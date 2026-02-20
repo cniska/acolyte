@@ -46,6 +46,7 @@ const CHAT_SLASH_COMMANDS = [
   "/exit",
 ] as const;
 const SHORTCUT_ITEMS = [
+  { key: "@path", description: "attach file/dir context" },
   { key: "/new", description: "new session" },
   { key: "/sessions", description: "list sessions" },
   { key: "/resume <id>", description: "resume session" },
