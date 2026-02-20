@@ -1,0 +1,59 @@
+# Acolyte Talk Notes
+
+## Purpose
+Living notes for talks about building Acolyte. Update this file as milestones ship so demos and explanations stay accurate.
+
+## Project Pitch
+- Acolyte is a personal AI coding assistant with:
+  - interactive CLI-first UX
+  - centralized memory across devices
+  - agentic workflows and coding tools
+  - explicit behavior contract in `docs/soul.md`
+
+## Current Architecture (as of 2026-02-20)
+- CLI runtime: Bun + TypeScript (`src/cli.ts`)
+- Backend API: Bun server with `/v1/chat` and `/healthz` (`src/server.ts`)
+- Agent runtime: Mastra `Agent` (`src/agent.ts`)
+- Tools: Mastra tools for repo search/read (`src/mastra-tools.ts`)
+- Local persistence:
+  - sessions: `~/.acolyte/sessions.json`
+  - memory notes: `~/.acolyte/memory.json`
+  - config: `~/.acolyte/config.json`
+
+## Why This Stack
+- Bun: fast local iteration and simple CLI/backend workflow.
+- Mastra: standardized agent/tool primitives to avoid framework drift.
+- Hosted-backend-ready contract: CLI can target local or hosted API without changing user workflow.
+
+## Milestones Log
+### 2026-02-20
+- Scaffolded CLI with session persistence and slash commands.
+- Added backend contract (`/v1/chat`) and status checks.
+- Added persistent memory notes and memory injection.
+- Added file context attachment support.
+- Added coding tools (`search`, `read`) in CLI.
+- Migrated backend to Mastra Agent + Mastra tools.
+- Added soul document (`docs/soul.md`) and wired it into backend instructions.
+
+## Demo Flow (Short)
+1. Start backend: `bun --env-file=.env run serve`
+2. Set CLI backend once: `bun run src/cli.ts config set apiUrl http://localhost:8787`
+3. Start chat: `bun run chat`
+4. Show:
+   - `/remember ...` and `/memories`
+   - `/search createBackend`
+   - `/read src/backend.ts 1 80`
+   - `/file src/cli.ts`
+   - ask Acolyte to reason over attached/tool context
+
+## Key Talking Points
+- Interactive-first CLI beats dashboard-first UX for coding workflows.
+- Persistent memory quality matters more than model swapping.
+- Standardizing on Mastra early reduces long-term maintenance cost.
+- Soul/behavior docs reduce style drift and improve consistency.
+
+## Open Narrative Threads
+- Next: expand Mastra toolset (`edit`, `run`, `git-status`, `git-diff`, `test`).
+- Add retrieval ranking and memory promotion rules.
+- Move persistence from local JSON to centralized Postgres/pgvector.
+- Add auth hardening and production deployment path.
