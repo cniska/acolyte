@@ -55,6 +55,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
   - added slash-command suggestions with keyboard selection/autocomplete (arrows + Tab/Enter)
   - tightened review style policy (concise, evidence-first, no destructive git suggestions)
   - polished transcript output (compact tool blocks, no-result clarity, duration summaries)
+  - hardened empty-output handling with explicit assistant/review fallbacks instead of blank replies
   - added lightweight semantic highlighting in assistant responses (code/commands/file refs)
   - added canonical feature inventory in `docs/features.md` and linked it from README
 - Delivery workflow:
