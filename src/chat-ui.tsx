@@ -116,6 +116,7 @@ export function toRows(messages: Message[], limit = RESUME_TRANSCRIPT_ROWS): Cha
 export function sanitizeAssistantContent(content: string): string {
   return content
     .split("\n")
+    .map((line) => line.replace(/^\s+(\d+\.\s)/, "$1"))
     .filter((line) => !/^\s*(Tools used:|Evidence:)/.test(line))
     .join("\n")
     .trimEnd();

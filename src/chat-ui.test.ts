@@ -52,6 +52,11 @@ describe("chat-ui helpers", () => {
     expect(sanitizeAssistantContent(raw)).toBe("Run bun run verify");
   });
 
+  test("sanitizeAssistantContent left-aligns numbered findings", () => {
+    const raw = ["  1. First finding", "    2. Second finding"].join("\n");
+    expect(sanitizeAssistantContent(raw)).toBe(["1. First finding", "2. Second finding"].join("\n"));
+  });
+
   test("toRows keeps only user/assistant and applies limit", () => {
     const messages: Message[] = [
       { id: "1", role: "system", content: "x", timestamp: "" },
