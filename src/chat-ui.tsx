@@ -1,5 +1,5 @@
 import { homedir } from "node:os";
-import { readdir, readFile } from "node:fs/promises";
+import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import React, { useState } from "react";
 import { useEffect } from "react";
@@ -15,7 +15,6 @@ import { createSession } from "./storage";
 import { sanitizeAssistantContent, tokenizeForHighlighting } from "./chat-content";
 import { formatChangesSummary, formatDogfoodStatus, formatThoughtDuration, formatVerifySummary } from "./chat-formatters";
 import { applySlashSuggestion, resolveSlashAlias, shouldAutocompleteSlashSubmit, suggestSlashCommands } from "./chat-slash";
-import { parseImplementedFeatures } from "./chat-features";
 import type { Message, Session, SessionStore } from "./types";
 import type { SkillMeta } from "./skills";
 
@@ -51,7 +50,6 @@ const SHORTCUT_ITEMS = [
   { key: "/changes", description: "show git changes" },
   { key: "/dogfood <task>", description: "run verify-first coding loop" },
   { key: "/dogfood-status (/ds)", description: "check dogfooding readiness" },
-  { key: "/features", description: "list current features" },
   { key: "/new", description: "new session" },
   { key: "/status", description: "show backend status" },
   { key: "/sessions", description: "list sessions" },
@@ -756,50 +754,6 @@ function ChatApp(props: ChatAppProps) {
           content: `- [${entry.scope}] ${entry.content}`,
         })),
       ]);
-      return;
-    }
-
-    if (resolvedText === "/features") {
-      pushUserCommandRow();
-      try {
-        const featurePath = join(process.cwd(), "docs/features.md");
-        const markdown = await readFile(featurePath, "utf8");
-        const features = parseImplementedFeatures(markdown, 8);
-        if (features.length === 0) {
-          setRows((current) => [
-            ...current,
-            {
-              id: `row_${crypto.randomUUID()}`,
-              role: "system",
-              content: "No implemented features listed yet. See docs/features.md.",
-            },
-          ]);
-          return;
-        }
-        setRows((current) => [
-          ...current,
-          { id: `row_${crypto.randomUUID()}`, role: "system", content: "Current Features" },
-          ...features.map((feature) => ({
-            id: `row_${crypto.randomUUID()}`,
-            role: "system" as const,
-            content: `- ${feature}`,
-          })),
-          {
-            id: `row_${crypto.randomUUID()}`,
-            role: "system",
-            content: "See docs/features.md for full list.",
-          },
-        ]);
-      } catch {
-        setRows((current) => [
-          ...current,
-          {
-            id: `row_${crypto.randomUUID()}`,
-            role: "system",
-            content: "Feature list not found. See docs/features.md.",
-          },
-        ]);
-      }
       return;
     }
 
