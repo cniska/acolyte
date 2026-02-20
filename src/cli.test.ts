@@ -37,6 +37,13 @@ describe("cli formatting helpers", () => {
     expect(out).toContain("3 lines");
   });
 
+  test("formatReadOutput normalizes repo-local File path", () => {
+    const raw = [`File: ${process.cwd()}/src/cli.ts`, "1: a", "2: b"].join("\n");
+    const out = formatForTool("read", raw);
+    expect(out).toContain("2 lines");
+    expect(out).toContain("File: src/cli.ts");
+  });
+
   test("formatDiffOutput includes file and line summary", () => {
     const raw = [
       "diff --git a/a.ts b/a.ts",
@@ -73,6 +80,14 @@ describe("cli formatting helpers", () => {
     const out = formatEditUpdateOutput(1, diff);
     expect(out).toContain("1 replacement applied.");
     expect(out).toContain("Added 1 line, removed 1 line.");
+  });
+
+  test("formatRunOutput hides shell echo noise in successful stderr", () => {
+    const raw = ["exit_code=0", "stdout:", "ok", "stderr:", "$ bun run typecheck"].join("\n");
+    const out = formatRunOutput(raw);
+    expect(out).toContain("stdout:");
+    expect(out).toContain("ok");
+    expect(out).not.toContain("stderr:");
   });
 
   test("truncateText and formatTimestamp stay stable", () => {

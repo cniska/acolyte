@@ -297,8 +297,14 @@ export function formatSearchOutput(raw: string): string {
 
 export function formatReadOutput(raw: string): string {
   const lines = raw.split("\n");
-  const summary = countLabel(lines.length, "line", "lines");
-  return [summary, ...clampLines(lines, 48)].join("\n");
+  const normalized = [...lines];
+  if (normalized[0]?.startsWith("File: ")) {
+    const rawPath = normalized[0].slice("File: ".length).trim();
+    normalized[0] = `File: ${displayPath(rawPath)}`;
+  }
+  const contentLines = Math.max(0, normalized.length - (normalized[0]?.startsWith("File: ") ? 1 : 0));
+  const summary = countLabel(contentLines, "line", "lines");
+  return [summary, ...clampLines(normalized, 48)].join("\n");
 }
 
 export function formatDiffOutput(raw: string): string {
@@ -337,6 +343,7 @@ export function formatRunOutput(raw: string): string {
   }
 
   const exitLine = lines[0];
+  const exitCode = Number.parseInt(exitLine.replace("exit_code=", "").trim(), 10);
   const stdoutIdx = lines.findIndex((line) => line.trim() === "stdout:");
   const stderrIdx = lines.findIndex((line) => line.trim() === "stderr:");
   const out: string[] = [exitLine];
@@ -345,7 +352,13 @@ export function formatRunOutput(raw: string): string {
     if (start < 0) {
       return;
     }
-    const payload = lines.slice(start + 1, end).filter((line) => line.trim().length > 0);
+    let payload = lines.slice(start + 1, end).filter((line) => line.trim().length > 0);
+    if (name === "stderr:" && exitCode === 0 && stdoutIdx >= 0) {
+      payload = [];
+    }
+    if (payload.length === 0) {
+      return;
+    }
     out.push(name);
     if (payload.length <= 4) {
       out.push(...payload);

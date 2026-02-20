@@ -46,6 +46,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Added inline result summaries in tool output (search match/file counts, read line counts).
 - Added `/verify` chat command to run project validation (`bun run verify`) in-place.
 - Added inline diff summary (`files changed`, `+added`, `-removed`) ahead of diff excerpts.
+- Improved transcript clarity: `Read` now shows repo-relative file paths and content-line counts; successful `Run` output suppresses noisy stderr blocks when stdout is present.
 
 ## Demo Flow (Short)
 1. Start backend: `bun --env-file=.env run serve`
