@@ -45,6 +45,7 @@
 ## Documentation
 
 - Update docs when behavior or contracts change.
+- Keep `docs/project-plan.md` and `docs/talk-notes.md` updated continuously as implementation evolves.
 - Keep this file policy-only. Procedural workflows can be added later as reusable skills.
 
 ## Safety

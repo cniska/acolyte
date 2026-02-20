@@ -52,7 +52,7 @@ Build a personal AI assistant using Mastra, with a CLI-first interface and a hos
    - Reviewer agent for checks and reflection.
 4. Tool Layer:
    - Repository tools (read/search/write diffs).
-   - Command tools (lint/test/build/typecheck).
+   - Command tools (run/typecheck/test via command execution).
    - Git tools (status/diff/log/branch-aware context).
    - Memory tools (write/read/promote/forget).
 5. Memory Layer:
@@ -156,5 +156,5 @@ Build a personal AI assistant using Mastra, with a CLI-first interface and a hos
 ## Next Actions
 1. Prioritize interactive CLI UX polish; keep batch mode intentionally minimal.
 2. Create technical design doc (`docs/technical-design.md`).
-3. Implement coding tool adapters first (`search`, `read`, `edit`, `run`, `git-status`, `git-diff`).
+3. Add stronger agent tool-use behavior for coding tasks (higher tool-call reliability).
 4. Create implementation backlog from phases.

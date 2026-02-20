@@ -14,7 +14,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - CLI runtime: Bun + TypeScript (`src/cli.ts`)
 - Backend API: Bun server with `/v1/chat` and `/healthz` (`src/server.ts`)
 - Agent runtime: Mastra `Agent` (`src/agent.ts`)
-- Tools: Mastra tools for repo search/read (`src/mastra-tools.ts`)
+- Tools: Mastra tools for repo search/read/git/run/edit (`src/mastra-tools.ts`)
 - Local persistence:
   - sessions: `~/.acolyte/sessions.json`
   - memory notes: `~/.acolyte/memory.json`
@@ -31,9 +31,10 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Added backend contract (`/v1/chat`) and status checks.
 - Added persistent memory notes and memory injection.
 - Added file context attachment support.
-- Added coding tools (`search`, `read`) in CLI.
+- Added coding tools (`search`, `read`, `git-status`, `git-diff`, `run`, `edit`) in CLI.
 - Migrated backend to Mastra Agent + Mastra tools.
 - Added soul document (`docs/soul.md`) and wired it into backend instructions.
+- Added `/resume` session command and cleaned up CLI UX/header.
 
 ## Demo Flow (Short)
 1. Start backend: `bun --env-file=.env run serve`
@@ -53,7 +54,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Soul/behavior docs reduce style drift and improve consistency.
 
 ## Open Narrative Threads
-- Next: expand Mastra toolset (`edit`, `run`, `git-status`, `git-diff`, `test`).
+- Next: improve agent reliability in choosing and sequencing tools for coding tasks.
 - Add retrieval ranking and memory promotion rules.
 - Move persistence from local JSON to centralized Postgres/pgvector.
 - Add auth hardening and production deployment path.
