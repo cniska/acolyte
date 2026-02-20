@@ -129,7 +129,7 @@ const INTERNAL_CHAT_COMMANDS = new Set([
   "/model",
   "/clear",
 ]);
-const SHORTCUT_PANEL_RENDERED_LINES = 13;
+const SHORTCUT_PANEL_RENDERED_LINES = 11;
 
 export function resolveCommandAlias(command: string): string {
   return COMMAND_ALIASES[command] ?? command;
@@ -666,7 +666,14 @@ async function chatMode(): Promise<void> {
       shortcutsOpen = false;
       return;
     }
-    output.write(`\x1b[${SHORTCUT_PANEL_RENDERED_LINES}A\r\x1b[J> `);
+    output.write("\x1b[s\n");
+    for (let i = 0; i < SHORTCUT_PANEL_RENDERED_LINES; i += 1) {
+      output.write("\x1b[2K");
+      if (i < SHORTCUT_PANEL_RENDERED_LINES - 1) {
+        output.write("\n");
+      }
+    }
+    output.write("\x1b[u");
     shortcutsOpen = false;
   };
 
@@ -676,10 +683,20 @@ async function chatMode(): Promise<void> {
       shortcutsOpen = false;
       return;
     }
-    printOutput("");
-    printHelp();
-    printOutput("");
-    output.write("> ");
+    output.write("\r\x1b[K> ");
+    output.write("\x1b[s\n");
+    printSection("Shortcuts");
+    printInfo("  ?               show shortcuts");
+    printInfo("  /skills         show capabilities");
+    printInfo("  /exit           exit chat");
+    printInfo("");
+    printSection("Keys");
+    printInfo("  enter           send message");
+    printInfo("  up / down       command history");
+    printInfo("  ctrl + c        exit chat");
+    printInfo("");
+    printInfo("Advanced workflows: acolyte run|history|memory|config|tool");
+    output.write("\x1b[u");
     shortcutsOpen = true;
   };
 
@@ -756,8 +773,16 @@ async function chatMode(): Promise<void> {
       const [rawCommand] = line === "?" ? ["?"] : line.split(/\s+/);
       const command = resolveCommandAlias(rawCommand);
       if (command === "?") {
-        erasePromptLineIfTty();
-        printHelp();
+        if (output.isTTY) {
+          if (shortcutsOpen) {
+            closeShortcutsPanel();
+          } else {
+            openShortcutsPanel();
+          }
+        } else {
+          erasePromptLineIfTty();
+          printHelp();
+        }
       } else if (command === "/skills") {
         erasePromptLineIfTty();
         printSkills();
