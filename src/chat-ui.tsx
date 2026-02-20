@@ -5,12 +5,12 @@ import { type ChatRow, type TokenUsageEntry } from "./chat-commands";
 import { useAtSuggestionsEffect, useSlashSuggestionsEffect, useThinkingAnimationEffect } from "./chat-effects";
 import { extractAtReferenceQuery } from "./chat-file-ref";
 import { ChatHeader } from "./chat-header";
+import { processInputChange, processInputSubmit } from "./chat-input-handlers";
 import { ChatInputPanel } from "./chat-input-panel";
 import { useChatKeybindings } from "./chat-keybindings";
 import { type PickerState, shownCwd } from "./chat-layout";
 import { createPickerHandlers } from "./chat-picker-handlers";
 import { suggestSlashCommands } from "./chat-slash";
-import { resolveSubmitInput } from "./chat-submit";
 import { createSubmitHandler } from "./chat-submit-handler";
 import { ChatTranscript } from "./chat-transcript";
 import type { Message, Session, SessionStore } from "./types";
@@ -180,18 +180,24 @@ function ChatApp(props: ChatAppProps) {
         value={value}
         inputRevision={inputRevision}
         onChange={(next) => {
-          if (value.length === 0 && next === "?") {
+          const decision = processInputChange({
+            currentValue: value,
+            nextValue: next,
+            applyingHistory: applyingHistoryRef.current,
+          });
+          if (decision.ignore) {
             return;
           }
-          if (applyingHistoryRef.current) {
+          if (decision.clearApplyingHistory) {
             applyingHistoryRef.current = false;
-          } else {
+          }
+          if (decision.resetHistoryIndex) {
             setInputHistoryIndex(-1);
           }
-          setValue(next);
+          setValue(decision.nextValue);
         }}
         onSubmit={(next) => {
-          const resolved = resolveSubmitInput({
+          const resolved = processInputSubmit({
             value: next,
             atSuggestions,
             atSuggestionIndex,
