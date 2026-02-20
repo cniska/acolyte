@@ -2,6 +2,7 @@
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { createBackend } from "./backend";
+import { readSnippet, searchRepo } from "./coding-tools";
 import { readConfig, setConfigValue, unsetConfigValue } from "./config";
 import { buildFileContext } from "./file-context";
 import { addMemory, listMemories } from "./memory";
@@ -20,13 +21,14 @@ import {
 const FALLBACK_MODEL = "gpt-5-mini";
 
 function usage(): void {
-  printInfo("Usage: acolyte <chat|run|history|status|memory|config>");
+  printInfo("Usage: acolyte <chat|run|history|status|memory|config|tool>");
   printInfo("  chat            Start interactive session");
   printInfo("  run [--file path] <prompt>    Send one prompt and exit");
   printInfo("  history         Show recent sessions");
   printInfo("  status          Show backend connection status");
   printInfo("  memory          Manage personal memory notes");
   printInfo("  config          Manage local CLI defaults");
+  printInfo("  tool            Run coding tools (search/read)");
 }
 
 function nowIso(): string {
@@ -63,6 +65,8 @@ function printHelp(): void {
   printInfo("  /use <id>       Switch to a session by id prefix");
   printInfo("  /title <text>   Rename current session");
   printInfo("  /status         Show backend connection status");
+  printInfo("  /search <pat>   Search repository text with ripgrep");
+  printInfo("  /read <path> [start] [end]  Read file snippet");
   printInfo("  /file <path>    Attach a local text file to this session");
   printInfo("  /remember <x>   Add a personal memory note");
   printInfo("  /memories       Show personal memory notes");
@@ -117,6 +121,10 @@ function printMemoryRows(rows: Awaited<ReturnType<typeof listMemories>>): void {
   for (const row of rows.slice(0, 50)) {
     printInfo(`${row.id.slice(0, 12)}  ${row.createdAt}  ${row.content}`);
   }
+}
+
+function formatToolContext(label: string, content: string): string {
+  return [`Tool context: ${label}`, "```text", content, "```"].join("\n");
 }
 
 function setSessionTitle(session: Session, inputText: string): void {
@@ -286,6 +294,36 @@ async function chatMode(): Promise<void> {
         } catch (error) {
           const message = error instanceof Error ? error.message : "Unknown error";
           printError(message);
+        }
+      } else if (command === "/search") {
+        const pattern = args.join(" ").trim();
+        if (!pattern) {
+          printWarning("Usage: /search <pattern>");
+        } else {
+          try {
+            const result = await searchRepo(pattern);
+            printInfo(result);
+            session.messages.push(newMessage("system", formatToolContext(`search ${pattern}`, result)));
+            session.updatedAt = nowIso();
+          } catch (error) {
+            const message = error instanceof Error ? error.message : "Unknown error";
+            printError(message);
+          }
+        }
+      } else if (command === "/read") {
+        const [pathInput, start, end] = args;
+        if (!pathInput) {
+          printWarning("Usage: /read <path> [start] [end]");
+        } else {
+          try {
+            const snippet = await readSnippet(pathInput, start, end);
+            printInfo(snippet);
+            session.messages.push(newMessage("system", formatToolContext(`read ${pathInput}`, snippet)));
+            session.updatedAt = nowIso();
+          } catch (error) {
+            const message = error instanceof Error ? error.message : "Unknown error";
+            printError(message);
+          }
         }
       } else if (command === "/file") {
         const pathInput = args.join(" ").trim();
@@ -472,6 +510,36 @@ async function configMode(args: string[]): Promise<void> {
   process.exitCode = 1;
 }
 
+async function toolMode(args: string[]): Promise<void> {
+  const [subcommand, ...rest] = args;
+  if (subcommand === "search") {
+    const pattern = rest.join(" ").trim();
+    if (!pattern) {
+      printError("Usage: acolyte tool search <pattern>");
+      process.exitCode = 1;
+      return;
+    }
+    const result = await searchRepo(pattern);
+    printInfo(result);
+    return;
+  }
+
+  if (subcommand === "read") {
+    const [pathInput, start, end] = rest;
+    if (!pathInput) {
+      printError("Usage: acolyte tool read <path> [start] [end]");
+      process.exitCode = 1;
+      return;
+    }
+    const snippet = await readSnippet(pathInput, start, end);
+    printInfo(snippet);
+    return;
+  }
+
+  printError("Usage: acolyte tool <search|read> ...");
+  process.exitCode = 1;
+}
+
 async function main(): Promise<void> {
   const [command, ...args] = process.argv.slice(2);
 
@@ -508,6 +576,11 @@ async function main(): Promise<void> {
 
   if (command === "config") {
     await configMode(args);
+    return;
+  }
+
+  if (command === "tool") {
+    await toolMode(args);
     return;
   }
 

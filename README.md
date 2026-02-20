@@ -46,10 +46,18 @@ Session management in chat:
 - `/use <session-id-prefix>` to switch sessions
 - `/title <text>` to rename current session
 - `/file <path>` to attach a local text/code file as context
+- `/search <pattern>` to search repository content
+- `/read <path> [start] [end]` to inspect file snippets
 
 Attach file context in one-shot mode:
 ```bash
 ACOLYTE_API_URL=http://localhost:8787 bun run run --file src/cli.ts "review this file"
+```
+
+Batch coding tools:
+```bash
+bun run src/cli.ts tool search "createBackend"
+bun run src/cli.ts tool read src/cli.ts 1 80
 ```
 
 ## Backend Behavior
