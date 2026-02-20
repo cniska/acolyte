@@ -1,9 +1,10 @@
 import { Box, render, Static, Text, useApp } from "ink";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import type { Backend } from "./backend";
 import { type ChatRow, type TokenUsageEntry } from "./chat-commands";
 import { renderAssistantContent } from "./chat-content-render";
-import { extractAtReferenceQuery, getCachedRepoPathCandidates, rankAtReferenceSuggestions } from "./chat-file-ref";
+import { useAtSuggestionsEffect, useSlashSuggestionsEffect, useThinkingAnimationEffect } from "./chat-effects";
+import { extractAtReferenceQuery } from "./chat-file-ref";
 import { useChatKeybindings } from "./chat-keybindings";
 import {
   borderLine,
@@ -103,46 +104,9 @@ function ChatApp(props: ChatAppProps) {
     { id: "cwd", text: shownCwd(), dim: true, brand: false },
   ];
 
-  useEffect(() => {
-    let cancelled = false;
-    const query = atQuery;
-    if (query === null) {
-      setAtSuggestions([]);
-      setAtSuggestionIndex(0);
-      return () => {
-        cancelled = true;
-      };
-    }
-    void (async () => {
-      const candidates = await getCachedRepoPathCandidates();
-      if (cancelled) {
-        return;
-      }
-      const next = rankAtReferenceSuggestions(candidates, query);
-      setAtSuggestions(next);
-      setAtSuggestionIndex((current) => Math.max(0, Math.min(current, Math.max(0, next.length - 1))));
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [atQuery]);
-
-  useEffect(() => {
-    setSlashSuggestionIndex((current) => Math.max(0, Math.min(current, Math.max(0, slashSuggestions.length - 1))));
-  }, [slashSuggestions]);
-
-  useEffect(() => {
-    if (!isThinking) {
-      setThinkingFrame(0);
-      return;
-    }
-    const id = setInterval(() => {
-      setThinkingFrame((current) => (current + 1) % THINKING_FRAMES.length);
-    }, 90);
-    return () => {
-      clearInterval(id);
-    };
-  }, [isThinking]);
+  useAtSuggestionsEffect(atQuery, setAtSuggestions, setAtSuggestionIndex);
+  useSlashSuggestionsEffect(slashSuggestions, setSlashSuggestionIndex);
+  useThinkingAnimationEffect(isThinking, THINKING_FRAMES.length, setThinkingFrame);
 
   const { openSkillsPanel, openResumePanel, handlePickerSelect } = createPickerHandlers({
     store,
