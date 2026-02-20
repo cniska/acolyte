@@ -1,0 +1,19 @@
+{
+  "name": "acolyte",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "acolyte": "./src/cli.ts"
+  },
+  "scripts": {
+    "chat": "bun run src/cli.ts chat",
+    "run": "bun run src/cli.ts run",
+    "dev": "bun run src/cli.ts chat",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  }
+}
