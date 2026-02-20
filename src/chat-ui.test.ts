@@ -1,7 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import type { Message, SessionStore } from "./types";
 import {
+  extractAtReferencePaths,
+  applyAtSuggestion,
   extractAtReferenceQuery,
+  formatThoughtDuration,
   formatSessionList,
   rankAtReferenceSuggestions,
   resolveResumeSession,
@@ -107,6 +110,7 @@ describe("chat-ui helpers", () => {
   test("extractAtReferenceQuery parses @prefix", () => {
     expect(extractAtReferenceQuery("@cli")).toBe("cli");
     expect(extractAtReferenceQuery(" @cli")).toBe("cli");
+    expect(extractAtReferenceQuery("review @src/cl please")).toBe("src/cl");
     expect(extractAtReferenceQuery("hello")).toBeNull();
   });
 
@@ -122,7 +126,26 @@ describe("chat-ui helpers", () => {
   test("shouldAutocompleteAtSubmit only intercepts unresolved single @token", () => {
     expect(shouldAutocompleteAtSubmit("@src/cl", "src/cli.ts")).toBe(true);
     expect(shouldAutocompleteAtSubmit("@src/cli.ts", "src/cli.ts")).toBe(false);
-    expect(shouldAutocompleteAtSubmit("@src/cli.ts review this", "src/cli.ts")).toBe(false);
+    expect(shouldAutocompleteAtSubmit("review @src/cli.ts now", "src/cli.ts")).toBe(false);
+    expect(shouldAutocompleteAtSubmit("review @src/cl now", "src/cli.ts")).toBe(true);
     expect(shouldAutocompleteAtSubmit("plain text", "src/cli.ts")).toBe(false);
+  });
+
+  test("applyAtSuggestion replaces only active @token", () => {
+    expect(applyAtSuggestion("@src/cl", "src/cli.ts")).toBe("@src/cli.ts");
+    expect(applyAtSuggestion("review @src/cl now", "src/cli.ts")).toBe("review @src/cli.ts now");
+  });
+
+  test("extractAtReferencePaths finds unique @paths in a prompt", () => {
+    expect(extractAtReferencePaths("review @AGENTS.md and @docs/soul.md")).toEqual([
+      "AGENTS.md",
+      "docs/soul.md",
+    ]);
+    expect(extractAtReferencePaths("repeat @AGENTS.md and @AGENTS.md")).toEqual(["AGENTS.md"]);
+  });
+
+  test("formatThoughtDuration renders ms and s forms", () => {
+    expect(formatThoughtDuration(240)).toBe("240ms");
+    expect(formatThoughtDuration(1200)).toBe("1.2s");
   });
 });

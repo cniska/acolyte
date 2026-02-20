@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import { Box, Static, Text, render, useApp, useInput } from "ink";
 import type { Backend } from "./backend";
 import { addMemory, listMemories } from "./memory";
+import { buildFileContext } from "./file-context";
 import { PromptInput } from "./prompt-input";
 import { listSkills, readSkillInstructions } from "./skills";
 import { createSession } from "./storage";
@@ -16,6 +17,7 @@ type ChatRow = {
   id: string;
   role: "user" | "assistant" | "system";
   content: string;
+  dim?: boolean;
 };
 
 type HeaderLine = {
@@ -33,6 +35,7 @@ type PickerState =
 const TOOL_LABELS = ["Run", "Search", "Read", "Diff", "Edit", "Update", "Status"] as const;
 const BRAND_COLOR = "#A56EFF";
 const MAX_SKILL_INSTRUCTION_CHARS = 4000;
+const THINKING_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"] as const;
 const CHAT_SLASH_COMMANDS = [
   "/new",
   "/sessions",
@@ -142,13 +145,29 @@ export function suggestSlashCommands(inputValue: string, max = 5): string[] {
   return [];
 }
 
-export function extractAtReferenceQuery(inputValue: string): string | null {
-  const value = inputValue.trim();
-  if (!value.startsWith("@")) {
+type AtToken = {
+  query: string;
+  start: number;
+  end: number;
+};
+
+function findActiveAtToken(inputValue: string): AtToken | null {
+  const matches = [...inputValue.matchAll(/(^|\s)@([^\s@]*)/g)];
+  if (matches.length === 0) {
     return null;
   }
-  const token = value.split(/\s+/)[0] ?? "";
-  return token.slice(1);
+  const match = matches[matches.length - 1];
+  const full = match[0] ?? "";
+  const query = match[2] ?? "";
+  const fullStart = match.index ?? 0;
+  const hasLeadingSpace = full.startsWith(" ");
+  const start = fullStart + (hasLeadingSpace ? 1 : 0);
+  const end = start + full.length - (hasLeadingSpace ? 1 : 0);
+  return { query, start, end };
+}
+
+export function extractAtReferenceQuery(inputValue: string): string | null {
+  return findActiveAtToken(inputValue)?.query ?? null;
 }
 
 export function rankAtReferenceSuggestions(paths: string[], query: string, max = MAX_AT_SUGGESTIONS): string[] {
@@ -181,14 +200,45 @@ export function shouldAutocompleteAtSubmit(
   if (!selectedSuggestion) {
     return false;
   }
-  const trimmed = inputValue.trim();
-  if (!trimmed.startsWith("@")) {
+  const token = findActiveAtToken(inputValue);
+  if (!token) {
     return false;
   }
-  if (trimmed.includes(" ")) {
+  const currentToken = inputValue.slice(token.start, token.end);
+  if (!currentToken.startsWith("@")) {
     return false;
   }
-  return trimmed !== `@${selectedSuggestion}`;
+  return currentToken !== `@${selectedSuggestion}`;
+}
+
+export function applyAtSuggestion(inputValue: string, suggestion: string): string {
+  const token = findActiveAtToken(inputValue);
+  if (!token) {
+    return inputValue;
+  }
+  const before = inputValue.slice(0, token.start);
+  const after = inputValue.slice(token.end);
+  const spacedAfter = after.startsWith(" ") || after.length === 0 ? after : ` ${after}`;
+  return `${before}@${suggestion}${spacedAfter}`;
+}
+
+export function extractAtReferencePaths(inputValue: string): string[] {
+  const matches = [...inputValue.matchAll(/(^|\s)@([^\s@]+)/g)];
+  if (matches.length === 0) {
+    return [];
+  }
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const match of matches) {
+    const raw = match[2] ?? "";
+    const cleaned = raw.replace(/[.,;:!?]+$/g, "").trim();
+    if (!cleaned || seen.has(cleaned)) {
+      continue;
+    }
+    seen.add(cleaned);
+    out.push(cleaned);
+  }
+  return out;
 }
 
 async function collectRepoPathCandidates(root = process.cwd(), maxEntries = MAX_SCAN_ENTRIES): Promise<string[]> {
@@ -276,6 +326,13 @@ function truncateText(input: string, max = 72): string {
   return `${input.slice(0, Math.max(0, max - 1))}…`;
 }
 
+export function formatThoughtDuration(ms: number): string {
+  if (ms < 1000) {
+    return `${ms}ms`;
+  }
+  return `${(ms / 1000).toFixed(1)}s`;
+}
+
 function formatShortcutRows(): string[] {
   const width = process.stdout.columns ?? 96;
   const columns = width >= 92 ? 2 : 1;
@@ -309,6 +366,7 @@ function ChatApp(props: ChatAppProps) {
   const [value, setValue] = useState("");
   const [inputRevision, setInputRevision] = useState(0);
   const [isThinking, setIsThinking] = useState(false);
+  const [thinkingFrame, setThinkingFrame] = useState(0);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [picker, setPicker] = useState<PickerState | null>(null);
   const slashSuggestions = suggestSlashCommands(value);
@@ -406,6 +464,19 @@ function ChatApp(props: ChatAppProps) {
       cancelled = true;
     };
   }, [atQuery]);
+
+  useEffect(() => {
+    if (!isThinking) {
+      setThinkingFrame(0);
+      return;
+    }
+    const id = setInterval(() => {
+      setThinkingFrame((current) => (current + 1) % THINKING_FRAMES.length);
+    }, 90);
+    return () => {
+      clearInterval(id);
+    };
+  }, [isThinking]);
 
   const handleSubmit = async (raw: string): Promise<void> => {
     const text = raw.trim();
@@ -640,11 +711,40 @@ function ChatApp(props: ChatAppProps) {
     }
     currentSession.updatedAt = nowIso();
     setRows((current) => [...current, { id: userMessage.id, role: "user", content: text }]);
+    const referencedPaths = extractAtReferencePaths(text);
+    const fileContextMessages: Message[] = [];
+    const unresolvedPaths: string[] = [];
+    for (const pathInput of referencedPaths) {
+      try {
+        const context = await buildFileContext(pathInput);
+        fileContextMessages.push(newMessage("system", context));
+      } catch {
+        unresolvedPaths.push(pathInput);
+      }
+    }
+    if (unresolvedPaths.length > 0) {
+      setRows((current) => [
+        ...current,
+        ...unresolvedPaths.map((pathInput) => ({
+          id: `row_${crypto.randomUUID()}`,
+          role: "system" as const,
+          content: `File not found: @${pathInput}`,
+        })),
+      ]);
+      await persist();
+      return;
+    }
+
     setIsThinking(true);
+    const thinkingStartedAt = Date.now();
     await persist();
 
     try {
-      const historyWithContext = await buildHistoryWithMemoryContext(currentSession.messages);
+
+      const historyWithContext = await buildHistoryWithMemoryContext([
+        ...fileContextMessages,
+        ...currentSession.messages,
+      ]);
       const reply = await backend.reply({
         message: text,
         history: historyWithContext,
@@ -659,6 +759,18 @@ function ChatApp(props: ChatAppProps) {
         ...current,
         { id: assistantMessage.id, role: "assistant", content: reply.output },
       ]);
+      const durationMs = Date.now() - thinkingStartedAt;
+      if (durationMs >= 300) {
+        setRows((current) => [
+          ...current,
+          {
+            id: `row_${crypto.randomUUID()}`,
+            role: "system",
+            content: `• thought for ${formatThoughtDuration(durationMs)}`,
+            dim: true,
+          },
+        ]);
+      }
       await persist();
     } catch (error) {
       const row: ChatRow = {
@@ -778,7 +890,9 @@ function ChatApp(props: ChatAppProps) {
               <Text>{row.role === "user" ? "❯ " : row.role === "assistant" ? "• " : "  "}</Text>
             </Box>
             <Box flexGrow={1}>
-              <Text>{row.role === "assistant" ? renderAssistantContent(row.content) : row.content}</Text>
+              <Text dimColor={Boolean(row.dim)}>
+                {row.role === "assistant" ? renderAssistantContent(row.content) : row.content}
+              </Text>
             </Box>
           </Box>
         </React.Fragment>
@@ -786,7 +900,7 @@ function ChatApp(props: ChatAppProps) {
       {isThinking ? (
         <>
           {rows.length > 0 ? <Text> </Text> : null}
-          <Text dimColor>  thinking...</Text>
+          <Text dimColor>{`  ${THINKING_FRAMES[thinkingFrame]} thinking…`}</Text>
         </>
       ) : null}
 
@@ -840,7 +954,7 @@ function ChatApp(props: ChatAppProps) {
             <Text>❯ </Text>
             <PromptInput
               value={value}
-              placeholder="Ask Acolyte..."
+              placeholder="Ask something…"
               onChange={(next) => {
                 if (value.length === 0 && next === "?") {
                   return;
@@ -852,7 +966,7 @@ function ChatApp(props: ChatAppProps) {
                 if (query !== null && atSuggestions.length > 0) {
                   const selected = atSuggestions[Math.max(0, Math.min(atSuggestionIndex, atSuggestions.length - 1))];
                   if (shouldAutocompleteAtSubmit(next, selected)) {
-                    setValue(`@${selected ?? ""} `);
+                    setValue(applyAtSuggestion(next, selected ?? ""));
                     setInputRevision((current) => current + 1);
                     return;
                   }
