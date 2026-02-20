@@ -13,6 +13,8 @@
 - Prefer editing existing files over creating new ones unless necessary.
 - Do not guess; use concrete evidence (errors, logs, tests, source) before changing code.
 - Stop and ask if unexpected diffs or artifacts appear.
+- Default to autonomous execution for straightforward improvements and continue without explicit confirmation.
+- Only pause for confirmation when decisions are ambiguous, risky, or irreversible.
 
 ## Commits
 
