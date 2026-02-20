@@ -23,8 +23,8 @@ export const searchRepoTool = createTool({
   },
 });
 
-export const readFileSnippetTool = createTool({
-  id: "read-file-snippet",
+export const readFileTool = createTool({
+  id: "read-file",
   description: "Read a text file snippet by line range from the local repository.",
   inputSchema: z.object({
     path: z.string().min(1),
@@ -76,7 +76,7 @@ export const runCommandTool = createTool({
 });
 
 export const editFileTool = createTool({
-  id: "edit-file-replace",
+  id: "edit-file",
   description: "Replace exact text in a file. Supports dry run mode.",
   inputSchema: z.object({
     path: z.string().min(1),
@@ -97,9 +97,9 @@ export const editFileTool = createTool({
 
 export const acolyteTools = {
   searchRepo: searchRepoTool,
-  readFileSnippet: readFileSnippetTool,
+  readFile: readFileTool,
   gitStatus: gitStatusTool,
   gitDiff: gitDiffTool,
   runCommand: runCommandTool,
-  editFileReplace: editFileTool,
+  editFile: editFileTool,
 };
