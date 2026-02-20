@@ -1,9 +1,8 @@
 #!/usr/bin/env bun
-import { emitKeypressEvents } from "node:readline";
-import { createInterface } from "node:readline/promises";
-import { stdin as input, stdout as output } from "node:process";
+import { stdout as output } from "node:process";
 import { relative } from "node:path";
 import { createBackend } from "./backend";
+import { runInkChat } from "./chat-ui";
 import {
   editFileReplace,
   gitDiff,
@@ -20,14 +19,12 @@ import type { Message, Session, SessionStore } from "./types";
 import {
   banner,
   clearScreen,
-  printAssistantHeader,
   printError,
   printInfo,
   printOutput,
   printSection,
   printToolHeader,
   printTool,
-  printUser,
   printWarning,
   streamText,
 } from "./ui";
@@ -35,9 +32,6 @@ import {
 const FALLBACK_MODEL = "gpt-5-mini";
 const CLI_VERSION = process.env.npm_package_version ?? "dev";
 const PROMPT = "❯ ";
-const PROMPT_PLACEHOLDER = "Ask Acolyte…";
-const DIM_ON = "\x1b[2m";
-const DIM_OFF = "\x1b[22m";
 
 function usage(): void {
   printInfo("Usage: acolyte <chat|run|history|status|memory|config|tool>");
@@ -581,10 +575,9 @@ async function handlePrompt(prompt: string, session: Session, backend = createBa
   session.messages.push(userMsg);
   setSessionTitle(session, prompt);
 
-  printUser(prompt);
-  printAssistantHeader();
-
   try {
+    printOutput(`❯ ${prompt}`);
+    printInfo("  thinking...");
     const historyWithContext = await buildHistoryWithMemoryContext(session.messages);
     const reply = await backend.reply({
       message: prompt,
@@ -592,7 +585,8 @@ async function handlePrompt(prompt: string, session: Session, backend = createBa
       model: session.model,
     });
 
-    await streamText(reply.output);
+    printOutput("");
+    await streamText(`• ${reply.output}`);
     session.messages.push(newMessage("assistant", reply.output));
     session.model = reply.model;
     session.updatedAt = nowIso();
@@ -654,247 +648,27 @@ async function chatMode(): Promise<void> {
   const config = await readConfig();
   const store = await readStore();
   const defaultModel = process.env.ACOLYTE_MODEL ?? config.model ?? FALLBACK_MODEL;
-  let session = getOrCreateActiveSession(store, defaultModel);
-
-  if (output.isTTY) {
-    clearScreen();
-  }
-  banner(session.model, session.id, CLI_VERSION);
-
-  const rl = createInterface({
-    input,
-    output,
-    // Lower timeout so Esc keypress is handled quickly instead of waiting for possible sequences.
-    escapeCodeTimeout: 25,
-  });
-  rl.setPrompt(PROMPT);
-  const canUseHotkeys = Boolean(input.isTTY && typeof input.setRawMode === "function");
-  const wasRawMode = canUseHotkeys ? input.isRaw : false;
-  let shortcutsOpen = false;
-  let promptPlaceholderVisible = false;
-  const promptBorder = (): string => `${DIM_ON}${"─".repeat(output.columns ?? 96)}${DIM_OFF}`;
-
-  const renderPromptWithPlaceholder = (): void => {
-    if (!output.isTTY) {
-      return;
-    }
-    // Render placeholder and move cursor back so typing starts at the same position.
-    output.write(`${DIM_ON}${PROMPT_PLACEHOLDER}${DIM_OFF}\x1b[${PROMPT_PLACEHOLDER.length}D`);
-    promptPlaceholderVisible = true;
-  };
-
-  const renderPromptFooter = (shortcuts: boolean): void => {
-    if (!output.isTTY) {
-      return;
-    }
-    const lines = shortcuts ? [...getShortcutPanelLines()] : ["  ? for shortcuts"];
-    const dimmed = [promptBorder(), ...lines.map((line) => `${DIM_ON}${line}${DIM_OFF}`)];
-    // Redraw below prompt line without relying on saved cursor state.
-    output.write("\x1b[1E\x1b[0J");
-    output.write(`${dimmed.join("\n")}\n`);
-    output.write(`\x1b[${dimmed.length + 1}A\r`);
-  };
-
-  const redrawPromptFrame = (): void => {
-    if (!output.isTTY) {
-      return;
-    }
-    // Redraw the top border above the prompt line.
-    output.write(`\x1b[1F\r\x1b[2K${promptBorder()}\x1b[1E\r`);
-    const currentLine = rl.line ?? "";
-    output.write(`\x1b[2K${PROMPT}${currentLine}`);
-    const cursorPos = (rl as unknown as { cursor?: number }).cursor;
-    if (typeof cursorPos === "number" && cursorPos >= 0 && cursorPos < currentLine.length) {
-      output.write(`\x1b[${currentLine.length - cursorPos}D`);
-    }
-    if (promptPlaceholderVisible && rl.line.length === 0) {
-      renderPromptWithPlaceholder();
-    }
-    renderPromptFooter(shortcutsOpen);
-  };
-
-  const closeShortcutsPanel = (): void => {
-    if (!shortcutsOpen || !output.isTTY) {
-      shortcutsOpen = false;
-      return;
-    }
-    renderPromptFooter(false);
-    shortcutsOpen = false;
-  };
-
-  const openShortcutsPanel = (): void => {
-    if (!output.isTTY) {
-      printHelp();
-      shortcutsOpen = false;
-      return;
-    }
-    renderPromptFooter(true);
-    shortcutsOpen = true;
-  };
-
-  const onKeypress = (str: string | undefined, key?: { name?: string }): void => {
-    const inputStr = str ?? "";
-    if (inputStr === "\x1b[I") {
-      // Terminal focus-in event (when enabled): redraw full prompt frame.
-      redrawPromptFrame();
-      return;
-    }
-    if (inputStr === "\x1b[O") {
-      // Terminal focus-out event.
-      return;
-    }
-
-    const keyName = key?.name ?? "";
-    const isEscape = keyName === "escape" || inputStr.includes("\x1b");
-    if (promptPlaceholderVisible) {
-      const isPrintable = Boolean(inputStr) && inputStr >= " " && inputStr !== "\x7f";
-      const clearsPlaceholder = isPrintable && !isEscape;
-      if (clearsPlaceholder) {
-        output.write("\x1b[0K");
-        promptPlaceholderVisible = false;
-      }
-    }
-
-    if (key?.name === "escape" || inputStr.includes("\x1b")) {
-      if (shortcutsOpen) {
-        closeShortcutsPanel();
-      }
-      return;
-    }
-    if (inputStr !== "?") {
-      return;
-    }
-    if (rl.line.trim() !== "?") {
-      return;
-    }
-    rl.write("", { ctrl: true, name: "u" });
-    if (shortcutsOpen) {
-      closeShortcutsPanel();
-      return;
-    }
-    openShortcutsPanel();
-  };
-  if (canUseHotkeys) {
-    emitKeypressEvents(input);
-    if (!wasRawMode) {
-      input.setRawMode(true);
-    }
-    // Enable terminal focus in/out events so we can redraw after tab-switch.
-    output.write("\x1b[?1004h");
-    input.on("keypress", onKeypress);
-  }
-
-  const persist = async (): Promise<void> => {
-    await writeStore(store);
-  };
+  // Start a fresh chat session by default to avoid cross-session transcript/context bleed.
+  const session = createSession(defaultModel);
+  store.sessions.unshift(session);
+  store.activeSessionId = session.id;
   const backend = createBackend({
     apiUrl: config.apiUrl,
     apiKey: config.apiKey,
   });
+  const persist = async (): Promise<void> => {
+    await writeStore(store);
+  };
 
-  process.on("SIGINT", async () => {
-    if (canUseHotkeys) {
-      input.off("keypress", onKeypress);
-      output.write("\x1b[?1004l");
-      if (!wasRawMode) {
-        input.setRawMode(false);
-      }
-    }
-    await persist();
-    rl.close();
-    process.exit(0);
-  });
-
-  while (true) {
-    let line = "";
-    let promptHintRendered = false;
-    try {
-      if (output.isTTY && !shortcutsOpen) {
-        output.write(`${promptBorder()}\n`);
-        const question = rl.question(PROMPT);
-        renderPromptWithPlaceholder();
-        renderPromptFooter(false);
-        promptHintRendered = true;
-        line = (await question).trim();
-        promptPlaceholderVisible = false;
-      } else {
-        promptPlaceholderVisible = false;
-        line = (await rl.question(PROMPT)).trim();
-      }
-    } catch (error) {
-      const code = (error as { code?: string })?.code;
-      if (code === "ERR_USE_AFTER_CLOSE") {
-        if (canUseHotkeys) {
-          input.off("keypress", onKeypress);
-          output.write("\x1b[?1004l");
-          if (!wasRawMode) {
-            input.setRawMode(false);
-          }
-        }
-        await persist();
-        return;
-      }
-
-      throw error;
-    }
-    if (output.isTTY && promptHintRendered && !shortcutsOpen) {
-      output.write("\x1b[0J");
-    }
-    if (!line) {
-      continue;
-    }
-
-    if (shortcutsOpen) {
-      closeShortcutsPanel();
-    }
-
-    if (line.startsWith("/") || line === "?") {
-      const [rawCommand] = line === "?" ? ["?"] : line.split(/\s+/);
-      const command = resolveCommandAlias(rawCommand);
-      if (command === "?") {
-        if (output.isTTY) {
-          if (shortcutsOpen) {
-            closeShortcutsPanel();
-          } else {
-            openShortcutsPanel();
-          }
-        } else {
-          erasePromptLineIfTty();
-          printHelp();
-        }
-      } else if (command === "/exit") {
-        if (canUseHotkeys) {
-          input.off("keypress", onKeypress);
-          output.write("\x1b[?1004l");
-          if (!wasRawMode) {
-            input.setRawMode(false);
-          }
-        }
-        await persist();
-        rl.close();
-        return;
-      } else if (INTERNAL_CHAT_COMMANDS.has(command)) {
-        printWarning(
-          `\`${rawCommand}\` is internal. Ask naturally in chat, or use \`acolyte tool ...\` for advanced usage.`,
-        );
-      } else {
-        const suggestions = normalizeSuggestions(suggestCommands(rawCommand, 3));
-        if (suggestions.length === 1) {
-          printWarning(`Unknown command: ${rawCommand}. Did you mean ${suggestions[0]}?`);
-        } else if (suggestions.length > 1) {
-          printWarning(`Unknown command: ${rawCommand}. Try: ${suggestions.join(", ")}`);
-        } else {
-          printWarning(`Unknown command: ${rawCommand}`);
-        }
-      }
-
-      await persist();
-      continue;
-    }
-
-    await handlePrompt(line, session, backend);
-    await persist();
+  if (output.isTTY) {
+    clearScreen();
   }
+  await runInkChat({
+    backend,
+    session,
+    persist,
+    version: CLI_VERSION,
+  });
 }
 
 async function runMode(args: string[]): Promise<void> {

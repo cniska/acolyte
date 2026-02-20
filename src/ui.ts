@@ -22,14 +22,6 @@ export function banner(model: string, sessionId: string, version: string): void 
   stdout.write("\n");
 }
 
-export function printUser(content: string): void {
-  stdout.write(`${color.green("you")}: ${content}\n`);
-}
-
-export function printAssistantHeader(): void {
-  stdout.write(`${color.brand("Acolyte")}: `);
-}
-
 export async function streamText(content: string): Promise<void> {
   const words = content.split(" ");
   for (let i = 0; i < words.length; i += 1) {

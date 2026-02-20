@@ -8,8 +8,9 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
+    "jsx": "react-jsx",
     "types": ["bun", "node"],
     "outDir": "dist"
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
 }
