@@ -125,14 +125,16 @@ Build a personal AI assistant using Mastra, with a CLI-first interface that runs
 6. Return result + what memory was updated.
 
 ## Implementation Phases
-## Phase 0: Foundations (Week 1)
+Phases are milestone-based, not calendar-bound.
+
+## Phase 0: Foundations
 1. Create monorepo structure and baseline Mastra + CLI integration.
 2. Set up local-first persistence, migrations, and base schema.
 3. Configure providers and model routing.
 4. Implement local CLI bootstrap (`acolyte` command).
 5. Scaffold optional Vercel API endpoints for remote CLI connectivity.
 
-## Phase 1: MVP CLI Assistant (Weeks 2-3)
+## Phase 1: MVP CLI Assistant
 1. Implement interactive CLI commands first with backend auth.
 2. Implement coding assistant agent and tool orchestration.
 3. Add toolset for repo read/search/edit, git context, and command execution.
@@ -140,20 +142,20 @@ Build a personal AI assistant using Mastra, with a CLI-first interface that runs
 5. Add history and memory inspection/edit commands.
 6. Add minimal batch mode (`run` and `run --file`) for scripting.
 
-## Phase 2: Reliable Memory (Weeks 4-5)
+## Phase 2: Reliable Memory
 1. Add memory ranking and promotion rules.
 2. Add feedback capture and correction workflow in CLI.
 3. Add memory-related eval tests.
 4. Add import/export for memory backups.
 5. Add observational-memory pipeline (signal extraction, confidence scoring, promotion guardrails).
 
-## Phase 3: Quality and Safety (Weeks 6-7)
+## Phase 3: Quality and Safety
 1. Add verification gates and retry policies.
 2. Add sandboxed code execution.
 3. Add audit logs and trace dashboards.
 4. Add failure mode playbooks.
 
-## Phase 4: Deployment and Operations (Week 8)
+## Phase 4: Deployment and Operations
 1. Deploy backend to Vercel and connect Prisma Postgres (optional hosted path).
 2. Add local install/run scripts and environment docs for multi-machine CLI use.
 3. Add backup/restore workflow for centralized memory DB.

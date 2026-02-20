@@ -22,6 +22,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Subagent v1 routing (`planner` / `coder` / `reviewer`) with explicit per-role context handoff.
 - Mastra Studio exposes role agents (`Planner`, `Coder`, `Reviewer`) plus default `acolyte` alias.
 - Dogfooding workflow command: `/dogfood <task>` with verify-first loop.
+- Compact execution aliases: `/compact <task>` and `/cmp` map to `/dogfood`.
 - Optional skip verify flow: `/dogfood --no-verify <task>`.
 - One-shot CLI mode via `run` (including `--file` attachment support).
 - Tool command surface for search/read/edit/git/run operations.
