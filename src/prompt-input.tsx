@@ -6,6 +6,7 @@ const KEYS = {
     c: "c",
     h: "\u0008",
     w: "w",
+    wordDelete: "\u0017",
   },
   meta: {
     b: "b",
@@ -110,7 +111,7 @@ export function PromptInput({
         return;
       }
 
-      if (key.ctrl && input === KEYS.ctrl.w) {
+      if ((key.ctrl && input === KEYS.ctrl.w) || input === KEYS.ctrl.wordDelete) {
         if (cursorOffset === 0) {
           return;
         }
