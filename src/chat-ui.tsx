@@ -13,6 +13,7 @@ import { listSkills, readSkillInstructions } from "./skills";
 import { createSession } from "./storage";
 import { sanitizeAssistantContent, tokenizeForHighlighting } from "./chat-content";
 import { formatChangesSummary, formatDogfoodStatus, formatThoughtDuration, formatVerifySummary } from "./chat-formatters";
+import { applySlashSuggestion, resolveSlashAlias, shouldAutocompleteSlashSubmit, suggestSlashCommands } from "./chat-slash";
 import type { Message, Session, SessionStore } from "./types";
 import type { SkillMeta } from "./skills";
 
@@ -43,24 +44,6 @@ const COLORS = {
 } as const;
 const MAX_SKILL_INSTRUCTION_CHARS = 4000;
 const THINKING_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"] as const;
-const CHAT_SLASH_COMMANDS = [
-  "/changes",
-  "/dogfood",
-  "/ds",
-  "/dogfood-status",
-  "/features",
-  "/new",
-  "/status",
-  "/sessions",
-  "/skills",
-  "/resume",
-  "/remember",
-  "/memories",
-  "/exit",
-] as const;
-const SLASH_ALIASES: Record<string, string> = {
-  "/ds": "/dogfood-status",
-};
 const SHORTCUT_ITEMS = [
   { key: "@path", description: "attach file/dir context" },
   { key: "/changes", description: "show git changes" },
@@ -153,43 +136,6 @@ export function formatSessionList(store: SessionStore, limit = 10): string[] {
     const title = item.title || "New Session";
     return `${active} ${item.id.slice(0, 12)}  ${title}`;
   });
-}
-
-export function suggestSlashCommands(inputValue: string, max = 5): string[] {
-  const value = inputValue.trim();
-  if (!value.startsWith("/")) {
-    return [];
-  }
-  const matches = CHAT_SLASH_COMMANDS.filter((command) => command.startsWith(value));
-  if (matches.length > 0) {
-    return matches.slice(0, max);
-  }
-  return [];
-}
-
-export function shouldAutocompleteSlashSubmit(
-  inputValue: string,
-  selectedSuggestion: string | undefined,
-): boolean {
-  if (!selectedSuggestion) {
-    return false;
-  }
-  const trimmed = inputValue.trim();
-  if (!trimmed.startsWith("/")) {
-    return false;
-  }
-  if (trimmed.includes(" ")) {
-    return false;
-  }
-  return trimmed !== selectedSuggestion;
-}
-
-export function applySlashSuggestion(selectedSuggestion: string): string {
-  return `${selectedSuggestion} `;
-}
-
-function resolveSlashAlias(value: string): string {
-  return SLASH_ALIASES[value] ?? value;
 }
 
 export function parseImplementedFeatures(markdown: string, limit = 8): string[] {

@@ -3,15 +3,12 @@ import type { Message, SessionStore } from "./types";
 import {
   extractAtReferencePaths,
   applyAtSuggestion,
-  applySlashSuggestion,
   extractAtReferenceQuery,
   parseImplementedFeatures,
   formatSessionList,
   rankAtReferenceSuggestions,
   resolveResumeSession,
-  shouldAutocompleteSlashSubmit,
   shouldAutocompleteAtSubmit,
-  suggestSlashCommands,
   toRows,
 } from "./chat-ui";
 
@@ -87,33 +84,6 @@ describe("chat-ui helpers", () => {
     const lines = formatSessionList(makeStore());
     expect(lines[0]?.startsWith("* ")).toBe(true);
     expect(lines[1]?.startsWith("  ")).toBe(true);
-  });
-
-  test("suggestSlashCommands filters known commands by prefix", () => {
-    expect(suggestSlashCommands("/c")).toEqual(["/changes"]);
-    expect(suggestSlashCommands("/f")).toEqual(["/features"]);
-    expect(suggestSlashCommands("/s")).toEqual(["/status", "/sessions", "/skills"]);
-    expect(suggestSlashCommands("/st")).toEqual(["/status"]);
-    expect(suggestSlashCommands("/d")).toEqual(["/dogfood", "/ds", "/dogfood-status"]);
-    expect(suggestSlashCommands("/ds")).toEqual(["/ds"]);
-    expect(suggestSlashCommands("/dogfood-s")).toEqual(["/dogfood-status"]);
-    expect(suggestSlashCommands("/h")).toEqual([]);
-    expect(suggestSlashCommands("/res")).toEqual(["/resume"]);
-    expect(suggestSlashCommands("/mem")).toEqual(["/memories"]);
-    expect(suggestSlashCommands("/rem")).toEqual(["/remember"]);
-    expect(suggestSlashCommands("/unknown")).toEqual([]);
-    expect(suggestSlashCommands("plain")).toEqual([]);
-  });
-
-  test("shouldAutocompleteSlashSubmit only intercepts unresolved slash command token", () => {
-    expect(shouldAutocompleteSlashSubmit("/st", "/status")).toBe(true);
-    expect(shouldAutocompleteSlashSubmit("/status", "/status")).toBe(false);
-    expect(shouldAutocompleteSlashSubmit("/status now", "/status")).toBe(false);
-    expect(shouldAutocompleteSlashSubmit("status", "/status")).toBe(false);
-  });
-
-  test("applySlashSuggestion appends trailing space", () => {
-    expect(applySlashSuggestion("/status")).toBe("/status ");
   });
 
   test("parseImplementedFeatures reads implemented bullet list", () => {
