@@ -1,7 +1,8 @@
-import { createAcolyteAgent } from "./acolyte-agent";
+import { createAgent } from "./agent-factory";
 import { type AgentRole, buildRoleInstructions, buildSubagentContext, selectAgentRole } from "./agent-roles";
 import type { ChatRequest, ChatResponse } from "./api";
 import { appConfig } from "./app-config";
+import { loadRoleSoulPrompt } from "./soul";
 
 interface OpenAIClientConfig {
   apiKey?: string;
@@ -258,12 +259,13 @@ export async function runAgent(input: {
   }
 
   const role = selectAgentRole(input.request.message);
+  const roleSoul = loadRoleSoulPrompt(role);
 
-  const agent = createAcolyteAgent({
+  const agent = createAgent({
     id: `acolyte-${role}`,
     name: `Acolyte ${role[0].toUpperCase()}${role.slice(1)}`,
     model: input.request.model,
-    instructions: buildRoleInstructions(input.soulPrompt, role),
+    instructions: buildRoleInstructions(input.soulPrompt, role, roleSoul),
   });
 
   const requestInput = buildAgentInputWithUsage(input.request);

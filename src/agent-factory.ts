@@ -17,11 +17,11 @@ function normalizeModel(model: string): string {
   return model.includes("/") ? model : `openai/${model}`;
 }
 
-export type AcolyteInstructions = string | (() => string | Promise<string>);
+export type AgentInstructions = string | (() => string | Promise<string>);
 
-export function createAcolyteAgent(input: {
+export function createAgent(input: {
   model: string;
-  instructions: AcolyteInstructions;
+  instructions: AgentInstructions;
   id?: string;
   name?: string;
 }): Agent {
