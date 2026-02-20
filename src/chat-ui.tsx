@@ -313,16 +313,24 @@ export async function runInkChat(props: ChatAppProps): Promise<void> {
   const app = render(<ChatApp {...props} />);
   await app.waitUntilExit();
 }
-  const renderAssistantContent = (content: string): React.ReactNode => {
-    for (const label of TOOL_LABELS) {
-      if (content.startsWith(`${label} `) || content.startsWith(`${label}(`) || content.startsWith(`${label}:`)) {
-        return (
-          <>
-            <Text bold>{label}</Text>
-            {content.slice(label.length)}
-          </>
-        );
-      }
+
+function renderAssistantContent(content: string): React.ReactNode {
+  const cleaned = content
+    .split("\n")
+    .filter((line) => !/^\s*(Tools used:|Evidence:)/.test(line))
+    .join("\n")
+    .trimEnd();
+
+  for (const label of TOOL_LABELS) {
+    if (cleaned.startsWith(`${label} `) || cleaned.startsWith(`${label}(`) || cleaned.startsWith(`${label}:`)) {
+      return (
+        <>
+          <Text bold>{label}</Text>
+          {cleaned.slice(label.length)}
+        </>
+      );
     }
-    return content;
-  };
+  }
+
+  return cleaned;
+}
