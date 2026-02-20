@@ -48,3 +48,5 @@ Acolyte is my personal AI assistant for practical execution, especially coding w
 2. Batch mode exists for minimal scripting use.
 3. Centralized memory enables continuity across machines.
 4. Tool reliability and memory quality are higher priority than feature count.
+
+Reference: https://soul.md
