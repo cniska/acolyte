@@ -45,7 +45,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - UX upgrades:
   - moved chat UI to Ink with stable prompt/transcript separation
   - added session controls (`/new`, `/sessions`, `/resume`) and skills picker UX
-  - added in-chat memory commands (`/remember [--project]`, `/memories`)
+  - added in-chat memory commands (`/remember [--project]`, `/memory`)
   - added in-chat `/dogfood <task>` for verify-first autonomous coding tasks with automatic local `bun run verify`
   - added in-chat `/dogfood-status` (`/ds`) for quick dogfooding readiness checks
   - added in-chat `/changes` for quick git status + diff summary without leaving chat
@@ -56,6 +56,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
   - added slash-command suggestions with keyboard selection/autocomplete (arrows + Tab/Enter)
   - added compact slash aliases for common flows (`/df`, `/ds`, `/mem`, `/rem`)
   - centralized provider/model routing config (role model fallback + provider-aware model presentation)
+  - added per-role model overrides with fallback to main model (`ACOLYTE_MODEL_*` -> `ACOLYTE_MODEL`)
   - tightened review style policy (concise, evidence-first, no destructive git suggestions)
   - polished transcript output (compact tool blocks, no-result clarity, duration summaries)
   - hardened empty-output handling with explicit assistant/review fallbacks instead of blank replies
@@ -72,7 +73,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 3. Start chat: `bun run chat`
 4. Show:
    - `@src/agent.ts review this file`
-   - `/remember [--project] ...` and `/memories`
+   - `/remember [--project] ...` and `/memory`
    - `/resume` and `/skills`
    - tool-backed reasoning over attached file context
 
@@ -88,6 +89,8 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - UX details matter: prompt ergonomics and low-noise output have outsized impact.
 - `@file` references are only valuable when they attach real context, not just visual autocomplete.
 - Subagents work better when each role gets explicit context (goal, scope, expected output), not implicit routing guesses.
+- Centralized provider/model routing reduces drift across CLI/backend/agent wiring.
+- Mock-path smoke checks (`/healthz` with `--no-env-file`) catch provider/env assumptions early.
 
 ## Open Narrative Threads
 - Next: richer transcript-style tool blocks (focused excerpts by default, expandable when needed).
