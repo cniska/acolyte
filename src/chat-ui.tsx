@@ -521,7 +521,9 @@ function ChatApp(props: ChatAppProps) {
         }
         return;
       }
-      const suggestionNavActive = atQuery !== null || (atQuery === null && slashSuggestions.length > 0);
+      const browsingInputHistory = inputHistoryIndex >= 0;
+      const suggestionNavActive =
+        !browsingInputHistory && (atQuery !== null || (atQuery === null && slashSuggestions.length > 0));
       if (!isThinking && !suggestionNavActive && key.upArrow) {
         if (inputHistory.length === 0) {
           return;
@@ -557,7 +559,7 @@ function ChatApp(props: ChatAppProps) {
         setInputRevision((current) => current + 1);
         return;
       }
-      if (atQuery !== null && atSuggestions.length > 0) {
+      if (!browsingInputHistory && atQuery !== null && atSuggestions.length > 0) {
         const selected = atSuggestions[Math.max(0, Math.min(atSuggestionIndex, atSuggestions.length - 1))];
         if (key.tab && shouldAutocompleteAtSubmit(value, selected)) {
           setValue(applyAtSuggestion(value, selected ?? ""));
@@ -573,7 +575,7 @@ function ChatApp(props: ChatAppProps) {
           return;
         }
       }
-      if (atQuery === null && slashSuggestions.length > 0) {
+      if (!browsingInputHistory && atQuery === null && slashSuggestions.length > 0) {
         const selected = slashSuggestions[Math.max(0, Math.min(slashSuggestionIndex, slashSuggestions.length - 1))];
         if (key.tab && shouldAutocompleteSlashSubmit(value, selected)) {
           setValue(applySlashSuggestion(selected ?? ""));
