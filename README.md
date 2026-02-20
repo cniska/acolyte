@@ -69,6 +69,29 @@ bun run tool test "bun run typecheck"
 bun run tool edit src/cli.ts Acolyte Acolyte --dry-run
 ```
 
+## Example Prompts
+
+Inside `bun run chat`, try:
+
+```text
+/remember I prefer concise answers with concrete commands.
+/search createBackend
+/read src/agent.ts 1 120
+/git-status
+/git-diff src/cli.ts 3
+/run bun run typecheck
+/test bun run typecheck
+/edit src/cli.ts Acolyte Acolyte --dry-run
+Summarize the current architecture and the next 3 improvements.
+```
+
+One-shot examples:
+
+```bash
+bun run run "Review the current repository state and suggest top 3 technical risks."
+bun run run --file src/mastra-tools.ts "Explain what tools are available and what is missing."
+```
+
 ## Backend Behavior
 
 - `/v1/chat` runs a simple agent pipeline: `plan -> execute -> review`.
