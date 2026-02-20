@@ -125,6 +125,14 @@ export function finalizeReviewOutput(output: string): string {
   return "No review output produced. Try a narrower scope (for example src/file.ts).";
 }
 
+export function finalizeAssistantOutput(output: string): string {
+  const cleaned = output.trim();
+  if (cleaned.length > 0) {
+    return cleaned;
+  }
+  return "No output produced. Try rephrasing the request.";
+}
+
 function buildToolPolicy(baseInstructions: string): string {
   return [
     baseInstructions,
@@ -216,7 +224,7 @@ export async function runAgent(input: {
   const rawOutput = result.text.trim();
   const output = isReviewRequest(input.request.message)
     ? finalizeReviewOutput(rawOutput)
-    : rawOutput;
+    : finalizeAssistantOutput(rawOutput);
 
   return {
     model: input.request.model,

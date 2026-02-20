@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import type { ChatRequest } from "./api";
-import { buildAgentInput, compactReviewOutput, finalizeReviewOutput, normalizeReviewOutput } from "./agent";
+import {
+  buildAgentInput,
+  compactReviewOutput,
+  finalizeAssistantOutput,
+  finalizeReviewOutput,
+  normalizeReviewOutput,
+} from "./agent";
 
 function makeRequest(content: string): ChatRequest {
   return {
@@ -71,5 +77,15 @@ describe("finalizeReviewOutput", () => {
   test("keeps meaningful normalized output", () => {
     const raw = "• 1 findings in @src/mastra-tools.ts\n 1) naming issue";
     expect(finalizeReviewOutput(raw)).toBe("1 finding in src/mastra-tools.ts\n1. naming issue");
+  });
+});
+
+describe("finalizeAssistantOutput", () => {
+  test("returns fallback when output is empty", () => {
+    expect(finalizeAssistantOutput("   ")).toBe("No output produced. Try rephrasing the request.");
+  });
+
+  test("keeps non-empty output", () => {
+    expect(finalizeAssistantOutput("Done")).toBe("Done");
   });
 });
