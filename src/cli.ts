@@ -670,6 +670,9 @@ async function chatMode(): Promise<void> {
     }
     // Restore prompt anchor and clear everything below it in one pass.
     output.write("\x1b[u\x1b[J\r\x1b[K> ");
+    output.write("\x1b[s\n\n");
+    printInfo("  ? for shortcuts");
+    output.write("\x1b[u");
     shortcutsOpen = false;
   };
 
@@ -740,8 +743,8 @@ async function chatMode(): Promise<void> {
     try {
       if (output.isTTY && !shortcutsOpen) {
         const question = rl.question("> ");
-        output.write("\x1b[s\n");
-        printInfo("  ? shortcuts");
+        output.write("\x1b[s\n\n");
+        printInfo("  ? for shortcuts");
         output.write("\x1b[u");
         promptHintRendered = true;
         line = (await question).trim();
