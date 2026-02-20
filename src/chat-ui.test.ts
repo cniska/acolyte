@@ -99,7 +99,8 @@ describe("chat-ui helpers", () => {
   });
 
   test("suggestSlashCommands filters known commands by prefix", () => {
-    expect(suggestSlashCommands("/s")).toEqual(["/sessions", "/skills"]);
+    expect(suggestSlashCommands("/s")).toEqual(["/status", "/sessions", "/skills"]);
+    expect(suggestSlashCommands("/st")).toEqual(["/status"]);
     expect(suggestSlashCommands("/d")).toEqual(["/dogfood"]);
     expect(suggestSlashCommands("/h")).toEqual([]);
     expect(suggestSlashCommands("/res")).toEqual(["/resume"]);

@@ -39,6 +39,7 @@ const THINKING_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧",
 const CHAT_SLASH_COMMANDS = [
   "/dogfood",
   "/new",
+  "/status",
   "/sessions",
   "/skills",
   "/resume",
@@ -50,6 +51,7 @@ const SHORTCUT_ITEMS = [
   { key: "@path", description: "attach file/dir context" },
   { key: "/dogfood <task>", description: "run verify-first coding loop" },
   { key: "/new", description: "new session" },
+  { key: "/status", description: "show backend status" },
   { key: "/sessions", description: "list sessions" },
   { key: "/resume <id>", description: "resume session" },
   { key: "/skills", description: "open skills picker" },
@@ -616,6 +618,27 @@ function ChatApp(props: ChatAppProps) {
           content: line,
         })),
       ]);
+      return;
+    }
+
+    if (text === "/status") {
+      pushUserCommandRow();
+      try {
+        const status = await backend.status();
+        setRows((current) => [
+          ...current,
+          { id: `row_${crypto.randomUUID()}`, role: "assistant", content: status },
+        ]);
+      } catch (error) {
+        setRows((current) => [
+          ...current,
+          {
+            id: `row_${crypto.randomUUID()}`,
+            role: "system",
+            content: error instanceof Error ? error.message : "Status check failed.",
+          },
+        ]);
+      }
       return;
     }
 
