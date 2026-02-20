@@ -1,6 +1,7 @@
 import { Mastra } from "@mastra/core/mastra";
 import { appConfig } from "../app-config";
 import { createAcolyteAgent } from "../acolyte-agent";
+import { mastraStorage } from "../mastra-storage";
 import { loadSystemPromptWithMemories } from "../soul";
 
 export const acolyte = createAcolyteAgent({
@@ -9,5 +10,6 @@ export const acolyte = createAcolyteAgent({
 });
 
 export const mastra = new Mastra({
+  storage: mastraStorage,
   agents: { acolyte },
 });

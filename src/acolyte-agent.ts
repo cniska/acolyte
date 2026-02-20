@@ -1,10 +1,12 @@
 import { Agent } from "@mastra/core/agent";
 import { Memory } from "@mastra/memory";
 import { appConfig } from "./app-config";
+import { mastraStorage } from "./mastra-storage";
 import { acolyteTools } from "./mastra-tools";
 import { getObservationalMemoryConfig } from "./memory-config";
 
 const sharedMemory = new Memory({
+  storage: mastraStorage,
   options: {
     lastMessages: appConfig.memory.lastMessages,
     observationalMemory: getObservationalMemoryConfig(),
