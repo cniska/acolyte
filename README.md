@@ -32,6 +32,10 @@ ACOLYTE_OM_MODEL=gpt-5-mini
 ACOLYTE_OM_OBSERVATION_TOKENS=3000
 ACOLYTE_OM_REFLECTION_TOKENS=8000
 ```
+Optional persistent memory storage:
+```bash
+DATABASE_URL=postgres://user:pass@host:5432/acolyte
+```
 
 3. Start local backend:
 ```bash
@@ -46,7 +50,8 @@ Optional: open Mastra Studio:
 bun run studio
 ```
 This starts Mastra dev server (`http://localhost:4111`) in the background and opens Studio (`http://localhost:3000`).
-Studio currently uses local Mastra `Memory` with observational memory enabled (thread scope).
+Studio uses Mastra `Memory` with observational memory enabled (resource scope).
+If `DATABASE_URL` is set, storage uses Postgres; otherwise it falls back to in-memory storage.
 
 4. In a second shell, run CLI against backend:
 ```bash

@@ -14,6 +14,7 @@ describe("env parsing", () => {
   test("parseEnv accepts explicit values", () => {
     const parsed = parseEnv({
       PORT: "9999",
+      DATABASE_URL: "postgres://u:p@localhost:5432/acolyte",
       OPENAI_BASE_URL: "https://example.com/v1",
       ACOLYTE_MODEL: "gpt-5",
       ACOLYTE_OM_MODEL: "gpt-4o-mini",
@@ -21,6 +22,7 @@ describe("env parsing", () => {
       ACOLYTE_OM_REFLECTION_TOKENS: "9000",
     });
     expect(parsed.PORT).toBe(9999);
+    expect(parsed.DATABASE_URL).toBe("postgres://u:p@localhost:5432/acolyte");
     expect(parsed.OPENAI_BASE_URL).toBe("https://example.com/v1");
     expect(parsed.ACOLYTE_MODEL).toBe("gpt-5");
     expect(parsed.ACOLYTE_OM_MODEL).toBe("gpt-4o-mini");

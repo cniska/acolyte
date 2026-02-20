@@ -7,6 +7,7 @@ const EnvSchema = z.object({
   ),
   ACOLYTE_API_KEY: z.string().trim().min(1).optional(),
   ACOLYTE_API_URL: z.string().trim().min(1).optional(),
+  DATABASE_URL: z.string().trim().min(1).optional(),
   OPENAI_API_KEY: z.string().trim().min(1).optional(),
   OPENAI_BASE_URL: z.string().trim().min(1).default("https://api.openai.com/v1"),
   ACOLYTE_MODEL: z.string().trim().min(1).default("gpt-5-mini"),

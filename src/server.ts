@@ -2,7 +2,7 @@
 import type { ChatRequest } from "./api";
 import { runAgent } from "./agent";
 import { appConfig } from "./app-config";
-import { mastraStorage } from "./mastra-storage";
+import { mastraStorage, mastraStorageMode } from "./mastra-storage";
 import { getObservationalMemoryConfig } from "./memory-config";
 import { loadSystemPromptWithMemories } from "./soul";
 
@@ -69,6 +69,8 @@ const server = Bun.serve({
         service: "acolyte-backend",
         mode: OPENAI_API_KEY ? "openai" : "mock",
         memory: {
+          storage: mastraStorageMode,
+          resourceId: appConfig.memory.resourceId,
           observational: {
             enabled: true,
             scope: omConfig.scope,

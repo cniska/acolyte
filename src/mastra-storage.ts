@@ -1,3 +1,11 @@
 import { InMemoryStore } from "@mastra/core/storage";
+import { PostgresStore } from "@mastra/pg";
+import { env } from "./env";
 
-export const mastraStorage = new InMemoryStore();
+const databaseUrl = env.DATABASE_URL?.trim();
+
+export const mastraStorageMode = databaseUrl ? "postgres" : "in-memory";
+
+export const mastraStorage = databaseUrl
+  ? new PostgresStore({ connectionString: databaseUrl })
+  : new InMemoryStore();

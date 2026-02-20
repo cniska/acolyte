@@ -84,6 +84,7 @@ class RemoteBackend implements Backend {
       mode?: unknown;
       service?: unknown;
       memory?: {
+        storage?: unknown;
         observational?: {
           enabled?: unknown;
           scope?: unknown;
@@ -95,6 +96,8 @@ class RemoteBackend implements Backend {
     };
     const mode = typeof json.mode === "string" ? json.mode : "unknown";
     const service = typeof json.service === "string" ? json.service : "unknown";
+    const memoryStorage =
+      typeof json.memory?.storage === "string" ? json.memory.storage : undefined;
     const om = json.memory?.observational;
     const omEnabled = typeof om?.enabled === "boolean" ? om.enabled : undefined;
     const omScope = typeof om?.scope === "string" ? om.scope : undefined;
@@ -107,6 +110,7 @@ class RemoteBackend implements Backend {
       `mode=${mode}`,
       `service=${service}`,
       `url=${this.apiUrl}`,
+      memoryStorage ? `memory_storage=${memoryStorage}` : undefined,
       omEnabled === undefined ? undefined : `om=${omEnabled ? "enabled" : "disabled"}`,
       omScope ? `om_scope=${omScope}` : undefined,
       omModel ? `om_model=${omModel}` : undefined,
