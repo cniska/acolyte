@@ -58,6 +58,14 @@ function resolveResourceId(url: URL): string {
   return appConfig.memory.resourceId;
 }
 
+try {
+  await mastraStorage.init();
+} catch (error) {
+  const message = error instanceof Error ? error.message : "Unknown storage initialization error";
+  console.error(`Failed to initialize Mastra storage: ${message}`);
+  process.exit(1);
+}
+
 const server = Bun.serve({
   port: PORT,
   async fetch(req) {
@@ -86,42 +94,52 @@ const server = Bun.serve({
       if (!hasValidAuth(req)) {
         return unauthorized();
       }
-      const memoryStore = await mastraStorage.getStore("memory");
-      if (!memoryStore) {
-        return json({ error: "Memory storage is not available." }, 501);
+      try {
+        const memoryStore = await mastraStorage.getStore("memory");
+        if (!memoryStore) {
+          return json({ error: "Memory storage is not available." }, 501);
+        }
+        const resourceId = resolveResourceId(url);
+        const current = await memoryStore.getObservationalMemory(null, resourceId);
+        const history = await memoryStore.getObservationalMemoryHistory(null, resourceId, 10);
+        const latestReflection = history.find((row) => row.originType === "reflection");
+        const observations =
+          current?.activeObservations
+            .split("\n")
+            .map((line) => line.trim())
+            .filter((line) => line.length > 0) ?? [];
+        return json({
+          ok: true,
+          resourceId,
+          exists: Boolean(current),
+          generationCount: current?.generationCount ?? 0,
+          lastObservedAt: current?.lastObservedAt ?? null,
+          lastReflectionAt: latestReflection?.createdAt ?? null,
+          observations: observations.slice(0, 5),
+          historyCount: history.length,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to read OM status.";
+        return json({ error: message }, 500);
       }
-      const resourceId = resolveResourceId(url);
-      const current = await memoryStore.getObservationalMemory(null, resourceId);
-      const history = await memoryStore.getObservationalMemoryHistory(null, resourceId, 10);
-      const latestReflection = history.find((row) => row.originType === "reflection");
-      const observations =
-        current?.activeObservations
-          .split("\n")
-          .map((line) => line.trim())
-          .filter((line) => line.length > 0) ?? [];
-      return json({
-        ok: true,
-        resourceId,
-        exists: Boolean(current),
-        generationCount: current?.generationCount ?? 0,
-        lastObservedAt: current?.lastObservedAt ?? null,
-        lastReflectionAt: latestReflection?.createdAt ?? null,
-        observations: observations.slice(0, 5),
-        historyCount: history.length,
-      });
     }
 
     if (url.pathname === "/v1/admin/om/wipe" && req.method === "POST") {
       if (!hasValidAuth(req)) {
         return unauthorized();
       }
-      const memoryStore = await mastraStorage.getStore("memory");
-      if (!memoryStore) {
-        return json({ error: "Memory storage is not available." }, 501);
+      try {
+        const memoryStore = await mastraStorage.getStore("memory");
+        if (!memoryStore) {
+          return json({ error: "Memory storage is not available." }, 501);
+        }
+        const resourceId = resolveResourceId(url);
+        await memoryStore.clearObservationalMemory(null, resourceId);
+        return json({ ok: true, resourceId, wiped: true });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to wipe OM.";
+        return json({ error: message }, 500);
       }
-      const resourceId = resolveResourceId(url);
-      await memoryStore.clearObservationalMemory(null, resourceId);
-      return json({ ok: true, resourceId, wiped: true });
     }
 
     if (url.pathname !== "/v1/chat" || req.method !== "POST") {
