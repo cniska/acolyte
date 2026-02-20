@@ -2,23 +2,33 @@
 
 My personal AI assistant.
 
-## Local Development
+## Setup Modes
+
+- `Local-first (default)`: run everything on your machine with your own API key.
+- `Hosted (optional)`: deploy backend + DB for centralized memory across devices.
+
+## Local-First Quickstart
 
 1. Install dependencies:
 ```bash
 bun install
 ```
 
-2. Start local backend:
+2. Add model key in `.env` (recommended for real responses):
+```bash
+OPENAI_API_KEY=...
+```
+
+3. Start local backend:
 ```bash
 bun run serve
 ```
-With real model responses:
+With `.env` loaded:
 ```bash
 bun run serve:env
 ```
 
-3. In a second shell, run CLI against backend:
+4. In a second shell, run CLI against backend:
 ```bash
 ACOLYTE_API_URL=http://localhost:8787 bun run chat
 ```
@@ -30,6 +40,8 @@ Check connectivity:
 ```bash
 ACOLYTE_API_URL=http://localhost:8787 bun run src/cli.ts status
 ```
+
+No deployment is required for this mode.
 
 Personal memory notes:
 ```bash
