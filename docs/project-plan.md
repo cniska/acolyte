@@ -166,3 +166,6 @@ Build a personal AI assistant using Mastra, with a CLI-first interface and a hos
 
 ## Deferred Improvements
 1. Full Claude-style transcript rendering in CLI output (structured `Edit(...)` / `Bash(...)` blocks with compact per-tool summaries).
+
+## Known Issues
+1. Interactive TTY focus restore is not fully stable yet: after terminal unfocus/refocus, the prompt line can lose `❯` and/or hide placeholder/footer content until the next input redraw.

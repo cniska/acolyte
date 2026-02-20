@@ -35,6 +35,9 @@ import {
 const FALLBACK_MODEL = "gpt-5-mini";
 const CLI_VERSION = process.env.npm_package_version ?? "dev";
 const PROMPT = "❯ ";
+const PROMPT_PLACEHOLDER = "Ask Acolyte…";
+const DIM_ON = "\x1b[2m";
+const DIM_OFF = "\x1b[22m";
 
 function usage(): void {
   printInfo("Usage: acolyte <chat|run|history|status|memory|config|tool>");
@@ -118,9 +121,13 @@ const SHORTCUT_PANEL_COMPACT_LINES = [
   "  /exit quit",
 ] as const;
 
-function renderShortcutsPanel(): void {
+function getShortcutPanelLines(): readonly string[] {
   const width = output.columns ?? 120;
-  const lines = width < 96 ? SHORTCUT_PANEL_COMPACT_LINES : SHORTCUT_PANEL_LINES;
+  return width < 96 ? SHORTCUT_PANEL_COMPACT_LINES : SHORTCUT_PANEL_LINES;
+}
+
+function renderShortcutsPanel(): void {
+  const lines = getShortcutPanelLines();
   for (const line of lines) {
     printInfo(line);
   }
@@ -660,20 +667,58 @@ async function chatMode(): Promise<void> {
     // Lower timeout so Esc keypress is handled quickly instead of waiting for possible sequences.
     escapeCodeTimeout: 25,
   });
+  rl.setPrompt(PROMPT);
   const canUseHotkeys = Boolean(input.isTTY && typeof input.setRawMode === "function");
   const wasRawMode = canUseHotkeys ? input.isRaw : false;
   let shortcutsOpen = false;
+  let promptPlaceholderVisible = false;
+  const promptBorder = (): string => `${DIM_ON}${"─".repeat(output.columns ?? 96)}${DIM_OFF}`;
+
+  const renderPromptWithPlaceholder = (): void => {
+    if (!output.isTTY) {
+      return;
+    }
+    // Render placeholder and move cursor back so typing starts at the same position.
+    output.write(`${DIM_ON}${PROMPT_PLACEHOLDER}${DIM_OFF}\x1b[${PROMPT_PLACEHOLDER.length}D`);
+    promptPlaceholderVisible = true;
+  };
+
+  const renderPromptFooter = (shortcuts: boolean): void => {
+    if (!output.isTTY) {
+      return;
+    }
+    const lines = shortcuts ? [...getShortcutPanelLines()] : ["  ? for shortcuts"];
+    const dimmed = [promptBorder(), ...lines.map((line) => `${DIM_ON}${line}${DIM_OFF}`)];
+    // Redraw below prompt line without relying on saved cursor state.
+    output.write("\x1b[1E\x1b[0J");
+    output.write(`${dimmed.join("\n")}\n`);
+    output.write(`\x1b[${dimmed.length + 1}A\r`);
+  };
+
+  const redrawPromptFrame = (): void => {
+    if (!output.isTTY) {
+      return;
+    }
+    // Redraw the top border above the prompt line.
+    output.write(`\x1b[1F\r\x1b[2K${promptBorder()}\x1b[1E\r`);
+    const currentLine = rl.line ?? "";
+    output.write(`\x1b[2K${PROMPT}${currentLine}`);
+    const cursorPos = (rl as unknown as { cursor?: number }).cursor;
+    if (typeof cursorPos === "number" && cursorPos >= 0 && cursorPos < currentLine.length) {
+      output.write(`\x1b[${currentLine.length - cursorPos}D`);
+    }
+    if (promptPlaceholderVisible && rl.line.length === 0) {
+      renderPromptWithPlaceholder();
+    }
+    renderPromptFooter(shortcutsOpen);
+  };
 
   const closeShortcutsPanel = (): void => {
     if (!shortcutsOpen || !output.isTTY) {
       shortcutsOpen = false;
       return;
     }
-    // Restore prompt anchor and clear everything below it in one pass.
-    output.write(`\x1b[u\x1b[J\r\x1b[K${PROMPT}`);
-    output.write("\x1b[s\n\n");
-    printInfo("  ? for shortcuts");
-    output.write("\x1b[u");
+    renderPromptFooter(false);
     shortcutsOpen = false;
   };
 
@@ -683,21 +728,40 @@ async function chatMode(): Promise<void> {
       shortcutsOpen = false;
       return;
     }
-    output.write(`\r\x1b[K${PROMPT}`);
-    output.write("\x1b[s\n\n");
-    renderShortcutsPanel();
-    output.write("\x1b[u");
+    renderPromptFooter(true);
     shortcutsOpen = true;
   };
 
-  const onKeypress = (str: string, key?: { name?: string }): void => {
-    if (key?.name === "escape" || str.includes("\x1b")) {
+  const onKeypress = (str: string | undefined, key?: { name?: string }): void => {
+    const inputStr = str ?? "";
+    if (inputStr === "\x1b[I") {
+      // Terminal focus-in event (when enabled): redraw full prompt frame.
+      redrawPromptFrame();
+      return;
+    }
+    if (inputStr === "\x1b[O") {
+      // Terminal focus-out event.
+      return;
+    }
+
+    const keyName = key?.name ?? "";
+    const isEscape = keyName === "escape" || inputStr.includes("\x1b");
+    if (promptPlaceholderVisible) {
+      const isPrintable = Boolean(inputStr) && inputStr >= " " && inputStr !== "\x7f";
+      const clearsPlaceholder = isPrintable && !isEscape;
+      if (clearsPlaceholder) {
+        output.write("\x1b[0K");
+        promptPlaceholderVisible = false;
+      }
+    }
+
+    if (key?.name === "escape" || inputStr.includes("\x1b")) {
       if (shortcutsOpen) {
         closeShortcutsPanel();
       }
       return;
     }
-    if (str !== "?") {
+    if (inputStr !== "?") {
       return;
     }
     if (rl.line.trim() !== "?") {
@@ -715,6 +779,8 @@ async function chatMode(): Promise<void> {
     if (!wasRawMode) {
       input.setRawMode(true);
     }
+    // Enable terminal focus in/out events so we can redraw after tab-switch.
+    output.write("\x1b[?1004h");
     input.on("keypress", onKeypress);
   }
 
@@ -729,6 +795,7 @@ async function chatMode(): Promise<void> {
   process.on("SIGINT", async () => {
     if (canUseHotkeys) {
       input.off("keypress", onKeypress);
+      output.write("\x1b[?1004l");
       if (!wasRawMode) {
         input.setRawMode(false);
       }
@@ -743,13 +810,15 @@ async function chatMode(): Promise<void> {
     let promptHintRendered = false;
     try {
       if (output.isTTY && !shortcutsOpen) {
+        output.write(`${promptBorder()}\n`);
         const question = rl.question(PROMPT);
-        output.write("\x1b[s\n\n");
-        printInfo("  ? for shortcuts");
-        output.write("\x1b[u");
+        renderPromptWithPlaceholder();
+        renderPromptFooter(false);
         promptHintRendered = true;
         line = (await question).trim();
+        promptPlaceholderVisible = false;
       } else {
+        promptPlaceholderVisible = false;
         line = (await rl.question(PROMPT)).trim();
       }
     } catch (error) {
@@ -757,6 +826,7 @@ async function chatMode(): Promise<void> {
       if (code === "ERR_USE_AFTER_CLOSE") {
         if (canUseHotkeys) {
           input.off("keypress", onKeypress);
+          output.write("\x1b[?1004l");
           if (!wasRawMode) {
             input.setRawMode(false);
           }
@@ -768,7 +838,7 @@ async function chatMode(): Promise<void> {
       throw error;
     }
     if (output.isTTY && promptHintRendered && !shortcutsOpen) {
-      output.write("\x1b[u\x1b[J");
+      output.write("\x1b[0J");
     }
     if (!line) {
       continue;
@@ -795,6 +865,7 @@ async function chatMode(): Promise<void> {
       } else if (command === "/exit") {
         if (canUseHotkeys) {
           input.off("keypress", onKeypress);
+          output.write("\x1b[?1004l");
           if (!wasRawMode) {
             input.setRawMode(false);
           }
