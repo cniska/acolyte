@@ -17,3 +17,26 @@ export function loadSoulPrompt(cwd = process.cwd()): string {
     return FALLBACK_SOUL;
   }
 }
+
+export function loadAgentsPrompt(cwd = process.cwd()): string {
+  const agentsPath = join(cwd, "AGENTS.md");
+  if (!existsSync(agentsPath)) {
+    return "";
+  }
+
+  try {
+    const content = readFileSync(agentsPath, "utf8").trim();
+    if (content.length === 0) {
+      return "";
+    }
+    return ["Repository Instructions (AGENTS.md):", content].join("\n");
+  } catch {
+    return "";
+  }
+}
+
+export function loadSystemPrompt(cwd = process.cwd()): string {
+  const soul = loadSoulPrompt(cwd);
+  const agents = loadAgentsPrompt(cwd);
+  return agents ? `${soul}\n\n${agents}` : soul;
+}
