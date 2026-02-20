@@ -1,0 +1,58 @@
+# Project Rules
+
+## Tooling
+
+- Prefer repository scripts and task runners over ad-hoc commands.
+- Use documented commands when available.
+
+## Workflow
+
+- Start from latest `main` before new work.
+- Read relevant files before editing.
+- Keep changes scoped, minimal, and well-engineered.
+- Prefer editing existing files over creating new ones unless necessary.
+- Do not guess; use concrete evidence (errors, logs, tests, source) before changing code.
+- Stop and ask if unexpected diffs or artifacts appear.
+
+## Commits
+
+- Commit only when explicitly requested.
+- Use Conventional Commit format: `type(scope): description`.
+- Allowed types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`.
+- Keep commit subject lines under 72 characters.
+
+## Code
+
+- Choose pragmatic solutions with low maintenance overhead.
+- Avoid unnecessary indirection and abstractions.
+- Prefer root-cause fixes over workaround-only patches.
+- Do not introduce intentional tech debt unless explicitly tracked with `TODO(username):`.
+- Remove temporary debug code before review/commit.
+
+## Validation
+
+- Run relevant validation after changes.
+- For this repo baseline, run `bun run typecheck` when TypeScript code changes.
+- Document validation that could not run and why.
+
+## Testing
+
+- Add tests for meaningful regression risk or critical behavior.
+- Avoid redundant or trivial tests.
+
+## Documentation
+
+- Update docs when behavior or contracts change.
+- Keep this file policy-only. Procedural workflows can be added later as reusable skills.
+
+## Safety
+
+- Never run destructive git/file operations unless explicitly requested.
+- Do not discard unrelated changes without approval.
+- If unexpected changes appear, pause and confirm before continuing.
+
+## Communication
+
+- Ask when requirements are unclear.
+- Capture decisions, tradeoffs, and open questions.
+- Be explicit about assumptions, risks, and next steps.
