@@ -1,14 +1,16 @@
 import { describe, expect, test } from "bun:test";
 import type { Message, SessionStore } from "./types";
 import {
-  extractAtReferencePaths,
-  applyAtSuggestion,
-  extractAtReferenceQuery,
-  rankAtReferenceSuggestions,
-  shouldAutocompleteAtSubmit,
   toRows,
 } from "./chat-ui";
 import { formatSessionList, resolveResumeSession } from "./chat-commands";
+import {
+  applyAtSuggestion,
+  extractAtReferencePaths,
+  extractAtReferenceQuery,
+  rankAtReferenceSuggestions,
+  shouldAutocompleteAtSubmit,
+} from "./chat-file-ref";
 
 function makeStore(): SessionStore {
   return {
