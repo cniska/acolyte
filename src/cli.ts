@@ -438,9 +438,13 @@ export function formatRunOutput(raw: string): string {
 
   const exitLine = lines[0];
   const exitCode = Number.parseInt(exitLine.replace("exit_code=", "").trim(), 10);
+  const durationLine = lines[1]?.startsWith("duration_ms=") ? lines[1] : null;
   const stdoutIdx = lines.findIndex((line) => line.trim() === "stdout:");
   const stderrIdx = lines.findIndex((line) => line.trim() === "stderr:");
   const out: string[] = [exitLine];
+  if (durationLine) {
+    out.push(durationLine);
+  }
 
   const section = (name: "stdout:" | "stderr:", start: number, end: number): void => {
     if (start < 0) {

@@ -104,6 +104,7 @@ export async function runShellCommand(command: string, timeoutMs = 60_000): Prom
     throw new Error("Command contains blocked token");
   }
 
+  const startedAt = Date.now();
   const proc = Bun.spawn({
     cmd: ["bash", "-lc", trimmed],
     stdout: "pipe",
@@ -123,15 +124,16 @@ export async function runShellCommand(command: string, timeoutMs = 60_000): Prom
     new Response(proc.stderr).text(),
   ]);
   const exitCode = await proc.exited;
+  const durationMs = Date.now() - startedAt;
   clearTimeout(timer);
 
-  const header = `exit_code=${exitCode}`;
+  const headers = [`exit_code=${exitCode}`, `duration_ms=${durationMs}`];
   const out = stdoutText.trim();
   const err = stderrText.trim();
   if (!out && !err) {
-    return header;
+    return headers.join("\n");
   }
-  return [header, out ? `stdout:\n${out}` : "", err ? `stderr:\n${err}` : ""]
+  return [headers.join("\n"), out ? `stdout:\n${out}` : "", err ? `stderr:\n${err}` : ""]
     .filter(Boolean)
     .join("\n\n");
 }

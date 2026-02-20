@@ -40,6 +40,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
   - compact action-style tool transcripts (`Run`, `Search`, `Read`, `Diff`, `Update`)
   - inline summaries (search counts, read line count, diff +/- summary)
   - fixed no-result search UX to report `No matches.` cleanly
+  - run output now shows command duration (`duration_ms`) with exit code
   - edit summaries now include changed location count and change-only excerpts
   - git status summaries (`N changed files`) before detailed entries
   - repo-relative read paths and reduced successful `Run` noise

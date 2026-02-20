@@ -14,9 +14,10 @@ import {
 
 describe("cli formatting helpers", () => {
   test("formatRunOutput compresses long stdout", () => {
-    const raw = ["exit_code=0", "stdout:", "a", "b", "c", "d", "e"].join("\n");
+    const raw = ["exit_code=0", "duration_ms=42", "stdout:", "a", "b", "c", "d", "e"].join("\n");
     const out = formatRunOutput(raw);
     expect(out).toContain("exit_code=0");
+    expect(out).toContain("duration_ms=42");
     expect(out).toContain("stdout:");
     expect(out).toContain("a");
     expect(out).toContain("… +3 lines");
@@ -100,7 +101,7 @@ describe("cli formatting helpers", () => {
   });
 
   test("formatRunOutput hides shell echo noise in successful stderr", () => {
-    const raw = ["exit_code=0", "stdout:", "ok", "stderr:", "$ bun run typecheck"].join("\n");
+    const raw = ["exit_code=0", "duration_ms=12", "stdout:", "ok", "stderr:", "$ bun run typecheck"].join("\n");
     const out = formatRunOutput(raw);
     expect(out).toContain("stdout:");
     expect(out).toContain("ok");
