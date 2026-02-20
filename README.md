@@ -45,6 +45,12 @@ Session management in chat:
 - `/sessions` to list saved sessions
 - `/use <session-id-prefix>` to switch sessions
 - `/title <text>` to rename current session
+- `/file <path>` to attach a local text/code file as context
+
+Attach file context in one-shot mode:
+```bash
+ACOLYTE_API_URL=http://localhost:8787 bun run run --file src/cli.ts "review this file"
+```
 
 ## Backend Behavior
 

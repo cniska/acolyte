@@ -3,6 +3,7 @@ import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { createBackend } from "./backend";
 import { readConfig, setConfigValue, unsetConfigValue } from "./config";
+import { buildFileContext } from "./file-context";
 import { addMemory, listMemories } from "./memory";
 import { createSession, readStore, writeStore } from "./storage";
 import type { Message, Session, SessionStore } from "./types";
@@ -21,7 +22,7 @@ const FALLBACK_MODEL = "gpt-5-mini";
 function usage(): void {
   printInfo("Usage: acolyte <chat|run|history|status|memory|config>");
   printInfo("  chat            Start interactive session");
-  printInfo("  run <prompt>    Send one prompt and exit");
+  printInfo("  run [--file path] <prompt>    Send one prompt and exit");
   printInfo("  history         Show recent sessions");
   printInfo("  status          Show backend connection status");
   printInfo("  memory          Manage personal memory notes");
@@ -62,6 +63,7 @@ function printHelp(): void {
   printInfo("  /use <id>       Switch to a session by id prefix");
   printInfo("  /title <text>   Rename current session");
   printInfo("  /status         Show backend connection status");
+  printInfo("  /file <path>    Attach a local text file to this session");
   printInfo("  /remember <x>   Add a personal memory note");
   printInfo("  /memories       Show personal memory notes");
   printInfo("  /model <name>   Change active model");
@@ -146,8 +148,7 @@ async function buildHistoryWithMemoryContext(history: Message[]): Promise<Messag
   return [context, ...history];
 }
 
-async function handlePrompt(prompt: string, session: Session): Promise<void> {
-  const backend = createBackend();
+async function handlePrompt(prompt: string, session: Session, backend = createBackend()): Promise<void> {
   const userMsg = newMessage("user", prompt);
   session.messages.push(userMsg);
   setSessionTitle(session, prompt);
@@ -172,6 +173,33 @@ async function handlePrompt(prompt: string, session: Session): Promise<void> {
     printError(message);
     session.updatedAt = nowIso();
   }
+}
+
+async function attachFileToSession(session: Session, filePath: string): Promise<void> {
+  const context = await buildFileContext(filePath);
+  session.messages.push(newMessage("system", context));
+  session.updatedAt = nowIso();
+}
+
+function parseRunArgs(args: string[]): { files: string[]; prompt: string } {
+  const files: string[] = [];
+  const promptTokens: string[] = [];
+
+  for (let i = 0; i < args.length; i += 1) {
+    if (args[i] === "--file") {
+      const next = args[i + 1];
+      if (!next) {
+        throw new Error("Usage: acolyte run --file <path> <prompt>");
+      }
+      files.push(next);
+      i += 1;
+      continue;
+    }
+
+    promptTokens.push(args[i]);
+  }
+
+  return { files, prompt: promptTokens.join(" ").trim() };
 }
 
 async function chatMode(): Promise<void> {
@@ -259,6 +287,19 @@ async function chatMode(): Promise<void> {
           const message = error instanceof Error ? error.message : "Unknown error";
           printError(message);
         }
+      } else if (command === "/file") {
+        const pathInput = args.join(" ").trim();
+        if (!pathInput) {
+          printWarning("Usage: /file <path>");
+        } else {
+          try {
+            await attachFileToSession(session, pathInput);
+            printInfo(`Attached file context from ${pathInput}`);
+          } catch (error) {
+            const message = error instanceof Error ? error.message : "Unknown error";
+            printError(message);
+          }
+        }
       } else if (command === "/remember") {
         const content = args.join(" ").trim();
         if (!content) {
@@ -290,15 +331,25 @@ async function chatMode(): Promise<void> {
       continue;
     }
 
-    await handlePrompt(line, session);
+    await handlePrompt(line, session, backend);
     await persist();
   }
 }
 
 async function runMode(args: string[]): Promise<void> {
-  const prompt = args.join(" ").trim();
+  let parsed: { files: string[]; prompt: string };
+  try {
+    parsed = parseRunArgs(args);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Invalid run args";
+    printError(message);
+    process.exitCode = 1;
+    return;
+  }
+
+  const prompt = parsed.prompt;
   if (!prompt) {
-    printError("Usage: acolyte run <prompt>");
+    printError("Usage: acolyte run [--file path] <prompt>");
     process.exitCode = 1;
     return;
   }
@@ -307,7 +358,24 @@ async function runMode(args: string[]): Promise<void> {
   const store = await readStore();
   const defaultModel = process.env.ACOLYTE_MODEL ?? config.model ?? FALLBACK_MODEL;
   const session = getOrCreateActiveSession(store, defaultModel);
-  await handlePrompt(prompt, session);
+  const backend = createBackend({
+    apiUrl: config.apiUrl,
+    apiKey: config.apiKey,
+  });
+
+  for (const filePath of parsed.files) {
+    try {
+      await attachFileToSession(session, filePath);
+      printInfo(`Attached file context from ${filePath}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      printError(message);
+      process.exitCode = 1;
+      return;
+    }
+  }
+
+  await handlePrompt(prompt, session, backend);
   await writeStore(store);
 }
 
