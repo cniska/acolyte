@@ -84,6 +84,34 @@ export function compactReviewOutput(output: string): string {
   return truncateText(output, MAX_REVIEW_OUTPUT_CHARS);
 }
 
+export function normalizeReviewOutput(output: string): string {
+  const lines = output.split("\n");
+  const normalized = lines.map((line, index) => {
+    const trimmedRight = line.trimEnd();
+
+    if (index === 0) {
+      const headerMatch = trimmedRight.match(/^\s*[•*-]?\s*(\d+)\s+findings?\s+in\s+(.+)\s*$/i);
+      if (headerMatch) {
+        const count = Number.parseInt(headerMatch[1] ?? "0", 10);
+        const scope = (headerMatch[2] ?? "").replace(/^@/, "").trim();
+        const label = count === 1 ? "finding" : "findings";
+        return `${count} ${label} in ${scope}`;
+      }
+    }
+
+    const numbered = trimmedRight.match(/^\s*(\d+)[\)\.]?\s+(.*)$/);
+    if (numbered) {
+      const num = numbered[1];
+      const body = numbered[2]?.trim() ?? "";
+      return `${num}. ${body}`;
+    }
+
+    return trimmedRight;
+  });
+
+  return normalized.join("\n").trimEnd();
+}
+
 function buildToolPolicy(baseInstructions: string): string {
   return [
     baseInstructions,
@@ -174,7 +202,7 @@ export async function runAgent(input: {
 
   const rawOutput = result.text.trim();
   const output = isReviewRequest(input.request.message)
-    ? compactReviewOutput(rawOutput)
+    ? normalizeReviewOutput(compactReviewOutput(rawOutput))
     : rawOutput;
 
   return {

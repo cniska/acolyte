@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { ChatRequest } from "./api";
-import { buildAgentInput, compactReviewOutput } from "./agent";
+import { buildAgentInput, compactReviewOutput, normalizeReviewOutput } from "./agent";
 
 function makeRequest(content: string): ChatRequest {
   return {
@@ -45,5 +45,17 @@ describe("compactReviewOutput", () => {
     const compact = compactReviewOutput(long);
     expect(compact.length).toBeLessThanOrEqual(1800);
     expect(compact.endsWith("…")).toBe(true);
+  });
+});
+
+describe("normalizeReviewOutput", () => {
+  test("normalizes findings header and removes @ prefix in scope", () => {
+    const raw = "• 2 findings in @src/mastra-tools.ts";
+    expect(normalizeReviewOutput(raw)).toBe("2 findings in src/mastra-tools.ts");
+  });
+
+  test("normalizes numbered lines to dotted form and left aligns", () => {
+    const raw = ["  1) First issue", "    2. Second issue"].join("\n");
+    expect(normalizeReviewOutput(raw)).toBe(["1. First issue", "2. Second issue"].join("\n"));
   });
 });
