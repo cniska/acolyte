@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
+import { relative } from "node:path";
 import { createBackend } from "./backend";
 import {
   editFileReplace,
@@ -185,6 +186,29 @@ function printMemoryRows(rows: Awaited<ReturnType<typeof listMemories>>): void {
 
 function formatToolContext(label: string, content: string): string {
   return [`Tool context: ${label}`, "```text", content, "```"].join("\n");
+}
+
+function parseEditResult(raw: string): { path: string; matches: number; dryRun: boolean } | null {
+  const path = raw.match(/^path=(.*)$/m)?.[1]?.trim();
+  const matchesText = raw.match(/^matches=(.*)$/m)?.[1]?.trim();
+  const dryRunText = raw.match(/^dry_run=(.*)$/m)?.[1]?.trim();
+  const matches = matchesText ? Number.parseInt(matchesText, 10) : Number.NaN;
+  if (!path || Number.isNaN(matches) || !dryRunText) {
+    return null;
+  }
+  return {
+    path,
+    matches,
+    dryRun: dryRunText === "true",
+  };
+}
+
+function displayPath(pathInput: string): string {
+  const rel = relative(process.cwd(), pathInput);
+  if (!rel || rel.startsWith("..")) {
+    return pathInput;
+  }
+  return rel;
 }
 
 function showToolResult(title: string, content: string, style: "plain" | "tool" = "plain"): void {
@@ -480,7 +504,21 @@ async function chatMode(): Promise<void> {
         try {
           const parsed = parseEditArgs(args);
           const result = await editFileReplace(parsed);
-          showToolResult(`Edit ${parsed.path}`, result);
+          const summary = parseEditResult(result);
+          if (summary) {
+            const shownPath = displayPath(summary.path);
+            if (summary.dryRun) {
+              showToolResult(
+                `Dry Run ${shownPath}`,
+                `${summary.matches} match(es) would be changed.`,
+              );
+            } else {
+              showToolResult(`Edited ${shownPath}`, `${summary.matches} replacement(s) applied.`);
+            }
+          } else {
+            showToolResult(`Edit ${parsed.path}`, result);
+          }
+
           if (!parsed.dryRun) {
             try {
               const diff = await gitDiff(parsed.path, 3);
@@ -693,88 +731,105 @@ async function configMode(args: string[]): Promise<void> {
 }
 
 async function toolMode(args: string[]): Promise<void> {
-  const [subcommand, ...rest] = args;
-  if (subcommand === "search") {
-    const pattern = rest.join(" ").trim();
-    if (!pattern) {
-      printError("Usage: acolyte tool search <pattern>");
-      process.exitCode = 1;
+  try {
+    const [subcommand, ...rest] = args;
+    if (subcommand === "search") {
+      const pattern = rest.join(" ").trim();
+      if (!pattern) {
+        printError("Usage: acolyte tool search <pattern>");
+        process.exitCode = 1;
+        return;
+      }
+      const result = await searchRepo(pattern);
+      showToolResult("Search Results", result, "tool");
       return;
     }
-    const result = await searchRepo(pattern);
-    showToolResult("Search Results", result, "tool");
-    return;
-  }
 
-  if (subcommand === "read") {
-    const [pathInput, start, end] = rest;
-    if (!pathInput) {
-      printError("Usage: acolyte tool read <path> [start] [end]");
-      process.exitCode = 1;
+    if (subcommand === "read") {
+      const [pathInput, start, end] = rest;
+      if (!pathInput) {
+        printError("Usage: acolyte tool read <path> [start] [end]");
+        process.exitCode = 1;
+        return;
+      }
+      const snippet = await readSnippet(pathInput, start, end);
+      showToolResult(`Read ${pathInput}`, snippet);
       return;
     }
-    const snippet = await readSnippet(pathInput, start, end);
-    showToolResult(`Read ${pathInput}`, snippet);
-    return;
-  }
 
-  if (subcommand === "git-status") {
-    const result = await gitStatusShort();
-    showToolResult("Git Status", result, "tool");
-    return;
-  }
-
-  if (subcommand === "git-diff") {
-    const [pathInput, context] = rest;
-    const ctxRaw = context ? Number.parseInt(context, 10) : undefined;
-    const ctx = ctxRaw !== undefined && !Number.isNaN(ctxRaw) ? ctxRaw : 3;
-    const result = await gitDiff(pathInput, ctx);
-    showToolResult(`Git Diff${pathInput ? ` ${pathInput}` : ""}`, result);
-    return;
-  }
-
-  if (subcommand === "run") {
-    const command = rest.join(" ").trim();
-    if (!command) {
-      printError("Usage: acolyte tool run <command>");
-      process.exitCode = 1;
+    if (subcommand === "git-status") {
+      const result = await gitStatusShort();
+      showToolResult("Git Status", result, "tool");
       return;
     }
-    const result = await runShellCommand(command);
-    showToolResult(`Run ${command}`, result);
-    return;
-  }
 
-  if (subcommand === "edit") {
-    let parsed: ReturnType<typeof parseEditArgs>;
-    try {
-      parsed = parseEditArgs(rest);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Invalid edit args";
-      printError(message.replace("/edit", "acolyte tool edit"));
-      process.exitCode = 1;
+    if (subcommand === "git-diff") {
+      const [pathInput, context] = rest;
+      const ctxRaw = context ? Number.parseInt(context, 10) : undefined;
+      const ctx = ctxRaw !== undefined && !Number.isNaN(ctxRaw) ? ctxRaw : 3;
+      const result = await gitDiff(pathInput, ctx);
+      showToolResult(`Git Diff${pathInput ? ` ${pathInput}` : ""}`, result);
       return;
     }
-    const result = await editFileReplace(parsed);
-    showToolResult(`Edit ${parsed.path}`, result);
-    if (!parsed.dryRun) {
+
+    if (subcommand === "run") {
+      const command = rest.join(" ").trim();
+      if (!command) {
+        printError("Usage: acolyte tool run <command>");
+        process.exitCode = 1;
+        return;
+      }
+      const result = await runShellCommand(command);
+      showToolResult(`Run ${command}`, result);
+      return;
+    }
+
+    if (subcommand === "edit") {
+      let parsed: ReturnType<typeof parseEditArgs>;
       try {
-        const diff = await gitDiff(parsed.path, 3);
-        showToolResult(`Diff Preview ${parsed.path}`, diff);
+        parsed = parseEditArgs(rest);
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Unable to render diff preview";
-        if (message.includes("outside repository")) {
-          printWarning("Diff preview unavailable (file is outside current repository).");
+        const message = error instanceof Error ? error.message : "Invalid edit args";
+        printError(message.replace("/edit", "acolyte tool edit"));
+        process.exitCode = 1;
+        return;
+      }
+      const result = await editFileReplace(parsed);
+      const summary = parseEditResult(result);
+      if (summary) {
+        const shownPath = displayPath(summary.path);
+        if (summary.dryRun) {
+          showToolResult(`Dry Run ${shownPath}`, `${summary.matches} match(es) would be changed.`);
         } else {
-          printWarning(message);
+          showToolResult(`Edited ${shownPath}`, `${summary.matches} replacement(s) applied.`);
+        }
+      } else {
+        showToolResult(`Edit ${parsed.path}`, result);
+      }
+
+      if (!parsed.dryRun) {
+        try {
+          const diff = await gitDiff(parsed.path, 3);
+          showToolResult(`Diff Preview ${parsed.path}`, diff);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Unable to render diff preview";
+          if (message.includes("outside repository")) {
+            printWarning("Diff preview unavailable (file is outside current repository).");
+          } else {
+            printWarning(message);
+          }
         }
       }
+      return;
     }
-    return;
-  }
 
-  printError("Usage: acolyte tool <search|read|git-status|git-diff|run|edit> ...");
-  process.exitCode = 1;
+    printError("Usage: acolyte tool <search|read|git-status|git-diff|run|edit> ...");
+    process.exitCode = 1;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Tool command failed";
+    printError(message);
+    process.exitCode = 1;
+  }
 }
 
 async function main(): Promise<void> {
