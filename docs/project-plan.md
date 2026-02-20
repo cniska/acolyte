@@ -210,6 +210,7 @@ Build a personal AI assistant using Mastra, with a CLI-first interface that runs
 17. Implement task-lane model routing with explicit config (`chat`, `code`, `long-context`, `vision`) and fallback chain instrumentation.
 18. Add first-class local model support via OpenAI-compatible base URLs (Ollama/vLLM), including docs, smoke checks, and lane-specific overrides.
 19. Add token-usage guardrails: hard prompt/context budgets, default compact tool output, and token telemetry per reply.
+20. Prioritize a TypeScript-first development lane (Bun/Node/TS defaults, typecheck+test workflow) before expanding language-specific support for other stacks.
 
 ## Prioritization Policy
 1. Prioritize correctness, reliability, and core workflow capability over cosmetic UX changes.
