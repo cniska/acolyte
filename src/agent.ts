@@ -1,5 +1,6 @@
 import type { ChatRequest, ChatResponse } from "./api";
 import { createAcolyteAgent } from "./acolyte-agent";
+import { appConfig } from "./app-config";
 
 interface OpenAIClientConfig {
   apiKey?: string;
@@ -13,7 +14,6 @@ const MAX_HISTORY_TOTAL_CHARS = 40_000;
 const MAX_MESSAGE_CHARS = 2_000;
 const MAX_ATTACHMENT_MESSAGE_CHARS = 20_000;
 const MAX_REVIEW_OUTPUT_CHARS = 1800;
-const OM_RESOURCE_ID = "acolyte-local";
 
 function truncateText(input: string, maxChars: number): string {
   if (input.length <= maxChars) {
@@ -220,7 +220,7 @@ export async function runAgent(input: {
   const requestInput = buildAgentInput(input.request);
   const toolLikely = isToolLikelyRequest(input.request.message);
   const memoryOptions = input.request.sessionId
-    ? { thread: input.request.sessionId, resource: OM_RESOURCE_ID }
+    ? { thread: input.request.sessionId, resource: appConfig.memory.resourceId }
     : undefined;
   let result = await agent.generate(requestInput, {
     maxSteps: 8,

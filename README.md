@@ -167,3 +167,14 @@ Health endpoint:
 curl http://localhost:6767/healthz
 ```
 Response includes memory status (observational memory enabled/scope/model/token thresholds).
+
+OM debug scripts:
+```bash
+bun run om:status
+bun run om:wipe
+```
+Optional resource override:
+```bash
+bun run om:status my-resource-id
+bun run om:wipe my-resource-id
+```

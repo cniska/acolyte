@@ -15,6 +15,7 @@ export const appConfig = {
     observationalMemory: env.ACOLYTE_OM_MODEL ?? env.ACOLYTE_MODEL,
   },
   memory: {
+    resourceId: "acolyte-local",
     lastMessages: 10,
     observational: {
       scope: "resource" as const,

@@ -13,6 +13,8 @@
     "run": "bun run src/cli.ts run",
     "history": "bun run src/cli.ts history",
     "status": "bun run src/cli.ts status",
+    "om:status": "bun run src/om-admin.ts status",
+    "om:wipe": "bun run src/om-admin.ts wipe",
     "memory": "bun run src/cli.ts memory",
     "config": "bun run src/cli.ts config",
     "tool": "bun run src/cli.ts tool",
