@@ -70,6 +70,16 @@ function getOrCreateActiveSession(store: SessionStore, model: string): Session {
 }
 
 function printHelp(): void {
+  printSection("Common");
+  printInfo("  /search (/s) <pat>   Search repository text with ripgrep");
+  printInfo("  /read (/r) <path> [start] [end]  Read file snippet");
+  printInfo("  /run <cmd>      Run shell command");
+  printInfo("  /verify         Run project validation (bun run verify)");
+  printInfo("  /git-status (/gs)     Show git status summary");
+  printInfo("  /git-diff (/gd) [path] [context]  Show git diff");
+  printInfo("  /help           Show this help");
+  printInfo("  /exit           Exit the CLI");
+  printInfo("");
   printSection("Session");
   printInfo("  /new            Start a new session");
   printInfo("  /history        Show messages in this session");
@@ -81,12 +91,6 @@ function printHelp(): void {
   printInfo("  /status         Show backend connection status");
   printInfo("");
   printSection("Tools");
-  printInfo("  /search (/s) <pat>   Search repository text with ripgrep");
-  printInfo("  /read (/r) <path> [start] [end]  Read file snippet");
-  printInfo("  /git-status (/gs)     Show git status summary");
-  printInfo("  /git-diff (/gd) [path] [context]  Show git diff");
-  printInfo("  /run <cmd>      Run shell command");
-  printInfo("  /verify         Run project validation (bun run verify)");
   printInfo("  /edit <path> <find> <replace> [--dry-run]  Replace text in file");
   printInfo("  /file <path>    Attach a local text file to this session");
   printInfo("");
@@ -95,9 +99,7 @@ function printHelp(): void {
   printInfo("  /memories       Show personal memory notes");
   printInfo("");
   printSection("General");
-  printInfo("  /help           Show this help");
   printInfo("  /clear          Clear terminal and reprint banner");
-  printInfo("  /exit           Exit the CLI");
 }
 
 const CHAT_COMMANDS = [

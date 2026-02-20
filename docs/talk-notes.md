@@ -44,6 +44,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
   - short aliases for speed (`/s`, `/r`, `/gs`, `/gd`)
   - alias-aware command suggestions for faster recovery from partial/typo commands
   - typo-tolerant command suggestions (edit-distance fallback for unknown slash commands)
+  - reordered help output to prioritize common commands first
 - Delivery workflow:
   - `bun run verify` (`typecheck` + tests)
   - autonomous feature loop in `docs/development-workflow.md`
