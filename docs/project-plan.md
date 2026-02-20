@@ -158,3 +158,7 @@ Build a personal AI assistant using Mastra, with a CLI-first interface and a hos
 2. Create technical design doc (`docs/technical-design.md`).
 3. Add explicit tool traces/evidence in responses for transparency and debugging.
 4. Create implementation backlog from phases.
+
+## Deferred Improvements
+1. Claude-style tool transcript formatting in CLI output (structured `Edit(...)` / `Bash(...)` blocks with concise summaries).
+2. Deferral rule: when more pressing reliability or correctness tasks appear, postpone UX polish and record deferred items here before continuing.
