@@ -5,7 +5,7 @@ import { loadSystemPromptWithMemories } from "../soul";
 
 export const acolyte = createAcolyteAgent({
   model: appConfig.models.default,
-  instructions: await loadSystemPromptWithMemories(),
+  instructions: async () => loadSystemPromptWithMemories(),
 });
 
 export const mastra = new Mastra({

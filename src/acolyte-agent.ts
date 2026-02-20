@@ -15,7 +15,9 @@ function normalizeModel(model: string): string {
   return model.includes("/") ? model : `openai/${model}`;
 }
 
-export function createAcolyteAgent(input: { model: string; instructions: string }): Agent {
+export type AcolyteInstructions = string | (() => string | Promise<string>);
+
+export function createAcolyteAgent(input: { model: string; instructions: AcolyteInstructions }): Agent {
   return new Agent({
     id: "acolyte",
     name: "Acolyte",
