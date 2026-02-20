@@ -72,18 +72,22 @@ Build a personal AI assistant using Mastra, with a CLI-first interface and a hos
 3. `project_facts`: repo conventions and constraints.
 4. `episodes`: summarized past tasks and outcomes.
 5. `feedback_events`: thumbs up/down + corrections.
+6. `observations`: inferred behavioral patterns from repeated interactions (confidence-scored, never hard constraints by default).
 
 ### Write Policy
 1. Always write user-stated preferences immediately.
 2. Promote repeated behavior to procedural memory after N confirmations.
 3. Store task outcome summaries on every completed task.
 4. Never auto-promote low-confidence inferred preferences.
+5. Record observational memory only after repeated signals and attach confidence + source episodes.
+6. Require explicit promotion before observational memory is treated as a hard preference.
 
 ### Retrieval Policy
 1. Retrieve profile + project facts for every request.
 2. Retrieve top-K episodes by semantic relevance and recency.
 3. Inject hard constraints into system instructions before planning.
 4. Show memory snippets used in response for transparency.
+5. Use observational memory as soft ranking hints unless explicitly confirmed by the user.
 
 ## Agentic Workflow
 1. Understand request + fetch relevant memory/context.
@@ -114,6 +118,7 @@ Build a personal AI assistant using Mastra, with a CLI-first interface and a hos
 2. Add feedback capture and correction workflow in CLI.
 3. Add memory-related eval tests.
 4. Add import/export for memory backups.
+5. Add observational-memory pipeline (signal extraction, confidence scoring, promotion guardrails).
 
 ## Phase 3: Quality and Safety (Weeks 6-7)
 1. Add verification gates and retry policies.
@@ -161,6 +166,7 @@ Build a personal AI assistant using Mastra, with a CLI-first interface and a hos
 5. Adopt `docs/development-workflow.md` as the default feature-delivery loop.
 6. Expand `/resume` UX (session picker/listing ergonomics) on top of current ID-prefix resume flow.
 7. Add a dogfooding transition milestone: move from Codex-led development to Acolyte-led development in this repo after coding-loop reliability gates are met.
+8. Introduce observational memory only after coding workflow reliability is stable and evaluated.
 
 ## Prioritization Policy
 1. Prioritize correctness, reliability, and core workflow capability over cosmetic UX changes.

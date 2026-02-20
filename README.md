@@ -88,6 +88,7 @@ One-shot examples:
 ```bash
 bun run run "Review the current repository state and suggest top 3 technical risks."
 bun run run --file src/mastra-tools.ts "Explain what tools are available and what is missing."
+bun run run --verify "Apply the requested change and then validate with bun run verify."
 ```
 
 ## Backend Behavior

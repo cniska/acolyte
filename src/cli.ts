@@ -36,7 +36,7 @@ const PROMPT = "❯ ";
 function usage(): void {
   printInfo("Usage: acolyte <chat|run|history|status|memory|config|tool>");
   printInfo("  chat            Start interactive session");
-  printInfo("  run [--file path] <prompt>    Send one prompt and exit");
+  printInfo("  run [--file path] [--verify] <prompt>    Send one prompt and optionally verify");
   printInfo("  history         Show recent sessions");
   printInfo("  status          Show backend connection status");
   printInfo("  memory          Manage personal memory notes");
@@ -603,9 +603,10 @@ async function attachFileToSession(session: Session, filePath: string): Promise<
   session.updatedAt = nowIso();
 }
 
-function parseRunArgs(args: string[]): { files: string[]; prompt: string } {
+function parseRunArgs(args: string[]): { files: string[]; prompt: string; verify: boolean } {
   const files: string[] = [];
   const promptTokens: string[] = [];
+  let verify = false;
 
   for (let i = 0; i < args.length; i += 1) {
     if (args[i] === "--file") {
@@ -617,11 +618,15 @@ function parseRunArgs(args: string[]): { files: string[]; prompt: string } {
       i += 1;
       continue;
     }
+    if (args[i] === "--verify") {
+      verify = true;
+      continue;
+    }
 
     promptTokens.push(args[i]);
   }
 
-  return { files, prompt: promptTokens.join(" ").trim() };
+  return { files, prompt: promptTokens.join(" ").trim(), verify };
 }
 
 function parseEditArgs(args: string[]): {
@@ -673,7 +678,7 @@ async function chatMode(): Promise<void> {
 }
 
 async function runMode(args: string[]): Promise<void> {
-  let parsed: { files: string[]; prompt: string };
+  let parsed: { files: string[]; prompt: string; verify: boolean };
   try {
     parsed = parseRunArgs(args);
   } catch (error) {
@@ -685,7 +690,7 @@ async function runMode(args: string[]): Promise<void> {
 
   const prompt = parsed.prompt;
   if (!prompt) {
-    printError("Usage: acolyte run [--file path] <prompt>");
+    printError("Usage: acolyte run [--file path] [--verify] <prompt>");
     process.exitCode = 1;
     return;
   }
@@ -712,6 +717,10 @@ async function runMode(args: string[]): Promise<void> {
   }
 
   await handlePrompt(prompt, session, backend);
+  if (parsed.verify) {
+    const verifyResult = await runShellCommand("bun run verify");
+    showToolResult("Run", formatForTool("run", verifyResult), "tool", "bun run verify");
+  }
   await writeStore(store);
 }
 
