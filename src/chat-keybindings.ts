@@ -1,7 +1,89 @@
 import { useInput } from "ink";
 import { applyAtSuggestion, shouldAutocompleteAtSubmit } from "./chat-file-ref";
-import { applySlashSuggestion, shouldAutocompleteSlashSubmit } from "./chat-slash";
 import type { PickerState } from "./chat-layout";
+import { applySlashSuggestion, shouldAutocompleteSlashSubmit } from "./chat-slash";
+
+type HistoryTransition = {
+  nextIndex: number;
+  nextValue: string;
+  nextDraft?: string;
+};
+
+type ResolveTabAutocompleteInput = {
+  browsingInputHistory: boolean;
+  value: string;
+  atQuery: string | null;
+  atSuggestions: string[];
+  atSuggestionIndex: number;
+  slashSuggestions: string[];
+  slashSuggestionIndex: number;
+  isTab: boolean;
+};
+
+export function resolveHistoryUp(
+  inputHistory: string[],
+  inputHistoryIndex: number,
+  value: string,
+): HistoryTransition | null {
+  if (inputHistory.length === 0) {
+    return null;
+  }
+  if (inputHistoryIndex === -1) {
+    const nextIndex = inputHistory.length - 1;
+    return {
+      nextIndex,
+      nextValue: inputHistory[nextIndex] ?? "",
+      nextDraft: value,
+    };
+  }
+  const nextIndex = Math.max(0, inputHistoryIndex - 1);
+  return {
+    nextIndex,
+    nextValue: inputHistory[nextIndex] ?? "",
+  };
+}
+
+export function resolveHistoryDown(
+  inputHistory: string[],
+  inputHistoryIndex: number,
+  inputHistoryDraft: string,
+): HistoryTransition | null {
+  if (inputHistoryIndex < 0) {
+    return null;
+  }
+  if (inputHistoryIndex >= inputHistory.length - 1) {
+    return {
+      nextIndex: -1,
+      nextValue: inputHistoryDraft,
+    };
+  }
+  const nextIndex = inputHistoryIndex + 1;
+  return {
+    nextIndex,
+    nextValue: inputHistory[nextIndex] ?? "",
+  };
+}
+
+export function resolveTabAutocomplete(input: ResolveTabAutocompleteInput): string | null {
+  if (!input.isTab || input.browsingInputHistory) {
+    return null;
+  }
+  if (input.atQuery !== null && input.atSuggestions.length > 0) {
+    const selected =
+      input.atSuggestions[Math.max(0, Math.min(input.atSuggestionIndex, input.atSuggestions.length - 1))];
+    if (shouldAutocompleteAtSubmit(input.value, selected)) {
+      return applyAtSuggestion(input.value, selected ?? "");
+    }
+  }
+  if (input.atQuery === null && input.slashSuggestions.length > 0) {
+    const selected =
+      input.slashSuggestions[Math.max(0, Math.min(input.slashSuggestionIndex, input.slashSuggestions.length - 1))];
+    if (shouldAutocompleteSlashSubmit(input.value, selected)) {
+      return applySlashSuggestion(selected ?? "");
+    }
+  }
+  return null;
+}
 
 type UseChatKeybindingsInput = {
   persist: () => Promise<void>;
@@ -64,45 +146,43 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
         !browsingInputHistory &&
         (input.atQuery !== null || (input.atQuery === null && input.slashSuggestions.length > 0));
       if (!input.isThinking && !suggestionNavActive && key.upArrow) {
-        if (input.inputHistory.length === 0) {
+        const transition = resolveHistoryUp(input.inputHistory, input.inputHistoryIndex, input.value);
+        if (!transition) {
           return;
         }
-        if (input.inputHistoryIndex === -1) {
-          input.setInputHistoryDraft(input.value);
-          const nextIndex = input.inputHistory.length - 1;
-          input.setInputHistoryIndex(nextIndex);
-          input.applyingHistoryRef.current = true;
-          input.setValue(input.inputHistory[nextIndex] ?? "");
-          input.setInputRevision((current) => current + 1);
-          return;
+        if (transition.nextDraft !== undefined) {
+          input.setInputHistoryDraft(transition.nextDraft);
         }
-        const nextIndex = Math.max(0, input.inputHistoryIndex - 1);
-        input.setInputHistoryIndex(nextIndex);
+        input.setInputHistoryIndex(transition.nextIndex);
         input.applyingHistoryRef.current = true;
-        input.setValue(input.inputHistory[nextIndex] ?? "");
+        input.setValue(transition.nextValue);
         input.setInputRevision((current) => current + 1);
         return;
       }
       if (!input.isThinking && !suggestionNavActive && key.downArrow && input.inputHistoryIndex >= 0) {
-        if (input.inputHistoryIndex >= input.inputHistory.length - 1) {
-          input.setInputHistoryIndex(-1);
-          input.applyingHistoryRef.current = true;
-          input.setValue(input.inputHistoryDraft);
-          input.setInputRevision((current) => current + 1);
+        const transition = resolveHistoryDown(input.inputHistory, input.inputHistoryIndex, input.inputHistoryDraft);
+        if (!transition) {
           return;
         }
-        const nextIndex = input.inputHistoryIndex + 1;
-        input.setInputHistoryIndex(nextIndex);
+        input.setInputHistoryIndex(transition.nextIndex);
         input.applyingHistoryRef.current = true;
-        input.setValue(input.inputHistory[nextIndex] ?? "");
+        input.setValue(transition.nextValue);
         input.setInputRevision((current) => current + 1);
         return;
       }
       if (!browsingInputHistory && input.atQuery !== null && input.atSuggestions.length > 0) {
-        const selected =
-          input.atSuggestions[Math.max(0, Math.min(input.atSuggestionIndex, input.atSuggestions.length - 1))];
-        if (key.tab && shouldAutocompleteAtSubmit(input.value, selected)) {
-          input.setValue(applyAtSuggestion(input.value, selected ?? ""));
+        const autocompleted = resolveTabAutocomplete({
+          browsingInputHistory,
+          value: input.value,
+          atQuery: input.atQuery,
+          atSuggestions: input.atSuggestions,
+          atSuggestionIndex: input.atSuggestionIndex,
+          slashSuggestions: input.slashSuggestions,
+          slashSuggestionIndex: input.slashSuggestionIndex,
+          isTab: key.tab,
+        });
+        if (autocompleted !== null) {
+          input.setValue(autocompleted);
           input.setInputRevision((current) => current + 1);
           return;
         }
@@ -116,10 +196,18 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
         }
       }
       if (!browsingInputHistory && input.atQuery === null && input.slashSuggestions.length > 0) {
-        const selected =
-          input.slashSuggestions[Math.max(0, Math.min(input.slashSuggestionIndex, input.slashSuggestions.length - 1))];
-        if (key.tab && shouldAutocompleteSlashSubmit(input.value, selected)) {
-          input.setValue(applySlashSuggestion(selected ?? ""));
+        const autocompleted = resolveTabAutocomplete({
+          browsingInputHistory,
+          value: input.value,
+          atQuery: input.atQuery,
+          atSuggestions: input.atSuggestions,
+          atSuggestionIndex: input.atSuggestionIndex,
+          slashSuggestions: input.slashSuggestions,
+          slashSuggestionIndex: input.slashSuggestionIndex,
+          isTab: key.tab,
+        });
+        if (autocompleted !== null) {
+          input.setValue(autocompleted);
           input.setInputRevision((current) => current + 1);
           return;
         }
