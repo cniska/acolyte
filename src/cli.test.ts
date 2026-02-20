@@ -6,6 +6,7 @@ import {
   formatStatusOutput,
   formatTimestamp,
   resolveCommandAlias,
+  suggestCommand,
   summarizeDiff,
   truncateText,
 } from "./cli";
@@ -102,5 +103,12 @@ describe("cli formatting helpers", () => {
     expect(resolveCommandAlias("/gs")).toBe("/git-status");
     expect(resolveCommandAlias("/gd")).toBe("/git-diff");
     expect(resolveCommandAlias("/run")).toBe("/run");
+  });
+
+  test("suggestCommand supports canonical and alias prefixes", () => {
+    expect(suggestCommand("/git-st")).toBe("/git-status");
+    expect(suggestCommand("/g")).toBe("/git-status");
+    expect(suggestCommand("/gd")).toBe("/gd");
+    expect(suggestCommand("plain text")).toBeNull();
   });
 });

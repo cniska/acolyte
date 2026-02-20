@@ -135,12 +135,16 @@ export function resolveCommandAlias(command: string): string {
   return COMMAND_ALIASES[command] ?? command;
 }
 
-function suggestCommand(input: string): string | null {
+function allKnownCommands(): string[] {
+  return [...CHAT_COMMANDS, ...Object.keys(COMMAND_ALIASES)];
+}
+
+export function suggestCommand(input: string): string | null {
   const normalized = input.trim();
   if (!normalized.startsWith("/")) {
     return null;
   }
-  for (const command of CHAT_COMMANDS) {
+  for (const command of allKnownCommands()) {
     if (command.startsWith(normalized)) {
       return command;
     }

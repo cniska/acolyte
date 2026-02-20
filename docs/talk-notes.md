@@ -36,6 +36,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
   - inline summaries (search counts, read line count, diff +/- summary)
   - repo-relative read paths and reduced successful `Run` noise
   - short aliases for speed (`/s`, `/r`, `/gs`, `/gd`)
+  - alias-aware command suggestions for faster recovery from partial/typo commands
 - Delivery workflow:
   - `bun run verify` (`typecheck` + tests)
   - autonomous feature loop in `docs/development-workflow.md`
