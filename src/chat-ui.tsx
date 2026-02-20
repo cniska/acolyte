@@ -5,6 +5,7 @@ import React, { useState } from "react";
 import { useEffect } from "react";
 import { Box, Static, Text, render, useApp, useInput } from "ink";
 import type { Backend } from "./backend";
+import { runShellCommand } from "./coding-tools";
 import { addMemory, listMemories } from "./memory";
 import { buildFileContext } from "./file-context";
 import { PromptInput } from "./prompt-input";
@@ -376,6 +377,22 @@ function buildDogfoodPrompt(task: string): string {
     "",
   ].join("\n");
   return `${preamble}${task}`;
+}
+
+function parseRunMeta(raw: string): { exitCode: number | null; durationMs: number | null } {
+  const exitMatch = raw.match(/^exit_code=(\d+)$/m);
+  const durationMatch = raw.match(/^duration_ms=(\d+)$/m);
+  return {
+    exitCode: exitMatch ? Number.parseInt(exitMatch[1], 10) : null,
+    durationMs: durationMatch ? Number.parseInt(durationMatch[1], 10) : null,
+  };
+}
+
+export function formatVerifySummary(raw: string): string {
+  const meta = parseRunMeta(raw);
+  const status = meta.exitCode === 0 ? "passed" : "failed";
+  const duration = meta.durationMs === null ? "n/a" : formatThoughtDuration(meta.durationMs);
+  return `Verify ${status} (exit ${meta.exitCode ?? "?"}, ${duration}).`;
 }
 
 function formatShortcutRows(): string[] {
@@ -777,26 +794,40 @@ function ChatApp(props: ChatAppProps) {
     }
 
     let userText = text;
+    let runVerifyAfterReply = false;
     if (text.startsWith("/dogfood")) {
-      const task = text.slice("/dogfood".length).trim();
+      const parts = text.split(/\s+/).slice(1);
+      let noVerify = false;
+      const taskParts: string[] = [];
+      for (const part of parts) {
+        if (part === "--no-verify") {
+          noVerify = true;
+          continue;
+        }
+        taskParts.push(part);
+      }
+      const task = taskParts.join(" ").trim();
       if (!task) {
         setRows((current) => [
           ...current,
           {
             id: `row_${crypto.randomUUID()}`,
             role: "system",
-            content: "Usage: /dogfood <task>",
+            content: "Usage: /dogfood [--no-verify] <task>",
           },
         ]);
         return;
       }
+      runVerifyAfterReply = !noVerify;
       userText = buildDogfoodPrompt(task);
       setRows((current) => [
         ...current,
         {
           id: `row_${crypto.randomUUID()}`,
           role: "system",
-          content: "Dogfood mode enabled for this task.",
+          content: runVerifyAfterReply
+            ? "Dogfood mode enabled (verify after reply)."
+            : "Dogfood mode enabled (no verify).",
         },
       ]);
     }
@@ -856,6 +887,37 @@ function ChatApp(props: ChatAppProps) {
         ...current,
         { id: assistantMessage.id, role: "assistant", content: reply.output },
       ]);
+      if (runVerifyAfterReply) {
+        setRows((current) => [
+          ...current,
+          {
+            id: `row_${crypto.randomUUID()}`,
+            role: "system",
+            content: "  verifying…",
+            dim: true,
+          },
+        ]);
+        try {
+          const verifyResult = await runShellCommand("bun run verify");
+          setRows((current) => [
+            ...current,
+            {
+              id: `row_${crypto.randomUUID()}`,
+              role: "assistant",
+              content: formatVerifySummary(verifyResult),
+            },
+          ]);
+        } catch (error) {
+          setRows((current) => [
+            ...current,
+            {
+              id: `row_${crypto.randomUUID()}`,
+              role: "system",
+              content: error instanceof Error ? error.message : "Verify step failed.",
+            },
+          ]);
+        }
+      }
       const durationMs = Date.now() - thinkingStartedAt;
       if (durationMs >= 300) {
         setRows((current) => [
