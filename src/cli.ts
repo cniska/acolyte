@@ -123,7 +123,6 @@ const SHORTCUT_PANEL_LINES = [
   "  /skills capabilities     /exit quit",
   "  enter send               up/down history              esc close panel       ctrl+c exit",
 ] as const;
-const SHORTCUT_PANEL_TOP_PADDING_LINES = 1;
 
 function renderShortcutsPanel(): void {
   for (const line of SHORTCUT_PANEL_LINES) {
@@ -669,15 +668,8 @@ async function chatMode(): Promise<void> {
       shortcutsOpen = false;
       return;
     }
-    output.write("\x1b[u");
-    output.write("\x1b[s\n");
-    for (let i = 0; i < SHORTCUT_PANEL_TOP_PADDING_LINES + SHORTCUT_PANEL_LINES.length; i += 1) {
-      output.write("\x1b[2K");
-      if (i < SHORTCUT_PANEL_TOP_PADDING_LINES + SHORTCUT_PANEL_LINES.length - 1) {
-        output.write("\n");
-      }
-    }
-    output.write("\x1b[u");
+    // Restore prompt anchor and clear everything below it in one pass.
+    output.write("\x1b[u\x1b[J");
     shortcutsOpen = false;
   };
 
