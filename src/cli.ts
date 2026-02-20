@@ -71,48 +71,36 @@ function getOrCreateActiveSession(store: SessionStore, model: string): Session {
 }
 
 function printHelp(): void {
-  printSection("Common");
-  printInfo("  /help (/?)      Show this help");
-  printInfo("  /search (/s) <pat>   Search repository text with ripgrep");
-  printInfo("  /read (/r) <path> [start] [end]  Read file snippet");
-  printInfo("  /run <cmd>      Run shell command");
-  printInfo("  /verify         Run project validation (bun run verify)");
-  printInfo("  /git-status (/gs)     Show git status summary");
-  printInfo("  /git-diff (/gd) [path] [context]  Show git diff");
-  printInfo("  /exit           Exit the CLI");
+  printSection("Chat Commands");
+  printInfo("  ?               Show this help");
+  printInfo("  /skills         Show available capabilities");
+  printInfo("  /exit           Exit the chat");
   printInfo("");
-  printSection("Session");
-  printInfo("  /new            Start a new session");
-  printInfo("  /history        Show messages in this session");
-  printInfo("  /sessions       List saved sessions");
-  printInfo("  /use <id>       Switch to a session by id prefix");
-  printInfo("  /resume [id]    Resume active session or switch by id prefix");
-  printInfo("  /title <text>   Rename current session");
-  printInfo("  /model <name>   Change active model");
-  printInfo("  /status         Show backend connection status");
-  printInfo("");
-  printSection("Tools");
-  printInfo("  /edit <path> <find> <replace> [--dry-run]  Replace text in file");
-  printInfo("  /file <path>    Attach a local text file to this session");
-  printInfo("");
-  printSection("Memory");
-  printInfo("  /remember <x>   Add a personal memory note");
-  printInfo("  /memories       Show personal memory notes");
-  printInfo("");
-  printSection("General");
-  printInfo("  /clear          Clear terminal and reprint banner");
+  printSection("CLI Commands");
+  printInfo("  acolyte run <prompt>         One-shot prompt");
+  printInfo("  acolyte history              Session list");
+  printInfo("  acolyte memory [list|add]    Memory management");
+  printInfo("  acolyte config [list|set|unset]  CLI config");
+  printInfo("  acolyte tool ...             Advanced/internal tools");
+}
+
+function printSkills(): void {
+  printSection("Skills");
+  printInfo("  - Coding tasks (read, edit, verify, iterate)");
+  printInfo("  - Repository context (files, git changes, project structure)");
+  printInfo("  - Persistent memory preferences");
+  printInfo("  - Multi-step reasoning with tool use when needed");
 }
 
 const CHAT_COMMANDS = [
-  "/help",
-  "/clear",
-  "/new",
-  "/history",
-  "/sessions",
-  "/use",
-  "/resume",
-  "/title",
-  "/status",
+  "?",
+  "/skills",
+  "/exit",
+];
+
+const COMMAND_ALIASES: Record<string, string> = {};
+
+const INTERNAL_CHAT_COMMANDS = new Set([
   "/search",
   "/read",
   "/git-status",
@@ -123,17 +111,16 @@ const CHAT_COMMANDS = [
   "/file",
   "/remember",
   "/memories",
+  "/status",
+  "/new",
+  "/history",
+  "/sessions",
+  "/use",
+  "/resume",
+  "/title",
   "/model",
-  "/exit",
-];
-
-const COMMAND_ALIASES: Record<string, string> = {
-  "/?": "/help",
-  "/s": "/search",
-  "/r": "/read",
-  "/gs": "/git-status",
-  "/gd": "/git-diff",
-};
+  "/clear",
+]);
 
 export function resolveCommandAlias(command: string): string {
   return COMMAND_ALIASES[command] ?? command;
@@ -170,7 +157,7 @@ export function suggestCommand(input: string): string | null {
 
 export function suggestCommands(input: string, max = 3): string[] {
   const normalized = input.trim();
-  if (!normalized.startsWith("/")) {
+  if (!normalized.startsWith("/") && !normalized.startsWith("?")) {
     return [];
   }
   const commands = allKnownCommands();
@@ -693,234 +680,23 @@ async function chatMode(): Promise<void> {
       continue;
     }
 
-    if (line.startsWith("/")) {
-      const [rawCommand, ...args] = line.split(/\s+/);
+    if (line.startsWith("/") || line === "?") {
+      const [rawCommand] = line === "?" ? ["?"] : line.split(/\s+/);
       const command = resolveCommandAlias(rawCommand);
-      if (command === "/help") {
+      if (command === "?") {
+        printOutput("");
         printHelp();
-      } else if (command === "/clear") {
-        clearScreen();
-        banner(session.model, session.id, CLI_VERSION);
-      } else if (command === "/new") {
-        const created = createSession(session.model);
-        store.sessions.unshift(created);
-        store.activeSessionId = created.id;
-        session = created;
-        banner(session.model, session.id, CLI_VERSION);
-      } else if (command === "/history") {
-        printSection(`• Session History (${session.messages.length})`);
-        printSessionHistory(session);
-      } else if (command === "/sessions") {
-        printSection(`• Sessions (${store.sessions.length})`);
-        listSessions(store);
-      } else if (command === "/use") {
-        if (args.length === 0) {
-          printWarning("Usage: /use <session-id-prefix>");
-        } else {
-          const next = findSessionByPrefix(store, args[0]);
-          if (!next) {
-            printWarning("No unique session found for that id prefix.");
-          } else {
-            session = next;
-            store.activeSessionId = next.id;
-            banner(session.model, session.id, CLI_VERSION);
-          }
-        }
-      } else if (command === "/resume") {
-        if (args.length === 0) {
-          const active = store.sessions.find((s) => s.id === store.activeSessionId);
-          if (!active) {
-            printWarning("No active session to resume.");
-          } else {
-            session = active;
-            banner(session.model, session.id, CLI_VERSION);
-          }
-        } else {
-          const next = findSessionByPrefix(store, args[0]);
-          if (!next) {
-            printWarning("No unique session found for that id prefix.");
-          } else {
-            session = next;
-            store.activeSessionId = next.id;
-            banner(session.model, session.id, CLI_VERSION);
-          }
-        }
-      } else if (command === "/title") {
-        const value = args.join(" ").trim();
-        if (!value) {
-          printWarning("Usage: /title <text>");
-        } else {
-          session.title = value.slice(0, 80);
-          session.updatedAt = nowIso();
-          printInfo("Session title updated.");
-        }
-      } else if (command === "/status") {
-        try {
-          const status = await backend.status();
-          showToolResult("Status", formatStatusOutput(status), "tool");
-        } catch (error) {
-          const message = error instanceof Error ? error.message : "Unknown error";
-          printError(message);
-        }
-      } else if (command === "/search") {
-        const pattern = args.join(" ").trim();
-        if (!pattern) {
-          printWarning("Usage: /search <pattern>");
-        } else {
-          try {
-            const result = await searchRepo(pattern);
-            showToolResult("Search", formatForTool("search", result), "tool", pattern);
-            session.messages.push(newMessage("system", formatToolContext(`search ${pattern}`, result)));
-            session.updatedAt = nowIso();
-          } catch (error) {
-            const message = error instanceof Error ? error.message : "Unknown error";
-            printError(message);
-          }
-        }
-      } else if (command === "/read") {
-        const [pathInput, start, end] = args;
-        if (!pathInput) {
-          printWarning("Usage: /read <path> [start] [end]");
-        } else {
-          try {
-            const snippet = await readSnippet(pathInput, start, end);
-            showToolResult("Read", formatForTool("read", snippet), "plain", formatReadDetail(pathInput, start, end));
-            session.messages.push(newMessage("system", formatToolContext(`read ${pathInput}`, snippet)));
-            session.updatedAt = nowIso();
-          } catch (error) {
-            const message = error instanceof Error ? error.message : "Unknown error";
-            printError(message);
-          }
-        }
-      } else if (command === "/git-status") {
-        try {
-          const result = await gitStatusShort();
-          showToolResult("Git Status", formatForTool("status", result), "tool");
-          session.messages.push(newMessage("system", formatToolContext("git-status", result)));
-          session.updatedAt = nowIso();
-        } catch (error) {
-          const message = error instanceof Error ? error.message : "Unknown error";
-          printError(message);
-        }
-      } else if (command === "/git-diff") {
-        const [pathInput, context] = args;
-        try {
-          const ctxRaw = context ? Number.parseInt(context, 10) : undefined;
-          const ctx = ctxRaw !== undefined && !Number.isNaN(ctxRaw) ? ctxRaw : 3;
-          const result = await gitDiff(pathInput, ctx);
-          showToolResult("Diff", formatForTool("diff", result), "plain", pathInput ?? ".");
-          session.messages.push(
-            newMessage("system", formatToolContext(`git-diff ${pathInput ?? ""}`.trim(), result)),
-          );
-          session.updatedAt = nowIso();
-        } catch (error) {
-          const message = error instanceof Error ? error.message : "Unknown error";
-          printError(message);
-        }
-      } else if (command === "/run") {
-        const cmd = args.join(" ").trim();
-        if (!cmd) {
-          printWarning("Usage: /run <command>");
-        } else {
-          try {
-            const result = await runShellCommand(cmd);
-            showToolResult("Run", formatForTool("run", result), "plain", cmd);
-            session.messages.push(newMessage("system", formatToolContext(`run ${cmd}`, result)));
-            session.updatedAt = nowIso();
-          } catch (error) {
-            const message = error instanceof Error ? error.message : "Unknown error";
-            printError(message);
-          }
-        }
-      } else if (command === "/verify") {
-        try {
-          const result = await runShellCommand("bun run verify");
-          showToolResult("Run", formatForTool("run", result), "plain", "bun run verify");
-          session.messages.push(newMessage("system", formatToolContext("run bun run verify", result)));
-          session.updatedAt = nowIso();
-        } catch (error) {
-          const message = error instanceof Error ? error.message : "Unknown error";
-          printError(message);
-        }
-      } else if (command === "/edit") {
-        try {
-          const parsed = parseEditArgs(args);
-          const result = await editFileReplace(parsed);
-          const summary = parseEditResult(result);
-          let rendered = false;
-          if (summary) {
-            const shownPath = displayPath(summary.path);
-            if (summary.dryRun) {
-              showToolResult(
-                `Dry Run ${shownPath}`,
-                `${countLabel(summary.matches, "match", "matches")} would be changed.`,
-              );
-              rendered = true;
-            } else {
-              try {
-                const diff = await gitDiff(parsed.path, 3);
-                showToolResult("Update", formatEditUpdateOutput(summary.matches, diff), "plain", shownPath);
-                rendered = true;
-              } catch (error) {
-                const message = error instanceof Error ? error.message : "Unable to render diff preview";
-                if (message.includes("outside repository")) {
-                  showToolResult("Edited", `${countLabel(summary.matches, "replacement", "replacements")} applied.`, "plain", shownPath);
-                  rendered = true;
-                  printWarning("Diff preview unavailable (file is outside current repository).");
-                } else {
-                  printWarning(message);
-                }
-              }
-            }
-          }
-          if (!rendered) {
-            showToolResult("Edit", result, "plain", parsed.path);
-          }
-          session.messages.push(
-            newMessage("system", formatToolContext(`edit ${parsed.path}`, result)),
-          );
-          session.updatedAt = nowIso();
-        } catch (error) {
-          const message = error instanceof Error ? error.message : "Unknown error";
-          printError(message);
-        }
-      } else if (command === "/file") {
-        const pathInput = args.join(" ").trim();
-        if (!pathInput) {
-          printWarning("Usage: /file <path>");
-        } else {
-          try {
-            await attachFileToSession(session, pathInput);
-            printInfo(`Attached file context from ${pathInput}`);
-          } catch (error) {
-            const message = error instanceof Error ? error.message : "Unknown error";
-            printError(message);
-          }
-        }
-      } else if (command === "/remember") {
-        const content = args.join(" ").trim();
-        if (!content) {
-          printWarning("Usage: /remember <memory text>");
-        } else {
-          const entry = await addMemory(content);
-          printInfo(`Saved memory ${entry.id.slice(0, 12)}.`);
-        }
-      } else if (command === "/memories") {
-        const rows = await listMemories();
-        printSection(`• Memories (${rows.length})`);
-        printMemoryRows(rows);
-      } else if (command === "/model") {
-        if (args.length === 0) {
-          printWarning("Usage: /model <model-name>");
-        } else {
-          session.model = args[0];
-          session.updatedAt = nowIso();
-          printInfo(`Active model set to ${session.model}`);
-        }
+      } else if (command === "/skills") {
+        printOutput("");
+        printSkills();
       } else if (command === "/exit") {
         await persist();
         rl.close();
         return;
+      } else if (INTERNAL_CHAT_COMMANDS.has(command)) {
+        printWarning(
+          `\`${rawCommand}\` is internal. Ask naturally in chat, or use \`acolyte tool ...\` for advanced usage.`,
+        );
       } else {
         const suggestions = normalizeSuggestions(suggestCommands(rawCommand, 3));
         if (suggestions.length === 1) {

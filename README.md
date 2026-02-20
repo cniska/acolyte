@@ -46,12 +46,9 @@ bun run src/cli.ts config list
 ```
 
 Session management in chat:
-- `/sessions` to list saved sessions
-- `/use <session-id-prefix>` to switch sessions
-- `/title <text>` to rename current session
-- `/file <path>` to attach a local text/code file as context
-- `/search <pattern>` to search repository content
-- `/read <path> [start] [end]` to inspect file snippets
+- `?` to open chat help
+- `/skills` to view available capabilities
+- `/exit` to leave chat
 
 Attach file context in one-shot mode:
 ```bash
@@ -79,14 +76,10 @@ bun run verify
 Inside `bun run chat`, try:
 
 ```text
-/remember I prefer concise answers with concrete commands.
-/search createBackend
-/read src/agent.ts 1 120
-/git-status
-/git-diff src/cli.ts 3
-/run bun run typecheck
-/verify
-/edit src/cli.ts Acolyte Acolyte --dry-run
+?
+/skills
+Use ripgrep to find where createBackend is defined and summarize what it does.
+Review src/agent.ts and list the top 3 improvements.
 Summarize the current architecture and the next 3 improvements.
 ```
 

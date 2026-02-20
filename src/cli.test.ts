@@ -115,27 +115,23 @@ describe("cli formatting helpers", () => {
   });
 
   test("resolveCommandAlias maps short commands", () => {
-    expect(resolveCommandAlias("/?")).toBe("/help");
-    expect(resolveCommandAlias("/s")).toBe("/search");
-    expect(resolveCommandAlias("/r")).toBe("/read");
-    expect(resolveCommandAlias("/gs")).toBe("/git-status");
-    expect(resolveCommandAlias("/gd")).toBe("/git-diff");
+    expect(resolveCommandAlias("?")).toBe("?");
+    expect(resolveCommandAlias("/skills")).toBe("/skills");
+    expect(resolveCommandAlias("/exit")).toBe("/exit");
     expect(resolveCommandAlias("/run")).toBe("/run");
   });
 
   test("suggestCommand supports canonical and alias prefixes", () => {
-    expect(suggestCommand("/git-st")).toBe("/git-status");
-    expect(suggestCommand("/g")).toBe("/git-status");
-    expect(suggestCommand("/gd")).toBe("/gd");
-    expect(suggestCommand("/git-stats")).toBe("/git-status");
-    expect(suggestCommand("/memoris")).toBe("/memories");
+    expect(suggestCommand("/s")).toBe("/skills");
+    expect(suggestCommand("/sk")).toBe("/skills");
+    expect(suggestCommand("/skils")).toBe("/skills");
+    expect(suggestCommand("?")).toBe("?");
     expect(suggestCommand("plain text")).toBeNull();
   });
 
   test("suggestCommands returns multiple ranked suggestions", () => {
-    expect(suggestCommands("/g", 3)).toEqual(["/git-status", "/git-diff", "/gs"]);
-    expect(suggestCommands("/git-stats", 3)).toContain("/git-status");
-    expect(suggestCommands("/memoriez", 3)).toContain("/memories");
+    expect(suggestCommands("/", 3)).toEqual(["/skills", "/exit"]);
+    expect(suggestCommands("/sklls", 3)).toContain("/skills");
     expect(suggestCommands("no slash", 3)).toEqual([]);
   });
 });

@@ -53,6 +53,8 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
   - switched CLI accent color to a lighter accessible royal-purple branding
   - tool headers now use white action labels with dim gray args for readability
   - fixed overflow marker alignment in truncated tool output lists
+  - hard-separated chat UX: only `?`, `/skills`, `/exit`; internal commands moved to top-level CLI/tool mode
+  - help is inline text under chat input (no popup/overlay shortcut panel)
 - Delivery workflow:
   - `bun run verify` (`typecheck` + tests)
   - autonomous feature loop in `docs/development-workflow.md`
