@@ -86,6 +86,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Memory must be transparent and editable, otherwise trust decays quickly.
 - UX details matter: prompt ergonomics and low-noise output have outsized impact.
 - `@file` references are only valuable when they attach real context, not just visual autocomplete.
+- Subagents work better when each role gets explicit context (goal, scope, expected output), not implicit routing guesses.
 
 ## Open Narrative Threads
 - Next: richer transcript-style tool blocks (focused excerpts by default, expandable when needed).

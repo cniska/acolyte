@@ -19,10 +19,15 @@ function normalizeModel(model: string): string {
 
 export type AcolyteInstructions = string | (() => string | Promise<string>);
 
-export function createAcolyteAgent(input: { model: string; instructions: AcolyteInstructions }): Agent {
+export function createAcolyteAgent(input: {
+  model: string;
+  instructions: AcolyteInstructions;
+  id?: string;
+  name?: string;
+}): Agent {
   return new Agent({
-    id: "acolyte",
-    name: "Acolyte",
+    id: input.id ?? "acolyte",
+    name: input.name ?? "Acolyte",
     instructions: input.instructions,
     model: normalizeModel(input.model),
     tools: acolyteTools,

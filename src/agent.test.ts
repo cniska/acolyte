@@ -1,10 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import {
   buildAgentInput,
+  buildSubagentContext,
   compactReviewOutput,
   finalizeAssistantOutput,
   finalizeReviewOutput,
   normalizeReviewOutput,
+  selectAgentRole,
 } from "./agent";
 import type { ChatRequest } from "./api";
 
@@ -136,5 +138,34 @@ describe("finalizeAssistantOutput", () => {
 
   test("keeps non-empty output", () => {
     expect(finalizeAssistantOutput("Done")).toBe("Done");
+  });
+});
+
+describe("selectAgentRole", () => {
+  test("routes review prompts to reviewer", () => {
+    expect(selectAgentRole("review @src/agent.ts")).toBe("reviewer");
+  });
+
+  test("routes planning prompts to planner", () => {
+    expect(selectAgentRole("plan rollout steps for memory")).toBe("planner");
+  });
+
+  test("routes implementation prompts to coder by default", () => {
+    expect(selectAgentRole("implement /resume picker improvements")).toBe("coder");
+  });
+});
+
+describe("buildSubagentContext", () => {
+  test("includes role goal and expected output guidance", () => {
+    const req: ChatRequest = {
+      model: "gpt-5-mini",
+      message: "review @src/agent.ts",
+      history: [{ id: "1", role: "user", content: "previous", timestamp: "2026-02-20T10:00:00.000Z" }],
+    };
+    const context = buildSubagentContext("reviewer", req);
+    expect(context).toContain("Subagent: Reviewer");
+    expect(context).toContain("Goal: review @src/agent.ts");
+    expect(context).toContain("Context: 1 history messages; model=gpt-5-mini");
+    expect(context).toContain("Expected output:");
   });
 });

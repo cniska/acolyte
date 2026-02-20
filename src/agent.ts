@@ -7,6 +7,8 @@ interface OpenAIClientConfig {
   baseUrl: string;
 }
 
+export type AgentRole = "planner" | "coder" | "reviewer";
+
 const FALLBACK_PLAN =
   "1) Interpret request. 2) Use available repo tools when helpful. 3) Return concise, actionable answer.";
 const APPROX_CHARS_PER_TOKEN = 4;
@@ -153,6 +155,47 @@ function isReviewRequest(text: string): boolean {
   return /\breview\b/i.test(text);
 }
 
+function isPlanningRequest(text: string): boolean {
+  const lower = text.toLowerCase();
+  const hints = ["plan", "roadmap", "strategy", "approach", "break down", "steps", "outline", "design"];
+  return hints.some((hint) => lower.includes(hint));
+}
+
+function selectHeuristicRole(text: string): AgentRole | null {
+  if (isReviewRequest(text)) {
+    return "reviewer";
+  }
+  if (isPlanningRequest(text)) {
+    return "planner";
+  }
+  const lower = text.toLowerCase();
+  const codingHints = ["implement", "fix", "write", "edit", "refactor", "add", "build", "create", "test"];
+  if (codingHints.some((hint) => lower.includes(hint))) {
+    return "coder";
+  }
+  return null;
+}
+
+export function selectAgentRole(text: string): AgentRole {
+  return selectHeuristicRole(text) ?? "coder";
+}
+
+export function buildSubagentContext(role: AgentRole, req: ChatRequest): string {
+  const scope = req.history.length > 0 ? `${req.history.length} history messages` : "no history";
+  const roleName = role[0].toUpperCase() + role.slice(1);
+  const roleExpectations: Record<AgentRole, string> = {
+    planner: "Expected output: concise sequenced plan with risks and validation checkpoints.",
+    coder: "Expected output: practical implementation guidance; use tools when needed and keep results compact.",
+    reviewer: "Expected output: prioritized findings with concrete evidence and remediation guidance.",
+  };
+  return [
+    `Subagent: ${roleName}`,
+    `Goal: ${req.message.trim()}`,
+    `Context: ${scope}; model=${req.model}`,
+    roleExpectations[role],
+  ].join("\n");
+}
+
 export function compactReviewOutput(output: string): string {
   if (output.length <= MAX_REVIEW_OUTPUT_CHARS) {
     return output;
@@ -271,6 +314,34 @@ function buildToolPolicy(baseInstructions: string): string {
   ].join("\n");
 }
 
+function buildRoleInstructions(baseInstructions: string, role: AgentRole): string {
+  if (role === "planner") {
+    return [
+      baseInstructions,
+      "Role: planner.",
+      "- Focus on decomposition, sequencing, risks, and validation strategy.",
+      "- Prefer concise actionable plans with clear milestones.",
+      "- Avoid unnecessary tool usage unless repository evidence is explicitly needed.",
+    ].join("\n");
+  }
+
+  if (role === "reviewer") {
+    return [
+      buildToolPolicy(baseInstructions),
+      "Role: reviewer.",
+      "- Prioritize concrete defects, regressions, and risks over stylistic nits.",
+      "- Ground findings in files/evidence when possible.",
+    ].join("\n");
+  }
+
+  return [
+    buildToolPolicy(baseInstructions),
+    "Role: coder.",
+    "- Optimize for practical implementation and verification with available tools.",
+    "- Keep responses compact and execution-oriented.",
+  ].join("\n");
+}
+
 function buildMockReply(req: ChatRequest): ChatResponse {
   return {
     model: req.model,
@@ -292,24 +363,31 @@ export async function runAgent(input: {
     return buildMockReply(input.request);
   }
 
+  const role = selectAgentRole(input.request.message);
+
   const agent = createAcolyteAgent({
+    id: `acolyte-${role}`,
+    name: `Acolyte ${role[0].toUpperCase()}${role.slice(1)}`,
     model: input.request.model,
-    instructions: buildToolPolicy(input.soulPrompt),
+    instructions: buildRoleInstructions(input.soulPrompt, role),
   });
 
   const requestInput = buildAgentInputWithUsage(input.request);
+  const subagentContext = buildSubagentContext(role, input.request);
+  const agentInput = `${subagentContext}\n\n${requestInput.input}`;
   const toolLikely = isToolLikelyRequest(input.request.message);
   const memoryOptions = input.request.sessionId
     ? { thread: input.request.sessionId, resource: appConfig.memory.resourceId }
     : undefined;
-  let result = await agent.generate(requestInput.input, {
-    maxSteps: 8,
+  let result = await agent.generate(agentInput, {
+    maxSteps: role === "planner" ? 5 : 8,
     toolChoice: "auto",
     memory: memoryOptions,
   });
 
-  if (toolLikely && result.toolCalls.length === 0) {
-    result = await agent.generate(requestInput.input, {
+  const shouldRequireToolsFallback = role !== "planner" && (toolLikely || role === "reviewer");
+  if (shouldRequireToolsFallback && result.toolCalls.length === 0) {
+    result = await agent.generate(agentInput, {
       maxSteps: 8,
       toolChoice: "required",
       memory: memoryOptions,

@@ -166,6 +166,7 @@ Build a personal AI assistant using Mastra, with a CLI-first interface that runs
 4. Optional hosted backend on Vercel with persistent memory database and migrations.
 5. Documented memory policy and governance.
 6. Evaluation suite for quality regression checks.
+7. Subagent routing baseline (planner/coder/reviewer) with explicit per-role context handoff.
 
 ## Risks and Mitigations
 1. Memory drift or wrong assumptions.
@@ -185,7 +186,7 @@ Build a personal AI assistant using Mastra, with a CLI-first interface that runs
 3. Sandbox provider choice (E2B vs Modal).
 4. Packaging target (`npm` global vs standalone binary).
 5. Async job strategy (Vercel-native vs external worker).
-6. Multi-agent rollout timing and topology (planner/executor/reviewer) after single-agent reliability gates are consistently met.
+6. How far to evolve from v1 subagent routing (single-role-per-turn) to true multi-step delegation.
 7. Channel adapter rollout timing (WhatsApp via OpenClaw/Twilio) and auth model for cross-device messaging.
 8. Initial task-lane routing policy (`chat`, `code`, `long-context`, `vision`) and per-lane fallback order.
 9. Local model strategy for default installs (optional by default vs recommended baseline for coding lane).
@@ -199,7 +200,7 @@ Build a personal AI assistant using Mastra, with a CLI-first interface that runs
 6. Expand `/resume` UX (session picker/listing ergonomics) on top of current ID-prefix resume flow.
 7. Add a dogfooding transition milestone: move from Codex-led development to Acolyte-led development in this repo after coding-loop reliability gates are met.
 8. Evaluate and tune the current resource-scoped observational memory setup (cost, precision, promotion quality) before broader automatic preference promotion.
-9. Defer multi-agent orchestration until single-agent coding loop is stable; then introduce as an optional path for complex tasks.
+9. Keep subagent v1 simple and deterministic (heuristic router + explicit context), then evaluate optional richer delegation only after stability gates.
 10. Continue CLI UX convergence with Codex/Claude patterns while preserving minimalism (slash suggestions + picker flows via shared components).
 11. Add a package script to launch Mastra Studio once Mastra app wiring is production-ready for inspection/debugging.
 12. Tune `@path` autocomplete filtering for discoverability: keep gitignored paths visible by default and add optional `.acolyteignore` support for user-controlled exclusions.

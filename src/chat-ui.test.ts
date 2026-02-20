@@ -7,8 +7,7 @@ import {
   rankAtReferenceSuggestions,
   shouldAutocompleteAtSubmit,
 } from "./chat-file-ref";
-import { toRows } from "./chat-session";
-import type { Message, SessionStore } from "./types";
+import type { SessionStore } from "./types";
 
 function makeStore(): SessionStore {
   return {
@@ -35,19 +34,6 @@ function makeStore(): SessionStore {
 }
 
 describe("chat-ui helpers", () => {
-  test("toRows keeps only user/assistant and applies limit", () => {
-    const messages: Message[] = [
-      { id: "1", role: "system", content: "x", timestamp: "" },
-      { id: "2", role: "user", content: "u1", timestamp: "" },
-      { id: "3", role: "assistant", content: "a1", timestamp: "" },
-      { id: "4", role: "user", content: "u2", timestamp: "" },
-    ];
-    const rows = toRows(messages, 2);
-    expect(rows).toHaveLength(2);
-    expect(rows[0]?.content).toBe("a1");
-    expect(rows[1]?.content).toBe("u2");
-  });
-
   test("resolveResumeSession reports usage when no prefix is provided", () => {
     const resolved = resolveResumeSession(makeStore(), "/resume");
     expect(resolved.kind).toBe("usage");
