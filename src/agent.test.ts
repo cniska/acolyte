@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { ChatRequest } from "./api";
-import { buildAgentInput, compactReviewOutput, normalizeReviewOutput } from "./agent";
+import { buildAgentInput, compactReviewOutput, finalizeReviewOutput, normalizeReviewOutput } from "./agent";
 
 function makeRequest(content: string): ChatRequest {
   return {
@@ -57,5 +57,19 @@ describe("normalizeReviewOutput", () => {
   test("normalizes numbered lines to dotted form and left aligns", () => {
     const raw = ["  1) First issue", "    2. Second issue"].join("\n");
     expect(normalizeReviewOutput(raw)).toBe(["1. First issue", "2. Second issue"].join("\n"));
+  });
+});
+
+describe("finalizeReviewOutput", () => {
+  test("returns fallback when normalized output is empty", () => {
+    const raw = "Tools used: search-repo\nEvidence: src/cli.ts:1";
+    expect(finalizeReviewOutput(raw)).toBe(
+      "No review output produced. Try a narrower scope (for example src/file.ts).",
+    );
+  });
+
+  test("keeps meaningful normalized output", () => {
+    const raw = "• 1 findings in @src/mastra-tools.ts\n 1) naming issue";
+    expect(finalizeReviewOutput(raw)).toBe("1 finding in src/mastra-tools.ts\n1. naming issue");
   });
 });

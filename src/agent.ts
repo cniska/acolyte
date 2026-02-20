@@ -112,6 +112,19 @@ export function normalizeReviewOutput(output: string): string {
   return normalized.join("\n").trimEnd();
 }
 
+export function finalizeReviewOutput(output: string): string {
+  const cleaned = output
+    .split("\n")
+    .filter((line) => !/^\s*(Tools used:|Evidence:)/.test(line))
+    .join("\n")
+    .trim();
+  const normalized = normalizeReviewOutput(compactReviewOutput(cleaned));
+  if (normalized.trim().length > 0) {
+    return normalized;
+  }
+  return "No review output produced. Try a narrower scope (for example src/file.ts).";
+}
+
 function buildToolPolicy(baseInstructions: string): string {
   return [
     baseInstructions,
@@ -202,7 +215,7 @@ export async function runAgent(input: {
 
   const rawOutput = result.text.trim();
   const output = isReviewRequest(input.request.message)
-    ? normalizeReviewOutput(compactReviewOutput(rawOutput))
+    ? finalizeReviewOutput(rawOutput)
     : rawOutput;
 
   return {
