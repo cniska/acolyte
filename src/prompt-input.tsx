@@ -4,6 +4,7 @@ import { Text, useInput } from "ink";
 const KEYS = {
   ctrl: {
     c: "c",
+    h: "\u0008",
     w: "w",
   },
   meta: {
@@ -13,6 +14,11 @@ const KEYS = {
   esc: {
     altB: "\u001bb",
     altF: "\u001bf",
+    altBackspace: "\u001b\u007f",
+    delete: "\u001b[3~",
+  },
+  chars: {
+    backspace: "\u007f",
   },
 } as const;
 
@@ -114,6 +120,16 @@ export function PromptInput({
         return;
       }
 
+      if ((key.meta && key.backspace) || input === KEYS.esc.altBackspace) {
+        if (cursorOffset === 0) {
+          return;
+        }
+        const next = moveWordLeft(value, cursorOffset);
+        onChange(`${value.slice(0, next)}${value.slice(cursorOffset)}`);
+        setCursorOffset(next);
+        return;
+      }
+
       if (key.leftArrow) {
         setCursorOffset((current) => Math.max(0, current - 1));
         return;
@@ -124,7 +140,14 @@ export function PromptInput({
         return;
       }
 
-      if (key.backspace) {
+      const isForwardDelete = input === KEYS.esc.delete;
+      const isBackspace =
+        key.backspace ||
+        input === KEYS.ctrl.h ||
+        input === KEYS.chars.backspace ||
+        (key.delete && !isForwardDelete);
+
+      if (isBackspace) {
         if (cursorOffset === 0) {
           return;
         }
@@ -133,7 +156,7 @@ export function PromptInput({
         return;
       }
 
-      if (key.delete) {
+      if (isForwardDelete) {
         if (cursorOffset >= value.length) {
           return;
         }
