@@ -186,6 +186,7 @@ Build a personal AI assistant using Mastra, with a CLI-first interface that runs
 9. Defer multi-agent orchestration until single-agent coding loop is stable; then introduce as an optional path for complex tasks.
 10. Continue CLI UX convergence with Codex/Claude patterns while preserving minimalism (slash suggestions + picker flows via shared components).
 11. Add a package script to launch Mastra Studio once Mastra app wiring is production-ready for inspection/debugging.
+12. Add `@path` file reference support in interactive chat (autocomplete + attach semantics) to reduce command friction.
 
 ## Prioritization Policy
 1. Prioritize correctness, reliability, and core workflow capability over cosmetic UX changes.
