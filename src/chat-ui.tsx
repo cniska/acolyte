@@ -1,5 +1,8 @@
 import { homedir } from "node:os";
+import { readdir } from "node:fs/promises";
+import { join } from "node:path";
 import React, { useState } from "react";
+import { useEffect } from "react";
 import { Box, Static, Text, render, useApp, useInput } from "ink";
 import TextInput from "ink-text-input";
 import type { Backend } from "./backend";
@@ -71,6 +74,9 @@ function newMessage(role: Message["role"], content: string): Message {
 }
 
 const RESUME_TRANSCRIPT_ROWS = 40;
+const MAX_AT_SUGGESTIONS = 8;
+const MAX_SCAN_ENTRIES = 5000;
+const IGNORED_DIRS = new Set(["node_modules", ".acolyte", "dist", "build", ".next", "coverage"]);
 
 export function toRows(messages: Message[], limit = RESUME_TRANSCRIPT_ROWS): ChatRow[] {
   const rows: ChatRow[] = [];
@@ -134,6 +140,81 @@ export function suggestSlashCommands(inputValue: string, max = 5): string[] {
     return matches.slice(0, max);
   }
   return [];
+}
+
+export function extractAtReferenceQuery(inputValue: string): string | null {
+  const value = inputValue.trim();
+  if (!value.startsWith("@")) {
+    return null;
+  }
+  const token = value.split(/\s+/)[0] ?? "";
+  return token.slice(1);
+}
+
+export function rankAtReferenceSuggestions(paths: string[], query: string, max = MAX_AT_SUGGESTIONS): string[] {
+  const q = query.trim().toLowerCase();
+  if (!q) {
+    return paths.slice(0, max);
+  }
+  return paths
+    .filter((path) => path.toLowerCase().includes(q))
+    .sort((a, b) => {
+      const aLower = a.toLowerCase();
+      const bLower = b.toLowerCase();
+      const aStarts = aLower.startsWith(q) ? 0 : 1;
+      const bStarts = bLower.startsWith(q) ? 0 : 1;
+      if (aStarts !== bStarts) {
+        return aStarts - bStarts;
+      }
+      if (a.length !== b.length) {
+        return a.length - b.length;
+      }
+      return a.localeCompare(b);
+    })
+    .slice(0, max);
+}
+
+async function collectRepoPathCandidates(root = process.cwd(), maxEntries = MAX_SCAN_ENTRIES): Promise<string[]> {
+  const out: string[] = [];
+  const stack: Array<{ abs: string; rel: string }> = [{ abs: root, rel: "" }];
+
+  while (stack.length > 0 && out.length < maxEntries) {
+    const current = stack.pop();
+    if (!current) {
+      break;
+    }
+    let entries: Array<{ name: string; isDirectory: () => boolean; isFile: () => boolean }> = [];
+    try {
+      entries = await readdir(current.abs, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    entries.sort((a, b) => a.name.localeCompare(b.name));
+
+    for (const entry of entries) {
+      if (entry.isDirectory() && IGNORED_DIRS.has(entry.name)) {
+        continue;
+      }
+      const rel = current.rel ? `${current.rel}/${entry.name}` : entry.name;
+      const abs = join(current.abs, entry.name);
+      if (entry.isDirectory()) {
+        if (rel === ".git") {
+          out.push(".git/config");
+          out.push(".git/COMMIT_EDITMSG");
+          continue;
+        }
+        out.push(`${rel}/`);
+        stack.push({ abs, rel });
+      } else if (entry.isFile()) {
+        out.push(rel);
+      }
+      if (out.length >= maxEntries) {
+        break;
+      }
+    }
+  }
+
+  return out;
 }
 
 function shownCwd(): string {
@@ -213,6 +294,9 @@ function ChatApp(props: ChatAppProps) {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [picker, setPicker] = useState<PickerState | null>(null);
   const slashSuggestions = suggestSlashCommands(value);
+  const atQuery = extractAtReferenceQuery(value);
+  const [atSuggestions, setAtSuggestions] = useState<string[]>([]);
+  const [atSuggestionIndex, setAtSuggestionIndex] = useState(0);
   const headerLines: HeaderLine[] = [
     { id: "title", text: "Acolyte", suffix: ` v${version}`, dim: false, brand: true },
     {
@@ -256,6 +340,16 @@ function ChatApp(props: ChatAppProps) {
         }
         return;
       }
+      if (atQuery !== null && atSuggestions.length > 0) {
+        if (key.upArrow) {
+          setAtSuggestionIndex((current) => Math.max(0, current - 1));
+          return;
+        }
+        if (key.downArrow) {
+          setAtSuggestionIndex((current) => Math.min(atSuggestions.length - 1, current + 1));
+          return;
+        }
+      }
       if (!isThinking && input === "$" && value.length === 0) {
         void openSkillsPanel();
         return;
@@ -270,6 +364,30 @@ function ChatApp(props: ChatAppProps) {
     },
     { isActive: Boolean(process.stdin.isTTY) },
   );
+
+  useEffect(() => {
+    let cancelled = false;
+    const query = atQuery;
+    if (query === null) {
+      setAtSuggestions([]);
+      setAtSuggestionIndex(0);
+      return () => {
+        cancelled = true;
+      };
+    }
+    void (async () => {
+      const candidates = await collectRepoPathCandidates();
+      if (cancelled) {
+        return;
+      }
+      const next = rankAtReferenceSuggestions(candidates, query);
+      setAtSuggestions(next);
+      setAtSuggestionIndex((current) => Math.max(0, Math.min(current, Math.max(0, next.length - 1))));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [atQuery]);
 
   const handleSubmit = async (raw: string): Promise<void> => {
     const text = raw.trim();
@@ -711,12 +829,31 @@ function ChatApp(props: ChatAppProps) {
                 }
                 setValue(next);
               }}
-              onSubmit={(next) => void handleSubmit(next)}
+              onSubmit={(next) => {
+                const query = extractAtReferenceQuery(next);
+                if (query !== null && atSuggestions.length > 0) {
+                  const selected = atSuggestions[Math.max(0, Math.min(atSuggestionIndex, atSuggestions.length - 1))];
+                  if (selected) {
+                    setValue(`@${selected}`);
+                    return;
+                  }
+                }
+                void handleSubmit(next);
+              }}
             />
           </Box>
           <Text dimColor>{borderLine()}</Text>
 
-          {slashSuggestions.length > 0 ? (
+          {atQuery !== null && atSuggestions.length > 0 ? (
+            <>
+              {atSuggestions.map((item) => (
+                <Text
+                  key={`at-suggestion-${item}`}
+                  color={item === atSuggestions[atSuggestionIndex] ? BRAND_COLOR : undefined}
+                >{`  ${item}`}</Text>
+              ))}
+            </>
+          ) : slashSuggestions.length > 0 ? (
             <Text dimColor>{`  ${slashSuggestions.join("  ")}`}</Text>
           ) : showShortcuts ? (
             <>
