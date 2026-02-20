@@ -4,6 +4,7 @@ import {
   formatSessionList,
   resolveResumeSession,
   sanitizeAssistantContent,
+  suggestSlashCommands,
   toRows,
 } from "./chat-ui";
 
@@ -90,5 +91,11 @@ describe("chat-ui helpers", () => {
     expect(lines[0]?.startsWith("* ")).toBe(true);
     expect(lines[1]?.startsWith("  ")).toBe(true);
   });
-});
 
+  test("suggestSlashCommands filters known commands by prefix", () => {
+    expect(suggestSlashCommands("/s")).toEqual(["/sessions", "/skills"]);
+    expect(suggestSlashCommands("/res")).toEqual(["/resume"]);
+    expect(suggestSlashCommands("/unknown")).toEqual([]);
+    expect(suggestSlashCommands("plain")).toEqual([]);
+  });
+});

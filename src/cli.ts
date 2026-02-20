@@ -726,7 +726,22 @@ async function runMode(args: string[]): Promise<void> {
 }
 
 async function dogfoodMode(args: string[]): Promise<void> {
-  await runMode(["--verify", ...args]);
+  const prompt = args.join(" ").trim();
+  if (!prompt) {
+    printError("Usage: acolyte dogfood [--file path] <prompt>");
+    process.exitCode = 1;
+    return;
+  }
+
+  const preamble = [
+    "Dogfood mode:",
+    "- Work in small, verifiable steps.",
+    "- Keep response concise and action-focused.",
+    "- If edits are made, verify with bun run verify.",
+    "",
+  ].join("\n");
+
+  await runMode(["--verify", `${preamble}${prompt}`]);
 }
 
 async function historyMode(): Promise<void> {

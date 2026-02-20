@@ -26,6 +26,7 @@ type HeaderLine = {
 const TOOL_LABELS = ["Run", "Search", "Read", "Diff", "Edit", "Update", "Status"] as const;
 const BRAND_COLOR = "#A56EFF";
 const MAX_SKILL_INSTRUCTION_CHARS = 4000;
+const CHAT_SLASH_COMMANDS = ["/new", "/sessions", "/skills", "/resume", "/exit"] as const;
 
 interface ChatAppProps {
   backend: Backend;
@@ -102,6 +103,18 @@ export function formatSessionList(store: SessionStore, limit = 10): string[] {
   });
 }
 
+export function suggestSlashCommands(inputValue: string, max = 5): string[] {
+  const value = inputValue.trim();
+  if (!value.startsWith("/")) {
+    return [];
+  }
+  const matches = CHAT_SLASH_COMMANDS.filter((command) => command.startsWith(value));
+  if (matches.length > 0) {
+    return matches.slice(0, max);
+  }
+  return [];
+}
+
 function shownCwd(): string {
   const cwd = process.cwd();
   const home = homedir();
@@ -155,6 +168,7 @@ function ChatApp(props: ChatAppProps) {
   const [skillsPanelOpen, setSkillsPanelOpen] = useState(false);
   const [skillsPanelItems, setSkillsPanelItems] = useState<SkillMeta[]>([]);
   const [skillsPanelIndex, setSkillsPanelIndex] = useState(0);
+  const slashSuggestions = suggestSlashCommands(value);
   const headerLines: HeaderLine[] = [
     { id: "title", text: "Acolyte", suffix: ` v${version}`, dim: false, brand: true },
     {
@@ -491,7 +505,9 @@ function ChatApp(props: ChatAppProps) {
           </Box>
           <Text dimColor>{borderLine()}</Text>
 
-          {showShortcuts ? (
+          {slashSuggestions.length > 0 ? (
+            <Text dimColor>{`  ${slashSuggestions.join("  ")}`}</Text>
+          ) : showShortcuts ? (
             <Text dimColor>{"  /new  /sessions  /skills  /resume <id>  /exit"}</Text>
           ) : (
             <Text dimColor>  ? for shortcuts</Text>
