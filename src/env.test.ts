@@ -7,6 +7,8 @@ describe("env parsing", () => {
     expect(parsed.PORT).toBe(6767);
     expect(parsed.OPENAI_BASE_URL).toBe("https://api.openai.com/v1");
     expect(parsed.ACOLYTE_MODEL).toBe("gpt-5-mini");
+    expect(parsed.ACOLYTE_OM_OBSERVATION_TOKENS).toBe(20_000);
+    expect(parsed.ACOLYTE_OM_REFLECTION_TOKENS).toBe(40_000);
   });
 
   test("parseEnv accepts explicit values", () => {
@@ -15,11 +17,15 @@ describe("env parsing", () => {
       OPENAI_BASE_URL: "https://example.com/v1",
       ACOLYTE_MODEL: "gpt-5",
       ACOLYTE_OM_MODEL: "gpt-4o-mini",
+      ACOLYTE_OM_OBSERVATION_TOKENS: "2500",
+      ACOLYTE_OM_REFLECTION_TOKENS: "6000",
     });
     expect(parsed.PORT).toBe(9999);
     expect(parsed.OPENAI_BASE_URL).toBe("https://example.com/v1");
     expect(parsed.ACOLYTE_MODEL).toBe("gpt-5");
     expect(parsed.ACOLYTE_OM_MODEL).toBe("gpt-4o-mini");
+    expect(parsed.ACOLYTE_OM_OBSERVATION_TOKENS).toBe(2500);
+    expect(parsed.ACOLYTE_OM_REFLECTION_TOKENS).toBe(6000);
   });
 
   test("parseEnv rejects invalid port", () => {

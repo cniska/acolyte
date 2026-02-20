@@ -1,8 +1,8 @@
 import { Agent } from "@mastra/core/agent";
 import { Memory } from "@mastra/memory";
 import type { ChatRequest, ChatResponse } from "./api";
-import { env } from "./env";
 import { acolyteTools } from "./mastra-tools";
+import { getObservationalMemoryConfig } from "./om-config";
 
 interface OpenAIClientConfig {
   apiKey?: string;
@@ -21,16 +21,7 @@ const OM_RESOURCE_ID = "acolyte-local";
 const memory = new Memory({
   options: {
     lastMessages: 10,
-    observationalMemory: {
-      model: env.ACOLYTE_OM_MODEL ?? env.ACOLYTE_MODEL,
-      scope: "thread",
-      observation: {
-        messageTokens: 20_000,
-      },
-      reflection: {
-        observationTokens: 40_000,
-      },
-    },
+    observationalMemory: getObservationalMemoryConfig(),
   },
 });
 

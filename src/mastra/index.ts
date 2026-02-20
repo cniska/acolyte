@@ -3,6 +3,7 @@ import { Mastra } from "@mastra/core/mastra";
 import { Memory } from "@mastra/memory";
 import { env } from "../env";
 import { acolyteTools } from "../mastra-tools";
+import { getObservationalMemoryConfig } from "../om-config";
 import { loadSystemPromptWithMemories } from "../soul";
 
 function normalizeModel(model: string): string {
@@ -10,20 +11,10 @@ function normalizeModel(model: string): string {
 }
 
 const model = normalizeModel(env.ACOLYTE_MODEL);
-const observationalModel = normalizeModel(env.ACOLYTE_OM_MODEL ?? env.ACOLYTE_MODEL);
 const memory = new Memory({
   options: {
     lastMessages: 10,
-    observationalMemory: {
-      model: observationalModel,
-      scope: "thread",
-      observation: {
-        messageTokens: 20_000,
-      },
-      reflection: {
-        observationTokens: 40_000,
-      },
-    },
+    observationalMemory: getObservationalMemoryConfig(),
   },
 });
 

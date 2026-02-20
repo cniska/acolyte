@@ -26,6 +26,12 @@ bun install
 ```bash
 OPENAI_API_KEY=...
 ```
+Optional OM tuning:
+```bash
+ACOLYTE_OM_MODEL=gpt-5-mini
+ACOLYTE_OM_OBSERVATION_TOKENS=2000
+ACOLYTE_OM_REFLECTION_TOKENS=4000
+```
 
 3. Start local backend:
 ```bash
