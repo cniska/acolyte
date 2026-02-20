@@ -168,6 +168,9 @@ function ChatApp(props: ChatAppProps) {
   const [skillsPanelOpen, setSkillsPanelOpen] = useState(false);
   const [skillsPanelItems, setSkillsPanelItems] = useState<SkillMeta[]>([]);
   const [skillsPanelIndex, setSkillsPanelIndex] = useState(0);
+  const [resumePanelOpen, setResumePanelOpen] = useState(false);
+  const [resumePanelItems, setResumePanelItems] = useState<Session[]>([]);
+  const [resumePanelIndex, setResumePanelIndex] = useState(0);
   const slashSuggestions = suggestSlashCommands(value);
   const headerLines: HeaderLine[] = [
     { id: "title", text: "Acolyte", suffix: ` v${version}`, dim: false, brand: true },
@@ -242,6 +245,39 @@ function ChatApp(props: ChatAppProps) {
         }
         return;
       }
+      if (resumePanelOpen) {
+        if (key.escape) {
+          setResumePanelOpen(false);
+          return;
+        }
+        if (key.upArrow || input === "k") {
+          setResumePanelIndex((current) => Math.max(0, current - 1));
+          return;
+        }
+        if (key.downArrow || input === "j") {
+          setResumePanelIndex((current) => Math.min(resumePanelItems.length - 1, current + 1));
+          return;
+        }
+        if (key.return && resumePanelItems.length > 0) {
+          const selected = resumePanelItems[resumePanelIndex];
+          if (selected) {
+            store.activeSessionId = selected.id;
+            setCurrentSession(selected);
+            setRows([
+              ...toRows(selected.messages),
+              {
+                id: `row_${crypto.randomUUID()}`,
+                role: "assistant",
+                content: `Resumed session: ${selected.id.slice(0, 12)}`,
+              },
+            ]);
+            void persist();
+          }
+          setResumePanelOpen(false);
+          return;
+        }
+        return;
+      }
       if (!isThinking && input === "$" && value.length === 0) {
         void openSkillsPanel();
         return;
@@ -264,12 +300,26 @@ function ChatApp(props: ChatAppProps) {
       return;
     }
 
+    const pushUserCommandRow = (): void => {
+      setRows((current) => [
+        ...current,
+        { id: `row_${crypto.randomUUID()}`, role: "user", content: text },
+      ]);
+    };
+
     if (text === "?") {
       setShowShortcuts((current) => !current);
       return;
     }
 
+    if (text === "/resume") {
+      pushUserCommandRow();
+      openResumePanel();
+      return;
+    }
+
     if (text.startsWith("/resume")) {
+      pushUserCommandRow();
       const resolved = resolveResumeSession(store, text);
       if (resolved.kind === "usage") {
         const recent = formatSessionList(store, 6);
@@ -309,13 +359,21 @@ function ChatApp(props: ChatAppProps) {
       const target = resolved.session;
       store.activeSessionId = target.id;
       setCurrentSession(target);
-      setRows(toRows(target.messages));
+      setRows([
+        ...toRows(target.messages),
+        {
+          id: `row_${crypto.randomUUID()}`,
+          role: "assistant",
+          content: `Resumed session: ${target.id.slice(0, 12)}`,
+        },
+      ]);
       setShowShortcuts(false);
       await persist();
       return;
     }
 
     if (text === "/sessions") {
+      pushUserCommandRow();
       const recent = formatSessionList(store, 10);
       setRows((current) => [
         ...current,
@@ -330,28 +388,40 @@ function ChatApp(props: ChatAppProps) {
     }
 
     if (text === "/skills") {
+      pushUserCommandRow();
       await openSkillsPanel();
       return;
     }
 
     if (text === "/new") {
+      pushUserCommandRow();
       const next = createSession(currentSession.model);
       store.sessions.unshift(next);
       store.activeSessionId = next.id;
       setCurrentSession(next);
-      setRows([]);
+      setRows((current) => [
+        ...current,
+        {
+          id: `row_${crypto.randomUUID()}`,
+          role: "assistant",
+          content: `Started new session: ${next.id.slice(0, 12)}`,
+        },
+      ]);
+      setValue("");
       setShowShortcuts(false);
       await persist();
       return;
     }
 
     if (text === "/exit") {
+      pushUserCommandRow();
       await persist();
       exit();
       return;
     }
 
     if (text.startsWith("/")) {
+      pushUserCommandRow();
       if (text === "/skill" || text.startsWith("/skill ")) {
         setRows((current) => [
           ...current,
@@ -422,8 +492,26 @@ function ChatApp(props: ChatAppProps) {
     }
     setSkillsPanelItems(skills);
     setSkillsPanelIndex(0);
+    setResumePanelOpen(false);
     setShowShortcuts(false);
     setSkillsPanelOpen(true);
+  };
+
+  const openResumePanel = (): void => {
+    const items = store.sessions.slice(0, 20);
+    if (items.length === 0) {
+      setRows((current) => [
+        ...current,
+        { id: `row_${crypto.randomUUID()}`, role: "system", content: "No saved sessions." },
+      ]);
+      return;
+    }
+    setResumePanelItems(items);
+    const activeIndex = items.findIndex((item) => item.id === store.activeSessionId);
+    setResumePanelIndex(activeIndex >= 0 ? activeIndex : 0);
+    setSkillsPanelOpen(false);
+    setShowShortcuts(false);
+    setResumePanelOpen(true);
   };
 
   return (
@@ -478,12 +566,33 @@ function ChatApp(props: ChatAppProps) {
             return (
               <Text key={skill.path}>
                 {selected ? "› " : "  "}
-                <Text color={selected ? BRAND_COLOR : "white"}>{skill.name.padEnd(nameWidth)}</Text>  {truncateText(skill.description)}
+                <Text color={selected ? BRAND_COLOR : undefined}>{skill.name.padEnd(nameWidth)}</Text>  {truncateText(skill.description)}
               </Text>
             );
           })}
           <Text> </Text>
           <Text dimColor>Esc to close · Enter to select</Text>
+          <Text dimColor>{borderLine()}</Text>
+        </>
+      ) : resumePanelOpen ? (
+        <>
+          <Text dimColor>{borderLine()}</Text>
+          <Text>Resume Session</Text>
+          <Text> </Text>
+          {resumePanelItems.map((item, index) => {
+            const selected = index === resumePanelIndex;
+            const prefix = item.id.slice(0, 12);
+            const active = item.id === store.activeSessionId ? "●" : " ";
+            return (
+              <Text key={item.id}>
+                {selected ? "› " : "  "}
+                <Text color={selected ? BRAND_COLOR : undefined}>{`${active} ${prefix}`}</Text>{" "}
+                <Text dimColor>{truncateText(item.title || "New Session")}</Text>
+              </Text>
+            );
+          })}
+          <Text> </Text>
+          <Text dimColor>Esc to close · Enter to resume</Text>
           <Text dimColor>{borderLine()}</Text>
         </>
       ) : (

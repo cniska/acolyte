@@ -95,6 +95,11 @@ bun run run --verify "Apply the requested change and then validate with bun run 
 bun run src/cli.ts dogfood "Implement the requested change and validate the repo."
 ```
 
+Dogfooding workflow (recommended for transition to Acolyte-led development):
+```bash
+bun run src/cli.ts dogfood "Implement <task> in this repo and verify."
+```
+
 ## Backend Behavior
 
 - `/v1/chat` runs a simple agent pipeline: `plan -> execute -> review`.
