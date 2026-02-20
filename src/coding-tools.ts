@@ -90,3 +90,51 @@ export async function gitDiff(pathInput?: string, contextLines = 3): Promise<str
   }
   return stdout.trim() || "No unstaged changes.";
 }
+
+const BLOCKED_SHELL_TOKENS = ["rm -rf /", "shutdown", "reboot", "mkfs", "dd if="];
+
+export async function runShellCommand(command: string, timeoutMs = 60_000): Promise<string> {
+  const trimmed = command.trim();
+  if (!trimmed) {
+    throw new Error("Command cannot be empty");
+  }
+  const lower = trimmed.toLowerCase();
+  if (BLOCKED_SHELL_TOKENS.some((token) => lower.includes(token))) {
+    throw new Error("Command contains blocked token");
+  }
+
+  const proc = Bun.spawn({
+    cmd: ["bash", "-lc", trimmed],
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+
+  const timer = setTimeout(() => {
+    try {
+      proc.kill();
+    } catch {
+      // no-op
+    }
+  }, timeoutMs);
+
+  const [stdoutText, stderrText] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+  ]);
+  const exitCode = await proc.exited;
+  clearTimeout(timer);
+
+  const header = `exit_code=${exitCode}`;
+  const out = stdoutText.trim();
+  const err = stderrText.trim();
+  if (!out && !err) {
+    return header;
+  }
+  return [header, out ? `stdout:\n${out}` : "", err ? `stderr:\n${err}` : ""]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+export async function runTestCommand(command = "bun run test"): Promise<string> {
+  return runShellCommand(command, 120_000);
+}

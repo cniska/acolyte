@@ -1,6 +1,6 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
-import { gitDiff, gitStatusShort, readSnippet, searchRepo } from "./coding-tools";
+import { gitDiff, gitStatusShort, readSnippet, runShellCommand, runTestCommand, searchRepo } from "./coding-tools";
 
 export const searchRepoTool = createTool({
   id: "search-repo",
@@ -55,9 +55,36 @@ export const gitDiffTool = createTool({
   },
 });
 
+export const runCommandTool = createTool({
+  id: "run-command",
+  description: "Run a shell command in the repository and capture stdout/stderr.",
+  inputSchema: z.object({
+    command: z.string().min(1),
+    timeoutMs: z.number().int().min(500).max(120000).optional(),
+  }),
+  execute: async (input) => {
+    const result = await runShellCommand(input.command, input.timeoutMs ?? 60_000);
+    return { result };
+  },
+});
+
+export const runTestsTool = createTool({
+  id: "run-tests",
+  description: "Run project tests using a provided command. Defaults to bun run test.",
+  inputSchema: z.object({
+    command: z.string().optional(),
+  }),
+  execute: async (input) => {
+    const result = await runTestCommand(input.command ?? "bun run test");
+    return { result };
+  },
+});
+
 export const acolyteTools = {
   searchRepo: searchRepoTool,
   readFileSnippet: readFileSnippetTool,
   gitStatus: gitStatusTool,
   gitDiff: gitDiffTool,
+  runCommand: runCommandTool,
+  runTests: runTestsTool,
 };

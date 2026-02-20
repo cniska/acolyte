@@ -2,7 +2,7 @@
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { createBackend } from "./backend";
-import { gitDiff, gitStatusShort, readSnippet, searchRepo } from "./coding-tools";
+import { gitDiff, gitStatusShort, readSnippet, runShellCommand, runTestCommand, searchRepo } from "./coding-tools";
 import { readConfig, setConfigValue, unsetConfigValue } from "./config";
 import { buildFileContext } from "./file-context";
 import { addMemory, listMemories } from "./memory";
@@ -28,7 +28,7 @@ function usage(): void {
   printInfo("  status          Show backend connection status");
   printInfo("  memory          Manage personal memory notes");
   printInfo("  config          Manage local CLI defaults");
-  printInfo("  tool            Run coding tools (search/read/git)");
+  printInfo("  tool            Run coding tools (search/read/git/run/test)");
 }
 
 function nowIso(): string {
@@ -69,6 +69,8 @@ function printHelp(): void {
   printInfo("  /read <path> [start] [end]  Read file snippet");
   printInfo("  /git-status     Show git status summary");
   printInfo("  /git-diff [path] [context]  Show git diff");
+  printInfo("  /run <cmd>      Run shell command");
+  printInfo("  /test [cmd]     Run tests (default: bun run test)");
   printInfo("  /file <path>    Attach a local text file to this session");
   printInfo("  /remember <x>   Add a personal memory note");
   printInfo("  /memories       Show personal memory notes");
@@ -352,6 +354,32 @@ async function chatMode(): Promise<void> {
           const message = error instanceof Error ? error.message : "Unknown error";
           printError(message);
         }
+      } else if (command === "/run") {
+        const cmd = args.join(" ").trim();
+        if (!cmd) {
+          printWarning("Usage: /run <command>");
+        } else {
+          try {
+            const result = await runShellCommand(cmd);
+            printInfo(result);
+            session.messages.push(newMessage("system", formatToolContext(`run ${cmd}`, result)));
+            session.updatedAt = nowIso();
+          } catch (error) {
+            const message = error instanceof Error ? error.message : "Unknown error";
+            printError(message);
+          }
+        }
+      } else if (command === "/test") {
+        const cmd = args.join(" ").trim() || "bun run test";
+        try {
+          const result = await runTestCommand(cmd);
+          printInfo(result);
+          session.messages.push(newMessage("system", formatToolContext(`test ${cmd}`, result)));
+          session.updatedAt = nowIso();
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Unknown error";
+          printError(message);
+        }
       } else if (command === "/file") {
         const pathInput = args.join(" ").trim();
         if (!pathInput) {
@@ -578,7 +606,26 @@ async function toolMode(args: string[]): Promise<void> {
     return;
   }
 
-  printError("Usage: acolyte tool <search|read|git-status|git-diff> ...");
+  if (subcommand === "run") {
+    const command = rest.join(" ").trim();
+    if (!command) {
+      printError("Usage: acolyte tool run <command>");
+      process.exitCode = 1;
+      return;
+    }
+    const result = await runShellCommand(command);
+    printInfo(result);
+    return;
+  }
+
+  if (subcommand === "test") {
+    const command = rest.join(" ").trim() || "bun run test";
+    const result = await runTestCommand(command);
+    printInfo(result);
+    return;
+  }
+
+  printError("Usage: acolyte tool <search|read|git-status|git-diff|run|test> ...");
   process.exitCode = 1;
 }
 
