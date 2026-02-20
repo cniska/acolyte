@@ -47,7 +47,6 @@ bun run src/cli.ts config list
 
 Session management in chat:
 - `?` to toggle shortcuts/help
-- `/skills` to view available capabilities
 - `/exit` to leave chat
 
 Attach file context in one-shot mode:
@@ -77,7 +76,6 @@ Inside `bun run chat`, try:
 
 ```text
 ?
-/skills
 Use ripgrep to find where createBackend is defined and summarize what it does.
 Review src/agent.ts and list the top 3 improvements.
 Summarize the current architecture and the next 3 improvements.

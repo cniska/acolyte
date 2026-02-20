@@ -75,14 +75,6 @@ function printHelp(): void {
   renderShortcutsPanel();
 }
 
-function printSkills(): void {
-  printSection("Skills");
-  printInfo("  - Coding tasks (read, edit, verify, iterate)");
-  printInfo("  - Repository context (files, git changes, project structure)");
-  printInfo("  - Persistent memory preferences");
-  printInfo("  - Multi-step reasoning with tool use when needed");
-}
-
 function erasePromptLineIfTty(): void {
   if (!output.isTTY) {
     return;
@@ -92,7 +84,6 @@ function erasePromptLineIfTty(): void {
 
 const CHAT_COMMANDS = [
   "?",
-  "/skills",
   "/exit",
 ];
 
@@ -120,7 +111,7 @@ const INTERNAL_CHAT_COMMANDS = new Set([
   "/clear",
 ]);
 const SHORTCUT_PANEL_LINES = [
-  "  /skills capabilities     /exit quit",
+  "  /exit quit",
   "  enter send               up/down history              esc close panel       ctrl+c exit",
 ] as const;
 
@@ -658,7 +649,12 @@ async function chatMode(): Promise<void> {
   }
   banner(session.model, session.id, CLI_VERSION);
 
-  const rl = createInterface({ input, output });
+  const rl = createInterface({
+    input,
+    output,
+    // Lower timeout so Esc keypress is handled quickly instead of waiting for possible sequences.
+    escapeCodeTimeout: 25,
+  });
   const canUseHotkeys = Boolean(input.isTTY && typeof input.setRawMode === "function");
   const wasRawMode = canUseHotkeys ? input.isRaw : false;
   let shortcutsOpen = false;
@@ -669,7 +665,7 @@ async function chatMode(): Promise<void> {
       return;
     }
     // Restore prompt anchor and clear everything below it in one pass.
-    output.write("\x1b[u\x1b[J");
+    output.write("\x1b[u\x1b[J\r\x1b[K> ");
     shortcutsOpen = false;
   };
 
@@ -687,7 +683,7 @@ async function chatMode(): Promise<void> {
   };
 
   const onKeypress = (str: string, key?: { name?: string }): void => {
-    if (key?.name === "escape" || str === "\x1b") {
+    if (key?.name === "escape" || str.includes("\x1b")) {
       if (shortcutsOpen) {
         closeShortcutsPanel();
       }
@@ -775,9 +771,6 @@ async function chatMode(): Promise<void> {
           erasePromptLineIfTty();
           printHelp();
         }
-      } else if (command === "/skills") {
-        erasePromptLineIfTty();
-        printSkills();
       } else if (command === "/exit") {
         if (canUseHotkeys) {
           input.off("keypress", onKeypress);

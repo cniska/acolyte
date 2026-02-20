@@ -116,22 +116,21 @@ describe("cli formatting helpers", () => {
 
   test("resolveCommandAlias maps short commands", () => {
     expect(resolveCommandAlias("?")).toBe("?");
-    expect(resolveCommandAlias("/skills")).toBe("/skills");
     expect(resolveCommandAlias("/exit")).toBe("/exit");
     expect(resolveCommandAlias("/run")).toBe("/run");
   });
 
   test("suggestCommand supports canonical and alias prefixes", () => {
-    expect(suggestCommand("/s")).toBe("/skills");
-    expect(suggestCommand("/sk")).toBe("/skills");
-    expect(suggestCommand("/skils")).toBe("/skills");
+    expect(suggestCommand("/e")).toBe("/exit");
+    expect(suggestCommand("/exi")).toBe("/exit");
+    expect(suggestCommand("/ext")).toBe("/exit");
     expect(suggestCommand("?")).toBe("?");
     expect(suggestCommand("plain text")).toBeNull();
   });
 
   test("suggestCommands returns multiple ranked suggestions", () => {
-    expect(suggestCommands("/", 3)).toEqual(["/skills", "/exit"]);
-    expect(suggestCommands("/sklls", 3)).toContain("/skills");
+    expect(suggestCommands("/", 3)).toEqual(["/exit"]);
+    expect(suggestCommands("/exot", 3)).toContain("/exit");
     expect(suggestCommands("no slash", 3)).toEqual([]);
   });
 });
