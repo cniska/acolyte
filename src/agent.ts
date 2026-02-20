@@ -158,6 +158,11 @@ function buildToolTransparency(input: {
   toolCalls: Array<{ payload?: { toolName?: string } }>;
   toolResults: Array<{ payload?: { toolName?: string; result?: unknown } }>;
 }): string {
+  const show = (process.env.ACOLYTE_SHOW_TOOLS ?? "").toLowerCase();
+  if (show !== "1" && show !== "true" && show !== "yes") {
+    return "";
+  }
+
   const names = toolNameList(input.toolCalls);
   if (names.length === 0) {
     return "";

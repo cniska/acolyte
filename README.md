@@ -106,3 +106,8 @@ Health endpoint:
 ```bash
 curl http://localhost:8787/healthz
 ```
+
+Optional tool-transparency debug mode:
+```bash
+ACOLYTE_SHOW_TOOLS=1 bun run chat
+```
