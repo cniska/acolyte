@@ -13,6 +13,7 @@ const MAX_HISTORY_MESSAGES = 20;
 const MAX_HISTORY_TOTAL_CHARS = 40_000;
 const MAX_MESSAGE_CHARS = 2_000;
 const MAX_ATTACHMENT_MESSAGE_CHARS = 20_000;
+const MAX_REVIEW_OUTPUT_CHARS = 1800;
 
 function truncateText(input: string, maxChars: number): string {
   if (input.length <= maxChars) {
@@ -70,6 +71,17 @@ function isToolLikelyRequest(text: string): boolean {
     "test",
   ];
   return hints.some((hint) => lower.includes(hint));
+}
+
+function isReviewRequest(text: string): boolean {
+  return /\breview\b/i.test(text);
+}
+
+export function compactReviewOutput(output: string): string {
+  if (output.length <= MAX_REVIEW_OUTPUT_CHARS) {
+    return output;
+  }
+  return truncateText(output, MAX_REVIEW_OUTPUT_CHARS);
 }
 
 function buildToolPolicy(baseInstructions: string): string {
@@ -146,7 +158,10 @@ export async function runAgent(input: {
     });
   }
 
-  const output = result.text.trim();
+  const rawOutput = result.text.trim();
+  const output = isReviewRequest(input.request.message)
+    ? compactReviewOutput(rawOutput)
+    : rawOutput;
 
   return {
     model: input.request.model,

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { ChatRequest } from "./api";
-import { buildAgentInput } from "./agent";
+import { buildAgentInput, compactReviewOutput } from "./agent";
 
 function makeRequest(content: string): ChatRequest {
   return {
@@ -31,5 +31,19 @@ describe("buildAgentInput", () => {
     const input = buildAgentInput(makeRequest(longSystem));
     expect(input).toContain("General note:");
     expect(input).toContain("…");
+  });
+});
+
+describe("compactReviewOutput", () => {
+  test("keeps short review output as-is", () => {
+    const short = "Summary: looks good.";
+    expect(compactReviewOutput(short)).toBe(short);
+  });
+
+  test("truncates very long review output", () => {
+    const long = `Summary\n${"A".repeat(3000)}`;
+    const compact = compactReviewOutput(long);
+    expect(compact.length).toBeLessThanOrEqual(1800);
+    expect(compact.endsWith("…")).toBe(true);
   });
 });

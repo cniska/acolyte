@@ -72,6 +72,12 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Standardizing on Mastra early reduces long-term maintenance cost.
 - Soul/behavior docs reduce style drift and improve consistency.
 
+## Lessons Learned
+- Reliability beats novelty: verify-first loops and small commits prevent drift.
+- Memory must be transparent and editable, otherwise trust decays quickly.
+- UX details matter: prompt ergonomics and low-noise output have outsized impact.
+- `@file` references are only valuable when they attach real context, not just visual autocomplete.
+
 ## Open Narrative Threads
 - Next: richer transcript-style tool blocks (focused excerpts by default, expandable when needed).
 - Add retrieval ranking and memory promotion rules.
