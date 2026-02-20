@@ -212,12 +212,34 @@ function displayPath(pathInput: string): string {
 }
 
 function showToolResult(title: string, content: string, style: "plain" | "tool" = "plain"): void {
-  printSection(title);
-  if (style === "tool") {
-    printTool(content);
+  printSection(`⏺ ${title}`);
+  const lines = content.split("\n");
+  if (lines.length === 0) {
+    printInfo("  ⎿ (no output)");
     return;
   }
-  printOutput(content);
+
+  if (lines.length === 1) {
+    if (style === "tool") {
+      printTool(`  ⎿ ${lines[0]}`);
+    } else {
+      printOutput(`  ⎿ ${lines[0]}`);
+    }
+    return;
+  }
+
+  printInfo("  ⎿");
+  const preview = lines.slice(0, 120);
+  for (const line of preview) {
+    if (style === "tool") {
+      printTool(`    ${line}`);
+    } else {
+      printOutput(`    ${line}`);
+    }
+  }
+  if (lines.length > preview.length) {
+    printInfo(`    ... (${lines.length - preview.length} more lines)`);
+  }
 }
 
 function setSessionTitle(session: Session, inputText: string): void {
