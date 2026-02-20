@@ -37,6 +37,7 @@ const BRAND_COLOR = "#A56EFF";
 const MAX_SKILL_INSTRUCTION_CHARS = 4000;
 const THINKING_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"] as const;
 const CHAT_SLASH_COMMANDS = [
+  "/dogfood",
   "/new",
   "/sessions",
   "/skills",
@@ -47,6 +48,7 @@ const CHAT_SLASH_COMMANDS = [
 ] as const;
 const SHORTCUT_ITEMS = [
   { key: "@path", description: "attach file/dir context" },
+  { key: "/dogfood <task>", description: "run verify-first coding loop" },
   { key: "/new", description: "new session" },
   { key: "/sessions", description: "list sessions" },
   { key: "/resume <id>", description: "resume session" },
@@ -358,6 +360,18 @@ export function formatThoughtDuration(ms: number): string {
     return `${ms}ms`;
   }
   return `${(ms / 1000).toFixed(1)}s`;
+}
+
+function buildDogfoodPrompt(task: string): string {
+  const preamble = [
+    "Dogfood mode:",
+    "- Work in small, verifiable steps.",
+    "- Keep response concise and action-focused.",
+    "- Use tools when needed; avoid guessing.",
+    "- If edits are made, verify with bun run verify before final response.",
+    "",
+  ].join("\n");
+  return `${preamble}${task}`;
 }
 
 function formatShortcutRows(): string[] {
@@ -737,14 +751,39 @@ function ChatApp(props: ChatAppProps) {
       return;
     }
 
-    const userMessage = newMessage("user", text);
+    let userText = text;
+    if (text.startsWith("/dogfood")) {
+      const task = text.slice("/dogfood".length).trim();
+      if (!task) {
+        setRows((current) => [
+          ...current,
+          {
+            id: `row_${crypto.randomUUID()}`,
+            role: "system",
+            content: "Usage: /dogfood <task>",
+          },
+        ]);
+        return;
+      }
+      userText = buildDogfoodPrompt(task);
+      setRows((current) => [
+        ...current,
+        {
+          id: `row_${crypto.randomUUID()}`,
+          role: "system",
+          content: "Dogfood mode enabled for this task.",
+        },
+      ]);
+    }
+
+    const userMessage = newMessage("user", userText);
     currentSession.messages.push(userMessage);
     if (currentSession.title === "New Session") {
       currentSession.title = text.trim().replace(/\s+/g, " ").slice(0, 60) || "New Session";
     }
     currentSession.updatedAt = nowIso();
     setRows((current) => [...current, { id: userMessage.id, role: "user", content: text }]);
-    const referencedPaths = extractAtReferencePaths(text);
+    const referencedPaths = extractAtReferencePaths(userText);
     const fileContextMessages: Message[] = [];
     const unresolvedPaths: string[] = [];
     for (const pathInput of referencedPaths) {
@@ -779,7 +818,7 @@ function ChatApp(props: ChatAppProps) {
         ...currentSession.messages,
       ]);
       const reply = await backend.reply({
-        message: text,
+        message: userText,
         history: historyWithContext,
         model: currentSession.model,
       });
