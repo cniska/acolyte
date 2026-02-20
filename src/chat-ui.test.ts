@@ -3,6 +3,7 @@ import type { Message, SessionStore } from "./types";
 import {
   extractAtReferencePaths,
   applyAtSuggestion,
+  applySlashSuggestion,
   extractAtReferenceQuery,
   formatChangesSummary,
   parseImplementedFeatures,
@@ -13,6 +14,7 @@ import {
   rankAtReferenceSuggestions,
   resolveResumeSession,
   sanitizeAssistantContent,
+  shouldAutocompleteSlashSubmit,
   shouldAutocompleteAtSubmit,
   suggestSlashCommands,
   toRows,
@@ -124,6 +126,17 @@ describe("chat-ui helpers", () => {
     expect(suggestSlashCommands("/rem")).toEqual(["/remember"]);
     expect(suggestSlashCommands("/unknown")).toEqual([]);
     expect(suggestSlashCommands("plain")).toEqual([]);
+  });
+
+  test("shouldAutocompleteSlashSubmit only intercepts unresolved slash command token", () => {
+    expect(shouldAutocompleteSlashSubmit("/st", "/status")).toBe(true);
+    expect(shouldAutocompleteSlashSubmit("/status", "/status")).toBe(false);
+    expect(shouldAutocompleteSlashSubmit("/status now", "/status")).toBe(false);
+    expect(shouldAutocompleteSlashSubmit("status", "/status")).toBe(false);
+  });
+
+  test("applySlashSuggestion appends trailing space", () => {
+    expect(applySlashSuggestion("/status")).toBe("/status ");
   });
 
   test("parseImplementedFeatures reads implemented bullet list", () => {
