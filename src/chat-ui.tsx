@@ -348,6 +348,16 @@ function buildDogfoodPrompt(task: string): string {
   return `${preamble}${task}`;
 }
 
+function estimateTokenUsageFallback(prompt: string, output: string): TokenUsage {
+  const promptTokens = Math.ceil(prompt.length / 4);
+  const completionTokens = Math.ceil(output.length / 4);
+  return {
+    promptTokens,
+    completionTokens,
+    totalTokens: promptTokens + completionTokens,
+  };
+}
+
 function formatTokenUsageLines(last: TokenUsageEntry | null, all: TokenUsageEntry[]): string[] {
   if (!last) {
     return ["No token data yet."];
@@ -452,6 +462,9 @@ function ChatApp(props: ChatAppProps) {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [picker, setPicker] = useState<PickerState | null>(null);
   const [tokenUsage, setTokenUsage] = useState<TokenUsageEntry[]>([]);
+  const [inputHistory, setInputHistory] = useState<string[]>([]);
+  const [inputHistoryIndex, setInputHistoryIndex] = useState(-1);
+  const [inputHistoryDraft, setInputHistoryDraft] = useState("");
   const slashSuggestions = suggestSlashCommands(value);
   const [slashSuggestionIndex, setSlashSuggestionIndex] = useState(0);
   const atQuery = extractAtReferenceQuery(value);
@@ -531,6 +544,37 @@ function ChatApp(props: ChatAppProps) {
           return;
         }
       }
+      if (!isThinking && key.upArrow) {
+        if (inputHistory.length === 0) {
+          return;
+        }
+        if (inputHistoryIndex === -1) {
+          setInputHistoryDraft(value);
+          const nextIndex = inputHistory.length - 1;
+          setInputHistoryIndex(nextIndex);
+          setValue(inputHistory[nextIndex] ?? "");
+          setInputRevision((current) => current + 1);
+          return;
+        }
+        const nextIndex = Math.max(0, inputHistoryIndex - 1);
+        setInputHistoryIndex(nextIndex);
+        setValue(inputHistory[nextIndex] ?? "");
+        setInputRevision((current) => current + 1);
+        return;
+      }
+      if (!isThinking && key.downArrow && inputHistoryIndex >= 0) {
+        if (inputHistoryIndex >= inputHistory.length - 1) {
+          setInputHistoryIndex(-1);
+          setValue(inputHistoryDraft);
+          setInputRevision((current) => current + 1);
+          return;
+        }
+        const nextIndex = inputHistoryIndex + 1;
+        setInputHistoryIndex(nextIndex);
+        setValue(inputHistory[nextIndex] ?? "");
+        setInputRevision((current) => current + 1);
+        return;
+      }
       if (!isThinking && input === "$" && value.length === 0) {
         void openSkillsPanel();
         return;
@@ -596,6 +640,18 @@ function ChatApp(props: ChatAppProps) {
       return;
     }
     const resolvedText = resolveSlashAlias(text);
+    setInputHistory((current) => {
+      if (current[current.length - 1] === text) {
+        return current;
+      }
+      const next = [...current, text];
+      if (next.length > 200) {
+        return next.slice(next.length - 200);
+      }
+      return next;
+    });
+    setInputHistoryIndex(-1);
+    setInputHistoryDraft("");
     setValue("");
 
     const pushUserCommandRow = (): void => {
@@ -1014,14 +1070,12 @@ function ChatApp(props: ChatAppProps) {
         ...current,
         { id: assistantMessage.id, role: "assistant", content: reply.output },
       ]);
-      if (reply.usage) {
-        const entry: TokenUsageEntry = {
-          id: assistantMessage.id,
-          usage: reply.usage,
-          warning: reply.budgetWarning,
-        };
-        setTokenUsage((current) => [...current, entry]);
-      }
+      const entry: TokenUsageEntry = {
+        id: assistantMessage.id,
+        usage: reply.usage ?? estimateTokenUsageFallback(userText, reply.output),
+        warning: reply.budgetWarning,
+      };
+      setTokenUsage((current) => [...current, entry]);
       if (reply.budgetWarning) {
         setRows((current) => [
           ...current,
@@ -1234,6 +1288,7 @@ function ChatApp(props: ChatAppProps) {
                 if (value.length === 0 && next === "?") {
                   return;
                 }
+                setInputHistoryIndex(-1);
                 setValue(next);
               }}
               onSubmit={(next) => {
