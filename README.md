@@ -69,7 +69,7 @@ Session management in chat:
 - `/resume <session-id-prefix>` to restore a previous session
 - `/exit` to leave chat
 - chat starts in a fresh session by default (clean transcript)
-- `@path` to reference a file directly in your prompt (use arrows + Enter to autocomplete)
+- `@path` to reference a file or directory directly in your prompt (use arrows + Enter to autocomplete)
 
 Attach file context in one-shot mode:
 ```bash
@@ -99,6 +99,7 @@ Inside `bun run chat`, try:
 ```text
 ?
 Review @AGENTS.md and suggest 3 concrete fixes.
+Summarize @src/ as a directory and identify missing tests.
 Find where createBackend is defined and summarize what it does.
 Review src/agent.ts and list the top 3 improvements.
 Summarize the current architecture and the next 3 improvements.
