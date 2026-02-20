@@ -7,8 +7,8 @@ describe("env parsing", () => {
     expect(parsed.PORT).toBe(6767);
     expect(parsed.OPENAI_BASE_URL).toBe("https://api.openai.com/v1");
     expect(parsed.ACOLYTE_MODEL).toBe("gpt-5-mini");
-    expect(parsed.ACOLYTE_OM_OBSERVATION_TOKENS).toBe(20_000);
-    expect(parsed.ACOLYTE_OM_REFLECTION_TOKENS).toBe(40_000);
+    expect(parsed.ACOLYTE_OM_OBSERVATION_TOKENS).toBe(1_000);
+    expect(parsed.ACOLYTE_OM_REFLECTION_TOKENS).toBe(2_000);
   });
 
   test("parseEnv accepts explicit values", () => {
