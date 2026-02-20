@@ -1318,7 +1318,9 @@ function ChatApp(props: ChatAppProps) {
           {index > 0 ? <Text> </Text> : null}
           <Box>
             <Box width={2}>
-              <Text>{row.role === "user" ? "❯ " : row.role === "assistant" ? "• " : "  "}</Text>
+              <Text dimColor={Boolean(row.dim)}>
+                {row.role === "user" ? "❯ " : row.role === "assistant" ? "• " : "  "}
+              </Text>
             </Box>
             <Box flexGrow={1}>
               <Text dimColor={Boolean(row.dim)}>
