@@ -80,10 +80,40 @@ class RemoteBackend implements Backend {
       throw new Error(`Backend health check failed (${response.status}): ${body || "no body"}`);
     }
 
-    const json = (await response.json()) as { mode?: unknown; service?: unknown };
+    const json = (await response.json()) as {
+      mode?: unknown;
+      service?: unknown;
+      memory?: {
+        observational?: {
+          enabled?: unknown;
+          scope?: unknown;
+          model?: unknown;
+          observationTokens?: unknown;
+          reflectionTokens?: unknown;
+        };
+      };
+    };
     const mode = typeof json.mode === "string" ? json.mode : "unknown";
     const service = typeof json.service === "string" ? json.service : "unknown";
-    return `mode=${mode} service=${service} url=${this.apiUrl}`;
+    const om = json.memory?.observational;
+    const omEnabled = typeof om?.enabled === "boolean" ? om.enabled : undefined;
+    const omScope = typeof om?.scope === "string" ? om.scope : undefined;
+    const omModel = typeof om?.model === "string" ? om.model : undefined;
+    const omObservationTokens =
+      typeof om?.observationTokens === "number" ? om.observationTokens : undefined;
+    const omReflectionTokens =
+      typeof om?.reflectionTokens === "number" ? om.reflectionTokens : undefined;
+    const fields = [
+      `mode=${mode}`,
+      `service=${service}`,
+      `url=${this.apiUrl}`,
+      omEnabled === undefined ? undefined : `om=${omEnabled ? "enabled" : "disabled"}`,
+      omScope ? `om_scope=${omScope}` : undefined,
+      omModel ? `om_model=${omModel}` : undefined,
+      omObservationTokens === undefined ? undefined : `om_obs_tokens=${omObservationTokens}`,
+      omReflectionTokens === undefined ? undefined : `om_ref_tokens=${omReflectionTokens}`,
+    ].filter((field): field is string => Boolean(field));
+    return fields.join(" ");
   }
 }
 

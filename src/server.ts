@@ -57,6 +57,15 @@ const server = Bun.serve({
         ok: true,
         service: "acolyte-backend",
         mode: OPENAI_API_KEY ? "openai" : "mock",
+        memory: {
+          observational: {
+            enabled: true,
+            scope: appConfig.memory.observational.scope,
+            model: appConfig.models.observationalMemory,
+            observationTokens: appConfig.memory.observational.observationTokens,
+            reflectionTokens: appConfig.memory.observational.reflectionTokens,
+          },
+        },
       });
     }
 
