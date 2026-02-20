@@ -38,10 +38,26 @@ export function printInfo(content: string): void {
   stdout.write(`${color.dim(content)}\n`);
 }
 
+export function printSection(title: string): void {
+  stdout.write(`${color.bold(color.cyan(title))}\n`);
+}
+
+export function printOutput(content: string): void {
+  stdout.write(`${content}\n`);
+}
+
+export function printTool(content: string): void {
+  stdout.write(`${color.yellow(content)}\n`);
+}
+
 export function printWarning(content: string): void {
   stdout.write(`${color.yellow(content)}\n`);
 }
 
 export function printError(content: string): void {
   stdout.write(`${color.red(content)}\n`);
+}
+
+export function clearScreen(): void {
+  stdout.write("\x1b[2J\x1b[H");
 }

@@ -17,9 +17,13 @@ import { createSession, readStore, writeStore } from "./storage";
 import type { Message, Session, SessionStore } from "./types";
 import {
   banner,
+  clearScreen,
   printAssistantHeader,
   printError,
   printInfo,
+  printOutput,
+  printSection,
+  printTool,
   printUser,
   printWarning,
   streamText,
@@ -64,14 +68,16 @@ function getOrCreateActiveSession(store: SessionStore, model: string): Session {
 }
 
 function printHelp(): void {
-  printInfo("Slash commands:");
-  printInfo("  /help           Show this help");
+  printSection("Session");
   printInfo("  /new            Start a new session");
   printInfo("  /history        Show messages in this session");
   printInfo("  /sessions       List saved sessions");
   printInfo("  /use <id>       Switch to a session by id prefix");
   printInfo("  /title <text>   Rename current session");
+  printInfo("  /model <name>   Change active model");
   printInfo("  /status         Show backend connection status");
+  printInfo("");
+  printSection("Tools");
   printInfo("  /search <pat>   Search repository text with ripgrep");
   printInfo("  /read <path> [start] [end]  Read file snippet");
   printInfo("  /git-status     Show git status summary");
@@ -79,10 +85,50 @@ function printHelp(): void {
   printInfo("  /run <cmd>      Run shell command");
   printInfo("  /edit <path> <find> <replace> [--dry-run]  Replace text in file");
   printInfo("  /file <path>    Attach a local text file to this session");
+  printInfo("");
+  printSection("Memory");
   printInfo("  /remember <x>   Add a personal memory note");
   printInfo("  /memories       Show personal memory notes");
-  printInfo("  /model <name>   Change active model");
+  printInfo("");
+  printSection("General");
+  printInfo("  /help           Show this help");
+  printInfo("  /clear          Clear terminal and reprint banner");
   printInfo("  /exit           Exit the CLI");
+}
+
+const CHAT_COMMANDS = [
+  "/help",
+  "/clear",
+  "/new",
+  "/history",
+  "/sessions",
+  "/use",
+  "/title",
+  "/status",
+  "/search",
+  "/read",
+  "/git-status",
+  "/git-diff",
+  "/run",
+  "/edit",
+  "/file",
+  "/remember",
+  "/memories",
+  "/model",
+  "/exit",
+];
+
+function suggestCommand(input: string): string | null {
+  const normalized = input.trim();
+  if (!normalized.startsWith("/")) {
+    return null;
+  }
+  for (const command of CHAT_COMMANDS) {
+    if (command.startsWith(normalized)) {
+      return command;
+    }
+  }
+  return null;
 }
 
 function listSessions(store: SessionStore): void {
@@ -268,7 +314,7 @@ async function chatMode(): Promise<void> {
   while (true) {
     let line = "";
     try {
-      line = (await rl.question("> ")).trim();
+      line = (await rl.question("acolyte> ")).trim();
     } catch (error) {
       const code = (error as { code?: string })?.code;
       if (code === "ERR_USE_AFTER_CLOSE") {
@@ -286,6 +332,9 @@ async function chatMode(): Promise<void> {
       const [command, ...args] = line.split(/\s+/);
       if (command === "/help") {
         printHelp();
+      } else if (command === "/clear") {
+        clearScreen();
+        banner(session.model, session.id);
       } else if (command === "/new") {
         const created = createSession(session.model);
         store.sessions.unshift(created);
@@ -333,7 +382,7 @@ async function chatMode(): Promise<void> {
         } else {
           try {
             const result = await searchRepo(pattern);
-            printInfo(result);
+            printTool(result);
             session.messages.push(newMessage("system", formatToolContext(`search ${pattern}`, result)));
             session.updatedAt = nowIso();
           } catch (error) {
@@ -348,7 +397,7 @@ async function chatMode(): Promise<void> {
         } else {
           try {
             const snippet = await readSnippet(pathInput, start, end);
-            printInfo(snippet);
+            printOutput(snippet);
             session.messages.push(newMessage("system", formatToolContext(`read ${pathInput}`, snippet)));
             session.updatedAt = nowIso();
           } catch (error) {
@@ -359,7 +408,7 @@ async function chatMode(): Promise<void> {
       } else if (command === "/git-status") {
         try {
           const result = await gitStatusShort();
-          printInfo(result);
+          printTool(result);
           session.messages.push(newMessage("system", formatToolContext("git-status", result)));
           session.updatedAt = nowIso();
         } catch (error) {
@@ -372,7 +421,7 @@ async function chatMode(): Promise<void> {
           const ctxRaw = context ? Number.parseInt(context, 10) : undefined;
           const ctx = ctxRaw !== undefined && !Number.isNaN(ctxRaw) ? ctxRaw : 3;
           const result = await gitDiff(pathInput, ctx);
-          printInfo(result);
+          printOutput(result);
           session.messages.push(
             newMessage("system", formatToolContext(`git-diff ${pathInput ?? ""}`.trim(), result)),
           );
@@ -388,7 +437,7 @@ async function chatMode(): Promise<void> {
         } else {
           try {
             const result = await runShellCommand(cmd);
-            printInfo(result);
+            printOutput(result);
             session.messages.push(newMessage("system", formatToolContext(`run ${cmd}`, result)));
             session.updatedAt = nowIso();
           } catch (error) {
@@ -400,7 +449,7 @@ async function chatMode(): Promise<void> {
         try {
           const parsed = parseEditArgs(args);
           const result = await editFileReplace(parsed);
-          printInfo(result);
+          printOutput(result);
           session.messages.push(
             newMessage("system", formatToolContext(`edit ${parsed.path}`, result)),
           );
@@ -446,7 +495,12 @@ async function chatMode(): Promise<void> {
         rl.close();
         return;
       } else {
-        printWarning(`Unknown command: ${command}`);
+        const suggestion = suggestCommand(command);
+        if (suggestion) {
+          printWarning(`Unknown command: ${command}. Did you mean ${suggestion}?`);
+        } else {
+          printWarning(`Unknown command: ${command}`);
+        }
       }
 
       await persist();
@@ -604,7 +658,7 @@ async function toolMode(args: string[]): Promise<void> {
       return;
     }
     const result = await searchRepo(pattern);
-    printInfo(result);
+    printTool(result);
     return;
   }
 
@@ -616,13 +670,13 @@ async function toolMode(args: string[]): Promise<void> {
       return;
     }
     const snippet = await readSnippet(pathInput, start, end);
-    printInfo(snippet);
+    printOutput(snippet);
     return;
   }
 
   if (subcommand === "git-status") {
     const result = await gitStatusShort();
-    printInfo(result);
+    printTool(result);
     return;
   }
 
@@ -631,7 +685,7 @@ async function toolMode(args: string[]): Promise<void> {
     const ctxRaw = context ? Number.parseInt(context, 10) : undefined;
     const ctx = ctxRaw !== undefined && !Number.isNaN(ctxRaw) ? ctxRaw : 3;
     const result = await gitDiff(pathInput, ctx);
-    printInfo(result);
+    printOutput(result);
     return;
   }
 
@@ -643,7 +697,7 @@ async function toolMode(args: string[]): Promise<void> {
       return;
     }
     const result = await runShellCommand(command);
-    printInfo(result);
+    printOutput(result);
     return;
   }
 
@@ -658,7 +712,7 @@ async function toolMode(args: string[]): Promise<void> {
       return;
     }
     const result = await editFileReplace(parsed);
-    printInfo(result);
+    printOutput(result);
     return;
   }
 
