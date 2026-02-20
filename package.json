@@ -7,9 +7,16 @@
     "acolyte": "./src/cli.ts"
   },
   "scripts": {
+    "start": "bun run src/cli.ts chat",
     "chat": "bun run src/cli.ts chat",
     "run": "bun run src/cli.ts run",
+    "history": "bun run src/cli.ts history",
+    "status": "bun run src/cli.ts status",
+    "memory": "bun run src/cli.ts memory",
+    "config": "bun run src/cli.ts config",
+    "tool": "bun run src/cli.ts tool",
     "serve": "bun run src/server.ts",
+    "serve:env": "bun --env-file=.env run src/server.ts",
     "dev": "bun run src/cli.ts chat",
     "typecheck": "bunx tsc --noEmit"
   },

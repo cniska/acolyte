@@ -15,7 +15,7 @@ bun run serve
 ```
 With real model responses:
 ```bash
-OPENAI_API_KEY=your_key bun run serve
+bun run serve:env
 ```
 
 3. In a second shell, run CLI against backend:
@@ -56,13 +56,13 @@ ACOLYTE_API_URL=http://localhost:8787 bun run run --file src/cli.ts "review this
 
 Batch coding tools:
 ```bash
-bun run src/cli.ts tool search "createBackend"
-bun run src/cli.ts tool read src/cli.ts 1 80
-bun run src/cli.ts tool git-status
-bun run src/cli.ts tool git-diff src/cli.ts 3
-bun run src/cli.ts tool run "bun run typecheck"
-bun run src/cli.ts tool test "bun run typecheck"
-bun run src/cli.ts tool edit src/cli.ts Acolyte Acolyte --dry-run
+bun run tool search "createBackend"
+bun run tool read src/cli.ts 1 80
+bun run tool git-status
+bun run tool git-diff src/cli.ts 3
+bun run tool run "bun run typecheck"
+bun run tool test "bun run typecheck"
+bun run tool edit src/cli.ts Acolyte Acolyte --dry-run
 ```
 
 ## Backend Behavior
