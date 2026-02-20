@@ -73,7 +73,11 @@ export function PromptInput({
     (input, key) => {
       const now = Date.now();
       const hasMetaPrefix = metaPrefixAt.current !== null && now - metaPrefixAt.current <= META_PREFIX_WINDOW_MS;
-      if ((input === "\u001b" || key.escape) && !key.meta && !key.ctrl) {
+      if (input === "\u001b") {
+        metaPrefixAt.current = now;
+        return;
+      }
+      if (key.escape && !input) {
         metaPrefixAt.current = now;
         return;
       }
@@ -132,7 +136,11 @@ export function PromptInput({
         return;
       }
 
-      const isBackspaceLike = key.backspace || input === KEYS.ctrl.h || input === KEYS.chars.backspace;
+      const isBackspaceLike =
+        key.backspace ||
+        key.delete ||
+        input === KEYS.ctrl.h ||
+        input === KEYS.chars.backspace;
       const isMetaWordDelete =
         (hasMetaPrefix && isBackspaceLike) ||
         (key.meta && isBackspaceLike) ||
@@ -140,6 +148,11 @@ export function PromptInput({
         input === KEYS.esc.altCtrlH;
       if (isMetaWordDelete) {
         metaPrefixAt.current = null;
+        if (key.meta && key.backspace) {
+          onChange("");
+          setCursorOffset(0);
+          return;
+        }
         if (cursorOffset === 0) {
           return;
         }
