@@ -5,16 +5,12 @@ import React, { useRef, useState } from "react";
 import { useEffect } from "react";
 import { Box, Static, Text, render, useApp, useInput } from "ink";
 import type { Backend } from "./backend";
-import { appConfig } from "./app-config";
-import { gitDiff, gitStatusShort, runShellCommand } from "./coding-tools";
-import { addMemory, listMemories } from "./memory";
+import { runShellCommand } from "./coding-tools";
 import { buildFileContext } from "./file-context";
 import { PromptInput } from "./prompt-input";
 import { listSkills, readSkillInstructions } from "./skills";
-import { formatStatusOutput } from "./status-format";
-import { createSession } from "./storage";
 import { sanitizeAssistantContent, tokenizeForHighlighting } from "./chat-content";
-import { formatChangesSummary, formatDogfoodStatus, formatThoughtDuration, formatVerifySummary } from "./chat-formatters";
+import { formatThoughtDuration, formatVerifySummary } from "./chat-formatters";
 import {
   applySlashSuggestion,
   isKnownSlashToken,
@@ -22,6 +18,7 @@ import {
   shouldAutocompleteSlashSubmit,
   suggestSlashCommands,
 } from "./chat-slash";
+import { dispatchSlashCommand, formatSessionList, resolveResumeSession, type TokenUsageEntry } from "./chat-commands";
 import type { Message, Session, SessionStore } from "./types";
 import type { SkillMeta } from "./skills";
 import type { TokenUsage } from "./api";
@@ -44,12 +41,6 @@ type HeaderLine = {
 type PickerState =
   | { kind: "skills"; items: SkillMeta[]; index: number }
   | { kind: "resume"; items: Session[]; index: number };
-
-type TokenUsageEntry = {
-  id: string;
-  usage: TokenUsage;
-  warning?: string;
-};
 
 const TOOL_LABELS = ["Run", "Search", "Read", "Diff", "Edit", "Update", "Status"] as const;
 const COLORS = {
@@ -121,36 +112,6 @@ export function toRows(messages: Message[], limit = RESUME_TRANSCRIPT_ROWS): Cha
     }
   }
   return rows.slice(-limit);
-}
-
-export type ResumeResolution =
-  | { kind: "usage" }
-  | { kind: "not_found"; prefix: string }
-  | { kind: "ambiguous"; prefix: string; matches: Session[] }
-  | { kind: "ok"; session: Session };
-
-export function resolveResumeSession(store: SessionStore, text: string): ResumeResolution {
-  const parts = text.split(/\s+/).filter((part) => part.length > 0);
-  if (parts.length < 2) {
-    return { kind: "usage" };
-  }
-  const prefix = parts[1];
-  const matches = store.sessions.filter((item) => item.id.startsWith(prefix));
-  if (matches.length === 0) {
-    return { kind: "not_found", prefix };
-  }
-  if (matches.length > 1) {
-    return { kind: "ambiguous", prefix, matches };
-  }
-  return { kind: "ok", session: matches[0] };
-}
-
-export function formatSessionList(store: SessionStore, limit = 10): string[] {
-  return store.sessions.slice(0, limit).map((item) => {
-    const active = item.id === store.activeSessionId ? "*" : " ";
-    const title = item.title || "New Session";
-    return `${active} ${item.id.slice(0, 12)}  ${title}`;
-  });
 }
 
 type AtToken = {
@@ -334,20 +295,6 @@ function truncateText(input: string, max = 72): string {
   return `${input.slice(0, Math.max(0, max - 1))}…`;
 }
 
-function buildDogfoodPrompt(task: string): string {
-  const preamble = [
-    "Dogfood mode:",
-    "- Work in small, verifiable steps.",
-    "- Keep response concise and action-focused.",
-    "- Use tools when needed; avoid guessing.",
-    "- If edits are made, verify with bun run verify before final response.",
-    "- Return: (1) what changed, (2) validation result, (3) any residual risk/blocker.",
-    "- Keep output short unless asked for detail.",
-    "",
-  ].join("\n");
-  return `${preamble}${task}`;
-}
-
 function estimateTokenUsageFallback(prompt: string, output: string): TokenUsage {
   const promptTokens = Math.ceil(prompt.length / 4);
   const completionTokens = Math.ceil(output.length / 4);
@@ -356,39 +303,6 @@ function estimateTokenUsageFallback(prompt: string, output: string): TokenUsage 
     completionTokens,
     totalTokens: promptTokens + completionTokens,
   };
-}
-
-function formatTokenUsageOutput(last: TokenUsageEntry | null, all: TokenUsageEntry[]): string {
-  if (!last) {
-    return "tokens: no data yet";
-  }
-  const totals = all.reduce(
-    (acc, entry) => {
-      acc.prompt += entry.usage.promptTokens;
-      acc.completion += entry.usage.completionTokens;
-      acc.total += entry.usage.totalTokens;
-      return acc;
-    },
-    { prompt: 0, completion: 0, total: 0 },
-  );
-  const rows: Array<{ key: string; value: string }> = [
-    {
-      key: "last_turn:",
-      value: `prompt=${last.usage.promptTokens} completion=${last.usage.completionTokens} total=${last.usage.totalTokens}`,
-    },
-    {
-      key: "session:",
-      value: `prompt=${totals.prompt} completion=${totals.completion} total=${totals.total} (${all.length} ${all.length === 1 ? "turn" : "turns"})`,
-    },
-  ];
-  if (last.usage.promptBudgetTokens) {
-    rows.push({
-      key: "budget:",
-      value: `${last.usage.promptTokens}/${last.usage.promptBudgetTokens}${last.usage.promptTruncated ? " (trimmed)" : ""}`,
-    });
-  }
-  const maxKey = rows.reduce((max, row) => Math.max(max, row.key.length), 0);
-  return rows.map((row) => `${row.key.padEnd(maxKey, " ")} ${row.value}`).join("\n");
 }
 
 function formatShortcutRows(): string[] {
@@ -670,367 +584,32 @@ function ChatApp(props: ChatAppProps) {
     setInputHistoryDraft("");
     setValue("");
 
-    const pushUserCommandRow = (): void => {
-      setRows((current) => [
-        ...current,
-        { id: `row_${crypto.randomUUID()}`, role: "user", content: text },
-      ]);
-    };
-
     if (resolvedText === "?") {
       setShowShortcuts((current) => !current);
       return;
     }
-
-    if (resolvedText === "/resume") {
-      pushUserCommandRow();
-      openResumePanel();
+    const commandResult = await dispatchSlashCommand({
+      text,
+      resolvedText,
+      backend,
+      store,
+      currentSession,
+      setCurrentSession,
+      toRows: (messages) => toRows(messages),
+      setRows,
+      setShowShortcuts,
+      setValue,
+      persist,
+      exit,
+      openSkillsPanel,
+      openResumePanel,
+      tokenUsage,
+    });
+    if (commandResult.stop) {
       return;
     }
-
-    if (resolvedText.startsWith("/resume")) {
-      pushUserCommandRow();
-      const resolved = resolveResumeSession(store, resolvedText);
-      if (resolved.kind === "usage") {
-        const recent = formatSessionList(store, 6);
-        setRows((current) => [
-          ...current,
-          { id: `row_${crypto.randomUUID()}`, role: "system", content: "Usage: /resume <session-id-prefix>" },
-          ...recent.map((line: string) => ({
-            id: `row_${crypto.randomUUID()}`,
-            role: "system" as const,
-            content: line,
-          })),
-        ]);
-        return;
-      }
-      if (resolved.kind === "not_found") {
-        setRows((current) => [
-          ...current,
-          {
-            id: `row_${crypto.randomUUID()}`,
-            role: "system",
-            content: `No session found for prefix: ${resolved.prefix}`,
-          },
-        ]);
-        return;
-      }
-      if (resolved.kind === "ambiguous") {
-        setRows((current) => [
-          ...current,
-          {
-            id: `row_${crypto.randomUUID()}`,
-            role: "system",
-            content: `Ambiguous prefix: ${resolved.prefix}. Matches: ${resolved.matches.map((item: Session) => item.id.slice(0, 12)).join(", ")}`,
-          },
-        ]);
-        return;
-      }
-      const target = resolved.session;
-      store.activeSessionId = target.id;
-      setCurrentSession(target);
-      setRows([
-        ...toRows(target.messages),
-        {
-          id: `row_${crypto.randomUUID()}`,
-          role: "assistant",
-          content: `Resumed session: ${target.id.slice(0, 12)}`,
-        },
-      ]);
-      setShowShortcuts(false);
-      await persist();
-      return;
-    }
-
-    if (resolvedText === "/sessions") {
-      pushUserCommandRow();
-      const recent = formatSessionList(store, 10);
-      setRows((current) => [
-        ...current,
-        { id: `row_${crypto.randomUUID()}`, role: "system", content: `Sessions (${store.sessions.length})` },
-        ...recent.map((line: string) => ({
-          id: `row_${crypto.randomUUID()}`,
-          role: "system" as const,
-          content: line,
-        })),
-      ]);
-      return;
-    }
-
-    if (resolvedText === "/status") {
-      pushUserCommandRow();
-      try {
-        const status = await backend.status();
-        setRows((current) => [
-          ...current,
-          { id: `row_${crypto.randomUUID()}`, role: "assistant", content: formatStatusOutput(status) },
-        ]);
-      } catch (error) {
-        setRows((current) => [
-          ...current,
-          {
-            id: `row_${crypto.randomUUID()}`,
-            role: "system",
-            content: error instanceof Error ? error.message : "Status check failed.",
-          },
-        ]);
-      }
-      return;
-    }
-
-    if (resolvedText === "/changes") {
-      pushUserCommandRow();
-      try {
-        const [statusRaw, diffRaw] = await Promise.all([gitStatusShort(), gitDiff()]);
-        setRows((current) => [
-          ...current,
-          {
-            id: `row_${crypto.randomUUID()}`,
-            role: "assistant",
-            content: formatChangesSummary(statusRaw, diffRaw),
-          },
-        ]);
-      } catch (error) {
-        setRows((current) => [
-          ...current,
-          {
-            id: `row_${crypto.randomUUID()}`,
-            role: "system",
-            content: error instanceof Error ? error.message : "Could not inspect git changes.",
-          },
-        ]);
-      }
-      return;
-    }
-
-    if (resolvedText === "/dogfood-status") {
-      pushUserCommandRow();
-      setRows((current) => [
-        ...current,
-        {
-          id: `row_${crypto.randomUUID()}`,
-          role: "system",
-          content: "Checking dogfood status…",
-          dim: true,
-        },
-      ]);
-      try {
-        const [backendStatus, verifyRaw] = await Promise.all([
-          backend.status().catch((error) => (error instanceof Error ? error.message : "status unavailable")),
-          runShellCommand("bun run verify", 30_000).catch((error) =>
-            error instanceof Error ? `exit_code=1\nduration_ms=0\nstderr:\n${error.message}` : "exit_code=1\nduration_ms=0",
-          ),
-        ]);
-        const verifySummary = formatVerifySummary(verifyRaw);
-        setRows((current) => [
-          ...current,
-          {
-            id: `row_${crypto.randomUUID()}`,
-            role: "assistant",
-            content: formatDogfoodStatus({
-              backendStatus,
-              verifySummary,
-              hasApiKey: Boolean(appConfig.openai.apiKey),
-            }),
-          },
-        ]);
-      } catch (error) {
-        setRows((current) => [
-          ...current,
-          {
-            id: `row_${crypto.randomUUID()}`,
-            role: "system",
-            content: error instanceof Error ? error.message : "Could not run dogfood status checks.",
-          },
-        ]);
-      }
-      return;
-    }
-
-    if (resolvedText === "/memory") {
-      pushUserCommandRow();
-      const memories = await listMemories();
-      if (memories.length === 0) {
-        setRows((current) => [
-          ...current,
-          { id: `row_${crypto.randomUUID()}`, role: "system", content: "No memories saved." },
-        ]);
-        return;
-      }
-      setRows((current) => [
-        ...current,
-        {
-          id: `row_${crypto.randomUUID()}`,
-          role: "system",
-          content: `Memories (${memories.length})`,
-        },
-        ...memories.slice(0, 10).map((entry) => ({
-          id: `row_${crypto.randomUUID()}`,
-          role: "system" as const,
-          content: `- [${entry.scope}] ${entry.content}`,
-        })),
-      ]);
-      return;
-    }
-
-    if (resolvedText === "/tokens") {
-      pushUserCommandRow();
-      const last = tokenUsage.length > 0 ? tokenUsage[tokenUsage.length - 1] : null;
-      setRows((current) => [
-        ...current,
-        {
-          id: `row_${crypto.randomUUID()}`,
-          role: "assistant",
-          content: formatTokenUsageOutput(last, tokenUsage),
-        },
-      ]);
-      return;
-    }
-
-    if (resolvedText.startsWith("/remember")) {
-      pushUserCommandRow();
-      const parts = resolvedText.split(/\s+/).slice(1);
-      let scope: "user" | "project" = "user";
-      const contentParts: string[] = [];
-      for (const part of parts) {
-        if (part === "--project") {
-          scope = "project";
-          continue;
-        }
-        if (part === "--user") {
-          scope = "user";
-          continue;
-        }
-        contentParts.push(part);
-      }
-      const content = contentParts.join(" ").trim();
-      if (!content) {
-        setRows((current) => [
-          ...current,
-          {
-            id: `row_${crypto.randomUUID()}`,
-            role: "system",
-            content: "Usage: /remember [--user|--project] <memory text>",
-          },
-        ]);
-        return;
-      }
-      try {
-        const entry = await addMemory(content, { scope });
-        setRows((current) => [
-          ...current,
-          {
-            id: `row_${crypto.randomUUID()}`,
-            role: "system",
-            content: `Saved ${entry.scope} memory: ${content}`,
-          },
-        ]);
-      } catch (error) {
-        setRows((current) => [
-          ...current,
-          {
-            id: `row_${crypto.randomUUID()}`,
-            role: "system",
-            content: error instanceof Error ? error.message : "Failed to save memory.",
-          },
-        ]);
-      }
-      return;
-    }
-
-    if (resolvedText === "/skills") {
-      pushUserCommandRow();
-      await openSkillsPanel();
-      return;
-    }
-
-    if (resolvedText === "/new") {
-      pushUserCommandRow();
-      const next = createSession(currentSession.model);
-      store.sessions.unshift(next);
-      store.activeSessionId = next.id;
-      setCurrentSession(next);
-      setRows((current) => [
-        ...current,
-        {
-          id: `row_${crypto.randomUUID()}`,
-          role: "assistant",
-          content: `Started new session: ${next.id.slice(0, 12)}`,
-        },
-      ]);
-      setValue("");
-      setShowShortcuts(false);
-      await persist();
-      return;
-    }
-
-    if (resolvedText === "/exit") {
-      pushUserCommandRow();
-      await persist();
-      exit();
-      return;
-    }
-
-    if (resolvedText.startsWith("/")) {
-      pushUserCommandRow();
-      if (resolvedText === "/skill" || resolvedText.startsWith("/skill ")) {
-        setRows((current) => [
-          ...current,
-          {
-            id: `row_${crypto.randomUUID()}`,
-            role: "system",
-            content: "Unknown command: /skill. Did you mean /skills?",
-          },
-        ]);
-        return;
-      }
-      const row: ChatRow = {
-        id: `row_${crypto.randomUUID()}`,
-        role: "system",
-        content: `Unknown command: ${text}`,
-      };
-      setRows((current) => [...current, row]);
-      return;
-    }
-
-    let userText = text;
-    let runVerifyAfterReply = false;
-    if (resolvedText.startsWith("/dogfood")) {
-      const parts = resolvedText.split(/\s+/).slice(1);
-      let noVerify = false;
-      const taskParts: string[] = [];
-      for (const part of parts) {
-        if (part === "--no-verify") {
-          noVerify = true;
-          continue;
-        }
-        taskParts.push(part);
-      }
-      const task = taskParts.join(" ").trim();
-      if (!task) {
-        setRows((current) => [
-          ...current,
-          {
-            id: `row_${crypto.randomUUID()}`,
-            role: "system",
-            content: "Usage: /dogfood [--no-verify] <task>",
-          },
-        ]);
-        return;
-      }
-      runVerifyAfterReply = !noVerify;
-      userText = buildDogfoodPrompt(task);
-      setRows((current) => [
-        ...current,
-        {
-          id: `row_${crypto.randomUUID()}`,
-          role: "system",
-          content: runVerifyAfterReply
-            ? "Dogfood mode enabled (verify after reply)."
-            : "Dogfood mode enabled (no verify).",
-        },
-      ]);
-    }
+    const userText = commandResult.userText;
+    const runVerifyAfterReply = commandResult.runVerifyAfterReply;
 
     const userMessage = newMessage("user", userText);
     currentSession.messages.push(userMessage);

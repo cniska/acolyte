@@ -4,12 +4,11 @@ import {
   extractAtReferencePaths,
   applyAtSuggestion,
   extractAtReferenceQuery,
-  formatSessionList,
   rankAtReferenceSuggestions,
-  resolveResumeSession,
   shouldAutocompleteAtSubmit,
   toRows,
 } from "./chat-ui";
+import { formatSessionList, resolveResumeSession } from "./chat-commands";
 
 function makeStore(): SessionStore {
   return {

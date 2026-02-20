@@ -12,6 +12,10 @@ const OPENAI_API_KEY = appConfig.openai.apiKey;
 const OPENAI_BASE_URL = appConfig.openai.baseUrl;
 const omConfig = getObservationalMemoryConfig();
 
+function normalizeModel(model: string): string {
+  return model.includes("/") ? model : `openai/${model}`;
+}
+
 function unauthorized(): Response {
   return new Response("Unauthorized", { status: 401 });
 }
@@ -109,7 +113,7 @@ const server = Bun.serve({
         ok: true,
         service: "acolyte-backend",
         provider: OPENAI_API_KEY ? "openai" : "mock",
-        model: appConfig.models.default,
+        model: OPENAI_API_KEY ? normalizeModel(appConfig.models.default) : appConfig.models.default,
         memory: {
           storage: mastraStorageMode,
           resourceId: appConfig.memory.resourceId,
