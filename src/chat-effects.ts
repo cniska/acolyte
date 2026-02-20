@@ -3,6 +3,14 @@ import { getCachedRepoPathCandidates, rankAtReferenceSuggestions } from "./chat-
 
 const THINKING_ANIMATION_INTERVAL_MS = 90;
 
+export function clampSuggestionIndex(current: number, length: number): number {
+  return Math.max(0, Math.min(current, Math.max(0, length - 1)));
+}
+
+export function nextThinkingFrame(current: number, frameCount: number): number {
+  return (current + 1) % frameCount;
+}
+
 export function useAtSuggestionsEffect(
   atQuery: string | null,
   setAtSuggestions: (next: string[]) => void,
@@ -25,7 +33,7 @@ export function useAtSuggestionsEffect(
       }
       const next = rankAtReferenceSuggestions(candidates, query);
       setAtSuggestions(next);
-      setAtSuggestionIndex((current) => Math.max(0, Math.min(current, Math.max(0, next.length - 1))));
+      setAtSuggestionIndex((current) => clampSuggestionIndex(current, next.length));
     })();
     return () => {
       cancelled = true;
@@ -38,7 +46,7 @@ export function useSlashSuggestionsEffect(
   setSlashSuggestionIndex: (next: number | ((current: number) => number)) => void,
 ): void {
   useEffect(() => {
-    setSlashSuggestionIndex((current) => Math.max(0, Math.min(current, Math.max(0, slashSuggestions.length - 1))));
+    setSlashSuggestionIndex((current) => clampSuggestionIndex(current, slashSuggestions.length));
   }, [setSlashSuggestionIndex, slashSuggestions]);
 }
 
@@ -53,7 +61,7 @@ export function useThinkingAnimationEffect(
       return;
     }
     const id = setInterval(() => {
-      setThinkingFrame((current) => (current + 1) % frameCount);
+      setThinkingFrame((current) => nextThinkingFrame(current, frameCount));
     }, THINKING_ANIMATION_INTERVAL_MS);
     return () => {
       clearInterval(id);
