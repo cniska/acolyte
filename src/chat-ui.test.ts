@@ -6,6 +6,7 @@ import {
   applySlashSuggestion,
   extractAtReferenceQuery,
   formatChangesSummary,
+  formatDogfoodStatus,
   parseImplementedFeatures,
   tokenizeForHighlighting,
   formatVerifySummary,
@@ -119,7 +120,9 @@ describe("chat-ui helpers", () => {
     expect(suggestSlashCommands("/f")).toEqual(["/features"]);
     expect(suggestSlashCommands("/s")).toEqual(["/status", "/sessions", "/skills"]);
     expect(suggestSlashCommands("/st")).toEqual(["/status"]);
-    expect(suggestSlashCommands("/d")).toEqual(["/dogfood"]);
+    expect(suggestSlashCommands("/d")).toEqual(["/dogfood", "/ds", "/dogfood-status"]);
+    expect(suggestSlashCommands("/ds")).toEqual(["/ds"]);
+    expect(suggestSlashCommands("/dogfood-s")).toEqual(["/dogfood-status"]);
     expect(suggestSlashCommands("/h")).toEqual([]);
     expect(suggestSlashCommands("/res")).toEqual(["/resume"]);
     expect(suggestSlashCommands("/mem")).toEqual(["/memories"]);
@@ -207,6 +210,18 @@ describe("chat-ui helpers", () => {
   test("formatVerifySummary renders compact pass/fail line", () => {
     expect(formatVerifySummary("exit_code=0\nduration_ms=1530")).toBe("Verify passed (exit 0, 1.5s).");
     expect(formatVerifySummary("exit_code=1\nduration_ms=320")).toBe("Verify failed (exit 1, 320ms).");
+  });
+
+  test("formatDogfoodStatus renders compact readiness summary", () => {
+    const out = formatDogfoodStatus({
+      backendStatus: "mode=openai service=acolyte-backend",
+      verifySummary: "Verify passed (exit 0, 1.2s).",
+      hasApiKey: true,
+    });
+    expect(out).toContain("Dogfood status");
+    expect(out).toContain("- Verify passed (exit 0, 1.2s).");
+    expect(out).toContain("- Backend: mode=openai service=acolyte-backend");
+    expect(out).toContain("- OPENAI_API_KEY: set");
   });
 
   test("formatChangesSummary renders git status and diff totals", () => {

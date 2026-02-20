@@ -52,6 +52,8 @@ const THINKING_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧",
 const CHAT_SLASH_COMMANDS = [
   "/changes",
   "/dogfood",
+  "/ds",
+  "/dogfood-status",
   "/features",
   "/new",
   "/status",
@@ -62,10 +64,14 @@ const CHAT_SLASH_COMMANDS = [
   "/memories",
   "/exit",
 ] as const;
+const SLASH_ALIASES: Record<string, string> = {
+  "/ds": "/dogfood-status",
+};
 const SHORTCUT_ITEMS = [
   { key: "@path", description: "attach file/dir context" },
   { key: "/changes", description: "show git changes" },
   { key: "/dogfood <task>", description: "run verify-first coding loop" },
+  { key: "/dogfood-status (/ds)", description: "check dogfooding readiness" },
   { key: "/features", description: "list current features" },
   { key: "/new", description: "new session" },
   { key: "/status", description: "show backend status" },
@@ -239,6 +245,10 @@ export function shouldAutocompleteSlashSubmit(
 
 export function applySlashSuggestion(selectedSuggestion: string): string {
   return `${selectedSuggestion} `;
+}
+
+function resolveSlashAlias(value: string): string {
+  return SLASH_ALIASES[value] ?? value;
 }
 
 export function parseImplementedFeatures(markdown: string, limit = 8): string[] {
@@ -499,6 +509,21 @@ export function formatVerifySummary(raw: string): string {
   return `Verify ${status} (exit ${meta.exitCode ?? "?"}, ${duration}).`;
 }
 
+export function formatDogfoodStatus(input: {
+  backendStatus: string;
+  verifySummary: string;
+  hasApiKey: boolean;
+}): string {
+  const keyStatus = input.hasApiKey ? "set" : "missing";
+  const lines = [
+    "Dogfood status",
+    `- ${input.verifySummary}`,
+    `- Backend: ${input.backendStatus}`,
+    `- OPENAI_API_KEY: ${keyStatus}`,
+  ];
+  return lines.join("\n");
+}
+
 function countLabel(value: number, singular: string, plural: string): string {
   return `${value} ${value === 1 ? singular : plural}`;
 }
@@ -751,6 +776,7 @@ function ChatApp(props: ChatAppProps) {
 
   const handleSubmit = async (raw: string): Promise<void> => {
     const text = raw.trim();
+    const resolvedText = resolveSlashAlias(text);
     setValue("");
     if (!text || isThinking) {
       return;
@@ -763,20 +789,20 @@ function ChatApp(props: ChatAppProps) {
       ]);
     };
 
-    if (text === "?") {
+    if (resolvedText === "?") {
       setShowShortcuts((current) => !current);
       return;
     }
 
-    if (text === "/resume") {
+    if (resolvedText === "/resume") {
       pushUserCommandRow();
       openResumePanel();
       return;
     }
 
-    if (text.startsWith("/resume")) {
+    if (resolvedText.startsWith("/resume")) {
       pushUserCommandRow();
-      const resolved = resolveResumeSession(store, text);
+      const resolved = resolveResumeSession(store, resolvedText);
       if (resolved.kind === "usage") {
         const recent = formatSessionList(store, 6);
         setRows((current) => [
@@ -828,7 +854,7 @@ function ChatApp(props: ChatAppProps) {
       return;
     }
 
-    if (text === "/sessions") {
+    if (resolvedText === "/sessions") {
       pushUserCommandRow();
       const recent = formatSessionList(store, 10);
       setRows((current) => [
@@ -843,7 +869,7 @@ function ChatApp(props: ChatAppProps) {
       return;
     }
 
-    if (text === "/status") {
+    if (resolvedText === "/status") {
       pushUserCommandRow();
       try {
         const status = await backend.status();
@@ -864,7 +890,7 @@ function ChatApp(props: ChatAppProps) {
       return;
     }
 
-    if (text === "/changes") {
+    if (resolvedText === "/changes") {
       pushUserCommandRow();
       try {
         const [statusRaw, diffRaw] = await Promise.all([gitStatusShort(), gitDiff()]);
@@ -889,7 +915,51 @@ function ChatApp(props: ChatAppProps) {
       return;
     }
 
-    if (text === "/memories") {
+    if (resolvedText === "/dogfood-status") {
+      pushUserCommandRow();
+      setRows((current) => [
+        ...current,
+        {
+          id: `row_${crypto.randomUUID()}`,
+          role: "system",
+          content: "Checking dogfood status…",
+          dim: true,
+        },
+      ]);
+      try {
+        const [backendStatus, verifyRaw] = await Promise.all([
+          backend.status().catch((error) => (error instanceof Error ? error.message : "status unavailable")),
+          runShellCommand("bun run verify").catch((error) =>
+            error instanceof Error ? `exit_code=1\nduration_ms=0\nstderr:\n${error.message}` : "exit_code=1\nduration_ms=0",
+          ),
+        ]);
+        const verifySummary = formatVerifySummary(verifyRaw);
+        setRows((current) => [
+          ...current,
+          {
+            id: `row_${crypto.randomUUID()}`,
+            role: "assistant",
+            content: formatDogfoodStatus({
+              backendStatus,
+              verifySummary,
+              hasApiKey: Boolean(process.env.OPENAI_API_KEY),
+            }),
+          },
+        ]);
+      } catch (error) {
+        setRows((current) => [
+          ...current,
+          {
+            id: `row_${crypto.randomUUID()}`,
+            role: "system",
+            content: error instanceof Error ? error.message : "Could not run dogfood status checks.",
+          },
+        ]);
+      }
+      return;
+    }
+
+    if (resolvedText === "/memories") {
       pushUserCommandRow();
       const memories = await listMemories();
       if (memories.length === 0) {
@@ -915,7 +985,7 @@ function ChatApp(props: ChatAppProps) {
       return;
     }
 
-    if (text === "/features") {
+    if (resolvedText === "/features") {
       pushUserCommandRow();
       try {
         const featurePath = join(process.cwd(), "docs/features.md");
@@ -959,9 +1029,9 @@ function ChatApp(props: ChatAppProps) {
       return;
     }
 
-    if (text.startsWith("/remember")) {
+    if (resolvedText.startsWith("/remember")) {
       pushUserCommandRow();
-      const parts = text.split(/\s+/).slice(1);
+      const parts = resolvedText.split(/\s+/).slice(1);
       let scope: "user" | "project" = "user";
       const contentParts: string[] = [];
       for (const part of parts) {
@@ -1010,13 +1080,13 @@ function ChatApp(props: ChatAppProps) {
       return;
     }
 
-    if (text === "/skills") {
+    if (resolvedText === "/skills") {
       pushUserCommandRow();
       await openSkillsPanel();
       return;
     }
 
-    if (text === "/new") {
+    if (resolvedText === "/new") {
       pushUserCommandRow();
       const next = createSession(currentSession.model);
       store.sessions.unshift(next);
@@ -1036,16 +1106,16 @@ function ChatApp(props: ChatAppProps) {
       return;
     }
 
-    if (text === "/exit") {
+    if (resolvedText === "/exit") {
       pushUserCommandRow();
       await persist();
       exit();
       return;
     }
 
-    if (text.startsWith("/")) {
+    if (resolvedText.startsWith("/")) {
       pushUserCommandRow();
-      if (text === "/skill" || text.startsWith("/skill ")) {
+      if (resolvedText === "/skill" || resolvedText.startsWith("/skill ")) {
         setRows((current) => [
           ...current,
           {
@@ -1067,8 +1137,8 @@ function ChatApp(props: ChatAppProps) {
 
     let userText = text;
     let runVerifyAfterReply = false;
-    if (text.startsWith("/dogfood")) {
-      const parts = text.split(/\s+/).slice(1);
+    if (resolvedText.startsWith("/dogfood")) {
+      const parts = resolvedText.split(/\s+/).slice(1);
       let noVerify = false;
       const taskParts: string[] = [];
       for (const part of parts) {
