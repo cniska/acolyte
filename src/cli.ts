@@ -494,8 +494,10 @@ async function chatMode(): Promise<void> {
         session = created;
         banner(session.model, session.id, CLI_VERSION);
       } else if (command === "/history") {
+        printSection(`• Session History (${session.messages.length})`);
         printSessionHistory(session);
       } else if (command === "/sessions") {
+        printSection(`• Sessions (${store.sessions.length})`);
         listSessions(store);
       } else if (command === "/use") {
         if (args.length === 0) {
@@ -679,6 +681,7 @@ async function chatMode(): Promise<void> {
         }
       } else if (command === "/memories") {
         const rows = await listMemories();
+        printSection(`• Memories (${rows.length})`);
         printMemoryRows(rows);
       } else if (command === "/model") {
         if (args.length === 0) {
@@ -755,6 +758,7 @@ async function runMode(args: string[]): Promise<void> {
 
 async function historyMode(): Promise<void> {
   const store = await readStore();
+  printSection(`• Sessions (${store.sessions.length})`);
   listSessions(store);
 }
 
@@ -779,6 +783,7 @@ async function memoryMode(args: string[]): Promise<void> {
 
   if (subcommand === "list" || !subcommand) {
     const rows = await listMemories();
+    printSection(`• Memories (${rows.length})`);
     printMemoryRows(rows);
     return;
   }

@@ -156,7 +156,7 @@ Build a personal AI assistant using Mastra, with a CLI-first interface and a hos
 ## Next Actions
 1. Prioritize interactive CLI UX polish; keep batch mode intentionally minimal.
 2. Create technical design doc (`docs/technical-design.md`).
-3. Improve tool-specific output formatting (Claude-style compact blocks per tool type).
+3. Iterate on richer transcript-style tool blocks (Edit/Bash summaries with focused excerpts).
 4. Create implementation backlog from phases.
 
 ## Prioritization Policy
@@ -164,4 +164,4 @@ Build a personal AI assistant using Mastra, with a CLI-first interface and a hos
 2. When UX polish is postponed for higher-priority work, record the specific deferred item under `Deferred Improvements`.
 
 ## Deferred Improvements
-1. Claude-style tool transcript formatting in CLI output (structured `Edit(...)` / `Bash(...)` blocks with concise summaries).
+1. Full Claude-style transcript rendering in CLI output (structured `Edit(...)` / `Bash(...)` blocks with compact per-tool summaries).
