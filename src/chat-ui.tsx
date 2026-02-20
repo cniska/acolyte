@@ -23,6 +23,10 @@ type HeaderLine = {
   brand: boolean;
 };
 
+type PickerState =
+  | { kind: "skills"; items: SkillMeta[]; index: number }
+  | { kind: "resume"; items: Session[]; index: number };
+
 const TOOL_LABELS = ["Run", "Search", "Read", "Diff", "Edit", "Update", "Status"] as const;
 const BRAND_COLOR = "#A56EFF";
 const MAX_SKILL_INSTRUCTION_CHARS = 4000;
@@ -165,12 +169,7 @@ function ChatApp(props: ChatAppProps) {
   const [value, setValue] = useState("");
   const [isThinking, setIsThinking] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
-  const [skillsPanelOpen, setSkillsPanelOpen] = useState(false);
-  const [skillsPanelItems, setSkillsPanelItems] = useState<SkillMeta[]>([]);
-  const [skillsPanelIndex, setSkillsPanelIndex] = useState(0);
-  const [resumePanelOpen, setResumePanelOpen] = useState(false);
-  const [resumePanelItems, setResumePanelItems] = useState<Session[]>([]);
-  const [resumePanelIndex, setResumePanelIndex] = useState(0);
+  const [picker, setPicker] = useState<PickerState | null>(null);
   const slashSuggestions = suggestSlashCommands(value);
   const headerLines: HeaderLine[] = [
     { id: "title", text: "Acolyte", suffix: ` v${version}`, dim: false, brand: true },
@@ -190,90 +189,27 @@ function ChatApp(props: ChatAppProps) {
         void persist().finally(exit);
         return;
       }
-      if (skillsPanelOpen) {
+      if (picker) {
         if (key.escape) {
-          setSkillsPanelOpen(false);
+          setPicker(null);
           return;
         }
         if (key.upArrow || input === "k") {
-          setSkillsPanelIndex((current) => Math.max(0, current - 1));
+          setPicker((current) =>
+            current ? { ...current, index: Math.max(0, current.index - 1) } : current,
+          );
           return;
         }
         if (key.downArrow || input === "j") {
-          setSkillsPanelIndex((current) => Math.min(skillsPanelItems.length - 1, current + 1));
+          setPicker((current) =>
+            current
+              ? { ...current, index: Math.min(current.items.length - 1, current.index + 1) }
+              : current,
+          );
           return;
         }
-        if (key.return && skillsPanelItems.length > 0) {
-          const selected = skillsPanelItems[skillsPanelIndex];
-          if (selected) {
-            void (async () => {
-              try {
-                const instructions = await readSkillInstructions(selected.path);
-                const boundedInstructions =
-                  instructions.length > MAX_SKILL_INSTRUCTION_CHARS
-                    ? `${instructions.slice(0, MAX_SKILL_INSTRUCTION_CHARS - 1)}…`
-                    : instructions;
-                const msg = newMessage(
-                  "system",
-                  `Active skill (${selected.name}):\n${boundedInstructions}`,
-                );
-                currentSession.messages.push(msg);
-                currentSession.updatedAt = nowIso();
-                setRows((current) => [
-                  ...current,
-                  {
-                    id: `row_${crypto.randomUUID()}`,
-                    role: "system",
-                    content: `Activated skill: ${selected.name}`,
-                  },
-                ]);
-                await persist();
-              } catch {
-                setRows((current) => [
-                  ...current,
-                  {
-                    id: `row_${crypto.randomUUID()}`,
-                    role: "system",
-                    content: `Failed to activate skill: ${selected.name}`,
-                  },
-                ]);
-              }
-            })();
-          }
-          setSkillsPanelOpen(false);
-          return;
-        }
-        return;
-      }
-      if (resumePanelOpen) {
-        if (key.escape) {
-          setResumePanelOpen(false);
-          return;
-        }
-        if (key.upArrow || input === "k") {
-          setResumePanelIndex((current) => Math.max(0, current - 1));
-          return;
-        }
-        if (key.downArrow || input === "j") {
-          setResumePanelIndex((current) => Math.min(resumePanelItems.length - 1, current + 1));
-          return;
-        }
-        if (key.return && resumePanelItems.length > 0) {
-          const selected = resumePanelItems[resumePanelIndex];
-          if (selected) {
-            store.activeSessionId = selected.id;
-            setCurrentSession(selected);
-            setRows([
-              ...toRows(selected.messages),
-              {
-                id: `row_${crypto.randomUUID()}`,
-                role: "assistant",
-                content: `Resumed session: ${selected.id.slice(0, 12)}`,
-              },
-            ]);
-            void persist();
-          }
-          setResumePanelOpen(false);
+        if (key.return && picker.items.length > 0) {
+          void handlePickerSelect(picker);
           return;
         }
         return;
@@ -490,11 +426,8 @@ function ChatApp(props: ChatAppProps) {
       ]);
       return;
     }
-    setSkillsPanelItems(skills);
-    setSkillsPanelIndex(0);
-    setResumePanelOpen(false);
+    setPicker({ kind: "skills", items: skills, index: 0 });
     setShowShortcuts(false);
-    setSkillsPanelOpen(true);
   };
 
   const openResumePanel = (): void => {
@@ -506,12 +439,63 @@ function ChatApp(props: ChatAppProps) {
       ]);
       return;
     }
-    setResumePanelItems(items);
     const activeIndex = items.findIndex((item) => item.id === store.activeSessionId);
-    setResumePanelIndex(activeIndex >= 0 ? activeIndex : 0);
-    setSkillsPanelOpen(false);
+    setPicker({ kind: "resume", items, index: activeIndex >= 0 ? activeIndex : 0 });
     setShowShortcuts(false);
-    setResumePanelOpen(true);
+  };
+
+  const handlePickerSelect = async (state: PickerState): Promise<void> => {
+    if (state.kind === "skills") {
+      const selected = state.items[state.index];
+      if (selected) {
+        try {
+          const instructions = await readSkillInstructions(selected.path);
+          const boundedInstructions =
+            instructions.length > MAX_SKILL_INSTRUCTION_CHARS
+              ? `${instructions.slice(0, MAX_SKILL_INSTRUCTION_CHARS - 1)}…`
+              : instructions;
+          const msg = newMessage("system", `Active skill (${selected.name}):\n${boundedInstructions}`);
+          currentSession.messages.push(msg);
+          currentSession.updatedAt = nowIso();
+          setRows((current) => [
+            ...current,
+            {
+              id: `row_${crypto.randomUUID()}`,
+              role: "system",
+              content: `Activated skill: ${selected.name}`,
+            },
+          ]);
+          await persist();
+        } catch {
+          setRows((current) => [
+            ...current,
+            {
+              id: `row_${crypto.randomUUID()}`,
+              role: "system",
+              content: `Failed to activate skill: ${selected.name}`,
+            },
+          ]);
+        }
+      }
+      setPicker(null);
+      return;
+    }
+
+    const selected = state.items[state.index];
+    if (selected) {
+      store.activeSessionId = selected.id;
+      setCurrentSession(selected);
+      setRows([
+        ...toRows(selected.messages),
+        {
+          id: `row_${crypto.randomUUID()}`,
+          role: "assistant",
+          content: `Resumed session: ${selected.id.slice(0, 12)}`,
+        },
+      ]);
+      await persist();
+    }
+    setPicker(null);
   };
 
   return (
@@ -552,47 +536,46 @@ function ChatApp(props: ChatAppProps) {
       ) : null}
 
       <Text> </Text>
-      {skillsPanelOpen ? (
+      {picker ? (
         <>
           <Text dimColor>{borderLine()}</Text>
-          <Text>Skills</Text>
+          <Text>{picker.kind === "skills" ? "Skills" : "Resume Session"}</Text>
           <Text> </Text>
-          {skillsPanelItems.map((skill, index) => {
-            const nameWidth = Math.min(
-              28,
-              Math.max(8, ...skillsPanelItems.map((item) => item.name.length)),
-            );
-            const selected = index === skillsPanelIndex;
-            return (
-              <Text key={skill.path}>
-                {selected ? "› " : "  "}
-                <Text color={selected ? BRAND_COLOR : undefined}>{skill.name.padEnd(nameWidth)}</Text>  {truncateText(skill.description)}
-              </Text>
-            );
-          })}
+          {picker.kind === "skills"
+            ? (() => {
+                const nameWidth = Math.min(
+                  28,
+                  Math.max(8, ...picker.items.map((item) => item.name.length)),
+                );
+                return picker.items.map((skill, index) => {
+                  const selected = index === picker.index;
+                  return (
+                    <Text key={skill.path}>
+                      {selected ? "› " : "  "}
+                      <Text color={selected ? BRAND_COLOR : undefined}>
+                        {skill.name.padEnd(nameWidth)}
+                      </Text>{" "}
+                      {truncateText(skill.description)}
+                    </Text>
+                  );
+                });
+              })()
+            : picker.items.map((item, index) => {
+                const selected = index === picker.index;
+                const prefix = item.id.slice(0, 12);
+                const active = item.id === store.activeSessionId ? "●" : " ";
+                return (
+                  <Text key={item.id}>
+                    {selected ? "› " : "  "}
+                    <Text color={selected ? BRAND_COLOR : undefined}>{`${active} ${prefix}`}</Text>{" "}
+                    <Text dimColor>{truncateText(item.title || "New Session")}</Text>
+                  </Text>
+                );
+              })}
           <Text> </Text>
-          <Text dimColor>Esc to close · Enter to select</Text>
-          <Text dimColor>{borderLine()}</Text>
-        </>
-      ) : resumePanelOpen ? (
-        <>
-          <Text dimColor>{borderLine()}</Text>
-          <Text>Resume Session</Text>
-          <Text> </Text>
-          {resumePanelItems.map((item, index) => {
-            const selected = index === resumePanelIndex;
-            const prefix = item.id.slice(0, 12);
-            const active = item.id === store.activeSessionId ? "●" : " ";
-            return (
-              <Text key={item.id}>
-                {selected ? "› " : "  "}
-                <Text color={selected ? BRAND_COLOR : undefined}>{`${active} ${prefix}`}</Text>{" "}
-                <Text dimColor>{truncateText(item.title || "New Session")}</Text>
-              </Text>
-            );
-          })}
-          <Text> </Text>
-          <Text dimColor>Esc to close · Enter to resume</Text>
+          <Text dimColor>
+            {picker.kind === "skills" ? "Esc to close · Enter to select" : "Esc to close · Enter to resume"}
+          </Text>
           <Text dimColor>{borderLine()}</Text>
         </>
       ) : (
