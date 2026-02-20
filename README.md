@@ -5,7 +5,7 @@ My personal AI assistant.
 ## Setup Modes
 
 - `Local-first (default)`: run everything on your machine with your own API key.
-- `Hosted (optional)`: deploy backend + DB for centralized memory across devices.
+- `Hosted (planned)`: optional deploy backend + DB for centralized memory across devices (not implemented yet).
 
 ## Local-First Quickstart
 
