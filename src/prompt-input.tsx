@@ -108,7 +108,6 @@ export function PromptInput({
       }
 
       if (
-        (key.leftArrow && key.meta) ||
         (key.meta && input === KEYS.meta.b) ||
         input === KEYS.esc.altB
       ) {
@@ -117,7 +116,6 @@ export function PromptInput({
       }
 
       if (
-        (key.rightArrow && key.meta) ||
         (key.meta && input === KEYS.meta.f) ||
         input === KEYS.esc.altF
       ) {
@@ -143,16 +141,10 @@ export function PromptInput({
         input === KEYS.chars.backspace;
       const isMetaWordDelete =
         (hasMetaPrefix && isBackspaceLike) ||
-        (key.meta && isBackspaceLike) ||
         input === KEYS.esc.altBackspace ||
         input === KEYS.esc.altCtrlH;
       if (isMetaWordDelete) {
         metaPrefixAt.current = null;
-        if (key.meta && key.backspace) {
-          onChange("");
-          setCursorOffset(0);
-          return;
-        }
         if (cursorOffset === 0) {
           return;
         }
