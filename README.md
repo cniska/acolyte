@@ -73,7 +73,7 @@ Session management in chat:
 - `/resume <session-id-prefix>` to restore a previous session
 - `/exit` to leave chat
 - chat starts in a fresh session by default (clean transcript)
-- `@path` to reference a file or directory directly in your prompt (use arrows + Enter to autocomplete)
+- `@path` to reference a file or directory directly in your prompt (use arrows + Tab/Enter to autocomplete)
 
 Attach file context in one-shot mode:
 ```bash
