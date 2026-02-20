@@ -11,6 +11,7 @@ import { buildFileContext } from "./file-context";
 import { PromptInput } from "./prompt-input";
 import { listSkills, readSkillInstructions } from "./skills";
 import { createSession } from "./storage";
+import { sanitizeAssistantContent, tokenizeForHighlighting } from "./chat-content";
 import type { Message, Session, SessionStore } from "./types";
 import type { SkillMeta } from "./skills";
 
@@ -19,13 +20,6 @@ type ChatRow = {
   role: "user" | "assistant" | "system";
   content: string;
   dim?: boolean;
-};
-
-type HighlightKind = "plain" | "code" | "path" | "command";
-
-type HighlightToken = {
-  text: string;
-  kind: HighlightKind;
 };
 
 type HeaderLine = {
@@ -41,7 +35,6 @@ type PickerState =
   | { kind: "resume"; items: Session[]; index: number };
 
 const TOOL_LABELS = ["Run", "Search", "Read", "Diff", "Edit", "Update", "Status"] as const;
-const COMMAND_WORDS = new Set(["bun", "bunx", "git", "npm", "pnpm", "yarn", "node", "npx"]);
 const COLORS = {
   brand: "#A56EFF",
   highlightCode: "#B7C0CC",
@@ -131,58 +124,7 @@ export function toRows(messages: Message[], limit = RESUME_TRANSCRIPT_ROWS): Cha
   return rows.slice(-limit);
 }
 
-export function sanitizeAssistantContent(content: string): string {
-  const cleaned = content
-    .split("\n")
-    .map((line) => line.replace(/^\s+(\d+\.\s)/, "$1"))
-    .filter((line) => !/^\s*(Tools used:|Evidence:)/.test(line))
-    .join("\n")
-    .trimEnd();
-  return cleaned.length > 0 ? cleaned : "No output.";
-}
-
-function looksLikePathRef(token: string): boolean {
-  if (token.length === 0) {
-    return false;
-  }
-  if (token.startsWith("@")) {
-    return false;
-  }
-  const fileWithExt = /^(?:\.{1,2}\/)?[\w.-]+\.[\w-]+(?::\d+(?::\d+)?)?$/.test(token);
-  const slashPath = /^(?:\.{1,2}\/|~\/)?[\w.-]+(?:\/[\w.-]+)+(?:\.[\w-]+)?(?::\d+(?::\d+)?)?$/.test(token);
-  return fileWithExt || slashPath;
-}
-
-export function tokenizeForHighlighting(line: string): HighlightToken[] {
-  const tokens: HighlightToken[] = [];
-  const parts = line.split(/(`[^`]+`)/g).filter((part) => part.length > 0);
-  for (const part of parts) {
-    if (part.startsWith("`") && part.endsWith("`") && part.length >= 2) {
-      tokens.push({ text: part, kind: "code" });
-      continue;
-    }
-
-    const chunks = part.split(/(\s+)/).filter((chunk) => chunk.length > 0);
-    for (const chunk of chunks) {
-      if (/^\s+$/.test(chunk)) {
-        tokens.push({ text: chunk, kind: "plain" });
-        continue;
-      }
-
-      const core = chunk.replace(/^[("'`]+|[)",.;!?]+$/g, "");
-      if (COMMAND_WORDS.has(core.toLowerCase())) {
-        tokens.push({ text: chunk, kind: "command" });
-        continue;
-      }
-      if (looksLikePathRef(core)) {
-        tokens.push({ text: chunk, kind: "path" });
-        continue;
-      }
-      tokens.push({ text: chunk, kind: "plain" });
-    }
-  }
-  return tokens;
-}
+export { sanitizeAssistantContent, tokenizeForHighlighting } from "./chat-content";
 
 export type ResumeResolution =
   | { kind: "usage" }
