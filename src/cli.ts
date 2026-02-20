@@ -34,9 +34,10 @@ const CLI_VERSION = process.env.npm_package_version ?? "dev";
 const PROMPT = "❯ ";
 
 function usage(): void {
-  printInfo("Usage: acolyte <chat|run|history|status|memory|config|tool>");
+  printInfo("Usage: acolyte <chat|run|dogfood|history|status|memory|config|tool>");
   printInfo("  chat            Start interactive session");
   printInfo("  run [--file path] [--verify] <prompt>    Send one prompt and optionally verify");
+  printInfo("  dogfood [--file path] <prompt>    Run one prompt and always verify");
   printInfo("  history         Show recent sessions");
   printInfo("  status          Show backend connection status");
   printInfo("  memory          Manage personal memory notes");
@@ -724,6 +725,10 @@ async function runMode(args: string[]): Promise<void> {
   await writeStore(store);
 }
 
+async function dogfoodMode(args: string[]): Promise<void> {
+  await runMode(["--verify", ...args]);
+}
+
 async function historyMode(): Promise<void> {
   const store = await readStore();
   printSection(`• Sessions (${store.sessions.length})`);
@@ -939,6 +944,11 @@ async function main(): Promise<void> {
 
   if (command === "run") {
     await runMode(args);
+    return;
+  }
+
+  if (command === "dogfood") {
+    await dogfoodMode(args);
     return;
   }
 

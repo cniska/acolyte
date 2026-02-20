@@ -92,6 +92,7 @@ One-shot examples:
 bun run run "Review the current repository state and suggest top 3 technical risks."
 bun run run --file src/mastra-tools.ts "Explain what tools are available and what is missing."
 bun run run --verify "Apply the requested change and then validate with bun run verify."
+bun run src/cli.ts dogfood "Implement the requested change and validate the repo."
 ```
 
 ## Backend Behavior
@@ -109,9 +110,4 @@ ACOLYTE_API_URL=http://localhost:8787 ACOLYTE_API_KEY=dev-secret bun run chat
 Health endpoint:
 ```bash
 curl http://localhost:8787/healthz
-```
-
-Optional tool-transparency debug mode:
-```bash
-ACOLYTE_SHOW_TOOLS=1 bun run chat
 ```

@@ -157,6 +157,7 @@ Build a personal AI assistant using Mastra, with a CLI-first interface and a hos
 3. Sandbox provider choice (E2B vs Modal).
 4. Packaging target (`npm` global vs standalone binary).
 5. Async job strategy (Vercel-native vs external worker).
+6. Multi-agent rollout timing and topology (planner/executor/reviewer) after single-agent reliability gates are consistently met.
 
 ## Next Actions
 1. Prioritize interactive CLI UX polish; keep batch mode intentionally minimal.
@@ -167,6 +168,7 @@ Build a personal AI assistant using Mastra, with a CLI-first interface and a hos
 6. Expand `/resume` UX (session picker/listing ergonomics) on top of current ID-prefix resume flow.
 7. Add a dogfooding transition milestone: move from Codex-led development to Acolyte-led development in this repo after coding-loop reliability gates are met.
 8. Introduce observational memory only after coding workflow reliability is stable and evaluated.
+9. Defer multi-agent orchestration until single-agent coding loop is stable; then introduce as an optional path for complex tasks.
 
 ## Prioritization Policy
 1. Prioritize correctness, reliability, and core workflow capability over cosmetic UX changes.
