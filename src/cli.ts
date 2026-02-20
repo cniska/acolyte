@@ -348,7 +348,20 @@ export function formatDiffOutput(raw: string): string {
 }
 
 export function formatGitStatusOutput(raw: string): string {
-  return clampLines(raw.split("\n"), 20).join("\n");
+  const lines = raw.split("\n").filter((line) => line.trim().length > 0);
+  if (lines.length === 0) {
+    return "working tree clean";
+  }
+
+  const branchLine = lines[0].startsWith("## ") ? lines[0] : undefined;
+  const changed = lines.filter((line) => !line.startsWith("## ")).length;
+  const summary = `${countLabel(changed, "changed file", "changed files")}`;
+  const out: string[] = [summary];
+  if (branchLine) {
+    out.push(branchLine);
+  }
+  out.push(...lines.filter((line) => !line.startsWith("## ")));
+  return clampLines(out, 20).join("\n");
 }
 
 export function formatRunOutput(raw: string): string {

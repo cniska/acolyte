@@ -59,6 +59,13 @@ describe("cli formatting helpers", () => {
     expect(out).toContain("1 file changed, +1 -1");
   });
 
+  test("formatGitStatusOutput includes changed-file summary", () => {
+    const raw = ["## main...origin/main", " M src/cli.ts", "?? src/new.ts"].join("\n");
+    const out = formatForTool("status", raw);
+    expect(out).toContain("2 changed files");
+    expect(out).toContain("## main...origin/main");
+  });
+
   test("summarizeDiff counts added and removed lines", () => {
     const diff = [
       "diff --git a/a.ts b/a.ts",

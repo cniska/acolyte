@@ -34,6 +34,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
   - cleaner banner/session flows (`/resume`, session switching)
   - compact action-style tool transcripts (`Run`, `Search`, `Read`, `Diff`, `Update`)
   - inline summaries (search counts, read line count, diff +/- summary)
+  - git status summaries (`N changed files`) before detailed entries
   - repo-relative read paths and reduced successful `Run` noise
   - short aliases for speed (`/s`, `/r`, `/gs`, `/gd`)
   - alias-aware command suggestions for faster recovery from partial/typo commands
