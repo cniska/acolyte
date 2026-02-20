@@ -1,7 +1,7 @@
 import { homedir } from "node:os";
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { useEffect } from "react";
 import { Box, Static, Text, render, useApp, useInput } from "ink";
 import type { Backend } from "./backend";
@@ -358,9 +358,9 @@ function estimateTokenUsageFallback(prompt: string, output: string): TokenUsage 
   };
 }
 
-function formatTokenUsageLines(last: TokenUsageEntry | null, all: TokenUsageEntry[]): string[] {
+function formatTokenUsageOutput(last: TokenUsageEntry | null, all: TokenUsageEntry[]): string {
   if (!last) {
-    return ["No token data yet."];
+    return "tokens: no data yet";
   }
   const totals = all.reduce(
     (acc, entry) => {
@@ -371,16 +371,24 @@ function formatTokenUsageLines(last: TokenUsageEntry | null, all: TokenUsageEntr
     },
     { prompt: 0, completion: 0, total: 0 },
   );
-  const lines = [
-    `Last turn: prompt=${last.usage.promptTokens} completion=${last.usage.completionTokens} total=${last.usage.totalTokens}`,
-    `Session: prompt=${totals.prompt} completion=${totals.completion} total=${totals.total} (${all.length} turns)`,
+  const rows: Array<{ key: string; value: string }> = [
+    {
+      key: "last_turn:",
+      value: `prompt=${last.usage.promptTokens} completion=${last.usage.completionTokens} total=${last.usage.totalTokens}`,
+    },
+    {
+      key: "session:",
+      value: `prompt=${totals.prompt} completion=${totals.completion} total=${totals.total} (${all.length} ${all.length === 1 ? "turn" : "turns"})`,
+    },
   ];
   if (last.usage.promptBudgetTokens) {
-    lines.push(
-      `Prompt budget: ${last.usage.promptTokens}/${last.usage.promptBudgetTokens}${last.usage.promptTruncated ? " (trimmed)" : ""}`,
-    );
+    rows.push({
+      key: "budget:",
+      value: `${last.usage.promptTokens}/${last.usage.promptBudgetTokens}${last.usage.promptTruncated ? " (trimmed)" : ""}`,
+    });
   }
-  return lines;
+  const maxKey = rows.reduce((max, row) => Math.max(max, row.key.length), 0);
+  return rows.map((row) => `${row.key.padEnd(maxKey, " ")} ${row.value}`).join("\n");
 }
 
 function formatShortcutRows(): string[] {
@@ -465,6 +473,7 @@ function ChatApp(props: ChatAppProps) {
   const [inputHistory, setInputHistory] = useState<string[]>([]);
   const [inputHistoryIndex, setInputHistoryIndex] = useState(-1);
   const [inputHistoryDraft, setInputHistoryDraft] = useState("");
+  const applyingHistoryRef = useRef(false);
   const slashSuggestions = suggestSlashCommands(value);
   const [slashSuggestionIndex, setSlashSuggestionIndex] = useState(0);
   const atQuery = extractAtReferenceQuery(value);
@@ -512,6 +521,42 @@ function ChatApp(props: ChatAppProps) {
         }
         return;
       }
+      const suggestionNavActive = atQuery !== null || (atQuery === null && slashSuggestions.length > 0);
+      if (!isThinking && !suggestionNavActive && key.upArrow) {
+        if (inputHistory.length === 0) {
+          return;
+        }
+        if (inputHistoryIndex === -1) {
+          setInputHistoryDraft(value);
+          const nextIndex = inputHistory.length - 1;
+          setInputHistoryIndex(nextIndex);
+          applyingHistoryRef.current = true;
+          setValue(inputHistory[nextIndex] ?? "");
+          setInputRevision((current) => current + 1);
+          return;
+        }
+        const nextIndex = Math.max(0, inputHistoryIndex - 1);
+        setInputHistoryIndex(nextIndex);
+        applyingHistoryRef.current = true;
+        setValue(inputHistory[nextIndex] ?? "");
+        setInputRevision((current) => current + 1);
+        return;
+      }
+      if (!isThinking && !suggestionNavActive && key.downArrow && inputHistoryIndex >= 0) {
+        if (inputHistoryIndex >= inputHistory.length - 1) {
+          setInputHistoryIndex(-1);
+          applyingHistoryRef.current = true;
+          setValue(inputHistoryDraft);
+          setInputRevision((current) => current + 1);
+          return;
+        }
+        const nextIndex = inputHistoryIndex + 1;
+        setInputHistoryIndex(nextIndex);
+        applyingHistoryRef.current = true;
+        setValue(inputHistory[nextIndex] ?? "");
+        setInputRevision((current) => current + 1);
+        return;
+      }
       if (atQuery !== null && atSuggestions.length > 0) {
         const selected = atSuggestions[Math.max(0, Math.min(atSuggestionIndex, atSuggestions.length - 1))];
         if (key.tab && shouldAutocompleteAtSubmit(value, selected)) {
@@ -543,37 +588,6 @@ function ChatApp(props: ChatAppProps) {
           setSlashSuggestionIndex((current) => Math.min(slashSuggestions.length - 1, current + 1));
           return;
         }
-      }
-      if (!isThinking && key.upArrow) {
-        if (inputHistory.length === 0) {
-          return;
-        }
-        if (inputHistoryIndex === -1) {
-          setInputHistoryDraft(value);
-          const nextIndex = inputHistory.length - 1;
-          setInputHistoryIndex(nextIndex);
-          setValue(inputHistory[nextIndex] ?? "");
-          setInputRevision((current) => current + 1);
-          return;
-        }
-        const nextIndex = Math.max(0, inputHistoryIndex - 1);
-        setInputHistoryIndex(nextIndex);
-        setValue(inputHistory[nextIndex] ?? "");
-        setInputRevision((current) => current + 1);
-        return;
-      }
-      if (!isThinking && key.downArrow && inputHistoryIndex >= 0) {
-        if (inputHistoryIndex >= inputHistory.length - 1) {
-          setInputHistoryIndex(-1);
-          setValue(inputHistoryDraft);
-          setInputRevision((current) => current + 1);
-          return;
-        }
-        const nextIndex = inputHistoryIndex + 1;
-        setInputHistoryIndex(nextIndex);
-        setValue(inputHistory[nextIndex] ?? "");
-        setInputRevision((current) => current + 1);
-        return;
       }
       if (!isThinking && input === "$" && value.length === 0) {
         void openSkillsPanel();
@@ -860,15 +874,13 @@ function ChatApp(props: ChatAppProps) {
     if (resolvedText === "/tokens") {
       pushUserCommandRow();
       const last = tokenUsage.length > 0 ? tokenUsage[tokenUsage.length - 1] : null;
-      const lines = formatTokenUsageLines(last, tokenUsage);
       setRows((current) => [
         ...current,
-        ...lines.map((line) => ({
+        {
           id: `row_${crypto.randomUUID()}`,
-          role: "assistant" as const,
-          content: line,
-          dim: true,
-        })),
+          role: "assistant",
+          content: formatTokenUsageOutput(last, tokenUsage),
+        },
       ]);
       return;
     }
@@ -1288,7 +1300,11 @@ function ChatApp(props: ChatAppProps) {
                 if (value.length === 0 && next === "?") {
                   return;
                 }
-                setInputHistoryIndex(-1);
+                if (applyingHistoryRef.current) {
+                  applyingHistoryRef.current = false;
+                } else {
+                  setInputHistoryIndex(-1);
+                }
                 setValue(next);
               }}
               onSubmit={(next) => {
