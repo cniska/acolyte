@@ -2,6 +2,14 @@
 
 My personal AI assistant.
 
+## Current Features
+
+- CLI-first chat with session controls, memory commands, and `@path` file references.
+- Built-in dogfooding workflow (`/dogfood`) with optional verify-first loop.
+- Local-first backend + one-shot and tool modes for coding workflows.
+
+Canonical feature list: `docs/features.md`
+
 ## Setup Modes
 
 - `Local-first (default)`: run everything on your machine with your own API key.
