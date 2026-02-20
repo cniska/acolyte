@@ -212,33 +212,58 @@ function displayPath(pathInput: string): string {
 }
 
 function showToolResult(title: string, content: string, style: "plain" | "tool" = "plain"): void {
-  printSection(`⏺ ${title}`);
+  printSection(`• ${title}`);
   const lines = content.split("\n");
   if (lines.length === 0) {
-    printInfo("  ⎿ (no output)");
+    printInfo("  └ (no output)");
     return;
   }
 
   if (lines.length === 1) {
     if (style === "tool") {
-      printTool(`  ⎿ ${lines[0]}`);
+      printTool(`  └ ${lines[0]}`);
     } else {
-      printOutput(`  ⎿ ${lines[0]}`);
+      printOutput(`  └ ${lines[0]}`);
     }
     return;
   }
 
-  printInfo("  ⎿");
-  const preview = lines.slice(0, 120);
-  for (const line of preview) {
+  const emitLine = (prefix: string, line: string): void => {
     if (style === "tool") {
-      printTool(`    ${line}`);
+      printTool(`${prefix}${line}`);
     } else {
-      printOutput(`    ${line}`);
+      printOutput(`${prefix}${line}`);
     }
+  };
+
+  const findLastSection = (section: string): number =>
+    lines.map((line, idx) => ({ line, idx })).filter((x) => x.line.trim() === section).at(-1)?.idx ?? -1;
+
+  const stdoutIdx = findLastSection("stdout:");
+  const stderrIdx = findLastSection("stderr:");
+  const sectionIdx = Math.max(stdoutIdx, stderrIdx);
+
+  const tail: string[] = [];
+  if (sectionIdx >= 0) {
+    tail.push(lines[sectionIdx]);
+    const after = lines.slice(sectionIdx + 1).filter((line) => line.trim().length > 0);
+    const last = after.at(-1);
+    if (last) {
+      tail.push(last);
+    }
+  } else {
+    const nonEmptyTail = lines.filter((line) => line.trim().length > 0).slice(-2);
+    tail.push(...nonEmptyTail);
   }
-  if (lines.length > preview.length) {
-    printInfo(`    ... (${lines.length - preview.length} more lines)`);
+
+  const dedupTail = [...new Set(tail)];
+  emitLine("  └ ", lines[0]);
+  const hidden = Math.max(0, lines.length - 1 - dedupTail.length);
+  if (hidden > 0) {
+    printInfo(`    … +${hidden} lines`);
+  }
+  for (const line of dedupTail) {
+    emitLine("    ", line);
   }
 }
 
