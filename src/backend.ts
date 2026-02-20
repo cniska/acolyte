@@ -1,16 +1,11 @@
-import type { Message } from "./types";
-
-export interface AssistantReply {
-  output: string;
-  model: string;
-}
+import type { ChatRequest, ChatResponse } from "./api";
 
 export interface Backend {
-  reply(input: { message: string; history: Message[]; model: string }): Promise<AssistantReply>;
+  reply(input: ChatRequest): Promise<ChatResponse>;
 }
 
 class LocalBackend implements Backend {
-  async reply(input: { message: string; history: Message[]; model: string }): Promise<AssistantReply> {
+  async reply(input: ChatRequest): Promise<ChatResponse> {
     const trimmed = input.message.trim();
     const lc = trimmed.toLowerCase();
 
@@ -38,7 +33,7 @@ class LocalBackend implements Backend {
 class RemoteBackend implements Backend {
   constructor(private readonly apiUrl: string, private readonly apiKey?: string) {}
 
-  async reply(input: { message: string; history: Message[]; model: string }): Promise<AssistantReply> {
+  async reply(input: ChatRequest): Promise<ChatResponse> {
     const response = await fetch(`${this.apiUrl.replace(/\/$/, "")}/v1/chat`, {
       method: "POST",
       headers: {
@@ -53,7 +48,7 @@ class RemoteBackend implements Backend {
       throw new Error(`Remote backend error (${response.status}): ${body || "no body"}`);
     }
 
-    const json = (await response.json()) as Partial<AssistantReply>;
+    const json = (await response.json()) as Partial<ChatResponse>;
     if (typeof json.output !== "string") {
       throw new Error("Remote backend returned invalid payload: missing output");
     }

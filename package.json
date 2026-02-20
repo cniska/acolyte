@@ -9,10 +9,12 @@
   "scripts": {
     "chat": "bun run src/cli.ts chat",
     "run": "bun run src/cli.ts run",
+    "serve": "bun run src/server.ts",
     "dev": "bun run src/cli.ts chat",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "bunx tsc --noEmit"
   },
   "devDependencies": {
+    "@types/bun": "^1.3.9",
     "@types/node": "^22.10.2",
     "typescript": "^5.7.2"
   }
