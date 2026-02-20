@@ -1,4 +1,5 @@
 import type { ChatRequest, ChatResponse } from "./api";
+import { env } from "./env";
 
 export interface BackendOptions {
   apiUrl?: string;
@@ -87,8 +88,8 @@ class RemoteBackend implements Backend {
 }
 
 export function createBackend(options?: BackendOptions): Backend {
-  const apiUrl = options?.apiUrl ?? process.env.ACOLYTE_API_URL;
-  const apiKey = options?.apiKey ?? process.env.ACOLYTE_API_KEY;
+  const apiUrl = options?.apiUrl ?? env.ACOLYTE_API_URL;
+  const apiKey = options?.apiKey ?? env.ACOLYTE_API_KEY;
 
   if (!apiUrl) {
     return new LocalBackend();
