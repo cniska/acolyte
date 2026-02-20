@@ -17,6 +17,7 @@
     "tool": "bun run src/cli.ts tool",
     "serve": "bun run src/server.ts",
     "serve:env": "bun --env-file=.env run src/server.ts",
+    "chat:test": "bash -lc 'bun run serve:env >/tmp/acolyte-server.log 2>&1 & pid=$!; trap \"kill $pid\" EXIT; sleep 1; bun run config set apiUrl http://localhost:8787 >/dev/null; bun run chat'",
     "dev": "bun run src/cli.ts chat",
     "typecheck": "bunx tsc --noEmit"
   },

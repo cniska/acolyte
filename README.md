@@ -22,6 +22,10 @@ bun run serve:env
 ```bash
 ACOLYTE_API_URL=http://localhost:8787 bun run chat
 ```
+One-command interactive test (starts backend + opens chat):
+```bash
+bun run chat:test
+```
 Check connectivity:
 ```bash
 ACOLYTE_API_URL=http://localhost:8787 bun run src/cli.ts status
