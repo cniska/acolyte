@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import type { ChatRow } from "./chat-commands";
 import { createSubmitHandler } from "./chat-submit-handler";
 import type { Message, Session, SessionStore } from "./types";
 
@@ -108,5 +109,77 @@ describe("chat submit handler guards", () => {
     expect(h.calls.setValue).toEqual([""]);
     expect(h.calls.setShowShortcuts).toHaveLength(1);
     expect(typeof h.calls.setShowShortcuts[0]).toBe("function");
+  });
+
+  test("records interrupted row when active turn is aborted", async () => {
+    const rows: ChatRow[] = [];
+    let interruptHandler: () => void = () => {};
+    let interruptRegistered = false;
+
+    const session = makeSession();
+    const store: SessionStore = {
+      activeSessionId: session.id,
+      sessions: [session],
+    };
+
+    const submit = createSubmitHandler({
+      backend: {
+        reply: async (_input, options) =>
+          await new Promise((_, reject) => {
+            const abort = (): void => {
+              const error = new Error("Aborted");
+              error.name = "AbortError";
+              reject(error);
+            };
+            if (options?.signal?.aborted) {
+              abort();
+              return;
+            }
+            options?.signal?.addEventListener("abort", abort, { once: true });
+          }),
+        status: async () => "ok",
+      },
+      store,
+      currentSession: session,
+      setCurrentSession: () => {},
+      toRows: () => [],
+      setRows: (updater) => {
+        rows.splice(0, rows.length, ...updater(rows));
+      },
+      setShowShortcuts: () => {},
+      setValue: () => {},
+      persist: async () => {},
+      exit: () => {},
+      openSkillsPanel: async () => {},
+      openResumePanel: () => {},
+      tokenUsage: [],
+      isThinking: false,
+      setInputHistory: () => {},
+      setInputHistoryIndex: () => {},
+      setInputHistoryDraft: () => {},
+      setIsThinking: () => {},
+      setTokenUsage: () => {},
+      createMessage: makeMessage,
+      nowIso: () => "2026-02-20T00:00:00.000Z",
+      setInterrupt: (handler) => {
+        interruptRegistered = handler !== null;
+        if (handler) {
+          interruptHandler = handler;
+        }
+      },
+    });
+
+    const pending = submit("hello");
+    for (let i = 0; i < 20 && !interruptRegistered; i += 1) {
+      await Bun.sleep(1);
+    }
+    expect(interruptRegistered).toBe(true);
+    interruptHandler();
+    await pending;
+
+    const last = rows[rows.length - 1];
+    expect(last?.role).toBe("system");
+    expect(last?.content).toBe("Interrupted.");
+    expect(last?.dim).toBe(true);
   });
 });
