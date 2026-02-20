@@ -572,24 +572,6 @@ function setSessionTitle(session: Session, inputText: string): void {
   }
 }
 
-async function buildHistoryWithMemoryContext(history: Message[]): Promise<Message[]> {
-  const memories = await listMemories();
-  const top = memories.slice(0, 8);
-  if (top.length === 0) {
-    return history;
-  }
-
-  const memoryLines = top.map((m) => `- ${m.content}`);
-  const context: Message = {
-    id: `msg_${crypto.randomUUID()}`,
-    role: "system",
-    content: `User memory context:\n${memoryLines.join("\n")}`,
-    timestamp: nowIso(),
-  };
-
-  return [context, ...history];
-}
-
 async function handlePrompt(prompt: string, session: Session, backend = createBackend()): Promise<void> {
   const userMsg = newMessage("user", prompt);
   session.messages.push(userMsg);
@@ -598,10 +580,9 @@ async function handlePrompt(prompt: string, session: Session, backend = createBa
   try {
     printOutput(`❯ ${prompt}`);
     printInfo("  thinking...");
-    const historyWithContext = await buildHistoryWithMemoryContext(session.messages);
     const reply = await backend.reply({
       message: prompt,
-      history: historyWithContext,
+      history: session.messages,
       model: session.model,
       sessionId: session.id,
     });

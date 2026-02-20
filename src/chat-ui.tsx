@@ -309,24 +309,6 @@ function shownCwd(): string {
   return cwd;
 }
 
-async function buildHistoryWithMemoryContext(history: Message[]): Promise<Message[]> {
-  const memories = await listMemories();
-  const top = memories.slice(0, 8);
-  if (top.length === 0) {
-    return history;
-  }
-
-  const memoryLines = top.map((m) => `- ${m.content}`);
-  const context: Message = {
-    id: `msg_${crypto.randomUUID()}`,
-    role: "system",
-    content: `User memory context:\n${memoryLines.join("\n")}`,
-    timestamp: nowIso(),
-  };
-
-  return [context, ...history];
-}
-
 function borderLine(): string {
   const width = process.stdout.columns ?? 96;
   return "─".repeat(Math.max(24, width));
@@ -1004,13 +986,9 @@ function ChatApp(props: ChatAppProps) {
 
     try {
 
-      const historyWithContext = await buildHistoryWithMemoryContext([
-        ...fileContextMessages,
-        ...currentSession.messages,
-      ]);
       const reply = await backend.reply({
         message: userText,
-        history: historyWithContext,
+        history: [...fileContextMessages, ...currentSession.messages],
         model: currentSession.model,
         sessionId: currentSession.id,
       });
