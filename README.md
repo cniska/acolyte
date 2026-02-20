@@ -166,3 +166,4 @@ Health endpoint:
 ```bash
 curl http://localhost:6767/healthz
 ```
+Response includes memory status (observational memory enabled/scope/model/token thresholds).
