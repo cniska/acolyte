@@ -1,4 +1,5 @@
 node_modules/
 .acolyte/
+.mastra/
 .DS_Store
 .env

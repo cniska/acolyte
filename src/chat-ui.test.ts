@@ -4,7 +4,6 @@ import {
   extractAtReferencePaths,
   applyAtSuggestion,
   extractAtReferenceQuery,
-  parseImplementedFeatures,
   formatSessionList,
   rankAtReferenceSuggestions,
   resolveResumeSession,
@@ -84,21 +83,6 @@ describe("chat-ui helpers", () => {
     const lines = formatSessionList(makeStore());
     expect(lines[0]?.startsWith("* ")).toBe(true);
     expect(lines[1]?.startsWith("  ")).toBe(true);
-  });
-
-  test("parseImplementedFeatures reads implemented bullet list", () => {
-    const markdown = [
-      "# Title",
-      "",
-      "## Implemented",
-      "",
-      "- First feature",
-      "- Second feature",
-      "",
-      "## Planned",
-      "- Later",
-    ].join("\n");
-    expect(parseImplementedFeatures(markdown, 8)).toEqual(["First feature", "Second feature"]);
   });
 
   test("extractAtReferenceQuery parses @prefix", () => {

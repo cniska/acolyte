@@ -14,6 +14,7 @@ import { createSession } from "./storage";
 import { sanitizeAssistantContent, tokenizeForHighlighting } from "./chat-content";
 import { formatChangesSummary, formatDogfoodStatus, formatThoughtDuration, formatVerifySummary } from "./chat-formatters";
 import { applySlashSuggestion, resolveSlashAlias, shouldAutocompleteSlashSubmit, suggestSlashCommands } from "./chat-slash";
+import { parseImplementedFeatures } from "./chat-features";
 import type { Message, Session, SessionStore } from "./types";
 import type { SkillMeta } from "./skills";
 
@@ -136,28 +137,6 @@ export function formatSessionList(store: SessionStore, limit = 10): string[] {
     const title = item.title || "New Session";
     return `${active} ${item.id.slice(0, 12)}  ${title}`;
   });
-}
-
-export function parseImplementedFeatures(markdown: string, limit = 8): string[] {
-  const lines = markdown.split("\n");
-  const start = lines.findIndex((line) => line.trim() === "## Implemented");
-  if (start < 0) {
-    return [];
-  }
-  const items: string[] = [];
-  for (let idx = start + 1; idx < lines.length; idx += 1) {
-    const line = lines[idx]?.trim() ?? "";
-    if (line.startsWith("## ")) {
-      break;
-    }
-    if (line.startsWith("- ")) {
-      items.push(line.slice(2).trim());
-      if (items.length >= limit) {
-        break;
-      }
-    }
-  }
-  return items;
 }
 
 type AtToken = {
