@@ -21,6 +21,13 @@ type ChatRow = {
   dim?: boolean;
 };
 
+type HighlightKind = "plain" | "code" | "path" | "command";
+
+type HighlightToken = {
+  text: string;
+  kind: HighlightKind;
+};
+
 type HeaderLine = {
   id: string;
   text: string;
@@ -34,6 +41,7 @@ type PickerState =
   | { kind: "resume"; items: Session[]; index: number };
 
 const TOOL_LABELS = ["Run", "Search", "Read", "Diff", "Edit", "Update", "Status"] as const;
+const COMMAND_WORDS = new Set(["bun", "bunx", "git", "npm", "pnpm", "yarn", "node", "npx"]);
 const BRAND_COLOR = "#A56EFF";
 const MAX_SKILL_INSTRUCTION_CHARS = 4000;
 const THINKING_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"] as const;
@@ -120,6 +128,49 @@ export function sanitizeAssistantContent(content: string): string {
     .filter((line) => !/^\s*(Tools used:|Evidence:)/.test(line))
     .join("\n")
     .trimEnd();
+}
+
+function looksLikePathRef(token: string): boolean {
+  if (token.length === 0) {
+    return false;
+  }
+  if (token.startsWith("@")) {
+    return false;
+  }
+  const fileWithExt = /^(?:\.{1,2}\/)?[\w.-]+\.[\w-]+(?::\d+(?::\d+)?)?$/.test(token);
+  const slashPath = /^(?:\.{1,2}\/|~\/)?[\w.-]+(?:\/[\w.-]+)+(?:\.[\w-]+)?(?::\d+(?::\d+)?)?$/.test(token);
+  return fileWithExt || slashPath;
+}
+
+export function tokenizeForHighlighting(line: string): HighlightToken[] {
+  const tokens: HighlightToken[] = [];
+  const parts = line.split(/(`[^`]+`)/g).filter((part) => part.length > 0);
+  for (const part of parts) {
+    if (part.startsWith("`") && part.endsWith("`") && part.length >= 2) {
+      tokens.push({ text: part, kind: "code" });
+      continue;
+    }
+
+    const chunks = part.split(/(\s+)/).filter((chunk) => chunk.length > 0);
+    for (const chunk of chunks) {
+      if (/^\s+$/.test(chunk)) {
+        tokens.push({ text: chunk, kind: "plain" });
+        continue;
+      }
+
+      const core = chunk.replace(/^[("'`]+|[)",.;!?]+$/g, "");
+      if (COMMAND_WORDS.has(core.toLowerCase())) {
+        tokens.push({ text: chunk, kind: "command" });
+        continue;
+      }
+      if (looksLikePathRef(core)) {
+        tokens.push({ text: chunk, kind: "path" });
+        continue;
+      }
+      tokens.push({ text: chunk, kind: "plain" });
+    }
+  }
+  return tokens;
 }
 
 export type ResumeResolution =
@@ -1307,16 +1358,53 @@ export async function runInkChat(props: ChatAppProps): Promise<void> {
 function renderAssistantContent(content: string): React.ReactNode {
   const cleaned = sanitizeAssistantContent(content);
 
+  const renderHighlighted = (value: string, keyPrefix: string): React.ReactNode => {
+    const lines = value.split("\n");
+    return (
+      <>
+        {lines.map((line, lineIndex) => (
+          <React.Fragment key={`${keyPrefix}-line-${lineIndex}`}>
+            {lineIndex > 0 ? "\n" : null}
+            {tokenizeForHighlighting(line).map((token, tokenIndex) => {
+              if (token.kind === "code") {
+                return (
+                  <Text key={`${keyPrefix}-token-${lineIndex}-${tokenIndex}`} bold color="#8EC5FF">
+                    {token.text}
+                  </Text>
+                );
+              }
+              if (token.kind === "command") {
+                return (
+                  <Text key={`${keyPrefix}-token-${lineIndex}-${tokenIndex}`} bold>
+                    {token.text}
+                  </Text>
+                );
+              }
+              if (token.kind === "path") {
+                return (
+                  <Text key={`${keyPrefix}-token-${lineIndex}-${tokenIndex}`} underline color="#9AA5B1">
+                    {token.text}
+                  </Text>
+                );
+              }
+              return <Text key={`${keyPrefix}-token-${lineIndex}-${tokenIndex}`}>{token.text}</Text>;
+            })}
+          </React.Fragment>
+        ))}
+      </>
+    );
+  };
+
   for (const label of TOOL_LABELS) {
     if (cleaned.startsWith(`${label} `) || cleaned.startsWith(`${label}(`) || cleaned.startsWith(`${label}:`)) {
       return (
         <>
           <Text bold>{label}</Text>
-          {cleaned.slice(label.length)}
+          {renderHighlighted(cleaned.slice(label.length), `tool-${label}`)}
         </>
       );
     }
   }
 
-  return cleaned;
+  return renderHighlighted(cleaned, "assistant");
 }

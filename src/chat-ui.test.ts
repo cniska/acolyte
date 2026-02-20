@@ -6,6 +6,7 @@ import {
   extractAtReferenceQuery,
   formatChangesSummary,
   parseImplementedFeatures,
+  tokenizeForHighlighting,
   formatVerifySummary,
   formatThoughtDuration,
   formatSessionList,
@@ -133,6 +134,14 @@ describe("chat-ui helpers", () => {
       "- Later",
     ].join("\n");
     expect(parseImplementedFeatures(markdown, 8)).toEqual(["First feature", "Second feature"]);
+  });
+
+  test("tokenizeForHighlighting tags code, paths, and command keywords", () => {
+    const tokens = tokenizeForHighlighting("bun run verify in `src/chat-ui.tsx:42` and src/chat-ui.tsx:42");
+    const kinds = tokens.map((token) => token.kind);
+    expect(kinds).toContain("command");
+    expect(kinds).toContain("code");
+    expect(kinds).toContain("path");
   });
 
   test("extractAtReferenceQuery parses @prefix", () => {
