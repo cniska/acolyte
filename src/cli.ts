@@ -480,10 +480,16 @@ export function formatForTool(kind: "search" | "read" | "diff" | "run" | "status
   return formatGitStatusOutput(raw);
 }
 
-export function summarizeDiff(raw: string): { added: number; removed: number; preview: string[] } {
+export function summarizeDiff(raw: string): {
+  added: number;
+  removed: number;
+  locations: number;
+  preview: string[];
+} {
   const preview: string[] = [];
   let added = 0;
   let removed = 0;
+  let locations = 0;
   for (const line of raw.split("\n")) {
     if (
       line.startsWith("diff --git ") ||
@@ -494,7 +500,7 @@ export function summarizeDiff(raw: string): { added: number; removed: number; pr
       continue;
     }
     if (line.startsWith("@@ ")) {
-      preview.push(line);
+      locations += 1;
       continue;
     }
     if (line.startsWith("+")) {
@@ -507,13 +513,14 @@ export function summarizeDiff(raw: string): { added: number; removed: number; pr
       preview.push(line);
     }
   }
-  return { added, removed, preview: clampLines(preview, 14) };
+  return { added, removed, locations, preview: clampLines(preview, 14) };
 }
 
 export function formatEditUpdateOutput(matches: number, diff: string): string {
   const summary = summarizeDiff(diff);
   const lines = [
     `${countLabel(matches, "replacement", "replacements")} applied.`,
+    `${countLabel(summary.locations, "location", "locations")} updated.`,
     `Added ${countLabel(summary.added, "line", "lines")}, removed ${countLabel(summary.removed, "line", "lines")}.`,
   ];
   if (summary.preview.length > 0) {

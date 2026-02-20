@@ -82,13 +82,15 @@ describe("cli formatting helpers", () => {
     const result = summarizeDiff(diff);
     expect(result.added).toBe(2);
     expect(result.removed).toBe(1);
-    expect(result.preview[0]).toContain("@@ -1,2 +1,3 @@");
+    expect(result.locations).toBe(1);
+    expect(result.preview[0]).toContain("-old");
   });
 
   test("formatEditUpdateOutput includes replacement and line summary", () => {
     const diff = ["@@ -1 +1 @@", "-old", "+new"].join("\n");
     const out = formatEditUpdateOutput(1, diff);
     expect(out).toContain("1 replacement applied.");
+    expect(out).toContain("1 location updated.");
     expect(out).toContain("Added 1 line, removed 1 line.");
   });
 
