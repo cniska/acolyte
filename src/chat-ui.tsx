@@ -1368,7 +1368,7 @@ function renderAssistantContent(content: string): React.ReactNode {
             {tokenizeForHighlighting(line).map((token, tokenIndex) => {
               if (token.kind === "code") {
                 return (
-                  <Text key={`${keyPrefix}-token-${lineIndex}-${tokenIndex}`} bold color="#8EC5FF">
+                  <Text key={`${keyPrefix}-token-${lineIndex}-${tokenIndex}`} color="#B7C0CC">
                     {token.text}
                   </Text>
                 );
@@ -1382,7 +1382,7 @@ function renderAssistantContent(content: string): React.ReactNode {
               }
               if (token.kind === "path") {
                 return (
-                  <Text key={`${keyPrefix}-token-${lineIndex}-${tokenIndex}`} underline color="#9AA5B1">
+                  <Text key={`${keyPrefix}-token-${lineIndex}-${tokenIndex}`} underline color="#A8B1BC">
                     {token.text}
                   </Text>
                 );
