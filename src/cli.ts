@@ -421,7 +421,7 @@ export function formatGitStatusOutput(raw: string): string {
 
   const branchLine = lines[0].startsWith("## ") ? lines[0] : undefined;
   const changed = lines.filter((line) => !line.startsWith("## ")).length;
-  const summary = `${countLabel(changed, "changed file", "changed files")}`;
+  const summary = changed === 0 ? "working tree clean" : `${countLabel(changed, "changed file", "changed files")}`;
   const out: string[] = [summary];
   if (branchLine) {
     out.push(branchLine);
