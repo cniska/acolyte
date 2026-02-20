@@ -11,6 +11,7 @@ import { addMemory, listMemories } from "./memory";
 import { buildFileContext } from "./file-context";
 import { PromptInput } from "./prompt-input";
 import { listSkills, readSkillInstructions } from "./skills";
+import { formatStatusOutput } from "./status-format";
 import { createSession } from "./storage";
 import { sanitizeAssistantContent, tokenizeForHighlighting } from "./chat-content";
 import { formatChangesSummary, formatDogfoodStatus, formatThoughtDuration, formatVerifySummary } from "./chat-formatters";
@@ -656,7 +657,7 @@ function ChatApp(props: ChatAppProps) {
         const status = await backend.status();
         setRows((current) => [
           ...current,
-          { id: `row_${crypto.randomUUID()}`, role: "assistant", content: status },
+          { id: `row_${crypto.randomUUID()}`, role: "assistant", content: formatStatusOutput(status) },
         ]);
       } catch (error) {
         setRows((current) => [
