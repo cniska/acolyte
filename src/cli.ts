@@ -112,11 +112,15 @@ const INTERNAL_CHAT_COMMANDS = new Set([
 ]);
 const SHORTCUT_PANEL_LINES = [
   "  /exit quit",
-  "  enter send               up/down history              esc close panel       ctrl+c exit",
+] as const;
+const SHORTCUT_PANEL_COMPACT_LINES = [
+  "  /exit quit",
 ] as const;
 
 function renderShortcutsPanel(): void {
-  for (const line of SHORTCUT_PANEL_LINES) {
+  const width = output.columns ?? 120;
+  const lines = width < 96 ? SHORTCUT_PANEL_COMPACT_LINES : SHORTCUT_PANEL_LINES;
+  for (const line of lines) {
     printInfo(line);
   }
 }

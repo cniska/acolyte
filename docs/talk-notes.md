@@ -50,6 +50,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
   - fixed overflow marker alignment in truncated tool output lists
   - hard-separated chat UX: only `?` and `/exit`; internal commands moved to top-level CLI/tool mode
   - `?` toggles a compact panel under the prompt (`esc` closes); chat starts on a cleared screen
+  - shortcuts panel now adapts to terminal width (single-line vs compact stacked key hints)
 - Delivery workflow:
   - `bun run verify` (`typecheck` + tests)
   - autonomous feature loop in `docs/development-workflow.md`
