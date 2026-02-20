@@ -81,14 +81,10 @@ function printHelp(): void {
   printInfo("  /status         Show backend connection status");
   printInfo("");
   printSection("Tools");
-  printInfo("  /search <pat>   Search repository text with ripgrep");
-  printInfo("  /s <pat>        Alias for /search");
-  printInfo("  /read <path> [start] [end]  Read file snippet");
-  printInfo("  /r <path> [start] [end]  Alias for /read");
-  printInfo("  /git-status     Show git status summary");
-  printInfo("  /gs             Alias for /git-status");
-  printInfo("  /git-diff [path] [context]  Show git diff");
-  printInfo("  /gd [path] [context]  Alias for /git-diff");
+  printInfo("  /search (/s) <pat>   Search repository text with ripgrep");
+  printInfo("  /read (/r) <path> [start] [end]  Read file snippet");
+  printInfo("  /git-status (/gs)     Show git status summary");
+  printInfo("  /git-diff (/gd) [path] [context]  Show git diff");
   printInfo("  /run <cmd>      Run shell command");
   printInfo("  /verify         Run project validation (bun run verify)");
   printInfo("  /edit <path> <find> <replace> [--dry-run]  Replace text in file");
