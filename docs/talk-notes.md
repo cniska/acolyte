@@ -54,6 +54,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
   - improved prompt ergonomics (word navigation, reliable delete behavior, autocomplete fixes)
   - tightened review style policy (concise, evidence-first, no destructive git suggestions)
   - polished transcript output (compact tool blocks, no-result clarity, duration summaries)
+  - added lightweight semantic highlighting in assistant responses (code/commands/file refs)
   - added canonical feature inventory in `docs/features.md` and linked it from README
 - Delivery workflow:
   - `bun run verify` (`typecheck` + tests)

@@ -5,6 +5,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 ## Implemented
 
 - CLI-first chat experience with inline prompt, shortcuts panel (`?`), and session-aware context.
+- Lightweight semantic response highlighting (inline code, command keywords, and file references).
 - Session controls: `/new`, `/sessions`, `/resume <session-id-prefix>`, `/exit`.
 - File and directory references via `@path` with suggestions/autocomplete.
 - In-chat utility commands: `/status`, `/changes`.
