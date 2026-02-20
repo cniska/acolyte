@@ -108,6 +108,10 @@ Validation:
 ```bash
 bun run verify
 ```
+Dogfooding readiness check:
+```bash
+bun run src/cli.ts dogfood-status
+```
 
 ## Example Prompts
 
