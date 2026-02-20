@@ -1,23 +1,40 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
+async function runCommand(cmd: string[]): Promise<{ code: number; stdout: string; stderr: string }> {
+  const proc = Bun.spawn({
+    cmd,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  const [stdoutText, stderrText] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+  ]);
+  const exitCode = await proc.exited;
+  return {
+    code: exitCode,
+    stdout: stdoutText,
+    stderr: stderrText,
+  };
+}
+
 export async function searchRepo(pattern: string, maxResults = 40): Promise<string> {
   const trimmed = pattern.trim();
   if (!trimmed) {
     throw new Error("Search pattern cannot be empty");
   }
 
-  const proc = Bun.spawn({
-    cmd: ["rg", "--line-number", "--color", "never", "--max-count", String(maxResults), trimmed, "."],
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-
-  const [stdoutText, stderrText] = await Promise.all([
-    new Response(proc.stdout).text(),
-    new Response(proc.stderr).text(),
+  const { code: exitCode, stdout: stdoutText, stderr: stderrText } = await runCommand([
+    "rg",
+    "--line-number",
+    "--color",
+    "never",
+    "--max-count",
+    String(maxResults),
+    trimmed,
+    ".",
   ]);
-  const exitCode = await proc.exited;
 
   if (exitCode !== 0 && stdoutText.trim().length === 0) {
     const err = stderrText.trim();
@@ -54,3 +71,22 @@ export async function readSnippet(pathInput: string, start?: string, end?: strin
   return [`File: ${absPath}`, ...numbered].join("\n");
 }
 
+export async function gitStatusShort(): Promise<string> {
+  const { code, stdout, stderr } = await runCommand(["git", "status", "--short", "--branch"]);
+  if (code !== 0) {
+    throw new Error(stderr.trim() || "git status failed");
+  }
+  return stdout.trim() || "Working tree clean.";
+}
+
+export async function gitDiff(pathInput?: string, contextLines = 3): Promise<string> {
+  const args = ["git", "diff", `--unified=${contextLines}`];
+  if (pathInput) {
+    args.push("--", pathInput);
+  }
+  const { code, stdout, stderr } = await runCommand(args);
+  if (code !== 0) {
+    throw new Error(stderr.trim() || "git diff failed");
+  }
+  return stdout.trim() || "No unstaged changes.";
+}

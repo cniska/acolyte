@@ -2,7 +2,7 @@
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { createBackend } from "./backend";
-import { readSnippet, searchRepo } from "./coding-tools";
+import { gitDiff, gitStatusShort, readSnippet, searchRepo } from "./coding-tools";
 import { readConfig, setConfigValue, unsetConfigValue } from "./config";
 import { buildFileContext } from "./file-context";
 import { addMemory, listMemories } from "./memory";
@@ -28,7 +28,7 @@ function usage(): void {
   printInfo("  status          Show backend connection status");
   printInfo("  memory          Manage personal memory notes");
   printInfo("  config          Manage local CLI defaults");
-  printInfo("  tool            Run coding tools (search/read)");
+  printInfo("  tool            Run coding tools (search/read/git)");
 }
 
 function nowIso(): string {
@@ -67,6 +67,8 @@ function printHelp(): void {
   printInfo("  /status         Show backend connection status");
   printInfo("  /search <pat>   Search repository text with ripgrep");
   printInfo("  /read <path> [start] [end]  Read file snippet");
+  printInfo("  /git-status     Show git status summary");
+  printInfo("  /git-diff [path] [context]  Show git diff");
   printInfo("  /file <path>    Attach a local text file to this session");
   printInfo("  /remember <x>   Add a personal memory note");
   printInfo("  /memories       Show personal memory notes");
@@ -325,6 +327,31 @@ async function chatMode(): Promise<void> {
             printError(message);
           }
         }
+      } else if (command === "/git-status") {
+        try {
+          const result = await gitStatusShort();
+          printInfo(result);
+          session.messages.push(newMessage("system", formatToolContext("git-status", result)));
+          session.updatedAt = nowIso();
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Unknown error";
+          printError(message);
+        }
+      } else if (command === "/git-diff") {
+        const [pathInput, context] = args;
+        try {
+          const ctxRaw = context ? Number.parseInt(context, 10) : undefined;
+          const ctx = ctxRaw !== undefined && !Number.isNaN(ctxRaw) ? ctxRaw : 3;
+          const result = await gitDiff(pathInput, ctx);
+          printInfo(result);
+          session.messages.push(
+            newMessage("system", formatToolContext(`git-diff ${pathInput ?? ""}`.trim(), result)),
+          );
+          session.updatedAt = nowIso();
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Unknown error";
+          printError(message);
+        }
       } else if (command === "/file") {
         const pathInput = args.join(" ").trim();
         if (!pathInput) {
@@ -536,7 +563,22 @@ async function toolMode(args: string[]): Promise<void> {
     return;
   }
 
-  printError("Usage: acolyte tool <search|read> ...");
+  if (subcommand === "git-status") {
+    const result = await gitStatusShort();
+    printInfo(result);
+    return;
+  }
+
+  if (subcommand === "git-diff") {
+    const [pathInput, context] = rest;
+    const ctxRaw = context ? Number.parseInt(context, 10) : undefined;
+    const ctx = ctxRaw !== undefined && !Number.isNaN(ctxRaw) ? ctxRaw : 3;
+    const result = await gitDiff(pathInput, ctx);
+    printInfo(result);
+    return;
+  }
+
+  printError("Usage: acolyte tool <search|read|git-status|git-diff> ...");
   process.exitCode = 1;
 }
 
