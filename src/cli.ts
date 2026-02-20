@@ -82,9 +82,13 @@ function printHelp(): void {
   printInfo("");
   printSection("Tools");
   printInfo("  /search <pat>   Search repository text with ripgrep");
+  printInfo("  /s <pat>        Alias for /search");
   printInfo("  /read <path> [start] [end]  Read file snippet");
+  printInfo("  /r <path> [start] [end]  Alias for /read");
   printInfo("  /git-status     Show git status summary");
+  printInfo("  /gs             Alias for /git-status");
   printInfo("  /git-diff [path] [context]  Show git diff");
+  printInfo("  /gd [path] [context]  Alias for /git-diff");
   printInfo("  /run <cmd>      Run shell command");
   printInfo("  /verify         Run project validation (bun run verify)");
   printInfo("  /edit <path> <find> <replace> [--dry-run]  Replace text in file");
@@ -123,6 +127,17 @@ const CHAT_COMMANDS = [
   "/model",
   "/exit",
 ];
+
+const COMMAND_ALIASES: Record<string, string> = {
+  "/s": "/search",
+  "/r": "/read",
+  "/gs": "/git-status",
+  "/gd": "/git-diff",
+};
+
+export function resolveCommandAlias(command: string): string {
+  return COMMAND_ALIASES[command] ?? command;
+}
 
 function suggestCommand(input: string): string | null {
   const normalized = input.trim();
@@ -588,7 +603,8 @@ async function chatMode(): Promise<void> {
     }
 
     if (line.startsWith("/")) {
-      const [command, ...args] = line.split(/\s+/);
+      const [rawCommand, ...args] = line.split(/\s+/);
+      const command = resolveCommandAlias(rawCommand);
       if (command === "/help") {
         printHelp();
       } else if (command === "/clear") {

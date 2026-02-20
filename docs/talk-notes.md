@@ -25,28 +25,21 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Mastra: standardized agent/tool primitives to avoid framework drift.
 - Hosted-backend-ready contract: CLI can target local or hosted API without changing user workflow.
 
-## Milestones Log
+## Milestones (Condensed)
 ### 2026-02-20
-- Scaffolded CLI with session persistence and slash commands.
-- Added backend contract (`/v1/chat`) and status checks.
-- Added persistent memory notes and memory injection.
-- Added file context attachment support.
-- Added coding tools (`search`, `read`, `git-status`, `git-diff`, `run`, `edit`) in CLI.
-- Migrated backend to Mastra Agent + Mastra tools.
-- Added soul document (`docs/soul.md`) and wired it into backend instructions.
-- Added `/resume` session command and cleaned up CLI UX/header.
-- Added stronger tool-use behavior (multi-step execution + required-tool retry for tool-like requests).
-- Added response-level tool transparency (`Tools used` + concise evidence paths when available).
-- Added compact, tool-specific output formatting for `search/read/diff/run/status`.
-- Polished list-style UX for sessions/history/memory with concise headers and readable timestamps.
-- Updated `edit` output to a compact `Update(path)` block with replacement summary + added/removed lines + excerpt.
-- Added `bun run verify` and documented a stepwise autonomous feature workflow (`docs/development-workflow.md`).
-- Added local skill scaffold for autonomous feature delivery (`skills/autonomous-feature-delivery/SKILL.md`).
-- Standardized tool transcript titles to action-style blocks (`Run`, `Search`, `Read`, `Diff`).
-- Added inline result summaries in tool output (search match/file counts, read line counts).
-- Added `/verify` chat command to run project validation (`bun run verify`) in-place.
-- Added inline diff summary (`files changed`, `+added`, `-removed`) ahead of diff excerpts.
-- Improved transcript clarity: `Read` now shows repo-relative file paths and content-line counts; successful `Run` output suppresses noisy stderr blocks when stdout is present.
+- Core platform: CLI + backend + Mastra agent/tools + `docs/soul.md`.
+- Persistence: local sessions, memory notes, config.
+- Coding tools: `search`, `read`, `git-status`, `git-diff`, `run`, `edit`, plus `/verify`.
+- UX upgrades:
+  - cleaner banner/session flows (`/resume`, session switching)
+  - compact action-style tool transcripts (`Run`, `Search`, `Read`, `Diff`, `Update`)
+  - inline summaries (search counts, read line count, diff +/- summary)
+  - repo-relative read paths and reduced successful `Run` noise
+  - short aliases for speed (`/s`, `/r`, `/gs`, `/gd`)
+- Delivery workflow:
+  - `bun run verify` (`typecheck` + tests)
+  - autonomous feature loop in `docs/development-workflow.md`
+  - local skill scaffold in `skills/autonomous-feature-delivery/SKILL.md`
 
 ## Demo Flow (Short)
 1. Start backend: `bun --env-file=.env run serve`
@@ -66,7 +59,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Soul/behavior docs reduce style drift and improve consistency.
 
 ## Open Narrative Threads
-- Next: richer transcript-style tool blocks (Edit/Run summaries with focused line excerpts).
+- Next: richer transcript-style tool blocks (focused excerpts by default, expandable when needed).
 - Add retrieval ranking and memory promotion rules.
 - Move persistence from local JSON to centralized Postgres/pgvector.
 - Add auth hardening and production deployment path.

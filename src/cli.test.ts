@@ -5,6 +5,7 @@ import {
   formatRunOutput,
   formatStatusOutput,
   formatTimestamp,
+  resolveCommandAlias,
   summarizeDiff,
   truncateText,
 } from "./cli";
@@ -93,5 +94,13 @@ describe("cli formatting helpers", () => {
   test("truncateText and formatTimestamp stay stable", () => {
     expect(truncateText("abcdef", 4)).toBe("abc…");
     expect(formatTimestamp("2026-02-20T15:06:12.000Z")).toMatch(/^2026-02-20 \d{2}:\d{2}$/);
+  });
+
+  test("resolveCommandAlias maps short commands", () => {
+    expect(resolveCommandAlias("/s")).toBe("/search");
+    expect(resolveCommandAlias("/r")).toBe("/read");
+    expect(resolveCommandAlias("/gs")).toBe("/git-status");
+    expect(resolveCommandAlias("/gd")).toBe("/git-diff");
+    expect(resolveCommandAlias("/run")).toBe("/run");
   });
 });
