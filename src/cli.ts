@@ -255,7 +255,9 @@ function printMemoryRows(rows: Awaited<ReturnType<typeof listMemories>>): void {
 
   for (const [idx, row] of rows.slice(0, 50).entries()) {
     const prefix = idx === 0 ? "  └ " : "    ";
-    printInfo(`${prefix}${row.id.slice(0, 12)}  ${formatTimestamp(row.createdAt)}  ${truncateText(row.content, 160)}`);
+    printInfo(
+      `${prefix}[${row.scope}] ${row.id.slice(0, 12)}  ${formatTimestamp(row.createdAt)}  ${truncateText(row.content, 160)}`,
+    );
   }
 }
 
@@ -768,27 +770,48 @@ async function statusMode(): Promise<void> {
 
 async function memoryMode(args: string[]): Promise<void> {
   const [subcommand, ...rest] = args;
+  const validScopes = new Set(["all", "user", "project"]);
 
   if (subcommand === "list" || !subcommand) {
-    const rows = await listMemories();
-    printSection(`• Memories (${rows.length})`);
+    const scopeRaw = subcommand === "list" ? rest[0] : undefined;
+    const scope = scopeRaw && validScopes.has(scopeRaw) ? scopeRaw : "all";
+    if (scopeRaw && !validScopes.has(scopeRaw)) {
+      printError("Usage: acolyte memory list [all|user|project]");
+      process.exitCode = 1;
+      return;
+    }
+    const rows = await listMemories({ scope: scope as "all" | "user" | "project" });
+    printSection(`• Memories (${scope}, ${rows.length})`);
     printMemoryRows(rows);
     return;
   }
 
   if (subcommand === "add") {
-    const content = rest.join(" ").trim();
+    let scope: "user" | "project" = "user";
+    const contentParts: string[] = [];
+    for (const token of rest) {
+      if (token === "--project") {
+        scope = "project";
+        continue;
+      }
+      if (token === "--user") {
+        scope = "user";
+        continue;
+      }
+      contentParts.push(token);
+    }
+    const content = contentParts.join(" ").trim();
     if (!content) {
-      printError("Usage: acolyte memory add <memory text>");
+      printError("Usage: acolyte memory add [--user|--project] <memory text>");
       process.exitCode = 1;
       return;
     }
-    const entry = await addMemory(content);
-    printInfo(`Saved memory ${entry.id.slice(0, 12)}.`);
+    const entry = await addMemory(content, { scope });
+    printInfo(`Saved ${scope} memory ${entry.id.slice(0, 12)}.`);
     return;
   }
 
-  printError("Usage: acolyte memory [list|add <text>]");
+  printError("Usage: acolyte memory [list [all|user|project]|add [--user|--project] <text>]");
   process.exitCode = 1;
 }
 

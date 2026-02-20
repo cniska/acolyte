@@ -46,7 +46,9 @@ No deployment is required for this mode.
 Personal memory notes:
 ```bash
 bun run src/cli.ts memory add "Prefer concise commit messages"
+bun run src/cli.ts memory add --project "Use kebab-case for route paths"
 bun run src/cli.ts memory list
+bun run src/cli.ts memory list project
 ```
 Saved memories are automatically injected as system context in future prompts.
 
@@ -59,7 +61,7 @@ bun run src/cli.ts config list
 
 Session management in chat:
 - `?` to toggle shortcuts/help
-- `/remember <text>` to save a memory note from chat
+- `/remember [--project] <text>` to save a memory note from chat
 - `/memories` to list saved memory notes
 - `/skills` to list local repo skills from `./skills/*/SKILL.md`
 - `/sessions` to list recent sessions

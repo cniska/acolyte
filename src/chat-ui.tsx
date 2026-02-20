@@ -39,6 +39,15 @@ const CHAT_SLASH_COMMANDS = [
   "/memories",
   "/exit",
 ] as const;
+const SHORTCUT_ITEMS = [
+  { key: "/new", description: "new session" },
+  { key: "/sessions", description: "list sessions" },
+  { key: "/resume <id>", description: "resume session" },
+  { key: "/skills", description: "open skills picker" },
+  { key: "/remember [--project] <text>", description: "save memory note" },
+  { key: "/memories", description: "list memories" },
+  { key: "/exit", description: "exit chat" },
+] as const;
 
 interface ChatAppProps {
   backend: Backend;
@@ -167,6 +176,31 @@ function truncateText(input: string, max = 72): string {
     return input;
   }
   return `${input.slice(0, Math.max(0, max - 1))}…`;
+}
+
+function formatShortcutRows(): string[] {
+  const width = process.stdout.columns ?? 96;
+  const columns = width >= 92 ? 2 : 1;
+  const rowsPerColumn = Math.ceil(SHORTCUT_ITEMS.length / columns);
+  const colWidth = columns > 1 ? Math.floor((width - 2) / columns) : width - 2;
+  const keyWidth = 16;
+  const lines: string[] = [];
+
+  for (let row = 0; row < rowsPerColumn; row += 1) {
+    let line = "  ";
+    for (let col = 0; col < columns; col += 1) {
+      const index = row + col * rowsPerColumn;
+      const item = SHORTCUT_ITEMS[index];
+      if (!item) {
+        continue;
+      }
+      const chunk = `${item.key.padEnd(keyWidth)}${item.description}`;
+      line += col < columns - 1 ? chunk.padEnd(colWidth) : chunk;
+    }
+    lines.push(line.trimEnd());
+  }
+
+  return lines;
 }
 
 function ChatApp(props: ChatAppProps) {
@@ -351,7 +385,7 @@ function ChatApp(props: ChatAppProps) {
         ...memories.slice(0, 10).map((entry) => ({
           id: `row_${crypto.randomUUID()}`,
           role: "system" as const,
-          content: `- ${entry.content}`,
+          content: `- [${entry.scope}] ${entry.content}`,
         })),
       ]);
       return;
@@ -359,26 +393,40 @@ function ChatApp(props: ChatAppProps) {
 
     if (text.startsWith("/remember")) {
       pushUserCommandRow();
-      const content = text.slice("/remember".length).trim();
+      const parts = text.split(/\s+/).slice(1);
+      let scope: "user" | "project" = "user";
+      const contentParts: string[] = [];
+      for (const part of parts) {
+        if (part === "--project") {
+          scope = "project";
+          continue;
+        }
+        if (part === "--user") {
+          scope = "user";
+          continue;
+        }
+        contentParts.push(part);
+      }
+      const content = contentParts.join(" ").trim();
       if (!content) {
         setRows((current) => [
           ...current,
           {
             id: `row_${crypto.randomUUID()}`,
             role: "system",
-            content: "Usage: /remember <memory text>",
+            content: "Usage: /remember [--user|--project] <memory text>",
           },
         ]);
         return;
       }
       try {
-        await addMemory(content);
+        const entry = await addMemory(content, { scope });
         setRows((current) => [
           ...current,
           {
             id: `row_${crypto.randomUUID()}`,
             role: "system",
-            content: `Saved memory: ${content}`,
+            content: `Saved ${entry.scope} memory: ${content}`,
           },
         ]);
       } catch (error) {
@@ -671,7 +719,13 @@ function ChatApp(props: ChatAppProps) {
           {slashSuggestions.length > 0 ? (
             <Text dimColor>{`  ${slashSuggestions.join("  ")}`}</Text>
           ) : showShortcuts ? (
-            <Text dimColor>{"  /new  /sessions  /skills  /resume <id>  /remember  /memories  /exit"}</Text>
+            <>
+              {formatShortcutRows().map((line, index) => (
+                <Text key={`shortcut-row-${index}`} dimColor>
+                  {line}
+                </Text>
+              ))}
+            </>
           ) : (
             <Text dimColor>  ? for shortcuts</Text>
           )}

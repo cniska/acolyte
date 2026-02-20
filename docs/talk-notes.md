@@ -23,7 +23,8 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Tools: Mastra tools for repo search/read/git/run/edit (`src/mastra-tools.ts`)
 - Local persistence:
   - sessions: `~/.acolyte/sessions.json`
-  - memory notes: `~/.acolyte/memory.json`
+  - user memory notes: `~/.acolyte/memory/user/*.md`
+  - project memory notes: `<repo>/.acolyte/memory/project/*.md`
   - config: `~/.acolyte/config.json`
 
 ## Why This Stack
@@ -58,6 +59,8 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
   - tool headers now use white action labels with dim gray args for readability
   - fixed overflow marker alignment in truncated tool output lists
   - command-aware chat UX with slash command suggestions and picker-style flows for `/skills` and `/resume`
+  - in-chat memory commands: `/remember [--project] <text>` and `/memories`
+  - filesystem Markdown memory with frontmatter headers (user + project scopes)
   - `?` toggles a compact panel under the prompt (`esc` closes); no enter required
   - shortcuts panel now adapts to terminal width (single-line vs compact stacked key hints)
 - Delivery workflow:
