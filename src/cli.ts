@@ -74,6 +74,7 @@ function printHelp(): void {
   printInfo("  /history        Show messages in this session");
   printInfo("  /sessions       List saved sessions");
   printInfo("  /use <id>       Switch to a session by id prefix");
+  printInfo("  /resume [id]    Resume active session or switch by id prefix");
   printInfo("  /title <text>   Rename current session");
   printInfo("  /model <name>   Change active model");
   printInfo("  /status         Show backend connection status");
@@ -104,6 +105,7 @@ const CHAT_COMMANDS = [
   "/history",
   "/sessions",
   "/use",
+  "/resume",
   "/title",
   "/status",
   "/search",
@@ -349,6 +351,25 @@ async function chatMode(): Promise<void> {
       } else if (command === "/use") {
         if (args.length === 0) {
           printWarning("Usage: /use <session-id-prefix>");
+        } else {
+          const next = findSessionByPrefix(store, args[0]);
+          if (!next) {
+            printWarning("No unique session found for that id prefix.");
+          } else {
+            session = next;
+            store.activeSessionId = next.id;
+            banner(session.model, session.id, CLI_VERSION);
+          }
+        }
+      } else if (command === "/resume") {
+        if (args.length === 0) {
+          const active = store.sessions.find((s) => s.id === store.activeSessionId);
+          if (!active) {
+            printWarning("No active session to resume.");
+          } else {
+            session = active;
+            banner(session.model, session.id, CLI_VERSION);
+          }
         } else {
           const next = findSessionByPrefix(store, args[0]);
           if (!next) {
