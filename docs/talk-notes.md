@@ -61,6 +61,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
   - command-aware chat UX with slash command suggestions and picker-style flows for `/skills` and `/resume`
   - in-chat memory commands: `/remember [--project] <text>` and `/memories`
   - filesystem Markdown memory with frontmatter headers (user + project scopes)
+  - tightened response contract for reviews: concise, repo-specific findings and no destructive git suggestions by default
   - `?` toggles a compact panel under the prompt (`esc` closes); no enter required
   - shortcuts panel now adapts to terminal width (single-line vs compact stacked key hints)
 - Delivery workflow:

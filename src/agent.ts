@@ -9,9 +9,10 @@ interface OpenAIClientConfig {
 
 const FALLBACK_PLAN =
   "1) Interpret request. 2) Use available repo tools when helpful. 3) Return concise, actionable answer.";
-const MAX_HISTORY_MESSAGES = 12;
-const MAX_HISTORY_TOTAL_CHARS = 7000;
-const MAX_MESSAGE_CHARS = 900;
+const MAX_HISTORY_MESSAGES = 20;
+const MAX_HISTORY_TOTAL_CHARS = 40_000;
+const MAX_MESSAGE_CHARS = 2_000;
+const MAX_ATTACHMENT_MESSAGE_CHARS = 20_000;
 
 function truncateText(input: string, maxChars: number): string {
   if (input.length <= maxChars) {
@@ -24,13 +25,20 @@ function normalizeModel(model: string): string {
   return model.includes("/") ? model : `openai/${model}`;
 }
 
-function buildAgentInput(req: ChatRequest): string {
+function messageCharLimit(content: string): number {
+  if (content.startsWith("Attached file:")) {
+    return MAX_ATTACHMENT_MESSAGE_CHARS;
+  }
+  return MAX_MESSAGE_CHARS;
+}
+
+export function buildAgentInput(req: ChatRequest): string {
   const lines: string[] = [];
   const recent = req.history.slice(-MAX_HISTORY_MESSAGES);
   let usedChars = 0;
   for (let i = recent.length - 1; i >= 0; i -= 1) {
     const message = recent[i];
-    const compact = truncateText(message.content, MAX_MESSAGE_CHARS);
+    const compact = truncateText(message.content, messageCharLimit(message.content));
     const line = `${message.role.toUpperCase()}: ${compact}`;
     if (usedChars + line.length > MAX_HISTORY_TOTAL_CHARS) {
       break;
@@ -80,6 +88,11 @@ function buildToolPolicy(baseInstructions: string): string {
     "- Prefer a short status line plus at most 3 concise bullets when summarizing command results.",
     "- Do not add optional next-step menus unless the user asks for options.",
     "- Do not restate capabilities after normal command/task confirmations.",
+    "Review response policy:",
+    "- For review requests, prioritize concrete findings first (bugs/risks/regressions), ordered by severity.",
+    "- Keep reviews concise: default to at most 3 high-signal findings unless the user asks for more.",
+    "- Ground each finding in repo/file evidence and avoid generic process advice unless explicitly requested.",
+    "- If evidence is incomplete, state that briefly instead of guessing broad recommendations.",
   ].join("\n");
 }
 
