@@ -39,6 +39,9 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Added response-level tool transparency (`Tools used` + concise evidence paths when available).
 - Added compact, tool-specific output formatting for `search/read/diff/run/status`.
 - Polished list-style UX for sessions/history/memory with concise headers and readable timestamps.
+- Updated `edit` output to a compact `Update(path)` block with replacement summary + added/removed lines + excerpt.
+- Added `bun run verify` and documented a stepwise autonomous feature workflow (`docs/development-workflow.md`).
+- Added local skill scaffold for autonomous feature delivery (`skills/autonomous-feature-delivery/SKILL.md`).
 
 ## Demo Flow (Short)
 1. Start backend: `bun --env-file=.env run serve`

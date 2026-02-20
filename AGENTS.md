@@ -34,7 +34,8 @@
 ## Validation
 
 - Run relevant validation after changes.
-- For this repo baseline, run `bun run typecheck` when TypeScript code changes.
+- For this repo baseline, run `bun run verify` for feature work (`typecheck` + `test`).
+- At minimum, run `bun run typecheck` when TypeScript code changes.
 - Document validation that could not run and why.
 
 ## Testing
@@ -46,6 +47,7 @@
 
 - Update docs when behavior or contracts change.
 - Keep `docs/project-plan.md` and `docs/talk-notes.md` updated continuously as implementation evolves.
+- For autonomous feature implementation, use the repo skill `skills/autonomous-feature-delivery/SKILL.md`.
 - Keep this file policy-only. Procedural workflows can be added later as reusable skills.
 
 ## Safety
