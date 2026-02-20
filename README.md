@@ -35,10 +35,11 @@ With `.env` loaded:
 ```bash
 bun run serve:env
 ```
-Optional: open Mastra Studio (if Mastra config is present):
+Optional: open Mastra Studio:
 ```bash
 bun run studio
 ```
+This starts Mastra dev server (`http://localhost:4111`) in the background and opens Studio (`http://localhost:3000`).
 
 4. In a second shell, run CLI against backend:
 ```bash
