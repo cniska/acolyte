@@ -27,6 +27,10 @@ With `.env` loaded:
 ```bash
 bun run serve:env
 ```
+Optional: open Mastra Studio (if Mastra config is present):
+```bash
+bun run studio
+```
 
 4. In a second shell, run CLI against backend:
 ```bash

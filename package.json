@@ -18,6 +18,7 @@
     "tool": "bun run src/cli.ts tool",
     "serve": "bun run src/server.ts",
     "serve:env": "bun --env-file=.env run src/server.ts",
+    "studio": "bunx mastra studio",
     "dev": "bun run src/cli.ts chat",
     "typecheck": "bunx tsc --noEmit",
     "test": "bun test",
