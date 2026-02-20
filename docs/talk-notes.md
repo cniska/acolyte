@@ -36,7 +36,9 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Persistence: local sessions, memory notes, config.
 - Coding tools: `search`, `read`, `git-status`, `git-diff`, `run`, `edit`, plus `/verify`.
 - UX upgrades:
-  - cleaner banner/session flows (`/resume`, session switching)
+  - migrated interactive chat renderer to Ink for deterministic prompt/transcript separation
+  - chat now starts with a fresh session by default (clean startup transcript)
+  - static header rendering to avoid focus/refocus duplication artifacts
   - compact action-style tool transcripts (`Run`, `Search`, `Read`, `Diff`, `Update`)
   - inline summaries (search counts, read line count, diff +/- summary)
   - fixed no-result search UX to report `No matches.` cleanly
@@ -49,7 +51,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
   - tool headers now use white action labels with dim gray args for readability
   - fixed overflow marker alignment in truncated tool output lists
   - hard-separated chat UX: only `?` and `/exit`; internal commands moved to top-level CLI/tool mode
-  - `?` toggles a compact panel under the prompt (`esc` closes); chat starts on a cleared screen
+  - `?` toggles a compact panel under the prompt (`esc` closes); no enter required
   - shortcuts panel now adapts to terminal width (single-line vs compact stacked key hints)
 - Delivery workflow:
   - `bun run verify` (`typecheck` + tests)

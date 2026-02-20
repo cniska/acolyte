@@ -48,6 +48,7 @@ bun run src/cli.ts config list
 Session management in chat:
 - `?` to toggle shortcuts/help
 - `/exit` to leave chat
+- chat starts in a fresh session by default (clean transcript)
 
 Attach file context in one-shot mode:
 ```bash
@@ -76,7 +77,7 @@ Inside `bun run chat`, try:
 
 ```text
 ?
-Use ripgrep to find where createBackend is defined and summarize what it does.
+Find where createBackend is defined and summarize what it does.
 Review src/agent.ts and list the top 3 improvements.
 Summarize the current architecture and the next 3 improvements.
 ```
