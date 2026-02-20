@@ -371,6 +371,8 @@ function buildDogfoodPrompt(task: string): string {
     "- Keep response concise and action-focused.",
     "- Use tools when needed; avoid guessing.",
     "- If edits are made, verify with bun run verify before final response.",
+    "- Return: (1) what changed, (2) validation result, (3) any residual risk/blocker.",
+    "- Keep output short unless asked for detail.",
     "",
   ].join("\n");
   return `${preamble}${task}`;
