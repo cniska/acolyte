@@ -71,17 +71,13 @@ function getOrCreateActiveSession(store: SessionStore, model: string): Session {
 }
 
 function printHelp(): void {
-  printSection("Chat Commands");
-  printInfo("  ?               Show this help");
-  printInfo("  /skills         Show available capabilities");
-  printInfo("  /exit           Exit the chat");
+  printSection("Shortcuts");
+  printInfo("  ?         Show shortcuts");
+  printInfo("  /skills   Show capabilities");
+  printInfo("  /exit     Exit chat");
   printInfo("");
-  printSection("CLI Commands");
-  printInfo("  acolyte run <prompt>         One-shot prompt");
-  printInfo("  acolyte history              Session list");
-  printInfo("  acolyte memory [list|add]    Memory management");
-  printInfo("  acolyte config [list|set|unset]  CLI config");
-  printInfo("  acolyte tool ...             Advanced/internal tools");
+  printInfo("Use top-level commands for advanced workflows:");
+  printInfo("  acolyte run|history|memory|config|tool");
 }
 
 function printSkills(): void {
