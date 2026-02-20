@@ -446,6 +446,12 @@ function ChatApp(props: ChatAppProps) {
         return;
       }
       if (atQuery !== null && atSuggestions.length > 0) {
+        const selected = atSuggestions[Math.max(0, Math.min(atSuggestionIndex, atSuggestions.length - 1))];
+        if (key.tab && shouldAutocompleteAtSubmit(value, selected)) {
+          setValue(applyAtSuggestion(value, selected ?? ""));
+          setInputRevision((current) => current + 1);
+          return;
+        }
         if (key.upArrow) {
           setAtSuggestionIndex((current) => Math.max(0, current - 1));
           return;
