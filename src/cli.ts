@@ -120,15 +120,10 @@ const INTERNAL_CHAT_COMMANDS = new Set([
   "/clear",
 ]);
 const SHORTCUT_PANEL_LINES = [
-  "shortcuts",
-  "  ? show shortcuts         /skills show capabilities    /exit exit chat",
-  "",
-  "keys",
-  "  enter send message       up/down command history      esc close shortcuts",
-  "  ctrl+c exit chat",
-  "",
-  "advanced: acolyte run|history|memory|config|tool",
+  "  /skills capabilities     /exit quit",
+  "  enter send               up/down history              esc close panel       ctrl+c exit",
 ] as const;
+const SHORTCUT_PANEL_TOP_PADDING_LINES = 1;
 
 function renderShortcutsPanel(): void {
   for (const line of SHORTCUT_PANEL_LINES) {
@@ -674,10 +669,11 @@ async function chatMode(): Promise<void> {
       shortcutsOpen = false;
       return;
     }
+    output.write("\x1b[u");
     output.write("\x1b[s\n");
-    for (let i = 0; i < SHORTCUT_PANEL_LINES.length; i += 1) {
+    for (let i = 0; i < SHORTCUT_PANEL_TOP_PADDING_LINES + SHORTCUT_PANEL_LINES.length; i += 1) {
       output.write("\x1b[2K");
-      if (i < SHORTCUT_PANEL_LINES.length - 1) {
+      if (i < SHORTCUT_PANEL_TOP_PADDING_LINES + SHORTCUT_PANEL_LINES.length - 1) {
         output.write("\n");
       }
     }
@@ -692,14 +688,14 @@ async function chatMode(): Promise<void> {
       return;
     }
     output.write("\r\x1b[K> ");
-    output.write("\x1b[s\n");
+    output.write("\x1b[s\n\n");
     renderShortcutsPanel();
     output.write("\x1b[u");
     shortcutsOpen = true;
   };
 
   const onKeypress = (str: string, key?: { name?: string }): void => {
-    if (key?.name === "escape") {
+    if (key?.name === "escape" || str === "\x1b") {
       if (shortcutsOpen) {
         closeShortcutsPanel();
       }
