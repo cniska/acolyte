@@ -28,7 +28,7 @@ describe("cli formatting helpers", () => {
 
   test("formatStatusOutput expands key-value status", () => {
     const out = formatStatusOutput("mode=openai service=acolyte-backend url=http://localhost:6767");
-    expect(out).toBe(["mode=openai", "service=acolyte-backend", "url=http://localhost:6767"].join("\n"));
+    expect(out).toBe(["mode: openai", "  service: acolyte-backend", "  url: http://localhost:6767"].join("\n"));
   });
 
   test("formatStatusOutput groups memory and OM fields", () => {
@@ -47,10 +47,10 @@ describe("cli formatting helpers", () => {
         "om_gen=4",
       ].join(" "),
     );
-    expect(out).toContain("memory=postgres");
-    expect(out).toContain("om=enabled scope=resource model=openai/gpt-5-mini");
-    expect(out).toContain("om_tokens=obs=3000 ref=8000");
-    expect(out).toContain("om_state=exists=true gen=4");
+    expect(out).toContain("memory: postgres");
+    expect(out).toContain("  om: enabled scope=resource model=openai/gpt-5-mini");
+    expect(out).toContain("  om_tokens: obs=3000 ref=8000");
+    expect(out).toContain("  om_state: exists=true gen=4");
   });
 
   test("formatDogfoodStatusOutput renders concise readiness lines", () => {
@@ -61,7 +61,7 @@ describe("cli formatting helpers", () => {
     });
     expect(out).toContain("Dogfood status");
     expect(out).toContain("- Verify: exit_code=0");
-    expect(out).toContain("- Backend: mode=openai service=acolyte-backend url=http://localhost:6767");
+    expect(out).toContain("- Backend: mode: openai   service: acolyte-backend   url: http://localhost:6767");
     expect(out).toContain("- OPENAI_API_KEY: set");
   });
 

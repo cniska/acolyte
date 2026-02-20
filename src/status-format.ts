@@ -29,20 +29,20 @@ export function formatStatusOutput(status: string): string {
 
   const mode = take("mode");
   if (mode) {
-    output.push(`mode=${mode}`);
+    output.push(`mode: ${mode}`);
   }
   const service = take("service");
   if (service) {
-    output.push(`service=${service}`);
+    output.push(`service: ${service}`);
   }
   const url = take("url");
   if (url) {
-    output.push(`url=${url}`);
+    output.push(`url: ${url}`);
   }
 
   const memoryStorage = take("memory_storage");
   if (memoryStorage) {
-    output.push(`memory=${memoryStorage}`);
+    output.push(`memory: ${memoryStorage}`);
   }
 
   const omEnabled = take("om");
@@ -59,14 +59,14 @@ export function formatStatusOutput(status: string): string {
     if (omModel) {
       parts.push(`model=${omModel}`);
     }
-    output.push(`om=${parts.join(" ")}`);
+    output.push(`om: ${parts.join(" ")}`);
   }
 
   const omObsTokens = take("om_obs_tokens");
   const omRefTokens = take("om_ref_tokens");
   if (omObsTokens || omRefTokens) {
     output.push(
-      `om_tokens=${[omObsTokens ? `obs=${omObsTokens}` : "", omRefTokens ? `ref=${omRefTokens}` : ""]
+      `om_tokens: ${[omObsTokens ? `obs=${omObsTokens}` : "", omRefTokens ? `ref=${omRefTokens}` : ""]
         .filter((part) => part.length > 0)
         .join(" ")}`,
     );
@@ -90,12 +90,15 @@ export function formatStatusOutput(status: string): string {
     if (omLastReflection) {
       parts.push(`last_reflection=${omLastReflection}`);
     }
-    output.push(`om_state=${parts.join(" ")}`);
+    output.push(`om_state: ${parts.join(" ")}`);
   }
 
   for (const [key, value] of fields.entries()) {
-    output.push(`${key}=${value}`);
+    output.push(`${key}: ${value}`);
   }
 
-  return output.join("\n");
+  if (output.length <= 1) {
+    return output.join("\n");
+  }
+  return [output[0], ...output.slice(1).map((line) => `  ${line}`)].join("\n");
 }
