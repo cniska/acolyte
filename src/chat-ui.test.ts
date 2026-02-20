@@ -1,7 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import type { Message, SessionStore } from "./types";
 import {
+  extractAtReferenceQuery,
   formatSessionList,
+  rankAtReferenceSuggestions,
   resolveResumeSession,
   sanitizeAssistantContent,
   suggestSlashCommands,
@@ -99,5 +101,20 @@ describe("chat-ui helpers", () => {
     expect(suggestSlashCommands("/rem")).toEqual(["/remember"]);
     expect(suggestSlashCommands("/unknown")).toEqual([]);
     expect(suggestSlashCommands("plain")).toEqual([]);
+  });
+
+  test("extractAtReferenceQuery parses @prefix", () => {
+    expect(extractAtReferenceQuery("@cli")).toBe("cli");
+    expect(extractAtReferenceQuery(" @cli")).toBe("cli");
+    expect(extractAtReferenceQuery("hello")).toBeNull();
+  });
+
+  test("rankAtReferenceSuggestions sorts by starts-with then length", () => {
+    const ranked = rankAtReferenceSuggestions(
+      ["src/chat-ui.tsx", "src/cli.ts", "src/config.ts", "README.md"],
+      "c",
+      3,
+    );
+    expect(ranked).toEqual(["src/cli.ts", "src/config.ts", "src/chat-ui.tsx"]);
   });
 });
