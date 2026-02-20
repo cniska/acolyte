@@ -34,6 +34,13 @@ bun run src/cli.ts memory list
 ```
 Saved memories are automatically injected as system context in future prompts.
 
+Local CLI config:
+```bash
+bun run src/cli.ts config set model gpt-5-mini
+bun run src/cli.ts config set apiUrl http://localhost:8787
+bun run src/cli.ts config list
+```
+
 ## Backend Behavior
 
 - `/v1/chat` runs a simple agent pipeline: `plan -> execute -> review`.

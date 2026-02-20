@@ -2,6 +2,7 @@
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { createBackend } from "./backend";
+import { readConfig, setConfigValue, unsetConfigValue } from "./config";
 import { addMemory, listMemories } from "./memory";
 import { createSession, readStore, writeStore } from "./storage";
 import type { Message, Session, SessionStore } from "./types";
@@ -15,15 +16,16 @@ import {
   streamText,
 } from "./ui";
 
-const DEFAULT_MODEL = process.env.ACOLYTE_MODEL ?? "gpt-5-mini";
+const FALLBACK_MODEL = "gpt-5-mini";
 
 function usage(): void {
-  printInfo("Usage: acolyte <chat|run|history|status|memory>");
+  printInfo("Usage: acolyte <chat|run|history|status|memory|config>");
   printInfo("  chat            Start interactive session");
   printInfo("  run <prompt>    Send one prompt and exit");
   printInfo("  history         Show recent sessions");
   printInfo("  status          Show backend connection status");
   printInfo("  memory          Manage personal memory notes");
+  printInfo("  config          Manage local CLI defaults");
 }
 
 function nowIso(): string {
@@ -157,8 +159,10 @@ async function handlePrompt(prompt: string, session: Session): Promise<void> {
 }
 
 async function chatMode(): Promise<void> {
+  const config = await readConfig();
   const store = await readStore();
-  let session = getOrCreateActiveSession(store, DEFAULT_MODEL);
+  const defaultModel = process.env.ACOLYTE_MODEL ?? config.model ?? FALLBACK_MODEL;
+  let session = getOrCreateActiveSession(store, defaultModel);
 
   banner(session.model, session.id);
 
@@ -167,7 +171,10 @@ async function chatMode(): Promise<void> {
   const persist = async (): Promise<void> => {
     await writeStore(store);
   };
-  const backend = createBackend();
+  const backend = createBackend({
+    apiUrl: config.apiUrl,
+    apiKey: config.apiKey,
+  });
 
   process.on("SIGINT", async () => {
     await persist();
@@ -258,8 +265,10 @@ async function runMode(args: string[]): Promise<void> {
     return;
   }
 
+  const config = await readConfig();
   const store = await readStore();
-  const session = getOrCreateActiveSession(store, DEFAULT_MODEL);
+  const defaultModel = process.env.ACOLYTE_MODEL ?? config.model ?? FALLBACK_MODEL;
+  const session = getOrCreateActiveSession(store, defaultModel);
   await handlePrompt(prompt, session);
   await writeStore(store);
 }
@@ -270,7 +279,11 @@ async function historyMode(): Promise<void> {
 }
 
 async function statusMode(): Promise<void> {
-  const backend = createBackend();
+  const config = await readConfig();
+  const backend = createBackend({
+    apiUrl: config.apiUrl,
+    apiKey: config.apiKey,
+  });
   try {
     const status = await backend.status();
     printInfo(status);
@@ -306,6 +319,53 @@ async function memoryMode(args: string[]): Promise<void> {
   process.exitCode = 1;
 }
 
+async function configMode(args: string[]): Promise<void> {
+  const [subcommand, key, ...rest] = args;
+  const valid = new Set(["model", "apiUrl", "apiKey"]);
+
+  if (!subcommand || subcommand === "list") {
+    const config = await readConfig();
+    printInfo(`model=${config.model ?? ""}`);
+    printInfo(`apiUrl=${config.apiUrl ?? ""}`);
+    printInfo(`apiKey=${config.apiKey ? "***set***" : ""}`);
+    return;
+  }
+
+  if (subcommand === "set") {
+    if (!key || !valid.has(key)) {
+      printError("Usage: acolyte config set <model|apiUrl|apiKey> <value>");
+      process.exitCode = 1;
+      return;
+    }
+
+    const value = rest.join(" ").trim();
+    if (!value) {
+      printError("Config value cannot be empty");
+      process.exitCode = 1;
+      return;
+    }
+
+    await setConfigValue(key as "model" | "apiUrl" | "apiKey", value);
+    printInfo(`Saved config ${key}.`);
+    return;
+  }
+
+  if (subcommand === "unset") {
+    if (!key || !valid.has(key)) {
+      printError("Usage: acolyte config unset <model|apiUrl|apiKey>");
+      process.exitCode = 1;
+      return;
+    }
+
+    await unsetConfigValue(key as "model" | "apiUrl" | "apiKey");
+    printInfo(`Removed config ${key}.`);
+    return;
+  }
+
+  printError("Usage: acolyte config [list|set|unset] ...");
+  process.exitCode = 1;
+}
+
 async function main(): Promise<void> {
   const [command, ...args] = process.argv.slice(2);
 
@@ -337,6 +397,11 @@ async function main(): Promise<void> {
 
   if (command === "memory") {
     await memoryMode(args);
+    return;
+  }
+
+  if (command === "config") {
+    await configMode(args);
     return;
   }
 
