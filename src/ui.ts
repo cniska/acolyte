@@ -9,13 +9,15 @@ const color = {
   bold: (value: string): string => `\x1b[1m${value}\x1b[22m`,
 };
 
-export function banner(model: string, sessionId: string): void {
-  const border = "─".repeat(66);
+export function banner(model: string, sessionId: string, version: string): void {
+  const border = "─".repeat(72);
   stdout.write(`${color.cyan(border)}\n`);
-  stdout.write(`${color.bold("Acolyte")}${color.dim("  personal agentic CLI")}`);
-  stdout.write(`  ${color.dim("model:")} ${model}  ${color.dim("session:")} ${sessionId.slice(0, 12)}\n`);
-  stdout.write(`${color.cyan(border)}\n`);
-  stdout.write(`${color.dim("Type /help for commands. Ctrl+C or /exit to quit.")}\n\n`);
+  stdout.write(`${color.bold("Acolyte")}${color.dim(" CLI")}\n`);
+  stdout.write(`${color.dim("v")} ${version} ${color.dim("• model")} ${model} ${color.dim("• session")} ${sessionId.slice(0, 12)}\n`);
+  stdout.write(
+    `${color.dim("quick")} /help • /search <pat> • /read <path> • /git-status • /run <cmd> • /exit\n`,
+  );
+  stdout.write(`${color.cyan(border)}\n\n`);
 }
 
 export function printUser(content: string): void {

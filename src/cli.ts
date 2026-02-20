@@ -30,6 +30,7 @@ import {
 } from "./ui";
 
 const FALLBACK_MODEL = "gpt-5-mini";
+const CLI_VERSION = process.env.npm_package_version ?? "dev";
 
 function usage(): void {
   printInfo("Usage: acolyte <chat|run|history|status|memory|config|tool>");
@@ -293,7 +294,7 @@ async function chatMode(): Promise<void> {
   const defaultModel = process.env.ACOLYTE_MODEL ?? config.model ?? FALLBACK_MODEL;
   let session = getOrCreateActiveSession(store, defaultModel);
 
-  banner(session.model, session.id);
+  banner(session.model, session.id, CLI_VERSION);
 
   const rl = createInterface({ input, output });
 
@@ -314,7 +315,7 @@ async function chatMode(): Promise<void> {
   while (true) {
     let line = "";
     try {
-      line = (await rl.question("acolyte> ")).trim();
+      line = (await rl.question("> ")).trim();
     } catch (error) {
       const code = (error as { code?: string })?.code;
       if (code === "ERR_USE_AFTER_CLOSE") {
@@ -334,13 +335,13 @@ async function chatMode(): Promise<void> {
         printHelp();
       } else if (command === "/clear") {
         clearScreen();
-        banner(session.model, session.id);
+        banner(session.model, session.id, CLI_VERSION);
       } else if (command === "/new") {
         const created = createSession(session.model);
         store.sessions.unshift(created);
         store.activeSessionId = created.id;
         session = created;
-        banner(session.model, session.id);
+        banner(session.model, session.id, CLI_VERSION);
       } else if (command === "/history") {
         printSessionHistory(session);
       } else if (command === "/sessions") {
@@ -355,7 +356,7 @@ async function chatMode(): Promise<void> {
           } else {
             session = next;
             store.activeSessionId = next.id;
-            banner(session.model, session.id);
+            banner(session.model, session.id, CLI_VERSION);
           }
         }
       } else if (command === "/title") {
