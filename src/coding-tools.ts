@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { mkdir, writeFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
 
 async function runCommand(cmd: string[]): Promise<{ code: number; stdout: string; stderr: string }> {
   const proc = Bun.spawn({
@@ -137,4 +138,35 @@ export async function runShellCommand(command: string, timeoutMs = 60_000): Prom
 
 export async function runTestCommand(command = "bun run test"): Promise<string> {
   return runShellCommand(command, 120_000);
+}
+
+export async function editFileReplace(input: {
+  path: string;
+  find: string;
+  replace: string;
+  dryRun?: boolean;
+}): Promise<string> {
+  const absPath = resolve(input.path);
+  const raw = await readFile(absPath, "utf8");
+
+  if (!input.find) {
+    throw new Error("Find text cannot be empty");
+  }
+
+  const count = raw.split(input.find).length - 1;
+  if (count === 0) {
+    throw new Error("Find text not found in file");
+  }
+
+  const next = raw.replaceAll(input.find, input.replace);
+  if (!input.dryRun) {
+    await mkdir(dirname(absPath), { recursive: true });
+    await writeFile(absPath, next, "utf8");
+  }
+
+  return [
+    `path=${absPath}`,
+    `matches=${count}`,
+    `dry_run=${input.dryRun ? "true" : "false"}`,
+  ].join("\n");
 }

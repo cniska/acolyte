@@ -2,7 +2,15 @@
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { createBackend } from "./backend";
-import { gitDiff, gitStatusShort, readSnippet, runShellCommand, runTestCommand, searchRepo } from "./coding-tools";
+import {
+  editFileReplace,
+  gitDiff,
+  gitStatusShort,
+  readSnippet,
+  runShellCommand,
+  runTestCommand,
+  searchRepo,
+} from "./coding-tools";
 import { readConfig, setConfigValue, unsetConfigValue } from "./config";
 import { buildFileContext } from "./file-context";
 import { addMemory, listMemories } from "./memory";
@@ -28,7 +36,7 @@ function usage(): void {
   printInfo("  status          Show backend connection status");
   printInfo("  memory          Manage personal memory notes");
   printInfo("  config          Manage local CLI defaults");
-  printInfo("  tool            Run coding tools (search/read/git/run/test)");
+  printInfo("  tool            Run coding tools (search/read/git/run/test/edit)");
 }
 
 function nowIso(): string {
@@ -71,6 +79,7 @@ function printHelp(): void {
   printInfo("  /git-diff [path] [context]  Show git diff");
   printInfo("  /run <cmd>      Run shell command");
   printInfo("  /test [cmd]     Run tests (default: bun run test)");
+  printInfo("  /edit <path> <find> <replace> [--dry-run]  Replace text in file");
   printInfo("  /file <path>    Attach a local text file to this session");
   printInfo("  /remember <x>   Add a personal memory note");
   printInfo("  /memories       Show personal memory notes");
@@ -212,6 +221,26 @@ function parseRunArgs(args: string[]): { files: string[]; prompt: string } {
   }
 
   return { files, prompt: promptTokens.join(" ").trim() };
+}
+
+function parseEditArgs(args: string[]): {
+  path: string;
+  find: string;
+  replace: string;
+  dryRun: boolean;
+} {
+  const dryRun = args.includes("--dry-run");
+  const clean = args.filter((a) => a !== "--dry-run");
+  if (clean.length < 3) {
+    throw new Error("Usage: /edit <path> <find> <replace> [--dry-run]");
+  }
+  const [path, find, ...replaceParts] = clean;
+  return {
+    path,
+    find,
+    replace: replaceParts.join(" "),
+    dryRun,
+  };
 }
 
 async function chatMode(): Promise<void> {
@@ -375,6 +404,19 @@ async function chatMode(): Promise<void> {
           const result = await runTestCommand(cmd);
           printInfo(result);
           session.messages.push(newMessage("system", formatToolContext(`test ${cmd}`, result)));
+          session.updatedAt = nowIso();
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Unknown error";
+          printError(message);
+        }
+      } else if (command === "/edit") {
+        try {
+          const parsed = parseEditArgs(args);
+          const result = await editFileReplace(parsed);
+          printInfo(result);
+          session.messages.push(
+            newMessage("system", formatToolContext(`edit ${parsed.path}`, result)),
+          );
           session.updatedAt = nowIso();
         } catch (error) {
           const message = error instanceof Error ? error.message : "Unknown error";
@@ -625,7 +667,22 @@ async function toolMode(args: string[]): Promise<void> {
     return;
   }
 
-  printError("Usage: acolyte tool <search|read|git-status|git-diff|run|test> ...");
+  if (subcommand === "edit") {
+    let parsed: ReturnType<typeof parseEditArgs>;
+    try {
+      parsed = parseEditArgs(rest);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Invalid edit args";
+      printError(message.replace("/edit", "acolyte tool edit"));
+      process.exitCode = 1;
+      return;
+    }
+    const result = await editFileReplace(parsed);
+    printInfo(result);
+    return;
+  }
+
+  printError("Usage: acolyte tool <search|read|git-status|git-diff|run|test|edit> ...");
   process.exitCode = 1;
 }
 

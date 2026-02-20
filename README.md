@@ -58,6 +58,11 @@ Batch coding tools:
 ```bash
 bun run src/cli.ts tool search "createBackend"
 bun run src/cli.ts tool read src/cli.ts 1 80
+bun run src/cli.ts tool git-status
+bun run src/cli.ts tool git-diff src/cli.ts 3
+bun run src/cli.ts tool run "bun run typecheck"
+bun run src/cli.ts tool test "bun run typecheck"
+bun run src/cli.ts tool edit src/cli.ts Acolyte Acolyte --dry-run
 ```
 
 ## Backend Behavior

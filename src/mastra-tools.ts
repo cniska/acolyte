@@ -1,6 +1,14 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
-import { gitDiff, gitStatusShort, readSnippet, runShellCommand, runTestCommand, searchRepo } from "./coding-tools";
+import {
+  editFileReplace,
+  gitDiff,
+  gitStatusShort,
+  readSnippet,
+  runShellCommand,
+  runTestCommand,
+  searchRepo,
+} from "./coding-tools";
 
 export const searchRepoTool = createTool({
   id: "search-repo",
@@ -80,6 +88,26 @@ export const runTestsTool = createTool({
   },
 });
 
+export const editFileTool = createTool({
+  id: "edit-file-replace",
+  description: "Replace exact text in a file. Supports dry run mode.",
+  inputSchema: z.object({
+    path: z.string().min(1),
+    find: z.string().min(1),
+    replace: z.string(),
+    dryRun: z.boolean().optional(),
+  }),
+  execute: async (input) => {
+    const result = await editFileReplace({
+      path: input.path,
+      find: input.find,
+      replace: input.replace,
+      dryRun: input.dryRun ?? false,
+    });
+    return { result };
+  },
+});
+
 export const acolyteTools = {
   searchRepo: searchRepoTool,
   readFileSnippet: readFileSnippetTool,
@@ -87,4 +115,5 @@ export const acolyteTools = {
   gitDiff: gitDiffTool,
   runCommand: runCommandTool,
   runTests: runTestsTool,
+  editFileReplace: editFileTool,
 };
