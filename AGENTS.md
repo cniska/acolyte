@@ -28,7 +28,7 @@
 - Choose pragmatic solutions with low maintenance overhead.
 - Avoid unnecessary indirection and abstractions.
 - Prefer root-cause fixes over workaround-only patches.
-- Do not introduce intentional tech debt unless explicitly tracked with `TODO(username):`.
+- Do not add technical debt unless explicitly agreed with the user and tracked with `TODO(username):` plus a docs note.
 - Remove temporary debug code before review/commit.
 
 ## Validation
