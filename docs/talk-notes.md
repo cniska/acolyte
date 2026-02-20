@@ -36,6 +36,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Added soul document (`docs/soul.md`) and wired it into backend instructions.
 - Added `/resume` session command and cleaned up CLI UX/header.
 - Added stronger tool-use behavior (multi-step execution + required-tool retry for tool-like requests).
+- Added response-level tool transparency (`Tools used` + concise evidence paths when available).
 
 ## Demo Flow (Short)
 1. Start backend: `bun --env-file=.env run serve`
@@ -55,7 +56,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Soul/behavior docs reduce style drift and improve consistency.
 
 ## Open Narrative Threads
-- Next: add explicit tool traces in user-visible responses so tool evidence is transparent.
+- Next: improve tool-specific output formatting (Claude-style compact blocks per tool type).
 - Add retrieval ranking and memory promotion rules.
 - Move persistence from local JSON to centralized Postgres/pgvector.
 - Add auth hardening and production deployment path.

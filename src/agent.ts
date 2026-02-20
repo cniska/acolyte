@@ -1,4 +1,5 @@
 import { Agent } from "@mastra/core/agent";
+import { relative } from "node:path";
 import type { ChatRequest, ChatResponse } from "./api";
 import { acolyteTools } from "./mastra-tools";
 
@@ -81,6 +82,89 @@ function createAcolyteAgent(input: { model: string; instructions: string }): Age
   });
 }
 
+function toolNameList(toolCalls: Array<{ payload?: { toolName?: string } }>): string[] {
+  const names = new Set<string>();
+  for (const call of toolCalls) {
+    const name = call?.payload?.toolName;
+    if (name) {
+      names.add(name);
+    }
+  }
+  return [...names];
+}
+
+function stringifyToolResult(result: unknown): string {
+  if (typeof result === "string") {
+    return result;
+  }
+  if (result && typeof result === "object" && "result" in (result as Record<string, unknown>)) {
+    const inner = (result as Record<string, unknown>).result;
+    if (typeof inner === "string") {
+      return inner;
+    }
+  }
+  return "";
+}
+
+function normalizePath(pathInput: string): string {
+  const rel = relative(process.cwd(), pathInput);
+  if (!rel || rel.startsWith("..")) {
+    return pathInput;
+  }
+  return rel;
+}
+
+function extractEvidencePaths(toolResults: Array<{ payload?: { toolName?: string; result?: unknown } }>): string[] {
+  const paths = new Set<string>();
+
+  for (const item of toolResults) {
+    const toolName = item?.payload?.toolName ?? "";
+    const text = stringifyToolResult(item?.payload?.result);
+    if (!text) {
+      continue;
+    }
+
+    if (toolName === "search-repo") {
+      const line = text.split("\n").find((row) => row.startsWith("./") && row.includes(":"));
+      if (line) {
+        const match = line.match(/^\.\/([^:]+):\d+:/);
+        if (match?.[1]) {
+          paths.add(match[1]);
+        }
+      }
+    }
+
+    if (toolName === "read-file-snippet") {
+      const line = text.split("\n").find((row) => row.startsWith("File: "));
+      if (line) {
+        const file = line.replace(/^File:\s+/, "").trim();
+        if (file) {
+          paths.add(normalizePath(file));
+        }
+      }
+    }
+  }
+
+  return [...paths].slice(0, 3);
+}
+
+function buildToolTransparency(input: {
+  toolCalls: Array<{ payload?: { toolName?: string } }>;
+  toolResults: Array<{ payload?: { toolName?: string; result?: unknown } }>;
+}): string {
+  const names = toolNameList(input.toolCalls);
+  if (names.length === 0) {
+    return "";
+  }
+
+  const evidence = extractEvidencePaths(input.toolResults);
+  const lines = [`Tools used: ${names.join(", ")}`];
+  if (evidence.length > 0) {
+    lines.push(`Evidence: ${evidence.join(", ")}`);
+  }
+  return lines.join("\n");
+}
+
 export async function runAgent(input: {
   request: ChatRequest;
   openai: OpenAIClientConfig;
@@ -109,8 +193,15 @@ export async function runAgent(input: {
     });
   }
 
+  const toolCalls = (result.toolCalls ?? []) as Array<{ payload?: { toolName?: string } }>;
+  const toolResults = (result.toolResults ?? []) as Array<{
+    payload?: { toolName?: string; result?: unknown };
+  }>;
+  const transparency = buildToolTransparency({ toolCalls, toolResults });
+  const output = transparency ? `${result.text.trim()}\n\n${transparency}` : result.text.trim();
+
   return {
     model: input.request.model,
-    output: result.text.trim(),
+    output,
   };
 }
