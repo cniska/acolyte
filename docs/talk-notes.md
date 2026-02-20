@@ -43,27 +43,14 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Persistence: local sessions, memory notes, config.
 - Coding tools: `search`, `read`, `git-status`, `git-diff`, `run`, `edit`, plus `/verify`.
 - UX upgrades:
-  - migrated interactive chat renderer to Ink for deterministic prompt/transcript separation
-  - chat now starts with a fresh session by default (clean startup transcript)
-  - added `/resume <session-id-prefix>` to restore prior sessions on demand
-  - static header rendering to avoid focus/refocus duplication artifacts
-  - compact action-style tool transcripts (`Run`, `Search`, `Read`, `Diff`, `Update`)
-  - inline summaries (search counts, read line count, diff +/- summary)
-  - fixed no-result search UX to report `No matches.` cleanly
-  - run output now shows command duration (`duration_ms`) with exit code
-  - edit summaries now include changed location count and change-only excerpts
-  - git status summaries (`N changed files`) before detailed entries
-  - repo-relative read paths and reduced successful `Run` noise
-  - typo-tolerant command suggestions (`Did you mean ...` / `Try: ...`) for unknown slash commands
-  - switched CLI accent color to a lighter accessible royal-purple branding
-  - tool headers now use white action labels with dim gray args for readability
-  - fixed overflow marker alignment in truncated tool output lists
-  - command-aware chat UX with slash command suggestions and picker-style flows for `/skills` and `/resume`
-  - in-chat memory commands: `/remember [--project] <text>` and `/memories`
-  - filesystem Markdown memory with frontmatter headers (user + project scopes)
-  - tightened response contract for reviews: concise, repo-specific findings and no destructive git suggestions by default
-  - `?` toggles a compact panel under the prompt (`esc` closes); no enter required
-  - shortcuts panel now adapts to terminal width (single-line vs compact stacked key hints)
+  - moved chat UI to Ink with stable prompt/transcript separation
+  - added session controls (`/new`, `/sessions`, `/resume`) and skills picker UX
+  - added in-chat memory commands (`/remember [--project]`, `/memories`)
+  - switched memory store to Markdown files with frontmatter (user + project scopes)
+  - added `@path` suggestions in chat and attachment of referenced files to model context
+  - improved prompt ergonomics (word navigation, reliable delete behavior, autocomplete fixes)
+  - tightened review style policy (concise, evidence-first, no destructive git suggestions)
+  - polished transcript output (compact tool blocks, no-result clarity, duration summaries)
 - Delivery workflow:
   - `bun run verify` (`typecheck` + tests)
   - autonomous feature loop in `docs/development-workflow.md`
@@ -74,11 +61,10 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 2. Set CLI backend once: `bun run src/cli.ts config set apiUrl http://localhost:8787`
 3. Start chat: `bun run chat`
 4. Show:
-   - `/remember ...` and `/memories`
-   - `/search createBackend`
-   - `/read src/backend.ts 1 80`
-   - `/file src/cli.ts`
-   - ask Acolyte to reason over attached/tool context
+   - `@src/agent.ts review this file`
+   - `/remember [--project] ...` and `/memories`
+   - `/resume` and `/skills`
+   - tool-backed reasoning over attached file context
 
 ## Key Talking Points
 - Interactive-first CLI beats dashboard-first UX for coding workflows.
