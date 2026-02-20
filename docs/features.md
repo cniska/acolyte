@@ -14,10 +14,11 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - In-chat dogfooding readiness check: `/dogfood-status` with short alias `/ds`.
 - Non-interactive dogfooding readiness command: `acolyte dogfood-status`.
 - Skills picker + command support: `/skills` and `$` shortcut.
-- Memory commands in chat: `/remember [--project] <text>`, `/memories`.
+- Memory commands in chat: `/remember [--project] <text>`, `/memory` (alias: `/mem`).
 - Automatic memory-context injection from saved user/project memories.
-- Mastra Studio agent memory with observational memory enabled (thread scope).
-- Backend chat now passes session/thread identity to Mastra memory for per-session observational memory in remote mode.
+- Mastra Studio agent memory with observational memory enabled (resource scope).
+- Backend chat passes session/thread identity to Mastra memory for turn continuity while observational memory remains resource-scoped.
+- Per-role model overrides with fallback-to-main (`ACOLYTE_MODEL_PLANNER|CODER|REVIEWER` -> `ACOLYTE_MODEL`).
 - Subagent v1 routing (`planner` / `coder` / `reviewer`) with explicit per-role context handoff.
 - Mastra Studio exposes role agents (`Planner`, `Coder`, `Reviewer`) plus default `acolyte` alias.
 - Dogfooding workflow command: `/dogfood <task>` with verify-first loop.

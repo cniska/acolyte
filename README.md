@@ -20,6 +20,8 @@ OPENAI_API_KEY=...
 # DATABASE_URL=postgres://acolyte:acolyte@localhost:5432/acolyte
 ```
 
+Role model vars are optional and fall back to `ACOLYTE_MODEL`.
+
 3. Start backend:
 ```bash
 bun run serve:env
