@@ -34,6 +34,7 @@ import {
 
 const FALLBACK_MODEL = "gpt-5-mini";
 const CLI_VERSION = process.env.npm_package_version ?? "dev";
+const PROMPT = "❯ ";
 
 function usage(): void {
   printInfo("Usage: acolyte <chat|run|history|status|memory|config|tool>");
@@ -669,7 +670,7 @@ async function chatMode(): Promise<void> {
       return;
     }
     // Restore prompt anchor and clear everything below it in one pass.
-    output.write("\x1b[u\x1b[J\r\x1b[K> ");
+    output.write(`\x1b[u\x1b[J\r\x1b[K${PROMPT}`);
     output.write("\x1b[s\n\n");
     printInfo("  ? for shortcuts");
     output.write("\x1b[u");
@@ -682,7 +683,7 @@ async function chatMode(): Promise<void> {
       shortcutsOpen = false;
       return;
     }
-    output.write("\r\x1b[K> ");
+    output.write(`\r\x1b[K${PROMPT}`);
     output.write("\x1b[s\n\n");
     renderShortcutsPanel();
     output.write("\x1b[u");
@@ -742,14 +743,14 @@ async function chatMode(): Promise<void> {
     let promptHintRendered = false;
     try {
       if (output.isTTY && !shortcutsOpen) {
-        const question = rl.question("> ");
+        const question = rl.question(PROMPT);
         output.write("\x1b[s\n\n");
         printInfo("  ? for shortcuts");
         output.write("\x1b[u");
         promptHintRendered = true;
         line = (await question).trim();
       } else {
-        line = (await rl.question("> ")).trim();
+        line = (await rl.question(PROMPT)).trim();
       }
     } catch (error) {
       const code = (error as { code?: string })?.code;

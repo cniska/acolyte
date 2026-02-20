@@ -1,4 +1,5 @@
 import { stdout } from "node:process";
+import { homedir } from "node:os";
 
 const color = {
   dim: (value: string): string => `\x1b[2m${value}\x1b[22m`,
@@ -12,11 +13,13 @@ const color = {
 };
 
 export function banner(model: string, sessionId: string, version: string): void {
-  const border = "─".repeat(72);
-  stdout.write(`${color.brand(border)}\n`);
-  stdout.write(`${color.bold(color.brand("Acolyte"))}${color.dim(" CLI")}\n`);
-  stdout.write(`${color.dim("v")} ${version} ${color.dim("• model")} ${model} ${color.dim("• session")} ${sessionId.slice(0, 12)}\n`);
-  stdout.write(`${color.brand(border)}\n\n`);
+  const cwd = process.cwd();
+  const home = homedir();
+  const shownCwd = cwd === home ? "~" : cwd.startsWith(`${home}/`) ? `~${cwd.slice(home.length)}` : cwd;
+  stdout.write(`${color.bold(color.brand("Acolyte"))}${color.dim(` CLI v${version}`)}\n`);
+  stdout.write(`${model} ${color.dim("· session")} ${sessionId.slice(0, 12)}\n`);
+  stdout.write(`${color.dim(shownCwd)}\n`);
+  stdout.write("\n");
 }
 
 export function printUser(content: string): void {
