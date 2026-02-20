@@ -43,6 +43,8 @@ type PickerState =
 const TOOL_LABELS = ["Run", "Search", "Read", "Diff", "Edit", "Update", "Status"] as const;
 const COMMAND_WORDS = new Set(["bun", "bunx", "git", "npm", "pnpm", "yarn", "node", "npx"]);
 const BRAND_COLOR = "#A56EFF";
+const HIGHLIGHT_CODE_COLOR = "#B7C0CC";
+const HIGHLIGHT_PATH_COLOR = "#A8B1BC";
 const MAX_SKILL_INSTRUCTION_CHARS = 4000;
 const THINKING_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"] as const;
 const CHAT_SLASH_COMMANDS = [
@@ -1368,7 +1370,7 @@ function renderAssistantContent(content: string): React.ReactNode {
             {tokenizeForHighlighting(line).map((token, tokenIndex) => {
               if (token.kind === "code") {
                 return (
-                  <Text key={`${keyPrefix}-token-${lineIndex}-${tokenIndex}`} color="#B7C0CC">
+                  <Text key={`${keyPrefix}-token-${lineIndex}-${tokenIndex}`} color={HIGHLIGHT_CODE_COLOR}>
                     {token.text}
                   </Text>
                 );
@@ -1382,7 +1384,7 @@ function renderAssistantContent(content: string): React.ReactNode {
               }
               if (token.kind === "path") {
                 return (
-                  <Text key={`${keyPrefix}-token-${lineIndex}-${tokenIndex}`} underline color="#A8B1BC">
+                  <Text key={`${keyPrefix}-token-${lineIndex}-${tokenIndex}`} underline color={HIGHLIGHT_PATH_COLOR}>
                     {token.text}
                   </Text>
                 );
