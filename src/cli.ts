@@ -59,6 +59,8 @@ function printHelp(): void {
   printInfo("  /new            Start a new session");
   printInfo("  /history        Show messages in this session");
   printInfo("  /sessions       List saved sessions");
+  printInfo("  /use <id>       Switch to a session by id prefix");
+  printInfo("  /title <text>   Rename current session");
   printInfo("  /status         Show backend connection status");
   printInfo("  /remember <x>   Add a personal memory note");
   printInfo("  /memories       Show personal memory notes");
@@ -76,6 +78,20 @@ function listSessions(store: SessionStore): void {
     const active = session.id === store.activeSessionId ? "*" : " ";
     printInfo(`${active} ${session.id.slice(0, 12)}  ${session.model}  ${session.updatedAt}  ${session.title}`);
   }
+}
+
+function findSessionByPrefix(store: SessionStore, prefix: string): Session | null {
+  const needle = prefix.trim();
+  if (!needle) {
+    return null;
+  }
+
+  const matches = store.sessions.filter((s) => s.id.startsWith(needle));
+  if (matches.length !== 1) {
+    return null;
+  }
+
+  return matches[0];
 }
 
 function printSessionHistory(session: Session): void {
@@ -213,6 +229,28 @@ async function chatMode(): Promise<void> {
         printSessionHistory(session);
       } else if (command === "/sessions") {
         listSessions(store);
+      } else if (command === "/use") {
+        if (args.length === 0) {
+          printWarning("Usage: /use <session-id-prefix>");
+        } else {
+          const next = findSessionByPrefix(store, args[0]);
+          if (!next) {
+            printWarning("No unique session found for that id prefix.");
+          } else {
+            session = next;
+            store.activeSessionId = next.id;
+            banner(session.model, session.id);
+          }
+        }
+      } else if (command === "/title") {
+        const value = args.join(" ").trim();
+        if (!value) {
+          printWarning("Usage: /title <text>");
+        } else {
+          session.title = value.slice(0, 80);
+          session.updatedAt = nowIso();
+          printInfo("Session title updated.");
+        }
       } else if (command === "/status") {
         try {
           const status = await backend.status();

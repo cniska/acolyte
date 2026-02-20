@@ -41,6 +41,11 @@ bun run src/cli.ts config set apiUrl http://localhost:8787
 bun run src/cli.ts config list
 ```
 
+Session management in chat:
+- `/sessions` to list saved sessions
+- `/use <session-id-prefix>` to switch sessions
+- `/title <text>` to rename current session
+
 ## Backend Behavior
 
 - `/v1/chat` runs a simple agent pipeline: `plan -> execute -> review`.
