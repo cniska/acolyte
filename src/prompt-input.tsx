@@ -1,32 +1,9 @@
 import { Text, useInput } from "ink";
 import React, { useEffect, useRef, useState } from "react";
+import { resolvePromptAction } from "./prompt-keymap";
 
-const KEYS = {
-  ctrl: {
-    c: "c",
-    h: "\u0008",
-    u: "\u0015",
-    w: "w",
-    wordDelete: "\u0017",
-  },
-  meta: {
-    b: "b",
-    f: "f",
-  },
-  esc: {
-    altB: "\u001bb",
-    altF: "\u001bf",
-    altBackspace: "\u001b\u007f",
-    altCtrlH: "\u001b\u0008",
-    delete: "\u001b[3~",
-    home: ["\u001b[H", "\u001bOH", "\u001b[1~"],
-    end: ["\u001b[F", "\u001bOF", "\u001b[4~"],
-  },
-  chars: {
-    backspace: "\u007f",
-  },
-} as const;
 const META_PREFIX_WINDOW_MS = 150;
+const ESCAPE_CHAR = "\u001b";
 
 interface PromptInputProps {
   value: string;
@@ -76,7 +53,7 @@ export function PromptInput({
     (input, key) => {
       const now = Date.now();
       const hasMetaPrefix = metaPrefixAt.current !== null && now - metaPrefixAt.current <= META_PREFIX_WINDOW_MS;
-      if (input === "\u001b" && !key.backspace && !key.delete) {
+      if (input === ESCAPE_CHAR && !key.backspace && !key.delete) {
         metaPrefixAt.current = now;
         return;
       }
@@ -85,38 +62,32 @@ export function PromptInput({
         return;
       }
 
-      if (key.upArrow || key.downArrow || key.tab || (key.shift && key.tab) || (key.ctrl && input === KEYS.ctrl.c)) {
+      const action = resolvePromptAction(input, key, { hasMetaPrefix });
+      if (action.type === "noop") {
+        metaPrefixAt.current = null;
         return;
       }
-
-      if (key.return) {
+      if (action.type === "submit") {
         onSubmit(value);
         return;
       }
-
-      const isHome = key.home || KEYS.esc.home.includes(input as (typeof KEYS.esc.home)[number]);
-      if (isHome) {
+      if (action.type === "move_home") {
         setCursorOffset(0);
         return;
       }
-
-      const isEnd = key.end || KEYS.esc.end.includes(input as (typeof KEYS.esc.end)[number]);
-      if (isEnd) {
+      if (action.type === "move_end") {
         setCursorOffset(value.length);
         return;
       }
-
-      if ((key.meta && input === KEYS.meta.b) || input === KEYS.esc.altB) {
+      if (action.type === "move_word_left") {
         setCursorOffset((current) => moveWordLeft(value, current));
         return;
       }
-
-      if ((key.meta && input === KEYS.meta.f) || input === KEYS.esc.altF) {
+      if (action.type === "move_word_right") {
         setCursorOffset((current) => moveWordRight(value, current));
         return;
       }
-
-      if ((key.ctrl && input === KEYS.ctrl.w) || input === KEYS.ctrl.wordDelete) {
+      if (action.type === "delete_word_back") {
         metaPrefixAt.current = null;
         if (cursorOffset === 0) {
           return;
@@ -126,9 +97,7 @@ export function PromptInput({
         setCursorOffset(next);
         return;
       }
-
-      const isClearLine = (key.ctrl && input === KEYS.ctrl.u) || input === KEYS.ctrl.u;
-      if (isClearLine) {
+      if (action.type === "clear_line") {
         metaPrefixAt.current = null;
         if (value.length === 0) {
           return;
@@ -137,38 +106,15 @@ export function PromptInput({
         setCursorOffset(0);
         return;
       }
-
-      const isBackspaceLike = key.backspace || key.delete || input === KEYS.ctrl.h || input === KEYS.chars.backspace;
-      const isMetaWordDelete =
-        (isBackspaceLike && (hasMetaPrefix || key.meta || input.includes("\u001b"))) ||
-        input === KEYS.esc.altBackspace ||
-        input === KEYS.esc.altCtrlH;
-      if (isMetaWordDelete) {
-        metaPrefixAt.current = null;
-        if (cursorOffset === 0) {
-          return;
-        }
-        const next = moveWordLeft(value, cursorOffset);
-        onChange(`${value.slice(0, next)}${value.slice(cursorOffset)}`);
-        setCursorOffset(next);
-        return;
-      }
-
-      if (key.leftArrow) {
+      if (action.type === "move_left") {
         setCursorOffset((current) => Math.max(0, current - 1));
         return;
       }
-
-      if (key.rightArrow) {
+      if (action.type === "move_right") {
         setCursorOffset((current) => Math.min(value.length, current + 1));
         return;
       }
-
-      const isForwardDelete = input === KEYS.esc.delete;
-      const isBackspace =
-        key.backspace || input === KEYS.ctrl.h || input === KEYS.chars.backspace || (key.delete && !isForwardDelete);
-
-      if (isBackspace) {
+      if (action.type === "delete_back") {
         metaPrefixAt.current = null;
         if (cursorOffset === 0) {
           return;
@@ -177,8 +123,7 @@ export function PromptInput({
         setCursorOffset((current) => Math.max(0, current - 1));
         return;
       }
-
-      if (isForwardDelete) {
+      if (action.type === "delete_forward") {
         metaPrefixAt.current = null;
         if (cursorOffset >= value.length) {
           return;
@@ -187,15 +132,9 @@ export function PromptInput({
         return;
       }
 
-      // Ignore escape/control sequences so modifier shortcuts don't pollute input.
-      if (!input || key.ctrl || key.meta || input.includes("\u001b")) {
-        metaPrefixAt.current = null;
-        return;
-      }
-
       metaPrefixAt.current = null;
-      onChange(`${value.slice(0, cursorOffset)}${input}${value.slice(cursorOffset)}`);
-      setCursorOffset((current) => current + input.length);
+      onChange(`${value.slice(0, cursorOffset)}${action.text}${value.slice(cursorOffset)}`);
+      setCursorOffset((current) => current + action.text.length);
     },
     { isActive: focus },
   );
