@@ -10,6 +10,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - File and directory references via `@path` with suggestions/autocomplete.
 - Slash-command suggestions with arrow navigation and Tab/Enter autocomplete.
 - In-chat utility commands: `/status`, `/changes`.
+- In-chat dogfooding readiness check: `/dogfood-status` with short alias `/ds`.
 - Skills picker + command support: `/skills` and `$` shortcut.
 - Memory commands in chat: `/remember [--project] <text>`, `/memories`.
 - Dogfooding workflow command: `/dogfood <task>` with verify-first loop.
