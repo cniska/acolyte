@@ -929,7 +929,7 @@ function ChatApp(props: ChatAppProps) {
       try {
         const [backendStatus, verifyRaw] = await Promise.all([
           backend.status().catch((error) => (error instanceof Error ? error.message : "status unavailable")),
-          runShellCommand("bun run verify").catch((error) =>
+          runShellCommand("bun run verify", 30_000).catch((error) =>
             error instanceof Error ? `exit_code=1\nduration_ms=0\nstderr:\n${error.message}` : "exit_code=1\nduration_ms=0",
           ),
         ]);
