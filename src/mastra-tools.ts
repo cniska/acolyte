@@ -8,6 +8,8 @@ import {
   runShellCommand,
   searchRepo,
 } from "./coding-tools";
+import { appConfig } from "./app-config";
+import { compactToolOutput } from "./tool-output";
 
 export const searchRepoTool = createTool({
   id: "search-repo",
@@ -18,7 +20,7 @@ export const searchRepoTool = createTool({
   }),
   execute: async (input) => {
     const maxResults = input.maxResults ?? 40;
-    const result = await searchRepo(input.pattern, maxResults);
+    const result = compactToolOutput(await searchRepo(input.pattern, maxResults), appConfig.agent.toolOutputBudget.search);
     return { result };
   },
 });
@@ -34,7 +36,7 @@ export const readFileTool = createTool({
   execute: async (input) => {
     const start = input.start ? String(input.start) : undefined;
     const end = input.end ? String(input.end) : undefined;
-    const result = await readSnippet(input.path, start, end);
+    const result = compactToolOutput(await readSnippet(input.path, start, end), appConfig.agent.toolOutputBudget.read);
     return { result };
   },
 });
@@ -44,7 +46,7 @@ export const gitStatusTool = createTool({
   description: "Get git status --short --branch for the current repository.",
   inputSchema: z.object({}),
   execute: async () => {
-    const result = await gitStatusShort();
+    const result = compactToolOutput(await gitStatusShort(), appConfig.agent.toolOutputBudget.gitStatus);
     return { result };
   },
 });
@@ -57,7 +59,10 @@ export const gitDiffTool = createTool({
     contextLines: z.number().int().min(0).max(20).optional(),
   }),
   execute: async (input) => {
-    const result = await gitDiff(input.path, input.contextLines ?? 3);
+    const result = compactToolOutput(
+      await gitDiff(input.path, input.contextLines ?? 3),
+      appConfig.agent.toolOutputBudget.gitDiff,
+    );
     return { result };
   },
 });
@@ -70,7 +75,10 @@ export const runCommandTool = createTool({
     timeoutMs: z.number().int().min(500).max(120000).optional(),
   }),
   execute: async (input) => {
-    const result = await runShellCommand(input.command, input.timeoutMs ?? 60_000);
+    const result = compactToolOutput(
+      await runShellCommand(input.command, input.timeoutMs ?? 60_000),
+      appConfig.agent.toolOutputBudget.run,
+    );
     return { result };
   },
 });
@@ -85,12 +93,15 @@ export const editFileTool = createTool({
     dryRun: z.boolean().optional(),
   }),
   execute: async (input) => {
-    const result = await editFileReplace({
-      path: input.path,
-      find: input.find,
-      replace: input.replace,
-      dryRun: input.dryRun ?? false,
-    });
+    const result = compactToolOutput(
+      await editFileReplace({
+        path: input.path,
+        find: input.find,
+        replace: input.replace,
+        dryRun: input.dryRun ?? false,
+      }),
+      appConfig.agent.toolOutputBudget.edit,
+    );
     return { result };
   },
 });

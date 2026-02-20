@@ -31,5 +31,13 @@ export const appConfig = {
       maxAttachmentMessageTokens: 3000,
       maxPinnedMessageTokens: 1200,
     },
+    toolOutputBudget: {
+      search: { maxChars: 2200, maxLines: 80 },
+      read: { maxChars: 2600, maxLines: 120 },
+      gitStatus: { maxChars: 1800, maxLines: 80 },
+      gitDiff: { maxChars: 3200, maxLines: 120 },
+      run: { maxChars: 2600, maxLines: 120 },
+      edit: { maxChars: 1400, maxLines: 60 },
+    },
   },
 } as const;
