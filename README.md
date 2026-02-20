@@ -34,6 +34,11 @@ bun run src/cli.ts memory list
 ```
 Saved memories are automatically injected as system context in future prompts.
 
+## Backend Behavior
+
+- `/v1/chat` runs a simple agent pipeline: `plan -> execute -> review`.
+- If `OPENAI_API_KEY` is not set, backend runs deterministic mock mode.
+
 Optional auth:
 ```bash
 ACOLYTE_API_KEY=dev-secret bun run serve

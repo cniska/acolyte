@@ -1,12 +1,11 @@
 #!/usr/bin/env bun
-import type { ChatRequest, ChatResponse } from "./api";
+import type { ChatRequest } from "./api";
+import { runAgent } from "./agent";
 
 const PORT = Number(process.env.PORT ?? "8787");
 const API_KEY = process.env.ACOLYTE_API_KEY;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1";
-const SYSTEM_PROMPT =
-  "You are Acolyte, a pragmatic personal coding assistant. Be concise, accurate, and action-oriented.";
 
 function unauthorized(): Response {
   return new Response("Unauthorized", { status: 401 });
@@ -34,107 +33,6 @@ function isChatRequest(value: unknown): value is ChatRequest {
     typeof req.model === "string" &&
     Array.isArray(req.history)
   );
-}
-
-function buildMockReply(req: ChatRequest): ChatResponse {
-  const prompt = req.message.trim();
-  const lower = prompt.toLowerCase();
-
-  if (lower.includes("summarize")) {
-    const userCount = req.history.filter((m) => m.role === "user").length;
-    const assistantCount = req.history.filter((m) => m.role === "assistant").length;
-    return {
-      model: req.model,
-      output: `Summary: ${userCount} user messages and ${assistantCount} assistant messages in this session.`,
-    };
-  }
-
-  return {
-    model: req.model,
-    output: [
-      "Remote backend is active.",
-      "No OPENAI_API_KEY configured, so mock mode is enabled.",
-      `Echo: ${prompt}`,
-    ].join(" "),
-  };
-}
-
-function buildModelInput(req: ChatRequest): string {
-  const recent = req.history.slice(-12);
-  const lines = recent.map((msg) => `${msg.role.toUpperCase()}: ${msg.content.trim()}`);
-  lines.push(`USER: ${req.message.trim()}`);
-  return lines.join("\n");
-}
-
-function parseOutputText(payload: unknown): string | null {
-  if (!payload || typeof payload !== "object") {
-    return null;
-  }
-
-  const withDirect = payload as { output_text?: unknown; output?: unknown };
-  if (typeof withDirect.output_text === "string" && withDirect.output_text.trim().length > 0) {
-    return withDirect.output_text.trim();
-  }
-
-  if (!Array.isArray(withDirect.output)) {
-    return null;
-  }
-
-  for (const item of withDirect.output) {
-    if (!item || typeof item !== "object") {
-      continue;
-    }
-    const maybeContent = (item as { content?: unknown }).content;
-    if (!Array.isArray(maybeContent)) {
-      continue;
-    }
-    for (const chunk of maybeContent) {
-      if (!chunk || typeof chunk !== "object") {
-        continue;
-      }
-      const text = (chunk as { text?: unknown }).text;
-      if (typeof text === "string" && text.trim().length > 0) {
-        return text.trim();
-      }
-    }
-  }
-
-  return null;
-}
-
-async function buildReply(req: ChatRequest): Promise<ChatResponse> {
-  if (!OPENAI_API_KEY) {
-    return buildMockReply(req);
-  }
-
-  const response = await fetch(`${OPENAI_BASE_URL}/responses`, {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${OPENAI_API_KEY}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model: req.model,
-      input: buildModelInput(req),
-      instructions: SYSTEM_PROMPT,
-    }),
-  });
-
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`OpenAI API error (${response.status}): ${body || "no body"}`);
-  }
-
-  const payload = await response.json();
-  const output = parseOutputText(payload);
-  if (!output) {
-    throw new Error("OpenAI API returned no output text");
-  }
-
-  return {
-    output,
-    model: req.model,
-  };
 }
 
 function hasValidAuth(req: Request): boolean {
@@ -179,7 +77,13 @@ const server = Bun.serve({
     }
 
     try {
-      const reply = await buildReply(payload);
+      const reply = await runAgent({
+        request: payload,
+        openai: {
+          apiKey: OPENAI_API_KEY,
+          baseUrl: OPENAI_BASE_URL,
+        },
+      });
       return json(reply);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown backend error";
@@ -188,4 +92,4 @@ const server = Bun.serve({
   },
 });
 
-console.log(`acolyte backend listening on http://localhost:${server.port}`);
+console.log(`Acolyte backend listening on http://localhost:${server.port}`);
