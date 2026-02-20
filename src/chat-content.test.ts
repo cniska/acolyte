@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { sanitizeAssistantContent, tokenizeForHighlighting } from "./chat-content";
+import { sanitizeAssistantContent, tokenizeForHighlighting, wrapAssistantContent } from "./chat-content";
 
 describe("chat-content helpers", () => {
   test("sanitizeAssistantContent removes tools/evidence footer lines", () => {
@@ -23,5 +23,15 @@ describe("chat-content helpers", () => {
     expect(kinds).toContain("command");
     expect(kinds).toContain("code");
     expect(kinds).toContain("path");
+  });
+
+  test("wrapAssistantContent uses hanging indent for numbered items", () => {
+    const wrapped = wrapAssistantContent("1. hello world next line here and so on", 16);
+    const lines = wrapped.split("\n");
+    expect(lines.length).toBeGreaterThan(1);
+    expect(lines[0]?.startsWith("1. ")).toBe(true);
+    for (const line of lines.slice(1)) {
+      expect(line.startsWith("   ")).toBe(true);
+    }
   });
 });

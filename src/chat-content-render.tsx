@@ -1,6 +1,6 @@
 import { Text } from "ink";
 import React from "react";
-import { sanitizeAssistantContent, tokenizeForHighlighting } from "./chat-content";
+import { sanitizeAssistantContent, tokenizeForHighlighting, wrapAssistantContent } from "./chat-content";
 
 const TOOL_LABELS = ["Run", "Search", "Read", "Diff", "Edit", "Update", "Status"] as const;
 const COLORS = {
@@ -8,8 +8,9 @@ const COLORS = {
   highlightPath: "#A8B1BC",
 } as const;
 
-export function renderAssistantContent(content: string): React.ReactNode {
+export function renderAssistantContent(content: string, wrapWidth: number): React.ReactNode {
   const cleaned = sanitizeAssistantContent(content);
+  const wrapped = wrapAssistantContent(cleaned, wrapWidth);
 
   const renderHighlighted = (value: string, keyPrefix: string): React.ReactNode => {
     const lines = value.split("\n");
@@ -49,15 +50,15 @@ export function renderAssistantContent(content: string): React.ReactNode {
   };
 
   for (const label of TOOL_LABELS) {
-    if (cleaned.startsWith(`${label} `) || cleaned.startsWith(`${label}(`) || cleaned.startsWith(`${label}:`)) {
+    if (wrapped.startsWith(`${label} `) || wrapped.startsWith(`${label}(`) || wrapped.startsWith(`${label}:`)) {
       return (
         <>
           <Text bold>{label}</Text>
-          {renderHighlighted(cleaned.slice(label.length), `tool-${label}`)}
+          {renderHighlighted(wrapped.slice(label.length), `tool-${label}`)}
         </>
       );
     }
   }
 
-  return renderHighlighted(cleaned, "assistant");
+  return renderHighlighted(wrapped, "assistant");
 }
