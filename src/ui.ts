@@ -4,6 +4,7 @@ const color = {
   dim: (value: string): string => `\x1b[2m${value}\x1b[22m`,
   // 256-color palette index 183: lighter royal-purple with strong readability.
   brand: (value: string): string => `\x1b[38;5;183m${value}\x1b[39m`,
+  white: (value: string): string => `\x1b[37m${value}\x1b[39m`,
   green: (value: string): string => `\x1b[32m${value}\x1b[39m`,
   yellow: (value: string): string => `\x1b[33m${value}\x1b[39m`,
   red: (value: string): string => `\x1b[31m${value}\x1b[39m`,
@@ -43,6 +44,12 @@ export function printInfo(content: string): void {
 
 export function printSection(title: string): void {
   stdout.write(`${color.bold(color.brand(title))}\n`);
+}
+
+export function printToolHeader(title: string, detail?: string): void {
+  const base = color.bold(color.white(`• ${title}`));
+  const suffix = detail ? ` ${color.dim(detail)}` : "";
+  stdout.write(`${base}${suffix}\n`);
 }
 
 export function printOutput(content: string): void {

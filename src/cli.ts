@@ -24,6 +24,7 @@ import {
   printInfo,
   printOutput,
   printSection,
+  printToolHeader,
   printTool,
   printUser,
   printWarning,
@@ -333,7 +334,7 @@ function showToolResult(
   style: "plain" | "tool" = "plain",
   detail?: string,
 ): void {
-  printSection(`• ${title}${detail ? ` ${detail}` : ""}`);
+  printToolHeader(title, detail);
   const lines = content.split("\n");
   if (lines.length === 0) {
     printInfo("  └ (no output)");
