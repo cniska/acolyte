@@ -1,166 +1,48 @@
+import { Agent } from "@mastra/core/agent";
 import type { ChatRequest, ChatResponse } from "./api";
+import { acolyteTools } from "./mastra-tools";
 
 interface OpenAIClientConfig {
   apiKey?: string;
   baseUrl: string;
 }
 
-interface AgentContext {
-  request: ChatRequest;
-  openai: OpenAIClientConfig;
-  soulPrompt: string;
+const FALLBACK_PLAN =
+  "1) Interpret request. 2) Use available repo tools when helpful. 3) Return concise, actionable answer.";
+
+function normalizeModel(model: string): string {
+  return model.includes("/") ? model : `openai/${model}`;
 }
 
-function buildModelInput(req: ChatRequest): string {
+function buildAgentInput(req: ChatRequest): string {
+  const lines: string[] = [];
   const recent = req.history.slice(-16);
-  const lines = recent.map((msg) => `${msg.role.toUpperCase()}: ${msg.content.trim()}`);
+  for (const message of recent) {
+    lines.push(`${message.role.toUpperCase()}: ${message.content}`);
+  }
   lines.push(`USER: ${req.message.trim()}`);
   return lines.join("\n");
 }
 
-function parseOutputText(payload: unknown): string | null {
-  if (!payload || typeof payload !== "object") {
-    return null;
-  }
-
-  const withDirect = payload as { output_text?: unknown; output?: unknown };
-  if (typeof withDirect.output_text === "string" && withDirect.output_text.trim().length > 0) {
-    return withDirect.output_text.trim();
-  }
-
-  if (!Array.isArray(withDirect.output)) {
-    return null;
-  }
-
-  for (const item of withDirect.output) {
-    if (!item || typeof item !== "object") {
-      continue;
-    }
-    const maybeContent = (item as { content?: unknown }).content;
-    if (!Array.isArray(maybeContent)) {
-      continue;
-    }
-    for (const chunk of maybeContent) {
-      if (!chunk || typeof chunk !== "object") {
-        continue;
-      }
-      const text = (chunk as { text?: unknown }).text;
-      if (typeof text === "string" && text.trim().length > 0) {
-        return text.trim();
-      }
-    }
-  }
-
-  return null;
-}
-
-async function callOpenAI(input: {
-  model: string;
-  openai: OpenAIClientConfig;
-  instructions: string;
-  inputText: string;
-}): Promise<string> {
-  const { model, instructions, inputText } = input;
-  const { apiKey, baseUrl } = input.openai;
-  if (!apiKey) {
-    throw new Error("OPENAI_API_KEY is not configured");
-  }
-
-  const response = await fetch(`${baseUrl}/responses`, {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${apiKey}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model,
-      instructions,
-      input: inputText,
-    }),
-  });
-
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`OpenAI API error (${response.status}): ${body || "no body"}`);
-  }
-
-  const payload = await response.json();
-  const text = parseOutputText(payload);
-  if (!text) {
-    throw new Error("OpenAI API returned no output text");
-  }
-
-  return text;
-}
-
-async function planStep(ctx: AgentContext): Promise<string> {
-  if (!ctx.openai.apiKey) {
-    return "1) Interpret request. 2) Give concise actionable response. 3) Validate against memory/context.";
-  }
-
-  const instructions = [
-    ctx.soulPrompt,
-    "Create a short execution plan for answering the final user request.",
-    "Return 2-5 numbered steps.",
-    "No prose before or after the steps.",
-  ].join("\n\n");
-
-  return callOpenAI({
-    model: ctx.request.model,
-    openai: ctx.openai,
-    instructions,
-    inputText: buildModelInput(ctx.request),
-  });
-}
-
-async function executeStep(ctx: AgentContext, plan: string): Promise<string> {
-  if (!ctx.openai.apiKey) {
-    return [
+function buildMockReply(req: ChatRequest): ChatResponse {
+  return {
+    model: req.model,
+    output: [
       "Remote backend is active.",
       "No OPENAI_API_KEY configured, so mock mode is enabled.",
-      `Plan: ${plan}`,
-      `Echo: ${ctx.request.message.trim()}`,
-    ].join(" ");
-  }
-
-  const instructions = [
-    ctx.soulPrompt,
-    "Follow the execution plan provided below.",
-    "Be concise and concrete. If uncertain, state what to verify.",
-    "Execution plan:",
-    plan,
-  ].join("\n\n");
-
-  return callOpenAI({
-    model: ctx.request.model,
-    openai: ctx.openai,
-    instructions,
-    inputText: buildModelInput(ctx.request),
-  });
+      `Plan: ${FALLBACK_PLAN}`,
+      `Echo: ${req.message.trim()}`,
+    ].join(" "),
+  };
 }
 
-async function reviewStep(ctx: AgentContext, draft: string): Promise<string> {
-  if (!ctx.openai.apiKey) {
-    return draft;
-  }
-
-  const instructions = [
-    ctx.soulPrompt,
-    "Review and improve the draft response.",
-    "Keep factual claims grounded and concise.",
-    "Return only the final revised response.",
-  ].join("\n\n");
-
-  const input = [
-    `USER_REQUEST:\n${ctx.request.message.trim()}`,
-    `DRAFT_RESPONSE:\n${draft}`,
-  ].join("\n\n");
-
-  return callOpenAI({
-    model: ctx.request.model,
-    openai: ctx.openai,
-    instructions,
-    inputText: input,
+function createAcolyteAgent(input: { model: string; instructions: string }): Agent {
+  return new Agent({
+    id: "acolyte",
+    name: "Acolyte",
+    instructions: input.instructions,
+    model: normalizeModel(input.model),
+    tools: acolyteTools,
   });
 }
 
@@ -169,18 +51,19 @@ export async function runAgent(input: {
   openai: OpenAIClientConfig;
   soulPrompt: string;
 }): Promise<ChatResponse> {
-  const context: AgentContext = {
-    request: input.request,
-    openai: input.openai,
-    soulPrompt: input.soulPrompt,
-  };
+  if (!input.openai.apiKey) {
+    return buildMockReply(input.request);
+  }
 
-  const plan = await planStep(context);
-  const draft = await executeStep(context, plan);
-  const finalOutput = await reviewStep(context, draft);
+  const agent = createAcolyteAgent({
+    model: input.request.model,
+    instructions: input.soulPrompt,
+  });
+
+  const result = await agent.generate(buildAgentInput(input.request));
 
   return {
-    model: context.request.model,
-    output: finalOutput,
+    model: input.request.model,
+    output: result.text.trim(),
   };
 }
