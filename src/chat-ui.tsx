@@ -42,9 +42,11 @@ type PickerState =
 
 const TOOL_LABELS = ["Run", "Search", "Read", "Diff", "Edit", "Update", "Status"] as const;
 const COMMAND_WORDS = new Set(["bun", "bunx", "git", "npm", "pnpm", "yarn", "node", "npx"]);
-const BRAND_COLOR = "#A56EFF";
-const HIGHLIGHT_CODE_COLOR = "#B7C0CC";
-const HIGHLIGHT_PATH_COLOR = "#A8B1BC";
+const COLORS = {
+  brand: "#A56EFF",
+  highlightCode: "#B7C0CC",
+  highlightPath: "#A8B1BC",
+} as const;
 const MAX_SKILL_INSTRUCTION_CHARS = 4000;
 const THINKING_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"] as const;
 const CHAT_SLASH_COMMANDS = [
@@ -1213,7 +1215,7 @@ function ChatApp(props: ChatAppProps) {
     <Box flexDirection="column">
       <Static<HeaderLine> items={headerLines}>
         {(line) => (
-          <Text key={line.id} dimColor={line.dim} color={line.brand ? BRAND_COLOR : undefined}>
+          <Text key={line.id} dimColor={line.dim} color={line.brand ? COLORS.brand : undefined}>
             {line.id === "title" ? (
               <>
                 <Text bold>{line.text}</Text>
@@ -1265,7 +1267,7 @@ function ChatApp(props: ChatAppProps) {
                   return (
                     <Text key={skill.path}>
                       {selected ? "› " : "  "}
-                      <Text color={selected ? BRAND_COLOR : undefined}>
+                      <Text color={selected ? COLORS.brand : undefined}>
                         {skill.name.padEnd(nameWidth)}
                       </Text>{" "}
                       {truncateText(skill.description)}
@@ -1280,7 +1282,7 @@ function ChatApp(props: ChatAppProps) {
                 return (
                   <Text key={item.id}>
                     {selected ? "› " : "  "}
-                    <Text color={selected ? BRAND_COLOR : undefined}>{`${active} ${prefix}`}</Text>{" "}
+                    <Text color={selected ? COLORS.brand : undefined}>{`${active} ${prefix}`}</Text>{" "}
                     <Text dimColor>{truncateText(item.title || "New Session")}</Text>
                   </Text>
                 );
@@ -1327,7 +1329,7 @@ function ChatApp(props: ChatAppProps) {
               {atSuggestions.map((item) => (
                 <Text
                   key={`at-suggestion-${item}`}
-                  color={item === atSuggestions[atSuggestionIndex] ? BRAND_COLOR : undefined}
+                  color={item === atSuggestions[atSuggestionIndex] ? COLORS.brand : undefined}
                 >{`  ${item}`}</Text>
               ))}
             </>
@@ -1370,7 +1372,7 @@ function renderAssistantContent(content: string): React.ReactNode {
             {tokenizeForHighlighting(line).map((token, tokenIndex) => {
               if (token.kind === "code") {
                 return (
-                  <Text key={`${keyPrefix}-token-${lineIndex}-${tokenIndex}`} color={HIGHLIGHT_CODE_COLOR}>
+                  <Text key={`${keyPrefix}-token-${lineIndex}-${tokenIndex}`} color={COLORS.highlightCode}>
                     {token.text}
                   </Text>
                 );
@@ -1384,7 +1386,7 @@ function renderAssistantContent(content: string): React.ReactNode {
               }
               if (token.kind === "path") {
                 return (
-                  <Text key={`${keyPrefix}-token-${lineIndex}-${tokenIndex}`} underline color={HIGHLIGHT_PATH_COLOR}>
+                  <Text key={`${keyPrefix}-token-${lineIndex}-${tokenIndex}`} underline color={COLORS.highlightPath}>
                     {token.text}
                   </Text>
                 );
