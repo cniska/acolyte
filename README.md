@@ -91,9 +91,9 @@ Session management in chat:
 - `/df <task>` as a short alias for `/dogfood <task>`
 - `/dogfood --no-verify <task>` to skip the automatic verify step
 - `/dogfood-status` (or `/ds`) to run a quick dogfooding readiness check (backend + verify + key status)
-- `/mem` and `/rem` as short aliases for `/memories` and `/remember`
+- `/mem` and `/rem` as short aliases for `/memory` and `/remember`
 - `/remember [--project] <text>` to save a memory note from chat
-- `/memories` to list saved memory notes
+- `/memory` to list saved memory notes
 - `/skills` to list local repo skills from `./skills/*/SKILL.md`
 - `/sessions` to list recent sessions
 - `/new` to start a fresh session

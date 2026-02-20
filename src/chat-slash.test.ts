@@ -8,7 +8,7 @@ describe("chat-slash helpers", () => {
     expect(suggestSlashCommands("/st")).toEqual(["/status"]);
     expect(suggestSlashCommands("/d")).toEqual(["/dogfood", "/df", "/ds", "/dogfood-status"]);
     expect(suggestSlashCommands("/dogfood-s")).toEqual(["/dogfood-status"]);
-    expect(suggestSlashCommands("/mem")).toEqual(["/mem", "/memories"]);
+    expect(suggestSlashCommands("/mem")).toEqual(["/mem", "/memory"]);
     expect(suggestSlashCommands("/rem")).toEqual(["/rem", "/remember"]);
     expect(suggestSlashCommands("/unknown")).toEqual([]);
     expect(suggestSlashCommands("plain")).toEqual([]);
@@ -28,7 +28,7 @@ describe("chat-slash helpers", () => {
   test("resolveSlashAlias maps bare and argument forms", () => {
     expect(resolveSlashAlias("/df")).toBe("/dogfood");
     expect(resolveSlashAlias("/ds")).toBe("/dogfood-status");
-    expect(resolveSlashAlias("/mem")).toBe("/memories");
+    expect(resolveSlashAlias("/mem")).toBe("/memory");
     expect(resolveSlashAlias("/rem fix naming")).toBe("/remember fix naming");
     expect(resolveSlashAlias("plain")).toBe("plain");
   });

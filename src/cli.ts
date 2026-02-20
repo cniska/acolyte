@@ -100,7 +100,7 @@ const INTERNAL_CHAT_COMMANDS = new Set([
   "/edit",
   "/file",
   "/remember",
-  "/memories",
+  "/memory",
   "/status",
   "/new",
   "/history",

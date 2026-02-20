@@ -56,7 +56,7 @@ const SHORTCUT_ITEMS = [
   { key: "/resume <id>", description: "resume session" },
   { key: "/skills", description: "open skills picker" },
   { key: "/remember [--project] <text>", description: "save memory note" },
-  { key: "/memories", description: "list memories" },
+  { key: "/memory", description: "list memories" },
   { key: "/exit", description: "exit chat" },
 ] as const;
 
@@ -731,7 +731,7 @@ function ChatApp(props: ChatAppProps) {
       return;
     }
 
-    if (resolvedText === "/memories") {
+    if (resolvedText === "/memory") {
       pushUserCommandRow();
       const memories = await listMemories();
       if (memories.length === 0) {

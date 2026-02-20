@@ -12,7 +12,7 @@ export const CHAT_SLASH_COMMANDS = [
   "/rem",
   "/remember",
   "/mem",
-  "/memories",
+  "/memory",
   "/exit",
 ] as const;
 
@@ -20,7 +20,7 @@ const SLASH_ALIASES: Record<string, string> = {
   "/df": "/dogfood",
   "/ds": "/dogfood-status",
   "/rem": "/remember",
-  "/mem": "/memories",
+  "/mem": "/memory",
 };
 
 export function suggestSlashCommands(inputValue: string, max = 5): string[] {
