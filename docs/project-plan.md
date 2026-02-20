@@ -189,6 +189,7 @@ Build a personal AI assistant using Mastra, with a CLI-first interface that runs
 12. Add `@path` file reference support in interactive chat (autocomplete + attach semantics) to reduce command friction.
 13. Evaluate opt-in git hooks for high-signal checks only (for example `pre-push` verify), avoid mandatory noisy hooks.
 14. Execute a staged dogfooding ramp on `main`: start with low-risk tasks, then graduate to isolated feature slices as reliability remains stable.
+15. Maintain `docs/features.md` as the canonical shipped/in-progress/planned feature inventory, and keep README pointing to it.
 
 ## Prioritization Policy
 1. Prioritize correctness, reliability, and core workflow capability over cosmetic UX changes.
