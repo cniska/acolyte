@@ -4,6 +4,7 @@ import { Box, Static, Text, render, useApp, useInput } from "ink";
 import TextInput from "ink-text-input";
 import type { Backend } from "./backend";
 import { listMemories } from "./memory";
+import { createSession } from "./storage";
 import type { Message, Session, SessionStore } from "./types";
 
 type ChatRow = {
@@ -45,7 +46,7 @@ function newMessage(role: Message["role"], content: string): Message {
 
 const RESUME_TRANSCRIPT_ROWS = 40;
 
-function toRows(messages: Message[], limit = RESUME_TRANSCRIPT_ROWS): ChatRow[] {
+export function toRows(messages: Message[], limit = RESUME_TRANSCRIPT_ROWS): ChatRow[] {
   const rows: ChatRow[] = [];
   for (const message of messages) {
     if (message.role === "user" || message.role === "assistant") {
@@ -57,6 +58,44 @@ function toRows(messages: Message[], limit = RESUME_TRANSCRIPT_ROWS): ChatRow[] 
     }
   }
   return rows.slice(-limit);
+}
+
+export function sanitizeAssistantContent(content: string): string {
+  return content
+    .split("\n")
+    .filter((line) => !/^\s*(Tools used:|Evidence:)/.test(line))
+    .join("\n")
+    .trimEnd();
+}
+
+export type ResumeResolution =
+  | { kind: "usage" }
+  | { kind: "not_found"; prefix: string }
+  | { kind: "ambiguous"; prefix: string; matches: Session[] }
+  | { kind: "ok"; session: Session };
+
+export function resolveResumeSession(store: SessionStore, text: string): ResumeResolution {
+  const parts = text.split(/\s+/).filter((part) => part.length > 0);
+  if (parts.length < 2) {
+    return { kind: "usage" };
+  }
+  const prefix = parts[1];
+  const matches = store.sessions.filter((item) => item.id.startsWith(prefix));
+  if (matches.length === 0) {
+    return { kind: "not_found", prefix };
+  }
+  if (matches.length > 1) {
+    return { kind: "ambiguous", prefix, matches };
+  }
+  return { kind: "ok", session: matches[0] };
+}
+
+export function formatSessionList(store: SessionStore, limit = 10): string[] {
+  return store.sessions.slice(0, limit).map((item) => {
+    const active = item.id === store.activeSessionId ? "*" : " ";
+    const title = item.title || "New Session";
+    return `${active} ${item.id.slice(0, 12)}  ${title}`;
+  });
 }
 
 function shownCwd(): string {
@@ -144,12 +183,9 @@ function ChatApp(props: ChatAppProps) {
     }
 
     if (text.startsWith("/resume")) {
-      const parts = text.split(/\s+/).filter((part) => part.length > 0);
-      if (parts.length < 2) {
-        const recent = store.sessions.slice(0, 6).map((item: Session) => {
-          const active = item.id === store.activeSessionId ? "*" : " ";
-          return `${active} ${item.id.slice(0, 12)}  ${item.title}`;
-        });
+      const resolved = resolveResumeSession(store, text);
+      if (resolved.kind === "usage") {
+        const recent = formatSessionList(store, 6);
         setRows((current) => [
           ...current,
           { id: `row_${crypto.randomUUID()}`, role: "system", content: "Usage: /resume <session-id-prefix>" },
@@ -161,30 +197,57 @@ function ChatApp(props: ChatAppProps) {
         ]);
         return;
       }
-      const prefix = parts[1];
-      const matches = store.sessions.filter((item: Session) => item.id.startsWith(prefix));
-      if (matches.length === 0) {
-        setRows((current) => [
-          ...current,
-          { id: `row_${crypto.randomUUID()}`, role: "system", content: `No session found for prefix: ${prefix}` },
-        ]);
-        return;
-      }
-      if (matches.length > 1) {
+      if (resolved.kind === "not_found") {
         setRows((current) => [
           ...current,
           {
             id: `row_${crypto.randomUUID()}`,
             role: "system",
-            content: `Ambiguous prefix: ${prefix}. Matches: ${matches.map((item: Session) => item.id.slice(0, 12)).join(", ")}`,
+            content: `No session found for prefix: ${resolved.prefix}`,
           },
         ]);
         return;
       }
-      const target = matches[0];
+      if (resolved.kind === "ambiguous") {
+        setRows((current) => [
+          ...current,
+          {
+            id: `row_${crypto.randomUUID()}`,
+            role: "system",
+            content: `Ambiguous prefix: ${resolved.prefix}. Matches: ${resolved.matches.map((item: Session) => item.id.slice(0, 12)).join(", ")}`,
+          },
+        ]);
+        return;
+      }
+      const target = resolved.session;
       store.activeSessionId = target.id;
       setCurrentSession(target);
       setRows(toRows(target.messages));
+      setShowShortcuts(false);
+      await persist();
+      return;
+    }
+
+    if (text === "/sessions") {
+      const recent = formatSessionList(store, 10);
+      setRows((current) => [
+        ...current,
+        { id: `row_${crypto.randomUUID()}`, role: "system", content: `Sessions (${store.sessions.length})` },
+        ...recent.map((line: string) => ({
+          id: `row_${crypto.randomUUID()}`,
+          role: "system" as const,
+          content: line,
+        })),
+      ]);
+      return;
+    }
+
+    if (text === "/new") {
+      const next = createSession(currentSession.model);
+      store.sessions.unshift(next);
+      store.activeSessionId = next.id;
+      setCurrentSession(next);
+      setRows([]);
       setShowShortcuts(false);
       await persist();
       return;
@@ -301,7 +364,7 @@ function ChatApp(props: ChatAppProps) {
       <Text dimColor>{borderLine()}</Text>
 
       {showShortcuts ? (
-        <Text dimColor>{"  /resume <id> resume session  ·  /exit quit"}</Text>
+        <Text dimColor>{"  /new  /sessions  /resume <id>  /exit"}</Text>
       ) : (
         <Text dimColor>  ? for shortcuts</Text>
       )}
@@ -315,11 +378,7 @@ export async function runInkChat(props: ChatAppProps): Promise<void> {
 }
 
 function renderAssistantContent(content: string): React.ReactNode {
-  const cleaned = content
-    .split("\n")
-    .filter((line) => !/^\s*(Tools used:|Evidence:)/.test(line))
-    .join("\n")
-    .trimEnd();
+  const cleaned = sanitizeAssistantContent(content);
 
   for (const label of TOOL_LABELS) {
     if (cleaned.startsWith(`${label} `) || cleaned.startsWith(`${label}(`) || cleaned.startsWith(`${label}:`)) {

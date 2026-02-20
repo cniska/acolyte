@@ -160,6 +160,7 @@ Build a personal AI assistant using Mastra, with a CLI-first interface and a hos
 4. Create implementation backlog from phases.
 5. Adopt `docs/development-workflow.md` as the default feature-delivery loop.
 6. Expand `/resume` UX (session picker/listing ergonomics) on top of current ID-prefix resume flow.
+7. Add a dogfooding transition milestone: move from Codex-led development to Acolyte-led development in this repo after coding-loop reliability gates are met.
 
 ## Prioritization Policy
 1. Prioritize correctness, reliability, and core workflow capability over cosmetic UX changes.
