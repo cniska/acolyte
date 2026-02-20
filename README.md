@@ -85,6 +85,7 @@ Session management in chat:
 - `/exit` to leave chat
 - chat starts in a fresh session by default (clean transcript)
 - `@path` to reference a file or directory directly in your prompt (use arrows + Tab/Enter to autocomplete)
+- `/...` to get slash-command suggestions (use arrows + Tab/Enter to autocomplete)
 
 Attach file context in one-shot mode:
 ```bash

@@ -8,6 +8,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Lightweight semantic response highlighting (inline code, command keywords, and file references).
 - Session controls: `/new`, `/sessions`, `/resume <session-id-prefix>`, `/exit`.
 - File and directory references via `@path` with suggestions/autocomplete.
+- Slash-command suggestions with arrow navigation and Tab/Enter autocomplete.
 - In-chat utility commands: `/status`, `/changes`.
 - Skills picker + command support: `/skills` and `$` shortcut.
 - Memory commands in chat: `/remember [--project] <text>`, `/memories`.
@@ -29,7 +30,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Hosted mode for centralized memory across devices.
 - Mastra-backed production workflow and deeper integration.
 - Persistent memory evolution, including observational memory with safeguards.
-- Expanded picker/autocomplete UX for slash commands and additional in-chat controls.
+- Expanded picker/autocomplete UX for additional in-chat controls.
 - Optional multi-agent topology after single-agent reliability gates are stable.
 - Optional high-signal git hooks (for example pre-push verify) after workflow fit is validated.
 - Optional messaging channel adapter (for example WhatsApp via OpenClaw/Twilio) after core reliability and auth hardening.

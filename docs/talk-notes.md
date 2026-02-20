@@ -52,6 +52,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
   - added `@path` suggestions in chat and attachment of referenced files to model context
   - expanded `@path` attachment to include directories (compact tree context)
   - improved prompt ergonomics (word navigation, reliable delete behavior, autocomplete fixes)
+  - added slash-command suggestions with keyboard selection/autocomplete (arrows + Tab/Enter)
   - tightened review style policy (concise, evidence-first, no destructive git suggestions)
   - polished transcript output (compact tool blocks, no-result clarity, duration summaries)
   - added lightweight semantic highlighting in assistant responses (code/commands/file refs)
