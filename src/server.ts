@@ -108,7 +108,8 @@ const server = Bun.serve({
       return json({
         ok: true,
         service: "acolyte-backend",
-        mode: OPENAI_API_KEY ? "openai" : "mock",
+        provider: OPENAI_API_KEY ? "openai" : "mock",
+        model: appConfig.models.default,
         memory: {
           storage: mastraStorageMode,
           resourceId: appConfig.memory.resourceId,

@@ -81,7 +81,9 @@ class RemoteBackend implements Backend {
     }
 
     const json = (await response.json()) as {
+      provider?: unknown;
       mode?: unknown;
+      model?: unknown;
       service?: unknown;
       memory?: {
         storage?: unknown;
@@ -101,7 +103,13 @@ class RemoteBackend implements Backend {
         };
       };
     };
-    const mode = typeof json.mode === "string" ? json.mode : "unknown";
+    const provider =
+      typeof json.provider === "string"
+        ? json.provider
+        : typeof json.mode === "string"
+          ? json.mode
+          : "unknown";
+    const model = typeof json.model === "string" ? json.model : undefined;
     const service = typeof json.service === "string" ? json.service : "unknown";
     const memoryStorage =
       typeof json.memory?.storage === "string" ? json.memory.storage : undefined;
@@ -121,7 +129,8 @@ class RemoteBackend implements Backend {
     const omLastReflectionAt =
       typeof om?.current?.lastReflectionAt === "string" ? om.current.lastReflectionAt : undefined;
     const fields = [
-      `mode=${mode}`,
+      `provider=${provider}`,
+      model ? `model=${model}` : undefined,
       `service=${service}`,
       `url=${this.apiUrl}`,
       memoryStorage ? `memory_storage=${memoryStorage}` : undefined,

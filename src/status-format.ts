@@ -27,9 +27,13 @@ export function formatStatusOutput(status: string): string {
     return value;
   };
 
-  const mode = take("mode");
-  if (mode) {
-    output.push(`mode: ${mode}`);
+  const provider = take("provider") ?? take("mode");
+  if (provider) {
+    output.push(`provider: ${provider}`);
+  }
+  const model = take("model");
+  if (model) {
+    output.push(`model: ${model}`);
   }
   const service = take("service");
   if (service) {
@@ -97,8 +101,26 @@ export function formatStatusOutput(status: string): string {
     output.push(`${key}: ${value}`);
   }
 
-  if (output.length <= 1) {
-    return output.join("\n");
+  if (output.length === 0) {
+    return status;
   }
-  return [output[0], ...output.slice(1).map((line) => `  ${line}`)].join("\n");
+
+  const rows = output.map((line) => {
+    const idx = line.indexOf(":");
+    if (idx <= 0) {
+      return { key: line, value: "" };
+    }
+    return {
+      key: line.slice(0, idx + 1),
+      value: line.slice(idx + 1).trim(),
+    };
+  });
+  const maxKey = rows.reduce((max, row) => Math.max(max, row.key.length), 0);
+
+  return rows
+    .map((row) => {
+      const key = row.key.padEnd(maxKey, " ");
+      return `${key} ${row.value}`.trimEnd();
+    })
+    .join("\n");
 }

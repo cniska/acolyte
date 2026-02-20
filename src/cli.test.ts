@@ -27,14 +27,23 @@ describe("cli formatting helpers", () => {
   });
 
   test("formatStatusOutput expands key-value status", () => {
-    const out = formatStatusOutput("mode=openai service=acolyte-backend url=http://localhost:6767");
-    expect(out).toBe(["mode: openai", "  service: acolyte-backend", "  url: http://localhost:6767"].join("\n"));
+    const out = formatStatusOutput("provider=openai model=gpt-5-mini service=acolyte-backend url=http://localhost:6767");
+    expect(out).toBe(
+      [
+        "provider: openai",
+        "model:    gpt-5-mini",
+        "service:  acolyte-backend",
+        "url:      http://localhost:6767",
+      ].join("\n"),
+    );
   });
 
   test("formatStatusOutput groups memory and OM fields", () => {
     const out = formatStatusOutput(
       [
         "mode=openai",
+        "provider=openai",
+        "model=gpt-5-mini",
         "service=acolyte-backend",
         "url=http://localhost:6767",
         "memory_storage=postgres",
@@ -47,21 +56,27 @@ describe("cli formatting helpers", () => {
         "om_gen=4",
       ].join(" "),
     );
-    expect(out).toContain("memory: postgres");
-    expect(out).toContain("  om: enabled scope=resource model=openai/gpt-5-mini");
-    expect(out).toContain("  om_tokens: obs=3000 ref=8000");
-    expect(out).toContain("  om_state: exists=true gen=4");
+    expect(out).toMatch(/provider:\s+openai/);
+    expect(out).toMatch(/mode:\s+openai/);
+    expect(out).toMatch(/model:\s+gpt-5-mini/);
+    expect(out).toMatch(/memory:\s+postgres/);
+    expect(out).toMatch(/om:\s+enabled scope=resource model=openai\/gpt-5-mini/);
+    expect(out).toMatch(/om_tokens:\s+obs=3000 ref=8000/);
+    expect(out).toMatch(/om_state:\s+exists=true gen=4/);
   });
 
   test("formatDogfoodStatusOutput renders concise readiness lines", () => {
     const out = formatDogfoodStatusOutput({
-      backendStatus: "mode=openai service=acolyte-backend url=http://localhost:6767",
+      backendStatus: "provider=openai model=gpt-5-mini service=acolyte-backend url=http://localhost:6767",
       verifyRaw: "exit_code=0\nduration_ms=200\nstdout:\nok",
       hasApiKey: true,
     });
     expect(out).toContain("Dogfood status");
     expect(out).toContain("- Verify: exit_code=0");
-    expect(out).toContain("- Backend: mode: openai   service: acolyte-backend   url: http://localhost:6767");
+    expect(out).toMatch(/- Backend: .*provider:\s+openai/);
+    expect(out).toMatch(/- Backend: .*model:\s+gpt-5-mini/);
+    expect(out).toMatch(/- Backend: .*service:\s+acolyte-backend/);
+    expect(out).toMatch(/- Backend: .*url:\s+http:\/\/localhost:6767/);
     expect(out).toContain("- OPENAI_API_KEY: set");
   });
 
