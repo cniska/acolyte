@@ -22,6 +22,10 @@ OPENAI_API_KEY=your_key bun run serve
 ```bash
 ACOLYTE_API_URL=http://localhost:8787 bun run chat
 ```
+Check connectivity:
+```bash
+ACOLYTE_API_URL=http://localhost:8787 bun run src/cli.ts status
+```
 
 Optional auth:
 ```bash

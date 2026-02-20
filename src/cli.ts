@@ -17,10 +17,11 @@ import {
 const DEFAULT_MODEL = process.env.ACOLYTE_MODEL ?? "gpt-5-mini";
 
 function usage(): void {
-  printInfo("Usage: acolyte <chat|run|history>");
+  printInfo("Usage: acolyte <chat|run|history|status>");
   printInfo("  chat            Start interactive session");
   printInfo("  run <prompt>    Send one prompt and exit");
   printInfo("  history         Show recent sessions");
+  printInfo("  status          Show backend connection status");
 }
 
 function nowIso(): string {
@@ -54,6 +55,7 @@ function printHelp(): void {
   printInfo("  /new            Start a new session");
   printInfo("  /history        Show messages in this session");
   printInfo("  /sessions       List saved sessions");
+  printInfo("  /status         Show backend connection status");
   printInfo("  /model <name>   Change active model");
   printInfo("  /exit           Exit the CLI");
 }
@@ -77,7 +79,7 @@ function printSessionHistory(session: Session): void {
   }
 
   for (const msg of session.messages) {
-    const who = msg.role === "user" ? "you" : msg.role === "assistant" ? "acolyte" : "system";
+    const who = msg.role === "user" ? "you" : msg.role === "assistant" ? "Acolyte" : "system";
     printInfo(`[${msg.timestamp}] ${who}: ${msg.content}`);
   }
 }
@@ -131,6 +133,7 @@ async function chatMode(): Promise<void> {
   const persist = async (): Promise<void> => {
     await writeStore(store);
   };
+  const backend = createBackend();
 
   process.on("SIGINT", async () => {
     await persist();
@@ -169,6 +172,14 @@ async function chatMode(): Promise<void> {
         printSessionHistory(session);
       } else if (command === "/sessions") {
         listSessions(store);
+      } else if (command === "/status") {
+        try {
+          const status = await backend.status();
+          printInfo(status);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Unknown error";
+          printError(message);
+        }
       } else if (command === "/model") {
         if (args.length === 0) {
           printWarning("Usage: /model <model-name>");
@@ -213,6 +224,18 @@ async function historyMode(): Promise<void> {
   listSessions(store);
 }
 
+async function statusMode(): Promise<void> {
+  const backend = createBackend();
+  try {
+    const status = await backend.status();
+    printInfo(status);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    printError(message);
+    process.exitCode = 1;
+  }
+}
+
 async function main(): Promise<void> {
   const [command, ...args] = process.argv.slice(2);
 
@@ -234,6 +257,11 @@ async function main(): Promise<void> {
 
   if (command === "history") {
     await historyMode();
+    return;
+  }
+
+  if (command === "status") {
+    await statusMode();
     return;
   }
 

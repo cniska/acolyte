@@ -2,6 +2,7 @@ import type { ChatRequest, ChatResponse } from "./api";
 
 export interface Backend {
   reply(input: ChatRequest): Promise<ChatResponse>;
+  status(): Promise<string>;
 }
 
 class LocalBackend implements Backend {
@@ -27,6 +28,10 @@ class LocalBackend implements Backend {
         `You said: ${trimmed}`,
       ].join(" "),
     };
+  }
+
+  async status(): Promise<string> {
+    return "mode=local-mock backend=embedded";
   }
 }
 
@@ -57,6 +62,22 @@ class RemoteBackend implements Backend {
       output: json.output,
       model: typeof json.model === "string" ? json.model : input.model,
     };
+  }
+
+  async status(): Promise<string> {
+    const response = await fetch(`${this.apiUrl.replace(/\/$/, "")}/healthz`, {
+      headers: this.apiKey ? { authorization: `Bearer ${this.apiKey}` } : undefined,
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`Backend health check failed (${response.status}): ${body || "no body"}`);
+    }
+
+    const json = (await response.json()) as { mode?: unknown; service?: unknown };
+    const mode = typeof json.mode === "string" ? json.mode : "unknown";
+    const service = typeof json.service === "string" ? json.service : "unknown";
+    return `mode=${mode} service=${service} url=${this.apiUrl}`;
   }
 }
 
