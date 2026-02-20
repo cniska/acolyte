@@ -4,9 +4,9 @@ import { join } from "node:path";
 import React, { useState } from "react";
 import { useEffect } from "react";
 import { Box, Static, Text, render, useApp, useInput } from "ink";
-import TextInput from "ink-text-input";
 import type { Backend } from "./backend";
 import { addMemory, listMemories } from "./memory";
+import { PromptInput } from "./prompt-input";
 import { listSkills, readSkillInstructions } from "./skills";
 import { createSession } from "./storage";
 import type { Message, Session, SessionStore } from "./types";
@@ -821,7 +821,7 @@ function ChatApp(props: ChatAppProps) {
           <Text dimColor>{borderLine()}</Text>
           <Box>
             <Text>❯ </Text>
-            <TextInput
+            <PromptInput
               value={value}
               placeholder="Ask Acolyte..."
               onChange={(next) => {
