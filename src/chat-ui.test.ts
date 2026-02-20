@@ -5,11 +5,7 @@ import {
   applyAtSuggestion,
   applySlashSuggestion,
   extractAtReferenceQuery,
-  formatChangesSummary,
-  formatDogfoodStatus,
   parseImplementedFeatures,
-  formatVerifySummary,
-  formatThoughtDuration,
   formatSessionList,
   rankAtReferenceSuggestions,
   resolveResumeSession,
@@ -19,6 +15,7 @@ import {
   toRows,
 } from "./chat-ui";
 import { sanitizeAssistantContent, tokenizeForHighlighting } from "./chat-content";
+import { formatChangesSummary, formatDogfoodStatus, formatThoughtDuration, formatVerifySummary } from "./chat-formatters";
 
 function makeStore(): SessionStore {
   return {
