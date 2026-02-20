@@ -14,7 +14,13 @@ import { listSkills, readSkillInstructions } from "./skills";
 import { createSession } from "./storage";
 import { sanitizeAssistantContent, tokenizeForHighlighting } from "./chat-content";
 import { formatChangesSummary, formatDogfoodStatus, formatThoughtDuration, formatVerifySummary } from "./chat-formatters";
-import { applySlashSuggestion, resolveSlashAlias, shouldAutocompleteSlashSubmit, suggestSlashCommands } from "./chat-slash";
+import {
+  applySlashSuggestion,
+  isKnownSlashToken,
+  resolveSlashAlias,
+  shouldAutocompleteSlashSubmit,
+  suggestSlashCommands,
+} from "./chat-slash";
 import type { Message, Session, SessionStore } from "./types";
 import type { SkillMeta } from "./skills";
 
@@ -548,11 +554,14 @@ function ChatApp(props: ChatAppProps) {
 
   const handleSubmit = async (raw: string): Promise<void> => {
     const text = raw.trim();
-    const resolvedText = resolveSlashAlias(text);
-    setValue("");
     if (!text || isThinking) {
       return;
     }
+    if (text.startsWith("/") && !text.includes(" ") && !isKnownSlashToken(text)) {
+      return;
+    }
+    const resolvedText = resolveSlashAlias(text);
+    setValue("");
 
     const pushUserCommandRow = (): void => {
       setRows((current) => [

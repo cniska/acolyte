@@ -23,6 +23,10 @@ const SLASH_ALIASES: Record<string, string> = {
   "/mem": "/memory",
 };
 
+export function isKnownSlashToken(token: string): boolean {
+  return CHAT_SLASH_COMMANDS.includes(token as (typeof CHAT_SLASH_COMMANDS)[number]) || token in SLASH_ALIASES;
+}
+
 export function suggestSlashCommands(inputValue: string, max = 5): string[] {
   const value = inputValue.trim();
   if (!value.startsWith("/")) {

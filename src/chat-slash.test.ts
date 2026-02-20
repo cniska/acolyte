@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { applySlashSuggestion, resolveSlashAlias, shouldAutocompleteSlashSubmit, suggestSlashCommands } from "./chat-slash";
+import {
+  applySlashSuggestion,
+  isKnownSlashToken,
+  resolveSlashAlias,
+  shouldAutocompleteSlashSubmit,
+  suggestSlashCommands,
+} from "./chat-slash";
 
 describe("chat-slash helpers", () => {
   test("suggestSlashCommands filters known commands by prefix", () => {
@@ -31,5 +37,11 @@ describe("chat-slash helpers", () => {
     expect(resolveSlashAlias("/mem")).toBe("/memory");
     expect(resolveSlashAlias("/rem fix naming")).toBe("/remember fix naming");
     expect(resolveSlashAlias("plain")).toBe("plain");
+  });
+
+  test("isKnownSlashToken recognizes canonical and alias tokens", () => {
+    expect(isKnownSlashToken("/status")).toBe(true);
+    expect(isKnownSlashToken("/df")).toBe(true);
+    expect(isKnownSlashToken("/unknown")).toBe(false);
   });
 });
