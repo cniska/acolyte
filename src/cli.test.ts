@@ -106,6 +106,7 @@ describe("cli formatting helpers", () => {
   });
 
   test("resolveCommandAlias maps short commands", () => {
+    expect(resolveCommandAlias("/?")).toBe("/help");
     expect(resolveCommandAlias("/s")).toBe("/search");
     expect(resolveCommandAlias("/r")).toBe("/read");
     expect(resolveCommandAlias("/gs")).toBe("/git-status");
