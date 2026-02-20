@@ -44,17 +44,12 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
   - edit summaries now include changed location count and change-only excerpts
   - git status summaries (`N changed files`) before detailed entries
   - repo-relative read paths and reduced successful `Run` noise
-  - short aliases for speed (`/s`, `/r`, `/gs`, `/gd`)
-  - alias-aware command suggestions for faster recovery from partial/typo commands
-  - typo-tolerant command suggestions (edit-distance fallback for unknown slash commands)
-  - multi-suggestion fallback (`Did you mean ...` / `Try: ...`) for unknown commands
-  - reordered help output to prioritize common commands first
-  - added `/?` as a fast help alias
+  - typo-tolerant command suggestions (`Did you mean ...` / `Try: ...`) for unknown slash commands
   - switched CLI accent color to a lighter accessible royal-purple branding
   - tool headers now use white action labels with dim gray args for readability
   - fixed overflow marker alignment in truncated tool output lists
   - hard-separated chat UX: only `?`, `/skills`, `/exit`; internal commands moved to top-level CLI/tool mode
-  - help is inline text under chat input (no popup/overlay shortcut panel)
+  - `?` works as a hotkey (no Enter) and toggles an inline shortcuts panel under the prompt
 - Delivery workflow:
   - `bun run verify` (`typecheck` + tests)
   - autonomous feature loop in `docs/development-workflow.md`

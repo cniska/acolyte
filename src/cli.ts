@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+import { emitKeypressEvents } from "node:readline";
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { relative } from "node:path";
@@ -92,6 +93,13 @@ function printSkills(): void {
   printInfo("  - Multi-step reasoning with tool use when needed");
 }
 
+function erasePromptLineIfTty(): void {
+  if (!output.isTTY) {
+    return;
+  }
+  output.write("\x1b[1A\r\x1b[2K");
+}
+
 const CHAT_COMMANDS = [
   "?",
   "/skills",
@@ -121,6 +129,7 @@ const INTERNAL_CHAT_COMMANDS = new Set([
   "/model",
   "/clear",
 ]);
+const SHORTCUT_PANEL_RENDERED_LINES = 13;
 
 export function resolveCommandAlias(command: string): string {
   return COMMAND_ALIASES[command] ?? command;
@@ -648,6 +657,53 @@ async function chatMode(): Promise<void> {
   banner(session.model, session.id, CLI_VERSION);
 
   const rl = createInterface({ input, output });
+  const canUseHotkeys = Boolean(input.isTTY && typeof input.setRawMode === "function");
+  const wasRawMode = canUseHotkeys ? input.isRaw : false;
+  let shortcutsOpen = false;
+
+  const closeShortcutsPanel = (): void => {
+    if (!shortcutsOpen || !output.isTTY) {
+      shortcutsOpen = false;
+      return;
+    }
+    output.write(`\x1b[${SHORTCUT_PANEL_RENDERED_LINES}A\r\x1b[J> `);
+    shortcutsOpen = false;
+  };
+
+  const openShortcutsPanel = (): void => {
+    if (!output.isTTY) {
+      printHelp();
+      shortcutsOpen = false;
+      return;
+    }
+    printOutput("");
+    printHelp();
+    printOutput("");
+    output.write("> ");
+    shortcutsOpen = true;
+  };
+
+  const onKeypress = (str: string): void => {
+    if (str !== "?") {
+      return;
+    }
+    if (rl.line.trim() !== "?") {
+      return;
+    }
+    rl.write("", { ctrl: true, name: "u" });
+    if (shortcutsOpen) {
+      closeShortcutsPanel();
+      return;
+    }
+    openShortcutsPanel();
+  };
+  if (canUseHotkeys) {
+    emitKeypressEvents(input);
+    if (!wasRawMode) {
+      input.setRawMode(true);
+    }
+    input.on("keypress", onKeypress);
+  }
 
   const persist = async (): Promise<void> => {
     await writeStore(store);
@@ -658,6 +714,12 @@ async function chatMode(): Promise<void> {
   });
 
   process.on("SIGINT", async () => {
+    if (canUseHotkeys) {
+      input.off("keypress", onKeypress);
+      if (!wasRawMode) {
+        input.setRawMode(false);
+      }
+    }
     await persist();
     rl.close();
     process.exit(0);
@@ -670,6 +732,12 @@ async function chatMode(): Promise<void> {
     } catch (error) {
       const code = (error as { code?: string })?.code;
       if (code === "ERR_USE_AFTER_CLOSE") {
+        if (canUseHotkeys) {
+          input.off("keypress", onKeypress);
+          if (!wasRawMode) {
+            input.setRawMode(false);
+          }
+        }
         await persist();
         return;
       }
@@ -680,16 +748,26 @@ async function chatMode(): Promise<void> {
       continue;
     }
 
+    if (shortcutsOpen) {
+      closeShortcutsPanel();
+    }
+
     if (line.startsWith("/") || line === "?") {
       const [rawCommand] = line === "?" ? ["?"] : line.split(/\s+/);
       const command = resolveCommandAlias(rawCommand);
       if (command === "?") {
-        printOutput("");
+        erasePromptLineIfTty();
         printHelp();
       } else if (command === "/skills") {
-        printOutput("");
+        erasePromptLineIfTty();
         printSkills();
       } else if (command === "/exit") {
+        if (canUseHotkeys) {
+          input.off("keypress", onKeypress);
+          if (!wasRawMode) {
+            input.setRawMode(false);
+          }
+        }
         await persist();
         rl.close();
         return;

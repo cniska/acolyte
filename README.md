@@ -46,7 +46,7 @@ bun run src/cli.ts config list
 ```
 
 Session management in chat:
-- `?` to open chat help
+- `?` to toggle shortcuts/help (hotkey, no Enter needed)
 - `/skills` to view available capabilities
 - `/exit` to leave chat
 
