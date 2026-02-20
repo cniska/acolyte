@@ -38,6 +38,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - UX upgrades:
   - migrated interactive chat renderer to Ink for deterministic prompt/transcript separation
   - chat now starts with a fresh session by default (clean startup transcript)
+  - added `/resume <session-id-prefix>` to restore prior sessions on demand
   - static header rendering to avoid focus/refocus duplication artifacts
   - compact action-style tool transcripts (`Run`, `Search`, `Read`, `Diff`, `Update`)
   - inline summaries (search counts, read line count, diff +/- summary)

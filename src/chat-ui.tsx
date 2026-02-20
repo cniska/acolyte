@@ -4,7 +4,7 @@ import { Box, Static, Text, render, useApp, useInput } from "ink";
 import TextInput from "ink-text-input";
 import type { Backend } from "./backend";
 import { listMemories } from "./memory";
-import type { Message, Session } from "./types";
+import type { Message, Session, SessionStore } from "./types";
 
 type ChatRow = {
   id: string;
@@ -22,6 +22,7 @@ type HeaderLine = {
 interface ChatAppProps {
   backend: Backend;
   session: Session;
+  store: SessionStore;
   persist: () => Promise<void>;
   version: string;
 }
@@ -39,9 +40,20 @@ function newMessage(role: Message["role"], content: string): Message {
   };
 }
 
-function toRows(messages: Message[]): ChatRow[] {
-  void messages;
-  return [];
+const RESUME_TRANSCRIPT_ROWS = 40;
+
+function toRows(messages: Message[], limit = RESUME_TRANSCRIPT_ROWS): ChatRow[] {
+  const rows: ChatRow[] = [];
+  for (const message of messages) {
+    if (message.role === "user" || message.role === "assistant") {
+      rows.push({
+        id: message.id,
+        role: message.role,
+        content: message.content,
+      });
+    }
+  }
+  return rows.slice(-limit);
 }
 
 function shownCwd(): string {
@@ -80,9 +92,10 @@ function borderLine(): string {
 }
 
 function ChatApp(props: ChatAppProps) {
-  const { backend, session, persist, version } = props;
+  const { backend, session, store, persist, version } = props;
   const { exit } = useApp();
-  const [rows, setRows] = useState<ChatRow[]>(() => toRows(session.messages));
+  const [currentSession, setCurrentSession] = useState<Session>(session);
+  const [rows, setRows] = useState<ChatRow[]>([]);
   const [value, setValue] = useState("");
   const [isThinking, setIsThinking] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
@@ -90,7 +103,7 @@ function ChatApp(props: ChatAppProps) {
     { id: "title", text: `Acolyte v${version}`, dim: false, brand: true },
     {
       id: "session",
-      text: `${session.model} · session ${session.id.slice(0, 12)}`,
+      text: `${currentSession.model} · session ${currentSession.id.slice(0, 12)}`,
       dim: false,
       brand: false,
     },
@@ -127,6 +140,53 @@ function ChatApp(props: ChatAppProps) {
       return;
     }
 
+    if (text.startsWith("/resume")) {
+      const parts = text.split(/\s+/).filter((part) => part.length > 0);
+      if (parts.length < 2) {
+        const recent = store.sessions.slice(0, 6).map((item: Session) => {
+          const active = item.id === store.activeSessionId ? "*" : " ";
+          return `${active} ${item.id.slice(0, 12)}  ${item.title}`;
+        });
+        setRows((current) => [
+          ...current,
+          { id: `row_${crypto.randomUUID()}`, role: "system", content: "Usage: /resume <session-id-prefix>" },
+          ...recent.map((line: string) => ({
+            id: `row_${crypto.randomUUID()}`,
+            role: "system" as const,
+            content: line,
+          })),
+        ]);
+        return;
+      }
+      const prefix = parts[1];
+      const matches = store.sessions.filter((item: Session) => item.id.startsWith(prefix));
+      if (matches.length === 0) {
+        setRows((current) => [
+          ...current,
+          { id: `row_${crypto.randomUUID()}`, role: "system", content: `No session found for prefix: ${prefix}` },
+        ]);
+        return;
+      }
+      if (matches.length > 1) {
+        setRows((current) => [
+          ...current,
+          {
+            id: `row_${crypto.randomUUID()}`,
+            role: "system",
+            content: `Ambiguous prefix: ${prefix}. Matches: ${matches.map((item: Session) => item.id.slice(0, 12)).join(", ")}`,
+          },
+        ]);
+        return;
+      }
+      const target = matches[0];
+      store.activeSessionId = target.id;
+      setCurrentSession(target);
+      setRows(toRows(target.messages));
+      setShowShortcuts(false);
+      await persist();
+      return;
+    }
+
     if (text === "/exit") {
       await persist();
       exit();
@@ -144,24 +204,27 @@ function ChatApp(props: ChatAppProps) {
     }
 
     const userMessage = newMessage("user", text);
-    session.messages.push(userMessage);
-    session.updatedAt = nowIso();
+    currentSession.messages.push(userMessage);
+    if (currentSession.title === "New Session") {
+      currentSession.title = text.trim().replace(/\s+/g, " ").slice(0, 60) || "New Session";
+    }
+    currentSession.updatedAt = nowIso();
     setRows((current) => [...current, { id: userMessage.id, role: "user", content: text }]);
     setIsThinking(true);
     await persist();
 
     try {
-      const historyWithContext = await buildHistoryWithMemoryContext(session.messages);
+      const historyWithContext = await buildHistoryWithMemoryContext(currentSession.messages);
       const reply = await backend.reply({
         message: text,
         history: historyWithContext,
-        model: session.model,
+        model: currentSession.model,
       });
 
       const assistantMessage = newMessage("assistant", reply.output);
-      session.messages.push(assistantMessage);
-      session.model = reply.model;
-      session.updatedAt = nowIso();
+      currentSession.messages.push(assistantMessage);
+      currentSession.model = reply.model;
+      currentSession.updatedAt = nowIso();
       setRows((current) => [
         ...current,
         { id: assistantMessage.id, role: "assistant", content: reply.output },
@@ -228,7 +291,7 @@ function ChatApp(props: ChatAppProps) {
       <Text dimColor>{borderLine()}</Text>
 
       {showShortcuts ? (
-        <Text dimColor>  /exit quit</Text>
+        <Text dimColor>{"  /resume <id> resume session  ·  /exit quit"}</Text>
       ) : (
         <Text dimColor>  ? for shortcuts</Text>
       )}

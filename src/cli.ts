@@ -666,6 +666,7 @@ async function chatMode(): Promise<void> {
   await runInkChat({
     backend,
     session,
+    store,
     persist,
     version: CLI_VERSION,
   });

@@ -159,7 +159,7 @@ Build a personal AI assistant using Mastra, with a CLI-first interface and a hos
 3. Iterate on richer transcript-style tool blocks (Edit/Bash summaries with focused excerpts).
 4. Create implementation backlog from phases.
 5. Adopt `docs/development-workflow.md` as the default feature-delivery loop.
-6. Add explicit `/resume` flow for session restoration (chat now starts fresh by default).
+6. Expand `/resume` UX (session picker/listing ergonomics) on top of current ID-prefix resume flow.
 
 ## Prioritization Policy
 1. Prioritize correctness, reliability, and core workflow capability over cosmetic UX changes.

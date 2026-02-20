@@ -47,6 +47,7 @@ bun run src/cli.ts config list
 
 Session management in chat:
 - `?` to toggle shortcuts/help
+- `/resume <session-id-prefix>` to restore a previous session
 - `/exit` to leave chat
 - chat starts in a fresh session by default (clean transcript)
 
