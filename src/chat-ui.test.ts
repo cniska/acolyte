@@ -168,4 +168,11 @@ describe("chat-ui helpers", () => {
     expect(out).toContain("## main...origin/main");
     expect(out).toContain("Diff summary: +2 -1.");
   });
+
+  test("formatChangesSummary handles singular changed-file count", () => {
+    const status = ["## main...origin/main", " M src/cli.ts"].join("\n");
+    const diff = ["diff --git a/x b/x", "--- a/x", "+++ b/x", "-old", "+new"].join("\n");
+    const out = formatChangesSummary(status, diff);
+    expect(out).toContain("1 changed file.");
+  });
 });

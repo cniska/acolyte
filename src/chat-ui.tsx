@@ -397,6 +397,10 @@ export function formatVerifySummary(raw: string): string {
   return `Verify ${status} (exit ${meta.exitCode ?? "?"}, ${duration}).`;
 }
 
+function countLabel(value: number, singular: string, plural: string): string {
+  return `${value} ${value === 1 ? singular : plural}`;
+}
+
 export function formatChangesSummary(statusRaw: string, diffRaw: string): string {
   const statusLines = statusRaw
     .split("\n")
@@ -419,7 +423,7 @@ export function formatChangesSummary(statusRaw: string, diffRaw: string): string
   }
 
   const summary: string[] = [];
-  summary.push(changedFiles === 0 ? "Working tree clean." : `${changedFiles} changed files.`);
+  summary.push(changedFiles === 0 ? "Working tree clean." : `${countLabel(changedFiles, "changed file", "changed files")}.`);
   if (branchLine) {
     summary.push(branchLine);
   }
