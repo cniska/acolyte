@@ -136,10 +136,6 @@ export async function runShellCommand(command: string, timeoutMs = 60_000): Prom
     .join("\n\n");
 }
 
-export async function runTestCommand(command = "bun run test"): Promise<string> {
-  return runShellCommand(command, 120_000);
-}
-
 export async function editFileReplace(input: {
   path: string;
   find: string;

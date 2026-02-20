@@ -6,7 +6,6 @@ import {
   gitStatusShort,
   readSnippet,
   runShellCommand,
-  runTestCommand,
   searchRepo,
 } from "./coding-tools";
 
@@ -76,18 +75,6 @@ export const runCommandTool = createTool({
   },
 });
 
-export const runTestsTool = createTool({
-  id: "run-tests",
-  description: "Run project tests using a provided command. Defaults to bun run test.",
-  inputSchema: z.object({
-    command: z.string().optional(),
-  }),
-  execute: async (input) => {
-    const result = await runTestCommand(input.command ?? "bun run test");
-    return { result };
-  },
-});
-
 export const editFileTool = createTool({
   id: "edit-file-replace",
   description: "Replace exact text in a file. Supports dry run mode.",
@@ -114,6 +101,5 @@ export const acolyteTools = {
   gitStatus: gitStatusTool,
   gitDiff: gitDiffTool,
   runCommand: runCommandTool,
-  runTests: runTestsTool,
   editFileReplace: editFileTool,
 };

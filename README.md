@@ -65,7 +65,6 @@ bun run tool read src/cli.ts 1 80
 bun run tool git-status
 bun run tool git-diff src/cli.ts 3
 bun run tool run "bun run typecheck"
-bun run tool test "bun run typecheck"
 bun run tool edit src/cli.ts Acolyte Acolyte --dry-run
 ```
 
@@ -80,7 +79,6 @@ Inside `bun run chat`, try:
 /git-status
 /git-diff src/cli.ts 3
 /run bun run typecheck
-/test bun run typecheck
 /edit src/cli.ts Acolyte Acolyte --dry-run
 Summarize the current architecture and the next 3 improvements.
 ```

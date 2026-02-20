@@ -8,7 +8,6 @@ import {
   gitStatusShort,
   readSnippet,
   runShellCommand,
-  runTestCommand,
   searchRepo,
 } from "./coding-tools";
 import { readConfig, setConfigValue, unsetConfigValue } from "./config";
@@ -36,7 +35,7 @@ function usage(): void {
   printInfo("  status          Show backend connection status");
   printInfo("  memory          Manage personal memory notes");
   printInfo("  config          Manage local CLI defaults");
-  printInfo("  tool            Run coding tools (search/read/git/run/test/edit)");
+  printInfo("  tool            Run coding tools (search/read/git/run/edit)");
 }
 
 function nowIso(): string {
@@ -78,7 +77,6 @@ function printHelp(): void {
   printInfo("  /git-status     Show git status summary");
   printInfo("  /git-diff [path] [context]  Show git diff");
   printInfo("  /run <cmd>      Run shell command");
-  printInfo("  /test [cmd]     Run tests (default: bun run test)");
   printInfo("  /edit <path> <find> <replace> [--dry-run]  Replace text in file");
   printInfo("  /file <path>    Attach a local text file to this session");
   printInfo("  /remember <x>   Add a personal memory note");
@@ -398,17 +396,6 @@ async function chatMode(): Promise<void> {
             printError(message);
           }
         }
-      } else if (command === "/test") {
-        const cmd = args.join(" ").trim() || "bun run test";
-        try {
-          const result = await runTestCommand(cmd);
-          printInfo(result);
-          session.messages.push(newMessage("system", formatToolContext(`test ${cmd}`, result)));
-          session.updatedAt = nowIso();
-        } catch (error) {
-          const message = error instanceof Error ? error.message : "Unknown error";
-          printError(message);
-        }
       } else if (command === "/edit") {
         try {
           const parsed = parseEditArgs(args);
@@ -660,13 +647,6 @@ async function toolMode(args: string[]): Promise<void> {
     return;
   }
 
-  if (subcommand === "test") {
-    const command = rest.join(" ").trim() || "bun run test";
-    const result = await runTestCommand(command);
-    printInfo(result);
-    return;
-  }
-
   if (subcommand === "edit") {
     let parsed: ReturnType<typeof parseEditArgs>;
     try {
@@ -682,7 +662,7 @@ async function toolMode(args: string[]): Promise<void> {
     return;
   }
 
-  printError("Usage: acolyte tool <search|read|git-status|git-diff|run|test|edit> ...");
+  printError("Usage: acolyte tool <search|read|git-status|git-diff|run|edit> ...");
   process.exitCode = 1;
 }
 
