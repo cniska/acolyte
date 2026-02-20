@@ -16,6 +16,7 @@ const KEYS = {
     altB: "\u001bb",
     altF: "\u001bf",
     altBackspace: "\u001b\u007f",
+    altCtrlH: "\u001b\u0008",
     delete: "\u001b[3~",
   },
   chars: {
@@ -121,7 +122,11 @@ export function PromptInput({
         return;
       }
 
-      if ((key.meta && key.backspace) || input === KEYS.esc.altBackspace) {
+      const isMetaWordDelete =
+        (key.meta && (key.backspace || input === KEYS.ctrl.h || input === KEYS.chars.backspace)) ||
+        input === KEYS.esc.altBackspace ||
+        input === KEYS.esc.altCtrlH;
+      if (isMetaWordDelete) {
         if (cursorOffset === 0) {
           return;
         }
