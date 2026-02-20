@@ -1,8 +1,14 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { listMemories } from "./memory";
 
 const FALLBACK_SOUL =
   "You are Acolyte, a pragmatic personal coding assistant. Be concise, accurate, and action-oriented.";
+const MEMORY_CONTEXT_LIMIT = 8;
+type PromptLoadOptions = {
+  cwd?: string;
+  homeDir?: string;
+};
 
 export function loadSoulPrompt(cwd = process.cwd()): string {
   const soulPath = join(cwd, "docs", "soul.md");
@@ -39,4 +45,25 @@ export function loadSystemPrompt(cwd = process.cwd()): string {
   const soul = loadSoulPrompt(cwd);
   const agents = loadAgentsPrompt(cwd);
   return agents ? `${soul}\n\n${agents}` : soul;
+}
+
+export async function loadMemoryContextPrompt(options: PromptLoadOptions = {}): Promise<string> {
+  const cwd = options.cwd ?? process.cwd();
+  const memories = await listMemories({ cwd, homeDir: options.homeDir, scope: "all" });
+  const top = memories.slice(0, MEMORY_CONTEXT_LIMIT);
+  if (top.length === 0) {
+    return "";
+  }
+  const lines = top.map((entry) => `- ${entry.content}`);
+  return `User memory context:\n${lines.join("\n")}`;
+}
+
+export async function loadSystemPromptWithMemories(options: PromptLoadOptions = {}): Promise<string> {
+  const cwd = options.cwd ?? process.cwd();
+  const base = loadSystemPrompt(cwd);
+  const memoryContext = await loadMemoryContextPrompt(options);
+  if (!memoryContext) {
+    return base;
+  }
+  return `${base}\n\n${memoryContext}`;
 }

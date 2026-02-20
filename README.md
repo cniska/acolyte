@@ -40,7 +40,7 @@ Optional: open Mastra Studio:
 bun run studio
 ```
 This starts Mastra dev server (`http://localhost:4111`) in the background and opens Studio (`http://localhost:3000`).
-Studio currently uses basic local `MockMemory` (thread history persists while the dev process is running).
+Studio currently uses local Mastra `Memory` with observational memory enabled (thread scope).
 
 4. In a second shell, run CLI against backend:
 ```bash

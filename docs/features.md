@@ -15,6 +15,8 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Non-interactive dogfooding readiness command: `acolyte dogfood-status`.
 - Skills picker + command support: `/skills` and `$` shortcut.
 - Memory commands in chat: `/remember [--project] <text>`, `/memories`.
+- Automatic memory-context injection from saved user/project memories.
+- Mastra Studio agent memory with observational memory enabled (thread scope).
 - Dogfooding workflow command: `/dogfood <task>` with verify-first loop.
 - Optional skip verify flow: `/dogfood --no-verify <task>`.
 - One-shot CLI mode via `run` (including `--file` attachment support).

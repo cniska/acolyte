@@ -16,6 +16,14 @@ Build a personal AI assistant using Mastra, with a CLI-first interface that runs
 4. Memory can be inspected, edited, and corrected from the CLI.
 5. Assistant can be used from multiple computers with shared centralized memory.
 
+## Missing For Goal (Current Gaps)
+1. Automatic preference learning loop is only partially implemented; we still need confidence-scored promotion and correction flow for observational memory.
+2. Memory transparency is incomplete; we need clear per-reply “memory used” visibility and lightweight memory debugging views.
+3. Cross-device centralized memory is not implemented yet (hosted mode still planned, local-first only by default).
+4. Tooling for robust coding execution is baseline only; we still need safer edit/apply flows and stronger verification orchestration for autonomous feature delivery.
+5. Reliability guardrails are still maturing; we need eval gates that specifically measure repeated-mistake reduction across sessions.
+6. Full dogfooding transition is not complete; Acolyte-led development loops need to become the default path for feature work in this repo.
+
 ## Product Moat
 1. Reliability moat: verification-first coding loop (plan, tool-grounded execution, validate, reflect) that measurably reduces repeated mistakes.
 2. Memory moat: persistent, editable, transparent memory that captures explicit preferences plus confidence-scored observations.
@@ -185,7 +193,7 @@ Build a personal AI assistant using Mastra, with a CLI-first interface that runs
 5. Adopt `docs/development-workflow.md` as the default feature-delivery loop.
 6. Expand `/resume` UX (session picker/listing ergonomics) on top of current ID-prefix resume flow.
 7. Add a dogfooding transition milestone: move from Codex-led development to Acolyte-led development in this repo after coding-loop reliability gates are met.
-8. Introduce observational memory only after coding workflow reliability is stable and evaluated.
+8. Evaluate and tune the current thread-scoped observational memory setup (cost, precision, promotion quality) before enabling broader automatic preference promotion.
 9. Defer multi-agent orchestration until single-agent coding loop is stable; then introduce as an optional path for complex tasks.
 10. Continue CLI UX convergence with Codex/Claude patterns while preserving minimalism (slash suggestions + picker flows via shared components).
 11. Add a package script to launch Mastra Studio once Mastra app wiring is production-ready for inspection/debugging.
