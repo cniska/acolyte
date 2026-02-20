@@ -27,6 +27,12 @@ Check connectivity:
 ACOLYTE_API_URL=http://localhost:8787 bun run src/cli.ts status
 ```
 
+Personal memory notes:
+```bash
+bun run src/cli.ts memory add "Prefer concise commit messages"
+bun run src/cli.ts memory list
+```
+
 Optional auth:
 ```bash
 ACOLYTE_API_KEY=dev-secret bun run serve

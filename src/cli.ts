@@ -2,6 +2,7 @@
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { createBackend } from "./backend";
+import { addMemory, listMemories } from "./memory";
 import { createSession, readStore, writeStore } from "./storage";
 import type { Message, Session, SessionStore } from "./types";
 import {
@@ -17,11 +18,12 @@ import {
 const DEFAULT_MODEL = process.env.ACOLYTE_MODEL ?? "gpt-5-mini";
 
 function usage(): void {
-  printInfo("Usage: acolyte <chat|run|history|status>");
+  printInfo("Usage: acolyte <chat|run|history|status|memory>");
   printInfo("  chat            Start interactive session");
   printInfo("  run <prompt>    Send one prompt and exit");
   printInfo("  history         Show recent sessions");
   printInfo("  status          Show backend connection status");
+  printInfo("  memory          Manage personal memory notes");
 }
 
 function nowIso(): string {
@@ -56,6 +58,8 @@ function printHelp(): void {
   printInfo("  /history        Show messages in this session");
   printInfo("  /sessions       List saved sessions");
   printInfo("  /status         Show backend connection status");
+  printInfo("  /remember <x>   Add a personal memory note");
+  printInfo("  /memories       Show personal memory notes");
   printInfo("  /model <name>   Change active model");
   printInfo("  /exit           Exit the CLI");
 }
@@ -81,6 +85,17 @@ function printSessionHistory(session: Session): void {
   for (const msg of session.messages) {
     const who = msg.role === "user" ? "you" : msg.role === "assistant" ? "Acolyte" : "system";
     printInfo(`[${msg.timestamp}] ${who}: ${msg.content}`);
+  }
+}
+
+function printMemoryRows(rows: Awaited<ReturnType<typeof listMemories>>): void {
+  if (rows.length === 0) {
+    printInfo("No memories saved.");
+    return;
+  }
+
+  for (const row of rows.slice(0, 50)) {
+    printInfo(`${row.id.slice(0, 12)}  ${row.createdAt}  ${row.content}`);
   }
 }
 
@@ -180,6 +195,17 @@ async function chatMode(): Promise<void> {
           const message = error instanceof Error ? error.message : "Unknown error";
           printError(message);
         }
+      } else if (command === "/remember") {
+        const content = args.join(" ").trim();
+        if (!content) {
+          printWarning("Usage: /remember <memory text>");
+        } else {
+          const entry = await addMemory(content);
+          printInfo(`Saved memory ${entry.id.slice(0, 12)}.`);
+        }
+      } else if (command === "/memories") {
+        const rows = await listMemories();
+        printMemoryRows(rows);
       } else if (command === "/model") {
         if (args.length === 0) {
           printWarning("Usage: /model <model-name>");
@@ -236,6 +262,31 @@ async function statusMode(): Promise<void> {
   }
 }
 
+async function memoryMode(args: string[]): Promise<void> {
+  const [subcommand, ...rest] = args;
+
+  if (subcommand === "list" || !subcommand) {
+    const rows = await listMemories();
+    printMemoryRows(rows);
+    return;
+  }
+
+  if (subcommand === "add") {
+    const content = rest.join(" ").trim();
+    if (!content) {
+      printError("Usage: acolyte memory add <memory text>");
+      process.exitCode = 1;
+      return;
+    }
+    const entry = await addMemory(content);
+    printInfo(`Saved memory ${entry.id.slice(0, 12)}.`);
+    return;
+  }
+
+  printError("Usage: acolyte memory [list|add <text>]");
+  process.exitCode = 1;
+}
+
 async function main(): Promise<void> {
   const [command, ...args] = process.argv.slice(2);
 
@@ -262,6 +313,11 @@ async function main(): Promise<void> {
 
   if (command === "status") {
     await statusMode();
+    return;
+  }
+
+  if (command === "memory") {
+    await memoryMode(args);
     return;
   }
 
