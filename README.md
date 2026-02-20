@@ -65,7 +65,6 @@ bun run src/cli.ts config list
 
 Session management in chat:
 - `?` to toggle shortcuts/help
-- `/help` (or `/?`) to toggle shortcuts/help
 - `/remember [--project] <text>` to save a memory note from chat
 - `/memories` to list saved memory notes
 - `/skills` to list local repo skills from `./skills/*/SKILL.md`
