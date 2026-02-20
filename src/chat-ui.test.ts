@@ -4,6 +4,7 @@ import {
   extractAtReferencePaths,
   applyAtSuggestion,
   extractAtReferenceQuery,
+  formatChangesSummary,
   formatVerifySummary,
   formatThoughtDuration,
   formatSessionList,
@@ -100,6 +101,7 @@ describe("chat-ui helpers", () => {
   });
 
   test("suggestSlashCommands filters known commands by prefix", () => {
+    expect(suggestSlashCommands("/c")).toEqual(["/changes"]);
     expect(suggestSlashCommands("/s")).toEqual(["/status", "/sessions", "/skills"]);
     expect(suggestSlashCommands("/st")).toEqual(["/status"]);
     expect(suggestSlashCommands("/d")).toEqual(["/dogfood"]);
@@ -156,5 +158,14 @@ describe("chat-ui helpers", () => {
   test("formatVerifySummary renders compact pass/fail line", () => {
     expect(formatVerifySummary("exit_code=0\nduration_ms=1530")).toBe("Verify passed (exit 0, 1.5s).");
     expect(formatVerifySummary("exit_code=1\nduration_ms=320")).toBe("Verify failed (exit 1, 320ms).");
+  });
+
+  test("formatChangesSummary renders git status and diff totals", () => {
+    const status = ["## main...origin/main", " M src/cli.ts", "?? src/new.ts"].join("\n");
+    const diff = ["diff --git a/x b/x", "--- a/x", "+++ b/x", "-old", "+new", "+another"].join("\n");
+    const out = formatChangesSummary(status, diff);
+    expect(out).toContain("2 changed files.");
+    expect(out).toContain("## main...origin/main");
+    expect(out).toContain("Diff summary: +2 -1.");
   });
 });

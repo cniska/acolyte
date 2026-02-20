@@ -5,7 +5,7 @@ import React, { useState } from "react";
 import { useEffect } from "react";
 import { Box, Static, Text, render, useApp, useInput } from "ink";
 import type { Backend } from "./backend";
-import { runShellCommand } from "./coding-tools";
+import { gitDiff, gitStatusShort, runShellCommand } from "./coding-tools";
 import { addMemory, listMemories } from "./memory";
 import { buildFileContext } from "./file-context";
 import { PromptInput } from "./prompt-input";
@@ -38,6 +38,7 @@ const BRAND_COLOR = "#A56EFF";
 const MAX_SKILL_INSTRUCTION_CHARS = 4000;
 const THINKING_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"] as const;
 const CHAT_SLASH_COMMANDS = [
+  "/changes",
   "/dogfood",
   "/new",
   "/status",
@@ -50,6 +51,7 @@ const CHAT_SLASH_COMMANDS = [
 ] as const;
 const SHORTCUT_ITEMS = [
   { key: "@path", description: "attach file/dir context" },
+  { key: "/changes", description: "show git changes" },
   { key: "/dogfood <task>", description: "run verify-first coding loop" },
   { key: "/new", description: "new session" },
   { key: "/status", description: "show backend status" },
@@ -395,6 +397,38 @@ export function formatVerifySummary(raw: string): string {
   return `Verify ${status} (exit ${meta.exitCode ?? "?"}, ${duration}).`;
 }
 
+export function formatChangesSummary(statusRaw: string, diffRaw: string): string {
+  const statusLines = statusRaw
+    .split("\n")
+    .map((line) => line.trimEnd())
+    .filter((line) => line.length > 0);
+  const branchLine = statusLines.find((line) => line.startsWith("## "));
+  const changedFiles = statusLines.filter((line) => !line.startsWith("## ")).length;
+
+  let added = 0;
+  let removed = 0;
+  for (const line of diffRaw.split("\n")) {
+    if (line.startsWith("+++ ") || line.startsWith("--- ")) {
+      continue;
+    }
+    if (line.startsWith("+")) {
+      added += 1;
+    } else if (line.startsWith("-")) {
+      removed += 1;
+    }
+  }
+
+  const summary: string[] = [];
+  summary.push(changedFiles === 0 ? "Working tree clean." : `${changedFiles} changed files.`);
+  if (branchLine) {
+    summary.push(branchLine);
+  }
+  if (changedFiles > 0) {
+    summary.push(`Diff summary: +${added} -${removed}.`);
+  }
+  return summary.join("\n");
+}
+
 function formatShortcutRows(): string[] {
   const width = process.stdout.columns ?? 96;
   const columns = width >= 92 ? 2 : 1;
@@ -655,6 +689,31 @@ function ChatApp(props: ChatAppProps) {
             id: `row_${crypto.randomUUID()}`,
             role: "system",
             content: error instanceof Error ? error.message : "Status check failed.",
+          },
+        ]);
+      }
+      return;
+    }
+
+    if (text === "/changes") {
+      pushUserCommandRow();
+      try {
+        const [statusRaw, diffRaw] = await Promise.all([gitStatusShort(), gitDiff()]);
+        setRows((current) => [
+          ...current,
+          {
+            id: `row_${crypto.randomUUID()}`,
+            role: "assistant",
+            content: formatChangesSummary(statusRaw, diffRaw),
+          },
+        ]);
+      } catch (error) {
+        setRows((current) => [
+          ...current,
+          {
+            id: `row_${crypto.randomUUID()}`,
+            role: "system",
+            content: error instanceof Error ? error.message : "Could not inspect git changes.",
           },
         ]);
       }
