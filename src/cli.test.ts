@@ -37,6 +37,19 @@ describe("cli formatting helpers", () => {
     expect(out).toContain("3 lines");
   });
 
+  test("formatDiffOutput includes file and line summary", () => {
+    const raw = [
+      "diff --git a/a.ts b/a.ts",
+      "--- a/a.ts",
+      "+++ b/a.ts",
+      "@@ -1 +1 @@",
+      "-old",
+      "+new",
+    ].join("\n");
+    const out = formatForTool("diff", raw);
+    expect(out).toContain("1 file changed, +1 -1");
+  });
+
   test("summarizeDiff counts added and removed lines", () => {
     const diff = [
       "diff --git a/a.ts b/a.ts",

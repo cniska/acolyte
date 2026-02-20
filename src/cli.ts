@@ -302,7 +302,28 @@ export function formatReadOutput(raw: string): string {
 }
 
 export function formatDiffOutput(raw: string): string {
-  return clampLines(raw.split("\n"), 64).join("\n");
+  const lines = raw.split("\n").filter((line) => line.length > 0);
+  let filesChanged = 0;
+  let added = 0;
+  let removed = 0;
+  for (const line of lines) {
+    if (line.startsWith("diff --git ")) {
+      filesChanged += 1;
+      continue;
+    }
+    if (line.startsWith("+++ ") || line.startsWith("--- ")) {
+      continue;
+    }
+    if (line.startsWith("+")) {
+      added += 1;
+      continue;
+    }
+    if (line.startsWith("-")) {
+      removed += 1;
+    }
+  }
+  const summary = `${countLabel(filesChanged, "file", "files")} changed, +${added} -${removed}`;
+  return [summary, ...clampLines(lines, 64)].join("\n");
 }
 
 export function formatGitStatusOutput(raw: string): string {
