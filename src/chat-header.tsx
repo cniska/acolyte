@@ -1,4 +1,4 @@
-import { Static, Text } from "ink";
+import { Box, Text } from "ink";
 import React from "react";
 
 type HeaderLine = {
@@ -17,8 +17,8 @@ type ChatHeaderProps = {
 export function ChatHeader(props: ChatHeaderProps): React.ReactNode {
   const { lines, brandColor } = props;
   return (
-    <Static<HeaderLine> items={lines}>
-      {(line) => (
+    <Box flexDirection="column">
+      {lines.map((line) => (
         <Text key={line.id} dimColor={line.dim} color={line.brand ? brandColor : undefined}>
           {line.id === "title" ? (
             <>
@@ -29,7 +29,7 @@ export function ChatHeader(props: ChatHeaderProps): React.ReactNode {
             line.text
           )}
         </Text>
-      )}
-    </Static>
+      ))}
+    </Box>
   );
 }
