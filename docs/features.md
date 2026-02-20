@@ -9,6 +9,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Session controls: `/new`, `/sessions`, `/resume <session-id-prefix>`, `/exit`.
 - File and directory references via `@path` with suggestions/autocomplete.
 - Slash-command suggestions with arrow navigation and Tab/Enter autocomplete.
+- Compact slash aliases for common commands (`/df`, `/ds`, `/mem`, `/rem`).
 - In-chat utility commands: `/status`, `/changes`.
 - In-chat dogfooding readiness check: `/dogfood-status` with short alias `/ds`.
 - Non-interactive dogfooding readiness command: `acolyte dogfood-status`.

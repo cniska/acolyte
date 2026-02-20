@@ -75,8 +75,10 @@ Session management in chat:
 - `?` to toggle shortcuts/help
 - `/changes` to show local git status + compact diff summary
 - `/dogfood <task>` to run the task with verify-first loop and automatic `bun run verify`
+- `/df <task>` as a short alias for `/dogfood <task>`
 - `/dogfood --no-verify <task>` to skip the automatic verify step
 - `/dogfood-status` (or `/ds`) to run a quick dogfooding readiness check (backend + verify + key status)
+- `/mem` and `/rem` as short aliases for `/memories` and `/remember`
 - `/remember [--project] <text>` to save a memory note from chat
 - `/memories` to list saved memory notes
 - `/skills` to list local repo skills from `./skills/*/SKILL.md`
