@@ -359,6 +359,12 @@ export function clampLines(lines: string[], maxLines: number): string[] {
 
 export function formatSearchOutput(raw: string): string {
   const lines = raw.split("\n").filter((line) => line.trim().length > 0);
+  if (
+    lines.length === 0 ||
+    (lines.length === 1 && lines[0].toLowerCase().startsWith("no matches"))
+  ) {
+    return "No matches.";
+  }
   const files = new Set<string>();
   for (const line of lines) {
     const firstColon = line.indexOf(":");

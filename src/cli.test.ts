@@ -34,6 +34,11 @@ describe("cli formatting helpers", () => {
     expect(out).toContain("3 matches in 2 files");
   });
 
+  test("formatSearchOutput handles no-match responses", () => {
+    expect(formatForTool("search", "No matches.")).toBe("No matches.");
+    expect(formatForTool("search", "")).toBe("No matches.");
+  });
+
   test("formatReadOutput includes line count", () => {
     const raw = ["one", "two", "three"].join("\n");
     const out = formatForTool("read", raw);
