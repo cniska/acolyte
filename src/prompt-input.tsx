@@ -73,7 +73,7 @@ export function PromptInput({
     (input, key) => {
       const now = Date.now();
       const hasMetaPrefix = metaPrefixAt.current !== null && now - metaPrefixAt.current <= META_PREFIX_WINDOW_MS;
-      if (input === "\u001b") {
+      if (input === "\u001b" && !key.backspace && !key.delete) {
         metaPrefixAt.current = now;
         return;
       }
@@ -140,7 +140,7 @@ export function PromptInput({
         input === KEYS.ctrl.h ||
         input === KEYS.chars.backspace;
       const isMetaWordDelete =
-        (hasMetaPrefix && isBackspaceLike) ||
+        (isBackspaceLike && (hasMetaPrefix || key.meta || input.includes("\u001b"))) ||
         input === KEYS.esc.altBackspace ||
         input === KEYS.esc.altCtrlH;
       if (isMetaWordDelete) {
