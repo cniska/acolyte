@@ -378,6 +378,15 @@ export function formatEditUpdateOutput(matches: number, diff: string): string {
   return lines.join("\n");
 }
 
+function formatReadTitle(pathInput: string, start?: string, end?: string): string {
+  if (!start && !end) {
+    return `Read(${pathInput})`;
+  }
+  const from = start ?? "1";
+  const to = end ?? "EOF";
+  return `Read(${pathInput}:${from}-${to})`;
+}
+
 function setSessionTitle(session: Session, inputText: string): void {
   if (session.title !== "New Session") {
     return;
@@ -597,7 +606,7 @@ async function chatMode(): Promise<void> {
         } else {
           try {
             const result = await searchRepo(pattern);
-            showToolResult("Search Results", formatForTool("search", result), "tool");
+            showToolResult(`Search(${pattern})`, formatForTool("search", result), "tool");
             session.messages.push(newMessage("system", formatToolContext(`search ${pattern}`, result)));
             session.updatedAt = nowIso();
           } catch (error) {
@@ -612,7 +621,7 @@ async function chatMode(): Promise<void> {
         } else {
           try {
             const snippet = await readSnippet(pathInput, start, end);
-            showToolResult(`Read ${pathInput}`, formatForTool("read", snippet));
+            showToolResult(formatReadTitle(pathInput, start, end), formatForTool("read", snippet));
             session.messages.push(newMessage("system", formatToolContext(`read ${pathInput}`, snippet)));
             session.updatedAt = nowIso();
           } catch (error) {
@@ -623,7 +632,7 @@ async function chatMode(): Promise<void> {
       } else if (command === "/git-status") {
         try {
           const result = await gitStatusShort();
-          showToolResult("Git Status", formatForTool("status", result), "tool");
+          showToolResult("GitStatus()", formatForTool("status", result), "tool");
           session.messages.push(newMessage("system", formatToolContext("git-status", result)));
           session.updatedAt = nowIso();
         } catch (error) {
@@ -636,7 +645,7 @@ async function chatMode(): Promise<void> {
           const ctxRaw = context ? Number.parseInt(context, 10) : undefined;
           const ctx = ctxRaw !== undefined && !Number.isNaN(ctxRaw) ? ctxRaw : 3;
           const result = await gitDiff(pathInput, ctx);
-          showToolResult(`Git Diff${pathInput ? ` ${pathInput}` : ""}`, formatForTool("diff", result));
+          showToolResult(`Diff(${pathInput ?? "."})`, formatForTool("diff", result));
           session.messages.push(
             newMessage("system", formatToolContext(`git-diff ${pathInput ?? ""}`.trim(), result)),
           );
@@ -652,7 +661,7 @@ async function chatMode(): Promise<void> {
         } else {
           try {
             const result = await runShellCommand(cmd);
-            showToolResult(`Run ${cmd}`, formatForTool("run", result));
+            showToolResult(`Bash(${cmd})`, formatForTool("run", result));
             session.messages.push(newMessage("system", formatToolContext(`run ${cmd}`, result)));
             session.updatedAt = nowIso();
           } catch (error) {
@@ -906,7 +915,7 @@ async function toolMode(args: string[]): Promise<void> {
         return;
       }
       const result = await searchRepo(pattern);
-      showToolResult("Search Results", formatForTool("search", result), "tool");
+      showToolResult(`Search(${pattern})`, formatForTool("search", result), "tool");
       return;
     }
 
@@ -918,13 +927,13 @@ async function toolMode(args: string[]): Promise<void> {
         return;
       }
       const snippet = await readSnippet(pathInput, start, end);
-      showToolResult(`Read ${pathInput}`, formatForTool("read", snippet));
+      showToolResult(formatReadTitle(pathInput, start, end), formatForTool("read", snippet));
       return;
     }
 
     if (subcommand === "git-status") {
       const result = await gitStatusShort();
-      showToolResult("Git Status", formatForTool("status", result), "tool");
+      showToolResult("GitStatus()", formatForTool("status", result), "tool");
       return;
     }
 
@@ -933,7 +942,7 @@ async function toolMode(args: string[]): Promise<void> {
       const ctxRaw = context ? Number.parseInt(context, 10) : undefined;
       const ctx = ctxRaw !== undefined && !Number.isNaN(ctxRaw) ? ctxRaw : 3;
       const result = await gitDiff(pathInput, ctx);
-      showToolResult(`Git Diff${pathInput ? ` ${pathInput}` : ""}`, formatForTool("diff", result));
+      showToolResult(`Diff(${pathInput ?? "."})`, formatForTool("diff", result));
       return;
     }
 
@@ -945,7 +954,7 @@ async function toolMode(args: string[]): Promise<void> {
         return;
       }
       const result = await runShellCommand(command);
-      showToolResult(`Run ${command}`, formatForTool("run", result));
+      showToolResult(`Bash(${command})`, formatForTool("run", result));
       return;
     }
 
