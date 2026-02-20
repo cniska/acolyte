@@ -37,6 +37,7 @@ const BRAND_COLOR = "#A56EFF";
 const MAX_SKILL_INSTRUCTION_CHARS = 4000;
 const THINKING_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"] as const;
 const CHAT_SLASH_COMMANDS = [
+  "/?",
   "/new",
   "/sessions",
   "/skills",
@@ -47,6 +48,7 @@ const CHAT_SLASH_COMMANDS = [
 ] as const;
 const SHORTCUT_ITEMS = [
   { key: "@path", description: "attach file/dir context" },
+  { key: "/?", description: "show shortcuts" },
   { key: "/new", description: "new session" },
   { key: "/sessions", description: "list sessions" },
   { key: "/resume <id>", description: "resume session" },
@@ -519,7 +521,7 @@ function ChatApp(props: ChatAppProps) {
       ]);
     };
 
-    if (text === "?") {
+    if (text === "?" || text === "/?") {
       setShowShortcuts((current) => !current);
       return;
     }
