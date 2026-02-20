@@ -1,5 +1,5 @@
 import { homedir } from "node:os";
-import { readdir } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import React, { useState } from "react";
 import { useEffect } from "react";
@@ -40,6 +40,7 @@ const THINKING_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧",
 const CHAT_SLASH_COMMANDS = [
   "/changes",
   "/dogfood",
+  "/features",
   "/new",
   "/status",
   "/sessions",
@@ -53,6 +54,7 @@ const SHORTCUT_ITEMS = [
   { key: "@path", description: "attach file/dir context" },
   { key: "/changes", description: "show git changes" },
   { key: "/dogfood <task>", description: "run verify-first coding loop" },
+  { key: "/features", description: "list current features" },
   { key: "/new", description: "new session" },
   { key: "/status", description: "show backend status" },
   { key: "/sessions", description: "list sessions" },
@@ -159,6 +161,28 @@ export function suggestSlashCommands(inputValue: string, max = 5): string[] {
     return matches.slice(0, max);
   }
   return [];
+}
+
+export function parseImplementedFeatures(markdown: string, limit = 8): string[] {
+  const lines = markdown.split("\n");
+  const start = lines.findIndex((line) => line.trim() === "## Implemented");
+  if (start < 0) {
+    return [];
+  }
+  const items: string[] = [];
+  for (let idx = start + 1; idx < lines.length; idx += 1) {
+    const line = lines[idx]?.trim() ?? "";
+    if (line.startsWith("## ")) {
+      break;
+    }
+    if (line.startsWith("- ")) {
+      items.push(line.slice(2).trim());
+      if (items.length >= limit) {
+        break;
+      }
+    }
+  }
+  return items;
 }
 
 type AtToken = {
@@ -747,6 +771,50 @@ function ChatApp(props: ChatAppProps) {
           content: `- [${entry.scope}] ${entry.content}`,
         })),
       ]);
+      return;
+    }
+
+    if (text === "/features") {
+      pushUserCommandRow();
+      try {
+        const featurePath = join(process.cwd(), "docs/features.md");
+        const markdown = await readFile(featurePath, "utf8");
+        const features = parseImplementedFeatures(markdown, 8);
+        if (features.length === 0) {
+          setRows((current) => [
+            ...current,
+            {
+              id: `row_${crypto.randomUUID()}`,
+              role: "system",
+              content: "No implemented features listed yet. See docs/features.md.",
+            },
+          ]);
+          return;
+        }
+        setRows((current) => [
+          ...current,
+          { id: `row_${crypto.randomUUID()}`, role: "system", content: "Current Features" },
+          ...features.map((feature) => ({
+            id: `row_${crypto.randomUUID()}`,
+            role: "system" as const,
+            content: `- ${feature}`,
+          })),
+          {
+            id: `row_${crypto.randomUUID()}`,
+            role: "system",
+            content: "See docs/features.md for full list.",
+          },
+        ]);
+      } catch {
+        setRows((current) => [
+          ...current,
+          {
+            id: `row_${crypto.randomUUID()}`,
+            role: "system",
+            content: "Feature list not found. See docs/features.md.",
+          },
+        ]);
+      }
       return;
     }
 

@@ -5,6 +5,7 @@ import {
   applyAtSuggestion,
   extractAtReferenceQuery,
   formatChangesSummary,
+  parseImplementedFeatures,
   formatVerifySummary,
   formatThoughtDuration,
   formatSessionList,
@@ -102,6 +103,7 @@ describe("chat-ui helpers", () => {
 
   test("suggestSlashCommands filters known commands by prefix", () => {
     expect(suggestSlashCommands("/c")).toEqual(["/changes"]);
+    expect(suggestSlashCommands("/f")).toEqual(["/features"]);
     expect(suggestSlashCommands("/s")).toEqual(["/status", "/sessions", "/skills"]);
     expect(suggestSlashCommands("/st")).toEqual(["/status"]);
     expect(suggestSlashCommands("/d")).toEqual(["/dogfood"]);
@@ -111,6 +113,21 @@ describe("chat-ui helpers", () => {
     expect(suggestSlashCommands("/rem")).toEqual(["/remember"]);
     expect(suggestSlashCommands("/unknown")).toEqual([]);
     expect(suggestSlashCommands("plain")).toEqual([]);
+  });
+
+  test("parseImplementedFeatures reads implemented bullet list", () => {
+    const markdown = [
+      "# Title",
+      "",
+      "## Implemented",
+      "",
+      "- First feature",
+      "- Second feature",
+      "",
+      "## Planned",
+      "- Later",
+    ].join("\n");
+    expect(parseImplementedFeatures(markdown, 8)).toEqual(["First feature", "Second feature"]);
   });
 
   test("extractAtReferenceQuery parses @prefix", () => {
