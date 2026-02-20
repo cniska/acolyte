@@ -1,13 +1,13 @@
 #!/usr/bin/env bun
 import type { ChatRequest } from "./api";
 import { runAgent } from "./agent";
-import { env } from "./env";
+import { appConfig } from "./app-config";
 import { loadSystemPromptWithMemories } from "./soul";
 
-const PORT = env.PORT;
-const API_KEY = env.ACOLYTE_API_KEY;
-const OPENAI_API_KEY = env.OPENAI_API_KEY;
-const OPENAI_BASE_URL = env.OPENAI_BASE_URL;
+const PORT = appConfig.server.port;
+const API_KEY = appConfig.server.apiKey;
+const OPENAI_API_KEY = appConfig.openai.apiKey;
+const OPENAI_BASE_URL = appConfig.openai.baseUrl;
 
 function unauthorized(): Response {
   return new Response("Unauthorized", { status: 401 });

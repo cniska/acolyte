@@ -5,10 +5,10 @@ import React, { useState } from "react";
 import { useEffect } from "react";
 import { Box, Static, Text, render, useApp, useInput } from "ink";
 import type { Backend } from "./backend";
+import { appConfig } from "./app-config";
 import { gitDiff, gitStatusShort, runShellCommand } from "./coding-tools";
 import { addMemory, listMemories } from "./memory";
 import { buildFileContext } from "./file-context";
-import { env } from "./env";
 import { PromptInput } from "./prompt-input";
 import { listSkills, readSkillInstructions } from "./skills";
 import { createSession } from "./storage";
@@ -717,7 +717,7 @@ function ChatApp(props: ChatAppProps) {
             content: formatDogfoodStatus({
               backendStatus,
               verifySummary,
-              hasApiKey: Boolean(env.OPENAI_API_KEY),
+              hasApiKey: Boolean(appConfig.openai.apiKey),
             }),
           },
         ]);

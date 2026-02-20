@@ -1,8 +1,5 @@
-import { Agent } from "@mastra/core/agent";
-import { Memory } from "@mastra/memory";
 import type { ChatRequest, ChatResponse } from "./api";
-import { acolyteTools } from "./mastra-tools";
-import { getObservationalMemoryConfig } from "./memory-config";
+import { createAcolyteAgent } from "./acolyte-agent";
 
 interface OpenAIClientConfig {
   apiKey?: string;
@@ -18,22 +15,11 @@ const MAX_ATTACHMENT_MESSAGE_CHARS = 20_000;
 const MAX_REVIEW_OUTPUT_CHARS = 1800;
 const OM_RESOURCE_ID = "acolyte-local";
 
-const memory = new Memory({
-  options: {
-    lastMessages: 10,
-    observationalMemory: getObservationalMemoryConfig(),
-  },
-});
-
 function truncateText(input: string, maxChars: number): string {
   if (input.length <= maxChars) {
     return input;
   }
   return `${input.slice(0, Math.max(0, maxChars - 1))}…`;
-}
-
-function normalizeModel(model: string): string {
-  return model.includes("/") ? model : `openai/${model}`;
 }
 
 function messageCharLimit(content: string): number {
@@ -215,17 +201,6 @@ function buildMockReply(req: ChatRequest): ChatResponse {
       `Echo: ${req.message.trim()}`,
     ].join(" "),
   };
-}
-
-function createAcolyteAgent(input: { model: string; instructions: string }): Agent {
-  return new Agent({
-    id: "acolyte",
-    name: "Acolyte",
-    instructions: input.instructions,
-    model: normalizeModel(input.model),
-    tools: acolyteTools,
-    memory,
-  });
 }
 
 export async function runAgent(input: {

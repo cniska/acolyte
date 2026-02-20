@@ -1,4 +1,4 @@
-import { env } from "./env";
+import { appConfig } from "./app-config";
 
 function normalizeModel(model: string): string {
   return model.includes("/") ? model : `openai/${model}`;
@@ -11,13 +11,13 @@ export function getObservationalMemoryConfig(): {
   reflection: { observationTokens: number };
 } {
   return {
-    model: normalizeModel(env.ACOLYTE_OM_MODEL ?? env.ACOLYTE_MODEL),
-    scope: "thread",
+    model: normalizeModel(appConfig.models.observationalMemory),
+    scope: appConfig.memory.observational.scope,
     observation: {
-      messageTokens: env.ACOLYTE_OM_OBSERVATION_TOKENS,
+      messageTokens: appConfig.memory.observational.observationTokens,
     },
     reflection: {
-      observationTokens: env.ACOLYTE_OM_REFLECTION_TOKENS,
+      observationTokens: appConfig.memory.observational.reflectionTokens,
     },
   };
 }

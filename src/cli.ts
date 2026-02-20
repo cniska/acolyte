@@ -12,7 +12,7 @@ import {
   searchRepo,
 } from "./coding-tools";
 import { readConfig, setConfigValue, unsetConfigValue } from "./config";
-import { env } from "./env";
+import { appConfig } from "./app-config";
 import { buildFileContext } from "./file-context";
 import { addMemory, listMemories } from "./memory";
 import { createSession, readStore, writeStore } from "./storage";
@@ -654,7 +654,7 @@ function parseEditArgs(args: string[]): {
 async function chatMode(): Promise<void> {
   const config = await readConfig();
   const store = await readStore();
-  const defaultModel = env.ACOLYTE_MODEL ?? config.model ?? FALLBACK_MODEL;
+  const defaultModel = appConfig.models.default ?? config.model ?? FALLBACK_MODEL;
   // Start a fresh chat session by default to avoid cross-session transcript/context bleed.
   const session = createSession(defaultModel);
   store.sessions.unshift(session);
@@ -699,7 +699,7 @@ async function runMode(args: string[]): Promise<void> {
 
   const config = await readConfig();
   const store = await readStore();
-  const defaultModel = env.ACOLYTE_MODEL ?? config.model ?? FALLBACK_MODEL;
+  const defaultModel = appConfig.models.default ?? config.model ?? FALLBACK_MODEL;
   const session = getOrCreateActiveSession(store, defaultModel);
   const backend = createBackend({
     apiUrl: config.apiUrl,
@@ -785,7 +785,7 @@ async function dogfoodStatusMode(): Promise<void> {
     formatDogfoodStatusOutput({
       backendStatus,
       verifyRaw,
-      hasApiKey: Boolean(env.OPENAI_API_KEY),
+      hasApiKey: Boolean(appConfig.openai.apiKey),
     }),
     "plain",
   );
