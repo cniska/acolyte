@@ -11,20 +11,11 @@ const EnvSchema = z.object({
   OPENAI_BASE_URL: z.string().trim().min(1).default("https://api.openai.com/v1"),
   ACOLYTE_MODEL: z.string().trim().min(1).default("gpt-5-mini"),
   ACOLYTE_OM_MODEL: z.string().trim().min(1).optional(),
-  ACOLYTE_OM_SCOPE: z.enum(["thread", "resource"]).default("thread"),
-  ACOLYTE_OM_THREAD_OBSERVATION_TOKENS: z.preprocess(
-    (value) => (value === undefined ? 1_000 : value),
-    z.coerce.number().int().min(500),
-  ),
-  ACOLYTE_OM_THREAD_REFLECTION_TOKENS: z.preprocess(
-    (value) => (value === undefined ? 2_000 : value),
-    z.coerce.number().int().min(1000),
-  ),
-  ACOLYTE_OM_RESOURCE_OBSERVATION_TOKENS: z.preprocess(
+  ACOLYTE_OM_OBSERVATION_TOKENS: z.preprocess(
     (value) => (value === undefined ? 3_000 : value),
     z.coerce.number().int().min(500),
   ),
-  ACOLYTE_OM_RESOURCE_REFLECTION_TOKENS: z.preprocess(
+  ACOLYTE_OM_REFLECTION_TOKENS: z.preprocess(
     (value) => (value === undefined ? 8_000 : value),
     z.coerce.number().int().min(1000),
   ),
