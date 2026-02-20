@@ -246,7 +246,7 @@ function ChatApp(props: ChatAppProps) {
     <Box flexDirection="column">
       <Static<HeaderLine> items={headerLines}>
         {(line) => (
-          <Text key={line.id} dimColor={line.dim} color={line.brand ? "magentaBright" : undefined}>
+          <Text key={line.id} dimColor={line.dim} color={line.brand ? "#A56EFF" : undefined}>
             {line.text}
           </Text>
         )}
