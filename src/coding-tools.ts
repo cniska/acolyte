@@ -1,5 +1,4 @@
-import { readFile } from "node:fs/promises";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 
 async function runCommand(cmd: string[]): Promise<{ code: number; stdout: string; stderr: string }> {

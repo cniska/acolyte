@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
-import type { ChatRequest } from "./api";
 import { runAgent } from "./agent";
+import type { ChatRequest } from "./api";
 import { appConfig } from "./app-config";
 import { mastraStorage, mastraStorageMode } from "./mastra-storage";
 import { getObservationalMemoryConfig } from "./memory-config";

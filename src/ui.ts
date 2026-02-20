@@ -1,5 +1,5 @@
-import { stdout } from "node:process";
 import { homedir } from "node:os";
+import { stdout } from "node:process";
 
 const color = {
   dim: (value: string): string => `\x1b[2m${value}\x1b[22m`,

@@ -1,6 +1,6 @@
 import { homedir } from "node:os";
-import React from "react";
 import { Text } from "ink";
+import React from "react";
 import type { SkillMeta } from "./skills";
 import type { Session } from "./types";
 

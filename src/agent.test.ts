@@ -1,5 +1,4 @@
 import { describe, expect, test } from "bun:test";
-import type { ChatRequest } from "./api";
 import {
   buildAgentInput,
   compactReviewOutput,
@@ -7,6 +6,7 @@ import {
   finalizeReviewOutput,
   normalizeReviewOutput,
 } from "./agent";
+import type { ChatRequest } from "./api";
 
 function makeRequest(content: string): ChatRequest {
   return {

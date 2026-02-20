@@ -1,6 +1,6 @@
 import { Mastra } from "@mastra/core/mastra";
-import { appConfig } from "../app-config";
 import { createAcolyteAgent } from "../acolyte-agent";
+import { appConfig } from "../app-config";
 import { mastraStorage } from "../mastra-storage";
 import { createSoulPrompt } from "../soul";
 

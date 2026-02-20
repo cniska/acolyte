@@ -1,5 +1,5 @@
-import React from "react";
 import { Text } from "ink";
+import React from "react";
 import { sanitizeAssistantContent, tokenizeForHighlighting } from "./chat-content";
 
 const TOOL_LABELS = ["Run", "Search", "Read", "Diff", "Edit", "Update", "Status"] as const;

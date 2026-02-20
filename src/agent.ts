@@ -1,5 +1,5 @@
-import type { ChatRequest, ChatResponse } from "./api";
 import { createAcolyteAgent } from "./acolyte-agent";
+import type { ChatRequest, ChatResponse } from "./api";
 import { appConfig } from "./app-config";
 
 interface OpenAIClientConfig {

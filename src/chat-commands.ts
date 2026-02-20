@@ -1,12 +1,12 @@
+import type { TokenUsage } from "./api";
 import { appConfig } from "./app-config";
 import type { Backend } from "./backend";
-import { gitDiff, gitStatusShort, runShellCommand } from "./coding-tools";
 import { formatChangesSummary, formatDogfoodStatus, formatVerifySummary } from "./chat-formatters";
+import { gitDiff, gitStatusShort, runShellCommand } from "./coding-tools";
 import { addMemory, listMemories } from "./memory";
 import { formatStatusOutput } from "./status-format";
 import { createSession } from "./storage";
 import type { Session, SessionStore } from "./types";
-import type { TokenUsage } from "./api";
 
 export type ChatRow = {
   id: string;

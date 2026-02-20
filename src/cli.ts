@@ -1,11 +1,11 @@
 #!/usr/bin/env bun
-import { stdout as output } from "node:process";
 import { relative } from "node:path";
+import { stdout as output } from "node:process";
+import { appConfig } from "./app-config";
 import { createBackend } from "./backend";
 import { runInkChat } from "./chat-ui";
 import { editFileReplace, gitDiff, gitStatusShort, readSnippet, runShellCommand, searchRepo } from "./coding-tools";
 import { readConfig, setConfigValue, unsetConfigValue } from "./config";
-import { appConfig } from "./app-config";
 import { buildFileContext } from "./file-context";
 import { addMemory, listMemories } from "./memory";
 import { formatStatusOutput as formatStatusOutputShared } from "./status-format";
@@ -18,8 +18,8 @@ import {
   printInfo,
   printOutput,
   printSection,
-  printToolHeader,
   printTool,
+  printToolHeader,
   printWarning,
   streamText,
 } from "./ui";

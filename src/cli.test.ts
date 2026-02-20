@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import {
   formatDogfoodStatusOutput,
-  formatForTool,
   formatEditUpdateOutput,
+  formatForTool,
   formatRunOutput,
   formatStatusOutput,
   formatTimestamp,

@@ -1,9 +1,9 @@
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
 import { describe, expect, test } from "bun:test";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { addMemory } from "./memory";
-import { loadAgentsPrompt, loadMemoryContextPrompt, loadSoulPrompt, loadSystemPrompt, createSoulPrompt } from "./soul";
+import { createSoulPrompt, loadAgentsPrompt, loadMemoryContextPrompt, loadSoulPrompt, loadSystemPrompt } from "./soul";
 
 describe("soul prompt loading", () => {
   test("loadSoulPrompt uses fallback when docs/soul.md is missing", () => {

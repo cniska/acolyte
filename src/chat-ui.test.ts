@@ -1,6 +1,4 @@
 import { describe, expect, test } from "bun:test";
-import type { Message, SessionStore } from "./types";
-import { toRows } from "./chat-ui";
 import { formatSessionList, resolveResumeSession } from "./chat-commands";
 import {
   applyAtSuggestion,
@@ -9,6 +7,8 @@ import {
   rankAtReferenceSuggestions,
   shouldAutocompleteAtSubmit,
 } from "./chat-file-ref";
+import { toRows } from "./chat-ui";
+import type { Message, SessionStore } from "./types";
 
 function makeStore(): SessionStore {
   return {

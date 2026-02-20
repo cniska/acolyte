@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { dispatchSlashCommand, formatTokenUsageOutput, type ChatRow, type TokenUsageEntry } from "./chat-commands";
-import type { Session, SessionStore } from "./types";
 import type { Backend } from "./backend";
+import { type ChatRow, dispatchSlashCommand, formatTokenUsageOutput, type TokenUsageEntry } from "./chat-commands";
+import type { Session, SessionStore } from "./types";
 
 function makeSession(id = "sess_test001"): Session {
   return {

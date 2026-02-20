@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from "react";
 import { Text, useInput } from "ink";
+import React, { useEffect, useRef, useState } from "react";
 
 const KEYS = {
   ctrl: {

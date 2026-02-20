@@ -1,7 +1,7 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
-import { editFileReplace, gitDiff, gitStatusShort, readSnippet, runShellCommand, searchRepo } from "./coding-tools";
 import { appConfig } from "./app-config";
+import { editFileReplace, gitDiff, gitStatusShort, readSnippet, runShellCommand, searchRepo } from "./coding-tools";
 import { compactToolOutput } from "./tool-output";
 
 export const searchRepoTool = createTool({

@@ -1,10 +1,10 @@
+import type { TokenUsage } from "./api";
 import type { Backend } from "./backend";
+import type { ChatRow, TokenUsageEntry } from "./chat-commands";
+import { extractAtReferencePaths } from "./chat-file-ref";
+import { formatThoughtDuration, formatVerifySummary } from "./chat-formatters";
 import { runShellCommand } from "./coding-tools";
 import { buildFileContext } from "./file-context";
-import { formatThoughtDuration, formatVerifySummary } from "./chat-formatters";
-import { extractAtReferencePaths } from "./chat-file-ref";
-import type { ChatRow, TokenUsageEntry } from "./chat-commands";
-import type { TokenUsage } from "./api";
 import type { Message, Session } from "./types";
 
 function row(role: ChatRow["role"], content: string, dim = false): ChatRow {
