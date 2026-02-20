@@ -156,5 +156,5 @@ Build a personal AI assistant using Mastra, with a CLI-first interface and a hos
 ## Next Actions
 1. Prioritize interactive CLI UX polish; keep batch mode intentionally minimal.
 2. Create technical design doc (`docs/technical-design.md`).
-3. Add stronger agent tool-use behavior for coding tasks (higher tool-call reliability).
+3. Add explicit tool traces/evidence in responses for transparency and debugging.
 4. Create implementation backlog from phases.

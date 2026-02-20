@@ -24,6 +24,41 @@ function buildAgentInput(req: ChatRequest): string {
   return lines.join("\n");
 }
 
+function isToolLikelyRequest(text: string): boolean {
+  const lower = text.toLowerCase();
+  const hints = [
+    "search",
+    "read",
+    "file",
+    "diff",
+    "git",
+    "status",
+    "run",
+    "command",
+    "edit",
+    "refactor",
+    "find",
+    "where",
+    "typecheck",
+    "lint",
+    "test",
+  ];
+  return hints.some((hint) => lower.includes(hint));
+}
+
+function buildToolPolicy(baseInstructions: string): string {
+  return [
+    baseInstructions,
+    "Tool policy:",
+    "- For repository or codebase questions, prefer tools over guessing.",
+    "- Use search-repo to locate relevant files before answering.",
+    "- Use read-file-snippet for exact evidence and quote paths/lines when relevant.",
+    "- Use git-status/git-diff when asked about current changes.",
+    "- Use run-command for verification commands when requested.",
+    "- Use edit-file-replace only when explicitly asked to modify files.",
+  ].join("\n");
+}
+
 function buildMockReply(req: ChatRequest): ChatResponse {
   return {
     model: req.model,
@@ -57,10 +92,22 @@ export async function runAgent(input: {
 
   const agent = createAcolyteAgent({
     model: input.request.model,
-    instructions: input.soulPrompt,
+    instructions: buildToolPolicy(input.soulPrompt),
   });
 
-  const result = await agent.generate(buildAgentInput(input.request));
+  const requestInput = buildAgentInput(input.request);
+  const toolLikely = isToolLikelyRequest(input.request.message);
+  let result = await agent.generate(requestInput, {
+    maxSteps: 8,
+    toolChoice: "auto",
+  });
+
+  if (toolLikely && result.toolCalls.length === 0) {
+    result = await agent.generate(requestInput, {
+      maxSteps: 8,
+      toolChoice: "required",
+    });
+  }
 
   return {
     model: input.request.model,
