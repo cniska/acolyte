@@ -34,7 +34,12 @@ ACOLYTE_OM_REFLECTION_TOKENS=8000
 ```
 Optional persistent memory storage:
 ```bash
-DATABASE_URL=postgres://user:pass@host:5432/acolyte
+DATABASE_URL=postgres://acolyte:acolyte@localhost:5432/acolyte
+```
+
+Optional local Postgres via Docker Compose:
+```bash
+bun run db:up
 ```
 
 3. Start local backend:
@@ -127,6 +132,16 @@ Dogfooding readiness check:
 ```bash
 bun run src/cli.ts dogfood-status
 ```
+
+Postgres smoke test:
+```bash
+bun run db:smoke
+```
+Run this while backend is running (`bun run serve:env`).
+This verifies:
+- backend `/healthz` reports `memory.storage=postgres`
+- OM admin status endpoint is reachable
+- OM wipe endpoint works for a temporary resource
 
 ## Example Prompts
 

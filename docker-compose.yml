@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: acolyte-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: acolyte
+      POSTGRES_PASSWORD: acolyte
+      POSTGRES_DB: acolyte
+    ports:
+      - "5432:5432"
+    volumes:
+      - acolyte_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  acolyte_postgres_data:
