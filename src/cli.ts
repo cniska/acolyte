@@ -163,27 +163,52 @@ function editDistance(a: string, b: string): number {
 }
 
 export function suggestCommand(input: string): string | null {
+  return suggestCommands(input, 1)[0] ?? null;
+}
+
+export function suggestCommands(input: string, max = 3): string[] {
   const normalized = input.trim();
   if (!normalized.startsWith("/")) {
-    return null;
+    return [];
   }
   const commands = allKnownCommands();
+  const prefixMatches: string[] = [];
   for (const command of commands) {
     if (command.startsWith(normalized)) {
-      return command;
+      prefixMatches.push(command);
     }
   }
-  let best: { command: string; score: number } | null = null;
+  if (prefixMatches.length > 0) {
+    return prefixMatches.slice(0, max);
+  }
+
+  const scored: Array<{ command: string; score: number }> = [];
+  let bestScore = Number.POSITIVE_INFINITY;
   for (const command of commands) {
     const score = editDistance(normalized, command);
-    if (!best || score < best.score) {
-      best = { command, score };
+    bestScore = Math.min(bestScore, score);
+    scored.push({ command, score });
+  }
+  if (!Number.isFinite(bestScore) || bestScore > 3) {
+    return [];
+  }
+  return scored
+    .filter((row) => row.score === bestScore)
+    .slice(0, max)
+    .map((row) => row.command);
+}
+
+function normalizeSuggestions(commands: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const command of commands) {
+    const canonical = resolveCommandAlias(command);
+    if (!seen.has(canonical)) {
+      seen.add(canonical);
+      out.push(canonical);
     }
   }
-  if (best && best.score <= 3) {
-    return best.command;
-  }
-  return null;
+  return out;
 }
 
 function listSessions(store: SessionStore): void {
@@ -878,11 +903,13 @@ async function chatMode(): Promise<void> {
         rl.close();
         return;
       } else {
-        const suggestion = suggestCommand(command);
-        if (suggestion) {
-          printWarning(`Unknown command: ${command}. Did you mean ${suggestion}?`);
+        const suggestions = normalizeSuggestions(suggestCommands(rawCommand, 3));
+        if (suggestions.length === 1) {
+          printWarning(`Unknown command: ${rawCommand}. Did you mean ${suggestions[0]}?`);
+        } else if (suggestions.length > 1) {
+          printWarning(`Unknown command: ${rawCommand}. Try: ${suggestions.join(", ")}`);
         } else {
-          printWarning(`Unknown command: ${command}`);
+          printWarning(`Unknown command: ${rawCommand}`);
         }
       }
 

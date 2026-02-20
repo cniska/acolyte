@@ -7,6 +7,7 @@ import {
   formatTimestamp,
   resolveCommandAlias,
   suggestCommand,
+  suggestCommands,
   summarizeDiff,
   truncateText,
 } from "./cli";
@@ -119,5 +120,12 @@ describe("cli formatting helpers", () => {
     expect(suggestCommand("/git-stats")).toBe("/git-status");
     expect(suggestCommand("/memoris")).toBe("/memories");
     expect(suggestCommand("plain text")).toBeNull();
+  });
+
+  test("suggestCommands returns multiple ranked suggestions", () => {
+    expect(suggestCommands("/g", 3)).toEqual(["/git-status", "/git-diff", "/gs"]);
+    expect(suggestCommands("/git-stats", 3)).toContain("/git-status");
+    expect(suggestCommands("/memoriez", 3)).toContain("/memories");
+    expect(suggestCommands("no slash", 3)).toEqual([]);
   });
 });
