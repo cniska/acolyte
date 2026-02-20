@@ -139,7 +139,18 @@ async function chatMode(): Promise<void> {
   });
 
   while (true) {
-    const line = (await rl.question("> ")).trim();
+    let line = "";
+    try {
+      line = (await rl.question("> ")).trim();
+    } catch (error) {
+      const code = (error as { code?: string })?.code;
+      if (code === "ERR_USE_AFTER_CLOSE") {
+        await persist();
+        return;
+      }
+
+      throw error;
+    }
     if (!line) {
       continue;
     }
