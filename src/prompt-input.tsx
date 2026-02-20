@@ -76,18 +76,18 @@ export function PromptInput({
         return;
       }
 
-      if (key.leftArrow && key.meta) {
+      if (key.home) {
         setCursorOffset(0);
         return;
       }
 
-      if (key.rightArrow && key.meta) {
+      if (key.end) {
         setCursorOffset(value.length);
         return;
       }
 
       if (
-        (key.leftArrow && key.ctrl) ||
+        (key.leftArrow && key.meta) ||
         (key.meta && input === KEYS.meta.b) ||
         input === KEYS.esc.altB
       ) {
@@ -96,7 +96,7 @@ export function PromptInput({
       }
 
       if (
-        (key.rightArrow && key.ctrl) ||
+        (key.rightArrow && key.meta) ||
         (key.meta && input === KEYS.meta.f) ||
         input === KEYS.esc.altF
       ) {
