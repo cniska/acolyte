@@ -32,6 +32,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Expanded picker/autocomplete UX for slash commands and additional in-chat controls.
 - Optional multi-agent topology after single-agent reliability gates are stable.
 - Optional high-signal git hooks (for example pre-push verify) after workflow fit is validated.
+- Optional messaging channel adapter (for example WhatsApp via OpenClaw/Twilio) after core reliability and auth hardening.
 
 ## Notes
 

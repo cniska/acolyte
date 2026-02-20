@@ -37,8 +37,9 @@ Build a personal AI assistant using Mastra, with a CLI-first interface that runs
 1. Web UI.
 2. Mobile apps.
 3. Voice interface.
-4. Team-level multi-tenant collaboration.
-5. Autonomous long-running operations without explicit user approval.
+4. Third-party messaging channel integrations (for example WhatsApp/OpenClaw).
+5. Team-level multi-tenant collaboration.
+6. Autonomous long-running operations without explicit user approval.
 
 ## Proposed Tech Stack
 1. Runtime: Bun + TypeScript + Mastra.
@@ -51,6 +52,7 @@ Build a personal AI assistant using Mastra, with a CLI-first interface that runs
 8. Model providers: OpenAI + Anthropic (+ optional others) through a single routing layer.
 9. Code execution sandbox: E2B or Modal.
 10. Observability: structured logs + traces + evaluation dataset.
+11. Channel adapters (post-MVP): OpenClaw/Twilio bridge for WhatsApp and other messaging channels.
 
 ## Architecture
 1. CLI Layer:
@@ -173,6 +175,7 @@ Build a personal AI assistant using Mastra, with a CLI-first interface that runs
 4. Packaging target (`npm` global vs standalone binary).
 5. Async job strategy (Vercel-native vs external worker).
 6. Multi-agent rollout timing and topology (planner/executor/reviewer) after single-agent reliability gates are consistently met.
+7. Channel adapter rollout timing (WhatsApp via OpenClaw/Twilio) and auth model for cross-device messaging.
 
 ## Next Actions
 1. Prioritize interactive CLI UX polish; keep batch mode intentionally minimal.
@@ -190,6 +193,7 @@ Build a personal AI assistant using Mastra, with a CLI-first interface that runs
 13. Evaluate opt-in git hooks for high-signal checks only (for example `pre-push` verify), avoid mandatory noisy hooks.
 14. Execute a staged dogfooding ramp on `main`: start with low-risk tasks, then graduate to isolated feature slices as reliability remains stable.
 15. Maintain `docs/features.md` as the canonical shipped/in-progress/planned feature inventory, and keep README pointing to it.
+16. Evaluate post-MVP channel adapter path for messaging access (WhatsApp/OpenClaw), including auth, rate limits, and privacy controls.
 
 ## Prioritization Policy
 1. Prioritize correctness, reliability, and core workflow capability over cosmetic UX changes.
