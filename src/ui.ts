@@ -16,7 +16,6 @@ export function banner(model: string, sessionId: string, version: string): void 
   stdout.write(`${color.brand(border)}\n`);
   stdout.write(`${color.bold("Acolyte")}${color.dim(" CLI")}\n`);
   stdout.write(`${color.dim("v")} ${version} ${color.dim("• model")} ${model} ${color.dim("• session")} ${sessionId.slice(0, 12)}\n`);
-  stdout.write(`${color.dim("? shortcuts   /exit quit")}\n`);
   stdout.write(`${color.brand(border)}\n\n`);
 }
 
