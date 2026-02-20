@@ -23,4 +23,7 @@ export const appConfig = {
       reflectionTokens: env.ACOLYTE_OM_REFLECTION_TOKENS,
     },
   },
+  agent: {
+    contextMaxTokens: env.ACOLYTE_CONTEXT_MAX_TOKENS,
+  },
 } as const;

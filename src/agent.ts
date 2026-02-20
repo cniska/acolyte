@@ -9,41 +9,101 @@ interface OpenAIClientConfig {
 
 const FALLBACK_PLAN =
   "1) Interpret request. 2) Use available repo tools when helpful. 3) Return concise, actionable answer.";
-const MAX_HISTORY_MESSAGES = 20;
-const MAX_HISTORY_TOTAL_CHARS = 40_000;
-const MAX_MESSAGE_CHARS = 2_000;
-const MAX_ATTACHMENT_MESSAGE_CHARS = 20_000;
+const APPROX_CHARS_PER_TOKEN = 4;
+const MAX_HISTORY_MESSAGES = 40;
+const MAX_MESSAGE_TOKENS = 600;
+const MAX_ATTACHMENT_MESSAGE_TOKENS = 3000;
+const MAX_PINNED_MESSAGE_TOKENS = 1200;
 const MAX_REVIEW_OUTPUT_CHARS = 1800;
 
-function truncateText(input: string, maxChars: number): string {
+function estimateTokens(input: string): number {
+  if (input.length === 0) {
+    return 0;
+  }
+  return Math.ceil(input.length / APPROX_CHARS_PER_TOKEN);
+}
+
+function truncateByTokens(input: string, maxTokens: number): string {
+  if (maxTokens <= 0) {
+    return "";
+  }
+  const maxChars = maxTokens * APPROX_CHARS_PER_TOKEN;
   if (input.length <= maxChars) {
     return input;
   }
   return `${input.slice(0, Math.max(0, maxChars - 1))}…`;
 }
 
-function messageCharLimit(content: string): number {
-  if (content.startsWith("Attached file:")) {
-    return MAX_ATTACHMENT_MESSAGE_CHARS;
+function isRelevantFileContext(content: string): boolean {
+  return content.startsWith("Attached file:") || content.startsWith("Attached directory:");
+}
+
+function isPinnedSystemContext(content: string): boolean {
+  return content.startsWith("Active skill (") || content.startsWith("Pinned memory:");
+}
+
+function lineForMessage(
+  message: ChatRequest["history"][number],
+  maxTokens: number,
+): { line: string; tokens: number } {
+  const compact = truncateByTokens(message.content, maxTokens);
+  const line = `${message.role.toUpperCase()}: ${compact}`;
+  return { line, tokens: estimateTokens(line) };
+}
+
+function collectLinesWithinBudget(
+  messages: ChatRequest["history"],
+  usedIds: Set<string>,
+  remainingTokens: number,
+  maxPerMessageTokens: number,
+): { lines: string[]; consumedTokens: number } {
+  const lines: string[] = [];
+  let consumed = 0;
+  const recent = messages.slice(-MAX_HISTORY_MESSAGES);
+  for (let i = recent.length - 1; i >= 0; i -= 1) {
+    const message = recent[i];
+    if (usedIds.has(message.id)) {
+      continue;
+    }
+    const candidate = lineForMessage(message, maxPerMessageTokens);
+    if (candidate.tokens === 0 || consumed + candidate.tokens > remainingTokens) {
+      continue;
+    }
+    usedIds.add(message.id);
+    lines.unshift(candidate.line);
+    consumed += candidate.tokens;
   }
-  return MAX_MESSAGE_CHARS;
+  return { lines, consumedTokens: consumed };
 }
 
 export function buildAgentInput(req: ChatRequest): string {
+  const maxContextTokens = appConfig.agent.contextMaxTokens;
   const lines: string[] = [];
-  const recent = req.history.slice(-MAX_HISTORY_MESSAGES);
-  let usedChars = 0;
-  for (let i = recent.length - 1; i >= 0; i -= 1) {
-    const message = recent[i];
-    const compact = truncateText(message.content, messageCharLimit(message.content));
-    const line = `${message.role.toUpperCase()}: ${compact}`;
-    if (usedChars + line.length > MAX_HISTORY_TOTAL_CHARS) {
-      break;
-    }
-    lines.unshift(line);
-    usedChars += line.length;
+  const usedIds = new Set<string>();
+
+  const userLine = `USER: ${truncateByTokens(req.message.trim(), MAX_MESSAGE_TOKENS)}`;
+  const userTokens = estimateTokens(userLine);
+  let remaining = Math.max(0, maxContextTokens - userTokens);
+
+  const pinnedSystem = req.history.filter((message) => message.role === "system" && isPinnedSystemContext(message.content));
+  const pinnedResult = collectLinesWithinBudget(pinnedSystem, usedIds, remaining, MAX_PINNED_MESSAGE_TOKENS);
+  lines.push(...pinnedResult.lines);
+  remaining -= pinnedResult.consumedTokens;
+
+  const relevantFiles = req.history.filter(
+    (message) => message.role === "system" && isRelevantFileContext(message.content),
+  );
+  const filesResult = collectLinesWithinBudget(relevantFiles, usedIds, remaining, MAX_ATTACHMENT_MESSAGE_TOKENS);
+  lines.push(...filesResult.lines);
+  remaining -= filesResult.consumedTokens;
+
+  const recentResult = collectLinesWithinBudget(req.history, usedIds, remaining, MAX_MESSAGE_TOKENS);
+  lines.push(...recentResult.lines);
+
+  if (lines.length > 0) {
+    lines.push("");
   }
-  lines.push(`USER: ${truncateText(req.message.trim(), MAX_MESSAGE_CHARS)}`);
+  lines.push(userLine);
   return lines.join("\n");
 }
 
@@ -77,7 +137,7 @@ export function compactReviewOutput(output: string): string {
   if (output.length <= MAX_REVIEW_OUTPUT_CHARS) {
     return output;
   }
-  return truncateText(output, MAX_REVIEW_OUTPUT_CHARS);
+  return `${output.slice(0, Math.max(0, MAX_REVIEW_OUTPUT_CHARS - 1))}…`;
 }
 
 export function normalizeReviewOutput(output: string): string {

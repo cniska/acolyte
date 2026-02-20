@@ -25,6 +25,7 @@ Build a personal AI assistant using Mastra, with a CLI-first interface that runs
 6. Full dogfooding transition is not complete; Acolyte-led development loops need to become the default path for feature work in this repo.
 7. Model selection is still mostly static; we need task-aware routing (chat/code/long-context/vision) with measurable quality/cost tradeoffs.
 8. Local model support is not fully productized; we need first-class configuration for OpenAI-compatible local endpoints (Ollama/vLLM) and routing integration.
+9. Token efficiency needs explicit controls; we need hard context budgets, tool-output compression defaults, and lane-based model routing to prevent cost/latency blowups.
 
 ## Product Moat
 1. Reliability moat: verification-first coding loop (plan, tool-grounded execution, validate, reflect) that measurably reduces repeated mistakes.
@@ -208,6 +209,7 @@ Build a personal AI assistant using Mastra, with a CLI-first interface that runs
 16. Evaluate post-MVP channel adapter path for messaging access (WhatsApp/OpenClaw), including auth, rate limits, and privacy controls.
 17. Implement task-lane model routing with explicit config (`chat`, `code`, `long-context`, `vision`) and fallback chain instrumentation.
 18. Add first-class local model support via OpenAI-compatible base URLs (Ollama/vLLM), including docs, smoke checks, and lane-specific overrides.
+19. Add token-usage guardrails: hard prompt/context budgets, default compact tool output, and token telemetry per reply.
 
 ## Prioritization Policy
 1. Prioritize correctness, reliability, and core workflow capability over cosmetic UX changes.

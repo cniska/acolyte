@@ -20,6 +20,10 @@ const EnvSchema = z.object({
     (value) => (value === undefined ? 8_000 : value),
     z.coerce.number().int().min(1000),
   ),
+  ACOLYTE_CONTEXT_MAX_TOKENS: z.preprocess(
+    (value) => (value === undefined ? 8_000 : value),
+    z.coerce.number().int().min(1000),
+  ),
 });
 
 export type AcolyteEnv = z.infer<typeof EnvSchema>;

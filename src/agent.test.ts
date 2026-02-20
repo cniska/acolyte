@@ -38,6 +38,48 @@ describe("buildAgentInput", () => {
     expect(input).toContain("General note:");
     expect(input).toContain("…");
   });
+
+  test("keeps pinned context before recent chat when budget is tight", () => {
+    const req: ChatRequest = {
+      model: "gpt-5-mini",
+      message: "use repo conventions",
+      history: [
+        {
+          id: "msg_skill",
+          role: "system",
+          content: "Active skill (autonomous-feature-delivery): keep slices small.",
+          timestamp: "2026-02-20T10:00:00.000Z",
+        },
+        {
+          id: "msg_user",
+          role: "user",
+          content: "x".repeat(10_000),
+          timestamp: "2026-02-20T10:00:01.000Z",
+        },
+      ],
+    };
+
+    const input = buildAgentInput(req);
+    expect(input).toContain("SYSTEM: Active skill (autonomous-feature-delivery)");
+    expect(input).toContain("USER: use repo conventions");
+  });
+
+  test("respects hard context token budget approximately", () => {
+    const req: ChatRequest = {
+      model: "gpt-5-mini",
+      message: "review",
+      history: Array.from({ length: 100 }).map((_, index) => ({
+        id: `msg_${index}`,
+        role: index % 2 === 0 ? ("user" as const) : ("assistant" as const),
+        content: `line-${index} ${"z".repeat(1000)}`,
+        timestamp: `2026-02-20T10:00:${String(index).padStart(2, "0")}.000Z`,
+      })),
+    };
+
+    const input = buildAgentInput(req);
+    expect(input.length).toBeLessThanOrEqual(35_000);
+    expect(input).toContain("USER: review");
+  });
 });
 
 describe("compactReviewOutput", () => {
