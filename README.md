@@ -32,6 +32,7 @@ Personal memory notes:
 bun run src/cli.ts memory add "Prefer concise commit messages"
 bun run src/cli.ts memory list
 ```
+Saved memories are automatically injected as system context in future prompts.
 
 Optional auth:
 ```bash
