@@ -2,6 +2,7 @@ import { createAgent } from "./agent-factory";
 import { type AgentRole, buildRoleInstructions, buildSubagentContext, selectAgentRole } from "./agent-roles";
 import type { ChatRequest, ChatResponse } from "./api";
 import { appConfig } from "./app-config";
+import { resolveRoleModel } from "./provider-config";
 import { loadRoleSoulPrompt } from "./soul";
 
 interface OpenAIClientConfig {
@@ -166,8 +167,7 @@ export function resolveAgentModel(
     reviewer?: string;
   } = appConfig.models,
 ): string {
-  const override = role === "planner" ? overrides.planner : role === "coder" ? overrides.coder : overrides.reviewer;
-  return override ?? requestedModel;
+  return resolveRoleModel(role, requestedModel, overrides);
 }
 
 export function compactReviewOutput(output: string): string {

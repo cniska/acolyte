@@ -4,6 +4,7 @@ import type { ChatRequest } from "./api";
 import { appConfig } from "./app-config";
 import { mastraStorage, mastraStorageMode } from "./mastra-storage";
 import { getObservationalMemoryConfig } from "./memory-config";
+import { type ProviderName, presentModel, presentRoleModels, resolveRoleModels } from "./provider-config";
 import { createSoulPrompt } from "./soul";
 
 const PORT = appConfig.server.port;
@@ -11,10 +12,6 @@ const API_KEY = appConfig.server.apiKey;
 const OPENAI_API_KEY = appConfig.openai.apiKey;
 const OPENAI_BASE_URL = appConfig.openai.baseUrl;
 const omConfig = getObservationalMemoryConfig();
-
-function normalizeModel(model: string): string {
-  return model.includes("/") ? model : `openai/${model}`;
-}
 
 function unauthorized(): Response {
   return new Response("Unauthorized", { status: 401 });
@@ -76,6 +73,7 @@ const server = Bun.serve({
     const url = new URL(req.url);
 
     if (url.pathname === "/healthz" && req.method === "GET") {
+      const provider: ProviderName = OPENAI_API_KEY ? "openai" : "mock";
       let currentOm: {
         exists: boolean;
         generationCount: number;
@@ -108,20 +106,9 @@ const server = Bun.serve({
       return json({
         ok: true,
         service: "acolyte-backend",
-        provider: OPENAI_API_KEY ? "openai" : "mock",
-        model: OPENAI_API_KEY ? normalizeModel(appConfig.models.main) : appConfig.models.main,
-        models: {
-          main: OPENAI_API_KEY ? normalizeModel(appConfig.models.main) : appConfig.models.main,
-          planner: OPENAI_API_KEY
-            ? normalizeModel(appConfig.models.planner ?? appConfig.models.main)
-            : (appConfig.models.planner ?? appConfig.models.main),
-          coder: OPENAI_API_KEY
-            ? normalizeModel(appConfig.models.coder ?? appConfig.models.main)
-            : (appConfig.models.coder ?? appConfig.models.main),
-          reviewer: OPENAI_API_KEY
-            ? normalizeModel(appConfig.models.reviewer ?? appConfig.models.main)
-            : (appConfig.models.reviewer ?? appConfig.models.main),
-        },
+        provider,
+        model: presentModel(provider, appConfig.models.main),
+        models: presentRoleModels(provider, resolveRoleModels()),
         memory: {
           storage: mastraStorageMode,
           resourceId: appConfig.memory.resourceId,

@@ -4,6 +4,7 @@ import { appConfig } from "./app-config";
 import { mastraStorage } from "./mastra-storage";
 import { acolyteTools } from "./mastra-tools";
 import { getObservationalMemoryConfig } from "./memory-config";
+import { normalizeModel } from "./provider-config";
 
 const sharedMemory = new Memory({
   storage: mastraStorage,
@@ -12,10 +13,6 @@ const sharedMemory = new Memory({
     observationalMemory: getObservationalMemoryConfig(),
   },
 });
-
-function normalizeModel(model: string): string {
-  return model.includes("/") ? model : `openai/${model}`;
-}
 
 export type AgentInstructions = string | (() => string | Promise<string>);
 

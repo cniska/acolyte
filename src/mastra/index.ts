@@ -3,16 +3,13 @@ import { createAgent } from "../agent-factory";
 import type { AgentRole } from "../agent-roles";
 import { appConfig } from "../app-config";
 import { mastraStorage } from "../mastra-storage";
+import { resolveRoleModels } from "../provider-config";
 import { createRoleSoulPrompt, createSoulPrompt } from "../soul";
 
 function createRoleAgent(role: AgentRole) {
   const name = role[0].toUpperCase() + role.slice(1);
-  const model =
-    role === "planner"
-      ? (appConfig.models.planner ?? appConfig.models.main)
-      : role === "coder"
-        ? (appConfig.models.coder ?? appConfig.models.main)
-        : (appConfig.models.reviewer ?? appConfig.models.main);
+  const models = resolveRoleModels();
+  const model = role === "planner" ? models.planner : role === "coder" ? models.coder : models.reviewer;
   return createAgent({
     id: `acolyte-${role}`,
     name,
