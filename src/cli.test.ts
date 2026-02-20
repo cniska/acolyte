@@ -14,14 +14,15 @@ import {
 
 describe("cli formatting helpers", () => {
   test("formatRunOutput compresses long stdout", () => {
-    const raw = ["exit_code=0", "duration_ms=42", "stdout:", "a", "b", "c", "d", "e"].join("\n");
+    const payload = Array.from({ length: 15 }, (_, i) => `line-${i + 1}`);
+    const raw = ["exit_code=0", "duration_ms=42", "stdout:", ...payload].join("\n");
     const out = formatRunOutput(raw);
     expect(out).toContain("exit_code=0");
     expect(out).toContain("duration_ms=42");
     expect(out).toContain("stdout:");
-    expect(out).toContain("a");
-    expect(out).toContain("… +3 lines");
-    expect(out).toContain("e");
+    expect(out).toContain("line-1");
+    expect(out).toContain("… +6 lines");
+    expect(out).toContain("line-15");
   });
 
   test("formatStatusOutput expands key-value status", () => {

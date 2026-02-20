@@ -350,8 +350,8 @@ function showToolResult(
   }
 }
 
-export function clampLines(lines: string[], maxLines: number): string[] {
-  if (lines.length <= maxLines) {
+export function clampLines(lines: string[], maxLines: number, overflowTolerance = 4): string[] {
+  if (lines.length <= maxLines + overflowTolerance) {
     return lines;
   }
   return [...lines.slice(0, maxLines - 1), `… +${lines.length - (maxLines - 1)} lines`];
@@ -458,13 +458,13 @@ export function formatRunOutput(raw: string): string {
       return;
     }
     out.push(name);
-    if (payload.length <= 4) {
+    if (payload.length <= 12) {
       out.push(...payload);
       return;
     }
-    out.push(payload[0]);
-    out.push(`… +${payload.length - 2} lines`);
-    out.push(payload[payload.length - 1]);
+    out.push(...payload.slice(0, 6));
+    out.push(`… +${payload.length - 9} lines`);
+    out.push(...payload.slice(-3));
   };
 
   const nextAfterStdout = stderrIdx >= 0 ? stderrIdx : lines.length;
