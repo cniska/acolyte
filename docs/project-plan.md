@@ -15,7 +15,7 @@ Build a personal AI assistant using Mastra, with a CLI-first interface and a hos
 1. Mastra-based assistant service with at least one coding-focused agent.
 2. Persistent memory architecture (profile, procedural, episodic).
 3. Multi-model support with configurable routing/fallback.
-4. Tooling for repo analysis, command execution, and test/lint verification.
+4. Core coding tools: repo search/read, safe file edits, command execution, and test/lint/typecheck verification.
 5. CLI for chat, history, and memory inspection/editing.
 6. Hosted API/backend on Vercel for centralized access.
 
@@ -52,7 +52,8 @@ Build a personal AI assistant using Mastra, with a CLI-first interface and a hos
    - Reviewer agent for checks and reflection.
 4. Tool Layer:
    - Repository tools (read/search/write diffs).
-   - Command tools (lint/test/build).
+   - Command tools (lint/test/build/typecheck).
+   - Git tools (status/diff/log/branch-aware context).
    - Memory tools (write/read/promote/forget).
 5. Memory Layer:
    - Profile memory: stable user preferences and coding style.
@@ -103,7 +104,7 @@ Build a personal AI assistant using Mastra, with a CLI-first interface and a hos
 ## Phase 1: MVP CLI Assistant (Weeks 2-3)
 1. Implement interactive and one-shot CLI commands with backend auth.
 2. Implement coding assistant agent and tool orchestration.
-3. Add toolset for repo read/search/edit and command execution.
+3. Add toolset for repo read/search/edit, git context, and command execution.
 4. Implement memory read/write APIs and retrieval hooks in hosted backend.
 5. Add history and memory inspection/edit commands.
 
@@ -154,5 +155,5 @@ Build a personal AI assistant using Mastra, with a CLI-first interface and a hos
 ## Next Actions
 1. Confirm CLI command surface (`chat`, `run`, `memory`, `history`, `config`).
 2. Create technical design doc (`docs/technical-design.md`).
-3. Create implementation backlog from phases.
-4. Initialize project scaffold and first runnable CLI command.
+3. Implement coding tool adapters first (`search`, `read`, `edit`, `run`, `git-status`, `git-diff`).
+4. Create implementation backlog from phases.
