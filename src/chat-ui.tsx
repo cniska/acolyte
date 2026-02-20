@@ -290,6 +290,7 @@ function ChatApp(props: ChatAppProps) {
   const [currentSession, setCurrentSession] = useState<Session>(session);
   const [rows, setRows] = useState<ChatRow[]>([]);
   const [value, setValue] = useState("");
+  const [inputRevision, setInputRevision] = useState(0);
   const [isThinking, setIsThinking] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [picker, setPicker] = useState<PickerState | null>(null);
@@ -835,11 +836,13 @@ function ChatApp(props: ChatAppProps) {
                   const selected = atSuggestions[Math.max(0, Math.min(atSuggestionIndex, atSuggestions.length - 1))];
                   if (selected) {
                     setValue(`@${selected}`);
+                    setInputRevision((current) => current + 1);
                     return;
                   }
                 }
                 void handleSubmit(next);
               }}
+              key={`chat-input-${inputRevision}`}
             />
           </Box>
           <Text dimColor>{borderLine()}</Text>
