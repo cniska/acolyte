@@ -2,12 +2,14 @@
 import type { ChatRequest } from "./api";
 import { runAgent } from "./agent";
 import { appConfig } from "./app-config";
+import { getObservationalMemoryConfig } from "./memory-config";
 import { loadSystemPromptWithMemories } from "./soul";
 
 const PORT = appConfig.server.port;
 const API_KEY = appConfig.server.apiKey;
 const OPENAI_API_KEY = appConfig.openai.apiKey;
 const OPENAI_BASE_URL = appConfig.openai.baseUrl;
+const omConfig = getObservationalMemoryConfig();
 
 function unauthorized(): Response {
   return new Response("Unauthorized", { status: 401 });
@@ -60,10 +62,10 @@ const server = Bun.serve({
         memory: {
           observational: {
             enabled: true,
-            scope: appConfig.memory.observational.scope,
-            model: appConfig.models.observationalMemory,
-            observationTokens: appConfig.memory.observational.observationTokens,
-            reflectionTokens: appConfig.memory.observational.reflectionTokens,
+            scope: omConfig.scope,
+            model: omConfig.model,
+            observationTokens: omConfig.observation.messageTokens,
+            reflectionTokens: omConfig.reflection.observationTokens,
           },
         },
       });

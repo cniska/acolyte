@@ -427,7 +427,6 @@ function ChatApp(props: ChatAppProps) {
       brand: false,
     },
     { id: "cwd", text: shownCwd(), dim: true, brand: false },
-    { id: "spacer", text: " ", dim: false, brand: false },
   ];
 
   useInput(
