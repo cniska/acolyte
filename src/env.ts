@@ -2,7 +2,7 @@ import { z } from "zod";
 
 const EnvSchema = z.object({
   PORT: z.preprocess(
-    (value) => (value === undefined ? 8787 : value),
+    (value) => (value === undefined ? 6767 : value),
     z.coerce.number().int().min(1).max(65535),
   ),
   ACOLYTE_API_KEY: z.string().trim().min(1).optional(),

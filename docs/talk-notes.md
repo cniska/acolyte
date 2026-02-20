@@ -67,7 +67,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 
 ## Demo Flow (Short)
 1. Start backend: `bun --env-file=.env run serve`
-2. Set CLI backend once: `bun run src/cli.ts config set apiUrl http://localhost:8787`
+2. Set CLI backend once: `bun run src/cli.ts config set apiUrl http://localhost:6767`
 3. Start chat: `bun run chat`
 4. Show:
    - `@src/agent.ts review this file`

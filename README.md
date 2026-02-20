@@ -44,7 +44,7 @@ Studio currently uses local Mastra `Memory` with observational memory enabled (t
 
 4. In a second shell, run CLI against backend:
 ```bash
-ACOLYTE_API_URL=http://localhost:8787 bun run chat
+ACOLYTE_API_URL=http://localhost:6767 bun run chat
 ```
 Raw CLI only (if backend already running):
 ```bash
@@ -52,7 +52,7 @@ bun run chat:raw
 ```
 Check connectivity:
 ```bash
-ACOLYTE_API_URL=http://localhost:8787 bun run src/cli.ts status
+ACOLYTE_API_URL=http://localhost:6767 bun run src/cli.ts status
 ```
 
 No deployment is required for this mode.
@@ -69,7 +69,7 @@ Saved memories are automatically injected as system context in future prompts.
 Local CLI config:
 ```bash
 bun run src/cli.ts config set model gpt-5-mini
-bun run src/cli.ts config set apiUrl http://localhost:8787
+bun run src/cli.ts config set apiUrl http://localhost:6767
 bun run src/cli.ts config list
 ```
 
@@ -94,7 +94,7 @@ Session management in chat:
 
 Attach file context in one-shot mode:
 ```bash
-ACOLYTE_API_URL=http://localhost:8787 bun run run --file src/cli.ts "review this file"
+ACOLYTE_API_URL=http://localhost:6767 bun run run --file src/cli.ts "review this file"
 ```
 
 Batch coding tools:
@@ -153,10 +153,10 @@ bun run src/cli.ts dogfood "Implement <task> in this repo and verify."
 Optional auth:
 ```bash
 ACOLYTE_API_KEY=dev-secret bun run serve
-ACOLYTE_API_URL=http://localhost:8787 ACOLYTE_API_KEY=dev-secret bun run chat
+ACOLYTE_API_URL=http://localhost:6767 ACOLYTE_API_KEY=dev-secret bun run chat
 ```
 
 Health endpoint:
 ```bash
-curl http://localhost:8787/healthz
+curl http://localhost:6767/healthz
 ```

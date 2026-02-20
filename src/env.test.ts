@@ -4,7 +4,7 @@ import { parseEnv } from "./env";
 describe("env parsing", () => {
   test("parseEnv applies defaults", () => {
     const parsed = parseEnv({});
-    expect(parsed.PORT).toBe(8787);
+    expect(parsed.PORT).toBe(6767);
     expect(parsed.OPENAI_BASE_URL).toBe("https://api.openai.com/v1");
     expect(parsed.ACOLYTE_MODEL).toBe("gpt-5-mini");
   });

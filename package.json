@@ -8,7 +8,7 @@
   },
   "scripts": {
     "start": "bun run src/cli.ts chat",
-    "chat": "bash -lc 'bun run serve:env >/tmp/acolyte-server.log 2>&1 & pid=$!; trap \"kill $pid\" EXIT; sleep 1; bun run config set apiUrl http://localhost:8787 >/dev/null; bun run src/cli.ts chat'",
+    "chat": "bash -lc 'bun run serve:env >/tmp/acolyte-server.log 2>&1 & pid=$!; trap \"kill $pid\" EXIT; sleep 1; bun run config set apiUrl http://localhost:6767 >/dev/null; bun run src/cli.ts chat'",
     "chat:raw": "bun run src/cli.ts chat",
     "run": "bun run src/cli.ts run",
     "history": "bun run src/cli.ts history",
