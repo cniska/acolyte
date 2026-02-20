@@ -202,6 +202,17 @@ function ChatApp(props: ChatAppProps) {
 }
 
 export async function runInkChat(props: ChatAppProps): Promise<void> {
+  const useAltScreen = Boolean(process.stdout.isTTY);
+  if (useAltScreen) {
+    process.stdout.write("\x1b[?1049h\x1b[2J\x1b[H");
+  }
+
   const app = render(<ChatApp {...props} />);
-  await app.waitUntilExit();
+  try {
+    await app.waitUntilExit();
+  } finally {
+    if (useAltScreen) {
+      process.stdout.write("\x1b[?1049l");
+    }
+  }
 }
