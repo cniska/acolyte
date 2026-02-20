@@ -12,7 +12,6 @@ const SHORTCUT_ITEMS = [
   { key: "@path", description: "attach file/dir context" },
   { key: "/changes", description: "show git changes" },
   { key: "/dogfood <task>", description: "run verify-first coding loop" },
-  { key: "/compact <task>", description: "same as /dogfood (concise mode)" },
   { key: "/dogfood-status (/ds)", description: "check dogfooding readiness" },
   { key: "/new", description: "new session" },
   { key: "/status", description: "show backend status" },

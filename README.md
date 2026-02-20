@@ -47,7 +47,6 @@ ACOLYTE_API_URL=http://localhost:6767 bun run chat
 - `/new`, `/sessions`, `/resume <id-prefix>`
 - `/status`, `/changes`
 - `/dogfood <task>` (alias: `/df`)
-- `/compact <task>` (aliases: `/cmp`, `/df`)
 - `/dogfood-status` (alias: `/ds`)
 - `/remember [--project] <text>`, `/memory` (aliases: `/rem`, `/mem`)
 - `/skills`
