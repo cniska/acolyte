@@ -1014,6 +1014,8 @@ function ChatApp(props: ChatAppProps) {
                 >{`  ${item}`}</Text>
               ))}
             </>
+          ) : atQuery !== null ? (
+            <Text dimColor>  No path matches.</Text>
           ) : slashSuggestions.length > 0 ? (
             <Text dimColor>{`  ${slashSuggestions.join("  ")}`}</Text>
           ) : showShortcuts ? (
