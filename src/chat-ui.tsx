@@ -174,6 +174,23 @@ export function rankAtReferenceSuggestions(paths: string[], query: string, max =
     .slice(0, max);
 }
 
+export function shouldAutocompleteAtSubmit(
+  inputValue: string,
+  selectedSuggestion: string | undefined,
+): boolean {
+  if (!selectedSuggestion) {
+    return false;
+  }
+  const trimmed = inputValue.trim();
+  if (!trimmed.startsWith("@")) {
+    return false;
+  }
+  if (trimmed.includes(" ")) {
+    return false;
+  }
+  return trimmed !== `@${selectedSuggestion}`;
+}
+
 async function collectRepoPathCandidates(root = process.cwd(), maxEntries = MAX_SCAN_ENTRIES): Promise<string[]> {
   const out: string[] = [];
   const stack: Array<{ abs: string; rel: string }> = [{ abs: root, rel: "" }];
@@ -834,8 +851,8 @@ function ChatApp(props: ChatAppProps) {
                 const query = extractAtReferenceQuery(next);
                 if (query !== null && atSuggestions.length > 0) {
                   const selected = atSuggestions[Math.max(0, Math.min(atSuggestionIndex, atSuggestions.length - 1))];
-                  if (selected) {
-                    setValue(`@${selected}`);
+                  if (shouldAutocompleteAtSubmit(next, selected)) {
+                    setValue(`@${selected ?? ""} `);
                     setInputRevision((current) => current + 1);
                     return;
                   }

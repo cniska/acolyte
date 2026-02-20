@@ -6,6 +6,7 @@ import {
   rankAtReferenceSuggestions,
   resolveResumeSession,
   sanitizeAssistantContent,
+  shouldAutocompleteAtSubmit,
   suggestSlashCommands,
   toRows,
 } from "./chat-ui";
@@ -116,5 +117,12 @@ describe("chat-ui helpers", () => {
       3,
     );
     expect(ranked).toEqual(["src/cli.ts", "src/config.ts", "src/chat-ui.tsx"]);
+  });
+
+  test("shouldAutocompleteAtSubmit only intercepts unresolved single @token", () => {
+    expect(shouldAutocompleteAtSubmit("@src/cl", "src/cli.ts")).toBe(true);
+    expect(shouldAutocompleteAtSubmit("@src/cli.ts", "src/cli.ts")).toBe(false);
+    expect(shouldAutocompleteAtSubmit("@src/cli.ts review this", "src/cli.ts")).toBe(false);
+    expect(shouldAutocompleteAtSubmit("plain text", "src/cli.ts")).toBe(false);
   });
 });
