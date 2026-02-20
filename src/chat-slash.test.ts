@@ -9,7 +9,8 @@ import {
 
 describe("chat-slash helpers", () => {
   test("suggestSlashCommands filters known commands by prefix", () => {
-    expect(suggestSlashCommands("/c")).toEqual(["/changes"]);
+    expect(suggestSlashCommands("/c")).toEqual(["/changes", "/compact", "/cmp"]);
+    expect(suggestSlashCommands("/co")).toEqual(["/compact"]);
     expect(suggestSlashCommands("/s")).toEqual(["/status", "/sessions", "/skills"]);
     expect(suggestSlashCommands("/st")).toEqual(["/status"]);
     expect(suggestSlashCommands("/d")).toEqual(["/dogfood", "/df", "/ds", "/dogfood-status"]);
@@ -33,6 +34,8 @@ describe("chat-slash helpers", () => {
 
   test("resolveSlashAlias maps bare and argument forms", () => {
     expect(resolveSlashAlias("/df")).toBe("/dogfood");
+    expect(resolveSlashAlias("/compact tighten output")).toBe("/dogfood tighten output");
+    expect(resolveSlashAlias("/cmp tighten output")).toBe("/dogfood tighten output");
     expect(resolveSlashAlias("/ds")).toBe("/dogfood-status");
     expect(resolveSlashAlias("/mem")).toBe("/memory");
     expect(resolveSlashAlias("/rem fix naming")).toBe("/remember fix naming");
@@ -42,6 +45,8 @@ describe("chat-slash helpers", () => {
   test("isKnownSlashToken recognizes canonical and alias tokens", () => {
     expect(isKnownSlashToken("/status")).toBe(true);
     expect(isKnownSlashToken("/df")).toBe(true);
+    expect(isKnownSlashToken("/compact")).toBe(true);
+    expect(isKnownSlashToken("/cmp")).toBe(true);
     expect(isKnownSlashToken("/unknown")).toBe(false);
   });
 });
