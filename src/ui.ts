@@ -12,7 +12,7 @@ const color = {
 export function banner(model: string, sessionId: string): void {
   const border = "─".repeat(66);
   stdout.write(`${color.cyan(border)}\n`);
-  stdout.write(`${color.bold("ACOLYTE")}${color.dim("  personal agentic CLI")}`);
+  stdout.write(`${color.bold("Acolyte")}${color.dim("  personal agentic CLI")}`);
   stdout.write(`  ${color.dim("model:")} ${model}  ${color.dim("session:")} ${sessionId.slice(0, 12)}\n`);
   stdout.write(`${color.cyan(border)}\n`);
   stdout.write(`${color.dim("Type /help for commands. Ctrl+C or /exit to quit.")}\n\n`);
@@ -23,7 +23,7 @@ export function printUser(content: string): void {
 }
 
 export function printAssistantHeader(): void {
-  stdout.write(`${color.cyan("acolyte")}: `);
+  stdout.write(`${color.cyan("Acolyte")}: `);
 }
 
 export async function streamText(content: string): Promise<void> {
