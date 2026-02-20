@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Box, Static, Text, render, useApp, useInput } from "ink";
 import TextInput from "ink-text-input";
 import type { Backend } from "./backend";
-import { listMemories } from "./memory";
+import { addMemory, listMemories } from "./memory";
 import { listSkills, readSkillInstructions } from "./skills";
 import { createSession } from "./storage";
 import type { Message, Session, SessionStore } from "./types";
@@ -30,7 +30,15 @@ type PickerState =
 const TOOL_LABELS = ["Run", "Search", "Read", "Diff", "Edit", "Update", "Status"] as const;
 const BRAND_COLOR = "#A56EFF";
 const MAX_SKILL_INSTRUCTION_CHARS = 4000;
-const CHAT_SLASH_COMMANDS = ["/new", "/sessions", "/skills", "/resume", "/exit"] as const;
+const CHAT_SLASH_COMMANDS = [
+  "/new",
+  "/sessions",
+  "/skills",
+  "/resume",
+  "/remember",
+  "/memories",
+  "/exit",
+] as const;
 
 interface ChatAppProps {
   backend: Backend;
@@ -323,6 +331,69 @@ function ChatApp(props: ChatAppProps) {
       return;
     }
 
+    if (text === "/memories") {
+      pushUserCommandRow();
+      const memories = await listMemories();
+      if (memories.length === 0) {
+        setRows((current) => [
+          ...current,
+          { id: `row_${crypto.randomUUID()}`, role: "system", content: "No memories saved." },
+        ]);
+        return;
+      }
+      setRows((current) => [
+        ...current,
+        {
+          id: `row_${crypto.randomUUID()}`,
+          role: "system",
+          content: `Memories (${memories.length})`,
+        },
+        ...memories.slice(0, 10).map((entry) => ({
+          id: `row_${crypto.randomUUID()}`,
+          role: "system" as const,
+          content: `- ${entry.content}`,
+        })),
+      ]);
+      return;
+    }
+
+    if (text.startsWith("/remember")) {
+      pushUserCommandRow();
+      const content = text.slice("/remember".length).trim();
+      if (!content) {
+        setRows((current) => [
+          ...current,
+          {
+            id: `row_${crypto.randomUUID()}`,
+            role: "system",
+            content: "Usage: /remember <memory text>",
+          },
+        ]);
+        return;
+      }
+      try {
+        await addMemory(content);
+        setRows((current) => [
+          ...current,
+          {
+            id: `row_${crypto.randomUUID()}`,
+            role: "system",
+            content: `Saved memory: ${content}`,
+          },
+        ]);
+      } catch (error) {
+        setRows((current) => [
+          ...current,
+          {
+            id: `row_${crypto.randomUUID()}`,
+            role: "system",
+            content: error instanceof Error ? error.message : "Failed to save memory.",
+          },
+        ]);
+      }
+      return;
+    }
+
     if (text === "/skills") {
       pushUserCommandRow();
       await openSkillsPanel();
@@ -600,7 +671,7 @@ function ChatApp(props: ChatAppProps) {
           {slashSuggestions.length > 0 ? (
             <Text dimColor>{`  ${slashSuggestions.join("  ")}`}</Text>
           ) : showShortcuts ? (
-            <Text dimColor>{"  /new  /sessions  /skills  /resume <id>  /exit"}</Text>
+            <Text dimColor>{"  /new  /sessions  /skills  /resume <id>  /remember  /memories  /exit"}</Text>
           ) : (
             <Text dimColor>  ? for shortcuts</Text>
           )}
