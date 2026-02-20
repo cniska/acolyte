@@ -7,8 +7,11 @@ describe("env parsing", () => {
     expect(parsed.PORT).toBe(6767);
     expect(parsed.OPENAI_BASE_URL).toBe("https://api.openai.com/v1");
     expect(parsed.ACOLYTE_MODEL).toBe("gpt-5-mini");
-    expect(parsed.ACOLYTE_OM_OBSERVATION_TOKENS).toBe(1_000);
-    expect(parsed.ACOLYTE_OM_REFLECTION_TOKENS).toBe(2_000);
+    expect(parsed.ACOLYTE_OM_SCOPE).toBe("thread");
+    expect(parsed.ACOLYTE_OM_THREAD_OBSERVATION_TOKENS).toBe(1_000);
+    expect(parsed.ACOLYTE_OM_THREAD_REFLECTION_TOKENS).toBe(2_000);
+    expect(parsed.ACOLYTE_OM_RESOURCE_OBSERVATION_TOKENS).toBe(3_000);
+    expect(parsed.ACOLYTE_OM_RESOURCE_REFLECTION_TOKENS).toBe(8_000);
   });
 
   test("parseEnv accepts explicit values", () => {
@@ -17,15 +20,21 @@ describe("env parsing", () => {
       OPENAI_BASE_URL: "https://example.com/v1",
       ACOLYTE_MODEL: "gpt-5",
       ACOLYTE_OM_MODEL: "gpt-4o-mini",
-      ACOLYTE_OM_OBSERVATION_TOKENS: "2500",
-      ACOLYTE_OM_REFLECTION_TOKENS: "6000",
+      ACOLYTE_OM_SCOPE: "resource",
+      ACOLYTE_OM_THREAD_OBSERVATION_TOKENS: "1200",
+      ACOLYTE_OM_THREAD_REFLECTION_TOKENS: "2400",
+      ACOLYTE_OM_RESOURCE_OBSERVATION_TOKENS: "3500",
+      ACOLYTE_OM_RESOURCE_REFLECTION_TOKENS: "9000",
     });
     expect(parsed.PORT).toBe(9999);
     expect(parsed.OPENAI_BASE_URL).toBe("https://example.com/v1");
     expect(parsed.ACOLYTE_MODEL).toBe("gpt-5");
     expect(parsed.ACOLYTE_OM_MODEL).toBe("gpt-4o-mini");
-    expect(parsed.ACOLYTE_OM_OBSERVATION_TOKENS).toBe(2500);
-    expect(parsed.ACOLYTE_OM_REFLECTION_TOKENS).toBe(6000);
+    expect(parsed.ACOLYTE_OM_SCOPE).toBe("resource");
+    expect(parsed.ACOLYTE_OM_THREAD_OBSERVATION_TOKENS).toBe(1200);
+    expect(parsed.ACOLYTE_OM_THREAD_REFLECTION_TOKENS).toBe(2400);
+    expect(parsed.ACOLYTE_OM_RESOURCE_OBSERVATION_TOKENS).toBe(3500);
+    expect(parsed.ACOLYTE_OM_RESOURCE_REFLECTION_TOKENS).toBe(9000);
   });
 
   test("parseEnv rejects invalid port", () => {

@@ -6,7 +6,7 @@ function normalizeModel(model: string): string {
 
 export function getObservationalMemoryConfig(): {
   model: string;
-  scope: "thread";
+  scope: "thread" | "resource";
   observation: { messageTokens: number };
   reflection: { observationTokens: number };
 } {

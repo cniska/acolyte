@@ -17,9 +17,23 @@ export const appConfig = {
   memory: {
     lastMessages: 10,
     observational: {
-      scope: "thread" as const,
-      observationTokens: env.ACOLYTE_OM_OBSERVATION_TOKENS,
-      reflectionTokens: env.ACOLYTE_OM_REFLECTION_TOKENS,
+      scope: env.ACOLYTE_OM_SCOPE,
+      thread: {
+        observationTokens: env.ACOLYTE_OM_THREAD_OBSERVATION_TOKENS,
+        reflectionTokens: env.ACOLYTE_OM_THREAD_REFLECTION_TOKENS,
+      },
+      resource: {
+        observationTokens: env.ACOLYTE_OM_RESOURCE_OBSERVATION_TOKENS,
+        reflectionTokens: env.ACOLYTE_OM_RESOURCE_REFLECTION_TOKENS,
+      },
+      observationTokens:
+        env.ACOLYTE_OM_SCOPE === "thread"
+          ? env.ACOLYTE_OM_THREAD_OBSERVATION_TOKENS
+          : env.ACOLYTE_OM_RESOURCE_OBSERVATION_TOKENS,
+      reflectionTokens:
+        env.ACOLYTE_OM_SCOPE === "thread"
+          ? env.ACOLYTE_OM_THREAD_REFLECTION_TOKENS
+          : env.ACOLYTE_OM_RESOURCE_REFLECTION_TOKENS,
     },
   },
 } as const;
