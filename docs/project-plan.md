@@ -219,4 +219,4 @@ Build a personal AI assistant using Mastra, with a CLI-first interface that runs
 1. Full Claude-style transcript rendering in CLI output (structured `Edit(...)` / `Bash(...)` blocks with compact per-tool summaries).
 
 ## Known Issues
-1. None currently tracked for the active Ink chat renderer.
+1. `Option+Backspace` word-delete behavior is terminal-dependent and still inconsistent in some environments; input key-sequence normalization needs hardening.
