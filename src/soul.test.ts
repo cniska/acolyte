@@ -8,7 +8,7 @@ import {
   loadMemoryContextPrompt,
   loadSoulPrompt,
   loadSystemPrompt,
-  loadSystemPromptWithMemories,
+  createSoulPrompt,
 } from "./soul";
 
 describe("soul prompt loading", () => {
@@ -62,14 +62,14 @@ describe("soul prompt loading", () => {
     }
   });
 
-  test("loadSystemPromptWithMemories appends memory context", async () => {
+  test("createSoulPrompt appends memory context", async () => {
     const dir = mkdtempSync(join(tmpdir(), "acolyte-system-"));
     const home = mkdtempSync(join(tmpdir(), "acolyte-home-"));
     try {
       mkdirSync(join(dir, "docs"), { recursive: true });
       writeFileSync(join(dir, "docs", "soul.md"), "Soul prompt body", "utf8");
       await addMemory("Keep answers terse unless asked for details", { cwd: dir, homeDir: home, scope: "user" });
-      const prompt = await loadSystemPromptWithMemories({ cwd: dir, homeDir: home });
+      const prompt = await createSoulPrompt({ cwd: dir, homeDir: home });
       expect(prompt).toContain("Soul prompt body");
       expect(prompt).toContain("User memory context:");
       expect(prompt).toContain("- Keep answers terse unless asked for details");

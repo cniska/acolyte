@@ -4,7 +4,7 @@ import { runAgent } from "./agent";
 import { appConfig } from "./app-config";
 import { mastraStorage, mastraStorageMode } from "./mastra-storage";
 import { getObservationalMemoryConfig } from "./memory-config";
-import { loadSystemPromptWithMemories } from "./soul";
+import { createSoulPrompt } from "./soul";
 
 const PORT = appConfig.server.port;
 const API_KEY = appConfig.server.apiKey;
@@ -144,7 +144,7 @@ const server = Bun.serve({
     }
 
     try {
-      const soulPrompt = await loadSystemPromptWithMemories();
+      const soulPrompt = await createSoulPrompt();
       const reply = await runAgent({
         request: payload,
         openai: {

@@ -58,7 +58,7 @@ export async function loadMemoryContextPrompt(options: PromptLoadOptions = {}): 
   return `User memory context:\n${lines.join("\n")}`;
 }
 
-export async function loadSystemPromptWithMemories(options: PromptLoadOptions = {}): Promise<string> {
+export async function createSoulPrompt(options: PromptLoadOptions = {}): Promise<string> {
   const cwd = options.cwd ?? process.cwd();
   const base = loadSystemPrompt(cwd);
   const memoryContext = await loadMemoryContextPrompt(options);
