@@ -79,7 +79,15 @@ function newMessage(role: Message["role"], content: string): Message {
 const RESUME_TRANSCRIPT_ROWS = 40;
 const MAX_AT_SUGGESTIONS = 8;
 const MAX_SCAN_ENTRIES = 5000;
+const PATH_CACHE_TTL_MS = 3000;
 const IGNORED_DIRS = new Set(["node_modules", ".acolyte", "dist", "build", ".next", "coverage"]);
+let repoPathCache:
+  | {
+      cwd: string;
+      loadedAt: number;
+      candidates: string[];
+    }
+  | null = null;
 
 export function toRows(messages: Message[], limit = RESUME_TRANSCRIPT_ROWS): ChatRow[] {
   const rows: ChatRow[] = [];
@@ -284,6 +292,24 @@ async function collectRepoPathCandidates(root = process.cwd(), maxEntries = MAX_
   return out;
 }
 
+async function getCachedRepoPathCandidates(root = process.cwd()): Promise<string[]> {
+  const now = Date.now();
+  if (
+    repoPathCache &&
+    repoPathCache.cwd === root &&
+    now - repoPathCache.loadedAt < PATH_CACHE_TTL_MS
+  ) {
+    return repoPathCache.candidates;
+  }
+  const candidates = await collectRepoPathCandidates(root);
+  repoPathCache = {
+    cwd: root,
+    loadedAt: now,
+    candidates,
+  };
+  return candidates;
+}
+
 function shownCwd(): string {
   const cwd = process.cwd();
   const home = homedir();
@@ -452,7 +478,7 @@ function ChatApp(props: ChatAppProps) {
       };
     }
     void (async () => {
-      const candidates = await collectRepoPathCandidates();
+      const candidates = await getCachedRepoPathCandidates();
       if (cancelled) {
         return;
       }
