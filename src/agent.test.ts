@@ -70,7 +70,14 @@ describe("finalizeReviewOutput", () => {
   test("returns fallback when normalized output is empty", () => {
     const raw = "Tools used: search-repo\nEvidence: src/cli.ts:1";
     expect(finalizeReviewOutput(raw)).toBe(
-      "No review output produced. Try a narrower scope (for example src/file.ts).",
+      "No review output produced. Try narrowing to a file (for example @src/agent.ts) or rephrasing your question.",
+    );
+  });
+
+  test("returns scope-aware fallback when request includes @path", () => {
+    const raw = "Tools used: search-repo\nEvidence: src/cli.ts:1";
+    expect(finalizeReviewOutput(raw, "review @src/")).toBe(
+      "No review output produced for @src/. Try narrowing the scope (for example @src/agent.ts) or rephrasing your question.",
     );
   });
 
@@ -82,7 +89,7 @@ describe("finalizeReviewOutput", () => {
 
 describe("finalizeAssistantOutput", () => {
   test("returns fallback when output is empty", () => {
-    expect(finalizeAssistantOutput("   ")).toBe("No output produced. Try rephrasing the request.");
+    expect(finalizeAssistantOutput("   ")).toBe("No output produced. Try rephrasing your question.");
   });
 
   test("keeps non-empty output", () => {

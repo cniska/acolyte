@@ -112,7 +112,27 @@ export function normalizeReviewOutput(output: string): string {
   return normalized.join("\n").trimEnd();
 }
 
-export function finalizeReviewOutput(output: string): string {
+function extractMentionedPath(message: string): string | null {
+  const match = message.match(/@([^\s]+)/);
+  if (!match) {
+    return null;
+  }
+  const cleaned = (match[1] ?? "").replace(/[.,;:!?]+$/g, "").trim();
+  return cleaned.length > 0 ? cleaned : null;
+}
+
+function suggestNarrowerReviewScope(path: string): string {
+  const clean = path.replace(/\/+$/, "");
+  if (clean.length === 0) {
+    return "@src/agent.ts";
+  }
+  if (clean.endsWith(".ts") || clean.endsWith(".tsx") || clean.endsWith(".js") || clean.endsWith(".md")) {
+    return `@${clean}`;
+  }
+  return `@${clean}/agent.ts`;
+}
+
+export function finalizeReviewOutput(output: string, message = ""): string {
   const cleaned = output
     .split("\n")
     .filter((line) => !/^\s*(Tools used:|Evidence:)/.test(line))
@@ -122,7 +142,11 @@ export function finalizeReviewOutput(output: string): string {
   if (normalized.trim().length > 0) {
     return normalized;
   }
-  return "No review output produced. Try a narrower scope (for example src/file.ts).";
+  const mentionedPath = extractMentionedPath(message);
+  if (mentionedPath) {
+    return `No review output produced for @${mentionedPath}. Try narrowing the scope (for example ${suggestNarrowerReviewScope(mentionedPath)}) or rephrasing your question.`;
+  }
+  return "No review output produced. Try narrowing to a file (for example @src/agent.ts) or rephrasing your question.";
 }
 
 export function finalizeAssistantOutput(output: string): string {
@@ -130,7 +154,7 @@ export function finalizeAssistantOutput(output: string): string {
   if (cleaned.length > 0) {
     return cleaned;
   }
-  return "No output produced. Try rephrasing the request.";
+  return "No output produced. Try rephrasing your question.";
 }
 
 function buildToolPolicy(baseInstructions: string): string {
@@ -223,7 +247,7 @@ export async function runAgent(input: {
 
   const rawOutput = result.text.trim();
   const output = isReviewRequest(input.request.message)
-    ? finalizeReviewOutput(rawOutput)
+    ? finalizeReviewOutput(rawOutput, input.request.message)
     : finalizeAssistantOutput(rawOutput);
 
   return {
