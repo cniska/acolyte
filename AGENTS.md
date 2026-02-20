@@ -59,3 +59,5 @@
 - Ask when requirements are unclear.
 - Capture decisions, tradeoffs, and open questions.
 - Be explicit about assumptions, risks, and next steps.
+- Prioritize user-focused output: show what helps the user make decisions, not internal implementation noise.
+- Prefer concise, readable UX and response formats that surface outcomes, changed files, and actionable next steps.
