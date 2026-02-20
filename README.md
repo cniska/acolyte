@@ -13,6 +13,10 @@ bun install
 ```bash
 OPENAI_API_KEY=...
 # Optional:
+# ACOLYTE_MODEL=gpt-5-mini
+# ACOLYTE_MODEL_PLANNER=o3
+# ACOLYTE_MODEL_CODER=gpt-5-codex
+# ACOLYTE_MODEL_REVIEWER=gpt-5-mini
 # DATABASE_URL=postgres://acolyte:acolyte@localhost:5432/acolyte
 ```
 

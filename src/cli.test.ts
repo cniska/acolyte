@@ -43,6 +43,10 @@ describe("cli formatting helpers", () => {
         "mode=openai",
         "provider=openai",
         "model=gpt-5-mini",
+        "model_main=openai/gpt-5-mini",
+        "model_planner=openai/o3",
+        "model_coder=openai/gpt-5-codex",
+        "model_reviewer=openai/gpt-5-mini",
         "service=acolyte-backend",
         "url=http://localhost:6767",
         "memory_storage=postgres",
@@ -58,6 +62,9 @@ describe("cli formatting helpers", () => {
     expect(out).toMatch(/provider:\s+openai/);
     expect(out).toMatch(/mode:\s+openai/);
     expect(out).toMatch(/model:\s+gpt-5-mini/);
+    expect(out).toMatch(
+      /models:\s+main=openai\/gpt-5-mini planner=openai\/o3 coder=openai\/gpt-5-codex reviewer=openai\/gpt-5-mini/,
+    );
     expect(out).toMatch(/memory:\s+postgres/);
     expect(out).toMatch(/om:\s+enabled scope=resource model=openai\/gpt-5-mini/);
     expect(out).toMatch(/om_tokens:\s+obs=3000 ref=8000/);

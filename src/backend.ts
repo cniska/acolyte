@@ -123,6 +123,12 @@ class RemoteBackend implements Backend {
       provider?: unknown;
       mode?: unknown;
       model?: unknown;
+      models?: {
+        main?: unknown;
+        planner?: unknown;
+        coder?: unknown;
+        reviewer?: unknown;
+      };
       service?: unknown;
       memory?: {
         storage?: unknown;
@@ -145,6 +151,10 @@ class RemoteBackend implements Backend {
     const provider =
       typeof json.provider === "string" ? json.provider : typeof json.mode === "string" ? json.mode : "unknown";
     const model = typeof json.model === "string" ? json.model : undefined;
+    const modelMain = typeof json.models?.main === "string" ? json.models.main : undefined;
+    const modelPlanner = typeof json.models?.planner === "string" ? json.models.planner : undefined;
+    const modelCoder = typeof json.models?.coder === "string" ? json.models.coder : undefined;
+    const modelReviewer = typeof json.models?.reviewer === "string" ? json.models.reviewer : undefined;
     const service = typeof json.service === "string" ? json.service : "unknown";
     const memoryStorage = typeof json.memory?.storage === "string" ? json.memory.storage : undefined;
     const om = json.memory?.observational;
@@ -161,6 +171,10 @@ class RemoteBackend implements Backend {
     const fields = [
       `provider=${provider}`,
       model ? `model=${model}` : undefined,
+      modelMain ? `model_main=${modelMain}` : undefined,
+      modelPlanner ? `model_planner=${modelPlanner}` : undefined,
+      modelCoder ? `model_coder=${modelCoder}` : undefined,
+      modelReviewer ? `model_reviewer=${modelReviewer}` : undefined,
       `service=${service}`,
       `url=${this.apiUrl}`,
       memoryStorage ? `memory_storage=${memoryStorage}` : undefined,

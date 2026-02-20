@@ -35,6 +35,26 @@ export function formatStatusOutput(status: string): string {
   if (model) {
     output.push(`model: ${model}`);
   }
+  const modelMain = take("model_main");
+  const modelPlanner = take("model_planner");
+  const modelCoder = take("model_coder");
+  const modelReviewer = take("model_reviewer");
+  if (modelMain || modelPlanner || modelCoder || modelReviewer) {
+    const parts: string[] = [];
+    if (modelMain) {
+      parts.push(`main=${modelMain}`);
+    }
+    if (modelPlanner) {
+      parts.push(`planner=${modelPlanner}`);
+    }
+    if (modelCoder) {
+      parts.push(`coder=${modelCoder}`);
+    }
+    if (modelReviewer) {
+      parts.push(`reviewer=${modelReviewer}`);
+    }
+    output.push(`models: ${parts.join(" ")}`);
+  }
   const service = take("service");
   if (service) {
     output.push(`service: ${service}`);

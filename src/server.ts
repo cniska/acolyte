@@ -109,7 +109,19 @@ const server = Bun.serve({
         ok: true,
         service: "acolyte-backend",
         provider: OPENAI_API_KEY ? "openai" : "mock",
-        model: OPENAI_API_KEY ? normalizeModel(appConfig.models.default) : appConfig.models.default,
+        model: OPENAI_API_KEY ? normalizeModel(appConfig.models.main) : appConfig.models.main,
+        models: {
+          main: OPENAI_API_KEY ? normalizeModel(appConfig.models.main) : appConfig.models.main,
+          planner: OPENAI_API_KEY
+            ? normalizeModel(appConfig.models.planner ?? appConfig.models.main)
+            : (appConfig.models.planner ?? appConfig.models.main),
+          coder: OPENAI_API_KEY
+            ? normalizeModel(appConfig.models.coder ?? appConfig.models.main)
+            : (appConfig.models.coder ?? appConfig.models.main),
+          reviewer: OPENAI_API_KEY
+            ? normalizeModel(appConfig.models.reviewer ?? appConfig.models.main)
+            : (appConfig.models.reviewer ?? appConfig.models.main),
+        },
         memory: {
           storage: mastraStorageMode,
           resourceId: appConfig.memory.resourceId,

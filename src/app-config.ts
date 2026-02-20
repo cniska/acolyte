@@ -11,7 +11,10 @@ export const appConfig = {
     baseUrl: env.OPENAI_BASE_URL,
   },
   models: {
-    default: env.ACOLYTE_MODEL,
+    main: env.ACOLYTE_MODEL,
+    planner: env.ACOLYTE_MODEL_PLANNER,
+    coder: env.ACOLYTE_MODEL_CODER,
+    reviewer: env.ACOLYTE_MODEL_REVIEWER,
     observationalMemory: env.ACOLYTE_OM_MODEL ?? env.ACOLYTE_MODEL,
   },
   memory: {

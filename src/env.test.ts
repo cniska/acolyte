@@ -18,6 +18,9 @@ describe("env parsing", () => {
       DATABASE_URL: "postgres://u:p@localhost:5432/acolyte",
       OPENAI_BASE_URL: "https://example.com/v1",
       ACOLYTE_MODEL: "gpt-5",
+      ACOLYTE_MODEL_PLANNER: "o3",
+      ACOLYTE_MODEL_CODER: "gpt-5-codex",
+      ACOLYTE_MODEL_REVIEWER: "gpt-5-mini",
       ACOLYTE_OM_MODEL: "gpt-4o-mini",
       ACOLYTE_OM_OBSERVATION_TOKENS: "3500",
       ACOLYTE_OM_REFLECTION_TOKENS: "9000",
@@ -27,6 +30,9 @@ describe("env parsing", () => {
     expect(parsed.DATABASE_URL).toBe("postgres://u:p@localhost:5432/acolyte");
     expect(parsed.OPENAI_BASE_URL).toBe("https://example.com/v1");
     expect(parsed.ACOLYTE_MODEL).toBe("gpt-5");
+    expect(parsed.ACOLYTE_MODEL_PLANNER).toBe("o3");
+    expect(parsed.ACOLYTE_MODEL_CODER).toBe("gpt-5-codex");
+    expect(parsed.ACOLYTE_MODEL_REVIEWER).toBe("gpt-5-mini");
     expect(parsed.ACOLYTE_OM_MODEL).toBe("gpt-4o-mini");
     expect(parsed.ACOLYTE_OM_OBSERVATION_TOKENS).toBe(3500);
     expect(parsed.ACOLYTE_OM_REFLECTION_TOKENS).toBe(9000);

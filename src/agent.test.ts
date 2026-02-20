@@ -6,6 +6,7 @@ import {
   finalizeAssistantOutput,
   finalizeReviewOutput,
   normalizeReviewOutput,
+  resolveAgentModel,
   selectAgentRole,
 } from "./agent";
 import type { ChatRequest } from "./api";
@@ -152,6 +153,18 @@ describe("selectAgentRole", () => {
 
   test("routes implementation prompts to coder by default", () => {
     expect(selectAgentRole("implement /resume picker improvements")).toBe("coder");
+  });
+});
+
+describe("resolveAgentModel", () => {
+  test("falls back to requested model when no role override is configured", () => {
+    expect(resolveAgentModel("planner", "gpt-5-mini", {})).toBe("gpt-5-mini");
+  });
+
+  test("uses role override when configured", () => {
+    expect(resolveAgentModel("planner", "gpt-5-mini", { planner: "o3" })).toBe("o3");
+    expect(resolveAgentModel("coder", "gpt-5-mini", { coder: "gpt-5-codex" })).toBe("gpt-5-codex");
+    expect(resolveAgentModel("reviewer", "gpt-5-mini", { reviewer: "gpt-5" })).toBe("gpt-5");
   });
 });
 

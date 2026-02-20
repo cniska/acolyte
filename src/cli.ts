@@ -622,7 +622,7 @@ function parseEditArgs(args: string[]): {
 async function chatMode(): Promise<void> {
   const config = await readConfig();
   const store = await readStore();
-  const defaultModel = appConfig.models.default ?? config.model ?? FALLBACK_MODEL;
+  const defaultModel = appConfig.models.main ?? config.model ?? FALLBACK_MODEL;
   // Start a fresh chat session by default to avoid cross-session transcript/context bleed.
   const session = createSession(defaultModel);
   store.sessions.unshift(session);
@@ -667,7 +667,7 @@ async function runMode(args: string[]): Promise<void> {
 
   const config = await readConfig();
   const store = await readStore();
-  const defaultModel = appConfig.models.default ?? config.model ?? FALLBACK_MODEL;
+  const defaultModel = appConfig.models.main ?? config.model ?? FALLBACK_MODEL;
   const session = getOrCreateActiveSession(store, defaultModel);
   const backend = createBackend({
     apiUrl: config.apiUrl,

@@ -8,6 +8,9 @@ const EnvSchema = z.object({
   OPENAI_API_KEY: z.string().trim().min(1).optional(),
   OPENAI_BASE_URL: z.string().trim().min(1).default("https://api.openai.com/v1"),
   ACOLYTE_MODEL: z.string().trim().min(1).default("gpt-5-mini"),
+  ACOLYTE_MODEL_PLANNER: z.string().trim().min(1).optional(),
+  ACOLYTE_MODEL_CODER: z.string().trim().min(1).optional(),
+  ACOLYTE_MODEL_REVIEWER: z.string().trim().min(1).optional(),
   ACOLYTE_OM_MODEL: z.string().trim().min(1).optional(),
   ACOLYTE_OM_OBSERVATION_TOKENS: z.preprocess(
     (value) => (value === undefined ? 3_000 : value),

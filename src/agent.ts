@@ -157,6 +157,19 @@ function isReviewRequest(text: string): boolean {
 
 export { buildSubagentContext, selectAgentRole };
 
+export function resolveAgentModel(
+  role: AgentRole,
+  requestedModel: string,
+  overrides: {
+    planner?: string;
+    coder?: string;
+    reviewer?: string;
+  } = appConfig.models,
+): string {
+  const override = role === "planner" ? overrides.planner : role === "coder" ? overrides.coder : overrides.reviewer;
+  return override ?? requestedModel;
+}
+
 export function compactReviewOutput(output: string): string {
   if (output.length <= MAX_REVIEW_OUTPUT_CHARS) {
     return output;
@@ -260,11 +273,12 @@ export async function runAgent(input: {
 
   const role = selectAgentRole(input.request.message);
   const roleSoul = loadRoleSoulPrompt(role);
+  const model = resolveAgentModel(role, input.request.model);
 
   const agent = createAgent({
     id: `acolyte-${role}`,
     name: `Acolyte ${role[0].toUpperCase()}${role.slice(1)}`,
-    model: input.request.model,
+    model,
     instructions: buildRoleInstructions(input.soulPrompt, role, roleSoul),
   });
 
@@ -304,7 +318,7 @@ export async function runAgent(input: {
   }
 
   return {
-    model: input.request.model,
+    model,
     output,
     usage: {
       promptTokens: promptUsage.promptTokens,
