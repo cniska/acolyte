@@ -1,12 +1,20 @@
 import React, { useEffect, useState } from "react";
 import { Text, useInput } from "ink";
 
-const CTRL_C = "c";
-const CTRL_W = "w";
-const META_B = "b";
-const META_F = "f";
-const ESC_ALT_B = "\u001bb";
-const ESC_ALT_F = "\u001bf";
+const KEYS = {
+  ctrl: {
+    c: "c",
+    w: "w",
+  },
+  meta: {
+    b: "b",
+    f: "f",
+  },
+  esc: {
+    altB: "\u001bb",
+    altF: "\u001bf",
+  },
+} as const;
 
 interface PromptInputProps {
   value: string;
@@ -58,7 +66,7 @@ export function PromptInput({
         key.downArrow ||
         key.tab ||
         (key.shift && key.tab) ||
-        (key.ctrl && input === CTRL_C)
+        (key.ctrl && input === KEYS.ctrl.c)
       ) {
         return;
       }
@@ -78,17 +86,25 @@ export function PromptInput({
         return;
       }
 
-      if ((key.leftArrow && key.ctrl) || (key.meta && input === META_B) || input === ESC_ALT_B) {
+      if (
+        (key.leftArrow && key.ctrl) ||
+        (key.meta && input === KEYS.meta.b) ||
+        input === KEYS.esc.altB
+      ) {
         setCursorOffset((current) => moveWordLeft(value, current));
         return;
       }
 
-      if ((key.rightArrow && key.ctrl) || (key.meta && input === META_F) || input === ESC_ALT_F) {
+      if (
+        (key.rightArrow && key.ctrl) ||
+        (key.meta && input === KEYS.meta.f) ||
+        input === KEYS.esc.altF
+      ) {
         setCursorOffset((current) => moveWordRight(value, current));
         return;
       }
 
-      if (key.ctrl && input === CTRL_W) {
+      if (key.ctrl && input === KEYS.ctrl.w) {
         if (cursorOffset === 0) {
           return;
         }
