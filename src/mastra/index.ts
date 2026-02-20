@@ -21,7 +21,12 @@ function createRoleAgent(role: AgentRole) {
 export const acolytePlanner = createRoleAgent("planner");
 export const acolyteCoder = createRoleAgent("coder");
 export const acolyteReviewer = createRoleAgent("reviewer");
-export const acolyte = acolyteCoder;
+export const acolyte = createAcolyteAgent({
+  id: "acolyte",
+  name: "Acolyte",
+  model: appConfig.models.default,
+  instructions: async () => createSoulPrompt(),
+});
 
 export const mastra = new Mastra({
   storage: mastraStorage,
