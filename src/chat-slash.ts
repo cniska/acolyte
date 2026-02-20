@@ -40,10 +40,7 @@ export function suggestSlashCommands(inputValue: string, max = 5): string[] {
   return [];
 }
 
-export function shouldAutocompleteSlashSubmit(
-  inputValue: string,
-  selectedSuggestion: string | undefined,
-): boolean {
+export function shouldAutocompleteSlashSubmit(inputValue: string, selectedSuggestion: string | undefined): boolean {
   if (!selectedSuggestion) {
     return false;
   }

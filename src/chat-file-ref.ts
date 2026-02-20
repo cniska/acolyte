@@ -12,13 +12,11 @@ const MAX_SCAN_ENTRIES = 5000;
 const PATH_CACHE_TTL_MS = 3000;
 const IGNORED_DIRS = new Set(["node_modules", ".acolyte", "dist", "build", ".next", "coverage"]);
 
-let repoPathCache:
-  | {
-      cwd: string;
-      loadedAt: number;
-      candidates: string[];
-    }
-  | null = null;
+let repoPathCache: {
+  cwd: string;
+  loadedAt: number;
+  candidates: string[];
+} | null = null;
 
 function findActiveAtToken(inputValue: string): AtToken | null {
   const matches = [...inputValue.matchAll(/(^|\s)@([^\s@]*)/g)];
@@ -62,10 +60,7 @@ export function rankAtReferenceSuggestions(paths: string[], query: string, max =
     .slice(0, max);
 }
 
-export function shouldAutocompleteAtSubmit(
-  inputValue: string,
-  selectedSuggestion: string | undefined,
-): boolean {
+export function shouldAutocompleteAtSubmit(inputValue: string, selectedSuggestion: string | undefined): boolean {
   if (!selectedSuggestion) {
     return false;
   }

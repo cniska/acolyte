@@ -22,14 +22,7 @@ describe("skills loader", () => {
       mkdirSync(skillDir, { recursive: true });
       writeFileSync(
         join(skillDir, "SKILL.md"),
-        [
-          "---",
-          "name: demo-skill",
-          "description: Demo description",
-          "---",
-          "",
-          "# Demo",
-        ].join("\n"),
+        ["---", "name: demo-skill", "description: Demo description", "---", "", "# Demo"].join("\n"),
         "utf8",
       );
       const skills = await listSkills(dir);
@@ -47,15 +40,7 @@ describe("skills loader", () => {
       const file = join(dir, "SKILL.md");
       writeFileSync(
         file,
-        [
-          "---",
-          "name: demo-skill",
-          "description: Demo description",
-          "---",
-          "",
-          "# Demo",
-          "Use this skill.",
-        ].join("\n"),
+        ["---", "name: demo-skill", "description: Demo description", "---", "", "# Demo", "Use this skill."].join("\n"),
         "utf8",
       );
       const body = await readSkillInstructions(file);

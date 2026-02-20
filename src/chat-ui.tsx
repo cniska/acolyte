@@ -175,18 +175,13 @@ function pickerHint(picker: PickerState): string {
 
 function renderPickerItems(picker: PickerState, activeSessionId: string | undefined): React.ReactNode {
   if (picker.kind === "skills") {
-    const nameWidth = Math.min(
-      28,
-      Math.max(8, ...picker.items.map((item) => item.name.length)),
-    );
+    const nameWidth = Math.min(28, Math.max(8, ...picker.items.map((item) => item.name.length)));
     return picker.items.map((skill, index) => {
       const selected = index === picker.index;
       return (
         <Text key={skill.path}>
           {selected ? "› " : "  "}
-          <Text color={selected ? COLORS.brand : undefined}>
-            {skill.name.padEnd(nameWidth)}
-          </Text>{" "}
+          <Text color={selected ? COLORS.brand : undefined}>{skill.name.padEnd(nameWidth)}</Text>{" "}
           {truncateText(skill.description)}
         </Text>
       );
@@ -251,16 +246,12 @@ function ChatApp(props: ChatAppProps) {
           return;
         }
         if (key.upArrow || input === "k") {
-          setPicker((current) =>
-            current ? { ...current, index: Math.max(0, current.index - 1) } : current,
-          );
+          setPicker((current) => (current ? { ...current, index: Math.max(0, current.index - 1) } : current));
           return;
         }
         if (key.downArrow || input === "j") {
           setPicker((current) =>
-            current
-              ? { ...current, index: Math.min(current.items.length - 1, current.index + 1) }
-              : current,
+            current ? { ...current, index: Math.min(current.items.length - 1, current.index + 1) } : current,
           );
           return;
         }
@@ -482,7 +473,6 @@ function ChatApp(props: ChatAppProps) {
     await persist();
 
     try {
-
       const reply = await backend.reply({
         message: userText,
         history: [...fileContextMessages, ...currentSession.messages],
@@ -494,10 +484,7 @@ function ChatApp(props: ChatAppProps) {
       currentSession.messages.push(assistantMessage);
       currentSession.model = reply.model;
       currentSession.updatedAt = nowIso();
-      setRows((current) => [
-        ...current,
-        { id: assistantMessage.id, role: "assistant", content: reply.output },
-      ]);
+      setRows((current) => [...current, { id: assistantMessage.id, role: "assistant", content: reply.output }]);
       const entry: TokenUsageEntry = {
         id: assistantMessage.id,
         usage: reply.usage ?? estimateTokenUsageFallback(userText, reply.output),
@@ -759,7 +746,7 @@ function ChatApp(props: ChatAppProps) {
               ))}
             </>
           ) : atQuery !== null ? (
-            <Text dimColor>  No file or folder matches.</Text>
+            <Text dimColor> No file or folder matches.</Text>
           ) : slashSuggestions.length > 0 ? (
             <>
               {slashSuggestions.map((item, index) => (
@@ -779,7 +766,7 @@ function ChatApp(props: ChatAppProps) {
               ))}
             </>
           ) : (
-            <Text dimColor>  ? for shortcuts</Text>
+            <Text dimColor> ? for shortcuts</Text>
           )}
         </>
       )}

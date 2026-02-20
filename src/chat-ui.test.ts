@@ -1,8 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Message, SessionStore } from "./types";
-import {
-  toRows,
-} from "./chat-ui";
+import { toRows } from "./chat-ui";
 import { formatSessionList, resolveResumeSession } from "./chat-commands";
 import {
   applyAtSuggestion,
@@ -94,11 +92,7 @@ describe("chat-ui helpers", () => {
   });
 
   test("rankAtReferenceSuggestions sorts by starts-with then length", () => {
-    const ranked = rankAtReferenceSuggestions(
-      ["src/chat-ui.tsx", "src/cli.ts", "src/config.ts", "README.md"],
-      "c",
-      3,
-    );
+    const ranked = rankAtReferenceSuggestions(["src/chat-ui.tsx", "src/cli.ts", "src/config.ts", "README.md"], "c", 3);
     expect(ranked).toEqual(["src/cli.ts", "src/config.ts", "src/chat-ui.tsx"]);
   });
 
@@ -116,11 +110,7 @@ describe("chat-ui helpers", () => {
   });
 
   test("extractAtReferencePaths finds unique @paths in a prompt", () => {
-    expect(extractAtReferencePaths("review @AGENTS.md and @docs/soul.md")).toEqual([
-      "AGENTS.md",
-      "docs/soul.md",
-    ]);
+    expect(extractAtReferencePaths("review @AGENTS.md and @docs/soul.md")).toEqual(["AGENTS.md", "docs/soul.md"]);
     expect(extractAtReferencePaths("repeat @AGENTS.md and @AGENTS.md")).toEqual(["AGENTS.md"]);
   });
-
 });

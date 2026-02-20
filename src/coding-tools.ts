@@ -26,16 +26,11 @@ export async function searchRepo(pattern: string, maxResults = 40): Promise<stri
     throw new Error("Search pattern cannot be empty");
   }
 
-  const { code: exitCode, stdout: stdoutText, stderr: stderrText } = await runCommand([
-    "rg",
-    "--line-number",
-    "--color",
-    "never",
-    "--max-count",
-    String(maxResults),
-    trimmed,
-    ".",
-  ]);
+  const {
+    code: exitCode,
+    stdout: stdoutText,
+    stderr: stderrText,
+  } = await runCommand(["rg", "--line-number", "--color", "never", "--max-count", String(maxResults), trimmed, "."]);
 
   if (exitCode !== 0 && stdoutText.trim().length === 0) {
     const err = stderrText.trim();
@@ -133,9 +128,7 @@ export async function runShellCommand(command: string, timeoutMs = 60_000): Prom
   if (!out && !err) {
     return headers.join("\n");
   }
-  return [headers.join("\n"), out ? `stdout:\n${out}` : "", err ? `stderr:\n${err}` : ""]
-    .filter(Boolean)
-    .join("\n\n");
+  return [headers.join("\n"), out ? `stdout:\n${out}` : "", err ? `stderr:\n${err}` : ""].filter(Boolean).join("\n\n");
 }
 
 export async function editFileReplace(input: {
@@ -162,9 +155,5 @@ export async function editFileReplace(input: {
     await writeFile(absPath, next, "utf8");
   }
 
-  return [
-    `path=${absPath}`,
-    `matches=${count}`,
-    `dry_run=${input.dryRun ? "true" : "false"}`,
-  ].join("\n");
+  return [`path=${absPath}`, `matches=${count}`, `dry_run=${input.dryRun ? "true" : "false"}`].join("\n");
 }

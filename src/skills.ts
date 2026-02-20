@@ -28,7 +28,10 @@ function parseFrontmatter(input: string): Record<string, string> | null {
       continue;
     }
     const key = line.slice(0, idx).trim();
-    const value = line.slice(idx + 1).trim().replace(/^["']|["']$/g, "");
+    const value = line
+      .slice(idx + 1)
+      .trim()
+      .replace(/^["']|["']$/g, "");
     if (key && value) {
       out[key] = value;
     }
@@ -49,7 +52,10 @@ function stripFrontmatter(input: string): string {
   if (endIdx < 0) {
     return input.trim();
   }
-  return lines.slice(endIdx + 1).join("\n").trim();
+  return lines
+    .slice(endIdx + 1)
+    .join("\n")
+    .trim();
 }
 
 export async function listSkills(cwd = process.cwd()): Promise<SkillMeta[]> {

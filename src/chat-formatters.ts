@@ -62,7 +62,9 @@ export function formatChangesSummary(statusRaw: string, diffRaw: string): string
   }
 
   const summary: string[] = [];
-  summary.push(changedFiles === 0 ? "Working tree clean." : `${countLabel(changedFiles, "changed file", "changed files")}.`);
+  summary.push(
+    changedFiles === 0 ? "Working tree clean." : `${countLabel(changedFiles, "changed file", "changed files")}.`,
+  );
   if (branchLine) {
     summary.push(branchLine);
   }

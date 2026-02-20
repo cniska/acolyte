@@ -23,9 +23,12 @@ class LocalBackend implements Backend {
         model: input.model,
         output: `Session so far: ${userMessages} user messages, ${assistantMessages} assistant messages. Ask me to /history for full local transcript.`,
         usage: {
-          promptTokens: Math.ceil((input.message.length + input.history.map((m) => m.content.length).join("").length) / 4),
+          promptTokens: Math.ceil(
+            (input.message.length + input.history.map((m) => m.content.length).join("").length) / 4,
+          ),
           completionTokens: 32,
-          totalTokens: Math.ceil((input.message.length + input.history.map((m) => m.content.length).join("").length) / 4) + 32,
+          totalTokens:
+            Math.ceil((input.message.length + input.history.map((m) => m.content.length).join("").length) / 4) + 32,
         },
       };
     }
@@ -54,7 +57,10 @@ class LocalBackend implements Backend {
 }
 
 class RemoteBackend implements Backend {
-  constructor(private readonly apiUrl: string, private readonly apiKey?: string) {}
+  constructor(
+    private readonly apiUrl: string,
+    private readonly apiKey?: string,
+  ) {}
 
   async reply(input: ChatRequest): Promise<ChatResponse> {
     const response = await fetch(`${this.apiUrl.replace(/\/$/, "")}/v1/chat`, {
@@ -137,28 +143,19 @@ class RemoteBackend implements Backend {
       };
     };
     const provider =
-      typeof json.provider === "string"
-        ? json.provider
-        : typeof json.mode === "string"
-          ? json.mode
-          : "unknown";
+      typeof json.provider === "string" ? json.provider : typeof json.mode === "string" ? json.mode : "unknown";
     const model = typeof json.model === "string" ? json.model : undefined;
     const service = typeof json.service === "string" ? json.service : "unknown";
-    const memoryStorage =
-      typeof json.memory?.storage === "string" ? json.memory.storage : undefined;
+    const memoryStorage = typeof json.memory?.storage === "string" ? json.memory.storage : undefined;
     const om = json.memory?.observational;
     const omEnabled = typeof om?.enabled === "boolean" ? om.enabled : undefined;
     const omScope = typeof om?.scope === "string" ? om.scope : undefined;
     const omModel = typeof om?.model === "string" ? om.model : undefined;
-    const omObservationTokens =
-      typeof om?.observationTokens === "number" ? om.observationTokens : undefined;
-    const omReflectionTokens =
-      typeof om?.reflectionTokens === "number" ? om.reflectionTokens : undefined;
+    const omObservationTokens = typeof om?.observationTokens === "number" ? om.observationTokens : undefined;
+    const omReflectionTokens = typeof om?.reflectionTokens === "number" ? om.reflectionTokens : undefined;
     const omExists = typeof om?.current?.exists === "boolean" ? om.current.exists : undefined;
-    const omGeneration =
-      typeof om?.current?.generationCount === "number" ? om.current.generationCount : undefined;
-    const omLastObservedAt =
-      typeof om?.current?.lastObservedAt === "string" ? om.current.lastObservedAt : undefined;
+    const omGeneration = typeof om?.current?.generationCount === "number" ? om.current.generationCount : undefined;
+    const omLastObservedAt = typeof om?.current?.lastObservedAt === "string" ? om.current.lastObservedAt : undefined;
     const omLastReflectionAt =
       typeof om?.current?.lastReflectionAt === "string" ? om.current.lastReflectionAt : undefined;
     const fields = [

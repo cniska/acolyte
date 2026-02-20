@@ -128,6 +128,8 @@ Validation:
 ```bash
 bun run verify
 ```
+This runs formatting, typecheck, and tests (`format` + `typecheck` + `test`).
+
 Dogfooding readiness check:
 ```bash
 bun run src/cli.ts dogfood-status

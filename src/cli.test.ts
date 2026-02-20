@@ -27,14 +27,13 @@ describe("cli formatting helpers", () => {
   });
 
   test("formatStatusOutput expands key-value status", () => {
-    const out = formatStatusOutput("provider=openai model=gpt-5-mini service=acolyte-backend url=http://localhost:6767");
+    const out = formatStatusOutput(
+      "provider=openai model=gpt-5-mini service=acolyte-backend url=http://localhost:6767",
+    );
     expect(out).toBe(
-      [
-        "provider: openai",
-        "model:    gpt-5-mini",
-        "service:  acolyte-backend",
-        "url:      http://localhost:6767",
-      ].join("\n"),
+      ["provider: openai", "model:    gpt-5-mini", "service:  acolyte-backend", "url:      http://localhost:6767"].join(
+        "\n",
+      ),
     );
   });
 
@@ -105,14 +104,7 @@ describe("cli formatting helpers", () => {
   });
 
   test("formatDiffOutput includes file and line summary", () => {
-    const raw = [
-      "diff --git a/a.ts b/a.ts",
-      "--- a/a.ts",
-      "+++ b/a.ts",
-      "@@ -1 +1 @@",
-      "-old",
-      "+new",
-    ].join("\n");
+    const raw = ["diff --git a/a.ts b/a.ts", "--- a/a.ts", "+++ b/a.ts", "@@ -1 +1 @@", "-old", "+new"].join("\n");
     const out = formatForTool("diff", raw);
     expect(out).toContain("1 file changed, +1 -1");
   });

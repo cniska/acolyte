@@ -107,12 +107,8 @@ export async function listMemories(options: MemoryOptions = {}): Promise<MemoryE
   const includeProject = scope === "all" || scope === "project";
   const includeUser = scope === "all" || scope === "user";
 
-  const projectEntries = includeProject
-    ? await readMemoryDir(getProjectMemoryDir(cwd), "project")
-    : [];
-  const userEntries = includeUser
-    ? await readMemoryDir(getUserMemoryDir(homeDir), "user")
-    : [];
+  const projectEntries = includeProject ? await readMemoryDir(getProjectMemoryDir(cwd), "project") : [];
+  const userEntries = includeUser ? await readMemoryDir(getUserMemoryDir(homeDir), "user") : [];
 
   return [...projectEntries, ...userEntries];
 }

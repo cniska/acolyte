@@ -3,12 +3,7 @@ import { sanitizeAssistantContent, tokenizeForHighlighting } from "./chat-conten
 
 describe("chat-content helpers", () => {
   test("sanitizeAssistantContent removes tools/evidence footer lines", () => {
-    const raw = [
-      "Run bun run verify",
-      "",
-      "Tools used: run-command",
-      "Evidence: src/cli.ts",
-    ].join("\n");
+    const raw = ["Run bun run verify", "", "Tools used: run-command", "Evidence: src/cli.ts"].join("\n");
     expect(sanitizeAssistantContent(raw)).toBe("Run bun run verify");
   });
 

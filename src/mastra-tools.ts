@@ -1,13 +1,6 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
-import {
-  editFileReplace,
-  gitDiff,
-  gitStatusShort,
-  readSnippet,
-  runShellCommand,
-  searchRepo,
-} from "./coding-tools";
+import { editFileReplace, gitDiff, gitStatusShort, readSnippet, runShellCommand, searchRepo } from "./coding-tools";
 import { appConfig } from "./app-config";
 import { compactToolOutput } from "./tool-output";
 
@@ -20,7 +13,10 @@ export const searchRepoTool = createTool({
   }),
   execute: async (input) => {
     const maxResults = input.maxResults ?? 40;
-    const result = compactToolOutput(await searchRepo(input.pattern, maxResults), appConfig.agent.toolOutputBudget.search);
+    const result = compactToolOutput(
+      await searchRepo(input.pattern, maxResults),
+      appConfig.agent.toolOutputBudget.search,
+    );
     return { result };
   },
 });

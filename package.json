@@ -27,11 +27,14 @@
     "mastra:dev": "bunx mastra dev --dir src/mastra",
     "studio": "bash -lc 'bun run mastra:dev >/tmp/acolyte-mastra-dev.log 2>&1 & pid=$!; trap \"kill $pid\" EXIT; sleep 2; bunx mastra studio'",
     "dev": "bun run src/cli.ts chat",
+    "format": "bunx biome format --write .",
+    "lint": "bunx biome check .",
     "typecheck": "bunx tsc --noEmit",
     "test": "bun test",
-    "verify": "bun run typecheck && bun run test"
+    "verify": "bun run format && bun run typecheck && bun run test"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.4.3",
     "@types/bun": "^1.3.9",
     "@types/node": "^22.10.2",
     "@types/react": "^19.2.14",

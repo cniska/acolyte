@@ -82,13 +82,7 @@ export function PromptInput({
         return;
       }
 
-      if (
-        key.upArrow ||
-        key.downArrow ||
-        key.tab ||
-        (key.shift && key.tab) ||
-        (key.ctrl && input === KEYS.ctrl.c)
-      ) {
+      if (key.upArrow || key.downArrow || key.tab || (key.shift && key.tab) || (key.ctrl && input === KEYS.ctrl.c)) {
         return;
       }
 
@@ -107,18 +101,12 @@ export function PromptInput({
         return;
       }
 
-      if (
-        (key.meta && input === KEYS.meta.b) ||
-        input === KEYS.esc.altB
-      ) {
+      if ((key.meta && input === KEYS.meta.b) || input === KEYS.esc.altB) {
         setCursorOffset((current) => moveWordLeft(value, current));
         return;
       }
 
-      if (
-        (key.meta && input === KEYS.meta.f) ||
-        input === KEYS.esc.altF
-      ) {
+      if ((key.meta && input === KEYS.meta.f) || input === KEYS.esc.altF) {
         setCursorOffset((current) => moveWordRight(value, current));
         return;
       }
@@ -134,11 +122,7 @@ export function PromptInput({
         return;
       }
 
-      const isBackspaceLike =
-        key.backspace ||
-        key.delete ||
-        input === KEYS.ctrl.h ||
-        input === KEYS.chars.backspace;
+      const isBackspaceLike = key.backspace || key.delete || input === KEYS.ctrl.h || input === KEYS.chars.backspace;
       const isMetaWordDelete =
         (isBackspaceLike && (hasMetaPrefix || key.meta || input.includes("\u001b"))) ||
         input === KEYS.esc.altBackspace ||
@@ -166,10 +150,7 @@ export function PromptInput({
 
       const isForwardDelete = input === KEYS.esc.delete;
       const isBackspace =
-        key.backspace ||
-        input === KEYS.ctrl.h ||
-        input === KEYS.chars.backspace ||
-        (key.delete && !isForwardDelete);
+        key.backspace || input === KEYS.ctrl.h || input === KEYS.chars.backspace || (key.delete && !isForwardDelete);
 
       if (isBackspace) {
         metaPrefixAt.current = null;

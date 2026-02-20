@@ -38,10 +38,7 @@ function isPinnedSystemContext(content: string): boolean {
   return content.startsWith("Active skill (") || content.startsWith("Pinned memory:");
 }
 
-function lineForMessage(
-  message: ChatRequest["history"][number],
-  maxTokens: number,
-): { line: string; tokens: number } {
+function lineForMessage(message: ChatRequest["history"][number], maxTokens: number): { line: string; tokens: number } {
   const compact = truncateByTokens(message.content, maxTokens);
   const line = `${message.role.toUpperCase()}: ${compact}`;
   return { line, tokens: estimateTokens(line) };
@@ -95,7 +92,9 @@ function buildAgentInputWithUsage(req: ChatRequest): {
   const userTokens = estimateTokens(userLine);
   let remaining = Math.max(0, maxContextTokens - userTokens);
 
-  const pinnedSystem = req.history.filter((message) => message.role === "system" && isPinnedSystemContext(message.content));
+  const pinnedSystem = req.history.filter(
+    (message) => message.role === "system" && isPinnedSystemContext(message.content),
+  );
   const pinnedResult = collectLinesWithinBudget(pinnedSystem, usedIds, remaining, budget.maxPinnedMessageTokens);
   lines.push(...pinnedResult.lines);
   remaining -= pinnedResult.consumedTokens;

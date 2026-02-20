@@ -34,7 +34,7 @@
 ## Validation
 
 - Run relevant validation after changes.
-- For this repo baseline, run `bun run verify` for feature work (`typecheck` + `test`).
+- For this repo baseline, run `bun run verify` for feature work (`format` + `typecheck` + `test`).
 - At minimum, run `bun run typecheck` when TypeScript code changes.
 - Document validation that could not run and why.
 

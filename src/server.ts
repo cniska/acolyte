@@ -92,11 +92,7 @@ const server = Bun.serve({
         const memoryStore = await mastraStorage.getStore("memory");
         if (memoryStore) {
           const current = await memoryStore.getObservationalMemory(null, appConfig.memory.resourceId);
-          const history = await memoryStore.getObservationalMemoryHistory(
-            null,
-            appConfig.memory.resourceId,
-            10,
-          );
+          const history = await memoryStore.getObservationalMemoryHistory(null, appConfig.memory.resourceId, 10);
           const latestReflection = history.find((row) => row.originType === "reflection");
           currentOm = {
             exists: Boolean(current),

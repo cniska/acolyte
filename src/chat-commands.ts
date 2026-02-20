@@ -143,7 +143,11 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     const resolved = resolveResumeSession(ctx.store, resolvedText);
     if (resolved.kind === "usage") {
       const recent = formatSessionList(ctx.store, 6);
-      ctx.setRows((current) => [...current, row("system", "Usage: /resume <session-id-prefix>"), ...recent.map((line) => row("system", line))]);
+      ctx.setRows((current) => [
+        ...current,
+        row("system", "Usage: /resume <session-id-prefix>"),
+        ...recent.map((line) => row("system", line)),
+      ]);
       return { stop: true, userText: text, runVerifyAfterReply: false };
     }
     if (resolved.kind === "not_found") {
@@ -153,7 +157,10 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     if (resolved.kind === "ambiguous") {
       ctx.setRows((current) => [
         ...current,
-        row("system", `Ambiguous prefix: ${resolved.prefix}. Matches: ${resolved.matches.map((item) => item.id.slice(0, 12)).join(", ")}`),
+        row(
+          "system",
+          `Ambiguous prefix: ${resolved.prefix}. Matches: ${resolved.matches.map((item) => item.id.slice(0, 12)).join(", ")}`,
+        ),
       ]);
       return { stop: true, userText: text, runVerifyAfterReply: false };
     }
@@ -169,7 +176,11 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
   if (resolvedText === "/sessions") {
     pushUserCommandRow();
     const recent = formatSessionList(ctx.store, 10);
-    ctx.setRows((current) => [...current, row("system", `Sessions (${ctx.store.sessions.length})`), ...recent.map((line) => row("system", line))]);
+    ctx.setRows((current) => [
+      ...current,
+      row("system", `Sessions (${ctx.store.sessions.length})`),
+      ...recent.map((line) => row("system", line)),
+    ]);
     return { stop: true, userText: text, runVerifyAfterReply: false };
   }
 
@@ -179,7 +190,10 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       const status = await ctx.backend.status();
       ctx.setRows((current) => [...current, row("assistant", formatStatusOutput(status))]);
     } catch (error) {
-      ctx.setRows((current) => [...current, row("system", error instanceof Error ? error.message : "Status check failed.")]);
+      ctx.setRows((current) => [
+        ...current,
+        row("system", error instanceof Error ? error.message : "Status check failed."),
+      ]);
     }
     return { stop: true, userText: text, runVerifyAfterReply: false };
   }
@@ -190,7 +204,10 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       const [statusRaw, diffRaw] = await Promise.all([gitStatusShort(), gitDiff()]);
       ctx.setRows((current) => [...current, row("assistant", formatChangesSummary(statusRaw, diffRaw))]);
     } catch (error) {
-      ctx.setRows((current) => [...current, row("system", error instanceof Error ? error.message : "Could not inspect git changes.")]);
+      ctx.setRows((current) => [
+        ...current,
+        row("system", error instanceof Error ? error.message : "Could not inspect git changes."),
+      ]);
     }
     return { stop: true, userText: text, runVerifyAfterReply: false };
   }
@@ -202,16 +219,24 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       const [backendStatus, verifyRaw] = await Promise.all([
         ctx.backend.status().catch((error) => (error instanceof Error ? error.message : "status unavailable")),
         runShellCommand("bun run verify", 30_000).catch((error) =>
-          error instanceof Error ? `exit_code=1\nduration_ms=0\nstderr:\n${error.message}` : "exit_code=1\nduration_ms=0",
+          error instanceof Error
+            ? `exit_code=1\nduration_ms=0\nstderr:\n${error.message}`
+            : "exit_code=1\nduration_ms=0",
         ),
       ]);
       const verifySummary = formatVerifySummary(verifyRaw);
       ctx.setRows((current) => [
         ...current,
-        row("assistant", formatDogfoodStatus({ backendStatus, verifySummary, hasApiKey: Boolean(appConfig.openai.apiKey) })),
+        row(
+          "assistant",
+          formatDogfoodStatus({ backendStatus, verifySummary, hasApiKey: Boolean(appConfig.openai.apiKey) }),
+        ),
       ]);
     } catch (error) {
-      ctx.setRows((current) => [...current, row("system", error instanceof Error ? error.message : "Could not run dogfood status checks.")]);
+      ctx.setRows((current) => [
+        ...current,
+        row("system", error instanceof Error ? error.message : "Could not run dogfood status checks."),
+      ]);
     }
     return { stop: true, userText: text, runVerifyAfterReply: false };
   }
@@ -263,7 +288,10 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       const entry = await addMemory(content, { scope });
       ctx.setRows((current) => [...current, row("system", `Saved ${entry.scope} memory: ${content}`)]);
     } catch (error) {
-      ctx.setRows((current) => [...current, row("system", error instanceof Error ? error.message : "Failed to save memory.")]);
+      ctx.setRows((current) => [
+        ...current,
+        row("system", error instanceof Error ? error.message : "Failed to save memory."),
+      ]);
     }
     return { stop: true, userText: text, runVerifyAfterReply: false };
   }
@@ -313,7 +341,10 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     const runVerifyAfterReply = !noVerify;
     ctx.setRows((current) => [
       ...current,
-      row("system", runVerifyAfterReply ? "Dogfood mode enabled (verify after reply)." : "Dogfood mode enabled (no verify)."),
+      row(
+        "system",
+        runVerifyAfterReply ? "Dogfood mode enabled (verify after reply)." : "Dogfood mode enabled (no verify).",
+      ),
     ]);
     return { stop: false, userText: buildDogfoodPrompt(task), runVerifyAfterReply };
   }

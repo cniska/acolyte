@@ -70,10 +70,5 @@ export async function buildFileContext(pathInput: string): Promise<string> {
   }
 
   const truncatedNotice = buf.byteLength > MAX_BYTES ? "\n[truncated]" : "";
-  return [
-    `Attached file: ${basename(absPath)}`,
-    "```text",
-    `${text}${truncatedNotice}`,
-    "```",
-  ].join("\n");
+  return [`Attached file: ${basename(absPath)}`, "```text", `${text}${truncatedNotice}`, "```"].join("\n");
 }

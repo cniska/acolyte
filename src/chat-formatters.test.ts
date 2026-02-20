@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { formatChangesSummary, formatDogfoodStatus, formatThoughtDuration, formatVerifySummary } from "./chat-formatters";
+import {
+  formatChangesSummary,
+  formatDogfoodStatus,
+  formatThoughtDuration,
+  formatVerifySummary,
+} from "./chat-formatters";
 
 describe("chat-formatters helpers", () => {
   test("formatThoughtDuration renders ms and s forms", () => {

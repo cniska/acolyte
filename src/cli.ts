@@ -3,14 +3,7 @@ import { stdout as output } from "node:process";
 import { relative } from "node:path";
 import { createBackend } from "./backend";
 import { runInkChat } from "./chat-ui";
-import {
-  editFileReplace,
-  gitDiff,
-  gitStatusShort,
-  readSnippet,
-  runShellCommand,
-  searchRepo,
-} from "./coding-tools";
+import { editFileReplace, gitDiff, gitStatusShort, readSnippet, runShellCommand, searchRepo } from "./coding-tools";
 import { readConfig, setConfigValue, unsetConfigValue } from "./config";
 import { appConfig } from "./app-config";
 import { buildFileContext } from "./file-context";
@@ -84,10 +77,7 @@ function erasePromptLineIfTty(): void {
   output.write("\x1b[1A\r\x1b[2K");
 }
 
-const CHAT_COMMANDS = [
-  "?",
-  "/exit",
-];
+const CHAT_COMMANDS = ["?", "/exit"];
 
 const COMMAND_ALIASES: Record<string, string> = {};
 
@@ -112,12 +102,8 @@ const INTERNAL_CHAT_COMMANDS = new Set([
   "/model",
   "/clear",
 ]);
-const SHORTCUT_PANEL_LINES = [
-  "  /exit quit",
-] as const;
-const SHORTCUT_PANEL_COMPACT_LINES = [
-  "  /exit quit",
-] as const;
+const SHORTCUT_PANEL_LINES = ["  /exit quit"] as const;
+const SHORTCUT_PANEL_COMPACT_LINES = ["  /exit quit"] as const;
 
 function getShortcutPanelLines(): readonly string[] {
   const width = output.columns ?? 120;
@@ -150,11 +136,7 @@ function editDistance(a: string, b: string): number {
   for (let i = 1; i <= a.length; i += 1) {
     for (let j = 1; j <= b.length; j += 1) {
       const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-      dp[i][j] = Math.min(
-        dp[i - 1][j] + 1,
-        dp[i][j - 1] + 1,
-        dp[i - 1][j - 1] + cost,
-      );
+      dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost);
     }
   }
   return dp[a.length][b.length];
@@ -319,12 +301,7 @@ export function formatStatusOutput(status: string): string {
   return formatStatusOutputShared(status);
 }
 
-function showToolResult(
-  title: string,
-  content: string,
-  style: "plain" | "tool" = "plain",
-  detail?: string,
-): void {
+function showToolResult(title: string, content: string, style: "plain" | "tool" = "plain", detail?: string): void {
   printToolHeader(title, detail);
   const lines = content.split("\n");
   if (lines.length === 0) {
@@ -351,10 +328,7 @@ export function clampLines(lines: string[], maxLines: number, overflowTolerance 
 
 export function formatSearchOutput(raw: string): string {
   const lines = raw.split("\n").filter((line) => line.trim().length > 0);
-  if (
-    lines.length === 0 ||
-    (lines.length === 1 && lines[0].toLowerCase().startsWith("no matches"))
-  ) {
+  if (lines.length === 0 || (lines.length === 1 && lines[0].toLowerCase().startsWith("no matches"))) {
     return "No matches.";
   }
   const files = new Set<string>();
@@ -949,7 +923,12 @@ async function toolMode(args: string[]): Promise<void> {
       if (summary) {
         const shownPath = displayPath(summary.path);
         if (summary.dryRun) {
-          showToolResult("Dry Run", `${countLabel(summary.matches, "match", "matches")} would be changed.`, "plain", shownPath);
+          showToolResult(
+            "Dry Run",
+            `${countLabel(summary.matches, "match", "matches")} would be changed.`,
+            "plain",
+            shownPath,
+          );
           rendered = true;
         } else {
           try {
@@ -959,7 +938,12 @@ async function toolMode(args: string[]): Promise<void> {
           } catch (error) {
             const message = error instanceof Error ? error.message : "Unable to render diff preview";
             if (message.includes("outside repository")) {
-              showToolResult("Edited", `${countLabel(summary.matches, "replacement", "replacements")} applied.`, "plain", shownPath);
+              showToolResult(
+                "Edited",
+                `${countLabel(summary.matches, "replacement", "replacements")} applied.`,
+                "plain",
+                shownPath,
+              );
               rendered = true;
               printWarning("Diff preview unavailable (file is outside current repository).");
             } else {
