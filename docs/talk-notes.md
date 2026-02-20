@@ -49,7 +49,8 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
   - multi-suggestion fallback (`Did you mean ...` / `Try: ...`) for unknown commands
   - reordered help output to prioritize common commands first
   - added `/?` as a fast help alias
-  - switched CLI accent color to accessible royal-purple branding
+  - switched CLI accent color to a lighter accessible royal-purple branding
+  - fixed overflow marker alignment in truncated tool output lists
 - Delivery workflow:
   - `bun run verify` (`typecheck` + tests)
   - autonomous feature loop in `docs/development-workflow.md`
