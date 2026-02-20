@@ -65,6 +65,7 @@ bun run src/cli.ts config list
 
 Session management in chat:
 - `?` to toggle shortcuts/help
+- `/dogfood <task>` to run the task with a verify-first coding loop prompt
 - `/remember [--project] <text>` to save a memory note from chat
 - `/memories` to list saved memory notes
 - `/skills` to list local repo skills from `./skills/*/SKILL.md`

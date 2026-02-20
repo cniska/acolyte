@@ -46,6 +46,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
   - moved chat UI to Ink with stable prompt/transcript separation
   - added session controls (`/new`, `/sessions`, `/resume`) and skills picker UX
   - added in-chat memory commands (`/remember [--project]`, `/memories`)
+  - added in-chat `/dogfood <task>` for verify-first autonomous coding tasks
   - switched memory store to Markdown files with frontmatter (user + project scopes)
   - added `@path` suggestions in chat and attachment of referenced files to model context
   - expanded `@path` attachment to include directories (compact tree context)
