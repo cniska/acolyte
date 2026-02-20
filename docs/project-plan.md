@@ -202,7 +202,7 @@ Build a personal AI assistant using Mastra, with a CLI-first interface that runs
 9. Defer multi-agent orchestration until single-agent coding loop is stable; then introduce as an optional path for complex tasks.
 10. Continue CLI UX convergence with Codex/Claude patterns while preserving minimalism (slash suggestions + picker flows via shared components).
 11. Add a package script to launch Mastra Studio once Mastra app wiring is production-ready for inspection/debugging.
-12. Add `@path` file reference support in interactive chat (autocomplete + attach semantics) to reduce command friction.
+12. Tune `@path` autocomplete filtering for discoverability: keep gitignored paths visible by default and add optional `.acolyteignore` support for user-controlled exclusions.
 13. Evaluate opt-in git hooks for high-signal checks only (for example `pre-push` verify), avoid mandatory noisy hooks.
 14. Execute a staged dogfooding ramp on `main`: start with low-risk tasks, then graduate to isolated feature slices as reliability remains stable.
 15. Maintain `docs/features.md` as the canonical shipped/in-progress/planned feature inventory, and keep README pointing to it.
