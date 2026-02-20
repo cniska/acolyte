@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  formatDogfoodStatusOutput,
   formatForTool,
   formatEditUpdateOutput,
   formatRunOutput,
@@ -28,6 +29,18 @@ describe("cli formatting helpers", () => {
   test("formatStatusOutput expands key-value status", () => {
     const out = formatStatusOutput("mode=openai service=acolyte-backend url=http://localhost:8787");
     expect(out).toBe(["mode=openai", "service=acolyte-backend", "url=http://localhost:8787"].join("\n"));
+  });
+
+  test("formatDogfoodStatusOutput renders concise readiness lines", () => {
+    const out = formatDogfoodStatusOutput({
+      backendStatus: "mode=openai service=acolyte-backend url=http://localhost:8787",
+      verifyRaw: "exit_code=0\nduration_ms=200\nstdout:\nok",
+      hasApiKey: true,
+    });
+    expect(out).toContain("Dogfood status");
+    expect(out).toContain("- Verify: exit_code=0");
+    expect(out).toContain("- Backend: mode=openai service=acolyte-backend url=http://localhost:8787");
+    expect(out).toContain("- OPENAI_API_KEY: set");
   });
 
   test("formatSearchOutput includes match and file counts", () => {
