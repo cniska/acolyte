@@ -24,6 +24,7 @@ import {
 } from "./chat-slash";
 import type { Message, Session, SessionStore } from "./types";
 import type { SkillMeta } from "./skills";
+import type { TokenUsage } from "./api";
 
 type ChatRow = {
   id: string;
@@ -43,6 +44,12 @@ type HeaderLine = {
 type PickerState =
   | { kind: "skills"; items: SkillMeta[]; index: number }
   | { kind: "resume"; items: Session[]; index: number };
+
+type TokenUsageEntry = {
+  id: string;
+  usage: TokenUsage;
+  warning?: string;
+};
 
 const TOOL_LABELS = ["Run", "Search", "Read", "Diff", "Edit", "Update", "Status"] as const;
 const COLORS = {
@@ -64,6 +71,7 @@ const SHORTCUT_ITEMS = [
   { key: "/skills", description: "open skills picker" },
   { key: "/remember [--project] <text>", description: "save memory note" },
   { key: "/memory", description: "list memories" },
+  { key: "/tokens", description: "show token usage summary" },
   { key: "/exit", description: "exit chat" },
 ] as const;
 
@@ -340,6 +348,31 @@ function buildDogfoodPrompt(task: string): string {
   return `${preamble}${task}`;
 }
 
+function formatTokenUsageLines(last: TokenUsageEntry | null, all: TokenUsageEntry[]): string[] {
+  if (!last) {
+    return ["No token data yet."];
+  }
+  const totals = all.reduce(
+    (acc, entry) => {
+      acc.prompt += entry.usage.promptTokens;
+      acc.completion += entry.usage.completionTokens;
+      acc.total += entry.usage.totalTokens;
+      return acc;
+    },
+    { prompt: 0, completion: 0, total: 0 },
+  );
+  const lines = [
+    `Last turn: prompt=${last.usage.promptTokens} completion=${last.usage.completionTokens} total=${last.usage.totalTokens}`,
+    `Session: prompt=${totals.prompt} completion=${totals.completion} total=${totals.total} (${all.length} turns)`,
+  ];
+  if (last.usage.promptBudgetTokens) {
+    lines.push(
+      `Prompt budget: ${last.usage.promptTokens}/${last.usage.promptBudgetTokens}${last.usage.promptTruncated ? " (trimmed)" : ""}`,
+    );
+  }
+  return lines;
+}
+
 function formatShortcutRows(): string[] {
   const width = process.stdout.columns ?? 96;
   const columns = width >= 92 ? 2 : 1;
@@ -418,6 +451,7 @@ function ChatApp(props: ChatAppProps) {
   const [thinkingFrame, setThinkingFrame] = useState(0);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [picker, setPicker] = useState<PickerState | null>(null);
+  const [tokenUsage, setTokenUsage] = useState<TokenUsageEntry[]>([]);
   const slashSuggestions = suggestSlashCommands(value);
   const [slashSuggestionIndex, setSlashSuggestionIndex] = useState(0);
   const atQuery = extractAtReferenceQuery(value);
@@ -767,6 +801,22 @@ function ChatApp(props: ChatAppProps) {
       return;
     }
 
+    if (resolvedText === "/tokens") {
+      pushUserCommandRow();
+      const last = tokenUsage.length > 0 ? tokenUsage[tokenUsage.length - 1] : null;
+      const lines = formatTokenUsageLines(last, tokenUsage);
+      setRows((current) => [
+        ...current,
+        ...lines.map((line) => ({
+          id: `row_${crypto.randomUUID()}`,
+          role: "assistant" as const,
+          content: line,
+          dim: true,
+        })),
+      ]);
+      return;
+    }
+
     if (resolvedText.startsWith("/remember")) {
       pushUserCommandRow();
       const parts = resolvedText.split(/\s+/).slice(1);
@@ -964,6 +1014,25 @@ function ChatApp(props: ChatAppProps) {
         ...current,
         { id: assistantMessage.id, role: "assistant", content: reply.output },
       ]);
+      if (reply.usage) {
+        const entry: TokenUsageEntry = {
+          id: assistantMessage.id,
+          usage: reply.usage,
+          warning: reply.budgetWarning,
+        };
+        setTokenUsage((current) => [...current, entry]);
+      }
+      if (reply.budgetWarning) {
+        setRows((current) => [
+          ...current,
+          {
+            id: `row_${crypto.randomUUID()}`,
+            role: "assistant",
+            content: `token budget: ${reply.budgetWarning}`,
+            dim: true,
+          },
+        ]);
+      }
       if (runVerifyAfterReply) {
         setRows((current) => [
           ...current,

@@ -22,17 +22,29 @@ class LocalBackend implements Backend {
       return {
         model: input.model,
         output: `Session so far: ${userMessages} user messages, ${assistantMessages} assistant messages. Ask me to /history for full local transcript.`,
+        usage: {
+          promptTokens: Math.ceil((input.message.length + input.history.map((m) => m.content.length).join("").length) / 4),
+          completionTokens: 32,
+          totalTokens: Math.ceil((input.message.length + input.history.map((m) => m.content.length).join("").length) / 4) + 32,
+        },
       };
     }
 
+    const output = [
+      "Local backend is active.",
+      "Set ACOLYTE_API_URL to route CLI requests to your hosted Mastra backend.",
+      "I can still track your session context, memory notes, and command history locally.",
+      `You said: ${trimmed}`,
+    ].join(" ");
+    const promptTokens = Math.ceil((trimmed.length + input.history.map((m) => m.content.length).join("").length) / 4);
     return {
       model: input.model,
-      output: [
-        "Local backend is active.",
-        "Set ACOLYTE_API_URL to route CLI requests to your hosted Mastra backend.",
-        "I can still track your session context, memory notes, and command history locally.",
-        `You said: ${trimmed}`,
-      ].join(" "),
+      output,
+      usage: {
+        promptTokens,
+        completionTokens: Math.ceil(output.length / 4),
+        totalTokens: promptTokens + Math.ceil(output.length / 4),
+      },
     };
   }
 
@@ -67,6 +79,27 @@ class RemoteBackend implements Backend {
     return {
       output: json.output,
       model: typeof json.model === "string" ? json.model : input.model,
+      usage:
+        json.usage &&
+        typeof json.usage === "object" &&
+        typeof (json.usage as { promptTokens?: unknown }).promptTokens === "number" &&
+        typeof (json.usage as { completionTokens?: unknown }).completionTokens === "number" &&
+        typeof (json.usage as { totalTokens?: unknown }).totalTokens === "number"
+          ? {
+              promptTokens: (json.usage as { promptTokens: number }).promptTokens,
+              completionTokens: (json.usage as { completionTokens: number }).completionTokens,
+              totalTokens: (json.usage as { totalTokens: number }).totalTokens,
+              promptBudgetTokens:
+                typeof (json.usage as { promptBudgetTokens?: unknown }).promptBudgetTokens === "number"
+                  ? (json.usage as { promptBudgetTokens: number }).promptBudgetTokens
+                  : undefined,
+              promptTruncated:
+                typeof (json.usage as { promptTruncated?: unknown }).promptTruncated === "boolean"
+                  ? (json.usage as { promptTruncated: boolean }).promptTruncated
+                  : undefined,
+            }
+          : undefined,
+      budgetWarning: typeof json.budgetWarning === "string" ? json.budgetWarning : undefined,
     };
   }
 

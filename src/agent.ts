@@ -73,6 +73,19 @@ function collectLinesWithinBudget(
 }
 
 export function buildAgentInput(req: ChatRequest): string {
+  return buildAgentInputWithUsage(req).input;
+}
+
+function buildAgentInputWithUsage(req: ChatRequest): {
+  input: string;
+  usage: {
+    promptTokens: number;
+    promptBudgetTokens: number;
+    promptTruncated: boolean;
+    includedHistoryMessages: number;
+    totalHistoryMessages: number;
+  };
+} {
   const maxContextTokens = appConfig.agent.contextMaxTokens;
   const lines: string[] = [];
   const usedIds = new Set<string>();
@@ -101,7 +114,18 @@ export function buildAgentInput(req: ChatRequest): string {
     lines.push("");
   }
   lines.push(userLine);
-  return lines.join("\n");
+  const input = lines.join("\n");
+  const promptTokens = estimateTokens(input);
+  return {
+    input,
+    usage: {
+      promptTokens,
+      promptBudgetTokens: maxContextTokens,
+      promptTruncated: usedIds.size < req.history.length,
+      includedHistoryMessages: usedIds.size,
+      totalHistoryMessages: req.history.length,
+    },
+  };
 }
 
 function isToolLikelyRequest(text: string): boolean {
@@ -274,19 +298,19 @@ export async function runAgent(input: {
     instructions: buildToolPolicy(input.soulPrompt),
   });
 
-  const requestInput = buildAgentInput(input.request);
+  const requestInput = buildAgentInputWithUsage(input.request);
   const toolLikely = isToolLikelyRequest(input.request.message);
   const memoryOptions = input.request.sessionId
     ? { thread: input.request.sessionId, resource: appConfig.memory.resourceId }
     : undefined;
-  let result = await agent.generate(requestInput, {
+  let result = await agent.generate(requestInput.input, {
     maxSteps: 8,
     toolChoice: "auto",
     memory: memoryOptions,
   });
 
   if (toolLikely && result.toolCalls.length === 0) {
-    result = await agent.generate(requestInput, {
+    result = await agent.generate(requestInput.input, {
       maxSteps: 8,
       toolChoice: "required",
       memory: memoryOptions,
@@ -297,9 +321,25 @@ export async function runAgent(input: {
   const output = isReviewRequest(input.request.message)
     ? finalizeReviewOutput(rawOutput, input.request.message)
     : finalizeAssistantOutput(rawOutput);
+  const completionTokens = estimateTokens(output);
+  const promptUsage = requestInput.usage;
+  let budgetWarning: string | undefined;
+  if (promptUsage.promptTruncated) {
+    budgetWarning = `context trimmed (${promptUsage.includedHistoryMessages}/${promptUsage.totalHistoryMessages} history messages)`;
+  } else if (promptUsage.promptTokens >= Math.floor(promptUsage.promptBudgetTokens * 0.9)) {
+    budgetWarning = `context near budget (${promptUsage.promptTokens}/${promptUsage.promptBudgetTokens} tokens)`;
+  }
 
   return {
     model: input.request.model,
     output,
+    usage: {
+      promptTokens: promptUsage.promptTokens,
+      completionTokens,
+      totalTokens: promptUsage.promptTokens + completionTokens,
+      promptBudgetTokens: promptUsage.promptBudgetTokens,
+      promptTruncated: promptUsage.promptTruncated,
+    },
+    budgetWarning,
   };
 }
