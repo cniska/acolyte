@@ -5,21 +5,13 @@ import { type ChatRow, type TokenUsageEntry } from "./chat-commands";
 import { renderAssistantContent } from "./chat-content-render";
 import { useAtSuggestionsEffect, useSlashSuggestionsEffect, useThinkingAnimationEffect } from "./chat-effects";
 import { extractAtReferenceQuery } from "./chat-file-ref";
+import { ChatInputPanel } from "./chat-input-panel";
 import { useChatKeybindings } from "./chat-keybindings";
-import {
-  borderLine,
-  formatShortcutRows,
-  type PickerState,
-  pickerHint,
-  pickerTitle,
-  renderPickerItems,
-  shownCwd,
-} from "./chat-layout";
+import { type PickerState, shownCwd } from "./chat-layout";
 import { createPickerHandlers } from "./chat-picker-handlers";
 import { suggestSlashCommands } from "./chat-slash";
 import { resolveSubmitInput } from "./chat-submit";
 import { createSubmitHandler } from "./chat-submit-handler";
-import { PromptInput } from "./prompt-input";
 import type { Message, Session, SessionStore } from "./types";
 
 type HeaderLine = {
@@ -216,89 +208,45 @@ function ChatApp(props: ChatAppProps) {
       ) : null}
 
       <Text> </Text>
-      {picker ? (
-        <>
-          <Text dimColor>{borderLine()}</Text>
-          <Text>{pickerTitle(picker)}</Text>
-          <Text> </Text>
-          {renderPickerItems(picker, store.activeSessionId, COLORS.brand)}
-          <Text> </Text>
-          <Text dimColor>{pickerHint(picker)}</Text>
-          <Text dimColor>{borderLine()}</Text>
-        </>
-      ) : (
-        <>
-          <Text dimColor>{borderLine()}</Text>
-          <Box>
-            <Text>❯ </Text>
-            <PromptInput
-              value={value}
-              placeholder="Ask something…"
-              onChange={(next) => {
-                if (value.length === 0 && next === "?") {
-                  return;
-                }
-                if (applyingHistoryRef.current) {
-                  applyingHistoryRef.current = false;
-                } else {
-                  setInputHistoryIndex(-1);
-                }
-                setValue(next);
-              }}
-              onSubmit={(next) => {
-                const resolved = resolveSubmitInput({
-                  value: next,
-                  atSuggestions,
-                  atSuggestionIndex,
-                  slashSuggestions,
-                  slashSuggestionIndex,
-                });
-                if (resolved.kind === "autocomplete") {
-                  setValue(resolved.value);
-                  setInputRevision((current) => current + 1);
-                  return;
-                }
-                void handleSubmit(next);
-              }}
-              key={`chat-input-${inputRevision}`}
-            />
-          </Box>
-          <Text dimColor>{borderLine()}</Text>
-
-          {atQuery !== null && atSuggestions.length > 0 ? (
-            <>
-              {atSuggestions.map((item) => (
-                <Text
-                  key={`at-suggestion-${item}`}
-                  color={item === atSuggestions[atSuggestionIndex] ? COLORS.brand : undefined}
-                >{`  ${item}`}</Text>
-              ))}
-            </>
-          ) : atQuery !== null ? (
-            <Text dimColor> No file or folder matches.</Text>
-          ) : slashSuggestions.length > 0 ? (
-            <>
-              {slashSuggestions.map((item, index) => (
-                <Text
-                  key={`slash-suggestion-${item}`}
-                  color={index === slashSuggestionIndex ? COLORS.brand : undefined}
-                  dimColor={index !== slashSuggestionIndex}
-                >{`  ${item}`}</Text>
-              ))}
-            </>
-          ) : showShortcuts ? (
-            <>
-              {formatShortcutRows().map((line, index) => (
-                <Text key={`shortcut-row-${index}`} dimColor>
-                  {line}
-                </Text>
-              ))}
-            </>
-          ) : (
-            <Text dimColor> ? for shortcuts</Text>
-          )}
-        </>
-      )}
+      <ChatInputPanel
+        picker={picker}
+        activeSessionId={store.activeSessionId}
+        brandColor={COLORS.brand}
+        value={value}
+        inputRevision={inputRevision}
+        onChange={(next) => {
+          if (value.length === 0 && next === "?") {
+            return;
+          }
+          if (applyingHistoryRef.current) {
+            applyingHistoryRef.current = false;
+          } else {
+            setInputHistoryIndex(-1);
+          }
+          setValue(next);
+        }}
+        onSubmit={(next) => {
+          const resolved = resolveSubmitInput({
+            value: next,
+            atSuggestions,
+            atSuggestionIndex,
+            slashSuggestions,
+            slashSuggestionIndex,
+          });
+          if (resolved.kind === "autocomplete") {
+            setValue(resolved.value);
+            setInputRevision((current) => current + 1);
+            return;
+          }
+          void handleSubmit(next);
+        }}
+        atQuery={atQuery}
+        atSuggestions={atSuggestions}
+        atSuggestionIndex={atSuggestionIndex}
+        slashSuggestions={slashSuggestions}
+        slashSuggestionIndex={slashSuggestionIndex}
+        showShortcuts={showShortcuts}
+      />
     </Box>
   );
 }
