@@ -124,8 +124,6 @@ export function toRows(messages: Message[], limit = RESUME_TRANSCRIPT_ROWS): Cha
   return rows.slice(-limit);
 }
 
-export { sanitizeAssistantContent, tokenizeForHighlighting } from "./chat-content";
-
 export type ResumeResolution =
   | { kind: "usage" }
   | { kind: "not_found"; prefix: string }

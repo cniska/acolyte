@@ -8,18 +8,17 @@ import {
   formatChangesSummary,
   formatDogfoodStatus,
   parseImplementedFeatures,
-  tokenizeForHighlighting,
   formatVerifySummary,
   formatThoughtDuration,
   formatSessionList,
   rankAtReferenceSuggestions,
   resolveResumeSession,
-  sanitizeAssistantContent,
   shouldAutocompleteSlashSubmit,
   shouldAutocompleteAtSubmit,
   suggestSlashCommands,
   toRows,
 } from "./chat-ui";
+import { sanitizeAssistantContent, tokenizeForHighlighting } from "./chat-content";
 
 function makeStore(): SessionStore {
   return {
