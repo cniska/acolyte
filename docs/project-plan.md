@@ -203,16 +203,16 @@ Build a personal AI assistant using Mastra, with a CLI-first interface that runs
 9. Keep subagent v1 simple and deterministic (heuristic router + explicit context), then evaluate optional richer delegation only after stability gates.
 10. Continue CLI UX convergence with Codex/Claude patterns while preserving minimalism (slash suggestions + picker flows via shared components).
 11. Keep provider/model routing centralized in one config module to avoid drift across CLI/backend/agent wiring.
-11. Add a package script to launch Mastra Studio once Mastra app wiring is production-ready for inspection/debugging.
-12. Tune `@path` autocomplete filtering for discoverability: keep gitignored paths visible by default and add optional `.acolyteignore` support for user-controlled exclusions.
-13. Evaluate opt-in git hooks for high-signal checks only (for example `pre-push` verify), avoid mandatory noisy hooks.
-14. Execute a staged dogfooding ramp on `main`: start with low-risk tasks, then graduate to isolated feature slices as reliability remains stable.
-15. Maintain `docs/features.md` as the canonical shipped/in-progress/planned feature inventory, and keep README pointing to it.
-16. Evaluate post-MVP channel adapter path for messaging access (WhatsApp/OpenClaw), including auth, rate limits, and privacy controls.
-17. Implement task-lane model routing with explicit config (`chat`, `code`, `long-context`, `vision`) and fallback chain instrumentation.
-18. Add first-class local model support via OpenAI-compatible base URLs (Ollama/vLLM), including docs, smoke checks, and lane-specific overrides.
-19. Add token-usage guardrails: hard prompt/context budgets, default compact tool output, and token telemetry per reply.
-20. Prioritize a TypeScript-first development lane (Bun/Node/TS defaults, typecheck+test workflow) before expanding language-specific support for other stacks.
+12. Add a package script to launch Mastra Studio once Mastra app wiring is production-ready for inspection/debugging.
+13. Tune `@path` autocomplete filtering for discoverability: keep gitignored paths visible by default and add optional `.acolyteignore` support for user-controlled exclusions.
+14. Evaluate opt-in git hooks for high-signal checks only (for example `pre-push` verify), avoid mandatory noisy hooks.
+15. Execute a staged dogfooding ramp on `main`: start with low-risk tasks, then graduate to isolated feature slices as reliability remains stable.
+16. Maintain `docs/features.md` as the canonical shipped/in-progress/planned feature inventory, and keep README pointing to it.
+17. Evaluate post-MVP channel adapter path for messaging access (WhatsApp/OpenClaw), including auth, rate limits, and privacy controls.
+18. Implement task-lane model routing with explicit config (`chat`, `code`, `long-context`, `vision`) and fallback chain instrumentation.
+19. Add first-class local model support via OpenAI-compatible base URLs (Ollama/vLLM), including docs, smoke checks, and lane-specific overrides.
+20. Add token-usage guardrails: hard prompt/context budgets, default compact tool output, and token telemetry per reply.
+21. Prioritize a TypeScript-first development lane (Bun/Node/TS defaults, typecheck+test workflow) before expanding language-specific support for other stacks.
 
 ## Prioritization Policy
 1. Prioritize correctness, reliability, and core workflow capability over cosmetic UX changes.
@@ -222,4 +222,4 @@ Build a personal AI assistant using Mastra, with a CLI-first interface that runs
 1. Full Claude-style transcript rendering in CLI output (structured `Edit(...)` / `Bash(...)` blocks with compact per-tool summaries).
 
 ## Known Issues
-1. `Cmd+Arrow` and `Cmd+Backspace` line-navigation/editing behavior is not yet implemented consistently in chat input across terminals.
+1. Some terminal profiles may still emit unmapped `Cmd` key sequences; capture-and-map follow-ups should be added as encountered.
