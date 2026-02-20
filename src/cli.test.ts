@@ -116,6 +116,8 @@ describe("cli formatting helpers", () => {
     expect(suggestCommand("/git-st")).toBe("/git-status");
     expect(suggestCommand("/g")).toBe("/git-status");
     expect(suggestCommand("/gd")).toBe("/gd");
+    expect(suggestCommand("/git-stats")).toBe("/git-status");
+    expect(suggestCommand("/memoris")).toBe("/memories");
     expect(suggestCommand("plain text")).toBeNull();
   });
 });
