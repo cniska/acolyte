@@ -23,6 +23,8 @@ Build a personal AI assistant using Mastra, with a CLI-first interface that runs
 4. Tooling for robust coding execution is baseline only; we still need safer edit/apply flows and stronger verification orchestration for autonomous feature delivery.
 5. Reliability guardrails are still maturing; we need eval gates that specifically measure repeated-mistake reduction across sessions.
 6. Full dogfooding transition is not complete; Acolyte-led development loops need to become the default path for feature work in this repo.
+7. Model selection is still mostly static; we need task-aware routing (chat/code/long-context/vision) with measurable quality/cost tradeoffs.
+8. Local model support is not fully productized; we need first-class configuration for OpenAI-compatible local endpoints (Ollama/vLLM) and routing integration.
 
 ## Product Moat
 1. Reliability moat: verification-first coding loop (plan, tool-grounded execution, validate, reflect) that measurably reduces repeated mistakes.
@@ -57,7 +59,7 @@ Build a personal AI assistant using Mastra, with a CLI-first interface that runs
 5. ORM/Data Layer: Prisma ORM for relational data; raw SQL through Prisma for vector search/index operations when using pgvector.
 6. Auth: API key/session token for CLI-to-backend authentication.
 7. Cache/queue (optional phase 2): Redis/Upstash.
-8. Model providers: OpenAI + Anthropic (+ optional others) through a single routing layer.
+8. Model providers: OpenAI + Anthropic + Gemini + local OpenAI-compatible endpoints (Ollama/vLLM) through a single routing layer.
 9. Code execution sandbox: E2B or Modal.
 10. Observability: structured logs + traces + evaluation dataset.
 11. Channel adapters (post-MVP): OpenClaw/Twilio bridge for WhatsApp and other messaging channels.
@@ -184,6 +186,8 @@ Build a personal AI assistant using Mastra, with a CLI-first interface that runs
 5. Async job strategy (Vercel-native vs external worker).
 6. Multi-agent rollout timing and topology (planner/executor/reviewer) after single-agent reliability gates are consistently met.
 7. Channel adapter rollout timing (WhatsApp via OpenClaw/Twilio) and auth model for cross-device messaging.
+8. Initial task-lane routing policy (`chat`, `code`, `long-context`, `vision`) and per-lane fallback order.
+9. Local model strategy for default installs (optional by default vs recommended baseline for coding lane).
 
 ## Next Actions
 1. Prioritize interactive CLI UX polish; keep batch mode intentionally minimal.
@@ -193,7 +197,7 @@ Build a personal AI assistant using Mastra, with a CLI-first interface that runs
 5. Adopt `docs/development-workflow.md` as the default feature-delivery loop.
 6. Expand `/resume` UX (session picker/listing ergonomics) on top of current ID-prefix resume flow.
 7. Add a dogfooding transition milestone: move from Codex-led development to Acolyte-led development in this repo after coding-loop reliability gates are met.
-8. Evaluate and tune the current thread-scoped observational memory setup (cost, precision, promotion quality) before enabling broader automatic preference promotion.
+8. Evaluate and tune the current resource-scoped observational memory setup (cost, precision, promotion quality) before broader automatic preference promotion.
 9. Defer multi-agent orchestration until single-agent coding loop is stable; then introduce as an optional path for complex tasks.
 10. Continue CLI UX convergence with Codex/Claude patterns while preserving minimalism (slash suggestions + picker flows via shared components).
 11. Add a package script to launch Mastra Studio once Mastra app wiring is production-ready for inspection/debugging.
@@ -202,6 +206,8 @@ Build a personal AI assistant using Mastra, with a CLI-first interface that runs
 14. Execute a staged dogfooding ramp on `main`: start with low-risk tasks, then graduate to isolated feature slices as reliability remains stable.
 15. Maintain `docs/features.md` as the canonical shipped/in-progress/planned feature inventory, and keep README pointing to it.
 16. Evaluate post-MVP channel adapter path for messaging access (WhatsApp/OpenClaw), including auth, rate limits, and privacy controls.
+17. Implement task-lane model routing with explicit config (`chat`, `code`, `long-context`, `vision`) and fallback chain instrumentation.
+18. Add first-class local model support via OpenAI-compatible base URLs (Ollama/vLLM), including docs, smoke checks, and lane-specific overrides.
 
 ## Prioritization Policy
 1. Prioritize correctness, reliability, and core workflow capability over cosmetic UX changes.
