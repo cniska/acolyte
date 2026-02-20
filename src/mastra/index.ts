@@ -3,7 +3,7 @@ import { Mastra } from "@mastra/core/mastra";
 import { Memory } from "@mastra/memory";
 import { env } from "../env";
 import { acolyteTools } from "../mastra-tools";
-import { getObservationalMemoryConfig } from "../om-config";
+import { getObservationalMemoryConfig } from "../memory-config";
 import { loadSystemPromptWithMemories } from "../soul";
 
 function normalizeModel(model: string): string {

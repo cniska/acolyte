@@ -2,7 +2,7 @@ import { Agent } from "@mastra/core/agent";
 import { Memory } from "@mastra/memory";
 import type { ChatRequest, ChatResponse } from "./api";
 import { acolyteTools } from "./mastra-tools";
-import { getObservationalMemoryConfig } from "./om-config";
+import { getObservationalMemoryConfig } from "./memory-config";
 
 interface OpenAIClientConfig {
   apiKey?: string;
