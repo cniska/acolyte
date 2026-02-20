@@ -10,6 +10,12 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
   - agentic workflows and coding tools
   - explicit behavior contract in `docs/soul.md`
 
+## Moat Narrative
+- Reliability moat: fewer repeated mistakes via a verify-first execution loop.
+- Memory moat: persistent, user-correctable memory that outlives single sessions.
+- Workflow moat: coding-native tools and repo-grounded behavior, not generic assistant output.
+- UX moat: operator-focused CLI ergonomics with minimal noise and strong control.
+
 ## Current Architecture (as of 2026-02-20)
 - CLI runtime: Bun + TypeScript (`src/cli.ts`)
 - Backend API: Bun server with `/v1/chat` and `/healthz` (`src/server.ts`)
@@ -51,7 +57,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
   - switched CLI accent color to a lighter accessible royal-purple branding
   - tool headers now use white action labels with dim gray args for readability
   - fixed overflow marker alignment in truncated tool output lists
-  - hard-separated chat UX: only `?` and `/exit`; internal commands moved to top-level CLI/tool mode
+  - command-aware chat UX with slash command suggestions and picker-style flows for `/skills` and `/resume`
   - `?` toggles a compact panel under the prompt (`esc` closes); no enter required
   - shortcuts panel now adapts to terminal width (single-line vs compact stacked key hints)
 - Delivery workflow:

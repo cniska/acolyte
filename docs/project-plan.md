@@ -1,7 +1,13 @@
 # Acolyte Project Plan
 
 ## Goal
-Build a personal AI assistant using Mastra, with a CLI-first interface and a hosted backend, so memory is centralized and consistent across computers.
+Build a personal AI assistant using Mastra, with a CLI-first interface that runs locally by default and supports optional hosted deployment for centralized memory across computers.
+
+## Product Principles
+1. BYO-first: users should be able to run Acolyte with their own API keys and infrastructure.
+2. Local-first: default setup should work fully on a single machine with minimal dependencies.
+3. Hosted-optional: cloud deployment is an opt-in for cross-device memory and collaboration.
+4. No mandatory Acolyte SaaS: core functionality must not depend on a vendor-hosted control plane.
 
 ## Success Criteria
 1. Assistant retains stable user preferences across sessions.
@@ -10,6 +16,13 @@ Build a personal AI assistant using Mastra, with a CLI-first interface and a hos
 4. Memory can be inspected, edited, and corrected from the CLI.
 5. Assistant can be used from multiple computers with shared centralized memory.
 
+## Product Moat
+1. Reliability moat: verification-first coding loop (plan, tool-grounded execution, validate, reflect) that measurably reduces repeated mistakes.
+2. Memory moat: persistent, editable, transparent memory that captures explicit preferences plus confidence-scored observations.
+3. Workflow moat: strong fit for real coding workflows (repo tools, tests, diff-aware edits, session continuity) instead of generic chat.
+4. UX moat: fast, minimal, high-signal CLI interface that keeps operator trust and control.
+5. Data moat: longitudinal personal workflow context (decisions, corrections, outcomes) centralized across devices.
+
 ## Scope
 ### In Scope (MVP)
 1. Mastra-based assistant service with at least one coding-focused agent.
@@ -17,7 +30,8 @@ Build a personal AI assistant using Mastra, with a CLI-first interface and a hos
 3. Multi-model support with configurable routing/fallback.
 4. Core coding tools: repo search/read, safe file edits, command execution, and test/lint/typecheck verification.
 5. CLI for chat, history, and memory inspection/editing.
-6. Hosted API/backend on Vercel for centralized access.
+6. Optional hosted API/backend on Vercel for centralized access.
+7. Local backend + local memory mode as first-class setup path.
 
 ### Out of Scope (MVP)
 1. Web UI.
@@ -29,14 +43,14 @@ Build a personal AI assistant using Mastra, with a CLI-first interface and a hos
 ## Proposed Tech Stack
 1. Runtime: Bun + TypeScript + Mastra.
 2. Interface: Bun CLI (Ink or plain TTY prompts).
-3. Backend Hosting: Vercel Functions.
-4. Data: Prisma Postgres (via Vercel Marketplace) + pgvector.
-5. ORM/Data Layer: Prisma ORM for relational data; raw SQL through Prisma for vector search/index operations.
+3. Backend Hosting (optional): Vercel Functions.
+4. Data: local SQLite (default) or Prisma Postgres (optional hosted mode) + pgvector.
+5. ORM/Data Layer: Prisma ORM for relational data; raw SQL through Prisma for vector search/index operations when using pgvector.
 6. Auth: API key/session token for CLI-to-backend authentication.
-4. Cache/queue (optional phase 2): Redis/Upstash.
-7. Model providers: OpenAI + Anthropic (+ optional others) through a single routing layer.
-8. Code execution sandbox: E2B or Modal.
-9. Observability: structured logs + traces + evaluation dataset.
+7. Cache/queue (optional phase 2): Redis/Upstash.
+8. Model providers: OpenAI + Anthropic (+ optional others) through a single routing layer.
+9. Code execution sandbox: E2B or Modal.
+10. Observability: structured logs + traces + evaluation dataset.
 
 ## Architecture
 1. CLI Layer:
@@ -100,10 +114,10 @@ Build a personal AI assistant using Mastra, with a CLI-first interface and a hos
 ## Implementation Phases
 ## Phase 0: Foundations (Week 1)
 1. Create monorepo structure and baseline Mastra + CLI integration.
-2. Set up Prisma Postgres, migrations, and base schema.
+2. Set up local-first persistence, migrations, and base schema.
 3. Configure providers and model routing.
 4. Implement local CLI bootstrap (`acolyte` command).
-5. Scaffold Vercel API endpoints for CLI connectivity.
+5. Scaffold optional Vercel API endpoints for remote CLI connectivity.
 
 ## Phase 1: MVP CLI Assistant (Weeks 2-3)
 1. Implement interactive CLI commands first with backend auth.
@@ -127,7 +141,7 @@ Build a personal AI assistant using Mastra, with a CLI-first interface and a hos
 4. Add failure mode playbooks.
 
 ## Phase 4: Deployment and Operations (Week 8)
-1. Deploy backend to Vercel and connect Prisma Postgres.
+1. Deploy backend to Vercel and connect Prisma Postgres (optional hosted path).
 2. Add local install/run scripts and environment docs for multi-machine CLI use.
 3. Add backup/restore workflow for centralized memory DB.
 4. Add release process (versioning + changelog).
@@ -135,9 +149,10 @@ Build a personal AI assistant using Mastra, with a CLI-first interface and a hos
 ## Deliverables
 1. Working CLI assistant (`acolyte`) usable from multiple computers.
 2. Mastra agent/workflow codebase.
-3. Hosted backend on Vercel with persistent memory database and migrations.
-4. Documented memory policy and governance.
-5. Evaluation suite for quality regression checks.
+3. Local-first setup docs and scripts (single-machine, BYO keys).
+4. Optional hosted backend on Vercel with persistent memory database and migrations.
+5. Documented memory policy and governance.
+6. Evaluation suite for quality regression checks.
 
 ## Risks and Mitigations
 1. Memory drift or wrong assumptions.
@@ -169,6 +184,7 @@ Build a personal AI assistant using Mastra, with a CLI-first interface and a hos
 7. Add a dogfooding transition milestone: move from Codex-led development to Acolyte-led development in this repo after coding-loop reliability gates are met.
 8. Introduce observational memory only after coding workflow reliability is stable and evaluated.
 9. Defer multi-agent orchestration until single-agent coding loop is stable; then introduce as an optional path for complex tasks.
+10. Continue CLI UX convergence with Codex/Claude patterns while preserving minimalism (slash suggestions + picker flows via shared components).
 
 ## Prioritization Policy
 1. Prioritize correctness, reliability, and core workflow capability over cosmetic UX changes.
