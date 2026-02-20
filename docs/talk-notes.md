@@ -43,6 +43,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Added `bun run verify` and documented a stepwise autonomous feature workflow (`docs/development-workflow.md`).
 - Added local skill scaffold for autonomous feature delivery (`skills/autonomous-feature-delivery/SKILL.md`).
 - Standardized tool transcript titles to action-style blocks (`Bash(...)`, `Search(...)`, `Read(...)`, `Diff(...)`).
+- Added inline result summaries in tool output (search match/file counts, read line counts).
 
 ## Demo Flow (Short)
 1. Start backend: `bun --env-file=.env run serve`

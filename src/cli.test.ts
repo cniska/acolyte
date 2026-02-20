@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  formatForTool,
   formatEditUpdateOutput,
   formatRunOutput,
   formatStatusOutput,
@@ -22,6 +23,18 @@ describe("cli formatting helpers", () => {
   test("formatStatusOutput expands key-value status", () => {
     const out = formatStatusOutput("mode=openai service=acolyte-backend url=http://localhost:8787");
     expect(out).toBe(["mode=openai", "service=acolyte-backend", "url=http://localhost:8787"].join("\n"));
+  });
+
+  test("formatSearchOutput includes match and file counts", () => {
+    const raw = ["./a.ts:1:foo", "./a.ts:2:bar", "./b.ts:9:baz"].join("\n");
+    const out = formatForTool("search", raw);
+    expect(out).toContain("3 match(es) in 2 file(s)");
+  });
+
+  test("formatReadOutput includes line count", () => {
+    const raw = ["one", "two", "three"].join("\n");
+    const out = formatForTool("read", raw);
+    expect(out).toContain("3 line(s)");
   });
 
   test("summarizeDiff counts added and removed lines", () => {

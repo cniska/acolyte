@@ -272,11 +272,22 @@ export function clampLines(lines: string[], maxLines: number): string[] {
 }
 
 export function formatSearchOutput(raw: string): string {
-  return clampLines(raw.split("\n"), 12).join("\n");
+  const lines = raw.split("\n").filter((line) => line.trim().length > 0);
+  const files = new Set<string>();
+  for (const line of lines) {
+    const firstColon = line.indexOf(":");
+    if (firstColon > 0) {
+      files.add(line.slice(0, firstColon));
+    }
+  }
+  const summary = `${lines.length} match(es) in ${files.size} file(s)`;
+  return [summary, ...clampLines(lines, 12)].join("\n");
 }
 
 export function formatReadOutput(raw: string): string {
-  return clampLines(raw.split("\n"), 48).join("\n");
+  const lines = raw.split("\n");
+  const summary = `${lines.length} line(s)`;
+  return [summary, ...clampLines(lines, 48)].join("\n");
 }
 
 export function formatDiffOutput(raw: string): string {
