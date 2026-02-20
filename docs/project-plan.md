@@ -202,6 +202,7 @@ Build a personal AI assistant using Mastra, with a CLI-first interface that runs
 8. Evaluate and tune the current resource-scoped observational memory setup (cost, precision, promotion quality) before broader automatic preference promotion.
 9. Keep subagent v1 simple and deterministic (heuristic router + explicit context), then evaluate optional richer delegation only after stability gates.
 10. Continue CLI UX convergence with Codex/Claude patterns while preserving minimalism (slash suggestions + picker flows via shared components).
+11. Keep provider/model routing centralized in one config module to avoid drift across CLI/backend/agent wiring.
 11. Add a package script to launch Mastra Studio once Mastra app wiring is production-ready for inspection/debugging.
 12. Tune `@path` autocomplete filtering for discoverability: keep gitignored paths visible by default and add optional `.acolyteignore` support for user-controlled exclusions.
 13. Evaluate opt-in git hooks for high-signal checks only (for example `pre-push` verify), avoid mandatory noisy hooks.

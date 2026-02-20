@@ -55,6 +55,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
   - improved prompt ergonomics (word navigation, reliable delete behavior, autocomplete fixes)
   - added slash-command suggestions with keyboard selection/autocomplete (arrows + Tab/Enter)
   - added compact slash aliases for common flows (`/df`, `/ds`, `/mem`, `/rem`)
+  - centralized provider/model routing config (role model fallback + provider-aware model presentation)
   - tightened review style policy (concise, evidence-first, no destructive git suggestions)
   - polished transcript output (compact tool blocks, no-result clarity, duration summaries)
   - hardened empty-output handling with explicit assistant/review fallbacks instead of blank replies

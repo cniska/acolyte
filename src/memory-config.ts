@@ -1,8 +1,5 @@
 import { appConfig } from "./app-config";
-
-function normalizeModel(model: string): string {
-  return model.includes("/") ? model : `openai/${model}`;
-}
+import { normalizeModel } from "./provider-config";
 
 export function getObservationalMemoryConfig(): {
   model: string;
