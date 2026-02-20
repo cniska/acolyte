@@ -9,6 +9,16 @@ interface OpenAIClientConfig {
 
 const FALLBACK_PLAN =
   "1) Interpret request. 2) Use available repo tools when helpful. 3) Return concise, actionable answer.";
+const MAX_HISTORY_MESSAGES = 12;
+const MAX_HISTORY_TOTAL_CHARS = 7000;
+const MAX_MESSAGE_CHARS = 900;
+
+function truncateText(input: string, maxChars: number): string {
+  if (input.length <= maxChars) {
+    return input;
+  }
+  return `${input.slice(0, Math.max(0, maxChars - 1))}…`;
+}
 
 function normalizeModel(model: string): string {
   return model.includes("/") ? model : `openai/${model}`;
@@ -16,11 +26,19 @@ function normalizeModel(model: string): string {
 
 function buildAgentInput(req: ChatRequest): string {
   const lines: string[] = [];
-  const recent = req.history.slice(-16);
-  for (const message of recent) {
-    lines.push(`${message.role.toUpperCase()}: ${message.content}`);
+  const recent = req.history.slice(-MAX_HISTORY_MESSAGES);
+  let usedChars = 0;
+  for (let i = recent.length - 1; i >= 0; i -= 1) {
+    const message = recent[i];
+    const compact = truncateText(message.content, MAX_MESSAGE_CHARS);
+    const line = `${message.role.toUpperCase()}: ${compact}`;
+    if (usedChars + line.length > MAX_HISTORY_TOTAL_CHARS) {
+      break;
+    }
+    lines.unshift(line);
+    usedChars += line.length;
   }
-  lines.push(`USER: ${req.message.trim()}`);
+  lines.push(`USER: ${truncateText(req.message.trim(), MAX_MESSAGE_CHARS)}`);
   return lines.join("\n");
 }
 

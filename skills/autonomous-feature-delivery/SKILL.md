@@ -1,6 +1,6 @@
 ---
 name: autonomous-feature-delivery
-description: Use when implementing project features end-to-end with autonomous stepwise execution, validation after each slice, and commit-per-slice discipline.
+description: Build features end-to-end in small validated slices with commit-per-slice discipline.
 ---
 
 # Autonomous Feature Delivery

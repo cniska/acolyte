@@ -4,9 +4,10 @@ import { Box, Static, Text, render, useApp, useInput } from "ink";
 import TextInput from "ink-text-input";
 import type { Backend } from "./backend";
 import { listMemories } from "./memory";
-import { listSkills } from "./skills";
+import { listSkills, readSkillInstructions } from "./skills";
 import { createSession } from "./storage";
 import type { Message, Session, SessionStore } from "./types";
+import type { SkillMeta } from "./skills";
 
 type ChatRow = {
   id: string;
@@ -23,6 +24,8 @@ type HeaderLine = {
 };
 
 const TOOL_LABELS = ["Run", "Search", "Read", "Diff", "Edit", "Update", "Status"] as const;
+const BRAND_COLOR = "#A56EFF";
+const MAX_SKILL_INSTRUCTION_CHARS = 4000;
 
 interface ChatAppProps {
   backend: Backend;
@@ -134,6 +137,13 @@ function borderLine(): string {
   return "─".repeat(Math.max(24, width));
 }
 
+function truncateText(input: string, max = 72): string {
+  if (input.length <= max) {
+    return input;
+  }
+  return `${input.slice(0, Math.max(0, max - 1))}…`;
+}
+
 function ChatApp(props: ChatAppProps) {
   const { backend, session, store, persist, version } = props;
   const { exit } = useApp();
@@ -142,6 +152,9 @@ function ChatApp(props: ChatAppProps) {
   const [value, setValue] = useState("");
   const [isThinking, setIsThinking] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [skillsPanelOpen, setSkillsPanelOpen] = useState(false);
+  const [skillsPanelItems, setSkillsPanelItems] = useState<SkillMeta[]>([]);
+  const [skillsPanelIndex, setSkillsPanelIndex] = useState(0);
   const headerLines: HeaderLine[] = [
     { id: "title", text: "Acolyte", suffix: ` v${version}`, dim: false, brand: true },
     {
@@ -158,6 +171,65 @@ function ChatApp(props: ChatAppProps) {
     (input, key) => {
       if (key.ctrl && input === "c") {
         void persist().finally(exit);
+        return;
+      }
+      if (skillsPanelOpen) {
+        if (key.escape) {
+          setSkillsPanelOpen(false);
+          return;
+        }
+        if (key.upArrow || input === "k") {
+          setSkillsPanelIndex((current) => Math.max(0, current - 1));
+          return;
+        }
+        if (key.downArrow || input === "j") {
+          setSkillsPanelIndex((current) => Math.min(skillsPanelItems.length - 1, current + 1));
+          return;
+        }
+        if (key.return && skillsPanelItems.length > 0) {
+          const selected = skillsPanelItems[skillsPanelIndex];
+          if (selected) {
+            void (async () => {
+              try {
+                const instructions = await readSkillInstructions(selected.path);
+                const boundedInstructions =
+                  instructions.length > MAX_SKILL_INSTRUCTION_CHARS
+                    ? `${instructions.slice(0, MAX_SKILL_INSTRUCTION_CHARS - 1)}…`
+                    : instructions;
+                const msg = newMessage(
+                  "system",
+                  `Active skill (${selected.name}):\n${boundedInstructions}`,
+                );
+                currentSession.messages.push(msg);
+                currentSession.updatedAt = nowIso();
+                setRows((current) => [
+                  ...current,
+                  {
+                    id: `row_${crypto.randomUUID()}`,
+                    role: "system",
+                    content: `Activated skill: ${selected.name}`,
+                  },
+                ]);
+                await persist();
+              } catch {
+                setRows((current) => [
+                  ...current,
+                  {
+                    id: `row_${crypto.randomUUID()}`,
+                    role: "system",
+                    content: `Failed to activate skill: ${selected.name}`,
+                  },
+                ]);
+              }
+            })();
+          }
+          setSkillsPanelOpen(false);
+          return;
+        }
+        return;
+      }
+      if (!isThinking && input === "$" && value.length === 0) {
+        void openSkillsPanel();
         return;
       }
       if (!isThinking && input === "?" && value.length === 0) {
@@ -244,23 +316,7 @@ function ChatApp(props: ChatAppProps) {
     }
 
     if (text === "/skills") {
-      const skills = await listSkills();
-      if (skills.length === 0) {
-        setRows((current) => [
-          ...current,
-          { id: `row_${crypto.randomUUID()}`, role: "system", content: "No skills found in ./skills." },
-        ]);
-        return;
-      }
-      setRows((current) => [
-        ...current,
-        { id: `row_${crypto.randomUUID()}`, role: "system", content: `Skills (${skills.length})` },
-        ...skills.map((skill) => ({
-          id: `row_${crypto.randomUUID()}`,
-          role: "system" as const,
-          content: `${skill.name} - ${skill.description}`,
-        })),
-      ]);
+      await openSkillsPanel();
       return;
     }
 
@@ -282,6 +338,17 @@ function ChatApp(props: ChatAppProps) {
     }
 
     if (text.startsWith("/")) {
+      if (text === "/skill" || text.startsWith("/skill ")) {
+        setRows((current) => [
+          ...current,
+          {
+            id: `row_${crypto.randomUUID()}`,
+            role: "system",
+            content: "Unknown command: /skill. Did you mean /skills?",
+          },
+        ]);
+        return;
+      }
       const row: ChatRow = {
         id: `row_${crypto.randomUUID()}`,
         role: "system",
@@ -330,11 +397,26 @@ function ChatApp(props: ChatAppProps) {
     }
   };
 
+  const openSkillsPanel = async (): Promise<void> => {
+    const skills = await listSkills();
+    if (skills.length === 0) {
+      setRows((current) => [
+        ...current,
+        { id: `row_${crypto.randomUUID()}`, role: "system", content: "No skills found in ./skills." },
+      ]);
+      return;
+    }
+    setSkillsPanelItems(skills);
+    setSkillsPanelIndex(0);
+    setShowShortcuts(false);
+    setSkillsPanelOpen(true);
+  };
+
   return (
     <Box flexDirection="column">
       <Static<HeaderLine> items={headerLines}>
         {(line) => (
-          <Text key={line.id} dimColor={line.dim} color={line.brand ? "#A56EFF" : undefined}>
+          <Text key={line.id} dimColor={line.dim} color={line.brand ? BRAND_COLOR : undefined}>
             {line.id === "title" ? (
               <>
                 <Text bold>{line.text}</Text>
@@ -368,27 +450,53 @@ function ChatApp(props: ChatAppProps) {
       ) : null}
 
       <Text> </Text>
-      <Text dimColor>{borderLine()}</Text>
-      <Box>
-        <Text>❯ </Text>
-        <TextInput
-          value={value}
-          placeholder="Ask Acolyte..."
-          onChange={(next) => {
-            if (value.length === 0 && next === "?") {
-              return;
-            }
-            setValue(next);
-          }}
-          onSubmit={(next) => void handleSubmit(next)}
-        />
-      </Box>
-      <Text dimColor>{borderLine()}</Text>
-
-      {showShortcuts ? (
-        <Text dimColor>{"  /new  /sessions  /skills  /resume <id>  /exit"}</Text>
+      {skillsPanelOpen ? (
+        <>
+          <Text dimColor>{borderLine()}</Text>
+          <Text>Skills</Text>
+          <Text> </Text>
+          {skillsPanelItems.map((skill, index) => {
+            const nameWidth = Math.min(
+              28,
+              Math.max(8, ...skillsPanelItems.map((item) => item.name.length)),
+            );
+            const selected = index === skillsPanelIndex;
+            return (
+              <Text key={skill.path}>
+                {selected ? "› " : "  "}
+                <Text color={selected ? BRAND_COLOR : "white"}>{skill.name.padEnd(nameWidth)}</Text>  {truncateText(skill.description)}
+              </Text>
+            );
+          })}
+          <Text> </Text>
+          <Text dimColor>Esc to close · Enter to select</Text>
+          <Text dimColor>{borderLine()}</Text>
+        </>
       ) : (
-        <Text dimColor>  ? for shortcuts</Text>
+        <>
+          <Text dimColor>{borderLine()}</Text>
+          <Box>
+            <Text>❯ </Text>
+            <TextInput
+              value={value}
+              placeholder="Ask Acolyte..."
+              onChange={(next) => {
+                if (value.length === 0 && next === "?") {
+                  return;
+                }
+                setValue(next);
+              }}
+              onSubmit={(next) => void handleSubmit(next)}
+            />
+          </Box>
+          <Text dimColor>{borderLine()}</Text>
+
+          {showShortcuts ? (
+            <Text dimColor>{"  /new  /sessions  /skills  /resume <id>  /exit"}</Text>
+          ) : (
+            <Text dimColor>  ? for shortcuts</Text>
+          )}
+        </>
       )}
     </Box>
   );

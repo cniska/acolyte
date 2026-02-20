@@ -36,6 +36,22 @@ function parseFrontmatter(input: string): Record<string, string> | null {
   return out;
 }
 
+function stripFrontmatter(input: string): string {
+  const trimmed = input.trimStart();
+  if (!trimmed.startsWith("---")) {
+    return input.trim();
+  }
+  const lines = trimmed.split("\n");
+  if (lines.length < 3 || lines[0].trim() !== "---") {
+    return input.trim();
+  }
+  const endIdx = lines.findIndex((line, idx) => idx > 0 && line.trim() === "---");
+  if (endIdx < 0) {
+    return input.trim();
+  }
+  return lines.slice(endIdx + 1).join("\n").trim();
+}
+
 export async function listSkills(cwd = process.cwd()): Promise<SkillMeta[]> {
   const root = join(cwd, "skills");
   if (!existsSync(root)) {
@@ -67,3 +83,7 @@ export async function listSkills(cwd = process.cwd()): Promise<SkillMeta[]> {
   return found.sort((a, b) => a.name.localeCompare(b.name));
 }
 
+export async function readSkillInstructions(path: string): Promise<string> {
+  const raw = await readFile(path, "utf8");
+  return stripFrontmatter(raw);
+}

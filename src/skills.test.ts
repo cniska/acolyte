@@ -2,7 +2,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, test } from "bun:test";
-import { listSkills } from "./skills";
+import { listSkills, readSkillInstructions } from "./skills";
 
 describe("skills loader", () => {
   test("returns empty when skills directory is missing", async () => {
@@ -40,5 +40,28 @@ describe("skills loader", () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
-});
 
+  test("readSkillInstructions strips frontmatter and returns body", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "acolyte-skills-body-"));
+    try {
+      const file = join(dir, "SKILL.md");
+      writeFileSync(
+        file,
+        [
+          "---",
+          "name: demo-skill",
+          "description: Demo description",
+          "---",
+          "",
+          "# Demo",
+          "Use this skill.",
+        ].join("\n"),
+        "utf8",
+      );
+      const body = await readSkillInstructions(file);
+      expect(body).toBe("# Demo\nUse this skill.");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
