@@ -7,8 +7,8 @@ import { runShellCommand } from "./coding-tools";
 import { buildFileContext } from "./file-context";
 import { PromptInput } from "./prompt-input";
 import { listSkills, readSkillInstructions } from "./skills";
-import { sanitizeAssistantContent, tokenizeForHighlighting } from "./chat-content";
 import { formatThoughtDuration, formatVerifySummary } from "./chat-formatters";
+import { renderAssistantContent } from "./chat-content-render";
 import {
   applySlashSuggestion,
   isKnownSlashToken,
@@ -48,11 +48,8 @@ type PickerState =
   | { kind: "skills"; items: SkillMeta[]; index: number }
   | { kind: "resume"; items: Session[]; index: number };
 
-const TOOL_LABELS = ["Run", "Search", "Read", "Diff", "Edit", "Update", "Status"] as const;
 const COLORS = {
   brand: "#A56EFF",
-  highlightCode: "#B7C0CC",
-  highlightPath: "#A8B1BC",
 } as const;
 const MAX_SKILL_INSTRUCTION_CHARS = 4000;
 const THINKING_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"] as const;
@@ -793,58 +790,4 @@ function ChatApp(props: ChatAppProps) {
 export async function runInkChat(props: ChatAppProps): Promise<void> {
   const app = render(<ChatApp {...props} />);
   await app.waitUntilExit();
-}
-
-function renderAssistantContent(content: string): React.ReactNode {
-  const cleaned = sanitizeAssistantContent(content);
-
-  const renderHighlighted = (value: string, keyPrefix: string): React.ReactNode => {
-    const lines = value.split("\n");
-    return (
-      <>
-        {lines.map((line, lineIndex) => (
-          <React.Fragment key={`${keyPrefix}-line-${lineIndex}`}>
-            {lineIndex > 0 ? "\n" : null}
-            {tokenizeForHighlighting(line).map((token, tokenIndex) => {
-              if (token.kind === "code") {
-                return (
-                  <Text key={`${keyPrefix}-token-${lineIndex}-${tokenIndex}`} color={COLORS.highlightCode}>
-                    {token.text}
-                  </Text>
-                );
-              }
-              if (token.kind === "command") {
-                return (
-                  <Text key={`${keyPrefix}-token-${lineIndex}-${tokenIndex}`} bold>
-                    {token.text}
-                  </Text>
-                );
-              }
-              if (token.kind === "path") {
-                return (
-                  <Text key={`${keyPrefix}-token-${lineIndex}-${tokenIndex}`} underline color={COLORS.highlightPath}>
-                    {token.text}
-                  </Text>
-                );
-              }
-              return <Text key={`${keyPrefix}-token-${lineIndex}-${tokenIndex}`}>{token.text}</Text>;
-            })}
-          </React.Fragment>
-        ))}
-      </>
-    );
-  };
-
-  for (const label of TOOL_LABELS) {
-    if (cleaned.startsWith(`${label} `) || cleaned.startsWith(`${label}(`) || cleaned.startsWith(`${label}:`)) {
-      return (
-        <>
-          <Text bold>{label}</Text>
-          {renderHighlighted(cleaned.slice(label.length), `tool-${label}`)}
-        </>
-      );
-    }
-  }
-
-  return renderHighlighted(cleaned, "assistant");
 }
