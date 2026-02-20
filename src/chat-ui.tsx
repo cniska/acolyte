@@ -1,10 +1,10 @@
-import { Box, render, Static, Text, useApp } from "ink";
+import { Box, render, Text, useApp } from "ink";
 import React, { useRef, useState } from "react";
 import type { Backend } from "./backend";
 import { type ChatRow, type TokenUsageEntry } from "./chat-commands";
-import { renderAssistantContent } from "./chat-content-render";
 import { useAtSuggestionsEffect, useSlashSuggestionsEffect, useThinkingAnimationEffect } from "./chat-effects";
 import { extractAtReferenceQuery } from "./chat-file-ref";
+import { ChatHeader } from "./chat-header";
 import { ChatInputPanel } from "./chat-input-panel";
 import { useChatKeybindings } from "./chat-keybindings";
 import { type PickerState, shownCwd } from "./chat-layout";
@@ -12,6 +12,7 @@ import { createPickerHandlers } from "./chat-picker-handlers";
 import { suggestSlashCommands } from "./chat-slash";
 import { resolveSubmitInput } from "./chat-submit";
 import { createSubmitHandler } from "./chat-submit-handler";
+import { ChatTranscript } from "./chat-transcript";
 import type { Message, Session, SessionStore } from "./types";
 
 type HeaderLine = {
@@ -168,44 +169,8 @@ function ChatApp(props: ChatAppProps) {
 
   return (
     <Box flexDirection="column">
-      <Static<HeaderLine> items={headerLines}>
-        {(line) => (
-          <Text key={line.id} dimColor={line.dim} color={line.brand ? COLORS.brand : undefined}>
-            {line.id === "title" ? (
-              <>
-                <Text bold>{line.text}</Text>
-                <Text dimColor>{line.suffix}</Text>
-              </>
-            ) : (
-              line.text
-            )}
-          </Text>
-        )}
-      </Static>
-
-      {rows.map((row, index) => (
-        <React.Fragment key={row.id}>
-          {index > 0 ? <Text> </Text> : null}
-          <Box>
-            <Box width={2}>
-              <Text dimColor={Boolean(row.dim)}>
-                {row.role === "user" ? "❯ " : row.role === "assistant" ? "• " : "  "}
-              </Text>
-            </Box>
-            <Box flexGrow={1}>
-              <Text dimColor={Boolean(row.dim)}>
-                {row.role === "assistant" ? renderAssistantContent(row.content) : row.content}
-              </Text>
-            </Box>
-          </Box>
-        </React.Fragment>
-      ))}
-      {isThinking ? (
-        <>
-          {rows.length > 0 ? <Text> </Text> : null}
-          <Text dimColor>{`  ${THINKING_FRAMES[thinkingFrame]} thinking…`}</Text>
-        </>
-      ) : null}
+      <ChatHeader lines={headerLines} brandColor={COLORS.brand} />
+      <ChatTranscript rows={rows} isThinking={isThinking} thinkingFrame={THINKING_FRAMES[thinkingFrame] ?? "⠋"} />
 
       <Text> </Text>
       <ChatInputPanel
