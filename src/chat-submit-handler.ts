@@ -1,0 +1,128 @@
+import type { Backend } from "./backend";
+import { type ChatRow, dispatchSlashCommand, type TokenUsageEntry } from "./chat-commands";
+import { isKnownSlashToken, resolveSlashAlias } from "./chat-slash";
+import {
+  appendInputHistory,
+  applyUserTurn,
+  resolveReferencedFileContext,
+  runAssistantTurn,
+  unresolvedPathRows,
+} from "./chat-turn";
+import type { Message, Session, SessionStore } from "./types";
+
+type CreateSubmitHandlerInput = {
+  backend: Backend;
+  store: SessionStore;
+  currentSession: Session;
+  setCurrentSession: (next: Session) => void;
+  toRows: (messages: Message[]) => ChatRow[];
+  setRows: (updater: (current: ChatRow[]) => ChatRow[]) => void;
+  setShowShortcuts: (next: boolean | ((current: boolean) => boolean)) => void;
+  setValue: (next: string) => void;
+  persist: () => Promise<void>;
+  exit: () => void;
+  openSkillsPanel: () => Promise<void>;
+  openResumePanel: () => void;
+  tokenUsage: TokenUsageEntry[];
+  isThinking: boolean;
+  setInputHistory: (updater: (current: string[]) => string[]) => void;
+  setInputHistoryIndex: (next: number) => void;
+  setInputHistoryDraft: (next: string) => void;
+  setIsThinking: (next: boolean) => void;
+  setTokenUsage: (updater: (current: TokenUsageEntry[]) => TokenUsageEntry[]) => void;
+  createMessage: (role: Message["role"], content: string) => Message;
+  nowIso: () => string;
+};
+
+export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: string) => Promise<void> {
+  return async (raw: string): Promise<void> => {
+    const text = raw.trim();
+    if (!text || input.isThinking) {
+      return;
+    }
+    if (text.startsWith("/") && !text.includes(" ") && !isKnownSlashToken(text)) {
+      return;
+    }
+    const resolvedText = resolveSlashAlias(text);
+    input.setInputHistory((current) => appendInputHistory(current, text));
+    input.setInputHistoryIndex(-1);
+    input.setInputHistoryDraft("");
+    input.setValue("");
+
+    if (resolvedText === "?") {
+      input.setShowShortcuts((current) => !current);
+      return;
+    }
+    const commandResult = await dispatchSlashCommand({
+      text,
+      resolvedText,
+      backend: input.backend,
+      store: input.store,
+      currentSession: input.currentSession,
+      setCurrentSession: input.setCurrentSession,
+      toRows: (messages) => input.toRows(messages),
+      setRows: input.setRows,
+      setShowShortcuts: input.setShowShortcuts,
+      setValue: input.setValue,
+      persist: input.persist,
+      exit: input.exit,
+      openSkillsPanel: input.openSkillsPanel,
+      openResumePanel: input.openResumePanel,
+      tokenUsage: input.tokenUsage,
+    });
+    if (commandResult.stop) {
+      return;
+    }
+    const userText = commandResult.userText;
+    const runVerifyAfterReply = commandResult.runVerifyAfterReply;
+
+    const { row: userRow } = applyUserTurn({
+      session: input.currentSession,
+      displayText: text,
+      userText,
+      nowIso: input.nowIso,
+      createMessage: input.createMessage,
+    });
+    input.setRows((current) => [...current, userRow]);
+    const { contexts, unresolvedPaths } = await resolveReferencedFileContext(userText);
+    const fileContextMessages: Message[] = contexts.map((context) => input.createMessage("system", context));
+    if (unresolvedPaths.length > 0) {
+      input.setRows((current) => [...current, ...unresolvedPathRows(unresolvedPaths)]);
+      await input.persist();
+      return;
+    }
+
+    input.setIsThinking(true);
+    const thinkingStartedAt = Date.now();
+    await input.persist();
+
+    try {
+      const turn = await runAssistantTurn({
+        backend: input.backend,
+        userText,
+        history: [...fileContextMessages, ...input.currentSession.messages],
+        model: input.currentSession.model,
+        sessionId: input.currentSession.id,
+        runVerifyAfterReply,
+        thinkingStartedAt,
+        createMessage: input.createMessage,
+      });
+      const assistantMessage = turn.assistantMessage;
+      input.currentSession.messages.push(assistantMessage);
+      input.currentSession.model = turn.model;
+      input.currentSession.updatedAt = input.nowIso();
+      input.setRows((current) => [...current, ...turn.rows]);
+      input.setTokenUsage((current) => [...current, turn.tokenEntry]);
+      await input.persist();
+    } catch (error) {
+      const row: ChatRow = {
+        id: `row_${crypto.randomUUID()}`,
+        role: "system",
+        content: error instanceof Error ? error.message : "Unknown error",
+      };
+      input.setRows((current) => [...current, row]);
+    } finally {
+      input.setIsThinking(false);
+    }
+  };
+}
