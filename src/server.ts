@@ -2,21 +2,12 @@
 import type { ChatRequest } from "./api";
 import { runAgent } from "./agent";
 import { env } from "./env";
-import { loadSystemPrompt, loadSystemPromptWithMemories } from "./soul";
+import { loadSystemPromptWithMemories } from "./soul";
 
 const PORT = env.PORT;
 const API_KEY = env.ACOLYTE_API_KEY;
 const OPENAI_API_KEY = env.OPENAI_API_KEY;
 const OPENAI_BASE_URL = env.OPENAI_BASE_URL;
-
-function hasInjectedMemoryContext(req: ChatRequest): boolean {
-  return req.history.some(
-    (msg) =>
-      msg.role === "system" &&
-      typeof msg.content === "string" &&
-      msg.content.trimStart().startsWith("User memory context:"),
-  );
-}
 
 function unauthorized(): Response {
   return new Response("Unauthorized", { status: 401 });
@@ -89,9 +80,7 @@ const server = Bun.serve({
     }
 
     try {
-      const soulPrompt = hasInjectedMemoryContext(payload)
-        ? loadSystemPrompt()
-        : await loadSystemPromptWithMemories();
+      const soulPrompt = await loadSystemPromptWithMemories();
       const reply = await runAgent({
         request: payload,
         openai: {
