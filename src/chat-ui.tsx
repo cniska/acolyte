@@ -10,10 +10,11 @@ import { ChatInputPanel } from "./chat-input-panel";
 import { useChatKeybindings } from "./chat-keybindings";
 import { type PickerState, shownCwd } from "./chat-layout";
 import { createPickerHandlers } from "./chat-picker-handlers";
+import { newMessage, nowIso, toRows } from "./chat-session";
 import { suggestSlashCommands } from "./chat-slash";
 import { createSubmitHandler } from "./chat-submit-handler";
 import { ChatTranscript } from "./chat-transcript";
-import type { Message, Session, SessionStore } from "./types";
+import type { Session, SessionStore } from "./types";
 
 type HeaderLine = {
   id: string;
@@ -34,35 +35,6 @@ interface ChatAppProps {
   store: SessionStore;
   persist: () => Promise<void>;
   version: string;
-}
-
-function nowIso(): string {
-  return new Date().toISOString();
-}
-
-function newMessage(role: Message["role"], content: string): Message {
-  return {
-    id: `msg_${crypto.randomUUID()}`,
-    role,
-    content,
-    timestamp: nowIso(),
-  };
-}
-
-const RESUME_TRANSCRIPT_ROWS = 40;
-
-export function toRows(messages: Message[], limit = RESUME_TRANSCRIPT_ROWS): ChatRow[] {
-  const rows: ChatRow[] = [];
-  for (const message of messages) {
-    if (message.role === "user" || message.role === "assistant") {
-      rows.push({
-        id: message.id,
-        role: message.role,
-        content: message.content,
-      });
-    }
-  }
-  return rows.slice(-limit);
 }
 
 function ChatApp(props: ChatAppProps) {

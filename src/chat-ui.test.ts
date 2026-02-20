@@ -7,7 +7,7 @@ import {
   rankAtReferenceSuggestions,
   shouldAutocompleteAtSubmit,
 } from "./chat-file-ref";
-import { toRows } from "./chat-ui";
+import { toRows } from "./chat-session";
 import type { Message, SessionStore } from "./types";
 
 function makeStore(): SessionStore {
