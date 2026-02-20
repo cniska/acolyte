@@ -85,6 +85,7 @@ Inside `bun run chat`, try:
 /git-status
 /git-diff src/cli.ts 3
 /run bun run typecheck
+/verify
 /edit src/cli.ts Acolyte Acolyte --dry-run
 Summarize the current architecture and the next 3 improvements.
 ```

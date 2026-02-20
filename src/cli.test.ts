@@ -28,13 +28,13 @@ describe("cli formatting helpers", () => {
   test("formatSearchOutput includes match and file counts", () => {
     const raw = ["./a.ts:1:foo", "./a.ts:2:bar", "./b.ts:9:baz"].join("\n");
     const out = formatForTool("search", raw);
-    expect(out).toContain("3 match(es) in 2 file(s)");
+    expect(out).toContain("3 matches in 2 files");
   });
 
   test("formatReadOutput includes line count", () => {
     const raw = ["one", "two", "three"].join("\n");
     const out = formatForTool("read", raw);
-    expect(out).toContain("3 line(s)");
+    expect(out).toContain("3 lines");
   });
 
   test("summarizeDiff counts added and removed lines", () => {
@@ -58,8 +58,8 @@ describe("cli formatting helpers", () => {
   test("formatEditUpdateOutput includes replacement and line summary", () => {
     const diff = ["@@ -1 +1 @@", "-old", "+new"].join("\n");
     const out = formatEditUpdateOutput(1, diff);
-    expect(out).toContain("1 replacement(s) applied.");
-    expect(out).toContain("Added 1 lines, removed 1 lines.");
+    expect(out).toContain("1 replacement applied.");
+    expect(out).toContain("Added 1 line, removed 1 line.");
   });
 
   test("truncateText and formatTimestamp stay stable", () => {

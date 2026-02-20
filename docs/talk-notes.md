@@ -42,8 +42,9 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Updated `edit` output to a compact `Update(path)` block with replacement summary + added/removed lines + excerpt.
 - Added `bun run verify` and documented a stepwise autonomous feature workflow (`docs/development-workflow.md`).
 - Added local skill scaffold for autonomous feature delivery (`skills/autonomous-feature-delivery/SKILL.md`).
-- Standardized tool transcript titles to action-style blocks (`Bash(...)`, `Search(...)`, `Read(...)`, `Diff(...)`).
+- Standardized tool transcript titles to action-style blocks (`Run`, `Search`, `Read`, `Diff`).
 - Added inline result summaries in tool output (search match/file counts, read line counts).
+- Added `/verify` chat command to run project validation (`bun run verify`) in-place.
 
 ## Demo Flow (Short)
 1. Start backend: `bun --env-file=.env run serve`
@@ -63,7 +64,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Soul/behavior docs reduce style drift and improve consistency.
 
 ## Open Narrative Threads
-- Next: richer transcript-style tool blocks (Edit/Bash summaries with focused line excerpts).
+- Next: richer transcript-style tool blocks (Edit/Run summaries with focused line excerpts).
 - Add retrieval ranking and memory promotion rules.
 - Move persistence from local JSON to centralized Postgres/pgvector.
 - Add auth hardening and production deployment path.
