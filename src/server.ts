@@ -72,6 +72,39 @@ const server = Bun.serve({
     const url = new URL(req.url);
 
     if (url.pathname === "/healthz" && req.method === "GET") {
+      let currentOm: {
+        exists: boolean;
+        generationCount: number;
+        lastObservedAt: Date | null;
+        lastReflectionAt: Date | null;
+      } = {
+        exists: false,
+        generationCount: 0,
+        lastObservedAt: null,
+        lastReflectionAt: null,
+      };
+      let currentOmError: string | undefined;
+      try {
+        const memoryStore = await mastraStorage.getStore("memory");
+        if (memoryStore) {
+          const current = await memoryStore.getObservationalMemory(null, appConfig.memory.resourceId);
+          const history = await memoryStore.getObservationalMemoryHistory(
+            null,
+            appConfig.memory.resourceId,
+            10,
+          );
+          const latestReflection = history.find((row) => row.originType === "reflection");
+          currentOm = {
+            exists: Boolean(current),
+            generationCount: current?.generationCount ?? 0,
+            lastObservedAt: current?.lastObservedAt ?? null,
+            lastReflectionAt: latestReflection?.createdAt ?? null,
+          };
+        }
+      } catch (error) {
+        currentOmError = error instanceof Error ? error.message : "Failed to read OM state.";
+      }
+
       return json({
         ok: true,
         service: "acolyte-backend",
@@ -85,6 +118,8 @@ const server = Bun.serve({
             model: omConfig.model,
             observationTokens: omConfig.observation.messageTokens,
             reflectionTokens: omConfig.reflection.observationTokens,
+            current: currentOm,
+            currentError: currentOmError,
           },
         },
       });

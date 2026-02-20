@@ -91,6 +91,13 @@ class RemoteBackend implements Backend {
           model?: unknown;
           observationTokens?: unknown;
           reflectionTokens?: unknown;
+          current?: {
+            exists?: unknown;
+            generationCount?: unknown;
+            lastObservedAt?: unknown;
+            lastReflectionAt?: unknown;
+          };
+          currentError?: unknown;
         };
       };
     };
@@ -106,6 +113,13 @@ class RemoteBackend implements Backend {
       typeof om?.observationTokens === "number" ? om.observationTokens : undefined;
     const omReflectionTokens =
       typeof om?.reflectionTokens === "number" ? om.reflectionTokens : undefined;
+    const omExists = typeof om?.current?.exists === "boolean" ? om.current.exists : undefined;
+    const omGeneration =
+      typeof om?.current?.generationCount === "number" ? om.current.generationCount : undefined;
+    const omLastObservedAt =
+      typeof om?.current?.lastObservedAt === "string" ? om.current.lastObservedAt : undefined;
+    const omLastReflectionAt =
+      typeof om?.current?.lastReflectionAt === "string" ? om.current.lastReflectionAt : undefined;
     const fields = [
       `mode=${mode}`,
       `service=${service}`,
@@ -116,6 +130,10 @@ class RemoteBackend implements Backend {
       omModel ? `om_model=${omModel}` : undefined,
       omObservationTokens === undefined ? undefined : `om_obs_tokens=${omObservationTokens}`,
       omReflectionTokens === undefined ? undefined : `om_ref_tokens=${omReflectionTokens}`,
+      omExists === undefined ? undefined : `om_exists=${omExists}`,
+      omGeneration === undefined ? undefined : `om_gen=${omGeneration}`,
+      omLastObservedAt ? `om_last_observed=${omLastObservedAt}` : undefined,
+      omLastReflectionAt ? `om_last_reflection=${omLastReflectionAt}` : undefined,
     ].filter((field): field is string => Boolean(field));
     return fields.join(" ");
   }
