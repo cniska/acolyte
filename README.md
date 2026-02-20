@@ -47,6 +47,9 @@ bun run src/cli.ts config list
 
 Session management in chat:
 - `?` to toggle shortcuts/help
+- `/skills` to list local repo skills from `./skills/*/SKILL.md`
+- `/sessions` to list recent sessions
+- `/new` to start a fresh session
 - `/resume <session-id-prefix>` to restore a previous session
 - `/exit` to leave chat
 - chat starts in a fresh session by default (clean transcript)

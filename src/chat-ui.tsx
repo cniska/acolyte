@@ -4,6 +4,7 @@ import { Box, Static, Text, render, useApp, useInput } from "ink";
 import TextInput from "ink-text-input";
 import type { Backend } from "./backend";
 import { listMemories } from "./memory";
+import { listSkills } from "./skills";
 import { createSession } from "./storage";
 import type { Message, Session, SessionStore } from "./types";
 
@@ -242,6 +243,27 @@ function ChatApp(props: ChatAppProps) {
       return;
     }
 
+    if (text === "/skills") {
+      const skills = await listSkills();
+      if (skills.length === 0) {
+        setRows((current) => [
+          ...current,
+          { id: `row_${crypto.randomUUID()}`, role: "system", content: "No skills found in ./skills." },
+        ]);
+        return;
+      }
+      setRows((current) => [
+        ...current,
+        { id: `row_${crypto.randomUUID()}`, role: "system", content: `Skills (${skills.length})` },
+        ...skills.map((skill) => ({
+          id: `row_${crypto.randomUUID()}`,
+          role: "system" as const,
+          content: `${skill.name} - ${skill.description}`,
+        })),
+      ]);
+      return;
+    }
+
     if (text === "/new") {
       const next = createSession(currentSession.model);
       store.sessions.unshift(next);
@@ -364,7 +386,7 @@ function ChatApp(props: ChatAppProps) {
       <Text dimColor>{borderLine()}</Text>
 
       {showShortcuts ? (
-        <Text dimColor>{"  /new  /sessions  /resume <id>  /exit"}</Text>
+        <Text dimColor>{"  /new  /sessions  /skills  /resume <id>  /exit"}</Text>
       ) : (
         <Text dimColor>  ? for shortcuts</Text>
       )}
