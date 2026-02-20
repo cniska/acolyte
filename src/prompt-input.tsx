@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Text, useInput } from "ink";
 
 const KEYS = {
@@ -23,6 +23,7 @@ const KEYS = {
     backspace: "\u007f",
   },
 } as const;
+const META_PREFIX_WINDOW_MS = 150;
 
 interface PromptInputProps {
   value: string;
@@ -62,6 +63,7 @@ export function PromptInput({
   onSubmit,
 }: PromptInputProps): React.JSX.Element {
   const [cursorOffset, setCursorOffset] = useState(value.length);
+  const metaPrefixAt = useRef<number | null>(null);
 
   useEffect(() => {
     setCursorOffset((current) => Math.max(0, Math.min(current, value.length)));
@@ -69,6 +71,13 @@ export function PromptInput({
 
   useInput(
     (input, key) => {
+      const now = Date.now();
+      const hasMetaPrefix = metaPrefixAt.current !== null && now - metaPrefixAt.current <= META_PREFIX_WINDOW_MS;
+      if ((input === "\u001b" || key.escape) && !key.meta && !key.ctrl) {
+        metaPrefixAt.current = now;
+        return;
+      }
+
       if (
         key.upArrow ||
         key.downArrow ||
@@ -113,6 +122,7 @@ export function PromptInput({
       }
 
       if ((key.ctrl && input === KEYS.ctrl.w) || input === KEYS.ctrl.wordDelete) {
+        metaPrefixAt.current = null;
         if (cursorOffset === 0) {
           return;
         }
@@ -122,11 +132,14 @@ export function PromptInput({
         return;
       }
 
+      const isBackspaceLike = key.backspace || input === KEYS.ctrl.h || input === KEYS.chars.backspace;
       const isMetaWordDelete =
-        (key.meta && (key.backspace || input === KEYS.ctrl.h || input === KEYS.chars.backspace)) ||
+        (hasMetaPrefix && isBackspaceLike) ||
+        (key.meta && isBackspaceLike) ||
         input === KEYS.esc.altBackspace ||
         input === KEYS.esc.altCtrlH;
       if (isMetaWordDelete) {
+        metaPrefixAt.current = null;
         if (cursorOffset === 0) {
           return;
         }
@@ -154,6 +167,7 @@ export function PromptInput({
         (key.delete && !isForwardDelete);
 
       if (isBackspace) {
+        metaPrefixAt.current = null;
         if (cursorOffset === 0) {
           return;
         }
@@ -163,6 +177,7 @@ export function PromptInput({
       }
 
       if (isForwardDelete) {
+        metaPrefixAt.current = null;
         if (cursorOffset >= value.length) {
           return;
         }
@@ -172,9 +187,11 @@ export function PromptInput({
 
       // Ignore escape/control sequences so modifier shortcuts don't pollute input.
       if (!input || key.ctrl || key.meta || input.includes("\u001b")) {
+        metaPrefixAt.current = null;
         return;
       }
 
+      metaPrefixAt.current = null;
       onChange(`${value.slice(0, cursorOffset)}${input}${value.slice(cursorOffset)}`);
       setCursorOffset((current) => current + input.length);
     },
