@@ -65,6 +65,7 @@ bun run src/cli.ts config list
 
 Session management in chat:
 - `?` to toggle shortcuts/help
+- `/changes` to show local git status + compact diff summary
 - `/dogfood <task>` to run the task with verify-first loop and automatic `bun run verify`
 - `/dogfood --no-verify <task>` to skip the automatic verify step
 - `/remember [--project] <text>` to save a memory note from chat
