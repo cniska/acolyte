@@ -67,6 +67,7 @@ bun run tool git-diff src/cli.ts 3
 bun run tool run "bun run typecheck"
 bun run tool edit src/cli.ts Acolyte Acolyte --dry-run
 ```
+For non-dry-run edits, Acolyte now prints an immediate git diff preview for the edited file.
 
 ## Example Prompts
 

@@ -187,6 +187,15 @@ function formatToolContext(label: string, content: string): string {
   return [`Tool context: ${label}`, "```text", content, "```"].join("\n");
 }
 
+function showToolResult(title: string, content: string, style: "plain" | "tool" = "plain"): void {
+  printSection(title);
+  if (style === "tool") {
+    printTool(content);
+    return;
+  }
+  printOutput(content);
+}
+
 function setSessionTitle(session: Session, inputText: string): void {
   if (session.title !== "New Session") {
     return;
@@ -404,7 +413,7 @@ async function chatMode(): Promise<void> {
         } else {
           try {
             const result = await searchRepo(pattern);
-            printTool(result);
+            showToolResult("Search Results", result, "tool");
             session.messages.push(newMessage("system", formatToolContext(`search ${pattern}`, result)));
             session.updatedAt = nowIso();
           } catch (error) {
@@ -419,7 +428,7 @@ async function chatMode(): Promise<void> {
         } else {
           try {
             const snippet = await readSnippet(pathInput, start, end);
-            printOutput(snippet);
+            showToolResult(`Read ${pathInput}`, snippet);
             session.messages.push(newMessage("system", formatToolContext(`read ${pathInput}`, snippet)));
             session.updatedAt = nowIso();
           } catch (error) {
@@ -430,7 +439,7 @@ async function chatMode(): Promise<void> {
       } else if (command === "/git-status") {
         try {
           const result = await gitStatusShort();
-          printTool(result);
+          showToolResult("Git Status", result, "tool");
           session.messages.push(newMessage("system", formatToolContext("git-status", result)));
           session.updatedAt = nowIso();
         } catch (error) {
@@ -443,7 +452,7 @@ async function chatMode(): Promise<void> {
           const ctxRaw = context ? Number.parseInt(context, 10) : undefined;
           const ctx = ctxRaw !== undefined && !Number.isNaN(ctxRaw) ? ctxRaw : 3;
           const result = await gitDiff(pathInput, ctx);
-          printOutput(result);
+          showToolResult(`Git Diff${pathInput ? ` ${pathInput}` : ""}`, result);
           session.messages.push(
             newMessage("system", formatToolContext(`git-diff ${pathInput ?? ""}`.trim(), result)),
           );
@@ -459,7 +468,7 @@ async function chatMode(): Promise<void> {
         } else {
           try {
             const result = await runShellCommand(cmd);
-            printOutput(result);
+            showToolResult(`Run ${cmd}`, result);
             session.messages.push(newMessage("system", formatToolContext(`run ${cmd}`, result)));
             session.updatedAt = nowIso();
           } catch (error) {
@@ -471,7 +480,20 @@ async function chatMode(): Promise<void> {
         try {
           const parsed = parseEditArgs(args);
           const result = await editFileReplace(parsed);
-          printOutput(result);
+          showToolResult(`Edit ${parsed.path}`, result);
+          if (!parsed.dryRun) {
+            try {
+              const diff = await gitDiff(parsed.path, 3);
+              showToolResult(`Diff Preview ${parsed.path}`, diff);
+            } catch (error) {
+              const message = error instanceof Error ? error.message : "Unable to render diff preview";
+              if (message.includes("outside repository")) {
+                printWarning("Diff preview unavailable (file is outside current repository).");
+              } else {
+                printWarning(message);
+              }
+            }
+          }
           session.messages.push(
             newMessage("system", formatToolContext(`edit ${parsed.path}`, result)),
           );
@@ -680,7 +702,7 @@ async function toolMode(args: string[]): Promise<void> {
       return;
     }
     const result = await searchRepo(pattern);
-    printTool(result);
+    showToolResult("Search Results", result, "tool");
     return;
   }
 
@@ -692,13 +714,13 @@ async function toolMode(args: string[]): Promise<void> {
       return;
     }
     const snippet = await readSnippet(pathInput, start, end);
-    printOutput(snippet);
+    showToolResult(`Read ${pathInput}`, snippet);
     return;
   }
 
   if (subcommand === "git-status") {
     const result = await gitStatusShort();
-    printTool(result);
+    showToolResult("Git Status", result, "tool");
     return;
   }
 
@@ -707,7 +729,7 @@ async function toolMode(args: string[]): Promise<void> {
     const ctxRaw = context ? Number.parseInt(context, 10) : undefined;
     const ctx = ctxRaw !== undefined && !Number.isNaN(ctxRaw) ? ctxRaw : 3;
     const result = await gitDiff(pathInput, ctx);
-    printOutput(result);
+    showToolResult(`Git Diff${pathInput ? ` ${pathInput}` : ""}`, result);
     return;
   }
 
@@ -719,7 +741,7 @@ async function toolMode(args: string[]): Promise<void> {
       return;
     }
     const result = await runShellCommand(command);
-    printOutput(result);
+    showToolResult(`Run ${command}`, result);
     return;
   }
 
@@ -734,7 +756,20 @@ async function toolMode(args: string[]): Promise<void> {
       return;
     }
     const result = await editFileReplace(parsed);
-    printOutput(result);
+    showToolResult(`Edit ${parsed.path}`, result);
+    if (!parsed.dryRun) {
+      try {
+        const diff = await gitDiff(parsed.path, 3);
+        showToolResult(`Diff Preview ${parsed.path}`, diff);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unable to render diff preview";
+        if (message.includes("outside repository")) {
+          printWarning("Diff preview unavailable (file is outside current repository).");
+        } else {
+          printWarning(message);
+        }
+      }
+    }
     return;
   }
 
