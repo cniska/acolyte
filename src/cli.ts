@@ -72,12 +72,16 @@ function getOrCreateActiveSession(store: SessionStore, model: string): Session {
 
 function printHelp(): void {
   printSection("Shortcuts");
-  printInfo("  ?         Show shortcuts");
-  printInfo("  /skills   Show capabilities");
-  printInfo("  /exit     Exit chat");
+  printInfo("  ?               show shortcuts");
+  printInfo("  /skills         show capabilities");
+  printInfo("  /exit           exit chat");
   printInfo("");
-  printInfo("Use top-level commands for advanced workflows:");
-  printInfo("  acolyte run|history|memory|config|tool");
+  printSection("Keys");
+  printInfo("  enter           send message");
+  printInfo("  up / down       command history");
+  printInfo("  ctrl + c        exit chat");
+  printInfo("");
+  printInfo("Advanced workflows: acolyte run|history|memory|config|tool");
 }
 
 function printSkills(): void {
