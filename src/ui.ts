@@ -2,8 +2,8 @@ import { stdout } from "node:process";
 
 const color = {
   dim: (value: string): string => `\x1b[2m${value}\x1b[22m`,
-  // 256-color palette index 183: lighter royal-purple with strong readability.
-  brand: (value: string): string => `\x1b[38;5;183m${value}\x1b[39m`,
+  // Keep default styling neutral unless explicitly asked for brand colors.
+  brand: (value: string): string => value,
   white: (value: string): string => `\x1b[37m${value}\x1b[39m`,
   green: (value: string): string => `\x1b[32m${value}\x1b[39m`,
   yellow: (value: string): string => `\x1b[33m${value}\x1b[39m`,

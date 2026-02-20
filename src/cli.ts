@@ -72,17 +72,7 @@ function getOrCreateActiveSession(store: SessionStore, model: string): Session {
 }
 
 function printHelp(): void {
-  printSection("Shortcuts");
-  printInfo("  ?               show shortcuts");
-  printInfo("  /skills         show capabilities");
-  printInfo("  /exit           exit chat");
-  printInfo("");
-  printSection("Keys");
-  printInfo("  enter           send message");
-  printInfo("  up / down       command history");
-  printInfo("  ctrl + c        exit chat");
-  printInfo("");
-  printInfo("Advanced workflows: acolyte run|history|memory|config|tool");
+  renderShortcutsPanel();
 }
 
 function printSkills(): void {
@@ -129,7 +119,22 @@ const INTERNAL_CHAT_COMMANDS = new Set([
   "/model",
   "/clear",
 ]);
-const SHORTCUT_PANEL_RENDERED_LINES = 11;
+const SHORTCUT_PANEL_LINES = [
+  "shortcuts",
+  "  ? show shortcuts         /skills show capabilities    /exit exit chat",
+  "",
+  "keys",
+  "  enter send message       up/down command history      esc close shortcuts",
+  "  ctrl+c exit chat",
+  "",
+  "advanced: acolyte run|history|memory|config|tool",
+] as const;
+
+function renderShortcutsPanel(): void {
+  for (const line of SHORTCUT_PANEL_LINES) {
+    printInfo(line);
+  }
+}
 
 export function resolveCommandAlias(command: string): string {
   return COMMAND_ALIASES[command] ?? command;
@@ -654,6 +659,9 @@ async function chatMode(): Promise<void> {
   const defaultModel = process.env.ACOLYTE_MODEL ?? config.model ?? FALLBACK_MODEL;
   let session = getOrCreateActiveSession(store, defaultModel);
 
+  if (output.isTTY) {
+    clearScreen();
+  }
   banner(session.model, session.id, CLI_VERSION);
 
   const rl = createInterface({ input, output });
@@ -667,9 +675,9 @@ async function chatMode(): Promise<void> {
       return;
     }
     output.write("\x1b[s\n");
-    for (let i = 0; i < SHORTCUT_PANEL_RENDERED_LINES; i += 1) {
+    for (let i = 0; i < SHORTCUT_PANEL_LINES.length; i += 1) {
       output.write("\x1b[2K");
-      if (i < SHORTCUT_PANEL_RENDERED_LINES - 1) {
+      if (i < SHORTCUT_PANEL_LINES.length - 1) {
         output.write("\n");
       }
     }
@@ -685,22 +693,18 @@ async function chatMode(): Promise<void> {
     }
     output.write("\r\x1b[K> ");
     output.write("\x1b[s\n");
-    printSection("Shortcuts");
-    printInfo("  ?               show shortcuts");
-    printInfo("  /skills         show capabilities");
-    printInfo("  /exit           exit chat");
-    printInfo("");
-    printSection("Keys");
-    printInfo("  enter           send message");
-    printInfo("  up / down       command history");
-    printInfo("  ctrl + c        exit chat");
-    printInfo("");
-    printInfo("Advanced workflows: acolyte run|history|memory|config|tool");
+    renderShortcutsPanel();
     output.write("\x1b[u");
     shortcutsOpen = true;
   };
 
-  const onKeypress = (str: string): void => {
+  const onKeypress = (str: string, key?: { name?: string }): void => {
+    if (key?.name === "escape") {
+      if (shortcutsOpen) {
+        closeShortcutsPanel();
+      }
+      return;
+    }
     if (str !== "?") {
       return;
     }

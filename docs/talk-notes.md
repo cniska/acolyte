@@ -49,7 +49,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
   - tool headers now use white action labels with dim gray args for readability
   - fixed overflow marker alignment in truncated tool output lists
   - hard-separated chat UX: only `?`, `/skills`, `/exit`; internal commands moved to top-level CLI/tool mode
-  - `?` works as a hotkey (no Enter) and toggles an inline shortcuts panel under the prompt
+  - `?` toggles a compact gray shortcuts panel under the prompt (`esc` closes); chat starts on a cleared screen
 - Delivery workflow:
   - `bun run verify` (`typecheck` + tests)
   - autonomous feature loop in `docs/development-workflow.md`
