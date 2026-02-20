@@ -50,7 +50,7 @@ export function printOutput(content: string): void {
 }
 
 export function printTool(content: string): void {
-  stdout.write(`${color.yellow(content)}\n`);
+  stdout.write(`${content}\n`);
 }
 
 export function printWarning(content: string): void {
