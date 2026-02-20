@@ -40,8 +40,8 @@ Build a personal AI assistant using Mastra, with a CLI-first interface and a hos
 
 ## Architecture
 1. CLI Layer:
-   - Interactive chat mode.
-   - Non-interactive one-shot mode.
+   - Interactive chat mode (primary surface).
+   - Non-interactive one-shot mode (minimal scripting support).
    - Commands for memory/history inspection and editing.
 2. API/Backend Layer (Vercel):
    - Authenticated endpoints for chat, tool orchestration, and memory operations.
@@ -102,11 +102,12 @@ Build a personal AI assistant using Mastra, with a CLI-first interface and a hos
 5. Scaffold Vercel API endpoints for CLI connectivity.
 
 ## Phase 1: MVP CLI Assistant (Weeks 2-3)
-1. Implement interactive and one-shot CLI commands with backend auth.
+1. Implement interactive CLI commands first with backend auth.
 2. Implement coding assistant agent and tool orchestration.
 3. Add toolset for repo read/search/edit, git context, and command execution.
 4. Implement memory read/write APIs and retrieval hooks in hosted backend.
 5. Add history and memory inspection/edit commands.
+6. Add minimal batch mode (`run` and `run --file`) for scripting.
 
 ## Phase 2: Reliable Memory (Weeks 4-5)
 1. Add memory ranking and promotion rules.
@@ -147,13 +148,13 @@ Build a personal AI assistant using Mastra, with a CLI-first interface and a hos
 
 ## Open Decisions
 1. Preferred primary model and fallback model order.
-2. CLI UX style (`chat` command only vs full subcommand suite).
+2. Interactive-first command surface details (`chat` + slash commands as primary UX).
 3. Sandbox provider choice (E2B vs Modal).
 4. Packaging target (`npm` global vs standalone binary).
 5. Async job strategy (Vercel-native vs external worker).
 
 ## Next Actions
-1. Confirm CLI command surface (`chat`, `run`, `memory`, `history`, `config`).
+1. Prioritize interactive CLI UX polish; keep batch mode intentionally minimal.
 2. Create technical design doc (`docs/technical-design.md`).
 3. Implement coding tool adapters first (`search`, `read`, `edit`, `run`, `git-status`, `git-diff`).
 4. Create implementation backlog from phases.
