@@ -103,10 +103,13 @@ function buildToolPolicy(baseInstructions: string): string {
     "Review response policy:",
     "- For review requests, prioritize concrete findings first (bugs/risks/regressions), ordered by severity.",
     "- Keep reviews concise: default to at most 3 high-signal findings unless the user asks for more.",
-    "- Keep each finding brief (1-2 short lines: evidence and recommendation).",
-    "- Do not add extra sections like optional improvements, next steps, or menus unless explicitly requested.",
+    "- Use this compact structure: first line `• <N> findings in <scope>`, then numbered findings.",
+    "- Keep each finding brief: one short evidence sentence + one short recommendation sentence.",
+    "- Include file references in each finding when available (path:line).",
+    "- Do not add extra sections (summary, optional improvements, next steps, menus) unless explicitly requested.",
     "- Ground each finding in repo/file evidence and avoid generic process advice unless explicitly requested.",
     "- If evidence is incomplete, state that briefly instead of guessing broad recommendations.",
+    "- Do not end with questions like 'which do you prefer?' unless the user explicitly asked for options.",
   ].join("\n");
 }
 
