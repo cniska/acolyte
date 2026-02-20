@@ -18,6 +18,8 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Automatic memory-context injection from saved user/project memories.
 - Mastra Studio agent memory with observational memory enabled (thread scope).
 - Backend chat now passes session/thread identity to Mastra memory for per-session observational memory in remote mode.
+- Subagent v1 routing (`planner` / `coder` / `reviewer`) with explicit per-role context handoff.
+- Mastra Studio exposes role agents (`Planner`, `Coder`, `Reviewer`) plus default `acolyte` alias.
 - Dogfooding workflow command: `/dogfood <task>` with verify-first loop.
 - Optional skip verify flow: `/dogfood --no-verify <task>`.
 - One-shot CLI mode via `run` (including `--file` attachment support).
@@ -37,7 +39,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Mastra-backed production workflow and deeper integration.
 - Persistent memory evolution, including observational memory with safeguards.
 - Expanded picker/autocomplete UX for additional in-chat controls.
-- Optional multi-agent topology after single-agent reliability gates are stable.
+- Richer multi-step subagent delegation/orchestration beyond v1 role routing.
 - Optional high-signal git hooks (for example pre-push verify) after workflow fit is validated.
 - Optional messaging channel adapter (for example WhatsApp via OpenClaw/Twilio) after core reliability and auth hardening.
 
