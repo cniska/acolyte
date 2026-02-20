@@ -5,6 +5,7 @@ const KEYS = {
   ctrl: {
     c: "c",
     h: "\u0008",
+    u: "\u0015",
     w: "w",
     wordDelete: "\u0017",
   },
@@ -18,6 +19,8 @@ const KEYS = {
     altBackspace: "\u001b\u007f",
     altCtrlH: "\u001b\u0008",
     delete: "\u001b[3~",
+    home: ["\u001b[H", "\u001bOH", "\u001b[1~"],
+    end: ["\u001b[F", "\u001bOF", "\u001b[4~"],
   },
   chars: {
     backspace: "\u007f",
@@ -91,12 +94,14 @@ export function PromptInput({
         return;
       }
 
-      if (key.home) {
+      const isHome = key.home || KEYS.esc.home.includes(input as (typeof KEYS.esc.home)[number]);
+      if (isHome) {
         setCursorOffset(0);
         return;
       }
 
-      if (key.end) {
+      const isEnd = key.end || KEYS.esc.end.includes(input as (typeof KEYS.esc.end)[number]);
+      if (isEnd) {
         setCursorOffset(value.length);
         return;
       }
@@ -119,6 +124,17 @@ export function PromptInput({
         const next = moveWordLeft(value, cursorOffset);
         onChange(`${value.slice(0, next)}${value.slice(cursorOffset)}`);
         setCursorOffset(next);
+        return;
+      }
+
+      const isClearLine = (key.ctrl && input === KEYS.ctrl.u) || input === KEYS.ctrl.u;
+      if (isClearLine) {
+        metaPrefixAt.current = null;
+        if (value.length === 0) {
+          return;
+        }
+        onChange("");
+        setCursorOffset(0);
         return;
       }
 
