@@ -32,7 +32,12 @@ type CreateSubmitHandlerInput = {
   setTokenUsage: (updater: (current: TokenUsageEntry[]) => TokenUsageEntry[]) => void;
   createMessage: (role: Message["role"], content: string) => Message;
   nowIso: () => string;
+  setInterrupt: (handler: (() => void) | null) => void;
 };
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === "AbortError";
+}
 
 export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: string) => Promise<void> {
   return async (raw: string): Promise<void> => {
@@ -93,6 +98,8 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
     }
 
     input.setIsThinking(true);
+    const abortController = new AbortController();
+    input.setInterrupt(() => abortController.abort());
     const thinkingStartedAt = Date.now();
     await input.persist();
 
@@ -103,6 +110,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         history: [...fileContextMessages, ...input.currentSession.messages],
         model: input.currentSession.model,
         sessionId: input.currentSession.id,
+        signal: abortController.signal,
         runVerifyAfterReply,
         thinkingStartedAt,
         createMessage: input.createMessage,
@@ -118,10 +126,12 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       const row: ChatRow = {
         id: `row_${crypto.randomUUID()}`,
         role: "system",
-        content: error instanceof Error ? error.message : "Unknown error",
+        content: isAbortError(error) ? "Interrupted." : error instanceof Error ? error.message : "Unknown error",
+        dim: isAbortError(error),
       };
       input.setRows((current) => [...current, row]);
     } finally {
+      input.setInterrupt(null);
       input.setIsThinking(false);
     }
   };

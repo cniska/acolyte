@@ -11,8 +11,10 @@ type ChatTranscriptProps = {
 
 export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
   const { rows, isThinking, thinkingFrame } = props;
+  const hasContent = rows.length > 0 || isThinking;
   return (
     <>
+      {hasContent ? <Text> </Text> : null}
       {rows.map((row, index) => (
         <React.Fragment key={row.id}>
           {index > 0 ? <Text> </Text> : null}

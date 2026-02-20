@@ -78,6 +78,7 @@ type RunAssistantTurnParams = {
   history: Message[];
   model: string;
   sessionId: string;
+  signal?: AbortSignal;
   runVerifyAfterReply: boolean;
   thinkingStartedAt: number;
   createMessage: (role: Message["role"], content: string) => Message;
@@ -89,12 +90,15 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
   rows: ChatRow[];
   model: string;
 }> {
-  const reply = await params.backend.reply({
-    message: params.userText,
-    history: params.history,
-    model: params.model,
-    sessionId: params.sessionId,
-  });
+  const reply = await params.backend.reply(
+    {
+      message: params.userText,
+      history: params.history,
+      model: params.model,
+      sessionId: params.sessionId,
+    },
+    { signal: params.signal },
+  );
 
   const assistantMessage = params.createMessage("assistant", reply.output);
   const rows: ChatRow[] = [row("assistant", reply.output)];

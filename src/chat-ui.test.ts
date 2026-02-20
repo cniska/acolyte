@@ -82,6 +82,20 @@ describe("chat-ui helpers", () => {
     expect(ranked).toEqual(["src/cli.ts", "src/config.ts", "src/chat-ui.tsx"]);
   });
 
+  test("rankAtReferenceSuggestions supports partial path segment matching", () => {
+    const ranked = rankAtReferenceSuggestions(
+      ["src/chat-ui.tsx", "src/chat-submit-handler.ts", "docs/project-plan.md"],
+      "s/ch-u",
+      3,
+    );
+    expect(ranked[0]).toBe("src/chat-ui.tsx");
+  });
+
+  test("rankAtReferenceSuggestions supports fuzzy subsequence matching", () => {
+    const ranked = rankAtReferenceSuggestions(["src/chat-ui.tsx", "src/cli.ts", "docs/project-plan.md"], "schui", 3);
+    expect(ranked[0]).toBe("src/chat-ui.tsx");
+  });
+
   test("shouldAutocompleteAtSubmit only intercepts unresolved single @token", () => {
     expect(shouldAutocompleteAtSubmit("@src/cl", "src/cli.ts")).toBe(true);
     expect(shouldAutocompleteAtSubmit("@src/cli.ts", "src/cli.ts")).toBe(false);

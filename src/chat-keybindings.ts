@@ -85,6 +85,19 @@ export function resolveTabAutocomplete(input: ResolveTabAutocompleteInput): stri
   return null;
 }
 
+export function resolveEscapeAction(input: {
+  isThinking: boolean;
+  showShortcuts: boolean;
+}): "interrupt" | "hide" | null {
+  if (input.isThinking) {
+    return "interrupt";
+  }
+  if (input.showShortcuts) {
+    return "hide";
+  }
+  return null;
+}
+
 type UseChatKeybindingsInput = {
   persist: () => Promise<void>;
   exit: () => void;
@@ -111,6 +124,7 @@ type UseChatKeybindingsInput = {
   openSkillsPanel: () => Promise<void>;
   showShortcuts: boolean;
   setShowShortcuts: (next: boolean | ((current: boolean) => boolean)) => void;
+  interruptCurrentTurn: () => void;
 };
 
 export function useChatKeybindings(input: UseChatKeybindingsInput): void {
@@ -228,8 +242,15 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
         input.setShowShortcuts((current) => !current);
         return;
       }
-      if (key.escape && input.showShortcuts) {
-        input.setShowShortcuts(false);
+      if (key.escape) {
+        const action = resolveEscapeAction({ isThinking: input.isThinking, showShortcuts: input.showShortcuts });
+        if (action === "interrupt") {
+          input.interruptCurrentTurn();
+          return;
+        }
+        if (action === "hide") {
+          input.setShowShortcuts(false);
+        }
       }
     },
     { isActive: Boolean(process.stdin.isTTY) },

@@ -58,6 +58,7 @@ function ChatApp(props: ChatAppProps) {
   const atQuery = extractAtReferenceQuery(value);
   const [atSuggestions, setAtSuggestions] = useState<string[]>([]);
   const [atSuggestionIndex, setAtSuggestionIndex] = useState(0);
+  const interruptRef = useRef<(() => void) | null>(null);
   const headerLines: HeaderLine[] = [
     { id: "title", text: "Acolyte", suffix: ` v${version}`, dim: false, brand: true },
     {
@@ -109,6 +110,9 @@ function ChatApp(props: ChatAppProps) {
     setTokenUsage,
     createMessage: newMessage,
     nowIso,
+    setInterrupt: (handler) => {
+      interruptRef.current = handler;
+    },
   });
 
   useChatKeybindings({
@@ -137,6 +141,9 @@ function ChatApp(props: ChatAppProps) {
     openSkillsPanel,
     showShortcuts,
     setShowShortcuts,
+    interruptCurrentTurn: () => {
+      interruptRef.current?.();
+    },
   });
 
   return (

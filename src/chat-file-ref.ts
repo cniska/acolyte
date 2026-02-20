@@ -42,21 +42,61 @@ export function rankAtReferenceSuggestions(paths: string[], query: string, max =
   if (!q) {
     return paths.slice(0, max);
   }
+
+  const querySegments = q.split("/").filter((segment) => segment.length > 0);
+  const matchesSegmentPrefixes = (path: string): boolean => {
+    if (querySegments.length === 0) {
+      return false;
+    }
+    const pathSegments = path
+      .toLowerCase()
+      .split("/")
+      .filter((segment) => segment.length > 0);
+    if (querySegments.length > pathSegments.length) {
+      return false;
+    }
+    return querySegments.every((segment, index) => (pathSegments[index] ?? "").startsWith(segment));
+  };
+  const isSubsequence = (path: string): boolean => {
+    let qi = 0;
+    const lower = path.toLowerCase();
+    for (let i = 0; i < lower.length && qi < q.length; i += 1) {
+      if (lower[i] === q[qi]) {
+        qi += 1;
+      }
+    }
+    return qi === q.length;
+  };
+  const score = (path: string): number => {
+    const lower = path.toLowerCase();
+    if (lower.startsWith(q)) {
+      return 0;
+    }
+    if (matchesSegmentPrefixes(path)) {
+      return 1;
+    }
+    if (lower.includes(q)) {
+      return 2;
+    }
+    if (isSubsequence(path)) {
+      return 3;
+    }
+    return 4;
+  };
+
   return paths
-    .filter((path) => path.toLowerCase().includes(q))
+    .map((path) => ({ path, score: score(path) }))
+    .filter((item) => item.score < 4)
     .sort((a, b) => {
-      const aLower = a.toLowerCase();
-      const bLower = b.toLowerCase();
-      const aStarts = aLower.startsWith(q) ? 0 : 1;
-      const bStarts = bLower.startsWith(q) ? 0 : 1;
-      if (aStarts !== bStarts) {
-        return aStarts - bStarts;
+      if (a.score !== b.score) {
+        return a.score - b.score;
       }
-      if (a.length !== b.length) {
-        return a.length - b.length;
+      if (a.path.length !== b.path.length) {
+        return a.path.length - b.path.length;
       }
-      return a.localeCompare(b);
+      return a.path.localeCompare(b.path);
     })
+    .map((item) => item.path)
     .slice(0, max);
 }
 

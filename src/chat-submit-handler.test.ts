@@ -73,6 +73,7 @@ function makeHarness(overrides?: { isThinking?: boolean }): Harness {
     setTokenUsage: () => {},
     createMessage: makeMessage,
     nowIso: () => "2026-02-20T00:00:00.000Z",
+    setInterrupt: () => {},
   });
   return { submit, calls };
 }

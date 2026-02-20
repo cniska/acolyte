@@ -7,12 +7,12 @@ export interface BackendOptions {
 }
 
 export interface Backend {
-  reply(input: ChatRequest): Promise<ChatResponse>;
+  reply(input: ChatRequest, options?: { signal?: AbortSignal }): Promise<ChatResponse>;
   status(): Promise<string>;
 }
 
 class LocalBackend implements Backend {
-  async reply(input: ChatRequest): Promise<ChatResponse> {
+  async reply(input: ChatRequest, _options?: { signal?: AbortSignal }): Promise<ChatResponse> {
     const trimmed = input.message.trim();
     const lc = trimmed.toLowerCase();
 
@@ -62,9 +62,10 @@ class RemoteBackend implements Backend {
     private readonly apiKey?: string,
   ) {}
 
-  async reply(input: ChatRequest): Promise<ChatResponse> {
+  async reply(input: ChatRequest, options?: { signal?: AbortSignal }): Promise<ChatResponse> {
     const response = await fetch(`${this.apiUrl.replace(/\/$/, "")}/v1/chat`, {
       method: "POST",
+      signal: options?.signal,
       headers: {
         "content-type": "application/json",
         ...(this.apiKey ? { authorization: `Bearer ${this.apiKey}` } : {}),

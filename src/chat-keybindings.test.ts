@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { resolveHistoryDown, resolveHistoryUp, resolveTabAutocomplete } from "./chat-keybindings";
+import { resolveEscapeAction, resolveHistoryDown, resolveHistoryUp, resolveTabAutocomplete } from "./chat-keybindings";
 
 describe("chat keybindings helpers", () => {
   test("resolveHistoryUp starts browsing from latest entry and saves draft", () => {
@@ -43,5 +43,11 @@ describe("chat keybindings helpers", () => {
       isTab: true,
     });
     expect(result).toBe("/status ");
+  });
+
+  test("resolveEscapeAction prefers interrupt while thinking", () => {
+    expect(resolveEscapeAction({ isThinking: true, showShortcuts: true })).toBe("interrupt");
+    expect(resolveEscapeAction({ isThinking: false, showShortcuts: true })).toBe("hide");
+    expect(resolveEscapeAction({ isThinking: false, showShortcuts: false })).toBeNull();
   });
 });
