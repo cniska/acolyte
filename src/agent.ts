@@ -144,9 +144,9 @@ export function finalizeReviewOutput(output: string, message = ""): string {
   }
   const mentionedPath = extractMentionedPath(message);
   if (mentionedPath) {
-    return `No review output produced for @${mentionedPath}. Try narrowing the scope (for example ${suggestNarrowerReviewScope(mentionedPath)}) or rephrasing your question.`;
+    return `No review output produced for @${mentionedPath}. Try narrowing the scope (for example ${suggestNarrowerReviewScope(mentionedPath)}) or rephrasing your prompt.`;
   }
-  return "No review output produced. Try narrowing to a file (for example @src/agent.ts) or rephrasing your question.";
+  return "No review output produced. Try narrowing to a file (for example @src/agent.ts) or rephrasing your prompt.";
 }
 
 export function finalizeAssistantOutput(output: string): string {
@@ -154,14 +154,14 @@ export function finalizeAssistantOutput(output: string): string {
   if (cleaned.length > 0) {
     return cleaned;
   }
-  return "No output produced. Try rephrasing your question.";
+  return "No output produced. Try rephrasing your prompt.";
 }
 
 function buildToolPolicy(baseInstructions: string): string {
   return [
     baseInstructions,
     "Tool policy:",
-    "- For repository or codebase questions, prefer tools over guessing.",
+    "- For repository or codebase prompts, prefer tools over guessing.",
     "- Use search-repo to locate relevant files before answering.",
     "- Use read-file-snippet for exact evidence and quote paths/lines when relevant.",
     "- Use git-status/git-diff when asked about current changes.",
@@ -191,7 +191,7 @@ function buildToolPolicy(baseInstructions: string): string {
     "- Do not add extra sections (summary, optional improvements, next steps, menus) unless explicitly requested.",
     "- Ground each finding in repo/file evidence and avoid generic process advice unless explicitly requested.",
     "- If evidence is incomplete, state that briefly instead of guessing broad recommendations.",
-    "- Do not end with questions like 'which do you prefer?' unless the user explicitly asked for options.",
+    "- Do not end with option-questions like 'which do you prefer?' unless the user explicitly asked for options.",
   ].join("\n");
 }
 
