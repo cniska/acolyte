@@ -1,11 +1,13 @@
 #!/usr/bin/env bun
 import type { ChatRequest } from "./api";
 import { runAgent } from "./agent";
+import { loadSoulPrompt } from "./soul";
 
 const PORT = Number(process.env.PORT ?? "8787");
 const API_KEY = process.env.ACOLYTE_API_KEY;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1";
+const SOUL_PROMPT = loadSoulPrompt();
 
 function unauthorized(): Response {
   return new Response("Unauthorized", { status: 401 });
@@ -83,6 +85,7 @@ const server = Bun.serve({
           apiKey: OPENAI_API_KEY,
           baseUrl: OPENAI_BASE_URL,
         },
+        soulPrompt: SOUL_PROMPT,
       });
       return json(reply);
     } catch (error) {

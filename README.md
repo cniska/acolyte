@@ -55,6 +55,7 @@ ACOLYTE_API_URL=http://localhost:8787 bun run run --file src/cli.ts "review this
 ## Backend Behavior
 
 - `/v1/chat` runs a simple agent pipeline: `plan -> execute -> review`.
+- Backend loads `docs/soul.md` as the system behavior contract.
 - If `OPENAI_API_KEY` is not set, backend runs deterministic mock mode.
 
 Optional auth:

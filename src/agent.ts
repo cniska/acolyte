@@ -1,8 +1,5 @@
 import type { ChatRequest, ChatResponse } from "./api";
 
-const SYSTEM_PROMPT =
-  "You are Acolyte, a pragmatic personal coding assistant. Be concise, accurate, and action-oriented.";
-
 interface OpenAIClientConfig {
   apiKey?: string;
   baseUrl: string;
@@ -11,6 +8,7 @@ interface OpenAIClientConfig {
 interface AgentContext {
   request: ChatRequest;
   openai: OpenAIClientConfig;
+  soulPrompt: string;
 }
 
 function buildModelInput(req: ChatRequest): string {
@@ -101,10 +99,11 @@ async function planStep(ctx: AgentContext): Promise<string> {
   }
 
   const instructions = [
+    ctx.soulPrompt,
     "Create a short execution plan for answering the final user request.",
     "Return 2-5 numbered steps.",
     "No prose before or after the steps.",
-  ].join(" ");
+  ].join("\n\n");
 
   return callOpenAI({
     model: ctx.request.model,
@@ -125,7 +124,7 @@ async function executeStep(ctx: AgentContext, plan: string): Promise<string> {
   }
 
   const instructions = [
-    SYSTEM_PROMPT,
+    ctx.soulPrompt,
     "Follow the execution plan provided below.",
     "Be concise and concrete. If uncertain, state what to verify.",
     "Execution plan:",
@@ -146,10 +145,11 @@ async function reviewStep(ctx: AgentContext, draft: string): Promise<string> {
   }
 
   const instructions = [
+    ctx.soulPrompt,
     "Review and improve the draft response.",
     "Keep factual claims grounded and concise.",
     "Return only the final revised response.",
-  ].join(" ");
+  ].join("\n\n");
 
   const input = [
     `USER_REQUEST:\n${ctx.request.message.trim()}`,
@@ -167,10 +167,12 @@ async function reviewStep(ctx: AgentContext, draft: string): Promise<string> {
 export async function runAgent(input: {
   request: ChatRequest;
   openai: OpenAIClientConfig;
+  soulPrompt: string;
 }): Promise<ChatResponse> {
   const context: AgentContext = {
     request: input.request,
     openai: input.openai,
+    soulPrompt: input.soulPrompt,
   };
 
   const plan = await planStep(context);
