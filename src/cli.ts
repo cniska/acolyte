@@ -215,14 +215,14 @@ function displayPath(pathInput: string): string {
   return rel;
 }
 
-function truncateText(input: string, maxChars: number): string {
+export function truncateText(input: string, maxChars: number): string {
   if (input.length <= maxChars) {
     return input;
   }
   return `${input.slice(0, Math.max(0, maxChars - 1))}…`;
 }
 
-function formatTimestamp(iso: string): string {
+export function formatTimestamp(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) {
     return iso;
@@ -235,7 +235,7 @@ function formatTimestamp(iso: string): string {
   return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
 }
 
-function formatStatusOutput(status: string): string {
+export function formatStatusOutput(status: string): string {
   const pairs = status
     .split(/\s+/)
     .map((part) => part.trim())
@@ -264,30 +264,30 @@ function showToolResult(title: string, content: string, style: "plain" | "tool" 
   }
 }
 
-function clampLines(lines: string[], maxLines: number): string[] {
+export function clampLines(lines: string[], maxLines: number): string[] {
   if (lines.length <= maxLines) {
     return lines;
   }
   return [...lines.slice(0, maxLines - 1), `… +${lines.length - (maxLines - 1)} lines`];
 }
 
-function formatSearchOutput(raw: string): string {
+export function formatSearchOutput(raw: string): string {
   return clampLines(raw.split("\n"), 12).join("\n");
 }
 
-function formatReadOutput(raw: string): string {
+export function formatReadOutput(raw: string): string {
   return clampLines(raw.split("\n"), 48).join("\n");
 }
 
-function formatDiffOutput(raw: string): string {
+export function formatDiffOutput(raw: string): string {
   return clampLines(raw.split("\n"), 64).join("\n");
 }
 
-function formatGitStatusOutput(raw: string): string {
+export function formatGitStatusOutput(raw: string): string {
   return clampLines(raw.split("\n"), 20).join("\n");
 }
 
-function formatRunOutput(raw: string): string {
+export function formatRunOutput(raw: string): string {
   const lines = raw.split("\n");
   if (lines.length === 0) {
     return "(no output)";
@@ -320,7 +320,7 @@ function formatRunOutput(raw: string): string {
   return out.join("\n");
 }
 
-function formatForTool(kind: "search" | "read" | "diff" | "run" | "status", raw: string): string {
+export function formatForTool(kind: "search" | "read" | "diff" | "run" | "status", raw: string): string {
   if (kind === "search") {
     return formatSearchOutput(raw);
   }
@@ -334,6 +334,48 @@ function formatForTool(kind: "search" | "read" | "diff" | "run" | "status", raw:
     return formatRunOutput(raw);
   }
   return formatGitStatusOutput(raw);
+}
+
+export function summarizeDiff(raw: string): { added: number; removed: number; preview: string[] } {
+  const preview: string[] = [];
+  let added = 0;
+  let removed = 0;
+  for (const line of raw.split("\n")) {
+    if (
+      line.startsWith("diff --git ") ||
+      line.startsWith("index ") ||
+      line.startsWith("--- ") ||
+      line.startsWith("+++ ")
+    ) {
+      continue;
+    }
+    if (line.startsWith("@@ ")) {
+      preview.push(line);
+      continue;
+    }
+    if (line.startsWith("+")) {
+      added += 1;
+      preview.push(line);
+      continue;
+    }
+    if (line.startsWith("-")) {
+      removed += 1;
+      preview.push(line);
+    }
+  }
+  return { added, removed, preview: clampLines(preview, 14) };
+}
+
+export function formatEditUpdateOutput(matches: number, diff: string): string {
+  const summary = summarizeDiff(diff);
+  const lines = [
+    `${matches} replacement(s) applied.`,
+    `Added ${summary.added} lines, removed ${summary.removed} lines.`,
+  ];
+  if (summary.preview.length > 0) {
+    lines.push(...summary.preview);
+  }
+  return lines.join("\n");
 }
 
 function setSessionTitle(session: Session, inputText: string): void {
@@ -623,6 +665,7 @@ async function chatMode(): Promise<void> {
           const parsed = parseEditArgs(args);
           const result = await editFileReplace(parsed);
           const summary = parseEditResult(result);
+          let rendered = false;
           if (summary) {
             const shownPath = displayPath(summary.path);
             if (summary.dryRun) {
@@ -630,25 +673,26 @@ async function chatMode(): Promise<void> {
                 `Dry Run ${shownPath}`,
                 `${summary.matches} match(es) would be changed.`,
               );
+              rendered = true;
             } else {
-              showToolResult(`Edited ${shownPath}`, `${summary.matches} replacement(s) applied.`);
-            }
-          } else {
-            showToolResult(`Edit ${parsed.path}`, result);
-          }
-
-          if (!parsed.dryRun) {
-            try {
-              const diff = await gitDiff(parsed.path, 3);
-              showToolResult(`Diff Preview ${parsed.path}`, formatForTool("diff", diff));
-            } catch (error) {
-              const message = error instanceof Error ? error.message : "Unable to render diff preview";
-              if (message.includes("outside repository")) {
-                printWarning("Diff preview unavailable (file is outside current repository).");
-              } else {
-                printWarning(message);
+              try {
+                const diff = await gitDiff(parsed.path, 3);
+                showToolResult(`Update(${shownPath})`, formatEditUpdateOutput(summary.matches, diff));
+                rendered = true;
+              } catch (error) {
+                const message = error instanceof Error ? error.message : "Unable to render diff preview";
+                if (message.includes("outside repository")) {
+                  showToolResult(`Edited ${shownPath}`, `${summary.matches} replacement(s) applied.`);
+                  rendered = true;
+                  printWarning("Diff preview unavailable (file is outside current repository).");
+                } else {
+                  printWarning(message);
+                }
               }
             }
+          }
+          if (!rendered) {
+            showToolResult(`Edit ${parsed.path}`, result);
           }
           session.messages.push(
             newMessage("system", formatToolContext(`edit ${parsed.path}`, result)),
@@ -917,29 +961,31 @@ async function toolMode(args: string[]): Promise<void> {
       }
       const result = await editFileReplace(parsed);
       const summary = parseEditResult(result);
+      let rendered = false;
       if (summary) {
         const shownPath = displayPath(summary.path);
         if (summary.dryRun) {
           showToolResult(`Dry Run ${shownPath}`, `${summary.matches} match(es) would be changed.`);
+          rendered = true;
         } else {
-          showToolResult(`Edited ${shownPath}`, `${summary.matches} replacement(s) applied.`);
-        }
-      } else {
-        showToolResult(`Edit ${parsed.path}`, result);
-      }
-
-      if (!parsed.dryRun) {
-        try {
-          const diff = await gitDiff(parsed.path, 3);
-          showToolResult(`Diff Preview ${parsed.path}`, formatForTool("diff", diff));
-        } catch (error) {
-          const message = error instanceof Error ? error.message : "Unable to render diff preview";
-          if (message.includes("outside repository")) {
-            printWarning("Diff preview unavailable (file is outside current repository).");
-          } else {
-            printWarning(message);
+          try {
+            const diff = await gitDiff(parsed.path, 3);
+            showToolResult(`Update(${shownPath})`, formatEditUpdateOutput(summary.matches, diff));
+            rendered = true;
+          } catch (error) {
+            const message = error instanceof Error ? error.message : "Unable to render diff preview";
+            if (message.includes("outside repository")) {
+              showToolResult(`Edited ${shownPath}`, `${summary.matches} replacement(s) applied.`);
+              rendered = true;
+              printWarning("Diff preview unavailable (file is outside current repository).");
+            } else {
+              printWarning(message);
+            }
           }
         }
+      }
+      if (!rendered) {
+        showToolResult(`Edit ${parsed.path}`, result);
       }
       return;
     }
@@ -1001,4 +1047,6 @@ async function main(): Promise<void> {
   process.exitCode = 1;
 }
 
-await main();
+if (import.meta.main) {
+  await main();
+}

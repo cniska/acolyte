@@ -69,6 +69,11 @@ bun run tool edit src/cli.ts Acolyte Acolyte --dry-run
 ```
 For non-dry-run edits, Acolyte now prints an immediate git diff preview for the edited file.
 
+Validation:
+```bash
+bun run verify
+```
+
 ## Example Prompts
 
 Inside `bun run chat`, try:
