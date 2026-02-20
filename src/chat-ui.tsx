@@ -126,12 +126,13 @@ export function toRows(messages: Message[], limit = RESUME_TRANSCRIPT_ROWS): Cha
 }
 
 export function sanitizeAssistantContent(content: string): string {
-  return content
+  const cleaned = content
     .split("\n")
     .map((line) => line.replace(/^\s+(\d+\.\s)/, "$1"))
     .filter((line) => !/^\s*(Tools used:|Evidence:)/.test(line))
     .join("\n")
     .trimEnd();
+  return cleaned.length > 0 ? cleaned : "No output.";
 }
 
 function looksLikePathRef(token: string): boolean {
@@ -217,6 +218,27 @@ export function suggestSlashCommands(inputValue: string, max = 5): string[] {
     return matches.slice(0, max);
   }
   return [];
+}
+
+export function shouldAutocompleteSlashSubmit(
+  inputValue: string,
+  selectedSuggestion: string | undefined,
+): boolean {
+  if (!selectedSuggestion) {
+    return false;
+  }
+  const trimmed = inputValue.trim();
+  if (!trimmed.startsWith("/")) {
+    return false;
+  }
+  if (trimmed.includes(" ")) {
+    return false;
+  }
+  return trimmed !== selectedSuggestion;
+}
+
+export function applySlashSuggestion(selectedSuggestion: string): string {
+  return `${selectedSuggestion} `;
 }
 
 export function parseImplementedFeatures(markdown: string, limit = 8): string[] {
@@ -538,6 +560,48 @@ function formatShortcutRows(): string[] {
   return lines;
 }
 
+function pickerTitle(picker: PickerState): string {
+  return picker.kind === "skills" ? "Skills" : "Resume Session";
+}
+
+function pickerHint(picker: PickerState): string {
+  return picker.kind === "skills" ? "Esc to close · Enter to select" : "Esc to close · Enter to resume";
+}
+
+function renderPickerItems(picker: PickerState, activeSessionId: string | undefined): React.ReactNode {
+  if (picker.kind === "skills") {
+    const nameWidth = Math.min(
+      28,
+      Math.max(8, ...picker.items.map((item) => item.name.length)),
+    );
+    return picker.items.map((skill, index) => {
+      const selected = index === picker.index;
+      return (
+        <Text key={skill.path}>
+          {selected ? "› " : "  "}
+          <Text color={selected ? COLORS.brand : undefined}>
+            {skill.name.padEnd(nameWidth)}
+          </Text>{" "}
+          {truncateText(skill.description)}
+        </Text>
+      );
+    });
+  }
+
+  return picker.items.map((item, index) => {
+    const selected = index === picker.index;
+    const prefix = item.id.slice(0, 12);
+    const active = item.id === activeSessionId ? "●" : " ";
+    return (
+      <Text key={item.id}>
+        {selected ? "› " : "  "}
+        <Text color={selected ? COLORS.brand : undefined}>{`${active} ${prefix}`}</Text>{" "}
+        <Text dimColor>{truncateText(item.title || "New Session")}</Text>
+      </Text>
+    );
+  });
+}
+
 function ChatApp(props: ChatAppProps) {
   const { backend, session, store, persist, version } = props;
   const { exit } = useApp();
@@ -550,6 +614,7 @@ function ChatApp(props: ChatAppProps) {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [picker, setPicker] = useState<PickerState | null>(null);
   const slashSuggestions = suggestSlashCommands(value);
+  const [slashSuggestionIndex, setSlashSuggestionIndex] = useState(0);
   const atQuery = extractAtReferenceQuery(value);
   const [atSuggestions, setAtSuggestions] = useState<string[]>([]);
   const [atSuggestionIndex, setAtSuggestionIndex] = useState(0);
@@ -612,6 +677,22 @@ function ChatApp(props: ChatAppProps) {
           return;
         }
       }
+      if (atQuery === null && slashSuggestions.length > 0) {
+        const selected = slashSuggestions[Math.max(0, Math.min(slashSuggestionIndex, slashSuggestions.length - 1))];
+        if (key.tab && shouldAutocompleteSlashSubmit(value, selected)) {
+          setValue(applySlashSuggestion(selected ?? ""));
+          setInputRevision((current) => current + 1);
+          return;
+        }
+        if (key.upArrow) {
+          setSlashSuggestionIndex((current) => Math.max(0, current - 1));
+          return;
+        }
+        if (key.downArrow) {
+          setSlashSuggestionIndex((current) => Math.min(slashSuggestions.length - 1, current + 1));
+          return;
+        }
+      }
       if (!isThinking && input === "$" && value.length === 0) {
         void openSkillsPanel();
         return;
@@ -650,6 +731,10 @@ function ChatApp(props: ChatAppProps) {
       cancelled = true;
     };
   }, [atQuery]);
+
+  useEffect(() => {
+    setSlashSuggestionIndex((current) => Math.max(0, Math.min(current, Math.max(0, slashSuggestions.length - 1))));
+  }, [slashSuggestions]);
 
   useEffect(() => {
     if (!isThinking) {
@@ -1111,8 +1196,8 @@ function ChatApp(props: ChatAppProps) {
           ...current,
           {
             id: `row_${crypto.randomUUID()}`,
-            role: "system",
-            content: `• thought for ${formatThoughtDuration(durationMs)}`,
+            role: "assistant",
+            content: `thought for ${formatThoughtDuration(durationMs)}`,
             dim: true,
           },
         ]);
@@ -1254,43 +1339,11 @@ function ChatApp(props: ChatAppProps) {
       {picker ? (
         <>
           <Text dimColor>{borderLine()}</Text>
-          <Text>{picker.kind === "skills" ? "Skills" : "Resume Session"}</Text>
+          <Text>{pickerTitle(picker)}</Text>
           <Text> </Text>
-          {picker.kind === "skills"
-            ? (() => {
-                const nameWidth = Math.min(
-                  28,
-                  Math.max(8, ...picker.items.map((item) => item.name.length)),
-                );
-                return picker.items.map((skill, index) => {
-                  const selected = index === picker.index;
-                  return (
-                    <Text key={skill.path}>
-                      {selected ? "› " : "  "}
-                      <Text color={selected ? COLORS.brand : undefined}>
-                        {skill.name.padEnd(nameWidth)}
-                      </Text>{" "}
-                      {truncateText(skill.description)}
-                    </Text>
-                  );
-                });
-              })()
-            : picker.items.map((item, index) => {
-                const selected = index === picker.index;
-                const prefix = item.id.slice(0, 12);
-                const active = item.id === store.activeSessionId ? "●" : " ";
-                return (
-                  <Text key={item.id}>
-                    {selected ? "› " : "  "}
-                    <Text color={selected ? COLORS.brand : undefined}>{`${active} ${prefix}`}</Text>{" "}
-                    <Text dimColor>{truncateText(item.title || "New Session")}</Text>
-                  </Text>
-                );
-              })}
+          {renderPickerItems(picker, store.activeSessionId)}
           <Text> </Text>
-          <Text dimColor>
-            {picker.kind === "skills" ? "Esc to close · Enter to select" : "Esc to close · Enter to resume"}
-          </Text>
+          <Text dimColor>{pickerHint(picker)}</Text>
           <Text dimColor>{borderLine()}</Text>
         </>
       ) : (
@@ -1317,6 +1370,15 @@ function ChatApp(props: ChatAppProps) {
                     return;
                   }
                 }
+                if (query === null && slashSuggestions.length > 0) {
+                  const selected =
+                    slashSuggestions[Math.max(0, Math.min(slashSuggestionIndex, slashSuggestions.length - 1))];
+                  if (shouldAutocompleteSlashSubmit(next, selected)) {
+                    setValue(applySlashSuggestion(selected ?? ""));
+                    setInputRevision((current) => current + 1);
+                    return;
+                  }
+                }
                 void handleSubmit(next);
               }}
               key={`chat-input-${inputRevision}`}
@@ -1336,7 +1398,15 @@ function ChatApp(props: ChatAppProps) {
           ) : atQuery !== null ? (
             <Text dimColor>  No file or folder matches.</Text>
           ) : slashSuggestions.length > 0 ? (
-            <Text dimColor>{`  ${slashSuggestions.join("  ")}`}</Text>
+            <>
+              {slashSuggestions.map((item, index) => (
+                <Text
+                  key={`slash-suggestion-${item}`}
+                  color={index === slashSuggestionIndex ? COLORS.brand : undefined}
+                  dimColor={index !== slashSuggestionIndex}
+                >{`  ${item}`}</Text>
+              ))}
+            </>
           ) : showShortcuts ? (
             <>
               {formatShortcutRows().map((line, index) => (

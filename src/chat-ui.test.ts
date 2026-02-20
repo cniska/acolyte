@@ -58,6 +58,11 @@ describe("chat-ui helpers", () => {
     expect(sanitizeAssistantContent(raw)).toBe(["1. First finding", "2. Second finding"].join("\n"));
   });
 
+  test("sanitizeAssistantContent returns fallback when everything is stripped", () => {
+    const raw = ["Tools used: search-repo", "Evidence: src/cli.ts:1"].join("\n");
+    expect(sanitizeAssistantContent(raw)).toBe("No output.");
+  });
+
   test("toRows keeps only user/assistant and applies limit", () => {
     const messages: Message[] = [
       { id: "1", role: "system", content: "x", timestamp: "" },
