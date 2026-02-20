@@ -15,9 +15,12 @@ type ChatRow = {
 type HeaderLine = {
   id: string;
   text: string;
+  suffix?: string;
   dim: boolean;
   brand: boolean;
 };
+
+const TOOL_LABELS = ["Run", "Search", "Read", "Diff", "Edit", "Update", "Status"] as const;
 
 interface ChatAppProps {
   backend: Backend;
@@ -100,7 +103,7 @@ function ChatApp(props: ChatAppProps) {
   const [isThinking, setIsThinking] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const headerLines: HeaderLine[] = [
-    { id: "title", text: `Acolyte v${version}`, dim: false, brand: true },
+    { id: "title", text: "Acolyte", suffix: ` v${version}`, dim: false, brand: true },
     {
       id: "session",
       text: `${currentSession.model} · session ${currentSession.id.slice(0, 12)}`,
@@ -247,7 +250,14 @@ function ChatApp(props: ChatAppProps) {
       <Static<HeaderLine> items={headerLines}>
         {(line) => (
           <Text key={line.id} dimColor={line.dim} color={line.brand ? "#A56EFF" : undefined}>
-            {line.text}
+            {line.id === "title" ? (
+              <>
+                <Text bold>{line.text}</Text>
+                <Text dimColor>{line.suffix}</Text>
+              </>
+            ) : (
+              line.text
+            )}
           </Text>
         )}
       </Static>
@@ -260,7 +270,7 @@ function ChatApp(props: ChatAppProps) {
               <Text>{row.role === "user" ? "❯ " : row.role === "assistant" ? "• " : "  "}</Text>
             </Box>
             <Box flexGrow={1}>
-              <Text>{row.content}</Text>
+              <Text>{row.role === "assistant" ? renderAssistantContent(row.content) : row.content}</Text>
             </Box>
           </Box>
         </React.Fragment>
@@ -303,3 +313,16 @@ export async function runInkChat(props: ChatAppProps): Promise<void> {
   const app = render(<ChatApp {...props} />);
   await app.waitUntilExit();
 }
+  const renderAssistantContent = (content: string): React.ReactNode => {
+    for (const label of TOOL_LABELS) {
+      if (content.startsWith(`${label} `) || content.startsWith(`${label}(`) || content.startsWith(`${label}:`)) {
+        return (
+          <>
+            <Text bold>{label}</Text>
+            {content.slice(label.length)}
+          </>
+        );
+      }
+    }
+    return content;
+  };

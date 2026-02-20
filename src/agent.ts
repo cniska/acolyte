@@ -57,6 +57,12 @@ function buildToolPolicy(baseInstructions: string): string {
     "- Use git-status/git-diff when asked about current changes.",
     "- Use run-command for verification commands when requested.",
     "- Use edit-file-replace only when explicitly asked to modify files.",
+    "Response style policy:",
+    "- Keep tool-result responses compact and user-focused.",
+    "- Do not start with conversational preambles like 'Done', 'Great', 'Sure', or similar.",
+    "- Prefer a short status line plus at most 3 concise bullets when summarizing command results.",
+    "- Do not add optional next-step menus unless the user asks for options.",
+    "- Do not restate capabilities after normal command/task confirmations.",
   ].join("\n");
 }
 
