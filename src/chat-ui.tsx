@@ -755,7 +755,7 @@ function ChatApp(props: ChatAppProps) {
         ...unresolvedPaths.map((pathInput) => ({
           id: `row_${crypto.randomUUID()}`,
           role: "system" as const,
-          content: `File not found: @${pathInput}`,
+          content: `No file or folder found: @${pathInput}`,
         })),
       ]);
       await persist();
@@ -1015,7 +1015,7 @@ function ChatApp(props: ChatAppProps) {
               ))}
             </>
           ) : atQuery !== null ? (
-            <Text dimColor>  No path matches.</Text>
+            <Text dimColor>  No file or folder matches.</Text>
           ) : slashSuggestions.length > 0 ? (
             <Text dimColor>{`  ${slashSuggestions.join("  ")}`}</Text>
           ) : showShortcuts ? (
