@@ -603,6 +603,7 @@ async function handlePrompt(prompt: string, session: Session, backend = createBa
       message: prompt,
       history: historyWithContext,
       model: session.model,
+      sessionId: session.id,
     });
 
     printOutput("");

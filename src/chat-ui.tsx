@@ -1012,6 +1012,7 @@ function ChatApp(props: ChatAppProps) {
         message: userText,
         history: historyWithContext,
         model: currentSession.model,
+        sessionId: currentSession.id,
       });
 
       const assistantMessage = newMessage("assistant", reply.output);

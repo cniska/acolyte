@@ -17,6 +17,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Memory commands in chat: `/remember [--project] <text>`, `/memories`.
 - Automatic memory-context injection from saved user/project memories.
 - Mastra Studio agent memory with observational memory enabled (thread scope).
+- Backend chat now passes session/thread identity to Mastra memory for per-session observational memory in remote mode.
 - Dogfooding workflow command: `/dogfood <task>` with verify-first loop.
 - Optional skip verify flow: `/dogfood --no-verify <task>`.
 - One-shot CLI mode via `run` (including `--file` attachment support).

@@ -42,7 +42,8 @@ function isChatRequest(value: unknown): value is ChatRequest {
   return (
     typeof req.message === "string" &&
     typeof req.model === "string" &&
-    Array.isArray(req.history)
+    Array.isArray(req.history) &&
+    (req.sessionId === undefined || typeof req.sessionId === "string")
   );
 }
 

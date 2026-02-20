@@ -1,5 +1,7 @@
 import { Agent } from "@mastra/core/agent";
+import { Memory } from "@mastra/memory";
 import type { ChatRequest, ChatResponse } from "./api";
+import { env } from "./env";
 import { acolyteTools } from "./mastra-tools";
 
 interface OpenAIClientConfig {
@@ -14,6 +16,23 @@ const MAX_HISTORY_TOTAL_CHARS = 40_000;
 const MAX_MESSAGE_CHARS = 2_000;
 const MAX_ATTACHMENT_MESSAGE_CHARS = 20_000;
 const MAX_REVIEW_OUTPUT_CHARS = 1800;
+const OM_RESOURCE_ID = "acolyte-local";
+
+const memory = new Memory({
+  options: {
+    lastMessages: 10,
+    observationalMemory: {
+      model: env.ACOLYTE_OM_MODEL ?? env.ACOLYTE_MODEL,
+      scope: "thread",
+      observation: {
+        messageTokens: 20_000,
+      },
+      reflection: {
+        observationTokens: 40_000,
+      },
+    },
+  },
+});
 
 function truncateText(input: string, maxChars: number): string {
   if (input.length <= maxChars) {
@@ -214,6 +233,7 @@ function createAcolyteAgent(input: { model: string; instructions: string }): Age
     instructions: input.instructions,
     model: normalizeModel(input.model),
     tools: acolyteTools,
+    memory,
   });
 }
 
@@ -233,15 +253,20 @@ export async function runAgent(input: {
 
   const requestInput = buildAgentInput(input.request);
   const toolLikely = isToolLikelyRequest(input.request.message);
+  const memoryOptions = input.request.sessionId
+    ? { thread: input.request.sessionId, resource: OM_RESOURCE_ID }
+    : undefined;
   let result = await agent.generate(requestInput, {
     maxSteps: 8,
     toolChoice: "auto",
+    memory: memoryOptions,
   });
 
   if (toolLikely && result.toolCalls.length === 0) {
     result = await agent.generate(requestInput, {
       maxSteps: 8,
       toolChoice: "required",
+      memory: memoryOptions,
     });
   }
 
