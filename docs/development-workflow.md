@@ -24,6 +24,23 @@ Use these gates after each meaningful slice:
 4. Targeted smoke checks for changed behavior:
    - Example: `bun run tool ...`, `bun run chat`, `bun run status`
 
+## Dogfooding Ramp
+Use this staged rollout when shifting work from Codex-driven to Acolyte-driven execution on `main`:
+
+1. Level 1 (safe):
+   - Docs-only edits, help text, naming cleanups, and no-behavior refactors.
+2. Level 2 (low risk):
+   - Add tests for existing behavior, parser/formatter fixes, and UX copy polish.
+3. Level 3 (moderate):
+   - Small isolated feature slices with explicit acceptance checks.
+4. Level 4 (higher risk):
+   - Multi-file behavior changes and workflow-affecting updates.
+
+Escalation rules:
+1. Start each new capability at Level 1 and climb only after consistent green `bun run verify`.
+2. If a slice fails twice, drop one level and split into smaller slices.
+3. Keep commit-per-slice and avoid mixing risk levels in one commit.
+
 ## Commit Rules
 1. One logical slice per commit.
 2. Commit message describes shipped behavior, not implementation detail.
