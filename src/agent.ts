@@ -10,10 +10,6 @@ interface OpenAIClientConfig {
 const FALLBACK_PLAN =
   "1) Interpret request. 2) Use available repo tools when helpful. 3) Return concise, actionable answer.";
 const APPROX_CHARS_PER_TOKEN = 4;
-const MAX_HISTORY_MESSAGES = 40;
-const MAX_MESSAGE_TOKENS = 600;
-const MAX_ATTACHMENT_MESSAGE_TOKENS = 3000;
-const MAX_PINNED_MESSAGE_TOKENS = 1200;
 const MAX_REVIEW_OUTPUT_CHARS = 1800;
 
 function estimateTokens(input: string): number {
@@ -59,7 +55,7 @@ function collectLinesWithinBudget(
 ): { lines: string[]; consumedTokens: number } {
   const lines: string[] = [];
   let consumed = 0;
-  const recent = messages.slice(-MAX_HISTORY_MESSAGES);
+  const recent = messages.slice(-appConfig.agent.inputBudget.maxHistoryMessages);
   for (let i = recent.length - 1; i >= 0; i -= 1) {
     const message = recent[i];
     if (usedIds.has(message.id)) {
@@ -80,24 +76,25 @@ export function buildAgentInput(req: ChatRequest): string {
   const maxContextTokens = appConfig.agent.contextMaxTokens;
   const lines: string[] = [];
   const usedIds = new Set<string>();
+  const budget = appConfig.agent.inputBudget;
 
-  const userLine = `USER: ${truncateByTokens(req.message.trim(), MAX_MESSAGE_TOKENS)}`;
+  const userLine = `USER: ${truncateByTokens(req.message.trim(), budget.maxMessageTokens)}`;
   const userTokens = estimateTokens(userLine);
   let remaining = Math.max(0, maxContextTokens - userTokens);
 
   const pinnedSystem = req.history.filter((message) => message.role === "system" && isPinnedSystemContext(message.content));
-  const pinnedResult = collectLinesWithinBudget(pinnedSystem, usedIds, remaining, MAX_PINNED_MESSAGE_TOKENS);
+  const pinnedResult = collectLinesWithinBudget(pinnedSystem, usedIds, remaining, budget.maxPinnedMessageTokens);
   lines.push(...pinnedResult.lines);
   remaining -= pinnedResult.consumedTokens;
 
   const relevantFiles = req.history.filter(
     (message) => message.role === "system" && isRelevantFileContext(message.content),
   );
-  const filesResult = collectLinesWithinBudget(relevantFiles, usedIds, remaining, MAX_ATTACHMENT_MESSAGE_TOKENS);
+  const filesResult = collectLinesWithinBudget(relevantFiles, usedIds, remaining, budget.maxAttachmentMessageTokens);
   lines.push(...filesResult.lines);
   remaining -= filesResult.consumedTokens;
 
-  const recentResult = collectLinesWithinBudget(req.history, usedIds, remaining, MAX_MESSAGE_TOKENS);
+  const recentResult = collectLinesWithinBudget(req.history, usedIds, remaining, budget.maxMessageTokens);
   lines.push(...recentResult.lines);
 
   if (lines.length > 0) {

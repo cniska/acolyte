@@ -25,5 +25,11 @@ export const appConfig = {
   },
   agent: {
     contextMaxTokens: env.ACOLYTE_CONTEXT_MAX_TOKENS,
+    inputBudget: {
+      maxHistoryMessages: 40,
+      maxMessageTokens: 600,
+      maxAttachmentMessageTokens: 3000,
+      maxPinnedMessageTokens: 1200,
+    },
   },
 } as const;
