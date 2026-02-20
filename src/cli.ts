@@ -141,9 +141,11 @@ function listSessions(store: SessionStore): void {
     return;
   }
 
-  for (const session of store.sessions.slice(0, 20)) {
+  for (const [idx, session] of store.sessions.slice(0, 20).entries()) {
     const active = session.id === store.activeSessionId ? "*" : " ";
-    printInfo(`${active} ${session.id.slice(0, 12)}  ${session.model}  ${session.updatedAt}  ${session.title}`);
+    const prefix = idx === 0 ? "  └ " : "    ";
+    const updated = formatTimestamp(session.updatedAt);
+    printInfo(`${prefix}${active} ${session.id.slice(0, 12)}  ${session.model}  ${updated}  ${session.title}`);
   }
 }
 
@@ -167,9 +169,10 @@ function printSessionHistory(session: Session): void {
     return;
   }
 
-  for (const msg of session.messages) {
+  for (const [idx, msg] of session.messages.entries()) {
     const who = msg.role === "user" ? "you" : msg.role === "assistant" ? "Acolyte" : "system";
-    printInfo(`[${msg.timestamp}] ${who}: ${msg.content}`);
+    const prefix = idx === 0 ? "  └ " : "    ";
+    printInfo(`${prefix}[${formatTimestamp(msg.timestamp)}] ${who}: ${truncateText(msg.content, 180)}`);
   }
 }
 
@@ -179,8 +182,9 @@ function printMemoryRows(rows: Awaited<ReturnType<typeof listMemories>>): void {
     return;
   }
 
-  for (const row of rows.slice(0, 50)) {
-    printInfo(`${row.id.slice(0, 12)}  ${row.createdAt}  ${row.content}`);
+  for (const [idx, row] of rows.slice(0, 50).entries()) {
+    const prefix = idx === 0 ? "  └ " : "    ";
+    printInfo(`${prefix}${row.id.slice(0, 12)}  ${formatTimestamp(row.createdAt)}  ${truncateText(row.content, 160)}`);
   }
 }
 
@@ -209,6 +213,37 @@ function displayPath(pathInput: string): string {
     return pathInput;
   }
   return rel;
+}
+
+function truncateText(input: string, maxChars: number): string {
+  if (input.length <= maxChars) {
+    return input;
+  }
+  return `${input.slice(0, Math.max(0, maxChars - 1))}…`;
+}
+
+function formatTimestamp(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return iso;
+  }
+  const yyyy = String(date.getFullYear());
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  const hh = String(date.getHours()).padStart(2, "0");
+  const min = String(date.getMinutes()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+}
+
+function formatStatusOutput(status: string): string {
+  const pairs = status
+    .split(/\s+/)
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0 && part.includes("="));
+  if (pairs.length === 0) {
+    return status;
+  }
+  return pairs.join("\n");
 }
 
 function showToolResult(title: string, content: string, style: "plain" | "tool" = "plain"): void {
@@ -506,7 +541,7 @@ async function chatMode(): Promise<void> {
       } else if (command === "/status") {
         try {
           const status = await backend.status();
-          printInfo(status);
+          showToolResult("Status", formatStatusOutput(status), "tool");
         } catch (error) {
           const message = error instanceof Error ? error.message : "Unknown error";
           printError(message);
@@ -731,7 +766,7 @@ async function statusMode(): Promise<void> {
   });
   try {
     const status = await backend.status();
-    printInfo(status);
+    showToolResult("Status", formatStatusOutput(status), "tool");
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     printError(message);
