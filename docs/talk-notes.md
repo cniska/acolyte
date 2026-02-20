@@ -25,6 +25,11 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Mastra: standardized agent/tool primitives to avoid framework drift.
 - Hosted-backend-ready contract: CLI can target local or hosted API without changing user workflow.
 
+## Build Process
+- Built collaboratively with Codex in commit-sized slices.
+- Used an autonomous delivery loop: define slice -> implement -> validate -> commit.
+- Standardized validation via `bun run verify` and kept docs/workflow in sync as features shipped.
+
 ## Milestones (Condensed)
 ### 2026-02-20
 - Core platform: CLI + backend + Mastra agent/tools + `docs/soul.md`.
