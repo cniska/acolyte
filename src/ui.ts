@@ -2,8 +2,8 @@ import { stdout } from "node:process";
 
 const color = {
   dim: (value: string): string => `\x1b[2m${value}\x1b[22m`,
-  // Keep default styling neutral unless explicitly asked for brand colors.
-  brand: (value: string): string => value,
+  // Default brand accent (used only where requested).
+  brand: (value: string): string => `\x1b[38;5;183m${value}\x1b[39m`,
   white: (value: string): string => `\x1b[37m${value}\x1b[39m`,
   green: (value: string): string => `\x1b[32m${value}\x1b[39m`,
   yellow: (value: string): string => `\x1b[33m${value}\x1b[39m`,
@@ -14,9 +14,8 @@ const color = {
 export function banner(model: string, sessionId: string, version: string): void {
   const border = "─".repeat(72);
   stdout.write(`${color.brand(border)}\n`);
-  stdout.write(`${color.bold("Acolyte")}${color.dim(" CLI")}\n`);
+  stdout.write(`${color.bold(color.brand("Acolyte"))}${color.dim(" CLI")}\n`);
   stdout.write(`${color.dim("v")} ${version} ${color.dim("• model")} ${model} ${color.dim("• session")} ${sessionId.slice(0, 12)}\n`);
-  stdout.write(`${color.dim("? shortcuts")}\n`);
   stdout.write(`${color.brand(border)}\n\n`);
 }
 

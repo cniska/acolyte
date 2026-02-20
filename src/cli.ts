@@ -737,7 +737,15 @@ async function chatMode(): Promise<void> {
   while (true) {
     let line = "";
     try {
-      line = (await rl.question("> ")).trim();
+      if (output.isTTY) {
+        output.write("> ");
+        output.write("\x1b[s\n");
+        printInfo("  ? shortcuts");
+        output.write("\x1b[u");
+        line = (await rl.question("")).trim();
+      } else {
+        line = (await rl.question("> ")).trim();
+      }
     } catch (error) {
       const code = (error as { code?: string })?.code;
       if (code === "ERR_USE_AFTER_CLOSE") {
@@ -752,6 +760,9 @@ async function chatMode(): Promise<void> {
       }
 
       throw error;
+    }
+    if (output.isTTY && !shortcutsOpen) {
+      output.write("\x1b[u\x1b[J");
     }
     if (!line) {
       continue;
