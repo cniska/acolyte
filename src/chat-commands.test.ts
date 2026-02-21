@@ -7,6 +7,15 @@ async function runCommand(
   text: string,
   tokenUsage: TokenUsageEntry[] = [],
   store = createStore(),
+  options?: {
+    memoryApi?: {
+      listMemories: () => Promise<Array<{ id: string; scope: "user" | "project"; content: string; createdAt: string }>>;
+      addMemory: (
+        content: string,
+        options?: { scope?: "user" | "project" },
+      ) => Promise<{ id: string; scope: "user" | "project"; content: string; createdAt: string }>;
+    };
+  },
 ): Promise<{ rows: ChatRow[]; stop: boolean; openedPermissions: boolean; openedPolicy: number }> {
   let rows: ChatRow[] = [];
   let openedPermissions = false;
@@ -36,6 +45,7 @@ async function runCommand(
     },
     setBackendPermissionMode: async () => {},
     tokenUsage,
+    memoryApi: options?.memoryApi,
   });
   return { rows, stop: result.stop, openedPermissions, openedPolicy };
 }
@@ -169,6 +179,78 @@ describe("chat-commands", () => {
     expect(rows.some((row) => row.content.includes("Proposed policy updates"))).toBe(true);
     expect(rows.some((row) => row.content.includes("keep output concise"))).toBe(true);
     expect(openedPolicy).toBe(1);
+  });
+
+  test("dispatchSlashCommand handles /memory with empty store", async () => {
+    const memoryApi = {
+      listMemories: async () => [],
+      addMemory: async () => ({
+        id: "mem_unused",
+        scope: "user" as const,
+        content: "unused",
+        createdAt: "2026-02-21T00:00:00.000Z",
+      }),
+    };
+    const { rows, stop } = await runCommand("/memory", [], createStore(), { memoryApi });
+    expect(stop).toBe(true);
+    expect(rows.some((row) => row.role === "assistant" && row.content === "No memory saved yet.")).toBe(true);
+  });
+
+  test("dispatchSlashCommand handles /memory with entries", async () => {
+    const memoryApi = {
+      listMemories: async () => [
+        {
+          id: "mem_1",
+          scope: "user" as const,
+          content: "prefer concise output",
+          createdAt: "2026-02-21T00:00:00.000Z",
+        },
+        {
+          id: "mem_2",
+          scope: "project" as const,
+          content: "use bun scripts",
+          createdAt: "2026-02-21T00:00:01.000Z",
+        },
+      ],
+      addMemory: async () => ({
+        id: "mem_unused",
+        scope: "user" as const,
+        content: "unused",
+        createdAt: "2026-02-21T00:00:00.000Z",
+      }),
+    };
+    const { rows, stop } = await runCommand("/memory", [], createStore(), { memoryApi });
+    expect(stop).toBe(true);
+    const assistant = rows.find((row) => row.role === "assistant" && row.content.startsWith("Memory 2"));
+    expect(assistant).toBeDefined();
+    expect(assistant?.content).toContain("user: prefer concise output");
+    expect(assistant?.content).toContain("project: use bun scripts");
+  });
+
+  test("dispatchSlashCommand handles /remember and saves selected scope", async () => {
+    let savedContent = "";
+    let savedScope = "";
+    const memoryApi = {
+      listMemories: async () => [],
+      addMemory: async (content: string, options?: { scope?: "user" | "project" }) => {
+        const scope = options?.scope ?? "user";
+        savedContent = content;
+        savedScope = scope;
+        return {
+          id: "mem_3",
+          scope,
+          content,
+          createdAt: "2026-02-21T00:00:02.000Z",
+        };
+      },
+    };
+    const { rows, stop } = await runCommand("/remember --project use bun verify", [], createStore(), { memoryApi });
+    expect(stop).toBe(true);
+    expect(savedContent).toBe("use bun verify");
+    expect(savedScope).toBe("project");
+    expect(rows.some((row) => row.role === "assistant" && row.content === "Saved project memory: use bun verify")).toBe(
+      true,
+    );
   });
 
   test("dispatchSlashCommand shows permission mode", async () => {

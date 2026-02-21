@@ -110,6 +110,10 @@ type CommandContext = {
   openPolicyPanel: (items: ReturnType<typeof distillPolicyCandidatesFromSessions>) => void;
   setBackendPermissionMode: (mode: "read" | "write") => Promise<void>;
   tokenUsage: TokenUsageEntry[];
+  memoryApi?: {
+    listMemories: typeof listMemories;
+    addMemory: typeof addMemory;
+  };
 };
 
 function row(role: ChatRow["role"], content: string, dim = false, style?: ChatRow["style"]): ChatRow {
@@ -132,6 +136,7 @@ function buildDogfoodPrompt(task: string): string {
 
 export async function dispatchSlashCommand(ctx: CommandContext): Promise<CommandResult> {
   const { text, resolvedText } = ctx;
+  const memoryApi = ctx.memoryApi ?? { listMemories, addMemory };
   const pushUserCommandRow = (): void => {
     ctx.setRows((current) => [...current, row("user", text)]);
   };
@@ -230,7 +235,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
 
   if (resolvedText === "/memory") {
     pushUserCommandRow();
-    const memories = await listMemories();
+    const memories = await memoryApi.listMemories();
     if (memories.length === 0) {
       ctx.setRows((current) => [...current, row("assistant", "No memory saved yet.")]);
       return { stop: true, userText: text, runVerifyAfterReply: false };
@@ -286,7 +291,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       return { stop: true, userText: text, runVerifyAfterReply: false };
     }
     try {
-      const entry = await addMemory(content, { scope });
+      const entry = await memoryApi.addMemory(content, { scope });
       ctx.setRows((current) => [...current, row("assistant", `Saved ${entry.scope} memory: ${content}`)]);
     } catch (error) {
       ctx.setRows((current) => [
