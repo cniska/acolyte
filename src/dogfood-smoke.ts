@@ -11,7 +11,7 @@ type RunResult = {
   stderr: string;
 };
 
-const checks: SmokeCheck[] = [
+export const checks: SmokeCheck[] = [
   {
     name: "status",
     cmd: ["bun", "run", "src/cli.ts", "status"],
@@ -29,7 +29,7 @@ const checks: SmokeCheck[] = [
   },
 ];
 
-async function runCommand(cmd: string[]): Promise<RunResult> {
+export async function runCommand(cmd: string[]): Promise<RunResult> {
   const proc = Bun.spawn(cmd, {
     stdout: "pipe",
     stderr: "pipe",
@@ -43,7 +43,7 @@ async function runCommand(cmd: string[]): Promise<RunResult> {
   return { exitCode, stdout, stderr };
 }
 
-function stripAnsi(value: string): string {
+export function stripAnsi(value: string): string {
   let out = "";
   for (let i = 0; i < value.length; i += 1) {
     if (value[i] === "\x1b" && value[i + 1] === "[") {
@@ -66,7 +66,7 @@ function stripAnsi(value: string): string {
   return out;
 }
 
-function assertCheckOutput(check: SmokeCheck, output: string): string | null {
+export function assertCheckOutput(check: SmokeCheck, output: string): string | null {
   for (const pattern of check.expect) {
     if (!pattern.test(output)) {
       return `missing expected pattern ${pattern}`;
@@ -75,7 +75,7 @@ function assertCheckOutput(check: SmokeCheck, output: string): string | null {
   return null;
 }
 
-async function main(): Promise<void> {
+export async function main(): Promise<void> {
   console.log("Running dogfood smoke checks...");
   for (const check of checks) {
     const result = await runCommand(check.cmd);
@@ -103,4 +103,6 @@ async function main(): Promise<void> {
   console.log("Dogfood smoke checks passed.");
 }
 
-void main();
+if (import.meta.main) {
+  void main();
+}
