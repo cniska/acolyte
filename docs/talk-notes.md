@@ -92,6 +92,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - `om-soak` now has strict Zod-backed option parsing + tests (and no side-effects on module import).
 - Policy distillation option parsing now uses Zod while preserving current CLI error messages.
 - Core CLI argument paths (`run`, `edit`) also moved to Zod-backed parsing for consistency.
+- `dogfood-progress` now runs `git log` via argv (no shell string construction), reducing injection/quoting risk.
 
 ## Open Narrative Threads
 1. Continue dogfooding ramp from Codex-led to Acolyte-led development.
