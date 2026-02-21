@@ -20,9 +20,9 @@ const checks: SmokeCheck[] = [
     expect: [/provider:/i, /model:/i],
   },
   {
-    name: 'run "what next"',
-    command: 'bun run src/cli.ts run "what next"',
-    expect: [/^❯\s+what next/m, /^\s*•\s+/m],
+    name: 'run "hello"',
+    command: 'bun run src/cli.ts run "hello"',
+    expect: [/^❯\s+hello/m, /^\s*•\s+/m],
   },
   {
     name: "dogfood no-verify",

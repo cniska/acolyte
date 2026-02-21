@@ -64,11 +64,11 @@ Build a personal AI coding assistant (Mastra + CLI) that is local-first, memory-
    - Status: completed on February 21, 2026.
    - Evidence:
    - `bun run verify` is green after each implementation slice.
-   - Smoke checks pass for `status`, `run "what next"`, and OM admin safety (`om:wipe` refuses without `--yes`).
+   - Smoke checks pass for `status`, `run "hello"`, and OM admin safety (`om:wipe` refuses without `--yes`).
    - Core chat command coverage includes `/status`, `/changes`, `/permissions`, and `/dogfood` in automated tests.
    - Exit criteria:
    - `bun run verify` green after each slice.
-   - Automated smoke green for `status`, `run "what next"`, OM admin safety (`wipe` requires `--yes`).
+   - Automated smoke green for `status`, `run "hello"`, OM admin safety (`wipe` requires `--yes`).
    - No regressions in core chat commands (`/status`, `/changes`, `/permissions`, `/dogfood`).
 2. Milestone 2: Dogfooding Readiness
    - Status: in progress.
@@ -80,7 +80,7 @@ Build a personal AI coding assistant (Mastra + CLI) that is local-first, memory-
    - One-shot `run`/`dogfood` now use isolated OM resource ids (`run-<session>`), reducing cross-task memory bleed.
    - Integration test verifies `run` forwards isolated `resourceId` to backend.
    - One-shot `run` now fails with non-zero exit on backend errors (plus actionable backend-start hint), improving script reliability.
-   - Automated dogfood smoke (`bun run dogfood:smoke`) validates `status`, `run "what next"`, and `dogfood --no-verify`.
+   - Automated dogfood smoke (`bun run dogfood:smoke`) validates `status`, `run "hello"`, and `dogfood --no-verify`.
    - Auto-start smoke path (`bun run dogfood:smoke:env`) makes the same checks reproducible without manual backend startup.
    - Progress tracker (`bun run dogfood:progress --lookback 30 --target 10`) reports delivery slices (`feat|fix|refactor|test`) for switch gating.
    - Gate command (`bun run dogfood:gate --lookback 30 --target 10`) summarizes smoke + delivery readiness in one pass.
