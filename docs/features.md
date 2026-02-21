@@ -10,6 +10,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - File and directory references via `@path` with suggestions/autocomplete.
 - Slash-command suggestions with arrow navigation and Tab/Enter autocomplete.
 - Unknown slash-command typo recovery (for example `/stauts` -> `/status`).
+- Prompt history (up/down) restores from session user messages after restart/resume.
 - One-slot prompt queue while thinking (latest submit wins) with inline queued indicator.
 - Compact slash aliases for common commands (`/df`, `/mem`, `/rem`).
 - In-chat utility commands: `/status`, `/permissions`, `/changes`, `/web <query>`.
