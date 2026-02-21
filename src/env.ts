@@ -6,6 +6,7 @@ const MAX_OM_REFLECTION_TOKENS = 32_000;
 const MAX_MESSAGE_TOKENS = 4_000;
 const MAX_ATTACHMENT_MESSAGE_TOKENS = 12_000;
 const MAX_PINNED_MESSAGE_TOKENS = 4_000;
+const ProviderSchema = z.enum(["openai", "anthropic", "gemini", "openai-compatible", "mock"]);
 
 const EnvSchema = z.object({
   PORT: z.preprocess((value) => (value === undefined ? 6767 : value), z.coerce.number().int().min(1).max(65535)),
@@ -14,6 +15,14 @@ const EnvSchema = z.object({
   DATABASE_URL: z.string().trim().min(1).optional(),
   OPENAI_API_KEY: z.string().trim().min(1).optional(),
   OPENAI_BASE_URL: z.string().trim().min(1).default("https://api.openai.com/v1"),
+  ANTHROPIC_API_KEY: z.string().trim().min(1).optional(),
+  ANTHROPIC_BASE_URL: z.string().trim().min(1).default("https://api.anthropic.com"),
+  GOOGLE_API_KEY: z.string().trim().min(1).optional(),
+  GOOGLE_BASE_URL: z.string().trim().min(1).optional(),
+  ACOLYTE_PROVIDER: ProviderSchema.default("openai"),
+  ACOLYTE_PROVIDER_PLANNER: ProviderSchema.optional(),
+  ACOLYTE_PROVIDER_CODER: ProviderSchema.optional(),
+  ACOLYTE_PROVIDER_REVIEWER: ProviderSchema.optional(),
   ACOLYTE_MODEL: z.string().trim().min(1).default("gpt-5-mini"),
   ACOLYTE_MODEL_PLANNER: z.string().trim().min(1).optional(),
   ACOLYTE_MODEL_CODER: z.string().trim().min(1).optional(),

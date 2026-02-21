@@ -1,6 +1,7 @@
 import { env } from "./env";
 
 export type PermissionMode = "read" | "write";
+export type ModelProvider = "openai" | "anthropic" | "gemini" | "openai-compatible" | "mock";
 
 export const appConfig = {
   server: {
@@ -11,6 +12,20 @@ export const appConfig = {
   openai: {
     apiKey: env.OPENAI_API_KEY,
     baseUrl: env.OPENAI_BASE_URL,
+  },
+  anthropic: {
+    apiKey: env.ANTHROPIC_API_KEY,
+    baseUrl: env.ANTHROPIC_BASE_URL,
+  },
+  google: {
+    apiKey: env.GOOGLE_API_KEY,
+    baseUrl: env.GOOGLE_BASE_URL,
+  },
+  providers: {
+    main: env.ACOLYTE_PROVIDER,
+    planner: env.ACOLYTE_PROVIDER_PLANNER,
+    coder: env.ACOLYTE_PROVIDER_CODER,
+    reviewer: env.ACOLYTE_PROVIDER_REVIEWER,
   },
   models: {
     main: env.ACOLYTE_MODEL,
