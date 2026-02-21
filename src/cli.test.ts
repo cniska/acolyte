@@ -113,12 +113,12 @@ describe("cli formatting helpers", () => {
     );
     expect(out).toMatch(/provider:\s+openai/);
     expect(out).not.toMatch(/mode:\s+openai/);
-    expect(out).toMatch(/model:\s+gpt-5-mini/);
+    expect(out).not.toMatch(/model:\s+gpt-5-mini/);
     expect(out).toContain("models:");
-    expect(out).toContain("main: openai/gpt-5-mini");
-    expect(out).toContain("planner: openai/o3");
-    expect(out).toContain("coder: openai/gpt-5-codex");
-    expect(out).toContain("reviewer: openai/gpt-5-mini");
+    expect(out).toContain("main: gpt-5-mini");
+    expect(out).toContain("planner: o3");
+    expect(out).toContain("coder: gpt-5-codex");
+    expect(out).toContain("reviewer: gpt-5-mini");
     expect(out).toContain("providers:");
     expect(out).toContain("main: openai");
     expect(out).toContain("planner: openai");

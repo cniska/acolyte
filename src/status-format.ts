@@ -1,4 +1,14 @@
 export function formatStatusOutput(status: string): string {
+  const simplifyModelId = (value: string): string => {
+    const knownPrefixes = ["openai/", "openai-compatible/", "anthropic/", "gemini/", "google/"];
+    for (const prefix of knownPrefixes) {
+      if (value.startsWith(prefix)) {
+        return value.slice(prefix.length);
+      }
+    }
+    return value;
+  };
+
   const pairs = status
     .split(/\s+/)
     .map((part) => part.trim())
@@ -60,16 +70,21 @@ export function formatStatusOutput(status: string): string {
   const modelCoder = take("model_coder");
   const modelReviewer = take("model_reviewer");
   const model = take("model");
-  if (model && model !== modelMain) {
-    output.push(`model: ${model}`);
+  const displayModel = model ? simplifyModelId(model) : undefined;
+  const displayModelMain = modelMain ? simplifyModelId(modelMain) : undefined;
+  const displayModelPlanner = modelPlanner ? simplifyModelId(modelPlanner) : undefined;
+  const displayModelCoder = modelCoder ? simplifyModelId(modelCoder) : undefined;
+  const displayModelReviewer = modelReviewer ? simplifyModelId(modelReviewer) : undefined;
+  if (displayModel && displayModel !== displayModelMain) {
+    output.push(`model: ${displayModel}`);
   }
   pushStacked(
     "models",
     [
-      ["main", modelMain],
-      ["planner", modelPlanner],
-      ["coder", modelCoder],
-      ["reviewer", modelReviewer],
+      ["main", displayModelMain],
+      ["planner", displayModelPlanner],
+      ["coder", displayModelCoder],
+      ["reviewer", displayModelReviewer],
     ],
     false,
     true,

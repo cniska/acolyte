@@ -62,6 +62,18 @@ describe("status format", () => {
     expect(output).toContain("coder: gpt-5-codex");
   });
 
+  test("strips provider prefix from model display fields", () => {
+    const output = formatStatusOutput(
+      "provider=openai model=openai/gpt-5-mini model_main=openai/gpt-5-mini model_planner=anthropic/claude-sonnet-4 model_coder=gemini/gemini-2.5-pro model_reviewer=openai-compatible/qwen2.5-coder",
+    );
+
+    expect(output).not.toContain("model: openai/gpt-5-mini");
+    expect(output).toContain("main: gpt-5-mini");
+    expect(output).toContain("planner: claude-sonnet-4");
+    expect(output).toContain("coder: gemini-2.5-pro");
+    expect(output).toContain("reviewer: qwen2.5-coder");
+  });
+
   test("formats OM state timestamps when present", () => {
     const output = formatStatusOutput(
       "provider=openai om_exists=true om_gen=7 om_last_observed=2026-02-21T10:10:53.908Z om_last_reflection=2026-02-21T10:15:00.000Z",
