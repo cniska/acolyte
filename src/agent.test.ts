@@ -313,71 +313,17 @@ describe("finalizeAssistantOutput", () => {
       "Immediate action: apply edit and run verify",
     );
   });
-
-  test("what next prompt returns exactly 3 numbered steps", () => {
-    const raw = [
-      "Quick status",
-      "- Branch: main",
-      "",
-      "1) fix null checks",
-      "2) add execute try/catch",
-      "3) run bun run verify",
-      "4) optional cleanup",
-    ].join("\n");
-    expect(finalizeAssistantOutput(raw, "what next")).toBe(
-      ["1. Fix null checks", "2. Add execute try/catch", "3. Run bun run verify"].join("\n"),
-    );
-  });
-
-  test("what next splits inline numbered steps into separate lines", () => {
-    const raw = "1. fix null checks 2. add execute try/catch 3. run bun run verify";
-    expect(finalizeAssistantOutput(raw, "what next")).toBe(
-      ["1. Fix null checks", "2. Add execute try/catch", "3. Run bun run verify"].join("\n"),
-    );
-  });
-
-  test("what next compacts verbose wording and avoids PR phrasing", () => {
-    const raw = [
-      "1. If you approve the diff, apply edits and run verify to confirm everything is green.",
-      "2. If verification passes, push and open a PR.",
-      "3. Share output and next risk.",
-    ].join("\n");
-    expect(finalizeAssistantOutput(raw, "what next")).toBe(
-      [
-        "1. Apply edits and run verify to confirm everything is green",
-        "2. Commit and share results",
-        "3. Share output and next risk",
-      ].join("\n"),
-    );
-  });
-
-  test("what next prompt builds numbered fallback when output is unstructured", () => {
-    const raw = ["Recap: do these", "Fix null checks", "Add error wrapping", "Run verify"].join("\n");
-    expect(finalizeAssistantOutput(raw, "what next")).toBe(
-      ["1. Fix null checks", "2. Add error wrapping", "3. Run verify"].join("\n"),
-    );
-  });
-
-  test("what next prompt always returns three steps even with sparse output", () => {
-    const raw = "Recap: two small fixes remain.";
-    expect(finalizeAssistantOutput(raw, "whats next")).toBe(
-      [
-        "1. Confirm the target file or task.",
-        "2. Apply the smallest safe change.",
-        "3. Run verify and report result.",
-      ].join("\n"),
-    );
-  });
 });
 
 describe("selectAgentRole", () => {
-  test("routes what-next prompts to planner", () => {
-    expect(selectAgentRole("what next")).toBe("planner");
-    expect(selectAgentRole("whats next")).toBe("planner");
-  });
-
   test("routes review prompts to reviewer", () => {
     expect(selectAgentRole("review @src/agent.ts")).toBe("reviewer");
+  });
+
+  test("routes what-next prompts to default coder role", () => {
+    expect(selectAgentRole("what next")).toBe("coder");
+    expect(selectAgentRole("whats next")).toBe("coder");
+    expect(selectAgentRole("ok, what's next for this?")).toBe("coder");
   });
 
   test("routes planning prompts to planner", () => {
@@ -415,14 +361,14 @@ describe("buildSubagentContext", () => {
     expect(context).toContain("Expected output:");
   });
 
-  test("adds what-next guidance for concise numbered steps", () => {
+  test("does not add prompt-specific what-next guidance", () => {
     const req: ChatRequest = {
       model: "gpt-5-mini",
       message: "what next",
       history: [],
     };
     const context = buildSubagentContext("coder", req);
-    expect(context).toContain("return exactly 3 concise numbered next steps");
-    expect(context).toContain("no lettered options");
+    expect(context).not.toContain("return exactly 3 concise numbered next steps");
+    expect(context).not.toContain("no lettered options");
   });
 });

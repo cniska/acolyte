@@ -16,7 +16,6 @@ const FALLBACK_PLAN =
 const APPROX_CHARS_PER_TOKEN = 4;
 const MAX_REVIEW_OUTPUT_CHARS = 1800;
 const MAX_ASSISTANT_OUTPUT_CHARS = 1400;
-const MAX_WHAT_NEXT_STEP_CHARS = 180;
 
 function estimateTokens(input: string): number {
   if (input.length === 0) {
@@ -235,10 +234,6 @@ function suggestNarrowerReviewScope(path: string): string {
   return `@${clean}/agent.ts`;
 }
 
-function isWhatNextPrompt(text: string): boolean {
-  return /^(what('?s|\s+is)?\s+next)\??$/i.test(text.trim());
-}
-
 function isGreetingPrompt(text: string): boolean {
   return /^(hi|hello|hey|yo|sup)\b[!.?]*$/i.test(text.trim());
 }
@@ -280,89 +275,6 @@ function normalizeDogfoodOutput(output: string): string {
     .trim();
   const compact = body.length > 220 ? `${body.slice(0, 219).trimEnd()}…` : body;
   return `Immediate action: ${compact}`;
-}
-
-function compactWhatNextStep(step: string): string {
-  let compact = step
-    .replace(/\s+/g, " ")
-    .replace(/^if\s+you\s+approve[^,]*,\s*/i, "")
-    .replace(/^if\s+verification\s+passes,\s*/i, "")
-    .replace(/^quick\s+(recap|status)[:\-]\s*/i, "")
-    .trim();
-  compact = compact.replace(/\bpush and open a PR\b/gi, "commit and share results");
-  compact = compact.replace(/\bopen a PR\b/gi, "share results");
-  compact = compact.replace(/,\s*I(?:'|’)ll[^.;]*$/i, "");
-  compact = compact.replace(/^commit with .*?,\s*commit and share results/gi, "commit and share results");
-  compact = compact.replace(/\s+/g, " ").trim();
-  if (compact.length > MAX_WHAT_NEXT_STEP_CHARS) {
-    compact = `${compact.slice(0, Math.max(0, MAX_WHAT_NEXT_STEP_CHARS - 1)).trimEnd()}…`;
-  }
-  const stripped = compact.replace(/[.;]\s*$/g, "").trim();
-  if (stripped.length === 0) {
-    return stripped;
-  }
-  return `${stripped.slice(0, 1).toUpperCase()}${stripped.slice(1)}`;
-}
-
-function normalizeWhatNextOutput(output: string): string {
-  const numbered = output
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => /^\d+\.\s+/.test(line))
-    .map((line) => {
-      const body = line.replace(/^\d+\.\s+/, "");
-      return body.length > 0 ? body : "";
-    })
-    .map(compactWhatNextStep)
-    .filter((line) => line.length > 0)
-    .map((line, index) => `${index + 1}. ${line}`)
-    .slice(0, 3);
-  if (numbered.length >= 3) {
-    return numbered.join("\n");
-  }
-
-  const inline = output.replace(/\s+/g, " ").trim();
-  const markers = Array.from(inline.matchAll(/(?:^|\s)(\d+)\.\s+/g));
-  if (markers.length >= 2) {
-    const steps: string[] = [];
-    for (let i = 0; i < markers.length && steps.length < 3; i += 1) {
-      const marker = markers[i];
-      const start = (marker.index ?? 0) + marker[0].length;
-      const end = i + 1 < markers.length ? (markers[i + 1].index ?? inline.length) : inline.length;
-      const body = inline.slice(start, end).trim();
-      if (body.length === 0) {
-        continue;
-      }
-      const compact = compactWhatNextStep(body);
-      if (compact.length === 0) {
-        continue;
-      }
-      steps.push(`${steps.length + 1}. ${compact}`);
-    }
-    if (steps.length >= 2) {
-      while (steps.length < 3) {
-        steps.push(`${steps.length + 1}. Continue with the next highest-impact step and verify.`);
-      }
-      return steps.slice(0, 3).join("\n");
-    }
-  }
-
-  const candidates = output
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0)
-    .filter((line) => !/^(what next|recap|quick|ready|pick one|reply|which option)/i.test(line))
-    .map(compactWhatNextStep)
-    .filter((line) => line.length > 0)
-    .slice(0, 3);
-  if (candidates.length === 0) {
-    return "1. Confirm the target file or task.\n2. Apply the smallest safe change.\n3. Run verify and report result.";
-  }
-  const numberedCandidates = candidates.map((line, index) => `${index + 1}. ${line.replace(/^\d+[.)]\s+/, "")}`);
-  while (numberedCandidates.length < 3) {
-    numberedCandidates.push(`${numberedCandidates.length + 1}. Continue with the next highest-impact step and verify.`);
-  }
-  return numberedCandidates.slice(0, 3).join("\n");
 }
 
 export function finalizeReviewOutput(output: string, message = ""): string {
@@ -476,10 +388,6 @@ export function finalizeAssistantOutput(output: string, message = ""): string {
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
-  if (isWhatNextPrompt(message)) {
-    const source = cleaned.length > 0 ? cleaned : output;
-    return compactAssistantOutput(normalizeWhatNextOutput(source));
-  }
   if (cleaned.length > 0) {
     return compactAssistantOutput(cleaned);
   }

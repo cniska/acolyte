@@ -2,10 +2,6 @@ import type { ChatRequest } from "./api";
 
 export type AgentRole = "planner" | "coder" | "reviewer";
 
-function isWhatNextPrompt(text: string): boolean {
-  return /^(what('?s|\s+is)?\s+next)\??$/i.test(text.trim());
-}
-
 function isReviewRequest(text: string): boolean {
   return /\breview\b/i.test(text);
 }
@@ -29,9 +25,6 @@ const DEFAULT_ROLE_SOUL: Record<AgentRole, string> = {
 };
 
 export function selectAgentRole(text: string): AgentRole {
-  if (isWhatNextPrompt(text)) {
-    return "planner";
-  }
   if (isReviewRequest(text)) {
     return "reviewer";
   }
@@ -58,9 +51,6 @@ export function buildSubagentContext(role: AgentRole, req: ChatRequest): string 
     `Context: ${scope}; model=${req.model}`,
     roleExpectations[role],
   ];
-  if (isWhatNextPrompt(req.message)) {
-    lines.push("For this prompt, return exactly 3 concise numbered next steps (1. 2. 3.) and no lettered options.");
-  }
   return lines.join("\n");
 }
 
