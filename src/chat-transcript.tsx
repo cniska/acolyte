@@ -10,6 +10,21 @@ type ChatTranscriptProps = {
 };
 
 const MAX_TRANSCRIPT_WIDTH = 100;
+const SESSION_STATUS_PREFIXES = ["Started new session: ", "Resumed session: "] as const;
+
+function parseSessionStatus(content: string): { prefix: string; sessionId: string } | null {
+  for (const prefix of SESSION_STATUS_PREFIXES) {
+    if (!content.startsWith(prefix)) {
+      continue;
+    }
+    const sessionId = content.slice(prefix.length).trim();
+    if (sessionId.length === 0) {
+      return null;
+    }
+    return { prefix, sessionId };
+  }
+  return null;
+}
 
 export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
   const { rows, isThinking, thinkingFrame } = props;
@@ -22,18 +37,31 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
       {rows.map((row, index) => (
         <React.Fragment key={row.id}>
           {index > 0 ? <Text> </Text> : null}
+          {(() => {
+            const sessionStatus = row.role === "assistant" ? parseSessionStatus(row.content) : null;
+            const dimMarker = Boolean(row.dim) || Boolean(sessionStatus);
+            return (
           <Box>
             <Box width={2}>
-              <Text dimColor={Boolean(row.dim)}>
+              <Text dimColor={dimMarker}>
                 {row.role === "user" ? "❯ " : row.role === "assistant" ? "• " : "  "}
               </Text>
             </Box>
             <Box width={contentWidth}>
-              <Text dimColor={Boolean(row.dim)}>
-                {row.role === "assistant" ? renderAssistantContent(row.content, contentWidth) : row.content}
-              </Text>
+              {sessionStatus ? (
+                <Text>
+                  <Text dimColor>{sessionStatus.prefix}</Text>
+                  <Text>{sessionStatus.sessionId}</Text>
+                </Text>
+              ) : (
+                <Text dimColor={Boolean(row.dim)}>
+                  {row.role === "assistant" ? renderAssistantContent(row.content, contentWidth) : row.content}
+                </Text>
+              )}
             </Box>
           </Box>
+            );
+          })()}
         </React.Fragment>
       ))}
       {isThinking ? (
