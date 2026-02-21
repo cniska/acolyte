@@ -1,5 +1,5 @@
 import type { ChatRow } from "./chat-commands";
-import type { PickerState } from "./chat-layout";
+import type { PickerState } from "./chat-picker";
 import { boundedSkillInstructions, createResumePicker, createResumeRows } from "./chat-picker-actions";
 import { listSkills, readSkillInstructions } from "./skills";
 import type { Message, Session, SessionStore } from "./types";

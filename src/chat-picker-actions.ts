@@ -1,5 +1,5 @@
 import type { ChatRow } from "./chat-commands";
-import type { PickerState } from "./chat-layout";
+import type { PickerState } from "./chat-picker";
 import type { Session, SessionStore } from "./types";
 
 function row(role: ChatRow["role"], content: string): ChatRow {

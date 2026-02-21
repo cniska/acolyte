@@ -1,13 +1,7 @@
 import { Box, Text } from "ink";
 import React from "react";
-import {
-  borderLine,
-  formatShortcutRows,
-  type PickerState,
-  pickerHint,
-  pickerTitle,
-  renderPickerItems,
-} from "./chat-layout";
+import { borderLine, formatShortcutRows } from "./chat-layout";
+import { type PickerState, pickerHint, pickerTitle, renderPickerItems } from "./chat-picker";
 import { PromptInput } from "./prompt-input";
 
 type ChatInputPanelProps = {

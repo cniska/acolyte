@@ -1,6 +1,6 @@
 import { useInput } from "ink";
 import { applyAtSuggestion, shouldAutocompleteAtSubmit } from "./chat-file-ref";
-import type { PickerState } from "./chat-layout";
+import type { PickerState } from "./chat-picker";
 import { applySlashSuggestion, shouldAutocompleteSlashSubmit } from "./chat-slash";
 
 type HistoryTransition = {
