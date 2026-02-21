@@ -28,7 +28,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Automatic memory-context injection from saved user/project memories.
 - Mastra Studio agent memory with observational memory enabled (resource scope).
 - Backend chat passes session/thread identity to Mastra memory for turn continuity while observational memory remains resource-scoped.
-- Per-role model overrides with fallback-to-main (`ACOLYTE_MODEL_PLANNER|CODER|REVIEWER` -> `~/.acolyte/config.toml` `model`).
+- Per-role model overrides with fallback-to-main (`modelPlanner|modelCoder|modelReviewer` -> `~/.acolyte/config.toml` `model`).
 - Subagent v1 routing (`planner` / `coder` / `reviewer`) with explicit per-role context handoff.
 - Coder role guidance now prefers one clear next action and avoids lettered option menus unless explicitly requested.
 - Runtime provider is inferred from configured role model IDs (for example `anthropic/...`, `gemini/...`), with credential-aware fallback to mock mode when unavailable.
@@ -54,7 +54,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Secure-by-default tool guardrails:
   - file reads/edits are restricted to the workspace plus `~/.acolyte`
   - shell commands reject path traversal and paths outside workspace/`~/.acolyte`
-- Permission modes (`ACOLYTE_PERMISSION_MODE`):
+- Permission modes (`permissionMode` in `~/.acolyte/config.toml`):
   - `read` (default): disables write-capable tools (shell execution, file edit)
   - `write`: enables full local tool capability within guarded roots
 - Read-mode write confirmation picker:
@@ -65,13 +65,13 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Local-first configuration and optional API-key auth for backend access.
 - Non-secret local config can now be read from `~/.acolyte/config.toml` (TOML takes precedence over legacy JSON reads).
 - File config is now non-secret only: `apiKey` is ignored in config files and `/config set apiKey` is blocked (env-only).
-- Configurable agent input budgeting via env:
-  - `ACOLYTE_CONTEXT_MAX_TOKENS`
-  - `ACOLYTE_MAX_HISTORY_MESSAGES`
-  - `ACOLYTE_MAX_MESSAGE_TOKENS`
-  - `ACOLYTE_MAX_ATTACHMENT_MESSAGE_TOKENS`
-  - `ACOLYTE_MAX_PINNED_MESSAGE_TOKENS`
-- Token budget env parsing enforces hard max caps to prevent runaway configs.
+- Configurable agent input budgeting via `~/.acolyte/config.toml`:
+  - `contextMaxTokens`
+  - `maxHistoryMessages`
+  - `maxMessageTokens`
+  - `maxAttachmentMessageTokens`
+  - `maxPinnedMessageTokens`
+- Token budget parsing enforces hard max caps to prevent runaway configs.
 
 ## In Progress
 

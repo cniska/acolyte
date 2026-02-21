@@ -1,10 +1,13 @@
+import { readResolvedConfigSync } from "./config";
+
 export type LogLevel = "debug" | "info" | "warn" | "error";
 type LogFormat = "logfmt" | "json";
+const config = readResolvedConfigSync();
 
 type LogFields = Record<string, string | number | boolean | null | undefined>;
 
 function resolveLogFormat(): LogFormat {
-  return process.env.ACOLYTE_LOG_FORMAT === "json" ? "json" : "logfmt";
+  return config.logFormat;
 }
 
 function renderLogfmtLine(level: LogLevel, message: string, fields?: LogFields): string {
@@ -28,9 +31,9 @@ function renderJsonLine(level: LogLevel, message: string, fields?: LogFields): s
   return `${JSON.stringify(body)}\n`;
 }
 
-export function renderLogLine(level: LogLevel, message: string, fields?: LogFields): string {
-  const format = resolveLogFormat();
-  if (format === "json") {
+export function renderLogLine(level: LogLevel, message: string, fields?: LogFields, format?: LogFormat): string {
+  const resolvedFormat = format ?? resolveLogFormat();
+  if (resolvedFormat === "json") {
     return renderJsonLine(level, message, fields);
   }
   return renderLogfmtLine(level, message, fields);

@@ -1,56 +1,55 @@
-import { readConfigSync } from "./config";
+import { readResolvedConfigSync } from "./config";
 import { env } from "./env";
 
 export type PermissionMode = "read" | "write";
 export type ModelProvider = "openai" | "anthropic" | "gemini" | "openai-compatible" | "mock";
 
-const fileConfig = readConfigSync();
-const defaultModel = fileConfig.model ?? "gpt-5-mini";
+const fileConfig = readResolvedConfigSync();
 
 export const appConfig = {
   server: {
-    port: env.PORT,
+    port: fileConfig.port,
     apiKey: env.ACOLYTE_API_KEY,
     apiUrl: fileConfig.apiUrl,
   },
   openai: {
     apiKey: env.OPENAI_API_KEY,
-    baseUrl: env.OPENAI_BASE_URL,
+    baseUrl: fileConfig.openaiBaseUrl,
   },
   anthropic: {
     apiKey: env.ANTHROPIC_API_KEY,
-    baseUrl: env.ANTHROPIC_BASE_URL,
+    baseUrl: fileConfig.anthropicBaseUrl,
   },
   google: {
     apiKey: env.GOOGLE_API_KEY,
-    baseUrl: env.GOOGLE_BASE_URL,
+    baseUrl: fileConfig.googleBaseUrl,
   },
   models: {
-    main: defaultModel,
-    planner: env.ACOLYTE_MODEL_PLANNER,
-    coder: env.ACOLYTE_MODEL_CODER,
-    reviewer: env.ACOLYTE_MODEL_REVIEWER,
-    observationalMemory: env.ACOLYTE_OM_MODEL ?? defaultModel,
+    main: fileConfig.model,
+    planner: fileConfig.modelPlanner,
+    coder: fileConfig.modelCoder,
+    reviewer: fileConfig.modelReviewer,
+    observationalMemory: fileConfig.omModel,
   },
   memory: {
     resourceId: "acolyte-local",
     lastMessages: 10,
     observational: {
       scope: "resource" as const,
-      observationTokens: env.ACOLYTE_OM_OBSERVATION_TOKENS,
-      reflectionTokens: env.ACOLYTE_OM_REFLECTION_TOKENS,
+      observationTokens: fileConfig.omObservationTokens,
+      reflectionTokens: fileConfig.omReflectionTokens,
     },
   },
   agent: {
     permissions: {
-      mode: env.ACOLYTE_PERMISSION_MODE,
+      mode: fileConfig.permissionMode,
     },
-    contextMaxTokens: env.ACOLYTE_CONTEXT_MAX_TOKENS,
+    contextMaxTokens: fileConfig.contextMaxTokens,
     inputBudget: {
-      maxHistoryMessages: env.ACOLYTE_MAX_HISTORY_MESSAGES,
-      maxMessageTokens: env.ACOLYTE_MAX_MESSAGE_TOKENS,
-      maxAttachmentMessageTokens: env.ACOLYTE_MAX_ATTACHMENT_MESSAGE_TOKENS,
-      maxPinnedMessageTokens: env.ACOLYTE_MAX_PINNED_MESSAGE_TOKENS,
+      maxHistoryMessages: fileConfig.maxHistoryMessages,
+      maxMessageTokens: fileConfig.maxMessageTokens,
+      maxAttachmentMessageTokens: fileConfig.maxAttachmentMessageTokens,
+      maxPinnedMessageTokens: fileConfig.maxPinnedMessageTokens,
     },
     toolOutputBudget: {
       search: { maxChars: 2200, maxLines: 80 },

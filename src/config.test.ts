@@ -2,7 +2,14 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { readConfig, readConfigSync, setConfigValue, unsetConfigValue, writeConfig } from "./config";
+import {
+  readConfig,
+  readConfigSync,
+  readResolvedConfigSync,
+  setConfigValue,
+  unsetConfigValue,
+  writeConfig,
+} from "./config";
 
 const tempDirs: string[] = [];
 
@@ -170,5 +177,56 @@ describe("config store", () => {
     const rawToml = readFileSync(join(dataDir, "config.toml"), "utf8");
     expect(rawToml).toContain('model = "openai/gpt-5-mini"');
     expect(rawToml).toContain('apiUrl = "http://localhost:6767"');
+  });
+
+  test("reads non-secret runtime knobs from config.toml", () => {
+    const home = createTempDir("acolyte-config-home-");
+    const dataDir = join(home, ".acolyte");
+    mkdirSync(dataDir, { recursive: true });
+    writeFileSync(
+      join(dataDir, "config.toml"),
+      [
+        "port = 7777",
+        'model = "openai/gpt-5-mini"',
+        'modelPlanner = "openai/o3"',
+        'modelCoder = "anthropic/claude-sonnet-4"',
+        'modelReviewer = "gemini/gemini-2.5-pro"',
+        'apiUrl = "http://localhost:6767"',
+        'openaiBaseUrl = "https://openai.example.com/v1"',
+        'anthropicBaseUrl = "https://anthropic.example.com"',
+        'googleBaseUrl = "https://google.example.com"',
+        'permissionMode = "write"',
+        'logFormat = "json"',
+        "omObservationTokens = 3500",
+        "omReflectionTokens = 9000",
+        "contextMaxTokens = 7000",
+        "maxHistoryMessages = 50",
+        "maxMessageTokens = 700",
+        "maxAttachmentMessageTokens = 4500",
+        "maxPinnedMessageTokens = 1600",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const loaded = readConfigSync({ homeDir: home });
+    expect(loaded.port).toBe(7777);
+    expect(loaded.modelPlanner).toBe("openai/o3");
+    expect(loaded.permissionMode).toBe("write");
+    expect(loaded.logFormat).toBe("json");
+    expect(loaded.maxMessageTokens).toBe(700);
+  });
+
+  test("readResolvedConfigSync applies defaults and omModel fallback", () => {
+    const home = createTempDir("acolyte-config-home-");
+    const dataDir = join(home, ".acolyte");
+    mkdirSync(dataDir, { recursive: true });
+    writeFileSync(join(dataDir, "config.toml"), 'model = "anthropic/claude-sonnet-4"\n', "utf8");
+
+    const resolved = readResolvedConfigSync({ homeDir: home });
+    expect(resolved.port).toBe(6767);
+    expect(resolved.model).toBe("anthropic/claude-sonnet-4");
+    expect(resolved.omModel).toBe("anthropic/claude-sonnet-4");
+    expect(resolved.permissionMode).toBe("read");
+    expect(resolved.logFormat).toBe("logfmt");
   });
 });
