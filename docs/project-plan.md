@@ -69,20 +69,24 @@ Build a personal AI coding assistant (Mastra + CLI) that is local-first, memory-
    - Acolyte completes small feature slices end-to-end (plan -> edit -> verify) without fallback.
    - Output stays concise and decision-useful without pseudo-picker noise.
    - Session recovery (`interrupt`, `/new`, `/resume`) remains stable in daily use.
-3. Milestone 3: Switch Trial Week
+3. Milestone 3: Switch Trial (2-3 Days)
    - Exit criteria:
-   - One full week of normal repo development primarily with Acolyte.
+   - 2-3 consecutive days of normal repo development primarily with Acolyte.
+   - At least 10-15 real feature/fix slices completed end-to-end with Acolyte.
    - No blocker requiring routine Codex fallback.
    - Cost/latency and memory behavior remain acceptable for daily workflow.
 
 ## Switch-To-Acolyte Gate
-Move primary development from Codex to Acolyte once these checks pass for one week of normal use:
-1. Reliability: `bun run verify` stays green on every Acolyte-driven slice.
-2. Edit clarity: edit previews are readable enough to approve/reject quickly (compact, diff-first, low noise).
-3. Recovery: interrupt, resume, and `/new` flows are stable during daily usage.
-4. Safety: read/write permission gating prevents accidental writes and is easy to override intentionally.
-5. Throughput: Acolyte can complete at least small-to-medium feature slices end-to-end without manual fallback.
-6. Cost/latency: response times and token usage stay within acceptable bounds for daily development.
+Move primary development from Codex to Acolyte once these checks pass in a staged trial:
+1. Initial gate: 2-3 consecutive days and 10-15 real slices completed with Acolyte.
+2. Confirmation gate: optional one-week run after the initial gate to confirm stability.
+3. During trial, Codex remains fallback only for true blockers.
+4. Reliability: `bun run verify` stays green on every Acolyte-driven slice.
+5. Edit clarity: edit previews are readable enough to approve/reject quickly (compact, diff-first, low noise).
+6. Recovery: interrupt, resume, and `/new` flows are stable during daily usage.
+7. Safety: read/write permission gating prevents accidental writes and is easy to override intentionally.
+8. Throughput: Acolyte can complete at least small-to-medium feature slices end-to-end without manual fallback.
+9. Cost/latency: response times and token usage stay within acceptable bounds for daily development.
 
 Adoption plan:
 1. Start with low-risk chores and test updates.
