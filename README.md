@@ -26,6 +26,7 @@ That starts backend watch mode and chat.
 - One-shot prompt: `bun run run "review src/agent.ts"`
 - Verify: `bun run verify`
 - Status: `bun run src/cli.ts status`
+- Mastra Studio: `bun run studio` (loads `.env` automatically)
 
 ## Common In-Chat Commands
 
