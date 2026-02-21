@@ -130,6 +130,26 @@ describe("chat-commands", () => {
     expect(rows.some((row) => row.content.includes("Did you mean /status?"))).toBe(true);
   });
 
+  test("dispatchSlashCommand handles /status", async () => {
+    const { rows, stop } = await runCommand("/status");
+    expect(stop).toBe(true);
+    expect(rows.some((row) => row.role === "assistant" && row.content.includes("provider:"))).toBe(true);
+  });
+
+  test("dispatchSlashCommand handles /changes", async () => {
+    const { rows, stop } = await runCommand("/changes");
+    expect(stop).toBe(true);
+    expect(
+      rows.some(
+        (row) =>
+          row.role === "assistant" &&
+          (row.content.includes("No local changes.") ||
+            row.content.includes("changed file") ||
+            row.content.includes("Diff summary:")),
+      ),
+    ).toBe(true);
+  });
+
   test("dispatchSlashCommand validates /web usage", async () => {
     const { rows, stop } = await runCommand("/web");
     expect(stop).toBe(true);
