@@ -10,9 +10,7 @@ import {
 
 describe("chat-slash helpers", () => {
   test("suggestSlashCommands filters known commands by prefix", () => {
-    expect(suggestSlashCommands("/c")).toEqual(["/changes"]);
-    expect(suggestSlashCommands("/w")).toEqual(["/web"]);
-    expect(suggestSlashCommands("/f")).toEqual(["/fetch"]);
+    expect(suggestSlashCommands("/c")).toEqual([]);
     expect(suggestSlashCommands("/p")).toEqual(["/permissions"]);
     expect(suggestSlashCommands("/s")).toEqual(["/status", "/sessions", "/skills"]);
     expect(suggestSlashCommands("/st")).toEqual(["/status"]);
@@ -44,7 +42,6 @@ describe("chat-slash helpers", () => {
 
   test("isKnownSlashToken recognizes canonical and alias tokens", () => {
     expect(isKnownSlashToken("/status")).toBe(true);
-    expect(isKnownSlashToken("/fetch")).toBe(true);
     expect(isKnownSlashToken("/df")).toBe(true);
     expect(isKnownSlashToken("/session")).toBe(true);
     expect(isKnownSlashToken("/unknown")).toBe(false);

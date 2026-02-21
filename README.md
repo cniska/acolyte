@@ -76,9 +76,7 @@ ACOLYTE_API_URL=http://localhost:6767 bun run chat:raw
 - `?` toggle shortcuts
 - `@path` attach file/dir context
 - `/new`, `/sessions`, `/resume <id-prefix>`
-- `/status`, `/changes`, `/web <query>`
-- `/fetch <url>`
-- `/permissions`
+- `/status`, `/permissions`
 - `/dogfood <task>` (alias: `/df`)
 - `/distill [--sessions N] [--min N]`
 - `/remember [--project] <text>`, `/memory` (aliases: `/rem`, `/mem`)

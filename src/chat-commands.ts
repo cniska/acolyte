@@ -1,9 +1,7 @@
 import type { TokenUsage } from "./api";
 import { setPermissionMode } from "./app-config";
 import type { Backend } from "./backend";
-import { formatChangesSummary } from "./chat-formatters";
 import { suggestClosestSlashCommand } from "./chat-slash";
-import { fetchWeb, gitDiff, gitStatusShort, searchWeb } from "./coding-tools";
 import { addMemory, listMemories } from "./memory";
 import { distillPolicyCandidatesFromSessions, distillPolicyFromSessions, parseDistillOptions } from "./policy-distill";
 import { formatStatusOutput } from "./status-format";
@@ -225,58 +223,6 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       ctx.setRows((current) => [
         ...current,
         row("system", error instanceof Error ? error.message : "Failed to set permission mode."),
-      ]);
-    }
-    return { stop: true, userText: text, runVerifyAfterReply: false };
-  }
-
-  if (resolvedText === "/changes") {
-    pushUserCommandRow();
-    try {
-      const [statusRaw, diffRaw] = await Promise.all([gitStatusShort(), gitDiff()]);
-      ctx.setRows((current) => [...current, row("assistant", formatChangesSummary(statusRaw, diffRaw))]);
-    } catch (error) {
-      ctx.setRows((current) => [
-        ...current,
-        row("system", error instanceof Error ? error.message : "Could not inspect git changes."),
-      ]);
-    }
-    return { stop: true, userText: text, runVerifyAfterReply: false };
-  }
-
-  if (resolvedText.startsWith("/web")) {
-    pushUserCommandRow();
-    const query = resolvedText.replace(/^\/web\s*/, "").trim();
-    if (!query) {
-      ctx.setRows((current) => [...current, row("system", "Usage: /web <query>")]);
-      return { stop: true, userText: text, runVerifyAfterReply: false };
-    }
-    try {
-      const result = await searchWeb(query, 5);
-      ctx.setRows((current) => [...current, row("assistant", result)]);
-    } catch (error) {
-      ctx.setRows((current) => [
-        ...current,
-        row("system", error instanceof Error ? error.message : "Web search failed."),
-      ]);
-    }
-    return { stop: true, userText: text, runVerifyAfterReply: false };
-  }
-
-  if (resolvedText.startsWith("/fetch")) {
-    pushUserCommandRow();
-    const url = resolvedText.replace(/^\/fetch\s*/, "").trim();
-    if (!url) {
-      ctx.setRows((current) => [...current, row("system", "Usage: /fetch <url>")]);
-      return { stop: true, userText: text, runVerifyAfterReply: false };
-    }
-    try {
-      const result = await fetchWeb(url, 5000);
-      ctx.setRows((current) => [...current, row("assistant", result)]);
-    } catch (error) {
-      ctx.setRows((current) => [
-        ...current,
-        row("system", error instanceof Error ? error.message : "Web fetch failed."),
       ]);
     }
     return { stop: true, userText: text, runVerifyAfterReply: false };

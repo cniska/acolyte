@@ -136,14 +136,6 @@ describe("chat-commands", () => {
     expect(rows.some((row) => row.role === "assistant" && row.content.includes("provider:"))).toBe(true);
   });
 
-  test("dispatchSlashCommand handles /changes", async () => {
-    const { rows, stop } = await runCommand("/changes");
-    expect(stop).toBe(true);
-    const assistant = [...rows].reverse().find((row) => row.role === "assistant");
-    expect(assistant).toBeDefined();
-    expect((assistant?.content ?? "").trim().length).toBeGreaterThan(0);
-  });
-
   test("dispatchSlashCommand handles /sessions with compact assistant output", async () => {
     const store = createStore({
       activeSessionId: "sess_aaaa1111",
@@ -159,18 +151,6 @@ describe("chat-commands", () => {
     expect(assistant?.style).toBe("sessionsList");
     expect(assistant?.content).toContain("● sess_aaaa111  First");
     expect(assistant?.content).toContain("  sess_bbbb222  Second");
-  });
-
-  test("dispatchSlashCommand validates /web usage", async () => {
-    const { rows, stop } = await runCommand("/web");
-    expect(stop).toBe(true);
-    expect(rows.some((row) => row.content === "Usage: /web <query>")).toBe(true);
-  });
-
-  test("dispatchSlashCommand validates /fetch usage", async () => {
-    const { rows, stop } = await runCommand("/fetch");
-    expect(stop).toBe(true);
-    expect(rows.some((row) => row.content === "Usage: /fetch <url>")).toBe(true);
   });
 
   test("dispatchSlashCommand handles /distill", async () => {

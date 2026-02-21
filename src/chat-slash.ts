@@ -1,7 +1,4 @@
 export const CHAT_SLASH_COMMANDS = [
-  "/changes",
-  "/web",
-  "/fetch",
   "/dogfood",
   "/df",
   "/new",

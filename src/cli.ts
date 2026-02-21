@@ -132,7 +132,6 @@ export function buildUsageCommandRows(): Array<{ command: string; description: s
     { command: "status", description: "show backend status" },
     { command: "memory", description: "manage memory notes" },
     { command: "config", description: "manage local CLI config" },
-    { command: "tool", description: "run coding tools (search/read/git/run/edit/web/fetch)" },
   ];
 }
 

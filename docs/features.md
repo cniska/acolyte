@@ -13,7 +13,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Prompt history (up/down) restores from session user messages after restart/resume.
 - One-slot prompt queue while thinking (latest submit wins) with inline queued indicator.
 - Compact slash aliases for common commands (`/df`, `/mem`, `/rem`).
-- In-chat utility commands: `/status`, `/permissions`, `/changes`, `/web <query>`, `/fetch <url>`.
+- In-chat utility commands: `/status`, `/permissions`.
 - `/status` includes provider/model details plus API base URL for endpoint diagnostics.
 - `/status` formats multi-value fields in stacked rows (`models`, `om`, `om_tokens`, `om_state`) and hides duplicate `mode` when `provider` is present.
 - Policy distillation command from chat logs: `/distill [--sessions N] [--min N]`.
@@ -40,7 +40,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - One-shot memory resource isolation for `run`/`dogfood` (`run-<session>` resource ids).
 - One-shot `run` exits non-zero on backend failures so scripting/automation can reliably detect errors.
 - One-shot `run --verify` propagates verify failures via non-zero exit status.
-- Tool command surface for search/web/fetch/read/edit/git/run operations.
+- Internal tool command surface for search/web/fetch/read/edit/git/run operations.
 - Secure-by-default tool guardrails:
   - file reads/edits are restricted to the workspace plus `~/.acolyte`
   - shell commands reject path traversal and paths outside workspace/`~/.acolyte`
