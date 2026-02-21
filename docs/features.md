@@ -9,6 +9,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Session controls: `/new`, `/sessions`, `/resume <session-id-prefix>`, `/exit`.
 - File and directory references via `@path` with suggestions/autocomplete.
 - Slash-command suggestions with arrow navigation and Tab/Enter autocomplete.
+- Unknown slash-command typo recovery (for example `/stauts` -> `/status`).
 - Compact slash aliases for common commands (`/df`, `/ds`, `/mem`, `/rem`).
 - In-chat utility commands: `/status`, `/changes`.
 - In-chat dogfooding readiness check: `/dogfood-status` with short alias `/ds`.
@@ -23,6 +24,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Mastra Studio exposes role agents (`Planner`, `Coder`, `Reviewer`) plus default `acolyte` alias.
 - Dogfooding workflow command: `/dogfood <task>` with verify-first loop.
 - Optional skip verify flow: `/dogfood --no-verify <task>`.
+- In-flight turn interrupt via `Esc` while Acolyte is thinking.
 - One-shot CLI mode via `run` (including `--file` attachment support).
 - Tool command surface for search/read/edit/git/run operations.
 - Local backend server with health check (`/healthz`) and chat endpoint (`/v1/chat`).

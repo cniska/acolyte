@@ -67,6 +67,14 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
   - autonomous feature loop in `docs/development-workflow.md`
   - local skill scaffold in `skills/autonomous-feature-delivery/SKILL.md`
 
+### 2026-02-21
+- Chat reliability + UX hardening:
+  - stabilized focus-switch repaints in Ink chat using alternate screen handling
+  - improved `@path` matching (partial + fuzzy, case-insensitive ranking)
+  - added in-flight interrupt (`Esc`) while a turn is running
+  - improved unknown slash-command recovery with typo suggestions (for example `/stauts` -> `/status`)
+  - expanded formatter/parser test coverage for status output and key input handling
+
 ## Demo Flow (Short)
 1. Start backend: `bun --env-file=.env run serve`
 2. Set CLI backend once: `bun run src/cli.ts config set apiUrl http://localhost:6767`
