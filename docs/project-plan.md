@@ -86,6 +86,7 @@ Build a personal AI coding assistant (Mastra + CLI) that is local-first, memory-
    - Skip-verify gate (`bun run dogfood:gate --skip-verify --lookback 30 --target 10`) enables frequent readiness checks during active iteration.
    - Skip-verify gate hit `ready` on February 21, 2026 with `bun run dogfood:gate --skip-verify --lookback 10 --target 6` (smoke pass, delivery-slices 6/6).
    - Latest run remains `ready` on February 21, 2026 with `bun run dogfood:gate --skip-verify --lookback 10 --target 6` (smoke pass, delivery-slices 7/6).
+   - `/status` now includes role-level provider readiness (`providers`, `provider_ready`) for mixed-lane debugging during switch trials.
    - Remaining validation:
    - Complete 6-10 real feature/fix slices in normal flow with Acolyte-first execution and no routine fallback.
    - Exit criteria:
