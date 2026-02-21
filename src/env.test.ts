@@ -8,10 +8,6 @@ describe("env parsing", () => {
     expect(parsed.OPENAI_BASE_URL).toBe("https://api.openai.com/v1");
     expect(parsed.ANTHROPIC_BASE_URL).toBe("https://api.anthropic.com");
     expect(parsed.GOOGLE_BASE_URL).toBeUndefined();
-    expect(parsed.ACOLYTE_PROVIDER).toBe("openai");
-    expect(parsed.ACOLYTE_PROVIDER_PLANNER).toBeUndefined();
-    expect(parsed.ACOLYTE_PROVIDER_CODER).toBeUndefined();
-    expect(parsed.ACOLYTE_PROVIDER_REVIEWER).toBeUndefined();
     expect(parsed.ACOLYTE_MODEL).toBe("gpt-5-mini");
     expect(parsed.ACOLYTE_OM_OBSERVATION_TOKENS).toBe(3_000);
     expect(parsed.ACOLYTE_OM_REFLECTION_TOKENS).toBe(8_000);
@@ -32,10 +28,6 @@ describe("env parsing", () => {
       ANTHROPIC_BASE_URL: "https://anthropic.example.com",
       GOOGLE_API_KEY: "sk-goog",
       GOOGLE_BASE_URL: "https://google.example.com",
-      ACOLYTE_PROVIDER: "openai-compatible",
-      ACOLYTE_PROVIDER_PLANNER: "openai",
-      ACOLYTE_PROVIDER_CODER: "anthropic",
-      ACOLYTE_PROVIDER_REVIEWER: "gemini",
       ACOLYTE_MODEL: "gpt-5",
       ACOLYTE_MODEL_PLANNER: "o3",
       ACOLYTE_MODEL_CODER: "gpt-5-codex",
@@ -57,10 +49,6 @@ describe("env parsing", () => {
     expect(parsed.ANTHROPIC_BASE_URL).toBe("https://anthropic.example.com");
     expect(parsed.GOOGLE_API_KEY).toBe("sk-goog");
     expect(parsed.GOOGLE_BASE_URL).toBe("https://google.example.com");
-    expect(parsed.ACOLYTE_PROVIDER).toBe("openai-compatible");
-    expect(parsed.ACOLYTE_PROVIDER_PLANNER).toBe("openai");
-    expect(parsed.ACOLYTE_PROVIDER_CODER).toBe("anthropic");
-    expect(parsed.ACOLYTE_PROVIDER_REVIEWER).toBe("gemini");
     expect(parsed.ACOLYTE_MODEL).toBe("gpt-5");
     expect(parsed.ACOLYTE_MODEL_PLANNER).toBe("o3");
     expect(parsed.ACOLYTE_MODEL_CODER).toBe("gpt-5-codex");
@@ -84,9 +72,5 @@ describe("env parsing", () => {
     expect(() => parseEnv({ ACOLYTE_CONTEXT_MAX_TOKENS: "1000000" })).toThrow("Invalid environment configuration");
     expect(() => parseEnv({ ACOLYTE_OM_OBSERVATION_TOKENS: "50000" })).toThrow("Invalid environment configuration");
     expect(() => parseEnv({ ACOLYTE_MAX_MESSAGE_TOKENS: "50000" })).toThrow("Invalid environment configuration");
-  });
-
-  test("parseEnv rejects invalid provider", () => {
-    expect(() => parseEnv({ ACOLYTE_PROVIDER: "claude" })).toThrow("Invalid environment configuration");
   });
 });

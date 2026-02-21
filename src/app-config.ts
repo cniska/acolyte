@@ -21,12 +21,6 @@ export const appConfig = {
     apiKey: env.GOOGLE_API_KEY,
     baseUrl: env.GOOGLE_BASE_URL,
   },
-  providers: {
-    main: env.ACOLYTE_PROVIDER,
-    planner: env.ACOLYTE_PROVIDER_PLANNER,
-    coder: env.ACOLYTE_PROVIDER_CODER,
-    reviewer: env.ACOLYTE_PROVIDER_REVIEWER,
-  },
   models: {
     main: env.ACOLYTE_MODEL,
     planner: env.ACOLYTE_MODEL_PLANNER,
