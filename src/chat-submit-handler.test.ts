@@ -3,27 +3,7 @@ import { rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { ChatRow } from "./chat-commands";
 import { createSubmitHandler } from "./chat-submit-handler";
-import type { Message, Session, SessionStore } from "./types";
-
-function makeMessage(role: Message["role"], content: string): Message {
-  return {
-    id: "msg_test",
-    role,
-    content,
-    timestamp: "2026-02-20T00:00:00.000Z",
-  };
-}
-
-function makeSession(): Session {
-  return {
-    id: "sess_test",
-    createdAt: "2026-02-20T00:00:00.000Z",
-    updatedAt: "2026-02-20T00:00:00.000Z",
-    model: "gpt-5-mini",
-    title: "New Session",
-    messages: [],
-  };
-}
+import { createBackend, createMessage, createSession, createStore } from "./test-factory";
 
 type Harness = {
   submit: (raw: string) => Promise<void>;
@@ -40,16 +20,10 @@ function makeHarness(overrides?: { isThinking?: boolean }): Harness {
     setValue: [] as string[],
     setShowShortcuts: [] as Array<boolean | ((current: boolean) => boolean)>,
   };
-  const session = makeSession();
-  const store: SessionStore = {
-    activeSessionId: session.id,
-    sessions: [session],
-  };
+  const session = createSession({ id: "sess_test" });
+  const store = createStore({ activeSessionId: session.id, sessions: [session] });
   const submit = createSubmitHandler({
-    backend: {
-      reply: async () => ({ model: "gpt-5-mini", output: "ok" }),
-      status: async () => "ok",
-    },
+    backend: createBackend({ status: async () => "ok" }),
     store,
     currentSession: session,
     setCurrentSession: () => {},
@@ -74,7 +48,7 @@ function makeHarness(overrides?: { isThinking?: boolean }): Harness {
     setInputHistoryDraft: () => {},
     setIsThinking: () => {},
     setTokenUsage: () => {},
-    createMessage: makeMessage,
+    createMessage,
     nowIso: () => "2026-02-20T00:00:00.000Z",
     setInterrupt: () => {},
   });
@@ -118,14 +92,11 @@ describe("chat submit handler guards", () => {
     let interruptHandler: () => void = () => {};
     let interruptRegistered = false;
 
-    const session = makeSession();
-    const store: SessionStore = {
-      activeSessionId: session.id,
-      sessions: [session],
-    };
+    const session = createSession({ id: "sess_test" });
+    const store = createStore({ activeSessionId: session.id, sessions: [session] });
 
     const submit = createSubmitHandler({
-      backend: {
+      backend: createBackend({
         reply: async (_input, options) =>
           await new Promise((_, reject) => {
             const abort = (): void => {
@@ -140,7 +111,7 @@ describe("chat submit handler guards", () => {
             options?.signal?.addEventListener("abort", abort, { once: true });
           }),
         status: async () => "ok",
-      },
+      }),
       store,
       currentSession: session,
       setCurrentSession: () => {},
@@ -161,7 +132,7 @@ describe("chat submit handler guards", () => {
       setInputHistoryDraft: () => {},
       setIsThinking: () => {},
       setTokenUsage: () => {},
-      createMessage: makeMessage,
+      createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
       setInterrupt: (handler) => {
         interruptRegistered = handler !== null;
@@ -189,20 +160,17 @@ describe("chat submit handler guards", () => {
     const rows: ChatRow[] = [];
     let replyCalls = 0;
 
-    const session = makeSession();
-    const store: SessionStore = {
-      activeSessionId: session.id,
-      sessions: [session],
-    };
+    const session = createSession({ id: "sess_test" });
+    const store = createStore({ activeSessionId: session.id, sessions: [session] });
 
     const submit = createSubmitHandler({
-      backend: {
+      backend: createBackend({
         reply: async () => {
           replyCalls += 1;
           return { model: "gpt-5-mini", output: "ok" };
         },
         status: async () => "ok",
-      },
+      }),
       store,
       currentSession: session,
       setCurrentSession: () => {},
@@ -223,7 +191,7 @@ describe("chat submit handler guards", () => {
       setInputHistoryDraft: () => {},
       setIsThinking: () => {},
       setTokenUsage: () => {},
-      createMessage: makeMessage,
+      createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
       setInterrupt: () => {},
     });
@@ -242,20 +210,17 @@ describe("chat submit handler guards", () => {
     await writeFile(fixturePath, "fixture");
 
     try {
-      const session = makeSession();
-      const store: SessionStore = {
-        activeSessionId: session.id,
-        sessions: [session],
-      };
+      const session = createSession({ id: "sess_test" });
+      const store = createStore({ activeSessionId: session.id, sessions: [session] });
 
       const submit = createSubmitHandler({
-        backend: {
+        backend: createBackend({
           reply: async () => {
             replyCalls += 1;
             return { model: "gpt-5-mini", output: "ok" };
           },
           status: async () => "ok",
-        },
+        }),
         store,
         currentSession: session,
         setCurrentSession: () => {},
@@ -276,7 +241,7 @@ describe("chat submit handler guards", () => {
         setInputHistoryDraft: () => {},
         setIsThinking: () => {},
         setTokenUsage: () => {},
-        createMessage: makeMessage,
+        createMessage,
         nowIso: () => "2026-02-20T00:00:00.000Z",
         setInterrupt: () => {},
       });

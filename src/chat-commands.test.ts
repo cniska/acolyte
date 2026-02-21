@@ -1,35 +1,32 @@
 import { describe, expect, test } from "bun:test";
-import type { Backend } from "./backend";
 import { type ChatRow, dispatchSlashCommand, formatTokenUsageOutput, type TokenUsageEntry } from "./chat-commands";
-import type { Session, SessionStore } from "./types";
+import { createBackend, createSession, createStore } from "./test-factory";
 
-function makeSession(id = "sess_test001"): Session {
-  return {
-    id,
-    createdAt: "2026-02-20T10:00:00.000Z",
-    updatedAt: "2026-02-20T10:00:00.000Z",
-    model: "gpt-5-mini",
-    title: "New Session",
-    messages: [],
-  };
-}
-
-function makeStore(): SessionStore {
-  return {
-    activeSessionId: "sess_test001",
-    sessions: [makeSession("sess_test001"), makeSession("sess_test002")],
-  };
-}
-
-function makeBackend(): Backend {
-  return {
-    async reply() {
-      return { model: "gpt-5-mini", output: "ok" };
+async function runCommand(
+  text: string,
+  tokenUsage: TokenUsageEntry[] = [],
+): Promise<{ rows: ChatRow[]; stop: boolean }> {
+  let rows: ChatRow[] = [];
+  const result = await dispatchSlashCommand({
+    text,
+    resolvedText: text,
+    backend: createBackend(),
+    store: createStore(),
+    currentSession: createSession(),
+    setCurrentSession: () => {},
+    toRows: () => [],
+    setRows: (updater) => {
+      rows = updater(rows);
     },
-    async status() {
-      return "provider=local model=gpt-5-mini";
-    },
-  };
+    setShowShortcuts: () => {},
+    setValue: () => {},
+    persist: async () => {},
+    exit: () => {},
+    openSkillsPanel: async () => {},
+    openResumePanel: () => {},
+    tokenUsage,
+  });
+  return { rows, stop: result.stop };
 }
 
 describe("chat-commands", () => {
@@ -51,7 +48,6 @@ describe("chat-commands", () => {
   });
 
   test("dispatchSlashCommand handles /tokens", async () => {
-    let rows: ChatRow[] = [];
     const tokenUsage: TokenUsageEntry[] = [
       {
         id: "row_2",
@@ -62,53 +58,16 @@ describe("chat-commands", () => {
         },
       },
     ];
-    const result = await dispatchSlashCommand({
-      text: "/tokens",
-      resolvedText: "/tokens",
-      backend: makeBackend(),
-      store: makeStore(),
-      currentSession: makeSession(),
-      setCurrentSession: () => {},
-      toRows: () => [],
-      setRows: (updater) => {
-        rows = updater(rows);
-      },
-      setShowShortcuts: () => {},
-      setValue: () => {},
-      persist: async () => {},
-      exit: () => {},
-      openSkillsPanel: async () => {},
-      openResumePanel: () => {},
-      tokenUsage,
-    });
+    const { rows, stop } = await runCommand("/tokens", tokenUsage);
 
-    expect(result.stop).toBe(true);
+    expect(stop).toBe(true);
     expect(rows.some((row) => row.content.includes("last_turn:"))).toBe(true);
   });
 
   test("dispatchSlashCommand handles /tokens with empty usage", async () => {
-    let rows: ChatRow[] = [];
-    const result = await dispatchSlashCommand({
-      text: "/tokens",
-      resolvedText: "/tokens",
-      backend: makeBackend(),
-      store: makeStore(),
-      currentSession: makeSession(),
-      setCurrentSession: () => {},
-      toRows: () => [],
-      setRows: (updater) => {
-        rows = updater(rows);
-      },
-      setShowShortcuts: () => {},
-      setValue: () => {},
-      persist: async () => {},
-      exit: () => {},
-      openSkillsPanel: async () => {},
-      openResumePanel: () => {},
-      tokenUsage: [],
-    });
+    const { rows, stop } = await runCommand("/tokens");
 
-    expect(result.stop).toBe(true);
+    expect(stop).toBe(true);
     expect(rows.some((row) => row.content === "No token data yet. Send a prompt first.")).toBe(true);
   });
 
@@ -116,9 +75,9 @@ describe("chat-commands", () => {
     const result = await dispatchSlashCommand({
       text: "/dogfood tighten output",
       resolvedText: "/dogfood tighten output",
-      backend: makeBackend(),
-      store: makeStore(),
-      currentSession: makeSession(),
+      backend: createBackend(),
+      store: createStore(),
+      currentSession: createSession(),
       setCurrentSession: () => {},
       toRows: () => [],
       setRows: () => {},
@@ -137,80 +96,23 @@ describe("chat-commands", () => {
   });
 
   test("dispatchSlashCommand suggests /skills for /skill typo", async () => {
-    let rows: ChatRow[] = [];
-    const result = await dispatchSlashCommand({
-      text: "/skill",
-      resolvedText: "/skill",
-      backend: makeBackend(),
-      store: makeStore(),
-      currentSession: makeSession(),
-      setCurrentSession: () => {},
-      toRows: () => [],
-      setRows: (updater) => {
-        rows = updater(rows);
-      },
-      setShowShortcuts: () => {},
-      setValue: () => {},
-      persist: async () => {},
-      exit: () => {},
-      openSkillsPanel: async () => {},
-      openResumePanel: () => {},
-      tokenUsage: [],
-    });
+    const { rows, stop } = await runCommand("/skill");
 
-    expect(result.stop).toBe(true);
+    expect(stop).toBe(true);
     expect(rows.some((row) => row.content.includes("Did you mean /skills?"))).toBe(true);
   });
 
   test("dispatchSlashCommand suggests /dogfood for removed /compact aliases", async () => {
-    let rows: ChatRow[] = [];
-    const result = await dispatchSlashCommand({
-      text: "/compact refactor chat output",
-      resolvedText: "/compact refactor chat output",
-      backend: makeBackend(),
-      store: makeStore(),
-      currentSession: makeSession(),
-      setCurrentSession: () => {},
-      toRows: () => [],
-      setRows: (updater) => {
-        rows = updater(rows);
-      },
-      setShowShortcuts: () => {},
-      setValue: () => {},
-      persist: async () => {},
-      exit: () => {},
-      openSkillsPanel: async () => {},
-      openResumePanel: () => {},
-      tokenUsage: [],
-    });
+    const { rows, stop } = await runCommand("/compact refactor chat output");
 
-    expect(result.stop).toBe(true);
+    expect(stop).toBe(true);
     expect(rows.some((row) => row.content.includes("Did you mean /dogfood?"))).toBe(true);
   });
 
   test("dispatchSlashCommand suggests nearest command for general typo", async () => {
-    let rows: ChatRow[] = [];
-    const result = await dispatchSlashCommand({
-      text: "/stauts",
-      resolvedText: "/stauts",
-      backend: makeBackend(),
-      store: makeStore(),
-      currentSession: makeSession(),
-      setCurrentSession: () => {},
-      toRows: () => [],
-      setRows: (updater) => {
-        rows = updater(rows);
-      },
-      setShowShortcuts: () => {},
-      setValue: () => {},
-      persist: async () => {},
-      exit: () => {},
-      openSkillsPanel: async () => {},
-      openResumePanel: () => {},
-      tokenUsage: [],
-    });
+    const { rows, stop } = await runCommand("/stauts");
 
-    expect(result.stop).toBe(true);
+    expect(stop).toBe(true);
     expect(rows.some((row) => row.content.includes("Did you mean /status?"))).toBe(true);
   });
 });
