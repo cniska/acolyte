@@ -14,6 +14,7 @@
     "run": "bun run src/cli.ts run",
     "dogfood": "bun run src/cli.ts dogfood",
     "dogfood:smoke": "bun run src/dogfood-smoke.ts",
+    "dogfood:smoke:env": "bash -lc 'bun run serve:env >/tmp/acolyte-server.log 2>&1 & pid=$!; trap \"kill $pid 2>/dev/null || true\" EXIT; sleep 1; bun run dogfood:smoke'",
     "history": "bun run src/cli.ts history",
     "status": "bun run src/cli.ts status",
     "memory": "bun run src/cli.ts memory",

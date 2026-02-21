@@ -65,6 +65,7 @@ ACOLYTE_API_URL=http://localhost:6767 bun run chat
 - One-shot prompt (isolated session): `bun run run "review src/agent.ts"`
 - Dogfood prompt (verify-first): `bun run dogfood "fix src/agent.ts"`
 - Dogfood smoke checks: `bun run dogfood:smoke`
+- Dogfood smoke (auto-start backend): `bun run dogfood:smoke:env`
 - Status: `bun run status`
 - Verify: `bun run verify`
 - Mastra Studio: `bun run studio`
