@@ -62,18 +62,6 @@ function newMessage(role: Message["role"], content: string): Message {
   };
 }
 
-function getOrCreateActiveSession(store: SessionStore, model: string): Session {
-  const active = store.sessions.find((s) => s.id === store.activeSessionId);
-  if (active) {
-    return active;
-  }
-
-  const created = createSession(model);
-  store.sessions.unshift(created);
-  store.activeSessionId = created.id;
-  return created;
-}
-
 function printHelp(): void {
   renderShortcutsPanel();
 }
@@ -771,9 +759,8 @@ async function runMode(args: string[]): Promise<void> {
   }
 
   const config = await readConfig();
-  const store = await readStore();
   const defaultModel = appConfig.models.main ?? config.model ?? FALLBACK_MODEL;
-  const session = getOrCreateActiveSession(store, defaultModel);
+  const session = createSession(defaultModel);
   const backend = createBackend({
     apiUrl: config.apiUrl,
     apiKey: config.apiKey,
@@ -796,7 +783,6 @@ async function runMode(args: string[]): Promise<void> {
     const verifyResult = await runShellCommand("bun run verify");
     showToolResult("Run", formatForTool("run", verifyResult), "tool", "bun run verify");
   }
-  await writeStore(store);
 }
 
 async function dogfoodMode(args: string[]): Promise<void> {

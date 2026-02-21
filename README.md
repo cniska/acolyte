@@ -62,7 +62,7 @@ ACOLYTE_API_URL=http://localhost:6767 bun run chat
 - Dev (backend watch + chat): `bun run dev`
 - Chat only (assumes backend already running): `bun run chat:raw`
 - Chat (starts backend helper process): `bun run chat`
-- One-shot prompt: `bun run run "review src/agent.ts"`
+- One-shot prompt (isolated session): `bun run run "review src/agent.ts"`
 - Status: `bun run status`
 - Verify: `bun run verify`
 - Mastra Studio: `bun run studio`
