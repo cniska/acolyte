@@ -40,4 +40,15 @@ describe("status format", () => {
     expect(output).toContain("om_tokens: obs: 3000");
     expect(output).toContain("           ref: 8000");
   });
+
+  test("formats OM state timestamps when present", () => {
+    const output = formatStatusOutput(
+      "provider=openai om_exists=true om_gen=7 om_last_observed=2026-02-21T10:10:53.908Z om_last_reflection=2026-02-21T10:15:00.000Z",
+    );
+
+    expect(output).toMatch(/om_state:\s+exists: true/);
+    expect(output).toContain("gen: 7");
+    expect(output).toContain("last_observed: 2026-02-21T10:10:53.908Z");
+    expect(output).toContain("last_reflection: 2026-02-21T10:15:00.000Z");
+  });
 });
