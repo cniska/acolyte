@@ -22,11 +22,19 @@ export function banner(model: string, sessionId: string, version: string): void 
   stdout.write("\n");
 }
 
+export function tokenizeStreamContent(content: string): string[] {
+  return content.split(/(\s+)/).filter((part) => part.length > 0);
+}
+
 export async function streamText(content: string): Promise<void> {
-  const words = content.split(" ");
-  for (let i = 0; i < words.length; i += 1) {
-    stdout.write(i === words.length - 1 ? `${words[i]}\n` : `${words[i]} `);
-    await Bun.sleep(12);
+  for (const token of tokenizeStreamContent(content)) {
+    stdout.write(token);
+    if (!/^\s+$/.test(token)) {
+      await Bun.sleep(12);
+    }
+  }
+  if (!content.endsWith("\n")) {
+    stdout.write("\n");
   }
 }
 
