@@ -91,6 +91,14 @@ describe("cli formatting helpers", () => {
         "model_planner=openai/o3",
         "model_coder=openai/gpt-5-codex",
         "model_reviewer=openai/gpt-5-mini",
+        "provider_main=openai",
+        "provider_planner=openai",
+        "provider_coder=anthropic",
+        "provider_reviewer=gemini",
+        "provider_ready_main=true",
+        "provider_ready_planner=true",
+        "provider_ready_coder=false",
+        "provider_ready_reviewer=true",
         "service=acolyte-backend",
         "url=http://localhost:6767",
         "memory_storage=postgres",
@@ -111,6 +119,16 @@ describe("cli formatting helpers", () => {
     expect(out).toContain("planner: openai/o3");
     expect(out).toContain("coder: openai/gpt-5-codex");
     expect(out).toContain("reviewer: openai/gpt-5-mini");
+    expect(out).toContain("providers:");
+    expect(out).toContain("main: openai");
+    expect(out).toContain("planner: openai");
+    expect(out).toContain("coder: anthropic");
+    expect(out).toContain("reviewer: gemini");
+    expect(out).toContain("provider_ready:");
+    expect(out).toContain("main: true");
+    expect(out).toContain("planner: true");
+    expect(out).toContain("coder: false");
+    expect(out).toContain("reviewer: true");
     expect(out).toMatch(/memory:\s+postgres/);
     expect(out).toContain("om:");
     expect(out).toContain("enabled");
