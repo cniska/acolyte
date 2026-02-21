@@ -38,6 +38,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - One-shot `run` mode is isolated (does not reuse/persist chat session history).
 - One-shot memory resource isolation for `run`/`dogfood` (`run-<session>` resource ids).
 - One-shot `run` exits non-zero on backend failures so scripting/automation can reliably detect errors.
+- One-shot `run --verify` propagates verify failures via non-zero exit status.
 - Tool command surface for search/web/read/edit/git/run operations.
 - Secure-by-default tool guardrails:
   - file reads/edits are restricted to the workspace plus `~/.acolyte`
