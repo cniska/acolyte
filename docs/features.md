@@ -14,6 +14,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Compact slash aliases for common commands (`/df`, `/ds`, `/mem`, `/rem`).
 - In-chat utility commands: `/status`, `/permissions`, `/changes`, `/web <query>`.
 - Policy distillation command from chat logs: `/distill [--sessions N] [--min N]`.
+- Distilled policy candidate review picker with explicit `yes/no` confirmation and optional note (`yes also do this`).
 - In-chat dogfooding readiness check: `/dogfood-status` with short alias `/ds`.
 - Non-interactive dogfooding readiness command: `acolyte dogfood-status`.
 - Skills picker + command support: `/skills` and `$` shortcut.

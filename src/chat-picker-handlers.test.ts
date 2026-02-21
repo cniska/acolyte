@@ -24,6 +24,7 @@ describe("chat picker handlers", () => {
         pickerValues.push(next);
       },
       setShowShortcuts: () => {},
+      setPendingPolicyCandidate: () => {},
       persist: async () => {},
       toRows: () => [],
       createMessage,
@@ -50,6 +51,7 @@ describe("chat picker handlers", () => {
         pickerValues.push(next);
       },
       setShowShortcuts: () => {},
+      setPendingPolicyCandidate: () => {},
       persist: async () => {},
       toRows: () => [],
       createMessage,
@@ -85,6 +87,7 @@ describe("chat picker handlers", () => {
         pickerValues.push(next);
       },
       setShowShortcuts: () => {},
+      setPendingPolicyCandidate: () => {},
       persist: async () => {},
       toRows: () => [],
       createMessage,
@@ -119,6 +122,7 @@ describe("chat picker handlers", () => {
         pickerValues.push(next);
       },
       setShowShortcuts: () => {},
+      setPendingPolicyCandidate: () => {},
       persist: async () => {},
       toRows: () => [],
       createMessage,
@@ -144,5 +148,40 @@ describe("chat picker handlers", () => {
     } finally {
       setPermissionMode(prev);
     }
+  });
+
+  test("handlePickerSelect policy stores pending confirmation", async () => {
+    let pending: unknown = null;
+    const rows: ChatRow[] = [];
+    const currentSession = createSession({ id: "sess_current" });
+    const store = createStore({ sessions: [currentSession], activeSessionId: currentSession.id });
+    const handlers = createPickerHandlers({
+      store,
+      currentSession,
+      setCurrentSession: () => {},
+      setRows: (updater) => {
+        const next = updater(rows);
+        rows.length = 0;
+        rows.push(...next);
+      },
+      setRowsDirect: () => {},
+      setPicker: () => {},
+      setShowShortcuts: () => {},
+      setPendingPolicyCandidate: (next) => {
+        pending = next;
+      },
+      persist: async () => {},
+      toRows: () => [],
+      createMessage,
+      nowIso: () => "2026-02-20T00:00:00.000Z",
+    });
+
+    await handlers.handlePickerSelect({
+      kind: "policy",
+      items: [{ normalized: "keep output concise", count: 3, examples: ["we should keep output concise"] }],
+      index: 0,
+    });
+    expect(pending).toMatchObject({ normalized: "keep output concise" });
+    expect(rows.some((row) => row.content.includes("Reply yes/no"))).toBe(true);
   });
 });

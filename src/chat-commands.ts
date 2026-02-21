@@ -5,7 +5,7 @@ import { formatChangesSummary, formatDogfoodStatus, formatVerifySummary } from "
 import { suggestClosestSlashCommand } from "./chat-slash";
 import { gitDiff, gitStatusShort, runShellCommand, searchWeb } from "./coding-tools";
 import { addMemory, listMemories } from "./memory";
-import { distillPolicyFromSessions, parseDistillOptions } from "./policy-distill";
+import { distillPolicyCandidatesFromSessions, distillPolicyFromSessions, parseDistillOptions } from "./policy-distill";
 import { formatStatusOutput } from "./status-format";
 import { createSession } from "./storage";
 import type { Session, SessionStore } from "./types";
@@ -108,6 +108,7 @@ type CommandContext = {
   openSkillsPanel: () => Promise<void>;
   openResumePanel: () => void;
   openPermissionsPanel: () => void;
+  openPolicyPanel: (items: ReturnType<typeof distillPolicyCandidatesFromSessions>) => void;
   tokenUsage: TokenUsageEntry[];
 };
 
@@ -304,8 +305,12 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       ctx.setRows((current) => [...current, row("system", parsed.error)]);
       return { stop: true, userText: text, runVerifyAfterReply: false };
     }
+    const candidates = distillPolicyCandidatesFromSessions(ctx.store.sessions, parsed.options);
     const output = distillPolicyFromSessions(ctx.store.sessions, parsed.options);
     ctx.setRows((current) => [...current, row("assistant", output)]);
+    if (candidates.length > 0) {
+      ctx.openPolicyPanel(candidates);
+    }
     return { stop: true, userText: text, runVerifyAfterReply: false };
   }
 

@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { boundedSkillInstructions, createPicker, createResumePicker, createResumeRows } from "./chat-picker-actions";
+import {
+  boundedSkillInstructions,
+  createPicker,
+  createPolicyPicker,
+  createResumePicker,
+  createResumeRows,
+} from "./chat-picker-actions";
 import type { Session, SessionStore } from "./types";
 
 function session(id: string, title = "New Session"): Session {
@@ -62,5 +68,10 @@ describe("chat picker actions", () => {
     });
     expect(picker.kind).toBe("permissions");
     expect(picker.items[1]?.mode).toBe("write");
+  });
+
+  test("createPolicyPicker returns picker for policy candidates", () => {
+    const picker = createPolicyPicker([{ normalized: "keep output concise", count: 2, examples: [] }]);
+    expect(picker).toMatchObject({ kind: "policy", index: 0 });
   });
 });

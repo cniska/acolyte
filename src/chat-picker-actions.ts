@@ -1,6 +1,7 @@
 import { appConfig } from "./app-config";
 import type { ChatRow } from "./chat-commands";
 import type { PickerState } from "./chat-picker";
+import type { PolicyCandidate } from "./policy-distill";
 import type { Session, SessionStore } from "./types";
 
 function row(role: ChatRow["role"], content: string): ChatRow {
@@ -11,6 +12,7 @@ type PickerByKind = {
   skills: Extract<PickerState, { kind: "skills" }>;
   resume: Extract<PickerState, { kind: "resume" }>;
   permissions: Extract<PickerState, { kind: "permissions" }>;
+  policy: Extract<PickerState, { kind: "policy" }>;
 };
 
 type CreatePickerConfig<K extends keyof PickerByKind> = {
@@ -55,6 +57,17 @@ export function createPermissionsPicker(): PickerState {
     kind: "permissions",
     items,
     index: index >= 0 ? index : 0,
+  });
+}
+
+export function createPolicyPicker(items: PolicyCandidate[]): PickerState | null {
+  if (items.length === 0) {
+    return null;
+  }
+  return createPicker({
+    kind: "policy",
+    items,
+    index: 0,
   });
 }
 

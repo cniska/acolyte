@@ -35,19 +35,28 @@ OPENAI_API_KEY=...
 
 Role model vars are optional and fall back to `ACOLYTE_MODEL`.
 
-3. Start backend:
+3. Start full dev mode (recommended):
+```bash
+bun run dev
+```
+
+This runs the backend in watch mode and opens chat.
+
+4. Optional manual split mode:
 ```bash
 bun run serve:env
 ```
 
-4. Start chat (new shell):
+Then start chat in another shell:
 ```bash
 ACOLYTE_API_URL=http://localhost:6767 bun run chat
 ```
 
 ## Daily Commands
 
-- Chat: `bun run chat`
+- Dev (backend watch + chat): `bun run dev`
+- Chat only (assumes backend already running): `bun run chat:raw`
+- Chat (starts backend helper process): `bun run chat`
 - One-shot prompt: `bun run run "review src/agent.ts"`
 - Status: `bun run status`
 - Verify: `bun run verify`

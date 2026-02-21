@@ -16,6 +16,7 @@ import { suggestSlashCommands } from "./chat-slash";
 import { resolveQueueSubmit } from "./chat-submit";
 import { createSubmitHandler } from "./chat-submit-handler";
 import { ChatTranscript } from "./chat-transcript";
+import type { PolicyCandidate } from "./policy-distill";
 import type { Session, SessionStore } from "./types";
 
 type HeaderLine = {
@@ -51,6 +52,7 @@ function ChatApp(props: ChatAppProps) {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [queuedInput, setQueuedInput] = useState<string | null>(null);
   const [picker, setPicker] = useState<PickerState | null>(null);
+  const [pendingPolicyCandidate, setPendingPolicyCandidate] = useState<PolicyCandidate | null>(null);
   const [tokenUsage, setTokenUsage] = useState<TokenUsageEntry[]>([]);
   const [inputHistory, setInputHistory] = useState<string[]>([]);
   const [inputHistoryIndex, setInputHistoryIndex] = useState(-1);
@@ -77,19 +79,21 @@ function ChatApp(props: ChatAppProps) {
   useSlashSuggestionsEffect(slashSuggestions, setSlashSuggestionIndex);
   useThinkingAnimationEffect(isThinking, THINKING_FRAMES.length, setThinkingFrame);
 
-  const { openSkillsPanel, openResumePanel, openPermissionsPanel, handlePickerSelect } = createPickerHandlers({
-    store,
-    currentSession,
-    setCurrentSession,
-    setRows,
-    setRowsDirect: setRows,
-    setPicker: (next) => setPicker(next),
-    setShowShortcuts,
-    persist,
-    toRows,
-    createMessage: newMessage,
-    nowIso,
-  });
+  const { openSkillsPanel, openResumePanel, openPermissionsPanel, openPolicyPanel, handlePickerSelect } =
+    createPickerHandlers({
+      store,
+      currentSession,
+      setCurrentSession,
+      setRows,
+      setRowsDirect: setRows,
+      setPicker: (next) => setPicker(next),
+      setShowShortcuts,
+      setPendingPolicyCandidate,
+      persist,
+      toRows,
+      createMessage: newMessage,
+      nowIso,
+    });
 
   const handleSubmit = createSubmitHandler({
     backend,
@@ -105,6 +109,9 @@ function ChatApp(props: ChatAppProps) {
     openSkillsPanel,
     openResumePanel,
     openPermissionsPanel,
+    openPolicyPanel,
+    pendingPolicyCandidate,
+    setPendingPolicyCandidate,
     tokenUsage,
     isThinking,
     setInputHistory,
@@ -148,6 +155,7 @@ function ChatApp(props: ChatAppProps) {
     slashSuggestions,
     slashSuggestionIndex,
     setSlashSuggestionIndex,
+    pendingPolicyCandidate,
     setInputHistoryIndex,
     setInputHistoryDraft,
     openSkillsPanel,

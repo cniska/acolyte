@@ -27,6 +27,7 @@ describe("chat keybindings helpers", () => {
       slashSuggestions: [],
       slashSuggestionIndex: 0,
       isTab: true,
+      pendingPolicyCandidate: null,
     });
     expect(result).toBe("review @src/chat-ui.tsx");
   });
@@ -41,8 +42,43 @@ describe("chat keybindings helpers", () => {
       slashSuggestions: ["/status"],
       slashSuggestionIndex: 0,
       isTab: true,
+      pendingPolicyCandidate: null,
     });
     expect(result).toBe("/status ");
+  });
+
+  test("resolveTabAutocomplete supports yes/no completion for pending policy confirmation", () => {
+    const pending = {
+      normalized: "keep output concise",
+      count: 2,
+      examples: ["we should keep output concise"],
+    };
+    expect(
+      resolveTabAutocomplete({
+        browsingInputHistory: false,
+        value: "y",
+        atQuery: null,
+        atSuggestions: [],
+        atSuggestionIndex: 0,
+        slashSuggestions: [],
+        slashSuggestionIndex: 0,
+        isTab: true,
+        pendingPolicyCandidate: pending,
+      }),
+    ).toBe("yes ");
+    expect(
+      resolveTabAutocomplete({
+        browsingInputHistory: false,
+        value: "n",
+        atQuery: null,
+        atSuggestions: [],
+        atSuggestionIndex: 0,
+        slashSuggestions: [],
+        slashSuggestionIndex: 0,
+        isTab: true,
+        pendingPolicyCandidate: pending,
+      }),
+    ).toBe("no ");
   });
 
   test("resolveEscapeAction prefers interrupt while thinking", () => {

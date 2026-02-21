@@ -146,12 +146,21 @@ export function parseDistillOptions(
 }
 
 export function distillPolicyFromSessions(sessions: Session[], options: DistillOptions = {}): string {
+  const candidates = distillPolicyCandidatesFromSessions(sessions, options);
+  const sessionLimit = options.sessions ?? DEFAULT_SESSION_LIMIT;
+  const scopedSessions = sessions.slice(0, sessionLimit);
+  return formatPolicyDistillation(candidates, scopedSessions.length);
+}
+
+export function distillPolicyCandidatesFromSessions(
+  sessions: Session[],
+  options: DistillOptions = {},
+): PolicyCandidate[] {
   const sessionLimit = options.sessions ?? DEFAULT_SESSION_LIMIT;
   const minOccurrences = options.minOccurrences ?? DEFAULT_MIN_OCCURRENCES;
   const scopedSessions = sessions.slice(0, sessionLimit);
   const messages = scopedSessions.flatMap((session) => session.messages);
-  const candidates = collectPolicyCandidates(messages, minOccurrences);
-  return formatPolicyDistillation(candidates, scopedSessions.length);
+  return collectPolicyCandidates(messages, minOccurrences);
 }
 
 export async function runPolicyDistill(args: string[]): Promise<void> {

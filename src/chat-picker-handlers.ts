@@ -5,9 +5,11 @@ import {
   boundedSkillInstructions,
   createPermissionsPicker,
   createPicker,
+  createPolicyPicker,
   createResumePicker,
   createResumeRows,
 } from "./chat-picker-actions";
+import type { PolicyCandidate } from "./policy-distill";
 import { listSkills, readSkillInstructions } from "./skills";
 import type { Message, Session, SessionStore } from "./types";
 
@@ -21,6 +23,7 @@ type CreatePickerHandlersInput = {
   setRowsDirect: (next: ChatRow[]) => void;
   setPicker: (next: PickerState | null) => void;
   setShowShortcuts: (next: boolean | ((current: boolean) => boolean)) => void;
+  setPendingPolicyCandidate: (next: PolicyCandidate | null) => void;
   persist: () => Promise<void>;
   toRows: (messages: Message[]) => ChatRow[];
   createMessage: (role: Message["role"], content: string) => Message;
@@ -31,6 +34,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
   openSkillsPanel: () => Promise<void>;
   openResumePanel: () => void;
   openPermissionsPanel: () => void;
+  openPolicyPanel: (items: PolicyCandidate[]) => void;
   handlePickerSelect: (state: PickerState) => Promise<void>;
 } {
   const openSkillsPanel = async (): Promise<void> => {
@@ -67,6 +71,19 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
 
   const openPermissionsPanel = (): void => {
     input.setPicker(createPermissionsPicker());
+    input.setShowShortcuts(false);
+  };
+
+  const openPolicyPanel = (items: PolicyCandidate[]): void => {
+    const picker = createPolicyPicker(items);
+    if (!picker) {
+      input.setRows((current) => [
+        ...current,
+        { id: `row_${crypto.randomUUID()}`, role: "system", content: "No repeated policy signals found." },
+      ]);
+      return;
+    }
+    input.setPicker(picker);
     input.setShowShortcuts(false);
   };
 
@@ -127,6 +144,22 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
         input.setPicker(null);
         return;
       }
+      case "policy": {
+        const selected = state.items[state.index];
+        if (selected) {
+          input.setPendingPolicyCandidate(selected);
+          input.setRows((current) => [
+            ...current,
+            {
+              id: `row_${crypto.randomUUID()}`,
+              role: "assistant",
+              content: `Policy draft selected: ${selected.normalized}\nReply yes/no with optional note (Tab autocompletes).`,
+            },
+          ]);
+        }
+        input.setPicker(null);
+        return;
+      }
     }
   };
 
@@ -134,6 +167,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
     openSkillsPanel,
     openResumePanel,
     openPermissionsPanel,
+    openPolicyPanel,
     handlePickerSelect,
   };
 }

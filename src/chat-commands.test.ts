@@ -7,9 +7,10 @@ async function runCommand(
   text: string,
   tokenUsage: TokenUsageEntry[] = [],
   store = createStore(),
-): Promise<{ rows: ChatRow[]; stop: boolean; openedPermissions: boolean }> {
+): Promise<{ rows: ChatRow[]; stop: boolean; openedPermissions: boolean; openedPolicy: number }> {
   let rows: ChatRow[] = [];
   let openedPermissions = false;
+  let openedPolicy = 0;
   const result = await dispatchSlashCommand({
     text,
     resolvedText: text,
@@ -30,9 +31,12 @@ async function runCommand(
     openPermissionsPanel: () => {
       openedPermissions = true;
     },
+    openPolicyPanel: () => {
+      openedPolicy += 1;
+    },
     tokenUsage,
   });
-  return { rows, stop: result.stop, openedPermissions };
+  return { rows, stop: result.stop, openedPermissions, openedPolicy };
 }
 
 describe("chat-commands", () => {
@@ -94,6 +98,7 @@ describe("chat-commands", () => {
       openSkillsPanel: async () => {},
       openResumePanel: () => {},
       openPermissionsPanel: () => {},
+      openPolicyPanel: () => {},
       tokenUsage: [],
     });
 
@@ -140,10 +145,11 @@ describe("chat-commands", () => {
         }),
       ],
     });
-    const { rows, stop } = await runCommand("/distill --sessions 10 --min 2", [], store);
+    const { rows, stop, openedPolicy } = await runCommand("/distill --sessions 10 --min 2", [], store);
     expect(stop).toBe(true);
     expect(rows.some((row) => row.content.includes("Proposed policy updates"))).toBe(true);
     expect(rows.some((row) => row.content.includes("keep output concise"))).toBe(true);
+    expect(openedPolicy).toBe(1);
   });
 
   test("dispatchSlashCommand shows permission mode", async () => {
