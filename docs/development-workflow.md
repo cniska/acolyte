@@ -22,14 +22,13 @@ Use these gates after each meaningful slice:
 3. Baseline bundle:
    - `bun run verify`
 4. Targeted smoke checks for changed behavior:
-   - Example: `bun run src/cli.ts tool ...` (internal/debug), `bun run chat`, `bun run status`, `bun run dogfood:smoke` (or `bun run dogfood:smoke:env`)
+   - Example: `bun run src/cli.ts tool ...` (internal/debug), `bun run chat`, `bun run src/cli.ts status`, `bun run dogfood:smoke`
 5. Optional switch-readiness check:
-   - Fast check: `bun run dogfood:gate:fast --lookback 30 --target 10`
+   - Gate check: `bun run dogfood:gate --lookback 30 --target 10 --skip-verify`
 
 Internal-only telemetry (not primary end-user commands):
 1. `bun run dogfood:progress --lookback 30 --target 10 [--json]`
 2. `bun run dogfood:gate --lookback 30 --target 10`
-3. `bun run dogfood:gate:fast --lookback 30 --target 10`
 
 ## Dogfooding Ramp
 Use this staged rollout when shifting work from Codex-driven to Acolyte-driven execution on `main`:

@@ -47,7 +47,7 @@ describe("dogfood gate", () => {
   });
 
   test("firstSignalLine skips shell noise and script wrapper errors", () => {
-    const stderr = ["$ bun run dogfood:smoke:env", 'error: script "dogfood:smoke:env" exited with code 1'].join("\n");
+    const stderr = ["$ bun run dogfood:smoke", 'error: script "dogfood:smoke" exited with code 1'].join("\n");
     const stdout = ["Running dogfood smoke checks...", "✗ status: command failed (exit 1)"].join("\n");
     expect(firstSignalLine(stderr, stdout)).toBe("Running dogfood smoke checks...");
   });

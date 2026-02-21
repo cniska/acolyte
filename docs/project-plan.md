@@ -81,11 +81,10 @@ Build a personal AI coding assistant (Mastra + CLI) that is local-first, memory-
    - Integration test verifies `run` forwards isolated `resourceId` to backend.
    - One-shot `run` now fails with non-zero exit on backend errors (plus actionable backend-start hint), improving script reliability.
    - Automated dogfood smoke (`bun run dogfood:smoke`) validates `status`, `run "hello"`, and `dogfood --no-verify`.
-   - Auto-start smoke path (`bun run dogfood:smoke:env`) makes the same checks reproducible without manual backend startup.
    - Progress tracker (`bun run dogfood:progress --lookback 30 --target 10`) reports delivery slices (`feat|fix|refactor|test`) for switch gating.
    - Gate command (`bun run dogfood:gate --lookback 30 --target 10`) summarizes smoke + delivery readiness in one pass.
-   - Fast gate path (`bun run dogfood:gate:fast --lookback 30 --target 10`) enables frequent readiness checks during active iteration.
-   - Fast gate hit `ready` on February 21, 2026 with `bun run dogfood:gate:fast --lookback 10 --target 6` (smoke pass, delivery-slices 6/6).
+   - Skip-verify gate (`bun run dogfood:gate --skip-verify --lookback 30 --target 10`) enables frequent readiness checks during active iteration.
+   - Skip-verify gate hit `ready` on February 21, 2026 with `bun run dogfood:gate --skip-verify --lookback 10 --target 6` (smoke pass, delivery-slices 6/6).
    - Remaining validation:
    - Complete 6-10 real feature/fix slices in normal flow with Acolyte-first execution and no routine fallback.
    - Exit criteria:

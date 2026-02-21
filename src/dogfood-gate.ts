@@ -187,7 +187,7 @@ async function main(): Promise<void> {
     }
 
     if (!args.skipSmoke) {
-      const smoke = run(["bun", "run", "dogfood:smoke:env"]);
+      const smoke = run(["bun", "run", "dogfood:smoke"]);
       const smokeError = firstSignalLine(smoke.stderr, smoke.stdout);
       checks.push({
         name: "smoke",
