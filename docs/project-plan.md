@@ -26,6 +26,7 @@ Build a personal AI assistant using Mastra, with a CLI-first interface that runs
 7. Model selection is still mostly static; we need task-aware routing (chat/code/long-context/vision) with measurable quality/cost tradeoffs.
 8. Local model support is not fully productized; we need first-class configuration for OpenAI-compatible local endpoints (Ollama/vLLM) and routing integration.
 9. Token efficiency needs explicit controls; we need hard context budgets, tool-output compression defaults, and lane-based model routing to prevent cost/latency blowups.
+10. Preference-policy learning is not yet closed-loop; we need a safe distillation pass that turns repeated chat corrections into proposed `AGENTS.md`/skill updates.
 
 ## Product Moat
 1. Reliability moat: verification-first coding loop (plan, tool-grounded execution, validate, reflect) that measurably reduces repeated mistakes.
@@ -218,6 +219,7 @@ Phases are milestone-based, not calendar-bound.
 21. Prioritize a TypeScript-first development lane (Bun/Node/TS defaults, typecheck+test workflow) before expanding language-specific support for other stacks.
 22. Keep tool execution secure-by-default as a product differentiator:
     file tools are limited to workspace + `~/.acolyte`, and shell tools block traversal/path escapes outside those roots.
+23. Add an opt-in chat-log distillation loop that periodically proposes policy improvements (`AGENTS.md`, skills, memory rules) with human approval before apply.
 
 ## Prioritization Policy
 1. Prioritize correctness, reliability, and core workflow capability over cosmetic UX changes.
