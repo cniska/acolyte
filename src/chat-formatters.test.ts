@@ -27,6 +27,7 @@ describe("chat-formatters helpers", () => {
     expect(out).toContain("- Verify passed (exit 0, 1.2s).");
     expect(out).toContain("- Backend: mode=openai service=acolyte-backend");
     expect(out).toContain("- OPENAI_API_KEY: set");
+    expect(out).toContain("- Checks: verify=pass backend=pass api_key=pass");
     expect(out).toContain("- Switch gate: ready");
   });
 
@@ -36,6 +37,7 @@ describe("chat-formatters helpers", () => {
       verifySummary: "Verify failed (exit 1, 500ms).",
       hasApiKey: false,
     });
+    expect(out).toContain("- Checks: verify=fail backend=fail api_key=fail");
     expect(out).toContain("- Switch gate: not ready yet");
   });
 

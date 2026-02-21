@@ -34,6 +34,7 @@
     "db:smoke": "bun run src/postgres-smoke.ts",
     "om:status": "bun run src/om-admin.ts status",
     "om:wipe": "bun run src/om-admin.ts wipe",
+    "om:soak": "bun run src/om-soak.ts",
     "policy:distill": "bun run src/policy-distill.ts"
   },
   "devDependencies": {

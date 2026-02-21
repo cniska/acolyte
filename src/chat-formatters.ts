@@ -39,6 +39,7 @@ export function formatDogfoodStatus(input: {
     `- ${input.verifySummary}`,
     `- Backend: ${input.backendStatus}`,
     `- OPENAI_API_KEY: ${keyStatus}`,
+    `- Checks: verify=${verifyOk ? "pass" : "fail"} backend=${backendOk ? "pass" : "fail"} api_key=${input.hasApiKey ? "pass" : "fail"}`,
     `- Switch gate: ${switchGate}`,
   ];
   return lines.join("\n");
