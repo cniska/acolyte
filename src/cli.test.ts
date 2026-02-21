@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  formatAssistantReplyOutput,
   formatEditUpdateOutput,
   formatForTool,
   formatRunOutput,
@@ -161,6 +162,11 @@ describe("cli formatting helpers", () => {
     expect(resolveCommandAlias("?")).toBe("?");
     expect(resolveCommandAlias("/exit")).toBe("/exit");
     expect(resolveCommandAlias("/run")).toBe("/run");
+  });
+
+  test("formatAssistantReplyOutput indents multiline assistant output", () => {
+    const out = formatAssistantReplyOutput(["1. first", "2. second", "3. third"].join("\n"));
+    expect(out).toBe(["• 1. first", "  2. second", "  3. third"].join("\n"));
   });
 
   test("suggestCommand supports canonical and alias prefixes", () => {

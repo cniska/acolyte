@@ -627,6 +627,14 @@ function setSessionTitle(session: Session, inputText: string): void {
   }
 }
 
+export function formatAssistantReplyOutput(content: string): string {
+  const lines = content.split("\n");
+  if (lines.length === 0) {
+    return "•";
+  }
+  return lines.map((line, index) => (index === 0 ? `• ${line}` : `  ${line}`)).join("\n");
+}
+
 async function handlePrompt(prompt: string, session: Session, backend = createBackend()): Promise<void> {
   const userMsg = newMessage("user", prompt);
   session.messages.push(userMsg);
@@ -643,7 +651,7 @@ async function handlePrompt(prompt: string, session: Session, backend = createBa
     });
 
     printOutput("");
-    await streamText(`• ${reply.output}`);
+    await streamText(formatAssistantReplyOutput(reply.output));
     session.messages.push(newMessage("assistant", reply.output));
     session.model = reply.model;
     session.updatedAt = nowIso();
