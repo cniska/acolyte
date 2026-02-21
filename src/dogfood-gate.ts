@@ -75,9 +75,9 @@ function parseArgs(args: string[]): GateArgs {
   return parsed.data;
 }
 
-function run(command: string): { ok: boolean; stdout: string; stderr: string; code: number } {
+function run(cmd: string[]): { ok: boolean; stdout: string; stderr: string; code: number } {
   const proc = Bun.spawnSync({
-    cmd: ["bash", "-lc", command],
+    cmd,
     stdout: "pipe",
     stderr: "pipe",
   });
@@ -179,7 +179,7 @@ async function main(): Promise<void> {
     const checks: GateCheck[] = [];
 
     if (!args.skipVerify) {
-      const verify = run("bun run verify");
+      const verify = run(["bun", "run", "verify"]);
       const verifyError = firstSignalLine(verify.stderr, verify.stdout);
       checks.push({
         name: "verify",
@@ -189,7 +189,7 @@ async function main(): Promise<void> {
     }
 
     if (!args.skipSmoke) {
-      const smoke = run("bun run dogfood:smoke:env");
+      const smoke = run(["bun", "run", "dogfood:smoke:env"]);
       const smokeError = firstSignalLine(smoke.stderr, smoke.stdout);
       checks.push({
         name: "smoke",
@@ -198,7 +198,16 @@ async function main(): Promise<void> {
       });
     }
 
-    const progress = run(`bun run dogfood:progress --lookback ${args.lookback} --target ${args.target} --json`);
+    const progress = run([
+      "bun",
+      "run",
+      "dogfood:progress",
+      "--lookback",
+      String(args.lookback),
+      "--target",
+      String(args.target),
+      "--json",
+    ]);
     const parsedProgress = parseDeliveryProgress(progress.stdout);
     checks.push({
       name: "delivery-slices",
