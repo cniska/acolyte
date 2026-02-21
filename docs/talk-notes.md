@@ -103,6 +103,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Session UX was aligned: `/sessions` now renders as a compact assistant block and uses UTF-8 active markers (`●`) for readability.
 - Added a forgiving slash alias: `/session` now resolves to `/sessions`.
 - Added production-style session resume flow: top-level `acolyte resume [id-prefix]` and an exit-time resume hint command.
+- Kept user slash-command surface minimal by moving tool-like commands (`/changes`, `/web`, `/fetch`) out of chat UX and retaining them only as internal agent/debug paths.
 
 ## Open Narrative Threads
 1. Continue dogfooding ramp from Codex-led to Acolyte-led development.
