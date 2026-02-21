@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
-import { appConfig } from "./app-config";
 import type { ChatRequest, ChatResponse } from "./api";
+import { appConfig } from "./app-config";
 import type { Message } from "./types";
 
 type OmStatusResponse = {
@@ -133,7 +133,13 @@ async function wipeOm(url: string): Promise<void> {
   });
 }
 
-async function runChatTurn(url: string, message: string, model: string, sessionId: string, history: Message[]): Promise<string> {
+async function runChatTurn(
+  url: string,
+  message: string,
+  model: string,
+  sessionId: string,
+  history: Message[],
+): Promise<string> {
   const payload: ChatRequest = {
     message,
     model,
