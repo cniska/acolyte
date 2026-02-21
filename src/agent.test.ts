@@ -217,6 +217,8 @@ describe("finalizeAssistantOutput", () => {
     ].join("\n");
     expect(finalizeAssistantOutput(raw)).toBe(
       [
+        "Ready, Chris.",
+        "",
         "What I found to fix in src/mastra-tools.ts",
         "1. Use null checks for numeric fields.",
         "2. Add execute try/catch context.",
@@ -235,7 +237,7 @@ describe("finalizeAssistantOutput", () => {
       "",
       "Start with src/mastra-tools.ts null-check fix.",
     ].join("\n");
-    expect(finalizeAssistantOutput(raw)).toBe("Start with src/mastra-tools.ts null-check fix.");
+    expect(finalizeAssistantOutput(raw)).toBe("Ready.\n\nStart with src/mastra-tools.ts null-check fix.");
   });
 
   test("strips 'If you want, I can' option scaffolding", () => {

@@ -346,9 +346,6 @@ export function finalizeAssistantOutput(output: string, message = ""): string {
       if (dropAuxSection && (/^[-*]\s+/.test(trimmed) || /^\d+\.\s+/.test(trimmed))) {
         return false;
       }
-      if (/^ready[,.!]/i.test(trimmed)) {
-        return false;
-      }
       if (/^recommendation\s*[—-]\s*do\s*[abc]\b/i.test(trimmed)) {
         dropAuxSection = true;
         return false;
