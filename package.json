@@ -17,6 +17,7 @@
     "dogfood:smoke:env": "bash -lc 'bun run serve:env >/tmp/acolyte-server.log 2>&1 & pid=$!; trap \"kill $pid 2>/dev/null || true\" EXIT; sleep 1; bun run dogfood:smoke'",
     "dogfood:progress": "bun run src/dogfood-progress.ts",
     "dogfood:gate": "bun run src/dogfood-gate.ts",
+    "dogfood:gate:fast": "bun run src/dogfood-gate.ts --skip-verify",
     "history": "bun run src/cli.ts history",
     "status": "bun run src/cli.ts status",
     "memory": "bun run src/cli.ts memory",

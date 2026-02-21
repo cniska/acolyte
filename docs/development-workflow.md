@@ -23,6 +23,8 @@ Use these gates after each meaningful slice:
    - `bun run verify`
 4. Targeted smoke checks for changed behavior:
    - Example: `bun run tool ...`, `bun run chat`, `bun run status`, `bun run dogfood:smoke` (or `bun run dogfood:smoke:env`)
+5. Optional switch-readiness check:
+   - Fast check: `bun run dogfood:gate:fast --lookback 30 --target 10`
 
 ## Dogfooding Ramp
 Use this staged rollout when shifting work from Codex-driven to Acolyte-driven execution on `main`:
