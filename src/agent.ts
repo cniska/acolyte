@@ -201,7 +201,7 @@ export function normalizeReviewOutput(output: string): string {
       }
     }
 
-    const numbered = trimmedRight.match(/^\s*(\d+)[\)\.]?\s+(.*)$/);
+    const numbered = trimmedRight.match(/^\s*(\d+)[).]?\s+(.*)$/);
     if (numbered) {
       const num = numbered[1];
       const body = numbered[2]?.trim() ?? "";
@@ -332,7 +332,7 @@ export function finalizeAssistantOutput(output: string, message = ""): string {
         dropAuxSection = true;
         return false;
       }
-      if (/^recap\s*[:\-]/i.test(trimmed)) {
+      if (/^recap\s*[:-]/i.test(trimmed)) {
         return false;
       }
       if (/^i can:\s*$/i.test(trimmed)) {

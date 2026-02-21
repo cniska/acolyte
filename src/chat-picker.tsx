@@ -1,5 +1,5 @@
 import { Text } from "ink";
-import React from "react";
+import type React from "react";
 import type { PolicyCandidate } from "./policy-distill";
 import type { SkillMeta } from "./skills";
 import type { Session } from "./types";

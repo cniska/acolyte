@@ -1,5 +1,5 @@
 import { Box, Text } from "ink";
-import React from "react";
+import type React from "react";
 
 type HeaderLine = {
   id: string;
@@ -31,10 +31,10 @@ export function ChatHeader(props: ChatHeaderProps): React.ReactNode {
   return (
     <Box>
       <Box flexDirection="column" marginRight={2}>
-        {logo.map((parts, index) => (
-          <Text key={`logo-${index}`}>
-            {parts.map((part, partIndex) => (
-              <Text key={`logo-${index}-${partIndex}`} color={part.color}>
+        {logo.map((parts) => (
+          <Text key={parts.map((part) => `${part.color}:${part.text}`).join("|")}>
+            {parts.map((part) => (
+              <Text key={`${part.color}:${part.text}`} color={part.color}>
                 {part.text}
               </Text>
             ))}

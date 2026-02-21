@@ -1,7 +1,7 @@
 import { Box, render, Text, useApp } from "ink";
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Backend } from "./backend";
-import { type ChatRow, type TokenUsageEntry } from "./chat-commands";
+import type { ChatRow, TokenUsageEntry } from "./chat-commands";
 import { useAtSuggestionsEffect, useSlashSuggestionsEffect, useThinkingAnimationEffect } from "./chat-effects";
 import { extractAtReferenceQuery } from "./chat-file-ref";
 import { ChatHeader } from "./chat-header";
@@ -9,7 +9,7 @@ import { processInputChange, processInputSubmit } from "./chat-input-handlers";
 import { ChatInputPanel } from "./chat-input-panel";
 import { useChatKeybindings } from "./chat-keybindings";
 import { shownCwd } from "./chat-layout";
-import { type PickerState } from "./chat-picker";
+import type { PickerState } from "./chat-picker";
 import { createPickerHandlers } from "./chat-picker-handlers";
 import { newMessage, nowIso, toRows } from "./chat-session";
 import { suggestSlashCommands } from "./chat-slash";
@@ -86,7 +86,7 @@ function ChatApp(props: ChatAppProps) {
     setInputHistory(buildInputHistory(currentSession.messages));
     setInputHistoryIndex(-1);
     setInputHistoryDraft("");
-  }, [currentSession.id, currentSession.messages]);
+  }, [currentSession.messages]);
 
   const {
     openSkillsPanel,

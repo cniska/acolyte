@@ -14,37 +14,48 @@ export function renderAssistantContent(content: string, wrapWidth: number): Reac
 
   const renderHighlighted = (value: string, keyPrefix: string): React.ReactNode => {
     const lines = value.split("\n");
+    let lineOffset = 0;
     return (
       <>
-        {lines.map((line, lineIndex) => (
-          <React.Fragment key={`${keyPrefix}-line-${lineIndex}`}>
-            {lineIndex > 0 ? "\n" : null}
-            {tokenizeForHighlighting(line).map((token, tokenIndex) => {
-              if (token.kind === "code") {
-                return (
-                  <Text key={`${keyPrefix}-token-${lineIndex}-${tokenIndex}`} color={COLORS.highlightCode}>
-                    {token.text}
-                  </Text>
-                );
-              }
-              if (token.kind === "command") {
-                return (
-                  <Text key={`${keyPrefix}-token-${lineIndex}-${tokenIndex}`} bold>
-                    {token.text}
-                  </Text>
-                );
-              }
-              if (token.kind === "path") {
-                return (
-                  <Text key={`${keyPrefix}-token-${lineIndex}-${tokenIndex}`} underline color={COLORS.highlightPath}>
-                    {token.text}
-                  </Text>
-                );
-              }
-              return <Text key={`${keyPrefix}-token-${lineIndex}-${tokenIndex}`}>{token.text}</Text>;
-            })}
-          </React.Fragment>
-        ))}
+        {lines.map((line) => {
+          const lineKey = `${keyPrefix}-line-${lineOffset}-${line}`;
+          const showBreak = lineOffset > 0;
+          const tokens = tokenizeForHighlighting(line);
+          let tokenOffset = 0;
+          const renderedTokens = tokens.map((token) => {
+            const tokenKey = `${lineKey}-token-${tokenOffset}-${token.kind}-${token.text}`;
+            tokenOffset += token.text.length;
+            if (token.kind === "code") {
+              return (
+                <Text key={tokenKey} color={COLORS.highlightCode}>
+                  {token.text}
+                </Text>
+              );
+            }
+            if (token.kind === "command") {
+              return (
+                <Text key={tokenKey} bold>
+                  {token.text}
+                </Text>
+              );
+            }
+            if (token.kind === "path") {
+              return (
+                <Text key={tokenKey} underline color={COLORS.highlightPath}>
+                  {token.text}
+                </Text>
+              );
+            }
+            return <Text key={tokenKey}>{token.text}</Text>;
+          });
+          lineOffset += line.length + 1;
+          return (
+            <React.Fragment key={lineKey}>
+              {showBreak ? "\n" : null}
+              {renderedTokens}
+            </React.Fragment>
+          );
+        })}
       </>
     );
   };

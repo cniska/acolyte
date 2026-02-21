@@ -1,5 +1,3 @@
-const STRIP_ANSI_REGEX = /\u001b\[[0-9;]*m/g;
-
 type SmokeCheck = {
   name: string;
   cmd: string[];
@@ -46,7 +44,26 @@ async function runCommand(cmd: string[]): Promise<RunResult> {
 }
 
 function stripAnsi(value: string): string {
-  return value.replaceAll(STRIP_ANSI_REGEX, "");
+  let out = "";
+  for (let i = 0; i < value.length; i += 1) {
+    if (value[i] === "\x1b" && value[i + 1] === "[") {
+      let j = i + 2;
+      while (j < value.length) {
+        const ch = value[j];
+        if ((ch >= "0" && ch <= "9") || ch === ";") {
+          j += 1;
+          continue;
+        }
+        break;
+      }
+      if (value[j] === "m") {
+        i = j;
+        continue;
+      }
+    }
+    out += value[i];
+  }
+  return out;
 }
 
 function assertCheckOutput(check: SmokeCheck, output: string): string | null {

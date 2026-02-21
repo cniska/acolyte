@@ -1,5 +1,6 @@
 import { Text, useInput } from "ink";
-import React, { useEffect, useRef, useState } from "react";
+import type React from "react";
+import { useEffect, useRef, useState } from "react";
 import { resolvePromptAction } from "./prompt-keymap";
 
 const META_PREFIX_WINDOW_MS = 150;

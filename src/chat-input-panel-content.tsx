@@ -1,5 +1,5 @@
 import { Text } from "ink";
-import React from "react";
+import type React from "react";
 import { formatShortcutRows } from "./chat-layout";
 
 type SuggestionContentInput = {
@@ -27,42 +27,27 @@ export function renderInputPanelContent(input: SuggestionContentInput): React.Re
 
   let suggestions: React.ReactNode;
   if (atQuery !== null && atSuggestions.length > 0) {
-    suggestions = (
-      <>
-        {atSuggestions.map((item, index) => (
-          <Text
-            key={`at-suggestion-${index}-${item}`}
-            color={item === atSuggestions[atSuggestionIndex] ? brandColor : undefined}
-          >
-            {`  ${item}`}
-          </Text>
-        ))}
-      </>
-    );
+    suggestions = atSuggestions.map((item) => (
+      <Text key={`at-suggestion-${item}`} color={item === atSuggestions[atSuggestionIndex] ? brandColor : undefined}>
+        {`  ${item}`}
+      </Text>
+    ));
   } else if (atQuery !== null) {
     suggestions = <Text dimColor> No file or folder matches.</Text>;
   } else if (slashSuggestions.length > 0) {
-    suggestions = (
-      <>
-        {slashSuggestions.map((item, index) => (
-          <Text
-            key={`slash-suggestion-${index}-${item}`}
-            color={index === slashSuggestionIndex ? brandColor : undefined}
-            dimColor={index !== slashSuggestionIndex}
-          >{`  ${item}`}</Text>
-        ))}
-      </>
-    );
+    suggestions = slashSuggestions.map((item, index) => (
+      <Text
+        key={`slash-suggestion-${item}`}
+        color={index === slashSuggestionIndex ? brandColor : undefined}
+        dimColor={index !== slashSuggestionIndex}
+      >{`  ${item}`}</Text>
+    ));
   } else if (showShortcuts) {
-    suggestions = (
-      <>
-        {formatShortcutRows().map((line, index) => (
-          <Text key={`shortcut-row-${index}`} dimColor>
-            {line}
-          </Text>
-        ))}
-      </>
-    );
+    suggestions = formatShortcutRows().map((line) => (
+      <Text key={`shortcut-row-${line}`} dimColor>
+        {line}
+      </Text>
+    ));
   } else {
     suggestions = <Text dimColor> ? for shortcuts</Text>;
   }

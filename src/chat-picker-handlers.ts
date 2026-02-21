@@ -1,4 +1,4 @@
-import { appConfig, setPermissionMode } from "./app-config";
+import { setPermissionMode } from "./app-config";
 import type { ChatRow } from "./chat-commands";
 import type { PickerState } from "./chat-picker";
 import {

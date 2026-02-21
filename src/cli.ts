@@ -24,13 +24,11 @@ import { formatStatusOutput as formatStatusOutputShared } from "./status-format"
 import { createSession, readStore, writeStore } from "./storage";
 import type { Message, Session, SessionStore } from "./types";
 import {
-  banner,
   clearScreen,
   formatCliTitle,
   printError,
   printInfo,
   printOutput,
-  printSection,
   printTool,
   printToolHeader,
   printWarning,
@@ -66,7 +64,6 @@ function resolveCliVersion(): string {
 }
 
 const CLI_VERSION = resolveCliVersion();
-const PROMPT = "❯ ";
 const ONE_SHOT_SYSTEM_PROMPT =
   "One-shot mode: answer concisely and directly (prefer <=5 lines). Avoid option menus unless the user explicitly asks for options.";
 const runArgsSchema = z.object({
@@ -96,7 +93,6 @@ function usage(): void {
       options.reduce((max, row) => Math.max(max, row.option.length), 0),
     ) + 2;
   const dim = (text: string): string => `\x1b[2m${text}\x1b[22m`;
-  const white = (text: string): string => `\x1b[37m${text}\x1b[39m`;
   const whiteBold = (text: string): string => `\x1b[1m\x1b[37m${text}\x1b[39m\x1b[22m`;
 
   printOutput("");
@@ -160,56 +156,9 @@ function newMessage(role: Message["role"], content: string): Message {
   };
 }
 
-function printHelp(): void {
-  renderShortcutsPanel();
-}
-
-function erasePromptLineIfTty(): void {
-  if (!output.isTTY) {
-    return;
-  }
-  output.write("\x1b[1A\r\x1b[2K");
-}
-
 const CHAT_COMMANDS = ["?", "/exit"];
 
 const COMMAND_ALIASES: Record<string, string> = {};
-
-const INTERNAL_CHAT_COMMANDS = new Set([
-  "/search",
-  "/read",
-  "/git-status",
-  "/git-diff",
-  "/run",
-  "/verify",
-  "/edit",
-  "/file",
-  "/remember",
-  "/memory",
-  "/status",
-  "/new",
-  "/history",
-  "/sessions",
-  "/use",
-  "/resume",
-  "/title",
-  "/model",
-  "/clear",
-]);
-const SHORTCUT_PANEL_LINES = ["  /exit quit"] as const;
-const SHORTCUT_PANEL_COMPACT_LINES = ["  /exit quit"] as const;
-
-function getShortcutPanelLines(): readonly string[] {
-  const width = output.columns ?? 120;
-  return width < 96 ? SHORTCUT_PANEL_COMPACT_LINES : SHORTCUT_PANEL_LINES;
-}
-
-function renderShortcutsPanel(): void {
-  const lines = getShortcutPanelLines();
-  for (const line of lines) {
-    printInfo(line);
-  }
-}
 
 export function resolveCommandAlias(command: string): string {
   return COMMAND_ALIASES[command] ?? command;
@@ -272,19 +221,6 @@ export function suggestCommands(input: string, max = 3): string[] {
     .map((row) => row.command);
 }
 
-function normalizeSuggestions(commands: string[]): string[] {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const command of commands) {
-    const canonical = resolveCommandAlias(command);
-    if (!seen.has(canonical)) {
-      seen.add(canonical);
-      out.push(canonical);
-    }
-  }
-  return out;
-}
-
 export function formatKeyValueLines(rows: Array<Record<string, string>>): string[] {
   if (rows.length === 0) {
     return [];
@@ -327,33 +263,6 @@ function listSessions(store: SessionStore): void {
   }
 }
 
-function findSessionByPrefix(store: SessionStore, prefix: string): Session | null {
-  const needle = prefix.trim();
-  if (!needle) {
-    return null;
-  }
-
-  const matches = store.sessions.filter((s) => s.id.startsWith(needle));
-  if (matches.length !== 1) {
-    return null;
-  }
-
-  return matches[0];
-}
-
-function printSessionHistory(session: Session): void {
-  if (session.messages.length === 0) {
-    printInfo("Session is empty.");
-    return;
-  }
-
-  for (const [idx, msg] of session.messages.entries()) {
-    const who = msg.role === "user" ? "you" : msg.role === "assistant" ? "Acolyte" : "system";
-    const prefix = idx === 0 ? "  └ " : "    ";
-    printInfo(`${prefix}[${formatTimestamp(msg.timestamp)}] ${who}: ${truncateText(msg.content, 180)}`);
-  }
-}
-
 function printMemoryRows(rows: Awaited<ReturnType<typeof listMemories>>): void {
   if (rows.length === 0) {
     printInfo("No memories saved.");
@@ -369,10 +278,6 @@ function printMemoryRows(rows: Awaited<ReturnType<typeof listMemories>>): void {
   for (const line of formatKeyValueLines(formattedRows)) {
     printInfo(line);
   }
-}
-
-function formatToolContext(label: string, content: string): string {
-  return [`Tool context: ${label}`, "```text", content, "```"].join("\n");
 }
 
 function countLabel(value: number, singular: string, plural: string): string {
