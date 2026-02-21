@@ -80,6 +80,7 @@ Build a personal AI coding assistant (Mastra + CLI) that is local-first, memory-
    - One-shot `run` is isolated from persisted chat history (plus regression test).
    - One-shot `run`/`dogfood` now use isolated OM resource ids (`run-<session>`), reducing cross-task memory bleed.
    - Integration test verifies `run` forwards isolated `resourceId` to backend.
+   - One-shot `run` now fails with non-zero exit on backend errors (plus actionable backend-start hint), improving script reliability.
    - Automated dogfood smoke (`bun run dogfood:smoke`) validates `status`, `run "what next"`, and `dogfood --no-verify`.
    - Auto-start smoke path (`bun run dogfood:smoke:env`) makes the same checks reproducible without manual backend startup.
    - Progress tracker (`bun run dogfood:progress --lookback 30 --target 10`) reports delivery slices (`feat|fix|refactor|test`) for switch gating.
