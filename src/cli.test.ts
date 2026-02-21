@@ -9,6 +9,7 @@ import {
   formatStatusOutput,
   formatTimestamp,
   inferResumeCommandBase,
+  isTopLevelHelpCommand,
   oneShotResourceId,
   parseChatModeArgs,
   parseEditResult,
@@ -229,6 +230,14 @@ describe("cli formatting helpers", () => {
     expect(inferResumeCommandBase(["bun", "src/cli.ts", "chat"])).toBe("bun run src/cli.ts");
     expect(inferResumeCommandBase(["/opt/homebrew/bin/bun", "/repo/src/cli.ts", "chat"])).toBe("bun run src/cli.ts");
     expect(inferResumeCommandBase(["acolyte", "chat"])).toBe("acolyte");
+  });
+
+  test("isTopLevelHelpCommand recognizes help variants", () => {
+    expect(isTopLevelHelpCommand("help")).toBe(true);
+    expect(isTopLevelHelpCommand("--help")).toBe(true);
+    expect(isTopLevelHelpCommand("-h")).toBe(true);
+    expect(isTopLevelHelpCommand("chat")).toBe(false);
+    expect(isTopLevelHelpCommand(undefined)).toBe(false);
   });
 
   test("formatAssistantReplyOutput indents multiline assistant output", () => {

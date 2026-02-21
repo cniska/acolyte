@@ -62,7 +62,7 @@ const chatModeArgsSchema = z.object({
 });
 
 function usage(): void {
-  printInfo("Usage: acolyte [chat|resume|run|dogfood|history|status|memory|config|tool]");
+  printInfo("Usage: acolyte [chat|resume|run|dogfood|history|status|memory|config|tool|help]");
   printInfo("  (no command defaults to chat)");
   printInfo("  chat [--resume [id-prefix]]    Start interactive session");
   printInfo("  resume [id-prefix]             Resume active/recent session");
@@ -73,6 +73,11 @@ function usage(): void {
   printInfo("  memory          Manage personal memory notes");
   printInfo("  config          Manage local CLI defaults");
   printInfo("  tool            Run coding tools (search/read/git/run/edit/web)");
+  printInfo("  help            Show this help");
+}
+
+export function isTopLevelHelpCommand(command: string | undefined): boolean {
+  return command === "help" || command === "--help" || command === "-h";
 }
 
 function nowIso(): string {
@@ -1204,6 +1209,11 @@ async function toolMode(args: string[]): Promise<void> {
 
 async function main(): Promise<void> {
   const [command, ...args] = process.argv.slice(2);
+
+  if (isTopLevelHelpCommand(command)) {
+    usage();
+    return;
+  }
 
   if (!command) {
     await chatModeWithOptions({ resumeLatest: false });
