@@ -86,6 +86,32 @@ describe("chat-commands", () => {
     expect(rows.some((row) => row.content.includes("last_turn:"))).toBe(true);
   });
 
+  test("dispatchSlashCommand handles /tokens with empty usage", async () => {
+    let rows: ChatRow[] = [];
+    const result = await dispatchSlashCommand({
+      text: "/tokens",
+      resolvedText: "/tokens",
+      backend: makeBackend(),
+      store: makeStore(),
+      currentSession: makeSession(),
+      setCurrentSession: () => {},
+      toRows: () => [],
+      setRows: (updater) => {
+        rows = updater(rows);
+      },
+      setShowShortcuts: () => {},
+      setValue: () => {},
+      persist: async () => {},
+      exit: () => {},
+      openSkillsPanel: async () => {},
+      openResumePanel: () => {},
+      tokenUsage: [],
+    });
+
+    expect(result.stop).toBe(true);
+    expect(rows.some((row) => row.content === "No token data yet. Send a prompt first.")).toBe(true);
+  });
+
   test("dispatchSlashCommand returns transformed prompt for /dogfood", async () => {
     const result = await dispatchSlashCommand({
       text: "/dogfood tighten output",

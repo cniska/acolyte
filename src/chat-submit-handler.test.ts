@@ -1,4 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { rm, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import type { ChatRow } from "./chat-commands";
 import { createSubmitHandler } from "./chat-submit-handler";
 import type { Message, Session, SessionStore } from "./types";
@@ -181,5 +183,111 @@ describe("chat submit handler guards", () => {
     expect(last?.role).toBe("system");
     expect(last?.content).toBe("Interrupted.");
     expect(last?.dim).toBe(true);
+  });
+
+  test("stops before backend call when all @references are unresolved", async () => {
+    const rows: ChatRow[] = [];
+    let replyCalls = 0;
+
+    const session = makeSession();
+    const store: SessionStore = {
+      activeSessionId: session.id,
+      sessions: [session],
+    };
+
+    const submit = createSubmitHandler({
+      backend: {
+        reply: async () => {
+          replyCalls += 1;
+          return { model: "gpt-5-mini", output: "ok" };
+        },
+        status: async () => "ok",
+      },
+      store,
+      currentSession: session,
+      setCurrentSession: () => {},
+      toRows: () => [],
+      setRows: (updater) => {
+        rows.splice(0, rows.length, ...updater(rows));
+      },
+      setShowShortcuts: () => {},
+      setValue: () => {},
+      persist: async () => {},
+      exit: () => {},
+      openSkillsPanel: async () => {},
+      openResumePanel: () => {},
+      tokenUsage: [],
+      isThinking: false,
+      setInputHistory: () => {},
+      setInputHistoryIndex: () => {},
+      setInputHistoryDraft: () => {},
+      setIsThinking: () => {},
+      setTokenUsage: () => {},
+      createMessage: makeMessage,
+      nowIso: () => "2026-02-20T00:00:00.000Z",
+      setInterrupt: () => {},
+    });
+
+    await submit("review @definitely-not-a-real-file-xyz");
+
+    expect(replyCalls).toBe(0);
+    expect(rows.some((row) => row.content.includes("No file or folder found"))).toBe(true);
+  });
+
+  test("continues with resolved @references even when some are unresolved", async () => {
+    const rows: ChatRow[] = [];
+    let replyCalls = 0;
+    const fixture = `tmp-chat-submit-${crypto.randomUUID()}.txt`;
+    const fixturePath = join(process.cwd(), fixture);
+    await writeFile(fixturePath, "fixture");
+
+    try {
+      const session = makeSession();
+      const store: SessionStore = {
+        activeSessionId: session.id,
+        sessions: [session],
+      };
+
+      const submit = createSubmitHandler({
+        backend: {
+          reply: async () => {
+            replyCalls += 1;
+            return { model: "gpt-5-mini", output: "ok" };
+          },
+          status: async () => "ok",
+        },
+        store,
+        currentSession: session,
+        setCurrentSession: () => {},
+        toRows: () => [],
+        setRows: (updater) => {
+          rows.splice(0, rows.length, ...updater(rows));
+        },
+        setShowShortcuts: () => {},
+        setValue: () => {},
+        persist: async () => {},
+        exit: () => {},
+        openSkillsPanel: async () => {},
+        openResumePanel: () => {},
+        tokenUsage: [],
+        isThinking: false,
+        setInputHistory: () => {},
+        setInputHistoryIndex: () => {},
+        setInputHistoryDraft: () => {},
+        setIsThinking: () => {},
+        setTokenUsage: () => {},
+        createMessage: makeMessage,
+        nowIso: () => "2026-02-20T00:00:00.000Z",
+        setInterrupt: () => {},
+      });
+
+      await submit(`review @${fixture} and @definitely-not-a-real-file-xyz`);
+
+      expect(replyCalls).toBe(1);
+      expect(rows.some((row) => row.content.includes("No file or folder found"))).toBe(true);
+      expect(rows.some((row) => row.role === "assistant" && row.content === "ok")).toBe(true);
+    } finally {
+      await rm(fixturePath, { force: true });
+    }
   });
 });

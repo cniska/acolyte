@@ -93,6 +93,8 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
     const fileContextMessages: Message[] = contexts.map((context) => input.createMessage("system", context));
     if (unresolvedPaths.length > 0) {
       input.setRows((current) => [...current, ...unresolvedPathRows(unresolvedPaths)]);
+    }
+    if (unresolvedPaths.length > 0 && contexts.length === 0) {
       await input.persist();
       return;
     }

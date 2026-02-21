@@ -54,7 +54,7 @@ export function formatSessionList(store: SessionStore, limit = 10): string[] {
 
 export function formatTokenUsageOutput(last: TokenUsageEntry | null, all: TokenUsageEntry[]): string {
   if (!last) {
-    return "tokens: no data yet";
+    return "No token data yet. Send a prompt first.";
   }
   const totals = all.reduce(
     (acc, entry) => {
