@@ -25,25 +25,24 @@ describe("provider config", () => {
     expect(resolveRoleModel("reviewer", "gpt-5-mini", { reviewer: "gpt-5" })).toBe("gpt-5");
   });
 
-  test("presentModel and presentRoleModels respect provider", () => {
-    expect(presentModel("openai", "gpt-5-mini")).toBe("openai/gpt-5-mini");
-    expect(presentModel("openai-compatible", "gpt-5-mini")).toBe("gpt-5-mini");
-    expect(presentModel("anthropic", "anthropic/claude-sonnet-4")).toBe("anthropic/claude-sonnet-4");
-    expect(presentModel("gemini", "gemini/gemini-2.5-pro")).toBe("gemini/gemini-2.5-pro");
-    expect(presentModel("mock", "gpt-5-mini")).toBe("gpt-5-mini");
+  test("presentModel and presentRoleModels normalize unqualified ids and preserve qualified ids", () => {
+    expect(presentModel("gpt-5-mini")).toBe("openai/gpt-5-mini");
+    expect(presentModel("openai-compatible/qwen2.5-coder")).toBe("openai-compatible/qwen2.5-coder");
+    expect(presentModel("anthropic/claude-sonnet-4")).toBe("anthropic/claude-sonnet-4");
+    expect(presentModel("gemini/gemini-2.5-pro")).toBe("gemini/gemini-2.5-pro");
 
     expect(
-      presentRoleModels("openai", {
+      presentRoleModels({
         main: "gpt-5-mini",
-        planner: "o3",
-        coder: "gpt-5-codex",
-        reviewer: "gpt-5-mini",
+        planner: "openai/o3",
+        coder: "anthropic/claude-sonnet-4",
+        reviewer: "openai-compatible/qwen2.5-coder",
       }),
     ).toEqual({
       main: "openai/gpt-5-mini",
       planner: "openai/o3",
-      coder: "openai/gpt-5-codex",
-      reviewer: "openai/gpt-5-mini",
+      coder: "anthropic/claude-sonnet-4",
+      reviewer: "openai-compatible/qwen2.5-coder",
     });
   });
 

@@ -127,8 +127,8 @@ const server = Bun.serve({
         ok: true,
         service: "acolyte-backend",
         provider,
-        model: presentModel(provider, appConfig.models.main),
-        models: presentRoleModels(provider, resolveRoleModels()),
+        model: presentModel(appConfig.models.main),
+        models: presentRoleModels(resolveRoleModels()),
         apiBaseUrl: appConfig.openai.baseUrl,
         memory: {
           storage: mastraStorageMode,

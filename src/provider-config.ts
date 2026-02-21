@@ -37,16 +37,16 @@ export function resolveRoleModels(mainModel = appConfig.models.main): RoleModelM
   };
 }
 
-export function presentModel(provider: ProviderName, model: string): string {
-  return provider === "openai" ? normalizeModel(model) : model;
+export function presentModel(model: string): string {
+  return normalizeModel(model);
 }
 
-export function presentRoleModels(provider: ProviderName, models: RoleModelMap): RoleModelMap {
+export function presentRoleModels(models: RoleModelMap): RoleModelMap {
   return {
-    main: presentModel(provider, models.main),
-    planner: presentModel(provider, models.planner),
-    coder: presentModel(provider, models.coder),
-    reviewer: presentModel(provider, models.reviewer),
+    main: presentModel(models.main),
+    planner: presentModel(models.planner),
+    coder: presentModel(models.coder),
+    reviewer: presentModel(models.reviewer),
   };
 }
 
