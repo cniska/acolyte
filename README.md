@@ -2,6 +2,17 @@
 
 Personal AI coding assistant (CLI-first), built on Bun + Mastra.
 
+## Tech Stack
+
+- Runtime: Bun + TypeScript
+- Agent runtime: Mastra (`@mastra/core`, `@mastra/memory`, `@mastra/pg`)
+- Models/providers: OpenAI-compatible APIs (default: OpenAI)
+- CLI UI: Ink + `ink-text-input`
+- Storage:
+  - Local-first: JSON + markdown memory files under `~/.acolyte` / `<repo>/.acolyte`
+  - Optional DB: Postgres + pgvector (via Docker/Vercel Postgres)
+- Quality tooling: Biome (format + lint), TypeScript, Bun test
+
 ## Quickstart (Local-First)
 
 1. Install deps:
