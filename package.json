@@ -32,6 +32,7 @@
     "db:down": "docker compose down",
     "db:logs": "docker compose logs -f postgres",
     "db:smoke": "bun run src/postgres-smoke.ts",
+    "milestone:smoke": "bash -lc 'bun run serve:env >/tmp/acolyte-server.log 2>&1 & pid=$!; trap \"kill $pid\" EXIT; sleep 2; bun run src/milestone-smoke.ts'",
     "om:status": "bun run src/om-admin.ts status",
     "om:wipe": "bun run src/om-admin.ts wipe",
     "om:soak": "bun run src/om-soak.ts",

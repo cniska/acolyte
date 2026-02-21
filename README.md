@@ -60,6 +60,7 @@ ACOLYTE_API_URL=http://localhost:6767 bun run chat
 - One-shot prompt: `bun run run "review src/agent.ts"`
 - Status: `bun run status`
 - Verify: `bun run verify`
+- Milestone smoke: `bun run milestone:smoke`
 - Mastra Studio: `bun run studio`
 - Policy distillation from chat logs: `bun run policy:distill --sessions 60 --min 2`
 

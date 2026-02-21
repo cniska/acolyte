@@ -41,6 +41,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
   - selecting `switch` sets backend permission mode to `write` and pre-fills the original prompt
 - Local backend server with health check (`/healthz`) and chat endpoint (`/v1/chat`).
 - Local-first configuration and optional API-key auth for backend access.
+- Milestone smoke command for switch-readiness checks: `bun run milestone:smoke`.
 
 ## In Progress
 
