@@ -143,7 +143,7 @@ describe("remote backend status parsing", () => {
 });
 
 describe("local backend status", () => {
-  test("includes provider and role model fields for consistent status formatting", async () => {
+  test("includes provider and readiness rows for role lanes", async () => {
     const backend = createBackend();
     const status = await backend.status();
 
@@ -153,6 +153,14 @@ describe("local backend status", () => {
     expect(status).toContain("model_planner=");
     expect(status).toContain("model_coder=");
     expect(status).toContain("model_reviewer=");
+    expect(status).toContain("provider_main=");
+    expect(status).toContain("provider_planner=");
+    expect(status).toContain("provider_coder=");
+    expect(status).toContain("provider_reviewer=");
+    expect(status).toContain("provider_ready_main=");
+    expect(status).toContain("provider_ready_planner=");
+    expect(status).toContain("provider_ready_coder=");
+    expect(status).toContain("provider_ready_reviewer=");
     expect(status).toContain("backend=embedded");
     expect(status).toContain("permission_mode=");
   });

@@ -1,5 +1,6 @@
 import type { ChatRequest, ChatResponse } from "./api";
 import { appConfig, type PermissionMode, setPermissionMode } from "./app-config";
+import { isProviderAvailable, providerFromModel } from "./provider-config";
 
 export interface BackendOptions {
   apiUrl?: string;
@@ -67,13 +68,39 @@ class LocalBackend implements Backend {
   }
 
   async status(): Promise<string> {
+    const modelMain = appConfig.models.main;
+    const modelPlanner = appConfig.models.planner ?? modelMain;
+    const modelCoder = appConfig.models.coder ?? modelMain;
+    const modelReviewer = appConfig.models.reviewer ?? modelMain;
+    const providerMain = providerFromModel(modelMain);
+    const providerPlanner = providerFromModel(modelPlanner);
+    const providerCoder = providerFromModel(modelCoder);
+    const providerReviewer = providerFromModel(modelReviewer);
+    const providerConfig = {
+      openaiApiKey: appConfig.openai.apiKey,
+      openaiBaseUrl: appConfig.openai.baseUrl,
+      anthropicApiKey: appConfig.anthropic.apiKey,
+      googleApiKey: appConfig.google.apiKey,
+    };
+    const providerReadyMain = isProviderAvailable({ provider: providerMain, ...providerConfig });
+    const providerReadyPlanner = isProviderAvailable({ provider: providerPlanner, ...providerConfig });
+    const providerReadyCoder = isProviderAvailable({ provider: providerCoder, ...providerConfig });
+    const providerReadyReviewer = isProviderAvailable({ provider: providerReviewer, ...providerConfig });
     const fields = [
       "provider=local-mock",
-      `model=${appConfig.models.main}`,
-      `model_main=${appConfig.models.main}`,
-      `model_planner=${appConfig.models.planner ?? appConfig.models.main}`,
-      `model_coder=${appConfig.models.coder ?? appConfig.models.main}`,
-      `model_reviewer=${appConfig.models.reviewer ?? appConfig.models.main}`,
+      `model=${modelMain}`,
+      `model_main=${modelMain}`,
+      `model_planner=${modelPlanner}`,
+      `model_coder=${modelCoder}`,
+      `model_reviewer=${modelReviewer}`,
+      `provider_main=${providerMain}`,
+      `provider_planner=${providerPlanner}`,
+      `provider_coder=${providerCoder}`,
+      `provider_reviewer=${providerReviewer}`,
+      `provider_ready_main=${providerReadyMain}`,
+      `provider_ready_planner=${providerReadyPlanner}`,
+      `provider_ready_coder=${providerReadyCoder}`,
+      `provider_ready_reviewer=${providerReadyReviewer}`,
       "backend=embedded",
       `permission_mode=${appConfig.agent.permissions.mode}`,
     ];
