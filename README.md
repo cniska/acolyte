@@ -66,10 +66,6 @@ ACOLYTE_API_URL=http://localhost:6767 bun run chat
 - Dogfood prompt (verify-first): `bun run dogfood "fix src/agent.ts"`
 - Dogfood smoke checks: `bun run dogfood:smoke`
 - Dogfood smoke (auto-start backend): `bun run dogfood:smoke:env`
-- Dogfood milestone progress: `bun run dogfood:progress --lookback 30 --target 10`
-- Dogfood progress JSON: `bun run dogfood:progress --lookback 30 --target 10 --json`
-- Dogfood readiness gate: `bun run dogfood:gate --lookback 30 --target 10`
-- Dogfood fast gate (skip verify): `bun run dogfood:gate:fast --lookback 30 --target 10`
 - Status: `bun run status`
 - Verify: `bun run verify`
 - Mastra Studio: `bun run studio`
@@ -103,6 +99,7 @@ bun run om:soak --turns 60 --checkpoint-every 10
 - No deployment is required for local-first usage.
 - `bun run verify` runs: `format + lint + typecheck + test`.
 - Switch-to-Acolyte path: use small commit-sized slices, run `bun run verify`, then run `bun run dogfood:smoke`.
+- Internal dogfood telemetry (`dogfood:progress`, `dogfood:gate`) is documented in `docs/development-workflow.md`.
 
 ## More Docs
 

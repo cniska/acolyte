@@ -26,6 +26,11 @@ Use these gates after each meaningful slice:
 5. Optional switch-readiness check:
    - Fast check: `bun run dogfood:gate:fast --lookback 30 --target 10`
 
+Internal-only telemetry (not primary end-user commands):
+1. `bun run dogfood:progress --lookback 30 --target 10 [--json]`
+2. `bun run dogfood:gate --lookback 30 --target 10`
+3. `bun run dogfood:gate:fast --lookback 30 --target 10`
+
 ## Dogfooding Ramp
 Use this staged rollout when shifting work from Codex-driven to Acolyte-driven execution on `main`:
 
