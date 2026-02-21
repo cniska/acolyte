@@ -289,18 +289,45 @@ function normalizeSuggestions(commands: string[]): string[] {
   return out;
 }
 
+export function formatKeyValueLines(rows: Array<Record<string, string>>): string[] {
+  if (rows.length === 0) {
+    return [];
+  }
+  const keys = Array.from(
+    rows.reduce((set, row) => {
+      for (const key of Object.keys(row)) {
+        set.add(`${key}:`);
+      }
+      return set;
+    }, new Set<string>()),
+  );
+  const maxKey = keys.reduce((max, key) => Math.max(max, key.length), 0);
+  return rows.map((row) =>
+    Object.entries(row)
+      .map(([key, value]) => `${`${key}:`.padEnd(maxKey, " ")} ${value}`.trimEnd())
+      .join("  "),
+  );
+}
+
 function listSessions(store: SessionStore): void {
   if (store.sessions.length === 0) {
     printInfo("No saved sessions.");
     return;
   }
 
-  for (const session of store.sessions.slice(0, 20)) {
+  const rows = store.sessions.slice(0, 20).map((session) => {
     const active = session.id === store.activeSessionId ? "true" : "false";
     const updated = formatTimestamp(session.updatedAt);
-    printInfo(
-      `session=${session.id.slice(0, 12)} active=${active} model=${session.model} updated=${updated} title=${truncateText(session.title, 80)}`,
-    );
+    return {
+      session: session.id.slice(0, 12),
+      active,
+      model: session.model,
+      updated,
+      title: truncateText(session.title, 80),
+    };
+  });
+  for (const line of formatKeyValueLines(rows)) {
+    printInfo(line);
   }
 }
 
@@ -337,10 +364,14 @@ function printMemoryRows(rows: Awaited<ReturnType<typeof listMemories>>): void {
     return;
   }
 
-  for (const row of rows.slice(0, 50)) {
-    printInfo(
-      `memory=${row.id.slice(0, 12)} scope=${row.scope} created=${formatTimestamp(row.createdAt)} text=${truncateText(row.content, 160)}`,
-    );
+  const formattedRows = rows.slice(0, 50).map((row) => ({
+    memory: row.id.slice(0, 12),
+    scope: row.scope,
+    created: formatTimestamp(row.createdAt),
+    text: truncateText(row.content, 160),
+  }));
+  for (const line of formatKeyValueLines(formattedRows)) {
+    printInfo(line);
   }
 }
 
@@ -1038,9 +1069,9 @@ async function dogfoodMode(args: string[]): Promise<void> {
 
 async function historyMode(): Promise<void> {
   const store = await readStore();
-  printInfo(`sessions=${store.sessions.length}`);
+  printInfo(`sessions: ${store.sessions.length}`);
   if (store.activeSessionId) {
-    printInfo(`activeSession=${store.activeSessionId.slice(0, 12)}`);
+    printInfo(`active_session: ${store.activeSessionId.slice(0, 12)}`);
   }
   listSessions(store);
 }
@@ -1074,8 +1105,8 @@ async function memoryMode(args: string[]): Promise<void> {
       return;
     }
     const rows = await listMemories({ scope: scope as "all" | "user" | "project" });
-    printInfo(`scope=${scope}`);
-    printInfo(`memories=${rows.length}`);
+    printInfo(`scope: ${scope}`);
+    printInfo(`memories: ${rows.length}`);
     printMemoryRows(rows);
     return;
   }

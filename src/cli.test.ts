@@ -6,6 +6,7 @@ import {
   formatAssistantReplyOutput,
   formatEditUpdateOutput,
   formatForTool,
+  formatKeyValueLines,
   formatResumeCommand,
   formatRunOutput,
   formatStatusOutput,
@@ -109,6 +110,14 @@ describe("cli formatting helpers", () => {
     expect(out).toContain("om_state:");
     expect(out).toContain("exists=true");
     expect(out).toContain("gen=4");
+  });
+
+  test("formatKeyValueLines aligns key/value rows", () => {
+    const out = formatKeyValueLines([
+      { session: "sess_123", active: "true" },
+      { session: "sess_456", active: "false" },
+    ]);
+    expect(out).toEqual(["session: sess_123  active:  true", "session: sess_456  active:  false"]);
   });
 
   test("formatSearchOutput includes match and file counts", () => {
