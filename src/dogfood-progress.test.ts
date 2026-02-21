@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { countDeliverySlices, parseArgs, parseGitLog, summarizeByType } from "./dogfood-progress";
+import { buildGitLogCmd, countDeliverySlices, parseArgs, parseGitLog, summarizeByType } from "./dogfood-progress";
 
 describe("dogfood progress", () => {
   test("parseArgs applies defaults", () => {
@@ -69,5 +69,24 @@ describe("dogfood progress", () => {
         { type: "other", count: 2 },
       ]),
     ).toBe(7);
+  });
+
+  test("buildGitLogCmd uses argv form for lookback and since", () => {
+    expect(buildGitLogCmd({ lookback: 12, target: 10, json: false })).toEqual([
+      "git",
+      "log",
+      "--date=short",
+      "--pretty=format:%h%x09%ad%x09%s",
+      "-n",
+      "12",
+    ]);
+    expect(buildGitLogCmd({ since: "2026-02-21 10:00", lookback: 30, target: 10, json: false })).toEqual([
+      "git",
+      "log",
+      "--date=short",
+      "--pretty=format:%h%x09%ad%x09%s",
+      "--since",
+      "2026-02-21 10:00",
+    ]);
   });
 });

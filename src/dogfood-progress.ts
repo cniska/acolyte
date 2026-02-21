@@ -113,13 +113,17 @@ function countDeliverySlices(types: Array<{ type: string; count: number }>): num
   return types.reduce((sum, row) => sum + (DELIVERY_TYPES.has(row.type) ? row.count : 0), 0);
 }
 
+function buildGitLogCmd(args: ProgressArgs): string[] {
+  const base = ["git", "log", "--date=short", "--pretty=format:%h%x09%ad%x09%s"];
+  if (args.since) {
+    return [...base, "--since", args.since];
+  }
+  return [...base, "-n", String(args.lookback)];
+}
+
 function runGitLog(args: ProgressArgs): Commit[] {
-  const cmd = [
-    "git log --date=short --pretty=format:%h%x09%ad%x09%s",
-    args.since ? `--since='${args.since.replaceAll("'", "'\"'\"'")}'` : `-n ${args.lookback}`,
-  ].join(" ");
   const proc = Bun.spawnSync({
-    cmd: ["bash", "-lc", cmd],
+    cmd: buildGitLogCmd(args),
     stdout: "pipe",
     stderr: "pipe",
   });
@@ -191,4 +195,4 @@ if (import.meta.main) {
   void main();
 }
 
-export { countDeliverySlices, parseArgs, parseGitLog, summarizeByType };
+export { buildGitLogCmd, countDeliverySlices, parseArgs, parseGitLog, summarizeByType };
