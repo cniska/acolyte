@@ -29,6 +29,8 @@ type HeaderLine = {
 
 const COLORS = {
   brand: "#A56EFF",
+  logo: "#2A1D4A",
+  logoEyes: "#FFD84D",
 } as const;
 const THINKING_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"] as const;
 
@@ -179,7 +181,13 @@ function ChatApp(props: ChatAppProps) {
 
   return (
     <Box flexDirection="column">
-      <ChatHeader lines={headerLines} brandColor={COLORS.brand} />
+      <Text> </Text>
+      <ChatHeader
+        lines={headerLines}
+        brandColor={COLORS.brand}
+        logoColor={COLORS.logo}
+        logoEyeColor={COLORS.logoEyes}
+      />
       <ChatTranscript rows={rows} isThinking={isThinking} thinkingFrame={THINKING_FRAMES[thinkingFrame] ?? "⠋"} />
 
       <Text> </Text>
