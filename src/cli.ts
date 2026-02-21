@@ -99,6 +99,7 @@ function usage(): void {
   const white = (text: string): string => `\x1b[37m${text}\x1b[39m`;
   const whiteBold = (text: string): string => `\x1b[1m\x1b[37m${text}\x1b[39m\x1b[22m`;
 
+  printOutput("");
   printOutput(formatCliTitle(CLI_VERSION));
   printOutput("");
   printOutput(whiteBold("Usage"));
