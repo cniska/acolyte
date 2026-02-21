@@ -71,6 +71,13 @@ Build a personal AI coding assistant (Mastra + CLI) that is local-first, memory-
    - Automated smoke green for `status`, `run "what next"`, OM admin safety (`wipe` requires `--yes`).
    - No regressions in core chat commands (`/status`, `/changes`, `/permissions`, `/dogfood`).
 2. Milestone 2: Dogfooding Readiness
+   - Status: in progress.
+   - Current evidence:
+   - Output shaping is now constrained for greetings, `what next`, and dogfood (`Immediate action:` normalization).
+   - Session-recovery command paths (`/new`, `/resume`, `/permissions`) are covered by automated tests.
+   - One-shot `run` is isolated from persisted chat history (plus regression test).
+   - Remaining validation:
+   - Complete 6-10 real feature/fix slices in normal flow with Acolyte-first execution and no routine fallback.
    - Exit criteria:
    - Acolyte completes small feature slices end-to-end (plan -> edit -> verify) without fallback.
    - Output stays concise and decision-useful without pseudo-picker noise.
