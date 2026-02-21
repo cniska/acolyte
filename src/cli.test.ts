@@ -94,21 +94,21 @@ describe("cli formatting helpers", () => {
     expect(out).not.toMatch(/mode:\s+openai/);
     expect(out).toMatch(/model:\s+gpt-5-mini/);
     expect(out).toContain("models:");
-    expect(out).toContain("main=openai/gpt-5-mini");
-    expect(out).toContain("planner=openai/o3");
-    expect(out).toContain("coder=openai/gpt-5-codex");
-    expect(out).toContain("reviewer=openai/gpt-5-mini");
+    expect(out).toContain("main: openai/gpt-5-mini");
+    expect(out).toContain("planner: openai/o3");
+    expect(out).toContain("coder: openai/gpt-5-codex");
+    expect(out).toContain("reviewer: openai/gpt-5-mini");
     expect(out).toMatch(/memory:\s+postgres/);
     expect(out).toContain("om:");
     expect(out).toContain("enabled");
-    expect(out).toContain("scope=resource");
-    expect(out).toContain("model=openai/gpt-5-mini");
+    expect(out).toContain("scope: resource");
+    expect(out).toContain("model: openai/gpt-5-mini");
     expect(out).toContain("om_tokens:");
-    expect(out).toContain("obs=3000");
-    expect(out).toContain("ref=8000");
+    expect(out).toContain("obs: 3000");
+    expect(out).toContain("ref: 8000");
     expect(out).toContain("om_state:");
-    expect(out).toContain("exists=true");
-    expect(out).toContain("gen=4");
+    expect(out).toContain("exists: true");
+    expect(out).toContain("gen: 4");
   });
 
   test("formatKeyValueLines aligns key/value rows", () => {

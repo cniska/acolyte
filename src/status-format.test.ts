@@ -30,14 +30,14 @@ describe("status format", () => {
       "provider=openai model_main=gpt-5-mini model_planner=o3 model_coder=gpt-5-codex model_reviewer=gpt-5 om=enabled om_scope=resource om_model=openai/gpt-5-mini om_obs_tokens=3000 om_ref_tokens=8000",
     );
 
-    expect(output).toContain("models:    main=gpt-5-mini");
-    expect(output).toContain("           planner=o3");
-    expect(output).toContain("           coder=gpt-5-codex");
-    expect(output).toContain("           reviewer=gpt-5");
-    expect(output).toContain("om:        enabled");
-    expect(output).toContain("           scope=resource");
-    expect(output).toContain("           model=openai/gpt-5-mini");
-    expect(output).toContain("om_tokens: obs=3000");
-    expect(output).toContain("           ref=8000");
+    expect(output).toContain("models:    main: gpt-5-mini");
+    expect(output).toContain("           planner: o3");
+    expect(output).toContain("           coder: gpt-5-codex");
+    expect(output).toContain("           reviewer: gpt-5");
+    expect(output).toContain("om:        status: enabled");
+    expect(output).toContain("           scope: resource");
+    expect(output).toContain("           model: openai/gpt-5-mini");
+    expect(output).toContain("om_tokens: obs: 3000");
+    expect(output).toContain("           ref: 8000");
   });
 });

@@ -43,16 +43,16 @@ export function formatStatusOutput(status: string): string {
   if (modelMain || modelPlanner || modelCoder || modelReviewer) {
     const parts: string[] = [];
     if (modelMain) {
-      parts.push(`main=${modelMain}`);
+      parts.push(`main: ${modelMain}`);
     }
     if (modelPlanner) {
-      parts.push(`planner=${modelPlanner}`);
+      parts.push(`planner: ${modelPlanner}`);
     }
     if (modelCoder) {
-      parts.push(`coder=${modelCoder}`);
+      parts.push(`coder: ${modelCoder}`);
     }
     if (modelReviewer) {
-      parts.push(`reviewer=${modelReviewer}`);
+      parts.push(`reviewer: ${modelReviewer}`);
     }
     output.push(`models: ${parts.join("\n")}`);
   }
@@ -84,13 +84,13 @@ export function formatStatusOutput(status: string): string {
   if (omEnabled || omScope || omModel) {
     const parts: string[] = [];
     if (omEnabled) {
-      parts.push(omEnabled);
+      parts.push(`status: ${omEnabled}`);
     }
     if (omScope) {
-      parts.push(`scope=${omScope}`);
+      parts.push(`scope: ${omScope}`);
     }
     if (omModel) {
-      parts.push(`model=${omModel}`);
+      parts.push(`model: ${omModel}`);
     }
     output.push(`om: ${parts.join("\n")}`);
   }
@@ -99,7 +99,7 @@ export function formatStatusOutput(status: string): string {
   const omRefTokens = take("om_ref_tokens");
   if (omObsTokens || omRefTokens) {
     output.push(
-      `om_tokens: ${[omObsTokens ? `obs=${omObsTokens}` : "", omRefTokens ? `ref=${omRefTokens}` : ""]
+      `om_tokens: ${[omObsTokens ? `obs: ${omObsTokens}` : "", omRefTokens ? `ref: ${omRefTokens}` : ""]
         .filter((part) => part.length > 0)
         .join("\n")}`,
     );
@@ -112,16 +112,16 @@ export function formatStatusOutput(status: string): string {
   if (omExists || omGen || omLastObserved || omLastReflection) {
     const parts: string[] = [];
     if (omExists) {
-      parts.push(`exists=${omExists}`);
+      parts.push(`exists: ${omExists}`);
     }
     if (omGen) {
-      parts.push(`gen=${omGen}`);
+      parts.push(`gen: ${omGen}`);
     }
     if (omLastObserved) {
-      parts.push(`last_observed=${omLastObserved}`);
+      parts.push(`last_observed: ${omLastObserved}`);
     }
     if (omLastReflection) {
-      parts.push(`last_reflection=${omLastReflection}`);
+      parts.push(`last_reflection: ${omLastReflection}`);
     }
     output.push(`om_state: ${parts.join("\n")}`);
   }
