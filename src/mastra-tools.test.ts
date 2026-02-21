@@ -29,22 +29,32 @@ describe("mastra role toolsets", () => {
 
 describe("read-file tool schema", () => {
   test("rejects invalid range when start is greater than end", () => {
-    expect(() => readFileTool.inputSchema.parse({ path: "src/agent.ts", start: 20, end: 10 })).toThrow(
+    const schema = readFileTool.inputSchema;
+    expect(schema).toBeDefined();
+    if (!schema) {
+      throw new Error("readFileTool.inputSchema is undefined");
+    }
+    expect(() => schema.parse({ path: "src/agent.ts", start: 20, end: 10 })).toThrow(
       "start must be less than or equal to end",
     );
   });
 
   test("accepts bounded ranges and single-sided ranges", () => {
-    expect(readFileTool.inputSchema.parse({ path: "src/agent.ts", start: 10, end: 20 })).toEqual({
+    const schema = readFileTool.inputSchema;
+    expect(schema).toBeDefined();
+    if (!schema) {
+      throw new Error("readFileTool.inputSchema is undefined");
+    }
+    expect(schema.parse({ path: "src/agent.ts", start: 10, end: 20 })).toEqual({
       path: "src/agent.ts",
       start: 10,
       end: 20,
     });
-    expect(readFileTool.inputSchema.parse({ path: "src/agent.ts", start: 10 })).toEqual({
+    expect(schema.parse({ path: "src/agent.ts", start: 10 })).toEqual({
       path: "src/agent.ts",
       start: 10,
     });
-    expect(readFileTool.inputSchema.parse({ path: "src/agent.ts", end: 20 })).toEqual({
+    expect(schema.parse({ path: "src/agent.ts", end: 20 })).toEqual({
       path: "src/agent.ts",
       end: 20,
     });
