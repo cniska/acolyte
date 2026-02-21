@@ -199,6 +199,12 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     return { stop: true, userText: text, runVerifyAfterReply: false };
   }
 
+  if (resolvedText === "/permissions") {
+    pushUserCommandRow();
+    ctx.setRows((current) => [...current, row("assistant", `permissions: ${appConfig.agent.permissions.mode}`)]);
+    return { stop: true, userText: text, runVerifyAfterReply: false };
+  }
+
   if (resolvedText === "/changes") {
     pushUserCommandRow();
     try {

@@ -68,6 +68,10 @@ export function formatStatusOutput(status: string): string {
   if (memoryStorage) {
     output.push(`memory: ${memoryStorage}`);
   }
+  const permissionMode = take("permission_mode");
+  if (permissionMode) {
+    output.push(`permissions: ${permissionMode}`);
+  }
 
   const omEnabled = take("om");
   const omScope = take("om_scope");

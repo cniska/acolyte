@@ -10,6 +10,7 @@ describe("env parsing", () => {
     expect(parsed.ACOLYTE_OM_OBSERVATION_TOKENS).toBe(3_000);
     expect(parsed.ACOLYTE_OM_REFLECTION_TOKENS).toBe(8_000);
     expect(parsed.ACOLYTE_CONTEXT_MAX_TOKENS).toBe(8_000);
+    expect(parsed.ACOLYTE_PERMISSION_MODE).toBe("write");
   });
 
   test("parseEnv accepts explicit values", () => {
@@ -25,6 +26,7 @@ describe("env parsing", () => {
       ACOLYTE_OM_OBSERVATION_TOKENS: "3500",
       ACOLYTE_OM_REFLECTION_TOKENS: "9000",
       ACOLYTE_CONTEXT_MAX_TOKENS: "7000",
+      ACOLYTE_PERMISSION_MODE: "read",
     });
     expect(parsed.PORT).toBe(9999);
     expect(parsed.DATABASE_URL).toBe("postgres://u:p@localhost:5432/acolyte");
@@ -37,6 +39,7 @@ describe("env parsing", () => {
     expect(parsed.ACOLYTE_OM_OBSERVATION_TOKENS).toBe(3500);
     expect(parsed.ACOLYTE_OM_REFLECTION_TOKENS).toBe(9000);
     expect(parsed.ACOLYTE_CONTEXT_MAX_TOKENS).toBe(7000);
+    expect(parsed.ACOLYTE_PERMISSION_MODE).toBe("read");
   });
 
   test("parseEnv rejects invalid port", () => {

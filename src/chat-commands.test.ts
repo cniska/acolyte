@@ -121,4 +121,10 @@ describe("chat-commands", () => {
     expect(stop).toBe(true);
     expect(rows.some((row) => row.content === "Usage: /web <query>")).toBe(true);
   });
+
+  test("dispatchSlashCommand shows permission mode", async () => {
+    const { rows, stop } = await runCommand("/permissions");
+    expect(stop).toBe(true);
+    expect(rows.some((row) => row.content.includes("permissions:"))).toBe(true);
+  });
 });

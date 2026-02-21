@@ -27,6 +27,9 @@ export const appConfig = {
     },
   },
   agent: {
+    permissions: {
+      mode: env.ACOLYTE_PERMISSION_MODE,
+    },
     contextMaxTokens: env.ACOLYTE_CONTEXT_MAX_TOKENS,
     inputBudget: {
       maxHistoryMessages: 40,

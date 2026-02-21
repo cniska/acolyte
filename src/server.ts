@@ -122,6 +122,7 @@ const server = Bun.serve({
             currentError: currentOmError,
           },
         },
+        permissionMode: appConfig.agent.permissions.mode,
       });
     }
 

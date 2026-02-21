@@ -12,7 +12,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Unknown slash-command typo recovery (for example `/stauts` -> `/status`).
 - One-slot prompt queue while thinking (latest submit wins) with inline queued indicator.
 - Compact slash aliases for common commands (`/df`, `/ds`, `/mem`, `/rem`).
-- In-chat utility commands: `/status`, `/changes`, `/web <query>`.
+- In-chat utility commands: `/status`, `/permissions`, `/changes`, `/web <query>`.
 - In-chat dogfooding readiness check: `/dogfood-status` with short alias `/ds`.
 - Non-interactive dogfooding readiness command: `acolyte dogfood-status`.
 - Skills picker + command support: `/skills` and `$` shortcut.
@@ -28,7 +28,12 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - In-flight turn interrupt via `Esc` while Acolyte is thinking.
 - One-shot CLI mode via `run` (including `--file` attachment support).
 - Tool command surface for search/web/read/edit/git/run operations.
-- Secure-by-default workspace guards for tool execution (file ops scoped to repo; shell commands reject obvious path escapes).
+- Secure-by-default tool guardrails:
+  - file reads/edits are restricted to the workspace plus `~/.acolyte`
+  - shell commands reject path traversal and paths outside workspace/`~/.acolyte`
+- Permission modes (`ACOLYTE_PERMISSION_MODE`):
+  - `read`: disables write-capable tools (shell execution, file edit)
+  - `write`: enables full local tool capability within guarded roots
 - Local backend server with health check (`/healthz`) and chat endpoint (`/v1/chat`).
 - Local-first configuration and optional API-key auth for backend access.
 

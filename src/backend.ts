@@ -52,7 +52,7 @@ class LocalBackend implements Backend {
   }
 
   async status(): Promise<string> {
-    return "mode=local-mock backend=embedded";
+    return `mode=local-mock backend=embedded permission_mode=${appConfig.agent.permissions.mode}`;
   }
 }
 
@@ -148,6 +148,7 @@ class RemoteBackend implements Backend {
           currentError?: unknown;
         };
       };
+      permissionMode?: unknown;
     };
     const provider =
       typeof json.provider === "string" ? json.provider : typeof json.mode === "string" ? json.mode : "unknown";
@@ -188,6 +189,7 @@ class RemoteBackend implements Backend {
       omGeneration === undefined ? undefined : `om_gen=${omGeneration}`,
       omLastObservedAt ? `om_last_observed=${omLastObservedAt}` : undefined,
       omLastReflectionAt ? `om_last_reflection=${omLastReflectionAt}` : undefined,
+      typeof json.permissionMode === "string" ? `permission_mode=${json.permissionMode}` : undefined,
     ].filter((field): field is string => Boolean(field));
     return fields.join(" ");
   }

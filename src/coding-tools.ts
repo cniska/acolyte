@@ -1,7 +1,10 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
+import { appConfig } from "./app-config";
 
 const WORKSPACE_ROOT = resolve(process.cwd());
+const ACOLYTE_HOME_ROOT = resolve(homedir(), ".acolyte");
 
 async function runCommand(cmd: string[]): Promise<{ code: number; stdout: string; stderr: string }> {
   const proc = Bun.spawn({
@@ -50,10 +53,19 @@ function isWithinWorkspace(pathInput: string): boolean {
   return absPath === WORKSPACE_ROOT || absPath.startsWith(`${WORKSPACE_ROOT}/`);
 }
 
-function ensurePathWithinWorkspace(pathInput: string, operation: string): string {
+function isWithinAcolyteHome(pathInput: string): boolean {
   const absPath = resolve(pathInput);
-  if (!isWithinWorkspace(absPath)) {
-    throw new Error(`${operation} is restricted to the current workspace`);
+  return absPath === ACOLYTE_HOME_ROOT || absPath.startsWith(`${ACOLYTE_HOME_ROOT}/`);
+}
+
+function isAllowedPath(pathInput: string): boolean {
+  return isWithinWorkspace(pathInput) || isWithinAcolyteHome(pathInput);
+}
+
+function ensurePathWithinAllowedRoots(pathInput: string, operation: string): string {
+  const absPath = resolve(pathInput);
+  if (!isAllowedPath(absPath)) {
+    throw new Error(`${operation} is restricted to the workspace or ~/.acolyte`);
   }
   return absPath;
 }
@@ -63,15 +75,33 @@ function extractAbsolutePathsFromCommand(command: string): string[] {
   return matches.map((part) => part.trim().replace(/^["'`]/, ""));
 }
 
+function extractHomePathsFromCommand(command: string): string[] {
+  const matches = command.match(/(?:^|[\s"'`])(~\/[^\s"'`|;&<>]*)/g) ?? [];
+  return matches.map((part) => part.trim().replace(/^["'`]/, ""));
+}
+
 function ensureCommandScopedToWorkspace(command: string): void {
   if (command.includes("../") || command.includes("..\\")) {
     throw new Error("Command contains path traversal outside workspace");
   }
   const absPaths = extractAbsolutePathsFromCommand(command);
   for (const absPath of absPaths) {
-    if (!isWithinWorkspace(absPath)) {
-      throw new Error("Command references absolute path outside workspace");
+    if (!isAllowedPath(absPath)) {
+      throw new Error("Command references path outside workspace and ~/.acolyte");
     }
+  }
+  const homePaths = extractHomePathsFromCommand(command);
+  for (const homePath of homePaths) {
+    const expanded = resolve(homedir(), homePath.slice(2));
+    if (!isWithinAcolyteHome(expanded)) {
+      throw new Error("Command references home path outside ~/.acolyte");
+    }
+  }
+}
+
+function ensureWritePermission(operation: string): void {
+  if (appConfig.agent.permissions.mode === "read") {
+    throw new Error(`${operation} is disabled in read mode`);
   }
 }
 
@@ -161,7 +191,7 @@ function toInt(value: string | undefined, fallback: number): number {
 }
 
 export async function readSnippet(pathInput: string, start?: string, end?: string): Promise<string> {
-  const absPath = ensurePathWithinWorkspace(pathInput, "Read");
+  const absPath = ensurePathWithinAllowedRoots(pathInput, "Read");
   const raw = await readFile(absPath, "utf8");
   const lines = raw.split("\n");
 
@@ -184,7 +214,7 @@ export async function gitStatusShort(): Promise<string> {
 export async function gitDiff(pathInput?: string, contextLines = 3): Promise<string> {
   const args = ["git", "diff", `--unified=${contextLines}`];
   if (pathInput) {
-    ensurePathWithinWorkspace(pathInput, "Diff");
+    ensurePathWithinAllowedRoots(pathInput, "Diff");
     args.push("--", pathInput);
   }
   const { code, stdout, stderr } = await runCommand(args);
@@ -197,6 +227,7 @@ export async function gitDiff(pathInput?: string, contextLines = 3): Promise<str
 const BLOCKED_SHELL_TOKENS = ["rm -rf /", "shutdown", "reboot", "mkfs", "dd if="];
 
 export async function runShellCommand(command: string, timeoutMs = 60_000): Promise<string> {
+  ensureWritePermission("Shell command execution");
   const trimmed = command.trim();
   if (!trimmed) {
     throw new Error("Command cannot be empty");
@@ -246,7 +277,8 @@ export async function editFileReplace(input: {
   replace: string;
   dryRun?: boolean;
 }): Promise<string> {
-  const absPath = ensurePathWithinWorkspace(input.path, "Edit");
+  ensureWritePermission("File editing");
+  const absPath = ensurePathWithinAllowedRoots(input.path, "Edit");
   const raw = await readFile(absPath, "utf8");
 
   if (!input.find) {

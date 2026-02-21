@@ -18,6 +18,7 @@ OPENAI_API_KEY=...
 # ACOLYTE_MODEL_CODER=gpt-5-codex
 # ACOLYTE_MODEL_REVIEWER=gpt-5-mini
 # DATABASE_URL=postgres://acolyte:acolyte@localhost:5432/acolyte
+# ACOLYTE_PERMISSION_MODE=write   # read|write
 ```
 
 Role model vars are optional and fall back to `ACOLYTE_MODEL`.
@@ -46,6 +47,7 @@ ACOLYTE_API_URL=http://localhost:6767 bun run chat
 - `@path` attach file/dir context
 - `/new`, `/sessions`, `/resume <id-prefix>`
 - `/status`, `/changes`, `/web <query>`
+- `/permissions`
 - `/dogfood <task>` (alias: `/df`)
 - `/dogfood-status` (alias: `/ds`)
 - `/remember [--project] <text>`, `/memory` (aliases: `/rem`, `/mem`)

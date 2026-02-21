@@ -15,6 +15,7 @@ const SHORTCUT_ITEMS = [
   { key: "/dogfood <task>", description: "run verify-first coding loop" },
   { key: "/dogfood-status (/ds)", description: "check dogfooding readiness" },
   { key: "/new", description: "new session" },
+  { key: "/permissions", description: "show permission mode" },
   { key: "/status", description: "show backend status" },
   { key: "/sessions", description: "list sessions" },
   { key: "/resume <id>", description: "resume session" },

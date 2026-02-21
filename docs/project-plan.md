@@ -33,6 +33,7 @@ Build a personal AI assistant using Mastra, with a CLI-first interface that runs
 3. Workflow moat: strong fit for real coding workflows (repo tools, tests, diff-aware edits, session continuity) instead of generic chat.
 4. UX moat: fast, minimal, high-signal CLI interface that keeps operator trust and control.
 5. Data moat: longitudinal personal workflow context (decisions, corrections, outcomes) centralized across devices.
+6. Safety moat: secure-by-default execution policy (permission modes + path guardrails) that keeps automation predictable and trusted.
 
 ## Scope
 ### In Scope (MVP)
@@ -215,7 +216,8 @@ Phases are milestone-based, not calendar-bound.
 19. Add first-class local model support via OpenAI-compatible base URLs (Ollama/vLLM), including docs, smoke checks, and lane-specific overrides.
 20. Add token-usage guardrails: hard prompt/context budgets, default compact tool output, and token telemetry per reply.
 21. Prioritize a TypeScript-first development lane (Bun/Node/TS defaults, typecheck+test workflow) before expanding language-specific support for other stacks.
-22. Keep tool execution workspace-scoped by default; later add a narrow opt-in exception for Acolyte-owned config paths (for example `~/.acolyte`).
+22. Keep tool execution secure-by-default as a product differentiator:
+    file tools are limited to workspace + `~/.acolyte`, and shell tools block traversal/path escapes outside those roots.
 
 ## Prioritization Policy
 1. Prioritize correctness, reliability, and core workflow capability over cosmetic UX changes.
