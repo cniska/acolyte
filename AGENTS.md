@@ -26,6 +26,8 @@
 ## Code
 
 - Choose pragmatic solutions with low maintenance overhead.
+- Build first, tune second: prioritize delivering a working end-to-end capability before spending time on polish.
+- Polish user-facing behavior first in MVP; defer internal polish/refactors unless they unblock delivery, reliability, or safety.
 - Follow YAGNI strictly: do not add new commands/features/options unless they are needed for active workflows right now.
 - Apply Rule of Three for abstractions: wait for repeated concrete use (roughly three real cases) before introducing shared abstractions.
 - Avoid unnecessary indirection and abstractions.
