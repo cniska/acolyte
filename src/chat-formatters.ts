@@ -31,11 +31,15 @@ export function formatDogfoodStatus(input: {
   hasApiKey: boolean;
 }): string {
   const keyStatus = input.hasApiKey ? "set" : "missing";
+  const verifyOk = /\bpassed\b/i.test(input.verifySummary);
+  const backendOk = !/\b(unavailable|failed|error)\b/i.test(input.backendStatus);
+  const switchGate = verifyOk && backendOk && input.hasApiKey ? "ready" : "not ready yet";
   const lines = [
     "Dogfood status",
     `- ${input.verifySummary}`,
     `- Backend: ${input.backendStatus}`,
     `- OPENAI_API_KEY: ${keyStatus}`,
+    `- Switch gate: ${switchGate}`,
   ];
   return lines.join("\n");
 }

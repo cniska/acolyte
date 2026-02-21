@@ -27,6 +27,16 @@ describe("chat-formatters helpers", () => {
     expect(out).toContain("- Verify passed (exit 0, 1.2s).");
     expect(out).toContain("- Backend: mode=openai service=acolyte-backend");
     expect(out).toContain("- OPENAI_API_KEY: set");
+    expect(out).toContain("- Switch gate: ready");
+  });
+
+  test("formatDogfoodStatus reports not-ready gate when checks fail", () => {
+    const out = formatDogfoodStatus({
+      backendStatus: "status unavailable",
+      verifySummary: "Verify failed (exit 1, 500ms).",
+      hasApiKey: false,
+    });
+    expect(out).toContain("- Switch gate: not ready yet");
   });
 
   test("formatChangesSummary renders git status and diff totals", () => {
