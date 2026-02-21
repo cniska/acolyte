@@ -90,6 +90,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Internal CLI helpers now use Zod-backed argument validation in key scripts (`dogfood-gate`, `wait-backend`).
 - Expanded Zod arg-validation pattern to additional admin tooling (`om-admin`) for consistency.
 - `om-soak` now has strict Zod-backed option parsing + tests (and no side-effects on module import).
+- Policy distillation option parsing now uses Zod while preserving current CLI error messages.
 
 ## Open Narrative Threads
 1. Continue dogfooding ramp from Codex-led to Acolyte-led development.
