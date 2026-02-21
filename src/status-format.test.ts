@@ -58,4 +58,12 @@ describe("status format", () => {
     expect(output).toContain("om:       scope: resource");
     expect(output).toContain("          model: openai/gpt-5-mini");
   });
+
+  test("keeps OM headline value plain when enabled is present", () => {
+    const output = formatStatusOutput("provider=openai om=enabled om_scope=resource");
+
+    expect(output).toContain("om:       enabled");
+    expect(output).toContain("          scope: resource");
+    expect(output).not.toContain("status: enabled");
+  });
 });
