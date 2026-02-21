@@ -65,6 +65,11 @@ async function main(): Promise<void> {
     const output = stripAnsi(`${result.stdout}\n${result.stderr}`);
     if (result.exitCode !== 0 && !check.allowFailure) {
       console.error(`✗ ${check.name}: command failed (exit ${result.exitCode})`);
+      if (check.name === "status" && /unable to connect/i.test(output)) {
+        console.error(
+          "Hint: start backend first (`bun run serve:env`) and ensure apiUrl is set to http://localhost:6767.",
+        );
+      }
       console.error(output.trim());
       process.exit(1);
     }
