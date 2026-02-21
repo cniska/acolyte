@@ -65,11 +65,11 @@ Build a personal AI coding assistant (Mastra + CLI) that is local-first, memory-
    - Evidence:
    - `bun run verify` is green after each implementation slice.
    - Smoke checks pass for `status`, `run "hello"`, and OM admin safety (`om:wipe` refuses without `--yes`).
-   - Core chat command coverage includes `/status`, `/changes`, `/permissions`, and `/dogfood` in automated tests.
+   - Core chat command coverage includes `/status`, `/permissions`, and `/dogfood` in automated tests.
    - Exit criteria:
    - `bun run verify` green after each slice.
    - Automated smoke green for `status`, `run "hello"`, OM admin safety (`wipe` requires `--yes`).
-   - No regressions in core chat commands (`/status`, `/changes`, `/permissions`, `/dogfood`).
+   - No regressions in core chat commands (`/status`, `/permissions`, `/dogfood`).
 2. Milestone 2: Dogfooding Readiness
    - Status: in progress.
    - Current evidence:

@@ -41,7 +41,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 ## Shipped Highlights
 1. Core platform: CLI + backend + Mastra agent/tools + `docs/soul.md`.
 2. Local persistence: sessions + memory (user/project) + config.
-3. Core commands: search/read/edit/run/git/status, `/verify`, `/changes`.
+3. Core commands: search/read/edit/run/git/status, `/verify`.
 4. Chat UX: Ink-based interface, stable prompt/transcript separation, shortcuts/pickers, resume/skills flows.
 5. Memory UX: `/remember [--project]`, `/memory`, policy distillation groundwork.
 6. Developer ergonomics: `@path` attach (files + directories), fuzzy matching, better keybindings, interrupt with `Esc`.
