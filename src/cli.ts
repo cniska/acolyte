@@ -56,10 +56,15 @@ const editResultSchema = z.object({
   matches: z.coerce.number().int().nonnegative(),
   dryRun: z.boolean(),
 });
+const chatModeArgsSchema = z.object({
+  resumeLatest: z.boolean(),
+  resumePrefix: z.string().min(1).optional(),
+});
 
 function usage(): void {
-  printInfo("Usage: acolyte <chat|run|dogfood|history|status|memory|config|tool>");
-  printInfo("  chat            Start interactive session");
+  printInfo("Usage: acolyte <chat|resume|run|dogfood|history|status|memory|config|tool>");
+  printInfo("  chat [--resume [id-prefix]]    Start interactive session");
+  printInfo("  resume [id-prefix]             Resume active/recent session");
   printInfo("  run [--file path] [--verify] <prompt>    Send one prompt and optionally verify");
   printInfo("  dogfood [--file path] <prompt>    Run one prompt and always verify");
   printInfo("  history         Show recent sessions");
@@ -768,13 +773,87 @@ function parseEditArgs(args: string[]): {
   });
 }
 
-async function chatMode(): Promise<void> {
+export function parseChatModeArgs(args: string[]): { resumeLatest: boolean; resumePrefix?: string } {
+  const raw: { resumeLatest: boolean; resumePrefix?: string } = { resumeLatest: false };
+  for (let i = 0; i < args.length; i += 1) {
+    const token = args[i];
+    if (token === "--resume") {
+      raw.resumeLatest = true;
+      const next = args[i + 1];
+      if (next && !next.startsWith("-")) {
+        raw.resumePrefix = next;
+        i += 1;
+      }
+      continue;
+    }
+    throw new Error("Usage: acolyte chat [--resume [session-id-prefix]]");
+  }
+  return chatModeArgsSchema.parse(raw);
+}
+
+export function formatResumeCommand(sessionId: string): string {
+  return `acolyte resume ${sessionId.slice(0, 12)}`;
+}
+
+type ResumeTarget =
+  | { kind: "ok"; session: Session }
+  | { kind: "not_found"; prefix: string }
+  | { kind: "ambiguous"; prefix: string; matches: Session[] };
+
+function resolveResumeTarget(
+  store: SessionStore,
+  options: { resumeLatest: boolean; resumePrefix?: string },
+): ResumeTarget | null {
+  if (options.resumePrefix) {
+    const matches = store.sessions.filter((item) => item.id.startsWith(options.resumePrefix ?? ""));
+    if (matches.length === 0) {
+      return { kind: "not_found", prefix: options.resumePrefix };
+    }
+    if (matches.length > 1) {
+      return { kind: "ambiguous", prefix: options.resumePrefix, matches };
+    }
+    return { kind: "ok", session: matches[0] };
+  }
+
+  if (!options.resumeLatest) {
+    return null;
+  }
+
+  const active = store.activeSessionId ? store.sessions.find((item) => item.id === store.activeSessionId) : undefined;
+  if (active) {
+    return { kind: "ok", session: active };
+  }
+  if (store.sessions.length > 0) {
+    const latest = store.sessions[0];
+    if (latest) {
+      return { kind: "ok", session: latest };
+    }
+  }
+  return null;
+}
+
+async function chatModeWithOptions(options: { resumeLatest: boolean; resumePrefix?: string }): Promise<void> {
   const config = await readConfig();
   const store = await readStore();
   const defaultModel = appConfig.models.main ?? config.model ?? FALLBACK_MODEL;
-  // Start a fresh chat session by default to avoid cross-session transcript/context bleed.
-  const session = createSession(defaultModel);
-  store.sessions.unshift(session);
+  const resolved = resolveResumeTarget(store, options);
+  if (resolved?.kind === "not_found") {
+    printError(`No session found for prefix: ${resolved.prefix}`);
+    process.exitCode = 1;
+    return;
+  }
+  if (resolved?.kind === "ambiguous") {
+    const sample = resolved.matches.slice(0, 6).map((item) => item.id.slice(0, 12));
+    printError(`Ambiguous prefix: ${resolved.prefix}`);
+    printInfo(`Matches: ${sample.join(", ")}`);
+    process.exitCode = 1;
+    return;
+  }
+  const session = resolved?.kind === "ok" ? resolved.session : createSession(defaultModel);
+  if (resolved?.kind !== "ok") {
+    // Start a fresh chat session by default to avoid cross-session transcript/context bleed.
+    store.sessions.unshift(session);
+  }
   store.activeSessionId = session.id;
   const backend = createBackend({
     apiUrl: config.apiUrl,
@@ -794,6 +873,8 @@ async function chatMode(): Promise<void> {
     persist,
     version: CLI_VERSION,
   });
+  const resumeId = store.activeSessionId ?? session.id;
+  printInfo(`Resume with: ${formatResumeCommand(resumeId)}`);
 }
 
 async function runMode(args: string[]): Promise<void> {
@@ -1122,7 +1203,26 @@ async function main(): Promise<void> {
   }
 
   if (command === "chat") {
-    await chatMode();
+    let parsed: { resumeLatest: boolean; resumePrefix?: string };
+    try {
+      parsed = parseChatModeArgs(args);
+    } catch (error) {
+      printError(error instanceof Error ? error.message : "Invalid chat args");
+      process.exitCode = 1;
+      return;
+    }
+    await chatModeWithOptions(parsed);
+    return;
+  }
+
+  if (command === "resume") {
+    if (args.length > 1) {
+      printError("Usage: acolyte resume [session-id-prefix]");
+      process.exitCode = 1;
+      return;
+    }
+    const resumePrefix = args[0]?.trim() || undefined;
+    await chatModeWithOptions({ resumeLatest: true, resumePrefix });
     return;
   }
 

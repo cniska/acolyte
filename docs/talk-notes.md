@@ -102,6 +102,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - `policy-distill` option parsing is now strict on unknown flags/missing values (`--sessions`, `--min` only), with explicit errors.
 - Session UX was aligned: `/sessions` now renders as a compact assistant block and uses UTF-8 active markers (`●`) for readability.
 - Added a forgiving slash alias: `/session` now resolves to `/sessions`.
+- Added production-style session resume flow: top-level `acolyte resume [id-prefix]` and an exit-time resume hint command.
 
 ## Open Narrative Threads
 1. Continue dogfooding ramp from Codex-led to Acolyte-led development.

@@ -4,10 +4,12 @@ import {
   formatAssistantReplyOutput,
   formatEditUpdateOutput,
   formatForTool,
+  formatResumeCommand,
   formatRunOutput,
   formatStatusOutput,
   formatTimestamp,
   oneShotResourceId,
+  parseChatModeArgs,
   parseEditResult,
   parseRunExitCode,
   resolveCommandAlias,
@@ -206,6 +208,17 @@ describe("cli formatting helpers", () => {
   test("oneShotResourceId derives stable isolated resource key", () => {
     expect(oneShotResourceId("sess_abcdef1234567890")).toBe("run-abcdef1234567890");
     expect(oneShotResourceId("sess_short")).toBe("run-short");
+  });
+
+  test("parseChatModeArgs supports resume flags", () => {
+    expect(parseChatModeArgs([])).toEqual({ resumeLatest: false });
+    expect(parseChatModeArgs(["--resume"])).toEqual({ resumeLatest: true });
+    expect(parseChatModeArgs(["--resume", "sess_abcd"])).toEqual({ resumeLatest: true, resumePrefix: "sess_abcd" });
+    expect(() => parseChatModeArgs(["--unknown"])).toThrow("Usage: acolyte chat [--resume [session-id-prefix]]");
+  });
+
+  test("formatResumeCommand returns prod-friendly command", () => {
+    expect(formatResumeCommand("sess_abcdef1234567890")).toBe("acolyte resume sess_abcdef1");
   });
 
   test("formatAssistantReplyOutput indents multiline assistant output", () => {
