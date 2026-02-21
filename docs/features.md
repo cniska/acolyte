@@ -63,6 +63,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - User-friendly backend connection errors with direct recovery hints (`bun run dev` or `bun run serve:env`).
 - Local-first configuration and optional API-key auth for backend access.
 - Non-secret local config can now be read from `~/.acolyte/config.toml` (TOML takes precedence over legacy JSON reads).
+- File config is now non-secret only: `apiKey` is ignored in config files and `/config set apiKey` is blocked (env-only).
 - Configurable agent input budgeting via env:
   - `ACOLYTE_CONTEXT_MAX_TOKENS`
   - `ACOLYTE_MAX_HISTORY_MESSAGES`
