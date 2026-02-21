@@ -73,6 +73,7 @@ ACOLYTE_API_URL=http://localhost:6767 bun run src/cli.ts
 - Help / version: `acolyte --help`, `acolyte --version`
 - One-shot prompt (isolated session): `bun run run "review src/agent.ts"`
 - Dogfood prompt (verify-first): `bun run dogfood "fix src/agent.ts"`
+- Dogfood prompt (skip verify): `bun run dogfood --no-verify "ping"`
 - Dogfood smoke checks: `bun run dogfood:smoke`
 - Status: `bun run src/cli.ts status`
 - Verify: `bun run verify`
