@@ -220,6 +220,8 @@ Phases are milestone-based, not calendar-bound.
 22. Keep tool execution secure-by-default as a product differentiator:
     file tools are limited to workspace + `~/.acolyte`, and shell tools block traversal/path escapes outside those roots.
 23. Add an opt-in chat-log distillation loop that periodically proposes policy improvements (`AGENTS.md`, skills, memory rules) with human approval before apply.
+24. Evolve policy distillation in stages to avoid premature complexity:
+    start with deterministic heuristics, add optional LLM rewrite/ranking, and introduce a dedicated policy subagent only after sustained usage proves value.
 
 ## Prioritization Policy
 1. Prioritize correctness, reliability, and core workflow capability over cosmetic UX changes.
