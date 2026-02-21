@@ -14,6 +14,15 @@ import {
 } from "./coding-tools";
 import { compactToolOutput } from "./tool-output";
 
+export async function withToolError<T>(toolId: string, task: () => Promise<T>): Promise<T> {
+  try {
+    return await task();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`${toolId} failed: ${message}`);
+  }
+}
+
 export const searchRepoTool = createTool({
   id: "search-repo",
   description: "Search the repository for a text pattern using ripgrep.",
@@ -22,12 +31,14 @@ export const searchRepoTool = createTool({
     maxResults: z.number().int().min(1).max(200).optional(),
   }),
   execute: async (input) => {
-    const maxResults = input.maxResults ?? 40;
-    const result = compactToolOutput(
-      await searchRepo(input.pattern, maxResults),
-      appConfig.agent.toolOutputBudget.search,
-    );
-    return { result };
+    return withToolError("search-repo", async () => {
+      const maxResults = input.maxResults ?? 40;
+      const result = compactToolOutput(
+        await searchRepo(input.pattern, maxResults),
+        appConfig.agent.toolOutputBudget.search,
+      );
+      return { result };
+    });
   },
 });
 
@@ -45,10 +56,12 @@ export const readFileTool = createTool({
       path: ["end"],
     }),
   execute: async (input) => {
-    const start = input.start != null ? String(input.start) : undefined;
-    const end = input.end != null ? String(input.end) : undefined;
-    const result = compactToolOutput(await readSnippet(input.path, start, end), appConfig.agent.toolOutputBudget.read);
-    return { result };
+    return withToolError("read-file", async () => {
+      const start = input.start != null ? String(input.start) : undefined;
+      const end = input.end != null ? String(input.end) : undefined;
+      const result = compactToolOutput(await readSnippet(input.path, start, end), appConfig.agent.toolOutputBudget.read);
+      return { result };
+    });
   },
 });
 
@@ -57,8 +70,10 @@ export const gitStatusTool = createTool({
   description: "Get git status --short --branch for the current repository.",
   inputSchema: z.object({}),
   execute: async () => {
-    const result = compactToolOutput(await gitStatusShort(), appConfig.agent.toolOutputBudget.gitStatus);
-    return { result };
+    return withToolError("git-status", async () => {
+      const result = compactToolOutput(await gitStatusShort(), appConfig.agent.toolOutputBudget.gitStatus);
+      return { result };
+    });
   },
 });
 
@@ -70,11 +85,13 @@ export const gitDiffTool = createTool({
     contextLines: z.number().int().min(0).max(20).optional(),
   }),
   execute: async (input) => {
-    const result = compactToolOutput(
-      await gitDiff(input.path, input.contextLines ?? 3),
-      appConfig.agent.toolOutputBudget.gitDiff,
-    );
-    return { result };
+    return withToolError("git-diff", async () => {
+      const result = compactToolOutput(
+        await gitDiff(input.path, input.contextLines ?? 3),
+        appConfig.agent.toolOutputBudget.gitDiff,
+      );
+      return { result };
+    });
   },
 });
 
@@ -86,11 +103,13 @@ export const runCommandTool = createTool({
     timeoutMs: z.number().int().min(500).max(120000).optional(),
   }),
   execute: async (input) => {
-    const result = compactToolOutput(
-      await runShellCommand(input.command, input.timeoutMs ?? 60_000),
-      appConfig.agent.toolOutputBudget.run,
-    );
-    return { result };
+    return withToolError("run-command", async () => {
+      const result = compactToolOutput(
+        await runShellCommand(input.command, input.timeoutMs ?? 60_000),
+        appConfig.agent.toolOutputBudget.run,
+      );
+      return { result };
+    });
   },
 });
 
@@ -104,16 +123,18 @@ export const editFileTool = createTool({
     dryRun: z.boolean().optional(),
   }),
   execute: async (input) => {
-    const result = compactToolOutput(
-      await editFileReplace({
-        path: input.path,
-        find: input.find,
-        replace: input.replace,
-        dryRun: input.dryRun ?? false,
-      }),
-      appConfig.agent.toolOutputBudget.edit,
-    );
-    return { result };
+    return withToolError("edit-file", async () => {
+      const result = compactToolOutput(
+        await editFileReplace({
+          path: input.path,
+          find: input.find,
+          replace: input.replace,
+          dryRun: input.dryRun ?? false,
+        }),
+        appConfig.agent.toolOutputBudget.edit,
+      );
+      return { result };
+    });
   },
 });
 
@@ -125,11 +146,13 @@ export const webSearchTool = createTool({
     maxResults: z.number().int().min(1).max(10).optional(),
   }),
   execute: async (input) => {
-    const result = compactToolOutput(
-      await searchWeb(input.query, input.maxResults ?? 5),
-      appConfig.agent.toolOutputBudget.webSearch,
-    );
-    return { result };
+    return withToolError("web-search", async () => {
+      const result = compactToolOutput(
+        await searchWeb(input.query, input.maxResults ?? 5),
+        appConfig.agent.toolOutputBudget.webSearch,
+      );
+      return { result };
+    });
   },
 });
 
@@ -141,11 +164,13 @@ export const webFetchTool = createTool({
     maxChars: z.number().int().min(500).max(12000).optional(),
   }),
   execute: async (input) => {
-    const result = compactToolOutput(
-      await fetchWeb(input.url, input.maxChars ?? 5000),
-      appConfig.agent.toolOutputBudget.webFetch,
-    );
-    return { result };
+    return withToolError("web-fetch", async () => {
+      const result = compactToolOutput(
+        await fetchWeb(input.url, input.maxChars ?? 5000),
+        appConfig.agent.toolOutputBudget.webFetch,
+      );
+      return { result };
+    });
   },
 });
 

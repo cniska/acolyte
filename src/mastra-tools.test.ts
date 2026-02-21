@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { readFileTool, toolsForRole } from "./mastra-tools";
+import { readFileTool, toolsForRole, withToolError } from "./mastra-tools";
 
 describe("mastra role toolsets", () => {
   test("planner has minimal read-only planning tools", () => {
@@ -58,5 +58,13 @@ describe("read-file tool schema", () => {
       path: "src/agent.ts",
       end: 20,
     });
+  });
+});
+
+describe("tool error wrapper", () => {
+  test("prefixes thrown errors with tool id", async () => {
+    await expect(withToolError("read-file", async () => Promise.reject(new Error("boom")))).rejects.toThrow(
+      "read-file failed: boom",
+    );
   });
 });
