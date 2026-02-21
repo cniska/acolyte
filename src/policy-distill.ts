@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { readStore } from "./storage";
 import type { Message, Session } from "./types";
 
@@ -28,6 +29,11 @@ export type DistillOptions = {
   sessions?: number;
   minOccurrences?: number;
 };
+
+const distillOptionsSchema = z.object({
+  sessions: z.coerce.number().int().positive(),
+  minOccurrences: z.coerce.number().int().min(2),
+});
 
 export function normalizePolicySignal(text: string): string | null {
   const trimmed = text.trim().replace(/\s+/g, " ");
@@ -126,21 +132,23 @@ export function parseDistillOptions(
 ): { ok: true; options: Required<DistillOptions> } | { ok: false; error: string } {
   const limitRaw = parseArgValue(args, "--sessions");
   const minRaw = parseArgValue(args, "--min");
-  const sessionLimit = Number(limitRaw ?? DEFAULT_SESSION_LIMIT);
-  const minOccurrences = Number(minRaw ?? DEFAULT_MIN_OCCURRENCES);
-
-  if (!Number.isFinite(sessionLimit) || sessionLimit < 1) {
-    return { ok: false, error: "Invalid --sessions value. Expected a positive integer." };
-  }
-  if (!Number.isFinite(minOccurrences) || minOccurrences < 2) {
+  const parsed = distillOptionsSchema.safeParse({
+    sessions: limitRaw ?? DEFAULT_SESSION_LIMIT,
+    minOccurrences: minRaw ?? DEFAULT_MIN_OCCURRENCES,
+  });
+  if (!parsed.success) {
+    const hasSessionsError = parsed.error.issues.some((issue) => issue.path[0] === "sessions");
+    if (hasSessionsError) {
+      return { ok: false, error: "Invalid --sessions value. Expected a positive integer." };
+    }
     return { ok: false, error: "Invalid --min value. Expected an integer >= 2." };
   }
 
   return {
     ok: true,
     options: {
-      sessions: Math.floor(sessionLimit),
-      minOccurrences: Math.floor(minOccurrences),
+      sessions: parsed.data.sessions,
+      minOccurrences: parsed.data.minOccurrences,
     },
   };
 }
