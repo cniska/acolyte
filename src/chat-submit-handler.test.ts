@@ -14,7 +14,7 @@ type Harness = {
   };
 };
 
-function makeHarness(overrides?: { isThinking?: boolean }): Harness {
+function createHarness(overrides?: { isThinking?: boolean }): Harness {
   const calls = {
     setInputHistory: 0,
     setValue: [] as string[],
@@ -57,7 +57,7 @@ function makeHarness(overrides?: { isThinking?: boolean }): Harness {
 
 describe("chat submit handler guards", () => {
   test("ignores empty input", async () => {
-    const h = makeHarness();
+    const h = createHarness();
     await h.submit("   ");
     expect(h.calls.setInputHistory).toBe(0);
     expect(h.calls.setValue).toEqual([]);
@@ -65,21 +65,21 @@ describe("chat submit handler guards", () => {
   });
 
   test("ignores input while thinking", async () => {
-    const h = makeHarness({ isThinking: true });
+    const h = createHarness({ isThinking: true });
     await h.submit("hello");
     expect(h.calls.setInputHistory).toBe(0);
     expect(h.calls.setValue).toEqual([]);
   });
 
   test("ignores unknown single-token slash commands", async () => {
-    const h = makeHarness();
+    const h = createHarness();
     await h.submit("/not-a-command");
     expect(h.calls.setInputHistory).toBe(0);
     expect(h.calls.setValue).toEqual([]);
   });
 
   test("toggles shortcuts on ? input", async () => {
-    const h = makeHarness();
+    const h = createHarness();
     await h.submit("?");
     expect(h.calls.setInputHistory).toBe(1);
     expect(h.calls.setValue).toEqual([""]);

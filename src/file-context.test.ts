@@ -6,7 +6,7 @@ import { buildFileContext } from "./file-context";
 
 const tempDirs: string[] = [];
 
-function makeTempDir(prefix: string): string {
+function createTempDir(prefix: string): string {
   const dir = mkdtempSync(join(tmpdir(), prefix));
   tempDirs.push(dir);
   return dir;
@@ -20,7 +20,7 @@ afterEach(() => {
 
 describe("buildFileContext", () => {
   test("attaches regular files", async () => {
-    const root = makeTempDir("acolyte-file-context-file-");
+    const root = createTempDir("acolyte-file-context-file-");
     const file = join(root, "demo.ts");
     writeFileSync(file, "const x = 1;\n", "utf8");
     const context = await buildFileContext(file);
@@ -29,7 +29,7 @@ describe("buildFileContext", () => {
   });
 
   test("attaches directories as tree listing", async () => {
-    const root = makeTempDir("acolyte-file-context-dir-");
+    const root = createTempDir("acolyte-file-context-dir-");
     mkdirSync(join(root, "src"), { recursive: true });
     writeFileSync(join(root, "src", "index.ts"), "export {};\n", "utf8");
     writeFileSync(join(root, "README.md"), "# Demo\n", "utf8");

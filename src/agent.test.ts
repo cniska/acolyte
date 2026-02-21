@@ -11,7 +11,7 @@ import {
 } from "./agent";
 import type { ChatRequest } from "./api";
 
-function makeRequest(content: string): ChatRequest {
+function createRequest(content: string): ChatRequest {
   return {
     model: "gpt-5-mini",
     message: "review this",
@@ -29,7 +29,7 @@ function makeRequest(content: string): ChatRequest {
 describe("buildAgentInput", () => {
   test("keeps large attached-file system context", () => {
     const attachment = `Attached file: AGENTS.md\n${"A".repeat(6000)}`;
-    const input = buildAgentInput(makeRequest(attachment));
+    const input = buildAgentInput(createRequest(attachment));
     expect(input).toContain("Attached file: AGENTS.md");
     expect(input).toContain("A".repeat(5000));
     expect(input.endsWith("…")).toBe(false);
@@ -37,7 +37,7 @@ describe("buildAgentInput", () => {
 
   test("still truncates non-attachment long messages", () => {
     const longSystem = `General note: ${"B".repeat(4000)}`;
-    const input = buildAgentInput(makeRequest(longSystem));
+    const input = buildAgentInput(createRequest(longSystem));
     expect(input).toContain("General note:");
     expect(input).toContain("…");
   });

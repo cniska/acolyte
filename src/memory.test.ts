@@ -6,7 +6,7 @@ import { addMemory, listMemories } from "./memory";
 
 const tempDirs: string[] = [];
 
-function makeTempDir(prefix: string): string {
+function createTempDir(prefix: string): string {
   const dir = mkdtempSync(join(tmpdir(), prefix));
   tempDirs.push(dir);
   return dir;
@@ -20,8 +20,8 @@ afterEach(() => {
 
 describe("markdown memory store", () => {
   test("writes user memory as markdown with frontmatter", async () => {
-    const homeDir = makeTempDir("acolyte-memory-home-");
-    const cwd = makeTempDir("acolyte-memory-cwd-");
+    const homeDir = createTempDir("acolyte-memory-home-");
+    const cwd = createTempDir("acolyte-memory-cwd-");
     const entry = await addMemory("Prefer concise answers", { scope: "user", homeDir, cwd });
 
     const memoryDir = join(homeDir, ".acolyte", "memory", "user");
@@ -35,8 +35,8 @@ describe("markdown memory store", () => {
   });
 
   test("supports separate project and user memories", async () => {
-    const homeDir = makeTempDir("acolyte-memory-home-");
-    const cwd = makeTempDir("acolyte-memory-cwd-");
+    const homeDir = createTempDir("acolyte-memory-home-");
+    const cwd = createTempDir("acolyte-memory-cwd-");
     await addMemory("Global preference", { scope: "user", homeDir, cwd });
     await addMemory("Project convention", { scope: "project", homeDir, cwd });
 
