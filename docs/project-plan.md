@@ -74,6 +74,7 @@ Build a personal AI coding assistant (Mastra + CLI) that is local-first, memory-
    - Status: in progress.
    - Current evidence:
    - Output shaping is now constrained for greetings, `what next`, and dogfood (`Immediate action:` normalization).
+   - Dogfood output strips quick-status / pick-one / A-B-C scaffolding, preserving one actionable line.
    - `what next` output is normalized to exactly 3 numbered steps, including sparse model responses.
    - Session-recovery command paths (`/new`, `/resume`, `/permissions`) are covered by automated tests.
    - One-shot `run` is isolated from persisted chat history (plus regression test).
