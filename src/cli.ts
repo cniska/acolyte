@@ -312,7 +312,6 @@ export function formatStatusOutput(status: string): string {
 const ANSI = {
   green: "\x1b[32m",
   red: "\x1b[31m",
-  yellow: "\x1b[33m",
   dim: "\x1b[2m",
   reset: "\x1b[39m",
   resetDim: "\x1b[22m",
@@ -320,7 +319,7 @@ const ANSI = {
 
 function colorizeDiffLine(line: string): string {
   if (line.startsWith("@@ ")) {
-    return `${ANSI.yellow}${line}${ANSI.reset}`;
+    return `${ANSI.dim}${line}${ANSI.resetDim}`;
   }
   if (line.startsWith("+") && !line.startsWith("+++")) {
     return `${ANSI.green}${line}${ANSI.reset}`;
@@ -618,6 +617,8 @@ export function formatEditUpdateOutput(matches: number, diff: string): string {
   if (summary.preview.length > 0) {
     lines.push("Preview:");
     lines.push(...summary.preview);
+  } else {
+    lines.push("No diff preview available (file may be untracked or unchanged in git).");
   }
   return lines.join("\n");
 }

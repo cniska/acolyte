@@ -154,6 +154,12 @@ describe("cli formatting helpers", () => {
     expect(out).toContain("@@ -1 +1 @@");
   });
 
+  test("formatEditUpdateOutput explains when diff preview is unavailable", () => {
+    const out = formatEditUpdateOutput(1, "");
+    expect(out).toContain("1 replacement applied.");
+    expect(out).toContain("No diff preview available");
+  });
+
   test("formatRunOutput hides shell echo noise in successful stderr", () => {
     const raw = ["exit_code=0", "duration_ms=12", "stdout:", "ok", "stderr:", "$ bun run typecheck"].join("\n");
     const out = formatRunOutput(raw);
