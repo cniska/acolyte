@@ -126,6 +126,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Coder role instructions now bias toward one recommended next action instead of A/B/C option menus by default.
 - Planner tool scope now matches real planning needs while staying read-only (`read/search/git/web`).
 - `mastra:dev` and `studio` now load `.env` so provider credentials are consistent in local dev and Mastra Studio.
+- Local backend `/status` now emits role-model fields, matching remote status shape for easier debugging.
 
 ## Open Narrative Threads
 1. Continue dogfooding ramp from Codex-led to Acolyte-led development.

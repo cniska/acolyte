@@ -15,6 +15,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Compact slash aliases for common commands (`/df`, `/mem`, `/rem`).
 - In-chat utility commands: `/status`, `/permissions`.
 - `/status` includes provider/model details plus API base URL for endpoint diagnostics.
+- `/status` now keeps local and remote output shapes aligned (local mode includes role-model rows too).
 - `/status` provider now distinguishes `openai` vs `openai-compatible` (based on API base URL), improving local endpoint clarity.
 - `/status` formats multi-value fields in stacked `key: value` rows (`models`, `om`, `om_tokens`, `om_state`) and hides duplicate `mode` when `provider` is present.
 - `/status` now suppresses duplicate top-level `model` when it matches `models.main`.
