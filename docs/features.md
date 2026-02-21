@@ -45,6 +45,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Automated dogfood smoke checks via `bun run dogfood:smoke`.
 - Internal telemetry: one-command dogfood readiness gate via `bun run dogfood:gate` (smoke + delivery-slice progress, optional verify).
 - Internal telemetry: dogfood progress supports machine-readable output (`bun run dogfood:progress --json`).
+- Dogfood lookback now scopes to the last N non-doc commits to reduce false negatives from docs-only streaks.
 - Biome recommended lint rules enabled in main config (`biome.json`) with zero current diagnostics.
 - CLI policy distillation script: `bun run policy:distill --sessions <N> --min <N>`.
 - In-flight turn interrupt via `Esc` while Acolyte is thinking.
