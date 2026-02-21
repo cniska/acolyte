@@ -116,6 +116,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Terminal key handling now covers more `Cmd`-style Home/End sequence variants across terminal profiles.
 - Policy confirmation picker outcomes now stay in assistant voice for consistent transcript tone.
 - Status diagnostics now include role-level provider readiness (`main/planner/coder/reviewer`) to debug mixed-provider setup quickly.
+- Status model labels are now provider-less for cleaner scan (`gpt-5-mini`, `claude-*`, `gemini-*`), with providers shown separately.
 - Non-secret user config is now TOML-readable (`~/.acolyte/config.toml`) while keeping JSON compatibility.
 - Secret handling tightened: API keys are env-only; file config no longer accepts/stores `apiKey`.
 - Status model rows now render mixed-role providers correctly (no single-provider formatting assumption).
