@@ -230,6 +230,66 @@ describe("chat picker handlers", () => {
     expect(pickerValues.at(-1)).toMatchObject({ kind: "policyConfirm" });
   });
 
+  test("handlePickerSelect policyConfirm appends assistant outcome for yes/no", async () => {
+    const rows: ChatRow[] = [];
+    const pendingValues: unknown[] = [];
+    const currentSession = createSession({ id: "sess_current" });
+    const store = createStore({ sessions: [currentSession], activeSessionId: currentSession.id });
+    const handlers = createPickerHandlers({
+      store,
+      currentSession,
+      setCurrentSession: () => {},
+      setRows: (updater) => {
+        const next = updater(rows);
+        rows.length = 0;
+        rows.push(...next);
+      },
+      setRowsDirect: () => {},
+      setPicker: () => {},
+      setShowShortcuts: () => {},
+      setPendingPolicyCandidate: (next) => {
+        pendingValues.push(next);
+      },
+      setValue: () => {},
+      setBackendPermissionMode: async () => {},
+      persist: async () => {},
+      toRows: () => [],
+      createMessage,
+      nowIso: () => "2026-02-20T00:00:00.000Z",
+    });
+
+    await handlers.handlePickerSelect({
+      kind: "policyConfirm",
+      item: { normalized: "keep output concise", count: 2, examples: [] },
+      items: [
+        { value: "yes", description: "accept this draft" },
+        { value: "no", description: "skip this draft" },
+      ],
+      index: 0,
+      note: "",
+    });
+    expect(rows.at(-1)).toMatchObject({
+      role: "assistant",
+      content: "Policy draft confirmed: keep output concise",
+    });
+
+    await handlers.handlePickerSelect({
+      kind: "policyConfirm",
+      item: { normalized: "keep output concise", count: 2, examples: [] },
+      items: [
+        { value: "yes", description: "accept this draft" },
+        { value: "no", description: "skip this draft" },
+      ],
+      index: 1,
+      note: "",
+    });
+    expect(rows.at(-1)).toMatchObject({
+      role: "assistant",
+      content: "Policy draft skipped.",
+    });
+    expect(pendingValues.at(-1)).toBeNull();
+  });
+
   test("handlePickerSelect writeConfirm switch updates mode and pre-fills prompt", async () => {
     const rows: ChatRow[] = [];
     const values: string[] = [];

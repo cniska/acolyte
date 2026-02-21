@@ -201,7 +201,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
             ...current,
             {
               id: `row_${crypto.randomUUID()}`,
-              role: "system",
+              role: "assistant",
               content: `Policy draft skipped.${noteSuffix}`,
             },
           ]);
