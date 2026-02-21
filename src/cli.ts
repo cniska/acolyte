@@ -891,7 +891,6 @@ async function chatModeWithOptions(options: { resumeLatest: boolean; resumePrefi
   store.activeSessionId = session.id;
   const backend = createBackend({
     apiUrl: config.apiUrl,
-    apiKey: config.apiKey,
   });
   const persist = async (): Promise<void> => {
     await writeStore(store);
@@ -935,7 +934,6 @@ async function runMode(args: string[]): Promise<void> {
   session.messages.push(newMessage("system", ONE_SHOT_SYSTEM_PROMPT));
   const backend = createBackend({
     apiUrl: config.apiUrl,
-    apiKey: config.apiKey,
   });
 
   for (const filePath of parsed.files) {
@@ -1011,7 +1009,6 @@ async function statusMode(): Promise<void> {
   const config = await readConfig();
   const backend = createBackend({
     apiUrl: config.apiUrl,
-    apiKey: config.apiKey,
   });
   try {
     const status = await backend.status();
@@ -1073,19 +1070,24 @@ async function memoryMode(args: string[]): Promise<void> {
 
 async function configMode(args: string[]): Promise<void> {
   const [subcommand, key, ...rest] = args;
-  const valid = new Set(["model", "apiUrl", "apiKey"]);
+  const valid = new Set(["model", "apiUrl"]);
 
   if (!subcommand || subcommand === "list") {
     const config = await readConfig();
     printInfo(`model=${config.model ?? ""}`);
     printInfo(`apiUrl=${config.apiUrl ?? ""}`);
-    printInfo(`apiKey=${config.apiKey ? "***set***" : ""}`);
+    printInfo("apiKey=(env only)");
     return;
   }
 
   if (subcommand === "set") {
+    if (key === "apiKey") {
+      printError("Config apiKey is not supported. Use ACOLYTE_API_KEY in .env instead.");
+      process.exitCode = 1;
+      return;
+    }
     if (!key || !valid.has(key)) {
-      printError("Usage: acolyte config set <model|apiUrl|apiKey> <value>");
+      printError("Usage: acolyte config set <model|apiUrl> <value>");
       process.exitCode = 1;
       return;
     }
@@ -1097,19 +1099,24 @@ async function configMode(args: string[]): Promise<void> {
       return;
     }
 
-    await setConfigValue(key as "model" | "apiUrl" | "apiKey", value);
+    await setConfigValue(key as "model" | "apiUrl", value);
     printInfo(`Saved config ${key}.`);
     return;
   }
 
   if (subcommand === "unset") {
+    if (key === "apiKey") {
+      printError("Config apiKey is not supported. Use ACOLYTE_API_KEY in .env instead.");
+      process.exitCode = 1;
+      return;
+    }
     if (!key || !valid.has(key)) {
-      printError("Usage: acolyte config unset <model|apiUrl|apiKey>");
+      printError("Usage: acolyte config unset <model|apiUrl>");
       process.exitCode = 1;
       return;
     }
 
-    await unsetConfigValue(key as "model" | "apiUrl" | "apiKey");
+    await unsetConfigValue(key as "model" | "apiUrl");
     printInfo(`Removed config ${key}.`);
     return;
   }

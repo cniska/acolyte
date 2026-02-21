@@ -6,7 +6,6 @@ import { join } from "node:path";
 export interface AcolyteConfig {
   model?: string;
   apiUrl?: string;
-  apiKey?: string;
 }
 
 type ConfigOptions = {
@@ -17,7 +16,6 @@ function toConfig(input: Record<string, unknown>): AcolyteConfig {
   return {
     model: typeof input.model === "string" ? input.model : undefined,
     apiUrl: typeof input.apiUrl === "string" ? input.apiUrl : undefined,
-    apiKey: typeof input.apiKey === "string" ? input.apiKey : undefined,
   };
 }
 
@@ -28,6 +26,17 @@ function resolvePaths(options?: ConfigOptions): { dataDir: string; jsonPath: str
     jsonPath: join(dataDir, "config.json"),
     tomlPath: join(dataDir, "config.toml"),
   };
+}
+
+function serializeToml(config: AcolyteConfig): string {
+  const lines: string[] = [];
+  if (config.model) {
+    lines.push(`model = ${JSON.stringify(config.model)}`);
+  }
+  if (config.apiUrl) {
+    lines.push(`apiUrl = ${JSON.stringify(config.apiUrl)}`);
+  }
+  return `${lines.join("\n")}${lines.length > 0 ? "\n" : ""}`;
 }
 
 export async function readConfig(options?: ConfigOptions): Promise<AcolyteConfig> {
@@ -52,6 +61,10 @@ export async function readConfig(options?: ConfigOptions): Promise<AcolyteConfig
 export async function writeConfig(config: AcolyteConfig, options?: ConfigOptions): Promise<void> {
   const paths = resolvePaths(options);
   await mkdir(paths.dataDir, { recursive: true });
+  if (existsSync(paths.tomlPath)) {
+    await writeFile(paths.tomlPath, serializeToml(config), "utf8");
+    return;
+  }
   await writeFile(paths.jsonPath, JSON.stringify(config, null, 2), "utf8");
 }
 
@@ -69,5 +82,6 @@ export async function unsetConfigValue(key: keyof AcolyteConfig, options?: Confi
 }
 export const __internal = {
   toConfig,
+  serializeToml,
   resolvePaths,
 };
