@@ -51,6 +51,7 @@ ACOLYTE_API_URL=http://localhost:6767 bun run chat
 - Status: `bun run status`
 - Verify: `bun run verify`
 - Mastra Studio: `bun run studio`
+- Policy distillation from chat logs: `bun run policy:distill --sessions 60 --min 2`
 
 ## In-Chat Shortcuts
 

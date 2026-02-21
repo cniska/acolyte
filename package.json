@@ -33,7 +33,8 @@
     "db:logs": "docker compose logs -f postgres",
     "db:smoke": "bun run src/postgres-smoke.ts",
     "om:status": "bun run src/om-admin.ts status",
-    "om:wipe": "bun run src/om-admin.ts wipe"
+    "om:wipe": "bun run src/om-admin.ts wipe",
+    "policy:distill": "bun run src/policy-distill.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.3",
