@@ -7,7 +7,7 @@
     "acolyte": "./src/cli.ts"
   },
   "scripts": {
-    "start": "bun run src/cli.ts chat",
+    "start": "bun run chat",
     "dev": "ACOLYTE_SET_API_URL=1 ./scripts/with-backend.sh serve:env:watch bun run chat:raw",
     "chat": "ACOLYTE_SET_API_URL=1 ./scripts/with-backend.sh serve:env bun run src/cli.ts chat",
     "chat:raw": "bun run src/cli.ts chat",
