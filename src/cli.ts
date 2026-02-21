@@ -62,7 +62,8 @@ const chatModeArgsSchema = z.object({
 });
 
 function usage(): void {
-  printInfo("Usage: acolyte <chat|resume|run|dogfood|history|status|memory|config|tool>");
+  printInfo("Usage: acolyte [chat|resume|run|dogfood|history|status|memory|config|tool]");
+  printInfo("  (no command defaults to chat)");
   printInfo("  chat [--resume [id-prefix]]    Start interactive session");
   printInfo("  resume [id-prefix]             Resume active/recent session");
   printInfo("  run [--file path] [--verify] <prompt>    Send one prompt and optionally verify");
@@ -791,8 +792,16 @@ export function parseChatModeArgs(args: string[]): { resumeLatest: boolean; resu
   return chatModeArgsSchema.parse(raw);
 }
 
-export function formatResumeCommand(sessionId: string): string {
-  return `acolyte resume ${sessionId.slice(0, 12)}`;
+export function inferResumeCommandBase(argv: string[] = process.argv): string {
+  const entry = argv[1] ?? "";
+  if (entry.endsWith("/src/cli.ts") || entry === "src/cli.ts" || entry.endsWith("\\src\\cli.ts")) {
+    return "bun run src/cli.ts";
+  }
+  return "acolyte";
+}
+
+export function formatResumeCommand(sessionId: string, commandBase = inferResumeCommandBase()): string {
+  return `${commandBase} resume ${sessionId.slice(0, 12)}`;
 }
 
 type ResumeTarget =
@@ -874,7 +883,7 @@ async function chatModeWithOptions(options: { resumeLatest: boolean; resumePrefi
     version: CLI_VERSION,
   });
   const resumeId = store.activeSessionId ?? session.id;
-  printInfo(`Resume with: ${formatResumeCommand(resumeId)}`);
+  printInfo(`Resume with: ${formatResumeCommand(resumeId, inferResumeCommandBase())}`);
 }
 
 async function runMode(args: string[]): Promise<void> {
@@ -1197,8 +1206,7 @@ async function main(): Promise<void> {
   const [command, ...args] = process.argv.slice(2);
 
   if (!command) {
-    usage();
-    process.exitCode = 1;
+    await chatModeWithOptions({ resumeLatest: false });
     return;
   }
 

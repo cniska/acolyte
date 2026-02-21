@@ -26,6 +26,19 @@ function parseSessionStatus(content: string): { prefix: string; sessionId: strin
   return null;
 }
 
+function parseSessionsHeader(content: string): { prefix: string; count: string; rest: string } | null {
+  const [header, ...restLines] = content.split("\n");
+  const match = header?.match(/^(Sessions\s+)(\d+)$/);
+  if (!match) {
+    return null;
+  }
+  return {
+    prefix: match[1] ?? "Sessions ",
+    count: match[2] ?? "0",
+    rest: restLines.join("\n"),
+  };
+}
+
 export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
   const { rows, isThinking, thinkingFrame } = props;
   const pulsePeriod = 16;
@@ -52,6 +65,8 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
               row.role === "assistant" && (row.style === "sessionStatus" || row.style === undefined)
                 ? parseSessionStatus(row.content)
                 : null;
+            const sessionsListHeader =
+              row.role === "assistant" && row.style === "sessionsList" ? parseSessionsHeader(row.content) : null;
             const dimMarker = Boolean(row.dim) || Boolean(sessionStatus);
             return (
               <Box>
@@ -65,6 +80,12 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
                     <Text>
                       <Text dimColor>{sessionStatus.prefix}</Text>
                       <Text>{sessionStatus.sessionId}</Text>
+                    </Text>
+                  ) : sessionsListHeader ? (
+                    <Text>
+                      <Text>{sessionsListHeader.prefix}</Text>
+                      <Text dimColor>{sessionsListHeader.count}</Text>
+                      {sessionsListHeader.rest.length > 0 ? <Text>{`\n${sessionsListHeader.rest}`}</Text> : null}
                     </Text>
                   ) : (
                     <Text dimColor={Boolean(row.dim)}>

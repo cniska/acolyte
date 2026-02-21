@@ -15,7 +15,7 @@ export type ChatRow = {
   role: "user" | "assistant" | "system";
   content: string;
   dim?: boolean;
-  style?: "sessionStatus";
+  style?: "sessionStatus" | "sessionsList";
 };
 
 export type TokenUsageEntry = {
@@ -185,8 +185,8 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
   if (resolvedText === "/sessions") {
     pushUserCommandRow();
     const recent = formatSessionList(ctx.store, 10);
-    const sections = [`Sessions (${ctx.store.sessions.length})`, ...recent];
-    ctx.setRows((current) => [...current, row("assistant", sections.join("\n"))]);
+    const sections = [`Sessions ${ctx.store.sessions.length}`, "", ...recent];
+    ctx.setRows((current) => [...current, row("assistant", sections.join("\n"), false, "sessionsList")]);
     return { stop: true, userText: text, runVerifyAfterReply: false };
   }
 

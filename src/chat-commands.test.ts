@@ -154,8 +154,9 @@ describe("chat-commands", () => {
     });
     const { rows, stop } = await runCommand("/sessions", [], store);
     expect(stop).toBe(true);
-    const assistant = rows.find((row) => row.role === "assistant" && row.content.includes("Sessions (2)"));
+    const assistant = rows.find((row) => row.role === "assistant" && row.content.includes("Sessions 2"));
     expect(assistant).toBeDefined();
+    expect(assistant?.style).toBe("sessionsList");
     expect(assistant?.content).toContain("● sess_aaaa111  First");
     expect(assistant?.content).toContain("  sess_bbbb222  Second");
   });

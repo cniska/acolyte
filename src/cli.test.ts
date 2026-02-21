@@ -8,6 +8,7 @@ import {
   formatRunOutput,
   formatStatusOutput,
   formatTimestamp,
+  inferResumeCommandBase,
   oneShotResourceId,
   parseChatModeArgs,
   parseEditResult,
@@ -219,6 +220,15 @@ describe("cli formatting helpers", () => {
 
   test("formatResumeCommand returns prod-friendly command", () => {
     expect(formatResumeCommand("sess_abcdef1234567890")).toBe("acolyte resume sess_abcdef1");
+    expect(formatResumeCommand("sess_abcdef1234567890", "bun run src/cli.ts")).toBe(
+      "bun run src/cli.ts resume sess_abcdef1",
+    );
+  });
+
+  test("inferResumeCommandBase detects source-run mode", () => {
+    expect(inferResumeCommandBase(["bun", "src/cli.ts", "chat"])).toBe("bun run src/cli.ts");
+    expect(inferResumeCommandBase(["/opt/homebrew/bin/bun", "/repo/src/cli.ts", "chat"])).toBe("bun run src/cli.ts");
+    expect(inferResumeCommandBase(["acolyte", "chat"])).toBe("acolyte");
   });
 
   test("formatAssistantReplyOutput indents multiline assistant output", () => {
