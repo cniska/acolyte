@@ -1,13 +1,27 @@
+import { z } from "zod";
+
 function countLabel(value: number, singular: string, plural: string): string {
   return `${value} ${value === 1 ? singular : plural}`;
 }
 
+const runMetaSchema = z.object({
+  exitCode: z.coerce.number().int(),
+  durationMs: z.coerce.number().int().nonnegative(),
+});
+
 function parseRunMeta(raw: string): { exitCode: number | null; durationMs: number | null } {
-  const exitMatch = raw.match(/^exit_code=(\d+)$/m);
-  const durationMatch = raw.match(/^duration_ms=(\d+)$/m);
+  const exitMatch = raw.match(/^exit_code=([^\s]+)$/m);
+  const durationMatch = raw.match(/^duration_ms=([^\s]+)$/m);
+  const parsed = runMetaSchema.safeParse({
+    exitCode: exitMatch?.[1],
+    durationMs: durationMatch?.[1],
+  });
+  if (!parsed.success) {
+    return { exitCode: null, durationMs: null };
+  }
   return {
-    exitCode: exitMatch ? Number.parseInt(exitMatch[1], 10) : null,
-    durationMs: durationMatch ? Number.parseInt(durationMatch[1], 10) : null,
+    exitCode: parsed.data.exitCode,
+    durationMs: parsed.data.durationMs,
   };
 }
 
