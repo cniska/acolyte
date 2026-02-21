@@ -16,6 +16,14 @@ describe("wait-backend", () => {
     });
   });
 
+  test("parseArgs rejects invalid timeout value", () => {
+    expect(() => parseArgs(["--timeout-ms", "0"])).toThrow("Invalid value for --timeout-ms");
+  });
+
+  test("parseArgs rejects unknown flags", () => {
+    expect(() => parseArgs(["--wat"])).toThrow("Unknown argument: --wat");
+  });
+
   test("waitForBackend resolves when endpoint is healthy", async () => {
     const server = Bun.serve({
       port: 0,
