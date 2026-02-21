@@ -14,6 +14,7 @@ const SHORTCUT_ITEMS = [
   { key: "/skills", description: "open skills picker" },
   { key: "/remember [--project] <text>", description: "save memory note" },
   { key: "/memory", description: "list memories" },
+  { key: "/distill", description: "distill policy from chat logs" },
   { key: "/tokens", description: "show token usage summary" },
   { key: "/exit", description: "exit chat" },
 ] as const;

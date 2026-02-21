@@ -5,6 +5,7 @@ import { formatChangesSummary, formatDogfoodStatus, formatVerifySummary } from "
 import { suggestClosestSlashCommand } from "./chat-slash";
 import { gitDiff, gitStatusShort, runShellCommand, searchWeb } from "./coding-tools";
 import { addMemory, listMemories } from "./memory";
+import { distillPolicyFromSessions, parseDistillOptions } from "./policy-distill";
 import { formatStatusOutput } from "./status-format";
 import { createSession } from "./storage";
 import type { Session, SessionStore } from "./types";
@@ -292,6 +293,19 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       row("system", `Memories (${memories.length})`),
       ...memories.slice(0, 10).map((entry) => row("system", `- [${entry.scope}] ${entry.content}`)),
     ]);
+    return { stop: true, userText: text, runVerifyAfterReply: false };
+  }
+
+  if (resolvedText.startsWith("/distill")) {
+    pushUserCommandRow();
+    const args = resolvedText.split(/\s+/).slice(1);
+    const parsed = parseDistillOptions(args);
+    if (!parsed.ok) {
+      ctx.setRows((current) => [...current, row("system", parsed.error)]);
+      return { stop: true, userText: text, runVerifyAfterReply: false };
+    }
+    const output = distillPolicyFromSessions(ctx.store.sessions, parsed.options);
+    ctx.setRows((current) => [...current, row("assistant", output)]);
     return { stop: true, userText: text, runVerifyAfterReply: false };
   }
 

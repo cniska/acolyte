@@ -1,11 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { appConfig, setPermissionMode } from "./app-config";
 import { type ChatRow, dispatchSlashCommand, formatTokenUsageOutput, type TokenUsageEntry } from "./chat-commands";
-import { createBackend, createSession, createStore } from "./test-factory";
+import { createBackend, createMessage, createSession, createStore } from "./test-factory";
 
 async function runCommand(
   text: string,
   tokenUsage: TokenUsageEntry[] = [],
+  store = createStore(),
 ): Promise<{ rows: ChatRow[]; stop: boolean; openedPermissions: boolean }> {
   let rows: ChatRow[] = [];
   let openedPermissions = false;
@@ -13,7 +14,7 @@ async function runCommand(
     text,
     resolvedText: text,
     backend: createBackend(),
-    store: createStore(),
+    store,
     currentSession: createSession(),
     setCurrentSession: () => {},
     toRows: () => [],
@@ -126,6 +127,23 @@ describe("chat-commands", () => {
     const { rows, stop } = await runCommand("/web");
     expect(stop).toBe(true);
     expect(rows.some((row) => row.content === "Usage: /web <query>")).toBe(true);
+  });
+
+  test("dispatchSlashCommand handles /distill", async () => {
+    const store = createStore({
+      sessions: [
+        createSession({
+          messages: [
+            createMessage("user", "we should keep output concise"),
+            createMessage("user", "please we should keep output concise"),
+          ],
+        }),
+      ],
+    });
+    const { rows, stop } = await runCommand("/distill --sessions 10 --min 2", [], store);
+    expect(stop).toBe(true);
+    expect(rows.some((row) => row.content.includes("Proposed policy updates"))).toBe(true);
+    expect(rows.some((row) => row.content.includes("keep output concise"))).toBe(true);
   });
 
   test("dispatchSlashCommand shows permission mode", async () => {

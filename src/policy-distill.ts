@@ -1,5 +1,5 @@
 import { readStore } from "./storage";
-import type { Message } from "./types";
+import type { Message, Session } from "./types";
 
 const DEFAULT_SESSION_LIMIT = 40;
 const DEFAULT_MIN_OCCURRENCES = 2;
@@ -22,6 +22,11 @@ export type PolicyCandidate = {
   normalized: string;
   count: number;
   examples: string[];
+};
+
+export type DistillOptions = {
+  sessions?: number;
+  minOccurrences?: number;
 };
 
 export function normalizePolicySignal(text: string): string | null {
@@ -116,25 +121,47 @@ function parseArgValue(args: string[], flag: string): string | undefined {
   return args[idx + 1];
 }
 
-export async function runPolicyDistill(args: string[]): Promise<void> {
+export function parseDistillOptions(
+  args: string[],
+): { ok: true; options: Required<DistillOptions> } | { ok: false; error: string } {
   const limitRaw = parseArgValue(args, "--sessions");
   const minRaw = parseArgValue(args, "--min");
   const sessionLimit = Number(limitRaw ?? DEFAULT_SESSION_LIMIT);
   const minOccurrences = Number(minRaw ?? DEFAULT_MIN_OCCURRENCES);
 
   if (!Number.isFinite(sessionLimit) || sessionLimit < 1) {
-    throw new Error("Invalid --sessions value. Expected a positive integer.");
+    return { ok: false, error: "Invalid --sessions value. Expected a positive integer." };
   }
   if (!Number.isFinite(minOccurrences) || minOccurrences < 2) {
-    throw new Error("Invalid --min value. Expected an integer >= 2.");
+    return { ok: false, error: "Invalid --min value. Expected an integer >= 2." };
   }
 
-  const store = await readStore();
-  const scopedSessions = store.sessions.slice(0, sessionLimit);
+  return {
+    ok: true,
+    options: {
+      sessions: Math.floor(sessionLimit),
+      minOccurrences: Math.floor(minOccurrences),
+    },
+  };
+}
+
+export function distillPolicyFromSessions(sessions: Session[], options: DistillOptions = {}): string {
+  const sessionLimit = options.sessions ?? DEFAULT_SESSION_LIMIT;
+  const minOccurrences = options.minOccurrences ?? DEFAULT_MIN_OCCURRENCES;
+  const scopedSessions = sessions.slice(0, sessionLimit);
   const messages = scopedSessions.flatMap((session) => session.messages);
   const candidates = collectPolicyCandidates(messages, minOccurrences);
-  const output = formatPolicyDistillation(candidates, scopedSessions.length);
-  console.log(output);
+  return formatPolicyDistillation(candidates, scopedSessions.length);
+}
+
+export async function runPolicyDistill(args: string[]): Promise<void> {
+  const parsed = parseDistillOptions(args);
+  if (!parsed.ok) {
+    throw new Error(parsed.error);
+  }
+  const store = await readStore();
+  const output = distillPolicyFromSessions(store.sessions, parsed.options);
+  process.stdout.write(`${output}\n`);
 }
 
 if (import.meta.main) {

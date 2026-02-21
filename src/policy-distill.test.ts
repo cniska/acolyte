@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { collectPolicyCandidates, formatPolicyDistillation, normalizePolicySignal } from "./policy-distill";
+import {
+  collectPolicyCandidates,
+  formatPolicyDistillation,
+  normalizePolicySignal,
+  parseDistillOptions,
+} from "./policy-distill";
 import type { Message } from "./types";
 
 function user(content: string): Message {
@@ -47,5 +52,17 @@ describe("policy distillation", () => {
     expect(text).toContain("Scanned 14 sessions.");
     expect(text).toContain("1. keep output concise (3x)");
     expect(text).toContain("Convert accepted items into AGENTS.md rules");
+  });
+
+  test("parseDistillOptions validates numeric arguments", () => {
+    const ok = parseDistillOptions(["--sessions", "80", "--min", "3"]);
+    expect(ok.ok).toBe(true);
+    if (ok.ok) {
+      expect(ok.options.sessions).toBe(80);
+      expect(ok.options.minOccurrences).toBe(3);
+    }
+
+    const bad = parseDistillOptions(["--min", "1"]);
+    expect(bad.ok).toBe(false);
   });
 });

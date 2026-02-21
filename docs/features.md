@@ -13,6 +13,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - One-slot prompt queue while thinking (latest submit wins) with inline queued indicator.
 - Compact slash aliases for common commands (`/df`, `/ds`, `/mem`, `/rem`).
 - In-chat utility commands: `/status`, `/permissions`, `/changes`, `/web <query>`.
+- Policy distillation command from chat logs: `/distill [--sessions N] [--min N]`.
 - In-chat dogfooding readiness check: `/dogfood-status` with short alias `/ds`.
 - Non-interactive dogfooding readiness command: `acolyte dogfood-status`.
 - Skills picker + command support: `/skills` and `$` shortcut.
@@ -25,6 +26,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Mastra Studio exposes role agents (`Planner`, `Coder`, `Reviewer`) plus default `acolyte` alias.
 - Dogfooding workflow command: `/dogfood <task>` with verify-first loop.
 - Optional skip verify flow: `/dogfood --no-verify <task>`.
+- CLI policy distillation script: `bun run policy:distill --sessions <N> --min <N>`.
 - In-flight turn interrupt via `Esc` while Acolyte is thinking.
 - One-shot CLI mode via `run` (including `--file` attachment support).
 - Tool command surface for search/web/read/edit/git/run operations.

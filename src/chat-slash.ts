@@ -15,6 +15,7 @@ export const CHAT_SLASH_COMMANDS = [
   "/remember",
   "/mem",
   "/memory",
+  "/distill",
   "/tokens",
   "/exit",
 ] as const;
