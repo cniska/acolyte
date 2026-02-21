@@ -119,22 +119,39 @@ export function formatPolicyDistillation(candidates: PolicyCandidate[], scannedS
   return lines.join("\n");
 }
 
-function parseArgValue(args: string[], flag: string): string | undefined {
-  const idx = args.findIndex((arg) => arg === flag);
-  if (idx < 0) {
-    return undefined;
-  }
-  return args[idx + 1];
-}
-
 export function parseDistillOptions(
   args: string[],
 ): { ok: true; options: Required<DistillOptions> } | { ok: false; error: string } {
-  const limitRaw = parseArgValue(args, "--sessions");
-  const minRaw = parseArgValue(args, "--min");
+  const raw: { sessions: number | string; minOccurrences: number | string } = {
+    sessions: DEFAULT_SESSION_LIMIT,
+    minOccurrences: DEFAULT_MIN_OCCURRENCES,
+  };
+  for (let i = 0; i < args.length; i += 1) {
+    const token = args[i];
+    if (token === "--sessions") {
+      const value = args[i + 1];
+      if (!value) {
+        return { ok: false, error: "Invalid --sessions value. Expected a positive integer." };
+      }
+      raw.sessions = value;
+      i += 1;
+      continue;
+    }
+    if (token === "--min") {
+      const value = args[i + 1];
+      if (!value) {
+        return { ok: false, error: "Invalid --min value. Expected an integer >= 2." };
+      }
+      raw.minOccurrences = value;
+      i += 1;
+      continue;
+    }
+    return { ok: false, error: `Unknown argument: ${token}` };
+  }
+
   const parsed = distillOptionsSchema.safeParse({
-    sessions: limitRaw ?? DEFAULT_SESSION_LIMIT,
-    minOccurrences: minRaw ?? DEFAULT_MIN_OCCURRENCES,
+    sessions: raw.sessions,
+    minOccurrences: raw.minOccurrences,
   });
   if (!parsed.success) {
     const hasSessionsError = parsed.error.issues.some((issue) => issue.path[0] === "sessions");

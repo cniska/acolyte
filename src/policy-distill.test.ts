@@ -65,4 +65,23 @@ describe("policy distillation", () => {
     const bad = parseDistillOptions(["--min", "1"]);
     expect(bad.ok).toBe(false);
   });
+
+  test("parseDistillOptions rejects unknown arguments", () => {
+    const parsed = parseDistillOptions(["--wat"]);
+    expect(parsed).toEqual({ ok: false, error: "Unknown argument: --wat" });
+  });
+
+  test("parseDistillOptions rejects missing values", () => {
+    const missingSessions = parseDistillOptions(["--sessions"]);
+    expect(missingSessions).toEqual({
+      ok: false,
+      error: "Invalid --sessions value. Expected a positive integer.",
+    });
+
+    const missingMin = parseDistillOptions(["--min"]);
+    expect(missingMin).toEqual({
+      ok: false,
+      error: "Invalid --min value. Expected an integer >= 2.",
+    });
+  });
 });

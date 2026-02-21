@@ -99,6 +99,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Verify-summary run-meta parsing also moved to Zod (`chat-formatters`) with fallback-safe output.
 - `/edit` tool metadata parsing is now strict and Zod-validated (`path`, `matches`, `dry_run`).
 - `dogfood-gate` progress JSON is now parsed via an explicit Zod schema (not ad-hoc field checks).
+- `policy-distill` option parsing is now strict on unknown flags/missing values (`--sessions`, `--min` only), with explicit errors.
 
 ## Open Narrative Threads
 1. Continue dogfooding ramp from Codex-led to Acolyte-led development.
