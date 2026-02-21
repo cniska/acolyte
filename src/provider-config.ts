@@ -63,6 +63,16 @@ export function resolveProvider(openaiApiKey: string | undefined, openaiBaseUrl:
 }
 
 export function providerFromModel(model: string): ModelProviderName {
+  const normalized = model.trim().toLowerCase();
+  if (!normalized.includes("/")) {
+    if (normalized.startsWith("claude")) {
+      return "anthropic";
+    }
+    if (normalized.startsWith("gemini")) {
+      return "gemini";
+    }
+  }
+
   const prefix = model.split("/", 1)[0]?.toLowerCase();
   if (prefix === "anthropic") {
     return "anthropic";
