@@ -18,7 +18,12 @@ export function formatStatusOutput(status: string): string {
   }
 
   const output: string[] = [];
-  const pushStacked = (label: string, entries: Array<[string, string | undefined]>, plainFirst = false): void => {
+  const pushStacked = (
+    label: string,
+    entries: Array<[string, string | undefined]>,
+    plainFirst = false,
+    forceHeaderRow = false,
+  ): void => {
     const filtered = entries.filter((entry): entry is [string, string] => entry[1] !== undefined);
     if (filtered.length === 0) {
       return;
@@ -29,6 +34,10 @@ export function formatStatusOutput(status: string): string {
       }
       return `${key}: ${value}`;
     });
+    if (forceHeaderRow) {
+      output.push(`${label}:${["", ...parts].join("\n")}`);
+      return;
+    }
     output.push(`${label}: ${parts.join("\n")}`);
   };
 
@@ -54,12 +63,17 @@ export function formatStatusOutput(status: string): string {
   const modelPlanner = take("model_planner");
   const modelCoder = take("model_coder");
   const modelReviewer = take("model_reviewer");
-  pushStacked("models", [
-    ["main", modelMain],
-    ["planner", modelPlanner],
-    ["coder", modelCoder],
-    ["reviewer", modelReviewer],
-  ]);
+  pushStacked(
+    "models",
+    [
+      ["main", modelMain],
+      ["planner", modelPlanner],
+      ["coder", modelCoder],
+      ["reviewer", modelReviewer],
+    ],
+    false,
+    true,
+  );
   const service = take("service");
   if (service) {
     output.push(`service: ${service}`);
@@ -97,21 +111,31 @@ export function formatStatusOutput(status: string): string {
 
   const omObsTokens = take("om_obs_tokens");
   const omRefTokens = take("om_ref_tokens");
-  pushStacked("om_tokens", [
-    ["obs", omObsTokens],
-    ["ref", omRefTokens],
-  ]);
+  pushStacked(
+    "om_tokens",
+    [
+      ["obs", omObsTokens],
+      ["ref", omRefTokens],
+    ],
+    false,
+    true,
+  );
 
   const omExists = take("om_exists");
   const omGen = take("om_gen");
   const omLastObserved = take("om_last_observed");
   const omLastReflection = take("om_last_reflection");
-  pushStacked("om_state", [
-    ["exists", omExists],
-    ["gen", omGen],
-    ["last_observed", omLastObserved],
-    ["last_reflection", omLastReflection],
-  ]);
+  pushStacked(
+    "om_state",
+    [
+      ["exists", omExists],
+      ["gen", omGen],
+      ["last_observed", omLastObserved],
+      ["last_reflection", omLastReflection],
+    ],
+    false,
+    true,
+  );
 
   for (const [key, value] of fields.entries()) {
     output.push(`${key}: ${value}`);
@@ -126,9 +150,10 @@ export function formatStatusOutput(status: string): string {
     if (idx <= 0) {
       return { key: line, value: "" };
     }
+    const rawValue = line.slice(idx + 1);
     return {
       key: line.slice(0, idx + 1),
-      value: line.slice(idx + 1).trim(),
+      value: rawValue.startsWith("\n") ? rawValue : rawValue.trim(),
     };
   });
   const maxKey = rows.reduce((max, row) => Math.max(max, row.key.length), 0);
