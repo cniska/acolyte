@@ -306,4 +306,62 @@ describe("chat-commands", () => {
     expect(stop).toBe(true);
     expect(rows.some((row) => row.content === "No session found for prefix: missing")).toBe(true);
   });
+
+  test("dispatchSlashCommand supports /new then /resume round-trip", async () => {
+    let rows: ChatRow[] = [];
+    const original = createSession({
+      id: "sess_original",
+      title: "Original Session",
+      messages: [createMessage("assistant", "orig")],
+    });
+    const store = createStore({
+      sessions: [original],
+      activeSessionId: original.id,
+    });
+    let current = original;
+
+    const baseCtx = {
+      backend: createBackend(),
+      store,
+      setCurrentSession: (next: ReturnType<typeof createSession>) => {
+        current = next;
+      },
+      toRows: (messages: ReturnType<typeof createSession>["messages"]) =>
+        messages.map((m) => ({ id: m.id, role: m.role, content: m.content })),
+      setRows: (updater: (currentRows: ChatRow[]) => ChatRow[]) => {
+        rows = updater(rows);
+      },
+      setShowShortcuts: () => {},
+      setValue: () => {},
+      persist: async () => {},
+      exit: () => {},
+      openSkillsPanel: async () => {},
+      openResumePanel: () => {},
+      openPermissionsPanel: () => {},
+      openPolicyPanel: () => {},
+      setBackendPermissionMode: async () => {},
+      tokenUsage: [] as TokenUsageEntry[],
+    };
+
+    const newResult = await dispatchSlashCommand({
+      text: "/new",
+      resolvedText: "/new",
+      currentSession: current,
+      ...baseCtx,
+    });
+    expect(newResult.stop).toBe(true);
+    const createdId = store.activeSessionId ?? "";
+    expect(createdId.startsWith("sess_")).toBe(true);
+    expect(createdId).not.toBe(original.id);
+
+    const resumeResult = await dispatchSlashCommand({
+      text: `/resume ${original.id.slice(0, 12)}`,
+      resolvedText: `/resume ${original.id.slice(0, 12)}`,
+      currentSession: current,
+      ...baseCtx,
+    });
+    expect(resumeResult.stop).toBe(true);
+    expect(store.activeSessionId).toBe(original.id);
+    expect(current.id).toBe(original.id);
+  });
 });
