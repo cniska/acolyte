@@ -17,7 +17,7 @@ import {
   searchRepo,
   searchWeb,
 } from "./coding-tools";
-import { readConfig, setConfigValue, unsetConfigValue } from "./config";
+import { type AcolyteConfig, readConfig, setConfigValue, unsetConfigValue } from "./config";
 import { buildFileContext } from "./file-context";
 import { addMemory, listMemories } from "./memory";
 import { formatStatusOutput as formatStatusOutputShared } from "./status-format";
@@ -1067,12 +1067,35 @@ async function memoryMode(args: string[]): Promise<void> {
 
 async function configMode(args: string[]): Promise<void> {
   const [subcommand, key, ...rest] = args;
-  const valid = new Set(["model", "apiUrl"]);
+  const validKeys = [
+    "port",
+    "model",
+    "modelPlanner",
+    "modelCoder",
+    "modelReviewer",
+    "omModel",
+    "apiUrl",
+    "openaiBaseUrl",
+    "anthropicBaseUrl",
+    "googleBaseUrl",
+    "permissionMode",
+    "logFormat",
+    "omObservationTokens",
+    "omReflectionTokens",
+    "contextMaxTokens",
+    "maxHistoryMessages",
+    "maxMessageTokens",
+    "maxAttachmentMessageTokens",
+    "maxPinnedMessageTokens",
+  ] as const;
+  const valid = new Set<string>(validKeys);
+  const validKeysHint = validKeys.join("|");
 
   if (!subcommand || subcommand === "list") {
     const config = await readConfig();
-    printInfo(`model=${config.model ?? ""}`);
-    printInfo(`apiUrl=${config.apiUrl ?? ""}`);
+    for (const name of validKeys) {
+      printInfo(`${name}=${String(config[name] ?? "")}`);
+    }
     printInfo("apiKey=(env only)");
     return;
   }
@@ -1084,7 +1107,7 @@ async function configMode(args: string[]): Promise<void> {
       return;
     }
     if (!key || !valid.has(key)) {
-      printError("Usage: acolyte config set <model|apiUrl> <value>");
+      printError(`Usage: acolyte config set <${validKeysHint}> <value>`);
       process.exitCode = 1;
       return;
     }
@@ -1096,7 +1119,7 @@ async function configMode(args: string[]): Promise<void> {
       return;
     }
 
-    await setConfigValue(key as "model" | "apiUrl", value);
+    await setConfigValue(key as keyof AcolyteConfig, value);
     printInfo(`Saved config ${key}.`);
     return;
   }
@@ -1108,12 +1131,12 @@ async function configMode(args: string[]): Promise<void> {
       return;
     }
     if (!key || !valid.has(key)) {
-      printError("Usage: acolyte config unset <model|apiUrl>");
+      printError(`Usage: acolyte config unset <${validKeysHint}>`);
       process.exitCode = 1;
       return;
     }
 
-    await unsetConfigValue(key as "model" | "apiUrl");
+    await unsetConfigValue(key as keyof AcolyteConfig);
     printInfo(`Removed config ${key}.`);
     return;
   }
