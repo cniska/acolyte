@@ -67,6 +67,7 @@ ACOLYTE_API_URL=http://localhost:6767 bun run chat
 - Dogfood smoke checks: `bun run dogfood:smoke`
 - Dogfood smoke (auto-start backend): `bun run dogfood:smoke:env`
 - Dogfood milestone progress: `bun run dogfood:progress --lookback 30 --target 10`
+- Dogfood progress JSON: `bun run dogfood:progress --lookback 30 --target 10 --json`
 - Dogfood readiness gate: `bun run dogfood:gate --lookback 30 --target 10`
 - Status: `bun run status`
 - Verify: `bun run verify`

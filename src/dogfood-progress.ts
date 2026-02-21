@@ -12,12 +12,14 @@ type ProgressArgs = {
   since?: string;
   target: number;
   lookback: number;
+  json: boolean;
 };
 
 function parseArgs(args: string[]): ProgressArgs {
   const parsed: ProgressArgs = {
     target: DEFAULT_TARGET,
     lookback: DEFAULT_LOOKBACK,
+    json: false,
   };
 
   for (let i = 0; i < args.length; i += 1) {
@@ -47,6 +49,10 @@ function parseArgs(args: string[]): ProgressArgs {
       }
       parsed.lookback = value;
       i += 1;
+      continue;
+    }
+    if (token === "--json") {
+      parsed.json = true;
       continue;
     }
     throw new Error(`Unknown argument: ${token}`);
@@ -110,6 +116,27 @@ function printProgress(commits: Commit[], args: ProgressArgs): void {
   const delivery = countDeliverySlices(types);
   const pct = Math.min(100, Math.round((delivery / args.target) * 100));
   const remaining = Math.max(0, args.target - delivery);
+
+  if (args.json) {
+    console.log(
+      JSON.stringify(
+        {
+          scope,
+          commitsTotal: total,
+          deliverySlices: delivery,
+          target: args.target,
+          percent: pct,
+          remaining,
+          commitTypes: types,
+          hint:
+            total === 0 && args.since ? "no commits matched --since; try --lookback 30 or adjust the date." : undefined,
+        },
+        null,
+        2,
+      ),
+    );
+    return;
+  }
 
   console.log("Dogfood progress");
   console.log(`- scope: ${scope}`);

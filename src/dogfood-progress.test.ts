@@ -6,6 +6,7 @@ describe("dogfood progress", () => {
     expect(parseArgs([])).toEqual({
       lookback: 30,
       target: 10,
+      json: false,
     });
   });
 
@@ -14,6 +15,15 @@ describe("dogfood progress", () => {
       since: "2026-02-21",
       target: 6,
       lookback: 50,
+      json: false,
+    });
+  });
+
+  test("parseArgs parses --json", () => {
+    expect(parseArgs(["--json"])).toEqual({
+      lookback: 30,
+      target: 10,
+      json: true,
     });
   });
 
