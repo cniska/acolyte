@@ -867,9 +867,8 @@ function resolveResumeTarget(
 }
 
 async function chatModeWithOptions(options: { resumeLatest: boolean; resumePrefix?: string }): Promise<void> {
-  const config = await readConfig();
   const store = await readStore();
-  const defaultModel = config.model ?? appConfig.models.main ?? FALLBACK_MODEL;
+  const defaultModel = appConfig.models.main ?? FALLBACK_MODEL;
   const resolved = resolveResumeTarget(store, options);
   if (resolved?.kind === "not_found") {
     printError(`No session found for prefix: ${resolved.prefix}`);
@@ -890,7 +889,7 @@ async function chatModeWithOptions(options: { resumeLatest: boolean; resumePrefi
   }
   store.activeSessionId = session.id;
   const backend = createBackend({
-    apiUrl: config.apiUrl,
+    apiUrl: appConfig.server.apiUrl,
   });
   const persist = async (): Promise<void> => {
     await writeStore(store);
@@ -928,12 +927,11 @@ async function runMode(args: string[]): Promise<void> {
     return;
   }
 
-  const config = await readConfig();
-  const defaultModel = config.model ?? appConfig.models.main ?? FALLBACK_MODEL;
+  const defaultModel = appConfig.models.main ?? FALLBACK_MODEL;
   const session = createSession(defaultModel);
   session.messages.push(newMessage("system", ONE_SHOT_SYSTEM_PROMPT));
   const backend = createBackend({
-    apiUrl: config.apiUrl,
+    apiUrl: appConfig.server.apiUrl,
   });
 
   for (const filePath of parsed.files) {
@@ -1006,9 +1004,8 @@ async function historyMode(): Promise<void> {
 }
 
 async function statusMode(): Promise<void> {
-  const config = await readConfig();
   const backend = createBackend({
-    apiUrl: config.apiUrl,
+    apiUrl: appConfig.server.apiUrl,
   });
   try {
     const status = await backend.status();
