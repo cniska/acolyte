@@ -169,6 +169,11 @@ describe("cli formatting helpers", () => {
     expect(out).toBe(["• 1. first", "  2. second", "  3. third"].join("\n"));
   });
 
+  test("formatAssistantReplyOutput preserves blank lines without trailing spaces", () => {
+    const out = formatAssistantReplyOutput(["Summary", "", "Next step"].join("\n"));
+    expect(out).toBe(["• Summary", "", "  Next step"].join("\n"));
+  });
+
   test("suggestCommand supports canonical and alias prefixes", () => {
     expect(suggestCommand("/e")).toBe("/exit");
     expect(suggestCommand("/exi")).toBe("/exit");

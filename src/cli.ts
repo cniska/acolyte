@@ -632,7 +632,14 @@ export function formatAssistantReplyOutput(content: string): string {
   if (lines.length === 0) {
     return "•";
   }
-  return lines.map((line, index) => (index === 0 ? `• ${line}` : `  ${line}`)).join("\n");
+  return lines
+    .map((line, index) => {
+      if (index === 0) {
+        return line.length > 0 ? `• ${line}` : "•";
+      }
+      return line.length > 0 ? `  ${line}` : "";
+    })
+    .join("\n");
 }
 
 async function handlePrompt(prompt: string, session: Session, backend = createBackend()): Promise<void> {
