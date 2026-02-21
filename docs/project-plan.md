@@ -93,12 +93,13 @@ Adoption plan:
 2. Continue CLI UX convergence with Codex/Claude patterns while staying minimal.
 3. Keep picker wording action-oriented (labels describe concrete outcomes).
 4. Keep model/provider routing centralized in one config module.
-5. Tune observational-memory thresholds (cost vs precision).
-6. Add token guardrails (hard budgets + compact tool output defaults).
-7. Implement lane-based routing and add local-model endpoint support.
-8. Keep `docs/features.md` as canonical feature inventory.
-9. Evaluate optional git hooks for high-signal checks only.
-10. Add staged path for channel adapters post-MVP (not now).
+5. Add regular OM soak runs (`bun run om:soak`) to validate long-running memory behavior under real usage.
+6. Tune observational-memory thresholds (cost vs precision).
+7. Add token guardrails (hard budgets + compact tool output defaults).
+8. Implement lane-based routing and add local-model endpoint support.
+9. Keep `docs/features.md` as canonical feature inventory.
+10. Evaluate optional git hooks for high-signal checks only.
+11. Add staged path for channel adapters post-MVP (not now).
 
 ## Risks
 1. Memory drift: mitigate with confidence scores + manual correction.
