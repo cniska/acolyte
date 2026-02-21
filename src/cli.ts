@@ -60,20 +60,57 @@ const chatModeArgsSchema = z.object({
   resumeLatest: z.boolean(),
   resumePrefix: z.string().min(1).optional(),
 });
+const HELP_ANSI = {
+  bold: "\x1b[1m",
+  white: "\x1b[37m",
+  dim: "\x1b[2m",
+  resetBold: "\x1b[22m",
+  resetColor: "\x1b[39m",
+  resetDim: "\x1b[22m",
+} as const;
 
 function usage(): void {
-  printInfo("Usage: acolyte [chat|resume|run|dogfood|history|status|memory|config|tool|help]");
-  printInfo("  (no command defaults to chat)");
-  printInfo("  chat [--resume [id-prefix]]    Start interactive session");
-  printInfo("  resume [id-prefix]             Resume active/recent session");
-  printInfo("  run [--file path] [--verify] <prompt>    Send one prompt and optionally verify");
-  printInfo("  dogfood [--file path] <prompt>    Run one prompt and always verify");
-  printInfo("  history         Show recent sessions");
-  printInfo("  status          Show backend connection status");
-  printInfo("  memory          Manage personal memory notes");
-  printInfo("  config          Manage local CLI defaults");
-  printInfo("  tool            Run coding tools (search/read/git/run/edit/web)");
-  printInfo("  help            Show this help");
+  const commands = buildUsageCommandRows();
+  const commandPad = commands.reduce((max, row) => Math.max(max, row.command.length), 0) + 2;
+  const heading = (text: string): string =>
+    `${HELP_ANSI.bold}${HELP_ANSI.white}${text}${HELP_ANSI.resetColor}${HELP_ANSI.resetBold}`;
+  const white = (text: string): string => `${HELP_ANSI.white}${text}${HELP_ANSI.resetColor}`;
+  const dim = (text: string): string => `${HELP_ANSI.dim}${text}${HELP_ANSI.resetDim}`;
+
+  printSection(`Acolyte CLI v${CLI_VERSION}`);
+  printOutput(heading("Usage"));
+  printOutput(white("  acolyte"));
+  printOutput(white("  acolyte <command> [options]"));
+  printOutput(dim("  (no command defaults to chat)"));
+  printOutput("");
+
+  printOutput(heading("Commands"));
+  for (const row of commands) {
+    printOutput(`${white(`  ${row.command.padEnd(commandPad)}`)}${dim(row.description)}`);
+  }
+  printOutput("");
+
+  printOutput(heading("Examples"));
+  printOutput(white("  acolyte"));
+  printOutput(white("  acolyte resume"));
+  printOutput(white("  acolyte resume sess_8c3b922"));
+  printOutput(white('  acolyte run --verify "review @src/cli.ts"'));
+  printOutput("");
+}
+
+export function buildUsageCommandRows(): Array<{ command: string; description: string }> {
+  return [
+    { command: "chat [--resume [id-prefix]]", description: "start interactive session" },
+    { command: "resume [id-prefix]", description: "resume active/recent session" },
+    { command: "run [--file path] [--verify] <prompt>", description: "run one prompt (optional verify)" },
+    { command: "dogfood [--file path] <prompt>", description: "run one prompt and always verify" },
+    { command: "history", description: "show recent sessions" },
+    { command: "status", description: "show backend status" },
+    { command: "memory", description: "manage memory notes" },
+    { command: "config", description: "manage local CLI config" },
+    { command: "tool", description: "run coding tools (search/read/git/run/edit/web)" },
+    { command: "help | -h | --help", description: "show this help" },
+  ];
 }
 
 export function isTopLevelHelpCommand(command: string | undefined): boolean {

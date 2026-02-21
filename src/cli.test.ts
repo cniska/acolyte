@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  buildUsageCommandRows,
   displayPromptForOutput,
   formatAssistantReplyOutput,
   formatEditUpdateOutput,
@@ -238,6 +239,13 @@ describe("cli formatting helpers", () => {
     expect(isTopLevelHelpCommand("-h")).toBe(true);
     expect(isTopLevelHelpCommand("chat")).toBe(false);
     expect(isTopLevelHelpCommand(undefined)).toBe(false);
+  });
+
+  test("buildUsageCommandRows includes core commands", () => {
+    const rows = buildUsageCommandRows();
+    expect(rows.some((row) => row.command.startsWith("chat"))).toBe(true);
+    expect(rows.some((row) => row.command.startsWith("resume"))).toBe(true);
+    expect(rows.some((row) => row.command.includes("help"))).toBe(true);
   });
 
   test("formatAssistantReplyOutput indents multiline assistant output", () => {
