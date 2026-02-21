@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  displayPromptForOutput,
   formatAssistantReplyOutput,
   formatEditUpdateOutput,
   formatForTool,
@@ -162,6 +163,12 @@ describe("cli formatting helpers", () => {
     expect(resolveCommandAlias("?")).toBe("?");
     expect(resolveCommandAlias("/exit")).toBe("/exit");
     expect(resolveCommandAlias("/run")).toBe("/run");
+  });
+
+  test("displayPromptForOutput hides dogfood preamble and keeps task line", () => {
+    const prompt = ["Dogfood mode:", "- Keep response concise", "- Verify edits", "fix src/agent.ts output"].join("\n");
+    expect(displayPromptForOutput(prompt)).toBe("fix src/agent.ts output");
+    expect(displayPromptForOutput("plain prompt")).toBe("plain prompt");
   });
 
   test("formatAssistantReplyOutput indents multiline assistant output", () => {
