@@ -1,11 +1,23 @@
 import { describe, expect, test } from "bun:test";
-import { appendInputHistory, applyUserTurn } from "./chat-turn";
+import { appendInputHistory, applyUserTurn, buildInputHistory } from "./chat-turn";
 import type { Session } from "./types";
 
 describe("chat turn helpers", () => {
   test("appendInputHistory avoids duplicate consecutive entries", () => {
     expect(appendInputHistory(["hello"], "hello")).toEqual(["hello"]);
     expect(appendInputHistory(["hello"], "world")).toEqual(["hello", "world"]);
+  });
+
+  test("buildInputHistory reconstructs user prompt history from messages", () => {
+    const history = buildInputHistory([
+      { id: "m1", role: "system", content: "Pinned memory", timestamp: "2026-02-21T10:00:00.000Z" },
+      { id: "m2", role: "user", content: "  hello  ", timestamp: "2026-02-21T10:00:01.000Z" },
+      { id: "m3", role: "assistant", content: "Hi", timestamp: "2026-02-21T10:00:02.000Z" },
+      { id: "m4", role: "user", content: "hello", timestamp: "2026-02-21T10:00:03.000Z" },
+      { id: "m5", role: "user", content: "review @src/agent.ts", timestamp: "2026-02-21T10:00:04.000Z" },
+      { id: "m6", role: "user", content: " ", timestamp: "2026-02-21T10:00:05.000Z" },
+    ]);
+    expect(history).toEqual(["hello", "review @src/agent.ts"]);
   });
 
   test("applyUserTurn appends message and initializes title", () => {

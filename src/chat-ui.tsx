@@ -16,6 +16,7 @@ import { suggestSlashCommands } from "./chat-slash";
 import { resolveQueueSubmit } from "./chat-submit";
 import { createSubmitHandler } from "./chat-submit-handler";
 import { ChatTranscript } from "./chat-transcript";
+import { buildInputHistory } from "./chat-turn";
 import type { PolicyCandidate } from "./policy-distill";
 import type { Session, SessionStore } from "./types";
 
@@ -80,6 +81,12 @@ function ChatApp(props: ChatAppProps) {
   useAtSuggestionsEffect(atQuery, setAtSuggestions, setAtSuggestionIndex);
   useSlashSuggestionsEffect(slashSuggestions, setSlashSuggestionIndex);
   useThinkingAnimationEffect(isThinking, THINKING_PULSE_FRAMES, setThinkingFrame);
+
+  useEffect(() => {
+    setInputHistory(buildInputHistory(currentSession.messages));
+    setInputHistoryIndex(-1);
+    setInputHistoryDraft("");
+  }, [currentSession.id, currentSession.messages]);
 
   const {
     openSkillsPanel,

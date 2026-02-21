@@ -54,6 +54,21 @@ export function appendInputHistory(history: string[], value: string, maxEntries 
   return next;
 }
 
+export function buildInputHistory(messages: Message[], maxEntries = 200): string[] {
+  let history: string[] = [];
+  for (const message of messages) {
+    if (message.role !== "user") {
+      continue;
+    }
+    const value = message.content.trim();
+    if (value.length === 0) {
+      continue;
+    }
+    history = appendInputHistory(history, value, maxEntries);
+  }
+  return history;
+}
+
 type ApplyUserTurnParams = {
   session: Session;
   displayText: string;
