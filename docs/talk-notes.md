@@ -84,6 +84,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Reduced prompt-specific output rewrites (for example greetings) in favor of generic response handling.
 - Continued reducing brittle output filtering so assistant replies preserve more model intent.
 - Dogfood readiness gate now surfaces clearer first-signal failure lines (less shell-wrapper noise).
+- Soul prompt now explicitly favors one recommended next action over option menus unless alternatives are requested.
 
 ## Open Narrative Threads
 1. Continue dogfooding ramp from Codex-led to Acolyte-led development.
