@@ -4,8 +4,8 @@ import type { PickerState } from "./chat-picker";
 import type { PolicyCandidate } from "./policy-distill";
 import type { Session, SessionStore } from "./types";
 
-function row(role: ChatRow["role"], content: string): ChatRow {
-  return { id: `row_${crypto.randomUUID()}`, role, content };
+function row(role: ChatRow["role"], content: string, style?: ChatRow["style"]): ChatRow {
+  return { id: `row_${crypto.randomUUID()}`, role, content, style };
 }
 
 type PickerByKind = {
@@ -45,7 +45,10 @@ export function createResumePicker(store: SessionStore, limit = 20): PickerState
 }
 
 export function createResumeRows(session: Session, toRows: (messages: Session["messages"]) => ChatRow[]): ChatRow[] {
-  return [...toRows(session.messages), row("assistant", `Resumed session: ${session.id.slice(0, 12)}`)];
+  return [
+    ...toRows(session.messages),
+    row("assistant", `Resumed session: ${session.id.slice(0, 12)}`, "sessionStatus"),
+  ];
 }
 
 export function createPermissionsPicker(): PickerState {

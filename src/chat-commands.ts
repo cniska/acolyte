@@ -15,6 +15,7 @@ export type ChatRow = {
   role: "user" | "assistant" | "system";
   content: string;
   dim?: boolean;
+  style?: "sessionStatus";
 };
 
 export type TokenUsageEntry = {
@@ -113,8 +114,8 @@ type CommandContext = {
   tokenUsage: TokenUsageEntry[];
 };
 
-function row(role: ChatRow["role"], content: string, dim = false): ChatRow {
-  return { id: `row_${crypto.randomUUID()}`, role, content, dim };
+function row(role: ChatRow["role"], content: string, dim = false, style?: ChatRow["style"]): ChatRow {
+  return { id: `row_${crypto.randomUUID()}`, role, content, dim, style };
 }
 
 function buildDogfoodPrompt(task: string): string {
@@ -172,7 +173,10 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     const target = resolved.session;
     ctx.store.activeSessionId = target.id;
     ctx.setCurrentSession(target);
-    ctx.setRows(() => [...ctx.toRows(target.messages), row("assistant", `Resumed session: ${target.id.slice(0, 12)}`)]);
+    ctx.setRows(() => [
+      ...ctx.toRows(target.messages),
+      row("assistant", `Resumed session: ${target.id.slice(0, 12)}`, false, "sessionStatus"),
+    ]);
     ctx.setShowShortcuts(() => false);
     await ctx.persist();
     return { stop: true, userText: text, runVerifyAfterReply: false };
@@ -374,7 +378,10 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     ctx.store.sessions.unshift(next);
     ctx.store.activeSessionId = next.id;
     ctx.setCurrentSession(next);
-    ctx.setRows(() => [row("user", text), row("assistant", `Started new session: ${next.id.slice(0, 12)}`)]);
+    ctx.setRows(() => [
+      row("user", text),
+      row("assistant", `Started new session: ${next.id.slice(0, 12)}`, false, "sessionStatus"),
+    ]);
     ctx.setValue("");
     ctx.setShowShortcuts(() => false);
     await ctx.persist();

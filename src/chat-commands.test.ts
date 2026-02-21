@@ -231,6 +231,7 @@ describe("chat-commands", () => {
     expect(rows[0]).toMatchObject({ role: "user", content: "/new" });
     expect(rows[1]?.role).toBe("assistant");
     expect(rows[1]?.content.startsWith("Started new session: sess_")).toBe(true);
+    expect(rows[1]?.style).toBe("sessionStatus");
     expect(setCurrentSessionCalls).toHaveLength(1);
     expect(store.sessions).toHaveLength(2);
     expect(store.activeSessionId).toBe(setCurrentSessionCalls[0]);

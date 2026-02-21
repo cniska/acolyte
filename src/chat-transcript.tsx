@@ -38,7 +38,10 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
         <React.Fragment key={row.id}>
           {index > 0 ? <Text> </Text> : null}
           {(() => {
-            const sessionStatus = row.role === "assistant" ? parseSessionStatus(row.content) : null;
+            const sessionStatus =
+              row.role === "assistant" && (row.style === "sessionStatus" || row.style === undefined)
+                ? parseSessionStatus(row.content)
+                : null;
             const dimMarker = Boolean(row.dim) || Boolean(sessionStatus);
             return (
               <Box>

@@ -51,6 +51,7 @@ describe("chat picker actions", () => {
     expect(rows[1]).toMatchObject({
       role: "assistant",
       content: "Resumed session: sess_abc1234",
+      style: "sessionStatus",
     });
   });
 
