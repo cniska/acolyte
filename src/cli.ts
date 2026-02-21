@@ -102,7 +102,6 @@ function usage(): void {
   const white = (text: string): string => `\x1b[37m${text}\x1b[39m`;
 
   printOutput(formatCliTitle(CLI_VERSION));
-  printOutput(dim("If no subcommand is specified, Acolyte starts interactive chat."));
   printOutput("");
   printOutput(white("Usage"));
   printOutput("  acolyte");
