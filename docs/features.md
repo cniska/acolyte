@@ -30,6 +30,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - CLI policy distillation script: `bun run policy:distill --sessions <N> --min <N>`.
 - In-flight turn interrupt via `Esc` while Acolyte is thinking.
 - One-shot CLI mode via `run` (including `--file` attachment support).
+- One-shot `run` mode is isolated (does not reuse/persist chat session history).
 - Tool command surface for search/web/read/edit/git/run operations.
 - Secure-by-default tool guardrails:
   - file reads/edits are restricted to the workspace plus `~/.acolyte`
