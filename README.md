@@ -30,6 +30,7 @@ OPENAI_API_KEY=...
 # ACOLYTE_MODEL_REVIEWER=gpt-5-mini
 # DATABASE_URL=postgres://acolyte:acolyte@localhost:5432/acolyte
 # ACOLYTE_PERMISSION_MODE=write   # read|write
+# ACOLYTE_LOG_FORMAT=logfmt       # logfmt|json
 ```
 
 Role model vars are optional and fall back to `ACOLYTE_MODEL`.

@@ -1,8 +1,13 @@
 export type LogLevel = "debug" | "info" | "warn" | "error";
+type LogFormat = "logfmt" | "json";
 
 type LogFields = Record<string, string | number | boolean | null | undefined>;
 
-export function renderLogLine(level: LogLevel, message: string, fields?: LogFields): string {
+function resolveLogFormat(): LogFormat {
+  return process.env.ACOLYTE_LOG_FORMAT === "json" ? "json" : "logfmt";
+}
+
+function renderLogfmtLine(level: LogLevel, message: string, fields?: LogFields): string {
   const timestamp = new Date().toISOString();
   const pairs = fields
     ? Object.entries(fields)
@@ -11,6 +16,24 @@ export function renderLogLine(level: LogLevel, message: string, fields?: LogFiel
     : [];
   const tail = pairs.length > 0 ? ` ${pairs.join(" ")}` : "";
   return `${timestamp} level=${level} msg="${message.replace(/"/g, '\\"')}"${tail}\n`;
+}
+
+function renderJsonLine(level: LogLevel, message: string, fields?: LogFields): string {
+  const body = {
+    ts: new Date().toISOString(),
+    level,
+    msg: message,
+    ...fields,
+  };
+  return `${JSON.stringify(body)}\n`;
+}
+
+export function renderLogLine(level: LogLevel, message: string, fields?: LogFields): string {
+  const format = resolveLogFormat();
+  if (format === "json") {
+    return renderJsonLine(level, message, fields);
+  }
+  return renderLogfmtLine(level, message, fields);
 }
 
 function write(level: LogLevel, message: string, fields?: LogFields): void {
