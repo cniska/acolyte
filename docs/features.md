@@ -60,6 +60,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
   - `ACOLYTE_MAX_MESSAGE_TOKENS`
   - `ACOLYTE_MAX_ATTACHMENT_MESSAGE_TOKENS`
   - `ACOLYTE_MAX_PINNED_MESSAGE_TOKENS`
+- Token budget env parsing enforces hard max caps to prevent runaway configs.
 
 ## In Progress
 

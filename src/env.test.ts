@@ -57,4 +57,10 @@ describe("env parsing", () => {
   test("parseEnv rejects invalid port", () => {
     expect(() => parseEnv({ PORT: "0" })).toThrow("Invalid environment configuration");
   });
+
+  test("parseEnv rejects oversized token budgets", () => {
+    expect(() => parseEnv({ ACOLYTE_CONTEXT_MAX_TOKENS: "1000000" })).toThrow("Invalid environment configuration");
+    expect(() => parseEnv({ ACOLYTE_OM_OBSERVATION_TOKENS: "50000" })).toThrow("Invalid environment configuration");
+    expect(() => parseEnv({ ACOLYTE_MAX_MESSAGE_TOKENS: "50000" })).toThrow("Invalid environment configuration");
+  });
 });
