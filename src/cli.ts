@@ -36,6 +36,8 @@ import {
 const FALLBACK_MODEL = "gpt-5-mini";
 const CLI_VERSION = process.env.npm_package_version ?? "dev";
 const PROMPT = "❯ ";
+const ONE_SHOT_SYSTEM_PROMPT =
+  "One-shot mode: answer concisely and directly (prefer <=5 lines). Avoid option menus unless the user explicitly asks for options.";
 
 function usage(): void {
   printInfo("Usage: acolyte <chat|run|dogfood|history|status|memory|config|tool>");
@@ -761,6 +763,7 @@ async function runMode(args: string[]): Promise<void> {
   const config = await readConfig();
   const defaultModel = appConfig.models.main ?? config.model ?? FALLBACK_MODEL;
   const session = createSession(defaultModel);
+  session.messages.push(newMessage("system", ONE_SHOT_SYSTEM_PROMPT));
   const backend = createBackend({
     apiUrl: config.apiUrl,
     apiKey: config.apiKey,
