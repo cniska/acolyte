@@ -4,10 +4,19 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const tmpHomes: string[] = [];
+const tmpProjects: string[] = [];
+const repoRoot = process.cwd();
 
 afterEach(async () => {
   while (tmpHomes.length > 0) {
     const dir = tmpHomes.pop();
+    if (!dir) {
+      continue;
+    }
+    await rm(dir, { recursive: true, force: true });
+  }
+  while (tmpProjects.length > 0) {
+    const dir = tmpProjects.pop();
     if (!dir) {
       continue;
     }
@@ -18,9 +27,13 @@ afterEach(async () => {
 describe("cli run resource id", () => {
   test("run forwards isolated resource id to backend", async () => {
     const home = await mkdtemp(join(tmpdir(), "acolyte-resource-test-"));
+    const project = await mkdtemp(join(tmpdir(), "acolyte-resource-project-"));
     tmpHomes.push(home);
-    const dataDir = join(home, ".acolyte");
-    await mkdir(dataDir, { recursive: true });
+    tmpProjects.push(project);
+    const userDataDir = join(home, ".acolyte");
+    const projectDataDir = join(project, ".acolyte");
+    await mkdir(userDataDir, { recursive: true });
+    await mkdir(projectDataDir, { recursive: true });
 
     const requests: Array<{ sessionId?: string; resourceId?: string }> = [];
     const server = Bun.serve({
@@ -44,20 +57,13 @@ describe("cli run resource id", () => {
 
     try {
       await writeFile(
-        join(dataDir, "config.json"),
-        JSON.stringify(
-          {
-            apiUrl: `http://127.0.0.1:${server.port}`,
-            model: "gpt-5-mini",
-          },
-          null,
-          2,
-        ),
+        join(projectDataDir, "config.toml"),
+        `apiUrl = "http://127.0.0.1:${server.port}"\nmodel = "gpt-5-mini"\n`,
         "utf8",
       );
 
-      const proc = Bun.spawn([process.execPath, "run", "src/cli.ts", "run", "ping"], {
-        cwd: process.cwd(),
+      const proc = Bun.spawn([process.execPath, "run", join(repoRoot, "src/cli.ts"), "run", "ping"], {
+        cwd: project,
         env: { ...process.env, HOME: home, NO_COLOR: "1" },
         stdout: "pipe",
         stderr: "pipe",

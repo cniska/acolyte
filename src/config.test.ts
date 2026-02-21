@@ -253,4 +253,51 @@ describe("config store", () => {
     expect(loaded.model).toBe("anthropic/claude-sonnet-4");
     expect(loaded.maxMessageTokens).toBe(700);
   });
+
+  test("setConfigValue writes to project scope without mutating user scope", async () => {
+    const home = createTempDir("acolyte-config-home-");
+    const project = createTempDir("acolyte-config-project-");
+    const userDataDir = join(home, ".acolyte");
+    const projectDataDir = join(project, ".acolyte");
+    mkdirSync(userDataDir, { recursive: true });
+    mkdirSync(projectDataDir, { recursive: true });
+
+    writeFileSync(join(userDataDir, "config.toml"), 'model = "openai/gpt-5-mini"\n', "utf8");
+    await setConfigValue("model", "anthropic/claude-sonnet-4", { homeDir: home, cwd: project, scope: "project" });
+
+    const userToml = readFileSync(join(userDataDir, "config.toml"), "utf8");
+    const projectToml = readFileSync(join(projectDataDir, "config.toml"), "utf8");
+    expect(userToml).toContain('model = "openai/gpt-5-mini"');
+    expect(projectToml).toContain('model = "anthropic/claude-sonnet-4"');
+  });
+
+  test("setConfigValue validates external values with zod", async () => {
+    const home = createTempDir("acolyte-config-home-");
+    const project = createTempDir("acolyte-config-project-");
+    await expect(setConfigValue("maxMessageTokens", "not-a-number", { homeDir: home, cwd: project })).rejects.toThrow(
+      "Invalid value for maxMessageTokens",
+    );
+    await expect(setConfigValue("permissionMode", "admin", { homeDir: home, cwd: project })).rejects.toThrow(
+      "Invalid value for permissionMode",
+    );
+  });
+
+  test("unsetConfigValue removes key only from targeted project scope", async () => {
+    const home = createTempDir("acolyte-config-home-");
+    const project = createTempDir("acolyte-config-project-");
+    const userDataDir = join(home, ".acolyte");
+    const projectDataDir = join(project, ".acolyte");
+    mkdirSync(userDataDir, { recursive: true });
+    mkdirSync(projectDataDir, { recursive: true });
+
+    writeFileSync(join(userDataDir, "config.toml"), 'apiUrl = "http://user.local"\n', "utf8");
+    writeFileSync(join(projectDataDir, "config.toml"), 'apiUrl = "http://project.local"\n', "utf8");
+
+    await unsetConfigValue("apiUrl", { homeDir: home, cwd: project, scope: "project" });
+
+    const userToml = readFileSync(join(userDataDir, "config.toml"), "utf8");
+    const projectToml = readFileSync(join(projectDataDir, "config.toml"), "utf8");
+    expect(userToml).toContain('apiUrl = "http://user.local"');
+    expect(projectToml).not.toContain("apiUrl =");
+  });
 });

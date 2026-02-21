@@ -48,6 +48,9 @@ bun run db:smoke
 - Non-secret runtime defaults come from config files with precedence:
   - project: `<repo>/.acolyte/config.toml`
   - user: `~/.acolyte/config.toml`
+- Config CLI writes user scope by default; use `--project` for repo scope:
+  - `acolyte config set --project model "anthropic/claude-sonnet-4"`
+  - `acolyte config list --user`
 - Use `acolyte config set model <value>` and `acolyte config set apiUrl <url>` to update them
 - Secrets are env-only (`OPENAI_API_KEY`, `ACOLYTE_API_KEY`, provider keys)
 - Provider/model routing supports role lanes with fallback

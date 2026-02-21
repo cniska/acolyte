@@ -6,10 +6,19 @@ import { createSession } from "./storage";
 import type { SessionStore } from "./types";
 
 const tmpHomes: string[] = [];
+const tmpProjects: string[] = [];
+const repoRoot = process.cwd();
 
 afterEach(async () => {
   while (tmpHomes.length > 0) {
     const dir = tmpHomes.pop();
+    if (!dir) {
+      continue;
+    }
+    await rm(dir, { recursive: true, force: true });
+  }
+  while (tmpProjects.length > 0) {
+    const dir = tmpProjects.pop();
     if (!dir) {
       continue;
     }
@@ -20,7 +29,9 @@ afterEach(async () => {
 describe("cli run mode", () => {
   test("run command does not mutate persisted sessions", async () => {
     const home = await mkdtemp(join(tmpdir(), "acolyte-run-test-"));
+    const project = await mkdtemp(join(tmpdir(), "acolyte-run-project-"));
     tmpHomes.push(home);
+    tmpProjects.push(project);
     const dataDir = join(home, ".acolyte");
     await mkdir(dataDir, { recursive: true });
 
@@ -35,8 +46,8 @@ describe("cli run mode", () => {
     await writeFile(storePath, before, "utf8");
 
     const result = Bun.spawnSync({
-      cmd: [process.execPath, "run", "src/cli.ts", "run", "hello"],
-      cwd: process.cwd(),
+      cmd: [process.execPath, "run", join(repoRoot, "src/cli.ts"), "run", "hello"],
+      cwd: project,
       env: {
         ...process.env,
         HOME: home,
@@ -52,25 +63,22 @@ describe("cli run mode", () => {
 
   test("run command exits non-zero when remote backend is unreachable", async () => {
     const home = await mkdtemp(join(tmpdir(), "acolyte-run-fail-test-"));
+    const project = await mkdtemp(join(tmpdir(), "acolyte-run-fail-project-"));
     tmpHomes.push(home);
-    const dataDir = join(home, ".acolyte");
-    await mkdir(dataDir, { recursive: true });
+    tmpProjects.push(project);
+    const userDataDir = join(home, ".acolyte");
+    const projectDataDir = join(project, ".acolyte");
+    await mkdir(userDataDir, { recursive: true });
+    await mkdir(projectDataDir, { recursive: true });
     await writeFile(
-      join(dataDir, "config.json"),
-      JSON.stringify(
-        {
-          apiUrl: "http://127.0.0.1:1",
-          model: "gpt-5-mini",
-        },
-        null,
-        2,
-      ),
+      join(projectDataDir, "config.toml"),
+      'apiUrl = "http://127.0.0.1:1"\nmodel = "gpt-5-mini"\n',
       "utf8",
     );
 
     const result = Bun.spawnSync({
-      cmd: [process.execPath, "run", "src/cli.ts", "run", "hello"],
-      cwd: process.cwd(),
+      cmd: [process.execPath, "run", join(repoRoot, "src/cli.ts"), "run", "hello"],
+      cwd: project,
       env: {
         ...process.env,
         HOME: home,

@@ -13,6 +13,12 @@ const MAX_OM_REFLECTION_TOKENS = 32_000;
 const MAX_MESSAGE_TOKENS = 4_000;
 const MAX_ATTACHMENT_MESSAGE_TOKENS = 12_000;
 const MAX_PINNED_MESSAGE_TOKENS = 4_000;
+const nonEmptyStringSchema = z.string().trim().min(1);
+const parseIntegerSchema = (min: number, max: number): z.ZodType<number> =>
+  z.preprocess(
+    (value) => (typeof value === "string" && value.trim().length > 0 ? Number(value) : value),
+    z.number().int().min(min).max(max),
+  );
 
 const DEFAULT_CONFIG = {
   port: 6767,
@@ -74,9 +80,34 @@ export interface ResolvedAcolyteConfig {
   maxPinnedMessageTokens: number;
 }
 
+export type ConfigScope = "user" | "project";
+
 type ConfigOptions = {
   homeDir?: string;
   cwd?: string;
+  scope?: ConfigScope;
+};
+
+const CONFIG_SET_SCHEMAS: Record<keyof AcolyteConfig, z.ZodTypeAny> = {
+  port: parseIntegerSchema(1, 65535),
+  model: nonEmptyStringSchema,
+  modelPlanner: nonEmptyStringSchema,
+  modelCoder: nonEmptyStringSchema,
+  modelReviewer: nonEmptyStringSchema,
+  omModel: nonEmptyStringSchema,
+  apiUrl: nonEmptyStringSchema,
+  openaiBaseUrl: nonEmptyStringSchema,
+  anthropicBaseUrl: nonEmptyStringSchema,
+  googleBaseUrl: nonEmptyStringSchema,
+  permissionMode: z.enum(["read", "write"]),
+  logFormat: z.enum(["logfmt", "json"]),
+  omObservationTokens: parseIntegerSchema(500, MAX_OM_OBSERVATION_TOKENS),
+  omReflectionTokens: parseIntegerSchema(1000, MAX_OM_REFLECTION_TOKENS),
+  contextMaxTokens: parseIntegerSchema(1000, MAX_CONTEXT_TOKENS),
+  maxHistoryMessages: parseIntegerSchema(1, 200),
+  maxMessageTokens: parseIntegerSchema(50, MAX_MESSAGE_TOKENS),
+  maxAttachmentMessageTokens: parseIntegerSchema(100, MAX_ATTACHMENT_MESSAGE_TOKENS),
+  maxPinnedMessageTokens: parseIntegerSchema(100, MAX_PINNED_MESSAGE_TOKENS),
 };
 
 function toConfig(input: Record<string, unknown>): AcolyteConfig {
@@ -84,36 +115,33 @@ function toConfig(input: Record<string, unknown>): AcolyteConfig {
     const result = schema.safeParse(value);
     return result.success ? result.data : undefined;
   };
-  const parseInteger = (min: number, max: number): z.ZodType<number> =>
-    z.preprocess(
-      (value) => (typeof value === "string" && value.trim().length > 0 ? Number(value) : value),
-      z.number().int().min(min).max(max),
-    );
-  const nonEmptyString = z.string().trim().min(1);
 
   return {
-    port: parseField(parseInteger(1, 65535), input.port),
-    model: parseField(nonEmptyString, input.model),
-    modelPlanner: parseField(nonEmptyString, input.modelPlanner),
-    modelCoder: parseField(nonEmptyString, input.modelCoder),
-    modelReviewer: parseField(nonEmptyString, input.modelReviewer),
-    omModel: parseField(nonEmptyString, input.omModel),
-    apiUrl: parseField(nonEmptyString, input.apiUrl),
-    openaiBaseUrl: parseField(nonEmptyString, input.openaiBaseUrl),
-    anthropicBaseUrl: parseField(nonEmptyString, input.anthropicBaseUrl),
-    googleBaseUrl: parseField(nonEmptyString, input.googleBaseUrl),
+    port: parseField(parseIntegerSchema(1, 65535), input.port),
+    model: parseField(nonEmptyStringSchema, input.model),
+    modelPlanner: parseField(nonEmptyStringSchema, input.modelPlanner),
+    modelCoder: parseField(nonEmptyStringSchema, input.modelCoder),
+    modelReviewer: parseField(nonEmptyStringSchema, input.modelReviewer),
+    omModel: parseField(nonEmptyStringSchema, input.omModel),
+    apiUrl: parseField(nonEmptyStringSchema, input.apiUrl),
+    openaiBaseUrl: parseField(nonEmptyStringSchema, input.openaiBaseUrl),
+    anthropicBaseUrl: parseField(nonEmptyStringSchema, input.anthropicBaseUrl),
+    googleBaseUrl: parseField(nonEmptyStringSchema, input.googleBaseUrl),
     permissionMode: parseField(z.enum(["read", "write"]), input.permissionMode),
     logFormat: parseField(z.enum(["logfmt", "json"]), input.logFormat),
-    omObservationTokens: parseField(parseInteger(500, MAX_OM_OBSERVATION_TOKENS), input.omObservationTokens),
-    omReflectionTokens: parseField(parseInteger(1000, MAX_OM_REFLECTION_TOKENS), input.omReflectionTokens),
-    contextMaxTokens: parseField(parseInteger(1000, MAX_CONTEXT_TOKENS), input.contextMaxTokens),
-    maxHistoryMessages: parseField(parseInteger(1, 200), input.maxHistoryMessages),
-    maxMessageTokens: parseField(parseInteger(50, MAX_MESSAGE_TOKENS), input.maxMessageTokens),
+    omObservationTokens: parseField(parseIntegerSchema(500, MAX_OM_OBSERVATION_TOKENS), input.omObservationTokens),
+    omReflectionTokens: parseField(parseIntegerSchema(1000, MAX_OM_REFLECTION_TOKENS), input.omReflectionTokens),
+    contextMaxTokens: parseField(parseIntegerSchema(1000, MAX_CONTEXT_TOKENS), input.contextMaxTokens),
+    maxHistoryMessages: parseField(parseIntegerSchema(1, 200), input.maxHistoryMessages),
+    maxMessageTokens: parseField(parseIntegerSchema(50, MAX_MESSAGE_TOKENS), input.maxMessageTokens),
     maxAttachmentMessageTokens: parseField(
-      parseInteger(100, MAX_ATTACHMENT_MESSAGE_TOKENS),
+      parseIntegerSchema(100, MAX_ATTACHMENT_MESSAGE_TOKENS),
       input.maxAttachmentMessageTokens,
     ),
-    maxPinnedMessageTokens: parseField(parseInteger(100, MAX_PINNED_MESSAGE_TOKENS), input.maxPinnedMessageTokens),
+    maxPinnedMessageTokens: parseField(
+      parseIntegerSchema(100, MAX_PINNED_MESSAGE_TOKENS),
+      input.maxPinnedMessageTokens,
+    ),
   };
 }
 
@@ -135,6 +163,48 @@ function resolvePaths(options?: ConfigOptions): {
     projectJsonPath: join(projectDataDir, "config.json"),
     projectTomlPath: join(projectDataDir, "config.toml"),
   };
+}
+
+function readSourceRecordSync(tomlPath: string, jsonPath: string): Record<string, unknown> {
+  if (existsSync(tomlPath)) {
+    const rawToml = readFileSync(tomlPath, "utf8");
+    return Bun.TOML.parse(rawToml) as Record<string, unknown>;
+  }
+  if (existsSync(jsonPath)) {
+    const rawJson = readFileSync(jsonPath, "utf8");
+    return JSON.parse(rawJson) as Record<string, unknown>;
+  }
+  return {};
+}
+
+async function readSourceRecord(tomlPath: string, jsonPath: string): Promise<Record<string, unknown>> {
+  if (existsSync(tomlPath)) {
+    const rawToml = await readFile(tomlPath, "utf8");
+    return Bun.TOML.parse(rawToml) as Record<string, unknown>;
+  }
+  if (existsSync(jsonPath)) {
+    const rawJson = await readFile(jsonPath, "utf8");
+    return JSON.parse(rawJson) as Record<string, unknown>;
+  }
+  return {};
+}
+
+function readConfigScopeSync(scope: ConfigScope, options?: ConfigOptions): AcolyteConfig {
+  const paths = resolvePaths(options);
+  const raw =
+    scope === "project"
+      ? readSourceRecordSync(paths.projectTomlPath, paths.projectJsonPath)
+      : readSourceRecordSync(paths.userTomlPath, paths.userJsonPath);
+  return toConfig(raw);
+}
+
+async function readConfigScope(scope: ConfigScope, options?: ConfigOptions): Promise<AcolyteConfig> {
+  const paths = resolvePaths(options);
+  const raw =
+    scope === "project"
+      ? await readSourceRecord(paths.projectTomlPath, paths.projectJsonPath)
+      : await readSourceRecord(paths.userTomlPath, paths.userJsonPath);
+  return toConfig(raw);
 }
 
 function serializeToml(config: AcolyteConfig): string {
@@ -229,23 +299,9 @@ export function readResolvedConfigSync(options?: ConfigOptions): ResolvedAcolyte
 }
 
 export async function readConfig(options?: ConfigOptions): Promise<AcolyteConfig> {
-  const paths = resolvePaths(options);
-  const readSource = async (tomlPath: string, jsonPath: string): Promise<AcolyteConfig> => {
-    if (existsSync(tomlPath)) {
-      const rawToml = await readFile(tomlPath, "utf8");
-      const parsedToml = Bun.TOML.parse(rawToml) as Record<string, unknown>;
-      return toConfig(parsedToml);
-    }
-    if (existsSync(jsonPath)) {
-      const rawJson = await readFile(jsonPath, "utf8");
-      const parsedJson = JSON.parse(rawJson) as Record<string, unknown>;
-      return toConfig(parsedJson);
-    }
-    return {};
-  };
   try {
-    const userConfig = await readSource(paths.userTomlPath, paths.userJsonPath);
-    const projectConfig = await readSource(paths.projectTomlPath, paths.projectJsonPath);
+    const userConfig = await readConfigScope("user", options);
+    const projectConfig = await readConfigScope("project", options);
     return toConfig({ ...userConfig, ...projectConfig } as Record<string, unknown>);
   } catch {
     return {};
@@ -253,23 +309,9 @@ export async function readConfig(options?: ConfigOptions): Promise<AcolyteConfig
 }
 
 export function readConfigSync(options?: ConfigOptions): AcolyteConfig {
-  const paths = resolvePaths(options);
-  const readSourceSync = (tomlPath: string, jsonPath: string): AcolyteConfig => {
-    if (existsSync(tomlPath)) {
-      const rawToml = readFileSync(tomlPath, "utf8");
-      const parsedToml = Bun.TOML.parse(rawToml) as Record<string, unknown>;
-      return toConfig(parsedToml);
-    }
-    if (existsSync(jsonPath)) {
-      const rawJson = readFileSync(jsonPath, "utf8");
-      const parsedJson = JSON.parse(rawJson) as Record<string, unknown>;
-      return toConfig(parsedJson);
-    }
-    return {};
-  };
   try {
-    const userConfig = readSourceSync(paths.userTomlPath, paths.userJsonPath);
-    const projectConfig = readSourceSync(paths.projectTomlPath, paths.projectJsonPath);
+    const userConfig = readConfigScopeSync("user", options);
+    const projectConfig = readConfigScopeSync("project", options);
     return toConfig({ ...userConfig, ...projectConfig } as Record<string, unknown>);
   } catch {
     return {};
@@ -279,21 +321,41 @@ export function readConfigSync(options?: ConfigOptions): AcolyteConfig {
 export async function writeConfig(config: AcolyteConfig, options?: ConfigOptions): Promise<void> {
   const paths = resolvePaths(options);
   const sanitized = toConfig(config as Record<string, unknown>);
-  await mkdir(paths.userDataDir, { recursive: true });
-  await writeFile(paths.userTomlPath, serializeToml(sanitized), "utf8");
+  const scope = options?.scope ?? "user";
+  const dataDir = scope === "project" ? paths.projectDataDir : paths.userDataDir;
+  const tomlPath = scope === "project" ? paths.projectTomlPath : paths.userTomlPath;
+  await mkdir(dataDir, { recursive: true });
+  await writeFile(tomlPath, serializeToml(sanitized), "utf8");
 }
 
 export async function setConfigValue(key: keyof AcolyteConfig, value: string, options?: ConfigOptions): Promise<void> {
-  const current = await readConfig(options);
-  const next: AcolyteConfig = { ...current, [key]: value };
-  await writeConfig(next, options);
+  const scope = options?.scope ?? "user";
+  const parsed = CONFIG_SET_SCHEMAS[key].safeParse(value);
+  if (!parsed.success) {
+    throw new Error(`Invalid value for ${key}`);
+  }
+  const current = await readConfigScope(scope, options);
+  const next: AcolyteConfig = { ...current, [key]: parsed.data };
+  await writeConfig(next, { ...options, scope });
 }
 
 export async function unsetConfigValue(key: keyof AcolyteConfig, options?: ConfigOptions): Promise<void> {
-  const current = await readConfig(options);
+  const scope = options?.scope ?? "user";
+  const current = await readConfigScope(scope, options);
   const next: AcolyteConfig = { ...current };
   delete next[key];
-  await writeConfig(next, options);
+  await writeConfig(next, { ...options, scope });
+}
+
+export async function readConfigForScope(
+  scope: ConfigScope,
+  options?: Omit<ConfigOptions, "scope">,
+): Promise<AcolyteConfig> {
+  return readConfigScope(scope, options);
+}
+
+export function readConfigForScopeSync(scope: ConfigScope, options?: Omit<ConfigOptions, "scope">): AcolyteConfig {
+  return readConfigScopeSync(scope, options);
 }
 export const __internal = {
   toConfig,

@@ -17,7 +17,7 @@ import {
   searchRepo,
   searchWeb,
 } from "./coding-tools";
-import { type AcolyteConfig, readConfig, setConfigValue, unsetConfigValue } from "./config";
+import { type AcolyteConfig, readConfig, readConfigForScope, setConfigValue, unsetConfigValue } from "./config";
 import { buildFileContext } from "./file-context";
 import { addMemory, listMemories } from "./memory";
 import { formatStatusOutput as formatStatusOutputShared } from "./status-format";
@@ -1066,7 +1066,8 @@ async function memoryMode(args: string[]): Promise<void> {
 }
 
 async function configMode(args: string[]): Promise<void> {
-  const [subcommand, key, ...rest] = args;
+  const [subcommandRaw, ...restArgs] = args;
+  const subcommand = subcommandRaw ?? "list";
   const validKeys = [
     "port",
     "model",
@@ -1090,17 +1091,23 @@ async function configMode(args: string[]): Promise<void> {
   ] as const;
   const valid = new Set<string>(validKeys);
   const validKeysHint = validKeys.join("|");
+  const parseScopeFlag = (token: string | undefined): "user" | "project" | null =>
+    token === "--user" ? "user" : token === "--project" ? "project" : null;
 
-  if (!subcommand || subcommand === "list") {
-    const config = await readConfig();
+  if (subcommand === "list") {
+    const scope = parseScopeFlag(restArgs[0]);
+    const config = scope ? await readConfigForScope(scope) : await readConfig();
+    printInfo(`scope=${scope ?? "effective"}`);
     for (const name of validKeys) {
       printInfo(`${name}=${String(config[name] ?? "")}`);
     }
-    printInfo("apiKey=(env only)");
     return;
   }
 
   if (subcommand === "set") {
+    const scope = parseScopeFlag(restArgs[0]);
+    const key = scope ? restArgs[1] : restArgs[0];
+    const valueParts = scope ? restArgs.slice(2) : restArgs.slice(1);
     if (key === "apiKey") {
       printError("Config apiKey is not supported. Use ACOLYTE_API_KEY in .env instead.");
       process.exitCode = 1;
@@ -1112,19 +1119,28 @@ async function configMode(args: string[]): Promise<void> {
       return;
     }
 
-    const value = rest.join(" ").trim();
+    const value = valueParts.join(" ").trim();
     if (!value) {
       printError("Config value cannot be empty");
       process.exitCode = 1;
       return;
     }
 
-    await setConfigValue(key as keyof AcolyteConfig, value);
-    printInfo(`Saved config ${key}.`);
+    try {
+      await setConfigValue(key as keyof AcolyteConfig, value, { scope: scope ?? "user" });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : `Invalid value for ${key}`;
+      printError(message);
+      process.exitCode = 1;
+      return;
+    }
+    printInfo(`Saved config ${key} (${scope ?? "user"}).`);
     return;
   }
 
   if (subcommand === "unset") {
+    const scope = parseScopeFlag(restArgs[0]);
+    const key = scope ? restArgs[1] : restArgs[0];
     if (key === "apiKey") {
       printError("Config apiKey is not supported. Use ACOLYTE_API_KEY in .env instead.");
       process.exitCode = 1;
@@ -1136,12 +1152,14 @@ async function configMode(args: string[]): Promise<void> {
       return;
     }
 
-    await unsetConfigValue(key as keyof AcolyteConfig);
-    printInfo(`Removed config ${key}.`);
+    await unsetConfigValue(key as keyof AcolyteConfig, { scope: scope ?? "user" });
+    printInfo(`Removed config ${key} (${scope ?? "user"}).`);
     return;
   }
 
-  printError("Usage: acolyte config [list|set|unset] ...");
+  printError(
+    `Usage: acolyte config list [--user|--project] | set [--user|--project] <${validKeysHint}> <value> | unset [--user|--project] <${validKeysHint}>`,
+  );
   process.exitCode = 1;
 }
 
