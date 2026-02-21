@@ -67,7 +67,17 @@ class LocalBackend implements Backend {
   }
 
   async status(): Promise<string> {
-    return `mode=local-mock backend=embedded permission_mode=${appConfig.agent.permissions.mode}`;
+    const fields = [
+      "provider=local-mock",
+      `model=${appConfig.models.main}`,
+      `model_main=${appConfig.models.main}`,
+      `model_planner=${appConfig.models.planner ?? appConfig.models.main}`,
+      `model_coder=${appConfig.models.coder ?? appConfig.models.main}`,
+      `model_reviewer=${appConfig.models.reviewer ?? appConfig.models.main}`,
+      "backend=embedded",
+      `permission_mode=${appConfig.agent.permissions.mode}`,
+    ];
+    return fields.join(" ");
   }
 
   async setPermissionMode(mode: PermissionMode): Promise<void> {

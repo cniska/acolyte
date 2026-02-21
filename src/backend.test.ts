@@ -141,3 +141,19 @@ describe("remote backend status parsing", () => {
     expect(status).toContain("url=http://localhost:6767");
   });
 });
+
+describe("local backend status", () => {
+  test("includes provider and role model fields for consistent status formatting", async () => {
+    const backend = createBackend();
+    const status = await backend.status();
+
+    expect(status).toContain("provider=local-mock");
+    expect(status).toContain("model=");
+    expect(status).toContain("model_main=");
+    expect(status).toContain("model_planner=");
+    expect(status).toContain("model_coder=");
+    expect(status).toContain("model_reviewer=");
+    expect(status).toContain("backend=embedded");
+    expect(status).toContain("permission_mode=");
+  });
+});
