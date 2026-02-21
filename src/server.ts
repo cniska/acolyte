@@ -111,6 +111,7 @@ const server = Bun.serve({
         provider,
         model: presentModel(provider, appConfig.models.main),
         models: presentRoleModels(provider, resolveRoleModels()),
+        apiBaseUrl: appConfig.openai.baseUrl,
         memory: {
           storage: mastraStorageMode,
           resourceId: appConfig.memory.resourceId,

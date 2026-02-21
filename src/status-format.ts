@@ -63,6 +63,10 @@ export function formatStatusOutput(status: string): string {
   if (url) {
     output.push(`url: ${url}`);
   }
+  const apiBaseUrl = take("api_base_url");
+  if (apiBaseUrl) {
+    output.push(`api_base_url: ${apiBaseUrl}`);
+  }
 
   const memoryStorage = take("memory_storage");
   if (memoryStorage) {

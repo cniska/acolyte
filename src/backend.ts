@@ -154,6 +154,7 @@ class RemoteBackend implements Backend {
         };
       };
       permissionMode?: unknown;
+      apiBaseUrl?: unknown;
     };
     const provider =
       typeof json.provider === "string" ? json.provider : typeof json.mode === "string" ? json.mode : "unknown";
@@ -163,6 +164,7 @@ class RemoteBackend implements Backend {
     const modelCoder = typeof json.models?.coder === "string" ? json.models.coder : undefined;
     const modelReviewer = typeof json.models?.reviewer === "string" ? json.models.reviewer : undefined;
     const service = typeof json.service === "string" ? json.service : "unknown";
+    const apiBaseUrl = typeof json.apiBaseUrl === "string" ? json.apiBaseUrl : undefined;
     const memoryStorage = typeof json.memory?.storage === "string" ? json.memory.storage : undefined;
     const om = json.memory?.observational;
     const omEnabled = typeof om?.enabled === "boolean" ? om.enabled : undefined;
@@ -184,6 +186,7 @@ class RemoteBackend implements Backend {
       modelReviewer ? `model_reviewer=${modelReviewer}` : undefined,
       `service=${service}`,
       `url=${this.apiUrl}`,
+      apiBaseUrl ? `api_base_url=${apiBaseUrl}` : undefined,
       memoryStorage ? `memory_storage=${memoryStorage}` : undefined,
       omEnabled === undefined ? undefined : `om=${omEnabled ? "enabled" : "disabled"}`,
       omScope ? `om_scope=${omScope}` : undefined,
