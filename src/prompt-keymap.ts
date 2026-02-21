@@ -109,6 +109,7 @@ export function resolvePromptAction(input: string, key: PromptKey, options: { ha
 
   if (
     key.home ||
+    (key.meta && key.leftArrow) ||
     ESC.home.has(input) ||
     (key.ctrl && input === CTRL.a) ||
     ESC.lineLeft.has(input) ||
@@ -118,6 +119,7 @@ export function resolvePromptAction(input: string, key: PromptKey, options: { ha
   }
   if (
     key.end ||
+    (key.meta && key.rightArrow) ||
     ESC.end.has(input) ||
     (key.ctrl && input === CTRL.e) ||
     ESC.lineRight.has(input) ||
@@ -151,7 +153,7 @@ export function resolvePromptAction(input: string, key: PromptKey, options: { ha
   ) {
     return { type: "delete_word_back" };
   }
-  if ((key.ctrl && input === CTRL.u) || input === CTRL.clearLine) {
+  if ((key.ctrl && input === CTRL.u) || input === CTRL.clearLine || (key.meta && key.backspace)) {
     return { type: "clear_line" };
   }
 

@@ -20,6 +20,12 @@ describe("prompt keymap", () => {
     expect(resolvePromptAction("\u001b[1;10C", {}, { hasMetaPrefix: false })).toEqual({ type: "move_end" });
     expect(resolvePromptAction("\u001b[1;13D", {}, { hasMetaPrefix: false })).toEqual({ type: "move_home" });
     expect(resolvePromptAction("\u001b[1;13C", {}, { hasMetaPrefix: false })).toEqual({ type: "move_end" });
+    expect(resolvePromptAction("", { meta: true, leftArrow: true }, { hasMetaPrefix: false })).toEqual({
+      type: "move_home",
+    });
+    expect(resolvePromptAction("", { meta: true, rightArrow: true }, { hasMetaPrefix: false })).toEqual({
+      type: "move_end",
+    });
   });
 
   test("maps modifier CSI arrows for word navigation across terminal variants", () => {
@@ -30,5 +36,8 @@ describe("prompt keymap", () => {
   test("maps clear-line control sequence", () => {
     expect(resolvePromptAction("\u0015", {}, { hasMetaPrefix: false })).toEqual({ type: "clear_line" });
     expect(resolvePromptAction("u", { ctrl: true }, { hasMetaPrefix: false })).toEqual({ type: "clear_line" });
+    expect(resolvePromptAction("\u007f", { meta: true, backspace: true }, { hasMetaPrefix: false })).toEqual({
+      type: "clear_line",
+    });
   });
 });
