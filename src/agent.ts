@@ -239,6 +239,10 @@ function isWhatNextPrompt(text: string): boolean {
   return /^(what('?s|\s+is)?\s+next)\??$/i.test(text.trim());
 }
 
+function isGreetingPrompt(text: string): boolean {
+  return /^(hi|hello|hey|yo|sup)\b[!.?]*$/i.test(text.trim());
+}
+
 function compactWhatNextStep(step: string): string {
   let compact = step
     .replace(/\s+/g, " ")
@@ -336,6 +340,10 @@ export function finalizeReviewOutput(output: string, message = ""): string {
 }
 
 export function finalizeAssistantOutput(output: string, message = ""): string {
+  if (isGreetingPrompt(message)) {
+    return "Hi - ready. What should we work on?";
+  }
+
   const normalizedOptions = output
     .split("\n")
     .map((line) => {
