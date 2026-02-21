@@ -296,6 +296,21 @@ describe("finalizeAssistantOutput", () => {
     );
   });
 
+  test("what next compacts verbose wording and avoids PR phrasing", () => {
+    const raw = [
+      "1. If you approve the diff, apply edits and run verify to confirm everything is green.",
+      "2. If verification passes, push and open a PR.",
+      "3. Share output and next risk.",
+    ].join("\n");
+    expect(finalizeAssistantOutput(raw, "what next")).toBe(
+      [
+        "1. apply edits and run verify to confirm everything is green",
+        "2. commit and share results",
+        "3. Share output and next risk",
+      ].join("\n"),
+    );
+  });
+
   test("what next prompt builds numbered fallback when output is unstructured", () => {
     const raw = ["Recap: do these", "Fix null checks", "Add error wrapping", "Run verify"].join("\n");
     expect(finalizeAssistantOutput(raw, "what next")).toBe(

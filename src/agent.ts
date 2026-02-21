@@ -16,6 +16,7 @@ const FALLBACK_PLAN =
 const APPROX_CHARS_PER_TOKEN = 4;
 const MAX_REVIEW_OUTPUT_CHARS = 1800;
 const MAX_ASSISTANT_OUTPUT_CHARS = 1400;
+const MAX_WHAT_NEXT_STEP_CHARS = 180;
 
 function estimateTokens(input: string): number {
   if (input.length === 0) {
@@ -238,11 +239,34 @@ function isWhatNextPrompt(text: string): boolean {
   return /^(what('?s|\s+is)?\s+next)\??$/i.test(text.trim());
 }
 
+function compactWhatNextStep(step: string): string {
+  let compact = step
+    .replace(/\s+/g, " ")
+    .replace(/^if\s+you\s+approve[^,]*,\s*/i, "")
+    .replace(/^if\s+verification\s+passes,\s*/i, "")
+    .replace(/^quick\s+(recap|status)[:\-]\s*/i, "")
+    .trim();
+  compact = compact.replace(/\bpush and open a PR\b/gi, "commit and share results");
+  compact = compact.replace(/\bopen a PR\b/gi, "share results");
+  compact = compact.replace(/\s+/g, " ").trim();
+  if (compact.length > MAX_WHAT_NEXT_STEP_CHARS) {
+    compact = `${compact.slice(0, Math.max(0, MAX_WHAT_NEXT_STEP_CHARS - 1)).trimEnd()}…`;
+  }
+  return compact.replace(/[.;]\s*$/g, "").trim();
+}
+
 function normalizeWhatNextOutput(output: string): string {
   const numbered = output
     .split("\n")
     .map((line) => line.trim())
     .filter((line) => /^\d+\.\s+/.test(line))
+    .map((line) => {
+      const body = line.replace(/^\d+\.\s+/, "");
+      return body.length > 0 ? body : "";
+    })
+    .map(compactWhatNextStep)
+    .filter((line) => line.length > 0)
+    .map((line, index) => `${index + 1}. ${line}`)
     .slice(0, 3);
   if (numbered.length >= 3) {
     return numbered.join("\n");
@@ -260,7 +284,11 @@ function normalizeWhatNextOutput(output: string): string {
       if (body.length === 0) {
         continue;
       }
-      steps.push(`${steps.length + 1}. ${body}`);
+      const compact = compactWhatNextStep(body);
+      if (compact.length === 0) {
+        continue;
+      }
+      steps.push(`${steps.length + 1}. ${compact}`);
     }
     if (steps.length >= 2) {
       while (steps.length < 3) {
@@ -275,6 +303,8 @@ function normalizeWhatNextOutput(output: string): string {
     .map((line) => line.trim())
     .filter((line) => line.length > 0)
     .filter((line) => !/^(what next|recap|quick|ready|pick one|reply|which option)/i.test(line))
+    .map(compactWhatNextStep)
+    .filter((line) => line.length > 0)
     .slice(0, 3);
   if (candidates.length === 0) {
     return "1. Confirm the target file or task.\n2. Apply the smallest safe change.\n3. Run verify and report result.";
