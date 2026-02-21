@@ -5,7 +5,7 @@ import { appConfig, setPermissionMode } from "./app-config";
 import { log } from "./log";
 import { mastraStorage, mastraStorageMode } from "./mastra-storage";
 import { getObservationalMemoryConfig } from "./memory-config";
-import { type ProviderName, presentModel, presentRoleModels, resolveRoleModels } from "./provider-config";
+import { presentModel, presentRoleModels, resolveProvider, resolveRoleModels } from "./provider-config";
 import { createSoulPrompt } from "./soul";
 
 const PORT = appConfig.server.port;
@@ -75,7 +75,7 @@ const server = Bun.serve({
     const url = new URL(req.url);
 
     if (url.pathname === "/healthz" && req.method === "GET") {
-      const provider: ProviderName = OPENAI_API_KEY ? "openai" : "mock";
+      const provider = resolveProvider(OPENAI_API_KEY, OPENAI_BASE_URL);
       let currentOm: {
         exists: boolean;
         generationCount: number;

@@ -1,7 +1,7 @@
 import type { AgentRole } from "./agent-roles";
 import { appConfig } from "./app-config";
 
-export type ProviderName = "openai" | "mock";
+export type ProviderName = "openai" | "openai-compatible" | "mock";
 
 export type RoleModelMap = {
   main: string;
@@ -47,4 +47,16 @@ export function presentRoleModels(provider: ProviderName, models: RoleModelMap):
     coder: presentModel(provider, models.coder),
     reviewer: presentModel(provider, models.reviewer),
   };
+}
+
+export function resolveProvider(openaiApiKey: string | undefined, openaiBaseUrl: string): ProviderName {
+  if (!openaiApiKey) {
+    return "mock";
+  }
+  try {
+    const host = new URL(openaiBaseUrl).hostname.toLowerCase();
+    return host === "api.openai.com" ? "openai" : "openai-compatible";
+  } catch {
+    return "openai-compatible";
+  }
 }

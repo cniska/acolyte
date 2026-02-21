@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { normalizeModel, presentModel, presentRoleModels, resolveRoleModel } from "./provider-config";
+import { normalizeModel, presentModel, presentRoleModels, resolveProvider, resolveRoleModel } from "./provider-config";
 
 describe("provider config", () => {
   test("normalizeModel prefixes unqualified model ids", () => {
@@ -19,6 +19,7 @@ describe("provider config", () => {
 
   test("presentModel and presentRoleModels respect provider", () => {
     expect(presentModel("openai", "gpt-5-mini")).toBe("openai/gpt-5-mini");
+    expect(presentModel("openai-compatible", "gpt-5-mini")).toBe("gpt-5-mini");
     expect(presentModel("mock", "gpt-5-mini")).toBe("gpt-5-mini");
 
     expect(
@@ -34,5 +35,12 @@ describe("provider config", () => {
       coder: "openai/gpt-5-codex",
       reviewer: "openai/gpt-5-mini",
     });
+  });
+
+  test("resolveProvider detects openai vs openai-compatible vs mock", () => {
+    expect(resolveProvider(undefined, "https://api.openai.com/v1")).toBe("mock");
+    expect(resolveProvider("sk-test", "https://api.openai.com/v1")).toBe("openai");
+    expect(resolveProvider("sk-test", "http://localhost:11434/v1")).toBe("openai-compatible");
+    expect(resolveProvider("sk-test", "not-a-url")).toBe("openai-compatible");
   });
 });
