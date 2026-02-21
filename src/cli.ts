@@ -3,6 +3,7 @@ import { relative } from "node:path";
 import { stdout as output } from "node:process";
 import { appConfig } from "./app-config";
 import { createBackend } from "./backend";
+import { wrapAssistantContent } from "./chat-content";
 import { runInkChat } from "./chat-ui";
 import {
   editFileReplace,
@@ -627,8 +628,9 @@ function setSessionTitle(session: Session, inputText: string): void {
   }
 }
 
-export function formatAssistantReplyOutput(content: string): string {
-  const lines = content.split("\n");
+export function formatAssistantReplyOutput(content: string, wrapWidth = 100): string {
+  const wrapped = wrapAssistantContent(content, wrapWidth);
+  const lines = wrapped.split("\n");
   if (lines.length === 0) {
     return "•";
   }
@@ -658,7 +660,8 @@ async function handlePrompt(prompt: string, session: Session, backend = createBa
     });
 
     printOutput("");
-    await streamText(formatAssistantReplyOutput(reply.output));
+    const wrapWidth = Math.max(24, (output.columns ?? 120) - 4);
+    await streamText(formatAssistantReplyOutput(reply.output, wrapWidth));
     session.messages.push(newMessage("assistant", reply.output));
     session.model = reply.model;
     session.updatedAt = nowIso();

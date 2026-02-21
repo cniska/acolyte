@@ -174,6 +174,13 @@ describe("cli formatting helpers", () => {
     expect(out).toBe(["• Summary", "", "  Next step"].join("\n"));
   });
 
+  test("formatAssistantReplyOutput wraps long lines with stable indentation", () => {
+    const out = formatAssistantReplyOutput("1. first second third fourth fifth", 16);
+    const lines = out.split("\n");
+    expect(lines[0]).toBe("• 1. first second third");
+    expect(lines[1]).toMatch(/^\s+fourth fifth$/);
+  });
+
   test("suggestCommand supports canonical and alias prefixes", () => {
     expect(suggestCommand("/e")).toBe("/exit");
     expect(suggestCommand("/exi")).toBe("/exit");
