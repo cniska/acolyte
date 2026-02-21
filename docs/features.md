@@ -30,6 +30,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Mastra Studio role agents use role-scoped tools (planner minimal read/search, reviewer read/search/git/web, coder full toolset).
 - Dogfooding workflow command: `/dogfood <task>` with verify-first loop.
 - Optional skip verify flow: `/dogfood --no-verify <task>`.
+- Assistant output post-processing strips common option-menu/status scaffolding and keeps concise actionable content.
 - Automated dogfood smoke checks via `bun run dogfood:smoke`.
 - Internal telemetry: one-command dogfood readiness gate via `bun run dogfood:gate` (smoke + delivery-slice progress, optional verify).
 - Internal telemetry: dogfood progress supports machine-readable output (`bun run dogfood:progress --json`).

@@ -15,7 +15,7 @@ const FALLBACK_PLAN =
   "1) Interpret request. 2) Use available repo tools when helpful. 3) Return concise, actionable answer.";
 const APPROX_CHARS_PER_TOKEN = 4;
 const MAX_REVIEW_OUTPUT_CHARS = 1800;
-const MAX_ASSISTANT_OUTPUT_CHARS = 1400;
+const MAX_ASSISTANT_OUTPUT_CHARS = 1200;
 
 function estimateTokens(input: string): number {
   if (input.length === 0) {
@@ -310,6 +310,10 @@ export function finalizeAssistantOutput(output: string, message = ""): string {
       return `${match[1] ?? ""}${index}. ${match[3] ?? ""}`;
     })
     .join("\n");
+  const hasAuxScaffolding =
+    /^(quick (status|summary|recap|context|options|reminders?)|repo context|pick one action|notes?\s*\/?\s*blockers?|next-action options?|next actions?|next steps?)\b/im.test(
+      normalizedOptions,
+    );
 
   let dropAuxSection = false;
   const cleaned = normalizedOptions
@@ -333,6 +337,9 @@ export function finalizeAssistantOutput(output: string, message = ""): string {
         return false;
       }
       if (/^recap\s*[:-]/i.test(trimmed)) {
+        return false;
+      }
+      if (hasAuxScaffolding && /^ready(?:[,.!]|$|\s*[—-]\s*)/i.test(trimmed)) {
         return false;
       }
       if (/^i can:\s*$/i.test(trimmed)) {
