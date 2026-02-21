@@ -292,6 +292,13 @@ describe("finalizeAssistantOutput", () => {
     );
   });
 
+  test("dogfood prompt removes duplicate immediate-action prefixes", () => {
+    const raw = "Immediate action: Immediate action — generate a dry-run diff.";
+    expect(finalizeAssistantOutput(raw, "Dogfood mode:\n- Keep response concise")).toBe(
+      "Immediate action: generate a dry-run diff.",
+    );
+  });
+
   test("what next prompt returns exactly 3 numbered steps", () => {
     const raw = [
       "Quick status",

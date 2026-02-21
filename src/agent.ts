@@ -267,6 +267,7 @@ function normalizeDogfoodOutput(output: string): string {
 
   const body = immediate
     .replace(/^Immediate action\s*[-:]\s*/i, "")
+    .replace(/^Immediate action\s*[—-]\s*/i, "")
     .replace(/^\d+\.\s+/, "")
     .replace(/^[-*]\s+/, "")
     .replace(/^I (will|can)\s+/i, "")
