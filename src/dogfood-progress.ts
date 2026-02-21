@@ -1,5 +1,6 @@
 const DEFAULT_TARGET = 10;
 const DEFAULT_LOOKBACK = 30;
+const DELIVERY_TYPES = new Set(["feat", "fix", "refactor", "test"]);
 
 type Commit = {
   hash: string;
@@ -81,6 +82,10 @@ function summarizeByType(commits: Commit[]): Array<{ type: string; count: number
     .sort((a, b) => b.count - a.count || a.type.localeCompare(b.type));
 }
 
+function countDeliverySlices(types: Array<{ type: string; count: number }>): number {
+  return types.reduce((sum, row) => sum + (DELIVERY_TYPES.has(row.type) ? row.count : 0), 0);
+}
+
 function runGitLog(args: ProgressArgs): Commit[] {
   const cmd = [
     "git log --date=short --pretty=format:%h%x09%ad%x09%s",
@@ -100,14 +105,16 @@ function runGitLog(args: ProgressArgs): Commit[] {
 
 function printProgress(commits: Commit[], args: ProgressArgs): void {
   const total = commits.length;
-  const pct = Math.min(100, Math.round((total / args.target) * 100));
-  const remaining = Math.max(0, args.target - total);
   const scope = args.since ? `since ${args.since}` : `last ${args.lookback} commits`;
   const types = summarizeByType(commits);
+  const delivery = countDeliverySlices(types);
+  const pct = Math.min(100, Math.round((delivery / args.target) * 100));
+  const remaining = Math.max(0, args.target - delivery);
 
   console.log("Dogfood progress");
   console.log(`- scope: ${scope}`);
-  console.log(`- slices: ${total}/${args.target} (${pct}%)`);
+  console.log(`- commits (all): ${total}`);
+  console.log(`- slices (delivery): ${delivery}/${args.target} (${pct}%)`);
   console.log(`- remaining to target: ${remaining}`);
   if (types.length > 0) {
     console.log("- commit types:");
@@ -136,4 +143,4 @@ if (import.meta.main) {
   void main();
 }
 
-export { parseArgs, parseGitLog, summarizeByType };
+export { countDeliverySlices, parseArgs, parseGitLog, summarizeByType };

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseArgs, parseGitLog, summarizeByType } from "./dogfood-progress";
+import { countDeliverySlices, parseArgs, parseGitLog, summarizeByType } from "./dogfood-progress";
 
 describe("dogfood progress", () => {
   test("parseArgs applies defaults", () => {
@@ -39,5 +39,17 @@ describe("dogfood progress", () => {
       { type: "fix", count: 1 },
       { type: "other", count: 1 },
     ]);
+  });
+
+  test("countDeliverySlices includes feat/fix/refactor/test", () => {
+    expect(
+      countDeliverySlices([
+        { type: "docs", count: 3 },
+        { type: "feat", count: 2 },
+        { type: "fix", count: 1 },
+        { type: "test", count: 4 },
+        { type: "other", count: 2 },
+      ]),
+    ).toBe(7);
   });
 });
