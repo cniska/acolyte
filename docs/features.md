@@ -33,6 +33,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Runtime provider inference also recognizes common unprefixed ids (`claude-*`, `gemini-*`) to reduce configuration friction.
 - Mastra Studio exposes role agents (`Planner`, `Coder`, `Reviewer`) plus default `acolyte` alias.
 - Mastra Studio role agents use role-scoped tools (planner minimal read/search, reviewer read/search/git/web, coder full toolset).
+- Tool execution errors are normalized with tool-id context (for example `read-file failed: ...`) for clearer debugging.
 - Dogfooding workflow command: `/dogfood <task>` with verify-first loop.
 - Optional skip verify flow: `/dogfood --no-verify <task>`.
 - Assistant output post-processing strips common option-menu/status scaffolding and keeps concise actionable content.
