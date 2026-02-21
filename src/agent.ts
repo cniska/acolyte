@@ -3,7 +3,7 @@ import { type AgentRole, buildRoleInstructions, buildSubagentContext, selectAgen
 import type { ChatRequest, ChatResponse } from "./api";
 import { appConfig } from "./app-config";
 import { toolsForRole } from "./mastra-tools";
-import { isProviderAvailable, providerFromModel, resolveRoleModel } from "./provider-config";
+import { isProviderAvailable, type ModelProviderName, providerFromModel, resolveRoleModel } from "./provider-config";
 import { loadRoleSoulPrompt } from "./soul";
 
 const FALLBACK_PLAN =
@@ -165,6 +165,31 @@ export function resolveAgentModel(
   } = appConfig.models,
 ): string {
   return resolveRoleModel(role, requestedModel, overrides);
+}
+
+export function resolveModelProviderState(
+  model: string,
+  credentials: {
+    openaiApiKey?: string;
+    openaiBaseUrl: string;
+    anthropicApiKey?: string;
+    googleApiKey?: string;
+  } = {
+    openaiApiKey: appConfig.openai.apiKey,
+    openaiBaseUrl: appConfig.openai.baseUrl,
+    anthropicApiKey: appConfig.anthropic.apiKey,
+    googleApiKey: appConfig.google.apiKey,
+  },
+): { provider: ModelProviderName; available: boolean } {
+  const provider = providerFromModel(model);
+  const available = isProviderAvailable({
+    provider,
+    openaiApiKey: credentials.openaiApiKey,
+    openaiBaseUrl: credentials.openaiBaseUrl,
+    anthropicApiKey: credentials.anthropicApiKey,
+    googleApiKey: credentials.googleApiKey,
+  });
+  return { provider, available };
 }
 
 export function compactReviewOutput(output: string): string {
@@ -401,16 +426,9 @@ export async function runAgent(input: { request: ChatRequest; soulPrompt: string
   const role = selectAgentRole(input.request.message);
   const roleSoul = loadRoleSoulPrompt(role);
   const model = resolveAgentModel(role, input.request.model);
-  const provider = providerFromModel(model);
-  const providerReady = isProviderAvailable({
-    provider,
-    openaiApiKey: appConfig.openai.apiKey,
-    openaiBaseUrl: appConfig.openai.baseUrl,
-    anthropicApiKey: appConfig.anthropic.apiKey,
-    googleApiKey: appConfig.google.apiKey,
-  });
-  if (!providerReady) {
-    return buildMockReply(input.request, `Provider '${provider}' is not configured.`);
+  const providerState = resolveModelProviderState(model);
+  if (!providerState.available) {
+    return buildMockReply(input.request, `Provider '${providerState.provider}' is not configured.`);
   }
 
   const agent = createAgent({

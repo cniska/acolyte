@@ -7,6 +7,7 @@ import {
   finalizeReviewOutput,
   normalizeReviewOutput,
   resolveAgentModel,
+  resolveModelProviderState,
   selectAgentRole,
 } from "./agent";
 import type { ChatRequest } from "./api";
@@ -327,6 +328,54 @@ describe("selectAgentRole", () => {
 
   test("routes implementation prompts to coder by default", () => {
     expect(selectAgentRole("implement /resume picker improvements")).toBe("coder");
+  });
+});
+
+describe("resolveModelProviderState", () => {
+  test("marks openai as unavailable without OpenAI credentials on api.openai.com", () => {
+    expect(
+      resolveModelProviderState("openai/gpt-5-mini", {
+        openaiApiKey: undefined,
+        openaiBaseUrl: "https://api.openai.com/v1",
+      }),
+    ).toEqual({
+      provider: "openai",
+      available: false,
+    });
+  });
+
+  test("marks openai-compatible models as available without OpenAI key", () => {
+    expect(
+      resolveModelProviderState("openai-compatible/qwen2.5-coder", {
+        openaiApiKey: undefined,
+        openaiBaseUrl: "http://localhost:11434/v1",
+      }),
+    ).toEqual({
+      provider: "openai-compatible",
+      available: true,
+    });
+  });
+
+  test("marks anthropic and gemini availability by provider-specific credentials", () => {
+    expect(
+      resolveModelProviderState("anthropic/claude-sonnet-4", {
+        openaiBaseUrl: "https://api.openai.com/v1",
+        anthropicApiKey: undefined,
+      }),
+    ).toEqual({
+      provider: "anthropic",
+      available: false,
+    });
+
+    expect(
+      resolveModelProviderState("gemini/gemini-2.5-pro", {
+        openaiBaseUrl: "https://api.openai.com/v1",
+        googleApiKey: "sk-goog",
+      }),
+    ).toEqual({
+      provider: "gemini",
+      available: true,
+    });
   });
 });
 
