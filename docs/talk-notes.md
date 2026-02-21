@@ -111,6 +111,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Dogfood CLI argument parsing now explicitly supports `--no-verify`, preventing smoke/gate regressions.
 - Prompt key handling now parses more modifier-based CSI arrow variants, reducing terminal-specific `Cmd` navigation misses.
 - Health/status now labels non-OpenAI base URLs as `openai-compatible`, improving local-model endpoint debugging.
+- Role model IDs now drive runtime provider selection (`openai` / `anthropic` / `gemini` / `openai-compatible`) with credential-aware fallback behavior.
 
 ## Open Narrative Threads
 1. Continue dogfooding ramp from Codex-led to Acolyte-led development.
