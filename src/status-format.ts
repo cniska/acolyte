@@ -84,7 +84,7 @@ export function formatStatusOutput(status: string): string {
   if (omEnabled || omScope || omModel) {
     const parts: string[] = [];
     if (omEnabled) {
-      parts.push(`status: ${omEnabled}`);
+      parts.push(omEnabled);
     }
     if (omScope) {
       parts.push(`scope: ${omScope}`);

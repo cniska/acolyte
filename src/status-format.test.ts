@@ -34,7 +34,7 @@ describe("status format", () => {
     expect(output).toContain("           planner: o3");
     expect(output).toContain("           coder: gpt-5-codex");
     expect(output).toContain("           reviewer: gpt-5");
-    expect(output).toContain("om:        status: enabled");
+    expect(output).toContain("om:        enabled");
     expect(output).toContain("           scope: resource");
     expect(output).toContain("           model: openai/gpt-5-mini");
     expect(output).toContain("om_tokens: obs: 3000");
