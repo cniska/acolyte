@@ -53,7 +53,7 @@ export function formatStatusOutput(status: string): string {
     if (modelReviewer) {
       parts.push(`reviewer=${modelReviewer}`);
     }
-    output.push(`models: ${parts.join(" ")}`);
+    output.push(`models: ${parts.join("\n")}`);
   }
   const service = take("service");
   if (service) {
@@ -91,7 +91,7 @@ export function formatStatusOutput(status: string): string {
     if (omModel) {
       parts.push(`model=${omModel}`);
     }
-    output.push(`om: ${parts.join(" ")}`);
+    output.push(`om: ${parts.join("\n")}`);
   }
 
   const omObsTokens = take("om_obs_tokens");
@@ -100,7 +100,7 @@ export function formatStatusOutput(status: string): string {
     output.push(
       `om_tokens: ${[omObsTokens ? `obs=${omObsTokens}` : "", omRefTokens ? `ref=${omRefTokens}` : ""]
         .filter((part) => part.length > 0)
-        .join(" ")}`,
+        .join("\n")}`,
     );
   }
 
@@ -122,7 +122,7 @@ export function formatStatusOutput(status: string): string {
     if (omLastReflection) {
       parts.push(`last_reflection=${omLastReflection}`);
     }
-    output.push(`om_state: ${parts.join(" ")}`);
+    output.push(`om_state: ${parts.join("\n")}`);
   }
 
   for (const [key, value] of fields.entries()) {
@@ -146,9 +146,16 @@ export function formatStatusOutput(status: string): string {
   const maxKey = rows.reduce((max, row) => Math.max(max, row.key.length), 0);
 
   return rows
-    .map((row) => {
+    .flatMap((row) => {
       const key = row.key.padEnd(maxKey, " ");
-      return `${key} ${row.value}`.trimEnd();
+      const valueLines = row.value.length > 0 ? row.value.split("\n") : [""];
+      const first = `${key} ${valueLines[0] ?? ""}`.trimEnd();
+      if (valueLines.length === 1) {
+        return [first];
+      }
+      const continuationIndent = " ".repeat(maxKey + 1);
+      const rest = valueLines.slice(1).map((line) => `${continuationIndent}${line}`.trimEnd());
+      return [first, ...rest];
     })
     .join("\n");
 }

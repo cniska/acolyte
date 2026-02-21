@@ -64,13 +64,22 @@ describe("cli formatting helpers", () => {
     expect(out).toMatch(/provider:\s+openai/);
     expect(out).toMatch(/mode:\s+openai/);
     expect(out).toMatch(/model:\s+gpt-5-mini/);
-    expect(out).toMatch(
-      /models:\s+main=openai\/gpt-5-mini planner=openai\/o3 coder=openai\/gpt-5-codex reviewer=openai\/gpt-5-mini/,
-    );
+    expect(out).toContain("models:");
+    expect(out).toContain("main=openai/gpt-5-mini");
+    expect(out).toContain("planner=openai/o3");
+    expect(out).toContain("coder=openai/gpt-5-codex");
+    expect(out).toContain("reviewer=openai/gpt-5-mini");
     expect(out).toMatch(/memory:\s+postgres/);
-    expect(out).toMatch(/om:\s+enabled scope=resource model=openai\/gpt-5-mini/);
-    expect(out).toMatch(/om_tokens:\s+obs=3000 ref=8000/);
-    expect(out).toMatch(/om_state:\s+exists=true gen=4/);
+    expect(out).toContain("om:");
+    expect(out).toContain("enabled");
+    expect(out).toContain("scope=resource");
+    expect(out).toContain("model=openai/gpt-5-mini");
+    expect(out).toContain("om_tokens:");
+    expect(out).toContain("obs=3000");
+    expect(out).toContain("ref=8000");
+    expect(out).toContain("om_state:");
+    expect(out).toContain("exists=true");
+    expect(out).toContain("gen=4");
   });
 
   test("formatSearchOutput includes match and file counts", () => {
