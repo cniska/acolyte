@@ -250,4 +250,60 @@ describe("chat-commands", () => {
     expect(store.sessions).toHaveLength(2);
     expect(store.activeSessionId).toBe(setCurrentSessionCalls[0]);
   });
+
+  test("dispatchSlashCommand /resume with prefix restores matching session", async () => {
+    let rows: ChatRow[] = [];
+    const target = createSession({
+      id: "sess_resume_target",
+      title: "Resume Target",
+      messages: [createMessage("assistant", "hi")],
+    });
+    const store = createStore({
+      sessions: [target, createSession({ id: "sess_other", title: "Other" })],
+      activeSessionId: "sess_other",
+    });
+    const setCurrentSessionCalls: string[] = [];
+
+    const result = await dispatchSlashCommand({
+      text: `/resume ${target.id.slice(0, 12)}`,
+      resolvedText: `/resume ${target.id.slice(0, 12)}`,
+      backend: createBackend(),
+      store,
+      currentSession: createSession({ id: "sess_current" }),
+      setCurrentSession: (next) => {
+        setCurrentSessionCalls.push(next.id);
+      },
+      toRows: (messages) => messages.map((m) => ({ id: m.id, role: m.role, content: m.content })),
+      setRows: (updater) => {
+        rows = updater(rows);
+      },
+      setShowShortcuts: () => {},
+      setValue: () => {},
+      persist: async () => {},
+      exit: () => {},
+      openSkillsPanel: async () => {},
+      openResumePanel: () => {},
+      openPermissionsPanel: () => {},
+      openPolicyPanel: () => {},
+      setBackendPermissionMode: async () => {},
+      tokenUsage: [],
+    });
+
+    expect(result.stop).toBe(true);
+    expect(store.activeSessionId).toBe(target.id);
+    expect(setCurrentSessionCalls).toEqual([target.id]);
+    expect(rows.some((row) => row.style === "sessionStatus" && row.content.startsWith("Resumed session:"))).toBe(true);
+  });
+
+  test("dispatchSlashCommand /resume opens picker flow", async () => {
+    const { rows, stop } = await runCommand("/resume");
+    expect(stop).toBe(true);
+    expect(rows.some((row) => row.role === "user" && row.content === "/resume")).toBe(true);
+  });
+
+  test("dispatchSlashCommand /resume with missing prefix reports not found", async () => {
+    const { rows, stop } = await runCommand("/resume missing");
+    expect(stop).toBe(true);
+    expect(rows.some((row) => row.content === "No session found for prefix: missing")).toBe(true);
+  });
 });
