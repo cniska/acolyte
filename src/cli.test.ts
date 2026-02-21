@@ -252,10 +252,11 @@ describe("cli formatting helpers", () => {
 
   test("buildUsageCommandRows includes core commands", () => {
     const rows = buildUsageCommandRows();
-    expect(rows.some((row) => row.command.startsWith("chat"))).toBe(true);
     expect(rows.some((row) => row.command.startsWith("resume"))).toBe(true);
-    expect(rows.some((row) => row.command.includes("help"))).toBe(true);
-    expect(rows.some((row) => row.command.includes("version"))).toBe(true);
+    expect(rows.some((row) => row.command.startsWith("run"))).toBe(true);
+    expect(rows.some((row) => row.command.startsWith("tool"))).toBe(true);
+    expect(rows.some((row) => row.command.includes("help"))).toBe(false);
+    expect(rows.some((row) => row.command.includes("version"))).toBe(false);
   });
 
   test("extractVersionFromPackageJsonText parses version safely", () => {

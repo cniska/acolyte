@@ -100,21 +100,22 @@ function usage(): void {
     ) + 2;
   const dim = (text: string): string => `\x1b[2m${text}\x1b[22m`;
   const white = (text: string): string => `\x1b[37m${text}\x1b[39m`;
+  const whiteBold = (text: string): string => `\x1b[1m\x1b[37m${text}\x1b[39m\x1b[22m`;
 
   printOutput(formatCliTitle(CLI_VERSION));
   printOutput("");
-  printOutput(white("Usage"));
+  printOutput(whiteBold("Usage"));
   printOutput("  acolyte");
   printOutput("  acolyte <COMMAND> [ARGS]");
   printOutput("");
 
-  printOutput(white("Commands"));
+  printOutput(whiteBold("Commands"));
   for (const row of commands) {
     printOutput(`  ${row.command.padEnd(sharedPad)}${dim(row.description)}`);
   }
   printOutput("");
 
-  printOutput(white("Options"));
+  printOutput(whiteBold("Options"));
   for (const row of options) {
     printOutput(`  ${row.option.padEnd(sharedPad)}${dim(row.description)}`);
   }
@@ -123,7 +124,6 @@ function usage(): void {
 
 export function buildUsageCommandRows(): Array<{ command: string; description: string }> {
   return [
-    { command: "chat [--resume [id-prefix]]", description: "start interactive session" },
     { command: "resume [id-prefix]", description: "resume previous session" },
     { command: "run [--file path] [--verify] <prompt>", description: "run one prompt (optional verify)" },
     { command: "dogfood [--file path] <prompt>", description: "run one prompt and always verify" },
@@ -132,8 +132,6 @@ export function buildUsageCommandRows(): Array<{ command: string; description: s
     { command: "memory", description: "manage memory notes" },
     { command: "config", description: "manage local CLI config" },
     { command: "tool", description: "run coding tools (search/read/git/run/edit/web)" },
-    { command: "version", description: "print version" },
-    { command: "help", description: "print this message" },
   ];
 }
 
