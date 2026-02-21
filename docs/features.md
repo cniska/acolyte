@@ -63,7 +63,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Local backend server with health check (`/healthz`) and chat endpoint (`/v1/chat`).
 - User-friendly backend connection errors with direct recovery hints (`bun run dev` or `bun run serve:env`).
 - Local-first configuration and optional API-key auth for backend access.
-- Non-secret local config can now be read from `~/.acolyte/config.toml` (TOML takes precedence over legacy JSON reads).
+- Non-secret local config now supports layered precedence: project (`<repo>/.acolyte/config.toml`) over user (`~/.acolyte/config.toml`) over defaults.
 - File config is now non-secret only: `apiKey` is ignored in config files and `/config set apiKey` is blocked (env-only).
 - Configurable agent input budgeting via `~/.acolyte/config.toml`:
   - `contextMaxTokens`

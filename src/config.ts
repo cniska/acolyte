@@ -76,6 +76,7 @@ export interface ResolvedAcolyteConfig {
 
 type ConfigOptions = {
   homeDir?: string;
+  cwd?: string;
 };
 
 function toConfig(input: Record<string, unknown>): AcolyteConfig {
@@ -116,12 +117,23 @@ function toConfig(input: Record<string, unknown>): AcolyteConfig {
   };
 }
 
-function resolvePaths(options?: ConfigOptions): { dataDir: string; jsonPath: string; tomlPath: string } {
-  const dataDir = join(options?.homeDir ?? homedir(), ".acolyte");
+function resolvePaths(options?: ConfigOptions): {
+  userDataDir: string;
+  userJsonPath: string;
+  userTomlPath: string;
+  projectDataDir: string;
+  projectJsonPath: string;
+  projectTomlPath: string;
+} {
+  const userDataDir = join(options?.homeDir ?? homedir(), ".acolyte");
+  const projectDataDir = join(options?.cwd ?? process.cwd(), ".acolyte");
   return {
-    dataDir,
-    jsonPath: join(dataDir, "config.json"),
-    tomlPath: join(dataDir, "config.toml"),
+    userDataDir,
+    userJsonPath: join(userDataDir, "config.json"),
+    userTomlPath: join(userDataDir, "config.toml"),
+    projectDataDir,
+    projectJsonPath: join(projectDataDir, "config.json"),
+    projectTomlPath: join(projectDataDir, "config.toml"),
   };
 }
 
@@ -218,18 +230,23 @@ export function readResolvedConfigSync(options?: ConfigOptions): ResolvedAcolyte
 
 export async function readConfig(options?: ConfigOptions): Promise<AcolyteConfig> {
   const paths = resolvePaths(options);
-  try {
-    if (existsSync(paths.tomlPath)) {
-      const rawToml = await readFile(paths.tomlPath, "utf8");
+  const readSource = async (tomlPath: string, jsonPath: string): Promise<AcolyteConfig> => {
+    if (existsSync(tomlPath)) {
+      const rawToml = await readFile(tomlPath, "utf8");
       const parsedToml = Bun.TOML.parse(rawToml) as Record<string, unknown>;
       return toConfig(parsedToml);
     }
-    if (existsSync(paths.jsonPath)) {
-      const rawJson = await readFile(paths.jsonPath, "utf8");
+    if (existsSync(jsonPath)) {
+      const rawJson = await readFile(jsonPath, "utf8");
       const parsedJson = JSON.parse(rawJson) as Record<string, unknown>;
       return toConfig(parsedJson);
     }
     return {};
+  };
+  try {
+    const userConfig = await readSource(paths.userTomlPath, paths.userJsonPath);
+    const projectConfig = await readSource(paths.projectTomlPath, paths.projectJsonPath);
+    return toConfig({ ...userConfig, ...projectConfig } as Record<string, unknown>);
   } catch {
     return {};
   }
@@ -237,18 +254,23 @@ export async function readConfig(options?: ConfigOptions): Promise<AcolyteConfig
 
 export function readConfigSync(options?: ConfigOptions): AcolyteConfig {
   const paths = resolvePaths(options);
-  try {
-    if (existsSync(paths.tomlPath)) {
-      const rawToml = readFileSync(paths.tomlPath, "utf8");
+  const readSourceSync = (tomlPath: string, jsonPath: string): AcolyteConfig => {
+    if (existsSync(tomlPath)) {
+      const rawToml = readFileSync(tomlPath, "utf8");
       const parsedToml = Bun.TOML.parse(rawToml) as Record<string, unknown>;
       return toConfig(parsedToml);
     }
-    if (existsSync(paths.jsonPath)) {
-      const rawJson = readFileSync(paths.jsonPath, "utf8");
+    if (existsSync(jsonPath)) {
+      const rawJson = readFileSync(jsonPath, "utf8");
       const parsedJson = JSON.parse(rawJson) as Record<string, unknown>;
       return toConfig(parsedJson);
     }
     return {};
+  };
+  try {
+    const userConfig = readSourceSync(paths.userTomlPath, paths.userJsonPath);
+    const projectConfig = readSourceSync(paths.projectTomlPath, paths.projectJsonPath);
+    return toConfig({ ...userConfig, ...projectConfig } as Record<string, unknown>);
   } catch {
     return {};
   }
@@ -257,8 +279,8 @@ export function readConfigSync(options?: ConfigOptions): AcolyteConfig {
 export async function writeConfig(config: AcolyteConfig, options?: ConfigOptions): Promise<void> {
   const paths = resolvePaths(options);
   const sanitized = toConfig(config as Record<string, unknown>);
-  await mkdir(paths.dataDir, { recursive: true });
-  await writeFile(paths.tomlPath, serializeToml(sanitized), "utf8");
+  await mkdir(paths.userDataDir, { recursive: true });
+  await writeFile(paths.userTomlPath, serializeToml(sanitized), "utf8");
 }
 
 export async function setConfigValue(key: keyof AcolyteConfig, value: string, options?: ConfigOptions): Promise<void> {

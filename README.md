@@ -45,7 +45,9 @@ bun run db:smoke
 
 ## Config Notes
 
-- Non-secret runtime defaults come from `~/.acolyte/config.toml` (for example `model`, `apiUrl`, model lanes, provider base URLs, permission mode, token budgets)
+- Non-secret runtime defaults come from config files with precedence:
+  - project: `<repo>/.acolyte/config.toml`
+  - user: `~/.acolyte/config.toml`
 - Use `acolyte config set model <value>` and `acolyte config set apiUrl <url>` to update them
 - Secrets are env-only (`OPENAI_API_KEY`, `ACOLYTE_API_KEY`, provider keys)
 - Provider/model routing supports role lanes with fallback
