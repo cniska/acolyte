@@ -248,6 +248,28 @@ function normalizeWhatNextOutput(output: string): string {
     return numbered.join("\n");
   }
 
+  const inline = output.replace(/\s+/g, " ").trim();
+  const markers = Array.from(inline.matchAll(/(?:^|\s)(\d+)\.\s+/g));
+  if (markers.length >= 2) {
+    const steps: string[] = [];
+    for (let i = 0; i < markers.length && steps.length < 3; i += 1) {
+      const marker = markers[i];
+      const start = (marker.index ?? 0) + marker[0].length;
+      const end = i + 1 < markers.length ? (markers[i + 1].index ?? inline.length) : inline.length;
+      const body = inline.slice(start, end).trim();
+      if (body.length === 0) {
+        continue;
+      }
+      steps.push(`${steps.length + 1}. ${body}`);
+    }
+    if (steps.length >= 2) {
+      while (steps.length < 3) {
+        steps.push(`${steps.length + 1}. Continue with the next highest-impact step and verify.`);
+      }
+      return steps.slice(0, 3).join("\n");
+    }
+  }
+
   const candidates = output
     .split("\n")
     .map((line) => line.trim())

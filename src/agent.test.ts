@@ -289,6 +289,13 @@ describe("finalizeAssistantOutput", () => {
     );
   });
 
+  test("what next splits inline numbered steps into separate lines", () => {
+    const raw = "1. fix null checks 2. add execute try/catch 3. run bun run verify";
+    expect(finalizeAssistantOutput(raw, "what next")).toBe(
+      ["1. fix null checks", "2. add execute try/catch", "3. run bun run verify"].join("\n"),
+    );
+  });
+
   test("what next prompt builds numbered fallback when output is unstructured", () => {
     const raw = ["Recap: do these", "Fix null checks", "Add error wrapping", "Run verify"].join("\n");
     expect(finalizeAssistantOutput(raw, "what next")).toBe(
