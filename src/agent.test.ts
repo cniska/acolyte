@@ -140,6 +140,161 @@ describe("finalizeAssistantOutput", () => {
   test("keeps non-empty output", () => {
     expect(finalizeAssistantOutput("Done")).toBe("Done");
   });
+
+  test("strips A/B/C choice scaffolding and keeps core answer", () => {
+    const raw = [
+      "I can apply the two fixes.",
+      "",
+      "Pick one:",
+      "A — Show dry-run patch.",
+      "B — Apply edits and run verify.",
+      "C — Skip.",
+      "",
+      "Reply A, B, or C.",
+    ].join("\n");
+    expect(finalizeAssistantOutput(raw)).toBe("I can apply the two fixes.");
+  });
+
+  test("strips pick-one action prompt line", () => {
+    const raw = ["Done reviewing.", "", "Pick one action:"].join("\n");
+    expect(finalizeAssistantOutput(raw)).toBe("Done reviewing.");
+  });
+
+  test("normalizes A/B/C option lines to numbered options", () => {
+    const raw = ["A - first", "B — second", "C) third"].join("\n");
+    expect(finalizeAssistantOutput(raw)).toBe(["1. first", "2. second", "3. third"].join("\n"));
+  });
+
+  test("normalizes 1) style numbering to 1. style", () => {
+    const raw = ["1) first", "2) second"].join("\n");
+    expect(finalizeAssistantOutput(raw)).toBe(["1. first", "2. second"].join("\n"));
+  });
+
+  test("strips numeric reply scaffolding lines", () => {
+    const raw = ["Applied changes.", "", "Reply 1, 2, or 3.", "Which option do you prefer?"].join("\n");
+    expect(finalizeAssistantOutput(raw)).toBe("Applied changes.");
+  });
+
+  test("strips generic recap lead-in lines", () => {
+    const raw = ["Recap: two small fixes.", "", "1) fix null checks", "2) add try/catch"].join("\n");
+    expect(finalizeAssistantOutput(raw)).toBe(["1. fix null checks", "2. add try/catch"].join("\n"));
+  });
+
+  test("strips quick recap and repo context sections", () => {
+    const raw = [
+      "Next recommended change: tighten tool error wrapping.",
+      "",
+      "Quick recap + next step.",
+      "",
+      "Repo context (from latest status)",
+      "- Branch: main (ahead 57)",
+      "- Modified files: src/cli.ts",
+      "",
+      "Pick one action:",
+      "A — Show dry-run patch.",
+      "B — Apply edits.",
+      "C — Skip.",
+      "",
+      "Reply A, B, or C.",
+    ].join("\n");
+    expect(finalizeAssistantOutput(raw)).toBe("Next recommended change: tighten tool error wrapping.");
+  });
+
+  test("strips quick status and recommendation letter scaffolding", () => {
+    const raw = [
+      "Ready, Chris.",
+      "",
+      "Quick status",
+      "- Branch: main (ahead 57)",
+      "- Modified files: src/cli.ts",
+      "",
+      "What I found to fix in src/mastra-tools.ts",
+      "1) Use null checks for numeric fields.",
+      "2) Add execute try/catch context.",
+      "",
+      "Recommendation — do B",
+      "- Apply the edits and run verify.",
+    ].join("\n");
+    expect(finalizeAssistantOutput(raw)).toBe(
+      [
+        "What I found to fix in src/mastra-tools.ts",
+        "1. Use null checks for numeric fields.",
+        "2. Add execute try/catch context.",
+      ].join("\n"),
+    );
+  });
+
+  test("strips quick options capability dump", () => {
+    const raw = [
+      "Ready.",
+      "",
+      "Quick options:",
+      "- Inspect the repo",
+      "- Run tests",
+      "- Edit files",
+      "",
+      "Start with src/mastra-tools.ts null-check fix.",
+    ].join("\n");
+    expect(finalizeAssistantOutput(raw)).toBe("Start with src/mastra-tools.ts null-check fix.");
+  });
+
+  test("strips 'If you want, I can' option scaffolding", () => {
+    const raw = [
+      "Fix is ready.",
+      "",
+      "If you want, I can:",
+      "- apply the patch",
+      "- run verify",
+      "",
+      "Which do you want?",
+    ].join("\n");
+    expect(finalizeAssistantOutput(raw)).toBe("Fix is ready.");
+  });
+
+  test("caps very long assistant output", () => {
+    const raw = `Summary\n${"x".repeat(3000)}`;
+    const out = finalizeAssistantOutput(raw);
+    expect(out.length).toBeLessThanOrEqual(1400);
+    expect(out.endsWith("…")).toBe(true);
+  });
+
+  test("strips quick reminders and notes/blockers sections", () => {
+    const raw = [
+      "Actionable fix: add null checks in read-file snippet.",
+      "",
+      "Quick reminders:",
+      "- inspect repo",
+      "- run tests",
+      "",
+      "Notes / blockers",
+      "- none",
+      "",
+      "Done.",
+    ].join("\n");
+    expect(finalizeAssistantOutput(raw)).toBe("Actionable fix: add null checks in read-file snippet.\n\nDone.");
+  });
+
+  test("what next prompt returns exactly 3 numbered steps", () => {
+    const raw = [
+      "Quick status",
+      "- Branch: main",
+      "",
+      "1) fix null checks",
+      "2) add execute try/catch",
+      "3) run bun run verify",
+      "4) optional cleanup",
+    ].join("\n");
+    expect(finalizeAssistantOutput(raw, "what next")).toBe(
+      ["1. fix null checks", "2. add execute try/catch", "3. run bun run verify"].join("\n"),
+    );
+  });
+
+  test("what next prompt builds numbered fallback when output is unstructured", () => {
+    const raw = ["Recap: do these", "Fix null checks", "Add error wrapping", "Run verify"].join("\n");
+    expect(finalizeAssistantOutput(raw, "what next")).toBe(
+      ["1. Fix null checks", "2. Add error wrapping", "3. Run verify"].join("\n"),
+    );
+  });
 });
 
 describe("selectAgentRole", () => {
@@ -180,5 +335,16 @@ describe("buildSubagentContext", () => {
     expect(context).toContain("Goal: review @src/agent.ts");
     expect(context).toContain("Context: 1 history messages; model=gpt-5-mini");
     expect(context).toContain("Expected output:");
+  });
+
+  test("adds what-next guidance for concise numbered steps", () => {
+    const req: ChatRequest = {
+      model: "gpt-5-mini",
+      message: "what next",
+      history: [],
+    };
+    const context = buildSubagentContext("coder", req);
+    expect(context).toContain("return exactly 3 concise numbered next steps");
+    expect(context).toContain("no lettered options");
   });
 });

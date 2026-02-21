@@ -15,6 +15,7 @@ const FALLBACK_PLAN =
   "1) Interpret request. 2) Use available repo tools when helpful. 3) Return concise, actionable answer.";
 const APPROX_CHARS_PER_TOKEN = 4;
 const MAX_REVIEW_OUTPUT_CHARS = 1800;
+const MAX_ASSISTANT_OUTPUT_CHARS = 1400;
 
 function estimateTokens(input: string): number {
   if (input.length === 0) {
@@ -178,6 +179,13 @@ export function compactReviewOutput(output: string): string {
   return `${output.slice(0, Math.max(0, MAX_REVIEW_OUTPUT_CHARS - 1))}…`;
 }
 
+function compactAssistantOutput(output: string): string {
+  if (output.length <= MAX_ASSISTANT_OUTPUT_CHARS) {
+    return output;
+  }
+  return `${output.slice(0, Math.max(0, MAX_ASSISTANT_OUTPUT_CHARS - 1))}…`;
+}
+
 export function normalizeReviewOutput(output: string): string {
   const lines = output.split("\n");
   const normalized = lines.map((line, index) => {
@@ -226,6 +234,32 @@ function suggestNarrowerReviewScope(path: string): string {
   return `@${clean}/agent.ts`;
 }
 
+function isWhatNextPrompt(text: string): boolean {
+  return /^(what('?s|\s+is)?\s+next)\??$/i.test(text.trim());
+}
+
+function normalizeWhatNextOutput(output: string): string {
+  const numbered = output
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => /^\d+\.\s+/.test(line))
+    .slice(0, 3);
+  if (numbered.length >= 3) {
+    return numbered.join("\n");
+  }
+
+  const candidates = output
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .filter((line) => !/^(what next|recap|quick|ready|pick one|reply|which option)/i.test(line))
+    .slice(0, 3);
+  if (candidates.length === 0) {
+    return "1. Confirm the target file or task.\n2. Apply the smallest safe change.\n3. Run verify and report result.";
+  }
+  return candidates.map((line, index) => `${index + 1}. ${line.replace(/^\d+[.)]\s+/, "")}`).join("\n");
+}
+
 export function finalizeReviewOutput(output: string, message = ""): string {
   const cleaned = output
     .split("\n")
@@ -243,10 +277,97 @@ export function finalizeReviewOutput(output: string, message = ""): string {
   return "No review output produced. Try narrowing to a file (for example @src/agent.ts) or rephrasing your prompt.";
 }
 
-export function finalizeAssistantOutput(output: string): string {
-  const cleaned = output.trim();
+export function finalizeAssistantOutput(output: string, message = ""): string {
+  const normalizedOptions = output
+    .split("\n")
+    .map((line) => {
+      const numberedMatch = line.match(/^(\s*)(\d+)\)\s+(.*)$/);
+      if (numberedMatch) {
+        return `${numberedMatch[1] ?? ""}${numberedMatch[2] ?? "1"}. ${numberedMatch[3] ?? ""}`;
+      }
+      const match = line.match(/^(\s*)([A-Ca-c])\s*[-—:)]\s+(.*)$/);
+      if (!match) {
+        return line;
+      }
+      const index = (match[2]?.toUpperCase().charCodeAt(0) ?? 65) - 64;
+      return `${match[1] ?? ""}${index}. ${match[3] ?? ""}`;
+    })
+    .join("\n");
+
+  let dropAuxSection = false;
+  const cleaned = normalizedOptions
+    .split("\n")
+    .filter((line) => {
+      const trimmed = line.trim();
+      if (trimmed.length === 0) {
+        dropAuxSection = false;
+        return true;
+      }
+      if (
+        /^(quick recap|quick summary|repo context|pick one action|quick status|quick options|quick reminders?|quick context)\b/i.test(
+          trimmed,
+        )
+      ) {
+        dropAuxSection = true;
+        return false;
+      }
+      if (/^(notes?\s*\/?\s*blockers?|next-action options?|next actions?|next steps?)\b/i.test(trimmed)) {
+        dropAuxSection = true;
+        return false;
+      }
+      if (/^recap\s*[:\-]/i.test(trimmed)) {
+        return false;
+      }
+      if (/^i can:\s*$/i.test(trimmed)) {
+        dropAuxSection = true;
+        return false;
+      }
+      if (/^if you want,?\s*i can\s*:?\s*$/i.test(trimmed)) {
+        dropAuxSection = true;
+        return false;
+      }
+      if (dropAuxSection && (/^[-*]\s+/.test(trimmed) || /^\d+\.\s+/.test(trimmed))) {
+        return false;
+      }
+      if (/^ready[,.!]/i.test(trimmed)) {
+        return false;
+      }
+      if (/^recommendation\s*[—-]\s*do\s*[abc]\b/i.test(trimmed)) {
+        dropAuxSection = true;
+        return false;
+      }
+      if (/^pick one(?:\s+[a-z]+)*:?\s*$/i.test(trimmed)) {
+        dropAuxSection = true;
+        return false;
+      }
+      if (/^next actions?\s*\(pick one\)\s*:?\s*$/i.test(trimmed)) {
+        return false;
+      }
+      if (/^which option\b/i.test(trimmed)) {
+        return false;
+      }
+      if (/^which (do you want|one do you want)\b/i.test(trimmed)) {
+        return false;
+      }
+      if (/^reply\s+[a-z](\s*,\s*[a-z])*\s*(or\s*[a-z])?/i.test(trimmed)) {
+        return false;
+      }
+      if (/^reply\s+\d+(\s*,\s*\d+)*\s*(or\s*\d+)?/i.test(trimmed)) {
+        return false;
+      }
+      if (/^[abc]\s*[-—:)]/i.test(trimmed)) {
+        return false;
+      }
+      return true;
+    })
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
   if (cleaned.length > 0) {
-    return cleaned;
+    if (isWhatNextPrompt(message)) {
+      return compactAssistantOutput(normalizeWhatNextOutput(cleaned));
+    }
+    return compactAssistantOutput(cleaned);
   }
   return "No output produced. Try rephrasing your prompt.";
 }
@@ -309,7 +430,7 @@ export async function runAgent(input: {
   const rawOutput = result.text.trim();
   const output = isReviewRequest(input.request.message)
     ? finalizeReviewOutput(rawOutput, input.request.message)
-    : finalizeAssistantOutput(rawOutput);
+    : finalizeAssistantOutput(rawOutput, input.request.message);
   const completionTokens = estimateTokens(output);
   const promptUsage = requestInput.usage;
   let budgetWarning: string | undefined;

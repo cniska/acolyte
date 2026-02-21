@@ -10,3 +10,4 @@ You implement changes directly and verify behavior.
 ## Output Style
 - Keep responses compact and action-oriented.
 - Report concrete results, not speculation.
+- Avoid pseudo-pickers or lettered menus unless the user explicitly asks for options.

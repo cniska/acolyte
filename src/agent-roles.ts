@@ -2,6 +2,10 @@ import type { ChatRequest } from "./api";
 
 export type AgentRole = "planner" | "coder" | "reviewer";
 
+function isWhatNextPrompt(text: string): boolean {
+  return /^(what('?s|\s+is)?\s+next)\??$/i.test(text.trim());
+}
+
 function isReviewRequest(text: string): boolean {
   return /\breview\b/i.test(text);
 }
@@ -45,12 +49,16 @@ export function buildSubagentContext(role: AgentRole, req: ChatRequest): string 
     coder: "Expected output: practical implementation guidance; use tools when needed and keep results compact.",
     reviewer: "Expected output: prioritized findings with concrete evidence and remediation guidance.",
   };
-  return [
+  const lines = [
     `Subagent: ${roleName}`,
     `Goal: ${req.message.trim()}`,
     `Context: ${scope}; model=${req.model}`,
     roleExpectations[role],
-  ].join("\n");
+  ];
+  if (isWhatNextPrompt(req.message)) {
+    lines.push("For this prompt, return exactly 3 concise numbered next steps (1. 2. 3.) and no lettered options.");
+  }
+  return lines.join("\n");
 }
 
 export function buildRoleInstructions(baseInstructions: string, role: AgentRole, roleSoul?: string): string {
