@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { readConfig, setConfigValue, unsetConfigValue, writeConfig } from "./config";
+import { readConfig, readConfigSync, setConfigValue, unsetConfigValue, writeConfig } from "./config";
 
 const tempDirs: string[] = [];
 
@@ -81,6 +81,27 @@ describe("config store", () => {
       model: "openai/gpt-5-mini",
       apiUrl: "http://localhost:6767",
     });
+  });
+
+  test("readConfigSync prefers TOML over JSON", () => {
+    const home = createTempDir("acolyte-config-home-");
+    const dataDir = join(home, ".acolyte");
+    mkdirSync(dataDir, { recursive: true });
+    writeFileSync(join(dataDir, "config.toml"), 'model = "gemini/gemini-2.5-pro"', "utf8");
+    writeFileSync(join(dataDir, "config.json"), JSON.stringify({ model: "openai/gpt-5-mini" }, null, 2), "utf8");
+
+    const loaded = readConfigSync({ homeDir: home });
+    expect(loaded.model).toBe("gemini/gemini-2.5-pro");
+  });
+
+  test("readConfigSync falls back to empty config on parse errors", () => {
+    const home = createTempDir("acolyte-config-home-");
+    const dataDir = join(home, ".acolyte");
+    mkdirSync(dataDir, { recursive: true });
+    writeFileSync(join(dataDir, "config.toml"), "not valid toml = {", "utf8");
+
+    const loaded = readConfigSync({ homeDir: home });
+    expect(loaded).toEqual({});
   });
 
   test("setConfigValue updates TOML when config.toml exists", async () => {
