@@ -20,7 +20,7 @@ Use these gates after each meaningful slice:
 2. Unit tests:
    - `bun run test`
 3. Baseline bundle:
-   - `bun run verify`
+   - `bun run verify` (`format + lint + typecheck + test`, with Biome recommended rules enabled)
 4. Targeted smoke checks for changed behavior:
    - Example: `bun run src/cli.ts tool ...` (internal/debug), `bun run start`, `bun run src/cli.ts status`, `bun run dogfood:smoke`
 5. Optional switch-readiness check:
