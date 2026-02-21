@@ -29,9 +29,9 @@ export function renderInputPanelContent(input: SuggestionContentInput): React.Re
   if (atQuery !== null && atSuggestions.length > 0) {
     suggestions = (
       <>
-        {atSuggestions.map((item) => (
+        {atSuggestions.map((item, index) => (
           <Text
-            key={`at-suggestion-${item}`}
+            key={`at-suggestion-${index}-${item}`}
             color={item === atSuggestions[atSuggestionIndex] ? brandColor : undefined}
           >
             {`  ${item}`}
@@ -46,7 +46,7 @@ export function renderInputPanelContent(input: SuggestionContentInput): React.Re
       <>
         {slashSuggestions.map((item, index) => (
           <Text
-            key={`slash-suggestion-${item}`}
+            key={`slash-suggestion-${index}-${item}`}
             color={index === slashSuggestionIndex ? brandColor : undefined}
             dimColor={index !== slashSuggestionIndex}
           >{`  ${item}`}</Text>
