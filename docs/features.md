@@ -49,6 +49,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
   - likely write prompts trigger `switch/cancel` confirmation with inline `reason…`
   - selecting `switch` sets backend permission mode to `write` and pre-fills the original prompt
 - Local backend server with health check (`/healthz`) and chat endpoint (`/v1/chat`).
+- User-friendly backend connection errors with direct recovery hints (`bun run dev` or `bun run serve:env`).
 - Local-first configuration and optional API-key auth for backend access.
 - Configurable agent input budgeting via env:
   - `ACOLYTE_CONTEXT_MAX_TOKENS`
