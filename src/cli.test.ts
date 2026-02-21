@@ -15,7 +15,6 @@ import {
   isTopLevelHelpCommand,
   isTopLevelVersionCommand,
   oneShotResourceId,
-  parseChatModeArgs,
   parseEditResult,
   parseRunExitCode,
   resolveCommandAlias,
@@ -224,13 +223,6 @@ describe("cli formatting helpers", () => {
     expect(oneShotResourceId("sess_short")).toBe("run-short");
   });
 
-  test("parseChatModeArgs supports resume flags", () => {
-    expect(parseChatModeArgs([])).toEqual({ resumeLatest: false });
-    expect(parseChatModeArgs(["--resume"])).toEqual({ resumeLatest: true });
-    expect(parseChatModeArgs(["--resume", "sess_abcd"])).toEqual({ resumeLatest: true, resumePrefix: "sess_abcd" });
-    expect(() => parseChatModeArgs(["--unknown"])).toThrow("Usage: acolyte chat [--resume [session-id-prefix]]");
-  });
-
   test("formatResumeCommand returns prod-friendly command", () => {
     expect(formatResumeCommand("sess_abcdef1234567890")).toBe("acolyte resume sess_abcdef1");
     expect(formatResumeCommand("sess_abcdef1234567890", "bun run src/cli.ts")).toBe(
@@ -239,9 +231,9 @@ describe("cli formatting helpers", () => {
   });
 
   test("inferResumeCommandBase detects source-run mode", () => {
-    expect(inferResumeCommandBase(["bun", "src/cli.ts", "chat"])).toBe("bun run src/cli.ts");
-    expect(inferResumeCommandBase(["/opt/homebrew/bin/bun", "/repo/src/cli.ts", "chat"])).toBe("bun run src/cli.ts");
-    expect(inferResumeCommandBase(["acolyte", "chat"])).toBe("acolyte");
+    expect(inferResumeCommandBase(["bun", "src/cli.ts"])).toBe("bun run src/cli.ts");
+    expect(inferResumeCommandBase(["/opt/homebrew/bin/bun", "/repo/src/cli.ts"])).toBe("bun run src/cli.ts");
+    expect(inferResumeCommandBase(["acolyte"])).toBe("acolyte");
   });
 
   test("isTopLevelHelpCommand recognizes help variants", () => {

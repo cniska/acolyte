@@ -86,10 +86,6 @@ const editResultSchema = z.object({
   matches: z.coerce.number().int().nonnegative(),
   dryRun: z.boolean(),
 });
-const chatModeArgsSchema = z.object({
-  resumeLatest: z.boolean(),
-  resumePrefix: z.string().min(1).optional(),
-});
 
 function usage(): void {
   const commands = buildUsageCommandRows();
@@ -121,10 +117,6 @@ function usage(): void {
     printOutput(`  ${row.option.padEnd(sharedPad)}${dim(row.description)}`);
   }
   printOutput("");
-}
-
-function chatUsage(): void {
-  printOutput("Usage: acolyte chat [--resume [session-id-prefix]]");
 }
 
 export function buildUsageCommandRows(): Array<{ command: string; description: string }> {
@@ -884,24 +876,6 @@ function parseEditArgs(args: string[]): {
   });
 }
 
-export function parseChatModeArgs(args: string[]): { resumeLatest: boolean; resumePrefix?: string } {
-  const raw: { resumeLatest: boolean; resumePrefix?: string } = { resumeLatest: false };
-  for (let i = 0; i < args.length; i += 1) {
-    const token = args[i];
-    if (token === "--resume") {
-      raw.resumeLatest = true;
-      const next = args[i + 1];
-      if (next && !next.startsWith("-")) {
-        raw.resumePrefix = next;
-        i += 1;
-      }
-      continue;
-    }
-    throw new Error("Usage: acolyte chat [--resume [session-id-prefix]]");
-  }
-  return chatModeArgsSchema.parse(raw);
-}
-
 export function inferResumeCommandBase(argv: string[] = process.argv): string {
   const entry = argv[1] ?? "";
   if (entry.endsWith("/src/cli.ts") || entry === "src/cli.ts" || entry.endsWith("\\src\\cli.ts")) {
@@ -1342,23 +1316,6 @@ async function main(): Promise<void> {
 
   if (!command) {
     await chatModeWithOptions({ resumeLatest: false });
-    return;
-  }
-
-  if (command === "chat") {
-    if (args.length > 0 && (args[0] === "--help" || args[0] === "-h")) {
-      chatUsage();
-      return;
-    }
-    let parsed: { resumeLatest: boolean; resumePrefix?: string };
-    try {
-      parsed = parseChatModeArgs(args);
-    } catch (error) {
-      printError(error instanceof Error ? error.message : "Invalid chat args");
-      process.exitCode = 1;
-      return;
-    }
-    await chatModeWithOptions(parsed);
     return;
   }
 

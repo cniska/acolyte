@@ -9,8 +9,8 @@
   "scripts": {
     "start": "bun run chat",
     "dev": "ACOLYTE_SET_API_URL=1 ./scripts/with-backend.sh serve:env:watch bun run chat:raw",
-    "chat": "ACOLYTE_SET_API_URL=1 ./scripts/with-backend.sh serve:env bun run src/cli.ts chat",
-    "chat:raw": "bun run src/cli.ts chat",
+    "chat": "ACOLYTE_SET_API_URL=1 ./scripts/with-backend.sh serve:env bun run src/cli.ts",
+    "chat:raw": "bun run src/cli.ts",
     "run": "bun run src/cli.ts run",
     "dogfood": "bun run src/cli.ts dogfood",
     "dogfood:smoke": "bun run src/dogfood-smoke.ts",
