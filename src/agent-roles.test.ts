@@ -12,10 +12,22 @@ describe("agent role guidance", () => {
 
     const context = buildSubagentContext("coder", req);
     expect(context).toContain("prefer one clear recommendation over option menus");
+    expect(context).toContain("avoid recap/status/capability sections");
   });
 
   test("default coder role instructions discourage lettered menus", () => {
     const merged = buildRoleInstructions("Base soul", "coder");
+    expect(merged).toContain("avoid recap/capability sections");
     expect(merged).toContain("avoid lettered choice menus unless explicitly requested");
+  });
+
+  test("planner and reviewer contexts discourage recap/status scaffolding", () => {
+    const req: ChatRequest = {
+      model: "openai/gpt-5-mini",
+      message: "plan this",
+      history: [],
+    };
+    expect(buildSubagentContext("planner", req)).toContain("avoid recap/status scaffolding");
+    expect(buildSubagentContext("reviewer", req)).toContain("avoid recap/status scaffolding");
   });
 });

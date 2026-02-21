@@ -33,6 +33,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Per-role model overrides with fallback-to-main (`modelPlanner|modelCoder|modelReviewer` -> `~/.acolyte/config.toml` `model`).
 - Subagent v1 routing (`planner` / `coder` / `reviewer`) with explicit per-role context handoff.
 - Coder role guidance now prefers one clear next action and avoids lettered option menus unless explicitly requested.
+- Role guidance now also discourages recap/status/capability scaffolding to keep replies direct.
 - Runtime provider is inferred from configured role model IDs (for example `anthropic/...`, `gemini/...`), with credential-aware fallback to mock mode when unavailable.
 - Runtime provider inference also recognizes common unprefixed ids (`claude-*`, `gemini-*`) to reduce configuration friction.
 - Mastra Studio exposes role agents (`Planner`, `Coder`, `Reviewer`) plus default `acolyte` alias.

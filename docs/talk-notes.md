@@ -124,6 +124,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - `acolyte config` now supports listing/setting/unsetting all non-secret keys (not just `model`/`apiUrl`).
 - Status model rows now render mixed-role providers correctly (no single-provider formatting assumption).
 - Coder role instructions now bias toward one recommended next action instead of A/B/C option menus by default.
+- Role guidance now explicitly suppresses recap/status/capability scaffolding unless the user asks for it.
 - Planner tool scope now matches real planning needs while staying read-only (`read/search/git/web`).
 - `mastra:dev` and `studio` now load `.env` so provider credentials are consistent in local dev and Mastra Studio.
 - Local backend `/status` now emits role-model fields, matching remote status shape for easier debugging.
