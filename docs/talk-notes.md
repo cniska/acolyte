@@ -48,6 +48,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 7. Reliability/safety: verify-first loop, role-scoped subagent tools, permission modes, workspace path guardrails.
 8. Routing/config: centralized provider/model config with per-role fallback support.
 9. Feature documentation: `docs/features.md` as inventory.
+10. Dogfooding readiness: automated `bun run dogfood:smoke` + isolated one-shot OM resource IDs for `run`/`dogfood`.
 
 ## Demo Flow (Short)
 1. Start backend: `bun --env-file=.env run serve`
@@ -75,6 +76,8 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Centralized provider/model routing reduces drift across CLI/backend/agent wiring.
 - Mock-path smoke checks (`/healthz` with `--no-env-file`) catch provider/env assumptions early.
 - Token budget discipline is required during rapid iteration.
+- One-shot workflows need memory isolation (`run-<session>` resources) to avoid cross-task bleed.
+- Lightweight smoke commands improve confidence without adding heavy CI complexity.
 
 ## Open Narrative Threads
 1. Continue dogfooding ramp from Codex-led to Acolyte-led development.
