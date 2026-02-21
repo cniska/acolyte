@@ -96,6 +96,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - `dogfood-gate` now executes readiness checks via argv (`bun run ...`) instead of `bash -lc`.
 - `dogfood-smoke` checks now run via argv commands as well, removing shell-wrapper execution there too.
 - CLI parsing for tool outputs (`exit_code`, `/edit` metadata) now uses Zod validation for safer handling.
+- Verify-summary run-meta parsing also moved to Zod (`chat-formatters`) with fallback-safe output.
 
 ## Open Narrative Threads
 1. Continue dogfooding ramp from Codex-led to Acolyte-led development.
