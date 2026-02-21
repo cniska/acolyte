@@ -15,6 +15,7 @@ import {
   isTopLevelHelpCommand,
   isTopLevelVersionCommand,
   oneShotResourceId,
+  parseDogfoodArgs,
   parseEditResult,
   parseRunExitCode,
   resolveCommandAlias,
@@ -41,6 +42,18 @@ describe("cli formatting helpers", () => {
     expect(parseRunExitCode("exit_code=0\nduration_ms=20")).toBe(0);
     expect(parseRunExitCode("exit_code=17\nstdout:\nnope")).toBe(17);
     expect(parseRunExitCode("stdout:\nmissing")).toBeNull();
+  });
+
+  test("parseDogfoodArgs enables verify by default", () => {
+    expect(parseDogfoodArgs(["ping"])).toEqual({ files: [], prompt: "ping", verify: true });
+  });
+
+  test("parseDogfoodArgs supports --no-verify and --file", () => {
+    expect(parseDogfoodArgs(["--file", "src/cli.ts", "--no-verify", "ping"])).toEqual({
+      files: ["src/cli.ts"],
+      prompt: "ping",
+      verify: false,
+    });
   });
 
   test("parseEditResult parses strict edit metadata", () => {

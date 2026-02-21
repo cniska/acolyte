@@ -71,6 +71,11 @@ const runArgsSchema = z.object({
   prompt: z.string(),
   verify: z.boolean(),
 });
+const dogfoodArgsSchema = z.object({
+  files: z.array(z.string().min(1)),
+  prompt: z.string(),
+  verify: z.boolean(),
+});
 const runExitCodeSchema = z.coerce.number().int();
 const editArgsSchema = z.object({
   path: z.string().min(1),
@@ -762,6 +767,36 @@ function parseRunArgs(args: string[]): { files: string[]; prompt: string; verify
   return runArgsSchema.parse({ files, prompt: promptTokens.join(" ").trim(), verify });
 }
 
+export function parseDogfoodArgs(args: string[]): { files: string[]; prompt: string; verify: boolean } {
+  const files: string[] = [];
+  const promptTokens: string[] = [];
+  let verify = true;
+
+  for (let i = 0; i < args.length; i += 1) {
+    if (args[i] === "--file") {
+      const next = args[i + 1];
+      if (!next) {
+        throw new Error("Usage: acolyte dogfood [--file path] [--no-verify] <prompt>");
+      }
+      files.push(next);
+      i += 1;
+      continue;
+    }
+    if (args[i] === "--no-verify") {
+      verify = false;
+      continue;
+    }
+    if (args[i] === "--verify") {
+      verify = true;
+      continue;
+    }
+
+    promptTokens.push(args[i]);
+  }
+
+  return dogfoodArgsSchema.parse({ files, prompt: promptTokens.join(" ").trim(), verify });
+}
+
 function parseEditArgs(args: string[]): {
   path: string;
   find: string;
@@ -931,9 +966,17 @@ async function runMode(args: string[]): Promise<void> {
 }
 
 async function dogfoodMode(args: string[]): Promise<void> {
-  const prompt = args.join(" ").trim();
-  if (!prompt) {
-    printError("Usage: acolyte dogfood [--file path] <prompt>");
+  let parsed: { files: string[]; prompt: string; verify: boolean };
+  try {
+    parsed = parseDogfoodArgs(args);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Invalid dogfood args";
+    printError(message);
+    process.exitCode = 1;
+    return;
+  }
+  if (!parsed.prompt) {
+    printError("Usage: acolyte dogfood [--file path] [--no-verify] <prompt>");
     process.exitCode = 1;
     return;
   }
@@ -947,7 +990,12 @@ async function dogfoodMode(args: string[]): Promise<void> {
     "",
   ].join("\n");
 
-  await runMode(["--verify", `${preamble}${prompt}`]);
+  const runArgs = [
+    ...parsed.files.flatMap((filePath) => ["--file", filePath]),
+    ...(parsed.verify ? ["--verify"] : []),
+    `${preamble}${parsed.prompt}`,
+  ];
+  await runMode(runArgs);
 }
 
 async function historyMode(): Promise<void> {
