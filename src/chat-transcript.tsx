@@ -6,7 +6,7 @@ import { renderAssistantContent } from "./chat-content-render";
 type ChatTranscriptProps = {
   rows: ChatRow[];
   isThinking: boolean;
-  thinkingFrame: string;
+  thinkingFrame: number;
 };
 
 const MAX_TRANSCRIPT_WIDTH = 100;
@@ -28,6 +28,17 @@ function parseSessionStatus(content: string): { prefix: string; sessionId: strin
 
 export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
   const { rows, isThinking, thinkingFrame } = props;
+  const pulsePeriod = 16;
+  const phase = ((Math.abs(thinkingFrame) % pulsePeriod) / pulsePeriod) * Math.PI * 2;
+  const baseIntensity = (Math.cos(phase) + 1) / 2;
+  const holdThreshold = 0.9;
+  const heldIntensity =
+    baseIntensity >= holdThreshold ? 1 : Math.max(0, Math.min(1, baseIntensity / holdThreshold));
+  const easedIntensity = heldIntensity * heldIntensity * (3 - 2 * heldIntensity);
+  const gray = Math.round(24 + easedIntensity * (255 - 24));
+  const channel = gray.toString(16).padStart(2, "0");
+  const pulseColor = `#${channel}${channel}${channel}`;
+  const pulseGlyph = "●";
   const hasContent = rows.length > 0 || isThinking;
   const columns = process.stdout.columns ?? 120;
   const contentWidth = Math.max(24, Math.min(MAX_TRANSCRIPT_WIDTH, columns - 2));
@@ -70,7 +81,14 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
       {isThinking ? (
         <>
           {rows.length > 0 ? <Text> </Text> : null}
-          <Text dimColor>{`  ${thinkingFrame} thinking…`}</Text>
+          <Box>
+            <Box width={2}>
+              <Text color={pulseColor}>{`${pulseGlyph} `}</Text>
+            </Box>
+            <Box width={contentWidth}>
+              <Text dimColor>Thinking…</Text>
+            </Box>
+          </Box>
         </>
       ) : null}
     </>

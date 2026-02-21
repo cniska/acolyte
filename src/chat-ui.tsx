@@ -32,7 +32,7 @@ const COLORS = {
   logo: "#2A1D4A",
   logoEyes: "#FFD84D",
 } as const;
-const THINKING_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"] as const;
+const THINKING_PULSE_FRAMES = 16;
 
 interface ChatAppProps {
   backend: Backend;
@@ -79,7 +79,7 @@ function ChatApp(props: ChatAppProps) {
 
   useAtSuggestionsEffect(atQuery, setAtSuggestions, setAtSuggestionIndex);
   useSlashSuggestionsEffect(slashSuggestions, setSlashSuggestionIndex);
-  useThinkingAnimationEffect(isThinking, THINKING_FRAMES.length, setThinkingFrame);
+  useThinkingAnimationEffect(isThinking, THINKING_PULSE_FRAMES, setThinkingFrame);
 
   const {
     openSkillsPanel,
@@ -188,7 +188,7 @@ function ChatApp(props: ChatAppProps) {
         logoColor={COLORS.logo}
         logoEyeColor={COLORS.logoEyes}
       />
-      <ChatTranscript rows={rows} isThinking={isThinking} thinkingFrame={THINKING_FRAMES[thinkingFrame] ?? "⠋"} />
+      <ChatTranscript rows={rows} isThinking={isThinking} thinkingFrame={thinkingFrame} />
 
       <Text> </Text>
       <ChatInputPanel
