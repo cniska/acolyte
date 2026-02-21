@@ -196,6 +196,10 @@ export function toolsForRole(role: AgentRole): Partial<AcolyteToolset> {
       return {
         searchRepo: acolyteTools.searchRepo,
         readFile: acolyteTools.readFile,
+        gitStatus: acolyteTools.gitStatus,
+        gitDiff: acolyteTools.gitDiff,
+        webSearch: acolyteTools.webSearch,
+        webFetch: acolyteTools.webFetch,
       };
     case "reviewer":
       return {

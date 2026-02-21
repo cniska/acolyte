@@ -2,9 +2,9 @@ import { describe, expect, test } from "bun:test";
 import { readFileTool, toolsForRole, withToolError } from "./mastra-tools";
 
 describe("mastra role toolsets", () => {
-  test("planner has minimal read-only planning tools", () => {
+  test("planner has read-only planning tools", () => {
     const keys = Object.keys(toolsForRole("planner")).sort();
-    expect(keys).toEqual(["readFile", "searchRepo"]);
+    expect(keys).toEqual(["gitDiff", "gitStatus", "readFile", "searchRepo", "webFetch", "webSearch"]);
   });
 
   test("reviewer has read-only tools", () => {
