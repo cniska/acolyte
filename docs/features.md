@@ -15,9 +15,9 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - In-chat utility commands: `/status`, `/permissions`, `/changes`, `/web <query>`.
 - Policy distillation command from chat logs: `/distill [--sessions N] [--min N]`.
 - Distilled policy candidate review picker with explicit `yes/no` confirmation and optional note (`yes also do this`).
-- Non-interactive dogfooding readiness command: `acolyte dogfood-status`.
 - Skills picker + command support: `/skills` and `$` shortcut.
 - Memory commands in chat: `/remember [--project] <text>`, `/memory` (alias: `/mem`).
+- OM admin safety: `om:wipe` requires explicit `--yes` confirmation.
 - Automatic memory-context injection from saved user/project memories.
 - Mastra Studio agent memory with observational memory enabled (resource scope).
 - Backend chat passes session/thread identity to Mastra memory for turn continuity while observational memory remains resource-scoped.

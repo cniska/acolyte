@@ -81,6 +81,7 @@ ACOLYTE_API_URL=http://localhost:6767 bun run chat
 bun run db:up
 bun run db:smoke
 bun run om:status
+bun run om:wipe -- --yes
 bun run om:soak --turns 60 --checkpoint-every 10
 ```
 

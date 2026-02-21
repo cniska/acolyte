@@ -15,7 +15,7 @@ type OmStatusResponse = {
 function usage(): void {
   console.log("Usage:");
   console.log("  bun run om:status [resourceId]");
-  console.log("  bun run om:wipe [resourceId]");
+  console.log("  bun run om:wipe [resourceId] --yes");
 }
 
 function baseUrl(): string {
@@ -76,29 +76,61 @@ async function wipe(resourceIdArg?: string): Promise<void> {
   console.log(`Wiped OM for ${payload.resourceId}: ${payload.wiped ? "ok" : "no-op"}`);
 }
 
+export function parseArgs(args: string[]): { resourceId?: string; yes: boolean; unknown: string[] } {
+  let resourceId: string | undefined;
+  let yes = false;
+  const unknown: string[] = [];
+  for (const arg of args) {
+    if (arg === "--yes") {
+      yes = true;
+      continue;
+    }
+    if (arg.startsWith("--")) {
+      unknown.push(arg);
+      continue;
+    }
+    if (!resourceId) {
+      resourceId = arg;
+      continue;
+    }
+    unknown.push(arg);
+  }
+  return { resourceId, yes, unknown };
+}
+
 async function main(): Promise<void> {
-  const [cmd, resourceIdArg] = process.argv.slice(2);
+  const [cmd, ...rest] = process.argv.slice(2);
+  const parsed = parseArgs(rest);
+  if (parsed.unknown.length > 0) {
+    usage();
+    throw new Error(`Unknown arguments: ${parsed.unknown.join(" ")}`);
+  }
   if (cmd === "status") {
-    await status(resourceIdArg);
+    await status(parsed.resourceId);
     return;
   }
   if (cmd === "wipe") {
-    await wipe(resourceIdArg);
+    if (!parsed.yes) {
+      throw new Error("Refusing to wipe OM without --yes.");
+    }
+    await wipe(parsed.resourceId);
     return;
   }
   usage();
   process.exitCode = 1;
 }
 
-try {
-  await main();
-} catch (error) {
-  const message = error instanceof Error ? error.message : String(error);
-  const lower = message.toLowerCase();
-  if (lower.includes("connectionrefused") || lower.includes("unable to connect")) {
-    console.error(`Cannot reach backend at ${baseUrl()}. Start it with: bun run serve:env`);
-  } else {
-    console.error(message);
+if (import.meta.main) {
+  try {
+    await main();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const lower = message.toLowerCase();
+    if (lower.includes("connectionrefused") || lower.includes("unable to connect")) {
+      console.error(`Cannot reach backend at ${baseUrl()}. Start it with: bun run serve:env`);
+    } else {
+      console.error(message);
+    }
+    process.exitCode = 1;
   }
-  process.exitCode = 1;
 }
