@@ -27,6 +27,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Backend chat passes session/thread identity to Mastra memory for turn continuity while observational memory remains resource-scoped.
 - Per-role model overrides with fallback-to-main (`ACOLYTE_MODEL_PLANNER|CODER|REVIEWER` -> `ACOLYTE_MODEL`).
 - Subagent v1 routing (`planner` / `coder` / `reviewer`) with explicit per-role context handoff.
+- Coder role guidance now prefers one clear next action and avoids lettered option menus unless explicitly requested.
 - Runtime provider is inferred from configured role model IDs (for example `anthropic/...`, `gemini/...`), with credential-aware fallback to mock mode when unavailable.
 - Mastra Studio exposes role agents (`Planner`, `Coder`, `Reviewer`) plus default `acolyte` alias.
 - Mastra Studio role agents use role-scoped tools (planner minimal read/search, reviewer read/search/git/web, coder full toolset).

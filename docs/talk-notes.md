@@ -113,6 +113,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Health/status now labels non-OpenAI base URLs as `openai-compatible`, improving local-model endpoint debugging.
 - Role model IDs now drive runtime provider selection (`openai` / `anthropic` / `gemini` / `openai-compatible`) with credential-aware fallback behavior.
 - Status model rows now render mixed-role providers correctly (no single-provider formatting assumption).
+- Coder role instructions now bias toward one recommended next action instead of A/B/C option menus by default.
 
 ## Open Narrative Threads
 1. Continue dogfooding ramp from Codex-led to Acolyte-led development.
