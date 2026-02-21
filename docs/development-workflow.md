@@ -22,7 +22,7 @@ Use these gates after each meaningful slice:
 3. Baseline bundle:
    - `bun run verify`
 4. Targeted smoke checks for changed behavior:
-   - Example: `bun run tool ...`, `bun run chat`, `bun run status`
+   - Example: `bun run tool ...`, `bun run chat`, `bun run status`, `bun run dogfood:smoke`
 
 ## Dogfooding Ramp
 Use this staged rollout when shifting work from Codex-driven to Acolyte-driven execution on `main`:
