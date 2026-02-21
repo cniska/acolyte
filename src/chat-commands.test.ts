@@ -144,6 +144,22 @@ describe("chat-commands", () => {
     expect((assistant?.content ?? "").trim().length).toBeGreaterThan(0);
   });
 
+  test("dispatchSlashCommand handles /sessions with compact assistant output", async () => {
+    const store = createStore({
+      activeSessionId: "sess_aaaa1111",
+      sessions: [
+        createSession({ id: "sess_aaaa1111", title: "First" }),
+        createSession({ id: "sess_bbbb2222", title: "Second" }),
+      ],
+    });
+    const { rows, stop } = await runCommand("/sessions", [], store);
+    expect(stop).toBe(true);
+    const assistant = rows.find((row) => row.role === "assistant" && row.content.includes("Sessions (2)"));
+    expect(assistant).toBeDefined();
+    expect(assistant?.content).toContain("● sess_aaaa111  First");
+    expect(assistant?.content).toContain("  sess_bbbb222  Second");
+  });
+
   test("dispatchSlashCommand validates /web usage", async () => {
     const { rows, stop } = await runCommand("/web");
     expect(stop).toBe(true);

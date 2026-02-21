@@ -48,7 +48,7 @@ export function resolveResumeSession(store: SessionStore, text: string): ResumeR
 
 export function formatSessionList(store: SessionStore, limit = 10): string[] {
   return store.sessions.slice(0, limit).map((item) => {
-    const active = item.id === store.activeSessionId ? "*" : " ";
+    const active = item.id === store.activeSessionId ? "●" : " ";
     const title = item.title || "New Session";
     return `${active} ${item.id.slice(0, 12)}  ${title}`;
   });
@@ -185,11 +185,8 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
   if (resolvedText === "/sessions") {
     pushUserCommandRow();
     const recent = formatSessionList(ctx.store, 10);
-    ctx.setRows((current) => [
-      ...current,
-      row("system", `Sessions (${ctx.store.sessions.length})`),
-      ...recent.map((line) => row("system", line)),
-    ]);
+    const sections = [`Sessions (${ctx.store.sessions.length})`, ...recent];
+    ctx.setRows((current) => [...current, row("assistant", sections.join("\n"))]);
     return { stop: true, userText: text, runVerifyAfterReply: false };
   }
 

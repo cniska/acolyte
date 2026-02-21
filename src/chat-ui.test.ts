@@ -52,7 +52,7 @@ describe("chat-ui helpers", () => {
 
   test("formatSessionList marks active session", () => {
     const lines = formatSessionList(createUiStore());
-    expect(lines[0]?.startsWith("* ")).toBe(true);
+    expect(lines[0]?.startsWith("● ")).toBe(true);
     expect(lines[1]?.startsWith("  ")).toBe(true);
   });
 

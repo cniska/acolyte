@@ -100,6 +100,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - `/edit` tool metadata parsing is now strict and Zod-validated (`path`, `matches`, `dry_run`).
 - `dogfood-gate` progress JSON is now parsed via an explicit Zod schema (not ad-hoc field checks).
 - `policy-distill` option parsing is now strict on unknown flags/missing values (`--sessions`, `--min` only), with explicit errors.
+- Session UX was aligned: `/sessions` now renders as a compact assistant block and uses UTF-8 active markers (`●`) for readability.
 
 ## Open Narrative Threads
 1. Continue dogfooding ramp from Codex-led to Acolyte-led development.
