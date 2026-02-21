@@ -16,6 +16,15 @@ describe("prompt keymap", () => {
   test("maps line home/end style sequences often used by cmd+arrows", () => {
     expect(resolvePromptAction("\u001b[1;9D", {}, { hasMetaPrefix: false })).toEqual({ type: "move_home" });
     expect(resolvePromptAction("\u001b[1;9C", {}, { hasMetaPrefix: false })).toEqual({ type: "move_end" });
+    expect(resolvePromptAction("\u001b[1;10D", {}, { hasMetaPrefix: false })).toEqual({ type: "move_home" });
+    expect(resolvePromptAction("\u001b[1;10C", {}, { hasMetaPrefix: false })).toEqual({ type: "move_end" });
+    expect(resolvePromptAction("\u001b[1;13D", {}, { hasMetaPrefix: false })).toEqual({ type: "move_home" });
+    expect(resolvePromptAction("\u001b[1;13C", {}, { hasMetaPrefix: false })).toEqual({ type: "move_end" });
+  });
+
+  test("maps modifier CSI arrows for word navigation across terminal variants", () => {
+    expect(resolvePromptAction("\u001b[1;6D", {}, { hasMetaPrefix: false })).toEqual({ type: "move_word_left" });
+    expect(resolvePromptAction("\u001b[1;6C", {}, { hasMetaPrefix: false })).toEqual({ type: "move_word_right" });
   });
 
   test("maps clear-line control sequence", () => {

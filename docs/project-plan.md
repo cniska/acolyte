@@ -159,4 +159,4 @@ Adoption plan:
 1. Rich Claude-style transcript blocks (`Edit(...)` / `Bash(...)`) with compact excerpts.
 
 ## Known Issues
-1. Some terminal profiles still emit unmapped `Cmd` key sequences.
+1. A small set of terminal profiles may still emit unmapped `Cmd` key sequences.

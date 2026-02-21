@@ -60,7 +60,46 @@ const CHARS = {
   backspace: "\u007f",
 } as const;
 
+type CsiArrowMove = {
+  kind: "word" | "line";
+  direction: "left" | "right";
+};
+
+function parseCsiArrowMove(input: string): CsiArrowMove | null {
+  const prefix = `${ESCAPE_CHAR}[`;
+  if (!input.startsWith(prefix)) {
+    return null;
+  }
+  const final = input.at(-1);
+  if (final !== "C" && final !== "D") {
+    return null;
+  }
+  const payload = input.slice(prefix.length, -1);
+  if (payload.length === 0) {
+    return null;
+  }
+  const parts = payload.split(";");
+  const modifierPart = parts.length === 1 ? parts[0] : parts[1];
+  if (parts.length > 2 || (parts.length === 2 && parts[0] !== "1") || !modifierPart) {
+    return null;
+  }
+  const modifier = Number.parseInt(modifierPart, 10);
+  const direction = final === "D" ? "left" : "right";
+  if (!Number.isFinite(modifier) || modifier <= 0) {
+    return null;
+  }
+  if (modifier >= 9) {
+    return { kind: "line", direction };
+  }
+  if (modifier >= 3) {
+    return { kind: "word", direction };
+  }
+  return null;
+}
+
 export function resolvePromptAction(input: string, key: PromptKey, options: { hasMetaPrefix: boolean }): PromptAction {
+  const csiArrowMove = parseCsiArrowMove(input);
+
   if (key.upArrow || key.downArrow || key.tab || (key.shift && key.tab) || (key.ctrl && input === CTRL.c)) {
     return { type: "noop" };
   }
@@ -68,17 +107,39 @@ export function resolvePromptAction(input: string, key: PromptKey, options: { ha
     return { type: "submit" };
   }
 
-  if (key.home || ESC.home.has(input) || (key.ctrl && input === CTRL.a) || ESC.lineLeft.has(input)) {
+  if (
+    key.home ||
+    ESC.home.has(input) ||
+    (key.ctrl && input === CTRL.a) ||
+    ESC.lineLeft.has(input) ||
+    (csiArrowMove?.kind === "line" && csiArrowMove.direction === "left")
+  ) {
     return { type: "move_home" };
   }
-  if (key.end || ESC.end.has(input) || (key.ctrl && input === CTRL.e) || ESC.lineRight.has(input)) {
+  if (
+    key.end ||
+    ESC.end.has(input) ||
+    (key.ctrl && input === CTRL.e) ||
+    ESC.lineRight.has(input) ||
+    (csiArrowMove?.kind === "line" && csiArrowMove.direction === "right")
+  ) {
     return { type: "move_end" };
   }
 
-  if ((key.meta && input === "b") || input === ESC.altB || ESC.wordLeft.has(input)) {
+  if (
+    (key.meta && input === "b") ||
+    input === ESC.altB ||
+    ESC.wordLeft.has(input) ||
+    (csiArrowMove?.kind === "word" && csiArrowMove.direction === "left")
+  ) {
     return { type: "move_word_left" };
   }
-  if ((key.meta && input === "f") || input === ESC.altF || ESC.wordRight.has(input)) {
+  if (
+    (key.meta && input === "f") ||
+    input === ESC.altF ||
+    ESC.wordRight.has(input) ||
+    (csiArrowMove?.kind === "word" && csiArrowMove.direction === "right")
+  ) {
     return { type: "move_word_right" };
   }
 
