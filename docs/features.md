@@ -28,6 +28,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - In-flight turn interrupt via `Esc` while Acolyte is thinking.
 - One-shot CLI mode via `run` (including `--file` attachment support).
 - Tool command surface for search/web/read/edit/git/run operations.
+- Secure-by-default workspace guards for tool execution (file ops scoped to repo; shell commands reject obvious path escapes).
 - Local backend server with health check (`/healthz`) and chat endpoint (`/v1/chat`).
 - Local-first configuration and optional API-key auth for backend access.
 

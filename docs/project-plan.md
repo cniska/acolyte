@@ -215,6 +215,7 @@ Phases are milestone-based, not calendar-bound.
 19. Add first-class local model support via OpenAI-compatible base URLs (Ollama/vLLM), including docs, smoke checks, and lane-specific overrides.
 20. Add token-usage guardrails: hard prompt/context budgets, default compact tool output, and token telemetry per reply.
 21. Prioritize a TypeScript-first development lane (Bun/Node/TS defaults, typecheck+test workflow) before expanding language-specific support for other stacks.
+22. Keep tool execution workspace-scoped by default; later add a narrow opt-in exception for Acolyte-owned config paths (for example `~/.acolyte`).
 
 ## Prioritization Policy
 1. Prioritize correctness, reliability, and core workflow capability over cosmetic UX changes.
