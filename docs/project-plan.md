@@ -8,6 +8,7 @@ Build a personal AI coding assistant (Mastra + CLI) that is local-first, memory-
 2. Local-first default; hosted is optional.
 3. CLI-first UX (fast, minimal, high-signal).
 4. Safe-by-default automation (permissions + path guardrails).
+5. Apply extra scrutiny to chat UX changes: prefer minimal surface-area updates with tests + smoke checks before merge.
 
 ## Success Criteria
 1. Preference and workflow memory persists across sessions.
