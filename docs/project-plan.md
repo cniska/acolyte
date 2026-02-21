@@ -24,7 +24,7 @@ Build a personal AI coding assistant (Mastra + CLI) that is local-first, memory-
 4. Coding loop needs stronger safety/verification orchestration.
 5. Dogfooding transition (Codex -> Acolyte-led dev) is not complete.
 6. Task-lane model routing and local-model support are incomplete.
-7. Token budget controls need hard caps and better defaults.
+7. Token budget controls need iterative tuning for real-world cost/latency.
 
 ## Scope (MVP)
 ### In Scope
@@ -85,7 +85,7 @@ Build a personal AI coding assistant (Mastra + CLI) that is local-first, memory-
    - Gate command (`bun run dogfood:gate --lookback 30 --target 10`) summarizes smoke + delivery readiness in one pass.
    - Skip-verify gate (`bun run dogfood:gate --skip-verify --lookback 30 --target 10`) enables frequent readiness checks during active iteration.
    - Skip-verify gate hit `ready` on February 21, 2026 with `bun run dogfood:gate --skip-verify --lookback 10 --target 6` (smoke pass, delivery-slices 6/6).
-   - Latest run remains `ready` on February 21, 2026 with `bun run dogfood:gate --skip-verify --lookback 10 --target 6` (smoke pass, delivery-slices 7/6).
+   - Latest run remains `ready` on February 21, 2026 with `bun run dogfood:gate --skip-verify --lookback 10 --target 6` (smoke pass, delivery-slices 8/6).
    - Remaining validation:
    - Complete 6-10 real feature/fix slices in normal flow with Acolyte-first execution and no routine fallback.
    - Exit criteria:
