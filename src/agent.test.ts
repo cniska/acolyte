@@ -299,6 +299,21 @@ describe("finalizeAssistantOutput", () => {
     );
   });
 
+  test("dogfood prompt strips scaffolding and returns actionable line", () => {
+    const raw = [
+      "Quick status",
+      "- branch clean",
+      "Pick one action:",
+      "A - show dry-run patch",
+      "B - apply edit and run verify",
+      "Which option do you want?",
+      "1. apply edit and run verify",
+    ].join("\n");
+    expect(finalizeAssistantOutput(raw, "Dogfood mode:\n- Keep response concise")).toBe(
+      "Immediate action: apply edit and run verify",
+    );
+  });
+
   test("what next prompt returns exactly 3 numbered steps", () => {
     const raw = [
       "Quick status",

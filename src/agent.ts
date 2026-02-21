@@ -253,7 +253,12 @@ function normalizeDogfoodOutput(output: string): string {
     .map((line) => line.trim())
     .filter((line) => line.length > 0)
     .filter((line) => !/^(Outcome|Validation plan|Risk)\s*[-:]/i.test(line))
-    .filter((line) => !/^I can\b/i.test(line));
+    .filter((line) => !/^I can\b/i.test(line))
+    .filter((line) => !/^(quick (status|summary|recap|context|options|reminders?)|repo context)\b/i.test(line))
+    .filter((line) => !/^pick one\b/i.test(line))
+    .filter((line) => !/^which option\b/i.test(line))
+    .filter((line) => !/^reply\s+[a-z0-9]/i.test(line))
+    .filter((line) => !/^[A-C]\s*[-—:)]\s+/i.test(line));
 
   const immediate =
     cleaned.find((line) => /^Immediate action\s*[-:]/i.test(line)) ??
