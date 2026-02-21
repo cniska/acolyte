@@ -81,6 +81,7 @@ Build a personal AI coding assistant (Mastra + CLI) that is local-first, memory-
    - One-shot `run`/`dogfood` now use isolated OM resource ids (`run-<session>`), reducing cross-task memory bleed.
    - Integration test verifies `run` forwards isolated `resourceId` to backend.
    - Automated dogfood smoke (`bun run dogfood:smoke`) validates `status`, `run "what next"`, and `dogfood --no-verify`.
+   - Auto-start smoke path (`bun run dogfood:smoke:env`) makes the same checks reproducible without manual backend startup.
    - Remaining validation:
    - Complete 6-10 real feature/fix slices in normal flow with Acolyte-first execution and no routine fallback.
    - Exit criteria:
