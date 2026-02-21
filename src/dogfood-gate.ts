@@ -22,6 +22,11 @@ const gateArgsSchema = z.object({
   skipVerify: z.boolean(),
   skipSmoke: z.boolean(),
 });
+const deliveryProgressSchema = z.object({
+  deliverySlices: z.number().finite(),
+  target: z.number().finite(),
+  percent: z.number().finite(),
+});
 
 function parseArgs(args: string[]): GateArgs {
   const raw: { target: number | string; lookback: number | string; skipVerify: boolean; skipSmoke: boolean } = {
@@ -134,21 +139,14 @@ function parseDeliveryProgress(raw: string): { delivery: number; target: number;
   if (!found) {
     return null;
   }
-  const obj = parsed as { deliverySlices?: unknown; target?: unknown; percent?: unknown };
-  if (
-    typeof obj.deliverySlices !== "number" ||
-    !Number.isFinite(obj.deliverySlices) ||
-    typeof obj.target !== "number" ||
-    !Number.isFinite(obj.target) ||
-    typeof obj.percent !== "number" ||
-    !Number.isFinite(obj.percent)
-  ) {
+  const validated = deliveryProgressSchema.safeParse(parsed);
+  if (!validated.success) {
     return null;
   }
   return {
-    delivery: obj.deliverySlices,
-    target: obj.target,
-    percent: obj.percent,
+    delivery: validated.data.deliverySlices,
+    target: validated.data.target,
+    percent: validated.data.percent,
   };
 }
 
