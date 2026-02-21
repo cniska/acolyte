@@ -2,6 +2,7 @@
 import { runAgent } from "./agent";
 import type { ChatRequest } from "./api";
 import { appConfig } from "./app-config";
+import { log } from "./log";
 import { mastraStorage, mastraStorageMode } from "./mastra-storage";
 import { getObservationalMemoryConfig } from "./memory-config";
 import { type ProviderName, presentModel, presentRoleModels, resolveRoleModels } from "./provider-config";
@@ -63,7 +64,7 @@ try {
   await mastraStorage.init();
 } catch (error) {
   const message = error instanceof Error ? error.message : "Unknown storage initialization error";
-  console.error(`Failed to initialize Mastra storage: ${message}`);
+  log.error("failed to initialize Mastra storage", { error: message });
   process.exit(1);
 }
 
@@ -215,4 +216,4 @@ const server = Bun.serve({
   },
 });
 
-console.log(`Acolyte backend listening on http://localhost:${server.port}`);
+log.info("Acolyte backend listening", { url: `http://localhost:${server.port}` });
