@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+import { z } from "zod";
 import type { ChatRequest, ChatResponse } from "./api";
 import { appConfig } from "./app-config";
 import type { Message } from "./types";
@@ -22,6 +23,20 @@ type SoakOptions = {
   wipeBefore: boolean;
 };
 
+const DEFAULT_OPTIONS = {
+  turns: 40,
+  delayMs: 150,
+  checkpointEvery: 10,
+} as const;
+
+const soakOptionsSchema = z.object({
+  turns: z.coerce.number().int().positive(),
+  delayMs: z.coerce.number().int().nonnegative(),
+  checkpointEvery: z.coerce.number().int().positive(),
+  sessionId: z.string().min(1),
+  wipeBefore: z.boolean(),
+});
+
 function baseUrl(): string {
   const configured = appConfig.server.apiUrl?.trim();
   if (configured) {
@@ -39,52 +54,83 @@ function buildHeaders(): Record<string, string> {
 }
 
 function parseOptions(argv: string[]): SoakOptions {
-  let turns = 40;
-  let delayMs = 150;
-  let checkpointEvery = 10;
-  let sessionId = `om_soak_${Date.now().toString(36)}`;
-  let wipeBefore = false;
+  const raw: {
+    turns: number | string;
+    delayMs: number | string;
+    checkpointEvery: number | string;
+    sessionId: string;
+    wipeBefore: boolean;
+  } = {
+    turns: DEFAULT_OPTIONS.turns,
+    delayMs: DEFAULT_OPTIONS.delayMs,
+    checkpointEvery: DEFAULT_OPTIONS.checkpointEvery,
+    sessionId: `om_soak_${Date.now().toString(36)}`,
+    wipeBefore: false,
+  };
 
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
     if (token === "--turns") {
-      const value = Number.parseInt(argv[i + 1] ?? "", 10);
-      if (!Number.isNaN(value) && value > 0) {
-        turns = value;
-        i += 1;
+      const value = argv[i + 1];
+      if (!value) {
+        throw new Error("Invalid --turns value.");
       }
+      raw.turns = value;
+      i += 1;
       continue;
     }
     if (token === "--delay-ms") {
-      const value = Number.parseInt(argv[i + 1] ?? "", 10);
-      if (!Number.isNaN(value) && value >= 0) {
-        delayMs = value;
-        i += 1;
+      const value = argv[i + 1];
+      if (!value) {
+        throw new Error("Invalid --delay-ms value.");
       }
+      raw.delayMs = value;
+      i += 1;
       continue;
     }
     if (token === "--checkpoint-every") {
-      const value = Number.parseInt(argv[i + 1] ?? "", 10);
-      if (!Number.isNaN(value) && value > 0) {
-        checkpointEvery = value;
-        i += 1;
+      const value = argv[i + 1];
+      if (!value) {
+        throw new Error("Invalid --checkpoint-every value.");
       }
+      raw.checkpointEvery = value;
+      i += 1;
       continue;
     }
     if (token === "--session-id") {
       const value = (argv[i + 1] ?? "").trim();
-      if (value) {
-        sessionId = value;
-        i += 1;
+      if (!value) {
+        throw new Error("Invalid --session-id value.");
       }
+      raw.sessionId = value;
+      i += 1;
       continue;
     }
     if (token === "--wipe-before") {
-      wipeBefore = true;
+      raw.wipeBefore = true;
+      continue;
     }
+    throw new Error(`Unknown argument: ${token}`);
   }
 
-  return { turns, delayMs, checkpointEvery, sessionId, wipeBefore };
+  const parsed = soakOptionsSchema.safeParse(raw);
+  if (!parsed.success) {
+    if (parsed.error.issues.some((issue) => issue.path[0] === "turns")) {
+      throw new Error("Invalid --turns value.");
+    }
+    if (parsed.error.issues.some((issue) => issue.path[0] === "delayMs")) {
+      throw new Error("Invalid --delay-ms value.");
+    }
+    if (parsed.error.issues.some((issue) => issue.path[0] === "checkpointEvery")) {
+      throw new Error("Invalid --checkpoint-every value.");
+    }
+    if (parsed.error.issues.some((issue) => issue.path[0] === "sessionId")) {
+      throw new Error("Invalid --session-id value.");
+    }
+    throw new Error("Invalid options.");
+  }
+
+  return parsed.data;
 }
 
 function nowIso(): string {
@@ -205,15 +251,19 @@ async function main(): Promise<void> {
   console.log("OM soak complete.");
 }
 
-try {
-  await main();
-} catch (error) {
-  const message = error instanceof Error ? error.message : String(error);
-  const lower = message.toLowerCase();
-  if (lower.includes("connectionrefused") || lower.includes("unable to connect")) {
-    console.error(`Cannot reach backend at ${baseUrl()}. Start it with: bun run serve:env`);
-  } else {
-    console.error(message);
+if (import.meta.main) {
+  try {
+    await main();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const lower = message.toLowerCase();
+    if (lower.includes("connectionrefused") || lower.includes("unable to connect")) {
+      console.error(`Cannot reach backend at ${baseUrl()}. Start it with: bun run serve:env`);
+    } else {
+      console.error(message);
+    }
+    process.exitCode = 1;
   }
-  process.exitCode = 1;
 }
+
+export { parseOptions };
