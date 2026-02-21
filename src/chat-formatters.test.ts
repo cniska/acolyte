@@ -1,10 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-  formatChangesSummary,
-  formatDogfoodStatus,
-  formatThoughtDuration,
-  formatVerifySummary,
-} from "./chat-formatters";
+import { formatChangesSummary, formatThoughtDuration, formatVerifySummary } from "./chat-formatters";
 
 describe("chat-formatters helpers", () => {
   test("formatThoughtDuration renders ms and s forms", () => {
@@ -15,30 +10,6 @@ describe("chat-formatters helpers", () => {
   test("formatVerifySummary renders compact pass/fail line", () => {
     expect(formatVerifySummary("exit_code=0\nduration_ms=1530")).toBe("Verify passed (exit 0, 1.5s).");
     expect(formatVerifySummary("exit_code=1\nduration_ms=320")).toBe("Verify failed (exit 1, 320ms).");
-  });
-
-  test("formatDogfoodStatus renders compact readiness summary", () => {
-    const out = formatDogfoodStatus({
-      backendStatus: "mode=openai service=acolyte-backend",
-      verifySummary: "Verify passed (exit 0, 1.2s).",
-      hasApiKey: true,
-    });
-    expect(out).toContain("Dogfood status");
-    expect(out).toContain("- Verify passed (exit 0, 1.2s).");
-    expect(out).toContain("- Backend: mode=openai service=acolyte-backend");
-    expect(out).toContain("- OPENAI_API_KEY: set");
-    expect(out).toContain("- Checks: verify=pass backend=pass api_key=pass");
-    expect(out).toContain("- Switch gate: ready");
-  });
-
-  test("formatDogfoodStatus reports not-ready gate when checks fail", () => {
-    const out = formatDogfoodStatus({
-      backendStatus: "status unavailable",
-      verifySummary: "Verify failed (exit 1, 500ms).",
-      hasApiKey: false,
-    });
-    expect(out).toContain("- Checks: verify=fail backend=fail api_key=fail");
-    expect(out).toContain("- Switch gate: not ready yet");
   });
 
   test("formatChangesSummary renders git status and diff totals", () => {

@@ -1,3 +1,7 @@
+function countLabel(value: number, singular: string, plural: string): string {
+  return `${value} ${value === 1 ? singular : plural}`;
+}
+
 function parseRunMeta(raw: string): { exitCode: number | null; durationMs: number | null } {
   const exitMatch = raw.match(/^exit_code=(\d+)$/m);
   const durationMatch = raw.match(/^duration_ms=(\d+)$/m);
@@ -5,10 +9,6 @@ function parseRunMeta(raw: string): { exitCode: number | null; durationMs: numbe
     exitCode: exitMatch ? Number.parseInt(exitMatch[1], 10) : null,
     durationMs: durationMatch ? Number.parseInt(durationMatch[1], 10) : null,
   };
-}
-
-function countLabel(value: number, singular: string, plural: string): string {
-  return `${value} ${value === 1 ? singular : plural}`;
 }
 
 export function formatThoughtDuration(ms: number): string {
@@ -23,26 +23,6 @@ export function formatVerifySummary(raw: string): string {
   const status = meta.exitCode === 0 ? "passed" : "failed";
   const duration = meta.durationMs === null ? "n/a" : formatThoughtDuration(meta.durationMs);
   return `Verify ${status} (exit ${meta.exitCode ?? "?"}, ${duration}).`;
-}
-
-export function formatDogfoodStatus(input: {
-  backendStatus: string;
-  verifySummary: string;
-  hasApiKey: boolean;
-}): string {
-  const keyStatus = input.hasApiKey ? "set" : "missing";
-  const verifyOk = /\bpassed\b/i.test(input.verifySummary);
-  const backendOk = !/\b(unavailable|failed|error)\b/i.test(input.backendStatus);
-  const switchGate = verifyOk && backendOk && input.hasApiKey ? "ready" : "not ready yet";
-  const lines = [
-    "Dogfood status",
-    `- ${input.verifySummary}`,
-    `- Backend: ${input.backendStatus}`,
-    `- OPENAI_API_KEY: ${keyStatus}`,
-    `- Checks: verify=${verifyOk ? "pass" : "fail"} backend=${backendOk ? "pass" : "fail"} api_key=${input.hasApiKey ? "pass" : "fail"}`,
-    `- Switch gate: ${switchGate}`,
-  ];
-  return lines.join("\n");
 }
 
 export function formatChangesSummary(statusRaw: string, diffRaw: string): string {

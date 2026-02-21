@@ -11,11 +11,10 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Slash-command suggestions with arrow navigation and Tab/Enter autocomplete.
 - Unknown slash-command typo recovery (for example `/stauts` -> `/status`).
 - One-slot prompt queue while thinking (latest submit wins) with inline queued indicator.
-- Compact slash aliases for common commands (`/df`, `/ds`, `/mem`, `/rem`).
+- Compact slash aliases for common commands (`/df`, `/mem`, `/rem`).
 - In-chat utility commands: `/status`, `/permissions`, `/changes`, `/web <query>`.
 - Policy distillation command from chat logs: `/distill [--sessions N] [--min N]`.
 - Distilled policy candidate review picker with explicit `yes/no` confirmation and optional note (`yes also do this`).
-- In-chat dogfooding readiness check: `/dogfood-status` with short alias `/ds`.
 - Non-interactive dogfooding readiness command: `acolyte dogfood-status`.
 - Skills picker + command support: `/skills` and `$` shortcut.
 - Memory commands in chat: `/remember [--project] <text>`, `/memory` (alias: `/mem`).

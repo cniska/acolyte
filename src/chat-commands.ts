@@ -1,9 +1,9 @@
 import type { TokenUsage } from "./api";
-import { appConfig, setPermissionMode } from "./app-config";
+import { setPermissionMode } from "./app-config";
 import type { Backend } from "./backend";
-import { formatChangesSummary, formatDogfoodStatus, formatVerifySummary } from "./chat-formatters";
+import { formatChangesSummary } from "./chat-formatters";
 import { suggestClosestSlashCommand } from "./chat-slash";
-import { gitDiff, gitStatusShort, runShellCommand, searchWeb } from "./coding-tools";
+import { gitDiff, gitStatusShort, searchWeb } from "./coding-tools";
 import { addMemory, listMemories } from "./memory";
 import { distillPolicyCandidatesFromSessions, distillPolicyFromSessions, parseDistillOptions } from "./policy-distill";
 import { formatStatusOutput } from "./status-format";
@@ -261,35 +261,6 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       ctx.setRows((current) => [
         ...current,
         row("system", error instanceof Error ? error.message : "Web search failed."),
-      ]);
-    }
-    return { stop: true, userText: text, runVerifyAfterReply: false };
-  }
-
-  if (resolvedText === "/dogfood-status") {
-    pushUserCommandRow();
-    ctx.setRows((current) => [...current, row("system", "Checking dogfood status…", true)]);
-    try {
-      const [backendStatus, verifyRaw] = await Promise.all([
-        ctx.backend.status().catch((error) => (error instanceof Error ? error.message : "status unavailable")),
-        runShellCommand("bun run verify", 30_000).catch((error) =>
-          error instanceof Error
-            ? `exit_code=1\nduration_ms=0\nstderr:\n${error.message}`
-            : "exit_code=1\nduration_ms=0",
-        ),
-      ]);
-      const verifySummary = formatVerifySummary(verifyRaw);
-      ctx.setRows((current) => [
-        ...current,
-        row(
-          "assistant",
-          formatDogfoodStatus({ backendStatus, verifySummary, hasApiKey: Boolean(appConfig.openai.apiKey) }),
-        ),
-      ]);
-    } catch (error) {
-      ctx.setRows((current) => [
-        ...current,
-        row("system", error instanceof Error ? error.message : "Could not run dogfood status checks."),
       ]);
     }
     return { stop: true, userText: text, runVerifyAfterReply: false };

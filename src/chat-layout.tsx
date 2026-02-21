@@ -5,7 +5,6 @@ const SHORTCUT_ITEMS = [
   { key: "/changes", description: "show git changes" },
   { key: "/web <query>", description: "search the web" },
   { key: "/dogfood <task>", description: "run verify-first coding loop" },
-  { key: "/dogfood-status (/ds)", description: "check dogfooding readiness" },
   { key: "/new", description: "new session" },
   { key: "/permissions", description: "show permission mode" },
   { key: "/status", description: "show backend status" },
