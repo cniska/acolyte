@@ -29,26 +29,10 @@ This makes `acolyte` available in your shell (for example `acolyte --help` and `
 
 3. Create `.env`:
 ```bash
-OPENAI_API_KEY=...
-# Optional:
-# ACOLYTE_MODEL=gpt-5-mini
-# ACOLYTE_MODEL_PLANNER=o3
-# ACOLYTE_MODEL_CODER=gpt-5-codex
-# ACOLYTE_MODEL_REVIEWER=gpt-5-mini
-# ANTHROPIC_API_KEY=...
-# ANTHROPIC_BASE_URL=https://api.anthropic.com
-# GOOGLE_API_KEY=...
-# GOOGLE_BASE_URL=...
-# DATABASE_URL=postgres://acolyte:acolyte@localhost:5432/acolyte
-# ACOLYTE_PERMISSION_MODE=read    # read|write
-# ACOLYTE_CONTEXT_MAX_TOKENS=8000
-# ACOLYTE_MAX_HISTORY_MESSAGES=40
-# ACOLYTE_MAX_MESSAGE_TOKENS=600
-# ACOLYTE_MAX_ATTACHMENT_MESSAGE_TOKENS=3000
-# ACOLYTE_MAX_PINNED_MESSAGE_TOKENS=1200
-# ACOLYTE_LOG_FORMAT=logfmt       # logfmt|json
+cp .env.example .env
 ```
 
+At minimum, set `OPENAI_API_KEY` in `.env`.
 Role model vars are optional and fall back to `ACOLYTE_MODEL`.
 Use provider-qualified model IDs for non-OpenAI lanes (for example `anthropic/claude-sonnet-4`, `gemini/gemini-2.5-pro`).
 Unprefixed `claude-*` and `gemini-*` ids are auto-inferred to Anthropic/Gemini providers for convenience.
