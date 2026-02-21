@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 const DEFAULT_URL = "http://localhost:6767/healthz";
 const DEFAULT_TIMEOUT_MS = 10_000;
 const POLL_INTERVAL_MS = 200;
@@ -7,9 +9,16 @@ type Args = {
   timeoutMs: number;
 };
 
+const argsSchema = z.object({
+  url: z.string().min(1),
+  timeoutMs: z.coerce.number().int().positive(),
+});
+
 function parseArgs(argv: string[]): Args {
-  let url = DEFAULT_URL;
-  let timeoutMs = DEFAULT_TIMEOUT_MS;
+  const raw: { url: string; timeoutMs: number | string } = {
+    url: DEFAULT_URL,
+    timeoutMs: DEFAULT_TIMEOUT_MS,
+  };
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
     if (token === "--url") {
@@ -17,22 +26,26 @@ function parseArgs(argv: string[]): Args {
       if (!value) {
         throw new Error("Missing value for --url");
       }
-      url = value;
+      raw.url = value;
       i += 1;
       continue;
     }
     if (token === "--timeout-ms") {
-      const value = Number.parseInt(argv[i + 1] ?? "", 10);
-      if (!Number.isFinite(value) || value <= 0) {
-        throw new Error("Invalid value for --timeout-ms");
+      const value = argv[i + 1];
+      if (!value) {
+        throw new Error("Missing value for --timeout-ms");
       }
-      timeoutMs = value;
+      raw.timeoutMs = value;
       i += 1;
       continue;
     }
     throw new Error(`Unknown argument: ${token}`);
   }
-  return { url, timeoutMs };
+  const parsed = argsSchema.safeParse(raw);
+  if (!parsed.success) {
+    throw new Error("Invalid value for --timeout-ms");
+  }
+  return parsed.data;
 }
 
 async function waitForBackend(url: string, timeoutMs: number): Promise<void> {

@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 type GateArgs = {
   target: number;
   lookback: number;
@@ -14,8 +16,15 @@ type GateCheck = {
 const DEFAULT_TARGET = 10;
 const DEFAULT_LOOKBACK = 30;
 
+const gateArgsSchema = z.object({
+  target: z.coerce.number().int().positive(),
+  lookback: z.coerce.number().int().positive(),
+  skipVerify: z.boolean(),
+  skipSmoke: z.boolean(),
+});
+
 function parseArgs(args: string[]): GateArgs {
-  const parsed: GateArgs = {
+  const raw: { target: number | string; lookback: number | string; skipVerify: boolean; skipSmoke: boolean } = {
     target: DEFAULT_TARGET,
     lookback: DEFAULT_LOOKBACK,
     skipVerify: false,
@@ -24,34 +33,46 @@ function parseArgs(args: string[]): GateArgs {
   for (let i = 0; i < args.length; i += 1) {
     const token = args[i];
     if (token === "--target") {
-      const value = Number.parseInt(args[i + 1] ?? "", 10);
-      if (!Number.isFinite(value) || value <= 0) {
+      const value = args[i + 1];
+      if (!value) {
         throw new Error("Invalid --target value.");
       }
-      parsed.target = value;
+      raw.target = value;
       i += 1;
       continue;
     }
     if (token === "--lookback") {
-      const value = Number.parseInt(args[i + 1] ?? "", 10);
-      if (!Number.isFinite(value) || value <= 0) {
+      const value = args[i + 1];
+      if (!value) {
         throw new Error("Invalid --lookback value.");
       }
-      parsed.lookback = value;
+      raw.lookback = value;
       i += 1;
       continue;
     }
     if (token === "--skip-verify") {
-      parsed.skipVerify = true;
+      raw.skipVerify = true;
       continue;
     }
     if (token === "--skip-smoke") {
-      parsed.skipSmoke = true;
+      raw.skipSmoke = true;
       continue;
     }
     throw new Error(`Unknown argument: ${token}`);
   }
-  return parsed;
+  const parsed = gateArgsSchema.safeParse(raw);
+  if (!parsed.success) {
+    const hasTargetError = parsed.error.issues.some((issue) => issue.path[0] === "target");
+    const hasLookbackError = parsed.error.issues.some((issue) => issue.path[0] === "lookback");
+    if (hasTargetError) {
+      throw new Error("Invalid --target value.");
+    }
+    if (hasLookbackError) {
+      throw new Error("Invalid --lookback value.");
+    }
+    throw new Error("Invalid arguments.");
+  }
+  return parsed.data;
 }
 
 function run(command: string): { ok: boolean; stdout: string; stderr: string; code: number } {
