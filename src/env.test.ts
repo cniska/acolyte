@@ -65,6 +65,15 @@ describe("env parsing", () => {
     expect(() => parseEnv({ PORT: "0" })).toThrow("Invalid environment configuration");
   });
 
+  test("parseEnv ignores legacy non-secret env keys", () => {
+    const parsed = parseEnv({
+      ACOLYTE_MODEL: "openai/gpt-5-mini",
+      ACOLYTE_API_URL: "http://localhost:6767",
+    } as Record<string, string>);
+    expect((parsed as Record<string, unknown>).ACOLYTE_MODEL).toBeUndefined();
+    expect((parsed as Record<string, unknown>).ACOLYTE_API_URL).toBeUndefined();
+  });
+
   test("parseEnv rejects oversized token budgets", () => {
     expect(() => parseEnv({ ACOLYTE_CONTEXT_MAX_TOKENS: "1000000" })).toThrow("Invalid environment configuration");
     expect(() => parseEnv({ ACOLYTE_OM_OBSERVATION_TOKENS: "50000" })).toThrow("Invalid environment configuration");
