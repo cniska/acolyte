@@ -71,7 +71,7 @@ Build a personal AI coding assistant (Mastra + CLI) that is local-first, memory-
    - Automated smoke green for `status`, `run "hello"`, OM admin safety (`wipe` requires `--yes`).
    - No regressions in core chat commands (`/status`, `/permissions`, `/dogfood`).
 2. Milestone 2: Dogfooding Readiness
-   - Status: in progress.
+   - Status: in progress (near gate-ready).
    - Current evidence:
    - Output shaping is now constrained for dogfood (`Immediate action:` normalization).
    - Dogfood output strips quick-status / pick-one / A-B-C scaffolding, preserving one actionable line.
@@ -85,6 +85,7 @@ Build a personal AI coding assistant (Mastra + CLI) that is local-first, memory-
    - Gate command (`bun run dogfood:gate --lookback 30 --target 10`) summarizes smoke + delivery readiness in one pass.
    - Skip-verify gate (`bun run dogfood:gate --skip-verify --lookback 30 --target 10`) enables frequent readiness checks during active iteration.
    - Skip-verify gate hit `ready` on February 21, 2026 with `bun run dogfood:gate --skip-verify --lookback 10 --target 6` (smoke pass, delivery-slices 6/6).
+   - Latest run remains `ready` on February 21, 2026 with `bun run dogfood:gate --skip-verify --lookback 10 --target 6` (smoke pass, delivery-slices 7/6).
    - Remaining validation:
    - Complete 6-10 real feature/fix slices in normal flow with Acolyte-first execution and no routine fallback.
    - Exit criteria:
