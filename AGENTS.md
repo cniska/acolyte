@@ -26,6 +26,8 @@
 ## Code
 
 - Choose pragmatic solutions with low maintenance overhead.
+- Follow YAGNI strictly: do not add new commands/features/options unless they are needed for active workflows right now.
+- Apply Rule of Three for abstractions: wait for repeated concrete use (roughly three real cases) before introducing shared abstractions.
 - Avoid unnecessary indirection and abstractions.
 - Prefer root-cause fixes over workaround-only patches.
 - Do not add technical debt unless explicitly agreed with the user and tracked with `TODO(username):` plus a docs note.
