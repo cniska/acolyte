@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   buildUsageCommandRows,
   displayPromptForOutput,
+  extractVersionFromPackageJsonText,
   formatAssistantReplyOutput,
   formatEditUpdateOutput,
   formatForTool,
@@ -11,6 +12,7 @@ import {
   formatTimestamp,
   inferResumeCommandBase,
   isTopLevelHelpCommand,
+  isTopLevelVersionCommand,
   oneShotResourceId,
   parseChatModeArgs,
   parseEditResult,
@@ -241,11 +243,25 @@ describe("cli formatting helpers", () => {
     expect(isTopLevelHelpCommand(undefined)).toBe(false);
   });
 
+  test("isTopLevelVersionCommand recognizes version variants", () => {
+    expect(isTopLevelVersionCommand("version")).toBe(true);
+    expect(isTopLevelVersionCommand("--version")).toBe(true);
+    expect(isTopLevelVersionCommand("-V")).toBe(true);
+    expect(isTopLevelVersionCommand("help")).toBe(false);
+  });
+
   test("buildUsageCommandRows includes core commands", () => {
     const rows = buildUsageCommandRows();
     expect(rows.some((row) => row.command.startsWith("chat"))).toBe(true);
     expect(rows.some((row) => row.command.startsWith("resume"))).toBe(true);
     expect(rows.some((row) => row.command.includes("help"))).toBe(true);
+    expect(rows.some((row) => row.command.includes("version"))).toBe(true);
+  });
+
+  test("extractVersionFromPackageJsonText parses version safely", () => {
+    expect(extractVersionFromPackageJsonText('{"name":"acolyte","version":"0.1.0"}')).toBe("0.1.0");
+    expect(extractVersionFromPackageJsonText('{"name":"acolyte"}')).toBeNull();
+    expect(extractVersionFromPackageJsonText("{bad json}")).toBeNull();
   });
 
   test("formatAssistantReplyOutput indents multiline assistant output", () => {

@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+import { readFileSync } from "node:fs";
 import { relative } from "node:path";
 import { stdout as output } from "node:process";
 import { z } from "zod";
@@ -24,6 +25,7 @@ import type { Message, Session, SessionStore } from "./types";
 import {
   banner,
   clearScreen,
+  formatCliTitle,
   printError,
   printInfo,
   printOutput,
@@ -35,7 +37,34 @@ import {
 } from "./ui";
 
 const FALLBACK_MODEL = "gpt-5-mini";
-const CLI_VERSION = process.env.npm_package_version ?? "dev";
+export function extractVersionFromPackageJsonText(text: string): string | null {
+  try {
+    const parsed = JSON.parse(text) as { version?: unknown };
+    return typeof parsed.version === "string" && parsed.version.trim().length > 0 ? parsed.version.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
+function resolveCliVersion(): string {
+  if (process.env.npm_package_version && process.env.npm_package_version.trim().length > 0) {
+    return process.env.npm_package_version.trim();
+  }
+  const candidates = [`${process.cwd()}/package.json`, `${import.meta.dir}/../package.json`];
+  for (const path of candidates) {
+    try {
+      const version = extractVersionFromPackageJsonText(readFileSync(path, "utf8"));
+      if (version) {
+        return version;
+      }
+    } catch {
+      // Try next candidate.
+    }
+  }
+  return "dev";
+}
+
+const CLI_VERSION = resolveCliVersion();
 const PROMPT = "❯ ";
 const ONE_SHOT_SYSTEM_PROMPT =
   "One-shot mode: answer concisely and directly (prefer <=5 lines). Avoid option menus unless the user explicitly asks for options.";
@@ -60,48 +89,42 @@ const chatModeArgsSchema = z.object({
   resumeLatest: z.boolean(),
   resumePrefix: z.string().min(1).optional(),
 });
-const HELP_ANSI = {
-  bold: "\x1b[1m",
-  white: "\x1b[37m",
-  dim: "\x1b[2m",
-  resetBold: "\x1b[22m",
-  resetColor: "\x1b[39m",
-  resetDim: "\x1b[22m",
-} as const;
 
 function usage(): void {
   const commands = buildUsageCommandRows();
-  const commandPad = commands.reduce((max, row) => Math.max(max, row.command.length), 0) + 2;
-  const heading = (text: string): string =>
-    `${HELP_ANSI.bold}${HELP_ANSI.white}${text}${HELP_ANSI.resetColor}${HELP_ANSI.resetBold}`;
-  const white = (text: string): string => `${HELP_ANSI.white}${text}${HELP_ANSI.resetColor}`;
-  const dim = (text: string): string => `${HELP_ANSI.dim}${text}${HELP_ANSI.resetDim}`;
+  const options = buildUsageOptionRows();
+  const sharedPad =
+    Math.max(
+      commands.reduce((max, row) => Math.max(max, row.command.length), 0),
+      options.reduce((max, row) => Math.max(max, row.option.length), 0),
+    ) + 2;
+  const dim = (text: string): string => `\x1b[2m${text}\x1b[22m`;
 
-  printSection(`Acolyte CLI v${CLI_VERSION}`);
-  printOutput(heading("Usage"));
-  printOutput(white("  acolyte"));
-  printOutput(white("  acolyte <command> [options]"));
-  printOutput(dim("  (no command defaults to chat)"));
+  printOutput(formatCliTitle(CLI_VERSION));
+  printOutput(dim("If no subcommand is specified, Acolyte starts interactive chat."));
+  printOutput("");
+  printOutput("Usage");
+  printOutput("  acolyte");
+  printOutput("  acolyte <COMMAND> [ARGS]");
   printOutput("");
 
-  printOutput(heading("Commands"));
+  printOutput("Commands");
   for (const row of commands) {
-    printOutput(`${white(`  ${row.command.padEnd(commandPad)}`)}${dim(row.description)}`);
+    printOutput(`  ${row.command.padEnd(sharedPad)}${dim(row.description)}`);
   }
   printOutput("");
 
-  printOutput(heading("Examples"));
-  printOutput(white("  acolyte"));
-  printOutput(white("  acolyte resume"));
-  printOutput(white("  acolyte resume sess_8c3b922"));
-  printOutput(white('  acolyte run --verify "review @src/cli.ts"'));
+  printOutput("Options");
+  for (const row of options) {
+    printOutput(`  ${row.option.padEnd(sharedPad)}${dim(row.description)}`);
+  }
   printOutput("");
 }
 
 export function buildUsageCommandRows(): Array<{ command: string; description: string }> {
   return [
     { command: "chat [--resume [id-prefix]]", description: "start interactive session" },
-    { command: "resume [id-prefix]", description: "resume active/recent session" },
+    { command: "resume [id-prefix]", description: "resume previous session" },
     { command: "run [--file path] [--verify] <prompt>", description: "run one prompt (optional verify)" },
     { command: "dogfood [--file path] <prompt>", description: "run one prompt and always verify" },
     { command: "history", description: "show recent sessions" },
@@ -109,12 +132,24 @@ export function buildUsageCommandRows(): Array<{ command: string; description: s
     { command: "memory", description: "manage memory notes" },
     { command: "config", description: "manage local CLI config" },
     { command: "tool", description: "run coding tools (search/read/git/run/edit/web)" },
-    { command: "help | -h | --help", description: "show this help" },
+    { command: "version", description: "print version" },
+    { command: "help", description: "print this message" },
   ];
 }
 
 export function isTopLevelHelpCommand(command: string | undefined): boolean {
   return command === "help" || command === "--help" || command === "-h";
+}
+
+export function buildUsageOptionRows(): Array<{ option: string; description: string }> {
+  return [
+    { option: "-h, --help", description: "print help" },
+    { option: "-V, --version", description: "print version" },
+  ];
+}
+
+export function isTopLevelVersionCommand(command: string | undefined): boolean {
+  return command === "version" || command === "--version" || command === "-V";
 }
 
 function nowIso(): string {
@@ -1249,6 +1284,10 @@ async function main(): Promise<void> {
 
   if (isTopLevelHelpCommand(command)) {
     usage();
+    return;
+  }
+  if (isTopLevelVersionCommand(command)) {
+    printOutput(CLI_VERSION);
     return;
   }
 

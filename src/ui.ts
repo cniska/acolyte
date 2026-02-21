@@ -12,11 +12,15 @@ const color = {
   bold: (value: string): string => `\x1b[1m${value}\x1b[22m`,
 };
 
+export function formatCliTitle(version: string): string {
+  return `${color.bold(color.brand("Acolyte"))}${color.dim(` CLI v${version}`)}`;
+}
+
 export function banner(model: string, sessionId: string, version: string): void {
   const cwd = process.cwd();
   const home = homedir();
   const shownCwd = cwd === home ? "~" : cwd.startsWith(`${home}/`) ? `~${cwd.slice(home.length)}` : cwd;
-  stdout.write(`${color.bold(color.brand("Acolyte"))}${color.dim(` CLI v${version}`)}\n`);
+  stdout.write(`${formatCliTitle(version)}\n`);
   stdout.write(`${model} ${color.dim("· session")} ${sessionId.slice(0, 12)}\n`);
   stdout.write(`${color.dim(shownCwd)}\n`);
   stdout.write("\n");
