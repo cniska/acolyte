@@ -29,6 +29,9 @@ const DEFAULT_ROLE_SOUL: Record<AgentRole, string> = {
 };
 
 export function selectAgentRole(text: string): AgentRole {
+  if (isWhatNextPrompt(text)) {
+    return "planner";
+  }
   if (isReviewRequest(text)) {
     return "reviewer";
   }

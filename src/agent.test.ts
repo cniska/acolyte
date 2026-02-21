@@ -356,6 +356,11 @@ describe("finalizeAssistantOutput", () => {
 });
 
 describe("selectAgentRole", () => {
+  test("routes what-next prompts to planner", () => {
+    expect(selectAgentRole("what next")).toBe("planner");
+    expect(selectAgentRole("whats next")).toBe("planner");
+  });
+
   test("routes review prompts to reviewer", () => {
     expect(selectAgentRole("review @src/agent.ts")).toBe("reviewer");
   });
