@@ -20,6 +20,10 @@ describe("wait-backend", () => {
     expect(() => parseArgs(["--timeout-ms", "0"])).toThrow("Invalid value for --timeout-ms");
   });
 
+  test("parseArgs rejects missing timeout value", () => {
+    expect(() => parseArgs(["--timeout-ms"])).toThrow("Missing value for --timeout-ms");
+  });
+
   test("parseArgs rejects unknown flags", () => {
     expect(() => parseArgs(["--wat"])).toThrow("Unknown argument: --wat");
   });
