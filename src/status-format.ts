@@ -55,14 +55,14 @@ export function formatStatusOutput(status: string): string {
     output.push(`provider: ${provider}`);
     fields.delete("mode");
   }
-  const model = take("model");
-  if (model) {
-    output.push(`model: ${model}`);
-  }
   const modelMain = take("model_main");
   const modelPlanner = take("model_planner");
   const modelCoder = take("model_coder");
   const modelReviewer = take("model_reviewer");
+  const model = take("model");
+  if (model && model !== modelMain) {
+    output.push(`model: ${model}`);
+  }
   pushStacked(
     "models",
     [

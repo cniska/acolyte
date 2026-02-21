@@ -43,6 +43,15 @@ describe("status format", () => {
     expect(output).toContain("           ref: 8000");
   });
 
+  test("omits duplicate model when model_main matches", () => {
+    const output = formatStatusOutput("provider=openai model=gpt-5-mini model_main=gpt-5-mini model_coder=gpt-5-codex");
+
+    expect(output).not.toContain("model:       gpt-5-mini");
+    expect(output).toContain("models:");
+    expect(output).toContain("main: gpt-5-mini");
+    expect(output).toContain("coder: gpt-5-codex");
+  });
+
   test("formats OM state timestamps when present", () => {
     const output = formatStatusOutput(
       "provider=openai om_exists=true om_gen=7 om_last_observed=2026-02-21T10:10:53.908Z om_last_reflection=2026-02-21T10:15:00.000Z",
