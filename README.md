@@ -64,6 +64,7 @@ ACOLYTE_API_URL=http://localhost:6767 bun run chat
 - Chat (starts backend helper process): `bun run chat`
 - One-shot prompt (isolated session): `bun run run "review src/agent.ts"`
 - Dogfood prompt (verify-first): `bun run dogfood "fix src/agent.ts"`
+- Dogfood smoke checks: `bun run dogfood:smoke`
 - Status: `bun run status`
 - Verify: `bun run verify`
 - Mastra Studio: `bun run studio`
@@ -96,6 +97,7 @@ bun run om:soak --turns 60 --checkpoint-every 10
 - Hosted mode is planned, not implemented.
 - No deployment is required for local-first usage.
 - `bun run verify` runs: `format + lint + typecheck + test`.
+- Switch-to-Acolyte path: use small commit-sized slices, run `bun run verify`, then run `bun run dogfood:smoke`.
 
 ## More Docs
 
