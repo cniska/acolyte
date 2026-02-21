@@ -309,7 +309,37 @@ export function formatStatusOutput(status: string): string {
   return formatStatusOutputShared(status);
 }
 
-function showToolResult(title: string, content: string, style: "plain" | "tool" = "plain", detail?: string): void {
+const ANSI = {
+  green: "\x1b[32m",
+  red: "\x1b[31m",
+  yellow: "\x1b[33m",
+  dim: "\x1b[2m",
+  reset: "\x1b[39m",
+  resetDim: "\x1b[22m",
+} as const;
+
+function colorizeDiffLine(line: string): string {
+  if (line.startsWith("@@ ")) {
+    return `${ANSI.yellow}${line}${ANSI.reset}`;
+  }
+  if (line.startsWith("+") && !line.startsWith("+++")) {
+    return `${ANSI.green}${line}${ANSI.reset}`;
+  }
+  if (line.startsWith("-") && !line.startsWith("---")) {
+    return `${ANSI.red}${line}${ANSI.reset}`;
+  }
+  if (line.startsWith("… +")) {
+    return `${ANSI.dim}${line}${ANSI.resetDim}`;
+  }
+  return line;
+}
+
+function showToolResult(
+  title: string,
+  content: string,
+  style: "plain" | "tool" | "diff" = "plain",
+  detail?: string,
+): void {
   printToolHeader(title, detail);
   const lines = content.split("\n");
   if (lines.length === 0) {
@@ -321,6 +351,8 @@ function showToolResult(title: string, content: string, style: "plain" | "tool" 
     const prefix = i === 0 ? "  └ " : "    ";
     if (style === "tool") {
       printTool(`${prefix}${lines[i]}`);
+    } else if (style === "diff") {
+      printTool(`${prefix}${colorizeDiffLine(lines[i] ?? "")}`);
     } else {
       printOutput(`${prefix}${lines[i]}`);
     }
@@ -489,7 +521,8 @@ export function summarizeDiff(raw: string): {
   let added = 0;
   let removed = 0;
   let locations = 0;
-  for (const line of raw.split("\n")) {
+  const lines = raw.split("\n");
+  for (const line of lines) {
     if (
       line.startsWith("diff --git ") ||
       line.startsWith("index ") ||
@@ -500,19 +533,79 @@ export function summarizeDiff(raw: string): {
     }
     if (line.startsWith("@@ ")) {
       locations += 1;
+      preview.push(line);
       continue;
     }
     if (line.startsWith("+")) {
       added += 1;
-      preview.push(line);
       continue;
     }
     if (line.startsWith("-")) {
       removed += 1;
-      preview.push(line);
     }
   }
-  return { added, removed, locations, preview: clampLines(preview, 14) };
+
+  // Build a compact hunk-centered preview with one context line around edits.
+  let currentHunkHeader = "";
+  let currentHunkBody: string[] = [];
+  const excerpt: string[] = [];
+  const flushHunk = (): void => {
+    if (!currentHunkHeader) {
+      return;
+    }
+    const changedIdxs = currentHunkBody
+      .map((line, index) => ({ line, index }))
+      .filter((entry) => entry.line.startsWith("+") || entry.line.startsWith("-"))
+      .map((entry) => entry.index);
+    if (changedIdxs.length === 0) {
+      currentHunkHeader = "";
+      currentHunkBody = [];
+      return;
+    }
+    const include = new Set<number>();
+    for (const idx of changedIdxs) {
+      include.add(idx - 1);
+      include.add(idx);
+      include.add(idx + 1);
+    }
+    excerpt.push(currentHunkHeader);
+    for (let i = 0; i < currentHunkBody.length; i += 1) {
+      if (!include.has(i)) {
+        continue;
+      }
+      const line = currentHunkBody[i];
+      if (line === undefined) {
+        continue;
+      }
+      excerpt.push(line);
+    }
+    currentHunkHeader = "";
+    currentHunkBody = [];
+  };
+
+  for (const line of lines) {
+    if (line.startsWith("@@ ")) {
+      flushHunk();
+      currentHunkHeader = line;
+      currentHunkBody = [];
+      continue;
+    }
+    if (
+      line.startsWith("diff --git ") ||
+      line.startsWith("index ") ||
+      line.startsWith("--- ") ||
+      line.startsWith("+++ ")
+    ) {
+      continue;
+    }
+    if (!currentHunkHeader) {
+      continue;
+    }
+    currentHunkBody.push(line);
+  }
+  flushHunk();
+
+  return { added, removed, locations, preview: clampLines(excerpt, 18) };
 }
 
 export function formatEditUpdateOutput(matches: number, diff: string): string {
@@ -523,6 +616,7 @@ export function formatEditUpdateOutput(matches: number, diff: string): string {
     `Added ${countLabel(summary.added, "line", "lines")}, removed ${countLabel(summary.removed, "line", "lines")}.`,
   ];
   if (summary.preview.length > 0) {
+    lines.push("Preview:");
     lines.push(...summary.preview);
   }
   return lines.join("\n");
@@ -952,8 +1046,8 @@ async function toolMode(args: string[]): Promise<void> {
           rendered = true;
         } else {
           try {
-            const diff = await gitDiff(parsed.path, 3);
-            showToolResult("Update", formatEditUpdateOutput(summary.matches, diff), "plain", shownPath);
+            const diff = await gitDiff(parsed.path, 1);
+            showToolResult("Update", formatEditUpdateOutput(summary.matches, diff), "diff", shownPath);
             rendered = true;
           } catch (error) {
             const message = error instanceof Error ? error.message : "Unable to render diff preview";
