@@ -8,6 +8,7 @@ import {
   formatStatusOutput,
   formatTimestamp,
   oneShotResourceId,
+  parseRunExitCode,
   resolveCommandAlias,
   suggestCommand,
   suggestCommands,
@@ -26,6 +27,12 @@ describe("cli formatting helpers", () => {
     expect(out).toContain("line-1");
     expect(out).toContain("… +6 lines");
     expect(out).toContain("line-15");
+  });
+
+  test("parseRunExitCode reads exit code from run output", () => {
+    expect(parseRunExitCode("exit_code=0\nduration_ms=20")).toBe(0);
+    expect(parseRunExitCode("exit_code=17\nstdout:\nnope")).toBe(17);
+    expect(parseRunExitCode("stdout:\nmissing")).toBeNull();
   });
 
   test("formatStatusOutput expands key-value status", () => {

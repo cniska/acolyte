@@ -469,6 +469,16 @@ export function formatRunOutput(raw: string): string {
   return out.join("\n");
 }
 
+export function parseRunExitCode(raw: string): number | null {
+  const first = raw.split("\n")[0]?.trim() ?? "";
+  const match = first.match(/^exit_code=(-?\d+)$/);
+  if (!match) {
+    return null;
+  }
+  const parsed = Number.parseInt(match[1] ?? "", 10);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
 export function formatForTool(kind: "search" | "read" | "diff" | "run" | "status", raw: string): string {
   if (kind === "search") {
     return formatSearchOutput(raw);
@@ -812,6 +822,10 @@ async function runMode(args: string[]): Promise<void> {
   if (parsed.verify) {
     const verifyResult = await runShellCommand("bun run verify");
     showToolResult("Run", formatForTool("run", verifyResult), "tool", "bun run verify");
+    const verifyExitCode = parseRunExitCode(verifyResult);
+    if (verifyExitCode !== null && verifyExitCode !== 0) {
+      process.exitCode = 1;
+    }
   }
 }
 
