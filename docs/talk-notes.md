@@ -94,6 +94,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Core CLI argument paths (`run`, `edit`) also moved to Zod-backed parsing for consistency.
 - `dogfood-progress` now runs `git log` via argv (no shell string construction), reducing injection/quoting risk.
 - `dogfood-gate` now executes readiness checks via argv (`bun run ...`) instead of `bash -lc`.
+- `dogfood-smoke` checks now run via argv commands as well, removing shell-wrapper execution there too.
 
 ## Open Narrative Threads
 1. Continue dogfooding ramp from Codex-led to Acolyte-led development.
