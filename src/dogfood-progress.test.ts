@@ -1,5 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import { buildGitLogCmd, countDeliverySlices, parseArgs, parseGitLog, summarizeByType } from "./dogfood-progress";
+import {
+  buildGitLogCmd,
+  commitType,
+  countDeliverySlices,
+  parseArgs,
+  parseGitLog,
+  selectScopeCommits,
+  summarizeByType,
+} from "./dogfood-progress";
 
 describe("dogfood progress", () => {
   test("parseArgs applies defaults", () => {
@@ -57,6 +65,23 @@ describe("dogfood progress", () => {
       { type: "fix", count: 1 },
       { type: "other", count: 1 },
     ]);
+  });
+
+  test("commitType falls back to other when conventional prefix is absent", () => {
+    expect(commitType("feat(cli): one")).toBe("feat");
+    expect(commitType("plain commit subject")).toBe("other");
+  });
+
+  test("selectScopeCommits skips docs commits in lookback mode", () => {
+    const commits = [
+      { hash: "1", date: "2026-02-21", subject: "docs: update readme" },
+      { hash: "2", date: "2026-02-21", subject: "feat(cli): add status" },
+      { hash: "3", date: "2026-02-21", subject: "docs: polish notes" },
+      { hash: "4", date: "2026-02-21", subject: "fix(agent): handle edge case" },
+      { hash: "5", date: "2026-02-21", subject: "refactor(ui): reduce noise" },
+    ];
+    const selected = selectScopeCommits(commits, { lookback: 2, target: 10, json: false });
+    expect(selected.map((row) => row.hash)).toEqual(["2", "4"]);
   });
 
   test("countDeliverySlices includes feat/fix/refactor/test", () => {

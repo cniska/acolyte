@@ -3,6 +3,7 @@ import { z } from "zod";
 const DEFAULT_TARGET = 10;
 const DEFAULT_LOOKBACK = 30;
 const DELIVERY_TYPES = new Set(["feat", "fix", "refactor", "test"]);
+const NON_DELIVERY_EXCLUDED_TYPES = new Set(["docs"]);
 
 type Commit = {
   hash: string;
@@ -101,7 +102,7 @@ function parseGitLog(raw: string): Commit[] {
 function summarizeByType(commits: Commit[]): Array<{ type: string; count: number }> {
   const counts = new Map<string, number>();
   for (const commit of commits) {
-    const type = commit.subject.match(/^([a-z]+)(?:\(|:)/i)?.[1]?.toLowerCase() ?? "other";
+    const type = commitType(commit.subject);
     counts.set(type, (counts.get(type) ?? 0) + 1);
   }
   return Array.from(counts.entries())
@@ -111,6 +112,27 @@ function summarizeByType(commits: Commit[]): Array<{ type: string; count: number
 
 function countDeliverySlices(types: Array<{ type: string; count: number }>): number {
   return types.reduce((sum, row) => sum + (DELIVERY_TYPES.has(row.type) ? row.count : 0), 0);
+}
+
+function commitType(subject: string): string {
+  return subject.match(/^([a-z]+)(?:\(|:)/i)?.[1]?.toLowerCase() ?? "other";
+}
+
+function selectScopeCommits(commits: Commit[], args: ProgressArgs): Commit[] {
+  if (args.since) {
+    return commits;
+  }
+  const scoped: Commit[] = [];
+  for (const commit of commits) {
+    if (NON_DELIVERY_EXCLUDED_TYPES.has(commitType(commit.subject))) {
+      continue;
+    }
+    scoped.push(commit);
+    if (scoped.length >= args.lookback) {
+      break;
+    }
+  }
+  return scoped;
 }
 
 function buildGitLogCmd(args: ProgressArgs): string[] {
@@ -135,9 +157,10 @@ function runGitLog(args: ProgressArgs): Commit[] {
 }
 
 function printProgress(commits: Commit[], args: ProgressArgs): void {
-  const total = commits.length;
-  const scope = args.since ? `since ${args.since}` : `last ${args.lookback} commits`;
-  const types = summarizeByType(commits);
+  const scopedCommits = selectScopeCommits(commits, args);
+  const total = scopedCommits.length;
+  const scope = args.since ? `since ${args.since}` : `last ${args.lookback} non-doc commits`;
+  const types = summarizeByType(scopedCommits);
   const delivery = countDeliverySlices(types);
   const pct = Math.min(100, Math.round((delivery / args.target) * 100));
   const remaining = Math.max(0, args.target - delivery);
@@ -148,6 +171,7 @@ function printProgress(commits: Commit[], args: ProgressArgs): void {
         {
           scope,
           commitsTotal: total,
+          commitsScanned: commits.length,
           deliverySlices: delivery,
           target: args.target,
           percent: pct,
@@ -165,7 +189,10 @@ function printProgress(commits: Commit[], args: ProgressArgs): void {
 
   console.log("Dogfood progress");
   console.log(`- scope: ${scope}`);
-  console.log(`- commits (all): ${total}`);
+  console.log(`- commits (scoped): ${total}`);
+  if (!args.since) {
+    console.log(`- commits scanned: ${commits.length}`);
+  }
   console.log(`- slices (delivery): ${delivery}/${args.target} (${pct}%)`);
   console.log(`- remaining to target: ${remaining}`);
   if (types.length > 0) {
@@ -196,3 +223,4 @@ if (import.meta.main) {
 }
 
 export { buildGitLogCmd, countDeliverySlices, parseArgs, parseGitLog, summarizeByType };
+export { commitType, selectScopeCommits };
