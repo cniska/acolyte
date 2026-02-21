@@ -2,7 +2,7 @@ const STRIP_ANSI_REGEX = /\u001b\[[0-9;]*m/g;
 
 type SmokeCheck = {
   name: string;
-  command: string;
+  cmd: string[];
   expect: RegExp[];
   allowFailure?: boolean;
 };
@@ -16,23 +16,23 @@ type RunResult = {
 const checks: SmokeCheck[] = [
   {
     name: "status",
-    command: "bun run src/cli.ts status",
+    cmd: ["bun", "run", "src/cli.ts", "status"],
     expect: [/provider:/i, /model:/i],
   },
   {
     name: 'run "hello"',
-    command: 'bun run src/cli.ts run "hello"',
+    cmd: ["bun", "run", "src/cli.ts", "run", "hello"],
     expect: [/^❯\s+hello/m, /^\s*•\s+/m],
   },
   {
     name: "dogfood no-verify",
-    command: 'bun run src/cli.ts dogfood --no-verify "ping"',
+    cmd: ["bun", "run", "src/cli.ts", "dogfood", "--no-verify", "ping"],
     expect: [/Immediate action:/i],
   },
 ];
 
-async function runCommand(command: string): Promise<RunResult> {
-  const proc = Bun.spawn(["bash", "-lc", command], {
+async function runCommand(cmd: string[]): Promise<RunResult> {
+  const proc = Bun.spawn(cmd, {
     stdout: "pipe",
     stderr: "pipe",
     env: { ...process.env, NO_COLOR: "1" },
@@ -61,7 +61,7 @@ function assertCheckOutput(check: SmokeCheck, output: string): string | null {
 async function main(): Promise<void> {
   console.log("Running dogfood smoke checks...");
   for (const check of checks) {
-    const result = await runCommand(check.command);
+    const result = await runCommand(check.cmd);
     const output = stripAnsi(`${result.stdout}\n${result.stderr}`);
     if (result.exitCode !== 0 && !check.allowFailure) {
       console.error(`✗ ${check.name}: command failed (exit ${result.exitCode})`);
