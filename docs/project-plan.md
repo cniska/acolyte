@@ -23,7 +23,7 @@ Build a personal AI coding assistant (Mastra + CLI) that is local-first, memory-
 3. Hosted shared-memory mode is not production-ready.
 4. Coding loop needs stronger safety/verification orchestration.
 5. Dogfooding transition (Codex -> Acolyte-led dev) is not complete.
-6. Task-lane model routing and local-model support are incomplete.
+6. Local-model ergonomics still need tuning, but role model -> provider inference is now in place.
 7. Token budget controls need iterative tuning for real-world cost/latency.
 
 ## Scope (MVP)
