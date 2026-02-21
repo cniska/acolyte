@@ -513,9 +513,8 @@ export async function runAgent(input: {
   const subagentContext = buildSubagentContext(role, input.request);
   const agentInput = `${subagentContext}\n\n${requestInput.input}`;
   const toolLikely = isToolLikelyRequest(input.request.message);
-  const memoryOptions = input.request.sessionId
-    ? { thread: input.request.sessionId, resource: appConfig.memory.resourceId }
-    : undefined;
+  const resourceId = input.request.resourceId?.trim() || appConfig.memory.resourceId;
+  const memoryOptions = input.request.sessionId ? { thread: input.request.sessionId, resource: resourceId } : undefined;
   let result = await agent.generate(agentInput, {
     maxSteps: role === "planner" ? 5 : 8,
     toolChoice: "auto",

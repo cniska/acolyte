@@ -645,7 +645,16 @@ export function formatAssistantReplyOutput(content: string, wrapWidth = 100): st
     .join("\n");
 }
 
-async function handlePrompt(prompt: string, session: Session, backend = createBackend()): Promise<void> {
+export function oneShotResourceId(sessionId: string): string {
+  return `run-${sessionId.replace(/^sess_/, "").slice(0, 24)}`;
+}
+
+async function handlePrompt(
+  prompt: string,
+  session: Session,
+  backend = createBackend(),
+  options?: { resourceId?: string },
+): Promise<void> {
   const userMsg = newMessage("user", prompt);
   session.messages.push(userMsg);
   setSessionTitle(session, prompt);
@@ -658,6 +667,7 @@ async function handlePrompt(prompt: string, session: Session, backend = createBa
       history: session.messages,
       model: session.model,
       sessionId: session.id,
+      resourceId: options?.resourceId,
     });
 
     printOutput("");
@@ -792,7 +802,7 @@ async function runMode(args: string[]): Promise<void> {
     }
   }
 
-  await handlePrompt(prompt, session, backend);
+  await handlePrompt(prompt, session, backend, { resourceId: oneShotResourceId(session.id) });
   if (parsed.verify) {
     const verifyResult = await runShellCommand("bun run verify");
     showToolResult("Run", formatForTool("run", verifyResult), "tool", "bun run verify");

@@ -7,6 +7,7 @@ import {
   formatRunOutput,
   formatStatusOutput,
   formatTimestamp,
+  oneShotResourceId,
   resolveCommandAlias,
   suggestCommand,
   suggestCommands,
@@ -169,6 +170,11 @@ describe("cli formatting helpers", () => {
     const prompt = ["Dogfood mode:", "- Keep response concise", "- Verify edits", "fix src/agent.ts output"].join("\n");
     expect(displayPromptForOutput(prompt)).toBe("fix src/agent.ts output");
     expect(displayPromptForOutput("plain prompt")).toBe("plain prompt");
+  });
+
+  test("oneShotResourceId derives stable isolated resource key", () => {
+    expect(oneShotResourceId("sess_abcdef1234567890")).toBe("run-abcdef1234567890");
+    expect(oneShotResourceId("sess_short")).toBe("run-short");
   });
 
   test("formatAssistantReplyOutput indents multiline assistant output", () => {

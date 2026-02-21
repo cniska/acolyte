@@ -13,6 +13,7 @@ export interface ChatRequest {
   history: Message[];
   model: string;
   sessionId?: string;
+  resourceId?: string;
 }
 
 export interface ChatResponse {
