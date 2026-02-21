@@ -73,7 +73,7 @@ Build a personal AI coding assistant (Mastra + CLI) that is local-first, memory-
 2. Milestone 2: Dogfooding Readiness
    - Status: in progress.
    - Current evidence:
-   - Output shaping is now constrained for greetings and dogfood (`Immediate action:` normalization).
+   - Output shaping is now constrained for dogfood (`Immediate action:` normalization).
    - Dogfood output strips quick-status / pick-one / A-B-C scaffolding, preserving one actionable line.
    - Session-recovery command paths (`/new`, `/resume`, `/permissions`) are covered by automated tests.
    - One-shot `run` is isolated from persisted chat history (plus regression test).
