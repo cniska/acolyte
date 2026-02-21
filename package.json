@@ -21,7 +21,6 @@
     "status": "bun run src/cli.ts status",
     "memory": "bun run src/cli.ts memory",
     "config": "bun run src/cli.ts config",
-    "tool": "bun run src/cli.ts tool",
     "serve": "bun run src/server.ts",
     "serve:watch": "bun --watch run src/server.ts",
     "serve:env": "bun --env-file=.env run src/server.ts",
