@@ -81,7 +81,7 @@ Move primary development from Codex to Acolyte once these checks pass in a stage
 1. Initial gate: 1-2 consecutive days and 6-10 real slices completed with Acolyte.
 2. Confirmation gate: optional one-week run after the initial gate to confirm stability.
 3. During trial, Codex remains fallback only for true blockers.
-4. Reliability: `bun run verify` and `bun run milestone:smoke` stay green on every Acolyte-driven slice.
+4. Reliability: `bun run verify` stays green on every Acolyte-driven slice.
 5. Edit clarity: edit previews are readable enough to approve/reject quickly (compact, diff-first, low noise).
 6. Recovery: interrupt, resume, and `/new` flows are stable during daily usage.
 7. Safety: read/write permission gating prevents accidental writes and is easy to override intentionally.
