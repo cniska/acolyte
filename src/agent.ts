@@ -248,11 +248,17 @@ function compactWhatNextStep(step: string): string {
     .trim();
   compact = compact.replace(/\bpush and open a PR\b/gi, "commit and share results");
   compact = compact.replace(/\bopen a PR\b/gi, "share results");
+  compact = compact.replace(/,\s*I(?:'|’)ll[^.;]*$/i, "");
+  compact = compact.replace(/^commit with .*?,\s*commit and share results/gi, "commit and share results");
   compact = compact.replace(/\s+/g, " ").trim();
   if (compact.length > MAX_WHAT_NEXT_STEP_CHARS) {
     compact = `${compact.slice(0, Math.max(0, MAX_WHAT_NEXT_STEP_CHARS - 1)).trimEnd()}…`;
   }
-  return compact.replace(/[.;]\s*$/g, "").trim();
+  const stripped = compact.replace(/[.;]\s*$/g, "").trim();
+  if (stripped.length === 0) {
+    return stripped;
+  }
+  return `${stripped.slice(0, 1).toUpperCase()}${stripped.slice(1)}`;
 }
 
 function normalizeWhatNextOutput(output: string): string {

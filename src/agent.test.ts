@@ -285,14 +285,14 @@ describe("finalizeAssistantOutput", () => {
       "4) optional cleanup",
     ].join("\n");
     expect(finalizeAssistantOutput(raw, "what next")).toBe(
-      ["1. fix null checks", "2. add execute try/catch", "3. run bun run verify"].join("\n"),
+      ["1. Fix null checks", "2. Add execute try/catch", "3. Run bun run verify"].join("\n"),
     );
   });
 
   test("what next splits inline numbered steps into separate lines", () => {
     const raw = "1. fix null checks 2. add execute try/catch 3. run bun run verify";
     expect(finalizeAssistantOutput(raw, "what next")).toBe(
-      ["1. fix null checks", "2. add execute try/catch", "3. run bun run verify"].join("\n"),
+      ["1. Fix null checks", "2. Add execute try/catch", "3. Run bun run verify"].join("\n"),
     );
   });
 
@@ -304,8 +304,8 @@ describe("finalizeAssistantOutput", () => {
     ].join("\n");
     expect(finalizeAssistantOutput(raw, "what next")).toBe(
       [
-        "1. apply edits and run verify to confirm everything is green",
-        "2. commit and share results",
+        "1. Apply edits and run verify to confirm everything is green",
+        "2. Commit and share results",
         "3. Share output and next risk",
       ].join("\n"),
     );
