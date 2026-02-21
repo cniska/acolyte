@@ -22,7 +22,7 @@ const checks: SmokeCheck[] = [
   {
     name: 'run "what next"',
     command: 'bun run src/cli.ts run "what next"',
-    expect: [/1\./, /2\./, /3\./],
+    expect: [/^\s*•\s*1\./m, /^\s*2\./m, /^\s*3\./m],
   },
   {
     name: "dogfood no-verify",
