@@ -232,14 +232,11 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     pushUserCommandRow();
     const memories = await listMemories();
     if (memories.length === 0) {
-      ctx.setRows((current) => [...current, row("system", "No memories saved.")]);
+      ctx.setRows((current) => [...current, row("assistant", "No memory saved yet.")]);
       return { stop: true, userText: text, runVerifyAfterReply: false };
     }
-    ctx.setRows((current) => [
-      ...current,
-      row("system", `Memories (${memories.length})`),
-      ...memories.slice(0, 10).map((entry) => row("system", `- [${entry.scope}] ${entry.content}`)),
-    ]);
+    const lines = memories.slice(0, 10).map((entry) => `${entry.scope}: ${entry.content}`);
+    ctx.setRows((current) => [...current, row("assistant", `Memory ${memories.length}\n\n${lines.join("\n")}`)]);
     return { stop: true, userText: text, runVerifyAfterReply: false };
   }
 
@@ -290,7 +287,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     }
     try {
       const entry = await addMemory(content, { scope });
-      ctx.setRows((current) => [...current, row("system", `Saved ${entry.scope} memory: ${content}`)]);
+      ctx.setRows((current) => [...current, row("assistant", `Saved ${entry.scope} memory: ${content}`)]);
     } catch (error) {
       ctx.setRows((current) => [
         ...current,
