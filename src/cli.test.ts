@@ -8,6 +8,7 @@ import {
   formatStatusOutput,
   formatTimestamp,
   oneShotResourceId,
+  parseEditResult,
   parseRunExitCode,
   resolveCommandAlias,
   suggestCommand,
@@ -33,6 +34,20 @@ describe("cli formatting helpers", () => {
     expect(parseRunExitCode("exit_code=0\nduration_ms=20")).toBe(0);
     expect(parseRunExitCode("exit_code=17\nstdout:\nnope")).toBe(17);
     expect(parseRunExitCode("stdout:\nmissing")).toBeNull();
+  });
+
+  test("parseEditResult parses strict edit metadata", () => {
+    expect(parseEditResult("path=/tmp/a.ts\nmatches=2\ndry_run=true")).toEqual({
+      path: "/tmp/a.ts",
+      matches: 2,
+      dryRun: true,
+    });
+    expect(parseEditResult("path=/tmp/a.ts\nmatches=2\ndry_run=false")).toEqual({
+      path: "/tmp/a.ts",
+      matches: 2,
+      dryRun: false,
+    });
+    expect(parseEditResult("path=/tmp/a.ts\nmatches=2\ndry_run=maybe")).toBeNull();
   });
 
   test("formatStatusOutput expands key-value status", () => {

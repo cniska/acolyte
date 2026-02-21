@@ -270,11 +270,14 @@ function countLabel(value: number, singular: string, plural: string): string {
   return `${value} ${value === 1 ? singular : plural}`;
 }
 
-function parseEditResult(raw: string): { path: string; matches: number; dryRun: boolean } | null {
+export function parseEditResult(raw: string): { path: string; matches: number; dryRun: boolean } | null {
   const path = raw.match(/^path=(.*)$/m)?.[1]?.trim();
   const matchesText = raw.match(/^matches=(.*)$/m)?.[1]?.trim();
   const dryRunText = raw.match(/^dry_run=(.*)$/m)?.[1]?.trim();
   if (!path || !matchesText || !dryRunText) {
+    return null;
+  }
+  if (dryRunText !== "true" && dryRunText !== "false") {
     return null;
   }
   const parsed = editResultSchema.safeParse({
