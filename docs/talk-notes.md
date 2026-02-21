@@ -21,7 +21,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - CLI runtime: Bun + TypeScript (`src/cli.ts`)
 - Backend API: Bun server (`src/server.ts`)
 - Agent runtime: Mastra (`src/agent.ts`)
-- Tools: repo search/read/git/run/edit + web search (`src/mastra-tools.ts`)
+- Tools: repo search/read/git/run/edit + web search/fetch (`src/mastra-tools.ts`)
 - Local persistence:
   - sessions: `~/.acolyte/sessions.json`
   - user memory notes: `~/.acolyte/memory/user/*.md`
