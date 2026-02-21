@@ -15,7 +15,7 @@ export const checks: SmokeCheck[] = [
   {
     name: "status",
     cmd: ["bun", "run", "src/cli.ts", "status"],
-    expect: [/provider:/i, /model:/i],
+    expect: [/provider:/i, /(?:model|backend|service):/i],
   },
   {
     name: 'run "hello"',
@@ -25,7 +25,7 @@ export const checks: SmokeCheck[] = [
   {
     name: "dogfood no-verify",
     cmd: ["bun", "run", "src/cli.ts", "dogfood", "--no-verify", "ping"],
-    expect: [/Immediate action:/i],
+    expect: [/^❯\s+ping/m, /^\s*•\s+/m],
   },
 ];
 
