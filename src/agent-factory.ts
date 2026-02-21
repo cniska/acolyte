@@ -2,7 +2,7 @@ import { Agent } from "@mastra/core/agent";
 import { Memory } from "@mastra/memory";
 import { appConfig } from "./app-config";
 import { mastraStorage } from "./mastra-storage";
-import { acolyteTools } from "./mastra-tools";
+import { type AcolyteToolset, acolyteTools } from "./mastra-tools";
 import { getObservationalMemoryConfig } from "./memory-config";
 import { normalizeModel } from "./provider-config";
 
@@ -21,13 +21,14 @@ export function createAgent(input: {
   instructions: AgentInstructions;
   id?: string;
   name?: string;
+  tools?: Partial<AcolyteToolset>;
 }): Agent {
   return new Agent({
     id: input.id ?? "acolyte",
     name: input.name ?? "Acolyte",
     instructions: input.instructions,
     model: normalizeModel(input.model),
-    tools: acolyteTools,
+    tools: input.tools ?? acolyteTools,
     memory: sharedMemory,
   });
 }

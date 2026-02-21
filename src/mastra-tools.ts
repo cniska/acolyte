@@ -1,5 +1,6 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
+import type { AgentRole } from "./agent-roles";
 import { appConfig } from "./app-config";
 import {
   editFileReplace,
@@ -135,3 +136,25 @@ export const acolyteTools = {
   editFile: editFileTool,
   webSearch: webSearchTool,
 };
+
+export type AcolyteToolset = typeof acolyteTools;
+
+export function toolsForRole(role: AgentRole): Partial<AcolyteToolset> {
+  switch (role) {
+    case "planner":
+      return {
+        searchRepo: acolyteTools.searchRepo,
+        readFile: acolyteTools.readFile,
+      };
+    case "reviewer":
+      return {
+        searchRepo: acolyteTools.searchRepo,
+        readFile: acolyteTools.readFile,
+        gitStatus: acolyteTools.gitStatus,
+        gitDiff: acolyteTools.gitDiff,
+        webSearch: acolyteTools.webSearch,
+      };
+    case "coder":
+      return acolyteTools;
+  }
+}

@@ -2,6 +2,7 @@ import { createAgent } from "./agent-factory";
 import { type AgentRole, buildRoleInstructions, buildSubagentContext, selectAgentRole } from "./agent-roles";
 import type { ChatRequest, ChatResponse } from "./api";
 import { appConfig } from "./app-config";
+import { toolsForRole } from "./mastra-tools";
 import { resolveRoleModel } from "./provider-config";
 import { loadRoleSoulPrompt } from "./soul";
 
@@ -280,6 +281,7 @@ export async function runAgent(input: {
     name: `Acolyte ${role[0].toUpperCase()}${role.slice(1)}`,
     model,
     instructions: buildRoleInstructions(input.soulPrompt, role, roleSoul),
+    tools: toolsForRole(role),
   });
 
   const requestInput = buildAgentInputWithUsage(input.request);
