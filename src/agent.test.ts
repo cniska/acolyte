@@ -8,6 +8,7 @@ import {
   normalizeReviewOutput,
   resolveAgentModel,
   resolveModelProviderState,
+  resolveRunnableModel,
   selectAgentRole,
 } from "./agent";
 import type { ChatRequest } from "./api";
@@ -388,6 +389,62 @@ describe("resolveAgentModel", () => {
     expect(resolveAgentModel("planner", "gpt-5-mini", { planner: "o3" })).toBe("o3");
     expect(resolveAgentModel("coder", "gpt-5-mini", { coder: "gpt-5-codex" })).toBe("gpt-5-codex");
     expect(resolveAgentModel("reviewer", "gpt-5-mini", { reviewer: "gpt-5" })).toBe("gpt-5");
+  });
+});
+
+describe("resolveRunnableModel", () => {
+  test("falls back to requested model when override provider is unavailable", () => {
+    expect(
+      resolveRunnableModel("coder", "openai/gpt-5-mini", {
+        overrides: { coder: "anthropic/claude-sonnet-4" },
+        credentials: {
+          openaiApiKey: "sk-openai",
+          openaiBaseUrl: "https://api.openai.com/v1",
+          anthropicApiKey: undefined,
+        },
+      }),
+    ).toEqual({
+      model: "openai/gpt-5-mini",
+      provider: "openai",
+      available: true,
+      usedFallback: true,
+    });
+  });
+
+  test("keeps override model when its provider is available", () => {
+    expect(
+      resolveRunnableModel("coder", "openai/gpt-5-mini", {
+        overrides: { coder: "anthropic/claude-sonnet-4" },
+        credentials: {
+          openaiApiKey: "sk-openai",
+          openaiBaseUrl: "https://api.openai.com/v1",
+          anthropicApiKey: "sk-ant",
+        },
+      }),
+    ).toEqual({
+      model: "anthropic/claude-sonnet-4",
+      provider: "anthropic",
+      available: true,
+      usedFallback: false,
+    });
+  });
+
+  test("returns unavailable when both override and requested model providers are unavailable", () => {
+    expect(
+      resolveRunnableModel("coder", "openai/gpt-5-mini", {
+        overrides: { coder: "anthropic/claude-sonnet-4" },
+        credentials: {
+          openaiApiKey: undefined,
+          openaiBaseUrl: "https://api.openai.com/v1",
+          anthropicApiKey: undefined,
+        },
+      }),
+    ).toEqual({
+      model: "anthropic/claude-sonnet-4",
+      provider: "anthropic",
+      available: false,
+      usedFallback: false,
+    });
   });
 });
 

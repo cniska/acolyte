@@ -192,6 +192,57 @@ export function resolveModelProviderState(
   return { provider, available };
 }
 
+export function resolveRunnableModel(
+  role: AgentRole,
+  requestedModel: string,
+  options: {
+    overrides?: {
+      planner?: string;
+      coder?: string;
+      reviewer?: string;
+    };
+    credentials?: {
+      openaiApiKey?: string;
+      openaiBaseUrl: string;
+      anthropicApiKey?: string;
+      googleApiKey?: string;
+    };
+  } = {},
+): {
+  model: string;
+  provider: ModelProviderName;
+  available: boolean;
+  usedFallback: boolean;
+} {
+  const preferredModel = resolveAgentModel(role, requestedModel, options.overrides);
+  const preferredState = resolveModelProviderState(preferredModel, options.credentials);
+  if (preferredState.available || preferredModel === requestedModel) {
+    return {
+      model: preferredModel,
+      provider: preferredState.provider,
+      available: preferredState.available,
+      usedFallback: false,
+    };
+  }
+
+  const requestedState = resolveModelProviderState(requestedModel, options.credentials);
+  if (requestedState.available) {
+    return {
+      model: requestedModel,
+      provider: requestedState.provider,
+      available: true,
+      usedFallback: true,
+    };
+  }
+
+  return {
+    model: preferredModel,
+    provider: preferredState.provider,
+    available: false,
+    usedFallback: false,
+  };
+}
+
 export function compactReviewOutput(output: string): string {
   if (output.length <= MAX_REVIEW_OUTPUT_CHARS) {
     return output;
@@ -425,11 +476,11 @@ function buildMockReply(req: ChatRequest, reason?: string): ChatResponse {
 export async function runAgent(input: { request: ChatRequest; soulPrompt: string }): Promise<ChatResponse> {
   const role = selectAgentRole(input.request.message);
   const roleSoul = loadRoleSoulPrompt(role);
-  const model = resolveAgentModel(role, input.request.model);
-  const providerState = resolveModelProviderState(model);
-  if (!providerState.available) {
-    return buildMockReply(input.request, `Provider '${providerState.provider}' is not configured.`);
+  const resolved = resolveRunnableModel(role, input.request.model);
+  if (!resolved.available) {
+    return buildMockReply(input.request, `Provider '${resolved.provider}' is not configured.`);
   }
+  const model = resolved.model;
 
   const agent = createAgent({
     id: `acolyte-${role}`,
