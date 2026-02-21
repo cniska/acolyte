@@ -10,7 +10,6 @@ const MAX_PINNED_MESSAGE_TOKENS = 4_000;
 const EnvSchema = z.object({
   PORT: z.preprocess((value) => (value === undefined ? 6767 : value), z.coerce.number().int().min(1).max(65535)),
   ACOLYTE_API_KEY: z.string().trim().min(1).optional(),
-  ACOLYTE_API_URL: z.string().trim().min(1).optional(),
   DATABASE_URL: z.string().trim().min(1).optional(),
   OPENAI_API_KEY: z.string().trim().min(1).optional(),
   OPENAI_BASE_URL: z.string().trim().min(1).default("https://api.openai.com/v1"),
@@ -18,7 +17,6 @@ const EnvSchema = z.object({
   ANTHROPIC_BASE_URL: z.string().trim().min(1).default("https://api.anthropic.com"),
   GOOGLE_API_KEY: z.string().trim().min(1).optional(),
   GOOGLE_BASE_URL: z.string().trim().min(1).optional(),
-  ACOLYTE_MODEL: z.string().trim().min(1).default("gpt-5-mini"),
   ACOLYTE_MODEL_PLANNER: z.string().trim().min(1).optional(),
   ACOLYTE_MODEL_CODER: z.string().trim().min(1).optional(),
   ACOLYTE_MODEL_REVIEWER: z.string().trim().min(1).optional(),

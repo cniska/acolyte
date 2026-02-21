@@ -50,7 +50,7 @@ class LocalBackend implements Backend {
 
     const output = [
       "Local backend is active.",
-      "Set ACOLYTE_API_URL to route CLI requests to your hosted Mastra backend.",
+      "Set the backend URL with `acolyte config set apiUrl <url>` to route CLI requests to your hosted Mastra backend.",
       "I can still track your session context, memory notes, and command history locally.",
       `You said: ${trimmed}`,
     ].join(" ");

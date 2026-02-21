@@ -8,7 +8,6 @@ describe("env parsing", () => {
     expect(parsed.OPENAI_BASE_URL).toBe("https://api.openai.com/v1");
     expect(parsed.ANTHROPIC_BASE_URL).toBe("https://api.anthropic.com");
     expect(parsed.GOOGLE_BASE_URL).toBeUndefined();
-    expect(parsed.ACOLYTE_MODEL).toBe("gpt-5-mini");
     expect(parsed.ACOLYTE_OM_OBSERVATION_TOKENS).toBe(3_000);
     expect(parsed.ACOLYTE_OM_REFLECTION_TOKENS).toBe(8_000);
     expect(parsed.ACOLYTE_CONTEXT_MAX_TOKENS).toBe(8_000);
@@ -28,7 +27,6 @@ describe("env parsing", () => {
       ANTHROPIC_BASE_URL: "https://anthropic.example.com",
       GOOGLE_API_KEY: "sk-goog",
       GOOGLE_BASE_URL: "https://google.example.com",
-      ACOLYTE_MODEL: "gpt-5",
       ACOLYTE_MODEL_PLANNER: "o3",
       ACOLYTE_MODEL_CODER: "gpt-5-codex",
       ACOLYTE_MODEL_REVIEWER: "gpt-5-mini",
@@ -49,7 +47,6 @@ describe("env parsing", () => {
     expect(parsed.ANTHROPIC_BASE_URL).toBe("https://anthropic.example.com");
     expect(parsed.GOOGLE_API_KEY).toBe("sk-goog");
     expect(parsed.GOOGLE_BASE_URL).toBe("https://google.example.com");
-    expect(parsed.ACOLYTE_MODEL).toBe("gpt-5");
     expect(parsed.ACOLYTE_MODEL_PLANNER).toBe("o3");
     expect(parsed.ACOLYTE_MODEL_CODER).toBe("gpt-5-codex");
     expect(parsed.ACOLYTE_MODEL_REVIEWER).toBe("gpt-5-mini");

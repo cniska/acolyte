@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -49,6 +49,25 @@ export async function readConfig(options?: ConfigOptions): Promise<AcolyteConfig
     }
     if (existsSync(paths.jsonPath)) {
       const rawJson = await readFile(paths.jsonPath, "utf8");
+      const parsedJson = JSON.parse(rawJson) as Record<string, unknown>;
+      return toConfig(parsedJson);
+    }
+    return {};
+  } catch {
+    return {};
+  }
+}
+
+export function readConfigSync(options?: ConfigOptions): AcolyteConfig {
+  const paths = resolvePaths(options);
+  try {
+    if (existsSync(paths.tomlPath)) {
+      const rawToml = readFileSync(paths.tomlPath, "utf8");
+      const parsedToml = Bun.TOML.parse(rawToml) as Record<string, unknown>;
+      return toConfig(parsedToml);
+    }
+    if (existsSync(paths.jsonPath)) {
+      const rawJson = readFileSync(paths.jsonPath, "utf8");
       const parsedJson = JSON.parse(rawJson) as Record<string, unknown>;
       return toConfig(parsedJson);
     }

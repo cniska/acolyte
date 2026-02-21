@@ -1,13 +1,17 @@
+import { readConfigSync } from "./config";
 import { env } from "./env";
 
 export type PermissionMode = "read" | "write";
 export type ModelProvider = "openai" | "anthropic" | "gemini" | "openai-compatible" | "mock";
 
+const fileConfig = readConfigSync();
+const defaultModel = fileConfig.model ?? "gpt-5-mini";
+
 export const appConfig = {
   server: {
     port: env.PORT,
     apiKey: env.ACOLYTE_API_KEY,
-    apiUrl: env.ACOLYTE_API_URL,
+    apiUrl: fileConfig.apiUrl,
   },
   openai: {
     apiKey: env.OPENAI_API_KEY,
@@ -22,11 +26,11 @@ export const appConfig = {
     baseUrl: env.GOOGLE_BASE_URL,
   },
   models: {
-    main: env.ACOLYTE_MODEL,
+    main: defaultModel,
     planner: env.ACOLYTE_MODEL_PLANNER,
     coder: env.ACOLYTE_MODEL_CODER,
     reviewer: env.ACOLYTE_MODEL_REVIEWER,
-    observationalMemory: env.ACOLYTE_OM_MODEL ?? env.ACOLYTE_MODEL,
+    observationalMemory: env.ACOLYTE_OM_MODEL ?? defaultModel,
   },
   memory: {
     resourceId: "acolyte-local",
