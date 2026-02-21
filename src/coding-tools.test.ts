@@ -2,7 +2,7 @@ import { afterAll, describe, expect, test } from "bun:test";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { appConfig } from "./app-config";
+import { appConfig, setPermissionMode } from "./app-config";
 import { editFileReplace, readSnippet, runShellCommand } from "./coding-tools";
 
 const tempFiles: string[] = [];
@@ -68,7 +68,7 @@ describe("coding-tools workspace guards", () => {
 
   test("read mode blocks write tools", async () => {
     const prev = appConfig.agent.permissions.mode;
-    (appConfig.agent.permissions as { mode: "read" | "write" }).mode = "read";
+    setPermissionMode("read");
     try {
       await expect(runShellCommand("printf 'ok'")).rejects.toThrow("Shell command execution is disabled in read mode");
       await expect(
@@ -80,7 +80,7 @@ describe("coding-tools workspace guards", () => {
         }),
       ).rejects.toThrow("File editing is disabled in read mode");
     } finally {
-      (appConfig.agent.permissions as { mode: "read" | "write" }).mode = prev;
+      setPermissionMode(prev);
     }
   });
 

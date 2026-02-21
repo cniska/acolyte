@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { boundedSkillInstructions, createResumePicker, createResumeRows } from "./chat-picker-actions";
+import { boundedSkillInstructions, createPicker, createResumePicker, createResumeRows } from "./chat-picker-actions";
 import type { Session, SessionStore } from "./types";
 
 function session(id: string, title = "New Session"): Session {
@@ -49,5 +49,18 @@ describe("chat picker actions", () => {
   test("boundedSkillInstructions truncates with ellipsis", () => {
     expect(boundedSkillInstructions("abcdef", 6)).toBe("abcdef");
     expect(boundedSkillInstructions("abcdefg", 6)).toBe("abcde…");
+  });
+
+  test("createPicker builds typed picker from config", () => {
+    const picker = createPicker({
+      kind: "permissions",
+      items: [
+        { mode: "read", description: "inspect/search only" },
+        { mode: "write", description: "allow edits and shell commands" },
+      ],
+      index: 1,
+    });
+    expect(picker.kind).toBe("permissions");
+    expect(picker.items[1]?.mode).toBe("write");
   });
 });

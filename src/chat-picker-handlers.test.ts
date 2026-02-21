@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { appConfig, setPermissionMode } from "./app-config";
 import type { ChatRow } from "./chat-commands";
 import { createPickerHandlers } from "./chat-picker-handlers";
 import { createMessage, createSession, createStore } from "./test-factory";
@@ -95,5 +96,53 @@ describe("chat picker handlers", () => {
     expect(setCurrentSessionCalls).toEqual([second]);
     expect(setRowsDirectCalls.at(-1)?.at(-1)?.content).toBe("Resumed session: sess_second");
     expect(pickerValues.at(-1)).toBeNull();
+  });
+
+  test("openPermissionsPanel opens permissions picker and handlePickerSelect applies it", async () => {
+    const prev = appConfig.agent.permissions.mode;
+    setPermissionMode("write");
+    const pickerValues: unknown[] = [];
+    const rows: ChatRow[] = [];
+    const currentSession = createSession({ id: "sess_current" });
+    const store = createStore({ sessions: [currentSession], activeSessionId: currentSession.id });
+    const handlers = createPickerHandlers({
+      store,
+      currentSession,
+      setCurrentSession: () => {},
+      setRows: (updater) => {
+        const next = updater(rows);
+        rows.length = 0;
+        rows.push(...next);
+      },
+      setRowsDirect: () => {},
+      setPicker: (next) => {
+        pickerValues.push(next);
+      },
+      setShowShortcuts: () => {},
+      persist: async () => {},
+      toRows: () => [],
+      createMessage,
+      nowIso: () => "2026-02-20T00:00:00.000Z",
+    });
+
+    try {
+      handlers.openPermissionsPanel();
+      const picker = pickerValues.at(-1) as { kind: string; items: Array<{ mode: string }>; index: number };
+      expect(picker.kind).toBe("permissions");
+      expect(picker.items.length).toBe(2);
+
+      await handlers.handlePickerSelect({
+        kind: "permissions",
+        items: [
+          { mode: "read", description: "inspect/search only" },
+          { mode: "write", description: "allow edits and shell commands" },
+        ],
+        index: 0,
+      });
+      expect(appConfig.agent.permissions.mode).toBe("read");
+      expect(rows.some((row) => row.content === "permission mode: read")).toBe(true);
+    } finally {
+      setPermissionMode(prev);
+    }
   });
 });

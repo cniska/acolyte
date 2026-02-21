@@ -1,5 +1,7 @@
 import { env } from "./env";
 
+export type PermissionMode = "read" | "write";
+
 export const appConfig = {
   server: {
     port: env.PORT,
@@ -48,3 +50,7 @@ export const appConfig = {
     },
   },
 } as const;
+
+export function setPermissionMode(mode: PermissionMode): void {
+  (appConfig.agent.permissions as { mode: PermissionMode }).mode = mode;
+}

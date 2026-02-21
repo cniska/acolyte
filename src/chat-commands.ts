@@ -1,5 +1,5 @@
 import type { TokenUsage } from "./api";
-import { appConfig } from "./app-config";
+import { appConfig, setPermissionMode } from "./app-config";
 import type { Backend } from "./backend";
 import { formatChangesSummary, formatDogfoodStatus, formatVerifySummary } from "./chat-formatters";
 import { suggestClosestSlashCommand } from "./chat-slash";
@@ -106,6 +106,7 @@ type CommandContext = {
   exit: () => void;
   openSkillsPanel: () => Promise<void>;
   openResumePanel: () => void;
+  openPermissionsPanel: () => void;
   tokenUsage: TokenUsageEntry[];
 };
 
@@ -201,7 +202,19 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
 
   if (resolvedText === "/permissions") {
     pushUserCommandRow();
-    ctx.setRows((current) => [...current, row("assistant", `permissions: ${appConfig.agent.permissions.mode}`)]);
+    ctx.openPermissionsPanel();
+    return { stop: true, userText: text, runVerifyAfterReply: false };
+  }
+
+  if (resolvedText.startsWith("/permissions ")) {
+    pushUserCommandRow();
+    const mode = resolvedText.split(/\s+/)[1];
+    if (mode !== "read" && mode !== "write") {
+      ctx.setRows((current) => [...current, row("system", "Usage: /permissions [read|write]")]);
+      return { stop: true, userText: text, runVerifyAfterReply: false };
+    }
+    setPermissionMode(mode);
+    ctx.setRows((current) => [...current, row("assistant", `permission mode: ${mode}`)]);
     return { stop: true, userText: text, runVerifyAfterReply: false };
   }
 

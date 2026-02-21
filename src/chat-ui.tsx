@@ -77,7 +77,7 @@ function ChatApp(props: ChatAppProps) {
   useSlashSuggestionsEffect(slashSuggestions, setSlashSuggestionIndex);
   useThinkingAnimationEffect(isThinking, THINKING_FRAMES.length, setThinkingFrame);
 
-  const { openSkillsPanel, openResumePanel, handlePickerSelect } = createPickerHandlers({
+  const { openSkillsPanel, openResumePanel, openPermissionsPanel, handlePickerSelect } = createPickerHandlers({
     store,
     currentSession,
     setCurrentSession,
@@ -104,6 +104,7 @@ function ChatApp(props: ChatAppProps) {
     exit,
     openSkillsPanel,
     openResumePanel,
+    openPermissionsPanel,
     tokenUsage,
     isThinking,
     setInputHistory,

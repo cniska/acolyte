@@ -1,3 +1,4 @@
+import { appConfig } from "./app-config";
 import type { ChatRow } from "./chat-commands";
 import type { PickerState } from "./chat-picker";
 import type { Session, SessionStore } from "./types";
@@ -6,17 +7,55 @@ function row(role: ChatRow["role"], content: string): ChatRow {
   return { id: `row_${crypto.randomUUID()}`, role, content };
 }
 
+type PickerByKind = {
+  skills: Extract<PickerState, { kind: "skills" }>;
+  resume: Extract<PickerState, { kind: "resume" }>;
+  permissions: Extract<PickerState, { kind: "permissions" }>;
+};
+
+type CreatePickerConfig<K extends keyof PickerByKind> = {
+  kind: K;
+  items: PickerByKind[K]["items"];
+  index: number;
+};
+
+export function createPicker<K extends keyof PickerByKind>(config: CreatePickerConfig<K>): PickerByKind[K] {
+  return {
+    kind: config.kind,
+    items: config.items,
+    index: config.index,
+  } as PickerByKind[K];
+}
+
 export function createResumePicker(store: SessionStore, limit = 20): PickerState | null {
   const items = store.sessions.slice(0, limit);
   if (items.length === 0) {
     return null;
   }
   const activeIndex = items.findIndex((item) => item.id === store.activeSessionId);
-  return { kind: "resume", items, index: activeIndex >= 0 ? activeIndex : 0 };
+  return createPicker({
+    kind: "resume",
+    items,
+    index: activeIndex >= 0 ? activeIndex : 0,
+  });
 }
 
 export function createResumeRows(session: Session, toRows: (messages: Session["messages"]) => ChatRow[]): ChatRow[] {
   return [...toRows(session.messages), row("assistant", `Resumed session: ${session.id.slice(0, 12)}`)];
+}
+
+export function createPermissionsPicker(): PickerState {
+  const items: Array<{ mode: "read" | "write"; description: string }> = [
+    { mode: "read", description: "inspect/search only" },
+    { mode: "write", description: "allow edits and shell commands" },
+  ];
+  const currentMode = appConfig.agent.permissions.mode;
+  const index = items.findIndex((item) => item.mode === currentMode);
+  return createPicker({
+    kind: "permissions",
+    items,
+    index: index >= 0 ? index : 0,
+  });
 }
 
 export function boundedSkillInstructions(instructions: string, maxChars: number): string {

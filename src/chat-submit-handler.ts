@@ -23,6 +23,7 @@ type CreateSubmitHandlerInput = {
   exit: () => void;
   openSkillsPanel: () => Promise<void>;
   openResumePanel: () => void;
+  openPermissionsPanel: () => void;
   tokenUsage: TokenUsageEntry[];
   isThinking: boolean;
   setInputHistory: (updater: (current: string[]) => string[]) => void;
@@ -73,6 +74,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       exit: input.exit,
       openSkillsPanel: input.openSkillsPanel,
       openResumePanel: input.openResumePanel,
+      openPermissionsPanel: input.openPermissionsPanel,
       tokenUsage: input.tokenUsage,
     });
     if (commandResult.stop) {

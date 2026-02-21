@@ -5,8 +5,9 @@ import { createBackend, createSession, createStore } from "./test-factory";
 async function runCommand(
   text: string,
   tokenUsage: TokenUsageEntry[] = [],
-): Promise<{ rows: ChatRow[]; stop: boolean }> {
+): Promise<{ rows: ChatRow[]; stop: boolean; openedPermissions: boolean }> {
   let rows: ChatRow[] = [];
+  let openedPermissions = false;
   const result = await dispatchSlashCommand({
     text,
     resolvedText: text,
@@ -24,9 +25,12 @@ async function runCommand(
     exit: () => {},
     openSkillsPanel: async () => {},
     openResumePanel: () => {},
+    openPermissionsPanel: () => {
+      openedPermissions = true;
+    },
     tokenUsage,
   });
-  return { rows, stop: result.stop };
+  return { rows, stop: result.stop, openedPermissions };
 }
 
 describe("chat-commands", () => {
@@ -87,6 +91,7 @@ describe("chat-commands", () => {
       exit: () => {},
       openSkillsPanel: async () => {},
       openResumePanel: () => {},
+      openPermissionsPanel: () => {},
       tokenUsage: [],
     });
 
@@ -123,8 +128,9 @@ describe("chat-commands", () => {
   });
 
   test("dispatchSlashCommand shows permission mode", async () => {
-    const { rows, stop } = await runCommand("/permissions");
+    const { rows, stop, openedPermissions } = await runCommand("/permissions");
     expect(stop).toBe(true);
-    expect(rows.some((row) => row.content.includes("permissions:"))).toBe(true);
+    expect(openedPermissions).toBe(true);
+    expect(rows.some((row) => row.role === "user" && row.content === "/permissions")).toBe(true);
   });
 });
