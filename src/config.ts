@@ -62,11 +62,7 @@ export async function writeConfig(config: AcolyteConfig, options?: ConfigOptions
   const paths = resolvePaths(options);
   const sanitized = toConfig(config as Record<string, unknown>);
   await mkdir(paths.dataDir, { recursive: true });
-  if (existsSync(paths.tomlPath)) {
-    await writeFile(paths.tomlPath, serializeToml(sanitized), "utf8");
-    return;
-  }
-  await writeFile(paths.jsonPath, JSON.stringify(sanitized, null, 2), "utf8");
+  await writeFile(paths.tomlPath, serializeToml(sanitized), "utf8");
 }
 
 export async function setConfigValue(key: keyof AcolyteConfig, value: string, options?: ConfigOptions): Promise<void> {

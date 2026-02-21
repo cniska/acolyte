@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { readConfig, setConfigValue, unsetConfigValue, writeConfig } from "./config";
@@ -129,5 +129,25 @@ describe("config store", () => {
     expect(rawToml).toContain('model = "openai/gpt-5-mini"');
     expect(rawToml).toContain('apiUrl = "http://localhost:6767"');
     expect(rawToml).not.toContain("apiKey");
+  });
+
+  test("writeConfig writes TOML by default when only JSON existed", async () => {
+    const home = createTempDir("acolyte-config-home-");
+    const dataDir = join(home, ".acolyte");
+    mkdirSync(dataDir, { recursive: true });
+    writeFileSync(join(dataDir, "config.json"), JSON.stringify({ model: "openai/gpt-5-mini" }, null, 2), "utf8");
+
+    await writeConfig(
+      {
+        model: "openai/gpt-5-mini",
+        apiUrl: "http://localhost:6767",
+      },
+      { homeDir: home },
+    );
+
+    expect(existsSync(join(dataDir, "config.toml"))).toBe(true);
+    const rawToml = readFileSync(join(dataDir, "config.toml"), "utf8");
+    expect(rawToml).toContain('model = "openai/gpt-5-mini"');
+    expect(rawToml).toContain('apiUrl = "http://localhost:6767"');
   });
 });
