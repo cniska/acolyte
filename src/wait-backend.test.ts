@@ -29,4 +29,10 @@ describe("wait-backend", () => {
       server.stop(true);
     }
   });
+
+  test("waitForBackend times out when endpoint stays unavailable", async () => {
+    await expect(waitForBackend("http://127.0.0.1:9/healthz", 250)).rejects.toThrow(
+      "Timed out waiting for backend at http://127.0.0.1:9/healthz",
+    );
+  });
 });
