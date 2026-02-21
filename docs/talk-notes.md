@@ -82,6 +82,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Moving complex shell orchestration out of `package.json` keeps runtime scripts readable and easier to debug.
 - Manual split mode is now explicit: run backend with `bun run serve:env`, then attach CLI with `bun run chat:raw`.
 - Reduced prompt-specific output rewrites (for example greetings) in favor of generic response handling.
+- Continued reducing brittle output filtering so assistant replies preserve more model intent.
 
 ## Open Narrative Threads
 1. Continue dogfooding ramp from Codex-led to Acolyte-led development.
