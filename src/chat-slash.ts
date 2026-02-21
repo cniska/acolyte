@@ -20,6 +20,7 @@ export const CHAT_SLASH_COMMANDS = [
 
 const SLASH_ALIASES: Record<string, string> = {
   "/df": "/dogfood",
+  "/session": "/sessions",
   "/rem": "/remember",
   "/mem": "/memory",
 };

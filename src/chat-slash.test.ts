@@ -35,6 +35,7 @@ describe("chat-slash helpers", () => {
 
   test("resolveSlashAlias maps bare and argument forms", () => {
     expect(resolveSlashAlias("/df")).toBe("/dogfood");
+    expect(resolveSlashAlias("/session")).toBe("/sessions");
     expect(resolveSlashAlias("/mem")).toBe("/memory");
     expect(resolveSlashAlias("/rem fix naming")).toBe("/remember fix naming");
     expect(resolveSlashAlias("plain")).toBe("plain");
@@ -43,6 +44,7 @@ describe("chat-slash helpers", () => {
   test("isKnownSlashToken recognizes canonical and alias tokens", () => {
     expect(isKnownSlashToken("/status")).toBe(true);
     expect(isKnownSlashToken("/df")).toBe(true);
+    expect(isKnownSlashToken("/session")).toBe(true);
     expect(isKnownSlashToken("/unknown")).toBe(false);
   });
 
