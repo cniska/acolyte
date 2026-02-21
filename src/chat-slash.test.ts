@@ -11,6 +11,7 @@ import {
 describe("chat-slash helpers", () => {
   test("suggestSlashCommands filters known commands by prefix", () => {
     expect(suggestSlashCommands("/c")).toEqual(["/changes"]);
+    expect(suggestSlashCommands("/w")).toEqual(["/web"]);
     expect(suggestSlashCommands("/s")).toEqual(["/status", "/sessions", "/skills"]);
     expect(suggestSlashCommands("/st")).toEqual(["/status"]);
     expect(suggestSlashCommands("/d")).toEqual(["/dogfood", "/df", "/ds", "/dogfood-status"]);

@@ -42,6 +42,80 @@ export async function searchRepo(pattern: string, maxResults = 40): Promise<stri
   return stdoutText.trim() || "No matches.";
 }
 
+function decodeHtmlEntities(input: string): string {
+  return input
+    .replaceAll("&amp;", "&")
+    .replaceAll("&quot;", '"')
+    .replaceAll("&#39;", "'")
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">")
+    .replaceAll("&#x2F;", "/");
+}
+
+function stripHtmlTags(input: string): string {
+  return decodeHtmlEntities(
+    input
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim(),
+  );
+}
+
+export async function searchWeb(query: string, maxResults = 5): Promise<string> {
+  const trimmed = query.trim();
+  if (!trimmed) {
+    throw new Error("Web search query cannot be empty");
+  }
+
+  const limit = Math.max(1, Math.min(10, maxResults));
+  const url = `https://duckduckgo.com/html/?q=${encodeURIComponent(trimmed)}`;
+  const response = await fetch(url, {
+    headers: {
+      "user-agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36",
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`Web search failed with status ${response.status}`);
+  }
+  const html = await response.text();
+
+  const rows: Array<{ title: string; link: string; snippet: string }> = [];
+  const resultBlockPattern = /<div class="result(?:.|\n|\r)*?<\/div>\s*<\/div>/g;
+  const blocks = html.match(resultBlockPattern) ?? [];
+  for (const block of blocks) {
+    const titleMatch = block.match(/<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/);
+    if (!titleMatch) {
+      continue;
+    }
+    const link = decodeHtmlEntities(titleMatch[1] ?? "").trim();
+    const title = stripHtmlTags(titleMatch[2] ?? "");
+    const snippetMatch = block.match(/<a[^>]*class="result__snippet"[^>]*>([\s\S]*?)<\/a>/);
+    const snippet = stripHtmlTags(snippetMatch?.[1] ?? "");
+    if (!link || !title) {
+      continue;
+    }
+    rows.push({ title, link, snippet });
+    if (rows.length >= limit) {
+      break;
+    }
+  }
+
+  if (rows.length === 0) {
+    return `No web results found for: ${trimmed}`;
+  }
+
+  const output = [`Web results for: ${trimmed}`];
+  for (const [index, row] of rows.entries()) {
+    output.push(`${index + 1}. ${row.title}`);
+    output.push(`   ${row.link}`);
+    if (row.snippet) {
+      output.push(`   ${row.snippet}`);
+    }
+  }
+  return output.join("\n");
+}
+
 function toInt(value: string | undefined, fallback: number): number {
   if (!value) {
     return fallback;

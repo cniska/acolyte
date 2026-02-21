@@ -4,7 +4,15 @@ import { stdout as output } from "node:process";
 import { appConfig } from "./app-config";
 import { createBackend } from "./backend";
 import { runInkChat } from "./chat-ui";
-import { editFileReplace, gitDiff, gitStatusShort, readSnippet, runShellCommand, searchRepo } from "./coding-tools";
+import {
+  editFileReplace,
+  gitDiff,
+  gitStatusShort,
+  readSnippet,
+  runShellCommand,
+  searchRepo,
+  searchWeb,
+} from "./coding-tools";
 import { readConfig, setConfigValue, unsetConfigValue } from "./config";
 import { buildFileContext } from "./file-context";
 import { addMemory, listMemories } from "./memory";
@@ -38,7 +46,7 @@ function usage(): void {
   printInfo("  status          Show backend connection status");
   printInfo("  memory          Manage personal memory notes");
   printInfo("  config          Manage local CLI defaults");
-  printInfo("  tool            Run coding tools (search/read/git/run/edit)");
+  printInfo("  tool            Run coding tools (search/read/git/run/edit/web)");
 }
 
 function nowIso(): string {
@@ -868,6 +876,18 @@ async function toolMode(args: string[]): Promise<void> {
       return;
     }
 
+    if (subcommand === "web") {
+      const query = rest.join(" ").trim();
+      if (!query) {
+        printError("Usage: acolyte tool web <query>");
+        process.exitCode = 1;
+        return;
+      }
+      const result = await searchWeb(query, 5);
+      showToolResult("Web", result, "plain", query);
+      return;
+    }
+
     if (subcommand === "read") {
       const [pathInput, start, end] = rest;
       if (!pathInput) {
@@ -958,7 +978,7 @@ async function toolMode(args: string[]): Promise<void> {
       return;
     }
 
-    printError("Usage: acolyte tool <search|read|git-status|git-diff|run|edit> ...");
+    printError("Usage: acolyte tool <search|web|read|git-status|git-diff|run|edit> ...");
     process.exitCode = 1;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Tool command failed";

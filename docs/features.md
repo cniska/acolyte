@@ -12,7 +12,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Unknown slash-command typo recovery (for example `/stauts` -> `/status`).
 - One-slot prompt queue while thinking (latest submit wins) with inline queued indicator.
 - Compact slash aliases for common commands (`/df`, `/ds`, `/mem`, `/rem`).
-- In-chat utility commands: `/status`, `/changes`.
+- In-chat utility commands: `/status`, `/changes`, `/web <query>`.
 - In-chat dogfooding readiness check: `/dogfood-status` with short alias `/ds`.
 - Non-interactive dogfooding readiness command: `acolyte dogfood-status`.
 - Skills picker + command support: `/skills` and `$` shortcut.
@@ -27,7 +27,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Optional skip verify flow: `/dogfood --no-verify <task>`.
 - In-flight turn interrupt via `Esc` while Acolyte is thinking.
 - One-shot CLI mode via `run` (including `--file` attachment support).
-- Tool command surface for search/read/edit/git/run operations.
+- Tool command surface for search/web/read/edit/git/run operations.
 - Local backend server with health check (`/healthz`) and chat endpoint (`/v1/chat`).
 - Local-first configuration and optional API-key auth for backend access.
 

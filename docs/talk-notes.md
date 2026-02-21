@@ -72,6 +72,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
   - stabilized focus-switch repaints in Ink chat using alternate screen handling
   - improved `@path` matching (partial + fuzzy, case-insensitive ranking)
   - added in-flight interrupt (`Esc`) while a turn is running
+  - added web search support (`/web <query>`, `acolyte tool web`, and Mastra `web-search` tool)
   - improved unknown slash-command recovery with typo suggestions (for example `/stauts` -> `/status`)
   - expanded formatter/parser test coverage for status output and key input handling
 

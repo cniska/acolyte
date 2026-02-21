@@ -3,7 +3,7 @@ import { appConfig } from "./app-config";
 import type { Backend } from "./backend";
 import { formatChangesSummary, formatDogfoodStatus, formatVerifySummary } from "./chat-formatters";
 import { suggestClosestSlashCommand } from "./chat-slash";
-import { gitDiff, gitStatusShort, runShellCommand } from "./coding-tools";
+import { gitDiff, gitStatusShort, runShellCommand, searchWeb } from "./coding-tools";
 import { addMemory, listMemories } from "./memory";
 import { formatStatusOutput } from "./status-format";
 import { createSession } from "./storage";
@@ -208,6 +208,25 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       ctx.setRows((current) => [
         ...current,
         row("system", error instanceof Error ? error.message : "Could not inspect git changes."),
+      ]);
+    }
+    return { stop: true, userText: text, runVerifyAfterReply: false };
+  }
+
+  if (resolvedText.startsWith("/web")) {
+    pushUserCommandRow();
+    const query = resolvedText.replace(/^\/web\s*/, "").trim();
+    if (!query) {
+      ctx.setRows((current) => [...current, row("system", "Usage: /web <query>")]);
+      return { stop: true, userText: text, runVerifyAfterReply: false };
+    }
+    try {
+      const result = await searchWeb(query, 5);
+      ctx.setRows((current) => [...current, row("assistant", result)]);
+    } catch (error) {
+      ctx.setRows((current) => [
+        ...current,
+        row("system", error instanceof Error ? error.message : "Web search failed."),
       ]);
     }
     return { stop: true, userText: text, runVerifyAfterReply: false };

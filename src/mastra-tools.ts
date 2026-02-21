@@ -1,7 +1,15 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 import { appConfig } from "./app-config";
-import { editFileReplace, gitDiff, gitStatusShort, readSnippet, runShellCommand, searchRepo } from "./coding-tools";
+import {
+  editFileReplace,
+  gitDiff,
+  gitStatusShort,
+  readSnippet,
+  runShellCommand,
+  searchRepo,
+  searchWeb,
+} from "./coding-tools";
 import { compactToolOutput } from "./tool-output";
 
 export const searchRepoTool = createTool({
@@ -102,6 +110,22 @@ export const editFileTool = createTool({
   },
 });
 
+export const webSearchTool = createTool({
+  id: "web-search",
+  description: "Search the public web for recent information and return top results.",
+  inputSchema: z.object({
+    query: z.string().min(1),
+    maxResults: z.number().int().min(1).max(10).optional(),
+  }),
+  execute: async (input) => {
+    const result = compactToolOutput(
+      await searchWeb(input.query, input.maxResults ?? 5),
+      appConfig.agent.toolOutputBudget.webSearch,
+    );
+    return { result };
+  },
+});
+
 export const acolyteTools = {
   searchRepo: searchRepoTool,
   readFile: readFileTool,
@@ -109,4 +133,5 @@ export const acolyteTools = {
   gitDiff: gitDiffTool,
   runCommand: runCommandTool,
   editFile: editFileTool,
+  webSearch: webSearchTool,
 };

@@ -115,4 +115,10 @@ describe("chat-commands", () => {
     expect(stop).toBe(true);
     expect(rows.some((row) => row.content.includes("Did you mean /status?"))).toBe(true);
   });
+
+  test("dispatchSlashCommand validates /web usage", async () => {
+    const { rows, stop } = await runCommand("/web");
+    expect(stop).toBe(true);
+    expect(rows.some((row) => row.content === "Usage: /web <query>")).toBe(true);
+  });
 });
