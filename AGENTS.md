@@ -40,6 +40,7 @@
 - Run relevant validation after changes.
 - For this repo baseline, run `bun run verify` for feature work (`format` + `lint` + `typecheck` + `test`).
 - At minimum, run `bun run typecheck` when TypeScript code changes.
+- Prefer automated smoke checks for readiness; ask for manual user testing only at milestone checkpoints.
 - Document validation that could not run and why.
 
 ## Testing

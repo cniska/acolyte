@@ -58,6 +58,23 @@ Build a personal AI coding assistant (Mastra + CLI) that is local-first, memory-
 3. Tighten output quality (user-focused summaries, concise review format).
 4. Use Acolyte for increasing share of repo work; track failures and fixes.
 
+## Milestones (Near-Term)
+1. Milestone 1: Build Stability Baseline
+   - Exit criteria:
+   - `bun run verify` green after each slice.
+   - Automated smoke green for `status`, `run "what next"`, OM admin safety (`wipe` requires `--yes`).
+   - No regressions in core chat commands (`/status`, `/changes`, `/permissions`, `/dogfood`).
+2. Milestone 2: Dogfooding Readiness
+   - Exit criteria:
+   - Acolyte completes small feature slices end-to-end (plan -> edit -> verify) without fallback.
+   - Output stays concise and decision-useful without pseudo-picker noise.
+   - Session recovery (`interrupt`, `/new`, `/resume`) remains stable in daily use.
+3. Milestone 3: Switch Trial Week
+   - Exit criteria:
+   - One full week of normal repo development primarily with Acolyte.
+   - No blocker requiring routine Codex fallback.
+   - Cost/latency and memory behavior remain acceptable for daily workflow.
+
 ## Switch-To-Acolyte Gate
 Move primary development from Codex to Acolyte once these checks pass for one week of normal use:
 1. Reliability: `bun run verify` stays green on every Acolyte-driven slice.
