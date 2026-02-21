@@ -4,10 +4,10 @@
 Living notes for talks about building Acolyte. Update this file as milestones ship so demos and explanations stay accurate.
 
 ## Project Pitch
-- Acolyte is a personal AI coding assistant with:
-  - interactive CLI-first UX
-  - centralized memory across devices
-  - agentic workflows and coding tools
+- Acolyte is a personal AI coding assistant focused on practical execution:
+  - CLI-first UX
+  - persistent memory
+  - agentic coding workflows
   - explicit behavior contract in `docs/soul.md`
 
 ## Moat Narrative
@@ -15,12 +15,13 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Memory moat: persistent, user-correctable memory that outlives single sessions.
 - Workflow moat: coding-native tools and repo-grounded behavior, not generic assistant output.
 - UX moat: operator-focused CLI ergonomics with minimal noise and strong control.
+- Safety moat: permission modes + path guardrails by default.
 
-## Current Architecture (as of 2026-02-20)
+## Architecture Snapshot (2026-02-21)
 - CLI runtime: Bun + TypeScript (`src/cli.ts`)
-- Backend API: Bun server with `/v1/chat` and `/healthz` (`src/server.ts`)
-- Agent runtime: Mastra `Agent` (`src/agent.ts`)
-- Tools: Mastra tools for repo search/read/git/run/edit (`src/mastra-tools.ts`)
+- Backend API: Bun server (`src/server.ts`)
+- Agent runtime: Mastra (`src/agent.ts`)
+- Tools: repo search/read/git/run/edit + web search (`src/mastra-tools.ts`)
 - Local persistence:
   - sessions: `~/.acolyte/sessions.json`
   - user memory notes: `~/.acolyte/memory/user/*.md`
@@ -30,51 +31,23 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 ## Why This Stack
 - Bun: fast local iteration and simple CLI/backend workflow.
 - Mastra: standardized agent/tool primitives to avoid framework drift.
-- Hosted-backend-ready contract: CLI can target local or hosted API without changing user workflow.
+- Deployable contract: CLI can target local or hosted API without changing user workflow.
 
 ## Build Process
 - Built collaboratively with Codex in commit-sized slices.
-- Used an autonomous delivery loop: define slice -> implement -> validate -> commit.
-- Standardized validation via `bun run verify` and kept docs/workflow in sync as features shipped.
+- Delivery loop: define slice -> implement -> validate -> commit.
+- Standard validation: `bun run verify`.
 
-## Milestones (Condensed)
-### 2026-02-20
-- Core platform: CLI + backend + Mastra agent/tools + `docs/soul.md`.
-- Persistence: local sessions, memory notes, config.
-- Coding tools: `search`, `read`, `git-status`, `git-diff`, `run`, `edit`, plus `/verify`.
-- UX upgrades:
-  - moved chat UI to Ink with stable prompt/transcript separation
-  - added session controls (`/new`, `/sessions`, `/resume`) and skills picker UX
-  - added in-chat memory commands (`/remember [--project]`, `/memory`)
-  - added in-chat `/dogfood <task>` for verify-first autonomous coding tasks with automatic local `bun run verify`
-  - added in-chat `/dogfood-status` (`/ds`) for quick dogfooding readiness checks
-  - added in-chat `/changes` for quick git status + diff summary without leaving chat
-  - switched memory store to Markdown files with frontmatter (user + project scopes)
-  - added `@path` suggestions in chat and attachment of referenced files to model context
-  - expanded `@path` attachment to include directories (compact tree context)
-  - improved prompt ergonomics (word navigation, reliable delete behavior, autocomplete fixes)
-  - added slash-command suggestions with keyboard selection/autocomplete (arrows + Tab/Enter)
-  - added compact slash aliases for common flows (`/df`, `/ds`, `/mem`, `/rem`)
-  - centralized provider/model routing config (role model fallback + provider-aware model presentation)
-  - added per-role model overrides with fallback to main model (`ACOLYTE_MODEL_*` -> `ACOLYTE_MODEL`)
-  - tightened review style policy (concise, evidence-first, no destructive git suggestions)
-  - polished transcript output (compact tool blocks, no-result clarity, duration summaries)
-  - hardened empty-output handling with explicit assistant/review fallbacks instead of blank replies
-  - added lightweight semantic highlighting in assistant responses (code/commands/file refs)
-  - added canonical feature inventory in `docs/features.md` and linked it from README
-- Delivery workflow:
-  - `bun run verify` (`typecheck` + tests)
-  - autonomous feature loop in `docs/development-workflow.md`
-  - local skill scaffold in `skills/autonomous-feature-delivery/SKILL.md`
-
-### 2026-02-21
-- Chat reliability + UX hardening:
-  - stabilized focus-switch repaints in Ink chat using alternate screen handling
-  - improved `@path` matching (partial + fuzzy, case-insensitive ranking)
-  - added in-flight interrupt (`Esc`) while a turn is running
-  - added web search support (`/web <query>`, `acolyte tool web`, and Mastra `web-search` tool)
-  - improved unknown slash-command recovery with typo suggestions (for example `/stauts` -> `/status`)
-  - expanded formatter/parser test coverage for status output and key input handling
+## Shipped Highlights
+1. Core platform: CLI + backend + Mastra agent/tools + `docs/soul.md`.
+2. Local persistence: sessions + memory (user/project) + config.
+3. Core commands: search/read/edit/run/git/status, `/verify`, `/changes`.
+4. Chat UX: Ink-based interface, stable prompt/transcript separation, shortcuts/pickers, resume/skills flows.
+5. Memory UX: `/remember [--project]`, `/memory`, policy distillation groundwork.
+6. Developer ergonomics: `@path` attach (files + directories), fuzzy matching, better keybindings, interrupt with `Esc`.
+7. Reliability/safety: verify-first loop, role-scoped subagent tools, permission modes, workspace path guardrails.
+8. Routing/config: centralized provider/model config with per-role fallback support.
+9. Feature documentation: `docs/features.md` as inventory.
 
 ## Demo Flow (Short)
 1. Start backend: `bun --env-file=.env run serve`
@@ -91,6 +64,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Persistent memory quality matters more than model swapping.
 - Standardizing on Mastra early reduces long-term maintenance cost.
 - Soul/behavior docs reduce style drift and improve consistency.
+- Build process matters: small validated slices outperform large speculative changes.
 
 ## Lessons Learned
 - Reliability beats novelty: verify-first loops and small commits prevent drift.
@@ -100,9 +74,11 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Subagents work better when each role gets explicit context (goal, scope, expected output), not implicit routing guesses.
 - Centralized provider/model routing reduces drift across CLI/backend/agent wiring.
 - Mock-path smoke checks (`/healthz` with `--no-env-file`) catch provider/env assumptions early.
+- Token budget discipline is required during rapid iteration.
 
 ## Open Narrative Threads
-- Next: richer transcript-style tool blocks (focused excerpts by default, expandable when needed).
-- Add retrieval ranking and memory promotion rules.
-- Move persistence from local JSON to centralized Postgres/pgvector.
-- Add auth hardening and production deployment path.
+1. Continue dogfooding ramp from Codex-led to Acolyte-led development.
+2. Improve memory promotion/retrieval quality and transparency.
+3. Complete hosted readiness (Postgres/pgvector + backup/restore + auth hardening).
+4. Add lane-based model routing and local-model support.
+5. Refine transcript/tool output for maximal signal with minimal noise.
