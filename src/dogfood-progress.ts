@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 const DEFAULT_TARGET = 10;
 const DEFAULT_LOOKBACK = 30;
 const DELIVERY_TYPES = new Set(["feat", "fix", "refactor", "test"]);
@@ -15,8 +17,15 @@ type ProgressArgs = {
   json: boolean;
 };
 
+const progressArgsSchema = z.object({
+  since: z.string().min(1).optional(),
+  target: z.coerce.number().int().positive(),
+  lookback: z.coerce.number().int().positive(),
+  json: z.boolean(),
+});
+
 function parseArgs(args: string[]): ProgressArgs {
-  const parsed: ProgressArgs = {
+  const raw: { since?: string; target: number | string; lookback: number | string; json: boolean } = {
     target: DEFAULT_TARGET,
     lookback: DEFAULT_LOOKBACK,
     json: false,
@@ -29,36 +38,48 @@ function parseArgs(args: string[]): ProgressArgs {
       if (!value) {
         throw new Error("Missing value for --since.");
       }
-      parsed.since = value;
+      raw.since = value;
       i += 1;
       continue;
     }
     if (token === "--target") {
-      const value = Number.parseInt(args[i + 1] ?? "", 10);
-      if (!Number.isFinite(value) || value <= 0) {
+      const value = args[i + 1];
+      if (!value) {
         throw new Error("Invalid --target value.");
       }
-      parsed.target = value;
+      raw.target = value;
       i += 1;
       continue;
     }
     if (token === "--lookback") {
-      const value = Number.parseInt(args[i + 1] ?? "", 10);
-      if (!Number.isFinite(value) || value <= 0) {
+      const value = args[i + 1];
+      if (!value) {
         throw new Error("Invalid --lookback value.");
       }
-      parsed.lookback = value;
+      raw.lookback = value;
       i += 1;
       continue;
     }
     if (token === "--json") {
-      parsed.json = true;
+      raw.json = true;
       continue;
     }
     throw new Error(`Unknown argument: ${token}`);
   }
 
-  return parsed;
+  const parsed = progressArgsSchema.safeParse(raw);
+  if (!parsed.success) {
+    const hasTargetError = parsed.error.issues.some((issue) => issue.path[0] === "target");
+    const hasLookbackError = parsed.error.issues.some((issue) => issue.path[0] === "lookback");
+    if (hasTargetError) {
+      throw new Error("Invalid --target value.");
+    }
+    if (hasLookbackError) {
+      throw new Error("Invalid --lookback value.");
+    }
+    throw new Error("Invalid arguments.");
+  }
+  return parsed.data;
 }
 
 function parseGitLog(raw: string): Commit[] {

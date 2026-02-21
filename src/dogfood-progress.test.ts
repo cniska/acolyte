@@ -27,6 +27,14 @@ describe("dogfood progress", () => {
     });
   });
 
+  test("parseArgs rejects invalid target value", () => {
+    expect(() => parseArgs(["--target", "0"])).toThrow("Invalid --target value.");
+  });
+
+  test("parseArgs rejects invalid lookback value", () => {
+    expect(() => parseArgs(["--lookback", "-1"])).toThrow("Invalid --lookback value.");
+  });
+
   test("parseGitLog parses tab-delimited rows", () => {
     const rows = parseGitLog(
       ["abc123\t2026-02-21\tfeat(cli): improve status", "def456\t2026-02-21\tdocs: update"].join("\n"),
