@@ -81,6 +81,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Lightweight smoke commands improve confidence without adding heavy CI complexity.
 - Moving complex shell orchestration out of `package.json` keeps runtime scripts readable and easier to debug.
 - Manual split mode is now explicit: run backend with `bun run serve:env`, then attach CLI with `bun run chat:raw`.
+- Default start entry now uses managed chat startup (`bun run start` -> `bun run chat`) for fewer local setup misses.
 - Reduced prompt-specific output rewrites (for example greetings) in favor of generic response handling.
 - Continued reducing brittle output filtering so assistant replies preserve more model intent.
 - Dogfood readiness gate now surfaces clearer first-signal failure lines (less shell-wrapper noise).
