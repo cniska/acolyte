@@ -34,10 +34,10 @@ export const appConfig = {
     },
     contextMaxTokens: env.ACOLYTE_CONTEXT_MAX_TOKENS,
     inputBudget: {
-      maxHistoryMessages: 40,
-      maxMessageTokens: 600,
-      maxAttachmentMessageTokens: 3000,
-      maxPinnedMessageTokens: 1200,
+      maxHistoryMessages: env.ACOLYTE_MAX_HISTORY_MESSAGES,
+      maxMessageTokens: env.ACOLYTE_MAX_MESSAGE_TOKENS,
+      maxAttachmentMessageTokens: env.ACOLYTE_MAX_ATTACHMENT_MESSAGE_TOKENS,
+      maxPinnedMessageTokens: env.ACOLYTE_MAX_PINNED_MESSAGE_TOKENS,
     },
     toolOutputBudget: {
       search: { maxChars: 2200, maxLines: 80 },

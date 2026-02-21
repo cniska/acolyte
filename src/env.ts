@@ -24,6 +24,22 @@ const EnvSchema = z.object({
     (value) => (value === undefined ? 8_000 : value),
     z.coerce.number().int().min(1000),
   ),
+  ACOLYTE_MAX_HISTORY_MESSAGES: z.preprocess(
+    (value) => (value === undefined ? 40 : value),
+    z.coerce.number().int().min(1).max(200),
+  ),
+  ACOLYTE_MAX_MESSAGE_TOKENS: z.preprocess(
+    (value) => (value === undefined ? 600 : value),
+    z.coerce.number().int().min(50),
+  ),
+  ACOLYTE_MAX_ATTACHMENT_MESSAGE_TOKENS: z.preprocess(
+    (value) => (value === undefined ? 3_000 : value),
+    z.coerce.number().int().min(100),
+  ),
+  ACOLYTE_MAX_PINNED_MESSAGE_TOKENS: z.preprocess(
+    (value) => (value === undefined ? 1_200 : value),
+    z.coerce.number().int().min(100),
+  ),
   ACOLYTE_PERMISSION_MODE: z.enum(["read", "write"]).default("write"),
 });
 

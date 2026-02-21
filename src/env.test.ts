@@ -10,6 +10,10 @@ describe("env parsing", () => {
     expect(parsed.ACOLYTE_OM_OBSERVATION_TOKENS).toBe(3_000);
     expect(parsed.ACOLYTE_OM_REFLECTION_TOKENS).toBe(8_000);
     expect(parsed.ACOLYTE_CONTEXT_MAX_TOKENS).toBe(8_000);
+    expect(parsed.ACOLYTE_MAX_HISTORY_MESSAGES).toBe(40);
+    expect(parsed.ACOLYTE_MAX_MESSAGE_TOKENS).toBe(600);
+    expect(parsed.ACOLYTE_MAX_ATTACHMENT_MESSAGE_TOKENS).toBe(3_000);
+    expect(parsed.ACOLYTE_MAX_PINNED_MESSAGE_TOKENS).toBe(1_200);
     expect(parsed.ACOLYTE_PERMISSION_MODE).toBe("write");
   });
 
@@ -26,6 +30,10 @@ describe("env parsing", () => {
       ACOLYTE_OM_OBSERVATION_TOKENS: "3500",
       ACOLYTE_OM_REFLECTION_TOKENS: "9000",
       ACOLYTE_CONTEXT_MAX_TOKENS: "7000",
+      ACOLYTE_MAX_HISTORY_MESSAGES: "50",
+      ACOLYTE_MAX_MESSAGE_TOKENS: "750",
+      ACOLYTE_MAX_ATTACHMENT_MESSAGE_TOKENS: "4500",
+      ACOLYTE_MAX_PINNED_MESSAGE_TOKENS: "1600",
       ACOLYTE_PERMISSION_MODE: "read",
     });
     expect(parsed.PORT).toBe(9999);
@@ -39,6 +47,10 @@ describe("env parsing", () => {
     expect(parsed.ACOLYTE_OM_OBSERVATION_TOKENS).toBe(3500);
     expect(parsed.ACOLYTE_OM_REFLECTION_TOKENS).toBe(9000);
     expect(parsed.ACOLYTE_CONTEXT_MAX_TOKENS).toBe(7000);
+    expect(parsed.ACOLYTE_MAX_HISTORY_MESSAGES).toBe(50);
+    expect(parsed.ACOLYTE_MAX_MESSAGE_TOKENS).toBe(750);
+    expect(parsed.ACOLYTE_MAX_ATTACHMENT_MESSAGE_TOKENS).toBe(4500);
+    expect(parsed.ACOLYTE_MAX_PINNED_MESSAGE_TOKENS).toBe(1600);
     expect(parsed.ACOLYTE_PERMISSION_MODE).toBe("read");
   });
 
