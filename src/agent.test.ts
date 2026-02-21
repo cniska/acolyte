@@ -274,11 +274,6 @@ describe("finalizeAssistantOutput", () => {
     expect(finalizeAssistantOutput(raw)).toBe("Actionable fix: add null checks in read-file snippet.\n\nDone.");
   });
 
-  test("returns concise fixed greeting for simple greeting prompts", () => {
-    const raw = ["Hi — ready to help.", "", "Quick options:", "- run tests", "- inspect files"].join("\n");
-    expect(finalizeAssistantOutput(raw, "hello")).toBe("Hi - ready. What should we work on?");
-  });
-
   test("dogfood prompt returns one immediate action line", () => {
     const raw = [
       "Immediate action - I will generate a dry-run diff for src/mastra-tools.ts.",

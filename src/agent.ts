@@ -234,10 +234,6 @@ function suggestNarrowerReviewScope(path: string): string {
   return `@${clean}/agent.ts`;
 }
 
-function isGreetingPrompt(text: string): boolean {
-  return /^(hi|hello|hey|yo|sup)\b[!.?]*$/i.test(text.trim());
-}
-
 function isDogfoodPrompt(text: string): boolean {
   return text.includes("Dogfood mode:");
 }
@@ -297,10 +293,6 @@ export function finalizeReviewOutput(output: string, message = ""): string {
 export function finalizeAssistantOutput(output: string, message = ""): string {
   if (isDogfoodPrompt(message)) {
     return normalizeDogfoodOutput(output);
-  }
-
-  if (isGreetingPrompt(message)) {
-    return "Hi - ready. What should we work on?";
   }
 
   const normalizedOptions = output
