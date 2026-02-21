@@ -353,6 +353,10 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     pushUserCommandRow();
     if (resolvedText === "/skill" || resolvedText.startsWith("/skill ")) {
       ctx.setRows((current) => [...current, row("system", "Unknown command: /skill. Did you mean /skills?")]);
+    } else if (resolvedText === "/compact" || resolvedText.startsWith("/compact ")) {
+      ctx.setRows((current) => [...current, row("system", "Unknown command: /compact. Did you mean /dogfood?")]);
+    } else if (resolvedText === "/cmp" || resolvedText.startsWith("/cmp ")) {
+      ctx.setRows((current) => [...current, row("system", "Unknown command: /cmp. Did you mean /dogfood?")]);
     } else {
       ctx.setRows((current) => [...current, row("system", `Unknown command: ${text}`)]);
     }

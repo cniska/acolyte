@@ -109,4 +109,56 @@ describe("chat-commands", () => {
     expect(result.runVerifyAfterReply).toBe(true);
     expect(result.userText.startsWith("Dogfood mode:")).toBe(true);
   });
+
+  test("dispatchSlashCommand suggests /skills for /skill typo", async () => {
+    let rows: ChatRow[] = [];
+    const result = await dispatchSlashCommand({
+      text: "/skill",
+      resolvedText: "/skill",
+      backend: makeBackend(),
+      store: makeStore(),
+      currentSession: makeSession(),
+      setCurrentSession: () => {},
+      toRows: () => [],
+      setRows: (updater) => {
+        rows = updater(rows);
+      },
+      setShowShortcuts: () => {},
+      setValue: () => {},
+      persist: async () => {},
+      exit: () => {},
+      openSkillsPanel: async () => {},
+      openResumePanel: () => {},
+      tokenUsage: [],
+    });
+
+    expect(result.stop).toBe(true);
+    expect(rows.some((row) => row.content.includes("Did you mean /skills?"))).toBe(true);
+  });
+
+  test("dispatchSlashCommand suggests /dogfood for removed /compact aliases", async () => {
+    let rows: ChatRow[] = [];
+    const result = await dispatchSlashCommand({
+      text: "/compact refactor chat output",
+      resolvedText: "/compact refactor chat output",
+      backend: makeBackend(),
+      store: makeStore(),
+      currentSession: makeSession(),
+      setCurrentSession: () => {},
+      toRows: () => [],
+      setRows: (updater) => {
+        rows = updater(rows);
+      },
+      setShowShortcuts: () => {},
+      setValue: () => {},
+      persist: async () => {},
+      exit: () => {},
+      openSkillsPanel: async () => {},
+      openResumePanel: () => {},
+      tokenUsage: [],
+    });
+
+    expect(result.stop).toBe(true);
+    expect(rows.some((row) => row.content.includes("Did you mean /dogfood?"))).toBe(true);
+  });
 });
