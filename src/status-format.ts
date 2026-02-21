@@ -24,7 +24,7 @@ export function formatStatusOutput(status: string): string {
       return;
     }
     const parts = filtered.map(([key, value], index) => {
-      if (plainFirst && index === 0) {
+      if (plainFirst && index === 0 && key === "status") {
         return value;
       }
       return `${key}: ${value}`;

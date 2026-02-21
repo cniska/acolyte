@@ -51,4 +51,11 @@ describe("status format", () => {
     expect(output).toContain("last_observed: 2026-02-21T10:10:53.908Z");
     expect(output).toContain("last_reflection: 2026-02-21T10:15:00.000Z");
   });
+
+  test("keeps OM subkeys when enabled flag is absent", () => {
+    const output = formatStatusOutput("provider=openai om_scope=resource om_model=openai/gpt-5-mini");
+
+    expect(output).toContain("om:       scope: resource");
+    expect(output).toContain("          model: openai/gpt-5-mini");
+  });
 });
