@@ -15,7 +15,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Compact slash aliases for common commands (`/df`, `/mem`, `/rem`).
 - In-chat utility commands: `/status`, `/permissions`.
 - `/status` includes provider/model details plus API base URL for endpoint diagnostics.
-- `/status` formats multi-value fields in stacked rows (`models`, `om`, `om_tokens`, `om_state`) and hides duplicate `mode` when `provider` is present.
+- `/status` formats multi-value fields in stacked `key: value` rows (`models`, `om`, `om_tokens`, `om_state`) and hides duplicate `mode` when `provider` is present.
 - Policy distillation command from chat logs: `/distill [--sessions N] [--min N]`.
 - Distilled policy candidate review picker with explicit `yes/no` confirmation and optional note (`yes also do this`).
 - Skills picker + command support: `/skills` and `$` shortcut.
