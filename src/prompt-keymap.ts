@@ -65,6 +65,11 @@ type CsiArrowMove = {
   direction: "left" | "right";
 };
 
+type CsiLineMove = {
+  kind: "line";
+  direction: "left" | "right";
+};
+
 function parseCsiArrowMove(input: string): CsiArrowMove | null {
   const prefix = `${ESCAPE_CHAR}[`;
   if (!input.startsWith(prefix)) {
@@ -97,8 +102,37 @@ function parseCsiArrowMove(input: string): CsiArrowMove | null {
   return null;
 }
 
+function parseCsiLineMove(input: string): CsiLineMove | null {
+  const prefix = `${ESCAPE_CHAR}[`;
+  if (!input.startsWith(prefix)) {
+    return null;
+  }
+  const final = input.at(-1);
+  if (final !== "H" && final !== "F") {
+    return null;
+  }
+  const payload = input.slice(prefix.length, -1);
+  if (payload.length === 0) {
+    return null;
+  }
+  const parts = payload.split(";");
+  const modifierPart = parts.length === 1 ? parts[0] : parts[1];
+  if (parts.length > 2 || (parts.length === 2 && parts[0] !== "1") || !modifierPart) {
+    return null;
+  }
+  const modifier = Number.parseInt(modifierPart, 10);
+  if (!Number.isFinite(modifier) || modifier < 3) {
+    return null;
+  }
+  return {
+    kind: "line",
+    direction: final === "H" ? "left" : "right",
+  };
+}
+
 export function resolvePromptAction(input: string, key: PromptKey, options: { hasMetaPrefix: boolean }): PromptAction {
   const csiArrowMove = parseCsiArrowMove(input);
+  const csiLineMove = parseCsiLineMove(input);
 
   if (key.upArrow || key.downArrow || key.tab || (key.shift && key.tab) || (key.ctrl && input === CTRL.c)) {
     return { type: "noop" };
@@ -113,7 +147,8 @@ export function resolvePromptAction(input: string, key: PromptKey, options: { ha
     ESC.home.has(input) ||
     (key.ctrl && input === CTRL.a) ||
     ESC.lineLeft.has(input) ||
-    (csiArrowMove?.kind === "line" && csiArrowMove.direction === "left")
+    (csiArrowMove?.kind === "line" && csiArrowMove.direction === "left") ||
+    csiLineMove?.direction === "left"
   ) {
     return { type: "move_home" };
   }
@@ -123,7 +158,8 @@ export function resolvePromptAction(input: string, key: PromptKey, options: { ha
     ESC.end.has(input) ||
     (key.ctrl && input === CTRL.e) ||
     ESC.lineRight.has(input) ||
-    (csiArrowMove?.kind === "line" && csiArrowMove.direction === "right")
+    (csiArrowMove?.kind === "line" && csiArrowMove.direction === "right") ||
+    csiLineMove?.direction === "right"
   ) {
     return { type: "move_end" };
   }

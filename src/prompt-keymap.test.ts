@@ -20,6 +20,10 @@ describe("prompt keymap", () => {
     expect(resolvePromptAction("\u001b[1;10C", {}, { hasMetaPrefix: false })).toEqual({ type: "move_end" });
     expect(resolvePromptAction("\u001b[1;13D", {}, { hasMetaPrefix: false })).toEqual({ type: "move_home" });
     expect(resolvePromptAction("\u001b[1;13C", {}, { hasMetaPrefix: false })).toEqual({ type: "move_end" });
+    expect(resolvePromptAction("\u001b[1;9H", {}, { hasMetaPrefix: false })).toEqual({ type: "move_home" });
+    expect(resolvePromptAction("\u001b[1;9F", {}, { hasMetaPrefix: false })).toEqual({ type: "move_end" });
+    expect(resolvePromptAction("\u001b[1;10H", {}, { hasMetaPrefix: false })).toEqual({ type: "move_home" });
+    expect(resolvePromptAction("\u001b[1;10F", {}, { hasMetaPrefix: false })).toEqual({ type: "move_end" });
     expect(resolvePromptAction("", { meta: true, leftArrow: true }, { hasMetaPrefix: false })).toEqual({
       type: "move_home",
     });
