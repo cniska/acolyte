@@ -2,6 +2,7 @@ import type { TokenUsage } from "./api";
 import { appConfig } from "./app-config";
 import type { Backend } from "./backend";
 import { formatChangesSummary, formatDogfoodStatus, formatVerifySummary } from "./chat-formatters";
+import { suggestClosestSlashCommand } from "./chat-slash";
 import { gitDiff, gitStatusShort, runShellCommand } from "./coding-tools";
 import { addMemory, listMemories } from "./memory";
 import { formatStatusOutput } from "./status-format";
@@ -358,7 +359,9 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     } else if (resolvedText === "/cmp" || resolvedText.startsWith("/cmp ")) {
       ctx.setRows((current) => [...current, row("system", "Unknown command: /cmp. Did you mean /dogfood?")]);
     } else {
-      ctx.setRows((current) => [...current, row("system", `Unknown command: ${text}`)]);
+      const suggested = suggestClosestSlashCommand(resolvedText);
+      const message = suggested ? `Unknown command: ${text}. Did you mean ${suggested}?` : `Unknown command: ${text}`;
+      ctx.setRows((current) => [...current, row("system", message)]);
     }
     return { stop: true, userText: text, runVerifyAfterReply: false };
   }

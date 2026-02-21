@@ -161,4 +161,30 @@ describe("chat-commands", () => {
     expect(result.stop).toBe(true);
     expect(rows.some((row) => row.content.includes("Did you mean /dogfood?"))).toBe(true);
   });
+
+  test("dispatchSlashCommand suggests nearest command for general typo", async () => {
+    let rows: ChatRow[] = [];
+    const result = await dispatchSlashCommand({
+      text: "/stauts",
+      resolvedText: "/stauts",
+      backend: makeBackend(),
+      store: makeStore(),
+      currentSession: makeSession(),
+      setCurrentSession: () => {},
+      toRows: () => [],
+      setRows: (updater) => {
+        rows = updater(rows);
+      },
+      setShowShortcuts: () => {},
+      setValue: () => {},
+      persist: async () => {},
+      exit: () => {},
+      openSkillsPanel: async () => {},
+      openResumePanel: () => {},
+      tokenUsage: [],
+    });
+
+    expect(result.stop).toBe(true);
+    expect(rows.some((row) => row.content.includes("Did you mean /status?"))).toBe(true);
+  });
 });

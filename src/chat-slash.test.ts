@@ -4,6 +4,7 @@ import {
   isKnownSlashToken,
   resolveSlashAlias,
   shouldAutocompleteSlashSubmit,
+  suggestClosestSlashCommand,
   suggestSlashCommands,
 } from "./chat-slash";
 
@@ -43,5 +44,12 @@ describe("chat-slash helpers", () => {
     expect(isKnownSlashToken("/status")).toBe(true);
     expect(isKnownSlashToken("/df")).toBe(true);
     expect(isKnownSlashToken("/unknown")).toBe(false);
+  });
+
+  test("suggestClosestSlashCommand finds nearest known command for typos", () => {
+    expect(suggestClosestSlashCommand("/stauts")).toBe("/status");
+    expect(suggestClosestSlashCommand("/dogfodo")).toBe("/dogfood");
+    expect(suggestClosestSlashCommand("/status")).toBeNull();
+    expect(suggestClosestSlashCommand("plain")).toBeNull();
   });
 });
