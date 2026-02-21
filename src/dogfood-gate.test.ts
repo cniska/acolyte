@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { firstNonEmptyLine, parseArgs, parseDeliveryProgress, summarizeGate } from "./dogfood-gate";
+import { firstNonEmptyLine, firstSignalLine, parseArgs, parseDeliveryProgress, summarizeGate } from "./dogfood-gate";
 
 describe("dogfood gate", () => {
   test("parseArgs applies defaults", () => {
@@ -32,6 +32,12 @@ describe("dogfood gate", () => {
   test("firstNonEmptyLine returns first meaningful line", () => {
     expect(firstNonEmptyLine("\n \nerror one\nerror two")).toBe("error one");
     expect(firstNonEmptyLine("\n \n")).toBeNull();
+  });
+
+  test("firstSignalLine skips shell noise and script wrapper errors", () => {
+    const stderr = ["$ bun run dogfood:smoke:env", 'error: script "dogfood:smoke:env" exited with code 1'].join("\n");
+    const stdout = ["Running dogfood smoke checks...", "✗ status: command failed (exit 1)"].join("\n");
+    expect(firstSignalLine(stderr, stdout)).toBe("Running dogfood smoke checks...");
   });
 
   test("summarizeGate reports ready when all checks pass", () => {

@@ -78,6 +78,23 @@ function firstNonEmptyLine(value: string): string | null {
   return null;
 }
 
+function firstSignalLine(stderr: string, stdout: string): string | null {
+  const candidates = [stderr, stdout].flatMap((value) => value.split("\n").map((line) => line.trim()));
+  for (const line of candidates) {
+    if (line.length === 0) {
+      continue;
+    }
+    if (line.startsWith("$ ")) {
+      continue;
+    }
+    if (/^error: script\s+".+"\s+exited with code/i.test(line)) {
+      continue;
+    }
+    return line;
+  }
+  return null;
+}
+
 function parseDeliveryProgress(raw: string): { delivery: number; target: number; percent: number } | null {
   let parsed: unknown;
   try {
@@ -120,7 +137,7 @@ async function main(): Promise<void> {
 
     if (!args.skipVerify) {
       const verify = run("bun run verify");
-      const verifyError = firstNonEmptyLine(verify.stderr) ?? firstNonEmptyLine(verify.stdout);
+      const verifyError = firstSignalLine(verify.stderr, verify.stdout);
       checks.push({
         name: "verify",
         ok: verify.ok,
@@ -130,7 +147,7 @@ async function main(): Promise<void> {
 
     if (!args.skipSmoke) {
       const smoke = run("bun run dogfood:smoke:env");
-      const smokeError = firstNonEmptyLine(smoke.stderr) ?? firstNonEmptyLine(smoke.stdout);
+      const smokeError = firstSignalLine(smoke.stderr, smoke.stdout);
       checks.push({
         name: "smoke",
         ok: smoke.ok,
@@ -168,3 +185,4 @@ if (import.meta.main) {
 }
 
 export { firstNonEmptyLine, parseArgs, parseDeliveryProgress, summarizeGate };
+export { firstSignalLine };
