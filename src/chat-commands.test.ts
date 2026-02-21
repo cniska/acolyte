@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { appConfig, setPermissionMode } from "./app-config";
 import { type ChatRow, dispatchSlashCommand, formatTokenUsageOutput, type TokenUsageEntry } from "./chat-commands";
 import { createBackend, createSession, createStore } from "./test-factory";
 
@@ -128,9 +129,43 @@ describe("chat-commands", () => {
   });
 
   test("dispatchSlashCommand shows permission mode", async () => {
-    const { rows, stop, openedPermissions } = await runCommand("/permissions");
-    expect(stop).toBe(true);
-    expect(openedPermissions).toBe(true);
-    expect(rows.some((row) => row.role === "user" && row.content === "/permissions")).toBe(true);
+    const prev = appConfig.agent.permissions.mode;
+    try {
+      const { rows, stop, openedPermissions } = await runCommand("/permissions");
+      expect(stop).toBe(true);
+      expect(openedPermissions).toBe(true);
+      expect(rows.some((row) => row.role === "user" && row.content === "/permissions")).toBe(true);
+    } finally {
+      setPermissionMode(prev);
+    }
+  });
+
+  test("dispatchSlashCommand applies /permissions read|write", async () => {
+    const prev = appConfig.agent.permissions.mode;
+    try {
+      const readResult = await runCommand("/permissions read");
+      expect(readResult.stop).toBe(true);
+      expect(appConfig.agent.permissions.mode).toBe("read");
+      expect(readResult.rows.some((row) => row.content === "permission mode: read")).toBe(true);
+
+      const writeResult = await runCommand("/permissions write");
+      expect(writeResult.stop).toBe(true);
+      expect(appConfig.agent.permissions.mode).toBe("write");
+      expect(writeResult.rows.some((row) => row.content === "permission mode: write")).toBe(true);
+    } finally {
+      setPermissionMode(prev);
+    }
+  });
+
+  test("dispatchSlashCommand validates /permissions usage", async () => {
+    const prev = appConfig.agent.permissions.mode;
+    try {
+      const { rows, stop } = await runCommand("/permissions maybe");
+      expect(stop).toBe(true);
+      expect(rows.some((row) => row.content === "Usage: /permissions [read|write]")).toBe(true);
+      expect(appConfig.agent.permissions.mode).toBe(prev);
+    } finally {
+      setPermissionMode(prev);
+    }
   });
 });
