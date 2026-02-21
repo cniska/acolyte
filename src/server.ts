@@ -5,7 +5,14 @@ import { appConfig, setPermissionMode } from "./app-config";
 import { log } from "./log";
 import { mastraStorage, mastraStorageMode } from "./mastra-storage";
 import { getObservationalMemoryConfig } from "./memory-config";
-import { presentModel, presentRoleModels, resolveProvider, resolveRoleModels } from "./provider-config";
+import {
+  isProviderAvailable,
+  presentModel,
+  presentRoleModels,
+  providerFromModel,
+  resolveProvider,
+  resolveRoleModels,
+} from "./provider-config";
 import { createSoulPrompt } from "./soul";
 
 const PORT = appConfig.server.port;
@@ -75,7 +82,18 @@ const server = Bun.serve({
     const url = new URL(req.url);
 
     if (url.pathname === "/healthz" && req.method === "GET") {
-      const provider = resolveProvider(OPENAI_API_KEY, OPENAI_BASE_URL);
+      const mainProvider = providerFromModel(appConfig.models.main);
+      const provider = isProviderAvailable({
+        provider: mainProvider,
+        openaiApiKey: OPENAI_API_KEY,
+        openaiBaseUrl: OPENAI_BASE_URL,
+        anthropicApiKey: appConfig.anthropic.apiKey,
+        googleApiKey: appConfig.google.apiKey,
+      })
+        ? mainProvider === "openai"
+          ? resolveProvider(OPENAI_API_KEY, OPENAI_BASE_URL)
+          : mainProvider
+        : "mock";
       let currentOm: {
         exists: boolean;
         generationCount: number;
@@ -222,10 +240,6 @@ const server = Bun.serve({
       const soulPrompt = await createSoulPrompt();
       const reply = await runAgent({
         request: payload,
-        openai: {
-          apiKey: OPENAI_API_KEY,
-          baseUrl: OPENAI_BASE_URL,
-        },
         soulPrompt,
       });
       return json(reply);

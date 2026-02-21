@@ -50,6 +50,7 @@ OPENAI_API_KEY=...
 ```
 
 Role model vars are optional and fall back to `ACOLYTE_MODEL`.
+Use provider-qualified model IDs for non-OpenAI lanes (for example `anthropic/claude-sonnet-4`, `gemini/gemini-2.5-pro`).
 
 4. Start full dev mode (recommended):
 ```bash

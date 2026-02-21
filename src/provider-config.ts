@@ -1,7 +1,8 @@
 import type { AgentRole } from "./agent-roles";
 import { appConfig } from "./app-config";
 
-export type ProviderName = "openai" | "openai-compatible" | "mock";
+export type ProviderName = "openai" | "openai-compatible" | "anthropic" | "gemini" | "mock";
+export type ModelProviderName = ProviderName;
 
 export type RoleModelMap = {
   main: string;
@@ -50,13 +51,52 @@ export function presentRoleModels(provider: ProviderName, models: RoleModelMap):
 }
 
 export function resolveProvider(openaiApiKey: string | undefined, openaiBaseUrl: string): ProviderName {
-  if (!openaiApiKey) {
-    return "mock";
-  }
   try {
     const host = new URL(openaiBaseUrl).hostname.toLowerCase();
-    return host === "api.openai.com" ? "openai" : "openai-compatible";
+    if (host === "api.openai.com") {
+      return openaiApiKey ? "openai" : "mock";
+    }
+    return "openai-compatible";
   } catch {
     return "openai-compatible";
   }
+}
+
+export function providerFromModel(model: string): ModelProviderName {
+  const prefix = model.split("/", 1)[0]?.toLowerCase();
+  if (prefix === "anthropic") {
+    return "anthropic";
+  }
+  if (prefix === "gemini" || prefix === "google") {
+    return "gemini";
+  }
+  if (prefix === "openai-compatible") {
+    return "openai-compatible";
+  }
+  if (prefix === "mock") {
+    return "mock";
+  }
+  return "openai";
+}
+
+export function isProviderAvailable(input: {
+  provider: ModelProviderName;
+  openaiApiKey?: string;
+  openaiBaseUrl: string;
+  anthropicApiKey?: string;
+  googleApiKey?: string;
+}): boolean {
+  if (input.provider === "anthropic") {
+    return Boolean(input.anthropicApiKey);
+  }
+  if (input.provider === "gemini") {
+    return Boolean(input.googleApiKey);
+  }
+  if (input.provider === "mock") {
+    return false;
+  }
+  if (input.provider === "openai-compatible") {
+    return true;
+  }
+  return resolveProvider(input.openaiApiKey, input.openaiBaseUrl) !== "mock";
 }

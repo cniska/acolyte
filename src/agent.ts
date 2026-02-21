@@ -3,13 +3,8 @@ import { type AgentRole, buildRoleInstructions, buildSubagentContext, selectAgen
 import type { ChatRequest, ChatResponse } from "./api";
 import { appConfig } from "./app-config";
 import { toolsForRole } from "./mastra-tools";
-import { resolveRoleModel } from "./provider-config";
+import { isProviderAvailable, providerFromModel, resolveRoleModel } from "./provider-config";
 import { loadRoleSoulPrompt } from "./soul";
-
-interface OpenAIClientConfig {
-  apiKey?: string;
-  baseUrl: string;
-}
 
 const FALLBACK_PLAN =
   "1) Interpret request. 2) Use available repo tools when helpful. 3) Return concise, actionable answer.";
@@ -390,30 +385,33 @@ export function finalizeAssistantOutput(output: string, message = ""): string {
   return "No output produced. Try rephrasing your prompt.";
 }
 
-function buildMockReply(req: ChatRequest): ChatResponse {
+function buildMockReply(req: ChatRequest, reason?: string): ChatResponse {
   return {
     model: req.model,
     output: [
       "Remote backend is active.",
-      "No OPENAI_API_KEY configured, so mock mode is enabled.",
+      reason ?? "Provider credentials are unavailable for the requested model, so mock mode is enabled.",
       `Plan: ${FALLBACK_PLAN}`,
       `Echo: ${req.message.trim()}`,
     ].join(" "),
   };
 }
 
-export async function runAgent(input: {
-  request: ChatRequest;
-  openai: OpenAIClientConfig;
-  soulPrompt: string;
-}): Promise<ChatResponse> {
-  if (!input.openai.apiKey) {
-    return buildMockReply(input.request);
-  }
-
+export async function runAgent(input: { request: ChatRequest; soulPrompt: string }): Promise<ChatResponse> {
   const role = selectAgentRole(input.request.message);
   const roleSoul = loadRoleSoulPrompt(role);
   const model = resolveAgentModel(role, input.request.model);
+  const provider = providerFromModel(model);
+  const providerReady = isProviderAvailable({
+    provider,
+    openaiApiKey: appConfig.openai.apiKey,
+    openaiBaseUrl: appConfig.openai.baseUrl,
+    anthropicApiKey: appConfig.anthropic.apiKey,
+    googleApiKey: appConfig.google.apiKey,
+  });
+  if (!providerReady) {
+    return buildMockReply(input.request, `Provider '${provider}' is not configured.`);
+  }
 
   const agent = createAgent({
     id: `acolyte-${role}`,
