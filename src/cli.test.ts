@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
 import {
-  formatDogfoodStatusOutput,
   formatEditUpdateOutput,
   formatForTool,
   formatRunOutput,
@@ -69,21 +68,6 @@ describe("cli formatting helpers", () => {
     expect(out).toMatch(/om:\s+enabled scope=resource model=openai\/gpt-5-mini/);
     expect(out).toMatch(/om_tokens:\s+obs=3000 ref=8000/);
     expect(out).toMatch(/om_state:\s+exists=true gen=4/);
-  });
-
-  test("formatDogfoodStatusOutput renders concise readiness lines", () => {
-    const out = formatDogfoodStatusOutput({
-      backendStatus: "provider=openai model=gpt-5-mini service=acolyte-backend url=http://localhost:6767",
-      verifyRaw: "exit_code=0\nduration_ms=200\nstdout:\nok",
-      hasApiKey: true,
-    });
-    expect(out).toContain("Dogfood status");
-    expect(out).toContain("- Verify: exit_code=0");
-    expect(out).toMatch(/- Backend: .*provider:\s+openai/);
-    expect(out).toMatch(/- Backend: .*model:\s+gpt-5-mini/);
-    expect(out).toMatch(/- Backend: .*service:\s+acolyte-backend/);
-    expect(out).toMatch(/- Backend: .*url:\s+http:\/\/localhost:6767/);
-    expect(out).toContain("- OPENAI_API_KEY: set");
   });
 
   test("formatSearchOutput includes match and file counts", () => {

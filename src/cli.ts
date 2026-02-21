@@ -37,11 +37,10 @@ const CLI_VERSION = process.env.npm_package_version ?? "dev";
 const PROMPT = "❯ ";
 
 function usage(): void {
-  printInfo("Usage: acolyte <chat|run|dogfood|dogfood-status|history|status|memory|config|tool>");
+  printInfo("Usage: acolyte <chat|run|dogfood|history|status|memory|config|tool>");
   printInfo("  chat            Start interactive session");
   printInfo("  run [--file path] [--verify] <prompt>    Send one prompt and optionally verify");
   printInfo("  dogfood [--file path] <prompt>    Run one prompt and always verify");
-  printInfo("  dogfood-status  Run quick dogfooding readiness checks");
   printInfo("  history         Show recent sessions");
   printInfo("  status          Show backend connection status");
   printInfo("  memory          Manage personal memory notes");
@@ -479,21 +478,6 @@ export function formatRunOutput(raw: string): string {
   return out.join("\n");
 }
 
-export function formatDogfoodStatusOutput(input: {
-  backendStatus: string;
-  verifyRaw: string;
-  hasApiKey: boolean;
-}): string {
-  const verifySummary = formatRunOutput(input.verifyRaw).split("\n")[0] ?? "verify unavailable";
-  const keyStatus = input.hasApiKey ? "set" : "missing";
-  return [
-    "Dogfood status",
-    `- Verify: ${verifySummary}`,
-    `- Backend: ${formatStatusOutput(input.backendStatus).replace(/\n/g, " ")}`,
-    `- OPENAI_API_KEY: ${keyStatus}`,
-  ].join("\n");
-}
-
 export function formatForTool(kind: "search" | "read" | "diff" | "run" | "status", raw: string): string {
   if (kind === "search") {
     return formatSearchOutput(raw);
@@ -838,30 +822,6 @@ async function statusMode(): Promise<void> {
   }
 }
 
-async function dogfoodStatusMode(): Promise<void> {
-  const config = await readConfig();
-  const backend = createBackend({
-    apiUrl: config.apiUrl,
-    apiKey: config.apiKey,
-  });
-  const [backendStatus, verifyRaw] = await Promise.all([
-    backend.status().catch((error) => (error instanceof Error ? error.message : "status unavailable")),
-    runShellCommand("bun run verify", 30_000).catch((error) =>
-      error instanceof Error ? `exit_code=1\nduration_ms=0\nstderr:\n${error.message}` : "exit_code=1\nduration_ms=0",
-    ),
-  ]);
-
-  showToolResult(
-    "Status",
-    formatDogfoodStatusOutput({
-      backendStatus,
-      verifyRaw,
-      hasApiKey: Boolean(appConfig.openai.apiKey),
-    }),
-    "plain",
-  );
-}
-
 async function memoryMode(args: string[]): Promise<void> {
   const [subcommand, ...rest] = args;
   const validScopes = new Set(["all", "user", "project"]);
@@ -1103,11 +1063,6 @@ async function main(): Promise<void> {
 
   if (command === "dogfood") {
     await dogfoodMode(args);
-    return;
-  }
-
-  if (command === "dogfood-status") {
-    await dogfoodStatusMode();
     return;
   }
 
