@@ -99,22 +99,23 @@ function usage(): void {
       options.reduce((max, row) => Math.max(max, row.option.length), 0),
     ) + 2;
   const dim = (text: string): string => `\x1b[2m${text}\x1b[22m`;
+  const white = (text: string): string => `\x1b[37m${text}\x1b[39m`;
 
   printOutput(formatCliTitle(CLI_VERSION));
   printOutput(dim("If no subcommand is specified, Acolyte starts interactive chat."));
   printOutput("");
-  printOutput("Usage");
+  printOutput(white("Usage"));
   printOutput("  acolyte");
   printOutput("  acolyte <COMMAND> [ARGS]");
   printOutput("");
 
-  printOutput("Commands");
+  printOutput(white("Commands"));
   for (const row of commands) {
     printOutput(`  ${row.command.padEnd(sharedPad)}${dim(row.description)}`);
   }
   printOutput("");
 
-  printOutput("Options");
+  printOutput(white("Options"));
   for (const row of options) {
     printOutput(`  ${row.option.padEnd(sharedPad)}${dim(row.description)}`);
   }
