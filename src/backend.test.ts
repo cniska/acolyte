@@ -49,6 +49,18 @@ describe("remote backend status parsing", () => {
             coder: "anthropic/claude-sonnet-4",
             reviewer: "gemini/gemini-2.5-pro",
           },
+          providers: {
+            main: "openai",
+            planner: "openai",
+            coder: "anthropic",
+            reviewer: "gemini",
+          },
+          providerAvailability: {
+            main: true,
+            planner: true,
+            coder: true,
+            reviewer: false,
+          },
           service: "acolyte-backend",
           apiBaseUrl: "https://router.example/v1",
           permissionMode: "write",
@@ -84,6 +96,14 @@ describe("remote backend status parsing", () => {
     expect(status).toContain("model_planner=openai/o3");
     expect(status).toContain("model_coder=anthropic/claude-sonnet-4");
     expect(status).toContain("model_reviewer=gemini/gemini-2.5-pro");
+    expect(status).toContain("provider_main=openai");
+    expect(status).toContain("provider_planner=openai");
+    expect(status).toContain("provider_coder=anthropic");
+    expect(status).toContain("provider_reviewer=gemini");
+    expect(status).toContain("provider_ready_main=true");
+    expect(status).toContain("provider_ready_planner=true");
+    expect(status).toContain("provider_ready_coder=true");
+    expect(status).toContain("provider_ready_reviewer=false");
     expect(status).toContain("service=acolyte-backend");
     expect(status).toContain("url=http://localhost:6767");
     expect(status).toContain("api_base_url=https://router.example/v1");

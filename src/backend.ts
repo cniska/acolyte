@@ -161,6 +161,18 @@ class RemoteBackend implements Backend {
         coder?: unknown;
         reviewer?: unknown;
       };
+      providers?: {
+        main?: unknown;
+        planner?: unknown;
+        coder?: unknown;
+        reviewer?: unknown;
+      };
+      providerAvailability?: {
+        main?: unknown;
+        planner?: unknown;
+        coder?: unknown;
+        reviewer?: unknown;
+      };
       service?: unknown;
       memory?: {
         storage?: unknown;
@@ -189,6 +201,18 @@ class RemoteBackend implements Backend {
     const modelPlanner = typeof json.models?.planner === "string" ? json.models.planner : undefined;
     const modelCoder = typeof json.models?.coder === "string" ? json.models.coder : undefined;
     const modelReviewer = typeof json.models?.reviewer === "string" ? json.models.reviewer : undefined;
+    const providerMain = typeof json.providers?.main === "string" ? json.providers.main : undefined;
+    const providerPlanner = typeof json.providers?.planner === "string" ? json.providers.planner : undefined;
+    const providerCoder = typeof json.providers?.coder === "string" ? json.providers.coder : undefined;
+    const providerReviewer = typeof json.providers?.reviewer === "string" ? json.providers.reviewer : undefined;
+    const providerReadyMain =
+      typeof json.providerAvailability?.main === "boolean" ? json.providerAvailability.main : undefined;
+    const providerReadyPlanner =
+      typeof json.providerAvailability?.planner === "boolean" ? json.providerAvailability.planner : undefined;
+    const providerReadyCoder =
+      typeof json.providerAvailability?.coder === "boolean" ? json.providerAvailability.coder : undefined;
+    const providerReadyReviewer =
+      typeof json.providerAvailability?.reviewer === "boolean" ? json.providerAvailability.reviewer : undefined;
     const service = typeof json.service === "string" ? json.service : "unknown";
     const apiBaseUrl = typeof json.apiBaseUrl === "string" ? json.apiBaseUrl : undefined;
     const memoryStorage = typeof json.memory?.storage === "string" ? json.memory.storage : undefined;
@@ -210,6 +234,14 @@ class RemoteBackend implements Backend {
       modelPlanner ? `model_planner=${modelPlanner}` : undefined,
       modelCoder ? `model_coder=${modelCoder}` : undefined,
       modelReviewer ? `model_reviewer=${modelReviewer}` : undefined,
+      providerMain ? `provider_main=${providerMain}` : undefined,
+      providerPlanner ? `provider_planner=${providerPlanner}` : undefined,
+      providerCoder ? `provider_coder=${providerCoder}` : undefined,
+      providerReviewer ? `provider_reviewer=${providerReviewer}` : undefined,
+      providerReadyMain === undefined ? undefined : `provider_ready_main=${providerReadyMain}`,
+      providerReadyPlanner === undefined ? undefined : `provider_ready_planner=${providerReadyPlanner}`,
+      providerReadyCoder === undefined ? undefined : `provider_ready_coder=${providerReadyCoder}`,
+      providerReadyReviewer === undefined ? undefined : `provider_ready_reviewer=${providerReadyReviewer}`,
       `service=${service}`,
       `url=${this.apiUrl}`,
       apiBaseUrl ? `api_base_url=${apiBaseUrl}` : undefined,

@@ -27,7 +27,7 @@ describe("status format", () => {
 
   test("formats role models and OM fields", () => {
     const output = formatStatusOutput(
-      "provider=openai model_main=gpt-5-mini model_planner=o3 model_coder=gpt-5-codex model_reviewer=gpt-5 om=enabled om_scope=resource om_model=openai/gpt-5-mini om_obs_tokens=3000 om_ref_tokens=8000",
+      "provider=openai model_main=gpt-5-mini model_planner=o3 model_coder=gpt-5-codex model_reviewer=gpt-5 provider_main=openai provider_planner=openai provider_coder=anthropic provider_reviewer=gemini provider_ready_main=true provider_ready_planner=true provider_ready_coder=false provider_ready_reviewer=true om=enabled om_scope=resource om_model=openai/gpt-5-mini om_obs_tokens=3000 om_ref_tokens=8000",
     );
 
     expect(output).toContain("models:");
@@ -35,7 +35,17 @@ describe("status format", () => {
     expect(output).toContain("           planner: o3");
     expect(output).toContain("           coder: gpt-5-codex");
     expect(output).toContain("           reviewer: gpt-5");
-    expect(output).toContain("om:        enabled");
+    expect(output).toContain("providers:");
+    expect(output).toContain("           main: openai");
+    expect(output).toContain("           planner: openai");
+    expect(output).toContain("           coder: anthropic");
+    expect(output).toContain("           reviewer: gemini");
+    expect(output).toContain("provider_ready:");
+    expect(output).toContain("               main: true");
+    expect(output).toContain("               planner: true");
+    expect(output).toContain("               coder: false");
+    expect(output).toContain("               reviewer: true");
+    expect(output).toMatch(/om:\s+enabled/);
     expect(output).toContain("           scope: resource");
     expect(output).toContain("           model: openai/gpt-5-mini");
     expect(output).toContain("om_tokens:");

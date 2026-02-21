@@ -82,17 +82,29 @@ const server = Bun.serve({
     const url = new URL(req.url);
 
     if (url.pathname === "/healthz" && req.method === "GET") {
-      const mainProvider = providerFromModel(appConfig.models.main);
-      const provider = isProviderAvailable({
-        provider: mainProvider,
+      const roleModels = resolveRoleModels();
+      const providerConfig = {
         openaiApiKey: OPENAI_API_KEY,
         openaiBaseUrl: OPENAI_BASE_URL,
         anthropicApiKey: appConfig.anthropic.apiKey,
         googleApiKey: appConfig.google.apiKey,
-      })
-        ? mainProvider === "openai"
+      };
+      const roleProviders = {
+        main: providerFromModel(roleModels.main),
+        planner: providerFromModel(roleModels.planner),
+        coder: providerFromModel(roleModels.coder),
+        reviewer: providerFromModel(roleModels.reviewer),
+      };
+      const roleProviderAvailability = {
+        main: isProviderAvailable({ provider: roleProviders.main, ...providerConfig }),
+        planner: isProviderAvailable({ provider: roleProviders.planner, ...providerConfig }),
+        coder: isProviderAvailable({ provider: roleProviders.coder, ...providerConfig }),
+        reviewer: isProviderAvailable({ provider: roleProviders.reviewer, ...providerConfig }),
+      };
+      const provider = roleProviderAvailability.main
+        ? roleProviders.main === "openai"
           ? resolveProvider(OPENAI_API_KEY, OPENAI_BASE_URL)
-          : mainProvider
+          : roleProviders.main
         : "mock";
       let currentOm: {
         exists: boolean;
@@ -127,8 +139,10 @@ const server = Bun.serve({
         ok: true,
         service: "acolyte-backend",
         provider,
-        model: presentModel(appConfig.models.main),
-        models: presentRoleModels(resolveRoleModels()),
+        model: presentModel(roleModels.main),
+        models: presentRoleModels(roleModels),
+        providers: roleProviders,
+        providerAvailability: roleProviderAvailability,
         apiBaseUrl: appConfig.openai.baseUrl,
         memory: {
           storage: mastraStorageMode,
