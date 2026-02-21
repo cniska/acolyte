@@ -49,4 +49,39 @@ describe("cli run mode", () => {
     const after = await readFile(storePath, "utf8");
     expect(after).toBe(before);
   });
+
+  test("run command exits non-zero when remote backend is unreachable", async () => {
+    const home = await mkdtemp(join(tmpdir(), "acolyte-run-fail-test-"));
+    tmpHomes.push(home);
+    const dataDir = join(home, ".acolyte");
+    await mkdir(dataDir, { recursive: true });
+    await writeFile(
+      join(dataDir, "config.json"),
+      JSON.stringify(
+        {
+          apiUrl: "http://127.0.0.1:1",
+          model: "gpt-5-mini",
+        },
+        null,
+        2,
+      ),
+      "utf8",
+    );
+
+    const result = Bun.spawnSync({
+      cmd: [process.execPath, "run", "src/cli.ts", "run", "hello"],
+      cwd: process.cwd(),
+      env: {
+        ...process.env,
+        HOME: home,
+        NO_COLOR: "1",
+      },
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+
+    const stdout = Buffer.from(result.stdout).toString("utf8");
+    expect(result.exitCode).toBe(1);
+    expect(stdout).toContain("Cannot reach backend at http://127.0.0.1:1");
+  });
 });

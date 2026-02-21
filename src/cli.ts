@@ -654,7 +654,7 @@ async function handlePrompt(
   session: Session,
   backend = createBackend(),
   options?: { resourceId?: string },
-): Promise<void> {
+): Promise<boolean> {
   const userMsg = newMessage("user", prompt);
   session.messages.push(userMsg);
   setSessionTitle(session, prompt);
@@ -676,10 +676,12 @@ async function handlePrompt(
     session.messages.push(newMessage("assistant", reply.output));
     session.model = reply.model;
     session.updatedAt = nowIso();
+    return true;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     printError(message);
     session.updatedAt = nowIso();
+    return false;
   }
 }
 
@@ -802,7 +804,11 @@ async function runMode(args: string[]): Promise<void> {
     }
   }
 
-  await handlePrompt(prompt, session, backend, { resourceId: oneShotResourceId(session.id) });
+  const success = await handlePrompt(prompt, session, backend, { resourceId: oneShotResourceId(session.id) });
+  if (!success) {
+    process.exitCode = 1;
+    return;
+  }
   if (parsed.verify) {
     const verifyResult = await runShellCommand("bun run verify");
     showToolResult("Run", formatForTool("run", verifyResult), "tool", "bun run verify");
