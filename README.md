@@ -54,7 +54,7 @@ bun run serve:env
 
 Then start chat in another shell:
 ```bash
-ACOLYTE_API_URL=http://localhost:6767 bun run chat
+ACOLYTE_API_URL=http://localhost:6767 bun run chat:raw
 ```
 
 ## Daily Commands
@@ -100,6 +100,7 @@ bun run om:soak --turns 60 --checkpoint-every 10
 - `bun run verify` runs: `format + lint + typecheck + test`.
 - Switch-to-Acolyte path: use small commit-sized slices, run `bun run verify`, then run `bun run dogfood:smoke`.
 - Internal dogfood telemetry (`dogfood:progress`, `dogfood:gate`) is documented in `docs/development-workflow.md`.
+- Complex script orchestration is centralized in `scripts/` (`with-backend.sh`, `with-mastra-dev.sh`).
 
 ## More Docs
 
