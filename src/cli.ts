@@ -123,6 +123,10 @@ function usage(): void {
   printOutput("");
 }
 
+function chatUsage(): void {
+  printOutput("Usage: acolyte chat [--resume [session-id-prefix]]");
+}
+
 export function buildUsageCommandRows(): Array<{ command: string; description: string }> {
   return [
     { command: "resume [id-prefix]", description: "resume previous session" },
@@ -1342,6 +1346,10 @@ async function main(): Promise<void> {
   }
 
   if (command === "chat") {
+    if (args.length > 0 && (args[0] === "--help" || args[0] === "-h")) {
+      chatUsage();
+      return;
+    }
     let parsed: { resumeLatest: boolean; resumePrefix?: string };
     try {
       parsed = parseChatModeArgs(args);
