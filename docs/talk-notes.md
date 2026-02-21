@@ -116,6 +116,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Terminal key handling now covers more `Cmd`-style Home/End sequence variants across terminal profiles.
 - Policy confirmation picker outcomes now stay in assistant voice for consistent transcript tone.
 - Status diagnostics now include role-level provider readiness (`main/planner/coder/reviewer`) to debug mixed-provider setup quickly.
+- Non-secret user config is now TOML-readable (`~/.acolyte/config.toml`) while keeping JSON compatibility.
 - Status model rows now render mixed-role providers correctly (no single-provider formatting assumption).
 - Coder role instructions now bias toward one recommended next action instead of A/B/C option menus by default.
 

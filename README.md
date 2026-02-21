@@ -36,6 +36,7 @@ At minimum, set `OPENAI_API_KEY` in `.env`.
 Role model vars are optional and fall back to `ACOLYTE_MODEL`.
 Use provider-qualified model IDs for non-OpenAI lanes (for example `anthropic/claude-sonnet-4`, `gemini/gemini-2.5-pro`).
 Unprefixed `claude-*` and `gemini-*` ids are auto-inferred to Anthropic/Gemini providers for convenience.
+Optional non-secret overrides can be stored in `~/.acolyte/config.toml` (for example `model`, `apiUrl`).
 
 4. Start full dev mode (recommended):
 ```bash
