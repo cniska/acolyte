@@ -58,6 +58,20 @@ Build a personal AI coding assistant (Mastra + CLI) that is local-first, memory-
 3. Tighten output quality (user-focused summaries, concise review format).
 4. Use Acolyte for increasing share of repo work; track failures and fixes.
 
+## Switch-To-Acolyte Gate
+Move primary development from Codex to Acolyte once these checks pass for one week of normal use:
+1. Reliability: `bun run verify` stays green on every Acolyte-driven slice.
+2. Edit clarity: edit previews are readable enough to approve/reject quickly (compact, diff-first, low noise).
+3. Recovery: interrupt, resume, and `/new` flows are stable during daily usage.
+4. Safety: read/write permission gating prevents accidental writes and is easy to override intentionally.
+5. Throughput: Acolyte can complete at least small-to-medium feature slices end-to-end without manual fallback.
+6. Cost/latency: response times and token usage stay within acceptable bounds for daily development.
+
+Adoption plan:
+1. Start with low-risk chores and test updates.
+2. Graduate to normal feature slices on `main`.
+3. Keep Codex as fallback only for blocked/high-risk tasks until the gate is consistently met.
+
 ### Phase B: Memory Quality
 1. Improve observational-memory precision and promotion gates.
 2. Add memory transparency/debug tooling.
