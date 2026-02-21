@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import { relative } from "node:path";
 import { stdout as output } from "node:process";
+import { z } from "zod";
 import { appConfig } from "./app-config";
 import { createBackend } from "./backend";
 import { wrapAssistantContent } from "./chat-content";
@@ -38,6 +39,17 @@ const CLI_VERSION = process.env.npm_package_version ?? "dev";
 const PROMPT = "❯ ";
 const ONE_SHOT_SYSTEM_PROMPT =
   "One-shot mode: answer concisely and directly (prefer <=5 lines). Avoid option menus unless the user explicitly asks for options.";
+const runArgsSchema = z.object({
+  files: z.array(z.string().min(1)),
+  prompt: z.string(),
+  verify: z.boolean(),
+});
+const editArgsSchema = z.object({
+  path: z.string().min(1),
+  find: z.string().min(1),
+  replace: z.string(),
+  dryRun: z.boolean(),
+});
 
 function usage(): void {
   printInfo("Usage: acolyte <chat|run|dogfood|history|status|memory|config|tool>");
@@ -724,7 +736,7 @@ function parseRunArgs(args: string[]): { files: string[]; prompt: string; verify
     promptTokens.push(args[i]);
   }
 
-  return { files, prompt: promptTokens.join(" ").trim(), verify };
+  return runArgsSchema.parse({ files, prompt: promptTokens.join(" ").trim(), verify });
 }
 
 function parseEditArgs(args: string[]): {
@@ -739,12 +751,12 @@ function parseEditArgs(args: string[]): {
     throw new Error("Usage: /edit <path> <find> <replace> [--dry-run]");
   }
   const [path, find, ...replaceParts] = clean;
-  return {
+  return editArgsSchema.parse({
     path,
     find,
     replace: replaceParts.join(" "),
     dryRun,
-  };
+  });
 }
 
 async function chatMode(): Promise<void> {
