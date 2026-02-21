@@ -10,7 +10,7 @@ bun link
 cp .env.example .env
 ```
 
-Set `OPENAI_API_KEY` in `.env`, then run:
+Set at least one provider key in `.env` (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `GOOGLE_API_KEY`), then run:
 
 ```bash
 bun run dev
@@ -59,13 +59,13 @@ Example `~/.acolyte/config.toml`:
 
 ```toml
 port = 6767
-model = "gpt-5-mini"
-modelPlanner = "o3"
-modelCoder = "gpt-5-codex"
-modelReviewer = "gpt-5-mini"
+model = "anthropic/claude-sonnet-4"
+modelPlanner = "openai/o3"
+modelCoder = "openai/gpt-5-codex"
+modelReviewer = "gemini/gemini-2.5-pro"
 apiUrl = "http://localhost:6767"
-openaiBaseUrl = "https://api.openai.com/v1"
 anthropicBaseUrl = "https://api.anthropic.com"
+openaiBaseUrl = "https://api.openai.com/v1"
 permissionMode = "read"
 logFormat = "logfmt"
 contextMaxTokens = 8000
