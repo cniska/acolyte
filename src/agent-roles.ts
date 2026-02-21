@@ -20,7 +20,8 @@ function isCodingRequest(text: string): boolean {
 
 const DEFAULT_ROLE_SOUL: Record<AgentRole, string> = {
   planner: "Role: planner. Produce concise, sequenced plans with risks and validation checkpoints.",
-  coder: "Role: coder. Focus on practical implementation and compact, execution-oriented responses.",
+  coder:
+    "Role: coder. Focus on practical implementation and compact, execution-oriented responses. Prefer one clear next action; avoid lettered choice menus unless explicitly requested.",
   reviewer: "Role: reviewer. Prioritize concrete findings with evidence and concise remediation guidance.",
 };
 
@@ -42,7 +43,8 @@ export function buildSubagentContext(role: AgentRole, req: ChatRequest): string 
   const roleName = role[0].toUpperCase() + role.slice(1);
   const roleExpectations: Record<AgentRole, string> = {
     planner: "Expected output: concise sequenced plan with risks and validation checkpoints.",
-    coder: "Expected output: practical implementation guidance; use tools when needed and keep results compact.",
+    coder:
+      "Expected output: practical implementation guidance; use tools when needed and keep results compact; prefer one clear recommendation over option menus.",
     reviewer: "Expected output: prioritized findings with concrete evidence and remediation guidance.",
   };
   const lines = [
