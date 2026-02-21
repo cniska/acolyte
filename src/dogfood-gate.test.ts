@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseArgs, parseDeliveryProgress, summarizeGate } from "./dogfood-gate";
+import { firstNonEmptyLine, parseArgs, parseDeliveryProgress, summarizeGate } from "./dogfood-gate";
 
 describe("dogfood gate", () => {
   test("parseArgs applies defaults", () => {
@@ -26,6 +26,11 @@ describe("dogfood gate", () => {
       target: 10,
       percent: 100,
     });
+  });
+
+  test("firstNonEmptyLine returns first meaningful line", () => {
+    expect(firstNonEmptyLine("\n \nerror one\nerror two")).toBe("error one");
+    expect(firstNonEmptyLine("\n \n")).toBeNull();
   });
 
   test("summarizeGate reports ready when all checks pass", () => {

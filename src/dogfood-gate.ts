@@ -68,6 +68,16 @@ function run(command: string): { ok: boolean; stdout: string; stderr: string; co
   };
 }
 
+function firstNonEmptyLine(value: string): string | null {
+  for (const line of value.split("\n")) {
+    const trimmed = line.trim();
+    if (trimmed.length > 0) {
+      return trimmed;
+    }
+  }
+  return null;
+}
+
 function parseDeliveryProgress(raw: string): { delivery: number; target: number; percent: number } | null {
   const match = raw.match(/slices \(delivery\):\s+(\d+)\/(\d+)\s+\((\d+)%\)/i);
   if (!match) {
@@ -97,19 +107,21 @@ async function main(): Promise<void> {
 
     if (!args.skipVerify) {
       const verify = run("bun run verify");
+      const verifyError = firstNonEmptyLine(verify.stderr) ?? firstNonEmptyLine(verify.stdout);
       checks.push({
         name: "verify",
         ok: verify.ok,
-        detail: verify.ok ? "green" : `exit ${verify.code}`,
+        detail: verify.ok ? "green" : `exit ${verify.code}${verifyError ? ` (${verifyError})` : ""}`,
       });
     }
 
     if (!args.skipSmoke) {
       const smoke = run("bun run dogfood:smoke:env");
+      const smokeError = firstNonEmptyLine(smoke.stderr) ?? firstNonEmptyLine(smoke.stdout);
       checks.push({
         name: "smoke",
         ok: smoke.ok,
-        detail: smoke.ok ? "green" : `exit ${smoke.code}`,
+        detail: smoke.ok ? "green" : `exit ${smoke.code}${smokeError ? ` (${smokeError})` : ""}`,
       });
     }
 
@@ -142,4 +154,4 @@ if (import.meta.main) {
   void main();
 }
 
-export { parseArgs, parseDeliveryProgress, summarizeGate };
+export { firstNonEmptyLine, parseArgs, parseDeliveryProgress, summarizeGate };
