@@ -129,6 +129,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Local backend `/status` now emits role-model fields, matching remote status shape for easier debugging.
 - Local backend `/status` now also emits provider lane diagnostics (`providers`, `provider_ready`) for full parity.
 - Dogfood progress/gate lookback now evaluates the last N non-doc commits, reducing docs-only noise in readiness checks.
+- Dogfood gate delivery diagnostics now surface `scoped` and `scanned` commit counts for clearer readiness debugging.
 
 ## Open Narrative Threads
 1. Continue dogfooding ramp from Codex-led to Acolyte-led development.

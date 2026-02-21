@@ -26,6 +26,8 @@ const deliveryProgressSchema = z.object({
   deliverySlices: z.number().finite(),
   target: z.number().finite(),
   percent: z.number().finite(),
+  commitsTotal: z.number().finite().optional(),
+  commitsScanned: z.number().finite().optional(),
 });
 
 function parseArgs(args: string[]): GateArgs {
@@ -121,7 +123,13 @@ function firstSignalLine(stderr: string, stdout: string): string | null {
   return null;
 }
 
-function parseDeliveryProgress(raw: string): { delivery: number; target: number; percent: number } | null {
+function parseDeliveryProgress(raw: string): {
+  delivery: number;
+  target: number;
+  percent: number;
+  commitsTotal?: number;
+  commitsScanned?: number;
+} | null {
   const candidates = [raw.trim(), ...raw.split("\n").map((line) => line.trim())].filter(
     (line) => line.startsWith("{") && line.endsWith("}"),
   );
@@ -147,15 +155,28 @@ function parseDeliveryProgress(raw: string): { delivery: number; target: number;
     delivery: validated.data.deliverySlices,
     target: validated.data.target,
     percent: validated.data.percent,
+    commitsTotal: validated.data.commitsTotal,
+    commitsScanned: validated.data.commitsScanned,
   };
 }
 
 function progressDetail(
   result: { ok: boolean; stdout: string; stderr: string },
-  parsed: { delivery: number; target: number; percent: number } | null,
+  parsed: {
+    delivery: number;
+    target: number;
+    percent: number;
+    commitsTotal?: number;
+    commitsScanned?: number;
+  } | null,
 ): string {
   if (result.ok && parsed) {
-    return `${parsed.delivery}/${parsed.target} (${parsed.percent}%)`;
+    const scoped = parsed.commitsTotal !== undefined ? `scoped=${parsed.commitsTotal}` : undefined;
+    const scanned = parsed.commitsScanned !== undefined ? `scanned=${parsed.commitsScanned}` : undefined;
+    const extras = [scoped, scanned].filter((value): value is string => Boolean(value));
+    return extras.length > 0
+      ? `${parsed.delivery}/${parsed.target} (${parsed.percent}%, ${extras.join(" ")})`
+      : `${parsed.delivery}/${parsed.target} (${parsed.percent}%)`;
   }
   const signal = firstSignalLine(result.stderr, result.stdout);
   return signal ? `unable to parse progress (${signal})` : "unable to parse progress";

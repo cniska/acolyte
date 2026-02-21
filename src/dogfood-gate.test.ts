@@ -32,13 +32,25 @@ describe("dogfood gate", () => {
       delivery: 16,
       target: 10,
       percent: 100,
+      commitsTotal: undefined,
+      commitsScanned: undefined,
     });
     expect(parseDeliveryProgress("- slices (delivery): 16/10 (100%)")).toBeNull();
   });
 
   test("parseDeliveryProgress tolerates surrounding log lines", () => {
-    const noisy = ["Running dogfood progress...", '{"deliverySlices":6,"target":6,"percent":100}', "done"].join("\n");
-    expect(parseDeliveryProgress(noisy)).toEqual({ delivery: 6, target: 6, percent: 100 });
+    const noisy = [
+      "Running dogfood progress...",
+      '{"deliverySlices":6,"target":6,"percent":100,"commitsTotal":10,"commitsScanned":14}',
+      "done",
+    ].join("\n");
+    expect(parseDeliveryProgress(noisy)).toEqual({
+      delivery: 6,
+      target: 6,
+      percent: 100,
+      commitsTotal: 10,
+      commitsScanned: 14,
+    });
   });
 
   test("firstNonEmptyLine returns first meaningful line", () => {
@@ -54,10 +66,14 @@ describe("dogfood gate", () => {
 
   test("progressDetail reports parsed values when available", () => {
     const detail = progressDetail(
-      { ok: true, stdout: '{"deliverySlices":7,"target":6,"percent":100}', stderr: "" },
-      { delivery: 7, target: 6, percent: 100 },
+      {
+        ok: true,
+        stdout: '{"deliverySlices":7,"target":6,"percent":100,"commitsTotal":10,"commitsScanned":13}',
+        stderr: "",
+      },
+      { delivery: 7, target: 6, percent: 100, commitsTotal: 10, commitsScanned: 13 },
     );
-    expect(detail).toBe("7/6 (100%)");
+    expect(detail).toBe("7/6 (100%, scoped=10 scanned=13)");
   });
 
   test("progressDetail includes signal line on parse failure", () => {
