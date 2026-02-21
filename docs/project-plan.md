@@ -61,6 +61,11 @@ Build a personal AI coding assistant (Mastra + CLI) that is local-first, memory-
 
 ## Milestones (Near-Term)
 1. Milestone 1: Build Stability Baseline
+   - Status: completed on February 21, 2026.
+   - Evidence:
+   - `bun run verify` is green after each implementation slice.
+   - Smoke checks pass for `status`, `run "what next"`, and OM admin safety (`om:wipe` refuses without `--yes`).
+   - Core chat command coverage includes `/status`, `/changes`, `/permissions`, and `/dogfood` in automated tests.
    - Exit criteria:
    - `bun run verify` green after each slice.
    - Automated smoke green for `status`, `run "what next"`, OM admin safety (`wipe` requires `--yes`).
