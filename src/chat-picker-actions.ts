@@ -92,7 +92,7 @@ export function createWriteConfirmPicker(prompt: string): PickerState {
     prompt,
     items: [
       { value: "switch", description: "switch to write mode" },
-      { value: "cancel", description: "keep read mode" },
+      { value: "cancel", description: "stay in read mode" },
     ],
     index: 0,
     note: "",

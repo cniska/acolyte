@@ -217,6 +217,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
         if (selected.value === "switch") {
           try {
             await input.setBackendPermissionMode("write");
+            setPermissionMode("write");
             input.setRows((current) => [
               ...current,
               {
@@ -241,8 +242,8 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
             ...current,
             {
               id: `row_${crypto.randomUUID()}`,
-              role: "system",
-              content: `Write request canceled.${noteSuffix}`,
+              role: "assistant",
+              content: `Staying in read mode.${noteSuffix}\nI can still help with a read-only plan for this change.`,
             },
           ]);
         }

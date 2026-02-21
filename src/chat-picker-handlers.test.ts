@@ -265,7 +265,7 @@ describe("chat picker handlers", () => {
       prompt: "edit src/cli.ts",
       items: [
         { value: "switch", description: "switch to write mode" },
-        { value: "cancel", description: "keep read mode" },
+        { value: "cancel", description: "stay in read mode" },
       ],
       index: 0,
       note: "temporary",
