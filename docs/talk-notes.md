@@ -119,6 +119,9 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Status model labels are now provider-less for cleaner scan (`gpt-5-mini`, `claude-*`, `gemini-*`), with providers shown separately.
 - Non-secret user config is now TOML-readable (`~/.acolyte/config.toml`) while keeping JSON compatibility.
 - Secret handling tightened: API keys are env-only; file config no longer accepts/stores `apiKey`.
+- Non-secret runtime settings were consolidated into config files (secrets remain env-only), reducing env/config overlap.
+- Config precedence is now project-first: `<repo>/.acolyte/config.toml` overrides `~/.acolyte/config.toml`.
+- `acolyte config` now supports listing/setting/unsetting all non-secret keys (not just `model`/`apiUrl`).
 - Status model rows now render mixed-role providers correctly (no single-provider formatting assumption).
 - Coder role instructions now bias toward one recommended next action instead of A/B/C option menus by default.
 
