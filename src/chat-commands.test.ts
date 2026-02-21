@@ -194,4 +194,45 @@ describe("chat-commands", () => {
       setPermissionMode(prev);
     }
   });
+
+  test("dispatchSlashCommand /new resets rows to new-session status", async () => {
+    let rows: ChatRow[] = [{ id: "old", role: "assistant", content: "old row" }];
+    const session = createSession({ id: "sess_current" });
+    const store = createStore({ sessions: [session], activeSessionId: session.id });
+    const setCurrentSessionCalls: string[] = [];
+
+    const result = await dispatchSlashCommand({
+      text: "/new",
+      resolvedText: "/new",
+      backend: createBackend(),
+      store,
+      currentSession: session,
+      setCurrentSession: (next) => {
+        setCurrentSessionCalls.push(next.id);
+      },
+      toRows: () => [],
+      setRows: (updater) => {
+        rows = updater(rows);
+      },
+      setShowShortcuts: () => {},
+      setValue: () => {},
+      persist: async () => {},
+      exit: () => {},
+      openSkillsPanel: async () => {},
+      openResumePanel: () => {},
+      openPermissionsPanel: () => {},
+      openPolicyPanel: () => {},
+      setBackendPermissionMode: async () => {},
+      tokenUsage: [],
+    });
+
+    expect(result.stop).toBe(true);
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({ role: "user", content: "/new" });
+    expect(rows[1]?.role).toBe("assistant");
+    expect(rows[1]?.content.startsWith("Started new session: sess_")).toBe(true);
+    expect(setCurrentSessionCalls).toHaveLength(1);
+    expect(store.sessions).toHaveLength(2);
+    expect(store.activeSessionId).toBe(setCurrentSessionCalls[0]);
+  });
 });

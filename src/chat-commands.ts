@@ -370,12 +370,11 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
   }
 
   if (resolvedText === "/new") {
-    pushUserCommandRow();
     const next = createSession(ctx.currentSession.model);
     ctx.store.sessions.unshift(next);
     ctx.store.activeSessionId = next.id;
     ctx.setCurrentSession(next);
-    ctx.setRows((current) => [...current, row("assistant", `Started new session: ${next.id.slice(0, 12)}`)]);
+    ctx.setRows(() => [row("user", text), row("assistant", `Started new session: ${next.id.slice(0, 12)}`)]);
     ctx.setValue("");
     ctx.setShowShortcuts(() => false);
     await ctx.persist();
