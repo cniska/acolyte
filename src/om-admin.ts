@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+import { z } from "zod";
 import { appConfig } from "./app-config";
 
 type OmStatusResponse = {
@@ -95,7 +96,12 @@ export function parseArgs(args: string[]): { resourceId?: string; yes: boolean; 
     }
     unknown.push(arg);
   }
-  return { resourceId, yes, unknown };
+  const schema = z.object({
+    resourceId: z.string().min(1).optional(),
+    yes: z.boolean(),
+    unknown: z.array(z.string()),
+  });
+  return schema.parse({ resourceId, yes, unknown });
 }
 
 async function main(): Promise<void> {
