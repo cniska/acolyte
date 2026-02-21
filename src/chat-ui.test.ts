@@ -7,40 +7,26 @@ import {
   rankAtReferenceSuggestions,
   shouldAutocompleteAtSubmit,
 } from "./chat-file-ref";
-import type { SessionStore } from "./types";
+import { createSession, createStore } from "./test-factory";
 
-function makeStore(): SessionStore {
-  return {
+function createUiStore() {
+  return createStore({
     activeSessionId: "sess_aaaa1111",
     sessions: [
-      {
-        id: "sess_aaaa1111",
-        createdAt: "2026-02-20T10:00:00.000Z",
-        updatedAt: "2026-02-20T10:00:00.000Z",
-        model: "gpt-5-mini",
-        title: "First",
-        messages: [],
-      },
-      {
-        id: "sess_bbbb2222",
-        createdAt: "2026-02-20T10:10:00.000Z",
-        updatedAt: "2026-02-20T10:10:00.000Z",
-        model: "gpt-5-mini",
-        title: "Second",
-        messages: [],
-      },
+      createSession({ id: "sess_aaaa1111", title: "First" }),
+      createSession({ id: "sess_bbbb2222", title: "Second" }),
     ],
-  };
+  });
 }
 
 describe("chat-ui helpers", () => {
   test("resolveResumeSession reports usage when no prefix is provided", () => {
-    const resolved = resolveResumeSession(makeStore(), "/resume");
+    const resolved = resolveResumeSession(createUiStore(), "/resume");
     expect(resolved.kind).toBe("usage");
   });
 
   test("resolveResumeSession reports not_found for unknown prefix", () => {
-    const resolved = resolveResumeSession(makeStore(), "/resume sess_missing");
+    const resolved = resolveResumeSession(createUiStore(), "/resume sess_missing");
     expect(resolved.kind).toBe("not_found");
     if (resolved.kind === "not_found") {
       expect(resolved.prefix).toBe("sess_missing");
@@ -48,7 +34,7 @@ describe("chat-ui helpers", () => {
   });
 
   test("resolveResumeSession reports ambiguous for multi-match prefix", () => {
-    const store = makeStore();
+    const store = createUiStore();
     const resolved = resolveResumeSession(store, "/resume sess_");
     expect(resolved.kind).toBe("ambiguous");
     if (resolved.kind === "ambiguous") {
@@ -57,7 +43,7 @@ describe("chat-ui helpers", () => {
   });
 
   test("resolveResumeSession returns target session for exact-ish prefix", () => {
-    const resolved = resolveResumeSession(makeStore(), "/resume sess_bbbb");
+    const resolved = resolveResumeSession(createUiStore(), "/resume sess_bbbb");
     expect(resolved.kind).toBe("ok");
     if (resolved.kind === "ok") {
       expect(resolved.session.id).toBe("sess_bbbb2222");
@@ -65,7 +51,7 @@ describe("chat-ui helpers", () => {
   });
 
   test("formatSessionList marks active session", () => {
-    const lines = formatSessionList(makeStore());
+    const lines = formatSessionList(createUiStore());
     expect(lines[0]?.startsWith("* ")).toBe(true);
     expect(lines[1]?.startsWith("  ")).toBe(true);
   });
