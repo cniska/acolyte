@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { readConfig, setConfigValue, unsetConfigValue } from "./config";
+import { readConfig, setConfigValue, unsetConfigValue, writeConfig } from "./config";
 
 const tempDirs: string[] = [];
 
@@ -109,5 +109,25 @@ describe("config store", () => {
     const rawToml = readFileSync(join(dataDir, "config.toml"), "utf8");
     expect(rawToml).toContain('model = "openai/gpt-5-mini"');
     expect(rawToml).not.toContain("apiUrl =");
+  });
+
+  test("writeConfig sanitizes unexpected secret fields before persisting", async () => {
+    const home = createTempDir("acolyte-config-home-");
+    const dataDir = join(home, ".acolyte");
+    mkdirSync(dataDir, { recursive: true });
+    writeFileSync(join(dataDir, "config.toml"), 'model = "openai/gpt-5-mini"\n', "utf8");
+
+    await writeConfig(
+      {
+        model: "openai/gpt-5-mini",
+        apiUrl: "http://localhost:6767",
+        ...({ apiKey: "secret-should-not-persist" } as unknown as Record<string, string>),
+      } as unknown as { model: string; apiUrl: string; apiKey: string },
+      { homeDir: home },
+    );
+    const rawToml = readFileSync(join(dataDir, "config.toml"), "utf8");
+    expect(rawToml).toContain('model = "openai/gpt-5-mini"');
+    expect(rawToml).toContain('apiUrl = "http://localhost:6767"');
+    expect(rawToml).not.toContain("apiKey");
   });
 });

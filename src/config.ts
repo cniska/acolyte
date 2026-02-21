@@ -60,12 +60,13 @@ export async function readConfig(options?: ConfigOptions): Promise<AcolyteConfig
 
 export async function writeConfig(config: AcolyteConfig, options?: ConfigOptions): Promise<void> {
   const paths = resolvePaths(options);
+  const sanitized = toConfig(config as Record<string, unknown>);
   await mkdir(paths.dataDir, { recursive: true });
   if (existsSync(paths.tomlPath)) {
-    await writeFile(paths.tomlPath, serializeToml(config), "utf8");
+    await writeFile(paths.tomlPath, serializeToml(sanitized), "utf8");
     return;
   }
-  await writeFile(paths.jsonPath, JSON.stringify(config, null, 2), "utf8");
+  await writeFile(paths.jsonPath, JSON.stringify(sanitized, null, 2), "utf8");
 }
 
 export async function setConfigValue(key: keyof AcolyteConfig, value: string, options?: ConfigOptions): Promise<void> {
