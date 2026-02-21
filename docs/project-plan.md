@@ -83,6 +83,7 @@ Build a personal AI coding assistant (Mastra + CLI) that is local-first, memory-
    - Automated dogfood smoke (`bun run dogfood:smoke`) validates `status`, `run "what next"`, and `dogfood --no-verify`.
    - Auto-start smoke path (`bun run dogfood:smoke:env`) makes the same checks reproducible without manual backend startup.
    - Progress tracker (`bun run dogfood:progress --lookback 30 --target 10`) reports delivery slices (`feat|fix|refactor|test`) for switch gating.
+   - Gate command (`bun run dogfood:gate --lookback 30 --target 10`) summarizes smoke + delivery readiness in one pass.
    - Remaining validation:
    - Complete 6-10 real feature/fix slices in normal flow with Acolyte-first execution and no routine fallback.
    - Exit criteria:
