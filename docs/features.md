@@ -13,7 +13,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Prompt history (up/down) restores from session user messages after restart/resume.
 - One-slot prompt queue while thinking (latest submit wins) with inline queued indicator.
 - Compact slash aliases for common commands (`/df`, `/mem`, `/rem`).
-- In-chat utility commands: `/status`, `/permissions`, `/changes`, `/web <query>`.
+- In-chat utility commands: `/status`, `/permissions`, `/changes`, `/web <query>`, `/fetch <url>`.
 - `/status` includes provider/model details plus API base URL for endpoint diagnostics.
 - `/status` formats multi-value fields in stacked rows (`models`, `om`, `om_tokens`, `om_state`) and hides duplicate `mode` when `provider` is present.
 - Policy distillation command from chat logs: `/distill [--sessions N] [--min N]`.
@@ -27,6 +27,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Per-role model overrides with fallback-to-main (`ACOLYTE_MODEL_PLANNER|CODER|REVIEWER` -> `ACOLYTE_MODEL`).
 - Subagent v1 routing (`planner` / `coder` / `reviewer`) with explicit per-role context handoff.
 - Mastra Studio exposes role agents (`Planner`, `Coder`, `Reviewer`) plus default `acolyte` alias.
+- Mastra Studio role agents use role-scoped tools (planner minimal read/search, reviewer read/search/git/web, coder full toolset).
 - Dogfooding workflow command: `/dogfood <task>` with verify-first loop.
 - Optional skip verify flow: `/dogfood --no-verify <task>`.
 - Automated dogfood smoke checks via `bun run dogfood:smoke`.
@@ -39,7 +40,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - One-shot memory resource isolation for `run`/`dogfood` (`run-<session>` resource ids).
 - One-shot `run` exits non-zero on backend failures so scripting/automation can reliably detect errors.
 - One-shot `run --verify` propagates verify failures via non-zero exit status.
-- Tool command surface for search/web/read/edit/git/run operations.
+- Tool command surface for search/web/fetch/read/edit/git/run operations.
 - Secure-by-default tool guardrails:
   - file reads/edits are restricted to the workspace plus `~/.acolyte`
   - shell commands reject path traversal and paths outside workspace/`~/.acolyte`
