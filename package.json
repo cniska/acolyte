@@ -17,7 +17,7 @@
     "serve:env": "bun --env-file=.env run src/server.ts",
     "serve:env:watch": "bun --watch --env-file=.env run src/server.ts",
     "wait:backend": "bun run src/wait-backend.ts",
-    "mastra:dev": "bunx mastra dev --dir src/mastra",
+    "mastra:dev": "bun --env-file=.env x mastra dev --dir src/mastra",
     "studio": "./scripts/with-mastra-dev.sh",
     "format": "bunx biome format --write .",
     "lint": "bunx biome check .",

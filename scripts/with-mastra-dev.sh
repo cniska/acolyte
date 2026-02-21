@@ -11,4 +11,4 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 sleep 2
-bunx mastra studio
+bun --env-file=.env x mastra studio
