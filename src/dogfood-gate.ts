@@ -96,10 +96,21 @@ function firstSignalLine(stderr: string, stdout: string): string | null {
 }
 
 function parseDeliveryProgress(raw: string): { delivery: number; target: number; percent: number } | null {
+  const candidates = [raw.trim(), ...raw.split("\n").map((line) => line.trim())].filter(
+    (line) => line.startsWith("{") && line.endsWith("}"),
+  );
   let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw) as unknown;
-  } catch {
+  let found = false;
+  for (const candidate of candidates) {
+    try {
+      parsed = JSON.parse(candidate) as unknown;
+      found = true;
+      break;
+    } catch {
+      // try next json-looking line
+    }
+  }
+  if (!found) {
     return null;
   }
   const obj = parsed as { deliverySlices?: unknown; target?: unknown; percent?: unknown };

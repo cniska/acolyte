@@ -36,6 +36,11 @@ describe("dogfood gate", () => {
     expect(parseDeliveryProgress("- slices (delivery): 16/10 (100%)")).toBeNull();
   });
 
+  test("parseDeliveryProgress tolerates surrounding log lines", () => {
+    const noisy = ["Running dogfood progress...", '{"deliverySlices":6,"target":6,"percent":100}', "done"].join("\n");
+    expect(parseDeliveryProgress(noisy)).toEqual({ delivery: 6, target: 6, percent: 100 });
+  });
+
   test("firstNonEmptyLine returns first meaningful line", () => {
     expect(firstNonEmptyLine("\n \nerror one\nerror two")).toBe("error one");
     expect(firstNonEmptyLine("\n \n")).toBeNull();
