@@ -353,7 +353,11 @@ function normalizeWhatNextOutput(output: string): string {
   if (candidates.length === 0) {
     return "1. Confirm the target file or task.\n2. Apply the smallest safe change.\n3. Run verify and report result.";
   }
-  return candidates.map((line, index) => `${index + 1}. ${line.replace(/^\d+[.)]\s+/, "")}`).join("\n");
+  const numberedCandidates = candidates.map((line, index) => `${index + 1}. ${line.replace(/^\d+[.)]\s+/, "")}`);
+  while (numberedCandidates.length < 3) {
+    numberedCandidates.push(`${numberedCandidates.length + 1}. Continue with the next highest-impact step and verify.`);
+  }
+  return numberedCandidates.slice(0, 3).join("\n");
 }
 
 export function finalizeReviewOutput(output: string, message = ""): string {
@@ -467,10 +471,11 @@ export function finalizeAssistantOutput(output: string, message = ""): string {
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+  if (isWhatNextPrompt(message)) {
+    const source = cleaned.length > 0 ? cleaned : output;
+    return compactAssistantOutput(normalizeWhatNextOutput(source));
+  }
   if (cleaned.length > 0) {
-    if (isWhatNextPrompt(message)) {
-      return compactAssistantOutput(normalizeWhatNextOutput(cleaned));
-    }
     return compactAssistantOutput(cleaned);
   }
   return "No output produced. Try rephrasing your prompt.";

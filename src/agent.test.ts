@@ -342,6 +342,17 @@ describe("finalizeAssistantOutput", () => {
       ["1. Fix null checks", "2. Add error wrapping", "3. Run verify"].join("\n"),
     );
   });
+
+  test("what next prompt always returns three steps even with sparse output", () => {
+    const raw = "Recap: two small fixes remain.";
+    expect(finalizeAssistantOutput(raw, "whats next")).toBe(
+      [
+        "1. Confirm the target file or task.",
+        "2. Apply the smallest safe change.",
+        "3. Run verify and report result.",
+      ].join("\n"),
+    );
+  });
 });
 
 describe("selectAgentRole", () => {
