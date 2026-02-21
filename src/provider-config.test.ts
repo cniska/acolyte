@@ -12,6 +12,8 @@ import {
 describe("provider config", () => {
   test("normalizeModel prefixes unqualified model ids", () => {
     expect(normalizeModel("gpt-5-mini")).toBe("openai/gpt-5-mini");
+    expect(normalizeModel("claude-sonnet-4-5")).toBe("anthropic/claude-sonnet-4-5");
+    expect(normalizeModel("gemini-2.5-pro")).toBe("gemini/gemini-2.5-pro");
     expect(normalizeModel("openai/gpt-5-mini")).toBe("openai/gpt-5-mini");
   });
 
@@ -27,6 +29,8 @@ describe("provider config", () => {
 
   test("presentModel and presentRoleModels normalize unqualified ids and preserve qualified ids", () => {
     expect(presentModel("gpt-5-mini")).toBe("openai/gpt-5-mini");
+    expect(presentModel("claude-sonnet-4")).toBe("anthropic/claude-sonnet-4");
+    expect(presentModel("gemini-2.5-pro")).toBe("gemini/gemini-2.5-pro");
     expect(presentModel("openai-compatible/qwen2.5-coder")).toBe("openai-compatible/qwen2.5-coder");
     expect(presentModel("anthropic/claude-sonnet-4")).toBe("anthropic/claude-sonnet-4");
     expect(presentModel("gemini/gemini-2.5-pro")).toBe("gemini/gemini-2.5-pro");
@@ -34,8 +38,8 @@ describe("provider config", () => {
     expect(
       presentRoleModels({
         main: "gpt-5-mini",
-        planner: "openai/o3",
-        coder: "anthropic/claude-sonnet-4",
+        planner: "o3",
+        coder: "claude-sonnet-4",
         reviewer: "openai-compatible/qwen2.5-coder",
       }),
     ).toEqual({

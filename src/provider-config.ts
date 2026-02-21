@@ -11,8 +11,23 @@ export type RoleModelMap = {
   reviewer: string;
 };
 
+function inferUnqualifiedModelPrefix(model: string): "openai" | "anthropic" | "gemini" {
+  const normalized = model.trim().toLowerCase();
+  if (normalized.startsWith("claude")) {
+    return "anthropic";
+  }
+  if (normalized.startsWith("gemini")) {
+    return "gemini";
+  }
+  return "openai";
+}
+
 export function normalizeModel(model: string): string {
-  return model.includes("/") ? model : `openai/${model}`;
+  if (model.includes("/")) {
+    return model;
+  }
+  const prefix = inferUnqualifiedModelPrefix(model);
+  return `${prefix}/${model}`;
 }
 
 export function resolveRoleModel(
