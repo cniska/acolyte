@@ -3,6 +3,7 @@ import { createAgent } from "../agent-factory";
 import type { AgentRole } from "../agent-roles";
 import { appConfig } from "../app-config";
 import { mastraStorage } from "../mastra-storage";
+import { toolsForRole } from "../mastra-tools";
 import { resolveRoleModels } from "../provider-config";
 import { createRoleSoulPrompt, createSoulPrompt } from "../soul";
 
@@ -15,6 +16,7 @@ function createRoleAgent(role: AgentRole) {
     name,
     model,
     instructions: async () => createRoleSoulPrompt(role),
+    tools: toolsForRole(role),
   });
 }
 
