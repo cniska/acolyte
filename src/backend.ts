@@ -12,6 +12,20 @@ export interface Backend {
   setPermissionMode(mode: PermissionMode): Promise<void>;
 }
 
+function isConnectionFailure(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  const message = error.message.toLowerCase();
+  return (
+    message.includes("unable to connect") || message.includes("connection refused") || message.includes("econnrefused")
+  );
+}
+
+function connectionHelpMessage(apiUrl: string): string {
+  return `Cannot reach backend at ${apiUrl}. Start it with: bun run dev (or bun run serve:env)`;
+}
+
 class LocalBackend implements Backend {
   async reply(input: ChatRequest, _options?: { signal?: AbortSignal }): Promise<ChatResponse> {
     const trimmed = input.message.trim();
@@ -67,8 +81,20 @@ class RemoteBackend implements Backend {
     private readonly apiKey?: string,
   ) {}
 
+  private async fetchOrThrow(path: string, init?: RequestInit): Promise<Response> {
+    const url = `${this.apiUrl.replace(/\/$/, "")}${path}`;
+    try {
+      return await fetch(url, init);
+    } catch (error) {
+      if (isConnectionFailure(error)) {
+        throw new Error(connectionHelpMessage(this.apiUrl));
+      }
+      throw error;
+    }
+  }
+
   async reply(input: ChatRequest, options?: { signal?: AbortSignal }): Promise<ChatResponse> {
-    const response = await fetch(`${this.apiUrl.replace(/\/$/, "")}/v1/chat`, {
+    const response = await this.fetchOrThrow("/v1/chat", {
       method: "POST",
       signal: options?.signal,
       headers: {
@@ -116,7 +142,7 @@ class RemoteBackend implements Backend {
   }
 
   async status(): Promise<string> {
-    const response = await fetch(`${this.apiUrl.replace(/\/$/, "")}/healthz`, {
+    const response = await this.fetchOrThrow("/healthz", {
       headers: this.apiKey ? { authorization: `Bearer ${this.apiKey}` } : undefined,
     });
 
@@ -203,7 +229,7 @@ class RemoteBackend implements Backend {
   }
 
   async setPermissionMode(mode: PermissionMode): Promise<void> {
-    const response = await fetch(`${this.apiUrl.replace(/\/$/, "")}/v1/permissions`, {
+    const response = await this.fetchOrThrow("/v1/permissions", {
       method: "POST",
       headers: {
         "content-type": "application/json",
