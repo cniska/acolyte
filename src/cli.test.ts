@@ -113,7 +113,7 @@ describe("cli formatting helpers", () => {
     );
     expect(out).toMatch(/provider:\s+openai/);
     expect(out).not.toMatch(/mode:\s+openai/);
-    expect(out).not.toMatch(/model:\s+gpt-5-mini/);
+    expect(out).not.toMatch(/^model:\s+gpt-5-mini$/m);
     expect(out).toContain("models:");
     expect(out).toContain("main: gpt-5-mini");
     expect(out).toContain("planner: o3");
@@ -133,7 +133,7 @@ describe("cli formatting helpers", () => {
     expect(out).toContain("om:");
     expect(out).toContain("enabled");
     expect(out).toContain("scope: resource");
-    expect(out).toContain("model: openai/gpt-5-mini");
+    expect(out).toContain("model: gpt-5-mini");
     expect(out).toContain("om_tokens:");
     expect(out).toContain("obs: 3000");
     expect(out).toContain("ref: 8000");

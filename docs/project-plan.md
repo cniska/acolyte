@@ -124,8 +124,9 @@ Adoption plan:
 
 ### Phase C: Hosted Readiness
 1. Harden Vercel + Postgres deployment path.
-2. Add backup/restore and multi-machine setup docs.
-3. Add operational smoke tests and release process.
+2. Move CLI session storage to server-backed sessions in hosted mode (`/sessions` and `/resume` across devices).
+3. Add backup/restore and multi-machine setup docs.
+4. Add operational smoke tests and release process.
 
 ## Open Decisions
 1. Default model + fallback order by lane (`chat`, `code`, `long-context`, `vision`).
@@ -145,6 +146,7 @@ Adoption plan:
 9. Keep `docs/features.md` as canonical feature inventory.
 10. Evaluate optional git hooks for high-signal checks only.
 11. Add staged path for channel adapters post-MVP (not now).
+12. Implement server-backed session APIs (`list/create/resume`) for hosted cross-device continuity.
 
 ## Risks
 1. Memory drift: mitigate with confidence scores + manual correction.

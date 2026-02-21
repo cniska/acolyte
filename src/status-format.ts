@@ -144,12 +144,13 @@ export function formatStatusOutput(status: string): string {
   const omEnabled = take("om");
   const omScope = take("om_scope");
   const omModel = take("om_model");
+  const displayOmModel = omModel ? simplifyModelId(omModel) : undefined;
   pushStacked(
     "om",
     [
       ["status", omEnabled],
       ["scope", omScope],
-      ["model", omModel],
+      ["model", displayOmModel],
     ],
     true,
   );

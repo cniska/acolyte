@@ -21,7 +21,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - `/status` formats multi-value fields in stacked `key: value` rows (`models`, `om`, `om_tokens`, `om_state`) and hides duplicate `mode` when `provider` is present.
 - `/status` now suppresses duplicate top-level `model` when it matches `models.main`.
 - `/status` now includes per-role provider and readiness rows (`providers`, `provider_ready`) for mixed-lane diagnostics.
-- `/status` model rows now omit provider prefixes for readability; provider details remain in `providers`.
+- `/status` model rows (including `om.model`) now omit provider prefixes for readability; provider details remain in `providers`.
 - Policy distillation command from chat logs: `/distill [--sessions N] [--min N]`.
 - Distilled policy candidate review picker with explicit `yes/no` confirmation and optional note (`yes also do this`).
 - Skills picker + command support: `/skills` and `$` shortcut.

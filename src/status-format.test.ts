@@ -47,7 +47,7 @@ describe("status format", () => {
     expect(output).toContain("               reviewer: true");
     expect(output).toMatch(/om:\s+enabled/);
     expect(output).toContain("           scope: resource");
-    expect(output).toContain("           model: openai/gpt-5-mini");
+    expect(output).toContain("           model: gpt-5-mini");
     expect(output).toContain("om_tokens:");
     expect(output).toContain("           obs: 3000");
     expect(output).toContain("           ref: 8000");
@@ -90,7 +90,7 @@ describe("status format", () => {
     const output = formatStatusOutput("provider=openai om_scope=resource om_model=openai/gpt-5-mini");
 
     expect(output).toContain("om:       scope: resource");
-    expect(output).toContain("          model: openai/gpt-5-mini");
+    expect(output).toContain("          model: gpt-5-mini");
   });
 
   test("keeps OM headline value plain when enabled is present", () => {
