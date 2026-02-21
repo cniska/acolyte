@@ -59,7 +59,10 @@ export const readFileTool = createTool({
     return withToolError("read-file", async () => {
       const start = input.start != null ? String(input.start) : undefined;
       const end = input.end != null ? String(input.end) : undefined;
-      const result = compactToolOutput(await readSnippet(input.path, start, end), appConfig.agent.toolOutputBudget.read);
+      const result = compactToolOutput(
+        await readSnippet(input.path, start, end),
+        appConfig.agent.toolOutputBudget.read,
+      );
       return { result };
     });
   },
