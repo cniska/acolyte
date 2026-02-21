@@ -20,7 +20,14 @@ Personal AI coding assistant (CLI-first), built on Bun + Mastra.
 bun install
 ```
 
-2. Create `.env`:
+2. Link the CLI command (recommended):
+```bash
+bun link
+```
+
+This makes `acolyte` available in your shell (for example `acolyte --help` and `acolyte resume <id>`).
+
+3. Create `.env`:
 ```bash
 OPENAI_API_KEY=...
 # Optional:
@@ -40,14 +47,14 @@ OPENAI_API_KEY=...
 
 Role model vars are optional and fall back to `ACOLYTE_MODEL`.
 
-3. Start full dev mode (recommended):
+4. Start full dev mode (recommended):
 ```bash
 bun run dev
 ```
 
 This runs the backend in watch mode and opens chat.
 
-4. Optional manual split mode:
+5. Optional manual split mode:
 ```bash
 bun run serve:env
 ```
