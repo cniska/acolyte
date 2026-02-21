@@ -47,7 +47,7 @@ const EnvSchema = z.object({
     (value) => (value === undefined ? 1_200 : value),
     z.coerce.number().int().min(100).max(MAX_PINNED_MESSAGE_TOKENS),
   ),
-  ACOLYTE_PERMISSION_MODE: z.enum(["read", "write"]).default("write"),
+  ACOLYTE_PERMISSION_MODE: z.enum(["read", "write"]).default("read"),
 });
 
 export type AcolyteEnv = z.infer<typeof EnvSchema>;

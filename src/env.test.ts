@@ -14,7 +14,7 @@ describe("env parsing", () => {
     expect(parsed.ACOLYTE_MAX_MESSAGE_TOKENS).toBe(600);
     expect(parsed.ACOLYTE_MAX_ATTACHMENT_MESSAGE_TOKENS).toBe(3_000);
     expect(parsed.ACOLYTE_MAX_PINNED_MESSAGE_TOKENS).toBe(1_200);
-    expect(parsed.ACOLYTE_PERMISSION_MODE).toBe("write");
+    expect(parsed.ACOLYTE_PERMISSION_MODE).toBe("read");
   });
 
   test("parseEnv accepts explicit values", () => {

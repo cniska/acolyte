@@ -46,7 +46,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
   - file reads/edits are restricted to the workspace plus `~/.acolyte`
   - shell commands reject path traversal and paths outside workspace/`~/.acolyte`
 - Permission modes (`ACOLYTE_PERMISSION_MODE`):
-  - `read`: disables write-capable tools (shell execution, file edit)
+  - `read` (default): disables write-capable tools (shell execution, file edit)
   - `write`: enables full local tool capability within guarded roots
 - Read-mode write confirmation picker:
   - likely write prompts trigger `switch/cancel` confirmation with inline `reason…`

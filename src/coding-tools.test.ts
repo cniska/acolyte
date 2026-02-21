@@ -1,4 +1,4 @@
-import { afterAll, describe, expect, test } from "bun:test";
+import { afterAll, afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -6,12 +6,22 @@ import { appConfig, setPermissionMode } from "./app-config";
 import { editFileReplace, fetchWeb, readSnippet, runShellCommand } from "./coding-tools";
 
 const tempFiles: string[] = [];
+const initialPermissionMode = appConfig.agent.permissions.mode;
 
 afterAll(async () => {
   await Promise.all(tempFiles.map(async (filePath) => await rm(filePath, { force: true })));
+  setPermissionMode(initialPermissionMode);
 });
 
 describe("coding-tools workspace guards", () => {
+  beforeEach(() => {
+    setPermissionMode("write");
+  });
+
+  afterEach(() => {
+    setPermissionMode(initialPermissionMode);
+  });
+
   test("readSnippet blocks paths outside workspace", async () => {
     await expect(readSnippet("/tmp/acolyte-outside.txt")).rejects.toThrow(
       "Read is restricted to the workspace or ~/.acolyte",
