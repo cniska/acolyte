@@ -1,5 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { firstNonEmptyLine, firstSignalLine, parseArgs, parseDeliveryProgress, summarizeGate } from "./dogfood-gate";
+import {
+  firstNonEmptyLine,
+  firstSignalLine,
+  parseArgs,
+  parseDeliveryProgress,
+  progressDetail,
+  summarizeGate,
+} from "./dogfood-gate";
 
 describe("dogfood gate", () => {
   test("parseArgs applies defaults", () => {
@@ -38,6 +45,26 @@ describe("dogfood gate", () => {
     const stderr = ["$ bun run dogfood:smoke:env", 'error: script "dogfood:smoke:env" exited with code 1'].join("\n");
     const stdout = ["Running dogfood smoke checks...", "✗ status: command failed (exit 1)"].join("\n");
     expect(firstSignalLine(stderr, stdout)).toBe("Running dogfood smoke checks...");
+  });
+
+  test("progressDetail reports parsed values when available", () => {
+    const detail = progressDetail(
+      { ok: true, stdout: '{"deliverySlices":7,"target":6,"percent":100}', stderr: "" },
+      { delivery: 7, target: 6, percent: 100 },
+    );
+    expect(detail).toBe("7/6 (100%)");
+  });
+
+  test("progressDetail includes signal line on parse failure", () => {
+    const detail = progressDetail(
+      {
+        ok: false,
+        stdout: '$ bun run dogfood:progress\nerror: script "dogfood:progress" exited with code 1',
+        stderr: "boom",
+      },
+      null,
+    );
+    expect(detail).toBe("unable to parse progress (boom)");
   });
 
   test("summarizeGate reports ready when all checks pass", () => {

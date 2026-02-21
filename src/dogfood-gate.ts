@@ -120,6 +120,17 @@ function parseDeliveryProgress(raw: string): { delivery: number; target: number;
   };
 }
 
+function progressDetail(
+  result: { ok: boolean; stdout: string; stderr: string },
+  parsed: { delivery: number; target: number; percent: number } | null,
+): string {
+  if (result.ok && parsed) {
+    return `${parsed.delivery}/${parsed.target} (${parsed.percent}%)`;
+  }
+  const signal = firstSignalLine(result.stderr, result.stdout);
+  return signal ? `unable to parse progress (${signal})` : "unable to parse progress";
+}
+
 function summarizeGate(checks: GateCheck[]): { ok: boolean; lines: string[] } {
   const lines = ["Dogfood gate"];
   for (const check of checks) {
@@ -160,10 +171,7 @@ async function main(): Promise<void> {
     checks.push({
       name: "delivery-slices",
       ok: progress.ok && parsedProgress !== null && parsedProgress.delivery >= args.target,
-      detail:
-        progress.ok && parsedProgress
-          ? `${parsedProgress.delivery}/${parsedProgress.target} (${parsedProgress.percent}%)`
-          : "unable to parse progress",
+      detail: progressDetail(progress, parsedProgress),
     });
 
     const summary = summarizeGate(checks);
@@ -186,3 +194,4 @@ if (import.meta.main) {
 
 export { firstNonEmptyLine, parseArgs, parseDeliveryProgress, summarizeGate };
 export { firstSignalLine };
+export { progressDetail };
