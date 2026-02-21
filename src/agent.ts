@@ -243,6 +243,39 @@ function isGreetingPrompt(text: string): boolean {
   return /^(hi|hello|hey|yo|sup)\b[!.?]*$/i.test(text.trim());
 }
 
+function isDogfoodPrompt(text: string): boolean {
+  return text.includes("Dogfood mode:");
+}
+
+function normalizeDogfoodOutput(output: string): string {
+  const cleaned = output
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .filter((line) => !/^(Outcome|Validation plan|Risk)\s*[-:]/i.test(line))
+    .filter((line) => !/^I can\b/i.test(line));
+
+  const immediate =
+    cleaned.find((line) => /^Immediate action\s*[-:]/i.test(line)) ??
+    cleaned.find((line) => /^\d+\.\s+/.test(line)) ??
+    cleaned.find((line) => /^[-*]\s+/.test(line)) ??
+    cleaned[0];
+
+  if (!immediate) {
+    return "Immediate action: Confirm the target change and I will apply the smallest safe edit + verify.";
+  }
+
+  const body = immediate
+    .replace(/^Immediate action\s*[-:]\s*/i, "")
+    .replace(/^\d+\.\s+/, "")
+    .replace(/^[-*]\s+/, "")
+    .replace(/^I (will|can)\s+/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const compact = body.length > 220 ? `${body.slice(0, 219).trimEnd()}…` : body;
+  return `Immediate action: ${compact}`;
+}
+
 function compactWhatNextStep(step: string): string {
   let compact = step
     .replace(/\s+/g, " ")
@@ -340,6 +373,10 @@ export function finalizeReviewOutput(output: string, message = ""): string {
 }
 
 export function finalizeAssistantOutput(output: string, message = ""): string {
+  if (isDogfoodPrompt(message)) {
+    return normalizeDogfoodOutput(output);
+  }
+
   if (isGreetingPrompt(message)) {
     return "Hi - ready. What should we work on?";
   }

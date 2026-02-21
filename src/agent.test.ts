@@ -279,6 +279,19 @@ describe("finalizeAssistantOutput", () => {
     expect(finalizeAssistantOutput(raw, "hello")).toBe("Hi - ready. What should we work on?");
   });
 
+  test("dogfood prompt returns one immediate action line", () => {
+    const raw = [
+      "Immediate action - I will generate a dry-run diff for src/mastra-tools.ts.",
+      "",
+      "Outcome - you will get the patch.",
+      "Validation plan - run verify.",
+      "Risk - none.",
+    ].join("\n");
+    expect(finalizeAssistantOutput(raw, "Dogfood mode:\n- Keep response concise")).toBe(
+      "Immediate action: generate a dry-run diff for src/mastra-tools.ts.",
+    );
+  });
+
   test("what next prompt returns exactly 3 numbered steps", () => {
     const raw = [
       "Quick status",
