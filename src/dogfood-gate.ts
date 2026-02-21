@@ -79,14 +79,27 @@ function firstNonEmptyLine(value: string): string | null {
 }
 
 function parseDeliveryProgress(raw: string): { delivery: number; target: number; percent: number } | null {
-  const match = raw.match(/slices \(delivery\):\s+(\d+)\/(\d+)\s+\((\d+)%\)/i);
-  if (!match) {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw) as unknown;
+  } catch {
+    return null;
+  }
+  const obj = parsed as { deliverySlices?: unknown; target?: unknown; percent?: unknown };
+  if (
+    typeof obj.deliverySlices !== "number" ||
+    !Number.isFinite(obj.deliverySlices) ||
+    typeof obj.target !== "number" ||
+    !Number.isFinite(obj.target) ||
+    typeof obj.percent !== "number" ||
+    !Number.isFinite(obj.percent)
+  ) {
     return null;
   }
   return {
-    delivery: Number.parseInt(match[1] ?? "0", 10),
-    target: Number.parseInt(match[2] ?? "0", 10),
-    percent: Number.parseInt(match[3] ?? "0", 10),
+    delivery: obj.deliverySlices,
+    target: obj.target,
+    percent: obj.percent,
   };
 }
 
@@ -125,7 +138,7 @@ async function main(): Promise<void> {
       });
     }
 
-    const progress = run(`bun run dogfood:progress --lookback ${args.lookback} --target ${args.target}`);
+    const progress = run(`bun run dogfood:progress --lookback ${args.lookback} --target ${args.target} --json`);
     const parsedProgress = parseDeliveryProgress(progress.stdout);
     checks.push({
       name: "delivery-slices",

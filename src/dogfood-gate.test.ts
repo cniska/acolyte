@@ -20,12 +20,13 @@ describe("dogfood gate", () => {
     });
   });
 
-  test("parseDeliveryProgress reads progress line", () => {
-    expect(parseDeliveryProgress("- slices (delivery): 16/10 (100%)")).toEqual({
+  test("parseDeliveryProgress reads progress json", () => {
+    expect(parseDeliveryProgress('{"deliverySlices":16,"target":10,"percent":100}')).toEqual({
       delivery: 16,
       target: 10,
       percent: 100,
     });
+    expect(parseDeliveryProgress("- slices (delivery): 16/10 (100%)")).toBeNull();
   });
 
   test("firstNonEmptyLine returns first meaningful line", () => {
