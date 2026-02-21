@@ -2,7 +2,7 @@ import { Text } from "ink";
 import React from "react";
 import { sanitizeAssistantContent, tokenizeForHighlighting, wrapAssistantContent } from "./chat-content";
 
-const TOOL_LABELS = ["Run", "Search", "Fetch", "Read", "Diff", "Edit", "Status"] as const;
+const TOOL_LABELS = ["Run", "Search", "Fetch", "Read", "Diff", "Edit", "Git Status"] as const;
 const COLORS = {
   highlightCode: "#B7C0CC",
   highlightPath: "#A8B1BC",
