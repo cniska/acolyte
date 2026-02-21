@@ -800,6 +800,7 @@ async function dogfoodMode(args: string[]): Promise<void> {
     "Dogfood mode:",
     "- Work in small, verifiable steps.",
     "- Keep response concise and action-focused.",
+    "- Return one immediate next action; avoid multi-option menus unless asked.",
     "- If edits are made, verify with bun run verify.",
     "",
   ].join("\n");
