@@ -50,6 +50,28 @@ bun run db:smoke
 - Secrets are env-only (`OPENAI_API_KEY`, `ACOLYTE_API_KEY`, provider keys)
 - Provider/model routing supports role lanes with fallback
 
+Example `~/.acolyte/config.toml`:
+
+```toml
+port = 6767
+model = "gpt-5-mini"
+modelPlanner = "o3"
+modelCoder = "gpt-5-codex"
+modelReviewer = "gpt-5-mini"
+apiUrl = "http://localhost:6767"
+openaiBaseUrl = "https://api.openai.com/v1"
+anthropicBaseUrl = "https://api.anthropic.com"
+permissionMode = "read"
+logFormat = "logfmt"
+contextMaxTokens = 8000
+maxHistoryMessages = 40
+maxMessageTokens = 600
+maxAttachmentMessageTokens = 3000
+maxPinnedMessageTokens = 1200
+omObservationTokens = 3000
+omReflectionTokens = 8000
+```
+
 ## Docs
 
 - Features: `docs/features.md`
