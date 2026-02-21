@@ -28,6 +28,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Dogfooding workflow command: `/dogfood <task>` with verify-first loop.
 - Optional skip verify flow: `/dogfood --no-verify <task>`.
 - Automated dogfood smoke checks via `bun run dogfood:smoke`.
+- `what next` prompts route to planner role and are normalized to exactly 3 numbered steps.
 - CLI policy distillation script: `bun run policy:distill --sessions <N> --min <N>`.
 - In-flight turn interrupt via `Esc` while Acolyte is thinking.
 - One-shot CLI mode via `run` (including `--file` attachment support).
