@@ -69,6 +69,7 @@ async function main(): Promise<void> {
         console.error(
           "Hint: start backend first (`bun run serve:env`) and ensure apiUrl is set to http://localhost:6767.",
         );
+        console.error("Or run `bun run dogfood:smoke:env` to auto-start a local backend for the smoke check.");
       }
       console.error(output.trim());
       process.exit(1);
