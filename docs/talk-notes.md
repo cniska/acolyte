@@ -97,6 +97,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - `dogfood-smoke` checks now run via argv commands as well, removing shell-wrapper execution there too.
 - CLI parsing for tool outputs (`exit_code`, `/edit` metadata) now uses Zod validation for safer handling.
 - Verify-summary run-meta parsing also moved to Zod (`chat-formatters`) with fallback-safe output.
+- `/edit` tool metadata parsing is now strict and Zod-validated (`path`, `matches`, `dry_run`).
 
 ## Open Narrative Threads
 1. Continue dogfooding ramp from Codex-led to Acolyte-led development.
