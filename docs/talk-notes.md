@@ -49,6 +49,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 8. Routing/config: centralized provider/model config with per-role fallback support.
 9. Feature documentation: `docs/features.md` as inventory.
 10. Dogfooding readiness: automated `bun run dogfood:smoke` + isolated one-shot OM resource IDs for `run`/`dogfood`.
+11. Script maintainability: complex `package.json` shell flows moved into reusable `scripts/*.sh` wrappers.
 
 ## Demo Flow (Short)
 1. Start backend: `bun --env-file=.env run serve`
@@ -78,6 +79,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Token budget discipline is required during rapid iteration.
 - One-shot workflows need memory isolation (`run-<session>` resources) to avoid cross-task bleed.
 - Lightweight smoke commands improve confidence without adding heavy CI complexity.
+- Moving complex shell orchestration out of `package.json` keeps runtime scripts readable and easier to debug.
 
 ## Open Narrative Threads
 1. Continue dogfooding ramp from Codex-led to Acolyte-led development.
