@@ -30,6 +30,7 @@ export function formatStatusOutput(status: string): string {
   const provider = take("provider") ?? take("mode");
   if (provider) {
     output.push(`provider: ${provider}`);
+    fields.delete("mode");
   }
   const model = take("model");
   if (model) {
