@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { toolsForRole } from "./mastra-tools";
+import { readFileTool, toolsForRole } from "./mastra-tools";
 
 describe("mastra role toolsets", () => {
   test("planner has minimal read-only planning tools", () => {
@@ -24,5 +24,29 @@ describe("mastra role toolsets", () => {
       "webFetch",
       "webSearch",
     ]);
+  });
+});
+
+describe("read-file tool schema", () => {
+  test("rejects invalid range when start is greater than end", () => {
+    expect(() => readFileTool.inputSchema.parse({ path: "src/agent.ts", start: 20, end: 10 })).toThrow(
+      "start must be less than or equal to end",
+    );
+  });
+
+  test("accepts bounded ranges and single-sided ranges", () => {
+    expect(readFileTool.inputSchema.parse({ path: "src/agent.ts", start: 10, end: 20 })).toEqual({
+      path: "src/agent.ts",
+      start: 10,
+      end: 20,
+    });
+    expect(readFileTool.inputSchema.parse({ path: "src/agent.ts", start: 10 })).toEqual({
+      path: "src/agent.ts",
+      start: 10,
+    });
+    expect(readFileTool.inputSchema.parse({ path: "src/agent.ts", end: 20 })).toEqual({
+      path: "src/agent.ts",
+      end: 20,
+    });
   });
 });

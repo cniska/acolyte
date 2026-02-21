@@ -34,14 +34,19 @@ export const searchRepoTool = createTool({
 export const readFileTool = createTool({
   id: "read-file",
   description: "Read a text file snippet by line range from the local repository.",
-  inputSchema: z.object({
-    path: z.string().min(1),
-    start: z.number().int().min(1).optional(),
-    end: z.number().int().min(1).optional(),
-  }),
+  inputSchema: z
+    .object({
+      path: z.string().min(1),
+      start: z.number().int().min(1).optional(),
+      end: z.number().int().min(1).optional(),
+    })
+    .refine((input) => input.start === undefined || input.end === undefined || input.start <= input.end, {
+      message: "start must be less than or equal to end",
+      path: ["end"],
+    }),
   execute: async (input) => {
-    const start = input.start ? String(input.start) : undefined;
-    const end = input.end ? String(input.end) : undefined;
+    const start = input.start != null ? String(input.start) : undefined;
+    const end = input.end != null ? String(input.end) : undefined;
     const result = compactToolOutput(await readSnippet(input.path, start, end), appConfig.agent.toolOutputBudget.read);
     return { result };
   },
