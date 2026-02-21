@@ -74,9 +74,11 @@ Build a personal AI coding assistant (Mastra + CLI) that is local-first, memory-
    - Status: in progress.
    - Current evidence:
    - Output shaping is now constrained for greetings, `what next`, and dogfood (`Immediate action:` normalization).
+   - `what next` output is normalized to exactly 3 numbered steps, including sparse model responses.
    - Session-recovery command paths (`/new`, `/resume`, `/permissions`) are covered by automated tests.
    - One-shot `run` is isolated from persisted chat history (plus regression test).
    - One-shot `run`/`dogfood` now use isolated OM resource ids (`run-<session>`), reducing cross-task memory bleed.
+   - Integration test verifies `run` forwards isolated `resourceId` to backend.
    - Automated dogfood smoke (`bun run dogfood:smoke`) validates `status`, `run "what next"`, and `dogfood --no-verify`.
    - Remaining validation:
    - Complete 6-10 real feature/fix slices in normal flow with Acolyte-first execution and no routine fallback.
