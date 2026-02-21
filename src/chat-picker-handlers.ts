@@ -5,9 +5,11 @@ import {
   boundedSkillInstructions,
   createPermissionsPicker,
   createPicker,
+  createPolicyConfirmPicker,
   createPolicyPicker,
   createResumePicker,
   createResumeRows,
+  createWriteConfirmPicker,
 } from "./chat-picker-actions";
 import type { PolicyCandidate } from "./policy-distill";
 import { listSkills, readSkillInstructions } from "./skills";
@@ -24,6 +26,8 @@ type CreatePickerHandlersInput = {
   setPicker: (next: PickerState | null) => void;
   setShowShortcuts: (next: boolean | ((current: boolean) => boolean)) => void;
   setPendingPolicyCandidate: (next: PolicyCandidate | null) => void;
+  setValue: (next: string) => void;
+  setBackendPermissionMode: (mode: "read" | "write") => Promise<void>;
   persist: () => Promise<void>;
   toRows: (messages: Message[]) => ChatRow[];
   createMessage: (role: Message["role"], content: string) => Message;
@@ -35,6 +39,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
   openResumePanel: () => void;
   openPermissionsPanel: () => void;
   openPolicyPanel: (items: PolicyCandidate[]) => void;
+  openWriteConfirmPanel: (prompt: string) => void;
   handlePickerSelect: (state: PickerState) => Promise<void>;
 } {
   const openSkillsPanel = async (): Promise<void> => {
@@ -83,7 +88,19 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
       ]);
       return;
     }
+    if (items.length === 1) {
+      const selected = items[0];
+      input.setPendingPolicyCandidate(selected);
+      input.setPicker(createPolicyConfirmPicker(selected));
+      input.setShowShortcuts(false);
+      return;
+    }
     input.setPicker(picker);
+    input.setShowShortcuts(false);
+  };
+
+  const openWriteConfirmPanel = (prompt: string): void => {
+    input.setPicker(createWriteConfirmPicker(prompt));
     input.setShowShortcuts(false);
   };
 
@@ -124,11 +141,23 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
       case "permissions": {
         const selected = state.items[state.index];
         if (selected) {
-          setPermissionMode(selected.mode);
-          input.setRows((current) => [
-            ...current,
-            { id: `row_${crypto.randomUUID()}`, role: "assistant", content: `permission mode: ${selected.mode}` },
-          ]);
+          try {
+            await input.setBackendPermissionMode(selected.mode);
+            setPermissionMode(selected.mode);
+            input.setRows((current) => [
+              ...current,
+              { id: `row_${crypto.randomUUID()}`, role: "assistant", content: `permission mode: ${selected.mode}` },
+            ]);
+          } catch (error) {
+            input.setRows((current) => [
+              ...current,
+              {
+                id: `row_${crypto.randomUUID()}`,
+                role: "system",
+                content: error instanceof Error ? error.message : "Failed to set permission mode.",
+              },
+            ]);
+          }
         }
         input.setPicker(null);
         return;
@@ -148,12 +177,72 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
         const selected = state.items[state.index];
         if (selected) {
           input.setPendingPolicyCandidate(selected);
+          input.setPicker(createPolicyConfirmPicker(selected));
+          return;
+        }
+        input.setPicker(null);
+        return;
+      }
+      case "policyConfirm": {
+        const selected = state.items[state.index];
+        const note = state.note.trim();
+        const noteSuffix = note ? ` | note: ${note}` : "";
+        if (selected.value === "yes") {
           input.setRows((current) => [
             ...current,
             {
               id: `row_${crypto.randomUUID()}`,
               role: "assistant",
-              content: `Policy draft selected: ${selected.normalized}\nReply yes/no with optional note (Tab autocompletes).`,
+              content: `Policy draft confirmed: ${state.item.normalized}${noteSuffix}`,
+            },
+          ]);
+        } else {
+          input.setRows((current) => [
+            ...current,
+            {
+              id: `row_${crypto.randomUUID()}`,
+              role: "system",
+              content: `Policy draft skipped.${noteSuffix}`,
+            },
+          ]);
+        }
+        input.setPendingPolicyCandidate(null);
+        input.setPicker(null);
+        return;
+      }
+      case "writeConfirm": {
+        const selected = state.items[state.index];
+        const note = state.note.trim();
+        const noteSuffix = note ? ` | reason: ${note}` : "";
+        if (selected.value === "switch") {
+          try {
+            await input.setBackendPermissionMode("write");
+            input.setRows((current) => [
+              ...current,
+              {
+                id: `row_${crypto.randomUUID()}`,
+                role: "assistant",
+                content: `permission mode: write${noteSuffix}`,
+              },
+            ]);
+            input.setValue(state.prompt);
+          } catch (error) {
+            input.setRows((current) => [
+              ...current,
+              {
+                id: `row_${crypto.randomUUID()}`,
+                role: "system",
+                content: error instanceof Error ? error.message : "Failed to switch permission mode.",
+              },
+            ]);
+          }
+        } else {
+          input.setRows((current) => [
+            ...current,
+            {
+              id: `row_${crypto.randomUUID()}`,
+              role: "system",
+              content: `Write request canceled.${noteSuffix}`,
             },
           ]);
         }
@@ -168,6 +257,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
     openResumePanel,
     openPermissionsPanel,
     openPolicyPanel,
+    openWriteConfirmPanel,
     handlePickerSelect,
   };
 }

@@ -26,6 +26,7 @@ type CreateSubmitHandlerInput = {
   openResumePanel: () => void;
   openPermissionsPanel: () => void;
   openPolicyPanel: (items: PolicyCandidate[]) => void;
+  openWriteConfirmPanel: (prompt: string) => void;
   pendingPolicyCandidate: PolicyCandidate | null;
   setPendingPolicyCandidate: (next: PolicyCandidate | null) => void;
   tokenUsage: TokenUsageEntry[];
@@ -42,6 +43,20 @@ type CreateSubmitHandlerInput = {
 
 function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === "AbortError";
+}
+
+function isLikelyWritePrompt(text: string): boolean {
+  return /\b(edit|modify|update|change|refactor|rewrite|rename|create|delete|implement|apply patch|write)\b/i.test(
+    text,
+  );
+}
+
+function statusPermissionMode(status: string): "read" | "write" | null {
+  const match = status.match(/\bpermission_mode=(read|write)\b/);
+  if (!match) {
+    return null;
+  }
+  return match[1] as "read" | "write";
 }
 
 export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: string) => Promise<void> {
@@ -113,10 +128,30 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       openResumePanel: input.openResumePanel,
       openPermissionsPanel: input.openPermissionsPanel,
       openPolicyPanel: input.openPolicyPanel,
+      setBackendPermissionMode: input.backend.setPermissionMode,
       tokenUsage: input.tokenUsage,
     });
     if (commandResult.stop) {
       return;
+    }
+    if (isLikelyWritePrompt(text)) {
+      try {
+        const status = await input.backend.status();
+        if (statusPermissionMode(status) === "read") {
+          input.setRows((current) => [
+            ...current,
+            {
+              id: `row_${crypto.randomUUID()}`,
+              role: "system",
+              content: "Write request needs confirmation in read mode.",
+            },
+          ]);
+          input.openWriteConfirmPanel(text);
+          return;
+        }
+      } catch {
+        // Best-effort check; continue normally if status lookup fails.
+      }
     }
     const userText = commandResult.userText;
     const runVerifyAfterReply = commandResult.runVerifyAfterReply;

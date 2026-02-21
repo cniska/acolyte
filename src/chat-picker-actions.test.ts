@@ -2,9 +2,11 @@ import { describe, expect, test } from "bun:test";
 import {
   boundedSkillInstructions,
   createPicker,
+  createPolicyConfirmPicker,
   createPolicyPicker,
   createResumePicker,
   createResumeRows,
+  createWriteConfirmPicker,
 } from "./chat-picker-actions";
 import type { Session, SessionStore } from "./types";
 
@@ -73,5 +75,15 @@ describe("chat picker actions", () => {
   test("createPolicyPicker returns picker for policy candidates", () => {
     const picker = createPolicyPicker([{ normalized: "keep output concise", count: 2, examples: [] }]);
     expect(picker).toMatchObject({ kind: "policy", index: 0 });
+  });
+
+  test("createPolicyConfirmPicker returns yes/no options", () => {
+    const picker = createPolicyConfirmPicker({ normalized: "keep output concise", count: 2, examples: [] });
+    expect(picker).toMatchObject({ kind: "policyConfirm", index: 0 });
+  });
+
+  test("createWriteConfirmPicker returns switch/cancel options", () => {
+    const picker = createWriteConfirmPicker("edit src/cli.ts");
+    expect(picker).toMatchObject({ kind: "writeConfirm", index: 0, prompt: "edit src/cli.ts" });
   });
 });

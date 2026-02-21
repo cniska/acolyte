@@ -41,6 +41,7 @@ function createHarness(overrides?: { isThinking?: boolean }): Harness {
     openResumePanel: () => {},
     openPermissionsPanel: () => {},
     openPolicyPanel: () => {},
+    openWriteConfirmPanel: () => {},
     pendingPolicyCandidate: null,
     setPendingPolicyCandidate: () => {},
     tokenUsage: [],
@@ -117,6 +118,7 @@ describe("chat submit handler guards", () => {
       openResumePanel: () => {},
       openPermissionsPanel: () => {},
       openPolicyPanel: () => {},
+      openWriteConfirmPanel: () => {},
       pendingPolicyCandidate: pending,
       setPendingPolicyCandidate: (next) => {
         pending = next;
@@ -137,6 +139,49 @@ describe("chat submit handler guards", () => {
     expect(pending).toBeNull();
     expect(rows.some((row) => row.content.includes("Policy draft confirmed: keep output concise"))).toBe(true);
     expect(rows.some((row) => row.content.includes("note: also do this"))).toBe(true);
+  });
+
+  test("opens write confirm panel for likely write prompt in read mode", async () => {
+    let openWriteConfirmWith = "";
+    const session = createSession({ id: "sess_test" });
+    const store = createStore({ activeSessionId: session.id, sessions: [session] });
+    const submit = createSubmitHandler({
+      backend: createBackend({
+        status: async () => "provider=openai permission_mode=read",
+        reply: async () => ({ model: "gpt-5-mini", output: "ok" }),
+      }),
+      store,
+      currentSession: session,
+      setCurrentSession: () => {},
+      toRows: () => [],
+      setRows: () => {},
+      setShowShortcuts: () => {},
+      setValue: () => {},
+      persist: async () => {},
+      exit: () => {},
+      openSkillsPanel: async () => {},
+      openResumePanel: () => {},
+      openPermissionsPanel: () => {},
+      openPolicyPanel: () => {},
+      openWriteConfirmPanel: (prompt) => {
+        openWriteConfirmWith = prompt;
+      },
+      pendingPolicyCandidate: null,
+      setPendingPolicyCandidate: () => {},
+      tokenUsage: [],
+      isThinking: false,
+      setInputHistory: () => {},
+      setInputHistoryIndex: () => {},
+      setInputHistoryDraft: () => {},
+      setIsThinking: () => {},
+      setTokenUsage: () => {},
+      createMessage,
+      nowIso: () => "2026-02-20T00:00:00.000Z",
+      setInterrupt: () => {},
+    });
+
+    await submit("edit src/cli.ts to rename x to y");
+    expect(openWriteConfirmWith).toBe("edit src/cli.ts to rename x to y");
   });
 
   test("records interrupted row when active turn is aborted", async () => {
@@ -179,6 +224,7 @@ describe("chat submit handler guards", () => {
       openResumePanel: () => {},
       openPermissionsPanel: () => {},
       openPolicyPanel: () => {},
+      openWriteConfirmPanel: () => {},
       pendingPolicyCandidate: null,
       setPendingPolicyCandidate: () => {},
       tokenUsage: [],
@@ -242,6 +288,7 @@ describe("chat submit handler guards", () => {
       openResumePanel: () => {},
       openPermissionsPanel: () => {},
       openPolicyPanel: () => {},
+      openWriteConfirmPanel: () => {},
       pendingPolicyCandidate: null,
       setPendingPolicyCandidate: () => {},
       tokenUsage: [],
@@ -296,6 +343,7 @@ describe("chat submit handler guards", () => {
         openResumePanel: () => {},
         openPermissionsPanel: () => {},
         openPolicyPanel: () => {},
+        openWriteConfirmPanel: () => {},
         pendingPolicyCandidate: null,
         setPendingPolicyCandidate: () => {},
         tokenUsage: [],

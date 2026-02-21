@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 import { runAgent } from "./agent";
 import type { ChatRequest } from "./api";
-import { appConfig } from "./app-config";
+import { appConfig, setPermissionMode } from "./app-config";
 import { log } from "./log";
 import { mastraStorage, mastraStorageMode } from "./mastra-storage";
 import { getObservationalMemoryConfig } from "./memory-config";
@@ -177,6 +177,24 @@ const server = Bun.serve({
         const message = error instanceof Error ? error.message : "Failed to wipe OM.";
         return json({ error: message }, 500);
       }
+    }
+
+    if (url.pathname === "/v1/permissions" && req.method === "POST") {
+      if (!hasValidAuth(req)) {
+        return unauthorized();
+      }
+      let payload: unknown;
+      try {
+        payload = await req.json();
+      } catch {
+        return badRequest("Invalid JSON body");
+      }
+      const mode = (payload as { mode?: unknown })?.mode;
+      if (mode !== "read" && mode !== "write") {
+        return badRequest("Invalid permission mode. Expected read or write.");
+      }
+      setPermissionMode(mode);
+      return json({ ok: true, permissionMode: appConfig.agent.permissions.mode });
     }
 
     if (url.pathname !== "/v1/chat" || req.method !== "POST") {

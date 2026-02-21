@@ -109,6 +109,7 @@ type CommandContext = {
   openResumePanel: () => void;
   openPermissionsPanel: () => void;
   openPolicyPanel: (items: ReturnType<typeof distillPolicyCandidatesFromSessions>) => void;
+  setBackendPermissionMode: (mode: "read" | "write") => Promise<void>;
   tokenUsage: TokenUsageEntry[];
 };
 
@@ -215,8 +216,16 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       ctx.setRows((current) => [...current, row("system", "Usage: /permissions [read|write]")]);
       return { stop: true, userText: text, runVerifyAfterReply: false };
     }
-    setPermissionMode(mode);
-    ctx.setRows((current) => [...current, row("assistant", `permission mode: ${mode}`)]);
+    try {
+      await ctx.setBackendPermissionMode(mode);
+      setPermissionMode(mode);
+      ctx.setRows((current) => [...current, row("assistant", `permission mode: ${mode}`)]);
+    } catch (error) {
+      ctx.setRows((current) => [
+        ...current,
+        row("system", error instanceof Error ? error.message : "Failed to set permission mode."),
+      ]);
+    }
     return { stop: true, userText: text, runVerifyAfterReply: false };
   }
 

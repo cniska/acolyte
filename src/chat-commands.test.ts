@@ -34,6 +34,7 @@ async function runCommand(
     openPolicyPanel: () => {
       openedPolicy += 1;
     },
+    setBackendPermissionMode: async () => {},
     tokenUsage,
   });
   return { rows, stop: result.stop, openedPermissions, openedPolicy };
@@ -99,6 +100,7 @@ describe("chat-commands", () => {
       openResumePanel: () => {},
       openPermissionsPanel: () => {},
       openPolicyPanel: () => {},
+      setBackendPermissionMode: async () => {},
       tokenUsage: [],
     });
 

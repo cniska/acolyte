@@ -79,21 +79,31 @@ function ChatApp(props: ChatAppProps) {
   useSlashSuggestionsEffect(slashSuggestions, setSlashSuggestionIndex);
   useThinkingAnimationEffect(isThinking, THINKING_FRAMES.length, setThinkingFrame);
 
-  const { openSkillsPanel, openResumePanel, openPermissionsPanel, openPolicyPanel, handlePickerSelect } =
-    createPickerHandlers({
-      store,
-      currentSession,
-      setCurrentSession,
-      setRows,
-      setRowsDirect: setRows,
-      setPicker: (next) => setPicker(next),
-      setShowShortcuts,
-      setPendingPolicyCandidate,
-      persist,
-      toRows,
-      createMessage: newMessage,
-      nowIso,
-    });
+  const {
+    openSkillsPanel,
+    openResumePanel,
+    openPermissionsPanel,
+    openPolicyPanel,
+    openWriteConfirmPanel,
+    handlePickerSelect,
+  } = createPickerHandlers({
+    store,
+    currentSession,
+    setCurrentSession,
+    setRows,
+    setRowsDirect: setRows,
+    setPicker: (next) => setPicker(next),
+    setShowShortcuts,
+    setPendingPolicyCandidate,
+    setValue,
+    setBackendPermissionMode: async (mode) => {
+      await backend.setPermissionMode(mode);
+    },
+    persist,
+    toRows,
+    createMessage: newMessage,
+    nowIso,
+  });
 
   const handleSubmit = createSubmitHandler({
     backend,
@@ -110,6 +120,7 @@ function ChatApp(props: ChatAppProps) {
     openResumePanel,
     openPermissionsPanel,
     openPolicyPanel,
+    openWriteConfirmPanel,
     pendingPolicyCandidate,
     setPendingPolicyCandidate,
     tokenUsage,
@@ -226,6 +237,14 @@ function ChatApp(props: ChatAppProps) {
         slashSuggestionIndex={slashSuggestionIndex}
         showShortcuts={showShortcuts}
         queuedInput={queuedInput}
+        onPolicyConfirmNoteChange={(next) => {
+          setPicker((current) => {
+            if (!current || (current.kind !== "policyConfirm" && current.kind !== "writeConfirm")) {
+              return current;
+            }
+            return { ...current, note: next };
+          });
+        }}
       />
     </Box>
   );

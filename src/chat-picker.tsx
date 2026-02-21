@@ -8,7 +8,21 @@ export type PickerState =
   | { kind: "skills"; items: SkillMeta[]; index: number }
   | { kind: "resume"; items: Session[]; index: number }
   | { kind: "permissions"; items: Array<{ mode: "read" | "write"; description: string }>; index: number }
-  | { kind: "policy"; items: PolicyCandidate[]; index: number };
+  | { kind: "policy"; items: PolicyCandidate[]; index: number }
+  | {
+      kind: "writeConfirm";
+      prompt: string;
+      items: Array<{ value: "switch" | "cancel"; description: string }>;
+      index: number;
+      note: string;
+    }
+  | {
+      kind: "policyConfirm";
+      item: PolicyCandidate;
+      items: Array<{ value: "yes" | "no"; description: string }>;
+      index: number;
+      note: string;
+    };
 
 function truncateText(input: string, max = 72): string {
   if (input.length <= max) {
@@ -27,6 +41,10 @@ export function pickerTitle(picker: PickerState): string {
       return "Permissions";
     case "policy":
       return "Policy Candidates";
+    case "writeConfirm":
+      return "Confirm Write Access";
+    case "policyConfirm":
+      return truncateText(picker.item.normalized, 72);
   }
 }
 
@@ -40,6 +58,10 @@ export function pickerHint(picker: PickerState): string {
       return "Esc to close · Enter to apply";
     case "policy":
       return "Esc to close · Enter to review";
+    case "writeConfirm":
+      return "Esc to close · Type reason inline · Enter to apply";
+    case "policyConfirm":
+      return "Esc to close · Type note inline · Enter to apply";
   }
 }
 
@@ -84,6 +106,37 @@ export function renderPickerItems(
           </Text>
         );
       });
+    case "writeConfirm":
+      return (
+        <>
+          <Text dimColor>{`  prompt: ${truncateText(picker.prompt, 72)}`}</Text>
+          {picker.items.map((item, index) => {
+            const selected = index === picker.index;
+            return (
+              <Text key={item.value}>
+                {selected ? "› " : "  "}
+                <Text color={selected ? brandColor : undefined}>{item.value.padEnd(8)}</Text>
+                <Text dimColor>{item.description}</Text>
+              </Text>
+            );
+          })}
+        </>
+      );
+    case "policyConfirm":
+      return (
+        <>
+          {picker.items.map((item, index) => {
+            const selected = index === picker.index;
+            return (
+              <Text key={item.value}>
+                {selected ? "› " : "  "}
+                <Text color={selected ? brandColor : undefined}>{item.value.padEnd(8)}</Text>
+                <Text dimColor>{item.description}</Text>
+              </Text>
+            );
+          })}
+        </>
+      );
     case "resume":
       return picker.items.map((item, index) => {
         const selected = index === picker.index;

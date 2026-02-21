@@ -13,6 +13,8 @@ type PickerByKind = {
   resume: Extract<PickerState, { kind: "resume" }>;
   permissions: Extract<PickerState, { kind: "permissions" }>;
   policy: Extract<PickerState, { kind: "policy" }>;
+  policyConfirm: Extract<PickerState, { kind: "policyConfirm" }>;
+  writeConfirm: Extract<PickerState, { kind: "writeConfirm" }>;
 };
 
 type CreatePickerConfig<K extends keyof PickerByKind> = {
@@ -69,6 +71,32 @@ export function createPolicyPicker(items: PolicyCandidate[]): PickerState | null
     items,
     index: 0,
   });
+}
+
+export function createPolicyConfirmPicker(item: PolicyCandidate): PickerState {
+  return {
+    kind: "policyConfirm",
+    item,
+    items: [
+      { value: "yes", description: "accept this draft" },
+      { value: "no", description: "skip this draft" },
+    ],
+    index: 0,
+    note: "",
+  };
+}
+
+export function createWriteConfirmPicker(prompt: string): PickerState {
+  return {
+    kind: "writeConfirm",
+    prompt,
+    items: [
+      { value: "switch", description: "switch to write mode" },
+      { value: "cancel", description: "keep read mode" },
+    ],
+    index: 0,
+    note: "",
+  };
 }
 
 export function boundedSkillInstructions(instructions: string, maxChars: number): string {

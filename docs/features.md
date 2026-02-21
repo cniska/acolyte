@@ -37,6 +37,9 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Permission modes (`ACOLYTE_PERMISSION_MODE`):
   - `read`: disables write-capable tools (shell execution, file edit)
   - `write`: enables full local tool capability within guarded roots
+- Read-mode write confirmation picker:
+  - likely write prompts trigger `switch/cancel` confirmation with inline `reason…`
+  - selecting `switch` sets backend permission mode to `write` and pre-fills the original prompt
 - Local backend server with health check (`/healthz`) and chat endpoint (`/v1/chat`).
 - Local-first configuration and optional API-key auth for backend access.
 

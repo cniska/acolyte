@@ -1,5 +1,5 @@
 import type { ChatRequest, ChatResponse } from "./api";
-import { appConfig } from "./app-config";
+import { appConfig, type PermissionMode, setPermissionMode } from "./app-config";
 
 export interface BackendOptions {
   apiUrl?: string;
@@ -9,6 +9,7 @@ export interface BackendOptions {
 export interface Backend {
   reply(input: ChatRequest, options?: { signal?: AbortSignal }): Promise<ChatResponse>;
   status(): Promise<string>;
+  setPermissionMode(mode: PermissionMode): Promise<void>;
 }
 
 class LocalBackend implements Backend {
@@ -53,6 +54,10 @@ class LocalBackend implements Backend {
 
   async status(): Promise<string> {
     return `mode=local-mock backend=embedded permission_mode=${appConfig.agent.permissions.mode}`;
+  }
+
+  async setPermissionMode(mode: PermissionMode): Promise<void> {
+    setPermissionMode(mode);
   }
 }
 
@@ -192,6 +197,21 @@ class RemoteBackend implements Backend {
       typeof json.permissionMode === "string" ? `permission_mode=${json.permissionMode}` : undefined,
     ].filter((field): field is string => Boolean(field));
     return fields.join(" ");
+  }
+
+  async setPermissionMode(mode: PermissionMode): Promise<void> {
+    const response = await fetch(`${this.apiUrl.replace(/\/$/, "")}/v1/permissions`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...(this.apiKey ? { authorization: `Bearer ${this.apiKey}` } : {}),
+      },
+      body: JSON.stringify({ mode }),
+    });
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`Failed to set permission mode (${response.status}): ${body || "no body"}`);
+    }
   }
 }
 

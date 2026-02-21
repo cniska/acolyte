@@ -25,6 +25,8 @@ describe("chat picker handlers", () => {
       },
       setShowShortcuts: () => {},
       setPendingPolicyCandidate: () => {},
+      setValue: () => {},
+      setBackendPermissionMode: async () => {},
       persist: async () => {},
       toRows: () => [],
       createMessage,
@@ -52,6 +54,8 @@ describe("chat picker handlers", () => {
       },
       setShowShortcuts: () => {},
       setPendingPolicyCandidate: () => {},
+      setValue: () => {},
+      setBackendPermissionMode: async () => {},
       persist: async () => {},
       toRows: () => [],
       createMessage,
@@ -88,6 +92,8 @@ describe("chat picker handlers", () => {
       },
       setShowShortcuts: () => {},
       setPendingPolicyCandidate: () => {},
+      setValue: () => {},
+      setBackendPermissionMode: async () => {},
       persist: async () => {},
       toRows: () => [],
       createMessage,
@@ -123,6 +129,8 @@ describe("chat picker handlers", () => {
       },
       setShowShortcuts: () => {},
       setPendingPolicyCandidate: () => {},
+      setValue: () => {},
+      setBackendPermissionMode: async () => {},
       persist: async () => {},
       toRows: () => [],
       createMessage,
@@ -153,6 +161,78 @@ describe("chat picker handlers", () => {
   test("handlePickerSelect policy stores pending confirmation", async () => {
     let pending: unknown = null;
     const rows: ChatRow[] = [];
+    const pickerValues: unknown[] = [];
+    const currentSession = createSession({ id: "sess_current" });
+    const store = createStore({ sessions: [currentSession], activeSessionId: currentSession.id });
+    const handlers = createPickerHandlers({
+      store,
+      currentSession,
+      setCurrentSession: () => {},
+      setRows: (updater) => {
+        const next = updater(rows);
+        rows.length = 0;
+        rows.push(...next);
+      },
+      setRowsDirect: () => {},
+      setPicker: (next) => {
+        pickerValues.push(next);
+      },
+      setShowShortcuts: () => {},
+      setPendingPolicyCandidate: (next) => {
+        pending = next;
+      },
+      setValue: () => {},
+      setBackendPermissionMode: async () => {},
+      persist: async () => {},
+      toRows: () => [],
+      createMessage,
+      nowIso: () => "2026-02-20T00:00:00.000Z",
+    });
+
+    await handlers.handlePickerSelect({
+      kind: "policy",
+      items: [{ normalized: "keep output concise", count: 3, examples: ["we should keep output concise"] }],
+      index: 0,
+    });
+    expect(pending).toMatchObject({ normalized: "keep output concise" });
+    expect(rows).toHaveLength(0);
+    expect(pickerValues.at(-1)).toMatchObject({ kind: "policyConfirm" });
+  });
+
+  test("openPolicyPanel opens confirm picker directly for one candidate", () => {
+    let pending: unknown = null;
+    const pickerValues: unknown[] = [];
+    const currentSession = createSession({ id: "sess_current" });
+    const store = createStore({ sessions: [currentSession], activeSessionId: currentSession.id });
+    const handlers = createPickerHandlers({
+      store,
+      currentSession,
+      setCurrentSession: () => {},
+      setRows: () => {},
+      setRowsDirect: () => {},
+      setPicker: (next) => {
+        pickerValues.push(next);
+      },
+      setShowShortcuts: () => {},
+      setPendingPolicyCandidate: (next) => {
+        pending = next;
+      },
+      setValue: () => {},
+      setBackendPermissionMode: async () => {},
+      persist: async () => {},
+      toRows: () => [],
+      createMessage,
+      nowIso: () => "2026-02-20T00:00:00.000Z",
+    });
+
+    handlers.openPolicyPanel([{ normalized: "keep output concise", count: 2, examples: [] }]);
+    expect(pending).toMatchObject({ normalized: "keep output concise" });
+    expect(pickerValues.at(-1)).toMatchObject({ kind: "policyConfirm" });
+  });
+
+  test("handlePickerSelect writeConfirm switch updates mode and pre-fills prompt", async () => {
+    const rows: ChatRow[] = [];
+    const values: string[] = [];
     const currentSession = createSession({ id: "sess_current" });
     const store = createStore({ sessions: [currentSession], activeSessionId: currentSession.id });
     const handlers = createPickerHandlers({
@@ -167,8 +247,12 @@ describe("chat picker handlers", () => {
       setRowsDirect: () => {},
       setPicker: () => {},
       setShowShortcuts: () => {},
-      setPendingPolicyCandidate: (next) => {
-        pending = next;
+      setPendingPolicyCandidate: () => {},
+      setValue: (next) => {
+        values.push(next);
+      },
+      setBackendPermissionMode: async (next) => {
+        expect(next).toBe("write");
       },
       persist: async () => {},
       toRows: () => [],
@@ -177,11 +261,16 @@ describe("chat picker handlers", () => {
     });
 
     await handlers.handlePickerSelect({
-      kind: "policy",
-      items: [{ normalized: "keep output concise", count: 3, examples: ["we should keep output concise"] }],
+      kind: "writeConfirm",
+      prompt: "edit src/cli.ts",
+      items: [
+        { value: "switch", description: "switch to write mode" },
+        { value: "cancel", description: "keep read mode" },
+      ],
       index: 0,
+      note: "temporary",
     });
-    expect(pending).toMatchObject({ normalized: "keep output concise" });
-    expect(rows.some((row) => row.content.includes("Reply yes/no"))).toBe(true);
+    expect(values.at(-1)).toBe("edit src/cli.ts");
+    expect(rows.some((row) => row.content.includes("permission mode: write"))).toBe(true);
   });
 });
