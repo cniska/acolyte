@@ -22,7 +22,7 @@ Use these gates after each meaningful slice:
 3. Baseline bundle:
    - `bun run verify`
 4. Targeted smoke checks for changed behavior:
-   - Example: `bun run src/cli.ts tool ...` (internal/debug), `bun run chat`, `bun run src/cli.ts status`, `bun run dogfood:smoke`
+   - Example: `bun run src/cli.ts tool ...` (internal/debug), `bun run start`, `bun run src/cli.ts status`, `bun run dogfood:smoke`
 5. Optional switch-readiness check:
    - Gate check: `bun run dogfood:gate --lookback 30 --target 10 --skip-verify`
 

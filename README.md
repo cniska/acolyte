@@ -61,7 +61,7 @@ ACOLYTE_API_URL=http://localhost:6767 bun run src/cli.ts
 
 - Dev (backend watch + chat): `bun run dev`
 - Chat only (assumes backend already running): `bun run src/cli.ts`
-- Chat (starts backend helper process): `bun run chat`
+- Start (starts backend helper process): `bun run start`
 - One-shot prompt (isolated session): `bun run run "review src/agent.ts"`
 - Dogfood prompt (verify-first): `bun run dogfood "fix src/agent.ts"`
 - Dogfood smoke checks: `bun run dogfood:smoke`

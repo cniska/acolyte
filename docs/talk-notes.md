@@ -54,7 +54,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 ## Demo Flow (Short)
 1. Start backend: `bun --env-file=.env run serve`
 2. Set CLI backend once: `bun run src/cli.ts config set apiUrl http://localhost:6767`
-3. Start chat: `bun run chat`
+3. Start chat: `bun run start`
 4. Show:
    - `@src/agent.ts review this file`
    - `/remember [--project] ...` and `/memory`
@@ -81,7 +81,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Lightweight smoke commands improve confidence without adding heavy CI complexity.
 - Moving complex shell orchestration out of `package.json` keeps runtime scripts readable and easier to debug.
 - Manual split mode is now explicit: run backend with `bun run serve:env`, then attach CLI with `bun run src/cli.ts`.
-- Default dev startup is managed chat (`bun run chat`) for fewer local setup misses.
+- Default startup is managed chat (`bun run start`) for fewer local setup misses.
 - Reduced prompt-specific output rewrites (for example greetings) in favor of generic response handling.
 - Continued reducing brittle output filtering so assistant replies preserve more model intent.
 - Dogfood readiness gate now surfaces clearer first-signal failure lines (less shell-wrapper noise).
