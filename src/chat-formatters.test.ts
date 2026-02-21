@@ -27,4 +27,12 @@ describe("chat-formatters helpers", () => {
     const out = formatChangesSummary(status, diff);
     expect(out).toContain("1 changed file.");
   });
+
+  test("formatChangesSummary falls back to diff file count when status is missing", () => {
+    const status = "";
+    const diff = ["diff --git a/x b/x", "--- a/x", "+++ b/x", "-old", "+new", "+another"].join("\n");
+    const out = formatChangesSummary(status, diff);
+    expect(out).toContain("1 changed file.");
+    expect(out).toContain("Diff summary: +2 -1.");
+  });
 });

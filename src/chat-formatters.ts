@@ -31,11 +31,16 @@ export function formatChangesSummary(statusRaw: string, diffRaw: string): string
     .map((line) => line.trimEnd())
     .filter((line) => line.length > 0);
   const branchLine = statusLines.find((line) => line.startsWith("## "));
-  const changedFiles = statusLines.filter((line) => !line.startsWith("## ")).length;
+  const changedFilesFromStatus = statusLines.filter((line) => !line.startsWith("## ")).length;
 
   let added = 0;
   let removed = 0;
+  let changedFilesFromDiff = 0;
   for (const line of diffRaw.split("\n")) {
+    if (line.startsWith("diff --git ")) {
+      changedFilesFromDiff += 1;
+      continue;
+    }
     if (line.startsWith("+++ ") || line.startsWith("--- ")) {
       continue;
     }
@@ -45,6 +50,7 @@ export function formatChangesSummary(statusRaw: string, diffRaw: string): string
       removed += 1;
     }
   }
+  const changedFiles = Math.max(changedFilesFromStatus, changedFilesFromDiff);
 
   const summary: string[] = [];
   summary.push(
