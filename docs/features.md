@@ -32,7 +32,6 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Automated dogfood smoke checks via `bun run dogfood:smoke`.
 - Internal telemetry: one-command dogfood readiness gate via `bun run dogfood:gate` (smoke + delivery-slice progress, optional verify).
 - Internal telemetry: dogfood progress supports machine-readable output (`bun run dogfood:progress --json`).
-- `what next` prompts route to planner role and are normalized to exactly 3 numbered steps.
 - CLI policy distillation script: `bun run policy:distill --sessions <N> --min <N>`.
 - In-flight turn interrupt via `Esc` while Acolyte is thinking.
 - One-shot CLI mode via `run` (including `--file` attachment support).
