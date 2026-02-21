@@ -107,6 +107,9 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - `/status` nested sections now use stacked `key: value` rows for easier scanning during backend/debug checks.
 - Biome recommended lint rules are now enabled in the main config (`biome.json`) with zero current diagnostics.
 - Env token budgeting now has hard caps (context/message/attachment/pinned + OM thresholds) to prevent runaway config values.
+- Permission default is now `read` mode, reducing accidental write/shell actions in fresh sessions.
+- Dogfood CLI argument parsing now explicitly supports `--no-verify`, preventing smoke/gate regressions.
+- Prompt key handling now parses more modifier-based CSI arrow variants, reducing terminal-specific `Cmd` navigation misses.
 
 ## Open Narrative Threads
 1. Continue dogfooding ramp from Codex-led to Acolyte-led development.
