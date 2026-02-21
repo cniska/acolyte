@@ -89,6 +89,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Soul prompt now explicitly favors one recommended next action over option menus unless alternatives are requested.
 - Internal CLI helpers now use Zod-backed argument validation in key scripts (`dogfood-gate`, `wait-backend`).
 - Expanded Zod arg-validation pattern to additional admin tooling (`om-admin`) for consistency.
+- `om-soak` now has strict Zod-backed option parsing + tests (and no side-effects on module import).
 
 ## Open Narrative Threads
 1. Continue dogfooding ramp from Codex-led to Acolyte-led development.
