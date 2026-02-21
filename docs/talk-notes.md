@@ -110,6 +110,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Permission default is now `read` mode, reducing accidental write/shell actions in fresh sessions.
 - Dogfood CLI argument parsing now explicitly supports `--no-verify`, preventing smoke/gate regressions.
 - Prompt key handling now parses more modifier-based CSI arrow variants, reducing terminal-specific `Cmd` navigation misses.
+- Health/status now labels non-OpenAI base URLs as `openai-compatible`, improving local-model endpoint debugging.
 
 ## Open Narrative Threads
 1. Continue dogfooding ramp from Codex-led to Acolyte-led development.
