@@ -124,6 +124,110 @@ function stripHtmlTags(input: string): string {
   );
 }
 
+function isPrivateOrLocalHost(hostname: string): boolean {
+  const host = hostname.toLowerCase();
+  if (host === "localhost" || host === "::1" || host.endsWith(".local")) {
+    return true;
+  }
+  if (/^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host)) {
+    return true;
+  }
+  if (/^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host)) {
+    return true;
+  }
+  if (/^192\.168\.\d{1,3}\.\d{1,3}$/.test(host)) {
+    return true;
+  }
+  const match172 = host.match(/^172\.(\d{1,3})\.\d{1,3}\.\d{1,3}$/);
+  if (match172) {
+    const second = Number.parseInt(match172[1] ?? "0", 10);
+    if (second >= 16 && second <= 31) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function parseWebUrl(input: string): URL {
+  let parsed: URL;
+  try {
+    parsed = new URL(input.trim());
+  } catch {
+    throw new Error("Web fetch URL is invalid");
+  }
+  const protocol = parsed.protocol.toLowerCase();
+  if (protocol !== "http:" && protocol !== "https:") {
+    throw new Error("Web fetch only supports http/https URLs");
+  }
+  if (isPrivateOrLocalHost(parsed.hostname)) {
+    throw new Error("Web fetch blocks localhost/private hosts");
+  }
+  return parsed;
+}
+
+function extractHtmlText(html: string): { title: string; text: string } {
+  const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  const title = stripHtmlTags(titleMatch?.[1] ?? "").trim();
+  const withoutHead = html.replace(/<head[\s\S]*?<\/head>/gi, " ");
+  const withoutScripts = withoutHead
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ");
+  return {
+    title,
+    text: stripHtmlTags(withoutScripts),
+  };
+}
+
+export async function fetchWeb(urlInput: string, maxChars = 5000): Promise<string> {
+  const limit = Math.max(500, Math.min(12_000, maxChars));
+  let current = parseWebUrl(urlInput);
+  let redirects = 0;
+
+  while (redirects <= 3) {
+    const response = await fetch(current.toString(), {
+      redirect: "manual",
+      headers: {
+        "user-agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36",
+      },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get("location");
+      if (!location) {
+        throw new Error("Web fetch received redirect without location");
+      }
+      current = parseWebUrl(new URL(location, current).toString());
+      redirects += 1;
+      continue;
+    }
+    if (!response.ok) {
+      throw new Error(`Web fetch failed with status ${response.status}`);
+    }
+    const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
+    const raw = await response.text();
+    const rendered = contentType.includes("text/html") ? extractHtmlText(raw) : { title: "", text: raw.trim() };
+    const body = rendered.text.replace(/\s+/g, " ").trim();
+    if (!body) {
+      return `Fetched: ${current.toString()}\nNo textual content found.`;
+    }
+    const clipped = body.slice(0, limit);
+    const lines = [`Fetched: ${current.toString()}`];
+    if (rendered.title) {
+      lines.push(`Title: ${rendered.title}`);
+    }
+    lines.push("Content:");
+    lines.push(clipped);
+    if (body.length > clipped.length) {
+      lines.push(`… clipped ${body.length - clipped.length} chars`);
+    }
+    return lines.join("\n");
+  }
+
+  throw new Error("Web fetch stopped after too many redirects");
+}
+
 export async function searchWeb(query: string, maxResults = 5): Promise<string> {
   const trimmed = query.trim();
   if (!trimmed) {

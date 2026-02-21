@@ -42,6 +42,7 @@ export const appConfig = {
     toolOutputBudget: {
       search: { maxChars: 2200, maxLines: 80 },
       webSearch: { maxChars: 2400, maxLines: 80 },
+      webFetch: { maxChars: 2600, maxLines: 90 },
       read: { maxChars: 2600, maxLines: 120 },
       gitStatus: { maxChars: 1800, maxLines: 80 },
       gitDiff: { maxChars: 3200, maxLines: 120 },

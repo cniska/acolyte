@@ -3,7 +3,7 @@ import { setPermissionMode } from "./app-config";
 import type { Backend } from "./backend";
 import { formatChangesSummary } from "./chat-formatters";
 import { suggestClosestSlashCommand } from "./chat-slash";
-import { gitDiff, gitStatusShort, searchWeb } from "./coding-tools";
+import { fetchWeb, gitDiff, gitStatusShort, searchWeb } from "./coding-tools";
 import { addMemory, listMemories } from "./memory";
 import { distillPolicyCandidatesFromSessions, distillPolicyFromSessions, parseDistillOptions } from "./policy-distill";
 import { formatStatusOutput } from "./status-format";
@@ -258,6 +258,25 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       ctx.setRows((current) => [
         ...current,
         row("system", error instanceof Error ? error.message : "Web search failed."),
+      ]);
+    }
+    return { stop: true, userText: text, runVerifyAfterReply: false };
+  }
+
+  if (resolvedText.startsWith("/fetch")) {
+    pushUserCommandRow();
+    const url = resolvedText.replace(/^\/fetch\s*/, "").trim();
+    if (!url) {
+      ctx.setRows((current) => [...current, row("system", "Usage: /fetch <url>")]);
+      return { stop: true, userText: text, runVerifyAfterReply: false };
+    }
+    try {
+      const result = await fetchWeb(url, 5000);
+      ctx.setRows((current) => [...current, row("assistant", result)]);
+    } catch (error) {
+      ctx.setRows((current) => [
+        ...current,
+        row("system", error instanceof Error ? error.message : "Web fetch failed."),
       ]);
     }
     return { stop: true, userText: text, runVerifyAfterReply: false };

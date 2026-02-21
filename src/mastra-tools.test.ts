@@ -9,11 +9,20 @@ describe("mastra role toolsets", () => {
 
   test("reviewer has read-only tools", () => {
     const keys = Object.keys(toolsForRole("reviewer")).sort();
-    expect(keys).toEqual(["gitDiff", "gitStatus", "readFile", "searchRepo", "webSearch"]);
+    expect(keys).toEqual(["gitDiff", "gitStatus", "readFile", "searchRepo", "webFetch", "webSearch"]);
   });
 
   test("coder has full toolset", () => {
     const keys = Object.keys(toolsForRole("coder")).sort();
-    expect(keys).toEqual(["editFile", "gitDiff", "gitStatus", "readFile", "runCommand", "searchRepo", "webSearch"]);
+    expect(keys).toEqual([
+      "editFile",
+      "gitDiff",
+      "gitStatus",
+      "readFile",
+      "runCommand",
+      "searchRepo",
+      "webFetch",
+      "webSearch",
+    ]);
   });
 });

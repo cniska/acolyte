@@ -4,6 +4,7 @@ const SHORTCUT_ITEMS = [
   { key: "@path", description: "attach file/dir context" },
   { key: "/changes", description: "show git changes" },
   { key: "/web <query>", description: "search the web" },
+  { key: "/fetch <url>", description: "fetch page text" },
   { key: "/dogfood <task>", description: "run verify-first coding loop" },
   { key: "/new", description: "new session" },
   { key: "/permissions", description: "show permission mode" },

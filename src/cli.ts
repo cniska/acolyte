@@ -9,6 +9,7 @@ import { wrapAssistantContent } from "./chat-content";
 import { runInkChat } from "./chat-ui";
 import {
   editFileReplace,
+  fetchWeb,
   gitDiff,
   gitStatusShort,
   readSnippet,
@@ -131,7 +132,7 @@ export function buildUsageCommandRows(): Array<{ command: string; description: s
     { command: "status", description: "show backend status" },
     { command: "memory", description: "manage memory notes" },
     { command: "config", description: "manage local CLI config" },
-    { command: "tool", description: "run coding tools (search/read/git/run/edit/web)" },
+    { command: "tool", description: "run coding tools (search/read/git/run/edit/web/fetch)" },
   ];
 }
 
@@ -294,11 +295,12 @@ function listSessions(store: SessionStore): void {
     return;
   }
 
-  for (const [idx, session] of store.sessions.slice(0, 20).entries()) {
-    const active = session.id === store.activeSessionId ? "*" : " ";
-    const prefix = idx === 0 ? "  └ " : "    ";
+  for (const session of store.sessions.slice(0, 20)) {
+    const active = session.id === store.activeSessionId ? "true" : "false";
     const updated = formatTimestamp(session.updatedAt);
-    printInfo(`${prefix}${active} ${session.id.slice(0, 12)}  ${session.model}  ${updated}  ${session.title}`);
+    printInfo(
+      `session=${session.id.slice(0, 12)} active=${active} model=${session.model} updated=${updated} title=${truncateText(session.title, 80)}`,
+    );
   }
 }
 
@@ -335,10 +337,9 @@ function printMemoryRows(rows: Awaited<ReturnType<typeof listMemories>>): void {
     return;
   }
 
-  for (const [idx, row] of rows.slice(0, 50).entries()) {
-    const prefix = idx === 0 ? "  └ " : "    ";
+  for (const row of rows.slice(0, 50)) {
     printInfo(
-      `${prefix}[${row.scope}] ${row.id.slice(0, 12)}  ${formatTimestamp(row.createdAt)}  ${truncateText(row.content, 160)}`,
+      `memory=${row.id.slice(0, 12)} scope=${row.scope} created=${formatTimestamp(row.createdAt)} text=${truncateText(row.content, 160)}`,
     );
   }
 }
@@ -1037,7 +1038,10 @@ async function dogfoodMode(args: string[]): Promise<void> {
 
 async function historyMode(): Promise<void> {
   const store = await readStore();
-  printSection(`• Sessions (${store.sessions.length})`);
+  printInfo(`sessions=${store.sessions.length}`);
+  if (store.activeSessionId) {
+    printInfo(`activeSession=${store.activeSessionId.slice(0, 12)}`);
+  }
   listSessions(store);
 }
 
@@ -1049,7 +1053,7 @@ async function statusMode(): Promise<void> {
   });
   try {
     const status = await backend.status();
-    showToolResult("Status", formatStatusOutput(status), "tool");
+    printOutput(formatStatusOutput(status));
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     printError(message);
@@ -1070,7 +1074,8 @@ async function memoryMode(args: string[]): Promise<void> {
       return;
     }
     const rows = await listMemories({ scope: scope as "all" | "user" | "project" });
-    printSection(`• Memories (${scope}, ${rows.length})`);
+    printInfo(`scope=${scope}`);
+    printInfo(`memories=${rows.length}`);
     printMemoryRows(rows);
     return;
   }
@@ -1178,6 +1183,18 @@ async function toolMode(args: string[]): Promise<void> {
       return;
     }
 
+    if (subcommand === "fetch") {
+      const url = rest.join(" ").trim();
+      if (!url) {
+        printError("Usage: acolyte tool fetch <url>");
+        process.exitCode = 1;
+        return;
+      }
+      const result = await fetchWeb(url, 5000);
+      showToolResult("Fetch", result, "plain", url);
+      return;
+    }
+
     if (subcommand === "read") {
       const [pathInput, start, end] = rest;
       if (!pathInput) {
@@ -1243,13 +1260,13 @@ async function toolMode(args: string[]): Promise<void> {
         } else {
           try {
             const diff = await gitDiff(parsed.path, 1);
-            showToolResult("Update", formatEditUpdateOutput(summary.matches, diff), "diff", shownPath);
+            showToolResult("Edit", formatEditUpdateOutput(summary.matches, diff), "diff", shownPath);
             rendered = true;
           } catch (error) {
             const message = error instanceof Error ? error.message : "Unable to render diff preview";
             if (message.includes("outside repository")) {
               showToolResult(
-                "Edited",
+                "Edit",
                 `${countLabel(summary.matches, "replacement", "replacements")} applied.`,
                 "plain",
                 shownPath,
@@ -1268,7 +1285,7 @@ async function toolMode(args: string[]): Promise<void> {
       return;
     }
 
-    printError("Usage: acolyte tool <search|web|read|git-status|git-diff|run|edit> ...");
+    printError("Usage: acolyte tool <search|web|fetch|read|git-status|git-diff|run|edit> ...");
     process.exitCode = 1;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Tool command failed";

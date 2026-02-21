@@ -167,6 +167,12 @@ describe("chat-commands", () => {
     expect(rows.some((row) => row.content === "Usage: /web <query>")).toBe(true);
   });
 
+  test("dispatchSlashCommand validates /fetch usage", async () => {
+    const { rows, stop } = await runCommand("/fetch");
+    expect(stop).toBe(true);
+    expect(rows.some((row) => row.content === "Usage: /fetch <url>")).toBe(true);
+  });
+
   test("dispatchSlashCommand handles /distill", async () => {
     const store = createStore({
       sessions: [

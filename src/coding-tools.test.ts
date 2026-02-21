@@ -3,7 +3,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { appConfig, setPermissionMode } from "./app-config";
-import { editFileReplace, readSnippet, runShellCommand } from "./coding-tools";
+import { editFileReplace, fetchWeb, readSnippet, runShellCommand } from "./coding-tools";
 
 const tempFiles: string[] = [];
 
@@ -64,6 +64,14 @@ describe("coding-tools workspace guards", () => {
 
   test("runShellCommand blocks home paths outside ~/.acolyte", async () => {
     await expect(runShellCommand("cat ~/Documents")).rejects.toThrow("Command references home path outside ~/.acolyte");
+  });
+
+  test("fetchWeb rejects invalid URL input", async () => {
+    await expect(fetchWeb("not-a-url")).rejects.toThrow("Web fetch URL is invalid");
+  });
+
+  test("fetchWeb blocks localhost/private hosts", async () => {
+    await expect(fetchWeb("http://localhost:6767/healthz")).rejects.toThrow("Web fetch blocks localhost/private hosts");
   });
 
   test("read mode blocks write tools", async () => {

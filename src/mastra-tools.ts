@@ -4,6 +4,7 @@ import type { AgentRole } from "./agent-roles";
 import { appConfig } from "./app-config";
 import {
   editFileReplace,
+  fetchWeb,
   gitDiff,
   gitStatusShort,
   readSnippet,
@@ -127,6 +128,22 @@ export const webSearchTool = createTool({
   },
 });
 
+export const webFetchTool = createTool({
+  id: "web-fetch",
+  description: "Fetch a public URL and return extracted text content.",
+  inputSchema: z.object({
+    url: z.string().min(1),
+    maxChars: z.number().int().min(500).max(12000).optional(),
+  }),
+  execute: async (input) => {
+    const result = compactToolOutput(
+      await fetchWeb(input.url, input.maxChars ?? 5000),
+      appConfig.agent.toolOutputBudget.webFetch,
+    );
+    return { result };
+  },
+});
+
 export const acolyteTools = {
   searchRepo: searchRepoTool,
   readFile: readFileTool,
@@ -135,6 +152,7 @@ export const acolyteTools = {
   runCommand: runCommandTool,
   editFile: editFileTool,
   webSearch: webSearchTool,
+  webFetch: webFetchTool,
 };
 
 export type AcolyteToolset = typeof acolyteTools;
@@ -153,6 +171,7 @@ export function toolsForRole(role: AgentRole): Partial<AcolyteToolset> {
         gitStatus: acolyteTools.gitStatus,
         gitDiff: acolyteTools.gitDiff,
         webSearch: acolyteTools.webSearch,
+        webFetch: acolyteTools.webFetch,
       };
     case "coder":
       return acolyteTools;
