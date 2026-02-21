@@ -29,6 +29,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Subagent v1 routing (`planner` / `coder` / `reviewer`) with explicit per-role context handoff.
 - Coder role guidance now prefers one clear next action and avoids lettered option menus unless explicitly requested.
 - Runtime provider is inferred from configured role model IDs (for example `anthropic/...`, `gemini/...`), with credential-aware fallback to mock mode when unavailable.
+- Runtime provider inference also recognizes common unprefixed ids (`claude-*`, `gemini-*`) to reduce configuration friction.
 - Mastra Studio exposes role agents (`Planner`, `Coder`, `Reviewer`) plus default `acolyte` alias.
 - Mastra Studio role agents use role-scoped tools (planner minimal read/search, reviewer read/search/git/web, coder full toolset).
 - Dogfooding workflow command: `/dogfood <task>` with verify-first loop.
