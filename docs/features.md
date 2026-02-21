@@ -10,6 +10,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - File and directory references via `@path` with suggestions/autocomplete.
 - Slash-command suggestions with arrow navigation and Tab/Enter autocomplete.
 - Unknown slash-command typo recovery (for example `/stauts` -> `/status`).
+- One-slot prompt queue while thinking (latest submit wins) with inline queued indicator.
 - Compact slash aliases for common commands (`/df`, `/ds`, `/mem`, `/rem`).
 - In-chat utility commands: `/status`, `/changes`.
 - In-chat dogfooding readiness check: `/dogfood-status` with short alias `/ds`.

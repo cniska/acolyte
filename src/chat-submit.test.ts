@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { resolveSubmitInput } from "./chat-submit";
+import { resolveQueueSubmit, resolveSubmitInput } from "./chat-submit";
 
 describe("chat submit helpers", () => {
   test("autocompletes unresolved @path on submit", () => {
@@ -33,5 +33,23 @@ describe("chat submit helpers", () => {
       slashSuggestionIndex: 0,
     });
     expect(result).toEqual({ kind: "submit", value: "hello world" });
+  });
+
+  test("resolveQueueSubmit ignores empty input", () => {
+    expect(resolveQueueSubmit({ value: "   ", isThinking: true })).toEqual({ kind: "ignore" });
+  });
+
+  test("resolveQueueSubmit queues while thinking", () => {
+    expect(resolveQueueSubmit({ value: "hello", isThinking: true })).toEqual({
+      kind: "queue",
+      value: "hello",
+    });
+  });
+
+  test("resolveQueueSubmit submits immediately when idle", () => {
+    expect(resolveQueueSubmit({ value: "hello", isThinking: false })).toEqual({
+      kind: "submit",
+      value: "hello",
+    });
   });
 });

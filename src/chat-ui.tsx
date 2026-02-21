@@ -1,5 +1,5 @@
 import { Box, render, Text, useApp } from "ink";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import type { Backend } from "./backend";
 import { type ChatRow, type TokenUsageEntry } from "./chat-commands";
 import { useAtSuggestionsEffect, useSlashSuggestionsEffect, useThinkingAnimationEffect } from "./chat-effects";
@@ -12,6 +12,7 @@ import { type PickerState, shownCwd } from "./chat-layout";
 import { createPickerHandlers } from "./chat-picker-handlers";
 import { newMessage, nowIso, toRows } from "./chat-session";
 import { suggestSlashCommands } from "./chat-slash";
+import { resolveQueueSubmit } from "./chat-submit";
 import { createSubmitHandler } from "./chat-submit-handler";
 import { ChatTranscript } from "./chat-transcript";
 import type { Session, SessionStore } from "./types";
@@ -47,6 +48,7 @@ function ChatApp(props: ChatAppProps) {
   const [isThinking, setIsThinking] = useState(false);
   const [thinkingFrame, setThinkingFrame] = useState(0);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [queuedInput, setQueuedInput] = useState<string | null>(null);
   const [picker, setPicker] = useState<PickerState | null>(null);
   const [tokenUsage, setTokenUsage] = useState<TokenUsageEntry[]>([]);
   const [inputHistory, setInputHistory] = useState<string[]>([]);
@@ -114,6 +116,14 @@ function ChatApp(props: ChatAppProps) {
       interruptRef.current = handler;
     },
   });
+  useEffect(() => {
+    if (isThinking || !queuedInput) {
+      return;
+    }
+    const next = queuedInput;
+    setQueuedInput(null);
+    void handleSubmit(next);
+  }, [handleSubmit, isThinking, queuedInput]);
 
   useChatKeybindings({
     persist,
@@ -188,7 +198,16 @@ function ChatApp(props: ChatAppProps) {
             setInputRevision((current) => current + 1);
             return;
           }
-          void handleSubmit(next);
+          const queueDecision = resolveQueueSubmit({ value: resolved.value, isThinking });
+          if (queueDecision.kind === "ignore") {
+            return;
+          }
+          if (queueDecision.kind === "queue") {
+            setQueuedInput(queueDecision.value);
+            setValue("");
+            return;
+          }
+          void handleSubmit(queueDecision.value);
         }}
         atQuery={atQuery}
         atSuggestions={atSuggestions}
@@ -196,6 +215,7 @@ function ChatApp(props: ChatAppProps) {
         slashSuggestions={slashSuggestions}
         slashSuggestionIndex={slashSuggestionIndex}
         showShortcuts={showShortcuts}
+        queuedInput={queuedInput}
       />
     </Box>
   );

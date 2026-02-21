@@ -11,6 +11,19 @@ export type SubmitResolution =
       value: string;
     };
 
+export type QueueSubmitResolution =
+  | {
+      kind: "ignore";
+    }
+  | {
+      kind: "queue";
+      value: string;
+    }
+  | {
+      kind: "submit";
+      value: string;
+    };
+
 type ResolveSubmitInput = {
   value: string;
   atSuggestions: string[];
@@ -37,5 +50,16 @@ export function resolveSubmitInput(input: ResolveSubmitInput): SubmitResolution 
     }
   }
 
+  return { kind: "submit", value: input.value };
+}
+
+export function resolveQueueSubmit(input: { value: string; isThinking: boolean }): QueueSubmitResolution {
+  const trimmed = input.value.trim();
+  if (!trimmed) {
+    return { kind: "ignore" };
+  }
+  if (input.isThinking) {
+    return { kind: "queue", value: trimmed };
+  }
   return { kind: "submit", value: input.value };
 }

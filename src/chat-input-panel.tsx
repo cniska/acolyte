@@ -24,6 +24,7 @@ type ChatInputPanelProps = {
   slashSuggestions: string[];
   slashSuggestionIndex: number;
   showShortcuts: boolean;
+  queuedInput: string | null;
 };
 
 export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
@@ -41,6 +42,7 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
     slashSuggestions,
     slashSuggestionIndex,
     showShortcuts,
+    queuedInput,
   } = props;
 
   if (picker) {
@@ -104,6 +106,7 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
       ) : (
         <Text dimColor> ? for shortcuts</Text>
       )}
+      {queuedInput ? <Text dimColor>{` queued: ${queuedInput}`}</Text> : null}
     </>
   );
 }
