@@ -44,10 +44,16 @@ const runArgsSchema = z.object({
   prompt: z.string(),
   verify: z.boolean(),
 });
+const runExitCodeSchema = z.coerce.number().int();
 const editArgsSchema = z.object({
   path: z.string().min(1),
   find: z.string().min(1),
   replace: z.string(),
+  dryRun: z.boolean(),
+});
+const editResultSchema = z.object({
+  path: z.string().min(1),
+  matches: z.coerce.number().int().nonnegative(),
   dryRun: z.boolean(),
 });
 
@@ -268,15 +274,15 @@ function parseEditResult(raw: string): { path: string; matches: number; dryRun: 
   const path = raw.match(/^path=(.*)$/m)?.[1]?.trim();
   const matchesText = raw.match(/^matches=(.*)$/m)?.[1]?.trim();
   const dryRunText = raw.match(/^dry_run=(.*)$/m)?.[1]?.trim();
-  const matches = matchesText ? Number.parseInt(matchesText, 10) : Number.NaN;
-  if (!path || Number.isNaN(matches) || !dryRunText) {
+  if (!path || !matchesText || !dryRunText) {
     return null;
   }
-  return {
+  const parsed = editResultSchema.safeParse({
     path,
-    matches,
+    matches: matchesText,
     dryRun: dryRunText === "true",
-  };
+  });
+  return parsed.success ? parsed.data : null;
 }
 
 function displayPath(pathInput: string): string {
@@ -483,12 +489,12 @@ export function formatRunOutput(raw: string): string {
 
 export function parseRunExitCode(raw: string): number | null {
   const first = raw.split("\n")[0]?.trim() ?? "";
-  const match = first.match(/^exit_code=(-?\d+)$/);
+  const match = first.match(/^exit_code=([^\\s]+)$/);
   if (!match) {
     return null;
   }
-  const parsed = Number.parseInt(match[1] ?? "", 10);
-  return Number.isNaN(parsed) ? null : parsed;
+  const parsed = runExitCodeSchema.safeParse(match[1]);
+  return parsed.success ? parsed.data : null;
 }
 
 export function formatForTool(kind: "search" | "read" | "diff" | "run" | "status", raw: string): string {
