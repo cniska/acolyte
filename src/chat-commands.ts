@@ -171,6 +171,16 @@ function parseMemoryListScope(parts: string[]): MemoryContextScope | null {
   return null;
 }
 
+function scopeLabel(scope: MemoryContextScope): string {
+  if (scope === "user") {
+    return "User";
+  }
+  if (scope === "project") {
+    return "Project";
+  }
+  return "All";
+}
+
 export async function dispatchSlashCommand(ctx: CommandContext): Promise<CommandResult> {
   const { text, resolvedText } = ctx;
   const memoryApi = {
@@ -296,7 +306,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       return { stop: true, userText: text, runVerifyAfterReply: false };
     }
     const lines = memories.slice(0, 10).map((entry) => `${entry.scope}: ${entry.content}`);
-    const header = scope === "all" ? `Memory ${memories.length}` : `Memory ${scope} ${memories.length}`;
+    const header = scope === "all" ? `Memory ${memories.length}` : `${scopeLabel(scope)} memory ${memories.length}`;
     ctx.setRows((current) => [...current, row("assistant", `${header}\n\n${lines.join("\n")}`)]);
     return { stop: true, userText: text, runVerifyAfterReply: false };
   }
@@ -316,7 +326,8 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       return { stop: true, userText: text, runVerifyAfterReply: false };
     }
     const lines = entries.map((entry) => `${entry.scope}: ${entry.content}`);
-    const header = scope === "all" ? `Memory context ${entries.length}` : `Memory context ${scope} ${entries.length}`;
+    const header =
+      scope === "all" ? `Memory context ${entries.length}` : `${scopeLabel(scope)} memory context ${entries.length}`;
     ctx.setRows((current) => [...current, row("assistant", `${header}\n\n${lines.join("\n")}`)]);
     return { stop: true, userText: text, runVerifyAfterReply: false };
   }

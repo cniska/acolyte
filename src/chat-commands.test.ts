@@ -371,6 +371,54 @@ describe("chat-commands", () => {
     expect(assistant?.content).toContain("project: use bun scripts");
   });
 
+  test("dispatchSlashCommand renders scoped /memory header", async () => {
+    const memoryApi = {
+      listMemories: async () => [
+        {
+          id: "mem_1",
+          scope: "user" as const,
+          content: "prefer concise output",
+          createdAt: "2026-02-21T00:00:00.000Z",
+        },
+      ],
+      addMemory: async () => ({
+        id: "mem_unused",
+        scope: "user" as const,
+        content: "unused",
+        createdAt: "2026-02-21T00:00:00.000Z",
+      }),
+      getMemoryContextEntries: async () => [],
+    };
+    const { rows, stop } = await runCommand("/memory user", [], createStore(), { memoryApi });
+    expect(stop).toBe(true);
+    expect(rows.some((row) => row.role === "assistant" && row.content.startsWith("User memory 1"))).toBe(true);
+  });
+
+  test("dispatchSlashCommand renders scoped /memory context header", async () => {
+    const memoryApi = {
+      listMemories: async () => [],
+      addMemory: async () => ({
+        id: "mem_unused",
+        scope: "user" as const,
+        content: "unused",
+        createdAt: "2026-02-21T00:00:00.000Z",
+      }),
+      getMemoryContextEntries: async () => [
+        {
+          id: "mem_2",
+          scope: "project" as const,
+          content: "use bun scripts",
+          createdAt: "2026-02-21T00:00:01.000Z",
+        },
+      ],
+    };
+    const { rows, stop } = await runCommand("/memory context project", [], createStore(), { memoryApi });
+    expect(stop).toBe(true);
+    expect(rows.some((row) => row.role === "assistant" && row.content.startsWith("Project memory context 1"))).toBe(
+      true,
+    );
+  });
+
   test("dispatchSlashCommand validates /memory scope usage", async () => {
     const { rows, stop } = await runCommand("/memory foo");
     expect(stop).toBe(true);
