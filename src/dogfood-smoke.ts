@@ -27,6 +27,11 @@ export const checks: SmokeCheck[] = [
     cmd: ["bun", "run", "src/cli.ts", "dogfood", "--no-verify", "ping"],
     expect: [/^❯\s+ping/m, /^\s*•\s+/m],
   },
+  {
+    name: "memory context all",
+    cmd: ["bun", "run", "src/cli.ts", "memory", "context", "all"],
+    expect: [/scope:\s+all/i, /memory_context:\s+\d+/i],
+  },
 ];
 
 export async function runCommand(cmd: string[]): Promise<RunResult> {
