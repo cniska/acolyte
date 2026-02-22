@@ -295,7 +295,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     if (!scope) {
       ctx.setRows((current) => [
         ...current,
-        row("system", "Usage: /memory [all|user|project|context [all|user|project]]"),
+        row("system", "Usage: /memory [all|user|project] | /memory context [all|user|project]"),
       ]);
       return { stop: true, userText: text, runVerifyAfterReply: false };
     }
@@ -336,7 +336,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     pushUserCommandRow();
     ctx.setRows((current) => [
       ...current,
-      row("system", "Usage: /memory [all|user|project|context [all|user|project]]"),
+      row("system", "Usage: /memory [all|user|project] | /memory context [all|user|project]"),
     ]);
     return { stop: true, userText: text, runVerifyAfterReply: false };
   }

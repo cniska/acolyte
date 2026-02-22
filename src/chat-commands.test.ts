@@ -460,9 +460,9 @@ describe("chat-commands", () => {
   test("dispatchSlashCommand validates /memory scope usage", async () => {
     const { rows, stop } = await runCommand("/memory foo");
     expect(stop).toBe(true);
-    expect(rows.some((row) => row.content === "Usage: /memory [all|user|project|context [all|user|project]]")).toBe(
-      true,
-    );
+    expect(
+      rows.some((row) => row.content === "Usage: /memory [all|user|project] | /memory context [all|user|project]"),
+    ).toBe(true);
   });
 
   test("dispatchSlashCommand handles /remember and saves selected scope", async () => {
