@@ -138,6 +138,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Local backend `/status` now also emits provider lane diagnostics (`providers`, `provider_ready`) for full parity.
 - Dogfood progress/gate lookback now evaluates the last N non-doc commits, reducing docs-only noise in readiness checks.
 - Dogfood gate delivery diagnostics now surface `scoped` and `scanned` commit counts for clearer readiness debugging.
+- Latest dogfood skip-verify gate on February 22, 2026 remained `ready` at 6/6 delivery slices (lookback 10).
 
 ## Open Narrative Threads
 1. Continue dogfooding ramp from Codex-led to Acolyte-led development.
