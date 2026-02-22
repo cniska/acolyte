@@ -26,6 +26,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - `/status` model rows (including `om.model`) now omit provider prefixes for readability; provider details remain in `providers`.
 - Policy distillation command from chat logs: `/distill [--sessions N] [--min N]`.
 - `/tokens` now includes the latest token-budget warning when context was trimmed or near budget.
+- `/tokens` now keeps the latest session warning visible even if the newest turn has no warning.
 - Token-budget warnings are shown on-demand via `/tokens` (not as inline transcript noise).
 - Distilled policy candidate review picker with explicit `yes/no` confirmation and optional note (`yes also do this`).
 - Skills picker + command support: `/skills` and `$` shortcut.

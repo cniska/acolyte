@@ -131,6 +131,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Non-chat CLI now supports `acolyte memory context` for scriptable memory-context inspection.
 - `/tokens` now surfaces the latest budget warning so context-trim events are visible on demand.
 - Token budget diagnostics moved to on-demand `/tokens` output (removed inline transcript warning rows).
+- `/tokens` now shows the latest session warning (not only last-turn warning) to preserve recent trim signal.
 - Local `/status` now degrades gracefully if memory-context files are unreadable (status still returns).
 - Planner tool scope now matches real planning needs while staying read-only (`read/search/git/web`).
 - `mastra:dev` and `studio` now load `.env` so provider credentials are consistent in local dev and Mastra Studio.
