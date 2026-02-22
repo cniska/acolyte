@@ -82,6 +82,12 @@ export function formatTokenUsageOutput(last: TokenUsageEntry | null, all: TokenU
       value: `${last.usage.promptTokens}/${last.usage.promptBudgetTokens}${last.usage.promptTruncated ? " (trimmed)" : ""}`,
     });
   }
+  if (last.warning) {
+    rows.push({
+      key: "warning:",
+      value: last.warning,
+    });
+  }
   const maxKey = rows.reduce((max, row) => Math.max(max, row.key.length), 0);
   return rows.map((row) => `${row.key.padEnd(maxKey, " ")} ${row.value}`).join("\n");
 }

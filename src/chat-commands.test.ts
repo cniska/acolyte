@@ -71,6 +71,23 @@ describe("chat-commands", () => {
     expect(output).toContain("budget:");
   });
 
+  test("formatTokenUsageOutput includes latest warning when present", () => {
+    const usage: TokenUsageEntry = {
+      id: "row_warn",
+      usage: {
+        promptTokens: 900,
+        completionTokens: 40,
+        totalTokens: 940,
+        promptBudgetTokens: 1000,
+        promptTruncated: true,
+      },
+      warning: "context trimmed (8/42 history messages)",
+    };
+    const output = formatTokenUsageOutput(usage, [usage]);
+    expect(output).toContain("warning:");
+    expect(output).toContain("context trimmed (8/42 history messages)");
+  });
+
   test("dispatchSlashCommand handles /tokens", async () => {
     const tokenUsage: TokenUsageEntry[] = [
       {
