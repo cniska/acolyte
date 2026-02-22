@@ -149,6 +149,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Slash suggestions now complete memory context scopes (`/memory context all|user|project`) and also work when starting from `/mem context ...`.
 - Chat `/memory` now accepts optional scope (`/memory user|project|all`) for parity with CLI memory listing.
 - Slash suggestions now also complete `/memory` listing scopes (`/memory all|user|project`) and include `/memory context`.
+- Scoped memory headers in chat are now humanized (`User memory`, `Project memory context`) instead of inverted wording.
 
 ## Open Narrative Threads
 1. Continue dogfooding ramp from Codex-led to Acolyte-led development.
