@@ -15,7 +15,8 @@ describe("chat-slash helpers", () => {
     expect(suggestSlashCommands("/s")).toEqual(["/status", "/sessions", "/skills"]);
     expect(suggestSlashCommands("/st")).toEqual(["/status"]);
     expect(suggestSlashCommands("/d")).toEqual(["/dogfood", "/df", "/distill"]);
-    expect(suggestSlashCommands("/mem")).toEqual(["/mem", "/memory"]);
+    expect(suggestSlashCommands("/mem")).toEqual(["/mem", "/memory", "/memory context"]);
+    expect(suggestSlashCommands("/memory c")).toEqual(["/memory context"]);
     expect(suggestSlashCommands("/rem")).toEqual(["/rem", "/remember"]);
     expect(suggestSlashCommands("/unknown")).toEqual([]);
     expect(suggestSlashCommands("plain")).toEqual([]);
