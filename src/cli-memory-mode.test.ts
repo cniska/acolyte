@@ -144,4 +144,28 @@ describe("cli memory mode", () => {
     expect(result.exitCode).toBe(1);
     expect(`${result.stdout}\n${result.stderr}`).toContain("Usage: acolyte memory context [all|user|project]");
   });
+
+  test("memory list rejects extra positional args", async () => {
+    const home = await mkdtemp(join(tmpdir(), "acolyte-memory-cli-home-"));
+    const project = await mkdtemp(join(tmpdir(), "acolyte-memory-cli-project-"));
+    tmpHomes.push(home);
+    tmpProjects.push(project);
+    await mkdir(join(home, ".acolyte"), { recursive: true });
+
+    const result = runCli(home, project, "memory", "list", "all", "extra");
+    expect(result.exitCode).toBe(1);
+    expect(`${result.stdout}\n${result.stderr}`).toContain("Usage: acolyte memory list [all|user|project]");
+  });
+
+  test("memory context rejects extra positional args", async () => {
+    const home = await mkdtemp(join(tmpdir(), "acolyte-memory-cli-home-"));
+    const project = await mkdtemp(join(tmpdir(), "acolyte-memory-cli-project-"));
+    tmpHomes.push(home);
+    tmpProjects.push(project);
+    await mkdir(join(home, ".acolyte"), { recursive: true });
+
+    const result = runCli(home, project, "memory", "context", "all", "extra");
+    expect(result.exitCode).toBe(1);
+    expect(`${result.stdout}\n${result.stderr}`).toContain("Usage: acolyte memory context [all|user|project]");
+  });
 });

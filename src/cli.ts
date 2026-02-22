@@ -1037,6 +1037,11 @@ async function memoryMode(args: string[]): Promise<void> {
 
   if (subcommand === "list" || !subcommand) {
     const scopeRaw = subcommand === "list" ? rest[0] : undefined;
+    if (subcommand === "list" && rest.length > 1) {
+      printError("Usage: acolyte memory list [all|user|project]");
+      process.exitCode = 1;
+      return;
+    }
     const scope = scopeRaw && validScopes.has(scopeRaw) ? scopeRaw : "all";
     if (scopeRaw && !validScopes.has(scopeRaw)) {
       printError("Usage: acolyte memory list [all|user|project]");
@@ -1076,6 +1081,11 @@ async function memoryMode(args: string[]): Promise<void> {
   }
 
   if (subcommand === "context") {
+    if (rest.length > 1) {
+      printError("Usage: acolyte memory context [all|user|project]");
+      process.exitCode = 1;
+      return;
+    }
     const scopeRaw = rest[0];
     const scope = scopeRaw && validScopes.has(scopeRaw) ? scopeRaw : "all";
     if (scopeRaw && !validScopes.has(scopeRaw)) {
