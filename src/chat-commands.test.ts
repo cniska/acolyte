@@ -147,6 +147,7 @@ describe("chat-commands", () => {
     const { rows, stop } = await runCommand("/status");
     expect(stop).toBe(true);
     expect(rows.some((row) => row.role === "assistant" && row.content.includes("provider:"))).toBe(true);
+    expect(rows.some((row) => row.role === "assistant" && row.content.includes("memory_context:"))).toBe(true);
   });
 
   test("dispatchSlashCommand handles /sessions with compact assistant output", async () => {

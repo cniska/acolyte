@@ -50,7 +50,7 @@ export function createBackend(overrides?: {
         model: "gpt-5-mini",
         output: "ok",
       })),
-    status: overrides?.status ?? (async () => "provider=local model=gpt-5-mini"),
+    status: overrides?.status ?? (async () => "provider=local model=gpt-5-mini memory_context=2"),
     setPermissionMode: overrides?.setPermissionMode ?? (async () => {}),
   };
 }
