@@ -254,9 +254,7 @@ describe("chat-commands", () => {
     const { rows, stop } = await runCommand("/memory context", [], createStore(), { memoryApi });
     expect(stop).toBe(true);
     expect(
-      rows.some(
-        (row) => row.role === "assistant" && row.content === "No injected memory context is currently injected.",
-      ),
+      rows.some((row) => row.role === "assistant" && row.content === "No memory context is currently injected."),
     ).toBe(true);
   });
 
@@ -311,9 +309,7 @@ describe("chat-commands", () => {
     expect(stop).toBe(true);
     expect(receivedScope).toBe("user");
     expect(
-      rows.some(
-        (row) => row.role === "assistant" && row.content === "No user injected memory context is currently injected.",
-      ),
+      rows.some((row) => row.role === "assistant" && row.content === "No user memory context is currently injected."),
     ).toBe(true);
   });
 

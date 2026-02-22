@@ -283,11 +283,8 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     }
     const entries = await memoryApi.getMemoryContextEntries({ scope });
     if (entries.length === 0) {
-      const scopeLabel = scope === "all" ? "injected" : `${scope} injected`;
-      ctx.setRows((current) => [
-        ...current,
-        row("assistant", `No ${scopeLabel} memory context is currently injected.`),
-      ]);
+      const scopeLabel = scope === "all" ? "" : `${scope} `;
+      ctx.setRows((current) => [...current, row("assistant", `No ${scopeLabel}memory context is currently injected.`)]);
       return { stop: true, userText: text, runVerifyAfterReply: false };
     }
     const lines = entries.map((entry) => `${entry.scope}: ${entry.content}`);
