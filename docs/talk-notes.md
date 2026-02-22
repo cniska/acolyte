@@ -130,6 +130,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - `/status` now reports `memory_context` count for at-a-glance prompt-memory transparency.
 - Non-chat CLI now supports `acolyte memory context` for scriptable memory-context inspection.
 - `/tokens` now surfaces the latest budget warning so context-trim events are visible on demand.
+- Local `/status` now degrades gracefully if memory-context files are unreadable (status still returns).
 - Planner tool scope now matches real planning needs while staying read-only (`read/search/git/web`).
 - `mastra:dev` and `studio` now load `.env` so provider credentials are consistent in local dev and Mastra Studio.
 - Local backend `/status` now emits role-model fields, matching remote status shape for easier debugging.
