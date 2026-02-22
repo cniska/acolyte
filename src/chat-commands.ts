@@ -4,6 +4,7 @@ import type { Backend } from "./backend";
 import { suggestClosestSlashCommand } from "./chat-slash";
 import { addMemory, listMemories } from "./memory";
 import { distillPolicyCandidatesFromSessions, distillPolicyFromSessions, parseDistillOptions } from "./policy-distill";
+import { getMemoryContextEntries } from "./soul";
 import { formatStatusOutput } from "./status-format";
 import { createSession } from "./storage";
 import type { Session, SessionStore } from "./types";
@@ -113,6 +114,7 @@ type CommandContext = {
   memoryApi?: {
     listMemories: typeof listMemories;
     addMemory: typeof addMemory;
+    getMemoryContextEntries?: typeof getMemoryContextEntries;
   };
 };
 
@@ -136,7 +138,12 @@ function buildDogfoodPrompt(task: string): string {
 
 export async function dispatchSlashCommand(ctx: CommandContext): Promise<CommandResult> {
   const { text, resolvedText } = ctx;
-  const memoryApi = ctx.memoryApi ?? { listMemories, addMemory };
+  const memoryApi = {
+    listMemories,
+    addMemory,
+    getMemoryContextEntries,
+    ...ctx.memoryApi,
+  };
   const pushUserCommandRow = (): void => {
     ctx.setRows((current) => [...current, row("user", text)]);
   };
@@ -242,6 +249,18 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     }
     const lines = memories.slice(0, 10).map((entry) => `${entry.scope}: ${entry.content}`);
     ctx.setRows((current) => [...current, row("assistant", `Memory ${memories.length}\n\n${lines.join("\n")}`)]);
+    return { stop: true, userText: text, runVerifyAfterReply: false };
+  }
+
+  if (resolvedText === "/memory context") {
+    pushUserCommandRow();
+    const entries = await memoryApi.getMemoryContextEntries();
+    if (entries.length === 0) {
+      ctx.setRows((current) => [...current, row("assistant", "No memory context is currently injected.")]);
+      return { stop: true, userText: text, runVerifyAfterReply: false };
+    }
+    const lines = entries.map((entry) => `${entry.scope}: ${entry.content}`);
+    ctx.setRows((current) => [...current, row("assistant", `Memory context ${entries.length}\n\n${lines.join("\n")}`)]);
     return { stop: true, userText: text, runVerifyAfterReply: false };
   }
 

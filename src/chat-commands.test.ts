@@ -14,6 +14,9 @@ async function runCommand(
         content: string,
         options?: { scope?: "user" | "project" },
       ) => Promise<{ id: string; scope: "user" | "project"; content: string; createdAt: string }>;
+      getMemoryContextEntries?: () => Promise<
+        Array<{ id: string; scope: "user" | "project"; content: string; createdAt: string }>
+      >;
     };
   },
 ): Promise<{ rows: ChatRow[]; stop: boolean; openedPermissions: boolean; openedPolicy: number }> {
@@ -194,6 +197,56 @@ describe("chat-commands", () => {
     const { rows, stop } = await runCommand("/memory", [], createStore(), { memoryApi });
     expect(stop).toBe(true);
     expect(rows.some((row) => row.role === "assistant" && row.content === "No memory saved yet.")).toBe(true);
+  });
+
+  test("dispatchSlashCommand handles /memory context with empty context", async () => {
+    const memoryApi = {
+      listMemories: async () => [],
+      addMemory: async () => ({
+        id: "mem_unused",
+        scope: "user" as const,
+        content: "unused",
+        createdAt: "2026-02-21T00:00:00.000Z",
+      }),
+      getMemoryContextEntries: async () => [],
+    };
+    const { rows, stop } = await runCommand("/memory context", [], createStore(), { memoryApi });
+    expect(stop).toBe(true);
+    expect(
+      rows.some((row) => row.role === "assistant" && row.content === "No memory context is currently injected."),
+    ).toBe(true);
+  });
+
+  test("dispatchSlashCommand handles /memory context with entries", async () => {
+    const memoryApi = {
+      listMemories: async () => [],
+      addMemory: async () => ({
+        id: "mem_unused",
+        scope: "user" as const,
+        content: "unused",
+        createdAt: "2026-02-21T00:00:00.000Z",
+      }),
+      getMemoryContextEntries: async () => [
+        {
+          id: "mem_1",
+          scope: "project" as const,
+          content: "use bun run verify before commit",
+          createdAt: "2026-02-21T00:00:05.000Z",
+        },
+        {
+          id: "mem_2",
+          scope: "user" as const,
+          content: "keep output concise",
+          createdAt: "2026-02-21T00:00:03.000Z",
+        },
+      ],
+    };
+    const { rows, stop } = await runCommand("/memory context", [], createStore(), { memoryApi });
+    expect(stop).toBe(true);
+    const assistant = rows.find((row) => row.role === "assistant" && row.content.startsWith("Memory context 2"));
+    expect(assistant).toBeDefined();
+    expect(assistant?.content).toContain("project: use bun run verify before commit");
+    expect(assistant?.content).toContain("user: keep output concise");
   });
 
   test("dispatchSlashCommand handles /memory with entries", async () => {

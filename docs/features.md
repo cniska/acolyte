@@ -25,7 +25,8 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Policy distillation command from chat logs: `/distill [--sessions N] [--min N]`.
 - Distilled policy candidate review picker with explicit `yes/no` confirmation and optional note (`yes also do this`).
 - Skills picker + command support: `/skills` and `$` shortcut.
-- Memory commands in chat: `/remember [--project] <text>`, `/memory` (alias: `/mem`).
+- Memory commands in chat: `/remember [--project] <text>`, `/memory`, `/memory context` (alias: `/mem`).
+- Memory context selection is now globally sorted by timestamp across user/project scopes before injection.
 - OM admin safety: `om:wipe` requires explicit `--yes` confirmation.
 - Automatic memory-context injection from saved user/project memories.
 - Mastra Studio agent memory with observational memory enabled (resource scope).

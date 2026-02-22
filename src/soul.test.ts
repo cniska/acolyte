@@ -3,7 +3,14 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { addMemory } from "./memory";
-import { createSoulPrompt, loadAgentsPrompt, loadMemoryContextPrompt, loadSoulPrompt, loadSystemPrompt } from "./soul";
+import {
+  createSoulPrompt,
+  getMemoryContextEntries,
+  loadAgentsPrompt,
+  loadMemoryContextPrompt,
+  loadSoulPrompt,
+  loadSystemPrompt,
+} from "./soul";
 
 describe("soul prompt loading", () => {
   test("loadSoulPrompt uses fallback when docs/soul.md is missing", () => {
@@ -67,6 +74,22 @@ describe("soul prompt loading", () => {
       expect(prompt).toContain("Soul prompt body");
       expect(prompt).toContain("User memory context:");
       expect(prompt).toContain("- Keep answers terse unless asked for details");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+      rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  test("getMemoryContextEntries sorts globally across scopes by createdAt desc", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "acolyte-system-"));
+    const home = mkdtempSync(join(tmpdir(), "acolyte-home-"));
+    try {
+      await addMemory("older user memory", { cwd: dir, homeDir: home, scope: "user" });
+      await Bun.sleep(5);
+      await addMemory("newer project memory", { cwd: dir, homeDir: home, scope: "project" });
+      const entries = await getMemoryContextEntries({ cwd: dir, homeDir: home });
+      expect(entries[0]?.content).toBe("newer project memory");
+      expect(entries[1]?.content).toBe("older user memory");
     } finally {
       rmSync(dir, { recursive: true, force: true });
       rmSync(home, { recursive: true, force: true });

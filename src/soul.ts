@@ -67,10 +67,14 @@ export function loadSystemPrompt(cwd = process.cwd()): string {
   return agents ? `${soul}\n\n${agents}` : soul;
 }
 
-export async function loadMemoryContextPrompt(options: PromptLoadOptions = {}): Promise<string> {
+export async function getMemoryContextEntries(options: PromptLoadOptions = {}) {
   const cwd = options.cwd ?? process.cwd();
   const memories = await listMemories({ cwd, homeDir: options.homeDir, scope: "all" });
-  const top = memories.slice(0, MEMORY_CONTEXT_LIMIT);
+  return memories.sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, MEMORY_CONTEXT_LIMIT);
+}
+
+export async function loadMemoryContextPrompt(options: PromptLoadOptions = {}): Promise<string> {
+  const top = await getMemoryContextEntries(options);
   if (top.length === 0) {
     return "";
   }

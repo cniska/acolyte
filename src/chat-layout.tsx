@@ -10,7 +10,7 @@ const SHORTCUT_ITEMS = [
   { key: "/resume <id>", description: "resume session" },
   { key: "/skills", description: "open skills picker" },
   { key: "/remember [--project] <text>", description: "save memory note" },
-  { key: "/memory", description: "list memories" },
+  { key: "/memory [context]", description: "list memories or injected context" },
   { key: "/distill", description: "distill policy from chat logs" },
   { key: "/tokens", description: "show token usage summary" },
   { key: "/exit", description: "exit chat" },

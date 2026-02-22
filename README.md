@@ -34,7 +34,7 @@ That starts backend watch mode and chat.
 - `@path` attach files/directories
 - `/new`, `/sessions`, `/resume <id-prefix>`
 - `/status`, `/permissions`
-- `/remember [--project] <text>`, `/memory` (aliases: `/rem`, `/mem`)
+- `/remember [--project] <text>`, `/memory`, `/memory context` (aliases: `/rem`, `/mem`)
 - `/skills`
 
 ## Optional Local Postgres
