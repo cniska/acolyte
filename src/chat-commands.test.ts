@@ -280,6 +280,12 @@ describe("chat-commands", () => {
     expect(assistant?.content).toContain("project: use bun scripts");
   });
 
+  test("dispatchSlashCommand validates /memory usage for unknown subcommand", async () => {
+    const { rows, stop } = await runCommand("/memory foo");
+    expect(stop).toBe(true);
+    expect(rows.some((row) => row.content === "Usage: /memory [context]")).toBe(true);
+  });
+
   test("dispatchSlashCommand handles /remember and saves selected scope", async () => {
     let savedContent = "";
     let savedScope = "";

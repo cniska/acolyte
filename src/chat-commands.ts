@@ -264,6 +264,12 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     return { stop: true, userText: text, runVerifyAfterReply: false };
   }
 
+  if (resolvedText.startsWith("/memory ")) {
+    pushUserCommandRow();
+    ctx.setRows((current) => [...current, row("system", "Usage: /memory [context]")]);
+    return { stop: true, userText: text, runVerifyAfterReply: false };
+  }
+
   if (resolvedText.startsWith("/distill")) {
     pushUserCommandRow();
     const args = resolvedText.split(/\s+/).slice(1);
