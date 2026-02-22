@@ -818,12 +818,25 @@ function parseEditArgs(args: string[]): {
   });
 }
 
-export function inferResumeCommandBase(argv: string[] = process.argv): string {
-  const entry = argv[1] ?? "";
-  if (entry.endsWith("/src/cli.ts") || entry === "src/cli.ts" || entry.endsWith("\\src\\cli.ts")) {
+function hasCommandOnPath(command: string): boolean {
+  try {
+    return typeof Bun !== "undefined" && typeof Bun.which === "function" && Boolean(Bun.which(command));
+  } catch {
+    return false;
+  }
+}
+
+export function inferResumeCommandBase(
+  argv: string[] = process.argv,
+  hasCommand: (command: string) => boolean = hasCommandOnPath,
+): string {
+  const sourceRun = argv.some(
+    (part) => part === "src/cli.ts" || part.endsWith("/src/cli.ts") || part.endsWith("\\src\\cli.ts"),
+  );
+  if (sourceRun) {
     return "bun run src/cli.ts";
   }
-  return "acolyte";
+  return hasCommand("acolyte") ? "acolyte" : "bun run src/cli.ts";
 }
 
 export function formatResumeCommand(sessionId: string, commandBase = inferResumeCommandBase()): string {

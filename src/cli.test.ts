@@ -257,16 +257,19 @@ describe("cli formatting helpers", () => {
   });
 
   test("formatResumeCommand returns prod-friendly command", () => {
-    expect(formatResumeCommand("sess_abcdef1234567890")).toBe("acolyte resume sess_abcdef1");
+    expect(formatResumeCommand("sess_abcdef1234567890", "acolyte")).toBe("acolyte resume sess_abcdef1");
     expect(formatResumeCommand("sess_abcdef1234567890", "bun run src/cli.ts")).toBe(
       "bun run src/cli.ts resume sess_abcdef1",
     );
   });
 
   test("inferResumeCommandBase detects source-run mode", () => {
-    expect(inferResumeCommandBase(["bun", "src/cli.ts"])).toBe("bun run src/cli.ts");
-    expect(inferResumeCommandBase(["/opt/homebrew/bin/bun", "/repo/src/cli.ts"])).toBe("bun run src/cli.ts");
-    expect(inferResumeCommandBase(["acolyte"])).toBe("acolyte");
+    const yes = () => true;
+    const no = () => false;
+    expect(inferResumeCommandBase(["bun", "src/cli.ts"], yes)).toBe("bun run src/cli.ts");
+    expect(inferResumeCommandBase(["/opt/homebrew/bin/bun", "/repo/src/cli.ts"], yes)).toBe("bun run src/cli.ts");
+    expect(inferResumeCommandBase(["acolyte"], yes)).toBe("acolyte");
+    expect(inferResumeCommandBase(["acolyte"], no)).toBe("bun run src/cli.ts");
   });
 
   test("isTopLevelHelpCommand recognizes help variants", () => {
