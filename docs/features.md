@@ -19,6 +19,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Local-mode `/status` now also includes `providers` + `provider_ready` lane rows for parity with remote diagnostics.
 - `/status` provider now distinguishes `openai` vs `openai-compatible` (based on API base URL), improving local endpoint clarity.
 - `/status` formats multi-value fields in stacked `key: value` rows (`models`, `om`, `om_tokens`, `om_state`) and hides duplicate `mode` when `provider` is present.
+- `/status` includes `memory_context` to show how many memory notes are currently injected into prompts.
 - `/status` now suppresses duplicate top-level `model` when it matches `models.main`.
 - `/status` now includes per-role provider and readiness rows (`providers`, `provider_ready`) for mixed-lane diagnostics.
 - `/status` model rows (including `om.model`) now omit provider prefixes for readability; provider details remain in `providers`.

@@ -1,6 +1,7 @@
 import type { ChatRequest, ChatResponse } from "./api";
 import { appConfig, type PermissionMode, setPermissionMode } from "./app-config";
 import { isProviderAvailable, providerFromModel } from "./provider-config";
+import { getMemoryContextEntries } from "./soul";
 
 export interface BackendOptions {
   apiUrl?: string;
@@ -86,6 +87,7 @@ class LocalBackend implements Backend {
     const providerReadyPlanner = isProviderAvailable({ provider: providerPlanner, ...providerConfig });
     const providerReadyCoder = isProviderAvailable({ provider: providerCoder, ...providerConfig });
     const providerReadyReviewer = isProviderAvailable({ provider: providerReviewer, ...providerConfig });
+    const memoryContextCount = (await getMemoryContextEntries()).length;
     const fields = [
       "provider=local-mock",
       `model=${modelMain}`,
@@ -103,6 +105,7 @@ class LocalBackend implements Backend {
       `provider_ready_reviewer=${providerReadyReviewer}`,
       "backend=embedded",
       `permission_mode=${appConfig.agent.permissions.mode}`,
+      `memory_context=${memoryContextCount}`,
     ];
     return fields.join(" ");
   }
@@ -213,6 +216,7 @@ class RemoteBackend implements Backend {
       service?: unknown;
       memory?: {
         storage?: unknown;
+        contextCount?: unknown;
         observational?: {
           enabled?: unknown;
           scope?: unknown;
@@ -253,6 +257,7 @@ class RemoteBackend implements Backend {
     const service = typeof json.service === "string" ? json.service : "unknown";
     const apiBaseUrl = typeof json.apiBaseUrl === "string" ? json.apiBaseUrl : undefined;
     const memoryStorage = typeof json.memory?.storage === "string" ? json.memory.storage : undefined;
+    const memoryContextCount = typeof json.memory?.contextCount === "number" ? json.memory.contextCount : undefined;
     const om = json.memory?.observational;
     const omEnabled = typeof om?.enabled === "boolean" ? om.enabled : undefined;
     const omScope = typeof om?.scope === "string" ? om.scope : undefined;
@@ -283,6 +288,7 @@ class RemoteBackend implements Backend {
       `url=${this.apiUrl}`,
       apiBaseUrl ? `api_base_url=${apiBaseUrl}` : undefined,
       memoryStorage ? `memory_storage=${memoryStorage}` : undefined,
+      memoryContextCount === undefined ? undefined : `memory_context=${memoryContextCount}`,
       omEnabled === undefined ? undefined : `om=${omEnabled ? "enabled" : "disabled"}`,
       omScope ? `om_scope=${omScope}` : undefined,
       omModel ? `om_model=${omModel}` : undefined,

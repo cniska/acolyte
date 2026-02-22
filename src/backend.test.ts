@@ -66,6 +66,7 @@ describe("remote backend status parsing", () => {
           permissionMode: "write",
           memory: {
             storage: "postgres",
+            contextCount: 6,
             observational: {
               enabled: true,
               scope: "resource",
@@ -108,6 +109,7 @@ describe("remote backend status parsing", () => {
     expect(status).toContain("url=http://localhost:6767");
     expect(status).toContain("api_base_url=https://router.example/v1");
     expect(status).toContain("memory_storage=postgres");
+    expect(status).toContain("memory_context=6");
     expect(status).toContain("om=enabled");
     expect(status).toContain("om_scope=resource");
     expect(status).toContain("om_model=openai/gpt-5-mini");
@@ -163,5 +165,6 @@ describe("local backend status", () => {
     expect(status).toContain("provider_ready_reviewer=");
     expect(status).toContain("backend=embedded");
     expect(status).toContain("permission_mode=");
+    expect(status).toContain("memory_context=");
   });
 });

@@ -136,6 +136,10 @@ export function formatStatusOutput(status: string): string {
   if (memoryStorage) {
     output.push(`memory: ${memoryStorage}`);
   }
+  const memoryContext = take("memory_context");
+  if (memoryContext) {
+    output.push(`memory_context: ${memoryContext}`);
+  }
   const permissionMode = take("permission_mode");
   if (permissionMode) {
     output.push(`permissions: ${permissionMode}`);

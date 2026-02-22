@@ -102,6 +102,7 @@ describe("cli formatting helpers", () => {
         "service=acolyte-backend",
         "url=http://localhost:6767",
         "memory_storage=postgres",
+        "memory_context=7",
         "om=enabled",
         "om_scope=resource",
         "om_model=openai/gpt-5-mini",
@@ -130,6 +131,7 @@ describe("cli formatting helpers", () => {
     expect(out).toContain("coder: false");
     expect(out).toContain("reviewer: true");
     expect(out).toMatch(/memory:\s+postgres/);
+    expect(out).toMatch(/memory_context:\s+7/);
     expect(out).toContain("om:");
     expect(out).toContain("enabled");
     expect(out).toContain("scope: resource");

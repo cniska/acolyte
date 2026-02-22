@@ -13,7 +13,7 @@ import {
   resolveProvider,
   resolveRoleModels,
 } from "./provider-config";
-import { createSoulPrompt } from "./soul";
+import { createSoulPrompt, getMemoryContextEntries } from "./soul";
 
 const PORT = appConfig.server.port;
 const API_KEY = appConfig.server.apiKey;
@@ -135,6 +135,7 @@ const server = Bun.serve({
         currentOmError = error instanceof Error ? error.message : "Failed to read OM state.";
       }
 
+      const memoryContextCount = (await getMemoryContextEntries()).length;
       return json({
         ok: true,
         service: "acolyte-backend",
@@ -146,6 +147,7 @@ const server = Bun.serve({
         apiBaseUrl: appConfig.openai.baseUrl,
         memory: {
           storage: mastraStorageMode,
+          contextCount: memoryContextCount,
           resourceId: appConfig.memory.resourceId,
           observational: {
             enabled: true,
