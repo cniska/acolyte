@@ -150,6 +150,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Chat `/memory` now accepts optional scope (`/memory user|project|all`) for parity with CLI memory listing.
 - Slash suggestions now also complete `/memory` listing scopes (`/memory all|user|project`) and include `/memory context`.
 - Scoped memory headers in chat are now humanized (`User memory`, `Project memory context`) instead of inverted wording.
+- Internal dogfood scripts now support `--help` (`dogfood:progress`, `dogfood:gate`) for discoverable local usage.
 
 ## Open Narrative Threads
 1. Continue dogfooding ramp from Codex-led to Acolyte-led development.
