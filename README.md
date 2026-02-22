@@ -26,7 +26,7 @@ That starts backend watch mode and chat.
 - One-shot prompt: `bun run run "review src/agent.ts"`
 - Verify: `bun run verify`
 - Status: `bun run src/cli.ts status`
-- Memory context: `acolyte memory context`
+- Memory context: `acolyte memory context [all|user|project]`
 - Mastra Studio: `bun run studio` (loads `.env` automatically)
 
 ## Common In-Chat Commands
@@ -35,7 +35,7 @@ That starts backend watch mode and chat.
 - `@path` attach files/directories
 - `/new`, `/sessions`, `/resume <id-prefix>`
 - `/status`, `/permissions`
-- `/remember [--project] <text>`, `/memory`, `/memory context` (aliases: `/rem`, `/mem`)
+- `/remember [--project] <text>`, `/memory`, `/memory context [all|user|project]` (aliases: `/rem`, `/mem`)
 - `/skills`
 
 ## Optional Local Postgres

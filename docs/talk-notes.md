@@ -130,6 +130,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - `/status` now reports `memory_context` count for at-a-glance prompt-memory transparency.
 - Non-chat CLI now supports `acolyte memory context` for scriptable memory-context inspection.
 - `/tokens` now surfaces the latest budget warning so context-trim events are visible on demand.
+- Memory-context inspection now supports scope filters (`all|user|project`) in both chat (`/memory context <scope>`) and CLI (`acolyte memory context <scope>`).
 - Token budget diagnostics moved to on-demand `/tokens` output (removed inline transcript warning rows).
 - `/tokens` now shows the latest session warning (not only last-turn warning) to preserve recent trim signal.
 - Local `/status` now degrades gracefully if memory-context files are unreadable (status still returns).
