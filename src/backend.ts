@@ -87,7 +87,12 @@ class LocalBackend implements Backend {
     const providerReadyPlanner = isProviderAvailable({ provider: providerPlanner, ...providerConfig });
     const providerReadyCoder = isProviderAvailable({ provider: providerCoder, ...providerConfig });
     const providerReadyReviewer = isProviderAvailable({ provider: providerReviewer, ...providerConfig });
-    const memoryContextCount = (await getMemoryContextEntries()).length;
+    let memoryContextCount: number | undefined;
+    try {
+      memoryContextCount = (await getMemoryContextEntries()).length;
+    } catch {
+      memoryContextCount = undefined;
+    }
     const fields = [
       "provider=local-mock",
       `model=${modelMain}`,
@@ -105,9 +110,9 @@ class LocalBackend implements Backend {
       `provider_ready_reviewer=${providerReadyReviewer}`,
       "backend=embedded",
       `permission_mode=${appConfig.agent.permissions.mode}`,
-      `memory_context=${memoryContextCount}`,
+      memoryContextCount === undefined ? undefined : `memory_context=${memoryContextCount}`,
     ];
-    return fields.join(" ");
+    return fields.filter((field): field is string => Boolean(field)).join(" ");
   }
 
   async setPermissionMode(mode: PermissionMode): Promise<void> {
