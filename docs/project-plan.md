@@ -32,13 +32,14 @@ Build a personal AI coding assistant (Mastra + CLI) that is local-first, memory-
 2. CLI chat as primary UX (+ minimal batch support).
 3. Core coding tools: read/search/edit/run/test/git context.
 4. Persistent memory (explicit + observational foundations).
-5. Local mode first, optional hosted backend on Vercel + Postgres/pgvector.
+5. Local mode first (hosted backend is post-MVP).
 
 ### Out of Scope
 1. Web/mobile/voice UI.
 2. Team multi-tenant collaboration.
 3. Messaging channels (WhatsApp/OpenClaw) in MVP.
 4. Fully autonomous long-running ops without user approval.
+5. Hosted cross-device session continuity in MVP.
 
 ## Tech Stack
 1. Bun + TypeScript + Mastra.
