@@ -153,6 +153,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Internal dogfood scripts now support `--help` (`dogfood:progress`, `dogfood:gate`) for discoverable local usage.
 - OM admin commands now support `--help`/`-h` (`om:status`, `om:wipe`) without triggering unknown-argument errors.
 - Dogfood gate delivery detail now includes `remaining=<n>` so near-miss readiness states are explicit at a glance.
+- Dogfood smoke now includes a scoped memory check (`acolyte memory context all`) to keep memory UX in the readiness loop.
 
 ## Open Narrative Threads
 1. Continue dogfooding ramp from Codex-led to Acolyte-led development.
