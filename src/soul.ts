@@ -10,6 +10,7 @@ type PromptLoadOptions = {
   cwd?: string;
   homeDir?: string;
 };
+export type MemoryContextScope = "all" | "user" | "project";
 
 export function loadSoulPrompt(cwd = process.cwd()): string {
   const soulPath = join(cwd, "docs", "soul.md");
@@ -67,9 +68,14 @@ export function loadSystemPrompt(cwd = process.cwd()): string {
   return agents ? `${soul}\n\n${agents}` : soul;
 }
 
-export async function getMemoryContextEntries(options: PromptLoadOptions = {}) {
+type MemoryContextLoadOptions = PromptLoadOptions & {
+  scope?: MemoryContextScope;
+};
+
+export async function getMemoryContextEntries(options: MemoryContextLoadOptions = {}) {
   const cwd = options.cwd ?? process.cwd();
-  const memories = await listMemories({ cwd, homeDir: options.homeDir, scope: "all" });
+  const scope = options.scope ?? "all";
+  const memories = await listMemories({ cwd, homeDir: options.homeDir, scope });
   return memories.sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, MEMORY_CONTEXT_LIMIT);
 }
 

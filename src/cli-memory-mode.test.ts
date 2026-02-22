@@ -81,6 +81,25 @@ describe("cli memory mode", () => {
     expect(result.stdout.indexOf("use bun run verify")).toBeLessThan(result.stdout.indexOf("prefer concise answers"));
   });
 
+  test("memory context supports scope filtering", async () => {
+    const home = await mkdtemp(join(tmpdir(), "acolyte-memory-cli-home-"));
+    const project = await mkdtemp(join(tmpdir(), "acolyte-memory-cli-project-"));
+    tmpHomes.push(home);
+    tmpProjects.push(project);
+    await mkdir(join(home, ".acolyte"), { recursive: true });
+    await mkdir(join(project, ".acolyte"), { recursive: true });
+
+    await addMemory("user preference", { scope: "user", homeDir: home, cwd: project });
+    await addMemory("project convention", { scope: "project", homeDir: home, cwd: project });
+
+    const result = runCli(home, project, "memory", "context", "project");
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("scope: project");
+    expect(result.stdout).toContain("memory_context: 1");
+    expect(result.stdout).toContain("project convention");
+    expect(result.stdout).not.toContain("user preference");
+  });
+
   test("memory list supports scope filtering", async () => {
     const home = await mkdtemp(join(tmpdir(), "acolyte-memory-cli-home-"));
     const project = await mkdtemp(join(tmpdir(), "acolyte-memory-cli-project-"));
@@ -110,7 +129,19 @@ describe("cli memory mode", () => {
     const result = runCli(home, project, "memory", "foo");
     expect(result.exitCode).toBe(1);
     expect(`${result.stdout}\n${result.stderr}`).toContain(
-      "Usage: acolyte memory [list [all|user|project]|context|add [--user|--project] <text>]",
+      "Usage: acolyte memory [list [all|user|project]|context [all|user|project]|add [--user|--project] <text>]",
     );
+  });
+
+  test("memory context rejects invalid scope", async () => {
+    const home = await mkdtemp(join(tmpdir(), "acolyte-memory-cli-home-"));
+    const project = await mkdtemp(join(tmpdir(), "acolyte-memory-cli-project-"));
+    tmpHomes.push(home);
+    tmpProjects.push(project);
+    await mkdir(join(home, ".acolyte"), { recursive: true });
+
+    const result = runCli(home, project, "memory", "context", "invalid");
+    expect(result.exitCode).toBe(1);
+    expect(`${result.stdout}\n${result.stderr}`).toContain("Usage: acolyte memory context [all|user|project]");
   });
 });

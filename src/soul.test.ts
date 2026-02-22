@@ -95,4 +95,20 @@ describe("soul prompt loading", () => {
       rmSync(home, { recursive: true, force: true });
     }
   });
+
+  test("getMemoryContextEntries supports scope filtering", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "acolyte-system-"));
+    const home = mkdtempSync(join(tmpdir(), "acolyte-home-"));
+    try {
+      await addMemory("user memory", { cwd: dir, homeDir: home, scope: "user" });
+      await addMemory("project memory", { cwd: dir, homeDir: home, scope: "project" });
+      const userEntries = await getMemoryContextEntries({ cwd: dir, homeDir: home, scope: "user" });
+      const projectEntries = await getMemoryContextEntries({ cwd: dir, homeDir: home, scope: "project" });
+      expect(userEntries.map((entry) => entry.content)).toEqual(["user memory"]);
+      expect(projectEntries.map((entry) => entry.content)).toEqual(["project memory"]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+      rmSync(home, { recursive: true, force: true });
+    }
+  });
 });

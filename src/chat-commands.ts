@@ -4,7 +4,7 @@ import type { Backend } from "./backend";
 import { suggestClosestSlashCommand } from "./chat-slash";
 import { addMemory, listMemories } from "./memory";
 import { distillPolicyCandidatesFromSessions, distillPolicyFromSessions, parseDistillOptions } from "./policy-distill";
-import { getMemoryContextEntries } from "./soul";
+import { getMemoryContextEntries, type MemoryContextScope } from "./soul";
 import { formatStatusOutput } from "./status-format";
 import { createSession } from "./storage";
 import type { Session, SessionStore } from "./types";
@@ -143,6 +143,20 @@ function buildDogfoodPrompt(task: string): string {
   return `${preamble}${task}`;
 }
 
+function parseMemoryContextScope(parts: string[]): MemoryContextScope | null {
+  if (parts.length === 2) {
+    return "all";
+  }
+  if (parts.length !== 3) {
+    return null;
+  }
+  const scope = parts[2];
+  if (scope === "all" || scope === "user" || scope === "project") {
+    return scope;
+  }
+  return null;
+}
+
 export async function dispatchSlashCommand(ctx: CommandContext): Promise<CommandResult> {
   const { text, resolvedText } = ctx;
   const memoryApi = {
@@ -259,21 +273,32 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     return { stop: true, userText: text, runVerifyAfterReply: false };
   }
 
-  if (resolvedText === "/memory context") {
+  if (resolvedText === "/memory context" || resolvedText.startsWith("/memory context ")) {
     pushUserCommandRow();
-    const entries = await memoryApi.getMemoryContextEntries();
+    const parts = resolvedText.split(/\s+/);
+    const scope = parseMemoryContextScope(parts);
+    if (!scope) {
+      ctx.setRows((current) => [...current, row("system", "Usage: /memory context [all|user|project]")]);
+      return { stop: true, userText: text, runVerifyAfterReply: false };
+    }
+    const entries = await memoryApi.getMemoryContextEntries({ scope });
     if (entries.length === 0) {
-      ctx.setRows((current) => [...current, row("assistant", "No memory context is currently injected.")]);
+      const scopeLabel = scope === "all" ? "injected" : `${scope} injected`;
+      ctx.setRows((current) => [
+        ...current,
+        row("assistant", `No ${scopeLabel} memory context is currently injected.`),
+      ]);
       return { stop: true, userText: text, runVerifyAfterReply: false };
     }
     const lines = entries.map((entry) => `${entry.scope}: ${entry.content}`);
-    ctx.setRows((current) => [...current, row("assistant", `Memory context ${entries.length}\n\n${lines.join("\n")}`)]);
+    const header = scope === "all" ? `Memory context ${entries.length}` : `Memory context ${scope} ${entries.length}`;
+    ctx.setRows((current) => [...current, row("assistant", `${header}\n\n${lines.join("\n")}`)]);
     return { stop: true, userText: text, runVerifyAfterReply: false };
   }
 
   if (resolvedText.startsWith("/memory ")) {
     pushUserCommandRow();
-    ctx.setRows((current) => [...current, row("system", "Usage: /memory [context]")]);
+    ctx.setRows((current) => [...current, row("system", "Usage: /memory [context [all|user|project]]")]);
     return { stop: true, userText: text, runVerifyAfterReply: false };
   }
 

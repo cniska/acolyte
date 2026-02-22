@@ -1063,13 +1063,23 @@ async function memoryMode(args: string[]): Promise<void> {
   }
 
   if (subcommand === "context") {
-    const rows = await getMemoryContextEntries();
+    const scopeRaw = rest[0];
+    const scope = scopeRaw && validScopes.has(scopeRaw) ? scopeRaw : "all";
+    if (scopeRaw && !validScopes.has(scopeRaw)) {
+      printError("Usage: acolyte memory context [all|user|project]");
+      process.exitCode = 1;
+      return;
+    }
+    const rows = await getMemoryContextEntries({ scope: scope as "all" | "user" | "project" });
+    printInfo(`scope: ${scope}`);
     printInfo(`memory_context: ${rows.length}`);
     printMemoryRows(rows);
     return;
   }
 
-  printError("Usage: acolyte memory [list [all|user|project]|context|add [--user|--project] <text>]");
+  printError(
+    "Usage: acolyte memory [list [all|user|project]|context [all|user|project]|add [--user|--project] <text>]",
+  );
   process.exitCode = 1;
 }
 
