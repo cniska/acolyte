@@ -143,6 +143,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Dogfood gate delivery diagnostics now surface `scoped` and `scanned` commit counts for clearer readiness debugging.
 - Latest dogfood skip-verify gate on February 22, 2026 remained `ready` at 6/6 delivery slices (lookback 10).
 - Assistant output cleanup now also strips recap lead-ins that use an em dash (`Recap — ...`) to reduce scaffold leakage.
+- `om:soak` now supports `--help` and common camelCase flag aliases (`--delayMs`, `--checkpointEvery`, `--sessionId`, `--wipeBefore`) for smoother local diagnostics.
 
 ## Open Narrative Threads
 1. Continue dogfooding ramp from Codex-led to Acolyte-led development.
