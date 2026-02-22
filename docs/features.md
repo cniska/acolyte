@@ -33,6 +33,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Memory commands in chat: `/remember [--project] <text>`, `/memory`, `/memory context [all|user|project]` (alias: `/mem`).
 - Memory context selection is now globally sorted by timestamp across user/project scopes before injection.
 - Non-chat CLI also supports `acolyte memory context [all|user|project]` for scriptable memory-context inspection.
+- Saved memory context and observational memory (OM) are separate layers and can be inspected independently (`memory context` vs `om:*` tools/status fields).
 - OM admin safety: `om:wipe` requires explicit `--yes` confirmation.
 - Automatic memory-context injection from saved user/project memories.
 - Mastra Studio agent memory with observational memory enabled (resource scope).

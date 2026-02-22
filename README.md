@@ -57,6 +57,17 @@ bun run db:smoke
 - Secrets are env-only (`OPENAI_API_KEY`, `ACOLYTE_API_KEY`, provider keys)
 - Provider/model routing supports role lanes with fallback
 
+## Memory Layers
+
+- Saved memory context:
+  - Stored in markdown memory files (`user` + `project` scopes).
+  - Injected into prompts as "User memory context".
+  - Inspect with `acolyte memory context [all|user|project]` or in chat via `/memory context [all|user|project]`.
+- Observational memory (OM):
+  - Managed by Mastra memory and updated from conversation turns.
+  - Reflected in backend status fields such as `om`, `om_state`, and `memory_context`.
+  - Inspect with `bun run om:status`; wipe manually only with `bun run om:wipe -- --yes`.
+
 Example `~/.acolyte/config.toml`:
 
 ```toml
