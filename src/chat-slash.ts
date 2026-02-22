@@ -16,6 +16,11 @@ export const CHAT_SLASH_COMMANDS = [
   "/tokens",
   "/exit",
 ] as const;
+const MEMORY_CONTEXT_SCOPE_COMMANDS = [
+  "/memory context all",
+  "/memory context user",
+  "/memory context project",
+] as const;
 
 const SLASH_ALIASES: Record<string, string> = {
   "/df": "/dogfood",
@@ -49,6 +54,21 @@ export function suggestSlashCommands(inputValue: string, max = 5): string[] {
   const value = inputValue.trim();
   if (!value.startsWith("/")) {
     return [];
+  }
+  const scopeCandidate = inputValue.trimStart();
+  const isMemoryContextScope =
+    scopeCandidate.startsWith("/memory context ") ||
+    scopeCandidate === "/memory context " ||
+    scopeCandidate.startsWith("/mem context ") ||
+    scopeCandidate === "/mem context ";
+  if (isMemoryContextScope) {
+    const canonical = scopeCandidate.startsWith("/mem context")
+      ? scopeCandidate.replace(/^\/mem context/, "/memory context")
+      : scopeCandidate;
+    const scopeMatches = MEMORY_CONTEXT_SCOPE_COMMANDS.filter((command) => command.startsWith(canonical));
+    if (scopeMatches.length > 0) {
+      return scopeMatches.slice(0, max);
+    }
   }
   const matches = CHAT_SLASH_COMMANDS.filter((command) => command.startsWith(value));
   if (matches.length > 0) {
