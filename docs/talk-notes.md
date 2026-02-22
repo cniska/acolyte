@@ -145,6 +145,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Assistant output cleanup now also strips recap lead-ins that use an em dash (`Recap — ...`) to reduce scaffold leakage.
 - `om:soak` now supports `--help` and common camelCase flag aliases (`--delayMs`, `--checkpointEvery`, `--sessionId`, `--wipeBefore`) for smoother local diagnostics.
 - Resume hints now fall back to `bun run src/cli.ts resume ...` when `acolyte` is not available on PATH, reducing setup friction on fresh machines.
+- CLI memory mode now rejects extra positional args for `memory list/context` (no silent argument drops).
 
 ## Open Narrative Threads
 1. Continue dogfooding ramp from Codex-led to Acolyte-led development.
