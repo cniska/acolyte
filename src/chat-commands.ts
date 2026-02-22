@@ -82,10 +82,11 @@ export function formatTokenUsageOutput(last: TokenUsageEntry | null, all: TokenU
       value: `${last.usage.promptTokens}/${last.usage.promptBudgetTokens}${last.usage.promptTruncated ? " (trimmed)" : ""}`,
     });
   }
-  if (last.warning) {
+  const latestWarning = [...all].reverse().find((entry) => Boolean(entry.warning))?.warning;
+  if (latestWarning) {
     rows.push({
-      key: "warning:",
-      value: last.warning,
+      key: "latest_warning:",
+      value: latestWarning,
     });
   }
   const maxKey = rows.reduce((max, row) => Math.max(max, row.key.length), 0);

@@ -84,8 +84,31 @@ describe("chat-commands", () => {
       warning: "context trimmed (8/42 history messages)",
     };
     const output = formatTokenUsageOutput(usage, [usage]);
-    expect(output).toContain("warning:");
+    expect(output).toContain("latest_warning:");
     expect(output).toContain("context trimmed (8/42 history messages)");
+  });
+
+  test("formatTokenUsageOutput shows latest session warning even when last turn has none", () => {
+    const warned: TokenUsageEntry = {
+      id: "row_warned",
+      usage: {
+        promptTokens: 950,
+        completionTokens: 30,
+        totalTokens: 980,
+      },
+      warning: "context near budget (950/1000 tokens)",
+    };
+    const clean: TokenUsageEntry = {
+      id: "row_clean",
+      usage: {
+        promptTokens: 200,
+        completionTokens: 20,
+        totalTokens: 220,
+      },
+    };
+    const output = formatTokenUsageOutput(clean, [warned, clean]);
+    expect(output).toContain("latest_warning:");
+    expect(output).toContain("context near budget (950/1000 tokens)");
   });
 
   test("dispatchSlashCommand handles /tokens", async () => {
