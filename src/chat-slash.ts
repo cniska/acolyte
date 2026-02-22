@@ -21,6 +21,7 @@ const MEMORY_CONTEXT_SCOPE_COMMANDS = [
   "/memory context user",
   "/memory context project",
 ] as const;
+const MEMORY_SCOPE_COMMANDS = ["/memory all", "/memory user", "/memory project", "/memory context"] as const;
 
 const SLASH_ALIASES: Record<string, string> = {
   "/df": "/dogfood",
@@ -56,6 +57,19 @@ export function suggestSlashCommands(inputValue: string, max = 5): string[] {
     return [];
   }
   const scopeCandidate = inputValue.trimStart();
+  const isMemoryScope =
+    (scopeCandidate.startsWith("/memory ") || scopeCandidate === "/memory ") &&
+    !scopeCandidate.startsWith("/memory context ") &&
+    scopeCandidate !== "/memory context ";
+  if (isMemoryScope || scopeCandidate.startsWith("/mem ") || scopeCandidate === "/mem ") {
+    const canonical = scopeCandidate.startsWith("/mem ")
+      ? scopeCandidate.replace(/^\/mem /, "/memory ")
+      : scopeCandidate;
+    const scopeMatches = MEMORY_SCOPE_COMMANDS.filter((command) => command.startsWith(canonical));
+    if (scopeMatches.length > 0) {
+      return scopeMatches.slice(0, max);
+    }
+  }
   const isMemoryContextScope =
     scopeCandidate.startsWith("/memory context ") ||
     scopeCandidate === "/memory context " ||
