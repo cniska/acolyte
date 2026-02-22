@@ -65,6 +65,7 @@ describe("cli memory mode", () => {
     expect(result.stdout).toContain("memory_context: 2");
     expect(result.stdout).toContain("scope:   project");
     expect(result.stdout).toContain("scope:   user");
+    expect(result.stdout.indexOf("use bun run verify")).toBeLessThan(result.stdout.indexOf("prefer concise answers"));
   });
 
   test("memory list supports scope filtering", async () => {
