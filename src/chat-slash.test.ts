@@ -37,6 +37,7 @@ describe("chat-slash helpers", () => {
     expect(resolveSlashAlias("/df")).toBe("/dogfood");
     expect(resolveSlashAlias("/session")).toBe("/sessions");
     expect(resolveSlashAlias("/mem")).toBe("/memory");
+    expect(resolveSlashAlias("/mem context")).toBe("/memory context");
     expect(resolveSlashAlias("/rem fix naming")).toBe("/remember fix naming");
     expect(resolveSlashAlias("plain")).toBe("plain");
   });
