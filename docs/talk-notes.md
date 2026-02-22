@@ -155,6 +155,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Dogfood gate delivery detail now includes `remaining=<n>` so near-miss readiness states are explicit at a glance.
 - Dogfood smoke now includes a scoped memory check (`acolyte memory context all`) to keep memory UX in the readiness loop.
 - Added explicit alias regression coverage for scoped memory slash forms (`/mem user|project|context user`).
+- Simplified chat memory usage guidance to a two-form usage line: `/memory [scope] | /memory context [scope]`.
 
 ## Open Narrative Threads
 1. Continue dogfooding ramp from Codex-led to Acolyte-led development.
