@@ -20,6 +20,7 @@ import {
 import { type AcolyteConfig, readConfig, readConfigForScope, setConfigValue, unsetConfigValue } from "./config";
 import { buildFileContext } from "./file-context";
 import { addMemory, listMemories } from "./memory";
+import { getMemoryContextEntries } from "./soul";
 import { formatStatusOutput as formatStatusOutputShared } from "./status-format";
 import { createSession, readStore, writeStore } from "./storage";
 import type { Message, Session, SessionStore } from "./types";
@@ -1061,7 +1062,14 @@ async function memoryMode(args: string[]): Promise<void> {
     return;
   }
 
-  printError("Usage: acolyte memory [list [all|user|project]|add [--user|--project] <text>]");
+  if (subcommand === "context") {
+    const rows = await getMemoryContextEntries();
+    printInfo(`memory_context: ${rows.length}`);
+    printMemoryRows(rows);
+    return;
+  }
+
+  printError("Usage: acolyte memory [list [all|user|project]|context|add [--user|--project] <text>]");
   process.exitCode = 1;
 }
 
