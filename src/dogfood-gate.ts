@@ -192,9 +192,18 @@ function summarizeGate(checks: GateCheck[]): { ok: boolean; lines: string[] } {
   return { ok, lines };
 }
 
+function printUsage(): void {
+  console.log("Usage: bun run dogfood:gate [--lookback N] [--target N] [--skip-verify] [--skip-smoke]");
+}
+
 async function main(): Promise<void> {
   try {
-    const args = parseArgs(process.argv.slice(2));
+    const argv = process.argv.slice(2);
+    if (argv.includes("--help") || argv.includes("-h")) {
+      printUsage();
+      return;
+    }
+    const args = parseArgs(argv);
     const checks: GateCheck[] = [];
 
     if (!args.skipVerify) {

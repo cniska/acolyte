@@ -206,9 +206,18 @@ function printProgress(commits: Commit[], args: ProgressArgs): void {
   }
 }
 
+function printUsage(): void {
+  console.log("Usage: bun run dogfood:progress [--since YYYY-MM-DD] [--lookback N] [--target N] [--json]");
+}
+
 async function main(): Promise<void> {
   try {
-    const args = parseArgs(process.argv.slice(2));
+    const argv = process.argv.slice(2);
+    if (argv.includes("--help") || argv.includes("-h")) {
+      printUsage();
+      return;
+    }
+    const args = parseArgs(argv);
     const commits = runGitLog(args);
     printProgress(commits, args);
   } catch (error) {
