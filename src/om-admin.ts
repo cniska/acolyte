@@ -77,11 +77,16 @@ async function wipe(resourceIdArg?: string): Promise<void> {
   console.log(`Wiped OM for ${payload.resourceId}: ${payload.wiped ? "ok" : "no-op"}`);
 }
 
-export function parseArgs(args: string[]): { resourceId?: string; yes: boolean; unknown: string[] } {
+export function parseArgs(args: string[]): { resourceId?: string; yes: boolean; help: boolean; unknown: string[] } {
   let resourceId: string | undefined;
   let yes = false;
+  let help = false;
   const unknown: string[] = [];
   for (const arg of args) {
+    if (arg === "--help" || arg === "-h") {
+      help = true;
+      continue;
+    }
     if (arg === "--yes") {
       yes = true;
       continue;
@@ -99,14 +104,19 @@ export function parseArgs(args: string[]): { resourceId?: string; yes: boolean; 
   const schema = z.object({
     resourceId: z.string().min(1).optional(),
     yes: z.boolean(),
+    help: z.boolean(),
     unknown: z.array(z.string()),
   });
-  return schema.parse({ resourceId, yes, unknown });
+  return schema.parse({ resourceId, yes, help, unknown });
 }
 
 async function main(): Promise<void> {
   const [cmd, ...rest] = process.argv.slice(2);
   const parsed = parseArgs(rest);
+  if (parsed.help) {
+    usage();
+    return;
+  }
   if (parsed.unknown.length > 0) {
     usage();
     throw new Error(`Unknown arguments: ${parsed.unknown.join(" ")}`);
