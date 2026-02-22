@@ -73,7 +73,7 @@ describe("dogfood gate", () => {
       },
       { delivery: 7, target: 6, percent: 100, commitsTotal: 10, commitsScanned: 13 },
     );
-    expect(detail).toBe("7/6 (100%, scoped=10 scanned=13)");
+    expect(detail).toBe("7/6 (100%, remaining=0 scoped=10 scanned=13)");
   });
 
   test("progressDetail includes signal line on parse failure", () => {

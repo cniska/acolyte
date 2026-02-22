@@ -171,9 +171,11 @@ function progressDetail(
   } | null,
 ): string {
   if (result.ok && parsed) {
+    const remaining = Math.max(0, parsed.target - parsed.delivery);
+    const remainingDetail = `remaining=${remaining}`;
     const scoped = parsed.commitsTotal !== undefined ? `scoped=${parsed.commitsTotal}` : undefined;
     const scanned = parsed.commitsScanned !== undefined ? `scanned=${parsed.commitsScanned}` : undefined;
-    const extras = [scoped, scanned].filter((value): value is string => Boolean(value));
+    const extras = [remainingDetail, scoped, scanned].filter((value): value is string => Boolean(value));
     return extras.length > 0
       ? `${parsed.delivery}/${parsed.target} (${parsed.percent}%, ${extras.join(" ")})`
       : `${parsed.delivery}/${parsed.target} (${parsed.percent}%)`;
