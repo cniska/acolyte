@@ -49,6 +49,19 @@ function runCli(
 }
 
 describe("cli memory mode", () => {
+  test("memory context handles empty state", async () => {
+    const home = await mkdtemp(join(tmpdir(), "acolyte-memory-cli-home-"));
+    const project = await mkdtemp(join(tmpdir(), "acolyte-memory-cli-project-"));
+    tmpHomes.push(home);
+    tmpProjects.push(project);
+    await mkdir(join(home, ".acolyte"), { recursive: true });
+
+    const result = runCli(home, project, "memory", "context");
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("memory_context: 0");
+    expect(result.stdout).toContain("No memories saved.");
+  });
+
   test("memory context shows injected memory count and entries", async () => {
     const home = await mkdtemp(join(tmpdir(), "acolyte-memory-cli-home-"));
     const project = await mkdtemp(join(tmpdir(), "acolyte-memory-cli-project-"));
