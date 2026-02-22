@@ -105,6 +105,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Added production-style session resume flow: top-level `acolyte resume [id-prefix]` and an exit-time resume hint command.
 - Kept user slash-command surface minimal by moving tool-like commands (`/changes`, `/web`, `/fetch`) out of chat UX and retaining them only as internal agent/debug paths.
 - `/status` nested sections now use stacked `key: value` rows for easier scanning during backend/debug checks.
+- `/status` nested sections now also align nested keys (for example `main/planner/coder/reviewer`) to improve scan speed.
 - Biome recommended lint rules are now enabled in the main config (`biome.json`) with zero current diagnostics.
 - Config token budgeting now has hard caps (context/message/attachment/pinned + OM thresholds) to prevent runaway values.
 - Permission default is now `read` mode, reducing accidental write/shell actions in fresh sessions.
