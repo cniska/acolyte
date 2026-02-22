@@ -340,6 +340,12 @@ describe("chat-commands", () => {
     expect(rows.some((row) => row.content === "Usage: /memory context [all|user|project]")).toBe(true);
   });
 
+  test("dispatchSlashCommand validates /memory context extra args", async () => {
+    const { rows, stop } = await runCommand("/memory context all extra");
+    expect(stop).toBe(true);
+    expect(rows.some((row) => row.content === "Usage: /memory context [all|user|project]")).toBe(true);
+  });
+
   test("dispatchSlashCommand handles /memory with entries", async () => {
     const memoryApi = {
       listMemories: async () => [
