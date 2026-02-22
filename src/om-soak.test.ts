@@ -33,6 +33,28 @@ describe("om-soak options", () => {
     });
   });
 
+  test("parseOptions accepts camelCase flag aliases", () => {
+    expect(
+      parseOptions([
+        "--turns",
+        "12",
+        "--delayMs",
+        "25",
+        "--checkpointEvery",
+        "3",
+        "--sessionId",
+        "sess_camel",
+        "--wipeBefore",
+      ]),
+    ).toEqual({
+      turns: 12,
+      delayMs: 25,
+      checkpointEvery: 3,
+      sessionId: "sess_camel",
+      wipeBefore: true,
+    });
+  });
+
   test("parseOptions rejects invalid numeric values", () => {
     expect(() => parseOptions(["--turns", "0"])).toThrow("Invalid --turns value.");
     expect(() => parseOptions(["--delay-ms", "-1"])).toThrow("Invalid --delay-ms value.");

@@ -79,7 +79,7 @@ function parseOptions(argv: string[]): SoakOptions {
       i += 1;
       continue;
     }
-    if (token === "--delay-ms") {
+    if (token === "--delay-ms" || token === "--delayMs") {
       const value = argv[i + 1];
       if (!value) {
         throw new Error("Invalid --delay-ms value.");
@@ -88,7 +88,7 @@ function parseOptions(argv: string[]): SoakOptions {
       i += 1;
       continue;
     }
-    if (token === "--checkpoint-every") {
+    if (token === "--checkpoint-every" || token === "--checkpointEvery") {
       const value = argv[i + 1];
       if (!value) {
         throw new Error("Invalid --checkpoint-every value.");
@@ -97,7 +97,7 @@ function parseOptions(argv: string[]): SoakOptions {
       i += 1;
       continue;
     }
-    if (token === "--session-id") {
+    if (token === "--session-id" || token === "--sessionId") {
       const value = (argv[i + 1] ?? "").trim();
       if (!value) {
         throw new Error("Invalid --session-id value.");
@@ -106,7 +106,7 @@ function parseOptions(argv: string[]): SoakOptions {
       i += 1;
       continue;
     }
-    if (token === "--wipe-before") {
+    if (token === "--wipe-before" || token === "--wipeBefore") {
       raw.wipeBefore = true;
       continue;
     }
@@ -135,6 +135,13 @@ function parseOptions(argv: string[]): SoakOptions {
 
 function nowIso(): string {
   return new Date().toISOString();
+}
+
+function printUsage(): void {
+  console.log(
+    "Usage: bun run om:soak -- [--turns N] [--delay-ms N] [--checkpoint-every N] [--session-id ID] [--wipe-before]",
+  );
+  console.log("Aliases: --delayMs --checkpointEvery --sessionId --wipeBefore");
 }
 
 function makeMessage(role: Message["role"], content: string): Message {
@@ -208,7 +215,12 @@ async function checkpoint(url: string, turn: number): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  const options = parseOptions(process.argv.slice(2));
+  const args = process.argv.slice(2);
+  if (args.includes("--help") || args.includes("-h")) {
+    printUsage();
+    return;
+  }
+  const options = parseOptions(args);
   const url = baseUrl();
   const model = appConfig.models.main;
   const history: Message[] = [];
