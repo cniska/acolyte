@@ -123,10 +123,6 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
     warning: reply.budgetWarning,
   };
 
-  if (reply.budgetWarning) {
-    rows.push(row("assistant", `token budget: ${reply.budgetWarning}`, true));
-  }
-
   if (params.runVerifyAfterReply) {
     rows.push(row("system", "  verifying…", true));
     try {
