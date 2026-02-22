@@ -38,11 +38,23 @@ export function formatStatusOutput(status: string): string {
     if (filtered.length === 0) {
       return;
     }
-    const parts = filtered.map(([key, value], index) => {
-      if (plainFirst && index === 0 && key === "status") {
-        return value;
+    const keyed = filtered.map(([key, value], index) => ({
+      key,
+      value,
+      plain: plainFirst && index === 0 && key === "status",
+    }));
+    const nestedKeyMax = keyed.reduce((max, entry) => {
+      if (entry.plain) {
+        return max;
       }
-      return `${key}: ${value}`;
+      return Math.max(max, `${entry.key}:`.length);
+    }, 0);
+    const parts = keyed.map((entry) => {
+      if (entry.plain) {
+        return entry.value;
+      }
+      const nestedKey = `${entry.key}:`.padEnd(nestedKeyMax, " ");
+      return `${nestedKey} ${entry.value}`;
     });
     if (forceHeaderRow) {
       output.push(`${label}:${["", ...parts].join("\n")}`);

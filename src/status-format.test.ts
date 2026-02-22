@@ -32,26 +32,26 @@ describe("status format", () => {
     );
 
     expect(output).toContain("models:");
-    expect(output).toContain("           main: gpt-5-mini");
-    expect(output).toContain("           planner: o3");
-    expect(output).toContain("           coder: gpt-5-codex");
-    expect(output).toContain("           reviewer: gpt-5");
+    expect(output).toMatch(/\n\s+main:\s+gpt-5-mini/);
+    expect(output).toMatch(/\n\s+planner:\s+o3/);
+    expect(output).toMatch(/\n\s+coder:\s+gpt-5-codex/);
+    expect(output).toMatch(/\n\s+reviewer:\s+gpt-5/);
     expect(output).toContain("providers:");
-    expect(output).toContain("           main: openai");
-    expect(output).toContain("           planner: openai");
-    expect(output).toContain("           coder: anthropic");
-    expect(output).toContain("           reviewer: gemini");
+    expect(output).toMatch(/\n\s+main:\s+openai/);
+    expect(output).toMatch(/\n\s+planner:\s+openai/);
+    expect(output).toMatch(/\n\s+coder:\s+anthropic/);
+    expect(output).toMatch(/\n\s+reviewer:\s+gemini/);
     expect(output).toContain("provider_ready:");
-    expect(output).toContain("               main: true");
-    expect(output).toContain("               planner: true");
-    expect(output).toContain("               coder: false");
-    expect(output).toContain("               reviewer: true");
+    expect(output).toMatch(/\n\s+main:\s+true/);
+    expect(output).toMatch(/\n\s+planner:\s+true/);
+    expect(output).toMatch(/\n\s+coder:\s+false/);
+    expect(output).toMatch(/\n\s+reviewer:\s+true/);
     expect(output).toMatch(/om:\s+enabled/);
-    expect(output).toContain("           scope: resource");
-    expect(output).toContain("           model: gpt-5-mini");
+    expect(output).toMatch(/\n\s+scope:\s+resource/);
+    expect(output).toMatch(/\n\s+model:\s+gpt-5-mini/);
     expect(output).toContain("om_tokens:");
-    expect(output).toContain("           obs: 3000");
-    expect(output).toContain("           ref: 8000");
+    expect(output).toMatch(/\n\s+obs:\s+3000/);
+    expect(output).toMatch(/\n\s+ref:\s+8000/);
   });
 
   test("omits duplicate model when model_main matches", () => {
@@ -59,8 +59,8 @@ describe("status format", () => {
 
     expect(output).not.toContain("model:       gpt-5-mini");
     expect(output).toContain("models:");
-    expect(output).toContain("main: gpt-5-mini");
-    expect(output).toContain("coder: gpt-5-codex");
+    expect(output).toMatch(/\n\s+main:\s+gpt-5-mini/);
+    expect(output).toMatch(/\n\s+coder:\s+gpt-5-codex/);
   });
 
   test("strips provider prefix from model display fields", () => {
@@ -69,10 +69,10 @@ describe("status format", () => {
     );
 
     expect(output).not.toContain("model: openai/gpt-5-mini");
-    expect(output).toContain("main: gpt-5-mini");
-    expect(output).toContain("planner: claude-sonnet-4");
-    expect(output).toContain("coder: gemini-2.5-pro");
-    expect(output).toContain("reviewer: qwen2.5-coder");
+    expect(output).toMatch(/\n\s+main:\s+gpt-5-mini/);
+    expect(output).toMatch(/\n\s+planner:\s+claude-sonnet-4/);
+    expect(output).toMatch(/\n\s+coder:\s+gemini-2.5-pro/);
+    expect(output).toMatch(/\n\s+reviewer:\s+qwen2.5-coder/);
   });
 
   test("formats OM state timestamps when present", () => {
@@ -81,10 +81,10 @@ describe("status format", () => {
     );
 
     expect(output).toContain("om_state:");
-    expect(output).toContain("exists: true");
-    expect(output).toContain("gen: 7");
-    expect(output).toContain("last_observed: 2026-02-21T10:10:53.908Z");
-    expect(output).toContain("last_reflection: 2026-02-21T10:15:00.000Z");
+    expect(output).toMatch(/\n\s+exists:\s+true/);
+    expect(output).toMatch(/\n\s+gen:\s+7/);
+    expect(output).toMatch(/\n\s+last_observed:\s+2026-02-21T10:10:53.908Z/);
+    expect(output).toMatch(/\n\s+last_reflection:\s+2026-02-21T10:15:00.000Z/);
   });
 
   test("keeps OM subkeys when enabled flag is absent", () => {
@@ -100,5 +100,13 @@ describe("status format", () => {
     expect(output).toContain("om:       enabled");
     expect(output).toContain("          scope: resource");
     expect(output).not.toContain("status: enabled");
+  });
+
+  test("aligns nested keys inside stacked groups", () => {
+    const output = formatStatusOutput("provider=openai model_main=gpt-5-mini model_planner=o3 model_reviewer=gpt-5");
+    expect(output).toContain("models:");
+    expect(output).toContain("          main:     gpt-5-mini");
+    expect(output).toContain("          planner:  o3");
+    expect(output).toContain("          reviewer: gpt-5");
   });
 });

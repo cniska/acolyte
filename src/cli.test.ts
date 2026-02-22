@@ -116,20 +116,20 @@ describe("cli formatting helpers", () => {
     expect(out).not.toMatch(/mode:\s+openai/);
     expect(out).not.toMatch(/^model:\s+gpt-5-mini$/m);
     expect(out).toContain("models:");
-    expect(out).toContain("main: gpt-5-mini");
-    expect(out).toContain("planner: o3");
-    expect(out).toContain("coder: gpt-5-codex");
-    expect(out).toContain("reviewer: gpt-5-mini");
+    expect(out).toMatch(/\n\s+main:\s+gpt-5-mini/);
+    expect(out).toMatch(/\n\s+planner:\s+o3/);
+    expect(out).toMatch(/\n\s+coder:\s+gpt-5-codex/);
+    expect(out).toMatch(/\n\s+reviewer:\s+gpt-5-mini/);
     expect(out).toContain("providers:");
-    expect(out).toContain("main: openai");
-    expect(out).toContain("planner: openai");
-    expect(out).toContain("coder: anthropic");
-    expect(out).toContain("reviewer: gemini");
+    expect(out).toMatch(/\n\s+main:\s+openai/);
+    expect(out).toMatch(/\n\s+planner:\s+openai/);
+    expect(out).toMatch(/\n\s+coder:\s+anthropic/);
+    expect(out).toMatch(/\n\s+reviewer:\s+gemini/);
     expect(out).toContain("provider_ready:");
-    expect(out).toContain("main: true");
-    expect(out).toContain("planner: true");
-    expect(out).toContain("coder: false");
-    expect(out).toContain("reviewer: true");
+    expect(out).toMatch(/\n\s+main:\s+true/);
+    expect(out).toMatch(/\n\s+planner:\s+true/);
+    expect(out).toMatch(/\n\s+coder:\s+false/);
+    expect(out).toMatch(/\n\s+reviewer:\s+true/);
     expect(out).toMatch(/memory:\s+postgres/);
     expect(out).toMatch(/memory_context:\s+7/);
     expect(out).toContain("om:");
@@ -137,11 +137,11 @@ describe("cli formatting helpers", () => {
     expect(out).toContain("scope: resource");
     expect(out).toContain("model: gpt-5-mini");
     expect(out).toContain("om_tokens:");
-    expect(out).toContain("obs: 3000");
-    expect(out).toContain("ref: 8000");
+    expect(out).toMatch(/\n\s+obs:\s+3000/);
+    expect(out).toMatch(/\n\s+ref:\s+8000/);
     expect(out).toContain("om_state:");
-    expect(out).toContain("exists: true");
-    expect(out).toContain("gen: 4");
+    expect(out).toMatch(/\n\s+exists:\s+true/);
+    expect(out).toMatch(/\n\s+gen:\s+4/);
   });
 
   test("formatKeyValueLines aligns key/value rows", () => {
