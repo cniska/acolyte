@@ -182,6 +182,11 @@ describe("finalizeAssistantOutput", () => {
     expect(finalizeAssistantOutput(raw)).toBe(["1. fix null checks", "2. add try/catch"].join("\n"));
   });
 
+  test("strips recap lead-in lines with em dash", () => {
+    const raw = ["Recap — two small fixes.", "", "1) fix null checks", "2) add try/catch"].join("\n");
+    expect(finalizeAssistantOutput(raw)).toBe(["1. fix null checks", "2. add try/catch"].join("\n"));
+  });
+
   test("strips quick recap and repo context sections", () => {
     const raw = [
       "Next recommended change: tighten tool error wrapping.",

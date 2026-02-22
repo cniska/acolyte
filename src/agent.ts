@@ -407,7 +407,7 @@ export function finalizeAssistantOutput(output: string, message = ""): string {
         dropAuxSection = true;
         return false;
       }
-      if (/^recap\s*[:-]/i.test(trimmed)) {
+      if (/^recap\s*(?:[:\-—]|$)/i.test(trimmed)) {
         return false;
       }
       if (hasAuxScaffolding && /^ready(?:[,.!]|$|\s*[—-]\s*)/i.test(trimmed)) {
