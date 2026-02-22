@@ -24,6 +24,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - `/status` now includes per-role provider and readiness rows (`providers`, `provider_ready`) for mixed-lane diagnostics.
 - `/status` model rows (including `om.model`) now omit provider prefixes for readability; provider details remain in `providers`.
 - Policy distillation command from chat logs: `/distill [--sessions N] [--min N]`.
+- `/tokens` now includes the latest token-budget warning when context was trimmed or near budget.
 - Distilled policy candidate review picker with explicit `yes/no` confirmation and optional note (`yes also do this`).
 - Skills picker + command support: `/skills` and `$` shortcut.
 - Memory commands in chat: `/remember [--project] <text>`, `/memory`, `/memory context` (alias: `/mem`).
