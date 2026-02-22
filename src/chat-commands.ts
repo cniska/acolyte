@@ -85,7 +85,7 @@ export function formatTokenUsageOutput(last: TokenUsageEntry | null, all: TokenU
   const latestWarning = [...all].reverse().find((entry) => Boolean(entry.warning))?.warning;
   if (latestWarning) {
     rows.push({
-      key: "latest_warning:",
+      key: "warning:",
       value: latestWarning,
     });
   }

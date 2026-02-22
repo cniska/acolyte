@@ -84,7 +84,7 @@ describe("chat-commands", () => {
       warning: "context trimmed (8/42 history messages)",
     };
     const output = formatTokenUsageOutput(usage, [usage]);
-    expect(output).toContain("latest_warning:");
+    expect(output).toContain("warning:");
     expect(output).toContain("context trimmed (8/42 history messages)");
   });
 
@@ -107,7 +107,7 @@ describe("chat-commands", () => {
       },
     };
     const output = formatTokenUsageOutput(clean, [warned, clean]);
-    expect(output).toContain("latest_warning:");
+    expect(output).toContain("warning:");
     expect(output).toContain("context near budget (950/1000 tokens)");
   });
 
