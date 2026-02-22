@@ -28,6 +28,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Skills picker + command support: `/skills` and `$` shortcut.
 - Memory commands in chat: `/remember [--project] <text>`, `/memory`, `/memory context` (alias: `/mem`).
 - Memory context selection is now globally sorted by timestamp across user/project scopes before injection.
+- Non-chat CLI also supports `acolyte memory context` for scriptable memory-context inspection.
 - OM admin safety: `om:wipe` requires explicit `--yes` confirmation.
 - Automatic memory-context injection from saved user/project memories.
 - Mastra Studio agent memory with observational memory enabled (resource scope).
