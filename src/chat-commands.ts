@@ -157,6 +157,20 @@ function parseMemoryContextScope(parts: string[]): MemoryContextScope | null {
   return null;
 }
 
+function parseMemoryListScope(parts: string[]): MemoryContextScope | null {
+  if (parts.length === 1) {
+    return "all";
+  }
+  if (parts.length !== 2) {
+    return null;
+  }
+  const scope = parts[1];
+  if (scope === "all" || scope === "user" || scope === "project") {
+    return scope;
+  }
+  return null;
+}
+
 export async function dispatchSlashCommand(ctx: CommandContext): Promise<CommandResult> {
   const { text, resolvedText } = ctx;
   const memoryApi = {
@@ -261,15 +275,29 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     return { stop: true, userText: text, runVerifyAfterReply: false };
   }
 
-  if (resolvedText === "/memory") {
+  if (
+    resolvedText === "/memory" ||
+    (resolvedText.startsWith("/memory ") && !resolvedText.startsWith("/memory context"))
+  ) {
     pushUserCommandRow();
-    const memories = await memoryApi.listMemories();
+    const parts = resolvedText.split(/\s+/);
+    const scope = parseMemoryListScope(parts);
+    if (!scope) {
+      ctx.setRows((current) => [
+        ...current,
+        row("system", "Usage: /memory [all|user|project|context [all|user|project]]"),
+      ]);
+      return { stop: true, userText: text, runVerifyAfterReply: false };
+    }
+    const memories = await memoryApi.listMemories({ scope });
     if (memories.length === 0) {
-      ctx.setRows((current) => [...current, row("assistant", "No memory saved yet.")]);
+      const scopeLabel = scope === "all" ? "" : `${scope} `;
+      ctx.setRows((current) => [...current, row("assistant", `No ${scopeLabel}memory saved yet.`)]);
       return { stop: true, userText: text, runVerifyAfterReply: false };
     }
     const lines = memories.slice(0, 10).map((entry) => `${entry.scope}: ${entry.content}`);
-    ctx.setRows((current) => [...current, row("assistant", `Memory ${memories.length}\n\n${lines.join("\n")}`)]);
+    const header = scope === "all" ? `Memory ${memories.length}` : `Memory ${scope} ${memories.length}`;
+    ctx.setRows((current) => [...current, row("assistant", `${header}\n\n${lines.join("\n")}`)]);
     return { stop: true, userText: text, runVerifyAfterReply: false };
   }
 
@@ -295,7 +323,10 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
 
   if (resolvedText.startsWith("/memory ")) {
     pushUserCommandRow();
-    ctx.setRows((current) => [...current, row("system", "Usage: /memory [context [all|user|project]]")]);
+    ctx.setRows((current) => [
+      ...current,
+      row("system", "Usage: /memory [all|user|project|context [all|user|project]]"),
+    ]);
     return { stop: true, userText: text, runVerifyAfterReply: false };
   }
 

@@ -30,7 +30,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Token-budget warnings are shown on-demand via `/tokens` (not as inline transcript noise).
 - Distilled policy candidate review picker with explicit `yes/no` confirmation and optional note (`yes also do this`).
 - Skills picker + command support: `/skills` and `$` shortcut.
-- Memory commands in chat: `/remember [--project] <text>`, `/memory`, `/memory context [all|user|project]` (alias: `/mem`).
+- Memory commands in chat: `/remember [--project] <text>`, `/memory [all|user|project]`, `/memory context [all|user|project]` (alias: `/mem`).
 - Memory context selection is now globally sorted by timestamp across user/project scopes before injection.
 - Non-chat CLI also supports `acolyte memory context [all|user|project]` for scriptable memory-context inspection.
 - Saved memory context and observational memory (OM) are separate layers and can be inspected independently (`memory context` vs `om:*` tools/status fields).

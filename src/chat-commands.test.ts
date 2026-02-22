@@ -240,6 +240,27 @@ describe("chat-commands", () => {
     expect(rows.some((row) => row.role === "assistant" && row.content === "No memory saved yet.")).toBe(true);
   });
 
+  test("dispatchSlashCommand handles scoped /memory with empty store", async () => {
+    let receivedScope = "";
+    const memoryApi = {
+      listMemories: async (options?: { scope?: "all" | "user" | "project" }) => {
+        receivedScope = options?.scope ?? "all";
+        return [];
+      },
+      addMemory: async () => ({
+        id: "mem_unused",
+        scope: "user" as const,
+        content: "unused",
+        createdAt: "2026-02-21T00:00:00.000Z",
+      }),
+      getMemoryContextEntries: async () => [],
+    };
+    const { rows, stop } = await runCommand("/memory user", [], createStore(), { memoryApi });
+    expect(stop).toBe(true);
+    expect(receivedScope).toBe("user");
+    expect(rows.some((row) => row.role === "assistant" && row.content === "No user memory saved yet.")).toBe(true);
+  });
+
   test("dispatchSlashCommand handles /memory context with empty context", async () => {
     const memoryApi = {
       listMemories: async () => [],
@@ -350,10 +371,12 @@ describe("chat-commands", () => {
     expect(assistant?.content).toContain("project: use bun scripts");
   });
 
-  test("dispatchSlashCommand validates /memory usage for unknown subcommand", async () => {
+  test("dispatchSlashCommand validates /memory scope usage", async () => {
     const { rows, stop } = await runCommand("/memory foo");
     expect(stop).toBe(true);
-    expect(rows.some((row) => row.content === "Usage: /memory [context [all|user|project]]")).toBe(true);
+    expect(rows.some((row) => row.content === "Usage: /memory [all|user|project|context [all|user|project]]")).toBe(
+      true,
+    );
   });
 
   test("dispatchSlashCommand handles /remember and saves selected scope", async () => {
