@@ -7,6 +7,7 @@ import {
   rankAtReferenceSuggestions,
   shouldAutocompleteAtSubmit,
 } from "./chat-file-ref";
+import { initialTranscriptRows } from "./chat-ui";
 import { createSession, createStore } from "./test-factory";
 
 function createUiStore() {
@@ -98,5 +99,20 @@ describe("chat-ui helpers", () => {
   test("extractAtReferencePaths finds unique @paths in a prompt", () => {
     expect(extractAtReferencePaths("review @AGENTS.md and @docs/soul.md")).toEqual(["AGENTS.md", "docs/soul.md"]);
     expect(extractAtReferencePaths("repeat @AGENTS.md and @AGENTS.md")).toEqual(["AGENTS.md"]);
+  });
+
+  test("initialTranscriptRows hydrates transcript from resumed session messages", () => {
+    const session = createSession({
+      id: "sess_resume1",
+      messages: [
+        { id: "m1", role: "system", content: "Pinned memory", timestamp: "2026-02-23T00:00:00.000Z" },
+        { id: "m2", role: "user", content: "hello", timestamp: "2026-02-23T00:00:01.000Z" },
+        { id: "m3", role: "assistant", content: "hi", timestamp: "2026-02-23T00:00:02.000Z" },
+      ],
+    });
+    expect(initialTranscriptRows(session)).toEqual([
+      { id: "m2", role: "user", content: "hello" },
+      { id: "m3", role: "assistant", content: "hi" },
+    ]);
   });
 });
