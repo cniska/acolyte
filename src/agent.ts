@@ -614,7 +614,7 @@ async function summarizeWithModel(model: string, text: string, stage: "plan" | "
   });
   const stagePrompt =
     stage === "plan"
-      ? "Summarize the intended approach briefly in plain language."
+      ? "Summarize the intended approach briefly in plain language. Use plan wording in present/future tense (for example: 'The plan is to ...')."
       : "Summarize what was done briefly in plain language.";
   const result = await summarizer.generate(
     [stagePrompt, "Max 2 short sentences.", "Output JSON only. No prose outside JSON.", "", text].join("\n"),
@@ -983,6 +983,7 @@ export async function runAgent(input: {
   onProgress?: (message: string) => void;
 }): Promise<ChatResponse> {
   const role = selectAgentRole(input.request.message);
+  const directEditLikely = role === "coder" && isDirectEditRequest(input.request.message);
   const roleSoul = loadRoleSoulPrompt(role);
   const resolved = resolveRunnableModel(role, input.request.model);
   if (!resolved.available) {
@@ -1035,7 +1036,7 @@ export async function runAgent(input: {
 
   let delegationBrief = input.request.message.trim();
   const plannerResolved = resolveRunnableModel("planner", input.request.model);
-  if (role !== "planner" && plannerResolved.available) {
+  if (role !== "planner" && !directEditLikely && plannerResolved.available) {
     try {
       emitProgress(progressStageForRole("planner", plannerResolved.model));
       const plannerSoul = loadRoleSoulPrompt("planner");
@@ -1063,7 +1064,7 @@ export async function runAgent(input: {
     } catch {
       // Best-effort planning; fallback to raw user prompt.
     }
-  } else if (role !== "planner") {
+  } else if (role !== "planner" && !directEditLikely) {
     try {
       const coordinator = createAgent({
         id: "acolyte-coordinator",
@@ -1110,7 +1111,6 @@ export async function runAgent(input: {
     });
   }
 
-  const directEditLikely = role === "coder" && isDirectEditRequest(input.request.message);
   if (directEditLikely && result.toolCalls.length === 0) {
     emitProgress("Retrying with enforced tool execution");
     result = await agent.generate(
@@ -1124,7 +1124,7 @@ export async function runAgent(input: {
     );
   }
 
-  if (directEditLikely && result.toolCalls.length === 0 && isPlanLikeOutput(result.text)) {
+  if (directEditLikely && result.toolCalls.length === 0) {
     const fallback = "I couldn't execute tools for this edit request. Check /status and permissions, then retry.";
     const completionTokens = estimateTokens(fallback);
     return {
