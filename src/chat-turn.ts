@@ -119,7 +119,12 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
   const assistantMessage = params.createMessage("assistant", reply.output);
   const rows: ChatRow[] = [];
   for (const toolId of reply.toolCalls ?? []) {
-    rows.push(row("system", `Tool: ${formatToolLabel(toolId)}`, true));
+    rows.push({
+      id: `row_${crypto.randomUUID()}`,
+      role: "assistant",
+      content: formatToolLabel(toolId),
+      style: "toolProgress",
+    });
   }
   rows.push(row("assistant", reply.output));
   const tokenEntry: TokenUsageEntry = {

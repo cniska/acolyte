@@ -56,8 +56,33 @@ function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === "AbortError";
 }
 
+function formatSubmitError(error: unknown): string {
+  if (!(error instanceof Error)) {
+    return "Request failed. Retry and check backend logs if it keeps failing.";
+  }
+  const message = error.message.trim();
+  const lower = message.toLowerCase();
+  if (lower.includes("insufficient_quota") || lower.includes("quota exceeded") || lower.includes("quota")) {
+    return "Provider quota exceeded. Add billing/credits or switch model/provider.";
+  }
+  if (lower.includes("shell command execution is disabled in read mode")) {
+    return "Write action blocked in read mode. Run /permissions write and retry.";
+  }
+  if (
+    lower.includes("backend unavailable") ||
+    lower.includes("connection refused") ||
+    lower.includes("socket connection was closed unexpectedly")
+  ) {
+    return "Backend unavailable. Start the backend and retry.";
+  }
+  if (lower.includes("remote backend error")) {
+    return message;
+  }
+  return message || "Request failed. Retry and check backend logs if it keeps failing.";
+}
+
 function isLikelyWritePrompt(text: string): boolean {
-  return /\b(edit|modify|update|change|refactor|rewrite|rename|create|delete|implement|apply patch|write)\b/i.test(
+  return /\b(add|edit|modify|update|change|fix|insert|refactor|rewrite|rename|create|delete|implement|apply patch|write)\b/i.test(
     text,
   );
 }
@@ -156,13 +181,16 @@ export function resolveNaturalRememberDirective(text: string): NaturalRememberDi
 
 function isStageProgressMessage(message: string): boolean {
   const trimmed = message.trim();
+  if (trimmed.startsWith("Retrying with ")) {
+    return false;
+  }
   return (
     trimmed.startsWith("Thinking…") ||
     trimmed.startsWith("Planning…") ||
+    trimmed.startsWith("Coding…") ||
     trimmed.startsWith("Working…") ||
     trimmed.startsWith("Reviewing…") ||
-    trimmed.startsWith("Summarizing…") ||
-    trimmed === "Trying a tool-assisted pass"
+    trimmed.startsWith("Summarizing…")
   );
 }
 
@@ -518,7 +546,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       const row: ChatRow = {
         id: `row_${crypto.randomUUID()}`,
         role: "system",
-        content: isAbortError(error) ? "Interrupted." : error instanceof Error ? error.message : "Unknown error",
+        content: isAbortError(error) ? "Interrupted." : formatSubmitError(error),
         dim: isAbortError(error),
       };
       input.setRows((current) => [...current, row]);

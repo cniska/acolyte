@@ -2,7 +2,11 @@ import { describe, expect, test } from "bun:test";
 import { rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { ChatRow } from "./chat-commands";
-import { createSubmitHandler, resolveNaturalRememberDirective } from "./chat-submit-handler";
+import {
+  createSubmitHandler,
+  extractClarifyingQuestions,
+  resolveNaturalRememberDirective,
+} from "./chat-submit-handler";
 import { createBackend, createMessage, createSession, createStore } from "./test-factory";
 
 type Harness = {
@@ -41,6 +45,7 @@ function createHarness(overrides?: { isThinking?: boolean }): Harness {
     openResumePanel: () => {},
     openPermissionsPanel: () => {},
     openPolicyPanel: () => {},
+    openClarifyPanel: (_questions, _originalPrompt) => {},
     openWriteConfirmPanel: () => {},
     pendingPolicyCandidate: null,
     setPendingPolicyCandidate: () => {},
@@ -62,6 +67,24 @@ function createHarness(overrides?: { isThinking?: boolean }): Harness {
 }
 
 describe("chat submit handler guards", () => {
+  test("extractClarifyingQuestions reads numbered clarify blocks", () => {
+    const output = [
+      "Risks/assumptions: unsure where release-note automation lives.",
+      "",
+      "Clarifying questions:",
+      "1. Where is release-notes generation triggered?",
+      "2. Should filters be case-insensitive?",
+      "3. Any CI consumer to adjust?",
+      "",
+      "Next steps: answer these first.",
+    ].join("\n");
+    expect(extractClarifyingQuestions(output)).toEqual([
+      "Where is release-notes generation triggered?",
+      "Should filters be case-insensitive?",
+      "Any CI consumer to adjust?",
+    ]);
+  });
+
   test("resolveNaturalRememberDirective parses user and project forms", () => {
     expect(resolveNaturalRememberDirective("remember this: keep output concise")).toEqual({
       scope: "user",
@@ -162,6 +185,7 @@ describe("chat submit handler guards", () => {
       openResumePanel: () => {},
       openPermissionsPanel: () => {},
       openPolicyPanel: () => {},
+      openClarifyPanel: (_questions, _originalPrompt) => {},
       openWriteConfirmPanel: () => {},
       pendingPolicyCandidate: pending,
       setPendingPolicyCandidate: (next) => {
@@ -208,6 +232,7 @@ describe("chat submit handler guards", () => {
       openResumePanel: () => {},
       openPermissionsPanel: () => {},
       openPolicyPanel: () => {},
+      openClarifyPanel: (_questions, _originalPrompt) => {},
       openWriteConfirmPanel: (prompt) => {
         openWriteConfirmWith = prompt;
       },
@@ -228,6 +253,51 @@ describe("chat submit handler guards", () => {
 
     await submit("edit src/cli.ts to rename x to y");
     expect(openWriteConfirmWith).toBe("edit src/cli.ts to rename x to y");
+  });
+
+  test("opens write confirm panel for add/fix phrasing in read mode", async () => {
+    let openWriteConfirmWith = "";
+    const session = createSession({ id: "sess_test" });
+    const store = createStore({ activeSessionId: session.id, sessions: [session] });
+    const submit = createSubmitHandler({
+      backend: createBackend({
+        status: async () => "provider=openai permission_mode=read",
+        reply: async () => ({ model: "gpt-5-mini", output: "ok" }),
+      }),
+      store,
+      currentSession: session,
+      setCurrentSession: () => {},
+      toRows: () => [],
+      setRows: () => {},
+      setShowShortcuts: () => {},
+      setValue: () => {},
+      persist: async () => {},
+      exit: () => {},
+      openSkillsPanel: async () => {},
+      openResumePanel: () => {},
+      openPermissionsPanel: () => {},
+      openPolicyPanel: () => {},
+      openClarifyPanel: (_questions, _originalPrompt) => {},
+      openWriteConfirmPanel: (prompt) => {
+        openWriteConfirmWith = prompt;
+      },
+      pendingPolicyCandidate: null,
+      setPendingPolicyCandidate: () => {},
+      tokenUsage: [],
+      isThinking: false,
+      setInputHistory: () => {},
+      setInputHistoryIndex: () => {},
+      setInputHistoryDraft: () => {},
+      setIsThinking: () => {},
+      setThinkingLabel: () => {},
+      setTokenUsage: () => {},
+      createMessage,
+      nowIso: () => "2026-02-20T00:00:00.000Z",
+      setInterrupt: () => {},
+    });
+
+    await submit("add a line break before the resume message");
+    expect(openWriteConfirmWith).toBe("add a line break before the resume message");
   });
 
   test("records interrupted row when active turn is aborted", async () => {
@@ -270,6 +340,7 @@ describe("chat submit handler guards", () => {
       openResumePanel: () => {},
       openPermissionsPanel: () => {},
       openPolicyPanel: () => {},
+      openClarifyPanel: (_questions, _originalPrompt) => {},
       openWriteConfirmPanel: () => {},
       pendingPolicyCandidate: null,
       setPendingPolicyCandidate: () => {},
@@ -305,6 +376,69 @@ describe("chat submit handler guards", () => {
     expect(last?.dim).toBe(true);
   });
 
+  test("suppresses raw assistant output and opens clarify picker when clarification is needed", async () => {
+    const rows: ChatRow[] = [];
+    const openedClarify: string[][] = [];
+    const session = createSession({ id: "sess_test" });
+    const store = createStore({ activeSessionId: session.id, sessions: [session] });
+    const submit = createSubmitHandler({
+      backend: createBackend({
+        status: async () => "ok",
+        reply: async () => ({
+          model: "gpt-5-mini",
+          output: [
+            "Risks/assumptions: unsure where release-note automation lives.",
+            "",
+            "Clarifying questions:",
+            "1. Where is release-notes generation triggered?",
+            "2. Should filters be case-insensitive?",
+          ].join("\n"),
+        }),
+      }),
+      store,
+      currentSession: session,
+      setCurrentSession: () => {},
+      toRows: () => [],
+      setRows: (updater) => {
+        rows.splice(0, rows.length, ...updater(rows));
+      },
+      setShowShortcuts: () => {},
+      setValue: () => {},
+      persist: async () => {},
+      exit: () => {},
+      openSkillsPanel: async () => {},
+      openResumePanel: () => {},
+      openPermissionsPanel: () => {},
+      openPolicyPanel: () => {},
+      openClarifyPanel: (questions, _originalPrompt) => {
+        openedClarify.push(questions);
+      },
+      openWriteConfirmPanel: () => {},
+      pendingPolicyCandidate: null,
+      setPendingPolicyCandidate: () => {},
+      tokenUsage: [],
+      isThinking: false,
+      setInputHistory: () => {},
+      setInputHistoryIndex: () => {},
+      setInputHistoryDraft: () => {},
+      setIsThinking: () => {},
+      setThinkingLabel: () => {},
+      setTokenUsage: () => {},
+      createMessage,
+      nowIso: () => "2026-02-20T00:00:00.000Z",
+      setInterrupt: () => {},
+    });
+
+    await submit("what next");
+    expect(openedClarify).toHaveLength(1);
+    expect(openedClarify[0]).toEqual([
+      "Where is release-notes generation triggered?",
+      "Should filters be case-insensitive?",
+    ]);
+    expect(rows.some((row) => row.content.includes("Clarification needed before continuing:"))).toBe(true);
+    expect(rows.some((row) => row.content.includes("Risks/assumptions"))).toBe(false);
+  });
+
   test("stops before backend call when all @references are unresolved", async () => {
     const rows: ChatRow[] = [];
     let replyCalls = 0;
@@ -335,6 +469,7 @@ describe("chat submit handler guards", () => {
       openResumePanel: () => {},
       openPermissionsPanel: () => {},
       openPolicyPanel: () => {},
+      openClarifyPanel: (_questions, _originalPrompt) => {},
       openWriteConfirmPanel: () => {},
       pendingPolicyCandidate: null,
       setPendingPolicyCandidate: () => {},
@@ -391,6 +526,7 @@ describe("chat submit handler guards", () => {
         openResumePanel: () => {},
         openPermissionsPanel: () => {},
         openPolicyPanel: () => {},
+        openClarifyPanel: (_questions, _originalPrompt) => {},
         openWriteConfirmPanel: () => {},
         pendingPolicyCandidate: null,
         setPendingPolicyCandidate: () => {},
@@ -463,6 +599,7 @@ describe("chat submit handler guards", () => {
       openResumePanel: () => {},
       openPermissionsPanel: () => {},
       openPolicyPanel: () => {},
+      openClarifyPanel: (_questions, _originalPrompt) => {},
       openWriteConfirmPanel: () => {},
       pendingPolicyCandidate: null,
       setPendingPolicyCandidate: () => {},
@@ -486,8 +623,112 @@ describe("chat submit handler guards", () => {
     expect(thinkingLabels[0]).toMatch(/^Thinking… \(.+\)$/);
     expect(thinkingLabels).toContain("Working… (gpt-5-mini)");
     expect(thinkingLabels.at(-1)).toBeNull();
-    expect(rows.some((row) => row.role === "assistant" && row.content === "Run" && row.dim)).toBe(true);
+    expect(rows.some((row) => row.role === "assistant" && row.content === "Run" && row.style === "toolProgress")).toBe(
+      true,
+    );
     expect(rows.some((row) => row.role === "system" && row.content.includes("Working…"))).toBe(false);
     expect(rows.some((row) => row.role === "assistant" && row.content === "done")).toBe(true);
+  });
+
+  test("shows tool progress rows from reply toolCalls when progress stream is empty", async () => {
+    const rows: ChatRow[] = [];
+    const session = createSession({ id: "sess_test" });
+    const store = createStore({ activeSessionId: session.id, sessions: [session] });
+
+    const submit = createSubmitHandler({
+      backend: createBackend({
+        reply: async () => ({
+          model: "gpt-5-mini",
+          output: "done",
+          toolCalls: ["run-command"],
+        }),
+        progress: async () => ({ sessionId: "sess_test", requestId: "req_1", done: false, events: [] }),
+        status: async () => "ok",
+      }),
+      store,
+      currentSession: session,
+      setCurrentSession: () => {},
+      toRows: () => [],
+      setRows: (updater) => {
+        rows.splice(0, rows.length, ...updater(rows));
+      },
+      setShowShortcuts: () => {},
+      setValue: () => {},
+      persist: async () => {},
+      exit: () => {},
+      openSkillsPanel: async () => {},
+      openResumePanel: () => {},
+      openPermissionsPanel: () => {},
+      openPolicyPanel: () => {},
+      openClarifyPanel: () => {},
+      openWriteConfirmPanel: () => {},
+      pendingPolicyCandidate: null,
+      setPendingPolicyCandidate: () => {},
+      tokenUsage: [],
+      isThinking: false,
+      setInputHistory: () => {},
+      setInputHistoryIndex: () => {},
+      setInputHistoryDraft: () => {},
+      setIsThinking: () => {},
+      setThinkingLabel: () => {},
+      setTokenUsage: () => {},
+      createMessage,
+      nowIso: () => "2026-02-20T00:00:00.000Z",
+      setInterrupt: () => {},
+    });
+
+    await submit("hello");
+
+    expect(rows.some((row) => row.role === "assistant" && row.style === "toolProgress" && row.content === "Run")).toBe(
+      true,
+    );
+  });
+
+  test("maps quota errors to user-facing submit error", async () => {
+    const rows: ChatRow[] = [];
+    const session = createSession({ id: "sess_test" });
+    const store = createStore({ activeSessionId: session.id, sessions: [session] });
+    const submit = createSubmitHandler({
+      backend: createBackend({
+        status: async () => "ok",
+        reply: async () => {
+          throw new Error("insufficient_quota: You exceeded your current quota");
+        },
+      }),
+      store,
+      currentSession: session,
+      setCurrentSession: () => {},
+      toRows: () => [],
+      setRows: (updater) => {
+        rows.splice(0, rows.length, ...updater(rows));
+      },
+      setShowShortcuts: () => {},
+      setValue: () => {},
+      persist: async () => {},
+      exit: () => {},
+      openSkillsPanel: async () => {},
+      openResumePanel: () => {},
+      openPermissionsPanel: () => {},
+      openPolicyPanel: () => {},
+      openClarifyPanel: (_questions, _originalPrompt) => {},
+      openWriteConfirmPanel: () => {},
+      pendingPolicyCandidate: null,
+      setPendingPolicyCandidate: () => {},
+      tokenUsage: [],
+      isThinking: false,
+      setInputHistory: () => {},
+      setInputHistoryIndex: () => {},
+      setInputHistoryDraft: () => {},
+      setIsThinking: () => {},
+      setThinkingLabel: () => {},
+      setTokenUsage: () => {},
+      createMessage,
+      nowIso: () => "2026-02-20T00:00:00.000Z",
+      setInterrupt: () => {},
+    });
+
+    await submit("hello");
+
+    expect(rows.some((row) => row.role === "system" && row.content.includes("Provider quota exceeded"))).toBe(true);
   });
 });
