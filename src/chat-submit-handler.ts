@@ -50,7 +50,11 @@ type InternalClarificationTurn = {
   originalPrompt: string;
   answers: ClarificationAnswer[];
 };
+type InternalWriteResumeTurn = {
+  prompt: string;
+};
 const INTERNAL_CLARIFICATION_PREFIX = "\u0000acolyte_clarify:";
+const INTERNAL_WRITE_RESUME_PREFIX = "\u0000acolyte_write_resume:";
 
 function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === "AbortError";
@@ -233,6 +237,10 @@ export function buildInternalClarificationTurn(turn: InternalClarificationTurn):
   return `${INTERNAL_CLARIFICATION_PREFIX}${JSON.stringify(turn)}`;
 }
 
+export function buildInternalWriteResumeTurn(prompt: string): string {
+  return `${INTERNAL_WRITE_RESUME_PREFIX}${prompt}`;
+}
+
 function parseInternalClarificationTurn(raw: string): InternalClarificationTurn | null {
   if (!raw.startsWith(INTERNAL_CLARIFICATION_PREFIX)) {
     return null;
@@ -274,6 +282,17 @@ function parseInternalClarificationTurn(raw: string): InternalClarificationTurn 
   }
 }
 
+function parseInternalWriteResumeTurn(raw: string): InternalWriteResumeTurn | null {
+  if (!raw.startsWith(INTERNAL_WRITE_RESUME_PREFIX)) {
+    return null;
+  }
+  const prompt = raw.slice(INTERNAL_WRITE_RESUME_PREFIX.length).trim();
+  if (!prompt) {
+    return null;
+  }
+  return { prompt };
+}
+
 function buildClarifiedUserText(turn: InternalClarificationTurn): string {
   const lines = turn.answers.map((item) => `- ${item.question}: ${item.answer}`);
   return `${turn.originalPrompt}\n\nClarifications:\n${lines.join("\n")}`;
@@ -304,17 +323,23 @@ function dedupeToolProgressRows(existing: ChatRow[], incoming: ChatRow[]): ChatR
 export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: string) => Promise<void> {
   return async (raw: string): Promise<void> => {
     const internalClarification = parseInternalClarificationTurn(raw);
-    const text = internalClarification ? internalClarification.originalPrompt : raw.trim();
+    const internalWriteResume = parseInternalWriteResumeTurn(raw);
+    const isInternalReplay = Boolean(internalClarification || internalWriteResume);
+    const text = internalClarification
+      ? internalClarification.originalPrompt
+      : internalWriteResume
+        ? internalWriteResume.prompt
+        : raw.trim();
     if (!text || (input.isThinking && !text.startsWith("/"))) {
       return;
     }
-    if (!internalClarification && text.startsWith("/") && !text.includes(" ") && !isKnownSlashToken(text)) {
+    if (!isInternalReplay && text.startsWith("/") && !text.includes(" ") && !isKnownSlashToken(text)) {
       return;
     }
     const resolvedText = internalClarification ? text : resolveSlashAlias(text);
-    const naturalRememberDirective = internalClarification ? null : resolveNaturalRememberDirective(text);
+    const naturalRememberDirective = isInternalReplay ? null : resolveNaturalRememberDirective(text);
     const dispatchResolvedText = resolvedText;
-    if (!internalClarification) {
+    if (!isInternalReplay) {
       input.setInputHistory((current) => appendInputHistory(current, text));
       input.setInputHistoryIndex(-1);
       input.setInputHistoryDraft("");
@@ -405,7 +430,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
     }
     let userText = text;
     let runVerifyAfterReply = false;
-    if (!internalClarification) {
+    if (!isInternalReplay) {
       const commandResult = await dispatchSlashCommand({
         text,
         resolvedText: dispatchResolvedText,
@@ -429,7 +454,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       if (commandResult.stop) {
         return;
       }
-      if (isLikelyWritePrompt(text)) {
+      if (!internalWriteResume && isLikelyWritePrompt(text)) {
         try {
           const status = await input.backend.status();
           if (statusPermissionMode(status) === "read") {
@@ -450,8 +475,11 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       }
       userText = commandResult.userText;
       runVerifyAfterReply = commandResult.runVerifyAfterReply;
-    } else {
+    } else if (internalClarification) {
       userText = buildClarifiedUserText(internalClarification);
+      runVerifyAfterReply = false;
+    } else {
+      userText = text;
       runVerifyAfterReply = false;
     }
 

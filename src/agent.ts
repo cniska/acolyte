@@ -11,8 +11,6 @@ import { formatToolLabel } from "./tool-labels";
 const FALLBACK_PLAN =
   "1) Interpret request. 2) Use available repo tools when helpful. 3) Return concise, actionable answer.";
 const APPROX_CHARS_PER_TOKEN = 4;
-const MAX_REVIEW_OUTPUT_CHARS = 1800;
-const MAX_ASSISTANT_OUTPUT_CHARS = 1200;
 
 function estimateTokens(input: string): number {
   if (input.length === 0) {
@@ -192,6 +190,14 @@ function isReviewRequest(text: string): boolean {
   return /\breview\b/i.test(text);
 }
 
+export function directEditExecutionSatisfied(toolCalls: string[], output: string): boolean {
+  const usedEditTool = toolCalls.includes("edit-file");
+  if (!usedEditTool) {
+    return false;
+  }
+  return !isPlanLikeOutput(output);
+}
+
 export { buildSubagentContext, selectAgentRole };
 
 export function resolveAgentModel(
@@ -283,45 +289,15 @@ export function resolveRunnableModel(
 }
 
 export function compactReviewOutput(output: string): string {
-  if (output.length <= MAX_REVIEW_OUTPUT_CHARS) {
-    return output;
-  }
-  return `${output.slice(0, Math.max(0, MAX_REVIEW_OUTPUT_CHARS - 1))}…`;
+  return output;
 }
 
 function compactAssistantOutput(output: string): string {
-  if (output.length <= MAX_ASSISTANT_OUTPUT_CHARS) {
-    return output;
-  }
-  return `${output.slice(0, Math.max(0, MAX_ASSISTANT_OUTPUT_CHARS - 1))}…`;
+  return output;
 }
 
 export function normalizeReviewOutput(output: string): string {
-  const lines = output.split("\n");
-  const normalized = lines.map((line, index) => {
-    const trimmedRight = line.trimEnd();
-
-    if (index === 0) {
-      const headerMatch = trimmedRight.match(/^\s*[•*-]?\s*(\d+)\s+findings?\s+in\s+(.+)\s*$/i);
-      if (headerMatch) {
-        const count = Number.parseInt(headerMatch[1] ?? "0", 10);
-        const scope = (headerMatch[2] ?? "").replace(/^@/, "").trim();
-        const label = count === 1 ? "finding" : "findings";
-        return `${count} ${label} in ${scope}`;
-      }
-    }
-
-    const numbered = trimmedRight.match(/^\s*(\d+)[).]?\s+(.*)$/);
-    if (numbered) {
-      const num = numbered[1];
-      const body = numbered[2]?.trim() ?? "";
-      return `${num}. ${body}`;
-    }
-
-    return trimmedRight;
-  });
-
-  return normalized.join("\n").trimEnd();
+  return output;
 }
 
 function extractMentionedPath(message: string): string | null {
@@ -342,10 +318,6 @@ function suggestNarrowerReviewScope(path: string): string {
     return `@${clean}`;
   }
   return `@${clean}/agent.ts`;
-}
-
-function isDogfoodPrompt(text: string): boolean {
-  return text.includes("Dogfood mode:");
 }
 
 function collectToolCallIds(toolCalls: unknown[]): string[] {
@@ -775,7 +747,7 @@ export function createProgressStageLabel(stage: AgentRole, model: string): strin
     case "reviewer":
       return `Reviewing… (${shownModel})`;
     case "coder":
-      return `Working… (${shownModel})`;
+      return `Coding… (${shownModel})`;
   }
 }
 
@@ -783,50 +755,10 @@ export function progressStageForRole(role: AgentRole, model: string): string {
   return createProgressStageLabel(role, model);
 }
 
-function normalizeDogfoodOutput(output: string): string {
-  const cleaned = output
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0)
-    .filter((line) => !/^(Outcome|Validation plan|Risk)\s*[-:]/i.test(line))
-    .filter((line) => !/^I can\b/i.test(line))
-    .filter((line) => !/^(quick (status|summary|recap|context|options|reminders?)|repo context)\b/i.test(line))
-    .filter((line) => !/^pick one\b/i.test(line))
-    .filter((line) => !/^which option\b/i.test(line))
-    .filter((line) => !/^reply\s+[a-z0-9]/i.test(line))
-    .filter((line) => !/^[A-C]\s*[-—:)]\s+/i.test(line));
-
-  const immediate =
-    cleaned.find((line) => /^Immediate action\s*[-:]/i.test(line)) ??
-    cleaned.find((line) => /^\d+\.\s+/.test(line)) ??
-    cleaned.find((line) => /^[-*]\s+/.test(line)) ??
-    cleaned[0];
-
-  if (!immediate) {
-    return "Immediate action: Confirm the target change and I will apply the smallest safe edit + verify.";
-  }
-
-  const body = immediate
-    .replace(/^Immediate action\s*[-:]\s*/i, "")
-    .replace(/^Immediate action\s*[—-]\s*/i, "")
-    .replace(/^\d+\.\s+/, "")
-    .replace(/^[-*]\s+/, "")
-    .replace(/^I (will|can)\s+/i, "")
-    .replace(/\s+/g, " ")
-    .trim();
-  const compact = body.length > 220 ? `${body.slice(0, 219).trimEnd()}…` : body;
-  return `Immediate action: ${compact}`;
-}
-
 export function finalizeReviewOutput(output: string, message = ""): string {
-  const cleaned = output
-    .split("\n")
-    .filter((line) => !/^\s*(Tools used:|Evidence:)/.test(line))
-    .join("\n")
-    .trim();
-  const normalized = normalizeReviewOutput(compactReviewOutput(cleaned));
-  if (normalized.trim().length > 0) {
-    return normalized;
+  const trimmed = output.trim();
+  if (trimmed.length > 0) {
+    return compactReviewOutput(normalizeReviewOutput(trimmed));
   }
   const mentionedPath = extractMentionedPath(message);
   if (mentionedPath) {
@@ -835,121 +767,18 @@ export function finalizeReviewOutput(output: string, message = ""): string {
   return "No review output produced. Try narrowing to a file (for example @src/agent.ts) or rephrasing your prompt.";
 }
 
-export function finalizeAssistantOutput(output: string, message = ""): string {
-  if (isDogfoodPrompt(message)) {
-    return normalizeDogfoodOutput(output);
+export function finalizeAssistantOutput(output: string, message = "", toolCallCount = 0): string {
+  const trimmed = output.trim();
+  if (trimmed.length > 0) {
+    return compactAssistantOutput(trimmed);
   }
-
-  const normalizedOptions = output
-    .split("\n")
-    .map((line) => {
-      const numberedMatch = line.match(/^(\s*)(\d+)\)\s+(.*)$/);
-      if (numberedMatch) {
-        return `${numberedMatch[1] ?? ""}${numberedMatch[2] ?? "1"}. ${numberedMatch[3] ?? ""}`;
-      }
-      const match = line.match(/^(\s*)([A-Ca-c])\s*[-—:)]\s+(.*)$/);
-      if (!match) {
-        return line;
-      }
-      const index = (match[2]?.toUpperCase().charCodeAt(0) ?? 65) - 64;
-      return `${match[1] ?? ""}${index}. ${match[3] ?? ""}`;
-    })
-    .join("\n");
-  const hasAuxScaffolding =
-    /^(quick (status|summary|recap|context|options|reminders?)|repo context|pick one action|notes?\s*\/?\s*blockers?|next-action options?|next actions?|next steps?)\b/im.test(
-      normalizedOptions,
-    );
-
-  let dropAuxSection = false;
-  const cleaned = normalizedOptions
-    .split("\n")
-    .filter((line) => {
-      const trimmed = line.trim();
-      if (trimmed.length === 0) {
-        dropAuxSection = false;
-        return true;
-      }
-      if (
-        /^(quick recap|quick summary|repo context|pick one action|quick status|quick options|quick reminders?|quick context)\b/i.test(
-          trimmed,
-        )
-      ) {
-        dropAuxSection = true;
-        return false;
-      }
-      if (/^(notes?\s*\/?\s*blockers?|next-action options?|next actions?|next steps?)\b/i.test(trimmed)) {
-        dropAuxSection = true;
-        return false;
-      }
-      if (/^recap\s*(?:[:\-—]|$)/i.test(trimmed)) {
-        return false;
-      }
-      if (hasAuxScaffolding && /^ready(?:[,.!]|$|\s*[—-]\s*)/i.test(trimmed)) {
-        return false;
-      }
-      if (/^i can:\s*$/i.test(trimmed)) {
-        dropAuxSection = true;
-        return false;
-      }
-      if (/^if you want,?\s*i can\s*:?\s*$/i.test(trimmed)) {
-        dropAuxSection = true;
-        return false;
-      }
-      if (dropAuxSection && (/^[-*]\s+/.test(trimmed) || /^\d+\.\s+/.test(trimmed))) {
-        return false;
-      }
-      if (/^recommendation\s*[—-]\s*do\s*[abc]\b/i.test(trimmed)) {
-        dropAuxSection = true;
-        return false;
-      }
-      if (/^pick one(?:\s+[a-z]+)*:?\s*$/i.test(trimmed)) {
-        dropAuxSection = true;
-        return false;
-      }
-      if (/^next actions?\s*\(pick one\)\s*:?\s*$/i.test(trimmed)) {
-        return false;
-      }
-      if (/^which option\b/i.test(trimmed)) {
-        return false;
-      }
-      if (/^which (do you want|one do you want)\b/i.test(trimmed)) {
-        return false;
-      }
-      if (/^(do you want me to|want me to)\b/i.test(trimmed)) {
-        return false;
-      }
-      if (/^reply\s+[a-z](\s*,\s*[a-z])*\s*(or\s*[a-z])?/i.test(trimmed)) {
-        return false;
-      }
-      if (/^reply\s+\d+(\s*,\s*\d+)*\s*(or\s*\d+)?/i.test(trimmed)) {
-        return false;
-      }
-      if (/^[abc]\s*[-—:)]/i.test(trimmed)) {
-        return false;
-      }
-      return true;
-    })
-    .join("\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-  if (cleaned.length > 0) {
-    return compactAssistantOutput(cleaned);
+  if (isDirectEditRequest(message)) {
+    return "Edit request failed: no tools ran. Check /status and retry.";
   }
-  const fallbackLine = normalizedOptions
-    .split("\n")
-    .map((line) => line.trim())
-    .find((line) => line.length > 0 && !/^(Tools used:|Evidence:)/i.test(line));
-  if (fallbackLine) {
-    return compactAssistantOutput(fallbackLine);
+  if (toolCallCount > 0) {
+    return "No final response after tool execution. Retry, or check backend logs if this repeats.";
   }
-  const rawFallbackLine = output
-    .split("\n")
-    .map((line) => line.trim())
-    .find((line) => line.length > 0);
-  if (rawFallbackLine) {
-    return compactAssistantOutput(rawFallbackLine);
-  }
-  return "No output from model. Check /status and backend logs, then retry.";
+  return "No output from model. Check /status and backend logs, then retry or switch model/provider.";
 }
 
 function buildMockReply(req: ChatRequest, reason?: string): ChatResponse {
@@ -1102,7 +931,6 @@ export async function runAgent(input: {
 
   const shouldRequireToolsFallback = role !== "planner" && (toolLikely || role === "reviewer");
   if (shouldRequireToolsFallback && result.toolCalls.length === 0) {
-    emitProgress("Retrying with tools");
     result = await agent.generate(delegatedInput, {
       maxSteps: 8,
       toolChoice: "required",
@@ -1112,7 +940,6 @@ export async function runAgent(input: {
   }
 
   if (directEditLikely && result.toolCalls.length === 0) {
-    emitProgress("Retrying with enforced tool execution");
     result = await agent.generate(
       `${delegatedInput}\n\nHard requirement: execute at least one tool before responding. Do not return a plan.`,
       {
@@ -1124,13 +951,14 @@ export async function runAgent(input: {
     );
   }
 
-  if (directEditLikely && result.toolCalls.length === 0) {
-    const fallback = "I couldn't execute tools for this edit request. Check /status and permissions, then retry.";
+  const toolCallIds = collectToolCallIds(Array.isArray(result.toolCalls) ? (result.toolCalls as unknown[]) : []);
+  if (directEditLikely && !directEditExecutionSatisfied(toolCallIds, result.text)) {
+    const fallback = "Edit request failed: required edit tool did not run. Check /status and retry.";
     const completionTokens = estimateTokens(fallback);
     return {
       model,
       output: fallback,
-      toolCalls: [],
+      toolCalls: toolCallIds,
       usage: {
         promptTokens: requestInput.usage.promptTokens,
         completionTokens,
@@ -1162,7 +990,7 @@ export async function runAgent(input: {
   }
   const output = isReviewRequest(input.request.message)
     ? finalizeReviewOutput(rawOutput, input.request.message)
-    : finalizeAssistantOutput(rawOutput, input.request.message);
+    : finalizeAssistantOutput(rawOutput, input.request.message, toolCallIds.length);
   const completionTokens = estimateTokens(output);
   const promptUsage = requestInput.usage;
   let budgetWarning: string | undefined;
@@ -1175,7 +1003,7 @@ export async function runAgent(input: {
   return {
     model,
     output,
-    toolCalls: collectToolCallIds(Array.isArray(result.toolCalls) ? (result.toolCalls as unknown[]) : []),
+    toolCalls: toolCallIds,
     usage: {
       promptTokens: promptUsage.promptTokens,
       completionTokens,

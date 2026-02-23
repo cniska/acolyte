@@ -157,6 +157,13 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Added explicit alias regression coverage for scoped memory slash forms (`/mem user|project|context user`).
 - Simplified chat memory usage guidance to a two-form usage line: `/memory [scope] | /memory context [scope]`.
 - Added regression coverage for project-scoped chat memory header output (`/memory project` -> `Project memory ...`).
+- Instruction quality beats brittle cleanup code: role/soul prompts are now the primary lever for concise, user-focused answers.
+- MVP focus tightened to reliability over polish: prioritize successful tool-backed execution and explicit failure signals over response post-processing.
+- Keep post-processing minimal and defensive only (empty-output fallbacks, safety/error clarity), not style-shaping.
+- Agent finalization now preserves raw model output (trim-only + empty-output fallback), removing most style-shaping rewrite logic.
+- Direct edit prompts now enforce an execution contract: no successful completion unless `edit-file` actually ran.
+- Write-confirm recovery now auto-replays the original prompt via an internal payload, avoiding a second manual submit after switching to write mode.
+- Empty-output fallback is now more specific when tools ran but no final answer was produced, improving troubleshooting signal.
 
 ## Open Narrative Threads
 1. Continue dogfooding ramp from Codex-led to Acolyte-led development.

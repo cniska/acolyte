@@ -3,6 +3,7 @@ import type { ChatRow } from "./chat-commands";
 import type { PickerState } from "./chat-picker";
 import {
   boundedSkillInstructions,
+  createClarifyAnswerPicker,
   createPermissionsPicker,
   createPicker,
   createPolicyConfirmPicker,
@@ -11,6 +12,7 @@ import {
   createResumeRows,
   createWriteConfirmPicker,
 } from "./chat-picker-actions";
+import { setConfigValue } from "./config";
 import type { PolicyCandidate } from "./policy-distill";
 import { listSkills, readSkillInstructions } from "./skills";
 import type { Message, Session, SessionStore } from "./types";
@@ -28,7 +30,13 @@ type CreatePickerHandlersInput = {
   setPendingPolicyCandidate: (next: PolicyCandidate | null) => void;
   setValue: (next: string) => void;
   queueInput: (next: string) => void;
+  buildClarificationPayload: (input: {
+    originalPrompt: string;
+    answers: Array<{ question: string; answer: string }>;
+  }) => string;
+  buildWriteResumePayload: (prompt: string) => string;
   setBackendPermissionMode: (mode: "read" | "write") => Promise<void>;
+  persistPermissionMode: (mode: "read" | "write", scope: "project" | "user") => Promise<void>;
   persist: () => Promise<void>;
   toRows: (messages: Message[]) => ChatRow[];
   createMessage: (role: Message["role"], content: string) => Message;
@@ -40,6 +48,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
   openResumePanel: () => void;
   openPermissionsPanel: () => void;
   openPolicyPanel: (items: PolicyCandidate[]) => void;
+  openClarifyPanel: (questions: string[], originalPrompt: string) => void;
   openWriteConfirmPanel: (prompt: string) => void;
   handlePickerSelect: (state: PickerState) => Promise<void>;
 } {
@@ -100,6 +109,21 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
     input.setShowShortcuts(false);
   };
 
+  const openClarifyPanel = (questions: string[], originalPrompt: string): void => {
+    const [first, ...remaining] = questions
+      .map((question) => question.trim())
+      .filter((question) => question.length > 0);
+    if (!first) {
+      return;
+    }
+    const picker = createClarifyAnswerPicker(originalPrompt, first, remaining);
+    if (!picker) {
+      return;
+    }
+    input.setPicker(picker);
+    input.setShowShortcuts(false);
+  };
+
   const openWriteConfirmPanel = (prompt: string): void => {
     input.setPicker(createWriteConfirmPicker(prompt));
     input.setShowShortcuts(false);
@@ -144,10 +168,15 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
         if (selected) {
           try {
             await input.setBackendPermissionMode(selected.mode);
+            await input.persistPermissionMode(selected.mode, "project");
             setPermissionMode(selected.mode);
             input.setRows((current) => [
               ...current,
-              { id: `row_${crypto.randomUUID()}`, role: "assistant", content: `permission mode: ${selected.mode}` },
+              {
+                id: `row_${crypto.randomUUID()}`,
+                role: "system",
+                content: `Changed permissions to ${selected.mode} (project).`,
+              },
             ]);
           } catch (error) {
             input.setRows((current) => [
@@ -211,6 +240,43 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
         input.setPicker(null);
         return;
       }
+      case "clarifyAnswer": {
+        const answer = state.note.trim();
+        if (answer.length === 0) {
+          input.setRows((current) => [
+            ...current,
+            {
+              id: `row_${crypto.randomUUID()}`,
+              role: "system",
+              content: "Please enter an answer before continuing.",
+            },
+          ]);
+          return;
+        }
+        const answers = [...state.answers, { question: state.question, answer }];
+        const [nextQuestion, ...remaining] = state.remaining;
+        if (nextQuestion) {
+          input.setPicker(createClarifyAnswerPicker(state.originalPrompt, nextQuestion, remaining, answers));
+          return;
+        }
+        input.queueInput(
+          input.buildClarificationPayload({
+            originalPrompt: state.originalPrompt,
+            answers,
+          }),
+        );
+        input.setRows((current) => [
+          ...current,
+          {
+            id: `row_${crypto.randomUUID()}`,
+            role: "assistant",
+            content: `Captured ${answers.length} clarification${answers.length === 1 ? "" : "s"}. Continuing…`,
+            dim: true,
+          },
+        ]);
+        input.setPicker(null);
+        return;
+      }
       case "writeConfirm": {
         const selected = state.items[state.index];
         const note = state.note.trim();
@@ -218,17 +284,18 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
         if (selected.value === "switch") {
           try {
             await input.setBackendPermissionMode("write");
+            await input.persistPermissionMode("write", "project");
             setPermissionMode("write");
             input.setRows((current) => [
               ...current,
               {
                 id: `row_${crypto.randomUUID()}`,
                 role: "assistant",
-                content: `Changed permissions to \`write\`${noteSuffix}`,
+                content: `Changed permissions to write${noteSuffix}`,
               },
             ]);
             input.setValue("");
-            input.queueInput(state.prompt);
+            input.queueInput(input.buildWriteResumePayload(state.prompt));
           } catch (error) {
             input.setRows((current) => [
               ...current,
@@ -260,7 +327,12 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
     openResumePanel,
     openPermissionsPanel,
     openPolicyPanel,
+    openClarifyPanel,
     openWriteConfirmPanel,
     handlePickerSelect,
   };
+}
+
+export async function persistPermissionMode(mode: "read" | "write", scope: "project" | "user"): Promise<void> {
+  await setConfigValue("permissionMode", mode, { scope });
 }

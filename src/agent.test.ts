@@ -2,11 +2,14 @@ import { describe, expect, test } from "bun:test";
 import {
   buildAgentInput,
   buildSubagentContext,
-  compactReviewOutput,
+  collectToolProgressFromStep,
   createProgressStageLabel,
+  directEditExecutionSatisfied,
   finalizeAssistantOutput,
   finalizeReviewOutput,
-  normalizeReviewOutput,
+  formatToolProgressMessage,
+  isDirectEditRequest,
+  isPlanLikeOutput,
   progressStageForRole,
   resolveAgentModel,
   resolveModelProviderState,
@@ -89,241 +92,82 @@ describe("buildAgentInput", () => {
   });
 });
 
-describe("compactReviewOutput", () => {
-  test("keeps short review output as-is", () => {
-    const short = "Summary: looks good.";
-    expect(compactReviewOutput(short)).toBe(short);
+describe("execution intent detection", () => {
+  test("isDirectEditRequest detects imperative edit prompts", () => {
+    expect(isDirectEditRequest("add a line break after resume message")).toBe(true);
+    expect(isDirectEditRequest("fix the status output")).toBe(true);
+    expect(isDirectEditRequest("what next")).toBe(false);
   });
 
-  test("truncates very long review output", () => {
-    const long = `Summary\n${"A".repeat(3000)}`;
-    const compact = compactReviewOutput(long);
-    expect(compact.length).toBeLessThanOrEqual(1800);
-    expect(compact.endsWith("…")).toBe(true);
+  test("isPlanLikeOutput detects planning scaffolding", () => {
+    expect(isPlanLikeOutput("Plan: update file then run verify")).toBe(true);
+    expect(isPlanLikeOutput("I can apply this in two steps.")).toBe(true);
+    expect(isPlanLikeOutput("Updated src/cli.ts and tests pass.")).toBe(false);
   });
 });
 
-describe("normalizeReviewOutput", () => {
-  test("normalizes findings header and removes @ prefix in scope", () => {
-    const raw = "• 2 findings in @src/mastra-tools.ts";
-    expect(normalizeReviewOutput(raw)).toBe("2 findings in src/mastra-tools.ts");
+describe("direct edit execution contract", () => {
+  test("requires edit-file tool usage", () => {
+    expect(directEditExecutionSatisfied([], "Edited src/cli.ts")).toBe(false);
+    expect(directEditExecutionSatisfied(["run-command"], "Done")).toBe(false);
   });
 
-  test("normalizes numbered lines to dotted form and left aligns", () => {
-    const raw = ["  1) First issue", "    2. Second issue"].join("\n");
-    expect(normalizeReviewOutput(raw)).toBe(["1. First issue", "2. Second issue"].join("\n"));
+  test("rejects plan-like output even when edit-file is present", () => {
+    expect(directEditExecutionSatisfied(["edit-file"], "Plan: update file then run verify")).toBe(false);
+  });
+
+  test("accepts concrete output when edit-file was used", () => {
+    expect(directEditExecutionSatisfied(["read-file", "edit-file"], "Updated src/cli.ts and applied the change.")).toBe(
+      true,
+    );
   });
 });
 
 describe("finalizeReviewOutput", () => {
-  test("returns fallback when normalized output is empty", () => {
-    const raw = "Tools used: search-repo\nEvidence: src/cli.ts:1";
+  test("returns fallback when output is empty", () => {
+    const raw = "   ";
     expect(finalizeReviewOutput(raw)).toBe(
       "No review output produced. Try narrowing to a file (for example @src/agent.ts) or rephrasing your prompt.",
     );
   });
 
-  test("returns scope-aware fallback when request includes @path", () => {
+  test("keeps non-empty output even when request includes @path", () => {
     const raw = "Tools used: search-repo\nEvidence: src/cli.ts:1";
-    expect(finalizeReviewOutput(raw, "review @src/")).toBe(
-      "No review output produced for @src/. Try narrowing the scope (for example @src/agent.ts) or rephrasing your prompt.",
-    );
+    expect(finalizeReviewOutput(raw, "review @src/")).toBe(raw);
   });
 
-  test("keeps meaningful normalized output", () => {
-    const raw = "• 1 findings in @src/mastra-tools.ts\n 1) naming issue";
-    expect(finalizeReviewOutput(raw)).toBe("1 finding in src/mastra-tools.ts\n1. naming issue");
+  test("keeps non-empty output as-is (trimmed)", () => {
+    const raw = "\n  • 1 findings in @src/mastra-tools.ts\n 1) naming issue \n";
+    expect(finalizeReviewOutput(raw)).toBe("• 1 findings in @src/mastra-tools.ts\n 1) naming issue");
   });
 });
 
 describe("finalizeAssistantOutput", () => {
   test("returns fallback when output is empty", () => {
-    expect(finalizeAssistantOutput("   ")).toBe("No output from model. Check /status and backend logs, then retry.");
-  });
-
-  test("keeps non-empty output", () => {
-    expect(finalizeAssistantOutput("Done")).toBe("Done");
-  });
-
-  test("strips A/B/C choice scaffolding and keeps core answer", () => {
-    const raw = [
-      "I can apply the two fixes.",
-      "",
-      "Pick one:",
-      "A — Show dry-run patch.",
-      "B — Apply edits and run verify.",
-      "C — Skip.",
-      "",
-      "Reply A, B, or C.",
-    ].join("\n");
-    expect(finalizeAssistantOutput(raw)).toBe("I can apply the two fixes.");
-  });
-
-  test("strips pick-one action prompt line", () => {
-    const raw = ["Done reviewing.", "", "Pick one action:"].join("\n");
-    expect(finalizeAssistantOutput(raw)).toBe("Done reviewing.");
-  });
-
-  test("normalizes A/B/C option lines to numbered options", () => {
-    const raw = ["A - first", "B — second", "C) third"].join("\n");
-    expect(finalizeAssistantOutput(raw)).toBe(["1. first", "2. second", "3. third"].join("\n"));
-  });
-
-  test("normalizes 1) style numbering to 1. style", () => {
-    const raw = ["1) first", "2) second"].join("\n");
-    expect(finalizeAssistantOutput(raw)).toBe(["1. first", "2. second"].join("\n"));
-  });
-
-  test("strips numeric reply scaffolding lines", () => {
-    const raw = ["Applied changes.", "", "Reply 1, 2, or 3.", "Which option do you prefer?"].join("\n");
-    expect(finalizeAssistantOutput(raw)).toBe("Applied changes.");
-  });
-
-  test("strips trailing want-me-to confirmation lines", () => {
-    const raw = [
-      "Recommendation: hide ready states by default and show issues only.",
-      "",
-      "Want me to wire this up now (adjust /status rendering and run bun run verify)?",
-    ].join("\n");
-    expect(finalizeAssistantOutput(raw)).toBe("Recommendation: hide ready states by default and show issues only.");
-  });
-
-  test("strips generic recap lead-in lines", () => {
-    const raw = ["Recap: two small fixes.", "", "1) fix null checks", "2) add try/catch"].join("\n");
-    expect(finalizeAssistantOutput(raw)).toBe(["1. fix null checks", "2. add try/catch"].join("\n"));
-  });
-
-  test("strips recap lead-in lines with em dash", () => {
-    const raw = ["Recap — two small fixes.", "", "1) fix null checks", "2) add try/catch"].join("\n");
-    expect(finalizeAssistantOutput(raw)).toBe(["1. fix null checks", "2. add try/catch"].join("\n"));
-  });
-
-  test("strips quick recap and repo context sections", () => {
-    const raw = [
-      "Next recommended change: tighten tool error wrapping.",
-      "",
-      "Quick recap + next step.",
-      "",
-      "Repo context (from latest status)",
-      "- Branch: main (ahead 57)",
-      "- Modified files: src/cli.ts",
-      "",
-      "Pick one action:",
-      "A — Show dry-run patch.",
-      "B — Apply edits.",
-      "C — Skip.",
-      "",
-      "Reply A, B, or C.",
-    ].join("\n");
-    expect(finalizeAssistantOutput(raw)).toBe("Next recommended change: tighten tool error wrapping.");
-  });
-
-  test("strips quick status and recommendation letter scaffolding", () => {
-    const raw = [
-      "Ready, Chris.",
-      "",
-      "Quick status",
-      "- Branch: main (ahead 57)",
-      "- Modified files: src/cli.ts",
-      "",
-      "What I found to fix in src/mastra-tools.ts",
-      "1) Use null checks for numeric fields.",
-      "2) Add execute try/catch context.",
-      "",
-      "Recommendation — do B",
-      "- Apply the edits and run verify.",
-    ].join("\n");
-    expect(finalizeAssistantOutput(raw)).toBe(
-      [
-        "What I found to fix in src/mastra-tools.ts",
-        "1. Use null checks for numeric fields.",
-        "2. Add execute try/catch context.",
-      ].join("\n"),
+    expect(finalizeAssistantOutput("   ")).toBe(
+      "No output from model. Check /status and backend logs, then retry or switch model/provider.",
     );
   });
 
-  test("strips quick options capability dump", () => {
-    const raw = [
-      "Ready.",
-      "",
-      "Quick options:",
-      "- Inspect the repo",
-      "- Run tests",
-      "- Edit files",
-      "",
-      "Start with src/mastra-tools.ts null-check fix.",
-    ].join("\n");
-    expect(finalizeAssistantOutput(raw)).toBe("Start with src/mastra-tools.ts null-check fix.");
+  test("keeps non-empty output as-is (trimmed)", () => {
+    expect(finalizeAssistantOutput("\n Done \n")).toBe("Done");
   });
 
-  test("strips 'If you want, I can' option scaffolding", () => {
-    const raw = [
-      "Fix is ready.",
-      "",
-      "If you want, I can:",
-      "- apply the patch",
-      "- run verify",
-      "",
-      "Which do you want?",
-    ].join("\n");
-    expect(finalizeAssistantOutput(raw)).toBe("Fix is ready.");
-  });
-
-  test("caps very long assistant output", () => {
+  test("keeps long output as-is (no truncation)", () => {
     const raw = `Summary\n${"x".repeat(3000)}`;
     const out = finalizeAssistantOutput(raw);
-    expect(out.length).toBeLessThanOrEqual(1200);
-    expect(out.endsWith("…")).toBe(true);
+    expect(out).toBe(raw);
   });
 
-  test("strips quick reminders and notes/blockers sections", () => {
-    const raw = [
-      "Actionable fix: add null checks in read-file snippet.",
-      "",
-      "Quick reminders:",
-      "- inspect repo",
-      "- run tests",
-      "",
-      "Notes / blockers",
-      "- none",
-      "",
-      "Done.",
-    ].join("\n");
-    expect(finalizeAssistantOutput(raw)).toBe("Actionable fix: add null checks in read-file snippet.\n\nDone.");
-  });
-
-  test("dogfood prompt returns one immediate action line", () => {
-    const raw = [
-      "Immediate action - I will generate a dry-run diff for src/mastra-tools.ts.",
-      "",
-      "Outcome - you will get the patch.",
-      "Validation plan - run verify.",
-      "Risk - none.",
-    ].join("\n");
-    expect(finalizeAssistantOutput(raw, "Dogfood mode:\n- Keep response concise")).toBe(
-      "Immediate action: generate a dry-run diff for src/mastra-tools.ts.",
+  test("returns edit-specific fallback when output is empty for direct edit prompts", () => {
+    expect(finalizeAssistantOutput("   ", "add a line break before resume message")).toBe(
+      "Edit request failed: no tools ran. Check /status and retry.",
     );
   });
 
-  test("dogfood prompt removes duplicate immediate-action prefixes", () => {
-    const raw = "Immediate action: Immediate action — generate a dry-run diff.";
-    expect(finalizeAssistantOutput(raw, "Dogfood mode:\n- Keep response concise")).toBe(
-      "Immediate action: generate a dry-run diff.",
-    );
-  });
-
-  test("dogfood prompt strips scaffolding and returns actionable line", () => {
-    const raw = [
-      "Quick status",
-      "- branch clean",
-      "Pick one action:",
-      "A - show dry-run patch",
-      "B - apply edit and run verify",
-      "Which option do you want?",
-      "1. apply edit and run verify",
-    ].join("\n");
-    expect(finalizeAssistantOutput(raw, "Dogfood mode:\n- Keep response concise")).toBe(
-      "Immediate action: apply edit and run verify",
+  test("returns tool-executed fallback when output is empty after tool calls", () => {
+    expect(finalizeAssistantOutput("   ", "check status", 2)).toBe(
+      "No final response after tool execution. Retry, or check backend logs if this repeats.",
     );
   });
 });
@@ -405,6 +249,34 @@ describe("resolveAgentModel", () => {
     expect(resolveAgentModel("planner", "gpt-5-mini", { planner: "o3" })).toBe("o3");
     expect(resolveAgentModel("coder", "gpt-5-mini", { coder: "gpt-5-codex" })).toBe("gpt-5-codex");
     expect(resolveAgentModel("reviewer", "gpt-5-mini", { reviewer: "gpt-5" })).toBe("gpt-5");
+  });
+});
+
+describe("collectToolProgressFromStep", () => {
+  test("extracts nested tool calls/results from step payloads", () => {
+    const step = {
+      stepResult: {
+        traces: [
+          {
+            toolCalls: [{ toolName: "run-command", args: { command: "echo hi" } }],
+            toolResults: [{ toolName: "run-command", result: "hi" }],
+          },
+        ],
+      },
+    };
+
+    expect(collectToolProgressFromStep(step)).toEqual([
+      {
+        name: "run-command",
+        args: { command: "echo hi" },
+        result: "",
+      },
+      {
+        name: "run-command",
+        args: {},
+        result: "hi",
+      },
+    ]);
   });
 });
 
@@ -493,13 +365,27 @@ describe("buildSubagentContext", () => {
 describe("progressStageForRole", () => {
   test("uses user-facing stage labels with model names", () => {
     expect(progressStageForRole("planner", "openai/o3")).toBe("Planning… (o3)");
-    expect(progressStageForRole("coder", "openai/gpt-5-codex")).toBe("Working… (gpt-5-codex)");
+    expect(progressStageForRole("coder", "openai/gpt-5-codex")).toBe("Coding… (gpt-5-codex)");
     expect(progressStageForRole("reviewer", "anthropic/claude-sonnet-4")).toBe("Reviewing… (claude-sonnet-4)");
   });
 });
 
 describe("createProgressStageLabel", () => {
   test("normalizes known provider prefixes in model labels", () => {
-    expect(createProgressStageLabel("coder", "openai-compatible/qwen2.5-coder")).toBe("Working… (qwen2.5-coder)");
+    expect(createProgressStageLabel("coder", "openai-compatible/qwen2.5-coder")).toBe("Coding… (qwen2.5-coder)");
+  });
+});
+
+describe("formatToolProgressMessage", () => {
+  test("formats multi-file file-tool args as comma-separated paths", () => {
+    expect(
+      formatToolProgressMessage("edit-file", {
+        paths: ["src/a.ts", "src/b.ts", "src/c.ts", "src/d.ts"],
+      }),
+    ).toBe("Edit src/a.ts, src/b.ts, src/c.ts (+1)");
+  });
+
+  test("formats run command with command text", () => {
+    expect(formatToolProgressMessage("run-command", { command: "bun run verify" })).toBe("Run bun run verify");
   });
 });

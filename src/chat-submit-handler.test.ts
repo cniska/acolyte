@@ -3,6 +3,7 @@ import { rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { ChatRow } from "./chat-commands";
 import {
+  buildInternalWriteResumeTurn,
   createSubmitHandler,
   extractClarifyingQuestions,
   resolveNaturalRememberDirective,
@@ -298,6 +299,60 @@ describe("chat submit handler guards", () => {
 
     await submit("add a line break before the resume message");
     expect(openWriteConfirmWith).toBe("add a line break before the resume message");
+  });
+
+  test("internal write-resume payload bypasses read-mode write confirm gate", async () => {
+    let openWriteConfirmWith = "";
+    let replyCalls = 0;
+    const rows: ChatRow[] = [];
+    const session = createSession({ id: "sess_test" });
+    const store = createStore({ activeSessionId: session.id, sessions: [session] });
+    const submit = createSubmitHandler({
+      backend: createBackend({
+        status: async () => "provider=openai permission_mode=read",
+        reply: async () => {
+          replyCalls += 1;
+          return { model: "gpt-5-mini", output: "done" };
+        },
+      }),
+      store,
+      currentSession: session,
+      setCurrentSession: () => {},
+      toRows: () => [],
+      setRows: (updater) => {
+        rows.splice(0, rows.length, ...updater(rows));
+      },
+      setShowShortcuts: () => {},
+      setValue: () => {},
+      persist: async () => {},
+      exit: () => {},
+      openSkillsPanel: async () => {},
+      openResumePanel: () => {},
+      openPermissionsPanel: () => {},
+      openPolicyPanel: () => {},
+      openClarifyPanel: (_questions, _originalPrompt) => {},
+      openWriteConfirmPanel: (prompt) => {
+        openWriteConfirmWith = prompt;
+      },
+      pendingPolicyCandidate: null,
+      setPendingPolicyCandidate: () => {},
+      tokenUsage: [],
+      isThinking: false,
+      setInputHistory: () => {},
+      setInputHistoryIndex: () => {},
+      setInputHistoryDraft: () => {},
+      setIsThinking: () => {},
+      setThinkingLabel: () => {},
+      setTokenUsage: () => {},
+      createMessage,
+      nowIso: () => "2026-02-20T00:00:00.000Z",
+      setInterrupt: () => {},
+    });
+
+    await submit(buildInternalWriteResumeTurn("edit src/cli.ts to rename x to y"));
+    expect(openWriteConfirmWith).toBe("");
+    expect(replyCalls).toBe(1);
+    expect(rows.some((row) => row.role === "assistant" && row.content === "done")).toBe(true);
   });
 
   test("records interrupted row when active turn is aborted", async () => {

@@ -10,11 +10,15 @@ import { ChatInputPanel } from "./chat-input-panel";
 import { useChatKeybindings } from "./chat-keybindings";
 import { shownCwd } from "./chat-layout";
 import type { PickerState } from "./chat-picker";
-import { createPickerHandlers } from "./chat-picker-handlers";
+import { createPickerHandlers, persistPermissionMode } from "./chat-picker-handlers";
 import { newMessage, nowIso, toRows } from "./chat-session";
 import { suggestSlashCommands } from "./chat-slash";
 import { resolveQueueSubmit } from "./chat-submit";
-import { createSubmitHandler } from "./chat-submit-handler";
+import {
+  buildInternalClarificationTurn,
+  buildInternalWriteResumeTurn,
+  createSubmitHandler,
+} from "./chat-submit-handler";
 import { ChatTranscript } from "./chat-transcript";
 import { buildInputHistory } from "./chat-turn";
 import type { PolicyCandidate } from "./policy-distill";
@@ -106,6 +110,7 @@ function ChatApp(props: ChatAppProps) {
     openResumePanel,
     openPermissionsPanel,
     openPolicyPanel,
+    openClarifyPanel,
     openWriteConfirmPanel,
     handlePickerSelect,
   } = createPickerHandlers({
@@ -119,9 +124,12 @@ function ChatApp(props: ChatAppProps) {
     setPendingPolicyCandidate,
     setValue,
     queueInput: setQueuedInput,
+    buildClarificationPayload: buildInternalClarificationTurn,
+    buildWriteResumePayload: buildInternalWriteResumeTurn,
     setBackendPermissionMode: async (mode) => {
       await backend.setPermissionMode(mode);
     },
+    persistPermissionMode,
     persist,
     toRows,
     createMessage: newMessage,
@@ -143,6 +151,7 @@ function ChatApp(props: ChatAppProps) {
     openResumePanel,
     openPermissionsPanel,
     openPolicyPanel,
+    openClarifyPanel,
     openWriteConfirmPanel,
     pendingPolicyCandidate,
     setPendingPolicyCandidate,
@@ -275,7 +284,10 @@ function ChatApp(props: ChatAppProps) {
         queuedInput={queuedInput}
         onPolicyConfirmNoteChange={(next) => {
           setPicker((current) => {
-            if (!current || (current.kind !== "policyConfirm" && current.kind !== "writeConfirm")) {
+            if (
+              !current ||
+              (current.kind !== "policyConfirm" && current.kind !== "writeConfirm" && current.kind !== "clarifyAnswer")
+            ) {
               return current;
             }
             return { ...current, note: next };
@@ -287,17 +299,6 @@ function ChatApp(props: ChatAppProps) {
 }
 
 export async function runInkChat(props: ChatAppProps): Promise<void> {
-  const useAltScreen = Boolean(process.stdout.isTTY);
-  if (useAltScreen) {
-    process.stdout.write("\x1b[?1049h\x1b[2J\x1b[H");
-  }
-
   const app = render(<ChatApp {...props} />);
-  try {
-    await app.waitUntilExit();
-  } finally {
-    if (useAltScreen) {
-      process.stdout.write("\x1b[?1049l");
-    }
-  }
+  await app.waitUntilExit();
 }
