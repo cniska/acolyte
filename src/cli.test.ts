@@ -74,9 +74,12 @@ describe("cli formatting helpers", () => {
       "provider=openai model=gpt-5-mini service=acolyte-backend url=http://localhost:6767",
     );
     expect(out).toBe(
-      ["provider: openai", "model:    gpt-5-mini", "service:  acolyte-backend", "api_url:  http://localhost:6767"].join(
-        "\n",
-      ),
+      [
+        "provider: openai",
+        "model:    gpt-5-mini",
+        "service:  acolyte-backend",
+        "          url: http://localhost:6767",
+      ].join("\n"),
     );
   });
 

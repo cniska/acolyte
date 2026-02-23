@@ -4,14 +4,14 @@ import { formatStatusOutput } from "./status-format";
 describe("status format", () => {
   test("formats core backend fields in stable order", () => {
     const output = formatStatusOutput(
-      "provider=openai model=gpt-5-mini service=acolyte-backend url=http://localhost:6767 api_url=https://api.openai.com/v1 memory_storage=postgres memory_context=8 permission_mode=write",
+      "provider=openai model=gpt-5-mini service=acolyte-backend url=http://localhost:6767 provider_api_url=https://api.openai.com/v1 memory_storage=postgres memory_context=8 permission_mode=write",
     );
 
     expect(output).toMatch(/provider:\s+openai/);
     expect(output).toMatch(/\n\s+api_url:\s+https:\/\/api\.openai\.com\/v1/);
     expect(output).toMatch(/model:\s+gpt-5-mini/);
     expect(output).toMatch(/service:\s+acolyte-backend/);
-    expect(output).toMatch(/api_url:\s+http:\/\/localhost:6767/);
+    expect(output).toMatch(/\n\s+url:\s+http:\/\/localhost:6767/);
     expect(output).toMatch(/memory:\s+postgres/);
     expect(output).toMatch(/\n\s+entries:\s+8/);
     expect(output).toMatch(/permissions:\s+write/);

@@ -85,7 +85,7 @@ export function formatStatusOutput(status: string): string {
   const providerPlanner = take("provider_planner");
   const providerCoder = take("provider_coder");
   const providerReviewer = take("provider_reviewer");
-  const providerApiUrl = take("api_url");
+  const primaryApiUrl = take("provider_api_url");
   const primaryProvider = providerMain ?? provider ?? providerPlanner ?? providerCoder ?? providerReviewer;
   pushStacked(
     "provider",
@@ -94,10 +94,22 @@ export function formatStatusOutput(status: string): string {
       ["planner", providerPlanner && providerPlanner !== primaryProvider ? providerPlanner : undefined],
       ["coder", providerCoder && providerCoder !== primaryProvider ? providerCoder : undefined],
       ["reviewer", providerReviewer && providerReviewer !== primaryProvider ? providerReviewer : undefined],
-      ["api_url", primaryProvider ? providerApiUrl : undefined],
+      ["api_url", primaryApiUrl],
     ],
     true,
   );
+  const providerApiUrls = Array.from(fields.entries())
+    .filter(([key]) => key.startsWith("provider_api_url_"))
+    .map(([key, value]) => [key.slice("provider_api_url_".length), value] as const);
+  for (const [providerKey] of providerApiUrls) {
+    fields.delete(`provider_api_url_${providerKey}`);
+  }
+  for (const [providerKey, apiUrl] of providerApiUrls) {
+    if (!providerKey || !apiUrl) {
+      continue;
+    }
+    output.push(`${providerKey}:\napi_url: ${apiUrl}`);
+  }
   const modelMain = take("model_lead");
   const modelPlanner = take("model_planner");
   const modelCoder = take("model_coder");
@@ -134,14 +146,16 @@ export function formatStatusOutput(status: string): string {
   if (hasProviderReadinessIssue) {
     pushStacked("provider_ready", providerReadyRows, false, true);
   }
-  const service = take("service");
-  if (service) {
-    output.push(`service: ${service}`);
-  }
   const url = take("url");
-  if (url) {
-    output.push(`api_url: ${url}`);
-  }
+  const service = take("service");
+  pushStacked(
+    "service",
+    [
+      ["status", service],
+      ["url", url],
+    ],
+    true,
+  );
 
   const memoryStorage = take("memory_storage");
   const memoryContext = take("memory_context");

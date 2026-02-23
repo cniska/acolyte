@@ -331,7 +331,7 @@ class RemoteBackend implements Backend {
       providerReadyReviewer === undefined ? undefined : `provider_ready_reviewer=${providerReadyReviewer}`,
       `service=${service}`,
       `url=${this.apiUrl}`,
-      apiBaseUrl ? `api_url=${apiBaseUrl}` : undefined,
+      apiBaseUrl ? `provider_api_url=${apiBaseUrl}` : undefined,
       memoryStorage ? `memory_storage=${memoryStorage}` : undefined,
       memoryContextCount === undefined ? undefined : `memory_context=${memoryContextCount}`,
       omEnabled === undefined ? undefined : `om=${omEnabled ? "enabled" : "disabled"}`,
