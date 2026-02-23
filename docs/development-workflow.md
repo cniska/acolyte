@@ -3,6 +3,9 @@
 ## Purpose
 Define a consistent way to implement features autonomously while validating each step.
 
+## Related Guide
+1. Day-to-day dogfood playbook: `docs/dogfood-workflow.md`
+
 ## Feature Loop
 1. Define the target outcome in one sentence.
 2. Write explicit acceptance checks (behavior + commands).
