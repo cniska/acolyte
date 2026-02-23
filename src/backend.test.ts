@@ -19,6 +19,24 @@ describe("remote backend connection errors", () => {
     );
   });
 
+  test("reply maps socket-close fetch errors to backend-start hint", async () => {
+    globalThis.fetch = (async () => {
+      throw new TypeError("The socket connection was closed unexpectedly.");
+    }) as unknown as typeof fetch;
+
+    const backend = createBackend({ apiUrl: "http://localhost:6767" });
+    await expect(
+      backend.reply({
+        message: "ping",
+        history: [],
+        model: "gpt-5-mini",
+        sessionId: "sess_test",
+      }),
+    ).rejects.toThrow(
+      "Cannot reach backend at http://localhost:6767. Start it with: bun run dev (or bun run serve:env)",
+    );
+  });
+
   test("reply preserves non-connection errors", async () => {
     globalThis.fetch = (async () => {
       throw new Error("boom");
