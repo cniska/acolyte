@@ -731,4 +731,70 @@ describe("chat submit handler guards", () => {
 
     expect(rows.some((row) => row.role === "system" && row.content.includes("Provider quota exceeded"))).toBe(true);
   });
+
+  test("dedupes fallback tool progress when same tool was streamed", async () => {
+    const rows: ChatRow[] = [];
+    let progressCalls = 0;
+    const session = createSession({ id: "sess_test" });
+    const store = createStore({ activeSessionId: session.id, sessions: [session] });
+    const submit = createSubmitHandler({
+      backend: createBackend({
+        status: async () => "ok",
+        reply: async () => ({
+          model: "gpt-5-mini",
+          output: "done",
+          toolCalls: ["run-command"],
+        }),
+        progress: async () => {
+          progressCalls += 1;
+          if (progressCalls === 1) {
+            return {
+              sessionId: "sess_test",
+              requestId: "req_1",
+              done: false,
+              events: [{ seq: 1, message: "Run" }],
+            };
+          }
+          return { sessionId: "sess_test", requestId: "req_1", done: false, events: [] };
+        },
+      }),
+      store,
+      currentSession: session,
+      setCurrentSession: () => {},
+      toRows: () => [],
+      setRows: (updater) => {
+        rows.splice(0, rows.length, ...updater(rows));
+      },
+      setShowShortcuts: () => {},
+      setValue: () => {},
+      persist: async () => {},
+      exit: () => {},
+      openSkillsPanel: async () => {},
+      openResumePanel: () => {},
+      openPermissionsPanel: () => {},
+      openPolicyPanel: () => {},
+      openClarifyPanel: (_questions, _originalPrompt) => {},
+      openWriteConfirmPanel: () => {},
+      pendingPolicyCandidate: null,
+      setPendingPolicyCandidate: () => {},
+      tokenUsage: [],
+      isThinking: false,
+      setInputHistory: () => {},
+      setInputHistoryIndex: () => {},
+      setInputHistoryDraft: () => {},
+      setIsThinking: () => {},
+      setThinkingLabel: () => {},
+      setTokenUsage: () => {},
+      createMessage,
+      nowIso: () => "2026-02-20T00:00:00.000Z",
+      setInterrupt: () => {},
+    });
+
+    await submit("hello");
+
+    const runRows = rows.filter(
+      (row) => row.role === "assistant" && row.style === "toolProgress" && row.content === "Run",
+    );
+    expect(runRows.length).toBe(1);
+  });
 });

@@ -279,6 +279,28 @@ function buildClarifiedUserText(turn: InternalClarificationTurn): string {
   return `${turn.originalPrompt}\n\nClarifications:\n${lines.join("\n")}`;
 }
 
+function dedupeToolProgressRows(existing: ChatRow[], incoming: ChatRow[]): ChatRow[] {
+  const seen = new Set(
+    existing
+      .filter((row) => row.style === "toolProgress")
+      .map((row) => `${row.role}:${row.style}:${row.content.trim().toLowerCase()}`),
+  );
+  const out: ChatRow[] = [];
+  for (const row of incoming) {
+    if (row.style !== "toolProgress") {
+      out.push(row);
+      continue;
+    }
+    const key = `${row.role}:${row.style}:${row.content.trim().toLowerCase()}`;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    out.push(row);
+  }
+  return out;
+}
+
 export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: string) => Promise<void> {
   return async (raw: string): Promise<void> => {
     const internalClarification = parseInternalClarificationTurn(raw);
@@ -529,16 +551,19 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         input.currentSession.messages.push(clarificationMessage);
         input.currentSession.updatedAt = input.nowIso();
         const nonAssistantRows = turn.rows.filter((row) => row.role !== "assistant");
-        input.setRows((current) => [
-          ...current,
-          ...nonAssistantRows,
-          { id: `row_${crypto.randomUUID()}`, role: "assistant", content: clarificationPrompt },
-        ]);
+        input.setRows((current) => {
+          const deduped = dedupeToolProgressRows(current, nonAssistantRows);
+          return [
+            ...current,
+            ...deduped,
+            { id: `row_${crypto.randomUUID()}`, role: "assistant", content: clarificationPrompt },
+          ];
+        });
         input.openClarifyPanel(clarifyingQuestions, text);
       } else {
         input.currentSession.messages.push(assistantMessage);
         input.currentSession.updatedAt = input.nowIso();
-        input.setRows((current) => [...current, ...turn.rows]);
+        input.setRows((current) => [...current, ...dedupeToolProgressRows(current, turn.rows)]);
       }
       input.setTokenUsage((current) => [...current, turn.tokenEntry]);
       await input.persist();
