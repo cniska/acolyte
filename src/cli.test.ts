@@ -74,7 +74,7 @@ describe("cli formatting helpers", () => {
       "provider=openai model=gpt-5-mini service=acolyte-backend url=http://localhost:6767",
     );
     expect(out).toBe(
-      ["provider: openai", "model:    gpt-5-mini", "service:  acolyte-backend", "url:      http://localhost:6767"].join(
+      ["provider: openai", "model:    gpt-5-mini", "service:  acolyte-backend", "api_url:  http://localhost:6767"].join(
         "\n",
       ),
     );
@@ -113,15 +113,10 @@ describe("cli formatting helpers", () => {
     );
     expect(out).toMatch(/provider:\s+openai/);
     expect(out).not.toMatch(/mode:\s+openai/);
-    expect(out).not.toMatch(/^model:\s+gpt-5-mini$/m);
-    expect(out).toContain("models:");
-    expect(out).toMatch(/\n\s+lead:\s+gpt-5-mini/);
+    expect(out).toMatch(/model:\s+gpt-5-mini/);
     expect(out).toMatch(/\n\s+planner:\s+o3/);
     expect(out).toMatch(/\n\s+coder:\s+gpt-5-codex/);
-    expect(out).toMatch(/\n\s+reviewer:\s+gpt-5-mini/);
-    expect(out).toContain("providers:");
-    expect(out).toMatch(/\n\s+lead:\s+openai/);
-    expect(out).toMatch(/\n\s+planner:\s+openai/);
+    expect(out).toMatch(/provider:\s+openai/);
     expect(out).toMatch(/\n\s+coder:\s+anthropic/);
     expect(out).toMatch(/\n\s+reviewer:\s+gemini/);
     expect(out).toContain("provider_ready:");
@@ -130,17 +125,13 @@ describe("cli formatting helpers", () => {
     expect(out).toMatch(/\n\s+coder:\s+false/);
     expect(out).toMatch(/\n\s+reviewer:\s+true/);
     expect(out).toMatch(/memory:\s+postgres/);
-    expect(out).toMatch(/memory_context:\s+7/);
+    expect(out).toMatch(/\n\s+entries:\s+7/);
     expect(out).toContain("om:");
     expect(out).toContain("enabled");
-    expect(out).toContain("scope: resource");
-    expect(out).toContain("model: gpt-5-mini");
-    expect(out).toContain("om_tokens:");
-    expect(out).toMatch(/\n\s+obs:\s+3000/);
-    expect(out).toMatch(/\n\s+ref:\s+8000/);
-    expect(out).toContain("om_state:");
-    expect(out).toMatch(/\n\s+exists:\s+true/);
-    expect(out).toMatch(/\n\s+gen:\s+4/);
+    expect(out).toMatch(/scope:\s+resource/);
+    expect(out).toMatch(/model:\s+gpt-5-mini/);
+    expect(out).toMatch(/\n\s+tokens:\s+obs=3000 ref=8000/);
+    expect(out).toMatch(/\n\s+state:\s+exists=true gen=4/);
   });
 
   test("formatKeyValueLines aligns key/value rows", () => {

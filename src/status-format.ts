@@ -85,6 +85,7 @@ export function formatStatusOutput(status: string): string {
   const providerPlanner = take("provider_planner");
   const providerCoder = take("provider_coder");
   const providerReviewer = take("provider_reviewer");
+  const providerApiUrl = take("api_url");
   const primaryProvider = providerMain ?? provider ?? providerPlanner ?? providerCoder ?? providerReviewer;
   pushStacked(
     "provider",
@@ -93,6 +94,7 @@ export function formatStatusOutput(status: string): string {
       ["planner", providerPlanner && providerPlanner !== primaryProvider ? providerPlanner : undefined],
       ["coder", providerCoder && providerCoder !== primaryProvider ? providerCoder : undefined],
       ["reviewer", providerReviewer && providerReviewer !== primaryProvider ? providerReviewer : undefined],
+      ["api_url", primaryProvider ? providerApiUrl : undefined],
     ],
     true,
   );
@@ -138,11 +140,7 @@ export function formatStatusOutput(status: string): string {
   }
   const url = take("url");
   if (url) {
-    output.push(`url: ${url}`);
-  }
-  const apiBaseUrl = take("api_url");
-  if (apiBaseUrl) {
-    output.push(`api_url: ${apiBaseUrl}`);
+    output.push(`api_url: ${url}`);
   }
 
   const memoryStorage = take("memory_storage");
