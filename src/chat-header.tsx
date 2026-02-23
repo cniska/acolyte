@@ -18,43 +18,41 @@ type ChatHeaderProps = {
 
 export function ChatHeader(props: ChatHeaderProps): React.ReactNode {
   const { lines, brandColor, logoColor, logoEyeColor } = props;
-  const logo = [
-    [{ text: "   ▗████▖", color: logoColor }],
-    [
-      { text: "  ▟█", color: logoColor },
-      { text: "●  ●", color: logoEyeColor },
-      { text: "█▙", color: logoColor },
-    ],
-    [{ text: "  ▜█▄▄▄▄█▛", color: logoColor }],
-  ] as const;
+  const title = lines.find((line) => line.id === "title");
+  const session = lines.find((line) => line.id === "session");
+  const cwd = lines.find((line) => line.id === "cwd");
+  const logoColumnWidth = 10;
+  const logoTop = "  ▗████▖  ";
+  const logoMiddleLeft = " ▟█";
+  const logoMiddleEyes = "●  ●";
+  const logoMiddleRight = "█▙ ";
+  const logoBottom = " ▜█▄▄▄▄█▛ ";
 
   return (
-    <Box>
-      <Box flexDirection="column" marginRight={2}>
-        {logo.map((parts) => (
-          <Text key={parts.map((part) => `${part.color}:${part.text}`).join("|")}>
-            {parts.map((part) => (
-              <Text key={`${part.color}:${part.text}`} color={part.color}>
-                {part.text}
-              </Text>
-            ))}
-          </Text>
-        ))}
+    <>
+      <Box>
+        <Box width={logoColumnWidth}>
+          <Text color={logoColor}>{logoTop}</Text>
+        </Box>
+        <Text>  </Text>
+        <Text color={brandColor} bold>{`${title?.text ?? ""}${title?.suffix ?? ""}`}</Text>
       </Box>
-      <Box flexDirection="column">
-        {lines.map((line) => (
-          <Text key={line.id} dimColor={line.dim} color={line.brand ? brandColor : undefined}>
-            {line.id === "title" ? (
-              <>
-                <Text bold>{line.text}</Text>
-                <Text dimColor>{line.suffix}</Text>
-              </>
-            ) : (
-              line.text
-            )}
-          </Text>
-        ))}
+      <Box>
+        <Box width={logoColumnWidth}>
+          <Text color={logoColor}>{logoMiddleLeft}</Text>
+          <Text color={logoEyeColor}>{logoMiddleEyes}</Text>
+          <Text color={logoColor}>{logoMiddleRight}</Text>
+        </Box>
+        <Text>  </Text>
+        <Text dimColor={Boolean(session?.dim)}>{session?.text ?? ""}</Text>
       </Box>
-    </Box>
+      <Box>
+        <Box width={logoColumnWidth}>
+          <Text color={logoColor}>{logoBottom}</Text>
+        </Box>
+        <Text>  </Text>
+        <Text dimColor={Boolean(cwd?.dim)}>{cwd?.text ?? ""}</Text>
+      </Box>
+    </>
   );
 }
