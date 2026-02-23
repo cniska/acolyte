@@ -861,7 +861,7 @@ function resolveResumeTarget(
 
 async function chatModeWithOptions(options: { resumeLatest: boolean; resumePrefix?: string }): Promise<void> {
   const store = await readStore();
-  const defaultModel = appConfig.models.main ?? FALLBACK_MODEL;
+  const defaultModel = appConfig.models.lead ?? FALLBACK_MODEL;
   const resolved = resolveResumeTarget(store, options);
   if (resolved?.kind === "not_found") {
     printError(`No session found for prefix: ${resolved.prefix}`);
@@ -899,6 +899,7 @@ async function chatModeWithOptions(options: { resumeLatest: boolean; resumePrefi
     version: CLI_VERSION,
   });
   const resumeId = store.activeSessionId ?? session.id;
+  printOutput("");
   printInfo(`Resume with: ${formatResumeCommand(resumeId)}`);
 }
 
@@ -920,7 +921,7 @@ async function runMode(args: string[]): Promise<void> {
     return;
   }
 
-  const defaultModel = appConfig.models.main ?? FALLBACK_MODEL;
+  const defaultModel = appConfig.models.lead ?? FALLBACK_MODEL;
   const session = createSession(defaultModel);
   session.messages.push(newMessage("system", ONE_SHOT_SYSTEM_PROMPT));
   const backend = createBackend({

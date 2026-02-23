@@ -86,11 +86,11 @@ class LocalBackend implements Backend {
   }
 
   async status(): Promise<string> {
-    const modelMain = appConfig.models.main;
-    const modelPlanner = appConfig.models.planner ?? modelMain;
-    const modelCoder = appConfig.models.coder ?? modelMain;
-    const modelReviewer = appConfig.models.reviewer ?? modelMain;
-    const providerMain = providerFromModel(modelMain);
+    const modelLead = appConfig.models.lead;
+    const modelPlanner = appConfig.models.planner ?? modelLead;
+    const modelCoder = appConfig.models.coder ?? modelLead;
+    const modelReviewer = appConfig.models.reviewer ?? modelLead;
+    const providerLead = providerFromModel(modelLead);
     const providerPlanner = providerFromModel(modelPlanner);
     const providerCoder = providerFromModel(modelCoder);
     const providerReviewer = providerFromModel(modelReviewer);
@@ -100,7 +100,7 @@ class LocalBackend implements Backend {
       anthropicApiKey: appConfig.anthropic.apiKey,
       googleApiKey: appConfig.google.apiKey,
     };
-    const providerReadyMain = isProviderAvailable({ provider: providerMain, ...providerConfig });
+    const providerReadyLead = isProviderAvailable({ provider: providerLead, ...providerConfig });
     const providerReadyPlanner = isProviderAvailable({ provider: providerPlanner, ...providerConfig });
     const providerReadyCoder = isProviderAvailable({ provider: providerCoder, ...providerConfig });
     const providerReadyReviewer = isProviderAvailable({ provider: providerReviewer, ...providerConfig });
@@ -112,16 +112,16 @@ class LocalBackend implements Backend {
     }
     const fields = [
       "provider=local-mock",
-      `model=${modelMain}`,
-      `model_main=${modelMain}`,
+      `model=${modelLead}`,
+      `model_lead=${modelLead}`,
       `model_planner=${modelPlanner}`,
       `model_coder=${modelCoder}`,
       `model_reviewer=${modelReviewer}`,
-      `provider_main=${providerMain}`,
+      `provider_lead=${providerLead}`,
       `provider_planner=${providerPlanner}`,
       `provider_coder=${providerCoder}`,
       `provider_reviewer=${providerReviewer}`,
-      `provider_ready_main=${providerReadyMain}`,
+      `provider_ready_lead=${providerReadyLead}`,
       `provider_ready_planner=${providerReadyPlanner}`,
       `provider_ready_coder=${providerReadyCoder}`,
       `provider_ready_reviewer=${providerReadyReviewer}`,
@@ -241,19 +241,19 @@ class RemoteBackend implements Backend {
       mode?: unknown;
       model?: unknown;
       models?: {
-        main?: unknown;
+        lead?: unknown;
         planner?: unknown;
         coder?: unknown;
         reviewer?: unknown;
       };
       providers?: {
-        main?: unknown;
+        lead?: unknown;
         planner?: unknown;
         coder?: unknown;
         reviewer?: unknown;
       };
       providerAvailability?: {
-        main?: unknown;
+        lead?: unknown;
         planner?: unknown;
         coder?: unknown;
         reviewer?: unknown;
@@ -283,16 +283,16 @@ class RemoteBackend implements Backend {
     const provider =
       typeof json.provider === "string" ? json.provider : typeof json.mode === "string" ? json.mode : "unknown";
     const model = typeof json.model === "string" ? json.model : undefined;
-    const modelMain = typeof json.models?.main === "string" ? json.models.main : undefined;
+    const modelLead = typeof json.models?.lead === "string" ? json.models.lead : undefined;
     const modelPlanner = typeof json.models?.planner === "string" ? json.models.planner : undefined;
     const modelCoder = typeof json.models?.coder === "string" ? json.models.coder : undefined;
     const modelReviewer = typeof json.models?.reviewer === "string" ? json.models.reviewer : undefined;
-    const providerMain = typeof json.providers?.main === "string" ? json.providers.main : undefined;
+    const providerLead = typeof json.providers?.lead === "string" ? json.providers.lead : undefined;
     const providerPlanner = typeof json.providers?.planner === "string" ? json.providers.planner : undefined;
     const providerCoder = typeof json.providers?.coder === "string" ? json.providers.coder : undefined;
     const providerReviewer = typeof json.providers?.reviewer === "string" ? json.providers.reviewer : undefined;
-    const providerReadyMain =
-      typeof json.providerAvailability?.main === "boolean" ? json.providerAvailability.main : undefined;
+    const providerReadyLead =
+      typeof json.providerAvailability?.lead === "boolean" ? json.providerAvailability.lead : undefined;
     const providerReadyPlanner =
       typeof json.providerAvailability?.planner === "boolean" ? json.providerAvailability.planner : undefined;
     const providerReadyCoder =
@@ -317,15 +317,15 @@ class RemoteBackend implements Backend {
     const fields = [
       `provider=${provider}`,
       model ? `model=${model}` : undefined,
-      modelMain ? `model_main=${modelMain}` : undefined,
+      modelLead ? `model_lead=${modelLead}` : undefined,
       modelPlanner ? `model_planner=${modelPlanner}` : undefined,
       modelCoder ? `model_coder=${modelCoder}` : undefined,
       modelReviewer ? `model_reviewer=${modelReviewer}` : undefined,
-      providerMain ? `provider_main=${providerMain}` : undefined,
+      providerLead ? `provider_lead=${providerLead}` : undefined,
       providerPlanner ? `provider_planner=${providerPlanner}` : undefined,
       providerCoder ? `provider_coder=${providerCoder}` : undefined,
       providerReviewer ? `provider_reviewer=${providerReviewer}` : undefined,
-      providerReadyMain === undefined ? undefined : `provider_ready_main=${providerReadyMain}`,
+      providerReadyLead === undefined ? undefined : `provider_ready_lead=${providerReadyLead}`,
       providerReadyPlanner === undefined ? undefined : `provider_ready_planner=${providerReadyPlanner}`,
       providerReadyCoder === undefined ? undefined : `provider_ready_coder=${providerReadyCoder}`,
       providerReadyReviewer === undefined ? undefined : `provider_ready_reviewer=${providerReadyReviewer}`,

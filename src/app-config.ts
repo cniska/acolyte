@@ -25,7 +25,7 @@ export const appConfig = {
     baseUrl: fileConfig.googleBaseUrl,
   },
   models: {
-    main: fileConfig.model,
+    lead: fileConfig.model,
     planner: fileConfig.modelPlanner,
     coder: fileConfig.modelCoder,
     reviewer: fileConfig.modelReviewer,

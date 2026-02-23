@@ -189,21 +189,21 @@ const server = Bun.serve({
         googleApiKey: appConfig.google.apiKey,
       };
       const roleProviders = {
-        main: providerFromModel(roleModels.main),
+        lead: providerFromModel(roleModels.lead),
         planner: providerFromModel(roleModels.planner),
         coder: providerFromModel(roleModels.coder),
         reviewer: providerFromModel(roleModels.reviewer),
       };
       const roleProviderAvailability = {
-        main: isProviderAvailable({ provider: roleProviders.main, ...providerConfig }),
+        lead: isProviderAvailable({ provider: roleProviders.lead, ...providerConfig }),
         planner: isProviderAvailable({ provider: roleProviders.planner, ...providerConfig }),
         coder: isProviderAvailable({ provider: roleProviders.coder, ...providerConfig }),
         reviewer: isProviderAvailable({ provider: roleProviders.reviewer, ...providerConfig }),
       };
-      const provider = roleProviderAvailability.main
-        ? roleProviders.main === "openai"
+      const provider = roleProviderAvailability.lead
+        ? roleProviders.lead === "openai"
           ? resolveProvider(OPENAI_API_KEY, OPENAI_BASE_URL)
-          : roleProviders.main
+          : roleProviders.lead
         : "mock";
       let currentOm: {
         exists: boolean;
@@ -239,7 +239,7 @@ const server = Bun.serve({
         ok: true,
         service: "acolyte-backend",
         provider,
-        model: presentModel(roleModels.main),
+        model: presentModel(roleModels.lead),
         models: presentRoleModels(roleModels),
         providers: roleProviders,
         providerAvailability: roleProviderAvailability,

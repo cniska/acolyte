@@ -5,7 +5,7 @@ export type ProviderName = "openai" | "openai-compatible" | "anthropic" | "gemin
 export type ModelProviderName = ProviderName;
 
 export type RoleModelMap = {
-  main: string;
+  lead: string;
   planner: string;
   coder: string;
   reviewer: string;
@@ -43,12 +43,12 @@ export function resolveRoleModel(
   return override ?? requestedModel;
 }
 
-export function resolveRoleModels(mainModel = appConfig.models.main): RoleModelMap {
+export function resolveRoleModels(leadModel = appConfig.models.lead): RoleModelMap {
   return {
-    main: mainModel,
-    planner: appConfig.models.planner ?? mainModel,
-    coder: appConfig.models.coder ?? mainModel,
-    reviewer: appConfig.models.reviewer ?? mainModel,
+    lead: leadModel,
+    planner: appConfig.models.planner ?? leadModel,
+    coder: appConfig.models.coder ?? leadModel,
+    reviewer: appConfig.models.reviewer ?? leadModel,
   };
 }
 
@@ -58,7 +58,7 @@ export function presentModel(model: string): string {
 
 export function presentRoleModels(models: RoleModelMap): RoleModelMap {
   return {
-    main: presentModel(models.main),
+    lead: presentModel(models.lead),
     planner: presentModel(models.planner),
     coder: presentModel(models.coder),
     reviewer: presentModel(models.reviewer),

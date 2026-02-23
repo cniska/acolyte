@@ -26,7 +26,7 @@ export const acolyteReviewer = createRoleAgent("reviewer");
 export const acolyte = createAgent({
   id: "acolyte",
   name: "Acolyte",
-  model: appConfig.models.main,
+  model: appConfig.models.lead,
   instructions: async () => createSoulPrompt(),
 });
 

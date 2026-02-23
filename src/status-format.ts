@@ -84,7 +84,7 @@ export function formatStatusOutput(status: string): string {
     output.push(`provider: ${provider}`);
     fields.delete("mode");
   }
-  const modelMain = take("model_main");
+  const modelMain = take("model_lead");
   const modelPlanner = take("model_planner");
   const modelCoder = take("model_coder");
   const modelReviewer = take("model_reviewer");
@@ -100,7 +100,7 @@ export function formatStatusOutput(status: string): string {
   pushStacked(
     "models",
     [
-      ["main", displayModelMain],
+      ["lead", displayModelMain],
       ["planner", displayModelPlanner],
       ["coder", displayModelCoder],
       ["reviewer", displayModelReviewer],
@@ -108,14 +108,14 @@ export function formatStatusOutput(status: string): string {
     false,
     true,
   );
-  const providerMain = take("provider_main");
+  const providerMain = take("provider_lead");
   const providerPlanner = take("provider_planner");
   const providerCoder = take("provider_coder");
   const providerReviewer = take("provider_reviewer");
   pushStacked(
     "providers",
     [
-      ["main", providerMain],
+      ["lead", providerMain],
       ["planner", providerPlanner],
       ["coder", providerCoder],
       ["reviewer", providerReviewer],
@@ -123,12 +123,12 @@ export function formatStatusOutput(status: string): string {
     false,
     true,
   );
-  const providerReadyMain = take("provider_ready_main");
+  const providerReadyMain = take("provider_ready_lead");
   const providerReadyPlanner = take("provider_ready_planner");
   const providerReadyCoder = take("provider_ready_coder");
   const providerReadyReviewer = take("provider_ready_reviewer");
   const providerReadyRows: Array<[string, string | undefined]> = [
-    ["main", providerReadyMain],
+    ["lead", providerReadyMain],
     ["planner", providerReadyPlanner],
     ["coder", providerReadyCoder],
     ["reviewer", providerReadyReviewer],

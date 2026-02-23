@@ -28,6 +28,7 @@ type CreateSubmitHandlerInput = {
   openResumePanel: () => void;
   openPermissionsPanel: () => void;
   openPolicyPanel: (items: PolicyCandidate[]) => void;
+  openClarifyPanel: (questions: string[], originalPrompt: string) => void;
   openWriteConfirmPanel: (prompt: string) => void;
   pendingPolicyCandidate: PolicyCandidate | null;
   setPendingPolicyCandidate: (next: PolicyCandidate | null) => void;
@@ -43,6 +44,13 @@ type CreateSubmitHandlerInput = {
   nowIso: () => string;
   setInterrupt: (handler: (() => void) | null) => void;
 };
+
+type ClarificationAnswer = { question: string; answer: string };
+type InternalClarificationTurn = {
+  originalPrompt: string;
+  answers: ClarificationAnswer[];
+};
+const INTERNAL_CLARIFICATION_PREFIX = "\u0000acolyte_clarify:";
 
 function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === "AbortError";
@@ -153,28 +161,117 @@ function isStageProgressMessage(message: string): boolean {
     trimmed.startsWith("Planning…") ||
     trimmed.startsWith("Working…") ||
     trimmed.startsWith("Reviewing…") ||
+    trimmed.startsWith("Summarizing…") ||
     trimmed === "Trying a tool-assisted pass"
   );
 }
 
+export function extractClarifyingQuestions(output: string): string[] {
+  const lines = output.split("\n").map((line) => line.trim());
+  const headingIndex = lines.findIndex((line) => /^(?:[-*]\s*)?clarifying questions\s*:?\s*$/i.test(line));
+  if (headingIndex < 0) {
+    return [];
+  }
+  const questions: string[] = [];
+  for (let i = headingIndex + 1; i < lines.length; i += 1) {
+    const line = lines[i] ?? "";
+    if (line.length === 0) {
+      if (questions.length > 0) {
+        break;
+      }
+      continue;
+    }
+    const numbered = line.match(/^\d+[).]\s+(.+)$/);
+    if (!numbered?.[1]) {
+      if (questions.length > 0) {
+        break;
+      }
+      continue;
+    }
+    questions.push(numbered[1].trim());
+  }
+  return questions;
+}
+
+function buildClarificationPrompt(questions: string[]): string {
+  const lines = ["Clarification needed before continuing:"];
+  for (let i = 0; i < questions.length; i += 1) {
+    lines.push(`${i + 1}. ${questions[i] ?? ""}`);
+  }
+  return lines.join("\n");
+}
+
+export function buildInternalClarificationTurn(turn: InternalClarificationTurn): string {
+  return `${INTERNAL_CLARIFICATION_PREFIX}${JSON.stringify(turn)}`;
+}
+
+function parseInternalClarificationTurn(raw: string): InternalClarificationTurn | null {
+  if (!raw.startsWith(INTERNAL_CLARIFICATION_PREFIX)) {
+    return null;
+  }
+  const payload = raw.slice(INTERNAL_CLARIFICATION_PREFIX.length);
+  try {
+    const parsed = JSON.parse(payload) as Partial<InternalClarificationTurn>;
+    if (!parsed || typeof parsed !== "object") {
+      return null;
+    }
+    const originalPrompt = typeof parsed.originalPrompt === "string" ? parsed.originalPrompt.trim() : "";
+    const answers = Array.isArray(parsed.answers)
+      ? parsed.answers
+          .map((item) => {
+            if (!item || typeof item !== "object") {
+              return null;
+            }
+            const question =
+              typeof (item as { question?: unknown }).question === "string"
+                ? (item as { question: string }).question.trim()
+                : "";
+            const answer =
+              typeof (item as { answer?: unknown }).answer === "string"
+                ? (item as { answer: string }).answer.trim()
+                : "";
+            if (!question || !answer) {
+              return null;
+            }
+            return { question, answer };
+          })
+          .filter((item): item is ClarificationAnswer => Boolean(item))
+      : [];
+    if (!originalPrompt || answers.length === 0) {
+      return null;
+    }
+    return { originalPrompt, answers };
+  } catch {
+    return null;
+  }
+}
+
+function buildClarifiedUserText(turn: InternalClarificationTurn): string {
+  const lines = turn.answers.map((item) => `- ${item.question}: ${item.answer}`);
+  return `${turn.originalPrompt}\n\nClarifications:\n${lines.join("\n")}`;
+}
+
 export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: string) => Promise<void> {
   return async (raw: string): Promise<void> => {
-    const text = raw.trim();
+    const internalClarification = parseInternalClarificationTurn(raw);
+    const text = internalClarification ? internalClarification.originalPrompt : raw.trim();
     if (!text || (input.isThinking && !text.startsWith("/"))) {
       return;
     }
-    if (text.startsWith("/") && !text.includes(" ") && !isKnownSlashToken(text)) {
+    if (!internalClarification && text.startsWith("/") && !text.includes(" ") && !isKnownSlashToken(text)) {
       return;
     }
-    const resolvedText = resolveSlashAlias(text);
-    const naturalRememberDirective = resolveNaturalRememberDirective(text);
+    const resolvedText = internalClarification ? text : resolveSlashAlias(text);
+    const naturalRememberDirective = internalClarification ? null : resolveNaturalRememberDirective(text);
     const dispatchResolvedText = resolvedText;
-    input.setInputHistory((current) => appendInputHistory(current, text));
-    input.setInputHistoryIndex(-1);
-    input.setInputHistoryDraft("");
+    if (!internalClarification) {
+      input.setInputHistory((current) => appendInputHistory(current, text));
+      input.setInputHistoryIndex(-1);
+      input.setInputHistoryDraft("");
+    }
     input.setValue("");
 
-    if (resolvedText === "?") {
+    if (!internalClarification && resolvedText === "?") {
       input.setShowShortcuts((current) => !current);
       return;
     }
@@ -188,12 +285,12 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       });
       input.setRows((current) => [...current, userRow]);
       input.setIsThinking(true);
-      input.setThinkingLabel(`Thinking… (${appConfig.models.main})`);
+      input.setThinkingLabel(`Thinking… (${appConfig.models.lead})`);
       try {
         const distilled = await distillMemoryNote(
           input.backend,
           naturalRememberDirective.content,
-          appConfig.models.main,
+          appConfig.models.lead,
           input.currentSession.id,
         );
         await addMemory(distilled, { scope: naturalRememberDirective.scope });
@@ -223,7 +320,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       }
       return;
     }
-    if (input.pendingPolicyCandidate && !text.startsWith("/")) {
+    if (!internalClarification && input.pendingPolicyCandidate && !text.startsWith("/")) {
       const [head, ...rest] = text.split(/\s+/);
       const note = rest.join(" ").trim();
       const decision = head.toLowerCase();
@@ -256,59 +353,77 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         return;
       }
     }
-    const commandResult = await dispatchSlashCommand({
-      text,
-      resolvedText: dispatchResolvedText,
-      backend: input.backend,
-      store: input.store,
-      currentSession: input.currentSession,
-      setCurrentSession: input.setCurrentSession,
-      toRows: (messages) => input.toRows(messages),
-      setRows: input.setRows,
-      setShowShortcuts: input.setShowShortcuts,
-      setValue: input.setValue,
-      persist: input.persist,
-      exit: input.exit,
-      openSkillsPanel: input.openSkillsPanel,
-      openResumePanel: input.openResumePanel,
-      openPermissionsPanel: input.openPermissionsPanel,
-      openPolicyPanel: input.openPolicyPanel,
-      setBackendPermissionMode: input.backend.setPermissionMode,
-      tokenUsage: input.tokenUsage,
-    });
-    if (commandResult.stop) {
-      return;
-    }
-    if (isLikelyWritePrompt(text)) {
-      try {
-        const status = await input.backend.status();
-        if (statusPermissionMode(status) === "read") {
-          input.setRows((current) => [
-            ...current,
-            {
-              id: `row_${crypto.randomUUID()}`,
-              role: "system",
-              content: "Write request needs confirmation in read mode.",
-            },
-          ]);
-          input.openWriteConfirmPanel(text);
-          return;
-        }
-      } catch {
-        // Best-effort check; continue normally if status lookup fails.
+    let userText = text;
+    let runVerifyAfterReply = false;
+    if (!internalClarification) {
+      const commandResult = await dispatchSlashCommand({
+        text,
+        resolvedText: dispatchResolvedText,
+        backend: input.backend,
+        store: input.store,
+        currentSession: input.currentSession,
+        setCurrentSession: input.setCurrentSession,
+        toRows: (messages) => input.toRows(messages),
+        setRows: input.setRows,
+        setShowShortcuts: input.setShowShortcuts,
+        setValue: input.setValue,
+        persist: input.persist,
+        exit: input.exit,
+        openSkillsPanel: input.openSkillsPanel,
+        openResumePanel: input.openResumePanel,
+        openPermissionsPanel: input.openPermissionsPanel,
+        openPolicyPanel: input.openPolicyPanel,
+        setBackendPermissionMode: input.backend.setPermissionMode,
+        tokenUsage: input.tokenUsage,
+      });
+      if (commandResult.stop) {
+        return;
       }
+      if (isLikelyWritePrompt(text)) {
+        try {
+          const status = await input.backend.status();
+          if (statusPermissionMode(status) === "read") {
+            input.setRows((current) => [
+              ...current,
+              {
+                id: `row_${crypto.randomUUID()}`,
+                role: "system",
+                content: "Write request needs confirmation in read mode.",
+              },
+            ]);
+            input.openWriteConfirmPanel(text);
+            return;
+          }
+        } catch {
+          // Best-effort check; continue normally if status lookup fails.
+        }
+      }
+      userText = commandResult.userText;
+      runVerifyAfterReply = commandResult.runVerifyAfterReply;
+    } else {
+      userText = buildClarifiedUserText(internalClarification);
+      runVerifyAfterReply = false;
     }
-    const userText = commandResult.userText;
-    const runVerifyAfterReply = commandResult.runVerifyAfterReply;
 
-    const { row: userRow } = applyUserTurn({
-      session: input.currentSession,
-      displayText: text,
-      userText,
-      nowIso: input.nowIso,
-      createMessage: input.createMessage,
-    });
-    input.setRows((current) => [...current, userRow]);
+    if (internalClarification) {
+      const userMessage = input.createMessage("user", userText);
+      input.currentSession.messages.push(userMessage);
+      if (input.currentSession.title === "New Session") {
+        input.currentSession.title =
+          internalClarification.originalPrompt.trim().replace(/\s+/g, " ").slice(0, 60) || "New Session";
+      }
+      input.currentSession.updatedAt = input.nowIso();
+    } else {
+      const { row: userRow } = applyUserTurn({
+        session: input.currentSession,
+        displayText: text,
+        userText,
+        nowIso: input.nowIso,
+        createMessage: input.createMessage,
+      });
+      input.setRows((current) => [...current, userRow]);
+    }
+
     const { contexts, unresolvedPaths } = await resolveReferencedFileContext(userText);
     const fileContextMessages: Message[] = contexts.map((context) => input.createMessage("system", context));
     if (unresolvedPaths.length > 0) {
@@ -320,42 +435,47 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
     }
 
     input.setIsThinking(true);
-    input.setThinkingLabel(`Thinking… (${presentModelLabel(appConfig.models.main)})`);
+    input.setThinkingLabel(`Thinking… (${presentModelLabel(appConfig.models.lead)})`);
     const abortController = new AbortController();
     input.setInterrupt(() => abortController.abort());
     const thinkingStartedAt = Date.now();
     let progressAfterSeq = 0;
+    const applyProgressEvents = (events: Array<{ seq: number; message: string }>): void => {
+      if (events.length === 0) {
+        return;
+      }
+      progressAfterSeq = events[events.length - 1]?.seq ?? progressAfterSeq;
+      for (const event of events) {
+        const message = event.message.trim();
+        if (!message) {
+          continue;
+        }
+        if (isStageProgressMessage(message)) {
+          input.setThinkingLabel(message);
+          continue;
+        }
+        input.setRows((current) => [
+          ...current,
+          {
+            id: `row_${crypto.randomUUID()}`,
+            role: "assistant",
+            content: message,
+            style: "toolProgress",
+          },
+        ]);
+      }
+    };
+    const pollProgress = async (): Promise<void> => {
+      const progress = await input.backend.progress(input.currentSession.id, progressAfterSeq);
+      if (!progress || progress.events.length === 0) {
+        return;
+      }
+      applyProgressEvents(progress.events);
+    };
     const progressPoll = setInterval(() => {
-      void input.backend
-        .progress(input.currentSession.id, progressAfterSeq)
-        .then((progress) => {
-          if (!progress || progress.events.length === 0) {
-            return;
-          }
-          progressAfterSeq = progress.events[progress.events.length - 1]?.seq ?? progressAfterSeq;
-          for (const event of progress.events) {
-            const message = event.message.trim();
-            if (!message) {
-              continue;
-            }
-            if (isStageProgressMessage(message)) {
-              input.setThinkingLabel(message);
-              continue;
-            }
-            input.setRows((current) => [
-              ...current,
-              {
-                id: `row_${crypto.randomUUID()}`,
-                role: "assistant",
-                content: message,
-                dim: true,
-              },
-            ]);
-          }
-        })
-        .catch(() => {
-          // Best-effort progress polling; ignore transient backend/proxy errors.
-        });
+      void pollProgress().catch(() => {
+        // Best-effort progress polling; ignore transient backend/proxy errors.
+      });
     }, 600);
     await input.persist();
 
@@ -364,7 +484,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         backend: input.backend,
         userText,
         history: [...fileContextMessages, ...input.currentSession.messages],
-        model: appConfig.models.main,
+        model: appConfig.models.lead,
         sessionId: input.currentSession.id,
         signal: abortController.signal,
         runVerifyAfterReply,
@@ -372,9 +492,26 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         createMessage: input.createMessage,
       });
       const assistantMessage = turn.assistantMessage;
-      input.currentSession.messages.push(assistantMessage);
-      input.currentSession.updatedAt = input.nowIso();
-      input.setRows((current) => [...current, ...turn.rows]);
+      // Ensure fast turns still surface tool/stage progress once before final rows.
+      await pollProgress().catch(() => {});
+      const clarifyingQuestions = extractClarifyingQuestions(assistantMessage.content);
+      if (clarifyingQuestions.length > 0) {
+        const clarificationPrompt = buildClarificationPrompt(clarifyingQuestions);
+        const clarificationMessage = input.createMessage("assistant", clarificationPrompt);
+        input.currentSession.messages.push(clarificationMessage);
+        input.currentSession.updatedAt = input.nowIso();
+        const nonAssistantRows = turn.rows.filter((row) => row.role !== "assistant");
+        input.setRows((current) => [
+          ...current,
+          ...nonAssistantRows,
+          { id: `row_${crypto.randomUUID()}`, role: "assistant", content: clarificationPrompt },
+        ]);
+        input.openClarifyPanel(clarifyingQuestions, text);
+      } else {
+        input.currentSession.messages.push(assistantMessage);
+        input.currentSession.updatedAt = input.nowIso();
+        input.setRows((current) => [...current, ...turn.rows]);
+      }
       input.setTokenUsage((current) => [...current, turn.tokenEntry]);
       await input.persist();
     } catch (error) {

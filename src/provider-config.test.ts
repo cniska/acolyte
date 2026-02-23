@@ -37,13 +37,13 @@ describe("provider config", () => {
 
     expect(
       presentRoleModels({
-        main: "gpt-5-mini",
+        lead: "gpt-5-mini",
         planner: "o3",
         coder: "claude-sonnet-4",
         reviewer: "openai-compatible/qwen2.5-coder",
       }),
     ).toEqual({
-      main: "openai/gpt-5-mini",
+      lead: "openai/gpt-5-mini",
       planner: "openai/o3",
       coder: "anthropic/claude-sonnet-4",
       reviewer: "openai-compatible/qwen2.5-coder",

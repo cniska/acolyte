@@ -86,15 +86,15 @@ describe("cli formatting helpers", () => {
         "mode=openai",
         "provider=openai",
         "model=gpt-5-mini",
-        "model_main=openai/gpt-5-mini",
+        "model_lead=openai/gpt-5-mini",
         "model_planner=openai/o3",
         "model_coder=openai/gpt-5-codex",
         "model_reviewer=openai/gpt-5-mini",
-        "provider_main=openai",
+        "provider_lead=openai",
         "provider_planner=openai",
         "provider_coder=anthropic",
         "provider_reviewer=gemini",
-        "provider_ready_main=true",
+        "provider_ready_lead=true",
         "provider_ready_planner=true",
         "provider_ready_coder=false",
         "provider_ready_reviewer=true",
@@ -115,17 +115,17 @@ describe("cli formatting helpers", () => {
     expect(out).not.toMatch(/mode:\s+openai/);
     expect(out).not.toMatch(/^model:\s+gpt-5-mini$/m);
     expect(out).toContain("models:");
-    expect(out).toMatch(/\n\s+main:\s+gpt-5-mini/);
+    expect(out).toMatch(/\n\s+lead:\s+gpt-5-mini/);
     expect(out).toMatch(/\n\s+planner:\s+o3/);
     expect(out).toMatch(/\n\s+coder:\s+gpt-5-codex/);
     expect(out).toMatch(/\n\s+reviewer:\s+gpt-5-mini/);
     expect(out).toContain("providers:");
-    expect(out).toMatch(/\n\s+main:\s+openai/);
+    expect(out).toMatch(/\n\s+lead:\s+openai/);
     expect(out).toMatch(/\n\s+planner:\s+openai/);
     expect(out).toMatch(/\n\s+coder:\s+anthropic/);
     expect(out).toMatch(/\n\s+reviewer:\s+gemini/);
     expect(out).toContain("provider_ready:");
-    expect(out).toMatch(/\n\s+main:\s+true/);
+    expect(out).toMatch(/\n\s+lead:\s+true/);
     expect(out).toMatch(/\n\s+planner:\s+true/);
     expect(out).toMatch(/\n\s+coder:\s+false/);
     expect(out).toMatch(/\n\s+reviewer:\s+true/);

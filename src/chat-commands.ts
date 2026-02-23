@@ -16,7 +16,7 @@ export type ChatRow = {
   role: "user" | "assistant" | "system";
   content: string;
   dim?: boolean;
-  style?: "sessionStatus" | "sessionsList";
+  style?: "sessionStatus" | "sessionsList" | "toolProgress";
 };
 
 export type TokenUsageEntry = {
@@ -244,7 +244,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     ctx.setCurrentSession(target);
     ctx.setRows(() => [
       ...ctx.toRows(target.messages),
-      row("assistant", `Resumed session: ${target.id.slice(0, 12)}`, false, "sessionStatus"),
+      row("system", `Resumed session: ${target.id.slice(0, 12)}`, true, "sessionStatus"),
     ]);
     ctx.setShowShortcuts(() => false);
     await ctx.persist();
@@ -306,7 +306,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
         await setConfigValue("permissionMode", mode, { scope });
       }
       setPermissionMode(mode);
-      ctx.setRows((current) => [...current, row("assistant", `Changed permissions to \`${mode}\` (${scope}).`)]);
+      ctx.setRows((current) => [...current, row("assistant", `Changed permissions to ${mode} (${scope}).`)]);
     } catch (error) {
       ctx.setRows((current) => [
         ...current,
@@ -436,13 +436,13 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
   }
 
   if (resolvedText === "/new") {
-    const next = createSession(appConfig.models.main);
+    const next = createSession(appConfig.models.lead);
     ctx.store.sessions.unshift(next);
     ctx.store.activeSessionId = next.id;
     ctx.setCurrentSession(next);
     ctx.setRows(() => [
       row("user", text),
-      row("assistant", `Started new session: ${next.id.slice(0, 12)}`, false, "sessionStatus"),
+      row("system", `Started new session: ${next.id.slice(0, 12)}`, true, "sessionStatus"),
     ]);
     ctx.setValue("");
     ctx.setShowShortcuts(() => false);

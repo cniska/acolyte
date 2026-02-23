@@ -86,19 +86,19 @@ describe("remote backend status parsing", () => {
           provider: "openai-compatible",
           model: "openai-compatible/qwen2.5-coder",
           models: {
-            main: "openai/gpt-5-mini",
+            lead: "openai/gpt-5-mini",
             planner: "openai/o3",
             coder: "anthropic/claude-sonnet-4",
             reviewer: "gemini/gemini-2.5-pro",
           },
           providers: {
-            main: "openai",
+            lead: "openai",
             planner: "openai",
             coder: "anthropic",
             reviewer: "gemini",
           },
           providerAvailability: {
-            main: true,
+            lead: true,
             planner: true,
             coder: true,
             reviewer: false,
@@ -135,15 +135,15 @@ describe("remote backend status parsing", () => {
 
     expect(status).toContain("provider=openai-compatible");
     expect(status).toContain("model=openai-compatible/qwen2.5-coder");
-    expect(status).toContain("model_main=openai/gpt-5-mini");
+    expect(status).toContain("model_lead=openai/gpt-5-mini");
     expect(status).toContain("model_planner=openai/o3");
     expect(status).toContain("model_coder=anthropic/claude-sonnet-4");
     expect(status).toContain("model_reviewer=gemini/gemini-2.5-pro");
-    expect(status).toContain("provider_main=openai");
+    expect(status).toContain("provider_lead=openai");
     expect(status).toContain("provider_planner=openai");
     expect(status).toContain("provider_coder=anthropic");
     expect(status).toContain("provider_reviewer=gemini");
-    expect(status).toContain("provider_ready_main=true");
+    expect(status).toContain("provider_ready_lead=true");
     expect(status).toContain("provider_ready_planner=true");
     expect(status).toContain("provider_ready_coder=true");
     expect(status).toContain("provider_ready_reviewer=false");
@@ -229,15 +229,15 @@ describe("local backend status", () => {
 
     expect(status).toContain("provider=local-mock");
     expect(status).toContain("model=");
-    expect(status).toContain("model_main=");
+    expect(status).toContain("model_lead=");
     expect(status).toContain("model_planner=");
     expect(status).toContain("model_coder=");
     expect(status).toContain("model_reviewer=");
-    expect(status).toContain("provider_main=");
+    expect(status).toContain("provider_lead=");
     expect(status).toContain("provider_planner=");
     expect(status).toContain("provider_coder=");
     expect(status).toContain("provider_reviewer=");
-    expect(status).toContain("provider_ready_main=");
+    expect(status).toContain("provider_ready_lead=");
     expect(status).toContain("provider_ready_planner=");
     expect(status).toContain("provider_ready_coder=");
     expect(status).toContain("provider_ready_reviewer=");
