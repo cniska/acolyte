@@ -62,6 +62,13 @@ export function formatStatusOutput(status: string): string {
     }
     output.push(`${label}: ${parts.join("\n")}`);
   };
+  const isReady = (value: string | undefined): boolean => {
+    if (!value) {
+      return false;
+    }
+    const normalized = value.trim().toLowerCase();
+    return normalized === "true" || normalized === "ready" || normalized === "ok" || normalized === "healthy";
+  };
 
   const take = (key: string): string | undefined => {
     const value = fields.get(key);
@@ -120,17 +127,16 @@ export function formatStatusOutput(status: string): string {
   const providerReadyPlanner = take("provider_ready_planner");
   const providerReadyCoder = take("provider_ready_coder");
   const providerReadyReviewer = take("provider_ready_reviewer");
-  pushStacked(
-    "provider_ready",
-    [
-      ["main", providerReadyMain],
-      ["planner", providerReadyPlanner],
-      ["coder", providerReadyCoder],
-      ["reviewer", providerReadyReviewer],
-    ],
-    false,
-    true,
-  );
+  const providerReadyRows: Array<[string, string | undefined]> = [
+    ["main", providerReadyMain],
+    ["planner", providerReadyPlanner],
+    ["coder", providerReadyCoder],
+    ["reviewer", providerReadyReviewer],
+  ];
+  const hasProviderReadinessIssue = providerReadyRows.some(([, value]) => value !== undefined && !isReady(value));
+  if (hasProviderReadinessIssue) {
+    pushStacked("provider_ready", providerReadyRows, false, true);
+  }
   const service = take("service");
   if (service) {
     output.push(`service: ${service}`);

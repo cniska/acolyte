@@ -109,4 +109,19 @@ describe("status format", () => {
     expect(output).toContain("          planner:  o3");
     expect(output).toContain("          reviewer: gpt-5");
   });
+
+  test("omits provider readiness section when all providers are ready", () => {
+    const output = formatStatusOutput(
+      "provider=openai provider_ready_main=true provider_ready_planner=true provider_ready_coder=true provider_ready_reviewer=true",
+    );
+    expect(output).not.toContain("provider_ready:");
+  });
+
+  test("shows provider readiness section when any provider is not ready", () => {
+    const output = formatStatusOutput(
+      "provider=openai provider_ready_main=true provider_ready_planner=true provider_ready_coder=false provider_ready_reviewer=true",
+    );
+    expect(output).toContain("provider_ready:");
+    expect(output).toContain("coder:    false");
+  });
 });
