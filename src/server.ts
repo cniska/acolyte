@@ -22,6 +22,7 @@ const OPENAI_BASE_URL = appConfig.openai.baseUrl;
 const omConfig = getObservationalMemoryConfig();
 const ERROR_ID_PREFIX = "err";
 const CHAT_PROGRESS_TTL_MS = 5 * 60 * 1000;
+const SUPPRESSED_STDERR_PREFIX = "Upstream LLM API error from";
 
 type ChatProgressState = {
   requestId: string;
@@ -33,6 +34,15 @@ type ChatProgressState = {
 };
 
 const chatProgressBySession = new Map<string, ChatProgressState>();
+
+const originalConsoleError = console.error.bind(console);
+console.error = (...args: unknown[]): void => {
+  const first = args[0];
+  if (typeof first === "string" && first.includes(SUPPRESSED_STDERR_PREFIX)) {
+    return;
+  }
+  originalConsoleError(...args);
+};
 
 function unauthorized(): Response {
   return new Response("Unauthorized", { status: 401 });
@@ -111,12 +121,17 @@ function serverError(
 ): Response {
   const errorId = nextErrorId();
   const errorMessage = error instanceof Error ? error.message : "Unknown error";
+  const errorMessageLower = errorMessage.toLowerCase();
+  const publicMessage =
+    errorMessageLower.includes("insufficient_quota") || errorMessageLower.includes("exceeded your current quota")
+      ? "Provider quota exceeded. Add billing/credits or switch model/provider."
+      : errorMessage;
   log.error(message, {
     error_id: errorId,
     ...details,
     ...errorToLogFields(error),
   });
-  return json({ error: errorMessage, errorId }, status);
+  return json({ error: publicMessage, errorId }, status);
 }
 
 function isChatRequest(value: unknown): value is ChatRequest {
