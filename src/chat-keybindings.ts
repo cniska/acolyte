@@ -113,10 +113,8 @@ export function resolveEscapeAction(input: {
 }
 
 export function shouldCycleInputHistory(value: string, inputHistoryIndex: number): boolean {
-  if (inputHistoryIndex >= 0) {
-    return true;
-  }
-  return value.trim().length > 0;
+  void value;
+  return inputHistoryIndex >= -1;
 }
 
 type UseChatKeybindingsInput = {

@@ -61,7 +61,7 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
   const trimmedThinkingLabel = thinkingLabel?.trim() ?? "";
   const stageMatch = trimmedThinkingLabel.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
   const thinkingText = (() => {
-    const timeText = elapsedSec > 0 ? `${elapsedSec}s` : "";
+    const timeText = `${elapsedSec}s`;
     if (stageMatch) {
       const stage = stageMatch[1]?.trim() || "Thinking…";
       const model = stageMatch[2]?.trim() || "";
@@ -69,7 +69,7 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
       return details.length > 0 ? `${stage} (${details})` : stage;
     }
     const base = trimmedThinkingLabel.length > 0 ? trimmedThinkingLabel : "Thinking…";
-    return timeText.length > 0 ? `${base} (${timeText})` : base;
+    return `${base} (${timeText})`;
   })();
   const columns = process.stdout.columns ?? 120;
   const contentWidth = Math.max(24, Math.min(MAX_TRANSCRIPT_WIDTH, columns - 2));

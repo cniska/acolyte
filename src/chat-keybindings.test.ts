@@ -93,9 +93,9 @@ describe("chat keybindings helpers", () => {
     expect(resolveEscapeAction({ isThinking: false, showShortcuts: false })).toBeNull();
   });
 
-  test("shouldCycleInputHistory requires typed input unless already browsing history", () => {
-    expect(shouldCycleInputHistory("", -1)).toBeFalse();
-    expect(shouldCycleInputHistory("   ", -1)).toBeFalse();
+  test("shouldCycleInputHistory allows browsing from empty prompt", () => {
+    expect(shouldCycleInputHistory("", -1)).toBeTrue();
+    expect(shouldCycleInputHistory("   ", -1)).toBeTrue();
     expect(shouldCycleInputHistory("hello", -1)).toBeTrue();
     expect(shouldCycleInputHistory("", 0)).toBeTrue();
   });
