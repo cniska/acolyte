@@ -54,6 +54,13 @@ Build a personal AI coding assistant (Mastra + CLI) that is local-first, memory-
 3. Agent layer: role-based subagents with scoped tools.
 4. Memory layer: profile/project/episodes/observations with guarded promotion.
 
+## Preference Storage Policy
+1. `AGENTS.md` stores repository-level, durable engineering policy and guardrails.
+2. `docs/soul.md` stores project-local assistant behavior/voice defaults and high-level operating intent.
+3. `skills/*` stores reusable procedures/workflows that can be intentionally activated.
+4. Memory stores mutable user/project preferences and context learned during usage.
+5. Rule: if information should change frequently or is user-specific, store it in memory; if it must be stable and enforceable for the repo, store it in `AGENTS.md`.
+
 ## Delivery Plan
 ### Phase A (Now): CLI Reliability + Dogfooding
 1. Stabilize interactive UX (shortcuts, pickers, autocomplete, history).
