@@ -21,10 +21,11 @@ Build a personal AI coding assistant (Mastra + CLI) that is local-first, memory-
 1. Preference learning loop is incomplete (confidence + promotion + correction).
 2. Memory transparency needs better per-reply visibility/debugging.
 3. Hosted shared-memory mode is not production-ready.
-4. Coding loop needs stronger safety/verification orchestration.
-5. Dogfooding transition (Codex -> Acolyte-led dev) is not complete.
-6. Local-model ergonomics still need tuning, but role model -> provider inference is now in place.
-7. Token budget controls need iterative tuning for real-world cost/latency.
+4. Cross-device sessions are still local-only; hosted session continuity is not implemented.
+5. Coding loop needs stronger safety/verification orchestration.
+6. Dogfooding transition (Codex -> Acolyte-led dev) is not complete.
+7. Local-model ergonomics still need tuning, but role model -> provider inference is now in place.
+8. Token budget controls need iterative tuning for real-world cost/latency.
 
 ## Scope (MVP)
 ### In Scope
@@ -126,9 +127,17 @@ Adoption plan:
 
 ### Phase C: Hosted Readiness
 1. Harden Vercel + Postgres deployment path.
-2. Move CLI session storage to server-backed sessions in hosted mode (`/sessions` and `/resume` across devices).
-3. Add backup/restore and multi-machine setup docs.
-4. Add operational smoke tests and release process.
+2. Add hosted session APIs in small slices:
+   - `POST /v1/sessions` (create)
+   - `GET /v1/sessions` (list)
+   - `GET /v1/sessions/:id` (load)
+   - `PATCH /v1/sessions/:id` (append/update metadata)
+3. Use hybrid session store in CLI:
+   - local default
+   - remote session store only when `apiUrl` + auth are configured
+4. Add migration/import path from local sessions to hosted sessions.
+5. Add backup/restore and multi-machine setup docs.
+6. Add operational smoke tests and release process.
 
 ## Open Decisions
 1. Default model + fallback order by lane (`chat`, `code`, `long-context`, `vision`).
@@ -148,7 +157,7 @@ Adoption plan:
 9. Keep `docs/features.md` as canonical feature inventory.
 10. Evaluate optional git hooks for high-signal checks only.
 11. Add staged path for channel adapters post-MVP (not now).
-12. Implement server-backed session APIs (`list/create/resume`) for hosted cross-device continuity.
+12. Implement hosted session continuity (`/sessions`, `/resume`) via server-backed session APIs.
 
 ## Risks
 1. Memory drift: mitigate with confidence scores + manual correction.
