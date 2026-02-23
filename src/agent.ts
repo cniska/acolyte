@@ -365,6 +365,17 @@ function userProgressForTool(toolName: string): string {
   return known[toolName] ?? `Using ${toTitleWords(toolName)}`;
 }
 
+export function progressStageForRole(role: AgentRole): string {
+  switch (role) {
+    case "planner":
+      return "Planning…";
+    case "reviewer":
+      return "Reviewing…";
+    case "coder":
+      return "Working…";
+  }
+}
+
 function normalizeDogfoodOutput(output: string): string {
   const cleaned = output
     .split("\n")
@@ -591,7 +602,7 @@ export async function runAgent(input: {
       emitProgress(userProgressForTool(toolName));
     }
   };
-  emitProgress("Thinking through the request");
+  emitProgress(progressStageForRole(role));
   let result = await agent.generate(agentInput, {
     maxSteps: role === "planner" ? 5 : 8,
     toolChoice: "auto",

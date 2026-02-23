@@ -6,6 +6,7 @@ import {
   finalizeAssistantOutput,
   finalizeReviewOutput,
   normalizeReviewOutput,
+  progressStageForRole,
   resolveAgentModel,
   resolveModelProviderState,
   resolveRunnableModel,
@@ -485,5 +486,13 @@ describe("buildSubagentContext", () => {
     const context = buildSubagentContext("coder", req);
     expect(context).not.toContain("return exactly 3 concise numbered next steps");
     expect(context).not.toContain("no lettered options");
+  });
+});
+
+describe("progressStageForRole", () => {
+  test("uses user-facing stage labels for each role", () => {
+    expect(progressStageForRole("planner")).toBe("Planning…");
+    expect(progressStageForRole("coder")).toBe("Working…");
+    expect(progressStageForRole("reviewer")).toBe("Reviewing…");
   });
 });
