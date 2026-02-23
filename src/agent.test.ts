@@ -136,7 +136,7 @@ describe("finalizeReviewOutput", () => {
 
 describe("finalizeAssistantOutput", () => {
   test("returns fallback when output is empty", () => {
-    expect(finalizeAssistantOutput("   ")).toBe("No output produced. Try rephrasing your prompt.");
+    expect(finalizeAssistantOutput("   ")).toBe("No output from model. Check /status and backend logs, then retry.");
   });
 
   test("keeps non-empty output", () => {

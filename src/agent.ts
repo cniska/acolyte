@@ -483,7 +483,14 @@ export function finalizeAssistantOutput(output: string, message = ""): string {
   if (fallbackLine) {
     return compactAssistantOutput(fallbackLine);
   }
-  return "No output produced. Try rephrasing your prompt.";
+  const rawFallbackLine = output
+    .split("\n")
+    .map((line) => line.trim())
+    .find((line) => line.length > 0);
+  if (rawFallbackLine) {
+    return compactAssistantOutput(rawFallbackLine);
+  }
+  return "No output from model. Check /status and backend logs, then retry.";
 }
 
 function buildMockReply(req: ChatRequest, reason?: string): ChatResponse {
@@ -532,6 +539,14 @@ export async function runAgent(input: { request: ChatRequest; soulPrompt: string
     result = await agent.generate(agentInput, {
       maxSteps: 8,
       toolChoice: "required",
+      memory: memoryOptions,
+    });
+  }
+
+  if (result.text.trim().length === 0) {
+    result = await agent.generate(`${agentInput}\n\nReturn a direct concise answer.`, {
+      maxSteps: role === "planner" ? 3 : 5,
+      toolChoice: "auto",
       memory: memoryOptions,
     });
   }

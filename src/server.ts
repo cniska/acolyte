@@ -271,11 +271,32 @@ const server = Bun.serve({
       return badRequest("Invalid request shape");
     }
 
+    const requestId = nextErrorId();
+    const startedAt = Date.now();
+    const chatRequest = payload as ChatRequest;
+    log.info("chat request started", {
+      request_id: requestId,
+      session_id: chatRequest.sessionId ?? null,
+      model: chatRequest.model,
+      history_messages: chatRequest.history.length,
+    });
+
     try {
       const soulPrompt = await createSoulPrompt();
       const reply = await runAgent({
-        request: payload,
+        request: chatRequest,
         soulPrompt,
+      });
+      const durationMs = Date.now() - startedAt;
+      log.info("chat request completed", {
+        request_id: requestId,
+        session_id: chatRequest.sessionId ?? null,
+        model: reply.model,
+        duration_ms: durationMs,
+        tool_count: reply.toolCalls?.length ?? 0,
+        tools: reply.toolCalls?.join(",") ?? "",
+        prompt_tokens: reply.usage?.promptTokens ?? null,
+        completion_tokens: reply.usage?.completionTokens ?? null,
       });
       return json(reply);
     } catch (error) {
@@ -283,10 +304,11 @@ const server = Bun.serve({
         "chat request failed",
         error,
         {
+          request_id: requestId,
           path: url.pathname,
           method: req.method,
-          session_id: (payload as ChatRequest).sessionId ?? null,
-          model: (payload as ChatRequest).model,
+          session_id: chatRequest.sessionId ?? null,
+          model: chatRequest.model,
         },
         502,
       );
