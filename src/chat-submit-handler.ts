@@ -1,3 +1,4 @@
+import { appConfig } from "./app-config";
 import type { Backend } from "./backend";
 import { type ChatRow, dispatchSlashCommand, type TokenUsageEntry } from "./chat-commands";
 import { isKnownSlashToken, resolveSlashAlias } from "./chat-slash";
@@ -209,7 +210,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         backend: input.backend,
         userText,
         history: [...fileContextMessages, ...input.currentSession.messages],
-        model: input.currentSession.model,
+        model: appConfig.models.main,
         sessionId: input.currentSession.id,
         signal: abortController.signal,
         runVerifyAfterReply,
@@ -218,7 +219,6 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       });
       const assistantMessage = turn.assistantMessage;
       input.currentSession.messages.push(assistantMessage);
-      input.currentSession.model = turn.model;
       input.currentSession.updatedAt = input.nowIso();
       input.setRows((current) => [...current, ...turn.rows]);
       input.setTokenUsage((current) => [...current, turn.tokenEntry]);

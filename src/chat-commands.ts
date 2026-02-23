@@ -1,5 +1,5 @@
 import type { TokenUsage } from "./api";
-import { setPermissionMode } from "./app-config";
+import { appConfig, setPermissionMode } from "./app-config";
 import type { Backend } from "./backend";
 import { suggestClosestSlashCommand } from "./chat-slash";
 import { addMemory, listMemories } from "./memory";
@@ -405,7 +405,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
   }
 
   if (resolvedText === "/new") {
-    const next = createSession(ctx.currentSession.model);
+    const next = createSession(appConfig.models.main);
     ctx.store.sessions.unshift(next);
     ctx.store.activeSessionId = next.id;
     ctx.setCurrentSession(next);

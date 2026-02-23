@@ -557,6 +557,19 @@ function buildMockReply(req: ChatRequest, reason?: string): ChatResponse {
   };
 }
 
+function createDelegationPrompt(role: AgentRole, request: ChatRequest): string {
+  return [
+    `Target role: ${role}`,
+    "Task: Create a short execution brief for the target role.",
+    "Output rules:",
+    "- Max 4 lines",
+    "- No preamble",
+    "- Focus on concrete outcome and constraints",
+    "",
+    `User request: ${request.message.trim()}`,
+  ].join("\n");
+}
+
 export async function runAgent(input: {
   request: ChatRequest;
   soulPrompt: string;
@@ -564,6 +577,7 @@ export async function runAgent(input: {
 }): Promise<ChatResponse> {
   const role = selectAgentRole(input.request.message);
   const roleSoul = loadRoleSoulPrompt(role);
+  const requestModelState = resolveModelProviderState(input.request.model);
   const resolved = resolveRunnableModel(role, input.request.model);
   if (!resolved.available) {
     return buildMockReply(input.request, `Provider '${resolved.provider}' is not configured.`);
@@ -602,8 +616,35 @@ export async function runAgent(input: {
       emitProgress(userProgressForTool(toolName));
     }
   };
+
+  let delegationBrief = input.request.message.trim();
+  if (requestModelState.available) {
+    try {
+      emitProgress("Thinking…");
+      const coordinator = createAgent({
+        id: "acolyte-coordinator",
+        name: "Acolyte Coordinator",
+        model: input.request.model,
+        instructions:
+          "You are the orchestrator. Convert user requests into concise execution briefs for subagents. Do not call tools.",
+        tools: {},
+      });
+      const delegation = await coordinator.generate(createDelegationPrompt(role, input.request), {
+        maxSteps: 1,
+        toolChoice: "auto",
+      });
+      const candidate = delegation.text.trim();
+      if (candidate.length > 0) {
+        delegationBrief = candidate;
+      }
+    } catch {
+      // Best-effort orchestration; fallback to raw user prompt.
+    }
+  }
+
+  const delegatedInput = `${agentInput}\n\nDelegation brief:\n${delegationBrief}`;
   emitProgress(progressStageForRole(role));
-  let result = await agent.generate(agentInput, {
+  let result = await agent.generate(delegatedInput, {
     maxSteps: role === "planner" ? 5 : 8,
     toolChoice: "auto",
     memory: memoryOptions,
@@ -613,7 +654,7 @@ export async function runAgent(input: {
   const shouldRequireToolsFallback = role !== "planner" && (toolLikely || role === "reviewer");
   if (shouldRequireToolsFallback && result.toolCalls.length === 0) {
     emitProgress("Trying a tool-assisted pass");
-    result = await agent.generate(agentInput, {
+    result = await agent.generate(delegatedInput, {
       maxSteps: 8,
       toolChoice: "required",
       memory: memoryOptions,
@@ -623,7 +664,7 @@ export async function runAgent(input: {
 
   if (result.text.trim().length === 0) {
     emitProgress("Refining the response");
-    result = await agent.generate(`${agentInput}\n\nReturn a direct concise answer.`, {
+    result = await agent.generate(`${delegatedInput}\n\nReturn a direct concise answer.`, {
       maxSteps: role === "planner" ? 3 : 5,
       toolChoice: "auto",
       memory: memoryOptions,
