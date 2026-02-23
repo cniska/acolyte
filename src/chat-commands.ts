@@ -2,6 +2,8 @@ import type { TokenUsage } from "./api";
 import { appConfig, setPermissionMode } from "./app-config";
 import type { Backend } from "./backend";
 import { suggestClosestSlashCommand } from "./chat-slash";
+import type { ConfigScope } from "./config";
+import { setConfigValue } from "./config";
 import { addMemory, listMemories } from "./memory";
 import { distillPolicyCandidatesFromSessions, distillPolicyFromSessions, parseDistillOptions } from "./policy-distill";
 import { getMemoryContextEntries, type MemoryContextScope } from "./soul";
@@ -117,6 +119,7 @@ type CommandContext = {
   openPermissionsPanel: () => void;
   openPolicyPanel: (items: ReturnType<typeof distillPolicyCandidatesFromSessions>) => void;
   setBackendPermissionMode: (mode: "read" | "write") => Promise<void>;
+  setConfigPermissionMode?: (mode: "read" | "write", scope: ConfigScope) => Promise<void>;
   tokenUsage: TokenUsageEntry[];
   memoryApi?: {
     listMemories: typeof listMemories;
@@ -179,6 +182,17 @@ function scopeLabel(scope: MemoryContextScope): string {
     return "Project";
   }
   return "All";
+}
+
+function parsePermissionsScope(parts: string[]): ConfigScope | null {
+  if (parts.length < 2) {
+    return null;
+  }
+  const flag = parts.find((part) => part === "--project" || part === "--user");
+  if (!flag) {
+    return "project";
+  }
+  return flag === "--user" ? "user" : "project";
 }
 
 export async function dispatchSlashCommand(ctx: CommandContext): Promise<CommandResult> {
@@ -268,14 +282,31 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
   if (resolvedText.startsWith("/permissions ")) {
     pushUserCommandRow();
     const mode = resolvedText.split(/\s+/)[1];
-    if (mode !== "read" && mode !== "write") {
-      ctx.setRows((current) => [...current, row("system", "Usage: /permissions [read|write]")]);
+    const parts = resolvedText.split(/\s+/).filter((part) => part.length > 0);
+    const validParts =
+      parts.length >= 2 &&
+      parts.length <= 3 &&
+      parts[0] === "/permissions" &&
+      (parts[1] === "read" || parts[1] === "write") &&
+      (parts.length === 2 || parts[2] === "--project" || parts[2] === "--user");
+    if (!validParts || (mode !== "read" && mode !== "write")) {
+      ctx.setRows((current) => [...current, row("system", "Usage: /permissions [read|write] [--project|--user]")]);
+      return { stop: true, userText: text, runVerifyAfterReply: false };
+    }
+    const scope = parsePermissionsScope(parts);
+    if (!scope) {
+      ctx.setRows((current) => [...current, row("system", "Usage: /permissions [read|write] [--project|--user]")]);
       return { stop: true, userText: text, runVerifyAfterReply: false };
     }
     try {
       await ctx.setBackendPermissionMode(mode);
+      if (ctx.setConfigPermissionMode) {
+        await ctx.setConfigPermissionMode(mode, scope);
+      } else {
+        await setConfigValue("permissionMode", mode, { scope });
+      }
       setPermissionMode(mode);
-      ctx.setRows((current) => [...current, row("assistant", `permission mode: ${mode}`)]);
+      ctx.setRows((current) => [...current, row("assistant", `Changed permissions to \`${mode}\` (${scope}).`)]);
     } catch (error) {
       ctx.setRows((current) => [
         ...current,

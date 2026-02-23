@@ -18,6 +18,7 @@ async function runCommand(
         Array<{ id: string; scope: "user" | "project"; content: string; createdAt: string }>
       >;
     };
+    setConfigPermissionMode?: (mode: "read" | "write", scope: "user" | "project") => Promise<void>;
   },
 ): Promise<{ rows: ChatRow[]; stop: boolean; openedPermissions: boolean; openedPolicy: number }> {
   let rows: ChatRow[] = [];
@@ -47,6 +48,7 @@ async function runCommand(
       openedPolicy += 1;
     },
     setBackendPermissionMode: async () => {},
+    setConfigPermissionMode: options?.setConfigPermissionMode,
     tokenUsage,
     memoryApi: options?.memoryApi,
   });
@@ -154,6 +156,7 @@ describe("chat-commands", () => {
       openPermissionsPanel: () => {},
       openPolicyPanel: () => {},
       setBackendPermissionMode: async () => {},
+      setConfigPermissionMode: async () => {},
       tokenUsage: [],
     });
 
@@ -537,15 +540,26 @@ describe("chat-commands", () => {
   test("dispatchSlashCommand applies /permissions read|write", async () => {
     const prev = appConfig.agent.permissions.mode;
     try {
-      const readResult = await runCommand("/permissions read");
+      const writes: Array<{ mode: "read" | "write"; scope: "user" | "project" }> = [];
+      const readResult = await runCommand("/permissions read", [], createStore(), {
+        setConfigPermissionMode: async (mode, scope) => {
+          writes.push({ mode, scope });
+        },
+      });
       expect(readResult.stop).toBe(true);
       expect(appConfig.agent.permissions.mode).toBe("read");
-      expect(readResult.rows.some((row) => row.content === "permission mode: read")).toBe(true);
+      expect(readResult.rows.some((row) => row.content === "Changed permissions to `read` (project).")).toBe(true);
+      expect(writes).toContainEqual({ mode: "read", scope: "project" });
 
-      const writeResult = await runCommand("/permissions write");
+      const writeResult = await runCommand("/permissions write --user", [], createStore(), {
+        setConfigPermissionMode: async (mode, scope) => {
+          writes.push({ mode, scope });
+        },
+      });
       expect(writeResult.stop).toBe(true);
       expect(appConfig.agent.permissions.mode).toBe("write");
-      expect(writeResult.rows.some((row) => row.content === "permission mode: write")).toBe(true);
+      expect(writeResult.rows.some((row) => row.content === "Changed permissions to `write` (user).")).toBe(true);
+      expect(writes).toContainEqual({ mode: "write", scope: "user" });
     } finally {
       setPermissionMode(prev);
     }
@@ -556,7 +570,12 @@ describe("chat-commands", () => {
     try {
       const { rows, stop } = await runCommand("/permissions maybe");
       expect(stop).toBe(true);
-      expect(rows.some((row) => row.content === "Usage: /permissions [read|write]")).toBe(true);
+      expect(rows.some((row) => row.content === "Usage: /permissions [read|write] [--project|--user]")).toBe(true);
+      const invalidScope = await runCommand("/permissions read --wat");
+      expect(invalidScope.stop).toBe(true);
+      expect(
+        invalidScope.rows.some((row) => row.content === "Usage: /permissions [read|write] [--project|--user]"),
+      ).toBe(true);
       expect(appConfig.agent.permissions.mode).toBe(prev);
     } finally {
       setPermissionMode(prev);
