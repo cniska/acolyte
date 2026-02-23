@@ -324,6 +324,25 @@ function collectToolCallIds(toolCalls: unknown[]): string[] {
   return Array.from(new Set(names));
 }
 
+function collectToolNamesFromStep(step: unknown): string[] {
+  if (!step || typeof step !== "object") {
+    return [];
+  }
+  const container = step as {
+    toolCalls?: unknown;
+    tool_calls?: unknown;
+    toolResults?: unknown;
+    tool_results?: unknown;
+  };
+  const raw =
+    (Array.isArray(container.toolCalls) && container.toolCalls) ||
+    (Array.isArray(container.tool_calls) && container.tool_calls) ||
+    (Array.isArray(container.toolResults) && container.toolResults) ||
+    (Array.isArray(container.tool_results) && container.tool_results) ||
+    [];
+  return collectToolCallIds(raw as unknown[]);
+}
+
 function normalizeDogfoodOutput(output: string): string {
   const cleaned = output
     .split("\n")
@@ -505,7 +524,11 @@ function buildMockReply(req: ChatRequest, reason?: string): ChatResponse {
   };
 }
 
-export async function runAgent(input: { request: ChatRequest; soulPrompt: string }): Promise<ChatResponse> {
+export async function runAgent(input: {
+  request: ChatRequest;
+  soulPrompt: string;
+  onProgress?: (message: string) => void;
+}): Promise<ChatResponse> {
   const role = selectAgentRole(input.request.message);
   const roleSoul = loadRoleSoulPrompt(role);
   const resolved = resolveRunnableModel(role, input.request.model);
@@ -528,26 +551,50 @@ export async function runAgent(input: { request: ChatRequest; soulPrompt: string
   const toolLikely = isToolLikelyRequest(input.request.message);
   const resourceId = input.request.resourceId?.trim() || appConfig.memory.resourceId;
   const memoryOptions = input.request.sessionId ? { thread: input.request.sessionId, resource: resourceId } : undefined;
+  const seenToolNames = new Set<string>();
+  const emitProgress = (message: string): void => {
+    const trimmed = message.trim();
+    if (trimmed.length === 0) {
+      return;
+    }
+    input.onProgress?.(trimmed);
+  };
+  const emitToolProgress = (step: unknown): void => {
+    const toolNames = collectToolNamesFromStep(step);
+    for (const toolName of toolNames) {
+      if (seenToolNames.has(toolName)) {
+        continue;
+      }
+      seenToolNames.add(toolName);
+      emitProgress(`Run ${toolName}`);
+    }
+  };
+  emitProgress("Plan");
   let result = await agent.generate(agentInput, {
     maxSteps: role === "planner" ? 5 : 8,
     toolChoice: "auto",
     memory: memoryOptions,
+    onStepFinish: emitToolProgress,
   });
 
   const shouldRequireToolsFallback = role !== "planner" && (toolLikely || role === "reviewer");
   if (shouldRequireToolsFallback && result.toolCalls.length === 0) {
+    emitProgress("Retry with required tools");
     result = await agent.generate(agentInput, {
       maxSteps: 8,
       toolChoice: "required",
       memory: memoryOptions,
+      onStepFinish: emitToolProgress,
     });
   }
 
   if (result.text.trim().length === 0) {
+    emitProgress("Retry concise response");
     result = await agent.generate(`${agentInput}\n\nReturn a direct concise answer.`, {
       maxSteps: role === "planner" ? 3 : 5,
       toolChoice: "auto",
       memory: memoryOptions,
+      onStepFinish: emitToolProgress,
     });
   }
 

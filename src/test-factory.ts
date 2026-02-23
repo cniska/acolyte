@@ -41,6 +41,7 @@ export function createStore(overrides: Partial<SessionStore> = {}): SessionStore
 export function createBackend(overrides?: {
   reply?: Backend["reply"];
   status?: Backend["status"];
+  progress?: Backend["progress"];
   setPermissionMode?: Backend["setPermissionMode"];
 }): Backend {
   return {
@@ -51,6 +52,7 @@ export function createBackend(overrides?: {
         output: "ok",
       })),
     status: overrides?.status ?? (async () => "provider=local model=gpt-5-mini memory_context=2"),
+    progress: overrides?.progress ?? (async () => null),
     setPermissionMode: overrides?.setPermissionMode ?? (async () => {}),
   };
 }

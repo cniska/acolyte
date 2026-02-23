@@ -8,9 +8,22 @@ export interface BackendOptions {
   apiKey?: string;
 }
 
+export type ChatProgressEvent = {
+  seq: number;
+  message: string;
+};
+
+export type ChatProgress = {
+  sessionId: string;
+  requestId: string;
+  done: boolean;
+  events: ChatProgressEvent[];
+};
+
 export interface Backend {
   reply(input: ChatRequest, options?: { signal?: AbortSignal }): Promise<ChatResponse>;
   status(): Promise<string>;
+  progress(sessionId: string, afterSeq?: number): Promise<ChatProgress | null>;
   setPermissionMode(mode: PermissionMode): Promise<void>;
 }
 
@@ -113,6 +126,10 @@ class LocalBackend implements Backend {
       memoryContextCount === undefined ? undefined : `memory_context=${memoryContextCount}`,
     ];
     return fields.filter((field): field is string => Boolean(field)).join(" ");
+  }
+
+  async progress(_sessionId: string, _afterSeq = 0): Promise<ChatProgress | null> {
+    return null;
   }
 
   async setPermissionMode(mode: PermissionMode): Promise<void> {
@@ -325,6 +342,53 @@ class RemoteBackend implements Backend {
       typeof json.permissionMode === "string" ? `permission_mode=${json.permissionMode}` : undefined,
     ].filter((field): field is string => Boolean(field));
     return fields.join(" ");
+  }
+
+  async progress(sessionId: string, afterSeq = 0): Promise<ChatProgress | null> {
+    const query = new URLSearchParams({
+      sessionId,
+      afterSeq: String(afterSeq),
+    });
+    const response = await this.fetchOrThrow(`/v1/chat/progress?${query.toString()}`, {
+      headers: this.apiKey ? { authorization: `Bearer ${this.apiKey}` } : undefined,
+    });
+    if (response.status === 404) {
+      return null;
+    }
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`Backend progress check failed (${response.status}): ${body || "no body"}`);
+    }
+    const json = (await response.json()) as {
+      sessionId?: unknown;
+      requestId?: unknown;
+      done?: unknown;
+      events?: unknown;
+    };
+    if (typeof json.sessionId !== "string" || typeof json.requestId !== "string") {
+      return null;
+    }
+    const events = Array.isArray(json.events)
+      ? json.events
+          .map((entry) => {
+            if (!entry || typeof entry !== "object") {
+              return null;
+            }
+            const seq = (entry as { seq?: unknown }).seq;
+            const message = (entry as { message?: unknown }).message;
+            if (typeof seq !== "number" || typeof message !== "string") {
+              return null;
+            }
+            return { seq, message };
+          })
+          .filter((entry): entry is { seq: number; message: string } => Boolean(entry))
+      : [];
+    return {
+      sessionId: json.sessionId,
+      requestId: json.requestId,
+      done: typeof json.done === "boolean" ? json.done : false,
+      events,
+    };
   }
 
   async setPermissionMode(mode: PermissionMode): Promise<void> {

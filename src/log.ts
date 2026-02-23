@@ -6,6 +6,20 @@ const config = readResolvedConfigSync();
 
 type LogFields = Record<string, string | number | boolean | null | undefined>;
 
+function encodeLogfmtValue(value: string | number | boolean | null): string {
+  if (value === null) {
+    return "null";
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  const compact = value.replace(/\s+/g, " ").trim();
+  if (/^[a-zA-Z0-9._:/-]+$/.test(compact)) {
+    return compact;
+  }
+  return JSON.stringify(compact);
+}
+
 function resolveLogFormat(): LogFormat {
   return config.logFormat;
 }
@@ -15,7 +29,7 @@ function renderLogfmtLine(level: LogLevel, message: string, fields?: LogFields):
   const pairs = fields
     ? Object.entries(fields)
         .filter(([, value]) => value !== undefined)
-        .map(([key, value]) => `${key}=${String(value)}`)
+        .map(([key, value]) => `${key}=${encodeLogfmtValue(value ?? null)}`)
     : [];
   const tail = pairs.length > 0 ? ` ${pairs.join(" ")}` : "";
   return `${timestamp} level=${level} msg="${message.replace(/"/g, '\\"')}"${tail}\n`;
@@ -46,6 +60,23 @@ function write(level: LogLevel, message: string, fields?: LogFields): void {
     return;
   }
   process.stdout.write(line);
+}
+
+export function errorToLogFields(error: unknown, prefix = "error"): LogFields {
+  if (!(error instanceof Error)) {
+    return {
+      [`${prefix}_type`]: typeof error,
+      [`${prefix}_message`]: String(error),
+    };
+  }
+  const cause =
+    error.cause === undefined ? undefined : error.cause instanceof Error ? error.cause.message : String(error.cause);
+  return {
+    [`${prefix}_name`]: error.name,
+    [`${prefix}_message`]: error.message,
+    [`${prefix}_stack`]: error.stack,
+    [`${prefix}_cause`]: cause,
+  };
 }
 
 export const log = {

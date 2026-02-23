@@ -59,6 +59,15 @@ function statusPermissionMode(status: string): "read" | "write" | null {
   return match[1] as "read" | "write";
 }
 
+function progressRow(message: string): ChatRow {
+  return {
+    id: `row_${crypto.randomUUID()}`,
+    role: "system",
+    content: message,
+    dim: true,
+  };
+}
+
 export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: string) => Promise<void> {
   return async (raw: string): Promise<void> => {
     const text = raw.trim();
@@ -178,6 +187,21 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
     const abortController = new AbortController();
     input.setInterrupt(() => abortController.abort());
     const thinkingStartedAt = Date.now();
+    let progressAfterSeq = 0;
+    const progressPoll = setInterval(() => {
+      void input.backend
+        .progress(input.currentSession.id, progressAfterSeq)
+        .then((progress) => {
+          if (!progress || progress.events.length === 0) {
+            return;
+          }
+          progressAfterSeq = progress.events[progress.events.length - 1]?.seq ?? progressAfterSeq;
+          input.setRows((current) => [...current, ...progress.events.map((event) => progressRow(event.message))]);
+        })
+        .catch(() => {
+          // Best-effort progress polling; ignore transient backend/proxy errors.
+        });
+    }, 600);
     await input.persist();
 
     try {
@@ -208,6 +232,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       };
       input.setRows((current) => [...current, row]);
     } finally {
+      clearInterval(progressPoll);
       input.setInterrupt(null);
       input.setIsThinking(false);
     }

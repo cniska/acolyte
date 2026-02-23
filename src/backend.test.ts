@@ -168,6 +168,42 @@ describe("remote backend status parsing", () => {
   });
 });
 
+describe("remote backend progress parsing", () => {
+  test("progress returns null when no active session progress exists", async () => {
+    globalThis.fetch = (async () => new Response("Not Found", { status: 404 })) as unknown as typeof fetch;
+    const backend = createBackend({ apiUrl: "http://localhost:6767" });
+    await expect(backend.progress("sess_missing", 0)).resolves.toBeNull();
+  });
+
+  test("progress parses events and done flag", async () => {
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({
+          ok: true,
+          sessionId: "sess_123",
+          requestId: "err_abcd",
+          done: false,
+          events: [
+            { seq: 1, message: "Request received" },
+            { seq: 2, message: "Run search-repo" },
+          ],
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      )) as unknown as typeof fetch;
+    const backend = createBackend({ apiUrl: "http://localhost:6767" });
+    const progress = await backend.progress("sess_123", 0);
+    expect(progress).toEqual({
+      sessionId: "sess_123",
+      requestId: "err_abcd",
+      done: false,
+      events: [
+        { seq: 1, message: "Request received" },
+        { seq: 2, message: "Run search-repo" },
+      ],
+    });
+  });
+});
+
 describe("local backend status", () => {
   test("includes provider and readiness rows for role lanes", async () => {
     const backend = createBackend({ apiUrl: "" });

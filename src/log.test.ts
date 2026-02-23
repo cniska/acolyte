@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { renderLogLine } from "./log";
+import { errorToLogFields, renderLogLine } from "./log";
 
 describe("log", () => {
   test("renderLogLine includes level, message, and fields", () => {
@@ -17,5 +17,18 @@ describe("log", () => {
     expect(parsed.level).toBe("warn");
     expect(parsed.msg).toBe("be careful");
     expect(parsed.service).toBe("acolyte");
+  });
+
+  test("renderLogLine escapes logfmt fields with spaces", () => {
+    const line = renderLogLine("info", "quoted", { detail: "failed to read file", scope: "src/app.ts" });
+    expect(line).toContain('detail="failed to read file"');
+    expect(line).toContain("scope=src/app.ts");
+  });
+
+  test("errorToLogFields captures error details", () => {
+    const fields = errorToLogFields(new Error("boom"));
+    expect(fields.error_name).toBe("Error");
+    expect(fields.error_message).toBe("boom");
+    expect(typeof fields.error_stack).toBe("string");
   });
 });
