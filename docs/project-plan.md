@@ -1,202 +1,82 @@
 # Acolyte Project Plan
 
 ## Goal
-Build a personal AI coding assistant (Mastra + CLI) that is local-first, memory-aware, and optionally deployable for shared cross-device memory.
+Build a reliable, local-first AI coding assistant that can run daily development slices end-to-end (plan -> edit -> verify), with optional hosted mode later.
 
-## Principles
-1. BYO-first (keys + infra).
-2. Local-first default; hosted is optional.
-3. CLI-first UX (fast, minimal, high-signal).
-4. Safe-by-default automation (permissions + path guardrails).
-5. Apply extra scrutiny to chat UX changes: prefer minimal surface-area updates with tests + smoke checks before merge.
-6. Prefer instruction-quality fixes over output post-processing; avoid brittle response rewrites in MVP.
+## Milestones
 
-## Success Criteria
-1. Preference and workflow memory persists across sessions.
-2. Assistant reduces repeated mistakes on real coding tasks.
-3. Plan -> execute -> verify loop is reliable by default.
-4. Memory is inspectable/correctable from CLI.
-5. Optional hosted mode enables shared memory across machines.
+### Milestone 1: Build Stability Baseline
+Status: completed on February 21, 2026.
+Description: Lock in quality gates and prevent regressions while core workflows evolve.
+Goal: establish a stable implementation baseline with verify-first workflow and smoke coverage.
 
-## Current Gaps
-1. Preference learning loop is incomplete (confidence + promotion + correction).
-2. Memory transparency needs better per-reply visibility/debugging.
-3. Hosted shared-memory mode is not production-ready.
-4. Cross-device sessions are still local-only; hosted session continuity is not implemented.
-5. Coding loop needs stronger safety/verification orchestration.
-6. Dogfooding transition (Codex -> Acolyte-led dev) is not complete.
-7. Local-model ergonomics still need tuning, but role model -> provider inference is now in place.
-8. Token budget controls need iterative tuning for real-world cost/latency.
-9. Agent reliability for straightforward edit prompts still needs hardening (avoid plan-only/no-tool turns).
+Exit Criteria:
+- `bun run verify` stays green after each slice.
+- Smoke checks pass for `status`, `run "hello"`, and OM admin safety.
+- No regressions in `/status`, `/permissions`, and `/dogfood`.
 
-## Scope (MVP)
-### In Scope
-1. Mastra-based coding agent with planner/coder/reviewer roles.
-2. CLI chat as primary UX (+ minimal batch support).
-3. Core coding tools: read/search/edit/run/test/git context.
-4. Persistent memory (explicit + observational foundations).
-5. Local mode first (hosted backend is post-MVP).
+### Milestone 2: Dogfooding Readiness
+Status: in progress.
+Description: Make Acolyte dependable for daily small/medium development slices in this repo.
+Goal: reliable day-to-day dogfooding without routine Codex fallback.
 
-### Out of Scope
-1. Web/mobile/voice UI.
-2. Team multi-tenant collaboration.
-3. Messaging channels (WhatsApp/OpenClaw) in MVP.
-4. Fully autonomous long-running ops without user approval.
-5. Hosted cross-device session continuity in MVP.
+Exit Criteria:
+- Small feature slices complete end-to-end without fallback.
+- Output stays concise and decision-useful.
+- Recovery paths (`interrupt`, `/new`, `/resume`) remain stable.
+- Setup/diagnostics are reliable (`start`/`dev` + `/status` with clear failure guidance).
+- Permission flow is explicit and frictionless (read default, write confirm, auto-continue prompt).
 
-## Tech Stack
-1. Bun + TypeScript + Mastra.
-2. Ink-based CLI.
-3. Prisma + Postgres/pgvector (hosted path), local-first memory mode.
-4. Multi-provider model routing (OpenAI/Anthropic/Gemini + OpenAI-compatible local endpoints later).
+### Milestone 3: Aggressive Switch Trial
+Status: planned.
+Description: Run Acolyte as primary driver for a short continuous period.
+Goal: validate Acolyte as primary for normal repo work.
 
-## Core Architecture
-1. CLI: chat loop, slash commands, pickers, history/memory commands.
-2. Backend: chat/tool/memory endpoints + session/auth + health/admin.
-3. Agent layer: role-based subagents with scoped tools.
-4. Memory layer: profile/project/episodes/observations with guarded promotion.
+Exit Criteria:
+- 1-2 consecutive days of primary development with Acolyte.
+- 6-10 real feature/fix slices completed end-to-end.
+- No blocker that requires routine Codex fallback.
+- Cost/latency and memory behavior remain acceptable.
 
-## Preference Storage Policy
-1. `AGENTS.md` stores repository-level, durable engineering policy and guardrails.
-2. `docs/soul.md` stores project-local assistant behavior/voice defaults and high-level operating intent.
-3. `skills/*` stores reusable procedures/workflows that can be intentionally activated.
-4. Memory stores mutable user/project preferences and context learned during usage.
-5. Rule: if information should change frequently or is user-specific, store it in memory; if it must be stable and enforceable for the repo, store it in `AGENTS.md`.
+### Milestone 4: Runtime Reliability Signals
+Status: in progress.
+Description: Make in-flight execution and failures visible, actionable, and low-noise.
+Goal: users can always see meaningful progress and failure reasons during execution.
 
-## Delivery Plan
-### Phase A (Now): CLI Reliability + Dogfooding
-1. Stabilize interactive UX (shortcuts, pickers, autocomplete, history).
-2. Enforce safe execution defaults (permission modes + path restrictions).
-3. Tighten output quality (user-focused summaries, concise review format).
-4. Use Acolyte for increasing share of repo work; track failures and fixes.
+Exit Criteria:
+- Tool activity is visible even when progress polling misses events.
+- Duplicate tool-progress rows are suppressed.
+- Empty-output failures return actionable guidance (quota/backend/model/provider).
+- Permission-blocked writes trigger picker-based recovery, not manual command detours.
+- Critical operator actions stay explicit and command-first.
 
-## Milestones (Near-Term)
-1. Milestone 1: Build Stability Baseline
-   - Status: completed on February 21, 2026.
-   - Evidence:
-   - `bun run verify` is green after each implementation slice.
-   - Smoke checks pass for `status`, `run "hello"`, and OM admin safety (`om:wipe` refuses without `--yes`).
-   - Core chat command coverage includes `/status`, `/permissions`, and `/dogfood` in automated tests.
-   - Exit criteria:
-   - `bun run verify` green after each slice.
-   - Automated smoke green for `status`, `run "hello"`, OM admin safety (`wipe` requires `--yes`).
-   - No regressions in core chat commands (`/status`, `/permissions`, `/dogfood`).
-2. Milestone 2: Dogfooding Readiness
-   - Status: in progress (near gate-ready).
-   - Current evidence:
-   - Output shaping is now constrained for dogfood (`Immediate action:` normalization).
-   - Dogfood output strips quick-status / pick-one / A-B-C scaffolding, preserving one actionable line.
-   - Session-recovery command paths (`/new`, `/resume`, `/permissions`) are covered by automated tests.
-   - One-shot `run` is isolated from persisted chat history (plus regression test).
-   - One-shot `run`/`dogfood` now use isolated OM resource ids (`run-<session>`), reducing cross-task memory bleed.
-   - Integration test verifies `run` forwards isolated `resourceId` to backend.
-   - One-shot `run` now fails with non-zero exit on backend errors (plus actionable backend-start hint), improving script reliability.
-   - Automated dogfood smoke (`bun run dogfood:smoke`) validates `status`, `run "hello"`, and `dogfood --no-verify`.
-   - Progress tracker (`bun run dogfood:progress --lookback 30 --target 10`) reports delivery slices (`feat|fix|refactor|test`) for switch gating.
-   - Gate command (`bun run dogfood:gate --lookback 30 --target 10`) summarizes smoke + delivery readiness in one pass.
-   - Skip-verify gate (`bun run dogfood:gate --skip-verify --lookback 30 --target 10`) enables frequent readiness checks during active iteration.
-   - Skip-verify gate hit `ready` on February 21, 2026 with `bun run dogfood:gate --skip-verify --lookback 10 --target 6` (smoke pass, delivery-slices 6/6).
-   - Latest run remains `ready` on February 21, 2026 with `bun run dogfood:gate --skip-verify --lookback 10 --target 6` (smoke pass, delivery-slices 7/6).
-   - Latest run remains `ready` on February 22, 2026 with `bun run dogfood:gate --skip-verify --lookback 10 --target 6` (smoke pass, delivery-slices 6/6).
-   - `/status` now includes role-level provider readiness (`providers`, `provider_ready`) for mixed-lane debugging during switch trials.
-   - Remaining validation:
-   - Complete 6-10 real feature/fix slices in normal flow with Acolyte-first execution and no routine fallback.
-   - Exit criteria:
-   - Acolyte completes small feature slices end-to-end (plan -> edit -> verify) without fallback.
-   - Output stays concise and decision-useful without pseudo-picker noise.
-   - Session recovery (`interrupt`, `/new`, `/resume`) remains stable in daily use.
-3. Milestone 3: Aggressive Switch Trial (1-2 Days)
-   - Exit criteria:
-   - 1-2 consecutive days of normal repo development primarily with Acolyte.
-   - At least 6-10 real feature/fix slices completed end-to-end with Acolyte.
-   - No blocker requiring routine Codex fallback.
-   - Cost/latency and memory behavior remain acceptable for daily workflow.
-4. Milestone 4: Runtime Reliability Signals
-   - Status: in progress.
-   - Goal:
-   - Ensure users can always see meaningful in-flight progress and actionable failures during execution.
-   - Exit criteria:
-   - Tool activity is visible even when progress polling misses events (fallback tool-progress path).
-   - Duplicate tool-progress rows are suppressed when streamed and fallback signals overlap.
-   - Empty-output failures return actionable guidance (quota/backend/model/provider), not generic no-op text.
-   - Permission-blocked writes trigger picker-based recovery flow instead of manual command detours.
+### Milestone 5: Memory Quality
+Status: planned.
+Description: Improve quality and trustworthiness of persistent memory.
+Goal: reduce repeated mistakes with transparent, correctable memory behavior.
 
-## Switch-To-Acolyte Gate
-Move primary development from Codex to Acolyte once these checks pass in a staged trial:
-1. Initial gate: 1-2 consecutive days and 6-10 real slices completed with Acolyte.
-2. Confirmation gate: optional one-week run after the initial gate to confirm stability.
-3. During trial, Codex remains fallback only for true blockers.
-4. Reliability: `bun run verify` stays green on every Acolyte-driven slice.
-5. Edit clarity: edit previews are readable enough to approve/reject quickly (compact, diff-first, low noise).
-6. Recovery: interrupt, resume, and `/new` flows are stable during daily usage.
-7. Safety: read/write permission gating prevents accidental writes and is easy to override intentionally.
-8. Throughput: Acolyte can complete at least small-to-medium feature slices end-to-end without manual fallback.
-9. Cost/latency: response times and token usage stay within acceptable bounds for daily development.
+Exit Criteria:
+- Observational memory promotion/precision is tuned for daily coding use.
+- Memory context is inspectable and easy to correct.
+- Evals show reduction in repeated instruction failures.
 
-Adoption plan:
-1. Start with low-risk chores and test updates.
-2. Graduate to normal feature slices on `main`.
-3. Keep Codex as fallback only for blocked/high-risk tasks until the gate is consistently met.
+### Milestone 6: Hosted Readiness
+Status: planned.
+Description: Prepare optional hosted mode for centralized memory and multi-device continuity.
+Goal: enable safe, reliable hosted operation without degrading local-first UX.
 
-### Phase B: Memory Quality
-1. Improve observational-memory precision and promotion gates.
-2. Add memory transparency/debug tooling.
-3. Add evals for repeated-mistake reduction.
+Exit Criteria:
+- Vercel + Postgres path is hardened and documented.
+- Hosted session APIs support create/list/load/update flows.
+- CLI supports hybrid local/remote session storage.
+- Auth baseline is in place (GitHub-first).
 
-### Phase C: Hosted Readiness
-1. Harden Vercel + Postgres deployment path.
-2. Add hosted session APIs in small slices:
-   - `POST /v1/sessions` (create)
-   - `GET /v1/sessions` (list)
-   - `GET /v1/sessions/:id` (load)
-   - `PATCH /v1/sessions/:id` (append/update metadata)
-3. Use hybrid session store in CLI:
-   - local default
-   - remote session store only when `apiUrl` + auth are configured
-4. Add migration/import path from local sessions to hosted sessions.
-5. Add backup/restore and multi-machine setup docs.
-6. Add operational smoke tests and release process.
-7. Add hosted auth with GitHub as default identity provider (local mode remains auth-free).
-8. Keep API-key auth as optional automation fallback for hosted scripts/services.
+### Milestone 7: Post-MVP OSS Release
+Status: planned.
+Description: Open-source core local mode after MVP gate is met.
+Goal: ship a clean OSS local-first release with optional self-host path.
 
-## Open Decisions
-1. Default model + fallback order by lane (`chat`, `code`, `long-context`, `vision`).
-2. Sandbox provider timeline (E2B/Modal).
-3. Packaging target (`npm` global vs standalone binary).
-4. If/when to evolve from heuristic routing to deeper multi-agent delegation.
-5. Hosted auth choice is now set to GitHub-first for user login; implementation details (OAuth app vs GitHub App) remain open.
-
-## Next Actions (Prioritized)
-1. Keep dogfooding on `main` with small validated slices.
-2. Prioritize execution reliability (tool execution success, actionable failures, no silent no-op responses).
-3. Keep model behavior in agent instructions/souls; defer non-essential response post-processing.
-4. Continue CLI UX convergence with Codex/Claude patterns while staying minimal.
-5. Keep picker wording action-oriented (labels describe concrete outcomes).
-6. Keep model/provider routing centralized in one config module.
-7. Add regular OM soak runs (`bun run om:soak`) to validate long-running memory behavior under real usage.
-8. Tune observational-memory thresholds (cost vs precision).
-9. Add token guardrails (hard budgets + compact tool output defaults).
-10. Implement lane-based routing and add local-model endpoint support.
-11. Keep `docs/features.md` as canonical feature inventory.
-12. Evaluate optional git hooks for high-signal checks only.
-13. Add staged path for channel adapters post-MVP (not now).
-14. Implement hosted session continuity (`/sessions`, `/resume`) via server-backed session APIs.
-
-## Risks
-1. Memory drift: mitigate with confidence scores + manual correction.
-2. Hallucinated repo claims: require tool-grounded evidence.
-3. Cost/latency spikes: enforce token budgets + lane routing.
-4. Reliability regressions: preserve verify-first workflow and smoke checks.
-
-## Prioritization Policy
-1. Correctness/reliability/core workflow over cosmetic polish.
-2. If UX polish is deferred, record it explicitly.
-3. Prefer fixing model instructions/role prompts before adding output-rewrite logic.
-4. For permission-blocked actions, prefer picker-driven recovery (for example switch to write mode) over manual command guidance in responses.
-
-## Deferred Improvements
-1. Rich Claude-style transcript blocks (`Edit(...)` / `Bash(...)`) with compact excerpts.
-2. OM lifecycle visibility in chat progress (for example, show `Reflected` briefly ~5s after observational-memory reflection completes).
-
-## Known Issues
-1. Terminal tab switching can trigger header repaint artifacts in some terminal setups.
+Exit Criteria:
+- MVP gate is met (Milestones 2-4 stable).
+- Public quickstart and self-host docs are ready.
+- OSS vs managed boundaries are clearly documented.
