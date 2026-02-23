@@ -112,16 +112,15 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
   return (
     <>
       <Text dimColor>{borderLine()}</Text>
-      <Box>
-        <Text>❯ </Text>
-        <PromptInput
-          value={value}
-          placeholder="Ask something…"
-          onChange={onChange}
-          onSubmit={onSubmit}
-          key={`chat-input-${inputRevision}`}
-        />
-      </Box>
+      <PromptInput
+        value={value}
+        placeholder="Ask something…"
+        linePrefixFirst="❯ "
+        linePrefixRest="  "
+        onChange={onChange}
+        onSubmit={onSubmit}
+        key={`chat-input-${inputRevision}`}
+      />
       <Text dimColor>{borderLine()}</Text>
       {renderInputPanelContent({
         brandColor,

@@ -1,58 +1,120 @@
 # Acolyte Dogfood Workflow
 
 ## Goal
-Run daily development with Acolyte as the primary driver while keeping reliability checks tight.
+Use Acolyte as the primary development driver and ship in small, verified slices.
 
-## Start
-1. Terminal 1 (backend + chat app):
-   - `bun run dev`
-2. Terminal 2 (interactive CLI):
-   - `acolyte`
-   - Fallback: `bun run src/cli.ts`
+## Setup
+Run once:
 
-## Slice Loop
-1. Ask for one small slice at a time.
-2. Require validation before commit:
-   - `bun run verify`
-3. Commit one logical slice:
-   - commit message in Conventional Commit format.
-4. Repeat.
+```bash
+acolyte config set --project model "openai/gpt-5"
+acolyte config set --project modelPlanner "openai/o3"
+acolyte config set --project modelCoder "openai/gpt-5-codex"
+acolyte config set --project modelReviewer "openai/o3"
+acolyte config set apiUrl "http://localhost:6767"
+```
 
-## Readiness Loop
-Run this regularly while dogfooding:
-1. Fast gate (no duplicate verify run):
-   - `bun run dogfood:gate -- --skip-verify --lookback 10 --target 6`
-2. Full gate when needed:
-   - `bun run dogfood:gate -- --lookback 30 --target 10`
+Set API key in `.env`:
 
-Interpretation:
-1. `result: ready` means smoke checks are green and enough delivery slices are present.
-2. `remaining=<n>` in delivery detail shows exactly how many slices are still missing.
+```bash
+OPENAI_API_KEY=...
+```
 
-## Session Continuity
-1. In chat:
-   - `/sessions`
-   - `/resume <id-prefix>`
-   - `/new`
-2. From shell:
-   - `acolyte resume <id-prefix>`
-   - Fallback: `bun run src/cli.ts resume <id-prefix>`
+After setup, restart chat and check:
 
-## Memory Usage During Dogfood
-1. Save preferences:
-   - `/remember <text>`
-   - `/remember --project <text>`
-2. Inspect memory:
-   - `/memory [all|user|project]`
-   - `/memory context [all|user|project]`
+```text
+/status
+```
+
+Expected:
+- backend is not `embedded`
+- provider is not `local-mock`
+
+## Start Of Day
+
+```bash
+bun run dev
+```
+
+`bun run dev` starts backend + chat together. Enter prompts in that same terminal.
+
+Then in chat:
+
+```text
+/status
+/remember --project when I ask "what's next", pick the highest-priority unfinished item in docs/project-plan.md and propose one smallest verifiable slice
+```
+
+## Per Slice Loop (Practical)
+In chat:
+
+```text
+what next
+do it, run bun run verify, then commit with a conventional commit message
+```
+
+If verify fails:
+
+```text
+fix the failure, rerun bun run verify, and commit
+```
+
+Repeat with:
+
+```text
+what next
+```
+
+## End Of Day
+
+```bash
+bun run dogfood:gate -- --lookback 30 --target 10
+```
+
+If not ready, note `remaining=<n>` and continue next session.
+
+Resume later with:
+
+```bash
+acolyte resume <id-prefix>
+```
+
+## Restart Matrix
+- If you run `bun run dev`:
+  - restart `bun run dev` after `.env` changes, CLI changes, or backend/server changes.
+- If you run split mode:
+  - restart `acolyte` after `acolyte config set ...`, `.env` changes, or CLI changes.
+  - restart backend after `.env` changes, or backend/server changes when not running watch mode.
+- No restart needed for normal prompts/commands and `/remember` or `/memory` updates.
+
+## Readiness Checks
+
+```bash
+bun run dogfood:gate -- --skip-verify --lookback 10 --target 6
+bun run dogfood:gate -- --lookback 30 --target 10
+```
+
+- `result: ready` means checks are green and slice target is met.
+- `remaining=<n>` means how many more slices are needed.
 
 ## Troubleshooting
-1. Backend not reachable:
-   - `bun run serve:env`
-2. OM/admin checks:
-   - `bun run om:status`
-   - `bun run om:status -- --help`
-3. Dogfood scripts help:
-   - `bun run dogfood:progress -- --help`
-   - `bun run dogfood:gate -- --help`
 
+```bash
+bun run serve:env
+bun run om:status
+bun run dogfood:progress -- --help
+bun run dogfood:gate -- --help
+```
+
+Split mode (optional):
+
+```bash
+# terminal 1
+bun run serve:env:watch
+
+# terminal 2
+acolyte
+```
+
+## References
+- `README.md` for full command reference.

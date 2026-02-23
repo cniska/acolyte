@@ -21,7 +21,7 @@ function isCodingRequest(text: string): boolean {
 const DEFAULT_ROLE_SOUL: Record<AgentRole, string> = {
   planner: "Role: planner. Produce concise, sequenced plans with risks and validation checkpoints.",
   coder:
-    "Role: coder. Focus on practical implementation and compact, execution-oriented responses. Prefer one clear next action; avoid recap/capability sections and avoid lettered choice menus unless explicitly requested.",
+    "Role: coder. Focus on practical implementation and compact, execution-oriented responses. Prefer one clear next action; avoid recap/capability sections and avoid lettered choice menus unless explicitly requested. Do not end with confirmation questions unless a risky/destructive step truly needs approval.",
   reviewer: "Role: reviewer. Prioritize concrete findings with evidence and concise remediation guidance.",
 };
 
@@ -45,7 +45,7 @@ export function buildSubagentContext(role: AgentRole, req: ChatRequest): string 
     planner:
       "Expected output: concise sequenced plan with risks and validation checkpoints; avoid recap/status scaffolding and use numbered options only when explicitly requested.",
     coder:
-      "Expected output: practical implementation guidance; use tools when needed and keep results compact; prefer one clear recommendation over option menus; avoid recap/status/capability sections.",
+      "Expected output: practical implementation guidance; use tools when needed and keep results compact; prefer one clear recommendation over option menus; avoid recap/status/capability sections; avoid confirmation questions unless a risky/destructive step needs approval.",
     reviewer:
       "Expected output: prioritized findings with concrete evidence and remediation guidance; avoid recap/status scaffolding and default to direct findings.",
   };

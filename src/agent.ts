@@ -441,6 +441,9 @@ export function finalizeAssistantOutput(output: string, message = ""): string {
       if (/^which (do you want|one do you want)\b/i.test(trimmed)) {
         return false;
       }
+      if (/^(do you want me to|want me to)\b/i.test(trimmed)) {
+        return false;
+      }
       if (/^reply\s+[a-z](\s*,\s*[a-z])*\s*(or\s*[a-z])?/i.test(trimmed)) {
         return false;
       }
@@ -457,6 +460,13 @@ export function finalizeAssistantOutput(output: string, message = ""): string {
     .trim();
   if (cleaned.length > 0) {
     return compactAssistantOutput(cleaned);
+  }
+  const fallbackLine = normalizedOptions
+    .split("\n")
+    .map((line) => line.trim())
+    .find((line) => line.length > 0 && !/^(Tools used:|Evidence:)/i.test(line));
+  if (fallbackLine) {
+    return compactAssistantOutput(fallbackLine);
   }
   return "No output produced. Try rephrasing your prompt.";
 }

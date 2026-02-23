@@ -254,6 +254,26 @@ describe("config store", () => {
     expect(loaded.maxMessageTokens).toBe(700);
   });
 
+  test("project config does not clear user values when project key is missing", async () => {
+    const home = createTempDir("acolyte-config-home-");
+    const project = createTempDir("acolyte-config-project-");
+    const userDataDir = join(home, ".acolyte");
+    const projectDataDir = join(project, ".acolyte");
+    mkdirSync(userDataDir, { recursive: true });
+    mkdirSync(projectDataDir, { recursive: true });
+
+    writeFileSync(
+      join(userDataDir, "config.toml"),
+      ['apiUrl = "http://localhost:6767"', 'model = "openai/gpt-5-mini"'].join("\n"),
+      "utf8",
+    );
+    writeFileSync(join(projectDataDir, "config.toml"), 'model = "anthropic/claude-sonnet-4"\n', "utf8");
+
+    const loaded = await readConfig({ homeDir: home, cwd: project });
+    expect(loaded.model).toBe("anthropic/claude-sonnet-4");
+    expect(loaded.apiUrl).toBe("http://localhost:6767");
+  });
+
   test("setConfigValue writes to project scope without mutating user scope", async () => {
     const home = createTempDir("acolyte-config-home-");
     const project = createTempDir("acolyte-config-project-");

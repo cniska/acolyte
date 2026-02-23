@@ -58,6 +58,9 @@ export function resolveQueueSubmit(input: { value: string; isThinking: boolean }
   if (!trimmed) {
     return { kind: "ignore" };
   }
+  if (input.isThinking && trimmed.startsWith("/")) {
+    return { kind: "submit", value: trimmed };
+  }
   if (input.isThinking) {
     return { kind: "queue", value: trimmed };
   }

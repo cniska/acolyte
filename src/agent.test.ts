@@ -177,6 +177,15 @@ describe("finalizeAssistantOutput", () => {
     expect(finalizeAssistantOutput(raw)).toBe("Applied changes.");
   });
 
+  test("strips trailing want-me-to confirmation lines", () => {
+    const raw = [
+      "Recommendation: hide ready states by default and show issues only.",
+      "",
+      "Want me to wire this up now (adjust /status rendering and run bun run verify)?",
+    ].join("\n");
+    expect(finalizeAssistantOutput(raw)).toBe("Recommendation: hide ready states by default and show issues only.");
+  });
+
   test("strips generic recap lead-in lines", () => {
     const raw = ["Recap: two small fixes.", "", "1) fix null checks", "2) add try/catch"].join("\n");
     expect(finalizeAssistantOutput(raw)).toBe(["1. fix null checks", "2. add try/catch"].join("\n"));

@@ -1,4 +1,4 @@
-import { Text, useInput } from "ink";
+import { Box, Text, useInput } from "ink";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { resolvePromptAction } from "./prompt-keymap";
@@ -10,9 +10,17 @@ interface PromptInputProps {
   value: string;
   placeholder?: string;
   focus?: boolean;
+  linePrefixFirst?: string;
+  linePrefixRest?: string;
   onChange: (next: string) => void;
   onSubmit: (value: string) => void;
 }
+
+type PromptDisplayLine = {
+  before: string;
+  cursor: string | null;
+  after: string;
+};
 
 export function moveWordLeft(value: string, cursor: number): number {
   let index = Math.max(0, Math.min(cursor, value.length));
@@ -36,10 +44,34 @@ export function moveWordRight(value: string, cursor: number): number {
   return index;
 }
 
+export function buildPromptDisplayLines(value: string, cursorOffset: number): PromptDisplayLine[] {
+  const clamped = Math.max(0, Math.min(cursorOffset, value.length));
+  const beforeCursor = value.slice(0, clamped);
+  const cursorLine = beforeCursor.split("\n").length - 1;
+  const lineStart = beforeCursor.lastIndexOf("\n") + 1;
+  const cursorColumn = clamped - lineStart;
+  const lines = value.split("\n");
+  return lines.map((line, index) => {
+    if (index !== cursorLine) {
+      return { before: line, cursor: null, after: "" };
+    }
+    if (cursorColumn < line.length) {
+      return {
+        before: line.slice(0, cursorColumn),
+        cursor: line[cursorColumn] ?? " ",
+        after: line.slice(cursorColumn + 1),
+      };
+    }
+    return { before: line, cursor: " ", after: "" };
+  });
+}
+
 export function PromptInput({
   value,
   placeholder = "",
   focus = true,
+  linePrefixFirst = "",
+  linePrefixRest = "",
   onChange,
   onSubmit,
 }: PromptInputProps): React.JSX.Element {
@@ -143,6 +175,7 @@ export function PromptInput({
   if (value.length === 0 && placeholder.length > 0) {
     return (
       <Text>
+        {linePrefixFirst}
         {focus ? (
           <>
             <Text inverse>{placeholder[0] ?? " "}</Text>
@@ -156,18 +189,43 @@ export function PromptInput({
   }
 
   if (!focus) {
-    return <Text>{value}</Text>;
+    const lines = value.split("\n");
+    let lineOffset = 0;
+    const readonlyLines = lines.map((line) => {
+      const key = `prompt-readonly-line-${lineOffset}-${line}`;
+      lineOffset += line.length + 1;
+      return { key, line };
+    });
+    return (
+      <Box flexDirection="column">
+        {readonlyLines.map((entry, index) => (
+          <Text key={entry.key}>
+            {index === 0 ? linePrefixFirst : linePrefixRest}
+            {entry.line}
+          </Text>
+        ))}
+      </Box>
+    );
   }
-
-  const before = value.slice(0, cursorOffset);
-  const cursor = cursorOffset < value.length ? value[cursorOffset] : " ";
-  const after = cursorOffset < value.length ? value.slice(cursorOffset + 1) : "";
+  const lines = buildPromptDisplayLines(value, cursorOffset);
+  let lineOffset = 0;
+  const focusLines = lines.map((line) => {
+    const content = `${line.before}${line.cursor ?? ""}${line.after}`;
+    const key = `prompt-focus-line-${lineOffset}-${content}`;
+    lineOffset += content.length + 1;
+    return { key, line };
+  });
 
   return (
-    <Text>
-      {before}
-      <Text inverse>{cursor}</Text>
-      {after}
-    </Text>
+    <Box flexDirection="column">
+      {focusLines.map((entry, index) => (
+        <Text key={entry.key}>
+          {index === 0 ? linePrefixFirst : linePrefixRest}
+          {entry.line.before}
+          {entry.line.cursor !== null ? <Text inverse>{entry.line.cursor}</Text> : null}
+          {entry.line.after}
+        </Text>
+      ))}
+    </Box>
   );
 }

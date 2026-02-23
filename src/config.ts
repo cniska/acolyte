@@ -145,6 +145,16 @@ function toConfig(input: Record<string, unknown>): AcolyteConfig {
   };
 }
 
+function mergeConfigScopes(base: AcolyteConfig, override: AcolyteConfig): AcolyteConfig {
+  const merged: AcolyteConfig = { ...base };
+  for (const [key, value] of Object.entries(override) as Array<[keyof AcolyteConfig, unknown]>) {
+    if (value !== undefined) {
+      merged[key] = value as never;
+    }
+  }
+  return merged;
+}
+
 function resolvePaths(options?: ConfigOptions): {
   userDataDir: string;
   userJsonPath: string;
@@ -302,7 +312,7 @@ export async function readConfig(options?: ConfigOptions): Promise<AcolyteConfig
   try {
     const userConfig = await readConfigScope("user", options);
     const projectConfig = await readConfigScope("project", options);
-    return toConfig({ ...userConfig, ...projectConfig } as Record<string, unknown>);
+    return mergeConfigScopes(userConfig, projectConfig);
   } catch {
     return {};
   }
@@ -312,7 +322,7 @@ export function readConfigSync(options?: ConfigOptions): AcolyteConfig {
   try {
     const userConfig = readConfigScopeSync("user", options);
     const projectConfig = readConfigScopeSync("project", options);
-    return toConfig({ ...userConfig, ...projectConfig } as Record<string, unknown>);
+    return mergeConfigScopes(userConfig, projectConfig);
   } catch {
     return {};
   }

@@ -106,7 +106,7 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
               <Text color={pulseColor}>{`${pulseGlyph} `}</Text>
             </Box>
             <Box width={contentWidth}>
-              <Text dimColor>Thinking…</Text>
+              <Text dimColor>Working…</Text>
             </Box>
           </Box>
         </>

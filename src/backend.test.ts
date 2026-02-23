@@ -146,7 +146,7 @@ describe("remote backend status parsing", () => {
 
 describe("local backend status", () => {
   test("includes provider and readiness rows for role lanes", async () => {
-    const backend = createBackend();
+    const backend = createBackend({ apiUrl: "" });
     const status = await backend.status();
 
     expect(status).toContain("provider=local-mock");
