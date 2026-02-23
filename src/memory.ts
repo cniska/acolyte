@@ -18,10 +18,6 @@ export interface MemoryOptions {
   homeDir?: string;
 }
 
-function toSafeTimestamp(input: string): string {
-  return input.replace(/[:.]/g, "-");
-}
-
 function getUserMemoryDir(homeDir = homedir()): string {
   return join(homeDir, ".acolyte", "memory", "user");
 }
@@ -132,7 +128,7 @@ export async function addMemory(
     createdAt: new Date().toISOString(),
     scope,
   };
-  const filename = `${toSafeTimestamp(entry.createdAt)}-${entry.id}.md`;
+  const filename = `${entry.id}.md`;
   await writeFile(join(dir, filename), serializeMemory(entry), "utf8");
   return entry;
 }

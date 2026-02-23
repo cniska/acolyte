@@ -27,6 +27,7 @@ describe("markdown memory store", () => {
     const memoryDir = join(homeDir, ".acolyte", "memory", "user");
     const files = readdirSync(memoryDir).filter((name) => name.endsWith(".md"));
     expect(files.length).toBe(1);
+    expect(files[0]).toBe(`${entry.id}.md`);
     const raw = readFileSync(join(memoryDir, files[0] ?? ""), "utf8");
     expect(raw).toContain("---");
     expect(raw).toContain(`id: ${entry.id}`);
