@@ -7,6 +7,7 @@ type ChatTranscriptProps = {
   rows: ChatRow[];
   isThinking: boolean;
   thinkingFrame: number;
+  thinkingStartedAt?: number | null;
 };
 
 const MAX_TRANSCRIPT_WIDTH = 100;
@@ -40,7 +41,7 @@ function parseSessionsHeader(content: string): { prefix: string; count: string; 
 }
 
 export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
-  const { rows, isThinking, thinkingFrame } = props;
+  const { rows, isThinking, thinkingFrame, thinkingStartedAt } = props;
   const pulsePeriod = 16;
   const phase = ((Math.abs(thinkingFrame) % pulsePeriod) / pulsePeriod) * Math.PI * 2;
   const baseIntensity = (Math.cos(phase) + 1) / 2;
@@ -52,6 +53,10 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
   const pulseColor = `#${channel}${channel}${channel}`;
   const pulseGlyph = "●";
   const hasContent = rows.length > 0 || isThinking;
+  const elapsedSec =
+    isThinking && typeof thinkingStartedAt === "number"
+      ? Math.max(0, Math.floor((Date.now() - thinkingStartedAt) / 1000))
+      : 0;
   const columns = process.stdout.columns ?? 120;
   const contentWidth = Math.max(24, Math.min(MAX_TRANSCRIPT_WIDTH, columns - 2));
   return (
@@ -106,7 +111,7 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
               <Text color={pulseColor}>{`${pulseGlyph} `}</Text>
             </Box>
             <Box width={contentWidth}>
-              <Text dimColor>Working…</Text>
+              <Text dimColor>{elapsedSec > 0 ? `Working… ${elapsedSec}s` : "Working…"}</Text>
             </Box>
           </Box>
         </>

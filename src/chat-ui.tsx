@@ -43,15 +43,20 @@ interface ChatAppProps {
   version: string;
 }
 
+export function initialTranscriptRows(session: Session): ChatRow[] {
+  return toRows(session.messages);
+}
+
 function ChatApp(props: ChatAppProps) {
   const { backend, session, store, persist, version } = props;
   const { exit } = useApp();
   const [currentSession, setCurrentSession] = useState<Session>(session);
-  const [rows, setRows] = useState<ChatRow[]>([]);
+  const [rows, setRows] = useState<ChatRow[]>(() => initialTranscriptRows(session));
   const [value, setValue] = useState("");
   const [inputRevision, setInputRevision] = useState(0);
   const [isThinking, setIsThinking] = useState(false);
   const [thinkingFrame, setThinkingFrame] = useState(0);
+  const [thinkingStartedAt, setThinkingStartedAt] = useState<number | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [queuedInput, setQueuedInput] = useState<string | null>(null);
   const [picker, setPicker] = useState<PickerState | null>(null);
@@ -81,6 +86,13 @@ function ChatApp(props: ChatAppProps) {
   useAtSuggestionsEffect(atQuery, setAtSuggestions, setAtSuggestionIndex);
   useSlashSuggestionsEffect(slashSuggestions, setSlashSuggestionIndex);
   useThinkingAnimationEffect(isThinking, THINKING_PULSE_FRAMES, setThinkingFrame);
+  useEffect(() => {
+    if (isThinking) {
+      setThinkingStartedAt((current) => current ?? Date.now());
+      return;
+    }
+    setThinkingStartedAt(null);
+  }, [isThinking]);
 
   useEffect(() => {
     setInputHistory(buildInputHistory(currentSession.messages));
@@ -195,7 +207,12 @@ function ChatApp(props: ChatAppProps) {
         logoColor={COLORS.logo}
         logoEyeColor={COLORS.logoEyes}
       />
-      <ChatTranscript rows={rows} isThinking={isThinking} thinkingFrame={thinkingFrame} />
+      <ChatTranscript
+        rows={rows}
+        isThinking={isThinking}
+        thinkingFrame={thinkingFrame}
+        thinkingStartedAt={thinkingStartedAt}
+      />
 
       <Text> </Text>
       <ChatInputPanel
