@@ -343,6 +343,28 @@ function collectToolNamesFromStep(step: unknown): string[] {
   return collectToolCallIds(raw as unknown[]);
 }
 
+function toTitleWords(input: string): string {
+  return input
+    .split(/[-_]+/)
+    .filter((part) => part.length > 0)
+    .map((part) => part[0]?.toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function userProgressForTool(toolName: string): string {
+  const known: Record<string, string> = {
+    "search-repo": "Searching the repo",
+    "read-file": "Reading files",
+    "git-status": "Checking git status",
+    "git-diff": "Inspecting changes",
+    "run-command": "Running commands",
+    "edit-file": "Preparing edits",
+    "web-search": "Searching the web",
+    "web-fetch": "Fetching a page",
+  };
+  return known[toolName] ?? `Using ${toTitleWords(toolName)}`;
+}
+
 function normalizeDogfoodOutput(output: string): string {
   const cleaned = output
     .split("\n")
@@ -566,10 +588,10 @@ export async function runAgent(input: {
         continue;
       }
       seenToolNames.add(toolName);
-      emitProgress(`Run ${toolName}`);
+      emitProgress(userProgressForTool(toolName));
     }
   };
-  emitProgress("Plan");
+  emitProgress("Thinking through the request");
   let result = await agent.generate(agentInput, {
     maxSteps: role === "planner" ? 5 : 8,
     toolChoice: "auto",
@@ -579,7 +601,7 @@ export async function runAgent(input: {
 
   const shouldRequireToolsFallback = role !== "planner" && (toolLikely || role === "reviewer");
   if (shouldRequireToolsFallback && result.toolCalls.length === 0) {
-    emitProgress("Retry with required tools");
+    emitProgress("Trying a tool-assisted pass");
     result = await agent.generate(agentInput, {
       maxSteps: 8,
       toolChoice: "required",
@@ -589,7 +611,7 @@ export async function runAgent(input: {
   }
 
   if (result.text.trim().length === 0) {
-    emitProgress("Retry concise response");
+    emitProgress("Refining the response");
     result = await agent.generate(`${agentInput}\n\nReturn a direct concise answer.`, {
       maxSteps: role === "planner" ? 3 : 5,
       toolChoice: "auto",

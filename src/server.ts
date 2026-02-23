@@ -419,7 +419,6 @@ const server = Bun.serve({
     });
     if (chatRequest.sessionId) {
       startChatProgress(chatRequest.sessionId, requestId);
-      appendChatProgress(chatRequest.sessionId, "Request received");
     }
 
     try {
@@ -445,13 +444,11 @@ const server = Bun.serve({
         completion_tokens: reply.usage?.completionTokens ?? null,
       });
       if (chatRequest.sessionId) {
-        appendChatProgress(chatRequest.sessionId, "Done");
         completeChatProgress(chatRequest.sessionId);
       }
       return json(reply);
     } catch (error) {
       if (chatRequest.sessionId) {
-        appendChatProgress(chatRequest.sessionId, "Failed");
         completeChatProgress(chatRequest.sessionId);
       }
       return serverError(
