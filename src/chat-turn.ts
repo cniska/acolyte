@@ -5,33 +5,11 @@ import { extractAtReferencePaths } from "./chat-file-ref";
 import { formatThoughtDuration, formatVerifySummary } from "./chat-formatters";
 import { runShellCommand } from "./coding-tools";
 import { buildFileContext } from "./file-context";
+import { formatToolLabel } from "./tool-labels";
 import type { Message, Session } from "./types";
 
 function row(role: ChatRow["role"], content: string, dim = false): ChatRow {
   return { id: `row_${crypto.randomUUID()}`, role, content, dim };
-}
-
-const TOOL_LABELS: Record<string, string> = {
-  "run-command": "Run",
-  "read-file": "Read",
-  "search-repo": "Search",
-  "git-status": "Status",
-  "git-diff": "Diff",
-  "edit-file": "Edit",
-  "web-search": "Web Search",
-  "web-fetch": "Web Fetch",
-};
-
-export function formatToolLabel(toolId: string): string {
-  const known = TOOL_LABELS[toolId];
-  if (known) {
-    return known;
-  }
-  return toolId
-    .split(/[-_]+/)
-    .filter((part) => part.length > 0)
-    .map((part) => part[0]?.toUpperCase() + part.slice(1))
-    .join(" ");
 }
 
 export function estimateTokenUsageFallback(prompt: string, output: string): TokenUsage {

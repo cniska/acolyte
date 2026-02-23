@@ -438,7 +438,10 @@ describe("chat submit handler guards", () => {
               sessionId: "sess_test",
               requestId: "req_1",
               done: false,
-              events: [{ seq: 1, message: "Working… (gpt-5-mini)" }],
+              events: [
+                { seq: 1, message: "Working… (gpt-5-mini)" },
+                { seq: 2, message: "Run" },
+              ],
             };
           }
           return { sessionId: "sess_test", requestId: "req_1", done: false, events: [] };
@@ -483,6 +486,7 @@ describe("chat submit handler guards", () => {
     expect(thinkingLabels[0]).toMatch(/^Thinking… \(.+\)$/);
     expect(thinkingLabels).toContain("Working… (gpt-5-mini)");
     expect(thinkingLabels.at(-1)).toBeNull();
+    expect(rows.some((row) => row.role === "assistant" && row.content === "Run" && row.dim)).toBe(true);
     expect(rows.some((row) => row.role === "system" && row.content.includes("Working…"))).toBe(false);
     expect(rows.some((row) => row.role === "assistant" && row.content === "done")).toBe(true);
   });

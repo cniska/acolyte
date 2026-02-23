@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { appendInputHistory, applyUserTurn, buildInputHistory, formatToolLabel } from "./chat-turn";
+import { appendInputHistory, applyUserTurn, buildInputHistory } from "./chat-turn";
+import { formatToolLabel } from "./tool-labels";
 import type { Session } from "./types";
 
 describe("chat turn helpers", () => {
@@ -55,7 +56,7 @@ describe("chat turn helpers", () => {
   test("formatToolLabel maps known tool ids to user-facing labels", () => {
     expect(formatToolLabel("run-command")).toBe("Run");
     expect(formatToolLabel("read-file")).toBe("Read");
-    expect(formatToolLabel("web-search")).toBe("Web Search");
+    expect(formatToolLabel("web-search")).toBe("Search");
   });
 
   test("formatToolLabel title-cases unknown tool ids", () => {

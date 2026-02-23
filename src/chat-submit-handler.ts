@@ -146,6 +146,17 @@ export function resolveNaturalRememberDirective(text: string): NaturalRememberDi
   return null;
 }
 
+function isStageProgressMessage(message: string): boolean {
+  const trimmed = message.trim();
+  return (
+    trimmed.startsWith("Thinking…") ||
+    trimmed.startsWith("Planning…") ||
+    trimmed.startsWith("Working…") ||
+    trimmed.startsWith("Reviewing…") ||
+    trimmed === "Trying a tool-assisted pass"
+  );
+}
+
 export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: string) => Promise<void> {
   return async (raw: string): Promise<void> => {
     const text = raw.trim();
@@ -322,9 +333,24 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
             return;
           }
           progressAfterSeq = progress.events[progress.events.length - 1]?.seq ?? progressAfterSeq;
-          const latestMessage = progress.events[progress.events.length - 1]?.message?.trim();
-          if (latestMessage) {
-            input.setThinkingLabel(latestMessage);
+          for (const event of progress.events) {
+            const message = event.message.trim();
+            if (!message) {
+              continue;
+            }
+            if (isStageProgressMessage(message)) {
+              input.setThinkingLabel(message);
+              continue;
+            }
+            input.setRows((current) => [
+              ...current,
+              {
+                id: `row_${crypto.randomUUID()}`,
+                role: "assistant",
+                content: message,
+                dim: true,
+              },
+            ]);
           }
         })
         .catch(() => {
