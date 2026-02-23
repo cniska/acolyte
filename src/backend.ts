@@ -151,7 +151,21 @@ class RemoteBackend implements Backend {
 
     if (!response.ok) {
       const body = await response.text();
-      throw new Error(`Remote backend error (${response.status}): ${body || "no body"}`);
+      let errorMessage = body || "no body";
+      let errorId: string | undefined;
+      try {
+        const parsed = JSON.parse(body) as { error?: unknown; errorId?: unknown };
+        if (typeof parsed.error === "string" && parsed.error.length > 0) {
+          errorMessage = parsed.error;
+        }
+        if (typeof parsed.errorId === "string" && parsed.errorId.length > 0) {
+          errorId = parsed.errorId;
+        }
+      } catch {
+        // Non-JSON error body; keep raw body text.
+      }
+      const errorSuffix = errorId ? ` [error_id=${errorId}]` : "";
+      throw new Error(`Remote backend error (${response.status}): ${errorMessage}${errorSuffix}`);
     }
 
     const json = (await response.json()) as Partial<ChatResponse>;

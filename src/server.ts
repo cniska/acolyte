@@ -20,6 +20,7 @@ const API_KEY = appConfig.server.apiKey;
 const OPENAI_API_KEY = appConfig.openai.apiKey;
 const OPENAI_BASE_URL = appConfig.openai.baseUrl;
 const omConfig = getObservationalMemoryConfig();
+const ERROR_ID_PREFIX = "err";
 
 function unauthorized(): Response {
   return new Response("Unauthorized", { status: 401 });
@@ -34,6 +35,26 @@ function json<T>(body: T, status = 200): Response {
     status,
     headers: { "content-type": "application/json" },
   });
+}
+
+function nextErrorId(): string {
+  return `${ERROR_ID_PREFIX}_${crypto.randomUUID().slice(0, 8)}`;
+}
+
+function serverError(
+  message: string,
+  error: unknown,
+  details: Record<string, string | number | boolean | null | undefined>,
+  status = 500,
+): Response {
+  const errorId = nextErrorId();
+  const errorMessage = error instanceof Error ? error.message : "Unknown error";
+  log.error(message, {
+    error_id: errorId,
+    error: errorMessage,
+    ...details,
+  });
+  return json({ error: errorMessage, errorId }, status);
 }
 
 function isChatRequest(value: unknown): value is ChatRequest {
@@ -192,8 +213,7 @@ const server = Bun.serve({
           historyCount: history.length,
         });
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Failed to read OM status.";
-        return json({ error: message }, 500);
+        return serverError("om status failed", error, { path: url.pathname, method: req.method }, 500);
       }
     }
 
@@ -210,8 +230,7 @@ const server = Bun.serve({
         await memoryStore.clearObservationalMemory(null, resourceId);
         return json({ ok: true, resourceId, wiped: true });
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Failed to wipe OM.";
-        return json({ error: message }, 500);
+        return serverError("om wipe failed", error, { path: url.pathname, method: req.method }, 500);
       }
     }
 
@@ -260,8 +279,17 @@ const server = Bun.serve({
       });
       return json(reply);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown backend error";
-      return json({ error: message }, 502);
+      return serverError(
+        "chat request failed",
+        error,
+        {
+          path: url.pathname,
+          method: req.method,
+          session_id: (payload as ChatRequest).sessionId ?? null,
+          model: (payload as ChatRequest).model,
+        },
+        502,
+      );
     }
   },
 });

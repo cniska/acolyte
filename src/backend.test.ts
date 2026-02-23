@@ -34,6 +34,30 @@ describe("remote backend connection errors", () => {
       }),
     ).rejects.toThrow("boom");
   });
+
+  test("reply surfaces backend error_id when present", async () => {
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({
+          error: "model call failed",
+          errorId: "err_abc12345",
+        }),
+        {
+          status: 502,
+          headers: { "content-type": "application/json" },
+        },
+      )) as unknown as typeof fetch;
+
+    const backend = createBackend({ apiUrl: "http://localhost:6767" });
+    await expect(
+      backend.reply({
+        message: "ping",
+        history: [],
+        model: "gpt-5-mini",
+        sessionId: "sess_test",
+      }),
+    ).rejects.toThrow("Remote backend error (502): model call failed [error_id=err_abc12345]");
+  });
 });
 
 describe("remote backend status parsing", () => {
