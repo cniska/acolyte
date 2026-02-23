@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { createAgent } from "./agent-factory";
 import { type AgentRole, buildRoleInstructions, buildSubagentContext, selectAgentRole } from "./agent-roles";
 import type { ChatRequest, ChatResponse } from "./api";
@@ -131,6 +132,14 @@ function buildAgentInputWithUsage(req: ChatRequest): {
 function isToolLikelyRequest(text: string): boolean {
   const lower = text.toLowerCase();
   const hints = [
+    "add",
+    "change",
+    "update",
+    "remove",
+    "delete",
+    "insert",
+    "line break",
+    "newline",
     "search",
     "read",
     "file",
@@ -148,6 +157,35 @@ function isToolLikelyRequest(text: string): boolean {
     "test",
   ];
   return hints.some((hint) => lower.includes(hint));
+}
+
+export function isDirectEditRequest(text: string): boolean {
+  return /\b(add|change|update|remove|delete|edit|fix|insert)\b/i.test(text);
+}
+
+export function isPlanLikeOutput(text: string): boolean {
+  const normalized = text.trim();
+  if (normalized.length === 0) {
+    return false;
+  }
+  const lines = normalized
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+  if (lines.length === 0) {
+    return false;
+  }
+  const planSignals = [
+    /^plan\b/i,
+    /^steps?\b/i,
+    /^next steps?\b/i,
+    /^i (can|will)\b/i,
+    /^pick one\b/i,
+    /^reply [a-z0-9]/i,
+    /^want me to\b/i,
+    /^\d+\)\s+/,
+  ];
+  return lines.some((line) => planSignals.some((signal) => signal.test(line)));
 }
 
 function isReviewRequest(text: string): boolean {
@@ -325,23 +363,398 @@ function collectToolCallIds(toolCalls: unknown[]): string[] {
   return Array.from(new Set(names));
 }
 
-function collectToolNamesFromStep(step: unknown): string[] {
+function parseToolArgs(raw: unknown): Record<string, unknown> {
+  if (!raw) {
+    return {};
+  }
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {};
+    } catch {
+      return {};
+    }
+  }
+  return raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+}
+
+function compactProgressDetail(value: string, maxChars = 80): string {
+  const single = value.replace(/\s+/g, " ").trim();
+  if (single.length <= maxChars) {
+    return single;
+  }
+  return `${single.slice(0, maxChars - 1).trimEnd()}…`;
+}
+
+function asStringList(value: unknown): string[] {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? [trimmed] : [];
+  }
+  if (Array.isArray(value)) {
+    return value.map((entry) => (typeof entry === "string" ? entry.trim() : "")).filter((entry) => entry.length > 0);
+  }
+  return [];
+}
+
+function collectPathDetails(args: Record<string, unknown>): string[] {
+  const candidates = [args.path, args.paths, args.file, args.files]
+    .flatMap((entry) => asStringList(entry))
+    .map((entry) => compactProgressDetail(entry, 48));
+  return Array.from(new Set(candidates));
+}
+
+function formatPathList(paths: string[], maxShown = 3): string | null {
+  if (paths.length === 0) {
+    return null;
+  }
+  const shown = paths.slice(0, maxShown).join(", ");
+  if (paths.length <= maxShown) {
+    return shown;
+  }
+  return `${shown} (+${paths.length - maxShown})`;
+}
+
+type DiffLinePreview = {
+  kind: "add" | "del" | "ctx";
+  oldLine: number | null;
+  newLine: number | null;
+  text: string;
+};
+
+type UnifiedDiffFile = {
+  path: string;
+  added: number;
+  removed: number;
+  preview: DiffLinePreview[];
+  previewOverflow: number;
+};
+
+function parseHunkHeader(line: string): { oldStart: number; newStart: number } | null {
+  const match = line.match(/^@@\s*-(\d+)(?:,\d+)?\s+\+(\d+)(?:,\d+)?\s*@@/);
+  if (!match) {
+    return null;
+  }
+  const oldStart = Number.parseInt(match[1] ?? "", 10);
+  const newStart = Number.parseInt(match[2] ?? "", 10);
+  if (!Number.isFinite(oldStart) || !Number.isFinite(newStart)) {
+    return null;
+  }
+  return { oldStart, newStart };
+}
+
+function parseUnifiedDiffFiles(text: string, maxPreviewLinesPerFile = 8): UnifiedDiffFile[] {
+  if (!text.includes("diff --git")) {
+    return [];
+  }
+  const lines = text.split("\n");
+  const summaries: UnifiedDiffFile[] = [];
+  let current: UnifiedDiffFile | null = null;
+  let oldLine = 0;
+  let newLine = 0;
+  for (const line of lines) {
+    const diffMatch = line.match(/^diff --git a\/(.+?) b\/(.+)$/);
+    if (diffMatch) {
+      if (current) {
+        summaries.push(current);
+      }
+      current = {
+        path: (diffMatch[2] ?? diffMatch[1] ?? "").trim(),
+        added: 0,
+        removed: 0,
+        preview: [],
+        previewOverflow: 0,
+      };
+      oldLine = 0;
+      newLine = 0;
+      continue;
+    }
+    if (!current || line.length === 0) {
+      continue;
+    }
+    const hunk = parseHunkHeader(line);
+    if (hunk) {
+      oldLine = hunk.oldStart;
+      newLine = hunk.newStart;
+      continue;
+    }
+    if (line.startsWith("+++ ") || line.startsWith("--- ")) {
+      continue;
+    }
+    if (line.startsWith("\\ No newline at end of file")) {
+      continue;
+    }
+    if (line.startsWith(" ")) {
+      if (current.preview.length < maxPreviewLinesPerFile) {
+        current.preview.push({
+          kind: "ctx",
+          oldLine,
+          newLine,
+          text: line.slice(1),
+        });
+      } else {
+        current.previewOverflow += 1;
+      }
+      oldLine += 1;
+      newLine += 1;
+      continue;
+    }
+    if (line.startsWith("+")) {
+      current.added += 1;
+      if (current.preview.length < maxPreviewLinesPerFile) {
+        current.preview.push({
+          kind: "add",
+          oldLine: null,
+          newLine,
+          text: line.slice(1),
+        });
+      } else {
+        current.previewOverflow += 1;
+      }
+      newLine += 1;
+      continue;
+    }
+    if (line.startsWith("-")) {
+      current.removed += 1;
+      if (current.preview.length < maxPreviewLinesPerFile) {
+        current.preview.push({
+          kind: "del",
+          oldLine,
+          newLine: null,
+          text: line.slice(1),
+        });
+      } else {
+        current.previewOverflow += 1;
+      }
+      oldLine += 1;
+    }
+  }
+  if (current) {
+    summaries.push(current);
+  }
+  return summaries.filter((entry) => entry.path.length > 0);
+}
+
+export function formatToolProgressMessage(toolName: string, args: Record<string, unknown>): string {
+  const label = formatToolLabel(toolName);
+  const asString = (value: unknown): string | null => {
+    if (typeof value !== "string") {
+      return null;
+    }
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? compactProgressDetail(trimmed) : null;
+  };
+
+  switch (toolName) {
+    case "run-command": {
+      const command = asString(args.command);
+      return command ? `${label} ${command}` : label;
+    }
+    case "read-file":
+    case "edit-file":
+    case "git-diff": {
+      const paths = collectPathDetails(args);
+      const formatted = formatPathList(paths);
+      return formatted ? `${label} ${formatted}` : label;
+    }
+    case "search-repo": {
+      const pattern = asString(args.pattern);
+      return pattern ? `${label} ${pattern}` : label;
+    }
+    case "web-search": {
+      const query = asString(args.query);
+      return query ? `${label} ${query}` : label;
+    }
+    case "web-fetch": {
+      const url = asString(args.url);
+      return url ? `${label} ${url}` : label;
+    }
+    default:
+      return label;
+  }
+}
+
+function parseToolResultText(raw: unknown): string {
+  if (typeof raw === "string") {
+    return raw;
+  }
+  if (!raw || typeof raw !== "object") {
+    return "";
+  }
+  const entry = raw as {
+    output?: unknown;
+    result?: unknown;
+    text?: unknown;
+    stdout?: unknown;
+  };
+  const chunks = [entry.output, entry.result, entry.text, entry.stdout]
+    .filter((part): part is string => typeof part === "string")
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+  return chunks.join("\n");
+}
+
+async function summarizeWithModel(model: string, text: string, stage: "plan" | "conclusion"): Promise<string> {
+  const summarySchema = z.object({
+    summary: z.string().trim().min(1),
+  });
+
+  const summarizer = createAgent({
+    id: "acolyte-summarizer",
+    name: "Acolyte Summarizer",
+    model,
+    instructions: [
+      "You write compact progress blurbs for a terminal UI.",
+      'Return strict JSON only with shape: {"summary":"..."}.',
+      "Use short natural prose in summary.",
+      "Do not use bullets, numbering, markdown, or checklist phrasing.",
+      "State what was decided or completed, not what should be done next.",
+    ].join(" "),
+    tools: {},
+  });
+  const stagePrompt =
+    stage === "plan"
+      ? "Summarize the intended approach briefly in plain language."
+      : "Summarize what was done briefly in plain language.";
+  const result = await summarizer.generate(
+    [stagePrompt, "Max 2 short sentences.", "Output JSON only. No prose outside JSON.", "", text].join("\n"),
+    {
+      maxSteps: 1,
+      toolChoice: "auto",
+    },
+  );
+  const parsed = summarySchema.safeParse(JSON.parse(result.text));
+  return parsed.success ? parsed.data.summary : "";
+}
+
+function formatToolResultProgressMessages(toolName: string, resultText: string): string[] {
+  if (!resultText.trim()) {
+    return [];
+  }
+  if (toolName !== "edit-file") {
+    return [];
+  }
+  const files = parseUnifiedDiffFiles(resultText, 4);
+  if (files.length === 0) {
+    return [];
+  }
+  const lines: string[] = [];
+  const verb = formatToolLabel(toolName);
+  for (const file of files) {
+    lines.push(`${verb} ${compactProgressDetail(file.path, 48)} (+${file.added} -${file.removed})`);
+    for (const preview of file.preview) {
+      if (preview.kind === "del") {
+        lines.push(`${preview.oldLine ?? "?"} - ${compactProgressDetail(preview.text, 96)}`);
+      } else if (preview.kind === "add") {
+        lines.push(`${preview.newLine ?? "?"} + ${compactProgressDetail(preview.text, 96)}`);
+      } else {
+        lines.push(`${preview.newLine ?? preview.oldLine ?? "?"}   ${compactProgressDetail(preview.text, 96)}`);
+      }
+    }
+    if (file.previewOverflow > 0) {
+      lines.push(`… +${file.previewOverflow} more changed lines`);
+    }
+  }
+  return lines;
+}
+
+export function collectToolProgressFromStep(
+  step: unknown,
+): Array<{ name: string; args: Record<string, unknown>; result: string }> {
   if (!step || typeof step !== "object") {
     return [];
   }
-  const container = step as {
+  const containers: Array<{
     toolCalls?: unknown;
     tool_calls?: unknown;
     toolResults?: unknown;
     tool_results?: unknown;
-  };
-  const raw =
-    (Array.isArray(container.toolCalls) && container.toolCalls) ||
-    (Array.isArray(container.tool_calls) && container.tool_calls) ||
-    (Array.isArray(container.toolResults) && container.toolResults) ||
-    (Array.isArray(container.tool_results) && container.tool_results) ||
-    [];
-  return collectToolCallIds(raw as unknown[]);
+  }> = [];
+  const queue: unknown[] = [step];
+  const seen = new Set<unknown>();
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (!current || typeof current !== "object" || seen.has(current)) {
+      continue;
+    }
+    seen.add(current);
+    const obj = current as Record<string, unknown>;
+    if ("toolCalls" in obj || "tool_calls" in obj || "toolResults" in obj || "tool_results" in obj) {
+      containers.push(obj);
+    }
+    for (const value of Object.values(obj)) {
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          if (item && typeof item === "object") {
+            queue.push(item);
+          }
+        }
+        continue;
+      }
+      if (value && typeof value === "object") {
+        queue.push(value);
+      }
+    }
+  }
+
+  const progress: Array<{ name: string; args: Record<string, unknown>; result: string }> = [];
+  for (const container of containers) {
+    const rawCalls =
+      (Array.isArray(container.toolCalls) && container.toolCalls) ||
+      (Array.isArray(container.tool_calls) && container.tool_calls) ||
+      [];
+    for (const call of rawCalls as unknown[]) {
+      if (!call || typeof call !== "object") {
+        continue;
+      }
+      const entry = call as {
+        toolName?: unknown;
+        name?: unknown;
+        id?: unknown;
+        args?: unknown;
+        input?: unknown;
+        parameters?: unknown;
+      };
+      const name = [entry.toolName, entry.name, entry.id].find((value) => typeof value === "string") as
+        | string
+        | undefined;
+      if (!name) {
+        continue;
+      }
+      const args = parseToolArgs(entry.args ?? entry.input ?? entry.parameters);
+      progress.push({ name, args, result: "" });
+    }
+    const rawResults =
+      (Array.isArray(container.toolResults) && container.toolResults) ||
+      (Array.isArray(container.tool_results) && container.tool_results) ||
+      [];
+    for (const result of rawResults as unknown[]) {
+      if (!result || typeof result !== "object") {
+        continue;
+      }
+      const entry = result as {
+        toolName?: unknown;
+        name?: unknown;
+        id?: unknown;
+        args?: unknown;
+        input?: unknown;
+        parameters?: unknown;
+        output?: unknown;
+        result?: unknown;
+        text?: unknown;
+        stdout?: unknown;
+      };
+      const name = [entry.toolName, entry.name, entry.id].find((value) => typeof value === "string") as
+        | string
+        | undefined;
+      if (!name) {
+        continue;
+      }
+      const args = parseToolArgs(entry.args ?? entry.input ?? entry.parameters);
+      progress.push({ name, args, result: parseToolResultText(entry) });
+    }
+  }
+  return progress;
 }
 
 function presentModelLabel(model: string): string {
@@ -352,10 +765,6 @@ function presentModelLabel(model: string): string {
     }
   }
   return model;
-}
-
-function userProgressForTool(toolName: string): string {
-  return formatToolLabel(toolName);
 }
 
 export function createProgressStageLabel(stage: AgentRole, model: string): string {
@@ -575,7 +984,6 @@ export async function runAgent(input: {
 }): Promise<ChatResponse> {
   const role = selectAgentRole(input.request.message);
   const roleSoul = loadRoleSoulPrompt(role);
-  const requestModelState = resolveModelProviderState(input.request.model);
   const resolved = resolveRunnableModel(role, input.request.model);
   if (!resolved.available) {
     return buildMockReply(input.request, `Provider '${resolved.provider}' is not configured.`);
@@ -605,18 +1013,57 @@ export async function runAgent(input: {
     input.onProgress?.(trimmed);
   };
   const emitToolProgress = (step: unknown): void => {
-    const toolNames = collectToolNamesFromStep(step);
-    for (const toolName of toolNames) {
-      if (seenToolNames.has(toolName)) {
-        continue;
+    const tools = collectToolProgressFromStep(step);
+    for (const tool of tools) {
+      const startMessage = formatToolProgressMessage(tool.name, tool.args);
+      const startDedupeKey = JSON.stringify({ kind: "call", name: tool.name, message: startMessage });
+      if (!seenToolNames.has(startDedupeKey)) {
+        seenToolNames.add(startDedupeKey);
+        emitProgress(startMessage);
       }
-      seenToolNames.add(toolName);
-      emitProgress(userProgressForTool(toolName));
+      const resultMessages = formatToolResultProgressMessages(tool.name, tool.result);
+      for (const resultMessage of resultMessages) {
+        const resultDedupeKey = JSON.stringify({ kind: "result", name: tool.name, message: resultMessage });
+        if (seenToolNames.has(resultDedupeKey)) {
+          continue;
+        }
+        seenToolNames.add(resultDedupeKey);
+        emitProgress(resultMessage);
+      }
     }
   };
 
   let delegationBrief = input.request.message.trim();
-  if (requestModelState.available) {
+  const plannerResolved = resolveRunnableModel("planner", input.request.model);
+  if (role !== "planner" && plannerResolved.available) {
+    try {
+      emitProgress(progressStageForRole("planner", plannerResolved.model));
+      const plannerSoul = loadRoleSoulPrompt("planner");
+      const planner = createAgent({
+        id: "acolyte-planner",
+        name: "Acolyte Planner",
+        model: plannerResolved.model,
+        instructions: buildRoleInstructions(input.soulPrompt, "planner", plannerSoul),
+        tools: toolsForCoordinator(),
+      });
+      const planningInput = `${buildSubagentContext("planner", input.request)}\n\n${requestInput.input}`;
+      const planning = await planner.generate(planningInput, {
+        maxSteps: 3,
+        toolChoice: "auto",
+        memory: memoryOptions,
+      });
+      const candidate = planning.text.trim();
+      if (candidate.length > 0) {
+        delegationBrief = candidate;
+        const planSummary = await summarizeWithModel(plannerResolved.model, candidate, "plan").catch(() => "");
+        if (planSummary.length > 0) {
+          emitProgress(planSummary);
+        }
+      }
+    } catch {
+      // Best-effort planning; fallback to raw user prompt.
+    }
+  } else if (role !== "planner") {
     try {
       const coordinator = createAgent({
         id: "acolyte-coordinator",
@@ -633,6 +1080,10 @@ export async function runAgent(input: {
       const candidate = delegation.text.trim();
       if (candidate.length > 0) {
         delegationBrief = candidate;
+        const planSummary = await summarizeWithModel(input.request.model, candidate, "plan").catch(() => "");
+        if (planSummary.length > 0) {
+          emitProgress(planSummary);
+        }
       }
     } catch {
       // Best-effort orchestration; fallback to raw user prompt.
@@ -650,13 +1101,47 @@ export async function runAgent(input: {
 
   const shouldRequireToolsFallback = role !== "planner" && (toolLikely || role === "reviewer");
   if (shouldRequireToolsFallback && result.toolCalls.length === 0) {
-    emitProgress("Trying a tool-assisted pass");
+    emitProgress("Retrying with tools");
     result = await agent.generate(delegatedInput, {
       maxSteps: 8,
       toolChoice: "required",
       memory: memoryOptions,
       onStepFinish: emitToolProgress,
     });
+  }
+
+  const directEditLikely = role === "coder" && isDirectEditRequest(input.request.message);
+  if (directEditLikely && result.toolCalls.length === 0) {
+    emitProgress("Retrying with enforced tool execution");
+    result = await agent.generate(
+      `${delegatedInput}\n\nHard requirement: execute at least one tool before responding. Do not return a plan.`,
+      {
+        maxSteps: 10,
+        toolChoice: "required",
+        memory: memoryOptions,
+        onStepFinish: emitToolProgress,
+      },
+    );
+  }
+
+  if (directEditLikely && result.toolCalls.length === 0 && isPlanLikeOutput(result.text)) {
+    const fallback = "I couldn't execute tools for this edit request. Check /status and permissions, then retry.";
+    const completionTokens = estimateTokens(fallback);
+    return {
+      model,
+      output: fallback,
+      toolCalls: [],
+      usage: {
+        promptTokens: requestInput.usage.promptTokens,
+        completionTokens,
+        totalTokens: requestInput.usage.promptTokens + completionTokens,
+        promptBudgetTokens: requestInput.usage.promptBudgetTokens,
+        promptTruncated: requestInput.usage.promptTruncated,
+      },
+      budgetWarning: requestInput.usage.promptTruncated
+        ? `context trimmed (${requestInput.usage.includedHistoryMessages}/${requestInput.usage.totalHistoryMessages} history messages)`
+        : undefined,
+    };
   }
 
   if (result.text.trim().length === 0) {
@@ -669,7 +1154,12 @@ export async function runAgent(input: {
   }
 
   const rawOutput = result.text.trim();
-  emitProgress("Summarizing…");
+  if (rawOutput.length > 0) {
+    const conclusionSummary = await summarizeWithModel(model, rawOutput, "conclusion").catch(() => "");
+    if (conclusionSummary.length > 0) {
+      emitProgress(conclusionSummary);
+    }
+  }
   const output = isReviewRequest(input.request.message)
     ? finalizeReviewOutput(rawOutput, input.request.message)
     : finalizeAssistantOutput(rawOutput, input.request.message);
