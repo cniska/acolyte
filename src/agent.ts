@@ -2,7 +2,7 @@ import { createAgent } from "./agent-factory";
 import { type AgentRole, buildRoleInstructions, buildSubagentContext, selectAgentRole } from "./agent-roles";
 import type { ChatRequest, ChatResponse } from "./api";
 import { appConfig } from "./app-config";
-import { toolsForRole } from "./mastra-tools";
+import { toolsForCoordinator, toolsForRole } from "./mastra-tools";
 import { isProviderAvailable, type ModelProviderName, providerFromModel, resolveRoleModel } from "./provider-config";
 import { loadRoleSoulPrompt } from "./soul";
 
@@ -641,7 +641,7 @@ export async function runAgent(input: {
         model: input.request.model,
         instructions:
           "You are the orchestrator. Convert user requests into concise execution briefs for subagents. Do not call tools.",
-        tools: {},
+        tools: toolsForCoordinator(),
       });
       const delegation = await coordinator.generate(createDelegationPrompt(role, input.request), {
         maxSteps: 1,
