@@ -11,6 +11,8 @@ type RunResult = {
   stderr: string;
 };
 
+const COMMAND_TIMEOUT_MS = 90_000;
+
 export const checks: SmokeCheck[] = [
   {
     name: "status",
@@ -34,18 +36,40 @@ export const checks: SmokeCheck[] = [
   },
 ];
 
-export async function runCommand(cmd: string[]): Promise<RunResult> {
+export async function runCommand(cmd: string[], timeoutMs = COMMAND_TIMEOUT_MS): Promise<RunResult> {
   const proc = Bun.spawn(cmd, {
     stdout: "pipe",
     stderr: "pipe",
     env: { ...process.env, NO_COLOR: "1" },
   });
-  const [stdout, stderr, exitCode] = await Promise.all([
-    new Response(proc.stdout).text(),
-    new Response(proc.stderr).text(),
-    proc.exited,
-  ]);
-  return { exitCode, stdout, stderr };
+  const stdoutPromise = new Response(proc.stdout).text();
+  const stderrPromise = new Response(proc.stderr).text();
+  const completed = Promise.all([stdoutPromise, stderrPromise, proc.exited]).then(([stdout, stderr, exitCode]) => ({
+    exitCode,
+    stdout,
+    stderr,
+  }));
+
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  const timeoutResult = new Promise<RunResult>((resolve) => {
+    timeoutId = setTimeout(async () => {
+      proc.kill();
+      const [stdout, stderr] = await Promise.all([stdoutPromise.catch(() => ""), stderrPromise.catch(() => "")]);
+      resolve({
+        exitCode: 124,
+        stdout,
+        stderr: `${stderr}\nCommand timed out after ${timeoutMs}ms.`,
+      });
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([completed, timeoutResult]);
+  } finally {
+    if (timeoutId !== null) {
+      clearTimeout(timeoutId);
+    }
+  }
 }
 
 export function stripAnsi(value: string): string {
