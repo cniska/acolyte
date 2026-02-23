@@ -190,27 +190,24 @@ export const acolyteTools = {
 
 export type AcolyteToolset = typeof acolyteTools;
 
+function readOnlyTools(): Partial<AcolyteToolset> {
+  return {
+    searchRepo: acolyteTools.searchRepo,
+    readFile: acolyteTools.readFile,
+    gitStatus: acolyteTools.gitStatus,
+    gitDiff: acolyteTools.gitDiff,
+    webSearch: acolyteTools.webSearch,
+    webFetch: acolyteTools.webFetch,
+  };
+}
+
 export function toolsForRole(role: AgentRole): Partial<AcolyteToolset> {
   switch (role) {
     case "planner":
-      return {
-        searchRepo: acolyteTools.searchRepo,
-        readFile: acolyteTools.readFile,
-        gitStatus: acolyteTools.gitStatus,
-        gitDiff: acolyteTools.gitDiff,
-        webSearch: acolyteTools.webSearch,
-        webFetch: acolyteTools.webFetch,
-      };
+      return readOnlyTools();
     case "reviewer":
-      return {
-        searchRepo: acolyteTools.searchRepo,
-        readFile: acolyteTools.readFile,
-        gitStatus: acolyteTools.gitStatus,
-        gitDiff: acolyteTools.gitDiff,
-        webSearch: acolyteTools.webSearch,
-        webFetch: acolyteTools.webFetch,
-      };
+      return readOnlyTools();
     case "coder":
-      return acolyteTools;
+      return appConfig.agent.permissions.mode === "read" ? readOnlyTools() : acolyteTools;
   }
 }
