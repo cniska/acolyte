@@ -80,10 +80,22 @@ export function formatStatusOutput(status: string): string {
   };
 
   const provider = take("provider") ?? take("mode");
-  if (provider) {
-    output.push(`provider: ${provider}`);
-    fields.delete("mode");
-  }
+  fields.delete("mode");
+  const providerMain = take("provider_lead");
+  const providerPlanner = take("provider_planner");
+  const providerCoder = take("provider_coder");
+  const providerReviewer = take("provider_reviewer");
+  const primaryProvider = providerMain ?? provider ?? providerPlanner ?? providerCoder ?? providerReviewer;
+  pushStacked(
+    "provider",
+    [
+      ["status", primaryProvider],
+      ["planner", providerPlanner && providerPlanner !== primaryProvider ? providerPlanner : undefined],
+      ["coder", providerCoder && providerCoder !== primaryProvider ? providerCoder : undefined],
+      ["reviewer", providerReviewer && providerReviewer !== primaryProvider ? providerReviewer : undefined],
+    ],
+    true,
+  );
   const modelMain = take("model_lead");
   const modelPlanner = take("model_planner");
   const modelCoder = take("model_coder");
@@ -94,33 +106,16 @@ export function formatStatusOutput(status: string): string {
   const displayModelPlanner = modelPlanner ? simplifyModelId(modelPlanner) : undefined;
   const displayModelCoder = modelCoder ? simplifyModelId(modelCoder) : undefined;
   const displayModelReviewer = modelReviewer ? simplifyModelId(modelReviewer) : undefined;
-  if (displayModel && displayModel !== displayModelMain) {
-    output.push(`model: ${displayModel}`);
-  }
+  const primaryModel =
+    displayModelMain ?? displayModel ?? displayModelPlanner ?? displayModelCoder ?? displayModelReviewer;
   pushStacked(
-    "models",
+    "model",
     [
-      ["lead", displayModelMain],
-      ["planner", displayModelPlanner],
-      ["coder", displayModelCoder],
-      ["reviewer", displayModelReviewer],
+      ["status", primaryModel],
+      ["planner", displayModelPlanner && displayModelPlanner !== primaryModel ? displayModelPlanner : undefined],
+      ["coder", displayModelCoder && displayModelCoder !== primaryModel ? displayModelCoder : undefined],
+      ["reviewer", displayModelReviewer && displayModelReviewer !== primaryModel ? displayModelReviewer : undefined],
     ],
-    false,
-    true,
-  );
-  const providerMain = take("provider_lead");
-  const providerPlanner = take("provider_planner");
-  const providerCoder = take("provider_coder");
-  const providerReviewer = take("provider_reviewer");
-  pushStacked(
-    "providers",
-    [
-      ["lead", providerMain],
-      ["planner", providerPlanner],
-      ["coder", providerCoder],
-      ["reviewer", providerReviewer],
-    ],
-    false,
     true,
   );
   const providerReadyMain = take("provider_ready_lead");
@@ -145,19 +140,21 @@ export function formatStatusOutput(status: string): string {
   if (url) {
     output.push(`url: ${url}`);
   }
-  const apiBaseUrl = take("api_base_url");
+  const apiBaseUrl = take("api_url");
   if (apiBaseUrl) {
-    output.push(`api_base_url: ${apiBaseUrl}`);
+    output.push(`api_url: ${apiBaseUrl}`);
   }
 
   const memoryStorage = take("memory_storage");
-  if (memoryStorage) {
-    output.push(`memory: ${memoryStorage}`);
-  }
   const memoryContext = take("memory_context");
-  if (memoryContext) {
-    output.push(`memory_context: ${memoryContext}`);
-  }
+  pushStacked(
+    "memory",
+    [
+      ["status", memoryStorage],
+      ["entries", memoryContext],
+    ],
+    true,
+  );
   const permissionMode = take("permission_mode");
   if (permissionMode) {
     output.push(`permissions: ${permissionMode}`);
@@ -167,41 +164,26 @@ export function formatStatusOutput(status: string): string {
   const omScope = take("om_scope");
   const omModel = take("om_model");
   const displayOmModel = omModel ? simplifyModelId(omModel) : undefined;
+  const omObsTokens = take("om_obs_tokens");
+  const omRefTokens = take("om_ref_tokens");
+  const omTokens =
+    omObsTokens || omRefTokens ? [`obs=${omObsTokens ?? "n/a"}`, `ref=${omRefTokens ?? "n/a"}`].join(" ") : undefined;
+  const omExists = take("om_exists");
+  const omGen = take("om_gen");
+  const omState = omExists || omGen ? [`exists=${omExists ?? "n/a"}`, `gen=${omGen ?? "n/a"}`].join(" ") : undefined;
+  const omLastObserved = take("om_last_observed");
+  const omLastReflection = take("om_last_reflection");
   pushStacked(
     "om",
     [
       ["status", omEnabled],
       ["scope", omScope],
       ["model", displayOmModel],
-    ],
-    true,
-  );
-
-  const omObsTokens = take("om_obs_tokens");
-  const omRefTokens = take("om_ref_tokens");
-  pushStacked(
-    "om_tokens",
-    [
-      ["obs", omObsTokens],
-      ["ref", omRefTokens],
-    ],
-    false,
-    true,
-  );
-
-  const omExists = take("om_exists");
-  const omGen = take("om_gen");
-  const omLastObserved = take("om_last_observed");
-  const omLastReflection = take("om_last_reflection");
-  pushStacked(
-    "om_state",
-    [
-      ["exists", omExists],
-      ["gen", omGen],
+      ["tokens", omTokens],
+      ["state", omState],
       ["last_observed", omLastObserved],
       ["last_reflection", omLastReflection],
     ],
-    false,
     true,
   );
 
