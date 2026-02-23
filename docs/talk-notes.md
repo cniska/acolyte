@@ -154,6 +154,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - OM admin commands now support `--help`/`-h` (`om:status`, `om:wipe`) without triggering unknown-argument errors.
 - Dogfood gate delivery detail now includes `remaining=<n>` so near-miss readiness states are explicit at a glance.
 - Dogfood smoke now includes a scoped memory check (`acolyte memory context all`) to keep memory UX in the readiness loop.
+- Mastra Studio `/api/agents` model metadata can currently show `gpt-5-mini` for all agents even when runtime role routing uses configured models; treat `/status` + runtime traces as source of truth until fixed.
 - Added explicit alias regression coverage for scoped memory slash forms (`/mem user|project|context user`).
 - Simplified chat memory usage guidance to a two-form usage line: `/memory [scope] | /memory context [scope]`.
 - Added regression coverage for project-scoped chat memory header output (`/memory project` -> `Project memory ...`).

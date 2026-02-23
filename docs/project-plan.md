@@ -80,3 +80,6 @@ Exit Criteria:
 - MVP gate is met (Milestones 2-4 stable).
 - Public quickstart and self-host docs are ready.
 - OSS vs managed boundaries are clearly documented.
+
+## Known Issues
+- Mastra Studio agent metadata currently reports `gpt-5-mini` for all agents, even when runtime role routing uses configured models correctly (for example coder uses `openai/gpt-5-codex`).
