@@ -25,7 +25,7 @@ trap cleanup EXIT INT TERM
 bun run wait:backend --url "$wait_url" --timeout-ms "$wait_timeout_ms" >/dev/null
 
 if [[ "${ACOLYTE_SET_API_URL:-0}" == "1" ]]; then
-  bun run config set apiUrl "$api_url" >/dev/null
+  bun run src/cli.ts config set apiUrl "$api_url" >/dev/null
 fi
 
 "$@"
