@@ -1,5 +1,7 @@
 # Acolyte
 
+![Acolyte logo](src/assets/acolyte.png)
+
 Personal AI coding assistant (CLI-first), built on Bun + Mastra.
 
 ## Quickstart
