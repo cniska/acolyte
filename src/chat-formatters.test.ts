@@ -5,6 +5,7 @@ describe("chat-formatters helpers", () => {
   test("formatThoughtDuration renders ms and s forms", () => {
     expect(formatThoughtDuration(240)).toBe("240ms");
     expect(formatThoughtDuration(1200)).toBe("1.2s");
+    expect(formatThoughtDuration(81_900)).toBe("1m 22s");
   });
 
   test("formatVerifySummary renders compact pass/fail line", () => {

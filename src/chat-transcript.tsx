@@ -6,6 +6,7 @@ import { renderAssistantContent } from "./chat-content-render";
 type ChatTranscriptProps = {
   rows: ChatRow[];
   isThinking: boolean;
+  thinkingLabel?: string | null;
   thinkingFrame: number;
   thinkingStartedAt?: number | null;
 };
@@ -41,7 +42,7 @@ function parseSessionsHeader(content: string): { prefix: string; count: string; 
 }
 
 export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
-  const { rows, isThinking, thinkingFrame, thinkingStartedAt } = props;
+  const { rows, isThinking, thinkingLabel, thinkingFrame, thinkingStartedAt } = props;
   const pulsePeriod = 16;
   const phase = ((Math.abs(thinkingFrame) % pulsePeriod) / pulsePeriod) * Math.PI * 2;
   const baseIntensity = (Math.cos(phase) + 1) / 2;
@@ -57,6 +58,19 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
     isThinking && typeof thinkingStartedAt === "number"
       ? Math.max(0, Math.floor((Date.now() - thinkingStartedAt) / 1000))
       : 0;
+  const trimmedThinkingLabel = thinkingLabel?.trim() ?? "";
+  const stageMatch = trimmedThinkingLabel.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+  const thinkingText = (() => {
+    const timeText = elapsedSec > 0 ? `${elapsedSec}s` : "";
+    if (stageMatch) {
+      const stage = stageMatch[1]?.trim() || "Thinking…";
+      const model = stageMatch[2]?.trim() || "";
+      const details = [model, timeText].filter((part) => part.length > 0).join(" · ");
+      return details.length > 0 ? `${stage} (${details})` : stage;
+    }
+    const base = trimmedThinkingLabel.length > 0 ? trimmedThinkingLabel : "Thinking…";
+    return timeText.length > 0 ? `${base} (${timeText})` : base;
+  })();
   const columns = process.stdout.columns ?? 120;
   const contentWidth = Math.max(24, Math.min(MAX_TRANSCRIPT_WIDTH, columns - 2));
   return (
@@ -111,7 +125,7 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
               <Text color={pulseColor}>{`${pulseGlyph} `}</Text>
             </Box>
             <Box width={contentWidth}>
-              <Text dimColor>{elapsedSec > 0 ? `Working… ${elapsedSec}s` : "Working…"}</Text>
+              <Text dimColor>{thinkingText}</Text>
             </Box>
           </Box>
         </>

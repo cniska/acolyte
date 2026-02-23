@@ -52,6 +52,7 @@ function createHarness(overrides?: { isThinking?: boolean }): Harness {
     setInputHistoryIndex: () => {},
     setInputHistoryDraft: () => {},
     setIsThinking: () => {},
+    setThinkingLabel: () => {},
     setTokenUsage: () => {},
     createMessage,
     nowIso: () => "2026-02-20T00:00:00.000Z",
@@ -136,6 +137,7 @@ describe("chat submit handler guards", () => {
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
       setIsThinking: () => {},
+      setThinkingLabel: () => {},
       setTokenUsage: () => {},
       createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
@@ -181,6 +183,7 @@ describe("chat submit handler guards", () => {
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
       setIsThinking: () => {},
+      setThinkingLabel: () => {},
       setTokenUsage: () => {},
       createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
@@ -240,6 +243,7 @@ describe("chat submit handler guards", () => {
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
       setIsThinking: () => {},
+      setThinkingLabel: () => {},
       setTokenUsage: () => {},
       createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
@@ -304,6 +308,7 @@ describe("chat submit handler guards", () => {
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
       setIsThinking: () => {},
+      setThinkingLabel: () => {},
       setTokenUsage: () => {},
       createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
@@ -359,6 +364,7 @@ describe("chat submit handler guards", () => {
         setInputHistoryIndex: () => {},
         setInputHistoryDraft: () => {},
         setIsThinking: () => {},
+        setThinkingLabel: () => {},
         setTokenUsage: () => {},
         createMessage,
         nowIso: () => "2026-02-20T00:00:00.000Z",
@@ -373,5 +379,75 @@ describe("chat submit handler guards", () => {
     } finally {
       await rm(fixturePath, { force: true });
     }
+  });
+
+  test("updates a single thinking label from progress events", async () => {
+    const rows: ChatRow[] = [];
+    const thinkingLabels: Array<string | null> = [];
+    let progressCalls = 0;
+
+    const session = createSession({ id: "sess_test" });
+    const store = createStore({ activeSessionId: session.id, sessions: [session] });
+
+    const submit = createSubmitHandler({
+      backend: createBackend({
+        reply: async () => {
+          await Bun.sleep(700);
+          return { model: "gpt-5-mini", output: "done" };
+        },
+        progress: async () => {
+          progressCalls += 1;
+          if (progressCalls === 1) {
+            return {
+              sessionId: "sess_test",
+              requestId: "req_1",
+              done: false,
+              events: [{ seq: 1, message: "Working… (gpt-5-mini)" }],
+            };
+          }
+          return { sessionId: "sess_test", requestId: "req_1", done: false, events: [] };
+        },
+        status: async () => "ok",
+      }),
+      store,
+      currentSession: session,
+      setCurrentSession: () => {},
+      toRows: () => [],
+      setRows: (updater) => {
+        rows.splice(0, rows.length, ...updater(rows));
+      },
+      setShowShortcuts: () => {},
+      setValue: () => {},
+      persist: async () => {},
+      exit: () => {},
+      openSkillsPanel: async () => {},
+      openResumePanel: () => {},
+      openPermissionsPanel: () => {},
+      openPolicyPanel: () => {},
+      openWriteConfirmPanel: () => {},
+      pendingPolicyCandidate: null,
+      setPendingPolicyCandidate: () => {},
+      tokenUsage: [],
+      isThinking: false,
+      setInputHistory: () => {},
+      setInputHistoryIndex: () => {},
+      setInputHistoryDraft: () => {},
+      setIsThinking: () => {},
+      setThinkingLabel: (next) => {
+        thinkingLabels.push(next);
+      },
+      setTokenUsage: () => {},
+      createMessage,
+      nowIso: () => "2026-02-20T00:00:00.000Z",
+      setInterrupt: () => {},
+    });
+
+    await submit("hello");
+
+    expect(thinkingLabels[0]).toMatch(/^Thinking… \(.+\)$/);
+    expect(thinkingLabels).toContain("Working… (gpt-5-mini)");
+    expect(thinkingLabels.at(-1)).toBeNull();
+    expect(rows.some((row) => row.role === "system" && row.content.includes("Working…"))).toBe(false);
+    expect(rows.some((row) => row.role === "assistant" && row.content === "done")).toBe(true);
   });
 });

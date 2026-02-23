@@ -36,6 +36,7 @@ type CreateSubmitHandlerInput = {
   setInputHistoryIndex: (next: number) => void;
   setInputHistoryDraft: (next: string) => void;
   setIsThinking: (next: boolean) => void;
+  setThinkingLabel: (next: string | null) => void;
   setTokenUsage: (updater: (current: TokenUsageEntry[]) => TokenUsageEntry[]) => void;
   createMessage: (role: Message["role"], content: string) => Message;
   nowIso: () => string;
@@ -60,13 +61,14 @@ function statusPermissionMode(status: string): "read" | "write" | null {
   return match[1] as "read" | "write";
 }
 
-function progressRow(message: string): ChatRow {
-  return {
-    id: `row_${crypto.randomUUID()}`,
-    role: "system",
-    content: message,
-    dim: true,
-  };
+function presentModelLabel(model: string): string {
+  const prefixes = ["openai/", "openai-compatible/", "anthropic/", "gemini/", "google/"];
+  for (const prefix of prefixes) {
+    if (model.startsWith(prefix)) {
+      return model.slice(prefix.length);
+    }
+  }
+  return model;
 }
 
 export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: string) => Promise<void> {
@@ -185,6 +187,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
     }
 
     input.setIsThinking(true);
+    input.setThinkingLabel(`Thinking… (${presentModelLabel(appConfig.models.main)})`);
     const abortController = new AbortController();
     input.setInterrupt(() => abortController.abort());
     const thinkingStartedAt = Date.now();
@@ -197,7 +200,10 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
             return;
           }
           progressAfterSeq = progress.events[progress.events.length - 1]?.seq ?? progressAfterSeq;
-          input.setRows((current) => [...current, ...progress.events.map((event) => progressRow(event.message))]);
+          const latestMessage = progress.events[progress.events.length - 1]?.message?.trim();
+          if (latestMessage) {
+            input.setThinkingLabel(latestMessage);
+          }
         })
         .catch(() => {
           // Best-effort progress polling; ignore transient backend/proxy errors.
@@ -235,6 +241,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       clearInterval(progressPoll);
       input.setInterrupt(null);
       input.setIsThinking(false);
+      input.setThinkingLabel(null);
     }
   };
 }

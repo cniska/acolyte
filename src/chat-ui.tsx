@@ -55,6 +55,7 @@ function ChatApp(props: ChatAppProps) {
   const [value, setValue] = useState("");
   const [inputRevision, setInputRevision] = useState(0);
   const [isThinking, setIsThinking] = useState(false);
+  const [thinkingLabel, setThinkingLabel] = useState<string | null>(null);
   const [thinkingFrame, setThinkingFrame] = useState(0);
   const [thinkingStartedAt, setThinkingStartedAt] = useState<number | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
@@ -150,6 +151,7 @@ function ChatApp(props: ChatAppProps) {
     setInputHistoryIndex,
     setInputHistoryDraft,
     setIsThinking,
+    setThinkingLabel,
     setTokenUsage,
     createMessage: newMessage,
     nowIso,
@@ -210,6 +212,7 @@ function ChatApp(props: ChatAppProps) {
       <ChatTranscript
         rows={rows}
         isThinking={isThinking}
+        thinkingLabel={thinkingLabel}
         thinkingFrame={thinkingFrame}
         thinkingStartedAt={thinkingStartedAt}
       />
