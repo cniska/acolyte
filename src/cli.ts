@@ -818,29 +818,8 @@ function parseEditArgs(args: string[]): {
   });
 }
 
-function hasCommandOnPath(command: string): boolean {
-  try {
-    return typeof Bun !== "undefined" && typeof Bun.which === "function" && Boolean(Bun.which(command));
-  } catch {
-    return false;
-  }
-}
-
-export function inferResumeCommandBase(
-  argv: string[] = process.argv,
-  hasCommand: (command: string) => boolean = hasCommandOnPath,
-): string {
-  const sourceRun = argv.some(
-    (part) => part === "src/cli.ts" || part.endsWith("/src/cli.ts") || part.endsWith("\\src\\cli.ts"),
-  );
-  if (sourceRun) {
-    return "bun run src/cli.ts";
-  }
-  return hasCommand("acolyte") ? "acolyte" : "bun run src/cli.ts";
-}
-
-export function formatResumeCommand(sessionId: string, commandBase = inferResumeCommandBase()): string {
-  return `${commandBase} resume ${sessionId.slice(0, 12)}`;
+export function formatResumeCommand(sessionId: string): string {
+  return `acolyte resume ${sessionId.slice(0, 12)}`;
 }
 
 type ResumeTarget =
@@ -920,7 +899,7 @@ async function chatModeWithOptions(options: { resumeLatest: boolean; resumePrefi
     version: CLI_VERSION,
   });
   const resumeId = store.activeSessionId ?? session.id;
-  printInfo(`Resume with: ${formatResumeCommand(resumeId, inferResumeCommandBase())}`);
+  printInfo(`Resume with: ${formatResumeCommand(resumeId)}`);
 }
 
 async function runMode(args: string[]): Promise<void> {
