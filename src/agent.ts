@@ -351,6 +351,16 @@ function toTitleWords(input: string): string {
     .join(" ");
 }
 
+function presentModelLabel(model: string): string {
+  const prefixes = ["openai/", "openai-compatible/", "anthropic/", "gemini/", "google/"];
+  for (const prefix of prefixes) {
+    if (model.startsWith(prefix)) {
+      return model.slice(prefix.length);
+    }
+  }
+  return model;
+}
+
 function userProgressForTool(toolName: string): string {
   const known: Record<string, string> = {
     "search-repo": "Searching the repo",
@@ -365,15 +375,20 @@ function userProgressForTool(toolName: string): string {
   return known[toolName] ?? `Using ${toTitleWords(toolName)}`;
 }
 
-export function progressStageForRole(role: AgentRole): string {
-  switch (role) {
+export function createProgressStageLabel(stage: AgentRole, model: string): string {
+  const shownModel = presentModelLabel(model);
+  switch (stage) {
     case "planner":
-      return "Planning…";
+      return `Planning… (${shownModel})`;
     case "reviewer":
-      return "Reviewing…";
+      return `Reviewing… (${shownModel})`;
     case "coder":
-      return "Working…";
+      return `Working… (${shownModel})`;
   }
+}
+
+export function progressStageForRole(role: AgentRole, model: string): string {
+  return createProgressStageLabel(role, model);
 }
 
 function normalizeDogfoodOutput(output: string): string {
@@ -620,7 +635,6 @@ export async function runAgent(input: {
   let delegationBrief = input.request.message.trim();
   if (requestModelState.available) {
     try {
-      emitProgress("Thinking…");
       const coordinator = createAgent({
         id: "acolyte-coordinator",
         name: "Acolyte Coordinator",
@@ -643,7 +657,7 @@ export async function runAgent(input: {
   }
 
   const delegatedInput = `${agentInput}\n\nDelegation brief:\n${delegationBrief}`;
-  emitProgress(progressStageForRole(role));
+  emitProgress(progressStageForRole(role, model));
   let result = await agent.generate(delegatedInput, {
     maxSteps: role === "planner" ? 5 : 8,
     toolChoice: "auto",

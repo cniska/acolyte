@@ -3,6 +3,7 @@ import {
   buildAgentInput,
   buildSubagentContext,
   compactReviewOutput,
+  createProgressStageLabel,
   finalizeAssistantOutput,
   finalizeReviewOutput,
   normalizeReviewOutput,
@@ -490,9 +491,15 @@ describe("buildSubagentContext", () => {
 });
 
 describe("progressStageForRole", () => {
-  test("uses user-facing stage labels for each role", () => {
-    expect(progressStageForRole("planner")).toBe("Planning…");
-    expect(progressStageForRole("coder")).toBe("Working…");
-    expect(progressStageForRole("reviewer")).toBe("Reviewing…");
+  test("uses user-facing stage labels with model names", () => {
+    expect(progressStageForRole("planner", "openai/o3")).toBe("Planning… (o3)");
+    expect(progressStageForRole("coder", "openai/gpt-5-codex")).toBe("Working… (gpt-5-codex)");
+    expect(progressStageForRole("reviewer", "anthropic/claude-sonnet-4")).toBe("Reviewing… (claude-sonnet-4)");
+  });
+});
+
+describe("createProgressStageLabel", () => {
+  test("normalizes known provider prefixes in model labels", () => {
+    expect(createProgressStageLabel("coder", "openai-compatible/qwen2.5-coder")).toBe("Working… (qwen2.5-coder)");
   });
 });

@@ -20,6 +20,15 @@ Set API key in `.env`:
 OPENAI_API_KEY=...
 ```
 
+Run backend with logs in both terminal and file (recommended for dogfooding):
+
+```bash
+mkdir -p .acolyte/logs
+bun --env-file=.env run src/server.ts 2>&1 | tee -a .acolyte/logs/server.log
+```
+
+Use `--watch` only when actively editing backend code. In watch mode, server restarts can interrupt long-running agent turns.
+
 After setup, restart chat and check:
 
 ```text
@@ -110,7 +119,7 @@ Split mode (optional):
 
 ```bash
 # terminal 1
-bun run serve:env:watch
+bun run serve:env
 
 # terminal 2
 acolyte
