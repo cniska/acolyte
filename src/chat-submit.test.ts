@@ -46,6 +46,13 @@ describe("chat submit helpers", () => {
     });
   });
 
+  test("resolveQueueSubmit submits slash commands while thinking", () => {
+    expect(resolveQueueSubmit({ value: "/status", isThinking: true })).toEqual({
+      kind: "submit",
+      value: "/status",
+    });
+  });
+
   test("resolveQueueSubmit submits immediately when idle", () => {
     expect(resolveQueueSubmit({ value: "hello", isThinking: false })).toEqual({
       kind: "submit",

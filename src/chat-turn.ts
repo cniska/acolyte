@@ -11,6 +11,29 @@ function row(role: ChatRow["role"], content: string, dim = false): ChatRow {
   return { id: `row_${crypto.randomUUID()}`, role, content, dim };
 }
 
+const TOOL_LABELS: Record<string, string> = {
+  "run-command": "Run",
+  "read-file": "Read",
+  "search-repo": "Search",
+  "git-status": "Status",
+  "git-diff": "Diff",
+  "edit-file": "Edit",
+  "web-search": "Web Search",
+  "web-fetch": "Web Fetch",
+};
+
+export function formatToolLabel(toolId: string): string {
+  const known = TOOL_LABELS[toolId];
+  if (known) {
+    return known;
+  }
+  return toolId
+    .split(/[-_]+/)
+    .filter((part) => part.length > 0)
+    .map((part) => part[0]?.toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 export function estimateTokenUsageFallback(prompt: string, output: string): TokenUsage {
   const promptTokens = Math.ceil(prompt.length / 4);
   const completionTokens = Math.ceil(output.length / 4);
@@ -116,7 +139,11 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
   );
 
   const assistantMessage = params.createMessage("assistant", reply.output);
-  const rows: ChatRow[] = [row("assistant", reply.output)];
+  const rows: ChatRow[] = [];
+  for (const toolId of reply.toolCalls ?? []) {
+    rows.push(row("system", `Tool: ${formatToolLabel(toolId)}`, true));
+  }
+  rows.push(row("assistant", reply.output));
   const tokenEntry: TokenUsageEntry = {
     id: assistantMessage.id,
     usage: reply.usage ?? estimateTokenUsageFallback(params.userText, reply.output),

@@ -62,7 +62,7 @@ function statusPermissionMode(status: string): "read" | "write" | null {
 export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: string) => Promise<void> {
   return async (raw: string): Promise<void> => {
     const text = raw.trim();
-    if (!text || input.isThinking) {
+    if (!text || (input.isThinking && !text.startsWith("/"))) {
       return;
     }
     if (text.startsWith("/") && !text.includes(" ") && !isKnownSlashToken(text)) {

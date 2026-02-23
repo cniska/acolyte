@@ -162,6 +162,11 @@ class RemoteBackend implements Backend {
     return {
       output: json.output,
       model: typeof json.model === "string" ? json.model : input.model,
+      toolCalls: Array.isArray((json as { toolCalls?: unknown }).toolCalls)
+        ? ((json as { toolCalls?: unknown[] }).toolCalls ?? []).filter(
+            (item): item is string => typeof item === "string",
+          )
+        : undefined,
       usage:
         json.usage &&
         typeof json.usage === "object" &&

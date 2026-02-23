@@ -309,6 +309,21 @@ function isDogfoodPrompt(text: string): boolean {
   return text.includes("Dogfood mode:");
 }
 
+function collectToolCallIds(toolCalls: unknown[]): string[] {
+  const names = toolCalls
+    .map((call) => {
+      if (!call || typeof call !== "object") {
+        return null;
+      }
+      const candidate =
+        (call as { toolName?: unknown }).toolName ?? (call as { name?: unknown }).name ?? (call as { id?: unknown }).id;
+      return typeof candidate === "string" ? candidate : null;
+    })
+    .filter((name): name is string => Boolean(name))
+    .slice(0, 10);
+  return Array.from(new Set(names));
+}
+
 function normalizeDogfoodOutput(output: string): string {
   const cleaned = output
     .split("\n")
@@ -537,6 +552,7 @@ export async function runAgent(input: { request: ChatRequest; soulPrompt: string
   return {
     model,
     output,
+    toolCalls: collectToolCallIds(Array.isArray(result.toolCalls) ? (result.toolCalls as unknown[]) : []),
     usage: {
       promptTokens: promptUsage.promptTokens,
       completionTokens,

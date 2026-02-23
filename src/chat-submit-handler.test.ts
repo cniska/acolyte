@@ -76,6 +76,13 @@ describe("chat submit handler guards", () => {
     expect(h.calls.setValue).toEqual([]);
   });
 
+  test("handles slash command while thinking", async () => {
+    const h = createHarness({ isThinking: true });
+    await h.submit("/sessions");
+    expect(h.calls.setInputHistory).toBe(1);
+    expect(h.calls.setValue).toEqual([""]);
+  });
+
   test("ignores unknown single-token slash commands", async () => {
     const h = createHarness();
     await h.submit("/not-a-command");
