@@ -118,6 +118,7 @@ function ChatApp(props: ChatAppProps) {
     setShowShortcuts,
     setPendingPolicyCandidate,
     setValue,
+    queueInput: setQueuedInput,
     setBackendPermissionMode: async (mode) => {
       await backend.setPermissionMode(mode);
     },

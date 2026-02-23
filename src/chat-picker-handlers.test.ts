@@ -26,6 +26,7 @@ describe("chat picker handlers", () => {
       setShowShortcuts: () => {},
       setPendingPolicyCandidate: () => {},
       setValue: () => {},
+      queueInput: () => {},
       setBackendPermissionMode: async () => {},
       persist: async () => {},
       toRows: () => [],
@@ -55,6 +56,7 @@ describe("chat picker handlers", () => {
       setShowShortcuts: () => {},
       setPendingPolicyCandidate: () => {},
       setValue: () => {},
+      queueInput: () => {},
       setBackendPermissionMode: async () => {},
       persist: async () => {},
       toRows: () => [],
@@ -93,6 +95,7 @@ describe("chat picker handlers", () => {
       setShowShortcuts: () => {},
       setPendingPolicyCandidate: () => {},
       setValue: () => {},
+      queueInput: () => {},
       setBackendPermissionMode: async () => {},
       persist: async () => {},
       toRows: () => [],
@@ -130,6 +133,7 @@ describe("chat picker handlers", () => {
       setShowShortcuts: () => {},
       setPendingPolicyCandidate: () => {},
       setValue: () => {},
+      queueInput: () => {},
       setBackendPermissionMode: async () => {},
       persist: async () => {},
       toRows: () => [],
@@ -182,6 +186,7 @@ describe("chat picker handlers", () => {
         pending = next;
       },
       setValue: () => {},
+      queueInput: () => {},
       setBackendPermissionMode: async () => {},
       persist: async () => {},
       toRows: () => [],
@@ -218,6 +223,7 @@ describe("chat picker handlers", () => {
         pending = next;
       },
       setValue: () => {},
+      queueInput: () => {},
       setBackendPermissionMode: async () => {},
       persist: async () => {},
       toRows: () => [],
@@ -251,6 +257,7 @@ describe("chat picker handlers", () => {
         pendingValues.push(next);
       },
       setValue: () => {},
+      queueInput: () => {},
       setBackendPermissionMode: async () => {},
       persist: async () => {},
       toRows: () => [],
@@ -290,9 +297,10 @@ describe("chat picker handlers", () => {
     expect(pendingValues.at(-1)).toBeNull();
   });
 
-  test("handlePickerSelect writeConfirm switch updates mode and pre-fills prompt", async () => {
+  test("handlePickerSelect writeConfirm switch updates mode and auto-queues prompt", async () => {
     const rows: ChatRow[] = [];
     const values: string[] = [];
+    const queued: string[] = [];
     const currentSession = createSession({ id: "sess_current" });
     const store = createStore({ sessions: [currentSession], activeSessionId: currentSession.id });
     const handlers = createPickerHandlers({
@@ -310,6 +318,9 @@ describe("chat picker handlers", () => {
       setPendingPolicyCandidate: () => {},
       setValue: (next) => {
         values.push(next);
+      },
+      queueInput: (next) => {
+        queued.push(next);
       },
       setBackendPermissionMode: async (next) => {
         expect(next).toBe("write");
@@ -330,7 +341,8 @@ describe("chat picker handlers", () => {
       index: 0,
       note: "temporary",
     });
-    expect(values.at(-1)).toBe("edit src/cli.ts");
-    expect(rows.some((row) => row.content.includes("permission mode: write"))).toBe(true);
+    expect(values.at(-1)).toBe("");
+    expect(queued.at(-1)).toBe("edit src/cli.ts");
+    expect(rows.some((row) => row.content.includes("Changed permissions to `write`"))).toBe(true);
   });
 });

@@ -71,6 +71,34 @@ function presentModelLabel(model: string): string {
   return model;
 }
 
+export function resolveNaturalRememberCommand(text: string): string | null {
+  const trimmed = text.trim();
+  if (trimmed.length === 0) {
+    return null;
+  }
+  const projectMatch = trimmed.match(/^remember this for project[:\s]+(.+)$/i);
+  if (projectMatch?.[1]) {
+    return `/remember --project ${projectMatch[1].trim()}`;
+  }
+  const userMatch = trimmed.match(/^remember this(?: for user)?[:\s]+(.+)$/i);
+  if (userMatch?.[1]) {
+    return `/remember ${userMatch[1].trim()}`;
+  }
+  const bareRememberMatch = trimmed.match(/^remember\s+(.+)$/i);
+  if (bareRememberMatch?.[1]) {
+    const content = bareRememberMatch[1].trim();
+    if (/^this$/i.test(content)) {
+      return null;
+    }
+    return `/remember ${content}`;
+  }
+  const trailingRememberMatch = trimmed.match(/^(.+?)\s+remember$/i);
+  if (trailingRememberMatch?.[1]) {
+    return `/remember ${trailingRememberMatch[1].trim()}`;
+  }
+  return null;
+}
+
 export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: string) => Promise<void> {
   return async (raw: string): Promise<void> => {
     const text = raw.trim();
@@ -81,6 +109,8 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       return;
     }
     const resolvedText = resolveSlashAlias(text);
+    const naturalRememberCommand = resolveNaturalRememberCommand(text);
+    const dispatchResolvedText = naturalRememberCommand ?? resolvedText;
     input.setInputHistory((current) => appendInputHistory(current, text));
     input.setInputHistoryIndex(-1);
     input.setInputHistoryDraft("");
@@ -125,7 +155,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
     }
     const commandResult = await dispatchSlashCommand({
       text,
-      resolvedText,
+      resolvedText: dispatchResolvedText,
       backend: input.backend,
       store: input.store,
       currentSession: input.currentSession,

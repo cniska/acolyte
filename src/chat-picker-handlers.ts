@@ -27,6 +27,7 @@ type CreatePickerHandlersInput = {
   setShowShortcuts: (next: boolean | ((current: boolean) => boolean)) => void;
   setPendingPolicyCandidate: (next: PolicyCandidate | null) => void;
   setValue: (next: string) => void;
+  queueInput: (next: string) => void;
   setBackendPermissionMode: (mode: "read" | "write") => Promise<void>;
   persist: () => Promise<void>;
   toRows: (messages: Message[]) => ChatRow[];
@@ -223,10 +224,11 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
               {
                 id: `row_${crypto.randomUUID()}`,
                 role: "assistant",
-                content: `permission mode: write${noteSuffix}`,
+                content: `Changed permissions to \`write\`${noteSuffix}`,
               },
             ]);
-            input.setValue(state.prompt);
+            input.setValue("");
+            input.queueInput(state.prompt);
           } catch (error) {
             input.setRows((current) => [
               ...current,
