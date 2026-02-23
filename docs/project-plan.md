@@ -9,6 +9,7 @@ Build a personal AI coding assistant (Mastra + CLI) that is local-first, memory-
 3. CLI-first UX (fast, minimal, high-signal).
 4. Safe-by-default automation (permissions + path guardrails).
 5. Apply extra scrutiny to chat UX changes: prefer minimal surface-area updates with tests + smoke checks before merge.
+6. Prefer instruction-quality fixes over output post-processing; avoid brittle response rewrites in MVP.
 
 ## Success Criteria
 1. Preference and workflow memory persists across sessions.
@@ -26,6 +27,7 @@ Build a personal AI coding assistant (Mastra + CLI) that is local-first, memory-
 6. Dogfooding transition (Codex -> Acolyte-led dev) is not complete.
 7. Local-model ergonomics still need tuning, but role model -> provider inference is now in place.
 8. Token budget controls need iterative tuning for real-world cost/latency.
+9. Agent reliability for straightforward edit prompts still needs hardening (avoid plan-only/no-tool turns).
 
 ## Scope (MVP)
 ### In Scope
@@ -109,6 +111,15 @@ Build a personal AI coding assistant (Mastra + CLI) that is local-first, memory-
    - At least 6-10 real feature/fix slices completed end-to-end with Acolyte.
    - No blocker requiring routine Codex fallback.
    - Cost/latency and memory behavior remain acceptable for daily workflow.
+4. Milestone 4: Runtime Reliability Signals
+   - Status: in progress.
+   - Goal:
+   - Ensure users can always see meaningful in-flight progress and actionable failures during execution.
+   - Exit criteria:
+   - Tool activity is visible even when progress polling misses events (fallback tool-progress path).
+   - Duplicate tool-progress rows are suppressed when streamed and fallback signals overlap.
+   - Empty-output failures return actionable guidance (quota/backend/model/provider), not generic no-op text.
+   - Permission-blocked writes trigger picker-based recovery flow instead of manual command detours.
 
 ## Switch-To-Acolyte Gate
 Move primary development from Codex to Acolyte once these checks pass in a staged trial:
@@ -157,17 +168,19 @@ Adoption plan:
 
 ## Next Actions (Prioritized)
 1. Keep dogfooding on `main` with small validated slices.
-2. Continue CLI UX convergence with Codex/Claude patterns while staying minimal.
-3. Keep picker wording action-oriented (labels describe concrete outcomes).
-4. Keep model/provider routing centralized in one config module.
-5. Add regular OM soak runs (`bun run om:soak`) to validate long-running memory behavior under real usage.
-6. Tune observational-memory thresholds (cost vs precision).
-7. Add token guardrails (hard budgets + compact tool output defaults).
-8. Implement lane-based routing and add local-model endpoint support.
-9. Keep `docs/features.md` as canonical feature inventory.
-10. Evaluate optional git hooks for high-signal checks only.
-11. Add staged path for channel adapters post-MVP (not now).
-12. Implement hosted session continuity (`/sessions`, `/resume`) via server-backed session APIs.
+2. Prioritize execution reliability (tool execution success, actionable failures, no silent no-op responses).
+3. Keep model behavior in agent instructions/souls; defer non-essential response post-processing.
+4. Continue CLI UX convergence with Codex/Claude patterns while staying minimal.
+5. Keep picker wording action-oriented (labels describe concrete outcomes).
+6. Keep model/provider routing centralized in one config module.
+7. Add regular OM soak runs (`bun run om:soak`) to validate long-running memory behavior under real usage.
+8. Tune observational-memory thresholds (cost vs precision).
+9. Add token guardrails (hard budgets + compact tool output defaults).
+10. Implement lane-based routing and add local-model endpoint support.
+11. Keep `docs/features.md` as canonical feature inventory.
+12. Evaluate optional git hooks for high-signal checks only.
+13. Add staged path for channel adapters post-MVP (not now).
+14. Implement hosted session continuity (`/sessions`, `/resume`) via server-backed session APIs.
 
 ## Risks
 1. Memory drift: mitigate with confidence scores + manual correction.
@@ -178,9 +191,12 @@ Adoption plan:
 ## Prioritization Policy
 1. Correctness/reliability/core workflow over cosmetic polish.
 2. If UX polish is deferred, record it explicitly.
+3. Prefer fixing model instructions/role prompts before adding output-rewrite logic.
+4. For permission-blocked actions, prefer picker-driven recovery (for example switch to write mode) over manual command guidance in responses.
 
 ## Deferred Improvements
 1. Rich Claude-style transcript blocks (`Edit(...)` / `Bash(...)`) with compact excerpts.
+2. OM lifecycle visibility in chat progress (for example, show `Reflected` briefly ~5s after observational-memory reflection completes).
 
 ## Known Issues
-1. None currently tracked as active.
+1. Terminal tab switching can trigger header repaint artifacts in some terminal setups.
