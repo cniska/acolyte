@@ -112,6 +112,13 @@ export function resolveEscapeAction(input: {
   return null;
 }
 
+export function shouldCycleInputHistory(value: string, inputHistoryIndex: number): boolean {
+  if (inputHistoryIndex >= 0) {
+    return true;
+  }
+  return value.trim().length > 0;
+}
+
 type UseChatKeybindingsInput = {
   persist: () => Promise<void>;
   exit: () => void;
@@ -185,7 +192,12 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
       const suggestionNavActive =
         !browsingInputHistory &&
         (input.atQuery !== null || (input.atQuery === null && input.slashSuggestions.length > 0));
-      if (!input.isThinking && !suggestionNavActive && key.upArrow) {
+      const historyTriggerUp = key.upArrow || (key.ctrl && keyInput === "p");
+      const historyTriggerDown = key.downArrow || (key.ctrl && keyInput === "n");
+      if (!input.isThinking && !suggestionNavActive && historyTriggerUp) {
+        if (!shouldCycleInputHistory(input.value, input.inputHistoryIndex)) {
+          return;
+        }
         const transition = resolveHistoryUp(input.inputHistory, input.inputHistoryIndex, input.value);
         if (!transition) {
           return;
@@ -199,7 +211,7 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
         input.setInputRevision((current) => current + 1);
         return;
       }
-      if (!input.isThinking && !suggestionNavActive && key.downArrow && input.inputHistoryIndex >= 0) {
+      if (!input.isThinking && !suggestionNavActive && historyTriggerDown && input.inputHistoryIndex >= 0) {
         const transition = resolveHistoryDown(input.inputHistory, input.inputHistoryIndex, input.inputHistoryDraft);
         if (!transition) {
           return;

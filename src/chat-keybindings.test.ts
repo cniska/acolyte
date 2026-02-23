@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { resolveEscapeAction, resolveHistoryDown, resolveHistoryUp, resolveTabAutocomplete } from "./chat-keybindings";
+import {
+  resolveEscapeAction,
+  resolveHistoryDown,
+  resolveHistoryUp,
+  resolveTabAutocomplete,
+  shouldCycleInputHistory,
+} from "./chat-keybindings";
 
 describe("chat keybindings helpers", () => {
   test("resolveHistoryUp starts browsing from latest entry and saves draft", () => {
@@ -85,5 +91,12 @@ describe("chat keybindings helpers", () => {
     expect(resolveEscapeAction({ isThinking: true, showShortcuts: true })).toBe("interrupt");
     expect(resolveEscapeAction({ isThinking: false, showShortcuts: true })).toBe("hide");
     expect(resolveEscapeAction({ isThinking: false, showShortcuts: false })).toBeNull();
+  });
+
+  test("shouldCycleInputHistory requires typed input unless already browsing history", () => {
+    expect(shouldCycleInputHistory("", -1)).toBeFalse();
+    expect(shouldCycleInputHistory("   ", -1)).toBeFalse();
+    expect(shouldCycleInputHistory("hello", -1)).toBeTrue();
+    expect(shouldCycleInputHistory("", 0)).toBeTrue();
   });
 });
