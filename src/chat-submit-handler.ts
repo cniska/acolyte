@@ -9,6 +9,7 @@ import {
   runAssistantTurn,
   unresolvedPathRows,
 } from "./chat-turn";
+import { addMemory } from "./memory";
 import type { PolicyCandidate } from "./policy-distill";
 import type { Message, Session, SessionStore } from "./types";
 
@@ -71,18 +72,64 @@ function presentModelLabel(model: string): string {
   return model;
 }
 
-export function resolveNaturalRememberCommand(text: string): string | null {
+type RememberScope = "user" | "project";
+
+type NaturalRememberDirective = {
+  scope: RememberScope;
+  content: string;
+};
+
+function cleanMemoryCandidate(value: string): string {
+  return value
+    .trim()
+    .replace(/^[-*]\s+/, "")
+    .replace(/^["'`]|["'`]$/g, "")
+    .replace(/^memory\s*[:-]\s*/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function distillMemoryNote(backend: Backend, content: string, model: string, sessionId: string): Promise<string> {
+  const prompt = [
+    "Rewrite this into one concise memory note for future collaboration.",
+    "Rules: one sentence, concrete preference, no preamble, no quotes, no markdown.",
+    "",
+    `Input: ${content}`,
+  ].join("\n");
+  try {
+    const response = await backend.reply({
+      message: prompt,
+      history: [],
+      model,
+      sessionId,
+    });
+    const line = response.output.split("\n").find((item) => item.trim().length > 0) ?? response.output;
+    return cleanMemoryCandidate(line) || cleanMemoryCandidate(content);
+  } catch {
+    return cleanMemoryCandidate(content);
+  }
+}
+
+export function resolveNaturalRememberDirective(text: string): NaturalRememberDirective | null {
   const trimmed = text.trim();
   if (trimmed.length === 0) {
     return null;
   }
+  const trailingProjectRememberThisMatch = trimmed.match(/^(.+?)(?:,\s*|\s+)remember this for project$/i);
+  if (trailingProjectRememberThisMatch?.[1]) {
+    return { scope: "project", content: trailingProjectRememberThisMatch[1].trim() };
+  }
+  const trailingUserRememberThisMatch = trimmed.match(/^(.+?)(?:,\s*|\s+)remember this(?: for user)?$/i);
+  if (trailingUserRememberThisMatch?.[1]) {
+    return { scope: "user", content: trailingUserRememberThisMatch[1].trim() };
+  }
   const projectMatch = trimmed.match(/^remember this for project[:\s]+(.+)$/i);
   if (projectMatch?.[1]) {
-    return `/remember --project ${projectMatch[1].trim()}`;
+    return { scope: "project", content: projectMatch[1].trim() };
   }
   const userMatch = trimmed.match(/^remember this(?: for user)?[:\s]+(.+)$/i);
   if (userMatch?.[1]) {
-    return `/remember ${userMatch[1].trim()}`;
+    return { scope: "user", content: userMatch[1].trim() };
   }
   const bareRememberMatch = trimmed.match(/^remember\s+(.+)$/i);
   if (bareRememberMatch?.[1]) {
@@ -90,11 +137,11 @@ export function resolveNaturalRememberCommand(text: string): string | null {
     if (/^this$/i.test(content)) {
       return null;
     }
-    return `/remember ${content}`;
+    return { scope: "user", content };
   }
   const trailingRememberMatch = trimmed.match(/^(.+?)\s+remember$/i);
   if (trailingRememberMatch?.[1]) {
-    return `/remember ${trailingRememberMatch[1].trim()}`;
+    return { scope: "user", content: trailingRememberMatch[1].trim() };
   }
   return null;
 }
@@ -109,8 +156,8 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       return;
     }
     const resolvedText = resolveSlashAlias(text);
-    const naturalRememberCommand = resolveNaturalRememberCommand(text);
-    const dispatchResolvedText = naturalRememberCommand ?? resolvedText;
+    const naturalRememberDirective = resolveNaturalRememberDirective(text);
+    const dispatchResolvedText = resolvedText;
     input.setInputHistory((current) => appendInputHistory(current, text));
     input.setInputHistoryIndex(-1);
     input.setInputHistoryDraft("");
@@ -118,6 +165,51 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
 
     if (resolvedText === "?") {
       input.setShowShortcuts((current) => !current);
+      return;
+    }
+    if (naturalRememberDirective) {
+      const { row: userRow } = applyUserTurn({
+        session: input.currentSession,
+        displayText: text,
+        userText: text,
+        nowIso: input.nowIso,
+        createMessage: input.createMessage,
+      });
+      input.setRows((current) => [...current, userRow]);
+      input.setIsThinking(true);
+      input.setThinkingLabel(`Thinking… (${appConfig.models.main})`);
+      try {
+        const distilled = await distillMemoryNote(
+          input.backend,
+          naturalRememberDirective.content,
+          appConfig.models.main,
+          input.currentSession.id,
+        );
+        await addMemory(distilled, { scope: naturalRememberDirective.scope });
+        const label = naturalRememberDirective.scope === "project" ? "project" : "user";
+        const confirmation = `Saved ${label} memory: ${distilled}`;
+        const assistant = input.createMessage("assistant", confirmation);
+        input.currentSession.messages.push(assistant);
+        input.currentSession.updatedAt = input.nowIso();
+        input.setRows((current) => [
+          ...current,
+          { id: `row_${crypto.randomUUID()}`, role: "system", content: confirmation, dim: true },
+        ]);
+        await input.persist();
+      } catch (error) {
+        input.setRows((current) => [
+          ...current,
+          {
+            id: `row_${crypto.randomUUID()}`,
+            role: "system",
+            content: error instanceof Error ? error.message : "Failed to save memory.",
+            dim: true,
+          },
+        ]);
+      } finally {
+        input.setIsThinking(false);
+        input.setThinkingLabel(null);
+      }
       return;
     }
     if (input.pendingPolicyCandidate && !text.startsWith("/")) {

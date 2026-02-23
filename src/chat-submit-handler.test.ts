@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { ChatRow } from "./chat-commands";
-import { createSubmitHandler, resolveNaturalRememberCommand } from "./chat-submit-handler";
+import { createSubmitHandler, resolveNaturalRememberDirective } from "./chat-submit-handler";
 import { createBackend, createMessage, createSession, createStore } from "./test-factory";
 
 type Harness = {
@@ -62,17 +62,40 @@ function createHarness(overrides?: { isThinking?: boolean }): Harness {
 }
 
 describe("chat submit handler guards", () => {
-  test("resolveNaturalRememberCommand parses user and project forms", () => {
-    expect(resolveNaturalRememberCommand("remember this: keep output concise")).toBe("/remember keep output concise");
-    expect(resolveNaturalRememberCommand("remember this for user: prefer numbered lists")).toBe(
-      "/remember prefer numbered lists",
-    );
-    expect(resolveNaturalRememberCommand("remember this for project: use bun scripts")).toBe(
-      "/remember --project use bun scripts",
-    );
-    expect(resolveNaturalRememberCommand("remember prefer concise output")).toBe("/remember prefer concise output");
-    expect(resolveNaturalRememberCommand("prefer concise output remember")).toBe("/remember prefer concise output");
-    expect(resolveNaturalRememberCommand("remember this")).toBeNull();
+  test("resolveNaturalRememberDirective parses user and project forms", () => {
+    expect(resolveNaturalRememberDirective("remember this: keep output concise")).toEqual({
+      scope: "user",
+      content: "keep output concise",
+    });
+    expect(resolveNaturalRememberDirective("remember this for user: prefer numbered lists")).toEqual({
+      scope: "user",
+      content: "prefer numbered lists",
+    });
+    expect(resolveNaturalRememberDirective("remember this for project: use bun scripts")).toEqual({
+      scope: "project",
+      content: "use bun scripts",
+    });
+    expect(
+      resolveNaturalRememberDirective("no need, only big features should be documented there, remember this"),
+    ).toEqual({
+      scope: "user",
+      content: "no need, only big features should be documented there",
+    });
+    expect(
+      resolveNaturalRememberDirective("only big features should be documented, remember this for project"),
+    ).toEqual({
+      scope: "project",
+      content: "only big features should be documented",
+    });
+    expect(resolveNaturalRememberDirective("remember prefer concise output")).toEqual({
+      scope: "user",
+      content: "prefer concise output",
+    });
+    expect(resolveNaturalRememberDirective("prefer concise output remember")).toEqual({
+      scope: "user",
+      content: "prefer concise output",
+    });
+    expect(resolveNaturalRememberDirective("remember this")).toBeNull();
   });
 
   test("ignores empty input", async () => {
