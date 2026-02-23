@@ -138,12 +138,15 @@ Adoption plan:
 4. Add migration/import path from local sessions to hosted sessions.
 5. Add backup/restore and multi-machine setup docs.
 6. Add operational smoke tests and release process.
+7. Add hosted auth with GitHub as default identity provider (local mode remains auth-free).
+8. Keep API-key auth as optional automation fallback for hosted scripts/services.
 
 ## Open Decisions
 1. Default model + fallback order by lane (`chat`, `code`, `long-context`, `vision`).
 2. Sandbox provider timeline (E2B/Modal).
 3. Packaging target (`npm` global vs standalone binary).
 4. If/when to evolve from heuristic routing to deeper multi-agent delegation.
+5. Hosted auth choice is now set to GitHub-first for user login; implementation details (OAuth app vs GitHub App) remain open.
 
 ## Next Actions (Prioritized)
 1. Keep dogfooding on `main` with small validated slices.
