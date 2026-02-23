@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   boundedSkillInstructions,
+  createClarifyAnswerPicker,
   createPicker,
   createPolicyConfirmPicker,
   createPolicyPicker,
@@ -86,5 +87,16 @@ describe("chat picker actions", () => {
   test("createWriteConfirmPicker returns switch/cancel options", () => {
     const picker = createWriteConfirmPicker("edit src/cli.ts");
     expect(picker).toMatchObject({ kind: "writeConfirm", index: 0, prompt: "edit src/cli.ts" });
+  });
+
+  test("createClarifyAnswerPicker returns one-question answer picker", () => {
+    const picker = createClarifyAnswerPicker("implement feature x", "First question?", ["Second question?"]);
+    expect(picker).toMatchObject({
+      kind: "clarifyAnswer",
+      question: "First question?",
+      remaining: ["Second question?"],
+      index: 0,
+      note: "",
+    });
   });
 });

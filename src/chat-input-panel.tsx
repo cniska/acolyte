@@ -42,7 +42,7 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
     onPolicyConfirmNoteChange,
   } = props;
 
-  if (picker && picker.kind !== "policyConfirm" && picker.kind !== "writeConfirm") {
+  if (picker && picker.kind !== "policyConfirm" && picker.kind !== "writeConfirm" && picker.kind !== "clarifyAnswer") {
     return (
       <>
         <Text dimColor>{borderLine()}</Text>
@@ -56,14 +56,17 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
     );
   }
 
-  if (picker?.kind === "policyConfirm" || picker?.kind === "writeConfirm") {
+  if (picker?.kind === "policyConfirm" || picker?.kind === "writeConfirm" || picker?.kind === "clarifyAnswer") {
     const selected = picker.items[picker.index];
-    const firstSelected = picker.kind === "policyConfirm" ? selected?.value === "yes" : selected?.value === "switch";
-    const secondSelected = picker.kind === "policyConfirm" ? selected?.value === "no" : selected?.value === "cancel";
-    const firstLabel = picker.kind === "policyConfirm" ? "yes" : "switch";
-    const secondLabel = picker.kind === "policyConfirm" ? "no" : "cancel";
-    const firstHint = picker.kind === "policyConfirm" ? "accept" : "switch to write mode";
-    const secondHint = picker.kind === "policyConfirm" ? "skip" : "stay in read mode";
+    const isPolicy = picker.kind === "policyConfirm";
+    const isWrite = picker.kind === "writeConfirm";
+    const isClarify = picker.kind === "clarifyAnswer";
+    const firstSelected = isPolicy ? selected?.value === "yes" : isWrite ? selected?.value === "switch" : true;
+    const secondSelected = isPolicy ? selected?.value === "no" : isWrite ? selected?.value === "cancel" : false;
+    const firstLabel = isPolicy ? "yes" : isWrite ? "switch" : "answer";
+    const secondLabel = isPolicy ? "no" : "cancel";
+    const firstHint = isPolicy ? "accept" : isWrite ? "switch to write mode" : "continue";
+    const secondHint = isPolicy ? "skip" : "stay in read mode";
     const labelWidth = Math.max(firstLabel.length, secondLabel.length);
     return (
       <>
@@ -77,7 +80,7 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
           {firstSelected ? (
             <PromptInput
               value={picker.note}
-              placeholder="reason…"
+              placeholder={isClarify ? "answer…" : "reason…"}
               onChange={onPolicyConfirmNoteChange}
               onSubmit={() => {}}
               key={`policy-confirm-yes-${inputRevision}`}
@@ -86,22 +89,24 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
             <Text dimColor>{firstHint}</Text>
           )}
         </Box>
-        <Box>
-          <Text>{secondSelected ? "› " : "  "}</Text>
-          <Text color={secondSelected ? brandColor : undefined}>{secondLabel.padEnd(labelWidth, " ")}</Text>
-          <Text> </Text>
-          {secondSelected ? (
-            <PromptInput
-              value={picker.note}
-              placeholder="reason…"
-              onChange={onPolicyConfirmNoteChange}
-              onSubmit={() => {}}
-              key={`policy-confirm-no-${inputRevision}`}
-            />
-          ) : (
-            <Text dimColor>{secondHint}</Text>
-          )}
-        </Box>
+        {!isClarify && (
+          <Box>
+            <Text>{secondSelected ? "› " : "  "}</Text>
+            <Text color={secondSelected ? brandColor : undefined}>{secondLabel.padEnd(labelWidth, " ")}</Text>
+            <Text> </Text>
+            {secondSelected ? (
+              <PromptInput
+                value={picker.note}
+                placeholder="reason…"
+                onChange={onPolicyConfirmNoteChange}
+                onSubmit={() => {}}
+                key={`policy-confirm-no-${inputRevision}`}
+              />
+            ) : (
+              <Text dimColor>{secondHint}</Text>
+            )}
+          </Box>
+        )}
         <Text> </Text>
         <Text dimColor>{pickerHint(picker)}</Text>
         <Text dimColor>{borderLine()}</Text>

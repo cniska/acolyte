@@ -10,6 +10,16 @@ export type PickerState =
   | { kind: "permissions"; items: Array<{ mode: "read" | "write"; description: string }>; index: number }
   | { kind: "policy"; items: PolicyCandidate[]; index: number }
   | {
+      kind: "clarifyAnswer";
+      originalPrompt: string;
+      question: string;
+      remaining: string[];
+      answers: Array<{ question: string; answer: string }>;
+      items: Array<{ value: "continue"; description: string }>;
+      index: number;
+      note: string;
+    }
+  | {
       kind: "writeConfirm";
       prompt: string;
       items: Array<{ value: "switch" | "cancel"; description: string }>;
@@ -41,6 +51,8 @@ export function pickerTitle(picker: PickerState): string {
       return "Permissions";
     case "policy":
       return "Policy Candidates";
+    case "clarifyAnswer":
+      return truncateText(picker.question, 72);
     case "writeConfirm":
       return "Confirm Write Access";
     case "policyConfirm":
@@ -58,6 +70,8 @@ export function pickerHint(picker: PickerState): string {
       return "Esc to close · Enter to apply";
     case "policy":
       return "Esc to close · Enter to review";
+    case "clarifyAnswer":
+      return "Esc to close · Type answer inline · Enter to continue";
     case "writeConfirm":
       return "Esc to close · Type reason inline · Enter to apply";
     case "policyConfirm":
@@ -106,6 +120,21 @@ export function renderPickerItems(
           </Text>
         );
       });
+    case "clarifyAnswer":
+      return (
+        <>
+          {picker.items.map((item, index) => {
+            const selected = index === picker.index;
+            return (
+              <Text key={item.value}>
+                {selected ? "› " : "  "}
+                <Text color={selected ? brandColor : undefined}>{item.value.padEnd(8)}</Text>
+                <Text dimColor>{item.description}</Text>
+              </Text>
+            );
+          })}
+        </>
+      );
     case "writeConfirm":
       return (
         <>
