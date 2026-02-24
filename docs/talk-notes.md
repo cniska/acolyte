@@ -185,6 +185,8 @@ Living notes for talks about building this project. Update this file as mileston
 - Token usage is now persisted per session and restored on `/resume` (resets on `/new`).
 - Chat `/status` rendering now dims keys while keeping values normal for faster scanning.
 - Clarification flow now opens the picker directly (no generated “clarifying questions” transcript block before picker input).
+- Slash command diagnostics are now consistently system-scoped across status/sessions/tokens/memory/permissions/distill flows.
+- Added storage normalization coverage to guarantee `tokenUsage` defaults/restoration remain stable across persisted sessions.
 
 ## Open Narrative Threads
 1. Continue dogfooding ramp from Codex-led to assistant-led development.

@@ -58,6 +58,7 @@ Exit Criteria:
 - Command diagnostics are consistently system-scoped and scan-friendly (`/status`, `/tokens`, `/sessions`).
 - Session diagnostics survive session switches (`/tokens` restored on `/resume`, reset on `/new`).
 - Clarification handling is picker-first (no generated follow-up prompt text before question pickers).
+- Persistence guards cover diagnostic continuity (`tokenUsage` normalization tested at storage layer).
 - Critical operator actions stay explicit and command-first.
 
 ### Milestone 5: Memory Quality
