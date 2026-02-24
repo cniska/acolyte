@@ -1,6 +1,5 @@
 import { afterAll, afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdir, rm, writeFile } from "node:fs/promises";
-import { homedir } from "node:os";
+import { rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { appConfig, setPermissionMode } from "./app-config";
 import { editFileReplace, fetchWeb, readSnippet, runShellCommand } from "./coding-tools";
@@ -23,46 +22,36 @@ describe("coding-tools workspace guards", () => {
   });
 
   test("readSnippet blocks paths outside workspace", async () => {
-    await expect(readSnippet("/tmp/acolyte-outside.txt")).rejects.toThrow(
-      "Read is restricted to the workspace or ~/.acolyte",
-    );
+    await expect(readSnippet("/etc/hosts")).rejects.toThrow("Read is restricted to the workspace or /tmp");
   });
 
   test("editFileReplace blocks paths outside workspace", async () => {
     await expect(
       editFileReplace({
-        path: "/tmp/acolyte-outside-edit.txt",
+        path: "/etc/hosts",
         find: "a",
         replace: "b",
       }),
-    ).rejects.toThrow("Edit is restricted to the workspace or ~/.acolyte");
+    ).rejects.toThrow("Edit is restricted to the workspace or /tmp");
   });
 
   test("runShellCommand blocks absolute paths outside workspace", async () => {
-    await expect(runShellCommand("echo hi > /tmp/acolyte-outside.txt")).rejects.toThrow(
-      "Command references path outside workspace and ~/.acolyte",
+    await expect(runShellCommand("echo hi > /etc/acolyte-outside.txt")).rejects.toThrow(
+      "Command references path outside workspace and /tmp",
     );
   });
 
-  test("runShellCommand allows in-workspace commands", async () => {
-    const output = await runShellCommand("printf 'ok'");
-    expect(output).toContain("exit_code=0");
-    expect(output).toContain("ok");
-  });
-
-  test("readSnippet allows ~/.acolyte files", async () => {
-    const filePath = join(homedir(), ".acolyte", `tmp-coding-tools-read-${crypto.randomUUID()}.txt`);
+  test("readSnippet allows /tmp files", async () => {
+    const filePath = `/tmp/acolyte-tmp-read-${crypto.randomUUID()}.txt`;
     tempFiles.push(filePath);
-    await mkdir(join(homedir(), ".acolyte"), { recursive: true });
-    await writeFile(filePath, "hello from acolyte home", "utf8");
+    await writeFile(filePath, "hello from tmp", "utf8");
     const output = await readSnippet(filePath, "1", "1");
-    expect(output).toContain("hello from acolyte home");
+    expect(output).toContain("hello from tmp");
   });
 
-  test("editFileReplace allows ~/.acolyte files", async () => {
-    const filePath = join(homedir(), ".acolyte", `tmp-coding-tools-edit-${crypto.randomUUID()}.txt`);
+  test("editFileReplace allows /tmp files", async () => {
+    const filePath = `/tmp/acolyte-tmp-edit-${crypto.randomUUID()}.txt`;
     tempFiles.push(filePath);
-    await mkdir(join(homedir(), ".acolyte"), { recursive: true });
     await writeFile(filePath, "alpha beta", "utf8");
     const output = await editFileReplace({
       path: filePath,
@@ -72,8 +61,23 @@ describe("coding-tools workspace guards", () => {
     expect(output).toContain("matches=1");
   });
 
-  test("runShellCommand blocks home paths outside ~/.acolyte", async () => {
-    await expect(runShellCommand("cat ~/Documents")).rejects.toThrow("Command references home path outside ~/.acolyte");
+  test("runShellCommand allows /tmp paths", async () => {
+    const filePath = `/tmp/acolyte-tmp-run-${crypto.randomUUID()}.txt`;
+    tempFiles.push(filePath);
+    const output = await runShellCommand(`printf 'ok' > ${filePath}`);
+    expect(output).toContain("exit_code=0");
+  });
+
+  test("runShellCommand allows in-workspace commands", async () => {
+    const output = await runShellCommand("printf 'ok'");
+    expect(output).toContain("exit_code=0");
+    expect(output).toContain("ok");
+  });
+
+  test("runShellCommand blocks home paths", async () => {
+    await expect(runShellCommand("cat ~/Documents")).rejects.toThrow(
+      "Command references home path outside allowed roots",
+    );
   });
 
   test("fetchWeb rejects invalid URL input", async () => {

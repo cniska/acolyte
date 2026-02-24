@@ -133,6 +133,27 @@ describe("runAgent guards", () => {
       setPermissionMode(previousMode);
     }
   });
+
+  test("blocks direct edit prompts that target absolute paths outside workspace", async () => {
+    const previousMode = appConfig.agent.permissions.mode;
+    setPermissionMode("write");
+    try {
+      const result = await runAgent({
+        soulPrompt: "test soul",
+        request: {
+          model: "gpt-5-mini",
+          message: "edit /etc/hosts to set x to 2",
+          history: [],
+          sessionId: "sess_test",
+        },
+      });
+      expect(result.output).toContain("outside allowed roots");
+      expect(result.output).toContain("/etc/hosts");
+      expect(result.toolCalls ?? []).toHaveLength(0);
+    } finally {
+      setPermissionMode(previousMode);
+    }
+  });
 });
 
 describe("direct edit execution contract", () => {

@@ -1,10 +1,10 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { homedir } from "node:os";
+import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { appConfig } from "./app-config";
 
 const WORKSPACE_ROOT = resolve(process.cwd());
-const ACOLYTE_HOME_ROOT = resolve(homedir(), ".acolyte");
+const TEMP_ROOTS = Array.from(new Set([resolve(tmpdir()), resolve("/tmp"), resolve("/private/tmp")]));
 
 async function runCommand(cmd: string[]): Promise<{ code: number; stdout: string; stderr: string }> {
   const proc = Bun.spawn({
@@ -53,30 +53,25 @@ function isWithinWorkspace(pathInput: string): boolean {
   return absPath === WORKSPACE_ROOT || absPath.startsWith(`${WORKSPACE_ROOT}/`);
 }
 
-function isWithinAcolyteHome(pathInput: string): boolean {
+function isWithinTempRoot(pathInput: string): boolean {
   const absPath = resolve(pathInput);
-  return absPath === ACOLYTE_HOME_ROOT || absPath.startsWith(`${ACOLYTE_HOME_ROOT}/`);
+  return TEMP_ROOTS.some((root) => absPath === root || absPath.startsWith(`${root}/`));
 }
 
 function isAllowedPath(pathInput: string): boolean {
-  return isWithinWorkspace(pathInput) || isWithinAcolyteHome(pathInput);
+  return isWithinWorkspace(pathInput) || isWithinTempRoot(pathInput);
 }
 
 function ensurePathWithinAllowedRoots(pathInput: string, operation: string): string {
   const absPath = resolve(pathInput);
   if (!isAllowedPath(absPath)) {
-    throw new Error(`${operation} is restricted to the workspace or ~/.acolyte`);
+    throw new Error(`${operation} is restricted to the workspace or /tmp`);
   }
   return absPath;
 }
 
 function extractAbsolutePathsFromCommand(command: string): string[] {
   const matches = command.match(/(?:^|[\s"'`])(\/[^\s"'`|;&<>]+)/g) ?? [];
-  return matches.map((part) => part.trim().replace(/^["'`]/, ""));
-}
-
-function extractHomePathsFromCommand(command: string): string[] {
-  const matches = command.match(/(?:^|[\s"'`])(~\/[^\s"'`|;&<>]*)/g) ?? [];
   return matches.map((part) => part.trim().replace(/^["'`]/, ""));
 }
 
@@ -87,15 +82,11 @@ function ensureCommandScopedToWorkspace(command: string): void {
   const absPaths = extractAbsolutePathsFromCommand(command);
   for (const absPath of absPaths) {
     if (!isAllowedPath(absPath)) {
-      throw new Error("Command references path outside workspace and ~/.acolyte");
+      throw new Error("Command references path outside workspace and /tmp");
     }
   }
-  const homePaths = extractHomePathsFromCommand(command);
-  for (const homePath of homePaths) {
-    const expanded = resolve(homedir(), homePath.slice(2));
-    if (!isWithinAcolyteHome(expanded)) {
-      throw new Error("Command references home path outside ~/.acolyte");
-    }
+  if (/(?:^|[\s"'`])~\//.test(command)) {
+    throw new Error("Command references home path outside allowed roots");
   }
 }
 

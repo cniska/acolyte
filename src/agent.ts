@@ -1,3 +1,5 @@
+import { tmpdir } from "node:os";
+import { isAbsolute, relative, resolve } from "node:path";
 import { createAgent } from "./agent-factory";
 import { type AgentRole, buildRoleInstructions, buildSubagentContext, selectAgentRole } from "./agent-roles";
 import type { ChatRequest, ChatResponse } from "./api";
@@ -325,6 +327,32 @@ function extractExplicitTargetPath(message: string): string | null {
   }
   const candidate = (pathMatch[1] ?? "").trim();
   return candidate.length > 0 ? candidate : null;
+}
+
+function extractAbsolutePathCandidates(message: string): string[] {
+  const results: string[] = [];
+  const pattern = /(?:^|\s)(\/[^\s,;:!?]+)/g;
+  let match: RegExpExecArray | null = pattern.exec(message);
+  while (match) {
+    const candidate = (match[1] ?? "").trim().replace(/[.)]+$/g, "");
+    if (candidate.length > 0) {
+      results.push(candidate);
+    }
+    match = pattern.exec(message);
+  }
+  return results;
+}
+
+function isPathInside(root: string, target: string): boolean {
+  const rel = relative(root, target);
+  return rel.length === 0 || (!rel.startsWith("..") && !isAbsolute(rel));
+}
+
+function isAllowedAbsoluteEditPath(pathInput: string): boolean {
+  const target = resolve(pathInput);
+  const workspaceRoot = resolve(process.cwd());
+  const tempRoots = Array.from(new Set([resolve(tmpdir()), resolve("/tmp"), resolve("/private/tmp")]));
+  return isPathInside(workspaceRoot, target) || tempRoots.some((root) => isPathInside(root, target));
 }
 
 function suggestNarrowerReviewScope(path: string): string {
@@ -918,6 +946,21 @@ export async function runAgent(input: {
       toolCalls: [],
       modelCalls: 0,
     };
+  }
+  if (directEditLikely) {
+    const disallowedAbsolutePaths = extractAbsolutePathCandidates(input.request.message).filter(
+      (pathInput) => !isAllowedAbsoluteEditPath(pathInput),
+    );
+    if (disallowedAbsolutePaths.length > 0) {
+      const blockedPath = disallowedAbsolutePaths[0] ?? "absolute path";
+      emitDebug("agent.direct_edit.blocked_path", { blocked_path: blockedPath });
+      return {
+        model: input.request.model,
+        output: `Edit request blocked: ${blockedPath} is outside allowed roots. Allowed roots are the current repository and /tmp.`,
+        toolCalls: [],
+        modelCalls: 0,
+      };
+    }
   }
   const roleSoul = loadRoleSoulPrompt(role);
   const resolved = resolveRunnableModel(role, input.request.model);
