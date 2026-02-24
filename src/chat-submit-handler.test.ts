@@ -852,4 +852,64 @@ describe("chat submit handler guards", () => {
     );
     expect(runRows.length).toBe(1);
   });
+
+  test("persists token usage on successful turn", async () => {
+    const session = createSession({ id: "sess_test" });
+    const store = createStore({ activeSessionId: session.id, sessions: [session] });
+    const tokenUsageSnapshots: Array<typeof session.tokenUsage> = [];
+
+    const submit = createSubmitHandler({
+      backend: createBackend({
+        status: async () => "ok",
+        reply: async () => ({
+          model: "gpt-5-mini",
+          output: "done",
+          usage: {
+            promptTokens: 12,
+            completionTokens: 8,
+            totalTokens: 20,
+          },
+          modelCalls: 3,
+        }),
+      }),
+      store,
+      currentSession: session,
+      setCurrentSession: () => {},
+      toRows: () => [],
+      setRows: () => {},
+      setShowShortcuts: () => {},
+      setValue: () => {},
+      persist: async () => {},
+      exit: () => {},
+      openSkillsPanel: async () => {},
+      openResumePanel: () => {},
+      openPermissionsPanel: () => {},
+      openPolicyPanel: () => {},
+      openClarifyPanel: () => {},
+      openWriteConfirmPanel: () => {},
+      pendingPolicyCandidate: null,
+      setPendingPolicyCandidate: () => {},
+      tokenUsage: [],
+      isThinking: false,
+      setInputHistory: () => {},
+      setInputHistoryIndex: () => {},
+      setInputHistoryDraft: () => {},
+      setIsThinking: () => {},
+      setThinkingLabel: () => {},
+      setTokenUsage: (updater) => {
+        tokenUsageSnapshots.push(updater([]));
+      },
+      createMessage,
+      nowIso: () => "2026-02-20T00:00:00.000Z",
+      setInterrupt: () => {},
+    });
+
+    await submit("hello");
+
+    expect(session.tokenUsage.length).toBe(1);
+    expect(session.tokenUsage[0]?.usage.totalTokens).toBe(20);
+    expect(session.tokenUsage[0]?.modelCalls).toBe(3);
+    expect(tokenUsageSnapshots.length).toBe(1);
+    expect(tokenUsageSnapshots[0]).toEqual(session.tokenUsage);
+  });
 });
