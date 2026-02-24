@@ -922,6 +922,7 @@ export async function runAgent(input: {
   onDebug?: (event: string, fields?: Record<string, unknown>) => void;
 }): Promise<ChatResponse> {
   const CODER_INITIAL_MAX_STEPS = 6;
+  const DIRECT_EDIT_INITIAL_MAX_STEPS = 4;
   const REQUIRED_TOOLS_RETRY_MAX_STEPS = 6;
   const BASE_MODEL_RETRY_MAX_STEPS = 5;
   const EMPTY_TEXT_RETRY_MAX_STEPS = 4;
@@ -1138,14 +1139,14 @@ export async function runAgent(input: {
 
   const delegatedInput = `${agentInput}\n\nDelegation brief:\n${delegationBrief}`;
   const directEditTargetHint = directEditTargetPath
-    ? `\n\nDirect edit target path: ${directEditTargetPath}`
-    : "\n\nDirect edit target path: none specified; locate exact target and then execute edit-file.";
+    ? `\n\nDirect edit target path: ${directEditTargetPath}\nHard requirement: execute edit-file in this first response. Prefer read-file then edit-file.`
+    : "\n\nDirect edit target path: none specified; locate exact target quickly, then execute edit-file in this first response.";
   const agentPrompt = directEditLikely ? `${delegatedInput}${directEditTargetHint}` : delegatedInput;
   emitProgress(progressStageForRole(role, model));
   emitDebug("agent.generate.start", {
     model,
     tool_choice: directEditLikely ? "required" : "auto",
-    max_steps: role === "planner" ? 5 : directEditLikely ? 6 : CODER_INITIAL_MAX_STEPS,
+    max_steps: role === "planner" ? 5 : directEditLikely ? DIRECT_EDIT_INITIAL_MAX_STEPS : CODER_INITIAL_MAX_STEPS,
     reason: "initial",
   });
   let result: Awaited<ReturnType<typeof agent.generate>>;
@@ -1154,7 +1155,7 @@ export async function runAgent(input: {
     result = await generateWithTimeout(
       agentPrompt,
       {
-        maxSteps: role === "planner" ? 5 : directEditLikely ? 6 : CODER_INITIAL_MAX_STEPS,
+        maxSteps: role === "planner" ? 5 : directEditLikely ? DIRECT_EDIT_INITIAL_MAX_STEPS : CODER_INITIAL_MAX_STEPS,
         toolChoice: directEditLikely ? "required" : "auto",
         memory: memoryOptions,
         onStepFinish: emitToolProgress,

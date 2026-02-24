@@ -160,6 +160,14 @@ describe("runAgent guards", () => {
     expect(extractAbsolutePathCandidates("add a test for /xyz alias behavior")).toEqual([]);
     expect(extractAbsolutePathCandidates("edit /etc/hosts to set x to 2")).toEqual(["/etc/hosts"]);
   });
+
+  test("path candidate parsing strips trailing punctuation", () => {
+    expect(extractAbsolutePathCandidates("edit /etc/hosts. to set x to 2")).toEqual(["/etc/hosts"]);
+  });
+
+  test("path candidate parsing strips punctuation at end of message", () => {
+    expect(extractAbsolutePathCandidates("please open /etc/hosts.")).toEqual(["/etc/hosts"]);
+  });
 });
 
 describe("direct edit execution contract", () => {
