@@ -70,18 +70,18 @@ Exit Criteria:
 - Absolute-path safety guards avoid false positives on non-path slash tokens in prompts (for example `/xyz` in examples).
   Evidence (February 24, 2026): `bun run dogfood:gate` passed with verify/smoke/recovery/one-shot-diagnostics/session-diagnostics green, plus delivery and delegated-success-rate checks.
 
-### Milestone 5: Autonomous Delivery Readiness (MVP Closure)
-Status: completed on February 24, 2026.
-Description: Prove the assistant can complete real coding tasks independently with low fallback.
-Goal: make autonomous end-to-end execution reliable enough to call MVP complete.
+### Milestone 5: Autonomous Soak (MVP Closure)
+Status: in progress.
+Description: Prove autonomous coding reliability over time, not just a single capability snapshot.
+Goal: sustain autonomous end-to-end execution with low fallback across multiple days.
 
 Exit Criteria:
-- Independent delegated coding tasks succeed consistently over a sustained window (not single-run).
-- Manual fallback is the exception path, not the default path.
-- Failure categories are tracked, and repeated classes are closed with root-cause fixes.
-- Gate evidence remains green while real task execution stays stable.
+- Strict autonomy gate passes across a soak window (at least 10 runs over at least 3 separate days).
+- Manual fallback remains the exception path, with an explicit fallback-rate cap for scoped delegated runs.
+- Failure categories are tracked, and repeated classes show either closure or an active root-cause fix item.
+- Gate evidence remains green while real task execution stays stable during the soak window.
 - MVP gate is only marked complete when this milestone is complete.
-  Evidence (February 24, 2026): `dogfood:smoke` requires two autonomous coding edits when provider is ready, fails on fallback edit responses, and strict autonomy smoke fails when provider readiness is missing; `dogfood:progress` reports non-delivery category counts for repeated failure-class tracking; `bun run dogfood:gate -- --strict-autonomy --skip-verify` is green with smoke/recovery/diagnostics/concurrency/delegated checks and stability window `4/3`.
+  Baseline achieved (February 24, 2026): `dogfood:smoke` requires two autonomous coding edits when provider is ready, fails on fallback edit responses, and strict autonomy smoke fails when provider readiness is missing; `dogfood:progress` reports non-delivery category counts for repeated failure-class tracking; `bun run dogfood:gate -- --strict-autonomy --skip-verify` is green with smoke/recovery/diagnostics/concurrency/delegated checks and stability window `4/3`.
 
 ### Milestone 6: Memory Quality
 Status: planned.
@@ -130,6 +130,6 @@ Exit Criteria:
 - Progress/status contracts were simplified to a single-agent, single-model shape (`model`, `provider`, `provider_ready`) plus `Working…` stage text.
 
 ## MVP Gate
-- Status: met on February 24, 2026.
+- Status: not yet met.
 - Completed milestones retained: 1-4 are complete.
-- Milestone 5 is complete (autonomous independent task execution with low fallback).
+- Remaining requirement: complete Milestone 5 soak window and fallback/failure-class durability criteria.
