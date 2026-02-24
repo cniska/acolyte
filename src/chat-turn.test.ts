@@ -29,6 +29,7 @@ describe("chat turn helpers", () => {
       createdAt: "2026-02-20T00:00:00.000Z",
       updatedAt: "2026-02-20T00:00:00.000Z",
       messages: [],
+      tokenUsage: [],
     };
     const result = applyUserTurn({
       session,

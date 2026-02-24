@@ -24,6 +24,7 @@ export function createSession(overrides: Partial<Session> = {}): Session {
     model: overrides.model ?? "gpt-5-mini",
     title: overrides.title ?? "New Session",
     messages: overrides.messages ?? [],
+    tokenUsage: overrides.tokenUsage ?? [],
   };
 }
 

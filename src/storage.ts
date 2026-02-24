@@ -17,8 +17,16 @@ export async function readStore(): Promise<SessionStore> {
   try {
     const raw = await readFile(STORE_PATH, "utf8");
     const parsed = JSON.parse(raw) as SessionStore;
+    const sessions = Array.isArray(parsed.sessions)
+      ? parsed.sessions.map((session) => {
+          const tokenUsage = Array.isArray((session as Partial<Session>).tokenUsage)
+            ? ((session as Partial<Session>).tokenUsage ?? [])
+            : [];
+          return { ...session, tokenUsage } as Session;
+        })
+      : [];
     return {
-      sessions: parsed.sessions ?? [],
+      sessions,
       activeSessionId: parsed.activeSessionId,
     };
   } catch {
@@ -41,5 +49,6 @@ export function createSession(model: string): Session {
     title: "New Session",
     model,
     messages: [],
+    tokenUsage: [],
   };
 }

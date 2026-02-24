@@ -1,5 +1,5 @@
 import { setPermissionMode } from "./app-config";
-import type { ChatRow } from "./chat-commands";
+import type { ChatRow, TokenUsageEntry } from "./chat-commands";
 import type { PickerState } from "./chat-picker";
 import {
   boundedSkillInstructions,
@@ -23,6 +23,7 @@ type CreatePickerHandlersInput = {
   store: SessionStore;
   currentSession: Session;
   setCurrentSession: (next: Session) => void;
+  setTokenUsage?: (updater: (current: TokenUsageEntry[]) => TokenUsageEntry[]) => void;
   setRows: (updater: (current: ChatRow[]) => ChatRow[]) => void;
   setRowsDirect: (next: ChatRow[]) => void;
   setPicker: (next: PickerState | null) => void;
@@ -197,6 +198,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
         if (selected) {
           input.store.activeSessionId = selected.id;
           input.setCurrentSession(selected);
+          input.setTokenUsage?.(() => selected.tokenUsage);
           input.setRowsDirect(createResumeRows(selected, input.toRows));
           await input.persist();
         }

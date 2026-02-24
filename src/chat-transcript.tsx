@@ -41,6 +41,43 @@ function parseSessionsHeader(content: string): { prefix: string; count: string; 
   };
 }
 
+function parseStatusLine(line: string): { indent: string; key: string; value: string } | null {
+  const match = line.match(/^(\s*)([a-zA-Z0-9_]+:\s*)(.*)$/);
+  if (!match) {
+    return null;
+  }
+  return {
+    indent: match[1] ?? "",
+    key: match[2] ?? "",
+    value: match[3] ?? "",
+  };
+}
+
+function renderStatusContent(content: string): React.ReactNode {
+  const lines = content.split("\n");
+  return (
+    <>
+      {lines.map((line, index) => {
+        const parsed = parseStatusLine(line);
+        return (
+          <React.Fragment key={`status-line-${index}-${line}`}>
+            {index > 0 ? "\n" : null}
+            {parsed ? (
+              <>
+                <Text>{parsed.indent}</Text>
+                <Text dimColor>{parsed.key}</Text>
+                <Text>{parsed.value}</Text>
+              </>
+            ) : (
+              <Text>{line}</Text>
+            )}
+          </React.Fragment>
+        );
+      })}
+    </>
+  );
+}
+
 export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
   const { rows, isThinking, thinkingLabel, thinkingFrame, thinkingStartedAt } = props;
   const pulsePeriod = 16;
@@ -106,6 +143,8 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
                       <Text dimColor>{sessionsListHeader.count}</Text>
                       {sessionsListHeader.rest.length > 0 ? <Text>{`\n${sessionsListHeader.rest}`}</Text> : null}
                     </Text>
+                  ) : row.role === "system" && row.style === "statusOutput" ? (
+                    <Text>{renderStatusContent(row.content)}</Text>
                   ) : (
                     <Text dimColor={Boolean(row.dim)}>
                       {row.role === "assistant" ? renderAssistantContent(row.content, contentWidth) : row.content}

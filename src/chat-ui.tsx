@@ -66,7 +66,7 @@ function ChatApp(props: ChatAppProps) {
   const [queuedInput, setQueuedInput] = useState<string | null>(null);
   const [picker, setPicker] = useState<PickerState | null>(null);
   const [pendingPolicyCandidate, setPendingPolicyCandidate] = useState<PolicyCandidate | null>(null);
-  const [tokenUsage, setTokenUsage] = useState<TokenUsageEntry[]>([]);
+  const [tokenUsage, setTokenUsage] = useState<TokenUsageEntry[]>(() => session.tokenUsage ?? []);
   const [inputHistory, setInputHistory] = useState<string[]>([]);
   const [inputHistoryIndex, setInputHistoryIndex] = useState(-1);
   const [inputHistoryDraft, setInputHistoryDraft] = useState("");
@@ -105,6 +105,10 @@ function ChatApp(props: ChatAppProps) {
     setInputHistoryDraft("");
   }, [currentSession.messages]);
 
+  useEffect(() => {
+    setTokenUsage(currentSession.tokenUsage ?? []);
+  }, [currentSession]);
+
   const {
     openSkillsPanel,
     openResumePanel,
@@ -117,6 +121,7 @@ function ChatApp(props: ChatAppProps) {
     store,
     currentSession,
     setCurrentSession,
+    setTokenUsage,
     setRows,
     setRowsDirect: setRows,
     setPicker: (next) => setPicker(next),

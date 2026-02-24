@@ -1,4 +1,3 @@
-import type { TokenUsage } from "./api";
 import { appConfig, setPermissionMode } from "./app-config";
 import type { Backend } from "./backend";
 import { suggestClosestSlashCommand } from "./chat-slash";
@@ -9,21 +8,17 @@ import { distillPolicyCandidatesFromSessions, distillPolicyFromSessions, parseDi
 import { getMemoryContextEntries, type MemoryContextScope } from "./soul";
 import { formatStatusOutput } from "./status-format";
 import { createSession } from "./storage";
-import type { Session, SessionStore } from "./types";
+import type { Session, SessionStore, SessionTokenUsageEntry } from "./types";
 
 export type ChatRow = {
   id: string;
   role: "user" | "assistant" | "system";
   content: string;
   dim?: boolean;
-  style?: "sessionStatus" | "sessionsList" | "toolProgress";
+  style?: "sessionStatus" | "sessionsList" | "toolProgress" | "statusOutput";
 };
 
-export type TokenUsageEntry = {
-  id: string;
-  usage: TokenUsage;
-  warning?: string;
-};
+export type TokenUsageEntry = SessionTokenUsageEntry;
 
 export type ResumeResolution =
   | { kind: "usage" }
@@ -64,9 +59,10 @@ export function formatTokenUsageOutput(last: TokenUsageEntry | null, all: TokenU
       acc.prompt += entry.usage.promptTokens;
       acc.completion += entry.usage.completionTokens;
       acc.total += entry.usage.totalTokens;
+      acc.modelCalls += entry.modelCalls ?? 0;
       return acc;
     },
-    { prompt: 0, completion: 0, total: 0 },
+    { prompt: 0, completion: 0, total: 0, modelCalls: 0 },
   );
   const rows: Array<{ key: string; value: string }> = [
     {
@@ -78,6 +74,12 @@ export function formatTokenUsageOutput(last: TokenUsageEntry | null, all: TokenU
       value: `prompt=${totals.prompt} completion=${totals.completion} total=${totals.total} (${all.length} ${all.length === 1 ? "turn" : "turns"})`,
     },
   ];
+  if (last.modelCalls !== undefined || totals.modelCalls > 0) {
+    rows.push({
+      key: "model_calls:",
+      value: `last=${last.modelCalls ?? 0} session=${totals.modelCalls}`,
+    });
+  }
   if (last.usage.promptBudgetTokens) {
     rows.push({
       key: "budget:",
@@ -108,6 +110,7 @@ type CommandContext = {
   store: SessionStore;
   currentSession: Session;
   setCurrentSession: (next: Session) => void;
+  setTokenUsage?: (updater: (current: TokenUsageEntry[]) => TokenUsageEntry[]) => void;
   toRows: (messages: Session["messages"]) => ChatRow[];
   setRows: (updater: (current: ChatRow[]) => ChatRow[]) => void;
   setShowShortcuts: (updater: (current: boolean) => boolean) => void;
@@ -242,6 +245,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     const target = resolved.session;
     ctx.store.activeSessionId = target.id;
     ctx.setCurrentSession(target);
+    ctx.setTokenUsage?.(() => target.tokenUsage);
     ctx.setRows(() => [
       ...ctx.toRows(target.messages),
       row("system", `Resumed session: ${target.id.slice(0, 12)}`, true, "sessionStatus"),
@@ -255,7 +259,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     pushUserCommandRow();
     const recent = formatSessionList(ctx.store, 10);
     const sections = [`Sessions ${ctx.store.sessions.length}`, "", ...recent];
-    ctx.setRows((current) => [...current, row("assistant", sections.join("\n"), false, "sessionsList")]);
+    ctx.setRows((current) => [...current, row("system", sections.join("\n"), false, "sessionsList")]);
     return { stop: true, userText: text, runVerifyAfterReply: false };
   }
 
@@ -263,7 +267,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     pushUserCommandRow();
     try {
       const status = await ctx.backend.status();
-      ctx.setRows((current) => [...current, row("assistant", formatStatusOutput(status))]);
+      ctx.setRows((current) => [...current, row("system", formatStatusOutput(status), false, "statusOutput")]);
     } catch (error) {
       ctx.setRows((current) => [
         ...current,
@@ -392,7 +396,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
   if (resolvedText === "/tokens") {
     pushUserCommandRow();
     const last = ctx.tokenUsage.length > 0 ? ctx.tokenUsage[ctx.tokenUsage.length - 1] : null;
-    ctx.setRows((current) => [...current, row("assistant", formatTokenUsageOutput(last, ctx.tokenUsage))]);
+    ctx.setRows((current) => [...current, row("system", formatTokenUsageOutput(last, ctx.tokenUsage))]);
     return { stop: true, userText: text, runVerifyAfterReply: false };
   }
 
@@ -440,6 +444,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     ctx.store.sessions.unshift(next);
     ctx.store.activeSessionId = next.id;
     ctx.setCurrentSession(next);
+    ctx.setTokenUsage?.(() => []);
     ctx.setRows(() => [
       row("user", text),
       row("system", `Started new session: ${next.id.slice(0, 12)}`, true, "sessionStatus"),

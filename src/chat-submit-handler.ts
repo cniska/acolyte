@@ -438,6 +438,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         store: input.store,
         currentSession: input.currentSession,
         setCurrentSession: input.setCurrentSession,
+        setTokenUsage: input.setTokenUsage,
         toRows: (messages) => input.toRows(messages),
         setRows: input.setRows,
         setShowShortcuts: input.setShowShortcuts,
@@ -593,7 +594,8 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         input.currentSession.updatedAt = input.nowIso();
         input.setRows((current) => [...current, ...dedupeToolProgressRows(current, turn.rows)]);
       }
-      input.setTokenUsage((current) => [...current, turn.tokenEntry]);
+      input.currentSession.tokenUsage.push(turn.tokenEntry);
+      input.setTokenUsage(() => [...input.currentSession.tokenUsage]);
       await input.persist();
     } catch (error) {
       const row: ChatRow = {

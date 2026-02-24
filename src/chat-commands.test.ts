@@ -31,6 +31,7 @@ async function runCommand(
     store,
     currentSession: createSession(),
     setCurrentSession: () => {},
+    setTokenUsage: () => {},
     toRows: () => [],
     setRows: (updater) => {
       rows = updater(rows);
@@ -66,11 +67,14 @@ describe("chat-commands", () => {
         promptBudgetTokens: 300,
         promptTruncated: false,
       },
+      modelCalls: 3,
     };
     const output = formatTokenUsageOutput(usage, [usage]);
     expect(output).toContain("last_turn:");
     expect(output).toContain("session:");
     expect(output).toContain("budget:");
+    expect(output).toContain("model_calls:");
+    expect(output).toContain("last=3 session=3");
   });
 
   test("formatTokenUsageOutput includes latest warning when present", () => {
@@ -122,12 +126,26 @@ describe("chat-commands", () => {
           completionTokens: 5,
           totalTokens: 15,
         },
+        modelCalls: 2,
+      },
+      {
+        id: "row_3",
+        usage: {
+          promptTokens: 20,
+          completionTokens: 10,
+          totalTokens: 30,
+        },
+        modelCalls: 5,
       },
     ];
     const { rows, stop } = await runCommand("/tokens", tokenUsage);
 
     expect(stop).toBe(true);
     expect(rows.some((row) => row.content.includes("last_turn:"))).toBe(true);
+    expect(rows.some((row) => row.role === "system" && row.content.includes("last_turn:"))).toBe(true);
+    expect(rows.some((row) => row.content.includes("model_calls:") && row.content.includes("last=5 session=7"))).toBe(
+      true,
+    );
   });
 
   test("dispatchSlashCommand handles /tokens with empty usage", async () => {
@@ -189,11 +207,12 @@ describe("chat-commands", () => {
   test("dispatchSlashCommand handles /status", async () => {
     const { rows, stop } = await runCommand("/status");
     expect(stop).toBe(true);
-    expect(rows.some((row) => row.role === "assistant" && row.content.includes("provider:"))).toBe(true);
-    expect(rows.some((row) => row.role === "assistant" && row.content.includes("entries:"))).toBe(true);
+    expect(rows.some((row) => row.role === "system" && row.content.includes("provider:"))).toBe(true);
+    expect(rows.some((row) => row.role === "system" && row.content.includes("entries:"))).toBe(true);
+    expect(rows.some((row) => row.role === "system" && row.style === "statusOutput")).toBe(true);
   });
 
-  test("dispatchSlashCommand handles /sessions with compact assistant output", async () => {
+  test("dispatchSlashCommand handles /sessions with compact system output", async () => {
     const store = createStore({
       activeSessionId: "sess_aaaa1111",
       sessions: [
@@ -203,11 +222,11 @@ describe("chat-commands", () => {
     });
     const { rows, stop } = await runCommand("/sessions", [], store);
     expect(stop).toBe(true);
-    const assistant = rows.find((row) => row.role === "assistant" && row.content.includes("Sessions 2"));
-    expect(assistant).toBeDefined();
-    expect(assistant?.style).toBe("sessionsList");
-    expect(assistant?.content).toContain("● sess_aaaa111  First");
-    expect(assistant?.content).toContain("  sess_bbbb222  Second");
+    const system = rows.find((row) => row.role === "system" && row.content.includes("Sessions 2"));
+    expect(system).toBeDefined();
+    expect(system?.style).toBe("sessionsList");
+    expect(system?.content).toContain("● sess_aaaa111  First");
+    expect(system?.content).toContain("  sess_bbbb222  Second");
   });
 
   test("dispatchSlashCommand handles /distill", async () => {
@@ -587,6 +606,7 @@ describe("chat-commands", () => {
     const session = createSession({ id: "sess_current" });
     const store = createStore({ sessions: [session], activeSessionId: session.id });
     const setCurrentSessionCalls: string[] = [];
+    const tokenUsageCalls: TokenUsageEntry[][] = [];
 
     const result = await dispatchSlashCommand({
       text: "/new",
@@ -596,6 +616,9 @@ describe("chat-commands", () => {
       currentSession: session,
       setCurrentSession: (next) => {
         setCurrentSessionCalls.push(next.id);
+      },
+      setTokenUsage: (updater) => {
+        tokenUsageCalls.push(updater([]));
       },
       toRows: () => [],
       setRows: (updater) => {
@@ -620,6 +643,7 @@ describe("chat-commands", () => {
     expect(rows[1]?.content.startsWith("Started new session: sess_")).toBe(true);
     expect(rows[1]?.style).toBe("sessionStatus");
     expect(setCurrentSessionCalls).toHaveLength(1);
+    expect(tokenUsageCalls).toEqual([[]]);
     expect(store.sessions).toHaveLength(2);
     expect(store.activeSessionId).toBe(setCurrentSessionCalls[0]);
   });
@@ -630,12 +654,20 @@ describe("chat-commands", () => {
       id: "sess_resume_target",
       title: "Resume Target",
       messages: [createMessage("assistant", "hi")],
+      tokenUsage: [
+        {
+          id: "row_1",
+          usage: { promptTokens: 11, completionTokens: 7, totalTokens: 18 },
+          modelCalls: 2,
+        },
+      ],
     });
     const store = createStore({
       sessions: [target, createSession({ id: "sess_other", title: "Other" })],
       activeSessionId: "sess_other",
     });
     const setCurrentSessionCalls: string[] = [];
+    const setTokenUsageCalls: TokenUsageEntry[][] = [];
 
     const result = await dispatchSlashCommand({
       text: `/resume ${target.id.slice(0, 12)}`,
@@ -645,6 +677,9 @@ describe("chat-commands", () => {
       currentSession: createSession({ id: "sess_current" }),
       setCurrentSession: (next) => {
         setCurrentSessionCalls.push(next.id);
+      },
+      setTokenUsage: (updater) => {
+        setTokenUsageCalls.push(updater([]));
       },
       toRows: (messages) => messages.map((m) => ({ id: m.id, role: m.role, content: m.content })),
       setRows: (updater) => {
@@ -665,6 +700,7 @@ describe("chat-commands", () => {
     expect(result.stop).toBe(true);
     expect(store.activeSessionId).toBe(target.id);
     expect(setCurrentSessionCalls).toEqual([target.id]);
+    expect(setTokenUsageCalls).toEqual([target.tokenUsage]);
     expect(rows.some((row) => row.style === "sessionStatus" && row.content.startsWith("Resumed session:"))).toBe(true);
   });
 

@@ -131,6 +131,7 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
     id: assistantMessage.id,
     usage: reply.usage ?? estimateTokenUsageFallback(params.userText, reply.output),
     warning: reply.budgetWarning,
+    modelCalls: reply.modelCalls,
   };
 
   if (params.runVerifyAfterReply) {
