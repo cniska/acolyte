@@ -1,0 +1,55 @@
+import { describe, expect, test } from "bun:test";
+import { normalizeStore } from "./storage";
+
+describe("storage", () => {
+  test("normalizeStore defaults missing tokenUsage to an empty list", () => {
+    const normalized = normalizeStore({
+      activeSessionId: "sess_1",
+      sessions: [
+        {
+          id: "sess_1",
+          createdAt: "2026-02-24T00:00:00.000Z",
+          updatedAt: "2026-02-24T00:00:00.000Z",
+          model: "gpt-5-mini",
+          title: "New Session",
+          messages: [],
+        },
+      ] as never,
+    });
+
+    expect(normalized.sessions).toHaveLength(1);
+    expect(normalized.sessions[0]?.tokenUsage).toEqual([]);
+  });
+
+  test("normalizeStore preserves existing tokenUsage entries", () => {
+    const normalized = normalizeStore({
+      activeSessionId: "sess_1",
+      sessions: [
+        {
+          id: "sess_1",
+          createdAt: "2026-02-24T00:00:00.000Z",
+          updatedAt: "2026-02-24T00:00:00.000Z",
+          model: "gpt-5-mini",
+          title: "New Session",
+          messages: [],
+          tokenUsage: [
+            {
+              id: "row_1",
+              usage: {
+                promptTokens: 10,
+                completionTokens: 5,
+                totalTokens: 15,
+              },
+              modelCalls: 2,
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(normalized.sessions).toHaveLength(1);
+    expect(normalized.sessions[0]?.tokenUsage).toHaveLength(1);
+    expect(normalized.sessions[0]?.tokenUsage[0]?.usage.totalTokens).toBe(15);
+    expect(normalized.sessions[0]?.tokenUsage[0]?.modelCalls).toBe(2);
+  });
+});

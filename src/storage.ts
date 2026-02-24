@@ -9,6 +9,21 @@ const STORE_PATH = join(DATA_DIR, "sessions.json");
 
 const EMPTY_STORE: SessionStore = { sessions: [] };
 
+export function normalizeStore(parsed: SessionStore): SessionStore {
+  const sessions = Array.isArray(parsed.sessions)
+    ? parsed.sessions.map((session) => {
+        const tokenUsage = Array.isArray((session as Partial<Session>).tokenUsage)
+          ? ((session as Partial<Session>).tokenUsage ?? [])
+          : [];
+        return { ...session, tokenUsage } as Session;
+      })
+    : [];
+  return {
+    sessions,
+    activeSessionId: parsed.activeSessionId,
+  };
+}
+
 export async function readStore(): Promise<SessionStore> {
   if (!existsSync(STORE_PATH)) {
     return EMPTY_STORE;
@@ -17,18 +32,7 @@ export async function readStore(): Promise<SessionStore> {
   try {
     const raw = await readFile(STORE_PATH, "utf8");
     const parsed = JSON.parse(raw) as SessionStore;
-    const sessions = Array.isArray(parsed.sessions)
-      ? parsed.sessions.map((session) => {
-          const tokenUsage = Array.isArray((session as Partial<Session>).tokenUsage)
-            ? ((session as Partial<Session>).tokenUsage ?? [])
-            : [];
-          return { ...session, tokenUsage } as Session;
-        })
-      : [];
-    return {
-      sessions,
-      activeSessionId: parsed.activeSessionId,
-    };
+    return normalizeStore(parsed);
   } catch {
     return EMPTY_STORE;
   }
