@@ -61,7 +61,7 @@ Exit Criteria:
 - Session diagnostics survive session switches (`/tokens` restored on `/resume`, reset on `/new`).
 - Clarification handling is picker-first (no generated follow-up prompt text before question pickers).
 - Persistence guards cover diagnostic continuity (`tokenUsage` normalization tested at storage layer).
-- Role routing sends read-only file-inspection requests to reviewer lane by default.
+- Role routing uses explicit intents (`review ...`, `plan ...`) and defaults to coder otherwise.
 - Critical operator actions stay explicit and command-first.
 - Absolute-path safety guards avoid false positives on non-path slash tokens in prompts (for example `/xyz` in examples).
 
