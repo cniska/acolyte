@@ -11,6 +11,7 @@ import {
   formatToolProgressMessage,
   isDirectEditRequest,
   isPlanLikeOutput,
+  parseExplicitReplacement,
   resolveAgentModel,
   resolveModelProviderState,
   resolveRunnableModel,
@@ -108,6 +109,18 @@ describe("execution intent detection", () => {
     expect(isPlanLikeOutput("1. Edit src/cli.ts\n2. Run verify")).toBe(true);
     expect(isPlanLikeOutput("• 1. Edit src/cli.ts\n• 2. Run verify")).toBe(true);
     expect(isPlanLikeOutput("Updated src/cli.ts and tests pass.")).toBe(false);
+  });
+
+  test("parseExplicitReplacement extracts quoted replace directives", () => {
+    expect(parseExplicitReplacement("replace 'alpha' with 'beta' in src/file.ts")).toEqual({
+      find: "alpha",
+      replace: "beta",
+    });
+    expect(parseExplicitReplacement('change exact text "before" to "after"')).toEqual({
+      find: "before",
+      replace: "after",
+    });
+    expect(parseExplicitReplacement("please update src/file.ts")).toBeNull();
   });
 });
 

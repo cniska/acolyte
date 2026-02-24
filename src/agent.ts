@@ -3,6 +3,7 @@ import { isAbsolute, relative, resolve } from "node:path";
 import { createAgent } from "./agent-factory";
 import type { ChatRequest, ChatResponse } from "./api";
 import { appConfig } from "./app-config";
+import { editFileReplace } from "./coding-tools";
 import { toolsForAgent } from "./mastra-tools";
 import { isProviderAvailable, type ModelProviderName, providerFromModel } from "./provider-config";
 import { formatToolLabel } from "./tool-labels";
@@ -227,7 +228,14 @@ export function buildSubagentContext(_role: AgentRole, req: ChatRequest): string
 }
 
 export function buildRoleInstructions(baseInstructions: string, _role: AgentRole): string {
-  return baseInstructions;
+  const executionContract = [
+    "Execution contract:",
+    "- Prefer tool-backed execution over speculative answers when code changes are requested.",
+    "- For direct edit requests in write mode: call read-file for context, then call edit-file for the actual change.",
+    "- Do not end a direct edit request without executing edit-file.",
+    "- Keep final output concise and outcome-focused.",
+  ].join("\n");
+  return `${baseInstructions}\n\n${executionContract}`;
 }
 
 export function resolveAgentModel(_role: AgentRole, requestedModel: string, _overrides?: unknown): string {
@@ -326,6 +334,22 @@ function extractExplicitTargetPath(message: string): string | null {
   }
   const candidate = (pathMatch[1] ?? "").trim();
   return candidate.length > 0 ? candidate : null;
+}
+
+export function parseExplicitReplacement(message: string): { find: string; replace: string } | null {
+  const patterns = [
+    /(?:replace|change)(?:\s+exact(?:ly)?(?:\s+text)?)?\s+["'`](.+?)["'`]\s+(?:with|to)\s+["'`](.+?)["'`]/i,
+    /["'`](.+?)["'`]\s+(?:to|with)\s+["'`](.+?)["'`]/i,
+  ];
+  for (const pattern of patterns) {
+    const match = message.match(pattern);
+    const find = match?.[1]?.trim();
+    const replace = match?.[2]?.trim();
+    if (find && replace && find.length > 0) {
+      return { find, replace };
+    }
+  }
+  return null;
 }
 
 export function extractAbsolutePathCandidates(message: string): string[] {
@@ -879,7 +903,7 @@ export async function runAgent(input: {
   const BASE_MODEL_RETRY_MAX_STEPS = 5;
   const EMPTY_TEXT_RETRY_MAX_STEPS = 4;
   const CODER_TIMEOUT_MS = 90_000;
-  const DIRECT_EDIT_TIMEOUT_MS = 45_000;
+  const DIRECT_EDIT_TIMEOUT_MS = 90_000;
   const role = selectAgentRole(input.request.message);
   const directEditLikely = role === "coder" && isDirectEditRequest(input.request.message);
   const directEditTargetPath = directEditLikely ? extractExplicitTargetPath(input.request.message) : null;
@@ -1314,6 +1338,50 @@ export async function runAgent(input: {
     });
   }
   if (directEditLikely && !directEditExecutionSatisfied(toolCallIds, result.text)) {
+    const explicitReplacement = directEditTargetPath ? parseExplicitReplacement(input.request.message) : null;
+    if (directEditTargetPath && explicitReplacement) {
+      try {
+        await editFileReplace({
+          path: directEditTargetPath,
+          find: explicitReplacement.find,
+          replace: explicitReplacement.replace,
+        });
+        const output = `Applied direct edit fallback in ${directEditTargetPath}.`;
+        const completionTokens = estimateTokens(output);
+        const promptUsage = requestInput.usage;
+        let budgetWarning: string | undefined;
+        if (promptUsage.promptTruncated) {
+          budgetWarning = `context trimmed (${promptUsage.includedHistoryMessages}/${promptUsage.totalHistoryMessages} history messages)`;
+        } else if (promptUsage.promptTokens >= Math.floor(promptUsage.promptBudgetTokens * 0.9)) {
+          budgetWarning = `context near budget (${promptUsage.promptTokens}/${promptUsage.promptBudgetTokens} tokens)`;
+        }
+        const mergedToolCalls = Array.from(new Set([...toolCallIds, "edit-file"]));
+        emitDebug("agent.fallback.direct_edit_explicit_replace_applied", {
+          path: directEditTargetPath,
+          prior_tools: toolCallIds.join(","),
+        });
+        return {
+          model,
+          output,
+          toolCalls: mergedToolCalls,
+          modelCalls: modelCallCount,
+          usage: {
+            promptTokens: promptUsage.promptTokens,
+            completionTokens,
+            totalTokens: promptUsage.promptTokens + completionTokens,
+            promptBudgetTokens: promptUsage.promptBudgetTokens,
+            promptTruncated: promptUsage.promptTruncated,
+          },
+          budgetWarning,
+        };
+      } catch (error) {
+        lastToolFailureReason = error instanceof Error ? error.message : String(error);
+        emitDebug("agent.fallback.direct_edit_explicit_replace_failed", {
+          path: directEditTargetPath,
+          error: lastToolFailureReason,
+        });
+      }
+    }
     emitDebug("agent.fallback.direct_edit_execution_unsatisfied", {
       model,
       tool_calls: toolCallIds.length,
