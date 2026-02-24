@@ -123,6 +123,10 @@ export function isProviderReadyFromStatusOutput(output: string): boolean {
   return true;
 }
 
+export function hasFallbackEditSignal(output: string): boolean {
+  return /Applied direct edit fallback|Edit request failed:/i.test(output);
+}
+
 export function parseArgs(args: string[]): SmokeArgs {
   const parsed: SmokeArgs = { requireProviderReady: false };
   for (const token of args) {
@@ -235,6 +239,10 @@ async function runCodingTaskSmoke(
     );
     if (result.exitCode !== 0) {
       return { ok: false, detail: `command failed (exit ${result.exitCode})` };
+    }
+    const output = stripAnsi(`${result.stdout}\n${result.stderr}`);
+    if (hasFallbackEditSignal(output)) {
+      return { ok: false, detail: "fallback edit path used" };
     }
     const content = await readFile(filePath, "utf8");
     if (task.validate(content)) {

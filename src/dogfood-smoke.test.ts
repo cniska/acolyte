@@ -1,5 +1,11 @@
 import { describe, expect, it } from "bun:test";
-import { assertCheckOutput, isProviderReadyFromStatusOutput, parseArgs, stripAnsi } from "./dogfood-smoke";
+import {
+  assertCheckOutput,
+  hasFallbackEditSignal,
+  isProviderReadyFromStatusOutput,
+  parseArgs,
+  stripAnsi,
+} from "./dogfood-smoke";
 
 describe("dogfood-smoke helpers", () => {
   it("strips ANSI color sequences", () => {
@@ -26,6 +32,12 @@ describe("dogfood-smoke helpers", () => {
   it("assumes provider ready when no false readiness row is present", () => {
     const output = ["provider: openai", "model: gpt-5-mini"].join("\n");
     expect(isProviderReadyFromStatusOutput(output)).toBe(true);
+  });
+
+  it("detects fallback edit signals in output", () => {
+    expect(hasFallbackEditSignal("Applied direct edit fallback in /tmp/x.txt.")).toBe(true);
+    expect(hasFallbackEditSignal("Edit request failed: no edit-file call was executed")).toBe(true);
+    expect(hasFallbackEditSignal("Edited file successfully.")).toBe(false);
   });
 
   it("parseArgs defaults to optional provider readiness", () => {
