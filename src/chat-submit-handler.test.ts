@@ -492,7 +492,9 @@ describe("chat submit handler guards", () => {
     ]);
     expect(rows.some((row) => row.content.includes("Clarification needed before continuing:"))).toBe(false);
     expect(rows.some((row) => row.content.includes("Risks/assumptions"))).toBe(false);
-    expect(session.messages.some((message) => message.role === "assistant" && message.content.includes("Risks/assumptions"))).toBe(false);
+    expect(
+      session.messages.some((message) => message.role === "assistant" && message.content.includes("Risks/assumptions")),
+    ).toBe(false);
   });
 
   test("stops before backend call when all @references are unresolved", async () => {
