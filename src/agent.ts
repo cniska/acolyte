@@ -306,6 +306,19 @@ function extractMentionedPath(message: string): string | null {
   return cleaned.length > 0 ? cleaned : null;
 }
 
+function extractExplicitTargetPath(message: string): string | null {
+  const atRef = extractMentionedPath(message);
+  if (atRef) {
+    return atRef;
+  }
+  const pathMatch = message.match(/(?:^|\s)([./~]?[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_.-]+)+\.[A-Za-z0-9]+)(?=\s|$|[,:;])/);
+  if (!pathMatch) {
+    return null;
+  }
+  const candidate = (pathMatch[1] ?? "").trim();
+  return candidate.length > 0 ? candidate : null;
+}
+
 function suggestNarrowerReviewScope(path: string): string {
   const clean = path.replace(/\/+$/, "");
   if (clean.length === 0) {
@@ -860,6 +873,7 @@ export async function runAgent(input: {
   const DIRECT_EDIT_RETRY_TIMEOUT_MS = 45_000;
   const role = selectAgentRole(input.request.message);
   const directEditLikely = role === "coder" && isDirectEditRequest(input.request.message);
+  const directEditTargetPath = directEditLikely ? extractExplicitTargetPath(input.request.message) : null;
   const emitDebug = (event: string, fields: Record<string, unknown> = {}): void => {
     input.onDebug?.(event, {
       role,
@@ -1018,6 +1032,10 @@ export async function runAgent(input: {
   }
 
   const delegatedInput = `${agentInput}\n\nDelegation brief:\n${delegationBrief}`;
+  const directEditTargetHint = directEditTargetPath
+    ? `\n\nDirect edit target path: ${directEditTargetPath}`
+    : "\n\nDirect edit target path: none specified; locate exact target and then execute edit-file.";
+  const agentPrompt = directEditLikely ? `${delegatedInput}${directEditTargetHint}` : delegatedInput;
   emitProgress(progressStageForRole(role, model));
   emitDebug("agent.generate.start", {
     model,
@@ -1025,7 +1043,7 @@ export async function runAgent(input: {
     max_steps: role === "planner" ? 5 : directEditLikely ? 6 : 8,
     reason: "initial",
   });
-  let result = await agent.generate(delegatedInput, {
+  let result = await agent.generate(agentPrompt, {
     maxSteps: role === "planner" ? 5 : directEditLikely ? 6 : 8,
     toolChoice: directEditLikely ? "required" : "auto",
     memory: memoryOptions,
@@ -1046,7 +1064,7 @@ export async function runAgent(input: {
       tool_choice: "required",
       max_steps: 8,
     });
-    result = await agent.generate(delegatedInput, {
+    result = await agent.generate(agentPrompt, {
       maxSteps: 8,
       toolChoice: "required",
       memory: memoryOptions,
@@ -1072,7 +1090,7 @@ export async function runAgent(input: {
         tool_choice: "required",
         max_steps: directEditLikely ? 8 : 6,
       });
-      result = await agent.generate(delegatedInput, {
+      result = await agent.generate(agentPrompt, {
         maxSteps: directEditLikely ? 8 : 6,
         toolChoice: "required",
         memory: memoryOptions,
@@ -1096,7 +1114,7 @@ export async function runAgent(input: {
     });
     try {
       result = await generateWithTimeout(
-        `${delegatedInput}\n\nHard requirement: execute at least one tool before responding. Do not return a plan.`,
+        `${agentPrompt}\n\nHard requirement: execute at least one tool before responding. Do not return a plan.`,
         {
           maxSteps: 10,
           toolChoice: "required",
@@ -1133,7 +1151,7 @@ export async function runAgent(input: {
     });
     try {
       result = await generateWithTimeout(
-        `${delegatedInput}\n\nHard requirement: execute edit-file now. Apply a concrete file change and return a concise result.`,
+        `${agentPrompt}\n\nHard requirement: execute edit-file now. Apply a concrete file change and return a concise result.${directEditTargetPath ? ` Use path: ${directEditTargetPath}.` : ""}`,
         {
           maxSteps: 8,
           toolChoice: "required",
@@ -1201,7 +1219,7 @@ export async function runAgent(input: {
       tool_choice: "auto",
       max_steps: role === "planner" ? 3 : 5,
     });
-    result = await agent.generate(`${delegatedInput}\n\nReturn a direct concise answer.`, {
+    result = await agent.generate(`${agentPrompt}\n\nReturn a direct concise answer.`, {
       maxSteps: role === "planner" ? 3 : 5,
       toolChoice: "auto",
       memory: memoryOptions,
