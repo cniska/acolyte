@@ -513,7 +513,7 @@ async function main(): Promise<void> {
     const summary = summarizeGate(checks);
     await writeGateHistory([
       ...history,
-      { at: new Date().toISOString(), ready: summary.ok, strictAutonomy: args.strictAutonomy },
+      { at: new Date().toISOString(), ready: readyWithoutStability, strictAutonomy: args.strictAutonomy },
     ]);
     for (const line of summary.lines) {
       console.log(line);
