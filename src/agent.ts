@@ -1,4 +1,3 @@
-import { z } from "zod";
 import { createAgent } from "./agent-factory";
 import { type AgentRole, buildRoleInstructions, buildSubagentContext, selectAgentRole } from "./agent-roles";
 import type { ChatRequest, ChatResponse } from "./api";
@@ -286,18 +285,6 @@ export function resolveRunnableModel(
     available: false,
     usedFallback: false,
   };
-}
-
-export function compactReviewOutput(output: string): string {
-  return output;
-}
-
-function compactAssistantOutput(output: string): string {
-  return output;
-}
-
-export function normalizeReviewOutput(output: string): string {
-  return output;
 }
 
 function extractMentionedPath(message: string): string | null {
@@ -594,39 +581,6 @@ function extractToolFailureReason(resultText: string): string | null {
   return null;
 }
 
-async function summarizeWithModel(model: string, text: string, stage: "plan" | "conclusion"): Promise<string> {
-  const summarySchema = z.object({
-    summary: z.string().trim().min(1),
-  });
-
-  const summarizer = createAgent({
-    id: "acolyte-summarizer",
-    name: "Acolyte Summarizer",
-    model,
-    instructions: [
-      "You write compact progress blurbs for a terminal UI.",
-      'Return strict JSON only with shape: {"summary":"..."}.',
-      "Use short natural prose in summary.",
-      "Do not use bullets, numbering, markdown, or checklist phrasing.",
-      "State what was decided or completed, not what should be done next.",
-    ].join(" "),
-    tools: {},
-  });
-  const stagePrompt =
-    stage === "plan"
-      ? "Summarize the intended approach briefly in plain language. Use plan wording in present/future tense (for example: 'The plan is to ...')."
-      : "Summarize what was done briefly in plain language.";
-  const result = await summarizer.generate(
-    [stagePrompt, "Max 2 short sentences.", "Output JSON only. No prose outside JSON.", "", text].join("\n"),
-    {
-      maxSteps: 1,
-      toolChoice: "auto",
-    },
-  );
-  const parsed = summarySchema.safeParse(JSON.parse(result.text));
-  return parsed.success ? parsed.data.summary : "";
-}
-
 function formatToolResultProgressMessages(toolName: string, resultText: string): string[] {
   if (!resultText.trim()) {
     return [];
@@ -786,7 +740,7 @@ export function progressStageForRole(role: AgentRole, model: string): string {
 export function finalizeReviewOutput(output: string, message = ""): string {
   const trimmed = output.trim();
   if (trimmed.length > 0) {
-    return compactReviewOutput(normalizeReviewOutput(trimmed));
+    return trimmed;
   }
   const mentionedPath = extractMentionedPath(message);
   if (mentionedPath) {
@@ -803,7 +757,7 @@ export function finalizeAssistantOutput(
 ): string {
   const trimmed = output.trim();
   if (trimmed.length > 0) {
-    return compactAssistantOutput(trimmed);
+    return trimmed;
   }
   if (isDirectEditRequest(message)) {
     return lastToolFailureReason
@@ -937,10 +891,6 @@ export async function runAgent(input: {
       const candidate = planning.text.trim();
       if (candidate.length > 0) {
         delegationBrief = candidate;
-        const planSummary = await summarizeWithModel(plannerResolved.model, candidate, "plan").catch(() => "");
-        if (planSummary.length > 0) {
-          emitProgress(planSummary);
-        }
       }
     } catch {
       // Best-effort planning; fallback to raw user prompt.
@@ -962,10 +912,6 @@ export async function runAgent(input: {
       const candidate = delegation.text.trim();
       if (candidate.length > 0) {
         delegationBrief = candidate;
-        const planSummary = await summarizeWithModel(input.request.model, candidate, "plan").catch(() => "");
-        if (planSummary.length > 0) {
-          emitProgress(planSummary);
-        }
       }
     } catch {
       // Best-effort orchestration; fallback to raw user prompt.
@@ -1051,12 +997,6 @@ export async function runAgent(input: {
   }
 
   const rawOutput = result.text.trim();
-  if (rawOutput.length > 0) {
-    const conclusionSummary = await summarizeWithModel(model, rawOutput, "conclusion").catch(() => "");
-    if (conclusionSummary.length > 0) {
-      emitProgress(conclusionSummary);
-    }
-  }
   const output = isReviewRequest(input.request.message)
     ? finalizeReviewOutput(rawOutput, input.request.message)
     : finalizeAssistantOutput(rawOutput, input.request.message, toolCallIds.length, lastToolFailureReason);
