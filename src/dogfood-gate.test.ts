@@ -13,6 +13,7 @@ describe("dogfood gate", () => {
     expect(parseArgs([])).toEqual({
       target: 10,
       lookback: 30,
+      minSuccessRate: 70,
       skipVerify: false,
       skipSmoke: false,
       skipRecovery: false,
@@ -21,10 +22,21 @@ describe("dogfood gate", () => {
 
   test("parseArgs parses flags", () => {
     expect(
-      parseArgs(["--target", "6", "--lookback", "14", "--skip-verify", "--skip-smoke", "--skip-recovery"]),
+      parseArgs([
+        "--target",
+        "6",
+        "--lookback",
+        "14",
+        "--min-success-rate",
+        "85",
+        "--skip-verify",
+        "--skip-smoke",
+        "--skip-recovery",
+      ]),
     ).toEqual({
       target: 6,
       lookback: 14,
+      minSuccessRate: 85,
       skipVerify: true,
       skipSmoke: true,
       skipRecovery: true,
@@ -35,10 +47,15 @@ describe("dogfood gate", () => {
     expect(parseArgs(["--target", "6", "--lookback", "14", "--no-verify", "--no-smoke", "--no-recovery"])).toEqual({
       target: 6,
       lookback: 14,
+      minSuccessRate: 70,
       skipVerify: true,
       skipSmoke: true,
       skipRecovery: true,
     });
+  });
+
+  test("parseArgs rejects invalid success-rate value", () => {
+    expect(() => parseArgs(["--min-success-rate", "101"])).toThrow("Invalid --min-success-rate value.");
   });
 
   test("parseDeliveryProgress reads progress json", () => {

@@ -3,6 +3,7 @@ import { z } from "zod";
 type GateArgs = {
   target: number;
   lookback: number;
+  minSuccessRate: number;
   skipVerify: boolean;
   skipSmoke: boolean;
   skipRecovery: boolean;
@@ -16,10 +17,12 @@ type GateCheck = {
 
 const DEFAULT_TARGET = 10;
 const DEFAULT_LOOKBACK = 30;
+const DEFAULT_MIN_SUCCESS_RATE = 70;
 
 const gateArgsSchema = z.object({
   target: z.coerce.number().int().positive(),
   lookback: z.coerce.number().int().positive(),
+  minSuccessRate: z.coerce.number().min(0).max(100),
   skipVerify: z.boolean(),
   skipSmoke: z.boolean(),
   skipRecovery: z.boolean(),
@@ -39,12 +42,14 @@ function parseArgs(args: string[]): GateArgs {
   const raw: {
     target: number | string;
     lookback: number | string;
+    minSuccessRate: number | string;
     skipVerify: boolean;
     skipSmoke: boolean;
     skipRecovery: boolean;
   } = {
     target: DEFAULT_TARGET,
     lookback: DEFAULT_LOOKBACK,
+    minSuccessRate: DEFAULT_MIN_SUCCESS_RATE,
     skipVerify: false,
     skipSmoke: false,
     skipRecovery: false,
@@ -66,6 +71,15 @@ function parseArgs(args: string[]): GateArgs {
         throw new Error("Invalid --lookback value.");
       }
       raw.lookback = value;
+      i += 1;
+      continue;
+    }
+    if (token === "--min-success-rate") {
+      const value = args[i + 1];
+      if (!value) {
+        throw new Error("Invalid --min-success-rate value.");
+      }
+      raw.minSuccessRate = value;
       i += 1;
       continue;
     }
@@ -92,6 +106,10 @@ function parseArgs(args: string[]): GateArgs {
     }
     if (hasLookbackError) {
       throw new Error("Invalid --lookback value.");
+    }
+    const hasSuccessRateError = parsed.error.issues.some((issue) => issue.path[0] === "minSuccessRate");
+    if (hasSuccessRateError) {
+      throw new Error("Invalid --min-success-rate value.");
     }
     throw new Error("Invalid arguments.");
   }
@@ -227,7 +245,7 @@ function summarizeGate(checks: GateCheck[]): { ok: boolean; lines: string[] } {
 
 function printUsage(): void {
   console.log(
-    "Usage: bun run dogfood:gate [--lookback N] [--target N] [--skip-verify|--no-verify] [--skip-smoke|--no-smoke] [--skip-recovery|--no-recovery]",
+    "Usage: bun run dogfood:gate [--lookback N] [--target N] [--min-success-rate N] [--skip-verify|--no-verify] [--skip-smoke|--no-smoke] [--skip-recovery|--no-recovery]",
   );
 }
 
@@ -286,6 +304,13 @@ async function main(): Promise<void> {
       name: "delivery-slices",
       ok: progress.ok && parsedProgress !== null && parsedProgress.delivery >= args.target,
       detail: progressDetail(progress, parsedProgress),
+    });
+    checks.push({
+      name: "delegated-success-rate",
+      ok: progress.ok && parsedProgress !== null && (parsedProgress.delegatedSuccessRate ?? 0) >= args.minSuccessRate,
+      detail: parsedProgress
+        ? `${parsedProgress.delegatedSuccessRate ?? 0}% (target ${args.minSuccessRate}%)`
+        : "missing delegated success-rate signal",
     });
 
     const summary = summarizeGate(checks);
