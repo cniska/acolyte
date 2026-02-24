@@ -35,7 +35,7 @@ Exit Criteria:
   Evidence (February 24, 2026): `bun run dogfood:gate` passed with verify/smoke/recovery green, delivery `23/10`, delegated success rate `96%` over last 30 non-doc commits.
 
 ### Milestone 3: Delegated Switch Trial
-Status: planned.
+Status: completed on February 24, 2026.
 Description: Move from Codex-led work to gradual delegated slices where the assistant executes bounded tasks end-to-end.
 Goal: increase delegated slice success rate while keeping manual fallback fast and explicit.
 
@@ -45,6 +45,7 @@ Exit Criteria:
 - No repeat failure class remains without either a root-cause fix or a tracked milestone item.
 - Thread/process safety prevents concurrent multi-CLI writes to the same session/thread.
 - Cost/latency and memory behavior remain acceptable.
+  Evidence (February 24, 2026): `bun run dogfood:gate` passed with delegated slices `16` (feat/fix target `6`) and delegated success rate `96%`, plus recovery/session/concurrency checks green.
 
 ### Milestone 4: Runtime Reliability Signals
 Status: completed on February 24, 2026.
