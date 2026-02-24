@@ -71,6 +71,39 @@ describe("remote backend connection errors", () => {
     ).rejects.toThrow("boom");
   });
 
+  test("reply surfaces timeout for hanging chat response", async () => {
+    globalThis.fetch = ((_: RequestInfo | URL, init?: RequestInit) => {
+      const signal = init?.signal;
+      return new Promise<Response>((_resolve, reject) => {
+        if (!signal) {
+          return;
+        }
+        const abortError = new Error("aborted");
+        if (signal.aborted) {
+          reject(abortError);
+          return;
+        }
+        signal.addEventListener(
+          "abort",
+          () => {
+            reject(abortError);
+          },
+          { once: true },
+        );
+      });
+    }) as unknown as typeof fetch;
+
+    const backend = createBackend({ apiUrl: "http://localhost:6767", replyTimeoutMs: 5 });
+    await expect(
+      backend.reply({
+        message: "ping",
+        history: [],
+        model: "gpt-5-mini",
+        sessionId: "sess_test",
+      }),
+    ).rejects.toThrow("Remote backend reply timed out after 5ms");
+  });
+
   test("reply surfaces backend error_id when present", async () => {
     globalThis.fetch = (async () =>
       new Response(

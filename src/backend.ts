@@ -6,6 +6,7 @@ import { getMemoryContextEntries } from "./soul";
 export interface BackendOptions {
   apiUrl?: string;
   apiKey?: string;
+  replyTimeoutMs?: number;
 }
 
 export type ChatProgressEvent = {
@@ -126,6 +127,7 @@ class RemoteBackend implements Backend {
   constructor(
     private readonly apiUrl: string,
     private readonly apiKey?: string,
+    private readonly replyTimeoutMs?: number,
   ) {}
 
   private async fetchOrThrow(path: string, init?: RequestInit): Promise<Response> {
@@ -141,15 +143,52 @@ class RemoteBackend implements Backend {
   }
 
   async reply(input: ChatRequest, options?: { signal?: AbortSignal }): Promise<ChatResponse> {
-    const response = await this.fetchOrThrow("/v1/chat", {
-      method: "POST",
-      signal: options?.signal,
-      headers: {
-        "content-type": "application/json",
-        ...(this.apiKey ? { authorization: `Bearer ${this.apiKey}` } : {}),
-      },
-      body: JSON.stringify(input),
-    });
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    let onAbort: (() => void) | undefined;
+    let timedOut = false;
+    let signal = options?.signal;
+
+    if (typeof this.replyTimeoutMs === "number") {
+      const timeoutController = new AbortController();
+      signal = timeoutController.signal;
+      onAbort = () => timeoutController.abort(options?.signal?.reason);
+      if (options?.signal) {
+        if (options.signal.aborted) {
+          onAbort();
+        } else {
+          options.signal.addEventListener("abort", onAbort, { once: true });
+        }
+      }
+      timeoutId = setTimeout(() => {
+        timedOut = true;
+        timeoutController.abort();
+      }, this.replyTimeoutMs);
+    }
+
+    let response: Response;
+    try {
+      response = await this.fetchOrThrow("/v1/chat", {
+        method: "POST",
+        signal,
+        headers: {
+          "content-type": "application/json",
+          ...(this.apiKey ? { authorization: `Bearer ${this.apiKey}` } : {}),
+        },
+        body: JSON.stringify(input),
+      });
+    } catch (error) {
+      if (timedOut) {
+        throw new Error(`Remote backend reply timed out after ${this.replyTimeoutMs}ms`);
+      }
+      throw error;
+    } finally {
+      if (typeof timeoutId !== "undefined") {
+        clearTimeout(timeoutId);
+      }
+      if (options?.signal && onAbort) {
+        options.signal.removeEventListener("abort", onAbort);
+      }
+    }
 
     if (!response.ok) {
       const body = await response.text();
@@ -344,10 +383,11 @@ class RemoteBackend implements Backend {
 export function createBackend(options?: BackendOptions): Backend {
   const apiUrl = options?.apiUrl ?? appConfig.server.apiUrl;
   const apiKey = options?.apiKey ?? appConfig.server.apiKey;
+  const replyTimeoutMs = options?.replyTimeoutMs;
 
   if (!apiUrl) {
     return new LocalBackend();
   }
 
-  return new RemoteBackend(apiUrl, apiKey);
+  return new RemoteBackend(apiUrl, apiKey, replyTimeoutMs);
 }

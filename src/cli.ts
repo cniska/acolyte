@@ -68,6 +68,7 @@ function resolveCliVersion(): string {
 const CLI_VERSION = resolveCliVersion();
 const ONE_SHOT_SYSTEM_PROMPT =
   "One-shot mode: answer concisely and directly (prefer <=5 lines). Avoid option menus unless the user explicitly asks for options.";
+const ONE_SHOT_REPLY_TIMEOUT_MS = 120_000;
 const runArgsSchema = z.object({
   files: z.array(z.string().min(1)),
   prompt: z.string(),
@@ -938,6 +939,7 @@ async function runMode(args: string[]): Promise<void> {
   session.messages.push(newMessage("system", ONE_SHOT_SYSTEM_PROMPT));
   const backend = createBackend({
     apiUrl: appConfig.server.apiUrl,
+    replyTimeoutMs: ONE_SHOT_REPLY_TIMEOUT_MS,
   });
 
   for (const filePath of parsed.files) {
