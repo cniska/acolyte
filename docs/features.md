@@ -84,6 +84,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - `dogfood:progress` reports non-delivery category counts from scoped commits to track repeated failure classes.
 - `dogfood:gate` includes delegated ratio + delegated-slice threshold checks, a stability-window check, and supports `--strict-autonomy` mode for higher thresholds plus provider-ready smoke enforcement.
 - Strict autonomy gate also enforces soak durability with ready-run and distinct-day minimums.
+- `dogfood:gate` enforces an explicit delegated fallback-rate cap (strict autonomy defaults to max 15% fallback).
 - Local backend server with health check (`/healthz`) and chat endpoint (`/v1/chat`).
 - User-friendly backend connection errors with direct recovery hints (`bun run dev` or `bun run serve:env`).
 - Local-first configuration and optional API-key auth for backend access.

@@ -7,6 +7,7 @@ type GateArgs = {
   target: number;
   lookback: number;
   minSuccessRate: number;
+  maxFallbackRate: number;
   minDelegatedSlices: number;
   minStableRuns: number;
   minSoakRuns: number;
@@ -29,6 +30,7 @@ type GateCheck = {
 const DEFAULT_TARGET = 10;
 const DEFAULT_LOOKBACK = 30;
 const DEFAULT_MIN_SUCCESS_RATE = 70;
+const DEFAULT_MAX_FALLBACK_RATE = 30;
 const DEFAULT_MIN_DELEGATED_SLICES = 6;
 const DEFAULT_MIN_STABLE_RUNS = 1;
 const DEFAULT_MIN_SOAK_RUNS = 1;
@@ -43,6 +45,7 @@ const gateArgsSchema = z.object({
   target: z.coerce.number().int().positive(),
   lookback: z.coerce.number().int().positive(),
   minSuccessRate: z.coerce.number().min(0).max(100),
+  maxFallbackRate: z.coerce.number().min(0).max(100),
   minDelegatedSlices: z.coerce.number().int().nonnegative(),
   minStableRuns: z.coerce.number().int().positive(),
   minSoakRuns: z.coerce.number().int().positive(),
@@ -61,6 +64,7 @@ const deliveryProgressSchema = z.object({
   delegatedSuccess: z.number().finite().optional(),
   delegatedFailure: z.number().finite().optional(),
   delegatedSuccessRate: z.number().finite().optional(),
+  delegatedFallbackRate: z.number().finite().optional(),
   target: z.number().finite(),
   percent: z.number().finite(),
   commitsTotal: z.number().finite().optional(),
@@ -86,6 +90,7 @@ function parseArgs(args: string[]): GateArgs {
     target: number | string;
     lookback: number | string;
     minSuccessRate: number | string;
+    maxFallbackRate: number | string;
     minDelegatedSlices: number | string;
     minStableRuns: number | string;
     minSoakRuns: number | string;
@@ -101,6 +106,7 @@ function parseArgs(args: string[]): GateArgs {
     target: DEFAULT_TARGET,
     lookback: DEFAULT_LOOKBACK,
     minSuccessRate: DEFAULT_MIN_SUCCESS_RATE,
+    maxFallbackRate: DEFAULT_MAX_FALLBACK_RATE,
     minDelegatedSlices: DEFAULT_MIN_DELEGATED_SLICES,
     minStableRuns: DEFAULT_MIN_STABLE_RUNS,
     minSoakRuns: DEFAULT_MIN_SOAK_RUNS,
@@ -139,6 +145,15 @@ function parseArgs(args: string[]): GateArgs {
         throw new Error("Invalid --min-success-rate value.");
       }
       raw.minSuccessRate = value;
+      i += 1;
+      continue;
+    }
+    if (token === "--max-fallback-rate") {
+      const value = args[i + 1];
+      if (!value) {
+        throw new Error("Invalid --max-fallback-rate value.");
+      }
+      raw.maxFallbackRate = value;
       i += 1;
       continue;
     }
@@ -222,6 +237,10 @@ function parseArgs(args: string[]): GateArgs {
     if (hasSuccessRateError) {
       throw new Error("Invalid --min-success-rate value.");
     }
+    const hasFallbackRateError = parsed.error.issues.some((issue) => issue.path[0] === "maxFallbackRate");
+    if (hasFallbackRateError) {
+      throw new Error("Invalid --max-fallback-rate value.");
+    }
     const hasDelegatedSlicesError = parsed.error.issues.some((issue) => issue.path[0] === "minDelegatedSlices");
     if (hasDelegatedSlicesError) {
       throw new Error("Invalid --min-delegated-slices value.");
@@ -247,6 +266,7 @@ function parseArgs(args: string[]): GateArgs {
   return {
     ...parsedArgs,
     minSuccessRate: Math.max(parsedArgs.minSuccessRate, 85),
+    maxFallbackRate: Math.min(parsedArgs.maxFallbackRate, 15),
     minDelegatedSlices: Math.max(parsedArgs.minDelegatedSlices, 10),
     minStableRuns: Math.max(parsedArgs.minStableRuns, STRICT_AUTONOMY_MIN_STABLE_RUNS),
     minSoakRuns: Math.max(parsedArgs.minSoakRuns, STRICT_AUTONOMY_MIN_SOAK_RUNS),
@@ -355,6 +375,7 @@ function parseDeliveryProgress(raw: string): {
   delegatedSuccess?: number;
   delegatedFailure?: number;
   delegatedSuccessRate?: number;
+  delegatedFallbackRate?: number;
   delegatedSlices?: number;
   commitsTotal?: number;
   commitsScanned?: number;
@@ -387,6 +408,7 @@ function parseDeliveryProgress(raw: string): {
     delegatedSuccess: validated.data.delegatedSuccess,
     delegatedFailure: validated.data.delegatedFailure,
     delegatedSuccessRate: validated.data.delegatedSuccessRate,
+    delegatedFallbackRate: validated.data.delegatedFallbackRate,
     delegatedSlices: validated.data.delegatedSlices,
     commitsTotal: validated.data.commitsTotal,
     commitsScanned: validated.data.commitsScanned,
@@ -402,6 +424,7 @@ function progressDetail(
     delegatedSuccess?: number;
     delegatedFailure?: number;
     delegatedSuccessRate?: number;
+    delegatedFallbackRate?: number;
     delegatedSlices?: number;
     commitsTotal?: number;
     commitsScanned?: number;
@@ -413,8 +436,9 @@ function progressDetail(
     const delegated =
       parsed.delegatedSuccess !== undefined &&
       parsed.delegatedFailure !== undefined &&
-      parsed.delegatedSuccessRate !== undefined
-        ? `success=${parsed.delegatedSuccess} failure=${parsed.delegatedFailure} rate=${parsed.delegatedSuccessRate}%`
+      parsed.delegatedSuccessRate !== undefined &&
+      parsed.delegatedFallbackRate !== undefined
+        ? `success=${parsed.delegatedSuccess} failure=${parsed.delegatedFailure} success_rate=${parsed.delegatedSuccessRate}% fallback_rate=${parsed.delegatedFallbackRate}%`
         : undefined;
     const scoped = parsed.commitsTotal !== undefined ? `scoped=${parsed.commitsTotal}` : undefined;
     const scanned = parsed.commitsScanned !== undefined ? `scanned=${parsed.commitsScanned}` : undefined;
@@ -440,6 +464,7 @@ function summarizeGate(checks: GateCheck[]): { ok: boolean; lines: string[] } {
 function printUsage(): void {
   console.log(
     "Usage: bun run dogfood:gate [--lookback N] [--target N] [--min-success-rate N] [--skip-verify|--no-verify] [--skip-smoke|--no-smoke] [--skip-recovery|--no-recovery]",
+    "       [--max-fallback-rate N]",
     "       [--min-delegated-slices N]",
     "       [--min-stable-runs N]",
     "       [--min-soak-runs N]",
@@ -554,6 +579,14 @@ async function main(): Promise<void> {
       detail: parsedProgress
         ? `${parsedProgress.delegatedSuccessRate ?? 0}% (target ${args.minSuccessRate}%)`
         : "missing delegated success-rate signal",
+    });
+    checks.push({
+      name: "delegated-fallback-rate",
+      ok:
+        progress.ok && parsedProgress !== null && (parsedProgress.delegatedFallbackRate ?? 100) <= args.maxFallbackRate,
+      detail: parsedProgress
+        ? `${parsedProgress.delegatedFallbackRate ?? 100}% (max ${args.maxFallbackRate}%)`
+        : "missing delegated fallback-rate signal",
     });
     checks.push({
       name: "delegated-slices",

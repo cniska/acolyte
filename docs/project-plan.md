@@ -83,7 +83,7 @@ Exit Criteria:
 - Tool-output UX remains readable under truncation/failures (operators can quickly see both context and tail signals).
 - Gate evidence remains green while real task execution stays stable during the soak window.
 - MVP gate is only marked complete when this milestone is complete.
-  Baseline achieved (February 24, 2026): `dogfood:smoke` requires four autonomous coding edits when provider is ready (including multi-line structured and multi-file edits), fails on fallback edit responses, and strict autonomy smoke fails when provider readiness is missing; `dogfood:progress` reports non-delivery category counts for repeated failure-class tracking; strict `dogfood:gate` now also tracks soak durability via ready-run and distinct-day minimums; tool-output truncation keeps leading and trailing context with omitted-line markers for better UX during debugging.
+  Baseline achieved (February 24, 2026): `dogfood:smoke` requires four autonomous coding edits when provider is ready (including multi-line structured and multi-file edits), fails on fallback edit responses, and strict autonomy smoke fails when provider readiness is missing; `dogfood:progress` reports non-delivery category counts for repeated failure-class tracking and delegated fallback rate; strict `dogfood:gate` tracks soak durability via ready-run and distinct-day minimums and enforces a delegated fallback-rate cap; tool-output truncation keeps leading and trailing context with omitted-line markers for better UX during debugging.
 
 ### Milestone 6: Memory Quality
 Status: planned.

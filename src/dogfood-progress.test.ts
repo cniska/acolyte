@@ -111,6 +111,7 @@ describe("dogfood progress", () => {
       success: 2,
       failure: 2,
       successRate: 50,
+      fallbackRate: 50,
     });
   });
 

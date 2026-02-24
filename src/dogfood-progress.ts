@@ -119,7 +119,12 @@ function countDelegatedSlices(types: Array<{ type: string; count: number }>): nu
   return types.reduce((sum, row) => sum + (DELEGATED_SLICE_TYPES.has(row.type) ? row.count : 0), 0);
 }
 
-function countDelegatedOutcomes(commits: Commit[]): { success: number; failure: number; successRate: number } {
+function countDelegatedOutcomes(commits: Commit[]): {
+  success: number;
+  failure: number;
+  successRate: number;
+  fallbackRate: number;
+} {
   let success = 0;
   let failure = 0;
   for (const commit of commits) {
@@ -131,7 +136,8 @@ function countDelegatedOutcomes(commits: Commit[]): { success: number; failure: 
   }
   const total = success + failure;
   const successRate = total > 0 ? Math.round((success / total) * 100) : 0;
-  return { success, failure, successRate };
+  const fallbackRate = total > 0 ? Math.round((failure / total) * 100) : 0;
+  return { success, failure, successRate, fallbackRate };
 }
 
 function nonDeliveryCategories(types: Array<{ type: string; count: number }>): Array<{ type: string; count: number }> {
@@ -204,6 +210,7 @@ function printProgress(commits: Commit[], args: ProgressArgs): void {
           delegatedSuccess: delegated.success,
           delegatedFailure: delegated.failure,
           delegatedSuccessRate: delegated.successRate,
+          delegatedFallbackRate: delegated.fallbackRate,
           nonDeliveryCategories: nonDelivery,
           target: args.target,
           percent: pct,
@@ -228,7 +235,7 @@ function printProgress(commits: Commit[], args: ProgressArgs): void {
   console.log(`- slices (delivery): ${delivery}/${args.target} (${pct}%)`);
   console.log(`- delegated slices (feat/fix): ${delegatedSlices}`);
   console.log(
-    `- delegated outcomes (proxy): success=${delegated.success} failure=${delegated.failure} rate=${delegated.successRate}%`,
+    `- delegated outcomes (proxy): success=${delegated.success} failure=${delegated.failure} success_rate=${delegated.successRate}% fallback_rate=${delegated.fallbackRate}%`,
   );
   console.log(
     `- non-delivery categories: ${nonDelivery.length > 0 ? nonDelivery.map((row) => `${row.type}=${row.count}`).join(" ") : "none"}`,

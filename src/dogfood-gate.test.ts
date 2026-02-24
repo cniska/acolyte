@@ -18,6 +18,7 @@ describe("dogfood gate", () => {
       target: 10,
       lookback: 30,
       minSuccessRate: 70,
+      maxFallbackRate: 30,
       minDelegatedSlices: 6,
       minStableRuns: 1,
       minSoakRuns: 1,
@@ -41,6 +42,8 @@ describe("dogfood gate", () => {
         "14",
         "--min-success-rate",
         "85",
+        "--max-fallback-rate",
+        "22",
         "--min-delegated-slices",
         "8",
         "--min-stable-runs",
@@ -56,6 +59,7 @@ describe("dogfood gate", () => {
       target: 6,
       lookback: 14,
       minSuccessRate: 85,
+      maxFallbackRate: 22,
       minDelegatedSlices: 8,
       minStableRuns: 2,
       minSoakRuns: 1,
@@ -88,6 +92,7 @@ describe("dogfood gate", () => {
       target: 6,
       lookback: 14,
       minSuccessRate: 70,
+      maxFallbackRate: 30,
       minDelegatedSlices: 6,
       minStableRuns: 1,
       minSoakRuns: 1,
@@ -104,6 +109,10 @@ describe("dogfood gate", () => {
 
   test("parseArgs rejects invalid success-rate value", () => {
     expect(() => parseArgs(["--min-success-rate", "101"])).toThrow("Invalid --min-success-rate value.");
+  });
+
+  test("parseArgs rejects invalid fallback-rate value", () => {
+    expect(() => parseArgs(["--max-fallback-rate", "-1"])).toThrow("Invalid --max-fallback-rate value.");
   });
 
   test("parseArgs rejects invalid delegated-slices value", () => {
@@ -127,6 +136,7 @@ describe("dogfood gate", () => {
       target: 10,
       lookback: 30,
       minSuccessRate: 85,
+      maxFallbackRate: 15,
       minDelegatedSlices: 10,
       minStableRuns: 3,
       minSoakRuns: 10,
@@ -144,6 +154,8 @@ describe("dogfood gate", () => {
         "--strict-autonomy",
         "--min-success-rate",
         "90",
+        "--max-fallback-rate",
+        "10",
         "--min-delegated-slices",
         "12",
         "--min-stable-runs",
@@ -157,6 +169,7 @@ describe("dogfood gate", () => {
       target: 10,
       lookback: 30,
       minSuccessRate: 90,
+      maxFallbackRate: 10,
       minDelegatedSlices: 12,
       minStableRuns: 4,
       minSoakRuns: 12,
@@ -195,6 +208,7 @@ describe("dogfood gate", () => {
       delegatedSuccess: undefined,
       delegatedFailure: undefined,
       delegatedSuccessRate: undefined,
+      delegatedFallbackRate: undefined,
       commitsTotal: undefined,
       commitsScanned: undefined,
     });
@@ -214,6 +228,7 @@ describe("dogfood gate", () => {
       delegatedSuccess: undefined,
       delegatedFailure: undefined,
       delegatedSuccessRate: undefined,
+      delegatedFallbackRate: undefined,
       commitsTotal: 10,
       commitsScanned: 14,
     });
@@ -235,7 +250,7 @@ describe("dogfood gate", () => {
       {
         ok: true,
         stdout:
-          '{"deliverySlices":7,"target":6,"percent":100,"delegatedSuccess":7,"delegatedFailure":2,"delegatedSuccessRate":78,"commitsTotal":10,"commitsScanned":13}',
+          '{"deliverySlices":7,"target":6,"percent":100,"delegatedSuccess":7,"delegatedFailure":2,"delegatedSuccessRate":78,"delegatedFallbackRate":22,"commitsTotal":10,"commitsScanned":13}',
         stderr: "",
       },
       {
@@ -245,11 +260,14 @@ describe("dogfood gate", () => {
         delegatedSuccess: 7,
         delegatedFailure: 2,
         delegatedSuccessRate: 78,
+        delegatedFallbackRate: 22,
         commitsTotal: 10,
         commitsScanned: 13,
       },
     );
-    expect(detail).toBe("7/6 (100%, remaining=0 success=7 failure=2 rate=78% scoped=10 scanned=13)");
+    expect(detail).toBe(
+      "7/6 (100%, remaining=0 success=7 failure=2 success_rate=78% fallback_rate=22% scoped=10 scanned=13)",
+    );
   });
 
   test("progressDetail includes signal line on parse failure", () => {
