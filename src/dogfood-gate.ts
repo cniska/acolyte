@@ -7,6 +7,7 @@ type GateArgs = {
   skipVerify: boolean;
   skipSmoke: boolean;
   skipRecovery: boolean;
+  skipOneShotDiagnostics: boolean;
 };
 
 type GateCheck = {
@@ -26,6 +27,7 @@ const gateArgsSchema = z.object({
   skipVerify: z.boolean(),
   skipSmoke: z.boolean(),
   skipRecovery: z.boolean(),
+  skipOneShotDiagnostics: z.boolean(),
 });
 const deliveryProgressSchema = z.object({
   deliverySlices: z.number().finite(),
@@ -46,6 +48,7 @@ function parseArgs(args: string[]): GateArgs {
     skipVerify: boolean;
     skipSmoke: boolean;
     skipRecovery: boolean;
+    skipOneShotDiagnostics: boolean;
   } = {
     target: DEFAULT_TARGET,
     lookback: DEFAULT_LOOKBACK,
@@ -53,6 +56,7 @@ function parseArgs(args: string[]): GateArgs {
     skipVerify: false,
     skipSmoke: false,
     skipRecovery: false,
+    skipOneShotDiagnostics: false,
   };
   for (let i = 0; i < args.length; i += 1) {
     const token = args[i];
@@ -93,6 +97,10 @@ function parseArgs(args: string[]): GateArgs {
     }
     if (token === "--skip-recovery" || token === "--no-recovery") {
       raw.skipRecovery = true;
+      continue;
+    }
+    if (token === "--skip-one-shot-diagnostics" || token === "--no-one-shot-diagnostics") {
+      raw.skipOneShotDiagnostics = true;
       continue;
     }
     throw new Error(`Unknown argument: ${token}`);
@@ -246,6 +254,7 @@ function summarizeGate(checks: GateCheck[]): { ok: boolean; lines: string[] } {
 function printUsage(): void {
   console.log(
     "Usage: bun run dogfood:gate [--lookback N] [--target N] [--min-success-rate N] [--skip-verify|--no-verify] [--skip-smoke|--no-smoke] [--skip-recovery|--no-recovery]",
+    "       [--skip-one-shot-diagnostics|--no-one-shot-diagnostics]",
   );
 }
 
@@ -286,6 +295,18 @@ async function main(): Promise<void> {
         name: "recovery",
         ok: recovery.ok,
         detail: recovery.ok ? "green" : `exit ${recovery.code}${recoveryError ? ` (${recoveryError})` : ""}`,
+      });
+    }
+
+    if (!args.skipOneShotDiagnostics) {
+      const diagnostics = run(["bun", "test", "src/cli-run-mode.test.ts", "src/cli.test.ts"]);
+      const diagnosticsError = firstSignalLine(diagnostics.stderr, diagnostics.stdout);
+      checks.push({
+        name: "one-shot-diagnostics",
+        ok: diagnostics.ok,
+        detail: diagnostics.ok
+          ? "green"
+          : `exit ${diagnostics.code}${diagnosticsError ? ` (${diagnosticsError})` : ""}`,
       });
     }
 

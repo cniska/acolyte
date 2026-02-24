@@ -17,6 +17,7 @@ describe("dogfood gate", () => {
       skipVerify: false,
       skipSmoke: false,
       skipRecovery: false,
+      skipOneShotDiagnostics: false,
     });
   });
 
@@ -32,6 +33,7 @@ describe("dogfood gate", () => {
         "--skip-verify",
         "--skip-smoke",
         "--skip-recovery",
+        "--skip-one-shot-diagnostics",
       ]),
     ).toEqual({
       target: 6,
@@ -40,17 +42,30 @@ describe("dogfood gate", () => {
       skipVerify: true,
       skipSmoke: true,
       skipRecovery: true,
+      skipOneShotDiagnostics: true,
     });
   });
 
   test("parseArgs accepts no-* aliases", () => {
-    expect(parseArgs(["--target", "6", "--lookback", "14", "--no-verify", "--no-smoke", "--no-recovery"])).toEqual({
+    expect(
+      parseArgs([
+        "--target",
+        "6",
+        "--lookback",
+        "14",
+        "--no-verify",
+        "--no-smoke",
+        "--no-recovery",
+        "--no-one-shot-diagnostics",
+      ]),
+    ).toEqual({
       target: 6,
       lookback: 14,
       minSuccessRate: 70,
       skipVerify: true,
       skipSmoke: true,
       skipRecovery: true,
+      skipOneShotDiagnostics: true,
     });
   });
 
