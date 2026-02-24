@@ -180,7 +180,7 @@ export function isPlanLikeOutput(text: string): boolean {
     /^pick one\b/i,
     /^reply [a-z0-9]/i,
     /^want me to\b/i,
-    /^\d+\)\s+/,
+    /^(?:[-*•]\s*)?\d+[.)]\s+/,
   ];
   return lines.some((line) => planSignals.some((signal) => signal.test(line)));
 }

@@ -7,15 +7,28 @@ function isReviewRequest(text: string): boolean {
 }
 
 function isPlanningRequest(text: string): boolean {
-  const lower = text.toLowerCase();
-  const hints = ["plan", "roadmap", "strategy", "approach", "break down", "steps", "outline", "design"];
-  return hints.some((hint) => lower.includes(hint));
+  const normalized = text.toLowerCase();
+  const patterns = [
+    /\bplan(?:ning)?\b/,
+    /\broadmap\b/,
+    /\bstrategy\b/,
+    /\bapproach\b/,
+    /\bbreak down\b/,
+    /\bsteps?\b/,
+    /\boutline\b/,
+    /\bdesign\b/,
+  ];
+  return patterns.some((pattern) => pattern.test(normalized));
 }
 
 function isCodingRequest(text: string): boolean {
   const lower = text.toLowerCase();
   const hints = ["implement", "fix", "write", "edit", "refactor", "add", "build", "create", "test"];
   return hints.some((hint) => lower.includes(hint));
+}
+
+function isDirectEditIntent(text: string): boolean {
+  return /\b(add|change|update|remove|delete|edit|fix|insert|write)\b/i.test(text);
 }
 
 const DEFAULT_ROLE_SOUL: Record<AgentRole, string> = {
@@ -28,6 +41,9 @@ const DEFAULT_ROLE_SOUL: Record<AgentRole, string> = {
 export function selectAgentRole(text: string): AgentRole {
   if (isReviewRequest(text)) {
     return "reviewer";
+  }
+  if (isDirectEditIntent(text)) {
+    return "coder";
   }
   if (isPlanningRequest(text)) {
     return "planner";

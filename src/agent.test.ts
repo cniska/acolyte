@@ -107,6 +107,8 @@ describe("execution intent detection", () => {
   test("isPlanLikeOutput detects planning scaffolding", () => {
     expect(isPlanLikeOutput("Plan: update file then run verify")).toBe(true);
     expect(isPlanLikeOutput("I can apply this in two steps.")).toBe(true);
+    expect(isPlanLikeOutput("1. Edit src/cli.ts\n2. Run verify")).toBe(true);
+    expect(isPlanLikeOutput("• 1. Edit src/cli.ts\n• 2. Run verify")).toBe(true);
     expect(isPlanLikeOutput("Updated src/cli.ts and tests pass.")).toBe(false);
   });
 });
@@ -243,6 +245,14 @@ describe("selectAgentRole", () => {
 
   test("routes implementation prompts to coder by default", () => {
     expect(selectAgentRole("implement /resume picker improvements")).toBe("coder");
+  });
+
+  test("does not treat file names containing 'plan' as planning intent", () => {
+    expect(
+      selectAgentRole(
+        "add a short note in docs/project-plan.md under Milestone 2 exit criteria: track delegated slice success/failure ratio weekly",
+      ),
+    ).toBe("coder");
   });
 });
 
