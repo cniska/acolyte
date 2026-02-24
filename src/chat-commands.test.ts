@@ -243,7 +243,7 @@ describe("chat-commands", () => {
     const { rows, stop, openedPolicy } = await runCommand("/distill --sessions 10 --min 2", [], store);
     expect(stop).toBe(true);
     expect(rows.some((row) => row.role === "system" && row.content.includes("Proposed policy updates"))).toBe(true);
-    expect(rows.some((row) => row.content.includes("keep output concise"))).toBe(true);
+    expect(rows.some((row) => row.role === "system" && row.content.includes("keep output concise"))).toBe(true);
     expect(openedPolicy).toBe(1);
   });
 
