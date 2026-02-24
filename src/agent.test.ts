@@ -5,6 +5,7 @@ import {
   collectToolProgressFromStep,
   createProgressStageLabel,
   directEditExecutionSatisfied,
+  directEditTimeoutMessage,
   finalizeAssistantOutput,
   finalizeReviewOutput,
   formatToolProgressMessage,
@@ -146,6 +147,16 @@ describe("direct edit execution contract", () => {
     expect(directEditExecutionSatisfied(["read-file", "edit-file"], "Updated src/cli.ts and applied the change.")).toBe(
       true,
     );
+  });
+});
+
+describe("directEditTimeoutMessage", () => {
+  test("includes generic guidance when paths are unknown", () => {
+    expect(directEditTimeoutMessage([])).toContain("Check git diff");
+  });
+
+  test("includes edited file path when available", () => {
+    expect(directEditTimeoutMessage(["src/cli.ts"])).toContain("src/cli.ts");
   });
 });
 

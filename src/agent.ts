@@ -207,6 +207,13 @@ function directEditFailureMessage(toolCallIds: string[], lastToolFailureReason?:
   return "Edit request failed: required edit tool did not run. Check /status and retry.";
 }
 
+export function directEditTimeoutMessage(paths: string[]): string {
+  if (paths.length === 0) {
+    return "Edit request timed out while composing the final response, but edit-file ran. Check git diff to confirm the applied change.";
+  }
+  return `Edit request timed out while composing the final response, but edit-file ran for ${formatPathList(paths) ?? "target files"}. Check git diff to confirm the applied change.`;
+}
+
 export { buildSubagentContext, selectAgentRole };
 
 export function resolveAgentModel(
@@ -330,22 +337,22 @@ function suggestNarrowerReviewScope(path: string): string {
   return `@${clean}/agent.ts`;
 }
 
-function collectToolCallIds(toolCalls: unknown[]): string[] {
-  const canonicalToolId = (value: string): string => {
-    const normalized = value.trim();
-    const aliases: Record<string, string> = {
-      readFile: "read-file",
-      searchRepo: "search-repo",
-      editFile: "edit-file",
-      gitDiff: "git-diff",
-      gitStatus: "git-status",
-      runCommand: "run-command",
-      webSearch: "web-search",
-      webFetch: "web-fetch",
-    };
-    return aliases[normalized] ?? normalized;
+function canonicalToolId(value: string): string {
+  const normalized = value.trim();
+  const aliases: Record<string, string> = {
+    readFile: "read-file",
+    searchRepo: "search-repo",
+    editFile: "edit-file",
+    gitDiff: "git-diff",
+    gitStatus: "git-status",
+    runCommand: "run-command",
+    webSearch: "web-search",
+    webFetch: "web-fetch",
   };
+  return aliases[normalized] ?? normalized;
+}
 
+function collectToolCallIds(toolCalls: unknown[]): string[] {
   const names = toolCalls
     .map((call) => {
       if (typeof call === "string") {
@@ -958,6 +965,8 @@ export async function runAgent(input: {
     has_memory: Boolean(memoryOptions),
   });
   const seenToolNames = new Set<string>();
+  const observedToolCallIds = new Set<string>();
+  const observedEditPaths = new Set<string>();
   let lastToolFailureReason: string | undefined;
   const emitProgress = (message: string): void => {
     const trimmed = message.trim();
@@ -969,6 +978,13 @@ export async function runAgent(input: {
   const emitToolProgress = (step: unknown): void => {
     const tools = collectToolProgressFromStep(step);
     for (const tool of tools) {
+      const toolId = canonicalToolId(tool.name);
+      observedToolCallIds.add(toolId);
+      if (toolId === "edit-file") {
+        for (const path of collectPathDetails(tool.args)) {
+          observedEditPaths.add(path);
+        }
+      }
       const startMessage = formatToolProgressMessage(tool.name, tool.args);
       const startDedupeKey = JSON.stringify({ kind: "call", name: tool.name, message: startMessage });
       if (!seenToolNames.has(startDedupeKey)) {
@@ -1082,12 +1098,31 @@ export async function runAgent(input: {
       reason: "initial",
       error: lastToolFailureReason,
     });
-    const output = finalizeAssistantOutput("", input.request.message, 0, lastToolFailureReason);
+    if (directEditLikely && observedToolCallIds.has("edit-file")) {
+      const output = directEditTimeoutMessage(Array.from(observedEditPaths));
+      const completionTokens = estimateTokens(output);
+      return {
+        model,
+        output,
+        toolCalls: Array.from(observedToolCallIds),
+        usage: {
+          promptTokens: requestInput.usage.promptTokens,
+          completionTokens,
+          totalTokens: requestInput.usage.promptTokens + completionTokens,
+          promptBudgetTokens: requestInput.usage.promptBudgetTokens,
+          promptTruncated: requestInput.usage.promptTruncated,
+        },
+        budgetWarning: requestInput.usage.promptTruncated
+          ? `context trimmed (${requestInput.usage.includedHistoryMessages}/${requestInput.usage.totalHistoryMessages} history messages)`
+          : undefined,
+      };
+    }
+    const output = finalizeAssistantOutput("", input.request.message, observedToolCallIds.size, lastToolFailureReason);
     const completionTokens = estimateTokens(output);
     return {
       model,
       output,
-      toolCalls: [],
+      toolCalls: Array.from(observedToolCallIds),
       usage: {
         promptTokens: requestInput.usage.promptTokens,
         completionTokens,
