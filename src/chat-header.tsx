@@ -34,7 +34,7 @@ export function ChatHeader(props: ChatHeaderProps): React.ReactNode {
         <Box width={logoColumnWidth}>
           <Text color={logoColor}>{logoTop}</Text>
         </Box>
-        <Text>  </Text>
+        <Text>{"  "}</Text>
         <Text color={brandColor} bold>{`${title?.text ?? ""}${title?.suffix ?? ""}`}</Text>
       </Box>
       <Box>
@@ -43,14 +43,14 @@ export function ChatHeader(props: ChatHeaderProps): React.ReactNode {
           <Text color={logoEyeColor}>{logoMiddleEyes}</Text>
           <Text color={logoColor}>{logoMiddleRight}</Text>
         </Box>
-        <Text>  </Text>
+        <Text>{"  "}</Text>
         <Text dimColor={Boolean(session?.dim)}>{session?.text ?? ""}</Text>
       </Box>
       <Box>
         <Box width={logoColumnWidth}>
           <Text color={logoColor}>{logoBottom}</Text>
         </Box>
-        <Text>  </Text>
+        <Text>{"  "}</Text>
         <Text dimColor={Boolean(cwd?.dim)}>{cwd?.text ?? ""}</Text>
       </Box>
     </>
