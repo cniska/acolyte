@@ -115,3 +115,6 @@ Exit Criteria:
 
 ## Known Issues
 - Progress/status contracts were simplified to a single-agent, single-model shape (`model`, `provider`, `provider_ready`) plus `Working…` stage text.
+
+## MVP Gate
+- Status: met on February 24, 2026 (Milestones 2-4 marked complete with passing `dogfood:gate` evidence).
