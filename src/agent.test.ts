@@ -17,6 +17,7 @@ import {
   runAgent,
   selectAgentRole,
   shouldForceRequiredToolsRetry,
+  shouldRunPlannerPreface,
 } from "./agent";
 import type { ChatRequest } from "./api";
 import { appConfig, setPermissionMode } from "./app-config";
@@ -246,6 +247,18 @@ describe("shouldForceRequiredToolsRetry", () => {
   test("does not force tool fallback for normal coder/planner prompts", () => {
     expect(shouldForceRequiredToolsRetry("coder", false)).toBe(false);
     expect(shouldForceRequiredToolsRetry("planner", false)).toBe(false);
+  });
+});
+
+describe("shouldRunPlannerPreface", () => {
+  test("runs planner preface for reviewer prompts", () => {
+    expect(shouldRunPlannerPreface("reviewer", false)).toBe(true);
+  });
+
+  test("skips planner preface for direct edits and coder/planner prompts", () => {
+    expect(shouldRunPlannerPreface("coder", true)).toBe(false);
+    expect(shouldRunPlannerPreface("coder", false)).toBe(false);
+    expect(shouldRunPlannerPreface("planner", false)).toBe(false);
   });
 });
 

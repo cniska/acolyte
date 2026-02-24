@@ -810,6 +810,13 @@ export function shouldForceRequiredToolsRetry(role: AgentRole, directEditLikely:
   return role === "reviewer";
 }
 
+export function shouldRunPlannerPreface(role: AgentRole, directEditLikely: boolean): boolean {
+  if (directEditLikely) {
+    return false;
+  }
+  return role === "reviewer";
+}
+
 export function finalizeReviewOutput(output: string, message = ""): string {
   const trimmed = output.trim();
   if (trimmed.length > 0) {
@@ -992,7 +999,7 @@ export async function runAgent(input: {
 
   let delegationBrief = input.request.message.trim();
   const plannerResolved = resolveRunnableModel("planner", input.request.model);
-  if (role !== "planner" && !directEditLikely && plannerResolved.available) {
+  if (role !== "planner" && shouldRunPlannerPreface(role, directEditLikely) && plannerResolved.available) {
     try {
       emitProgress(progressStageForRole("planner", plannerResolved.model));
       const plannerSoul = loadRoleSoulPrompt("planner");
