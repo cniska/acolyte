@@ -870,6 +870,7 @@ function buildMockReply(req: ChatRequest, reason?: string): ChatResponse {
       `Plan: ${FALLBACK_PLAN}`,
       `Echo: ${req.message.trim()}`,
     ].join(" "),
+    modelCalls: 0,
   };
 }
 
@@ -915,6 +916,7 @@ export async function runAgent(input: {
       model: input.request.model,
       output: "Edit request blocked in read mode. Use /permissions write, then retry.",
       toolCalls: [],
+      modelCalls: 0,
     };
   }
   const roleSoul = loadRoleSoulPrompt(role);
@@ -923,6 +925,7 @@ export async function runAgent(input: {
     return buildMockReply(input.request, `Provider '${resolved.provider}' is not configured.`);
   }
   let model = resolved.model;
+  let modelCallCount = 0;
 
   const buildRoleAgent = (agentModel: string) =>
     createAgent({
@@ -1033,6 +1036,7 @@ export async function runAgent(input: {
         tools: toolsForCoordinator(),
       });
       const planningInput = `${buildSubagentContext("planner", input.request)}\n\n${requestInput.input}`;
+      modelCallCount += 1;
       const planning = await planner.generate(planningInput, {
         maxSteps: 3,
         toolChoice: "auto",
@@ -1055,6 +1059,7 @@ export async function runAgent(input: {
           "You are the orchestrator. Convert user requests into concise execution briefs for subagents. Do not call tools.",
         tools: toolsForCoordinator(),
       });
+      modelCallCount += 1;
       const delegation = await coordinator.generate(createDelegationPrompt(role, input.request), {
         maxSteps: 1,
         toolChoice: "auto",
@@ -1082,6 +1087,7 @@ export async function runAgent(input: {
   });
   let result: Awaited<ReturnType<typeof agent.generate>>;
   try {
+    modelCallCount += 1;
     result = await generateWithTimeout(
       agentPrompt,
       {
@@ -1106,6 +1112,7 @@ export async function runAgent(input: {
         model,
         output,
         toolCalls: Array.from(observedToolCallIds),
+        modelCalls: modelCallCount,
         usage: {
           promptTokens: requestInput.usage.promptTokens,
           completionTokens,
@@ -1127,6 +1134,7 @@ export async function runAgent(input: {
         model,
         output,
         toolCalls: Array.from(observedToolCallIds),
+        modelCalls: modelCallCount,
         usage: {
           promptTokens: requestInput.usage.promptTokens,
           completionTokens,
@@ -1145,6 +1153,7 @@ export async function runAgent(input: {
       model,
       output,
       toolCalls: Array.from(observedToolCallIds),
+      modelCalls: modelCallCount,
       usage: {
         promptTokens: requestInput.usage.promptTokens,
         completionTokens,
@@ -1172,6 +1181,7 @@ export async function runAgent(input: {
       tool_choice: "required",
       max_steps: REQUIRED_TOOLS_RETRY_MAX_STEPS,
     });
+    modelCallCount += 1;
     result = await generateWithTimeout(
       agentPrompt,
       {
@@ -1202,6 +1212,7 @@ export async function runAgent(input: {
         tool_choice: "required",
         max_steps: directEditLikely ? 8 : BASE_MODEL_RETRY_MAX_STEPS,
       });
+      modelCallCount += 1;
       result = await generateWithTimeout(
         agentPrompt,
         {
@@ -1229,6 +1240,7 @@ export async function runAgent(input: {
       max_steps: 10,
     });
     try {
+      modelCallCount += 1;
       result = await generateWithTimeout(
         `${agentPrompt}\n\nHard requirement: execute at least one tool before responding. Do not return a plan.`,
         {
@@ -1266,6 +1278,7 @@ export async function runAgent(input: {
       prior_tools: toolCallIds.join(","),
     });
     try {
+      modelCallCount += 1;
       result = await generateWithTimeout(
         `${agentPrompt}\n\nHard requirement: execute edit-file now. Apply a concrete file change and return a concise result.${directEditTargetPath ? ` Use path: ${directEditTargetPath}.` : ""}`,
         {
@@ -1315,6 +1328,7 @@ export async function runAgent(input: {
       model,
       output: fallback,
       toolCalls: toolCallIds,
+      modelCalls: modelCallCount,
       usage: {
         promptTokens: requestInput.usage.promptTokens,
         completionTokens,
@@ -1335,6 +1349,7 @@ export async function runAgent(input: {
       tool_choice: "auto",
       max_steps: role === "planner" ? 3 : EMPTY_TEXT_RETRY_MAX_STEPS,
     });
+    modelCallCount += 1;
     result = await generateWithTimeout(
       `${agentPrompt}\n\nReturn a direct concise answer.`,
       {
@@ -1370,6 +1385,7 @@ export async function runAgent(input: {
     model,
     output,
     toolCalls: toolCallIds,
+    modelCalls: modelCallCount,
     usage: {
       promptTokens: promptUsage.promptTokens,
       completionTokens,

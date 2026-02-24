@@ -22,4 +22,5 @@ export interface ChatResponse {
   usage?: TokenUsage;
   budgetWarning?: string;
   toolCalls?: string[];
+  modelCalls?: number;
 }

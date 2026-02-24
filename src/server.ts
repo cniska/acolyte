@@ -484,6 +484,7 @@ const server = Bun.serve({
         session_id: chatRequest.sessionId ?? null,
         model: reply.model,
         duration_ms: durationMs,
+        model_calls: reply.modelCalls ?? null,
         tool_count: reply.toolCalls?.length ?? 0,
         tools: reply.toolCalls?.join(",") ?? "",
         prompt_tokens: reply.usage?.promptTokens ?? null,
