@@ -71,13 +71,24 @@ Exit Criteria:
 - CLI supports hybrid local/remote session storage.
 - Auth baseline is in place (GitHub-first).
 
-### Milestone 7: Post-MVP OSS Release
+### Milestone 7: Post-MVP Friends and Family
 Status: planned.
-Description: Open-source core local mode after MVP gate is met.
-Goal: ship a clean OSS local-first release with optional self-host path.
+Description: Share Acolyte with trusted coder friends to gather real-world feedback while continuing rapid iteration.
+Goal: validate usability, reliability, and core workflow fit before public release.
 
 Exit Criteria:
 - MVP gate is met (Milestones 2-4 stable).
+- 5-10 external users complete real tasks and share structured feedback.
+- Top rough edges from early feedback are prioritized and addressed.
+- Core onboarding remains simple and repeatable.
+
+### Milestone 8: Public OSS Release
+Status: planned.
+Description: Open-source core local mode after friends-and-family feedback is incorporated.
+Goal: ship a clean OSS local-first release with optional self-host path.
+
+Exit Criteria:
+- Friends-and-family phase is complete with major blockers resolved.
 - Public quickstart and self-host docs are ready.
 - OSS vs managed boundaries are clearly documented.
 
