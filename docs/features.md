@@ -48,6 +48,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Mastra Studio exposes a single `acolyte` agent.
 - `mastra:dev` and `studio` load `.env` automatically for consistent provider credentials in local dev.
 - Tool execution errors are normalized with tool-id context (for example `read-file failed: ...`) for clearer debugging.
+- Truncated tool output now keeps both leading and trailing context, with an explicit omitted-lines marker for scan-friendly debugging.
 - Dogfooding workflow command: `/dogfood <task>` with verify-first loop.
 - Optional skip verify flow: `/dogfood --no-verify <task>`.
 - Assistant output post-processing is intentionally minimal (safety/error shaping + empty-output fallback).

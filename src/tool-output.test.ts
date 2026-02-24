@@ -8,10 +8,12 @@ describe("compactToolOutput", () => {
   });
 
   test("truncates long output by chars", () => {
-    const input = `stdout:\n${"a".repeat(500)}`;
+    const input = `stdout:\n${"a".repeat(250)}ERRTAIL${"b".repeat(250)}`;
     const result = compactToolOutput(input, { maxChars: 120, maxLines: 200 });
     expect(result).toContain("… output truncated");
-    expect(result.length).toBeLessThanOrEqual(140);
+    expect(result).toContain("aaaa");
+    expect(result).toContain("bbbb");
+    expect(result.length).toBeLessThanOrEqual(200);
   });
 
   test("truncates long output by lines", () => {
@@ -19,8 +21,10 @@ describe("compactToolOutput", () => {
       .map((_, index) => `line-${index}`)
       .join("\n");
     const result = compactToolOutput(input, { maxChars: 1000, maxLines: 10 });
-    expect(result).toContain("line-9");
+    expect(result).toContain("line-6");
+    expect(result).toContain("line-49");
     expect(result).not.toContain("line-20");
+    expect(result).toContain("lines omitted");
     expect(result).toContain("… output truncated");
   });
 });
