@@ -125,5 +125,3 @@ export function createSubmitHandlerHarness(overrides?: {
   });
   return { submit, rows, calls };
 }
-
-export const createSubmitHandlerHardness = createSubmitHandlerHarness;
