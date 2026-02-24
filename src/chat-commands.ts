@@ -310,7 +310,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
         await setConfigValue("permissionMode", mode, { scope });
       }
       setPermissionMode(mode);
-      ctx.setRows((current) => [...current, row("assistant", `Changed permissions to ${mode} (${scope}).`)]);
+      ctx.setRows((current) => [...current, row("system", `Changed permissions to ${mode} (${scope}).`)]);
     } catch (error) {
       ctx.setRows((current) => [
         ...current,
@@ -337,12 +337,12 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     const memories = await memoryApi.listMemories({ scope });
     if (memories.length === 0) {
       const scopeLabel = scope === "all" ? "" : `${scope} `;
-      ctx.setRows((current) => [...current, row("assistant", `No ${scopeLabel}memory saved yet.`)]);
+      ctx.setRows((current) => [...current, row("system", `No ${scopeLabel}memory saved yet.`)]);
       return { stop: true, userText: text, runVerifyAfterReply: false };
     }
     const lines = memories.slice(0, 10).map((entry) => `${entry.scope}: ${entry.content}`);
     const header = scope === "all" ? `Memory ${memories.length}` : `${scopeLabel(scope)} memory ${memories.length}`;
-    ctx.setRows((current) => [...current, row("assistant", `${header}\n\n${lines.join("\n")}`)]);
+    ctx.setRows((current) => [...current, row("system", `${header}\n\n${lines.join("\n")}`)]);
     return { stop: true, userText: text, runVerifyAfterReply: false };
   }
 
@@ -357,13 +357,13 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     const entries = await memoryApi.getMemoryContextEntries({ scope });
     if (entries.length === 0) {
       const scopeLabel = scope === "all" ? "" : `${scope} `;
-      ctx.setRows((current) => [...current, row("assistant", `No ${scopeLabel}memory context is currently injected.`)]);
+      ctx.setRows((current) => [...current, row("system", `No ${scopeLabel}memory context is currently injected.`)]);
       return { stop: true, userText: text, runVerifyAfterReply: false };
     }
     const lines = entries.map((entry) => `${entry.scope}: ${entry.content}`);
     const header =
       scope === "all" ? `Memory context ${entries.length}` : `${scopeLabel(scope)} memory context ${entries.length}`;
-    ctx.setRows((current) => [...current, row("assistant", `${header}\n\n${lines.join("\n")}`)]);
+    ctx.setRows((current) => [...current, row("system", `${header}\n\n${lines.join("\n")}`)]);
     return { stop: true, userText: text, runVerifyAfterReply: false };
   }
 
@@ -386,7 +386,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     }
     const candidates = distillPolicyCandidatesFromSessions(ctx.store.sessions, parsed.options);
     const output = distillPolicyFromSessions(ctx.store.sessions, parsed.options);
-    ctx.setRows((current) => [...current, row("assistant", output)]);
+    ctx.setRows((current) => [...current, row("system", output)]);
     if (candidates.length > 0) {
       ctx.openPolicyPanel(candidates);
     }
@@ -423,7 +423,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     }
     try {
       const entry = await memoryApi.addMemory(content, { scope });
-      ctx.setRows((current) => [...current, row("assistant", `Saved ${entry.scope} memory: ${content}`)]);
+      ctx.setRows((current) => [...current, row("system", `Saved ${entry.scope} memory: ${content}`)]);
     } catch (error) {
       ctx.setRows((current) => [
         ...current,

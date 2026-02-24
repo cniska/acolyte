@@ -259,7 +259,7 @@ describe("chat-commands", () => {
     };
     const { rows, stop } = await runCommand("/memory", [], createStore(), { memoryApi });
     expect(stop).toBe(true);
-    expect(rows.some((row) => row.role === "assistant" && row.content === "No memory saved yet.")).toBe(true);
+    expect(rows.some((row) => row.role === "system" && row.content === "No memory saved yet.")).toBe(true);
   });
 
   test("dispatchSlashCommand handles scoped /memory with empty store", async () => {
@@ -280,7 +280,7 @@ describe("chat-commands", () => {
     const { rows, stop } = await runCommand("/memory user", [], createStore(), { memoryApi });
     expect(stop).toBe(true);
     expect(receivedScope).toBe("user");
-    expect(rows.some((row) => row.role === "assistant" && row.content === "No user memory saved yet.")).toBe(true);
+    expect(rows.some((row) => row.role === "system" && row.content === "No user memory saved yet.")).toBe(true);
   });
 
   test("dispatchSlashCommand handles /memory context with empty context", async () => {
@@ -297,7 +297,7 @@ describe("chat-commands", () => {
     const { rows, stop } = await runCommand("/memory context", [], createStore(), { memoryApi });
     expect(stop).toBe(true);
     expect(
-      rows.some((row) => row.role === "assistant" && row.content === "No memory context is currently injected."),
+      rows.some((row) => row.role === "system" && row.content === "No memory context is currently injected."),
     ).toBe(true);
   });
 
@@ -327,10 +327,10 @@ describe("chat-commands", () => {
     };
     const { rows, stop } = await runCommand("/memory context", [], createStore(), { memoryApi });
     expect(stop).toBe(true);
-    const assistant = rows.find((row) => row.role === "assistant" && row.content.startsWith("Memory context 2"));
-    expect(assistant).toBeDefined();
-    expect(assistant?.content).toContain("project: use bun run verify before commit");
-    expect(assistant?.content).toContain("user: keep output concise");
+    const system = rows.find((row) => row.role === "system" && row.content.startsWith("Memory context 2"));
+    expect(system).toBeDefined();
+    expect(system?.content).toContain("project: use bun run verify before commit");
+    expect(system?.content).toContain("user: keep output concise");
   });
 
   test("dispatchSlashCommand handles /memory context scope filtering", async () => {
@@ -352,7 +352,7 @@ describe("chat-commands", () => {
     expect(stop).toBe(true);
     expect(receivedScope).toBe("user");
     expect(
-      rows.some((row) => row.role === "assistant" && row.content === "No user memory context is currently injected."),
+      rows.some((row) => row.role === "system" && row.content === "No user memory context is currently injected."),
     ).toBe(true);
   });
 
@@ -393,10 +393,10 @@ describe("chat-commands", () => {
     };
     const { rows, stop } = await runCommand("/memory", [], createStore(), { memoryApi });
     expect(stop).toBe(true);
-    const assistant = rows.find((row) => row.role === "assistant" && row.content.startsWith("Memory 2"));
-    expect(assistant).toBeDefined();
-    expect(assistant?.content).toContain("user: prefer concise output");
-    expect(assistant?.content).toContain("project: use bun scripts");
+    const system = rows.find((row) => row.role === "system" && row.content.startsWith("Memory 2"));
+    expect(system).toBeDefined();
+    expect(system?.content).toContain("user: prefer concise output");
+    expect(system?.content).toContain("project: use bun scripts");
   });
 
   test("dispatchSlashCommand handles explicit /memory all scope", async () => {
@@ -425,10 +425,10 @@ describe("chat-commands", () => {
     };
     const { rows, stop } = await runCommand("/memory all", [], createStore(), { memoryApi });
     expect(stop).toBe(true);
-    const assistant = rows.find((row) => row.role === "assistant" && row.content.startsWith("Memory 2"));
-    expect(assistant).toBeDefined();
-    expect(assistant?.content).toContain("user: prefer concise output");
-    expect(assistant?.content).toContain("project: use bun scripts");
+    const system = rows.find((row) => row.role === "system" && row.content.startsWith("Memory 2"));
+    expect(system).toBeDefined();
+    expect(system?.content).toContain("user: prefer concise output");
+    expect(system?.content).toContain("project: use bun scripts");
   });
 
   test("dispatchSlashCommand renders scoped /memory header", async () => {
@@ -451,7 +451,7 @@ describe("chat-commands", () => {
     };
     const { rows, stop } = await runCommand("/memory user", [], createStore(), { memoryApi });
     expect(stop).toBe(true);
-    expect(rows.some((row) => row.role === "assistant" && row.content.startsWith("User memory 1"))).toBe(true);
+    expect(rows.some((row) => row.role === "system" && row.content.startsWith("User memory 1"))).toBe(true);
   });
 
   test("dispatchSlashCommand renders project-scoped /memory header", async () => {
@@ -474,7 +474,7 @@ describe("chat-commands", () => {
     };
     const { rows, stop } = await runCommand("/memory project", [], createStore(), { memoryApi });
     expect(stop).toBe(true);
-    expect(rows.some((row) => row.role === "assistant" && row.content.startsWith("Project memory 1"))).toBe(true);
+    expect(rows.some((row) => row.role === "system" && row.content.startsWith("Project memory 1"))).toBe(true);
   });
 
   test("dispatchSlashCommand renders scoped /memory context header", async () => {
@@ -497,7 +497,7 @@ describe("chat-commands", () => {
     };
     const { rows, stop } = await runCommand("/memory context project", [], createStore(), { memoryApi });
     expect(stop).toBe(true);
-    expect(rows.some((row) => row.role === "assistant" && row.content.startsWith("Project memory context 1"))).toBe(
+    expect(rows.some((row) => row.role === "system" && row.content.startsWith("Project memory context 1"))).toBe(
       true,
     );
   });
@@ -539,7 +539,7 @@ describe("chat-commands", () => {
     expect(stop).toBe(true);
     expect(savedContent).toBe("use bun verify");
     expect(savedScope).toBe("project");
-    expect(rows.some((row) => row.role === "assistant" && row.content === "Saved project memory: use bun verify")).toBe(
+    expect(rows.some((row) => row.role === "system" && row.content === "Saved project memory: use bun verify")).toBe(
       true,
     );
   });
