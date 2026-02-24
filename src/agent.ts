@@ -558,12 +558,40 @@ function parseToolResultText(raw: unknown): string {
     result?: unknown;
     text?: unknown;
     stdout?: unknown;
+    stderr?: unknown;
+    error?: unknown;
+    message?: unknown;
   };
-  const chunks = [entry.output, entry.result, entry.text, entry.stdout]
+  const errorText =
+    typeof entry.error === "string"
+      ? entry.error
+      : entry.error && typeof entry.error === "object" && "message" in (entry.error as Record<string, unknown>)
+        ? String((entry.error as Record<string, unknown>).message ?? "")
+        : "";
+  const chunks = [entry.output, entry.result, entry.text, entry.stdout, entry.stderr, entry.message, errorText]
     .filter((part): part is string => typeof part === "string")
     .map((part) => part.trim())
     .filter((part) => part.length > 0);
   return chunks.join("\n");
+}
+
+function extractToolFailureReason(resultText: string): string | null {
+  const trimmed = resultText.trim();
+  if (trimmed.length === 0) {
+    return null;
+  }
+  const lines = trimmed
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+  const failureLine = lines.find((line) => /failed:|error[:\s]/i.test(line));
+  if (failureLine) {
+    return compactProgressDetail(failureLine.replace(/^error[:\s]*/i, ""), 140);
+  }
+  if (/permission|denied|disabled|forbidden|not found|quota/i.test(trimmed)) {
+    return compactProgressDetail(lines[0] ?? trimmed, 140);
+  }
+  return null;
 }
 
 async function summarizeWithModel(model: string, text: string, stage: "plan" | "conclusion"): Promise<string> {
@@ -767,16 +795,26 @@ export function finalizeReviewOutput(output: string, message = ""): string {
   return "No review output produced. Try narrowing to a file (for example @src/agent.ts) or rephrasing your prompt.";
 }
 
-export function finalizeAssistantOutput(output: string, message = "", toolCallCount = 0): string {
+export function finalizeAssistantOutput(
+  output: string,
+  message = "",
+  toolCallCount = 0,
+  lastToolFailureReason?: string,
+): string {
   const trimmed = output.trim();
   if (trimmed.length > 0) {
     return compactAssistantOutput(trimmed);
   }
   if (isDirectEditRequest(message)) {
-    return "Edit request failed: no tools ran. Check /status and retry.";
+    return lastToolFailureReason
+      ? `Edit request failed: ${lastToolFailureReason}`
+      : "Edit request failed: no tools ran. Check /status and retry.";
   }
   if (toolCallCount > 0) {
     return "No final response after tool execution. Retry, or check backend logs if this repeats.";
+  }
+  if (lastToolFailureReason) {
+    return `No output from model. Last tool error: ${lastToolFailureReason}`;
   }
   return "No output from model. Check /status and backend logs, then retry or switch model/provider.";
 }
@@ -818,15 +856,18 @@ export async function runAgent(input: {
   if (!resolved.available) {
     return buildMockReply(input.request, `Provider '${resolved.provider}' is not configured.`);
   }
-  const model = resolved.model;
+  let model = resolved.model;
 
-  const agent = createAgent({
-    id: `acolyte-${role}`,
-    name: `Acolyte ${role[0].toUpperCase()}${role.slice(1)}`,
-    model,
-    instructions: buildRoleInstructions(input.soulPrompt, role, roleSoul),
-    tools: toolsForRole(role),
-  });
+  const buildRoleAgent = (agentModel: string) =>
+    createAgent({
+      id: `acolyte-${role}`,
+      name: `Acolyte ${role[0].toUpperCase()}${role.slice(1)}`,
+      model: agentModel,
+      instructions: buildRoleInstructions(input.soulPrompt, role, roleSoul),
+      tools: toolsForRole(role),
+    });
+
+  let agent = buildRoleAgent(model);
 
   const requestInput = buildAgentInputWithUsage(input.request);
   const subagentContext = buildSubagentContext(role, input.request);
@@ -835,6 +876,7 @@ export async function runAgent(input: {
   const resourceId = input.request.resourceId?.trim() || appConfig.memory.resourceId;
   const memoryOptions = input.request.sessionId ? { thread: input.request.sessionId, resource: resourceId } : undefined;
   const seenToolNames = new Set<string>();
+  let lastToolFailureReason: string | undefined;
   const emitProgress = (message: string): void => {
     const trimmed = message.trim();
     if (trimmed.length === 0) {
@@ -852,6 +894,16 @@ export async function runAgent(input: {
         emitProgress(startMessage);
       }
       const resultMessages = formatToolResultProgressMessages(tool.name, tool.result);
+      const failureReason = extractToolFailureReason(tool.result);
+      if (failureReason) {
+        lastToolFailureReason = failureReason;
+        const failureMessage = `Tool failed: ${failureReason}`;
+        const failureDedupeKey = JSON.stringify({ kind: "error", name: tool.name, message: failureMessage });
+        if (!seenToolNames.has(failureDedupeKey)) {
+          seenToolNames.add(failureDedupeKey);
+          emitProgress(failureMessage);
+        }
+      }
       for (const resultMessage of resultMessages) {
         const resultDedupeKey = JSON.stringify({ kind: "result", name: tool.name, message: resultMessage });
         if (seenToolNames.has(resultDedupeKey)) {
@@ -923,8 +975,8 @@ export async function runAgent(input: {
   const delegatedInput = `${agentInput}\n\nDelegation brief:\n${delegationBrief}`;
   emitProgress(progressStageForRole(role, model));
   let result = await agent.generate(delegatedInput, {
-    maxSteps: role === "planner" ? 5 : 8,
-    toolChoice: "auto",
+    maxSteps: role === "planner" ? 5 : directEditLikely ? 6 : 8,
+    toolChoice: directEditLikely ? "required" : "auto",
     memory: memoryOptions,
     onStepFinish: emitToolProgress,
   });
@@ -937,6 +989,21 @@ export async function runAgent(input: {
       memory: memoryOptions,
       onStepFinish: emitToolProgress,
     });
+  }
+
+  const canRetryOnBaseModel = input.request.model !== model;
+  if (shouldRequireToolsFallback && result.toolCalls.length === 0 && canRetryOnBaseModel) {
+    const baseModelState = resolveModelProviderState(input.request.model);
+    if (baseModelState.available) {
+      model = input.request.model;
+      agent = buildRoleAgent(model);
+      result = await agent.generate(delegatedInput, {
+        maxSteps: directEditLikely ? 8 : 6,
+        toolChoice: "required",
+        memory: memoryOptions,
+        onStepFinish: emitToolProgress,
+      });
+    }
   }
 
   if (directEditLikely && result.toolCalls.length === 0) {
@@ -953,7 +1020,9 @@ export async function runAgent(input: {
 
   const toolCallIds = collectToolCallIds(Array.isArray(result.toolCalls) ? (result.toolCalls as unknown[]) : []);
   if (directEditLikely && !directEditExecutionSatisfied(toolCallIds, result.text)) {
-    const fallback = "Edit request failed: required edit tool did not run. Check /status and retry.";
+    const fallback = lastToolFailureReason
+      ? `Edit request failed: ${lastToolFailureReason}`
+      : "Edit request failed: required edit tool did not run. Check /status and retry.";
     const completionTokens = estimateTokens(fallback);
     return {
       model,
@@ -990,7 +1059,7 @@ export async function runAgent(input: {
   }
   const output = isReviewRequest(input.request.message)
     ? finalizeReviewOutput(rawOutput, input.request.message)
-    : finalizeAssistantOutput(rawOutput, input.request.message, toolCallIds.length);
+    : finalizeAssistantOutput(rawOutput, input.request.message, toolCallIds.length, lastToolFailureReason);
   const completionTokens = estimateTokens(output);
   const promptUsage = requestInput.usage;
   let budgetWarning: string | undefined;

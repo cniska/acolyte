@@ -165,9 +165,26 @@ describe("finalizeAssistantOutput", () => {
     );
   });
 
+  test("returns tool failure reason for direct edit prompts when available", () => {
+    expect(
+      finalizeAssistantOutput(
+        "   ",
+        "add a line break before resume message",
+        0,
+        "run-command failed: Shell command execution is disabled in read mode",
+      ),
+    ).toBe("Edit request failed: run-command failed: Shell command execution is disabled in read mode");
+  });
+
   test("returns tool-executed fallback when output is empty after tool calls", () => {
     expect(finalizeAssistantOutput("   ", "check status", 2)).toBe(
       "No final response after tool execution. Retry, or check backend logs if this repeats.",
+    );
+  });
+
+  test("returns tool failure reason for non-edit prompts when no output is produced", () => {
+    expect(finalizeAssistantOutput("   ", "check status", 0, "openai quota exceeded")).toBe(
+      "No output from model. Last tool error: openai quota exceeded",
     );
   });
 });

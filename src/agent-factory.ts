@@ -28,7 +28,7 @@ export function createAgent(input: {
     name: input.name ?? "Acolyte",
     instructions: input.instructions,
     model: normalizeModel(input.model),
-    maxRetries: 0,
+    maxRetries: 1,
     tools: input.tools ?? acolyteTools,
     memory: sharedMemory,
   });
