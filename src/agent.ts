@@ -999,7 +999,8 @@ export async function runAgent(input: {
 
   let delegationBrief = input.request.message.trim();
   const plannerResolved = resolveRunnableModel("planner", input.request.model);
-  if (role !== "planner" && shouldRunPlannerPreface(role, directEditLikely) && plannerResolved.available) {
+  const shouldPreface = role !== "planner" && shouldRunPlannerPreface(role, directEditLikely);
+  if (shouldPreface && plannerResolved.available) {
     try {
       emitProgress(progressStageForRole("planner", plannerResolved.model));
       const plannerSoul = loadRoleSoulPrompt("planner");
@@ -1023,7 +1024,7 @@ export async function runAgent(input: {
     } catch {
       // Best-effort planning; fallback to raw user prompt.
     }
-  } else if (role !== "planner" && !directEditLikely) {
+  } else if (shouldPreface) {
     try {
       const coordinator = createAgent({
         id: "acolyte-coordinator",
