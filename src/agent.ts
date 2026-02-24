@@ -803,6 +803,13 @@ export function progressStageForRole(role: AgentRole, model: string): string {
   return createProgressStageLabel(role, model);
 }
 
+export function shouldForceRequiredToolsRetry(role: AgentRole, directEditLikely: boolean): boolean {
+  if (directEditLikely) {
+    return true;
+  }
+  return role === "reviewer";
+}
+
 export function finalizeReviewOutput(output: string, message = ""): string {
   const trimmed = output.trim();
   if (trimmed.length > 0) {
@@ -870,6 +877,7 @@ export async function runAgent(input: {
   onProgress?: (message: string) => void;
   onDebug?: (event: string, fields?: Record<string, unknown>) => void;
 }): Promise<ChatResponse> {
+  const MODEL_CALL_TIMEOUT_MS = 90_000;
   const DIRECT_EDIT_RETRY_TIMEOUT_MS = 45_000;
   const role = selectAgentRole(input.request.message);
   const directEditLikely = role === "coder" && isDirectEditRequest(input.request.message);
@@ -1043,12 +1051,43 @@ export async function runAgent(input: {
     max_steps: role === "planner" ? 5 : directEditLikely ? 6 : 8,
     reason: "initial",
   });
-  let result = await agent.generate(agentPrompt, {
-    maxSteps: role === "planner" ? 5 : directEditLikely ? 6 : 8,
-    toolChoice: directEditLikely ? "required" : "auto",
-    memory: memoryOptions,
-    onStepFinish: emitToolProgress,
-  });
+  let result: Awaited<ReturnType<typeof agent.generate>>;
+  try {
+    result = await generateWithTimeout(
+      agentPrompt,
+      {
+        maxSteps: role === "planner" ? 5 : directEditLikely ? 6 : 8,
+        toolChoice: directEditLikely ? "required" : "auto",
+        memory: memoryOptions,
+        onStepFinish: emitToolProgress,
+      },
+      MODEL_CALL_TIMEOUT_MS,
+    );
+  } catch (error) {
+    lastToolFailureReason = error instanceof Error ? error.message : String(error);
+    emitDebug("agent.generate.retry_failed", {
+      model,
+      reason: "initial",
+      error: lastToolFailureReason,
+    });
+    const output = finalizeAssistantOutput("", input.request.message, 0, lastToolFailureReason);
+    const completionTokens = estimateTokens(output);
+    return {
+      model,
+      output,
+      toolCalls: [],
+      usage: {
+        promptTokens: requestInput.usage.promptTokens,
+        completionTokens,
+        totalTokens: requestInput.usage.promptTokens + completionTokens,
+        promptBudgetTokens: requestInput.usage.promptBudgetTokens,
+        promptTruncated: requestInput.usage.promptTruncated,
+      },
+      budgetWarning: requestInput.usage.promptTruncated
+        ? `context trimmed (${requestInput.usage.includedHistoryMessages}/${requestInput.usage.totalHistoryMessages} history messages)`
+        : undefined,
+    };
+  }
   emitDebug("agent.generate.done", {
     model,
     reason: "initial",
@@ -1056,7 +1095,7 @@ export async function runAgent(input: {
     text_chars: result.text.trim().length,
   });
 
-  const shouldRequireToolsFallback = role !== "planner" && (toolLikely || role === "reviewer");
+  const shouldRequireToolsFallback = shouldForceRequiredToolsRetry(role, directEditLikely);
   if (shouldRequireToolsFallback && result.toolCalls.length === 0) {
     emitDebug("agent.generate.retry", {
       model,
@@ -1064,12 +1103,16 @@ export async function runAgent(input: {
       tool_choice: "required",
       max_steps: 8,
     });
-    result = await agent.generate(agentPrompt, {
-      maxSteps: 8,
-      toolChoice: "required",
-      memory: memoryOptions,
-      onStepFinish: emitToolProgress,
-    });
+    result = await generateWithTimeout(
+      agentPrompt,
+      {
+        maxSteps: 8,
+        toolChoice: "required",
+        memory: memoryOptions,
+        onStepFinish: emitToolProgress,
+      },
+      MODEL_CALL_TIMEOUT_MS,
+    );
     emitDebug("agent.generate.done", {
       model,
       reason: "required_tools_no_calls",
@@ -1090,12 +1133,16 @@ export async function runAgent(input: {
         tool_choice: "required",
         max_steps: directEditLikely ? 8 : 6,
       });
-      result = await agent.generate(agentPrompt, {
-        maxSteps: directEditLikely ? 8 : 6,
-        toolChoice: "required",
-        memory: memoryOptions,
-        onStepFinish: emitToolProgress,
-      });
+      result = await generateWithTimeout(
+        agentPrompt,
+        {
+          maxSteps: directEditLikely ? 8 : 6,
+          toolChoice: "required",
+          memory: memoryOptions,
+          onStepFinish: emitToolProgress,
+        },
+        MODEL_CALL_TIMEOUT_MS,
+      );
       emitDebug("agent.generate.done", {
         model,
         reason: "switch_to_base_model",
@@ -1219,12 +1266,16 @@ export async function runAgent(input: {
       tool_choice: "auto",
       max_steps: role === "planner" ? 3 : 5,
     });
-    result = await agent.generate(`${agentPrompt}\n\nReturn a direct concise answer.`, {
-      maxSteps: role === "planner" ? 3 : 5,
-      toolChoice: "auto",
-      memory: memoryOptions,
-      onStepFinish: emitToolProgress,
-    });
+    result = await generateWithTimeout(
+      `${agentPrompt}\n\nReturn a direct concise answer.`,
+      {
+        maxSteps: role === "planner" ? 3 : 5,
+        toolChoice: "auto",
+        memory: memoryOptions,
+        onStepFinish: emitToolProgress,
+      },
+      MODEL_CALL_TIMEOUT_MS,
+    );
     emitDebug("agent.generate.done", {
       model,
       reason: "empty_text_response",

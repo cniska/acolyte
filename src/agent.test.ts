@@ -16,6 +16,7 @@ import {
   resolveRunnableModel,
   runAgent,
   selectAgentRole,
+  shouldForceRequiredToolsRetry,
 } from "./agent";
 import type { ChatRequest } from "./api";
 import { appConfig, setPermissionMode } from "./app-config";
@@ -230,6 +231,21 @@ describe("selectAgentRole", () => {
 
   test("routes implementation prompts to coder by default", () => {
     expect(selectAgentRole("implement /resume picker improvements")).toBe("coder");
+  });
+});
+
+describe("shouldForceRequiredToolsRetry", () => {
+  test("requires tool fallback for direct edit requests", () => {
+    expect(shouldForceRequiredToolsRetry("coder", true)).toBe(true);
+  });
+
+  test("requires tool fallback for reviewer role", () => {
+    expect(shouldForceRequiredToolsRetry("reviewer", false)).toBe(true);
+  });
+
+  test("does not force tool fallback for normal coder/planner prompts", () => {
+    expect(shouldForceRequiredToolsRetry("coder", false)).toBe(false);
+    expect(shouldForceRequiredToolsRetry("planner", false)).toBe(false);
   });
 });
 
