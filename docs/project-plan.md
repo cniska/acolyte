@@ -70,7 +70,19 @@ Exit Criteria:
 - Absolute-path safety guards avoid false positives on non-path slash tokens in prompts (for example `/xyz` in examples).
   Evidence (February 24, 2026): `bun run dogfood:gate` passed with verify/smoke/recovery/one-shot-diagnostics/session-diagnostics green, plus delivery and delegated-success-rate checks.
 
-### Milestone 5: Memory Quality
+### Milestone 5: Autonomous Delivery Readiness (MVP Closure)
+Status: in progress.
+Description: Prove the assistant can complete real coding tasks independently with low fallback.
+Goal: make autonomous end-to-end execution reliable enough to call MVP complete.
+
+Exit Criteria:
+- Independent delegated coding tasks succeed consistently over a sustained window (not single-run).
+- Manual fallback is the exception path, not the default path.
+- Failure categories are tracked, and repeated classes are closed with root-cause fixes.
+- Gate evidence remains green while real task execution stays stable.
+- MVP gate is only marked complete when this milestone is complete.
+
+### Milestone 6: Memory Quality
 Status: planned.
 Description: Improve quality and trustworthiness of persistent memory.
 Goal: reduce repeated mistakes with transparent, correctable memory behavior.
@@ -80,7 +92,7 @@ Exit Criteria:
 - Memory context is inspectable and easy to correct.
 - Evals show reduction in repeated instruction failures.
 
-### Milestone 6: Hosted Readiness
+### Milestone 7: Hosted Readiness
 Status: planned.
 Description: Prepare optional hosted mode for centralized memory and multi-device continuity.
 Goal: enable safe, reliable hosted operation without degrading local-first UX.
@@ -91,19 +103,19 @@ Exit Criteria:
 - CLI supports hybrid local/remote session storage.
 - Auth baseline is in place (GitHub-first).
 
-### Milestone 7: Post-MVP Friends and Family
+### Milestone 8: Post-MVP Friends and Family
 Status: planned.
 Description: Share with trusted coder friends to gather real-world feedback while continuing rapid iteration.
 Goal: validate usability, reliability, and core workflow fit before public release.
 
 Exit Criteria:
-- MVP gate is met (Milestones 2-4 stable).
+- MVP gate is met (Milestones 2-5 stable).
 - 5-10 external users complete real tasks and share structured feedback.
 - Top rough edges from early feedback are prioritized and addressed.
 - Core onboarding remains simple and repeatable.
 - Setup/distribution polish deferred earlier (global install UX, onboarding wizard polish, OAuth setup flow) is production-ready.
 
-### Milestone 8: Public OSS Release
+### Milestone 9: Public OSS Release
 Status: planned.
 Description: Open-source core local mode after friends-and-family feedback is incorporated.
 Goal: ship a clean OSS local-first release with optional self-host path.
@@ -117,4 +129,5 @@ Exit Criteria:
 - Progress/status contracts were simplified to a single-agent, single-model shape (`model`, `provider`, `provider_ready`) plus `Working…` stage text.
 
 ## MVP Gate
-- Status: met on February 24, 2026 (Milestones 2-4 marked complete with passing `dogfood:gate` evidence).
+- Status: not yet met.
+- Remaining requirement: complete Milestone 5 (autonomous independent task execution with low fallback).
