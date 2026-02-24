@@ -566,7 +566,9 @@ describe("chat-commands", () => {
       expect(readResult.stop).toBe(true);
       expect(appConfig.agent.permissions.mode).toBe("read");
       expect(
-        readResult.rows.some((row) => row.role === "system" && row.content === "Changed permissions to read (project)."),
+        readResult.rows.some(
+          (row) => row.role === "system" && row.content === "Changed permissions to read (project).",
+        ),
       ).toBe(true);
       expect(writes).toContainEqual({ mode: "read", scope: "project" });
 
