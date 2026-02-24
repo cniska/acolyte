@@ -28,7 +28,7 @@ function parseSessionStatus(content: string): { prefix: string; sessionId: strin
   return null;
 }
 
-function parseSessionsHeader(content: string): { prefix: string; count: string; rest: string } | null {
+export function parseSessionsHeader(content: string): { prefix: string; count: string; rest: string } | null {
   const [header, ...restLines] = content.split("\n");
   const match = header?.match(/^(Sessions\s+)(\d+)$/);
   if (!match) {
@@ -41,7 +41,7 @@ function parseSessionsHeader(content: string): { prefix: string; count: string; 
   };
 }
 
-function parseStatusLine(line: string): { indent: string; key: string; value: string } | null {
+export function parseStatusLine(line: string): { indent: string; key: string; value: string } | null {
   const match = line.match(/^(\s*)([a-zA-Z0-9_]+:\s*)(.*)$/);
   if (!match) {
     return null;
