@@ -467,6 +467,47 @@ describe("chat-commands", () => {
     expect(rows.some((row) => row.content.includes("Removed project memory mem_deadbeef."))).toBe(true);
   });
 
+  test("dispatchSlashCommand handles /memory rm not_found", async () => {
+    const memoryApi = {
+      listMemories: async () => [],
+      addMemory: async () => ({
+        id: "mem_unused",
+        scope: "user" as const,
+        content: "unused",
+        createdAt: "2026-02-21T00:00:00.000Z",
+      }),
+      removeMemoryByPrefix: async () => ({ kind: "not_found" as const, prefix: "mem_zzz" }),
+    };
+    const { rows, stop } = await runCommand("/memory rm mem_zzz", [], createStore(), { memoryApi });
+    expect(stop).toBe(true);
+    expect(rows.some((row) => row.content === "No memory found for id prefix: mem_zzz")).toBe(true);
+  });
+
+  test("dispatchSlashCommand handles /memory rm ambiguous prefix", async () => {
+    const memoryApi = {
+      listMemories: async () => [],
+      addMemory: async () => ({
+        id: "mem_unused",
+        scope: "user" as const,
+        content: "unused",
+        createdAt: "2026-02-21T00:00:00.000Z",
+      }),
+      removeMemoryByPrefix: async () => ({
+        kind: "ambiguous" as const,
+        prefix: "mem_a",
+        matches: [
+          { id: "mem_abcd1111", scope: "user" as const, content: "one", createdAt: "2026-02-21T00:00:00.000Z" },
+          { id: "mem_abcd2222", scope: "project" as const, content: "two", createdAt: "2026-02-21T00:00:00.000Z" },
+        ],
+      }),
+    };
+    const { rows, stop } = await runCommand("/memory rm mem_a", [], createStore(), { memoryApi });
+    expect(stop).toBe(true);
+    expect(
+      rows.some((row) => row.content === "Ambiguous memory id prefix: mem_a. Matches: mem_abcd1111, mem_abcd2222"),
+    ).toBe(true);
+  });
+
   test("dispatchSlashCommand renders scoped /memory header", async () => {
     const memoryApi = {
       listMemories: async () => [
