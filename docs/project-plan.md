@@ -47,7 +47,7 @@ Exit Criteria:
 - Cost/latency and memory behavior remain acceptable.
 
 ### Milestone 4: Runtime Reliability Signals
-Status: in progress.
+Status: completed on February 24, 2026.
 Description: Make in-flight execution and failures visible, actionable, and low-noise.
 Goal: users can always see meaningful progress and failure reasons during execution.
 
@@ -67,6 +67,7 @@ Exit Criteria:
 - Single-agent execution remains the default path and should stay reliable under repeated dogfood use.
 - Critical operator actions stay explicit and command-first.
 - Absolute-path safety guards avoid false positives on non-path slash tokens in prompts (for example `/xyz` in examples).
+  Evidence (February 24, 2026): `bun run dogfood:gate` passed with verify/smoke/recovery/one-shot-diagnostics/session-diagnostics green, plus delivery and delegated-success-rate checks.
 
 ### Milestone 5: Memory Quality
 Status: planned.
