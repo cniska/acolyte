@@ -69,135 +69,16 @@ Living notes for talks about building this project. Update this file as mileston
 - Build process matters: small validated slices outperform large speculative changes.
 
 ## Lessons Learned
-- Reliability beats novelty: verify-first loops and small commits prevent drift.
-- Memory must be transparent and editable, otherwise trust decays quickly.
-- UX details matter: prompt ergonomics and low-noise output have outsized impact.
-- `@file` references are only valuable when they attach real context, not just visual autocomplete.
-- Subagents work better when each role gets explicit context (goal, scope, expected output), not implicit routing guesses.
-- Delegated loop remains the primary execution path.
-- Centralized provider/model routing reduces drift across CLI/backend/agent wiring.
-- Mock-path smoke checks (`/healthz` with `--no-env-file`) catch provider/env assumptions early.
-- Token budget discipline is required during rapid iteration.
-- One-shot workflows need memory isolation (`run-<session>` resources) to avoid cross-task bleed.
-- Lightweight smoke commands improve confidence without adding heavy CI complexity.
-- February 24, 2026 delegated smoke checks passed for both a direct file edit and a non-edit status check.
-- Moving complex shell orchestration out of `package.json` keeps runtime scripts readable and easier to debug.
-- Manual split mode is now explicit: run backend with `bun run serve:env`, then attach CLI with `bun run src/cli.ts`.
-- Default startup is managed chat (`bun run start`) for fewer local setup misses.
-- Reduced prompt-specific output rewrites (for example greetings) in favor of generic response handling.
-- Continued reducing brittle output filtering so assistant replies preserve more model intent.
-- Dogfood readiness gate now surfaces clearer first-signal failure lines (less shell-wrapper noise).
-- Gate progress parsing failures now include the first actionable signal line for faster troubleshooting.
-- Timeout fallback should mention `git diff` when the edit summary times out.
-- Session-level lock guard now prevents concurrent CLI processes from writing to the same active session.
-- Soul prompt now explicitly favors one recommended next action over option menus unless alternatives are requested.
-- Internal CLI helpers now use Zod-backed argument validation in key scripts (`dogfood-gate`, `wait-backend`).
-- Expanded Zod arg-validation pattern to additional admin tooling (`om-admin`) for consistency.
-- `om-soak` now has strict Zod-backed option parsing + tests (and no side-effects on module import).
-- Policy distillation option parsing now uses Zod while preserving current CLI error messages.
-- Core CLI argument paths (`run`, `edit`) also moved to Zod-backed parsing for consistency.
-- `dogfood-progress` now runs `git log` via argv (no shell string construction), reducing injection/quoting risk.
-- `dogfood-gate` now executes readiness checks via argv (`bun run ...`) instead of `bash -lc`.
-- `dogfood-smoke` checks now run via argv commands as well, removing shell-wrapper execution there too.
-- CLI parsing for tool outputs (`exit_code`, `/edit` metadata) now uses Zod validation for safer handling.
-- Verify-summary run-meta parsing also moved to Zod (`chat-formatters`) with fallback-safe output.
-- `/edit` tool metadata parsing is now strict and Zod-validated (`path`, `matches`, `dry_run`).
-- `dogfood-gate` progress JSON is now parsed via an explicit Zod schema (not ad-hoc field checks).
-- `policy-distill` option parsing is now strict on unknown flags/missing values (`--sessions`, `--min` only), with explicit errors.
-- Session UX was aligned: `/sessions` now renders as a compact assistant block and uses UTF-8 active markers (`●`) for readability.
-- Added a forgiving slash alias: `/session` now resolves to `/sessions`.
-- Added production-style session resume flow: top-level `acolyte resume [id-prefix]` and an exit-time resume hint command.
-- Kept user slash-command surface minimal by moving tool-like commands (`/changes`, `/web`, `/fetch`) out of chat UX and retaining them only as internal agent/debug paths.
-- `/status` nested sections now use stacked `key: value` rows for easier scanning during backend/debug checks.
-- `/status` nested sections now also align nested keys (for example `main/planner/coder/reviewer`) to improve scan speed.
-- Biome recommended lint rules are now enabled in the main config (`biome.json`) with zero current diagnostics.
-- Config token budgeting now has hard caps (context/message/attachment/pinned + OM thresholds) to prevent runaway values.
-- Permission default is now `read` mode, reducing accidental write/shell actions in fresh sessions.
-- Dogfood CLI argument parsing now explicitly supports `--no-verify`, preventing smoke/gate regressions.
-- Prompt key handling now parses more modifier-based CSI arrow variants, reducing terminal-specific `Cmd` navigation misses.
-- Health/status now labels non-OpenAI base URLs as `openai-compatible`, improving local-model endpoint debugging.
-- Role model IDs now drive runtime provider selection (`openai` / `anthropic` / `gemini` / `openai-compatible`) with credential-aware fallback behavior.
-- Provider inference now also handles common unprefixed ids (`claude-*`, `gemini-*`) for easier lane setup.
-- Terminal key handling now covers more `Cmd`-style Home/End sequence variants across terminal profiles.
-- Policy confirmation picker outcomes now stay in assistant voice for consistent transcript tone.
-- Status diagnostics now include role-level provider readiness (`main/planner/coder/reviewer`) to debug mixed-provider setup quickly.
-- Status model labels are now provider-less for cleaner scan (`gpt-5-mini`, `claude-*`, `gemini-*`), with providers shown separately.
-- Non-secret user config is now TOML-readable (`~/.acolyte/config.toml`) while keeping JSON compatibility.
-- Secret handling tightened: API keys are env-only; file config no longer accepts/stores `apiKey`.
-- Non-secret runtime settings were consolidated into config files (secrets remain env-only), reducing env/config overlap.
-- Config precedence is now project-first: `<repo>/.acolyte/config.toml` overrides `~/.acolyte/config.toml`.
-- `acolyte config` now supports listing/setting/unsetting all non-secret keys (not just `model`/`apiUrl`).
-- Status model rows now render mixed-role providers correctly (no single-provider formatting assumption).
-- Coder role instructions now bias toward one recommended next action instead of A/B/C option menus by default.
-- Role guidance now explicitly suppresses recap/status/capability scaffolding unless the user asks for it.
-- Added `/memory context` to inspect the exact top memory notes currently injected into prompts.
-- Memory context selection is now globally time-sorted across user/project scopes.
-- `/status` now reports `memory_context` count for at-a-glance prompt-memory transparency.
-- Non-chat CLI now supports `acolyte memory context` for scriptable memory-context inspection.
-- `/tokens` now surfaces the latest budget warning so context-trim events are visible on demand.
-- Memory-context inspection now supports scope filters (`all|user|project`) in both chat (`/memory context <scope>`) and CLI (`acolyte memory context <scope>`).
-- Token budget diagnostics moved to on-demand `/tokens` output (removed inline transcript warning rows).
-- `/tokens` now shows the latest session warning (not only last-turn warning) to preserve recent trim signal.
-- Local `/status` now degrades gracefully if memory-context files are unreadable (status still returns).
-- Planner tool scope now matches real planning needs while staying read-only (`read/search/git/web`).
-- `mastra:dev` and `studio` now load `.env` so provider credentials are consistent in local dev and Mastra Studio.
-- Local backend `/status` now emits role-model fields, matching remote status shape for easier debugging.
-- Local backend `/status` now also emits provider lane diagnostics (`providers`, `provider_ready`) for full parity.
-- Dogfood progress/gate lookback now evaluates the last N non-doc commits, reducing docs-only noise in readiness checks.
-- Dogfood gate delivery diagnostics now surface `scoped` and `scanned` commit counts for clearer readiness debugging.
-- Latest dogfood skip-verify gate on February 22, 2026 remained `ready` at 6/6 delivery slices (lookback 10).
-- Reliability slice on February 24, 2026 removed flaky `Bun.serve({ port: 0 })` test usage and restored full `bun run verify` green.
-- Remote backend connection handling now also maps Bun fetch url-typo errors to the same actionable offline hint (`Cannot reach backend at ...`).
-- Assistant output cleanup now also strips recap lead-ins that use an em dash (`Recap — ...`) to reduce scaffold leakage.
-- `om:soak` now supports `--help` and common camelCase flag aliases (`--delayMs`, `--checkpointEvery`, `--sessionId`, `--wipeBefore`) for smoother local diagnostics.
-- Resume hints now fall back to `bun run src/cli.ts resume ...` when `acolyte` is not available on PATH, reducing setup friction on fresh machines.
-- CLI memory mode now rejects extra positional args for `memory list/context` (no silent argument drops).
-- Slash suggestions now complete memory context scopes (`/memory context all|user|project`) and also work when starting from `/mem context ...`.
-- Chat `/memory` now accepts optional scope (`/memory user|project|all`) for parity with CLI memory listing.
-- Slash suggestions now also complete `/memory` listing scopes (`/memory all|user|project`) and include `/memory context`.
-- Scoped memory headers in chat are now humanized (`User memory`, `Project memory context`) instead of inverted wording.
-- Internal dogfood scripts now support `--help` (`dogfood:progress`, `dogfood:gate`) for discoverable local usage.
-- OM admin commands now support `--help`/`-h` (`om:status`, `om:wipe`) without triggering unknown-argument errors.
-- Dogfood gate delivery detail now includes `remaining=<n>` so near-miss readiness states are explicit at a glance.
-- Dogfood smoke now includes a scoped memory check (`acolyte memory context all`) to keep memory UX in the readiness loop.
-- Mastra Studio `/api/agents` model metadata can currently show `gpt-5-mini` for all agents even when runtime role routing uses configured models; treat `/status` + runtime traces as source of truth until fixed.
-- Added explicit alias regression coverage for scoped memory slash forms (`/mem user|project|context user`).
-- Simplified chat memory usage guidance to a two-form usage line: `/memory [scope] | /memory context [scope]`.
-- Added regression coverage for project-scoped chat memory header output (`/memory project` -> `Project memory ...`).
-- Instruction quality beats brittle cleanup code: role/soul prompts are now the primary lever for concise, user-focused answers.
-- MVP focus tightened to reliability over polish: prioritize successful tool-backed execution and explicit failure signals over response post-processing.
-- Keep post-processing minimal and defensive only (empty-output fallbacks, safety/error clarity), not style-shaping.
-- Removed plan/conclusion summarizer post-processing in the agent loop; replies now pass through raw model text (trim-only + fallbacks).
-- Instruction density matters: overly long/prescriptive `AGENTS.md` content can reduce coding-agent success and increase cost/latency, so keep repo instructions concise and execution-focused (see `docs/resources.md`).
-- Agent finalization now preserves raw model output (trim-only + empty-output fallback), removing most style-shaping rewrite logic.
-- Direct edit prompts now enforce an execution contract: no successful completion unless `edit-file` actually ran.
-- Write-confirm recovery now auto-replays the original prompt via an internal payload, avoiding a second manual submit after switching to write mode.
-- Empty-output fallback is now more specific when tools ran but no final answer was produced, improving troubleshooting signal.
-- Agent loop now emits structured debug events (role, retries, tool counts, fallback reasons) in backend logs for faster runtime diagnosis.
-- Direct-edit retries now have timeout guards to prevent multi-minute stalls on required-tool retries.
-- Tool-call IDs are canonicalized to kebab-case (`edit-file`, `read-file`, etc.) to avoid runtime/provider naming mismatches (`editFile`).
-- Direct-edit prompts now include explicit target-path hints when present, improving edit execution on file-specific requests.
-- `scripts/with-backend.sh` now reuses an already-running healthy backend instead of always starting a second instance (avoids local `EADDRINUSE` stalls during dogfooding).
-- Required-tools retry is now limited to reviewer/direct-edit flows; normal coder prompts no longer force a second required-tools pass, reducing latency and no-output loops.
-- Cost optimization: non-review coder turns no longer run planner/coordinator preface calls, cutting extra model requests during development.
-- Role routing now prioritizes explicit edit intent over planning keywords, preventing `project-plan.md`-style false planner routing.
-- Direct-edit plan detection now catches numbered list variants (including `• 1.`), reducing plan-only replies when execution is expected.
-- Slash command output roles were aligned for clarity: `/tokens`, `/sessions`, and `/status` now render as system output.
-- `/tokens` now includes model-call diagnostics (`last` + `session`) alongside token usage.
-- Token usage is now persisted per session and restored on `/resume` (resets on `/new`).
-- Chat `/status` rendering now dims keys while keeping values normal for faster scanning.
-- Clarification flow now opens the picker directly (no generated “clarifying questions” transcript block before picker input).
-- Slash command diagnostics are now consistently system-scoped across status/sessions/tokens/memory/permissions/distill flows.
-- Added storage normalization coverage to guarantee `tokenUsage` defaults/restoration remain stable across persisted sessions.
-- Command-output scanability improved: `/sessions` body is dimmed and `/tokens` now uses dim key / normal value rendering.
-- `dogfood:gate` now accepts `--no-verify/--no-smoke` aliases in addition to `--skip-*`.
-- Role routing now uses explicit intent only (`review ...` / `plan ...`), with coder as the default lane for all other prompts.
-- Removed planner/coordinator preface path from runtime execution; each request now runs a single selected role pass.
-- Runtime was simplified further to a single-agent path with one configured model, role-soul files removed, and unified progress text (`Working…`).
-- Direct-edit runtime now uses shorter timeout/step budgets, reducing long stalls and returning outcomes faster.
-- Fixed a direct-edit guard false positive where slash-like tokens in prompt examples (for example `/xyz`) were treated as absolute file paths and blocked execution.
-- Product scope was narrowed to coding-first workflows; setup/admin surface is intentionally minimal.
-- Tool path guardrails are now workspace + `/tmp` only.
+- Reliability over novelty: verify-first loops, small commits, and smoke checks keep iteration stable.
+- Keep execution simple: single-agent runtime, explicit permission controls, and minimal user-facing complexity.
+- Memory trust matters: saved context must be inspectable, editable, and scoped clearly.
+- UX clarity drives adoption: concise output, strong defaults, and low-noise command diagnostics.
+- Grounded execution beats prompt gymnastics: tool-backed changes and concrete validation are more reliable than heavy post-processing.
+- Configuration should stay predictable: non-secret file config + env-only secrets with clear precedence.
+- Safety defaults matter: read-mode first, guarded file/shell roots, and explicit escalation points.
+- Operational scripts should be robust and debuggable: argv execution, strict argument parsing, and actionable failure messages.
+- Dogfooding readiness should be measurable: gate checks, scoped lookback, and explicit remaining-slice signals.
+- Keep repo instructions lean: high-signal guidance improves execution quality and cost/latency.
 
 ## Open Narrative Threads
 1. Continue dogfooding ramp from Codex-led to assistant-led development.
