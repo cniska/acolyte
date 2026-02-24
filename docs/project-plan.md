@@ -27,6 +27,7 @@ Exit Criteria:
 - Recovery paths (`interrupt`, `/new`, `/resume`) remain stable.
 - Setup/diagnostics are reliable (`start`/`dev` + `/status` with clear failure guidance).
 - Permission flow is explicit and frictionless (read default, write confirm, auto-continue prompt).
+- Track delegated slice success/failure ratio weekly.
 
 ### Milestone 3: Delegated Switch Trial
 Status: planned.

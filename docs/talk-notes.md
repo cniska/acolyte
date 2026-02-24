@@ -176,6 +176,8 @@ Living notes for talks about building this project. Update this file as mileston
 - `scripts/with-backend.sh` now reuses an already-running healthy backend instead of always starting a second instance (avoids local `EADDRINUSE` stalls during dogfooding).
 - Required-tools retry is now limited to reviewer/direct-edit flows; normal coder prompts no longer force a second required-tools pass, reducing latency and no-output loops.
 - Cost optimization: non-review coder turns no longer run planner/coordinator preface calls, cutting extra model requests during development.
+- Role routing now prioritizes explicit edit intent over planning keywords, preventing `project-plan.md`-style false planner routing.
+- Direct-edit plan detection now catches numbered list variants (including `• 1.`), reducing plan-only replies when execution is expected.
 
 ## Open Narrative Threads
 1. Continue dogfooding ramp from Codex-led to assistant-led development.
