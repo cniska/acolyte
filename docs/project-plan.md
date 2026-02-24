@@ -56,6 +56,7 @@ Exit Criteria:
 - Permission policies support category-level control (`read`, `edit`, `execute`) with session-scoped “always allow” grants.
 - User-facing diagnostics include per-turn model-call counts and token usage.
 - Command diagnostics are consistently system-scoped and scan-friendly (`/status`, `/tokens`, `/sessions`).
+- Key-value command outputs preserve readability conventions (dim keys, normal values).
 - Session diagnostics survive session switches (`/tokens` restored on `/resume`, reset on `/new`).
 - Clarification handling is picker-first (no generated follow-up prompt text before question pickers).
 - Persistence guards cover diagnostic continuity (`tokenUsage` normalization tested at storage layer).

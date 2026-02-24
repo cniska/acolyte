@@ -187,6 +187,8 @@ Living notes for talks about building this project. Update this file as mileston
 - Clarification flow now opens the picker directly (no generated “clarifying questions” transcript block before picker input).
 - Slash command diagnostics are now consistently system-scoped across status/sessions/tokens/memory/permissions/distill flows.
 - Added storage normalization coverage to guarantee `tokenUsage` defaults/restoration remain stable across persisted sessions.
+- Command-output scanability improved: `/sessions` body is dimmed and `/tokens` now uses dim key / normal value rendering.
+- `dogfood:gate` now accepts `--no-verify/--no-smoke` aliases in addition to `--skip-*`.
 
 ## Open Narrative Threads
 1. Continue dogfooding ramp from Codex-led to assistant-led development.
