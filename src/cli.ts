@@ -20,6 +20,7 @@ import {
 import { type AcolyteConfig, readConfig, readConfigForScope, setConfigValue, unsetConfigValue } from "./config";
 import { buildFileContext } from "./file-context";
 import { addMemory, listMemories } from "./memory";
+import { acquireSessionLock, releaseSessionLock } from "./session-lock";
 import { getMemoryContextEntries } from "./soul";
 import { formatStatusOutput as formatStatusOutputShared } from "./status-format";
 import { createSession, readStore, writeStore } from "./storage";
@@ -881,6 +882,13 @@ async function chatModeWithOptions(options: { resumeLatest: boolean; resumePrefi
     store.sessions.unshift(session);
   }
   store.activeSessionId = session.id;
+  const lock = acquireSessionLock(session.id);
+  if (!lock.ok) {
+    printError(`Session is already open in another process (pid ${lock.ownerPid}).`);
+    printInfo(`Use: ${formatResumeCommand(session.id)}`);
+    process.exitCode = 1;
+    return;
+  }
   const backend = createBackend({
     apiUrl: appConfig.server.apiUrl,
   });
@@ -888,19 +896,23 @@ async function chatModeWithOptions(options: { resumeLatest: boolean; resumePrefi
     await writeStore(store);
   };
 
-  if (output.isTTY) {
-    clearScreen();
+  try {
+    if (output.isTTY) {
+      clearScreen();
+    }
+    await runInkChat({
+      backend,
+      session,
+      store,
+      persist,
+      version: CLI_VERSION,
+    });
+    const resumeId = store.activeSessionId ?? session.id;
+    printOutput("");
+    printInfo(`Resume with: ${formatResumeCommand(resumeId)}`);
+  } finally {
+    releaseSessionLock(session.id);
   }
-  await runInkChat({
-    backend,
-    session,
-    store,
-    persist,
-    version: CLI_VERSION,
-  });
-  const resumeId = store.activeSessionId ?? session.id;
-  printOutput("");
-  printInfo(`Resume with: ${formatResumeCommand(resumeId)}`);
 }
 
 async function runMode(args: string[]): Promise<void> {
