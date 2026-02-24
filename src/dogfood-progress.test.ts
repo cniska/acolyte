@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   buildGitLogCmd,
   commitType,
+  countDelegatedOutcomes,
   countDeliverySlices,
   parseArgs,
   parseGitLog,
@@ -94,6 +95,21 @@ describe("dogfood progress", () => {
         { type: "other", count: 2 },
       ]),
     ).toBe(7);
+  });
+
+  test("countDelegatedOutcomes reports success/failure proxy and rate", () => {
+    expect(
+      countDelegatedOutcomes([
+        { hash: "1", date: "2026-02-21", subject: "feat(cli): one" },
+        { hash: "2", date: "2026-02-21", subject: "fix(cli): two" },
+        { hash: "3", date: "2026-02-21", subject: "chore: three" },
+        { hash: "4", date: "2026-02-21", subject: "docs: four" },
+      ]),
+    ).toEqual({
+      success: 2,
+      failure: 2,
+      successRate: 50,
+    });
   });
 
   test("buildGitLogCmd uses argv form for lookback and since", () => {

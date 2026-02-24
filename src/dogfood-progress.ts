@@ -114,6 +114,21 @@ function countDeliverySlices(types: Array<{ type: string; count: number }>): num
   return types.reduce((sum, row) => sum + (DELIVERY_TYPES.has(row.type) ? row.count : 0), 0);
 }
 
+function countDelegatedOutcomes(commits: Commit[]): { success: number; failure: number; successRate: number } {
+  let success = 0;
+  let failure = 0;
+  for (const commit of commits) {
+    if (DELIVERY_TYPES.has(commitType(commit.subject))) {
+      success += 1;
+    } else {
+      failure += 1;
+    }
+  }
+  const total = success + failure;
+  const successRate = total > 0 ? Math.round((success / total) * 100) : 0;
+  return { success, failure, successRate };
+}
+
 function commitType(subject: string): string {
   return subject.match(/^([a-z]+)(?:\(|:)/i)?.[1]?.toLowerCase() ?? "other";
 }
@@ -162,6 +177,7 @@ function printProgress(commits: Commit[], args: ProgressArgs): void {
   const scope = args.since ? `since ${args.since}` : `last ${args.lookback} non-doc commits`;
   const types = summarizeByType(scopedCommits);
   const delivery = countDeliverySlices(types);
+  const delegated = countDelegatedOutcomes(scopedCommits);
   const pct = Math.min(100, Math.round((delivery / args.target) * 100));
   const remaining = Math.max(0, args.target - delivery);
 
@@ -173,6 +189,9 @@ function printProgress(commits: Commit[], args: ProgressArgs): void {
           commitsTotal: total,
           commitsScanned: commits.length,
           deliverySlices: delivery,
+          delegatedSuccess: delegated.success,
+          delegatedFailure: delegated.failure,
+          delegatedSuccessRate: delegated.successRate,
           target: args.target,
           percent: pct,
           remaining,
@@ -194,6 +213,9 @@ function printProgress(commits: Commit[], args: ProgressArgs): void {
     console.log(`- commits scanned: ${commits.length}`);
   }
   console.log(`- slices (delivery): ${delivery}/${args.target} (${pct}%)`);
+  console.log(
+    `- delegated outcomes (proxy): success=${delegated.success} failure=${delegated.failure} rate=${delegated.successRate}%`,
+  );
   console.log(`- remaining to target: ${remaining}`);
   if (types.length > 0) {
     console.log("- commit types:");
@@ -232,4 +254,4 @@ if (import.meta.main) {
 }
 
 export { buildGitLogCmd, countDeliverySlices, parseArgs, parseGitLog, summarizeByType };
-export { commitType, selectScopeCommits };
+export { commitType, countDelegatedOutcomes, selectScopeCommits };
