@@ -225,14 +225,6 @@ export function extractClarifyingQuestions(output: string): string[] {
   return questions;
 }
 
-function buildClarificationPrompt(questions: string[]): string {
-  const lines = ["Clarification needed before continuing:"];
-  for (let i = 0; i < questions.length; i += 1) {
-    lines.push(`${i + 1}. ${questions[i] ?? ""}`);
-  }
-  return lines.join("\n");
-}
-
 export function buildInternalClarificationTurn(turn: InternalClarificationTurn): string {
   return `${INTERNAL_CLARIFICATION_PREFIX}${JSON.stringify(turn)}`;
 }
@@ -575,18 +567,10 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       await pollProgress().catch(() => {});
       const clarifyingQuestions = extractClarifyingQuestions(assistantMessage.content);
       if (clarifyingQuestions.length > 0) {
-        const clarificationPrompt = buildClarificationPrompt(clarifyingQuestions);
-        const clarificationMessage = input.createMessage("assistant", clarificationPrompt);
-        input.currentSession.messages.push(clarificationMessage);
-        input.currentSession.updatedAt = input.nowIso();
         const nonAssistantRows = turn.rows.filter((row) => row.role !== "assistant");
         input.setRows((current) => {
           const deduped = dedupeToolProgressRows(current, nonAssistantRows);
-          return [
-            ...current,
-            ...deduped,
-            { id: `row_${crypto.randomUUID()}`, role: "assistant", content: clarificationPrompt },
-          ];
+          return [...current, ...deduped];
         });
         input.openClarifyPanel(clarifyingQuestions, text);
       } else {

@@ -490,7 +490,7 @@ describe("chat submit handler guards", () => {
       "Where is release-notes generation triggered?",
       "Should filters be case-insensitive?",
     ]);
-    expect(rows.some((row) => row.content.includes("Clarification needed before continuing:"))).toBe(true);
+    expect(rows.some((row) => row.content.includes("Clarification needed before continuing:"))).toBe(false);
     expect(rows.some((row) => row.content.includes("Risks/assumptions"))).toBe(false);
   });
 
