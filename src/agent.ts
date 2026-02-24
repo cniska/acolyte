@@ -207,11 +207,12 @@ function directEditFailureMessage(toolCallIds: string[], lastToolFailureReason?:
   return "Edit request failed: required edit tool did not run. Check /status and retry.";
 }
 
-export function directEditTimeoutMessage(paths: string[]): string {
+export function directEditTimeoutMessage(paths: string[], confirmed = false): string {
+  const actionPhrase = confirmed ? "edit-file ran" : "edit-file may have run";
   if (paths.length === 0) {
-    return "Edit request timed out while composing the final response, but edit-file ran. Check git diff to confirm the applied change.";
+    return `Edit request timed out while composing the final response; ${actionPhrase}. Check git diff to confirm the applied change.`;
   }
-  return `Edit request timed out while composing the final response, but edit-file ran for ${formatPathList(paths) ?? "target files"}. Check git diff to confirm the applied change.`;
+  return `Edit request timed out while composing the final response; ${actionPhrase} for ${formatPathList(paths) ?? "target files"}. Check git diff to confirm the applied change.`;
 }
 
 export { buildSubagentContext, selectAgentRole };
@@ -1099,7 +1100,28 @@ export async function runAgent(input: {
       error: lastToolFailureReason,
     });
     if (directEditLikely && observedToolCallIds.has("edit-file")) {
-      const output = directEditTimeoutMessage(Array.from(observedEditPaths));
+      const output = directEditTimeoutMessage(Array.from(observedEditPaths), true);
+      const completionTokens = estimateTokens(output);
+      return {
+        model,
+        output,
+        toolCalls: Array.from(observedToolCallIds),
+        usage: {
+          promptTokens: requestInput.usage.promptTokens,
+          completionTokens,
+          totalTokens: requestInput.usage.promptTokens + completionTokens,
+          promptBudgetTokens: requestInput.usage.promptBudgetTokens,
+          promptTruncated: requestInput.usage.promptTruncated,
+        },
+        budgetWarning: requestInput.usage.promptTruncated
+          ? `context trimmed (${requestInput.usage.includedHistoryMessages}/${requestInput.usage.totalHistoryMessages} history messages)`
+          : undefined,
+      };
+    }
+    if (directEditLikely && /timed out/i.test(lastToolFailureReason)) {
+      const hintedPaths =
+        observedEditPaths.size > 0 ? Array.from(observedEditPaths) : directEditTargetPath ? [directEditTargetPath] : [];
+      const output = directEditTimeoutMessage(hintedPaths, observedToolCallIds.has("edit-file"));
       const completionTokens = estimateTokens(output);
       return {
         model,

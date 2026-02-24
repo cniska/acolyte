@@ -27,6 +27,7 @@ function isCodingRequest(text: string): boolean {
   return hints.some((hint) => lower.includes(hint));
 }
 
+// Avoid misrouting planner requests from filenames like project-plan.md.
 function isDirectEditIntent(text: string): boolean {
   return /\b(add|change|update|remove|delete|edit|fix|insert|write)\b/i.test(text);
 }

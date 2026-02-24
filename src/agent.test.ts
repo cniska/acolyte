@@ -160,6 +160,10 @@ describe("directEditTimeoutMessage", () => {
   test("includes edited file path when available", () => {
     expect(directEditTimeoutMessage(["src/cli.ts"])).toContain("src/cli.ts");
   });
+
+  test("uses confirmed wording when edit execution is observed", () => {
+    expect(directEditTimeoutMessage(["src/cli.ts"], true)).toContain("edit-file ran");
+  });
 });
 
 describe("finalizeReviewOutput", () => {
