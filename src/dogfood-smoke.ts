@@ -144,6 +144,57 @@ async function configureSmokeCli(smokeEnv: Record<string, string>): Promise<void
   }
 }
 
+async function setBackendPermissionMode(mode: "read" | "write"): Promise<void> {
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+  };
+  if (process.env.ACOLYTE_API_KEY) {
+    headers.authorization = `Bearer ${process.env.ACOLYTE_API_KEY}`;
+  }
+  const response = await fetch("http://localhost:6767/v1/permissions", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ mode }),
+  });
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Failed to set backend permission mode to ${mode}: ${body || `status ${response.status}`}`);
+  }
+}
+
+async function runReadModeBlockSmoke(smokeEnv: Record<string, string>): Promise<{ ok: boolean; detail: string }> {
+  const filePath = join(tmpdir(), `acolyte-dogfood-read-block-${crypto.randomUUID()}.txt`);
+  await writeFile(filePath, "alpha\n", "utf8");
+  try {
+    await setBackendPermissionMode("read");
+    const prompt = `Edit ${filePath}: replace alpha with beta. Apply the edit directly, no explanation.`;
+    const result = await runCommand(
+      ["bun", "run", "src/cli.ts", "dogfood", "--no-verify", prompt],
+      COMMAND_TIMEOUT_MS,
+      smokeEnv,
+    );
+    if (result.exitCode !== 0) {
+      return { ok: false, detail: `command failed (exit ${result.exitCode})` };
+    }
+    const output = stripAnsi(`${result.stdout}\n${result.stderr}`);
+    if (!/Edit request blocked in read mode/i.test(output)) {
+      return { ok: false, detail: "missing read-mode block response" };
+    }
+    const content = await readFile(filePath, "utf8");
+    if (content !== "alpha\n") {
+      return { ok: false, detail: "file changed despite read mode" };
+    }
+    return { ok: true, detail: "blocked and file unchanged" };
+  } finally {
+    await rm(filePath, { force: true });
+    try {
+      await setBackendPermissionMode("write");
+    } catch {
+      // best-effort restore; subsequent checks will fail if backend remains read-only
+    }
+  }
+}
+
 async function runCodingTaskSmoke(smokeEnv: Record<string, string>): Promise<{ ok: boolean; detail: string }> {
   const filePath = join(tmpdir(), `acolyte-dogfood-coding-${crypto.randomUUID()}.txt`);
   await writeFile(filePath, "alpha\n", "utf8");
@@ -207,6 +258,14 @@ export async function main(): Promise<void> {
       }
       console.log(`✓ ${check.name}`);
     }
+
+    const readModeBlock = await runReadModeBlockSmoke(smokeEnv);
+    if (!readModeBlock.ok) {
+      console.error(`✗ dogfood read-mode block: ${readModeBlock.detail}`);
+      process.exit(1);
+      return;
+    }
+    console.log("✓ dogfood read-mode block");
 
     if (isProviderReadyFromStatusOutput(statusOutput)) {
       const codingTask = await runCodingTaskSmoke(smokeEnv);
