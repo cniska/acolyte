@@ -27,7 +27,7 @@ Exit Criteria:
 - Instruction contract stays lean: keep `AGENTS.md` high-signal and minimal; avoid adding verbose style rules that reduce execution success.
 - Runtime execution path remains simple and internal by default; no user-facing routing customization unless a concrete workflow requires it.
 - Recovery paths (`interrupt`, `/new`, `/resume`) remain stable.
-  Evidence: submit-handler regressions cover interrupted turns and timeout recovery to follow-up submit and `/new`.
+  Evidence: submit-handler regressions cover interrupted turns and timeout recovery to follow-up submit, `/new`, and `/resume`.
 - Setup/diagnostics are reliable (`start`/`dev` + `/status` with clear failure guidance).
 - Permission flow is explicit and frictionless (read default, write confirm, auto-continue prompt).
 - Dogfood smoke validates one real coding edit task end-to-end when provider credentials are ready.
