@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { addMemory, listMemories } from "./memory";
+import { addMemory, listMemories, removeMemoryByPrefix } from "./memory";
 
 const tempDirs: string[] = [];
 
@@ -52,5 +52,22 @@ describe("markdown memory store", () => {
     expect(all).toHaveLength(2);
     expect(all.some((entry) => entry.scope === "project")).toBe(true);
     expect(all.some((entry) => entry.scope === "user")).toBe(true);
+  });
+
+  test("removeMemoryByPrefix removes a matching memory", async () => {
+    const homeDir = createTempDir("acolyte-memory-home-");
+    const cwd = createTempDir("acolyte-memory-cwd-");
+    const entry = await addMemory("Disposable note", { scope: "user", homeDir, cwd });
+    const result = await removeMemoryByPrefix(entry.id.slice(0, 12), { homeDir, cwd });
+    expect(result.kind).toBe("removed");
+    const all = await listMemories({ homeDir, cwd });
+    expect(all.some((item) => item.id === entry.id)).toBe(false);
+  });
+
+  test("removeMemoryByPrefix returns not_found for unknown prefix", async () => {
+    const homeDir = createTempDir("acolyte-memory-home-");
+    const cwd = createTempDir("acolyte-memory-cwd-");
+    const result = await removeMemoryByPrefix("mem_missing", { homeDir, cwd });
+    expect(result).toEqual({ kind: "not_found", prefix: "mem_missing" });
   });
 });

@@ -9,11 +9,22 @@ async function runCommand(
   store = createStore(),
   options?: {
     memoryApi?: {
-      listMemories: () => Promise<Array<{ id: string; scope: "user" | "project"; content: string; createdAt: string }>>;
+      listMemories: (options?: {
+        scope?: "all" | "user" | "project";
+      }) => Promise<Array<{ id: string; scope: "user" | "project"; content: string; createdAt: string }>>;
       addMemory: (
         content: string,
         options?: { scope?: "user" | "project" },
       ) => Promise<{ id: string; scope: "user" | "project"; content: string; createdAt: string }>;
+      removeMemoryByPrefix?: (prefix: string) => Promise<
+        | { kind: "removed"; entry: { id: string; scope: "user" | "project"; content: string; createdAt: string } }
+        | { kind: "not_found"; prefix: string }
+        | {
+            kind: "ambiguous";
+            prefix: string;
+            matches: Array<{ id: string; scope: "user" | "project"; content: string; createdAt: string }>;
+          }
+      >;
       getMemoryContextEntries?: () => Promise<
         Array<{ id: string; scope: "user" | "project"; content: string; createdAt: string }>
       >;
@@ -396,8 +407,8 @@ describe("chat-commands", () => {
     expect(stop).toBe(true);
     const system = rows.find((row) => row.role === "system" && row.content.startsWith("Memory 2"));
     expect(system).toBeDefined();
-    expect(system?.content).toContain("user: prefer concise output");
-    expect(system?.content).toContain("project: use bun scripts");
+    expect(system?.content).toContain("user:mem_1 prefer concise output");
+    expect(system?.content).toContain("project:mem_2 use bun scripts");
   });
 
   test("dispatchSlashCommand handles explicit /memory all scope", async () => {
@@ -428,8 +439,32 @@ describe("chat-commands", () => {
     expect(stop).toBe(true);
     const system = rows.find((row) => row.role === "system" && row.content.startsWith("Memory 2"));
     expect(system).toBeDefined();
-    expect(system?.content).toContain("user: prefer concise output");
-    expect(system?.content).toContain("project: use bun scripts");
+    expect(system?.content).toContain("user:mem_1 prefer concise output");
+    expect(system?.content).toContain("project:mem_2 use bun scripts");
+  });
+
+  test("dispatchSlashCommand handles /memory rm success", async () => {
+    const memoryApi = {
+      listMemories: async () => [],
+      addMemory: async () => ({
+        id: "mem_unused",
+        scope: "user" as const,
+        content: "unused",
+        createdAt: "2026-02-21T00:00:00.000Z",
+      }),
+      removeMemoryByPrefix: async () => ({
+        kind: "removed" as const,
+        entry: {
+          id: "mem_deadbeef",
+          scope: "project" as const,
+          content: "x",
+          createdAt: "2026-02-21T00:00:00.000Z",
+        },
+      }),
+    };
+    const { rows, stop } = await runCommand("/memory rm mem_dead", [], createStore(), { memoryApi });
+    expect(stop).toBe(true);
+    expect(rows.some((row) => row.content.includes("Removed project memory mem_deadbeef."))).toBe(true);
   });
 
   test("dispatchSlashCommand renders scoped /memory header", async () => {

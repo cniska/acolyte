@@ -3,7 +3,7 @@ import type { Backend } from "./backend";
 import { suggestClosestSlashCommand } from "./chat-slash";
 import type { ConfigScope } from "./config";
 import { setConfigValue } from "./config";
-import { addMemory, listMemories } from "./memory";
+import { addMemory, listMemories, removeMemoryByPrefix } from "./memory";
 import { distillPolicyCandidatesFromSessions, distillPolicyFromSessions, parseDistillOptions } from "./policy-distill";
 import { getMemoryContextEntries, type MemoryContextScope } from "./soul";
 import { formatStatusOutput } from "./status-format";
@@ -127,6 +127,7 @@ type CommandContext = {
   memoryApi?: {
     listMemories: typeof listMemories;
     addMemory: typeof addMemory;
+    removeMemoryByPrefix?: typeof removeMemoryByPrefix;
     getMemoryContextEntries?: typeof getMemoryContextEntries;
   };
 };
@@ -203,6 +204,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
   const memoryApi = {
     listMemories,
     addMemory,
+    removeMemoryByPrefix,
     getMemoryContextEntries,
     ...ctx.memoryApi,
   };
@@ -320,6 +322,46 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     return { stop: true, userText: text, runVerifyAfterReply: false };
   }
 
+  if (resolvedText.startsWith("/memory rm")) {
+    pushUserCommandRow();
+    const parts = resolvedText.split(/\s+/).filter((part) => part.length > 0);
+    if (parts.length !== 3) {
+      ctx.setRows((current) => [...current, row("system", "Usage: /memory rm <id-prefix>")]);
+      return { stop: true, userText: text, runVerifyAfterReply: false };
+    }
+    const prefix = parts[2];
+    const remove = memoryApi.removeMemoryByPrefix;
+    if (!remove) {
+      ctx.setRows((current) => [...current, row("system", "Memory removal is unavailable in this context.")]);
+      return { stop: true, userText: text, runVerifyAfterReply: false };
+    }
+    try {
+      const removed = await remove(prefix);
+      if (removed.kind === "not_found") {
+        ctx.setRows((current) => [...current, row("system", `No memory found for id prefix: ${removed.prefix}`)]);
+        return { stop: true, userText: text, runVerifyAfterReply: false };
+      }
+      if (removed.kind === "ambiguous") {
+        const ids = removed.matches.map((item) => item.id.slice(0, 12)).join(", ");
+        ctx.setRows((current) => [
+          ...current,
+          row("system", `Ambiguous memory id prefix: ${removed.prefix}. Matches: ${ids}`),
+        ]);
+        return { stop: true, userText: text, runVerifyAfterReply: false };
+      }
+      ctx.setRows((current) => [
+        ...current,
+        row("system", `Removed ${removed.entry.scope} memory ${removed.entry.id.slice(0, 12)}.`),
+      ]);
+    } catch (error) {
+      ctx.setRows((current) => [
+        ...current,
+        row("system", error instanceof Error ? error.message : "Failed to remove memory."),
+      ]);
+    }
+    return { stop: true, userText: text, runVerifyAfterReply: false };
+  }
+
   if (
     resolvedText === "/memory" ||
     (resolvedText.startsWith("/memory ") && !resolvedText.startsWith("/memory context"))
@@ -340,7 +382,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       ctx.setRows((current) => [...current, row("system", `No ${scopeLabel}memory saved yet.`)]);
       return { stop: true, userText: text, runVerifyAfterReply: false };
     }
-    const lines = memories.slice(0, 10).map((entry) => `${entry.scope}: ${entry.content}`);
+    const lines = memories.slice(0, 10).map((entry) => `${entry.scope}:${entry.id.slice(0, 12)} ${entry.content}`);
     const header = scope === "all" ? `Memory ${memories.length}` : `${scopeLabel(scope)} memory ${memories.length}`;
     ctx.setRows((current) => [...current, row("system", `${header}\n\n${lines.join("\n")}`)]);
     return { stop: true, userText: text, runVerifyAfterReply: false };

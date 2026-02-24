@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -17,6 +17,11 @@ export interface MemoryOptions {
   cwd?: string;
   homeDir?: string;
 }
+
+export type RemoveMemoryResult =
+  | { kind: "removed"; entry: MemoryEntry }
+  | { kind: "not_found"; prefix: string }
+  | { kind: "ambiguous"; prefix: string; matches: MemoryEntry[] };
 
 function getUserMemoryDir(homeDir = homedir()): string {
   return join(homeDir, ".acolyte", "memory", "user");
@@ -131,4 +136,26 @@ export async function addMemory(
   const filename = `${entry.id}.md`;
   await writeFile(join(dir, filename), serializeMemory(entry), "utf8");
   return entry;
+}
+
+export async function removeMemoryByPrefix(
+  prefix: string,
+  options: Omit<MemoryOptions, "scope"> & { scope?: MemoryScope | "all" } = {},
+): Promise<RemoveMemoryResult> {
+  const trimmed = prefix.trim();
+  if (!trimmed) {
+    throw new Error("Memory id prefix cannot be empty");
+  }
+  const matches = (await listMemories(options)).filter((entry) => entry.id.startsWith(trimmed));
+  if (matches.length === 0) {
+    return { kind: "not_found", prefix: trimmed };
+  }
+  if (matches.length > 1) {
+    return { kind: "ambiguous", prefix: trimmed, matches };
+  }
+  const entry = matches[0];
+  const { cwd = process.cwd(), homeDir = homedir() } = options;
+  const dir = entry.scope === "project" ? getProjectMemoryDir(cwd) : getUserMemoryDir(homeDir);
+  await rm(join(dir, `${entry.id}.md`), { force: true });
+  return { kind: "removed", entry };
 }

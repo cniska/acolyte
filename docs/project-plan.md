@@ -86,7 +86,7 @@ Exit Criteria:
   Baseline achieved (February 24, 2026): `dogfood:smoke` requires four autonomous coding edits when provider is ready (including multi-line structured and multi-file edits), fails on fallback edit responses, and strict autonomy smoke fails when provider readiness is missing; `dogfood:progress` reports non-delivery category counts for repeated failure-class tracking and delegated fallback rate; strict `dogfood:gate` tracks soak durability via ready-run and distinct-day minimums, enforces a delegated fallback-rate cap, and includes a dedicated tool-output UX check; tool-output truncation keeps leading and trailing context with omitted-line markers for better UX during debugging.
 
 ### Milestone 6: Memory Quality
-Status: planned.
+Status: in progress.
 Description: Improve quality and trustworthiness of persistent memory.
 Goal: reduce repeated mistakes with transparent, correctable memory behavior.
 
@@ -94,6 +94,7 @@ Exit Criteria:
 - Observational memory promotion/precision is tuned for daily coding use.
 - Memory context is inspectable and easy to correct.
 - Evals show reduction in repeated instruction failures.
+  Current evidence (February 24, 2026): chat now supports memory removal by id prefix (`/memory rm <id-prefix>`) and `/memory` output includes memory IDs for correction workflows.
 
 ### Milestone 7: Hosted Readiness
 Status: planned.

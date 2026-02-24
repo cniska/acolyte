@@ -34,6 +34,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Distilled policy candidate review picker with explicit `yes/no` confirmation and optional note (`yes also do this`).
 - Skills picker + command support: `/skills` and `$` shortcut.
 - Memory commands in chat: `/remember [--project] <text>`, `/memory [all|user|project]`, `/memory context [all|user|project]` (alias: `/mem`).
+- Memory correction command in chat: `/memory rm <id-prefix>`.
 - Memory context selection is now globally sorted by timestamp across user/project scopes before injection.
 - Non-chat CLI also supports `acolyte memory context [all|user|project]` for scriptable memory-context inspection.
 - Saved memory context and observational memory (OM) are separate layers and can be inspected independently (`memory context` vs `om:*` tools/status fields).
