@@ -19,7 +19,6 @@ import {
   runAgent,
   selectAgentRole,
   shouldForceRequiredToolsRetry,
-  shouldRunPlannerPreface,
 } from "./agent";
 import type { ChatRequest } from "./api";
 import { appConfig, setPermissionMode } from "./app-config";
@@ -268,14 +267,15 @@ describe("finalizeAssistantOutput", () => {
 });
 
 describe("selectAgentRole", () => {
-  test("routes review prompts to reviewer", () => {
+  test("routes explicit review prompts to reviewer", () => {
     expect(selectAgentRole("review @src/agent.ts")).toBe("reviewer");
+    expect(selectAgentRole("/review @src/agent.ts")).toBe("reviewer");
   });
 
-  test("routes read-only file inspection prompts to reviewer", () => {
-    expect(selectAgentRole("What is in src/mastra-tools.ts?")).toBe("reviewer");
-    expect(selectAgentRole("summarize @src/chat-submit-handler.ts")).toBe("reviewer");
-    expect(selectAgentRole("explain docs/project-plan.md")).toBe("reviewer");
+  test("routes read-only inspection prompts to coder by default", () => {
+    expect(selectAgentRole("What is in src/mastra-tools.ts?")).toBe("coder");
+    expect(selectAgentRole("summarize @src/chat-submit-handler.ts")).toBe("coder");
+    expect(selectAgentRole("explain docs/project-plan.md")).toBe("coder");
   });
 
   test("routes what-next prompts to default coder role", () => {
@@ -284,8 +284,9 @@ describe("selectAgentRole", () => {
     expect(selectAgentRole("ok, what's next for this?")).toBe("coder");
   });
 
-  test("routes planning prompts to planner", () => {
+  test("routes explicit planning prompts to planner", () => {
     expect(selectAgentRole("plan rollout steps for memory")).toBe("planner");
+    expect(selectAgentRole("/plan rollout steps for memory")).toBe("planner");
   });
 
   test("routes implementation prompts to coder by default", () => {
@@ -313,18 +314,6 @@ describe("shouldForceRequiredToolsRetry", () => {
   test("does not force tool fallback for normal coder/planner prompts", () => {
     expect(shouldForceRequiredToolsRetry("coder", false)).toBe(false);
     expect(shouldForceRequiredToolsRetry("planner", false)).toBe(false);
-  });
-});
-
-describe("shouldRunPlannerPreface", () => {
-  test("runs planner preface for reviewer prompts", () => {
-    expect(shouldRunPlannerPreface("reviewer", false)).toBe(true);
-  });
-
-  test("skips planner preface for direct edits and coder/planner prompts", () => {
-    expect(shouldRunPlannerPreface("coder", true)).toBe(false);
-    expect(shouldRunPlannerPreface("coder", false)).toBe(false);
-    expect(shouldRunPlannerPreface("planner", false)).toBe(false);
   });
 });
 

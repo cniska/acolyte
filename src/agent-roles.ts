@@ -2,52 +2,18 @@ import type { ChatRequest } from "./api";
 
 export type AgentRole = "planner" | "coder" | "reviewer";
 
-function isReviewRequest(text: string): boolean {
-  return /\breview\b/i.test(text);
+function normalizeIntentText(text: string): string {
+  return text.trim().toLowerCase();
 }
 
-function isPlanningRequest(text: string): boolean {
-  const normalized = text.toLowerCase();
-  const patterns = [
-    /\bplan(?:ning)?\b/,
-    /\broadmap\b/,
-    /\bstrategy\b/,
-    /\bapproach\b/,
-    /\bbreak down\b/,
-    /\bsteps?\b/,
-    /\boutline\b/,
-    /\bdesign\b/,
-  ];
-  return patterns.some((pattern) => pattern.test(normalized));
+function isExplicitReviewIntent(text: string): boolean {
+  const normalized = normalizeIntentText(text);
+  return normalized.startsWith("review ") || normalized.startsWith("/review ");
 }
 
-function isCodingRequest(text: string): boolean {
-  const lower = text.toLowerCase();
-  const hints = ["implement", "fix", "write", "edit", "refactor", "add", "build", "create", "test"];
-  return hints.some((hint) => lower.includes(hint));
-}
-
-function isReadOnlyInspectionRequest(text: string): boolean {
-  const lower = text.toLowerCase();
-  const inspectionPhrases = [
-    "what is in",
-    "what's in",
-    "summarize",
-    "summarise",
-    "explain",
-    "describe",
-    "show me",
-    "list",
-  ];
-  const asksInspection = inspectionPhrases.some((phrase) => lower.includes(phrase));
-  if (!asksInspection) {
-    return false;
-  }
-  const hasPathLikeReference =
-    /@/.test(text) ||
-    /(?:^|\s)(?:[./~]?[\w-]+\/)+[\w.-]+/.test(text) ||
-    /(?:^|\s)[\w.-]+\.(ts|tsx|js|jsx|md|json|toml|yml|yaml)\b/i.test(text);
-  return hasPathLikeReference;
+function isExplicitPlanningIntent(text: string): boolean {
+  const normalized = normalizeIntentText(text);
+  return normalized.startsWith("plan ") || normalized.startsWith("/plan ");
 }
 
 // Avoid misrouting planner requests from filenames like project-plan.md.
@@ -63,20 +29,14 @@ const DEFAULT_ROLE_SOUL: Record<AgentRole, string> = {
 };
 
 export function selectAgentRole(text: string): AgentRole {
-  if (isReviewRequest(text)) {
-    return "reviewer";
-  }
-  if (isReadOnlyInspectionRequest(text)) {
-    return "reviewer";
-  }
   if (isDirectEditIntent(text)) {
     return "coder";
   }
-  if (isPlanningRequest(text)) {
-    return "planner";
+  if (isExplicitReviewIntent(text)) {
+    return "reviewer";
   }
-  if (isCodingRequest(text)) {
-    return "coder";
+  if (isExplicitPlanningIntent(text)) {
+    return "planner";
   }
   return "coder";
 }

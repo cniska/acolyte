@@ -4,7 +4,7 @@ import { createAgent } from "./agent-factory";
 import { type AgentRole, buildRoleInstructions, buildSubagentContext, selectAgentRole } from "./agent-roles";
 import type { ChatRequest, ChatResponse } from "./api";
 import { appConfig } from "./app-config";
-import { toolsForCoordinator, toolsForRole } from "./mastra-tools";
+import { toolsForRole } from "./mastra-tools";
 import { isProviderAvailable, type ModelProviderName, providerFromModel, resolveRoleModel } from "./provider-config";
 import { loadRoleSoulPrompt } from "./soul";
 import { formatToolLabel } from "./tool-labels";
@@ -846,13 +846,6 @@ export function shouldForceRequiredToolsRetry(role: AgentRole, directEditLikely:
   return role === "reviewer";
 }
 
-export function shouldRunPlannerPreface(role: AgentRole, directEditLikely: boolean): boolean {
-  if (directEditLikely) {
-    return false;
-  }
-  return role === "reviewer";
-}
-
 export function finalizeReviewOutput(output: string, message = ""): string {
   const trimmed = output.trim();
   if (trimmed.length > 0) {
@@ -902,19 +895,6 @@ function buildMockReply(req: ChatRequest, reason?: string): ChatResponse {
   };
 }
 
-function createDelegationPrompt(role: AgentRole, request: ChatRequest): string {
-  return [
-    `Target role: ${role}`,
-    "Task: Create a short execution brief for the target role.",
-    "Output rules:",
-    "- Max 4 lines",
-    "- No preamble",
-    "- Focus on concrete outcome and constraints",
-    "",
-    `User request: ${request.message.trim()}`,
-  ].join("\n");
-}
-
 export async function runAgent(input: {
   request: ChatRequest;
   soulPrompt: string;
@@ -922,6 +902,7 @@ export async function runAgent(input: {
   onDebug?: (event: string, fields?: Record<string, unknown>) => void;
 }): Promise<ChatResponse> {
   const CODER_INITIAL_MAX_STEPS = 6;
+  // Keep direct-edit first pass bounded to reduce stalls.
   const DIRECT_EDIT_INITIAL_MAX_STEPS = 4;
   const REQUIRED_TOOLS_RETRY_MAX_STEPS = 6;
   const BASE_MODEL_RETRY_MAX_STEPS = 5;
@@ -1085,63 +1066,10 @@ export async function runAgent(input: {
     }
   };
 
-  let delegationBrief = input.request.message.trim();
-  const plannerResolved = resolveRunnableModel("planner", input.request.model);
-  const shouldPreface = role !== "planner" && shouldRunPlannerPreface(role, directEditLikely);
-  if (shouldPreface && plannerResolved.available) {
-    try {
-      emitProgress(progressStageForRole("planner", plannerResolved.model));
-      const plannerSoul = loadRoleSoulPrompt("planner");
-      const planner = createAgent({
-        id: "acolyte-planner",
-        name: "Acolyte Planner",
-        model: plannerResolved.model,
-        instructions: buildRoleInstructions(input.soulPrompt, "planner", plannerSoul),
-        tools: toolsForCoordinator(),
-      });
-      const planningInput = `${buildSubagentContext("planner", input.request)}\n\n${requestInput.input}`;
-      modelCallCount += 1;
-      const planning = await planner.generate(planningInput, {
-        maxSteps: 3,
-        toolChoice: "auto",
-        memory: memoryOptions,
-      });
-      const candidate = planning.text.trim();
-      if (candidate.length > 0) {
-        delegationBrief = candidate;
-      }
-    } catch {
-      // Best-effort planning; fallback to raw user prompt.
-    }
-  } else if (shouldPreface) {
-    try {
-      const coordinator = createAgent({
-        id: "acolyte-coordinator",
-        name: "Acolyte Coordinator",
-        model: input.request.model,
-        instructions:
-          "You are the orchestrator. Convert user requests into concise execution briefs for subagents. Do not call tools.",
-        tools: toolsForCoordinator(),
-      });
-      modelCallCount += 1;
-      const delegation = await coordinator.generate(createDelegationPrompt(role, input.request), {
-        maxSteps: 1,
-        toolChoice: "auto",
-      });
-      const candidate = delegation.text.trim();
-      if (candidate.length > 0) {
-        delegationBrief = candidate;
-      }
-    } catch {
-      // Best-effort orchestration; fallback to raw user prompt.
-    }
-  }
-
-  const delegatedInput = `${agentInput}\n\nDelegation brief:\n${delegationBrief}`;
   const directEditTargetHint = directEditTargetPath
     ? `\n\nDirect edit target path: ${directEditTargetPath}\nHard requirement: execute edit-file in this first response. Prefer read-file then edit-file.`
     : "\n\nDirect edit target path: none specified; locate exact target quickly, then execute edit-file in this first response.";
-  const agentPrompt = directEditLikely ? `${delegatedInput}${directEditTargetHint}` : delegatedInput;
+  const agentPrompt = directEditLikely ? `${agentInput}${directEditTargetHint}` : agentInput;
   emitProgress(progressStageForRole(role, model));
   emitDebug("agent.generate.start", {
     model,

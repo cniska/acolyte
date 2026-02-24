@@ -201,13 +201,6 @@ function readOnlyTools(): Partial<AcolyteToolset> {
   };
 }
 
-export function toolsForCoordinator(): Partial<AcolyteToolset> {
-  return {
-    ...readOnlyTools(),
-    runCommand: acolyteTools.runCommand,
-  };
-}
-
 export function toolsForRole(role: AgentRole): Partial<AcolyteToolset> {
   switch (role) {
     case "planner":

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { buildRoleInstructions, buildSubagentContext } from "./agent-roles";
+import { buildRoleInstructions, buildSubagentContext, selectAgentRole } from "./agent-roles";
 import type { ChatRequest } from "./api";
 
 describe("agent role guidance", () => {
@@ -29,5 +29,10 @@ describe("agent role guidance", () => {
     };
     expect(buildSubagentContext("planner", req)).toContain("avoid recap/status scaffolding");
     expect(buildSubagentContext("reviewer", req)).toContain("avoid recap/status scaffolding");
+  });
+
+  test("direct edit intent takes precedence over review-style phrasing", () => {
+    expect(selectAgentRole("in src/agent.ts, add a short comment above this constant")).toBe("coder");
+    expect(selectAgentRole("review and edit src/agent.ts to add one line")).toBe("coder");
   });
 });

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { appConfig, setPermissionMode } from "./app-config";
-import { readFileTool, toolsForCoordinator, toolsForRole, withToolError } from "./mastra-tools";
+import { readFileTool, toolsForRole, withToolError } from "./mastra-tools";
 
 const initialPermissionMode = appConfig.agent.permissions.mode;
 
@@ -9,11 +9,6 @@ afterEach(() => {
 });
 
 describe("mastra role toolsets", () => {
-  test("coordinator has read/web tools plus run-command", () => {
-    const keys = Object.keys(toolsForCoordinator()).sort();
-    expect(keys).toEqual(["gitDiff", "gitStatus", "readFile", "runCommand", "searchRepo", "webFetch", "webSearch"]);
-  });
-
   test("planner has read-only planning tools", () => {
     const keys = Object.keys(toolsForRole("planner")).sort();
     expect(keys).toEqual(["gitDiff", "gitStatus", "readFile", "searchRepo", "webFetch", "webSearch"]);
