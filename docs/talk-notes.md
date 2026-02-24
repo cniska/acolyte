@@ -167,6 +167,10 @@ Living notes for talks about building this project. Update this file as mileston
 - Direct edit prompts now enforce an execution contract: no successful completion unless `edit-file` actually ran.
 - Write-confirm recovery now auto-replays the original prompt via an internal payload, avoiding a second manual submit after switching to write mode.
 - Empty-output fallback is now more specific when tools ran but no final answer was produced, improving troubleshooting signal.
+- Agent loop now emits structured debug events (role, retries, tool counts, fallback reasons) in backend logs for faster runtime diagnosis.
+- Direct-edit retries now have timeout guards to prevent multi-minute stalls on required-tool retries.
+- Tool-call IDs are canonicalized to kebab-case (`edit-file`, `read-file`, etc.) to avoid runtime/provider naming mismatches (`editFile`).
+- Direct-edit prompts now include explicit target-path hints when present, improving edit execution on file-specific requests.
 
 ## Open Narrative Threads
 1. Continue dogfooding ramp from Codex-led to assistant-led development.
