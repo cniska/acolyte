@@ -24,6 +24,9 @@ const gateArgsSchema = z.object({
 });
 const deliveryProgressSchema = z.object({
   deliverySlices: z.number().finite(),
+  delegatedSuccess: z.number().finite().optional(),
+  delegatedFailure: z.number().finite().optional(),
+  delegatedSuccessRate: z.number().finite().optional(),
   target: z.number().finite(),
   percent: z.number().finite(),
   commitsTotal: z.number().finite().optional(),
@@ -127,6 +130,9 @@ function parseDeliveryProgress(raw: string): {
   delivery: number;
   target: number;
   percent: number;
+  delegatedSuccess?: number;
+  delegatedFailure?: number;
+  delegatedSuccessRate?: number;
   commitsTotal?: number;
   commitsScanned?: number;
 } | null {
@@ -155,6 +161,9 @@ function parseDeliveryProgress(raw: string): {
     delivery: validated.data.deliverySlices,
     target: validated.data.target,
     percent: validated.data.percent,
+    delegatedSuccess: validated.data.delegatedSuccess,
+    delegatedFailure: validated.data.delegatedFailure,
+    delegatedSuccessRate: validated.data.delegatedSuccessRate,
     commitsTotal: validated.data.commitsTotal,
     commitsScanned: validated.data.commitsScanned,
   };
@@ -166,6 +175,9 @@ function progressDetail(
     delivery: number;
     target: number;
     percent: number;
+    delegatedSuccess?: number;
+    delegatedFailure?: number;
+    delegatedSuccessRate?: number;
     commitsTotal?: number;
     commitsScanned?: number;
   } | null,
@@ -173,9 +185,15 @@ function progressDetail(
   if (result.ok && parsed) {
     const remaining = Math.max(0, parsed.target - parsed.delivery);
     const remainingDetail = `remaining=${remaining}`;
+    const delegated =
+      parsed.delegatedSuccess !== undefined &&
+      parsed.delegatedFailure !== undefined &&
+      parsed.delegatedSuccessRate !== undefined
+        ? `success=${parsed.delegatedSuccess} failure=${parsed.delegatedFailure} rate=${parsed.delegatedSuccessRate}%`
+        : undefined;
     const scoped = parsed.commitsTotal !== undefined ? `scoped=${parsed.commitsTotal}` : undefined;
     const scanned = parsed.commitsScanned !== undefined ? `scanned=${parsed.commitsScanned}` : undefined;
-    const extras = [remainingDetail, scoped, scanned].filter((value): value is string => Boolean(value));
+    const extras = [remainingDetail, delegated, scoped, scanned].filter((value): value is string => Boolean(value));
     return extras.length > 0
       ? `${parsed.delivery}/${parsed.target} (${parsed.percent}%, ${extras.join(" ")})`
       : `${parsed.delivery}/${parsed.target} (${parsed.percent}%)`;

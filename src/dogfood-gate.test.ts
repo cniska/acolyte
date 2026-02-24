@@ -41,6 +41,9 @@ describe("dogfood gate", () => {
       delivery: 16,
       target: 10,
       percent: 100,
+      delegatedSuccess: undefined,
+      delegatedFailure: undefined,
+      delegatedSuccessRate: undefined,
       commitsTotal: undefined,
       commitsScanned: undefined,
     });
@@ -57,6 +60,9 @@ describe("dogfood gate", () => {
       delivery: 6,
       target: 6,
       percent: 100,
+      delegatedSuccess: undefined,
+      delegatedFailure: undefined,
+      delegatedSuccessRate: undefined,
       commitsTotal: 10,
       commitsScanned: 14,
     });
@@ -77,12 +83,22 @@ describe("dogfood gate", () => {
     const detail = progressDetail(
       {
         ok: true,
-        stdout: '{"deliverySlices":7,"target":6,"percent":100,"commitsTotal":10,"commitsScanned":13}',
+        stdout:
+          '{"deliverySlices":7,"target":6,"percent":100,"delegatedSuccess":7,"delegatedFailure":2,"delegatedSuccessRate":78,"commitsTotal":10,"commitsScanned":13}',
         stderr: "",
       },
-      { delivery: 7, target: 6, percent: 100, commitsTotal: 10, commitsScanned: 13 },
+      {
+        delivery: 7,
+        target: 6,
+        percent: 100,
+        delegatedSuccess: 7,
+        delegatedFailure: 2,
+        delegatedSuccessRate: 78,
+        commitsTotal: 10,
+        commitsScanned: 13,
+      },
     );
-    expect(detail).toBe("7/6 (100%, remaining=0 scoped=10 scanned=13)");
+    expect(detail).toBe("7/6 (100%, remaining=0 success=7 failure=2 rate=78% scoped=10 scanned=13)");
   });
 
   test("progressDetail includes signal line on parse failure", () => {
