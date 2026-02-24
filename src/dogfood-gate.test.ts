@@ -14,6 +14,7 @@ describe("dogfood gate", () => {
       target: 10,
       lookback: 30,
       minSuccessRate: 70,
+      minDelegatedSlices: 6,
       skipVerify: false,
       skipSmoke: false,
       skipRecovery: false,
@@ -32,6 +33,8 @@ describe("dogfood gate", () => {
         "14",
         "--min-success-rate",
         "85",
+        "--min-delegated-slices",
+        "8",
         "--skip-verify",
         "--skip-smoke",
         "--skip-recovery",
@@ -43,6 +46,7 @@ describe("dogfood gate", () => {
       target: 6,
       lookback: 14,
       minSuccessRate: 85,
+      minDelegatedSlices: 8,
       skipVerify: true,
       skipSmoke: true,
       skipRecovery: true,
@@ -70,6 +74,7 @@ describe("dogfood gate", () => {
       target: 6,
       lookback: 14,
       minSuccessRate: 70,
+      minDelegatedSlices: 6,
       skipVerify: true,
       skipSmoke: true,
       skipRecovery: true,
@@ -81,6 +86,10 @@ describe("dogfood gate", () => {
 
   test("parseArgs rejects invalid success-rate value", () => {
     expect(() => parseArgs(["--min-success-rate", "101"])).toThrow("Invalid --min-success-rate value.");
+  });
+
+  test("parseArgs rejects invalid delegated-slices value", () => {
+    expect(() => parseArgs(["--min-delegated-slices", "-1"])).toThrow("Invalid --min-delegated-slices value.");
   });
 
   test("parseDeliveryProgress reads progress json", () => {

@@ -4,6 +4,7 @@ type GateArgs = {
   target: number;
   lookback: number;
   minSuccessRate: number;
+  minDelegatedSlices: number;
   skipVerify: boolean;
   skipSmoke: boolean;
   skipRecovery: boolean;
@@ -21,11 +22,13 @@ type GateCheck = {
 const DEFAULT_TARGET = 10;
 const DEFAULT_LOOKBACK = 30;
 const DEFAULT_MIN_SUCCESS_RATE = 70;
+const DEFAULT_MIN_DELEGATED_SLICES = 6;
 
 const gateArgsSchema = z.object({
   target: z.coerce.number().int().positive(),
   lookback: z.coerce.number().int().positive(),
   minSuccessRate: z.coerce.number().min(0).max(100),
+  minDelegatedSlices: z.coerce.number().int().nonnegative(),
   skipVerify: z.boolean(),
   skipSmoke: z.boolean(),
   skipRecovery: z.boolean(),
@@ -35,6 +38,7 @@ const gateArgsSchema = z.object({
 });
 const deliveryProgressSchema = z.object({
   deliverySlices: z.number().finite(),
+  delegatedSlices: z.number().finite().optional(),
   delegatedSuccess: z.number().finite().optional(),
   delegatedFailure: z.number().finite().optional(),
   delegatedSuccessRate: z.number().finite().optional(),
@@ -49,6 +53,7 @@ function parseArgs(args: string[]): GateArgs {
     target: number | string;
     lookback: number | string;
     minSuccessRate: number | string;
+    minDelegatedSlices: number | string;
     skipVerify: boolean;
     skipSmoke: boolean;
     skipRecovery: boolean;
@@ -59,6 +64,7 @@ function parseArgs(args: string[]): GateArgs {
     target: DEFAULT_TARGET,
     lookback: DEFAULT_LOOKBACK,
     minSuccessRate: DEFAULT_MIN_SUCCESS_RATE,
+    minDelegatedSlices: DEFAULT_MIN_DELEGATED_SLICES,
     skipVerify: false,
     skipSmoke: false,
     skipRecovery: false,
@@ -92,6 +98,15 @@ function parseArgs(args: string[]): GateArgs {
         throw new Error("Invalid --min-success-rate value.");
       }
       raw.minSuccessRate = value;
+      i += 1;
+      continue;
+    }
+    if (token === "--min-delegated-slices") {
+      const value = args[i + 1];
+      if (!value) {
+        throw new Error("Invalid --min-delegated-slices value.");
+      }
+      raw.minDelegatedSlices = value;
       i += 1;
       continue;
     }
@@ -134,6 +149,10 @@ function parseArgs(args: string[]): GateArgs {
     const hasSuccessRateError = parsed.error.issues.some((issue) => issue.path[0] === "minSuccessRate");
     if (hasSuccessRateError) {
       throw new Error("Invalid --min-success-rate value.");
+    }
+    const hasDelegatedSlicesError = parsed.error.issues.some((issue) => issue.path[0] === "minDelegatedSlices");
+    if (hasDelegatedSlicesError) {
+      throw new Error("Invalid --min-delegated-slices value.");
     }
     throw new Error("Invalid arguments.");
   }
@@ -188,6 +207,7 @@ function parseDeliveryProgress(raw: string): {
   delegatedSuccess?: number;
   delegatedFailure?: number;
   delegatedSuccessRate?: number;
+  delegatedSlices?: number;
   commitsTotal?: number;
   commitsScanned?: number;
 } | null {
@@ -219,6 +239,7 @@ function parseDeliveryProgress(raw: string): {
     delegatedSuccess: validated.data.delegatedSuccess,
     delegatedFailure: validated.data.delegatedFailure,
     delegatedSuccessRate: validated.data.delegatedSuccessRate,
+    delegatedSlices: validated.data.delegatedSlices,
     commitsTotal: validated.data.commitsTotal,
     commitsScanned: validated.data.commitsScanned,
   };
@@ -233,6 +254,7 @@ function progressDetail(
     delegatedSuccess?: number;
     delegatedFailure?: number;
     delegatedSuccessRate?: number;
+    delegatedSlices?: number;
     commitsTotal?: number;
     commitsScanned?: number;
   } | null,
@@ -270,6 +292,7 @@ function summarizeGate(checks: GateCheck[]): { ok: boolean; lines: string[] } {
 function printUsage(): void {
   console.log(
     "Usage: bun run dogfood:gate [--lookback N] [--target N] [--min-success-rate N] [--skip-verify|--no-verify] [--skip-smoke|--no-smoke] [--skip-recovery|--no-recovery]",
+    "       [--min-delegated-slices N]",
     "       [--skip-one-shot-diagnostics|--no-one-shot-diagnostics]",
     "       [--skip-session-diagnostics|--no-session-diagnostics]",
     "       [--skip-concurrency-safety|--no-concurrency-safety]",
@@ -372,6 +395,13 @@ async function main(): Promise<void> {
       detail: parsedProgress
         ? `${parsedProgress.delegatedSuccessRate ?? 0}% (target ${args.minSuccessRate}%)`
         : "missing delegated success-rate signal",
+    });
+    checks.push({
+      name: "delegated-slices",
+      ok: progress.ok && parsedProgress !== null && (parsedProgress.delegatedSlices ?? 0) >= args.minDelegatedSlices,
+      detail: parsedProgress
+        ? `${parsedProgress.delegatedSlices ?? 0} (target ${args.minDelegatedSlices})`
+        : "missing delegated slices signal",
     });
 
     const summary = summarizeGate(checks);

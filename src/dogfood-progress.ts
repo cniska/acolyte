@@ -3,6 +3,7 @@ import { z } from "zod";
 const DEFAULT_TARGET = 10;
 const DEFAULT_LOOKBACK = 30;
 const DELIVERY_TYPES = new Set(["feat", "fix", "refactor", "test"]);
+const DELEGATED_SLICE_TYPES = new Set(["feat", "fix"]);
 const NON_DELIVERY_EXCLUDED_TYPES = new Set(["docs"]);
 
 type Commit = {
@@ -114,6 +115,10 @@ function countDeliverySlices(types: Array<{ type: string; count: number }>): num
   return types.reduce((sum, row) => sum + (DELIVERY_TYPES.has(row.type) ? row.count : 0), 0);
 }
 
+function countDelegatedSlices(types: Array<{ type: string; count: number }>): number {
+  return types.reduce((sum, row) => sum + (DELEGATED_SLICE_TYPES.has(row.type) ? row.count : 0), 0);
+}
+
 function countDelegatedOutcomes(commits: Commit[]): { success: number; failure: number; successRate: number } {
   let success = 0;
   let failure = 0;
@@ -177,6 +182,7 @@ function printProgress(commits: Commit[], args: ProgressArgs): void {
   const scope = args.since ? `since ${args.since}` : `last ${args.lookback} non-doc commits`;
   const types = summarizeByType(scopedCommits);
   const delivery = countDeliverySlices(types);
+  const delegatedSlices = countDelegatedSlices(types);
   const delegated = countDelegatedOutcomes(scopedCommits);
   const pct = Math.min(100, Math.round((delivery / args.target) * 100));
   const remaining = Math.max(0, args.target - delivery);
@@ -189,6 +195,7 @@ function printProgress(commits: Commit[], args: ProgressArgs): void {
           commitsTotal: total,
           commitsScanned: commits.length,
           deliverySlices: delivery,
+          delegatedSlices,
           delegatedSuccess: delegated.success,
           delegatedFailure: delegated.failure,
           delegatedSuccessRate: delegated.successRate,
@@ -213,6 +220,7 @@ function printProgress(commits: Commit[], args: ProgressArgs): void {
     console.log(`- commits scanned: ${commits.length}`);
   }
   console.log(`- slices (delivery): ${delivery}/${args.target} (${pct}%)`);
+  console.log(`- delegated slices (feat/fix): ${delegatedSlices}`);
   console.log(
     `- delegated outcomes (proxy): success=${delegated.success} failure=${delegated.failure} rate=${delegated.successRate}%`,
   );
@@ -254,4 +262,4 @@ if (import.meta.main) {
 }
 
 export { buildGitLogCmd, countDeliverySlices, parseArgs, parseGitLog, summarizeByType };
-export { commitType, countDelegatedOutcomes, selectScopeCommits };
+export { commitType, countDelegatedOutcomes, countDelegatedSlices, selectScopeCommits };

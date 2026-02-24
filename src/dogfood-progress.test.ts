@@ -3,6 +3,7 @@ import {
   buildGitLogCmd,
   commitType,
   countDelegatedOutcomes,
+  countDelegatedSlices,
   countDeliverySlices,
   parseArgs,
   parseGitLog,
@@ -110,6 +111,17 @@ describe("dogfood progress", () => {
       failure: 2,
       successRate: 50,
     });
+  });
+
+  test("countDelegatedSlices includes feat/fix only", () => {
+    expect(
+      countDelegatedSlices([
+        { type: "feat", count: 2 },
+        { type: "fix", count: 3 },
+        { type: "refactor", count: 4 },
+        { type: "test", count: 5 },
+      ]),
+    ).toBe(5);
   });
 
   test("buildGitLogCmd uses argv form for lookback and since", () => {
