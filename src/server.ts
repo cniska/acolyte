@@ -469,6 +469,14 @@ const server = Bun.serve({
             appendChatProgress(chatRequest.sessionId, message);
           }
         },
+        onDebug: (event, fields) => {
+          log.info("agent debug", {
+            request_id: requestId,
+            session_id: chatRequest.sessionId ?? null,
+            event,
+            ...(fields ?? {}),
+          });
+        },
       });
       const durationMs = Date.now() - startedAt;
       log.info("chat request completed", {

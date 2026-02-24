@@ -197,6 +197,16 @@ export function directEditExecutionSatisfied(toolCalls: string[], output: string
   return !isPlanLikeOutput(output);
 }
 
+function directEditFailureMessage(toolCallIds: string[], lastToolFailureReason?: string): string {
+  if (lastToolFailureReason) {
+    return `Edit request failed: ${lastToolFailureReason}`;
+  }
+  if (toolCallIds.length > 0) {
+    return `Edit request failed: no edit-file call was executed (tools: ${toolCallIds.join(", ")}). Retry with an explicit target file/path.`;
+  }
+  return "Edit request failed: required edit tool did not run. Check /status and retry.";
+}
+
 export { buildSubagentContext, selectAgentRole };
 
 export function resolveAgentModel(
@@ -310,16 +320,44 @@ function suggestNarrowerReviewScope(path: string): string {
 function collectToolCallIds(toolCalls: unknown[]): string[] {
   const names = toolCalls
     .map((call) => {
+      if (typeof call === "string") {
+        const trimmed = call.trim();
+        return trimmed.length > 0 ? trimmed : null;
+      }
       if (!call || typeof call !== "object") {
         return null;
       }
+      const payload =
+        "payload" in (call as Record<string, unknown>) &&
+        (call as { payload?: unknown }).payload &&
+        typeof (call as { payload?: unknown }).payload === "object"
+          ? ((call as { payload?: unknown }).payload as Record<string, unknown>)
+          : null;
       const candidate =
-        (call as { toolName?: unknown }).toolName ?? (call as { name?: unknown }).name ?? (call as { id?: unknown }).id;
+        (call as { toolName?: unknown }).toolName ??
+        (call as { name?: unknown }).name ??
+        (call as { id?: unknown }).id ??
+        payload?.toolName ??
+        payload?.name ??
+        payload?.id;
       return typeof candidate === "string" ? candidate : null;
     })
     .filter((name): name is string => Boolean(name))
     .slice(0, 10);
   return Array.from(new Set(names));
+}
+
+function normalizeToolCalls(rawToolCalls: unknown): unknown[] {
+  if (Array.isArray(rawToolCalls)) {
+    return rawToolCalls;
+  }
+  if (!rawToolCalls || typeof rawToolCalls !== "object") {
+    return [];
+  }
+  if (Symbol.iterator in rawToolCalls && typeof (rawToolCalls as Iterable<unknown>)[Symbol.iterator] === "function") {
+    return Array.from(rawToolCalls as Iterable<unknown>);
+  }
+  return [];
 }
 
 function parseToolArgs(raw: unknown): Record<string, unknown> {
@@ -802,10 +840,20 @@ export async function runAgent(input: {
   request: ChatRequest;
   soulPrompt: string;
   onProgress?: (message: string) => void;
+  onDebug?: (event: string, fields?: Record<string, unknown>) => void;
 }): Promise<ChatResponse> {
   const role = selectAgentRole(input.request.message);
   const directEditLikely = role === "coder" && isDirectEditRequest(input.request.message);
+  const emitDebug = (event: string, fields: Record<string, unknown> = {}): void => {
+    input.onDebug?.(event, {
+      role,
+      direct_edit_likely: directEditLikely,
+      ...fields,
+    });
+  };
+  emitDebug("agent.role.selected", { model_requested: input.request.model });
   if (directEditLikely && appConfig.agent.permissions.mode === "read") {
+    emitDebug("agent.direct_edit.blocked_read_mode");
     return {
       model: input.request.model,
       output: "Edit request blocked in read mode. Use /permissions write, then retry.",
@@ -836,6 +884,12 @@ export async function runAgent(input: {
   const toolLikely = isToolLikelyRequest(input.request.message);
   const resourceId = input.request.resourceId?.trim() || appConfig.memory.resourceId;
   const memoryOptions = input.request.sessionId ? { thread: input.request.sessionId, resource: resourceId } : undefined;
+  emitDebug("agent.context.built", {
+    model_selected: model,
+    history_messages: input.request.history.length,
+    tool_likely: toolLikely,
+    has_memory: Boolean(memoryOptions),
+  });
   const seenToolNames = new Set<string>();
   let lastToolFailureReason: string | undefined;
   const emitProgress = (message: string): void => {
@@ -858,6 +912,10 @@ export async function runAgent(input: {
       const failureReason = extractToolFailureReason(tool.result);
       if (failureReason) {
         lastToolFailureReason = failureReason;
+        emitDebug("agent.tool.failure", {
+          tool_name: tool.name,
+          reason: failureReason,
+        });
         const failureMessage = `Tool failed: ${failureReason}`;
         const failureDedupeKey = JSON.stringify({ kind: "error", name: tool.name, message: failureMessage });
         if (!seenToolNames.has(failureDedupeKey)) {
@@ -927,20 +985,44 @@ export async function runAgent(input: {
 
   const delegatedInput = `${agentInput}\n\nDelegation brief:\n${delegationBrief}`;
   emitProgress(progressStageForRole(role, model));
+  emitDebug("agent.generate.start", {
+    model,
+    tool_choice: directEditLikely ? "required" : "auto",
+    max_steps: role === "planner" ? 5 : directEditLikely ? 6 : 8,
+    reason: "initial",
+  });
   let result = await agent.generate(delegatedInput, {
     maxSteps: role === "planner" ? 5 : directEditLikely ? 6 : 8,
     toolChoice: directEditLikely ? "required" : "auto",
     memory: memoryOptions,
     onStepFinish: emitToolProgress,
   });
+  emitDebug("agent.generate.done", {
+    model,
+    reason: "initial",
+    tool_calls: result.toolCalls.length,
+    text_chars: result.text.trim().length,
+  });
 
   const shouldRequireToolsFallback = role !== "planner" && (toolLikely || role === "reviewer");
   if (shouldRequireToolsFallback && result.toolCalls.length === 0) {
+    emitDebug("agent.generate.retry", {
+      model,
+      reason: "required_tools_no_calls",
+      tool_choice: "required",
+      max_steps: 8,
+    });
     result = await agent.generate(delegatedInput, {
       maxSteps: 8,
       toolChoice: "required",
       memory: memoryOptions,
       onStepFinish: emitToolProgress,
+    });
+    emitDebug("agent.generate.done", {
+      model,
+      reason: "required_tools_no_calls",
+      tool_calls: result.toolCalls.length,
+      text_chars: result.text.trim().length,
     });
   }
 
@@ -950,16 +1032,34 @@ export async function runAgent(input: {
     if (baseModelState.available) {
       model = input.request.model;
       agent = buildRoleAgent(model);
+      emitDebug("agent.generate.retry", {
+        model,
+        reason: "switch_to_base_model",
+        tool_choice: "required",
+        max_steps: directEditLikely ? 8 : 6,
+      });
       result = await agent.generate(delegatedInput, {
         maxSteps: directEditLikely ? 8 : 6,
         toolChoice: "required",
         memory: memoryOptions,
         onStepFinish: emitToolProgress,
       });
+      emitDebug("agent.generate.done", {
+        model,
+        reason: "switch_to_base_model",
+        tool_calls: result.toolCalls.length,
+        text_chars: result.text.trim().length,
+      });
     }
   }
 
   if (directEditLikely && result.toolCalls.length === 0) {
+    emitDebug("agent.generate.retry", {
+      model,
+      reason: "direct_edit_hard_requirement",
+      tool_choice: "required",
+      max_steps: 10,
+    });
     result = await agent.generate(
       `${delegatedInput}\n\nHard requirement: execute at least one tool before responding. Do not return a plan.`,
       {
@@ -969,13 +1069,33 @@ export async function runAgent(input: {
         onStepFinish: emitToolProgress,
       },
     );
+    emitDebug("agent.generate.done", {
+      model,
+      reason: "direct_edit_hard_requirement",
+      tool_calls: result.toolCalls.length,
+      text_chars: result.text.trim().length,
+    });
   }
 
-  const toolCallIds = collectToolCallIds(Array.isArray(result.toolCalls) ? (result.toolCalls as unknown[]) : []);
+  const normalizedToolCalls = normalizeToolCalls(result.toolCalls);
+  const toolCallIds = collectToolCallIds(normalizedToolCalls);
+  if (normalizedToolCalls.length > 0 && toolCallIds.length === 0) {
+    const first = normalizedToolCalls[0];
+    const firstKeys = first && typeof first === "object" ? Object.keys(first as object).slice(0, 12) : [];
+    emitDebug("agent.tool_calls.unparsed", {
+      model,
+      raw_tool_calls: normalizedToolCalls.length,
+      first_keys: firstKeys.join(","),
+      first_type: typeof first,
+    });
+  }
   if (directEditLikely && !directEditExecutionSatisfied(toolCallIds, result.text)) {
-    const fallback = lastToolFailureReason
-      ? `Edit request failed: ${lastToolFailureReason}`
-      : "Edit request failed: required edit tool did not run. Check /status and retry.";
+    emitDebug("agent.fallback.direct_edit_execution_unsatisfied", {
+      model,
+      tool_calls: toolCallIds.length,
+      failure_reason: lastToolFailureReason ?? null,
+    });
+    const fallback = directEditFailureMessage(toolCallIds, lastToolFailureReason);
     const completionTokens = estimateTokens(fallback);
     return {
       model,
@@ -995,11 +1115,23 @@ export async function runAgent(input: {
   }
 
   if (result.text.trim().length === 0) {
+    emitDebug("agent.generate.retry", {
+      model,
+      reason: "empty_text_response",
+      tool_choice: "auto",
+      max_steps: role === "planner" ? 3 : 5,
+    });
     result = await agent.generate(`${delegatedInput}\n\nReturn a direct concise answer.`, {
       maxSteps: role === "planner" ? 3 : 5,
       toolChoice: "auto",
       memory: memoryOptions,
       onStepFinish: emitToolProgress,
+    });
+    emitDebug("agent.generate.done", {
+      model,
+      reason: "empty_text_response",
+      tool_calls: result.toolCalls.length,
+      text_chars: result.text.trim().length,
     });
   }
 
