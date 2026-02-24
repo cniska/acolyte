@@ -68,7 +68,21 @@ function resolveCliVersion(): string {
 const CLI_VERSION = resolveCliVersion();
 const ONE_SHOT_SYSTEM_PROMPT =
   "One-shot mode: answer concisely and directly (prefer <=5 lines). Avoid option menus unless the user explicitly asks for options.";
-const ONE_SHOT_REPLY_TIMEOUT_MS = 120_000;
+const DEFAULT_ONE_SHOT_REPLY_TIMEOUT_MS = 120_000;
+
+function resolveOneShotReplyTimeoutMs(): number {
+  const raw = process.env.ACOLYTE_RUN_REPLY_TIMEOUT_MS?.trim();
+  if (!raw) {
+    return DEFAULT_ONE_SHOT_REPLY_TIMEOUT_MS;
+  }
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return DEFAULT_ONE_SHOT_REPLY_TIMEOUT_MS;
+  }
+  return parsed;
+}
+
+const ONE_SHOT_REPLY_TIMEOUT_MS = resolveOneShotReplyTimeoutMs();
 const runArgsSchema = z.object({
   files: z.array(z.string().min(1)),
   prompt: z.string(),
