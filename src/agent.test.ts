@@ -14,9 +14,11 @@ import {
   resolveAgentModel,
   resolveModelProviderState,
   resolveRunnableModel,
+  runAgent,
   selectAgentRole,
 } from "./agent";
 import type { ChatRequest } from "./api";
+import { appConfig, setPermissionMode } from "./app-config";
 
 function createRequest(content: string): ChatRequest {
   return {
@@ -103,6 +105,28 @@ describe("execution intent detection", () => {
     expect(isPlanLikeOutput("Plan: update file then run verify")).toBe(true);
     expect(isPlanLikeOutput("I can apply this in two steps.")).toBe(true);
     expect(isPlanLikeOutput("Updated src/cli.ts and tests pass.")).toBe(false);
+  });
+});
+
+describe("runAgent guards", () => {
+  test("returns immediate read-mode guard for direct edits", async () => {
+    const previousMode = appConfig.agent.permissions.mode;
+    setPermissionMode("read");
+    try {
+      const result = await runAgent({
+        soulPrompt: "test soul",
+        request: {
+          model: "gpt-5-mini",
+          message: "add a line break before the resume message",
+          history: [],
+          sessionId: "sess_test",
+        },
+      });
+      expect(result.output).toBe("Edit request blocked in read mode. Use /permissions write, then retry.");
+      expect(result.toolCalls ?? []).toHaveLength(0);
+    } finally {
+      setPermissionMode(previousMode);
+    }
   });
 });
 

@@ -805,6 +805,13 @@ export async function runAgent(input: {
 }): Promise<ChatResponse> {
   const role = selectAgentRole(input.request.message);
   const directEditLikely = role === "coder" && isDirectEditRequest(input.request.message);
+  if (directEditLikely && appConfig.agent.permissions.mode === "read") {
+    return {
+      model: input.request.model,
+      output: "Edit request blocked in read mode. Use /permissions write, then retry.",
+      toolCalls: [],
+    };
+  }
   const roleSoul = loadRoleSoulPrompt(role);
   const resolved = resolveRunnableModel(role, input.request.model);
   if (!resolved.available) {
