@@ -69,6 +69,9 @@ function formatSubmitError(error: unknown): string {
   if (lower.includes("insufficient_quota") || lower.includes("quota exceeded") || lower.includes("quota")) {
     return "Provider quota exceeded. Add billing/credits or switch model/provider.";
   }
+  if (lower.includes("timed out") || lower.includes("timeout")) {
+    return "Backend request timed out. Retry or reduce request scope.";
+  }
   if (lower.includes("shell command execution is disabled in read mode")) {
     return "Write action blocked in read mode. Run /permissions write and retry.";
   }
