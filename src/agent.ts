@@ -884,6 +884,10 @@ export async function runAgent(input: {
   onProgress?: (message: string) => void;
   onDebug?: (event: string, fields?: Record<string, unknown>) => void;
 }): Promise<ChatResponse> {
+  const CODER_INITIAL_MAX_STEPS = 6;
+  const REQUIRED_TOOLS_RETRY_MAX_STEPS = 6;
+  const BASE_MODEL_RETRY_MAX_STEPS = 5;
+  const EMPTY_TEXT_RETRY_MAX_STEPS = 4;
   const MODEL_CALL_TIMEOUT_MS = 90_000;
   const DIRECT_EDIT_RETRY_TIMEOUT_MS = 45_000;
   const role = selectAgentRole(input.request.message);
@@ -1056,7 +1060,7 @@ export async function runAgent(input: {
   emitDebug("agent.generate.start", {
     model,
     tool_choice: directEditLikely ? "required" : "auto",
-    max_steps: role === "planner" ? 5 : directEditLikely ? 6 : 8,
+    max_steps: role === "planner" ? 5 : directEditLikely ? 6 : CODER_INITIAL_MAX_STEPS,
     reason: "initial",
   });
   let result: Awaited<ReturnType<typeof agent.generate>>;
@@ -1064,7 +1068,7 @@ export async function runAgent(input: {
     result = await generateWithTimeout(
       agentPrompt,
       {
-        maxSteps: role === "planner" ? 5 : directEditLikely ? 6 : 8,
+        maxSteps: role === "planner" ? 5 : directEditLikely ? 6 : CODER_INITIAL_MAX_STEPS,
         toolChoice: directEditLikely ? "required" : "auto",
         memory: memoryOptions,
         onStepFinish: emitToolProgress,
@@ -1109,12 +1113,12 @@ export async function runAgent(input: {
       model,
       reason: "required_tools_no_calls",
       tool_choice: "required",
-      max_steps: 8,
+      max_steps: REQUIRED_TOOLS_RETRY_MAX_STEPS,
     });
     result = await generateWithTimeout(
       agentPrompt,
       {
-        maxSteps: 8,
+        maxSteps: REQUIRED_TOOLS_RETRY_MAX_STEPS,
         toolChoice: "required",
         memory: memoryOptions,
         onStepFinish: emitToolProgress,
@@ -1139,12 +1143,12 @@ export async function runAgent(input: {
         model,
         reason: "switch_to_base_model",
         tool_choice: "required",
-        max_steps: directEditLikely ? 8 : 6,
+        max_steps: directEditLikely ? 8 : BASE_MODEL_RETRY_MAX_STEPS,
       });
       result = await generateWithTimeout(
         agentPrompt,
         {
-          maxSteps: directEditLikely ? 8 : 6,
+          maxSteps: directEditLikely ? 8 : BASE_MODEL_RETRY_MAX_STEPS,
           toolChoice: "required",
           memory: memoryOptions,
           onStepFinish: emitToolProgress,
@@ -1272,12 +1276,12 @@ export async function runAgent(input: {
       model,
       reason: "empty_text_response",
       tool_choice: "auto",
-      max_steps: role === "planner" ? 3 : 5,
+      max_steps: role === "planner" ? 3 : EMPTY_TEXT_RETRY_MAX_STEPS,
     });
     result = await generateWithTimeout(
       `${agentPrompt}\n\nReturn a direct concise answer.`,
       {
-        maxSteps: role === "planner" ? 3 : 5,
+        maxSteps: role === "planner" ? 3 : EMPTY_TEXT_RETRY_MAX_STEPS,
         toolChoice: "auto",
         memory: memoryOptions,
         onStepFinish: emitToolProgress,
