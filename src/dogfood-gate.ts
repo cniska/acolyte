@@ -5,6 +5,7 @@ type GateArgs = {
   lookback: number;
   skipVerify: boolean;
   skipSmoke: boolean;
+  skipRecovery: boolean;
 };
 
 type GateCheck = {
@@ -21,6 +22,7 @@ const gateArgsSchema = z.object({
   lookback: z.coerce.number().int().positive(),
   skipVerify: z.boolean(),
   skipSmoke: z.boolean(),
+  skipRecovery: z.boolean(),
 });
 const deliveryProgressSchema = z.object({
   deliverySlices: z.number().finite(),
@@ -34,11 +36,18 @@ const deliveryProgressSchema = z.object({
 });
 
 function parseArgs(args: string[]): GateArgs {
-  const raw: { target: number | string; lookback: number | string; skipVerify: boolean; skipSmoke: boolean } = {
+  const raw: {
+    target: number | string;
+    lookback: number | string;
+    skipVerify: boolean;
+    skipSmoke: boolean;
+    skipRecovery: boolean;
+  } = {
     target: DEFAULT_TARGET,
     lookback: DEFAULT_LOOKBACK,
     skipVerify: false,
     skipSmoke: false,
+    skipRecovery: false,
   };
   for (let i = 0; i < args.length; i += 1) {
     const token = args[i];
@@ -66,6 +75,10 @@ function parseArgs(args: string[]): GateArgs {
     }
     if (token === "--skip-smoke" || token === "--no-smoke") {
       raw.skipSmoke = true;
+      continue;
+    }
+    if (token === "--skip-recovery" || token === "--no-recovery") {
+      raw.skipRecovery = true;
       continue;
     }
     throw new Error(`Unknown argument: ${token}`);
@@ -214,7 +227,7 @@ function summarizeGate(checks: GateCheck[]): { ok: boolean; lines: string[] } {
 
 function printUsage(): void {
   console.log(
-    "Usage: bun run dogfood:gate [--lookback N] [--target N] [--skip-verify|--no-verify] [--skip-smoke|--no-smoke]",
+    "Usage: bun run dogfood:gate [--lookback N] [--target N] [--skip-verify|--no-verify] [--skip-smoke|--no-smoke] [--skip-recovery|--no-recovery]",
   );
 }
 
@@ -245,6 +258,16 @@ async function main(): Promise<void> {
         name: "smoke",
         ok: smoke.ok,
         detail: smoke.ok ? "green" : `exit ${smoke.code}${smokeError ? ` (${smokeError})` : ""}`,
+      });
+    }
+
+    if (!args.skipRecovery) {
+      const recovery = run(["bun", "test", "src/chat-submit-handler.test.ts"]);
+      const recoveryError = firstSignalLine(recovery.stderr, recovery.stdout);
+      checks.push({
+        name: "recovery",
+        ok: recovery.ok,
+        detail: recovery.ok ? "green" : `exit ${recovery.code}${recoveryError ? ` (${recoveryError})` : ""}`,
       });
     }
 

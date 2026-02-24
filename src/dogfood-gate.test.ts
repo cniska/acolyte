@@ -15,24 +15,29 @@ describe("dogfood gate", () => {
       lookback: 30,
       skipVerify: false,
       skipSmoke: false,
+      skipRecovery: false,
     });
   });
 
   test("parseArgs parses flags", () => {
-    expect(parseArgs(["--target", "6", "--lookback", "14", "--skip-verify", "--skip-smoke"])).toEqual({
+    expect(
+      parseArgs(["--target", "6", "--lookback", "14", "--skip-verify", "--skip-smoke", "--skip-recovery"]),
+    ).toEqual({
       target: 6,
       lookback: 14,
       skipVerify: true,
       skipSmoke: true,
+      skipRecovery: true,
     });
   });
 
   test("parseArgs accepts no-* aliases", () => {
-    expect(parseArgs(["--target", "6", "--lookback", "14", "--no-verify", "--no-smoke"])).toEqual({
+    expect(parseArgs(["--target", "6", "--lookback", "14", "--no-verify", "--no-smoke", "--no-recovery"])).toEqual({
       target: 6,
       lookback: 14,
       skipVerify: true,
       skipSmoke: true,
+      skipRecovery: true,
     });
   });
 
