@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   buildAgentInput,
   buildSubagentContext,
+  canonicalToolId,
   collectToolProgressFromStep,
   directEditExecutionSatisfied,
   directEditTimeoutMessage,
@@ -121,6 +122,13 @@ describe("execution intent detection", () => {
       replace: "after",
     });
     expect(parseExplicitReplacement("please update src/file.ts")).toBeNull();
+  });
+
+  test("canonicalToolId maps snake_case and camelCase tool aliases", () => {
+    expect(canonicalToolId("edit_file")).toBe("edit-file");
+    expect(canonicalToolId("runCommand")).toBe("run-command");
+    expect(canonicalToolId("execute_command")).toBe("run-command");
+    expect(canonicalToolId("web_search")).toBe("web-search");
   });
 });
 

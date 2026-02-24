@@ -389,17 +389,26 @@ function suggestNarrowerReviewScope(path: string): string {
   return `@${clean}/agent.ts`;
 }
 
-function canonicalToolId(value: string): string {
+export function canonicalToolId(value: string): string {
   const normalized = value.trim();
   const aliases: Record<string, string> = {
     readFile: "read-file",
+    read_file: "read-file",
     searchRepo: "search-repo",
+    search_repo: "search-repo",
     editFile: "edit-file",
+    edit_file: "edit-file",
     gitDiff: "git-diff",
+    git_diff: "git-diff",
     gitStatus: "git-status",
+    git_status: "git-status",
     runCommand: "run-command",
+    run_command: "run-command",
+    execute_command: "run-command",
     webSearch: "web-search",
+    web_search: "web-search",
     webFetch: "web-fetch",
+    web_fetch: "web-fetch",
   };
   return aliases[normalized] ?? normalized;
 }
