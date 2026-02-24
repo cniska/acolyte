@@ -318,6 +318,21 @@ function suggestNarrowerReviewScope(path: string): string {
 }
 
 function collectToolCallIds(toolCalls: unknown[]): string[] {
+  const canonicalToolId = (value: string): string => {
+    const normalized = value.trim();
+    const aliases: Record<string, string> = {
+      readFile: "read-file",
+      searchRepo: "search-repo",
+      editFile: "edit-file",
+      gitDiff: "git-diff",
+      gitStatus: "git-status",
+      runCommand: "run-command",
+      webSearch: "web-search",
+      webFetch: "web-fetch",
+    };
+    return aliases[normalized] ?? normalized;
+  };
+
   const names = toolCalls
     .map((call) => {
       if (typeof call === "string") {
@@ -340,7 +355,7 @@ function collectToolCallIds(toolCalls: unknown[]): string[] {
         payload?.toolName ??
         payload?.name ??
         payload?.id;
-      return typeof candidate === "string" ? candidate : null;
+      return typeof candidate === "string" ? canonicalToolId(candidate) : null;
     })
     .filter((name): name is string => Boolean(name))
     .slice(0, 10);
