@@ -396,6 +396,13 @@ function printUsage(): void {
   );
 }
 
+function smokeCommand(strictAutonomy: boolean): string[] {
+  if (!strictAutonomy) {
+    return ["bun", "run", "dogfood:smoke"];
+  }
+  return ["bun", "run", "dogfood:smoke", "--", "--require-provider-ready"];
+}
+
 async function main(): Promise<void> {
   try {
     const argv = process.argv.slice(2);
@@ -417,7 +424,7 @@ async function main(): Promise<void> {
     }
 
     if (!args.skipSmoke) {
-      const smoke = run(["bun", "run", "dogfood:smoke"]);
+      const smoke = run(smokeCommand(args.strictAutonomy));
       const smokeError = firstSignalLine(smoke.stderr, smoke.stdout);
       checks.push({
         name: "smoke",
@@ -535,3 +542,4 @@ if (import.meta.main) {
 export { firstNonEmptyLine, parseArgs, parseDeliveryProgress, summarizeGate };
 export { firstSignalLine };
 export { progressDetail };
+export { smokeCommand };

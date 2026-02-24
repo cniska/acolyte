@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { assertCheckOutput, isProviderReadyFromStatusOutput, stripAnsi } from "./dogfood-smoke";
+import { assertCheckOutput, isProviderReadyFromStatusOutput, parseArgs, stripAnsi } from "./dogfood-smoke";
 
 describe("dogfood-smoke helpers", () => {
   it("strips ANSI color sequences", () => {
@@ -26,5 +26,17 @@ describe("dogfood-smoke helpers", () => {
   it("assumes provider ready when no false readiness row is present", () => {
     const output = ["provider: openai", "model: gpt-5-mini"].join("\n");
     expect(isProviderReadyFromStatusOutput(output)).toBe(true);
+  });
+
+  it("parseArgs defaults to optional provider readiness", () => {
+    expect(parseArgs([])).toEqual({ requireProviderReady: false });
+  });
+
+  it("parseArgs enables required provider readiness", () => {
+    expect(parseArgs(["--require-provider-ready"])).toEqual({ requireProviderReady: true });
+  });
+
+  it("parseArgs rejects unknown flags", () => {
+    expect(() => parseArgs(["--unknown"])).toThrow("Unknown argument: --unknown");
   });
 });

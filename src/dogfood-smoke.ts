@@ -15,6 +15,10 @@ type RunResult = {
   stderr: string;
 };
 
+type SmokeArgs = {
+  requireProviderReady: boolean;
+};
+
 const COMMAND_TIMEOUT_MS = 90_000;
 
 export const checks: SmokeCheck[] = [
@@ -117,6 +121,22 @@ export function isProviderReadyFromStatusOutput(output: string): boolean {
     return false;
   }
   return true;
+}
+
+export function parseArgs(args: string[]): SmokeArgs {
+  const parsed: SmokeArgs = { requireProviderReady: false };
+  for (const token of args) {
+    if (token === "--require-provider-ready") {
+      parsed.requireProviderReady = true;
+      continue;
+    }
+    throw new Error(`Unknown argument: ${token}`);
+  }
+  return parsed;
+}
+
+function printUsage(): void {
+  console.log("Usage: bun run dogfood:smoke [--require-provider-ready]");
 }
 
 async function prepareSmokeEnv(): Promise<Record<string, string>> {
@@ -227,6 +247,13 @@ async function runCodingTaskSmoke(
 }
 
 export async function main(): Promise<void> {
+  const argv = process.argv.slice(2);
+  if (argv.includes("--help") || argv.includes("-h")) {
+    printUsage();
+    return;
+  }
+  const args = parseArgs(argv);
+
   console.log("Running dogfood smoke checks...");
   const smokeEnv = await prepareSmokeEnv();
   try {
@@ -304,6 +331,11 @@ export async function main(): Promise<void> {
         console.log(`✓ ${task.label}`);
       }
     } else {
+      if (args.requireProviderReady) {
+        console.error("✗ provider-ready: strict autonomy smoke requires configured provider credentials");
+        process.exit(1);
+        return;
+      }
       console.log("○ dogfood coding tasks skipped (provider not ready)");
     }
 

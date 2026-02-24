@@ -51,7 +51,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Dogfooding workflow command: `/dogfood <task>` with verify-first loop.
 - Optional skip verify flow: `/dogfood --no-verify <task>`.
 - Assistant output post-processing is intentionally minimal (safety/error shaping + empty-output fallback).
-- Automated dogfood smoke checks via `bun run dogfood:smoke`.
+- Automated dogfood smoke checks via `bun run dogfood:smoke` (strict autonomy can require provider-ready coding checks).
 - Dogfood smoke now requires two real e2e coding edit tasks when provider is ready, with an explicit skip when provider credentials are not configured.
 - Internal telemetry: one-command dogfood readiness gate via `bun run dogfood:gate` (verify, smoke, recovery, diagnostics, concurrency, delivery progress).
 - Internal telemetry: gate delivery details now include scoped/scanned commit counts to make lookback diagnostics explicit.
@@ -79,7 +79,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Clarification handling is picker-first: clarifying-question responses open pickers directly without generated follow-up transcript prompts.
 - `dogfood:progress` reports delegated success/failure proxy counts and success rate from recent non-doc commits.
 - `dogfood:progress` reports delegated feature/fix slice counts.
-- `dogfood:gate` includes delegated ratio + delegated-slice threshold checks, a stability-window check, and supports `--strict-autonomy` mode for higher thresholds.
+- `dogfood:gate` includes delegated ratio + delegated-slice threshold checks, a stability-window check, and supports `--strict-autonomy` mode for higher thresholds plus provider-ready smoke enforcement.
 - Local backend server with health check (`/healthz`) and chat endpoint (`/v1/chat`).
 - User-friendly backend connection errors with direct recovery hints (`bun run dev` or `bun run serve:env`).
 - Local-first configuration and optional API-key auth for backend access.

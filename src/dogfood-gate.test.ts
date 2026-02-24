@@ -6,6 +6,7 @@ import {
   parseArgs,
   parseDeliveryProgress,
   progressDetail,
+  smokeCommand,
   summarizeGate,
 } from "./dogfood-gate";
 
@@ -252,5 +253,10 @@ describe("dogfood gate", () => {
     ]);
     expect(summary.ok).toBe(false);
     expect(summary.lines.at(-1)).toBe("- result: not ready");
+  });
+
+  test("smokeCommand requires provider-ready only in strict autonomy mode", () => {
+    expect(smokeCommand(false)).toEqual(["bun", "run", "dogfood:smoke"]);
+    expect(smokeCommand(true)).toEqual(["bun", "run", "dogfood:smoke", "--", "--require-provider-ready"]);
   });
 });
