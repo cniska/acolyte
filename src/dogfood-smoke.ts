@@ -195,11 +195,19 @@ async function runReadModeBlockSmoke(smokeEnv: Record<string, string>): Promise<
   }
 }
 
-async function runCodingTaskSmoke(smokeEnv: Record<string, string>): Promise<{ ok: boolean; detail: string }> {
-  const filePath = join(tmpdir(), `acolyte-dogfood-coding-${crypto.randomUUID()}.txt`);
-  await writeFile(filePath, "alpha\n", "utf8");
+async function runCodingTaskSmoke(
+  smokeEnv: Record<string, string>,
+  task: {
+    id: string;
+    initial: string;
+    prompt: (filePath: string) => string;
+    validate: (content: string) => boolean;
+  },
+): Promise<{ ok: boolean; detail: string }> {
+  const filePath = join(tmpdir(), `acolyte-dogfood-coding-${task.id}-${crypto.randomUUID()}.txt`);
+  await writeFile(filePath, task.initial, "utf8");
   try {
-    const prompt = `Edit ${filePath}: replace alpha with beta. Apply the edit directly, no explanation.`;
+    const prompt = task.prompt(filePath);
     const result = await runCommand(
       ["bun", "run", "src/cli.ts", "dogfood", "--no-verify", prompt],
       COMMAND_TIMEOUT_MS,
@@ -209,7 +217,7 @@ async function runCodingTaskSmoke(smokeEnv: Record<string, string>): Promise<{ o
       return { ok: false, detail: `command failed (exit ${result.exitCode})` };
     }
     const content = await readFile(filePath, "utf8");
-    if (content.includes("beta") && !content.includes("alpha")) {
+    if (task.validate(content)) {
       return { ok: true, detail: "file edited" };
     }
     return { ok: false, detail: "file was not edited as expected" };
@@ -268,15 +276,35 @@ export async function main(): Promise<void> {
     console.log("✓ dogfood read-mode block");
 
     if (isProviderReadyFromStatusOutput(statusOutput)) {
-      const codingTask = await runCodingTaskSmoke(smokeEnv);
-      if (!codingTask.ok) {
-        console.error(`✗ dogfood coding task: ${codingTask.detail}`);
-        process.exit(1);
-        return;
+      const codingTasks = [
+        {
+          id: "replace",
+          label: "dogfood coding task replace",
+          initial: "alpha\n",
+          prompt: (filePath: string) =>
+            `Edit ${filePath}: replace alpha with beta. Apply the edit directly, no explanation.`,
+          validate: (content: string) => content.includes("beta") && !content.includes("alpha"),
+        },
+        {
+          id: "insert",
+          label: "dogfood coding task insert",
+          initial: "alpha\nbeta\n",
+          prompt: (filePath: string) =>
+            `Edit ${filePath}: replace "beta" with "beta\\ngamma". Apply the edit directly, no explanation.`,
+          validate: (content: string) => content.includes("beta\ngamma"),
+        },
+      ] as const;
+      for (const task of codingTasks) {
+        const codingTask = await runCodingTaskSmoke(smokeEnv, task);
+        if (!codingTask.ok) {
+          console.error(`✗ ${task.label}: ${codingTask.detail}`);
+          process.exit(1);
+          return;
+        }
+        console.log(`✓ ${task.label}`);
       }
-      console.log("✓ dogfood coding task");
     } else {
-      console.log("○ dogfood coding task skipped (provider not ready)");
+      console.log("○ dogfood coding tasks skipped (provider not ready)");
     }
 
     console.log("Dogfood smoke checks passed.");
