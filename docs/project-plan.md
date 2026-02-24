@@ -57,6 +57,7 @@ Exit Criteria:
 - User-facing diagnostics include per-turn model-call counts and token usage.
 - Command diagnostics are consistently system-scoped and scan-friendly (`/status`, `/tokens`, `/sessions`).
 - Session diagnostics survive session switches (`/tokens` restored on `/resume`, reset on `/new`).
+- Clarification handling is picker-first (no generated follow-up prompt text before question pickers).
 - Critical operator actions stay explicit and command-first.
 
 ### Milestone 5: Memory Quality

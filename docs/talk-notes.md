@@ -184,6 +184,7 @@ Living notes for talks about building this project. Update this file as mileston
 - `/tokens` now includes model-call diagnostics (`last` + `session`) alongside token usage.
 - Token usage is now persisted per session and restored on `/resume` (resets on `/new`).
 - Chat `/status` rendering now dims keys while keeping values normal for faster scanning.
+- Clarification flow now opens the picker directly (no generated “clarifying questions” transcript block before picker input).
 
 ## Open Narrative Threads
 1. Continue dogfooding ramp from Codex-led to assistant-led development.
