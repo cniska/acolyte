@@ -328,6 +328,27 @@ export async function main(): Promise<void> {
             `Edit ${filePath}: replace "beta" with "beta\\ngamma". Apply the edit directly, no explanation.`,
           validate: (content: string) => content.includes("beta\ngamma"),
         },
+        {
+          id: "multiline-structure",
+          label: "dogfood coding task multiline structure",
+          initial: ["# Notes", "", "## Tasks", "- [ ] alpha", "- [ ] beta", ""].join("\n"),
+          prompt: (filePath: string) =>
+            [
+              `Edit ${filePath} with all of these changes:`,
+              '1) Rename heading "## Tasks" to "## Plan".',
+              '2) Change "- [ ] alpha" to "- [x] alpha".',
+              "3) Append a new section at end:",
+              "## Done",
+              "- alpha",
+              "Apply the edit directly, no explanation.",
+            ].join("\n"),
+          validate: (content: string) =>
+            content.includes("## Plan") &&
+            !content.includes("## Tasks") &&
+            content.includes("- [x] alpha") &&
+            content.includes("## Done") &&
+            content.includes("- alpha"),
+        },
       ] as const;
       for (const task of codingTasks) {
         const codingTask = await runCodingTaskSmoke(smokeEnv, task);
