@@ -134,6 +134,10 @@ function countDelegatedOutcomes(commits: Commit[]): { success: number; failure: 
   return { success, failure, successRate };
 }
 
+function nonDeliveryCategories(types: Array<{ type: string; count: number }>): Array<{ type: string; count: number }> {
+  return types.filter((row) => !DELIVERY_TYPES.has(row.type));
+}
+
 function commitType(subject: string): string {
   return subject.match(/^([a-z]+)(?:\(|:)/i)?.[1]?.toLowerCase() ?? "other";
 }
@@ -184,6 +188,7 @@ function printProgress(commits: Commit[], args: ProgressArgs): void {
   const delivery = countDeliverySlices(types);
   const delegatedSlices = countDelegatedSlices(types);
   const delegated = countDelegatedOutcomes(scopedCommits);
+  const nonDelivery = nonDeliveryCategories(types);
   const pct = Math.min(100, Math.round((delivery / args.target) * 100));
   const remaining = Math.max(0, args.target - delivery);
 
@@ -199,6 +204,7 @@ function printProgress(commits: Commit[], args: ProgressArgs): void {
           delegatedSuccess: delegated.success,
           delegatedFailure: delegated.failure,
           delegatedSuccessRate: delegated.successRate,
+          nonDeliveryCategories: nonDelivery,
           target: args.target,
           percent: pct,
           remaining,
@@ -223,6 +229,9 @@ function printProgress(commits: Commit[], args: ProgressArgs): void {
   console.log(`- delegated slices (feat/fix): ${delegatedSlices}`);
   console.log(
     `- delegated outcomes (proxy): success=${delegated.success} failure=${delegated.failure} rate=${delegated.successRate}%`,
+  );
+  console.log(
+    `- non-delivery categories: ${nonDelivery.length > 0 ? nonDelivery.map((row) => `${row.type}=${row.count}`).join(" ") : "none"}`,
   );
   console.log(`- remaining to target: ${remaining}`);
   if (types.length > 0) {
@@ -262,4 +271,4 @@ if (import.meta.main) {
 }
 
 export { buildGitLogCmd, countDeliverySlices, parseArgs, parseGitLog, summarizeByType };
-export { commitType, countDelegatedOutcomes, countDelegatedSlices, selectScopeCommits };
+export { commitType, countDelegatedOutcomes, countDelegatedSlices, nonDeliveryCategories, selectScopeCommits };

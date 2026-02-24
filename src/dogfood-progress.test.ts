@@ -5,6 +5,7 @@ import {
   countDelegatedOutcomes,
   countDelegatedSlices,
   countDeliverySlices,
+  nonDeliveryCategories,
   parseArgs,
   parseGitLog,
   selectScopeCommits,
@@ -122,6 +123,20 @@ describe("dogfood progress", () => {
         { type: "test", count: 5 },
       ]),
     ).toBe(5);
+  });
+
+  test("nonDeliveryCategories reports non-delivery commit classes", () => {
+    expect(
+      nonDeliveryCategories([
+        { type: "feat", count: 2 },
+        { type: "fix", count: 1 },
+        { type: "chore", count: 3 },
+        { type: "other", count: 2 },
+      ]),
+    ).toEqual([
+      { type: "chore", count: 3 },
+      { type: "other", count: 2 },
+    ]);
   });
 
   test("buildGitLogCmd uses argv form for lookback and since", () => {
