@@ -898,6 +898,71 @@ describe("chat submit handler guards", () => {
     expect(rows.some((row) => row.role === "assistant" && row.content === "ok")).toBe(true);
   });
 
+  test("allows /new recovery after a timed-out turn", async () => {
+    const rows: ChatRow[] = [];
+    let sawTimeoutRow = false;
+    const session = createSession({ id: "sess_test" });
+    const store = createStore({ activeSessionId: session.id, sessions: [session] });
+    const setCurrentSessionCalls: string[] = [];
+    let calls = 0;
+    const submit = createSubmitHandler({
+      backend: createBackend({
+        status: async () => "ok",
+        reply: async () => {
+          calls += 1;
+          throw new Error("Remote backend reply timed out after 120000ms");
+        },
+      }),
+      store,
+      currentSession: session,
+      setCurrentSession: (next) => {
+        setCurrentSessionCalls.push(next.id);
+      },
+      toRows: () => [],
+      setRows: (updater) => {
+        const next = updater(rows);
+        if (next.some((row) => row.role === "system" && row.content.includes("Backend request timed out"))) {
+          sawTimeoutRow = true;
+        }
+        rows.splice(0, rows.length, ...next);
+      },
+      setShowShortcuts: () => {},
+      setValue: () => {},
+      persist: async () => {},
+      exit: () => {},
+      openSkillsPanel: async () => {},
+      openResumePanel: () => {},
+      openPermissionsPanel: () => {},
+      openPolicyPanel: () => {},
+      openClarifyPanel: (_questions, _originalPrompt) => {},
+      openWriteConfirmPanel: () => {},
+      pendingPolicyCandidate: null,
+      setPendingPolicyCandidate: () => {},
+      tokenUsage: [],
+      isThinking: false,
+      setInputHistory: () => {},
+      setInputHistoryIndex: () => {},
+      setInputHistoryDraft: () => {},
+      setIsThinking: () => {},
+      setThinkingLabel: () => {},
+      setTokenUsage: () => {},
+      createMessage,
+      nowIso: () => "2026-02-20T00:00:00.000Z",
+      setInterrupt: () => {},
+    });
+
+    await submit("first");
+    await submit("/new");
+
+    expect(calls).toBe(1);
+    expect(sawTimeoutRow).toBe(true);
+    expect(rows.some((row) => row.role === "system" && row.content.startsWith("Started new session: sess_"))).toBe(
+      true,
+    );
+    expect(setCurrentSessionCalls.length).toBe(1);
+    expect(store.activeSessionId).toBe(setCurrentSessionCalls[0]);
+  });
+
   test("dedupes fallback tool progress when same tool was streamed", async () => {
     const rows: ChatRow[] = [];
     let progressCalls = 0;
