@@ -1,4 +1,4 @@
-# Acolyte Features
+# Features
 
 Canonical source of truth for implemented, in-progress, and planned capabilities.
 
@@ -58,7 +58,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Dogfood lookback now scopes to the last N non-doc commits to reduce false negatives from docs-only streaks.
 - Biome recommended lint rules enabled in main config (`biome.json`) with zero current diagnostics.
 - CLI policy distillation script: `bun run policy:distill --sessions <N> --min <N>`.
-- In-flight turn interrupt via `Esc` while Acolyte is thinking.
+- In-flight turn interrupt via `Esc` while the assistant is thinking.
 - One-shot CLI mode via `run` (including `--file` attachment support).
 - One-shot `run` mode is isolated (does not reuse/persist chat session history).
 - One-shot memory resource isolation for `run`/`dogfood` (`run-<session>` resource ids).
@@ -90,7 +90,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 ## In Progress
 
 - Chat UX consistency polish (formatting, response compactness, command output ergonomics).
-- Transition workflow toward Acolyte-led development (dogfooding ramp on this repo).
+- Transition workflow toward assistant-led development (dogfooding ramp on this repo).
 - Reliability hardening for command output and review behavior.
 
 ## Planned

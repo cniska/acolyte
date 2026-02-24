@@ -1,7 +1,7 @@
-# Acolyte Dogfood Workflow
+# Dogfood Workflow
 
 ## Goal
-Use Acolyte as the primary development driver and ship in small, verified slices.
+Use the assistant as the primary development driver and ship in small, verified slices.
 
 ## Setup
 Run once:

@@ -1,4 +1,4 @@
-# Acolyte Project Plan
+# Project Plan
 
 ## Goal
 Build a reliable, local-first AI coding assistant that can run daily development slices end-to-end (plan -> edit -> verify), with optional hosted mode later.
@@ -17,23 +17,24 @@ Exit Criteria:
 
 ### Milestone 2: Dogfooding Readiness
 Status: in progress.
-Description: Make Acolyte dependable for daily small/medium development slices in this repo.
+Description: Make the assistant dependable for daily small/medium development slices in this repo.
 Goal: reliable day-to-day dogfooding without routine Codex fallback.
 
 Exit Criteria:
 - Small feature slices complete end-to-end without fallback.
 - Output stays concise and decision-useful.
+- Instruction contract stays lean: keep `AGENTS.md` high-signal and minimal; avoid adding verbose style rules that reduce execution success.
 - Recovery paths (`interrupt`, `/new`, `/resume`) remain stable.
 - Setup/diagnostics are reliable (`start`/`dev` + `/status` with clear failure guidance).
 - Permission flow is explicit and frictionless (read default, write confirm, auto-continue prompt).
 
 ### Milestone 3: Aggressive Switch Trial
 Status: planned.
-Description: Run Acolyte as primary driver for a short continuous period.
-Goal: validate Acolyte as primary for normal repo work.
+Description: Run the assistant as primary driver for a short continuous period.
+Goal: validate the assistant as primary for normal repo work.
 
 Exit Criteria:
-- 1-2 consecutive days of primary development with Acolyte.
+- 1-2 consecutive days of primary development with the assistant.
 - 6-10 real feature/fix slices completed end-to-end.
 - No blocker that requires routine Codex fallback.
 - Cost/latency and memory behavior remain acceptable.
@@ -73,7 +74,7 @@ Exit Criteria:
 
 ### Milestone 7: Post-MVP Friends and Family
 Status: planned.
-Description: Share Acolyte with trusted coder friends to gather real-world feedback while continuing rapid iteration.
+Description: Share with trusted coder friends to gather real-world feedback while continuing rapid iteration.
 Goal: validate usability, reliability, and core workflow fit before public release.
 
 Exit Criteria:

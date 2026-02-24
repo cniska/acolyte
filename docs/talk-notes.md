@@ -1,10 +1,10 @@
-# Acolyte Talk Notes
+# Talk Notes
 
 ## Purpose
-Living notes for talks about building Acolyte. Update this file as milestones ship so demos and explanations stay accurate.
+Living notes for talks about building this project. Update this file as milestones ship so demos and explanations stay accurate.
 
 ## Project Pitch
-- Acolyte is a personal AI coding assistant focused on practical execution:
+- Personal AI coding assistant focused on practical execution:
   - CLI-first UX
   - persistent memory
   - agentic coding workflows
@@ -162,13 +162,14 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - MVP focus tightened to reliability over polish: prioritize successful tool-backed execution and explicit failure signals over response post-processing.
 - Keep post-processing minimal and defensive only (empty-output fallbacks, safety/error clarity), not style-shaping.
 - Removed plan/conclusion summarizer post-processing in the agent loop; replies now pass through raw model text (trim-only + fallbacks).
+- Instruction density matters: overly long/prescriptive `AGENTS.md` content can reduce coding-agent success and increase cost/latency, so keep repo instructions concise and execution-focused (see `docs/resources.md`).
 - Agent finalization now preserves raw model output (trim-only + empty-output fallback), removing most style-shaping rewrite logic.
 - Direct edit prompts now enforce an execution contract: no successful completion unless `edit-file` actually ran.
 - Write-confirm recovery now auto-replays the original prompt via an internal payload, avoiding a second manual submit after switching to write mode.
 - Empty-output fallback is now more specific when tools ran but no final answer was produced, improving troubleshooting signal.
 
 ## Open Narrative Threads
-1. Continue dogfooding ramp from Codex-led to Acolyte-led development.
+1. Continue dogfooding ramp from Codex-led to assistant-led development.
 2. Improve memory promotion/retrieval quality and transparency.
 3. Complete hosted readiness (Postgres/pgvector + backup/restore + auth hardening).
 4. Add lane-based model routing and local-model support.

@@ -1,4 +1,4 @@
-# Acolyte Development Workflow
+# Development Workflow
 
 ## Purpose
 Define a consistent way to implement features autonomously while validating each step.
@@ -34,7 +34,7 @@ Internal-only telemetry (not primary end-user commands):
 2. `bun run dogfood:gate --lookback 30 --target 10`
 
 ## Dogfooding Ramp
-Use this staged rollout when shifting work from Codex-driven to Acolyte-driven execution on `main`:
+Use this staged rollout when shifting work from Codex-driven to assistant-driven execution on `main`:
 
 1. Level 1 (safe):
    - Docs-only edits, help text, naming cleanups, and no-behavior refactors.
