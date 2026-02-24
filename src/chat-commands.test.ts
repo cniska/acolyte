@@ -497,9 +497,7 @@ describe("chat-commands", () => {
     };
     const { rows, stop } = await runCommand("/memory context project", [], createStore(), { memoryApi });
     expect(stop).toBe(true);
-    expect(rows.some((row) => row.role === "system" && row.content.startsWith("Project memory context 1"))).toBe(
-      true,
-    );
+    expect(rows.some((row) => row.role === "system" && row.content.startsWith("Project memory context 1"))).toBe(true);
   });
 
   test("dispatchSlashCommand validates /memory scope usage", async () => {
