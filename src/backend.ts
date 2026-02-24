@@ -236,84 +236,89 @@ class RemoteBackend implements Backend {
       throw new Error(`Backend health check failed (${response.status}): ${body || "no body"}`);
     }
 
-    const json = (await response.json()) as {
-      provider?: unknown;
-      mode?: unknown;
-      model?: unknown;
-      models?: {
-        lead?: unknown;
-        planner?: unknown;
-        coder?: unknown;
-        reviewer?: unknown;
+    const json = (await response.json()) as Record<string, unknown>;
+    const asRecord = (value: unknown): Record<string, unknown> | undefined =>
+      value && typeof value === "object" ? (value as Record<string, unknown>) : undefined;
+    const asString = (value: unknown): string | undefined => (typeof value === "string" ? value : undefined);
+    const asNumber = (value: unknown): number | undefined => (typeof value === "number" ? value : undefined);
+    const asBoolean = (value: unknown): boolean | undefined => (typeof value === "boolean" ? value : undefined);
+    const parseOmTokens = (value: string): { obs?: number; ref?: number } => {
+      const obsMatch = value.match(/\bobs=(\d+)\b/);
+      const refMatch = value.match(/\bref=(\d+)\b/);
+      return {
+        obs: obsMatch ? Number(obsMatch[1]) : undefined,
+        ref: refMatch ? Number(refMatch[1]) : undefined,
       };
-      providers?: {
-        lead?: unknown;
-        planner?: unknown;
-        coder?: unknown;
-        reviewer?: unknown;
-      };
-      providerAvailability?: {
-        lead?: unknown;
-        planner?: unknown;
-        coder?: unknown;
-        reviewer?: unknown;
-      };
-      service?: unknown;
-      memory?: {
-        storage?: unknown;
-        contextCount?: unknown;
-        observational?: {
-          enabled?: unknown;
-          scope?: unknown;
-          model?: unknown;
-          observationTokens?: unknown;
-          reflectionTokens?: unknown;
-          current?: {
-            exists?: unknown;
-            generationCount?: unknown;
-            lastObservedAt?: unknown;
-            lastReflectionAt?: unknown;
-          };
-          currentError?: unknown;
-        };
-      };
-      permissionMode?: unknown;
-      apiBaseUrl?: unknown;
     };
-    const provider =
-      typeof json.provider === "string" ? json.provider : typeof json.mode === "string" ? json.mode : "unknown";
-    const model = typeof json.model === "string" ? json.model : undefined;
-    const modelLead = typeof json.models?.lead === "string" ? json.models.lead : undefined;
-    const modelPlanner = typeof json.models?.planner === "string" ? json.models.planner : undefined;
-    const modelCoder = typeof json.models?.coder === "string" ? json.models.coder : undefined;
-    const modelReviewer = typeof json.models?.reviewer === "string" ? json.models.reviewer : undefined;
-    const providerLead = typeof json.providers?.lead === "string" ? json.providers.lead : undefined;
-    const providerPlanner = typeof json.providers?.planner === "string" ? json.providers.planner : undefined;
-    const providerCoder = typeof json.providers?.coder === "string" ? json.providers.coder : undefined;
-    const providerReviewer = typeof json.providers?.reviewer === "string" ? json.providers.reviewer : undefined;
-    const providerReadyLead =
-      typeof json.providerAvailability?.lead === "boolean" ? json.providerAvailability.lead : undefined;
+    const parseOmState = (value: string): { exists?: boolean; gen?: number } => {
+      const existsMatch = value.match(/\bexists=(true|false)\b/);
+      const genMatch = value.match(/\bgen=(\d+)\b/);
+      return {
+        exists: existsMatch ? existsMatch[1] === "true" : undefined,
+        gen: genMatch ? Number(genMatch[1]) : undefined,
+      };
+    };
+
+    const providerGroup = asRecord(json.provider);
+    const modelGroup = asRecord(json.model);
+    const providerReadyGroup = asRecord(json.provider_ready);
+    const serviceGroup = asRecord(json.service);
+    const memoryGroup = asRecord(json.memory);
+    const omGroup = asRecord(json.om);
+
+    const legacyModels = asRecord(json.models);
+    const legacyProviders = asRecord(json.providers);
+    const legacyProviderAvailability = asRecord(json.providerAvailability);
+    const legacyMemory = asRecord(json.memory);
+    const legacyObservational = asRecord(legacyMemory?.observational);
+    const legacyCurrentOm = asRecord(legacyObservational?.current);
+
+    const provider = asString(providerGroup?.status) ?? asString(json.provider) ?? asString(json.mode) ?? "unknown";
+    const model = asString(modelGroup?.status) ?? asString(json.model);
+    const modelLead = asString(legacyModels?.lead);
+    const modelPlanner = asString(modelGroup?.planner) ?? asString(legacyModels?.planner);
+    const modelCoder = asString(modelGroup?.coder) ?? asString(legacyModels?.coder);
+    const modelReviewer = asString(modelGroup?.reviewer) ?? asString(legacyModels?.reviewer);
+
+    const providerLead = asString(legacyProviders?.lead);
+    const providerPlanner = asString(providerGroup?.planner) ?? asString(legacyProviders?.planner);
+    const providerCoder = asString(providerGroup?.coder) ?? asString(legacyProviders?.coder);
+    const providerReviewer = asString(providerGroup?.reviewer) ?? asString(legacyProviders?.reviewer);
+
+    const providerReadyLead = asBoolean(providerReadyGroup?.lead) ?? asBoolean(legacyProviderAvailability?.lead);
     const providerReadyPlanner =
-      typeof json.providerAvailability?.planner === "boolean" ? json.providerAvailability.planner : undefined;
-    const providerReadyCoder =
-      typeof json.providerAvailability?.coder === "boolean" ? json.providerAvailability.coder : undefined;
+      asBoolean(providerReadyGroup?.planner) ?? asBoolean(legacyProviderAvailability?.planner);
+    const providerReadyCoder = asBoolean(providerReadyGroup?.coder) ?? asBoolean(legacyProviderAvailability?.coder);
     const providerReadyReviewer =
-      typeof json.providerAvailability?.reviewer === "boolean" ? json.providerAvailability.reviewer : undefined;
-    const service = typeof json.service === "string" ? json.service : "unknown";
-    const apiBaseUrl = typeof json.apiBaseUrl === "string" ? json.apiBaseUrl : undefined;
-    const memoryStorage = typeof json.memory?.storage === "string" ? json.memory.storage : undefined;
-    const memoryContextCount = typeof json.memory?.contextCount === "number" ? json.memory.contextCount : undefined;
-    const om = json.memory?.observational;
-    const omEnabled = typeof om?.enabled === "boolean" ? om.enabled : undefined;
-    const omScope = typeof om?.scope === "string" ? om.scope : undefined;
-    const omModel = typeof om?.model === "string" ? om.model : undefined;
-    const omObservationTokens = typeof om?.observationTokens === "number" ? om.observationTokens : undefined;
-    const omReflectionTokens = typeof om?.reflectionTokens === "number" ? om.reflectionTokens : undefined;
-    const omExists = typeof om?.current?.exists === "boolean" ? om.current.exists : undefined;
-    const omGeneration = typeof om?.current?.generationCount === "number" ? om.current.generationCount : undefined;
-    const omLastObservedAt = typeof om?.current?.lastObservedAt === "string" ? om.current.lastObservedAt : undefined;
-    const omLastReflectionAt =
-      typeof om?.current?.lastReflectionAt === "string" ? om.current.lastReflectionAt : undefined;
+      asBoolean(providerReadyGroup?.reviewer) ?? asBoolean(legacyProviderAvailability?.reviewer);
+
+    const service = asString(serviceGroup?.status) ?? asString(json.service) ?? "unknown";
+    const serviceUrl = asString(serviceGroup?.url) ?? this.apiUrl;
+    const apiBaseUrl = asString(providerGroup?.api_url) ?? asString(json.apiBaseUrl);
+
+    const memoryStorage = asString(memoryGroup?.status) ?? asString(legacyMemory?.storage);
+    const memoryContextCount = asNumber(memoryGroup?.entries) ?? asNumber(legacyMemory?.contextCount);
+
+    const omStatus = asString(omGroup?.status);
+    const omEnabled =
+      omStatus === "enabled" ? true : omStatus === "disabled" ? false : asBoolean(legacyObservational?.enabled);
+    const omScope = asString(omGroup?.scope) ?? asString(legacyObservational?.scope);
+    const omModel = asString(omGroup?.model) ?? asString(legacyObservational?.model);
+    const omTokens = asRecord(omGroup?.tokens);
+    const omTokensInline = asString(omGroup?.tokens);
+    const parsedTokens = omTokensInline ? parseOmTokens(omTokensInline) : {};
+    const omObservationTokens =
+      asNumber(omTokens?.obs) ?? parsedTokens.obs ?? asNumber(legacyObservational?.observationTokens);
+    const omReflectionTokens =
+      asNumber(omTokens?.ref) ?? parsedTokens.ref ?? asNumber(legacyObservational?.reflectionTokens);
+    const omState = asRecord(omGroup?.state);
+    const omStateInline = asString(omGroup?.state);
+    const parsedState = omStateInline ? parseOmState(omStateInline) : {};
+    const omExists = asBoolean(omState?.exists) ?? parsedState.exists ?? asBoolean(legacyCurrentOm?.exists);
+    const omGeneration = asNumber(omState?.gen) ?? parsedState.gen ?? asNumber(legacyCurrentOm?.generationCount);
+    const omLastObservedAt = asString(omGroup?.last_observed) ?? asString(legacyCurrentOm?.lastObservedAt);
+    const omLastReflectionAt = asString(omGroup?.last_reflection) ?? asString(legacyCurrentOm?.lastReflectionAt);
+    const permissionMode = asString(json.permissions) ?? asString(json.permissionMode);
     const fields = [
       `provider=${provider}`,
       model ? `model=${model}` : undefined,
@@ -330,7 +335,7 @@ class RemoteBackend implements Backend {
       providerReadyCoder === undefined ? undefined : `provider_ready_coder=${providerReadyCoder}`,
       providerReadyReviewer === undefined ? undefined : `provider_ready_reviewer=${providerReadyReviewer}`,
       `service=${service}`,
-      `url=${this.apiUrl}`,
+      `url=${serviceUrl}`,
       apiBaseUrl ? `provider_api_url=${apiBaseUrl}` : undefined,
       memoryStorage ? `memory_storage=${memoryStorage}` : undefined,
       memoryContextCount === undefined ? undefined : `memory_context=${memoryContextCount}`,
@@ -343,7 +348,7 @@ class RemoteBackend implements Backend {
       omGeneration === undefined ? undefined : `om_gen=${omGeneration}`,
       omLastObservedAt ? `om_last_observed=${omLastObservedAt}` : undefined,
       omLastReflectionAt ? `om_last_reflection=${omLastReflectionAt}` : undefined,
-      typeof json.permissionMode === "string" ? `permission_mode=${json.permissionMode}` : undefined,
+      permissionMode ? `permission_mode=${permissionMode}` : undefined,
     ].filter((field): field is string => Boolean(field));
     return fields.join(" ");
   }

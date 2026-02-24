@@ -7,7 +7,6 @@ import { mastraStorage, mastraStorageMode } from "./mastra-storage";
 import { getObservationalMemoryConfig } from "./memory-config";
 import {
   isProviderAvailable,
-  presentModel,
   presentRoleModels,
   providerFromModel,
   resolveProvider,
@@ -235,30 +234,54 @@ const server = Bun.serve({
       }
 
       const memoryContextCount = (await getMemoryContextEntries()).length;
+      const presentModels = presentRoleModels(roleModels);
       return json({
         ok: true,
-        service: "acolyte-backend",
-        provider,
-        model: presentModel(roleModels.lead),
-        models: presentRoleModels(roleModels),
-        providers: roleProviders,
-        providerAvailability: roleProviderAvailability,
-        apiBaseUrl: appConfig.openai.baseUrl,
-        memory: {
-          storage: mastraStorageMode,
-          contextCount: memoryContextCount,
-          resourceId: appConfig.memory.resourceId,
-          observational: {
-            enabled: true,
-            scope: omConfig.scope,
-            model: omConfig.model,
-            observationTokens: omConfig.observation.messageTokens,
-            reflectionTokens: omConfig.reflection.observationTokens,
-            current: currentOm,
-            currentError: currentOmError,
-          },
+        provider: {
+          status: provider,
+          planner: roleProviders.planner,
+          coder: roleProviders.coder,
+          reviewer: roleProviders.reviewer,
+          api_url: appConfig.openai.baseUrl,
         },
-        permissionMode: appConfig.agent.permissions.mode,
+        model: {
+          status: presentModels.lead,
+          planner: presentModels.planner,
+          coder: presentModels.coder,
+          reviewer: presentModels.reviewer,
+        },
+        provider_ready: {
+          lead: roleProviderAvailability.lead,
+          planner: roleProviderAvailability.planner,
+          coder: roleProviderAvailability.coder,
+          reviewer: roleProviderAvailability.reviewer,
+        },
+        service: {
+          status: "acolyte-backend",
+          url: `http://localhost:${PORT}`,
+        },
+        memory: {
+          status: mastraStorageMode,
+          entries: memoryContextCount,
+          resource_id: appConfig.memory.resourceId,
+        },
+        om: {
+          status: "enabled",
+          scope: omConfig.scope,
+          model: omConfig.model,
+          tokens: {
+            obs: omConfig.observation.messageTokens,
+            ref: omConfig.reflection.observationTokens,
+          },
+          state: {
+            exists: currentOm.exists,
+            gen: currentOm.generationCount,
+          },
+          last_observed: currentOm.lastObservedAt,
+          last_reflection: currentOm.lastReflectionAt,
+          error: currentOmError,
+        },
+        permissions: appConfig.agent.permissions.mode,
       });
     }
 

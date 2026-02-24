@@ -79,6 +79,84 @@ describe("remote backend connection errors", () => {
 });
 
 describe("remote backend status parsing", () => {
+  test("status serializes grouped healthz payload fields", async () => {
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({
+          provider: {
+            status: "openai",
+            planner: "openai",
+            coder: "anthropic",
+            reviewer: "gemini",
+            api_url: "https://api.openai.com/v1",
+          },
+          model: {
+            status: "openai/gpt-5",
+            planner: "openai/o3",
+            coder: "anthropic/claude-sonnet-4",
+            reviewer: "gemini/gemini-2.5-pro",
+          },
+          provider_ready: {
+            lead: true,
+            planner: true,
+            coder: true,
+            reviewer: false,
+          },
+          service: {
+            status: "acolyte-backend",
+            url: "http://localhost:6767",
+          },
+          memory: {
+            status: "postgres",
+            entries: 4,
+          },
+          om: {
+            status: "enabled",
+            scope: "resource",
+            model: "openai/gpt-5",
+            tokens: { obs: 3000, ref: 8000 },
+            state: { exists: true, gen: 2 },
+            last_observed: "2026-02-23T10:10:53.908Z",
+            last_reflection: "2026-02-23T10:15:00.000Z",
+          },
+          permissions: "write",
+        }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
+      )) as unknown as typeof fetch;
+
+    const backend = createBackend({ apiUrl: "http://localhost:6767" });
+    const status = await backend.status();
+
+    expect(status).toContain("provider=openai");
+    expect(status).toContain("model=openai/gpt-5");
+    expect(status).toContain("model_planner=openai/o3");
+    expect(status).toContain("model_coder=anthropic/claude-sonnet-4");
+    expect(status).toContain("model_reviewer=gemini/gemini-2.5-pro");
+    expect(status).toContain("provider_planner=openai");
+    expect(status).toContain("provider_coder=anthropic");
+    expect(status).toContain("provider_reviewer=gemini");
+    expect(status).toContain("provider_ready_lead=true");
+    expect(status).toContain("provider_ready_reviewer=false");
+    expect(status).toContain("service=acolyte-backend");
+    expect(status).toContain("url=http://localhost:6767");
+    expect(status).toContain("provider_api_url=https://api.openai.com/v1");
+    expect(status).toContain("memory_storage=postgres");
+    expect(status).toContain("memory_context=4");
+    expect(status).toContain("om=enabled");
+    expect(status).toContain("om_scope=resource");
+    expect(status).toContain("om_model=openai/gpt-5");
+    expect(status).toContain("om_obs_tokens=3000");
+    expect(status).toContain("om_ref_tokens=8000");
+    expect(status).toContain("om_exists=true");
+    expect(status).toContain("om_gen=2");
+    expect(status).toContain("om_last_observed=2026-02-23T10:10:53.908Z");
+    expect(status).toContain("om_last_reflection=2026-02-23T10:15:00.000Z");
+    expect(status).toContain("permission_mode=write");
+  });
+
   test("status serializes multi-provider model payload fields", async () => {
     globalThis.fetch = (async () =>
       new Response(

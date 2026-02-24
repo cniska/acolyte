@@ -4,6 +4,7 @@ import { appConfig } from "./app-config";
 type HealthzResponse = {
   ok?: boolean;
   memory?: {
+    status?: unknown;
     storage?: unknown;
   };
 };
@@ -50,7 +51,12 @@ async function main(): Promise<void> {
   if (health.ok !== true) {
     throw new Error("Health check did not return ok=true.");
   }
-  const storage = typeof health.memory?.storage === "string" ? health.memory.storage : "unknown";
+  const storage =
+    typeof health.memory?.status === "string"
+      ? health.memory.status
+      : typeof health.memory?.storage === "string"
+        ? health.memory.storage
+        : "unknown";
   if (storage !== "postgres") {
     throw new Error(`Expected memory.storage=postgres, got ${storage}.`);
   }

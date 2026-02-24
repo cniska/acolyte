@@ -190,7 +190,7 @@ describe("chat-commands", () => {
     const { rows, stop } = await runCommand("/status");
     expect(stop).toBe(true);
     expect(rows.some((row) => row.role === "assistant" && row.content.includes("provider:"))).toBe(true);
-    expect(rows.some((row) => row.role === "assistant" && row.content.includes("memory_context:"))).toBe(true);
+    expect(rows.some((row) => row.role === "assistant" && row.content.includes("entries:"))).toBe(true);
   });
 
   test("dispatchSlashCommand handles /sessions with compact assistant output", async () => {
@@ -548,7 +548,7 @@ describe("chat-commands", () => {
       });
       expect(readResult.stop).toBe(true);
       expect(appConfig.agent.permissions.mode).toBe("read");
-      expect(readResult.rows.some((row) => row.content === "Changed permissions to `read` (project).")).toBe(true);
+      expect(readResult.rows.some((row) => row.content === "Changed permissions to read (project).")).toBe(true);
       expect(writes).toContainEqual({ mode: "read", scope: "project" });
 
       const writeResult = await runCommand("/permissions write --user", [], createStore(), {
@@ -558,7 +558,7 @@ describe("chat-commands", () => {
       });
       expect(writeResult.stop).toBe(true);
       expect(appConfig.agent.permissions.mode).toBe("write");
-      expect(writeResult.rows.some((row) => row.content === "Changed permissions to `write` (user).")).toBe(true);
+      expect(writeResult.rows.some((row) => row.content === "Changed permissions to write (user).")).toBe(true);
       expect(writes).toContainEqual({ mode: "write", scope: "user" });
     } finally {
       setPermissionMode(prev);
@@ -616,7 +616,7 @@ describe("chat-commands", () => {
     expect(result.stop).toBe(true);
     expect(rows).toHaveLength(2);
     expect(rows[0]).toMatchObject({ role: "user", content: "/new" });
-    expect(rows[1]?.role).toBe("assistant");
+    expect(rows[1]?.role).toBe("system");
     expect(rows[1]?.content.startsWith("Started new session: sess_")).toBe(true);
     expect(rows[1]?.style).toBe("sessionStatus");
     expect(setCurrentSessionCalls).toHaveLength(1);
