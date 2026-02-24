@@ -55,7 +55,7 @@ Exit Criteria:
 - Duplicate tool-progress rows are suppressed.
 - Empty-output failures return actionable guidance (quota/backend/model/provider).
 - Permission-blocked writes trigger picker-based recovery, not manual command detours.
-- Permission policies support category-level control (`read`, `edit`, `execute`) with session-scoped “always allow” grants.
+- Permission flow stays two-mode for MVP (`read`, `write`); defer finer-grained controls (like `execute`) until post-MVP.
 - User-facing diagnostics include per-turn model-call counts and token usage.
 - Command diagnostics are consistently system-scoped and scan-friendly (`/status`, `/tokens`, `/sessions`).
 - Key-value command outputs preserve readability conventions (dim keys, normal values).
