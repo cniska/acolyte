@@ -60,6 +60,11 @@ describe("chat-slash helpers", () => {
     expect(resolveSlashAlias("plain")).toBe("plain");
   });
 
+  test("resolveSlashAlias keeps unknown aliases unchanged", () => {
+    expect(resolveSlashAlias("/xyz")).toBe("/xyz");
+    expect(resolveSlashAlias("/not-a-command arg")).toBe("/not-a-command arg");
+  });
+
   test("isKnownSlashToken recognizes canonical and alias tokens", () => {
     expect(isKnownSlashToken("/status")).toBe(true);
     expect(isKnownSlashToken("/df")).toBe(true);

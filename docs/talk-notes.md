@@ -190,6 +190,7 @@ Living notes for talks about building this project. Update this file as mileston
 - Command-output scanability improved: `/sessions` body is dimmed and `/tokens` now uses dim key / normal value rendering.
 - `dogfood:gate` now accepts `--no-verify/--no-smoke` aliases in addition to `--skip-*`.
 - Role routing now sends read-only file-inspection prompts to reviewer lane to reduce unnecessary coder delegation.
+- Fixed a direct-edit guard false positive where slash-like tokens in prompt examples (for example `/xyz`) were treated as absolute file paths and blocked execution.
 - Product scope was narrowed to coding-first workflows; setup/admin surface is intentionally minimal.
 - Tool path guardrails are now workspace + `/tmp` only.
 

@@ -329,9 +329,9 @@ function extractExplicitTargetPath(message: string): string | null {
   return candidate.length > 0 ? candidate : null;
 }
 
-function extractAbsolutePathCandidates(message: string): string[] {
+export function extractAbsolutePathCandidates(message: string): string[] {
   const results: string[] = [];
-  const pattern = /(?:^|\s)(\/[^\s,;:!?]+)/g;
+  const pattern = /(?:^|\s)(\/[^\s,;:!?]+\/[^\s,;:!?]*)/g;
   let match: RegExpExecArray | null = pattern.exec(message);
   while (match) {
     const candidate = (match[1] ?? "").trim().replace(/[.)]+$/g, "");
@@ -926,7 +926,6 @@ export async function runAgent(input: {
   const BASE_MODEL_RETRY_MAX_STEPS = 5;
   const EMPTY_TEXT_RETRY_MAX_STEPS = 4;
   const MODEL_CALL_TIMEOUT_MS = 90_000;
-  const DIRECT_EDIT_RETRY_TIMEOUT_MS = 45_000;
   const role = selectAgentRole(input.request.message);
   const directEditLikely = role === "coder" && isDirectEditRequest(input.request.message);
   const directEditTargetPath = directEditLikely ? extractExplicitTargetPath(input.request.message) : null;
@@ -990,14 +989,35 @@ export async function runAgent(input: {
     },
     timeoutMs: number,
   ) =>
-    await Promise.race([
-      agent.generate(prompt, options),
-      new Promise<never>((_, reject) => {
-        setTimeout(() => {
-          reject(new Error(`Model call timed out after ${timeoutMs}ms`));
-        }, timeoutMs);
-      }),
-    ]);
+    await new Promise<Awaited<ReturnType<typeof agent.generate>>>((resolve, reject) => {
+      let settled = false;
+      const timeoutId = setTimeout(() => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        reject(new Error(`Model call timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
+
+      agent
+        .generate(prompt, options)
+        .then((value) => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          clearTimeout(timeoutId);
+          resolve(value);
+        })
+        .catch((error) => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          clearTimeout(timeoutId);
+          reject(error);
+        });
+    });
 
   const requestInput = buildAgentInputWithUsage(input.request);
   const subagentContext = buildSubagentContext(role, input.request);
@@ -1292,7 +1312,7 @@ export async function runAgent(input: {
           memory: memoryOptions,
           onStepFinish: emitToolProgress,
         },
-        DIRECT_EDIT_RETRY_TIMEOUT_MS,
+        MODEL_CALL_TIMEOUT_MS,
       );
       emitDebug("agent.generate.done", {
         model,
@@ -1330,7 +1350,7 @@ export async function runAgent(input: {
           memory: memoryOptions,
           onStepFinish: emitToolProgress,
         },
-        DIRECT_EDIT_RETRY_TIMEOUT_MS,
+        MODEL_CALL_TIMEOUT_MS,
       );
       emitDebug("agent.generate.done", {
         model,

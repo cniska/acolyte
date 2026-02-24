@@ -63,6 +63,7 @@ Exit Criteria:
 - Persistence guards cover diagnostic continuity (`tokenUsage` normalization tested at storage layer).
 - Role routing sends read-only file-inspection requests to reviewer lane by default.
 - Critical operator actions stay explicit and command-first.
+- Absolute-path safety guards avoid false positives on non-path slash tokens in prompts (for example `/xyz` in examples).
 
 ### Milestone 5: Memory Quality
 Status: planned.

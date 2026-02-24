@@ -6,6 +6,7 @@ import {
   createProgressStageLabel,
   directEditExecutionSatisfied,
   directEditTimeoutMessage,
+  extractAbsolutePathCandidates,
   finalizeAssistantOutput,
   finalizeReviewOutput,
   formatToolProgressMessage,
@@ -153,6 +154,11 @@ describe("runAgent guards", () => {
     } finally {
       setPermissionMode(previousMode);
     }
+  });
+
+  test("path candidate parsing ignores slash-like tokens without directory segments", () => {
+    expect(extractAbsolutePathCandidates("add a test for /xyz alias behavior")).toEqual([]);
+    expect(extractAbsolutePathCandidates("edit /etc/hosts to set x to 2")).toEqual(["/etc/hosts"]);
   });
 });
 
