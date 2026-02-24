@@ -8,64 +8,7 @@ import {
   extractClarifyingQuestions,
   resolveNaturalRememberDirective,
 } from "./chat-submit-handler";
-import { createBackend, createMessage, createSession, createStore } from "./test-factory";
-
-type Harness = {
-  submit: (raw: string) => Promise<void>;
-  calls: {
-    setInputHistory: number;
-    setValue: string[];
-    setShowShortcuts: Array<boolean | ((current: boolean) => boolean)>;
-  };
-};
-
-function createHarness(overrides?: { isThinking?: boolean }): Harness {
-  const calls = {
-    setInputHistory: 0,
-    setValue: [] as string[],
-    setShowShortcuts: [] as Array<boolean | ((current: boolean) => boolean)>,
-  };
-  const session = createSession({ id: "sess_test" });
-  const store = createStore({ activeSessionId: session.id, sessions: [session] });
-  const submit = createSubmitHandler({
-    backend: createBackend({ status: async () => "ok" }),
-    store,
-    currentSession: session,
-    setCurrentSession: () => {},
-    toRows: () => [],
-    setRows: () => {},
-    setShowShortcuts: (next) => {
-      calls.setShowShortcuts.push(next);
-    },
-    setValue: (next) => {
-      calls.setValue.push(next);
-    },
-    persist: async () => {},
-    exit: () => {},
-    openSkillsPanel: async () => {},
-    openResumePanel: () => {},
-    openPermissionsPanel: () => {},
-    openPolicyPanel: () => {},
-    openClarifyPanel: (_questions, _originalPrompt) => {},
-    openWriteConfirmPanel: () => {},
-    pendingPolicyCandidate: null,
-    setPendingPolicyCandidate: () => {},
-    tokenUsage: [],
-    isThinking: overrides?.isThinking ?? false,
-    setInputHistory: () => {
-      calls.setInputHistory += 1;
-    },
-    setInputHistoryIndex: () => {},
-    setInputHistoryDraft: () => {},
-    setIsThinking: () => {},
-    setThinkingLabel: () => {},
-    setTokenUsage: () => {},
-    createMessage,
-    nowIso: () => "2026-02-20T00:00:00.000Z",
-    setInterrupt: () => {},
-  });
-  return { submit, calls };
-}
+import { createBackend, createMessage, createSession, createStore, createSubmitHandlerHarness } from "./test-factory";
 
 describe("chat submit handler guards", () => {
   test("extractClarifyingQuestions reads numbered clarify blocks", () => {
@@ -123,7 +66,7 @@ describe("chat submit handler guards", () => {
   });
 
   test("ignores empty input", async () => {
-    const h = createHarness();
+    const h = createSubmitHandlerHarness();
     await h.submit("   ");
     expect(h.calls.setInputHistory).toBe(0);
     expect(h.calls.setValue).toEqual([]);
@@ -131,28 +74,28 @@ describe("chat submit handler guards", () => {
   });
 
   test("ignores input while thinking", async () => {
-    const h = createHarness({ isThinking: true });
+    const h = createSubmitHandlerHarness({ isThinking: true });
     await h.submit("hello");
     expect(h.calls.setInputHistory).toBe(0);
     expect(h.calls.setValue).toEqual([]);
   });
 
   test("handles slash command while thinking", async () => {
-    const h = createHarness({ isThinking: true });
+    const h = createSubmitHandlerHarness({ isThinking: true });
     await h.submit("/sessions");
     expect(h.calls.setInputHistory).toBe(1);
     expect(h.calls.setValue).toEqual([""]);
   });
 
   test("ignores unknown single-token slash commands", async () => {
-    const h = createHarness();
+    const h = createSubmitHandlerHarness();
     await h.submit("/not-a-command");
     expect(h.calls.setInputHistory).toBe(0);
     expect(h.calls.setValue).toEqual([]);
   });
 
   test("toggles shortcuts on ? input", async () => {
-    const h = createHarness();
+    const h = createSubmitHandlerHarness();
     await h.submit("?");
     expect(h.calls.setInputHistory).toBe(1);
     expect(h.calls.setValue).toEqual([""]);
@@ -961,6 +904,73 @@ describe("chat submit handler guards", () => {
     );
     expect(setCurrentSessionCalls.length).toBe(1);
     expect(store.activeSessionId).toBe(setCurrentSessionCalls[0]);
+  });
+
+  test("allows /resume recovery after a timed-out turn", async () => {
+    const rows: ChatRow[] = [];
+    let sawTimeoutRow = false;
+    const target = createSession({
+      id: "sess_resume_target",
+      messages: [createMessage("assistant", "resumed")],
+    });
+    const session = createSession({ id: "sess_current" });
+    const store = createStore({ activeSessionId: session.id, sessions: [session, target] });
+    const setCurrentSessionCalls: string[] = [];
+    let calls = 0;
+    const submit = createSubmitHandler({
+      backend: createBackend({
+        status: async () => "ok",
+        reply: async () => {
+          calls += 1;
+          throw new Error("Remote backend reply timed out after 120000ms");
+        },
+      }),
+      store,
+      currentSession: session,
+      setCurrentSession: (next) => {
+        setCurrentSessionCalls.push(next.id);
+      },
+      toRows: (messages) => messages.map((msg) => ({ id: msg.id, role: msg.role, content: msg.content })),
+      setRows: (updater) => {
+        const next = updater(rows);
+        if (next.some((row) => row.role === "system" && row.content.includes("Backend request timed out"))) {
+          sawTimeoutRow = true;
+        }
+        rows.splice(0, rows.length, ...next);
+      },
+      setShowShortcuts: () => {},
+      setValue: () => {},
+      persist: async () => {},
+      exit: () => {},
+      openSkillsPanel: async () => {},
+      openResumePanel: () => {},
+      openPermissionsPanel: () => {},
+      openPolicyPanel: () => {},
+      openClarifyPanel: (_questions, _originalPrompt) => {},
+      openWriteConfirmPanel: () => {},
+      pendingPolicyCandidate: null,
+      setPendingPolicyCandidate: () => {},
+      tokenUsage: [],
+      isThinking: false,
+      setInputHistory: () => {},
+      setInputHistoryIndex: () => {},
+      setInputHistoryDraft: () => {},
+      setIsThinking: () => {},
+      setThinkingLabel: () => {},
+      setTokenUsage: () => {},
+      createMessage,
+      nowIso: () => "2026-02-20T00:00:00.000Z",
+      setInterrupt: () => {},
+    });
+
+    await submit("first");
+    await submit(`/resume ${target.id.slice(0, 12)}`);
+
+    expect(calls).toBe(1);
+    expect(sawTimeoutRow).toBe(true);
+    expect(setCurrentSessionCalls).toEqual([target.id]);
+    expect(store.activeSessionId).toBe(target.id);
+    expect(rows.some((row) => row.role === "assistant" && row.content === "resumed")).toBe(true);
   });
 
   test("dedupes fallback tool progress when same tool was streamed", async () => {

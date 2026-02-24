@@ -1,4 +1,7 @@
 import type { Backend } from "./backend";
+import type { ChatRow } from "./chat-commands";
+import { createSubmitHandler } from "./chat-submit-handler";
+import type { PolicyCandidate } from "./policy-distill";
 import type { Message, Session, SessionStore } from "./types";
 
 const DEFAULT_TIME = "2026-02-20T00:00:00.000Z";
@@ -57,3 +60,70 @@ export function createBackend(overrides?: {
     setPermissionMode: overrides?.setPermissionMode ?? (async () => {}),
   };
 }
+
+export type SubmitHandlerHarness = {
+  submit: (raw: string) => Promise<void>;
+  rows: ChatRow[];
+  calls: {
+    setInputHistory: number;
+    setValue: string[];
+    setShowShortcuts: Array<boolean | ((current: boolean) => boolean)>;
+  };
+};
+
+export function createSubmitHandlerHarness(overrides?: {
+  isThinking?: boolean;
+  backend?: Backend;
+  pendingPolicyCandidate?: PolicyCandidate | null;
+}): SubmitHandlerHarness {
+  const rows: ChatRow[] = [];
+  const calls = {
+    setInputHistory: 0,
+    setValue: [] as string[],
+    setShowShortcuts: [] as Array<boolean | ((current: boolean) => boolean)>,
+  };
+  const session = createSession({ id: "sess_test" });
+  const store = createStore({ activeSessionId: session.id, sessions: [session] });
+  const submit = createSubmitHandler({
+    backend: overrides?.backend ?? createBackend({ status: async () => "ok" }),
+    store,
+    currentSession: session,
+    setCurrentSession: () => {},
+    toRows: () => [],
+    setRows: (updater) => {
+      rows.splice(0, rows.length, ...updater(rows));
+    },
+    setShowShortcuts: (next) => {
+      calls.setShowShortcuts.push(next);
+    },
+    setValue: (next) => {
+      calls.setValue.push(next);
+    },
+    persist: async () => {},
+    exit: () => {},
+    openSkillsPanel: async () => {},
+    openResumePanel: () => {},
+    openPermissionsPanel: () => {},
+    openPolicyPanel: () => {},
+    openClarifyPanel: () => {},
+    openWriteConfirmPanel: () => {},
+    pendingPolicyCandidate: overrides?.pendingPolicyCandidate ?? null,
+    setPendingPolicyCandidate: () => {},
+    tokenUsage: [],
+    isThinking: overrides?.isThinking ?? false,
+    setInputHistory: () => {
+      calls.setInputHistory += 1;
+    },
+    setInputHistoryIndex: () => {},
+    setInputHistoryDraft: () => {},
+    setIsThinking: () => {},
+    setThinkingLabel: () => {},
+    setTokenUsage: () => {},
+    createMessage,
+    nowIso: () => DEFAULT_TIME,
+    setInterrupt: () => {},
+  });
+  return { submit, rows, calls };
+}
+
+export const createSubmitHandlerHardness = createSubmitHandlerHarness;
