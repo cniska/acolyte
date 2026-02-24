@@ -71,8 +71,8 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - One-shot `run --verify` propagates verify failures via non-zero exit status.
 - Internal tool command surface for search/web/fetch/read/edit/git/run operations.
 - Secure-by-default tool guardrails:
-  - file reads/edits are restricted to the workspace plus `~/.acolyte`
-  - shell commands reject path traversal and paths outside workspace/`~/.acolyte`
+  - file reads/edits are restricted to the workspace plus `/tmp`
+  - shell commands reject path traversal and paths outside workspace/`/tmp`
 - Permission modes (`permissionMode` in `~/.acolyte/config.toml`):
   - `read` (default): disables write-capable tools (shell execution, file edit)
   - `write`: enables full local tool capability within guarded roots

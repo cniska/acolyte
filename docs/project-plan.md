@@ -23,6 +23,7 @@ Goal: reliable day-to-day dogfooding without routine Codex fallback.
 Exit Criteria:
 - Small feature slices complete end-to-end without fallback.
 - Output stays concise and decision-useful.
+- Product scope stays coding-first: prioritize code editing/review/test workflows; keep non-coding setup/admin UX minimal.
 - Instruction contract stays lean: keep `AGENTS.md` high-signal and minimal; avoid adding verbose style rules that reduce execution success.
 - Role/mode routing remains automatic and internal by default; no user-facing routing customization unless a concrete workflow requires it.
 - Recovery paths (`interrupt`, `/new`, `/resume`) remain stable.

@@ -4,7 +4,7 @@
 Living notes for talks about building this project. Update this file as milestones ship so demos and explanations stay accurate.
 
 ## Project Pitch
-- Personal AI coding assistant focused on practical execution:
+- Personal AI coding assistant focused on coding execution:
   - CLI-first UX
   - persistent memory
   - agentic coding workflows
@@ -190,6 +190,8 @@ Living notes for talks about building this project. Update this file as mileston
 - Command-output scanability improved: `/sessions` body is dimmed and `/tokens` now uses dim key / normal value rendering.
 - `dogfood:gate` now accepts `--no-verify/--no-smoke` aliases in addition to `--skip-*`.
 - Role routing now sends read-only file-inspection prompts to reviewer lane to reduce unnecessary coder delegation.
+- Product scope was narrowed to coding-first workflows; setup/admin surface is intentionally minimal.
+- Tool path guardrails are now workspace + `/tmp` only.
 
 ## Open Narrative Threads
 1. Continue dogfooding ramp from Codex-led to assistant-led development.
