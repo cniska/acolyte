@@ -27,7 +27,11 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Policy distillation command from chat logs: `/distill [--sessions N] [--min N]`.
 - `/tokens` now includes the latest token-budget warning when context was trimmed or near budget.
 - `/tokens` now keeps the latest session warning visible even if the newest turn has no warning.
+- `/tokens` now includes per-turn model-call diagnostics (`last` + `session`) for debugging routing/cost behavior.
+- `/tokens` usage now persists per session and restores on `/resume` (resets on `/new`).
 - Token-budget warnings are shown on-demand via `/tokens` (not as inline transcript noise).
+- Slash command diagnostics are system-scoped for consistency (`/status`, `/sessions`, `/tokens`, memory/permissions/distill flows).
+- `/status` command output uses dim keys with normal-value rendering for faster scanning.
 - Distilled policy candidate review picker with explicit `yes/no` confirmation and optional note (`yes also do this`).
 - Skills picker + command support: `/skills` and `$` shortcut.
 - Memory commands in chat: `/remember [--project] <text>`, `/memory [all|user|project]`, `/memory context [all|user|project]` (alias: `/mem`).
@@ -50,7 +54,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Tool execution errors are normalized with tool-id context (for example `read-file failed: ...`) for clearer debugging.
 - Dogfooding workflow command: `/dogfood <task>` with verify-first loop.
 - Optional skip verify flow: `/dogfood --no-verify <task>`.
-- Assistant output post-processing strips common option-menu/status scaffolding and keeps concise actionable content.
+- Assistant output post-processing is intentionally minimal (safety/error shaping + empty-output fallback).
 - Automated dogfood smoke checks via `bun run dogfood:smoke`.
 - Internal telemetry: one-command dogfood readiness gate via `bun run dogfood:gate` (smoke + delivery-slice progress, optional verify).
 - Internal telemetry: gate delivery details now include scoped/scanned commit counts to make lookback diagnostics explicit.
@@ -74,6 +78,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Read-mode write confirmation picker:
   - likely write prompts trigger `switch/cancel` confirmation with inline `reason…`
   - selecting `switch` sets backend permission mode to `write` and pre-fills the original prompt
+- Clarification handling is picker-first: clarifying-question responses open pickers directly without generated follow-up transcript prompts.
 - Local backend server with health check (`/healthz`) and chat endpoint (`/v1/chat`).
 - User-friendly backend connection errors with direct recovery hints (`bun run dev` or `bun run serve:env`).
 - Local-first configuration and optional API-key auth for backend access.
