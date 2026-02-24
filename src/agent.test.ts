@@ -267,9 +267,9 @@ describe("finalizeAssistantOutput", () => {
 });
 
 describe("selectAgentRole", () => {
-  test("routes explicit review prompts to reviewer", () => {
-    expect(selectAgentRole("review @src/agent.ts")).toBe("reviewer");
-    expect(selectAgentRole("/review @src/agent.ts")).toBe("reviewer");
+  test("routes explicit review prompts to coder", () => {
+    expect(selectAgentRole("review @src/agent.ts")).toBe("coder");
+    expect(selectAgentRole("/review @src/agent.ts")).toBe("coder");
   });
 
   test("routes read-only inspection prompts to coder by default", () => {
@@ -307,11 +307,8 @@ describe("shouldForceRequiredToolsRetry", () => {
     expect(shouldForceRequiredToolsRetry("coder", true)).toBe(true);
   });
 
-  test("requires tool fallback for reviewer role", () => {
-    expect(shouldForceRequiredToolsRetry("reviewer", false)).toBe(true);
-  });
-
-  test("does not force tool fallback for normal coder/planner prompts", () => {
+  test("does not force tool fallback for normal reviewer/coder/planner prompts", () => {
+    expect(shouldForceRequiredToolsRetry("reviewer", false)).toBe(false);
     expect(shouldForceRequiredToolsRetry("coder", false)).toBe(false);
     expect(shouldForceRequiredToolsRetry("planner", false)).toBe(false);
   });

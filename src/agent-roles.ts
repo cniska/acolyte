@@ -6,11 +6,6 @@ function normalizeIntentText(text: string): string {
   return text.trim().toLowerCase();
 }
 
-function isExplicitReviewIntent(text: string): boolean {
-  const normalized = normalizeIntentText(text);
-  return normalized.startsWith("review ") || normalized.startsWith("/review ");
-}
-
 function isExplicitPlanningIntent(text: string): boolean {
   const normalized = normalizeIntentText(text);
   return normalized.startsWith("plan ") || normalized.startsWith("/plan ");
@@ -31,9 +26,6 @@ const DEFAULT_ROLE_SOUL: Record<AgentRole, string> = {
 export function selectAgentRole(text: string): AgentRole {
   if (isDirectEditIntent(text)) {
     return "coder";
-  }
-  if (isExplicitReviewIntent(text)) {
-    return "reviewer";
   }
   if (isExplicitPlanningIntent(text)) {
     return "planner";
