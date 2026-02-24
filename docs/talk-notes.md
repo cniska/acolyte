@@ -79,6 +79,7 @@ Living notes for talks about building this project. Update this file as mileston
 - Token budget discipline is required during rapid iteration.
 - One-shot workflows need memory isolation (`run-<session>` resources) to avoid cross-task bleed.
 - Lightweight smoke commands improve confidence without adding heavy CI complexity.
+- February 24, 2026 delegated smoke checks passed for both a direct file edit and a non-edit status check.
 - Moving complex shell orchestration out of `package.json` keeps runtime scripts readable and easier to debug.
 - Manual split mode is now explicit: run backend with `bun run serve:env`, then attach CLI with `bun run src/cli.ts`.
 - Default startup is managed chat (`bun run start`) for fewer local setup misses.
