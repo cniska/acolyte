@@ -1077,8 +1077,34 @@ export async function runAgent(input: {
     });
   }
 
-  const normalizedToolCalls = normalizeToolCalls(result.toolCalls);
-  const toolCallIds = collectToolCallIds(normalizedToolCalls);
+  let normalizedToolCalls = normalizeToolCalls(result.toolCalls);
+  let toolCallIds = collectToolCallIds(normalizedToolCalls);
+  if (directEditLikely && !toolCallIds.includes("edit-file")) {
+    emitDebug("agent.generate.retry", {
+      model,
+      reason: "direct_edit_missing_edit_file",
+      tool_choice: "required",
+      max_steps: 8,
+      prior_tools: toolCallIds.join(","),
+    });
+    result = await agent.generate(
+      `${delegatedInput}\n\nHard requirement: execute edit-file now. Apply a concrete file change and return a concise result.`,
+      {
+        maxSteps: 8,
+        toolChoice: "required",
+        memory: memoryOptions,
+        onStepFinish: emitToolProgress,
+      },
+    );
+    emitDebug("agent.generate.done", {
+      model,
+      reason: "direct_edit_missing_edit_file",
+      tool_calls: result.toolCalls.length,
+      text_chars: result.text.trim().length,
+    });
+    normalizedToolCalls = normalizeToolCalls(result.toolCalls);
+    toolCallIds = collectToolCallIds(normalizedToolCalls);
+  }
   if (normalizedToolCalls.length > 0 && toolCallIds.length === 0) {
     const first = normalizedToolCalls[0];
     const firstKeys = first && typeof first === "object" ? Object.keys(first as object).slice(0, 12) : [];
