@@ -6,6 +6,8 @@ import {
   parseArgs,
   parseDeliveryProgress,
   progressDetail,
+  readyDistinctDaysInMode,
+  readyRunsInMode,
   smokeCommand,
   summarizeGate,
 } from "./dogfood-gate";
@@ -18,6 +20,8 @@ describe("dogfood gate", () => {
       minSuccessRate: 70,
       minDelegatedSlices: 6,
       minStableRuns: 1,
+      minSoakRuns: 1,
+      minSoakDays: 1,
       strictAutonomy: false,
       skipVerify: false,
       skipSmoke: false,
@@ -54,6 +58,8 @@ describe("dogfood gate", () => {
       minSuccessRate: 85,
       minDelegatedSlices: 8,
       minStableRuns: 2,
+      minSoakRuns: 1,
+      minSoakDays: 1,
       strictAutonomy: false,
       skipVerify: true,
       skipSmoke: true,
@@ -84,6 +90,8 @@ describe("dogfood gate", () => {
       minSuccessRate: 70,
       minDelegatedSlices: 6,
       minStableRuns: 1,
+      minSoakRuns: 1,
+      minSoakDays: 1,
       strictAutonomy: false,
       skipVerify: true,
       skipSmoke: true,
@@ -106,6 +114,14 @@ describe("dogfood gate", () => {
     expect(() => parseArgs(["--min-stable-runs", "0"])).toThrow("Invalid --min-stable-runs value.");
   });
 
+  test("parseArgs rejects invalid soak-runs value", () => {
+    expect(() => parseArgs(["--min-soak-runs", "0"])).toThrow("Invalid --min-soak-runs value.");
+  });
+
+  test("parseArgs rejects invalid soak-days value", () => {
+    expect(() => parseArgs(["--min-soak-days", "0"])).toThrow("Invalid --min-soak-days value.");
+  });
+
   test("parseArgs enforces stricter autonomy thresholds when enabled", () => {
     expect(parseArgs(["--strict-autonomy"])).toEqual({
       target: 10,
@@ -113,6 +129,8 @@ describe("dogfood gate", () => {
       minSuccessRate: 85,
       minDelegatedSlices: 10,
       minStableRuns: 3,
+      minSoakRuns: 10,
+      minSoakDays: 3,
       strictAutonomy: true,
       skipVerify: false,
       skipSmoke: false,
@@ -130,6 +148,10 @@ describe("dogfood gate", () => {
         "12",
         "--min-stable-runs",
         "4",
+        "--min-soak-runs",
+        "12",
+        "--min-soak-days",
+        "5",
       ]),
     ).toEqual({
       target: 10,
@@ -137,6 +159,8 @@ describe("dogfood gate", () => {
       minSuccessRate: 90,
       minDelegatedSlices: 12,
       minStableRuns: 4,
+      minSoakRuns: 12,
+      minSoakDays: 5,
       strictAutonomy: true,
       skipVerify: false,
       skipSmoke: false,
@@ -158,6 +182,9 @@ describe("dogfood gate", () => {
     expect(consecutiveReadyRuns(history, true, true)).toBe(2);
     expect(consecutiveReadyRuns(history, true, false)).toBe(0);
     expect(consecutiveReadyRuns(history, false, true)).toBe(2);
+    expect(readyRunsInMode(history, true)).toBe(3);
+    expect(readyDistinctDaysInMode(history, true)).toBe(1);
+    expect(readyDistinctDaysInMode(history, false)).toBe(1);
   });
 
   test("parseDeliveryProgress reads progress json", () => {

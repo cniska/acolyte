@@ -81,7 +81,7 @@ Exit Criteria:
 - Failure categories are tracked, and repeated classes show either closure or an active root-cause fix item.
 - Gate evidence remains green while real task execution stays stable during the soak window.
 - MVP gate is only marked complete when this milestone is complete.
-  Baseline achieved (February 24, 2026): `dogfood:smoke` requires two autonomous coding edits when provider is ready, fails on fallback edit responses, and strict autonomy smoke fails when provider readiness is missing; `dogfood:progress` reports non-delivery category counts for repeated failure-class tracking; `bun run dogfood:gate -- --strict-autonomy --skip-verify` is green with smoke/recovery/diagnostics/concurrency/delegated checks and stability window `4/3`.
+  Baseline achieved (February 24, 2026): `dogfood:smoke` requires two autonomous coding edits when provider is ready, fails on fallback edit responses, and strict autonomy smoke fails when provider readiness is missing; `dogfood:progress` reports non-delivery category counts for repeated failure-class tracking; strict `dogfood:gate` now also tracks soak durability via ready-run and distinct-day minimums.
 
 ### Milestone 6: Memory Quality
 Status: planned.

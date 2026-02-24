@@ -9,6 +9,8 @@ type GateArgs = {
   minSuccessRate: number;
   minDelegatedSlices: number;
   minStableRuns: number;
+  minSoakRuns: number;
+  minSoakDays: number;
   strictAutonomy: boolean;
   skipVerify: boolean;
   skipSmoke: boolean;
@@ -29,7 +31,11 @@ const DEFAULT_LOOKBACK = 30;
 const DEFAULT_MIN_SUCCESS_RATE = 70;
 const DEFAULT_MIN_DELEGATED_SLICES = 6;
 const DEFAULT_MIN_STABLE_RUNS = 1;
+const DEFAULT_MIN_SOAK_RUNS = 1;
+const DEFAULT_MIN_SOAK_DAYS = 1;
 const STRICT_AUTONOMY_MIN_STABLE_RUNS = 3;
+const STRICT_AUTONOMY_MIN_SOAK_RUNS = 10;
+const STRICT_AUTONOMY_MIN_SOAK_DAYS = 3;
 const GATE_HISTORY_LIMIT = 200;
 const GATE_HISTORY_FILE = "dogfood-gate-history.json";
 
@@ -39,6 +45,8 @@ const gateArgsSchema = z.object({
   minSuccessRate: z.coerce.number().min(0).max(100),
   minDelegatedSlices: z.coerce.number().int().nonnegative(),
   minStableRuns: z.coerce.number().int().positive(),
+  minSoakRuns: z.coerce.number().int().positive(),
+  minSoakDays: z.coerce.number().int().positive(),
   strictAutonomy: z.boolean(),
   skipVerify: z.boolean(),
   skipSmoke: z.boolean(),
@@ -80,6 +88,8 @@ function parseArgs(args: string[]): GateArgs {
     minSuccessRate: number | string;
     minDelegatedSlices: number | string;
     minStableRuns: number | string;
+    minSoakRuns: number | string;
+    minSoakDays: number | string;
     strictAutonomy: boolean;
     skipVerify: boolean;
     skipSmoke: boolean;
@@ -93,6 +103,8 @@ function parseArgs(args: string[]): GateArgs {
     minSuccessRate: DEFAULT_MIN_SUCCESS_RATE,
     minDelegatedSlices: DEFAULT_MIN_DELEGATED_SLICES,
     minStableRuns: DEFAULT_MIN_STABLE_RUNS,
+    minSoakRuns: DEFAULT_MIN_SOAK_RUNS,
+    minSoakDays: DEFAULT_MIN_SOAK_DAYS,
     strictAutonomy: false,
     skipVerify: false,
     skipSmoke: false,
@@ -148,6 +160,24 @@ function parseArgs(args: string[]): GateArgs {
       i += 1;
       continue;
     }
+    if (token === "--min-soak-runs") {
+      const value = args[i + 1];
+      if (!value) {
+        throw new Error("Invalid --min-soak-runs value.");
+      }
+      raw.minSoakRuns = value;
+      i += 1;
+      continue;
+    }
+    if (token === "--min-soak-days") {
+      const value = args[i + 1];
+      if (!value) {
+        throw new Error("Invalid --min-soak-days value.");
+      }
+      raw.minSoakDays = value;
+      i += 1;
+      continue;
+    }
     if (token === "--strict-autonomy") {
       raw.strictAutonomy = true;
       continue;
@@ -200,6 +230,14 @@ function parseArgs(args: string[]): GateArgs {
     if (hasStableRunsError) {
       throw new Error("Invalid --min-stable-runs value.");
     }
+    const hasSoakRunsError = parsed.error.issues.some((issue) => issue.path[0] === "minSoakRuns");
+    if (hasSoakRunsError) {
+      throw new Error("Invalid --min-soak-runs value.");
+    }
+    const hasSoakDaysError = parsed.error.issues.some((issue) => issue.path[0] === "minSoakDays");
+    if (hasSoakDaysError) {
+      throw new Error("Invalid --min-soak-days value.");
+    }
     throw new Error("Invalid arguments.");
   }
   const parsedArgs = parsed.data;
@@ -211,6 +249,8 @@ function parseArgs(args: string[]): GateArgs {
     minSuccessRate: Math.max(parsedArgs.minSuccessRate, 85),
     minDelegatedSlices: Math.max(parsedArgs.minDelegatedSlices, 10),
     minStableRuns: Math.max(parsedArgs.minStableRuns, STRICT_AUTONOMY_MIN_STABLE_RUNS),
+    minSoakRuns: Math.max(parsedArgs.minSoakRuns, STRICT_AUTONOMY_MIN_SOAK_RUNS),
+    minSoakDays: Math.max(parsedArgs.minSoakDays, STRICT_AUTONOMY_MIN_SOAK_DAYS),
   };
 }
 
@@ -252,6 +292,19 @@ export function consecutiveReadyRuns(
     break;
   }
   return streak;
+}
+
+export function readyRunsInMode(history: GateHistoryEntry[], strictAutonomy: boolean): number {
+  return history.filter((entry) => entry.strictAutonomy === strictAutonomy && entry.ready).length;
+}
+
+export function readyDistinctDaysInMode(history: GateHistoryEntry[], strictAutonomy: boolean): number {
+  const days = new Set(
+    history
+      .filter((entry) => entry.strictAutonomy === strictAutonomy && entry.ready)
+      .map((entry) => entry.at.slice(0, 10)),
+  );
+  return days.size;
 }
 
 function run(cmd: string[]): { ok: boolean; stdout: string; stderr: string; code: number } {
@@ -389,6 +442,8 @@ function printUsage(): void {
     "Usage: bun run dogfood:gate [--lookback N] [--target N] [--min-success-rate N] [--skip-verify|--no-verify] [--skip-smoke|--no-smoke] [--skip-recovery|--no-recovery]",
     "       [--min-delegated-slices N]",
     "       [--min-stable-runs N]",
+    "       [--min-soak-runs N]",
+    "       [--min-soak-days N]",
     "       [--strict-autonomy]",
     "       [--skip-one-shot-diagnostics|--no-one-shot-diagnostics]",
     "       [--skip-session-diagnostics|--no-session-diagnostics]",
@@ -517,11 +572,26 @@ async function main(): Promise<void> {
       detail: `${stableRuns}/${args.minStableRuns} consecutive ready runs${args.strictAutonomy ? " (strict)" : ""}`,
     });
 
-    const summary = summarizeGate(checks);
-    await writeGateHistory([
+    const now = new Date().toISOString();
+    const historyWithCurrent = [
       ...history,
-      { at: new Date().toISOString(), ready: readyWithoutStability, strictAutonomy: args.strictAutonomy },
-    ]);
+      { at: now, ready: readyWithoutStability, strictAutonomy: args.strictAutonomy },
+    ];
+    const soakRuns = readyRunsInMode(historyWithCurrent, args.strictAutonomy);
+    checks.push({
+      name: "soak-runs",
+      ok: soakRuns >= args.minSoakRuns,
+      detail: `${soakRuns}/${args.minSoakRuns} ready runs${args.strictAutonomy ? " (strict)" : ""}`,
+    });
+    const soakDays = readyDistinctDaysInMode(historyWithCurrent, args.strictAutonomy);
+    checks.push({
+      name: "soak-days",
+      ok: soakDays >= args.minSoakDays,
+      detail: `${soakDays}/${args.minSoakDays} ready days${args.strictAutonomy ? " (strict)" : ""}`,
+    });
+
+    const summary = summarizeGate(checks);
+    await writeGateHistory(historyWithCurrent);
     for (const line of summary.lines) {
       console.log(line);
     }
