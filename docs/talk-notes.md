@@ -74,6 +74,7 @@ Living notes for talks about building this project. Update this file as mileston
 - UX details matter: prompt ergonomics and low-noise output have outsized impact.
 - `@file` references are only valuable when they attach real context, not just visual autocomplete.
 - Subagents work better when each role gets explicit context (goal, scope, expected output), not implicit routing guesses.
+- Delegated loop remains the primary execution path.
 - Centralized provider/model routing reduces drift across CLI/backend/agent wiring.
 - Mock-path smoke checks (`/healthz` with `--no-env-file`) catch provider/env assumptions early.
 - Token budget discipline is required during rapid iteration.
