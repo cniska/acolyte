@@ -188,9 +188,6 @@ describe("config store", () => {
       [
         "port = 7777",
         'model = "openai/gpt-5-mini"',
-        'modelPlanner = "openai/o3"',
-        'modelCoder = "anthropic/claude-sonnet-4"',
-        'modelReviewer = "gemini/gemini-2.5-pro"',
         'apiUrl = "http://localhost:6767"',
         'openaiBaseUrl = "https://openai.example.com/v1"',
         'anthropicBaseUrl = "https://anthropic.example.com"',
@@ -210,7 +207,7 @@ describe("config store", () => {
 
     const loaded = readConfigSync({ homeDir: home, cwd: home });
     expect(loaded.port).toBe(7777);
-    expect(loaded.modelPlanner).toBe("openai/o3");
+    expect(loaded.model).toBe("openai/gpt-5-mini");
     expect(loaded.permissionMode).toBe("write");
     expect(loaded.logFormat).toBe("json");
     expect(loaded.maxMessageTokens).toBe(700);

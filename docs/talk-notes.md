@@ -191,6 +191,7 @@ Living notes for talks about building this project. Update this file as mileston
 - `dogfood:gate` now accepts `--no-verify/--no-smoke` aliases in addition to `--skip-*`.
 - Role routing now uses explicit intent only (`review ...` / `plan ...`), with coder as the default lane for all other prompts.
 - Removed planner/coordinator preface path from runtime execution; each request now runs a single selected role pass.
+- Runtime was simplified further to a single-agent path with one configured model, role-soul files removed, and unified progress text (`Working…`).
 - Direct-edit runtime now uses shorter timeout/step budgets, reducing long stalls and returning outcomes faster.
 - Fixed a direct-edit guard false positive where slash-like tokens in prompt examples (for example `/xyz`) were treated as absolute file paths and blocked execution.
 - Product scope was narrowed to coding-first workflows; setup/admin surface is intentionally minimal.

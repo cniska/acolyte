@@ -81,19 +81,11 @@ export function formatStatusOutput(status: string): string {
 
   const provider = take("provider") ?? take("mode");
   fields.delete("mode");
-  const providerMain = take("provider_lead");
-  const providerPlanner = take("provider_planner");
-  const providerCoder = take("provider_coder");
-  const providerReviewer = take("provider_reviewer");
   const primaryApiUrl = take("provider_api_url");
-  const primaryProvider = providerMain ?? provider ?? providerPlanner ?? providerCoder ?? providerReviewer;
   pushStacked(
     "provider",
     [
-      ["status", primaryProvider],
-      ["planner", providerPlanner && providerPlanner !== primaryProvider ? providerPlanner : undefined],
-      ["coder", providerCoder && providerCoder !== primaryProvider ? providerCoder : undefined],
-      ["reviewer", providerReviewer && providerReviewer !== primaryProvider ? providerReviewer : undefined],
+      ["status", provider],
       ["api_url", primaryApiUrl],
     ],
     true,
@@ -110,37 +102,18 @@ export function formatStatusOutput(status: string): string {
     }
     output.push(`${providerKey}:\napi_url: ${apiUrl}`);
   }
-  const modelMain = take("model_lead");
-  const modelPlanner = take("model_planner");
-  const modelCoder = take("model_coder");
-  const modelReviewer = take("model_reviewer");
   const model = take("model");
   const displayModel = model ? simplifyModelId(model) : undefined;
-  const displayModelMain = modelMain ? simplifyModelId(modelMain) : undefined;
-  const displayModelPlanner = modelPlanner ? simplifyModelId(modelPlanner) : undefined;
-  const displayModelCoder = modelCoder ? simplifyModelId(modelCoder) : undefined;
-  const displayModelReviewer = modelReviewer ? simplifyModelId(modelReviewer) : undefined;
-  const primaryModel =
-    displayModelMain ?? displayModel ?? displayModelPlanner ?? displayModelCoder ?? displayModelReviewer;
   pushStacked(
     "model",
     [
-      ["status", primaryModel],
-      ["planner", displayModelPlanner && displayModelPlanner !== primaryModel ? displayModelPlanner : undefined],
-      ["coder", displayModelCoder && displayModelCoder !== primaryModel ? displayModelCoder : undefined],
-      ["reviewer", displayModelReviewer && displayModelReviewer !== primaryModel ? displayModelReviewer : undefined],
+      ["status", displayModel],
     ],
     true,
   );
-  const providerReadyMain = take("provider_ready_lead");
-  const providerReadyPlanner = take("provider_ready_planner");
-  const providerReadyCoder = take("provider_ready_coder");
-  const providerReadyReviewer = take("provider_ready_reviewer");
+  const providerReadyMain = take("provider_ready");
   const providerReadyRows: Array<[string, string | undefined]> = [
-    ["lead", providerReadyMain],
-    ["planner", providerReadyPlanner],
-    ["coder", providerReadyCoder],
-    ["reviewer", providerReadyReviewer],
+    ["status", providerReadyMain],
   ];
   const hasProviderReadinessIssue = providerReadyRows.some(([, value]) => value !== undefined && !isReady(value));
   if (hasProviderReadinessIssue) {

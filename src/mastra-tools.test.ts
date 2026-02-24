@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { appConfig, setPermissionMode } from "./app-config";
-import { readFileTool, toolsForRole, withToolError } from "./mastra-tools";
+import { readFileTool, toolsForAgent, withToolError } from "./mastra-tools";
 
 const initialPermissionMode = appConfig.agent.permissions.mode;
 
@@ -8,20 +8,10 @@ afterEach(() => {
   setPermissionMode(initialPermissionMode);
 });
 
-describe("mastra role toolsets", () => {
-  test("planner has read-only planning tools", () => {
-    const keys = Object.keys(toolsForRole("planner")).sort();
-    expect(keys).toEqual(["gitDiff", "gitStatus", "readFile", "searchRepo", "webFetch", "webSearch"]);
-  });
-
-  test("reviewer has read-only tools", () => {
-    const keys = Object.keys(toolsForRole("reviewer")).sort();
-    expect(keys).toEqual(["gitDiff", "gitStatus", "readFile", "searchRepo", "webFetch", "webSearch"]);
-  });
-
-  test("coder has full toolset", () => {
+describe("mastra toolsets", () => {
+  test("returns full toolset in write mode", () => {
     setPermissionMode("write");
-    const keys = Object.keys(toolsForRole("coder")).sort();
+    const keys = Object.keys(toolsForAgent()).sort();
     expect(keys).toEqual([
       "editFile",
       "gitDiff",
@@ -34,9 +24,9 @@ describe("mastra role toolsets", () => {
     ]);
   });
 
-  test("coder falls back to read-only tools in read mode", () => {
+  test("returns read-only tools in read mode", () => {
     setPermissionMode("read");
-    const keys = Object.keys(toolsForRole("coder")).sort();
+    const keys = Object.keys(toolsForAgent()).sort();
     expect(keys).toEqual(["gitDiff", "gitStatus", "readFile", "searchRepo", "webFetch", "webSearch"]);
   });
 });

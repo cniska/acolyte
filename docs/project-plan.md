@@ -25,7 +25,7 @@ Exit Criteria:
 - Output stays concise and decision-useful.
 - Product scope stays coding-first: prioritize code editing/review/test workflows; keep non-coding setup/admin UX minimal.
 - Instruction contract stays lean: keep `AGENTS.md` high-signal and minimal; avoid adding verbose style rules that reduce execution success.
-- Role/mode routing remains automatic and internal by default; no user-facing routing customization unless a concrete workflow requires it.
+- Runtime execution path remains simple and internal by default; no user-facing routing customization unless a concrete workflow requires it.
 - Recovery paths (`interrupt`, `/new`, `/resume`) remain stable.
 - Setup/diagnostics are reliable (`start`/`dev` + `/status` with clear failure guidance).
 - Permission flow is explicit and frictionless (read default, write confirm, auto-continue prompt).
@@ -109,4 +109,4 @@ Exit Criteria:
 - OSS vs managed boundaries are clearly documented.
 
 ## Known Issues
-- Mastra Studio agent metadata currently reports `gpt-5-mini` for all agents, even when runtime role routing uses configured models correctly (for example coder uses `openai/gpt-5-codex`).
+- Progress/status contracts were simplified to a single-agent, single-model shape (`model`, `provider`, `provider_ready`) plus `Working…` stage text.

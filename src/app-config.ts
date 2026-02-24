@@ -24,13 +24,8 @@ export const appConfig = {
     apiKey: env.GOOGLE_API_KEY,
     baseUrl: fileConfig.googleBaseUrl,
   },
-  models: {
-    lead: fileConfig.model,
-    planner: fileConfig.modelPlanner,
-    coder: fileConfig.modelCoder,
-    reviewer: fileConfig.modelReviewer,
-    observationalMemory: fileConfig.omModel,
-  },
+  model: fileConfig.model,
+  omModel: fileConfig.omModel,
   memory: {
     resourceId: "acolyte-local",
     lastMessages: 10,

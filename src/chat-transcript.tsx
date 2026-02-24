@@ -100,12 +100,12 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
   const thinkingText = (() => {
     const timeText = `${elapsedSec}s`;
     if (stageMatch) {
-      const stage = stageMatch[1]?.trim() || "Thinking…";
+      const stage = stageMatch[1]?.trim() || "Working…";
       const model = stageMatch[2]?.trim() || "";
       const details = [model, timeText].filter((part) => part.length > 0).join(" · ");
       return details.length > 0 ? `${stage} (${details})` : stage;
     }
-    const base = trimmedThinkingLabel.length > 0 ? trimmedThinkingLabel : "Thinking…";
+    const base = trimmedThinkingLabel.length > 0 ? trimmedThinkingLabel : "Working…";
     return `${base} (${timeText})`;
   })();
   const columns = process.stdout.columns ?? 120;

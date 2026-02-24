@@ -443,7 +443,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
   }
 
   if (resolvedText === "/new") {
-    const next = createSession(appConfig.models.lead);
+    const next = createSession(appConfig.model);
     ctx.store.sessions.unshift(next);
     ctx.store.activeSessionId = next.id;
     ctx.setCurrentSession(next);

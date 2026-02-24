@@ -3,7 +3,6 @@ import {
   buildAgentInput,
   buildSubagentContext,
   collectToolProgressFromStep,
-  createProgressStageLabel,
   directEditExecutionSatisfied,
   directEditTimeoutMessage,
   extractAbsolutePathCandidates,
@@ -12,7 +11,6 @@ import {
   formatToolProgressMessage,
   isDirectEditRequest,
   isPlanLikeOutput,
-  progressStageForRole,
   resolveAgentModel,
   resolveModelProviderState,
   resolveRunnableModel,
@@ -267,33 +265,18 @@ describe("finalizeAssistantOutput", () => {
 });
 
 describe("selectAgentRole", () => {
-  test("routes explicit review prompts to coder", () => {
+  test("always routes prompts to coder", () => {
     expect(selectAgentRole("review @src/agent.ts")).toBe("coder");
     expect(selectAgentRole("/review @src/agent.ts")).toBe("coder");
-  });
-
-  test("routes read-only inspection prompts to coder by default", () => {
     expect(selectAgentRole("What is in src/mastra-tools.ts?")).toBe("coder");
     expect(selectAgentRole("summarize @src/chat-submit-handler.ts")).toBe("coder");
     expect(selectAgentRole("explain docs/project-plan.md")).toBe("coder");
-  });
-
-  test("routes what-next prompts to default coder role", () => {
     expect(selectAgentRole("what next")).toBe("coder");
     expect(selectAgentRole("whats next")).toBe("coder");
     expect(selectAgentRole("ok, what's next for this?")).toBe("coder");
-  });
-
-  test("routes explicit planning prompts to planner", () => {
-    expect(selectAgentRole("plan rollout steps for memory")).toBe("planner");
-    expect(selectAgentRole("/plan rollout steps for memory")).toBe("planner");
-  });
-
-  test("routes implementation prompts to coder by default", () => {
+    expect(selectAgentRole("plan rollout steps for memory")).toBe("coder");
+    expect(selectAgentRole("/plan rollout steps for memory")).toBe("coder");
     expect(selectAgentRole("implement /resume picker improvements")).toBe("coder");
-  });
-
-  test("does not treat file names containing 'plan' as planning intent", () => {
     expect(
       selectAgentRole(
         "add a short note in docs/project-plan.md under Milestone 2 exit criteria: track delegated slice success/failure ratio weekly",
@@ -307,10 +290,8 @@ describe("shouldForceRequiredToolsRetry", () => {
     expect(shouldForceRequiredToolsRetry("coder", true)).toBe(true);
   });
 
-  test("does not force tool fallback for normal reviewer/coder/planner prompts", () => {
-    expect(shouldForceRequiredToolsRetry("reviewer", false)).toBe(false);
+  test("does not force tool fallback for normal prompts", () => {
     expect(shouldForceRequiredToolsRetry("coder", false)).toBe(false);
-    expect(shouldForceRequiredToolsRetry("planner", false)).toBe(false);
   });
 });
 
@@ -363,14 +344,8 @@ describe("resolveModelProviderState", () => {
 });
 
 describe("resolveAgentModel", () => {
-  test("falls back to requested model when no role override is configured", () => {
-    expect(resolveAgentModel("planner", "gpt-5-mini", {})).toBe("gpt-5-mini");
-  });
-
-  test("uses role override when configured", () => {
-    expect(resolveAgentModel("planner", "gpt-5-mini", { planner: "o3" })).toBe("o3");
-    expect(resolveAgentModel("coder", "gpt-5-mini", { coder: "gpt-5-codex" })).toBe("gpt-5-codex");
-    expect(resolveAgentModel("reviewer", "gpt-5-mini", { reviewer: "gpt-5" })).toBe("gpt-5");
+  test("returns requested model when using single-model mode", () => {
+    expect(resolveAgentModel("coder", "gpt-5-mini", { coder: "gpt-5-codex" })).toBe("gpt-5-mini");
   });
 });
 
@@ -403,7 +378,7 @@ describe("collectToolProgressFromStep", () => {
 });
 
 describe("resolveRunnableModel", () => {
-  test("falls back to requested model when override provider is unavailable", () => {
+  test("uses requested model in single-model mode", () => {
     expect(
       resolveRunnableModel("coder", "openai/gpt-5-mini", {
         overrides: { coder: "anthropic/claude-sonnet-4" },
@@ -417,11 +392,11 @@ describe("resolveRunnableModel", () => {
       model: "openai/gpt-5-mini",
       provider: "openai",
       available: true,
-      usedFallback: true,
+      usedFallback: false,
     });
   });
 
-  test("keeps override model when its provider is available", () => {
+  test("ignores override even when alternate provider is available", () => {
     expect(
       resolveRunnableModel("coder", "openai/gpt-5-mini", {
         overrides: { coder: "anthropic/claude-sonnet-4" },
@@ -432,14 +407,14 @@ describe("resolveRunnableModel", () => {
         },
       }),
     ).toEqual({
-      model: "anthropic/claude-sonnet-4",
-      provider: "anthropic",
+      model: "openai/gpt-5-mini",
+      provider: "openai",
       available: true,
       usedFallback: false,
     });
   });
 
-  test("returns unavailable when both override and requested model providers are unavailable", () => {
+  test("returns unavailable when requested model provider is unavailable", () => {
     expect(
       resolveRunnableModel("coder", "openai/gpt-5-mini", {
         overrides: { coder: "anthropic/claude-sonnet-4" },
@@ -450,8 +425,8 @@ describe("resolveRunnableModel", () => {
         },
       }),
     ).toEqual({
-      model: "anthropic/claude-sonnet-4",
-      provider: "anthropic",
+      model: "openai/gpt-5-mini",
+      provider: "openai",
       available: false,
       usedFallback: false,
     });
@@ -459,17 +434,16 @@ describe("resolveRunnableModel", () => {
 });
 
 describe("buildSubagentContext", () => {
-  test("includes role goal and expected output guidance", () => {
+  test("includes goal and context guidance", () => {
     const req: ChatRequest = {
       model: "gpt-5-mini",
       message: "review @src/agent.ts",
       history: [{ id: "1", role: "user", content: "previous", timestamp: "2026-02-20T10:00:00.000Z" }],
     };
-    const context = buildSubagentContext("reviewer", req);
-    expect(context).toContain("Subagent: Reviewer");
+    const context = buildSubagentContext("coder", req);
+    expect(context).toContain("Agent: Acolyte");
     expect(context).toContain("Goal: review @src/agent.ts");
     expect(context).toContain("Context: 1 history messages; model=gpt-5-mini");
-    expect(context).toContain("Expected output:");
   });
 
   test("does not add prompt-specific what-next guidance", () => {
@@ -481,20 +455,6 @@ describe("buildSubagentContext", () => {
     const context = buildSubagentContext("coder", req);
     expect(context).not.toContain("return exactly 3 concise numbered next steps");
     expect(context).not.toContain("no lettered options");
-  });
-});
-
-describe("progressStageForRole", () => {
-  test("uses user-facing stage labels with model names", () => {
-    expect(progressStageForRole("planner", "openai/o3")).toBe("Planning… (o3)");
-    expect(progressStageForRole("coder", "openai/gpt-5-codex")).toBe("Coding… (gpt-5-codex)");
-    expect(progressStageForRole("reviewer", "anthropic/claude-sonnet-4")).toBe("Reviewing… (claude-sonnet-4)");
-  });
-});
-
-describe("createProgressStageLabel", () => {
-  test("normalizes known provider prefixes in model labels", () => {
-    expect(createProgressStageLabel("coder", "openai-compatible/qwen2.5-coder")).toBe("Coding… (qwen2.5-coder)");
   });
 });
 

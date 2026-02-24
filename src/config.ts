@@ -39,9 +39,6 @@ const DEFAULT_CONFIG = {
 export interface AcolyteConfig {
   port?: number;
   model?: string;
-  modelPlanner?: string;
-  modelCoder?: string;
-  modelReviewer?: string;
   omModel?: string;
   apiUrl?: string;
   openaiBaseUrl?: string;
@@ -61,9 +58,6 @@ export interface AcolyteConfig {
 export interface ResolvedAcolyteConfig {
   port: number;
   model: string;
-  modelPlanner?: string;
-  modelCoder?: string;
-  modelReviewer?: string;
   omModel: string;
   apiUrl?: string;
   openaiBaseUrl: string;
@@ -91,9 +85,6 @@ type ConfigOptions = {
 const CONFIG_SET_SCHEMAS: Record<keyof AcolyteConfig, z.ZodTypeAny> = {
   port: parseIntegerSchema(1, 65535),
   model: nonEmptyStringSchema,
-  modelPlanner: nonEmptyStringSchema,
-  modelCoder: nonEmptyStringSchema,
-  modelReviewer: nonEmptyStringSchema,
   omModel: nonEmptyStringSchema,
   apiUrl: nonEmptyStringSchema,
   openaiBaseUrl: nonEmptyStringSchema,
@@ -119,9 +110,6 @@ function toConfig(input: Record<string, unknown>): AcolyteConfig {
   return {
     port: parseField(parseIntegerSchema(1, 65535), input.port),
     model: parseField(nonEmptyStringSchema, input.model),
-    modelPlanner: parseField(nonEmptyStringSchema, input.modelPlanner),
-    modelCoder: parseField(nonEmptyStringSchema, input.modelCoder),
-    modelReviewer: parseField(nonEmptyStringSchema, input.modelReviewer),
     omModel: parseField(nonEmptyStringSchema, input.omModel),
     apiUrl: parseField(nonEmptyStringSchema, input.apiUrl),
     openaiBaseUrl: parseField(nonEmptyStringSchema, input.openaiBaseUrl),
@@ -225,15 +213,6 @@ function serializeToml(config: AcolyteConfig): string {
   if (config.model) {
     lines.push(`model = ${JSON.stringify(config.model)}`);
   }
-  if (config.modelPlanner) {
-    lines.push(`modelPlanner = ${JSON.stringify(config.modelPlanner)}`);
-  }
-  if (config.modelCoder) {
-    lines.push(`modelCoder = ${JSON.stringify(config.modelCoder)}`);
-  }
-  if (config.modelReviewer) {
-    lines.push(`modelReviewer = ${JSON.stringify(config.modelReviewer)}`);
-  }
   if (config.omModel) {
     lines.push(`omModel = ${JSON.stringify(config.omModel)}`);
   }
@@ -284,9 +263,6 @@ export function resolveConfig(config: AcolyteConfig): ResolvedAcolyteConfig {
   return {
     port: config.port ?? DEFAULT_CONFIG.port,
     model,
-    modelPlanner: config.modelPlanner,
-    modelCoder: config.modelCoder,
-    modelReviewer: config.modelReviewer,
     omModel: config.omModel ?? model,
     apiUrl: config.apiUrl,
     openaiBaseUrl: config.openaiBaseUrl ?? DEFAULT_CONFIG.openaiBaseUrl,

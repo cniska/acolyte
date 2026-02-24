@@ -222,7 +222,7 @@ async function main(): Promise<void> {
   }
   const options = parseOptions(args);
   const url = baseUrl();
-  const model = appConfig.models.lead;
+  const model = appConfig.model;
   const history: Message[] = [];
 
   console.log(`OM soak starting url=${url} turns=${options.turns} session=${options.sessionId}`);

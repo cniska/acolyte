@@ -1,13 +1,13 @@
 import { tmpdir } from "node:os";
 import { isAbsolute, relative, resolve } from "node:path";
 import { createAgent } from "./agent-factory";
-import { type AgentRole, buildRoleInstructions, buildSubagentContext, selectAgentRole } from "./agent-roles";
 import type { ChatRequest, ChatResponse } from "./api";
 import { appConfig } from "./app-config";
-import { toolsForRole } from "./mastra-tools";
-import { isProviderAvailable, type ModelProviderName, providerFromModel, resolveRoleModel } from "./provider-config";
-import { loadRoleSoulPrompt } from "./soul";
+import { toolsForAgent } from "./mastra-tools";
+import { isProviderAvailable, type ModelProviderName, providerFromModel } from "./provider-config";
 import { formatToolLabel } from "./tool-labels";
+
+export type AgentRole = "coder";
 
 const FALLBACK_PLAN =
   "1) Interpret request. 2) Use available repo tools when helpful. 3) Return concise, actionable answer.";
@@ -217,18 +217,25 @@ export function directEditTimeoutMessage(paths: string[], confirmed = false): st
   return `Edit request timed out while composing the final response; ${actionPhrase} for ${formatPathList(paths) ?? "target files"}. Check git diff to confirm the applied change.`;
 }
 
-export { buildSubagentContext, selectAgentRole };
+export function selectAgentRole(_text: string): AgentRole {
+  return "coder";
+}
+
+export function buildSubagentContext(_role: AgentRole, req: ChatRequest): string {
+  const scope = req.history.length > 0 ? `${req.history.length} history messages` : "no history";
+  return ["Agent: Acolyte", `Goal: ${req.message.trim()}`, `Context: ${scope}; model=${req.model}`].join("\n");
+}
+
+export function buildRoleInstructions(baseInstructions: string, _role: AgentRole): string {
+  return baseInstructions;
+}
 
 export function resolveAgentModel(
-  role: AgentRole,
+  _role: AgentRole,
   requestedModel: string,
-  overrides: {
-    planner?: string;
-    coder?: string;
-    reviewer?: string;
-  } = appConfig.models,
+  _overrides?: unknown,
 ): string {
-  return resolveRoleModel(role, requestedModel, overrides);
+  return requestedModel;
 }
 
 export function resolveModelProviderState(
@@ -260,11 +267,7 @@ export function resolveRunnableModel(
   role: AgentRole,
   requestedModel: string,
   options: {
-    overrides?: {
-      planner?: string;
-      coder?: string;
-      reviewer?: string;
-    };
+    overrides?: unknown;
     credentials?: {
       openaiApiKey?: string;
       openaiBaseUrl: string;
@@ -813,36 +816,8 @@ export function collectToolProgressFromStep(
   return progress;
 }
 
-function presentModelLabel(model: string): string {
-  const prefixes = ["openai/", "openai-compatible/", "anthropic/", "gemini/", "google/"];
-  for (const prefix of prefixes) {
-    if (model.startsWith(prefix)) {
-      return model.slice(prefix.length);
-    }
-  }
-  return model;
-}
-
-export function createProgressStageLabel(stage: AgentRole, model: string): string {
-  const shownModel = presentModelLabel(model);
-  switch (stage) {
-    case "planner":
-      return `Planning… (${shownModel})`;
-    case "reviewer":
-      return `Reviewing… (${shownModel})`;
-    case "coder":
-      return `Coding… (${shownModel})`;
-  }
-}
-
-export function progressStageForRole(role: AgentRole, model: string): string {
-  return createProgressStageLabel(role, model);
-}
-
 export function shouldForceRequiredToolsRetry(role: AgentRole, directEditLikely: boolean): boolean {
-  if (role === "planner") {
-    return false;
-  }
+  void role;
   return directEditLikely;
 }
 
@@ -902,15 +877,12 @@ export async function runAgent(input: {
   onDebug?: (event: string, fields?: Record<string, unknown>) => void;
 }): Promise<ChatResponse> {
   const CODER_INITIAL_MAX_STEPS = 6;
-  const REVIEWER_INITIAL_MAX_STEPS = 4;
   // Keep direct-edit first pass bounded to reduce stalls.
   const DIRECT_EDIT_INITIAL_MAX_STEPS = 2;
   const REQUIRED_TOOLS_RETRY_MAX_STEPS = 6;
   const BASE_MODEL_RETRY_MAX_STEPS = 5;
   const EMPTY_TEXT_RETRY_MAX_STEPS = 4;
   const CODER_TIMEOUT_MS = 90_000;
-  const PLANNER_TIMEOUT_MS = 90_000;
-  const REVIEWER_TIMEOUT_MS = 45_000;
   const DIRECT_EDIT_TIMEOUT_MS = 45_000;
   const role = selectAgentRole(input.request.message);
   const directEditLikely = role === "coder" && isDirectEditRequest(input.request.message);
@@ -947,7 +919,6 @@ export async function runAgent(input: {
       };
     }
   }
-  const roleSoul = loadRoleSoulPrompt(role);
   const resolved = resolveRunnableModel(role, input.request.model);
   if (!resolved.available) {
     return buildMockReply(input.request, `Provider '${resolved.provider}' is not configured.`);
@@ -960,8 +931,8 @@ export async function runAgent(input: {
       id: `acolyte-${role}`,
       name: `Acolyte ${role[0].toUpperCase()}${role.slice(1)}`,
       model: agentModel,
-      instructions: buildRoleInstructions(input.soulPrompt, role, roleSoul),
-      tools: toolsForRole(role),
+      instructions: buildRoleInstructions(input.soulPrompt, role),
+      tools: toolsForAgent(),
     });
 
   let agent = buildRoleAgent(model);
@@ -1009,7 +980,7 @@ export async function runAgent(input: {
   const subagentContext = buildSubagentContext(role, input.request);
   const agentInput = `${subagentContext}\n\n${requestInput.input}`;
   const toolLikely = isToolLikelyRequest(input.request.message);
-  if (role === "coder" && !directEditLikely && !toolLikely && input.request.model !== model) {
+  if (!directEditLikely && !toolLikely && input.request.model !== model) {
     const requestedState = resolveModelProviderState(input.request.model);
     if (requestedState.available) {
       model = input.request.model;
@@ -1085,22 +1056,11 @@ export async function runAgent(input: {
     ? `\n\nDirect edit target path: ${directEditTargetPath}\nHard requirement: execute edit-file in this first response. Prefer read-file then edit-file.`
     : "\n\nDirect edit target path: none specified; locate exact target quickly, then execute edit-file in this first response.";
   const agentPrompt = directEditLikely ? `${agentInput}${directEditTargetHint}` : agentInput;
-  const initialMaxSteps =
-    role === "planner"
-      ? 5
-      : role === "reviewer"
-        ? REVIEWER_INITIAL_MAX_STEPS
-        : directEditLikely
-          ? DIRECT_EDIT_INITIAL_MAX_STEPS
-          : CODER_INITIAL_MAX_STEPS;
+  const initialMaxSteps = directEditLikely ? DIRECT_EDIT_INITIAL_MAX_STEPS : CODER_INITIAL_MAX_STEPS;
   const callTimeoutMs = directEditLikely
     ? DIRECT_EDIT_TIMEOUT_MS
-    : role === "reviewer"
-      ? REVIEWER_TIMEOUT_MS
-      : role === "planner"
-        ? PLANNER_TIMEOUT_MS
-        : CODER_TIMEOUT_MS;
-  emitProgress(progressStageForRole(role, model));
+    : CODER_TIMEOUT_MS;
+  emitProgress("Working…");
   emitDebug("agent.generate.start", {
     model,
     tool_choice: directEditLikely ? "required" : "auto",
@@ -1128,42 +1088,7 @@ export async function runAgent(input: {
       error: lastToolFailureReason,
     });
     const isInitialTimeout = /timed out/i.test(lastToolFailureReason);
-    if (role === "reviewer" && isInitialTimeout && input.request.model !== model) {
-      const baseModelState = resolveModelProviderState(input.request.model);
-      if (baseModelState.available) {
-        model = input.request.model;
-        agent = buildRoleAgent(model);
-        emitDebug("agent.generate.retry", {
-          model,
-          reason: "reviewer_timeout_fallback_to_base_model",
-          tool_choice: "auto",
-          max_steps: 3,
-        });
-        try {
-          modelCallCount += 1;
-          result = await generateWithTimeout(
-            agentPrompt,
-            {
-              maxSteps: 3,
-              toolChoice: "auto",
-              memory: memoryOptions,
-              onStepFinish: emitToolProgress,
-            },
-            REVIEWER_TIMEOUT_MS,
-          );
-        } catch (fallbackError) {
-          lastToolFailureReason = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
-          emitDebug("agent.generate.retry_failed", {
-            model,
-            reason: "reviewer_timeout_fallback_to_base_model",
-            error: lastToolFailureReason,
-          });
-        }
-      }
-    }
-    if (result) {
-      // Recovered via reviewer fallback; continue normal post-processing path.
-    } else if (directEditLikely && observedToolCallIds.has("edit-file")) {
+    if (directEditLikely && observedToolCallIds.has("edit-file")) {
       const output = directEditTimeoutMessage(Array.from(observedEditPaths), true);
       const completionTokens = estimateTokens(output);
       return {
@@ -1182,7 +1107,8 @@ export async function runAgent(input: {
           ? `context trimmed (${requestInput.usage.includedHistoryMessages}/${requestInput.usage.totalHistoryMessages} history messages)`
           : undefined,
       };
-    } else if (directEditLikely && isInitialTimeout) {
+    }
+    if (directEditLikely && isInitialTimeout) {
       const hintedPaths =
         observedEditPaths.size > 0 ? Array.from(observedEditPaths) : directEditTargetPath ? [directEditTargetPath] : [];
       const output = directEditTimeoutMessage(hintedPaths, observedToolCallIds.has("edit-file"));
@@ -1203,31 +1129,25 @@ export async function runAgent(input: {
           ? `context trimmed (${requestInput.usage.includedHistoryMessages}/${requestInput.usage.totalHistoryMessages} history messages)`
           : undefined,
       };
-    } else {
-      const output = finalizeAssistantOutput(
-        "",
-        input.request.message,
-        observedToolCallIds.size,
-        lastToolFailureReason,
-      );
-      const completionTokens = estimateTokens(output);
-      return {
-        model,
-        output,
-        toolCalls: Array.from(observedToolCallIds),
-        modelCalls: modelCallCount,
-        usage: {
-          promptTokens: requestInput.usage.promptTokens,
-          completionTokens,
-          totalTokens: requestInput.usage.promptTokens + completionTokens,
-          promptBudgetTokens: requestInput.usage.promptBudgetTokens,
-          promptTruncated: requestInput.usage.promptTruncated,
-        },
-        budgetWarning: requestInput.usage.promptTruncated
-          ? `context trimmed (${requestInput.usage.includedHistoryMessages}/${requestInput.usage.totalHistoryMessages} history messages)`
-          : undefined,
-      };
     }
+    const output = finalizeAssistantOutput("", input.request.message, observedToolCallIds.size, lastToolFailureReason);
+    const completionTokens = estimateTokens(output);
+    return {
+      model,
+      output,
+      toolCalls: Array.from(observedToolCallIds),
+      modelCalls: modelCallCount,
+      usage: {
+        promptTokens: requestInput.usage.promptTokens,
+        completionTokens,
+        totalTokens: requestInput.usage.promptTokens + completionTokens,
+        promptBudgetTokens: requestInput.usage.promptBudgetTokens,
+        promptTruncated: requestInput.usage.promptTruncated,
+      },
+      budgetWarning: requestInput.usage.promptTruncated
+        ? `context trimmed (${requestInput.usage.includedHistoryMessages}/${requestInput.usage.totalHistoryMessages} history messages)`
+        : undefined,
+    };
   }
   if (!result) {
     const output = finalizeAssistantOutput("", input.request.message, observedToolCallIds.size, lastToolFailureReason);
@@ -1430,14 +1350,14 @@ export async function runAgent(input: {
       model,
       reason: "empty_text_response",
       tool_choice: "auto",
-      max_steps: role === "planner" ? 3 : EMPTY_TEXT_RETRY_MAX_STEPS,
+      max_steps: EMPTY_TEXT_RETRY_MAX_STEPS,
     });
     try {
       modelCallCount += 1;
       result = await generateWithTimeout(
         `${agentPrompt}\n\nReturn a direct concise answer.`,
         {
-          maxSteps: role === "planner" ? 3 : EMPTY_TEXT_RETRY_MAX_STEPS,
+          maxSteps: EMPTY_TEXT_RETRY_MAX_STEPS,
           toolChoice: "auto",
           memory: memoryOptions,
           onStepFinish: emitToolProgress,

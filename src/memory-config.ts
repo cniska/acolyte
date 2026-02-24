@@ -8,7 +8,7 @@ export function getObservationalMemoryConfig(): {
   reflection: { observationTokens: number };
 } {
   return {
-    model: normalizeModel(appConfig.models.observationalMemory),
+    model: normalizeModel(appConfig.omModel),
     scope: appConfig.memory.observational.scope,
     observation: {
       messageTokens: appConfig.memory.observational.observationTokens,

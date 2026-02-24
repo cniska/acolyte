@@ -99,16 +99,6 @@ function statusPermissionMode(status: string): "read" | "write" | null {
   return match[1] as "read" | "write";
 }
 
-function presentModelLabel(model: string): string {
-  const prefixes = ["openai/", "openai-compatible/", "anthropic/", "gemini/", "google/"];
-  for (const prefix of prefixes) {
-    if (model.startsWith(prefix)) {
-      return model.slice(prefix.length);
-    }
-  }
-  return model;
-}
-
 type RememberScope = "user" | "project";
 
 type NaturalRememberDirective = {
@@ -190,10 +180,15 @@ function isStageProgressMessage(message: string): boolean {
   }
   return (
     trimmed.startsWith("Thinking…") ||
+    trimmed.startsWith("Thinking...") ||
     trimmed.startsWith("Planning…") ||
+    trimmed.startsWith("Planning...") ||
     trimmed.startsWith("Coding…") ||
+    trimmed.startsWith("Coding...") ||
+    trimmed.startsWith("Working…") ||
     trimmed.startsWith("Working…") ||
     trimmed.startsWith("Reviewing…") ||
+    trimmed.startsWith("Reviewing...") ||
     trimmed.startsWith("Summarizing…")
   );
 }
@@ -352,12 +347,12 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       });
       input.setRows((current) => [...current, userRow]);
       input.setIsThinking(true);
-      input.setThinkingLabel(`Thinking… (${appConfig.models.lead})`);
+      input.setThinkingLabel("Working…");
       try {
         const distilled = await distillMemoryNote(
           input.backend,
           naturalRememberDirective.content,
-          appConfig.models.lead,
+          appConfig.model,
           input.currentSession.id,
         );
         await addMemory(distilled, { scope: naturalRememberDirective.scope });
@@ -506,7 +501,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
     }
 
     input.setIsThinking(true);
-    input.setThinkingLabel(`Thinking… (${presentModelLabel(appConfig.models.lead)})`);
+    input.setThinkingLabel("Working…");
     const abortController = new AbortController();
     input.setInterrupt(() => abortController.abort());
     const thinkingStartedAt = Date.now();
@@ -555,7 +550,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         backend: input.backend,
         userText,
         history: [...fileContextMessages, ...input.currentSession.messages],
-        model: appConfig.models.lead,
+        model: appConfig.model,
         sessionId: input.currentSession.id,
         signal: abortController.signal,
         runVerifyAfterReply,

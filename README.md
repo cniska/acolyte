@@ -57,7 +57,7 @@ bun run db:smoke
   - `acolyte config list --user`
 - Use `acolyte config set model <value>` and `acolyte config set apiUrl <url>` to update them
 - Secrets are env-only (`OPENAI_API_KEY`, `ACOLYTE_API_KEY`, provider keys)
-- Provider/model routing supports role lanes with fallback
+- Single configured model is used across the assistant runtime
 
 ## Memory Layers
 
@@ -75,9 +75,6 @@ Example `~/.acolyte/config.toml`:
 ```toml
 port = 6767
 model = "anthropic/claude-sonnet-4"
-modelPlanner = "openai/o3"
-modelCoder = "openai/gpt-5-codex"
-modelReviewer = "gemini/gemini-2.5-pro"
 apiUrl = "http://localhost:6767"
 anthropicBaseUrl = "https://api.anthropic.com"
 openaiBaseUrl = "https://api.openai.com/v1"

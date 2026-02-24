@@ -1,6 +1,5 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
-import type { AgentRole } from "./agent-roles";
 import { appConfig } from "./app-config";
 import {
   editFileReplace,
@@ -201,13 +200,6 @@ function readOnlyTools(): Partial<AcolyteToolset> {
   };
 }
 
-export function toolsForRole(role: AgentRole): Partial<AcolyteToolset> {
-  switch (role) {
-    case "planner":
-      return readOnlyTools();
-    case "reviewer":
-      return readOnlyTools();
-    case "coder":
-      return appConfig.agent.permissions.mode === "read" ? readOnlyTools() : acolyteTools;
-  }
+export function toolsForAgent(): Partial<AcolyteToolset> {
+  return appConfig.agent.permissions.mode === "read" ? readOnlyTools() : acolyteTools;
 }

@@ -633,7 +633,7 @@ describe("chat submit handler guards", () => {
               requestId: "req_1",
               done: false,
               events: [
-                { seq: 1, message: "Working… (gpt-5-mini)" },
+                { seq: 1, message: "Working…" },
                 { seq: 2, message: "Run" },
               ],
             };
@@ -678,8 +678,8 @@ describe("chat submit handler guards", () => {
 
     await submit("hello");
 
-    expect(thinkingLabels[0]).toMatch(/^Thinking… \(.+\)$/);
-    expect(thinkingLabels).toContain("Working… (gpt-5-mini)");
+    expect(thinkingLabels[0]).toBe("Working…");
+    expect(thinkingLabels).toContain("Working…");
     expect(thinkingLabels.at(-1)).toBeNull();
     expect(rows.some((row) => row.role === "assistant" && row.content === "Run" && row.style === "toolProgress")).toBe(
       true,

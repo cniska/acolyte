@@ -8,13 +8,8 @@ Run once:
 
 ```bash
 acolyte config set --project model "openai/gpt-5-mini"
-acolyte config set --project modelPlanner "openai/gpt-5-mini"
-acolyte config set --project modelCoder "openai/gpt-5-mini"
-acolyte config set --project modelReviewer "openai/gpt-5-mini"
 acolyte config set apiUrl "http://localhost:6767"
 ```
-
-Escalate a lane model only when a slice fails repeatedly in mini mode.
 
 Set API key in `.env`:
 

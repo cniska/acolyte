@@ -85,23 +85,12 @@ describe("remote backend status parsing", () => {
         JSON.stringify({
           provider: {
             status: "openai",
-            planner: "openai",
-            coder: "anthropic",
-            reviewer: "gemini",
             api_url: "https://api.openai.com/v1",
           },
           model: {
             status: "openai/gpt-5",
-            planner: "openai/o3",
-            coder: "anthropic/claude-sonnet-4",
-            reviewer: "gemini/gemini-2.5-pro",
           },
-          provider_ready: {
-            lead: true,
-            planner: true,
-            coder: true,
-            reviewer: false,
-          },
+          provider_ready: true,
           service: {
             status: "acolyte-backend",
             url: "http://localhost:6767",
@@ -132,14 +121,7 @@ describe("remote backend status parsing", () => {
 
     expect(status).toContain("provider=openai");
     expect(status).toContain("model=openai/gpt-5");
-    expect(status).toContain("model_planner=openai/o3");
-    expect(status).toContain("model_coder=anthropic/claude-sonnet-4");
-    expect(status).toContain("model_reviewer=gemini/gemini-2.5-pro");
-    expect(status).toContain("provider_planner=openai");
-    expect(status).toContain("provider_coder=anthropic");
-    expect(status).toContain("provider_reviewer=gemini");
-    expect(status).toContain("provider_ready_lead=true");
-    expect(status).toContain("provider_ready_reviewer=false");
+    expect(status).toContain("provider_ready=true");
     expect(status).toContain("service=acolyte-backend");
     expect(status).toContain("url=http://localhost:6767");
     expect(status).toContain("provider_api_url=https://api.openai.com/v1");
@@ -157,49 +139,37 @@ describe("remote backend status parsing", () => {
     expect(status).toContain("permission_mode=write");
   });
 
-  test("status serializes multi-provider model payload fields", async () => {
+  test("status serializes single-shape healthz payload fields", async () => {
     globalThis.fetch = (async () =>
       new Response(
         JSON.stringify({
-          provider: "openai-compatible",
-          model: "openai-compatible/qwen2.5-coder",
-          models: {
-            lead: "openai/gpt-5-mini",
-            planner: "openai/o3",
-            coder: "anthropic/claude-sonnet-4",
-            reviewer: "gemini/gemini-2.5-pro",
+          model: {
+            status: "openai-compatible/qwen2.5-coder",
           },
-          providers: {
-            lead: "openai",
-            planner: "openai",
-            coder: "anthropic",
-            reviewer: "gemini",
+          provider_ready: true,
+          service: {
+            status: "acolyte-backend",
           },
-          providerAvailability: {
-            lead: true,
-            planner: true,
-            coder: true,
-            reviewer: false,
+          provider: {
+            status: "openai-compatible",
+            api_url: "https://router.example/v1",
           },
-          service: "acolyte-backend",
-          apiBaseUrl: "https://router.example/v1",
-          permissionMode: "write",
+          permissions: "write",
           memory: {
-            storage: "postgres",
-            contextCount: 6,
-            observational: {
-              enabled: true,
-              scope: "resource",
-              model: "openai/gpt-5-mini",
-              observationTokens: 3000,
-              reflectionTokens: 8000,
-              current: {
-                exists: true,
-                generationCount: 3,
-                lastObservedAt: "2026-02-21T10:10:53.908Z",
-                lastReflectionAt: "2026-02-21T10:15:00.000Z",
-              },
+            status: "postgres",
+            entries: 6,
+          },
+          om: {
+            status: "enabled",
+            scope: "resource",
+            model: "openai/gpt-5-mini",
+            tokens: { obs: 3000, ref: 8000 },
+            state: {
+              exists: true,
+              gen: 3,
             },
+            last_observed: "2026-02-21T10:10:53.908Z",
+            last_reflection: "2026-02-21T10:15:00.000Z",
           },
         }),
         {
@@ -213,18 +183,7 @@ describe("remote backend status parsing", () => {
 
     expect(status).toContain("provider=openai-compatible");
     expect(status).toContain("model=openai-compatible/qwen2.5-coder");
-    expect(status).toContain("model_lead=openai/gpt-5-mini");
-    expect(status).toContain("model_planner=openai/o3");
-    expect(status).toContain("model_coder=anthropic/claude-sonnet-4");
-    expect(status).toContain("model_reviewer=gemini/gemini-2.5-pro");
-    expect(status).toContain("provider_lead=openai");
-    expect(status).toContain("provider_planner=openai");
-    expect(status).toContain("provider_coder=anthropic");
-    expect(status).toContain("provider_reviewer=gemini");
-    expect(status).toContain("provider_ready_lead=true");
-    expect(status).toContain("provider_ready_planner=true");
-    expect(status).toContain("provider_ready_coder=true");
-    expect(status).toContain("provider_ready_reviewer=false");
+    expect(status).toContain("provider_ready=true");
     expect(status).toContain("service=acolyte-backend");
     expect(status).toContain("url=http://localhost:6767");
     expect(status).toContain("provider_api_url=https://router.example/v1");
@@ -301,24 +260,13 @@ describe("remote backend progress parsing", () => {
 });
 
 describe("local backend status", () => {
-  test("includes provider and readiness rows for role lanes", async () => {
+  test("includes single-model provider and readiness rows", async () => {
     const backend = createBackend({ apiUrl: "" });
     const status = await backend.status();
 
     expect(status).toContain("provider=local-mock");
     expect(status).toContain("model=");
-    expect(status).toContain("model_lead=");
-    expect(status).toContain("model_planner=");
-    expect(status).toContain("model_coder=");
-    expect(status).toContain("model_reviewer=");
-    expect(status).toContain("provider_lead=");
-    expect(status).toContain("provider_planner=");
-    expect(status).toContain("provider_coder=");
-    expect(status).toContain("provider_reviewer=");
-    expect(status).toContain("provider_ready_lead=");
-    expect(status).toContain("provider_ready_planner=");
-    expect(status).toContain("provider_ready_coder=");
-    expect(status).toContain("provider_ready_reviewer=");
+    expect(status).toContain("provider_ready=");
     expect(status).toContain("backend=embedded");
     expect(status).toContain("permission_mode=");
     expect(status).toContain("memory_context=");

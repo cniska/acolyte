@@ -15,14 +15,13 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Compact slash aliases for common commands (`/df`, `/mem`, `/rem`).
 - In-chat utility commands: `/status`, `/permissions`.
 - `/status` includes provider/model details plus API base URL for endpoint diagnostics.
-- `/status` now keeps local and remote output shapes aligned (local mode includes role-model rows too).
-- Local-mode `/status` now also includes `providers` + `provider_ready` lane rows for parity with remote diagnostics.
+- `/status` now keeps local and remote output shapes aligned with a single-model contract.
 - `/status` provider now distinguishes `openai` vs `openai-compatible` (based on API base URL), improving local endpoint clarity.
 - `/status` formats multi-value fields in stacked `key: value` rows (`models`, `om`, `om_tokens`, `om_state`) and hides duplicate `mode` when `provider` is present.
 - `/status` includes `memory_context` to show how many memory notes are currently injected into prompts.
 - Local `/status` remains available even if memory-context files are temporarily unreadable.
-- `/status` now suppresses duplicate top-level `model` when it matches `models.main`.
-- `/status` now includes per-role provider and readiness rows (`providers`, `provider_ready`) for mixed-lane diagnostics.
+- `/status` uses a single-model status contract with compact output.
+- `/status` includes provider readiness as a single `provider_ready` field.
 - `/status` model rows (including `om.model`) now omit provider prefixes for readability; provider details remain in `providers`.
 - Policy distillation command from chat logs: `/distill [--sessions N] [--min N]`.
 - `/tokens` now includes the latest token-budget warning when context was trimmed or near budget.
@@ -42,15 +41,11 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Automatic memory-context injection from saved user/project memories.
 - Mastra Studio agent memory with observational memory enabled (resource scope).
 - Backend chat passes session/thread identity to Mastra memory for turn continuity while observational memory remains resource-scoped.
-- Per-role model overrides with fallback-to-main (`modelPlanner|modelCoder|modelReviewer` -> `~/.acolyte/config.toml` `model`).
-- Subagent v1 routing (`planner` / `coder` / `reviewer`) with explicit per-role context handoff.
-- Read-only file-inspection prompts (for example “what is in src/...”, “summarize @file”) now route to reviewer lane by default.
-- Coder role guidance now prefers one clear next action and avoids lettered option menus unless explicitly requested.
-- Role guidance now also discourages recap/status/capability scaffolding to keep replies direct.
-- Runtime provider is inferred from configured role model IDs (for example `anthropic/...`, `gemini/...`), with credential-aware fallback to mock mode when unavailable.
+- Single configured model (`model`) is used across the assistant runtime.
+- Single-agent execution path with direct tool usage and compact responses.
+- Runtime provider is inferred from configured model ID (for example `anthropic/...`, `gemini/...`), with credential-aware fallback to mock mode when unavailable.
 - Runtime provider inference also recognizes common unprefixed ids (`claude-*`, `gemini-*`) to reduce configuration friction.
-- Mastra Studio exposes role agents (`Planner`, `Coder`, `Reviewer`) plus default `acolyte` alias.
-- Mastra Studio role agents use role-scoped tools (planner/reviewer read-only: read/search/git/web, coder full toolset).
+- Mastra Studio exposes a single `acolyte` agent.
 - `mastra:dev` and `studio` load `.env` automatically for consistent provider credentials in local dev.
 - Tool execution errors are normalized with tool-id context (for example `read-file failed: ...`) for clearer debugging.
 - Dogfooding workflow command: `/dogfood <task>` with verify-first loop.
@@ -61,7 +56,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Internal telemetry: gate delivery details now include scoped/scanned commit counts to make lookback diagnostics explicit.
 - Internal telemetry: dogfood progress supports machine-readable output (`bun run dogfood:progress --json`).
 - Dogfood lookback now scopes to the last N non-doc commits to reduce false negatives from docs-only streaks.
-- Biome recommended lint rules enabled in main config (`biome.json`) with zero current diagnostics.
+- Biome recommended lint rules enabled in primary config (`biome.json`) with zero current diagnostics.
 - CLI policy distillation script: `bun run policy:distill --sessions <N> --min <N>`.
 - In-flight turn interrupt via `Esc` while the assistant is thinking.
 - One-shot CLI mode via `run` (including `--file` attachment support).
@@ -105,7 +100,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Mastra-backed production workflow and deeper integration.
 - Persistent memory evolution, including observational memory with safeguards.
 - Expanded picker/autocomplete UX for additional in-chat controls.
-- Richer multi-step subagent delegation/orchestration beyond v1 role routing.
+- Richer multi-step delegation/orchestration beyond current single-agent execution.
 - Optional high-signal git hooks (for example pre-push verify) after workflow fit is validated.
 - Optional messaging channel adapter (for example WhatsApp via OpenClaw/Twilio) after core reliability and auth hardening.
 

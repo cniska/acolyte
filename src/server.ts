@@ -7,10 +7,9 @@ import { mastraStorage, mastraStorageMode } from "./mastra-storage";
 import { getObservationalMemoryConfig } from "./memory-config";
 import {
   isProviderAvailable,
-  presentRoleModels,
+  presentModel,
   providerFromModel,
   resolveProvider,
-  resolveRoleModels,
 } from "./provider-config";
 import { createSoulPrompt, getMemoryContextEntries } from "./soul";
 
@@ -180,29 +179,19 @@ const server = Bun.serve({
     const url = new URL(req.url);
 
     if (url.pathname === "/healthz" && req.method === "GET") {
-      const roleModels = resolveRoleModels();
+      const model = appConfig.model;
       const providerConfig = {
         openaiApiKey: OPENAI_API_KEY,
         openaiBaseUrl: OPENAI_BASE_URL,
         anthropicApiKey: appConfig.anthropic.apiKey,
         googleApiKey: appConfig.google.apiKey,
       };
-      const roleProviders = {
-        lead: providerFromModel(roleModels.lead),
-        planner: providerFromModel(roleModels.planner),
-        coder: providerFromModel(roleModels.coder),
-        reviewer: providerFromModel(roleModels.reviewer),
-      };
-      const roleProviderAvailability = {
-        lead: isProviderAvailable({ provider: roleProviders.lead, ...providerConfig }),
-        planner: isProviderAvailable({ provider: roleProviders.planner, ...providerConfig }),
-        coder: isProviderAvailable({ provider: roleProviders.coder, ...providerConfig }),
-        reviewer: isProviderAvailable({ provider: roleProviders.reviewer, ...providerConfig }),
-      };
-      const provider = roleProviderAvailability.lead
-        ? roleProviders.lead === "openai"
+      const modelProvider = providerFromModel(model);
+      const providerReady = isProviderAvailable({ provider: modelProvider, ...providerConfig });
+      const provider = providerReady
+        ? modelProvider === "openai"
           ? resolveProvider(OPENAI_API_KEY, OPENAI_BASE_URL)
-          : roleProviders.lead
+          : modelProvider
         : "mock";
       let currentOm: {
         exists: boolean;
@@ -234,28 +223,16 @@ const server = Bun.serve({
       }
 
       const memoryContextCount = (await getMemoryContextEntries()).length;
-      const presentModels = presentRoleModels(roleModels);
       return json({
         ok: true,
         provider: {
           status: provider,
-          planner: roleProviders.planner,
-          coder: roleProviders.coder,
-          reviewer: roleProviders.reviewer,
           api_url: appConfig.openai.baseUrl,
         },
         model: {
-          status: presentModels.lead,
-          planner: presentModels.planner,
-          coder: presentModels.coder,
-          reviewer: presentModels.reviewer,
+          status: presentModel(model),
         },
-        provider_ready: {
-          lead: roleProviderAvailability.lead,
-          planner: roleProviderAvailability.planner,
-          coder: roleProviderAvailability.coder,
-          reviewer: roleProviderAvailability.reviewer,
-        },
+        provider_ready: providerReady,
         service: {
           status: "acolyte-backend",
           url: `http://localhost:${PORT}`,

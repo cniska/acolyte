@@ -1,15 +1,7 @@
-import type { AgentRole } from "./agent-roles";
 import { appConfig } from "./app-config";
 
 export type ProviderName = "openai" | "openai-compatible" | "anthropic" | "gemini" | "mock";
 export type ModelProviderName = ProviderName;
-
-export type RoleModelMap = {
-  lead: string;
-  planner: string;
-  coder: string;
-  reviewer: string;
-};
 
 function inferUnqualifiedModelPrefix(model: string): "openai" | "anthropic" | "gemini" {
   const normalized = model.trim().toLowerCase();
@@ -30,39 +22,8 @@ export function normalizeModel(model: string): string {
   return `${prefix}/${model}`;
 }
 
-export function resolveRoleModel(
-  role: AgentRole,
-  requestedModel: string,
-  overrides: {
-    planner?: string;
-    coder?: string;
-    reviewer?: string;
-  } = appConfig.models,
-): string {
-  const override = role === "planner" ? overrides.planner : role === "coder" ? overrides.coder : overrides.reviewer;
-  return override ?? requestedModel;
-}
-
-export function resolveRoleModels(leadModel = appConfig.models.lead): RoleModelMap {
-  return {
-    lead: leadModel,
-    planner: appConfig.models.planner ?? leadModel,
-    coder: appConfig.models.coder ?? leadModel,
-    reviewer: appConfig.models.reviewer ?? leadModel,
-  };
-}
-
 export function presentModel(model: string): string {
   return normalizeModel(model);
-}
-
-export function presentRoleModels(models: RoleModelMap): RoleModelMap {
-  return {
-    lead: presentModel(models.lead),
-    planner: presentModel(models.planner),
-    coder: presentModel(models.coder),
-    reviewer: presentModel(models.reviewer),
-  };
 }
 
 export function resolveProvider(openaiApiKey: string | undefined, openaiBaseUrl: string): ProviderName {

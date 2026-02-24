@@ -1,6 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { AgentRole } from "./agent-roles";
 import { listMemories } from "./memory";
 
 const FALLBACK_SOUL =
@@ -23,25 +22,6 @@ export function loadSoulPrompt(cwd = process.cwd()): string {
     return content.length > 0 ? content : FALLBACK_SOUL;
   } catch {
     return FALLBACK_SOUL;
-  }
-}
-
-const FALLBACK_ROLE_SOUL: Record<AgentRole, string> = {
-  planner: "Role: planner. Produce concise, sequenced plans with risks and validation checkpoints.",
-  coder: "Role: coder. Focus on practical implementation and compact, execution-oriented responses.",
-  reviewer: "Role: reviewer. Prioritize concrete findings with evidence and concise remediation guidance.",
-};
-
-export function loadRoleSoulPrompt(role: AgentRole, cwd = process.cwd()): string {
-  const roleSoulPath = join(cwd, "docs", "souls", `${role}.md`);
-  if (!existsSync(roleSoulPath)) {
-    return FALLBACK_ROLE_SOUL[role];
-  }
-  try {
-    const content = readFileSync(roleSoulPath, "utf8").trim();
-    return content.length > 0 ? content : FALLBACK_ROLE_SOUL[role];
-  } catch {
-    return FALLBACK_ROLE_SOUL[role];
   }
 }
 
@@ -96,11 +76,4 @@ export async function createSoulPrompt(options: PromptLoadOptions = {}): Promise
     return base;
   }
   return `${base}\n\n${memoryContext}`;
-}
-
-export async function createRoleSoulPrompt(role: AgentRole, options: PromptLoadOptions = {}): Promise<string> {
-  const cwd = options.cwd ?? process.cwd();
-  const core = await createSoulPrompt(options);
-  const roleSoul = loadRoleSoulPrompt(role, cwd);
-  return `${core}\n\n${roleSoul}`;
 }
