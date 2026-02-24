@@ -27,6 +27,15 @@ describe("dogfood gate", () => {
     });
   });
 
+  test("parseArgs accepts no-* aliases", () => {
+    expect(parseArgs(["--target", "6", "--lookback", "14", "--no-verify", "--no-smoke"])).toEqual({
+      target: 6,
+      lookback: 14,
+      skipVerify: true,
+      skipSmoke: true,
+    });
+  });
+
   test("parseDeliveryProgress reads progress json", () => {
     expect(parseDeliveryProgress('{"deliverySlices":16,"target":10,"percent":100}')).toEqual({
       delivery: 16,

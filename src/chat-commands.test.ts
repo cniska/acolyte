@@ -143,6 +143,7 @@ describe("chat-commands", () => {
     expect(stop).toBe(true);
     expect(rows.some((row) => row.content.includes("last_turn:"))).toBe(true);
     expect(rows.some((row) => row.role === "system" && row.content.includes("last_turn:"))).toBe(true);
+    expect(rows.some((row) => row.role === "system" && row.style === "tokenOutput")).toBe(true);
     expect(rows.some((row) => row.content.includes("model_calls:") && row.content.includes("last=5 session=7"))).toBe(
       true,
     );

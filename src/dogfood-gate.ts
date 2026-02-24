@@ -57,11 +57,11 @@ function parseArgs(args: string[]): GateArgs {
       i += 1;
       continue;
     }
-    if (token === "--skip-verify") {
+    if (token === "--skip-verify" || token === "--no-verify") {
       raw.skipVerify = true;
       continue;
     }
-    if (token === "--skip-smoke") {
+    if (token === "--skip-smoke" || token === "--no-smoke") {
       raw.skipSmoke = true;
       continue;
     }
@@ -195,7 +195,9 @@ function summarizeGate(checks: GateCheck[]): { ok: boolean; lines: string[] } {
 }
 
 function printUsage(): void {
-  console.log("Usage: bun run dogfood:gate [--lookback N] [--target N] [--skip-verify] [--skip-smoke]");
+  console.log(
+    "Usage: bun run dogfood:gate [--lookback N] [--target N] [--skip-verify|--no-verify] [--skip-smoke|--no-smoke]",
+  );
 }
 
 async function main(): Promise<void> {

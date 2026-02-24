@@ -15,7 +15,7 @@ export type ChatRow = {
   role: "user" | "assistant" | "system";
   content: string;
   dim?: boolean;
-  style?: "sessionStatus" | "sessionsList" | "toolProgress" | "statusOutput";
+  style?: "sessionStatus" | "sessionsList" | "toolProgress" | "statusOutput" | "tokenOutput";
 };
 
 export type TokenUsageEntry = SessionTokenUsageEntry;
@@ -396,7 +396,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
   if (resolvedText === "/tokens") {
     pushUserCommandRow();
     const last = ctx.tokenUsage.length > 0 ? ctx.tokenUsage[ctx.tokenUsage.length - 1] : null;
-    ctx.setRows((current) => [...current, row("system", formatTokenUsageOutput(last, ctx.tokenUsage))]);
+    ctx.setRows((current) => [...current, row("system", formatTokenUsageOutput(last, ctx.tokenUsage), false, "tokenOutput")]);
     return { stop: true, userText: text, runVerifyAfterReply: false };
   }
 
