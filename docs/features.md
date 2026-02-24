@@ -44,6 +44,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Backend chat passes session/thread identity to Mastra memory for turn continuity while observational memory remains resource-scoped.
 - Per-role model overrides with fallback-to-main (`modelPlanner|modelCoder|modelReviewer` -> `~/.acolyte/config.toml` `model`).
 - Subagent v1 routing (`planner` / `coder` / `reviewer`) with explicit per-role context handoff.
+- Read-only file-inspection prompts (for example “what is in src/...”, “summarize @file”) now route to reviewer lane by default.
 - Coder role guidance now prefers one clear next action and avoids lettered option menus unless explicitly requested.
 - Role guidance now also discourages recap/status/capability scaffolding to keep replies direct.
 - Runtime provider is inferred from configured role model IDs (for example `anthropic/...`, `gemini/...`), with credential-aware fallback to mock mode when unavailable.

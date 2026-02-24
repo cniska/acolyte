@@ -60,6 +60,7 @@ Exit Criteria:
 - Session diagnostics survive session switches (`/tokens` restored on `/resume`, reset on `/new`).
 - Clarification handling is picker-first (no generated follow-up prompt text before question pickers).
 - Persistence guards cover diagnostic continuity (`tokenUsage` normalization tested at storage layer).
+- Role routing sends read-only file-inspection requests to reviewer lane by default.
 - Critical operator actions stay explicit and command-first.
 
 ### Milestone 5: Memory Quality

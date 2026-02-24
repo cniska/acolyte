@@ -189,6 +189,7 @@ Living notes for talks about building this project. Update this file as mileston
 - Added storage normalization coverage to guarantee `tokenUsage` defaults/restoration remain stable across persisted sessions.
 - Command-output scanability improved: `/sessions` body is dimmed and `/tokens` now uses dim key / normal value rendering.
 - `dogfood:gate` now accepts `--no-verify/--no-smoke` aliases in addition to `--skip-*`.
+- Role routing now sends read-only file-inspection prompts to reviewer lane to reduce unnecessary coder delegation.
 
 ## Open Narrative Threads
 1. Continue dogfooding ramp from Codex-led to assistant-led development.
