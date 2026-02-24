@@ -71,7 +71,7 @@ Exit Criteria:
   Evidence (February 24, 2026): `bun run dogfood:gate` passed with verify/smoke/recovery/one-shot-diagnostics/session-diagnostics green, plus delivery and delegated-success-rate checks.
 
 ### Milestone 5: Autonomous Delivery Readiness (MVP Closure)
-Status: in progress.
+Status: completed on February 24, 2026.
 Description: Prove the assistant can complete real coding tasks independently with low fallback.
 Goal: make autonomous end-to-end execution reliable enough to call MVP complete.
 
@@ -81,7 +81,7 @@ Exit Criteria:
 - Failure categories are tracked, and repeated classes are closed with root-cause fixes.
 - Gate evidence remains green while real task execution stays stable.
 - MVP gate is only marked complete when this milestone is complete.
-  Current evidence (February 24, 2026): `dogfood:smoke` now requires two autonomous coding edits when provider is ready, fails on fallback edit responses, and strict autonomy smoke fails when provider readiness is missing; `dogfood:progress` now reports non-delivery category counts for repeated failure-class tracking; `bun run dogfood:gate` is green with recovery/diagnostics/concurrency/delegated checks; `--strict-autonomy` raises delegated thresholds and uses a 3-run stability window (validated from 1/3 to 3/3 in consecutive strict runs).
+  Evidence (February 24, 2026): `dogfood:smoke` requires two autonomous coding edits when provider is ready, fails on fallback edit responses, and strict autonomy smoke fails when provider readiness is missing; `dogfood:progress` reports non-delivery category counts for repeated failure-class tracking; `bun run dogfood:gate -- --strict-autonomy --skip-verify` is green with smoke/recovery/diagnostics/concurrency/delegated checks and stability window `4/3`.
 
 ### Milestone 6: Memory Quality
 Status: planned.
@@ -130,6 +130,6 @@ Exit Criteria:
 - Progress/status contracts were simplified to a single-agent, single-model shape (`model`, `provider`, `provider_ready`) plus `Working…` stage text.
 
 ## MVP Gate
-- Status: not yet met.
+- Status: met on February 24, 2026.
 - Completed milestones retained: 1-4 are complete.
-- Remaining requirement: complete Milestone 5 (autonomous independent task execution with low fallback).
+- Milestone 5 is complete (autonomous independent task execution with low fallback).
