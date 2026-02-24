@@ -230,11 +230,7 @@ export function buildRoleInstructions(baseInstructions: string, _role: AgentRole
   return baseInstructions;
 }
 
-export function resolveAgentModel(
-  _role: AgentRole,
-  requestedModel: string,
-  _overrides?: unknown,
-): string {
+export function resolveAgentModel(_role: AgentRole, requestedModel: string, _overrides?: unknown): string {
   return requestedModel;
 }
 
@@ -1057,9 +1053,7 @@ export async function runAgent(input: {
     : "\n\nDirect edit target path: none specified; locate exact target quickly, then execute edit-file in this first response.";
   const agentPrompt = directEditLikely ? `${agentInput}${directEditTargetHint}` : agentInput;
   const initialMaxSteps = directEditLikely ? DIRECT_EDIT_INITIAL_MAX_STEPS : CODER_INITIAL_MAX_STEPS;
-  const callTimeoutMs = directEditLikely
-    ? DIRECT_EDIT_TIMEOUT_MS
-    : CODER_TIMEOUT_MS;
+  const callTimeoutMs = directEditLikely ? DIRECT_EDIT_TIMEOUT_MS : CODER_TIMEOUT_MS;
   emitProgress("Working…");
   emitDebug("agent.generate.start", {
     model,

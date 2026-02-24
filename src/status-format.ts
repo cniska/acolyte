@@ -104,17 +104,9 @@ export function formatStatusOutput(status: string): string {
   }
   const model = take("model");
   const displayModel = model ? simplifyModelId(model) : undefined;
-  pushStacked(
-    "model",
-    [
-      ["status", displayModel],
-    ],
-    true,
-  );
+  pushStacked("model", [["status", displayModel]], true);
   const providerReadyMain = take("provider_ready");
-  const providerReadyRows: Array<[string, string | undefined]> = [
-    ["status", providerReadyMain],
-  ];
+  const providerReadyRows: Array<[string, string | undefined]> = [["status", providerReadyMain]];
   const hasProviderReadinessIssue = providerReadyRows.some(([, value]) => value !== undefined && !isReady(value));
   if (hasProviderReadinessIssue) {
     pushStacked("provider_ready", providerReadyRows, false, true);

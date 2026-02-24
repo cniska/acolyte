@@ -5,12 +5,7 @@ import { appConfig, setPermissionMode } from "./app-config";
 import { errorToLogFields, log } from "./log";
 import { mastraStorage, mastraStorageMode } from "./mastra-storage";
 import { getObservationalMemoryConfig } from "./memory-config";
-import {
-  isProviderAvailable,
-  presentModel,
-  providerFromModel,
-  resolveProvider,
-} from "./provider-config";
+import { isProviderAvailable, presentModel, providerFromModel, resolveProvider } from "./provider-config";
 import { createSoulPrompt, getMemoryContextEntries } from "./soul";
 
 const PORT = appConfig.server.port;

@@ -146,6 +146,8 @@ Living notes for talks about building this project. Update this file as mileston
 - Dogfood progress/gate lookback now evaluates the last N non-doc commits, reducing docs-only noise in readiness checks.
 - Dogfood gate delivery diagnostics now surface `scoped` and `scanned` commit counts for clearer readiness debugging.
 - Latest dogfood skip-verify gate on February 22, 2026 remained `ready` at 6/6 delivery slices (lookback 10).
+- Reliability slice on February 24, 2026 removed flaky `Bun.serve({ port: 0 })` test usage and restored full `bun run verify` green.
+- Remote backend connection handling now also maps Bun fetch url-typo errors to the same actionable offline hint (`Cannot reach backend at ...`).
 - Assistant output cleanup now also strips recap lead-ins that use an em dash (`Recap — ...`) to reduce scaffold leakage.
 - `om:soak` now supports `--help` and common camelCase flag aliases (`--delayMs`, `--checkpointEvery`, `--sessionId`, `--wipeBefore`) for smoother local diagnostics.
 - Resume hints now fall back to `bun run src/cli.ts resume ...` when `acolyte` is not available on PATH, reducing setup friction on fresh machines.
@@ -201,5 +203,5 @@ Living notes for talks about building this project. Update this file as mileston
 1. Continue dogfooding ramp from Codex-led to assistant-led development.
 2. Improve memory promotion/retrieval quality and transparency.
 3. Complete hosted readiness (Postgres/pgvector + backup/restore + auth hardening).
-4. Add lane-based model routing and local-model support.
+4. Keep single-agent runtime as default; evaluate optional multi-model routing only for concrete workflows.
 5. Refine transcript/tool output for maximal signal with minimal noise.

@@ -1,5 +1,3 @@
-import { appConfig } from "./app-config";
-
 export type ProviderName = "openai" | "openai-compatible" | "anthropic" | "gemini" | "mock";
 export type ModelProviderName = ProviderName;
 

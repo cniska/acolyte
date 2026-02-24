@@ -7,7 +7,7 @@ function startTestServer(fetch: (req: Request) => Response | Promise<Response>):
     const port = 20000 + Math.floor(Math.random() * 30000);
     try {
       const server = Bun.serve({ port, fetch });
-      return { port: server.port, stop: () => server.stop(true) };
+      return { port: server.port ?? port, stop: () => server.stop(true) };
     } catch {
       // Retry with another random port.
     }
