@@ -9,6 +9,7 @@ type GateArgs = {
   skipRecovery: boolean;
   skipOneShotDiagnostics: boolean;
   skipSessionDiagnostics: boolean;
+  skipConcurrencySafety: boolean;
 };
 
 type GateCheck = {
@@ -30,6 +31,7 @@ const gateArgsSchema = z.object({
   skipRecovery: z.boolean(),
   skipOneShotDiagnostics: z.boolean(),
   skipSessionDiagnostics: z.boolean(),
+  skipConcurrencySafety: z.boolean(),
 });
 const deliveryProgressSchema = z.object({
   deliverySlices: z.number().finite(),
@@ -52,6 +54,7 @@ function parseArgs(args: string[]): GateArgs {
     skipRecovery: boolean;
     skipOneShotDiagnostics: boolean;
     skipSessionDiagnostics: boolean;
+    skipConcurrencySafety: boolean;
   } = {
     target: DEFAULT_TARGET,
     lookback: DEFAULT_LOOKBACK,
@@ -61,6 +64,7 @@ function parseArgs(args: string[]): GateArgs {
     skipRecovery: false,
     skipOneShotDiagnostics: false,
     skipSessionDiagnostics: false,
+    skipConcurrencySafety: false,
   };
   for (let i = 0; i < args.length; i += 1) {
     const token = args[i];
@@ -109,6 +113,10 @@ function parseArgs(args: string[]): GateArgs {
     }
     if (token === "--skip-session-diagnostics" || token === "--no-session-diagnostics") {
       raw.skipSessionDiagnostics = true;
+      continue;
+    }
+    if (token === "--skip-concurrency-safety" || token === "--no-concurrency-safety") {
+      raw.skipConcurrencySafety = true;
       continue;
     }
     throw new Error(`Unknown argument: ${token}`);
@@ -264,6 +272,7 @@ function printUsage(): void {
     "Usage: bun run dogfood:gate [--lookback N] [--target N] [--min-success-rate N] [--skip-verify|--no-verify] [--skip-smoke|--no-smoke] [--skip-recovery|--no-recovery]",
     "       [--skip-one-shot-diagnostics|--no-one-shot-diagnostics]",
     "       [--skip-session-diagnostics|--no-session-diagnostics]",
+    "       [--skip-concurrency-safety|--no-concurrency-safety]",
   );
 }
 
@@ -327,6 +336,17 @@ async function main(): Promise<void> {
         detail: sessionDiagnostics.ok
           ? "green"
           : `exit ${sessionDiagnostics.code}${sessionDiagnosticsError ? ` (${sessionDiagnosticsError})` : ""}`,
+      });
+    }
+    if (!args.skipConcurrencySafety) {
+      const concurrency = run(["bun", "test", "src/session-lock.test.ts"]);
+      const concurrencyError = firstSignalLine(concurrency.stderr, concurrency.stdout);
+      checks.push({
+        name: "concurrency-safety",
+        ok: concurrency.ok,
+        detail: concurrency.ok
+          ? "green"
+          : `exit ${concurrency.code}${concurrencyError ? ` (${concurrencyError})` : ""}`,
       });
     }
 
