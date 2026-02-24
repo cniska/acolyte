@@ -838,6 +838,66 @@ describe("chat submit handler guards", () => {
     expect(rows.some((row) => row.role === "system" && row.content.includes("Backend request timed out"))).toBe(true);
   });
 
+  test("recovers cleanly after timeout and allows next submit", async () => {
+    const rows: ChatRow[] = [];
+    const thinkingTransitions: boolean[] = [];
+    const session = createSession({ id: "sess_test" });
+    const store = createStore({ activeSessionId: session.id, sessions: [session] });
+    let calls = 0;
+    const submit = createSubmitHandler({
+      backend: createBackend({
+        status: async () => "ok",
+        reply: async () => {
+          calls += 1;
+          if (calls === 1) {
+            throw new Error("Remote backend reply timed out after 120000ms");
+          }
+          return { model: "gpt-5-mini", output: "ok" };
+        },
+      }),
+      store,
+      currentSession: session,
+      setCurrentSession: () => {},
+      toRows: () => [],
+      setRows: (updater) => {
+        rows.splice(0, rows.length, ...updater(rows));
+      },
+      setShowShortcuts: () => {},
+      setValue: () => {},
+      persist: async () => {},
+      exit: () => {},
+      openSkillsPanel: async () => {},
+      openResumePanel: () => {},
+      openPermissionsPanel: () => {},
+      openPolicyPanel: () => {},
+      openClarifyPanel: (_questions, _originalPrompt) => {},
+      openWriteConfirmPanel: () => {},
+      pendingPolicyCandidate: null,
+      setPendingPolicyCandidate: () => {},
+      tokenUsage: [],
+      isThinking: false,
+      setInputHistory: () => {},
+      setInputHistoryIndex: () => {},
+      setInputHistoryDraft: () => {},
+      setIsThinking: (next) => {
+        thinkingTransitions.push(next);
+      },
+      setThinkingLabel: () => {},
+      setTokenUsage: () => {},
+      createMessage,
+      nowIso: () => "2026-02-20T00:00:00.000Z",
+      setInterrupt: () => {},
+    });
+
+    await submit("first");
+    await submit("second");
+
+    expect(calls).toBe(2);
+    expect(thinkingTransitions).toEqual([true, false, true, false]);
+    expect(rows.some((row) => row.role === "system" && row.content.includes("Backend request timed out"))).toBe(true);
+    expect(rows.some((row) => row.role === "assistant" && row.content === "ok")).toBe(true);
+  });
+
   test("dedupes fallback tool progress when same tool was streamed", async () => {
     const rows: ChatRow[] = [];
     let progressCalls = 0;
