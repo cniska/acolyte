@@ -64,6 +64,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - One-shot `run` mode is isolated (does not reuse/persist chat session history).
 - One-shot memory resource isolation for `run`/`dogfood` (`run-<session>` resource ids).
 - One-shot `run` exits non-zero on backend failures so scripting/automation can reliably detect errors.
+- One-shot `run`/`dogfood` backend reply timeout is configurable via `ACOLYTE_RUN_REPLY_TIMEOUT_MS` (default `120000`).
 - One-shot `run --verify` propagates verify failures via non-zero exit status.
 - Internal tool command surface for search/web/fetch/read/edit/git/run operations.
 - Secure-by-default tool guardrails:
@@ -76,6 +77,8 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
   - likely write prompts trigger `switch/cancel` confirmation with inline `reason…`
   - selecting `switch` sets backend permission mode to `write` and pre-fills the original prompt
 - Clarification handling is picker-first: clarifying-question responses open pickers directly without generated follow-up transcript prompts.
+- `dogfood:progress` reports delegated success/failure proxy counts and success rate from recent non-doc commits.
+- `dogfood:gate` includes delegated ratio details in the delivery check line.
 - Local backend server with health check (`/healthz`) and chat endpoint (`/v1/chat`).
 - User-friendly backend connection errors with direct recovery hints (`bun run dev` or `bun run serve:env`).
 - Local-first configuration and optional API-key auth for backend access.
