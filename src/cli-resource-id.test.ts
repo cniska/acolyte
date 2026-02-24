@@ -7,6 +7,20 @@ const tmpHomes: string[] = [];
 const tmpProjects: string[] = [];
 const repoRoot = process.cwd();
 
+function startTestServer(fetch: (req: Request) => Response | Promise<Response>): { port: number; stop: () => void } {
+  const attempts = 25;
+  for (let i = 0; i < attempts; i += 1) {
+    const port = 20000 + Math.floor(Math.random() * 30000);
+    try {
+      const server = Bun.serve({ port, fetch });
+      return { port: server.port, stop: () => server.stop(true) };
+    } catch {
+      // Retry with another random port.
+    }
+  }
+  throw new Error("Unable to start test server after multiple attempts.");
+}
+
 afterEach(async () => {
   while (tmpHomes.length > 0) {
     const dir = tmpHomes.pop();
@@ -36,23 +50,20 @@ describe("cli run resource id", () => {
     await mkdir(projectDataDir, { recursive: true });
 
     const requests: Array<{ sessionId?: string; resourceId?: string }> = [];
-    const server = Bun.serve({
-      port: 0,
-      async fetch(req) {
-        const url = new URL(req.url);
-        if (url.pathname === "/v1/chat" && req.method === "POST") {
-          const body = (await req.json()) as { sessionId?: string; resourceId?: string; model?: string };
-          requests.push({ sessionId: body.sessionId, resourceId: body.resourceId });
-          return Response.json({
-            model: typeof body.model === "string" ? body.model : "gpt-5-mini",
-            output: "ok",
-          });
-        }
-        if (url.pathname === "/healthz" && req.method === "GET") {
-          return Response.json({ ok: true, provider: "mock", service: "test" });
-        }
-        return new Response("not found", { status: 404 });
-      },
+    const server = startTestServer(async (req) => {
+      const url = new URL(req.url);
+      if (url.pathname === "/v1/chat" && req.method === "POST") {
+        const body = (await req.json()) as { sessionId?: string; resourceId?: string; model?: string };
+        requests.push({ sessionId: body.sessionId, resourceId: body.resourceId });
+        return Response.json({
+          model: typeof body.model === "string" ? body.model : "gpt-5-mini",
+          output: "ok",
+        });
+      }
+      if (url.pathname === "/healthz" && req.method === "GET") {
+        return Response.json({ ok: true, provider: "mock", service: "test" });
+      }
+      return new Response("not found", { status: 404 });
     });
 
     try {
@@ -84,7 +95,7 @@ describe("cli run resource id", () => {
       const expectedResource = `run-${(request.sessionId ?? "").replace(/^sess_/, "").slice(0, 24)}`;
       expect(request.resourceId).toBe(expectedResource);
     } finally {
-      server.stop(true);
+      server.stop();
     }
   });
 });
