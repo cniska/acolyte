@@ -30,6 +30,7 @@ describe("dogfood gate", () => {
       skipOneShotDiagnostics: false,
       skipSessionDiagnostics: false,
       skipConcurrencySafety: false,
+      skipToolOutputUx: false,
     });
   });
 
@@ -54,6 +55,7 @@ describe("dogfood gate", () => {
         "--skip-one-shot-diagnostics",
         "--skip-session-diagnostics",
         "--skip-concurrency-safety",
+        "--skip-tool-output-ux",
       ]),
     ).toEqual({
       target: 6,
@@ -71,6 +73,7 @@ describe("dogfood gate", () => {
       skipOneShotDiagnostics: true,
       skipSessionDiagnostics: true,
       skipConcurrencySafety: true,
+      skipToolOutputUx: true,
     });
   });
 
@@ -87,6 +90,7 @@ describe("dogfood gate", () => {
         "--no-one-shot-diagnostics",
         "--no-session-diagnostics",
         "--no-concurrency-safety",
+        "--no-tool-output-ux",
       ]),
     ).toEqual({
       target: 6,
@@ -104,6 +108,7 @@ describe("dogfood gate", () => {
       skipOneShotDiagnostics: true,
       skipSessionDiagnostics: true,
       skipConcurrencySafety: true,
+      skipToolOutputUx: true,
     });
   });
 
@@ -148,6 +153,7 @@ describe("dogfood gate", () => {
       skipOneShotDiagnostics: false,
       skipSessionDiagnostics: false,
       skipConcurrencySafety: false,
+      skipToolOutputUx: false,
     });
     expect(
       parseArgs([
@@ -181,6 +187,7 @@ describe("dogfood gate", () => {
       skipOneShotDiagnostics: false,
       skipSessionDiagnostics: false,
       skipConcurrencySafety: false,
+      skipToolOutputUx: false,
     });
   });
 

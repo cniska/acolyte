@@ -19,6 +19,7 @@ type GateArgs = {
   skipOneShotDiagnostics: boolean;
   skipSessionDiagnostics: boolean;
   skipConcurrencySafety: boolean;
+  skipToolOutputUx: boolean;
 };
 
 type GateCheck = {
@@ -57,6 +58,7 @@ const gateArgsSchema = z.object({
   skipOneShotDiagnostics: z.boolean(),
   skipSessionDiagnostics: z.boolean(),
   skipConcurrencySafety: z.boolean(),
+  skipToolOutputUx: z.boolean(),
 });
 const deliveryProgressSchema = z.object({
   deliverySlices: z.number().finite(),
@@ -102,6 +104,7 @@ function parseArgs(args: string[]): GateArgs {
     skipOneShotDiagnostics: boolean;
     skipSessionDiagnostics: boolean;
     skipConcurrencySafety: boolean;
+    skipToolOutputUx: boolean;
   } = {
     target: DEFAULT_TARGET,
     lookback: DEFAULT_LOOKBACK,
@@ -118,6 +121,7 @@ function parseArgs(args: string[]): GateArgs {
     skipOneShotDiagnostics: false,
     skipSessionDiagnostics: false,
     skipConcurrencySafety: false,
+    skipToolOutputUx: false,
   };
   for (let i = 0; i < args.length; i += 1) {
     const token = args[i];
@@ -219,6 +223,10 @@ function parseArgs(args: string[]): GateArgs {
     }
     if (token === "--skip-concurrency-safety" || token === "--no-concurrency-safety") {
       raw.skipConcurrencySafety = true;
+      continue;
+    }
+    if (token === "--skip-tool-output-ux" || token === "--no-tool-output-ux") {
+      raw.skipToolOutputUx = true;
       continue;
     }
     throw new Error(`Unknown argument: ${token}`);
@@ -473,6 +481,7 @@ function printUsage(): void {
     "       [--skip-one-shot-diagnostics|--no-one-shot-diagnostics]",
     "       [--skip-session-diagnostics|--no-session-diagnostics]",
     "       [--skip-concurrency-safety|--no-concurrency-safety]",
+    "       [--skip-tool-output-ux|--no-tool-output-ux]",
   );
 }
 
@@ -554,6 +563,17 @@ async function main(): Promise<void> {
         detail: concurrency.ok
           ? "green"
           : `exit ${concurrency.code}${concurrencyError ? ` (${concurrencyError})` : ""}`,
+      });
+    }
+    if (!args.skipToolOutputUx) {
+      const toolOutputUx = run(["bun", "test", "src/tool-output.test.ts", "src/cli.test.ts"]);
+      const toolOutputUxError = firstSignalLine(toolOutputUx.stderr, toolOutputUx.stdout);
+      checks.push({
+        name: "tool-output-ux",
+        ok: toolOutputUx.ok,
+        detail: toolOutputUx.ok
+          ? "green"
+          : `exit ${toolOutputUx.code}${toolOutputUxError ? ` (${toolOutputUxError})` : ""}`,
       });
     }
 
