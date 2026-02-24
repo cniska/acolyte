@@ -903,11 +903,12 @@ export async function runAgent(input: {
 }): Promise<ChatResponse> {
   const CODER_INITIAL_MAX_STEPS = 6;
   // Keep direct-edit first pass bounded to reduce stalls.
-  const DIRECT_EDIT_INITIAL_MAX_STEPS = 4;
+  const DIRECT_EDIT_INITIAL_MAX_STEPS = 2;
   const REQUIRED_TOOLS_RETRY_MAX_STEPS = 6;
   const BASE_MODEL_RETRY_MAX_STEPS = 5;
   const EMPTY_TEXT_RETRY_MAX_STEPS = 4;
   const MODEL_CALL_TIMEOUT_MS = 90_000;
+  const DIRECT_EDIT_TIMEOUT_MS = 45_000;
   const role = selectAgentRole(input.request.message);
   const directEditLikely = role === "coder" && isDirectEditRequest(input.request.message);
   const directEditTargetPath = directEditLikely ? extractExplicitTargetPath(input.request.message) : null;
@@ -1070,6 +1071,7 @@ export async function runAgent(input: {
     ? `\n\nDirect edit target path: ${directEditTargetPath}\nHard requirement: execute edit-file in this first response. Prefer read-file then edit-file.`
     : "\n\nDirect edit target path: none specified; locate exact target quickly, then execute edit-file in this first response.";
   const agentPrompt = directEditLikely ? `${agentInput}${directEditTargetHint}` : agentInput;
+  const callTimeoutMs = directEditLikely ? DIRECT_EDIT_TIMEOUT_MS : MODEL_CALL_TIMEOUT_MS;
   emitProgress(progressStageForRole(role, model));
   emitDebug("agent.generate.start", {
     model,
@@ -1088,7 +1090,7 @@ export async function runAgent(input: {
         memory: memoryOptions,
         onStepFinish: emitToolProgress,
       },
-      MODEL_CALL_TIMEOUT_MS,
+      callTimeoutMs,
     );
   } catch (error) {
     lastToolFailureReason = error instanceof Error ? error.message : String(error);
@@ -1171,18 +1173,18 @@ export async function runAgent(input: {
       model,
       reason: "required_tools_no_calls",
       tool_choice: "required",
-      max_steps: REQUIRED_TOOLS_RETRY_MAX_STEPS,
+      max_steps: directEditLikely ? DIRECT_EDIT_INITIAL_MAX_STEPS : REQUIRED_TOOLS_RETRY_MAX_STEPS,
     });
     modelCallCount += 1;
     result = await generateWithTimeout(
       agentPrompt,
       {
-        maxSteps: REQUIRED_TOOLS_RETRY_MAX_STEPS,
+        maxSteps: directEditLikely ? DIRECT_EDIT_INITIAL_MAX_STEPS : REQUIRED_TOOLS_RETRY_MAX_STEPS,
         toolChoice: "required",
         memory: memoryOptions,
         onStepFinish: emitToolProgress,
       },
-      MODEL_CALL_TIMEOUT_MS,
+      callTimeoutMs,
     );
     emitDebug("agent.generate.done", {
       model,
@@ -1202,18 +1204,18 @@ export async function runAgent(input: {
         model,
         reason: "switch_to_base_model",
         tool_choice: "required",
-        max_steps: directEditLikely ? 8 : BASE_MODEL_RETRY_MAX_STEPS,
+        max_steps: directEditLikely ? DIRECT_EDIT_INITIAL_MAX_STEPS : BASE_MODEL_RETRY_MAX_STEPS,
       });
       modelCallCount += 1;
       result = await generateWithTimeout(
         agentPrompt,
         {
-          maxSteps: directEditLikely ? 8 : BASE_MODEL_RETRY_MAX_STEPS,
+          maxSteps: directEditLikely ? DIRECT_EDIT_INITIAL_MAX_STEPS : BASE_MODEL_RETRY_MAX_STEPS,
           toolChoice: "required",
           memory: memoryOptions,
           onStepFinish: emitToolProgress,
         },
-        MODEL_CALL_TIMEOUT_MS,
+        callTimeoutMs,
       );
       emitDebug("agent.generate.done", {
         model,
@@ -1229,19 +1231,19 @@ export async function runAgent(input: {
       model,
       reason: "direct_edit_hard_requirement",
       tool_choice: "required",
-      max_steps: 10,
+      max_steps: 4,
     });
     try {
       modelCallCount += 1;
       result = await generateWithTimeout(
         `${agentPrompt}\n\nHard requirement: execute at least one tool before responding. Do not return a plan.`,
         {
-          maxSteps: 10,
+          maxSteps: 4,
           toolChoice: "required",
           memory: memoryOptions,
           onStepFinish: emitToolProgress,
         },
-        MODEL_CALL_TIMEOUT_MS,
+        callTimeoutMs,
       );
       emitDebug("agent.generate.done", {
         model,
@@ -1266,7 +1268,7 @@ export async function runAgent(input: {
       model,
       reason: "direct_edit_missing_edit_file",
       tool_choice: "required",
-      max_steps: 8,
+      max_steps: 4,
       prior_tools: toolCallIds.join(","),
     });
     try {
@@ -1274,12 +1276,12 @@ export async function runAgent(input: {
       result = await generateWithTimeout(
         `${agentPrompt}\n\nHard requirement: execute edit-file now. Apply a concrete file change and return a concise result.${directEditTargetPath ? ` Use path: ${directEditTargetPath}.` : ""}`,
         {
-          maxSteps: 8,
+          maxSteps: 4,
           toolChoice: "required",
           memory: memoryOptions,
           onStepFinish: emitToolProgress,
         },
-        MODEL_CALL_TIMEOUT_MS,
+        callTimeoutMs,
       );
       emitDebug("agent.generate.done", {
         model,
@@ -1350,7 +1352,7 @@ export async function runAgent(input: {
         memory: memoryOptions,
         onStepFinish: emitToolProgress,
       },
-      MODEL_CALL_TIMEOUT_MS,
+      callTimeoutMs,
     );
     emitDebug("agent.generate.done", {
       model,
