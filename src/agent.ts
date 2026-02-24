@@ -857,6 +857,7 @@ export async function runAgent(input: {
   onProgress?: (message: string) => void;
   onDebug?: (event: string, fields?: Record<string, unknown>) => void;
 }): Promise<ChatResponse> {
+  const DIRECT_EDIT_RETRY_TIMEOUT_MS = 45_000;
   const role = selectAgentRole(input.request.message);
   const directEditLikely = role === "coder" && isDirectEditRequest(input.request.message);
   const emitDebug = (event: string, fields: Record<string, unknown> = {}): void => {
@@ -892,6 +893,24 @@ export async function runAgent(input: {
     });
 
   let agent = buildRoleAgent(model);
+  const generateWithTimeout = async (
+    prompt: string,
+    options: {
+      maxSteps: number;
+      toolChoice: "auto" | "required";
+      memory: { thread: string; resource: string } | undefined;
+      onStepFinish: ((step: unknown) => void) | undefined;
+    },
+    timeoutMs: number,
+  ) =>
+    await Promise.race([
+      agent.generate(prompt, options),
+      new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error(`Model call timed out after ${timeoutMs}ms`));
+        }, timeoutMs);
+      }),
+    ]);
 
   const requestInput = buildAgentInputWithUsage(input.request);
   const subagentContext = buildSubagentContext(role, input.request);
@@ -1075,21 +1094,31 @@ export async function runAgent(input: {
       tool_choice: "required",
       max_steps: 10,
     });
-    result = await agent.generate(
-      `${delegatedInput}\n\nHard requirement: execute at least one tool before responding. Do not return a plan.`,
-      {
-        maxSteps: 10,
-        toolChoice: "required",
-        memory: memoryOptions,
-        onStepFinish: emitToolProgress,
-      },
-    );
-    emitDebug("agent.generate.done", {
-      model,
-      reason: "direct_edit_hard_requirement",
-      tool_calls: result.toolCalls.length,
-      text_chars: result.text.trim().length,
-    });
+    try {
+      result = await generateWithTimeout(
+        `${delegatedInput}\n\nHard requirement: execute at least one tool before responding. Do not return a plan.`,
+        {
+          maxSteps: 10,
+          toolChoice: "required",
+          memory: memoryOptions,
+          onStepFinish: emitToolProgress,
+        },
+        DIRECT_EDIT_RETRY_TIMEOUT_MS,
+      );
+      emitDebug("agent.generate.done", {
+        model,
+        reason: "direct_edit_hard_requirement",
+        tool_calls: result.toolCalls.length,
+        text_chars: result.text.trim().length,
+      });
+    } catch (error) {
+      lastToolFailureReason = error instanceof Error ? error.message : String(error);
+      emitDebug("agent.generate.retry_failed", {
+        model,
+        reason: "direct_edit_hard_requirement",
+        error: lastToolFailureReason,
+      });
+    }
   }
 
   let normalizedToolCalls = normalizeToolCalls(result.toolCalls);
@@ -1102,23 +1131,33 @@ export async function runAgent(input: {
       max_steps: 8,
       prior_tools: toolCallIds.join(","),
     });
-    result = await agent.generate(
-      `${delegatedInput}\n\nHard requirement: execute edit-file now. Apply a concrete file change and return a concise result.`,
-      {
-        maxSteps: 8,
-        toolChoice: "required",
-        memory: memoryOptions,
-        onStepFinish: emitToolProgress,
-      },
-    );
-    emitDebug("agent.generate.done", {
-      model,
-      reason: "direct_edit_missing_edit_file",
-      tool_calls: result.toolCalls.length,
-      text_chars: result.text.trim().length,
-    });
-    normalizedToolCalls = normalizeToolCalls(result.toolCalls);
-    toolCallIds = collectToolCallIds(normalizedToolCalls);
+    try {
+      result = await generateWithTimeout(
+        `${delegatedInput}\n\nHard requirement: execute edit-file now. Apply a concrete file change and return a concise result.`,
+        {
+          maxSteps: 8,
+          toolChoice: "required",
+          memory: memoryOptions,
+          onStepFinish: emitToolProgress,
+        },
+        DIRECT_EDIT_RETRY_TIMEOUT_MS,
+      );
+      emitDebug("agent.generate.done", {
+        model,
+        reason: "direct_edit_missing_edit_file",
+        tool_calls: result.toolCalls.length,
+        text_chars: result.text.trim().length,
+      });
+      normalizedToolCalls = normalizeToolCalls(result.toolCalls);
+      toolCallIds = collectToolCallIds(normalizedToolCalls);
+    } catch (error) {
+      lastToolFailureReason = error instanceof Error ? error.message : String(error);
+      emitDebug("agent.generate.retry_failed", {
+        model,
+        reason: "direct_edit_missing_edit_file",
+        error: lastToolFailureReason,
+      });
+    }
   }
   if (normalizedToolCalls.length > 0 && toolCallIds.length === 0) {
     const first = normalizedToolCalls[0];
