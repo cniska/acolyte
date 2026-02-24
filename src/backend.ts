@@ -34,6 +34,7 @@ function isConnectionFailure(error: unknown): boolean {
   const message = error.message.toLowerCase();
   return (
     message.includes("unable to connect") ||
+    message.includes("typo in the url or port") ||
     message.includes("connection refused") ||
     message.includes("econnrefused") ||
     message.includes("socket connection was closed unexpectedly") ||
