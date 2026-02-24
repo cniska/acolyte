@@ -89,6 +89,7 @@ Living notes for talks about building this project. Update this file as mileston
 - Dogfood readiness gate now surfaces clearer first-signal failure lines (less shell-wrapper noise).
 - Gate progress parsing failures now include the first actionable signal line for faster troubleshooting.
 - Timeout fallback should mention `git diff` when the edit summary times out.
+- Session-level lock guard now prevents concurrent CLI processes from writing to the same active session.
 - Soul prompt now explicitly favors one recommended next action over option menus unless alternatives are requested.
 - Internal CLI helpers now use Zod-backed argument validation in key scripts (`dogfood-gate`, `wait-backend`).
 - Expanded Zod arg-validation pattern to additional admin tooling (`om-admin`) for consistency.

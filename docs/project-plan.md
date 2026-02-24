@@ -24,6 +24,7 @@ Exit Criteria:
 - Small feature slices complete end-to-end without fallback.
 - Output stays concise and decision-useful.
 - Instruction contract stays lean: keep `AGENTS.md` high-signal and minimal; avoid adding verbose style rules that reduce execution success.
+- Role/mode routing remains automatic and internal by default; no user-facing routing customization unless a concrete workflow requires it.
 - Recovery paths (`interrupt`, `/new`, `/resume`) remain stable.
 - Setup/diagnostics are reliable (`start`/`dev` + `/status` with clear failure guidance).
 - Permission flow is explicit and frictionless (read default, write confirm, auto-continue prompt).
@@ -38,6 +39,7 @@ Exit Criteria:
 - 6-10 delegated real feature/fix slices completed end-to-end with verify green.
 - Delegated slices are the default path; manual fallback is used only for failed/retry cases.
 - No repeat failure class remains without either a root-cause fix or a tracked milestone item.
+- Thread/process safety prevents concurrent multi-CLI writes to the same session/thread.
 - Cost/latency and memory behavior remain acceptable.
 
 ### Milestone 4: Runtime Reliability Signals
@@ -47,9 +49,12 @@ Goal: users can always see meaningful progress and failure reasons during execut
 
 Exit Criteria:
 - Tool activity is visible even when progress polling misses events.
+- Tool lifecycle remains consistent (`tool_start` -> partial updates -> `tool_end`) so UI state does not desync.
 - Duplicate tool-progress rows are suppressed.
 - Empty-output failures return actionable guidance (quota/backend/model/provider).
 - Permission-blocked writes trigger picker-based recovery, not manual command detours.
+- Permission policies support category-level control (`read`, `edit`, `execute`) with session-scoped “always allow” grants.
+- User-facing diagnostics include per-turn model-call counts and token usage.
 - Critical operator actions stay explicit and command-first.
 
 ### Milestone 5: Memory Quality
@@ -83,6 +88,7 @@ Exit Criteria:
 - 5-10 external users complete real tasks and share structured feedback.
 - Top rough edges from early feedback are prioritized and addressed.
 - Core onboarding remains simple and repeatable.
+- Setup/distribution polish deferred earlier (global install UX, onboarding wizard polish, OAuth setup flow) is production-ready.
 
 ### Milestone 8: Public OSS Release
 Status: planned.
