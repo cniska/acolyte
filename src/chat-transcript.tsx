@@ -141,7 +141,9 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
                     <Text>
                       <Text>{sessionsListHeader.prefix}</Text>
                       <Text dimColor>{sessionsListHeader.count}</Text>
-                      {sessionsListHeader.rest.length > 0 ? <Text dimColor>{`\n${sessionsListHeader.rest}`}</Text> : null}
+                      {sessionsListHeader.rest.length > 0 ? (
+                        <Text dimColor>{`\n${sessionsListHeader.rest}`}</Text>
+                      ) : null}
                     </Text>
                   ) : row.role === "system" && (row.style === "statusOutput" || row.style === "tokenOutput") ? (
                     <Text>{renderStatusContent(row.content)}</Text>

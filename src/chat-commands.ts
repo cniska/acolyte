@@ -396,7 +396,10 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
   if (resolvedText === "/tokens") {
     pushUserCommandRow();
     const last = ctx.tokenUsage.length > 0 ? ctx.tokenUsage[ctx.tokenUsage.length - 1] : null;
-    ctx.setRows((current) => [...current, row("system", formatTokenUsageOutput(last, ctx.tokenUsage), false, "tokenOutput")]);
+    ctx.setRows((current) => [
+      ...current,
+      row("system", formatTokenUsageOutput(last, ctx.tokenUsage), false, "tokenOutput"),
+    ]);
     return { stop: true, userText: text, runVerifyAfterReply: false };
   }
 
