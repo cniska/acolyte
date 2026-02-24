@@ -81,7 +81,7 @@ Exit Criteria:
 - Failure categories are tracked, and repeated classes are closed with root-cause fixes.
 - Gate evidence remains green while real task execution stays stable.
 - MVP gate is only marked complete when this milestone is complete.
-  Current evidence (February 24, 2026): `dogfood:smoke` now requires two autonomous coding edits when provider is ready, and `bun run dogfood:gate` is green with recovery/diagnostics/concurrency/delegated checks.
+  Current evidence (February 24, 2026): `dogfood:smoke` now requires two autonomous coding edits when provider is ready, and `bun run dogfood:gate` is green with recovery/diagnostics/concurrency/delegated checks; `--strict-autonomy` raises delegated thresholds for MVP-closure tracking.
 
 ### Milestone 6: Memory Quality
 Status: planned.

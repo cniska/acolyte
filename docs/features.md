@@ -52,8 +52,8 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Optional skip verify flow: `/dogfood --no-verify <task>`.
 - Assistant output post-processing is intentionally minimal (safety/error shaping + empty-output fallback).
 - Automated dogfood smoke checks via `bun run dogfood:smoke`.
-- Dogfood smoke now includes a real e2e coding task (file edit) when provider is ready, with an explicit skip when provider credentials are not configured.
-- Internal telemetry: one-command dogfood readiness gate via `bun run dogfood:gate` (smoke + delivery-slice progress, optional verify).
+- Dogfood smoke now requires two real e2e coding edit tasks when provider is ready, with an explicit skip when provider credentials are not configured.
+- Internal telemetry: one-command dogfood readiness gate via `bun run dogfood:gate` (verify, smoke, recovery, diagnostics, concurrency, delivery progress).
 - Internal telemetry: gate delivery details now include scoped/scanned commit counts to make lookback diagnostics explicit.
 - Internal telemetry: dogfood progress supports machine-readable output (`bun run dogfood:progress --json`).
 - Dogfood lookback now scopes to the last N non-doc commits to reduce false negatives from docs-only streaks.
@@ -78,7 +78,8 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
   - selecting `switch` sets backend permission mode to `write` and pre-fills the original prompt
 - Clarification handling is picker-first: clarifying-question responses open pickers directly without generated follow-up transcript prompts.
 - `dogfood:progress` reports delegated success/failure proxy counts and success rate from recent non-doc commits.
-- `dogfood:gate` includes delegated ratio details in the delivery check line.
+- `dogfood:progress` reports delegated feature/fix slice counts.
+- `dogfood:gate` includes delegated ratio + delegated-slice threshold checks and supports `--strict-autonomy` mode for higher thresholds.
 - Local backend server with health check (`/healthz`) and chat endpoint (`/v1/chat`).
 - User-friendly backend connection errors with direct recovery hints (`bun run dev` or `bun run serve:env`).
 - Local-first configuration and optional API-key auth for backend access.
