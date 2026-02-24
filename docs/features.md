@@ -79,7 +79,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Clarification handling is picker-first: clarifying-question responses open pickers directly without generated follow-up transcript prompts.
 - `dogfood:progress` reports delegated success/failure proxy counts and success rate from recent non-doc commits.
 - `dogfood:progress` reports delegated feature/fix slice counts.
-- `dogfood:gate` includes delegated ratio + delegated-slice threshold checks and supports `--strict-autonomy` mode for higher thresholds.
+- `dogfood:gate` includes delegated ratio + delegated-slice threshold checks, a stability-window check, and supports `--strict-autonomy` mode for higher thresholds.
 - Local backend server with health check (`/healthz`) and chat endpoint (`/v1/chat`).
 - User-friendly backend connection errors with direct recovery hints (`bun run dev` or `bun run serve:env`).
 - Local-first configuration and optional API-key auth for backend access.

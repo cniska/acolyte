@@ -1,3 +1,6 @@
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { z } from "zod";
 
 type GateArgs = {
@@ -5,6 +8,7 @@ type GateArgs = {
   lookback: number;
   minSuccessRate: number;
   minDelegatedSlices: number;
+  minStableRuns: number;
   strictAutonomy: boolean;
   skipVerify: boolean;
   skipSmoke: boolean;
@@ -24,12 +28,17 @@ const DEFAULT_TARGET = 10;
 const DEFAULT_LOOKBACK = 30;
 const DEFAULT_MIN_SUCCESS_RATE = 70;
 const DEFAULT_MIN_DELEGATED_SLICES = 6;
+const DEFAULT_MIN_STABLE_RUNS = 1;
+const STRICT_AUTONOMY_MIN_STABLE_RUNS = 3;
+const GATE_HISTORY_LIMIT = 200;
+const GATE_HISTORY_FILE = "dogfood-gate-history.json";
 
 const gateArgsSchema = z.object({
   target: z.coerce.number().int().positive(),
   lookback: z.coerce.number().int().positive(),
   minSuccessRate: z.coerce.number().min(0).max(100),
   minDelegatedSlices: z.coerce.number().int().nonnegative(),
+  minStableRuns: z.coerce.number().int().positive(),
   strictAutonomy: z.boolean(),
   skipVerify: z.boolean(),
   skipSmoke: z.boolean(),
@@ -50,12 +59,27 @@ const deliveryProgressSchema = z.object({
   commitsScanned: z.number().finite().optional(),
 });
 
+type GateHistoryEntry = {
+  at: string;
+  ready: boolean;
+  strictAutonomy: boolean;
+};
+
+const gateHistorySchema = z.array(
+  z.object({
+    at: z.string().min(1),
+    ready: z.boolean(),
+    strictAutonomy: z.boolean(),
+  }),
+);
+
 function parseArgs(args: string[]): GateArgs {
   const raw: {
     target: number | string;
     lookback: number | string;
     minSuccessRate: number | string;
     minDelegatedSlices: number | string;
+    minStableRuns: number | string;
     strictAutonomy: boolean;
     skipVerify: boolean;
     skipSmoke: boolean;
@@ -68,6 +92,7 @@ function parseArgs(args: string[]): GateArgs {
     lookback: DEFAULT_LOOKBACK,
     minSuccessRate: DEFAULT_MIN_SUCCESS_RATE,
     minDelegatedSlices: DEFAULT_MIN_DELEGATED_SLICES,
+    minStableRuns: DEFAULT_MIN_STABLE_RUNS,
     strictAutonomy: false,
     skipVerify: false,
     skipSmoke: false,
@@ -111,6 +136,15 @@ function parseArgs(args: string[]): GateArgs {
         throw new Error("Invalid --min-delegated-slices value.");
       }
       raw.minDelegatedSlices = value;
+      i += 1;
+      continue;
+    }
+    if (token === "--min-stable-runs") {
+      const value = args[i + 1];
+      if (!value) {
+        throw new Error("Invalid --min-stable-runs value.");
+      }
+      raw.minStableRuns = value;
       i += 1;
       continue;
     }
@@ -162,6 +196,10 @@ function parseArgs(args: string[]): GateArgs {
     if (hasDelegatedSlicesError) {
       throw new Error("Invalid --min-delegated-slices value.");
     }
+    const hasStableRunsError = parsed.error.issues.some((issue) => issue.path[0] === "minStableRuns");
+    if (hasStableRunsError) {
+      throw new Error("Invalid --min-stable-runs value.");
+    }
     throw new Error("Invalid arguments.");
   }
   const parsedArgs = parsed.data;
@@ -172,7 +210,48 @@ function parseArgs(args: string[]): GateArgs {
     ...parsedArgs,
     minSuccessRate: Math.max(parsedArgs.minSuccessRate, 85),
     minDelegatedSlices: Math.max(parsedArgs.minDelegatedSlices, 10),
+    minStableRuns: Math.max(parsedArgs.minStableRuns, STRICT_AUTONOMY_MIN_STABLE_RUNS),
   };
+}
+
+function gateHistoryPath(): string {
+  return join(homedir(), ".acolyte", GATE_HISTORY_FILE);
+}
+
+async function readGateHistory(): Promise<GateHistoryEntry[]> {
+  try {
+    const raw = await readFile(gateHistoryPath(), "utf8");
+    const parsed = gateHistorySchema.safeParse(JSON.parse(raw));
+    return parsed.success ? parsed.data : [];
+  } catch {
+    return [];
+  }
+}
+
+async function writeGateHistory(entries: GateHistoryEntry[]): Promise<void> {
+  const path = gateHistoryPath();
+  await mkdir(join(homedir(), ".acolyte"), { recursive: true });
+  await writeFile(path, JSON.stringify(entries.slice(-GATE_HISTORY_LIMIT), null, 2), "utf8");
+}
+
+export function consecutiveReadyRuns(
+  history: GateHistoryEntry[],
+  strictAutonomy: boolean,
+  currentReady: boolean,
+): number {
+  if (!currentReady) {
+    return 0;
+  }
+  const modeHistory = history.filter((entry) => entry.strictAutonomy === strictAutonomy);
+  let streak = 1;
+  for (let i = modeHistory.length - 1; i >= 0; i -= 1) {
+    if (modeHistory[i]?.ready) {
+      streak += 1;
+      continue;
+    }
+    break;
+  }
+  return streak;
 }
 
 function run(cmd: string[]): { ok: boolean; stdout: string; stderr: string; code: number } {
@@ -309,6 +388,7 @@ function printUsage(): void {
   console.log(
     "Usage: bun run dogfood:gate [--lookback N] [--target N] [--min-success-rate N] [--skip-verify|--no-verify] [--skip-smoke|--no-smoke] [--skip-recovery|--no-recovery]",
     "       [--min-delegated-slices N]",
+    "       [--min-stable-runs N]",
     "       [--strict-autonomy]",
     "       [--skip-one-shot-diagnostics|--no-one-shot-diagnostics]",
     "       [--skip-session-diagnostics|--no-session-diagnostics]",
@@ -421,7 +501,20 @@ async function main(): Promise<void> {
         : "missing delegated slices signal",
     });
 
+    const readyWithoutStability = checks.every((check) => check.ok);
+    const history = await readGateHistory();
+    const stableRuns = consecutiveReadyRuns(history, args.strictAutonomy, readyWithoutStability);
+    checks.push({
+      name: "stability-window",
+      ok: stableRuns >= args.minStableRuns,
+      detail: `${stableRuns}/${args.minStableRuns} consecutive ready runs${args.strictAutonomy ? " (strict)" : ""}`,
+    });
+
     const summary = summarizeGate(checks);
+    await writeGateHistory([
+      ...history,
+      { at: new Date().toISOString(), ready: summary.ok, strictAutonomy: args.strictAutonomy },
+    ]);
     for (const line of summary.lines) {
       console.log(line);
     }
