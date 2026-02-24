@@ -8,6 +8,7 @@ type GateArgs = {
   skipSmoke: boolean;
   skipRecovery: boolean;
   skipOneShotDiagnostics: boolean;
+  skipSessionDiagnostics: boolean;
 };
 
 type GateCheck = {
@@ -28,6 +29,7 @@ const gateArgsSchema = z.object({
   skipSmoke: z.boolean(),
   skipRecovery: z.boolean(),
   skipOneShotDiagnostics: z.boolean(),
+  skipSessionDiagnostics: z.boolean(),
 });
 const deliveryProgressSchema = z.object({
   deliverySlices: z.number().finite(),
@@ -49,6 +51,7 @@ function parseArgs(args: string[]): GateArgs {
     skipSmoke: boolean;
     skipRecovery: boolean;
     skipOneShotDiagnostics: boolean;
+    skipSessionDiagnostics: boolean;
   } = {
     target: DEFAULT_TARGET,
     lookback: DEFAULT_LOOKBACK,
@@ -57,6 +60,7 @@ function parseArgs(args: string[]): GateArgs {
     skipSmoke: false,
     skipRecovery: false,
     skipOneShotDiagnostics: false,
+    skipSessionDiagnostics: false,
   };
   for (let i = 0; i < args.length; i += 1) {
     const token = args[i];
@@ -101,6 +105,10 @@ function parseArgs(args: string[]): GateArgs {
     }
     if (token === "--skip-one-shot-diagnostics" || token === "--no-one-shot-diagnostics") {
       raw.skipOneShotDiagnostics = true;
+      continue;
+    }
+    if (token === "--skip-session-diagnostics" || token === "--no-session-diagnostics") {
+      raw.skipSessionDiagnostics = true;
       continue;
     }
     throw new Error(`Unknown argument: ${token}`);
@@ -255,6 +263,7 @@ function printUsage(): void {
   console.log(
     "Usage: bun run dogfood:gate [--lookback N] [--target N] [--min-success-rate N] [--skip-verify|--no-verify] [--skip-smoke|--no-smoke] [--skip-recovery|--no-recovery]",
     "       [--skip-one-shot-diagnostics|--no-one-shot-diagnostics]",
+    "       [--skip-session-diagnostics|--no-session-diagnostics]",
   );
 }
 
@@ -307,6 +316,17 @@ async function main(): Promise<void> {
         detail: diagnostics.ok
           ? "green"
           : `exit ${diagnostics.code}${diagnosticsError ? ` (${diagnosticsError})` : ""}`,
+      });
+    }
+    if (!args.skipSessionDiagnostics) {
+      const sessionDiagnostics = run(["bun", "test", "src/chat-commands.test.ts"]);
+      const sessionDiagnosticsError = firstSignalLine(sessionDiagnostics.stderr, sessionDiagnostics.stdout);
+      checks.push({
+        name: "session-diagnostics",
+        ok: sessionDiagnostics.ok,
+        detail: sessionDiagnostics.ok
+          ? "green"
+          : `exit ${sessionDiagnostics.code}${sessionDiagnosticsError ? ` (${sessionDiagnosticsError})` : ""}`,
       });
     }
 

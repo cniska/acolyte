@@ -18,6 +18,7 @@ describe("dogfood gate", () => {
       skipSmoke: false,
       skipRecovery: false,
       skipOneShotDiagnostics: false,
+      skipSessionDiagnostics: false,
     });
   });
 
@@ -34,6 +35,7 @@ describe("dogfood gate", () => {
         "--skip-smoke",
         "--skip-recovery",
         "--skip-one-shot-diagnostics",
+        "--skip-session-diagnostics",
       ]),
     ).toEqual({
       target: 6,
@@ -43,6 +45,7 @@ describe("dogfood gate", () => {
       skipSmoke: true,
       skipRecovery: true,
       skipOneShotDiagnostics: true,
+      skipSessionDiagnostics: true,
     });
   });
 
@@ -57,6 +60,7 @@ describe("dogfood gate", () => {
         "--no-smoke",
         "--no-recovery",
         "--no-one-shot-diagnostics",
+        "--no-session-diagnostics",
       ]),
     ).toEqual({
       target: 6,
@@ -66,6 +70,7 @@ describe("dogfood gate", () => {
       skipSmoke: true,
       skipRecovery: true,
       skipOneShotDiagnostics: true,
+      skipSessionDiagnostics: true,
     });
   });
 
