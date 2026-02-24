@@ -28,15 +28,15 @@ Exit Criteria:
 - Setup/diagnostics are reliable (`start`/`dev` + `/status` with clear failure guidance).
 - Permission flow is explicit and frictionless (read default, write confirm, auto-continue prompt).
 
-### Milestone 3: Aggressive Switch Trial
+### Milestone 3: Delegated Switch Trial
 Status: planned.
-Description: Run the assistant as primary driver for a short continuous period.
-Goal: validate the assistant as primary for normal repo work.
+Description: Move from Codex-led work to gradual delegated slices where the assistant executes bounded tasks end-to-end.
+Goal: increase delegated slice success rate while keeping manual fallback fast and explicit.
 
 Exit Criteria:
-- 1-2 consecutive days of primary development with the assistant.
-- 6-10 real feature/fix slices completed end-to-end.
-- No blocker that requires routine Codex fallback.
+- 6-10 delegated real feature/fix slices completed end-to-end with verify green.
+- Delegated slices are the default path; manual fallback is used only for failed/retry cases.
+- No repeat failure class remains without either a root-cause fix or a tracked milestone item.
 - Cost/latency and memory behavior remain acceptable.
 
 ### Milestone 4: Runtime Reliability Signals

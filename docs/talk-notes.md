@@ -171,6 +171,8 @@ Living notes for talks about building this project. Update this file as mileston
 - Direct-edit retries now have timeout guards to prevent multi-minute stalls on required-tool retries.
 - Tool-call IDs are canonicalized to kebab-case (`edit-file`, `read-file`, etc.) to avoid runtime/provider naming mismatches (`editFile`).
 - Direct-edit prompts now include explicit target-path hints when present, improving edit execution on file-specific requests.
+- `scripts/with-backend.sh` now reuses an already-running healthy backend instead of always starting a second instance (avoids local `EADDRINUSE` stalls during dogfooding).
+- Required-tools retry is now limited to reviewer/direct-edit flows; normal coder prompts no longer force a second required-tools pass, reducing latency and no-output loops.
 
 ## Open Narrative Threads
 1. Continue dogfooding ramp from Codex-led to assistant-led development.
