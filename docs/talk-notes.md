@@ -180,6 +180,10 @@ Living notes for talks about building this project. Update this file as mileston
 - Cost optimization: non-review coder turns no longer run planner/coordinator preface calls, cutting extra model requests during development.
 - Role routing now prioritizes explicit edit intent over planning keywords, preventing `project-plan.md`-style false planner routing.
 - Direct-edit plan detection now catches numbered list variants (including `• 1.`), reducing plan-only replies when execution is expected.
+- Slash command output roles were aligned for clarity: `/tokens`, `/sessions`, and `/status` now render as system output.
+- `/tokens` now includes model-call diagnostics (`last` + `session`) alongside token usage.
+- Token usage is now persisted per session and restored on `/resume` (resets on `/new`).
+- Chat `/status` rendering now dims keys while keeping values normal for faster scanning.
 
 ## Open Narrative Threads
 1. Continue dogfooding ramp from Codex-led to assistant-led development.

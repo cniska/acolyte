@@ -55,6 +55,8 @@ Exit Criteria:
 - Permission-blocked writes trigger picker-based recovery, not manual command detours.
 - Permission policies support category-level control (`read`, `edit`, `execute`) with session-scoped “always allow” grants.
 - User-facing diagnostics include per-turn model-call counts and token usage.
+- Command diagnostics are consistently system-scoped and scan-friendly (`/status`, `/tokens`, `/sessions`).
+- Session diagnostics survive session switches (`/tokens` restored on `/resume`, reset on `/new`).
 - Critical operator actions stay explicit and command-first.
 
 ### Milestone 5: Memory Quality
