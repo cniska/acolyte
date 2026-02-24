@@ -161,6 +161,7 @@ Living notes for talks about building Acolyte. Update this file as milestones sh
 - Instruction quality beats brittle cleanup code: role/soul prompts are now the primary lever for concise, user-focused answers.
 - MVP focus tightened to reliability over polish: prioritize successful tool-backed execution and explicit failure signals over response post-processing.
 - Keep post-processing minimal and defensive only (empty-output fallbacks, safety/error clarity), not style-shaping.
+- Removed plan/conclusion summarizer post-processing in the agent loop; replies now pass through raw model text (trim-only + fallbacks).
 - Agent finalization now preserves raw model output (trim-only + empty-output fallback), removing most style-shaping rewrite logic.
 - Direct edit prompts now enforce an execution contract: no successful completion unless `edit-file` actually ran.
 - Write-confirm recovery now auto-replays the original prompt via an internal payload, avoiding a second manual submit after switching to write mode.
