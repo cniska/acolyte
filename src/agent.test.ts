@@ -237,6 +237,12 @@ describe("selectAgentRole", () => {
     expect(selectAgentRole("review @src/agent.ts")).toBe("reviewer");
   });
 
+  test("routes read-only file inspection prompts to reviewer", () => {
+    expect(selectAgentRole("What is in src/mastra-tools.ts?")).toBe("reviewer");
+    expect(selectAgentRole("summarize @src/chat-submit-handler.ts")).toBe("reviewer");
+    expect(selectAgentRole("explain docs/project-plan.md")).toBe("reviewer");
+  });
+
   test("routes what-next prompts to default coder role", () => {
     expect(selectAgentRole("what next")).toBe("coder");
     expect(selectAgentRole("whats next")).toBe("coder");

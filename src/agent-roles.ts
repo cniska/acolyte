@@ -27,6 +27,29 @@ function isCodingRequest(text: string): boolean {
   return hints.some((hint) => lower.includes(hint));
 }
 
+function isReadOnlyInspectionRequest(text: string): boolean {
+  const lower = text.toLowerCase();
+  const inspectionPhrases = [
+    "what is in",
+    "what's in",
+    "summarize",
+    "summarise",
+    "explain",
+    "describe",
+    "show me",
+    "list",
+  ];
+  const asksInspection = inspectionPhrases.some((phrase) => lower.includes(phrase));
+  if (!asksInspection) {
+    return false;
+  }
+  const hasPathLikeReference =
+    /@/.test(text) ||
+    /(?:^|\s)(?:[./~]?[\w-]+\/)+[\w.-]+/.test(text) ||
+    /(?:^|\s)[\w.-]+\.(ts|tsx|js|jsx|md|json|toml|yml|yaml)\b/i.test(text);
+  return hasPathLikeReference;
+}
+
 // Avoid misrouting planner requests from filenames like project-plan.md.
 function isDirectEditIntent(text: string): boolean {
   return /\b(add|change|update|remove|delete|edit|fix|insert|write)\b/i.test(text);
@@ -41,6 +64,9 @@ const DEFAULT_ROLE_SOUL: Record<AgentRole, string> = {
 
 export function selectAgentRole(text: string): AgentRole {
   if (isReviewRequest(text)) {
+    return "reviewer";
+  }
+  if (isReadOnlyInspectionRequest(text)) {
     return "reviewer";
   }
   if (isDirectEditIntent(text)) {
