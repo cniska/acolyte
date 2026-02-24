@@ -15,6 +15,7 @@ describe("dogfood gate", () => {
       lookback: 30,
       minSuccessRate: 70,
       minDelegatedSlices: 6,
+      strictAutonomy: false,
       skipVerify: false,
       skipSmoke: false,
       skipRecovery: false,
@@ -47,6 +48,7 @@ describe("dogfood gate", () => {
       lookback: 14,
       minSuccessRate: 85,
       minDelegatedSlices: 8,
+      strictAutonomy: false,
       skipVerify: true,
       skipSmoke: true,
       skipRecovery: true,
@@ -75,6 +77,7 @@ describe("dogfood gate", () => {
       lookback: 14,
       minSuccessRate: 70,
       minDelegatedSlices: 6,
+      strictAutonomy: false,
       skipVerify: true,
       skipSmoke: true,
       skipRecovery: true,
@@ -90,6 +93,35 @@ describe("dogfood gate", () => {
 
   test("parseArgs rejects invalid delegated-slices value", () => {
     expect(() => parseArgs(["--min-delegated-slices", "-1"])).toThrow("Invalid --min-delegated-slices value.");
+  });
+
+  test("parseArgs enforces stricter autonomy thresholds when enabled", () => {
+    expect(parseArgs(["--strict-autonomy"])).toEqual({
+      target: 10,
+      lookback: 30,
+      minSuccessRate: 85,
+      minDelegatedSlices: 10,
+      strictAutonomy: true,
+      skipVerify: false,
+      skipSmoke: false,
+      skipRecovery: false,
+      skipOneShotDiagnostics: false,
+      skipSessionDiagnostics: false,
+      skipConcurrencySafety: false,
+    });
+    expect(parseArgs(["--strict-autonomy", "--min-success-rate", "90", "--min-delegated-slices", "12"])).toEqual({
+      target: 10,
+      lookback: 30,
+      minSuccessRate: 90,
+      minDelegatedSlices: 12,
+      strictAutonomy: true,
+      skipVerify: false,
+      skipSmoke: false,
+      skipRecovery: false,
+      skipOneShotDiagnostics: false,
+      skipSessionDiagnostics: false,
+      skipConcurrencySafety: false,
+    });
   });
 
   test("parseDeliveryProgress reads progress json", () => {

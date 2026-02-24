@@ -5,6 +5,7 @@ type GateArgs = {
   lookback: number;
   minSuccessRate: number;
   minDelegatedSlices: number;
+  strictAutonomy: boolean;
   skipVerify: boolean;
   skipSmoke: boolean;
   skipRecovery: boolean;
@@ -29,6 +30,7 @@ const gateArgsSchema = z.object({
   lookback: z.coerce.number().int().positive(),
   minSuccessRate: z.coerce.number().min(0).max(100),
   minDelegatedSlices: z.coerce.number().int().nonnegative(),
+  strictAutonomy: z.boolean(),
   skipVerify: z.boolean(),
   skipSmoke: z.boolean(),
   skipRecovery: z.boolean(),
@@ -54,6 +56,7 @@ function parseArgs(args: string[]): GateArgs {
     lookback: number | string;
     minSuccessRate: number | string;
     minDelegatedSlices: number | string;
+    strictAutonomy: boolean;
     skipVerify: boolean;
     skipSmoke: boolean;
     skipRecovery: boolean;
@@ -65,6 +68,7 @@ function parseArgs(args: string[]): GateArgs {
     lookback: DEFAULT_LOOKBACK,
     minSuccessRate: DEFAULT_MIN_SUCCESS_RATE,
     minDelegatedSlices: DEFAULT_MIN_DELEGATED_SLICES,
+    strictAutonomy: false,
     skipVerify: false,
     skipSmoke: false,
     skipRecovery: false,
@@ -108,6 +112,10 @@ function parseArgs(args: string[]): GateArgs {
       }
       raw.minDelegatedSlices = value;
       i += 1;
+      continue;
+    }
+    if (token === "--strict-autonomy") {
+      raw.strictAutonomy = true;
       continue;
     }
     if (token === "--skip-verify" || token === "--no-verify") {
@@ -156,7 +164,15 @@ function parseArgs(args: string[]): GateArgs {
     }
     throw new Error("Invalid arguments.");
   }
-  return parsed.data;
+  const parsedArgs = parsed.data;
+  if (!parsedArgs.strictAutonomy) {
+    return parsedArgs;
+  }
+  return {
+    ...parsedArgs,
+    minSuccessRate: Math.max(parsedArgs.minSuccessRate, 85),
+    minDelegatedSlices: Math.max(parsedArgs.minDelegatedSlices, 10),
+  };
 }
 
 function run(cmd: string[]): { ok: boolean; stdout: string; stderr: string; code: number } {
@@ -293,6 +309,7 @@ function printUsage(): void {
   console.log(
     "Usage: bun run dogfood:gate [--lookback N] [--target N] [--min-success-rate N] [--skip-verify|--no-verify] [--skip-smoke|--no-smoke] [--skip-recovery|--no-recovery]",
     "       [--min-delegated-slices N]",
+    "       [--strict-autonomy]",
     "       [--skip-one-shot-diagnostics|--no-one-shot-diagnostics]",
     "       [--skip-session-diagnostics|--no-session-diagnostics]",
     "       [--skip-concurrency-safety|--no-concurrency-safety]",
