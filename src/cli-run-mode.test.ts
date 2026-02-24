@@ -136,7 +136,7 @@ describe("cli run mode", () => {
 
       const stdout = Buffer.from(result.stdout).toString("utf8");
       expect(result.exitCode).toBe(1);
-      expect(stdout).toContain("Remote backend reply timed out after 40ms");
+      expect(stdout).toContain("Backend request timed out. Retry or reduce request scope.");
     } finally {
       server.stop(true);
     }

@@ -716,6 +716,34 @@ export function oneShotResourceId(sessionId: string): string {
   return `run-${sessionId.replace(/^sess_/, "").slice(0, 24)}`;
 }
 
+export function formatPromptError(error: unknown): string {
+  if (!(error instanceof Error)) {
+    return "Request failed. Retry and check backend logs if it keeps failing.";
+  }
+  const message = error.message.trim();
+  const lower = message.toLowerCase();
+  if (lower.includes("insufficient_quota") || lower.includes("quota exceeded") || lower.includes("quota")) {
+    return "Provider quota exceeded. Add billing/credits or switch model/provider.";
+  }
+  if (lower.includes("timed out") || lower.includes("timeout")) {
+    return "Backend request timed out. Retry or reduce request scope.";
+  }
+  if (lower.includes("shell command execution is disabled in read mode")) {
+    return "Write action blocked in read mode. Run /permissions write and retry.";
+  }
+  if (
+    lower.includes("backend unavailable") ||
+    lower.includes("connection refused") ||
+    lower.includes("socket connection was closed unexpectedly")
+  ) {
+    return "Backend unavailable. Start the backend and retry.";
+  }
+  if (lower.includes("remote backend error")) {
+    return message;
+  }
+  return message || "Request failed. Retry and check backend logs if it keeps failing.";
+}
+
 async function handlePrompt(
   prompt: string,
   session: Session,
@@ -745,8 +773,7 @@ async function handlePrompt(
     session.updatedAt = nowIso();
     return true;
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    printError(message);
+    printError(formatPromptError(error));
     session.updatedAt = nowIso();
     return false;
   }
