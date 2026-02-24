@@ -130,4 +130,5 @@ Exit Criteria:
 
 ## MVP Gate
 - Status: not yet met.
+- Completed milestones retained: 1-4 are complete.
 - Remaining requirement: complete Milestone 5 (autonomous independent task execution with low fallback).
