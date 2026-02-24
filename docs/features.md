@@ -52,6 +52,7 @@ Canonical source of truth for implemented, in-progress, and planned capabilities
 - Optional skip verify flow: `/dogfood --no-verify <task>`.
 - Assistant output post-processing is intentionally minimal (safety/error shaping + empty-output fallback).
 - Automated dogfood smoke checks via `bun run dogfood:smoke`.
+- Dogfood smoke now includes a real e2e coding task (file edit) when provider is ready, with an explicit skip when provider credentials are not configured.
 - Internal telemetry: one-command dogfood readiness gate via `bun run dogfood:gate` (smoke + delivery-slice progress, optional verify).
 - Internal telemetry: gate delivery details now include scoped/scanned commit counts to make lookback diagnostics explicit.
 - Internal telemetry: dogfood progress supports machine-readable output (`bun run dogfood:progress --json`).

@@ -1,3 +1,7 @@
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 type SmokeCheck = {
   name: string;
   cmd: string[];
@@ -36,11 +40,15 @@ export const checks: SmokeCheck[] = [
   },
 ];
 
-export async function runCommand(cmd: string[], timeoutMs = COMMAND_TIMEOUT_MS): Promise<RunResult> {
+export async function runCommand(
+  cmd: string[],
+  timeoutMs = COMMAND_TIMEOUT_MS,
+  envOverride?: Record<string, string>,
+): Promise<RunResult> {
   const proc = Bun.spawn(cmd, {
     stdout: "pipe",
     stderr: "pipe",
-    env: { ...process.env, NO_COLOR: "1" },
+    env: { ...process.env, NO_COLOR: "1", ...envOverride },
   });
   const stdoutPromise = new Response(proc.stdout).text();
   const stderrPromise = new Response(proc.stderr).text();
@@ -104,32 +112,121 @@ export function assertCheckOutput(check: SmokeCheck, output: string): string | n
   return null;
 }
 
+export function isProviderReadyFromStatusOutput(output: string): boolean {
+  if (/provider_ready:[\s\S]*?status:\s*false/i.test(output)) {
+    return false;
+  }
+  return true;
+}
+
+async function prepareSmokeEnv(): Promise<Record<string, string>> {
+  const homeDir = await mkdtemp(join(tmpdir(), "acolyte-smoke-home-"));
+  await mkdir(join(homeDir, ".acolyte"), { recursive: true });
+  return { HOME: homeDir };
+}
+
+async function configureSmokeCli(smokeEnv: Record<string, string>): Promise<void> {
+  const setApiUrl = await runCommand(
+    ["bun", "run", "src/cli.ts", "config", "set", "apiUrl", "http://localhost:6767"],
+    15_000,
+    smokeEnv,
+  );
+  if (setApiUrl.exitCode !== 0) {
+    throw new Error(`Failed to set apiUrl for smoke env: ${setApiUrl.stderr || setApiUrl.stdout}`);
+  }
+  const setPermissions = await runCommand(
+    ["bun", "run", "src/cli.ts", "config", "set", "permissionMode", "write"],
+    15_000,
+    smokeEnv,
+  );
+  if (setPermissions.exitCode !== 0) {
+    throw new Error(`Failed to set permissionMode for smoke env: ${setPermissions.stderr || setPermissions.stdout}`);
+  }
+}
+
+async function runCodingTaskSmoke(smokeEnv: Record<string, string>): Promise<{ ok: boolean; detail: string }> {
+  const filePath = join(tmpdir(), `acolyte-dogfood-coding-${crypto.randomUUID()}.txt`);
+  await writeFile(filePath, "alpha\n", "utf8");
+  try {
+    const prompt = `Edit ${filePath}: replace alpha with beta. Apply the edit directly, no explanation.`;
+    const result = await runCommand(
+      ["bun", "run", "src/cli.ts", "dogfood", "--no-verify", prompt],
+      COMMAND_TIMEOUT_MS,
+      smokeEnv,
+    );
+    if (result.exitCode !== 0) {
+      return { ok: false, detail: `command failed (exit ${result.exitCode})` };
+    }
+    const content = await readFile(filePath, "utf8");
+    if (content.includes("beta") && !content.includes("alpha")) {
+      return { ok: true, detail: "file edited" };
+    }
+    return { ok: false, detail: "file was not edited as expected" };
+  } finally {
+    await rm(filePath, { force: true });
+  }
+}
+
 export async function main(): Promise<void> {
   console.log("Running dogfood smoke checks...");
-  for (const check of checks) {
-    const result = await runCommand(check.cmd);
-    const output = stripAnsi(`${result.stdout}\n${result.stderr}`);
-    if (result.exitCode !== 0 && !check.allowFailure) {
-      console.error(`✗ ${check.name}: command failed (exit ${result.exitCode})`);
-      if (check.name === "status" && /unable to connect/i.test(output)) {
-        console.error(
-          "Hint: start backend first (`bun run serve:env`) and ensure apiUrl is set to http://localhost:6767.",
-        );
-        console.error("Or run `bun run dogfood:smoke` to auto-start a local backend for the smoke check.");
-      }
-      console.error(output.trim());
+  const smokeEnv = await prepareSmokeEnv();
+  try {
+    try {
+      await configureSmokeCli(smokeEnv);
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : "Failed to configure smoke environment");
       process.exit(1);
+      return;
     }
-    const assertionError = assertCheckOutput(check, output);
-    if (assertionError) {
-      console.error(`✗ ${check.name}: ${assertionError}`);
-      console.error(output.trim());
-      process.exit(1);
-    }
-    console.log(`✓ ${check.name}`);
-  }
 
-  console.log("Dogfood smoke checks passed.");
+    let statusOutput = "";
+    for (const check of checks) {
+      const result = await runCommand(check.cmd, COMMAND_TIMEOUT_MS, smokeEnv);
+      const output = stripAnsi(`${result.stdout}\n${result.stderr}`);
+      if (check.name === "status") {
+        statusOutput = output;
+      }
+      if (result.exitCode !== 0 && !check.allowFailure) {
+        console.error(`✗ ${check.name}: command failed (exit ${result.exitCode})`);
+        if (check.name === "status" && /unable to connect/i.test(output)) {
+          console.error(
+            "Hint: start backend first (`bun run serve:env`) and ensure apiUrl is set to http://localhost:6767.",
+          );
+          console.error("Or run `bun run dogfood:smoke` to auto-start a local backend for the smoke check.");
+        }
+        console.error(output.trim());
+        process.exit(1);
+        return;
+      }
+      const assertionError = assertCheckOutput(check, output);
+      if (assertionError) {
+        console.error(`✗ ${check.name}: ${assertionError}`);
+        console.error(output.trim());
+        process.exit(1);
+        return;
+      }
+      console.log(`✓ ${check.name}`);
+    }
+
+    if (isProviderReadyFromStatusOutput(statusOutput)) {
+      const codingTask = await runCodingTaskSmoke(smokeEnv);
+      if (!codingTask.ok) {
+        console.error(`✗ dogfood coding task: ${codingTask.detail}`);
+        process.exit(1);
+        return;
+      }
+      console.log("✓ dogfood coding task");
+    } else {
+      console.log("○ dogfood coding task skipped (provider not ready)");
+    }
+
+    console.log("Dogfood smoke checks passed.");
+  } finally {
+    const smokeHome = smokeEnv.HOME;
+    if (smokeHome) {
+      await rm(smokeHome, { recursive: true, force: true });
+    }
+  }
 }
 
 if (import.meta.main) {

@@ -29,6 +29,7 @@ Exit Criteria:
 - Recovery paths (`interrupt`, `/new`, `/resume`) remain stable.
 - Setup/diagnostics are reliable (`start`/`dev` + `/status` with clear failure guidance).
 - Permission flow is explicit and frictionless (read default, write confirm, auto-continue prompt).
+- Dogfood smoke validates one real coding edit task end-to-end when provider credentials are ready.
 - Track delegated slice success/failure ratio weekly.
 
 ### Milestone 3: Delegated Switch Trial
