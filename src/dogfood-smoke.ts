@@ -254,6 +254,47 @@ async function runCodingTaskSmoke(
   }
 }
 
+async function runMultiFileCodingTaskSmoke(
+  smokeEnv: Record<string, string>,
+  task: {
+    id: string;
+    files: Array<{ name: string; initial: string }>;
+    prompt: (paths: string[]) => string;
+    validate: (contents: Record<string, string>) => boolean;
+  },
+): Promise<{ ok: boolean; detail: string }> {
+  const dirPath = await mkdtemp(join(tmpdir(), `acolyte-dogfood-coding-${task.id}-`));
+  const filePaths = task.files.map((file) => join(dirPath, file.name));
+  try {
+    for (let i = 0; i < task.files.length; i += 1) {
+      await writeFile(filePaths[i], task.files[i].initial, "utf8");
+    }
+    const prompt = task.prompt(filePaths);
+    const result = await runCommand(
+      ["bun", "run", "src/cli.ts", "dogfood", "--no-verify", prompt],
+      COMMAND_TIMEOUT_MS,
+      smokeEnv,
+    );
+    if (result.exitCode !== 0) {
+      return { ok: false, detail: `command failed (exit ${result.exitCode})` };
+    }
+    const output = stripAnsi(`${result.stdout}\n${result.stderr}`);
+    if (hasFallbackEditSignal(output)) {
+      return { ok: false, detail: "fallback edit path used" };
+    }
+    const contents: Record<string, string> = {};
+    for (const filePath of filePaths) {
+      contents[filePath] = await readFile(filePath, "utf8");
+    }
+    if (task.validate(contents)) {
+      return { ok: true, detail: "files edited" };
+    }
+    return { ok: false, detail: "files were not edited as expected" };
+  } finally {
+    await rm(dirPath, { recursive: true, force: true });
+  }
+}
+
 export async function main(): Promise<void> {
   const argv = process.argv.slice(2);
   if (argv.includes("--help") || argv.includes("-h")) {
@@ -359,6 +400,39 @@ export async function main(): Promise<void> {
         }
         console.log(`✓ ${task.label}`);
       }
+      const multiFileTask = await runMultiFileCodingTaskSmoke(smokeEnv, {
+        id: "multifile",
+        files: [
+          {
+            name: "math.txt",
+            initial: ["sum(a,b)=a+b", ""].join("\n"),
+          },
+          {
+            name: "usage.md",
+            initial: ["# Usage", "", "sum(2,3)=5", ""].join("\n"),
+          },
+        ],
+        prompt: ([mathPath, usagePath]) =>
+          [
+            `Edit both files: ${mathPath} and ${usagePath}.`,
+            'In "math.txt", add a new line: "multiply(a,b)=a*b".',
+            'In "usage.md", append a line under usage examples: "multiply(2,3)=6".',
+            "Apply the edits directly, no explanation.",
+          ].join("\n"),
+        validate: (contents) => {
+          const values = Object.values(contents);
+          return (
+            values.some((content) => content.includes("multiply(a,b)=a*b")) &&
+            values.some((content) => content.includes("multiply(2,3)=6"))
+          );
+        },
+      });
+      if (!multiFileTask.ok) {
+        console.error(`✗ dogfood coding task multifile: ${multiFileTask.detail}`);
+        process.exit(1);
+        return;
+      }
+      console.log("✓ dogfood coding task multifile");
     } else {
       if (args.requireProviderReady) {
         console.error("✗ provider-ready: strict autonomy smoke requires configured provider credentials");
