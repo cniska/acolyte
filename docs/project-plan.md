@@ -16,7 +16,7 @@ Exit Criteria:
 - No regressions in `/status`, `/permissions`, and `/dogfood`.
 
 ### Milestone 2: Dogfooding Readiness
-Status: in progress.
+Status: completed on February 24, 2026.
 Description: Make the assistant dependable for daily small/medium development slices in this repo.
 Goal: reliable day-to-day dogfooding without routine Codex fallback.
 
@@ -32,6 +32,7 @@ Exit Criteria:
 - Permission flow is explicit and frictionless (read default, write confirm, auto-continue prompt).
 - Dogfood smoke validates one real coding edit task end-to-end when provider credentials are ready.
 - Track delegated slice success/failure ratio weekly.
+  Evidence (February 24, 2026): `bun run dogfood:gate` passed with verify/smoke/recovery green, delivery `23/10`, delegated success rate `96%` over last 30 non-doc commits.
 
 ### Milestone 3: Delegated Switch Trial
 Status: planned.
