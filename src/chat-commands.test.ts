@@ -242,7 +242,7 @@ describe("chat-commands", () => {
     });
     const { rows, stop, openedPolicy } = await runCommand("/distill --sessions 10 --min 2", [], store);
     expect(stop).toBe(true);
-    expect(rows.some((row) => row.content.includes("Proposed policy updates"))).toBe(true);
+    expect(rows.some((row) => row.role === "system" && row.content.includes("Proposed policy updates"))).toBe(true);
     expect(rows.some((row) => row.content.includes("keep output concise"))).toBe(true);
     expect(openedPolicy).toBe(1);
   });
@@ -565,7 +565,9 @@ describe("chat-commands", () => {
       });
       expect(readResult.stop).toBe(true);
       expect(appConfig.agent.permissions.mode).toBe("read");
-      expect(readResult.rows.some((row) => row.content === "Changed permissions to read (project).")).toBe(true);
+      expect(
+        readResult.rows.some((row) => row.role === "system" && row.content === "Changed permissions to read (project)."),
+      ).toBe(true);
       expect(writes).toContainEqual({ mode: "read", scope: "project" });
 
       const writeResult = await runCommand("/permissions write --user", [], createStore(), {
@@ -575,7 +577,9 @@ describe("chat-commands", () => {
       });
       expect(writeResult.stop).toBe(true);
       expect(appConfig.agent.permissions.mode).toBe("write");
-      expect(writeResult.rows.some((row) => row.content === "Changed permissions to write (user).")).toBe(true);
+      expect(
+        writeResult.rows.some((row) => row.role === "system" && row.content === "Changed permissions to write (user)."),
+      ).toBe(true);
       expect(writes).toContainEqual({ mode: "write", scope: "user" });
     } finally {
       setPermissionMode(prev);
