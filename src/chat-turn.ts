@@ -3,7 +3,6 @@ import type { Backend } from "./backend";
 import type { ChatRow, TokenUsageEntry } from "./chat-commands";
 import { extractAtReferencePaths } from "./chat-file-ref";
 import { formatThoughtDuration, formatVerifySummary } from "./chat-formatters";
-import { createProgressTracker } from "./chat-progress";
 import { runShellCommand } from "./coding-tools";
 import { buildFileContext } from "./file-context";
 import type { Message, Session } from "./types";
@@ -16,7 +15,7 @@ function row(
   meta?: {
     toolCallId?: string;
     toolName?: string;
-    toolPhase?: "start" | "result" | "error" | "chunk_start" | "chunk_delta" | "chunk_end";
+    toolPhase?: "tool_start" | "tool_chunk" | "tool_end";
   },
 ): ChatRow {
   return { id: `row_${crypto.randomUUID()}`, role, content, dim, style, ...meta };
@@ -128,45 +127,6 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
 
   const assistantMessage = params.createMessage("assistant", reply.output);
   const rows: ChatRow[] = [];
-  if (Array.isArray(reply.progressEvents) && reply.progressEvents.length > 0) {
-    const tracker = createProgressTracker({
-      onStatus: () => {},
-      onTool: (entry) => {
-        rows.push(
-          row("assistant", entry.message, false, "toolProgress", {
-            toolCallId: entry.toolCallId,
-            toolName: entry.toolName,
-            toolPhase: entry.phase,
-          }),
-        );
-      },
-      dedupeToolMessages: false,
-    });
-    tracker.apply(
-      reply.progressEvents.map((entry, index) => ({
-        seq: index + 1,
-        message: entry.message,
-        kind: entry.kind,
-        toolCallId: entry.toolCallId,
-        toolName: entry.toolName,
-        phase: entry.phase,
-      })),
-    );
-  } else if (Array.isArray(reply.progressMessages) && reply.progressMessages.length > 0) {
-    const tracker = createProgressTracker({
-      onStatus: () => {},
-      onTool: (entry) => {
-        rows.push(row("assistant", entry.message, false, "toolProgress"));
-      },
-      dedupeToolMessages: false,
-    });
-    tracker.apply(
-      reply.progressMessages.map((message, index) => ({
-        seq: index + 1,
-        message,
-      })),
-    );
-  }
   rows.push(row("assistant", reply.output));
   const tokenEntry: TokenUsageEntry = {
     id: assistantMessage.id,

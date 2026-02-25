@@ -30,7 +30,7 @@ export function createProgressTracker(options: {
     message: string;
     toolCallId?: string;
     toolName?: string;
-    phase?: "start" | "result" | "error" | "chunk_start" | "chunk_delta" | "chunk_end";
+    phase?: "tool_start" | "tool_chunk" | "tool_end";
   }) => void;
   dedupeToolMessages?: boolean;
 }): {
@@ -54,7 +54,7 @@ export function createProgressTracker(options: {
       dedupeKey: string;
       toolCallId?: string;
       toolName?: string;
-      phase?: "start" | "result" | "error" | "chunk_start" | "chunk_delta" | "chunk_end";
+      phase?: "tool_start" | "tool_chunk" | "tool_end";
     }> = [];
     for (const event of events) {
       const message = event.message.trim();
@@ -82,7 +82,7 @@ export function createProgressTracker(options: {
       dedupeKey: string;
       toolCallId?: string;
       toolName?: string;
-      phase?: "start" | "result" | "error" | "chunk_start" | "chunk_delta" | "chunk_end";
+      phase?: "tool_start" | "tool_chunk" | "tool_end";
     }> = [];
     const groupedIndexByToolCallId = new Map<string, number>();
     for (const entry of rawToolMessages) {
@@ -172,6 +172,17 @@ export function createProgressTracker(options: {
         continue;
       }
       if (isToolHeaderLine(entry.message)) {
+        const previous = grouped[grouped.length - 1];
+        if (previous) {
+          const previousContent = previous.message.trim();
+          const incomingContent = entry.message.trim();
+          if (
+            previousContent.toLowerCase() === incomingContent.toLowerCase() ||
+            previousContent.toLowerCase().startsWith(`${incomingContent.toLowerCase()}\n`)
+          ) {
+            continue;
+          }
+        }
         grouped.push({
           message: entry.message,
           dedupeKey: entry.dedupeKey,
@@ -198,7 +209,9 @@ export function createProgressTracker(options: {
     }
     for (const entry of grouped) {
       const message = entry.message;
-      const eventDedupeKey = `${entry.dedupeKey}|${message.toLowerCase()}`;
+      const eventDedupeKey = entry.toolCallId
+        ? `${entry.toolCallId}|${message.toLowerCase()}`
+        : `${entry.dedupeKey}|${message.toLowerCase()}`;
       if (dedupe) {
         if (seenToolMessages.has(eventDedupeKey)) {
           continue;

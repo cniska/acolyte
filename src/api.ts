@@ -22,13 +22,5 @@ export interface ChatResponse {
   usage?: TokenUsage;
   budgetWarning?: string;
   toolCalls?: string[];
-  progressMessages?: string[];
-  progressEvents?: Array<{
-    message: string;
-    kind?: "status" | "tool" | "error";
-    toolCallId?: string;
-    toolName?: string;
-    phase?: "start" | "result" | "error" | "chunk_start" | "chunk_delta" | "chunk_end";
-  }>;
   modelCalls?: number;
 }

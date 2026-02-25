@@ -30,12 +30,31 @@ describe("chat progress tracker", () => {
     });
 
     tracker.apply([
-      { seq: 1, message: "Edited sum.rs", kind: "tool", toolCallId: "call_1", phase: "start" },
-      { seq: 2, message: "1 + fn main() {}", kind: "tool", toolCallId: "call_1", phase: "result" },
+      { seq: 1, message: "Edited sum.rs", kind: "tool", toolCallId: "call_1", phase: "tool_start" },
+      { seq: 2, message: "1 + fn main() {}", kind: "tool", toolCallId: "call_1", phase: "tool_end" },
     ]);
     tracker.apply([
-      { seq: 3, message: "Edited sum.rs", kind: "tool", toolCallId: "call_1", phase: "start" },
-      { seq: 4, message: "1 + fn main() {}", kind: "tool", toolCallId: "call_1", phase: "result" },
+      { seq: 3, message: "Edited sum.rs", kind: "tool", toolCallId: "call_1", phase: "tool_start" },
+      { seq: 4, message: "1 + fn main() {}", kind: "tool", toolCallId: "call_1", phase: "tool_end" },
+    ]);
+
+    expect(toolMessages).toEqual(["Edited sum.rs\n1 + fn main() {}"]);
+  });
+
+  test("does not emit duplicate grouped rows when only phase changes", () => {
+    const toolMessages: string[] = [];
+    const tracker = createProgressTracker({
+      onStatus: () => {},
+      onTool: (entry) => {
+        toolMessages.push(entry.message);
+      },
+    });
+
+    tracker.apply([
+      { seq: 1, message: "Edited sum.rs", kind: "tool", toolCallId: "call_1", phase: "tool_start" },
+      { seq: 2, message: "1 + fn main() {}", kind: "tool", toolCallId: "call_1", phase: "tool_chunk" },
+      { seq: 3, message: "Edited sum.rs", kind: "tool", toolCallId: "call_1", phase: "tool_end" },
+      { seq: 4, message: "Edited sum.rs", kind: "tool", toolCallId: "call_1", phase: "tool_end" },
     ]);
 
     expect(toolMessages).toEqual(["Edited sum.rs\n1 + fn main() {}"]);
@@ -50,8 +69,8 @@ describe("chat progress tracker", () => {
       },
     });
 
-    tracker.apply([{ seq: 1, message: "Edited sum.rs", kind: "tool", toolCallId: "call_1", phase: "start" }]);
-    tracker.apply([{ seq: 2, message: "Edited sum.rs", kind: "tool", toolCallId: "call_2", phase: "start" }]);
+    tracker.apply([{ seq: 1, message: "Edited sum.rs", kind: "tool", toolCallId: "call_1", phase: "tool_start" }]);
+    tracker.apply([{ seq: 2, message: "Edited sum.rs", kind: "tool", toolCallId: "call_2", phase: "tool_start" }]);
 
     expect(toolMessages).toEqual(["Edited sum.rs", "Edited sum.rs"]);
   });
@@ -60,7 +79,7 @@ describe("chat progress tracker", () => {
     const received: Array<{
       message: string;
       toolCallId?: string;
-      phase?: "start" | "result" | "error" | "chunk_start" | "chunk_delta" | "chunk_end";
+      phase?: "tool_start" | "tool_chunk" | "tool_end";
     }> = [];
     const tracker = createProgressTracker({
       onStatus: () => {},
@@ -69,16 +88,16 @@ describe("chat progress tracker", () => {
       },
     });
 
-    tracker.apply([{ seq: 1, message: "Edited sum.rs", kind: "tool", toolCallId: "call_1", phase: "start" }]);
+    tracker.apply([{ seq: 1, message: "Edited sum.rs", kind: "tool", toolCallId: "call_1", phase: "tool_start" }]);
 
-    expect(received).toEqual([{ message: "Edited sum.rs", toolCallId: "call_1", phase: "start" }]);
+    expect(received).toEqual([{ message: "Edited sum.rs", toolCallId: "call_1", phase: "tool_start" }]);
   });
 
   test("supports chunk phases and keeps latest phase in grouped emission", () => {
     const received: Array<{
       message: string;
       toolCallId?: string;
-      phase?: "start" | "result" | "error" | "chunk_start" | "chunk_delta" | "chunk_end";
+      phase?: "tool_start" | "tool_chunk" | "tool_end";
     }> = [];
     const tracker = createProgressTracker({
       onStatus: () => {},
@@ -89,17 +108,16 @@ describe("chat progress tracker", () => {
     });
 
     tracker.apply([
-      { seq: 1, message: "Edited sum.rs", kind: "tool", toolCallId: "call_1", phase: "start" },
-      { seq: 2, message: "Edited sum.rs", kind: "tool", toolCallId: "call_1", phase: "chunk_start" },
-      { seq: 3, message: "1 + fn draft() {}", kind: "tool", toolCallId: "call_1", phase: "chunk_delta" },
-      { seq: 4, message: "Edited sum.rs", kind: "tool", toolCallId: "call_1", phase: "chunk_end" },
+      { seq: 1, message: "Edited sum.rs", kind: "tool", toolCallId: "call_1", phase: "tool_start" },
+      { seq: 2, message: "1 + fn draft() {}", kind: "tool", toolCallId: "call_1", phase: "tool_chunk" },
+      { seq: 3, message: "Edited sum.rs", kind: "tool", toolCallId: "call_1", phase: "tool_end" },
     ]);
 
     expect(received).toEqual([
       {
         message: "Edited sum.rs\n1 + fn draft() {}",
         toolCallId: "call_1",
-        phase: "chunk_end",
+        phase: "tool_end",
       },
     ]);
   });
@@ -115,10 +133,10 @@ describe("chat progress tracker", () => {
     });
 
     tracker.apply([
-      { seq: 1, message: "Edited sum.rs", kind: "tool", toolCallId: "call_1", phase: "start" },
-      { seq: 2, message: "Edited sum.rs", kind: "tool", toolCallId: "call_2", phase: "start" },
-      { seq: 3, message: "1 + fn one() {}", kind: "tool", toolCallId: "call_1", phase: "result" },
-      { seq: 4, message: "1 + fn two() {}", kind: "tool", toolCallId: "call_2", phase: "result" },
+      { seq: 1, message: "Edited sum.rs", kind: "tool", toolCallId: "call_1", phase: "tool_start" },
+      { seq: 2, message: "Edited sum.rs", kind: "tool", toolCallId: "call_2", phase: "tool_start" },
+      { seq: 3, message: "1 + fn one() {}", kind: "tool", toolCallId: "call_1", phase: "tool_end" },
+      { seq: 4, message: "1 + fn two() {}", kind: "tool", toolCallId: "call_2", phase: "tool_end" },
     ]);
 
     expect(toolMessages).toEqual([
@@ -138,9 +156,9 @@ describe("chat progress tracker", () => {
     });
 
     tracker.apply([
-      { seq: 1, message: "Edited sum.rs", kind: "tool", toolCallId: "call_1", phase: "start" },
-      { seq: 2, message: "1 + fn main() {}", kind: "tool", toolCallId: "call_1", phase: "result" },
-      { seq: 3, message: "1 + fn main() {}", kind: "tool", toolCallId: "call_1", phase: "result" },
+      { seq: 1, message: "Edited sum.rs", kind: "tool", toolCallId: "call_1", phase: "tool_start" },
+      { seq: 2, message: "1 + fn main() {}", kind: "tool", toolCallId: "call_1", phase: "tool_end" },
+      { seq: 3, message: "1 + fn main() {}", kind: "tool", toolCallId: "call_1", phase: "tool_end" },
     ]);
 
     expect(toolMessages).toEqual(["Edited sum.rs\n1 + fn main() {}"]);
@@ -156,9 +174,28 @@ describe("chat progress tracker", () => {
       dedupeToolMessages: false,
     });
 
-    tracker.apply([{ seq: 1, message: "Edited sum.rs", kind: "tool", toolCallId: "call_1", phase: "start" }]);
-    tracker.apply([{ seq: 2, message: "1 + fn one() {}", kind: "tool", toolCallId: "call_1", phase: "result" }]);
+    tracker.apply([{ seq: 1, message: "Edited sum.rs", kind: "tool", toolCallId: "call_1", phase: "tool_start" }]);
+    tracker.apply([{ seq: 2, message: "1 + fn one() {}", kind: "tool", toolCallId: "call_1", phase: "tool_end" }]);
 
     expect(toolMessages).toEqual(["Edited sum.rs", "Edited sum.rs\n1 + fn one() {}"]);
+  });
+
+  test("suppresses duplicate trailing header when previous row already has details", () => {
+    const toolMessages: string[] = [];
+    const tracker = createProgressTracker({
+      onStatus: () => {},
+      onTool: (entry) => {
+        toolMessages.push(entry.message);
+      },
+      dedupeToolMessages: false,
+    });
+
+    tracker.apply([
+      { seq: 1, message: "Edited sum.rs", kind: "tool" },
+      { seq: 2, message: "1 + fn main() {}", kind: "tool" },
+      { seq: 3, message: "Edited sum.rs", kind: "tool" },
+    ]);
+
+    expect(toolMessages).toEqual(["Edited sum.rs\n1 + fn main() {}"]);
   });
 });

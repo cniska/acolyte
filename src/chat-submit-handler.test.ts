@@ -96,19 +96,41 @@ describe("chat submit handler guards", () => {
 
   test("keeps create-edit-delete tool output visible across submits", async () => {
     const replies = [
-      { model: "gpt-5-mini", output: "Created sum.rs.", progressMessages: ["Edited sum.rs"] },
+      { model: "gpt-5-mini", output: "Created sum.rs." },
       {
         model: "gpt-5-mini",
         output: "Updated sum.rs for three args.",
-        progressMessages: ["Edited sum.rs", "2 - let sum = a + b;", "2 + let sum = a + b + c;"],
       },
-      { model: "gpt-5-mini", output: "Removed sum.rs.", progressMessages: ["Deleted sum.rs"] },
+      { model: "gpt-5-mini", output: "Removed sum.rs." },
     ];
+    const progressByTurn = [
+      [{ seq: 1, message: "Edited sum.rs" }],
+      [
+        { seq: 1, message: "Edited sum.rs" },
+        { seq: 2, message: "2 - let sum = a + b;" },
+        { seq: 3, message: "2 + let sum = a + b + c;" },
+      ],
+      [{ seq: 1, message: "Deleted sum.rs" }],
+    ];
+    let replyCount = 0;
+    const servedTurns = new Set<number>();
     const { submit, rows } = createSubmitHandlerHarness({
       backend: createBackend({
         status: async () => "ok",
-        progress: async () => null,
-        reply: async () => replies.shift() ?? { model: "gpt-5-mini", output: "done" },
+        reply: async () => replies[replyCount++] ?? { model: "gpt-5-mini", output: "done" },
+        progress: async (_sessionId, afterSeq) => {
+          const turn = Math.max(0, replyCount - 1);
+          if (afterSeq === 0 && !servedTurns.has(turn)) {
+            servedTurns.add(turn);
+            return {
+              sessionId: "sess_test",
+              requestId: `req_${turn + 1}`,
+              done: false,
+              events: progressByTurn[turn] ?? [],
+            };
+          }
+          return { sessionId: "sess_test", requestId: `req_${turn + 1}`, done: true, events: [] };
+        },
       }),
     });
 
@@ -614,7 +636,7 @@ describe("chat submit handler guards", () => {
               ],
             };
           }
-          return { sessionId: "sess_test", requestId: "req_1", done: false, events: [] };
+          return { sessionId: "sess_test", requestId: "req_1", done: true, events: [] };
         },
         status: async () => "ok",
       }),
@@ -674,7 +696,7 @@ describe("chat submit handler guards", () => {
           output: "done",
           toolCalls: ["run-command"],
         }),
-        progress: async () => ({ sessionId: "sess_test", requestId: "req_1", done: false, events: [] }),
+        progress: async () => ({ sessionId: "sess_test", requestId: "req_1", done: true, events: [] }),
         status: async () => "ok",
       }),
       store,
@@ -1023,7 +1045,7 @@ describe("chat submit handler guards", () => {
               events: [{ seq: 1, message: "Run" }],
             };
           }
-          return { sessionId: "sess_test", requestId: "req_1", done: false, events: [] };
+          return { sessionId: "sess_test", requestId: "req_1", done: true, events: [] };
         },
       }),
     });
@@ -1044,7 +1066,6 @@ describe("chat submit handler guards", () => {
         reply: async () => ({
           model: "gpt-5-mini",
           output: "done",
-          progressMessages: ["Edited sum.rs\n1 + fn main() {}"],
         }),
         progress: async () => {
           progressCalls += 1;
@@ -1056,7 +1077,7 @@ describe("chat submit handler guards", () => {
               events: [{ seq: 1, message: "Edited sum.rs" }],
             };
           }
-          return { sessionId: "sess_test", requestId: "req_1", done: false, events: [] };
+          return { sessionId: "sess_test", requestId: "req_1", done: true, events: [] };
         },
       }),
     });
@@ -1067,7 +1088,7 @@ describe("chat submit handler guards", () => {
       (row) => row.role === "assistant" && row.style === "toolProgress" && row.content.startsWith("Edited sum.rs"),
     );
     expect(editedRows).toHaveLength(1);
-    expect(editedRows[0]?.content).toBe("Edited sum.rs\n1 + fn main() {}");
+    expect(editedRows[0]?.content).toBe("Edited sum.rs");
   });
 
   test("merges streamed tool header/detail lines in real time without reply progress payload", async () => {
@@ -1092,7 +1113,7 @@ describe("chat submit handler guards", () => {
               ],
             };
           }
-          return { sessionId: "sess_test", requestId: "req_1", done: false, events: [] };
+          return { sessionId: "sess_test", requestId: "req_1", done: true, events: [] };
         },
       }),
     });
@@ -1129,7 +1150,7 @@ describe("chat submit handler guards", () => {
               ],
             };
           }
-          return { sessionId: "sess_test", requestId: "req_1", done: false, events: [] };
+          return { sessionId: "sess_test", requestId: "req_1", done: true, events: [] };
         },
       }),
     });
@@ -1148,19 +1169,41 @@ describe("chat submit handler guards", () => {
       {
         model: "gpt-5-mini",
         output: "first done",
-        progressMessages: ["Edited sum.rs", "1 + fn main() {}"],
       },
       {
         model: "gpt-5-mini",
         output: "second done",
-        progressMessages: ["Edited sum.rs", '2 + println!("ok");'],
       },
     ];
+    const progressByTurn = [
+      [
+        { seq: 1, message: "Edited sum.rs" },
+        { seq: 2, message: "1 + fn main() {}" },
+      ],
+      [
+        { seq: 1, message: "Edited sum.rs" },
+        { seq: 2, message: '2 + println!("ok");' },
+      ],
+    ];
+    let replyCount = 0;
+    const servedTurns = new Set<number>();
     const { submit, rows } = createSubmitHandlerHarness({
       backend: createBackend({
         status: async () => "ok",
-        progress: async () => null,
-        reply: async () => replies.shift() ?? { model: "gpt-5-mini", output: "done" },
+        reply: async () => replies[replyCount++] ?? { model: "gpt-5-mini", output: "done" },
+        progress: async (_sessionId, afterSeq) => {
+          const turn = Math.max(0, replyCount - 1);
+          if (afterSeq === 0 && !servedTurns.has(turn)) {
+            servedTurns.add(turn);
+            return {
+              sessionId: "sess_test",
+              requestId: `req_${turn + 1}`,
+              done: false,
+              events: progressByTurn[turn] ?? [],
+            };
+          }
+          return { sessionId: "sess_test", requestId: `req_${turn + 1}`, done: true, events: [] };
+        },
       }),
     });
 
@@ -1192,14 +1235,14 @@ describe("chat submit handler guards", () => {
               requestId: "req_1",
               done: false,
               events: [
-                { seq: 1, message: "Edited sum.rs", kind: "tool", toolCallId: "call_1", phase: "start" },
-                { seq: 2, message: "1 + fn one() {}", kind: "tool", toolCallId: "call_1", phase: "result" },
-                { seq: 3, message: "Edited sum.rs", kind: "tool", toolCallId: "call_2", phase: "start" },
-                { seq: 4, message: "1 + fn two() {}", kind: "tool", toolCallId: "call_2", phase: "result" },
+                { seq: 1, message: "Edited sum.rs", kind: "tool", toolCallId: "call_1", phase: "tool_start" },
+                { seq: 2, message: "1 + fn one() {}", kind: "tool", toolCallId: "call_1", phase: "tool_end" },
+                { seq: 3, message: "Edited sum.rs", kind: "tool", toolCallId: "call_2", phase: "tool_start" },
+                { seq: 4, message: "1 + fn two() {}", kind: "tool", toolCallId: "call_2", phase: "tool_end" },
               ],
             };
           }
-          return { sessionId: "sess_test", requestId: "req_1", done: false, events: [] };
+          return { sessionId: "sess_test", requestId: "req_1", done: true, events: [] };
         },
       }),
     });

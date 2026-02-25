@@ -627,12 +627,25 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       },
       dedupeToolMessages: false,
     });
-    const pollProgress = async (): Promise<void> => {
+    const pollProgress = async (): Promise<{ hadEvents: boolean; done: boolean }> => {
       const progress = await input.backend.progress(input.currentSession.id, progressTracker.afterSeq());
-      if (!progress || progress.events.length === 0) {
-        return;
+      if (!progress) {
+        return { hadEvents: false, done: true };
       }
-      progressTracker.apply(progress.events);
+      const hadEvents = progress.events.length > 0;
+      if (hadEvents) {
+        progressTracker.apply(progress.events);
+      }
+      return { hadEvents, done: progress.done };
+    };
+    const drainProgress = async (): Promise<void> => {
+      for (let i = 0; i < 40; i += 1) {
+        const polled = await pollProgress().catch(() => ({ hadEvents: false, done: false }));
+        if (polled.done) {
+          break;
+        }
+        await Bun.sleep(50);
+      }
     };
     const progressPoll = setInterval(() => {
       void pollProgress().catch(() => {
@@ -654,8 +667,8 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         createMessage: input.createMessage,
       });
       const assistantMessage = turn.assistantMessage;
-      // Ensure fast turns still surface tool/stage progress once before final rows.
-      await pollProgress().catch(() => {});
+      // Drain until backend marks progress complete so late tool lines are not dropped.
+      await drainProgress().catch(() => {});
       const clarifyingQuestions = extractClarifyingQuestions(assistantMessage.content);
       if (clarifyingQuestions.length > 0) {
         const nonAssistantRows = turn.rows.filter((row) => row.role !== "assistant");
@@ -672,7 +685,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       input.setTokenUsage(() => [...input.currentSession.tokenUsage]);
       await input.persist();
     } catch (error) {
-      await pollProgress().catch(() => {});
+      await drainProgress().catch(() => {});
       const row: ChatRow = {
         id: `row_${crypto.randomUUID()}`,
         role: "system",

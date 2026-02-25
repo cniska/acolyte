@@ -128,40 +128,40 @@ describe("remote backend connection errors", () => {
     ).rejects.toThrow("Remote backend error (502): model call failed [error_id=err_abc12345]");
   });
 
-  test("reply parses structured progress events", async () => {
+  test("reply ignores embedded progress payload fields", async () => {
     globalThis.fetch = (async () =>
       new Response(
         JSON.stringify({
           model: "gpt-5-mini",
           output: "done",
-      progressEvents: [
-        {
-          message: "Edited sum.rs",
-          kind: "tool",
-          toolCallId: "call_1",
-          toolName: "edit-file",
-          phase: "start",
-        },
-        {
-          message: "1 + fn draft() {}",
-          kind: "tool",
-          toolCallId: "call_1",
-          toolName: "edit-file",
-          phase: "chunk_delta",
-        },
-        {
-          message: "Edited sum.rs",
-          kind: "tool",
-          toolCallId: "call_1",
-          toolName: "edit-file",
-          phase: "chunk_end",
-        },
-        {
-          message: "1 + fn main() {}",
-          kind: "tool",
-          toolCallId: "call_1",
+          progressEvents: [
+            {
+              message: "Edited sum.rs",
+              kind: "tool",
+              toolCallId: "call_1",
               toolName: "edit-file",
-              phase: "result",
+              phase: "tool_start",
+            },
+            {
+              message: "1 + fn draft() {}",
+              kind: "tool",
+              toolCallId: "call_1",
+              toolName: "edit-file",
+              phase: "tool_chunk",
+            },
+            {
+              message: "Edited sum.rs",
+              kind: "tool",
+              toolCallId: "call_1",
+              toolName: "edit-file",
+              phase: "tool_end",
+            },
+            {
+              message: "1 + fn main() {}",
+              kind: "tool",
+              toolCallId: "call_1",
+              toolName: "edit-file",
+              phase: "tool_end",
             },
           ],
         }),
@@ -178,36 +178,8 @@ describe("remote backend connection errors", () => {
       model: "gpt-5-mini",
       sessionId: "sess_test",
     });
-    expect(reply.progressEvents).toEqual([
-      {
-        message: "Edited sum.rs",
-        kind: "tool",
-        toolCallId: "call_1",
-        toolName: "edit-file",
-        phase: "start",
-      },
-      {
-        message: "1 + fn draft() {}",
-        kind: "tool",
-        toolCallId: "call_1",
-        toolName: "edit-file",
-        phase: "chunk_delta",
-      },
-      {
-        message: "Edited sum.rs",
-        kind: "tool",
-        toolCallId: "call_1",
-        toolName: "edit-file",
-        phase: "chunk_end",
-      },
-      {
-        message: "1 + fn main() {}",
-        kind: "tool",
-        toolCallId: "call_1",
-        toolName: "edit-file",
-        phase: "result",
-      },
-    ]);
+    expect("progressEvents" in reply).toBe(false);
+    expect("progressMessages" in reply).toBe(false);
   });
 });
 

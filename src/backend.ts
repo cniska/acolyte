@@ -15,7 +15,7 @@ export type ChatProgressEvent = {
   kind?: "status" | "tool" | "error";
   toolCallId?: string;
   toolName?: string;
-  phase?: "start" | "result" | "error" | "chunk_start" | "chunk_delta" | "chunk_end";
+  phase?: "tool_start" | "tool_chunk" | "tool_end";
 };
 
 export type ChatProgress = {
@@ -227,50 +227,6 @@ class RemoteBackend implements Backend {
             (item): item is string => typeof item === "string",
           )
         : undefined,
-      progressMessages: Array.isArray((json as { progressMessages?: unknown }).progressMessages)
-        ? ((json as { progressMessages?: unknown[] }).progressMessages ?? []).filter(
-            (item): item is string => typeof item === "string",
-          )
-        : undefined,
-      progressEvents: Array.isArray((json as { progressEvents?: unknown }).progressEvents)
-        ? ((json as { progressEvents?: unknown[] }).progressEvents ?? []).reduce<
-            NonNullable<ChatResponse["progressEvents"]>
-          >((acc, entry) => {
-            if (!entry || typeof entry !== "object") {
-              return acc;
-            }
-            const message = (entry as { message?: unknown }).message;
-            if (typeof message !== "string") {
-              return acc;
-            }
-            const kind = (entry as { kind?: unknown }).kind;
-            const toolCallId = (entry as { toolCallId?: unknown }).toolCallId;
-            const toolName = (entry as { toolName?: unknown }).toolName;
-            const phase = (entry as { phase?: unknown }).phase;
-            const normalized: NonNullable<ChatResponse["progressEvents"]>[number] = { message };
-            if (kind === "status" || kind === "tool" || kind === "error") {
-              normalized.kind = kind;
-            }
-            if (typeof toolCallId === "string") {
-              normalized.toolCallId = toolCallId;
-            }
-            if (typeof toolName === "string") {
-              normalized.toolName = toolName;
-            }
-            if (
-              phase === "start" ||
-              phase === "result" ||
-              phase === "error" ||
-              phase === "chunk_start" ||
-              phase === "chunk_delta" ||
-              phase === "chunk_end"
-            ) {
-              normalized.phase = phase;
-            }
-            acc.push(normalized);
-            return acc;
-          }, [])
-        : undefined,
       usage:
         json.usage &&
         typeof json.usage === "object" &&
@@ -426,14 +382,7 @@ class RemoteBackend implements Backend {
             if (typeof toolName === "string" && toolName.length > 0) {
               normalized.toolName = toolName;
             }
-            if (
-              phase === "start" ||
-              phase === "result" ||
-              phase === "error" ||
-              phase === "chunk_start" ||
-              phase === "chunk_delta" ||
-              phase === "chunk_end"
-            ) {
+            if (phase === "tool_start" || phase === "tool_chunk" || phase === "tool_end") {
               normalized.phase = phase;
             }
             return normalized;

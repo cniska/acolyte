@@ -29,7 +29,7 @@ type ChatProgressState = {
     kind: "status" | "tool" | "error";
     toolCallId?: string;
     toolName?: string;
-    phase?: "start" | "result" | "error" | "chunk_start" | "chunk_delta" | "chunk_end";
+    phase?: "tool_start" | "tool_chunk" | "tool_end";
   }>;
 };
 
@@ -122,7 +122,7 @@ function appendChatProgress(
         kind?: "status" | "tool" | "error";
         toolCallId?: string;
         toolName?: string;
-        phase?: "start" | "result" | "error" | "chunk_start" | "chunk_delta" | "chunk_end";
+        phase?: "tool_start" | "tool_chunk" | "tool_end";
       },
 ): void {
   const state = chatProgressBySession.get(sessionId);
