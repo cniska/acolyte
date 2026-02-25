@@ -126,36 +126,6 @@ function buildAgentInputWithUsage(req: ChatRequest): {
   };
 }
 
-function isToolLikelyRequest(text: string): boolean {
-  const lower = text.toLowerCase();
-  const hints = [
-    "add",
-    "change",
-    "update",
-    "remove",
-    "delete",
-    "insert",
-    "line break",
-    "newline",
-    "search",
-    "read",
-    "file",
-    "diff",
-    "git",
-    "status",
-    "run",
-    "command",
-    "edit",
-    "refactor",
-    "find",
-    "where",
-    "typecheck",
-    "lint",
-    "test",
-  ];
-  return hints.some((hint) => lower.includes(hint));
-}
-
 export function isPlanLikeOutput(text: string): boolean {
   const normalized = text.trim();
   if (normalized.length === 0) {
@@ -202,7 +172,9 @@ export function createInstructions(baseInstructions: string): string {
     "- Use `git-status`/`git-diff` for change inspection and `web-search`/`web-fetch` only when external lookup is needed.",
     "- Use tools for actions and text for communication.",
     "- Read relevant files before editing; avoid speculative code changes.",
-    "- For create-file/create-script requests, create files directly in this workspace; do not return 'save this as' instructions.",
+    "- Artifact requests (scripts/files/components/configs) MUST be fulfilled by creating or editing files directly in workspace.",
+    "- If filename/path is not specified, choose a sensible default filename and create it (for example `sum.rs`).",
+    "- Forbidden: replying with 'save this as ...' or asking user to copy/paste file contents.",
     "",
     "Execution Loop:",
     "- Understand request and identify concrete target files/commands.",
@@ -896,24 +868,11 @@ export async function runAgent(input: {
   const requestInput = buildAgentInputWithUsage(input.request);
   const subagentContext = buildSubagentContext(role, input.request);
   const agentInput = `${subagentContext}\n\n${requestInput.input}`;
-  const toolLikely = isToolLikelyRequest(input.request.message);
-  if (!toolLikely && input.request.model !== model) {
-    const requestedState = resolveModelProviderState(input.request.model);
-    if (requestedState.available) {
-      model = input.request.model;
-      agent = buildRoleAgent(model);
-      emitDebug("agent.model.override", {
-        reason: "coder_non_tool_prefers_requested_model",
-        model,
-      });
-    }
-  }
   const resourceId = input.request.resourceId?.trim() || appConfig.memory.resourceId;
   const memoryOptions = input.request.sessionId ? { thread: input.request.sessionId, resource: resourceId } : undefined;
   emitDebug("agent.context.built", {
     model_selected: model,
     history_messages: input.request.history.length,
-    tool_likely: toolLikely,
     has_memory: Boolean(memoryOptions),
   });
   const seenToolNames = new Set<string>();

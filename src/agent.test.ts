@@ -104,7 +104,6 @@ describe("execution intent detection", () => {
     expect(canonicalToolId("execute_command")).toBe("run-command");
     expect(canonicalToolId("web_search")).toBe("web-search");
   });
-
 });
 
 describe("finalizeReviewOutput", () => {
@@ -124,7 +123,6 @@ describe("finalizeReviewOutput", () => {
     const raw = "\n  • 1 findings in @src/mastra-tools.ts\n 1) naming issue \n";
     expect(finalizeReviewOutput(raw)).toBe("• 1 findings in @src/mastra-tools.ts\n 1) naming issue");
   });
-
 });
 
 describe("finalizeAssistantOutput", () => {
