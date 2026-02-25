@@ -274,6 +274,11 @@ function toolProgressHeader(content: string): string {
   return (content.split("\n")[0] ?? "").trim().toLowerCase();
 }
 
+function isToolDetailLine(content: string): boolean {
+  const trimmed = content.trim();
+  return /^\d+\s+[+-]\s/.test(trimmed) || /^\d+\s{3}/.test(trimmed) || /^[+-]\s/.test(trimmed) || /^(code|out|err)\s*\|/.test(trimmed);
+}
+
 function appendRowsWithToolProgressMerge(current: ChatRow[], incoming: ChatRow[]): ChatRow[] {
   const next = [...current];
   const currentTurnStart = (() => {
@@ -291,6 +296,22 @@ function appendRowsWithToolProgressMerge(current: ChatRow[], incoming: ChatRow[]
     }
 
     const incomingContent = incomingRow.content.trim();
+    if (isToolDetailLine(incomingContent)) {
+      const lastToolIndex = [...next]
+        .map((row, index) => ({ row, index }))
+        .reverse()
+        .find(({ row, index }) => index > currentTurnStart && row.style === "toolProgress")?.index;
+      if (typeof lastToolIndex === "number") {
+        const existingRow = next[lastToolIndex];
+        if (existingRow) {
+          const combined = `${existingRow.content.trim()}\n${incomingContent}`;
+          if (combined.toLowerCase() !== existingRow.content.trim().toLowerCase()) {
+            next[lastToolIndex] = { ...existingRow, content: combined };
+          }
+          continue;
+        }
+      }
+    }
     const incomingHeader = toolProgressHeader(incomingContent);
     const existingIndex = [...next]
       .map((row, index) => ({ row, index }))
@@ -530,15 +551,16 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
     const progressTracker = createProgressTracker({
       onStatus: () => {},
       onTool: (message) => {
-        input.setRows((current) => [
-          ...current,
-          {
-            id: `row_${crypto.randomUUID()}`,
-            role: "assistant",
-            content: message,
-            style: "toolProgress",
-          },
-        ]);
+        input.setRows((current) =>
+          appendRowsWithToolProgressMerge(current, [
+            {
+              id: `row_${crypto.randomUUID()}`,
+              role: "assistant",
+              content: message,
+              style: "toolProgress",
+            },
+          ]),
+        );
       },
       dedupeToolMessages: false,
     });

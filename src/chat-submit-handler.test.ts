@@ -1070,6 +1070,42 @@ describe("chat submit handler guards", () => {
     expect(editedRows[0]?.content).toBe("Edited sum.rs\n1 + fn main() {}");
   });
 
+  test("merges streamed tool header/detail lines in real time without reply progress payload", async () => {
+    let progressCalls = 0;
+    const { submit, rows } = createSubmitHandlerHarness({
+      backend: createBackend({
+        status: async () => "ok",
+        reply: async () => ({
+          model: "gpt-5-mini",
+          output: "done",
+        }),
+        progress: async () => {
+          progressCalls += 1;
+          if (progressCalls === 1) {
+            return {
+              sessionId: "sess_test",
+              requestId: "req_1",
+              done: false,
+              events: [
+                { seq: 1, message: "Edited sum.rs" },
+                { seq: 2, message: "1 + fn main() {}" },
+              ],
+            };
+          }
+          return { sessionId: "sess_test", requestId: "req_1", done: false, events: [] };
+        },
+      }),
+    });
+
+    await submit("hello");
+
+    const editedRows = rows.filter(
+      (row) => row.role === "assistant" && row.style === "toolProgress" && row.content.startsWith("Edited sum.rs"),
+    );
+    expect(editedRows).toHaveLength(1);
+    expect(editedRows[0]?.content).toBe("Edited sum.rs\n1 + fn main() {}");
+  });
+
   test("persists token usage on successful turn", async () => {
     const session = createSession({ id: "sess_test" });
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
