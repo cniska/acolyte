@@ -22,6 +22,7 @@ import {
   resolveCommandAlias,
   suggestCommand,
   suggestCommands,
+  summarizeProgressForChat,
   summarizeDiff,
   truncateText,
 } from "./cli";
@@ -209,6 +210,26 @@ describe("cli formatting helpers", () => {
     expect(out).toContain("stdout:");
     expect(out).toContain("ok");
     expect(out).not.toContain("stderr:");
+  });
+
+  test("summarizeProgressForChat returns concise action summary", () => {
+    const out = summarizeProgressForChat([
+      "Working…",
+      "Wrote src/sum.rs\n1   + fn main() {}",
+      "Edited src/sum.rs\n1   - old\n1   + new",
+      "Wrote src/sum.rs\n1   + fn main() {}", // dedupe
+    ]);
+    expect(out).toBe("Summary: Wrote src/sum.rs; Edited src/sum.rs.");
+  });
+
+  test("summarizeProgressForChat truncates long action lists", () => {
+    const out = summarizeProgressForChat([
+      "Wrote a.ts",
+      "Edited b.ts",
+      "Deleted c.ts",
+      "Read d.ts",
+    ]);
+    expect(out).toBe("Summary: Wrote a.ts; Edited b.ts; Deleted c.ts; +1 more action.");
   });
 
   test("truncateText and formatTimestamp stay stable", () => {

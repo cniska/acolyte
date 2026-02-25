@@ -751,6 +751,35 @@ export function formatProgressEventOutput(content: string): string {
     .join("\n");
 }
 
+export function summarizeProgressForChat(progressMessages: string[]): string | null {
+  const actions: string[] = [];
+  const seenActions = new Set<string>();
+  for (const message of progressMessages) {
+    const firstLine = message.split("\n")[0]?.trim() ?? "";
+    if (!firstLine) {
+      continue;
+    }
+    const parsed = parseToolProgressLine(firstLine);
+    if (parsed.kind !== "header") {
+      continue;
+    }
+    const action = `${parsed.verb} ${displayPath(parsed.path)}`;
+    if (seenActions.has(action)) {
+      continue;
+    }
+    seenActions.add(action);
+    actions.push(action);
+  }
+  if (actions.length === 0) {
+    return null;
+  }
+  if (actions.length <= 3) {
+    return `Summary: ${actions.join("; ")}.`;
+  }
+  const extra = actions.length - 3;
+  return `Summary: ${actions.slice(0, 3).join("; ")}; +${extra} more action${extra === 1 ? "" : "s"}.`;
+}
+
 export function oneShotResourceId(sessionId: string): string {
   return `run-${sessionId.replace(/^sess_/, "").slice(0, 24)}`;
 }
@@ -799,6 +828,8 @@ async function handlePrompt(
     let progressAfterSeq = 0;
     let isPolling = false;
     let hasPrintedProgress = false;
+    const progressMessages: string[] = [];
+    const seenProgressMessages = new Set<string>();
     const stageMessages = new Set(["Working…", "Working...", "Thinking…", "Thinking..."]);
     const applyProgressEvents = (events: Array<{ seq: number; message: string }>): void => {
       if (events.length === 0) {
@@ -807,9 +838,11 @@ async function handlePrompt(
       progressAfterSeq = events[events.length - 1]?.seq ?? progressAfterSeq;
       for (const event of events) {
         const message = event.message.trim();
-        if (!message || stageMessages.has(message)) {
+        if (!message || stageMessages.has(message) || seenProgressMessages.has(message)) {
           continue;
         }
+        seenProgressMessages.add(message);
+        progressMessages.push(message);
         printOutput(formatProgressEventOutput(message));
         hasPrintedProgress = true;
       }
@@ -875,8 +908,10 @@ async function handlePrompt(
       printOutput("");
     }
     const wrapWidth = Math.max(24, (output.columns ?? 120) - 4);
-    await streamText(formatAssistantReplyOutput(reply.output, wrapWidth));
-    session.messages.push(newMessage("assistant", reply.output));
+    const progressSummary = summarizeProgressForChat(progressMessages);
+    const assistantOutput = progressSummary ? `${progressSummary}\n\n${reply.output}` : reply.output;
+    await streamText(formatAssistantReplyOutput(assistantOutput, wrapWidth));
+    session.messages.push(newMessage("assistant", assistantOutput));
     session.model = reply.model;
     session.updatedAt = nowIso();
     return true;

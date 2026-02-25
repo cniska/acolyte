@@ -1,6 +1,7 @@
 import { appConfig } from "./app-config";
 import type { Backend } from "./backend";
 import { type ChatRow, dispatchSlashCommand, type TokenUsageEntry } from "./chat-commands";
+import { invalidateRepoPathCandidates } from "./chat-file-ref";
 import { isKnownSlashToken, resolveSlashAlias } from "./chat-slash";
 import {
   appendInputHistory,
@@ -578,6 +579,8 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         input.currentSession.updatedAt = input.nowIso();
         input.setRows((current) => [...current, ...dedupeToolProgressRows(current, turn.rows)]);
       }
+      // File tree may have changed during tool execution; refresh @path autocomplete candidates.
+      invalidateRepoPathCandidates();
       input.currentSession.tokenUsage.push(turn.tokenEntry);
       input.setTokenUsage(() => [...input.currentSession.tokenUsage]);
       await input.persist();

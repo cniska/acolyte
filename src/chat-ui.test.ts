@@ -4,11 +4,16 @@ import {
   applyAtSuggestion,
   extractAtReferencePaths,
   extractAtReferenceQuery,
+  getCachedRepoPathCandidates,
+  invalidateRepoPathCandidates,
   rankAtReferenceSuggestions,
   shouldAutocompleteAtSubmit,
 } from "./chat-file-ref";
 import { initialTranscriptRows } from "./chat-ui";
 import { createSession, createStore } from "./test-factory";
+import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 
 function createUiStore() {
   return createStore({
@@ -99,6 +104,21 @@ describe("chat-ui helpers", () => {
   test("extractAtReferencePaths finds unique @paths in a prompt", () => {
     expect(extractAtReferencePaths("review @AGENTS.md and @docs/soul.md")).toEqual(["AGENTS.md", "docs/soul.md"]);
     expect(extractAtReferencePaths("repeat @AGENTS.md and @AGENTS.md")).toEqual(["AGENTS.md"]);
+  });
+
+  test("getCachedRepoPathCandidates refreshes after invalidation", async () => {
+    const root = await mkdtemp(join(tmpdir(), "acolyte-at-cache-"));
+    await mkdir(join(root, "src"), { recursive: true });
+    await writeFile(join(root, "src", "a.ts"), "a", "utf8");
+    const first = await getCachedRepoPathCandidates(root);
+    expect(first).toContain("src/a.ts");
+    expect(first).not.toContain("sum.rs");
+    await writeFile(join(root, "sum.rs"), "fn main() {}", "utf8");
+    const stale = await getCachedRepoPathCandidates(root);
+    expect(stale).not.toContain("sum.rs");
+    invalidateRepoPathCandidates(root);
+    const refreshed = await getCachedRepoPathCandidates(root);
+    expect(refreshed).toContain("sum.rs");
   });
 
   test("initialTranscriptRows hydrates transcript from resumed session messages", () => {

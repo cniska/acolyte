@@ -176,6 +176,8 @@ export function createInstructions(baseInstructions: string): string {
     "- Artifact requests (scripts/files/components/configs) MUST be fulfilled by creating or editing files directly in workspace.",
     "- For requests that create a new file, call `write-file` directly (do not answer with file contents in chat).",
     "- If filename/path is not specified, choose a sensible default filename and create it (for example `sum.rs`) using `write-file`.",
+    "- Do not offer variants/options before performing a straightforward artifact request; create/edit the file first, then report outcome.",
+    "- When asked to edit a specific file and it does not exist, state that the file is missing instead of silently creating a replacement file.",
     "- Forbidden: replying with 'save this as ...' or asking user to copy/paste file contents.",
     "",
     "Execution Loop:",
@@ -896,6 +898,26 @@ export function formatEditPreviewFromArgs(args: Record<string, unknown>): string
   return [`Edited ${compactProgressDetail(path, 64)}`];
 }
 
+export function fallbackToolResultMessages(
+  canonicalToolName: string,
+  args: Record<string, unknown>,
+  resultMessages: string[],
+): string[] {
+  if (resultMessages.length > 0) {
+    return resultMessages;
+  }
+  if (canonicalToolName === "write-file") {
+    return formatWritePreviewFromArgs(args);
+  }
+  if (canonicalToolName === "edit-file") {
+    return formatEditPreviewFromArgs(args);
+  }
+  if (canonicalToolName === "delete-file") {
+    return formatDeletePreviewFromArgs(args);
+  }
+  return resultMessages;
+}
+
 function formatDeletePreviewFromArgs(args: Record<string, unknown>): string[] {
   const path = typeof args.path === "string" ? args.path.trim() : "";
   if (!path) {
@@ -1066,7 +1088,11 @@ export async function runAgent(input: {
           emitProgress(startMessage);
         }
       }
-      const resultMessages = formatToolResultProgressMessages(canonicalToolName, tool.result);
+      const resultMessages = fallbackToolResultMessages(
+        canonicalToolName,
+        tool.args,
+        formatToolResultProgressMessages(canonicalToolName, tool.result),
+      );
       const failureReason = extractToolFailureReason(tool.result);
       if (failureReason) {
         lastToolFailureReason = failureReason;

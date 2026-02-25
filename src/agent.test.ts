@@ -5,6 +5,7 @@ import {
   canonicalToolId,
   collectToolProgressFromStep,
   createInstructions,
+  fallbackToolResultMessages,
   finalizeAssistantOutput,
   finalizeReviewOutput,
   formatEditPreviewFromArgs,
@@ -347,6 +348,8 @@ describe("createInstructions", () => {
     const out = createInstructions("Base instructions.");
     expect(out).toContain("Default to tool execution.");
     expect(out).toContain("For requests that create a new file, call `write-file` directly");
+    expect(out).toContain("Do not offer variants/options before performing a straightforward artifact request");
+    expect(out).toContain("state that the file is missing instead of silently creating a replacement file");
   });
 
   test("forbids save-as advisory responses", () => {
@@ -376,5 +379,18 @@ describe("formatEditPreviewFromArgs", () => {
 
   test("returns empty when path is missing", () => {
     expect(formatEditPreviewFromArgs({})).toEqual([]);
+  });
+});
+
+describe("fallbackToolResultMessages", () => {
+  test("falls back to write preview when write result is empty", () => {
+    const out = fallbackToolResultMessages("write-file", { path: "sum.rs", content: "fn main() {}\n" }, []);
+    expect(out.length).toBeGreaterThan(0);
+    expect(out[0]).toContain("Wrote sum.rs");
+  });
+
+  test("returns existing result messages when present", () => {
+    const out = fallbackToolResultMessages("edit-file", { path: "src/a.ts" }, ["Edited src/a.ts"]);
+    expect(out).toEqual(["Edited src/a.ts"]);
   });
 });

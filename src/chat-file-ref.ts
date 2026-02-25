@@ -18,6 +18,15 @@ let repoPathCache: {
   candidates: string[];
 } | null = null;
 
+export function invalidateRepoPathCandidates(root?: string): void {
+  if (!repoPathCache) {
+    return;
+  }
+  if (!root || repoPathCache.cwd === root) {
+    repoPathCache = null;
+  }
+}
+
 function findActiveAtToken(inputValue: string): AtToken | null {
   const matches = [...inputValue.matchAll(/(^|\s)@([^\s@]*)/g)];
   if (matches.length === 0) {
