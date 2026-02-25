@@ -13,6 +13,7 @@ describe("mastra toolsets", () => {
     setPermissionMode("write");
     const keys = Object.keys(toolsForAgent()).sort();
     expect(keys).toEqual([
+      "deleteFile",
       "editFile",
       "gitDiff",
       "gitStatus",

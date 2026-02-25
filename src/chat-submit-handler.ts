@@ -509,7 +509,9 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
     input.setInterrupt(() => abortController.abort());
     const thinkingStartedAt = Date.now();
     let progressAfterSeq = 0;
-    const applyProgressEvents = (events: Array<{ seq: number; message: string }>): void => {
+    const applyProgressEvents = (
+      events: Array<{ seq: number; message: string; kind?: "status" | "tool" | "error" }>,
+    ): void => {
       if (events.length === 0) {
         return;
       }
@@ -519,7 +521,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         if (!message) {
           continue;
         }
-        if (isStageProgressMessage(message)) {
+        if (event.kind === "status" || isStageProgressMessage(message)) {
           input.setThinkingLabel(message);
           continue;
         }

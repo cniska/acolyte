@@ -2,6 +2,7 @@ import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 import { appConfig } from "./app-config";
 import {
+  deleteTextFile,
   editFileReplace,
   fetchWeb,
   gitDiff,
@@ -164,6 +165,27 @@ export const writeFileTool = createTool({
   },
 });
 
+export const deleteFileTool = createTool({
+  id: "delete-file",
+  description: "Delete a file. Supports dry run mode.",
+  inputSchema: z.object({
+    path: z.string().min(1),
+    dryRun: z.boolean().optional(),
+  }),
+  execute: async (input) => {
+    return withToolError("delete-file", async () => {
+      const result = compactToolOutput(
+        await deleteTextFile({
+          path: input.path,
+          dryRun: input.dryRun ?? false,
+        }),
+        appConfig.agent.toolOutputBudget.edit,
+      );
+      return { result };
+    });
+  },
+});
+
 export const webSearchTool = createTool({
   id: "web-search",
   description: "Search the public web for recent information and return top results.",
@@ -208,6 +230,7 @@ export const acolyteTools = {
   runCommand: runCommandTool,
   editFile: editFileTool,
   writeFile: writeFileTool,
+  deleteFile: deleteFileTool,
   webSearch: webSearchTool,
   webFetch: webFetchTool,
 };

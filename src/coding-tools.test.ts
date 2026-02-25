@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, test } from "bun:tes
 import { rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { appConfig, setPermissionMode } from "./app-config";
-import { editFileReplace, fetchWeb, readSnippet, runShellCommand, writeTextFile } from "./coding-tools";
+import { deleteTextFile, editFileReplace, fetchWeb, readSnippet, runShellCommand, writeTextFile } from "./coding-tools";
 
 const tempFiles: string[] = [];
 const initialPermissionMode = appConfig.agent.permissions.mode;
@@ -147,6 +147,33 @@ describe("coding-tools workspace guards", () => {
           content: "x",
         }),
       ).rejects.toThrow("File writing is disabled in read mode");
+    } finally {
+      setPermissionMode(prev);
+    }
+  });
+
+  test("deleteTextFile deletes /tmp files", async () => {
+    const filePath = `/tmp/acolyte-tmp-delete-${crypto.randomUUID()}.txt`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, "alpha\nbeta\n", "utf8");
+    const result = await deleteTextFile({ path: filePath });
+    expect(result).toContain("bytes=");
+    await expect(readSnippet(filePath)).rejects.toThrow();
+  });
+
+  test("deleteTextFile blocks paths outside workspace", async () => {
+    await expect(deleteTextFile({ path: "/etc/hosts" })).rejects.toThrow(
+      "Delete is restricted to the workspace or /tmp",
+    );
+  });
+
+  test("read mode blocks deleteTextFile", async () => {
+    const prev = appConfig.agent.permissions.mode;
+    setPermissionMode("read");
+    try {
+      await expect(deleteTextFile({ path: join(process.cwd(), "README.md") })).rejects.toThrow(
+        "File deletion is disabled in read mode",
+      );
     } finally {
       setPermissionMode(prev);
     }

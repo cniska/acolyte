@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { appConfig } from "./app-config";
@@ -132,6 +132,20 @@ function buildUnifiedWriteDiff(path: string, previous: string | null, next: stri
   const removed = oldLines.map((line) => `-${line}`);
   const added = newLines.map((line) => `+${line}`);
   return [...header, ...removed, ...added].join("\n");
+}
+
+function buildUnifiedDeleteDiff(path: string, previous: string): string {
+  const oldLines = contentLines(previous);
+  const oldCount = oldLines.length;
+  const header = [
+    `diff --git a/${path} b/${path}`,
+    "deleted file mode 100644",
+    `--- a/${path}`,
+    "+++ /dev/null",
+    `@@ -1,${oldCount} +0,0 @@`,
+  ];
+  const removed = oldLines.map((line) => `-${line}`);
+  return [...header, ...removed].join("\n");
 }
 
 function decodeHtmlEntities(input: string): string {
@@ -429,7 +443,9 @@ export async function editFileReplace(input: {
     await writeFile(absPath, next, "utf8");
   }
 
-  return [`path=${absPath}`, `matches=${count}`, `dry_run=${input.dryRun ? "true" : "false"}`].join("\n");
+  const relativePath = displayPathForDiff(absPath);
+  const diff = buildUnifiedWriteDiff(relativePath, raw, next);
+  return [`path=${absPath}`, `matches=${count}`, `dry_run=${input.dryRun ? "true" : "false"}`, "", diff].join("\n");
 }
 
 export async function writeTextFile(input: { path: string; content: string; overwrite?: boolean }): Promise<string> {
@@ -460,6 +476,25 @@ export async function writeTextFile(input: { path: string; content: string; over
     `path=${absPath}`,
     `bytes=${Buffer.byteLength(input.content, "utf8")}`,
     `overwritten=${overwrite ? "true" : "false"}`,
+    "",
+    diff,
+  ].join("\n");
+}
+
+export async function deleteTextFile(input: { path: string; dryRun?: boolean }): Promise<string> {
+  ensureWritePermission("File deletion");
+  const absPath = ensurePathWithinAllowedRoots(input.path, "Delete");
+  const previousContent = await readFile(absPath, "utf8");
+  const dryRun = input.dryRun ?? false;
+  if (!dryRun) {
+    await unlink(absPath);
+  }
+  const relativePath = displayPathForDiff(absPath);
+  const diff = buildUnifiedDeleteDiff(relativePath, previousContent);
+  return [
+    `path=${absPath}`,
+    `bytes=${Buffer.byteLength(previousContent, "utf8")}`,
+    `dry_run=${dryRun ? "true" : "false"}`,
     "",
     diff,
   ].join("\n");

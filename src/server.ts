@@ -23,7 +23,7 @@ type ChatProgressState = {
   done: boolean;
   updatedAt: number;
   nextSeq: number;
-  events: Array<{ seq: number; message: string }>;
+  events: Array<{ seq: number; message: string; kind: "status" | "tool" | "error" }>;
 };
 
 const chatProgressBySession = new Map<string, ChatProgressState>();
@@ -76,22 +76,54 @@ function startChatProgress(sessionId: string, requestId: string): void {
   });
 }
 
+function progressKindForMessage(message: string): "status" | "tool" | "error" {
+  if (/^tool failed:/i.test(message)) {
+    return "error";
+  }
+  if (/^(working|thinking|planning|coding|reviewing|summarizing)[.…]/i.test(message)) {
+    return "status";
+  }
+  return "tool";
+}
+
+function normalizeProgressMessage(message: string): string {
+  const trimmed = message.trim();
+  if (trimmed.length === 0) {
+    return "";
+  }
+  // Normalize common tool-name variants so client rendering is stable.
+  const aliases: Array<[RegExp, string]> = [
+    [/^ReadFile\b/i, "Read"],
+    [/^WriteFile\b/i, "Write"],
+    [/^EditFile\b/i, "Edit"],
+    [/^DeleteFile\b/i, "Delete"],
+  ];
+  for (const [pattern, replacement] of aliases) {
+    if (pattern.test(trimmed)) {
+      return trimmed.replace(pattern, replacement);
+    }
+  }
+  return trimmed;
+}
+
 function appendChatProgress(sessionId: string, message: string): void {
   const state = chatProgressBySession.get(sessionId);
   if (!state) {
     return;
   }
-  const trimmed = message.trim();
+  const trimmed = normalizeProgressMessage(message);
   if (!trimmed) {
     return;
   }
   const previous = state.events[state.events.length - 1];
-  if (previous?.message === trimmed) {
+  const kind = progressKindForMessage(trimmed);
+  if (previous?.message === trimmed && previous.kind === kind) {
     return;
   }
   state.events.push({
     seq: state.nextSeq,
     message: trimmed,
+    kind,
   });
   state.nextSeq += 1;
   state.updatedAt = Date.now();
@@ -375,6 +407,9 @@ const server = Bun.serve({
         return new Response("Not Found", { status: 404 });
       }
       const minSeq = Number.isFinite(afterSeq) ? Math.max(0, afterSeq) : 0;
+      if (minSeq > 0) {
+        state.events = state.events.filter((entry) => entry.seq > minSeq);
+      }
       const events = state.events.filter((entry) => entry.seq > minSeq);
       return json({
         ok: true,

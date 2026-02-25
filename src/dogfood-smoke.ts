@@ -302,6 +302,44 @@ async function runCreateFileCodingTaskSmoke(
   }
 }
 
+async function runDeleteFileCodingTaskSmoke(
+  smokeEnv: Record<string, string>,
+  task: {
+    id: string;
+    initial: string;
+    prompt: (filePath: string) => string;
+  },
+): Promise<{ ok: boolean; detail: string }> {
+  const filePath = join(tmpdir(), `acolyte-dogfood-delete-${task.id}-${crypto.randomUUID()}.txt`);
+  await writeFile(filePath, task.initial, "utf8");
+  try {
+    const prompt = task.prompt(filePath);
+    const result = await runCommand(
+      ["bun", "run", "src/cli.ts", "dogfood", "--no-verify", prompt],
+      COMMAND_TIMEOUT_MS,
+      smokeEnv,
+    );
+    if (result.exitCode !== 0) {
+      return { ok: false, detail: `command failed (exit ${result.exitCode})` };
+    }
+    const output = stripAnsi(`${result.stdout}\n${result.stderr}`);
+    if (hasFallbackEditSignal(output)) {
+      return { ok: false, detail: "fallback edit path used" };
+    }
+    if (hasAdvisoryFileWriteSignal(output)) {
+      return { ok: false, detail: "advisory file-write response detected" };
+    }
+    try {
+      await readFile(filePath, "utf8");
+      return { ok: false, detail: "file still exists after delete task" };
+    } catch {
+      return { ok: true, detail: "file deleted" };
+    }
+  } finally {
+    await rm(filePath, { force: true });
+  }
+}
+
 async function runMultiFileCodingTaskSmoke(
   smokeEnv: Record<string, string>,
   task: {
@@ -489,6 +527,23 @@ export async function main(): Promise<void> {
         return;
       }
       console.log("✓ dogfood coding task create file");
+      const deleteFileTask = await runDeleteFileCodingTaskSmoke(smokeEnv, {
+        id: "delete-file",
+        initial: "alpha\nbeta\n",
+        prompt: (filePath: string) =>
+          [
+            `Target file: ${filePath}`,
+            "Task: delete this file.",
+            "Use delete-file on the target path and execute directly.",
+            "Return a concise summary only.",
+          ].join("\n"),
+      });
+      if (!deleteFileTask.ok) {
+        console.error(`✗ dogfood coding task delete file: ${deleteFileTask.detail}`);
+        process.exit(1);
+        return;
+      }
+      console.log("✓ dogfood coding task delete file");
 
       const multiFileTask = await runMultiFileCodingTaskSmoke(smokeEnv, {
         id: "multifile",

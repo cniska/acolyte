@@ -6,6 +6,7 @@ const TOOL_LABELS: Record<string, string> = {
   "run-command": "Run",
   "edit-file": "Edit",
   "write-file": "Write",
+  "delete-file": "Delete",
   "web-search": "Search",
   "web-fetch": "Fetch",
 };

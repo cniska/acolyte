@@ -290,8 +290,9 @@ describe("remote backend progress parsing", () => {
           requestId: "err_abcd",
           done: false,
           events: [
-            { seq: 1, message: "Request received" },
-            { seq: 2, message: "Run search-repo" },
+            { seq: 1, message: "Request received", kind: "status" },
+            { seq: 2, message: "Run search-repo", kind: "tool" },
+            { seq: 3, message: "Tool failed: timeout", kind: "error" },
           ],
         }),
         { status: 200, headers: { "content-type": "application/json" } },
@@ -303,8 +304,9 @@ describe("remote backend progress parsing", () => {
       requestId: "err_abcd",
       done: false,
       events: [
-        { seq: 1, message: "Request received" },
-        { seq: 2, message: "Run search-repo" },
+        { seq: 1, message: "Request received", kind: "status" },
+        { seq: 2, message: "Run search-repo", kind: "tool" },
+        { seq: 3, message: "Tool failed: timeout", kind: "error" },
       ],
     });
   });
