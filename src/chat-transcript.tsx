@@ -92,6 +92,17 @@ function renderToolProgressContent(content: string): React.ReactNode {
         </>
       );
     }
+    const edited = line.match(/^(Edited)\s+(.+)$/);
+    if (edited) {
+      return (
+        <>
+          <Text bold>{`${edited[1]} `}</Text>
+          <Text underline color="#A8B1BC">
+            {edited[2]}
+          </Text>
+        </>
+      );
+    }
     const read = line.match(/^(Read)\s+(.+)$/);
     if (read) {
       return (

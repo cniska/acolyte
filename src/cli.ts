@@ -723,6 +723,10 @@ export function formatProgressEventOutput(content: string): string {
     if (wrote) {
       return `${bold(`${wrote[1]} `)}${path(wrote[2] ?? "")}`;
     }
+    const edited = line.match(/^(Edited)\s+(.+)$/);
+    if (edited) {
+      return `${bold(`${edited[1]} `)}${path(edited[2] ?? "")}`;
+    }
     const read = line.match(/^(Read)\s+(.+)$/);
     if (read) {
       return `${bold(`${read[1]} `)}${path(read[2] ?? "")}`;

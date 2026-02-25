@@ -1045,6 +1045,7 @@ export async function runAgent(input: {
       const canonicalToolName = canonicalToolId(tool.name);
       observedToolCallIds.add(canonicalToolName);
       if (
+        canonicalToolName !== "edit-file" &&
         canonicalToolName !== "write-file" &&
         canonicalToolName !== "delete-file" &&
         canonicalToolName !== "read-file"
@@ -1284,6 +1285,7 @@ export async function runAgent(input: {
       const canonicalToolName = canonicalToolId(tool.name);
       observedToolCallIds.add(canonicalToolName);
       if (
+        canonicalToolName !== "edit-file" &&
         canonicalToolName !== "write-file" &&
         canonicalToolName !== "delete-file" &&
         canonicalToolName !== "read-file"

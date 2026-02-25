@@ -7,6 +7,7 @@ import {
   formatEditUpdateOutput,
   formatForTool,
   formatKeyValueLines,
+  formatProgressEventOutput,
   formatPromptError,
   formatResumeCommand,
   formatRunOutput,
@@ -298,6 +299,21 @@ describe("cli formatting helpers", () => {
     const lines = out.split("\n");
     expect(lines[0]).toBe("• 1. first second third");
     expect(lines[1]).toMatch(/^\s+fourth fifth$/);
+  });
+
+  test("formatProgressEventOutput styles Edited header like file tools", () => {
+    const out = formatProgressEventOutput("Edited src/main.rs");
+    expect(out).toContain("• ");
+    expect(out).toContain("\x1b[1mEdited \x1b[22m");
+    expect(out).toContain("\x1b[4m\x1b[38;2;168;177;188msrc/main.rs\x1b[39m\x1b[24m");
+  });
+
+  test("formatProgressEventOutput styles numbered diff markers with spacing", () => {
+    const out = formatProgressEventOutput("12 + fn main() {}");
+    expect(out).toContain("• ");
+    expect(out).toContain("\x1b[2m12\x1b[22m");
+    expect(out).toContain("\x1b[32m+ \x1b[39m");
+    expect(out).toContain("\x1b[32mfn main() {}\x1b[39m");
   });
 
   test("suggestCommand supports canonical and alias prefixes", () => {
