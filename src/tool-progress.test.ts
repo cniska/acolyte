@@ -15,7 +15,7 @@ describe("tool progress helpers", () => {
     const out = groupToolProgressMessages([
       "Edited sum.rs",
       "1 + fn main() {}",
-      "2 + println!(\"ok\");",
+      '2 + println!("ok");',
       "Deleted sum.rs",
     ]);
     expect(out).toEqual(['Edited sum.rs\n1 + fn main() {}\n2 + println!("ok");', "Deleted sum.rs"]);

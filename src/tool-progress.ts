@@ -11,7 +11,12 @@ export function isToolHeaderLine(line: string): boolean {
 
 export function isToolDetailLine(line: string): boolean {
   const trimmed = line.trim();
-  return /^\d+\s+[+-]\s/.test(trimmed) || /^\d+\s{3}/.test(trimmed) || /^[+-]\s/.test(trimmed) || /^(code|out|err)\s*\|/.test(trimmed);
+  return (
+    /^\d+\s+[+-]\s/.test(trimmed) ||
+    /^\d+\s{3}/.test(trimmed) ||
+    /^[+-]\s/.test(trimmed) ||
+    /^(code|out|err)\s*\|/.test(trimmed)
+  );
 }
 
 export function groupToolProgressMessages(messages: string[]): string[] {
