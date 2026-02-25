@@ -739,43 +739,36 @@ function formatToolResultProgressMessages(
       break;
   }
   for (const file of files) {
-    const diffBlock: string[] = [];
-    if (toolName === "write-file" || toolName === "edit-file" || toolName === "delete-file") {
-      diffBlock.push(`${verb} ${compactProgressDetail(file.path, 64)}`);
-      diffBlock.push("");
-    } else {
+    if (!(toolName === "write-file" || toolName === "edit-file" || toolName === "delete-file")) {
       lines.push(`${verb} ${compactProgressDetail(file.path, 48)} (+${file.added} -${file.removed})`);
     }
     for (const preview of file.preview) {
       if (preview.kind === "del") {
-        if (toolName === "write-file" || toolName === "edit-file" || toolName === "delete-file") {
-          diffBlock.push(`${preview.oldLine ?? "?"} - ${preview.text}`);
-        } else {
+        if (!(toolName === "write-file" || toolName === "edit-file" || toolName === "delete-file")) {
           lines.push(`${preview.oldLine ?? "?"} - ${compactProgressDetail(preview.text, 96)}`);
+        } else {
+          lines.push(`${preview.oldLine ?? "?"} - ${preview.text}`);
         }
       } else if (preview.kind === "add") {
-        if (toolName === "write-file" || toolName === "edit-file" || toolName === "delete-file") {
-          diffBlock.push(`${preview.newLine ?? "?"} + ${preview.text}`);
-        } else {
+        if (!(toolName === "write-file" || toolName === "edit-file" || toolName === "delete-file")) {
           lines.push(`${preview.newLine ?? "?"} + ${compactProgressDetail(preview.text, 96)}`);
+        } else {
+          lines.push(`${preview.newLine ?? "?"} + ${preview.text}`);
         }
       } else {
-        if (toolName === "write-file" || toolName === "edit-file" || toolName === "delete-file") {
-          diffBlock.push(`${preview.newLine ?? preview.oldLine ?? "?"}   ${preview.text}`);
-        } else {
+        if (!(toolName === "write-file" || toolName === "edit-file" || toolName === "delete-file")) {
           lines.push(`${preview.newLine ?? preview.oldLine ?? "?"}   ${compactProgressDetail(preview.text, 96)}`);
+        } else {
+          lines.push(`${preview.newLine ?? preview.oldLine ?? "?"}   ${preview.text}`);
         }
       }
     }
     if (file.previewOverflow > 0) {
-      if (toolName === "write-file" || toolName === "edit-file" || toolName === "delete-file") {
-        diffBlock.push(`… +${file.previewOverflow} more changed lines`);
+      if (!(toolName === "write-file" || toolName === "edit-file" || toolName === "delete-file")) {
+        lines.push(`… +${file.previewOverflow} more changed lines`);
       } else {
         lines.push(`… +${file.previewOverflow} more changed lines`);
       }
-    }
-    if ((toolName === "write-file" || toolName === "edit-file" || toolName === "delete-file") && diffBlock.length > 0) {
-      lines.push(diffBlock.join("\n"));
     }
   }
   return lines;

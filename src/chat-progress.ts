@@ -164,7 +164,7 @@ export function createProgressTracker(options: {
     }
     for (const entry of grouped) {
       const message = entry.message;
-      const eventDedupeKey = entry.dedupeKey;
+      const eventDedupeKey = `${entry.dedupeKey}|${message.toLowerCase()}`;
       if (dedupe) {
         if (seenToolMessages.has(eventDedupeKey)) {
           continue;

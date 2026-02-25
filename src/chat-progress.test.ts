@@ -111,4 +111,5 @@ describe("chat progress tracker", () => {
 
     expect(toolMessages).toEqual(["Edited sum.rs\n1 + fn main() {}"]);
   });
+
 });
