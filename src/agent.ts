@@ -194,16 +194,27 @@ export function buildSubagentContext(_role: AgentRole, req: ChatRequest): string
   return ["Agent: Acolyte", `Goal: ${req.message.trim()}`, `Context: ${scope}; model=${req.model}`].join("\n");
 }
 
-export function buildRoleInstructions(baseInstructions: string, _role: AgentRole): string {
+export function createInstructions(baseInstructions: string): string {
   const executionContract = [
     "Execution contract:",
-    "- Prefer tool-backed execution over speculative answers when code changes are requested.",
-    "- When a task is straightforward, execute it directly; do not ask for confirmation before editing.",
+    "Tool Rules (use exact tool ids):",
+    "- Use `read-file` and `search-repo` to inspect code, `edit-file` to apply changes, and `run-command` for terminal commands.",
+    "- Use `git-status`/`git-diff` for change inspection and `web-search`/`web-fetch` only when external lookup is needed.",
+    "- Use tools for actions and text for communication.",
+    "- Read relevant files before editing; avoid speculative code changes.",
+    "- For create-file/create-script requests, create files directly in this workspace; do not return 'save this as' instructions.",
+    "",
+    "Execution Loop:",
+    "- Understand request and identify concrete target files/commands.",
+    "- Implement changes directly with tools.",
+    "- Verify when explicitly requested, when repo policy requires it, or when risk is high.",
+    "- Keep working until requested changes are complete or a real blocker is hit.",
+    "",
+    "Completion + Communication:",
+    "- For multi-step work, keep an internal checklist and do not finish until all requested items are addressed.",
     "- Ask follow-up questions only when requirements are ambiguous, risky, or blocked by missing access/context.",
-    "- For multi-step tasks, keep an internal checklist and do not finish until all requested items are addressed.",
     "- Respect response-shape constraints exactly (for example: 'summary only' means summary only).",
-    "- Run verification only when explicitly requested, when required by repo policy, or when safety risk is high.",
-    "- If verification is skipped, do not add extra verification commentary unless user asked for it.",
+    "- Never mention verification commands/results unless verification was explicitly requested in the prompt.",
     "- Keep final output concise and outcome-focused.",
   ].join("\n");
   return `${baseInstructions}\n\n${executionContract}`;
@@ -837,7 +848,7 @@ export async function runAgent(input: {
       id: `acolyte-${role}`,
       name: `Acolyte ${role[0].toUpperCase()}${role.slice(1)}`,
       model: agentModel,
-      instructions: buildRoleInstructions(input.soulPrompt, role),
+      instructions: createInstructions(input.soulPrompt),
       tools: toolsForAgent(),
     });
 
