@@ -442,4 +442,31 @@ describe("collectToolProgressFromStep", () => {
     expect(progress[0]?.result).toContain("diff --git a/sum.rs b/sum.rs");
     expect(progress[0]?.result).toContain("+ fn main() {}");
   });
+
+  test("extracts tool result text from fallback object fields", () => {
+    const progress = collectToolProgressFromStep({
+      toolResults: [
+        {
+          toolName: "run-command",
+          output: {
+            toolResult: {
+              data: "hello-from-run",
+            },
+          },
+        },
+      ],
+    });
+    expect(progress).toHaveLength(1);
+    expect(progress[0]?.result).toContain("hello-from-run");
+  });
+
+  test("matches unnamed tool results to prior tool call by id", () => {
+    const progress = collectToolProgressFromStep({
+      toolCalls: [{ id: "call_1", toolName: "run-command", args: { command: "echo hello" } }],
+      toolResults: [{ id: "call_1", output: "hello-from-run" }],
+    });
+    const resultEntry = progress.find((entry) => entry.callId === "call_1" && entry.result.length > 0);
+    expect(resultEntry?.name).toBe("run-command");
+    expect(resultEntry?.result).toContain("hello-from-run");
+  });
 });

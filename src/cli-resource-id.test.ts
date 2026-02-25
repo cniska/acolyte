@@ -50,8 +50,32 @@ describe("cli run resource id", () => {
     await mkdir(projectDataDir, { recursive: true });
 
     const requests: Array<{ sessionId?: string; resourceId?: string }> = [];
+    const encoder = new TextEncoder();
     const server = startTestServer(async (req) => {
       const url = new URL(req.url);
+      if (url.pathname === "/v1/chat/stream" && req.method === "POST") {
+        const body = (await req.json()) as { sessionId?: string; resourceId?: string; model?: string };
+        requests.push({ sessionId: body.sessionId, resourceId: body.resourceId });
+        return new Response(
+          new ReadableStream<Uint8Array>({
+            start(controller) {
+              controller.enqueue(
+                encoder.encode(
+                  `data: ${JSON.stringify({
+                    type: "done",
+                    reply: {
+                      model: typeof body.model === "string" ? body.model : "gpt-5-mini",
+                      output: "ok",
+                    },
+                  })}\n\n`,
+                ),
+              );
+              controller.close();
+            },
+          }),
+          { headers: { "content-type": "text/event-stream" } },
+        );
+      }
       if (url.pathname === "/v1/chat" && req.method === "POST") {
         const body = (await req.json()) as { sessionId?: string; resourceId?: string; model?: string };
         requests.push({ sessionId: body.sessionId, resourceId: body.resourceId });

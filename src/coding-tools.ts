@@ -30,6 +30,35 @@ export async function searchRepo(pattern: string, maxResults = 40): Promise<stri
   if (!trimmed) {
     throw new Error("Search pattern cannot be empty");
   }
+  const isFilenameLike = !/\s/.test(trimmed) && (trimmed.includes("/") || /\.[a-z0-9]+$/i.test(trimmed));
+
+  if (isFilenameLike) {
+    const { code, stdout, stderr } = await runCommand(["rg", "--files", "--color", "never", "."]);
+    if (code !== 0 && stdout.trim().length === 0) {
+      const err = stderr.trim();
+      return err.length > 0 ? `No matches. (${err})` : "No matches.";
+    }
+    const needle = trimmed.replace(/^\.\/+/, "").toLowerCase();
+    const fileLines = stdout
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+    const ranked = fileLines
+      .filter((line) => line.toLowerCase().includes(needle))
+      .sort((a, b) => {
+        const aLower = a.toLowerCase();
+        const bLower = b.toLowerCase();
+        const aExact = aLower === needle ? 0 : aLower.endsWith(`/${needle}`) ? 1 : 2;
+        const bExact = bLower === needle ? 0 : bLower.endsWith(`/${needle}`) ? 1 : 2;
+        if (aExact !== bExact) {
+          return aExact - bExact;
+        }
+        return a.length - b.length;
+      })
+      .slice(0, maxResults)
+      .map((line) => `./${line}`);
+    return ranked.length > 0 ? ranked.join("\n") : "No matches.";
+  }
 
   const {
     code: exitCode,
@@ -373,7 +402,47 @@ export async function gitDiff(pathInput?: string, contextLines = 3): Promise<str
 
 const BLOCKED_SHELL_TOKENS = ["rm -rf /", "shutdown", "reboot", "mkfs", "dd if="];
 
-export async function runShellCommand(command: string, timeoutMs = 60_000): Promise<string> {
+type ShellChunk = {
+  stream: "stdout" | "stderr";
+  text: string;
+};
+
+async function readStreamText(
+  stream: ReadableStream<Uint8Array> | null | undefined,
+  streamName: "stdout" | "stderr",
+  onChunk?: (chunk: ShellChunk) => void,
+): Promise<string> {
+  if (!stream) {
+    return "";
+  }
+  const reader = stream.getReader();
+  const decoder = new TextDecoder();
+  let combined = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+    const text = decoder.decode(value, { stream: true });
+    if (!text) {
+      continue;
+    }
+    combined += text;
+    onChunk?.({ stream: streamName, text });
+  }
+  const tail = decoder.decode();
+  if (tail) {
+    combined += tail;
+    onChunk?.({ stream: streamName, text: tail });
+  }
+  return combined;
+}
+
+export async function runShellCommand(
+  command: string,
+  timeoutMs = 60_000,
+  onChunk?: (chunk: ShellChunk) => void,
+): Promise<string> {
   ensureWritePermission("Shell command execution");
   const trimmed = command.trim();
   if (!trimmed) {
@@ -402,8 +471,8 @@ export async function runShellCommand(command: string, timeoutMs = 60_000): Prom
   }, timeoutMs);
 
   const [stdoutText, stderrText] = await Promise.all([
-    new Response(proc.stdout).text(),
-    new Response(proc.stderr).text(),
+    readStreamText(proc.stdout as ReadableStream<Uint8Array> | null, "stdout", onChunk),
+    readStreamText(proc.stderr as ReadableStream<Uint8Array> | null, "stderr", onChunk),
   ]);
   const exitCode = await proc.exited;
   const durationMs = Date.now() - startedAt;

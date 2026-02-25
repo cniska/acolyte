@@ -627,31 +627,6 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       },
       dedupeToolMessages: false,
     });
-    const pollProgress = async (): Promise<{ hadEvents: boolean; done: boolean }> => {
-      const progress = await input.backend.progress(input.currentSession.id, progressTracker.afterSeq());
-      if (!progress) {
-        return { hadEvents: false, done: true };
-      }
-      const hadEvents = progress.events.length > 0;
-      if (hadEvents) {
-        progressTracker.apply(progress.events);
-      }
-      return { hadEvents, done: progress.done };
-    };
-    const drainProgress = async (): Promise<void> => {
-      for (let i = 0; i < 40; i += 1) {
-        const polled = await pollProgress().catch(() => ({ hadEvents: false, done: false }));
-        if (polled.done) {
-          break;
-        }
-        await Bun.sleep(50);
-      }
-    };
-    const progressPoll = setInterval(() => {
-      void pollProgress().catch(() => {
-        // Best-effort progress polling; ignore transient backend/proxy errors.
-      });
-    }, 150);
     await input.persist();
 
     try {
@@ -662,13 +637,16 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         model: appConfig.model,
         sessionId: input.currentSession.id,
         signal: abortController.signal,
+        onProgressEvents: (events) => {
+          if (events.length > 0) {
+            progressTracker.apply(events);
+          }
+        },
         runVerifyAfterReply,
         thinkingStartedAt,
         createMessage: input.createMessage,
       });
       const assistantMessage = turn.assistantMessage;
-      // Drain until backend marks progress complete so late tool lines are not dropped.
-      await drainProgress().catch(() => {});
       const clarifyingQuestions = extractClarifyingQuestions(assistantMessage.content);
       if (clarifyingQuestions.length > 0) {
         const nonAssistantRows = turn.rows.filter((row) => row.role !== "assistant");
@@ -685,7 +663,6 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       input.setTokenUsage(() => [...input.currentSession.tokenUsage]);
       await input.persist();
     } catch (error) {
-      await drainProgress().catch(() => {});
       const row: ChatRow = {
         id: `row_${crypto.randomUUID()}`,
         role: "system",
@@ -694,7 +671,6 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       };
       input.setRows((current) => [...current, row]);
     } finally {
-      clearInterval(progressPoll);
       input.setInterrupt(null);
       input.setIsThinking(false);
       input.setThinkingLabel(null);

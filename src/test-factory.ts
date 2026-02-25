@@ -42,21 +42,68 @@ export function createStore(overrides: Partial<SessionStore> = {}): SessionStore
   };
 }
 
+type TestProgressPayload = {
+  sessionId: string;
+  requestId: string;
+  done: boolean;
+  events: Array<{
+    seq: number;
+    message: string;
+    kind?: "status" | "tool" | "error";
+    toolCallId?: string;
+    toolName?: string;
+    phase?: "tool_start" | "tool_chunk" | "tool_end";
+  }>;
+} | null;
+
 export function createBackend(overrides?: {
   reply?: Backend["reply"];
+  replyStream?: Backend["replyStream"];
   status?: Backend["status"];
-  progress?: Backend["progress"];
+  progress?: (sessionId: string, afterSeq: number) => Promise<TestProgressPayload>;
   setPermissionMode?: Backend["setPermissionMode"];
 }): Backend {
+  const reply =
+    overrides?.reply ??
+    (async () => ({
+      model: "gpt-5-mini",
+      output: "ok",
+    }));
+  const replyStream =
+    overrides?.replyStream ??
+    (async (input, options) => {
+      const progress = overrides?.progress;
+      if (!progress) {
+        return reply(input, { signal: options.signal });
+      }
+      const replyPromise = reply(input, { signal: options.signal });
+      let cursor = 0;
+      for (let i = 0; i < 40; i += 1) {
+        if (options.signal?.aborted) {
+          break;
+        }
+        const payload = await progress(input.sessionId ?? "sess_test", cursor);
+        if (!payload) {
+          break;
+        }
+        if (payload.events.length > 0) {
+          const latestEvent = payload.events[payload.events.length - 1];
+          if (latestEvent) {
+            cursor = latestEvent.seq;
+          }
+          options.onEvents(payload.events);
+        }
+        if (payload.done) {
+          break;
+        }
+        await Bun.sleep(50);
+      }
+      return replyPromise;
+    });
   return {
-    reply:
-      overrides?.reply ??
-      (async () => ({
-        model: "gpt-5-mini",
-        output: "ok",
-      })),
+    reply,
+    replyStream,
     status: overrides?.status ?? (async () => "provider=local model=gpt-5-mini memory_context=2"),
-    progress: overrides?.progress ?? (async () => null),
     setPermissionMode: overrides?.setPermissionMode ?? (async () => {}),
   };
 }

@@ -15,6 +15,127 @@ import {
 } from "./coding-tools";
 import { compactToolOutput } from "./tool-output";
 
+type ToolOutputListener = (event: {
+  toolName: string;
+  message: string;
+  toolCallId?: string;
+  phase?: "tool_start" | "tool_chunk" | "tool_end";
+}) => void;
+
+function emitResultChunks(
+  toolName: string,
+  result: string,
+  onToolOutput?: ToolOutputListener,
+  maxLines = 80,
+  toolCallId?: string,
+): void {
+  if (!onToolOutput) {
+    return;
+  }
+  const lines = result
+    .split("\n")
+    .map((line) => line.trimEnd())
+    .filter((line) => line.length > 0)
+    .slice(0, maxLines);
+  for (const line of lines) {
+    onToolOutput({ toolName, message: line, phase: "tool_chunk", toolCallId });
+  }
+}
+
+function unifiedDiffLines(rawResult: string, maxLines = 120): string[] {
+  const marker = "\ndiff --git ";
+  const index = rawResult.indexOf(marker);
+  const start = index >= 0 ? index + 1 : rawResult.indexOf("diff --git ");
+  if (start < 0) {
+    return [];
+  }
+  const lines = rawResult
+    .slice(start)
+    .split("\n")
+    .map((line) => line.trimEnd())
+    .filter((line) => line.length > 0);
+  return lines.slice(0, maxLines);
+}
+
+function streamCallId(toolName: string): string {
+  return `${toolName}_${crypto.randomUUID().slice(0, 8)}`;
+}
+
+function createRunCommandTool(onToolOutput?: ToolOutputListener) {
+  return createTool({
+    id: "run-command",
+    description: "Run a shell command in the repository and capture stdout/stderr.",
+    inputSchema: z.object({
+      command: z.string().min(1),
+      timeoutMs: z.number().int().min(500).max(120000).optional(),
+    }),
+    execute: async (input) => {
+      return withToolError("run-command", async () => {
+        const toolCallId = streamCallId("run-command");
+        onToolOutput?.({ toolName: "run-command", message: `Ran ${input.command}`, phase: "tool_start", toolCallId });
+        let stdoutBuffer = "";
+        let stderrBuffer = "";
+        const flushBufferLines = (stream: "stdout" | "stderr"): void => {
+          const label = stream === "stdout" ? "out" : "err";
+          const source = stream === "stdout" ? stdoutBuffer : stderrBuffer;
+          let remaining = source;
+          while (true) {
+            const newlineIndex = remaining.indexOf("\n");
+            if (newlineIndex === -1) {
+              break;
+            }
+            const line = remaining.slice(0, newlineIndex).trimEnd();
+            remaining = remaining.slice(newlineIndex + 1);
+            if (line.length > 0) {
+              onToolOutput?.({
+                toolName: "run-command",
+                message: `${label} | ${line}`,
+                phase: "tool_chunk",
+                toolCallId,
+              });
+            }
+          }
+          if (stream === "stdout") {
+            stdoutBuffer = remaining;
+          } else {
+            stderrBuffer = remaining;
+          }
+        };
+        const rawResult = await runShellCommand(input.command, input.timeoutMs ?? 60_000, ({ stream, text }) => {
+          if (stream === "stdout") {
+            stdoutBuffer += text;
+          } else {
+            stderrBuffer += text;
+          }
+          flushBufferLines(stream);
+        });
+        const flushRemainder = (stream: "stdout" | "stderr"): void => {
+          const label = stream === "stdout" ? "out" : "err";
+          const remainder = (stream === "stdout" ? stdoutBuffer : stderrBuffer).trimEnd();
+          if (remainder.length > 0) {
+            onToolOutput?.({
+              toolName: "run-command",
+              message: `${label} | ${remainder}`,
+              phase: "tool_chunk",
+              toolCallId,
+            });
+          }
+          if (stream === "stdout") {
+            stdoutBuffer = "";
+          } else {
+            stderrBuffer = "";
+          }
+        };
+        flushRemainder("stdout");
+        flushRemainder("stderr");
+        onToolOutput?.({ toolName: "run-command", message: `Ran ${input.command}`, phase: "tool_end", toolCallId });
+        const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.run);
+        return { result };
+      });
+    },
+  });
+}
+
 export async function withToolError<T>(toolId: string, task: () => Promise<T>): Promise<T> {
   try {
     return await task();
@@ -24,199 +145,291 @@ export async function withToolError<T>(toolId: string, task: () => Promise<T>): 
   }
 }
 
-export const searchRepoTool = createTool({
-  id: "search-repo",
-  description: "Search the repository for a text pattern using ripgrep.",
-  inputSchema: z.object({
-    pattern: z.string().min(1),
-    maxResults: z.number().int().min(1).max(200).optional(),
-  }),
-  execute: async (input) => {
-    return withToolError("search-repo", async () => {
-      const maxResults = input.maxResults ?? 40;
-      const result = compactToolOutput(
-        await searchRepo(input.pattern, maxResults),
-        appConfig.agent.toolOutputBudget.search,
-      );
-      return { result };
-    });
-  },
-});
-
-export const readFileTool = createTool({
-  id: "read-file",
-  description: "Read a text file snippet by line range from the local repository.",
-  inputSchema: z
-    .object({
-      path: z.string().min(1),
-      start: z.number().int().min(1).optional(),
-      end: z.number().int().min(1).optional(),
-    })
-    .refine((input) => input.start === undefined || input.end === undefined || input.start <= input.end, {
-      message: "start must be less than or equal to end",
-      path: ["end"],
+function createSearchRepoTool(onToolOutput?: ToolOutputListener) {
+  return createTool({
+    id: "search-repo",
+    description: "Search the repository for a text pattern using ripgrep.",
+    inputSchema: z.object({
+      pattern: z.string().min(1),
+      maxResults: z.number().int().min(1).max(200).optional(),
     }),
-  execute: async (input) => {
-    return withToolError("read-file", async () => {
-      const start = input.start != null ? String(input.start) : undefined;
-      const end = input.end != null ? String(input.end) : undefined;
-      const result = compactToolOutput(
-        await readSnippet(input.path, start, end),
-        appConfig.agent.toolOutputBudget.read,
-      );
-      return { result };
-    });
-  },
-});
+    execute: async (input) => {
+      return withToolError("search-repo", async () => {
+        const toolCallId = streamCallId("search-repo");
+        onToolOutput?.({
+          toolName: "search-repo",
+          message: `Ran search-repo ${input.pattern}`,
+          phase: "tool_start",
+          toolCallId,
+        });
+        const maxResults = input.maxResults ?? 20;
+        const result = compactToolOutput(
+          await searchRepo(input.pattern, maxResults),
+          appConfig.agent.toolOutputBudget.search,
+        );
+        emitResultChunks("search-repo", result, onToolOutput, 80, toolCallId);
+        onToolOutput?.({
+          toolName: "search-repo",
+          message: `Ran search-repo ${input.pattern}`,
+          phase: "tool_end",
+          toolCallId,
+        });
+        return { result };
+      });
+    },
+  });
+}
 
-export const gitStatusTool = createTool({
-  id: "git-status",
-  description: "Get git status --short --branch for the current repository.",
-  inputSchema: z.object({}),
-  execute: async () => {
-    return withToolError("git-status", async () => {
-      const result = compactToolOutput(await gitStatusShort(), appConfig.agent.toolOutputBudget.gitStatus);
-      return { result };
-    });
-  },
-});
+export const searchRepoTool = createSearchRepoTool();
 
-export const gitDiffTool = createTool({
-  id: "git-diff",
-  description: "Get git diff for the repository or a specific file path.",
-  inputSchema: z.object({
-    path: z.string().optional(),
-    contextLines: z.number().int().min(0).max(20).optional(),
-  }),
-  execute: async (input) => {
-    return withToolError("git-diff", async () => {
-      const result = compactToolOutput(
-        await gitDiff(input.path, input.contextLines ?? 3),
-        appConfig.agent.toolOutputBudget.gitDiff,
-      );
-      return { result };
-    });
-  },
-});
+function createReadFileTool(onToolOutput?: ToolOutputListener) {
+  return createTool({
+    id: "read-file",
+    description: "Read a text file snippet by line range from the local repository.",
+    inputSchema: z
+      .object({
+        path: z.string().min(1),
+        start: z.number().int().min(1).optional(),
+        end: z.number().int().min(1).optional(),
+      })
+      .refine((input) => input.start === undefined || input.end === undefined || input.start <= input.end, {
+        message: "start must be less than or equal to end",
+        path: ["end"],
+      }),
+    execute: async (input) => {
+      return withToolError("read-file", async () => {
+        const toolCallId = streamCallId("read-file");
+        onToolOutput?.({ toolName: "read-file", message: `Read ${input.path}`, phase: "tool_start", toolCallId });
+        const start = input.start != null ? String(input.start) : undefined;
+        const end = input.end != null ? String(input.end) : undefined;
+        const result = compactToolOutput(
+          await readSnippet(input.path, start, end),
+          appConfig.agent.toolOutputBudget.read,
+        );
+        emitResultChunks("read-file", result, onToolOutput, 80, toolCallId);
+        onToolOutput?.({ toolName: "read-file", message: `Read ${input.path}`, phase: "tool_end", toolCallId });
+        return { result };
+      });
+    },
+  });
+}
 
-export const runCommandTool = createTool({
-  id: "run-command",
-  description: "Run a shell command in the repository and capture stdout/stderr.",
-  inputSchema: z.object({
-    command: z.string().min(1),
-    timeoutMs: z.number().int().min(500).max(120000).optional(),
-  }),
-  execute: async (input) => {
-    return withToolError("run-command", async () => {
-      const result = compactToolOutput(
-        await runShellCommand(input.command, input.timeoutMs ?? 60_000),
-        appConfig.agent.toolOutputBudget.run,
-      );
-      return { result };
-    });
-  },
-});
+export const readFileTool = createReadFileTool();
 
-export const editFileTool = createTool({
-  id: "edit-file",
-  description: "Create/update file content or replace exact text in an existing file.",
-  inputSchema: z
-    .object({
+function createGitStatusTool(onToolOutput?: ToolOutputListener) {
+  return createTool({
+    id: "git-status",
+    description: "Get git status --short --branch for the current repository.",
+    inputSchema: z.object({}),
+    execute: async () => {
+      return withToolError("git-status", async () => {
+        const toolCallId = streamCallId("git-status");
+        onToolOutput?.({
+          toolName: "git-status",
+          message: "Ran git status --short --branch",
+          phase: "tool_start",
+          toolCallId,
+        });
+        const result = compactToolOutput(await gitStatusShort(), appConfig.agent.toolOutputBudget.gitStatus);
+        emitResultChunks("git-status", result, onToolOutput, 80, toolCallId);
+        onToolOutput?.({
+          toolName: "git-status",
+          message: "Ran git status --short --branch",
+          phase: "tool_end",
+          toolCallId,
+        });
+        return { result };
+      });
+    },
+  });
+}
+
+export const gitStatusTool = createGitStatusTool();
+
+function createGitDiffTool(onToolOutput?: ToolOutputListener) {
+  return createTool({
+    id: "git-diff",
+    description: "Get git diff for the repository or a specific file path.",
+    inputSchema: z.object({
+      path: z.string().optional(),
+      contextLines: z.number().int().min(0).max(20).optional(),
+    }),
+    execute: async (input) => {
+      return withToolError("git-diff", async () => {
+        const toolCallId = streamCallId("git-diff");
+        onToolOutput?.({ toolName: "git-diff", message: "Ran git diff", phase: "tool_start", toolCallId });
+        const result = compactToolOutput(
+          await gitDiff(input.path, input.contextLines ?? 3),
+          appConfig.agent.toolOutputBudget.gitDiff,
+        );
+        emitResultChunks("git-diff", result, onToolOutput, 80, toolCallId);
+        onToolOutput?.({ toolName: "git-diff", message: "Ran git diff", phase: "tool_end", toolCallId });
+        return { result };
+      });
+    },
+  });
+}
+
+export const gitDiffTool = createGitDiffTool();
+
+export const runCommandTool = createRunCommandTool();
+
+function createEditFileTool(onToolOutput?: ToolOutputListener) {
+  return createTool({
+    id: "edit-file",
+    description: "Create/update file content or replace exact text in an existing file.",
+    inputSchema: z
+      .object({
+        path: z.string().min(1),
+        find: z.string().optional(),
+        replace: z.string().optional(),
+        content: z.string().optional(),
+        overwrite: z.boolean().optional(),
+        dryRun: z.boolean().optional(),
+      })
+      .refine(
+        (input) => typeof input.content === "string" || (typeof input.find === "string" && input.find.length > 0),
+        {
+          message: "Provide either content, or find+replace.",
+          path: ["content"],
+        },
+      ),
+    execute: async (input: {
+      path: string;
+      find?: string;
+      replace?: string;
+      content?: string;
+      overwrite?: boolean;
+      dryRun?: boolean;
+    }) => {
+      return withToolError("edit-file", async () => {
+        const toolCallId = streamCallId("edit-file");
+        onToolOutput?.({ toolName: "edit-file", message: `Edited ${input.path}`, phase: "tool_start", toolCallId });
+        const rawResult =
+          typeof input.content === "string"
+            ? await writeTextFile({
+                path: input.path,
+                content: input.content,
+                overwrite: input.overwrite ?? true,
+              })
+            : await editFileReplace({
+                path: input.path,
+                find: input.find ?? "",
+                replace: input.replace ?? "",
+                dryRun: input.dryRun ?? false,
+              });
+        for (const line of unifiedDiffLines(rawResult)) {
+          onToolOutput?.({ toolName: "edit-file", message: line, phase: "tool_chunk", toolCallId });
+        }
+        onToolOutput?.({ toolName: "edit-file", message: `Edited ${input.path}`, phase: "tool_end", toolCallId });
+        const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.edit);
+        return { result };
+      });
+    },
+  });
+}
+
+function createDeleteFileTool(onToolOutput?: ToolOutputListener) {
+  return createTool({
+    id: "delete-file",
+    description: "Delete a file. Supports dry run mode.",
+    inputSchema: z.object({
       path: z.string().min(1),
-      find: z.string().optional(),
-      replace: z.string().optional(),
-      content: z.string().optional(),
-      overwrite: z.boolean().optional(),
       dryRun: z.boolean().optional(),
-    })
-    .refine((input) => typeof input.content === "string" || (typeof input.find === "string" && input.find.length > 0), {
-      message: "Provide either content, or find+replace.",
-      path: ["content"],
     }),
-  execute: async (input: {
-    path: string;
-    find?: string;
-    replace?: string;
-    content?: string;
-    overwrite?: boolean;
-    dryRun?: boolean;
-  }) => {
-    return withToolError("edit-file", async () => {
-      const rawResult =
-        typeof input.content === "string"
-          ? await writeTextFile({
-              path: input.path,
-              content: input.content,
-              overwrite: input.overwrite ?? true,
-            })
-          : await editFileReplace({
-              path: input.path,
-              find: input.find ?? "",
-              replace: input.replace ?? "",
-              dryRun: input.dryRun ?? false,
-            });
-      const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.edit);
-      return { result };
-    });
-  },
-});
-
-export const deleteFileTool = createTool({
-  id: "delete-file",
-  description: "Delete a file. Supports dry run mode.",
-  inputSchema: z.object({
-    path: z.string().min(1),
-    dryRun: z.boolean().optional(),
-  }),
-  execute: async (input) => {
-    return withToolError("delete-file", async () => {
-      const result = compactToolOutput(
-        await deleteTextFile({
+    execute: async (input) => {
+      return withToolError("delete-file", async () => {
+        const toolCallId = streamCallId("delete-file");
+        onToolOutput?.({
+          toolName: "delete-file",
+          message: `Deleted ${input.path}`,
+          phase: "tool_start",
+          toolCallId,
+        });
+        const rawResult = await deleteTextFile({
           path: input.path,
           dryRun: input.dryRun ?? false,
-        }),
-        appConfig.agent.toolOutputBudget.edit,
-      );
-      return { result };
-    });
-  },
-});
+        });
+        for (const line of unifiedDiffLines(rawResult)) {
+          onToolOutput?.({ toolName: "delete-file", message: line, phase: "tool_chunk", toolCallId });
+        }
+        onToolOutput?.({ toolName: "delete-file", message: `Deleted ${input.path}`, phase: "tool_end", toolCallId });
+        const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.edit);
+        return { result };
+      });
+    },
+  });
+}
 
-export const webSearchTool = createTool({
-  id: "web-search",
-  description: "Search the public web for recent information and return top results.",
-  inputSchema: z.object({
-    query: z.string().min(1),
-    maxResults: z.number().int().min(1).max(10).optional(),
-  }),
-  execute: async (input) => {
-    return withToolError("web-search", async () => {
-      const result = compactToolOutput(
-        await searchWeb(input.query, input.maxResults ?? 5),
-        appConfig.agent.toolOutputBudget.webSearch,
-      );
-      return { result };
-    });
-  },
-});
+export const editFileTool = createEditFileTool();
+export const deleteFileTool = createDeleteFileTool();
 
-export const webFetchTool = createTool({
-  id: "web-fetch",
-  description: "Fetch a public URL and return extracted text content.",
-  inputSchema: z.object({
-    url: z.string().min(1),
-    maxChars: z.number().int().min(500).max(12000).optional(),
-  }),
-  execute: async (input) => {
-    return withToolError("web-fetch", async () => {
-      const result = compactToolOutput(
-        await fetchWeb(input.url, input.maxChars ?? 5000),
-        appConfig.agent.toolOutputBudget.webFetch,
-      );
-      return { result };
-    });
-  },
-});
+function createWebSearchTool(onToolOutput?: ToolOutputListener) {
+  return createTool({
+    id: "web-search",
+    description: "Search the public web for recent information and return top results.",
+    inputSchema: z.object({
+      query: z.string().min(1),
+      maxResults: z.number().int().min(1).max(10).optional(),
+    }),
+    execute: async (input) => {
+      return withToolError("web-search", async () => {
+        const toolCallId = streamCallId("web-search");
+        onToolOutput?.({
+          toolName: "web-search",
+          message: `Ran web-search ${input.query}`,
+          phase: "tool_start",
+          toolCallId,
+        });
+        const result = compactToolOutput(
+          await searchWeb(input.query, input.maxResults ?? 5),
+          appConfig.agent.toolOutputBudget.webSearch,
+        );
+        emitResultChunks("web-search", result, onToolOutput, 80, toolCallId);
+        onToolOutput?.({
+          toolName: "web-search",
+          message: `Ran web-search ${input.query}`,
+          phase: "tool_end",
+          toolCallId,
+        });
+        return { result };
+      });
+    },
+  });
+}
+
+export const webSearchTool = createWebSearchTool();
+
+function createWebFetchTool(onToolOutput?: ToolOutputListener) {
+  return createTool({
+    id: "web-fetch",
+    description: "Fetch a public URL and return extracted text content.",
+    inputSchema: z.object({
+      url: z.string().min(1),
+      maxChars: z.number().int().min(500).max(12000).optional(),
+    }),
+    execute: async (input) => {
+      return withToolError("web-fetch", async () => {
+        const toolCallId = streamCallId("web-fetch");
+        onToolOutput?.({
+          toolName: "web-fetch",
+          message: `Ran web-fetch ${input.url}`,
+          phase: "tool_start",
+          toolCallId,
+        });
+        const result = compactToolOutput(
+          await fetchWeb(input.url, input.maxChars ?? 5000),
+          appConfig.agent.toolOutputBudget.webFetch,
+        );
+        emitResultChunks("web-fetch", result, onToolOutput, 80, toolCallId);
+        onToolOutput?.({ toolName: "web-fetch", message: `Ran web-fetch ${input.url}`, phase: "tool_end", toolCallId });
+        return { result };
+      });
+    },
+  });
+}
+
+export const webFetchTool = createWebFetchTool();
 
 export const acolyteTools = {
   searchRepo: searchRepoTool,
@@ -243,6 +456,23 @@ function readOnlyTools(): Partial<AcolyteToolset> {
   };
 }
 
-export function toolsForAgent(): Partial<AcolyteToolset> {
-  return appConfig.agent.permissions.mode === "read" ? readOnlyTools() : acolyteTools;
+export function toolsForAgent(options?: { onToolOutput?: ToolOutputListener }): Partial<AcolyteToolset> {
+  if (appConfig.agent.permissions.mode === "read") {
+    return readOnlyTools();
+  }
+  if (!options?.onToolOutput) {
+    return acolyteTools;
+  }
+  return {
+    ...acolyteTools,
+    searchRepo: createSearchRepoTool(options.onToolOutput),
+    readFile: createReadFileTool(options.onToolOutput),
+    gitStatus: createGitStatusTool(options.onToolOutput),
+    gitDiff: createGitDiffTool(options.onToolOutput),
+    runCommand: createRunCommandTool(options.onToolOutput),
+    editFile: createEditFileTool(options.onToolOutput),
+    deleteFile: createDeleteFileTool(options.onToolOutput),
+    webSearch: createWebSearchTool(options.onToolOutput),
+    webFetch: createWebFetchTool(options.onToolOutput),
+  };
 }

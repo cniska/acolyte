@@ -14,26 +14,8 @@ const OPENAI_API_KEY = appConfig.openai.apiKey;
 const OPENAI_BASE_URL = appConfig.openai.baseUrl;
 const omConfig = getObservationalMemoryConfig();
 const ERROR_ID_PREFIX = "err";
-const CHAT_PROGRESS_TTL_MS = 5 * 60 * 1000;
 const SUPPRESSED_STDERR_PREFIX = "Upstream LLM API error from";
-
-type ChatProgressState = {
-  requestId: string;
-  sessionId: string;
-  done: boolean;
-  updatedAt: number;
-  nextSeq: number;
-  events: Array<{
-    seq: number;
-    message: string;
-    kind: "status" | "tool" | "error";
-    toolCallId?: string;
-    toolName?: string;
-    phase?: "tool_start" | "tool_chunk" | "tool_end";
-  }>;
-};
-
-const chatProgressBySession = new Map<string, ChatProgressState>();
+const SERVER_IDLE_TIMEOUT_SECONDS = Math.max(30, Math.ceil(appConfig.server.replyTimeoutMs / 1000) + 30);
 
 const originalConsoleError = console.error.bind(console);
 console.error = (...args: unknown[]): void => {
@@ -61,26 +43,6 @@ function json<T>(body: T, status = 200): Response {
 
 function nextErrorId(): string {
   return `${ERROR_ID_PREFIX}_${crypto.randomUUID().slice(0, 8)}`;
-}
-
-function cleanupChatProgress(now = Date.now()): void {
-  for (const [sessionId, state] of chatProgressBySession.entries()) {
-    if (now - state.updatedAt > CHAT_PROGRESS_TTL_MS) {
-      chatProgressBySession.delete(sessionId);
-    }
-  }
-}
-
-function startChatProgress(sessionId: string, requestId: string): void {
-  cleanupChatProgress();
-  chatProgressBySession.set(sessionId, {
-    requestId,
-    sessionId,
-    done: false,
-    updatedAt: Date.now(),
-    nextSeq: 1,
-    events: [],
-  });
 }
 
 function progressKindForMessage(message: string): "status" | "tool" | "error" {
@@ -111,63 +73,6 @@ function normalizeProgressMessage(message: string): string {
     }
   }
   return trimmed;
-}
-
-function appendChatProgress(
-  sessionId: string,
-  progress:
-    | string
-    | {
-        message: string;
-        kind?: "status" | "tool" | "error";
-        toolCallId?: string;
-        toolName?: string;
-        phase?: "tool_start" | "tool_chunk" | "tool_end";
-      },
-): void {
-  const state = chatProgressBySession.get(sessionId);
-  if (!state) {
-    return;
-  }
-  const rawMessage = typeof progress === "string" ? progress : progress.message;
-  const trimmed = normalizeProgressMessage(rawMessage);
-  if (!trimmed) {
-    return;
-  }
-  const previous = state.events[state.events.length - 1];
-  const kind =
-    typeof progress === "string" ? progressKindForMessage(trimmed) : (progress.kind ?? progressKindForMessage(trimmed));
-  const toolCallId = typeof progress === "string" ? undefined : progress.toolCallId?.trim() || undefined;
-  const toolName = typeof progress === "string" ? undefined : progress.toolName?.trim() || undefined;
-  const phase = typeof progress === "string" ? undefined : progress.phase;
-  if (
-    previous?.message === trimmed &&
-    previous.kind === kind &&
-    previous.toolCallId === toolCallId &&
-    previous.toolName === toolName &&
-    previous.phase === phase
-  ) {
-    return;
-  }
-  state.events.push({
-    seq: state.nextSeq,
-    message: trimmed,
-    kind,
-    toolCallId,
-    toolName,
-    phase,
-  });
-  state.nextSeq += 1;
-  state.updatedAt = Date.now();
-}
-
-function completeChatProgress(sessionId: string): void {
-  const state = chatProgressBySession.get(sessionId);
-  if (!state) {
-    return;
-  }
-  state.done = true;
-  state.updatedAt = Date.now();
 }
 
 function serverError(
@@ -234,6 +139,7 @@ try {
 
 const server = Bun.serve({
   port: PORT,
+  idleTimeout: SERVER_IDLE_TIMEOUT_SECONDS,
   async fetch(req) {
     const url = new URL(req.url);
 
@@ -421,38 +327,9 @@ const server = Bun.serve({
       return json({ ok: true, permissionMode: appConfig.agent.permissions.mode });
     }
 
-    if (url.pathname === "/v1/chat/progress" && req.method === "GET") {
-      if (!hasValidAuth(req)) {
-        log.warn("unauthorized request", {
-          path: url.pathname,
-          method: req.method,
-        });
-        return unauthorized();
-      }
-      const sessionId = url.searchParams.get("sessionId")?.trim();
-      if (!sessionId) {
-        return badRequest("Missing sessionId");
-      }
-      const afterSeq = Number.parseInt(url.searchParams.get("afterSeq") ?? "0", 10);
-      const state = chatProgressBySession.get(sessionId);
-      if (!state) {
-        return new Response("Not Found", { status: 404 });
-      }
-      const minSeq = Number.isFinite(afterSeq) ? Math.max(0, afterSeq) : 0;
-      if (minSeq > 0) {
-        state.events = state.events.filter((entry) => entry.seq > minSeq);
-      }
-      const events = state.events.filter((entry) => entry.seq > minSeq);
-      return json({
-        ok: true,
-        sessionId: state.sessionId,
-        requestId: state.requestId,
-        done: state.done,
-        events,
-      });
-    }
-
-    if (url.pathname !== "/v1/chat" || req.method !== "POST") {
+    const isChatJsonRoute = url.pathname === "/v1/chat" && req.method === "POST";
+    const isChatStreamRoute = url.pathname === "/v1/chat/stream" && req.method === "POST";
+    if (!isChatJsonRoute && !isChatStreamRoute) {
       return new Response("Not Found", { status: 404 });
     }
 
@@ -494,8 +371,110 @@ const server = Bun.serve({
       message_chars: chatRequest.message.length,
       has_resource_id: Boolean(chatRequest.resourceId),
     });
-    if (chatRequest.sessionId) {
-      startChatProgress(chatRequest.sessionId, requestId);
+    if (isChatStreamRoute) {
+      const encoder = new TextEncoder();
+      let closed = false;
+      let seq = 1;
+      let lastEventSignature = "";
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          const send = (payload: Record<string, unknown>): void => {
+            if (closed) {
+              return;
+            }
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
+          };
+          void (async () => {
+            try {
+              const soulPrompt = await createSoulPrompt();
+              const reply = await runAgent({
+                request: chatRequest,
+                soulPrompt,
+                onProgress: (progress) => {
+                  const message =
+                    typeof progress === "string"
+                      ? normalizeProgressMessage(progress)
+                      : normalizeProgressMessage(progress.message);
+                  if (!message) {
+                    return;
+                  }
+                  const kind =
+                    typeof progress === "string"
+                      ? progressKindForMessage(message)
+                      : (progress.kind ?? progressKindForMessage(message));
+                  const toolCallId =
+                    typeof progress === "string" ? undefined : progress.toolCallId?.trim() || undefined;
+                  const toolName = typeof progress === "string" ? undefined : progress.toolName?.trim() || undefined;
+                  const phase = typeof progress === "string" ? undefined : progress.phase;
+                  const signature = `${kind}|${toolCallId ?? ""}|${toolName ?? ""}|${phase ?? ""}|${message}`;
+                  if (signature === lastEventSignature) {
+                    return;
+                  }
+                  lastEventSignature = signature;
+                  const event = {
+                    seq,
+                    message,
+                    kind,
+                    toolCallId,
+                    toolName,
+                    phase,
+                  };
+                  seq += 1;
+                  send({ type: "progress", event });
+                },
+                onDebug: (event, fields) => {
+                  log.info("agent debug", {
+                    request_id: requestId,
+                    session_id: chatRequest.sessionId ?? null,
+                    event,
+                    ...(fields ?? {}),
+                  });
+                },
+              });
+              const durationMs = Date.now() - startedAt;
+              log.info("chat request completed", {
+                request_id: requestId,
+                session_id: chatRequest.sessionId ?? null,
+                model: reply.model,
+                duration_ms: durationMs,
+                model_calls: reply.modelCalls ?? null,
+                tool_count: reply.toolCalls?.length ?? 0,
+                tools: reply.toolCalls?.join(",") ?? "",
+                prompt_tokens: reply.usage?.promptTokens ?? null,
+                completion_tokens: reply.usage?.completionTokens ?? null,
+                stream: true,
+              });
+              send({ type: "done", reply });
+            } catch (error) {
+              const errorMessage = error instanceof Error ? error.message : "Unknown error";
+              log.error("chat stream failed", {
+                request_id: requestId,
+                session_id: chatRequest.sessionId ?? null,
+                path: url.pathname,
+                method: req.method,
+                model: chatRequest.model,
+                ...errorToLogFields(error),
+              });
+              send({ type: "error", error: errorMessage });
+            } finally {
+              if (!closed) {
+                closed = true;
+                controller.close();
+              }
+            }
+          })();
+        },
+        cancel() {
+          closed = true;
+        },
+      });
+      return new Response(stream, {
+        headers: {
+          "content-type": "text/event-stream",
+          "cache-control": "no-cache",
+          connection: "keep-alive",
+        },
+      });
     }
 
     try {
@@ -503,11 +482,7 @@ const server = Bun.serve({
       const reply = await runAgent({
         request: chatRequest,
         soulPrompt,
-        onProgress: (message) => {
-          if (chatRequest.sessionId) {
-            appendChatProgress(chatRequest.sessionId, message);
-          }
-        },
+        onProgress: () => {},
         onDebug: (event, fields) => {
           log.info("agent debug", {
             request_id: requestId,
@@ -529,14 +504,8 @@ const server = Bun.serve({
         prompt_tokens: reply.usage?.promptTokens ?? null,
         completion_tokens: reply.usage?.completionTokens ?? null,
       });
-      if (chatRequest.sessionId) {
-        completeChatProgress(chatRequest.sessionId);
-      }
       return json(reply);
     } catch (error) {
-      if (chatRequest.sessionId) {
-        completeChatProgress(chatRequest.sessionId);
-      }
       return serverError(
         "chat request failed",
         error,

@@ -181,6 +181,109 @@ describe("remote backend connection errors", () => {
     expect("progressEvents" in reply).toBe(false);
     expect("progressMessages" in reply).toBe(false);
   });
+
+  test("replyStream emits progress events and returns final reply", async () => {
+    const encoder = new TextEncoder();
+    globalThis.fetch = (async () =>
+      new Response(
+        new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  type: "progress",
+                  event: {
+                    seq: 1,
+                    message: "Edited sum.rs",
+                    kind: "tool",
+                    toolCallId: "call_1",
+                    toolName: "edit-file",
+                    phase: "tool_start",
+                  },
+                })}\n\n`,
+              ),
+            );
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  type: "done",
+                  reply: {
+                    model: "gpt-5-mini",
+                    output: "done",
+                  },
+                })}\n\n`,
+              ),
+            );
+            controller.close();
+          },
+        }),
+        {
+          status: 200,
+          headers: { "content-type": "text/event-stream" },
+        },
+      )) as unknown as typeof fetch;
+
+    const backend = createBackend({ apiUrl: "http://localhost:6767" });
+    const received: Array<{ seq: number; message: string }> = [];
+    const reply = await backend.replyStream(
+      {
+        message: "ping",
+        history: [],
+        model: "gpt-5-mini",
+        sessionId: "sess_test",
+      },
+      {
+        onEvents: (events) => {
+          for (const event of events) {
+            received.push({ seq: event.seq, message: event.message });
+          }
+        },
+      },
+    );
+
+    expect(received).toEqual([{ seq: 1, message: "Edited sum.rs" }]);
+    expect(reply.output).toBe("done");
+    expect(reply.model).toBe("gpt-5-mini");
+  });
+
+  test("replyStream surfaces stream error event", async () => {
+    const encoder = new TextEncoder();
+    globalThis.fetch = (async () =>
+      new Response(
+        new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  type: "error",
+                  error: "Provider quota exceeded",
+                })}\n\n`,
+              ),
+            );
+            controller.close();
+          },
+        }),
+        {
+          status: 200,
+          headers: { "content-type": "text/event-stream" },
+        },
+      )) as unknown as typeof fetch;
+
+    const backend = createBackend({ apiUrl: "http://localhost:6767" });
+    await expect(
+      backend.replyStream(
+        {
+          message: "ping",
+          history: [],
+          model: "gpt-5-mini",
+          sessionId: "sess_test",
+        },
+        {
+          onEvents: () => {},
+        },
+      ),
+    ).rejects.toThrow("Provider quota exceeded");
+  });
 });
 
 describe("remote backend status parsing", () => {
@@ -325,44 +428,6 @@ describe("remote backend status parsing", () => {
     expect(status).toContain("provider=mock");
     expect(status).toContain("service=acolyte-backend");
     expect(status).toContain("url=http://localhost:6767");
-  });
-});
-
-describe("remote backend progress parsing", () => {
-  test("progress returns null when no active session progress exists", async () => {
-    globalThis.fetch = (async () => new Response("Not Found", { status: 404 })) as unknown as typeof fetch;
-    const backend = createBackend({ apiUrl: "http://localhost:6767" });
-    await expect(backend.progress("sess_missing", 0)).resolves.toBeNull();
-  });
-
-  test("progress parses events and done flag", async () => {
-    globalThis.fetch = (async () =>
-      new Response(
-        JSON.stringify({
-          ok: true,
-          sessionId: "sess_123",
-          requestId: "err_abcd",
-          done: false,
-          events: [
-            { seq: 1, message: "Request received", kind: "status" },
-            { seq: 2, message: "Run search-repo", kind: "tool" },
-            { seq: 3, message: "Tool failed: timeout", kind: "error" },
-          ],
-        }),
-        { status: 200, headers: { "content-type": "application/json" } },
-      )) as unknown as typeof fetch;
-    const backend = createBackend({ apiUrl: "http://localhost:6767" });
-    const progress = await backend.progress("sess_123", 0);
-    expect(progress).toEqual({
-      sessionId: "sess_123",
-      requestId: "err_abcd",
-      done: false,
-      events: [
-        { seq: 1, message: "Request received", kind: "status" },
-        { seq: 2, message: "Run search-repo", kind: "tool" },
-        { seq: 3, message: "Tool failed: timeout", kind: "error" },
-      ],
-    });
   });
 });
 

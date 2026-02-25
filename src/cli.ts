@@ -807,62 +807,56 @@ async function handlePrompt(
   try {
     printOutput(`❯ ${displayPromptForOutput(prompt)}`);
     printInfo("  Working…");
-    let isPolling = false;
     let hasPrintedProgress = false;
+    const toolSnapshotByCallId = new Map<string, string>();
+    const deltaForToolUpdate = (entry: { message: string; toolCallId?: string }): string => {
+      const toolCallId = entry.toolCallId?.trim();
+      if (!toolCallId) {
+        return entry.message;
+      }
+      const previous = toolSnapshotByCallId.get(toolCallId);
+      toolSnapshotByCallId.set(toolCallId, entry.message);
+      if (!previous) {
+        return entry.message;
+      }
+      const current = entry.message.trimEnd();
+      const before = previous.trimEnd();
+      if (current.length === 0 || current === before) {
+        return "";
+      }
+      if (current.startsWith(`${before}\n`)) {
+        return current.slice(before.length + 1).trimStart();
+      }
+      return current;
+    };
     const progressTracker = createProgressTracker({
       onStatus: () => {},
       onTool: (entry) => {
-        printOutput(formatProgressEventOutput(entry.message));
+        const delta = deltaForToolUpdate(entry);
+        if (!delta) {
+          return;
+        }
+        printOutput(formatProgressEventOutput(delta));
         hasPrintedProgress = true;
       },
       dedupeToolMessages: true,
     });
-    const pollProgress = async (): Promise<{ hadEvents: boolean; done: boolean }> => {
-      if (isPolling) {
-        return { hadEvents: false, done: false };
-      }
-      isPolling = true;
-      try {
-        const progress = await backend.progress(session.id, progressTracker.afterSeq());
-        if (!progress) {
-          return { hadEvents: false, done: true };
-        }
-        const hadEvents = progress.events.length > 0;
-        if (hadEvents) {
-          progressTracker.apply(progress.events);
-        }
-        return { hadEvents, done: progress.done };
-      } finally {
-        isPolling = false;
-      }
-    };
-    const progressPoll = setInterval(() => {
-      void pollProgress().catch(() => {
-        // Best-effort progress polling; ignore transient backend/proxy errors.
-      });
-    }, 150);
-
-    const reply = await (async () => {
-      try {
-        return await backend.reply({
-          message: prompt,
-          history: session.messages,
-          model: session.model,
-          sessionId: session.id,
-          resourceId: options?.resourceId,
-        });
-      } finally {
-        clearInterval(progressPoll);
-      }
-    })();
-
-    for (let i = 0; i < 40; i += 1) {
-      const polled = await pollProgress().catch(() => ({ hadEvents: false, done: false }));
-      if (polled.done) {
-        break;
-      }
-      await Bun.sleep(50);
-    }
+    const reply = await backend.replyStream(
+      {
+        message: prompt,
+        history: session.messages,
+        model: session.model,
+        sessionId: session.id,
+        resourceId: options?.resourceId,
+      },
+      {
+        onEvents: (events) => {
+          if (events.length > 0) {
+            progressTracker.apply(events);
+          }
+        },
+      },
+    );
 
     printOutput("");
     if (hasPrintedProgress) {

@@ -18,17 +18,16 @@ export type ChatProgressEvent = {
   phase?: "tool_start" | "tool_chunk" | "tool_end";
 };
 
-export type ChatProgress = {
-  sessionId: string;
-  requestId: string;
-  done: boolean;
-  events: ChatProgressEvent[];
-};
-
 export interface Backend {
   reply(input: ChatRequest, options?: { signal?: AbortSignal }): Promise<ChatResponse>;
+  replyStream(
+    input: ChatRequest,
+    options: {
+      onEvents: (events: ChatProgressEvent[]) => void;
+      signal?: AbortSignal;
+    },
+  ): Promise<ChatResponse>;
   status(): Promise<string>;
-  progress(sessionId: string, afterSeq?: number): Promise<ChatProgress | null>;
   setPermissionMode(mode: PermissionMode): Promise<void>;
 }
 
@@ -91,6 +90,16 @@ class LocalBackend implements Backend {
     };
   }
 
+  async replyStream(
+    input: ChatRequest,
+    _options: {
+      onEvents: (events: ChatProgressEvent[]) => void;
+      signal?: AbortSignal;
+    },
+  ): Promise<ChatResponse> {
+    return this.reply(input);
+  }
+
   async status(): Promise<string> {
     const model = appConfig.model;
     const provider = providerFromModel(model);
@@ -116,10 +125,6 @@ class LocalBackend implements Backend {
       memoryContextCount === undefined ? undefined : `memory_context=${memoryContextCount}`,
     ];
     return fields.filter((field): field is string => Boolean(field)).join(" ");
-  }
-
-  async progress(_sessionId: string, _afterSeq = 0): Promise<ChatProgress | null> {
-    return null;
   }
 
   async setPermissionMode(mode: PermissionMode): Promise<void> {
@@ -251,6 +256,137 @@ class RemoteBackend implements Backend {
     };
   }
 
+  async replyStream(
+    input: ChatRequest,
+    options: {
+      onEvents: (events: ChatProgressEvent[]) => void;
+      signal?: AbortSignal;
+    },
+  ): Promise<ChatResponse> {
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    let onAbort: (() => void) | undefined;
+    let timedOut = false;
+    let signal = options.signal;
+
+    if (typeof this.replyTimeoutMs === "number") {
+      const timeoutController = new AbortController();
+      signal = timeoutController.signal;
+      onAbort = () => timeoutController.abort(options.signal?.reason);
+      if (options.signal) {
+        if (options.signal.aborted) {
+          onAbort();
+        } else {
+          options.signal.addEventListener("abort", onAbort, { once: true });
+        }
+      }
+      timeoutId = setTimeout(() => {
+        timedOut = true;
+        timeoutController.abort();
+      }, this.replyTimeoutMs);
+    }
+
+    let response: Response;
+    try {
+      response = await this.fetchOrThrow("/v1/chat/stream", {
+        method: "POST",
+        signal,
+        headers: {
+          "content-type": "application/json",
+          ...(this.apiKey ? { authorization: `Bearer ${this.apiKey}` } : {}),
+        },
+        body: JSON.stringify(input),
+      });
+    } catch (error) {
+      if (timedOut) {
+        throw new Error(`Remote backend reply timed out after ${this.replyTimeoutMs}ms`);
+      }
+      throw error;
+    } finally {
+      if (typeof timeoutId !== "undefined") {
+        clearTimeout(timeoutId);
+      }
+      if (options.signal && onAbort) {
+        options.signal.removeEventListener("abort", onAbort);
+      }
+    }
+
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`Remote backend stream failed (${response.status}): ${body || "no body"}`);
+    }
+    if (!response.body) {
+      throw new Error("Remote backend stream returned no body");
+    }
+
+    const decoder = new TextDecoder();
+    const reader = response.body.getReader();
+    let buffer = "";
+    let finalReply: ChatResponse | null = null;
+
+    const processBlock = (block: string): void => {
+      const lines = block
+        .split("\n")
+        .map((line) => line.trimEnd())
+        .filter((line) => line.length > 0);
+      const dataLines = lines.filter((line) => line.startsWith("data:"));
+      if (dataLines.length === 0) {
+        return;
+      }
+      const jsonText = dataLines.map((line) => line.slice(5).trimStart()).join("\n");
+      if (!jsonText) {
+        return;
+      }
+      const payload = JSON.parse(jsonText) as {
+        type?: unknown;
+        event?: unknown;
+        reply?: unknown;
+        error?: unknown;
+      };
+      if (payload.type === "progress") {
+        const events = parseProgressEvents(payload.event ? [payload.event] : []);
+        if (events.length > 0) {
+          options.onEvents(events);
+        }
+        return;
+      }
+      if (payload.type === "error") {
+        throw new Error(typeof payload.error === "string" ? payload.error : "Remote backend stream failed");
+      }
+      if (payload.type === "done") {
+        const reply = parseChatResponse(payload.reply, input.model);
+        if (!reply) {
+          throw new Error("Remote backend stream returned invalid done payload");
+        }
+        finalReply = reply;
+      }
+    };
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        if (buffer.trim().length > 0) {
+          processBlock(buffer);
+        }
+        break;
+      }
+      buffer += decoder.decode(value, { stream: true });
+      while (true) {
+        const boundary = buffer.indexOf("\n\n");
+        if (boundary === -1) {
+          break;
+        }
+        const block = buffer.slice(0, boundary);
+        buffer = buffer.slice(boundary + 2);
+        processBlock(block);
+      }
+    }
+
+    if (!finalReply) {
+      throw new Error("Remote backend stream ended without final reply");
+    }
+    return finalReply;
+  }
+
   async status(): Promise<string> {
     const response = await this.fetchOrThrow("/healthz", {
       headers: this.apiKey ? { authorization: `Bearer ${this.apiKey}` } : undefined,
@@ -333,70 +469,6 @@ class RemoteBackend implements Backend {
     return fields.join(" ");
   }
 
-  async progress(sessionId: string, afterSeq = 0): Promise<ChatProgress | null> {
-    const query = new URLSearchParams({
-      sessionId,
-      afterSeq: String(afterSeq),
-    });
-    const response = await this.fetchOrThrow(`/v1/chat/progress?${query.toString()}`, {
-      headers: this.apiKey ? { authorization: `Bearer ${this.apiKey}` } : undefined,
-    });
-    if (response.status === 404) {
-      return null;
-    }
-    if (!response.ok) {
-      const body = await response.text();
-      throw new Error(`Backend progress check failed (${response.status}): ${body || "no body"}`);
-    }
-    const json = (await response.json()) as {
-      sessionId?: unknown;
-      requestId?: unknown;
-      done?: unknown;
-      events?: unknown;
-    };
-    if (typeof json.sessionId !== "string" || typeof json.requestId !== "string") {
-      return null;
-    }
-    const events = Array.isArray(json.events)
-      ? json.events
-          .map((entry) => {
-            if (!entry || typeof entry !== "object") {
-              return null;
-            }
-            const seq = (entry as { seq?: unknown }).seq;
-            const message = (entry as { message?: unknown }).message;
-            const kind = (entry as { kind?: unknown }).kind;
-            const toolCallId = (entry as { toolCallId?: unknown }).toolCallId;
-            const toolName = (entry as { toolName?: unknown }).toolName;
-            const phase = (entry as { phase?: unknown }).phase;
-            if (typeof seq !== "number" || typeof message !== "string") {
-              return null;
-            }
-            const normalized: ChatProgressEvent = { seq, message };
-            if (kind === "status" || kind === "tool" || kind === "error") {
-              normalized.kind = kind;
-            }
-            if (typeof toolCallId === "string" && toolCallId.length > 0) {
-              normalized.toolCallId = toolCallId;
-            }
-            if (typeof toolName === "string" && toolName.length > 0) {
-              normalized.toolName = toolName;
-            }
-            if (phase === "tool_start" || phase === "tool_chunk" || phase === "tool_end") {
-              normalized.phase = phase;
-            }
-            return normalized;
-          })
-          .filter((entry): entry is ChatProgressEvent => entry !== null)
-      : [];
-    return {
-      sessionId: json.sessionId,
-      requestId: json.requestId,
-      done: typeof json.done === "boolean" ? json.done : false,
-      events,
-    };
-  }
-
   async setPermissionMode(mode: PermissionMode): Promise<void> {
     const response = await this.fetchOrThrow("/v1/permissions", {
       method: "POST",
@@ -411,6 +483,81 @@ class RemoteBackend implements Backend {
       throw new Error(`Failed to set permission mode (${response.status}): ${body || "no body"}`);
     }
   }
+}
+
+function parseProgressEvents(events: unknown): ChatProgressEvent[] {
+  if (!Array.isArray(events)) {
+    return [];
+  }
+  return events
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") {
+        return null;
+      }
+      const seq = (entry as { seq?: unknown }).seq;
+      const message = (entry as { message?: unknown }).message;
+      const kind = (entry as { kind?: unknown }).kind;
+      const toolCallId = (entry as { toolCallId?: unknown }).toolCallId;
+      const toolName = (entry as { toolName?: unknown }).toolName;
+      const phase = (entry as { phase?: unknown }).phase;
+      if (typeof seq !== "number" || typeof message !== "string") {
+        return null;
+      }
+      const normalized: ChatProgressEvent = { seq, message };
+      if (kind === "status" || kind === "tool" || kind === "error") {
+        normalized.kind = kind;
+      }
+      if (typeof toolCallId === "string" && toolCallId.length > 0) {
+        normalized.toolCallId = toolCallId;
+      }
+      if (typeof toolName === "string" && toolName.length > 0) {
+        normalized.toolName = toolName;
+      }
+      if (phase === "tool_start" || phase === "tool_chunk" || phase === "tool_end") {
+        normalized.phase = phase;
+      }
+      return normalized;
+    })
+    .filter((entry): entry is ChatProgressEvent => entry !== null);
+}
+
+function parseChatResponse(payload: unknown, fallbackModel: string): ChatResponse | null {
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+  const json = payload as Partial<ChatResponse>;
+  if (typeof json.output !== "string") {
+    return null;
+  }
+  return {
+    output: json.output,
+    model: typeof json.model === "string" ? json.model : fallbackModel,
+    modelCalls: typeof json.modelCalls === "number" ? json.modelCalls : undefined,
+    toolCalls: Array.isArray((json as { toolCalls?: unknown }).toolCalls)
+      ? ((json as { toolCalls?: unknown[] }).toolCalls ?? []).filter((item): item is string => typeof item === "string")
+      : undefined,
+    usage:
+      json.usage &&
+      typeof json.usage === "object" &&
+      typeof (json.usage as { promptTokens?: unknown }).promptTokens === "number" &&
+      typeof (json.usage as { completionTokens?: unknown }).completionTokens === "number" &&
+      typeof (json.usage as { totalTokens?: unknown }).totalTokens === "number"
+        ? {
+            promptTokens: (json.usage as { promptTokens: number }).promptTokens,
+            completionTokens: (json.usage as { completionTokens: number }).completionTokens,
+            totalTokens: (json.usage as { totalTokens: number }).totalTokens,
+            promptBudgetTokens:
+              typeof (json.usage as { promptBudgetTokens?: unknown }).promptBudgetTokens === "number"
+                ? (json.usage as { promptBudgetTokens: number }).promptBudgetTokens
+                : undefined,
+            promptTruncated:
+              typeof (json.usage as { promptTruncated?: unknown }).promptTruncated === "boolean"
+                ? (json.usage as { promptTruncated: boolean }).promptTruncated
+                : undefined,
+          }
+        : undefined,
+    budgetWarning: typeof json.budgetWarning === "string" ? json.budgetWarning : undefined,
+  };
 }
 
 export function createBackend(options?: BackendOptions): Backend {

@@ -1058,6 +1058,47 @@ describe("chat submit handler guards", () => {
     expect(runRows.length).toBe(1);
   });
 
+  test("renders delayed tool progress before assistant summary row", async () => {
+    let progressCalls = 0;
+    const { submit, rows } = createSubmitHandlerHarness({
+      backend: createBackend({
+        status: async () => "ok",
+        reply: async () => {
+          await Bun.sleep(220);
+          return {
+            model: "gpt-5-mini",
+            output: "done",
+          };
+        },
+        progress: async () => {
+          progressCalls += 1;
+          if (progressCalls === 1) {
+            return { sessionId: "sess_test", requestId: "req_1", done: false, events: [] };
+          }
+          if (progressCalls === 2) {
+            return {
+              sessionId: "sess_test",
+              requestId: "req_1",
+              done: false,
+              events: [{ seq: 1, message: "Edited sum.rs" }],
+            };
+          }
+          return { sessionId: "sess_test", requestId: "req_1", done: true, events: [] };
+        },
+      }),
+    });
+
+    await submit("hello");
+
+    const toolIndex = rows.findIndex(
+      (row) => row.role === "assistant" && row.style === "toolProgress" && row.content.startsWith("Edited sum.rs"),
+    );
+    const assistantIndex = rows.findIndex((row) => row.role === "assistant" && row.content === "done");
+    expect(toolIndex).toBeGreaterThanOrEqual(0);
+    expect(assistantIndex).toBeGreaterThanOrEqual(0);
+    expect(toolIndex).toBeLessThan(assistantIndex);
+  });
+
   test("upgrades streamed header-only tool row when detailed row arrives", async () => {
     let progressCalls = 0;
     const { submit, rows } = createSubmitHandlerHarness({

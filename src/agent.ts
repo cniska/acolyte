@@ -173,9 +173,11 @@ export function createInstructions(baseInstructions: string): string {
     "- Use tools for actions and text for communication.",
     "- Default to tool execution. If a task can be completed with available tools, do it with tools instead of providing instructions/code-only replies.",
     "- Read relevant files before editing; avoid speculative code changes.",
+    "- Minimize tool round trips: for focused file edits, one targeted read then one edit is preferred.",
     "- Artifact requests (scripts/files/components/configs) MUST be fulfilled by creating or editing files directly in workspace.",
     "- For straightforward artifact tasks (create/update/delete a file), execute the file tool action immediately in the same turn.",
     "- For edit/update requests, check the target file with `read-file` first, then apply `edit-file`; do not guess file state.",
+    "- Prefer `read-file` when a likely target path is known; use broad `search-repo` scans only when the target is unclear.",
     "- After a successful `edit-file` for a straightforward request, do not re-read or re-edit the same file in the same turn unless the user explicitly asked for verification or additional changes.",
     "- Never claim a file was created/edited/found unless that is confirmed by tool results in the current turn.",
     "- For requests that create a new file, call `edit-file` with full file content directly (do not answer with file contents in chat).",
@@ -684,6 +686,22 @@ function formatToolResultProgressMessages(
       const emit = (label: string, text: string): void => {
         lines.push(`${label.padEnd(4, " ")}| ${compactProgressDetail(text, 96)}`);
       };
+      const isMetadataLikeFallbackLine = (line: string): boolean => {
+        const trimmed = line.trim();
+        if (!trimmed) {
+          return true;
+        }
+        if (/^[a-f0-9]{8}-[a-f0-9-]{27}$/i.test(trimmed)) {
+          return true;
+        }
+        if (/^(call|fc)_[a-z0-9]+$/i.test(trimmed)) {
+          return true;
+        }
+        if (/^[A-Z_]{3,}$/.test(trimmed)) {
+          return true;
+        }
+        return false;
+      };
       const command = typeof args?.command === "string" ? args.command.trim() : "";
       if (command.length > 0) {
         lines.push(`Ran ${command}`);
@@ -694,6 +712,7 @@ function formatToolResultProgressMessages(
       }
       const outMatch = resultText.match(/(?:^|\n)stdout:\n([\s\S]*?)(?:\n\nstderr:\n|$)/);
       const errMatch = resultText.match(/(?:^|\n)stderr:\n([\s\S]*?)$/);
+      const hasStructuredEnvelope = Boolean(codeMatch?.[1] || outMatch?.[1] || errMatch?.[1]);
       const previewLimit = 8;
       const pushBlock = (label: string, block: string | undefined): void => {
         const content = block?.trim();
@@ -714,6 +733,19 @@ function formatToolResultProgressMessages(
       };
       pushBlock("out", outMatch?.[1]);
       pushBlock("err", errMatch?.[1]);
+      if (!hasStructuredEnvelope) {
+        const fallbackLines = resultText
+          .split("\n")
+          .map((line) => line.trimEnd())
+          .filter((line) => line.length > 0 && !isMetadataLikeFallbackLine(line));
+        const shown = fallbackLines.slice(0, previewLimit);
+        for (const line of shown) {
+          emit("out", line);
+        }
+        if (fallbackLines.length > shown.length) {
+          emit("out", `… +${fallbackLines.length - shown.length} more lines`);
+        }
+      }
       return lines;
     }
     case "edit-file":
@@ -838,6 +870,7 @@ export function collectToolProgressFromStep(
   }
 
   const progress: Array<{ callId?: string; name: string; args: Record<string, unknown>; result: string }> = [];
+  const toolNameByCallId = new Map<string, string>();
   for (const container of containers) {
     const rawCalls =
       (Array.isArray(container.toolCalls) && container.toolCalls) ||
@@ -860,6 +893,9 @@ export function collectToolProgressFromStep(
         continue;
       }
       const callId = typeof entry.id === "string" ? entry.id : undefined;
+      if (callId) {
+        toolNameByCallId.set(callId, name);
+      }
       const args = parseToolArgs(entry.args ?? entry.input ?? entry.parameters);
       progress.push(callId ? { callId, name, args, result: "" } : { name, args, result: "" });
     }
@@ -885,19 +921,40 @@ export function collectToolProgressFromStep(
         stderr?: unknown;
         message?: unknown;
         error?: unknown;
+        content?: unknown;
+        response?: unknown;
+        data?: unknown;
+        value?: unknown;
+        toolResult?: unknown;
       };
-      const name = [entry.toolName, entry.name].find((value) => typeof value === "string") as string | undefined;
-      if (!name) {
+      const callId = typeof entry.id === "string" ? entry.id : undefined;
+      const name = [entry.toolName, entry.name].find((value) => typeof value === "string") as string | undefined | null;
+      const resolvedName = name ?? (callId ? toolNameByCallId.get(callId) : undefined);
+      if (!resolvedName) {
         continue;
       }
-      const callId = typeof entry.id === "string" ? entry.id : undefined;
+      if (callId) {
+        toolNameByCallId.set(callId, resolvedName);
+      }
       const args = parseToolArgs(entry.args ?? entry.input ?? entry.parameters);
       const resultSource =
-        entry.output ?? entry.result ?? entry.text ?? entry.stdout ?? entry.stderr ?? entry.message ?? entry.error;
+        entry.output ??
+        entry.result ??
+        entry.text ??
+        entry.stdout ??
+        entry.stderr ??
+        entry.message ??
+        entry.error ??
+        entry.content ??
+        entry.response ??
+        entry.data ??
+        entry.value ??
+        entry.toolResult ??
+        entry;
       progress.push(
         callId
-          ? { callId, name, args, result: parseToolResultText(resultSource) }
-          : { name, args, result: parseToolResultText(resultSource) },
+          ? { callId, name: resolvedName, args, result: parseToolResultText(resultSource) }
+          : { name: resolvedName, args, result: parseToolResultText(resultSource) },
       );
     }
   }
@@ -949,7 +1006,11 @@ function collectToolProgressFromToolCalls(
       payload?.output ??
       payload?.result ??
       payload?.text ??
-      payload?.response;
+      payload?.response ??
+      payload?.content ??
+      payload?.data ??
+      payload?.value ??
+      entry;
     const result = parseToolResultText(resultSource);
     progress.push(callId ? { callId, name, args, result } : { name, args, result });
   }
@@ -1013,6 +1074,17 @@ export async function runAgent(input: {
   }) => void;
   onDebug?: (event: string, fields?: Record<string, unknown>) => void;
 }): Promise<ChatResponse> {
+  const LIVE_STREAMED_TOOLS = new Set([
+    "search-repo",
+    "read-file",
+    "git-status",
+    "git-diff",
+    "run-command",
+    "edit-file",
+    "delete-file",
+    "web-search",
+    "web-fetch",
+  ]);
   const INITIAL_MAX_STEPS = 50;
   const REQUIRED_TOOLS_RETRY_MAX_STEPS = 10;
   const TIMEOUT_RECOVERY_MAX_STEPS = 8;
@@ -1034,6 +1106,14 @@ export async function runAgent(input: {
   }
   let model = resolved.model;
   let modelCallCount = 0;
+  let emitToolOutput:
+    | ((event: {
+        toolName: string;
+        message: string;
+        toolCallId?: string;
+        phase?: "tool_start" | "tool_chunk" | "tool_end";
+      }) => void)
+    | null = null;
 
   const buildRoleAgent = (agentModel: string) =>
     createAgent({
@@ -1041,7 +1121,11 @@ export async function runAgent(input: {
       name: `Acolyte ${role[0].toUpperCase()}${role.slice(1)}`,
       model: agentModel,
       instructions: createInstructions(input.soulPrompt),
-      tools: toolsForAgent(),
+      tools: toolsForAgent({
+        onToolOutput: (event) => {
+          emitToolOutput?.(event);
+        },
+      }),
     });
 
   let agent = buildRoleAgent(model);
@@ -1117,12 +1201,22 @@ export async function runAgent(input: {
       event.phase ?? "",
       trimmed.toLowerCase(),
     ].join("|");
-    if (!seenProgressEvents.has(dedupeKey)) {
-      seenProgressEvents.add(dedupeKey);
+    if (seenProgressEvents.has(dedupeKey)) {
+      return;
     }
+    seenProgressEvents.add(dedupeKey);
     input.onProgress?.({
       ...event,
       message: trimmed,
+    });
+  };
+  emitToolOutput = (event): void => {
+    emitProgress({
+      message: event.message,
+      kind: "tool",
+      toolName: event.toolName,
+      toolCallId: event.toolCallId,
+      phase: event.phase ?? "tool_chunk",
     });
   };
   const emitToolProgressEntries = (
@@ -1130,7 +1224,26 @@ export async function runAgent(input: {
   ): void => {
     for (const tool of tools) {
       const canonicalToolName = canonicalToolId(tool.name);
+      const isLiveStreamedTool = LIVE_STREAMED_TOOLS.has(canonicalToolName);
       observedToolCallIds.add(canonicalToolName);
+      if (isLiveStreamedTool) {
+        const failureReason = extractToolFailureReason(tool.result);
+        if (failureReason) {
+          lastToolFailureReason = failureReason;
+          emitDebug("agent.tool.failure", {
+            tool_name: tool.name,
+            reason: failureReason,
+          });
+          emitProgress({
+            message: `Tool failed: ${failureReason}`,
+            kind: "error",
+            toolCallId: tool.callId,
+            toolName: canonicalToolName,
+            phase: "tool_end",
+          });
+        }
+        continue;
+      }
       const startMessage = formatToolProgressMessage(canonicalToolName, tool.args);
       const startKey = JSON.stringify({
         kind: "tool_start",
