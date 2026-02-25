@@ -1004,11 +1004,8 @@ describe("chat submit handler guards", () => {
   });
 
   test("dedupes fallback tool progress when same tool was streamed", async () => {
-    const rows: ChatRow[] = [];
     let progressCalls = 0;
-    const session = createSession({ id: "sess_test" });
-    const store = createStore({ activeSessionId: session.id, sessions: [session] });
-    const submit = createSubmitHandler({
+    const { submit, rows } = createSubmitHandlerHarness({
       backend: createBackend({
         status: async () => "ok",
         reply: async () => ({
@@ -1029,36 +1026,6 @@ describe("chat submit handler guards", () => {
           return { sessionId: "sess_test", requestId: "req_1", done: false, events: [] };
         },
       }),
-      store,
-      currentSession: session,
-      setCurrentSession: () => {},
-      toRows: () => [],
-      setRows: (updater) => {
-        rows.splice(0, rows.length, ...updater(rows));
-      },
-      setShowShortcuts: () => {},
-      setValue: () => {},
-      persist: async () => {},
-      exit: () => {},
-      openSkillsPanel: async () => {},
-      openResumePanel: () => {},
-      openPermissionsPanel: () => {},
-      openPolicyPanel: () => {},
-      openClarifyPanel: (_questions, _originalPrompt) => {},
-      openWriteConfirmPanel: () => {},
-      pendingPolicyCandidate: null,
-      setPendingPolicyCandidate: () => {},
-      tokenUsage: [],
-      isThinking: false,
-      setInputHistory: () => {},
-      setInputHistoryIndex: () => {},
-      setInputHistoryDraft: () => {},
-      setIsThinking: () => {},
-      setThinkingLabel: () => {},
-      setTokenUsage: () => {},
-      createMessage,
-      nowIso: () => "2026-02-20T00:00:00.000Z",
-      setInterrupt: () => {},
     });
 
     await submit("hello");
@@ -1067,6 +1034,40 @@ describe("chat submit handler guards", () => {
       (row) => row.role === "assistant" && row.style === "toolProgress" && row.content === "Run",
     );
     expect(runRows.length).toBe(1);
+  });
+
+  test("upgrades streamed header-only tool row when detailed row arrives", async () => {
+    let progressCalls = 0;
+    const { submit, rows } = createSubmitHandlerHarness({
+      backend: createBackend({
+        status: async () => "ok",
+        reply: async () => ({
+          model: "gpt-5-mini",
+          output: "done",
+          progressMessages: ["Edited sum.rs\n1 + fn main() {}"],
+        }),
+        progress: async () => {
+          progressCalls += 1;
+          if (progressCalls === 1) {
+            return {
+              sessionId: "sess_test",
+              requestId: "req_1",
+              done: false,
+              events: [{ seq: 1, message: "Edited sum.rs" }],
+            };
+          }
+          return { sessionId: "sess_test", requestId: "req_1", done: false, events: [] };
+        },
+      }),
+    });
+
+    await submit("hello");
+
+    const editedRows = rows.filter(
+      (row) => row.role === "assistant" && row.style === "toolProgress" && row.content.startsWith("Edited sum.rs"),
+    );
+    expect(editedRows).toHaveLength(1);
+    expect(editedRows[0]?.content).toBe("Edited sum.rs\n1 + fn main() {}");
   });
 
   test("persists token usage on successful turn", async () => {

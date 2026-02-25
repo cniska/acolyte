@@ -270,26 +270,63 @@ function buildClarifiedUserText(turn: InternalClarificationTurn): string {
   return `${turn.originalPrompt}\n\nClarifications:\n${lines.join("\n")}`;
 }
 
-function dedupeToolProgressRows(existing: ChatRow[], incoming: ChatRow[]): ChatRow[] {
-  const seen = new Set(
-    existing
-      .filter((row) => row.style === "toolProgress")
-      .map((row) => `${row.role}:${row.style}:${row.content.trim().toLowerCase()}`),
-  );
-  const out: ChatRow[] = [];
-  for (const row of incoming) {
-    if (row.style !== "toolProgress") {
-      out.push(row);
+function toolProgressHeader(content: string): string {
+  return (content.split("\n")[0] ?? "").trim().toLowerCase();
+}
+
+function appendRowsWithToolProgressMerge(current: ChatRow[], incoming: ChatRow[]): ChatRow[] {
+  const next = [...current];
+  const currentTurnStart = (() => {
+    for (let index = next.length - 1; index >= 0; index -= 1) {
+      if (next[index]?.role === "user") {
+        return index;
+      }
+    }
+    return -1;
+  })();
+  for (const incomingRow of incoming) {
+    if (incomingRow.style !== "toolProgress") {
+      next.push(incomingRow);
       continue;
     }
-    const key = `${row.role}:${row.style}:${row.content.trim().toLowerCase()}`;
-    if (seen.has(key)) {
+
+    const incomingContent = incomingRow.content.trim();
+    const incomingHeader = toolProgressHeader(incomingContent);
+    const existingIndex = [...next]
+      .map((row, index) => ({ row, index }))
+      .reverse()
+      .find(
+        ({ row, index }) =>
+          index > currentTurnStart && row.style === "toolProgress" && toolProgressHeader(row.content) === incomingHeader,
+      )?.index;
+
+    if (existingIndex === undefined) {
+      next.push(incomingRow);
       continue;
     }
-    seen.add(key);
-    out.push(row);
+
+    const existingRow = next[existingIndex];
+    if (!existingRow) {
+      next.push(incomingRow);
+      continue;
+    }
+    const existingContent = existingRow.content.trim();
+    const incomingLower = incomingContent.toLowerCase();
+    const existingLower = existingContent.toLowerCase();
+
+    if (incomingLower === existingLower) {
+      continue;
+    }
+    if (incomingContent.startsWith(`${existingContent}\n`)) {
+      next[existingIndex] = { ...existingRow, content: incomingContent };
+      continue;
+    }
+    if (existingContent.startsWith(`${incomingContent}\n`)) {
+      continue;
+    }
+    next.push(incomingRow);
   }
-  return out;
+  return next;
 }
 
 export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: string) => Promise<void> {
@@ -537,15 +574,12 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       const clarifyingQuestions = extractClarifyingQuestions(assistantMessage.content);
       if (clarifyingQuestions.length > 0) {
         const nonAssistantRows = turn.rows.filter((row) => row.role !== "assistant");
-        input.setRows((current) => {
-          const deduped = dedupeToolProgressRows(current, nonAssistantRows);
-          return [...current, ...deduped];
-        });
+        input.setRows((current) => appendRowsWithToolProgressMerge(current, nonAssistantRows));
         input.openClarifyPanel(clarifyingQuestions, text);
       } else {
         input.currentSession.messages.push(assistantMessage);
         input.currentSession.updatedAt = input.nowIso();
-        input.setRows((current) => [...current, ...dedupeToolProgressRows(current, turn.rows)]);
+        input.setRows((current) => appendRowsWithToolProgressMerge(current, turn.rows));
       }
       // File tree may have changed during tool execution; refresh @path autocomplete candidates.
       invalidateRepoPathCandidates();
