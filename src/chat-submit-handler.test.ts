@@ -1003,7 +1003,7 @@ describe("chat submit handler guards", () => {
     expect(rows.some((row) => row.role === "assistant" && row.content === "resumed")).toBe(true);
   });
 
-  test("dedupes fallback tool progress when same tool was streamed", async () => {
+  test("dedupes duplicate tool progress when same tool was streamed", async () => {
     let progressCalls = 0;
     const { submit, rows } = createSubmitHandlerHarness({
       backend: createBackend({
