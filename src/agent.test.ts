@@ -6,6 +6,7 @@ import {
   collectToolProgressFromStep,
   finalizeAssistantOutput,
   finalizeReviewOutput,
+  formatEditPreviewFromArgs,
   formatToolProgressMessage,
   isPlanLikeOutput,
   resolveAgentModel,
@@ -351,5 +352,15 @@ describe("formatToolProgressMessage", () => {
 
   test("formats run command with command text", () => {
     expect(formatToolProgressMessage("run-command", { command: "bun run verify" })).toBe("Run bun run verify");
+  });
+});
+
+describe("formatEditPreviewFromArgs", () => {
+  test("returns edited header when path is present", () => {
+    expect(formatEditPreviewFromArgs({ path: "src/app.ts" })).toEqual(["Edited src/app.ts"]);
+  });
+
+  test("returns empty when path is missing", () => {
+    expect(formatEditPreviewFromArgs({})).toEqual([]);
   });
 });

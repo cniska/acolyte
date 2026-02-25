@@ -888,6 +888,14 @@ function formatWritePreviewFromArgs(args: Record<string, unknown>): string[] {
   return [out.join("\n")];
 }
 
+export function formatEditPreviewFromArgs(args: Record<string, unknown>): string[] {
+  const path = typeof args.path === "string" ? args.path.trim() : "";
+  if (!path) {
+    return [];
+  }
+  return [`Edited ${compactProgressDetail(path, 64)}`];
+}
+
 function formatDeletePreviewFromArgs(args: Record<string, unknown>): string[] {
   const path = typeof args.path === "string" ? args.path.trim() : "";
   if (!path) {
@@ -1299,14 +1307,16 @@ export async function runAgent(input: {
         }
       }
       const resultMessages = formatToolResultProgressMessages(canonicalToolName, tool.result);
-      const fallbackMessages =
-        resultMessages.length === 0
-          ? canonicalToolName === "write-file"
-            ? formatWritePreviewFromArgs(tool.args)
-            : canonicalToolName === "delete-file"
-              ? formatDeletePreviewFromArgs(tool.args)
-              : []
-          : [];
+      let fallbackMessages: string[] = [];
+      if (resultMessages.length === 0) {
+        if (canonicalToolName === "write-file") {
+          fallbackMessages = formatWritePreviewFromArgs(tool.args);
+        } else if (canonicalToolName === "edit-file") {
+          fallbackMessages = formatEditPreviewFromArgs(tool.args);
+        } else if (canonicalToolName === "delete-file") {
+          fallbackMessages = formatDeletePreviewFromArgs(tool.args);
+        }
+      }
       for (const resultMessage of [...resultMessages, ...fallbackMessages]) {
         const resultDedupeKey = JSON.stringify({ kind: "result", name: tool.name, message: resultMessage });
         if (seenToolNames.has(resultDedupeKey)) {
