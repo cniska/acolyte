@@ -28,7 +28,7 @@ export interface ChatResponse {
     kind?: "status" | "tool" | "error";
     toolCallId?: string;
     toolName?: string;
-    phase?: "start" | "result" | "error";
+    phase?: "start" | "result" | "error" | "chunk_start" | "chunk_delta" | "chunk_end";
   }>;
   modelCalls?: number;
 }

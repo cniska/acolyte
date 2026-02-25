@@ -30,7 +30,7 @@ export function createProgressTracker(options: {
     message: string;
     toolCallId?: string;
     toolName?: string;
-    phase?: "start" | "result" | "error";
+    phase?: "start" | "result" | "error" | "chunk_start" | "chunk_delta" | "chunk_end";
   }) => void;
   dedupeToolMessages?: boolean;
 }): {
@@ -54,7 +54,7 @@ export function createProgressTracker(options: {
       dedupeKey: string;
       toolCallId?: string;
       toolName?: string;
-      phase?: "start" | "result" | "error";
+      phase?: "start" | "result" | "error" | "chunk_start" | "chunk_delta" | "chunk_end";
     }> = [];
     for (const event of events) {
       const message = event.message.trim();
@@ -82,7 +82,7 @@ export function createProgressTracker(options: {
       dedupeKey: string;
       toolCallId?: string;
       toolName?: string;
-      phase?: "start" | "result" | "error";
+      phase?: "start" | "result" | "error" | "chunk_start" | "chunk_delta" | "chunk_end";
     }> = [];
     const groupedIndexByToolCallId = new Map<string, number>();
     for (const entry of rawToolMessages) {

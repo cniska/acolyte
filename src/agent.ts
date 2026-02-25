@@ -193,6 +193,7 @@ export function createInstructions(baseInstructions: string): string {
     "- Ask follow-up questions only when requirements are ambiguous, risky, or blocked by missing access/context.",
     "- If a sensible default exists (for example filename), choose it and continue; avoid multi-question loops.",
     "- Execute directly; do not ask for confirmation to proceed with normal coding actions inside workspace.",
+    "- Before tool execution, send one brief action summary of what you are about to do (1 sentence, no options).",
     "- Do not end with 'Proceed?' or similar approval prompts.",
     "- Do not report repo cleanliness/status unless user explicitly asked for git status.",
     "- Do not append unsolicited 'Next action' suggestions unless the user asked for options or next steps.",
@@ -774,6 +775,26 @@ function formatToolResultProgressMessages(
   return lines;
 }
 
+function formatToolInputProgressMessages(toolName: string, args: Record<string, unknown>): string[] {
+  if (toolName !== "edit-file") {
+    return [];
+  }
+  const content = typeof args.content === "string" ? args.content : null;
+  if (!content || content.trim().length === 0) {
+    return [];
+  }
+  const lines = content.split("\n");
+  const previewLimit = 80;
+  const out: string[] = [];
+  for (let index = 0; index < Math.min(lines.length, previewLimit); index += 1) {
+    out.push(`${index + 1} + ${lines[index] ?? ""}`);
+  }
+  if (lines.length > previewLimit) {
+    out.push(`… +${lines.length - previewLimit} more input lines`);
+  }
+  return out;
+}
+
 export function collectToolProgressFromStep(
   step: unknown,
 ): Array<{ callId?: string; name: string; args: Record<string, unknown>; result: string }> {
@@ -985,7 +1006,7 @@ export async function runAgent(input: {
     kind?: "status" | "tool" | "error";
     toolCallId?: string;
     toolName?: string;
-    phase?: "start" | "result" | "error";
+    phase?: "start" | "result" | "error" | "chunk_start" | "chunk_delta" | "chunk_end";
   }) => void;
   onDebug?: (event: string, fields?: Record<string, unknown>) => void;
 }): Promise<ChatResponse> {
@@ -1083,7 +1104,7 @@ export async function runAgent(input: {
     kind?: "status" | "tool" | "error";
     toolCallId?: string;
     toolName?: string;
-    phase?: "start" | "result" | "error";
+    phase?: "start" | "result" | "error" | "chunk_start" | "chunk_delta" | "chunk_end";
   }): void => {
     const trimmed = event.message.trim();
     if (trimmed.length === 0) {
@@ -1134,6 +1155,60 @@ export async function runAgent(input: {
           toolName: canonicalToolName,
           phase: "start",
         });
+      }
+      const inputMessages = formatToolInputProgressMessages(canonicalToolName, tool.args);
+      if (inputMessages.length > 0) {
+        const chunkStartKey = JSON.stringify({
+          kind: "chunk_start",
+          callId: tool.callId ?? "",
+          name: tool.name,
+          message: startMessage,
+        });
+        if (!seenToolNames.has(chunkStartKey)) {
+          seenToolNames.add(chunkStartKey);
+          emitProgress({
+            message: startMessage,
+            kind: "tool",
+            toolCallId: tool.callId,
+            toolName: canonicalToolName,
+            phase: "chunk_start",
+          });
+        }
+        for (const inputMessage of inputMessages) {
+          const chunkDeltaKey = JSON.stringify({
+            kind: "chunk_delta",
+            callId: tool.callId ?? "",
+            name: tool.name,
+            message: inputMessage,
+          });
+          if (seenToolNames.has(chunkDeltaKey)) {
+            continue;
+          }
+          seenToolNames.add(chunkDeltaKey);
+          emitProgress({
+            message: inputMessage,
+            kind: "tool",
+            toolCallId: tool.callId,
+            toolName: canonicalToolName,
+            phase: "chunk_delta",
+          });
+        }
+        const chunkEndKey = JSON.stringify({
+          kind: "chunk_end",
+          callId: tool.callId ?? "",
+          name: tool.name,
+          message: startMessage,
+        });
+        if (!seenToolNames.has(chunkEndKey)) {
+          seenToolNames.add(chunkEndKey);
+          emitProgress({
+            message: startMessage,
+            kind: "tool",
+            toolCallId: tool.callId,
+            toolName: canonicalToolName,
+            phase: "chunk_end",
+          });
+        }
       }
       const resultMessages = formatToolResultProgressMessages(canonicalToolName, tool.result, tool.args);
       const failureReason = extractToolFailureReason(tool.result);

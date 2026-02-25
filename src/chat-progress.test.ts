@@ -57,7 +57,11 @@ describe("chat progress tracker", () => {
   });
 
   test("forwards tool metadata to onTool callback", () => {
-    const received: Array<{ message: string; toolCallId?: string; phase?: "start" | "result" | "error" }> = [];
+    const received: Array<{
+      message: string;
+      toolCallId?: string;
+      phase?: "start" | "result" | "error" | "chunk_start" | "chunk_delta" | "chunk_end";
+    }> = [];
     const tracker = createProgressTracker({
       onStatus: () => {},
       onTool: (entry) => {
@@ -68,6 +72,36 @@ describe("chat progress tracker", () => {
     tracker.apply([{ seq: 1, message: "Edited sum.rs", kind: "tool", toolCallId: "call_1", phase: "start" }]);
 
     expect(received).toEqual([{ message: "Edited sum.rs", toolCallId: "call_1", phase: "start" }]);
+  });
+
+  test("supports chunk phases and keeps latest phase in grouped emission", () => {
+    const received: Array<{
+      message: string;
+      toolCallId?: string;
+      phase?: "start" | "result" | "error" | "chunk_start" | "chunk_delta" | "chunk_end";
+    }> = [];
+    const tracker = createProgressTracker({
+      onStatus: () => {},
+      onTool: (entry) => {
+        received.push({ message: entry.message, toolCallId: entry.toolCallId, phase: entry.phase });
+      },
+      dedupeToolMessages: false,
+    });
+
+    tracker.apply([
+      { seq: 1, message: "Edited sum.rs", kind: "tool", toolCallId: "call_1", phase: "start" },
+      { seq: 2, message: "Edited sum.rs", kind: "tool", toolCallId: "call_1", phase: "chunk_start" },
+      { seq: 3, message: "1 + fn draft() {}", kind: "tool", toolCallId: "call_1", phase: "chunk_delta" },
+      { seq: 4, message: "Edited sum.rs", kind: "tool", toolCallId: "call_1", phase: "chunk_end" },
+    ]);
+
+    expect(received).toEqual([
+      {
+        message: "Edited sum.rs\n1 + fn draft() {}",
+        toolCallId: "call_1",
+        phase: "chunk_end",
+      },
+    ]);
   });
 
   test("groups by toolCallId even when events are interleaved", () => {

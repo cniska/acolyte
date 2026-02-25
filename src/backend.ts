@@ -15,7 +15,7 @@ export type ChatProgressEvent = {
   kind?: "status" | "tool" | "error";
   toolCallId?: string;
   toolName?: string;
-  phase?: "start" | "result" | "error";
+  phase?: "start" | "result" | "error" | "chunk_start" | "chunk_delta" | "chunk_end";
 };
 
 export type ChatProgress = {
@@ -257,7 +257,14 @@ class RemoteBackend implements Backend {
             if (typeof toolName === "string") {
               normalized.toolName = toolName;
             }
-            if (phase === "start" || phase === "result" || phase === "error") {
+            if (
+              phase === "start" ||
+              phase === "result" ||
+              phase === "error" ||
+              phase === "chunk_start" ||
+              phase === "chunk_delta" ||
+              phase === "chunk_end"
+            ) {
               normalized.phase = phase;
             }
             acc.push(normalized);
@@ -419,7 +426,14 @@ class RemoteBackend implements Backend {
             if (typeof toolName === "string" && toolName.length > 0) {
               normalized.toolName = toolName;
             }
-            if (phase === "start" || phase === "result" || phase === "error") {
+            if (
+              phase === "start" ||
+              phase === "result" ||
+              phase === "error" ||
+              phase === "chunk_start" ||
+              phase === "chunk_delta" ||
+              phase === "chunk_end"
+            ) {
               normalized.phase = phase;
             }
             return normalized;

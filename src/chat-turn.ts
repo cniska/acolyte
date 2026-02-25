@@ -13,7 +13,11 @@ function row(
   content: string,
   dim = false,
   style?: ChatRow["style"],
-  meta?: { toolCallId?: string; toolName?: string; toolPhase?: "start" | "result" | "error" },
+  meta?: {
+    toolCallId?: string;
+    toolName?: string;
+    toolPhase?: "start" | "result" | "error" | "chunk_start" | "chunk_delta" | "chunk_end";
+  },
 ): ChatRow {
   return { id: `row_${crypto.randomUUID()}`, role, content, dim, style, ...meta };
 }

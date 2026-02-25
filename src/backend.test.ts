@@ -134,18 +134,32 @@ describe("remote backend connection errors", () => {
         JSON.stringify({
           model: "gpt-5-mini",
           output: "done",
-          progressEvents: [
-            {
-              message: "Edited sum.rs",
-              kind: "tool",
-              toolCallId: "call_1",
-              toolName: "edit-file",
-              phase: "start",
-            },
-            {
-              message: "1 + fn main() {}",
-              kind: "tool",
-              toolCallId: "call_1",
+      progressEvents: [
+        {
+          message: "Edited sum.rs",
+          kind: "tool",
+          toolCallId: "call_1",
+          toolName: "edit-file",
+          phase: "start",
+        },
+        {
+          message: "1 + fn draft() {}",
+          kind: "tool",
+          toolCallId: "call_1",
+          toolName: "edit-file",
+          phase: "chunk_delta",
+        },
+        {
+          message: "Edited sum.rs",
+          kind: "tool",
+          toolCallId: "call_1",
+          toolName: "edit-file",
+          phase: "chunk_end",
+        },
+        {
+          message: "1 + fn main() {}",
+          kind: "tool",
+          toolCallId: "call_1",
               toolName: "edit-file",
               phase: "result",
             },
@@ -171,6 +185,20 @@ describe("remote backend connection errors", () => {
         toolCallId: "call_1",
         toolName: "edit-file",
         phase: "start",
+      },
+      {
+        message: "1 + fn draft() {}",
+        kind: "tool",
+        toolCallId: "call_1",
+        toolName: "edit-file",
+        phase: "chunk_delta",
+      },
+      {
+        message: "Edited sum.rs",
+        kind: "tool",
+        toolCallId: "call_1",
+        toolName: "edit-file",
+        phase: "chunk_end",
       },
       {
         message: "1 + fn main() {}",

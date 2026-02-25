@@ -356,6 +356,11 @@ describe("createInstructions", () => {
     const out = createInstructions("Base instructions.");
     expect(out).toContain("Forbidden: replying with 'save this as ...'");
   });
+
+  test("requires a brief action summary before tool execution", () => {
+    const out = createInstructions("Base instructions.");
+    expect(out).toContain("Before tool execution, send one brief action summary of what you are about to do");
+  });
 });
 
 describe("formatToolProgressMessage", () => {
