@@ -100,6 +100,7 @@ describe("execution intent detection", () => {
 
   test("canonicalToolId maps snake_case and camelCase tool aliases", () => {
     expect(canonicalToolId("edit_file")).toBe("edit-file");
+    expect(canonicalToolId("write_file")).toBe("write-file");
     expect(canonicalToolId("runCommand")).toBe("run-command");
     expect(canonicalToolId("execute_command")).toBe("run-command");
     expect(canonicalToolId("web_search")).toBe("web-search");

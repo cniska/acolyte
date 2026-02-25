@@ -5,7 +5,6 @@ import { extractAtReferencePaths } from "./chat-file-ref";
 import { formatThoughtDuration, formatVerifySummary } from "./chat-formatters";
 import { runShellCommand } from "./coding-tools";
 import { buildFileContext } from "./file-context";
-import { formatToolLabel } from "./tool-labels";
 import type { Message, Session } from "./types";
 
 function row(role: ChatRow["role"], content: string, dim = false): ChatRow {
@@ -118,14 +117,6 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
 
   const assistantMessage = params.createMessage("assistant", reply.output);
   const rows: ChatRow[] = [];
-  for (const toolId of reply.toolCalls ?? []) {
-    rows.push({
-      id: `row_${crypto.randomUUID()}`,
-      role: "assistant",
-      content: formatToolLabel(toolId),
-      style: "toolProgress",
-    });
-  }
   rows.push(row("assistant", reply.output));
   const tokenEntry: TokenUsageEntry = {
     id: assistantMessage.id,

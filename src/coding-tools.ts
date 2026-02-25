@@ -96,6 +96,44 @@ function ensureWritePermission(operation: string): void {
   }
 }
 
+function displayPathForDiff(absPath: string): string {
+  if (absPath === WORKSPACE_ROOT) {
+    return ".";
+  }
+  if (absPath.startsWith(`${WORKSPACE_ROOT}/`)) {
+    return absPath.slice(WORKSPACE_ROOT.length + 1);
+  }
+  return absPath;
+}
+
+function contentLines(content: string): string[] {
+  if (content.length === 0) {
+    return [];
+  }
+  const lines = content.split("\n");
+  if (lines[lines.length - 1] === "") {
+    lines.pop();
+  }
+  return lines;
+}
+
+function buildUnifiedWriteDiff(path: string, previous: string | null, next: string): string {
+  const oldLines = previous == null ? [] : contentLines(previous);
+  const newLines = contentLines(next);
+  const oldCount = oldLines.length;
+  const newCount = newLines.length;
+  const header = [
+    `diff --git a/${path} b/${path}`,
+    ...(previous == null ? ["new file mode 100644"] : []),
+    `--- ${previous == null ? "/dev/null" : `a/${path}`}`,
+    `+++ b/${path}`,
+    `@@ -${previous == null ? 0 : 1},${oldCount} +1,${newCount} @@`,
+  ];
+  const removed = oldLines.map((line) => `-${line}`);
+  const added = newLines.map((line) => `+${line}`);
+  return [...header, ...removed, ...added].join("\n");
+}
+
 function decodeHtmlEntities(input: string): string {
   return input
     .replaceAll("&amp;", "&")
@@ -392,4 +430,37 @@ export async function editFileReplace(input: {
   }
 
   return [`path=${absPath}`, `matches=${count}`, `dry_run=${input.dryRun ? "true" : "false"}`].join("\n");
+}
+
+export async function writeTextFile(input: { path: string; content: string; overwrite?: boolean }): Promise<string> {
+  ensureWritePermission("File writing");
+  const absPath = ensurePathWithinAllowedRoots(input.path, "Write");
+  const overwrite = input.overwrite ?? true;
+  let previousContent: string | null = null;
+
+  try {
+    previousContent = await readFile(absPath, "utf8");
+    if (!overwrite) {
+      throw new Error("Target file already exists");
+    }
+  } catch (error) {
+    if (!(error instanceof Error) || !/ENOENT/.test(error.message)) {
+      if (error instanceof Error && error.message === "Target file already exists") {
+        throw error;
+      }
+      throw error;
+    }
+  }
+
+  await mkdir(dirname(absPath), { recursive: true });
+  await writeFile(absPath, input.content, "utf8");
+  const relativePath = displayPathForDiff(absPath);
+  const diff = buildUnifiedWriteDiff(relativePath, previousContent, input.content);
+  return [
+    `path=${absPath}`,
+    `bytes=${Buffer.byteLength(input.content, "utf8")}`,
+    `overwritten=${overwrite ? "true" : "false"}`,
+    "",
+    diff,
+  ].join("\n");
 }

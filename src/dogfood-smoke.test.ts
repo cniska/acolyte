@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import {
   assertCheckOutput,
+  hasAdvisoryFileWriteSignal,
   hasFallbackEditSignal,
   hasUnwantedVerificationChatter,
   isProviderReadyFromStatusOutput,
@@ -46,6 +47,12 @@ describe("dogfood-smoke helpers", () => {
     expect(hasUnwantedVerificationChatter("Verification: attempted bun run verify")).toBe(true);
     expect(hasUnwantedVerificationChatter("Next action: run bun run verify")).toBe(true);
     expect(hasUnwantedVerificationChatter("Edited src/a.ts and src/b.ts.")).toBe(false);
+  });
+
+  it("detects advisory save-as responses in coding output", () => {
+    expect(hasAdvisoryFileWriteSignal("Save this as sum.rs and run rustc.")).toBe(true);
+    expect(hasAdvisoryFileWriteSignal("Copy/paste this into a file.")).toBe(true);
+    expect(hasAdvisoryFileWriteSignal("Created /tmp/sum.rs and wrote the script.")).toBe(false);
   });
 
   it("parseArgs defaults to optional provider readiness", () => {

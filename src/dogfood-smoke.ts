@@ -131,6 +131,10 @@ export function hasUnwantedVerificationChatter(output: string): boolean {
   return /\bbun run verify\b|\bverification:\b|\bnext action:\b/i.test(output);
 }
 
+export function hasAdvisoryFileWriteSignal(output: string): boolean {
+  return /\bsave (?:this|as)\b|\bcopy\/paste\b|\bpaste this into\b/i.test(output);
+}
+
 export function parseArgs(args: string[]): SmokeArgs {
   const parsed: SmokeArgs = { requireProviderReady: false };
   for (const token of args) {
@@ -244,12 +248,55 @@ async function runCodingTaskSmoke(
     if (hasFallbackEditSignal(output)) {
       return { ok: false, detail: "fallback edit path used" };
     }
+    if (hasAdvisoryFileWriteSignal(output)) {
+      return { ok: false, detail: "advisory file-write response detected" };
+    }
     const hasOutputChatter = hasUnwantedVerificationChatter(output);
     const content = await readFile(filePath, "utf8");
     if (task.validate(content)) {
       return { ok: true, detail: hasOutputChatter ? "file edited (warning: verbose output chatter)" : "file edited" };
     }
     return { ok: false, detail: "file was not edited as expected" };
+  } finally {
+    await rm(filePath, { force: true });
+  }
+}
+
+async function runCreateFileCodingTaskSmoke(
+  smokeEnv: Record<string, string>,
+  task: {
+    id: string;
+    prompt: (filePath: string) => string;
+    validate: (content: string) => boolean;
+  },
+): Promise<{ ok: boolean; detail: string }> {
+  const filePath = join(tmpdir(), `acolyte-dogfood-create-${task.id}-${crypto.randomUUID()}.txt`);
+  try {
+    await rm(filePath, { force: true });
+    const prompt = task.prompt(filePath);
+    const result = await runCommand(
+      ["bun", "run", "src/cli.ts", "dogfood", "--no-verify", prompt],
+      COMMAND_TIMEOUT_MS,
+      smokeEnv,
+    );
+    if (result.exitCode !== 0) {
+      return { ok: false, detail: `command failed (exit ${result.exitCode})` };
+    }
+    const output = stripAnsi(`${result.stdout}\n${result.stderr}`);
+    if (hasFallbackEditSignal(output)) {
+      return { ok: false, detail: "fallback edit path used" };
+    }
+    if (hasAdvisoryFileWriteSignal(output)) {
+      return { ok: false, detail: "advisory file-write response detected" };
+    }
+    const hasOutputChatter = hasUnwantedVerificationChatter(output);
+    const content = await readFile(filePath, "utf8");
+    if (task.validate(content)) {
+      return { ok: true, detail: hasOutputChatter ? "file created (warning: verbose output chatter)" : "file created" };
+    }
+    return { ok: false, detail: "file was not created as expected" };
+  } catch {
+    return { ok: false, detail: "file was not created as expected" };
   } finally {
     await rm(filePath, { force: true });
   }
@@ -282,6 +329,9 @@ async function runMultiFileCodingTaskSmoke(
     const output = stripAnsi(`${result.stdout}\n${result.stderr}`);
     if (hasFallbackEditSignal(output)) {
       return { ok: false, detail: "fallback edit path used" };
+    }
+    if (hasAdvisoryFileWriteSignal(output)) {
+      return { ok: false, detail: "advisory file-write response detected" };
     }
     const hasOutputChatter = hasUnwantedVerificationChatter(output);
     const contents: Record<string, string> = {};
@@ -420,6 +470,26 @@ export async function main(): Promise<void> {
         }
         console.log(`✓ ${task.label}`);
       }
+      const createFileTask = await runCreateFileCodingTaskSmoke(smokeEnv, {
+        id: "create-file",
+        prompt: (filePath: string) =>
+          [
+            `Target file: ${filePath}`,
+            "Task: create this file with exactly two lines:",
+            "alpha",
+            "beta",
+            "Use write-file on the target path and write the file directly.",
+            "Return a concise summary only.",
+          ].join("\n"),
+        validate: (content: string) => content.trim() === "alpha\nbeta",
+      });
+      if (!createFileTask.ok) {
+        console.error(`✗ dogfood coding task create file: ${createFileTask.detail}`);
+        process.exit(1);
+        return;
+      }
+      console.log("✓ dogfood coding task create file");
+
       const multiFileTask = await runMultiFileCodingTaskSmoke(smokeEnv, {
         id: "multifile",
         files: [

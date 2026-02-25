@@ -10,6 +10,7 @@ import {
   runShellCommand,
   searchRepo,
   searchWeb,
+  writeTextFile,
 } from "./coding-tools";
 import { compactToolOutput } from "./tool-output";
 
@@ -140,6 +141,29 @@ export const editFileTool = createTool({
   },
 });
 
+export const writeFileTool = createTool({
+  id: "write-file",
+  description: "Create a file or overwrite file content.",
+  inputSchema: z.object({
+    path: z.string().min(1),
+    content: z.string(),
+    overwrite: z.boolean().optional(),
+  }),
+  execute: async (input) => {
+    return withToolError("write-file", async () => {
+      const result = compactToolOutput(
+        await writeTextFile({
+          path: input.path,
+          content: input.content,
+          overwrite: input.overwrite ?? true,
+        }),
+        appConfig.agent.toolOutputBudget.edit,
+      );
+      return { result };
+    });
+  },
+});
+
 export const webSearchTool = createTool({
   id: "web-search",
   description: "Search the public web for recent information and return top results.",
@@ -183,6 +207,7 @@ export const acolyteTools = {
   gitDiff: gitDiffTool,
   runCommand: runCommandTool,
   editFile: editFileTool,
+  writeFile: writeFileTool,
   webSearch: webSearchTool,
   webFetch: webFetchTool,
 };

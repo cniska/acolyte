@@ -712,6 +712,54 @@ export function formatAssistantReplyOutput(content: string, wrapWidth = 100): st
     .join("\n");
 }
 
+export function formatProgressEventOutput(content: string): string {
+  const dim = (value: string): string => `\x1b[2m${value}\x1b[22m`;
+  const bold = (value: string): string => `\x1b[1m${value}\x1b[22m`;
+  const path = (value: string): string => `\x1b[4m\x1b[38;2;168;177;188m${value}\x1b[39m\x1b[24m`;
+  const green = (value: string): string => `\x1b[32m${value}\x1b[39m`;
+  const red = (value: string): string => `\x1b[31m${value}\x1b[39m`;
+  const colorize = (line: string): string => {
+    const wrote = line.match(/^(Wrote)\s+(.+)$/);
+    if (wrote) {
+      return `${bold(`${wrote[1]} `)}${path(wrote[2] ?? "")}`;
+    }
+    const read = line.match(/^(Read)\s+(.+)$/);
+    if (read) {
+      return `${bold(`${read[1]} `)}${path(read[2] ?? "")}`;
+    }
+    const numberedDiff = line.match(/^(\d+)(\s+)([+-])\s(.*)$/);
+    if (numberedDiff) {
+      const marker = `${numberedDiff[3]} `;
+      const text = numberedDiff[4] ?? "";
+      const color = numberedDiff[3] === "+" ? green : red;
+      return `${dim(numberedDiff[1] ?? "")}${numberedDiff[2] ?? ""}${color(marker)}${color(text)}`;
+    }
+    const numberedContext = line.match(/^(\d+)(\s{3})(.*)$/);
+    if (numberedContext) {
+      return `${dim(numberedContext[1] ?? "")}${numberedContext[2] ?? ""}${numberedContext[3] ?? ""}`;
+    }
+    if (line.startsWith("+ ")) {
+      return green(line);
+    }
+    if (line.startsWith("- ")) {
+      return red(line);
+    }
+    return line;
+  };
+  const lines = content.split("\n");
+  if (lines.length === 0) {
+    return "•";
+  }
+  return lines
+    .map((line, index) => {
+      if (index === 0) {
+        return line.length > 0 ? `• ${colorize(line)}` : "•";
+      }
+      return line.length > 0 ? `  ${colorize(line)}` : "";
+    })
+    .join("\n");
+}
+
 export function oneShotResourceId(sessionId: string): string {
   return `run-${sessionId.replace(/^sess_/, "").slice(0, 24)}`;
 }
@@ -757,15 +805,64 @@ async function handlePrompt(
   try {
     printOutput(`❯ ${displayPromptForOutput(prompt)}`);
     printInfo("  thinking...");
-    const reply = await backend.reply({
-      message: prompt,
-      history: session.messages,
-      model: session.model,
-      sessionId: session.id,
-      resourceId: options?.resourceId,
-    });
+    let progressAfterSeq = 0;
+    let isPolling = false;
+    let hasPrintedProgress = false;
+    const stageMessages = new Set(["Working…", "Working...", "Thinking…", "Thinking..."]);
+    const applyProgressEvents = (events: Array<{ seq: number; message: string }>): void => {
+      if (events.length === 0) {
+        return;
+      }
+      progressAfterSeq = events[events.length - 1]?.seq ?? progressAfterSeq;
+      for (const event of events) {
+        const message = event.message.trim();
+        if (!message || stageMessages.has(message)) {
+          continue;
+        }
+        printOutput(formatProgressEventOutput(message));
+        hasPrintedProgress = true;
+      }
+    };
+    const pollProgress = async (): Promise<void> => {
+      if (isPolling) {
+        return;
+      }
+      isPolling = true;
+      try {
+        const progress = await backend.progress(session.id, progressAfterSeq);
+        if (!progress || progress.events.length === 0) {
+          return;
+        }
+        applyProgressEvents(progress.events);
+      } finally {
+        isPolling = false;
+      }
+    };
+    const progressPoll = setInterval(() => {
+      void pollProgress().catch(() => {
+        // Best-effort progress polling; ignore transient backend/proxy errors.
+      });
+    }, 150);
+
+    let reply;
+    try {
+      reply = await backend.reply({
+        message: prompt,
+        history: session.messages,
+        model: session.model,
+        sessionId: session.id,
+        resourceId: options?.resourceId,
+      });
+    } finally {
+      clearInterval(progressPoll);
+    }
+
+    await pollProgress().catch(() => {});
 
     printOutput("");
+    if (hasPrintedProgress) {
+      printOutput("");
+    }
     const wrapWidth = Math.max(24, (output.columns ?? 120) - 4);
     await streamText(formatAssistantReplyOutput(reply.output, wrapWidth));
     session.messages.push(newMessage("assistant", reply.output));

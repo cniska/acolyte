@@ -78,6 +78,71 @@ function renderStatusContent(content: string): React.ReactNode {
   );
 }
 
+function renderToolProgressContent(content: string): React.ReactNode {
+  const lines = content.split("\n");
+  const renderToolHeader = (line: string): React.ReactNode | null => {
+    const wrote = line.match(/^(Wrote)\s+(.+)$/);
+    if (wrote) {
+      return (
+        <>
+          <Text bold>{`${wrote[1]} `}</Text>
+          <Text underline color="#A8B1BC">
+            {wrote[2]}
+          </Text>
+        </>
+      );
+    }
+    const read = line.match(/^(Read)\s+(.+)$/);
+    if (read) {
+      return (
+        <>
+          <Text bold>{`${read[1]} `}</Text>
+          <Text underline color="#A8B1BC">
+            {read[2]}
+          </Text>
+        </>
+      );
+    }
+    return null;
+  };
+  return (
+    <>
+      {lines.map((line, index) => {
+        const numberedDiff = line.match(/^(\d+)(\s+)([+-])\s(.*)$/);
+        const numberedContext = line.match(/^(\d+)(\s{3})(.*)$/);
+        const toolHeader = renderToolHeader(line);
+        return (
+          <React.Fragment key={`tool-progress-line-${index}-${line}`}>
+            {index > 0 ? "\n" : null}
+            {toolHeader ? (
+              toolHeader
+            ) : numberedDiff ? (
+              <>
+                <Text dimColor>{numberedDiff[1]}</Text>
+                <Text>{numberedDiff[2]}</Text>
+                <Text color={numberedDiff[3] === "+" ? "green" : "red"}>{`${numberedDiff[3]} `}</Text>
+                <Text color={numberedDiff[3] === "+" ? "green" : "red"}>{numberedDiff[4]}</Text>
+              </>
+            ) : numberedContext ? (
+              <>
+                <Text dimColor>{numberedContext[1]}</Text>
+                <Text>{numberedContext[2]}</Text>
+                <Text>{numberedContext[3]}</Text>
+              </>
+            ) : line.startsWith("+ ") ? (
+              <Text color="green">{line}</Text>
+            ) : line.startsWith("- ") ? (
+              <Text color="red">{line}</Text>
+            ) : (
+              <Text>{line}</Text>
+            )}
+          </React.Fragment>
+        );
+      })}
+    </>
+  );
+}
+
 export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
   const { rows, isThinking, thinkingLabel, thinkingFrame, thinkingStartedAt } = props;
   const pulsePeriod = 16;
@@ -110,6 +175,7 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
   })();
   const columns = process.stdout.columns ?? 120;
   const contentWidth = Math.max(24, Math.min(MAX_TRANSCRIPT_WIDTH, columns - 2));
+  const toolContentWidth = Math.max(24, columns - 2);
   return (
     <>
       {hasContent ? <Text> </Text> : null}
@@ -131,7 +197,7 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
                     {row.role === "user" ? "❯ " : row.role === "assistant" ? "• " : "  "}
                   </Text>
                 </Box>
-                <Box width={contentWidth}>
+                <Box width={row.style === "toolProgress" ? toolContentWidth : contentWidth}>
                   {sessionStatus ? (
                     <Text>
                       <Text dimColor>{sessionStatus.prefix}</Text>
@@ -147,6 +213,8 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
                     </Text>
                   ) : row.role === "system" && (row.style === "statusOutput" || row.style === "tokenOutput") ? (
                     <Text>{renderStatusContent(row.content)}</Text>
+                  ) : row.role === "assistant" && row.style === "toolProgress" ? (
+                    <Text>{renderToolProgressContent(row.content)}</Text>
                   ) : (
                     <Text dimColor={Boolean(row.dim)}>
                       {row.role === "assistant" ? renderAssistantContent(row.content, contentWidth) : row.content}

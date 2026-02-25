@@ -168,12 +168,13 @@ export function createInstructions(baseInstructions: string): string {
   const executionContract = [
     "Execution contract:",
     "Tool Rules (use exact tool ids):",
-    "- Use `read-file` and `search-repo` to inspect code, `edit-file` to apply changes, and `run-command` for terminal commands.",
+    "- Use `read-file` and `search-repo` to inspect code, `edit-file` for targeted replacements, `write-file` for new files/full rewrites, and `run-command` for terminal commands.",
     "- Use `git-status`/`git-diff` for change inspection and `web-search`/`web-fetch` only when external lookup is needed.",
     "- Use tools for actions and text for communication.",
     "- Read relevant files before editing; avoid speculative code changes.",
     "- Artifact requests (scripts/files/components/configs) MUST be fulfilled by creating or editing files directly in workspace.",
-    "- If filename/path is not specified, choose a sensible default filename and create it (for example `sum.rs`).",
+    "- For requests that create a new file, call `write-file` directly (do not answer with file contents in chat).",
+    "- If filename/path is not specified, choose a sensible default filename and create it (for example `sum.rs`) using `write-file`.",
     "- Forbidden: replying with 'save this as ...' or asking user to copy/paste file contents.",
     "",
     "Execution Loop:",
@@ -185,6 +186,11 @@ export function createInstructions(baseInstructions: string): string {
     "Completion + Communication:",
     "- For multi-step work, keep an internal checklist and do not finish until all requested items are addressed.",
     "- Ask follow-up questions only when requirements are ambiguous, risky, or blocked by missing access/context.",
+    "- If a sensible default exists (for example filename), choose it and continue; avoid multi-question loops.",
+    "- Execute directly; do not ask for confirmation to proceed with normal coding actions inside workspace.",
+    "- Do not end with 'Proceed?' or similar approval prompts.",
+    "- Do not report repo cleanliness/status unless user explicitly asked for git status.",
+    "- Do not append unsolicited 'Next action' suggestions unless the user asked for options or next steps.",
     "- Respect response-shape constraints exactly (for example: 'summary only' means summary only).",
     "- Never mention verification commands/results unless verification was explicitly requested in the prompt.",
     "- Keep final output concise and outcome-focused.",
@@ -297,6 +303,8 @@ export function canonicalToolId(value: string): string {
     search_repo: "search-repo",
     editFile: "edit-file",
     edit_file: "edit-file",
+    writeFile: "write-file",
+    write_file: "write-file",
     gitDiff: "git-diff",
     git_diff: "git-diff",
     gitStatus: "git-status",
@@ -544,6 +552,7 @@ export function formatToolProgressMessage(toolName: string, args: Record<string,
     }
     case "read-file":
     case "edit-file":
+    case "write-file":
     case "git-diff": {
       const paths = collectPathDetails(args);
       const formatted = formatPathList(paths);
@@ -618,28 +627,86 @@ function formatToolResultProgressMessages(toolName: string, resultText: string):
   if (!resultText.trim()) {
     return [];
   }
-  if (toolName !== "edit-file") {
+  if (toolName === "run-command") {
+    const lines: string[] = [];
+    const emit = (label: string, text: string): void => {
+      lines.push(`${label.padEnd(4, " ")}| ${compactProgressDetail(text, 96)}`);
+    };
+    const codeMatch = resultText.match(/(?:^|\n)exit_code=(\d+)/);
+    if (codeMatch?.[1]) {
+      emit("code", codeMatch[1]);
+    }
+    const outMatch = resultText.match(/(?:^|\n)stdout:\n([\s\S]*?)(?:\n\nstderr:\n|$)/);
+    const errMatch = resultText.match(/(?:^|\n)stderr:\n([\s\S]*?)$/);
+    const previewLimit = 8;
+    const pushBlock = (label: string, block: string | undefined): void => {
+      const content = block?.trim();
+      if (!content) {
+        return;
+      }
+      const blockLines = content
+        .split("\n")
+        .map((line) => line.trimEnd())
+        .filter((line) => line.length > 0);
+      const shown = blockLines.slice(0, previewLimit);
+      for (const line of shown) {
+        emit(label, line);
+      }
+      if (blockLines.length > shown.length) {
+        emit(label, `… +${blockLines.length - shown.length} more lines`);
+      }
+    };
+    pushBlock("out", outMatch?.[1]);
+    pushBlock("err", errMatch?.[1]);
+    return lines;
+  }
+  if (toolName !== "edit-file" && toolName !== "write-file") {
     return [];
   }
-  const files = parseUnifiedDiffFiles(resultText, 4);
+  const files = parseUnifiedDiffFiles(resultText, toolName === "write-file" ? 80 : 4);
   if (files.length === 0) {
     return [];
   }
   const lines: string[] = [];
-  const verb = formatToolLabel(toolName);
+  const verb = toolName === "write-file" ? "Wrote" : formatToolLabel(toolName);
   for (const file of files) {
-    lines.push(`${verb} ${compactProgressDetail(file.path, 48)} (+${file.added} -${file.removed})`);
+    const writeBlock: string[] = [];
+    if (toolName === "write-file") {
+      writeBlock.push(`${verb} ${compactProgressDetail(file.path, 64)}`);
+      writeBlock.push("diff");
+    } else {
+      lines.push(`${verb} ${compactProgressDetail(file.path, 48)} (+${file.added} -${file.removed})`);
+    }
     for (const preview of file.preview) {
       if (preview.kind === "del") {
-        lines.push(`${preview.oldLine ?? "?"} - ${compactProgressDetail(preview.text, 96)}`);
+        if (toolName === "write-file") {
+          writeBlock.push(`${preview.oldLine ?? "?"} - ${preview.text}`);
+        } else {
+          lines.push(`${preview.oldLine ?? "?"} - ${compactProgressDetail(preview.text, 96)}`);
+        }
       } else if (preview.kind === "add") {
-        lines.push(`${preview.newLine ?? "?"} + ${compactProgressDetail(preview.text, 96)}`);
+        if (toolName === "write-file") {
+          writeBlock.push(`${preview.newLine ?? "?"} + ${preview.text}`);
+        } else {
+          lines.push(`${preview.newLine ?? "?"} + ${compactProgressDetail(preview.text, 96)}`);
+        }
       } else {
-        lines.push(`${preview.newLine ?? preview.oldLine ?? "?"}   ${compactProgressDetail(preview.text, 96)}`);
+        if (toolName === "write-file") {
+          writeBlock.push(`${preview.newLine ?? preview.oldLine ?? "?"}   ${preview.text}`);
+        } else {
+          lines.push(`${preview.newLine ?? preview.oldLine ?? "?"}   ${compactProgressDetail(preview.text, 96)}`);
+        }
       }
     }
     if (file.previewOverflow > 0) {
-      lines.push(`… +${file.previewOverflow} more changed lines`);
+      if (toolName === "write-file") {
+        writeBlock.push(`… +${file.previewOverflow} more changed lines`);
+      } else {
+        lines.push(`… +${file.previewOverflow} more changed lines`);
+      }
+    }
+    if (toolName === "write-file" && writeBlock.length > 0) {
+      lines.push(writeBlock.join("\n"));
     }
   }
   return lines;
@@ -744,6 +811,63 @@ export function collectToolProgressFromStep(
   return progress;
 }
 
+function collectToolProgressFromToolCalls(
+  toolCalls: unknown[],
+): Array<{ name: string; args: Record<string, unknown>; result: string }> {
+  const progress: Array<{ name: string; args: Record<string, unknown>; result: string }> = [];
+  for (const call of toolCalls) {
+    if (!call || typeof call !== "object") {
+      continue;
+    }
+    const entry = call as {
+      toolName?: unknown;
+      name?: unknown;
+      id?: unknown;
+      args?: unknown;
+      input?: unknown;
+      parameters?: unknown;
+      payload?: unknown;
+      output?: unknown;
+      result?: unknown;
+      text?: unknown;
+      stdout?: unknown;
+      stderr?: unknown;
+      error?: unknown;
+      message?: unknown;
+    };
+    const payload =
+      entry.payload && typeof entry.payload === "object" ? (entry.payload as Record<string, unknown>) : undefined;
+    const name = [entry.toolName, entry.name, entry.id, payload?.toolName, payload?.name, payload?.id].find(
+      (value) => typeof value === "string",
+    ) as
+      | string
+      | undefined;
+    if (!name) {
+      continue;
+    }
+    const args = parseToolArgs(entry.args ?? entry.input ?? entry.parameters ?? payload?.args ?? payload?.input);
+    const result = parseToolResultText(entry);
+    progress.push({ name, args, result });
+  }
+  return progress;
+}
+
+function formatWritePreviewFromArgs(args: Record<string, unknown>): string[] {
+  const path = typeof args.path === "string" ? args.path.trim() : "";
+  const content = typeof args.content === "string" ? args.content : "";
+  if (!path || content.length === 0) {
+    return [];
+  }
+  const sourceLines = content.split("\n");
+  const lines = sourceLines.slice(0, 80).map((line, index) => `${index + 1} + ${line}`);
+  const out = [`Wrote ${compactProgressDetail(path, 64)}`, "diff", ...lines];
+  const totalLines = sourceLines.length;
+  if (totalLines > lines.length) {
+    out.push(`… +${totalLines - lines.length} more lines`);
+  }
+  return [out.join("\n")];
+}
+
 export function finalizeReviewOutput(output: string, message = ""): string {
   const trimmed = output.trim();
   if (trimmed.length > 0) {
@@ -795,8 +919,8 @@ export async function runAgent(input: {
   onProgress?: (message: string) => void;
   onDebug?: (event: string, fields?: Record<string, unknown>) => void;
 }): Promise<ChatResponse> {
-  const CODER_INITIAL_MAX_STEPS = 20;
-  const REQUIRED_TOOLS_RETRY_MAX_STEPS = 6;
+  const INITIAL_MAX_STEPS = 50;
+  const REQUIRED_TOOLS_RETRY_MAX_STEPS = 10;
   const BASE_MODEL_RETRY_MAX_STEPS = 5;
   const EMPTY_TEXT_RETRY_MAX_STEPS = 4;
   const CODER_TIMEOUT_MS = 90_000;
@@ -885,18 +1009,21 @@ export async function runAgent(input: {
     }
     input.onProgress?.(trimmed);
   };
+  let emittedToolResultProgress = false;
   const emitToolProgress = (step: unknown): void => {
     const tools = collectToolProgressFromStep(step);
     for (const tool of tools) {
-      const toolId = canonicalToolId(tool.name);
-      observedToolCallIds.add(toolId);
-      const startMessage = formatToolProgressMessage(tool.name, tool.args);
-      const startDedupeKey = JSON.stringify({ kind: "call", name: tool.name, message: startMessage });
-      if (!seenToolNames.has(startDedupeKey)) {
-        seenToolNames.add(startDedupeKey);
-        emitProgress(startMessage);
+      const canonicalToolName = canonicalToolId(tool.name);
+      observedToolCallIds.add(canonicalToolName);
+      if (canonicalToolName !== "write-file" && canonicalToolName !== "read-file") {
+        const startMessage = formatToolProgressMessage(canonicalToolName, tool.args);
+        const startDedupeKey = JSON.stringify({ kind: "call", name: tool.name, message: startMessage });
+        if (!seenToolNames.has(startDedupeKey)) {
+          seenToolNames.add(startDedupeKey);
+          emitProgress(startMessage);
+        }
       }
-      const resultMessages = formatToolResultProgressMessages(tool.name, tool.result);
+      const resultMessages = formatToolResultProgressMessages(canonicalToolName, tool.result);
       const failureReason = extractToolFailureReason(tool.result);
       if (failureReason) {
         lastToolFailureReason = failureReason;
@@ -917,13 +1044,14 @@ export async function runAgent(input: {
           continue;
         }
         seenToolNames.add(resultDedupeKey);
+        emittedToolResultProgress = true;
         emitProgress(resultMessage);
       }
     }
   };
 
   const agentPrompt = agentInput;
-  const initialMaxSteps = CODER_INITIAL_MAX_STEPS;
+  const initialMaxSteps = INITIAL_MAX_STEPS;
   const callTimeoutMs = CODER_TIMEOUT_MS;
   emitProgress("Working…");
   emitDebug("agent.generate.start", {
@@ -998,7 +1126,7 @@ export async function runAgent(input: {
     text_chars: result.text.trim().length,
   });
 
-  const shouldRequireToolsFallback = false;
+  const shouldRequireToolsFallback = true;
   if (shouldRequireToolsFallback && result.toolCalls.length === 0) {
     emitDebug("agent.generate.retry", {
       model,
@@ -1006,23 +1134,33 @@ export async function runAgent(input: {
       tool_choice: "required",
       max_steps: REQUIRED_TOOLS_RETRY_MAX_STEPS,
     });
-    modelCallCount += 1;
-    result = await generateWithTimeout(
-      agentPrompt,
-      {
-        maxSteps: REQUIRED_TOOLS_RETRY_MAX_STEPS,
-        toolChoice: "required",
-        memory: memoryOptions,
-        onStepFinish: emitToolProgress,
-      },
-      callTimeoutMs,
-    );
-    emitDebug("agent.generate.done", {
-      model,
-      reason: "required_tools_no_calls",
-      tool_calls: result.toolCalls.length,
-      text_chars: result.text.trim().length,
-    });
+    try {
+      modelCallCount += 1;
+      result = await generateWithTimeout(
+        agentPrompt,
+        {
+          maxSteps: REQUIRED_TOOLS_RETRY_MAX_STEPS,
+          toolChoice: "required",
+          memory: memoryOptions,
+          onStepFinish: emitToolProgress,
+        },
+        callTimeoutMs,
+      );
+      emitDebug("agent.generate.done", {
+        model,
+        reason: "required_tools_no_calls",
+        tool_calls: result.toolCalls.length,
+        text_chars: result.text.trim().length,
+      });
+    } catch (error) {
+      const retryError = error instanceof Error ? error.message : String(error);
+      lastToolFailureReason = retryError;
+      emitDebug("agent.generate.retry_failed", {
+        model,
+        reason: "required_tools_no_calls",
+        error: retryError,
+      });
+    }
   }
 
   const canRetryOnBaseModel = input.request.model !== model;
@@ -1057,8 +1195,39 @@ export async function runAgent(input: {
     }
   }
 
-  let normalizedToolCalls = normalizeToolCalls(result.toolCalls);
-  let toolCallIds = collectToolCallIds(normalizedToolCalls);
+  const normalizedToolCalls = normalizeToolCalls(result.toolCalls);
+  if (normalizedToolCalls.length > 0 && !emittedToolResultProgress) {
+    const fallbackProgress = collectToolProgressFromToolCalls(normalizedToolCalls);
+    emitDebug("agent.tool_progress.fallback", {
+      model,
+      tool_calls: normalizedToolCalls.length,
+      fallback_entries: fallbackProgress.length,
+    });
+    for (const tool of fallbackProgress) {
+      const canonicalToolName = canonicalToolId(tool.name);
+      observedToolCallIds.add(canonicalToolName);
+      if (canonicalToolName !== "write-file" && canonicalToolName !== "read-file") {
+        const startMessage = formatToolProgressMessage(canonicalToolName, tool.args);
+        const startDedupeKey = JSON.stringify({ kind: "call", name: tool.name, message: startMessage });
+        if (!seenToolNames.has(startDedupeKey)) {
+          seenToolNames.add(startDedupeKey);
+          emitProgress(startMessage);
+        }
+      }
+      const resultMessages = formatToolResultProgressMessages(canonicalToolName, tool.result);
+      const fallbackMessages =
+        resultMessages.length === 0 && canonicalToolName === "write-file" ? formatWritePreviewFromArgs(tool.args) : [];
+      for (const resultMessage of [...resultMessages, ...fallbackMessages]) {
+        const resultDedupeKey = JSON.stringify({ kind: "result", name: tool.name, message: resultMessage });
+        if (seenToolNames.has(resultDedupeKey)) {
+          continue;
+        }
+        seenToolNames.add(resultDedupeKey);
+        emitProgress(resultMessage);
+      }
+    }
+  }
+  const toolCallIds = collectToolCallIds(normalizedToolCalls);
   const rawOutput = result.text.trim();
   if (normalizedToolCalls.length > 0 && toolCallIds.length === 0) {
     const first = normalizedToolCalls[0];

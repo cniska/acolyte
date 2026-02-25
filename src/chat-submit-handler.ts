@@ -545,7 +545,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       void pollProgress().catch(() => {
         // Best-effort progress polling; ignore transient backend/proxy errors.
       });
-    }, 600);
+    }, 150);
     await input.persist();
 
     try {

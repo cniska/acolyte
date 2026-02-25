@@ -21,6 +21,7 @@ describe("mastra toolsets", () => {
       "searchRepo",
       "webFetch",
       "webSearch",
+      "writeFile",
     ]);
   });
 

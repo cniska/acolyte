@@ -624,14 +624,12 @@ describe("chat submit handler guards", () => {
     expect(thinkingLabels[0]).toBe("Working…");
     expect(thinkingLabels).toContain("Working…");
     expect(thinkingLabels.at(-1)).toBeNull();
-    expect(rows.some((row) => row.role === "assistant" && row.content === "Run" && row.style === "toolProgress")).toBe(
-      true,
-    );
+    expect(rows.some((row) => row.role === "assistant" && row.style === "toolProgress")).toBe(true);
     expect(rows.some((row) => row.role === "system" && row.content.includes("Working…"))).toBe(false);
     expect(rows.some((row) => row.role === "assistant" && row.content === "done")).toBe(true);
   });
 
-  test("shows tool progress rows from reply toolCalls when progress stream is empty", async () => {
+  test("does not add generic tool rows when progress stream is empty", async () => {
     const rows: ChatRow[] = [];
     const session = createSession({ id: "sess_test" });
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
@@ -680,9 +678,8 @@ describe("chat submit handler guards", () => {
 
     await submit("hello");
 
-    expect(rows.some((row) => row.role === "assistant" && row.style === "toolProgress" && row.content === "Run")).toBe(
-      true,
-    );
+    expect(rows.some((row) => row.role === "assistant" && row.style === "toolProgress")).toBe(false);
+    expect(rows.some((row) => row.role === "assistant" && row.content === "done")).toBe(true);
   });
 
   test("maps quota errors to user-facing submit error", async () => {

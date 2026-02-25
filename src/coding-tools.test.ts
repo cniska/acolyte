@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, test } from "bun:tes
 import { rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { appConfig, setPermissionMode } from "./app-config";
-import { editFileReplace, fetchWeb, readSnippet, runShellCommand } from "./coding-tools";
+import { editFileReplace, fetchWeb, readSnippet, runShellCommand, writeTextFile } from "./coding-tools";
 
 const tempFiles: string[] = [];
 const initialPermissionMode = appConfig.agent.permissions.mode;
@@ -116,5 +116,39 @@ describe("coding-tools workspace guards", () => {
       replace: "gamma",
     });
     expect(result).toContain("matches=1");
+  });
+
+  test("writeTextFile allows creating /tmp files", async () => {
+    const filePath = `/tmp/acolyte-tmp-write-${crypto.randomUUID()}.txt`;
+    tempFiles.push(filePath);
+    const result = await writeTextFile({
+      path: filePath,
+      content: "hello",
+    });
+    expect(result).toContain("bytes=5");
+  });
+
+  test("writeTextFile blocks paths outside workspace", async () => {
+    await expect(
+      writeTextFile({
+        path: "/etc/acolyte.txt",
+        content: "x",
+      }),
+    ).rejects.toThrow("Write is restricted to the workspace or /tmp");
+  });
+
+  test("read mode blocks writeTextFile", async () => {
+    const prev = appConfig.agent.permissions.mode;
+    setPermissionMode("read");
+    try {
+      await expect(
+        writeTextFile({
+          path: join(process.cwd(), `tmp-read-block-${crypto.randomUUID()}.txt`),
+          content: "x",
+        }),
+      ).rejects.toThrow("File writing is disabled in read mode");
+    } finally {
+      setPermissionMode(prev);
+    }
   });
 });
