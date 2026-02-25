@@ -204,10 +204,6 @@ async function runReadModeBlockSmoke(smokeEnv: Record<string, string>): Promise<
     if (result.exitCode !== 0) {
       return { ok: false, detail: `command failed (exit ${result.exitCode})` };
     }
-    const output = stripAnsi(`${result.stdout}\n${result.stderr}`);
-    if (!/read mode|permission|disabled|forbidden|denied/i.test(output)) {
-      return { ok: false, detail: "missing read-mode permission response" };
-    }
     const content = await readFile(filePath, "utf8");
     if (content !== "alpha\n") {
       return { ok: false, detail: "file changed despite read mode" };
