@@ -3,14 +3,20 @@ import type { Backend } from "./backend";
 import type { ChatRow, TokenUsageEntry } from "./chat-commands";
 import { extractAtReferencePaths } from "./chat-file-ref";
 import { formatThoughtDuration, formatVerifySummary } from "./chat-formatters";
-import { isStageProgressMessage } from "./chat-progress";
+import { createProgressTracker, isStageProgressMessage } from "./chat-progress";
 import { runShellCommand } from "./coding-tools";
 import { buildFileContext } from "./file-context";
 import { groupToolProgressMessages } from "./tool-progress";
 import type { Message, Session } from "./types";
 
-function row(role: ChatRow["role"], content: string, dim = false, style?: ChatRow["style"]): ChatRow {
-  return { id: `row_${crypto.randomUUID()}`, role, content, dim, style };
+function row(
+  role: ChatRow["role"],
+  content: string,
+  dim = false,
+  style?: ChatRow["style"],
+  meta?: { toolCallId?: string; toolName?: string; toolPhase?: "start" | "result" | "error" },
+): ChatRow {
+  return { id: `row_${crypto.randomUUID()}`, role, content, dim, style, ...meta };
 }
 
 export function estimateTokenUsageFallback(prompt: string, output: string): TokenUsage {
@@ -119,7 +125,31 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
 
   const assistantMessage = params.createMessage("assistant", reply.output);
   const rows: ChatRow[] = [];
-  if (Array.isArray(reply.progressMessages) && reply.progressMessages.length > 0) {
+  if (Array.isArray(reply.progressEvents) && reply.progressEvents.length > 0) {
+    const tracker = createProgressTracker({
+      onStatus: () => {},
+      onTool: (entry) => {
+        rows.push(
+          row("assistant", entry.message, false, "toolProgress", {
+            toolCallId: entry.toolCallId,
+            toolName: entry.toolName,
+            toolPhase: entry.phase,
+          }),
+        );
+      },
+      dedupeToolMessages: false,
+    });
+    tracker.apply(
+      reply.progressEvents.map((entry, index) => ({
+        seq: index + 1,
+        message: entry.message,
+        kind: entry.kind,
+        toolCallId: entry.toolCallId,
+        toolName: entry.toolName,
+        phase: entry.phase,
+      })),
+    );
+  } else if (Array.isArray(reply.progressMessages) && reply.progressMessages.length > 0) {
     const toolMessages: string[] = [];
     for (const message of reply.progressMessages) {
       const trimmed = message.trim();

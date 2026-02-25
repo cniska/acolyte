@@ -128,4 +128,48 @@ describe("chat turn helpers", () => {
     expect(toolRows[0]?.content).toBe("Edited sum.rs\n2 - let sum = a + b;\n2 + let sum = a + b + c;");
     expect(toolRows[1]?.content).toBe("Deleted old.rs");
   });
+
+  test("runAssistantTurn prefers structured progress events with tool metadata", async () => {
+    const turn = await runAssistantTurn({
+      backend: {
+        reply: async () => ({
+          model: "gpt-5-mini",
+          output: "done",
+          progressMessages: ["Edited sum.rs", "1 + fallback"],
+          progressEvents: [
+            { message: "Edited sum.rs", kind: "tool", toolCallId: "call_1", toolName: "edit-file", phase: "start" },
+            {
+              message: "1 + fn main() {}",
+              kind: "tool",
+              toolCallId: "call_1",
+              toolName: "edit-file",
+              phase: "result",
+            },
+          ],
+        }),
+        status: async () => "ok",
+        progress: async () => null,
+        setPermissionMode: async () => {},
+      },
+      userText: "create file",
+      history: [],
+      model: "gpt-5-mini",
+      sessionId: "sess_test",
+      runVerifyAfterReply: false,
+      thinkingStartedAt: Date.now(),
+      createMessage: (role, content) => ({
+        id: "msg_assistant",
+        role,
+        content,
+        timestamp: "2026-02-20T00:00:00.000Z",
+      }),
+    });
+
+    const toolRows = turn.rows.filter((row) => row.style === "toolProgress");
+    expect(toolRows).toHaveLength(1);
+    expect(toolRows[0]?.content).toBe("Edited sum.rs\n1 + fn main() {}");
+    expect(toolRows[0]?.toolCallId).toBe("call_1");
+    expect(toolRows[0]?.toolName).toBe("edit-file");
+    expect(toolRows[0]?.toolPhase).toBe("result");
+  });
 });

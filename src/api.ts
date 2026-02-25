@@ -23,5 +23,12 @@ export interface ChatResponse {
   budgetWarning?: string;
   toolCalls?: string[];
   progressMessages?: string[];
+  progressEvents?: Array<{
+    message: string;
+    kind?: "status" | "tool" | "error";
+    toolCallId?: string;
+    toolName?: string;
+    phase?: "start" | "result" | "error";
+  }>;
   modelCalls?: number;
 }

@@ -284,6 +284,19 @@ function findLastToolRowIndex(rows: ChatRow[], minExclusiveIndex: number): numbe
   return -1;
 }
 
+function findLastToolRowIndexByCallId(rows: ChatRow[], minExclusiveIndex: number, toolCallId: string): number {
+  for (let index = rows.length - 1; index > minExclusiveIndex; index -= 1) {
+    const row = rows[index];
+    if (row?.style !== "toolProgress") {
+      continue;
+    }
+    if (row.toolCallId === toolCallId) {
+      return index;
+    }
+  }
+  return -1;
+}
+
 function findLastToolRowIndexByHeader(rows: ChatRow[], minExclusiveIndex: number, header: string): number {
   for (let index = rows.length - 1; index > minExclusiveIndex; index -= 1) {
     const row = rows[index];
@@ -314,6 +327,41 @@ function appendRowsWithToolProgressMerge(current: ChatRow[], incoming: ChatRow[]
     }
 
     const incomingContent = incomingRow.content.trim();
+    if (incomingRow.toolCallId) {
+      const byCallIdIndex = findLastToolRowIndexByCallId(next, currentTurnStart, incomingRow.toolCallId);
+      if (byCallIdIndex >= 0) {
+        const existingRow = next[byCallIdIndex];
+        if (existingRow) {
+          const existingContent = existingRow.content.trim();
+          const incomingLower = incomingContent.toLowerCase();
+          const existingLower = existingContent.toLowerCase();
+          if (incomingLower === existingLower) {
+            continue;
+          }
+          if (incomingContent.startsWith(`${existingContent}\n`)) {
+            next[byCallIdIndex] = { ...existingRow, ...incomingRow, content: incomingContent };
+            continue;
+          }
+          if (existingContent.startsWith(`${incomingContent}\n`)) {
+            continue;
+          }
+          if (isToolDetailLine(incomingContent)) {
+            const existingLines = existingContent.split("\n").map((line) => line.trim().toLowerCase());
+            if (existingLines.includes(incomingLower)) {
+              continue;
+            }
+            next[byCallIdIndex] = {
+              ...existingRow,
+              ...incomingRow,
+              content: `${existingContent}\n${incomingContent}`,
+            };
+            continue;
+          }
+          next.push(incomingRow);
+          continue;
+        }
+      }
+    }
     if (isToolDetailLine(incomingContent)) {
       const lastToolIndex = findLastToolRowIndex(next, currentTurnStart);
       if (lastToolIndex >= 0) {
@@ -562,14 +610,17 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
     const thinkingStartedAt = Date.now();
     const progressTracker = createProgressTracker({
       onStatus: () => {},
-      onTool: (message) => {
+      onTool: (entry) => {
         input.setRows((current) =>
           appendRowsWithToolProgressMerge(current, [
             {
               id: `row_${crypto.randomUUID()}`,
               role: "assistant",
-              content: message,
+              content: entry.message,
               style: "toolProgress",
+              toolCallId: entry.toolCallId,
+              toolName: entry.toolName,
+              toolPhase: entry.phase,
             },
           ]),
         );

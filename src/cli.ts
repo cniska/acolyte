@@ -804,8 +804,8 @@ async function handlePrompt(
     let hasPrintedProgress = false;
     const progressTracker = createProgressTracker({
       onStatus: () => {},
-      onTool: (message) => {
-        printOutput(formatProgressEventOutput(message));
+      onTool: (entry) => {
+        printOutput(formatProgressEventOutput(entry.message));
         hasPrintedProgress = true;
       },
       dedupeToolMessages: true,
@@ -865,16 +865,45 @@ async function handlePrompt(
       }
       await Bun.sleep(60);
     }
-    if (Array.isArray(reply.progressMessages) && reply.progressMessages.length > 0) {
-      const streamedMessages = new Set(progressTracker.toolMessages().map((message) => message.toLowerCase()));
+    if (
+      (Array.isArray(reply.progressMessages) && reply.progressMessages.length > 0) ||
+      (Array.isArray(reply.progressEvents) && reply.progressEvents.length > 0)
+    ) {
+      const fallbackToolMessages = (() => {
+        if (Array.isArray(reply.progressEvents) && reply.progressEvents.length > 0) {
+          const replyTracker = createProgressTracker({
+            onStatus: () => {},
+            onTool: () => {},
+          });
+          replyTracker.apply(
+            reply.progressEvents.map((entry, index) => ({
+              seq: index + 1,
+              message: entry.message,
+              kind: entry.kind,
+              toolCallId: entry.toolCallId,
+              toolName: entry.toolName,
+              phase: entry.phase,
+            })),
+          );
+          return replyTracker.toolMessages();
+        }
+        return reply.progressMessages ?? [];
+      })();
+      const streamedMessageCounts = new Map<string, number>();
+      for (const message of progressTracker.toolMessages()) {
+        const key = message.toLowerCase();
+        streamedMessageCounts.set(key, (streamedMessageCounts.get(key) ?? 0) + 1);
+      }
       const queued: string[] = [];
-      for (const message of reply.progressMessages) {
+      for (const message of fallbackToolMessages) {
         const trimmed = message.trim();
         if (!trimmed || isStageProgressMessage(trimmed)) {
           continue;
         }
         const key = trimmed.toLowerCase();
-        if (streamedMessages.has(key)) {
+        const remaining = streamedMessageCounts.get(key) ?? 0;
+        if (remaining > 0) {
+          streamedMessageCounts.set(key, remaining - 1);
           continue;
         }
         queued.push(trimmed);

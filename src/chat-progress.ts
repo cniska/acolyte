@@ -26,7 +26,12 @@ export function isStageProgressMessage(message: string): boolean {
 
 export function createProgressTracker(options: {
   onStatus: (message: string) => void;
-  onTool: (message: string) => void;
+  onTool: (entry: {
+    message: string;
+    toolCallId?: string;
+    toolName?: string;
+    phase?: "start" | "result" | "error";
+  }) => void;
   dedupeToolMessages?: boolean;
 }): {
   apply: (events: ChatProgressEvent[]) => void;
@@ -43,7 +48,13 @@ export function createProgressTracker(options: {
       return;
     }
     progressAfterSeq = events[events.length - 1]?.seq ?? progressAfterSeq;
-    const rawToolMessages: Array<{ message: string; dedupeKey: string }> = [];
+    const rawToolMessages: Array<{
+      message: string;
+      dedupeKey: string;
+      toolCallId?: string;
+      toolName?: string;
+      phase?: "start" | "result" | "error";
+    }> = [];
     for (const event of events) {
       const message = event.message.trim();
       if (!message) {
@@ -57,16 +68,83 @@ export function createProgressTracker(options: {
         event.toolCallId && event.toolCallId.length > 0
           ? `${event.toolCallId}:${event.phase ?? ""}:${message.toLowerCase()}`
           : message.toLowerCase();
-      rawToolMessages.push({ message, dedupeKey });
+      rawToolMessages.push({
+        message,
+        dedupeKey,
+        toolCallId: event.toolCallId,
+        toolName: event.toolName,
+        phase: event.phase,
+      });
     }
-    const grouped: Array<{ message: string; dedupeKey: string }> = [];
+    const grouped: Array<{
+      message: string;
+      dedupeKey: string;
+      toolCallId?: string;
+      toolName?: string;
+      phase?: "start" | "result" | "error";
+    }> = [];
+    const groupedIndexByToolCallId = new Map<string, number>();
     for (const entry of rawToolMessages) {
+      if (entry.toolCallId) {
+        const existingIndex = groupedIndexByToolCallId.get(entry.toolCallId);
+        if (existingIndex === undefined) {
+          grouped.push({
+            message: entry.message,
+            dedupeKey: entry.dedupeKey,
+            toolCallId: entry.toolCallId,
+            toolName: entry.toolName,
+            phase: entry.phase,
+          });
+          groupedIndexByToolCallId.set(entry.toolCallId, grouped.length - 1);
+          continue;
+        }
+        const existing = grouped[existingIndex];
+        if (!existing) {
+          continue;
+        }
+        const existingContent = existing.message.trim();
+        const incomingContent = entry.message.trim();
+        const existingLower = existingContent.toLowerCase();
+        const incomingLower = incomingContent.toLowerCase();
+        if (incomingLower === existingLower) {
+          continue;
+        }
+        if (incomingContent.startsWith(`${existingContent}\n`)) {
+          existing.message = incomingContent;
+          continue;
+        }
+        if (existingContent.startsWith(`${incomingContent}\n`)) {
+          continue;
+        }
+        const existingLines = existingContent.split("\n").map((line) => line.trim().toLowerCase());
+        if (existingLines.includes(incomingLower)) {
+          existing.toolName = entry.toolName ?? existing.toolName;
+          existing.phase = entry.phase ?? existing.phase;
+          continue;
+        }
+        existing.message = `${existingContent}\n${incomingContent}`;
+        existing.toolName = entry.toolName ?? existing.toolName;
+        existing.phase = entry.phase ?? existing.phase;
+        continue;
+      }
       if (grouped.length === 0) {
-        grouped.push({ message: entry.message, dedupeKey: entry.dedupeKey });
+        grouped.push({
+          message: entry.message,
+          dedupeKey: entry.dedupeKey,
+          toolCallId: entry.toolCallId,
+          toolName: entry.toolName,
+          phase: entry.phase,
+        });
         continue;
       }
       if (isToolHeaderLine(entry.message)) {
-        grouped.push({ message: entry.message, dedupeKey: entry.dedupeKey });
+        grouped.push({
+          message: entry.message,
+          dedupeKey: entry.dedupeKey,
+          toolCallId: entry.toolCallId,
+          toolName: entry.toolName,
+          phase: entry.phase,
+        });
         continue;
       }
       const previous = grouped[grouped.length - 1];
@@ -94,7 +172,12 @@ export function createProgressTracker(options: {
         seenToolMessages.add(eventDedupeKey);
       }
       toolMessages.push(message);
-      options.onTool(message);
+      options.onTool({
+        message,
+        toolCallId: entry.toolCallId,
+        toolName: entry.toolName,
+        phase: entry.phase,
+      });
     }
   };
 

@@ -232,6 +232,38 @@ class RemoteBackend implements Backend {
             (item): item is string => typeof item === "string",
           )
         : undefined,
+      progressEvents: Array.isArray((json as { progressEvents?: unknown }).progressEvents)
+        ? ((json as { progressEvents?: unknown[] }).progressEvents ?? []).reduce<
+            NonNullable<ChatResponse["progressEvents"]>
+          >((acc, entry) => {
+            if (!entry || typeof entry !== "object") {
+              return acc;
+            }
+            const message = (entry as { message?: unknown }).message;
+            if (typeof message !== "string") {
+              return acc;
+            }
+            const kind = (entry as { kind?: unknown }).kind;
+            const toolCallId = (entry as { toolCallId?: unknown }).toolCallId;
+            const toolName = (entry as { toolName?: unknown }).toolName;
+            const phase = (entry as { phase?: unknown }).phase;
+            const normalized: NonNullable<ChatResponse["progressEvents"]>[number] = { message };
+            if (kind === "status" || kind === "tool" || kind === "error") {
+              normalized.kind = kind;
+            }
+            if (typeof toolCallId === "string") {
+              normalized.toolCallId = toolCallId;
+            }
+            if (typeof toolName === "string") {
+              normalized.toolName = toolName;
+            }
+            if (phase === "start" || phase === "result" || phase === "error") {
+              normalized.phase = phase;
+            }
+            acc.push(normalized);
+            return acc;
+          }, [])
+        : undefined,
       usage:
         json.usage &&
         typeof json.usage === "object" &&

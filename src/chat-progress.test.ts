@@ -6,8 +6,8 @@ describe("chat progress tracker", () => {
     const toolMessages: string[] = [];
     const tracker = createProgressTracker({
       onStatus: () => {},
-      onTool: (message) => {
-        toolMessages.push(message);
+      onTool: (entry) => {
+        toolMessages.push(entry.message);
       },
     });
 
@@ -24,8 +24,8 @@ describe("chat progress tracker", () => {
     const toolMessages: string[] = [];
     const tracker = createProgressTracker({
       onStatus: () => {},
-      onTool: (message) => {
-        toolMessages.push(message);
+      onTool: (entry) => {
+        toolMessages.push(entry.message);
       },
     });
 
@@ -45,8 +45,8 @@ describe("chat progress tracker", () => {
     const toolMessages: string[] = [];
     const tracker = createProgressTracker({
       onStatus: () => {},
-      onTool: (message) => {
-        toolMessages.push(message);
+      onTool: (entry) => {
+        toolMessages.push(entry.message);
       },
     });
 
@@ -54,5 +54,61 @@ describe("chat progress tracker", () => {
     tracker.apply([{ seq: 2, message: "Edited sum.rs", kind: "tool", toolCallId: "call_2", phase: "start" }]);
 
     expect(toolMessages).toEqual(["Edited sum.rs", "Edited sum.rs"]);
+  });
+
+  test("forwards tool metadata to onTool callback", () => {
+    const received: Array<{ message: string; toolCallId?: string; phase?: "start" | "result" | "error" }> = [];
+    const tracker = createProgressTracker({
+      onStatus: () => {},
+      onTool: (entry) => {
+        received.push({ message: entry.message, toolCallId: entry.toolCallId, phase: entry.phase });
+      },
+    });
+
+    tracker.apply([{ seq: 1, message: "Edited sum.rs", kind: "tool", toolCallId: "call_1", phase: "start" }]);
+
+    expect(received).toEqual([{ message: "Edited sum.rs", toolCallId: "call_1", phase: "start" }]);
+  });
+
+  test("groups by toolCallId even when events are interleaved", () => {
+    const toolMessages: Array<{ message: string; toolCallId?: string }> = [];
+    const tracker = createProgressTracker({
+      onStatus: () => {},
+      onTool: (entry) => {
+        toolMessages.push({ message: entry.message, toolCallId: entry.toolCallId });
+      },
+      dedupeToolMessages: false,
+    });
+
+    tracker.apply([
+      { seq: 1, message: "Edited sum.rs", kind: "tool", toolCallId: "call_1", phase: "start" },
+      { seq: 2, message: "Edited sum.rs", kind: "tool", toolCallId: "call_2", phase: "start" },
+      { seq: 3, message: "1 + fn one() {}", kind: "tool", toolCallId: "call_1", phase: "result" },
+      { seq: 4, message: "1 + fn two() {}", kind: "tool", toolCallId: "call_2", phase: "result" },
+    ]);
+
+    expect(toolMessages).toEqual([
+      { message: "Edited sum.rs\n1 + fn one() {}", toolCallId: "call_1" },
+      { message: "Edited sum.rs\n1 + fn two() {}", toolCallId: "call_2" },
+    ]);
+  });
+
+  test("does not append duplicate detail lines for same toolCallId", () => {
+    const toolMessages: string[] = [];
+    const tracker = createProgressTracker({
+      onStatus: () => {},
+      onTool: (entry) => {
+        toolMessages.push(entry.message);
+      },
+      dedupeToolMessages: false,
+    });
+
+    tracker.apply([
+      { seq: 1, message: "Edited sum.rs", kind: "tool", toolCallId: "call_1", phase: "start" },
+      { seq: 2, message: "1 + fn main() {}", kind: "tool", toolCallId: "call_1", phase: "result" },
+      { seq: 3, message: "1 + fn main() {}", kind: "tool", toolCallId: "call_1", phase: "result" },
+    ]);
+
+    expect(toolMessages).toEqual(["Edited sum.rs\n1 + fn main() {}"]);
   });
 });

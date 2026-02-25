@@ -1175,6 +1175,45 @@ describe("chat submit handler guards", () => {
     expect(editedRows[1]?.content).toBe('Edited sum.rs\n2 + println!("ok");');
   });
 
+  test("keeps same-header tool rows separate when toolCallId differs in one turn", async () => {
+    let progressCalls = 0;
+    const { submit, rows } = createSubmitHandlerHarness({
+      backend: createBackend({
+        status: async () => "ok",
+        reply: async () => ({
+          model: "gpt-5-mini",
+          output: "done",
+        }),
+        progress: async () => {
+          progressCalls += 1;
+          if (progressCalls === 1) {
+            return {
+              sessionId: "sess_test",
+              requestId: "req_1",
+              done: false,
+              events: [
+                { seq: 1, message: "Edited sum.rs", kind: "tool", toolCallId: "call_1", phase: "start" },
+                { seq: 2, message: "1 + fn one() {}", kind: "tool", toolCallId: "call_1", phase: "result" },
+                { seq: 3, message: "Edited sum.rs", kind: "tool", toolCallId: "call_2", phase: "start" },
+                { seq: 4, message: "1 + fn two() {}", kind: "tool", toolCallId: "call_2", phase: "result" },
+              ],
+            };
+          }
+          return { sessionId: "sess_test", requestId: "req_1", done: false, events: [] };
+        },
+      }),
+    });
+
+    await submit("hello");
+
+    const editedRows = rows.filter(
+      (row) => row.role === "assistant" && row.style === "toolProgress" && row.content.startsWith("Edited sum.rs"),
+    );
+    expect(editedRows).toHaveLength(2);
+    expect(editedRows[0]?.content).toBe("Edited sum.rs\n1 + fn one() {}");
+    expect(editedRows[1]?.content).toBe("Edited sum.rs\n1 + fn two() {}");
+  });
+
   test("persists token usage on successful turn", async () => {
     const session = createSession({ id: "sess_test" });
     const store = createStore({ activeSessionId: session.id, sessions: [session] });

@@ -996,6 +996,7 @@ export async function runAgent(input: {
   }) => void;
   onDebug?: (event: string, fields?: Record<string, unknown>) => void;
 }): Promise<ChatResponse> {
+  type ProgressEventPayload = NonNullable<ChatResponse["progressEvents"]>[number];
   const INITIAL_MAX_STEPS = 50;
   const REQUIRED_TOOLS_RETRY_MAX_STEPS = 10;
   const TIMEOUT_RECOVERY_MAX_STEPS = 8;
@@ -1080,6 +1081,7 @@ export async function runAgent(input: {
   });
   const seenToolNames = new Set<string>();
   const emittedProgressMessages: string[] = [];
+  const emittedProgressEvents: ProgressEventPayload[] = [];
   const seenProgressEvents = new Set<string>();
   const observedToolCallIds = new Set<string>();
   let lastToolFailureReason: string | undefined;
@@ -1104,6 +1106,13 @@ export async function runAgent(input: {
     if (!seenProgressEvents.has(dedupeKey)) {
       seenProgressEvents.add(dedupeKey);
       emittedProgressMessages.push(trimmed);
+      emittedProgressEvents.push({
+        message: trimmed,
+        kind: event.kind,
+        toolCallId: event.toolCallId,
+        toolName: event.toolName,
+        phase: event.phase,
+      });
     }
     input.onProgress?.({
       ...event,
@@ -1258,6 +1267,7 @@ export async function runAgent(input: {
         output,
         toolCalls: Array.from(observedToolCallIds),
         progressMessages: emittedProgressMessages,
+        progressEvents: emittedProgressEvents,
         modelCalls: modelCallCount,
         usage: {
           promptTokens: requestInput.usage.promptTokens,
@@ -1280,6 +1290,7 @@ export async function runAgent(input: {
       output,
       toolCalls: Array.from(observedToolCallIds),
       progressMessages: emittedProgressMessages,
+      progressEvents: emittedProgressEvents,
       modelCalls: modelCallCount,
       usage: {
         promptTokens: requestInput.usage.promptTokens,
@@ -1444,6 +1455,7 @@ export async function runAgent(input: {
     output,
     toolCalls: toolCallIds,
     progressMessages: emittedProgressMessages,
+    progressEvents: emittedProgressEvents,
     modelCalls: modelCallCount,
     usage: {
       promptTokens: promptUsage.promptTokens,
