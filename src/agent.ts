@@ -884,70 +884,6 @@ function collectToolProgressFromToolCalls(
   return progress;
 }
 
-function formatWritePreviewFromArgs(args: Record<string, unknown>): string[] {
-  const path = typeof args.path === "string" ? args.path.trim() : "";
-  const content = typeof args.content === "string" ? args.content : "";
-  if (!path || content.length === 0) {
-    return [];
-  }
-  const sourceLines = content.split("\n");
-  const lines = sourceLines.slice(0, 80).map((line, index) => `${index + 1} + ${line}`);
-  const out = [`Edited ${compactProgressDetail(path, 64)}`, "", ...lines];
-  const totalLines = sourceLines.length;
-  if (totalLines > lines.length) {
-    out.push(`… +${totalLines - lines.length} more lines`);
-  }
-  return [out.join("\n")];
-}
-
-export function formatEditPreviewFromArgs(args: Record<string, unknown>): string[] {
-  const path = typeof args.path === "string" ? args.path.trim() : "";
-  if (!path) {
-    return [];
-  }
-  return [`Edited ${compactProgressDetail(path, 64)}`];
-}
-
-export function fallbackToolResultMessages(
-  canonicalToolName: string,
-  args: Record<string, unknown>,
-  resultMessages: string[],
-): string[] {
-  const hasDiffPreviewLine = (messages: string[]): boolean => {
-    const lines = messages.flatMap((message) => message.split("\n"));
-    return lines.some((line) => /^\d+\s+[+-]\s+/.test(line) || /^[+-]\s+/.test(line));
-  };
-  if (canonicalToolName === "edit-file" && typeof args.content === "string") {
-    const writeLikePreview = formatWritePreviewFromArgs(args);
-    if (writeLikePreview.length > 0) {
-      if (resultMessages.length === 0 || !hasDiffPreviewLine(resultMessages)) {
-        return writeLikePreview;
-      }
-    }
-  }
-  if (resultMessages.length > 0) {
-    return resultMessages;
-  }
-  if (canonicalToolName === "write-file") {
-    return formatWritePreviewFromArgs(args);
-  }
-  if (canonicalToolName === "edit-file") {
-    return formatEditPreviewFromArgs(args);
-  }
-  if (canonicalToolName === "delete-file") {
-    return formatDeletePreviewFromArgs(args);
-  }
-  return resultMessages;
-}
-
-function formatDeletePreviewFromArgs(args: Record<string, unknown>): string[] {
-  const path = typeof args.path === "string" ? args.path.trim() : "";
-  if (!path) {
-    return [];
-  }
-  return [`Deleted ${compactProgressDetail(path, 64)}`];
-}
-
 export function finalizeReviewOutput(output: string, message = ""): string {
   const trimmed = output.trim();
   if (trimmed.length > 0) {
@@ -1117,11 +1053,7 @@ export async function runAgent(input: {
           emitProgress(startMessage);
         }
       }
-      const resultMessages = fallbackToolResultMessages(
-        canonicalToolName,
-        tool.args,
-        formatToolResultProgressMessages(canonicalToolName, tool.result, tool.args),
-      );
+      const resultMessages = formatToolResultProgressMessages(canonicalToolName, tool.result, tool.args);
       const failureReason = extractToolFailureReason(tool.result);
       if (failureReason) {
         lastToolFailureReason = failureReason;
@@ -1364,17 +1296,7 @@ export async function runAgent(input: {
         }
       }
       const resultMessages = formatToolResultProgressMessages(canonicalToolName, tool.result, tool.args);
-      let fallbackMessages: string[] = [];
-      if (resultMessages.length === 0) {
-        if (canonicalToolName === "write-file") {
-          fallbackMessages = formatWritePreviewFromArgs(tool.args);
-        } else if (canonicalToolName === "edit-file") {
-          fallbackMessages = formatEditPreviewFromArgs(tool.args);
-        } else if (canonicalToolName === "delete-file") {
-          fallbackMessages = formatDeletePreviewFromArgs(tool.args);
-        }
-      }
-      for (const resultMessage of [...resultMessages, ...fallbackMessages]) {
+      for (const resultMessage of resultMessages) {
         const resultDedupeKey = JSON.stringify({ kind: "result", name: tool.name, message: resultMessage });
         if (seenToolNames.has(resultDedupeKey)) {
           continue;
