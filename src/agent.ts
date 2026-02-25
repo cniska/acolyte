@@ -168,16 +168,16 @@ export function createInstructions(baseInstructions: string): string {
   const executionContract = [
     "Execution contract:",
     "Tool Rules (use exact tool ids):",
-    "- Use `read-file` and `search-repo` to inspect code, `edit-file` for targeted replacements, `write-file` for new files/full rewrites, `delete-file` for deletions, and `run-command` for terminal commands.",
+    "- Use `read-file` and `search-repo` to inspect code, `edit-file` for file creation and updates, `delete-file` for deletions, and `run-command` for terminal commands.",
     "- Use `git-status`/`git-diff` for change inspection and `web-search`/`web-fetch` only when external lookup is needed.",
     "- Use tools for actions and text for communication.",
     "- Default to tool execution. If a task can be completed with available tools, do it with tools instead of providing instructions/code-only replies.",
     "- Read relevant files before editing; avoid speculative code changes.",
     "- Artifact requests (scripts/files/components/configs) MUST be fulfilled by creating or editing files directly in workspace.",
-    "- For edit/update requests, check the target file with `read-file` first, then apply `edit-file`/`write-file`; do not guess file state.",
+    "- For edit/update requests, check the target file with `read-file` first, then apply `edit-file`; do not guess file state.",
     "- Never claim a file was created/edited/found unless that is confirmed by tool results in the current turn.",
-    "- For requests that create a new file, call `write-file` directly (do not answer with file contents in chat).",
-    "- If filename/path is not specified, choose a sensible default filename and create it (for example `sum.rs`) using `write-file`.",
+    "- For requests that create a new file, call `edit-file` with full file content directly (do not answer with file contents in chat).",
+    "- If filename/path is not specified, choose a sensible default filename and create it (for example `sum.rs`) using `edit-file`.",
     "- Do not offer variants/options before performing a straightforward artifact request; create/edit the file first, then report outcome.",
     "- When asked to edit a specific file and it does not exist, state that the file is missing instead of silently creating a replacement file.",
     "- Forbidden: replying with 'save this as ...' or asking user to copy/paste file contents.",
@@ -308,8 +308,8 @@ export function canonicalToolId(value: string): string {
     search_repo: "search-repo",
     editFile: "edit-file",
     edit_file: "edit-file",
-    writeFile: "write-file",
-    write_file: "write-file",
+    writeFile: "edit-file",
+    write_file: "edit-file",
     deleteFile: "delete-file",
     delete_file: "delete-file",
     gitDiff: "git-diff",
@@ -555,7 +555,7 @@ export function formatToolProgressMessage(toolName: string, args: Record<string,
   switch (toolName) {
     case "run-command": {
       const command = asString(args.command);
-      return command ? `${label} ${command}` : label;
+      return command ? `Ran ${command}` : "Ran";
     }
     case "read-file":
     case "edit-file":
@@ -631,7 +631,11 @@ function extractToolFailureReason(resultText: string): string | null {
   return null;
 }
 
-function formatToolResultProgressMessages(toolName: string, resultText: string): string[] {
+function formatToolResultProgressMessages(
+  toolName: string,
+  resultText: string,
+  args?: Record<string, unknown>,
+): string[] {
   if (!resultText.trim()) {
     return [];
   }
@@ -641,6 +645,10 @@ function formatToolResultProgressMessages(toolName: string, resultText: string):
       const emit = (label: string, text: string): void => {
         lines.push(`${label.padEnd(4, " ")}| ${compactProgressDetail(text, 96)}`);
       };
+      const command = typeof args?.command === "string" ? args.command.trim() : "";
+      if (command.length > 0) {
+        lines.push(`Ran ${command}`);
+      }
       const codeMatch = resultText.match(/(?:^|\n)exit_code=(\d+)/);
       if (codeMatch?.[1]) {
         emit("code", codeMatch[1]);
@@ -684,7 +692,7 @@ function formatToolResultProgressMessages(toolName: string, resultText: string):
   let verb = formatToolLabel(toolName);
   switch (toolName) {
     case "write-file":
-      verb = "Wrote";
+      verb = "Edited";
       break;
     case "edit-file":
       verb = "Edited";
@@ -884,7 +892,7 @@ function formatWritePreviewFromArgs(args: Record<string, unknown>): string[] {
   }
   const sourceLines = content.split("\n");
   const lines = sourceLines.slice(0, 80).map((line, index) => `${index + 1} + ${line}`);
-  const out = [`Wrote ${compactProgressDetail(path, 64)}`, "", ...lines];
+  const out = [`Edited ${compactProgressDetail(path, 64)}`, "", ...lines];
   const totalLines = sourceLines.length;
   if (totalLines > lines.length) {
     out.push(`… +${totalLines - lines.length} more lines`);
@@ -1093,7 +1101,7 @@ export async function runAgent(input: {
       const resultMessages = fallbackToolResultMessages(
         canonicalToolName,
         tool.args,
-        formatToolResultProgressMessages(canonicalToolName, tool.result),
+        formatToolResultProgressMessages(canonicalToolName, tool.result, tool.args),
       );
       const failureReason = extractToolFailureReason(tool.result);
       if (failureReason) {
@@ -1334,7 +1342,7 @@ export async function runAgent(input: {
           emitProgress(startMessage);
         }
       }
-      const resultMessages = formatToolResultProgressMessages(canonicalToolName, tool.result);
+      const resultMessages = formatToolResultProgressMessages(canonicalToolName, tool.result, tool.args);
       let fallbackMessages: string[] = [];
       if (resultMessages.length === 0) {
         if (canonicalToolName === "write-file") {

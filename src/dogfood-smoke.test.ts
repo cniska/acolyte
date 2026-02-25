@@ -2,13 +2,14 @@ import { describe, expect, it } from "bun:test";
 import {
   assertCheckOutput,
   hasAdvisoryFileWriteSignal,
-  hasFallbackEditSignal,
+  hasEditClaimSignal,
   hasToolDiffPreviewSignal,
   hasToolOutcomeSignal,
   hasUnwantedVerificationChatter,
   isProviderReadyFromStatusOutput,
   parseArgs,
   stripAnsi,
+  violatesEditClaimContract,
 } from "./dogfood-smoke";
 
 describe("dogfood-smoke helpers", () => {
@@ -38,10 +39,16 @@ describe("dogfood-smoke helpers", () => {
     expect(isProviderReadyFromStatusOutput(output)).toBe(true);
   });
 
-  it("detects fallback edit signals in output", () => {
-    expect(hasFallbackEditSignal("Applied direct edit fallback in /tmp/x.txt.")).toBe(true);
-    expect(hasFallbackEditSignal("Edit request failed: no edit-file call was executed")).toBe(true);
-    expect(hasFallbackEditSignal("Edited file successfully.")).toBe(false);
+  it("detects edit claim signals in output", () => {
+    expect(hasEditClaimSignal("Edited /tmp/x.txt successfully.")).toBe(true);
+    expect(hasEditClaimSignal("Updated the file content.")).toBe(true);
+    expect(hasEditClaimSignal("Wrote /tmp/new.txt")).toBe(false);
+  });
+
+  it("detects edit claim contract violations", () => {
+    expect(violatesEditClaimContract("Updated /tmp/x.txt")).toBe(true);
+    expect(violatesEditClaimContract("Edited /tmp/x.txt\n• Edited /tmp/x.txt")).toBe(false);
+    expect(violatesEditClaimContract("Wrote /tmp/new.txt")).toBe(false);
   });
 
   it("detects unwanted verification chatter in concise coding responses", () => {

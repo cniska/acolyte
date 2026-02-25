@@ -1,5 +1,6 @@
 import { appConfig } from "./app-config";
 import type { Backend } from "./backend";
+import { createProgressTracker } from "./chat-progress";
 import { type ChatRow, dispatchSlashCommand, type TokenUsageEntry } from "./chat-commands";
 import { invalidateRepoPathCandidates } from "./chat-file-ref";
 import { isKnownSlashToken, resolveSlashAlias } from "./chat-slash";
@@ -175,26 +176,6 @@ export function resolveNaturalRememberDirective(text: string): NaturalRememberDi
     return { scope: "user", content: trailingRememberMatch[1].trim() };
   }
   return null;
-}
-
-function isStageProgressMessage(message: string): boolean {
-  const trimmed = message.trim();
-  if (trimmed.startsWith("Retrying with ")) {
-    return false;
-  }
-  return (
-    trimmed.startsWith("Thinking…") ||
-    trimmed.startsWith("Thinking...") ||
-    trimmed.startsWith("Planning…") ||
-    trimmed.startsWith("Planning...") ||
-    trimmed.startsWith("Coding…") ||
-    trimmed.startsWith("Coding...") ||
-    trimmed.startsWith("Working…") ||
-    trimmed.startsWith("Working…") ||
-    trimmed.startsWith("Reviewing…") ||
-    trimmed.startsWith("Reviewing...") ||
-    trimmed.startsWith("Summarizing…")
-  );
 }
 
 export function extractClarifyingQuestions(output: string): string[] {
@@ -509,23 +490,9 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
     const abortController = new AbortController();
     input.setInterrupt(() => abortController.abort());
     const thinkingStartedAt = Date.now();
-    let progressAfterSeq = 0;
-    const applyProgressEvents = (
-      events: Array<{ seq: number; message: string; kind?: "status" | "tool" | "error" }>,
-    ): void => {
-      if (events.length === 0) {
-        return;
-      }
-      progressAfterSeq = events[events.length - 1]?.seq ?? progressAfterSeq;
-      for (const event of events) {
-        const message = event.message.trim();
-        if (!message) {
-          continue;
-        }
-        if (event.kind === "status" || isStageProgressMessage(message)) {
-          input.setThinkingLabel(message);
-          continue;
-        }
+    const progressTracker = createProgressTracker({
+      onStatus: () => {},
+      onTool: (message) => {
         input.setRows((current) => [
           ...current,
           {
@@ -535,14 +502,15 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
             style: "toolProgress",
           },
         ]);
-      }
-    };
+      },
+      dedupeToolMessages: false,
+    });
     const pollProgress = async (): Promise<void> => {
-      const progress = await input.backend.progress(input.currentSession.id, progressAfterSeq);
+      const progress = await input.backend.progress(input.currentSession.id, progressTracker.afterSeq());
       if (!progress || progress.events.length === 0) {
         return;
       }
-      applyProgressEvents(progress.events);
+      progressTracker.apply(progress.events);
     };
     const progressPoll = setInterval(() => {
       void pollProgress().catch(() => {

@@ -329,6 +329,13 @@ describe("cli formatting helpers", () => {
     expect(out).toContain("\x1b[4m\x1b[38;2;168;177;188msrc/main.rs\x1b[39m\x1b[24m");
   });
 
+  test("formatProgressEventOutput styles Ran header with dim command", () => {
+    const out = formatProgressEventOutput("Ran rustc ./sum.rs -o ./sum && ./sum 1 2 3 4");
+    expect(out).toContain("• ");
+    expect(out).toContain("\x1b[1mRan \x1b[22m");
+    expect(out).toContain("\x1b[2mrustc ./sum.rs -o ./sum && ./sum 1 2 3 4\x1b[22m");
+  });
+
   test("formatProgressEventOutput styles numbered diff markers with spacing", () => {
     const out = formatProgressEventOutput("12 + fn main() {}");
     expect(out).toContain("• ");

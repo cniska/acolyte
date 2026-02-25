@@ -42,6 +42,14 @@ describe("chat transcript helpers", () => {
     });
   });
 
+  test("parseToolProgressLine parses ran headers", () => {
+    expect(parseToolProgressLine("Ran rustc ./sum.rs -o ./sum && ./sum 1 2 3 4")).toEqual({
+      kind: "header",
+      verb: "Ran",
+      path: "rustc ./sum.rs -o ./sum && ./sum 1 2 3 4",
+    });
+  });
+
   test("parseToolProgressLine parses numbered diff lines", () => {
     expect(parseToolProgressLine("12 + const x = 1;")).toEqual({
       kind: "numberedDiff",

@@ -103,7 +103,7 @@ describe("execution intent detection", () => {
 
   test("canonicalToolId maps snake_case and camelCase tool aliases", () => {
     expect(canonicalToolId("edit_file")).toBe("edit-file");
-    expect(canonicalToolId("write_file")).toBe("write-file");
+    expect(canonicalToolId("write_file")).toBe("edit-file");
     expect(canonicalToolId("runCommand")).toBe("run-command");
     expect(canonicalToolId("execute_command")).toBe("run-command");
     expect(canonicalToolId("web_search")).toBe("web-search");
@@ -347,7 +347,7 @@ describe("createInstructions", () => {
   test("enforces tool-first execution guidance", () => {
     const out = createInstructions("Base instructions.");
     expect(out).toContain("Default to tool execution.");
-    expect(out).toContain("For requests that create a new file, call `write-file` directly");
+    expect(out).toContain("For requests that create a new file, call `edit-file` with full file content directly");
     expect(out).toContain("For edit/update requests, check the target file with `read-file` first");
     expect(out).toContain("Never claim a file was created/edited/found unless that is confirmed by tool results");
     expect(out).toContain("Do not offer variants/options before performing a straightforward artifact request");
@@ -370,7 +370,7 @@ describe("formatToolProgressMessage", () => {
   });
 
   test("formats run command with command text", () => {
-    expect(formatToolProgressMessage("run-command", { command: "bun run verify" })).toBe("Run bun run verify");
+    expect(formatToolProgressMessage("run-command", { command: "bun run verify" })).toBe("Ran bun run verify");
   });
 });
 
@@ -388,7 +388,7 @@ describe("fallbackToolResultMessages", () => {
   test("falls back to write preview when write result is empty", () => {
     const out = fallbackToolResultMessages("write-file", { path: "sum.rs", content: "fn main() {}\n" }, []);
     expect(out.length).toBeGreaterThan(0);
-    expect(out[0]).toContain("Wrote sum.rs");
+    expect(out[0]).toContain("Edited sum.rs");
   });
 
   test("returns existing result messages when present", () => {

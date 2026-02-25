@@ -5,6 +5,7 @@ import { stdout as output } from "node:process";
 import { z } from "zod";
 import { appConfig } from "./app-config";
 import { createBackend } from "./backend";
+import { createProgressTracker } from "./chat-progress";
 import { wrapAssistantContent } from "./chat-content";
 import { runInkChat } from "./chat-ui";
 import {
@@ -723,6 +724,9 @@ export function formatProgressEventOutput(content: string): string {
     const parsed = parseToolProgressLine(line);
     switch (parsed.kind) {
       case "header":
+        if (parsed.verb === "Ran") {
+          return `${bold(`${parsed.verb} `)}${dim(parsed.path)}`;
+        }
         return `${bold(`${parsed.verb} `)}${path(parsed.path)}`;
       case "numberedDiff": {
         const marker = `${parsed.marker} `;
@@ -824,42 +828,30 @@ async function handlePrompt(
 
   try {
     printOutput(`❯ ${displayPromptForOutput(prompt)}`);
-    printInfo("  thinking...");
-    let progressAfterSeq = 0;
+    printInfo("  Working…");
     let isPolling = false;
     let hasPrintedProgress = false;
-    const progressMessages: string[] = [];
-    const seenProgressMessages = new Set<string>();
-    const stageMessages = new Set(["Working…", "Working...", "Thinking…", "Thinking..."]);
-    const applyProgressEvents = (events: Array<{ seq: number; message: string }>): void => {
-      if (events.length === 0) {
-        return;
-      }
-      progressAfterSeq = events[events.length - 1]?.seq ?? progressAfterSeq;
-      for (const event of events) {
-        const message = event.message.trim();
-        if (!message || stageMessages.has(message) || seenProgressMessages.has(message)) {
-          continue;
-        }
-        seenProgressMessages.add(message);
-        progressMessages.push(message);
+    const progressTracker = createProgressTracker({
+      onStatus: () => {},
+      onTool: (message) => {
         printOutput(formatProgressEventOutput(message));
         hasPrintedProgress = true;
-      }
-    };
+      },
+      dedupeToolMessages: true,
+    });
     const pollProgress = async (): Promise<{ hadEvents: boolean; done: boolean }> => {
       if (isPolling) {
         return { hadEvents: false, done: false };
       }
       isPolling = true;
       try {
-        const progress = await backend.progress(session.id, progressAfterSeq);
+        const progress = await backend.progress(session.id, progressTracker.afterSeq());
         if (!progress) {
           return { hadEvents: false, done: false };
         }
         const hadEvents = progress.events.length > 0;
         if (hadEvents) {
-          applyProgressEvents(progress.events);
+          progressTracker.apply(progress.events);
         }
         return { hadEvents, done: progress.done };
       } finally {
@@ -908,7 +900,7 @@ async function handlePrompt(
       printOutput("");
     }
     const wrapWidth = Math.max(24, (output.columns ?? 120) - 4);
-    const progressSummary = summarizeProgressForChat(progressMessages);
+    const progressSummary = summarizeProgressForChat(progressTracker.toolMessages());
     const assistantOutput = progressSummary ? `${progressSummary}\n\n${reply.output}` : reply.output;
     await streamText(formatAssistantReplyOutput(assistantOutput, wrapWidth));
     session.messages.push(newMessage("assistant", assistantOutput));

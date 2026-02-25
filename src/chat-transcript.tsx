@@ -89,12 +89,19 @@ function renderToolProgressContent(content: string): React.ReactNode {
           <React.Fragment key={`tool-progress-line-${index}-${line}`}>
             {index > 0 ? "\n" : null}
             {parsed.kind === "header" ? (
-              <>
-                <Text bold>{`${parsed.verb} `}</Text>
-                <Text underline color="#A8B1BC">
-                  {parsed.path}
-                </Text>
-              </>
+              parsed.verb === "Ran" ? (
+                <>
+                  <Text bold>{`${parsed.verb} `}</Text>
+                  <Text dimColor>{parsed.path}</Text>
+                </>
+              ) : (
+                <>
+                  <Text bold>{`${parsed.verb} `}</Text>
+                  <Text underline color="#A8B1BC">
+                    {parsed.path}
+                  </Text>
+                </>
+              )
             ) : parsed.kind === "numberedDiff" ? (
               <>
                 <Text dimColor>{parsed.lineNumber}</Text>

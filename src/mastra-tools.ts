@@ -119,47 +119,43 @@ export const runCommandTool = createTool({
 
 export const editFileTool = createTool({
   id: "edit-file",
-  description: "Replace exact text in a file. Supports dry run mode.",
-  inputSchema: z.object({
-    path: z.string().min(1),
-    find: z.string().min(1),
-    replace: z.string(),
-    dryRun: z.boolean().optional(),
-  }),
-  execute: async (input) => {
+  description: "Create/update file content or replace exact text in an existing file.",
+  inputSchema: z
+    .object({
+      path: z.string().min(1),
+      find: z.string().optional(),
+      replace: z.string().optional(),
+      content: z.string().optional(),
+      overwrite: z.boolean().optional(),
+      dryRun: z.boolean().optional(),
+    })
+    .refine((input) => typeof input.content === "string" || (typeof input.find === "string" && input.find.length > 0), {
+      message: "Provide either content, or find+replace.",
+      path: ["content"],
+    }),
+  execute: async (input: {
+    path: string;
+    find?: string;
+    replace?: string;
+    content?: string;
+    overwrite?: boolean;
+    dryRun?: boolean;
+  }) => {
     return withToolError("edit-file", async () => {
-      const result = compactToolOutput(
-        await editFileReplace({
-          path: input.path,
-          find: input.find,
-          replace: input.replace,
-          dryRun: input.dryRun ?? false,
-        }),
-        appConfig.agent.toolOutputBudget.edit,
-      );
-      return { result };
-    });
-  },
-});
-
-export const writeFileTool = createTool({
-  id: "write-file",
-  description: "Create a file or overwrite file content.",
-  inputSchema: z.object({
-    path: z.string().min(1),
-    content: z.string(),
-    overwrite: z.boolean().optional(),
-  }),
-  execute: async (input) => {
-    return withToolError("write-file", async () => {
-      const result = compactToolOutput(
-        await writeTextFile({
-          path: input.path,
-          content: input.content,
-          overwrite: input.overwrite ?? true,
-        }),
-        appConfig.agent.toolOutputBudget.edit,
-      );
+      const rawResult =
+        typeof input.content === "string"
+          ? await writeTextFile({
+              path: input.path,
+              content: input.content,
+              overwrite: input.overwrite ?? true,
+            })
+          : await editFileReplace({
+              path: input.path,
+              find: input.find ?? "",
+              replace: input.replace ?? "",
+              dryRun: input.dryRun ?? false,
+            });
+      const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.edit);
       return { result };
     });
   },
@@ -229,7 +225,6 @@ export const acolyteTools = {
   gitDiff: gitDiffTool,
   runCommand: runCommandTool,
   editFile: editFileTool,
-  writeFile: writeFileTool,
   deleteFile: deleteFileTool,
   webSearch: webSearchTool,
   webFetch: webFetchTool,

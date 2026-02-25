@@ -123,8 +123,12 @@ export function isProviderReadyFromStatusOutput(output: string): boolean {
   return true;
 }
 
-export function hasFallbackEditSignal(output: string): boolean {
-  return /Applied direct edit fallback|Edit request failed:/i.test(output);
+export function hasEditClaimSignal(output: string): boolean {
+  return /\b(edited|updated|modified|rewrote|changed|applied)\b/i.test(output);
+}
+
+export function violatesEditClaimContract(output: string): boolean {
+  return hasEditClaimSignal(output) && !hasToolOutcomeSignal(output, "Edited");
 }
 
 export function hasUnwantedVerificationChatter(output: string): boolean {
@@ -254,8 +258,8 @@ async function runCodingTaskSmoke(
       return { ok: false, detail: `command failed (exit ${result.exitCode})` };
     }
     const output = stripAnsi(`${result.stdout}\n${result.stderr}`);
-    if (hasFallbackEditSignal(output)) {
-      return { ok: false, detail: "fallback edit path used" };
+    if (violatesEditClaimContract(output)) {
+      return { ok: false, detail: "edit claimed without edited tool outcome" };
     }
     if (hasAdvisoryFileWriteSignal(output)) {
       return { ok: false, detail: "advisory file-write response detected" };
@@ -298,9 +302,6 @@ async function runCreateFileCodingTaskSmoke(
       return { ok: false, detail: `command failed (exit ${result.exitCode})` };
     }
     const output = stripAnsi(`${result.stdout}\n${result.stderr}`);
-    if (hasFallbackEditSignal(output)) {
-      return { ok: false, detail: "fallback edit path used" };
-    }
     if (hasAdvisoryFileWriteSignal(output)) {
       return { ok: false, detail: "advisory file-write response detected" };
     }
@@ -344,9 +345,6 @@ async function runDeleteFileCodingTaskSmoke(
       return { ok: false, detail: `command failed (exit ${result.exitCode})` };
     }
     const output = stripAnsi(`${result.stdout}\n${result.stderr}`);
-    if (hasFallbackEditSignal(output)) {
-      return { ok: false, detail: "fallback edit path used" };
-    }
     if (hasAdvisoryFileWriteSignal(output)) {
       return { ok: false, detail: "advisory file-write response detected" };
     }
@@ -389,8 +387,8 @@ async function runMultiFileCodingTaskSmoke(
       return { ok: false, detail: `command failed (exit ${result.exitCode})` };
     }
     const output = stripAnsi(`${result.stdout}\n${result.stderr}`);
-    if (hasFallbackEditSignal(output)) {
-      return { ok: false, detail: "fallback edit path used" };
+    if (violatesEditClaimContract(output)) {
+      return { ok: false, detail: "edit claimed without edited tool outcome" };
     }
     if (hasAdvisoryFileWriteSignal(output)) {
       return { ok: false, detail: "advisory file-write response detected" };

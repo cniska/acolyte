@@ -1,16 +1,16 @@
 export type ToolProgressParsedLine =
-  | { kind: "header"; verb: "Wrote" | "Edited" | "Read" | "Deleted"; path: string }
+  | { kind: "header"; verb: "Wrote" | "Edited" | "Read" | "Deleted" | "Ran"; path: string }
   | { kind: "numberedDiff"; lineNumber: string; spacing: string; marker: "+" | "-"; text: string }
   | { kind: "numberedContext"; lineNumber: string; spacing: string; text: string }
   | { kind: "plainDiff"; marker: "+" | "-"; text: string }
   | { kind: "text"; text: string };
 
 export function parseToolProgressLine(line: string): ToolProgressParsedLine {
-  const header = line.match(/^(Wrote|Edited|Read|Deleted)\s+(.+)$/);
+  const header = line.match(/^(Wrote|Edited|Read|Deleted|Ran)\s+(.+)$/);
   if (header) {
     return {
       kind: "header",
-      verb: header[1] as "Wrote" | "Edited" | "Read" | "Deleted",
+      verb: header[1] as "Wrote" | "Edited" | "Read" | "Deleted" | "Ran",
       path: header[2] ?? "",
     };
   }
