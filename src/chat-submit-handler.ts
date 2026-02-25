@@ -608,24 +608,129 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
     const abortController = new AbortController();
     input.setInterrupt(() => abortController.abort());
     const thinkingStartedAt = Date.now();
+    let streamingAssistantRowId: string | null = null;
+    let streamingAssistantContent = "";
+    const toolRowIdByCallId = new Map<string, string>();
+    const toolSeenLinesByCallId = new Map<string, Set<string>>();
     const progressTracker = createProgressTracker({
       onStatus: () => {},
-      onTool: (entry) => {
-        input.setRows((current) =>
-          appendRowsWithToolProgressMerge(current, [
-            {
-              id: `row_${crypto.randomUUID()}`,
-              role: "assistant",
-              content: entry.message,
-              style: "toolProgress",
-              toolCallId: entry.toolCallId,
-              toolName: entry.toolName,
-              toolPhase: entry.phase,
-            },
-          ]),
-        );
+      onAssistant: (delta) => {
+        if (delta.length === 0) {
+          return;
+        }
+        streamingAssistantContent += delta;
+        input.setRows((current) => {
+          if (!streamingAssistantRowId) {
+            streamingAssistantRowId = `row_${crypto.randomUUID()}`;
+            return [
+              ...current,
+              {
+                id: streamingAssistantRowId,
+                role: "assistant",
+                content: streamingAssistantContent,
+                dim: true,
+              },
+            ];
+          }
+          return current.map((row) =>
+            row.id === streamingAssistantRowId ? { ...row, content: streamingAssistantContent, dim: true } : row,
+          );
+        });
       },
-      dedupeToolMessages: false,
+      onTool: (entry) => {
+        const message = entry.message.trim();
+        if (!message) {
+          return;
+        }
+        const toolCallId = entry.toolCallId?.trim();
+        if (!toolCallId) {
+          input.setRows((current) => {
+            const currentTurnStart = (() => {
+              for (let index = current.length - 1; index >= 0; index -= 1) {
+                if (current[index]?.role === "user") {
+                  return index;
+                }
+              }
+              return -1;
+            })();
+            if (isToolDetailLine(message)) {
+              const toolIndex = findLastToolRowIndex(current, currentTurnStart);
+              if (toolIndex >= 0) {
+                const existingRow = current[toolIndex];
+                if (existingRow) {
+                  const existingLines = existingRow.content.split("\n").map((line) => line.trim().toLowerCase());
+                  if (existingLines.includes(message.toLowerCase())) {
+                    return current;
+                  }
+                  const next = [...current];
+                  next[toolIndex] = {
+                    ...existingRow,
+                    content: `${existingRow.content}\n${message}`,
+                    toolName: entry.toolName ?? existingRow.toolName,
+                    toolPhase: entry.phase ?? existingRow.toolPhase,
+                  };
+                  return next;
+                }
+              }
+            }
+            return [
+              ...current,
+              {
+                id: `row_${crypto.randomUUID()}`,
+                role: "assistant",
+                content: message,
+                style: "toolProgress",
+                toolName: entry.toolName,
+                toolPhase: entry.phase,
+              },
+            ];
+          });
+          return;
+        }
+
+        input.setRows((current) => {
+          const normalizedLine = message.toLowerCase();
+          const seenLines = toolSeenLinesByCallId.get(toolCallId) ?? new Set<string>();
+          const existingRowId = toolRowIdByCallId.get(toolCallId);
+          const existingIndex = existingRowId ? current.findIndex((row) => row.id === existingRowId) : -1;
+          const existingRow = existingIndex >= 0 ? current[existingIndex] : undefined;
+
+          if (!existingRow) {
+            const rowId = `row_${crypto.randomUUID()}`;
+            toolRowIdByCallId.set(toolCallId, rowId);
+            seenLines.add(normalizedLine);
+            toolSeenLinesByCallId.set(toolCallId, seenLines);
+            return [
+              ...current,
+              {
+                id: rowId,
+                role: "assistant",
+                content: message,
+                style: "toolProgress",
+                toolCallId,
+                toolName: entry.toolName,
+                toolPhase: entry.phase,
+              },
+            ];
+          }
+
+          if (seenLines.has(normalizedLine)) {
+            return current;
+          }
+
+          seenLines.add(normalizedLine);
+          toolSeenLinesByCallId.set(toolCallId, seenLines);
+          const next = [...current];
+          next[existingIndex] = {
+            ...existingRow,
+            content: `${existingRow.content}\n${message}`,
+            toolName: entry.toolName ?? existingRow.toolName,
+            toolPhase: entry.phase ?? existingRow.toolPhase,
+          };
+          return next;
+        });
+      },
+      dedupeToolMessages: true,
     });
     await input.persist();
 
@@ -649,10 +754,20 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       const assistantMessage = turn.assistantMessage;
       const clarifyingQuestions = extractClarifyingQuestions(assistantMessage.content);
       if (clarifyingQuestions.length > 0) {
+        if (streamingAssistantRowId) {
+          input.setRows((current) => current.filter((row) => row.id !== streamingAssistantRowId));
+          streamingAssistantRowId = null;
+          streamingAssistantContent = "";
+        }
         const nonAssistantRows = turn.rows.filter((row) => row.role !== "assistant");
         input.setRows((current) => appendRowsWithToolProgressMerge(current, nonAssistantRows));
         input.openClarifyPanel(clarifyingQuestions, text);
       } else {
+        if (streamingAssistantRowId) {
+          input.setRows((current) => current.filter((row) => row.id !== streamingAssistantRowId));
+          streamingAssistantRowId = null;
+          streamingAssistantContent = "";
+        }
         input.currentSession.messages.push(assistantMessage);
         input.currentSession.updatedAt = input.nowIso();
         input.setRows((current) => appendRowsWithToolProgressMerge(current, turn.rows));

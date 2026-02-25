@@ -52,9 +52,51 @@ function unifiedDiffLines(rawResult: string, maxLines = 120): string[] {
   const lines = rawResult
     .slice(start)
     .split("\n")
-    .map((line) => line.trimEnd())
-    .filter((line) => line.length > 0);
+    .map((line) => line.trimEnd());
   return lines.slice(0, maxLines);
+}
+
+function numberedUnifiedDiffLines(rawResult: string, maxLines = 160): string[] {
+  const lines = unifiedDiffLines(rawResult, Math.max(maxLines * 2, 240));
+  if (lines.length === 0) {
+    return [];
+  }
+  const rendered: string[] = [];
+  let oldLine = 0;
+  let newLine = 0;
+  let inHunk = false;
+  for (const line of lines) {
+    if (line.startsWith("@@")) {
+      const match = line.match(/^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
+      if (match) {
+        oldLine = Number.parseInt(match[1] ?? "0", 10);
+        newLine = Number.parseInt(match[2] ?? "0", 10);
+        inHunk = true;
+      }
+      continue;
+    }
+    if (!inHunk || line.startsWith("diff --git ") || line.startsWith("--- ") || line.startsWith("+++ ")) {
+      continue;
+    }
+    if (line.startsWith("+")) {
+      rendered.push(`${newLine} + ${line.slice(1)}`);
+      newLine += 1;
+      continue;
+    }
+    if (line.startsWith("-")) {
+      rendered.push(`${oldLine} - ${line.slice(1)}`);
+      oldLine += 1;
+      continue;
+    }
+    if (line.startsWith(" ")) {
+      rendered.push(`${newLine}   ${line.slice(1)}`);
+      oldLine += 1;
+      newLine += 1;
+      continue;
+    }
+    rendered.push(line);
+  }
+  return rendered.slice(0, maxLines);
 }
 
 function streamCallId(toolName: string): string {
@@ -318,7 +360,7 @@ function createEditFileTool(onToolOutput?: ToolOutputListener) {
                 replace: input.replace ?? "",
                 dryRun: input.dryRun ?? false,
               });
-        for (const line of unifiedDiffLines(rawResult)) {
+        for (const line of numberedUnifiedDiffLines(rawResult)) {
           onToolOutput?.({ toolName: "edit-file", message: line, phase: "tool_chunk", toolCallId });
         }
         onToolOutput?.({ toolName: "edit-file", message: `Edited ${input.path}`, phase: "tool_end", toolCallId });
@@ -350,7 +392,7 @@ function createDeleteFileTool(onToolOutput?: ToolOutputListener) {
           path: input.path,
           dryRun: input.dryRun ?? false,
         });
-        for (const line of unifiedDiffLines(rawResult)) {
+        for (const line of numberedUnifiedDiffLines(rawResult)) {
           onToolOutput?.({ toolName: "delete-file", message: line, phase: "tool_chunk", toolCallId });
         }
         onToolOutput?.({ toolName: "delete-file", message: `Deleted ${input.path}`, phase: "tool_end", toolCallId });

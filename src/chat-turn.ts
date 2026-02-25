@@ -108,7 +108,7 @@ type RunAssistantTurnParams = {
     events: Array<{
       seq: number;
       message: string;
-      kind?: "status" | "tool" | "error";
+      kind?: "status" | "tool" | "assistant" | "error";
       toolCallId?: string;
       toolName?: string;
       phase?: "tool_start" | "tool_chunk" | "tool_end";

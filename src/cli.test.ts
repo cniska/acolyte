@@ -318,7 +318,7 @@ describe("cli formatting helpers", () => {
   test("formatProgressEventOutput styles numbered diff markers with spacing", () => {
     const out = formatProgressEventOutput("12 + fn main() {}");
     expect(out).toContain("• ");
-    expect(out).toContain("\x1b[2m12\x1b[22m");
+    expect(out).toContain("\x1b[2m 12\x1b[22m");
     expect(out).toContain("\x1b[32m+ \x1b[39m");
     expect(out).toContain("\x1b[32mfn main() {}\x1b[39m");
   });
@@ -328,7 +328,7 @@ describe("cli formatting helpers", () => {
     const lines = out.split("\n");
     expect(lines[0]).toContain("• ");
     expect(lines[1]).toBe("");
-    expect(lines[2]?.startsWith(`  \x1b[2m1\x1b[22m`)).toBe(true);
+    expect(lines[2]?.startsWith(`  \x1b[2m  1\x1b[22m`)).toBe(true);
     expect(lines.filter((line) => line.startsWith("• ")).length).toBe(1);
   });
 

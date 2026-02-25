@@ -188,6 +188,7 @@ export function createInstructions(baseInstructions: string): string {
     "",
     "Execution Loop:",
     "- Understand request and identify concrete target files/commands.",
+    "- Before the first tool call, output one short intent line describing the immediate action.",
     "- Implement changes directly with tools.",
     "- Verify when explicitly requested, when repo policy requires it, or when risk is high.",
     "- Keep working until requested changes are complete or a real blocker is hit.",
@@ -204,7 +205,9 @@ export function createInstructions(baseInstructions: string): string {
     "- Do not append unsolicited 'Next action' suggestions unless the user asked for options or next steps.",
     "- Respect response-shape constraints exactly (for example: 'summary only' means summary only).",
     "- Never mention verification commands/results unless verification was explicitly requested in the prompt.",
-    "- Keep final output concise and outcome-focused; summarize outcome without repeating full tool output.",
+    "- Keep final output concise and outcome-focused; summarize what changed instead of narrating each step.",
+    "- Before finishing, output one short closing summary of outcome and changed file(s).",
+    "- For non-trivial tasks, end with a short structured summary: `Completed`, `Changes`, `Verification`, and `Notes` (only if needed).",
   ].join("\n");
   return `${baseInstructions}\n\n${executionContract}`;
 }
@@ -653,16 +656,29 @@ function parseToolResultText(raw: unknown): string {
   return collect(raw).join("\n");
 }
 
-function extractToolFailureReason(resultText: string): string | null {
+function isDiffLikeLine(line: string): boolean {
+  const trimmed = line.trim();
+  return /^(\d+\s+[+-]\s|[+-]\s|@@\s|diff --git\s|index\s|---\s|\+\+\+\s)/.test(trimmed);
+}
+
+export function extractToolFailureReason(resultText: string): string | null {
   const trimmed = resultText.trim();
   if (trimmed.length === 0) {
+    return null;
+  }
+  if (/^read-file failed:\s*ENOENT:/i.test(trimmed)) {
     return null;
   }
   const lines = trimmed
     .split("\n")
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
-  const failureLine = lines.find((line) => /failed:|error[:\s]/i.test(line));
+  const failureLine = lines.find((line) => {
+    if (isDiffLikeLine(line)) {
+      return false;
+    }
+    return /^error[:\s]/i.test(line) || /\bfailed:/i.test(line);
+  });
   if (failureLine) {
     return compactProgressDetail(failureLine.replace(/^error[:\s]*/i, ""), 140);
   }
@@ -1067,7 +1083,7 @@ export async function runAgent(input: {
   soulPrompt: string;
   onProgress?: (event: {
     message: string;
-    kind?: "status" | "tool" | "error";
+    kind?: "status" | "tool" | "assistant" | "error";
     toolCallId?: string;
     toolName?: string;
     phase?: "tool_start" | "tool_chunk" | "tool_end";
@@ -1129,7 +1145,7 @@ export async function runAgent(input: {
     });
 
   let agent = buildRoleAgent(model);
-  const generateWithTimeout = async (
+  const streamWithTimeout = async (
     prompt: string,
     options: {
       maxSteps: number;
@@ -1150,7 +1166,34 @@ export async function runAgent(input: {
       }, timeoutMs);
 
       agent
-        .generate(prompt, options)
+        .stream(prompt, options)
+        .then(async (streamOutput) => {
+          const reader = streamOutput.fullStream.getReader();
+          while (true) {
+            const { done, value: chunk } = await reader.read();
+            if (done) {
+              break;
+            }
+            if (!chunk || typeof chunk !== "object") {
+              continue;
+            }
+            const typed = chunk as { type?: unknown; payload?: unknown };
+            if (typed.type === "text-delta") {
+              const payload = typed.payload as { text?: unknown } | undefined;
+              if (typeof payload?.text === "string" && payload.text.length > 0) {
+                emitProgress({
+                  message: payload.text,
+                  kind: "assistant",
+                });
+              }
+              continue;
+            }
+            if (typed.type === "step-finish" && options.onStepFinish) {
+              options.onStepFinish(chunk);
+            }
+          }
+          return await streamOutput.getFullOutput();
+        })
         .then((value) => {
           if (settled) {
             return;
@@ -1185,11 +1228,18 @@ export async function runAgent(input: {
   let lastToolFailureReason: string | undefined;
   const emitProgress = (event: {
     message: string;
-    kind?: "status" | "tool" | "error";
+    kind?: "status" | "tool" | "assistant" | "error";
     toolCallId?: string;
     toolName?: string;
     phase?: "tool_start" | "tool_chunk" | "tool_end";
   }): void => {
+    if (event.kind === "assistant") {
+      if (event.message.length === 0) {
+        return;
+      }
+      input.onProgress?.(event);
+      return;
+    }
     const trimmed = event.message.trim();
     if (trimmed.length === 0) {
       return;
@@ -1356,7 +1406,7 @@ export async function runAgent(input: {
   let result: Awaited<ReturnType<typeof agent.generate>> | undefined;
   try {
     modelCallCount += 1;
-    result = await generateWithTimeout(
+    result = await streamWithTimeout(
       agentPrompt,
       {
         maxSteps: initialMaxSteps,
@@ -1383,7 +1433,7 @@ export async function runAgent(input: {
       });
       try {
         modelCallCount += 1;
-        result = await generateWithTimeout(
+        result = await streamWithTimeout(
           agentPrompt,
           {
             maxSteps: TIMEOUT_RECOVERY_MAX_STEPS,
@@ -1471,7 +1521,7 @@ export async function runAgent(input: {
     });
     try {
       modelCallCount += 1;
-      result = await generateWithTimeout(
+      result = await streamWithTimeout(
         agentPrompt,
         {
           maxSteps: REQUIRED_TOOLS_RETRY_MAX_STEPS,
@@ -1512,7 +1562,7 @@ export async function runAgent(input: {
         max_steps: BASE_MODEL_RETRY_MAX_STEPS,
       });
       modelCallCount += 1;
-      result = await generateWithTimeout(
+      result = await streamWithTimeout(
         agentPrompt,
         {
           maxSteps: BASE_MODEL_RETRY_MAX_STEPS,
@@ -1562,7 +1612,7 @@ export async function runAgent(input: {
     });
     try {
       modelCallCount += 1;
-      result = await generateWithTimeout(
+      result = await streamWithTimeout(
         `${agentPrompt}\n\nReturn a direct concise answer.`,
         {
           maxSteps: EMPTY_TEXT_RETRY_MAX_STEPS,

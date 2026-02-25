@@ -81,10 +81,20 @@ function renderStatusContent(content: string): React.ReactNode {
 
 function renderToolProgressContent(content: string): React.ReactNode {
   const lines = content.split("\n");
+  const parsedLines = lines.map((line) => parseToolProgressLine(line));
+  const lineNumberWidth = Math.max(
+    3,
+    parsedLines.reduce((max, parsed) => {
+      if (parsed.kind === "numberedDiff" || parsed.kind === "numberedContext") {
+        return Math.max(max, parsed.lineNumber.length);
+      }
+      return max;
+    }, 0),
+  );
   return (
     <>
       {lines.map((line, index) => {
-        const parsed = parseToolProgressLine(line);
+        const parsed = parsedLines[index] ?? parseToolProgressLine(line);
         return (
           <React.Fragment key={`tool-progress-line-${index}-${line}`}>
             {index > 0 ? "\n" : null}
@@ -104,14 +114,16 @@ function renderToolProgressContent(content: string): React.ReactNode {
               )
             ) : parsed.kind === "numberedDiff" ? (
               <>
-                <Text dimColor>{parsed.lineNumber}</Text>
-                <Text>{parsed.spacing}</Text>
+                <Text dimColor>{parsed.lineNumber.padStart(lineNumberWidth, " ")}</Text>
+                <Text> </Text>
                 <Text color={parsed.marker === "+" ? "green" : "red"}>{`${parsed.marker} `}</Text>
-                <Text color={parsed.marker === "+" ? "green" : "red"}>{parsed.text}</Text>
+                <Text color={parsed.marker === "+" ? "green" : "red"}>
+                  {parsed.text.length > 0 ? parsed.text : " "}
+                </Text>
               </>
             ) : parsed.kind === "numberedContext" ? (
               <>
-                <Text dimColor>{parsed.lineNumber}</Text>
+                <Text dimColor>{parsed.lineNumber.padStart(lineNumberWidth, " ")}</Text>
                 <Text>{parsed.spacing}</Text>
                 <Text>{parsed.text}</Text>
               </>

@@ -12,7 +12,7 @@ export interface BackendOptions {
 export type ChatProgressEvent = {
   seq: number;
   message: string;
-  kind?: "status" | "tool" | "error";
+  kind?: "status" | "tool" | "assistant" | "error";
   toolCallId?: string;
   toolName?: string;
   phase?: "tool_start" | "tool_chunk" | "tool_end";
@@ -504,7 +504,7 @@ function parseProgressEvents(events: unknown): ChatProgressEvent[] {
         return null;
       }
       const normalized: ChatProgressEvent = { seq, message };
-      if (kind === "status" || kind === "tool" || kind === "error") {
+      if (kind === "status" || kind === "tool" || kind === "assistant" || kind === "error") {
         normalized.kind = kind;
       }
       if (typeof toolCallId === "string" && toolCallId.length > 0) {

@@ -75,6 +75,13 @@ function normalizeProgressMessage(message: string): string {
   return trimmed;
 }
 
+function normalizeAssistantProgressMessage(message: string): string {
+  if (message.length === 0) {
+    return "";
+  }
+  return message;
+}
+
 function serverError(
   message: string,
   error: unknown,
@@ -391,23 +398,26 @@ const server = Bun.serve({
                 request: chatRequest,
                 soulPrompt,
                 onProgress: (progress) => {
-                  const message =
+                  const normalizedForKind =
+                    typeof progress === "string" ? normalizeProgressMessage(progress) : normalizeProgressMessage(progress.message);
+                  const kind =
                     typeof progress === "string"
-                      ? normalizeProgressMessage(progress)
-                      : normalizeProgressMessage(progress.message);
+                      ? progressKindForMessage(normalizedForKind)
+                      : (progress.kind ?? progressKindForMessage(normalizedForKind));
+                  const rawMessage = typeof progress === "string" ? progress : progress.message;
+                  const message =
+                    kind === "assistant"
+                      ? normalizeAssistantProgressMessage(rawMessage)
+                      : normalizeProgressMessage(rawMessage);
                   if (!message) {
                     return;
                   }
-                  const kind =
-                    typeof progress === "string"
-                      ? progressKindForMessage(message)
-                      : (progress.kind ?? progressKindForMessage(message));
                   const toolCallId =
                     typeof progress === "string" ? undefined : progress.toolCallId?.trim() || undefined;
                   const toolName = typeof progress === "string" ? undefined : progress.toolName?.trim() || undefined;
                   const phase = typeof progress === "string" ? undefined : progress.phase;
                   const signature = `${kind}|${toolCallId ?? ""}|${toolName ?? ""}|${phase ?? ""}|${message}`;
-                  if (signature === lastEventSignature) {
+                  if (kind !== "assistant" && signature === lastEventSignature) {
                     return;
                   }
                   lastEventSignature = signature;

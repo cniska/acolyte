@@ -5,6 +5,7 @@ import {
   canonicalToolId,
   collectToolProgressFromStep,
   createInstructions,
+  extractToolFailureReason,
   finalizeAssistantOutput,
   finalizeReviewOutput,
   formatToolProgressMessage,
@@ -345,6 +346,7 @@ describe("createInstructions", () => {
   test("enforces tool-first execution guidance", () => {
     const out = createInstructions("Base instructions.");
     expect(out).toContain("Default to tool execution.");
+    expect(out).toContain("Before the first tool call, output one short intent line");
     expect(out).toContain("execute the file tool action immediately in the same turn");
     expect(out).toContain("For requests that create a new file, call `edit-file` with full file content directly");
     expect(out).toContain("For edit/update requests, check the target file with `read-file` first");
@@ -361,7 +363,9 @@ describe("createInstructions", () => {
 
   test("uses concise outcome-focused completion guidance", () => {
     const out = createInstructions("Base instructions.");
-    expect(out).toContain("summarize outcome without repeating full tool output");
+    expect(out).toContain("summarize what changed instead of narrating each step");
+    expect(out).toContain("Before finishing, output one short closing summary");
+    expect(out).toContain("Completed`, `Changes`, `Verification`, and `Notes`");
   });
 
   test("allows one clarification only when blocked and avoids option menus", () => {
@@ -370,6 +374,32 @@ describe("createInstructions", () => {
     expect(out).toContain("Avoid option menus for straightforward tasks");
     expect(out).toContain("one short line stating no changes were needed");
     expect(out).toContain("Do not start final replies with action preambles like");
+  });
+});
+
+describe("extractToolFailureReason", () => {
+  test("does not treat diff lines containing EOFError as tool failure", () => {
+    const result = [
+      "1 + try:",
+      "2 +     word = input(\"Enter a word: \").strip()",
+      "3 + except EOFError:",
+      "4 +     return",
+    ].join("\n");
+    expect(extractToolFailureReason(result)).toBeNull();
+  });
+
+  test("detects explicit tool failure prefix", () => {
+    expect(extractToolFailureReason("edit-file failed: Target file already exists")).toBe(
+      "edit-file failed: Target file already exists",
+    );
+  });
+
+  test("ignores read-file ENOENT failures", () => {
+    expect(
+      extractToolFailureReason(
+        "read-file failed: ENOENT: no such file or directory, open '/Users/christofferniska/code/acolyte/capitalize.py'",
+      ),
+    ).toBeNull();
   });
 });
 

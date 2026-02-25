@@ -706,7 +706,7 @@ export function formatAssistantReplyOutput(content: string, wrapWidth = 100): st
     .join("\n");
 }
 
-export function formatProgressEventOutput(content: string): string {
+export function formatProgressEventOutput(content: string, options?: { lineNumberWidth?: number; bullet?: boolean }): string {
   const dim = (value: string): string => `\x1b[2m${value}\x1b[22m`;
   const bold = (value: string): string => `\x1b[1m${value}\x1b[22m`;
   const path = (value: string): string => `\x1b[4m\x1b[38;2;168;177;188m${value}\x1b[39m\x1b[24m`;
@@ -714,12 +714,13 @@ export function formatProgressEventOutput(content: string): string {
   const red = (value: string): string => `\x1b[31m${value}\x1b[39m`;
   const lines = content.split("\n");
   const parsedLines = lines.map((line) => parseToolProgressLine(line));
-  const lineNumberWidth = parsedLines.reduce((max, parsed) => {
+  const inferredLineNumberWidth = parsedLines.reduce((max, parsed) => {
     if (parsed.kind === "numberedDiff" || parsed.kind === "numberedContext") {
       return Math.max(max, parsed.lineNumber.length);
     }
     return max;
   }, 0);
+  const lineNumberWidth = Math.max(3, options?.lineNumberWidth ?? 0, inferredLineNumberWidth);
 
   const colorize = (parsed: ReturnType<typeof parseToolProgressLine>): string => {
     switch (parsed.kind) {
@@ -749,12 +750,16 @@ export function formatProgressEventOutput(content: string): string {
     }
   };
   if (lines.length === 0) {
-    return "•";
+    return options?.bullet === false ? "" : "•";
   }
+  const includeBullet = options?.bullet ?? true;
   return lines
     .map((line, index) => {
       const parsed = parsedLines[index] ?? parseToolProgressLine(line);
       if (index === 0) {
+        if (!includeBullet) {
+          return line.length > 0 ? `  ${colorize(parsed)}` : "";
+        }
         return line.length > 0 ? `• ${colorize(parsed)}` : "•";
       }
       return line.length > 0 ? `  ${colorize(parsed)}` : "";
@@ -808,11 +813,36 @@ async function handlePrompt(
     printOutput(`❯ ${displayPromptForOutput(prompt)}`);
     printInfo("  Working…");
     let hasPrintedProgress = false;
+    let assistantStreamStarted = false;
+    let assistantLineBuffer = "";
+    const flushAssistantLine = (line: string): void => {
+      if (!assistantStreamStarted) {
+        printOutput(`• ${line}`);
+        assistantStreamStarted = true;
+        return;
+      }
+      printOutput(`  ${line}`);
+    };
     const toolSnapshotByCallId = new Map<string, string>();
+    const toolLineWidthByCallId = new Map<string, number>();
+    const toolBulletPrintedByCallId = new Map<string, boolean>();
+    const lineNumberWidthForMessage = (message: string): number => {
+      return message.split("\n").reduce((max, line) => {
+        const parsed = parseToolProgressLine(line);
+        if (parsed.kind === "numberedDiff" || parsed.kind === "numberedContext") {
+          return Math.max(max, parsed.lineNumber.length);
+        }
+        return max;
+      }, 0);
+    };
     const deltaForToolUpdate = (entry: { message: string; toolCallId?: string }): string => {
       const toolCallId = entry.toolCallId?.trim();
       if (!toolCallId) {
         return entry.message;
+      }
+      const snapshotWidth = lineNumberWidthForMessage(entry.message);
+      if (snapshotWidth > 0) {
+        toolLineWidthByCallId.set(toolCallId, Math.max(toolLineWidthByCallId.get(toolCallId) ?? 0, snapshotWidth));
       }
       const previous = toolSnapshotByCallId.get(toolCallId);
       toolSnapshotByCallId.set(toolCallId, entry.message);
@@ -825,18 +855,38 @@ async function handlePrompt(
         return "";
       }
       if (current.startsWith(`${before}\n`)) {
-        return current.slice(before.length + 1).trimStart();
+        return current.slice(before.length + 1);
       }
       return current;
     };
     const progressTracker = createProgressTracker({
       onStatus: () => {},
+      onAssistant: (delta) => {
+        if (delta.length === 0) {
+          return;
+        }
+        assistantLineBuffer += delta;
+        while (true) {
+          const newlineIndex = assistantLineBuffer.indexOf("\n");
+          if (newlineIndex === -1) {
+            break;
+          }
+          const line = assistantLineBuffer.slice(0, newlineIndex);
+          assistantLineBuffer = assistantLineBuffer.slice(newlineIndex + 1);
+          flushAssistantLine(line);
+        }
+      },
       onTool: (entry) => {
         const delta = deltaForToolUpdate(entry);
         if (!delta) {
           return;
         }
-        printOutput(formatProgressEventOutput(delta));
+        const lineNumberWidth = entry.toolCallId ? toolLineWidthByCallId.get(entry.toolCallId) : undefined;
+        const includeBullet = entry.toolCallId ? !toolBulletPrintedByCallId.get(entry.toolCallId) : true;
+        printOutput(formatProgressEventOutput(delta, { lineNumberWidth, bullet: includeBullet }));
+        if (entry.toolCallId) {
+          toolBulletPrintedByCallId.set(entry.toolCallId, true);
+        }
         hasPrintedProgress = true;
       },
       dedupeToolMessages: true,
@@ -863,7 +913,13 @@ async function handlePrompt(
       printOutput("");
     }
     const wrapWidth = Math.max(24, (output.columns ?? 120) - 4);
-    await streamText(formatAssistantReplyOutput(reply.output, wrapWidth));
+    if (assistantLineBuffer.length > 0) {
+      flushAssistantLine(assistantLineBuffer);
+      assistantLineBuffer = "";
+    }
+    if (!assistantStreamStarted) {
+      await streamText(formatAssistantReplyOutput(reply.output, wrapWidth));
+    }
     session.messages.push(newMessage("assistant", reply.output));
     session.model = reply.model;
     session.updatedAt = nowIso();
