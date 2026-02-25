@@ -6,42 +6,11 @@ import { formatThoughtDuration, formatVerifySummary } from "./chat-formatters";
 import { isStageProgressMessage } from "./chat-progress";
 import { runShellCommand } from "./coding-tools";
 import { buildFileContext } from "./file-context";
+import { groupToolProgressMessages } from "./tool-progress";
 import type { Message, Session } from "./types";
 
 function row(role: ChatRow["role"], content: string, dim = false, style?: ChatRow["style"]): ChatRow {
   return { id: `row_${crypto.randomUUID()}`, role, content, dim, style };
-}
-
-function isToolHeaderLine(line: string): boolean {
-  return /^(Wrote|Edited|Read|Deleted|Ran)\s+\S/.test(line);
-}
-
-function isToolDetailLine(line: string): boolean {
-  return (
-    /^\d+\s+[+-]\s/.test(line) || /^\d+\s{3}/.test(line) || /^[+-]\s/.test(line) || /^(code|out|err)\s*\|/.test(line)
-  );
-}
-
-function groupToolProgressMessages(messages: string[]): string[] {
-  const grouped: string[] = [];
-  for (const message of messages) {
-    if (grouped.length === 0) {
-      grouped.push(message);
-      continue;
-    }
-    const previous = grouped[grouped.length - 1] ?? "";
-    const previousFirstLine = previous.split("\n")[0] ?? "";
-    if (isToolHeaderLine(message)) {
-      grouped.push(message);
-      continue;
-    }
-    if (isToolHeaderLine(previousFirstLine) || (isToolDetailLine(previous) && isToolDetailLine(message))) {
-      grouped[grouped.length - 1] = `${previous}\n${message}`;
-      continue;
-    }
-    grouped.push(message);
-  }
-  return grouped;
 }
 
 export function estimateTokenUsageFallback(prompt: string, output: string): TokenUsage {
