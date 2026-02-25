@@ -84,6 +84,7 @@ Exit Criteria:
 - Gate evidence remains green while real task execution stays stable during the soak window.
 - MVP gate is only marked complete when this milestone is complete.
   Baseline achieved (February 24, 2026): `dogfood:smoke` requires four autonomous coding edits when provider is ready (including multi-line structured and multi-file edits), fails on fallback edit responses, and strict autonomy smoke fails when provider readiness is missing; `dogfood:progress` reports non-delivery category counts for repeated failure-class tracking and delegated fallback rate; strict `dogfood:gate` tracks soak durability via ready-run and distinct-day minimums, enforces a delegated fallback-rate cap, and includes a dedicated tool-output UX check; tool-output truncation keeps leading and trailing context with omitted-line markers for better UX during debugging.
+  Progress update (February 25, 2026): live progress streaming was stabilized to use a single `tool_start -> tool_chunk -> tool_end` path, assistant text delta streaming was enabled, progress rendering now keeps one bullet per message with aligned numbered diffs, and false tool-failure reporting from diff lines (for example `EOFError:`) and expected `read-file ENOENT` during create flows was fixed.
 
 ### Milestone 6: Memory Quality
 Status: in progress.
@@ -146,3 +147,12 @@ Goal: close core autonomy gaps that still block reliable coding execution.
 3. Increase step budget for multi-step coding reliability.
 4. Keep smoke tasks outcome-based, target-file explicit, and concise-summary constrained.
 5. Run `bun run typecheck` + targeted tests during iteration; run `bun run dogfood:gate` only before commit.
+
+## Handoff (End of Day, February 25, 2026)
+- Completed today:
+  - Stabilized live stream plumbing and progress rendering for chat/run loops.
+  - Removed false-positive tool failure signals from diff-like content and create-flow ENOENT reads.
+  - Aligned instruction contract toward explicit pre-tool intent and concise completion summaries.
+- Remaining for next session:
+  - Continue Milestone 5 soak work by reducing unnecessary post-success tool loops and timeout risk using general (not case-specific) instruction tuning.
+  - Re-run dogfood evidence (`dogfood:smoke`, `dogfood:progress`, `dogfood:gate`) before marking Milestone 5 complete.

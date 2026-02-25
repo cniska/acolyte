@@ -45,11 +45,12 @@ Living notes for talks about building this project. Update this file as mileston
 4. Chat UX: Ink-based interface, stable prompt/transcript separation, shortcuts/pickers, resume/skills flows.
 5. Memory UX: `/remember [--project]`, `/memory`, policy distillation groundwork.
 6. Developer ergonomics: `@path` attach (files + directories), fuzzy matching, better keybindings, interrupt with `Esc`.
-7. Reliability/safety: verify-first loop, role-scoped subagent tools, permission modes, workspace path guardrails.
-8. Routing/config: centralized provider/model config with per-role fallback support.
+7. Reliability/safety: verify-first loop, permission modes, workspace path guardrails.
+8. Routing/config: single configured model + provider across the runtime (no multi-role model routing).
 9. Feature documentation: `docs/features.md` as inventory.
 10. Dogfooding readiness: automated `bun run dogfood:smoke` + isolated one-shot OM resource IDs for `run`/`dogfood`.
 11. Script maintainability: complex `package.json` shell flows moved into reusable `scripts/*.sh` wrappers.
+12. Live UX reliability: consistent streamed tool phases (`tool_start -> tool_chunk -> tool_end`), assistant delta streaming, and codex-style diff output with aligned numbered lines.
 
 ## Demo Flow (Short)
 1. Start backend: `bun --env-file=.env run serve`
@@ -71,6 +72,7 @@ Living notes for talks about building this project. Update this file as mileston
 ## Lessons Learned
 - Reliability over novelty: verify-first loops, small commits, and smoke checks keep iteration stable.
 - Keep execution simple: single-agent runtime, explicit permission controls, and minimal user-facing complexity.
+- Streaming correctness matters more than formatting polish: users need trustworthy live events before visual refinements.
 - Memory trust matters: saved context must be inspectable, editable, and scoped clearly.
 - UX clarity drives adoption: concise output, strong defaults, and low-noise command diagnostics.
 - Grounded execution beats prompt gymnastics: tool-backed changes and concrete validation are more reliable than heavy post-processing.
