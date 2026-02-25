@@ -1203,8 +1203,7 @@ export async function runAgent(input: {
     text_chars: result.text.trim().length,
   });
 
-  const shouldRequireToolsFallback = true;
-  if (shouldRequireToolsFallback && result.toolCalls.length === 0) {
+  if (result.toolCalls.length === 0) {
     emitDebug("agent.generate.retry", {
       model,
       reason: "required_tools_no_calls",
@@ -1242,7 +1241,7 @@ export async function runAgent(input: {
   }
 
   const canRetryOnBaseModel = input.request.model !== model;
-  if (shouldRequireToolsFallback && result.toolCalls.length === 0 && canRetryOnBaseModel) {
+  if (result.toolCalls.length === 0 && canRetryOnBaseModel) {
     const baseModelState = resolveModelProviderState(input.request.model);
     if (baseModelState.available) {
       model = input.request.model;
