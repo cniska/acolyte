@@ -755,35 +755,6 @@ export function formatProgressEventOutput(content: string): string {
     .join("\n");
 }
 
-export function summarizeProgressForChat(progressMessages: string[]): string | null {
-  const actions: string[] = [];
-  const seenActions = new Set<string>();
-  for (const message of progressMessages) {
-    const firstLine = message.split("\n")[0]?.trim() ?? "";
-    if (!firstLine) {
-      continue;
-    }
-    const parsed = parseToolProgressLine(firstLine);
-    if (parsed.kind !== "header") {
-      continue;
-    }
-    const action = `${parsed.verb} ${displayPath(parsed.path)}`;
-    if (seenActions.has(action)) {
-      continue;
-    }
-    seenActions.add(action);
-    actions.push(action);
-  }
-  if (actions.length === 0) {
-    return null;
-  }
-  if (actions.length <= 3) {
-    return `Summary: ${actions.join("; ")}.`;
-  }
-  const extra = actions.length - 3;
-  return `Summary: ${actions.slice(0, 3).join("; ")}; +${extra} more action${extra === 1 ? "" : "s"}.`;
-}
-
 export function normalizeProgressMessagesForOutput(messages: string[]): string[] {
   return groupToolProgressMessages(messages);
 }
