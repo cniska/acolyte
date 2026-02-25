@@ -1,5 +1,5 @@
 import type { ChatProgressEvent } from "./backend";
-import { groupToolProgressMessages } from "./tool-progress";
+import { isToolDetailLine, isToolHeaderLine } from "./tool-progress";
 
 const STAGE_PREFIXES = [
   "Thinking…",
@@ -43,7 +43,7 @@ export function createProgressTracker(options: {
       return;
     }
     progressAfterSeq = events[events.length - 1]?.seq ?? progressAfterSeq;
-    const rawToolMessages: string[] = [];
+    const rawToolMessages: Array<{ message: string; dedupeKey: string }> = [];
     for (const event of events) {
       const message = event.message.trim();
       if (!message) {
@@ -53,15 +53,45 @@ export function createProgressTracker(options: {
         options.onStatus(message);
         continue;
       }
-      rawToolMessages.push(message);
+      const dedupeKey =
+        event.toolCallId && event.toolCallId.length > 0
+          ? `${event.toolCallId}:${event.phase ?? ""}:${message.toLowerCase()}`
+          : message.toLowerCase();
+      rawToolMessages.push({ message, dedupeKey });
     }
-    for (const message of groupToolProgressMessages(rawToolMessages)) {
-      if (dedupe) {
-        const key = message.toLowerCase();
-        if (seenToolMessages.has(key)) {
+    const grouped: Array<{ message: string; dedupeKey: string }> = [];
+    for (const entry of rawToolMessages) {
+      if (grouped.length === 0) {
+        grouped.push({ message: entry.message, dedupeKey: entry.dedupeKey });
+        continue;
+      }
+      if (isToolHeaderLine(entry.message)) {
+        grouped.push({ message: entry.message, dedupeKey: entry.dedupeKey });
+        continue;
+      }
+      const previous = grouped[grouped.length - 1];
+      const previousFirstLine = previous?.message.split("\n")[0] ?? "";
+      if (
+        previous &&
+        (isToolHeaderLine(previousFirstLine) || (isToolDetailLine(previous.message) && isToolDetailLine(entry.message)))
+      ) {
+        const existingLines = previous.message.split("\n").map((line) => line.trim().toLowerCase());
+        if (existingLines.includes(entry.message.trim().toLowerCase())) {
           continue;
         }
-        seenToolMessages.add(key);
+        previous.message = `${previous.message}\n${entry.message}`;
+        continue;
+      }
+      grouped.push({ message: entry.message, dedupeKey: entry.dedupeKey });
+    }
+    for (const entry of grouped) {
+      const message = entry.message;
+      const eventDedupeKey = entry.dedupeKey;
+      if (dedupe) {
+        if (seenToolMessages.has(eventDedupeKey)) {
+          continue;
+        }
+        seenToolMessages.add(eventDedupeKey);
       }
       toolMessages.push(message);
       options.onTool(message);

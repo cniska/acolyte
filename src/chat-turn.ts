@@ -120,18 +120,12 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
   const assistantMessage = params.createMessage("assistant", reply.output);
   const rows: ChatRow[] = [];
   if (Array.isArray(reply.progressMessages) && reply.progressMessages.length > 0) {
-    const seen = new Set<string>();
     const toolMessages: string[] = [];
     for (const message of reply.progressMessages) {
       const trimmed = message.trim();
       if (!trimmed || isStageProgressMessage(trimmed)) {
         continue;
       }
-      const key = trimmed.toLowerCase();
-      if (seen.has(key)) {
-        continue;
-      }
-      seen.add(key);
       toolMessages.push(trimmed);
     }
     for (const groupedMessage of groupToolProgressMessages(toolMessages)) {

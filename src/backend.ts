@@ -13,6 +13,9 @@ export type ChatProgressEvent = {
   seq: number;
   message: string;
   kind?: "status" | "tool" | "error";
+  toolCallId?: string;
+  toolName?: string;
+  phase?: "start" | "result" | "error";
 };
 
 export type ChatProgress = {
@@ -368,13 +371,26 @@ class RemoteBackend implements Backend {
             const seq = (entry as { seq?: unknown }).seq;
             const message = (entry as { message?: unknown }).message;
             const kind = (entry as { kind?: unknown }).kind;
+            const toolCallId = (entry as { toolCallId?: unknown }).toolCallId;
+            const toolName = (entry as { toolName?: unknown }).toolName;
+            const phase = (entry as { phase?: unknown }).phase;
             if (typeof seq !== "number" || typeof message !== "string") {
               return null;
             }
+            const normalized: ChatProgressEvent = { seq, message };
             if (kind === "status" || kind === "tool" || kind === "error") {
-              return { seq, message, kind };
+              normalized.kind = kind;
             }
-            return { seq, message };
+            if (typeof toolCallId === "string" && toolCallId.length > 0) {
+              normalized.toolCallId = toolCallId;
+            }
+            if (typeof toolName === "string" && toolName.length > 0) {
+              normalized.toolName = toolName;
+            }
+            if (phase === "start" || phase === "result" || phase === "error") {
+              normalized.phase = phase;
+            }
+            return normalized;
           })
           .filter((entry): entry is ChatProgressEvent => entry !== null)
       : [];

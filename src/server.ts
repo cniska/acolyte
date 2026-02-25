@@ -23,7 +23,14 @@ type ChatProgressState = {
   done: boolean;
   updatedAt: number;
   nextSeq: number;
-  events: Array<{ seq: number; message: string; kind: "status" | "tool" | "error" }>;
+  events: Array<{
+    seq: number;
+    message: string;
+    kind: "status" | "tool" | "error";
+    toolCallId?: string;
+    toolName?: string;
+    phase?: "start" | "result" | "error";
+  }>;
 };
 
 const chatProgressBySession = new Map<string, ChatProgressState>();
@@ -106,24 +113,49 @@ function normalizeProgressMessage(message: string): string {
   return trimmed;
 }
 
-function appendChatProgress(sessionId: string, message: string): void {
+function appendChatProgress(
+  sessionId: string,
+  progress:
+    | string
+    | {
+        message: string;
+        kind?: "status" | "tool" | "error";
+        toolCallId?: string;
+        toolName?: string;
+        phase?: "start" | "result" | "error";
+      },
+): void {
   const state = chatProgressBySession.get(sessionId);
   if (!state) {
     return;
   }
-  const trimmed = normalizeProgressMessage(message);
+  const rawMessage = typeof progress === "string" ? progress : progress.message;
+  const trimmed = normalizeProgressMessage(rawMessage);
   if (!trimmed) {
     return;
   }
   const previous = state.events[state.events.length - 1];
-  const kind = progressKindForMessage(trimmed);
-  if (previous?.message === trimmed && previous.kind === kind) {
+  const kind =
+    typeof progress === "string" ? progressKindForMessage(trimmed) : (progress.kind ?? progressKindForMessage(trimmed));
+  const toolCallId = typeof progress === "string" ? undefined : progress.toolCallId?.trim() || undefined;
+  const toolName = typeof progress === "string" ? undefined : progress.toolName?.trim() || undefined;
+  const phase = typeof progress === "string" ? undefined : progress.phase;
+  if (
+    previous?.message === trimmed &&
+    previous.kind === kind &&
+    previous.toolCallId === toolCallId &&
+    previous.toolName === toolName &&
+    previous.phase === phase
+  ) {
     return;
   }
   state.events.push({
     seq: state.nextSeq,
     message: trimmed,
     kind,
+    toolCallId,
+    toolName,
+    phase,
   });
   state.nextSeq += 1;
   state.updatedAt = Date.now();

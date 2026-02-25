@@ -596,32 +596,55 @@ export function formatToolProgressMessage(toolName: string, args: Record<string,
 }
 
 function parseToolResultText(raw: unknown): string {
-  if (typeof raw === "string") {
-    return raw;
-  }
-  if (!raw || typeof raw !== "object") {
-    return "";
-  }
-  const entry = raw as {
-    output?: unknown;
-    result?: unknown;
-    text?: unknown;
-    stdout?: unknown;
-    stderr?: unknown;
-    error?: unknown;
-    message?: unknown;
+  const seen = new Set<unknown>();
+  const ignoredKeys = new Set(["type", "id", "name", "toolname", "tool_name", "args", "input", "parameters"]);
+  const collect = (value: unknown, depth = 0): string[] => {
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      return trimmed.length > 0 ? [trimmed] : [];
+    }
+    if (!value || depth > 8) {
+      return [];
+    }
+    if (Array.isArray(value)) {
+      const chunks: string[] = [];
+      for (const item of value) {
+        chunks.push(...collect(item, depth + 1));
+      }
+      return chunks;
+    }
+    if (typeof value !== "object" || seen.has(value)) {
+      return [];
+    }
+    seen.add(value);
+    const objectValue = value as Record<string, unknown>;
+    const preferredFields = [
+      objectValue.output,
+      objectValue.result,
+      objectValue.text,
+      objectValue.stdout,
+      objectValue.stderr,
+      objectValue.message,
+      objectValue.error,
+      objectValue.content,
+      objectValue.response,
+    ];
+    const chunks: string[] = [];
+    for (const field of preferredFields) {
+      chunks.push(...collect(field, depth + 1));
+    }
+    if (chunks.length > 0) {
+      return chunks;
+    }
+    for (const [key, field] of Object.entries(objectValue)) {
+      if (ignoredKeys.has(key.toLowerCase())) {
+        continue;
+      }
+      chunks.push(...collect(field, depth + 1));
+    }
+    return chunks;
   };
-  const errorText =
-    typeof entry.error === "string"
-      ? entry.error
-      : entry.error && typeof entry.error === "object" && "message" in (entry.error as Record<string, unknown>)
-        ? String((entry.error as Record<string, unknown>).message ?? "")
-        : "";
-  const chunks = [entry.output, entry.result, entry.text, entry.stdout, entry.stderr, entry.message, errorText]
-    .filter((part): part is string => typeof part === "string")
-    .map((part) => part.trim())
-    .filter((part) => part.length > 0);
-  return chunks.join("\n");
+  return collect(raw).join("\n");
 }
 
 function extractToolFailureReason(resultText: string): string | null {
@@ -760,7 +783,7 @@ function formatToolResultProgressMessages(
 
 export function collectToolProgressFromStep(
   step: unknown,
-): Array<{ name: string; args: Record<string, unknown>; result: string }> {
+): Array<{ callId?: string; name: string; args: Record<string, unknown>; result: string }> {
   if (!step || typeof step !== "object") {
     return [];
   }
@@ -797,7 +820,7 @@ export function collectToolProgressFromStep(
     }
   }
 
-  const progress: Array<{ name: string; args: Record<string, unknown>; result: string }> = [];
+  const progress: Array<{ callId?: string; name: string; args: Record<string, unknown>; result: string }> = [];
   for (const container of containers) {
     const rawCalls =
       (Array.isArray(container.toolCalls) && container.toolCalls) ||
@@ -815,14 +838,13 @@ export function collectToolProgressFromStep(
         input?: unknown;
         parameters?: unknown;
       };
-      const name = [entry.toolName, entry.name, entry.id].find((value) => typeof value === "string") as
-        | string
-        | undefined;
+      const name = [entry.toolName, entry.name].find((value) => typeof value === "string") as string | undefined;
       if (!name) {
         continue;
       }
+      const callId = typeof entry.id === "string" ? entry.id : undefined;
       const args = parseToolArgs(entry.args ?? entry.input ?? entry.parameters);
-      progress.push({ name, args, result: "" });
+      progress.push(callId ? { callId, name, args, result: "" } : { name, args, result: "" });
     }
     const rawResults =
       (Array.isArray(container.toolResults) && container.toolResults) ||
@@ -843,15 +865,23 @@ export function collectToolProgressFromStep(
         result?: unknown;
         text?: unknown;
         stdout?: unknown;
+        stderr?: unknown;
+        message?: unknown;
+        error?: unknown;
       };
-      const name = [entry.toolName, entry.name, entry.id].find((value) => typeof value === "string") as
-        | string
-        | undefined;
+      const name = [entry.toolName, entry.name].find((value) => typeof value === "string") as string | undefined;
       if (!name) {
         continue;
       }
+      const callId = typeof entry.id === "string" ? entry.id : undefined;
       const args = parseToolArgs(entry.args ?? entry.input ?? entry.parameters);
-      progress.push({ name, args, result: parseToolResultText(entry) });
+      const resultSource =
+        entry.output ?? entry.result ?? entry.text ?? entry.stdout ?? entry.stderr ?? entry.message ?? entry.error;
+      progress.push(
+        callId
+          ? { callId, name, args, result: parseToolResultText(resultSource) }
+          : { name, args, result: parseToolResultText(resultSource) },
+      );
     }
   }
   return progress;
@@ -859,8 +889,8 @@ export function collectToolProgressFromStep(
 
 function collectToolProgressFromToolCalls(
   toolCalls: unknown[],
-): Array<{ name: string; args: Record<string, unknown>; result: string }> {
-  const progress: Array<{ name: string; args: Record<string, unknown>; result: string }> = [];
+): Array<{ callId?: string; name: string; args: Record<string, unknown>; result: string }> {
+  const progress: Array<{ callId?: string; name: string; args: Record<string, unknown>; result: string }> = [];
   for (const call of toolCalls) {
     if (!call || typeof call !== "object") {
       continue;
@@ -883,15 +913,28 @@ function collectToolProgressFromToolCalls(
     };
     const payload =
       entry.payload && typeof entry.payload === "object" ? (entry.payload as Record<string, unknown>) : undefined;
-    const name = [entry.toolName, entry.name, entry.id, payload?.toolName, payload?.name, payload?.id].find(
+    const name = [entry.toolName, entry.name, payload?.toolName, payload?.name].find(
       (value) => typeof value === "string",
     ) as string | undefined;
     if (!name) {
       continue;
     }
+    const callId = typeof entry.id === "string" ? entry.id : typeof payload?.id === "string" ? payload.id : undefined;
     const args = parseToolArgs(entry.args ?? entry.input ?? entry.parameters ?? payload?.args ?? payload?.input);
-    const result = parseToolResultText(entry);
-    progress.push({ name, args, result });
+    const resultSource =
+      entry.output ??
+      entry.result ??
+      entry.text ??
+      entry.stdout ??
+      entry.stderr ??
+      entry.message ??
+      entry.error ??
+      payload?.output ??
+      payload?.result ??
+      payload?.text ??
+      payload?.response;
+    const result = parseToolResultText(resultSource);
+    progress.push(callId ? { callId, name, args, result } : { name, args, result });
   }
   return progress;
 }
@@ -944,7 +987,13 @@ function buildMockReply(req: ChatRequest, reason?: string): ChatResponse {
 export async function runAgent(input: {
   request: ChatRequest;
   soulPrompt: string;
-  onProgress?: (message: string) => void;
+  onProgress?: (event: {
+    message: string;
+    kind?: "status" | "tool" | "error";
+    toolCallId?: string;
+    toolName?: string;
+    phase?: "start" | "result" | "error";
+  }) => void;
   onDebug?: (event: string, fields?: Record<string, unknown>) => void;
 }): Promise<ChatResponse> {
   const INITIAL_MAX_STEPS = 50;
@@ -1031,32 +1080,58 @@ export async function runAgent(input: {
   });
   const seenToolNames = new Set<string>();
   const emittedProgressMessages: string[] = [];
-  const seenProgressMessages = new Set<string>();
+  const seenProgressEvents = new Set<string>();
   const observedToolCallIds = new Set<string>();
   let lastToolFailureReason: string | undefined;
-  const emitProgress = (message: string): void => {
-    const trimmed = message.trim();
+  const emitProgress = (event: {
+    message: string;
+    kind?: "status" | "tool" | "error";
+    toolCallId?: string;
+    toolName?: string;
+    phase?: "start" | "result" | "error";
+  }): void => {
+    const trimmed = event.message.trim();
     if (trimmed.length === 0) {
       return;
     }
-    const key = trimmed.toLowerCase();
-    if (!seenProgressMessages.has(key)) {
-      seenProgressMessages.add(key);
+    const dedupeKey = [
+      event.kind ?? "tool",
+      event.toolCallId ?? "",
+      event.toolName ?? "",
+      event.phase ?? "",
+      trimmed.toLowerCase(),
+    ].join("|");
+    if (!seenProgressEvents.has(dedupeKey)) {
+      seenProgressEvents.add(dedupeKey);
       emittedProgressMessages.push(trimmed);
     }
-    input.onProgress?.(trimmed);
+    input.onProgress?.({
+      ...event,
+      message: trimmed,
+    });
   };
   const emitToolProgressEntries = (
-    tools: Array<{ name: string; args: Record<string, unknown>; result: string }>,
+    tools: Array<{ callId?: string; name: string; args: Record<string, unknown>; result: string }>,
   ): void => {
     for (const tool of tools) {
       const canonicalToolName = canonicalToolId(tool.name);
       observedToolCallIds.add(canonicalToolName);
       const startMessage = formatToolProgressMessage(canonicalToolName, tool.args);
-      const startDedupeKey = JSON.stringify({ kind: "call", name: tool.name, message: startMessage });
+      const startDedupeKey = JSON.stringify({
+        kind: "call",
+        callId: tool.callId ?? "",
+        name: tool.name,
+        message: startMessage,
+      });
       if (!seenToolNames.has(startDedupeKey)) {
         seenToolNames.add(startDedupeKey);
-        emitProgress(startMessage);
+        emitProgress({
+          message: startMessage,
+          kind: "tool",
+          toolCallId: tool.callId,
+          toolName: canonicalToolName,
+          phase: "start",
+        });
       }
       const resultMessages = formatToolResultProgressMessages(canonicalToolName, tool.result, tool.args);
       const failureReason = extractToolFailureReason(tool.result);
@@ -1070,16 +1145,33 @@ export async function runAgent(input: {
         const failureDedupeKey = JSON.stringify({ kind: "error", name: tool.name, message: failureMessage });
         if (!seenToolNames.has(failureDedupeKey)) {
           seenToolNames.add(failureDedupeKey);
-          emitProgress(failureMessage);
+          emitProgress({
+            message: failureMessage,
+            kind: "error",
+            toolCallId: tool.callId,
+            toolName: canonicalToolName,
+            phase: "error",
+          });
         }
       }
       for (const resultMessage of resultMessages) {
-        const resultDedupeKey = JSON.stringify({ kind: "result", name: tool.name, message: resultMessage });
+        const resultDedupeKey = JSON.stringify({
+          kind: "result",
+          callId: tool.callId ?? "",
+          name: tool.name,
+          message: resultMessage,
+        });
         if (seenToolNames.has(resultDedupeKey)) {
           continue;
         }
         seenToolNames.add(resultDedupeKey);
-        emitProgress(resultMessage);
+        emitProgress({
+          message: resultMessage,
+          kind: "tool",
+          toolCallId: tool.callId,
+          toolName: canonicalToolName,
+          phase: "result",
+        });
       }
     }
   };
@@ -1090,7 +1182,7 @@ export async function runAgent(input: {
   const agentPrompt = agentInput;
   const initialMaxSteps = INITIAL_MAX_STEPS;
   const callTimeoutMs = CODER_TIMEOUT_MS;
-  emitProgress("Working…");
+  emitProgress({ message: "Working…", kind: "status" });
   emitDebug("agent.generate.start", {
     model,
     tool_choice: "auto",
@@ -1112,7 +1204,7 @@ export async function runAgent(input: {
     );
   } catch (error) {
     lastToolFailureReason = error instanceof Error ? error.message : String(error);
-    emitProgress(`Tool failed: ${lastToolFailureReason}`);
+    emitProgress({ message: `Tool failed: ${lastToolFailureReason}`, kind: "error" });
     emitDebug("agent.generate.retry_failed", {
       model,
       reason: "initial",
@@ -1145,7 +1237,7 @@ export async function runAgent(input: {
         });
       } catch (retryError) {
         lastToolFailureReason = retryError instanceof Error ? retryError.message : String(retryError);
-        emitProgress(`Tool failed: ${lastToolFailureReason}`);
+        emitProgress({ message: `Tool failed: ${lastToolFailureReason}`, kind: "error" });
         emitDebug("agent.generate.retry_failed", {
           model,
           reason: "initial_timeout_recovery",
@@ -1236,7 +1328,7 @@ export async function runAgent(input: {
     } catch (error) {
       const retryError = error instanceof Error ? error.message : String(error);
       lastToolFailureReason = retryError;
-      emitProgress(`Tool failed: ${retryError}`);
+      emitProgress({ message: `Tool failed: ${retryError}`, kind: "error" });
       emitDebug("agent.generate.retry_failed", {
         model,
         reason: "required_tools_no_calls",
@@ -1326,7 +1418,7 @@ export async function runAgent(input: {
       });
     } catch (error) {
       lastToolFailureReason = error instanceof Error ? error.message : String(error);
-      emitProgress(`Tool failed: ${lastToolFailureReason}`);
+      emitProgress({ message: `Tool failed: ${lastToolFailureReason}`, kind: "error" });
       emitDebug("agent.generate.retry_failed", {
         model,
         reason: "empty_text_response",

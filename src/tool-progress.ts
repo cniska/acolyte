@@ -21,17 +21,11 @@ export function isToolDetailLine(line: string): boolean {
 
 export function groupToolProgressMessages(messages: string[]): string[] {
   const grouped: string[] = [];
-  const seen = new Set<string>();
   for (const rawMessage of messages) {
     const message = rawMessage.trim();
     if (!message) {
       continue;
     }
-    const key = message.toLowerCase();
-    if (seen.has(key)) {
-      continue;
-    }
-    seen.add(key);
     if (grouped.length === 0) {
       grouped.push(message);
       continue;

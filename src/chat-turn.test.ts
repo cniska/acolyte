@@ -91,8 +91,9 @@ describe("chat turn helpers", () => {
     });
 
     const toolRows = turn.rows.filter((row) => row.style === "toolProgress");
-    expect(toolRows).toHaveLength(1);
+    expect(toolRows).toHaveLength(2);
     expect(toolRows[0]?.content).toBe("Edited sum.rs");
+    expect(toolRows[1]?.content).toBe("Edited sum.rs");
     expect(turn.rows.some((row) => row.role === "assistant" && row.content === "done")).toBe(true);
   });
 

@@ -21,8 +21,8 @@ describe("tool progress helpers", () => {
     expect(out).toEqual(['Edited sum.rs\n1 + fn main() {}\n2 + println!("ok");', "Deleted sum.rs"]);
   });
 
-  test("dedupes duplicate messages while grouping", () => {
+  test("preserves duplicate headers while grouping", () => {
     const out = groupToolProgressMessages(["Edited sum.rs", "Edited sum.rs", "1 + fn main() {}", "1 + fn main() {}"]);
-    expect(out).toEqual(["Edited sum.rs\n1 + fn main() {}"]);
+    expect(out).toEqual(["Edited sum.rs", "Edited sum.rs\n1 + fn main() {}\n1 + fn main() {}"]);
   });
 });

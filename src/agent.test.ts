@@ -371,3 +371,60 @@ describe("formatToolProgressMessage", () => {
     expect(formatToolProgressMessage("run-command", { command: "bun run verify" })).toBe("Ran bun run verify");
   });
 });
+
+describe("collectToolProgressFromStep", () => {
+  test("extracts nested result text from tool result payload objects", () => {
+    const progress = collectToolProgressFromStep({
+      toolResults: [
+        {
+          toolName: "edit-file",
+          output: {
+            result: [
+              "path=/tmp/sum.rs",
+              "",
+              "diff --git a/sum.rs b/sum.rs",
+              "--- /dev/null",
+              "+++ b/sum.rs",
+              "@@ -0,0 +1,1 @@",
+              "+ fn main() {}",
+            ].join("\n"),
+          },
+        },
+      ],
+    });
+    expect(progress).toHaveLength(1);
+    expect(progress[0]?.result).toContain("diff --git a/sum.rs b/sum.rs");
+    expect(progress[0]?.result).toContain("+ fn main() {}");
+  });
+
+  test("extracts nested result text from array/object tool payload shapes", () => {
+    const progress = collectToolProgressFromStep({
+      toolResults: [
+        {
+          toolName: "edit-file",
+          output: {
+            content: [
+              {
+                type: "tool_result",
+                payload: {
+                  response: {
+                    text: [
+                      "diff --git a/sum.rs b/sum.rs",
+                      "--- /dev/null",
+                      "+++ b/sum.rs",
+                      "@@ -0,0 +1,1 @@",
+                      "+ fn main() {}",
+                    ].join("\n"),
+                  },
+                },
+              },
+            ],
+          },
+        },
+      ],
+    });
+    expect(progress).toHaveLength(1);
+    expect(progress[0]?.result).toContain("diff --git a/sum.rs b/sum.rs");
+    expect(progress[0]?.result).toContain("+ fn main() {}");
+  });
+});
