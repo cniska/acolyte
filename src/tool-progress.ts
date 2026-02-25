@@ -12,7 +12,7 @@ export function isToolHeaderLine(line: string): boolean {
 export function isToolDetailLine(line: string): boolean {
   const trimmed = line.trim();
   return (
-    /^\d+\s+[+-]\s/.test(trimmed) ||
+    /^\d+\s+[+-](?:\s.*)?$/.test(trimmed) ||
     /^\d+\s{3}/.test(trimmed) ||
     /^[+-]\s/.test(trimmed) ||
     /^(code|out|err)\s*\|/.test(trimmed)
@@ -54,7 +54,7 @@ export function parseToolProgressLine(line: string): ToolProgressParsedLine {
       path: header[2] ?? "",
     };
   }
-  const numberedDiff = line.match(/^(\d+)(\s+)([+-])\s(.*)$/);
+  const numberedDiff = line.match(/^(\d+)(\s+)([+-])(?:\s(.*))?$/);
   if (numberedDiff) {
     return {
       kind: "numberedDiff",

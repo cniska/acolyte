@@ -15,11 +15,11 @@ import {
   formatTimestamp,
   isTopLevelHelpCommand,
   isTopLevelVersionCommand,
-  oneShotResourceId,
   parseDogfoodArgs,
   parseEditResult,
   parseRunExitCode,
   resolveCommandAlias,
+  runResourceId,
   suggestCommand,
   suggestCommands,
   summarizeDiff,
@@ -244,9 +244,9 @@ describe("cli formatting helpers", () => {
     expect(displayPromptForOutput("plain prompt")).toBe("plain prompt");
   });
 
-  test("oneShotResourceId derives stable isolated resource key", () => {
-    expect(oneShotResourceId("sess_abcdef1234567890")).toBe("run-abcdef1234567890");
-    expect(oneShotResourceId("sess_short")).toBe("run-short");
+  test("runResourceId derives stable isolated resource key", () => {
+    expect(runResourceId("sess_abcdef1234567890")).toBe("run-abcdef1234567890");
+    expect(runResourceId("sess_short")).toBe("run-short");
   });
 
   test("formatResumeCommand returns prod-friendly command", () => {

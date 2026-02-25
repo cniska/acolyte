@@ -11,6 +11,7 @@ export const appConfig = {
     port: fileConfig.port,
     apiKey: env.ACOLYTE_API_KEY,
     apiUrl: fileConfig.apiUrl,
+    replyTimeoutMs: fileConfig.replyTimeoutMs,
   },
   openai: {
     apiKey: env.OPENAI_API_KEY,

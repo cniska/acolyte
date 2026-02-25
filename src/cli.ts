@@ -6,7 +6,7 @@ import { z } from "zod";
 import { appConfig } from "./app-config";
 import { createBackend } from "./backend";
 import { wrapAssistantContent } from "./chat-content";
-import { createProgressTracker, isStageProgressMessage } from "./chat-progress";
+import { createProgressTracker } from "./chat-progress";
 import { runInkChat } from "./chat-ui";
 import {
   editFileReplace,
@@ -18,14 +18,21 @@ import {
   searchRepo,
   searchWeb,
 } from "./coding-tools";
-import { type AcolyteConfig, readConfig, readConfigForScope, setConfigValue, unsetConfigValue } from "./config";
+import {
+  type AcolyteConfig,
+  readConfig,
+  readConfigForScope,
+  readResolvedConfigSync,
+  setConfigValue,
+  unsetConfigValue,
+} from "./config";
 import { buildFileContext } from "./file-context";
 import { addMemory, listMemories } from "./memory";
 import { acquireSessionLock, releaseSessionLock } from "./session-lock";
 import { getMemoryContextEntries } from "./soul";
 import { formatStatusOutput as formatStatusOutputShared } from "./status-format";
 import { createSession, readStore, writeStore } from "./storage";
-import { groupToolProgressMessages, parseToolProgressLine } from "./tool-progress";
+import { parseToolProgressLine } from "./tool-progress";
 import type { Message, Session, SessionStore } from "./types";
 import {
   clearScreen,
@@ -68,23 +75,8 @@ function resolveCliVersion(): string {
 }
 
 const CLI_VERSION = resolveCliVersion();
-const ONE_SHOT_SYSTEM_PROMPT =
-  "One-shot mode: answer concisely and directly (prefer <=5 lines). Avoid option menus unless the user explicitly asks for options.";
-const DEFAULT_ONE_SHOT_REPLY_TIMEOUT_MS = 120_000;
-
-function resolveOneShotReplyTimeoutMs(): number {
-  const raw = process.env.ACOLYTE_RUN_REPLY_TIMEOUT_MS?.trim();
-  if (!raw) {
-    return DEFAULT_ONE_SHOT_REPLY_TIMEOUT_MS;
-  }
-  const parsed = Number.parseInt(raw, 10);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    return DEFAULT_ONE_SHOT_REPLY_TIMEOUT_MS;
-  }
-  return parsed;
-}
-
-const ONE_SHOT_REPLY_TIMEOUT_MS = resolveOneShotReplyTimeoutMs();
+const RUN_MODE_SYSTEM_PROMPT =
+  "Run mode: answer concisely and directly (prefer <=5 lines). Avoid option menus unless the user explicitly asks for options.";
 const runArgsSchema = z.object({
   files: z.array(z.string().min(1)),
   prompt: z.string(),
@@ -720,8 +712,16 @@ export function formatProgressEventOutput(content: string): string {
   const path = (value: string): string => `\x1b[4m\x1b[38;2;168;177;188m${value}\x1b[39m\x1b[24m`;
   const green = (value: string): string => `\x1b[32m${value}\x1b[39m`;
   const red = (value: string): string => `\x1b[31m${value}\x1b[39m`;
-  const colorize = (line: string): string => {
-    const parsed = parseToolProgressLine(line);
+  const lines = content.split("\n");
+  const parsedLines = lines.map((line) => parseToolProgressLine(line));
+  const lineNumberWidth = parsedLines.reduce((max, parsed) => {
+    if (parsed.kind === "numberedDiff" || parsed.kind === "numberedContext") {
+      return Math.max(max, parsed.lineNumber.length);
+    }
+    return max;
+  }, 0);
+
+  const colorize = (parsed: ReturnType<typeof parseToolProgressLine>): string => {
     switch (parsed.kind) {
       case "header":
         if (parsed.verb === "Ran") {
@@ -731,31 +731,38 @@ export function formatProgressEventOutput(content: string): string {
       case "numberedDiff": {
         const marker = `${parsed.marker} `;
         const color = parsed.marker === "+" ? green : red;
-        return `${dim(parsed.lineNumber)}${parsed.spacing}${color(marker)}${color(parsed.text)}`;
+        const paddedLineNumber =
+          lineNumberWidth > 0 ? parsed.lineNumber.padStart(lineNumberWidth, " ") : parsed.lineNumber;
+        const spacing = " ";
+        return `${dim(paddedLineNumber)}${spacing}${color(marker)}${color(parsed.text)}`;
       }
-      case "numberedContext":
-        return `${dim(parsed.lineNumber)}${parsed.spacing}${parsed.text}`;
+      case "numberedContext": {
+        const paddedLineNumber =
+          lineNumberWidth > 0 ? parsed.lineNumber.padStart(lineNumberWidth, " ") : parsed.lineNumber;
+        const spacing = parsed.spacing.length > 0 ? parsed.spacing : "   ";
+        return `${dim(paddedLineNumber)}${spacing}${parsed.text}`;
+      }
       case "plainDiff":
         return parsed.marker === "+" ? green(parsed.text) : red(parsed.text);
       default:
         return parsed.text;
     }
   };
-  const lines = content.split("\n");
   if (lines.length === 0) {
     return "•";
   }
   return lines
     .map((line, index) => {
+      const parsed = parsedLines[index] ?? parseToolProgressLine(line);
       if (index === 0) {
-        return line.length > 0 ? `• ${colorize(line)}` : "•";
+        return line.length > 0 ? `• ${colorize(parsed)}` : "•";
       }
-      return line.length > 0 ? `  ${colorize(line)}` : "";
+      return line.length > 0 ? `  ${colorize(parsed)}` : "";
     })
     .join("\n");
 }
 
-export function oneShotResourceId(sessionId: string): string {
+export function runResourceId(sessionId: string): string {
   return `run-${sessionId.replace(/^sess_/, "").slice(0, 24)}`;
 }
 
@@ -818,7 +825,7 @@ async function handlePrompt(
       try {
         const progress = await backend.progress(session.id, progressTracker.afterSeq());
         if (!progress) {
-          return { hadEvents: false, done: false };
+          return { hadEvents: false, done: true };
         }
         const hadEvents = progress.events.length > 0;
         if (hadEvents) {
@@ -849,69 +856,12 @@ async function handlePrompt(
       }
     })();
 
-    let quietPolls = 0;
-    for (let i = 0; i < 6; i += 1) {
+    for (let i = 0; i < 40; i += 1) {
       const polled = await pollProgress().catch(() => ({ hadEvents: false, done: false }));
       if (polled.done) {
         break;
       }
-      if (polled.hadEvents) {
-        quietPolls = 0;
-      } else {
-        quietPolls += 1;
-        if (quietPolls >= 2) {
-          break;
-        }
-      }
-      await Bun.sleep(60);
-    }
-    if (
-      (Array.isArray(reply.progressMessages) && reply.progressMessages.length > 0) ||
-      (Array.isArray(reply.progressEvents) && reply.progressEvents.length > 0)
-    ) {
-      const fallbackToolMessages = (() => {
-        if (Array.isArray(reply.progressEvents) && reply.progressEvents.length > 0) {
-          const replyTracker = createProgressTracker({
-            onStatus: () => {},
-            onTool: () => {},
-          });
-          replyTracker.apply(
-            reply.progressEvents.map((entry, index) => ({
-              seq: index + 1,
-              message: entry.message,
-              kind: entry.kind,
-              toolCallId: entry.toolCallId,
-              toolName: entry.toolName,
-              phase: entry.phase,
-            })),
-          );
-          return replyTracker.toolMessages();
-        }
-        return reply.progressMessages ?? [];
-      })();
-      const streamedMessageCounts = new Map<string, number>();
-      for (const message of progressTracker.toolMessages()) {
-        const key = message.toLowerCase();
-        streamedMessageCounts.set(key, (streamedMessageCounts.get(key) ?? 0) + 1);
-      }
-      const queued: string[] = [];
-      for (const message of fallbackToolMessages) {
-        const trimmed = message.trim();
-        if (!trimmed || isStageProgressMessage(trimmed)) {
-          continue;
-        }
-        const key = trimmed.toLowerCase();
-        const remaining = streamedMessageCounts.get(key) ?? 0;
-        if (remaining > 0) {
-          streamedMessageCounts.set(key, remaining - 1);
-          continue;
-        }
-        queued.push(trimmed);
-      }
-      for (const normalizedMessage of groupToolProgressMessages(queued)) {
-        printOutput(formatProgressEventOutput(normalizedMessage));
-        hasPrintedProgress = true;
-      }
+      await Bun.sleep(50);
     }
 
     printOutput("");
@@ -1128,11 +1078,12 @@ async function runMode(args: string[]): Promise<void> {
   }
 
   const defaultModel = appConfig.model ?? FALLBACK_MODEL;
+  const resolvedConfig = readResolvedConfigSync();
   const session = createSession(defaultModel);
-  session.messages.push(newMessage("system", ONE_SHOT_SYSTEM_PROMPT));
+  session.messages.push(newMessage("system", RUN_MODE_SYSTEM_PROMPT));
   const backend = createBackend({
     apiUrl: appConfig.server.apiUrl,
-    replyTimeoutMs: ONE_SHOT_REPLY_TIMEOUT_MS,
+    replyTimeoutMs: resolvedConfig.replyTimeoutMs,
   });
 
   for (const filePath of parsed.files) {
@@ -1147,7 +1098,7 @@ async function runMode(args: string[]): Promise<void> {
     }
   }
 
-  const success = await handlePrompt(prompt, session, backend, { resourceId: oneShotResourceId(session.id) });
+  const success = await handlePrompt(prompt, session, backend, { resourceId: runResourceId(session.id) });
   if (!success) {
     process.exitCode = 1;
     return;

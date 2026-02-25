@@ -201,6 +201,7 @@ describe("config store", () => {
         "maxMessageTokens = 700",
         "maxAttachmentMessageTokens = 4500",
         "maxPinnedMessageTokens = 1600",
+        "replyTimeoutMs = 220000",
       ].join("\n"),
       "utf8",
     );
@@ -211,6 +212,7 @@ describe("config store", () => {
     expect(loaded.permissionMode).toBe("write");
     expect(loaded.logFormat).toBe("json");
     expect(loaded.maxMessageTokens).toBe(700);
+    expect(loaded.replyTimeoutMs).toBe(220000);
   });
 
   test("readResolvedConfigSync applies defaults and omModel fallback", () => {
@@ -225,6 +227,7 @@ describe("config store", () => {
     expect(resolved.omModel).toBe("anthropic/claude-sonnet-4");
     expect(resolved.permissionMode).toBe("read");
     expect(resolved.logFormat).toBe("logfmt");
+    expect(resolved.replyTimeoutMs).toBe(180000);
   });
 
   test("project config overrides user config", async () => {

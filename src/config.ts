@@ -13,6 +13,7 @@ const MAX_OM_REFLECTION_TOKENS = 32_000;
 const MAX_MESSAGE_TOKENS = 4_000;
 const MAX_ATTACHMENT_MESSAGE_TOKENS = 12_000;
 const MAX_PINNED_MESSAGE_TOKENS = 4_000;
+const MAX_RUN_REPLY_TIMEOUT_MS = 600_000;
 const nonEmptyStringSchema = z.string().trim().min(1);
 const parseIntegerSchema = (min: number, max: number): z.ZodType<number> =>
   z.preprocess(
@@ -34,6 +35,7 @@ const DEFAULT_CONFIG = {
   maxMessageTokens: 600,
   maxAttachmentMessageTokens: 3_000,
   maxPinnedMessageTokens: 1_200,
+  replyTimeoutMs: 180_000,
 };
 
 export interface AcolyteConfig {
@@ -53,6 +55,7 @@ export interface AcolyteConfig {
   maxMessageTokens?: number;
   maxAttachmentMessageTokens?: number;
   maxPinnedMessageTokens?: number;
+  replyTimeoutMs?: number;
 }
 
 export interface ResolvedAcolyteConfig {
@@ -72,6 +75,7 @@ export interface ResolvedAcolyteConfig {
   maxMessageTokens: number;
   maxAttachmentMessageTokens: number;
   maxPinnedMessageTokens: number;
+  replyTimeoutMs: number;
 }
 
 export type ConfigScope = "user" | "project";
@@ -99,6 +103,7 @@ const CONFIG_SET_SCHEMAS: Record<keyof AcolyteConfig, z.ZodTypeAny> = {
   maxMessageTokens: parseIntegerSchema(50, MAX_MESSAGE_TOKENS),
   maxAttachmentMessageTokens: parseIntegerSchema(100, MAX_ATTACHMENT_MESSAGE_TOKENS),
   maxPinnedMessageTokens: parseIntegerSchema(100, MAX_PINNED_MESSAGE_TOKENS),
+  replyTimeoutMs: parseIntegerSchema(1_000, MAX_RUN_REPLY_TIMEOUT_MS),
 };
 
 function toConfig(input: Record<string, unknown>): AcolyteConfig {
@@ -130,6 +135,7 @@ function toConfig(input: Record<string, unknown>): AcolyteConfig {
       parseIntegerSchema(100, MAX_PINNED_MESSAGE_TOKENS),
       input.maxPinnedMessageTokens,
     ),
+    replyTimeoutMs: parseField(parseIntegerSchema(1_000, MAX_RUN_REPLY_TIMEOUT_MS), input.replyTimeoutMs),
   };
 }
 
@@ -255,6 +261,9 @@ function serializeToml(config: AcolyteConfig): string {
   if (typeof config.maxPinnedMessageTokens === "number") {
     lines.push(`maxPinnedMessageTokens = ${config.maxPinnedMessageTokens}`);
   }
+  if (typeof config.replyTimeoutMs === "number") {
+    lines.push(`replyTimeoutMs = ${config.replyTimeoutMs}`);
+  }
   return `${lines.join("\n")}${lines.length > 0 ? "\n" : ""}`;
 }
 
@@ -277,6 +286,7 @@ export function resolveConfig(config: AcolyteConfig): ResolvedAcolyteConfig {
     maxMessageTokens: config.maxMessageTokens ?? DEFAULT_CONFIG.maxMessageTokens,
     maxAttachmentMessageTokens: config.maxAttachmentMessageTokens ?? DEFAULT_CONFIG.maxAttachmentMessageTokens,
     maxPinnedMessageTokens: config.maxPinnedMessageTokens ?? DEFAULT_CONFIG.maxPinnedMessageTokens,
+    replyTimeoutMs: config.replyTimeoutMs ?? DEFAULT_CONFIG.replyTimeoutMs,
   };
 }
 
