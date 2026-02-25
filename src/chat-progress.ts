@@ -1,4 +1,5 @@
 import type { ChatProgressEvent } from "./backend";
+import { groupToolProgressMessages } from "./tool-progress";
 
 const STAGE_PREFIXES = [
   "Thinking…",
@@ -42,6 +43,7 @@ export function createProgressTracker(options: {
       return;
     }
     progressAfterSeq = events[events.length - 1]?.seq ?? progressAfterSeq;
+    const rawToolMessages: string[] = [];
     for (const event of events) {
       const message = event.message.trim();
       if (!message) {
@@ -51,6 +53,9 @@ export function createProgressTracker(options: {
         options.onStatus(message);
         continue;
       }
+      rawToolMessages.push(message);
+    }
+    for (const message of groupToolProgressMessages(rawToolMessages)) {
       if (dedupe) {
         const key = message.toLowerCase();
         if (seenToolMessages.has(key)) {
