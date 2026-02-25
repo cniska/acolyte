@@ -8,7 +8,6 @@ import {
   finalizeReviewOutput,
   formatToolProgressMessage,
   isPlanLikeOutput,
-  isSummaryOnlyRequest,
   resolveAgentModel,
   resolveModelProviderState,
   resolveRunnableModel,
@@ -106,12 +105,6 @@ describe("execution intent detection", () => {
     expect(canonicalToolId("web_search")).toBe("web-search");
   });
 
-  test("isSummaryOnlyRequest detects concise-summary constraints", () => {
-    expect(isSummaryOnlyRequest("return a concise summary only")).toBe(true);
-    expect(isSummaryOnlyRequest("summary only")).toBe(true);
-    expect(isSummaryOnlyRequest("just a summary")).toBe(true);
-    expect(isSummaryOnlyRequest("make the edit and explain reasoning")).toBe(false);
-  });
 });
 
 describe("finalizeReviewOutput", () => {
@@ -131,6 +124,7 @@ describe("finalizeReviewOutput", () => {
     const raw = "\n  • 1 findings in @src/mastra-tools.ts\n 1) naming issue \n";
     expect(finalizeReviewOutput(raw)).toBe("• 1 findings in @src/mastra-tools.ts\n 1) naming issue");
   });
+
 });
 
 describe("finalizeAssistantOutput", () => {

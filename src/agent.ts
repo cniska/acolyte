@@ -185,10 +185,6 @@ function isReviewRequest(text: string): boolean {
   return /\breview\b/i.test(text);
 }
 
-export function isSummaryOnlyRequest(text: string): boolean {
-  return /\b(summary only|concise summary only|just a summary|only summary|summary,?\s*no explanation)\b/i.test(text);
-}
-
 export function selectAgentRole(_text: string): AgentRole {
   return "coder";
 }
@@ -204,6 +200,7 @@ export function buildRoleInstructions(baseInstructions: string, _role: AgentRole
     "- Prefer tool-backed execution over speculative answers when code changes are requested.",
     "- When a task is straightforward, execute it directly; do not ask for confirmation before editing.",
     "- Ask follow-up questions only when requirements are ambiguous, risky, or blocked by missing access/context.",
+    "- For multi-step tasks, keep an internal checklist and do not finish until all requested items are addressed.",
     "- Respect response-shape constraints exactly (for example: 'summary only' means summary only).",
     "- Run verification only when explicitly requested, when required by repo policy, or when safety risk is high.",
     "- If verification is skipped, do not add extra verification commentary unless user asked for it.",
@@ -809,32 +806,6 @@ function buildMockReply(req: ChatRequest, reason?: string): ChatResponse {
   };
 }
 
-function outputClaimsAppliedEdit(output: string): boolean {
-  const trimmed = output.trim();
-  if (trimmed.length === 0) {
-    return false;
-  }
-  if (/\b(no changes?|did not edit|not edited|no edit applied|no file changes?)\b/i.test(trimmed)) {
-    return false;
-  }
-  if (/\b(would|could|can|suggest|recommend|propose|plan to|next steps?)\b/i.test(trimmed)) {
-    return false;
-  }
-  return /\b(applied|updated|edited|modified|changed|patched|fixed|added|removed|deleted|renamed|implemented|created)\b/i.test(
-    trimmed,
-  );
-}
-
-function claimedEditFailureMessage(toolCallIds: string[], lastToolFailureReason?: string): string {
-  if (lastToolFailureReason) {
-    return `Edit verification failed: ${lastToolFailureReason}`;
-  }
-  if (toolCallIds.length > 0) {
-    return `Edit verification failed: output claimed changes but no edit-file call was executed (tools: ${toolCallIds.join(", ")}).`;
-  }
-  return "Edit verification failed: output claimed changes but no edit-file call was executed.";
-}
-
 export async function runAgent(input: {
   request: ChatRequest;
   soulPrompt: string;
@@ -914,7 +885,6 @@ export async function runAgent(input: {
   const requestInput = buildAgentInputWithUsage(input.request);
   const subagentContext = buildSubagentContext(role, input.request);
   const agentInput = `${subagentContext}\n\n${requestInput.input}`;
-  const summaryOnly = isSummaryOnlyRequest(input.request.message);
   const toolLikely = isToolLikelyRequest(input.request.message);
   if (!toolLikely && input.request.model !== model) {
     const requestedState = resolveModelProviderState(input.request.model);
@@ -982,10 +952,7 @@ export async function runAgent(input: {
     }
   };
 
-  const summaryOnlyHint = summaryOnly
-    ? "\n\nResponse constraint: return a concise summary only. Do not run verification commands and do not include verification commentary."
-    : "";
-  const agentPrompt = `${agentInput}${summaryOnlyHint}`;
+  const agentPrompt = agentInput;
   const initialMaxSteps = CODER_INITIAL_MAX_STEPS;
   const callTimeoutMs = CODER_TIMEOUT_MS;
   emitProgress("Working…");
@@ -1122,45 +1089,7 @@ export async function runAgent(input: {
 
   let normalizedToolCalls = normalizeToolCalls(result.toolCalls);
   let toolCallIds = collectToolCallIds(normalizedToolCalls);
-  let rawOutput = result.text.trim();
-  if (outputClaimsAppliedEdit(rawOutput) && !toolCallIds.includes("edit-file")) {
-    emitDebug("agent.generate.retry", {
-      model,
-      reason: "claimed_edit_missing_edit_file",
-      tool_choice: "required",
-      max_steps: 4,
-      prior_tools: toolCallIds.join(","),
-    });
-    try {
-      modelCallCount += 1;
-      result = await generateWithTimeout(
-        `${agentPrompt}\n\nVerification: your previous reply claimed edits were applied but no edit-file call was recorded. If applying changes, execute edit-file now. Otherwise, explicitly state that no edit was applied and provide a suggested patch.`,
-        {
-          maxSteps: 4,
-          toolChoice: "required",
-          memory: memoryOptions,
-          onStepFinish: emitToolProgress,
-        },
-        callTimeoutMs,
-      );
-      emitDebug("agent.generate.done", {
-        model,
-        reason: "claimed_edit_missing_edit_file",
-        tool_calls: result.toolCalls.length,
-        text_chars: result.text.trim().length,
-      });
-      normalizedToolCalls = normalizeToolCalls(result.toolCalls);
-      toolCallIds = collectToolCallIds(normalizedToolCalls);
-      rawOutput = result.text.trim();
-    } catch (error) {
-      lastToolFailureReason = error instanceof Error ? error.message : String(error);
-      emitDebug("agent.generate.retry_failed", {
-        model,
-        reason: "claimed_edit_missing_edit_file",
-        error: lastToolFailureReason,
-      });
-    }
-  }
+  const rawOutput = result.text.trim();
   if (normalizedToolCalls.length > 0 && toolCallIds.length === 0) {
     const first = normalizedToolCalls[0];
     const firstKeys = first && typeof first === "object" ? Object.keys(first as object).slice(0, 12) : [];
@@ -1171,32 +1100,6 @@ export async function runAgent(input: {
       first_type: typeof first,
     });
   }
-  if (outputClaimsAppliedEdit(rawOutput) && !toolCallIds.includes("edit-file")) {
-    emitDebug("agent.fallback.claimed_edit_execution_unsatisfied", {
-      model,
-      tool_calls: toolCallIds.length,
-      failure_reason: lastToolFailureReason ?? null,
-    });
-    const fallback = claimedEditFailureMessage(toolCallIds, lastToolFailureReason);
-    const completionTokens = estimateTokens(fallback);
-    return {
-      model,
-      output: fallback,
-      toolCalls: toolCallIds,
-      modelCalls: modelCallCount,
-      usage: {
-        promptTokens: requestInput.usage.promptTokens,
-        completionTokens,
-        totalTokens: requestInput.usage.promptTokens + completionTokens,
-        promptBudgetTokens: requestInput.usage.promptBudgetTokens,
-        promptTruncated: requestInput.usage.promptTruncated,
-      },
-      budgetWarning: requestInput.usage.promptTruncated
-        ? `context trimmed (${requestInput.usage.includedHistoryMessages}/${requestInput.usage.totalHistoryMessages} history messages)`
-        : undefined,
-    };
-  }
-
   if (result.text.trim().length === 0) {
     emitDebug("agent.generate.retry", {
       model,
