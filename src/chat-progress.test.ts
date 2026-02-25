@@ -112,4 +112,19 @@ describe("chat progress tracker", () => {
     expect(toolMessages).toEqual(["Edited sum.rs\n1 + fn main() {}"]);
   });
 
+  test("accumulates toolCallId snapshots across apply calls", () => {
+    const toolMessages: string[] = [];
+    const tracker = createProgressTracker({
+      onStatus: () => {},
+      onTool: (entry) => {
+        toolMessages.push(entry.message);
+      },
+      dedupeToolMessages: false,
+    });
+
+    tracker.apply([{ seq: 1, message: "Edited sum.rs", kind: "tool", toolCallId: "call_1", phase: "start" }]);
+    tracker.apply([{ seq: 2, message: "1 + fn one() {}", kind: "tool", toolCallId: "call_1", phase: "result" }]);
+
+    expect(toolMessages).toEqual(["Edited sum.rs", "Edited sum.rs\n1 + fn one() {}"]);
+  });
 });

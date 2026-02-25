@@ -42,6 +42,7 @@ export function createProgressTracker(options: {
   let progressAfterSeq = 0;
   const seenToolMessages = new Set<string>();
   const toolMessages: string[] = [];
+  const toolSnapshotByCallId = new Map<string, string>();
 
   const apply = (events: ChatProgressEvent[]): void => {
     if (events.length === 0) {
@@ -86,6 +87,27 @@ export function createProgressTracker(options: {
     const groupedIndexByToolCallId = new Map<string, number>();
     for (const entry of rawToolMessages) {
       if (entry.toolCallId) {
+        const previousSnapshot = toolSnapshotByCallId.get(entry.toolCallId);
+        if (previousSnapshot) {
+          const previousLower = previousSnapshot.trim().toLowerCase();
+          const incomingLower = entry.message.trim().toLowerCase();
+          if (incomingLower !== previousLower) {
+            if (entry.message.startsWith(`${previousSnapshot}\n`)) {
+              entry.message = entry.message.trim();
+            } else if (!previousSnapshot.startsWith(`${entry.message}\n`)) {
+              const existingLines = previousSnapshot.split("\n").map((line) => line.trim().toLowerCase());
+              if (!existingLines.includes(incomingLower)) {
+                entry.message = `${previousSnapshot}\n${entry.message.trim()}`;
+              } else {
+                entry.message = previousSnapshot;
+              }
+            } else {
+              entry.message = previousSnapshot;
+            }
+          } else {
+            entry.message = previousSnapshot;
+          }
+        }
         const existingIndex = groupedIndexByToolCallId.get(entry.toolCallId);
         if (existingIndex === undefined) {
           grouped.push({
@@ -96,6 +118,7 @@ export function createProgressTracker(options: {
             phase: entry.phase,
           });
           groupedIndexByToolCallId.set(entry.toolCallId, grouped.length - 1);
+          toolSnapshotByCallId.set(entry.toolCallId, entry.message);
           continue;
         }
         const existing = grouped[existingIndex];
@@ -107,24 +130,35 @@ export function createProgressTracker(options: {
         const existingLower = existingContent.toLowerCase();
         const incomingLower = incomingContent.toLowerCase();
         if (incomingLower === existingLower) {
+          existing.toolName = entry.toolName ?? existing.toolName;
+          existing.phase = entry.phase ?? existing.phase;
+          toolSnapshotByCallId.set(entry.toolCallId, existing.message);
           continue;
         }
         if (incomingContent.startsWith(`${existingContent}\n`)) {
           existing.message = incomingContent;
+          existing.toolName = entry.toolName ?? existing.toolName;
+          existing.phase = entry.phase ?? existing.phase;
+          toolSnapshotByCallId.set(entry.toolCallId, existing.message);
           continue;
         }
         if (existingContent.startsWith(`${incomingContent}\n`)) {
+          existing.toolName = entry.toolName ?? existing.toolName;
+          existing.phase = entry.phase ?? existing.phase;
+          toolSnapshotByCallId.set(entry.toolCallId, existing.message);
           continue;
         }
         const existingLines = existingContent.split("\n").map((line) => line.trim().toLowerCase());
         if (existingLines.includes(incomingLower)) {
           existing.toolName = entry.toolName ?? existing.toolName;
           existing.phase = entry.phase ?? existing.phase;
+          toolSnapshotByCallId.set(entry.toolCallId, existing.message);
           continue;
         }
         existing.message = `${existingContent}\n${incomingContent}`;
         existing.toolName = entry.toolName ?? existing.toolName;
         existing.phase = entry.phase ?? existing.phase;
+        toolSnapshotByCallId.set(entry.toolCallId, existing.message);
         continue;
       }
       if (grouped.length === 0) {
