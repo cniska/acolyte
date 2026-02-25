@@ -345,8 +345,10 @@ describe("createInstructions", () => {
   test("enforces tool-first execution guidance", () => {
     const out = createInstructions("Base instructions.");
     expect(out).toContain("Default to tool execution.");
+    expect(out).toContain("execute the file tool action immediately in the same turn");
     expect(out).toContain("For requests that create a new file, call `edit-file` with full file content directly");
     expect(out).toContain("For edit/update requests, check the target file with `read-file` first");
+    expect(out).toContain("do not re-read or re-edit the same file in the same turn");
     expect(out).toContain("Never claim a file was created/edited/found unless that is confirmed by tool results");
     expect(out).toContain("Do not offer variants/options before performing a straightforward artifact request");
     expect(out).toContain("state that the file is missing instead of silently creating a replacement file");
@@ -357,9 +359,17 @@ describe("createInstructions", () => {
     expect(out).toContain("Forbidden: replying with 'save this as ...'");
   });
 
-  test("requires a brief action summary before tool execution", () => {
+  test("uses concise outcome-focused completion guidance", () => {
     const out = createInstructions("Base instructions.");
-    expect(out).toContain("Before tool execution, send one brief action summary of what you are about to do");
+    expect(out).toContain("summarize outcome without repeating full tool output");
+  });
+
+  test("allows one clarification only when blocked and avoids option menus", () => {
+    const out = createInstructions("Base instructions.");
+    expect(out).toContain("ask one short clarification question, then continue");
+    expect(out).toContain("Avoid option menus for straightforward tasks");
+    expect(out).toContain("one short line stating no changes were needed");
+    expect(out).toContain("Do not start final replies with action preambles like");
   });
 });
 

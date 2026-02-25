@@ -174,7 +174,9 @@ export function createInstructions(baseInstructions: string): string {
     "- Default to tool execution. If a task can be completed with available tools, do it with tools instead of providing instructions/code-only replies.",
     "- Read relevant files before editing; avoid speculative code changes.",
     "- Artifact requests (scripts/files/components/configs) MUST be fulfilled by creating or editing files directly in workspace.",
+    "- For straightforward artifact tasks (create/update/delete a file), execute the file tool action immediately in the same turn.",
     "- For edit/update requests, check the target file with `read-file` first, then apply `edit-file`; do not guess file state.",
+    "- After a successful `edit-file` for a straightforward request, do not re-read or re-edit the same file in the same turn unless the user explicitly asked for verification or additional changes.",
     "- Never claim a file was created/edited/found unless that is confirmed by tool results in the current turn.",
     "- For requests that create a new file, call `edit-file` with full file content directly (do not answer with file contents in chat).",
     "- If filename/path is not specified, choose a sensible default filename and create it (for example `sum.rs`) using `edit-file`.",
@@ -190,16 +192,17 @@ export function createInstructions(baseInstructions: string): string {
     "",
     "Completion + Communication:",
     "- For multi-step work, keep an internal checklist and do not finish until all requested items are addressed.",
-    "- Ask follow-up questions only when requirements are ambiguous, risky, or blocked by missing access/context.",
-    "- If a sensible default exists (for example filename), choose it and continue; avoid multi-question loops.",
-    "- Execute directly; do not ask for confirmation to proceed with normal coding actions inside workspace.",
-    "- Before tool execution, send one brief action summary of what you are about to do (1 sentence, no options).",
-    "- Do not end with 'Proceed?' or similar approval prompts.",
+    "- Execute directly for actionable requests; do not ask for confirmation for normal workspace actions.",
+    "- If blocked by missing or ambiguous requirements, ask one short clarification question, then continue.",
+    "- If a sensible default exists (for example filename), choose it and continue.",
+    "- Avoid option menus for straightforward tasks.",
+    "- If the requested change is already satisfied, reply with one short line stating no changes were needed, then stop.",
+    '- Do not start final replies with action preambles like "I\'ll".',
     "- Do not report repo cleanliness/status unless user explicitly asked for git status.",
     "- Do not append unsolicited 'Next action' suggestions unless the user asked for options or next steps.",
     "- Respect response-shape constraints exactly (for example: 'summary only' means summary only).",
     "- Never mention verification commands/results unless verification was explicitly requested in the prompt.",
-    "- Keep final output concise and outcome-focused.",
+    "- Keep final output concise and outcome-focused; summarize outcome without repeating full tool output.",
   ].join("\n");
   return `${baseInstructions}\n\n${executionContract}`;
 }
@@ -1006,11 +1009,10 @@ export async function runAgent(input: {
     kind?: "status" | "tool" | "error";
     toolCallId?: string;
     toolName?: string;
-    phase?: "start" | "result" | "error" | "chunk_start" | "chunk_delta" | "chunk_end";
+    phase?: "tool_start" | "tool_chunk" | "tool_end";
   }) => void;
   onDebug?: (event: string, fields?: Record<string, unknown>) => void;
 }): Promise<ChatResponse> {
-  type ProgressEventPayload = NonNullable<ChatResponse["progressEvents"]>[number];
   const INITIAL_MAX_STEPS = 50;
   const REQUIRED_TOOLS_RETRY_MAX_STEPS = 10;
   const TIMEOUT_RECOVERY_MAX_STEPS = 8;
@@ -1094,8 +1096,6 @@ export async function runAgent(input: {
     has_memory: Boolean(memoryOptions),
   });
   const seenToolNames = new Set<string>();
-  const emittedProgressMessages: string[] = [];
-  const emittedProgressEvents: ProgressEventPayload[] = [];
   const seenProgressEvents = new Set<string>();
   const observedToolCallIds = new Set<string>();
   let lastToolFailureReason: string | undefined;
@@ -1104,7 +1104,7 @@ export async function runAgent(input: {
     kind?: "status" | "tool" | "error";
     toolCallId?: string;
     toolName?: string;
-    phase?: "start" | "result" | "error" | "chunk_start" | "chunk_delta" | "chunk_end";
+    phase?: "tool_start" | "tool_chunk" | "tool_end";
   }): void => {
     const trimmed = event.message.trim();
     if (trimmed.length === 0) {
@@ -1119,14 +1119,6 @@ export async function runAgent(input: {
     ].join("|");
     if (!seenProgressEvents.has(dedupeKey)) {
       seenProgressEvents.add(dedupeKey);
-      emittedProgressMessages.push(trimmed);
-      emittedProgressEvents.push({
-        message: trimmed,
-        kind: event.kind,
-        toolCallId: event.toolCallId,
-        toolName: event.toolName,
-        phase: event.phase,
-      });
     }
     input.onProgress?.({
       ...event,
@@ -1140,75 +1132,41 @@ export async function runAgent(input: {
       const canonicalToolName = canonicalToolId(tool.name);
       observedToolCallIds.add(canonicalToolName);
       const startMessage = formatToolProgressMessage(canonicalToolName, tool.args);
-      const startDedupeKey = JSON.stringify({
-        kind: "call",
+      const startKey = JSON.stringify({
+        kind: "tool_start",
         callId: tool.callId ?? "",
         name: tool.name,
         message: startMessage,
       });
-      if (!seenToolNames.has(startDedupeKey)) {
-        seenToolNames.add(startDedupeKey);
+      if (!seenToolNames.has(startKey)) {
+        seenToolNames.add(startKey);
         emitProgress({
           message: startMessage,
           kind: "tool",
           toolCallId: tool.callId,
           toolName: canonicalToolName,
-          phase: "start",
+          phase: "tool_start",
         });
       }
       const inputMessages = formatToolInputProgressMessages(canonicalToolName, tool.args);
-      if (inputMessages.length > 0) {
-        const chunkStartKey = JSON.stringify({
-          kind: "chunk_start",
+      for (const inputMessage of inputMessages) {
+        const chunkKey = JSON.stringify({
+          kind: "tool_chunk",
           callId: tool.callId ?? "",
           name: tool.name,
-          message: startMessage,
+          message: inputMessage,
         });
-        if (!seenToolNames.has(chunkStartKey)) {
-          seenToolNames.add(chunkStartKey);
-          emitProgress({
-            message: startMessage,
-            kind: "tool",
-            toolCallId: tool.callId,
-            toolName: canonicalToolName,
-            phase: "chunk_start",
-          });
+        if (seenToolNames.has(chunkKey)) {
+          continue;
         }
-        for (const inputMessage of inputMessages) {
-          const chunkDeltaKey = JSON.stringify({
-            kind: "chunk_delta",
-            callId: tool.callId ?? "",
-            name: tool.name,
-            message: inputMessage,
-          });
-          if (seenToolNames.has(chunkDeltaKey)) {
-            continue;
-          }
-          seenToolNames.add(chunkDeltaKey);
-          emitProgress({
-            message: inputMessage,
-            kind: "tool",
-            toolCallId: tool.callId,
-            toolName: canonicalToolName,
-            phase: "chunk_delta",
-          });
-        }
-        const chunkEndKey = JSON.stringify({
-          kind: "chunk_end",
-          callId: tool.callId ?? "",
-          name: tool.name,
-          message: startMessage,
+        seenToolNames.add(chunkKey);
+        emitProgress({
+          message: inputMessage,
+          kind: "tool",
+          toolCallId: tool.callId,
+          toolName: canonicalToolName,
+          phase: "tool_chunk",
         });
-        if (!seenToolNames.has(chunkEndKey)) {
-          seenToolNames.add(chunkEndKey);
-          emitProgress({
-            message: startMessage,
-            kind: "tool",
-            toolCallId: tool.callId,
-            toolName: canonicalToolName,
-            phase: "chunk_end",
-          });
-        }
       }
       const resultMessages = formatToolResultProgressMessages(canonicalToolName, tool.result, tool.args);
       const failureReason = extractToolFailureReason(tool.result);
@@ -1227,13 +1185,13 @@ export async function runAgent(input: {
             kind: "error",
             toolCallId: tool.callId,
             toolName: canonicalToolName,
-            phase: "error",
+            phase: "tool_end",
           });
         }
       }
       for (const resultMessage of resultMessages) {
         const resultDedupeKey = JSON.stringify({
-          kind: "result",
+          kind: "tool_chunk",
           callId: tool.callId ?? "",
           name: tool.name,
           message: resultMessage,
@@ -1247,7 +1205,23 @@ export async function runAgent(input: {
           kind: "tool",
           toolCallId: tool.callId,
           toolName: canonicalToolName,
-          phase: "result",
+          phase: "tool_chunk",
+        });
+      }
+      const endKey = JSON.stringify({
+        kind: "tool_end",
+        callId: tool.callId ?? "",
+        name: tool.name,
+        message: startMessage,
+      });
+      if (!seenToolNames.has(endKey)) {
+        seenToolNames.add(endKey);
+        emitProgress({
+          message: startMessage,
+          kind: "tool",
+          toolCallId: tool.callId,
+          toolName: canonicalToolName,
+          phase: "tool_end",
         });
       }
     }
@@ -1334,8 +1308,6 @@ export async function runAgent(input: {
         model,
         output,
         toolCalls: Array.from(observedToolCallIds),
-        progressMessages: emittedProgressMessages,
-        progressEvents: emittedProgressEvents,
         modelCalls: modelCallCount,
         usage: {
           promptTokens: requestInput.usage.promptTokens,
@@ -1357,8 +1329,6 @@ export async function runAgent(input: {
       model,
       output,
       toolCalls: Array.from(observedToolCallIds),
-      progressMessages: emittedProgressMessages,
-      progressEvents: emittedProgressEvents,
       modelCalls: modelCallCount,
       usage: {
         promptTokens: requestInput.usage.promptTokens,
@@ -1522,8 +1492,6 @@ export async function runAgent(input: {
     model,
     output,
     toolCalls: toolCallIds,
-    progressMessages: emittedProgressMessages,
-    progressEvents: emittedProgressEvents,
     modelCalls: modelCallCount,
     usage: {
       promptTokens: promptUsage.promptTokens,
