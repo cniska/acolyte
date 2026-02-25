@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import {
   assertCheckOutput,
   hasFallbackEditSignal,
+  hasUnwantedVerificationChatter,
   isProviderReadyFromStatusOutput,
   parseArgs,
   stripAnsi,
@@ -38,6 +39,13 @@ describe("dogfood-smoke helpers", () => {
     expect(hasFallbackEditSignal("Applied direct edit fallback in /tmp/x.txt.")).toBe(true);
     expect(hasFallbackEditSignal("Edit request failed: no edit-file call was executed")).toBe(true);
     expect(hasFallbackEditSignal("Edited file successfully.")).toBe(false);
+  });
+
+  it("detects unwanted verification chatter in concise coding responses", () => {
+    expect(hasUnwantedVerificationChatter("Ran bun run verify — all checks passed.")).toBe(true);
+    expect(hasUnwantedVerificationChatter("Verification: attempted bun run verify")).toBe(true);
+    expect(hasUnwantedVerificationChatter("Next action: run bun run verify")).toBe(true);
+    expect(hasUnwantedVerificationChatter("Edited src/a.ts and src/b.ts.")).toBe(false);
   });
 
   it("parseArgs defaults to optional provider readiness", () => {

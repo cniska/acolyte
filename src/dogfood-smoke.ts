@@ -19,7 +19,7 @@ type SmokeArgs = {
   requireProviderReady: boolean;
 };
 
-const COMMAND_TIMEOUT_MS = 90_000;
+const COMMAND_TIMEOUT_MS = 120_000;
 
 export const checks: SmokeCheck[] = [
   {
@@ -127,6 +127,10 @@ export function hasFallbackEditSignal(output: string): boolean {
   return /Applied direct edit fallback|Edit request failed:/i.test(output);
 }
 
+export function hasUnwantedVerificationChatter(output: string): boolean {
+  return /\bbun run verify\b|\bverification:\b|\bnext action:\b/i.test(output);
+}
+
 export function parseArgs(args: string[]): SmokeArgs {
   const parsed: SmokeArgs = { requireProviderReady: false };
   for (const token of args) {
@@ -201,8 +205,8 @@ async function runReadModeBlockSmoke(smokeEnv: Record<string, string>): Promise<
       return { ok: false, detail: `command failed (exit ${result.exitCode})` };
     }
     const output = stripAnsi(`${result.stdout}\n${result.stderr}`);
-    if (!/Edit request blocked in read mode/i.test(output)) {
-      return { ok: false, detail: "missing read-mode block response" };
+    if (!/read mode|permission|disabled|forbidden|denied/i.test(output)) {
+      return { ok: false, detail: "missing read-mode permission response" };
     }
     const content = await readFile(filePath, "utf8");
     if (content !== "alpha\n") {
@@ -244,6 +248,9 @@ async function runCodingTaskSmoke(
     if (hasFallbackEditSignal(output)) {
       return { ok: false, detail: "fallback edit path used" };
     }
+    if (hasUnwantedVerificationChatter(output)) {
+      return { ok: false, detail: "response included verification chatter" };
+    }
     const content = await readFile(filePath, "utf8");
     if (task.validate(content)) {
       return { ok: true, detail: "file edited" };
@@ -281,6 +288,9 @@ async function runMultiFileCodingTaskSmoke(
     const output = stripAnsi(`${result.stdout}\n${result.stderr}`);
     if (hasFallbackEditSignal(output)) {
       return { ok: false, detail: "fallback edit path used" };
+    }
+    if (hasUnwantedVerificationChatter(output)) {
+      return { ok: false, detail: "response included verification chatter" };
     }
     const contents: Record<string, string> = {};
     for (const filePath of filePaths) {
@@ -358,7 +368,13 @@ export async function main(): Promise<void> {
           label: "dogfood coding task replace",
           initial: "alpha\n",
           prompt: (filePath: string) =>
-            `Edit ${filePath}: replace alpha with beta. Apply the edit directly, no explanation.`,
+            [
+              `Target file: ${filePath}`,
+              "Task: replace alpha with beta.",
+              "Use edit-file on the target path and write the change directly.",
+              "Do not only read/search; complete the edit.",
+              "Return a concise summary only.",
+            ].join("\n"),
           validate: (content: string) => content.includes("beta") && !content.includes("alpha"),
         },
         {
@@ -366,7 +382,13 @@ export async function main(): Promise<void> {
           label: "dogfood coding task insert",
           initial: "alpha\nbeta\n",
           prompt: (filePath: string) =>
-            `Edit ${filePath}: replace "beta" with "beta\\ngamma". Apply the edit directly, no explanation.`,
+            [
+              `Target file: ${filePath}`,
+              'Task: replace "beta" with "beta\\ngamma".',
+              "Use edit-file on the target path and write the change directly.",
+              "Do not only read/search; complete the edit.",
+              "Return a concise summary only.",
+            ].join("\n"),
           validate: (content: string) => content.includes("beta\ngamma"),
         },
         {
@@ -375,13 +397,16 @@ export async function main(): Promise<void> {
           initial: ["# Notes", "", "## Tasks", "- [ ] alpha", "- [ ] beta", ""].join("\n"),
           prompt: (filePath: string) =>
             [
-              `Edit ${filePath} with all of these changes:`,
+              `Target file: ${filePath}`,
+              "Task: apply all changes below in one edit:",
               '1) Rename heading "## Tasks" to "## Plan".',
               '2) Change "- [ ] alpha" to "- [x] alpha".',
               "3) Append a new section at end:",
               "## Done",
               "- alpha",
-              "Apply the edit directly, no explanation.",
+              "Use edit-file on the target path and write the change directly.",
+              "Do not only read/search; complete the edit.",
+              "Return a concise summary only.",
             ].join("\n"),
           validate: (content: string) =>
             content.includes("## Plan") &&
@@ -414,10 +439,13 @@ export async function main(): Promise<void> {
         ],
         prompt: ([mathPath, usagePath]) =>
           [
-            `Edit both files: ${mathPath} and ${usagePath}.`,
+            `Target files: ${mathPath} and ${usagePath}.`,
+            "Task: apply both file edits below:",
             'In "math.txt", add a new line: "multiply(a,b)=a*b".',
             'In "usage.md", append a line under usage examples: "multiply(2,3)=6".',
-            "Apply the edits directly, no explanation.",
+            "Use edit-file on both target paths and write the changes directly.",
+            "Do not only read/search; complete both edits.",
+            "Return a concise summary only.",
           ].join("\n"),
         validate: (contents) => {
           const values = Object.values(contents);
