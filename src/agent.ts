@@ -543,7 +543,19 @@ function parseUnifiedDiffFiles(text: string, maxPreviewLinesPerFile = 8): Unifie
 }
 
 export function formatToolProgressMessage(toolName: string, args: Record<string, unknown>): string {
-  const label = formatToolLabel(toolName);
+  const label = (() => {
+    switch (toolName) {
+      case "write-file":
+      case "edit-file":
+        return "Edited";
+      case "delete-file":
+        return "Deleted";
+      case "read-file":
+        return "Read";
+      default:
+        return formatToolLabel(toolName);
+    }
+  })();
   const asString = (value: unknown): string | null => {
     if (typeof value !== "string") {
       return null;
@@ -1040,18 +1052,11 @@ export async function runAgent(input: {
     for (const tool of tools) {
       const canonicalToolName = canonicalToolId(tool.name);
       observedToolCallIds.add(canonicalToolName);
-      if (
-        canonicalToolName !== "edit-file" &&
-        canonicalToolName !== "write-file" &&
-        canonicalToolName !== "delete-file" &&
-        canonicalToolName !== "read-file"
-      ) {
-        const startMessage = formatToolProgressMessage(canonicalToolName, tool.args);
-        const startDedupeKey = JSON.stringify({ kind: "call", name: tool.name, message: startMessage });
-        if (!seenToolNames.has(startDedupeKey)) {
-          seenToolNames.add(startDedupeKey);
-          emitProgress(startMessage);
-        }
+      const startMessage = formatToolProgressMessage(canonicalToolName, tool.args);
+      const startDedupeKey = JSON.stringify({ kind: "call", name: tool.name, message: startMessage });
+      if (!seenToolNames.has(startDedupeKey)) {
+        seenToolNames.add(startDedupeKey);
+        emitProgress(startMessage);
       }
       const resultMessages = formatToolResultProgressMessages(canonicalToolName, tool.result, tool.args);
       const failureReason = extractToolFailureReason(tool.result);

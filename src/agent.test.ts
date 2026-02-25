@@ -364,7 +364,7 @@ describe("formatToolProgressMessage", () => {
       formatToolProgressMessage("edit-file", {
         paths: ["src/a.ts", "src/b.ts", "src/c.ts", "src/d.ts"],
       }),
-    ).toBe("Edit src/a.ts, src/b.ts, src/c.ts (+1)");
+    ).toBe("Edited src/a.ts, src/b.ts, src/c.ts (+1)");
   });
 
   test("formats run command with command text", () => {
