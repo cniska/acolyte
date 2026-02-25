@@ -53,6 +53,50 @@ export function parseStatusLine(line: string): { indent: string; key: string; va
   };
 }
 
+export type ToolProgressParsedLine =
+  | { kind: "header"; verb: "Wrote" | "Edited" | "Read" | "Deleted"; path: string }
+  | { kind: "numberedDiff"; lineNumber: string; spacing: string; marker: "+" | "-"; text: string }
+  | { kind: "numberedContext"; lineNumber: string; spacing: string; text: string }
+  | { kind: "plainDiff"; marker: "+" | "-"; text: string }
+  | { kind: "text"; text: string };
+
+export function parseToolProgressLine(line: string): ToolProgressParsedLine {
+  const header = line.match(/^(Wrote|Edited|Read|Deleted)\s+(.+)$/);
+  if (header) {
+    return {
+      kind: "header",
+      verb: header[1] as "Wrote" | "Edited" | "Read" | "Deleted",
+      path: header[2] ?? "",
+    };
+  }
+  const numberedDiff = line.match(/^(\d+)(\s+)([+-])\s(.*)$/);
+  if (numberedDiff) {
+    return {
+      kind: "numberedDiff",
+      lineNumber: numberedDiff[1] ?? "",
+      spacing: numberedDiff[2] ?? " ",
+      marker: (numberedDiff[3] as "+" | "-") ?? "+",
+      text: numberedDiff[4] ?? "",
+    };
+  }
+  const numberedContext = line.match(/^(\d+)(\s{3})(.*)$/);
+  if (numberedContext) {
+    return {
+      kind: "numberedContext",
+      lineNumber: numberedContext[1] ?? "",
+      spacing: numberedContext[2] ?? "   ",
+      text: numberedContext[3] ?? "",
+    };
+  }
+  if (line.startsWith("+ ")) {
+    return { kind: "plainDiff", marker: "+", text: line };
+  }
+  if (line.startsWith("- ")) {
+    return { kind: "plainDiff", marker: "-", text: line };
+  }
+  return { kind: "text", text: line };
+}
+
 function renderStatusContent(content: string): React.ReactNode {
   const lines = content.split("\n");
   return (
@@ -80,81 +124,35 @@ function renderStatusContent(content: string): React.ReactNode {
 
 function renderToolProgressContent(content: string): React.ReactNode {
   const lines = content.split("\n");
-  const renderToolHeader = (line: string): React.ReactNode | null => {
-    const wrote = line.match(/^(Wrote)\s+(.+)$/);
-    if (wrote) {
-      return (
-        <>
-          <Text bold>{`${wrote[1]} `}</Text>
-          <Text underline color="#A8B1BC">
-            {wrote[2]}
-          </Text>
-        </>
-      );
-    }
-    const edited = line.match(/^(Edited)\s+(.+)$/);
-    if (edited) {
-      return (
-        <>
-          <Text bold>{`${edited[1]} `}</Text>
-          <Text underline color="#A8B1BC">
-            {edited[2]}
-          </Text>
-        </>
-      );
-    }
-    const read = line.match(/^(Read)\s+(.+)$/);
-    if (read) {
-      return (
-        <>
-          <Text bold>{`${read[1]} `}</Text>
-          <Text underline color="#A8B1BC">
-            {read[2]}
-          </Text>
-        </>
-      );
-    }
-    const deleted = line.match(/^(Deleted)\s+(.+)$/);
-    if (deleted) {
-      return (
-        <>
-          <Text bold>{`${deleted[1]} `}</Text>
-          <Text underline color="#A8B1BC">
-            {deleted[2]}
-          </Text>
-        </>
-      );
-    }
-    return null;
-  };
   return (
     <>
       {lines.map((line, index) => {
-        const numberedDiff = line.match(/^(\d+)(\s+)([+-])\s(.*)$/);
-        const numberedContext = line.match(/^(\d+)(\s{3})(.*)$/);
-        const toolHeader = renderToolHeader(line);
+        const parsed = parseToolProgressLine(line);
         return (
           <React.Fragment key={`tool-progress-line-${index}-${line}`}>
             {index > 0 ? "\n" : null}
-            {toolHeader ? (
-              toolHeader
-            ) : numberedDiff ? (
+            {parsed.kind === "header" ? (
               <>
-                <Text dimColor>{numberedDiff[1]}</Text>
-                <Text>{numberedDiff[2]}</Text>
-                <Text color={numberedDiff[3] === "+" ? "green" : "red"}>{`${numberedDiff[3]} `}</Text>
-                <Text color={numberedDiff[3] === "+" ? "green" : "red"}>{numberedDiff[4]}</Text>
+                <Text bold>{`${parsed.verb} `}</Text>
+                <Text underline color="#A8B1BC">
+                  {parsed.path}
+                </Text>
               </>
-            ) : numberedContext ? (
+            ) : parsed.kind === "numberedDiff" ? (
               <>
-                <Text dimColor>{numberedContext[1]}</Text>
-                <Text>{numberedContext[2]}</Text>
-                <Text>{numberedContext[3]}</Text>
+                <Text dimColor>{parsed.lineNumber}</Text>
+                <Text>{parsed.spacing}</Text>
+                <Text color={parsed.marker === "+" ? "green" : "red"}>{`${parsed.marker} `}</Text>
+                <Text color={parsed.marker === "+" ? "green" : "red"}>{parsed.text}</Text>
               </>
-            ) : line.startsWith("+ ") ? (
-              <Text color="green">{line}</Text>
-            ) : line.startsWith("- ") ? (
-              <Text color="red">{line}</Text>
+            ) : parsed.kind === "numberedContext" ? (
+              <>
+                <Text dimColor>{parsed.lineNumber}</Text>
+                <Text>{parsed.spacing}</Text>
+                <Text>{parsed.text}</Text>
+              </>
+            ) : parsed.kind === "plainDiff" ? (
+              <Text color={parsed.marker === "+" ? "green" : "red"}>{parsed.text}</Text>
             ) : (
               <Text>{line}</Text>
             )}

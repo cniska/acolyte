@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseSessionsHeader, parseStatusLine } from "./chat-transcript";
+import { parseSessionsHeader, parseStatusLine, parseToolProgressLine } from "./chat-transcript";
 
 describe("chat transcript helpers", () => {
   test("parseSessionsHeader reads session count and body", () => {
@@ -31,5 +31,32 @@ describe("chat transcript helpers", () => {
   test("parseStatusLine returns null for non key-value lines", () => {
     expect(parseStatusLine("plain text line")).toBeNull();
     expect(parseStatusLine("")).toBeNull();
+  });
+
+  test("parseToolProgressLine parses edited headers", () => {
+    expect(parseToolProgressLine("Edited src/main.ts")).toEqual({
+      kind: "header",
+      verb: "Edited",
+      path: "src/main.ts",
+    });
+  });
+
+  test("parseToolProgressLine parses numbered diff lines", () => {
+    expect(parseToolProgressLine("12 + const x = 1;")).toEqual({
+      kind: "numberedDiff",
+      lineNumber: "12",
+      spacing: " ",
+      marker: "+",
+      text: "const x = 1;",
+    });
+  });
+
+  test("parseToolProgressLine parses numbered context lines", () => {
+    expect(parseToolProgressLine("8   unchanged line")).toEqual({
+      kind: "numberedContext",
+      lineNumber: "8",
+      spacing: "   ",
+      text: "unchanged line",
+    });
   });
 });
