@@ -1034,9 +1034,7 @@ export async function runAgent(input: {
     }
     input.onProgress?.(trimmed);
   };
-  let emittedToolResultProgress = false;
-  const emitToolProgress = (step: unknown): void => {
-    const tools = collectToolProgressFromStep(step);
+  const emitToolProgressEntries = (tools: Array<{ name: string; args: Record<string, unknown>; result: string }>): void => {
     for (const tool of tools) {
       const canonicalToolName = canonicalToolId(tool.name);
       observedToolCallIds.add(canonicalToolName);
@@ -1074,10 +1072,12 @@ export async function runAgent(input: {
           continue;
         }
         seenToolNames.add(resultDedupeKey);
-        emittedToolResultProgress = true;
         emitProgress(resultMessage);
       }
     }
+  };
+  const emitToolProgress = (step: unknown): void => {
+    emitToolProgressEntries(collectToolProgressFromStep(step));
   };
 
   const agentPrompt = agentInput;
@@ -1272,39 +1272,14 @@ export async function runAgent(input: {
   }
 
   const normalizedToolCalls = normalizeToolCalls(result.toolCalls);
-  if (normalizedToolCalls.length > 0 && !emittedToolResultProgress) {
-    const fallbackProgress = collectToolProgressFromToolCalls(normalizedToolCalls);
-    emitDebug("agent.tool_progress.fallback", {
+  if (normalizedToolCalls.length > 0) {
+    const lateToolProgress = collectToolProgressFromToolCalls(normalizedToolCalls);
+    emitDebug("agent.tool_progress.late", {
       model,
       tool_calls: normalizedToolCalls.length,
-      fallback_entries: fallbackProgress.length,
+      late_entries: lateToolProgress.length,
     });
-    for (const tool of fallbackProgress) {
-      const canonicalToolName = canonicalToolId(tool.name);
-      observedToolCallIds.add(canonicalToolName);
-      if (
-        canonicalToolName !== "edit-file" &&
-        canonicalToolName !== "write-file" &&
-        canonicalToolName !== "delete-file" &&
-        canonicalToolName !== "read-file"
-      ) {
-        const startMessage = formatToolProgressMessage(canonicalToolName, tool.args);
-        const startDedupeKey = JSON.stringify({ kind: "call", name: tool.name, message: startMessage });
-        if (!seenToolNames.has(startDedupeKey)) {
-          seenToolNames.add(startDedupeKey);
-          emitProgress(startMessage);
-        }
-      }
-      const resultMessages = formatToolResultProgressMessages(canonicalToolName, tool.result, tool.args);
-      for (const resultMessage of resultMessages) {
-        const resultDedupeKey = JSON.stringify({ kind: "result", name: tool.name, message: resultMessage });
-        if (seenToolNames.has(resultDedupeKey)) {
-          continue;
-        }
-        seenToolNames.add(resultDedupeKey);
-        emitProgress(resultMessage);
-      }
-    }
+    emitToolProgressEntries(lateToolProgress);
   }
   const toolCallIds = collectToolCallIds(normalizedToolCalls);
   const rawOutput = result.text.trim();
