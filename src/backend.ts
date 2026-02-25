@@ -224,6 +224,11 @@ class RemoteBackend implements Backend {
             (item): item is string => typeof item === "string",
           )
         : undefined,
+      progressMessages: Array.isArray((json as { progressMessages?: unknown }).progressMessages)
+        ? ((json as { progressMessages?: unknown[] }).progressMessages ?? []).filter(
+            (item): item is string => typeof item === "string",
+          )
+        : undefined,
       usage:
         json.usage &&
         typeof json.usage === "object" &&

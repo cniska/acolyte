@@ -66,41 +66,41 @@ describe("chat submit handler guards", () => {
   });
 
   test("ignores empty input", async () => {
-    const h = createSubmitHandlerHarness();
-    await h.submit("   ");
-    expect(h.calls.setInputHistory).toBe(0);
-    expect(h.calls.setValue).toEqual([]);
-    expect(h.calls.setShowShortcuts).toEqual([]);
+    const { submit, calls } = createSubmitHandlerHarness();
+    await submit("   ");
+    expect(calls.setInputHistory).toBe(0);
+    expect(calls.setValue).toEqual([]);
+    expect(calls.setShowShortcuts).toEqual([]);
   });
 
   test("ignores input while thinking", async () => {
-    const h = createSubmitHandlerHarness({ isThinking: true });
-    await h.submit("hello");
-    expect(h.calls.setInputHistory).toBe(0);
-    expect(h.calls.setValue).toEqual([]);
+    const { submit, calls } = createSubmitHandlerHarness({ isThinking: true });
+    await submit("hello");
+    expect(calls.setInputHistory).toBe(0);
+    expect(calls.setValue).toEqual([]);
   });
 
   test("handles slash command while thinking", async () => {
-    const h = createSubmitHandlerHarness({ isThinking: true });
-    await h.submit("/sessions");
-    expect(h.calls.setInputHistory).toBe(1);
-    expect(h.calls.setValue).toEqual([""]);
+    const { submit, calls } = createSubmitHandlerHarness({ isThinking: true });
+    await submit("/sessions");
+    expect(calls.setInputHistory).toBe(1);
+    expect(calls.setValue).toEqual([""]);
   });
 
   test("ignores unknown single-token slash commands", async () => {
-    const h = createSubmitHandlerHarness();
-    await h.submit("/not-a-command");
-    expect(h.calls.setInputHistory).toBe(0);
-    expect(h.calls.setValue).toEqual([]);
+    const { submit, calls } = createSubmitHandlerHarness();
+    await submit("/not-a-command");
+    expect(calls.setInputHistory).toBe(0);
+    expect(calls.setValue).toEqual([]);
   });
 
   test("toggles shortcuts on ? input", async () => {
-    const h = createSubmitHandlerHarness();
-    await h.submit("?");
-    expect(h.calls.setInputHistory).toBe(1);
-    expect(h.calls.setValue).toEqual([""]);
-    expect(h.calls.setShowShortcuts).toHaveLength(1);
-    expect(typeof h.calls.setShowShortcuts[0]).toBe("function");
+    const { submit, calls } = createSubmitHandlerHarness();
+    await submit("?");
+    expect(calls.setInputHistory).toBe(1);
+    expect(calls.setValue).toEqual([""]);
+    expect(calls.setShowShortcuts).toHaveLength(1);
+    expect(typeof calls.setShowShortcuts[0]).toBe("function");
   });
 
   test("handles pending policy confirmation with note", async () => {

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { appendInputHistory, applyUserTurn, buildInputHistory } from "./chat-turn";
+import { appendInputHistory, applyUserTurn, buildInputHistory, runAssistantTurn } from "./chat-turn";
 import { formatToolLabel } from "./tool-labels";
 import type { Session } from "./types";
 
@@ -62,5 +62,37 @@ describe("chat turn helpers", () => {
 
   test("formatToolLabel title-cases unknown tool ids", () => {
     expect(formatToolLabel("custom-check")).toBe("Custom Check");
+  });
+
+  test("runAssistantTurn includes tool progress rows from reply payload", async () => {
+    const turn = await runAssistantTurn({
+      backend: {
+        reply: async () => ({
+          model: "gpt-5-mini",
+          output: "done",
+          progressMessages: ["Working…", "Edited sum.rs", "Edited sum.rs"],
+        }),
+        status: async () => "ok",
+        progress: async () => null,
+        setPermissionMode: async () => {},
+      },
+      userText: "create a rust script",
+      history: [],
+      model: "gpt-5-mini",
+      sessionId: "sess_test",
+      runVerifyAfterReply: false,
+      thinkingStartedAt: Date.now(),
+      createMessage: (role, content) => ({
+        id: "msg_assistant",
+        role,
+        content,
+        timestamp: "2026-02-20T00:00:00.000Z",
+      }),
+    });
+
+    const toolRows = turn.rows.filter((row) => row.style === "toolProgress");
+    expect(toolRows).toHaveLength(1);
+    expect(toolRows[0]?.content).toBe("Edited sum.rs");
+    expect(turn.rows.some((row) => row.role === "assistant" && row.content === "done")).toBe(true);
   });
 });

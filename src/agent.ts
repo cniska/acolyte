@@ -913,6 +913,18 @@ export function fallbackToolResultMessages(
   args: Record<string, unknown>,
   resultMessages: string[],
 ): string[] {
+  const hasDiffPreviewLine = (messages: string[]): boolean => {
+    const lines = messages.flatMap((message) => message.split("\n"));
+    return lines.some((line) => /^\d+\s+[+-]\s+/.test(line) || /^[+-]\s+/.test(line));
+  };
+  if (canonicalToolName === "edit-file" && typeof args.content === "string") {
+    const writeLikePreview = formatWritePreviewFromArgs(args);
+    if (writeLikePreview.length > 0) {
+      if (resultMessages.length === 0 || !hasDiffPreviewLine(resultMessages)) {
+        return writeLikePreview;
+      }
+    }
+  }
   if (resultMessages.length > 0) {
     return resultMessages;
   }
@@ -1070,12 +1082,19 @@ export async function runAgent(input: {
     has_memory: Boolean(memoryOptions),
   });
   const seenToolNames = new Set<string>();
+  const emittedProgressMessages: string[] = [];
+  const seenProgressMessages = new Set<string>();
   const observedToolCallIds = new Set<string>();
   let lastToolFailureReason: string | undefined;
   const emitProgress = (message: string): void => {
     const trimmed = message.trim();
     if (trimmed.length === 0) {
       return;
+    }
+    const key = trimmed.toLowerCase();
+    if (!seenProgressMessages.has(key)) {
+      seenProgressMessages.add(key);
+      emittedProgressMessages.push(trimmed);
     }
     input.onProgress?.(trimmed);
   };
@@ -1207,6 +1226,7 @@ export async function runAgent(input: {
         model,
         output,
         toolCalls: Array.from(observedToolCallIds),
+        progressMessages: emittedProgressMessages,
         modelCalls: modelCallCount,
         usage: {
           promptTokens: requestInput.usage.promptTokens,
@@ -1228,6 +1248,7 @@ export async function runAgent(input: {
       model,
       output,
       toolCalls: Array.from(observedToolCallIds),
+      progressMessages: emittedProgressMessages,
       modelCalls: modelCallCount,
       usage: {
         promptTokens: requestInput.usage.promptTokens,
@@ -1427,6 +1448,7 @@ export async function runAgent(input: {
     model,
     output,
     toolCalls: toolCallIds,
+    progressMessages: emittedProgressMessages,
     modelCalls: modelCallCount,
     usage: {
       promptTokens: promptUsage.promptTokens,

@@ -27,4 +27,21 @@ describe("compactToolOutput", () => {
     expect(result).toContain("lines omitted");
     expect(result).toContain("… output truncated");
   });
+
+  test("preserves unified diff headers when char budget is exceeded", () => {
+    const diff = [
+      "path=/tmp/sum.rs",
+      "matches=1",
+      "dry_run=false",
+      "",
+      "diff --git a/sum.rs b/sum.rs",
+      "--- /dev/null",
+      "+++ b/sum.rs",
+      "@@ -0,0 +1,80 @@",
+      ...Array.from({ length: 80 }, (_, i) => `+ line-${i + 1}`),
+    ].join("\n");
+    const result = compactToolOutput(diff, { maxChars: 120, maxLines: 120 });
+    expect(result).toContain("diff --git a/sum.rs b/sum.rs");
+    expect(result).toContain("@@ -0,0 +1,80 @@");
+  });
 });

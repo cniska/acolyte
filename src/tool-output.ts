@@ -35,6 +35,13 @@ export function compactToolOutput(raw: string, options: { maxChars?: number; max
 
   let text = lines.join("\n");
   if (text.length > maxChars) {
+    // Preserve unified-diff structure so downstream preview parsers remain stable.
+    if (text.includes("diff --git ")) {
+      if (!truncated) {
+        return `${text}\n… output truncated`;
+      }
+      return text;
+    }
     text = truncateMiddle(text, maxChars);
     truncated = true;
   }

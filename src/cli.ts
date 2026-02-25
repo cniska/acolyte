@@ -5,7 +5,7 @@ import { stdout as output } from "node:process";
 import { z } from "zod";
 import { appConfig } from "./app-config";
 import { createBackend } from "./backend";
-import { createProgressTracker } from "./chat-progress";
+import { createProgressTracker, isStageProgressMessage } from "./chat-progress";
 import { wrapAssistantContent } from "./chat-content";
 import { runInkChat } from "./chat-ui";
 import {
@@ -894,16 +894,30 @@ async function handlePrompt(
       }
       await Bun.sleep(60);
     }
+    if (Array.isArray(reply.progressMessages) && reply.progressMessages.length > 0) {
+      const seen = new Set(progressTracker.toolMessages().map((message) => message.toLowerCase()));
+      for (const message of reply.progressMessages) {
+        const trimmed = message.trim();
+        if (!trimmed || isStageProgressMessage(trimmed)) {
+          continue;
+        }
+        const key = trimmed.toLowerCase();
+        if (seen.has(key)) {
+          continue;
+        }
+        seen.add(key);
+        printOutput(formatProgressEventOutput(trimmed));
+        hasPrintedProgress = true;
+      }
+    }
 
     printOutput("");
     if (hasPrintedProgress) {
       printOutput("");
     }
     const wrapWidth = Math.max(24, (output.columns ?? 120) - 4);
-    const progressSummary = summarizeProgressForChat(progressTracker.toolMessages());
-    const assistantOutput = progressSummary ? `${progressSummary}\n\n${reply.output}` : reply.output;
-    await streamText(formatAssistantReplyOutput(assistantOutput, wrapWidth));
-    session.messages.push(newMessage("assistant", assistantOutput));
+    await streamText(formatAssistantReplyOutput(reply.output, wrapWidth));
+    session.messages.push(newMessage("assistant", reply.output));
     session.model = reply.model;
     session.updatedAt = nowIso();
     return true;

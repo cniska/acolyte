@@ -3,12 +3,13 @@ import type { Backend } from "./backend";
 import type { ChatRow, TokenUsageEntry } from "./chat-commands";
 import { extractAtReferencePaths } from "./chat-file-ref";
 import { formatThoughtDuration, formatVerifySummary } from "./chat-formatters";
+import { isStageProgressMessage } from "./chat-progress";
 import { runShellCommand } from "./coding-tools";
 import { buildFileContext } from "./file-context";
 import type { Message, Session } from "./types";
 
-function row(role: ChatRow["role"], content: string, dim = false): ChatRow {
-  return { id: `row_${crypto.randomUUID()}`, role, content, dim };
+function row(role: ChatRow["role"], content: string, dim = false, style?: ChatRow["style"]): ChatRow {
+  return { id: `row_${crypto.randomUUID()}`, role, content, dim, style };
 }
 
 export function estimateTokenUsageFallback(prompt: string, output: string): TokenUsage {
@@ -117,6 +118,21 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
 
   const assistantMessage = params.createMessage("assistant", reply.output);
   const rows: ChatRow[] = [];
+  if (Array.isArray(reply.progressMessages) && reply.progressMessages.length > 0) {
+    const seen = new Set<string>();
+    for (const message of reply.progressMessages) {
+      const trimmed = message.trim();
+      if (!trimmed || isStageProgressMessage(trimmed)) {
+        continue;
+      }
+      const key = trimmed.toLowerCase();
+      if (seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      rows.push(row("assistant", trimmed, false, "toolProgress"));
+    }
+  }
   rows.push(row("assistant", reply.output));
   const tokenEntry: TokenUsageEntry = {
     id: assistantMessage.id,

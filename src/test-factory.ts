@@ -64,6 +64,7 @@ export function createBackend(overrides?: {
 export type SubmitHandlerHarness = {
   submit: (raw: string) => Promise<void>;
   rows: ChatRow[];
+  session: Session;
   calls: {
     setInputHistory: number;
     setValue: string[];
@@ -123,5 +124,5 @@ export function createSubmitHandlerHarness(overrides?: {
     nowIso: () => DEFAULT_TIME,
     setInterrupt: () => {},
   });
-  return { submit, rows, calls };
+  return { submit, rows, session, calls };
 }

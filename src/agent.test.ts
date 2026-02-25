@@ -391,6 +391,13 @@ describe("fallbackToolResultMessages", () => {
     expect(out[0]).toContain("Edited sum.rs");
   });
 
+  test("falls back to content preview for edit-file content writes", () => {
+    const out = fallbackToolResultMessages("edit-file", { path: "sum.rs", content: "fn main() {}\n" }, []);
+    expect(out.length).toBeGreaterThan(0);
+    expect(out[0]).toContain("Edited sum.rs");
+    expect(out[0]).toContain("1 + fn main() {}");
+  });
+
   test("returns existing result messages when present", () => {
     const out = fallbackToolResultMessages("edit-file", { path: "src/a.ts" }, ["Edited src/a.ts"]);
     expect(out).toEqual(["Edited src/a.ts"]);

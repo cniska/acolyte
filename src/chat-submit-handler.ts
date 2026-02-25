@@ -553,6 +553,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       input.setTokenUsage(() => [...input.currentSession.tokenUsage]);
       await input.persist();
     } catch (error) {
+      await pollProgress().catch(() => {});
       const row: ChatRow = {
         id: `row_${crypto.randomUUID()}`,
         role: "system",
