@@ -94,6 +94,40 @@ describe("chat submit handler guards", () => {
     expect(calls.setValue).toEqual([]);
   });
 
+  test("keeps create-edit-delete tool output visible across submits", async () => {
+    const replies = [
+      { model: "gpt-5-mini", output: "Created sum.rs.", progressMessages: ["Edited sum.rs"] },
+      {
+        model: "gpt-5-mini",
+        output: "Updated sum.rs for three args.",
+        progressMessages: ["Edited sum.rs", "2 - let sum = a + b;", "2 + let sum = a + b + c;"],
+      },
+      { model: "gpt-5-mini", output: "Removed sum.rs.", progressMessages: ["Deleted sum.rs"] },
+    ];
+    const { submit, rows } = createSubmitHandlerHarness({
+      backend: createBackend({
+        status: async () => "ok",
+        progress: async () => null,
+        reply: async () => replies.shift() ?? { model: "gpt-5-mini", output: "done" },
+      }),
+    });
+
+    await submit("create a rust script that sums two numbers");
+    await submit("update sum.rs to take three instead of two");
+    await submit("delete sum.rs");
+
+    const toolRows = rows.filter((row) => row.role === "assistant" && row.style === "toolProgress");
+    expect(toolRows.map((row) => row.content)).toEqual([
+      "Edited sum.rs",
+      "2 - let sum = a + b;",
+      "2 + let sum = a + b + c;",
+      "Deleted sum.rs",
+    ]);
+    expect(rows.some((row) => row.role === "assistant" && row.content === "Created sum.rs.")).toBe(true);
+    expect(rows.some((row) => row.role === "assistant" && row.content === "Updated sum.rs for three args.")).toBe(true);
+    expect(rows.some((row) => row.role === "assistant" && row.content === "Removed sum.rs.")).toBe(true);
+  });
+
   test("toggles shortcuts on ? input", async () => {
     const { submit, calls } = createSubmitHandlerHarness();
     await submit("?");
