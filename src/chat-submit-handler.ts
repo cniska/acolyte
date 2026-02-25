@@ -275,6 +275,28 @@ function toolProgressHeader(content: string): string {
   return (content.split("\n")[0] ?? "").trim().toLowerCase();
 }
 
+function findLastToolRowIndex(rows: ChatRow[], minExclusiveIndex: number): number {
+  for (let index = rows.length - 1; index > minExclusiveIndex; index -= 1) {
+    if (rows[index]?.style === "toolProgress") {
+      return index;
+    }
+  }
+  return -1;
+}
+
+function findLastToolRowIndexByHeader(rows: ChatRow[], minExclusiveIndex: number, header: string): number {
+  for (let index = rows.length - 1; index > minExclusiveIndex; index -= 1) {
+    const row = rows[index];
+    if (row?.style !== "toolProgress") {
+      continue;
+    }
+    if (toolProgressHeader(row.content) === header) {
+      return index;
+    }
+  }
+  return -1;
+}
+
 function appendRowsWithToolProgressMerge(current: ChatRow[], incoming: ChatRow[]): ChatRow[] {
   const next = [...current];
   const currentTurnStart = (() => {
@@ -293,11 +315,8 @@ function appendRowsWithToolProgressMerge(current: ChatRow[], incoming: ChatRow[]
 
     const incomingContent = incomingRow.content.trim();
     if (isToolDetailLine(incomingContent)) {
-      const lastToolIndex = [...next]
-        .map((row, index) => ({ row, index }))
-        .reverse()
-        .find(({ row, index }) => index > currentTurnStart && row.style === "toolProgress")?.index;
-      if (typeof lastToolIndex === "number") {
+      const lastToolIndex = findLastToolRowIndex(next, currentTurnStart);
+      if (lastToolIndex >= 0) {
         const existingRow = next[lastToolIndex];
         if (existingRow) {
           const existingContent = existingRow.content.trim();
@@ -312,17 +331,9 @@ function appendRowsWithToolProgressMerge(current: ChatRow[], incoming: ChatRow[]
       }
     }
     const incomingHeader = toolProgressHeader(incomingContent);
-    const existingIndex = [...next]
-      .map((row, index) => ({ row, index }))
-      .reverse()
-      .find(
-        ({ row, index }) =>
-          index > currentTurnStart &&
-          row.style === "toolProgress" &&
-          toolProgressHeader(row.content) === incomingHeader,
-      )?.index;
+    const existingIndex = findLastToolRowIndexByHeader(next, currentTurnStart, incomingHeader);
 
-    if (existingIndex === undefined) {
+    if (existingIndex < 0) {
       next.push(incomingRow);
       continue;
     }
