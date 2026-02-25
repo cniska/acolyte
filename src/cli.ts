@@ -784,6 +784,46 @@ export function summarizeProgressForChat(progressMessages: string[]): string | n
   return `Summary: ${actions.slice(0, 3).join("; ")}; +${extra} more action${extra === 1 ? "" : "s"}.`;
 }
 
+function isToolHeaderLine(line: string): boolean {
+  return /^(Wrote|Edited|Read|Deleted|Ran)\s+\S/.test(line);
+}
+
+function isToolDetailLine(line: string): boolean {
+  return /^\d+\s+[+-]\s/.test(line) || /^\d+\s{3}/.test(line) || /^[+-]\s/.test(line) || /^(code|out|err)\s*\|/.test(line);
+}
+
+export function normalizeProgressMessagesForOutput(messages: string[]): string[] {
+  const grouped: string[] = [];
+  const seen = new Set<string>();
+  for (const rawMessage of messages) {
+    const message = rawMessage.trim();
+    if (!message) {
+      continue;
+    }
+    const key = message.toLowerCase();
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    if (grouped.length === 0) {
+      grouped.push(message);
+      continue;
+    }
+    if (isToolHeaderLine(message)) {
+      grouped.push(message);
+      continue;
+    }
+    const previous = grouped[grouped.length - 1] ?? "";
+    const previousFirstLine = previous.split("\n")[0] ?? "";
+    if (isToolHeaderLine(previousFirstLine) || (isToolDetailLine(previous) && isToolDetailLine(message))) {
+      grouped[grouped.length - 1] = `${previous}\n${message}`;
+      continue;
+    }
+    grouped.push(message);
+  }
+  return grouped;
+}
+
 export function oneShotResourceId(sessionId: string): string {
   return `run-${sessionId.replace(/^sess_/, "").slice(0, 24)}`;
 }
@@ -895,18 +935,21 @@ async function handlePrompt(
       await Bun.sleep(60);
     }
     if (Array.isArray(reply.progressMessages) && reply.progressMessages.length > 0) {
-      const seen = new Set(progressTracker.toolMessages().map((message) => message.toLowerCase()));
+      const streamedMessages = new Set(progressTracker.toolMessages().map((message) => message.toLowerCase()));
+      const queued: string[] = [];
       for (const message of reply.progressMessages) {
         const trimmed = message.trim();
         if (!trimmed || isStageProgressMessage(trimmed)) {
           continue;
         }
         const key = trimmed.toLowerCase();
-        if (seen.has(key)) {
+        if (streamedMessages.has(key)) {
           continue;
         }
-        seen.add(key);
-        printOutput(formatProgressEventOutput(trimmed));
+        queued.push(trimmed);
+      }
+      for (const normalizedMessage of normalizeProgressMessagesForOutput(queued)) {
+        printOutput(formatProgressEventOutput(normalizedMessage));
         hasPrintedProgress = true;
       }
     }
