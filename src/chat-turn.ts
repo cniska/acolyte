@@ -3,10 +3,9 @@ import type { Backend } from "./backend";
 import type { ChatRow, TokenUsageEntry } from "./chat-commands";
 import { extractAtReferencePaths } from "./chat-file-ref";
 import { formatThoughtDuration, formatVerifySummary } from "./chat-formatters";
-import { createProgressTracker, isStageProgressMessage } from "./chat-progress";
+import { createProgressTracker } from "./chat-progress";
 import { runShellCommand } from "./coding-tools";
 import { buildFileContext } from "./file-context";
-import { groupToolProgressMessages } from "./tool-progress";
 import type { Message, Session } from "./types";
 
 function row(
@@ -150,17 +149,19 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
       })),
     );
   } else if (Array.isArray(reply.progressMessages) && reply.progressMessages.length > 0) {
-    const toolMessages: string[] = [];
-    for (const message of reply.progressMessages) {
-      const trimmed = message.trim();
-      if (!trimmed || isStageProgressMessage(trimmed)) {
-        continue;
-      }
-      toolMessages.push(trimmed);
-    }
-    for (const groupedMessage of groupToolProgressMessages(toolMessages)) {
-      rows.push(row("assistant", groupedMessage, false, "toolProgress"));
-    }
+    const tracker = createProgressTracker({
+      onStatus: () => {},
+      onTool: (entry) => {
+        rows.push(row("assistant", entry.message, false, "toolProgress"));
+      },
+      dedupeToolMessages: false,
+    });
+    tracker.apply(
+      reply.progressMessages.map((message, index) => ({
+        seq: index + 1,
+        message,
+      })),
+    );
   }
   rows.push(row("assistant", reply.output));
   const tokenEntry: TokenUsageEntry = {
