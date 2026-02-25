@@ -309,10 +309,13 @@ function appendRowsWithToolProgressMerge(current: ChatRow[], incoming: ChatRow[]
       if (typeof lastToolIndex === "number") {
         const existingRow = next[lastToolIndex];
         if (existingRow) {
-          const combined = `${existingRow.content.trim()}\n${incomingContent}`;
-          if (combined.toLowerCase() !== existingRow.content.trim().toLowerCase()) {
-            next[lastToolIndex] = { ...existingRow, content: combined };
+          const existingContent = existingRow.content.trim();
+          const existingLines = existingContent.split("\n").map((line) => line.trim().toLowerCase());
+          if (existingLines.includes(incomingContent.toLowerCase())) {
+            continue;
           }
+          const combined = `${existingContent}\n${incomingContent}`;
+          next[lastToolIndex] = { ...existingRow, content: combined };
           continue;
         }
       }

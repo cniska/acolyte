@@ -1106,6 +1106,43 @@ describe("chat submit handler guards", () => {
     expect(editedRows[0]?.content).toBe("Edited sum.rs\n1 + fn main() {}");
   });
 
+  test("ignores duplicate streamed detail lines for the same tool row", async () => {
+    let progressCalls = 0;
+    const { submit, rows } = createSubmitHandlerHarness({
+      backend: createBackend({
+        status: async () => "ok",
+        reply: async () => ({
+          model: "gpt-5-mini",
+          output: "done",
+        }),
+        progress: async () => {
+          progressCalls += 1;
+          if (progressCalls === 1) {
+            return {
+              sessionId: "sess_test",
+              requestId: "req_1",
+              done: false,
+              events: [
+                { seq: 1, message: "Edited sum.rs" },
+                { seq: 2, message: "1 + fn main() {}" },
+                { seq: 3, message: "1 + fn main() {}" },
+              ],
+            };
+          }
+          return { sessionId: "sess_test", requestId: "req_1", done: false, events: [] };
+        },
+      }),
+    });
+
+    await submit("hello");
+
+    const editedRows = rows.filter(
+      (row) => row.role === "assistant" && row.style === "toolProgress" && row.content.startsWith("Edited sum.rs"),
+    );
+    expect(editedRows).toHaveLength(1);
+    expect(editedRows[0]?.content).toBe("Edited sum.rs\n1 + fn main() {}");
+  });
+
   test("does not merge tool rows across separate user turns", async () => {
     const replies = [
       {
