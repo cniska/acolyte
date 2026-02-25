@@ -66,6 +66,7 @@ describe("dogfood-smoke helpers", () => {
 
   it("detects required tool outcome verbs in output", () => {
     expect(hasToolOutcomeSignal("Wrote /tmp/sum.rs", "Wrote")).toBe(true);
+    expect(hasToolOutcomeSignal("Edited /tmp/sum.rs", "Edited")).toBe(true);
     expect(hasToolOutcomeSignal("Edited /tmp/a.ts", "Edited")).toBe(true);
     expect(hasToolOutcomeSignal("Deleted /tmp/a.ts", "Deleted")).toBe(true);
     expect(hasToolOutcomeSignal("Read /tmp/a.ts", "Edited")).toBe(false);

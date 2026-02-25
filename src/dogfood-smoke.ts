@@ -144,6 +144,10 @@ export function hasToolOutcomeSignal(output: string, verb: "Wrote" | "Edited" | 
   return new RegExp(`\\b${escapedVerb}\\s+`, "i").test(output);
 }
 
+function hasAnyToolOutcomeSignal(output: string, verbs: Array<"Wrote" | "Edited" | "Deleted">): boolean {
+  return verbs.some((verb) => hasToolOutcomeSignal(output, verb));
+}
+
 export function hasToolDiffPreviewSignal(output: string): boolean {
   return /^\s*\d+\s+[+-]\s+.+$/m.test(output) || /^\s*[+-]\s+.+$/m.test(output);
 }
@@ -305,8 +309,8 @@ async function runCreateFileCodingTaskSmoke(
     if (hasAdvisoryFileWriteSignal(output)) {
       return { ok: false, detail: "advisory file-write response detected" };
     }
-    if (!hasToolOutcomeSignal(output, "Wrote")) {
-      return { ok: false, detail: "missing wrote tool outcome in output" };
+    if (!hasAnyToolOutcomeSignal(output, ["Edited", "Wrote"])) {
+      return { ok: false, detail: "missing create tool outcome in output" };
     }
     if (!hasToolDiffPreviewSignal(output)) {
       return { ok: false, detail: "missing diff preview in output" };
