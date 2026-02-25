@@ -348,6 +348,8 @@ describe("createInstructions", () => {
     const out = createInstructions("Base instructions.");
     expect(out).toContain("Default to tool execution.");
     expect(out).toContain("For requests that create a new file, call `write-file` directly");
+    expect(out).toContain("For edit/update requests, check the target file with `read-file` first");
+    expect(out).toContain("Never claim a file was created/edited/found unless that is confirmed by tool results");
     expect(out).toContain("Do not offer variants/options before performing a straightforward artifact request");
     expect(out).toContain("state that the file is missing instead of silently creating a replacement file");
   });

@@ -174,6 +174,8 @@ export function createInstructions(baseInstructions: string): string {
     "- Default to tool execution. If a task can be completed with available tools, do it with tools instead of providing instructions/code-only replies.",
     "- Read relevant files before editing; avoid speculative code changes.",
     "- Artifact requests (scripts/files/components/configs) MUST be fulfilled by creating or editing files directly in workspace.",
+    "- For edit/update requests, check the target file with `read-file` first, then apply `edit-file`/`write-file`; do not guess file state.",
+    "- Never claim a file was created/edited/found unless that is confirmed by tool results in the current turn.",
     "- For requests that create a new file, call `write-file` directly (do not answer with file contents in chat).",
     "- If filename/path is not specified, choose a sensible default filename and create it (for example `sum.rs`) using `write-file`.",
     "- Do not offer variants/options before performing a straightforward artifact request; create/edit the file first, then report outcome.",
