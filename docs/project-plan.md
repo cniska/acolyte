@@ -136,3 +136,13 @@ Exit Criteria:
 - Status: not yet met.
 - Completed milestones retained: 1-4 are complete.
 - Remaining requirement: complete Milestone 5 soak window and fallback/failure-class durability criteria.
+
+## Today Plan (February 25, 2026)
+Goal: close core autonomy gaps that still block reliable coding execution.
+
+1. Replace direct-edit mode assumptions with a simpler contract:
+   If output claims edits were applied, `edit-file` must have run.
+2. Keep agent autonomy for strategy (suggest vs edit) and validate outcomes instead of enforcing intent mode.
+3. Increase step budget for multi-step coding reliability.
+4. Keep smoke tasks outcome-based, target-file explicit, and concise-summary constrained.
+5. Run `bun run typecheck` + targeted tests during iteration; run `bun run dogfood:gate` only before commit.
