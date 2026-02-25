@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { parseSessionsHeader, parseStatusLine, parseToolProgressLine } from "./chat-transcript";
+import { parseSessionsHeader, parseStatusLine } from "./chat-transcript";
+import { parseToolProgressLine } from "./tool-progress";
 
 describe("chat transcript helpers", () => {
   test("parseSessionsHeader reads session count and body", () => {

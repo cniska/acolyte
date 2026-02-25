@@ -24,6 +24,7 @@ import { acquireSessionLock, releaseSessionLock } from "./session-lock";
 import { getMemoryContextEntries } from "./soul";
 import { formatStatusOutput as formatStatusOutputShared } from "./status-format";
 import { createSession, readStore, writeStore } from "./storage";
+import { parseToolProgressLine } from "./tool-progress";
 import type { Message, Session, SessionStore } from "./types";
 import {
   clearScreen,
@@ -719,40 +720,22 @@ export function formatProgressEventOutput(content: string): string {
   const green = (value: string): string => `\x1b[32m${value}\x1b[39m`;
   const red = (value: string): string => `\x1b[31m${value}\x1b[39m`;
   const colorize = (line: string): string => {
-    const wrote = line.match(/^(Wrote)\s+(.+)$/);
-    if (wrote) {
-      return `${bold(`${wrote[1]} `)}${path(wrote[2] ?? "")}`;
+    const parsed = parseToolProgressLine(line);
+    switch (parsed.kind) {
+      case "header":
+        return `${bold(`${parsed.verb} `)}${path(parsed.path)}`;
+      case "numberedDiff": {
+        const marker = `${parsed.marker} `;
+        const color = parsed.marker === "+" ? green : red;
+        return `${dim(parsed.lineNumber)}${parsed.spacing}${color(marker)}${color(parsed.text)}`;
+      }
+      case "numberedContext":
+        return `${dim(parsed.lineNumber)}${parsed.spacing}${parsed.text}`;
+      case "plainDiff":
+        return parsed.marker === "+" ? green(parsed.text) : red(parsed.text);
+      default:
+        return parsed.text;
     }
-    const edited = line.match(/^(Edited)\s+(.+)$/);
-    if (edited) {
-      return `${bold(`${edited[1]} `)}${path(edited[2] ?? "")}`;
-    }
-    const read = line.match(/^(Read)\s+(.+)$/);
-    if (read) {
-      return `${bold(`${read[1]} `)}${path(read[2] ?? "")}`;
-    }
-    const deleted = line.match(/^(Deleted)\s+(.+)$/);
-    if (deleted) {
-      return `${bold(`${deleted[1]} `)}${path(deleted[2] ?? "")}`;
-    }
-    const numberedDiff = line.match(/^(\d+)(\s+)([+-])\s(.*)$/);
-    if (numberedDiff) {
-      const marker = `${numberedDiff[3]} `;
-      const text = numberedDiff[4] ?? "";
-      const color = numberedDiff[3] === "+" ? green : red;
-      return `${dim(numberedDiff[1] ?? "")}${numberedDiff[2] ?? ""}${color(marker)}${color(text)}`;
-    }
-    const numberedContext = line.match(/^(\d+)(\s{3})(.*)$/);
-    if (numberedContext) {
-      return `${dim(numberedContext[1] ?? "")}${numberedContext[2] ?? ""}${numberedContext[3] ?? ""}`;
-    }
-    if (line.startsWith("+ ")) {
-      return green(line);
-    }
-    if (line.startsWith("- ")) {
-      return red(line);
-    }
-    return line;
   };
   const lines = content.split("\n");
   if (lines.length === 0) {
@@ -798,39 +781,6 @@ export function formatPromptError(error: unknown): string {
     return message;
   }
   return message || "Request failed. Retry and check backend logs if it keeps failing.";
-}
-
-type ProgressPollResult = { hadEvents: boolean; done: boolean };
-
-export async function drainProgressAfterReply(
-  pollProgress: () => Promise<ProgressPollResult>,
-  options: {
-    maxPolls?: number;
-    quietPollLimit?: number;
-    sleepMs?: number;
-    sleep?: (ms: number) => Promise<void>;
-  } = {},
-): Promise<void> {
-  const maxPolls = options.maxPolls ?? 6;
-  const quietPollLimit = options.quietPollLimit ?? 2;
-  const sleepMs = options.sleepMs ?? 60;
-  const sleep = options.sleep ?? ((ms: number) => Bun.sleep(ms));
-  let quietPolls = 0;
-  for (let i = 0; i < maxPolls; i += 1) {
-    const polled = await pollProgress().catch(() => ({ hadEvents: false, done: false }));
-    if (polled.done) {
-      break;
-    }
-    if (polled.hadEvents) {
-      quietPolls = 0;
-    } else {
-      quietPolls += 1;
-      if (quietPolls >= quietPollLimit) {
-        break;
-      }
-    }
-    await sleep(sleepMs);
-  }
 }
 
 async function handlePrompt(
@@ -903,7 +853,22 @@ async function handlePrompt(
       }
     })();
 
-    await drainProgressAfterReply(pollProgress);
+    let quietPolls = 0;
+    for (let i = 0; i < 6; i += 1) {
+      const polled = await pollProgress().catch(() => ({ hadEvents: false, done: false }));
+      if (polled.done) {
+        break;
+      }
+      if (polled.hadEvents) {
+        quietPolls = 0;
+      } else {
+        quietPolls += 1;
+        if (quietPolls >= 2) {
+          break;
+        }
+      }
+      await Bun.sleep(60);
+    }
 
     printOutput("");
     if (hasPrintedProgress) {
