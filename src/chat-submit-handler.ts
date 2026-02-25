@@ -13,6 +13,7 @@ import {
 } from "./chat-turn";
 import { addMemory } from "./memory";
 import type { PolicyCandidate } from "./policy-distill";
+import { isToolDetailLine } from "./tool-progress";
 import type { Message, Session, SessionStore } from "./types";
 
 type CreateSubmitHandlerInput = {
@@ -272,16 +273,6 @@ function buildClarifiedUserText(turn: InternalClarificationTurn): string {
 
 function toolProgressHeader(content: string): string {
   return (content.split("\n")[0] ?? "").trim().toLowerCase();
-}
-
-function isToolDetailLine(content: string): boolean {
-  const trimmed = content.trim();
-  return (
-    /^\d+\s+[+-]\s/.test(trimmed) ||
-    /^\d+\s{3}/.test(trimmed) ||
-    /^[+-]\s/.test(trimmed) ||
-    /^(code|out|err)\s*\|/.test(trimmed)
-  );
 }
 
 function appendRowsWithToolProgressMerge(current: ChatRow[], incoming: ChatRow[]): ChatRow[] {
