@@ -171,6 +171,7 @@ export function createInstructions(baseInstructions: string): string {
     "- Use `read-file` and `search-repo` to inspect code, `edit-file` for targeted replacements, `write-file` for new files/full rewrites, `delete-file` for deletions, and `run-command` for terminal commands.",
     "- Use `git-status`/`git-diff` for change inspection and `web-search`/`web-fetch` only when external lookup is needed.",
     "- Use tools for actions and text for communication.",
+    "- Default to tool execution. If a task can be completed with available tools, do it with tools instead of providing instructions/code-only replies.",
     "- Read relevant files before editing; avoid speculative code changes.",
     "- Artifact requests (scripts/files/components/configs) MUST be fulfilled by creating or editing files directly in workspace.",
     "- For requests that create a new file, call `write-file` directly (do not answer with file contents in chat).",

@@ -3,6 +3,7 @@ import {
   assertCheckOutput,
   hasAdvisoryFileWriteSignal,
   hasFallbackEditSignal,
+  hasToolOutcomeSignal,
   hasUnwantedVerificationChatter,
   isProviderReadyFromStatusOutput,
   parseArgs,
@@ -53,6 +54,13 @@ describe("dogfood-smoke helpers", () => {
     expect(hasAdvisoryFileWriteSignal("Save this as sum.rs and run rustc.")).toBe(true);
     expect(hasAdvisoryFileWriteSignal("Copy/paste this into a file.")).toBe(true);
     expect(hasAdvisoryFileWriteSignal("Created /tmp/sum.rs and wrote the script.")).toBe(false);
+  });
+
+  it("detects required tool outcome verbs in output", () => {
+    expect(hasToolOutcomeSignal("Wrote /tmp/sum.rs", "Wrote")).toBe(true);
+    expect(hasToolOutcomeSignal("Edited /tmp/a.ts", "Edited")).toBe(true);
+    expect(hasToolOutcomeSignal("Deleted /tmp/a.ts", "Deleted")).toBe(true);
+    expect(hasToolOutcomeSignal("Read /tmp/a.ts", "Edited")).toBe(false);
   });
 
   it("parseArgs defaults to optional provider readiness", () => {

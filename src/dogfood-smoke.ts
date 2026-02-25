@@ -135,6 +135,11 @@ export function hasAdvisoryFileWriteSignal(output: string): boolean {
   return /\bsave (?:this|as)\b|\bcopy\/paste\b|\bpaste this into\b/i.test(output);
 }
 
+export function hasToolOutcomeSignal(output: string, verb: "Wrote" | "Edited" | "Deleted"): boolean {
+  const escapedVerb = verb.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`\\b${escapedVerb}\\s+`, "i").test(output);
+}
+
 export function parseArgs(args: string[]): SmokeArgs {
   const parsed: SmokeArgs = { requireProviderReady: false };
   for (const token of args) {
@@ -251,6 +256,9 @@ async function runCodingTaskSmoke(
     if (hasAdvisoryFileWriteSignal(output)) {
       return { ok: false, detail: "advisory file-write response detected" };
     }
+    if (!hasToolOutcomeSignal(output, "Edited")) {
+      return { ok: false, detail: "missing edited tool outcome in output" };
+    }
     const hasOutputChatter = hasUnwantedVerificationChatter(output);
     const content = await readFile(filePath, "utf8");
     if (task.validate(content)) {
@@ -288,6 +296,9 @@ async function runCreateFileCodingTaskSmoke(
     }
     if (hasAdvisoryFileWriteSignal(output)) {
       return { ok: false, detail: "advisory file-write response detected" };
+    }
+    if (!hasToolOutcomeSignal(output, "Wrote")) {
+      return { ok: false, detail: "missing wrote tool outcome in output" };
     }
     const hasOutputChatter = hasUnwantedVerificationChatter(output);
     const content = await readFile(filePath, "utf8");
@@ -328,6 +339,9 @@ async function runDeleteFileCodingTaskSmoke(
     }
     if (hasAdvisoryFileWriteSignal(output)) {
       return { ok: false, detail: "advisory file-write response detected" };
+    }
+    if (!hasToolOutcomeSignal(output, "Deleted")) {
+      return { ok: false, detail: "missing deleted tool outcome in output" };
     }
     try {
       await readFile(filePath, "utf8");
@@ -370,6 +384,9 @@ async function runMultiFileCodingTaskSmoke(
     }
     if (hasAdvisoryFileWriteSignal(output)) {
       return { ok: false, detail: "advisory file-write response detected" };
+    }
+    if (!hasToolOutcomeSignal(output, "Edited")) {
+      return { ok: false, detail: "missing edited tool outcome in output" };
     }
     const hasOutputChatter = hasUnwantedVerificationChatter(output);
     const contents: Record<string, string> = {};
