@@ -15,7 +15,6 @@ import {
   formatTimestamp,
   isTopLevelHelpCommand,
   isTopLevelVersionCommand,
-  normalizeProgressMessagesForOutput,
   oneShotResourceId,
   parseDogfoodArgs,
   parseEditResult,
@@ -331,26 +330,6 @@ describe("cli formatting helpers", () => {
     expect(lines[1]).toBe("");
     expect(lines[2]?.startsWith(`  \x1b[2m1\x1b[22m`)).toBe(true);
     expect(lines.filter((line) => line.startsWith("• ")).length).toBe(1);
-  });
-
-  test("normalizeProgressMessagesForOutput groups split tool header/detail lines", () => {
-    const out = normalizeProgressMessagesForOutput([
-      "Edited sum.rs",
-      "2 - let sum = a + b;",
-      "2 + let sum = a + b + c;",
-      "Deleted sum.rs",
-    ]);
-    expect(out).toEqual(["Edited sum.rs\n2 - let sum = a + b;\n2 + let sum = a + b + c;", "Deleted sum.rs"]);
-  });
-
-  test("normalizeProgressMessagesForOutput removes duplicate progress lines", () => {
-    const out = normalizeProgressMessagesForOutput([
-      "Edited sum.rs",
-      "Edited sum.rs",
-      "1 + fn main() {}",
-      "1 + fn main() {}",
-    ]);
-    expect(out).toEqual(["Edited sum.rs\n1 + fn main() {}"]);
   });
 
   test("suggestCommand supports canonical and alias prefixes", () => {

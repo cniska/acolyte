@@ -755,10 +755,6 @@ export function formatProgressEventOutput(content: string): string {
     .join("\n");
 }
 
-export function normalizeProgressMessagesForOutput(messages: string[]): string[] {
-  return groupToolProgressMessages(messages);
-}
-
 export function oneShotResourceId(sessionId: string): string {
   return `run-${sessionId.replace(/^sess_/, "").slice(0, 24)}`;
 }
@@ -883,7 +879,7 @@ async function handlePrompt(
         }
         queued.push(trimmed);
       }
-      for (const normalizedMessage of normalizeProgressMessagesForOutput(queued)) {
+      for (const normalizedMessage of groupToolProgressMessages(queued)) {
         printOutput(formatProgressEventOutput(normalizedMessage));
         hasPrintedProgress = true;
       }
