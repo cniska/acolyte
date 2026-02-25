@@ -22,8 +22,8 @@ import {
   resolveCommandAlias,
   suggestCommand,
   suggestCommands,
-  summarizeProgressForChat,
   summarizeDiff,
+  summarizeProgressForChat,
   truncateText,
 } from "./cli";
 
@@ -223,12 +223,7 @@ describe("cli formatting helpers", () => {
   });
 
   test("summarizeProgressForChat truncates long action lists", () => {
-    const out = summarizeProgressForChat([
-      "Wrote a.ts",
-      "Edited b.ts",
-      "Deleted c.ts",
-      "Read d.ts",
-    ]);
+    const out = summarizeProgressForChat(["Wrote a.ts", "Edited b.ts", "Deleted c.ts", "Read d.ts"]);
     expect(out).toBe("Summary: Wrote a.ts; Edited b.ts; Deleted c.ts; +1 more action.");
   });
 

@@ -5,8 +5,8 @@ import { stdout as output } from "node:process";
 import { z } from "zod";
 import { appConfig } from "./app-config";
 import { createBackend } from "./backend";
-import { createProgressTracker, isStageProgressMessage } from "./chat-progress";
 import { wrapAssistantContent } from "./chat-content";
+import { createProgressTracker, isStageProgressMessage } from "./chat-progress";
 import { runInkChat } from "./chat-ui";
 import {
   editFileReplace,

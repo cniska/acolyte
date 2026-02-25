@@ -1116,7 +1116,7 @@ describe("chat submit handler guards", () => {
       {
         model: "gpt-5-mini",
         output: "second done",
-        progressMessages: ["Edited sum.rs", "2 + println!(\"ok\");"],
+        progressMessages: ["Edited sum.rs", '2 + println!("ok");'],
       },
     ];
     const { submit, rows } = createSubmitHandlerHarness({

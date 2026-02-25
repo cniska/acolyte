@@ -102,12 +102,7 @@ describe("chat turn helpers", () => {
         reply: async () => ({
           model: "gpt-5-mini",
           output: "done",
-          progressMessages: [
-            "Edited sum.rs",
-            "2 - let sum = a + b;",
-            "2 + let sum = a + b + c;",
-            "Deleted old.rs",
-          ],
+          progressMessages: ["Edited sum.rs", "2 - let sum = a + b;", "2 + let sum = a + b + c;", "Deleted old.rs"],
         }),
         status: async () => "ok",
         progress: async () => null,

@@ -18,10 +18,7 @@ function isToolHeaderLine(line: string): boolean {
 
 function isToolDetailLine(line: string): boolean {
   return (
-    /^\d+\s+[+-]\s/.test(line) ||
-    /^\d+\s{3}/.test(line) ||
-    /^[+-]\s/.test(line) ||
-    /^(code|out|err)\s*\|/.test(line)
+    /^\d+\s+[+-]\s/.test(line) || /^\d+\s{3}/.test(line) || /^[+-]\s/.test(line) || /^(code|out|err)\s*\|/.test(line)
   );
 }
 

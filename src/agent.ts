@@ -1034,7 +1034,9 @@ export async function runAgent(input: {
     }
     input.onProgress?.(trimmed);
   };
-  const emitToolProgressEntries = (tools: Array<{ name: string; args: Record<string, unknown>; result: string }>): void => {
+  const emitToolProgressEntries = (
+    tools: Array<{ name: string; args: Record<string, unknown>; result: string }>,
+  ): void => {
     for (const tool of tools) {
       const canonicalToolName = canonicalToolId(tool.name);
       observedToolCallIds.add(canonicalToolName);

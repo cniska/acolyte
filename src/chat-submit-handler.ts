@@ -1,8 +1,8 @@
 import { appConfig } from "./app-config";
 import type { Backend } from "./backend";
-import { createProgressTracker } from "./chat-progress";
 import { type ChatRow, dispatchSlashCommand, type TokenUsageEntry } from "./chat-commands";
 import { invalidateRepoPathCandidates } from "./chat-file-ref";
+import { createProgressTracker } from "./chat-progress";
 import { isKnownSlashToken, resolveSlashAlias } from "./chat-slash";
 import {
   appendInputHistory,
@@ -276,7 +276,12 @@ function toolProgressHeader(content: string): string {
 
 function isToolDetailLine(content: string): boolean {
   const trimmed = content.trim();
-  return /^\d+\s+[+-]\s/.test(trimmed) || /^\d+\s{3}/.test(trimmed) || /^[+-]\s/.test(trimmed) || /^(code|out|err)\s*\|/.test(trimmed);
+  return (
+    /^\d+\s+[+-]\s/.test(trimmed) ||
+    /^\d+\s{3}/.test(trimmed) ||
+    /^[+-]\s/.test(trimmed) ||
+    /^(code|out|err)\s*\|/.test(trimmed)
+  );
 }
 
 function appendRowsWithToolProgressMerge(current: ChatRow[], incoming: ChatRow[]): ChatRow[] {
@@ -318,7 +323,9 @@ function appendRowsWithToolProgressMerge(current: ChatRow[], incoming: ChatRow[]
       .reverse()
       .find(
         ({ row, index }) =>
-          index > currentTurnStart && row.style === "toolProgress" && toolProgressHeader(row.content) === incomingHeader,
+          index > currentTurnStart &&
+          row.style === "toolProgress" &&
+          toolProgressHeader(row.content) === incomingHeader,
       )?.index;
 
     if (existingIndex === undefined) {

@@ -1,4 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { formatSessionList, resolveResumeSession } from "./chat-commands";
 import {
   applyAtSuggestion,
@@ -11,9 +14,6 @@ import {
 } from "./chat-file-ref";
 import { initialTranscriptRows } from "./chat-ui";
 import { createSession, createStore } from "./test-factory";
-import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
 
 function createUiStore() {
   return createStore({
