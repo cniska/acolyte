@@ -1106,6 +1106,38 @@ describe("chat submit handler guards", () => {
     expect(editedRows[0]?.content).toBe("Edited sum.rs\n1 + fn main() {}");
   });
 
+  test("does not merge tool rows across separate user turns", async () => {
+    const replies = [
+      {
+        model: "gpt-5-mini",
+        output: "first done",
+        progressMessages: ["Edited sum.rs", "1 + fn main() {}"],
+      },
+      {
+        model: "gpt-5-mini",
+        output: "second done",
+        progressMessages: ["Edited sum.rs", "2 + println!(\"ok\");"],
+      },
+    ];
+    const { submit, rows } = createSubmitHandlerHarness({
+      backend: createBackend({
+        status: async () => "ok",
+        progress: async () => null,
+        reply: async () => replies.shift() ?? { model: "gpt-5-mini", output: "done" },
+      }),
+    });
+
+    await submit("create file");
+    await submit("edit file");
+
+    const editedRows = rows.filter(
+      (row) => row.role === "assistant" && row.style === "toolProgress" && row.content.startsWith("Edited sum.rs"),
+    );
+    expect(editedRows).toHaveLength(2);
+    expect(editedRows[0]?.content).toBe("Edited sum.rs\n1 + fn main() {}");
+    expect(editedRows[1]?.content).toBe('Edited sum.rs\n2 + println!("ok");');
+  });
+
   test("persists token usage on successful turn", async () => {
     const session = createSession({ id: "sess_test" });
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
