@@ -95,4 +95,41 @@ describe("chat turn helpers", () => {
     expect(toolRows[0]?.content).toBe("Edited sum.rs");
     expect(turn.rows.some((row) => row.role === "assistant" && row.content === "done")).toBe(true);
   });
+
+  test("runAssistantTurn groups tool header and detail lines into one row", async () => {
+    const turn = await runAssistantTurn({
+      backend: {
+        reply: async () => ({
+          model: "gpt-5-mini",
+          output: "done",
+          progressMessages: [
+            "Edited sum.rs",
+            "2 - let sum = a + b;",
+            "2 + let sum = a + b + c;",
+            "Deleted old.rs",
+          ],
+        }),
+        status: async () => "ok",
+        progress: async () => null,
+        setPermissionMode: async () => {},
+      },
+      userText: "update file",
+      history: [],
+      model: "gpt-5-mini",
+      sessionId: "sess_test",
+      runVerifyAfterReply: false,
+      thinkingStartedAt: Date.now(),
+      createMessage: (role, content) => ({
+        id: "msg_assistant",
+        role,
+        content,
+        timestamp: "2026-02-20T00:00:00.000Z",
+      }),
+    });
+
+    const toolRows = turn.rows.filter((row) => row.style === "toolProgress");
+    expect(toolRows).toHaveLength(2);
+    expect(toolRows[0]?.content).toBe("Edited sum.rs\n2 - let sum = a + b;\n2 + let sum = a + b + c;");
+    expect(toolRows[1]?.content).toBe("Deleted old.rs");
+  });
 });

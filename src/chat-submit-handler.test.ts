@@ -119,8 +119,7 @@ describe("chat submit handler guards", () => {
     const toolRows = rows.filter((row) => row.role === "assistant" && row.style === "toolProgress");
     expect(toolRows.map((row) => row.content)).toEqual([
       "Edited sum.rs",
-      "2 - let sum = a + b;",
-      "2 + let sum = a + b + c;",
+      "Edited sum.rs\n2 - let sum = a + b;\n2 + let sum = a + b + c;",
       "Deleted sum.rs",
     ]);
     expect(rows.some((row) => row.role === "assistant" && row.content === "Created sum.rs.")).toBe(true);

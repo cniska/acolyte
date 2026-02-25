@@ -12,6 +12,41 @@ function row(role: ChatRow["role"], content: string, dim = false, style?: ChatRo
   return { id: `row_${crypto.randomUUID()}`, role, content, dim, style };
 }
 
+function isToolHeaderLine(line: string): boolean {
+  return /^(Wrote|Edited|Read|Deleted|Ran)\s+\S/.test(line);
+}
+
+function isToolDetailLine(line: string): boolean {
+  return (
+    /^\d+\s+[+-]\s/.test(line) ||
+    /^\d+\s{3}/.test(line) ||
+    /^[+-]\s/.test(line) ||
+    /^(code|out|err)\s*\|/.test(line)
+  );
+}
+
+function groupToolProgressMessages(messages: string[]): string[] {
+  const grouped: string[] = [];
+  for (const message of messages) {
+    if (grouped.length === 0) {
+      grouped.push(message);
+      continue;
+    }
+    const previous = grouped[grouped.length - 1] ?? "";
+    const previousFirstLine = previous.split("\n")[0] ?? "";
+    if (isToolHeaderLine(message)) {
+      grouped.push(message);
+      continue;
+    }
+    if (isToolHeaderLine(previousFirstLine) || (isToolDetailLine(previous) && isToolDetailLine(message))) {
+      grouped[grouped.length - 1] = `${previous}\n${message}`;
+      continue;
+    }
+    grouped.push(message);
+  }
+  return grouped;
+}
+
 export function estimateTokenUsageFallback(prompt: string, output: string): TokenUsage {
   const promptTokens = Math.ceil(prompt.length / 4);
   const completionTokens = Math.ceil(output.length / 4);
@@ -120,6 +155,7 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
   const rows: ChatRow[] = [];
   if (Array.isArray(reply.progressMessages) && reply.progressMessages.length > 0) {
     const seen = new Set<string>();
+    const toolMessages: string[] = [];
     for (const message of reply.progressMessages) {
       const trimmed = message.trim();
       if (!trimmed || isStageProgressMessage(trimmed)) {
@@ -130,7 +166,10 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
         continue;
       }
       seen.add(key);
-      rows.push(row("assistant", trimmed, false, "toolProgress"));
+      toolMessages.push(trimmed);
+    }
+    for (const groupedMessage of groupToolProgressMessages(toolMessages)) {
+      rows.push(row("assistant", groupedMessage, false, "toolProgress"));
     }
   }
   rows.push(row("assistant", reply.output));
