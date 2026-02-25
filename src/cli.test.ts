@@ -316,6 +316,15 @@ describe("cli formatting helpers", () => {
     expect(out).toContain("\x1b[32mfn main() {}\x1b[39m");
   });
 
+  test("formatProgressEventOutput keeps single bullet for multiline tool output", () => {
+    const out = formatProgressEventOutput("Wrote src/sum.rs\n\n1 + fn main() {}");
+    const lines = out.split("\n");
+    expect(lines[0]).toContain("• ");
+    expect(lines[1]).toBe("");
+    expect(lines[2]?.startsWith(`  \x1b[2m1\x1b[22m`)).toBe(true);
+    expect(lines.filter((line) => line.startsWith("• ")).length).toBe(1);
+  });
+
   test("suggestCommand supports canonical and alias prefixes", () => {
     expect(suggestCommand("/e")).toBe("/exit");
     expect(suggestCommand("/exi")).toBe("/exit");
