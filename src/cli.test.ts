@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   buildUsageCommandRows,
   displayPromptForOutput,
+  drainProgressAfterReply,
   extractVersionFromPackageJsonText,
   formatAssistantReplyOutput,
   formatEditUpdateOutput,
@@ -323,6 +324,36 @@ describe("cli formatting helpers", () => {
     expect(lines[1]).toBe("");
     expect(lines[2]?.startsWith(`  \x1b[2m1\x1b[22m`)).toBe(true);
     expect(lines.filter((line) => line.startsWith("• ")).length).toBe(1);
+  });
+
+  test("drainProgressAfterReply stops when done is reached", async () => {
+    const sequence = [
+      { hadEvents: false, done: false },
+      { hadEvents: true, done: false },
+      { hadEvents: false, done: true },
+    ];
+    let calls = 0;
+    await drainProgressAfterReply(
+      async () => {
+        const next = sequence[calls] ?? { hadEvents: false, done: true };
+        calls += 1;
+        return next;
+      },
+      { sleepMs: 0, sleep: async () => {} },
+    );
+    expect(calls).toBe(3);
+  });
+
+  test("drainProgressAfterReply stops after quiet poll limit", async () => {
+    let calls = 0;
+    await drainProgressAfterReply(
+      async () => {
+        calls += 1;
+        return { hadEvents: false, done: false };
+      },
+      { quietPollLimit: 2, maxPolls: 6, sleepMs: 0, sleep: async () => {} },
+    );
+    expect(calls).toBe(2);
   });
 
   test("suggestCommand supports canonical and alias prefixes", () => {

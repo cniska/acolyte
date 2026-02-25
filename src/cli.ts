@@ -800,6 +800,39 @@ export function formatPromptError(error: unknown): string {
   return message || "Request failed. Retry and check backend logs if it keeps failing.";
 }
 
+type ProgressPollResult = { hadEvents: boolean; done: boolean };
+
+export async function drainProgressAfterReply(
+  pollProgress: () => Promise<ProgressPollResult>,
+  options: {
+    maxPolls?: number;
+    quietPollLimit?: number;
+    sleepMs?: number;
+    sleep?: (ms: number) => Promise<void>;
+  } = {},
+): Promise<void> {
+  const maxPolls = options.maxPolls ?? 6;
+  const quietPollLimit = options.quietPollLimit ?? 2;
+  const sleepMs = options.sleepMs ?? 60;
+  const sleep = options.sleep ?? ((ms: number) => Bun.sleep(ms));
+  let quietPolls = 0;
+  for (let i = 0; i < maxPolls; i += 1) {
+    const polled = await pollProgress().catch(() => ({ hadEvents: false, done: false }));
+    if (polled.done) {
+      break;
+    }
+    if (polled.hadEvents) {
+      quietPolls = 0;
+    } else {
+      quietPolls += 1;
+      if (quietPolls >= quietPollLimit) {
+        break;
+      }
+    }
+    await sleep(sleepMs);
+  }
+}
+
 async function handlePrompt(
   prompt: string,
   session: Session,
@@ -831,17 +864,21 @@ async function handlePrompt(
         hasPrintedProgress = true;
       }
     };
-    const pollProgress = async (): Promise<void> => {
+    const pollProgress = async (): Promise<{ hadEvents: boolean; done: boolean }> => {
       if (isPolling) {
-        return;
+        return { hadEvents: false, done: false };
       }
       isPolling = true;
       try {
         const progress = await backend.progress(session.id, progressAfterSeq);
-        if (!progress || progress.events.length === 0) {
-          return;
+        if (!progress) {
+          return { hadEvents: false, done: false };
         }
-        applyProgressEvents(progress.events);
+        const hadEvents = progress.events.length > 0;
+        if (hadEvents) {
+          applyProgressEvents(progress.events);
+        }
+        return { hadEvents, done: progress.done };
       } finally {
         isPolling = false;
       }
@@ -866,7 +903,7 @@ async function handlePrompt(
       }
     })();
 
-    await pollProgress().catch(() => {});
+    await drainProgressAfterReply(pollProgress);
 
     printOutput("");
     if (hasPrintedProgress) {
