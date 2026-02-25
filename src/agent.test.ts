@@ -4,24 +4,17 @@ import {
   buildSubagentContext,
   canonicalToolId,
   collectToolProgressFromStep,
-  directEditExecutionSatisfied,
-  directEditTimeoutMessage,
-  extractAbsolutePathCandidates,
   finalizeAssistantOutput,
   finalizeReviewOutput,
   formatToolProgressMessage,
-  isDirectEditRequest,
   isPlanLikeOutput,
-  parseExplicitReplacement,
+  isSummaryOnlyRequest,
   resolveAgentModel,
   resolveModelProviderState,
   resolveRunnableModel,
-  runAgent,
   selectAgentRole,
-  shouldForceRequiredToolsRetry,
 } from "./agent";
 import type { ChatRequest } from "./api";
-import { appConfig, setPermissionMode } from "./app-config";
 
 function createRequest(content: string): ChatRequest {
   return {
@@ -62,7 +55,7 @@ describe("buildAgentInput", () => {
         {
           id: "msg_skill",
           role: "system",
-          content: "Active skill (autonomous-feature-delivery): keep slices small.",
+          content: "Active skill (dogfood): keep slices small.",
           timestamp: "2026-02-20T10:00:00.000Z",
         },
         {
@@ -75,7 +68,7 @@ describe("buildAgentInput", () => {
     };
 
     const input = buildAgentInput(req);
-    expect(input).toContain("SYSTEM: Active skill (autonomous-feature-delivery)");
+    expect(input).toContain("SYSTEM: Active skill (dogfood)");
     expect(input).toContain("USER: use repo conventions");
   });
 
@@ -98,12 +91,6 @@ describe("buildAgentInput", () => {
 });
 
 describe("execution intent detection", () => {
-  test("isDirectEditRequest detects imperative edit prompts", () => {
-    expect(isDirectEditRequest("add a line break after resume message")).toBe(true);
-    expect(isDirectEditRequest("fix the status output")).toBe(true);
-    expect(isDirectEditRequest("what next")).toBe(false);
-  });
-
   test("isPlanLikeOutput detects planning scaffolding", () => {
     expect(isPlanLikeOutput("Plan: update file then run verify")).toBe(true);
     expect(isPlanLikeOutput("I can apply this in two steps.")).toBe(true);
@@ -112,110 +99,18 @@ describe("execution intent detection", () => {
     expect(isPlanLikeOutput("Updated src/cli.ts and tests pass.")).toBe(false);
   });
 
-  test("parseExplicitReplacement extracts quoted replace directives", () => {
-    expect(parseExplicitReplacement("replace 'alpha' with 'beta' in src/file.ts")).toEqual({
-      find: "alpha",
-      replace: "beta",
-    });
-    expect(parseExplicitReplacement('change exact text "before" to "after"')).toEqual({
-      find: "before",
-      replace: "after",
-    });
-    expect(parseExplicitReplacement("please update src/file.ts")).toBeNull();
-  });
-
   test("canonicalToolId maps snake_case and camelCase tool aliases", () => {
     expect(canonicalToolId("edit_file")).toBe("edit-file");
     expect(canonicalToolId("runCommand")).toBe("run-command");
     expect(canonicalToolId("execute_command")).toBe("run-command");
     expect(canonicalToolId("web_search")).toBe("web-search");
   });
-});
 
-describe("runAgent guards", () => {
-  test("returns immediate read-mode guard for direct edits", async () => {
-    const previousMode = appConfig.agent.permissions.mode;
-    setPermissionMode("read");
-    try {
-      const result = await runAgent({
-        soulPrompt: "test soul",
-        request: {
-          model: "gpt-5-mini",
-          message: "add a line break before the resume message",
-          history: [],
-          sessionId: "sess_test",
-        },
-      });
-      expect(result.output).toBe("Edit request blocked in read mode. Use /permissions write, then retry.");
-      expect(result.toolCalls ?? []).toHaveLength(0);
-    } finally {
-      setPermissionMode(previousMode);
-    }
-  });
-
-  test("blocks direct edit prompts that target absolute paths outside workspace", async () => {
-    const previousMode = appConfig.agent.permissions.mode;
-    setPermissionMode("write");
-    try {
-      const result = await runAgent({
-        soulPrompt: "test soul",
-        request: {
-          model: "gpt-5-mini",
-          message: "edit /etc/hosts to set x to 2",
-          history: [],
-          sessionId: "sess_test",
-        },
-      });
-      expect(result.output).toContain("outside allowed roots");
-      expect(result.output).toContain("/etc/hosts");
-      expect(result.toolCalls ?? []).toHaveLength(0);
-    } finally {
-      setPermissionMode(previousMode);
-    }
-  });
-
-  test("path candidate parsing ignores slash-like tokens without directory segments", () => {
-    expect(extractAbsolutePathCandidates("add a test for /xyz alias behavior")).toEqual([]);
-    expect(extractAbsolutePathCandidates("edit /etc/hosts to set x to 2")).toEqual(["/etc/hosts"]);
-  });
-
-  test("path candidate parsing strips trailing punctuation", () => {
-    expect(extractAbsolutePathCandidates("edit /etc/hosts. to set x to 2")).toEqual(["/etc/hosts"]);
-  });
-
-  test("path candidate parsing strips punctuation at end of message", () => {
-    expect(extractAbsolutePathCandidates("please open /etc/hosts.")).toEqual(["/etc/hosts"]);
-  });
-});
-
-describe("direct edit execution contract", () => {
-  test("requires edit-file tool usage", () => {
-    expect(directEditExecutionSatisfied([], "Edited src/cli.ts")).toBe(false);
-    expect(directEditExecutionSatisfied(["run-command"], "Done")).toBe(false);
-  });
-
-  test("rejects plan-like output even when edit-file is present", () => {
-    expect(directEditExecutionSatisfied(["edit-file"], "Plan: update file then run verify")).toBe(false);
-  });
-
-  test("accepts concrete output when edit-file was used", () => {
-    expect(directEditExecutionSatisfied(["read-file", "edit-file"], "Updated src/cli.ts and applied the change.")).toBe(
-      true,
-    );
-  });
-});
-
-describe("directEditTimeoutMessage", () => {
-  test("includes generic guidance when paths are unknown", () => {
-    expect(directEditTimeoutMessage([])).toContain("Check git diff");
-  });
-
-  test("includes edited file path when available", () => {
-    expect(directEditTimeoutMessage(["src/cli.ts"])).toContain("src/cli.ts");
-  });
-
-  test("uses confirmed wording when edit execution is observed", () => {
-    expect(directEditTimeoutMessage(["src/cli.ts"], true)).toContain("edit-file ran");
+  test("isSummaryOnlyRequest detects concise-summary constraints", () => {
+    expect(isSummaryOnlyRequest("return a concise summary only")).toBe(true);
+    expect(isSummaryOnlyRequest("summary only")).toBe(true);
+    expect(isSummaryOnlyRequest("just a summary")).toBe(true);
+    expect(isSummaryOnlyRequest("make the edit and explain reasoning")).toBe(false);
   });
 });
 
@@ -255,23 +150,6 @@ describe("finalizeAssistantOutput", () => {
     expect(out).toBe(raw);
   });
 
-  test("returns edit-specific fallback when output is empty for direct edit prompts", () => {
-    expect(finalizeAssistantOutput("   ", "add a line break before resume message")).toBe(
-      "Edit request failed: no tools ran. Check /status and retry.",
-    );
-  });
-
-  test("returns tool failure reason for direct edit prompts when available", () => {
-    expect(
-      finalizeAssistantOutput(
-        "   ",
-        "add a line break before resume message",
-        0,
-        "run-command failed: Shell command execution is disabled in read mode",
-      ),
-    ).toBe("Edit request failed: run-command failed: Shell command execution is disabled in read mode");
-  });
-
   test("returns tool-executed fallback when output is empty after tool calls", () => {
     expect(finalizeAssistantOutput("   ", "check status", 2)).toBe(
       "No final response after tool execution. Retry, or check backend logs if this repeats.",
@@ -303,16 +181,6 @@ describe("selectAgentRole", () => {
         "add a short note in docs/project-plan.md under Milestone 2 exit criteria: track delegated slice success/failure ratio weekly",
       ),
     ).toBe("coder");
-  });
-});
-
-describe("shouldForceRequiredToolsRetry", () => {
-  test("requires tool fallback for direct edit requests", () => {
-    expect(shouldForceRequiredToolsRetry("coder", true)).toBe(true);
-  });
-
-  test("does not force tool fallback for normal prompts", () => {
-    expect(shouldForceRequiredToolsRetry("coder", false)).toBe(false);
   });
 });
 

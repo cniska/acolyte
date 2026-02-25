@@ -1,9 +1,6 @@
-import { tmpdir } from "node:os";
-import { isAbsolute, relative, resolve } from "node:path";
 import { createAgent } from "./agent-factory";
 import type { ChatRequest, ChatResponse } from "./api";
 import { appConfig } from "./app-config";
-import { editFileReplace } from "./coding-tools";
 import { toolsForAgent } from "./mastra-tools";
 import { isProviderAvailable, type ModelProviderName, providerFromModel } from "./provider-config";
 import { formatToolLabel } from "./tool-labels";
@@ -159,10 +156,6 @@ function isToolLikelyRequest(text: string): boolean {
   return hints.some((hint) => lower.includes(hint));
 }
 
-export function isDirectEditRequest(text: string): boolean {
-  return /\b(add|change|update|remove|delete|edit|fix|insert)\b/i.test(text);
-}
-
 export function isPlanLikeOutput(text: string): boolean {
   const normalized = text.trim();
   if (normalized.length === 0) {
@@ -192,30 +185,8 @@ function isReviewRequest(text: string): boolean {
   return /\breview\b/i.test(text);
 }
 
-export function directEditExecutionSatisfied(toolCalls: string[], output: string): boolean {
-  const usedEditTool = toolCalls.includes("edit-file");
-  if (!usedEditTool) {
-    return false;
-  }
-  return !isPlanLikeOutput(output);
-}
-
-function directEditFailureMessage(toolCallIds: string[], lastToolFailureReason?: string): string {
-  if (lastToolFailureReason) {
-    return `Edit request failed: ${lastToolFailureReason}`;
-  }
-  if (toolCallIds.length > 0) {
-    return `Edit request failed: no edit-file call was executed (tools: ${toolCallIds.join(", ")}). Retry with an explicit target file/path.`;
-  }
-  return "Edit request failed: required edit tool did not run. Check /status and retry.";
-}
-
-export function directEditTimeoutMessage(paths: string[], confirmed = false): string {
-  const actionPhrase = confirmed ? "edit-file ran" : "edit-file may have run";
-  if (paths.length === 0) {
-    return `Edit request timed out while composing the final response; ${actionPhrase}. Check git diff to confirm the applied change.`;
-  }
-  return `Edit request timed out while composing the final response; ${actionPhrase} for ${formatPathList(paths) ?? "target files"}. Check git diff to confirm the applied change.`;
+export function isSummaryOnlyRequest(text: string): boolean {
+  return /\b(summary only|concise summary only|just a summary|only summary|summary,?\s*no explanation)\b/i.test(text);
 }
 
 export function selectAgentRole(_text: string): AgentRole {
@@ -231,8 +202,11 @@ export function buildRoleInstructions(baseInstructions: string, _role: AgentRole
   const executionContract = [
     "Execution contract:",
     "- Prefer tool-backed execution over speculative answers when code changes are requested.",
-    "- For direct edit requests in write mode: call read-file for context, then call edit-file for the actual change.",
-    "- Do not end a direct edit request without executing edit-file.",
+    "- When a task is straightforward, execute it directly; do not ask for confirmation before editing.",
+    "- Ask follow-up questions only when requirements are ambiguous, risky, or blocked by missing access/context.",
+    "- Respect response-shape constraints exactly (for example: 'summary only' means summary only).",
+    "- Run verification only when explicitly requested, when required by repo policy, or when safety risk is high.",
+    "- If verification is skipped, do not add extra verification commentary unless user asked for it.",
     "- Keep final output concise and outcome-focused.",
   ].join("\n");
   return `${baseInstructions}\n\n${executionContract}`;
@@ -321,61 +295,6 @@ function extractMentionedPath(message: string): string | null {
   }
   const cleaned = (match[1] ?? "").replace(/[.,;:!?]+$/g, "").trim();
   return cleaned.length > 0 ? cleaned : null;
-}
-
-function extractExplicitTargetPath(message: string): string | null {
-  const atRef = extractMentionedPath(message);
-  if (atRef) {
-    return atRef;
-  }
-  const pathMatch = message.match(/(?:^|\s)([./~]?[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_.-]+)+\.[A-Za-z0-9]+)(?=\s|$|[,:;])/);
-  if (!pathMatch) {
-    return null;
-  }
-  const candidate = (pathMatch[1] ?? "").trim();
-  return candidate.length > 0 ? candidate : null;
-}
-
-export function parseExplicitReplacement(message: string): { find: string; replace: string } | null {
-  const patterns = [
-    /(?:replace|change)(?:\s+exact(?:ly)?(?:\s+text)?)?\s+["'`](.+?)["'`]\s+(?:with|to)\s+["'`](.+?)["'`]/i,
-    /["'`](.+?)["'`]\s+(?:to|with)\s+["'`](.+?)["'`]/i,
-  ];
-  for (const pattern of patterns) {
-    const match = message.match(pattern);
-    const find = match?.[1]?.trim();
-    const replace = match?.[2]?.trim();
-    if (find && replace && find.length > 0) {
-      return { find, replace };
-    }
-  }
-  return null;
-}
-
-export function extractAbsolutePathCandidates(message: string): string[] {
-  const results: string[] = [];
-  const pattern = /(?:^|\s)(\/[^\s,;:!?]+\/[^\s,;:!?]*)/g;
-  let match: RegExpExecArray | null = pattern.exec(message);
-  while (match) {
-    const candidate = (match[1] ?? "").trim().replace(/[.)]+$/g, "");
-    if (candidate.length > 0) {
-      results.push(candidate);
-    }
-    match = pattern.exec(message);
-  }
-  return results;
-}
-
-function isPathInside(root: string, target: string): boolean {
-  const rel = relative(root, target);
-  return rel.length === 0 || (!rel.startsWith("..") && !isAbsolute(rel));
-}
-
-function isAllowedAbsoluteEditPath(pathInput: string): boolean {
-  const target = resolve(pathInput);
-  const workspaceRoot = resolve(process.cwd());
-  const tempRoots = Array.from(new Set([resolve(tmpdir()), resolve("/tmp"), resolve("/private/tmp")]));
-  return isPathInside(workspaceRoot, target) || tempRoots.some((root) => isPathInside(root, target));
 }
 
 function suggestNarrowerReviewScope(path: string): string {
@@ -845,11 +764,6 @@ export function collectToolProgressFromStep(
   return progress;
 }
 
-export function shouldForceRequiredToolsRetry(role: AgentRole, directEditLikely: boolean): boolean {
-  void role;
-  return directEditLikely;
-}
-
 export function finalizeReviewOutput(output: string, message = ""): string {
   const trimmed = output.trim();
   if (trimmed.length > 0) {
@@ -868,14 +782,10 @@ export function finalizeAssistantOutput(
   toolCallCount = 0,
   lastToolFailureReason?: string,
 ): string {
+  void message;
   const trimmed = output.trim();
   if (trimmed.length > 0) {
     return trimmed;
-  }
-  if (isDirectEditRequest(message)) {
-    return lastToolFailureReason
-      ? `Edit request failed: ${lastToolFailureReason}`
-      : "Edit request failed: no tools ran. Check /status and retry.";
   }
   if (toolCallCount > 0) {
     return "No final response after tool execution. Retry, or check backend logs if this repeats.";
@@ -899,55 +809,51 @@ function buildMockReply(req: ChatRequest, reason?: string): ChatResponse {
   };
 }
 
+function outputClaimsAppliedEdit(output: string): boolean {
+  const trimmed = output.trim();
+  if (trimmed.length === 0) {
+    return false;
+  }
+  if (/\b(no changes?|did not edit|not edited|no edit applied|no file changes?)\b/i.test(trimmed)) {
+    return false;
+  }
+  if (/\b(would|could|can|suggest|recommend|propose|plan to|next steps?)\b/i.test(trimmed)) {
+    return false;
+  }
+  return /\b(applied|updated|edited|modified|changed|patched|fixed|added|removed|deleted|renamed|implemented|created)\b/i.test(
+    trimmed,
+  );
+}
+
+function claimedEditFailureMessage(toolCallIds: string[], lastToolFailureReason?: string): string {
+  if (lastToolFailureReason) {
+    return `Edit verification failed: ${lastToolFailureReason}`;
+  }
+  if (toolCallIds.length > 0) {
+    return `Edit verification failed: output claimed changes but no edit-file call was executed (tools: ${toolCallIds.join(", ")}).`;
+  }
+  return "Edit verification failed: output claimed changes but no edit-file call was executed.";
+}
+
 export async function runAgent(input: {
   request: ChatRequest;
   soulPrompt: string;
   onProgress?: (message: string) => void;
   onDebug?: (event: string, fields?: Record<string, unknown>) => void;
 }): Promise<ChatResponse> {
-  const CODER_INITIAL_MAX_STEPS = 6;
-  // Keep direct-edit first pass bounded to reduce stalls.
-  const DIRECT_EDIT_INITIAL_MAX_STEPS = 2;
+  const CODER_INITIAL_MAX_STEPS = 20;
   const REQUIRED_TOOLS_RETRY_MAX_STEPS = 6;
   const BASE_MODEL_RETRY_MAX_STEPS = 5;
   const EMPTY_TEXT_RETRY_MAX_STEPS = 4;
   const CODER_TIMEOUT_MS = 90_000;
-  const DIRECT_EDIT_TIMEOUT_MS = 90_000;
   const role = selectAgentRole(input.request.message);
-  const directEditLikely = role === "coder" && isDirectEditRequest(input.request.message);
-  const directEditTargetPath = directEditLikely ? extractExplicitTargetPath(input.request.message) : null;
   const emitDebug = (event: string, fields: Record<string, unknown> = {}): void => {
     input.onDebug?.(event, {
       role,
-      direct_edit_likely: directEditLikely,
       ...fields,
     });
   };
   emitDebug("agent.role.selected", { model_requested: input.request.model });
-  if (directEditLikely && appConfig.agent.permissions.mode === "read") {
-    emitDebug("agent.direct_edit.blocked_read_mode");
-    return {
-      model: input.request.model,
-      output: "Edit request blocked in read mode. Use /permissions write, then retry.",
-      toolCalls: [],
-      modelCalls: 0,
-    };
-  }
-  if (directEditLikely) {
-    const disallowedAbsolutePaths = extractAbsolutePathCandidates(input.request.message).filter(
-      (pathInput) => !isAllowedAbsoluteEditPath(pathInput),
-    );
-    if (disallowedAbsolutePaths.length > 0) {
-      const blockedPath = disallowedAbsolutePaths[0] ?? "absolute path";
-      emitDebug("agent.direct_edit.blocked_path", { blocked_path: blockedPath });
-      return {
-        model: input.request.model,
-        output: `Edit request blocked: ${blockedPath} is outside allowed roots. Allowed roots are the current repository and /tmp.`,
-        toolCalls: [],
-        modelCalls: 0,
-      };
-    }
-  }
   const resolved = resolveRunnableModel(role, input.request.model);
   if (!resolved.available) {
     return buildMockReply(input.request, `Provider '${resolved.provider}' is not configured.`);
@@ -1008,8 +914,9 @@ export async function runAgent(input: {
   const requestInput = buildAgentInputWithUsage(input.request);
   const subagentContext = buildSubagentContext(role, input.request);
   const agentInput = `${subagentContext}\n\n${requestInput.input}`;
+  const summaryOnly = isSummaryOnlyRequest(input.request.message);
   const toolLikely = isToolLikelyRequest(input.request.message);
-  if (!directEditLikely && !toolLikely && input.request.model !== model) {
+  if (!toolLikely && input.request.model !== model) {
     const requestedState = resolveModelProviderState(input.request.model);
     if (requestedState.available) {
       model = input.request.model;
@@ -1030,7 +937,6 @@ export async function runAgent(input: {
   });
   const seenToolNames = new Set<string>();
   const observedToolCallIds = new Set<string>();
-  const observedEditPaths = new Set<string>();
   let lastToolFailureReason: string | undefined;
   const emitProgress = (message: string): void => {
     const trimmed = message.trim();
@@ -1044,11 +950,6 @@ export async function runAgent(input: {
     for (const tool of tools) {
       const toolId = canonicalToolId(tool.name);
       observedToolCallIds.add(toolId);
-      if (toolId === "edit-file") {
-        for (const path of collectPathDetails(tool.args)) {
-          observedEditPaths.add(path);
-        }
-      }
       const startMessage = formatToolProgressMessage(tool.name, tool.args);
       const startDedupeKey = JSON.stringify({ kind: "call", name: tool.name, message: startMessage });
       if (!seenToolNames.has(startDedupeKey)) {
@@ -1081,16 +982,16 @@ export async function runAgent(input: {
     }
   };
 
-  const directEditTargetHint = directEditTargetPath
-    ? `\n\nDirect edit target path: ${directEditTargetPath}\nHard requirement: execute edit-file in this first response. Prefer read-file then edit-file.`
-    : "\n\nDirect edit target path: none specified; locate exact target quickly, then execute edit-file in this first response.";
-  const agentPrompt = directEditLikely ? `${agentInput}${directEditTargetHint}` : agentInput;
-  const initialMaxSteps = directEditLikely ? DIRECT_EDIT_INITIAL_MAX_STEPS : CODER_INITIAL_MAX_STEPS;
-  const callTimeoutMs = directEditLikely ? DIRECT_EDIT_TIMEOUT_MS : CODER_TIMEOUT_MS;
+  const summaryOnlyHint = summaryOnly
+    ? "\n\nResponse constraint: return a concise summary only. Do not run verification commands and do not include verification commentary."
+    : "";
+  const agentPrompt = `${agentInput}${summaryOnlyHint}`;
+  const initialMaxSteps = CODER_INITIAL_MAX_STEPS;
+  const callTimeoutMs = CODER_TIMEOUT_MS;
   emitProgress("Working…");
   emitDebug("agent.generate.start", {
     model,
-    tool_choice: directEditLikely ? "required" : "auto",
+    tool_choice: "auto",
     max_steps: initialMaxSteps,
     reason: "initial",
   });
@@ -1101,7 +1002,7 @@ export async function runAgent(input: {
       agentPrompt,
       {
         maxSteps: initialMaxSteps,
-        toolChoice: directEditLikely ? "required" : "auto",
+        toolChoice: "auto",
         memory: memoryOptions,
         onStepFinish: emitToolProgress,
       },
@@ -1114,49 +1015,6 @@ export async function runAgent(input: {
       reason: "initial",
       error: lastToolFailureReason,
     });
-    const isInitialTimeout = /timed out/i.test(lastToolFailureReason);
-    if (directEditLikely && observedToolCallIds.has("edit-file")) {
-      const output = directEditTimeoutMessage(Array.from(observedEditPaths), true);
-      const completionTokens = estimateTokens(output);
-      return {
-        model,
-        output,
-        toolCalls: Array.from(observedToolCallIds),
-        modelCalls: modelCallCount,
-        usage: {
-          promptTokens: requestInput.usage.promptTokens,
-          completionTokens,
-          totalTokens: requestInput.usage.promptTokens + completionTokens,
-          promptBudgetTokens: requestInput.usage.promptBudgetTokens,
-          promptTruncated: requestInput.usage.promptTruncated,
-        },
-        budgetWarning: requestInput.usage.promptTruncated
-          ? `context trimmed (${requestInput.usage.includedHistoryMessages}/${requestInput.usage.totalHistoryMessages} history messages)`
-          : undefined,
-      };
-    }
-    if (directEditLikely && isInitialTimeout) {
-      const hintedPaths =
-        observedEditPaths.size > 0 ? Array.from(observedEditPaths) : directEditTargetPath ? [directEditTargetPath] : [];
-      const output = directEditTimeoutMessage(hintedPaths, observedToolCallIds.has("edit-file"));
-      const completionTokens = estimateTokens(output);
-      return {
-        model,
-        output,
-        toolCalls: Array.from(observedToolCallIds),
-        modelCalls: modelCallCount,
-        usage: {
-          promptTokens: requestInput.usage.promptTokens,
-          completionTokens,
-          totalTokens: requestInput.usage.promptTokens + completionTokens,
-          promptBudgetTokens: requestInput.usage.promptBudgetTokens,
-          promptTruncated: requestInput.usage.promptTruncated,
-        },
-        budgetWarning: requestInput.usage.promptTruncated
-          ? `context trimmed (${requestInput.usage.includedHistoryMessages}/${requestInput.usage.totalHistoryMessages} history messages)`
-          : undefined,
-      };
-    }
     const output = finalizeAssistantOutput("", input.request.message, observedToolCallIds.size, lastToolFailureReason);
     const completionTokens = estimateTokens(output);
     return {
@@ -1203,19 +1061,19 @@ export async function runAgent(input: {
     text_chars: result.text.trim().length,
   });
 
-  const shouldRequireToolsFallback = shouldForceRequiredToolsRetry(role, directEditLikely);
+  const shouldRequireToolsFallback = false;
   if (shouldRequireToolsFallback && result.toolCalls.length === 0) {
     emitDebug("agent.generate.retry", {
       model,
       reason: "required_tools_no_calls",
       tool_choice: "required",
-      max_steps: directEditLikely ? DIRECT_EDIT_INITIAL_MAX_STEPS : REQUIRED_TOOLS_RETRY_MAX_STEPS,
+      max_steps: REQUIRED_TOOLS_RETRY_MAX_STEPS,
     });
     modelCallCount += 1;
     result = await generateWithTimeout(
       agentPrompt,
       {
-        maxSteps: directEditLikely ? DIRECT_EDIT_INITIAL_MAX_STEPS : REQUIRED_TOOLS_RETRY_MAX_STEPS,
+        maxSteps: REQUIRED_TOOLS_RETRY_MAX_STEPS,
         toolChoice: "required",
         memory: memoryOptions,
         onStepFinish: emitToolProgress,
@@ -1240,13 +1098,13 @@ export async function runAgent(input: {
         model,
         reason: "switch_to_base_model",
         tool_choice: "required",
-        max_steps: directEditLikely ? DIRECT_EDIT_INITIAL_MAX_STEPS : BASE_MODEL_RETRY_MAX_STEPS,
+        max_steps: BASE_MODEL_RETRY_MAX_STEPS,
       });
       modelCallCount += 1;
       result = await generateWithTimeout(
         agentPrompt,
         {
-          maxSteps: directEditLikely ? DIRECT_EDIT_INITIAL_MAX_STEPS : BASE_MODEL_RETRY_MAX_STEPS,
+          maxSteps: BASE_MODEL_RETRY_MAX_STEPS,
           toolChoice: "required",
           memory: memoryOptions,
           onStepFinish: emitToolProgress,
@@ -1262,47 +1120,13 @@ export async function runAgent(input: {
     }
   }
 
-  if (directEditLikely && result.toolCalls.length === 0) {
-    emitDebug("agent.generate.retry", {
-      model,
-      reason: "direct_edit_hard_requirement",
-      tool_choice: "required",
-      max_steps: 4,
-    });
-    try {
-      modelCallCount += 1;
-      result = await generateWithTimeout(
-        `${agentPrompt}\n\nHard requirement: execute at least one tool before responding. Do not return a plan.`,
-        {
-          maxSteps: 4,
-          toolChoice: "required",
-          memory: memoryOptions,
-          onStepFinish: emitToolProgress,
-        },
-        callTimeoutMs,
-      );
-      emitDebug("agent.generate.done", {
-        model,
-        reason: "direct_edit_hard_requirement",
-        tool_calls: result.toolCalls.length,
-        text_chars: result.text.trim().length,
-      });
-    } catch (error) {
-      lastToolFailureReason = error instanceof Error ? error.message : String(error);
-      emitDebug("agent.generate.retry_failed", {
-        model,
-        reason: "direct_edit_hard_requirement",
-        error: lastToolFailureReason,
-      });
-    }
-  }
-
   let normalizedToolCalls = normalizeToolCalls(result.toolCalls);
   let toolCallIds = collectToolCallIds(normalizedToolCalls);
-  if (directEditLikely && !toolCallIds.includes("edit-file")) {
+  let rawOutput = result.text.trim();
+  if (outputClaimsAppliedEdit(rawOutput) && !toolCallIds.includes("edit-file")) {
     emitDebug("agent.generate.retry", {
       model,
-      reason: "direct_edit_missing_edit_file",
+      reason: "claimed_edit_missing_edit_file",
       tool_choice: "required",
       max_steps: 4,
       prior_tools: toolCallIds.join(","),
@@ -1310,7 +1134,7 @@ export async function runAgent(input: {
     try {
       modelCallCount += 1;
       result = await generateWithTimeout(
-        `${agentPrompt}\n\nHard requirement: execute edit-file now. Apply a concrete file change and return a concise result.${directEditTargetPath ? ` Use path: ${directEditTargetPath}.` : ""}`,
+        `${agentPrompt}\n\nVerification: your previous reply claimed edits were applied but no edit-file call was recorded. If applying changes, execute edit-file now. Otherwise, explicitly state that no edit was applied and provide a suggested patch.`,
         {
           maxSteps: 4,
           toolChoice: "required",
@@ -1321,17 +1145,18 @@ export async function runAgent(input: {
       );
       emitDebug("agent.generate.done", {
         model,
-        reason: "direct_edit_missing_edit_file",
+        reason: "claimed_edit_missing_edit_file",
         tool_calls: result.toolCalls.length,
         text_chars: result.text.trim().length,
       });
       normalizedToolCalls = normalizeToolCalls(result.toolCalls);
       toolCallIds = collectToolCallIds(normalizedToolCalls);
+      rawOutput = result.text.trim();
     } catch (error) {
       lastToolFailureReason = error instanceof Error ? error.message : String(error);
       emitDebug("agent.generate.retry_failed", {
         model,
-        reason: "direct_edit_missing_edit_file",
+        reason: "claimed_edit_missing_edit_file",
         error: lastToolFailureReason,
       });
     }
@@ -1346,57 +1171,13 @@ export async function runAgent(input: {
       first_type: typeof first,
     });
   }
-  if (directEditLikely && !directEditExecutionSatisfied(toolCallIds, result.text)) {
-    const explicitReplacement = directEditTargetPath ? parseExplicitReplacement(input.request.message) : null;
-    if (directEditTargetPath && explicitReplacement) {
-      try {
-        await editFileReplace({
-          path: directEditTargetPath,
-          find: explicitReplacement.find,
-          replace: explicitReplacement.replace,
-        });
-        const output = `Applied direct edit fallback in ${directEditTargetPath}.`;
-        const completionTokens = estimateTokens(output);
-        const promptUsage = requestInput.usage;
-        let budgetWarning: string | undefined;
-        if (promptUsage.promptTruncated) {
-          budgetWarning = `context trimmed (${promptUsage.includedHistoryMessages}/${promptUsage.totalHistoryMessages} history messages)`;
-        } else if (promptUsage.promptTokens >= Math.floor(promptUsage.promptBudgetTokens * 0.9)) {
-          budgetWarning = `context near budget (${promptUsage.promptTokens}/${promptUsage.promptBudgetTokens} tokens)`;
-        }
-        const mergedToolCalls = Array.from(new Set([...toolCallIds, "edit-file"]));
-        emitDebug("agent.fallback.direct_edit_explicit_replace_applied", {
-          path: directEditTargetPath,
-          prior_tools: toolCallIds.join(","),
-        });
-        return {
-          model,
-          output,
-          toolCalls: mergedToolCalls,
-          modelCalls: modelCallCount,
-          usage: {
-            promptTokens: promptUsage.promptTokens,
-            completionTokens,
-            totalTokens: promptUsage.promptTokens + completionTokens,
-            promptBudgetTokens: promptUsage.promptBudgetTokens,
-            promptTruncated: promptUsage.promptTruncated,
-          },
-          budgetWarning,
-        };
-      } catch (error) {
-        lastToolFailureReason = error instanceof Error ? error.message : String(error);
-        emitDebug("agent.fallback.direct_edit_explicit_replace_failed", {
-          path: directEditTargetPath,
-          error: lastToolFailureReason,
-        });
-      }
-    }
-    emitDebug("agent.fallback.direct_edit_execution_unsatisfied", {
+  if (outputClaimsAppliedEdit(rawOutput) && !toolCallIds.includes("edit-file")) {
+    emitDebug("agent.fallback.claimed_edit_execution_unsatisfied", {
       model,
       tool_calls: toolCallIds.length,
       failure_reason: lastToolFailureReason ?? null,
     });
-    const fallback = directEditFailureMessage(toolCallIds, lastToolFailureReason);
+    const fallback = claimedEditFailureMessage(toolCallIds, lastToolFailureReason);
     const completionTokens = estimateTokens(fallback);
     return {
       model,
@@ -1451,7 +1232,6 @@ export async function runAgent(input: {
     }
   }
 
-  const rawOutput = result.text.trim();
   const output = isReviewRequest(input.request.message)
     ? finalizeReviewOutput(rawOutput, input.request.message)
     : finalizeAssistantOutput(rawOutput, input.request.message, toolCallIds.length, lastToolFailureReason);
