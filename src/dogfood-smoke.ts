@@ -140,6 +140,10 @@ export function hasToolOutcomeSignal(output: string, verb: "Wrote" | "Edited" | 
   return new RegExp(`\\b${escapedVerb}\\s+`, "i").test(output);
 }
 
+export function hasToolDiffPreviewSignal(output: string): boolean {
+  return /^\s*\d+\s+[+-]\s+.+$/m.test(output) || /^\s*[+-]\s+.+$/m.test(output);
+}
+
 export function parseArgs(args: string[]): SmokeArgs {
   const parsed: SmokeArgs = { requireProviderReady: false };
   for (const token of args) {
@@ -259,6 +263,9 @@ async function runCodingTaskSmoke(
     if (!hasToolOutcomeSignal(output, "Edited")) {
       return { ok: false, detail: "missing edited tool outcome in output" };
     }
+    if (!hasToolDiffPreviewSignal(output)) {
+      return { ok: false, detail: "missing diff preview in output" };
+    }
     const hasOutputChatter = hasUnwantedVerificationChatter(output);
     const content = await readFile(filePath, "utf8");
     if (task.validate(content)) {
@@ -299,6 +306,9 @@ async function runCreateFileCodingTaskSmoke(
     }
     if (!hasToolOutcomeSignal(output, "Wrote")) {
       return { ok: false, detail: "missing wrote tool outcome in output" };
+    }
+    if (!hasToolDiffPreviewSignal(output)) {
+      return { ok: false, detail: "missing diff preview in output" };
     }
     const hasOutputChatter = hasUnwantedVerificationChatter(output);
     const content = await readFile(filePath, "utf8");
@@ -387,6 +397,9 @@ async function runMultiFileCodingTaskSmoke(
     }
     if (!hasToolOutcomeSignal(output, "Edited")) {
       return { ok: false, detail: "missing edited tool outcome in output" };
+    }
+    if (!hasToolDiffPreviewSignal(output)) {
+      return { ok: false, detail: "missing diff preview in output" };
     }
     const hasOutputChatter = hasUnwantedVerificationChatter(output);
     const contents: Record<string, string> = {};

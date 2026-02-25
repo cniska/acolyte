@@ -3,6 +3,7 @@ import {
   assertCheckOutput,
   hasAdvisoryFileWriteSignal,
   hasFallbackEditSignal,
+  hasToolDiffPreviewSignal,
   hasToolOutcomeSignal,
   hasUnwantedVerificationChatter,
   isProviderReadyFromStatusOutput,
@@ -61,6 +62,12 @@ describe("dogfood-smoke helpers", () => {
     expect(hasToolOutcomeSignal("Edited /tmp/a.ts", "Edited")).toBe(true);
     expect(hasToolOutcomeSignal("Deleted /tmp/a.ts", "Deleted")).toBe(true);
     expect(hasToolOutcomeSignal("Read /tmp/a.ts", "Edited")).toBe(false);
+  });
+
+  it("detects diff preview lines in tool output", () => {
+    expect(hasToolDiffPreviewSignal("12 + fn main() {}")).toBe(true);
+    expect(hasToolDiffPreviewSignal("- old line")).toBe(true);
+    expect(hasToolDiffPreviewSignal("Wrote /tmp/sum.rs")).toBe(false);
   });
 
   it("parseArgs defaults to optional provider readiness", () => {
