@@ -69,8 +69,14 @@ export function errorToLogFields(error: unknown, prefix = "error"): LogFields {
       [`${prefix}_message`]: String(error),
     };
   }
-  const cause =
-    error.cause === undefined ? undefined : error.cause instanceof Error ? error.cause.message : String(error.cause);
+  let cause: string | undefined;
+  if (error.cause === undefined) {
+    cause = undefined;
+  } else if (error.cause instanceof Error) {
+    cause = error.cause.message;
+  } else {
+    cause = String(error.cause);
+  }
   return {
     [`${prefix}_name`]: error.name,
     [`${prefix}_message`]: error.message,

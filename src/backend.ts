@@ -12,6 +12,7 @@ export interface BackendOptions {
 export type ChatProgressEvent = {
   seq: number;
   message: string;
+  kind?: "status" | "tool" | "error";
 };
 
 export type ChatProgress = {
@@ -282,7 +283,19 @@ class RemoteBackend implements Backend {
     const memoryContextCount = asNumber(memoryGroup?.entries);
 
     const omStatus = asString(omGroup?.status);
-    const omEnabled = omStatus === "enabled" ? true : omStatus === "disabled" ? false : undefined;
+    let omEnabled: boolean | undefined;
+    if (omStatus === "enabled") {
+      omEnabled = true;
+    } else if (omStatus === "disabled") {
+      omEnabled = false;
+    } else {
+      omEnabled = undefined;
+    }
+    let omEnabledField: string | undefined;
+    if (omEnabled !== undefined) {
+      const omText = omEnabled ? "enabled" : "disabled";
+      omEnabledField = `om=${omText}`;
+    }
     const omScope = asString(omGroup?.scope);
     const omModel = asString(omGroup?.model);
     const omTokens = asRecord(omGroup?.tokens);
@@ -303,7 +316,7 @@ class RemoteBackend implements Backend {
       apiBaseUrl ? `provider_api_url=${apiBaseUrl}` : undefined,
       memoryStorage ? `memory_storage=${memoryStorage}` : undefined,
       memoryContextCount === undefined ? undefined : `memory_context=${memoryContextCount}`,
-      omEnabled === undefined ? undefined : `om=${omEnabled ? "enabled" : "disabled"}`,
+      omEnabledField,
       omScope ? `om_scope=${omScope}` : undefined,
       omModel ? `om_model=${omModel}` : undefined,
       omObservationTokens === undefined ? undefined : `om_obs_tokens=${omObservationTokens}`,
@@ -349,12 +362,16 @@ class RemoteBackend implements Backend {
             }
             const seq = (entry as { seq?: unknown }).seq;
             const message = (entry as { message?: unknown }).message;
+            const kind = (entry as { kind?: unknown }).kind;
             if (typeof seq !== "number" || typeof message !== "string") {
               return null;
             }
+            if (kind === "status" || kind === "tool" || kind === "error") {
+              return { seq, message, kind };
+            }
             return { seq, message };
           })
-          .filter((entry): entry is { seq: number; message: string } => Boolean(entry))
+          .filter((entry): entry is ChatProgressEvent => entry !== null)
       : [];
     return {
       sessionId: json.sessionId,

@@ -727,6 +727,10 @@ export function formatProgressEventOutput(content: string): string {
     if (read) {
       return `${bold(`${read[1]} `)}${path(read[2] ?? "")}`;
     }
+    const deleted = line.match(/^(Deleted)\s+(.+)$/);
+    if (deleted) {
+      return `${bold(`${deleted[1]} `)}${path(deleted[2] ?? "")}`;
+    }
     const numberedDiff = line.match(/^(\d+)(\s+)([+-])\s(.*)$/);
     if (numberedDiff) {
       const marker = `${numberedDiff[3]} `;
@@ -844,18 +848,19 @@ async function handlePrompt(
       });
     }, 150);
 
-    let reply;
-    try {
-      reply = await backend.reply({
-        message: prompt,
-        history: session.messages,
-        model: session.model,
-        sessionId: session.id,
-        resourceId: options?.resourceId,
-      });
-    } finally {
-      clearInterval(progressPoll);
-    }
+    const reply = await (async () => {
+      try {
+        return await backend.reply({
+          message: prompt,
+          history: session.messages,
+          model: session.model,
+          sessionId: session.id,
+          resourceId: options?.resourceId,
+        });
+      } finally {
+        clearInterval(progressPoll);
+      }
+    })();
 
     await pollProgress().catch(() => {});
 
@@ -1261,8 +1266,15 @@ async function configMode(args: string[]): Promise<void> {
   ] as const;
   const valid = new Set<string>(validKeys);
   const validKeysHint = validKeys.join("|");
-  const parseScopeFlag = (token: string | undefined): "user" | "project" | null =>
-    token === "--user" ? "user" : token === "--project" ? "project" : null;
+  const parseScopeFlag = (token: string | undefined): "user" | "project" | null => {
+    if (token === "--user") {
+      return "user";
+    }
+    if (token === "--project") {
+      return "project";
+    }
+    return null;
+  };
 
   if (subcommand === "list") {
     const scope = parseScopeFlag(restArgs[0]);

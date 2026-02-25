@@ -61,11 +61,34 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
     const isPolicy = picker.kind === "policyConfirm";
     const isWrite = picker.kind === "writeConfirm";
     const isClarify = picker.kind === "clarifyAnswer";
-    const firstSelected = isPolicy ? selected?.value === "yes" : isWrite ? selected?.value === "switch" : true;
-    const secondSelected = isPolicy ? selected?.value === "no" : isWrite ? selected?.value === "cancel" : false;
-    const firstLabel = isPolicy ? "yes" : isWrite ? "switch" : "answer";
+    let firstSelected = true;
+    if (isPolicy) {
+      firstSelected = selected?.value === "yes";
+    } else if (isWrite) {
+      firstSelected = selected?.value === "switch";
+    }
+
+    let secondSelected = false;
+    if (isPolicy) {
+      secondSelected = selected?.value === "no";
+    } else if (isWrite) {
+      secondSelected = selected?.value === "cancel";
+    }
+
+    let firstLabel = "answer";
+    if (isPolicy) {
+      firstLabel = "yes";
+    } else if (isWrite) {
+      firstLabel = "switch";
+    }
+
     const secondLabel = isPolicy ? "no" : "cancel";
-    const firstHint = isPolicy ? "accept" : isWrite ? "switch to write mode" : "continue";
+    let firstHint = "continue";
+    if (isPolicy) {
+      firstHint = "accept";
+    } else if (isWrite) {
+      firstHint = "switch to write mode";
+    }
     const secondHint = isPolicy ? "skip" : "stay in read mode";
     const labelWidth = Math.max(firstLabel.length, secondLabel.length);
     return (

@@ -19,7 +19,12 @@ export function formatCliTitle(version: string): string {
 export function banner(model: string, sessionId: string, version: string): void {
   const cwd = process.cwd();
   const home = homedir();
-  const shownCwd = cwd === home ? "~" : cwd.startsWith(`${home}/`) ? `~${cwd.slice(home.length)}` : cwd;
+  let shownCwd = cwd;
+  if (cwd === home) {
+    shownCwd = "~";
+  } else if (cwd.startsWith(`${home}/`)) {
+    shownCwd = `~${cwd.slice(home.length)}`;
+  }
   stdout.write(`${formatCliTitle(version)}\n`);
   stdout.write(`${model} ${color.dim("· session")} ${sessionId.slice(0, 12)}\n`);
   stdout.write(`${color.dim(shownCwd)}\n`);

@@ -168,7 +168,7 @@ export function createInstructions(baseInstructions: string): string {
   const executionContract = [
     "Execution contract:",
     "Tool Rules (use exact tool ids):",
-    "- Use `read-file` and `search-repo` to inspect code, `edit-file` for targeted replacements, `write-file` for new files/full rewrites, and `run-command` for terminal commands.",
+    "- Use `read-file` and `search-repo` to inspect code, `edit-file` for targeted replacements, `write-file` for new files/full rewrites, `delete-file` for deletions, and `run-command` for terminal commands.",
     "- Use `git-status`/`git-diff` for change inspection and `web-search`/`web-fetch` only when external lookup is needed.",
     "- Use tools for actions and text for communication.",
     "- Read relevant files before editing; avoid speculative code changes.",
@@ -305,6 +305,8 @@ export function canonicalToolId(value: string): string {
     edit_file: "edit-file",
     writeFile: "write-file",
     write_file: "write-file",
+    deleteFile: "delete-file",
+    delete_file: "delete-file",
     gitDiff: "git-diff",
     git_diff: "git-diff",
     gitStatus: "git-status",
@@ -553,6 +555,7 @@ export function formatToolProgressMessage(toolName: string, args: Record<string,
     case "read-file":
     case "edit-file":
     case "write-file":
+    case "delete-file":
     case "git-diff": {
       const paths = collectPathDetails(args);
       const formatted = formatPathList(paths);
@@ -627,86 +630,104 @@ function formatToolResultProgressMessages(toolName: string, resultText: string):
   if (!resultText.trim()) {
     return [];
   }
-  if (toolName === "run-command") {
-    const lines: string[] = [];
-    const emit = (label: string, text: string): void => {
-      lines.push(`${label.padEnd(4, " ")}| ${compactProgressDetail(text, 96)}`);
-    };
-    const codeMatch = resultText.match(/(?:^|\n)exit_code=(\d+)/);
-    if (codeMatch?.[1]) {
-      emit("code", codeMatch[1]);
+  switch (toolName) {
+    case "run-command": {
+      const lines: string[] = [];
+      const emit = (label: string, text: string): void => {
+        lines.push(`${label.padEnd(4, " ")}| ${compactProgressDetail(text, 96)}`);
+      };
+      const codeMatch = resultText.match(/(?:^|\n)exit_code=(\d+)/);
+      if (codeMatch?.[1]) {
+        emit("code", codeMatch[1]);
+      }
+      const outMatch = resultText.match(/(?:^|\n)stdout:\n([\s\S]*?)(?:\n\nstderr:\n|$)/);
+      const errMatch = resultText.match(/(?:^|\n)stderr:\n([\s\S]*?)$/);
+      const previewLimit = 8;
+      const pushBlock = (label: string, block: string | undefined): void => {
+        const content = block?.trim();
+        if (!content) {
+          return;
+        }
+        const blockLines = content
+          .split("\n")
+          .map((line) => line.trimEnd())
+          .filter((line) => line.length > 0);
+        const shown = blockLines.slice(0, previewLimit);
+        for (const line of shown) {
+          emit(label, line);
+        }
+        if (blockLines.length > shown.length) {
+          emit(label, `… +${blockLines.length - shown.length} more lines`);
+        }
+      };
+      pushBlock("out", outMatch?.[1]);
+      pushBlock("err", errMatch?.[1]);
+      return lines;
     }
-    const outMatch = resultText.match(/(?:^|\n)stdout:\n([\s\S]*?)(?:\n\nstderr:\n|$)/);
-    const errMatch = resultText.match(/(?:^|\n)stderr:\n([\s\S]*?)$/);
-    const previewLimit = 8;
-    const pushBlock = (label: string, block: string | undefined): void => {
-      const content = block?.trim();
-      if (!content) {
-        return;
-      }
-      const blockLines = content
-        .split("\n")
-        .map((line) => line.trimEnd())
-        .filter((line) => line.length > 0);
-      const shown = blockLines.slice(0, previewLimit);
-      for (const line of shown) {
-        emit(label, line);
-      }
-      if (blockLines.length > shown.length) {
-        emit(label, `… +${blockLines.length - shown.length} more lines`);
-      }
-    };
-    pushBlock("out", outMatch?.[1]);
-    pushBlock("err", errMatch?.[1]);
-    return lines;
-  }
-  if (toolName !== "edit-file" && toolName !== "write-file") {
-    return [];
+    case "edit-file":
+    case "write-file":
+    case "delete-file":
+      break;
+    default:
+      return [];
   }
   const files = parseUnifiedDiffFiles(resultText, toolName === "write-file" ? 80 : 4);
   if (files.length === 0) {
     return [];
   }
   const lines: string[] = [];
-  const verb = toolName === "write-file" ? "Wrote" : formatToolLabel(toolName);
+  let verb = formatToolLabel(toolName);
+  switch (toolName) {
+    case "write-file":
+      verb = "Wrote";
+      break;
+    case "edit-file":
+      verb = "Edited";
+      break;
+    case "delete-file":
+      verb = "Deleted";
+      break;
+    default:
+      break;
+  }
   for (const file of files) {
-    const writeBlock: string[] = [];
-    if (toolName === "write-file") {
-      writeBlock.push(`${verb} ${compactProgressDetail(file.path, 64)}`);
-      writeBlock.push("diff");
+    const diffBlock: string[] = [];
+    if (toolName === "write-file" || toolName === "edit-file" || toolName === "delete-file") {
+      diffBlock.push(`${verb} ${compactProgressDetail(file.path, 64)}`);
+      diffBlock.push("");
     } else {
       lines.push(`${verb} ${compactProgressDetail(file.path, 48)} (+${file.added} -${file.removed})`);
     }
     for (const preview of file.preview) {
       if (preview.kind === "del") {
-        if (toolName === "write-file") {
-          writeBlock.push(`${preview.oldLine ?? "?"} - ${preview.text}`);
+        if (toolName === "write-file" || toolName === "edit-file" || toolName === "delete-file") {
+          diffBlock.push(`${preview.oldLine ?? "?"} - ${preview.text}`);
         } else {
           lines.push(`${preview.oldLine ?? "?"} - ${compactProgressDetail(preview.text, 96)}`);
         }
       } else if (preview.kind === "add") {
-        if (toolName === "write-file") {
-          writeBlock.push(`${preview.newLine ?? "?"} + ${preview.text}`);
+        if (toolName === "write-file" || toolName === "edit-file" || toolName === "delete-file") {
+          diffBlock.push(`${preview.newLine ?? "?"} + ${preview.text}`);
         } else {
           lines.push(`${preview.newLine ?? "?"} + ${compactProgressDetail(preview.text, 96)}`);
         }
       } else {
-        if (toolName === "write-file") {
-          writeBlock.push(`${preview.newLine ?? preview.oldLine ?? "?"}   ${preview.text}`);
+        if (toolName === "write-file" || toolName === "edit-file" || toolName === "delete-file") {
+          diffBlock.push(`${preview.newLine ?? preview.oldLine ?? "?"}   ${preview.text}`);
         } else {
           lines.push(`${preview.newLine ?? preview.oldLine ?? "?"}   ${compactProgressDetail(preview.text, 96)}`);
         }
       }
     }
     if (file.previewOverflow > 0) {
-      if (toolName === "write-file") {
-        writeBlock.push(`… +${file.previewOverflow} more changed lines`);
+      if (toolName === "write-file" || toolName === "edit-file" || toolName === "delete-file") {
+        diffBlock.push(`… +${file.previewOverflow} more changed lines`);
       } else {
         lines.push(`… +${file.previewOverflow} more changed lines`);
       }
     }
-    if (toolName === "write-file" && writeBlock.length > 0) {
-      lines.push(writeBlock.join("\n"));
+    if ((toolName === "write-file" || toolName === "edit-file" || toolName === "delete-file") && diffBlock.length > 0) {
+      lines.push(diffBlock.join("\n"));
     }
   }
   return lines;
@@ -839,9 +860,7 @@ function collectToolProgressFromToolCalls(
       entry.payload && typeof entry.payload === "object" ? (entry.payload as Record<string, unknown>) : undefined;
     const name = [entry.toolName, entry.name, entry.id, payload?.toolName, payload?.name, payload?.id].find(
       (value) => typeof value === "string",
-    ) as
-      | string
-      | undefined;
+    ) as string | undefined;
     if (!name) {
       continue;
     }
@@ -860,12 +879,20 @@ function formatWritePreviewFromArgs(args: Record<string, unknown>): string[] {
   }
   const sourceLines = content.split("\n");
   const lines = sourceLines.slice(0, 80).map((line, index) => `${index + 1} + ${line}`);
-  const out = [`Wrote ${compactProgressDetail(path, 64)}`, "diff", ...lines];
+  const out = [`Wrote ${compactProgressDetail(path, 64)}`, "", ...lines];
   const totalLines = sourceLines.length;
   if (totalLines > lines.length) {
     out.push(`… +${totalLines - lines.length} more lines`);
   }
   return [out.join("\n")];
+}
+
+function formatDeletePreviewFromArgs(args: Record<string, unknown>): string[] {
+  const path = typeof args.path === "string" ? args.path.trim() : "";
+  if (!path) {
+    return [];
+  }
+  return [`Deleted ${compactProgressDetail(path, 64)}`];
 }
 
 export function finalizeReviewOutput(output: string, message = ""): string {
@@ -921,6 +948,8 @@ export async function runAgent(input: {
 }): Promise<ChatResponse> {
   const INITIAL_MAX_STEPS = 50;
   const REQUIRED_TOOLS_RETRY_MAX_STEPS = 10;
+  const TIMEOUT_RECOVERY_MAX_STEPS = 8;
+  const TIMEOUT_RECOVERY_TIMEOUT_MS = 45_000;
   const BASE_MODEL_RETRY_MAX_STEPS = 5;
   const EMPTY_TEXT_RETRY_MAX_STEPS = 4;
   const CODER_TIMEOUT_MS = 90_000;
@@ -1015,7 +1044,11 @@ export async function runAgent(input: {
     for (const tool of tools) {
       const canonicalToolName = canonicalToolId(tool.name);
       observedToolCallIds.add(canonicalToolName);
-      if (canonicalToolName !== "write-file" && canonicalToolName !== "read-file") {
+      if (
+        canonicalToolName !== "write-file" &&
+        canonicalToolName !== "delete-file" &&
+        canonicalToolName !== "read-file"
+      ) {
         const startMessage = formatToolProgressMessage(canonicalToolName, tool.args);
         const startDedupeKey = JSON.stringify({ kind: "call", name: tool.name, message: startMessage });
         if (!seenToolNames.has(startDedupeKey)) {
@@ -1075,29 +1108,72 @@ export async function runAgent(input: {
     );
   } catch (error) {
     lastToolFailureReason = error instanceof Error ? error.message : String(error);
+    emitProgress(`Tool failed: ${lastToolFailureReason}`);
     emitDebug("agent.generate.retry_failed", {
       model,
       reason: "initial",
       error: lastToolFailureReason,
     });
-    const output = finalizeAssistantOutput("", input.request.message, observedToolCallIds.size, lastToolFailureReason);
-    const completionTokens = estimateTokens(output);
-    return {
-      model,
-      output,
-      toolCalls: Array.from(observedToolCallIds),
-      modelCalls: modelCallCount,
-      usage: {
-        promptTokens: requestInput.usage.promptTokens,
-        completionTokens,
-        totalTokens: requestInput.usage.promptTokens + completionTokens,
-        promptBudgetTokens: requestInput.usage.promptBudgetTokens,
-        promptTruncated: requestInput.usage.promptTruncated,
-      },
-      budgetWarning: requestInput.usage.promptTruncated
-        ? `context trimmed (${requestInput.usage.includedHistoryMessages}/${requestInput.usage.totalHistoryMessages} history messages)`
-        : undefined,
-    };
+    if (/timed out/i.test(lastToolFailureReason)) {
+      emitDebug("agent.generate.retry", {
+        model,
+        reason: "initial_timeout_recovery",
+        tool_choice: "required",
+        max_steps: TIMEOUT_RECOVERY_MAX_STEPS,
+      });
+      try {
+        modelCallCount += 1;
+        result = await generateWithTimeout(
+          agentPrompt,
+          {
+            maxSteps: TIMEOUT_RECOVERY_MAX_STEPS,
+            toolChoice: "required",
+            memory: memoryOptions,
+            onStepFinish: emitToolProgress,
+          },
+          TIMEOUT_RECOVERY_TIMEOUT_MS,
+        );
+        emitDebug("agent.generate.done", {
+          model,
+          reason: "initial_timeout_recovery",
+          tool_calls: result.toolCalls.length,
+          text_chars: result.text.trim().length,
+        });
+      } catch (retryError) {
+        lastToolFailureReason = retryError instanceof Error ? retryError.message : String(retryError);
+        emitProgress(`Tool failed: ${lastToolFailureReason}`);
+        emitDebug("agent.generate.retry_failed", {
+          model,
+          reason: "initial_timeout_recovery",
+          error: lastToolFailureReason,
+        });
+      }
+    }
+    if (!result) {
+      const output = finalizeAssistantOutput(
+        "",
+        input.request.message,
+        observedToolCallIds.size,
+        lastToolFailureReason,
+      );
+      const completionTokens = estimateTokens(output);
+      return {
+        model,
+        output,
+        toolCalls: Array.from(observedToolCallIds),
+        modelCalls: modelCallCount,
+        usage: {
+          promptTokens: requestInput.usage.promptTokens,
+          completionTokens,
+          totalTokens: requestInput.usage.promptTokens + completionTokens,
+          promptBudgetTokens: requestInput.usage.promptBudgetTokens,
+          promptTruncated: requestInput.usage.promptTruncated,
+        },
+        budgetWarning: requestInput.usage.promptTruncated
+          ? `context trimmed (${requestInput.usage.includedHistoryMessages}/${requestInput.usage.totalHistoryMessages} history messages)`
+          : undefined,
+      };
+    }
   }
   if (!result) {
     const output = finalizeAssistantOutput("", input.request.message, observedToolCallIds.size, lastToolFailureReason);
@@ -1155,6 +1231,7 @@ export async function runAgent(input: {
     } catch (error) {
       const retryError = error instanceof Error ? error.message : String(error);
       lastToolFailureReason = retryError;
+      emitProgress(`Tool failed: ${retryError}`);
       emitDebug("agent.generate.retry_failed", {
         model,
         reason: "required_tools_no_calls",
@@ -1206,7 +1283,11 @@ export async function runAgent(input: {
     for (const tool of fallbackProgress) {
       const canonicalToolName = canonicalToolId(tool.name);
       observedToolCallIds.add(canonicalToolName);
-      if (canonicalToolName !== "write-file" && canonicalToolName !== "read-file") {
+      if (
+        canonicalToolName !== "write-file" &&
+        canonicalToolName !== "delete-file" &&
+        canonicalToolName !== "read-file"
+      ) {
         const startMessage = formatToolProgressMessage(canonicalToolName, tool.args);
         const startDedupeKey = JSON.stringify({ kind: "call", name: tool.name, message: startMessage });
         if (!seenToolNames.has(startDedupeKey)) {
@@ -1216,7 +1297,13 @@ export async function runAgent(input: {
       }
       const resultMessages = formatToolResultProgressMessages(canonicalToolName, tool.result);
       const fallbackMessages =
-        resultMessages.length === 0 && canonicalToolName === "write-file" ? formatWritePreviewFromArgs(tool.args) : [];
+        resultMessages.length === 0
+          ? canonicalToolName === "write-file"
+            ? formatWritePreviewFromArgs(tool.args)
+            : canonicalToolName === "delete-file"
+              ? formatDeletePreviewFromArgs(tool.args)
+              : []
+          : [];
       for (const resultMessage of [...resultMessages, ...fallbackMessages]) {
         const resultDedupeKey = JSON.stringify({ kind: "result", name: tool.name, message: resultMessage });
         if (seenToolNames.has(resultDedupeKey)) {
@@ -1266,6 +1353,7 @@ export async function runAgent(input: {
       });
     } catch (error) {
       lastToolFailureReason = error instanceof Error ? error.message : String(error);
+      emitProgress(`Tool failed: ${lastToolFailureReason}`);
       emitDebug("agent.generate.retry_failed", {
         model,
         reason: "empty_text_response",

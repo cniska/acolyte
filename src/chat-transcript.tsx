@@ -103,6 +103,17 @@ function renderToolProgressContent(content: string): React.ReactNode {
         </>
       );
     }
+    const deleted = line.match(/^(Deleted)\s+(.+)$/);
+    if (deleted) {
+      return (
+        <>
+          <Text bold>{`${deleted[1]} `}</Text>
+          <Text underline color="#A8B1BC">
+            {deleted[2]}
+          </Text>
+        </>
+      );
+    }
     return null;
   };
   return (
@@ -190,12 +201,16 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
             const sessionsListHeader =
               row.role === "assistant" && row.style === "sessionsList" ? parseSessionsHeader(row.content) : null;
             const dimMarker = Boolean(row.dim) || Boolean(sessionStatus);
+            let marker = "  ";
+            if (row.role === "user") {
+              marker = "❯ ";
+            } else if (row.role === "assistant") {
+              marker = "• ";
+            }
             return (
               <Box>
                 <Box width={2}>
-                  <Text dimColor={dimMarker}>
-                    {row.role === "user" ? "❯ " : row.role === "assistant" ? "• " : "  "}
-                  </Text>
+                  <Text dimColor={dimMarker}>{marker}</Text>
                 </Box>
                 <Box width={row.style === "toolProgress" ? toolContentWidth : contentWidth}>
                   {sessionStatus ? (

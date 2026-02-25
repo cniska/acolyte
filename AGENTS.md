@@ -33,6 +33,7 @@
 - Follow YAGNI strictly: do not add new commands/features/options unless they are needed for active workflows right now.
 - Apply Rule of Three for abstractions: wait for repeated concrete use (roughly three real cases) before introducing shared abstractions.
 - Avoid unnecessary indirection and abstractions.
+- Prefer explicit `if`/`switch` branching over nested ternaries for readability in production code.
 - Prefer prompt/tool-contract improvements over adding host-side task-classification logic.
 - Keep host-side autonomy logic minimal; enforce deterministic invariants (file/tool outcomes) instead of brittle output phrasing.
 - Prefer root-cause fixes over workaround-only patches.

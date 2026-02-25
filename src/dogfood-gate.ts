@@ -376,6 +376,17 @@ function firstSignalLine(stderr: string, stdout: string): string | null {
   return null;
 }
 
+function formatCheckDetail(result: { ok: boolean; code: number }, signal: string | null): string {
+  if (result.ok) {
+    return "green";
+  }
+  let detail = `exit ${result.code}`;
+  if (signal) {
+    detail += ` (${signal})`;
+  }
+  return detail;
+}
+
 function parseDeliveryProgress(raw: string): {
   delivery: number;
   target: number;
@@ -508,7 +519,7 @@ async function main(): Promise<void> {
       checks.push({
         name: "verify",
         ok: verify.ok,
-        detail: verify.ok ? "green" : `exit ${verify.code}${verifyError ? ` (${verifyError})` : ""}`,
+        detail: formatCheckDetail(verify, verifyError),
       });
     }
 
@@ -518,7 +529,7 @@ async function main(): Promise<void> {
       checks.push({
         name: "smoke",
         ok: smoke.ok,
-        detail: smoke.ok ? "green" : `exit ${smoke.code}${smokeError ? ` (${smokeError})` : ""}`,
+        detail: formatCheckDetail(smoke, smokeError),
       });
     }
 
@@ -528,7 +539,7 @@ async function main(): Promise<void> {
       checks.push({
         name: "recovery",
         ok: recovery.ok,
-        detail: recovery.ok ? "green" : `exit ${recovery.code}${recoveryError ? ` (${recoveryError})` : ""}`,
+        detail: formatCheckDetail(recovery, recoveryError),
       });
     }
 
@@ -538,9 +549,7 @@ async function main(): Promise<void> {
       checks.push({
         name: "one-shot-diagnostics",
         ok: diagnostics.ok,
-        detail: diagnostics.ok
-          ? "green"
-          : `exit ${diagnostics.code}${diagnosticsError ? ` (${diagnosticsError})` : ""}`,
+        detail: formatCheckDetail(diagnostics, diagnosticsError),
       });
     }
     if (!args.skipSessionDiagnostics) {
