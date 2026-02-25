@@ -4,6 +4,7 @@ import {
   buildSubagentContext,
   canonicalToolId,
   collectToolProgressFromStep,
+  createInstructions,
   finalizeAssistantOutput,
   finalizeReviewOutput,
   formatEditPreviewFromArgs,
@@ -338,6 +339,19 @@ describe("buildSubagentContext", () => {
     const context = buildSubagentContext("coder", req);
     expect(context).not.toContain("return exactly 3 concise numbered next steps");
     expect(context).not.toContain("no lettered options");
+  });
+});
+
+describe("createInstructions", () => {
+  test("enforces tool-first execution guidance", () => {
+    const out = createInstructions("Base instructions.");
+    expect(out).toContain("Default to tool execution.");
+    expect(out).toContain("For requests that create a new file, call `write-file` directly");
+  });
+
+  test("forbids save-as advisory responses", () => {
+    const out = createInstructions("Base instructions.");
+    expect(out).toContain("Forbidden: replying with 'save this as ...'");
   });
 });
 
