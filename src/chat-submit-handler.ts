@@ -592,15 +592,18 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       });
       const assistantMessage = turn.assistantMessage;
       const clarifyingQuestions = extractClarifyingQuestions(assistantMessage.content);
-      // Remove active (post-tool) streaming row — committed rows stay in place.
-      if (streamingAssistantRowId) {
-        input.setRows((current) => current.filter((row) => row.id !== streamingAssistantRowId));
-        streamingAssistantRowId = null;
-        streamingAssistantContent = "";
-      }
+      // Capture the streaming row id before clearing so we can remove it atomically
+      // with the final rows to avoid a visual jump.
+      const pendingStreamRowId = streamingAssistantRowId;
+      streamingAssistantRowId = null;
+      streamingAssistantContent = "";
+
       if (clarifyingQuestions.length > 0) {
         const nonAssistantRows = turn.rows.filter((row) => row.role !== "assistant");
-        input.setRows((current) => [...current, ...nonAssistantRows]);
+        input.setRows((current) => {
+          const base = pendingStreamRowId ? current.filter((row) => row.id !== pendingStreamRowId) : current;
+          return [...base, ...nonAssistantRows];
+        });
         input.openClarifyPanel(clarifyingQuestions, text);
       } else {
         input.currentSession.messages.push(assistantMessage);
@@ -618,7 +621,10 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
               })
               .filter((r): r is ChatRow => r !== null)
           : turn.rows;
-        input.setRows((current) => [...current, ...finalRows]);
+        input.setRows((current) => {
+          const base = pendingStreamRowId ? current.filter((row) => row.id !== pendingStreamRowId) : current;
+          return [...base, ...finalRows];
+        });
       }
       // File tree may have changed during tool execution; refresh @path autocomplete candidates.
       invalidateRepoPathCandidates();

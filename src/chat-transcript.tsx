@@ -127,6 +127,12 @@ function renderToolProgressContent(content: string): React.ReactNode {
                 <Text>{parsed.spacing}</Text>
                 <Text>{parsed.text}</Text>
               </>
+            ) : parsed.kind === "commandOutput" ? (
+              parsed.stream === "err" ? (
+                <Text dimColor color="red">{parsed.text}</Text>
+              ) : (
+                <Text dimColor>{parsed.text}</Text>
+              )
             ) : parsed.kind === "plainDiff" ? (
               <Text color={parsed.marker === "+" ? "green" : "red"}>{parsed.text}</Text>
             ) : (

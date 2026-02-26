@@ -748,6 +748,8 @@ export function formatProgressEventOutput(
         const spacing = parsed.spacing.length > 0 ? parsed.spacing : "   ";
         return `${dim(paddedLineNumber)}${spacing}${parsed.text}`;
       }
+      case "commandOutput":
+        return parsed.stream === "err" ? dim(red(parsed.text)) : dim(parsed.text);
       case "plainDiff":
         return parsed.marker === "+" ? green(parsed.text) : red(parsed.text);
       default:

@@ -3,6 +3,7 @@ export type ToolProgressParsedLine =
   | { kind: "numberedDiff"; lineNumber: string; spacing: string; marker: "+" | "-"; text: string }
   | { kind: "numberedContext"; lineNumber: string; spacing: string; text: string }
   | { kind: "plainDiff"; marker: "+" | "-"; text: string }
+  | { kind: "commandOutput"; stream: "out" | "err"; text: string }
   | { kind: "text"; text: string };
 
 export function parseToolProgressLine(line: string): ToolProgressParsedLine {
@@ -31,6 +32,14 @@ export function parseToolProgressLine(line: string): ToolProgressParsedLine {
       lineNumber: numberedContext[1] ?? "",
       spacing: numberedContext[2] ?? "   ",
       text: numberedContext[3] ?? "",
+    };
+  }
+  const commandOutput = line.match(/^(out|err) \| (.*)$/);
+  if (commandOutput) {
+    return {
+      kind: "commandOutput",
+      stream: commandOutput[1] as "out" | "err",
+      text: commandOutput[2] ?? "",
     };
   }
   if (line.startsWith("+ ")) {
