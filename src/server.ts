@@ -418,7 +418,7 @@ const server = Bun.serve({
                     typeof progress === "string" ? undefined : progress.toolCallId?.trim() || undefined;
                   const toolName = typeof progress === "string" ? undefined : progress.toolName?.trim() || undefined;
                   const phase = typeof progress === "string" ? undefined : progress.phase;
-                  const signature = `${kind}|${toolCallId ?? ""}|${toolName ?? ""}|${phase ?? ""}|${message}`;
+                  const signature = `${kind}|${toolCallId ?? ""}|${toolName ?? ""}|${phase ?? ""}|${message.toLowerCase()}`;
                   if (kind !== "assistant" && signature === lastEventSignature) {
                     return;
                   }

@@ -21,6 +21,7 @@ describe("chat progress tracker", () => {
     expect(received).toEqual([
       { message: "Edited sum.rs", toolCallId: "call_1", phase: "tool_start" },
       { message: "1 + fn main() {}", toolCallId: "call_1", phase: "tool_chunk" },
+      { message: "Edited sum.rs", toolCallId: "call_1", phase: "tool_end" },
     ]);
   });
 
@@ -57,7 +58,24 @@ describe("chat progress tracker", () => {
     expect(deltas).toEqual(["I will ", "edit sum.rs\n"]);
   });
 
-  test("suppresses duplicate tool events by default", () => {
+  test("suppresses exact duplicate tool events by default", () => {
+    const toolMessages: string[] = [];
+    const tracker = createProgressTracker({
+      onStatus: () => {},
+      onTool: (entry) => {
+        toolMessages.push(entry.message);
+      },
+    });
+
+    tracker.apply([
+      { seq: 1, message: "Edited sum.rs", kind: "tool", toolCallId: "call_1", phase: "tool_start" },
+      { seq: 2, message: "Edited sum.rs", kind: "tool", toolCallId: "call_1", phase: "tool_start" },
+    ]);
+
+    expect(toolMessages).toEqual(["Edited sum.rs"]);
+  });
+
+  test("distinguishes tool_start and tool_end with same message", () => {
     const toolMessages: string[] = [];
     const tracker = createProgressTracker({
       onStatus: () => {},
@@ -71,6 +89,37 @@ describe("chat progress tracker", () => {
       { seq: 2, message: "Edited sum.rs", kind: "tool", toolCallId: "call_1", phase: "tool_end" },
     ]);
 
-    expect(toolMessages).toEqual(["Edited sum.rs"]);
+    expect(toolMessages).toEqual(["Edited sum.rs", "Edited sum.rs"]);
+  });
+
+  test("does not deduplicate events from different tools with same message", () => {
+    const toolMessages: string[] = [];
+    const tracker = createProgressTracker({
+      onStatus: () => {},
+      onTool: (entry) => {
+        toolMessages.push(entry.message);
+      },
+    });
+
+    tracker.apply([
+      {
+        seq: 1,
+        message: "Read src/cli.ts",
+        kind: "tool",
+        toolCallId: "call_1",
+        toolName: "read-file",
+        phase: "tool_start",
+      },
+      {
+        seq: 2,
+        message: "Read src/cli.ts",
+        kind: "tool",
+        toolCallId: "call_2",
+        toolName: "read-file",
+        phase: "tool_start",
+      },
+    ]);
+
+    expect(toolMessages).toEqual(["Read src/cli.ts", "Read src/cli.ts"]);
   });
 });

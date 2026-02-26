@@ -65,9 +65,13 @@ export function createProgressTracker(options: {
         options.onStatus(message);
         continue;
       }
-      const dedupeKey = event.toolCallId
-        ? `${event.toolCallId}|${message.toLowerCase()}`
-        : `${event.phase ?? ""}|${message.toLowerCase()}`;
+      const dedupeKey = [
+        event.kind ?? "",
+        event.toolCallId ?? "",
+        event.toolName ?? "",
+        event.phase ?? "",
+        message.toLowerCase(),
+      ].join("|");
       if (dedupe && seenToolMessages.has(dedupeKey)) {
         continue;
       }
