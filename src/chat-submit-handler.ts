@@ -481,6 +481,9 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         clearTimeout(streamFlushTimer);
         streamFlushTimer = null;
       }
+      if (streamingAssistantContent.trim().length === 0) {
+        return;
+      }
       input.setRows((current) => {
         if (!streamingAssistantRowId) {
           streamingAssistantRowId = `row_${crypto.randomUUID()}`;
@@ -514,8 +517,14 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         // Flush any pending streaming content before showing tool header.
         flushStreamingContent();
         // Freeze pre-tool streaming text in place so it stays above tool rows.
+        // If the content is empty, remove the row instead of keeping a blank line.
         if (streamingAssistantRowId) {
-          committedStreamingText += streamingAssistantContent;
+          if (streamingAssistantContent.trim().length > 0) {
+            committedStreamingText += streamingAssistantContent;
+          } else {
+            const removeId = streamingAssistantRowId;
+            input.setRows((current) => current.filter((row) => row.id !== removeId));
+          }
           streamingAssistantRowId = null;
           streamingAssistantContent = "";
         }
