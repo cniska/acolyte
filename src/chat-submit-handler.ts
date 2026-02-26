@@ -17,7 +17,7 @@ import { createId } from "./short-id";
 import type { Message, Session, SessionStore } from "./types";
 
 type CreateSubmitHandlerInput = {
-  backend: Client;
+  client: Client;
   store: SessionStore;
   currentSession: Session;
   setCurrentSession: (next: Session) => void;
@@ -63,7 +63,7 @@ function isAbortError(error: unknown): boolean {
 
 function formatSubmitError(error: unknown): string {
   if (!(error instanceof Error)) {
-    return "Request failed. Retry and check backend logs if it keeps failing.";
+    return "Request failed. Retry and check server logs if it keeps failing.";
   }
   const message = error.message.trim();
   const lower = message.toLowerCase();
@@ -86,7 +86,7 @@ function formatSubmitError(error: unknown): string {
   if (lower.includes("remote server error")) {
     return message;
   }
-  return message || "Request failed. Retry and check backend logs if it keeps failing.";
+  return message || "Request failed. Retry and check server logs if it keeps failing.";
 }
 
 function isLikelyWritePrompt(text: string): boolean {
@@ -120,7 +120,7 @@ function cleanMemoryCandidate(value: string): string {
     .trim();
 }
 
-async function distillMemoryNote(backend: Client, content: string, model: string, sessionId: string): Promise<string> {
+async function distillMemoryNote(client: Client, content: string, model: string, sessionId: string): Promise<string> {
   const prompt = [
     "Rewrite this into one concise memory note for future collaboration.",
     "Rules: one sentence, concrete preference, no preamble, no quotes, no markdown.",
@@ -128,7 +128,7 @@ async function distillMemoryNote(backend: Client, content: string, model: string
     `Input: ${content}`,
   ].join("\n");
   try {
-    const response = await backend.reply({
+    const response = await client.reply({
       message: prompt,
       history: [],
       model,
@@ -312,7 +312,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       input.setProgressText("Working…");
       try {
         const distilled = await distillMemoryNote(
-          input.backend,
+          input.client,
           naturalRememberDirective.content,
           appConfig.model,
           input.currentSession.id,
@@ -341,7 +341,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       const commandResult = await dispatchSlashCommand({
         text,
         resolvedText: dispatchResolvedText,
-        backend: input.backend,
+        client: input.client,
         store: input.store,
         currentSession: input.currentSession,
         setCurrentSession: input.setCurrentSession,
@@ -355,7 +355,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         openSkillsPanel: input.openSkillsPanel,
         openResumePanel: input.openResumePanel,
         openPermissionsPanel: input.openPermissionsPanel,
-        setServerPermissionMode: input.backend.setPermissionMode,
+        setServerPermissionMode: input.client.setPermissionMode,
         tokenUsage: input.tokenUsage,
       });
       if (commandResult.stop) {
@@ -363,7 +363,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       }
       if (!internalWriteResume && isLikelyWritePrompt(text)) {
         try {
-          const status = await input.backend.status();
+          const status = await input.client.status();
           if (statusPermissionMode(status) === "read") {
             input.setRows((current) => [
               ...current,
@@ -547,7 +547,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
 
     try {
       const turn = await runAssistantTurn({
-        backend: input.backend,
+        client: input.client,
         userText,
         history: [...fileContextMessages, ...input.currentSession.messages],
         model: appConfig.model,

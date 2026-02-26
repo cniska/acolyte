@@ -115,7 +115,7 @@ describe("chat submit handler guards", () => {
     ];
     let replyCount = 0;
     const { submit, rows } = createSubmitHandlerHarness({
-      backend: createClient({
+      client: createClient({
         status: async () => ({}),
         replyStream: async (_input, options) => {
           const turn = replyCount++;
@@ -157,7 +157,7 @@ describe("chat submit handler guards", () => {
     const session = createSession({ id: "sess_test" });
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
     const submit = createSubmitHandler({
-      backend: createClient({
+      client: createClient({
         status: async () => ({ permissions: "read" }),
         reply: async () => ({ model: "gpt-5-mini", output: "ok" }),
       }),
@@ -199,7 +199,7 @@ describe("chat submit handler guards", () => {
     const session = createSession({ id: "sess_test" });
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
     const submit = createSubmitHandler({
-      backend: createClient({
+      client: createClient({
         status: async () => ({ permissions: "read" }),
         reply: async () => ({ model: "gpt-5-mini", output: "ok" }),
       }),
@@ -243,7 +243,7 @@ describe("chat submit handler guards", () => {
     const session = createSession({ id: "sess_test" });
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
     const submit = createSubmitHandler({
-      backend: createClient({
+      client: createClient({
         status: async () => ({ permissions: "read" }),
         reply: async () => {
           replyCalls += 1;
@@ -296,7 +296,7 @@ describe("chat submit handler guards", () => {
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
 
     const submit = createSubmitHandler({
-      backend: createClient({
+      client: createClient({
         reply: async (_input, options) =>
           await new Promise((_, reject) => {
             const abort = (): void => {
@@ -366,7 +366,7 @@ describe("chat submit handler guards", () => {
     const session = createSession({ id: "sess_test" });
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
     const submit = createSubmitHandler({
-      backend: createClient({
+      client: createClient({
         status: async () => ({}),
         reply: async () => ({
           model: "gpt-5-mini",
@@ -423,7 +423,7 @@ describe("chat submit handler guards", () => {
     ).toBe(false);
   });
 
-  test("stops before backend call when all @references are unresolved", async () => {
+  test("stops before server call when all @references are unresolved", async () => {
     const rows: ChatRow[] = [];
     let replyCalls = 0;
 
@@ -431,7 +431,7 @@ describe("chat submit handler guards", () => {
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
 
     const submit = createSubmitHandler({
-      backend: createClient({
+      client: createClient({
         reply: async () => {
           replyCalls += 1;
           return { model: "gpt-5-mini", output: "ok" };
@@ -485,7 +485,7 @@ describe("chat submit handler guards", () => {
       const store = createStore({ activeSessionId: session.id, sessions: [session] });
 
       const submit = createSubmitHandler({
-        backend: createClient({
+        client: createClient({
           reply: async () => {
             replyCalls += 1;
             return { model: "gpt-5-mini", output: "ok" };
@@ -539,7 +539,7 @@ describe("chat submit handler guards", () => {
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
 
     const submit = createSubmitHandler({
-      backend: createClient({
+      client: createClient({
         replyStream: async (_input, options) => {
           options.onEvent({ type: "status", message: "Working…" });
           options.onEvent({
@@ -598,7 +598,7 @@ describe("chat submit handler guards", () => {
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
 
     const submit = createSubmitHandler({
-      backend: createClient({
+      client: createClient({
         reply: async () => ({
           model: "gpt-5-mini",
           output: "done",
@@ -646,7 +646,7 @@ describe("chat submit handler guards", () => {
     const session = createSession({ id: "sess_test" });
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
     const submit = createSubmitHandler({
-      backend: createClient({
+      client: createClient({
         status: async () => ({}),
         reply: async () => {
           throw new Error("insufficient_quota: You exceeded your current quota");
@@ -691,7 +691,7 @@ describe("chat submit handler guards", () => {
     const session = createSession({ id: "sess_test" });
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
     const submit = createSubmitHandler({
-      backend: createClient({
+      client: createClient({
         status: async () => ({}),
         reply: async () => {
           throw new Error("Remote server reply timed out after 120000ms");
@@ -738,7 +738,7 @@ describe("chat submit handler guards", () => {
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
     let calls = 0;
     const submit = createSubmitHandler({
-      backend: createClient({
+      client: createClient({
         status: async () => ({}),
         reply: async () => {
           calls += 1;
@@ -796,7 +796,7 @@ describe("chat submit handler guards", () => {
     const setCurrentSessionCalls: string[] = [];
     let calls = 0;
     const submit = createSubmitHandler({
-      backend: createClient({
+      client: createClient({
         status: async () => ({}),
         reply: async () => {
           calls += 1;
@@ -862,7 +862,7 @@ describe("chat submit handler guards", () => {
     const setCurrentSessionCalls: string[] = [];
     let calls = 0;
     const submit = createSubmitHandler({
-      backend: createClient({
+      client: createClient({
         status: async () => ({}),
         reply: async () => {
           calls += 1;
@@ -916,7 +916,7 @@ describe("chat submit handler guards", () => {
 
   test("creates a single tool row per streamed tool-call event", async () => {
     const { submit, rows } = createSubmitHandlerHarness({
-      backend: createClient({
+      client: createClient({
         status: async () => ({}),
         events: [{ type: "tool-call", toolCallId: "call_1", toolName: "run-command", args: { command: "echo hi" } }],
         reply: async () => ({
@@ -937,7 +937,7 @@ describe("chat submit handler guards", () => {
 
   test("renders streamed tool rows before assistant summary row", async () => {
     const { submit, rows } = createSubmitHandlerHarness({
-      backend: createClient({
+      client: createClient({
         status: async () => ({}),
         events: [
           { type: "tool-call", toolCallId: "call_1", toolName: "edit-file", args: { path: "sum.rs" } },
@@ -963,7 +963,7 @@ describe("chat submit handler guards", () => {
 
   test("creates a single tool row for header-only tool-call event", async () => {
     const { submit, rows } = createSubmitHandlerHarness({
-      backend: createClient({
+      client: createClient({
         status: async () => ({}),
         events: [{ type: "tool-call", toolCallId: "call_1", toolName: "edit-file", args: { path: "sum.rs" } }],
         reply: async () => ({
@@ -984,7 +984,7 @@ describe("chat submit handler guards", () => {
 
   test("merges tool-output into tool-call row in real time", async () => {
     const { submit, rows } = createSubmitHandlerHarness({
-      backend: createClient({
+      client: createClient({
         status: async () => ({}),
         events: [
           { type: "tool-call", toolCallId: "call_1", toolName: "edit-file", args: { path: "sum.rs" } },
@@ -1008,7 +1008,7 @@ describe("chat submit handler guards", () => {
 
   test("ignores duplicate tool-output lines for the same tool row", async () => {
     const { submit, rows } = createSubmitHandlerHarness({
-      backend: createClient({
+      client: createClient({
         status: async () => ({}),
         events: [
           { type: "tool-call", toolCallId: "call_1", toolName: "edit-file", args: { path: "sum.rs" } },
@@ -1048,7 +1048,7 @@ describe("chat submit handler guards", () => {
     ];
     let replyCount = 0;
     const { submit, rows } = createSubmitHandlerHarness({
-      backend: createClient({
+      client: createClient({
         status: async () => ({}),
         replyStream: async (_input, options) => {
           const turn = replyCount++;
@@ -1074,7 +1074,7 @@ describe("chat submit handler guards", () => {
 
   test("keeps same-header tool rows separate when toolCallId differs in one turn", async () => {
     const { submit, rows } = createSubmitHandlerHarness({
-      backend: createClient({
+      client: createClient({
         status: async () => ({}),
         events: [
           { type: "tool-call", toolCallId: "call_1", toolName: "edit-file", args: { path: "sum.rs" } },
@@ -1105,7 +1105,7 @@ describe("chat submit handler guards", () => {
     const tokenUsageSnapshots: Array<typeof session.tokenUsage> = [];
 
     const submit = createSubmitHandler({
-      backend: createClient({
+      client: createClient({
         status: async () => ({}),
         reply: async () => ({
           model: "gpt-5-mini",

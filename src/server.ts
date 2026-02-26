@@ -404,4 +404,4 @@ const server = Bun.serve({
   },
 });
 
-log.info("Acolyte backend listening", { url: `http://localhost:${server.port}` });
+log.info("Acolyte server listening", { url: `http://localhost:${server.port}` });

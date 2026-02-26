@@ -25,7 +25,7 @@ const checks: SmokeCheck[] = [
   {
     name: "status",
     cmd: ["bun", "run", "src/cli.ts", "status"],
-    expect: [/provider:/i, /(?:model|backend|service):/i],
+    expect: [/provider:/i, /(?:model|server|service):/i],
   },
   {
     name: 'run "hello"',
@@ -212,7 +212,7 @@ async function setServerPermissionMode(mode: "read" | "write"): Promise<void> {
   });
   if (!response.ok) {
     const body = await response.text();
-    throw new Error(`Failed to set backend permission mode to ${mode}: ${body || `status ${response.status}`}`);
+    throw new Error(`Failed to set server permission mode to ${mode}: ${body || `status ${response.status}`}`);
   }
 }
 
@@ -240,7 +240,7 @@ async function runReadModeBlockSmoke(smokeEnv: Record<string, string>): Promise<
     try {
       await setServerPermissionMode("write");
     } catch {
-      // best-effort restore; subsequent checks will fail if backend remains read-only
+      // best-effort restore; subsequent checks will fail if server remains read-only
     }
   }
 }
@@ -457,9 +457,9 @@ async function main(): Promise<void> {
         console.error(`✗ ${check.name}: command failed (exit ${result.exitCode})`);
         if (check.name === "status" && /unable to connect/i.test(output)) {
           console.error(
-            "Hint: start backend first (`bun run serve:env`) and ensure apiUrl is set to http://localhost:6767.",
+            "Hint: start server first (`bun run serve:env`) and ensure apiUrl is set to http://localhost:6767.",
           );
-          console.error("Or run `bun run dogfood:smoke` to auto-start a local backend for the smoke check.");
+          console.error("Or run `bun run dogfood:smoke` to auto-start a local server for the smoke check.");
         }
         console.error(output.trim());
         process.exit(1);

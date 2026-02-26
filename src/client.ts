@@ -405,7 +405,7 @@ function parseChatResponse(payload: unknown, fallbackModel: string): ChatRespons
 export function createClient(options?: ClientOptions): Client {
   const apiUrl = options?.apiUrl ?? appConfig.server.apiUrl;
   if (!apiUrl) {
-    throw new Error("No API URL configured. Start the backend with: bun run dev");
+    throw new Error("No API URL configured. Start the server with: bun run dev");
   }
   const apiKey = options?.apiKey ?? appConfig.server.apiKey;
   const replyTimeoutMs = options?.replyTimeoutMs;

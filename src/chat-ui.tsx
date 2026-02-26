@@ -34,7 +34,7 @@ type HeaderLine = {
 const THINKING_PULSE_FRAMES = 16;
 
 interface ChatAppProps {
-  backend: Client;
+  client: Client;
   session: Session;
   store: SessionStore;
   persist: () => Promise<void>;
@@ -47,7 +47,7 @@ export function initialTranscriptRows(session: Session): ChatRow[] {
 }
 
 function ChatApp(props: ChatAppProps) {
-  const { backend, session, store, persist, version, useMemory } = props;
+  const { client, session, store, persist, version, useMemory } = props;
   const { exit } = useApp();
   const [currentSession, setCurrentSession] = useState<Session>(session);
   const [rows, setRows] = useState<ChatRow[]>(() => initialTranscriptRows(session));
@@ -124,7 +124,7 @@ function ChatApp(props: ChatAppProps) {
     buildClarificationPayload: buildInternalClarificationTurn,
     buildWriteResumePayload: buildInternalWriteResumeTurn,
     setServerPermissionMode: async (mode) => {
-      await backend.setPermissionMode(mode);
+      await client.setPermissionMode(mode);
     },
     persistPermissionMode,
     persist,
@@ -134,7 +134,7 @@ function ChatApp(props: ChatAppProps) {
   });
 
   const handleSubmit = createSubmitHandler({
-    backend,
+    client,
     store,
     currentSession,
     setCurrentSession,

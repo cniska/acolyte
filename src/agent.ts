@@ -378,12 +378,12 @@ export function finalizeAssistantOutput(
     return trimmed;
   }
   if (toolCallCount > 0) {
-    return "No final response after tool execution. Retry, or check backend logs if this repeats.";
+    return "No final response after tool execution. Retry, or check server logs if this repeats.";
   }
   if (lastToolFailureReason) {
     return `No output from model. Last tool error: ${lastToolFailureReason}`;
   }
-  return "No output from model. Check /status and backend logs, then retry or switch model/provider.";
+  return "No output from model. Check /status and server logs, then retry or switch model/provider.";
 }
 
 export async function runAgent(input: {

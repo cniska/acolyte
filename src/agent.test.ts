@@ -130,7 +130,7 @@ describe("finalizeReviewOutput", () => {
 describe("finalizeAssistantOutput", () => {
   test("returns fallback when output is empty", () => {
     expect(finalizeAssistantOutput("   ")).toBe(
-      "No output from model. Check /status and backend logs, then retry or switch model/provider.",
+      "No output from model. Check /status and server logs, then retry or switch model/provider.",
     );
   });
 
@@ -146,7 +146,7 @@ describe("finalizeAssistantOutput", () => {
 
   test("returns tool-executed fallback when output is empty after tool calls", () => {
     expect(finalizeAssistantOutput("   ", "check status", 2)).toBe(
-      "No final response after tool execution. Retry, or check backend logs if this repeats.",
+      "No final response after tool execution. Retry, or check server logs if this repeats.",
     );
   });
 

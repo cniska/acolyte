@@ -86,7 +86,7 @@ export type SubmitHandlerHarness = {
 
 export function createSubmitHandlerHarness(overrides?: {
   isThinking?: boolean;
-  backend?: Client;
+  client?: Client;
 }): SubmitHandlerHarness {
   const rows: ChatRow[] = [];
   const calls = {
@@ -97,7 +97,7 @@ export function createSubmitHandlerHarness(overrides?: {
   const session = createSession({ id: "sess_test" });
   const store = createStore({ activeSessionId: session.id, sessions: [session] });
   const submit = createSubmitHandler({
-    backend: overrides?.backend ?? createClient({ status: async () => ({}) }),
+    client: overrides?.client ?? createClient({ status: async () => ({}) }),
     store,
     currentSession: session,
     setCurrentSession: () => {},
@@ -155,7 +155,7 @@ export function createCommandContext(
   const ctx: CommandContext = {
     text,
     resolvedText: text,
-    backend: createClient(),
+    client: createClient(),
     store: createStore(),
     currentSession: createSession(),
     setCurrentSession: (next) => {

@@ -138,7 +138,7 @@ export function buildUsageCommandRows(): Array<{ command: string; description: s
     { command: "resume [id-prefix]", description: "resume previous session" },
     { command: "run [--file path] <prompt>", description: "run a single prompt" },
     { command: "history", description: "show recent sessions" },
-    { command: "status", description: "show backend status" },
+    { command: "status", description: "show server status" },
     { command: "memory", description: "manage memory notes" },
     { command: "config", description: "manage local CLI config" },
   ];
@@ -763,7 +763,7 @@ export function runResourceId(sessionId: string): string {
 
 export function formatPromptError(error: unknown): string {
   if (!(error instanceof Error)) {
-    return "Request failed. Retry and check backend logs if it keeps failing.";
+    return "Request failed. Retry and check server logs if it keeps failing.";
   }
   const message = error.message.trim();
   const lower = message.toLowerCase();
@@ -786,13 +786,13 @@ export function formatPromptError(error: unknown): string {
   if (lower.includes("remote server error")) {
     return message;
   }
-  return message || "Request failed. Retry and check backend logs if it keeps failing.";
+  return message || "Request failed. Retry and check server logs if it keeps failing.";
 }
 
 async function handlePrompt(
   prompt: string,
   session: Session,
-  backend = createClient(),
+  client = createClient(),
   options?: { resourceId?: string },
 ): Promise<boolean> {
   const userMsg = newMessage("user", prompt);
@@ -885,7 +885,7 @@ async function handlePrompt(
         hasPrintedProgress = true;
       },
     });
-    const reply = await backend.replyStream(
+    const reply = await client.replyStream(
       {
         message: prompt,
         history: session.messages,
@@ -1076,7 +1076,7 @@ async function chatModeWithOptions(options: { resumeLatest: boolean; resumePrefi
     process.exitCode = 1;
     return;
   }
-  const backend = createClient({
+  const client = createClient({
     apiUrl: appConfig.server.apiUrl,
   });
   const persist = async (): Promise<void> => {
@@ -1088,7 +1088,7 @@ async function chatModeWithOptions(options: { resumeLatest: boolean; resumePrefi
       clearScreen();
     }
     await runInkChat({
-      backend,
+      client,
       session,
       store,
       persist,
@@ -1127,7 +1127,7 @@ async function runMode(args: string[]): Promise<void> {
   const resolvedConfig = readResolvedConfigSync();
   const session = createSession(defaultModel);
   session.messages.push(newMessage("system", RUN_MODE_SYSTEM_PROMPT));
-  const backend = createClient({
+  const client = createClient({
     apiUrl: appConfig.server.apiUrl,
     replyTimeoutMs: resolvedConfig.replyTimeoutMs,
   });
@@ -1144,7 +1144,7 @@ async function runMode(args: string[]): Promise<void> {
     }
   }
 
-  const success = await handlePrompt(prompt, session, backend, { resourceId: runResourceId(session.id) });
+  const success = await handlePrompt(prompt, session, client, { resourceId: runResourceId(session.id) });
   if (!success) {
     process.exitCode = 1;
     return;
@@ -1198,11 +1198,11 @@ async function historyMode(): Promise<void> {
 }
 
 async function statusMode(): Promise<void> {
-  const backend = createClient({
+  const client = createClient({
     apiUrl: appConfig.server.apiUrl,
   });
   try {
-    const status = await backend.status();
+    const status = await client.status();
     printDim(formatStatusOutput(status));
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

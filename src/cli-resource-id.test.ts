@@ -39,7 +39,7 @@ afterEach(async () => {
 });
 
 describe("cli run resource id", () => {
-  test("run forwards isolated resource id to backend", async () => {
+  test("run forwards isolated resource id to server", async () => {
     const home = await mkdtemp(join(tmpdir(), "acolyte-resource-test-"));
     const project = await mkdtemp(join(tmpdir(), "acolyte-resource-project-"));
     tmpHomes.push(home);

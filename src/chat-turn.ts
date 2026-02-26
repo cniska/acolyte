@@ -83,7 +83,7 @@ export function applyUserTurn(params: ApplyUserTurnParams): { userMessage: Messa
 }
 
 type RunAssistantTurnParams = {
-  backend: Client;
+  client: Client;
   userText: string;
   history: Message[];
   model: string;
@@ -101,7 +101,7 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
   rows: ChatRow[];
 }> {
   const reply = params.onEvent
-    ? await params.backend.replyStream(
+    ? await params.client.replyStream(
         {
           message: params.userText,
           history: params.history,
@@ -111,7 +111,7 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
         },
         { signal: params.signal, onEvent: params.onEvent },
       )
-    : await params.backend.reply(
+    : await params.client.reply(
         {
           message: params.userText,
           history: params.history,

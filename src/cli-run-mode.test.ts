@@ -25,7 +25,7 @@ afterEach(async () => {
 });
 
 describe("cli run mode", () => {
-  test("run command exits non-zero when no backend is configured", async () => {
+  test("run command exits non-zero when no server is configured", async () => {
     const home = await mkdtemp(join(tmpdir(), "acolyte-run-test-"));
     const project = await mkdtemp(join(tmpdir(), "acolyte-run-project-"));
     tmpHomes.push(home);
@@ -49,7 +49,7 @@ describe("cli run mode", () => {
     expect(stderr).toContain("No API URL configured");
   });
 
-  test("run command exits non-zero when remote backend is unreachable", async () => {
+  test("run command exits non-zero when remote server is unreachable", async () => {
     const home = await mkdtemp(join(tmpdir(), "acolyte-run-fail-test-"));
     const project = await mkdtemp(join(tmpdir(), "acolyte-run-fail-project-"));
     tmpHomes.push(home);

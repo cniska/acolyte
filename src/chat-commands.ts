@@ -116,7 +116,7 @@ type CommandResult = {
 export type CommandContext = {
   text: string;
   resolvedText: string;
-  backend: Client;
+  client: Client;
   store: SessionStore;
   currentSession: Session;
   setCurrentSession: (next: Session) => void;
@@ -243,7 +243,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
   if (resolvedText === "/status") {
     pushUserCommandRow();
     try {
-      const status = await ctx.backend.status();
+      const status = await ctx.client.status();
       ctx.setRows((current) => [
         ...current,
         createRow("system", formatStatusOutput(status), { style: "statusOutput" }),
