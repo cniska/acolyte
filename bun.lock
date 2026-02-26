@@ -6,6 +6,9 @@
       "name": "acolyte",
       "dependencies": {
         "@ai-sdk/openai": "^3.0.30",
+        "@ast-grep/lang-go": "^0.0.5",
+        "@ast-grep/lang-python": "^0.0.5",
+        "@ast-grep/lang-rust": "^0.0.6",
         "@ast-grep/napi": "^0.41.0",
         "@mastra/core": "^1.5.0",
         "@mastra/memory": "^1.4.0",
@@ -45,6 +48,12 @@
 
     "@alcalzone/ansi-tokenize": ["@alcalzone/ansi-tokenize@0.2.5", "", { "dependencies": { "ansi-styles": "^6.2.1", "is-fullwidth-code-point": "^5.0.0" } }, "sha512-3NX/MpTdroi0aKz134A6RC2Gb2iXVECN4QaAXnvCIxxIm3C3AVB1mkUe8NaaiyvOpDfsrqWhYtj+Q6a62RrTsw=="],
 
+    "@ast-grep/lang-go": ["@ast-grep/lang-go@0.0.5", "", { "dependencies": { "@ast-grep/setup-lang": "0.0.6" }, "peerDependencies": { "tree-sitter-cli": "0.25.8" }, "optionalPeers": ["tree-sitter-cli"] }, "sha512-rPrTHtT2wDmyAi8tXe3xb3T94GrdXUwynt97l2AIULviQjEjzrewscUO3n0WkwQBuiKU78CDx+27PsmsykUlPQ=="],
+
+    "@ast-grep/lang-python": ["@ast-grep/lang-python@0.0.5", "", { "dependencies": { "@ast-grep/setup-lang": "0.0.6" }, "peerDependencies": { "tree-sitter-cli": "0.25.8" }, "optionalPeers": ["tree-sitter-cli"] }, "sha512-gbNwaCPvuyZFEG4y6zwylLRLsh1DWiOeLeZ/aWOlYRR0nxoXimuMPank6psT88rijnD6esBLWhFq6kkFhndzjQ=="],
+
+    "@ast-grep/lang-rust": ["@ast-grep/lang-rust@0.0.6", "", { "dependencies": { "@ast-grep/setup-lang": "0.0.6" }, "peerDependencies": { "tree-sitter-cli": "0.25.8" }, "optionalPeers": ["tree-sitter-cli"] }, "sha512-TZs8QD8SONj2mcoUVTANZF8t4uNlaKw9GE86reeHnczV3uWS44Z6pEAmwE9bJQnl430R6BTnerIitBlncAVqiw=="],
+
     "@ast-grep/napi": ["@ast-grep/napi@0.41.0", "", { "optionalDependencies": { "@ast-grep/napi-darwin-arm64": "0.41.0", "@ast-grep/napi-darwin-x64": "0.41.0", "@ast-grep/napi-linux-arm64-gnu": "0.41.0", "@ast-grep/napi-linux-arm64-musl": "0.41.0", "@ast-grep/napi-linux-x64-gnu": "0.41.0", "@ast-grep/napi-linux-x64-musl": "0.41.0", "@ast-grep/napi-win32-arm64-msvc": "0.41.0", "@ast-grep/napi-win32-ia32-msvc": "0.41.0", "@ast-grep/napi-win32-x64-msvc": "0.41.0" } }, "sha512-3kK6hCxyinsxZIM6p/gWoN33v0GgxBXU6uDbM/J2j3t7f9lXRvA1J+8HeiemCtXNA75H1EK5Oo7/E28HOhYHDg=="],
 
     "@ast-grep/napi-darwin-arm64": ["@ast-grep/napi-darwin-arm64@0.41.0", "", { "os": "darwin", "cpu": "arm64" }, "sha512-SoAzCj1o9/mdtOdj6pZI1qpZkfncd+2DsWAa2ZmoomKc7CFKCzPniJtThXeOq+IJKcufS8zFGbk57ScMpDgd5A=="],
@@ -64,6 +73,8 @@
     "@ast-grep/napi-win32-ia32-msvc": ["@ast-grep/napi-win32-ia32-msvc@0.41.0", "", { "os": "win32", "cpu": "ia32" }, "sha512-ITtAD7tI3/vImz13wJUUns3UDIsrE3d2/JhhLN3CE1YqNItuNoW53nWqR3YcC/KsfSJnDddD6R0gMVkmlXapAg=="],
 
     "@ast-grep/napi-win32-x64-msvc": ["@ast-grep/napi-win32-x64-msvc@0.41.0", "", { "os": "win32", "cpu": "x64" }, "sha512-DSqDh4KJ5+8x+gfAtWdXdeRpGfTjgm00kTW/pqUxhMdW6DVShMSDrFR+lj3dL9FmzMrwVGb+mcN8dWNqGA85Cw=="],
+
+    "@ast-grep/setup-lang": ["@ast-grep/setup-lang@0.0.6", "", {}, "sha512-aSYZNF5nGQMxnwiA3Lcc8zi0AtpGlug47ADgqCgP/2n7p922FbnW7vo1rbW4kKjW72B/3mDdN7uvYidv8JnPnw=="],
 
     "@biomejs/biome": ["@biomejs/biome@2.4.3", "", { "optionalDependencies": { "@biomejs/cli-darwin-arm64": "2.4.3", "@biomejs/cli-darwin-x64": "2.4.3", "@biomejs/cli-linux-arm64": "2.4.3", "@biomejs/cli-linux-arm64-musl": "2.4.3", "@biomejs/cli-linux-x64": "2.4.3", "@biomejs/cli-linux-x64-musl": "2.4.3", "@biomejs/cli-win32-arm64": "2.4.3", "@biomejs/cli-win32-x64": "2.4.3" }, "bin": { "biome": "bin/biome" } }, "sha512-cBrjf6PNF6yfL8+kcNl85AjiK2YHNsbU0EvDOwiZjBPbMbQ5QcgVGFpjD0O52p8nec5O8NYw7PKw3xUR7fPAkQ=="],
 

@@ -172,7 +172,7 @@ export function createInstructions(baseInstructions: string): string {
     "Tool Selection:",
     "- Prefer dedicated tools over shell equivalents: `find-files` not `ls`/`find`, `search-files` not `grep`, `read-file` not `cat`, `edit-file`/`edit-code` not `sed`/`awk`.",
     "- Use `find-files` to locate files by name; use `search-files` to search file contents.",
-    "- Use `edit-file` for targeted single-site text edits; use `edit-code` for multi-site structural changes, renames across call sites, or signature rewrites in code files (TS/TSX/JS/JSX/HTML/CSS).",
+    "- Use `edit-file` for targeted single-site text edits; use `edit-code` for multi-site structural changes, renames across call sites, or signature rewrites in code files (TS/TSX/JS/JSX/HTML/CSS/Python/Rust/Go).",
     "- Use `git-status`/`git-diff` for change inspection; use `web-search`/`web-fetch` only when external lookup is needed.",
     "- Default to tool execution. If a task can be completed with available tools, do it with tools instead of providing instructions/code-only replies.",
     "",

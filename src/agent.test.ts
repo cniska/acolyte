@@ -333,6 +333,7 @@ describe("createInstructions", () => {
     expect(out).toContain(
       "Use `edit-file` for targeted single-site text edits; use `edit-code` for multi-site structural changes",
     );
+    expect(out).toContain("Python/Rust/Go");
     expect(out).toContain("Use `find-files` to locate files by name; use `search-files` to search file contents");
     expect(out).toContain("Prefer dedicated tools over shell equivalents");
   });

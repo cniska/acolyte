@@ -263,4 +263,49 @@ describe("editCode", () => {
       }),
     ).rejects.toThrow("AST editing is disabled in read mode");
   });
+
+  test("replaces pattern matches in Python files", async () => {
+    const filePath = `/tmp/acolyte-ast-py-${crypto.randomUUID()}.py`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, 'print("hello")\nprint("world")\n', "utf8");
+    const result = await editCode({
+      path: filePath,
+      pattern: "print($ARG)",
+      replacement: "log($ARG)",
+    });
+    expect(result).toContain("matches=2");
+    const content = await readFile(filePath, "utf8");
+    expect(content).toContain('log("hello")');
+    expect(content).not.toContain("print");
+  });
+
+  test("replaces pattern matches in Rust files", async () => {
+    const filePath = `/tmp/acolyte-ast-rs-${crypto.randomUUID()}.rs`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, 'println!("hello");\nprintln!("world");\n', "utf8");
+    const result = await editCode({
+      path: filePath,
+      pattern: "println!($ARGS)",
+      replacement: "eprintln!($ARGS)",
+    });
+    expect(result).toContain("matches=2");
+    const content = await readFile(filePath, "utf8");
+    expect(content).toContain("eprintln!");
+    expect(content).not.toMatch(/(?<!e)println!/);
+  });
+
+  test("replaces pattern matches in Go files", async () => {
+    const filePath = `/tmp/acolyte-ast-go-${crypto.randomUUID()}.go`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, 'package main\n\nfunc main() {\n\tprintln("hello")\n\tprintln("world")\n}\n', "utf8");
+    const result = await editCode({
+      path: filePath,
+      pattern: "println($ARG)",
+      replacement: "print($ARG)",
+    });
+    expect(result).toContain("matches=2");
+    const content = await readFile(filePath, "utf8");
+    expect(content).toContain("print(");
+    expect(content).not.toContain("println(");
+  });
 });

@@ -674,6 +674,35 @@ export async function writeTextFile(input: { path: string; content: string; over
   ].join("\n");
 }
 
+let dynamicLangsRegistered = false;
+
+async function ensureDynamicLanguages(napi: typeof import("@ast-grep/napi")): Promise<void> {
+  if (dynamicLangsRegistered) return;
+  const langs: Record<string, unknown> = {};
+  try {
+    const { default: python } = await import("@ast-grep/lang-python");
+    langs.python = python;
+  } catch {
+    /* optional */
+  }
+  try {
+    const { default: rust } = await import("@ast-grep/lang-rust");
+    langs.rust = rust;
+  } catch {
+    /* optional */
+  }
+  try {
+    const { default: go } = await import("@ast-grep/lang-go");
+    langs.go = go;
+  } catch {
+    /* optional */
+  }
+  if (Object.keys(langs).length > 0) {
+    napi.registerDynamicLanguage(langs as any);
+  }
+  dynamicLangsRegistered = true;
+}
+
 function languageFromPath(filePath: string): string {
   const dot = filePath.lastIndexOf(".");
   if (dot < 0) {
@@ -687,6 +716,10 @@ function languageFromPath(filePath: string): string {
     ".jsx": "JavaScript",
     ".html": "Html",
     ".css": "Css",
+    ".py": "python",
+    ".pyi": "python",
+    ".rs": "rust",
+    ".go": "go",
   };
   return map[ext] ?? "TypeScript";
 }
@@ -716,13 +749,11 @@ export async function editCode(input: {
     throw new Error("@ast-grep/napi is not installed — run `bun add @ast-grep/napi`");
   }
 
+  await ensureDynamicLanguages(napi);
+
   const langName = languageFromPath(absPath);
   const langEnum = napi.Lang[langName as keyof typeof napi.Lang];
-  if (langEnum == null) {
-    throw new Error(`Unsupported language for AST edit: ${langName}`);
-  }
-
-  const tree = napi.parse(langEnum, raw);
+  const tree = napi.parse(langEnum ?? langName, raw);
   const matches = tree.root().findAll({ rule: { pattern: input.pattern } });
   if (matches.length === 0) {
     throw new Error(`No AST matches found for pattern: ${input.pattern}`);

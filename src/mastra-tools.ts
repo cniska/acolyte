@@ -384,7 +384,7 @@ function createAstEditTool(onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "edit-code",
     description:
-      "Edit code files using AST pattern matching with `$VARIABLE` metavariables. Best for renaming across call sites, signature changes, and wrapping expressions. Supports TS/TSX/JS/JSX/HTML/CSS. Example: pattern=`console.log($ARG)` replacement=`logger.debug($ARG)` replaces all matching call sites while preserving arguments. For single-site or non-code files use `edit-file` instead.",
+      "Edit code files using AST pattern matching with `$VARIABLE` metavariables. Best for renaming across call sites, signature changes, and wrapping expressions. Supports TS/TSX/JS/JSX/HTML/CSS/Python/Rust/Go. Example: pattern=`console.log($ARG)` replacement=`logger.debug($ARG)` replaces all matching call sites while preserving arguments. For single-site or non-code files use `edit-file` instead.",
     inputSchema: z.object({
       path: z.string().min(1),
       pattern: z.string().min(1),
