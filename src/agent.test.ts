@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
-  buildAgentInput,
   canonicalToolId,
+  createAgentInput,
   createInstructions,
   createModeInstructions,
   createSubagentContext,
@@ -29,10 +29,10 @@ function createRequest(content: string): ChatRequest {
   };
 }
 
-describe("buildAgentInput", () => {
+describe("createAgentInput", () => {
   test("keeps large attached-file system context", () => {
     const attachment = `Attached file: AGENTS.md\n${"A".repeat(6000)}`;
-    const input = buildAgentInput(createRequest(attachment));
+    const { input } = createAgentInput(createRequest(attachment));
     expect(input).toContain("Attached file: AGENTS.md");
     expect(input).toContain("A".repeat(5000));
     expect(input.endsWith("…")).toBe(false);
@@ -40,7 +40,7 @@ describe("buildAgentInput", () => {
 
   test("still truncates non-attachment long messages", () => {
     const longSystem = `General note: ${"B".repeat(4000)}`;
-    const input = buildAgentInput(createRequest(longSystem));
+    const { input } = createAgentInput(createRequest(longSystem));
     expect(input).toContain("General note:");
     expect(input).toContain("…");
   });
@@ -65,7 +65,7 @@ describe("buildAgentInput", () => {
       ],
     };
 
-    const input = buildAgentInput(req);
+    const { input } = createAgentInput(req);
     expect(input).toContain("SYSTEM: Active skill (dogfood)");
     expect(input).toContain("USER: use repo conventions");
   });
@@ -82,7 +82,7 @@ describe("buildAgentInput", () => {
       })),
     };
 
-    const input = buildAgentInput(req);
+    const { input } = createAgentInput(req);
     expect(input.length).toBeLessThanOrEqual(35_000);
     expect(input).toContain("USER: review");
   });

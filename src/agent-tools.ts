@@ -692,7 +692,7 @@ export async function editFileReplace(input: {
   }
   if (count > 1) {
     throw new Error(
-      `Find text matched ${count} locations. Provide a longer, more unique snippet so it matches exactly one location.`,
+      `Find text matched ${count} locations. Provide a longer, more unique snippet to match exactly one location, or use edit-code for multi-location code changes.`,
     );
   }
 

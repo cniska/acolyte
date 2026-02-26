@@ -67,11 +67,7 @@ function collectLinesWithinBudget(
   return { lines, consumedTokens: consumed };
 }
 
-export function buildAgentInput(req: ChatRequest): string {
-  return buildAgentInputWithUsage(req).input;
-}
-
-function buildAgentInputWithUsage(req: ChatRequest): {
+export function createAgentInput(req: ChatRequest): {
   input: string;
   usage: {
     promptTokens: number;
@@ -612,7 +608,7 @@ export async function runAgent(input: {
         });
     });
 
-  const requestInput = buildAgentInputWithUsage(input.request);
+  const requestInput = createAgentInput(input.request);
   const subagentContext = createSubagentContext(input.request);
   const agentInput = `${subagentContext}\n\n${requestInput.input}`;
   const resourceId = input.request.resourceId?.trim() || appConfig.memory.resourceId;
