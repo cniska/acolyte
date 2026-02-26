@@ -4,6 +4,7 @@
 
 - Prefer repository scripts and task runners over ad-hoc commands.
 - Use documented commands when available.
+- Do not depend on external CLI tools (e.g. `rg`, `fd`, `fzf`). Use Bun-native APIs and Node built-ins so the project runs with zero host dependencies beyond Bun itself.
 
 ## Workflow
 
