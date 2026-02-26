@@ -645,6 +645,14 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       input.setTokenUsage(() => [...input.currentSession.tokenUsage]);
       await input.persist();
     } catch (error) {
+      // Persist any partial assistant content so context isn't lost on timeout/error.
+      const partialContent = (committedStreamingText + streamingAssistantContent).trim();
+      if (partialContent.length > 0 && !isAbortError(error)) {
+        const partialMessage = input.createMessage("assistant", partialContent);
+        input.currentSession.messages.push(partialMessage);
+        input.currentSession.updatedAt = input.nowIso();
+        await input.persist().catch(() => {});
+      }
       const row: ChatRow = {
         id: `row_${crypto.randomUUID()}`,
         role: "system",
