@@ -3,7 +3,7 @@ import { type AgentMode, agentModes, classifyMode, modeForTool } from "./agent-m
 import type { ChatRequest, ChatResponse } from "./api";
 import { appConfig } from "./app-config";
 import type { StreamEvent } from "./client";
-import { toolsForAgent } from "./mastra-tools";
+import { toolMeta, toolsForAgent } from "./mastra-tools";
 import { isProviderAvailable, type ModelProviderName, providerFromModel } from "./provider-config";
 import { formatToolLabel } from "./tool-labels";
 
@@ -166,8 +166,20 @@ const BASE_INSTRUCTIONS = [
   "- Keep output concise and outcome-focused. End with a brief summary.",
 ].join("\n");
 
+export function createModeInstructions(mode: AgentMode): string {
+  const { tools, preamble } = agentModes[mode];
+  const lines: string[] = preamble.map((p) => `- ${p}`);
+  for (const toolId of tools) {
+    const meta = toolMeta[toolId];
+    if (meta?.instruction) {
+      lines.push(`- ${meta.instruction}`);
+    }
+  }
+  return lines.join("\n");
+}
+
 export function createInstructions(baseInstructions: string, mode: AgentMode): string {
-  const modeInstructions = agentModes[mode].instructions.join("\n");
+  const modeInstructions = createModeInstructions(mode);
   return `${baseInstructions}\n\n${BASE_INSTRUCTIONS}\n\n${modeInstructions}`;
 }
 
@@ -237,40 +249,16 @@ function suggestNarrowerReviewScope(path: string): string {
   return `@${clean}/agent.ts`;
 }
 
+const aliasMap = new Map<string, string>();
+for (const [id, meta] of Object.entries(toolMeta)) {
+  for (const alias of meta.aliases) {
+    aliasMap.set(alias, id);
+  }
+}
+
 export function canonicalToolId(value: string): string {
   const normalized = value.trim();
-  const aliases: Record<string, string> = {
-    readFile: "read-file",
-    read_file: "read-file",
-    findFiles: "find-files",
-    find_files: "find-files",
-    searchFiles: "search-files",
-    search_files: "search-files",
-    searchRepo: "search-files",
-    search_repo: "search-files",
-    editFile: "edit-file",
-    edit_file: "edit-file",
-    createFile: "create-file",
-    create_file: "create-file",
-    writeFile: "create-file",
-    write_file: "create-file",
-    editCode: "edit-code",
-    edit_code: "edit-code",
-    deleteFile: "delete-file",
-    delete_file: "delete-file",
-    gitDiff: "git-diff",
-    git_diff: "git-diff",
-    gitStatus: "git-status",
-    git_status: "git-status",
-    runCommand: "run-command",
-    run_command: "run-command",
-    execute_command: "run-command",
-    webSearch: "web-search",
-    web_search: "web-search",
-    webFetch: "web-fetch",
-    web_fetch: "web-fetch",
-  };
-  return aliases[normalized] ?? normalized;
+  return aliasMap.get(normalized) ?? normalized;
 }
 
 function formatToolArgs(args: Record<string, unknown>): Record<string, string | number | boolean> {

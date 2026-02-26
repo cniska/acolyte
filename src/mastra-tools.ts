@@ -19,6 +19,62 @@ import { compactToolOutput } from "./tool-output";
 
 type ToolOutputListener = (event: { toolName: string; message: string; toolCallId?: string }) => void;
 
+export type ToolMeta = {
+  instruction: string;
+  aliases: string[];
+};
+
+export const toolMeta: Record<string, ToolMeta> = {
+  "find-files": {
+    instruction: "Use `find-files` to locate files by name or path pattern.",
+    aliases: ["findFiles", "find_files"],
+  },
+  "search-files": {
+    instruction: "Use `search-files` to search file contents by text or regex.",
+    aliases: ["searchFiles", "search_files", "searchRepo", "search_repo"],
+  },
+  "read-file": {
+    instruction: "Use `read-file` to inspect code before editing.",
+    aliases: ["readFile", "read_file"],
+  },
+  "git-status": {
+    instruction: "Use `git-status` for working tree status.",
+    aliases: ["gitStatus", "git_status"],
+  },
+  "git-diff": {
+    instruction: "Use `git-diff` for change inspection.",
+    aliases: ["gitDiff", "git_diff"],
+  },
+  "web-search": {
+    instruction: "Use `web-search` for external information lookup.",
+    aliases: ["webSearch", "web_search"],
+  },
+  "web-fetch": {
+    instruction: "Use `web-fetch` to read web pages, docs, or API references.",
+    aliases: ["webFetch", "web_fetch"],
+  },
+  "edit-code": {
+    instruction: "For code changes (renames, refactors, structural edits), use `edit-code` with an AST pattern.",
+    aliases: ["editCode", "edit_code"],
+  },
+  "edit-file": {
+    instruction: "For prose, config, or non-code changes, use `edit-file` with a short unique `find` snippet.",
+    aliases: ["editFile", "edit_file"],
+  },
+  "create-file": {
+    instruction: "For new files, call `create-file` with full content directly.",
+    aliases: ["createFile", "create_file", "writeFile", "write_file"],
+  },
+  "delete-file": {
+    instruction: "Use `delete-file` to remove files from the repository.",
+    aliases: ["deleteFile", "delete_file"],
+  },
+  "run-command": {
+    instruction: "Use `run-command` to verify changes when explicitly requested or when risk is high.",
+    aliases: ["runCommand", "run_command", "execute_command"],
+  },
+};
+
 function emitResultChunks(
   toolName: string,
   result: string,
@@ -384,7 +440,7 @@ function createAstEditTool(onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "edit-code",
     description:
-      "Edit code files using AST pattern matching with `$VARIABLE` metavariables. Best for renaming across call sites, signature changes, and wrapping expressions. Supports TS/TSX/JS/JSX/HTML/CSS/Python/Rust/Go. Example: pattern=`console.log($ARG)` replacement=`logger.debug($ARG)` replaces all matching call sites while preserving arguments. For single-site or non-code files use `edit-file` instead.",
+      "The default tool for editing code files. Uses AST pattern matching with `$VARIABLE` metavariables. Use for renames, refactors, signature changes, call-site updates, and any structural code edit. Supports TS/TSX/JS/JSX/HTML/CSS/Python/Rust/Go. Example: pattern=`console.log($ARG)` replacement=`logger.debug($ARG)`. For prose, config, or non-code files use `edit-file` instead.",
     inputSchema: z.object({
       path: z.string().min(1),
       pattern: z.string().min(1),
@@ -493,9 +549,9 @@ export const acolyteTools = {
   gitStatus: gitStatusTool,
   gitDiff: gitDiffTool,
   runCommand: runCommandTool,
+  editCode: editCodeTool,
   editFile: editFileTool,
   createFile: createFileTool,
-  editCode: editCodeTool,
   deleteFile: deleteFileTool,
   webSearch: webSearchTool,
   webFetch: webFetchTool,
@@ -530,9 +586,9 @@ export function toolsForAgent(options?: { onToolOutput?: ToolOutputListener }): 
     gitStatus: createGitStatusTool(options.onToolOutput),
     gitDiff: createGitDiffTool(options.onToolOutput),
     runCommand: createRunCommandTool(options.onToolOutput),
+    editCode: createAstEditTool(options.onToolOutput),
     editFile: createEditFileTool(options.onToolOutput),
     createFile: createCreateFileTool(options.onToolOutput),
-    editCode: createAstEditTool(options.onToolOutput),
     deleteFile: createDeleteFileTool(options.onToolOutput),
     webSearch: createWebSearchTool(options.onToolOutput),
     webFetch: createWebFetchTool(options.onToolOutput),

@@ -3,6 +3,7 @@ import {
   buildAgentInput,
   canonicalToolId,
   createInstructions,
+  createModeInstructions,
   createSubagentContext,
   finalizeAssistantOutput,
   finalizeReviewOutput,
@@ -254,6 +255,36 @@ describe("createSubagentContext", () => {
     const context = createSubagentContext(req);
     expect(context).not.toContain("return exactly 3 concise numbered next steps");
     expect(context).not.toContain("no lettered options");
+  });
+});
+
+describe("createModeInstructions", () => {
+  test("code mode includes tool instructions from toolMeta", () => {
+    const out = createModeInstructions("code");
+    expect(out).toContain("edit-code");
+    expect(out).toContain("edit-file");
+    expect(out).toContain("create-file");
+    expect(out).toContain("run-command");
+  });
+
+  test("explore mode includes tool instructions from toolMeta", () => {
+    const out = createModeInstructions("explore");
+    expect(out).toContain("find-files");
+    expect(out).toContain("search-files");
+    expect(out).toContain("read-file");
+  });
+
+  test("code mode excludes explore tool instructions", () => {
+    const out = createModeInstructions("code");
+    expect(out).not.toContain("find-files");
+    expect(out).not.toContain("search-files");
+  });
+
+  test("includes preamble lines", () => {
+    const code = createModeInstructions("code");
+    const explore = createModeInstructions("explore");
+    expect(code).toContain("Read the target file before editing");
+    expect(explore).toContain("Minimize round trips");
   });
 });
 

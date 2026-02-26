@@ -32,9 +32,9 @@ describe("agentModes", () => {
     }
   });
 
-  test("every mode has instructions", () => {
+  test("every mode has preamble", () => {
     for (const def of Object.values(agentModes)) {
-      expect(def.instructions.length).toBeGreaterThan(0);
+      expect(def.preamble.length).toBeGreaterThan(0);
     }
   });
 });
