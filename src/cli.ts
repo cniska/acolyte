@@ -136,8 +136,7 @@ function usage(): void {
 export function buildUsageCommandRows(): Array<{ command: string; description: string }> {
   return [
     { command: "resume [id-prefix]", description: "resume previous session" },
-    { command: "run [--file path] [--verify] <prompt>", description: "run one prompt (optional verify)" },
-    { command: "dogfood [--file path] [--no-verify] <prompt>", description: "run one prompt with dogfood preamble" },
+    { command: "run [--file path] <prompt>", description: "run a single prompt" },
     { command: "history", description: "show recent sessions" },
     { command: "status", description: "show backend status" },
     { command: "memory", description: "manage memory notes" },
