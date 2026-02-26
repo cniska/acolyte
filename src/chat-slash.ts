@@ -12,7 +12,11 @@ const CHAT_SLASH_COMMANDS = [
   "/tokens",
   "/exit",
 ] as const;
-const MEMORY_SCOPE_COMMANDS = ["/memory all", "/memory user", "/memory project"] as const;
+
+const SUB_COMMANDS: Record<string, string[]> = {
+  "/memory": ["/memory list", "/memory add", "/memory all", "/memory user", "/memory project"],
+  "/permissions": ["/permissions read", "/permissions write"],
+};
 
 const SLASH_ALIASES: Record<string, string> = {
   "/session": "/sessions",
@@ -46,17 +50,27 @@ export function suggestSlashCommands(inputValue: string, max = 5): string[] {
   if (!value.startsWith("/")) {
     return [];
   }
-  const scopeCandidate = inputValue.trimStart();
-  const isMemoryScope = scopeCandidate.startsWith("/memory ") || scopeCandidate === "/memory ";
-  if (isMemoryScope || scopeCandidate.startsWith("/mem ") || scopeCandidate === "/mem ") {
-    const canonical = scopeCandidate.startsWith("/mem ")
-      ? scopeCandidate.replace(/^\/mem /, "/memory ")
-      : scopeCandidate;
-    const scopeMatches = MEMORY_SCOPE_COMMANDS.filter((command) => command.startsWith(canonical));
-    if (scopeMatches.length > 0) {
-      return scopeMatches.slice(0, max);
+  const candidate = inputValue.trimStart();
+
+  // Check subcommands: resolve alias first, then match against subcommand lists
+  for (const [parent, subs] of Object.entries(SUB_COMMANDS)) {
+    const aliases = Object.entries(SLASH_ALIASES)
+      .filter(([, v]) => v === parent)
+      .map(([k]) => k);
+    const prefixes = [parent, ...aliases];
+    const isMatch = prefixes.some((p) => candidate.startsWith(`${p} `) || candidate === `${p} `);
+    if (isMatch) {
+      const canonical = candidate.replace(
+        new RegExp(`^(${aliases.map((a) => a.replace("/", "\\/")).join("|")}) `),
+        `${parent} `,
+      );
+      const matches = subs.filter((sub) => sub.startsWith(canonical));
+      if (matches.length > 0) {
+        return matches.slice(0, max);
+      }
     }
   }
+
   const matches = CHAT_SLASH_COMMANDS.filter((command) => command.startsWith(value));
   if (matches.length > 0) {
     return matches.slice(0, max);
