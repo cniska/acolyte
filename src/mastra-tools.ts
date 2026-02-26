@@ -171,7 +171,7 @@ export async function withToolError<T>(toolId: string, task: () => Promise<T>): 
   }
 }
 
-function createFindFilesTool(onToolOutput?: ToolOutputListener) {
+function createFindFilesTool(_onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "find-files",
     description: "Find files in the repository by name or path pattern.",
@@ -181,20 +181,18 @@ function createFindFilesTool(onToolOutput?: ToolOutputListener) {
     }),
     execute: async (input) => {
       return withToolError("find-files", async () => {
-        const toolCallId = streamCallId("find-files");
         const maxResults = input.maxResults ?? 40;
         const result = compactToolOutput(
           await findFiles(input.pattern, maxResults),
           appConfig.agent.toolOutputBudget.findFiles,
         );
-        emitResultChunks("find-files", result, onToolOutput, 100, toolCallId);
         return { result };
       });
     },
   });
 }
 
-function createSearchFilesTool(onToolOutput?: ToolOutputListener) {
+function createSearchFilesTool(_onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "search-files",
     description: "Search file contents in the repository for a text or regex pattern.",
@@ -204,13 +202,11 @@ function createSearchFilesTool(onToolOutput?: ToolOutputListener) {
     }),
     execute: async (input) => {
       return withToolError("search-files", async () => {
-        const toolCallId = streamCallId("search-files");
         const maxResults = input.maxResults ?? 20;
         const result = compactToolOutput(
           await searchFiles(input.pattern, maxResults),
           appConfig.agent.toolOutputBudget.searchFiles,
         );
-        emitResultChunks("search-files", result, onToolOutput, 80, toolCallId);
         return { result };
       });
     },
