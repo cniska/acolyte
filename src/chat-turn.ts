@@ -1,9 +1,9 @@
+import { runShellCommand } from "./agent-tools";
 import type { TokenUsage } from "./api";
 import type { Backend, StreamEvent } from "./backend";
 import type { ChatRow, TokenUsageEntry } from "./chat-commands";
 import { extractAtReferencePaths } from "./chat-file-ref";
 import { formatThoughtDuration, formatVerifySummary } from "./chat-formatters";
-import { runShellCommand } from "./coding-tools";
 import { buildFileContext } from "./file-context";
 import type { Message, Session } from "./types";
 

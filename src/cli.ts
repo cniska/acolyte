@@ -4,11 +4,6 @@ import { relative } from "node:path";
 import { stdout as output } from "node:process";
 import { z } from "zod";
 import { formatToolHeader } from "./agent";
-import { appConfig } from "./app-config";
-import { createBackend } from "./backend";
-import { wrapAssistantContent } from "./chat-content";
-import { createProgressTracker } from "./chat-progress";
-import { runInkChat } from "./chat-ui";
 import {
   editFileReplace,
   fetchWeb,
@@ -19,7 +14,12 @@ import {
   runShellCommand,
   searchFiles,
   searchWeb,
-} from "./coding-tools";
+} from "./agent-tools";
+import { appConfig } from "./app-config";
+import { createBackend } from "./backend";
+import { wrapAssistantContent } from "./chat-content";
+import { createProgressTracker } from "./chat-progress";
+import { runInkChat } from "./chat-ui";
 import {
   type AcolyteConfig,
   readConfig,

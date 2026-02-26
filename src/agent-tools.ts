@@ -128,7 +128,10 @@ export async function findFiles(pattern: string, maxResults = 40): Promise<strin
     throw new Error("Search pattern cannot be empty");
   }
   const allFiles = await collectWorkspaceFiles();
-  const needle = trimmed.replace(/^\.\/+/, "").toLowerCase();
+  const needle = trimmed
+    .replace(/^\.\/+/, "")
+    .replace(/[*?]+/g, "")
+    .toLowerCase();
 
   const ranked = allFiles
     .filter((path) => path.toLowerCase().includes(needle))

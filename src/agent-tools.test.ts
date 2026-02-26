@@ -1,8 +1,8 @@
 import { afterAll, afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { deleteTextFile, editFileReplace, fetchWeb, readSnippet, runShellCommand, writeTextFile } from "./agent-tools";
 import { appConfig, setPermissionMode } from "./app-config";
-import { deleteTextFile, editFileReplace, fetchWeb, readSnippet, runShellCommand, writeTextFile } from "./coding-tools";
 
 const tempFiles: string[] = [];
 const initialPermissionMode = appConfig.agent.permissions.mode;

@@ -1,6 +1,5 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
-import { appConfig } from "./app-config";
 import {
   deleteTextFile,
   editFileReplace,
@@ -13,7 +12,8 @@ import {
   searchFiles,
   searchWeb,
   writeTextFile,
-} from "./coding-tools";
+} from "./agent-tools";
+import { appConfig } from "./app-config";
 import { compactToolOutput } from "./tool-output";
 
 type ToolOutputListener = (event: { toolName: string; message: string; toolCallId?: string }) => void;
