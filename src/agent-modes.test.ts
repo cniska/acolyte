@@ -20,8 +20,8 @@ describe("modeForTool", () => {
     expect(modeForTool("run-command")).toBe("code");
   });
 
-  test("falls back to ask for unknown tools", () => {
-    expect(modeForTool("unknown-tool")).toBe("ask");
+  test("falls back to code for unknown tools", () => {
+    expect(modeForTool("unknown-tool")).toBe("code");
   });
 });
 

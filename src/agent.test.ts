@@ -292,8 +292,7 @@ describe("createInstructions", () => {
   test("includes base instructions for all modes", () => {
     const code = createInstructions("Soul.", "code");
     const explore = createInstructions("Soul.", "explore");
-    const ask = createInstructions("Soul.", "ask");
-    for (const out of [code, explore, ask]) {
+    for (const out of [code, explore]) {
       expect(out).toContain("Soul.");
       expect(out).toContain("Prefer dedicated tools over shell equivalents");
       expect(out).toContain("Default to tool execution");
