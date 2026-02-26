@@ -1,12 +1,9 @@
 #!/usr/bin/env bun
 import { appConfig } from "./app-config";
 
-type HealthzResponse = {
+type StatusResponse = {
   ok?: boolean;
-  memory?: {
-    status?: unknown;
-    storage?: unknown;
-  };
+  memory?: string;
 };
 
 type OmStatusResponse = {
@@ -47,20 +44,14 @@ async function main(): Promise<void> {
   const url = baseUrl();
   console.log(`Running Postgres smoke test against ${url}`);
 
-  const health = await fetchJson<HealthzResponse>(`${url}/healthz`, { headers: buildHeaders() });
+  const health = await fetchJson<StatusResponse>(`${url}/v1/status`, { headers: buildHeaders() });
   if (health.ok !== true) {
-    throw new Error("Health check did not return ok=true.");
+    throw new Error("Status check did not return ok=true.");
   }
-  const storage =
-    typeof health.memory?.status === "string"
-      ? health.memory.status
-      : typeof health.memory?.storage === "string"
-        ? health.memory.storage
-        : "unknown";
-  if (storage !== "postgres") {
-    throw new Error(`Expected memory.storage=postgres, got ${storage}.`);
+  if (!health.memory?.startsWith("postgres")) {
+    throw new Error(`Expected memory to start with postgres, got ${health.memory ?? "unknown"}.`);
   }
-  console.log("✓ healthz reports postgres storage");
+  console.log("✓ status reports postgres storage");
 
   const resourceId = `smoke_${Date.now().toString(36)}`;
   const params = new URLSearchParams({ resourceId });

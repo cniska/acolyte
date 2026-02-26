@@ -75,7 +75,7 @@ describe("chat turn helpers", () => {
           model: "gpt-5-mini",
           output: "done",
         }),
-        status: async () => "ok",
+        status: async () => ({}),
         setPermissionMode: async () => {},
       },
       userText: "create a rust script",

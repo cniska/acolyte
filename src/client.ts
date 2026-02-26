@@ -44,7 +44,7 @@ export interface Client {
       signal?: AbortSignal;
     },
   ): Promise<ChatResponse>;
-  status(): Promise<string>;
+  status(): Promise<Record<string, string>>;
   setPermissionMode(mode: PermissionMode): Promise<void>;
 }
 
@@ -322,88 +322,24 @@ class HttpClient implements Client {
     return finalReply;
   }
 
-  async status(): Promise<string> {
-    const response = await this.fetchOrThrow("/healthz", {
+  async status(): Promise<Record<string, string>> {
+    const response = await this.fetchOrThrow("/v1/status", {
       headers: this.apiKey ? { authorization: `Bearer ${this.apiKey}` } : undefined,
     });
 
     if (!response.ok) {
       const body = await response.text();
-      throw new Error(`Server health check failed (${response.status}): ${body || "no body"}`);
+      throw new Error(`Status check failed (${response.status}): ${body || "no body"}`);
     }
 
-    const json = (await response.json()) as Record<string, unknown>;
-    const asRecord = (value: unknown): Record<string, unknown> | undefined =>
-      value && typeof value === "object" ? (value as Record<string, unknown>) : undefined;
-    const asString = (value: unknown): string | undefined => (typeof value === "string" ? value : undefined);
-    const asNumber = (value: unknown): number | undefined => (typeof value === "number" ? value : undefined);
-    const asBoolean = (value: unknown): boolean | undefined => (typeof value === "boolean" ? value : undefined);
-    const providerGroup = asRecord(json.provider);
-    const modelGroup = asRecord(json.model);
-    const providerReadyGroup = asRecord(json.provider_ready);
-    const serviceGroup = asRecord(json.service);
-    const memoryGroup = asRecord(json.memory);
-    const omGroup = asRecord(json.om);
-
-    const provider = asString(providerGroup?.status) ?? asString(json.provider) ?? asString(json.mode) ?? "unknown";
-    const model = asString(modelGroup?.status) ?? asString(json.model);
-    const exploreModel = asString(modelGroup?.explore);
-    const providerReady = asBoolean(json.provider_ready) ?? asBoolean(providerReadyGroup?.status);
-
-    const service = asString(serviceGroup?.status) ?? asString(json.service) ?? "unknown";
-    const serviceUrl = asString(serviceGroup?.url) ?? this.apiUrl;
-    const apiBaseUrl = asString(providerGroup?.api_url) ?? asString(json.apiBaseUrl);
-
-    const memoryStorage = asString(memoryGroup?.status);
-    const memoryContextCount = asNumber(memoryGroup?.entries);
-
-    const omStatus = asString(omGroup?.status);
-    let omEnabled: boolean | undefined;
-    if (omStatus === "enabled") {
-      omEnabled = true;
-    } else if (omStatus === "disabled") {
-      omEnabled = false;
-    } else {
-      omEnabled = undefined;
+    const data = (await response.json()) as Record<string, unknown>;
+    const fields: Record<string, string> = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (key !== "ok" && typeof value === "string") {
+        fields[key] = value;
+      }
     }
-    let omEnabledField: string | undefined;
-    if (omEnabled !== undefined) {
-      const omText = omEnabled ? "enabled" : "disabled";
-      omEnabledField = `om=${omText}`;
-    }
-    const omScope = asString(omGroup?.scope);
-    const omModel = asString(omGroup?.model);
-    const omTokens = asRecord(omGroup?.tokens);
-    const omObservationTokens = asNumber(omTokens?.obs);
-    const omReflectionTokens = asNumber(omTokens?.ref);
-    const omState = asRecord(omGroup?.state);
-    const omExists = asBoolean(omState?.exists);
-    const omGeneration = asNumber(omState?.gen);
-    const omLastObservedAt = asString(omGroup?.last_observed);
-    const omLastReflectionAt = asString(omGroup?.last_reflection);
-    const permissionMode = asString(json.permissions) ?? asString(json.permissionMode);
-    const fields = [
-      `provider=${provider}`,
-      model ? `model=${model}` : undefined,
-      exploreModel && exploreModel !== model ? `explore_model=${exploreModel}` : undefined,
-      providerReady === undefined ? undefined : `provider_ready=${providerReady}`,
-      `service=${service}`,
-      `url=${serviceUrl}`,
-      apiBaseUrl ? `provider_api_url=${apiBaseUrl}` : undefined,
-      memoryStorage ? `memory_storage=${memoryStorage}` : undefined,
-      memoryContextCount === undefined ? undefined : `memory_context=${memoryContextCount}`,
-      omEnabledField,
-      omScope ? `om_scope=${omScope}` : undefined,
-      omModel ? `om_model=${omModel}` : undefined,
-      omObservationTokens === undefined ? undefined : `om_obs_tokens=${omObservationTokens}`,
-      omReflectionTokens === undefined ? undefined : `om_ref_tokens=${omReflectionTokens}`,
-      omExists === undefined ? undefined : `om_exists=${omExists}`,
-      omGeneration === undefined ? undefined : `om_gen=${omGeneration}`,
-      omLastObservedAt ? `om_last_observed=${omLastObservedAt}` : undefined,
-      omLastReflectionAt ? `om_last_reflection=${omLastReflectionAt}` : undefined,
-      permissionMode ? `permission_mode=${permissionMode}` : undefined,
-    ].filter((field): field is string => Boolean(field));
-    return fields.join(" ");
+    return fields;
   }
 
   async setPermissionMode(mode: PermissionMode): Promise<void> {

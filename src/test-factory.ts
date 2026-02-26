@@ -69,7 +69,7 @@ export function createClient(overrides?: {
   return {
     reply,
     replyStream,
-    status: overrides?.status ?? (async () => "provider=local model=gpt-5-mini memory_context=2"),
+    status: overrides?.status ?? (async () => ({ provider: "local", model: "gpt-5-mini", permissions: "write" })),
     setPermissionMode: overrides?.setPermissionMode ?? (async () => {}),
   };
 }
@@ -99,7 +99,7 @@ export function createSubmitHandlerHarness(overrides?: {
   const session = createSession({ id: "sess_test" });
   const store = createStore({ activeSessionId: session.id, sessions: [session] });
   const submit = createSubmitHandler({
-    backend: overrides?.backend ?? createClient({ status: async () => "ok" }),
+    backend: overrides?.backend ?? createClient({ status: async () => ({}) }),
     store,
     currentSession: session,
     setCurrentSession: () => {},

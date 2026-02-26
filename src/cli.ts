@@ -348,7 +348,7 @@ export function formatTimestamp(iso: string): string {
   return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
 }
 
-export function formatStatusOutput(status: string): string {
+export function formatStatusOutput(status: Record<string, string>): string {
   return formatStatusOutputShared(status);
 }
 

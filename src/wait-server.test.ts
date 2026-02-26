@@ -18,14 +18,14 @@ function startTestServer(fetch: (req: Request) => Response | Promise<Response>):
 describe("wait-server", () => {
   test("parseArgs applies defaults", () => {
     expect(parseArgs([])).toEqual({
-      url: "http://localhost:6767/healthz",
+      url: "http://localhost:6767/v1/status",
       timeoutMs: 10_000,
     });
   });
 
   test("parseArgs reads explicit flags", () => {
-    expect(parseArgs(["--url", "http://127.0.0.1:1234/healthz", "--timeout-ms", "1500"])).toEqual({
-      url: "http://127.0.0.1:1234/healthz",
+    expect(parseArgs(["--url", "http://127.0.0.1:1234/v1/status", "--timeout-ms", "1500"])).toEqual({
+      url: "http://127.0.0.1:1234/v1/status",
       timeoutMs: 1500,
     });
   });
@@ -49,15 +49,15 @@ describe("wait-server", () => {
       }),
     );
     try {
-      await expect(waitForServer(`http://127.0.0.1:${server.port}/healthz`, 1000)).resolves.toBeUndefined();
+      await expect(waitForServer(`http://127.0.0.1:${server.port}/v1/status`, 1000)).resolves.toBeUndefined();
     } finally {
       server.stop();
     }
   });
 
   test("waitForServer times out when endpoint stays unavailable", async () => {
-    await expect(waitForServer("http://127.0.0.1:9/healthz", 250)).rejects.toThrow(
-      "Timed out waiting for server at http://127.0.0.1:9/healthz",
+    await expect(waitForServer("http://127.0.0.1:9/v1/status", 250)).rejects.toThrow(
+      "Timed out waiting for server at http://127.0.0.1:9/v1/status",
     );
   });
 });

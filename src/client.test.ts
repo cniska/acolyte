@@ -311,36 +311,17 @@ describe("remote backend connection errors", () => {
 });
 
 describe("remote backend status parsing", () => {
-  test("status serializes grouped healthz payload fields", async () => {
+  test("status extracts flat string fields from response", async () => {
     globalThis.fetch = (async () =>
       new Response(
         JSON.stringify({
-          provider: {
-            status: "openai",
-            api_url: "https://api.openai.com/v1",
-          },
-          model: {
-            status: "openai/gpt-5",
-          },
-          provider_ready: true,
-          service: {
-            status: "acolyte-backend",
-            url: "http://localhost:6767",
-          },
-          memory: {
-            status: "postgres",
-            entries: 4,
-          },
-          om: {
-            status: "enabled",
-            scope: "resource",
-            model: "openai/gpt-5",
-            tokens: { obs: 3000, ref: 8000 },
-            state: { exists: true, gen: 2 },
-            last_observed: "2026-02-23T10:10:53.908Z",
-            last_reflection: "2026-02-23T10:15:00.000Z",
-          },
+          ok: true,
+          provider: "openai",
+          model: "gpt-5-mini",
           permissions: "write",
+          service: "http://localhost:6767",
+          memory: "postgres (4 entries)",
+          observational_memory: "enabled (resource)",
         }),
         {
           status: 200,
@@ -351,58 +332,24 @@ describe("remote backend status parsing", () => {
     const backend = createClient({ apiUrl: "http://localhost:6767" });
     const status = await backend.status();
 
-    expect(status).toContain("provider=openai");
-    expect(status).toContain("model=openai/gpt-5");
-    expect(status).toContain("provider_ready=true");
-    expect(status).toContain("service=acolyte-backend");
-    expect(status).toContain("url=http://localhost:6767");
-    expect(status).toContain("provider_api_url=https://api.openai.com/v1");
-    expect(status).toContain("memory_storage=postgres");
-    expect(status).toContain("memory_context=4");
-    expect(status).toContain("om=enabled");
-    expect(status).toContain("om_scope=resource");
-    expect(status).toContain("om_model=openai/gpt-5");
-    expect(status).toContain("om_obs_tokens=3000");
-    expect(status).toContain("om_ref_tokens=8000");
-    expect(status).toContain("om_exists=true");
-    expect(status).toContain("om_gen=2");
-    expect(status).toContain("om_last_observed=2026-02-23T10:10:53.908Z");
-    expect(status).toContain("om_last_reflection=2026-02-23T10:15:00.000Z");
-    expect(status).toContain("permission_mode=write");
+    expect(status).toEqual({
+      provider: "openai",
+      model: "gpt-5-mini",
+      permissions: "write",
+      service: "http://localhost:6767",
+      memory: "postgres (4 entries)",
+      observational_memory: "enabled (resource)",
+    });
   });
 
-  test("status serializes single-shape healthz payload fields", async () => {
+  test("status skips ok and non-string fields", async () => {
     globalThis.fetch = (async () =>
       new Response(
         JSON.stringify({
-          model: {
-            status: "openai-compatible/qwen2.5-coder",
-          },
-          provider_ready: true,
-          service: {
-            status: "acolyte-backend",
-          },
-          provider: {
-            status: "openai-compatible",
-            api_url: "https://router.example/v1",
-          },
-          permissions: "write",
-          memory: {
-            status: "postgres",
-            entries: 6,
-          },
-          om: {
-            status: "enabled",
-            scope: "resource",
-            model: "openai/gpt-5-mini",
-            tokens: { obs: 3000, ref: 8000 },
-            state: {
-              exists: true,
-              gen: 3,
-            },
-            last_observed: "2026-02-21T10:10:53.908Z",
-            last_reflection: "2026-02-21T10:15:00.000Z",
-          },
+          ok: true,
+          provider: "mock",
+          model: "gpt-5-mini",
+          extra_number: 42,
         }),
         {
           status: 200,
@@ -413,45 +360,10 @@ describe("remote backend status parsing", () => {
     const backend = createClient({ apiUrl: "http://localhost:6767" });
     const status = await backend.status();
 
-    expect(status).toContain("provider=openai-compatible");
-    expect(status).toContain("model=openai-compatible/qwen2.5-coder");
-    expect(status).toContain("provider_ready=true");
-    expect(status).toContain("service=acolyte-backend");
-    expect(status).toContain("url=http://localhost:6767");
-    expect(status).toContain("provider_api_url=https://router.example/v1");
-    expect(status).toContain("memory_storage=postgres");
-    expect(status).toContain("memory_context=6");
-    expect(status).toContain("om=enabled");
-    expect(status).toContain("om_scope=resource");
-    expect(status).toContain("om_model=openai/gpt-5-mini");
-    expect(status).toContain("om_obs_tokens=3000");
-    expect(status).toContain("om_ref_tokens=8000");
-    expect(status).toContain("om_exists=true");
-    expect(status).toContain("om_gen=3");
-    expect(status).toContain("om_last_observed=2026-02-21T10:10:53.908Z");
-    expect(status).toContain("om_last_reflection=2026-02-21T10:15:00.000Z");
-    expect(status).toContain("permission_mode=write");
-  });
-
-  test("status falls back to mode when provider is absent", async () => {
-    globalThis.fetch = (async () =>
-      new Response(
-        JSON.stringify({
-          mode: "mock",
-          service: "acolyte-backend",
-        }),
-        {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        },
-      )) as unknown as typeof fetch;
-
-    const backend = createClient({ apiUrl: "http://localhost:6767" });
-    const status = await backend.status();
-
-    expect(status).toContain("provider=mock");
-    expect(status).toContain("service=acolyte-backend");
-    expect(status).toContain("url=http://localhost:6767");
+    expect(status).toEqual({
+      provider: "mock",
+      model: "gpt-5-mini",
+    });
   });
 });
 

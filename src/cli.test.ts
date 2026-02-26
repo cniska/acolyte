@@ -71,43 +71,20 @@ describe("cli formatting helpers", () => {
     expect(parseEditResult("path=/tmp/a.ts\nmatches=2\ndry_run=maybe")).toBeNull();
   });
 
-  test("formatStatusOutput expands key-value status", () => {
-    const out = formatStatusOutput(
-      "provider=openai model=gpt-5-mini service=acolyte-backend url=http://localhost:6767",
-    );
+  test("formatStatusOutput aligns flat key-value fields", () => {
+    const out = formatStatusOutput({
+      provider: "openai",
+      model: "gpt-5-mini",
+      permissions: "write",
+      service: "http://localhost:6767",
+      memory: "postgres (7 entries)",
+      observational_memory: "enabled (resource)",
+    });
     expect(out).toMatch(/^provider:\s+openai$/m);
     expect(out).toMatch(/^model:\s+gpt-5-mini$/m);
-    expect(out).toMatch(/^service:\s+acolyte-backend \(http:\/\/localhost:6767\)$/m);
-  });
-
-  test("formatStatusOutput compacts memory and OM fields", () => {
-    const out = formatStatusOutput(
-      [
-        "mode=openai",
-        "provider=openai",
-        "model=gpt-5-mini",
-        "provider_ready=false",
-        "service=acolyte-backend",
-        "url=http://localhost:6767",
-        "memory_storage=postgres",
-        "memory_context=7",
-        "om=enabled",
-        "om_scope=resource",
-        "om_model=openai/gpt-5-mini",
-        "om_obs_tokens=3000",
-        "om_ref_tokens=8000",
-        "om_exists=true",
-        "om_gen=4",
-      ].join(" "),
-    );
-    expect(out).toMatch(/^provider:\s+openai$/m);
-    expect(out).not.toContain("mode:");
-    expect(out).toMatch(/^model:\s+gpt-5-mini$/m);
-    expect(out).not.toContain("provider_ready");
+    expect(out).toMatch(/^permissions:\s+write$/m);
     expect(out).toMatch(/^memory:\s+postgres \(7 entries\)$/m);
-    expect(out).toMatch(/^observational memory:\s+enabled \(resource\)$/m);
-    expect(out).not.toContain("om_scope");
-    expect(out).not.toContain("om_tokens");
+    expect(out).toMatch(/^observational_memory:\s+enabled \(resource\)$/m);
   });
 
   test("formatKeyValueLines aligns key/value rows", () => {

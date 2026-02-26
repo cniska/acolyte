@@ -113,7 +113,7 @@ const server = Bun.serve({
   async fetch(req) {
     const url = new URL(req.url);
 
-    if (url.pathname === "/healthz" && req.method === "GET") {
+    if (url.pathname === "/v1/status" && req.method === "GET") {
       const model = appConfig.model;
       const providerConfig = {
         openaiApiKey: OPENAI_API_KEY,
@@ -128,73 +128,15 @@ const server = Bun.serve({
           ? resolveProvider(OPENAI_API_KEY, OPENAI_BASE_URL)
           : modelProvider
         : "mock";
-      let currentOm: {
-        exists: boolean;
-        generationCount: number;
-        lastObservedAt: Date | null;
-        lastReflectionAt: Date | null;
-      } = {
-        exists: false,
-        generationCount: 0,
-        lastObservedAt: null,
-        lastReflectionAt: null,
-      };
-      let currentOmError: string | undefined;
-      try {
-        const memoryStore = await mastraStorage.getStore("memory");
-        if (memoryStore) {
-          const current = await memoryStore.getObservationalMemory(null, appConfig.memory.resourceId);
-          const history = await memoryStore.getObservationalMemoryHistory(null, appConfig.memory.resourceId, 10);
-          const latestReflection = history.find((row) => row.originType === "reflection");
-          currentOm = {
-            exists: Boolean(current),
-            generationCount: current?.generationCount ?? 0,
-            lastObservedAt: current?.lastObservedAt ?? null,
-            lastReflectionAt: latestReflection?.createdAt ?? null,
-          };
-        }
-      } catch (error) {
-        currentOmError = error instanceof Error ? error.message : "Failed to read OM state.";
-      }
-
       const memoryContextCount = (await getMemoryContextEntries()).length;
       return json({
         ok: true,
-        provider: {
-          status: provider,
-          api_url: appConfig.openai.baseUrl,
-        },
-        model: {
-          status: presentModel(model),
-          explore: presentModel(appConfig.exploreModel),
-        },
-        provider_ready: providerReady,
-        service: {
-          status: "acolyte-backend",
-          url: `http://localhost:${PORT}`,
-        },
-        memory: {
-          status: mastraStorageMode,
-          entries: memoryContextCount,
-          resource_id: appConfig.memory.resourceId,
-        },
-        om: {
-          status: "enabled",
-          scope: omConfig.scope,
-          model: omConfig.model,
-          tokens: {
-            obs: omConfig.observation.messageTokens,
-            ref: omConfig.reflection.observationTokens,
-          },
-          state: {
-            exists: currentOm.exists,
-            gen: currentOm.generationCount,
-          },
-          last_observed: currentOm.lastObservedAt,
-          last_reflection: currentOm.lastReflectionAt,
-          error: currentOmError,
-        },
+        provider,
+        model: presentModel(model),
         permissions: appConfig.agent.permissions.mode,
+        service: `http://localhost:${PORT}`,
+        memory: memoryContextCount > 0 ? `${mastraStorageMode} (${memoryContextCount} entries)` : mastraStorageMode,
+        observational_memory: `enabled (${omConfig.scope})`,
       });
     }
 

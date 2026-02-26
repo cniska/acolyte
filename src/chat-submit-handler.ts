@@ -97,12 +97,12 @@ function isLikelyWritePrompt(text: string): boolean {
   );
 }
 
-function statusPermissionMode(status: string): "read" | "write" | null {
-  const match = status.match(/\bpermission_mode=(read|write)\b/);
-  if (!match) {
-    return null;
+function statusPermissionMode(status: Record<string, string>): "read" | "write" | null {
+  const mode = status.permissions;
+  if (mode === "read" || mode === "write") {
+    return mode;
   }
-  return match[1] as "read" | "write";
+  return null;
 }
 
 type RememberScope = "user" | "project";

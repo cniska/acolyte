@@ -84,7 +84,7 @@ describe("cli run resource id", () => {
           output: "ok",
         });
       }
-      if (url.pathname === "/healthz" && req.method === "GET") {
+      if (url.pathname === "/v1/status" && req.method === "GET") {
         return Response.json({ ok: true, provider: "mock", service: "test" });
       }
       return new Response("not found", { status: 404 });

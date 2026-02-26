@@ -53,7 +53,7 @@ run_test() {
 }
 
 # Check server
-if ! curl -s --max-time 3 "$BASE_URL/healthz" | python3 -c "import sys,json; assert json.load(sys.stdin).get('ok')" 2>/dev/null; then
+if ! curl -s --max-time 3 "$BASE_URL/v1/status" | python3 -c "import sys,json; assert json.load(sys.stdin).get('ok')" 2>/dev/null; then
   echo "Server not running at $BASE_URL. Start with: bun run serve:env"
   exit 1
 fi
