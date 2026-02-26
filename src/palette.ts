@@ -1,7 +1,7 @@
 export const palette = {
   // Brand
   brand: "#A56EFF",
-  brandLight: "#DDD0FF",
+  brandLight: "#D4C2FF",
   logo: "#2A1D4A",
   logoAccent: "#FFD84D",
 

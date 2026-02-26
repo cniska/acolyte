@@ -99,7 +99,7 @@ function renderToolProgressContent(content: string): React.ReactNode {
         return (
           <React.Fragment key={`tool-progress-line-${index}-${line}`}>
             {index > 0 ? "\n" : null}
-            {index > 0 && parsed.kind !== "header" ? "  " : null}
+            {index > 0 && parsed.kind !== "header" && parsed.kind !== "meta" ? "  " : null}
             {parsed.kind === "header" ? (
               <>
                 <Text bold>{`${parsed.verb} `}</Text>
