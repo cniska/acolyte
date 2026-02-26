@@ -5,11 +5,12 @@ import {
   deleteTextFile,
   editFileReplace,
   fetchWeb,
+  findFiles,
   gitDiff,
   gitStatusShort,
   readSnippet,
   runShellCommand,
-  searchRepo,
+  searchFiles,
   searchWeb,
   writeTextFile,
 } from "./coding-tools";
@@ -170,32 +171,53 @@ export async function withToolError<T>(toolId: string, task: () => Promise<T>): 
   }
 }
 
-function createSearchRepoTool(onToolOutput?: ToolOutputListener) {
+function createFindFilesTool(onToolOutput?: ToolOutputListener) {
   return createTool({
-    id: "search-repo",
-    description: "Search the repository for a text pattern using ripgrep.",
+    id: "find-files",
+    description: "Find files in the repository by name or path pattern.",
     inputSchema: z.object({
       pattern: z.string().min(1),
       maxResults: z.number().int().min(1).max(200).optional(),
     }),
     execute: async (input) => {
-      return withToolError("search-repo", async () => {
-        const toolCallId = streamCallId("search-repo");
-        const maxResults = input.maxResults ?? 20;
+      return withToolError("find-files", async () => {
+        const toolCallId = streamCallId("find-files");
+        const maxResults = input.maxResults ?? 40;
         const result = compactToolOutput(
-          await searchRepo(input.pattern, maxResults),
-          appConfig.agent.toolOutputBudget.search,
+          await findFiles(input.pattern, maxResults),
+          appConfig.agent.toolOutputBudget.findFiles,
         );
-        emitResultChunks("search-repo", result, onToolOutput, 80, toolCallId);
+        emitResultChunks("find-files", result, onToolOutput, 100, toolCallId);
         return { result };
       });
     },
   });
 }
 
-export const searchRepoTool = createSearchRepoTool();
+function createSearchFilesTool(onToolOutput?: ToolOutputListener) {
+  return createTool({
+    id: "search-files",
+    description: "Search file contents in the repository for a text or regex pattern.",
+    inputSchema: z.object({
+      pattern: z.string().min(1),
+      maxResults: z.number().int().min(1).max(200).optional(),
+    }),
+    execute: async (input) => {
+      return withToolError("search-files", async () => {
+        const toolCallId = streamCallId("search-files");
+        const maxResults = input.maxResults ?? 20;
+        const result = compactToolOutput(
+          await searchFiles(input.pattern, maxResults),
+          appConfig.agent.toolOutputBudget.searchFiles,
+        );
+        emitResultChunks("search-files", result, onToolOutput, 80, toolCallId);
+        return { result };
+      });
+    },
+  });
+}
 
-function createReadFileTool(onToolOutput?: ToolOutputListener) {
+function createReadFileTool(_onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "read-file",
     description: "Read a text file snippet by line range from the local repository.",
@@ -399,7 +421,8 @@ function createWebFetchTool(onToolOutput?: ToolOutputListener) {
 export const webFetchTool = createWebFetchTool();
 
 export const acolyteTools = {
-  searchRepo: searchRepoTool,
+  findFiles: createFindFilesTool(),
+  searchFiles: createSearchFilesTool(),
   readFile: readFileTool,
   gitStatus: gitStatusTool,
   gitDiff: gitDiffTool,
@@ -414,7 +437,8 @@ export type AcolyteToolset = typeof acolyteTools;
 
 function readOnlyTools(): Partial<AcolyteToolset> {
   return {
-    searchRepo: acolyteTools.searchRepo,
+    findFiles: acolyteTools.findFiles,
+    searchFiles: acolyteTools.searchFiles,
     readFile: acolyteTools.readFile,
     gitStatus: acolyteTools.gitStatus,
     gitDiff: acolyteTools.gitDiff,
@@ -432,7 +456,8 @@ export function toolsForAgent(options?: { onToolOutput?: ToolOutputListener }): 
   }
   return {
     ...acolyteTools,
-    searchRepo: createSearchRepoTool(options.onToolOutput),
+    findFiles: createFindFilesTool(options.onToolOutput),
+    searchFiles: createSearchFilesTool(options.onToolOutput),
     readFile: createReadFileTool(options.onToolOutput),
     gitStatus: createGitStatusTool(options.onToolOutput),
     gitDiff: createGitDiffTool(options.onToolOutput),

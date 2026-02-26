@@ -1,4 +1,4 @@
-import { mkdir, readFile, readdir, unlink, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { appConfig } from "./app-config";
@@ -25,69 +25,52 @@ async function runCommand(cmd: string[]): Promise<{ code: number; stdout: string
   };
 }
 
-export async function searchRepo(pattern: string, maxResults = 40): Promise<string> {
-  const trimmed = pattern.trim();
-  if (!trimmed) {
-    throw new Error("Search pattern cannot be empty");
-  }
-  const isFilenameLike = !/\s/.test(trimmed) && (trimmed.includes("/") || /\.[a-z0-9]+$/i.test(trimmed));
-
-  if (isFilenameLike) {
-    const { code, stdout, stderr } = await runCommand(["rg", "--files", "--color", "never", "."]);
-    if (code !== 0 && stdout.trim().length === 0) {
-      const err = stderr.trim();
-      return err.length > 0 ? `No matches. (${err})` : "No matches.";
-    }
-    const needle = trimmed.replace(/^\.\/+/, "").toLowerCase();
-    const fileLines = stdout
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0);
-    const ranked = fileLines
-      .filter((line) => line.toLowerCase().includes(needle))
-      .sort((a, b) => {
-        const aLower = a.toLowerCase();
-        const bLower = b.toLowerCase();
-        const aExact = aLower === needle ? 0 : aLower.endsWith(`/${needle}`) ? 1 : 2;
-        const bExact = bLower === needle ? 0 : bLower.endsWith(`/${needle}`) ? 1 : 2;
-        if (aExact !== bExact) {
-          return aExact - bExact;
-        }
-        return a.length - b.length;
-      })
-      .slice(0, maxResults)
-      .map((line) => `./${line}`);
-    return ranked.length > 0 ? ranked.join("\n") : "No matches.";
-  }
-
-  const {
-    code: exitCode,
-    stdout: stdoutText,
-    stderr: stderrText,
-  } = await runCommand(["rg", "--line-number", "--color", "never", "--max-count", String(maxResults), trimmed, "."]);
-
-  if (exitCode !== 0 && stdoutText.trim().length === 0) {
-    const err = stderrText.trim();
-    if (err.length > 0) {
-      return `No matches. (${err})`;
-    }
-    return "No matches.";
-  }
-
-  return stdoutText.trim() || "No matches.";
-}
-
 const IGNORED_DIRS = new Set(["node_modules", ".git", ".acolyte", "dist", "build", ".next", "coverage"]);
 
 const BINARY_EXTENSIONS = new Set([
-  ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".ico", ".svg", ".webp",
-  ".woff", ".woff2", ".ttf", ".otf", ".eot",
-  ".zip", ".gz", ".tar", ".bz2", ".7z", ".rar",
-  ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt",
-  ".exe", ".dll", ".so", ".dylib", ".bin",
-  ".mp3", ".mp4", ".avi", ".mov", ".wav", ".flac",
-  ".wasm", ".pyc", ".class", ".o", ".a",
-  ".sqlite", ".db",
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".gif",
+  ".bmp",
+  ".ico",
+  ".svg",
+  ".webp",
+  ".woff",
+  ".woff2",
+  ".ttf",
+  ".otf",
+  ".eot",
+  ".zip",
+  ".gz",
+  ".tar",
+  ".bz2",
+  ".7z",
+  ".rar",
+  ".pdf",
+  ".doc",
+  ".docx",
+  ".xls",
+  ".xlsx",
+  ".ppt",
+  ".exe",
+  ".dll",
+  ".so",
+  ".dylib",
+  ".bin",
+  ".mp3",
+  ".mp4",
+  ".avi",
+  ".mov",
+  ".wav",
+  ".flac",
+  ".wasm",
+  ".pyc",
+  ".class",
+  ".o",
+  ".a",
+  ".sqlite",
+  ".db",
   ".lock",
 ]);
 

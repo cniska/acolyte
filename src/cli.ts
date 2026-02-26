@@ -16,7 +16,7 @@ import {
   gitStatusShort,
   readSnippet,
   runShellCommand,
-  searchRepo,
+  searchFiles,
   searchWeb,
 } from "./coding-tools";
 import {
@@ -1412,7 +1412,7 @@ async function toolMode(args: string[]): Promise<void> {
         process.exitCode = 1;
         return;
       }
-      const result = await searchRepo(pattern);
+      const result = await searchFiles(pattern);
       showToolResult("Search", formatForTool("search", result), "tool", pattern);
       return;
     }

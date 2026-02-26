@@ -47,7 +47,8 @@ export const appConfig = {
       maxPinnedMessageTokens: fileConfig.maxPinnedMessageTokens,
     },
     toolOutputBudget: {
-      search: { maxChars: 2200, maxLines: 80 },
+      findFiles: { maxChars: 2500, maxLines: 100 },
+      searchFiles: { maxChars: 2200, maxLines: 80 },
       webSearch: { maxChars: 2400, maxLines: 80 },
       webFetch: { maxChars: 2600, maxLines: 90 },
       read: { maxChars: 2600, maxLines: 120 },

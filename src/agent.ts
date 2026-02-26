@@ -169,7 +169,7 @@ export function createInstructions(baseInstructions: string): string {
   const executionContract = [
     "Execution contract:",
     "Tool Rules (use exact tool ids):",
-    "- Use `read-file` and `search-repo` to inspect code, `edit-file` for file creation and updates, `delete-file` for deletions, and `run-command` for terminal commands.",
+    "- Use `read-file`, `find-files`, and `search-files` to inspect code, `edit-file` for file creation and updates, `delete-file` for deletions, and `run-command` for terminal commands.",
     "- Use `git-status`/`git-diff` for change inspection and `web-search`/`web-fetch` only when external lookup is needed.",
     "- Use tools for actions and text for communication.",
     "- Default to tool execution. If a task can be completed with available tools, do it with tools instead of providing instructions/code-only replies.",
@@ -178,7 +178,7 @@ export function createInstructions(baseInstructions: string): string {
     "- Artifact requests (scripts/files/components/configs) MUST be fulfilled by creating or editing files directly in workspace.",
     "- For straightforward artifact tasks (create/update/delete a file), execute the file tool action immediately in the same turn.",
     "- For edit/update requests, check the target file with `read-file` first, then apply `edit-file`; do not guess file state.",
-    "- Prefer `read-file` when a likely target path is known; use broad `search-repo` scans only when the target is unclear.",
+    "- Prefer `read-file` when a likely target path is known; use `find-files` to locate files by name and `search-files` for content search.",
     "- After a successful `edit-file` for a straightforward request, do not re-read or re-edit the same file in the same turn unless the user explicitly asked for verification or additional changes.",
     "- Never claim a file was created/edited/found unless that is confirmed by tool results in the current turn.",
     "- For requests that create a new file, call `edit-file` with full file content directly (do not answer with file contents in chat).",
@@ -314,8 +314,12 @@ export function canonicalToolId(value: string): string {
   const aliases: Record<string, string> = {
     readFile: "read-file",
     read_file: "read-file",
-    searchRepo: "search-repo",
-    search_repo: "search-repo",
+    findFiles: "find-files",
+    find_files: "find-files",
+    searchFiles: "search-files",
+    search_files: "search-files",
+    searchRepo: "search-files",
+    search_repo: "search-files",
     editFile: "edit-file",
     edit_file: "edit-file",
     writeFile: "edit-file",
@@ -410,7 +414,8 @@ export function formatToolHeader(toolName: string, args: Record<string, unknown>
       const formatted = formatPathList(paths);
       return formatted ? `${label} ${formatted}` : label;
     }
-    case "search-repo": {
+    case "find-files":
+    case "search-files": {
       const pattern = asString(args.pattern);
       return pattern ? `${label} ${pattern}` : label;
     }

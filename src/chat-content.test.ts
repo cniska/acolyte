@@ -13,7 +13,7 @@ describe("chat-content helpers", () => {
   });
 
   test("sanitizeAssistantContent returns fallback when everything is stripped", () => {
-    const raw = ["Tools used: search-repo", "Evidence: src/cli.ts:1"].join("\n");
+    const raw = ["Tools used: search-files", "Evidence: src/cli.ts:1"].join("\n");
     expect(sanitizeAssistantContent(raw)).toBe("No output.");
   });
 

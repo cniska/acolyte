@@ -116,7 +116,7 @@ describe("finalizeReviewOutput", () => {
   });
 
   test("keeps non-empty output even when request includes @path", () => {
-    const raw = "Tools used: search-repo\nEvidence: src/cli.ts:1";
+    const raw = "Tools used: search-files\nEvidence: src/cli.ts:1";
     expect(finalizeReviewOutput(raw, "review @src/")).toBe(raw);
   });
 

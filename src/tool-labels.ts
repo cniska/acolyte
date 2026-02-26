@@ -1,5 +1,6 @@
 const TOOL_LABELS: Record<string, string> = {
-  "search-repo": "Search",
+  "find-files": "Find",
+  "search-files": "Search",
   "read-file": "Read",
   "git-status": "Status",
   "git-diff": "Diff",
