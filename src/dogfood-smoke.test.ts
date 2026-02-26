@@ -47,8 +47,8 @@ describe("dogfood-smoke helpers", () => {
 
   it("detects edit claim contract violations", () => {
     expect(violatesEditClaimContract("Updated /tmp/x.txt")).toBe(true);
-    expect(violatesEditClaimContract("Edited /tmp/x.txt\n• Edited /tmp/x.txt")).toBe(false);
-    expect(violatesEditClaimContract("Wrote /tmp/new.txt")).toBe(false);
+    expect(violatesEditClaimContract("Edited /tmp/x.txt\n• Edit /tmp/x.txt")).toBe(false);
+    expect(violatesEditClaimContract("Create /tmp/new.txt")).toBe(false);
   });
 
   it("detects unwanted verification chatter in concise coding responses", () => {
@@ -65,11 +65,11 @@ describe("dogfood-smoke helpers", () => {
   });
 
   it("detects required tool outcome verbs in output", () => {
-    expect(hasToolOutcomeSignal("Wrote /tmp/sum.rs", "Wrote")).toBe(true);
-    expect(hasToolOutcomeSignal("Edited /tmp/sum.rs", "Edited")).toBe(true);
-    expect(hasToolOutcomeSignal("Edited /tmp/a.ts", "Edited")).toBe(true);
-    expect(hasToolOutcomeSignal("Deleted /tmp/a.ts", "Deleted")).toBe(true);
-    expect(hasToolOutcomeSignal("Read /tmp/a.ts", "Edited")).toBe(false);
+    expect(hasToolOutcomeSignal("Create /tmp/sum.rs", "Create")).toBe(true);
+    expect(hasToolOutcomeSignal("Edit /tmp/sum.rs", "Edit")).toBe(true);
+    expect(hasToolOutcomeSignal("Edit /tmp/a.ts", "Edit")).toBe(true);
+    expect(hasToolOutcomeSignal("Delete /tmp/a.ts", "Delete")).toBe(true);
+    expect(hasToolOutcomeSignal("Read /tmp/a.ts", "Edit")).toBe(false);
   });
 
   it("detects diff preview lines in tool output", () => {

@@ -56,6 +56,7 @@ export const appConfig = {
       gitDiff: { maxChars: 3200, maxLines: 120 },
       run: { maxChars: 2600, maxLines: 120 },
       edit: { maxChars: 1400, maxLines: 60 },
+      create: { maxChars: 3000, maxLines: 100 },
     },
   },
 } as const;

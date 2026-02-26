@@ -732,7 +732,7 @@ export function formatProgressEventOutput(
   const colorize = (parsed: ReturnType<typeof parseToolProgressLine>): string => {
     switch (parsed.kind) {
       case "header":
-        if (["Edit", "Read", "Delete", "Diff", "Status"].includes(parsed.verb)) {
+        if (["Edit", "Create", "Read", "Delete", "Diff", "Status"].includes(parsed.verb)) {
           return `${bold(`${parsed.verb} `)}${path(parsed.path)}`;
         }
         return `${bold(`${parsed.verb} `)}${dim(parsed.path)}`;

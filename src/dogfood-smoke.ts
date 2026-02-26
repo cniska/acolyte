@@ -138,7 +138,7 @@ export function hasEditClaimSignal(output: string): boolean {
 }
 
 export function violatesEditClaimContract(output: string): boolean {
-  return hasEditClaimSignal(output) && !hasToolOutcomeSignal(output, "Edited");
+  return hasEditClaimSignal(output) && !hasToolOutcomeSignal(output, "Edit");
 }
 
 export function hasUnwantedVerificationChatter(output: string): boolean {
@@ -149,12 +149,12 @@ export function hasAdvisoryFileWriteSignal(output: string): boolean {
   return /\bsave (?:this|as)\b|\bcopy\/paste\b|\bpaste this into\b/i.test(output);
 }
 
-export function hasToolOutcomeSignal(output: string, verb: "Wrote" | "Edited" | "Deleted"): boolean {
+export function hasToolOutcomeSignal(output: string, verb: "Edit" | "Create" | "Delete"): boolean {
   const escapedVerb = verb.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   return new RegExp(`\\b${escapedVerb}\\s+`, "i").test(output);
 }
 
-function hasAnyToolOutcomeSignal(output: string, verbs: Array<"Wrote" | "Edited" | "Deleted">): boolean {
+function hasAnyToolOutcomeSignal(output: string, verbs: Array<"Edit" | "Create" | "Delete">): boolean {
   return verbs.some((verb) => hasToolOutcomeSignal(output, verb));
 }
 
@@ -278,7 +278,7 @@ async function runCodingTaskSmoke(
     if (hasAdvisoryFileWriteSignal(output)) {
       return { ok: false, detail: "advisory file-write response detected" };
     }
-    if (!hasToolOutcomeSignal(output, "Edited")) {
+    if (!hasToolOutcomeSignal(output, "Edit")) {
       return { ok: false, detail: "missing edited tool outcome in output" };
     }
     if (!hasToolDiffPreviewSignal(output)) {
@@ -319,7 +319,7 @@ async function runCreateFileCodingTaskSmoke(
     if (hasAdvisoryFileWriteSignal(output)) {
       return { ok: false, detail: "advisory file-write response detected" };
     }
-    if (!hasAnyToolOutcomeSignal(output, ["Edited", "Wrote"])) {
+    if (!hasAnyToolOutcomeSignal(output, ["Edit", "Create"])) {
       return { ok: false, detail: "missing create tool outcome in output" };
     }
     if (!hasToolDiffPreviewSignal(output)) {
@@ -362,7 +362,7 @@ async function runDeleteFileCodingTaskSmoke(
     if (hasAdvisoryFileWriteSignal(output)) {
       return { ok: false, detail: "advisory file-write response detected" };
     }
-    if (!hasToolOutcomeSignal(output, "Deleted")) {
+    if (!hasToolOutcomeSignal(output, "Delete")) {
       return { ok: false, detail: "missing deleted tool outcome in output" };
     }
     try {
@@ -407,7 +407,7 @@ async function runMultiFileCodingTaskSmoke(
     if (hasAdvisoryFileWriteSignal(output)) {
       return { ok: false, detail: "advisory file-write response detected" };
     }
-    if (!hasToolOutcomeSignal(output, "Edited")) {
+    if (!hasToolOutcomeSignal(output, "Edit")) {
       return { ok: false, detail: "missing edited tool outcome in output" };
     }
     if (!hasToolDiffPreviewSignal(output)) {

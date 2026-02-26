@@ -98,11 +98,32 @@ function numberedUnifiedDiffLines(rawResult: string, maxLines = 160): string[] {
     }
     rendered.push(line);
   }
-  if (rendered.length > maxLines) {
-    const omitted = rendered.length - maxLines;
-    return [...rendered.slice(0, maxLines), `… ${omitted} lines truncated`];
+  const contextRadius = 3;
+  const isChange = rendered.map((line) => /^\d+\s+[+-]\s/.test(line));
+  const keep = new Uint8Array(rendered.length);
+  for (let i = 0; i < rendered.length; i++) {
+    if (!isChange[i]) {
+      continue;
+    }
+    for (let j = Math.max(0, i - contextRadius); j <= Math.min(rendered.length - 1, i + contextRadius); j++) {
+      keep[j] = 1;
+    }
   }
-  return rendered;
+  const filtered: string[] = [];
+  let skipped = false;
+  for (let i = 0; i < rendered.length; i++) {
+    if (keep[i]) {
+      skipped = false;
+      filtered.push(rendered[i] ?? "");
+    } else if (!skipped) {
+      skipped = true;
+    }
+  }
+  if (filtered.length > maxLines) {
+    const omitted = filtered.length - maxLines;
+    return [...filtered.slice(0, maxLines), `… ${omitted} lines truncated`];
+  }
+  return filtered;
 }
 
 function streamCallId(toolName: string): string {
@@ -300,50 +321,54 @@ export const runCommandTool = createRunCommandTool();
 function createEditFileTool(onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "edit-file",
-    description: "Create/update file content or replace exact text in an existing file.",
-    inputSchema: z
-      .object({
-        path: z.string().min(1),
-        find: z.string().optional(),
-        replace: z.string().optional(),
-        content: z.string().optional(),
-        overwrite: z.boolean().optional(),
-        dryRun: z.boolean().optional(),
-      })
-      .refine(
-        (input) => typeof input.content === "string" || (typeof input.find === "string" && input.find.length > 0),
-        {
-          message: "Provide either content, or find+replace.",
-          path: ["content"],
-        },
-      ),
-    execute: async (input: {
-      path: string;
-      find?: string;
-      replace?: string;
-      content?: string;
-      overwrite?: boolean;
-      dryRun?: boolean;
-    }) => {
+    description:
+      "Edit an existing file by replacing exact text. `find` must be a short, unique substring of the file (a few lines of context, not the whole file). `replace` is the replacement text. You MUST read the file first. For creating new files, use `create-file` instead.",
+    inputSchema: z.object({
+      path: z.string().min(1),
+      find: z.string().min(1),
+      replace: z.string(),
+      dryRun: z.boolean().optional(),
+    }),
+    execute: async (input) => {
       return withToolError("edit-file", async () => {
         const toolCallId = streamCallId("edit-file");
-        const rawResult =
-          typeof input.content === "string"
-            ? await writeTextFile({
-                path: input.path,
-                content: input.content,
-                overwrite: input.overwrite ?? true,
-              })
-            : await editFileReplace({
-                path: input.path,
-                find: input.find ?? "",
-                replace: input.replace ?? "",
-                dryRun: input.dryRun ?? false,
-              });
+        const rawResult = await editFileReplace({
+          path: input.path,
+          find: input.find,
+          replace: input.replace,
+          dryRun: input.dryRun ?? false,
+        });
         for (const line of numberedUnifiedDiffLines(rawResult)) {
           onToolOutput?.({ toolName: "edit-file", message: line, toolCallId });
         }
         const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.edit);
+        return { result };
+      });
+    },
+  });
+}
+
+function createCreateFileTool(onToolOutput?: ToolOutputListener) {
+  return createTool({
+    id: "create-file",
+    description:
+      "Create a new file with full content. For editing existing files, use `edit-file` with `find`/`replace` instead.",
+    inputSchema: z.object({
+      path: z.string().min(1),
+      content: z.string(),
+    }),
+    execute: async (input) => {
+      return withToolError("create-file", async () => {
+        const toolCallId = streamCallId("create-file");
+        const rawResult = await writeTextFile({
+          path: input.path,
+          content: input.content,
+          overwrite: true,
+        });
+        for (const line of numberedUnifiedDiffLines(rawResult)) {
+          onToolOutput?.({ toolName: "create-file", message: line, toolCallId });
+        }
+        const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.create);
         return { result };
       });
     },
@@ -372,6 +397,7 @@ function createDeleteFileTool(_onToolOutput?: ToolOutputListener) {
 }
 
 export const editFileTool = createEditFileTool();
+export const createFileTool = createCreateFileTool();
 export const deleteFileTool = createDeleteFileTool();
 
 function createWebSearchTool(onToolOutput?: ToolOutputListener) {
@@ -430,6 +456,7 @@ export const acolyteTools = {
   gitDiff: gitDiffTool,
   runCommand: runCommandTool,
   editFile: editFileTool,
+  createFile: createFileTool,
   deleteFile: deleteFileTool,
   webSearch: webSearchTool,
   webFetch: webFetchTool,
@@ -465,6 +492,7 @@ export function toolsForAgent(options?: { onToolOutput?: ToolOutputListener }): 
     gitDiff: createGitDiffTool(options.onToolOutput),
     runCommand: createRunCommandTool(options.onToolOutput),
     editFile: createEditFileTool(options.onToolOutput),
+    createFile: createCreateFileTool(options.onToolOutput),
     deleteFile: createDeleteFileTool(options.onToolOutput),
     webSearch: createWebSearchTool(options.onToolOutput),
     webFetch: createWebFetchTool(options.onToolOutput),

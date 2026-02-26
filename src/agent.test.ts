@@ -100,7 +100,7 @@ describe("execution intent detection", () => {
 
   test("canonicalToolId maps snake_case and camelCase tool aliases", () => {
     expect(canonicalToolId("edit_file")).toBe("edit-file");
-    expect(canonicalToolId("write_file")).toBe("edit-file");
+    expect(canonicalToolId("write_file")).toBe("create-file");
     expect(canonicalToolId("runCommand")).toBe("run-command");
     expect(canonicalToolId("execute_command")).toBe("run-command");
     expect(canonicalToolId("web_search")).toBe("web-search");
@@ -318,7 +318,7 @@ describe("createInstructions", () => {
     expect(out).toContain("Default to tool execution.");
     expect(out).toContain("Before the first tool call, briefly explain what you're about to do");
     expect(out).toContain("execute the file tool action immediately in the same turn");
-    expect(out).toContain("For requests that create a new file, call `edit-file` with full file content directly");
+    expect(out).toContain("For requests that create a new file, call `create-file` with full file content directly");
     expect(out).toContain("For edit/update requests, check the target file with `read-file` first");
     expect(out).toContain("do not re-read or re-edit the same file in the same turn");
     expect(out).toContain("Never claim a file was created/edited/found unless that is confirmed by tool results");

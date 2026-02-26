@@ -102,7 +102,7 @@ function renderToolProgressContent(content: string, width?: number): React.React
             {parsed.kind === "header" ? (
               <>
                 <Text bold>{`${parsed.verb} `}</Text>
-                {["Edit", "Read", "Delete", "Diff", "Status"].includes(parsed.verb) ? (
+                {["Edit", "Create", "Read", "Delete", "Diff", "Status"].includes(parsed.verb) ? (
                   <Text underline color={palette.textPath}>
                     {parsed.path}
                   </Text>

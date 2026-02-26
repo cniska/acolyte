@@ -169,7 +169,7 @@ export function createInstructions(baseInstructions: string): string {
   const executionContract = [
     "Execution contract:",
     "Tool Rules (use exact tool ids):",
-    "- Use `read-file`, `find-files`, and `search-files` to inspect code, `edit-file` for file creation and updates, `delete-file` for deletions, and `run-command` for terminal commands.",
+    "- Use `read-file`, `find-files`, and `search-files` to inspect code, `edit-file` for updates, `create-file` for new files, `delete-file` for deletions, and `run-command` for terminal commands.",
     "- Use `git-status`/`git-diff` for change inspection and `web-search`/`web-fetch` only when external lookup is needed.",
     "- Use tools for actions and text for communication.",
     "- Default to tool execution. If a task can be completed with available tools, do it with tools instead of providing instructions/code-only replies.",
@@ -177,12 +177,12 @@ export function createInstructions(baseInstructions: string): string {
     "- Minimize tool round trips: for focused file edits, one targeted read then one edit is preferred.",
     "- Artifact requests (scripts/files/components/configs) must be fulfilled by creating or editing files directly in workspace.",
     "- For straightforward artifact tasks (create/update/delete a file), execute the file tool action immediately in the same turn.",
-    "- For edit/update requests, check the target file with `read-file` first, then apply `edit-file`; do not guess file state.",
+    "- For edit/update requests, check the target file with `read-file` first, then apply `edit-file` with a short unique `find` snippet (a few surrounding lines, never the whole file) and `replace` with the updated snippet.",
     "- Prefer `read-file` when a likely target path is known; use `find-files` to locate files by name and `search-files` for content search.",
     "- After a successful `edit-file` for a straightforward request, do not re-read or re-edit the same file in the same turn unless the user explicitly asked for verification or additional changes.",
     "- Never claim a file was created/edited/found unless that is confirmed by tool results in the current turn.",
-    "- For requests that create a new file, call `edit-file` with full file content directly (do not answer with file contents in chat).",
-    "- If filename/path is not specified, choose a sensible default filename and create it (for example `sum.rs`) using `edit-file`.",
+    "- For requests that create a new file, call `create-file` with full file content directly (do not answer with file contents in chat).",
+    "- If filename/path is not specified, choose a sensible default filename and create it (for example `sum.rs`) using `create-file`.",
     "- Do not offer variants/options before performing a straightforward artifact request; create/edit the file first, then report outcome.",
     "- When asked to edit a specific file and it does not exist, state that the file is missing instead of silently creating a replacement file.",
     "- Never reply with 'save this as ...' or ask the user to copy/paste file contents.",
@@ -321,8 +321,10 @@ export function canonicalToolId(value: string): string {
     search_repo: "search-files",
     editFile: "edit-file",
     edit_file: "edit-file",
-    writeFile: "edit-file",
-    write_file: "edit-file",
+    createFile: "create-file",
+    create_file: "create-file",
+    writeFile: "create-file",
+    write_file: "create-file",
     deleteFile: "delete-file",
     delete_file: "delete-file",
     gitDiff: "git-diff",
@@ -394,6 +396,7 @@ export function formatToolHeader(toolName: string, args: Record<string, unknown>
     }
     case "read-file":
     case "edit-file":
+    case "create-file":
     case "delete-file":
     case "git-diff": {
       const paths = collectPathDetails(args);
