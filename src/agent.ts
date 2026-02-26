@@ -7,8 +7,6 @@ import { toolsForAgent } from "./mastra-tools";
 import { isProviderAvailable, type ModelProviderName, providerFromModel } from "./provider-config";
 import { formatToolLabel } from "./tool-labels";
 
-const FALLBACK_PLAN =
-  "1) Interpret request. 2) Use available repo tools when helpful. 3) Return concise, actionable answer.";
 const APPROX_CHARS_PER_TOKEN = 4;
 
 function estimateTokens(input: string): number {
@@ -434,19 +432,6 @@ export function finalizeAssistantOutput(
   return "No output from model. Check /status and backend logs, then retry or switch model/provider.";
 }
 
-function buildMockReply(req: ChatRequest, reason?: string): ChatResponse {
-  return {
-    model: req.model,
-    output: [
-      "Remote backend is active.",
-      reason ?? "Provider credentials are unavailable for the requested model, so mock mode is enabled.",
-      `Plan: ${FALLBACK_PLAN}`,
-      `Echo: ${req.message.trim()}`,
-    ].join(" "),
-    modelCalls: 0,
-  };
-}
-
 export async function runAgent(input: {
   request: ChatRequest;
   soulPrompt: string;
@@ -464,7 +449,10 @@ export async function runAgent(input: {
 
   const resolved = resolveRunnableModel(input.request.model);
   if (!resolved.available) {
-    return buildMockReply(input.request, `Provider '${resolved.provider}' is not configured.`);
+    throw new Error(
+      `Provider '${resolved.provider}' is not configured for model '${resolved.model}'. ` +
+        "Set the API key in your config or environment, or switch to another model.",
+    );
   }
 
   const model = resolved.model;

@@ -118,11 +118,9 @@ What MVP is **not**:
 
 - Parallel subagents per mode (explore, code, verify) for concurrent execution.
 - Mode-based tool filtering (restrict tool availability per mode).
-- Configurable model when mock mode is detected instead of silent fallback.
 
 ## Known Issues
 
 - Streaming pipeline has fragile multi-level deduplication that can drop legitimate events.
 - Token budgeting uses approximate char-to-token ratios, not actual counts.
-- Model fallbacks happen silently without user notification.
 - Provider integration is only tested with mocks; real multi-provider coverage is untested.
