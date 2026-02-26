@@ -49,11 +49,11 @@ Living notes for talks about building this project. Update this file as mileston
 - Built collaboratively with Codex in commit-sized slices.
 - Delivery loop: define slice -> implement -> validate -> commit.
 - Standard validation: `bun run verify` (format + lint + typecheck + test).
-- 430 tests, zero lint issues, ~22K lines of TypeScript.
+- ~430 tests, zero lint issues, ~22K lines of TypeScript.
 
 ## Key Talking Points
 - Vibe-coding can produce production-quality software with the right constraints (verify gates, scoped slices, clear policies).
-- The governance layer (soul contract, AGENTS.md, dogfood gates) is what keeps AI-generated code coherent.
+- The governance layer (soul contract, AGENTS.md) is what keeps AI-generated code coherent.
 - Persistent memory is the key differentiator from tools like Claude Code and Aider.
 - The hard ceiling is model reliability for chained tool use, not the scaffolding.
 - Building an AI tool with AI is the best way to understand AI tool limitations.
@@ -61,17 +61,18 @@ Living notes for talks about building this project. Update this file as mileston
 ## What's Been Shipped
 1. Core platform: CLI + backend + Mastra agent/tools + soul contract.
 2. Local persistence: sessions + memory (user/project) + layered config.
-3. Tool surface: search/read/edit/run/git/status + web search/fetch.
+3. Tool surface: search/read/edit/run/git/status + web search/fetch + AST edit (multi-language).
 4. Chat UX: Ink-based interface, shortcuts/pickers, resume/skills, `@path` file references.
 5. Memory UX: `/remember`, `/memory`, policy distillation groundwork.
 6. Reliability/safety: verify-first loop, permission modes, workspace path guardrails.
 7. Dogfooding infrastructure: automated smoke, progress tracking, readiness gates.
 8. Live streaming: tool phases, assistant delta streaming, progress rendering.
+9. Test infrastructure: shared factory helpers to reduce test boilerplate.
 
 ## Lessons Learned
 - Reliability over novelty: verify-first loops, small commits, and smoke checks keep iteration stable.
 - Keep execution simple: single-agent runtime, explicit permission controls, minimal user-facing complexity.
-- Streaming correctness matters more than formatting polish.
+- Streaming correctness matters more than formatting polish. When we moved to streaming, the biggest cost was carrying request/response abstractions into a streaming world — recognize when architecture shifts invalidate existing abstractions.
 - Memory trust matters: saved context must be inspectable, editable, and scoped clearly.
 - Grounded execution beats prompt gymnastics: tool-backed changes are more reliable than heavy post-processing.
 - AI-generated docs tend to be over-optimistic. Verify metrics and claims manually.
