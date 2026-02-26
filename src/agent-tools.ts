@@ -698,6 +698,7 @@ async function ensureDynamicLanguages(napi: typeof import("@ast-grep/napi")): Pr
     /* optional */
   }
   if (Object.keys(langs).length > 0) {
+    // biome-ignore lint/suspicious/noExplicitAny: ast-grep dynamic language API has loose types
     napi.registerDynamicLanguage(langs as any);
   }
   dynamicLangsRegistered = true;
