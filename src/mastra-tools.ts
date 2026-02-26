@@ -16,6 +16,7 @@ import {
 } from "./agent-tools";
 
 import { appConfig } from "./app-config";
+import { createId } from "./short-id";
 import { compactToolOutput } from "./tool-output";
 
 type ToolOutputListener = (event: { toolName: string; message: string; toolCallId?: string }) => void;
@@ -188,7 +189,7 @@ function numberedUnifiedDiffLines(rawResult: string, maxLines = 160): string[] {
 }
 
 function streamCallId(toolName: string): string {
-  return `${toolName}_${crypto.randomUUID().slice(0, 8)}`;
+  return `${toolName}_${createId()}`;
 }
 
 function createRunCommandTool(onToolOutput?: ToolOutputListener) {

@@ -75,7 +75,7 @@ function ChatApp(props: ChatAppProps) {
     { id: "title", text: "Acolyte", suffix: ` v${version}`, dim: false, brand: true },
     {
       id: "session",
-      text: `${currentSession.model} · session ${currentSession.id.slice(0, 12)}`,
+      text: `${currentSession.model} · session ${currentSession.id}`,
       dim: false,
       brand: false,
     },

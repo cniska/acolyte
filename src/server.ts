@@ -6,6 +6,7 @@ import { errorToLogFields, log } from "./log";
 import { mastraStorage, mastraStorageMode } from "./mastra-storage";
 import { getObservationalMemoryConfig } from "./memory-config";
 import { isProviderAvailable, presentModel, providerFromModel, resolveProvider } from "./provider-config";
+import { createId } from "./short-id";
 import { createSoulPrompt, getMemoryContextEntries } from "./soul";
 
 const PORT = appConfig.server.port;
@@ -13,7 +14,6 @@ const API_KEY = appConfig.server.apiKey;
 const OPENAI_API_KEY = appConfig.openai.apiKey;
 const OPENAI_BASE_URL = appConfig.openai.baseUrl;
 const omConfig = getObservationalMemoryConfig();
-const ERROR_ID_PREFIX = "err";
 const SUPPRESSED_STDERR_PREFIX = "Upstream LLM API error from";
 const SERVER_IDLE_TIMEOUT_SECONDS = Math.max(30, Math.ceil(appConfig.server.replyTimeoutMs / 1000) + 30);
 
@@ -42,7 +42,7 @@ function json<T>(body: T, status = 200): Response {
 }
 
 function nextErrorId(): string {
-  return `${ERROR_ID_PREFIX}_${crypto.randomUUID().slice(0, 8)}`;
+  return `err_${createId()}`;
 }
 
 function serverError(

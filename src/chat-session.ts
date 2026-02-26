@@ -1,4 +1,5 @@
 import type { ChatRow } from "./chat-commands";
+import { createId } from "./short-id";
 import type { Message } from "./types";
 
 const RESUME_TRANSCRIPT_ROWS = 40;
@@ -9,7 +10,7 @@ export function nowIso(): string {
 
 export function newMessage(role: Message["role"], content: string): Message {
   return {
-    id: `msg_${crypto.randomUUID()}`,
+    id: `msg_${createId()}`,
     role,
     content,
     timestamp: nowIso(),

@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { createId } from "./short-id";
 import type { Session, SessionStore } from "./types";
 
 const DATA_DIR = join(homedir(), ".acolyte");
@@ -45,7 +46,7 @@ export async function writeStore(store: SessionStore): Promise<void> {
 
 export function createSession(model: string): Session {
   const now = new Date().toISOString();
-  const id = `sess_${crypto.randomUUID()}`;
+  const id = `sess_${createId()}`;
   return {
     id,
     createdAt: now,

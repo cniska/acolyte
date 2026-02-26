@@ -224,7 +224,7 @@ describe("cli formatting helpers", () => {
   });
 
   test("formatResumeCommand returns prod-friendly command", () => {
-    expect(formatResumeCommand("sess_abcdef1234567890")).toBe("acolyte resume sess_abcdef1");
+    expect(formatResumeCommand("sess_abcdef1234567890")).toBe("acolyte resume sess_abcdef1234567890");
   });
 
   test("isTopLevelHelpCommand recognizes help variants", () => {

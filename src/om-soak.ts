@@ -2,6 +2,7 @@
 import { z } from "zod";
 import type { ChatRequest, ChatResponse } from "./api";
 import { appConfig } from "./app-config";
+import { createId } from "./short-id";
 import type { Message } from "./types";
 
 type OmStatusResponse = {
@@ -146,7 +147,7 @@ function printUsage(): void {
 
 function makeMessage(role: Message["role"], content: string): Message {
   return {
-    id: `msg_${crypto.randomUUID()}`,
+    id: `msg_${createId()}`,
     role,
     content,
     timestamp: nowIso(),

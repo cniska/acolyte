@@ -126,12 +126,11 @@ export function renderPickerItems(
     case "resume":
       return picker.items.map((item, index) => {
         const selected = index === picker.index;
-        const prefix = item.id.slice(0, 12);
         const active = item.id === activeSessionId ? "●" : " ";
         return (
           <Text key={item.id}>
             {selected ? "› " : "  "}
-            <Text color={selected ? brandColor : undefined}>{`${active} ${prefix}`}</Text>{" "}
+            <Text color={selected ? brandColor : undefined}>{`${active} ${item.id}`}</Text>{" "}
             <Text dimColor>{truncateText(item.title || "New Session")}</Text>
           </Text>
         );

@@ -31,6 +31,7 @@ import {
 import { buildFileContext } from "./file-context";
 import { addMemory, listMemories } from "./memory";
 import { acquireSessionLock, releaseSessionLock } from "./session-lock";
+import { createId } from "./short-id";
 import { formatStatusOutput as formatStatusOutputShared } from "./status-format";
 import { createSession, readStore, writeStore } from "./storage";
 import { parseToolProgressLine } from "./tool-progress";
@@ -164,7 +165,7 @@ function nowIso(): string {
 
 function newMessage(role: Message["role"], content: string): Message {
   return {
-    id: `msg_${crypto.randomUUID()}`,
+    id: `msg_${createId()}`,
     role,
     content,
     timestamp: nowIso(),
@@ -256,11 +257,7 @@ function listSessions(store: SessionStore): void {
 
   const rows = store.sessions
     .slice(0, 20)
-    .map((session) => [
-      session.id.slice(0, 12),
-      truncateText(session.title, 60),
-      formatRelativeTime(session.updatedAt),
-    ]);
+    .map((session) => [session.id, truncateText(session.title, 60), formatRelativeTime(session.updatedAt)]);
   for (const line of formatColumns(rows)) {
     printDim(line);
   }
@@ -274,7 +271,7 @@ function printMemoryRows(rows: Awaited<ReturnType<typeof listMemories>>): void {
 
   const formatted = rows
     .slice(0, 50)
-    .map((row) => [row.id.slice(0, 12), truncateText(row.content, 80), formatRelativeTime(row.createdAt)]);
+    .map((row) => [row.id, truncateText(row.content, 80), formatRelativeTime(row.createdAt)]);
   for (const line of formatColumns(formatted)) {
     printDim(line);
   }
@@ -1009,7 +1006,7 @@ function parseEditArgs(args: string[]): {
 }
 
 export function formatResumeCommand(sessionId: string): string {
-  return `acolyte resume ${sessionId.slice(0, 12)}`;
+  return `acolyte resume ${sessionId}`;
 }
 
 type ResumeTarget =
@@ -1059,7 +1056,7 @@ async function chatModeWithOptions(options: { resumeLatest: boolean; resumePrefi
     return;
   }
   if (resolved?.kind === "ambiguous") {
-    const sample = resolved.matches.slice(0, 6).map((item) => item.id.slice(0, 12));
+    const sample = resolved.matches.slice(0, 6).map((item) => item.id);
     printError(`Ambiguous prefix: ${resolved.prefix}`);
     printDim(`Matches: ${sample.join(", ")}`);
     process.exitCode = 1;
@@ -1257,7 +1254,7 @@ async function memoryMode(args: string[]): Promise<void> {
       return;
     }
     const entry = await addMemory(content, { scope });
-    printDim(`Saved ${scope} memory ${entry.id.slice(0, 12)}.`);
+    printDim(`Saved ${scope} memory ${entry.id}.`);
     return;
   }
 

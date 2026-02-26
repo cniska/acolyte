@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { createId } from "./short-id";
 
 export type MemoryScope = "user" | "project";
 
@@ -128,7 +129,7 @@ export async function addMemory(
   await mkdir(dir, { recursive: true });
 
   const entry: MemoryEntry = {
-    id: `mem_${crypto.randomUUID()}`,
+    id: `mem_${createId()}`,
     content: trimmed,
     createdAt: new Date().toISOString(),
     scope,

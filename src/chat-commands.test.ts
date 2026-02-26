@@ -138,8 +138,8 @@ describe("chat-commands", () => {
     const system = rows.find((row) => row.role === "system" && row.content.includes("Sessions 2"));
     expect(system).toBeDefined();
     expect(system?.style).toBe("sessionsList");
-    expect(system?.content).toContain("● sess_aaaa111  First");
-    expect(system?.content).toContain("  sess_bbbb222  Second");
+    expect(system?.content).toContain("● sess_aaaa1111  First");
+    expect(system?.content).toContain("  sess_bbbb2222  Second");
   });
 
   test("dispatchSlashCommand handles /memory with empty store", async () => {
