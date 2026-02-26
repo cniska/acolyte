@@ -134,7 +134,8 @@ function streamCallId(toolName: string): string {
 function createRunCommandTool(onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "run-command",
-    description: "Run a shell command in the repository and capture stdout/stderr.",
+    description:
+      "Run a shell command in the repository and capture stdout/stderr. Prefer dedicated tools (`find-files`, `search-files`, `read-file`, `edit-file`, `edit-code`) over shell equivalents.",
     inputSchema: z.object({
       command: z.string().min(1),
       timeoutMs: z.number().int().min(500).max(120000).optional(),
@@ -206,7 +207,8 @@ export async function withToolError<T>(toolId: string, task: () => Promise<T>): 
 function createFindFilesTool(_onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "find-files",
-    description: "Find files in the repository by name or path pattern.",
+    description:
+      "Find files in the repository by name or path pattern. To search file contents use `search-files` instead.",
     inputSchema: z.object({
       pattern: z.string().min(1),
       maxResults: z.number().int().min(1).max(200).optional(),
@@ -227,7 +229,8 @@ function createFindFilesTool(_onToolOutput?: ToolOutputListener) {
 function createSearchFilesTool(_onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "search-files",
-    description: "Search file contents in the repository for a text or regex pattern.",
+    description:
+      "Search file contents in the repository for a text or regex pattern. To locate files by name use `find-files` instead.",
     inputSchema: z.object({
       pattern: z.string().min(1),
       maxResults: z.number().int().min(1).max(200).optional(),
@@ -248,7 +251,8 @@ function createSearchFilesTool(_onToolOutput?: ToolOutputListener) {
 function createReadFileTool(_onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "read-file",
-    description: "Read a text file snippet by line range from the local repository.",
+    description:
+      "Read a text file snippet by line range from the local repository. Use to inspect code before editing.",
     inputSchema: z
       .object({
         path: z.string().min(1),
@@ -278,7 +282,7 @@ export const readFileTool = createReadFileTool();
 function createGitStatusTool(onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "git-status",
-    description: "Get git status --short --branch for the current repository.",
+    description: "Show working tree status (short format with branch) for the current repository.",
     inputSchema: z.object({}),
     execute: async () => {
       return withToolError("git-status", async () => {
@@ -296,7 +300,7 @@ export const gitStatusTool = createGitStatusTool();
 function createGitDiffTool(onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "git-diff",
-    description: "Get git diff for the repository or a specific file path.",
+    description: "Show unstaged changes (unified diff) for the repository or a specific file path.",
     inputSchema: z.object({
       path: z.string().optional(),
       contextLines: z.number().int().min(0).max(20).optional(),
@@ -323,7 +327,7 @@ function createEditFileTool(onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "edit-file",
     description:
-      "Edit an existing file by replacing exact text. `find` must be a short, unique substring of the file (a few lines of context, not the whole file). `replace` is the replacement text. You MUST read the file first. For creating new files, use `create-file` instead.",
+      "Edit an existing file by replacing exact text. Best for targeted single-site edits. `find` must be a short, unique substring of the file (a few lines of context, not the whole file). `replace` is the replacement text. You MUST read the file first. For multi-site structural changes use `edit-code`. For creating new files, use `create-file` instead.",
     inputSchema: z.object({
       path: z.string().min(1),
       find: z.string().min(1),
@@ -353,7 +357,7 @@ function createCreateFileTool(onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "create-file",
     description:
-      "Create a new file with full content. For editing existing files, use `edit-file` with `find`/`replace` instead.",
+      "Create a new file with full content. For editing existing files, use `edit-file` or `edit-code` instead.",
     inputSchema: z.object({
       path: z.string().min(1),
       content: z.string(),
@@ -380,7 +384,7 @@ function createAstEditTool(onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "edit-code",
     description:
-      "Edit code files using AST pattern matching with `$VARIABLE` metavariables. Example: pattern=`console.log($ARG)` replacement=`logger.debug($ARG)` replaces all matching call sites while preserving arguments. For simple text replacements, use `edit-file` instead.",
+      "Edit code files using AST pattern matching with `$VARIABLE` metavariables. Best for renaming across call sites, signature changes, and wrapping expressions. Supports TS/TSX/JS/JSX/HTML/CSS. Example: pattern=`console.log($ARG)` replacement=`logger.debug($ARG)` replaces all matching call sites while preserving arguments. For single-site or non-code files use `edit-file` instead.",
     inputSchema: z.object({
       path: z.string().min(1),
       pattern: z.string().min(1),
@@ -409,7 +413,7 @@ function createAstEditTool(onToolOutput?: ToolOutputListener) {
 function createDeleteFileTool(_onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "delete-file",
-    description: "Delete a file. Supports dry run mode.",
+    description: "Delete a file from the repository. Supports dry run mode.",
     inputSchema: z.object({
       path: z.string().min(1),
       dryRun: z.boolean().optional(),
@@ -435,7 +439,8 @@ export const deleteFileTool = createDeleteFileTool();
 function createWebSearchTool(onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "web-search",
-    description: "Search the public web for recent information and return top results.",
+    description:
+      "Search the public web for recent information and return top results. Use for questions not answerable from the repo.",
     inputSchema: z.object({
       query: z.string().min(1),
       maxResults: z.number().int().min(1).max(10).optional(),
@@ -459,7 +464,8 @@ export const webSearchTool = createWebSearchTool();
 function createWebFetchTool(onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "web-fetch",
-    description: "Fetch a public URL and return extracted text content.",
+    description:
+      "Fetch a public URL and return extracted text content. Use to read docs, API references, or linked resources by URL.",
     inputSchema: z.object({
       url: z.string().min(1),
       maxChars: z.number().int().min(500).max(12000).optional(),

@@ -319,13 +319,22 @@ describe("createInstructions", () => {
     const out = createInstructions("Base instructions.");
     expect(out).toContain("Default to tool execution.");
     expect(out).toContain("Before the first tool call, briefly explain what you're about to do");
-    expect(out).toContain("execute the file tool action immediately in the same turn");
     expect(out).toContain("For requests that create a new file, call `create-file` with full file content directly");
     expect(out).toContain("For edit/update requests, check the target file with `read-file` first");
     expect(out).toContain("do not re-read or re-edit the same file in the same turn");
     expect(out).toContain("Never claim a file was created/edited/found unless that is confirmed by tool results");
     expect(out).toContain("Do not offer variants/options before performing a straightforward artifact request");
     expect(out).toContain("state that the file is missing instead of silently creating a replacement file");
+  });
+
+  test("contains Tool Selection section with decision heuristics", () => {
+    const out = createInstructions("Base instructions.");
+    expect(out).toContain("Tool Selection:");
+    expect(out).toContain(
+      "Use `edit-file` for targeted single-site text edits; use `edit-code` for multi-site structural changes",
+    );
+    expect(out).toContain("Use `find-files` to locate files by name; use `search-files` to search file contents");
+    expect(out).toContain("Prefer dedicated tools over shell equivalents");
   });
 
   test("forbids save-as advisory responses", () => {
