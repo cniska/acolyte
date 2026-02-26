@@ -10,15 +10,6 @@ export interface BackendOptions {
   replyTimeoutMs?: number;
 }
 
-export type ChatProgressEvent = {
-  seq: number;
-  message: string;
-  kind?: "status" | "tool" | "assistant" | "error";
-  toolCallId?: string;
-  toolName?: string;
-  phase?: "tool_start" | "tool_chunk" | "tool_end";
-};
-
 export const streamEventSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("text-delta"), text: z.string() }),
   z.object({ type: z.literal("reasoning"), text: z.string() }),
@@ -51,7 +42,7 @@ export interface Backend {
   replyStream(
     input: ChatRequest,
     options: {
-      onEvents: (events: ChatProgressEvent[]) => void;
+      onEvent: (event: StreamEvent) => void;
       signal?: AbortSignal;
     },
   ): Promise<ChatResponse>;
@@ -121,7 +112,7 @@ class LocalBackend implements Backend {
   async replyStream(
     input: ChatRequest,
     _options: {
-      onEvents: (events: ChatProgressEvent[]) => void;
+      onEvent: (event: StreamEvent) => void;
       signal?: AbortSignal;
     },
   ): Promise<ChatResponse> {
@@ -287,7 +278,7 @@ class RemoteBackend implements Backend {
   async replyStream(
     input: ChatRequest,
     options: {
-      onEvents: (events: ChatProgressEvent[]) => void;
+      onEvent: (event: StreamEvent) => void;
       signal?: AbortSignal;
     },
   ): Promise<ChatResponse> {
@@ -364,21 +355,11 @@ class RemoteBackend implements Backend {
       if (!jsonText) {
         return;
       }
-      let payload: { type?: unknown; event?: unknown; reply?: unknown; error?: unknown };
+      let payload: { type?: unknown; reply?: unknown; error?: unknown };
       try {
         payload = JSON.parse(jsonText);
       } catch {
         return;
-      }
-      if (payload.type === "progress") {
-        const events = parseProgressEvents(payload.event ? [payload.event] : []);
-        if (events.length > 0) {
-          options.onEvents(events);
-        }
-        return;
-      }
-      if (payload.type === "error") {
-        throw new Error(typeof payload.error === "string" ? payload.error : "Remote backend stream failed");
       }
       if (payload.type === "done") {
         const reply = parseChatResponse(payload.reply, input.model);
@@ -386,6 +367,16 @@ class RemoteBackend implements Backend {
           throw new Error("Remote backend stream returned invalid done payload");
         }
         finalReply = reply;
+        return;
+      }
+      if (payload.type === "error") {
+        const errorMsg = typeof payload.error === "string" ? payload.error : "Remote backend stream failed";
+        options.onEvent({ type: "error", error: errorMsg });
+        throw new Error(errorMsg);
+      }
+      const event = parseStreamEvent(payload);
+      if (event) {
+        options.onEvent(event);
       }
     };
 
@@ -511,42 +502,6 @@ class RemoteBackend implements Backend {
       throw new Error(`Failed to set permission mode (${response.status}): ${body || "no body"}`);
     }
   }
-}
-
-function parseProgressEvents(events: unknown): ChatProgressEvent[] {
-  if (!Array.isArray(events)) {
-    return [];
-  }
-  return events
-    .map((entry) => {
-      if (!entry || typeof entry !== "object") {
-        return null;
-      }
-      const seq = (entry as { seq?: unknown }).seq;
-      const message = (entry as { message?: unknown }).message;
-      const kind = (entry as { kind?: unknown }).kind;
-      const toolCallId = (entry as { toolCallId?: unknown }).toolCallId;
-      const toolName = (entry as { toolName?: unknown }).toolName;
-      const phase = (entry as { phase?: unknown }).phase;
-      if (typeof seq !== "number" || typeof message !== "string") {
-        return null;
-      }
-      const normalized: ChatProgressEvent = { seq, message };
-      if (kind === "status" || kind === "tool" || kind === "assistant" || kind === "error") {
-        normalized.kind = kind;
-      }
-      if (typeof toolCallId === "string" && toolCallId.length > 0) {
-        normalized.toolCallId = toolCallId;
-      }
-      if (typeof toolName === "string" && toolName.length > 0) {
-        normalized.toolName = toolName;
-      }
-      if (phase === "tool_start" || phase === "tool_chunk" || phase === "tool_end") {
-        normalized.phase = phase;
-      }
-      return normalized;
-    })
-    .filter((entry): entry is ChatProgressEvent => entry !== null);
 }
 
 export function parseStreamEvent(raw: unknown): StreamEvent | null {

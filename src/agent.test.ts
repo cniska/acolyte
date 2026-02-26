@@ -3,12 +3,10 @@ import {
   buildAgentInput,
   buildSubagentContext,
   canonicalToolId,
-  collectToolProgressFromStep,
   createInstructions,
-  extractToolFailureReason,
   finalizeAssistantOutput,
   finalizeReviewOutput,
-  formatToolProgressMessage,
+  formatToolHeader,
   isPlanLikeOutput,
   resolveAgentModel,
   resolveModelProviderState,
@@ -233,34 +231,6 @@ describe("resolveAgentModel", () => {
   });
 });
 
-describe("collectToolProgressFromStep", () => {
-  test("extracts nested tool calls/results from step payloads", () => {
-    const step = {
-      stepResult: {
-        traces: [
-          {
-            toolCalls: [{ toolName: "run-command", args: { command: "echo hi" } }],
-            toolResults: [{ toolName: "run-command", result: "hi" }],
-          },
-        ],
-      },
-    };
-
-    expect(collectToolProgressFromStep(step)).toEqual([
-      {
-        name: "run-command",
-        args: { command: "echo hi" },
-        result: "",
-      },
-      {
-        name: "run-command",
-        args: {},
-        result: "hi",
-      },
-    ]);
-  });
-});
-
 describe("resolveRunnableModel", () => {
   test("uses requested model in single-model mode", () => {
     expect(
@@ -377,126 +347,16 @@ describe("createInstructions", () => {
   });
 });
 
-describe("extractToolFailureReason", () => {
-  test("does not treat diff lines containing EOFError as tool failure", () => {
-    const result = [
-      "1 + try:",
-      '2 +     word = input("Enter a word: ").strip()',
-      "3 + except EOFError:",
-      "4 +     return",
-    ].join("\n");
-    expect(extractToolFailureReason(result)).toBeNull();
-  });
-
-  test("detects explicit tool failure prefix", () => {
-    expect(extractToolFailureReason("edit-file failed: Target file already exists")).toBe(
-      "edit-file failed: Target file already exists",
-    );
-  });
-
-  test("ignores read-file ENOENT failures", () => {
-    expect(
-      extractToolFailureReason(
-        "read-file failed: ENOENT: no such file or directory, open '/Users/christofferniska/code/acolyte/capitalize.py'",
-      ),
-    ).toBeNull();
-  });
-});
-
-describe("formatToolProgressMessage", () => {
+describe("formatToolHeader", () => {
   test("formats multi-file file-tool args as comma-separated paths", () => {
     expect(
-      formatToolProgressMessage("edit-file", {
+      formatToolHeader("edit-file", {
         paths: ["src/a.ts", "src/b.ts", "src/c.ts", "src/d.ts"],
       }),
     ).toBe("Edited src/a.ts, src/b.ts, src/c.ts (+1)");
   });
 
   test("formats run command with command text", () => {
-    expect(formatToolProgressMessage("run-command", { command: "bun run verify" })).toBe("Ran bun run verify");
-  });
-});
-
-describe("collectToolProgressFromStep", () => {
-  test("extracts nested result text from tool result payload objects", () => {
-    const progress = collectToolProgressFromStep({
-      toolResults: [
-        {
-          toolName: "edit-file",
-          output: {
-            result: [
-              "path=/tmp/sum.rs",
-              "",
-              "diff --git a/sum.rs b/sum.rs",
-              "--- /dev/null",
-              "+++ b/sum.rs",
-              "@@ -0,0 +1,1 @@",
-              "+ fn main() {}",
-            ].join("\n"),
-          },
-        },
-      ],
-    });
-    expect(progress).toHaveLength(1);
-    expect(progress[0]?.result).toContain("diff --git a/sum.rs b/sum.rs");
-    expect(progress[0]?.result).toContain("+ fn main() {}");
-  });
-
-  test("extracts nested result text from array/object tool payload shapes", () => {
-    const progress = collectToolProgressFromStep({
-      toolResults: [
-        {
-          toolName: "edit-file",
-          output: {
-            content: [
-              {
-                type: "tool_result",
-                payload: {
-                  response: {
-                    text: [
-                      "diff --git a/sum.rs b/sum.rs",
-                      "--- /dev/null",
-                      "+++ b/sum.rs",
-                      "@@ -0,0 +1,1 @@",
-                      "+ fn main() {}",
-                    ].join("\n"),
-                  },
-                },
-              },
-            ],
-          },
-        },
-      ],
-    });
-    expect(progress).toHaveLength(1);
-    expect(progress[0]?.result).toContain("diff --git a/sum.rs b/sum.rs");
-    expect(progress[0]?.result).toContain("+ fn main() {}");
-  });
-
-  test("extracts tool result text from fallback object fields", () => {
-    const progress = collectToolProgressFromStep({
-      toolResults: [
-        {
-          toolName: "run-command",
-          output: {
-            toolResult: {
-              data: "hello-from-run",
-            },
-          },
-        },
-      ],
-    });
-    expect(progress).toHaveLength(1);
-    expect(progress[0]?.result).toContain("hello-from-run");
-  });
-
-  test("matches unnamed tool results to prior tool call by id", () => {
-    const progress = collectToolProgressFromStep({
-      toolCalls: [{ id: "call_1", toolName: "run-command", args: { command: "echo hello" } }],
-      toolResults: [{ id: "call_1", output: "hello-from-run" }],
-    });
-    const resultEntry = progress.find((entry) => entry.callId === "call_1" && entry.result.length > 0);
-    expect(resultEntry?.name).toBe("run-command");
-    expect(resultEntry?.result).toContain("hello-from-run");
+    expect(formatToolHeader("run-command", { command: "bun run verify" })).toBe("Ran bun run verify");
   });
 });

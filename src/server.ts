@@ -45,43 +45,6 @@ function nextErrorId(): string {
   return `${ERROR_ID_PREFIX}_${crypto.randomUUID().slice(0, 8)}`;
 }
 
-function progressKindForMessage(message: string): "status" | "tool" | "error" {
-  if (/^tool failed:/i.test(message)) {
-    return "error";
-  }
-  if (/^(working|thinking|planning|coding|reviewing|summarizing)[.…]/i.test(message)) {
-    return "status";
-  }
-  return "tool";
-}
-
-function normalizeProgressMessage(message: string): string {
-  const trimmed = message.trim();
-  if (trimmed.length === 0) {
-    return "";
-  }
-  // Normalize common tool-name variants so client rendering is stable.
-  const aliases: Array<[RegExp, string]> = [
-    [/^ReadFile\b/i, "Read"],
-    [/^WriteFile\b/i, "Write"],
-    [/^EditFile\b/i, "Edit"],
-    [/^DeleteFile\b/i, "Delete"],
-  ];
-  for (const [pattern, replacement] of aliases) {
-    if (pattern.test(trimmed)) {
-      return trimmed.replace(pattern, replacement);
-    }
-  }
-  return trimmed;
-}
-
-function normalizeAssistantProgressMessage(message: string): string {
-  if (message.length === 0) {
-    return "";
-  }
-  return message;
-}
-
 function serverError(
   message: string,
   error: unknown,
@@ -381,8 +344,6 @@ const server = Bun.serve({
     if (isChatStreamRoute) {
       const encoder = new TextEncoder();
       let closed = false;
-      let seq = 1;
-      let lastEventSignature = "";
       const stream = new ReadableStream<Uint8Array>({
         start(controller) {
           const send = (payload: Record<string, unknown>): void => {
@@ -397,42 +358,8 @@ const server = Bun.serve({
               const reply = await runAgent({
                 request: chatRequest,
                 soulPrompt,
-                onProgress: (progress) => {
-                  const normalizedForKind =
-                    typeof progress === "string"
-                      ? normalizeProgressMessage(progress)
-                      : normalizeProgressMessage(progress.message);
-                  const kind =
-                    typeof progress === "string"
-                      ? progressKindForMessage(normalizedForKind)
-                      : (progress.kind ?? progressKindForMessage(normalizedForKind));
-                  const rawMessage = typeof progress === "string" ? progress : progress.message;
-                  const message =
-                    kind === "assistant"
-                      ? normalizeAssistantProgressMessage(rawMessage)
-                      : normalizeProgressMessage(rawMessage);
-                  if (!message) {
-                    return;
-                  }
-                  const toolCallId =
-                    typeof progress === "string" ? undefined : progress.toolCallId?.trim() || undefined;
-                  const toolName = typeof progress === "string" ? undefined : progress.toolName?.trim() || undefined;
-                  const phase = typeof progress === "string" ? undefined : progress.phase;
-                  const signature = `${kind}|${toolCallId ?? ""}|${toolName ?? ""}|${phase ?? ""}|${message.toLowerCase()}`;
-                  if (kind !== "assistant" && signature === lastEventSignature) {
-                    return;
-                  }
-                  lastEventSignature = signature;
-                  const event = {
-                    seq,
-                    message,
-                    kind,
-                    toolCallId,
-                    toolName,
-                    phase,
-                  };
-                  seq += 1;
-                  send({ type: "progress", event });
+                onEvent: (event) => {
+                  send(event);
                 },
                 onDebug: (event, fields) => {
                   log.info("agent debug", {
@@ -494,7 +421,6 @@ const server = Bun.serve({
       const reply = await runAgent({
         request: chatRequest,
         soulPrompt,
-        onProgress: () => {},
         onDebug: (event, fields) => {
           log.info("agent debug", {
             request_id: requestId,

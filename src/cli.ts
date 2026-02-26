@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { relative } from "node:path";
 import { stdout as output } from "node:process";
 import { z } from "zod";
+import { formatToolHeader } from "./agent";
 import { appConfig } from "./app-config";
 import { createBackend } from "./backend";
 import { wrapAssistantContent } from "./chat-content";
@@ -879,20 +880,24 @@ async function handlePrompt(
           flushAssistantLine(line);
         }
       },
-      onTool: (entry) => {
-        const delta = deltaForToolUpdate(entry);
+      onToolCall: (entry) => {
+        const header = formatToolHeader(entry.toolName, entry.args);
+        toolSnapshotByCallId.set(entry.toolCallId, header);
+        printOutput(formatProgressEventOutput(header, { bullet: true }));
+        toolBulletPrintedByCallId.set(entry.toolCallId, true);
+        hasPrintedProgress = true;
+      },
+      onToolOutput: (entry) => {
+        const delta = deltaForToolUpdate({ message: entry.content, toolCallId: entry.toolCallId });
         if (!delta) {
           return;
         }
-        const lineNumberWidth = entry.toolCallId ? toolLineWidthByCallId.get(entry.toolCallId) : undefined;
-        const includeBullet = entry.toolCallId ? !toolBulletPrintedByCallId.get(entry.toolCallId) : true;
+        const lineNumberWidth = toolLineWidthByCallId.get(entry.toolCallId);
+        const includeBullet = !toolBulletPrintedByCallId.get(entry.toolCallId);
         printOutput(formatProgressEventOutput(delta, { lineNumberWidth, bullet: includeBullet }));
-        if (entry.toolCallId) {
-          toolBulletPrintedByCallId.set(entry.toolCallId, true);
-        }
+        toolBulletPrintedByCallId.set(entry.toolCallId, true);
         hasPrintedProgress = true;
       },
-      dedupeToolMessages: true,
     });
     const reply = await backend.replyStream(
       {
@@ -903,10 +908,8 @@ async function handlePrompt(
         resourceId: options?.resourceId,
       },
       {
-        onEvents: (events) => {
-          if (events.length > 0) {
-            progressTracker.apply(events);
-          }
+        onEvent: (event) => {
+          progressTracker.apply(event);
         },
       },
     );

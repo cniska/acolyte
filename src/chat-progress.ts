@@ -1,96 +1,53 @@
-import type { ChatProgressEvent } from "./backend";
-
-const STAGE_PREFIXES = [
-  "Thinking…",
-  "Thinking...",
-  "Planning…",
-  "Planning...",
-  "Coding…",
-  "Coding...",
-  "Working…",
-  "Working...",
-  "Reviewing…",
-  "Reviewing...",
-  "Summarizing…",
-  "Summarizing...",
-] as const;
-
-function isStageProgressMessage(message: string): boolean {
-  const trimmed = message.trim();
-  if (trimmed.startsWith("Retrying with ")) {
-    return false;
-  }
-  return STAGE_PREFIXES.some((prefix) => trimmed.startsWith(prefix));
-}
+import type { StreamEvent } from "./backend";
 
 export function createProgressTracker(options: {
-  onStatus: (message: string) => void;
+  onStatus?: (message: string) => void;
   onAssistant?: (delta: string) => void;
-  onTool: (entry: {
-    message: string;
-    toolCallId?: string;
-    toolName?: string;
-    phase?: "tool_start" | "tool_chunk" | "tool_end";
-  }) => void;
-  dedupeToolMessages?: boolean;
+  onReasoning?: (delta: string) => void;
+  onToolCall?: (entry: { toolCallId: string; toolName: string; args: Record<string, unknown> }) => void;
+  onToolOutput?: (entry: { toolCallId: string; toolName: string; content: string }) => void;
+  onToolResult?: (entry: { toolCallId: string; toolName: string; isError?: boolean }) => void;
+  onError?: (error: string) => void;
 }): {
-  apply: (events: ChatProgressEvent[]) => void;
-  afterSeq: () => number;
-  toolMessages: () => string[];
+  apply: (event: StreamEvent) => void;
 } {
-  const dedupe = options.dedupeToolMessages ?? true;
-  let progressAfterSeq = 0;
-  const seenToolMessages = new Set<string>();
-  const toolMessages: string[] = [];
-
-  const apply = (events: ChatProgressEvent[]): void => {
-    if (events.length === 0) {
-      return;
-    }
-    progressAfterSeq = events[events.length - 1]?.seq ?? progressAfterSeq;
-    for (const event of events) {
-      const rawMessage = event.message;
-      if (rawMessage.length === 0) {
-        continue;
-      }
-      if (event.kind === "assistant") {
-        options.onAssistant?.(rawMessage);
-        continue;
-      }
-      const message = rawMessage.trim();
-      if (!message) {
-        continue;
-      }
-      if (event.kind === "status" || isStageProgressMessage(message)) {
-        options.onStatus(message);
-        continue;
-      }
-      const dedupeKey = [
-        event.kind ?? "",
-        event.toolCallId ?? "",
-        event.toolName ?? "",
-        event.phase ?? "",
-        message.toLowerCase(),
-      ].join("|");
-      if (dedupe && seenToolMessages.has(dedupeKey)) {
-        continue;
-      }
-      if (dedupe) {
-        seenToolMessages.add(dedupeKey);
-      }
-      toolMessages.push(message);
-      options.onTool({
-        message,
-        toolCallId: event.toolCallId,
-        toolName: event.toolName,
-        phase: event.phase,
-      });
+  const apply = (event: StreamEvent): void => {
+    switch (event.type) {
+      case "text-delta":
+        options.onAssistant?.(event.text);
+        break;
+      case "reasoning":
+        options.onReasoning?.(event.text);
+        break;
+      case "tool-call":
+        options.onToolCall?.({
+          toolCallId: event.toolCallId,
+          toolName: event.toolName,
+          args: event.args,
+        });
+        break;
+      case "tool-output":
+        options.onToolOutput?.({
+          toolCallId: event.toolCallId,
+          toolName: event.toolName,
+          content: event.content,
+        });
+        break;
+      case "tool-result":
+        options.onToolResult?.({
+          toolCallId: event.toolCallId,
+          toolName: event.toolName,
+          isError: event.isError,
+        });
+        break;
+      case "status":
+        options.onStatus?.(event.message);
+        break;
+      case "error":
+        options.onError?.(event.error);
+        break;
     }
   };
 
-  return {
-    apply,
-    afterSeq: () => progressAfterSeq,
-    toolMessages: () => [...toolMessages],
-  };
+  return { apply };
 }

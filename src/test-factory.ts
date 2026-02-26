@@ -1,4 +1,4 @@
-import type { Backend } from "./backend";
+import type { Backend, StreamEvent } from "./backend";
 import type { ChatRow } from "./chat-commands";
 import { createSubmitHandler } from "./chat-submit-handler";
 import type { PolicyCandidate } from "./policy-distill";
@@ -42,25 +42,11 @@ export function createStore(overrides: Partial<SessionStore> = {}): SessionStore
   };
 }
 
-type TestProgressPayload = {
-  sessionId: string;
-  requestId: string;
-  done: boolean;
-  events: Array<{
-    seq: number;
-    message: string;
-    kind?: "status" | "tool" | "error";
-    toolCallId?: string;
-    toolName?: string;
-    phase?: "tool_start" | "tool_chunk" | "tool_end";
-  }>;
-} | null;
-
 export function createBackend(overrides?: {
   reply?: Backend["reply"];
   replyStream?: Backend["replyStream"];
   status?: Backend["status"];
-  progress?: (sessionId: string, afterSeq: number) => Promise<TestProgressPayload>;
+  events?: StreamEvent[];
   setPermissionMode?: Backend["setPermissionMode"];
 }): Backend {
   const reply =
@@ -72,33 +58,13 @@ export function createBackend(overrides?: {
   const replyStream =
     overrides?.replyStream ??
     (async (input, options) => {
-      const progress = overrides?.progress;
-      if (!progress) {
-        return reply(input, { signal: options.signal });
+      const events = overrides?.events;
+      if (events) {
+        for (const event of events) {
+          options.onEvent(event);
+        }
       }
-      const replyPromise = reply(input, { signal: options.signal });
-      let cursor = 0;
-      for (let i = 0; i < 40; i += 1) {
-        if (options.signal?.aborted) {
-          break;
-        }
-        const payload = await progress(input.sessionId ?? "sess_test", cursor);
-        if (!payload) {
-          break;
-        }
-        if (payload.events.length > 0) {
-          const latestEvent = payload.events[payload.events.length - 1];
-          if (latestEvent) {
-            cursor = latestEvent.seq;
-          }
-          options.onEvents(payload.events);
-        }
-        if (payload.done) {
-          break;
-        }
-        await Bun.sleep(50);
-      }
-      return replyPromise;
+      return reply(input, { signal: options.signal });
     });
   return {
     reply,

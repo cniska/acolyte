@@ -182,7 +182,7 @@ describe("remote backend connection errors", () => {
     expect("progressMessages" in reply).toBe(false);
   });
 
-  test("replyStream emits progress events and returns final reply", async () => {
+  test("replyStream emits stream events and returns final reply", async () => {
     const encoder = new TextEncoder();
     globalThis.fetch = (async () =>
       new Response(
@@ -191,15 +191,10 @@ describe("remote backend connection errors", () => {
             controller.enqueue(
               encoder.encode(
                 `data: ${JSON.stringify({
-                  type: "progress",
-                  event: {
-                    seq: 1,
-                    message: "Edited sum.rs",
-                    kind: "tool",
-                    toolCallId: "call_1",
-                    toolName: "edit-file",
-                    phase: "tool_start",
-                  },
+                  type: "tool-call",
+                  toolCallId: "call_1",
+                  toolName: "edit-file",
+                  args: { path: "sum.rs" },
                 })}\n\n`,
               ),
             );
@@ -224,7 +219,7 @@ describe("remote backend connection errors", () => {
       )) as unknown as typeof fetch;
 
     const backend = createBackend({ apiUrl: "http://localhost:6767" });
-    const received: Array<{ seq: number; message: string }> = [];
+    const received: Array<{ type: string; toolName?: string }> = [];
     const reply = await backend.replyStream(
       {
         message: "ping",
@@ -233,15 +228,15 @@ describe("remote backend connection errors", () => {
         sessionId: "sess_test",
       },
       {
-        onEvents: (events) => {
-          for (const event of events) {
-            received.push({ seq: event.seq, message: event.message });
+        onEvent: (event) => {
+          if (event.type === "tool-call") {
+            received.push({ type: event.type, toolName: event.toolName });
           }
         },
       },
     );
 
-    expect(received).toEqual([{ seq: 1, message: "Edited sum.rs" }]);
+    expect(received).toEqual([{ type: "tool-call", toolName: "edit-file" }]);
     expect(reply.output).toBe("done");
     expect(reply.model).toBe("gpt-5-mini");
   });
@@ -270,7 +265,7 @@ describe("remote backend connection errors", () => {
     const backend = createBackend({ apiUrl: "http://localhost:6767" });
     const reply = await backend.replyStream(
       { message: "ping", history: [], model: "gpt-5-mini", sessionId: "sess_test" },
-      { onEvents: () => {} },
+      { onEvent: () => {} },
     );
     expect(reply.output).toBe("ok");
   });
@@ -308,7 +303,7 @@ describe("remote backend connection errors", () => {
           sessionId: "sess_test",
         },
         {
-          onEvents: () => {},
+          onEvent: () => {},
         },
       ),
     ).rejects.toThrow("Provider quota exceeded");

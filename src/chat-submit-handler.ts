@@ -1,3 +1,4 @@
+import { formatToolHeader } from "./agent";
 import { appConfig } from "./app-config";
 import type { Backend } from "./backend";
 import { type ChatRow, dispatchSlashCommand, type TokenUsageEntry } from "./chat-commands";
@@ -13,7 +14,6 @@ import {
 } from "./chat-turn";
 import { addMemory } from "./memory";
 import type { PolicyCandidate } from "./policy-distill";
-import { isToolDetailLine } from "./tool-progress";
 import type { Message, Session, SessionStore } from "./types";
 
 type CreateSubmitHandlerInput = {
@@ -271,145 +271,6 @@ function buildClarifiedUserText(turn: InternalClarificationTurn): string {
   return `${turn.originalPrompt}\n\nClarifications:\n${lines.join("\n")}`;
 }
 
-function toolProgressHeader(content: string): string {
-  return (content.split("\n")[0] ?? "").trim().toLowerCase();
-}
-
-function findLastToolRowIndex(rows: ChatRow[], minExclusiveIndex: number): number {
-  for (let index = rows.length - 1; index > minExclusiveIndex; index -= 1) {
-    if (rows[index]?.style === "toolProgress") {
-      return index;
-    }
-  }
-  return -1;
-}
-
-function findLastToolRowIndexByCallId(rows: ChatRow[], minExclusiveIndex: number, toolCallId: string): number {
-  for (let index = rows.length - 1; index > minExclusiveIndex; index -= 1) {
-    const row = rows[index];
-    if (row?.style !== "toolProgress") {
-      continue;
-    }
-    if (row.toolCallId === toolCallId) {
-      return index;
-    }
-  }
-  return -1;
-}
-
-function findLastToolRowIndexByHeader(rows: ChatRow[], minExclusiveIndex: number, header: string): number {
-  for (let index = rows.length - 1; index > minExclusiveIndex; index -= 1) {
-    const row = rows[index];
-    if (row?.style !== "toolProgress") {
-      continue;
-    }
-    if (toolProgressHeader(row.content) === header) {
-      return index;
-    }
-  }
-  return -1;
-}
-
-function appendRowsWithToolProgressMerge(current: ChatRow[], incoming: ChatRow[]): ChatRow[] {
-  const next = [...current];
-  const currentTurnStart = (() => {
-    for (let index = next.length - 1; index >= 0; index -= 1) {
-      if (next[index]?.role === "user") {
-        return index;
-      }
-    }
-    return -1;
-  })();
-  for (const incomingRow of incoming) {
-    if (incomingRow.style !== "toolProgress") {
-      next.push(incomingRow);
-      continue;
-    }
-
-    const incomingContent = incomingRow.content.trim();
-    if (incomingRow.toolCallId) {
-      const byCallIdIndex = findLastToolRowIndexByCallId(next, currentTurnStart, incomingRow.toolCallId);
-      if (byCallIdIndex >= 0) {
-        const existingRow = next[byCallIdIndex];
-        if (existingRow) {
-          const existingContent = existingRow.content.trim();
-          const incomingLower = incomingContent.toLowerCase();
-          const existingLower = existingContent.toLowerCase();
-          if (incomingLower === existingLower) {
-            continue;
-          }
-          if (incomingContent.startsWith(`${existingContent}\n`)) {
-            next[byCallIdIndex] = { ...existingRow, ...incomingRow, content: incomingContent };
-            continue;
-          }
-          if (existingContent.startsWith(`${incomingContent}\n`)) {
-            continue;
-          }
-          if (isToolDetailLine(incomingContent)) {
-            const existingLines = existingContent.split("\n").map((line) => line.trim().toLowerCase());
-            if (existingLines.includes(incomingLower)) {
-              continue;
-            }
-            next[byCallIdIndex] = {
-              ...existingRow,
-              ...incomingRow,
-              content: `${existingContent}\n${incomingContent}`,
-            };
-            continue;
-          }
-          next.push(incomingRow);
-          continue;
-        }
-      }
-    }
-    if (isToolDetailLine(incomingContent)) {
-      const lastToolIndex = findLastToolRowIndex(next, currentTurnStart);
-      if (lastToolIndex >= 0) {
-        const existingRow = next[lastToolIndex];
-        if (existingRow) {
-          const existingContent = existingRow.content.trim();
-          const existingLines = existingContent.split("\n").map((line) => line.trim().toLowerCase());
-          if (existingLines.includes(incomingContent.toLowerCase())) {
-            continue;
-          }
-          const combined = `${existingContent}\n${incomingContent}`;
-          next[lastToolIndex] = { ...existingRow, content: combined };
-          continue;
-        }
-      }
-    }
-    const incomingHeader = toolProgressHeader(incomingContent);
-    const existingIndex = findLastToolRowIndexByHeader(next, currentTurnStart, incomingHeader);
-
-    if (existingIndex < 0) {
-      next.push(incomingRow);
-      continue;
-    }
-
-    const existingRow = next[existingIndex];
-    if (!existingRow) {
-      next.push(incomingRow);
-      continue;
-    }
-    const existingContent = existingRow.content.trim();
-    const incomingLower = incomingContent.toLowerCase();
-    const existingLower = existingContent.toLowerCase();
-
-    if (incomingLower === existingLower) {
-      continue;
-    }
-    if (incomingContent.startsWith(`${existingContent}\n`)) {
-      next[existingIndex] = { ...existingRow, content: incomingContent };
-      continue;
-    }
-    if (existingContent.startsWith(`${incomingContent}\n`)) {
-      continue;
-    }
-    next.push(incomingRow);
-  }
-  return next;
-}
-
 export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: string) => Promise<void> {
   return async (raw: string): Promise<void> => {
     const internalClarification = parseInternalClarificationTurn(raw);
@@ -637,100 +498,73 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
           );
         });
       },
-      onTool: (entry) => {
-        const message = entry.message.trim();
-        if (!message) {
+      onToolCall: (entry) => {
+        const header = formatToolHeader(entry.toolName, entry.args);
+        const rowId = `row_${crypto.randomUUID()}`;
+        toolRowIdByCallId.set(entry.toolCallId, rowId);
+        toolSeenLinesByCallId.set(entry.toolCallId, new Set([header.toLowerCase()]));
+        input.setRows((current) => [
+          ...current,
+          {
+            id: rowId,
+            role: "assistant",
+            content: header,
+            style: "toolProgress",
+            toolCallId: entry.toolCallId,
+            toolName: entry.toolName,
+          },
+        ]);
+      },
+      onToolOutput: (entry) => {
+        const content = entry.content.trim();
+        if (!content) {
           return;
         }
-        const toolCallId = entry.toolCallId?.trim();
-        if (!toolCallId) {
-          input.setRows((current) => {
-            const currentTurnStart = (() => {
-              for (let index = current.length - 1; index >= 0; index -= 1) {
-                if (current[index]?.role === "user") {
-                  return index;
-                }
-              }
-              return -1;
-            })();
-            if (isToolDetailLine(message)) {
-              const toolIndex = findLastToolRowIndex(current, currentTurnStart);
-              if (toolIndex >= 0) {
-                const existingRow = current[toolIndex];
-                if (existingRow) {
-                  const existingLines = existingRow.content.split("\n").map((line) => line.trim().toLowerCase());
-                  if (existingLines.includes(message.toLowerCase())) {
-                    return current;
-                  }
-                  const next = [...current];
-                  next[toolIndex] = {
-                    ...existingRow,
-                    content: `${existingRow.content}\n${message}`,
-                    toolName: entry.toolName ?? existingRow.toolName,
-                    toolPhase: entry.phase ?? existingRow.toolPhase,
-                  };
-                  return next;
-                }
-              }
-            }
-            return [
-              ...current,
-              {
-                id: `row_${crypto.randomUUID()}`,
-                role: "assistant",
-                content: message,
-                style: "toolProgress",
-                toolName: entry.toolName,
-                toolPhase: entry.phase,
-              },
-            ];
-          });
-          return;
-        }
-
         input.setRows((current) => {
-          const normalizedLine = message.toLowerCase();
-          const seenLines = toolSeenLinesByCallId.get(toolCallId) ?? new Set<string>();
-          const existingRowId = toolRowIdByCallId.get(toolCallId);
+          const normalizedLine = content.toLowerCase();
+          const seenLines = toolSeenLinesByCallId.get(entry.toolCallId) ?? new Set<string>();
+          if (seenLines.has(normalizedLine)) {
+            return current;
+          }
+          seenLines.add(normalizedLine);
+          toolSeenLinesByCallId.set(entry.toolCallId, seenLines);
+          const existingRowId = toolRowIdByCallId.get(entry.toolCallId);
           const existingIndex = existingRowId ? current.findIndex((row) => row.id === existingRowId) : -1;
           const existingRow = existingIndex >= 0 ? current[existingIndex] : undefined;
-
           if (!existingRow) {
             const rowId = `row_${crypto.randomUUID()}`;
-            toolRowIdByCallId.set(toolCallId, rowId);
-            seenLines.add(normalizedLine);
-            toolSeenLinesByCallId.set(toolCallId, seenLines);
+            toolRowIdByCallId.set(entry.toolCallId, rowId);
             return [
               ...current,
               {
                 id: rowId,
                 role: "assistant",
-                content: message,
+                content,
                 style: "toolProgress",
-                toolCallId,
+                toolCallId: entry.toolCallId,
                 toolName: entry.toolName,
-                toolPhase: entry.phase,
               },
             ];
           }
-
-          if (seenLines.has(normalizedLine)) {
-            return current;
-          }
-
-          seenLines.add(normalizedLine);
-          toolSeenLinesByCallId.set(toolCallId, seenLines);
           const next = [...current];
           next[existingIndex] = {
             ...existingRow,
-            content: `${existingRow.content}\n${message}`,
-            toolName: entry.toolName ?? existingRow.toolName,
-            toolPhase: entry.phase ?? existingRow.toolPhase,
+            content: `${existingRow.content}\n${content}`,
           };
           return next;
         });
       },
-      dedupeToolMessages: true,
+      onError: (error) => {
+        input.setRows((current) => [
+          ...current,
+          {
+            id: `row_${crypto.randomUUID()}`,
+            role: "system",
+            content: error,
+            dim: true,
+          },
+        ]);
+      },
     });
     await input.persist();
 
@@ -742,10 +576,8 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         model: appConfig.model,
         sessionId: input.currentSession.id,
         signal: abortController.signal,
-        onProgressEvents: (events) => {
-          if (events.length > 0) {
-            progressTracker.apply(events);
-          }
+        onEvent: (event) => {
+          progressTracker.apply(event);
         },
         runVerifyAfterReply,
         thinkingStartedAt,
@@ -760,7 +592,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
           streamingAssistantContent = "";
         }
         const nonAssistantRows = turn.rows.filter((row) => row.role !== "assistant");
-        input.setRows((current) => appendRowsWithToolProgressMerge(current, nonAssistantRows));
+        input.setRows((current) => [...current, ...nonAssistantRows]);
         input.openClarifyPanel(clarifyingQuestions, text);
       } else {
         if (streamingAssistantRowId) {
@@ -770,7 +602,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         }
         input.currentSession.messages.push(assistantMessage);
         input.currentSession.updatedAt = input.nowIso();
-        input.setRows((current) => appendRowsWithToolProgressMerge(current, turn.rows));
+        input.setRows((current) => [...current, ...turn.rows]);
       }
       // File tree may have changed during tool execution; refresh @path autocomplete candidates.
       invalidateRepoPathCandidates();

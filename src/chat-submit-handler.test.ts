@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import type { StreamEvent } from "./backend";
 import type { ChatRow } from "./chat-commands";
 import {
   buildInternalWriteResumeTurn,
@@ -103,33 +104,26 @@ describe("chat submit handler guards", () => {
       },
       { model: "gpt-5-mini", output: "Removed sum.rs." },
     ];
-    const progressByTurn = [
-      [{ seq: 1, message: "Edited sum.rs" }],
+    const eventsByTurn: StreamEvent[][] = [
+      [{ type: "tool-call", toolCallId: "call_1", toolName: "edit-file", args: { path: "sum.rs" } }],
       [
-        { seq: 1, message: "Edited sum.rs" },
-        { seq: 2, message: "2 - let sum = a + b;" },
-        { seq: 3, message: "2 + let sum = a + b + c;" },
+        { type: "tool-call", toolCallId: "call_2", toolName: "edit-file", args: { path: "sum.rs" } },
+        { type: "tool-output", toolCallId: "call_2", toolName: "edit-file", content: "2 - let sum = a + b;" },
+        { type: "tool-output", toolCallId: "call_2", toolName: "edit-file", content: "2 + let sum = a + b + c;" },
       ],
-      [{ seq: 1, message: "Deleted sum.rs" }],
+      [{ type: "tool-call", toolCallId: "call_3", toolName: "delete-file", args: { path: "sum.rs" } }],
     ];
     let replyCount = 0;
-    const servedTurns = new Set<number>();
     const { submit, rows } = createSubmitHandlerHarness({
       backend: createBackend({
         status: async () => "ok",
-        reply: async () => replies[replyCount++] ?? { model: "gpt-5-mini", output: "done" },
-        progress: async (_sessionId, afterSeq) => {
-          const turn = Math.max(0, replyCount - 1);
-          if (afterSeq === 0 && !servedTurns.has(turn)) {
-            servedTurns.add(turn);
-            return {
-              sessionId: "sess_test",
-              requestId: `req_${turn + 1}`,
-              done: false,
-              events: progressByTurn[turn] ?? [],
-            };
+        replyStream: async (_input, options) => {
+          const turn = replyCount++;
+          const events = eventsByTurn[turn] ?? [];
+          for (const event of events) {
+            options.onEvent(event);
           }
-          return { sessionId: "sess_test", requestId: `req_${turn + 1}`, done: true, events: [] };
+          return replies[turn] ?? { model: "gpt-5-mini", output: "done" };
         },
       }),
     });
@@ -609,34 +603,24 @@ describe("chat submit handler guards", () => {
     }
   });
 
-  test("updates a single thinking label from progress events", async () => {
+  test("streams tool-call events into tool progress rows", async () => {
     const rows: ChatRow[] = [];
     const thinkingLabels: Array<string | null> = [];
-    let progressCalls = 0;
 
     const session = createSession({ id: "sess_test" });
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
 
     const submit = createSubmitHandler({
       backend: createBackend({
-        reply: async () => {
-          await Bun.sleep(700);
+        replyStream: async (_input, options) => {
+          options.onEvent({ type: "status", message: "Working…" });
+          options.onEvent({
+            type: "tool-call",
+            toolCallId: "call_1",
+            toolName: "run-command",
+            args: { command: "echo hi" },
+          });
           return { model: "gpt-5-mini", output: "done" };
-        },
-        progress: async () => {
-          progressCalls += 1;
-          if (progressCalls === 1) {
-            return {
-              sessionId: "sess_test",
-              requestId: "req_1",
-              done: false,
-              events: [
-                { seq: 1, message: "Working…" },
-                { seq: 2, message: "Run" },
-              ],
-            };
-          }
-          return { sessionId: "sess_test", requestId: "req_1", done: true, events: [] };
         },
         status: async () => "ok",
       }),
@@ -677,7 +661,6 @@ describe("chat submit handler guards", () => {
     await submit("hello");
 
     expect(thinkingLabels[0]).toBe("Working…");
-    expect(thinkingLabels).toContain("Working…");
     expect(thinkingLabels.at(-1)).toBeNull();
     expect(rows.some((row) => row.role === "assistant" && row.style === "toolProgress")).toBe(true);
     expect(rows.some((row) => row.role === "system" && row.content.includes("Working…"))).toBe(false);
@@ -696,7 +679,6 @@ describe("chat submit handler guards", () => {
           output: "done",
           toolCalls: ["run-command"],
         }),
-        progress: async () => ({ sessionId: "sess_test", requestId: "req_1", done: true, events: [] }),
         status: async () => "ok",
       }),
       store,
@@ -1025,66 +1007,35 @@ describe("chat submit handler guards", () => {
     expect(rows.some((row) => row.role === "assistant" && row.content === "resumed")).toBe(true);
   });
 
-  test("dedupes duplicate tool progress when same tool was streamed", async () => {
-    let progressCalls = 0;
+  test("creates a single tool row per streamed tool-call event", async () => {
     const { submit, rows } = createSubmitHandlerHarness({
       backend: createBackend({
         status: async () => "ok",
+        events: [{ type: "tool-call", toolCallId: "call_1", toolName: "run-command", args: { command: "echo hi" } }],
         reply: async () => ({
           model: "gpt-5-mini",
           output: "done",
-          toolCalls: ["run-command"],
         }),
-        progress: async () => {
-          progressCalls += 1;
-          if (progressCalls === 1) {
-            return {
-              sessionId: "sess_test",
-              requestId: "req_1",
-              done: false,
-              events: [{ seq: 1, message: "Run" }],
-            };
-          }
-          return { sessionId: "sess_test", requestId: "req_1", done: true, events: [] };
-        },
       }),
     });
 
     await submit("hello");
 
     const runRows = rows.filter(
-      (row) => row.role === "assistant" && row.style === "toolProgress" && row.content === "Run",
+      (row) => row.role === "assistant" && row.style === "toolProgress" && row.content.startsWith("Ran"),
     );
     expect(runRows.length).toBe(1);
   });
 
-  test("renders delayed tool progress before assistant summary row", async () => {
-    let progressCalls = 0;
+  test("renders streamed tool rows before assistant summary row", async () => {
     const { submit, rows } = createSubmitHandlerHarness({
       backend: createBackend({
         status: async () => "ok",
-        reply: async () => {
-          await Bun.sleep(220);
-          return {
-            model: "gpt-5-mini",
-            output: "done",
-          };
-        },
-        progress: async () => {
-          progressCalls += 1;
-          if (progressCalls === 1) {
-            return { sessionId: "sess_test", requestId: "req_1", done: false, events: [] };
-          }
-          if (progressCalls === 2) {
-            return {
-              sessionId: "sess_test",
-              requestId: "req_1",
-              done: false,
-              events: [{ seq: 1, message: "Edited sum.rs" }],
-            };
-          }
-          return { sessionId: "sess_test", requestId: "req_1", done: true, events: [] };
-        },
+        events: [{ type: "tool-call", toolCallId: "call_1", toolName: "edit-file", args: { path: "sum.rs" } }],
+        reply: async () => ({
+          model: "gpt-5-mini",
+          output: "done",
+        }),
       }),
     });
 
@@ -1099,27 +1050,15 @@ describe("chat submit handler guards", () => {
     expect(toolIndex).toBeLessThan(assistantIndex);
   });
 
-  test("upgrades streamed header-only tool row when detailed row arrives", async () => {
-    let progressCalls = 0;
+  test("creates a single tool row for header-only tool-call event", async () => {
     const { submit, rows } = createSubmitHandlerHarness({
       backend: createBackend({
         status: async () => "ok",
+        events: [{ type: "tool-call", toolCallId: "call_1", toolName: "edit-file", args: { path: "sum.rs" } }],
         reply: async () => ({
           model: "gpt-5-mini",
           output: "done",
         }),
-        progress: async () => {
-          progressCalls += 1;
-          if (progressCalls === 1) {
-            return {
-              sessionId: "sess_test",
-              requestId: "req_1",
-              done: false,
-              events: [{ seq: 1, message: "Edited sum.rs" }],
-            };
-          }
-          return { sessionId: "sess_test", requestId: "req_1", done: true, events: [] };
-        },
       }),
     });
 
@@ -1132,30 +1071,18 @@ describe("chat submit handler guards", () => {
     expect(editedRows[0]?.content).toBe("Edited sum.rs");
   });
 
-  test("merges streamed tool header/detail lines in real time without reply progress payload", async () => {
-    let progressCalls = 0;
+  test("merges tool-output into tool-call row in real time", async () => {
     const { submit, rows } = createSubmitHandlerHarness({
       backend: createBackend({
         status: async () => "ok",
+        events: [
+          { type: "tool-call", toolCallId: "call_1", toolName: "edit-file", args: { path: "sum.rs" } },
+          { type: "tool-output", toolCallId: "call_1", toolName: "edit-file", content: "1 + fn main() {}" },
+        ],
         reply: async () => ({
           model: "gpt-5-mini",
           output: "done",
         }),
-        progress: async () => {
-          progressCalls += 1;
-          if (progressCalls === 1) {
-            return {
-              sessionId: "sess_test",
-              requestId: "req_1",
-              done: false,
-              events: [
-                { seq: 1, message: "Edited sum.rs" },
-                { seq: 2, message: "1 + fn main() {}" },
-              ],
-            };
-          }
-          return { sessionId: "sess_test", requestId: "req_1", done: true, events: [] };
-        },
       }),
     });
 
@@ -1168,31 +1095,19 @@ describe("chat submit handler guards", () => {
     expect(editedRows[0]?.content).toBe("Edited sum.rs\n1 + fn main() {}");
   });
 
-  test("ignores duplicate streamed detail lines for the same tool row", async () => {
-    let progressCalls = 0;
+  test("ignores duplicate tool-output lines for the same tool row", async () => {
     const { submit, rows } = createSubmitHandlerHarness({
       backend: createBackend({
         status: async () => "ok",
+        events: [
+          { type: "tool-call", toolCallId: "call_1", toolName: "edit-file", args: { path: "sum.rs" } },
+          { type: "tool-output", toolCallId: "call_1", toolName: "edit-file", content: "1 + fn main() {}" },
+          { type: "tool-output", toolCallId: "call_1", toolName: "edit-file", content: "1 + fn main() {}" },
+        ],
         reply: async () => ({
           model: "gpt-5-mini",
           output: "done",
         }),
-        progress: async () => {
-          progressCalls += 1;
-          if (progressCalls === 1) {
-            return {
-              sessionId: "sess_test",
-              requestId: "req_1",
-              done: false,
-              events: [
-                { seq: 1, message: "Edited sum.rs" },
-                { seq: 2, message: "1 + fn main() {}" },
-                { seq: 3, message: "1 + fn main() {}" },
-              ],
-            };
-          }
-          return { sessionId: "sess_test", requestId: "req_1", done: true, events: [] };
-        },
       }),
     });
 
@@ -1207,43 +1122,30 @@ describe("chat submit handler guards", () => {
 
   test("does not merge tool rows across separate user turns", async () => {
     const replies = [
-      {
-        model: "gpt-5-mini",
-        output: "first done",
-      },
-      {
-        model: "gpt-5-mini",
-        output: "second done",
-      },
+      { model: "gpt-5-mini", output: "first done" },
+      { model: "gpt-5-mini", output: "second done" },
     ];
-    const progressByTurn = [
+    const eventsByTurn: StreamEvent[][] = [
       [
-        { seq: 1, message: "Edited sum.rs" },
-        { seq: 2, message: "1 + fn main() {}" },
+        { type: "tool-call", toolCallId: "call_1", toolName: "edit-file", args: { path: "sum.rs" } },
+        { type: "tool-output", toolCallId: "call_1", toolName: "edit-file", content: "1 + fn main() {}" },
       ],
       [
-        { seq: 1, message: "Edited sum.rs" },
-        { seq: 2, message: '2 + println!("ok");' },
+        { type: "tool-call", toolCallId: "call_2", toolName: "edit-file", args: { path: "sum.rs" } },
+        { type: "tool-output", toolCallId: "call_2", toolName: "edit-file", content: '2 + println!("ok");' },
       ],
     ];
     let replyCount = 0;
-    const servedTurns = new Set<number>();
     const { submit, rows } = createSubmitHandlerHarness({
       backend: createBackend({
         status: async () => "ok",
-        reply: async () => replies[replyCount++] ?? { model: "gpt-5-mini", output: "done" },
-        progress: async (_sessionId, afterSeq) => {
-          const turn = Math.max(0, replyCount - 1);
-          if (afterSeq === 0 && !servedTurns.has(turn)) {
-            servedTurns.add(turn);
-            return {
-              sessionId: "sess_test",
-              requestId: `req_${turn + 1}`,
-              done: false,
-              events: progressByTurn[turn] ?? [],
-            };
+        replyStream: async (_input, options) => {
+          const turn = replyCount++;
+          const events = eventsByTurn[turn] ?? [];
+          for (const event of events) {
+            options.onEvent(event);
           }
-          return { sessionId: "sess_test", requestId: `req_${turn + 1}`, done: true, events: [] };
+          return replies[turn] ?? { model: "gpt-5-mini", output: "done" };
         },
       }),
     });
@@ -1260,31 +1162,19 @@ describe("chat submit handler guards", () => {
   });
 
   test("keeps same-header tool rows separate when toolCallId differs in one turn", async () => {
-    let progressCalls = 0;
     const { submit, rows } = createSubmitHandlerHarness({
       backend: createBackend({
         status: async () => "ok",
+        events: [
+          { type: "tool-call", toolCallId: "call_1", toolName: "edit-file", args: { path: "sum.rs" } },
+          { type: "tool-output", toolCallId: "call_1", toolName: "edit-file", content: "1 + fn one() {}" },
+          { type: "tool-call", toolCallId: "call_2", toolName: "edit-file", args: { path: "sum.rs" } },
+          { type: "tool-output", toolCallId: "call_2", toolName: "edit-file", content: "1 + fn two() {}" },
+        ],
         reply: async () => ({
           model: "gpt-5-mini",
           output: "done",
         }),
-        progress: async () => {
-          progressCalls += 1;
-          if (progressCalls === 1) {
-            return {
-              sessionId: "sess_test",
-              requestId: "req_1",
-              done: false,
-              events: [
-                { seq: 1, message: "Edited sum.rs", kind: "tool", toolCallId: "call_1", phase: "tool_start" },
-                { seq: 2, message: "1 + fn one() {}", kind: "tool", toolCallId: "call_1", phase: "tool_end" },
-                { seq: 3, message: "Edited sum.rs", kind: "tool", toolCallId: "call_2", phase: "tool_start" },
-                { seq: 4, message: "1 + fn two() {}", kind: "tool", toolCallId: "call_2", phase: "tool_end" },
-              ],
-            };
-          }
-          return { sessionId: "sess_test", requestId: "req_1", done: true, events: [] };
-        },
       }),
     });
 

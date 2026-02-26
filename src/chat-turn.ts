@@ -1,5 +1,5 @@
 import type { TokenUsage } from "./api";
-import type { Backend } from "./backend";
+import type { Backend, StreamEvent } from "./backend";
 import type { ChatRow, TokenUsageEntry } from "./chat-commands";
 import { extractAtReferencePaths } from "./chat-file-ref";
 import { formatThoughtDuration, formatVerifySummary } from "./chat-formatters";
@@ -15,7 +15,6 @@ function row(
   meta?: {
     toolCallId?: string;
     toolName?: string;
-    toolPhase?: "tool_start" | "tool_chunk" | "tool_end";
   },
 ): ChatRow {
   return { id: `row_${crypto.randomUUID()}`, role, content, dim, style, ...meta };
@@ -104,16 +103,7 @@ type RunAssistantTurnParams = {
   model: string;
   sessionId: string;
   signal?: AbortSignal;
-  onProgressEvents?: (
-    events: Array<{
-      seq: number;
-      message: string;
-      kind?: "status" | "tool" | "assistant" | "error";
-      toolCallId?: string;
-      toolName?: string;
-      phase?: "tool_start" | "tool_chunk" | "tool_end";
-    }>,
-  ) => void;
+  onEvent?: (event: StreamEvent) => void;
   runVerifyAfterReply: boolean;
   thinkingStartedAt: number;
   createMessage: (role: Message["role"], content: string) => Message;
@@ -125,7 +115,7 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
   rows: ChatRow[];
   model: string;
 }> {
-  const reply = params.onProgressEvents
+  const reply = params.onEvent
     ? await params.backend.replyStream(
         {
           message: params.userText,
@@ -133,7 +123,7 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
           model: params.model,
           sessionId: params.sessionId,
         },
-        { signal: params.signal, onEvents: params.onProgressEvents },
+        { signal: params.signal, onEvent: params.onEvent },
       )
     : await params.backend.reply(
         {
