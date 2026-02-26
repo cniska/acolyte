@@ -717,6 +717,8 @@ export function formatProgressEventOutput(
   const path = (value: string): string => `\x1b[4m\x1b[38;2;168;177;188m${value}\x1b[39m\x1b[24m`;
   const green = (value: string): string => `\x1b[32m${value}\x1b[39m`;
   const red = (value: string): string => `\x1b[31m${value}\x1b[39m`;
+  const greenBg = (value: string): string => `\x1b[32m\x1b[48;2;13;40;24m${value}\x1b[49m\x1b[39m`;
+  const redBg = (value: string): string => `\x1b[31m\x1b[48;2;45;11;11m${value}\x1b[49m\x1b[39m`;
   const lines = content.split("\n");
   const parsedLines = lines.map((line) => parseToolProgressLine(line));
   const inferredLineNumberWidth = parsedLines.reduce((max, parsed) => {
@@ -730,17 +732,17 @@ export function formatProgressEventOutput(
   const colorize = (parsed: ReturnType<typeof parseToolProgressLine>): string => {
     switch (parsed.kind) {
       case "header":
-        if (parsed.verb === "Ran") {
-          return `${bold(`${parsed.verb} `)}${dim(parsed.path)}`;
+        if (["Edit", "Read", "Delete", "Diff", "Status"].includes(parsed.verb)) {
+          return `${bold(`${parsed.verb} `)}${path(parsed.path)}`;
         }
-        return `${bold(`${parsed.verb} `)}${path(parsed.path)}`;
+        return `${bold(`${parsed.verb} `)}${dim(parsed.path)}`;
       case "numberedDiff": {
-        const marker = `${parsed.marker} `;
-        const color = parsed.marker === "+" ? green : red;
+        const colorBg = parsed.marker === "+" ? greenBg : redBg;
         const paddedLineNumber =
           lineNumberWidth > 0 ? parsed.lineNumber.padStart(lineNumberWidth, " ") : parsed.lineNumber;
-        const spacing = " ";
-        return `${dim(paddedLineNumber)}${spacing}${color(marker)}${color(parsed.text)}`;
+        const raw = `${paddedLineNumber} ${parsed.marker}${parsed.text.length > 0 ? parsed.text : " "}`;
+        const cols = process.stdout.columns ?? 120;
+        return colorBg(raw.length < cols - 4 ? raw.padEnd(cols - 4) : raw);
       }
       case "numberedContext": {
         const paddedLineNumber =

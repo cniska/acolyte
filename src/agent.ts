@@ -378,19 +378,7 @@ function formatPathList(paths: string[], maxShown = 3): string | null {
 }
 
 export function formatToolHeader(toolName: string, args: Record<string, unknown>): string {
-  const label = (() => {
-    switch (toolName) {
-      case "write-file":
-      case "edit-file":
-        return "Edited";
-      case "delete-file":
-        return "Deleted";
-      case "read-file":
-        return "Read";
-      default:
-        return formatToolLabel(toolName);
-    }
-  })();
+  const label = formatToolLabel(toolName);
   const asString = (value: unknown): string | null => {
     if (typeof value !== "string") {
       return null;
@@ -402,11 +390,10 @@ export function formatToolHeader(toolName: string, args: Record<string, unknown>
   switch (toolName) {
     case "run-command": {
       const command = asString(args.command);
-      return command ? `Ran ${command}` : "Ran";
+      return command ? `${label} ${command}` : label;
     }
     case "read-file":
     case "edit-file":
-    case "write-file":
     case "delete-file":
     case "git-diff": {
       const paths = collectPathDetails(args);

@@ -1,17 +1,21 @@
 export type ToolProgressParsedLine =
-  | { kind: "header"; verb: "Wrote" | "Edited" | "Read" | "Deleted" | "Ran"; path: string }
+  | { kind: "header"; verb: string; path: string }
   | { kind: "numberedDiff"; lineNumber: string; spacing: string; marker: "+" | "-"; text: string }
   | { kind: "numberedContext"; lineNumber: string; spacing: string; text: string }
   | { kind: "plainDiff"; marker: "+" | "-"; text: string }
   | { kind: "commandOutput"; stream: "out" | "err"; text: string }
   | { kind: "text"; text: string };
 
+import { TOOL_HEADER_VERBS } from "./tool-labels";
+
+const HEADER_PATTERN = new RegExp(`^(${TOOL_HEADER_VERBS.join("|")})\\s+(.+)$`);
+
 export function parseToolProgressLine(line: string): ToolProgressParsedLine {
-  const header = line.match(/^(Wrote|Edited|Read|Deleted|Ran)\s+(.+)$/);
+  const header = line.match(HEADER_PATTERN);
   if (header) {
     return {
       kind: "header",
-      verb: header[1] as "Wrote" | "Edited" | "Read" | "Deleted" | "Ran",
+      verb: header[1] ?? "",
       path: header[2] ?? "",
     };
   }

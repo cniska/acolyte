@@ -1,12 +1,9 @@
 import { Text } from "ink";
 import React from "react";
 import { sanitizeAssistantContent, tokenizeForHighlighting, wrapAssistantContent } from "./chat-content";
+import { palette } from "./palette";
 
 const TOOL_LABELS = ["Run", "Search", "Fetch", "Read", "Diff", "Edit", "Git Status"] as const;
-const COLORS = {
-  highlightCode: "#B7C0CC",
-  highlightPath: "#A8B1BC",
-} as const;
 
 export function renderAssistantContent(content: string, wrapWidth: number): React.ReactNode {
   const cleaned = sanitizeAssistantContent(content);
@@ -27,7 +24,7 @@ export function renderAssistantContent(content: string, wrapWidth: number): Reac
             tokenOffset += token.text.length;
             if (token.kind === "code") {
               return (
-                <Text key={tokenKey} color={COLORS.highlightCode}>
+                <Text key={tokenKey} color={palette.textCode}>
                   {token.text}
                 </Text>
               );
@@ -41,7 +38,7 @@ export function renderAssistantContent(content: string, wrapWidth: number): Reac
             }
             if (token.kind === "path") {
               return (
-                <Text key={tokenKey} underline color={COLORS.highlightPath}>
+                <Text key={tokenKey} underline color={palette.textPath}>
                   {token.text}
                 </Text>
               );

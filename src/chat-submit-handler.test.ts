@@ -134,9 +134,9 @@ describe("chat submit handler guards", () => {
 
     const toolRows = rows.filter((row) => row.role === "assistant" && row.style === "toolProgress");
     expect(toolRows.map((row) => row.content)).toEqual([
-      "Edited sum.rs",
-      "Edited sum.rs\n2 - let sum = a + b;\n2 + let sum = a + b + c;",
-      "Deleted sum.rs",
+      "Edit sum.rs",
+      "Edit sum.rs\n2 - let sum = a + b;\n2 + let sum = a + b + c;",
+      "Delete sum.rs",
     ]);
     expect(rows.some((row) => row.role === "assistant" && row.content === "Created sum.rs.")).toBe(true);
     expect(rows.some((row) => row.role === "assistant" && row.content === "Updated sum.rs for three args.")).toBe(true);
@@ -1022,7 +1022,7 @@ describe("chat submit handler guards", () => {
     await submit("hello");
 
     const runRows = rows.filter(
-      (row) => row.role === "assistant" && row.style === "toolProgress" && row.content.startsWith("Ran"),
+      (row) => row.role === "assistant" && row.style === "toolProgress" && row.content.startsWith("Run"),
     );
     expect(runRows.length).toBe(1);
   });
@@ -1042,7 +1042,7 @@ describe("chat submit handler guards", () => {
     await submit("hello");
 
     const toolIndex = rows.findIndex(
-      (row) => row.role === "assistant" && row.style === "toolProgress" && row.content.startsWith("Edited sum.rs"),
+      (row) => row.role === "assistant" && row.style === "toolProgress" && row.content.startsWith("Edit sum.rs"),
     );
     const assistantIndex = rows.findIndex((row) => row.role === "assistant" && row.content === "done");
     expect(toolIndex).toBeGreaterThanOrEqual(0);
@@ -1065,10 +1065,10 @@ describe("chat submit handler guards", () => {
     await submit("hello");
 
     const editedRows = rows.filter(
-      (row) => row.role === "assistant" && row.style === "toolProgress" && row.content.startsWith("Edited sum.rs"),
+      (row) => row.role === "assistant" && row.style === "toolProgress" && row.content.startsWith("Edit sum.rs"),
     );
     expect(editedRows).toHaveLength(1);
-    expect(editedRows[0]?.content).toBe("Edited sum.rs");
+    expect(editedRows[0]?.content).toBe("Edit sum.rs");
   });
 
   test("merges tool-output into tool-call row in real time", async () => {
@@ -1089,10 +1089,10 @@ describe("chat submit handler guards", () => {
     await submit("hello");
 
     const editedRows = rows.filter(
-      (row) => row.role === "assistant" && row.style === "toolProgress" && row.content.startsWith("Edited sum.rs"),
+      (row) => row.role === "assistant" && row.style === "toolProgress" && row.content.startsWith("Edit sum.rs"),
     );
     expect(editedRows).toHaveLength(1);
-    expect(editedRows[0]?.content).toBe("Edited sum.rs\n1 + fn main() {}");
+    expect(editedRows[0]?.content).toBe("Edit sum.rs\n1 + fn main() {}");
   });
 
   test("ignores duplicate tool-output lines for the same tool row", async () => {
@@ -1114,10 +1114,10 @@ describe("chat submit handler guards", () => {
     await submit("hello");
 
     const editedRows = rows.filter(
-      (row) => row.role === "assistant" && row.style === "toolProgress" && row.content.startsWith("Edited sum.rs"),
+      (row) => row.role === "assistant" && row.style === "toolProgress" && row.content.startsWith("Edit sum.rs"),
     );
     expect(editedRows).toHaveLength(1);
-    expect(editedRows[0]?.content).toBe("Edited sum.rs\n1 + fn main() {}");
+    expect(editedRows[0]?.content).toBe("Edit sum.rs\n1 + fn main() {}");
   });
 
   test("does not merge tool rows across separate user turns", async () => {
@@ -1154,11 +1154,11 @@ describe("chat submit handler guards", () => {
     await submit("edit file");
 
     const editedRows = rows.filter(
-      (row) => row.role === "assistant" && row.style === "toolProgress" && row.content.startsWith("Edited sum.rs"),
+      (row) => row.role === "assistant" && row.style === "toolProgress" && row.content.startsWith("Edit sum.rs"),
     );
     expect(editedRows).toHaveLength(2);
-    expect(editedRows[0]?.content).toBe("Edited sum.rs\n1 + fn main() {}");
-    expect(editedRows[1]?.content).toBe('Edited sum.rs\n2 + println!("ok");');
+    expect(editedRows[0]?.content).toBe("Edit sum.rs\n1 + fn main() {}");
+    expect(editedRows[1]?.content).toBe('Edit sum.rs\n2 + println!("ok");');
   });
 
   test("keeps same-header tool rows separate when toolCallId differs in one turn", async () => {
@@ -1181,11 +1181,11 @@ describe("chat submit handler guards", () => {
     await submit("hello");
 
     const editedRows = rows.filter(
-      (row) => row.role === "assistant" && row.style === "toolProgress" && row.content.startsWith("Edited sum.rs"),
+      (row) => row.role === "assistant" && row.style === "toolProgress" && row.content.startsWith("Edit sum.rs"),
     );
     expect(editedRows).toHaveLength(2);
-    expect(editedRows[0]?.content).toBe("Edited sum.rs\n1 + fn one() {}");
-    expect(editedRows[1]?.content).toBe("Edited sum.rs\n1 + fn two() {}");
+    expect(editedRows[0]?.content).toBe("Edit sum.rs\n1 + fn one() {}");
+    expect(editedRows[1]?.content).toBe("Edit sum.rs\n1 + fn two() {}");
   });
 
   test("persists token usage on successful turn", async () => {

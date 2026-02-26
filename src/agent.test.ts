@@ -352,10 +352,10 @@ describe("formatToolHeader", () => {
       formatToolHeader("edit-file", {
         paths: ["src/a.ts", "src/b.ts", "src/c.ts", "src/d.ts"],
       }),
-    ).toBe("Edited src/a.ts, src/b.ts, src/c.ts (+1)");
+    ).toBe("Edit src/a.ts, src/b.ts, src/c.ts (+1)");
   });
 
   test("formats run command with command text", () => {
-    expect(formatToolHeader("run-command", { command: "bun run verify" })).toBe("Ran bun run verify");
+    expect(formatToolHeader("run-command", { command: "bun run verify" })).toBe("Run bun run verify");
   });
 });

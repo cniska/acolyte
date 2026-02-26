@@ -6,11 +6,14 @@ const TOOL_LABELS: Record<string, string> = {
   "git-diff": "Diff",
   "run-command": "Run",
   "edit-file": "Edit",
-  "write-file": "Write",
   "delete-file": "Delete",
   "web-search": "Search",
   "web-fetch": "Fetch",
 };
+
+export const TOOL_HEADER_VERBS = Object.values(TOOL_LABELS).filter(
+  (value, index, self) => self.indexOf(value) === index,
+);
 
 function toTitleWords(input: string): string {
   return input

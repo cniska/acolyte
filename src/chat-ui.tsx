@@ -21,6 +21,7 @@ import {
 } from "./chat-submit-handler";
 import { ChatTranscript } from "./chat-transcript";
 import { buildInputHistory } from "./chat-turn";
+import { palette } from "./palette";
 import type { PolicyCandidate } from "./policy-distill";
 import type { Session, SessionStore } from "./types";
 
@@ -31,12 +32,6 @@ type HeaderLine = {
   dim: boolean;
   brand: boolean;
 };
-
-const COLORS = {
-  brand: "#A56EFF",
-  logo: "#2A1D4A",
-  logoEyes: "#FFD84D",
-} as const;
 const THINKING_PULSE_FRAMES = 16;
 
 interface ChatAppProps {
@@ -220,9 +215,9 @@ function ChatApp(props: ChatAppProps) {
       <Text> </Text>
       <ChatHeader
         lines={headerLines}
-        brandColor={COLORS.brand}
-        logoColor={COLORS.logo}
-        logoEyeColor={COLORS.logoEyes}
+        brandColor={palette.brand}
+        logoColor={palette.logo}
+        logoEyeColor={palette.logoAccent}
       />
       <ChatTranscript
         rows={rows}
@@ -236,7 +231,7 @@ function ChatApp(props: ChatAppProps) {
       <ChatInputPanel
         picker={picker}
         activeSessionId={store.activeSessionId}
-        brandColor={COLORS.brand}
+        brandColor={palette.brand}
         value={value}
         inputRevision={inputRevision}
         onChange={(next) => {

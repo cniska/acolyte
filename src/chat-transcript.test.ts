@@ -34,18 +34,18 @@ describe("chat transcript helpers", () => {
     expect(parseStatusLine("")).toBeNull();
   });
 
-  test("parseToolProgressLine parses edited headers", () => {
-    expect(parseToolProgressLine("Edited src/main.ts")).toEqual({
+  test("parseToolProgressLine parses edit headers", () => {
+    expect(parseToolProgressLine("Edit src/main.ts")).toEqual({
       kind: "header",
-      verb: "Edited",
+      verb: "Edit",
       path: "src/main.ts",
     });
   });
 
-  test("parseToolProgressLine parses ran headers", () => {
-    expect(parseToolProgressLine("Ran rustc ./sum.rs -o ./sum && ./sum 1 2 3 4")).toEqual({
+  test("parseToolProgressLine parses run headers", () => {
+    expect(parseToolProgressLine("Run rustc ./sum.rs -o ./sum && ./sum 1 2 3 4")).toEqual({
       kind: "header",
-      verb: "Ran",
+      verb: "Run",
       path: "rustc ./sum.rs -o ./sum && ./sum 1 2 3 4",
     });
   });

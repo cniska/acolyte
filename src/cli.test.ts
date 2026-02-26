@@ -300,34 +300,32 @@ describe("cli formatting helpers", () => {
     expect(lines[1]).toMatch(/^\s+fourth fifth$/);
   });
 
-  test("formatProgressEventOutput styles Edited header like file tools", () => {
-    const out = formatProgressEventOutput("Edited src/main.rs");
+  test("formatProgressEventOutput styles Edit header like file tools", () => {
+    const out = formatProgressEventOutput("Edit src/main.rs");
     expect(out).toContain("• ");
-    expect(out).toContain("\x1b[1mEdited \x1b[22m");
+    expect(out).toContain("\x1b[1mEdit \x1b[22m");
     expect(out).toContain("\x1b[4m\x1b[38;2;168;177;188msrc/main.rs\x1b[39m\x1b[24m");
   });
 
-  test("formatProgressEventOutput styles Ran header with dim command", () => {
-    const out = formatProgressEventOutput("Ran rustc ./sum.rs -o ./sum && ./sum 1 2 3 4");
+  test("formatProgressEventOutput styles Run header with dim command", () => {
+    const out = formatProgressEventOutput("Run rustc ./sum.rs -o ./sum && ./sum 1 2 3 4");
     expect(out).toContain("• ");
-    expect(out).toContain("\x1b[1mRan \x1b[22m");
+    expect(out).toContain("\x1b[1mRun \x1b[22m");
     expect(out).toContain("\x1b[2mrustc ./sum.rs -o ./sum && ./sum 1 2 3 4\x1b[22m");
   });
 
   test("formatProgressEventOutput styles numbered diff markers with spacing", () => {
     const out = formatProgressEventOutput("12 + fn main() {}");
     expect(out).toContain("• ");
-    expect(out).toContain("\x1b[2m 12\x1b[22m");
-    expect(out).toContain("\x1b[32m+ \x1b[39m");
-    expect(out).toContain("\x1b[32mfn main() {}\x1b[39m");
+    expect(out).toContain(" 12 +fn main() {}");
   });
 
   test("formatProgressEventOutput keeps single bullet for multiline tool output", () => {
-    const out = formatProgressEventOutput("Wrote src/sum.rs\n\n1 + fn main() {}");
+    const out = formatProgressEventOutput("Edit src/sum.rs\n\n1 + fn main() {}");
     const lines = out.split("\n");
     expect(lines[0]).toContain("• ");
     expect(lines[1]).toBe("");
-    expect(lines[2]?.startsWith(`  \x1b[2m  1\x1b[22m`)).toBe(true);
+    expect(lines[2]).toContain("  1 +fn main() {}");
     expect(lines.filter((line) => line.startsWith("• ")).length).toBe(1);
   });
 

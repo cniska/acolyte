@@ -350,7 +350,7 @@ function createEditFileTool(onToolOutput?: ToolOutputListener) {
   });
 }
 
-function createDeleteFileTool(onToolOutput?: ToolOutputListener) {
+function createDeleteFileTool(_onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "delete-file",
     description: "Delete a file. Supports dry run mode.",
