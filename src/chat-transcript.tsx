@@ -99,6 +99,7 @@ function renderToolProgressContent(content: string): React.ReactNode {
         return (
           <React.Fragment key={`tool-progress-line-${index}-${line}`}>
             {index > 0 ? "\n" : null}
+            {index > 0 && parsed.kind !== "header" ? "  " : null}
             {parsed.kind === "header" ? (
               <>
                 <Text bold>{`${parsed.verb} `}</Text>
@@ -118,7 +119,7 @@ function renderToolProgressContent(content: string): React.ReactNode {
             ) : parsed.kind === "numberedContext" ? (
               <Text dimColor>{`${parsed.lineNumber.padStart(lineNumberWidth, " ")}  ${parsed.text}`}</Text>
             ) : parsed.kind === "commandOutput" ? (
-              parsed.stream === "err" ? (
+              parsed.stream === "err" && !parsed.text.startsWith("$ ") ? (
                 <Text dimColor color={palette.red}>
                   {parsed.text}
                 </Text>
@@ -226,7 +227,10 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
                       {row.content}
                     </Text>
                   ) : (
-                    <Text dimColor={Boolean(row.dim)}>
+                    <Text
+                      dimColor={Boolean(row.dim)}
+                      color={row.role === "assistant" && !row.dim ? palette.brandLight : undefined}
+                    >
                       {row.role === "assistant" ? renderAssistantContent(row.content, contentWidth) : row.content}
                     </Text>
                   )}

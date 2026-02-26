@@ -388,8 +388,8 @@ function minimalUnifiedDiff(path: string, oldLines: string[], newLines: string[]
   while (oi < n) diffLines.push(`-${oldLines[oi++]}`);
   while (ni < m) diffLines.push(`+${newLines[ni++]}`);
 
-  // Group into hunks with 3-line context.
-  const contextSize = 3;
+  // Group into hunks with enough context for the display filter (contextRadius = 3).
+  const contextSize = 5;
   const isChange = diffLines.map((l) => !l.startsWith(" "));
   const hunkRanges: Array<{ start: number; end: number }> = [];
   let hunkStart = -1;

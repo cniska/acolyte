@@ -732,7 +732,10 @@ export function formatProgressEventOutput(
         return `${dim(paddedLineNumber)}${spacing}${parsed.text}`;
       }
       case "commandOutput":
-        return parsed.stream === "err" ? dim(red(parsed.text)) : dim(parsed.text);
+        if (parsed.stream === "err" && !parsed.text.startsWith("$ ")) {
+          return dim(red(parsed.text));
+        }
+        return dim(parsed.text);
       case "plainDiff":
         return parsed.marker === "+" ? green(parsed.text) : red(parsed.text);
       default:
@@ -748,11 +751,11 @@ export function formatProgressEventOutput(
       const parsed = parsedLines[index] ?? parseToolProgressLine(line);
       if (index === 0) {
         if (!includeBullet) {
-          return line.length > 0 ? `  ${colorize(parsed)}` : "";
+          return line.length > 0 ? `    ${colorize(parsed)}` : "";
         }
         return line.length > 0 ? `• ${colorize(parsed)}` : "•";
       }
-      return line.length > 0 ? `  ${colorize(parsed)}` : "";
+      return line.length > 0 ? `    ${colorize(parsed)}` : "";
     })
     .join("\n");
 }

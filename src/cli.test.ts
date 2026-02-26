@@ -300,7 +300,8 @@ describe("cli formatting helpers", () => {
     const lines = out.split("\n");
     expect(lines[0]).toContain("• ");
     expect(lines[1]).toBe("");
-    expect(lines[2]).toContain("  1 +fn main() {}");
+    expect(lines[2]).toMatch(/^\s{4}/);
+    expect(lines[2]).toContain("1 +fn main() {}");
     expect(lines.filter((line) => line.startsWith("• ")).length).toBe(1);
   });
 

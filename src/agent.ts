@@ -341,6 +341,8 @@ export function formatToolHeader(toolName: string, args: Record<string, unknown>
       const pattern = asString(args.pattern);
       return pattern ? `${label} ${pattern}` : label;
     }
+    case "git-status":
+      return `${label} .`;
     case "web-search": {
       const query = asString(args.query);
       return query ? `${label} ${query}` : label;
