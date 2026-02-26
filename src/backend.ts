@@ -336,12 +336,12 @@ class RemoteBackend implements Backend {
       if (!jsonText) {
         return;
       }
-      const payload = JSON.parse(jsonText) as {
-        type?: unknown;
-        event?: unknown;
-        reply?: unknown;
-        error?: unknown;
-      };
+      let payload: { type?: unknown; event?: unknown; reply?: unknown; error?: unknown };
+      try {
+        payload = JSON.parse(jsonText);
+      } catch {
+        return;
+      }
       if (payload.type === "progress") {
         const events = parseProgressEvents(payload.event ? [payload.event] : []);
         if (events.length > 0) {

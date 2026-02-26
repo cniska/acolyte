@@ -246,6 +246,35 @@ describe("remote backend connection errors", () => {
     expect(reply.model).toBe("gpt-5-mini");
   });
 
+  test("replyStream skips malformed SSE blocks without crashing", async () => {
+    const encoder = new TextEncoder();
+    globalThis.fetch = (async () =>
+      new Response(
+        new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(encoder.encode("data: {not valid json}\n\n"));
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  type: "done",
+                  reply: { model: "gpt-5-mini", output: "ok" },
+                })}\n\n`,
+              ),
+            );
+            controller.close();
+          },
+        }),
+        { status: 200, headers: { "content-type": "text/event-stream" } },
+      )) as unknown as typeof fetch;
+
+    const backend = createBackend({ apiUrl: "http://localhost:6767" });
+    const reply = await backend.replyStream(
+      { message: "ping", history: [], model: "gpt-5-mini", sessionId: "sess_test" },
+      { onEvents: () => {} },
+    );
+    expect(reply.output).toBe("ok");
+  });
+
   test("replyStream surfaces stream error event", async () => {
     const encoder = new TextEncoder();
     globalThis.fetch = (async () =>
