@@ -1096,9 +1096,12 @@ async function chatModeWithOptions(options: { resumeLatest: boolean; resumePrefi
       persist,
       version: CLI_VERSION,
     });
+    if (output.isTTY) {
+      clearScreen();
+    }
     const resumeId = store.activeSessionId ?? session.id;
-    printOutput("");
     printDim(`Resume with: ${formatResumeCommand(resumeId)}`);
+    printOutput("");
   } finally {
     releaseSessionLock(session.id);
   }

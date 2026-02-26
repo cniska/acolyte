@@ -395,7 +395,7 @@ export async function runAgent(input: {
   const INITIAL_MAX_STEPS = 50;
   const TIMEOUT_RECOVERY_MAX_STEPS = 8;
   const TIMEOUT_RECOVERY_TIMEOUT_MS = 45_000;
-  const CODER_TIMEOUT_MS = 90_000;
+  const STEP_TIMEOUT_MS = 120_000;
 
   const emitDebug = (event: string, fields: Record<string, unknown> = {}): void => {
     input.onDebug?.(event, fields);
@@ -468,13 +468,20 @@ export async function runAgent(input: {
   ) =>
     await new Promise<Awaited<ReturnType<typeof agent.generate>>>((resolve, reject) => {
       let settled = false;
-      const timeoutId = setTimeout(() => {
-        if (settled) {
-          return;
+      let timeoutId: ReturnType<typeof setTimeout> | null = null;
+      const resetTimeout = () => {
+        if (timeoutId !== null) {
+          clearTimeout(timeoutId);
         }
-        settled = true;
-        reject(new Error(`Model call timed out after ${timeoutMs}ms`));
-      }, timeoutMs);
+        timeoutId = setTimeout(() => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          reject(new Error(`Step timed out after ${timeoutMs}ms of inactivity`));
+        }, timeoutMs);
+      };
+      resetTimeout();
 
       agent
         .stream(prompt, options)
@@ -489,6 +496,7 @@ export async function runAgent(input: {
               continue;
             }
             const typed = chunk as { type?: string; payload?: unknown };
+            resetTimeout();
             switch (typed.type) {
               case "text-delta": {
                 const p = typed.payload as { text?: string } | undefined;
@@ -595,7 +603,9 @@ export async function runAgent(input: {
             return;
           }
           settled = true;
-          clearTimeout(timeoutId);
+          if (timeoutId !== null) {
+            clearTimeout(timeoutId);
+          }
           resolve(value);
         })
         .catch((error) => {
@@ -603,7 +613,9 @@ export async function runAgent(input: {
             return;
           }
           settled = true;
-          clearTimeout(timeoutId);
+          if (timeoutId !== null) {
+            clearTimeout(timeoutId);
+          }
           reject(error);
         });
     });
@@ -640,7 +652,7 @@ export async function runAgent(input: {
         toolChoice: "auto",
         memory: memoryOptions,
       },
-      CODER_TIMEOUT_MS,
+      STEP_TIMEOUT_MS,
     );
   } catch (error) {
     lastToolFailureReason = error instanceof Error ? error.message : String(error);
@@ -749,7 +761,7 @@ export async function runAgent(input: {
           toolChoice: "auto",
           memory: memoryOptions,
         },
-        CODER_TIMEOUT_MS,
+        STEP_TIMEOUT_MS,
       );
       emitDebug("agent.generate.done", {
         model,
