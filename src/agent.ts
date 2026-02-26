@@ -780,6 +780,17 @@ export async function runAgent(input: {
     budgetWarning = `context near budget (${promptUsage.promptTokens}/${promptUsage.promptBudgetTokens} tokens)`;
   }
 
+  emitDebug("agent.run.summary", {
+    mode: initialMode,
+    model,
+    model_calls: modelCallCount,
+    tool_calls: observedToolNames.size,
+    tools: Array.from(observedToolNames),
+    has_error: Boolean(lastToolFailureReason),
+    output_chars: output.length,
+    budget_warning: budgetWarning ?? null,
+  });
+
   return {
     model,
     output,
