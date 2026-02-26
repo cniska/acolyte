@@ -131,7 +131,7 @@ export function createSubmitHandlerHarness(overrides?: {
     setInputHistoryIndex: () => {},
     setInputHistoryDraft: () => {},
     setIsThinking: () => {},
-    setThinkingLabel: () => {},
+    setProgressText: () => {},
     setTokenUsage: () => {},
     createMessage,
     nowIso: () => DEFAULT_TIME,

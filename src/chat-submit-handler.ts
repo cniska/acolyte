@@ -41,7 +41,7 @@ type CreateSubmitHandlerInput = {
   setInputHistoryIndex: (next: number) => void;
   setInputHistoryDraft: (next: string) => void;
   setIsThinking: (next: boolean) => void;
-  setThinkingLabel: (next: string | null) => void;
+  setProgressText: (next: string | null) => void;
   setTokenUsage: (updater: (current: TokenUsageEntry[]) => TokenUsageEntry[]) => void;
   createMessage: (role: Message["role"], content: string) => Message;
   nowIso: () => string;
@@ -311,7 +311,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       });
       input.setRows((current) => [...current, userRow]);
       input.setIsThinking(true);
-      input.setThinkingLabel("Working…");
+      input.setProgressText("Working…");
       try {
         const distilled = await distillMemoryNote(
           input.backend,
@@ -342,7 +342,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         ]);
       } finally {
         input.setIsThinking(false);
-        input.setThinkingLabel(null);
+        input.setProgressText(null);
       }
       return;
     }
@@ -465,7 +465,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
     }
 
     input.setIsThinking(true);
-    input.setThinkingLabel("Working…");
+    input.setProgressText("Working…");
     const abortController = new AbortController();
     input.setInterrupt(() => abortController.abort());
     const thinkingStartedAt = Date.now();
@@ -620,7 +620,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
     } finally {
       input.setInterrupt(null);
       input.setIsThinking(false);
-      input.setThinkingLabel(null);
+      input.setProgressText(null);
     }
   };
 }

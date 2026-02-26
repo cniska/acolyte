@@ -190,7 +190,7 @@ describe("chat submit handler guards", () => {
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
       setIsThinking: () => {},
-      setThinkingLabel: () => {},
+      setProgressText: () => {},
       setTokenUsage: () => {},
       createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
@@ -237,7 +237,7 @@ describe("chat submit handler guards", () => {
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
       setIsThinking: () => {},
-      setThinkingLabel: () => {},
+      setProgressText: () => {},
       setTokenUsage: () => {},
       createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
@@ -282,7 +282,7 @@ describe("chat submit handler guards", () => {
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
       setIsThinking: () => {},
-      setThinkingLabel: () => {},
+      setProgressText: () => {},
       setTokenUsage: () => {},
       createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
@@ -334,7 +334,7 @@ describe("chat submit handler guards", () => {
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
       setIsThinking: () => {},
-      setThinkingLabel: () => {},
+      setProgressText: () => {},
       setTokenUsage: () => {},
       createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
@@ -397,7 +397,7 @@ describe("chat submit handler guards", () => {
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
       setIsThinking: () => {},
-      setThinkingLabel: () => {},
+      setProgressText: () => {},
       setTokenUsage: () => {},
       createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
@@ -469,7 +469,7 @@ describe("chat submit handler guards", () => {
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
       setIsThinking: () => {},
-      setThinkingLabel: () => {},
+      setProgressText: () => {},
       setTokenUsage: () => {},
       createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
@@ -529,7 +529,7 @@ describe("chat submit handler guards", () => {
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
       setIsThinking: () => {},
-      setThinkingLabel: () => {},
+      setProgressText: () => {},
       setTokenUsage: () => {},
       createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
@@ -586,7 +586,7 @@ describe("chat submit handler guards", () => {
         setInputHistoryIndex: () => {},
         setInputHistoryDraft: () => {},
         setIsThinking: () => {},
-        setThinkingLabel: () => {},
+        setProgressText: () => {},
         setTokenUsage: () => {},
         createMessage,
         nowIso: () => "2026-02-20T00:00:00.000Z",
@@ -605,7 +605,7 @@ describe("chat submit handler guards", () => {
 
   test("streams tool-call events into tool progress rows", async () => {
     const rows: ChatRow[] = [];
-    const thinkingLabels: Array<string | null> = [];
+    const progressTexts: Array<string | null> = [];
 
     const session = createSession({ id: "sess_test" });
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
@@ -649,8 +649,8 @@ describe("chat submit handler guards", () => {
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
       setIsThinking: () => {},
-      setThinkingLabel: (next) => {
-        thinkingLabels.push(next);
+      setProgressText: (next) => {
+        progressTexts.push(next);
       },
       setTokenUsage: () => {},
       createMessage,
@@ -660,8 +660,8 @@ describe("chat submit handler guards", () => {
 
     await submit("hello");
 
-    expect(thinkingLabels[0]).toBe("Working…");
-    expect(thinkingLabels.at(-1)).toBeNull();
+    expect(progressTexts[0]).toBe("Working…");
+    expect(progressTexts.at(-1)).toBeNull();
     expect(rows.some((row) => row.role === "assistant" && row.style === "toolProgress")).toBe(true);
     expect(rows.some((row) => row.role === "system" && row.content.includes("Working…"))).toBe(false);
     expect(rows.some((row) => row.role === "assistant" && row.content === "done")).toBe(true);
@@ -706,7 +706,7 @@ describe("chat submit handler guards", () => {
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
       setIsThinking: () => {},
-      setThinkingLabel: () => {},
+      setProgressText: () => {},
       setTokenUsage: () => {},
       createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
@@ -755,7 +755,7 @@ describe("chat submit handler guards", () => {
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
       setIsThinking: () => {},
-      setThinkingLabel: () => {},
+      setProgressText: () => {},
       setTokenUsage: () => {},
       createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
@@ -803,7 +803,7 @@ describe("chat submit handler guards", () => {
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
       setIsThinking: () => {},
-      setThinkingLabel: () => {},
+      setProgressText: () => {},
       setTokenUsage: () => {},
       createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
@@ -859,7 +859,7 @@ describe("chat submit handler guards", () => {
       setIsThinking: (next) => {
         thinkingTransitions.push(next);
       },
-      setThinkingLabel: () => {},
+      setProgressText: () => {},
       setTokenUsage: () => {},
       createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
@@ -921,7 +921,7 @@ describe("chat submit handler guards", () => {
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
       setIsThinking: () => {},
-      setThinkingLabel: () => {},
+      setProgressText: () => {},
       setTokenUsage: () => {},
       createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
@@ -990,7 +990,7 @@ describe("chat submit handler guards", () => {
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
       setIsThinking: () => {},
-      setThinkingLabel: () => {},
+      setProgressText: () => {},
       setTokenUsage: () => {},
       createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
@@ -1230,7 +1230,7 @@ describe("chat submit handler guards", () => {
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
       setIsThinking: () => {},
-      setThinkingLabel: () => {},
+      setProgressText: () => {},
       setTokenUsage: (updater) => {
         tokenUsageSnapshots.push(updater([]));
       },

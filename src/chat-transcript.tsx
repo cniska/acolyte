@@ -7,7 +7,7 @@ import { parseToolProgressLine } from "./tool-progress";
 type ChatTranscriptProps = {
   rows: ChatRow[];
   isThinking: boolean;
-  thinkingLabel?: string | null;
+  progressText?: string | null;
   thinkingFrame: number;
   thinkingStartedAt?: number | null;
 };
@@ -140,7 +140,7 @@ function renderToolProgressContent(content: string): React.ReactNode {
 }
 
 export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
-  const { rows, isThinking, thinkingLabel, thinkingFrame, thinkingStartedAt } = props;
+  const { rows, isThinking, progressText, thinkingFrame, thinkingStartedAt } = props;
   const pulsePeriod = 16;
   const phase = ((Math.abs(thinkingFrame) % pulsePeriod) / pulsePeriod) * Math.PI * 2;
   const baseIntensity = (Math.cos(phase) + 1) / 2;
@@ -156,8 +156,8 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
     isThinking && typeof thinkingStartedAt === "number"
       ? Math.max(0, Math.floor((Date.now() - thinkingStartedAt) / 1000))
       : 0;
-  const trimmedThinkingLabel = thinkingLabel?.trim() ?? "";
-  const stageMatch = trimmedThinkingLabel.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+  const trimmedProgressText = progressText?.trim() ?? "";
+  const stageMatch = trimmedProgressText.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
   const thinkingText = (() => {
     const timeText = `${elapsedSec}s`;
     if (stageMatch) {
@@ -166,7 +166,7 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
       const details = [model, timeText].filter((part) => part.length > 0).join(" · ");
       return details.length > 0 ? `${stage} (${details})` : stage;
     }
-    const base = trimmedThinkingLabel.length > 0 ? trimmedThinkingLabel : "Working…";
+    const base = trimmedProgressText.length > 0 ? trimmedProgressText : "Working…";
     return `${base} (${timeText})`;
   })();
   const columns = process.stdout.columns ?? 120;
