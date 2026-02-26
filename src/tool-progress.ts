@@ -4,6 +4,7 @@ export type ToolProgressParsedLine =
   | { kind: "numberedContext"; lineNumber: string; spacing: string; text: string }
   | { kind: "plainDiff"; marker: "+" | "-"; text: string }
   | { kind: "commandOutput"; stream: "out" | "err"; text: string }
+  | { kind: "meta"; text: string }
   | { kind: "text"; text: string };
 
 import { TOOL_HEADER_VERBS } from "./tool-labels";
@@ -51,6 +52,9 @@ export function parseToolProgressLine(line: string): ToolProgressParsedLine {
   }
   if (line.startsWith("- ")) {
     return { kind: "plainDiff", marker: "-", text: line };
+  }
+  if (/^[…(]/.test(line) && /truncat|omit|output\)?$/i.test(line)) {
+    return { kind: "meta", text: line };
   }
   return { kind: "text", text: line };
 }

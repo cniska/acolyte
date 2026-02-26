@@ -139,6 +139,8 @@ function renderToolProgressContent(content: string, width?: number): React.React
               )
             ) : parsed.kind === "plainDiff" ? (
               <Text color={parsed.marker === "+" ? palette.diffAdd : palette.diffRemove}>{parsed.text}</Text>
+            ) : parsed.kind === "meta" ? (
+              <Text dimColor>{parsed.text}</Text>
             ) : (
               <Text>{line}</Text>
             )}
@@ -173,7 +175,7 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
     if (stageMatch) {
       const stage = stageMatch[1]?.trim() || "Working…";
       const model = stageMatch[2]?.trim() || "";
-      const details = [model, timeText].filter((part) => part.length > 0).join(" · ");
+      const details = [timeText, model].filter((part) => part.length > 0).join(" · ");
       return details.length > 0 ? `${stage} (${details})` : stage;
     }
     const base = trimmedProgressText.length > 0 ? trimmedProgressText : "Working…";

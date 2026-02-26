@@ -932,13 +932,17 @@ describe("chat submit handler guards", () => {
       (row) => row.role === "assistant" && row.style === "toolProgress" && row.content.startsWith("Run"),
     );
     expect(runRows.length).toBe(1);
+    expect(runRows[0]?.content).toBe("Run echo hi\n(No output)");
   });
 
   test("renders streamed tool rows before assistant summary row", async () => {
     const { submit, rows } = createSubmitHandlerHarness({
       backend: createClient({
         status: async () => ({}),
-        events: [{ type: "tool-call", toolCallId: "call_1", toolName: "edit-file", args: { path: "sum.rs" } }],
+        events: [
+          { type: "tool-call", toolCallId: "call_1", toolName: "edit-file", args: { path: "sum.rs" } },
+          { type: "tool-output", toolCallId: "call_1", toolName: "edit-file", content: "1 + fn main() {}" },
+        ],
         reply: async () => ({
           model: "gpt-5-mini",
           output: "done",

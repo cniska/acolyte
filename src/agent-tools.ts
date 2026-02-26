@@ -75,17 +75,6 @@ export function getProjectLineWidth(): number | null {
   return projectLineWidth;
 }
 
-function checkLineWidth(content: string): string | null {
-  if (!projectLineWidth) return null;
-  const lines = content.split("\n");
-  let violations = 0;
-  for (const line of lines) {
-    if (line.length > projectLineWidth) violations++;
-  }
-  if (violations === 0) return null;
-  return `${violations} line(s) exceed project max width (${projectLineWidth})`;
-}
-
 const IGNORED_DIRS = new Set(["node_modules", ".git", ".acolyte", "dist", "build", ".next", "coverage"]);
 
 const BINARY_EXTENSIONS = new Set([
@@ -704,9 +693,7 @@ export async function editFileReplace(input: {
 
   const relativePath = displayPathForDiff(absPath);
   const diff = createUnifiedWriteDiff(relativePath, raw, next);
-  const warning = checkLineWidth(next);
   const parts = [`path=${absPath}`, `matches=${count}`, `dry_run=${input.dryRun ? "true" : "false"}`, "", diff];
-  if (warning) parts.push(`\nwarning: ${warning}`);
   return parts.join("\n");
 }
 
@@ -734,7 +721,6 @@ export async function writeTextFile(input: { path: string; content: string; over
   await writeFile(absPath, input.content, "utf8");
   const relativePath = displayPathForDiff(absPath);
   const diff = createUnifiedWriteDiff(relativePath, previousContent, input.content);
-  const warning = checkLineWidth(input.content);
   const parts = [
     `path=${absPath}`,
     `bytes=${Buffer.byteLength(input.content, "utf8")}`,
@@ -742,7 +728,6 @@ export async function writeTextFile(input: { path: string; content: string; over
     "",
     diff,
   ];
-  if (warning) parts.push(`\nwarning: ${warning}`);
   return parts.join("\n");
 }
 

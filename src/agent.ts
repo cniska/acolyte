@@ -520,7 +520,7 @@ export async function runAgent(input: {
                     const previousMode = currentMode;
                     currentMode = inferredMode;
                     emitDebug("agent.mode.changed", { from: previousMode, to: currentMode, trigger: toolName });
-                    emitEvent({ type: "status", message: agentModes[currentMode].progressText });
+                    emitEvent({ type: "status", message: `${agentModes[currentMode].progressText} (${model})` });
                   }
                   const args = (p.args ?? {}) as Record<string, unknown>;
                   emitDebug("agent.tool.call", {
@@ -622,7 +622,7 @@ export async function runAgent(input: {
     has_memory: Boolean(memoryOptions),
   });
 
-  emitEvent({ type: "status", message: agentModes[initialMode].progressText });
+  emitEvent({ type: "status", message: `${agentModes[initialMode].progressText} (${model})` });
   emitDebug("agent.generate.start", {
     model,
     tool_choice: "auto",
@@ -652,7 +652,7 @@ export async function runAgent(input: {
     });
     // Timeout recovery: retry with reduced scope.
     if (/timed out/i.test(lastToolFailureReason)) {
-      emitEvent({ type: "status", message: "Retrying after timeout…" });
+      emitEvent({ type: "status", message: `${agentModes[currentMode].progressText} (${model})` });
       emitDebug("agent.generate.retry", {
         model,
         reason: "timeout_recovery",
@@ -738,7 +738,7 @@ export async function runAgent(input: {
   // Plan detection: if model described a plan without using tools, re-invoke with execution nudge.
   if (isPlanLikeOutput(result.text.trim()) && observedToolNames.size === 0) {
     emitDebug("agent.plan.detected", { text_chars: result.text.trim().length });
-    emitEvent({ type: "status", message: "Executing…" });
+    emitEvent({ type: "status", message: `${agentModes[currentMode].progressText} (${model})` });
     try {
       modelCallCount += 1;
       const executionNudge = `${agentInput}\n\nExecute the task directly using tools. Do not describe a plan or ask for confirmation.`;

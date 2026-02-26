@@ -474,35 +474,30 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         }
       },
       onToolCall: (entry) => {
-        // Flush any pending streaming content before showing tool header.
-        flushStreamingContent();
-        // Freeze pre-tool streaming text in place so it stays above tool rows.
-        // If the content is empty, remove the row instead of keeping a blank line.
-        if (streamingAssistantRowId) {
-          if (streamingAssistantContent.trim().length > 0) {
-            committedStreamingText += streamingAssistantContent;
-          } else {
-            const removeId = streamingAssistantRowId;
-            input.setRows((current) => current.filter((row) => row.id !== removeId));
-          }
-          streamingAssistantRowId = null;
-          streamingAssistantContent = "";
+        // Cancel any pending flush — we handle it atomically below.
+        if (streamFlushTimer) {
+          clearTimeout(streamFlushTimer);
+          streamFlushTimer = null;
         }
         const header = formatToolHeader(entry.toolName, entry.args);
         const rowId = `row_${crypto.randomUUID()}`;
         toolRowIdByCallId.set(entry.toolCallId, rowId);
         toolSeenLinesByCallId.set(entry.toolCallId, new Set([header.toLowerCase()]));
-        input.setRows((current) => [
-          ...current,
-          {
-            id: rowId,
-            role: "assistant",
-            content: header,
-            style: "toolProgress",
-            toolCallId: entry.toolCallId,
-            toolName: entry.toolName,
-          },
-        ]);
+        const toolRow: ChatRow = {
+          id: rowId,
+          role: "assistant",
+          content: header,
+          style: "toolProgress",
+          toolCallId: entry.toolCallId,
+          toolName: entry.toolName,
+        };
+        // Freeze pre-tool streaming text and append tool row.
+        if (streamingAssistantContent.trim().length > 0) {
+          committedStreamingText += streamingAssistantContent;
+        }
+        streamingAssistantRowId = null;
+        streamingAssistantContent = "";
+        input.setRows((current) => [...current, toolRow]);
       },
       onToolOutput: (entry) => {
         const content = entry.content.trim();
@@ -579,12 +574,18 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       streamingAssistantRowId = null;
       streamingAssistantContent = "";
 
+      const finalizeRows = (rows: ChatRow[]): ChatRow[] =>
+        rows
+          .filter((row) => row.id !== pendingStreamRowId)
+          .map((row) => {
+            if (row.style !== "toolProgress" || row.content.includes("\n")) return row;
+            if (row.toolName === "run-command") return { ...row, content: `${row.content}\n(No output)` };
+            return row;
+          });
+
       if (clarifyingQuestions.length > 0) {
         const nonAssistantRows = turn.rows.filter((row) => row.role !== "assistant");
-        input.setRows((current) => {
-          const base = pendingStreamRowId ? current.filter((row) => row.id !== pendingStreamRowId) : current;
-          return [...base, ...nonAssistantRows];
-        });
+        input.setRows((current) => [...finalizeRows(current), ...nonAssistantRows]);
         input.openClarifyPanel(clarifyingQuestions, text);
       } else {
         input.currentSession.messages.push(assistantMessage);
@@ -606,10 +607,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
               })
               .filter((r): r is ChatRow => r !== null)
           : turn.rows;
-        input.setRows((current) => {
-          const base = pendingStreamRowId ? current.filter((row) => row.id !== pendingStreamRowId) : current;
-          return [...base, ...finalRows];
-        });
+        input.setRows((current) => [...finalizeRows(current), ...finalRows]);
       }
       // File tree may have changed during tool execution; refresh @path autocomplete candidates.
       invalidateRepoPathCandidates();
