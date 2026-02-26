@@ -75,17 +75,12 @@ describe("cli formatting helpers", () => {
     const out = formatStatusOutput(
       "provider=openai model=gpt-5-mini service=acolyte-backend url=http://localhost:6767",
     );
-    expect(out).toBe(
-      [
-        "provider: openai",
-        "model:    gpt-5-mini",
-        "service:  acolyte-backend",
-        "          url: http://localhost:6767",
-      ].join("\n"),
-    );
+    expect(out).toMatch(/^provider:\s+openai$/m);
+    expect(out).toMatch(/^model:\s+gpt-5-mini$/m);
+    expect(out).toMatch(/^service:\s+acolyte-backend \(http:\/\/localhost:6767\)$/m);
   });
 
-  test("formatStatusOutput groups memory and OM fields", () => {
+  test("formatStatusOutput compacts memory and OM fields", () => {
     const out = formatStatusOutput(
       [
         "mode=openai",
@@ -105,19 +100,14 @@ describe("cli formatting helpers", () => {
         "om_gen=4",
       ].join(" "),
     );
-    expect(out).toMatch(/provider:\s+openai/);
-    expect(out).not.toMatch(/mode:\s+openai/);
-    expect(out).toMatch(/model:\s+gpt-5-mini/);
-    expect(out).not.toContain("provider_ready:");
-    expect(out).not.toContain("not ready");
-    expect(out).toMatch(/memory:\s+postgres/);
-    expect(out).toMatch(/\n\s+entries:\s+7/);
-    expect(out).toContain("om:");
-    expect(out).toContain("enabled");
-    expect(out).toMatch(/scope:\s+resource/);
-    expect(out).toMatch(/model:\s+gpt-5-mini/);
-    expect(out).toMatch(/\n\s+tokens:\s+obs=3000 ref=8000/);
-    expect(out).toMatch(/\n\s+state:\s+exists=true gen=4/);
+    expect(out).toMatch(/^provider:\s+openai$/m);
+    expect(out).not.toContain("mode:");
+    expect(out).toMatch(/^model:\s+gpt-5-mini$/m);
+    expect(out).not.toContain("provider_ready");
+    expect(out).toMatch(/^memory:\s+postgres \(7 entries\)$/m);
+    expect(out).toMatch(/^om:\s+enabled \(resource\)$/m);
+    expect(out).not.toContain("om_scope");
+    expect(out).not.toContain("om_tokens");
   });
 
   test("formatKeyValueLines aligns key/value rows", () => {

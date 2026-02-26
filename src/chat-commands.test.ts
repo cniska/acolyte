@@ -126,8 +126,6 @@ describe("chat-commands", () => {
   test("dispatchSlashCommand handles /status", async () => {
     const { rows, stop } = await runCommand("/status");
     expect(stop).toBe(true);
-    expect(rows.some((row) => row.role === "system" && row.content.includes("provider:"))).toBe(true);
-    expect(rows.some((row) => row.role === "system" && row.content.includes("entries:"))).toBe(true);
     expect(rows.some((row) => row.role === "system" && row.style === "statusOutput")).toBe(true);
   });
 

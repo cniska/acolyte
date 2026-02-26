@@ -52,7 +52,6 @@ End-to-end autonomous execution: plan, edit, verify, iterate.
 - [x] Run summary debug event for failure tracking
 - [x] Configurable model per mode (e.g. cheaper model for explore/ask)
 - [x] Single-match guard on edit-file to prevent unintended multi-replacements
-- [ ] Multi-step soak: sustained successful runs across multiple days
 
 ### Milestone 6: Memory Quality
 
