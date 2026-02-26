@@ -75,6 +75,12 @@ describe("status format", () => {
     expect(output).toContain("          scope: resource");
   });
 
+  test("shows explore model when different from main model", () => {
+    const output = formatStatusOutput("provider=openai model=openai/gpt-5 explore_model=openai/gpt-5-mini");
+    expect(output).toMatch(/model:\s+gpt-5/);
+    expect(output).toMatch(/explore:\s+gpt-5-mini/);
+  });
+
   test("drops provider_ready field from output", () => {
     const output = formatStatusOutput("provider=openai provider_ready=false");
     expect(output).toMatch(/provider:\s+openai$/m);

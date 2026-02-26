@@ -166,6 +166,7 @@ const server = Bun.serve({
         },
         model: {
           status: presentModel(model),
+          explore: presentModel(appConfig.exploreModel),
         },
         provider_ready: providerReady,
         service: {

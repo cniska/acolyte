@@ -97,7 +97,20 @@ export function formatStatusOutput(status: string): string {
   }
   const model = take("model");
   const displayModel = model ? simplifyModelId(model) : undefined;
-  pushStacked("model", [["status", displayModel]], true);
+  const exploreModel = take("explore_model");
+  const displayExploreModel = exploreModel ? simplifyModelId(exploreModel) : undefined;
+  pushStacked(
+    "model",
+    [
+      ["status", displayModel],
+      ["explore", displayExploreModel],
+    ],
+    true,
+  );
+  const permissionMode = take("permission_mode");
+  if (permissionMode) {
+    output.push(`permissions: ${permissionMode}`);
+  }
   const url = take("url");
   const service = take("service");
   pushStacked(
@@ -119,10 +132,6 @@ export function formatStatusOutput(status: string): string {
     ],
     true,
   );
-  const permissionMode = take("permission_mode");
-  if (permissionMode) {
-    output.push(`permissions: ${permissionMode}`);
-  }
 
   const omEnabled = take("om");
   const omScope = take("om_scope");

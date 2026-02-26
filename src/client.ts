@@ -347,6 +347,7 @@ class HttpClient implements Client {
 
     const provider = asString(providerGroup?.status) ?? asString(json.provider) ?? asString(json.mode) ?? "unknown";
     const model = asString(modelGroup?.status) ?? asString(json.model);
+    const exploreModel = asString(modelGroup?.explore);
     const providerReady = asBoolean(json.provider_ready) ?? asBoolean(providerReadyGroup?.status);
 
     const service = asString(serviceGroup?.status) ?? asString(json.service) ?? "unknown";
@@ -384,6 +385,7 @@ class HttpClient implements Client {
     const fields = [
       `provider=${provider}`,
       model ? `model=${model}` : undefined,
+      exploreModel && exploreModel !== model ? `explore_model=${exploreModel}` : undefined,
       providerReady === undefined ? undefined : `provider_ready=${providerReady}`,
       `service=${service}`,
       `url=${serviceUrl}`,
