@@ -690,8 +690,13 @@ export async function editFileReplace(input: {
   if (count === 0) {
     throw new Error("Find text not found in file");
   }
+  if (count > 1) {
+    throw new Error(
+      `Find text matched ${count} locations. Provide a longer, more unique snippet so it matches exactly one location.`,
+    );
+  }
 
-  const next = raw.replaceAll(input.find, input.replace);
+  const next = raw.replace(input.find, input.replace);
   if (!input.dryRun) {
     await mkdir(dirname(absPath), { recursive: true });
     await writeFile(absPath, next, "utf8");

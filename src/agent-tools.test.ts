@@ -69,6 +69,15 @@ describe("coding-tools workspace guards", () => {
     expect(output).toContain("matches=1");
   });
 
+  test("editFileReplace rejects multi-match find text", async () => {
+    const filePath = `/tmp/acolyte-tmp-multi-${crypto.randomUUID()}.txt`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, "foo bar foo baz foo", "utf8");
+    await expect(editFileReplace({ path: filePath, find: "foo", replace: "qux" })).rejects.toThrow(
+      "matched 3 locations",
+    );
+  });
+
   test("runShellCommand allows /tmp paths", async () => {
     const filePath = `/tmp/acolyte-tmp-run-${crypto.randomUUID()}.txt`;
     tempFiles.push(filePath);
