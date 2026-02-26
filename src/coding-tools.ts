@@ -1,6 +1,6 @@
-import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { appConfig } from "./app-config";
 
 const WORKSPACE_ROOT = resolve(process.cwd());
@@ -75,6 +75,138 @@ export async function searchRepo(pattern: string, maxResults = 40): Promise<stri
   }
 
   return stdoutText.trim() || "No matches.";
+}
+
+const IGNORED_DIRS = new Set(["node_modules", ".git", ".acolyte", "dist", "build", ".next", "coverage"]);
+
+const BINARY_EXTENSIONS = new Set([
+  ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".ico", ".svg", ".webp",
+  ".woff", ".woff2", ".ttf", ".otf", ".eot",
+  ".zip", ".gz", ".tar", ".bz2", ".7z", ".rar",
+  ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt",
+  ".exe", ".dll", ".so", ".dylib", ".bin",
+  ".mp3", ".mp4", ".avi", ".mov", ".wav", ".flac",
+  ".wasm", ".pyc", ".class", ".o", ".a",
+  ".sqlite", ".db",
+  ".lock",
+]);
+
+function isBinaryExtension(path: string): boolean {
+  const dot = path.lastIndexOf(".");
+  if (dot < 0) {
+    return false;
+  }
+  return BINARY_EXTENSIONS.has(path.slice(dot).toLowerCase());
+}
+
+async function collectWorkspaceFiles(maxEntries = 5000): Promise<string[]> {
+  const out: string[] = [];
+  const stack: Array<{ abs: string; rel: string }> = [{ abs: WORKSPACE_ROOT, rel: "" }];
+
+  while (stack.length > 0 && out.length < maxEntries) {
+    const current = stack.pop();
+    if (!current) {
+      break;
+    }
+    let entries: Array<{ name: string; isDirectory: () => boolean; isFile: () => boolean }>;
+    try {
+      entries = await readdir(current.abs, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    entries.sort((a, b) => a.name.localeCompare(b.name));
+
+    for (const entry of entries) {
+      if (entry.name.startsWith(".") && entry.isDirectory()) {
+        continue;
+      }
+      if (entry.isDirectory() && IGNORED_DIRS.has(entry.name)) {
+        continue;
+      }
+      const rel = current.rel ? `${current.rel}/${entry.name}` : entry.name;
+      const abs = join(current.abs, entry.name);
+      if (entry.isDirectory()) {
+        stack.push({ abs, rel });
+      } else if (entry.isFile()) {
+        out.push(rel);
+      }
+      if (out.length >= maxEntries) {
+        break;
+      }
+    }
+  }
+
+  return out;
+}
+
+export async function findFiles(pattern: string, maxResults = 40): Promise<string> {
+  const trimmed = pattern.trim();
+  if (!trimmed) {
+    throw new Error("Search pattern cannot be empty");
+  }
+  const allFiles = await collectWorkspaceFiles();
+  const needle = trimmed.replace(/^\.\/+/, "").toLowerCase();
+
+  const ranked = allFiles
+    .filter((path) => path.toLowerCase().includes(needle))
+    .sort((a, b) => {
+      const aLower = a.toLowerCase();
+      const bLower = b.toLowerCase();
+      const aScore = aLower === needle ? 0 : aLower.endsWith(`/${needle}`) ? 1 : 2;
+      const bScore = bLower === needle ? 0 : bLower.endsWith(`/${needle}`) ? 1 : 2;
+      if (aScore !== bScore) {
+        return aScore - bScore;
+      }
+      return a.length - b.length;
+    })
+    .slice(0, maxResults)
+    .map((path) => `./${path}`);
+
+  return ranked.length > 0 ? ranked.join("\n") : "No matches.";
+}
+
+export async function searchFiles(pattern: string, maxResults = 40): Promise<string> {
+  const trimmed = pattern.trim();
+  if (!trimmed) {
+    throw new Error("Search pattern cannot be empty");
+  }
+  const allFiles = await collectWorkspaceFiles();
+  const matches: string[] = [];
+
+  let regex: RegExp;
+  try {
+    regex = new RegExp(trimmed, "i");
+  } catch {
+    regex = new RegExp(trimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+  }
+
+  for (const relPath of allFiles) {
+    if (matches.length >= maxResults) {
+      break;
+    }
+    if (isBinaryExtension(relPath)) {
+      continue;
+    }
+    const absPath = join(WORKSPACE_ROOT, relPath);
+    let content: string;
+    try {
+      content = await Bun.file(absPath).text();
+    } catch {
+      continue;
+    }
+    const lines = content.split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      if (regex.test(lines[i] ?? "")) {
+        const lineText = (lines[i] ?? "").trimEnd();
+        matches.push(`./${relPath}:${i + 1}:${lineText}`);
+        if (matches.length >= maxResults) {
+          break;
+        }
+      }
+    }
+  }
+
+  return matches.length > 0 ? matches.join("\n") : "No matches.";
 }
 
 function isWithinWorkspace(pathInput: string): boolean {
