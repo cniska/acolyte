@@ -211,14 +211,12 @@ function createReadFileTool(onToolOutput?: ToolOutputListener) {
       }),
     execute: async (input) => {
       return withToolError("read-file", async () => {
-        const toolCallId = streamCallId("read-file");
         const start = input.start != null ? String(input.start) : undefined;
         const end = input.end != null ? String(input.end) : undefined;
         const result = compactToolOutput(
           await readSnippet(input.path, start, end),
           appConfig.agent.toolOutputBudget.read,
         );
-        emitResultChunks("read-file", result, onToolOutput, 80, toolCallId);
         return { result };
       });
     },
