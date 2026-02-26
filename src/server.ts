@@ -399,7 +399,9 @@ const server = Bun.serve({
                 soulPrompt,
                 onProgress: (progress) => {
                   const normalizedForKind =
-                    typeof progress === "string" ? normalizeProgressMessage(progress) : normalizeProgressMessage(progress.message);
+                    typeof progress === "string"
+                      ? normalizeProgressMessage(progress)
+                      : normalizeProgressMessage(progress.message);
                   const kind =
                     typeof progress === "string"
                       ? progressKindForMessage(normalizedForKind)

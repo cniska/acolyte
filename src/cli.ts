@@ -706,7 +706,10 @@ export function formatAssistantReplyOutput(content: string, wrapWidth = 100): st
     .join("\n");
 }
 
-export function formatProgressEventOutput(content: string, options?: { lineNumberWidth?: number; bullet?: boolean }): string {
+export function formatProgressEventOutput(
+  content: string,
+  options?: { lineNumberWidth?: number; bullet?: boolean },
+): string {
   const dim = (value: string): string => `\x1b[2m${value}\x1b[22m`;
   const bold = (value: string): string => `\x1b[1m${value}\x1b[22m`;
   const path = (value: string): string => `\x1b[4m\x1b[38;2;168;177;188m${value}\x1b[39m\x1b[24m`;

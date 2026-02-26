@@ -381,7 +381,7 @@ describe("extractToolFailureReason", () => {
   test("does not treat diff lines containing EOFError as tool failure", () => {
     const result = [
       "1 + try:",
-      "2 +     word = input(\"Enter a word: \").strip()",
+      '2 +     word = input("Enter a word: ").strip()',
       "3 + except EOFError:",
       "4 +     return",
     ].join("\n");
