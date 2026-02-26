@@ -499,7 +499,9 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       });
     };
     const progressTracker = createProgressTracker({
-      onStatus: () => {},
+      onStatus: (message) => {
+        input.setProgressText(message);
+      },
       onAssistant: (delta) => {
         if (delta.length === 0) {
           return;

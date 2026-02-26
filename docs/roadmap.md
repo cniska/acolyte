@@ -114,6 +114,12 @@ What MVP is **not**:
 - Hosted mode or multi-device support.
 - Polished distribution (global install, onboarding wizard, etc.).
 
+## Post-MVP Ideas
+
+- Parallel subagents per mode (explore, code, verify) for concurrent execution.
+- Mode-based tool filtering (restrict tool availability per mode).
+- Configurable model when mock mode is detected instead of silent fallback.
+
 ## Known Issues
 
 - Streaming pipeline has fragile multi-level deduplication that can drop legitimate events.

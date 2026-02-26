@@ -1,17 +1,15 @@
 import { describe, expect, test } from "bun:test";
 import {
   buildAgentInput,
-  buildSubagentContext,
   canonicalToolId,
   createInstructions,
+  createSubagentContext,
   finalizeAssistantOutput,
   finalizeReviewOutput,
   formatToolHeader,
   isPlanLikeOutput,
-  resolveAgentModel,
   resolveModelProviderState,
   resolveRunnableModel,
-  selectAgentRole,
 } from "./agent";
 import type { ChatRequest } from "./api";
 
@@ -158,27 +156,6 @@ describe("finalizeAssistantOutput", () => {
   });
 });
 
-describe("selectAgentRole", () => {
-  test("always routes prompts to coder", () => {
-    expect(selectAgentRole("review @src/agent.ts")).toBe("coder");
-    expect(selectAgentRole("/review @src/agent.ts")).toBe("coder");
-    expect(selectAgentRole("What is in src/mastra-tools.ts?")).toBe("coder");
-    expect(selectAgentRole("summarize @src/chat-submit-handler.ts")).toBe("coder");
-    expect(selectAgentRole("explain docs/project-plan.md")).toBe("coder");
-    expect(selectAgentRole("what next")).toBe("coder");
-    expect(selectAgentRole("whats next")).toBe("coder");
-    expect(selectAgentRole("ok, what's next for this?")).toBe("coder");
-    expect(selectAgentRole("plan rollout steps for memory")).toBe("coder");
-    expect(selectAgentRole("/plan rollout steps for memory")).toBe("coder");
-    expect(selectAgentRole("implement /resume picker improvements")).toBe("coder");
-    expect(
-      selectAgentRole(
-        "add a short note in docs/project-plan.md under Milestone 2 exit criteria: track delegated slice success/failure ratio weekly",
-      ),
-    ).toBe("coder");
-  });
-});
-
 describe("resolveModelProviderState", () => {
   test("marks openai as unavailable without OpenAI credentials on api.openai.com", () => {
     expect(
@@ -227,76 +204,42 @@ describe("resolveModelProviderState", () => {
   });
 });
 
-describe("resolveAgentModel", () => {
-  test("returns requested model when using single-model mode", () => {
-    expect(resolveAgentModel("coder", "gpt-5-mini", { coder: "gpt-5-codex" })).toBe("gpt-5-mini");
-  });
-});
-
 describe("resolveRunnableModel", () => {
-  test("uses requested model in single-model mode", () => {
+  test("returns available when provider has credentials", () => {
     expect(
-      resolveRunnableModel("coder", "openai/gpt-5-mini", {
-        overrides: { coder: "anthropic/claude-sonnet-4" },
-        credentials: {
-          openaiApiKey: "sk-openai",
-          openaiBaseUrl: "https://api.openai.com/v1",
-          anthropicApiKey: undefined,
-        },
+      resolveRunnableModel("openai/gpt-5-mini", {
+        openaiApiKey: "sk-openai",
+        openaiBaseUrl: "https://api.openai.com/v1",
       }),
     ).toEqual({
       model: "openai/gpt-5-mini",
       provider: "openai",
       available: true,
-      usedFallback: false,
     });
   });
 
-  test("ignores override even when alternate provider is available", () => {
+  test("returns unavailable when provider lacks credentials", () => {
     expect(
-      resolveRunnableModel("coder", "openai/gpt-5-mini", {
-        overrides: { coder: "anthropic/claude-sonnet-4" },
-        credentials: {
-          openaiApiKey: "sk-openai",
-          openaiBaseUrl: "https://api.openai.com/v1",
-          anthropicApiKey: "sk-ant",
-        },
-      }),
-    ).toEqual({
-      model: "openai/gpt-5-mini",
-      provider: "openai",
-      available: true,
-      usedFallback: false,
-    });
-  });
-
-  test("returns unavailable when requested model provider is unavailable", () => {
-    expect(
-      resolveRunnableModel("coder", "openai/gpt-5-mini", {
-        overrides: { coder: "anthropic/claude-sonnet-4" },
-        credentials: {
-          openaiApiKey: undefined,
-          openaiBaseUrl: "https://api.openai.com/v1",
-          anthropicApiKey: undefined,
-        },
+      resolveRunnableModel("openai/gpt-5-mini", {
+        openaiApiKey: undefined,
+        openaiBaseUrl: "https://api.openai.com/v1",
       }),
     ).toEqual({
       model: "openai/gpt-5-mini",
       provider: "openai",
       available: false,
-      usedFallback: false,
     });
   });
 });
 
-describe("buildSubagentContext", () => {
+describe("createSubagentContext", () => {
   test("includes goal and context guidance", () => {
     const req: ChatRequest = {
       model: "gpt-5-mini",
       message: "review @src/agent.ts",
       history: [{ id: "1", role: "user", content: "previous", timestamp: "2026-02-20T10:00:00.000Z" }],
     };
-    const context = buildSubagentContext("coder", req);
+    const context = createSubagentContext(req);
     expect(context).toContain("Agent: Acolyte");
     expect(context).toContain("Goal: review @src/agent.ts");
     expect(context).toContain("Context: 1 history messages; model=gpt-5-mini");
@@ -308,7 +251,7 @@ describe("buildSubagentContext", () => {
       message: "what next",
       history: [],
     };
-    const context = buildSubagentContext("coder", req);
+    const context = createSubagentContext(req);
     expect(context).not.toContain("return exactly 3 concise numbered next steps");
     expect(context).not.toContain("no lettered options");
   });

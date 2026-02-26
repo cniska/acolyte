@@ -81,6 +81,7 @@ Living notes for talks about building this project. Update this file as mileston
 - Configuration should stay predictable: non-secret file config + env-only secrets with clear precedence.
 - Dogfooding readiness should be measurable: gate checks, scoped lookback, explicit remaining-slice signals.
 - Keep repo instructions lean: high-signal guidance improves execution quality and cost/latency.
+- Keep scope narrow early: premature abstractions (e.g. multi-agent before single-agent is reliable) add complexity without value. Ship the simplest thing that works, then layer on.
 
 ## Demo Flow (Short)
 1. `bun run dev` (starts backend + chat).

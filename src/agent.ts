@@ -1,12 +1,11 @@
 import { createAgent } from "./agent-factory";
+import { type AgentMode, agentModes, modeForTool } from "./agent-modes";
 import type { ChatRequest, ChatResponse } from "./api";
 import { appConfig } from "./app-config";
 import type { StreamEvent } from "./backend";
 import { toolsForAgent } from "./mastra-tools";
 import { isProviderAvailable, type ModelProviderName, providerFromModel } from "./provider-config";
 import { formatToolLabel } from "./tool-labels";
-
-export type AgentRole = "coder";
 
 const FALLBACK_PLAN =
   "1) Interpret request. 2) Use available repo tools when helpful. 3) Return concise, actionable answer.";
@@ -156,11 +155,7 @@ function isReviewRequest(text: string): boolean {
   return /\breview\b/i.test(text);
 }
 
-export function selectAgentRole(_text: string): AgentRole {
-  return "coder";
-}
-
-export function buildSubagentContext(_role: AgentRole, req: ChatRequest): string {
+export function createSubagentContext(req: ChatRequest): string {
   const scope = req.history.length > 0 ? `${req.history.length} history messages` : "no history";
   return ["Agent: Acolyte", `Goal: ${req.message.trim()}`, `Context: ${scope}; model=${req.model}`].join("\n");
 }
@@ -213,10 +208,6 @@ export function createInstructions(baseInstructions: string): string {
   return `${baseInstructions}\n\n${executionContract}`;
 }
 
-export function resolveAgentModel(_role: AgentRole, requestedModel: string, _overrides?: unknown): string {
-  return requestedModel;
-}
-
 export function resolveModelProviderState(
   model: string,
   credentials: {
@@ -243,49 +234,23 @@ export function resolveModelProviderState(
 }
 
 export function resolveRunnableModel(
-  role: AgentRole,
   requestedModel: string,
-  options: {
-    overrides?: unknown;
-    credentials?: {
-      openaiApiKey?: string;
-      openaiBaseUrl: string;
-      anthropicApiKey?: string;
-      googleApiKey?: string;
-    };
-  } = {},
+  credentials?: {
+    openaiApiKey?: string;
+    openaiBaseUrl: string;
+    anthropicApiKey?: string;
+    googleApiKey?: string;
+  },
 ): {
   model: string;
   provider: ModelProviderName;
   available: boolean;
-  usedFallback: boolean;
 } {
-  const preferredModel = resolveAgentModel(role, requestedModel, options.overrides);
-  const preferredState = resolveModelProviderState(preferredModel, options.credentials);
-  if (preferredState.available || preferredModel === requestedModel) {
-    return {
-      model: preferredModel,
-      provider: preferredState.provider,
-      available: preferredState.available,
-      usedFallback: false,
-    };
-  }
-
-  const requestedState = resolveModelProviderState(requestedModel, options.credentials);
-  if (requestedState.available) {
-    return {
-      model: requestedModel,
-      provider: requestedState.provider,
-      available: true,
-      usedFallback: true,
-    };
-  }
-
+  const state = resolveModelProviderState(requestedModel, credentials);
   return {
-    model: preferredModel,
-    provider: preferredState.provider,
-    available: false,
-    usedFallback: false,
+    model: requestedModel,
+    provider: state.provider,
+    available: state.available,
   };
 }
 
@@ -493,13 +458,11 @@ export async function runAgent(input: {
   const TIMEOUT_RECOVERY_TIMEOUT_MS = 45_000;
   const CODER_TIMEOUT_MS = 90_000;
 
-  const role = selectAgentRole(input.request.message);
   const emitDebug = (event: string, fields: Record<string, unknown> = {}): void => {
-    input.onDebug?.(event, { role, ...fields });
+    input.onDebug?.(event, fields);
   };
 
-  emitDebug("agent.role.selected", { model_requested: input.request.model });
-  const resolved = resolveRunnableModel(role, input.request.model);
+  const resolved = resolveRunnableModel(input.request.model);
   if (!resolved.available) {
     return buildMockReply(input.request, `Provider '${resolved.provider}' is not configured.`);
   }
@@ -508,6 +471,7 @@ export async function runAgent(input: {
   let modelCallCount = 0;
   const observedToolNames = new Set<string>();
   let lastToolFailureReason: string | undefined;
+  let currentMode: AgentMode = "ask";
 
   // Map Mastra native toolCallIds to correlate with onToolOutput from mastra-tools.
   // fullStream emits tool-call with native IDs; onToolOutput uses synthetic IDs.
@@ -522,8 +486,8 @@ export async function runAgent(input: {
   let toolOutputHandler: ((event: { toolName: string; message: string; toolCallId?: string }) => void) | null = null;
 
   const agent = createAgent({
-    id: `acolyte-${role}`,
-    name: `Acolyte ${role[0].toUpperCase()}${role.slice(1)}`,
+    id: "acolyte",
+    name: "Acolyte",
     model,
     instructions: createInstructions(input.soulPrompt),
     tools: toolsForAgent({
@@ -607,6 +571,11 @@ export async function runAgent(input: {
                 if (p?.toolCallId && p?.toolName) {
                   const toolName = canonicalToolId(p.toolName);
                   observedToolNames.add(toolName);
+                  const inferredMode = modeForTool(toolName);
+                  if (inferredMode !== currentMode) {
+                    currentMode = inferredMode;
+                    emitEvent({ type: "status", message: agentModes[currentMode].progressText });
+                  }
                   const args = (p.args ?? {}) as Record<string, unknown>;
                   emitDebug("agent.tool.call", {
                     tool: toolName,
@@ -694,7 +663,7 @@ export async function runAgent(input: {
     });
 
   const requestInput = buildAgentInputWithUsage(input.request);
-  const subagentContext = buildSubagentContext(role, input.request);
+  const subagentContext = createSubagentContext(input.request);
   const agentInput = `${subagentContext}\n\n${requestInput.input}`;
   const resourceId = input.request.resourceId?.trim() || appConfig.memory.resourceId;
   const memoryOptions = input.request.sessionId ? { thread: input.request.sessionId, resource: resourceId } : undefined;
