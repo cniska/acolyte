@@ -1,6 +1,5 @@
 import { Box, render, Text, useApp } from "ink";
 import { useEffect, useRef, useState } from "react";
-import type { Backend } from "./backend";
 import type { ChatRow, TokenUsageEntry } from "./chat-commands";
 import { useAtSuggestionsEffect, useSlashSuggestionsEffect, useThinkingAnimationEffect } from "./chat-effects";
 import { extractAtReferenceQuery } from "./chat-file-ref";
@@ -21,6 +20,7 @@ import {
 } from "./chat-submit-handler";
 import { ChatTranscript } from "./chat-transcript";
 import { buildInputHistory } from "./chat-turn";
+import type { Client } from "./client";
 import { palette } from "./palette";
 import type { PolicyCandidate } from "./policy-distill";
 import type { Session, SessionStore } from "./types";
@@ -35,7 +35,7 @@ type HeaderLine = {
 const THINKING_PULSE_FRAMES = 16;
 
 interface ChatAppProps {
-  backend: Backend;
+  backend: Client;
   session: Session;
   store: SessionStore;
   persist: () => Promise<void>;
@@ -126,7 +126,7 @@ function ChatApp(props: ChatAppProps) {
     queueInput: setQueuedInput,
     buildClarificationPayload: buildInternalClarificationTurn,
     buildWriteResumePayload: buildInternalWriteResumeTurn,
-    setBackendPermissionMode: async (mode) => {
+    setServerPermissionMode: async (mode) => {
       await backend.setPermissionMode(mode);
     },
     persistPermissionMode,

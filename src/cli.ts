@@ -16,10 +16,10 @@ import {
   searchWeb,
 } from "./agent-tools";
 import { appConfig } from "./app-config";
-import { createBackend } from "./backend";
 import { wrapAssistantContent } from "./chat-content";
 import { createProgressTracker } from "./chat-progress";
 import { runInkChat } from "./chat-ui";
+import { createClient } from "./client";
 import {
   type AcolyteConfig,
   readConfig,
@@ -790,19 +790,19 @@ export function formatPromptError(error: unknown): string {
     return "Provider quota exceeded. Add billing/credits or switch model/provider.";
   }
   if (lower.includes("timed out") || lower.includes("timeout")) {
-    return "Backend request timed out. Retry or reduce request scope.";
+    return "Server request timed out. Retry or reduce request scope.";
   }
   if (lower.includes("shell command execution is disabled in read mode")) {
     return "Write action blocked in read mode. Run /permissions write and retry.";
   }
   if (
-    lower.includes("backend unavailable") ||
+    lower.includes("server unavailable") ||
     lower.includes("connection refused") ||
     lower.includes("socket connection was closed unexpectedly")
   ) {
-    return "Backend unavailable. Start the backend and retry.";
+    return "Server unavailable. Start the server and retry.";
   }
-  if (lower.includes("remote backend error")) {
+  if (lower.includes("remote server error")) {
     return message;
   }
   return message || "Request failed. Retry and check backend logs if it keeps failing.";
@@ -811,7 +811,7 @@ export function formatPromptError(error: unknown): string {
 async function handlePrompt(
   prompt: string,
   session: Session,
-  backend = createBackend(),
+  backend = createClient(),
   options?: { resourceId?: string },
 ): Promise<boolean> {
   const userMsg = newMessage("user", prompt);
@@ -1094,7 +1094,7 @@ async function chatModeWithOptions(options: { resumeLatest: boolean; resumePrefi
     process.exitCode = 1;
     return;
   }
-  const backend = createBackend({
+  const backend = createClient({
     apiUrl: appConfig.server.apiUrl,
   });
   const persist = async (): Promise<void> => {
@@ -1142,7 +1142,7 @@ async function runMode(args: string[]): Promise<void> {
   const resolvedConfig = readResolvedConfigSync();
   const session = createSession(defaultModel);
   session.messages.push(newMessage("system", RUN_MODE_SYSTEM_PROMPT));
-  const backend = createBackend({
+  const backend = createClient({
     apiUrl: appConfig.server.apiUrl,
     replyTimeoutMs: resolvedConfig.replyTimeoutMs,
   });
@@ -1217,7 +1217,7 @@ async function historyMode(): Promise<void> {
 }
 
 async function statusMode(): Promise<void> {
-  const backend = createBackend({
+  const backend = createClient({
     apiUrl: appConfig.server.apiUrl,
   });
   try {

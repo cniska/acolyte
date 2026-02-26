@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseArgs, waitForBackend } from "./wait-backend";
+import { parseArgs, waitForServer } from "./wait-server";
 
 function startTestServer(fetch: (req: Request) => Response | Promise<Response>): { port: number; stop: () => void } {
   const attempts = 25;
@@ -15,7 +15,7 @@ function startTestServer(fetch: (req: Request) => Response | Promise<Response>):
   throw new Error("Unable to start test server after multiple attempts.");
 }
 
-describe("wait-backend", () => {
+describe("wait-server", () => {
   test("parseArgs applies defaults", () => {
     expect(parseArgs([])).toEqual({
       url: "http://localhost:6767/healthz",
@@ -42,22 +42,22 @@ describe("wait-backend", () => {
     expect(() => parseArgs(["--wat"])).toThrow("Unknown argument: --wat");
   });
 
-  test("waitForBackend resolves when endpoint is healthy", async () => {
+  test("waitForServer resolves when endpoint is healthy", async () => {
     const server = startTestServer(() =>
       Response.json({
         ok: true,
       }),
     );
     try {
-      await expect(waitForBackend(`http://127.0.0.1:${server.port}/healthz`, 1000)).resolves.toBeUndefined();
+      await expect(waitForServer(`http://127.0.0.1:${server.port}/healthz`, 1000)).resolves.toBeUndefined();
     } finally {
       server.stop();
     }
   });
 
-  test("waitForBackend times out when endpoint stays unavailable", async () => {
-    await expect(waitForBackend("http://127.0.0.1:9/healthz", 250)).rejects.toThrow(
-      "Timed out waiting for backend at http://127.0.0.1:9/healthz",
+  test("waitForServer times out when endpoint stays unavailable", async () => {
+    await expect(waitForServer("http://127.0.0.1:9/healthz", 250)).rejects.toThrow(
+      "Timed out waiting for server at http://127.0.0.1:9/healthz",
     );
   });
 });

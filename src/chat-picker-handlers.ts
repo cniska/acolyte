@@ -36,7 +36,7 @@ type CreatePickerHandlersInput = {
     answers: Array<{ question: string; answer: string }>;
   }) => string;
   buildWriteResumePayload: (prompt: string) => string;
-  setBackendPermissionMode: (mode: "read" | "write") => Promise<void>;
+  setServerPermissionMode: (mode: "read" | "write") => Promise<void>;
   persistPermissionMode: (mode: "read" | "write", scope: "project" | "user") => Promise<void>;
   persist: () => Promise<void>;
   toRows: (messages: Message[]) => ChatRow[];
@@ -168,7 +168,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
         const selected = state.items[state.index];
         if (selected) {
           try {
-            await input.setBackendPermissionMode(selected.mode);
+            await input.setServerPermissionMode(selected.mode);
             await input.persistPermissionMode(selected.mode, "project");
             setPermissionMode(selected.mode);
             input.setRows((current) => [
@@ -283,7 +283,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
         const selected = state.items[state.index];
         if (selected.value === "switch") {
           try {
-            await input.setBackendPermissionMode("write");
+            await input.setServerPermissionMode("write");
             await input.persistPermissionMode("write", "project");
             setPermissionMode("write");
             input.setRows((current) => [

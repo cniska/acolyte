@@ -225,16 +225,16 @@ describe("cli formatting helpers", () => {
     expect(formatPromptError(new Error("insufficient_quota: exceeded"))).toBe(
       "Provider quota exceeded. Add billing/credits or switch model/provider.",
     );
-    expect(formatPromptError(new Error("Remote backend reply timed out after 120000ms"))).toBe(
-      "Backend request timed out. Retry or reduce request scope.",
+    expect(formatPromptError(new Error("Remote server reply timed out after 120000ms"))).toBe(
+      "Server request timed out. Retry or reduce request scope.",
     );
     expect(formatPromptError(new Error("Shell command execution is disabled in read mode"))).toBe(
       "Write action blocked in read mode. Run /permissions write and retry.",
     );
     expect(formatPromptError(new Error("The socket connection was closed unexpectedly."))).toBe(
-      "Backend unavailable. Start the backend and retry.",
+      "Server unavailable. Start the server and retry.",
     );
-    expect(formatPromptError(new Error("Remote backend error (502): boom"))).toBe("Remote backend error (502): boom");
+    expect(formatPromptError(new Error("Remote server error (502): boom"))).toBe("Remote server error (502): boom");
   });
 
   test("displayPromptForOutput hides dogfood preamble and keeps task line", () => {

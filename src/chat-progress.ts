@@ -1,4 +1,4 @@
-import type { StreamEvent } from "./backend";
+import type { StreamEvent } from "./client";
 
 export function createProgressTracker(options: {
   onStatus?: (message: string) => void;

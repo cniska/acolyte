@@ -1,8 +1,8 @@
 import type { TokenUsage } from "./api";
-import type { Backend, StreamEvent } from "./backend";
 import type { ChatRow, TokenUsageEntry } from "./chat-commands";
 import { extractAtReferencePaths } from "./chat-file-ref";
 import { formatThoughtDuration } from "./chat-formatters";
+import type { Client, StreamEvent } from "./client";
 import { buildFileContext } from "./file-context";
 import type { Message, Session } from "./types";
 
@@ -96,7 +96,7 @@ export function applyUserTurn(params: ApplyUserTurnParams): { userMessage: Messa
 }
 
 type RunAssistantTurnParams = {
-  backend: Backend;
+  backend: Client;
   userText: string;
   history: Message[];
   model: string;

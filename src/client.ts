@@ -1,10 +1,8 @@
 import { z } from "zod";
 import type { ChatRequest, ChatResponse } from "./api";
-import { appConfig, type PermissionMode, setPermissionMode } from "./app-config";
-import { isProviderAvailable, providerFromModel } from "./provider-config";
-import { getMemoryContextEntries } from "./soul";
+import { appConfig, type PermissionMode } from "./app-config";
 
-export interface BackendOptions {
+export interface ClientOptions {
   apiUrl?: string;
   apiKey?: string;
   replyTimeoutMs?: number;
@@ -37,7 +35,7 @@ export const streamEventSchema = z.discriminatedUnion("type", [
 
 export type StreamEvent = z.infer<typeof streamEventSchema>;
 
-export interface Backend {
+export interface Client {
   reply(input: ChatRequest, options?: { signal?: AbortSignal }): Promise<ChatResponse>;
   replyStream(
     input: ChatRequest,
@@ -66,92 +64,10 @@ function isConnectionFailure(error: unknown): boolean {
 }
 
 function connectionHelpMessage(apiUrl: string): string {
-  return `Cannot reach backend at ${apiUrl}. Start it with: bun run dev (or bun run serve:env)`;
+  return `Cannot reach server at ${apiUrl}. Start it with: bun run dev (or bun run serve:env)`;
 }
 
-class LocalBackend implements Backend {
-  async reply(input: ChatRequest, _options?: { signal?: AbortSignal }): Promise<ChatResponse> {
-    const trimmed = input.message.trim();
-    const lc = trimmed.toLowerCase();
-
-    if (lc.includes("summarize") && input.history.length > 0) {
-      const userMessages = input.history.filter((m) => m.role === "user").length;
-      const assistantMessages = input.history.filter((m) => m.role === "assistant").length;
-      return {
-        model: input.model,
-        output: `Session so far: ${userMessages} user messages, ${assistantMessages} assistant messages. Ask me to /history for full local transcript.`,
-        usage: {
-          promptTokens: Math.ceil(
-            (input.message.length + input.history.map((m) => m.content.length).join("").length) / 4,
-          ),
-          completionTokens: 32,
-          totalTokens:
-            Math.ceil((input.message.length + input.history.map((m) => m.content.length).join("").length) / 4) + 32,
-        },
-      };
-    }
-
-    const output = [
-      "Local backend is active.",
-      "Set the backend URL with `acolyte config set apiUrl <url>` to route CLI requests to your hosted Mastra backend.",
-      "I can still track your session context, memory notes, and command history locally.",
-      `You said: ${trimmed}`,
-    ].join(" ");
-    const promptTokens = Math.ceil((trimmed.length + input.history.map((m) => m.content.length).join("").length) / 4);
-    return {
-      model: input.model,
-      output,
-      usage: {
-        promptTokens,
-        completionTokens: Math.ceil(output.length / 4),
-        totalTokens: promptTokens + Math.ceil(output.length / 4),
-      },
-    };
-  }
-
-  async replyStream(
-    input: ChatRequest,
-    _options: {
-      onEvent: (event: StreamEvent) => void;
-      signal?: AbortSignal;
-    },
-  ): Promise<ChatResponse> {
-    return this.reply(input);
-  }
-
-  async status(): Promise<string> {
-    const model = appConfig.model;
-    const provider = providerFromModel(model);
-    const providerConfig = {
-      openaiApiKey: appConfig.openai.apiKey,
-      openaiBaseUrl: appConfig.openai.baseUrl,
-      anthropicApiKey: appConfig.anthropic.apiKey,
-      googleApiKey: appConfig.google.apiKey,
-    };
-    const providerReady = isProviderAvailable({ provider, ...providerConfig });
-    let memoryContextCount: number | undefined;
-    try {
-      memoryContextCount = (await getMemoryContextEntries()).length;
-    } catch {
-      memoryContextCount = undefined;
-    }
-    const fields = [
-      "provider=local-mock",
-      `model=${model}`,
-      `provider_ready=${providerReady}`,
-      "backend=embedded",
-      `permission_mode=${appConfig.agent.permissions.mode}`,
-      memoryContextCount === undefined ? undefined : `memory_context=${memoryContextCount}`,
-    ];
-    return fields.filter((field): field is string => Boolean(field)).join(" ");
-  }
-
-  async setPermissionMode(mode: PermissionMode): Promise<void> {
-    setPermissionMode(mode);
-  }
-}
-
-class RemoteBackend implements Backend {
+class HttpClient implements Client {
   constructor(
     private readonly apiUrl: string,
     private readonly apiKey?: string,
@@ -206,7 +122,7 @@ class RemoteBackend implements Backend {
       });
     } catch (error) {
       if (timedOut) {
-        throw new Error(`Remote backend reply timed out after ${this.replyTimeoutMs}ms`);
+        throw new Error(`Remote server reply timed out after ${this.replyTimeoutMs}ms`);
       }
       throw error;
     } finally {
@@ -234,12 +150,12 @@ class RemoteBackend implements Backend {
         // Non-JSON error body; keep raw body text.
       }
       const errorSuffix = errorId ? ` [error_id=${errorId}]` : "";
-      throw new Error(`Remote backend error (${response.status}): ${errorMessage}${errorSuffix}`);
+      throw new Error(`Remote server error (${response.status}): ${errorMessage}${errorSuffix}`);
     }
 
     const json = (await response.json()) as Partial<ChatResponse>;
     if (typeof json.output !== "string") {
-      throw new Error("Remote backend returned invalid payload: missing output");
+      throw new Error("Remote server returned invalid payload: missing output");
     }
 
     return {
@@ -317,7 +233,7 @@ class RemoteBackend implements Backend {
       });
     } catch (error) {
       if (timedOut) {
-        throw new Error(`Remote backend reply timed out after ${this.replyTimeoutMs}ms`);
+        throw new Error(`Remote server reply timed out after ${this.replyTimeoutMs}ms`);
       }
       throw error;
     } finally {
@@ -331,10 +247,10 @@ class RemoteBackend implements Backend {
 
     if (!response.ok) {
       const body = await response.text();
-      throw new Error(`Remote backend stream failed (${response.status}): ${body || "no body"}`);
+      throw new Error(`Remote server stream failed (${response.status}): ${body || "no body"}`);
     }
     if (!response.body) {
-      throw new Error("Remote backend stream returned no body");
+      throw new Error("Remote server stream returned no body");
     }
 
     const decoder = new TextDecoder();
@@ -364,13 +280,13 @@ class RemoteBackend implements Backend {
       if (payload.type === "done") {
         const reply = parseChatResponse(payload.reply, input.model);
         if (!reply) {
-          throw new Error("Remote backend stream returned invalid done payload");
+          throw new Error("Remote server stream returned invalid done payload");
         }
         finalReply = reply;
         return;
       }
       if (payload.type === "error") {
-        const errorMsg = typeof payload.error === "string" ? payload.error : "Remote backend stream failed";
+        const errorMsg = typeof payload.error === "string" ? payload.error : "Remote server stream failed";
         options.onEvent({ type: "error", error: errorMsg });
         throw new Error(errorMsg);
       }
@@ -401,7 +317,7 @@ class RemoteBackend implements Backend {
     }
 
     if (!finalReply) {
-      throw new Error("Remote backend stream ended without final reply");
+      throw new Error("Remote server stream ended without final reply");
     }
     return finalReply;
   }
@@ -413,7 +329,7 @@ class RemoteBackend implements Backend {
 
     if (!response.ok) {
       const body = await response.text();
-      throw new Error(`Backend health check failed (${response.status}): ${body || "no body"}`);
+      throw new Error(`Server health check failed (${response.status}): ${body || "no body"}`);
     }
 
     const json = (await response.json()) as Record<string, unknown>;
@@ -548,14 +464,12 @@ function parseChatResponse(payload: unknown, fallbackModel: string): ChatRespons
   };
 }
 
-export function createBackend(options?: BackendOptions): Backend {
+export function createClient(options?: ClientOptions): Client {
   const apiUrl = options?.apiUrl ?? appConfig.server.apiUrl;
+  if (!apiUrl) {
+    throw new Error("No API URL configured. Start the backend with: bun run dev");
+  }
   const apiKey = options?.apiKey ?? appConfig.server.apiKey;
   const replyTimeoutMs = options?.replyTimeoutMs;
-
-  if (!apiUrl) {
-    return new LocalBackend();
-  }
-
-  return new RemoteBackend(apiUrl, apiKey, replyTimeoutMs);
+  return new HttpClient(apiUrl, apiKey, replyTimeoutMs);
 }

@@ -2,7 +2,7 @@ import { createAgent } from "./agent-factory";
 import { type AgentMode, agentModes, modeForTool } from "./agent-modes";
 import type { ChatRequest, ChatResponse } from "./api";
 import { appConfig } from "./app-config";
-import type { StreamEvent } from "./backend";
+import type { StreamEvent } from "./client";
 import { toolsForAgent } from "./mastra-tools";
 import { isProviderAvailable, type ModelProviderName, providerFromModel } from "./provider-config";
 import { formatToolLabel } from "./tool-labels";

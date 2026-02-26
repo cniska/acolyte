@@ -203,7 +203,7 @@ async function configureSmokeCli(smokeEnv: Record<string, string>): Promise<void
   }
 }
 
-async function setBackendPermissionMode(mode: "read" | "write"): Promise<void> {
+async function setServerPermissionMode(mode: "read" | "write"): Promise<void> {
   const headers: Record<string, string> = {
     "content-type": "application/json",
   };
@@ -225,7 +225,7 @@ async function runReadModeBlockSmoke(smokeEnv: Record<string, string>): Promise<
   const filePath = join(tmpdir(), `acolyte-dogfood-read-block-${crypto.randomUUID()}.txt`);
   await writeFile(filePath, "alpha\n", "utf8");
   try {
-    await setBackendPermissionMode("read");
+    await setServerPermissionMode("read");
     const prompt = `Edit ${filePath}: replace alpha with beta. Apply the edit directly, no explanation.`;
     const result = await runCommand(
       ["bun", "run", "src/cli.ts", "dogfood", "--no-verify", prompt],
@@ -243,7 +243,7 @@ async function runReadModeBlockSmoke(smokeEnv: Record<string, string>): Promise<
   } finally {
     await rm(filePath, { force: true });
     try {
-      await setBackendPermissionMode("write");
+      await setServerPermissionMode("write");
     } catch {
       // best-effort restore; subsequent checks will fail if backend remains read-only
     }

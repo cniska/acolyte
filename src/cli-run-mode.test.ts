@@ -1,9 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createSession } from "./storage";
-import type { SessionStore } from "./types";
 
 const tmpHomes: string[] = [];
 const tmpProjects: string[] = [];
@@ -27,23 +25,13 @@ afterEach(async () => {
 });
 
 describe("cli run mode", () => {
-  test("run command does not mutate persisted sessions", async () => {
+  test("run command exits non-zero when no backend is configured", async () => {
     const home = await mkdtemp(join(tmpdir(), "acolyte-run-test-"));
     const project = await mkdtemp(join(tmpdir(), "acolyte-run-project-"));
     tmpHomes.push(home);
     tmpProjects.push(project);
     const dataDir = join(home, ".acolyte");
     await mkdir(dataDir, { recursive: true });
-
-    const existing = createSession("gpt-5-mini");
-    existing.title = "Persisted Session";
-    const store: SessionStore = {
-      sessions: [existing],
-      activeSessionId: existing.id,
-    };
-    const storePath = join(dataDir, "sessions.json");
-    const before = JSON.stringify(store, null, 2);
-    await writeFile(storePath, before, "utf8");
 
     const result = Bun.spawnSync({
       cmd: [process.execPath, "run", join(repoRoot, "src/cli.ts"), "run", "hello"],
@@ -56,9 +44,9 @@ describe("cli run mode", () => {
       stderr: "pipe",
     });
 
-    expect(result.exitCode).toBe(0);
-    const after = await readFile(storePath, "utf8");
-    expect(after).toBe(before);
+    const stderr = Buffer.from(result.stderr).toString("utf8");
+    expect(result.exitCode).toBe(1);
+    expect(stderr).toContain("No API URL configured");
   });
 
   test("run command exits non-zero when remote backend is unreachable", async () => {
@@ -90,6 +78,6 @@ describe("cli run mode", () => {
 
     const stdout = Buffer.from(result.stdout).toString("utf8");
     expect(result.exitCode).toBe(1);
-    expect(stdout).toContain("Cannot reach backend at http://127.0.0.1:1");
+    expect(stdout).toContain("Cannot reach server at http://127.0.0.1:1");
   });
 });

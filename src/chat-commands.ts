@@ -1,6 +1,6 @@
 import { appConfig, setPermissionMode } from "./app-config";
-import type { Backend } from "./backend";
 import { suggestClosestSlashCommand } from "./chat-slash";
+import type { Client } from "./client";
 import type { ConfigScope } from "./config";
 import { setConfigValue } from "./config";
 import { addMemory, listMemories, removeMemoryByPrefix } from "./memory";
@@ -107,7 +107,7 @@ type CommandResult = {
 export type CommandContext = {
   text: string;
   resolvedText: string;
-  backend: Backend;
+  backend: Client;
   store: SessionStore;
   currentSession: Session;
   setCurrentSession: (next: Session) => void;
@@ -122,7 +122,7 @@ export type CommandContext = {
   openResumePanel: () => void;
   openPermissionsPanel: () => void;
   openPolicyPanel: (items: ReturnType<typeof distillPolicyCandidatesFromSessions>) => void;
-  setBackendPermissionMode: (mode: "read" | "write") => Promise<void>;
+  setServerPermissionMode: (mode: "read" | "write") => Promise<void>;
   setConfigPermissionMode?: (mode: "read" | "write", scope: ConfigScope) => Promise<void>;
   tokenUsage: TokenUsageEntry[];
   memoryApi?: {
@@ -292,7 +292,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       return { stop: true, userText: text };
     }
     try {
-      await ctx.setBackendPermissionMode(mode);
+      await ctx.setServerPermissionMode(mode);
       if (ctx.setConfigPermissionMode) {
         await ctx.setConfigPermissionMode(mode, scope);
       } else {

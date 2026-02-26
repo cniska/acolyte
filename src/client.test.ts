@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { createBackend } from "./backend";
+import { createClient } from "./client";
 
 const originalFetch = globalThis.fetch;
 
@@ -13,9 +13,9 @@ describe("remote backend connection errors", () => {
       throw new TypeError("Unable to connect. Is the computer able to access the url?");
     }) as unknown as typeof fetch;
 
-    const backend = createBackend({ apiUrl: "http://localhost:6767" });
+    const backend = createClient({ apiUrl: "http://localhost:6767" });
     await expect(backend.status()).rejects.toThrow(
-      "Cannot reach backend at http://localhost:6767. Start it with: bun run dev (or bun run serve:env)",
+      "Cannot reach server at http://localhost:6767. Start it with: bun run dev (or bun run serve:env)",
     );
   });
 
@@ -24,7 +24,7 @@ describe("remote backend connection errors", () => {
       throw new TypeError("The socket connection was closed unexpectedly.");
     }) as unknown as typeof fetch;
 
-    const backend = createBackend({ apiUrl: "http://localhost:6767" });
+    const backend = createClient({ apiUrl: "http://localhost:6767" });
     await expect(
       backend.reply({
         message: "ping",
@@ -33,7 +33,7 @@ describe("remote backend connection errors", () => {
         sessionId: "sess_test",
       }),
     ).rejects.toThrow(
-      "Cannot reach backend at http://localhost:6767. Start it with: bun run dev (or bun run serve:env)",
+      "Cannot reach server at http://localhost:6767. Start it with: bun run dev (or bun run serve:env)",
     );
   });
 
@@ -42,7 +42,7 @@ describe("remote backend connection errors", () => {
       throw new TypeError("Was there a typo in the url or port?");
     }) as unknown as typeof fetch;
 
-    const backend = createBackend({ apiUrl: "http://localhost:6767" });
+    const backend = createClient({ apiUrl: "http://localhost:6767" });
     await expect(
       backend.reply({
         message: "ping",
@@ -51,7 +51,7 @@ describe("remote backend connection errors", () => {
         sessionId: "sess_test",
       }),
     ).rejects.toThrow(
-      "Cannot reach backend at http://localhost:6767. Start it with: bun run dev (or bun run serve:env)",
+      "Cannot reach server at http://localhost:6767. Start it with: bun run dev (or bun run serve:env)",
     );
   });
 
@@ -60,7 +60,7 @@ describe("remote backend connection errors", () => {
       throw new Error("boom");
     }) as unknown as typeof fetch;
 
-    const backend = createBackend({ apiUrl: "http://localhost:6767" });
+    const backend = createClient({ apiUrl: "http://localhost:6767" });
     await expect(
       backend.reply({
         message: "ping",
@@ -93,7 +93,7 @@ describe("remote backend connection errors", () => {
       });
     }) as unknown as typeof fetch;
 
-    const backend = createBackend({ apiUrl: "http://localhost:6767", replyTimeoutMs: 5 });
+    const backend = createClient({ apiUrl: "http://localhost:6767", replyTimeoutMs: 5 });
     await expect(
       backend.reply({
         message: "ping",
@@ -101,7 +101,7 @@ describe("remote backend connection errors", () => {
         model: "gpt-5-mini",
         sessionId: "sess_test",
       }),
-    ).rejects.toThrow("Remote backend reply timed out after 5ms");
+    ).rejects.toThrow("Remote server reply timed out after 5ms");
   });
 
   test("reply surfaces backend error_id when present", async () => {
@@ -117,7 +117,7 @@ describe("remote backend connection errors", () => {
         },
       )) as unknown as typeof fetch;
 
-    const backend = createBackend({ apiUrl: "http://localhost:6767" });
+    const backend = createClient({ apiUrl: "http://localhost:6767" });
     await expect(
       backend.reply({
         message: "ping",
@@ -125,7 +125,7 @@ describe("remote backend connection errors", () => {
         model: "gpt-5-mini",
         sessionId: "sess_test",
       }),
-    ).rejects.toThrow("Remote backend error (502): model call failed [error_id=err_abc12345]");
+    ).rejects.toThrow("Remote server error (502): model call failed [error_id=err_abc12345]");
   });
 
   test("reply ignores embedded progress payload fields", async () => {
@@ -171,7 +171,7 @@ describe("remote backend connection errors", () => {
         },
       )) as unknown as typeof fetch;
 
-    const backend = createBackend({ apiUrl: "http://localhost:6767" });
+    const backend = createClient({ apiUrl: "http://localhost:6767" });
     const reply = await backend.reply({
       message: "ping",
       history: [],
@@ -218,7 +218,7 @@ describe("remote backend connection errors", () => {
         },
       )) as unknown as typeof fetch;
 
-    const backend = createBackend({ apiUrl: "http://localhost:6767" });
+    const backend = createClient({ apiUrl: "http://localhost:6767" });
     const received: Array<{ type: string; toolName?: string }> = [];
     const reply = await backend.replyStream(
       {
@@ -262,7 +262,7 @@ describe("remote backend connection errors", () => {
         { status: 200, headers: { "content-type": "text/event-stream" } },
       )) as unknown as typeof fetch;
 
-    const backend = createBackend({ apiUrl: "http://localhost:6767" });
+    const backend = createClient({ apiUrl: "http://localhost:6767" });
     const reply = await backend.replyStream(
       { message: "ping", history: [], model: "gpt-5-mini", sessionId: "sess_test" },
       { onEvent: () => {} },
@@ -293,7 +293,7 @@ describe("remote backend connection errors", () => {
         },
       )) as unknown as typeof fetch;
 
-    const backend = createBackend({ apiUrl: "http://localhost:6767" });
+    const backend = createClient({ apiUrl: "http://localhost:6767" });
     await expect(
       backend.replyStream(
         {
@@ -348,7 +348,7 @@ describe("remote backend status parsing", () => {
         },
       )) as unknown as typeof fetch;
 
-    const backend = createBackend({ apiUrl: "http://localhost:6767" });
+    const backend = createClient({ apiUrl: "http://localhost:6767" });
     const status = await backend.status();
 
     expect(status).toContain("provider=openai");
@@ -410,7 +410,7 @@ describe("remote backend status parsing", () => {
         },
       )) as unknown as typeof fetch;
 
-    const backend = createBackend({ apiUrl: "http://localhost:6767" });
+    const backend = createClient({ apiUrl: "http://localhost:6767" });
     const status = await backend.status();
 
     expect(status).toContain("provider=openai-compatible");
@@ -446,7 +446,7 @@ describe("remote backend status parsing", () => {
         },
       )) as unknown as typeof fetch;
 
-    const backend = createBackend({ apiUrl: "http://localhost:6767" });
+    const backend = createClient({ apiUrl: "http://localhost:6767" });
     const status = await backend.status();
 
     expect(status).toContain("provider=mock");
@@ -455,16 +455,8 @@ describe("remote backend status parsing", () => {
   });
 });
 
-describe("local backend status", () => {
-  test("includes single-model provider and readiness rows", async () => {
-    const backend = createBackend({ apiUrl: "" });
-    const status = await backend.status();
-
-    expect(status).toContain("provider=local-mock");
-    expect(status).toContain("model=");
-    expect(status).toContain("provider_ready=");
-    expect(status).toContain("backend=embedded");
-    expect(status).toContain("permission_mode=");
-    expect(status).toContain("memory_context=");
+describe("createClient", () => {
+  test("throws when no apiUrl is configured", () => {
+    expect(() => createClient({ apiUrl: "" })).toThrow("No API URL configured");
   });
 });

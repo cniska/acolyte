@@ -1,6 +1,5 @@
 import { formatToolHeader } from "./agent";
 import { appConfig } from "./app-config";
-import type { Backend } from "./backend";
 import { type ChatRow, dispatchSlashCommand, type TokenUsageEntry } from "./chat-commands";
 import { invalidateRepoPathCandidates } from "./chat-file-ref";
 import { createProgressTracker } from "./chat-progress";
@@ -12,12 +11,13 @@ import {
   runAssistantTurn,
   unresolvedPathRows,
 } from "./chat-turn";
+import type { Client } from "./client";
 import { addMemory } from "./memory";
 import type { PolicyCandidate } from "./policy-distill";
 import type { Message, Session, SessionStore } from "./types";
 
 type CreateSubmitHandlerInput = {
-  backend: Backend;
+  backend: Client;
   store: SessionStore;
   currentSession: Session;
   setCurrentSession: (next: Session) => void;
@@ -73,19 +73,19 @@ function formatSubmitError(error: unknown): string {
     return "Provider quota exceeded. Add billing/credits or switch model/provider.";
   }
   if (lower.includes("timed out") || lower.includes("timeout")) {
-    return "Backend request timed out. Retry or reduce request scope.";
+    return "Server request timed out. Retry or reduce request scope.";
   }
   if (lower.includes("shell command execution is disabled in read mode")) {
     return "Write action blocked in read mode. Run /permissions write and retry.";
   }
   if (
-    lower.includes("backend unavailable") ||
+    lower.includes("server unavailable") ||
     lower.includes("connection refused") ||
     lower.includes("socket connection was closed unexpectedly")
   ) {
-    return "Backend unavailable. Start the backend and retry.";
+    return "Server unavailable. Start the server and retry.";
   }
-  if (lower.includes("remote backend error")) {
+  if (lower.includes("remote server error")) {
     return message;
   }
   return message || "Request failed. Retry and check backend logs if it keeps failing.";
@@ -122,7 +122,7 @@ function cleanMemoryCandidate(value: string): string {
     .trim();
 }
 
-async function distillMemoryNote(backend: Backend, content: string, model: string, sessionId: string): Promise<string> {
+async function distillMemoryNote(backend: Client, content: string, model: string, sessionId: string): Promise<string> {
   const prompt = [
     "Rewrite this into one concise memory note for future collaboration.",
     "Rules: one sentence, concrete preference, no preamble, no quotes, no markdown.",
@@ -399,7 +399,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         openResumePanel: input.openResumePanel,
         openPermissionsPanel: input.openPermissionsPanel,
         openPolicyPanel: input.openPolicyPanel,
-        setBackendPermissionMode: input.backend.setPermissionMode,
+        setServerPermissionMode: input.backend.setPermissionMode,
         tokenUsage: input.tokenUsage,
       });
       if (commandResult.stop) {

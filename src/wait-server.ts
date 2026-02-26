@@ -48,7 +48,7 @@ function parseArgs(argv: string[]): Args {
   return parsed.data;
 }
 
-async function waitForBackend(url: string, timeoutMs: number): Promise<void> {
+async function waitForServer(url: string, timeoutMs: number): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     try {
@@ -61,19 +61,19 @@ async function waitForBackend(url: string, timeoutMs: number): Promise<void> {
     }
     await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
   }
-  throw new Error(`Timed out waiting for backend at ${url}`);
+  throw new Error(`Timed out waiting for server at ${url}`);
 }
 
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
-  await waitForBackend(args.url, args.timeoutMs);
+  await waitForServer(args.url, args.timeoutMs);
 }
 
 if (import.meta.main) {
   main().catch((error) => {
-    console.error(error instanceof Error ? error.message : "Failed to wait for backend");
+    console.error(error instanceof Error ? error.message : "Failed to wait for server");
     process.exit(1);
   });
 }
 
-export { parseArgs, waitForBackend };
+export { parseArgs, waitForServer };

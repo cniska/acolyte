@@ -1,6 +1,6 @@
-import type { Backend, StreamEvent } from "./backend";
 import type { ChatRow, CommandContext, TokenUsageEntry } from "./chat-commands";
 import { createSubmitHandler } from "./chat-submit-handler";
+import type { Client, StreamEvent } from "./client";
 import type { PolicyCandidate } from "./policy-distill";
 import type { Message, Session, SessionStore } from "./types";
 
@@ -42,13 +42,13 @@ export function createStore(overrides: Partial<SessionStore> = {}): SessionStore
   };
 }
 
-export function createBackend(overrides?: {
-  reply?: Backend["reply"];
-  replyStream?: Backend["replyStream"];
-  status?: Backend["status"];
+export function createClient(overrides?: {
+  reply?: Client["reply"];
+  replyStream?: Client["replyStream"];
+  status?: Client["status"];
   events?: StreamEvent[];
-  setPermissionMode?: Backend["setPermissionMode"];
-}): Backend {
+  setPermissionMode?: Client["setPermissionMode"];
+}): Client {
   const reply =
     overrides?.reply ??
     (async () => ({
@@ -87,7 +87,7 @@ export type SubmitHandlerHarness = {
 
 export function createSubmitHandlerHarness(overrides?: {
   isThinking?: boolean;
-  backend?: Backend;
+  backend?: Client;
   pendingPolicyCandidate?: PolicyCandidate | null;
 }): SubmitHandlerHarness {
   const rows: ChatRow[] = [];
@@ -99,7 +99,7 @@ export function createSubmitHandlerHarness(overrides?: {
   const session = createSession({ id: "sess_test" });
   const store = createStore({ activeSessionId: session.id, sessions: [session] });
   const submit = createSubmitHandler({
-    backend: overrides?.backend ?? createBackend({ status: async () => "ok" }),
+    backend: overrides?.backend ?? createClient({ status: async () => "ok" }),
     store,
     currentSession: session,
     setCurrentSession: () => {},
@@ -162,7 +162,7 @@ export function createCommandContext(
   const ctx: CommandContext = {
     text,
     resolvedText: text,
-    backend: createBackend(),
+    backend: createClient(),
     store: createStore(),
     currentSession: createSession(),
     setCurrentSession: (next) => {
@@ -187,7 +187,7 @@ export function createCommandContext(
     openPolicyPanel: () => {
       spies.openedPolicy += 1;
     },
-    setBackendPermissionMode: async () => {},
+    setServerPermissionMode: async () => {},
     tokenUsage: [],
     ...overrides,
   };

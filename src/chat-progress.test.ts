@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import type { StreamEvent } from "./backend";
 import { createProgressTracker } from "./chat-progress";
+import type { StreamEvent } from "./client";
 
 describe("chat progress tracker", () => {
   test("routes text-delta to onAssistant", () => {
