@@ -149,7 +149,7 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
   const holdThreshold = 0.9;
   const heldIntensity = baseIntensity >= holdThreshold ? 1 : Math.max(0, Math.min(1, baseIntensity / holdThreshold));
   const easedIntensity = heldIntensity * heldIntensity * (3 - 2 * heldIntensity);
-  const gray = Math.round(24 + easedIntensity * (255 - 24));
+  const gray = Math.round(60 + easedIntensity * (140 - 60));
   const channel = gray.toString(16).padStart(2, "0");
   const pulseColor = `#${channel}${channel}${channel}`;
   const pulseGlyph = "•";

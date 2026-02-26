@@ -451,12 +451,11 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
               id: streamingAssistantRowId,
               role: "assistant",
               content: streamingAssistantContent,
-              dim: true,
             },
           ];
         }
         return current.map((row) =>
-          row.id === streamingAssistantRowId ? { ...row, content: streamingAssistantContent, dim: true } : row,
+          row.id === streamingAssistantRowId ? { ...row, content: streamingAssistantContent } : row,
         );
       });
     };
