@@ -545,16 +545,22 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         input.setRows((current) => current.map((row) => (row.id === rowId ? { ...row, toolStatus: status } : row)));
       },
       onError: (error) => {
-        input.setRows((current) => [
-          ...current,
-          {
-            id: `row_${crypto.randomUUID()}`,
-            role: "system",
-            content: error,
-            dim: true,
-            style: "error",
-          },
-        ]);
+        input.setRows((current) => {
+          const last = current[current.length - 1];
+          if (last?.style === "error" && last.content === error) {
+            return current;
+          }
+          return [
+            ...current,
+            {
+              id: `row_${crypto.randomUUID()}`,
+              role: "system",
+              content: error,
+              dim: true,
+              style: "error",
+            },
+          ];
+        });
       },
     });
     await input.persist();

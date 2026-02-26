@@ -598,7 +598,7 @@ export async function runAgent(input: {
                         ? String((raw as { message: unknown }).message)
                         : "Tool error";
                 lastToolFailureReason = errorMsg;
-                emitEvent({ type: "error", error: errorMsg });
+                emitDebug("agent.tool.error", { error: errorMsg });
                 break;
               }
               // step-finish, step-start, etc.: internal only, not forwarded.
