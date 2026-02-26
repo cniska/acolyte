@@ -1,10 +1,13 @@
 # Project Plan
 
 ## Goal
+
 Build a personal AI coding delegate that can take over bounded tasks in my projects, with the long-term goal of autonomous end-to-end execution (plan -> edit -> verify -> iterate).
 
 ## Current State
+
 The assistant is at **step 1 of 3** on the autonomy ladder:
+
 1. **Single bounded tasks** (now): create a script, fix a type error, add a test.
 2. **Complex multi-file tasks** (next): implement a feature across multiple files with design decisions.
 3. **Iterative autonomous execution** (goal): plan -> edit -> verify -> iterate on failures without human intervention.
@@ -13,83 +16,96 @@ The project was built collaboratively with Codex in commit-sized slices.
 
 ## Milestones
 
-### Milestone 1: Build Stability Baseline
+### Milestone 1: Build Stability Baseline (completed)
 
-**Status:** Completed (February 21, 2026).
+Establish quality gates and smoke coverage to prevent regressions.
 
-**Goal:** Establish quality gates (`bun run verify`) and smoke coverage to prevent regressions.
+- [x] `bun run verify` runs format, lint, typecheck, and tests in one command
+- [x] All checks pass on every commit
+- [x] Smoke test infrastructure exists and covers basic CLI paths
 
-### Milestone 2: Dogfooding Readiness
+### Milestone 2: Dogfooding Readiness (completed)
 
-**Status:** Completed (February 24, 2026).
+Make the assistant dependable for daily small development slices in this repo.
 
-**Goal:** Make the assistant dependable for daily small development slices in this repo.
+- [x] Setup and diagnostics work (`/status`, `/tokens`, `/sessions`)
+- [x] Permission flow (read/write modes) is stable
+- [x] Recovery paths handle errors gracefully
+- [x] Assistant can complete simple feature slices with verify green
 
-**Summary:** Setup/diagnostics, permission flow, recovery paths, and basic smoke checks are stable. The assistant can complete simple feature slices with verify green.
+### Milestone 3: Delegated Switch Trial (completed)
 
-### Milestone 3: Delegated Switch Trial
+Shift from Codex-led work to assistant-led bounded tasks.
 
-**Status:** Completed (February 24, 2026).
+- [x] Assistant completes bounded feature/fix slices end-to-end
+- [x] Concurrency guards prevent multi-CLI write conflicts
+- [x] Human oversight still required — not autonomous execution
 
-**Goal:** Shift from Codex-led work to assistant-led bounded tasks.
+### Milestone 4: Runtime Reliability Signals (completed)
 
-**Summary:** The assistant has completed multiple delegated feature/fix slices end-to-end. Concurrency guards prevent multi-CLI writes. However, "delegated" here means single bounded tasks with human oversight — not autonomous execution.
+Make in-flight execution and failures visible and actionable.
 
-### Milestone 4: Runtime Reliability Signals
-
-**Status:** Completed (February 24, 2026).
-
-**Goal:** Make in-flight execution and failures visible and actionable.
-
-**Summary:** Tool lifecycle streaming (`tool_start -> tool_chunk -> tool_end`), progress rendering, permission flow, and diagnostics (`/status`, `/tokens`, `/sessions`) are working. Empty-output failures return actionable guidance.
+- [x] Tool lifecycle streaming works (`tool_start` -> `tool_chunk` -> `tool_end`)
+- [x] Progress rendering shows real-time tool output
+- [x] Empty-output failures return actionable guidance
+- [x] Diagnostics commands are useful (`/status`, `/tokens`, `/sessions`)
 
 ### Milestone 5: Autonomous Soak (MVP Closure)
 
-**Status:** In progress — not close to done.
+Sustain autonomous end-to-end execution with low fallback across multiple days.
 
-**Goal:** Sustain autonomous end-to-end execution with low fallback across multiple days.
+- [ ] Assistant can plan an approach, edit files, verify, and iterate on failures — at least one full cycle
+- [ ] Multi-step tasks work (e.g. implement a feature touching 3+ files)
+- [ ] Soak window passes: 10+ successful runs over 3+ separate days
+- [ ] Smoke checks cover multi-step edit tasks, not just single operations
+- [ ] Manual fallback is the exception, not the norm
+- [ ] Failure categories are tracked with root-cause fixes
 
-**Where it actually stands:**
-- Single bounded tasks work reliably.
-- Multi-step autonomous execution (plan -> edit -> verify -> iterate on failures) is not working yet.
-- The soak window criteria (10+ runs over 3+ days) have not been met.
-- Smoke infrastructure exists but has not been exercised against real autonomous multi-step tasks.
-- The main blocker is model reliability for chained tool use, not the scaffolding.
-
-**Exit criteria** (unchanged):
-- Strict autonomy gate passes across a soak window (at least 10 runs over at least 3 separate days).
-- Autonomous coding checks include multi-line/multi-step edit tasks.
-- Manual fallback remains the exception path.
-- Failure categories are tracked with root-cause fixes or tracked items.
+**Current status:** Single bounded tasks work. Multi-step autonomous execution is not working yet. The main blocker is model reliability for chained tool use, not the scaffolding.
 
 ### Milestone 6: Memory Quality
 
-**Status:** In progress — early.
+Reduce repeated mistakes with transparent, correctable memory behavior.
 
-**Goal:** Reduce repeated mistakes with transparent, correctable memory behavior.
+- [ ] Saved memory commands work and are useful (`/remember`, `/memory`, `/memory rm`)
+- [ ] Observational memory is tuned — assistant learns from past sessions
+- [ ] Evals show measurable reduction in repeated instruction failures
+- [ ] Memory doesn't hallucinate or carry stale context
 
-**Where it actually stands:**
-- Basic memory commands work (`/remember`, `/memory`, `/memory rm`).
-- Observational memory (via Mastra) is wired up but not tuned.
-- No evals yet for measuring reduction in repeated instruction failures.
+**Current status:** Basic memory commands work. Observational memory is wired up but not tuned. No evals yet.
 
 ### Milestone 7: Hosted Readiness
 
-**Status:** Planned. Blocked on closing the autonomous loop first.
+Enable optional hosted mode for centralized memory and multi-device continuity.
 
-**Goal:** Enable optional hosted mode for centralized memory and multi-device continuity.
+- [ ] Backend can run as a hosted service (not just local)
+- [ ] Memory syncs across devices
+- [ ] Auth and multi-tenancy work
+- [ ] Local-first mode still works without hosted backend
+
+**Blocked on:** Milestone 5.
 
 ### Milestone 8: Post-MVP Friends and Family
 
-**Status:** Planned. Blocked on Milestones 5-7.
+Share with trusted coders for real-world feedback.
 
-**Goal:** Share with trusted coders for real-world feedback.
+- [ ] Setup is simple and documented: clone, install, add API key, run
+- [ ] A new user gets value on day one with their own project
+- [ ] Feedback collected and acted on from 3+ users
+- [ ] Major usability issues resolved
+
+**Blocked on:** Milestones 5-7.
 
 ### Milestone 9: Public OSS Release
 
-**Status:** Planned. Blocked on friends-and-family feedback.
+Open-source core local mode with optional self-host path.
 
-**Goal:** Open-source core local mode with optional self-host path.
+- [ ] README and docs are clear for external contributors
+- [ ] License chosen and applied
+- [ ] No hardcoded secrets or internal paths
+- [ ] CI/CD pipeline for releases
+
+**Blocked on:** Milestone 8.
 
 ## MVP Definition
 
@@ -102,19 +118,15 @@ The MVP is reached when a coder friend can **set it up locally, try it on their 
 - The experience is good enough that a friend would use it again voluntarily, not just to be polite.
 
 What MVP is **not**:
+
 - Full autonomy for open-ended tasks with ambiguous requirements.
 - Multi-agent or multi-model orchestration.
 - Hosted mode or multi-device support.
 - Polished distribution (global install, onboarding wizard, etc.).
 
-## MVP Gate
-
-**Status:** Not met.
-
-The autonomous coding loop is not closed. The assistant can handle single bounded tasks but cannot reliably chain plan -> edit -> verify -> iterate without human intervention. Milestone 5 is the key blocker.
-
 ## Known Issues
 
-- Progress/status contracts were simplified to a single-agent, single-model shape.
-- Docs written by Codex tend to be over-optimistic — evidence blocks and metrics should be verified manually.
+- Streaming pipeline has fragile multi-level deduplication that can drop legitimate events.
+- Token budgeting uses approximate char-to-token ratios, not actual counts.
+- Model fallbacks happen silently without user notification.
 - Provider integration is only tested with mocks; real multi-provider coverage is untested.
