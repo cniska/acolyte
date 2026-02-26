@@ -1,90 +1,94 @@
 # Talk Notes
 
 ## Purpose
-Living notes for talks about building this project. Update this file as milestones ship so demos and explanations stay accurate.
+Living notes for talks about building this project. Update this file as milestones ship.
 
 ## Project Pitch
-- Personal AI coding assistant focused on coding execution:
-  - CLI-first UX
-  - persistent memory
-  - agentic coding workflows
-  - explicit behavior contract in `docs/soul.md`
+- Personal AI coding delegate — an assistant that can take over bounded tasks in my projects.
+- Built as a vibe-coding project with Codex, learning what works and what doesn't in AI-assisted development.
+- CLI-first UX, persistent memory, agentic coding workflows, explicit behavior contract (`docs/soul.md`).
 
-## Moat Narrative
-- Reliability moat: fewer repeated mistakes via a verify-first execution loop.
-- Memory moat: persistent, user-correctable memory that outlives single sessions.
-- Workflow moat: coding-native tools and repo-grounded behavior, not generic assistant output.
-- UX moat: operator-focused CLI ergonomics with minimal noise and strong control.
-- Safety moat: permission modes + path guardrails by default.
+## What Actually Works Today
+- Single bounded tasks: create a script, fix a type error, add a test, simple refactors.
+- Interactive CLI chat with session management, file references, and tool-backed execution.
+- Permission-gated tool use with workspace safety guardrails.
+- Persistent memory (user + project scopes) with inspection and correction.
+- Verify-first development loop (`bun run verify` after each slice).
 
-## Architecture Snapshot (2026-02-21)
+## What Doesn't Work Yet
+- Autonomous multi-step execution (plan -> edit -> verify -> iterate).
+- Self-correction when edits break something.
+- Reliable complex multi-file changes with design decisions.
+- Memory that meaningfully reduces repeated mistakes (infrastructure exists, tuning doesn't).
+
+## Design Principles (Not Moats Yet)
+- Reliability-first: verify-first loops, small commits, smoke checks.
+- Memory-first: persistent, user-correctable memory that outlives sessions.
+- Coding-native: repo-grounded tools and behavior, not generic assistant output.
+- Operator-focused: CLI ergonomics with minimal noise and strong control.
+- Safe by default: permission modes + path guardrails.
+
+## Architecture Snapshot
 - CLI runtime: Bun + TypeScript (`src/cli.ts`)
 - Backend API: Bun server (`src/server.ts`)
 - Agent runtime: Mastra (`src/agent.ts`)
 - Tools: repo search/read/git/run/edit + web search/fetch (`src/mastra-tools.ts`)
 - Local persistence:
   - sessions: `~/.acolyte/sessions.json`
-  - user memory notes: `~/.acolyte/memory/user/*.md`
-  - project memory notes: `<repo>/.acolyte/memory/project/*.md`
+  - user memory: `~/.acolyte/memory/user/*.md`
+  - project memory: `<repo>/.acolyte/memory/project/*.md`
   - config: `~/.acolyte/config.toml` (+ optional `<repo>/.acolyte/config.toml`)
 
 ## Why This Stack
 - Bun: fast local iteration and simple CLI/backend workflow.
-- Mastra: standardized agent/tool primitives to avoid framework drift.
-- Deployable contract: CLI can target local or hosted API without changing user workflow.
+- Mastra: standardized agent/tool primitives. Biggest dependency risk — young framework.
+- Ink (React for CLI): strong interactive terminal UI without ncurses complexity.
+- Deployable contract: CLI can target local or hosted API.
 
 ## Build Process
 - Built collaboratively with Codex in commit-sized slices.
 - Delivery loop: define slice -> implement -> validate -> commit.
-- Standard validation: `bun run verify`.
-
-## Shipped Highlights
-1. Core platform: CLI + backend + Mastra agent/tools + `docs/soul.md`.
-2. Local persistence: sessions + memory (user/project) + config.
-3. Core commands: search/read/edit/run/git/status, `/verify`.
-4. Chat UX: Ink-based interface, stable prompt/transcript separation, shortcuts/pickers, resume/skills flows.
-5. Memory UX: `/remember [--project]`, `/memory`, policy distillation groundwork.
-6. Developer ergonomics: `@path` attach (files + directories), fuzzy matching, better keybindings, interrupt with `Esc`.
-7. Reliability/safety: verify-first loop, permission modes, workspace path guardrails.
-8. Routing/config: single configured model + provider across the runtime (no multi-role model routing).
-9. Feature documentation: `docs/features.md` as inventory.
-10. Dogfooding readiness: automated `bun run dogfood:smoke` + isolated one-shot OM resource IDs for `run`/`dogfood`.
-11. Script maintainability: complex `package.json` shell flows moved into reusable `scripts/*.sh` wrappers.
-12. Live UX reliability: consistent streamed tool phases (`tool_start -> tool_chunk -> tool_end`), assistant delta streaming, and codex-style diff output with aligned numbered lines.
-
-## Demo Flow (Short)
-1. Start backend: `bun --env-file=.env run serve`
-2. Set CLI backend once: `bun run src/cli.ts config set apiUrl http://localhost:6767`
-3. Start chat: `bun run start`
-4. Show:
-   - `@src/agent.ts review this file`
-   - `/remember [--project] ...` and `/memory`
-   - `/resume` and `/skills`
-   - tool-backed reasoning over attached file context
+- Standard validation: `bun run verify` (format + lint + typecheck + test).
+- 430 tests, zero lint issues, ~22K lines of TypeScript.
 
 ## Key Talking Points
-- Interactive-first CLI beats dashboard-first UX for coding workflows.
-- Persistent memory quality matters more than model swapping.
-- Standardizing on Mastra early reduces long-term maintenance cost.
-- Soul/behavior docs reduce style drift and improve consistency.
-- Build process matters: small validated slices outperform large speculative changes.
+- Vibe-coding can produce production-quality software with the right constraints (verify gates, scoped slices, clear policies).
+- The governance layer (soul contract, AGENTS.md, dogfood gates) is what keeps AI-generated code coherent.
+- Persistent memory is the key differentiator from tools like Claude Code and Aider.
+- The hard ceiling is model reliability for chained tool use, not the scaffolding.
+- Building an AI tool with AI is the best way to understand AI tool limitations.
+
+## What's Been Shipped
+1. Core platform: CLI + backend + Mastra agent/tools + soul contract.
+2. Local persistence: sessions + memory (user/project) + layered config.
+3. Tool surface: search/read/edit/run/git/status + web search/fetch.
+4. Chat UX: Ink-based interface, shortcuts/pickers, resume/skills, `@path` file references.
+5. Memory UX: `/remember`, `/memory`, policy distillation groundwork.
+6. Reliability/safety: verify-first loop, permission modes, workspace path guardrails.
+7. Dogfooding infrastructure: automated smoke, progress tracking, readiness gates.
+8. Live streaming: tool phases, assistant delta streaming, progress rendering.
 
 ## Lessons Learned
 - Reliability over novelty: verify-first loops, small commits, and smoke checks keep iteration stable.
-- Keep execution simple: single-agent runtime, explicit permission controls, and minimal user-facing complexity.
-- Streaming correctness matters more than formatting polish: users need trustworthy live events before visual refinements.
+- Keep execution simple: single-agent runtime, explicit permission controls, minimal user-facing complexity.
+- Streaming correctness matters more than formatting polish.
 - Memory trust matters: saved context must be inspectable, editable, and scoped clearly.
-- UX clarity drives adoption: concise output, strong defaults, and low-noise command diagnostics.
-- Grounded execution beats prompt gymnastics: tool-backed changes and concrete validation are more reliable than heavy post-processing.
+- Grounded execution beats prompt gymnastics: tool-backed changes are more reliable than heavy post-processing.
+- AI-generated docs tend to be over-optimistic. Verify metrics and claims manually.
+- Safety defaults matter: read-mode first, guarded roots, explicit escalation.
+- UX clarity drives adoption: concise output, strong defaults, low-noise diagnostics.
 - Configuration should stay predictable: non-secret file config + env-only secrets with clear precedence.
-- Safety defaults matter: read-mode first, guarded file/shell roots, and explicit escalation points.
-- Operational scripts should be robust and debuggable: argv execution, strict argument parsing, and actionable failure messages.
-- Dogfooding readiness should be measurable: gate checks, scoped lookback, and explicit remaining-slice signals.
+- Dogfooding readiness should be measurable: gate checks, scoped lookback, explicit remaining-slice signals.
 - Keep repo instructions lean: high-signal guidance improves execution quality and cost/latency.
 
-## Open Narrative Threads
-1. Continue dogfooding ramp from Codex-led to assistant-led development.
-2. Improve memory promotion/retrieval quality and transparency.
-3. Complete hosted readiness (Postgres/pgvector + backup/restore + auth hardening).
-4. Keep single-agent runtime as default; evaluate optional multi-model routing only for concrete workflows.
-5. Refine transcript/tool output for maximal signal with minimal noise.
+## Demo Flow (Short)
+1. `bun run dev` (starts backend + chat).
+2. Show: `@src/agent.ts review this file` — tool-backed reasoning over attached context.
+3. Show: `/remember --project always use strict TypeScript` — persistent memory.
+4. Show: `/memory` — inspect what the assistant remembers.
+5. Show: `/status` — diagnostics and provider info.
+
+## Open Questions
+1. Can the autonomous loop be closed with current models, or does it need better foundation models?
+2. Is Mastra the right long-term bet, or should the agent layer be thinner?
+3. What's the distribution story for non-Bun users?

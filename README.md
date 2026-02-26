@@ -2,7 +2,7 @@
 
 ![Acolyte logo](src/assets/acolyte.png)
 
-Personal AI coding assistant (CLI-first), built on Bun + Mastra.
+Personal AI coding delegate (CLI-first), built on Bun + Mastra. Can handle single bounded tasks today; working toward autonomous multi-step execution.
 
 ## Quickstart
 
