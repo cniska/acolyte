@@ -79,7 +79,7 @@ describe("cli config mode", () => {
     expect(projectToml).toContain('model = "anthropic/claude-sonnet-4"');
   });
 
-  test("config list shows effective scope and merged precedence", async () => {
+  test("config list shows merged precedence (project overrides user)", async () => {
     const home = await mkdtemp(join(tmpdir(), "acolyte-config-cli-home-"));
     const project = await mkdtemp(join(tmpdir(), "acolyte-config-cli-project-"));
     tmpHomes.push(home);
@@ -92,8 +92,7 @@ describe("cli config mode", () => {
 
     const listResult = runCli(home, project, "config", "list");
     expect(listResult.exitCode).toBe(0);
-    expect(listResult.stdout).toContain("scope:");
-    expect(listResult.stdout).toContain("effective");
+    expect(listResult.stdout).not.toContain("scope:");
     expect(listResult.stdout).toContain("model:");
     expect(listResult.stdout).toContain("anthropic/claude-sonnet-4");
   });

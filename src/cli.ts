@@ -237,24 +237,16 @@ export function suggestCommands(input: string, max = 3): string[] {
     .map((row) => row.command);
 }
 
-export function formatKeyValueLines(rows: Array<Record<string, string>>): string[] {
+export function formatColumns(rows: string[][]): string[] {
   if (rows.length === 0) {
     return [];
   }
-  const keys = Array.from(
-    rows.reduce((set, row) => {
-      for (const key of Object.keys(row)) {
-        set.add(`${key}:`);
-      }
-      return set;
-    }, new Set<string>()),
-  );
-  const maxKey = keys.reduce((max, key) => Math.max(max, key.length), 0);
-  return rows.map((row) =>
-    Object.entries(row)
-      .map(([key, value]) => `${`${key}:`.padEnd(maxKey, " ")} ${value}`.trimEnd())
-      .join("  "),
-  );
+  const colCount = rows[0].length;
+  const widths: number[] = [];
+  for (let c = 0; c < colCount - 1; c++) {
+    widths.push(rows.reduce((max, row) => Math.max(max, (row[c] ?? "").length), 0));
+  }
+  return rows.map((row) => row.map((cell, i) => (i < widths.length ? cell.padEnd(widths[i] + 2) : cell)).join(""));
 }
 
 function listSessions(store: SessionStore): void {
@@ -263,18 +255,14 @@ function listSessions(store: SessionStore): void {
     return;
   }
 
-  const rows = store.sessions.slice(0, 20).map((session) => {
-    const active = session.id === store.activeSessionId ? "true" : "false";
-    const updated = formatTimestamp(session.updatedAt);
-    return {
-      session: session.id.slice(0, 12),
-      active,
-      model: session.model,
-      updated,
-      title: truncateText(session.title, 80),
-    };
-  });
-  for (const line of formatKeyValueLines(rows)) {
+  const rows = store.sessions
+    .slice(0, 20)
+    .map((session) => [
+      session.id.slice(0, 12),
+      truncateText(session.title, 60),
+      formatRelativeTime(session.updatedAt),
+    ]);
+  for (const line of formatColumns(rows)) {
     printDim(line);
   }
 }
@@ -285,13 +273,10 @@ function printMemoryRows(rows: Awaited<ReturnType<typeof listMemories>>): void {
     return;
   }
 
-  const formattedRows = rows.slice(0, 50).map((row) => ({
-    memory: row.id.slice(0, 12),
-    scope: row.scope,
-    created: formatTimestamp(row.createdAt),
-    text: truncateText(row.content, 160),
-  }));
-  for (const line of formatKeyValueLines(formattedRows)) {
+  const formatted = rows
+    .slice(0, 50)
+    .map((row) => [row.id.slice(0, 12), truncateText(row.content, 80), formatRelativeTime(row.createdAt)]);
+  for (const line of formatColumns(formatted)) {
     printDim(line);
   }
 }
@@ -333,17 +318,19 @@ export function truncateText(input: string, maxChars: number): string {
   return `${input.slice(0, Math.max(0, maxChars - 1))}…`;
 }
 
-export function formatTimestamp(iso: string): string {
+export function formatRelativeTime(iso: string, now?: number): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) {
     return iso;
   }
-  const yyyy = String(date.getFullYear());
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
-  const dd = String(date.getDate()).padStart(2, "0");
-  const hh = String(date.getHours()).padStart(2, "0");
-  const min = String(date.getMinutes()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+  const seconds = Math.floor(((now ?? Date.now()) - date.getTime()) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
 }
 
 export function formatStatusOutput(status: Record<string, string>): string {
@@ -1207,10 +1194,6 @@ async function dogfoodMode(args: string[]): Promise<void> {
 
 async function historyMode(): Promise<void> {
   const store = await readStore();
-  printDim(`sessions: ${store.sessions.length}`);
-  if (store.activeSessionId) {
-    printDim(`active_session: ${store.activeSessionId.slice(0, 12)}`);
-  }
   listSessions(store);
 }
 
@@ -1246,8 +1229,6 @@ async function memoryMode(args: string[]): Promise<void> {
       return;
     }
     const rows = await listMemories({ scope: scope as "all" | "user" | "project" });
-    printDim(`scope: ${scope}`);
-    printDim(`memories: ${rows.length}`);
     printMemoryRows(rows);
     return;
   }
@@ -1291,8 +1272,6 @@ async function memoryMode(args: string[]): Promise<void> {
       return;
     }
     const rows = await getMemoryContextEntries({ scope: scope as "all" | "user" | "project" });
-    printDim(`scope: ${scope}`);
-    printDim(`memory_context: ${rows.length}`);
     printMemoryRows(rows);
     return;
   }
@@ -1340,7 +1319,9 @@ async function configMode(args: string[]): Promise<void> {
     const scope = parseScopeFlag(restArgs[0]);
     const config = scope ? await readConfigForScope(scope) : await readConfig();
     const maxKey = validKeys.reduce((max, key) => Math.max(max, `${key}:`.length), 0);
-    printDim(`${"scope:".padEnd(maxKey + 1)} ${scope ?? "effective"}`);
+    if (scope) {
+      printDim(`${"scope:".padEnd(maxKey + 1)} ${scope}`);
+    }
     for (const name of validKeys) {
       const value = config[name];
       if (value !== undefined && value !== "") {

@@ -58,7 +58,6 @@ describe("cli memory mode", () => {
 
     const result = runCli(home, project, "memory", "context");
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("memory_context: 0");
     expect(result.stdout).toContain("No memories saved.");
   });
 
@@ -75,10 +74,8 @@ describe("cli memory mode", () => {
 
     const result = runCli(home, project, "memory", "context");
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("memory_context: 2");
-    expect(result.stdout).toContain("scope:   project");
-    expect(result.stdout).toContain("scope:   user");
-    expect(result.stdout.indexOf("use bun run verify")).toBeLessThan(result.stdout.indexOf("prefer concise answers"));
+    expect(result.stdout).toContain("use bun run verify");
+    expect(result.stdout).toContain("prefer concise answers");
   });
 
   test("memory context supports scope filtering", async () => {
@@ -94,8 +91,6 @@ describe("cli memory mode", () => {
 
     const result = runCli(home, project, "memory", "context", "project");
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("scope: project");
-    expect(result.stdout).toContain("memory_context: 1");
     expect(result.stdout).toContain("project convention");
     expect(result.stdout).not.toContain("user preference");
   });
@@ -113,8 +108,6 @@ describe("cli memory mode", () => {
 
     const userOnly = runCli(home, project, "memory", "list", "user");
     expect(userOnly.exitCode).toBe(0);
-    expect(userOnly.stdout).toContain("scope: user");
-    expect(userOnly.stdout).toContain("memories: 1");
     expect(userOnly.stdout).toContain("global pref");
     expect(userOnly.stdout).not.toContain("repo convention");
   });

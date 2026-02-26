@@ -4,15 +4,15 @@ import {
   displayPromptForOutput,
   extractVersionFromPackageJsonText,
   formatAssistantReplyOutput,
+  formatColumns,
   formatEditUpdateOutput,
   formatForTool,
-  formatKeyValueLines,
   formatProgressEventOutput,
   formatPromptError,
+  formatRelativeTime,
   formatResumeCommand,
   formatRunOutput,
   formatStatusOutput,
-  formatTimestamp,
   isTopLevelHelpCommand,
   isTopLevelVersionCommand,
   parseDogfoodArgs,
@@ -87,12 +87,21 @@ describe("cli formatting helpers", () => {
     expect(out).toMatch(/^observational_memory:\s+enabled \(resource\)$/m);
   });
 
-  test("formatKeyValueLines aligns key/value rows", () => {
-    const out = formatKeyValueLines([
-      { session: "sess_123", active: "true" },
-      { session: "sess_456", active: "false" },
+  test("formatColumns aligns columns with padding", () => {
+    const out = formatColumns([
+      ["sess_123", "hello world", "2m ago"],
+      ["sess_456789", "test", "1h ago"],
     ]);
-    expect(out).toEqual(["session: sess_123  active:  true", "session: sess_456  active:  false"]);
+    expect(out[0]).toBe("sess_123     hello world  2m ago");
+    expect(out[1]).toBe("sess_456789  test         1h ago");
+  });
+
+  test("formatRelativeTime returns human-readable relative time", () => {
+    const now = new Date("2026-02-26T12:00:00Z").getTime();
+    expect(formatRelativeTime("2026-02-26T11:59:30Z", now)).toBe("just now");
+    expect(formatRelativeTime("2026-02-26T11:55:00Z", now)).toBe("5m ago");
+    expect(formatRelativeTime("2026-02-26T09:00:00Z", now)).toBe("3h ago");
+    expect(formatRelativeTime("2026-02-24T12:00:00Z", now)).toBe("2d ago");
   });
 
   test("formatSearchOutput includes match and file counts", () => {
@@ -177,9 +186,8 @@ describe("cli formatting helpers", () => {
     expect(out).not.toContain("stderr:");
   });
 
-  test("truncateText and formatTimestamp stay stable", () => {
+  test("truncateText stays stable", () => {
     expect(truncateText("abcdef", 4)).toBe("abc…");
-    expect(formatTimestamp("2026-02-20T15:06:12.000Z")).toMatch(/^2026-02-20 \d{2}:\d{2}$/);
   });
 
   test("resolveCommandAlias maps short commands", () => {
