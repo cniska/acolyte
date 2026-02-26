@@ -782,7 +782,7 @@ export async function runAgent(input: {
     model,
     model_calls: modelCallCount,
     tool_calls: observedToolNames.size,
-    tools: Array.from(observedToolNames),
+    tools: Array.from(observedToolNames).join(","),
     has_error: Boolean(lastToolFailureReason),
     output_chars: output.length,
     budget_warning: budgetWarning ?? null,

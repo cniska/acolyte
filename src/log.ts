@@ -6,8 +6,8 @@ const config = readResolvedConfigSync();
 
 type LogFields = Record<string, string | number | boolean | null | undefined>;
 
-function encodeLogfmtValue(value: string | number | boolean | null): string {
-  if (value === null) {
+function encodeLogfmtValue(value: string | number | boolean | null | undefined): string {
+  if (value === null || value === undefined) {
     return "null";
   }
   if (typeof value === "number" || typeof value === "boolean") {
