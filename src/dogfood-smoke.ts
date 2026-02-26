@@ -117,7 +117,7 @@ export function assertCheckOutput(check: SmokeCheck, output: string): string | n
 }
 
 export function isProviderReadyFromStatusOutput(output: string): boolean {
-  if (/provider_ready:[\s\S]*?status:\s*false/i.test(output)) {
+  if (/provider:\s*mock/i.test(output)) {
     return false;
   }
   return true;

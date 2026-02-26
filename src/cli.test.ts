@@ -108,9 +108,8 @@ describe("cli formatting helpers", () => {
     expect(out).toMatch(/provider:\s+openai/);
     expect(out).not.toMatch(/mode:\s+openai/);
     expect(out).toMatch(/model:\s+gpt-5-mini/);
-    expect(out).toMatch(/provider:\s+openai/);
-    expect(out).toContain("provider_ready:");
-    expect(out).toMatch(/\n\s+status:\s+false/);
+    expect(out).not.toContain("provider_ready:");
+    expect(out).not.toContain("not ready");
     expect(out).toMatch(/memory:\s+postgres/);
     expect(out).toMatch(/\n\s+entries:\s+7/);
     expect(out).toContain("om:");

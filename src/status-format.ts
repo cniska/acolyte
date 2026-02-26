@@ -62,14 +62,6 @@ export function formatStatusOutput(status: string): string {
     }
     output.push(`${label}: ${parts.join("\n")}`);
   };
-  const isReady = (value: string | undefined): boolean => {
-    if (!value) {
-      return false;
-    }
-    const normalized = value.trim().toLowerCase();
-    return normalized === "true" || normalized === "ready" || normalized === "ok" || normalized === "healthy";
-  };
-
   const take = (key: string): string | undefined => {
     const value = fields.get(key);
     if (value === undefined) {
@@ -81,6 +73,7 @@ export function formatStatusOutput(status: string): string {
 
   const provider = take("provider") ?? take("mode");
   fields.delete("mode");
+  take("provider_ready");
   const primaryApiUrl = take("provider_api_url");
   pushStacked(
     "provider",
@@ -105,12 +98,6 @@ export function formatStatusOutput(status: string): string {
   const model = take("model");
   const displayModel = model ? simplifyModelId(model) : undefined;
   pushStacked("model", [["status", displayModel]], true);
-  const providerReadyMain = take("provider_ready");
-  const providerReadyRows: Array<[string, string | undefined]> = [["status", providerReadyMain]];
-  const hasProviderReadinessIssue = providerReadyRows.some(([, value]) => value !== undefined && !isReady(value));
-  if (hasProviderReadinessIssue) {
-    pushStacked("provider_ready", providerReadyRows, false, true);
-  }
   const url = take("url");
   const service = take("service");
   pushStacked(

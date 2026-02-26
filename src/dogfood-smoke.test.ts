@@ -29,12 +29,12 @@ describe("dogfood-smoke helpers", () => {
     expect(err).toContain("/world/");
   });
 
-  it("detects provider not ready from status output", () => {
-    const output = ["provider: openai", "provider_ready:", "  status: false"].join("\n");
+  it("detects provider not ready when provider is mock", () => {
+    const output = ["provider: mock", "model: gpt-5-mini"].join("\n");
     expect(isProviderReadyFromStatusOutput(output)).toBe(false);
   });
 
-  it("assumes provider ready when no false readiness row is present", () => {
+  it("assumes provider ready when provider is not mock", () => {
     const output = ["provider: openai", "model: gpt-5-mini"].join("\n");
     expect(isProviderReadyFromStatusOutput(output)).toBe(true);
   });

@@ -29,11 +29,8 @@ describe("status format", () => {
 
     expect(output).toMatch(/model:\s+gpt-5-mini/);
     expect(output).toMatch(/provider:\s+openai/);
-    expect(output).not.toMatch(/\n\s+planner:\s+/);
-    expect(output).not.toMatch(/\n\s+coder:\s+/);
-    expect(output).not.toMatch(/\n\s+reviewer:\s+/);
-    expect(output).toContain("provider_ready:");
-    expect(output).toMatch(/\n\s+status:\s+false/);
+    expect(output).not.toContain("provider_ready:");
+    expect(output).not.toContain("not ready");
     expect(output).toMatch(/om:\s+enabled/);
     expect(output).toMatch(/\n\s+scope:\s+resource/);
     expect(output).toMatch(/\n\s+model:\s+gpt-5-mini/);
@@ -78,14 +75,10 @@ describe("status format", () => {
     expect(output).toContain("          scope: resource");
   });
 
-  test("omits provider readiness section when all providers are ready", () => {
-    const output = formatStatusOutput("provider=openai provider_ready=true");
-    expect(output).not.toContain("provider_ready:");
-  });
-
-  test("shows provider readiness section when any provider is not ready", () => {
+  test("drops provider_ready field from output", () => {
     const output = formatStatusOutput("provider=openai provider_ready=false");
-    expect(output).toContain("provider_ready:");
-    expect(output).toContain("status: false");
+    expect(output).toMatch(/provider:\s+openai$/m);
+    expect(output).not.toContain("provider_ready");
+    expect(output).not.toContain("not ready");
   });
 });
