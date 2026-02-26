@@ -5,46 +5,6 @@ export type ToolProgressParsedLine =
   | { kind: "plainDiff"; marker: "+" | "-"; text: string }
   | { kind: "text"; text: string };
 
-export function isToolHeaderLine(line: string): boolean {
-  return /^(Wrote|Edited|Read|Deleted|Ran)\s+\S/.test(line.trim());
-}
-
-export function isToolDetailLine(line: string): boolean {
-  const trimmed = line.trim();
-  return (
-    /^\d+\s+[+-](?:\s.*)?$/.test(trimmed) ||
-    /^\d+\s{3}/.test(trimmed) ||
-    /^[+-]\s/.test(trimmed) ||
-    /^(code|out|err)\s*\|/.test(trimmed)
-  );
-}
-
-export function groupToolProgressMessages(messages: string[]): string[] {
-  const grouped: string[] = [];
-  for (const rawMessage of messages) {
-    const message = rawMessage.trim();
-    if (!message) {
-      continue;
-    }
-    if (grouped.length === 0) {
-      grouped.push(message);
-      continue;
-    }
-    if (isToolHeaderLine(message)) {
-      grouped.push(message);
-      continue;
-    }
-    const previous = grouped[grouped.length - 1] ?? "";
-    const previousFirstLine = previous.split("\n")[0] ?? "";
-    if (isToolHeaderLine(previousFirstLine) || (isToolDetailLine(previous) && isToolDetailLine(message))) {
-      grouped[grouped.length - 1] = `${previous}\n${message}`;
-      continue;
-    }
-    grouped.push(message);
-  }
-  return grouped;
-}
-
 export function parseToolProgressLine(line: string): ToolProgressParsedLine {
   const header = line.match(/^(Wrote|Edited|Read|Deleted|Ran)\s+(.+)$/);
   if (header) {
