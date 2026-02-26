@@ -9,16 +9,10 @@ const CHAT_SLASH_COMMANDS = [
   "/remember",
   "/mem",
   "/memory",
-  "/memory context",
   "/tokens",
   "/exit",
 ] as const;
-const MEMORY_CONTEXT_SCOPE_COMMANDS = [
-  "/memory context all",
-  "/memory context user",
-  "/memory context project",
-] as const;
-const MEMORY_SCOPE_COMMANDS = ["/memory all", "/memory user", "/memory project", "/memory context"] as const;
+const MEMORY_SCOPE_COMMANDS = ["/memory all", "/memory user", "/memory project"] as const;
 
 const SLASH_ALIASES: Record<string, string> = {
   "/session": "/sessions",
@@ -53,29 +47,12 @@ export function suggestSlashCommands(inputValue: string, max = 5): string[] {
     return [];
   }
   const scopeCandidate = inputValue.trimStart();
-  const isMemoryScope =
-    (scopeCandidate.startsWith("/memory ") || scopeCandidate === "/memory ") &&
-    !scopeCandidate.startsWith("/memory context ") &&
-    scopeCandidate !== "/memory context ";
+  const isMemoryScope = scopeCandidate.startsWith("/memory ") || scopeCandidate === "/memory ";
   if (isMemoryScope || scopeCandidate.startsWith("/mem ") || scopeCandidate === "/mem ") {
     const canonical = scopeCandidate.startsWith("/mem ")
       ? scopeCandidate.replace(/^\/mem /, "/memory ")
       : scopeCandidate;
     const scopeMatches = MEMORY_SCOPE_COMMANDS.filter((command) => command.startsWith(canonical));
-    if (scopeMatches.length > 0) {
-      return scopeMatches.slice(0, max);
-    }
-  }
-  const isMemoryContextScope =
-    scopeCandidate.startsWith("/memory context ") ||
-    scopeCandidate === "/memory context " ||
-    scopeCandidate.startsWith("/mem context ") ||
-    scopeCandidate === "/mem context ";
-  if (isMemoryContextScope) {
-    const canonical = scopeCandidate.startsWith("/mem context")
-      ? scopeCandidate.replace(/^\/mem context/, "/memory context")
-      : scopeCandidate;
-    const scopeMatches = MEMORY_CONTEXT_SCOPE_COMMANDS.filter((command) => command.startsWith(canonical));
     if (scopeMatches.length > 0) {
       return scopeMatches.slice(0, max);
     }

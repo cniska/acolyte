@@ -47,11 +47,6 @@ const checks: SmokeCheck[] = [
     cmd: ["bun", "run", "src/cli.ts", "tool", "search", "WORKSPACE_ROOT"],
     expect: [/WORKSPACE_ROOT/],
   },
-  {
-    name: "memory context all",
-    cmd: ["bun", "run", "src/cli.ts", "memory", "context", "all"],
-    expect: [/scope:\s+all/i, /memory_context:\s+\d+/i],
-  },
 ];
 
 async function runCommand(

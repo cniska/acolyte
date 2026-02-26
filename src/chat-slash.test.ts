@@ -15,23 +15,10 @@ describe("chat-slash helpers", () => {
     expect(suggestSlashCommands("/s")).toEqual(["/status", "/sessions", "/skills"]);
     expect(suggestSlashCommands("/st")).toEqual(["/status"]);
     expect(suggestSlashCommands("/d")).toEqual([]);
-    expect(suggestSlashCommands("/mem")).toEqual(["/mem", "/memory", "/memory context"]);
-    expect(suggestSlashCommands("/memory ")).toEqual([
-      "/memory all",
-      "/memory user",
-      "/memory project",
-      "/memory context",
-    ]);
+    expect(suggestSlashCommands("/mem")).toEqual(["/mem", "/memory"]);
+    expect(suggestSlashCommands("/memory ")).toEqual(["/memory all", "/memory user", "/memory project"]);
     expect(suggestSlashCommands("/memory p")).toEqual(["/memory project"]);
     expect(suggestSlashCommands("/mem u")).toEqual(["/memory user"]);
-    expect(suggestSlashCommands("/memory c")).toEqual(["/memory context"]);
-    expect(suggestSlashCommands("/memory context ")).toEqual([
-      "/memory context all",
-      "/memory context user",
-      "/memory context project",
-    ]);
-    expect(suggestSlashCommands("/memory context u")).toEqual(["/memory context user"]);
-    expect(suggestSlashCommands("/mem context p")).toEqual(["/memory context project"]);
     expect(suggestSlashCommands("/rem")).toEqual(["/rem", "/remember"]);
     expect(suggestSlashCommands("/unknown")).toEqual([]);
     expect(suggestSlashCommands("plain")).toEqual([]);
@@ -53,8 +40,6 @@ describe("chat-slash helpers", () => {
     expect(resolveSlashAlias("/mem")).toBe("/memory");
     expect(resolveSlashAlias("/mem user")).toBe("/memory user");
     expect(resolveSlashAlias("/mem project")).toBe("/memory project");
-    expect(resolveSlashAlias("/mem context")).toBe("/memory context");
-    expect(resolveSlashAlias("/mem context user")).toBe("/memory context user");
     expect(resolveSlashAlias("/rem fix naming")).toBe("/remember fix naming");
     expect(resolveSlashAlias("plain")).toBe("plain");
   });

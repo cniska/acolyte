@@ -4,7 +4,7 @@ import type { Client } from "./client";
 import type { ConfigScope } from "./config";
 import { setConfigValue } from "./config";
 import { addMemory, listMemories, removeMemoryByPrefix } from "./memory";
-import { getMemoryContextEntries, type MemoryContextScope } from "./soul";
+import type { MemoryContextScope } from "./soul";
 import { formatStatusOutput } from "./status-format";
 import { createSession } from "./storage";
 import type { Session, SessionStore, SessionTokenUsageEntry } from "./types";
@@ -127,26 +127,11 @@ export type CommandContext = {
     listMemories: typeof listMemories;
     addMemory: typeof addMemory;
     removeMemoryByPrefix?: typeof removeMemoryByPrefix;
-    getMemoryContextEntries?: typeof getMemoryContextEntries;
   };
 };
 
 function row(role: ChatRow["role"], content: string, dim = false, style?: ChatRow["style"]): ChatRow {
   return { id: `row_${crypto.randomUUID()}`, role, content, dim, style };
-}
-
-function parseMemoryContextScope(parts: string[]): MemoryContextScope | null {
-  if (parts.length === 2) {
-    return "all";
-  }
-  if (parts.length !== 3) {
-    return null;
-  }
-  const scope = parts[2];
-  if (scope === "all" || scope === "user" || scope === "project") {
-    return scope;
-  }
-  return null;
 }
 
 function parseMemoryListScope(parts: string[]): MemoryContextScope | null {
@@ -190,7 +175,6 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     listMemories,
     addMemory,
     removeMemoryByPrefix,
-    getMemoryContextEntries,
     ...ctx.memoryApi,
   };
   const pushUserCommandRow = (): void => {
@@ -347,18 +331,12 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     return { stop: true, userText: text };
   }
 
-  if (
-    resolvedText === "/memory" ||
-    (resolvedText.startsWith("/memory ") && !resolvedText.startsWith("/memory context"))
-  ) {
+  if (resolvedText === "/memory" || resolvedText.startsWith("/memory ")) {
     pushUserCommandRow();
     const parts = resolvedText.split(/\s+/);
     const scope = parseMemoryListScope(parts);
     if (!scope) {
-      ctx.setRows((current) => [
-        ...current,
-        row("system", "Usage: /memory [all|user|project] | /memory context [all|user|project]"),
-      ]);
+      ctx.setRows((current) => [...current, row("system", "Usage: /memory [all|user|project]")]);
       return { stop: true, userText: text };
     }
     const memories = await memoryApi.listMemories({ scope });
@@ -370,36 +348,6 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     const lines = memories.slice(0, 10).map((entry) => `${entry.scope}:${entry.id.slice(0, 12)} ${entry.content}`);
     const header = scope === "all" ? `Memory ${memories.length}` : `${scopeLabel(scope)} memory ${memories.length}`;
     ctx.setRows((current) => [...current, row("system", `${header}\n\n${lines.join("\n")}`)]);
-    return { stop: true, userText: text };
-  }
-
-  if (resolvedText === "/memory context" || resolvedText.startsWith("/memory context ")) {
-    pushUserCommandRow();
-    const parts = resolvedText.split(/\s+/);
-    const scope = parseMemoryContextScope(parts);
-    if (!scope) {
-      ctx.setRows((current) => [...current, row("system", "Usage: /memory context [all|user|project]")]);
-      return { stop: true, userText: text };
-    }
-    const entries = await memoryApi.getMemoryContextEntries({ scope });
-    if (entries.length === 0) {
-      const scopeLabel = scope === "all" ? "" : `${scope} `;
-      ctx.setRows((current) => [...current, row("system", `No ${scopeLabel}memory context is currently injected.`)]);
-      return { stop: true, userText: text };
-    }
-    const lines = entries.map((entry) => `${entry.scope}: ${entry.content}`);
-    const header =
-      scope === "all" ? `Memory context ${entries.length}` : `${scopeLabel(scope)} memory context ${entries.length}`;
-    ctx.setRows((current) => [...current, row("system", `${header}\n\n${lines.join("\n")}`)]);
-    return { stop: true, userText: text };
-  }
-
-  if (resolvedText.startsWith("/memory ")) {
-    pushUserCommandRow();
-    ctx.setRows((current) => [
-      ...current,
-      row("system", "Usage: /memory [all|user|project] | /memory context [all|user|project]"),
-    ]);
     return { stop: true, userText: text };
   }
 

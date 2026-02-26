@@ -31,7 +31,6 @@ import {
 import { buildFileContext } from "./file-context";
 import { addMemory, listMemories } from "./memory";
 import { acquireSessionLock, releaseSessionLock } from "./session-lock";
-import { getMemoryContextEntries } from "./soul";
 import { formatStatusOutput as formatStatusOutputShared } from "./status-format";
 import { createSession, readStore, writeStore } from "./storage";
 import { parseToolProgressLine } from "./tool-progress";
@@ -1258,27 +1257,7 @@ async function memoryMode(args: string[]): Promise<void> {
     return;
   }
 
-  if (subcommand === "context") {
-    if (rest.length > 1) {
-      printError("Usage: acolyte memory context [all|user|project]");
-      process.exitCode = 1;
-      return;
-    }
-    const scopeRaw = rest[0];
-    const scope = scopeRaw && validScopes.has(scopeRaw) ? scopeRaw : "all";
-    if (scopeRaw && !validScopes.has(scopeRaw)) {
-      printError("Usage: acolyte memory context [all|user|project]");
-      process.exitCode = 1;
-      return;
-    }
-    const rows = await getMemoryContextEntries({ scope: scope as "all" | "user" | "project" });
-    printMemoryRows(rows);
-    return;
-  }
-
-  printError(
-    "Usage: acolyte memory [list [all|user|project]|context [all|user|project]|add [--user|--project] <text>]",
-  );
+  printError("Usage: acolyte memory [list [all|user|project]|add [--user|--project] <text>]");
   process.exitCode = 1;
 }
 
