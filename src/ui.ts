@@ -6,7 +6,7 @@ const color = {
   brand: (value: string): string => `\x1b[38;2;165;110;255m${value}\x1b[39m`,
   white: (value: string): string => `\x1b[37m${value}\x1b[39m`,
   green: (value: string): string => `\x1b[32m${value}\x1b[39m`,
-  yellow: (value: string): string => `\x1b[33m${value}\x1b[39m`,
+  orange: (value: string): string => `\x1b[38;2;255;165;0m${value}\x1b[39m`,
   red: (value: string): string => `\x1b[31m${value}\x1b[39m`,
   bold: (value: string): string => `\x1b[1m${value}\x1b[22m`,
 };
@@ -31,7 +31,7 @@ export async function streamText(content: string): Promise<void> {
   }
 }
 
-export function printInfo(content: string): void {
+export function printDim(content: string): void {
   stdout.write(`${color.dim(content)}\n`);
 }
 
@@ -45,12 +45,8 @@ export function printOutput(content: string): void {
   stdout.write(`${content}\n`);
 }
 
-export function printTool(content: string): void {
-  stdout.write(`${content}\n`);
-}
-
 export function printWarning(content: string): void {
-  stdout.write(`${color.yellow(content)}\n`);
+  stdout.write(`${color.orange(content)}\n`);
 }
 
 export function printError(content: string): void {

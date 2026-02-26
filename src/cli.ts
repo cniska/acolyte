@@ -39,10 +39,9 @@ import type { Message, Session, SessionStore } from "./types";
 import {
   clearScreen,
   formatCliTitle,
+  printDim,
   printError,
-  printInfo,
   printOutput,
-  printTool,
   printToolHeader,
   printWarning,
   streamText,
@@ -261,7 +260,7 @@ export function formatKeyValueLines(rows: Array<Record<string, string>>): string
 
 function listSessions(store: SessionStore): void {
   if (store.sessions.length === 0) {
-    printInfo("No saved sessions.");
+    printDim("No saved sessions.");
     return;
   }
 
@@ -277,13 +276,13 @@ function listSessions(store: SessionStore): void {
     };
   });
   for (const line of formatKeyValueLines(rows)) {
-    printInfo(line);
+    printDim(line);
   }
 }
 
 function printMemoryRows(rows: Awaited<ReturnType<typeof listMemories>>): void {
   if (rows.length === 0) {
-    printInfo("No memories saved.");
+    printDim("No memories saved.");
     return;
   }
 
@@ -294,7 +293,7 @@ function printMemoryRows(rows: Awaited<ReturnType<typeof listMemories>>): void {
     text: truncateText(row.content, 160),
   }));
   for (const line of formatKeyValueLines(formattedRows)) {
-    printInfo(line);
+    printDim(line);
   }
 }
 
@@ -385,16 +384,16 @@ function showToolResult(
   printToolHeader(title, detail);
   const lines = content.split("\n");
   if (lines.length === 0) {
-    printInfo("  └ (no output)");
+    printDim("  └ (no output)");
     return;
   }
 
   for (let i = 0; i < lines.length; i += 1) {
     const prefix = i === 0 ? "  └ " : "    ";
     if (style === "tool") {
-      printTool(`${prefix}${lines[i]}`);
+      printOutput(`${prefix}${lines[i]}`);
     } else if (style === "diff") {
-      printTool(`${prefix}${colorizeDiffLine(lines[i] ?? "")}`);
+      printOutput(`${prefix}${colorizeDiffLine(lines[i] ?? "")}`);
     } else {
       printOutput(`${prefix}${lines[i]}`);
     }
@@ -820,7 +819,7 @@ async function handlePrompt(
 
   try {
     printOutput(`❯ ${displayPromptForOutput(prompt)}`);
-    printInfo("  Working…");
+    printDim("  Working…");
     let hasPrintedProgress = false;
     let assistantStreamStarted = false;
     let assistantLineBuffer = "";
@@ -1077,7 +1076,7 @@ async function chatModeWithOptions(options: { resumeLatest: boolean; resumePrefi
   if (resolved?.kind === "ambiguous") {
     const sample = resolved.matches.slice(0, 6).map((item) => item.id.slice(0, 12));
     printError(`Ambiguous prefix: ${resolved.prefix}`);
-    printInfo(`Matches: ${sample.join(", ")}`);
+    printDim(`Matches: ${sample.join(", ")}`);
     process.exitCode = 1;
     return;
   }
@@ -1090,7 +1089,7 @@ async function chatModeWithOptions(options: { resumeLatest: boolean; resumePrefi
   const lock = acquireSessionLock(session.id);
   if (!lock.ok) {
     printError(`Session is already open in another process (pid ${lock.ownerPid}).`);
-    printInfo(`Use: ${formatResumeCommand(session.id)}`);
+    printDim(`Use: ${formatResumeCommand(session.id)}`);
     process.exitCode = 1;
     return;
   }
@@ -1114,7 +1113,7 @@ async function chatModeWithOptions(options: { resumeLatest: boolean; resumePrefi
     });
     const resumeId = store.activeSessionId ?? session.id;
     printOutput("");
-    printInfo(`Resume with: ${formatResumeCommand(resumeId)}`);
+    printDim(`Resume with: ${formatResumeCommand(resumeId)}`);
   } finally {
     releaseSessionLock(session.id);
   }
@@ -1150,7 +1149,7 @@ async function runMode(args: string[]): Promise<void> {
   for (const filePath of parsed.files) {
     try {
       await attachFileToSession(session, filePath);
-      printInfo(`Attached file context from ${filePath}`);
+      printDim(`Attached file context from ${filePath}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       printError(message);
@@ -1209,9 +1208,9 @@ async function dogfoodMode(args: string[]): Promise<void> {
 
 async function historyMode(): Promise<void> {
   const store = await readStore();
-  printInfo(`sessions: ${store.sessions.length}`);
+  printDim(`sessions: ${store.sessions.length}`);
   if (store.activeSessionId) {
-    printInfo(`active_session: ${store.activeSessionId.slice(0, 12)}`);
+    printDim(`active_session: ${store.activeSessionId.slice(0, 12)}`);
   }
   listSessions(store);
 }
@@ -1222,7 +1221,7 @@ async function statusMode(): Promise<void> {
   });
   try {
     const status = await backend.status();
-    printInfo(formatStatusOutput(status));
+    printDim(formatStatusOutput(status));
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     printError(message);
@@ -1248,8 +1247,8 @@ async function memoryMode(args: string[]): Promise<void> {
       return;
     }
     const rows = await listMemories({ scope: scope as "all" | "user" | "project" });
-    printInfo(`scope: ${scope}`);
-    printInfo(`memories: ${rows.length}`);
+    printDim(`scope: ${scope}`);
+    printDim(`memories: ${rows.length}`);
     printMemoryRows(rows);
     return;
   }
@@ -1275,7 +1274,7 @@ async function memoryMode(args: string[]): Promise<void> {
       return;
     }
     const entry = await addMemory(content, { scope });
-    printInfo(`Saved ${scope} memory ${entry.id.slice(0, 12)}.`);
+    printDim(`Saved ${scope} memory ${entry.id.slice(0, 12)}.`);
     return;
   }
 
@@ -1293,8 +1292,8 @@ async function memoryMode(args: string[]): Promise<void> {
       return;
     }
     const rows = await getMemoryContextEntries({ scope: scope as "all" | "user" | "project" });
-    printInfo(`scope: ${scope}`);
-    printInfo(`memory_context: ${rows.length}`);
+    printDim(`scope: ${scope}`);
+    printDim(`memory_context: ${rows.length}`);
     printMemoryRows(rows);
     return;
   }
@@ -1342,11 +1341,11 @@ async function configMode(args: string[]): Promise<void> {
     const scope = parseScopeFlag(restArgs[0]);
     const config = scope ? await readConfigForScope(scope) : await readConfig();
     const maxKey = validKeys.reduce((max, key) => Math.max(max, `${key}:`.length), 0);
-    printInfo(`${"scope:".padEnd(maxKey + 1)} ${scope ?? "effective"}`);
+    printDim(`${"scope:".padEnd(maxKey + 1)} ${scope ?? "effective"}`);
     for (const name of validKeys) {
       const value = config[name];
       if (value !== undefined && value !== "") {
-        printInfo(`${`${name}:`.padEnd(maxKey + 1)} ${String(value)}`);
+        printDim(`${`${name}:`.padEnd(maxKey + 1)} ${String(value)}`);
       }
     }
     return;
@@ -1382,7 +1381,7 @@ async function configMode(args: string[]): Promise<void> {
       process.exitCode = 1;
       return;
     }
-    printInfo(`Saved config ${key} (${scope ?? "user"}).`);
+    printDim(`Saved config ${key} (${scope ?? "user"}).`);
     return;
   }
 
@@ -1401,7 +1400,7 @@ async function configMode(args: string[]): Promise<void> {
     }
 
     await unsetConfigValue(key as keyof AcolyteConfig, { scope: scope ?? "user" });
-    printInfo(`Removed config ${key} (${scope ?? "user"}).`);
+    printDim(`Removed config ${key} (${scope ?? "user"}).`);
     return;
   }
 
