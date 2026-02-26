@@ -70,7 +70,7 @@ export const toolMeta: Record<string, ToolMeta> = {
     aliases: ["deleteFile", "delete_file"],
   },
   "run-command": {
-    instruction: "Use `run-command` to verify changes when explicitly requested or when risk is high.",
+    instruction: "Use `run-command` to run verification after edits and to execute shell commands.",
     aliases: ["runCommand", "run_command", "execute_command"],
   },
 };

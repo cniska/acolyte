@@ -51,7 +51,7 @@ Sustain autonomous end-to-end execution with low fallback across multiple days.
 - [ ] Manual fallback is the exception, not the norm
 - [ ] Failure categories are tracked with root-cause fixes
 
-**Current status:** Single bounded tasks work. Multi-step autonomous execution is not working yet. The main blocker is model reliability for chained tool use, not the scaffolding.
+**Current status:** Single bounded tasks work with mode-specific instructions (explore/code/ask), dynamic tool metadata, and auto-verify. Plan detection re-invokes the agent when it plans instead of executing. Multi-step autonomous execution needs soak testing.
 
 ### Milestone 6: Memory Quality
 
@@ -117,7 +117,7 @@ What MVP is **not**:
 ## Post-MVP Ideas
 
 - Parallel subagents per mode (explore, code, verify) for concurrent execution.
-- Mode-based tool filtering (restrict tool availability per mode).
+- Mode-based tool filtering at the Mastra level (currently instruction-based, not enforced).
 
 ## Known Issues
 

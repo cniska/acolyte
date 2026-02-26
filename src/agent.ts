@@ -733,6 +733,35 @@ export async function runAgent(input: {
     text_chars: result.text.trim().length,
   });
 
+  // Plan detection: if model described a plan without using tools, re-invoke with execution nudge.
+  if (isPlanLikeOutput(result.text.trim()) && observedToolNames.size === 0) {
+    emitDebug("agent.plan.detected", { text_chars: result.text.trim().length });
+    emitEvent({ type: "status", message: "Executing…" });
+    try {
+      modelCallCount += 1;
+      const executionNudge = `${agentInput}\n\nExecute the task directly using tools. Do not describe a plan or ask for confirmation.`;
+      result = await streamWithTimeout(
+        executionNudge,
+        {
+          maxSteps: INITIAL_MAX_STEPS,
+          toolChoice: "auto",
+          memory: memoryOptions,
+        },
+        CODER_TIMEOUT_MS,
+      );
+      emitDebug("agent.generate.done", {
+        model,
+        reason: "plan_execution",
+        tool_calls: result.toolCalls.length,
+        text_chars: result.text.trim().length,
+      });
+    } catch (error) {
+      lastToolFailureReason = error instanceof Error ? error.message : String(error);
+      emitEvent({ type: "error", error: `Execution retry failed: ${lastToolFailureReason}` });
+      emitDebug("agent.plan.execution_failed", { error: lastToolFailureReason });
+    }
+  }
+
   const rawOutput = result.text.trim();
   const output = isReviewRequest(input.request.message)
     ? finalizeReviewOutput(rawOutput, input.request.message)

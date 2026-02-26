@@ -19,6 +19,7 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
       "After a successful edit, do not re-read the same file unless explicitly asked.",
       "Never claim a file was edited unless confirmed by tool results.",
       "When a target file does not exist, say so instead of silently creating it.",
+      "After making changes, run the project's verify command (e.g. `bun run verify`) before concluding.",
     ],
     progressText: "Coding…",
   },
