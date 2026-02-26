@@ -78,7 +78,7 @@ export function formatStatusOutput(status: string): string {
   take("om_gen");
   take("om_last_observed");
   take("om_last_reflection");
-  push("om", omEnabled && omScope ? `${omEnabled} (${omScope})` : omEnabled);
+  push("observational memory", omEnabled && omScope ? `${omEnabled} (${omScope})` : omEnabled);
 
   // Remaining
   for (const [key, value] of fields.entries()) {
@@ -89,6 +89,6 @@ export function formatStatusOutput(status: string): string {
     return status;
   }
 
-  const maxKey = rows.reduce((max, [key]) => Math.max(max, `${key}:`.length), 0);
-  return rows.map(([key, value]) => `${`${key}:`.padEnd(maxKey + 1)} ${value}`).join("\n");
+  const colWidth = Math.max(20, ...rows.map(([key]) => `${key}:`.length + 1));
+  return rows.map(([key, value]) => `${`${key}:`.padEnd(colWidth)}${value}`).join("\n");
 }

@@ -105,7 +105,7 @@ describe("cli formatting helpers", () => {
     expect(out).toMatch(/^model:\s+gpt-5-mini$/m);
     expect(out).not.toContain("provider_ready");
     expect(out).toMatch(/^memory:\s+postgres \(7 entries\)$/m);
-    expect(out).toMatch(/^om:\s+enabled \(resource\)$/m);
+    expect(out).toMatch(/^observational memory:\s+enabled \(resource\)$/m);
     expect(out).not.toContain("om_scope");
     expect(out).not.toContain("om_tokens");
   });

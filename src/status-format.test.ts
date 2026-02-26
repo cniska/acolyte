@@ -42,7 +42,7 @@ describe("status format", () => {
     const output = formatStatusOutput(
       "provider=openai om=enabled om_scope=resource om_model=openai/gpt-5-mini om_obs_tokens=3000 om_ref_tokens=8000",
     );
-    expect(output).toMatch(/^om:\s+enabled \(resource\)$/m);
+    expect(output).toMatch(/^observational memory:\s+enabled \(resource\)$/m);
     expect(output).not.toContain("om_scope");
     expect(output).not.toContain("om_model");
     expect(output).not.toContain("om_obs_tokens");
