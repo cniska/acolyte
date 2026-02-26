@@ -1425,6 +1425,7 @@ export async function runAgent(input: {
       error: lastToolFailureReason,
     });
     if (/timed out/i.test(lastToolFailureReason)) {
+      emitProgress({ message: "Retrying after timeout…", kind: "status" });
       emitDebug("agent.generate.retry", {
         model,
         reason: "initial_timeout_recovery",
@@ -1513,6 +1514,7 @@ export async function runAgent(input: {
   });
 
   if (result.toolCalls.length === 0) {
+    emitProgress({ message: "Retrying with required tool use…", kind: "status" });
     emitDebug("agent.generate.retry", {
       model,
       reason: "required_tools_no_calls",
@@ -1555,6 +1557,7 @@ export async function runAgent(input: {
     if (baseModelState.available) {
       model = input.request.model;
       agent = buildRoleAgent(model);
+      emitProgress({ message: `Retrying with ${model}…`, kind: "status" });
       emitDebug("agent.generate.retry", {
         model,
         reason: "switch_to_base_model",
@@ -1604,6 +1607,7 @@ export async function runAgent(input: {
     });
   }
   if (result.text.trim().length === 0) {
+    emitProgress({ message: "Retrying for text response…", kind: "status" });
     emitDebug("agent.generate.retry", {
       model,
       reason: "empty_text_response",
