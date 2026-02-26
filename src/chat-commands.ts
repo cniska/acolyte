@@ -424,14 +424,14 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
   }
 
   if (resolvedText.startsWith("/")) {
-    pushUserCommandRow();
-    if (resolvedText === "/skill" || resolvedText.startsWith("/skill ")) {
-      ctx.setRows((current) => [...current, row("system", "Unknown command: /skill. Did you mean /skills?")]);
-    } else {
-      const suggested = suggestClosestSlashCommand(resolvedText);
-      const message = suggested ? `Unknown command: ${text}. Did you mean ${suggested}?` : `Unknown command: ${text}`;
-      ctx.setRows((current) => [...current, row("system", message)]);
+    const [head, ...rest] = resolvedText.split(/\s+/);
+    const corrected = suggestClosestSlashCommand(head ?? resolvedText);
+    if (corrected) {
+      const correctedText = rest.length > 0 ? `${corrected} ${rest.join(" ")}` : corrected;
+      return dispatchSlashCommand({ ...ctx, text: correctedText, resolvedText: correctedText });
     }
+    pushUserCommandRow();
+    ctx.setRows((current) => [...current, row("system", `Unknown command: ${text}`)]);
     return { stop: true, userText: text };
   }
 

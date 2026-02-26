@@ -109,7 +109,8 @@ export function shouldAutocompleteSlashSubmit(inputValue: string, selectedSugges
   if (trimmed.includes(" ")) {
     return false;
   }
-  return trimmed !== selectedSuggestion;
+  // Only autocomplete when input is an actual prefix of the suggestion
+  return trimmed !== selectedSuggestion && selectedSuggestion.startsWith(trimmed);
 }
 
 export function applySlashSuggestion(selectedSuggestion: string): string {

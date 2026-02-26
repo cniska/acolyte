@@ -109,18 +109,14 @@ describe("chat-commands", () => {
     expect(rows.some((row) => row.content === "No token data yet. Send a prompt first.")).toBe(true);
   });
 
-  test("dispatchSlashCommand suggests /skills for /skill typo", async () => {
-    const { rows, stop } = await runCommand("/skill");
+  test("dispatchSlashCommand auto-corrects typos to nearest command", async () => {
+    const skill = await runCommand("/skill");
+    expect(skill.stop).toBe(true);
+    expect(skill.rows.every((row) => !row.content.includes("Unknown command"))).toBe(true);
 
-    expect(stop).toBe(true);
-    expect(rows.some((row) => row.content.includes("Did you mean /skills?"))).toBe(true);
-  });
-
-  test("dispatchSlashCommand suggests nearest command for general typo", async () => {
-    const { rows, stop } = await runCommand("/stauts");
-
-    expect(stop).toBe(true);
-    expect(rows.some((row) => row.content.includes("Did you mean /status?"))).toBe(true);
+    const status = await runCommand("/stauts");
+    expect(status.stop).toBe(true);
+    expect(status.rows.some((row) => row.style === "statusOutput")).toBe(true);
   });
 
   test("dispatchSlashCommand handles /status", async () => {
