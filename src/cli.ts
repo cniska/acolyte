@@ -12,6 +12,7 @@ import { runInkChat } from "./chat-ui";
 import {
   editFileReplace,
   fetchWeb,
+  findFiles,
   gitDiff,
   gitStatusShort,
   readSnippet,
@@ -531,8 +532,8 @@ export function parseRunExitCode(raw: string): number | null {
   return parsed.success ? parsed.data : null;
 }
 
-export function formatForTool(kind: "search" | "read" | "diff" | "run" | "status", raw: string): string {
-  if (kind === "search") {
+export function formatForTool(kind: "find" | "search" | "read" | "diff" | "run" | "status", raw: string): string {
+  if (kind === "find" || kind === "search") {
     return formatSearchOutput(raw);
   }
   if (kind === "read") {
@@ -1405,6 +1406,18 @@ async function configMode(args: string[]): Promise<void> {
 async function toolMode(args: string[]): Promise<void> {
   try {
     const [subcommand, ...rest] = args;
+    if (subcommand === "find") {
+      const pattern = rest.join(" ").trim();
+      if (!pattern) {
+        printError("Usage: acolyte tool find <pattern>");
+        process.exitCode = 1;
+        return;
+      }
+      const result = await findFiles(pattern);
+      showToolResult("Find", formatForTool("find", result), "tool", pattern);
+      return;
+    }
+
     if (subcommand === "search") {
       const pattern = rest.join(" ").trim();
       if (!pattern) {

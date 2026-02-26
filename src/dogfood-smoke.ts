@@ -38,6 +38,16 @@ const checks: SmokeCheck[] = [
     expect: [/^❯\s+ping/m, /^\s*•\s+/m],
   },
   {
+    name: "tool find",
+    cmd: ["bun", "run", "src/cli.ts", "tool", "find", "cli.ts"],
+    expect: [/cli\.ts/],
+  },
+  {
+    name: "tool search",
+    cmd: ["bun", "run", "src/cli.ts", "tool", "search", "WORKSPACE_ROOT"],
+    expect: [/WORKSPACE_ROOT/],
+  },
+  {
     name: "memory context all",
     cmd: ["bun", "run", "src/cli.ts", "memory", "context", "all"],
     expect: [/scope:\s+all/i, /memory_context:\s+\d+/i],
