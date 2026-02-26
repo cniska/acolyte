@@ -587,7 +587,14 @@ export async function runAgent(input: {
                 break;
               }
               case "tool-error": {
-                const p = typed.payload as { error?: unknown; message?: string; toolName?: string } | undefined;
+                const p = typed.payload as
+                  | {
+                      error?: unknown;
+                      message?: string;
+                      toolName?: string;
+                      toolCallId?: string;
+                    }
+                  | undefined;
                 const raw = p?.error ?? p?.message;
                 const errorMsg =
                   typeof raw === "string"
@@ -599,6 +606,15 @@ export async function runAgent(input: {
                         : "Tool error";
                 lastToolFailureReason = errorMsg;
                 emitDebug("agent.tool.error", { error: errorMsg });
+                // Mark the tool progress row as failed so the marker turns red.
+                if (p?.toolCallId && p?.toolName) {
+                  emitEvent({
+                    type: "tool-result",
+                    toolCallId: p.toolCallId,
+                    toolName: canonicalToolId(p.toolName),
+                    isError: true,
+                  });
+                }
                 break;
               }
               // step-finish, step-start, etc.: internal only, not forwarded.
