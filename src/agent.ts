@@ -509,14 +509,7 @@ export async function runAgent(input: {
   };
 
   // Callback wired to mastra-tools for real-time tool execution output.
-  let toolOutputHandler:
-    | ((event: {
-        toolName: string;
-        message: string;
-        toolCallId?: string;
-        phase?: "tool_start" | "tool_chunk" | "tool_end";
-      }) => void)
-    | null = null;
+  let toolOutputHandler: ((event: { toolName: string; message: string; toolCallId?: string }) => void) | null = null;
 
   const agent = createAgent({
     id: `acolyte-${role}`,
@@ -531,10 +524,6 @@ export async function runAgent(input: {
   });
 
   toolOutputHandler = (event) => {
-    // Skip lifecycle events — Mastra fullStream handles those natively.
-    if (event.phase === "tool_start" || event.phase === "tool_end") {
-      return;
-    }
     const content = event.message.trim();
     if (!content) {
       return;

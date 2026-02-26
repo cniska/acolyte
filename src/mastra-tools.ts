@@ -15,12 +15,7 @@ import {
 } from "./coding-tools";
 import { compactToolOutput } from "./tool-output";
 
-type ToolOutputListener = (event: {
-  toolName: string;
-  message: string;
-  toolCallId?: string;
-  phase?: "tool_start" | "tool_chunk" | "tool_end";
-}) => void;
+type ToolOutputListener = (event: { toolName: string; message: string; toolCallId?: string }) => void;
 
 function emitResultChunks(
   toolName: string,
@@ -38,7 +33,7 @@ function emitResultChunks(
     .filter((line) => line.length > 0)
     .slice(0, maxLines);
   for (const line of lines) {
-    onToolOutput({ toolName, message: line, phase: "tool_chunk", toolCallId });
+    onToolOutput({ toolName, message: line, toolCallId });
   }
 }
 
@@ -114,7 +109,6 @@ function createRunCommandTool(onToolOutput?: ToolOutputListener) {
     execute: async (input) => {
       return withToolError("run-command", async () => {
         const toolCallId = streamCallId("run-command");
-        onToolOutput?.({ toolName: "run-command", message: `Ran ${input.command}`, phase: "tool_start", toolCallId });
         let stdoutBuffer = "";
         let stderrBuffer = "";
         const flushBufferLines = (stream: "stdout" | "stderr"): void => {
@@ -129,12 +123,7 @@ function createRunCommandTool(onToolOutput?: ToolOutputListener) {
             const line = remaining.slice(0, newlineIndex).trimEnd();
             remaining = remaining.slice(newlineIndex + 1);
             if (line.length > 0) {
-              onToolOutput?.({
-                toolName: "run-command",
-                message: `${label} | ${line}`,
-                phase: "tool_chunk",
-                toolCallId,
-              });
+              onToolOutput?.({ toolName: "run-command", message: `${label} | ${line}`, toolCallId });
             }
           }
           if (stream === "stdout") {
@@ -155,12 +144,7 @@ function createRunCommandTool(onToolOutput?: ToolOutputListener) {
           const label = stream === "stdout" ? "out" : "err";
           const remainder = (stream === "stdout" ? stdoutBuffer : stderrBuffer).trimEnd();
           if (remainder.length > 0) {
-            onToolOutput?.({
-              toolName: "run-command",
-              message: `${label} | ${remainder}`,
-              phase: "tool_chunk",
-              toolCallId,
-            });
+            onToolOutput?.({ toolName: "run-command", message: `${label} | ${remainder}`, toolCallId });
           }
           if (stream === "stdout") {
             stdoutBuffer = "";
@@ -170,7 +154,6 @@ function createRunCommandTool(onToolOutput?: ToolOutputListener) {
         };
         flushRemainder("stdout");
         flushRemainder("stderr");
-        onToolOutput?.({ toolName: "run-command", message: `Ran ${input.command}`, phase: "tool_end", toolCallId });
         const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.run);
         return { result };
       });
@@ -198,24 +181,12 @@ function createSearchRepoTool(onToolOutput?: ToolOutputListener) {
     execute: async (input) => {
       return withToolError("search-repo", async () => {
         const toolCallId = streamCallId("search-repo");
-        onToolOutput?.({
-          toolName: "search-repo",
-          message: `Ran search-repo ${input.pattern}`,
-          phase: "tool_start",
-          toolCallId,
-        });
         const maxResults = input.maxResults ?? 20;
         const result = compactToolOutput(
           await searchRepo(input.pattern, maxResults),
           appConfig.agent.toolOutputBudget.search,
         );
         emitResultChunks("search-repo", result, onToolOutput, 80, toolCallId);
-        onToolOutput?.({
-          toolName: "search-repo",
-          message: `Ran search-repo ${input.pattern}`,
-          phase: "tool_end",
-          toolCallId,
-        });
         return { result };
       });
     },
@@ -241,7 +212,6 @@ function createReadFileTool(onToolOutput?: ToolOutputListener) {
     execute: async (input) => {
       return withToolError("read-file", async () => {
         const toolCallId = streamCallId("read-file");
-        onToolOutput?.({ toolName: "read-file", message: `Read ${input.path}`, phase: "tool_start", toolCallId });
         const start = input.start != null ? String(input.start) : undefined;
         const end = input.end != null ? String(input.end) : undefined;
         const result = compactToolOutput(
@@ -249,7 +219,6 @@ function createReadFileTool(onToolOutput?: ToolOutputListener) {
           appConfig.agent.toolOutputBudget.read,
         );
         emitResultChunks("read-file", result, onToolOutput, 80, toolCallId);
-        onToolOutput?.({ toolName: "read-file", message: `Read ${input.path}`, phase: "tool_end", toolCallId });
         return { result };
       });
     },
@@ -266,20 +235,8 @@ function createGitStatusTool(onToolOutput?: ToolOutputListener) {
     execute: async () => {
       return withToolError("git-status", async () => {
         const toolCallId = streamCallId("git-status");
-        onToolOutput?.({
-          toolName: "git-status",
-          message: "Ran git status --short --branch",
-          phase: "tool_start",
-          toolCallId,
-        });
         const result = compactToolOutput(await gitStatusShort(), appConfig.agent.toolOutputBudget.gitStatus);
         emitResultChunks("git-status", result, onToolOutput, 80, toolCallId);
-        onToolOutput?.({
-          toolName: "git-status",
-          message: "Ran git status --short --branch",
-          phase: "tool_end",
-          toolCallId,
-        });
         return { result };
       });
     },
@@ -299,13 +256,11 @@ function createGitDiffTool(onToolOutput?: ToolOutputListener) {
     execute: async (input) => {
       return withToolError("git-diff", async () => {
         const toolCallId = streamCallId("git-diff");
-        onToolOutput?.({ toolName: "git-diff", message: "Ran git diff", phase: "tool_start", toolCallId });
         const result = compactToolOutput(
           await gitDiff(input.path, input.contextLines ?? 3),
           appConfig.agent.toolOutputBudget.gitDiff,
         );
         emitResultChunks("git-diff", result, onToolOutput, 80, toolCallId);
-        onToolOutput?.({ toolName: "git-diff", message: "Ran git diff", phase: "tool_end", toolCallId });
         return { result };
       });
     },
@@ -346,7 +301,6 @@ function createEditFileTool(onToolOutput?: ToolOutputListener) {
     }) => {
       return withToolError("edit-file", async () => {
         const toolCallId = streamCallId("edit-file");
-        onToolOutput?.({ toolName: "edit-file", message: `Edited ${input.path}`, phase: "tool_start", toolCallId });
         const rawResult =
           typeof input.content === "string"
             ? await writeTextFile({
@@ -361,9 +315,8 @@ function createEditFileTool(onToolOutput?: ToolOutputListener) {
                 dryRun: input.dryRun ?? false,
               });
         for (const line of numberedUnifiedDiffLines(rawResult)) {
-          onToolOutput?.({ toolName: "edit-file", message: line, phase: "tool_chunk", toolCallId });
+          onToolOutput?.({ toolName: "edit-file", message: line, toolCallId });
         }
-        onToolOutput?.({ toolName: "edit-file", message: `Edited ${input.path}`, phase: "tool_end", toolCallId });
         const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.edit);
         return { result };
       });
@@ -382,20 +335,13 @@ function createDeleteFileTool(onToolOutput?: ToolOutputListener) {
     execute: async (input) => {
       return withToolError("delete-file", async () => {
         const toolCallId = streamCallId("delete-file");
-        onToolOutput?.({
-          toolName: "delete-file",
-          message: `Deleted ${input.path}`,
-          phase: "tool_start",
-          toolCallId,
-        });
         const rawResult = await deleteTextFile({
           path: input.path,
           dryRun: input.dryRun ?? false,
         });
         for (const line of numberedUnifiedDiffLines(rawResult)) {
-          onToolOutput?.({ toolName: "delete-file", message: line, phase: "tool_chunk", toolCallId });
+          onToolOutput?.({ toolName: "delete-file", message: line, toolCallId });
         }
-        onToolOutput?.({ toolName: "delete-file", message: `Deleted ${input.path}`, phase: "tool_end", toolCallId });
         const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.edit);
         return { result };
       });
@@ -417,23 +363,11 @@ function createWebSearchTool(onToolOutput?: ToolOutputListener) {
     execute: async (input) => {
       return withToolError("web-search", async () => {
         const toolCallId = streamCallId("web-search");
-        onToolOutput?.({
-          toolName: "web-search",
-          message: `Ran web-search ${input.query}`,
-          phase: "tool_start",
-          toolCallId,
-        });
         const result = compactToolOutput(
           await searchWeb(input.query, input.maxResults ?? 5),
           appConfig.agent.toolOutputBudget.webSearch,
         );
         emitResultChunks("web-search", result, onToolOutput, 80, toolCallId);
-        onToolOutput?.({
-          toolName: "web-search",
-          message: `Ran web-search ${input.query}`,
-          phase: "tool_end",
-          toolCallId,
-        });
         return { result };
       });
     },
@@ -453,18 +387,11 @@ function createWebFetchTool(onToolOutput?: ToolOutputListener) {
     execute: async (input) => {
       return withToolError("web-fetch", async () => {
         const toolCallId = streamCallId("web-fetch");
-        onToolOutput?.({
-          toolName: "web-fetch",
-          message: `Ran web-fetch ${input.url}`,
-          phase: "tool_start",
-          toolCallId,
-        });
         const result = compactToolOutput(
           await fetchWeb(input.url, input.maxChars ?? 5000),
           appConfig.agent.toolOutputBudget.webFetch,
         );
         emitResultChunks("web-fetch", result, onToolOutput, 80, toolCallId);
-        onToolOutput?.({ toolName: "web-fetch", message: `Ran web-fetch ${input.url}`, phase: "tool_end", toolCallId });
         return { result };
       });
     },
