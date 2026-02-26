@@ -35,7 +35,7 @@ export function formatShortcutRows(): string[] {
   const width = process.stdout.columns ?? 96;
   const columns = width >= 92 ? 2 : 1;
   const rowsPerColumn = Math.ceil(SHORTCUT_ITEMS.length / columns);
-  const colWidth = columns > 1 ? Math.floor((width - 2) / columns) : width - 2;
+  const colWidth = columns > 1 ? Math.min(40, Math.floor((width - 2) / columns)) : width - 2;
   const keyWidth = 20;
   const lines: string[] = [];
 
