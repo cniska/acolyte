@@ -45,37 +45,36 @@ export function isKnownSlashToken(token: string): boolean {
   return CHAT_SLASH_COMMANDS.includes(token as (typeof CHAT_SLASH_COMMANDS)[number]) || token in SLASH_ALIASES;
 }
 
-export function suggestSlashCommands(inputValue: string, max = 5): string[] {
+export function suggestSlashCommands(inputValue: string, max = 10): string[] {
   const value = inputValue.trim();
   if (!value.startsWith("/")) {
     return [];
   }
   const candidate = inputValue.trimStart();
 
-  // Check subcommands: resolve alias first, then match against subcommand lists
-  for (const [parent, subs] of Object.entries(SUB_COMMANDS)) {
-    const aliases = Object.entries(SLASH_ALIASES)
-      .filter(([, v]) => v === parent)
-      .map(([k]) => k);
-    const prefixes = [parent, ...aliases];
-    const isMatch = prefixes.some((p) => candidate.startsWith(`${p} `) || candidate === `${p} `);
-    if (isMatch) {
-      const canonical = candidate.replace(
-        new RegExp(`^(${aliases.map((a) => a.replace("/", "\\/")).join("|")}) `),
-        `${parent} `,
-      );
-      const matches = subs.filter((sub) => sub.startsWith(canonical));
-      if (matches.length > 0) {
-        return matches.slice(0, max);
+  // If input has a space, match subcommands only (resolve aliases first)
+  if (candidate.includes(" ")) {
+    for (const [parent, subs] of Object.entries(SUB_COMMANDS)) {
+      const aliases = Object.entries(SLASH_ALIASES)
+        .filter(([, v]) => v === parent)
+        .map(([k]) => k);
+      const prefixes = [parent, ...aliases];
+      const isMatch = prefixes.some((p) => candidate.startsWith(`${p} `) || candidate === `${p} `);
+      if (isMatch) {
+        const canonical = candidate.replace(
+          new RegExp(`^(${aliases.map((a) => a.replace("/", "\\/")).join("|")}) `),
+          `${parent} `,
+        );
+        return subs.filter((sub) => sub.startsWith(canonical)).slice(0, max);
       }
     }
+    return [];
   }
 
-  const matches = CHAT_SLASH_COMMANDS.filter((command) => command.startsWith(value));
-  if (matches.length > 0) {
-    return matches.slice(0, max);
-  }
-  return [];
+  // No space: match top-level commands + all subcommands
+  const allCommands = [...CHAT_SLASH_COMMANDS, ...Object.values(SUB_COMMANDS).flat()];
+  const matches = allCommands.filter((command) => command.startsWith(value));
+  return matches.slice(0, max);
 }
 
 export function suggestClosestSlashCommand(inputValue: string, maxDistance = 2): string | null {

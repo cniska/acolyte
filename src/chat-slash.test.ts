@@ -11,11 +11,19 @@ import {
 describe("chat-slash helpers", () => {
   test("suggestSlashCommands filters known commands by prefix", () => {
     expect(suggestSlashCommands("/c")).toEqual([]);
-    expect(suggestSlashCommands("/p")).toEqual(["/permissions"]);
+    expect(suggestSlashCommands("/p")).toEqual(["/permissions", "/permissions read", "/permissions write"]);
     expect(suggestSlashCommands("/s")).toEqual(["/status", "/sessions", "/skills"]);
     expect(suggestSlashCommands("/st")).toEqual(["/status"]);
     expect(suggestSlashCommands("/d")).toEqual([]);
-    expect(suggestSlashCommands("/mem")).toEqual(["/mem", "/memory"]);
+    expect(suggestSlashCommands("/mem")).toEqual([
+      "/mem",
+      "/memory",
+      "/memory list",
+      "/memory add",
+      "/memory all",
+      "/memory user",
+      "/memory project",
+    ]);
     expect(suggestSlashCommands("/memory ")).toEqual([
       "/memory list",
       "/memory add",
