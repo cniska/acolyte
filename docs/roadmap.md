@@ -51,7 +51,7 @@ Sustain autonomous end-to-end execution with low fallback across multiple days.
 - [ ] Manual fallback is the exception, not the norm
 - [ ] Failure categories are tracked with root-cause fixes
 
-**Current status:** Single bounded tasks work with mode-specific instructions (explore/code/ask), dynamic tool metadata, and auto-verify. Plan detection re-invokes the agent when it plans instead of executing. Multi-step autonomous execution needs soak testing.
+**Current status:** Single bounded tasks work with mode-specific instructions (explore/code/ask), dynamic tool metadata, auto-verify, and iterate-on-failure. Plan detection re-invokes the agent when it plans instead of executing. Line width detection enforces project formatting rules. Multi-step autonomous execution needs soak testing.
 
 ### Milestone 6: Memory Quality
 
@@ -121,6 +121,5 @@ What MVP is **not**:
 
 ## Known Issues
 
-- Streaming pipeline has fragile multi-level deduplication that can drop legitimate events.
 - Token budgeting uses approximate char-to-token ratios, not actual counts.
 - Provider integration is only tested with mocks; real multi-provider coverage is untested.
