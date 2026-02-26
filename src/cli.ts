@@ -1101,7 +1101,6 @@ async function chatModeWithOptions(options: { resumeLatest: boolean; resumePrefi
     }
     const resumeId = store.activeSessionId ?? session.id;
     printDim(`Resume with: ${formatResumeCommand(resumeId)}`);
-    printOutput("");
   } finally {
     releaseSessionLock(session.id);
   }

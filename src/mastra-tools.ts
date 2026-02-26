@@ -181,7 +181,8 @@ function numberedUnifiedDiffLines(rawResult: string, maxLines = 160): string[] {
     }
   }
   if (filtered.length > maxLines) {
-    return [...filtered.slice(0, maxLines), "…"];
+    const omitted = filtered.length - maxLines;
+    return [...filtered.slice(0, maxLines), `… +${omitted} lines`];
   }
   return filtered;
 }
@@ -417,7 +418,7 @@ function createEditFileTool(onToolOutput?: ToolOutputListener) {
           replace: input.replace,
           dryRun: input.dryRun ?? false,
         });
-        for (const line of numberedUnifiedDiffLines(rawResult)) {
+        for (const line of numberedUnifiedDiffLines(rawResult, 30)) {
           onToolOutput?.({ toolName: "edit-file", message: line, toolCallId });
         }
         const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.edit);
@@ -474,7 +475,7 @@ function createAstEditTool(onToolOutput?: ToolOutputListener) {
           replacement: input.replacement,
           dryRun: input.dryRun ?? false,
         });
-        for (const line of numberedUnifiedDiffLines(rawResult)) {
+        for (const line of numberedUnifiedDiffLines(rawResult, 30)) {
           onToolOutput?.({ toolName: "edit-code", message: line, toolCallId });
         }
         const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.astEdit);

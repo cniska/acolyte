@@ -314,21 +314,127 @@ function contentLines(content: string): string[] {
   return lines;
 }
 
-function createUnifiedWriteDiff(path: string, previous: string | null, next: string): string {
-  const oldLines = previous == null ? [] : contentLines(previous);
+function createDiff(path: string, previous: string | null, next: string): string {
+  if (previous == null) {
+    // New file: show all lines as additions.
+    const newLines = contentLines(next);
+    const header = [
+      `diff --git a/${path} b/${path}`,
+      "new file mode 100644",
+      "--- /dev/null",
+      `+++ b/${path}`,
+      `@@ -0,0 +1,${newLines.length} @@`,
+    ];
+    const added = newLines.map((line) => `+${line}`);
+    return [...header, ...added].join("\n");
+  }
+  // For edits, use a minimal diff algorithm to produce proper hunks.
+  const oldLines = contentLines(previous);
   const newLines = contentLines(next);
-  const oldCount = oldLines.length;
-  const newCount = newLines.length;
-  const header = [
-    `diff --git a/${path} b/${path}`,
-    ...(previous == null ? ["new file mode 100644"] : []),
-    `--- ${previous == null ? "/dev/null" : `a/${path}`}`,
-    `+++ b/${path}`,
-    `@@ -${previous == null ? 0 : 1},${oldCount} +1,${newCount} @@`,
-  ];
-  const removed = oldLines.map((line) => `-${line}`);
-  const added = newLines.map((line) => `+${line}`);
-  return [...header, ...removed, ...added].join("\n");
+  return minimalUnifiedDiff(path, oldLines, newLines);
+}
+
+function minimalUnifiedDiff(path: string, oldLines: string[], newLines: string[]): string {
+  // Myers-like LCS to find matching lines, then produce unified diff hunks.
+  const n = oldLines.length;
+  const m = newLines.length;
+  // For large files, fall back to simple full-replacement diff.
+  if (n + m > 10_000) {
+    const header = [`diff --git a/${path} b/${path}`, `--- a/${path}`, `+++ b/${path}`, `@@ -1,${n} +1,${m} @@`];
+    return [...header, ...oldLines.map((l) => `-${l}`), ...newLines.map((l) => `+${l}`)].join("\n");
+  }
+  // Hunt–McIlroy style: build a map of new-line positions, then find LCS.
+  const newLineMap = new Map<string, number[]>();
+  for (let j = 0; j < m; j++) {
+    const key = newLines[j];
+    let arr = newLineMap.get(key);
+    if (!arr) {
+      arr = [];
+      newLineMap.set(key, arr);
+    }
+    arr.push(j);
+  }
+  // Patience-like: find longest increasing subsequence of matched pairs.
+  const matches: Array<{ oldIdx: number; newIdx: number }> = [];
+  const used = new Uint8Array(m);
+  for (let i = 0; i < n; i++) {
+    const positions = newLineMap.get(oldLines[i]);
+    if (!positions) continue;
+    for (const j of positions) {
+      if (used[j]) continue;
+      // Greedy: accept first unused match that maintains order.
+      if (matches.length === 0 || j > matches[matches.length - 1].newIdx) {
+        matches.push({ oldIdx: i, newIdx: j });
+        used[j] = 1;
+        break;
+      }
+    }
+  }
+  // Build diff lines from matches.
+  const diffLines: string[] = [];
+  let oi = 0;
+  let ni = 0;
+  for (const match of matches) {
+    while (oi < match.oldIdx) {
+      diffLines.push(`-${oldLines[oi++]}`);
+    }
+    while (ni < match.newIdx) {
+      diffLines.push(`+${newLines[ni++]}`);
+    }
+    diffLines.push(` ${oldLines[oi]}`);
+    oi++;
+    ni++;
+  }
+  while (oi < n) diffLines.push(`-${oldLines[oi++]}`);
+  while (ni < m) diffLines.push(`+${newLines[ni++]}`);
+
+  // Group into hunks with 3-line context.
+  const contextSize = 3;
+  const isChange = diffLines.map((l) => !l.startsWith(" "));
+  const hunkRanges: Array<{ start: number; end: number }> = [];
+  let hunkStart = -1;
+  for (let i = 0; i < diffLines.length; i++) {
+    if (isChange[i]) {
+      if (hunkStart === -1) hunkStart = Math.max(0, i - contextSize);
+      const hunkEnd = Math.min(diffLines.length, i + contextSize + 1);
+      if (hunkRanges.length > 0 && hunkStart <= hunkRanges[hunkRanges.length - 1].end) {
+        hunkRanges[hunkRanges.length - 1].end = hunkEnd;
+      } else {
+        hunkRanges.push({ start: hunkStart, end: hunkEnd });
+      }
+      hunkStart = -1;
+    }
+  }
+
+  const output = [`diff --git a/${path} b/${path}`, `--- a/${path}`, `+++ b/${path}`];
+  for (const range of hunkRanges) {
+    let oldStart = 1;
+    let newStart = 1;
+    // Count line positions up to range.start
+    for (let i = 0; i < range.start; i++) {
+      if (diffLines[i].startsWith("-")) oldStart++;
+      else if (diffLines[i].startsWith("+")) newStart++;
+      else {
+        oldStart++;
+        newStart++;
+      }
+    }
+    let oldCount = 0;
+    let newCount = 0;
+    for (let i = range.start; i < range.end; i++) {
+      if (diffLines[i].startsWith("-")) oldCount++;
+      else if (diffLines[i].startsWith("+")) newCount++;
+      else {
+        oldCount++;
+        newCount++;
+      }
+    }
+    output.push(`@@ -${oldStart},${oldCount} +${newStart},${newCount} @@`);
+    for (let i = range.start; i < range.end; i++) {
+      output.push(diffLines[i]);
+    }
+  }
+  return output.join("\n");
 }
 
 function createUnifiedDeleteDiff(path: string, previous: string): string {
@@ -697,7 +803,7 @@ export async function editFileReplace(input: {
   }
 
   const relativePath = displayPathForDiff(absPath);
-  const diff = createUnifiedWriteDiff(relativePath, raw, next);
+  const diff = createDiff(relativePath, raw, next);
   const parts = [`path=${absPath}`, `matches=${count}`, `dry_run=${input.dryRun ? "true" : "false"}`, "", diff];
   return parts.join("\n");
 }
@@ -725,7 +831,7 @@ export async function writeTextFile(input: { path: string; content: string; over
   await mkdir(dirname(absPath), { recursive: true });
   await writeFile(absPath, input.content, "utf8");
   const relativePath = displayPathForDiff(absPath);
-  const diff = createUnifiedWriteDiff(relativePath, previousContent, input.content);
+  const diff = createDiff(relativePath, previousContent, input.content);
   const parts = [
     `path=${absPath}`,
     `bytes=${Buffer.byteLength(input.content, "utf8")}`,
@@ -851,7 +957,7 @@ export async function editCode(input: {
   }
 
   const relativePath = displayPathForDiff(absPath);
-  const diff = createUnifiedWriteDiff(relativePath, raw, next);
+  const diff = createDiff(relativePath, raw, next);
   return [`path=${absPath}`, `matches=${matches.length}`, `dry_run=${input.dryRun ? "true" : "false"}`, "", diff].join(
     "\n",
   );
