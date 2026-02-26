@@ -474,6 +474,31 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
     let committedStreamingText = "";
     const toolRowIdByCallId = new Map<string, string>();
     const toolSeenLinesByCallId = new Map<string, Set<string>>();
+    let streamFlushTimer: ReturnType<typeof setTimeout> | null = null;
+    const STREAM_FLUSH_MS = 50;
+    const flushStreamingContent = (): void => {
+      if (streamFlushTimer) {
+        clearTimeout(streamFlushTimer);
+        streamFlushTimer = null;
+      }
+      input.setRows((current) => {
+        if (!streamingAssistantRowId) {
+          streamingAssistantRowId = `row_${crypto.randomUUID()}`;
+          return [
+            ...current,
+            {
+              id: streamingAssistantRowId,
+              role: "assistant",
+              content: streamingAssistantContent,
+              dim: true,
+            },
+          ];
+        }
+        return current.map((row) =>
+          row.id === streamingAssistantRowId ? { ...row, content: streamingAssistantContent, dim: true } : row,
+        );
+      });
+    };
     const progressTracker = createProgressTracker({
       onStatus: () => {},
       onAssistant: (delta) => {
@@ -481,25 +506,13 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
           return;
         }
         streamingAssistantContent += delta;
-        input.setRows((current) => {
-          if (!streamingAssistantRowId) {
-            streamingAssistantRowId = `row_${crypto.randomUUID()}`;
-            return [
-              ...current,
-              {
-                id: streamingAssistantRowId,
-                role: "assistant",
-                content: streamingAssistantContent,
-                dim: true,
-              },
-            ];
-          }
-          return current.map((row) =>
-            row.id === streamingAssistantRowId ? { ...row, content: streamingAssistantContent, dim: true } : row,
-          );
-        });
+        if (!streamFlushTimer) {
+          streamFlushTimer = setTimeout(flushStreamingContent, STREAM_FLUSH_MS);
+        }
       },
       onToolCall: (entry) => {
+        // Flush any pending streaming content before showing tool header.
+        flushStreamingContent();
         // Freeze pre-tool streaming text in place so it stays above tool rows.
         if (streamingAssistantRowId) {
           committedStreamingText += streamingAssistantContent;
@@ -640,6 +653,10 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       };
       input.setRows((current) => [...current, row]);
     } finally {
+      if (streamFlushTimer) {
+        clearTimeout(streamFlushTimer);
+        streamFlushTimer = null;
+      }
       input.setInterrupt(null);
       input.setIsThinking(false);
       input.setProgressText(null);
