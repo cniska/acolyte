@@ -587,8 +587,16 @@ export async function runAgent(input: {
                 break;
               }
               case "tool-error": {
-                const p = typed.payload as { error?: string } | undefined;
-                const errorMsg = typeof p?.error === "string" ? p.error : "Unknown tool error";
+                const p = typed.payload as { error?: unknown; message?: string; toolName?: string } | undefined;
+                const raw = p?.error ?? p?.message;
+                const errorMsg =
+                  typeof raw === "string"
+                    ? raw
+                    : raw instanceof Error
+                      ? raw.message
+                      : typeof raw === "object" && raw !== null && "message" in raw
+                        ? String((raw as { message: unknown }).message)
+                        : "Tool error";
                 lastToolFailureReason = errorMsg;
                 emitEvent({ type: "error", error: errorMsg });
                 break;
@@ -624,7 +632,10 @@ export async function runAgent(input: {
   const subagentContext = createSubagentContext(input.request);
   const agentInput = `${subagentContext}\n\n${requestInput.input}`;
   const resourceId = input.request.resourceId?.trim() || appConfig.memory.resourceId;
-  const memoryOptions = input.request.sessionId ? { thread: input.request.sessionId, resource: resourceId } : undefined;
+  const memoryOptions =
+    input.request.useMemory && input.request.sessionId
+      ? { thread: input.request.sessionId, resource: resourceId }
+      : undefined;
 
   emitDebug("agent.mode.classified", { mode: initialMode });
   emitDebug("agent.context.built", {

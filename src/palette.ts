@@ -9,9 +9,7 @@ export const palette = {
   textPath: "#A8B1BC",
   textMuted: "#6B7280",
 
-  // Diff
-  diffAdd: "green",
-  diffAddBg: "#0d2818",
-  diffRemove: "red",
-  diffRemoveBg: "#2d0b0b",
+  // Semantic
+  green: "green",
+  red: "red",
 } as const;

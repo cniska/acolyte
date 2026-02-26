@@ -14,6 +14,8 @@ export interface ChatRequest {
   model: string;
   sessionId?: string;
   resourceId?: string;
+  /** When true, Mastra memory (thread history + observational memory) is enabled. */
+  useMemory?: boolean;
 }
 
 export interface ChatResponse {

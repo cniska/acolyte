@@ -101,6 +101,7 @@ type RunAssistantTurnParams = {
   history: Message[];
   model: string;
   sessionId: string;
+  useMemory?: boolean;
   signal?: AbortSignal;
   onEvent?: (event: StreamEvent) => void;
   thinkingStartedAt: number;
@@ -119,6 +120,7 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
           history: params.history,
           model: params.model,
           sessionId: params.sessionId,
+          useMemory: params.useMemory,
         },
         { signal: params.signal, onEvent: params.onEvent },
       )
@@ -128,6 +130,7 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
           history: params.history,
           model: params.model,
           sessionId: params.sessionId,
+          useMemory: params.useMemory,
         },
         { signal: params.signal },
       );

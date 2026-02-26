@@ -1065,8 +1065,9 @@ async function chatModeWithOptions(options: { resumeLatest: boolean; resumePrefi
     process.exitCode = 1;
     return;
   }
-  const session = resolved?.kind === "ok" ? resolved.session : createSession(defaultModel);
-  if (resolved?.kind !== "ok") {
+  const isResumed = resolved?.kind === "ok";
+  const session = isResumed ? resolved.session : createSession(defaultModel);
+  if (!isResumed) {
     // Start a fresh chat session by default to avoid cross-session transcript/context bleed.
     store.sessions.unshift(session);
   }
@@ -1095,6 +1096,7 @@ async function chatModeWithOptions(options: { resumeLatest: boolean; resumePrefi
       store,
       persist,
       version: CLI_VERSION,
+      useMemory: isResumed,
     });
     if (output.isTTY) {
       clearScreen();

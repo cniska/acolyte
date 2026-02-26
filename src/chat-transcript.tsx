@@ -113,20 +113,20 @@ function renderToolProgressContent(content: string): React.ReactNode {
             ) : parsed.kind === "numberedDiff" ? (
               <>
                 <Text dimColor>{parsed.lineNumber.padStart(lineNumberWidth, " ")}</Text>
-                <Text color={parsed.marker === "+" ? palette.diffAdd : palette.diffRemove}>{`  ${parsed.text}`}</Text>
+                <Text color={parsed.marker === "+" ? palette.green : palette.red}>{`  ${parsed.text}`}</Text>
               </>
             ) : parsed.kind === "numberedContext" ? (
               <Text dimColor>{`${parsed.lineNumber.padStart(lineNumberWidth, " ")}  ${parsed.text}`}</Text>
             ) : parsed.kind === "commandOutput" ? (
               parsed.stream === "err" ? (
-                <Text dimColor color={palette.diffRemove}>
+                <Text dimColor color={palette.red}>
                   {parsed.text}
                 </Text>
               ) : (
                 <Text dimColor>{parsed.text}</Text>
               )
             ) : parsed.kind === "plainDiff" ? (
-              <Text color={parsed.marker === "+" ? palette.diffAdd : palette.diffRemove}>{parsed.text}</Text>
+              <Text color={parsed.marker === "+" ? palette.green : palette.red}>{parsed.text}</Text>
             ) : parsed.kind === "meta" ? (
               <Text dimColor>{parsed.text.padStart(lineNumberWidth + parsed.text.length - 1, " ")}</Text>
             ) : (
@@ -194,7 +194,7 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
               marker = "• ";
             }
             if (row.style === "toolProgress" && row.toolStatus) {
-              markerColor = row.toolStatus === "ok" ? palette.diffAdd : palette.diffRemove;
+              markerColor = row.toolStatus === "ok" ? palette.green : palette.red;
             }
             return (
               <Box>
@@ -221,6 +221,10 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
                     <Text>{renderStatusContent(row.content)}</Text>
                   ) : row.role === "assistant" && row.style === "toolProgress" ? (
                     <Text>{renderToolProgressContent(row.content)}</Text>
+                  ) : row.style === "error" ? (
+                    <Text dimColor color={palette.red}>
+                      {row.content}
+                    </Text>
                   ) : (
                     <Text dimColor={Boolean(row.dim)}>
                       {row.role === "assistant" ? renderAssistantContent(row.content, contentWidth) : row.content}

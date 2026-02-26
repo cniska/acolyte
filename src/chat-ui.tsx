@@ -39,6 +39,7 @@ interface ChatAppProps {
   store: SessionStore;
   persist: () => Promise<void>;
   version: string;
+  useMemory?: boolean;
 }
 
 export function initialTranscriptRows(session: Session): ChatRow[] {
@@ -46,7 +47,7 @@ export function initialTranscriptRows(session: Session): ChatRow[] {
 }
 
 function ChatApp(props: ChatAppProps) {
-  const { backend, session, store, persist, version } = props;
+  const { backend, session, store, persist, version, useMemory } = props;
   const { exit } = useApp();
   const [currentSession, setCurrentSession] = useState<Session>(session);
   const [rows, setRows] = useState<ChatRow[]>(() => initialTranscriptRows(session));
@@ -161,6 +162,7 @@ function ChatApp(props: ChatAppProps) {
     setInterrupt: (handler) => {
       interruptRef.current = handler;
     },
+    useMemory,
   });
   useEffect(() => {
     if (isThinking || !queuedInput) {

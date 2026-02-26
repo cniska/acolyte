@@ -42,6 +42,7 @@ type CreateSubmitHandlerInput = {
   createMessage: (role: Message["role"], content: string) => Message;
   nowIso: () => string;
   setInterrupt: (handler: (() => void) | null) => void;
+  useMemory?: boolean;
 };
 
 type ClarificationAnswer = { question: string; answer: string };
@@ -551,6 +552,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
             role: "system",
             content: error,
             dim: true,
+            style: "error",
           },
         ]);
       },
@@ -564,6 +566,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         history: [...fileContextMessages, ...input.currentSession.messages],
         model: appConfig.model,
         sessionId: input.currentSession.id,
+        useMemory: input.useMemory,
         signal: abortController.signal,
         onEvent: (event) => {
           progressTracker.apply(event);
