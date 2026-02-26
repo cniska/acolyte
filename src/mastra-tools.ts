@@ -360,14 +360,10 @@ function createDeleteFileTool(onToolOutput?: ToolOutputListener) {
     }),
     execute: async (input) => {
       return withToolError("delete-file", async () => {
-        const toolCallId = streamCallId("delete-file");
         const rawResult = await deleteTextFile({
           path: input.path,
           dryRun: input.dryRun ?? false,
         });
-        for (const line of numberedUnifiedDiffLines(rawResult)) {
-          onToolOutput?.({ toolName: "delete-file", message: line, toolCallId });
-        }
         const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.edit);
         return { result };
       });
