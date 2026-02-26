@@ -149,7 +149,7 @@ function numberedUnifiedDiffLines(rawResult: string, maxLines = 160): string[] {
       continue;
     }
     if (line.startsWith(" ")) {
-      rendered.push(`${newLine}   ${line.slice(1)}`);
+      rendered.push(`${newLine}  ${line.slice(1)}`);
       oldLine += 1;
       newLine += 1;
       continue;
@@ -438,8 +438,14 @@ function createCreateFileTool(onToolOutput?: ToolOutputListener) {
           content: input.content,
           overwrite: true,
         });
-        for (const line of numberedUnifiedDiffLines(rawResult, 30)) {
-          onToolOutput?.({ toolName: "create-file", message: line, toolCallId });
+        const contentLines = input.content.split("\n");
+        const maxStreamLines = 30;
+        const count = Math.min(contentLines.length, maxStreamLines);
+        for (let i = 0; i < count; i++) {
+          onToolOutput?.({ toolName: "create-file", message: `${i + 1}  ${contentLines[i]}`, toolCallId });
+        }
+        if (contentLines.length > maxStreamLines) {
+          onToolOutput?.({ toolName: "create-file", message: "…", toolCallId });
         }
         const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.create);
         return { result };

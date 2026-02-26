@@ -30,12 +30,12 @@ export function parseToolProgressLine(line: string): ToolProgressParsedLine {
       text: numberedDiff[4] ?? "",
     };
   }
-  const numberedContext = line.match(/^(\d+)(\s{3})(.*)$/);
+  const numberedContext = line.match(/^(\d+)(\s{2,})(.*)$/);
   if (numberedContext) {
     return {
       kind: "numberedContext",
       lineNumber: numberedContext[1] ?? "",
-      spacing: numberedContext[2] ?? "   ",
+      spacing: numberedContext[2] ?? "  ",
       text: numberedContext[3] ?? "",
     };
   }
