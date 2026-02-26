@@ -440,10 +440,10 @@ describe("chat picker handlers", () => {
         { value: "cancel", description: "stay in read mode" },
       ],
       index: 0,
-      note: "temporary",
+      note: "",
     });
     expect(values.at(-1)).toBe("");
     expect(queued.at(-1)).toBe("resume:edit src/cli.ts");
-    expect(rows.some((row) => row.content.includes("Changed permissions to write"))).toBe(true);
+    expect(rows.some((row) => row.content.includes("Switched to write mode"))).toBe(true);
   });
 });

@@ -100,7 +100,7 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
           <Text>{firstSelected ? "› " : "  "}</Text>
           <Text color={firstSelected ? brandColor : undefined}>{firstLabel.padEnd(labelWidth, " ")}</Text>
           <Text> </Text>
-          {firstSelected ? (
+          {firstSelected && !isWrite ? (
             <PromptInput
               value={picker.note}
               placeholder={isClarify ? "answer…" : "reason…"}
@@ -117,7 +117,7 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
             <Text>{secondSelected ? "› " : "  "}</Text>
             <Text color={secondSelected ? brandColor : undefined}>{secondLabel.padEnd(labelWidth, " ")}</Text>
             <Text> </Text>
-            {secondSelected ? (
+            {secondSelected && !isWrite ? (
               <PromptInput
                 value={picker.note}
                 placeholder="reason…"

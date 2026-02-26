@@ -281,8 +281,6 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
       }
       case "writeConfirm": {
         const selected = state.items[state.index];
-        const note = state.note.trim();
-        const noteSuffix = note ? ` | reason: ${note}` : "";
         if (selected.value === "switch") {
           try {
             await input.setBackendPermissionMode("write");
@@ -292,8 +290,8 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
               ...current,
               {
                 id: `row_${crypto.randomUUID()}`,
-                role: "assistant",
-                content: `Changed permissions to write${noteSuffix}`,
+                role: "system",
+                content: "Switched to write mode.",
               },
             ]);
             input.setValue("");
@@ -313,8 +311,8 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
             ...current,
             {
               id: `row_${crypto.randomUUID()}`,
-              role: "assistant",
-              content: `Staying in read mode.${noteSuffix}\nI can still help with a read-only plan for this change.`,
+              role: "system",
+              content: "Staying in read mode.",
             },
           ]);
         }
