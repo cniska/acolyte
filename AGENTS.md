@@ -53,13 +53,6 @@
 - Add tests for meaningful regression risk or critical behavior.
 - Avoid redundant or trivial tests.
 
-## Documentation
-
-- Update docs when behavior or contracts change.
-- Keep `docs/` updated as implementation evolves.
-- For autonomous feature implementation, use the repo skill `skills/dogfood/SKILL.md`.
-- Keep this file policy-only. Procedural workflows can be added later as reusable skills.
-
 ## Safety
 
 - Never run destructive git/file operations unless explicitly requested.
