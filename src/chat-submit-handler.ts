@@ -471,6 +471,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
     const thinkingStartedAt = Date.now();
     let streamingAssistantRowId: string | null = null;
     let streamingAssistantContent = "";
+    let committedStreamingText = "";
     const toolRowIdByCallId = new Map<string, string>();
     const toolSeenLinesByCallId = new Map<string, Set<string>>();
     const progressTracker = createProgressTracker({
@@ -499,6 +500,12 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         });
       },
       onToolCall: (entry) => {
+        // Freeze pre-tool streaming text in place so it stays above tool rows.
+        if (streamingAssistantRowId) {
+          committedStreamingText += streamingAssistantContent;
+          streamingAssistantRowId = null;
+          streamingAssistantContent = "";
+        }
         const header = formatToolHeader(entry.toolName, entry.args);
         const rowId = `row_${crypto.randomUUID()}`;
         toolRowIdByCallId.set(entry.toolCallId, rowId);
@@ -585,24 +592,33 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       });
       const assistantMessage = turn.assistantMessage;
       const clarifyingQuestions = extractClarifyingQuestions(assistantMessage.content);
+      // Remove active (post-tool) streaming row — committed rows stay in place.
+      if (streamingAssistantRowId) {
+        input.setRows((current) => current.filter((row) => row.id !== streamingAssistantRowId));
+        streamingAssistantRowId = null;
+        streamingAssistantContent = "";
+      }
       if (clarifyingQuestions.length > 0) {
-        if (streamingAssistantRowId) {
-          input.setRows((current) => current.filter((row) => row.id !== streamingAssistantRowId));
-          streamingAssistantRowId = null;
-          streamingAssistantContent = "";
-        }
         const nonAssistantRows = turn.rows.filter((row) => row.role !== "assistant");
         input.setRows((current) => [...current, ...nonAssistantRows]);
         input.openClarifyPanel(clarifyingQuestions, text);
       } else {
-        if (streamingAssistantRowId) {
-          input.setRows((current) => current.filter((row) => row.id !== streamingAssistantRowId));
-          streamingAssistantRowId = null;
-          streamingAssistantContent = "";
-        }
         input.currentSession.messages.push(assistantMessage);
         input.currentSession.updatedAt = input.nowIso();
-        input.setRows((current) => [...current, ...turn.rows]);
+        // When pre-tool text was committed in place, strip it from the final
+        // assistant row so it doesn't appear twice.
+        const finalRows = committedStreamingText
+          ? turn.rows
+              .map((r) => {
+                if (r.role !== "assistant" || r.dim || r.style) {
+                  return r;
+                }
+                const remaining = r.content.slice(committedStreamingText.length).trim();
+                return remaining ? { ...r, content: remaining } : null;
+              })
+              .filter((r): r is ChatRow => r !== null)
+          : turn.rows;
+        input.setRows((current) => [...current, ...finalRows]);
       }
       // File tree may have changed during tool execution; refresh @path autocomplete candidates.
       invalidateRepoPathCandidates();
