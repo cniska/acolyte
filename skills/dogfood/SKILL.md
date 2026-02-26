@@ -42,7 +42,7 @@ If validation fails:
 
 ## Required Doc Sync
 1. Update `docs/talk-notes.md` for shipped milestones.
-2. Update `docs/project-plan.md` for priority/next-action changes.
+2. Update `docs/roadmap.md` for priority/next-action changes.
 3. Keep command docs in `README.md` current.
 
 ## Reference
