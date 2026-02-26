@@ -169,7 +169,7 @@ export function createInstructions(baseInstructions: string): string {
   const executionContract = [
     "Execution contract:",
     "Tool Rules (use exact tool ids):",
-    "- Use `read-file`, `find-files`, and `search-files` to inspect code, `edit-file` for updates, `create-file` for new files, `delete-file` for deletions, and `run-command` for terminal commands.",
+    "- Use `read-file`, `find-files`, and `search-files` to inspect code, `edit-file` for updates, `create-file` for new files, `delete-file` for deletions, `edit-code` for structural code transformations (AST pattern matching with `$VARIABLE` metavariables), and `run-command` for terminal commands.",
     "- Use `git-status`/`git-diff` for change inspection and `web-search`/`web-fetch` only when external lookup is needed.",
     "- Use tools for actions and text for communication.",
     "- Default to tool execution. If a task can be completed with available tools, do it with tools instead of providing instructions/code-only replies.",
@@ -325,6 +325,8 @@ export function canonicalToolId(value: string): string {
     create_file: "create-file",
     writeFile: "create-file",
     write_file: "create-file",
+    editCode: "edit-code",
+    edit_code: "edit-code",
     deleteFile: "delete-file",
     delete_file: "delete-file",
     gitDiff: "git-diff",
@@ -408,6 +410,7 @@ export function formatToolHeader(toolName: string, args: Record<string, unknown>
     }
     case "read-file":
     case "edit-file":
+    case "edit-code":
     case "create-file":
     case "delete-file":
     case "git-diff": {

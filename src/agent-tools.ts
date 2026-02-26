@@ -674,6 +674,95 @@ export async function writeTextFile(input: { path: string; content: string; over
   ].join("\n");
 }
 
+function languageFromPath(filePath: string): string {
+  const dot = filePath.lastIndexOf(".");
+  if (dot < 0) {
+    return "TypeScript";
+  }
+  const ext = filePath.slice(dot).toLowerCase();
+  const map: Record<string, string> = {
+    ".ts": "TypeScript",
+    ".tsx": "Tsx",
+    ".js": "JavaScript",
+    ".jsx": "JavaScript",
+    ".html": "Html",
+    ".css": "Css",
+  };
+  return map[ext] ?? "TypeScript";
+}
+
+function extractMetavariables(pattern: string): string[] {
+  const matches = pattern.match(/\$[A-Z_][A-Z0-9_]*/g);
+  if (!matches) {
+    return [];
+  }
+  return Array.from(new Set(matches));
+}
+
+export async function editCode(input: {
+  path: string;
+  pattern: string;
+  replacement: string;
+  dryRun?: boolean;
+}): Promise<string> {
+  ensureWritePermission("AST editing");
+  const absPath = ensurePathWithinAllowedRoots(input.path, "AST edit");
+  const raw = await readFile(absPath, "utf8");
+
+  let napi: typeof import("@ast-grep/napi");
+  try {
+    napi = await import("@ast-grep/napi");
+  } catch {
+    throw new Error("@ast-grep/napi is not installed — run `bun add @ast-grep/napi`");
+  }
+
+  const langName = languageFromPath(absPath);
+  const langEnum = napi.Lang[langName as keyof typeof napi.Lang];
+  if (langEnum == null) {
+    throw new Error(`Unsupported language for AST edit: ${langName}`);
+  }
+
+  const tree = napi.parse(langEnum, raw);
+  const matches = tree.root().findAll({ rule: { pattern: input.pattern } });
+  if (matches.length === 0) {
+    throw new Error(`No AST matches found for pattern: ${input.pattern}`);
+  }
+
+  const metavars = extractMetavariables(input.pattern);
+
+  const edits: Array<{ start: number; end: number; replacement: string }> = [];
+  for (const match of matches) {
+    let replaced = input.replacement;
+    for (const metavar of metavars) {
+      // getMatch expects the name without the `$` prefix.
+      const captured = match.getMatch(metavar.slice(1));
+      if (captured) {
+        replaced = replaced.replaceAll(metavar, captured.text());
+      }
+    }
+    const range = match.range();
+    edits.push({ start: range.start.index, end: range.end.index, replacement: replaced });
+  }
+
+  // Apply in reverse offset order to preserve positions.
+  edits.sort((a, b) => b.start - a.start);
+  let next = raw;
+  for (const edit of edits) {
+    next = next.slice(0, edit.start) + edit.replacement + next.slice(edit.end);
+  }
+
+  if (!input.dryRun) {
+    await mkdir(dirname(absPath), { recursive: true });
+    await writeFile(absPath, next, "utf8");
+  }
+
+  const relativePath = displayPathForDiff(absPath);
+  const diff = createUnifiedWriteDiff(relativePath, raw, next);
+  return [`path=${absPath}`, `matches=${matches.length}`, `dry_run=${input.dryRun ? "true" : "false"}`, "", diff].join(
+    "\n",
+  );
+}
+
 export async function deleteTextFile(input: { path: string; dryRun?: boolean }): Promise<string> {
   ensureWritePermission("File deletion");
   const absPath = ensurePathWithinAllowedRoots(input.path, "Delete");

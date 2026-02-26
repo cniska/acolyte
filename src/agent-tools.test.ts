@@ -1,7 +1,15 @@
 import { afterAll, afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { rm, writeFile } from "node:fs/promises";
+import { readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { deleteTextFile, editFileReplace, fetchWeb, readSnippet, runShellCommand, writeTextFile } from "./agent-tools";
+import {
+  deleteTextFile,
+  editCode,
+  editFileReplace,
+  fetchWeb,
+  readSnippet,
+  runShellCommand,
+  writeTextFile,
+} from "./agent-tools";
 import { appConfig, setPermissionMode } from "./app-config";
 
 const tempFiles: string[] = [];
@@ -177,5 +185,82 @@ describe("coding-tools workspace guards", () => {
     } finally {
       setPermissionMode(prev);
     }
+  });
+});
+
+describe("editCode", () => {
+  beforeEach(() => {
+    setPermissionMode("write");
+  });
+
+  afterEach(() => {
+    setPermissionMode(initialPermissionMode);
+  });
+
+  test("replaces pattern matches with metavariable capture", async () => {
+    const filePath = `/tmp/acolyte-ast-edit-${crypto.randomUUID()}.ts`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, 'console.log("hello");\nconsole.log("world");\n', "utf8");
+    const result = await editCode({
+      path: filePath,
+      pattern: "console.log($ARG)",
+      replacement: "logger.debug($ARG)",
+    });
+    expect(result).toContain("matches=2");
+    expect(result).toContain("+logger.debug");
+    const content = await readFile(filePath, "utf8");
+    expect(content).toContain('logger.debug("hello")');
+    expect(content).toContain('logger.debug("world")');
+    expect(content).not.toContain("console.log");
+  });
+
+  test("dry run preserves file", async () => {
+    const filePath = `/tmp/acolyte-ast-dry-${crypto.randomUUID()}.ts`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, 'console.log("keep");\n', "utf8");
+    const result = await editCode({
+      path: filePath,
+      pattern: "console.log($ARG)",
+      replacement: "logger.debug($ARG)",
+      dryRun: true,
+    });
+    expect(result).toContain("dry_run=true");
+    expect(result).toContain("matches=1");
+    const content = await readFile(filePath, "utf8");
+    expect(content).toContain("console.log");
+  });
+
+  test("throws when no matches found", async () => {
+    const filePath = `/tmp/acolyte-ast-nomatch-${crypto.randomUUID()}.ts`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, "const x = 1;\n", "utf8");
+    await expect(
+      editCode({
+        path: filePath,
+        pattern: "console.log($ARG)",
+        replacement: "logger.debug($ARG)",
+      }),
+    ).rejects.toThrow("No AST matches found");
+  });
+
+  test("blocks paths outside workspace", async () => {
+    await expect(
+      editCode({
+        path: "/etc/hosts",
+        pattern: "console.log($ARG)",
+        replacement: "logger.debug($ARG)",
+      }),
+    ).rejects.toThrow("AST edit is restricted to the workspace or /tmp");
+  });
+
+  test("read mode blocks editCode", async () => {
+    setPermissionMode("read");
+    await expect(
+      editCode({
+        path: join(process.cwd(), "src/agent.ts"),
+        pattern: "console.log($ARG)",
+        replacement: "logger.debug($ARG)",
+      }),
+    ).rejects.toThrow("AST editing is disabled in read mode");
   });
 });

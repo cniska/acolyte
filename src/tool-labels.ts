@@ -6,6 +6,7 @@ const TOOL_LABELS: Record<string, string> = {
   "git-diff": "Diff",
   "run-command": "Run",
   "edit-file": "Edit",
+  "edit-code": "AST Edit",
   "create-file": "Create",
   "delete-file": "Delete",
   "web-search": "Search",

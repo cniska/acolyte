@@ -2,6 +2,7 @@ import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 import {
   deleteTextFile,
+  editCode,
   editFileReplace,
   fetchWeb,
   findFiles,
@@ -375,6 +376,36 @@ function createCreateFileTool(onToolOutput?: ToolOutputListener) {
   });
 }
 
+function createAstEditTool(onToolOutput?: ToolOutputListener) {
+  return createTool({
+    id: "edit-code",
+    description:
+      "Edit code files using AST pattern matching with `$VARIABLE` metavariables. Example: pattern=`console.log($ARG)` replacement=`logger.debug($ARG)` replaces all matching call sites while preserving arguments. For simple text replacements, use `edit-file` instead.",
+    inputSchema: z.object({
+      path: z.string().min(1),
+      pattern: z.string().min(1),
+      replacement: z.string(),
+      dryRun: z.boolean().optional(),
+    }),
+    execute: async (input) => {
+      return withToolError("edit-code", async () => {
+        const toolCallId = streamCallId("edit-code");
+        const rawResult = await editCode({
+          path: input.path,
+          pattern: input.pattern,
+          replacement: input.replacement,
+          dryRun: input.dryRun ?? false,
+        });
+        for (const line of numberedUnifiedDiffLines(rawResult)) {
+          onToolOutput?.({ toolName: "edit-code", message: line, toolCallId });
+        }
+        const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.astEdit);
+        return { result };
+      });
+    },
+  });
+}
+
 function createDeleteFileTool(_onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "delete-file",
@@ -398,6 +429,7 @@ function createDeleteFileTool(_onToolOutput?: ToolOutputListener) {
 
 export const editFileTool = createEditFileTool();
 export const createFileTool = createCreateFileTool();
+export const editCodeTool = createAstEditTool();
 export const deleteFileTool = createDeleteFileTool();
 
 function createWebSearchTool(onToolOutput?: ToolOutputListener) {
@@ -457,6 +489,7 @@ export const acolyteTools = {
   runCommand: runCommandTool,
   editFile: editFileTool,
   createFile: createFileTool,
+  editCode: editCodeTool,
   deleteFile: deleteFileTool,
   webSearch: webSearchTool,
   webFetch: webFetchTool,
@@ -493,6 +526,7 @@ export function toolsForAgent(options?: { onToolOutput?: ToolOutputListener }): 
     runCommand: createRunCommandTool(options.onToolOutput),
     editFile: createEditFileTool(options.onToolOutput),
     createFile: createCreateFileTool(options.onToolOutput),
+    editCode: createAstEditTool(options.onToolOutput),
     deleteFile: createDeleteFileTool(options.onToolOutput),
     webSearch: createWebSearchTool(options.onToolOutput),
     webFetch: createWebFetchTool(options.onToolOutput),

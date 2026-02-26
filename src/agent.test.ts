@@ -104,6 +104,8 @@ describe("execution intent detection", () => {
     expect(canonicalToolId("runCommand")).toBe("run-command");
     expect(canonicalToolId("execute_command")).toBe("run-command");
     expect(canonicalToolId("web_search")).toBe("web-search");
+    expect(canonicalToolId("editCode")).toBe("edit-code");
+    expect(canonicalToolId("edit_code")).toBe("edit-code");
   });
 });
 
@@ -357,5 +359,9 @@ describe("formatToolHeader", () => {
 
   test("formats run command with command text", () => {
     expect(formatToolHeader("run-command", { command: "bun run verify" })).toBe("Run bun run verify");
+  });
+
+  test("formats edit-code with file path", () => {
+    expect(formatToolHeader("edit-code", { path: "src/agent.ts" })).toBe("AST Edit src/agent.ts");
   });
 });

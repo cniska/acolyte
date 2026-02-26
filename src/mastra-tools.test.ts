@@ -15,6 +15,7 @@ describe("mastra toolsets", () => {
     expect(keys).toEqual([
       "createFile",
       "deleteFile",
+      "editCode",
       "editFile",
       "findFiles",
       "gitDiff",
