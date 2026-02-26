@@ -1,11 +1,7 @@
 import { appConfig } from "./app-config";
-import type { ChatRow } from "./chat-commands";
+import { type ChatRow, createRow } from "./chat-commands";
 import type { PickerState } from "./chat-picker";
 import type { Session, SessionStore } from "./types";
-
-function row(role: ChatRow["role"], content: string, style?: ChatRow["style"]): ChatRow {
-  return { id: `row_${crypto.randomUUID()}`, role, content, style };
-}
 
 type PickerByKind = {
   skills: Extract<PickerState, { kind: "skills" }>;
@@ -45,7 +41,7 @@ export function createResumePicker(store: SessionStore, limit = 20): PickerState
 export function createResumeRows(session: Session, toRows: (messages: Session["messages"]) => ChatRow[]): ChatRow[] {
   return [
     ...toRows(session.messages),
-    row("assistant", `Resumed session: ${session.id.slice(0, 12)}`, "sessionStatus"),
+    createRow("assistant", `Resumed session: ${session.id}`, { style: "sessionStatus" }),
   ];
 }
 

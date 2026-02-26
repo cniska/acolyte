@@ -4,6 +4,7 @@ import type { Client } from "./client";
 import type { ConfigScope } from "./config";
 import { setConfigValue } from "./config";
 import { addMemory, listMemories, removeMemoryByPrefix } from "./memory";
+import { createId } from "./short-id";
 import type { MemoryContextScope } from "./soul";
 import { formatStatusOutput } from "./status-format";
 import { createSession } from "./storage";
@@ -19,6 +20,14 @@ export type ChatRow = {
   toolName?: string;
   toolStatus?: "ok" | "error";
 };
+
+export function createRow(
+  role: ChatRow["role"],
+  content: string,
+  options?: { dim?: boolean; style?: ChatRow["style"]; toolCallId?: string; toolName?: string },
+): ChatRow {
+  return { id: `row_${createId()}`, role, content, ...options };
+}
 
 export type TokenUsageEntry = SessionTokenUsageEntry;
 
@@ -48,7 +57,7 @@ export function formatSessionList(store: SessionStore, limit = 10): string[] {
   return store.sessions.slice(0, limit).map((item) => {
     const active = item.id === store.activeSessionId ? "●" : " ";
     const title = item.title || "New Session";
-    return `${active} ${item.id.slice(0, 12)}  ${title}`;
+    return `${active} ${item.id}  ${title}`;
   });
 }
 
@@ -131,10 +140,6 @@ export type CommandContext = {
   };
 };
 
-function row(role: ChatRow["role"], content: string, dim = false, style?: ChatRow["style"]): ChatRow {
-  return { id: `row_${crypto.randomUUID()}`, role, content, dim, style };
-}
-
 function parseMemoryListScope(parts: string[]): MemoryContextScope | null {
   if (parts.length === 1) {
     return "all";
@@ -179,7 +184,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     ...ctx.memoryApi,
   };
   const pushUserCommandRow = (): void => {
-    ctx.setRows((current) => [...current, row("user", text)]);
+    ctx.setRows((current) => [...current, createRow("user", text)]);
   };
 
   if (resolvedText === "/resume") {
@@ -195,21 +200,21 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       const recent = formatSessionList(ctx.store, 6);
       ctx.setRows((current) => [
         ...current,
-        row("system", "Usage: /resume <session-id-prefix>"),
-        ...recent.map((line) => row("system", line)),
+        createRow("system", "Usage: /resume <session-id-prefix>"),
+        ...recent.map((line) => createRow("system", line)),
       ]);
       return { stop: true, userText: text };
     }
     if (resolved.kind === "not_found") {
-      ctx.setRows((current) => [...current, row("system", `No session found for prefix: ${resolved.prefix}`)]);
+      ctx.setRows((current) => [...current, createRow("system", `No session found for prefix: ${resolved.prefix}`)]);
       return { stop: true, userText: text };
     }
     if (resolved.kind === "ambiguous") {
       ctx.setRows((current) => [
         ...current,
-        row(
+        createRow(
           "system",
-          `Ambiguous prefix: ${resolved.prefix}. Matches: ${resolved.matches.map((item) => item.id.slice(0, 12)).join(", ")}`,
+          `Ambiguous prefix: ${resolved.prefix}. Matches: ${resolved.matches.map((item) => item.id).join(", ")}`,
         ),
       ]);
       return { stop: true, userText: text };
@@ -220,7 +225,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     ctx.setTokenUsage?.(() => target.tokenUsage);
     ctx.setRows(() => [
       ...ctx.toRows(target.messages),
-      row("system", `Resumed session: ${target.id.slice(0, 12)}`, true, "sessionStatus"),
+      createRow("system", `Resumed session: ${target.id}`, { dim: true, style: "sessionStatus" }),
     ]);
     ctx.setShowShortcuts(() => false);
     await ctx.persist();
@@ -231,7 +236,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     pushUserCommandRow();
     const recent = formatSessionList(ctx.store, 10);
     const sections = [`Sessions ${ctx.store.sessions.length}`, "", ...recent];
-    ctx.setRows((current) => [...current, row("system", sections.join("\n"), false, "sessionsList")]);
+    ctx.setRows((current) => [...current, createRow("system", sections.join("\n"), { style: "sessionsList" })]);
     return { stop: true, userText: text };
   }
 
@@ -239,11 +244,14 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     pushUserCommandRow();
     try {
       const status = await ctx.backend.status();
-      ctx.setRows((current) => [...current, row("system", formatStatusOutput(status), false, "statusOutput")]);
+      ctx.setRows((current) => [
+        ...current,
+        createRow("system", formatStatusOutput(status), { style: "statusOutput" }),
+      ]);
     } catch (error) {
       ctx.setRows((current) => [
         ...current,
-        row("system", error instanceof Error ? error.message : "Status check failed."),
+        createRow("system", error instanceof Error ? error.message : "Status check failed."),
       ]);
     }
     return { stop: true, userText: text };
@@ -266,12 +274,18 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       (parts[1] === "read" || parts[1] === "write") &&
       (parts.length === 2 || parts[2] === "--project" || parts[2] === "--user");
     if (!validParts || (mode !== "read" && mode !== "write")) {
-      ctx.setRows((current) => [...current, row("system", "Usage: /permissions [read|write] [--project|--user]")]);
+      ctx.setRows((current) => [
+        ...current,
+        createRow("system", "Usage: /permissions [read|write] [--project|--user]"),
+      ]);
       return { stop: true, userText: text };
     }
     const scope = parsePermissionsScope(parts);
     if (!scope) {
-      ctx.setRows((current) => [...current, row("system", "Usage: /permissions [read|write] [--project|--user]")]);
+      ctx.setRows((current) => [
+        ...current,
+        createRow("system", "Usage: /permissions [read|write] [--project|--user]"),
+      ]);
       return { stop: true, userText: text };
     }
     try {
@@ -282,11 +296,11 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
         await setConfigValue("permissionMode", mode, { scope });
       }
       setPermissionMode(mode);
-      ctx.setRows((current) => [...current, row("system", `Changed permissions to ${mode} (${scope}).`)]);
+      ctx.setRows((current) => [...current, createRow("system", `Changed permissions to ${mode} (${scope}).`)]);
     } catch (error) {
       ctx.setRows((current) => [
         ...current,
-        row("system", error instanceof Error ? error.message : "Failed to set permission mode."),
+        createRow("system", error instanceof Error ? error.message : "Failed to set permission mode."),
       ]);
     }
     return { stop: true, userText: text };
@@ -296,37 +310,37 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     pushUserCommandRow();
     const parts = resolvedText.split(/\s+/).filter((part) => part.length > 0);
     if (parts.length !== 3) {
-      ctx.setRows((current) => [...current, row("system", "Usage: /memory rm <id-prefix>")]);
+      ctx.setRows((current) => [...current, createRow("system", "Usage: /memory rm <id-prefix>")]);
       return { stop: true, userText: text };
     }
     const prefix = parts[2];
     const remove = memoryApi.removeMemoryByPrefix;
     if (!remove) {
-      ctx.setRows((current) => [...current, row("system", "Memory removal is unavailable in this context.")]);
+      ctx.setRows((current) => [...current, createRow("system", "Memory removal is unavailable in this context.")]);
       return { stop: true, userText: text };
     }
     try {
       const removed = await remove(prefix);
       if (removed.kind === "not_found") {
-        ctx.setRows((current) => [...current, row("system", `No memory found for id prefix: ${removed.prefix}`)]);
+        ctx.setRows((current) => [...current, createRow("system", `No memory found for id prefix: ${removed.prefix}`)]);
         return { stop: true, userText: text };
       }
       if (removed.kind === "ambiguous") {
-        const ids = removed.matches.map((item) => item.id.slice(0, 12)).join(", ");
+        const ids = removed.matches.map((item) => item.id).join(", ");
         ctx.setRows((current) => [
           ...current,
-          row("system", `Ambiguous memory id prefix: ${removed.prefix}. Matches: ${ids}`),
+          createRow("system", `Ambiguous memory id prefix: ${removed.prefix}. Matches: ${ids}`),
         ]);
         return { stop: true, userText: text };
       }
       ctx.setRows((current) => [
         ...current,
-        row("system", `Removed ${removed.entry.scope} memory ${removed.entry.id.slice(0, 12)}.`),
+        createRow("system", `Removed ${removed.entry.scope} memory ${removed.entry.id}.`),
       ]);
     } catch (error) {
       ctx.setRows((current) => [
         ...current,
-        row("system", error instanceof Error ? error.message : "Failed to remove memory."),
+        createRow("system", error instanceof Error ? error.message : "Failed to remove memory."),
       ]);
     }
     return { stop: true, userText: text };
@@ -337,18 +351,18 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     const parts = resolvedText.split(/\s+/);
     const scope = parseMemoryListScope(parts);
     if (!scope) {
-      ctx.setRows((current) => [...current, row("system", "Usage: /memory [all|user|project]")]);
+      ctx.setRows((current) => [...current, createRow("system", "Usage: /memory [all|user|project]")]);
       return { stop: true, userText: text };
     }
     const memories = await memoryApi.listMemories({ scope });
     if (memories.length === 0) {
       const scopeLabel = scope === "all" ? "" : `${scope} `;
-      ctx.setRows((current) => [...current, row("system", `No ${scopeLabel}memory saved yet.`)]);
+      ctx.setRows((current) => [...current, createRow("system", `No ${scopeLabel}memory saved yet.`)]);
       return { stop: true, userText: text };
     }
-    const lines = memories.slice(0, 10).map((entry) => `${entry.scope}:${entry.id.slice(0, 12)} ${entry.content}`);
+    const lines = memories.slice(0, 10).map((entry) => `${entry.scope}:${entry.id} ${entry.content}`);
     const header = scope === "all" ? `Memory ${memories.length}` : `${scopeLabel(scope)} memory ${memories.length}`;
-    ctx.setRows((current) => [...current, row("system", `${header}\n\n${lines.join("\n")}`)]);
+    ctx.setRows((current) => [...current, createRow("system", `${header}\n\n${lines.join("\n")}`)]);
     return { stop: true, userText: text };
   }
 
@@ -357,7 +371,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     const last = ctx.tokenUsage.length > 0 ? ctx.tokenUsage[ctx.tokenUsage.length - 1] : null;
     ctx.setRows((current) => [
       ...current,
-      row("system", formatTokenUsageOutput(last, ctx.tokenUsage), false, "tokenOutput"),
+      createRow("system", formatTokenUsageOutput(last, ctx.tokenUsage), { style: "tokenOutput" }),
     ]);
     return { stop: true, userText: text };
   }
@@ -380,16 +394,16 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     }
     const content = contentParts.join(" ").trim();
     if (!content) {
-      ctx.setRows((current) => [...current, row("system", "Usage: /remember [--user|--project] <memory text>")]);
+      ctx.setRows((current) => [...current, createRow("system", "Usage: /remember [--user|--project] <memory text>")]);
       return { stop: true, userText: text };
     }
     try {
       const entry = await memoryApi.addMemory(content, { scope });
-      ctx.setRows((current) => [...current, row("system", `Saved ${entry.scope} memory: ${content}`)]);
+      ctx.setRows((current) => [...current, createRow("system", `Saved ${entry.scope} memory: ${content}`)]);
     } catch (error) {
       ctx.setRows((current) => [
         ...current,
-        row("system", error instanceof Error ? error.message : "Failed to save memory."),
+        createRow("system", error instanceof Error ? error.message : "Failed to save memory."),
       ]);
     }
     return { stop: true, userText: text };
@@ -408,8 +422,8 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     ctx.setCurrentSession(next);
     ctx.setTokenUsage?.(() => []);
     ctx.setRows(() => [
-      row("user", text),
-      row("system", `Started new session: ${next.id.slice(0, 12)}`, true, "sessionStatus"),
+      createRow("user", text),
+      createRow("system", `Started new session: ${next.id}`, { dim: true, style: "sessionStatus" }),
     ]);
     ctx.setValue("");
     ctx.setShowShortcuts(() => false);
@@ -432,7 +446,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       return dispatchSlashCommand({ ...ctx, text: correctedText, resolvedText: correctedText });
     }
     pushUserCommandRow();
-    ctx.setRows((current) => [...current, row("system", `Unknown command: ${text}`)]);
+    ctx.setRows((current) => [...current, createRow("system", `Unknown command: ${text}`)]);
     return { stop: true, userText: text };
   }
 

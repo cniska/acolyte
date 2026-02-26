@@ -1,5 +1,5 @@
 import { setPermissionMode } from "./app-config";
-import type { ChatRow, TokenUsageEntry } from "./chat-commands";
+import { type ChatRow, createRow, type TokenUsageEntry } from "./chat-commands";
 import type { PickerState } from "./chat-picker";
 import {
   boundedSkillInstructions,
@@ -51,10 +51,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
   const openSkillsPanel = async (): Promise<void> => {
     const skills = await listSkills();
     if (skills.length === 0) {
-      input.setRows((current) => [
-        ...current,
-        { id: `row_${crypto.randomUUID()}`, role: "system", content: "No skills found in ./skills." },
-      ]);
+      input.setRows((current) => [...current, createRow("system", "No skills found in ./skills.")]);
       return;
     }
     input.setPicker(
@@ -70,10 +67,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
   const openResumePanel = (): void => {
     const nextPicker = createResumePicker(input.store);
     if (!nextPicker) {
-      input.setRows((current) => [
-        ...current,
-        { id: `row_${crypto.randomUUID()}`, role: "system", content: "No saved sessions." },
-      ]);
+      input.setRows((current) => [...current, createRow("system", "No saved sessions.")]);
       return;
     }
     input.setPicker(nextPicker);
@@ -116,24 +110,10 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
             const msg = input.createMessage("system", `Active skill (${selected.name}):\n${boundedInstructions}`);
             input.currentSession.messages.push(msg);
             input.currentSession.updatedAt = input.nowIso();
-            input.setRows((current) => [
-              ...current,
-              {
-                id: `row_${crypto.randomUUID()}`,
-                role: "system",
-                content: `Activated skill: ${selected.name}`,
-              },
-            ]);
+            input.setRows((current) => [...current, createRow("system", `Activated skill: ${selected.name}`)]);
             await input.persist();
           } catch {
-            input.setRows((current) => [
-              ...current,
-              {
-                id: `row_${crypto.randomUUID()}`,
-                role: "system",
-                content: `Failed to activate skill: ${selected.name}`,
-              },
-            ]);
+            input.setRows((current) => [...current, createRow("system", `Failed to activate skill: ${selected.name}`)]);
           }
         }
         input.setPicker(null);
@@ -148,20 +128,12 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
             setPermissionMode(selected.mode);
             input.setRows((current) => [
               ...current,
-              {
-                id: `row_${crypto.randomUUID()}`,
-                role: "system",
-                content: `Changed permissions to ${selected.mode} (project).`,
-              },
+              createRow("system", `Changed permissions to ${selected.mode} (project).`),
             ]);
           } catch (error) {
             input.setRows((current) => [
               ...current,
-              {
-                id: `row_${crypto.randomUUID()}`,
-                role: "system",
-                content: error instanceof Error ? error.message : "Failed to set permission mode.",
-              },
+              createRow("system", error instanceof Error ? error.message : "Failed to set permission mode."),
             ]);
           }
         }
@@ -183,14 +155,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
       case "clarifyAnswer": {
         const answer = state.note.trim();
         if (answer.length === 0) {
-          input.setRows((current) => [
-            ...current,
-            {
-              id: `row_${crypto.randomUUID()}`,
-              role: "system",
-              content: "Please enter an answer before continuing.",
-            },
-          ]);
+          input.setRows((current) => [...current, createRow("system", "Please enter an answer before continuing.")]);
           return;
         }
         const answers = [...state.answers, { question: state.question, answer }];
@@ -207,12 +172,11 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
         );
         input.setRows((current) => [
           ...current,
-          {
-            id: `row_${crypto.randomUUID()}`,
-            role: "assistant",
-            content: `Captured ${answers.length} clarification${answers.length === 1 ? "" : "s"}. Continuing…`,
-            dim: true,
-          },
+          createRow(
+            "assistant",
+            `Captured ${answers.length} clarification${answers.length === 1 ? "" : "s"}. Continuing…`,
+            { dim: true },
+          ),
         ]);
         input.setPicker(null);
         return;
@@ -224,35 +188,17 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
             await input.setServerPermissionMode("write");
             await input.persistPermissionMode("write", "project");
             setPermissionMode("write");
-            input.setRows((current) => [
-              ...current,
-              {
-                id: `row_${crypto.randomUUID()}`,
-                role: "system",
-                content: "Switched to write mode.",
-              },
-            ]);
+            input.setRows((current) => [...current, createRow("system", "Switched to write mode.")]);
             input.setValue("");
             input.queueInput(input.buildWriteResumePayload(state.prompt));
           } catch (error) {
             input.setRows((current) => [
               ...current,
-              {
-                id: `row_${crypto.randomUUID()}`,
-                role: "system",
-                content: error instanceof Error ? error.message : "Failed to switch permission mode.",
-              },
+              createRow("system", error instanceof Error ? error.message : "Failed to switch permission mode."),
             ]);
           }
         } else {
-          input.setRows((current) => [
-            ...current,
-            {
-              id: `row_${crypto.randomUUID()}`,
-              role: "system",
-              content: "Staying in read mode.",
-            },
-          ]);
+          input.setRows((current) => [...current, createRow("system", "Staying in read mode.")]);
         }
         input.setPicker(null);
         return;

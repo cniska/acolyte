@@ -1,23 +1,10 @@
 import type { TokenUsage } from "./api";
-import type { ChatRow, TokenUsageEntry } from "./chat-commands";
+import { type ChatRow, createRow, type TokenUsageEntry } from "./chat-commands";
 import { extractAtReferencePaths } from "./chat-file-ref";
 import { formatThoughtDuration } from "./chat-formatters";
 import type { Client, StreamEvent } from "./client";
 import { buildFileContext } from "./file-context";
 import type { Message, Session } from "./types";
-
-function row(
-  role: ChatRow["role"],
-  content: string,
-  dim = false,
-  style?: ChatRow["style"],
-  meta?: {
-    toolCallId?: string;
-    toolName?: string;
-  },
-): ChatRow {
-  return { id: `row_${crypto.randomUUID()}`, role, content, dim, style, ...meta };
-}
 
 export function estimateTokenUsageFallback(prompt: string, output: string): TokenUsage {
   const promptTokens = Math.ceil(prompt.length / 4);
@@ -48,7 +35,7 @@ export async function resolveReferencedFileContext(userText: string): Promise<{
 }
 
 export function unresolvedPathRows(unresolvedPaths: string[]): ChatRow[] {
-  return unresolvedPaths.map((pathInput) => row("system", `No file or folder found: @${pathInput}`));
+  return unresolvedPaths.map((pathInput) => createRow("system", `No file or folder found: @${pathInput}`));
 }
 
 export function appendInputHistory(history: string[], value: string, maxEntries = 200): string[] {
@@ -138,7 +125,7 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
   const assistantMessage = params.createMessage("assistant", reply.output);
   const rows: ChatRow[] = [];
   if (reply.output.trim().length > 0) {
-    rows.push(row("assistant", reply.output));
+    rows.push(createRow("assistant", reply.output));
   }
   const tokenEntry: TokenUsageEntry = {
     id: assistantMessage.id,
@@ -149,7 +136,7 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
 
   const durationMs = Date.now() - params.thinkingStartedAt;
   if (durationMs >= 300) {
-    rows.push(row("assistant", `Worked for ${formatThoughtDuration(durationMs)}`, true));
+    rows.push(createRow("assistant", `Worked for ${formatThoughtDuration(durationMs)}`, { dim: true }));
   }
 
   return {

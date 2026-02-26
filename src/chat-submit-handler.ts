@@ -1,6 +1,6 @@
 import { formatToolHeader } from "./agent";
 import { appConfig } from "./app-config";
-import { type ChatRow, dispatchSlashCommand, type TokenUsageEntry } from "./chat-commands";
+import { type ChatRow, createRow, dispatchSlashCommand, type TokenUsageEntry } from "./chat-commands";
 import { invalidateRepoPathCandidates } from "./chat-file-ref";
 import { createProgressTracker } from "./chat-progress";
 import { isKnownSlashToken, resolveSlashAlias } from "./chat-slash";
@@ -13,6 +13,7 @@ import {
 } from "./chat-turn";
 import type { Client } from "./client";
 import { addMemory } from "./memory";
+import { createId } from "./short-id";
 import type { Message, Session, SessionStore } from "./types";
 
 type CreateSubmitHandlerInput = {
@@ -322,20 +323,12 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         const assistant = input.createMessage("assistant", confirmation);
         input.currentSession.messages.push(assistant);
         input.currentSession.updatedAt = input.nowIso();
-        input.setRows((current) => [
-          ...current,
-          { id: `row_${crypto.randomUUID()}`, role: "system", content: confirmation, dim: true },
-        ]);
+        input.setRows((current) => [...current, createRow("system", confirmation, { dim: true })]);
         await input.persist();
       } catch (error) {
         input.setRows((current) => [
           ...current,
-          {
-            id: `row_${crypto.randomUUID()}`,
-            role: "system",
-            content: error instanceof Error ? error.message : "Failed to save memory.",
-            dim: true,
-          },
+          createRow("system", error instanceof Error ? error.message : "Failed to save memory.", { dim: true }),
         ]);
       } finally {
         input.setIsThinking(false);
@@ -374,11 +367,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
           if (statusPermissionMode(status) === "read") {
             input.setRows((current) => [
               ...current,
-              {
-                id: `row_${crypto.randomUUID()}`,
-                role: "system",
-                content: "Write request needs confirmation in read mode.",
-              },
+              createRow("system", "Write request needs confirmation in read mode."),
             ]);
             input.openWriteConfirmPanel(text);
             return;
@@ -445,7 +434,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       }
       input.setRows((current) => {
         if (!streamingAssistantRowId) {
-          streamingAssistantRowId = `row_${crypto.randomUUID()}`;
+          streamingAssistantRowId = `row_${createId()}`;
           return [
             ...current,
             {
@@ -480,7 +469,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
           streamFlushTimer = null;
         }
         const header = formatToolHeader(entry.toolName, entry.args);
-        const rowId = `row_${crypto.randomUUID()}`;
+        const rowId = `row_${createId()}`;
         toolRowIdByCallId.set(entry.toolCallId, rowId);
         toolSeenLinesByCallId.set(entry.toolCallId, new Set([header.toLowerCase()]));
         const toolRow: ChatRow = {
@@ -516,7 +505,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
           const existingIndex = existingRowId ? current.findIndex((row) => row.id === existingRowId) : -1;
           const existingRow = existingIndex >= 0 ? current[existingIndex] : undefined;
           if (!existingRow) {
-            const rowId = `row_${crypto.randomUUID()}`;
+            const rowId = `row_${createId()}`;
             toolRowIdByCallId.set(entry.toolCallId, rowId);
             return [
               ...current,
@@ -550,16 +539,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
           if (last?.style === "error" && last.content === error) {
             return current;
           }
-          return [
-            ...current,
-            {
-              id: `row_${crypto.randomUUID()}`,
-              role: "system",
-              content: error,
-              dim: true,
-              style: "error",
-            },
-          ];
+          return [...current, createRow("system", error, { dim: true, style: "error" })];
         });
       },
     });
@@ -637,13 +617,8 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         input.currentSession.updatedAt = input.nowIso();
         await input.persist().catch(() => {});
       }
-      const row: ChatRow = {
-        id: `row_${crypto.randomUUID()}`,
-        role: "system",
-        content: isAbortError(error) ? "Interrupted." : formatSubmitError(error),
-        dim: isAbortError(error),
-      };
-      input.setRows((current) => [...current, row]);
+      const errorContent = isAbortError(error) ? "Interrupted." : formatSubmitError(error);
+      input.setRows((current) => [...current, createRow("system", errorContent, { dim: isAbortError(error) })]);
     } finally {
       if (streamFlushTimer) {
         clearTimeout(streamFlushTimer);
