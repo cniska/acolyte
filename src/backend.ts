@@ -1,3 +1,4 @@
+import { z } from "zod";
 import type { ChatRequest, ChatResponse } from "./api";
 import { appConfig, type PermissionMode, setPermissionMode } from "./app-config";
 import { isProviderAvailable, providerFromModel } from "./provider-config";
@@ -17,6 +18,33 @@ export type ChatProgressEvent = {
   toolName?: string;
   phase?: "tool_start" | "tool_chunk" | "tool_end";
 };
+
+export const streamEventSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("text-delta"), text: z.string() }),
+  z.object({ type: z.literal("reasoning"), text: z.string() }),
+  z.object({
+    type: z.literal("tool-call"),
+    toolCallId: z.string(),
+    toolName: z.string(),
+    args: z.record(z.string(), z.unknown()).default({}),
+  }),
+  z.object({
+    type: z.literal("tool-output"),
+    toolCallId: z.string(),
+    toolName: z.string(),
+    content: z.string(),
+  }),
+  z.object({
+    type: z.literal("tool-result"),
+    toolCallId: z.string(),
+    toolName: z.string(),
+    isError: z.boolean().optional(),
+  }),
+  z.object({ type: z.literal("status"), message: z.string() }),
+  z.object({ type: z.literal("error"), error: z.string() }),
+]);
+
+export type StreamEvent = z.infer<typeof streamEventSchema>;
 
 export interface Backend {
   reply(input: ChatRequest, options?: { signal?: AbortSignal }): Promise<ChatResponse>;
@@ -519,6 +547,11 @@ function parseProgressEvents(events: unknown): ChatProgressEvent[] {
       return normalized;
     })
     .filter((entry): entry is ChatProgressEvent => entry !== null);
+}
+
+export function parseStreamEvent(raw: unknown): StreamEvent | null {
+  const result = streamEventSchema.safeParse(raw);
+  return result.success ? result.data : null;
 }
 
 function parseChatResponse(payload: unknown, fallbackModel: string): ChatResponse | null {
