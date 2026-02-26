@@ -28,13 +28,16 @@ function emitResultChunks(
   if (!onToolOutput) {
     return;
   }
-  const lines = result
+  const allLines = result
     .split("\n")
     .map((line) => line.trimEnd())
-    .filter((line) => line.length > 0)
-    .slice(0, maxLines);
+    .filter((line) => line.length > 0);
+  const lines = allLines.slice(0, maxLines);
   for (const line of lines) {
     onToolOutput({ toolName, message: line, toolCallId });
+  }
+  if (allLines.length > maxLines) {
+    onToolOutput({ toolName, message: `… ${allLines.length - maxLines} lines truncated`, toolCallId });
   }
 }
 
@@ -49,7 +52,10 @@ function unifiedDiffLines(rawResult: string, maxLines = 120): string[] {
     .slice(start)
     .split("\n")
     .map((line) => line.trimEnd());
-  return lines.slice(0, maxLines);
+  if (lines.length > maxLines) {
+    return lines.slice(0, maxLines);
+  }
+  return lines;
 }
 
 function numberedUnifiedDiffLines(rawResult: string, maxLines = 160): string[] {
@@ -92,7 +98,11 @@ function numberedUnifiedDiffLines(rawResult: string, maxLines = 160): string[] {
     }
     rendered.push(line);
   }
-  return rendered.slice(0, maxLines);
+  if (rendered.length > maxLines) {
+    const omitted = rendered.length - maxLines;
+    return [...rendered.slice(0, maxLines), `… ${omitted} lines truncated`];
+  }
+  return rendered;
 }
 
 function streamCallId(toolName: string): string {
