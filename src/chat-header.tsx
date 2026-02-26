@@ -31,26 +31,34 @@ export function ChatHeader(props: ChatHeaderProps): React.ReactNode {
   return (
     <>
       <Box>
+        <Text> </Text>
         <Box width={logoColumnWidth}>
           <Text color={logoColor}>{logoTop}</Text>
         </Box>
-        <Text>{"  "}</Text>
-        <Text color={brandColor} bold>{`${title?.text ?? ""}${title?.suffix ?? ""}`}</Text>
+        <Text> </Text>
+        <Text color={brandColor} bold>
+          {title?.text ?? ""}
+        </Text>
+        <Text color={brandColor} dimColor>
+          {title?.suffix ?? ""}
+        </Text>
       </Box>
       <Box>
+        <Text> </Text>
         <Box width={logoColumnWidth}>
           <Text color={logoColor}>{logoMiddleLeft}</Text>
           <Text color={logoEyeColor}>{logoMiddleEyes}</Text>
           <Text color={logoColor}>{logoMiddleRight}</Text>
         </Box>
-        <Text>{"  "}</Text>
+        <Text> </Text>
         <Text dimColor={Boolean(session?.dim)}>{session?.text ?? ""}</Text>
       </Box>
       <Box>
+        <Text> </Text>
         <Box width={logoColumnWidth}>
           <Text color={logoColor}>{logoBottom}</Text>
         </Box>
-        <Text>{"  "}</Text>
+        <Text> </Text>
         <Text dimColor={Boolean(cwd?.dim)}>{cwd?.text ?? ""}</Text>
       </Box>
     </>

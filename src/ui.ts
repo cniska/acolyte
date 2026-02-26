@@ -1,9 +1,14 @@
 import { stdout } from "node:process";
+import { palette } from "./palette";
+
+function hexToAnsi(hex: string): string {
+  const n = Number.parseInt(hex.replace("#", ""), 16);
+  return `\x1b[38;2;${(n >> 16) & 255};${(n >> 8) & 255};${n & 255}m`;
+}
 
 const color = {
   dim: (value: string): string => `\x1b[2m${value}\x1b[22m`,
-  // Default brand accent (used only where requested).
-  brand: (value: string): string => `\x1b[38;2;165;110;255m${value}\x1b[39m`,
+  brand: (value: string): string => `${hexToAnsi(palette.brand)}${value}\x1b[39m`,
   white: (value: string): string => `\x1b[37m${value}\x1b[39m`,
   green: (value: string): string => `\x1b[32m${value}\x1b[39m`,
   yellow: (value: string): string => `\x1b[33m${value}\x1b[39m`,
