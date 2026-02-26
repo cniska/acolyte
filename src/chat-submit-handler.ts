@@ -538,6 +538,12 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
           return next;
         });
       },
+      onToolResult: (entry) => {
+        const rowId = toolRowIdByCallId.get(entry.toolCallId);
+        if (!rowId) return;
+        const status: ChatRow["toolStatus"] = entry.isError ? "error" : "ok";
+        input.setRows((current) => current.map((row) => (row.id === rowId ? { ...row, toolStatus: status } : row)));
+      },
       onError: (error) => {
         input.setRows((current) => [
           ...current,

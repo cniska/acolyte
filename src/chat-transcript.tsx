@@ -80,7 +80,7 @@ function renderStatusContent(content: string): React.ReactNode {
   );
 }
 
-function renderToolProgressContent(content: string, width?: number): React.ReactNode {
+function renderToolProgressContent(content: string): React.ReactNode {
   const lines = content.split("\n");
   const parsedLines = lines.map((line) => parseToolProgressLine(line));
   const lineNumberWidth = Math.max(
@@ -111,24 +111,14 @@ function renderToolProgressContent(content: string, width?: number): React.React
                 )}
               </>
             ) : parsed.kind === "numberedDiff" ? (
-              (() => {
-                const raw = `${parsed.lineNumber.padStart(lineNumberWidth, " ")} ${parsed.marker}${parsed.text.length > 0 ? parsed.text : " "}`;
-                const padded = width && raw.length < width ? raw.padEnd(width) : raw;
-                return (
-                  <Text
-                    color={parsed.marker === "+" ? palette.diffAdd : palette.diffRemove}
-                    backgroundColor={parsed.marker === "+" ? palette.diffAddBg : palette.diffRemoveBg}
-                  >
-                    {padded}
-                  </Text>
-                );
-              })()
-            ) : parsed.kind === "numberedContext" ? (
               <>
                 <Text dimColor>{parsed.lineNumber.padStart(lineNumberWidth, " ")}</Text>
-                <Text>{parsed.spacing}</Text>
-                <Text>{parsed.text}</Text>
+                <Text color={parsed.marker === "+" ? palette.diffAdd : palette.diffRemove}>{`  ${parsed.text}`}</Text>
               </>
+            ) : parsed.kind === "numberedContext" ? (
+              <Text dimColor>
+                {`${parsed.lineNumber.padStart(lineNumberWidth, " ")}${parsed.spacing}${parsed.text}`}
+              </Text>
             ) : parsed.kind === "commandOutput" ? (
               parsed.stream === "err" ? (
                 <Text dimColor color={palette.diffRemove}>
@@ -162,7 +152,7 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
   const gray = Math.round(24 + easedIntensity * (255 - 24));
   const channel = gray.toString(16).padStart(2, "0");
   const pulseColor = `#${channel}${channel}${channel}`;
-  const pulseGlyph = "●";
+  const pulseGlyph = "•";
   const hasContent = rows.length > 0 || isThinking;
   const elapsedSec =
     isThinking && typeof thinkingStartedAt === "number"
@@ -199,15 +189,21 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
               row.role === "assistant" && row.style === "sessionsList" ? parseSessionsHeader(row.content) : null;
             const dimMarker = Boolean(row.dim) || Boolean(sessionStatus);
             let marker = "  ";
+            let markerColor: string | undefined;
             if (row.role === "user") {
               marker = "❯ ";
             } else if (row.role === "assistant") {
               marker = "• ";
             }
+            if (row.style === "toolProgress" && row.toolStatus) {
+              markerColor = row.toolStatus === "ok" ? palette.diffAdd : palette.diffRemove;
+            }
             return (
               <Box>
                 <Box width={2}>
-                  <Text dimColor={dimMarker}>{marker}</Text>
+                  <Text dimColor={!markerColor && dimMarker} color={markerColor}>
+                    {marker}
+                  </Text>
                 </Box>
                 <Box width={row.style === "toolProgress" ? toolContentWidth : contentWidth}>
                   {sessionStatus ? (
@@ -226,7 +222,7 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
                   ) : row.role === "system" && (row.style === "statusOutput" || row.style === "tokenOutput") ? (
                     <Text>{renderStatusContent(row.content)}</Text>
                   ) : row.role === "assistant" && row.style === "toolProgress" ? (
-                    <Text>{renderToolProgressContent(row.content, toolContentWidth)}</Text>
+                    <Text>{renderToolProgressContent(row.content)}</Text>
                   ) : (
                     <Text dimColor={Boolean(row.dim)}>
                       {row.role === "assistant" ? renderAssistantContent(row.content, contentWidth) : row.content}

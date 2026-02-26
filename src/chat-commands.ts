@@ -17,6 +17,7 @@ export type ChatRow = {
   style?: "sessionStatus" | "sessionsList" | "toolProgress" | "statusOutput" | "tokenOutput";
   toolCallId?: string;
   toolName?: string;
+  toolStatus?: "ok" | "error";
 };
 
 export type TokenUsageEntry = SessionTokenUsageEntry;
