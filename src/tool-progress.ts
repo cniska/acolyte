@@ -53,7 +53,7 @@ export function parseToolProgressLine(line: string): ToolProgressParsedLine {
   if (line.startsWith("- ")) {
     return { kind: "plainDiff", marker: "-", text: line };
   }
-  if (/^[…(]/.test(line) && /truncat|omit|output\)?$/i.test(line)) {
+  if (line === "…" || (/^[…(]/.test(line) && /truncat|omit|output\)?$/i.test(line))) {
     return { kind: "meta", text: line };
   }
   return { kind: "text", text: line };

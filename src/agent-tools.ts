@@ -425,14 +425,19 @@ export async function fetchWeb(urlInput: string, maxChars = 5000): Promise<strin
   let redirects = 0;
 
   while (redirects <= 3) {
-    const response = await fetch(current.toString(), {
-      redirect: "manual",
-      headers: {
-        "user-agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36",
-      },
-      signal: AbortSignal.timeout(15_000),
-    });
+    let response: Response;
+    try {
+      response = await fetch(current.toString(), {
+        redirect: "manual",
+        headers: {
+          "user-agent":
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36",
+        },
+        signal: AbortSignal.timeout(15_000),
+      });
+    } catch {
+      throw new Error(`Failed to fetch ${current.toString()} — site may be unreachable or URL is invalid.`);
+    }
     if (response.status >= 300 && response.status < 400) {
       const location = response.headers.get("location");
       if (!location) {
