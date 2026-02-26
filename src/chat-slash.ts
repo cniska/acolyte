@@ -1,4 +1,4 @@
-export const CHAT_SLASH_COMMANDS = [
+const CHAT_SLASH_COMMANDS = [
   "/dogfood",
   "/df",
   "/new",

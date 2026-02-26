@@ -2,7 +2,6 @@ import { readResolvedConfigSync } from "./config";
 import { env } from "./env";
 
 export type PermissionMode = "read" | "write";
-export type ModelProvider = "openai" | "anthropic" | "gemini" | "openai-compatible" | "mock";
 
 const fileConfig = readResolvedConfigSync();
 

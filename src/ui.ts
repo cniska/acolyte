@@ -1,4 +1,3 @@
-import { homedir } from "node:os";
 import { stdout } from "node:process";
 
 const color = {
@@ -14,21 +13,6 @@ const color = {
 
 export function formatCliTitle(version: string): string {
   return `${color.bold(color.brand("Acolyte"))}${color.dim(color.brand(` v${version}`))}`;
-}
-
-export function banner(model: string, sessionId: string, version: string): void {
-  const cwd = process.cwd();
-  const home = homedir();
-  let shownCwd = cwd;
-  if (cwd === home) {
-    shownCwd = "~";
-  } else if (cwd.startsWith(`${home}/`)) {
-    shownCwd = `~${cwd.slice(home.length)}`;
-  }
-  stdout.write(`${formatCliTitle(version)}\n`);
-  stdout.write(`${model} ${color.dim("· session")} ${sessionId.slice(0, 12)}\n`);
-  stdout.write(`${color.dim(shownCwd)}\n`);
-  stdout.write("\n");
 }
 
 export function tokenizeStreamContent(content: string): string[] {
@@ -49,10 +33,6 @@ export async function streamText(content: string): Promise<void> {
 
 export function printInfo(content: string): void {
   stdout.write(`${color.dim(content)}\n`);
-}
-
-export function printSection(title: string): void {
-  stdout.write(`${color.bold(color.brand(title))}\n`);
 }
 
 export function printToolHeader(title: string, detail?: string): void {

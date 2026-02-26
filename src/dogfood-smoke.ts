@@ -21,7 +21,7 @@ type SmokeArgs = {
 
 const COMMAND_TIMEOUT_MS = 120_000;
 
-export const checks: SmokeCheck[] = [
+const checks: SmokeCheck[] = [
   {
     name: "status",
     cmd: ["bun", "run", "src/cli.ts", "status"],
@@ -44,7 +44,7 @@ export const checks: SmokeCheck[] = [
   },
 ];
 
-export async function runCommand(
+async function runCommand(
   cmd: string[],
   timeoutMs = COMMAND_TIMEOUT_MS,
   envOverride?: Record<string, string>,
@@ -420,7 +420,7 @@ async function runMultiFileCodingTaskSmoke(
   }
 }
 
-export async function main(): Promise<void> {
+async function main(): Promise<void> {
   const argv = process.argv.slice(2);
   if (argv.includes("--help") || argv.includes("-h")) {
     printUsage();

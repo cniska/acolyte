@@ -15,7 +15,7 @@ const STAGE_PREFIXES = [
   "Summarizing...",
 ] as const;
 
-export function isStageProgressMessage(message: string): boolean {
+function isStageProgressMessage(message: string): boolean {
   const trimmed = message.trim();
   if (trimmed.startsWith("Retrying with ")) {
     return false;

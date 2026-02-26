@@ -267,7 +267,7 @@ function serializeToml(config: AcolyteConfig): string {
   return `${lines.join("\n")}${lines.length > 0 ? "\n" : ""}`;
 }
 
-export function resolveConfig(config: AcolyteConfig): ResolvedAcolyteConfig {
+function resolveConfig(config: AcolyteConfig): ResolvedAcolyteConfig {
   const model = config.model ?? DEFAULT_CONFIG.model;
   return {
     port: config.port ?? DEFAULT_CONFIG.port,
@@ -349,12 +349,3 @@ export async function readConfigForScope(
 ): Promise<AcolyteConfig> {
   return readConfigScope(scope, options);
 }
-
-export function readConfigForScopeSync(scope: ConfigScope, options?: Omit<ConfigOptions, "scope">): AcolyteConfig {
-  return readConfigScopeSync(scope, options);
-}
-export const __internal = {
-  toConfig,
-  serializeToml,
-  resolvePaths,
-};
