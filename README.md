@@ -25,7 +25,7 @@ That starts backend watch mode and chat.
 - Start app: `bun run start`
 - Chat (backend already running): `acolyte`
 - Resume session: `acolyte resume <session-id-prefix>`
-- One-shot prompt: `bun run run "review src/agent.ts"`
+- Run mode: `acolyte run "review src/agent.ts"`
 - Verify: `bun run verify`
 - Status: `bun run src/cli.ts status`
 - Memory context: `acolyte memory context [all|user|project]`
@@ -91,8 +91,4 @@ omReflectionTokens = 8000
 
 ## Docs
 
-- Features: `docs/features.md`
-- Plan: `docs/project-plan.md`
-- Development workflow: `docs/development-workflow.md`
-- Talk notes: `docs/talk-notes.md`
-- Agent policy: `AGENTS.md`
+See [`docs/`](docs/) for project documentation and [`AGENTS.md`](AGENTS.md) for agent policy.

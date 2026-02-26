@@ -46,5 +46,4 @@ If validation fails:
 3. Keep command docs in `README.md` current.
 
 ## Reference
-For full process details and completion criteria, follow:
-- `docs/development-workflow.md`
+- `AGENTS.md` for project rules and validation gates.

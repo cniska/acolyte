@@ -37,13 +37,13 @@ Canonical source of truth for what works, what doesn't, and what's planned.
 - Configurable token budgets with hard max caps.
 
 ### Diagnostics
-- `/status` with provider/model details, provider readiness, memory context count.
+- `/status` with provider, model, memory, and OM details.
 - `/tokens` with per-turn model-call counts, token usage, and budget warnings.
 - `/sessions` for session listing.
 - All diagnostic output is system-scoped and scan-friendly.
 
-### One-Shot Mode
-- `bun run run "prompt"` for single requests (isolated, no session persistence).
+### Run Mode
+- `acolyte run "prompt"` for single requests outside interactive chat.
 - File attachment support (`--file`), verify mode (`--verify`), configurable timeout.
 - Non-zero exit on failures for scripting/automation.
 

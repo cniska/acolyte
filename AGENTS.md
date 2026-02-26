@@ -56,7 +56,7 @@
 ## Documentation
 
 - Update docs when behavior or contracts change.
-- Keep `docs/project-plan.md` and `docs/talk-notes.md` updated continuously as implementation evolves.
+- Keep `docs/` updated as implementation evolves.
 - For autonomous feature implementation, use the repo skill `skills/dogfood/SKILL.md`.
 - Keep this file policy-only. Procedural workflows can be added later as reusable skills.
 
