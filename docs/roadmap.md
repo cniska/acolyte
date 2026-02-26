@@ -50,7 +50,8 @@ End-to-end autonomous execution: plan, edit, verify, iterate.
 - [x] Iterate-on-failure (read errors, fix, re-verify)
 - [x] Line width detection enforces project formatting rules
 - [x] Run summary debug event for failure tracking
-- [ ] Configurable model per mode (e.g. cheaper model for explore/ask)
+- [x] Configurable model per mode (e.g. cheaper model for explore/ask)
+- [x] Single-match guard on edit-file to prevent unintended multi-replacements
 - [ ] Multi-step soak: sustained successful runs across multiple days
 
 ### Milestone 6: Memory Quality
