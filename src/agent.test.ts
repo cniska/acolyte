@@ -316,7 +316,7 @@ describe("createInstructions", () => {
   test("enforces tool-first execution guidance", () => {
     const out = createInstructions("Base instructions.");
     expect(out).toContain("Default to tool execution.");
-    expect(out).toContain("Before the first tool call, output one short intent line");
+    expect(out).toContain("Before the first tool call, briefly explain what you're about to do");
     expect(out).toContain("execute the file tool action immediately in the same turn");
     expect(out).toContain("For requests that create a new file, call `edit-file` with full file content directly");
     expect(out).toContain("For edit/update requests, check the target file with `read-file` first");
@@ -328,14 +328,13 @@ describe("createInstructions", () => {
 
   test("forbids save-as advisory responses", () => {
     const out = createInstructions("Base instructions.");
-    expect(out).toContain("Forbidden: replying with 'save this as ...'");
+    expect(out).toContain("Never reply with 'save this as ...'");
   });
 
   test("uses concise outcome-focused completion guidance", () => {
     const out = createInstructions("Base instructions.");
     expect(out).toContain("summarize what changed instead of narrating each step");
-    expect(out).toContain("Before finishing, output one short closing summary");
-    expect(out).toContain("Completed`, `Changes`, `Verification`, and `Notes`");
+    expect(out).toContain("End with a brief natural summary");
   });
 
   test("allows one clarification only when blocked and avoids option menus", () => {
@@ -343,7 +342,7 @@ describe("createInstructions", () => {
     expect(out).toContain("ask one short clarification question, then continue");
     expect(out).toContain("Avoid option menus for straightforward tasks");
     expect(out).toContain("one short line stating no changes were needed");
-    expect(out).toContain("Do not start final replies with action preambles like");
+    expect(out).toContain("lead with outcomes, not action preambles");
   });
 });
 
