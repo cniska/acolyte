@@ -137,7 +137,9 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
 
   const assistantMessage = params.createMessage("assistant", reply.output);
   const rows: ChatRow[] = [];
-  rows.push(row("assistant", reply.output));
+  if (reply.output.trim().length > 0) {
+    rows.push(row("assistant", reply.output));
+  }
   const tokenEntry: TokenUsageEntry = {
     id: assistantMessage.id,
     usage: reply.usage ?? estimateTokenUsageFallback(params.userText, reply.output),

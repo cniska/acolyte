@@ -12,9 +12,9 @@ describe("chat-content helpers", () => {
     expect(sanitizeAssistantContent(raw)).toBe(["1. First finding", "2. Second finding"].join("\n"));
   });
 
-  test("sanitizeAssistantContent returns fallback when everything is stripped", () => {
+  test("sanitizeAssistantContent returns empty when everything is stripped", () => {
     const raw = ["Tools used: search-files", "Evidence: src/cli.ts:1"].join("\n");
-    expect(sanitizeAssistantContent(raw)).toBe("No output.");
+    expect(sanitizeAssistantContent(raw)).toBe("");
   });
 
   test("tokenizeForHighlighting tags code, paths, and command keywords", () => {

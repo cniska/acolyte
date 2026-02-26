@@ -14,7 +14,7 @@ export function sanitizeAssistantContent(content: string): string {
     .filter((line) => !/^\s*(Tools used:|Evidence:)/.test(line))
     .join("\n")
     .trimEnd();
-  return cleaned.length > 0 ? cleaned : "No output.";
+  return cleaned;
 }
 
 function wrapWithIndent(prefix: string, continuationPrefix: string, body: string, width: number): string[] {
