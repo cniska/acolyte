@@ -1284,7 +1284,9 @@ async function memoryMode(args: string[]): Promise<void> {
 
 async function configMode(args: string[]): Promise<void> {
   const [subcommandRaw, ...restArgs] = args;
-  const subcommand = subcommandRaw ?? "list";
+  const isImplicitList = !subcommandRaw || subcommandRaw === "--user" || subcommandRaw === "--project";
+  const subcommand = isImplicitList ? "list" : subcommandRaw;
+  const listArgs = isImplicitList && subcommandRaw ? [subcommandRaw, ...restArgs] : restArgs;
   const validKeys = [
     "port",
     "model",
@@ -1316,7 +1318,7 @@ async function configMode(args: string[]): Promise<void> {
   };
 
   if (subcommand === "list") {
-    const scope = parseScopeFlag(restArgs[0]);
+    const scope = parseScopeFlag(listArgs[0]);
     const config = scope ? await readConfigForScope(scope) : await readConfig();
     const maxKey = validKeys.reduce((max, key) => Math.max(max, `${key}:`.length), 0);
     if (scope) {
