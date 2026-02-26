@@ -1,17 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { formatChangesSummary, formatThoughtDuration, formatVerifySummary } from "./chat-formatters";
+import { formatChangesSummary, formatThoughtDuration } from "./chat-formatters";
 
 describe("chat-formatters helpers", () => {
   test("formatThoughtDuration renders ms and s forms", () => {
     expect(formatThoughtDuration(240)).toBe("240ms");
     expect(formatThoughtDuration(1200)).toBe("1.2s");
     expect(formatThoughtDuration(81_900)).toBe("1m 22s");
-  });
-
-  test("formatVerifySummary renders compact pass/fail line", () => {
-    expect(formatVerifySummary("exit_code=0\nduration_ms=1530")).toBe("Verify passed (exit 0, 1.5s).");
-    expect(formatVerifySummary("exit_code=1\nduration_ms=320")).toBe("Verify failed (exit 1, 320ms).");
-    expect(formatVerifySummary("exit_code=nope\nduration_ms=320")).toBe("Verify failed (exit ?, n/a).");
   });
 
   test("formatChangesSummary renders git status and diff totals", () => {

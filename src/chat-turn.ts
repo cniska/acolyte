@@ -1,9 +1,8 @@
-import { runShellCommand } from "./agent-tools";
 import type { TokenUsage } from "./api";
 import type { Backend, StreamEvent } from "./backend";
 import type { ChatRow, TokenUsageEntry } from "./chat-commands";
 import { extractAtReferencePaths } from "./chat-file-ref";
-import { formatThoughtDuration, formatVerifySummary } from "./chat-formatters";
+import { formatThoughtDuration } from "./chat-formatters";
 import { buildFileContext } from "./file-context";
 import type { Message, Session } from "./types";
 
@@ -104,7 +103,6 @@ type RunAssistantTurnParams = {
   sessionId: string;
   signal?: AbortSignal;
   onEvent?: (event: StreamEvent) => void;
-  runVerifyAfterReply: boolean;
   thinkingStartedAt: number;
   createMessage: (role: Message["role"], content: string) => Message;
 };
@@ -146,16 +144,6 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
     warning: reply.budgetWarning,
     modelCalls: reply.modelCalls,
   };
-
-  if (params.runVerifyAfterReply) {
-    rows.push(row("system", "  verifying…", true));
-    try {
-      const verifyResult = await runShellCommand("bun run verify");
-      rows.push(row("assistant", formatVerifySummary(verifyResult)));
-    } catch (error) {
-      rows.push(row("system", error instanceof Error ? error.message : "Verify step failed."));
-    }
-  }
 
   const durationMs = Date.now() - params.thinkingStartedAt;
   if (durationMs >= 300) {

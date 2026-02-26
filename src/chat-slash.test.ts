@@ -14,7 +14,7 @@ describe("chat-slash helpers", () => {
     expect(suggestSlashCommands("/p")).toEqual(["/permissions"]);
     expect(suggestSlashCommands("/s")).toEqual(["/status", "/sessions", "/skills"]);
     expect(suggestSlashCommands("/st")).toEqual(["/status"]);
-    expect(suggestSlashCommands("/d")).toEqual(["/dogfood", "/df", "/distill"]);
+    expect(suggestSlashCommands("/d")).toEqual(["/distill"]);
     expect(suggestSlashCommands("/mem")).toEqual(["/mem", "/memory", "/memory context"]);
     expect(suggestSlashCommands("/memory ")).toEqual([
       "/memory all",
@@ -49,7 +49,6 @@ describe("chat-slash helpers", () => {
   });
 
   test("resolveSlashAlias maps bare and argument forms", () => {
-    expect(resolveSlashAlias("/df")).toBe("/dogfood");
     expect(resolveSlashAlias("/session")).toBe("/sessions");
     expect(resolveSlashAlias("/mem")).toBe("/memory");
     expect(resolveSlashAlias("/mem user")).toBe("/memory user");
@@ -67,14 +66,12 @@ describe("chat-slash helpers", () => {
 
   test("isKnownSlashToken recognizes canonical and alias tokens", () => {
     expect(isKnownSlashToken("/status")).toBe(true);
-    expect(isKnownSlashToken("/df")).toBe(true);
     expect(isKnownSlashToken("/session")).toBe(true);
     expect(isKnownSlashToken("/unknown")).toBe(false);
   });
 
   test("suggestClosestSlashCommand finds nearest known command for typos", () => {
     expect(suggestClosestSlashCommand("/stauts")).toBe("/status");
-    expect(suggestClosestSlashCommand("/dogfodo")).toBe("/dogfood");
     expect(suggestClosestSlashCommand("/status")).toBeNull();
     expect(suggestClosestSlashCommand("plain")).toBeNull();
   });

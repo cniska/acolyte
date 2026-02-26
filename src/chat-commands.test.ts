@@ -167,46 +167,11 @@ describe("chat-commands", () => {
     expect(rows.some((row) => row.content === "No token data yet. Send a prompt first.")).toBe(true);
   });
 
-  test("dispatchSlashCommand returns transformed prompt for /dogfood", async () => {
-    const result = await dispatchSlashCommand({
-      text: "/dogfood tighten output",
-      resolvedText: "/dogfood tighten output",
-      backend: createBackend(),
-      store: createStore(),
-      currentSession: createSession(),
-      setCurrentSession: () => {},
-      toRows: () => [],
-      setRows: () => {},
-      setShowShortcuts: () => {},
-      setValue: () => {},
-      persist: async () => {},
-      exit: () => {},
-      openSkillsPanel: async () => {},
-      openResumePanel: () => {},
-      openPermissionsPanel: () => {},
-      openPolicyPanel: () => {},
-      setBackendPermissionMode: async () => {},
-      setConfigPermissionMode: async () => {},
-      tokenUsage: [],
-    });
-
-    expect(result.stop).toBe(false);
-    expect(result.runVerifyAfterReply).toBe(true);
-    expect(result.userText.startsWith("Dogfood mode:")).toBe(true);
-  });
-
   test("dispatchSlashCommand suggests /skills for /skill typo", async () => {
     const { rows, stop } = await runCommand("/skill");
 
     expect(stop).toBe(true);
     expect(rows.some((row) => row.content.includes("Did you mean /skills?"))).toBe(true);
-  });
-
-  test("dispatchSlashCommand suggests /dogfood for removed /compact aliases", async () => {
-    const { rows, stop } = await runCommand("/compact refactor chat output");
-
-    expect(stop).toBe(true);
-    expect(rows.some((row) => row.content.includes("Did you mean /dogfood?"))).toBe(true);
   });
 
   test("dispatchSlashCommand suggests nearest command for general typo", async () => {

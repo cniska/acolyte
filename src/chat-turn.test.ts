@@ -82,7 +82,6 @@ describe("chat turn helpers", () => {
       history: [],
       model: "gpt-5-mini",
       sessionId: "sess_test",
-      runVerifyAfterReply: false,
       thinkingStartedAt: Date.now(),
       createMessage: (role, content) => ({
         id: "msg_assistant",

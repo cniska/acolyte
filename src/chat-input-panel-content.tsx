@@ -49,7 +49,7 @@ export function renderInputPanelContent(input: SuggestionContentInput): React.Re
       </Text>
     ));
   } else {
-    suggestions = <Text dimColor> ? for shortcuts</Text>;
+    suggestions = <Text dimColor> ? help</Text>;
   }
 
   return (

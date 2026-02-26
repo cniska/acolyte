@@ -1,6 +1,4 @@
 const CHAT_SLASH_COMMANDS = [
-  "/dogfood",
-  "/df",
   "/new",
   "/permissions",
   "/status",
@@ -24,7 +22,6 @@ const MEMORY_CONTEXT_SCOPE_COMMANDS = [
 const MEMORY_SCOPE_COMMANDS = ["/memory all", "/memory user", "/memory project", "/memory context"] as const;
 
 const SLASH_ALIASES: Record<string, string> = {
-  "/df": "/dogfood",
   "/session": "/sessions",
   "/rem": "/remember",
   "/mem": "/memory",

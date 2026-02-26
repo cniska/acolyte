@@ -1,19 +1,18 @@
 import { homedir } from "node:os";
 
 const SHORTCUT_ITEMS = [
-  { key: "@path", description: "attach file/dir context" },
-  { key: "/dogfood <task>", description: "run verify-first coding loop" },
+  { key: "@path", description: "attach file/dir" },
   { key: "/new", description: "new session" },
-  { key: "/permissions", description: "show permission mode" },
-  { key: "/status", description: "show backend status" },
+  { key: "/permissions", description: "permission mode" },
+  { key: "/status", description: "backend status" },
   { key: "/sessions", description: "list sessions" },
   { key: "/resume <id>", description: "resume session" },
-  { key: "/skills", description: "open skills picker" },
-  { key: "/remember [--project] <text>", description: "save memory note" },
-  { key: "/memory [scope|context [scope]]", description: "list memories or injected context (all|user|project)" },
-  { key: "/distill", description: "distill policy from chat logs" },
-  { key: "/tokens", description: "show token usage summary" },
-  { key: "/exit", description: "exit chat" },
+  { key: "/skills", description: "skills picker" },
+  { key: "/remember <text>", description: "save memory note" },
+  { key: "/memory [scope]", description: "list memories" },
+  { key: "/distill", description: "distill policy" },
+  { key: "/tokens", description: "token usage" },
+  { key: "/exit", description: "exit" },
 ] as const;
 
 export function shownCwd(): string {
@@ -38,7 +37,7 @@ export function formatShortcutRows(): string[] {
   const columns = width >= 92 ? 2 : 1;
   const rowsPerColumn = Math.ceil(SHORTCUT_ITEMS.length / columns);
   const colWidth = columns > 1 ? Math.floor((width - 2) / columns) : width - 2;
-  const keyWidth = 16;
+  const keyWidth = 20;
   const lines: string[] = [];
 
   for (let row = 0; row < rowsPerColumn; row += 1) {

@@ -1,28 +1,5 @@
-import { z } from "zod";
-
 function countLabel(value: number, singular: string, plural: string): string {
   return `${value} ${value === 1 ? singular : plural}`;
-}
-
-const runMetaSchema = z.object({
-  exitCode: z.coerce.number().int(),
-  durationMs: z.coerce.number().int().nonnegative(),
-});
-
-function parseRunMeta(raw: string): { exitCode: number | null; durationMs: number | null } {
-  const exitMatch = raw.match(/^exit_code=([^\s]+)$/m);
-  const durationMatch = raw.match(/^duration_ms=([^\s]+)$/m);
-  const parsed = runMetaSchema.safeParse({
-    exitCode: exitMatch?.[1],
-    durationMs: durationMatch?.[1],
-  });
-  if (!parsed.success) {
-    return { exitCode: null, durationMs: null };
-  }
-  return {
-    exitCode: parsed.data.exitCode,
-    durationMs: parsed.data.durationMs,
-  };
 }
 
 export function formatThoughtDuration(ms: number): string {
@@ -39,13 +16,6 @@ export function formatThoughtDuration(ms: number): string {
     return `${minutes + 1}m 0s`;
   }
   return `${minutes}m ${seconds}s`;
-}
-
-export function formatVerifySummary(raw: string): string {
-  const meta = parseRunMeta(raw);
-  const status = meta.exitCode === 0 ? "passed" : "failed";
-  const duration = meta.durationMs === null ? "n/a" : formatThoughtDuration(meta.durationMs);
-  return `Verify ${status} (exit ${meta.exitCode ?? "?"}, ${duration}).`;
 }
 
 export function formatChangesSummary(statusRaw: string, diffRaw: string): string {

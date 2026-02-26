@@ -380,7 +380,6 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       }
     }
     let userText = text;
-    let runVerifyAfterReply = false;
     if (!isInternalReplay) {
       const commandResult = await dispatchSlashCommand({
         text,
@@ -426,13 +425,10 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         }
       }
       userText = commandResult.userText;
-      runVerifyAfterReply = commandResult.runVerifyAfterReply;
     } else if (internalClarification) {
       userText = buildClarifiedUserText(internalClarification);
-      runVerifyAfterReply = false;
     } else {
       userText = text;
-      runVerifyAfterReply = false;
     }
 
     if (internalClarification) {
@@ -608,7 +604,6 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         onEvent: (event) => {
           progressTracker.apply(event);
         },
-        runVerifyAfterReply,
         thinkingStartedAt,
         createMessage: input.createMessage,
       });

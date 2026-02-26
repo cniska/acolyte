@@ -102,7 +102,6 @@ export function formatTokenUsageOutput(last: TokenUsageEntry | null, all: TokenU
 type CommandResult = {
   stop: boolean;
   userText: string;
-  runVerifyAfterReply: boolean;
 };
 
 type CommandContext = {
@@ -136,20 +135,6 @@ type CommandContext = {
 
 function row(role: ChatRow["role"], content: string, dim = false, style?: ChatRow["style"]): ChatRow {
   return { id: `row_${crypto.randomUUID()}`, role, content, dim, style };
-}
-
-function buildDogfoodPrompt(task: string): string {
-  const preamble = [
-    "Dogfood mode:",
-    "- Work in small, verifiable steps.",
-    "- Keep response concise and action-focused.",
-    "- Use tools when needed; avoid guessing.",
-    "- If edits are made, verify with bun run verify before final response.",
-    "- Return: (1) what changed, (2) validation result, (3) any residual risk/blocker.",
-    "- Keep output short unless asked for detail.",
-    "",
-  ].join("\n");
-  return `${preamble}${task}`;
 }
 
 function parseMemoryContextScope(parts: string[]): MemoryContextScope | null {
@@ -217,7 +202,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
   if (resolvedText === "/resume") {
     pushUserCommandRow();
     ctx.openResumePanel();
-    return { stop: true, userText: text, runVerifyAfterReply: false };
+    return { stop: true, userText: text };
   }
 
   if (resolvedText.startsWith("/resume")) {
@@ -230,11 +215,11 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
         row("system", "Usage: /resume <session-id-prefix>"),
         ...recent.map((line) => row("system", line)),
       ]);
-      return { stop: true, userText: text, runVerifyAfterReply: false };
+      return { stop: true, userText: text };
     }
     if (resolved.kind === "not_found") {
       ctx.setRows((current) => [...current, row("system", `No session found for prefix: ${resolved.prefix}`)]);
-      return { stop: true, userText: text, runVerifyAfterReply: false };
+      return { stop: true, userText: text };
     }
     if (resolved.kind === "ambiguous") {
       ctx.setRows((current) => [
@@ -244,7 +229,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
           `Ambiguous prefix: ${resolved.prefix}. Matches: ${resolved.matches.map((item) => item.id.slice(0, 12)).join(", ")}`,
         ),
       ]);
-      return { stop: true, userText: text, runVerifyAfterReply: false };
+      return { stop: true, userText: text };
     }
     const target = resolved.session;
     ctx.store.activeSessionId = target.id;
@@ -256,7 +241,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     ]);
     ctx.setShowShortcuts(() => false);
     await ctx.persist();
-    return { stop: true, userText: text, runVerifyAfterReply: false };
+    return { stop: true, userText: text };
   }
 
   if (resolvedText === "/sessions") {
@@ -264,7 +249,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     const recent = formatSessionList(ctx.store, 10);
     const sections = [`Sessions ${ctx.store.sessions.length}`, "", ...recent];
     ctx.setRows((current) => [...current, row("system", sections.join("\n"), false, "sessionsList")]);
-    return { stop: true, userText: text, runVerifyAfterReply: false };
+    return { stop: true, userText: text };
   }
 
   if (resolvedText === "/status") {
@@ -278,13 +263,13 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
         row("system", error instanceof Error ? error.message : "Status check failed."),
       ]);
     }
-    return { stop: true, userText: text, runVerifyAfterReply: false };
+    return { stop: true, userText: text };
   }
 
   if (resolvedText === "/permissions") {
     pushUserCommandRow();
     ctx.openPermissionsPanel();
-    return { stop: true, userText: text, runVerifyAfterReply: false };
+    return { stop: true, userText: text };
   }
 
   if (resolvedText.startsWith("/permissions ")) {
@@ -299,12 +284,12 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       (parts.length === 2 || parts[2] === "--project" || parts[2] === "--user");
     if (!validParts || (mode !== "read" && mode !== "write")) {
       ctx.setRows((current) => [...current, row("system", "Usage: /permissions [read|write] [--project|--user]")]);
-      return { stop: true, userText: text, runVerifyAfterReply: false };
+      return { stop: true, userText: text };
     }
     const scope = parsePermissionsScope(parts);
     if (!scope) {
       ctx.setRows((current) => [...current, row("system", "Usage: /permissions [read|write] [--project|--user]")]);
-      return { stop: true, userText: text, runVerifyAfterReply: false };
+      return { stop: true, userText: text };
     }
     try {
       await ctx.setBackendPermissionMode(mode);
@@ -321,7 +306,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
         row("system", error instanceof Error ? error.message : "Failed to set permission mode."),
       ]);
     }
-    return { stop: true, userText: text, runVerifyAfterReply: false };
+    return { stop: true, userText: text };
   }
 
   if (resolvedText.startsWith("/memory rm")) {
@@ -329,19 +314,19 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     const parts = resolvedText.split(/\s+/).filter((part) => part.length > 0);
     if (parts.length !== 3) {
       ctx.setRows((current) => [...current, row("system", "Usage: /memory rm <id-prefix>")]);
-      return { stop: true, userText: text, runVerifyAfterReply: false };
+      return { stop: true, userText: text };
     }
     const prefix = parts[2];
     const remove = memoryApi.removeMemoryByPrefix;
     if (!remove) {
       ctx.setRows((current) => [...current, row("system", "Memory removal is unavailable in this context.")]);
-      return { stop: true, userText: text, runVerifyAfterReply: false };
+      return { stop: true, userText: text };
     }
     try {
       const removed = await remove(prefix);
       if (removed.kind === "not_found") {
         ctx.setRows((current) => [...current, row("system", `No memory found for id prefix: ${removed.prefix}`)]);
-        return { stop: true, userText: text, runVerifyAfterReply: false };
+        return { stop: true, userText: text };
       }
       if (removed.kind === "ambiguous") {
         const ids = removed.matches.map((item) => item.id.slice(0, 12)).join(", ");
@@ -349,7 +334,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
           ...current,
           row("system", `Ambiguous memory id prefix: ${removed.prefix}. Matches: ${ids}`),
         ]);
-        return { stop: true, userText: text, runVerifyAfterReply: false };
+        return { stop: true, userText: text };
       }
       ctx.setRows((current) => [
         ...current,
@@ -361,7 +346,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
         row("system", error instanceof Error ? error.message : "Failed to remove memory."),
       ]);
     }
-    return { stop: true, userText: text, runVerifyAfterReply: false };
+    return { stop: true, userText: text };
   }
 
   if (
@@ -376,18 +361,18 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
         ...current,
         row("system", "Usage: /memory [all|user|project] | /memory context [all|user|project]"),
       ]);
-      return { stop: true, userText: text, runVerifyAfterReply: false };
+      return { stop: true, userText: text };
     }
     const memories = await memoryApi.listMemories({ scope });
     if (memories.length === 0) {
       const scopeLabel = scope === "all" ? "" : `${scope} `;
       ctx.setRows((current) => [...current, row("system", `No ${scopeLabel}memory saved yet.`)]);
-      return { stop: true, userText: text, runVerifyAfterReply: false };
+      return { stop: true, userText: text };
     }
     const lines = memories.slice(0, 10).map((entry) => `${entry.scope}:${entry.id.slice(0, 12)} ${entry.content}`);
     const header = scope === "all" ? `Memory ${memories.length}` : `${scopeLabel(scope)} memory ${memories.length}`;
     ctx.setRows((current) => [...current, row("system", `${header}\n\n${lines.join("\n")}`)]);
-    return { stop: true, userText: text, runVerifyAfterReply: false };
+    return { stop: true, userText: text };
   }
 
   if (resolvedText === "/memory context" || resolvedText.startsWith("/memory context ")) {
@@ -396,19 +381,19 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     const scope = parseMemoryContextScope(parts);
     if (!scope) {
       ctx.setRows((current) => [...current, row("system", "Usage: /memory context [all|user|project]")]);
-      return { stop: true, userText: text, runVerifyAfterReply: false };
+      return { stop: true, userText: text };
     }
     const entries = await memoryApi.getMemoryContextEntries({ scope });
     if (entries.length === 0) {
       const scopeLabel = scope === "all" ? "" : `${scope} `;
       ctx.setRows((current) => [...current, row("system", `No ${scopeLabel}memory context is currently injected.`)]);
-      return { stop: true, userText: text, runVerifyAfterReply: false };
+      return { stop: true, userText: text };
     }
     const lines = entries.map((entry) => `${entry.scope}: ${entry.content}`);
     const header =
       scope === "all" ? `Memory context ${entries.length}` : `${scopeLabel(scope)} memory context ${entries.length}`;
     ctx.setRows((current) => [...current, row("system", `${header}\n\n${lines.join("\n")}`)]);
-    return { stop: true, userText: text, runVerifyAfterReply: false };
+    return { stop: true, userText: text };
   }
 
   if (resolvedText.startsWith("/memory ")) {
@@ -417,7 +402,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       ...current,
       row("system", "Usage: /memory [all|user|project] | /memory context [all|user|project]"),
     ]);
-    return { stop: true, userText: text, runVerifyAfterReply: false };
+    return { stop: true, userText: text };
   }
 
   if (resolvedText.startsWith("/distill")) {
@@ -426,7 +411,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     const parsed = parseDistillOptions(args);
     if (!parsed.ok) {
       ctx.setRows((current) => [...current, row("system", parsed.error)]);
-      return { stop: true, userText: text, runVerifyAfterReply: false };
+      return { stop: true, userText: text };
     }
     const candidates = distillPolicyCandidatesFromSessions(ctx.store.sessions, parsed.options);
     const output = distillPolicyFromSessions(ctx.store.sessions, parsed.options);
@@ -434,7 +419,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     if (candidates.length > 0) {
       ctx.openPolicyPanel(candidates);
     }
-    return { stop: true, userText: text, runVerifyAfterReply: false };
+    return { stop: true, userText: text };
   }
 
   if (resolvedText === "/tokens") {
@@ -444,7 +429,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       ...current,
       row("system", formatTokenUsageOutput(last, ctx.tokenUsage), false, "tokenOutput"),
     ]);
-    return { stop: true, userText: text, runVerifyAfterReply: false };
+    return { stop: true, userText: text };
   }
 
   if (resolvedText.startsWith("/remember")) {
@@ -466,7 +451,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     const content = contentParts.join(" ").trim();
     if (!content) {
       ctx.setRows((current) => [...current, row("system", "Usage: /remember [--user|--project] <memory text>")]);
-      return { stop: true, userText: text, runVerifyAfterReply: false };
+      return { stop: true, userText: text };
     }
     try {
       const entry = await memoryApi.addMemory(content, { scope });
@@ -477,13 +462,13 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
         row("system", error instanceof Error ? error.message : "Failed to save memory."),
       ]);
     }
-    return { stop: true, userText: text, runVerifyAfterReply: false };
+    return { stop: true, userText: text };
   }
 
   if (resolvedText === "/skills") {
     pushUserCommandRow();
     await ctx.openSkillsPanel();
-    return { stop: true, userText: text, runVerifyAfterReply: false };
+    return { stop: true, userText: text };
   }
 
   if (resolvedText === "/new") {
@@ -499,58 +484,27 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     ctx.setValue("");
     ctx.setShowShortcuts(() => false);
     await ctx.persist();
-    return { stop: true, userText: text, runVerifyAfterReply: false };
+    return { stop: true, userText: text };
   }
 
   if (resolvedText === "/exit") {
     pushUserCommandRow();
     await ctx.persist();
     ctx.exit();
-    return { stop: true, userText: text, runVerifyAfterReply: false };
-  }
-
-  if (resolvedText.startsWith("/dogfood")) {
-    const parts = resolvedText.split(/\s+/).slice(1);
-    let noVerify = false;
-    const taskParts: string[] = [];
-    for (const part of parts) {
-      if (part === "--no-verify") {
-        noVerify = true;
-        continue;
-      }
-      taskParts.push(part);
-    }
-    const task = taskParts.join(" ").trim();
-    if (!task) {
-      ctx.setRows((current) => [...current, row("system", "Usage: /dogfood [--no-verify] <task>")]);
-      return { stop: true, userText: text, runVerifyAfterReply: false };
-    }
-    const runVerifyAfterReply = !noVerify;
-    ctx.setRows((current) => [
-      ...current,
-      row(
-        "system",
-        runVerifyAfterReply ? "Dogfood mode enabled (verify after reply)." : "Dogfood mode enabled (no verify).",
-      ),
-    ]);
-    return { stop: false, userText: buildDogfoodPrompt(task), runVerifyAfterReply };
+    return { stop: true, userText: text };
   }
 
   if (resolvedText.startsWith("/")) {
     pushUserCommandRow();
     if (resolvedText === "/skill" || resolvedText.startsWith("/skill ")) {
       ctx.setRows((current) => [...current, row("system", "Unknown command: /skill. Did you mean /skills?")]);
-    } else if (resolvedText === "/compact" || resolvedText.startsWith("/compact ")) {
-      ctx.setRows((current) => [...current, row("system", "Unknown command: /compact. Did you mean /dogfood?")]);
-    } else if (resolvedText === "/cmp" || resolvedText.startsWith("/cmp ")) {
-      ctx.setRows((current) => [...current, row("system", "Unknown command: /cmp. Did you mean /dogfood?")]);
     } else {
       const suggested = suggestClosestSlashCommand(resolvedText);
       const message = suggested ? `Unknown command: ${text}. Did you mean ${suggested}?` : `Unknown command: ${text}`;
       ctx.setRows((current) => [...current, row("system", message)]);
     }
-    return { stop: true, userText: text, runVerifyAfterReply: false };
+    return { stop: true, userText: text };
   }
 
-  return { stop: false, userText: text, runVerifyAfterReply: false };
+  return { stop: false, userText: text };
 }
