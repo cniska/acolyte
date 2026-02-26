@@ -41,6 +41,7 @@ const DEFAULT_CONFIG = {
 export interface AcolyteConfig {
   port?: number;
   model?: string;
+  exploreModel?: string;
   omModel?: string;
   apiUrl?: string;
   openaiBaseUrl?: string;
@@ -61,6 +62,7 @@ export interface AcolyteConfig {
 export interface ResolvedAcolyteConfig {
   port: number;
   model: string;
+  exploreModel: string;
   omModel: string;
   apiUrl?: string;
   openaiBaseUrl: string;
@@ -89,6 +91,7 @@ type ConfigOptions = {
 const CONFIG_SET_SCHEMAS: Record<keyof AcolyteConfig, z.ZodTypeAny> = {
   port: parseIntegerSchema(1, 65535),
   model: nonEmptyStringSchema,
+  exploreModel: nonEmptyStringSchema,
   omModel: nonEmptyStringSchema,
   apiUrl: nonEmptyStringSchema,
   openaiBaseUrl: nonEmptyStringSchema,
@@ -115,6 +118,7 @@ function toConfig(input: Record<string, unknown>): AcolyteConfig {
   return {
     port: parseField(parseIntegerSchema(1, 65535), input.port),
     model: parseField(nonEmptyStringSchema, input.model),
+    exploreModel: parseField(nonEmptyStringSchema, input.exploreModel),
     omModel: parseField(nonEmptyStringSchema, input.omModel),
     apiUrl: parseField(nonEmptyStringSchema, input.apiUrl),
     openaiBaseUrl: parseField(nonEmptyStringSchema, input.openaiBaseUrl),
@@ -219,6 +223,9 @@ function serializeToml(config: AcolyteConfig): string {
   if (config.model) {
     lines.push(`model = ${JSON.stringify(config.model)}`);
   }
+  if (config.exploreModel) {
+    lines.push(`exploreModel = ${JSON.stringify(config.exploreModel)}`);
+  }
   if (config.omModel) {
     lines.push(`omModel = ${JSON.stringify(config.omModel)}`);
   }
@@ -272,6 +279,7 @@ function resolveConfig(config: AcolyteConfig): ResolvedAcolyteConfig {
   return {
     port: config.port ?? DEFAULT_CONFIG.port,
     model,
+    exploreModel: config.exploreModel ?? model,
     omModel: config.omModel ?? model,
     apiUrl: config.apiUrl,
     openaiBaseUrl: config.openaiBaseUrl ?? DEFAULT_CONFIG.openaiBaseUrl,

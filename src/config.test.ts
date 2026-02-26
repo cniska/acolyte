@@ -215,7 +215,7 @@ describe("config store", () => {
     expect(loaded.replyTimeoutMs).toBe(220000);
   });
 
-  test("readResolvedConfigSync applies defaults and omModel fallback", () => {
+  test("readResolvedConfigSync applies defaults and model fallbacks", () => {
     const home = createTempDir("acolyte-config-home-");
     const dataDir = join(home, ".acolyte");
     mkdirSync(dataDir, { recursive: true });
@@ -224,10 +224,27 @@ describe("config store", () => {
     const resolved = readResolvedConfigSync({ homeDir: home, cwd: home });
     expect(resolved.port).toBe(6767);
     expect(resolved.model).toBe("anthropic/claude-sonnet-4");
+    expect(resolved.exploreModel).toBe("anthropic/claude-sonnet-4");
     expect(resolved.omModel).toBe("anthropic/claude-sonnet-4");
     expect(resolved.permissionMode).toBe("read");
     expect(resolved.logFormat).toBe("logfmt");
     expect(resolved.replyTimeoutMs).toBe(180000);
+  });
+
+  test("readResolvedConfigSync uses exploreModel when set", () => {
+    const home = createTempDir("acolyte-config-home-");
+    const dataDir = join(home, ".acolyte");
+    mkdirSync(dataDir, { recursive: true });
+    writeFileSync(
+      join(dataDir, "config.toml"),
+      'model = "anthropic/claude-sonnet-4"\nexploreModel = "openai/gpt-5-mini"\n',
+      "utf8",
+    );
+
+    const resolved = readResolvedConfigSync({ homeDir: home, cwd: home });
+    expect(resolved.model).toBe("anthropic/claude-sonnet-4");
+    expect(resolved.exploreModel).toBe("openai/gpt-5-mini");
+    expect(resolved.omModel).toBe("anthropic/claude-sonnet-4");
   });
 
   test("project config overrides user config", async () => {

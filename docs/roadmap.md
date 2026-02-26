@@ -42,16 +42,16 @@ Make in-flight execution and failures visible and actionable.
 
 ### Milestone 5: Autonomous Soak (MVP Closure)
 
-Sustain autonomous end-to-end execution with low fallback across multiple days.
+End-to-end autonomous execution: plan, edit, verify, iterate.
 
-- [ ] Assistant can plan an approach, edit files, verify, and iterate on failures — at least one full cycle
-- [ ] Multi-step tasks work (e.g. implement a feature touching 3+ files)
-- [ ] Soak window passes: 10+ successful runs over 3+ separate days
-- [ ] Smoke checks cover multi-step edit tasks, not just single operations
-- [ ] Manual fallback is the exception, not the norm
-- [ ] Failure categories are tracked with root-cause fixes
-
-**Current status:** Single bounded tasks work with mode-specific instructions (explore/code/ask), dynamic tool metadata, auto-verify, and iterate-on-failure. Plan detection re-invokes the agent when it plans instead of executing. Line width detection enforces project formatting rules. Multi-step autonomous execution needs soak testing.
+- [x] Mode-specific instructions (explore/code/ask) with dynamic tool metadata
+- [x] Plan detection re-invokes the agent when it plans instead of executing
+- [x] Auto-verify after edits (runs project verify command)
+- [x] Iterate-on-failure (read errors, fix, re-verify)
+- [x] Line width detection enforces project formatting rules
+- [x] Run summary debug event for failure tracking
+- [ ] Configurable model per mode (e.g. cheaper model for explore/ask)
+- [ ] Multi-step soak: sustained successful runs across multiple days
 
 ### Milestone 6: Memory Quality
 

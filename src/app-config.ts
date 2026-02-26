@@ -25,6 +25,7 @@ export const appConfig = {
     baseUrl: fileConfig.googleBaseUrl,
   },
   model: fileConfig.model,
+  exploreModel: fileConfig.exploreModel,
   omModel: fileConfig.omModel,
   memory: {
     resourceId: "acolyte-local",

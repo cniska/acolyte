@@ -405,7 +405,9 @@ export async function runAgent(input: {
     input.onDebug?.(event, fields);
   };
 
-  const resolved = resolveRunnableModel(input.request.model);
+  const initialMode = classifyMode(input.request.message);
+  const requestedModel = initialMode === "code" ? input.request.model : appConfig.exploreModel;
+  const resolved = resolveRunnableModel(requestedModel);
   if (!resolved.available) {
     throw new Error(
       `Provider '${resolved.provider}' is not configured for model '${resolved.model}'. ` +
@@ -417,7 +419,6 @@ export async function runAgent(input: {
   let modelCallCount = 0;
   const observedToolNames = new Set<string>();
   let lastToolFailureReason: string | undefined;
-  const initialMode = classifyMode(input.request.message);
   let currentMode: AgentMode = initialMode;
 
   // Map Mastra native toolCallIds to correlate with onToolOutput from mastra-tools.
