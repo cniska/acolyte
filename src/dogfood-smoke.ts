@@ -149,12 +149,12 @@ export function hasAdvisoryFileWriteSignal(output: string): boolean {
   return /\bsave (?:this|as)\b|\bcopy\/paste\b|\bpaste this into\b/i.test(output);
 }
 
-export function hasToolOutcomeSignal(output: string, verb: "Edit" | "Create" | "Delete"): boolean {
+export function hasToolOutcomeSignal(output: string, verb: "Edit" | "Create" | "Delete" | "Run"): boolean {
   const escapedVerb = verb.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   return new RegExp(`\\b${escapedVerb}\\s+`, "i").test(output);
 }
 
-function hasAnyToolOutcomeSignal(output: string, verbs: Array<"Edit" | "Create" | "Delete">): boolean {
+function hasAnyToolOutcomeSignal(output: string, verbs: Array<"Edit" | "Create" | "Delete" | "Run">): boolean {
   return verbs.some((verb) => hasToolOutcomeSignal(output, verb));
 }
 
@@ -257,9 +257,11 @@ async function runCodingTaskSmoke(
     initial: string;
     prompt: (filePath: string) => string;
     validate: (content: string) => boolean;
+    ext?: string;
   },
 ): Promise<{ ok: boolean; detail: string }> {
-  const filePath = join(tmpdir(), `acolyte-dogfood-coding-${task.id}-${crypto.randomUUID()}.txt`);
+  const ext = task.ext ?? ".txt";
+  const filePath = join(tmpdir(), `acolyte-dogfood-coding-${task.id}-${crypto.randomUUID()}${ext}`);
   await writeFile(filePath, task.initial, "utf8");
   try {
     const prompt = task.prompt(filePath);
@@ -540,6 +542,21 @@ async function main(): Promise<void> {
             content.includes("## Done") &&
             content.includes("- alpha"),
         },
+        {
+          id: "ast-rename",
+          label: "dogfood coding task ast rename",
+          initial: ["export function hello(): string {", '  return "world";', "}", ""].join("\n"),
+          ext: ".ts",
+          prompt: (filePath: string) =>
+            [
+              `Target file: ${filePath}`,
+              "Task: rename the function hello to greet.",
+              "Use edit-code on the target path to rename the function.",
+              "Do not only read/search; complete the edit.",
+              "Return a concise summary only.",
+            ].join("\n"),
+          validate: (content: string) => content.includes("greet") && !content.includes("hello"),
+        },
       ] as const;
       for (const task of codingTasks) {
         const codingTask = await runCodingTaskSmoke(smokeEnv, task);
@@ -558,7 +575,7 @@ async function main(): Promise<void> {
             "Task: create this file with exactly two lines:",
             "alpha",
             "beta",
-            "Use write-file on the target path and write the file directly.",
+            "Use create-file on the target path and write the file directly.",
             "Return a concise summary only.",
           ].join("\n"),
         validate: (content: string) => content.trim() === "alpha\nbeta",
@@ -682,6 +699,31 @@ async function main(): Promise<void> {
         return;
       }
       console.log("✓ dogfood coding task multifile refactor");
+
+      const runCommandResult = await runCommand(
+        [
+          "bun",
+          "run",
+          "src/cli.ts",
+          "dogfood",
+          "--no-verify",
+          'Run the command: echo "acolyte-smoke-ok". Use run-command directly. Return a concise summary only.',
+        ],
+        COMMAND_TIMEOUT_MS,
+        smokeEnv,
+      );
+      if (runCommandResult.exitCode !== 0) {
+        console.error(`✗ dogfood run-command: command failed (exit ${runCommandResult.exitCode})`);
+        process.exit(1);
+        return;
+      }
+      const runCommandOutput = stripAnsi(`${runCommandResult.stdout}\n${runCommandResult.stderr}`);
+      if (!hasToolOutcomeSignal(runCommandOutput, "Run")) {
+        console.error("✗ dogfood run-command: missing run tool outcome in output");
+        process.exit(1);
+        return;
+      }
+      console.log("✓ dogfood run-command");
     } else {
       if (args.requireProviderReady) {
         console.error("✗ provider-ready: strict autonomy smoke requires configured provider credentials");
