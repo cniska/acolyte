@@ -1,5 +1,5 @@
 import { createAgent } from "./agent-factory";
-import { type AgentMode, agentModes, modeForTool } from "./agent-modes";
+import { type AgentMode, agentModes, classifyMode, modeForTool } from "./agent-modes";
 import type { ChatRequest, ChatResponse } from "./api";
 import { appConfig } from "./app-config";
 import type { StreamEvent } from "./client";
@@ -158,52 +158,17 @@ export function createSubagentContext(req: ChatRequest): string {
   return ["Agent: Acolyte", `Goal: ${req.message.trim()}`, `Context: ${scope}; model=${req.model}`].join("\n");
 }
 
-export function createInstructions(baseInstructions: string): string {
-  const executionContract = [
-    "Execution contract:",
-    "",
-    "Tool Selection:",
-    "- Prefer dedicated tools over shell equivalents: `find-files` not `ls`/`find`, `search-files` not `grep`, `read-file` not `cat`, `edit-file`/`edit-code` not `sed`/`awk`.",
-    "- Use `find-files` to locate files by name; use `search-files` to search file contents.",
-    "- Use `edit-file` for targeted single-site text edits; use `edit-code` for multi-site structural changes, renames across call sites, or signature rewrites in code files (TS/TSX/JS/JSX/HTML/CSS/Python/Rust/Go).",
-    "- Use `git-status`/`git-diff` for change inspection; use `web-search`/`web-fetch` only when external lookup is needed.",
-    "- Default to tool execution. If a task can be completed with available tools, do it with tools instead of providing instructions/code-only replies.",
-    "",
-    "Workflow:",
-    "- Read relevant files before editing; avoid speculative code changes.",
-    "- Minimize tool round trips: for focused file edits, one targeted read then one edit is preferred.",
-    "- For edit/update requests, check the target file with `read-file` first, then apply `edit-file` with a short unique `find` snippet (a few surrounding lines, never the whole file) and `replace` with the updated snippet.",
-    "- For requests that create a new file, call `create-file` with full file content directly (do not answer with file contents in chat).",
-    "- If filename/path is not specified, choose a sensible default filename and create it (for example `sum.rs`) using `create-file`.",
-    "- After a successful `edit-file` for a straightforward request, do not re-read or re-edit the same file in the same turn unless the user explicitly asked for verification or additional changes.",
-    "- Never claim a file was created/edited/found unless that is confirmed by tool results in the current turn.",
-    "- When asked to edit a specific file and it does not exist, state that the file is missing instead of silently creating a replacement file.",
-    "",
-    "Execution Loop:",
-    "- Understand request and identify concrete target files/commands.",
-    "- Before the first tool call, briefly explain what you're about to do in natural language (no labels or prefixes).",
-    "- Implement changes directly with tools.",
-    "- Verify when explicitly requested, when repo policy requires it, or when risk is high.",
-    "- Keep working until requested changes are complete or a real blocker is hit.",
-    "",
-    "Completion:",
-    "- For multi-step work, keep an internal checklist and do not finish until all requested items are addressed.",
-    "- Execute directly for actionable requests; do not ask for confirmation for normal workspace actions.",
-    "- If blocked by missing or ambiguous requirements, ask one short clarification question, then continue.",
-    "- If a sensible default exists (for example filename), choose it and continue.",
-    "- Avoid option menus for straightforward tasks.",
-    "- Do not offer variants/options before performing a straightforward artifact request; create/edit the file first, then report outcome.",
-    "- If the requested change is already satisfied, reply with one short line stating no changes were needed, then stop.",
-    "- In final summaries, lead with outcomes, not action preambles.",
-    "- Do not report repo cleanliness/status unless user explicitly asked for git status.",
-    "- Do not append unsolicited 'Next action' suggestions unless the user asked for options or next steps.",
-    "- Respect response-shape constraints exactly (for example: 'summary only' means summary only).",
-    "- Never reply with 'save this as ...' or ask the user to copy/paste file contents.",
-    "- Never mention verification commands/results unless verification was explicitly requested in the prompt.",
-    "- Keep final output concise and outcome-focused; summarize what changed instead of narrating each step.",
-    "- End with a brief natural summary of what changed and any relevant notes.",
-  ].join("\n");
-  return `${baseInstructions}\n\n${executionContract}`;
+const BASE_INSTRUCTIONS = [
+  "- Prefer dedicated tools over shell equivalents.",
+  "- Default to tool execution over chat-only replies.",
+  "- Before the first tool call, briefly explain what you're about to do.",
+  "- Keep working until done or blocked. If blocked, ask one short question.",
+  "- Keep output concise and outcome-focused. End with a brief summary.",
+].join("\n");
+
+export function createInstructions(baseInstructions: string, mode: AgentMode): string {
+  const modeInstructions = agentModes[mode].instructions.join("\n");
+  return `${baseInstructions}\n\n${BASE_INSTRUCTIONS}\n\n${modeInstructions}`;
 }
 
 export function resolveModelProviderState(
@@ -459,7 +424,8 @@ export async function runAgent(input: {
   let modelCallCount = 0;
   const observedToolNames = new Set<string>();
   let lastToolFailureReason: string | undefined;
-  let currentMode: AgentMode = "ask";
+  const initialMode = classifyMode(input.request.message);
+  let currentMode: AgentMode = initialMode;
 
   // Map Mastra native toolCallIds to correlate with onToolOutput from mastra-tools.
   // fullStream emits tool-call with native IDs; onToolOutput uses synthetic IDs.
@@ -477,7 +443,7 @@ export async function runAgent(input: {
     id: "acolyte",
     name: "Acolyte",
     model,
-    instructions: createInstructions(input.soulPrompt),
+    instructions: createInstructions(input.soulPrompt, initialMode),
     tools: toolsForAgent({
       onToolOutput: (event) => {
         toolOutputHandler?.(event);
@@ -658,13 +624,15 @@ export async function runAgent(input: {
   const resourceId = input.request.resourceId?.trim() || appConfig.memory.resourceId;
   const memoryOptions = input.request.sessionId ? { thread: input.request.sessionId, resource: resourceId } : undefined;
 
+  emitDebug("agent.mode.classified", { mode: initialMode });
   emitDebug("agent.context.built", {
+    mode: initialMode,
     model_selected: model,
     history_messages: input.request.history.length,
     has_memory: Boolean(memoryOptions),
   });
 
-  emitEvent({ type: "status", message: "Working…" });
+  emitEvent({ type: "status", message: agentModes[initialMode].progressText });
   emitDebug("agent.generate.start", {
     model,
     tool_choice: "auto",

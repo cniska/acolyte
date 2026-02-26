@@ -258,46 +258,41 @@ describe("createSubagentContext", () => {
 });
 
 describe("createInstructions", () => {
-  test("enforces tool-first execution guidance", () => {
-    const out = createInstructions("Base instructions.");
-    expect(out).toContain("Default to tool execution.");
-    expect(out).toContain("Before the first tool call, briefly explain what you're about to do");
-    expect(out).toContain("For requests that create a new file, call `create-file` with full file content directly");
-    expect(out).toContain("For edit/update requests, check the target file with `read-file` first");
-    expect(out).toContain("do not re-read or re-edit the same file in the same turn");
-    expect(out).toContain("Never claim a file was created/edited/found unless that is confirmed by tool results");
-    expect(out).toContain("Do not offer variants/options before performing a straightforward artifact request");
-    expect(out).toContain("state that the file is missing instead of silently creating a replacement file");
+  test("includes base instructions for all modes", () => {
+    const code = createInstructions("Soul.", "code");
+    const explore = createInstructions("Soul.", "explore");
+    const ask = createInstructions("Soul.", "ask");
+    for (const out of [code, explore, ask]) {
+      expect(out).toContain("Soul.");
+      expect(out).toContain("Prefer dedicated tools over shell equivalents");
+      expect(out).toContain("Default to tool execution");
+      expect(out).toContain("End with a brief summary");
+    }
   });
 
-  test("contains Tool Selection section with decision heuristics", () => {
-    const out = createInstructions("Base instructions.");
-    expect(out).toContain("Tool Selection:");
-    expect(out).toContain(
-      "Use `edit-file` for targeted single-site text edits; use `edit-code` for multi-site structural changes",
-    );
-    expect(out).toContain("Python/Rust/Go");
-    expect(out).toContain("Use `find-files` to locate files by name; use `search-files` to search file contents");
-    expect(out).toContain("Prefer dedicated tools over shell equivalents");
+  test("code mode includes code-specific instructions", () => {
+    const out = createInstructions("Soul.", "code");
+    expect(out).toContain("use `edit-code` with an AST pattern");
+    expect(out).toContain("Read the target file before editing");
+    expect(out).toContain("call `create-file` with full content");
   });
 
-  test("forbids save-as advisory responses", () => {
-    const out = createInstructions("Base instructions.");
-    expect(out).toContain("Never reply with 'save this as ...'");
+  test("code mode excludes explore instructions", () => {
+    const out = createInstructions("Soul.", "code");
+    expect(out).not.toContain("Use `find-files` to locate files by name");
+    expect(out).not.toContain("Minimize round trips");
   });
 
-  test("uses concise outcome-focused completion guidance", () => {
-    const out = createInstructions("Base instructions.");
-    expect(out).toContain("summarize what changed instead of narrating each step");
-    expect(out).toContain("End with a brief natural summary");
+  test("explore mode includes explore-specific instructions", () => {
+    const out = createInstructions("Soul.", "explore");
+    expect(out).toContain("Use `find-files` to locate files by name");
+    expect(out).toContain("Minimize round trips");
   });
 
-  test("allows one clarification only when blocked and avoids option menus", () => {
-    const out = createInstructions("Base instructions.");
-    expect(out).toContain("ask one short clarification question, then continue");
-    expect(out).toContain("Avoid option menus for straightforward tasks");
-    expect(out).toContain("one short line stating no changes were needed");
-    expect(out).toContain("lead with outcomes, not action preambles");
+  test("explore mode excludes code instructions", () => {
+    const out = createInstructions("Soul.", "explore");
+    expect(out).not.toContain("use `edit-code` with an AST pattern");
+    expect(out).not.toContain("Read the target file before editing");
   });
 });
 

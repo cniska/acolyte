@@ -327,7 +327,7 @@ function createEditFileTool(onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "edit-file",
     description:
-      "Edit an existing file by replacing exact text. Best for targeted single-site edits. `find` must be a short, unique substring of the file (a few lines of context, not the whole file). `replace` is the replacement text. You MUST read the file first. For multi-site structural changes use `edit-code`. For creating new files, use `create-file` instead.",
+      "Edit an existing file by replacing exact text. Best for prose, config, or non-code edits. For code renames, refactors, or structural edits use `edit-code` instead. `find` must be a short, unique substring (a few lines, not the whole file). You MUST read the file first. For new files, use `create-file`.",
     inputSchema: z.object({
       path: z.string().min(1),
       find: z.string().min(1),
