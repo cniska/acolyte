@@ -62,7 +62,7 @@ type StreamEvent =
 
 ## Tools (`mastra-tools.ts`, `coding-tools.ts`)
 
-Nine tools registered with the Mastra agent: `read-file`, `edit-file`, `delete-file`, `run-command`, `search-repo`, `git-status`, `git-diff`, `web-search`, `web-fetch`. Each emits content lines via `onToolOutput` during execution. Tool output is compacted to per-tool token budgets.
+Ten tools registered with the Mastra agent: `read-file`, `edit-file`, `delete-file`, `run-command`, `find-files`, `search-files`, `git-status`, `git-diff`, `web-search`, `web-fetch`. Each emits content lines via `onToolOutput` during execution. Tool output is compacted to per-tool token budgets.
 
 ## Storage
 
