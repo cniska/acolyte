@@ -146,24 +146,6 @@ describe("chat-commands", () => {
     expect(system?.content).toContain("  sess_bbbb222  Second");
   });
 
-  test("dispatchSlashCommand handles /distill", async () => {
-    const store = createStore({
-      sessions: [
-        createSession({
-          messages: [
-            createMessage("user", "we should keep output concise"),
-            createMessage("user", "please we should keep output concise"),
-          ],
-        }),
-      ],
-    });
-    const { rows, stop, openedPolicy } = await runCommand("/distill --sessions 10 --min 2", { store });
-    expect(stop).toBe(true);
-    expect(rows.some((row) => row.role === "system" && row.content.includes("Proposed policy updates"))).toBe(true);
-    expect(rows.some((row) => row.role === "system" && row.content.includes("keep output concise"))).toBe(true);
-    expect(openedPolicy).toBe(1);
-  });
-
   test("dispatchSlashCommand handles /memory with empty store", async () => {
     const memoryApi = {
       listMemories: async () => [],

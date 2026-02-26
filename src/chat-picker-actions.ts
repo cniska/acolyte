@@ -1,7 +1,6 @@
 import { appConfig } from "./app-config";
 import type { ChatRow } from "./chat-commands";
 import type { PickerState } from "./chat-picker";
-import type { PolicyCandidate } from "./policy-distill";
 import type { Session, SessionStore } from "./types";
 
 function row(role: ChatRow["role"], content: string, style?: ChatRow["style"]): ChatRow {
@@ -12,9 +11,7 @@ type PickerByKind = {
   skills: Extract<PickerState, { kind: "skills" }>;
   resume: Extract<PickerState, { kind: "resume" }>;
   permissions: Extract<PickerState, { kind: "permissions" }>;
-  policy: Extract<PickerState, { kind: "policy" }>;
   clarifyAnswer: Extract<PickerState, { kind: "clarifyAnswer" }>;
-  policyConfirm: Extract<PickerState, { kind: "policyConfirm" }>;
   writeConfirm: Extract<PickerState, { kind: "writeConfirm" }>;
 };
 
@@ -64,30 +61,6 @@ export function createPermissionsPicker(): PickerState {
     items,
     index: index >= 0 ? index : 0,
   });
-}
-
-export function createPolicyPicker(items: PolicyCandidate[]): PickerState | null {
-  if (items.length === 0) {
-    return null;
-  }
-  return createPicker({
-    kind: "policy",
-    items,
-    index: 0,
-  });
-}
-
-export function createPolicyConfirmPicker(item: PolicyCandidate): PickerState {
-  return {
-    kind: "policyConfirm",
-    item,
-    items: [
-      { value: "yes", description: "accept this draft" },
-      { value: "no", description: "skip this draft" },
-    ],
-    index: 0,
-    note: "",
-  };
 }
 
 export function createWriteConfirmPicker(prompt: string): PickerState {

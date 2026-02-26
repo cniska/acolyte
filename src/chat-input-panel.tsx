@@ -20,7 +20,7 @@ type ChatInputPanelProps = {
   slashSuggestionIndex: number;
   showShortcuts: boolean;
   queuedInput: string | null;
-  onPolicyConfirmNoteChange: (next: string) => void;
+  onConfirmNoteChange: (next: string) => void;
 };
 
 export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
@@ -39,10 +39,10 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
     slashSuggestionIndex,
     showShortcuts,
     queuedInput,
-    onPolicyConfirmNoteChange,
+    onConfirmNoteChange,
   } = props;
 
-  if (picker && picker.kind !== "policyConfirm" && picker.kind !== "writeConfirm" && picker.kind !== "clarifyAnswer") {
+  if (picker && picker.kind !== "writeConfirm" && picker.kind !== "clarifyAnswer") {
     return (
       <>
         <Text dimColor>{borderLine()}</Text>
@@ -56,40 +56,31 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
     );
   }
 
-  if (picker?.kind === "policyConfirm" || picker?.kind === "writeConfirm" || picker?.kind === "clarifyAnswer") {
+  if (picker?.kind === "writeConfirm" || picker?.kind === "clarifyAnswer") {
     const selected = picker.items[picker.index];
-    const isPolicy = picker.kind === "policyConfirm";
     const isWrite = picker.kind === "writeConfirm";
     const isClarify = picker.kind === "clarifyAnswer";
     let firstSelected = true;
-    if (isPolicy) {
-      firstSelected = selected?.value === "yes";
-    } else if (isWrite) {
+    if (isWrite) {
       firstSelected = selected?.value === "switch";
     }
 
     let secondSelected = false;
-    if (isPolicy) {
-      secondSelected = selected?.value === "no";
-    } else if (isWrite) {
+    if (isWrite) {
       secondSelected = selected?.value === "cancel";
     }
 
     let firstLabel = "answer";
-    if (isPolicy) {
-      firstLabel = "yes";
-    } else if (isWrite) {
+    if (isWrite) {
       firstLabel = "switch";
     }
 
-    const secondLabel = isPolicy ? "no" : "cancel";
+    const secondLabel = "cancel";
     let firstHint = "continue";
-    if (isPolicy) {
-      firstHint = "accept";
-    } else if (isWrite) {
+    if (isWrite) {
       firstHint = "switch to write mode";
     }
-    const secondHint = isPolicy ? "skip" : "stay in read mode";
+    const secondHint = "stay in read mode";
     const labelWidth = Math.max(firstLabel.length, secondLabel.length);
     return (
       <>
@@ -104,9 +95,9 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
             <PromptInput
               value={picker.note}
               placeholder={isClarify ? "answer…" : "reason…"}
-              onChange={onPolicyConfirmNoteChange}
+              onChange={onConfirmNoteChange}
               onSubmit={() => {}}
-              key={`policy-confirm-yes-${inputRevision}`}
+              key={`confirm-yes-${inputRevision}`}
             />
           ) : (
             <Text dimColor>{firstHint}</Text>
@@ -117,17 +108,7 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
             <Text>{secondSelected ? "› " : "  "}</Text>
             <Text color={secondSelected ? brandColor : undefined}>{secondLabel.padEnd(labelWidth, " ")}</Text>
             <Text> </Text>
-            {secondSelected && !isWrite ? (
-              <PromptInput
-                value={picker.note}
-                placeholder="reason…"
-                onChange={onPolicyConfirmNoteChange}
-                onSubmit={() => {}}
-                key={`policy-confirm-no-${inputRevision}`}
-              />
-            ) : (
-              <Text dimColor>{secondHint}</Text>
-            )}
+            <Text dimColor>{secondHint}</Text>
           </Box>
         )}
         <Text> </Text>

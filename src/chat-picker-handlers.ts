@@ -6,14 +6,11 @@ import {
   createClarifyAnswerPicker,
   createPermissionsPicker,
   createPicker,
-  createPolicyConfirmPicker,
-  createPolicyPicker,
   createResumePicker,
   createResumeRows,
   createWriteConfirmPicker,
 } from "./chat-picker-actions";
 import { setConfigValue } from "./config";
-import type { PolicyCandidate } from "./policy-distill";
 import { listSkills, readSkillInstructions } from "./skills";
 import type { Message, Session, SessionStore } from "./types";
 
@@ -28,7 +25,6 @@ type CreatePickerHandlersInput = {
   setRowsDirect: (next: ChatRow[]) => void;
   setPicker: (next: PickerState | null) => void;
   setShowShortcuts: (next: boolean | ((current: boolean) => boolean)) => void;
-  setPendingPolicyCandidate: (next: PolicyCandidate | null) => void;
   setValue: (next: string) => void;
   queueInput: (next: string) => void;
   buildClarificationPayload: (input: {
@@ -48,7 +44,6 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
   openSkillsPanel: () => Promise<void>;
   openResumePanel: () => void;
   openPermissionsPanel: () => void;
-  openPolicyPanel: (items: PolicyCandidate[]) => void;
   openClarifyPanel: (questions: string[], originalPrompt: string) => void;
   openWriteConfirmPanel: (prompt: string) => void;
   handlePickerSelect: (state: PickerState) => Promise<void>;
@@ -87,26 +82,6 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
 
   const openPermissionsPanel = (): void => {
     input.setPicker(createPermissionsPicker());
-    input.setShowShortcuts(false);
-  };
-
-  const openPolicyPanel = (items: PolicyCandidate[]): void => {
-    const picker = createPolicyPicker(items);
-    if (!picker) {
-      input.setRows((current) => [
-        ...current,
-        { id: `row_${crypto.randomUUID()}`, role: "system", content: "No repeated policy signals found." },
-      ]);
-      return;
-    }
-    if (items.length === 1) {
-      const selected = items[0];
-      input.setPendingPolicyCandidate(selected);
-      input.setPicker(createPolicyConfirmPicker(selected));
-      input.setShowShortcuts(false);
-      return;
-    }
-    input.setPicker(picker);
     input.setShowShortcuts(false);
   };
 
@@ -205,43 +180,6 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
         input.setPicker(null);
         return;
       }
-      case "policy": {
-        const selected = state.items[state.index];
-        if (selected) {
-          input.setPendingPolicyCandidate(selected);
-          input.setPicker(createPolicyConfirmPicker(selected));
-          return;
-        }
-        input.setPicker(null);
-        return;
-      }
-      case "policyConfirm": {
-        const selected = state.items[state.index];
-        const note = state.note.trim();
-        const noteSuffix = note ? ` | note: ${note}` : "";
-        if (selected.value === "yes") {
-          input.setRows((current) => [
-            ...current,
-            {
-              id: `row_${crypto.randomUUID()}`,
-              role: "assistant",
-              content: `Policy draft confirmed: ${state.item.normalized}${noteSuffix}`,
-            },
-          ]);
-        } else {
-          input.setRows((current) => [
-            ...current,
-            {
-              id: `row_${crypto.randomUUID()}`,
-              role: "assistant",
-              content: `Policy draft skipped.${noteSuffix}`,
-            },
-          ]);
-        }
-        input.setPendingPolicyCandidate(null);
-        input.setPicker(null);
-        return;
-      }
       case "clarifyAnswer": {
         const answer = state.note.trim();
         if (answer.length === 0) {
@@ -326,7 +264,6 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
     openSkillsPanel,
     openResumePanel,
     openPermissionsPanel,
-    openPolicyPanel,
     openClarifyPanel,
     openWriteConfirmPanel,
     handlePickerSelect,

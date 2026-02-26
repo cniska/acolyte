@@ -152,57 +152,6 @@ describe("chat submit handler guards", () => {
     expect(typeof calls.setShowShortcuts[0]).toBe("function");
   });
 
-  test("handles pending policy confirmation with note", async () => {
-    const rows: ChatRow[] = [];
-    let pending: { normalized: string; count: number; examples: string[] } | null = {
-      normalized: "keep output concise",
-      count: 2,
-      examples: [],
-    };
-    const session = createSession({ id: "sess_test" });
-    const store = createStore({ activeSessionId: session.id, sessions: [session] });
-    const submit = createSubmitHandler({
-      backend: createClient({ status: async () => ({}) }),
-      store,
-      currentSession: session,
-      setCurrentSession: () => {},
-      toRows: () => [],
-      setRows: (updater) => {
-        rows.splice(0, rows.length, ...updater(rows));
-      },
-      setShowShortcuts: () => {},
-      setValue: () => {},
-      persist: async () => {},
-      exit: () => {},
-      openSkillsPanel: async () => {},
-      openResumePanel: () => {},
-      openPermissionsPanel: () => {},
-      openPolicyPanel: () => {},
-      openClarifyPanel: (_questions, _originalPrompt) => {},
-      openWriteConfirmPanel: () => {},
-      pendingPolicyCandidate: pending,
-      setPendingPolicyCandidate: (next) => {
-        pending = next;
-      },
-      tokenUsage: [],
-      isThinking: false,
-      setInputHistory: () => {},
-      setInputHistoryIndex: () => {},
-      setInputHistoryDraft: () => {},
-      setIsThinking: () => {},
-      setProgressText: () => {},
-      setTokenUsage: () => {},
-      createMessage,
-      nowIso: () => "2026-02-20T00:00:00.000Z",
-      setInterrupt: () => {},
-    });
-
-    await submit("yes also do this");
-    expect(pending).toBeNull();
-    expect(rows.some((row) => row.content.includes("Policy draft confirmed: keep output concise"))).toBe(true);
-    expect(rows.some((row) => row.content.includes("note: also do this"))).toBe(true);
-  });
-
   test("opens write confirm panel for likely write prompt in read mode", async () => {
     let openWriteConfirmWith = "";
     const session = createSession({ id: "sess_test" });
@@ -224,13 +173,10 @@ describe("chat submit handler guards", () => {
       openSkillsPanel: async () => {},
       openResumePanel: () => {},
       openPermissionsPanel: () => {},
-      openPolicyPanel: () => {},
       openClarifyPanel: (_questions, _originalPrompt) => {},
       openWriteConfirmPanel: (prompt) => {
         openWriteConfirmWith = prompt;
       },
-      pendingPolicyCandidate: null,
-      setPendingPolicyCandidate: () => {},
       tokenUsage: [],
       isThinking: false,
       setInputHistory: () => {},
@@ -269,13 +215,10 @@ describe("chat submit handler guards", () => {
       openSkillsPanel: async () => {},
       openResumePanel: () => {},
       openPermissionsPanel: () => {},
-      openPolicyPanel: () => {},
       openClarifyPanel: (_questions, _originalPrompt) => {},
       openWriteConfirmPanel: (prompt) => {
         openWriteConfirmWith = prompt;
       },
-      pendingPolicyCandidate: null,
-      setPendingPolicyCandidate: () => {},
       tokenUsage: [],
       isThinking: false,
       setInputHistory: () => {},
@@ -321,13 +264,10 @@ describe("chat submit handler guards", () => {
       openSkillsPanel: async () => {},
       openResumePanel: () => {},
       openPermissionsPanel: () => {},
-      openPolicyPanel: () => {},
       openClarifyPanel: (_questions, _originalPrompt) => {},
       openWriteConfirmPanel: (prompt) => {
         openWriteConfirmWith = prompt;
       },
-      pendingPolicyCandidate: null,
-      setPendingPolicyCandidate: () => {},
       tokenUsage: [],
       isThinking: false,
       setInputHistory: () => {},
@@ -386,11 +326,8 @@ describe("chat submit handler guards", () => {
       openSkillsPanel: async () => {},
       openResumePanel: () => {},
       openPermissionsPanel: () => {},
-      openPolicyPanel: () => {},
       openClarifyPanel: (_questions, _originalPrompt) => {},
       openWriteConfirmPanel: () => {},
-      pendingPolicyCandidate: null,
-      setPendingPolicyCandidate: () => {},
       tokenUsage: [],
       isThinking: false,
       setInputHistory: () => {},
@@ -456,13 +393,10 @@ describe("chat submit handler guards", () => {
       openSkillsPanel: async () => {},
       openResumePanel: () => {},
       openPermissionsPanel: () => {},
-      openPolicyPanel: () => {},
       openClarifyPanel: (questions, _originalPrompt) => {
         openedClarify.push(questions);
       },
       openWriteConfirmPanel: () => {},
-      pendingPolicyCandidate: null,
-      setPendingPolicyCandidate: () => {},
       tokenUsage: [],
       isThinking: false,
       setInputHistory: () => {},
@@ -518,11 +452,8 @@ describe("chat submit handler guards", () => {
       openSkillsPanel: async () => {},
       openResumePanel: () => {},
       openPermissionsPanel: () => {},
-      openPolicyPanel: () => {},
       openClarifyPanel: (_questions, _originalPrompt) => {},
       openWriteConfirmPanel: () => {},
-      pendingPolicyCandidate: null,
-      setPendingPolicyCandidate: () => {},
       tokenUsage: [],
       isThinking: false,
       setInputHistory: () => {},
@@ -575,11 +506,8 @@ describe("chat submit handler guards", () => {
         openSkillsPanel: async () => {},
         openResumePanel: () => {},
         openPermissionsPanel: () => {},
-        openPolicyPanel: () => {},
         openClarifyPanel: (_questions, _originalPrompt) => {},
         openWriteConfirmPanel: () => {},
-        pendingPolicyCandidate: null,
-        setPendingPolicyCandidate: () => {},
         tokenUsage: [],
         isThinking: false,
         setInputHistory: () => {},
@@ -638,11 +566,8 @@ describe("chat submit handler guards", () => {
       openSkillsPanel: async () => {},
       openResumePanel: () => {},
       openPermissionsPanel: () => {},
-      openPolicyPanel: () => {},
       openClarifyPanel: (_questions, _originalPrompt) => {},
       openWriteConfirmPanel: () => {},
-      pendingPolicyCandidate: null,
-      setPendingPolicyCandidate: () => {},
       tokenUsage: [],
       isThinking: false,
       setInputHistory: () => {},
@@ -695,11 +620,8 @@ describe("chat submit handler guards", () => {
       openSkillsPanel: async () => {},
       openResumePanel: () => {},
       openPermissionsPanel: () => {},
-      openPolicyPanel: () => {},
       openClarifyPanel: () => {},
       openWriteConfirmPanel: () => {},
-      pendingPolicyCandidate: null,
-      setPendingPolicyCandidate: () => {},
       tokenUsage: [],
       isThinking: false,
       setInputHistory: () => {},
@@ -744,11 +666,8 @@ describe("chat submit handler guards", () => {
       openSkillsPanel: async () => {},
       openResumePanel: () => {},
       openPermissionsPanel: () => {},
-      openPolicyPanel: () => {},
       openClarifyPanel: (_questions, _originalPrompt) => {},
       openWriteConfirmPanel: () => {},
-      pendingPolicyCandidate: null,
-      setPendingPolicyCandidate: () => {},
       tokenUsage: [],
       isThinking: false,
       setInputHistory: () => {},
@@ -792,11 +711,8 @@ describe("chat submit handler guards", () => {
       openSkillsPanel: async () => {},
       openResumePanel: () => {},
       openPermissionsPanel: () => {},
-      openPolicyPanel: () => {},
       openClarifyPanel: (_questions, _originalPrompt) => {},
       openWriteConfirmPanel: () => {},
-      pendingPolicyCandidate: null,
-      setPendingPolicyCandidate: () => {},
       tokenUsage: [],
       isThinking: false,
       setInputHistory: () => {},
@@ -846,11 +762,8 @@ describe("chat submit handler guards", () => {
       openSkillsPanel: async () => {},
       openResumePanel: () => {},
       openPermissionsPanel: () => {},
-      openPolicyPanel: () => {},
       openClarifyPanel: (_questions, _originalPrompt) => {},
       openWriteConfirmPanel: () => {},
-      pendingPolicyCandidate: null,
-      setPendingPolicyCandidate: () => {},
       tokenUsage: [],
       isThinking: false,
       setInputHistory: () => {},
@@ -910,11 +823,8 @@ describe("chat submit handler guards", () => {
       openSkillsPanel: async () => {},
       openResumePanel: () => {},
       openPermissionsPanel: () => {},
-      openPolicyPanel: () => {},
       openClarifyPanel: (_questions, _originalPrompt) => {},
       openWriteConfirmPanel: () => {},
-      pendingPolicyCandidate: null,
-      setPendingPolicyCandidate: () => {},
       tokenUsage: [],
       isThinking: false,
       setInputHistory: () => {},
@@ -979,11 +889,8 @@ describe("chat submit handler guards", () => {
       openSkillsPanel: async () => {},
       openResumePanel: () => {},
       openPermissionsPanel: () => {},
-      openPolicyPanel: () => {},
       openClarifyPanel: (_questions, _originalPrompt) => {},
       openWriteConfirmPanel: () => {},
-      pendingPolicyCandidate: null,
-      setPendingPolicyCandidate: () => {},
       tokenUsage: [],
       isThinking: false,
       setInputHistory: () => {},
@@ -1219,11 +1126,8 @@ describe("chat submit handler guards", () => {
       openSkillsPanel: async () => {},
       openResumePanel: () => {},
       openPermissionsPanel: () => {},
-      openPolicyPanel: () => {},
       openClarifyPanel: () => {},
       openWriteConfirmPanel: () => {},
-      pendingPolicyCandidate: null,
-      setPendingPolicyCandidate: () => {},
       tokenUsage: [],
       isThinking: false,
       setInputHistory: () => {},

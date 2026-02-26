@@ -3,8 +3,6 @@ import {
   boundedSkillInstructions,
   createClarifyAnswerPicker,
   createPicker,
-  createPolicyConfirmPicker,
-  createPolicyPicker,
   createResumePicker,
   createResumeRows,
   createWriteConfirmPicker,
@@ -73,16 +71,6 @@ describe("chat picker actions", () => {
     });
     expect(picker.kind).toBe("permissions");
     expect(picker.items[1]?.mode).toBe("write");
-  });
-
-  test("createPolicyPicker returns picker for policy candidates", () => {
-    const picker = createPolicyPicker([{ normalized: "keep output concise", count: 2, examples: [] }]);
-    expect(picker).toMatchObject({ kind: "policy", index: 0 });
-  });
-
-  test("createPolicyConfirmPicker returns yes/no options", () => {
-    const picker = createPolicyConfirmPicker({ normalized: "keep output concise", count: 2, examples: [] });
-    expect(picker).toMatchObject({ kind: "policyConfirm", index: 0 });
   });
 
   test("createWriteConfirmPicker returns switch/cancel options", () => {

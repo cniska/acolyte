@@ -2,7 +2,6 @@ import { useInput } from "ink";
 import { applyAtSuggestion, shouldAutocompleteAtSubmit } from "./chat-file-ref";
 import type { PickerState } from "./chat-picker";
 import { applySlashSuggestion, shouldAutocompleteSlashSubmit } from "./chat-slash";
-import type { PolicyCandidate } from "./policy-distill";
 
 type HistoryTransition = {
   nextIndex: number;
@@ -19,7 +18,6 @@ type ResolveTabAutocompleteInput = {
   slashSuggestions: string[];
   slashSuggestionIndex: number;
   isTab: boolean;
-  pendingPolicyCandidate: PolicyCandidate | null;
 };
 
 export function resolveHistoryUp(
@@ -69,18 +67,6 @@ export function resolveHistoryDown(
 export function resolveTabAutocomplete(input: ResolveTabAutocompleteInput): string | null {
   if (!input.isTab || input.browsingInputHistory) {
     return null;
-  }
-  if (input.pendingPolicyCandidate) {
-    const trimmed = input.value.trim();
-    if (trimmed.length === 0) {
-      return "yes ";
-    }
-    if ("yes".startsWith(trimmed.toLowerCase()) && trimmed.toLowerCase() !== "yes") {
-      return "yes ";
-    }
-    if ("no".startsWith(trimmed.toLowerCase()) && trimmed.toLowerCase() !== "no") {
-      return "no ";
-    }
   }
   if (input.atQuery !== null && input.atSuggestions.length > 0) {
     const selected =
@@ -138,7 +124,6 @@ type UseChatKeybindingsInput = {
   slashSuggestions: string[];
   slashSuggestionIndex: number;
   setSlashSuggestionIndex: (next: number | ((current: number) => number)) => void;
-  pendingPolicyCandidate: PolicyCandidate | null;
   setInputHistoryIndex: (next: number | ((current: number) => number)) => void;
   setInputHistoryDraft: (next: string) => void;
   openSkillsPanel: () => Promise<void>;
@@ -155,7 +140,7 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
         return;
       }
       if (input.picker) {
-        if (key.tab && (input.picker.kind === "policyConfirm" || input.picker.kind === "writeConfirm")) {
+        if (key.tab && input.picker.kind === "writeConfirm") {
           input.setPicker((current) =>
             current
               ? {
@@ -220,24 +205,6 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
         input.setInputRevision((current) => current + 1);
         return;
       }
-      if (!browsingInputHistory && input.pendingPolicyCandidate && key.tab) {
-        const autocompleted = resolveTabAutocomplete({
-          browsingInputHistory,
-          value: input.value,
-          atQuery: input.atQuery,
-          atSuggestions: input.atSuggestions,
-          atSuggestionIndex: input.atSuggestionIndex,
-          slashSuggestions: input.slashSuggestions,
-          slashSuggestionIndex: input.slashSuggestionIndex,
-          isTab: true,
-          pendingPolicyCandidate: input.pendingPolicyCandidate,
-        });
-        if (autocompleted !== null) {
-          input.setValue(autocompleted);
-          input.setInputRevision((current) => current + 1);
-          return;
-        }
-      }
       if (!browsingInputHistory && input.atQuery !== null && input.atSuggestions.length > 0) {
         const autocompleted = resolveTabAutocomplete({
           browsingInputHistory,
@@ -248,7 +215,6 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
           slashSuggestions: input.slashSuggestions,
           slashSuggestionIndex: input.slashSuggestionIndex,
           isTab: key.tab,
-          pendingPolicyCandidate: input.pendingPolicyCandidate,
         });
         if (autocompleted !== null) {
           input.setValue(autocompleted);
@@ -274,7 +240,6 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
           slashSuggestions: input.slashSuggestions,
           slashSuggestionIndex: input.slashSuggestionIndex,
           isTab: key.tab,
-          pendingPolicyCandidate: input.pendingPolicyCandidate,
         });
         if (autocompleted !== null) {
           input.setValue(autocompleted);

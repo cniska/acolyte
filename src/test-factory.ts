@@ -1,7 +1,6 @@
 import type { ChatRow, CommandContext, TokenUsageEntry } from "./chat-commands";
 import { createSubmitHandler } from "./chat-submit-handler";
 import type { Client, StreamEvent } from "./client";
-import type { PolicyCandidate } from "./policy-distill";
 import type { Message, Session, SessionStore } from "./types";
 
 const DEFAULT_TIME = "2026-02-20T00:00:00.000Z";
@@ -88,7 +87,6 @@ export type SubmitHandlerHarness = {
 export function createSubmitHandlerHarness(overrides?: {
   isThinking?: boolean;
   backend?: Client;
-  pendingPolicyCandidate?: PolicyCandidate | null;
 }): SubmitHandlerHarness {
   const rows: ChatRow[] = [];
   const calls = {
@@ -118,11 +116,8 @@ export function createSubmitHandlerHarness(overrides?: {
     openSkillsPanel: async () => {},
     openResumePanel: () => {},
     openPermissionsPanel: () => {},
-    openPolicyPanel: () => {},
     openClarifyPanel: () => {},
     openWriteConfirmPanel: () => {},
-    pendingPolicyCandidate: overrides?.pendingPolicyCandidate ?? null,
-    setPendingPolicyCandidate: () => {},
     tokenUsage: [],
     isThinking: overrides?.isThinking ?? false,
     setInputHistory: () => {
@@ -143,7 +138,6 @@ export function createSubmitHandlerHarness(overrides?: {
 export type CommandContextSpies = {
   rows: ChatRow[];
   openedPermissions: boolean;
-  openedPolicy: number;
   currentSessionIds: string[];
   tokenUsageSets: TokenUsageEntry[][];
 };
@@ -155,7 +149,6 @@ export function createCommandContext(
   const spies: CommandContextSpies = {
     rows: [],
     openedPermissions: false,
-    openedPolicy: 0,
     currentSessionIds: [],
     tokenUsageSets: [],
   };
@@ -183,9 +176,6 @@ export function createCommandContext(
     openResumePanel: () => {},
     openPermissionsPanel: () => {
       spies.openedPermissions = true;
-    },
-    openPolicyPanel: () => {
-      spies.openedPolicy += 1;
     },
     setServerPermissionMode: async () => {},
     tokenUsage: [],

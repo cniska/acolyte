@@ -4,7 +4,6 @@ import type { Client } from "./client";
 import type { ConfigScope } from "./config";
 import { setConfigValue } from "./config";
 import { addMemory, listMemories, removeMemoryByPrefix } from "./memory";
-import { distillPolicyCandidatesFromSessions, distillPolicyFromSessions, parseDistillOptions } from "./policy-distill";
 import { getMemoryContextEntries, type MemoryContextScope } from "./soul";
 import { formatStatusOutput } from "./status-format";
 import { createSession } from "./storage";
@@ -121,7 +120,6 @@ export type CommandContext = {
   openSkillsPanel: () => Promise<void>;
   openResumePanel: () => void;
   openPermissionsPanel: () => void;
-  openPolicyPanel: (items: ReturnType<typeof distillPolicyCandidatesFromSessions>) => void;
   setServerPermissionMode: (mode: "read" | "write") => Promise<void>;
   setConfigPermissionMode?: (mode: "read" | "write", scope: ConfigScope) => Promise<void>;
   tokenUsage: TokenUsageEntry[];
@@ -402,23 +400,6 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       ...current,
       row("system", "Usage: /memory [all|user|project] | /memory context [all|user|project]"),
     ]);
-    return { stop: true, userText: text };
-  }
-
-  if (resolvedText.startsWith("/distill")) {
-    pushUserCommandRow();
-    const args = resolvedText.split(/\s+/).slice(1);
-    const parsed = parseDistillOptions(args);
-    if (!parsed.ok) {
-      ctx.setRows((current) => [...current, row("system", parsed.error)]);
-      return { stop: true, userText: text };
-    }
-    const candidates = distillPolicyCandidatesFromSessions(ctx.store.sessions, parsed.options);
-    const output = distillPolicyFromSessions(ctx.store.sessions, parsed.options);
-    ctx.setRows((current) => [...current, row("system", output)]);
-    if (candidates.length > 0) {
-      ctx.openPolicyPanel(candidates);
-    }
     return { stop: true, userText: text };
   }
 

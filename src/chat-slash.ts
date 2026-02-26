@@ -10,7 +10,6 @@ const CHAT_SLASH_COMMANDS = [
   "/mem",
   "/memory",
   "/memory context",
-  "/distill",
   "/tokens",
   "/exit",
 ] as const;

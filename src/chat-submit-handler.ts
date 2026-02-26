@@ -13,7 +13,6 @@ import {
 } from "./chat-turn";
 import type { Client } from "./client";
 import { addMemory } from "./memory";
-import type { PolicyCandidate } from "./policy-distill";
 import type { Message, Session, SessionStore } from "./types";
 
 type CreateSubmitHandlerInput = {
@@ -30,11 +29,8 @@ type CreateSubmitHandlerInput = {
   openSkillsPanel: () => Promise<void>;
   openResumePanel: () => void;
   openPermissionsPanel: () => void;
-  openPolicyPanel: (items: PolicyCandidate[]) => void;
   openClarifyPanel: (questions: string[], originalPrompt: string) => void;
   openWriteConfirmPanel: (prompt: string) => void;
-  pendingPolicyCandidate: PolicyCandidate | null;
-  setPendingPolicyCandidate: (next: PolicyCandidate | null) => void;
   tokenUsage: TokenUsageEntry[];
   isThinking: boolean;
   setInputHistory: (updater: (current: string[]) => string[]) => void;
@@ -346,39 +342,6 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       }
       return;
     }
-    if (!internalClarification && input.pendingPolicyCandidate && !text.startsWith("/")) {
-      const [head, ...rest] = text.split(/\s+/);
-      const note = rest.join(" ").trim();
-      const decision = head.toLowerCase();
-      if (decision === "yes") {
-        const noteSuffix = note ? ` | note: ${note}` : "";
-        input.setRows((current) => [
-          ...current,
-          {
-            id: `row_${crypto.randomUUID()}`,
-            role: "assistant",
-            content: `Policy draft confirmed: ${input.pendingPolicyCandidate?.normalized}${noteSuffix}`,
-          },
-        ]);
-        input.setPendingPolicyCandidate(null);
-        await input.persist();
-        return;
-      }
-      if (decision === "no") {
-        const noteSuffix = note ? ` | note: ${note}` : "";
-        input.setRows((current) => [
-          ...current,
-          {
-            id: `row_${crypto.randomUUID()}`,
-            role: "system",
-            content: `Policy draft skipped.${noteSuffix}`,
-          },
-        ]);
-        input.setPendingPolicyCandidate(null);
-        await input.persist();
-        return;
-      }
-    }
     let userText = text;
     if (!isInternalReplay) {
       const commandResult = await dispatchSlashCommand({
@@ -398,7 +361,6 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         openSkillsPanel: input.openSkillsPanel,
         openResumePanel: input.openResumePanel,
         openPermissionsPanel: input.openPermissionsPanel,
-        openPolicyPanel: input.openPolicyPanel,
         setServerPermissionMode: input.backend.setPermissionMode,
         tokenUsage: input.tokenUsage,
       });

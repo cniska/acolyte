@@ -7,16 +7,16 @@
     "acolyte": "./src/cli.ts"
   },
   "scripts": {
-    "dev": "ACOLYTE_SET_API_URL=1 ./scripts/with-backend.sh serve:env:watch bun run src/cli.ts",
-    "start": "ACOLYTE_SET_API_URL=1 ./scripts/with-backend.sh serve:env bun run src/cli.ts",
+    "dev": "ACOLYTE_SET_API_URL=1 ./scripts/with-server.sh serve:env:watch bun run src/cli.ts",
+    "start": "ACOLYTE_SET_API_URL=1 ./scripts/with-server.sh serve:env bun run src/cli.ts",
     "run": "bun run src/cli.ts run",
     "dogfood": "bun run src/cli.ts dogfood",
-    "dogfood:smoke": "./scripts/with-backend.sh serve:env bun run src/dogfood-smoke.ts",
+    "dogfood:smoke": "./scripts/with-server.sh serve:env bun run src/dogfood-smoke.ts",
     "dogfood:progress": "bun run src/dogfood-progress.ts",
     "dogfood:gate": "bun run src/dogfood-gate.ts",
     "serve:env": "bun --env-file=.env run src/server.ts",
     "serve:env:watch": "bun --watch --env-file=.env run src/server.ts",
-    "wait:backend": "bun run src/wait-backend.ts",
+    "wait:server": "bun run src/wait-server.ts",
     "mastra:dev": "bun --env-file=.env x mastra dev --dir src/mastra",
     "studio": "./scripts/with-mastra-dev.sh",
     "format": "bunx biome format --write .",
@@ -31,8 +31,7 @@
     "om:status": "bun run src/om-admin.ts status",
     "om:wipe": "bun run src/om-admin.ts wipe",
     "om:soak": "bun run src/om-soak.ts",
-    "soak": "./scripts/soak.sh",
-    "policy:distill": "bun run src/policy-distill.ts"
+    "soak": "./scripts/soak.sh"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.3",

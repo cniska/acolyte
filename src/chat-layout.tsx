@@ -10,7 +10,6 @@ const SHORTCUT_ITEMS = [
   { key: "/skills", description: "skills picker" },
   { key: "/remember <text>", description: "save memory note" },
   { key: "/memory [scope]", description: "list memories" },
-  { key: "/distill", description: "distill policy" },
   { key: "/tokens", description: "token usage" },
   { key: "/exit", description: "exit" },
 ] as const;

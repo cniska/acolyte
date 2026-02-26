@@ -24,7 +24,6 @@ describe("chat picker handlers", () => {
         pickerValues.push(next);
       },
       setShowShortcuts: () => {},
-      setPendingPolicyCandidate: () => {},
       setValue: () => {},
       queueInput: () => {},
       buildClarificationPayload: () => "",
@@ -57,7 +56,6 @@ describe("chat picker handlers", () => {
         pickerValues.push(next);
       },
       setShowShortcuts: () => {},
-      setPendingPolicyCandidate: () => {},
       setValue: () => {},
       queueInput: () => {},
       buildClarificationPayload: () => "",
@@ -99,7 +97,6 @@ describe("chat picker handlers", () => {
         pickerValues.push(next);
       },
       setShowShortcuts: () => {},
-      setPendingPolicyCandidate: () => {},
       setValue: () => {},
       queueInput: () => {},
       buildClarificationPayload: () => "",
@@ -141,7 +138,6 @@ describe("chat picker handlers", () => {
         pickerValues.push(next);
       },
       setShowShortcuts: () => {},
-      setPendingPolicyCandidate: () => {},
       setValue: () => {},
       queueInput: () => {},
       buildClarificationPayload: () => "",
@@ -181,150 +177,6 @@ describe("chat picker handlers", () => {
     }
   });
 
-  test("handlePickerSelect policy stores pending confirmation", async () => {
-    let pending: unknown = null;
-    const rows: ChatRow[] = [];
-    const pickerValues: unknown[] = [];
-    const currentSession = createSession({ id: "sess_current" });
-    const store = createStore({ sessions: [currentSession], activeSessionId: currentSession.id });
-    const handlers = createPickerHandlers({
-      store,
-      currentSession,
-      setCurrentSession: () => {},
-      setRows: (updater) => {
-        const next = updater(rows);
-        rows.length = 0;
-        rows.push(...next);
-      },
-      setRowsDirect: () => {},
-      setPicker: (next) => {
-        pickerValues.push(next);
-      },
-      setShowShortcuts: () => {},
-      setPendingPolicyCandidate: (next) => {
-        pending = next;
-      },
-      setValue: () => {},
-      queueInput: () => {},
-      buildClarificationPayload: () => "",
-      buildWriteResumePayload: (prompt) => prompt,
-      setServerPermissionMode: async () => {},
-      persistPermissionMode: async () => {},
-      persist: async () => {},
-      toRows: () => [],
-      createMessage,
-      nowIso: () => "2026-02-20T00:00:00.000Z",
-    });
-
-    await handlers.handlePickerSelect({
-      kind: "policy",
-      items: [{ normalized: "keep output concise", count: 3, examples: ["we should keep output concise"] }],
-      index: 0,
-    });
-    expect(pending).toMatchObject({ normalized: "keep output concise" });
-    expect(rows).toHaveLength(0);
-    expect(pickerValues.at(-1)).toMatchObject({ kind: "policyConfirm" });
-  });
-
-  test("openPolicyPanel opens confirm picker directly for one candidate", () => {
-    let pending: unknown = null;
-    const pickerValues: unknown[] = [];
-    const currentSession = createSession({ id: "sess_current" });
-    const store = createStore({ sessions: [currentSession], activeSessionId: currentSession.id });
-    const handlers = createPickerHandlers({
-      store,
-      currentSession,
-      setCurrentSession: () => {},
-      setRows: () => {},
-      setRowsDirect: () => {},
-      setPicker: (next) => {
-        pickerValues.push(next);
-      },
-      setShowShortcuts: () => {},
-      setPendingPolicyCandidate: (next) => {
-        pending = next;
-      },
-      setValue: () => {},
-      queueInput: () => {},
-      buildClarificationPayload: () => "",
-      buildWriteResumePayload: (prompt) => prompt,
-      setServerPermissionMode: async () => {},
-      persistPermissionMode: async () => {},
-      persist: async () => {},
-      toRows: () => [],
-      createMessage,
-      nowIso: () => "2026-02-20T00:00:00.000Z",
-    });
-
-    handlers.openPolicyPanel([{ normalized: "keep output concise", count: 2, examples: [] }]);
-    expect(pending).toMatchObject({ normalized: "keep output concise" });
-    expect(pickerValues.at(-1)).toMatchObject({ kind: "policyConfirm" });
-  });
-
-  test("handlePickerSelect policyConfirm appends assistant outcome for yes/no", async () => {
-    const rows: ChatRow[] = [];
-    const pendingValues: unknown[] = [];
-    const currentSession = createSession({ id: "sess_current" });
-    const store = createStore({ sessions: [currentSession], activeSessionId: currentSession.id });
-    const handlers = createPickerHandlers({
-      store,
-      currentSession,
-      setCurrentSession: () => {},
-      setRows: (updater) => {
-        const next = updater(rows);
-        rows.length = 0;
-        rows.push(...next);
-      },
-      setRowsDirect: () => {},
-      setPicker: () => {},
-      setShowShortcuts: () => {},
-      setPendingPolicyCandidate: (next) => {
-        pendingValues.push(next);
-      },
-      setValue: () => {},
-      queueInput: () => {},
-      buildClarificationPayload: () => "",
-      buildWriteResumePayload: (prompt) => prompt,
-      setServerPermissionMode: async () => {},
-      persistPermissionMode: async () => {},
-      persist: async () => {},
-      toRows: () => [],
-      createMessage,
-      nowIso: () => "2026-02-20T00:00:00.000Z",
-    });
-
-    await handlers.handlePickerSelect({
-      kind: "policyConfirm",
-      item: { normalized: "keep output concise", count: 2, examples: [] },
-      items: [
-        { value: "yes", description: "accept this draft" },
-        { value: "no", description: "skip this draft" },
-      ],
-      index: 0,
-      note: "",
-    });
-    expect(rows.at(-1)).toMatchObject({
-      role: "assistant",
-      content: "Policy draft confirmed: keep output concise",
-    });
-
-    await handlers.handlePickerSelect({
-      kind: "policyConfirm",
-      item: { normalized: "keep output concise", count: 2, examples: [] },
-      items: [
-        { value: "yes", description: "accept this draft" },
-        { value: "no", description: "skip this draft" },
-      ],
-      index: 1,
-      note: "",
-    });
-    expect(rows.at(-1)).toMatchObject({
-      role: "assistant",
-      content: "Policy draft skipped.",
-    });
-    expect(pendingValues.at(-1)).toBeNull();
-  });
-
   test("openClarifyPanel opens one-question clarify picker and captures answers sequentially", async () => {
     const pickerValues: unknown[] = [];
     const rows: ChatRow[] = [];
@@ -345,7 +197,6 @@ describe("chat picker handlers", () => {
         pickerValues.push(next);
       },
       setShowShortcuts: () => {},
-      setPendingPolicyCandidate: () => {},
       setValue: () => {},
       queueInput: (next) => {
         queued.push(next);
@@ -410,7 +261,6 @@ describe("chat picker handlers", () => {
       setRowsDirect: () => {},
       setPicker: () => {},
       setShowShortcuts: () => {},
-      setPendingPolicyCandidate: () => {},
       setValue: (next) => {
         values.push(next);
       },

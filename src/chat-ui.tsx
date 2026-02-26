@@ -22,7 +22,6 @@ import { ChatTranscript } from "./chat-transcript";
 import { buildInputHistory } from "./chat-turn";
 import type { Client } from "./client";
 import { palette } from "./palette";
-import type { PolicyCandidate } from "./policy-distill";
 import type { Session, SessionStore } from "./types";
 
 type HeaderLine = {
@@ -60,7 +59,6 @@ function ChatApp(props: ChatAppProps) {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [queuedInput, setQueuedInput] = useState<string | null>(null);
   const [picker, setPicker] = useState<PickerState | null>(null);
-  const [pendingPolicyCandidate, setPendingPolicyCandidate] = useState<PolicyCandidate | null>(null);
   const [tokenUsage, setTokenUsage] = useState<TokenUsageEntry[]>(() => session.tokenUsage ?? []);
   const [inputHistory, setInputHistory] = useState<string[]>([]);
   const [inputHistoryIndex, setInputHistoryIndex] = useState(-1);
@@ -108,7 +106,6 @@ function ChatApp(props: ChatAppProps) {
     openSkillsPanel,
     openResumePanel,
     openPermissionsPanel,
-    openPolicyPanel,
     openClarifyPanel,
     openWriteConfirmPanel,
     handlePickerSelect,
@@ -121,7 +118,6 @@ function ChatApp(props: ChatAppProps) {
     setRowsDirect: setRows,
     setPicker: (next) => setPicker(next),
     setShowShortcuts,
-    setPendingPolicyCandidate,
     setValue,
     queueInput: setQueuedInput,
     buildClarificationPayload: buildInternalClarificationTurn,
@@ -150,11 +146,8 @@ function ChatApp(props: ChatAppProps) {
     openSkillsPanel,
     openResumePanel,
     openPermissionsPanel,
-    openPolicyPanel,
     openClarifyPanel,
     openWriteConfirmPanel,
-    pendingPolicyCandidate,
-    setPendingPolicyCandidate,
     tokenUsage,
     isThinking,
     setInputHistory,
@@ -199,7 +192,6 @@ function ChatApp(props: ChatAppProps) {
     slashSuggestions,
     slashSuggestionIndex,
     setSlashSuggestionIndex,
-    pendingPolicyCandidate,
     setInputHistoryIndex,
     setInputHistoryDraft,
     openSkillsPanel,
@@ -282,12 +274,9 @@ function ChatApp(props: ChatAppProps) {
         slashSuggestionIndex={slashSuggestionIndex}
         showShortcuts={showShortcuts}
         queuedInput={queuedInput}
-        onPolicyConfirmNoteChange={(next) => {
+        onConfirmNoteChange={(next) => {
           setPicker((current) => {
-            if (
-              !current ||
-              (current.kind !== "policyConfirm" && current.kind !== "writeConfirm" && current.kind !== "clarifyAnswer")
-            ) {
+            if (!current || (current.kind !== "writeConfirm" && current.kind !== "clarifyAnswer")) {
               return current;
             }
             return { ...current, note: next };
