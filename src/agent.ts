@@ -342,6 +342,18 @@ export function canonicalToolId(value: string): string {
   return aliases[normalized] ?? normalized;
 }
 
+function formatToolArgs(args: Record<string, unknown>): Record<string, string | number | boolean> {
+  const out: Record<string, string | number | boolean> = {};
+  for (const [key, value] of Object.entries(args)) {
+    if (typeof value === "string") {
+      out[key] = value.length > 80 ? `${value.slice(0, 79)}…` : value;
+    } else if (typeof value === "number" || typeof value === "boolean") {
+      out[key] = value;
+    }
+  }
+  return out;
+}
+
 function compactProgressDetail(value: string, maxChars = 80): string {
   const single = value.replace(/\s+/g, " ").trim();
   if (single.length <= maxChars) {
@@ -591,6 +603,11 @@ export async function runAgent(input: {
                 if (p?.toolCallId && p?.toolName) {
                   const toolName = canonicalToolId(p.toolName);
                   observedToolNames.add(toolName);
+                  const args = (p.args ?? {}) as Record<string, unknown>;
+                  emitDebug("agent.tool.call", {
+                    tool: toolName,
+                    ...formatToolArgs(args),
+                  });
                   // Queue native ID for onToolOutput correlation.
                   let queue = nativeIdQueue.get(toolName);
                   if (!queue) {
@@ -602,7 +619,7 @@ export async function runAgent(input: {
                     type: "tool-call",
                     toolCallId: p.toolCallId,
                     toolName,
-                    args: (p.args ?? {}) as Record<string, unknown>,
+                    args,
                   });
                 }
                 break;
@@ -628,6 +645,10 @@ export async function runAgent(input: {
                     "error" in (p.result as Record<string, unknown>);
                   if (isError) {
                     lastToolFailureReason = String((p.result as { error?: unknown }).error ?? "Tool error");
+                    emitDebug("agent.tool.error", {
+                      tool: toolName,
+                      error: lastToolFailureReason,
+                    });
                   }
                   emitEvent({
                     type: "tool-result",

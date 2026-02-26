@@ -264,7 +264,7 @@ function contentLines(content: string): string[] {
   return lines;
 }
 
-function buildUnifiedWriteDiff(path: string, previous: string | null, next: string): string {
+function createUnifiedWriteDiff(path: string, previous: string | null, next: string): string {
   const oldLines = previous == null ? [] : contentLines(previous);
   const newLines = contentLines(next);
   const oldCount = oldLines.length;
@@ -281,7 +281,7 @@ function buildUnifiedWriteDiff(path: string, previous: string | null, next: stri
   return [...header, ...removed, ...added].join("\n");
 }
 
-function buildUnifiedDeleteDiff(path: string, previous: string): string {
+function createUnifiedDeleteDiff(path: string, previous: string): string {
   const oldLines = contentLines(previous);
   const oldCount = oldLines.length;
   const header = [
@@ -619,6 +619,12 @@ export async function editFileReplace(input: {
     throw new Error("Find text cannot be empty");
   }
 
+  if (input.find.length > raw.length * 0.5) {
+    throw new Error(
+      "find must be a short unique snippet (a few lines), not a large portion of the file. Use just enough context to uniquely identify the edit location.",
+    );
+  }
+
   const count = raw.split(input.find).length - 1;
   if (count === 0) {
     throw new Error("Find text not found in file");
@@ -631,7 +637,7 @@ export async function editFileReplace(input: {
   }
 
   const relativePath = displayPathForDiff(absPath);
-  const diff = buildUnifiedWriteDiff(relativePath, raw, next);
+  const diff = createUnifiedWriteDiff(relativePath, raw, next);
   return [`path=${absPath}`, `matches=${count}`, `dry_run=${input.dryRun ? "true" : "false"}`, "", diff].join("\n");
 }
 
@@ -658,7 +664,7 @@ export async function writeTextFile(input: { path: string; content: string; over
   await mkdir(dirname(absPath), { recursive: true });
   await writeFile(absPath, input.content, "utf8");
   const relativePath = displayPathForDiff(absPath);
-  const diff = buildUnifiedWriteDiff(relativePath, previousContent, input.content);
+  const diff = createUnifiedWriteDiff(relativePath, previousContent, input.content);
   return [
     `path=${absPath}`,
     `bytes=${Buffer.byteLength(input.content, "utf8")}`,
@@ -677,7 +683,7 @@ export async function deleteTextFile(input: { path: string; dryRun?: boolean }):
     await unlink(absPath);
   }
   const relativePath = displayPathForDiff(absPath);
-  const diff = buildUnifiedDeleteDiff(relativePath, previousContent);
+  const diff = createUnifiedDeleteDiff(relativePath, previousContent);
   return [
     `path=${absPath}`,
     `bytes=${Buffer.byteLength(previousContent, "utf8")}`,

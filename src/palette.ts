@@ -7,7 +7,7 @@ export const palette = {
   // Text
   textCode: "#B7C0CC",
   textPath: "#A8B1BC",
-  textDim: "#6B7280",
+  textMuted: "#6B7280",
 
   // Diff
   diffAdd: "green",
