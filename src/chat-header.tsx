@@ -21,46 +21,51 @@ export function ChatHeader(props: ChatHeaderProps): React.ReactNode {
   const title = lines.find((line) => line.id === "title");
   const session = lines.find((line) => line.id === "session");
   const cwd = lines.find((line) => line.id === "cwd");
-  const logoColumnWidth = 10;
-  const logoTop = "  ▗████▖  ";
-  const logoMiddleLeft = " ▟█";
-  const logoMiddleEyes = "●  ●";
-  const logoMiddleRight = "█▙ ";
-  const logoBottom = " ▜█▄▄▄▄█▛ ";
+  const logoColumnWidth = 11;
+
+  const rows: { key: string; logo: React.ReactNode; text: React.ReactNode }[] = [
+    {
+      key: "title",
+      logo: <Text color={logoColor}>{"  ▗█████▖  "}</Text>,
+      text: (
+        <>
+          <Text color={brandColor} bold>
+            {title?.text ?? ""}
+          </Text>
+          <Text color={brandColor} dimColor>
+            {title?.suffix ?? ""}
+          </Text>
+        </>
+      ),
+    },
+    {
+      key: "session",
+      logo: (
+        <>
+          <Text color={logoColor}>{" ▟█ "}</Text>
+          <Text color={logoEyeColor}>{"● ●"}</Text>
+          <Text color={logoColor}>{" █▙ "}</Text>
+        </>
+      ),
+      text: <Text dimColor={Boolean(session?.dim)}>{session?.text ?? ""}</Text>,
+    },
+    {
+      key: "cwd",
+      logo: <Text color={logoColor}>{" ▜█▄▄▄▄▄█▛ "}</Text>,
+      text: <Text dimColor={Boolean(cwd?.dim)}>{cwd?.text ?? ""}</Text>,
+    },
+  ];
 
   return (
     <>
-      <Box>
-        <Text> </Text>
-        <Box width={logoColumnWidth}>
-          <Text color={logoColor}>{logoTop}</Text>
+      {rows.map((row) => (
+        <Box key={row.key}>
+          <Text> </Text>
+          <Box width={logoColumnWidth}>{row.logo}</Box>
+          <Text> </Text>
+          {row.text}
         </Box>
-        <Text> </Text>
-        <Text color={brandColor} bold>
-          {title?.text ?? ""}
-        </Text>
-        <Text color={brandColor} dimColor>
-          {title?.suffix ?? ""}
-        </Text>
-      </Box>
-      <Box>
-        <Text> </Text>
-        <Box width={logoColumnWidth}>
-          <Text color={logoColor}>{logoMiddleLeft}</Text>
-          <Text color={logoEyeColor}>{logoMiddleEyes}</Text>
-          <Text color={logoColor}>{logoMiddleRight}</Text>
-        </Box>
-        <Text> </Text>
-        <Text dimColor={Boolean(session?.dim)}>{session?.text ?? ""}</Text>
-      </Box>
-      <Box>
-        <Text> </Text>
-        <Box width={logoColumnWidth}>
-          <Text color={logoColor}>{logoBottom}</Text>
-        </Box>
-        <Text> </Text>
-        <Text dimColor={Boolean(cwd?.dim)}>{cwd?.text ?? ""}</Text>
-      </Box>
+      ))}
     </>
   );
 }
