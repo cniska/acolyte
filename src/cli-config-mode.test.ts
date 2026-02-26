@@ -92,8 +92,10 @@ describe("cli config mode", () => {
 
     const listResult = runCli(home, project, "config", "list");
     expect(listResult.exitCode).toBe(0);
-    expect(listResult.stdout).toContain("scope=effective");
-    expect(listResult.stdout).toContain("model=anthropic/claude-sonnet-4");
+    expect(listResult.stdout).toContain("scope:");
+    expect(listResult.stdout).toContain("effective");
+    expect(listResult.stdout).toContain("model:");
+    expect(listResult.stdout).toContain("anthropic/claude-sonnet-4");
   });
 
   test("config set rejects invalid values", async () => {

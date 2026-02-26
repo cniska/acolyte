@@ -1222,7 +1222,7 @@ async function statusMode(): Promise<void> {
   });
   try {
     const status = await backend.status();
-    printOutput(formatStatusOutput(status));
+    printInfo(formatStatusOutput(status));
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     printError(message);
@@ -1341,9 +1341,13 @@ async function configMode(args: string[]): Promise<void> {
   if (subcommand === "list") {
     const scope = parseScopeFlag(restArgs[0]);
     const config = scope ? await readConfigForScope(scope) : await readConfig();
-    printInfo(`scope=${scope ?? "effective"}`);
+    const maxKey = validKeys.reduce((max, key) => Math.max(max, `${key}:`.length), 0);
+    printInfo(`${"scope:".padEnd(maxKey + 1)} ${scope ?? "effective"}`);
     for (const name of validKeys) {
-      printInfo(`${name}=${String(config[name] ?? "")}`);
+      const value = config[name];
+      if (value !== undefined && value !== "") {
+        printInfo(`${`${name}:`.padEnd(maxKey + 1)} ${String(value)}`);
+      }
     }
     return;
   }
