@@ -204,9 +204,11 @@ function createRunCommandTool(onToolOutput?: ToolOutputListener) {
         const toolCallId = streamCallId("run-command");
         const maxStreamLines = 5;
         let streamedLines = 0;
+        let totalLines = 0;
         let stdoutBuffer = "";
         let stderrBuffer = "";
         const emitLine = (message: string): void => {
+          totalLines += 1;
           if (streamedLines >= maxStreamLines) {
             return;
           }
@@ -256,6 +258,10 @@ function createRunCommandTool(onToolOutput?: ToolOutputListener) {
         };
         flushRemainder("stdout");
         flushRemainder("stderr");
+        const omitted = totalLines - streamedLines;
+        if (omitted > 0) {
+          onToolOutput?.({ toolName: "run-command", message: `… +${omitted} lines`, toolCallId });
+        }
         const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.run);
         return { result };
       });
@@ -438,14 +444,8 @@ function createCreateFileTool(onToolOutput?: ToolOutputListener) {
           content: input.content,
           overwrite: true,
         });
-        const contentLines = input.content.split("\n");
-        const maxStreamLines = 30;
-        const count = Math.min(contentLines.length, maxStreamLines);
-        for (let i = 0; i < count; i++) {
-          onToolOutput?.({ toolName: "create-file", message: `${i + 1}  ${contentLines[i]}`, toolCallId });
-        }
-        if (contentLines.length > maxStreamLines) {
-          onToolOutput?.({ toolName: "create-file", message: "…", toolCallId });
+        for (const line of numberedUnifiedDiffLines(rawResult, 30)) {
+          onToolOutput?.({ toolName: "create-file", message: line, toolCallId });
         }
         const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.create);
         return { result };

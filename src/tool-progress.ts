@@ -30,7 +30,7 @@ export function parseToolProgressLine(line: string): ToolProgressParsedLine {
       text: numberedDiff[4] ?? "",
     };
   }
-  const numberedContext = line.match(/^(\d+)(\s{2,})(.*)$/);
+  const numberedContext = line.match(/^(\d+)(\s{2})(.*)$/);
   if (numberedContext) {
     return {
       kind: "numberedContext",
@@ -53,7 +53,7 @@ export function parseToolProgressLine(line: string): ToolProgressParsedLine {
   if (line.startsWith("- ")) {
     return { kind: "plainDiff", marker: "-", text: line };
   }
-  if (line === "…" || (/^[…(]/.test(line) && /truncat|omit|output\)?$/i.test(line))) {
+  if (line === "…" || (/^[…(]/.test(line) && /truncat|omit|output|lines$/i.test(line))) {
     return { kind: "meta", text: line };
   }
   return { kind: "text", text: line };

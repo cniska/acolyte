@@ -61,10 +61,10 @@ describe("chat transcript helpers", () => {
   });
 
   test("parseToolProgressLine parses numbered context lines", () => {
-    expect(parseToolProgressLine("8   unchanged line")).toEqual({
+    expect(parseToolProgressLine("8  unchanged line")).toEqual({
       kind: "numberedContext",
       lineNumber: "8",
-      spacing: "   ",
+      spacing: "  ",
       text: "unchanged line",
     });
   });

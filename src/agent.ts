@@ -442,10 +442,10 @@ export async function runAgent(input: {
   });
 
   toolOutputHandler = (event) => {
-    const content = event.message.trim();
-    if (!content) {
+    if (!event.message.trim()) {
       return;
     }
+    const content = event.message;
     // Map synthetic toolCallId to native one.
     const queue = nativeIdQueue.get(event.toolName);
     const nativeId = queue?.[queue.length - 1] ?? event.toolCallId ?? event.toolName;

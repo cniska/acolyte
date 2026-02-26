@@ -128,15 +128,7 @@ function renderToolProgressContent(content: string): React.ReactNode {
             ) : parsed.kind === "plainDiff" ? (
               <Text color={parsed.marker === "+" ? palette.diffAdd : palette.diffRemove}>{parsed.text}</Text>
             ) : parsed.kind === "meta" ? (
-              (() => {
-                const prev = index > 0 ? parsedLines[index - 1] : undefined;
-                const prevLen =
-                  prev && (prev.kind === "numberedDiff" || prev.kind === "numberedContext")
-                    ? prev.lineNumber.length
-                    : 0;
-                const pad = prevLen > 0 ? lineNumberWidth - prevLen + 1 : lineNumberWidth;
-                return <Text dimColor>{"…".padStart(pad, " ")}</Text>;
-              })()
+              <Text dimColor>{"…".padStart(lineNumberWidth, " ")}</Text>
             ) : (
               <Text>{line}</Text>
             )}
