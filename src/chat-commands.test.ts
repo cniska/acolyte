@@ -1,70 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { appConfig, setPermissionMode } from "./app-config";
-import { type ChatRow, dispatchSlashCommand, formatTokenUsageOutput, type TokenUsageEntry } from "./chat-commands";
-import { createBackend, createMessage, createSession, createStore } from "./test-factory";
+import { dispatchSlashCommand, formatTokenUsageOutput, type TokenUsageEntry } from "./chat-commands";
+import { createCommandContext, createMessage, createSession, createStore } from "./test-factory";
 
-async function runCommand(
-  text: string,
-  tokenUsage: TokenUsageEntry[] = [],
-  store = createStore(),
-  options?: {
-    memoryApi?: {
-      listMemories: (options?: {
-        scope?: "all" | "user" | "project";
-      }) => Promise<Array<{ id: string; scope: "user" | "project"; content: string; createdAt: string }>>;
-      addMemory: (
-        content: string,
-        options?: { scope?: "user" | "project" },
-      ) => Promise<{ id: string; scope: "user" | "project"; content: string; createdAt: string }>;
-      removeMemoryByPrefix?: (prefix: string) => Promise<
-        | { kind: "removed"; entry: { id: string; scope: "user" | "project"; content: string; createdAt: string } }
-        | { kind: "not_found"; prefix: string }
-        | {
-            kind: "ambiguous";
-            prefix: string;
-            matches: Array<{ id: string; scope: "user" | "project"; content: string; createdAt: string }>;
-          }
-      >;
-      getMemoryContextEntries?: () => Promise<
-        Array<{ id: string; scope: "user" | "project"; content: string; createdAt: string }>
-      >;
-    };
-    setConfigPermissionMode?: (mode: "read" | "write", scope: "user" | "project") => Promise<void>;
-  },
-): Promise<{ rows: ChatRow[]; stop: boolean; openedPermissions: boolean; openedPolicy: number }> {
-  let rows: ChatRow[] = [];
-  let openedPermissions = false;
-  let openedPolicy = 0;
-  const result = await dispatchSlashCommand({
-    text,
-    resolvedText: text,
-    backend: createBackend(),
-    store,
-    currentSession: createSession(),
-    setCurrentSession: () => {},
-    setTokenUsage: () => {},
-    toRows: () => [],
-    setRows: (updater) => {
-      rows = updater(rows);
-    },
-    setShowShortcuts: () => {},
-    setValue: () => {},
-    persist: async () => {},
-    exit: () => {},
-    openSkillsPanel: async () => {},
-    openResumePanel: () => {},
-    openPermissionsPanel: () => {
-      openedPermissions = true;
-    },
-    openPolicyPanel: () => {
-      openedPolicy += 1;
-    },
-    setBackendPermissionMode: async () => {},
-    setConfigPermissionMode: options?.setConfigPermissionMode,
-    tokenUsage,
-    memoryApi: options?.memoryApi,
-  });
-  return { rows, stop: result.stop, openedPermissions, openedPolicy };
+async function runCommand(text: string, overrides: Parameters<typeof createCommandContext>[1] = {}) {
+  const { ctx, spies } = createCommandContext(text, overrides);
+  const result = await dispatchSlashCommand(ctx);
+  return { ...spies, stop: result.stop };
 }
 
 describe("chat-commands", () => {
@@ -149,7 +91,7 @@ describe("chat-commands", () => {
         modelCalls: 5,
       },
     ];
-    const { rows, stop } = await runCommand("/tokens", tokenUsage);
+    const { rows, stop } = await runCommand("/tokens", { tokenUsage });
 
     expect(stop).toBe(true);
     expect(rows.some((row) => row.content.includes("last_turn:"))).toBe(true);
@@ -197,7 +139,7 @@ describe("chat-commands", () => {
         createSession({ id: "sess_bbbb2222", title: "Second" }),
       ],
     });
-    const { rows, stop } = await runCommand("/sessions", [], store);
+    const { rows, stop } = await runCommand("/sessions", { store });
     expect(stop).toBe(true);
     const system = rows.find((row) => row.role === "system" && row.content.includes("Sessions 2"));
     expect(system).toBeDefined();
@@ -217,7 +159,7 @@ describe("chat-commands", () => {
         }),
       ],
     });
-    const { rows, stop, openedPolicy } = await runCommand("/distill --sessions 10 --min 2", [], store);
+    const { rows, stop, openedPolicy } = await runCommand("/distill --sessions 10 --min 2", { store });
     expect(stop).toBe(true);
     expect(rows.some((row) => row.role === "system" && row.content.includes("Proposed policy updates"))).toBe(true);
     expect(rows.some((row) => row.role === "system" && row.content.includes("keep output concise"))).toBe(true);
@@ -234,7 +176,7 @@ describe("chat-commands", () => {
         createdAt: "2026-02-21T00:00:00.000Z",
       }),
     };
-    const { rows, stop } = await runCommand("/memory", [], createStore(), { memoryApi });
+    const { rows, stop } = await runCommand("/memory", { memoryApi });
     expect(stop).toBe(true);
     expect(rows.some((row) => row.role === "system" && row.content === "No memory saved yet.")).toBe(true);
   });
@@ -254,7 +196,7 @@ describe("chat-commands", () => {
       }),
       getMemoryContextEntries: async () => [],
     };
-    const { rows, stop } = await runCommand("/memory user", [], createStore(), { memoryApi });
+    const { rows, stop } = await runCommand("/memory user", { memoryApi });
     expect(stop).toBe(true);
     expect(receivedScope).toBe("user");
     expect(rows.some((row) => row.role === "system" && row.content === "No user memory saved yet.")).toBe(true);
@@ -271,7 +213,7 @@ describe("chat-commands", () => {
       }),
       getMemoryContextEntries: async () => [],
     };
-    const { rows, stop } = await runCommand("/memory context", [], createStore(), { memoryApi });
+    const { rows, stop } = await runCommand("/memory context", { memoryApi });
     expect(stop).toBe(true);
     expect(
       rows.some((row) => row.role === "system" && row.content === "No memory context is currently injected."),
@@ -302,7 +244,7 @@ describe("chat-commands", () => {
         },
       ],
     };
-    const { rows, stop } = await runCommand("/memory context", [], createStore(), { memoryApi });
+    const { rows, stop } = await runCommand("/memory context", { memoryApi });
     expect(stop).toBe(true);
     const system = rows.find((row) => row.role === "system" && row.content.startsWith("Memory context 2"));
     expect(system).toBeDefined();
@@ -325,7 +267,7 @@ describe("chat-commands", () => {
         return [];
       },
     };
-    const { rows, stop } = await runCommand("/memory context user", [], createStore(), { memoryApi });
+    const { rows, stop } = await runCommand("/memory context user", { memoryApi });
     expect(stop).toBe(true);
     expect(receivedScope).toBe("user");
     expect(
@@ -368,7 +310,7 @@ describe("chat-commands", () => {
         createdAt: "2026-02-21T00:00:00.000Z",
       }),
     };
-    const { rows, stop } = await runCommand("/memory", [], createStore(), { memoryApi });
+    const { rows, stop } = await runCommand("/memory", { memoryApi });
     expect(stop).toBe(true);
     const system = rows.find((row) => row.role === "system" && row.content.startsWith("Memory 2"));
     expect(system).toBeDefined();
@@ -400,7 +342,7 @@ describe("chat-commands", () => {
       }),
       getMemoryContextEntries: async () => [],
     };
-    const { rows, stop } = await runCommand("/memory all", [], createStore(), { memoryApi });
+    const { rows, stop } = await runCommand("/memory all", { memoryApi });
     expect(stop).toBe(true);
     const system = rows.find((row) => row.role === "system" && row.content.startsWith("Memory 2"));
     expect(system).toBeDefined();
@@ -427,7 +369,7 @@ describe("chat-commands", () => {
         },
       }),
     };
-    const { rows, stop } = await runCommand("/memory rm mem_dead", [], createStore(), { memoryApi });
+    const { rows, stop } = await runCommand("/memory rm mem_dead", { memoryApi });
     expect(stop).toBe(true);
     expect(rows.some((row) => row.content.includes("Removed project memory mem_deadbeef."))).toBe(true);
   });
@@ -443,7 +385,7 @@ describe("chat-commands", () => {
       }),
       removeMemoryByPrefix: async () => ({ kind: "not_found" as const, prefix: "mem_zzz" }),
     };
-    const { rows, stop } = await runCommand("/memory rm mem_zzz", [], createStore(), { memoryApi });
+    const { rows, stop } = await runCommand("/memory rm mem_zzz", { memoryApi });
     expect(stop).toBe(true);
     expect(rows.some((row) => row.content === "No memory found for id prefix: mem_zzz")).toBe(true);
   });
@@ -466,7 +408,7 @@ describe("chat-commands", () => {
         ],
       }),
     };
-    const { rows, stop } = await runCommand("/memory rm mem_a", [], createStore(), { memoryApi });
+    const { rows, stop } = await runCommand("/memory rm mem_a", { memoryApi });
     expect(stop).toBe(true);
     expect(
       rows.some((row) => row.content === "Ambiguous memory id prefix: mem_a. Matches: mem_abcd1111, mem_abcd2222"),
@@ -491,7 +433,7 @@ describe("chat-commands", () => {
       }),
       getMemoryContextEntries: async () => [],
     };
-    const { rows, stop } = await runCommand("/memory user", [], createStore(), { memoryApi });
+    const { rows, stop } = await runCommand("/memory user", { memoryApi });
     expect(stop).toBe(true);
     expect(rows.some((row) => row.role === "system" && row.content.startsWith("User memory 1"))).toBe(true);
   });
@@ -514,7 +456,7 @@ describe("chat-commands", () => {
       }),
       getMemoryContextEntries: async () => [],
     };
-    const { rows, stop } = await runCommand("/memory project", [], createStore(), { memoryApi });
+    const { rows, stop } = await runCommand("/memory project", { memoryApi });
     expect(stop).toBe(true);
     expect(rows.some((row) => row.role === "system" && row.content.startsWith("Project memory 1"))).toBe(true);
   });
@@ -537,7 +479,7 @@ describe("chat-commands", () => {
         },
       ],
     };
-    const { rows, stop } = await runCommand("/memory context project", [], createStore(), { memoryApi });
+    const { rows, stop } = await runCommand("/memory context project", { memoryApi });
     expect(stop).toBe(true);
     expect(rows.some((row) => row.role === "system" && row.content.startsWith("Project memory context 1"))).toBe(true);
   });
@@ -575,7 +517,7 @@ describe("chat-commands", () => {
         };
       },
     };
-    const { rows, stop } = await runCommand("/remember --project use bun verify", [], createStore(), { memoryApi });
+    const { rows, stop } = await runCommand("/remember --project use bun verify", { memoryApi });
     expect(stop).toBe(true);
     expect(savedContent).toBe("use bun verify");
     expect(savedScope).toBe("project");
@@ -600,11 +542,11 @@ describe("chat-commands", () => {
     const prev = appConfig.agent.permissions.mode;
     try {
       const writes: Array<{ mode: "read" | "write"; scope: "user" | "project" }> = [];
-      const readResult = await runCommand("/permissions read", [], createStore(), {
-        setConfigPermissionMode: async (mode, scope) => {
-          writes.push({ mode, scope });
-        },
-      });
+      const setConfigPermissionMode = async (mode: "read" | "write", scope: "user" | "project") => {
+        writes.push({ mode, scope });
+      };
+
+      const readResult = await runCommand("/permissions read", { setConfigPermissionMode });
       expect(readResult.stop).toBe(true);
       expect(appConfig.agent.permissions.mode).toBe("read");
       expect(
@@ -614,11 +556,7 @@ describe("chat-commands", () => {
       ).toBe(true);
       expect(writes).toContainEqual({ mode: "read", scope: "project" });
 
-      const writeResult = await runCommand("/permissions write --user", [], createStore(), {
-        setConfigPermissionMode: async (mode, scope) => {
-          writes.push({ mode, scope });
-        },
-      });
+      const writeResult = await runCommand("/permissions write --user", { setConfigPermissionMode });
       expect(writeResult.stop).toBe(true);
       expect(appConfig.agent.permissions.mode).toBe("write");
       expect(
@@ -648,54 +586,25 @@ describe("chat-commands", () => {
   });
 
   test("dispatchSlashCommand /new resets rows to new-session status", async () => {
-    let rows: ChatRow[] = [{ id: "old", role: "assistant", content: "old row" }];
     const session = createSession({ id: "sess_current" });
     const store = createStore({ sessions: [session], activeSessionId: session.id });
-    const setCurrentSessionCalls: string[] = [];
-    const tokenUsageCalls: TokenUsageEntry[][] = [];
+    const { ctx, spies } = createCommandContext("/new", { store, currentSession: session });
 
-    const result = await dispatchSlashCommand({
-      text: "/new",
-      resolvedText: "/new",
-      backend: createBackend(),
-      store,
-      currentSession: session,
-      setCurrentSession: (next) => {
-        setCurrentSessionCalls.push(next.id);
-      },
-      setTokenUsage: (updater) => {
-        tokenUsageCalls.push(updater([]));
-      },
-      toRows: () => [],
-      setRows: (updater) => {
-        rows = updater(rows);
-      },
-      setShowShortcuts: () => {},
-      setValue: () => {},
-      persist: async () => {},
-      exit: () => {},
-      openSkillsPanel: async () => {},
-      openResumePanel: () => {},
-      openPermissionsPanel: () => {},
-      openPolicyPanel: () => {},
-      setBackendPermissionMode: async () => {},
-      tokenUsage: [],
-    });
+    const result = await dispatchSlashCommand(ctx);
 
     expect(result.stop).toBe(true);
-    expect(rows).toHaveLength(2);
-    expect(rows[0]).toMatchObject({ role: "user", content: "/new" });
-    expect(rows[1]?.role).toBe("system");
-    expect(rows[1]?.content.startsWith("Started new session: sess_")).toBe(true);
-    expect(rows[1]?.style).toBe("sessionStatus");
-    expect(setCurrentSessionCalls).toHaveLength(1);
-    expect(tokenUsageCalls).toEqual([[]]);
+    expect(spies.rows).toHaveLength(2);
+    expect(spies.rows[0]).toMatchObject({ role: "user", content: "/new" });
+    expect(spies.rows[1]?.role).toBe("system");
+    expect(spies.rows[1]?.content.startsWith("Started new session: sess_")).toBe(true);
+    expect(spies.rows[1]?.style).toBe("sessionStatus");
+    expect(spies.currentSessionIds).toHaveLength(1);
+    expect(spies.tokenUsageSets).toEqual([[]]);
     expect(store.sessions).toHaveLength(2);
-    expect(store.activeSessionId).toBe(setCurrentSessionCalls[0]);
+    expect(store.activeSessionId).toBe(spies.currentSessionIds[0]);
   });
 
   test("dispatchSlashCommand /resume with prefix restores matching session", async () => {
-    let rows: ChatRow[] = [];
     const target = createSession({
       id: "sess_resume_target",
       title: "Resume Target",
@@ -712,42 +621,18 @@ describe("chat-commands", () => {
       sessions: [target, createSession({ id: "sess_other", title: "Other" })],
       activeSessionId: "sess_other",
     });
-    const setCurrentSessionCalls: string[] = [];
-    const setTokenUsageCalls: TokenUsageEntry[][] = [];
+    const text = `/resume ${target.id.slice(0, 12)}`;
+    const { ctx, spies } = createCommandContext(text, { store });
 
-    const result = await dispatchSlashCommand({
-      text: `/resume ${target.id.slice(0, 12)}`,
-      resolvedText: `/resume ${target.id.slice(0, 12)}`,
-      backend: createBackend(),
-      store,
-      currentSession: createSession({ id: "sess_current" }),
-      setCurrentSession: (next) => {
-        setCurrentSessionCalls.push(next.id);
-      },
-      setTokenUsage: (updater) => {
-        setTokenUsageCalls.push(updater([]));
-      },
-      toRows: (messages) => messages.map((m) => ({ id: m.id, role: m.role, content: m.content })),
-      setRows: (updater) => {
-        rows = updater(rows);
-      },
-      setShowShortcuts: () => {},
-      setValue: () => {},
-      persist: async () => {},
-      exit: () => {},
-      openSkillsPanel: async () => {},
-      openResumePanel: () => {},
-      openPermissionsPanel: () => {},
-      openPolicyPanel: () => {},
-      setBackendPermissionMode: async () => {},
-      tokenUsage: [],
-    });
+    const result = await dispatchSlashCommand(ctx);
 
     expect(result.stop).toBe(true);
     expect(store.activeSessionId).toBe(target.id);
-    expect(setCurrentSessionCalls).toEqual([target.id]);
-    expect(setTokenUsageCalls).toEqual([target.tokenUsage]);
-    expect(rows.some((row) => row.style === "sessionStatus" && row.content.startsWith("Resumed session:"))).toBe(true);
+    expect(spies.currentSessionIds).toEqual([target.id]);
+    expect(spies.tokenUsageSets).toEqual([target.tokenUsage]);
+    expect(spies.rows.some((row) => row.style === "sessionStatus" && row.content.startsWith("Resumed session:"))).toBe(
+      true,
+    );
   });
 
   test("dispatchSlashCommand /resume opens picker flow", async () => {
@@ -763,7 +648,6 @@ describe("chat-commands", () => {
   });
 
   test("dispatchSlashCommand supports /new then /resume round-trip", async () => {
-    let rows: ChatRow[] = [];
     const original = createSession({
       id: "sess_original",
       title: "Original Session",
@@ -773,50 +657,19 @@ describe("chat-commands", () => {
       sessions: [original],
       activeSessionId: original.id,
     });
-    let current = original;
 
-    const baseCtx = {
-      backend: createBackend(),
-      store,
-      setCurrentSession: (next: ReturnType<typeof createSession>) => {
-        current = next;
-      },
-      toRows: (messages: ReturnType<typeof createSession>["messages"]) =>
-        messages.map((m) => ({ id: m.id, role: m.role, content: m.content })),
-      setRows: (updater: (currentRows: ChatRow[]) => ChatRow[]) => {
-        rows = updater(rows);
-      },
-      setShowShortcuts: () => {},
-      setValue: () => {},
-      persist: async () => {},
-      exit: () => {},
-      openSkillsPanel: async () => {},
-      openResumePanel: () => {},
-      openPermissionsPanel: () => {},
-      openPolicyPanel: () => {},
-      setBackendPermissionMode: async () => {},
-      tokenUsage: [] as TokenUsageEntry[],
-    };
-
-    const newResult = await dispatchSlashCommand({
-      text: "/new",
-      resolvedText: "/new",
-      currentSession: current,
-      ...baseCtx,
-    });
+    const { ctx: newCtx } = createCommandContext("/new", { store, currentSession: original });
+    const newResult = await dispatchSlashCommand(newCtx);
     expect(newResult.stop).toBe(true);
     const createdId = store.activeSessionId ?? "";
     expect(createdId.startsWith("sess_")).toBe(true);
     expect(createdId).not.toBe(original.id);
 
-    const resumeResult = await dispatchSlashCommand({
-      text: `/resume ${original.id.slice(0, 12)}`,
-      resolvedText: `/resume ${original.id.slice(0, 12)}`,
-      currentSession: current,
-      ...baseCtx,
-    });
+    const resumeText = `/resume ${original.id.slice(0, 12)}`;
+    const { ctx: resumeCtx, spies } = createCommandContext(resumeText, { store });
+    const resumeResult = await dispatchSlashCommand(resumeCtx);
     expect(resumeResult.stop).toBe(true);
     expect(store.activeSessionId).toBe(original.id);
-    expect(current.id).toBe(original.id);
+    expect(spies.currentSessionIds).toContain(original.id);
   });
 });

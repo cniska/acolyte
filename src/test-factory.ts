@@ -1,5 +1,5 @@
 import type { Backend, StreamEvent } from "./backend";
-import type { ChatRow } from "./chat-commands";
+import type { ChatRow, CommandContext, TokenUsageEntry } from "./chat-commands";
 import { createSubmitHandler } from "./chat-submit-handler";
 import type { PolicyCandidate } from "./policy-distill";
 import type { Message, Session, SessionStore } from "./types";
@@ -138,4 +138,58 @@ export function createSubmitHandlerHarness(overrides?: {
     setInterrupt: () => {},
   });
   return { submit, rows, session, calls };
+}
+
+export type CommandContextSpies = {
+  rows: ChatRow[];
+  openedPermissions: boolean;
+  openedPolicy: number;
+  currentSessionIds: string[];
+  tokenUsageSets: TokenUsageEntry[][];
+};
+
+export function createCommandContext(
+  text: string,
+  overrides: Partial<CommandContext> = {},
+): { ctx: CommandContext; spies: CommandContextSpies } {
+  const spies: CommandContextSpies = {
+    rows: [],
+    openedPermissions: false,
+    openedPolicy: 0,
+    currentSessionIds: [],
+    tokenUsageSets: [],
+  };
+  const ctx: CommandContext = {
+    text,
+    resolvedText: text,
+    backend: createBackend(),
+    store: createStore(),
+    currentSession: createSession(),
+    setCurrentSession: (next) => {
+      spies.currentSessionIds.push(next.id);
+    },
+    setTokenUsage: (updater) => {
+      spies.tokenUsageSets.push(updater([]));
+    },
+    toRows: (messages) => messages.map((m) => ({ id: m.id, role: m.role, content: m.content })),
+    setRows: (updater) => {
+      spies.rows = updater(spies.rows);
+    },
+    setShowShortcuts: () => {},
+    setValue: () => {},
+    persist: async () => {},
+    exit: () => {},
+    openSkillsPanel: async () => {},
+    openResumePanel: () => {},
+    openPermissionsPanel: () => {
+      spies.openedPermissions = true;
+    },
+    openPolicyPanel: () => {
+      spies.openedPolicy += 1;
+    },
+    setBackendPermissionMode: async () => {},
+    tokenUsage: [],
+    ...overrides,
+  };
+  return { ctx, spies };
 }

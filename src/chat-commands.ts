@@ -104,7 +104,7 @@ type CommandResult = {
   userText: string;
 };
 
-type CommandContext = {
+export type CommandContext = {
   text: string;
   resolvedText: string;
   backend: Backend;
