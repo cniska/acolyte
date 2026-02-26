@@ -41,6 +41,13 @@ describe("chat-slash helpers", () => {
     expect(suggestSlashCommands("plain")).toEqual([]);
   });
 
+  test("suggestSlashCommands falls back to fuzzy matching for typos", () => {
+    expect(suggestSlashCommands("/stauts")).toEqual(["/status"]);
+    expect(suggestSlashCommands("/neew")).toEqual(["/new"]);
+    expect(suggestSlashCommands("/sesions")).toEqual(["/sessions"]);
+    expect(suggestSlashCommands("/xyzxyz")).toEqual([]);
+  });
+
   test("shouldAutocompleteSlashSubmit only intercepts unresolved slash command token", () => {
     expect(shouldAutocompleteSlashSubmit("/st", "/status")).toBe(true);
     expect(shouldAutocompleteSlashSubmit("/status", "/status")).toBe(false);

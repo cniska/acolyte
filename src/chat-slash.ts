@@ -74,7 +74,16 @@ export function suggestSlashCommands(inputValue: string, max = 10): string[] {
   // No space: match top-level commands + all subcommands
   const allCommands = [...CHAT_SLASH_COMMANDS, ...Object.values(SUB_COMMANDS).flat()];
   const matches = allCommands.filter((command) => command.startsWith(value));
-  return matches.slice(0, max);
+  if (matches.length > 0) {
+    return matches.slice(0, max);
+  }
+
+  // No prefix matches — fall back to fuzzy matching on top-level commands
+  const fuzzy = [...CHAT_SLASH_COMMANDS]
+    .map((command) => ({ command, distance: editDistance(value, command) }))
+    .filter((item) => item.distance <= 2)
+    .sort((a, b) => a.distance - b.distance);
+  return fuzzy.map((item) => item.command).slice(0, max);
 }
 
 export function suggestClosestSlashCommand(inputValue: string, maxDistance = 2): string | null {
@@ -109,8 +118,7 @@ export function shouldAutocompleteSlashSubmit(inputValue: string, selectedSugges
   if (trimmed.includes(" ")) {
     return false;
   }
-  // Only autocomplete when input is an actual prefix of the suggestion
-  return trimmed !== selectedSuggestion && selectedSuggestion.startsWith(trimmed);
+  return trimmed !== selectedSuggestion;
 }
 
 export function applySlashSuggestion(selectedSuggestion: string): string {
