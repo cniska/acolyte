@@ -561,7 +561,9 @@ export async function runAgent(input: {
                   observedToolNames.add(toolName);
                   const inferredMode = modeForTool(toolName);
                   if (inferredMode !== currentMode) {
+                    const previousMode = currentMode;
                     currentMode = inferredMode;
+                    emitDebug("agent.mode.changed", { from: previousMode, to: currentMode, trigger: toolName });
                     emitEvent({ type: "status", message: agentModes[currentMode].progressText });
                   }
                   const args = (p.args ?? {}) as Record<string, unknown>;
