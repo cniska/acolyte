@@ -123,7 +123,7 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
       <Text dimColor>{borderLine()}</Text>
       <PromptInput
         value={value}
-        placeholder="Ask something…"
+        placeholder="Ask anything…"
         linePrefixFirst="❯ "
         linePrefixRest="  "
         onChange={onChange}

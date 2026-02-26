@@ -1,16 +1,16 @@
 import { homedir } from "node:os";
 
 const SHORTCUT_ITEMS = [
-  { key: "@path", description: "attach file/dir" },
+  { key: "@path", description: "attach file" },
   { key: "/new", description: "new session" },
-  { key: "/permissions", description: "permission mode" },
-  { key: "/status", description: "backend status" },
-  { key: "/sessions", description: "list sessions" },
   { key: "/resume <id>", description: "resume session" },
-  { key: "/skills", description: "skills picker" },
-  { key: "/remember <text>", description: "save memory note" },
+  { key: "/sessions", description: "session history" },
+  { key: "/permissions", description: "permissions" },
+  { key: "/status", description: "server status" },
+  { key: "/remember <text>", description: "save memory" },
   { key: "/memory [scope]", description: "list memories" },
   { key: "/tokens", description: "token usage" },
+  { key: "/skills", description: "skills" },
   { key: "/exit", description: "exit" },
 ] as const;
 
