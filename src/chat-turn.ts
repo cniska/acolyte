@@ -147,7 +147,7 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
 
   const durationMs = Date.now() - params.thinkingStartedAt;
   if (durationMs >= 300) {
-    rows.push(row("assistant", `Worked for ${formatThoughtDuration(durationMs)}`, true));
+    rows.push(row("assistant", `Worked for ${formatThoughtDuration(durationMs)} · ${reply.model}`, true));
   }
 
   return {
