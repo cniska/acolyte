@@ -1,18 +1,8 @@
-# Project Plan
+# Roadmap
 
 ## Goal
 
 Build a personal AI coding delegate that can take over bounded tasks in my projects, with the long-term goal of autonomous end-to-end execution (plan -> edit -> verify -> iterate).
-
-## Current State
-
-The assistant is at **step 1 of 3** on the autonomy ladder:
-
-1. **Single bounded tasks** (now): create a script, fix a type error, add a test.
-2. **Complex multi-file tasks** (next): implement a feature across multiple files with design decisions.
-3. **Iterative autonomous execution** (goal): plan -> edit -> verify -> iterate on failures without human intervention.
-
-The project was built collaboratively with Codex in commit-sized slices.
 
 ## Milestones
 
