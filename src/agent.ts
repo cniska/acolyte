@@ -1,5 +1,6 @@
 import { createAgent } from "./agent-factory";
 import { type AgentMode, agentModes, classifyMode, modeForTool } from "./agent-modes";
+import { getProjectLineWidth } from "./agent-tools";
 import type { ChatRequest, ChatResponse } from "./api";
 import { appConfig } from "./app-config";
 import type { StreamEvent } from "./client";
@@ -174,6 +175,10 @@ export function createModeInstructions(mode: AgentMode): string {
     if (meta?.instruction) {
       lines.push(`- ${meta.instruction}`);
     }
+  }
+  const lineWidth = getProjectLineWidth();
+  if (lineWidth && mode === "code") {
+    lines.push(`- Keep lines under ${lineWidth} characters.`);
   }
   return lines.join("\n");
 }

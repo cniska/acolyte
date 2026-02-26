@@ -627,16 +627,20 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       } else {
         input.currentSession.messages.push(assistantMessage);
         input.currentSession.updatedAt = input.nowIso();
-        // When pre-tool text was committed in place, strip it from the final
-        // assistant row so it doesn't appear twice.
+        // When pre-tool text was committed in place, strip the prefix
+        // from the final assistant row to avoid duplication. Use a
+        // proper prefix check instead of blind character slicing.
         const finalRows = committedStreamingText
           ? turn.rows
               .map((r) => {
                 if (r.role !== "assistant" || r.dim || r.style) {
                   return r;
                 }
-                const remaining = r.content.slice(committedStreamingText.length).trim();
-                return remaining ? { ...r, content: remaining } : null;
+                if (!r.content.startsWith(committedStreamingText)) {
+                  return r;
+                }
+                const after = r.content.slice(committedStreamingText.length).trim();
+                return after ? { ...r, content: after } : null;
               })
               .filter((r): r is ChatRow => r !== null)
           : turn.rows;

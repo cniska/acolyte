@@ -1,3 +1,4 @@
+import { existsSync, readFileSync } from "node:fs";
 import { mkdir, readdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -23,6 +24,66 @@ async function runCommand(cmd: string[]): Promise<{ code: number; stdout: string
     stdout: stdoutText,
     stderr: stderrText,
   };
+}
+
+function detectLineWidth(): number | null {
+  const root = WORKSPACE_ROOT;
+  try {
+    // biome.json
+    for (const name of ["biome.json", "biome.jsonc"]) {
+      const path = join(root, name);
+      if (existsSync(path)) {
+        const raw = JSON.parse(readFileSync(path, "utf8"));
+        const width = raw?.formatter?.lineWidth;
+        if (typeof width === "number" && width > 0) return width;
+      }
+    }
+    // .editorconfig (simple parse for max_line_length)
+    const editorconfig = join(root, ".editorconfig");
+    if (existsSync(editorconfig)) {
+      const text = readFileSync(editorconfig, "utf8");
+      const match = text.match(/max_line_length\s*=\s*(\d+)/);
+      if (match) return Number(match[1]);
+    }
+    // .prettierrc (JSON format)
+    for (const name of [".prettierrc", ".prettierrc.json"]) {
+      const path = join(root, name);
+      if (existsSync(path)) {
+        const raw = JSON.parse(readFileSync(path, "utf8"));
+        const width = raw?.printWidth;
+        if (typeof width === "number" && width > 0) return width;
+      }
+    }
+    // deno.json
+    for (const name of ["deno.json", "deno.jsonc"]) {
+      const path = join(root, name);
+      if (existsSync(path)) {
+        const raw = JSON.parse(readFileSync(path, "utf8"));
+        const width = raw?.fmt?.lineWidth;
+        if (typeof width === "number" && width > 0) return width;
+      }
+    }
+  } catch {
+    // Detection failed — fall back to no limit.
+  }
+  return null;
+}
+
+const projectLineWidth = detectLineWidth();
+
+export function getProjectLineWidth(): number | null {
+  return projectLineWidth;
+}
+
+function checkLineWidth(content: string): string | null {
+  if (!projectLineWidth) return null;
+  const lines = content.split("\n");
+  let violations = 0;
+  for (const line of lines) {
+    if (line.length > projectLineWidth) violations++;
+  }
+  if (violations === 0) return null;
+  return `${violations} line(s) exceed project max width (${projectLineWidth})`;
 }
 
 const IGNORED_DIRS = new Set(["node_modules", ".git", ".acolyte", "dist", "build", ".next", "coverage"]);
@@ -638,7 +699,10 @@ export async function editFileReplace(input: {
 
   const relativePath = displayPathForDiff(absPath);
   const diff = createUnifiedWriteDiff(relativePath, raw, next);
-  return [`path=${absPath}`, `matches=${count}`, `dry_run=${input.dryRun ? "true" : "false"}`, "", diff].join("\n");
+  const warning = checkLineWidth(next);
+  const parts = [`path=${absPath}`, `matches=${count}`, `dry_run=${input.dryRun ? "true" : "false"}`, "", diff];
+  if (warning) parts.push(`\nwarning: ${warning}`);
+  return parts.join("\n");
 }
 
 export async function writeTextFile(input: { path: string; content: string; overwrite?: boolean }): Promise<string> {
@@ -665,13 +729,16 @@ export async function writeTextFile(input: { path: string; content: string; over
   await writeFile(absPath, input.content, "utf8");
   const relativePath = displayPathForDiff(absPath);
   const diff = createUnifiedWriteDiff(relativePath, previousContent, input.content);
-  return [
+  const warning = checkLineWidth(input.content);
+  const parts = [
     `path=${absPath}`,
     `bytes=${Buffer.byteLength(input.content, "utf8")}`,
     `overwritten=${overwrite ? "true" : "false"}`,
     "",
     diff,
-  ].join("\n");
+  ];
+  if (warning) parts.push(`\nwarning: ${warning}`);
+  return parts.join("\n");
 }
 
 let dynamicLangsRegistered = false;
