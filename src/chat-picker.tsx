@@ -1,5 +1,6 @@
 import { Text } from "ink";
 import type React from "react";
+import { formatRelativeTime } from "./chat-formatters";
 import type { SkillMeta } from "./skills";
 import type { Session } from "./types";
 
@@ -123,17 +124,24 @@ export function renderPickerItems(
           })}
         </>
       );
-    case "resume":
+    case "resume": {
+      const titleWidth = picker.items.reduce(
+        (max, item) => Math.max(max, truncateText(item.title || "New Session", 40).length),
+        0,
+      );
       return picker.items.map((item, index) => {
         const selected = index === picker.index;
         const active = item.id === activeSessionId ? "●" : " ";
+        const title = truncateText(item.title || "New Session", 40).padEnd(titleWidth);
         return (
           <Text key={item.id}>
             {selected ? "› " : "  "}
-            <Text color={selected ? brandColor : undefined}>{`${active} ${item.id}`}</Text>{" "}
-            <Text dimColor>{truncateText(item.title || "New Session")}</Text>
+            <Text color={selected ? brandColor : undefined}>{`${active} ${item.id}`}</Text>
+            {"  "}
+            <Text dimColor>{`${title}  ${formatRelativeTime(item.updatedAt)}`}</Text>
           </Text>
         );
       });
+    }
   }
 }

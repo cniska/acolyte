@@ -1,4 +1,5 @@
 import { appConfig, setPermissionMode } from "./app-config";
+import { formatColumns, formatRelativeTime } from "./chat-formatters";
 import { suggestClosestSlashCommand } from "./chat-slash";
 import type { Client } from "./client";
 import type { ConfigScope } from "./config";
@@ -54,11 +55,12 @@ export function resolveResumeSession(store: SessionStore, text: string): ResumeR
 }
 
 export function formatSessionList(store: SessionStore, limit = 10): string[] {
-  return store.sessions.slice(0, limit).map((item) => {
+  const rows = store.sessions.slice(0, limit).map((item) => {
     const active = item.id === store.activeSessionId ? "●" : " ";
     const title = item.title || "New Session";
-    return `${active} ${item.id}  ${title}`;
+    return [`${active} ${item.id}`, title, formatRelativeTime(item.updatedAt)];
   });
+  return formatColumns(rows);
 }
 
 export function formatTokenUsageOutput(last: TokenUsageEntry | null, all: TokenUsageEntry[]): string {

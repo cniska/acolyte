@@ -17,6 +17,7 @@ import {
 } from "./agent-tools";
 import { appConfig } from "./app-config";
 import { wrapAssistantContent } from "./chat-content";
+import { formatColumns, formatRelativeTime } from "./chat-formatters";
 import { createProgressTracker } from "./chat-progress";
 import { runInkChat } from "./chat-ui";
 import { createClient } from "./client";
@@ -237,17 +238,6 @@ export function suggestCommands(input: string, max = 3): string[] {
     .map((row) => row.command);
 }
 
-export function formatColumns(rows: string[][]): string[] {
-  if (rows.length === 0) {
-    return [];
-  }
-  const colCount = rows[0].length;
-  const widths: number[] = [];
-  for (let c = 0; c < colCount - 1; c++) {
-    widths.push(rows.reduce((max, row) => Math.max(max, (row[c] ?? "").length), 0));
-  }
-  return rows.map((row) => row.map((cell, i) => (i < widths.length ? cell.padEnd(widths[i] + 2) : cell)).join(""));
-}
 
 function listSessions(store: SessionStore): void {
   if (store.sessions.length === 0) {
@@ -314,20 +304,6 @@ export function truncateText(input: string, maxChars: number): string {
   return `${input.slice(0, Math.max(0, maxChars - 1))}…`;
 }
 
-export function formatRelativeTime(iso: string, now?: number): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) {
-    return iso;
-  }
-  const seconds = Math.floor(((now ?? Date.now()) - date.getTime()) / 1000);
-  if (seconds < 60) return "just now";
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-}
 
 export function formatStatusOutput(status: Record<string, string>): string {
   return formatStatusOutputShared(status);

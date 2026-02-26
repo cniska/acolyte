@@ -185,7 +185,7 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
                 ? parseSessionStatus(row.content)
                 : null;
             const sessionsListHeader =
-              row.role === "assistant" && row.style === "sessionsList" ? parseSessionsHeader(row.content) : null;
+              row.style === "sessionsList" ? parseSessionsHeader(row.content) : null;
             const dimMarker = Boolean(row.dim) || Boolean(sessionStatus);
             let marker = "  ";
             let markerColor: string | undefined;
@@ -215,7 +215,25 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
                       <Text>{sessionsListHeader.prefix}</Text>
                       <Text dimColor>{sessionsListHeader.count}</Text>
                       {sessionsListHeader.rest.length > 0 ? (
-                        <Text dimColor>{`\n${sessionsListHeader.rest}`}</Text>
+                        <>
+                          {sessionsListHeader.rest.split("\n").map((line, i) => {
+                            const match = line.match(/^(. )(sess_\S+)(\s.*)$/);
+                            if (!match) {
+                              return (
+                                <Text key={`sl-${i}`} dimColor>
+                                  {`\n${line}`}
+                                </Text>
+                              );
+                            }
+                            return (
+                              <React.Fragment key={`sl-${i}`}>
+                                <Text dimColor>{`\n${match[1]}`}</Text>
+                                <Text>{match[2]}</Text>
+                                <Text dimColor>{match[3]}</Text>
+                              </React.Fragment>
+                            );
+                          })}
+                        </>
                       ) : null}
                     </Text>
                   ) : row.role === "system" && (row.style === "statusOutput" || row.style === "tokenOutput") ? (

@@ -18,6 +18,33 @@ export function formatThoughtDuration(ms: number): string {
   return `${minutes}m ${seconds}s`;
 }
 
+export function formatRelativeTime(iso: string, now?: number): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return iso;
+  }
+  const seconds = Math.floor(((now ?? Date.now()) - date.getTime()) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
+export function formatColumns(rows: string[][]): string[] {
+  if (rows.length === 0) {
+    return [];
+  }
+  const colCount = rows[0].length;
+  const widths: number[] = [];
+  for (let c = 0; c < colCount - 1; c++) {
+    widths.push(rows.reduce((max, row) => Math.max(max, (row[c] ?? "").length), 0));
+  }
+  return rows.map((row) => row.map((cell, i) => (i < widths.length ? cell.padEnd(widths[i] + 2) : cell)).join(""));
+}
+
 export function formatChangesSummary(statusRaw: string, diffRaw: string): string {
   const statusLines = statusRaw
     .split("\n")

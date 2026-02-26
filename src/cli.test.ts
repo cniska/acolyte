@@ -1,15 +1,14 @@
 import { describe, expect, test } from "bun:test";
+import { formatColumns, formatRelativeTime } from "./chat-formatters";
 import {
   buildUsageCommandRows,
   displayPromptForOutput,
   extractVersionFromPackageJsonText,
   formatAssistantReplyOutput,
-  formatColumns,
   formatEditUpdateOutput,
   formatForTool,
   formatProgressEventOutput,
   formatPromptError,
-  formatRelativeTime,
   formatResumeCommand,
   formatRunOutput,
   formatStatusOutput,
