@@ -59,7 +59,7 @@ export const toolMeta: Record<string, ToolMeta> = {
   },
   "scan-code": {
     instruction:
-      "Use `scan-code` when you need structural, AST-level matching (for example specific node types, call/argument shapes, or refactor targets) that text search cannot reliably find. Pass an ast-grep `pattern` with `$VAR` metavariables (e.g. `console.log($ARG)`). For simple keyword or regex searches prefer `search-files`.",
+      "Use `scan-code` for structural, AST-level matching (node types, call/argument shapes, refactor targets). Pass an ast-grep `pattern` with `$VAR` metavariables (e.g. `console.log($ARG)`). Note: metavariable names like $NAME are arbitrary — they match any AST node regardless of identifier name. To match a specific identifier, use the literal text in the pattern (for example `function myFunc($ARG)`). For simple keyword or regex searches prefer `search-files`.",
     aliases: ["scanCode", "scan_code"],
   },
   "edit-code": {
