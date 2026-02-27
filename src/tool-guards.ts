@@ -1,6 +1,9 @@
+export type GuardEvent = { guardId: string; toolName: string; action: "blocked" | "flag_set"; detail?: string };
+
 export type SessionContext = {
   callLog: Array<{ toolName: string; args: Record<string, unknown> }>;
   flags: Record<string, unknown>;
+  onGuard?: (event: GuardEvent) => void;
 };
 
 export type GuardInput = {
@@ -42,6 +45,7 @@ const noRewriteGuard: ToolGuard = {
       });
     });
     if (wasRead) {
+      session.onGuard?.({ guardId: "no-rewrite", toolName, action: "blocked", detail: deletePath });
       throw new Error(
         `Cannot delete "${deletePath}" — it was read this session. Use edit-file to modify it instead of deleting and recreating.`,
       );
@@ -57,6 +61,7 @@ const verifyRanGuard: ToolGuard = {
     if (typeof args.command !== "string") return;
     if (/\bverify\b/i.test(args.command)) {
       session.flags.verifyRan = true;
+      session.onGuard?.({ guardId: "verify-ran", toolName, action: "flag_set", detail: "verifyRan" });
     }
   },
 };

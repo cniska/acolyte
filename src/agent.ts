@@ -463,6 +463,15 @@ export async function runAgent(input: {
     },
   });
 
+  session.onGuard = (event) => {
+    emitDebug("agent.guard", {
+      guard: event.guardId,
+      tool: event.toolName,
+      action: event.action,
+      detail: event.detail,
+    });
+  };
+
   const agent = createAgent({
     id: "acolyte",
     name: "Acolyte",
