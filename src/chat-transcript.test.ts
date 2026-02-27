@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { parseSessionsHeader, parseStatusLine } from "./chat-transcript";
-import { parseToolProgressLine } from "./tool-progress";
+import { parseToolProgressBlock, parseToolProgressLine } from "./tool-progress";
 
 describe("chat transcript helpers", () => {
   test("parseSessionsHeader reads session count and body", () => {
@@ -67,5 +67,26 @@ describe("chat transcript helpers", () => {
       spacing: "  ",
       text: "unchanged line",
     });
+  });
+
+  test("parseToolProgressBlock classifies edit output as diff", () => {
+    const block = parseToolProgressBlock("Edit src/main.ts\n5  const a = 1;\n6 +const b = 2;\n… +3 lines");
+    expect(block.kind).toBe("diff");
+    expect(block.header).toEqual({ verb: "Edit", path: "src/main.ts" });
+    expect(block.lines).toHaveLength(3);
+    expect(block.lineNumberWidth).toBe(3);
+  });
+
+  test("parseToolProgressBlock classifies run output as command", () => {
+    const block = parseToolProgressBlock("Run bun test\nout | 3 pass\nerr | warning\n… +5 lines");
+    expect(block.kind).toBe("command");
+    expect(block.header).toEqual({ verb: "Run", path: "bun test" });
+    expect(block.lines).toHaveLength(3);
+  });
+
+  test("parseToolProgressBlock classifies search output as plain", () => {
+    const block = parseToolProgressBlock("Search *.ts\nsrc/main.ts\nsrc/cli.ts");
+    expect(block.kind).toBe("plain");
+    expect(block.lines).toHaveLength(2);
   });
 });

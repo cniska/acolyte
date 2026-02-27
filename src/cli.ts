@@ -712,8 +712,14 @@ export function formatProgressEventOutput(
           return dim(red(parsed.text));
         }
         return dim(parsed.text);
-      case "plainDiff":
+      case "fileDiff":
         return parsed.marker === "+" ? green(parsed.text) : red(parsed.text);
+      case "meta":
+        if (options?.lineNumberWidth != null) {
+          const rest = parsed.text.length > 1 ? parsed.text.slice(1) : "";
+          return `${dim("…".padStart(lineNumberWidth, " "))}${dim(rest)}`;
+        }
+        return dim(parsed.text);
       default:
         return parsed.text;
     }

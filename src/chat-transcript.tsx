@@ -3,7 +3,7 @@ import React from "react";
 import type { ChatRow } from "./chat-commands";
 import { renderAssistantContent } from "./chat-content-render";
 import { palette } from "./palette";
-import { parseToolProgressLine } from "./tool-progress";
+import { parseToolProgressBlock, type ToolProgressBlock } from "./tool-progress";
 
 type ChatTranscriptProps = {
   rows: ChatRow[];
@@ -80,65 +80,96 @@ function renderStatusContent(content: string): React.ReactNode {
   );
 }
 
-function renderToolProgressContent(content: string): React.ReactNode {
-  const lines = content.split("\n");
-  const parsedLines = lines.map((line) => parseToolProgressLine(line));
-  const lineNumberWidth = Math.max(
-    3,
-    parsedLines.reduce((max, parsed) => {
-      if (parsed.kind === "numberedDiff" || parsed.kind === "numberedContext") {
-        return Math.max(max, parsed.lineNumber.length);
-      }
-      return max;
-    }, 0),
-  );
+const FILE_HEADER_VERBS = ["Edit", "Create", "Read", "Delete", "Diff", "Status"];
+
+function renderProgressHeader(header: { verb: string; path: string }): React.ReactNode {
   return (
     <>
-      {lines.map((line, index) => {
-        const parsed = parsedLines[index] ?? parseToolProgressLine(line);
-        return (
-          <React.Fragment key={`tool-progress-line-${index}-${line}`}>
-            {index > 0 ? "\n" : null}
-            {index > 0 && parsed.kind !== "header" && parsed.kind !== "meta" ? "  " : null}
-            {parsed.kind === "header" ? (
-              <>
-                <Text bold>{`${parsed.verb} `}</Text>
-                {["Edit", "Create", "Read", "Delete", "Diff", "Status"].includes(parsed.verb) ? (
-                  <Text underline color={palette.textPath}>
-                    {parsed.path}
-                  </Text>
-                ) : (
-                  <Text dimColor>{parsed.path}</Text>
-                )}
-              </>
-            ) : parsed.kind === "numberedDiff" ? (
-              <>
-                <Text dimColor>{parsed.lineNumber.padStart(lineNumberWidth, " ")}</Text>
-                <Text color={parsed.marker === "+" ? palette.green : palette.red}>{`  ${parsed.text}`}</Text>
-              </>
-            ) : parsed.kind === "numberedContext" ? (
-              <>
-                <Text dimColor>{`${parsed.lineNumber.padStart(lineNumberWidth, " ")}  `}</Text>
-                <Text>{parsed.text}</Text>
-              </>
-            ) : parsed.kind === "commandOutput" ? (
-              parsed.stream === "err" && !parsed.text.startsWith("$ ") ? (
-                <Text dimColor color={palette.red}>
-                  {parsed.text}
-                </Text>
-              ) : (
-                <Text dimColor>{parsed.text}</Text>
-              )
-            ) : parsed.kind === "plainDiff" ? (
-              <Text color={parsed.marker === "+" ? palette.green : palette.red}>{parsed.text}</Text>
-            ) : parsed.kind === "meta" ? (
-              <Text dimColor>{parsed.text.padStart(lineNumberWidth + parsed.text.length - 1, " ")}</Text>
-            ) : (
-              <Text>{line}</Text>
-            )}
-          </React.Fragment>
-        );
-      })}
+      <Text bold>{`${header.verb} `}</Text>
+      {FILE_HEADER_VERBS.includes(header.verb) ? (
+        <Text underline color={palette.textPath}>
+          {header.path}
+        </Text>
+      ) : (
+        <Text dimColor>{header.path}</Text>
+      )}
+    </>
+  );
+}
+
+function renderDiffBody(block: ToolProgressBlock): React.ReactNode {
+  const { lines, lineNumberWidth } = block;
+  return lines.map((parsed, index) => (
+    <React.Fragment key={`diff-${index}`}>
+      {"\n  "}
+      {parsed.kind === "numberedDiff" ? (
+        <>
+          <Text dimColor>{parsed.lineNumber.padStart(lineNumberWidth, " ")}</Text>
+          <Text color={parsed.marker === "+" ? palette.green : palette.red}>{`  ${parsed.text}`}</Text>
+        </>
+      ) : parsed.kind === "numberedContext" ? (
+        <>
+          <Text dimColor>{`${parsed.lineNumber.padStart(lineNumberWidth, " ")}  `}</Text>
+          <Text>{parsed.text}</Text>
+        </>
+      ) : parsed.kind === "fileDiff" ? (
+        <Text color={parsed.marker === "+" ? palette.green : palette.red}>{parsed.text}</Text>
+      ) : parsed.kind === "meta" ? (
+        <>
+          <Text dimColor>{"…".padStart(lineNumberWidth, " ")}</Text>
+          {parsed.text.length > 1 ? <Text dimColor>{parsed.text.slice(1)}</Text> : null}
+        </>
+      ) : (
+        <Text>{parsed.kind === "text" ? parsed.text : ""}</Text>
+      )}
+    </React.Fragment>
+  ));
+}
+
+function renderCommandBody(block: ToolProgressBlock): React.ReactNode {
+  return block.lines.map((parsed, index) => (
+    <React.Fragment key={`cmd-${index}`}>
+      {"\n  "}
+      {parsed.kind === "commandOutput" ? (
+        parsed.stream === "err" && !parsed.text.startsWith("$ ") ? (
+          <Text dimColor color={palette.red}>
+            {parsed.text}
+          </Text>
+        ) : (
+          <Text dimColor>{parsed.text}</Text>
+        )
+      ) : parsed.kind === "meta" ? (
+        <Text dimColor>{parsed.text}</Text>
+      ) : (
+        <Text>{parsed.kind === "text" ? parsed.text : ""}</Text>
+      )}
+    </React.Fragment>
+  ));
+}
+
+function renderPlainBody(block: ToolProgressBlock): React.ReactNode {
+  return block.lines.map((parsed, index) => (
+    <React.Fragment key={`plain-${index}`}>
+      {"\n  "}
+      {parsed.kind === "fileDiff" ? (
+        <Text color={parsed.marker === "+" ? palette.green : palette.red}>{parsed.text}</Text>
+      ) : (
+        <Text dimColor>{parsed.kind === "text" || parsed.kind === "meta" ? parsed.text : ""}</Text>
+      )}
+    </React.Fragment>
+  ));
+}
+
+function renderToolProgressContent(content: string): React.ReactNode {
+  const block = parseToolProgressBlock(content);
+  return (
+    <>
+      {block.header ? renderProgressHeader(block.header) : null}
+      {block.kind === "diff"
+        ? renderDiffBody(block)
+        : block.kind === "command"
+          ? renderCommandBody(block)
+          : renderPlainBody(block)}
     </>
   );
 }

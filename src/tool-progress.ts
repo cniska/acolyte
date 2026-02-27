@@ -2,14 +2,54 @@ export type ToolProgressParsedLine =
   | { kind: "header"; verb: string; path: string }
   | { kind: "numberedDiff"; lineNumber: string; spacing: string; marker: "+" | "-"; text: string }
   | { kind: "numberedContext"; lineNumber: string; spacing: string; text: string }
-  | { kind: "plainDiff"; marker: "+" | "-"; text: string }
+  | { kind: "fileDiff"; marker: "+" | "-"; text: string }
   | { kind: "commandOutput"; stream: "out" | "err"; text: string }
   | { kind: "meta"; text: string }
   | { kind: "text"; text: string };
 
+export type ToolOutputKind = "diff" | "command" | "plain";
+
+export type ToolProgressBlock = {
+  kind: ToolOutputKind;
+  header: { verb: string; path: string } | null;
+  lines: ToolProgressParsedLine[];
+  lineNumberWidth: number;
+};
+
 import { TOOL_HEADER_VERBS } from "./tool-labels";
 
 const HEADER_PATTERN = new RegExp(`^(${TOOL_HEADER_VERBS.join("|")})\\s+(.+)$`);
+
+function outputKindFromVerb(verb: string): ToolOutputKind {
+  switch (verb) {
+    case "Edit":
+    case "Create":
+      return "diff";
+    case "Run":
+      return "command";
+    default:
+      return "plain";
+  }
+}
+
+export function parseToolProgressBlock(content: string): ToolProgressBlock {
+  const allLines = content.split("\n");
+  const parsed = allLines.map(parseToolProgressLine);
+  const first = parsed[0];
+  const header = first?.kind === "header" ? { verb: first.verb, path: first.path } : null;
+  const lines = header ? parsed.slice(1) : parsed;
+  const kind = header ? outputKindFromVerb(header.verb) : "plain";
+  const lineNumberWidth = Math.max(
+    3,
+    lines.reduce((max, line) => {
+      if (line.kind === "numberedDiff" || line.kind === "numberedContext") {
+        return Math.max(max, line.lineNumber.length);
+      }
+      return max;
+    }, 0),
+  );
+  return { kind, header, lines, lineNumberWidth };
+}
 
 export function parseToolProgressLine(line: string): ToolProgressParsedLine {
   const header = line.match(HEADER_PATTERN);
@@ -48,10 +88,10 @@ export function parseToolProgressLine(line: string): ToolProgressParsedLine {
     };
   }
   if (line.startsWith("+ ")) {
-    return { kind: "plainDiff", marker: "+", text: line };
+    return { kind: "fileDiff", marker: "+", text: line };
   }
   if (line.startsWith("- ")) {
-    return { kind: "plainDiff", marker: "-", text: line };
+    return { kind: "fileDiff", marker: "-", text: line };
   }
   if (line === "…" || (/^[…(]/.test(line) && /truncat|omit|output|lines$/i.test(line))) {
     return { kind: "meta", text: line };

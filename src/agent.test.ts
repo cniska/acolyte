@@ -340,6 +340,6 @@ describe("formatToolHeader", () => {
   });
 
   test("formats edit-code with file path", () => {
-    expect(formatToolHeader("edit-code", { path: "src/agent.ts" })).toBe("AST Edit src/agent.ts");
+    expect(formatToolHeader("edit-code", { path: "src/agent.ts" })).toBe("Edit src/agent.ts");
   });
 });
