@@ -10,6 +10,7 @@ import {
   searchFiles,
   searchWeb,
 } from "./agent-tools";
+import { hasHelpFlag, subcommandHelp } from "./cli-commands";
 import {
   countLabel,
   displayPath,
@@ -19,7 +20,6 @@ import {
   parseEditResult,
   showToolResult,
 } from "./cli-format";
-import { hasHelpFlag, subcommandHelp } from "./cli-help";
 import { printError, printWarning } from "./ui";
 
 const editArgsSchema = z.object({

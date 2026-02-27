@@ -1,7 +1,7 @@
 import { createWorkspaceSpecifier, type TokenUsage } from "./api";
 import { type ChatRow, createRow, type TokenUsageEntry } from "./chat-commands";
 import { extractAtReferencePaths } from "./chat-file-ref";
-import { formatThoughtDuration } from "./chat-formatters";
+import { formatThoughtDuration } from "./chat-format";
 import type { Client, StreamEvent } from "./client";
 import { buildFileContext } from "./file-context";
 import type { Message, Session } from "./types";

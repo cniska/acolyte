@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { formatChangesSummary, formatThoughtDuration } from "./chat-formatters";
+import { formatChangesSummary, formatColumns, formatRelativeTime, formatThoughtDuration } from "./chat-format";
 
 describe("chat-formatters helpers", () => {
   test("formatThoughtDuration renders ms and s forms", () => {
@@ -30,5 +30,22 @@ describe("chat-formatters helpers", () => {
     const out = formatChangesSummary(status, diff);
     expect(out).toContain("1 changed file.");
     expect(out).toContain("Diff summary: +2 -1.");
+  });
+
+  test("formatColumns aligns columns with padding", () => {
+    const out = formatColumns([
+      ["sess_123", "hello world", "2m ago"],
+      ["sess_456789", "test", "1h ago"],
+    ]);
+    expect(out[0]).toBe("sess_123     hello world  2m ago");
+    expect(out[1]).toBe("sess_456789  test         1h ago");
+  });
+
+  test("formatRelativeTime returns human-readable relative time", () => {
+    const now = new Date("2026-02-26T12:00:00Z").getTime();
+    expect(formatRelativeTime("2026-02-26T11:59:30Z", now)).toBe("just now");
+    expect(formatRelativeTime("2026-02-26T11:55:00Z", now)).toBe("5m ago");
+    expect(formatRelativeTime("2026-02-26T09:00:00Z", now)).toBe("3h ago");
+    expect(formatRelativeTime("2026-02-24T12:00:00Z", now)).toBe("2d ago");
   });
 });

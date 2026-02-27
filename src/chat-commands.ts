@@ -1,5 +1,5 @@
 import { appConfig, setPermissionMode } from "./app-config";
-import { formatColumns, formatRelativeTime } from "./chat-formatters";
+import { formatColumns, formatRelativeTime } from "./chat-format";
 import { suggestClosestSlashCommand } from "./chat-slash";
 import type { Client } from "./client";
 import type { ConfigScope } from "./config";

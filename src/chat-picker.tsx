@@ -1,6 +1,6 @@
 import { Text } from "ink";
 import type React from "react";
-import { formatRelativeTime } from "./chat-formatters";
+import { formatRelativeTime } from "./chat-format";
 import type { SkillMeta } from "./skills";
 import type { Session } from "./types";
 

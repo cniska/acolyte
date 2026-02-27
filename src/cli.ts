@@ -1,45 +1,27 @@
 #!/usr/bin/env bun
 import { readFileSync } from "node:fs";
 import { stdout as output } from "node:process";
-import { z } from "zod";
 import { formatToolHeader } from "./agent";
-import { runShellCommand } from "./agent-tools";
 import { createWorkspaceSpecifier } from "./api";
 import { appConfig } from "./app-config";
-import { formatColumns, formatRelativeTime } from "./chat-formatters";
 import { createProgressTracker } from "./chat-progress";
 import { runInkChat } from "./chat-ui";
+import { commands, isTopLevelHelpCommand, isTopLevelVersionCommand, usage } from "./cli-commands";
 import {
   displayPromptForOutput,
   formatAssistantReplyOutput,
-  formatForTool,
   formatProgressEventOutput,
-  parseRunExitCode,
-  showToolResult,
-  truncateText,
+  formatPromptError,
 } from "./cli-format";
-import {
-  hasHelpFlag,
-  isTopLevelHelpCommand,
-  isTopLevelVersionCommand,
-  subcommandError,
-  subcommandHelp,
-  usage,
-} from "./cli-help";
-import { toolMode } from "./cli-tool-mode";
 import { createClient } from "./client";
-import { readConfig, readConfigForScope, readResolvedConfigSync, setConfigValue, unsetConfigValue } from "./config";
 import { buildFileContext } from "./file-context";
-import { addMemory, listMemories } from "./memory";
 import { acquireSessionLock, releaseSessionLock } from "./session-lock";
 import { createId } from "./short-id";
-import { formatStatusOutput as formatStatusOutputShared } from "./status-format";
 import { createSession, readStore, writeStore } from "./storage";
 import { parseToolProgressLine } from "./tool-progress";
 import type { Message, Session, SessionStore } from "./types";
 import { clearScreen, printDim, printError, printOutput, streamText } from "./ui";
 
-const FALLBACK_MODEL = "gpt-5-mini";
 export function extractVersionFromPackageJsonText(text: string): string | null {
   try {
     const parsed = JSON.parse(text) as { version?: unknown };
@@ -68,24 +50,14 @@ function resolveCliVersion(): string {
 }
 
 const CLI_VERSION = resolveCliVersion();
-const RUN_MODE_SYSTEM_PROMPT =
-  "Run mode: act decisively — make reasonable defaults instead of asking clarifying questions. Answer concisely (prefer <=5 lines). No option menus.";
-const runArgsSchema = z.object({
-  files: z.array(z.string().min(1)),
-  prompt: z.string(),
-  verify: z.boolean(),
-});
-const dogfoodArgsSchema = z.object({
-  files: z.array(z.string().min(1)),
-  prompt: z.string(),
-  verify: z.boolean(),
-});
+
+export const FALLBACK_MODEL = "gpt-5-mini";
 
 function nowIso(): string {
   return new Date().toISOString();
 }
 
-function newMessage(role: Message["role"], content: string): Message {
+export function newMessage(role: Message["role"], content: string): Message {
   return {
     id: `msg_${createId()}`,
     role,
@@ -159,38 +131,6 @@ export function suggestCommands(input: string, max = 3): string[] {
     .map((row) => row.command);
 }
 
-function listSessions(store: SessionStore): void {
-  if (store.sessions.length === 0) {
-    printDim("No saved sessions.");
-    return;
-  }
-
-  const rows = store.sessions
-    .slice(0, 20)
-    .map((session) => [session.id, truncateText(session.title, 60), formatRelativeTime(session.updatedAt)]);
-  for (const line of formatColumns(rows)) {
-    printDim(line);
-  }
-}
-
-function printMemoryRows(rows: Awaited<ReturnType<typeof listMemories>>): void {
-  if (rows.length === 0) {
-    printDim("No memories saved.");
-    return;
-  }
-
-  const formatted = rows
-    .slice(0, 50)
-    .map((row) => [row.id, truncateText(row.content, 80), formatRelativeTime(row.createdAt)]);
-  for (const line of formatColumns(formatted)) {
-    printDim(line);
-  }
-}
-
-export function formatStatusOutput(status: Record<string, string>): string {
-  return formatStatusOutputShared(status);
-}
-
 function setSessionTitle(session: Session, inputText: string): void {
   if (session.title !== "New Session") {
     return;
@@ -202,39 +142,11 @@ function setSessionTitle(session: Session, inputText: string): void {
   }
 }
 
-export function runResourceId(sessionId: string): string {
-  return `run-${sessionId.replace(/^sess_/, "").slice(0, 24)}`;
+export function formatResumeCommand(sessionId: string): string {
+  return `acolyte resume ${sessionId}`;
 }
 
-export function formatPromptError(error: unknown): string {
-  if (!(error instanceof Error)) {
-    return "Request failed. Retry and check server logs if it keeps failing.";
-  }
-  const message = error.message.trim();
-  const lower = message.toLowerCase();
-  if (lower.includes("insufficient_quota") || lower.includes("quota exceeded") || lower.includes("quota")) {
-    return "Provider quota exceeded. Add billing/credits or switch model/provider.";
-  }
-  if (lower.includes("timed out") || lower.includes("timeout")) {
-    return "Server request timed out. Retry or reduce request scope.";
-  }
-  if (lower.includes("shell command execution is disabled in read mode")) {
-    return "Write action blocked in read mode. Run /permissions write and retry.";
-  }
-  if (
-    lower.includes("server unavailable") ||
-    lower.includes("connection refused") ||
-    lower.includes("socket connection was closed unexpectedly")
-  ) {
-    return "Server unavailable. Start the server and retry.";
-  }
-  if (lower.includes("remote server error")) {
-    return message;
-  }
-  return message || "Request failed. Retry and check server logs if it keeps failing.";
-}
-
-async function handlePrompt(
+export async function handlePrompt(
   prompt: string,
   session: Session,
   client = createClient(),
@@ -368,80 +280,10 @@ async function handlePrompt(
   }
 }
 
-async function attachFileToSession(session: Session, filePath: string): Promise<void> {
+export async function attachFileToSession(session: Session, filePath: string): Promise<void> {
   const context = await buildFileContext(filePath);
   session.messages.push(newMessage("system", context));
   session.updatedAt = nowIso();
-}
-
-function parseRunArgs(args: string[]): { files: string[]; prompt: string; verify: boolean; workspace?: string } {
-  const files: string[] = [];
-  const promptTokens: string[] = [];
-  let verify = false;
-  let workspace: string | undefined;
-
-  for (let i = 0; i < args.length; i += 1) {
-    if (args[i] === "--file") {
-      const next = args[i + 1];
-      if (!next) {
-        throw new Error("--file requires a path");
-      }
-      files.push(next);
-      i += 1;
-      continue;
-    }
-    if (args[i] === "--workspace") {
-      const next = args[i + 1];
-      if (!next) {
-        throw new Error("--workspace requires a path");
-      }
-      workspace = next;
-      i += 1;
-      continue;
-    }
-    if (args[i] === "--verify") {
-      verify = true;
-      continue;
-    }
-
-    promptTokens.push(args[i]);
-  }
-
-  return { ...runArgsSchema.parse({ files, prompt: promptTokens.join(" ").trim(), verify }), workspace };
-}
-
-export function parseDogfoodArgs(args: string[]): { files: string[]; prompt: string; verify: boolean } {
-  const files: string[] = [];
-  const promptTokens: string[] = [];
-  let verify = true;
-
-  for (let i = 0; i < args.length; i += 1) {
-    if (args[i] === "--file") {
-      const next = args[i + 1];
-      if (!next) {
-        throw new Error("--file requires a path");
-      }
-      files.push(next);
-      i += 1;
-      continue;
-    }
-    if (args[i] === "--no-verify") {
-      verify = false;
-      continue;
-    }
-    if (args[i] === "--verify") {
-      verify = true;
-      continue;
-    }
-
-    promptTokens.push(args[i]);
-  }
-
-  return dogfoodArgsSchema.parse({ files, prompt: promptTokens.join(" ").trim(), verify });
-}
-
-export function formatResumeCommand(sessionId: string): string {
-  return `acolyte resume ${sessionId}`;
 }
 
 type ResumeTarget =
@@ -481,7 +323,7 @@ function resolveResumeTarget(
   return null;
 }
 
-async function chatModeWithOptions(options: { resumeLatest: boolean; resumePrefix?: string }): Promise<void> {
+export async function chatModeWithOptions(options: { resumeLatest: boolean; resumePrefix?: string }): Promise<void> {
   const store = await readStore();
   const defaultModel = appConfig.model ?? FALLBACK_MODEL;
   const resolved = resolveResumeTarget(store, options);
@@ -540,304 +382,6 @@ async function chatModeWithOptions(options: { resumeLatest: boolean; resumePrefi
   }
 }
 
-async function resumeMode(args: string[]): Promise<void> {
-  if (hasHelpFlag(args)) {
-    subcommandHelp("resume");
-    return;
-  }
-  if (args.length > 1) {
-    subcommandError("resume");
-    return;
-  }
-  const resumePrefix = args[0]?.trim() || undefined;
-  await chatModeWithOptions({ resumeLatest: true, resumePrefix });
-}
-
-async function runMode(args: string[]): Promise<void> {
-  if (hasHelpFlag(args)) {
-    subcommandHelp("run");
-    return;
-  }
-  let parsed: { files: string[]; prompt: string; verify: boolean; workspace?: string };
-  try {
-    parsed = parseRunArgs(args);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Invalid run args";
-    printError(message);
-    process.exitCode = 1;
-    return;
-  }
-
-  const prompt = parsed.prompt;
-  if (!prompt) {
-    subcommandError("run");
-    return;
-  }
-
-  const defaultModel = appConfig.model ?? FALLBACK_MODEL;
-  const resolvedConfig = readResolvedConfigSync();
-  const session = createSession(defaultModel);
-  session.messages.push(newMessage("system", RUN_MODE_SYSTEM_PROMPT));
-  const client = createClient({
-    apiUrl: appConfig.server.apiUrl,
-    replyTimeoutMs: resolvedConfig.replyTimeoutMs,
-  });
-
-  for (const filePath of parsed.files) {
-    try {
-      await attachFileToSession(session, filePath);
-      printDim(`Attached file context from ${filePath}`);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      printError(message);
-      process.exitCode = 1;
-      return;
-    }
-  }
-
-  const success = await handlePrompt(prompt, session, client, {
-    resourceId: runResourceId(session.id),
-    workspace: parsed.workspace,
-  });
-  if (!success) {
-    process.exitCode = 1;
-    return;
-  }
-  if (parsed.verify) {
-    const verifyResult = await runShellCommand(process.cwd(), "bun run verify");
-    showToolResult("Run", formatForTool("run", verifyResult), "tool", "bun run verify");
-    const verifyExitCode = parseRunExitCode(verifyResult);
-    if (verifyExitCode !== null && verifyExitCode !== 0) {
-      process.exitCode = 1;
-    }
-  }
-}
-
-async function dogfoodMode(args: string[]): Promise<void> {
-  let parsed: { files: string[]; prompt: string; verify: boolean };
-  try {
-    parsed = parseDogfoodArgs(args);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Invalid dogfood args";
-    printError(message);
-    process.exitCode = 1;
-    return;
-  }
-  if (!parsed.prompt) {
-    printError("Usage: acolyte dogfood [--file <path>] [--no-verify] <prompt>");
-    process.exitCode = 1;
-    return;
-  }
-
-  const preamble = [
-    "Dogfood mode:",
-    "- Work in small, verifiable steps.",
-    "- Keep response concise and action-focused.",
-    "- Return one immediate next action; avoid multi-option menus unless asked.",
-    "- If edits are made, verify with bun run verify.",
-    "",
-  ].join("\n");
-
-  const runArgs = [
-    ...parsed.files.flatMap((filePath) => ["--file", filePath]),
-    ...(parsed.verify ? ["--verify"] : []),
-    `${preamble}${parsed.prompt}`,
-  ];
-  await runMode(runArgs);
-}
-
-async function historyMode(_args: string[]): Promise<void> {
-  const store = await readStore();
-  listSessions(store);
-}
-
-async function serveMode(_args: string[]): Promise<void> {
-  await import("./server");
-}
-
-async function statusMode(_args: string[]): Promise<void> {
-  const client = createClient({
-    apiUrl: appConfig.server.apiUrl,
-  });
-  try {
-    const status = await client.status();
-    printDim(formatStatusOutput(status));
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    printError(message);
-    process.exitCode = 1;
-  }
-}
-
-async function memoryMode(args: string[]): Promise<void> {
-  if (hasHelpFlag(args)) {
-    subcommandHelp("memory");
-    return;
-  }
-  const [subcommand, ...rest] = args;
-  const validScopes = new Set(["all", "user", "project"]);
-
-  if (subcommand === "list" || !subcommand) {
-    const scopeRaw = subcommand === "list" ? rest[0] : undefined;
-    if (subcommand === "list" && rest.length > 1) {
-      subcommandError("memory", "Usage: acolyte memory list [all|user|project]");
-      return;
-    }
-    const scope = scopeRaw && validScopes.has(scopeRaw) ? scopeRaw : "all";
-    if (scopeRaw && !validScopes.has(scopeRaw)) {
-      subcommandError("memory", "Usage: acolyte memory list [all|user|project]");
-      return;
-    }
-    const rows = await listMemories({ scope: scope as "all" | "user" | "project" });
-    printMemoryRows(rows);
-    return;
-  }
-
-  if (subcommand === "add") {
-    let scope: "user" | "project" = "user";
-    const contentParts: string[] = [];
-    for (const token of rest) {
-      if (token === "--project") {
-        scope = "project";
-        continue;
-      }
-      if (token === "--user") {
-        scope = "user";
-        continue;
-      }
-      contentParts.push(token);
-    }
-    const content = contentParts.join(" ").trim();
-    if (!content) {
-      subcommandError("memory", "Usage: acolyte memory add [--user|--project] <memory text>");
-      return;
-    }
-    const entry = await addMemory(content, { scope });
-    printDim(`Saved ${scope} memory ${entry.id}.`);
-    return;
-  }
-
-  subcommandError("memory");
-}
-
-async function configMode(args: string[]): Promise<void> {
-  if (hasHelpFlag(args)) {
-    subcommandHelp("config");
-    return;
-  }
-  const [subcommandRaw, ...restArgs] = args;
-  const isImplicitList = !subcommandRaw || subcommandRaw === "--user" || subcommandRaw === "--project";
-  const subcommand = isImplicitList ? "list" : subcommandRaw;
-  const listArgs = isImplicitList && subcommandRaw ? [subcommandRaw, ...restArgs] : restArgs;
-  const validKeys = [
-    "port",
-    "model",
-    "models",
-    "omModel",
-    "apiUrl",
-    "openaiBaseUrl",
-    "anthropicBaseUrl",
-    "googleBaseUrl",
-    "permissionMode",
-    "logFormat",
-    "omObservationTokens",
-    "omReflectionTokens",
-    "contextMaxTokens",
-    "maxHistoryMessages",
-    "maxMessageTokens",
-    "maxAttachmentMessageTokens",
-    "maxPinnedMessageTokens",
-    "replyTimeoutMs",
-  ] as const;
-  const valid = new Set<string>(validKeys);
-  const parseScopeFlag = (token: string | undefined): "user" | "project" | null => {
-    if (token === "--user") {
-      return "user";
-    }
-    if (token === "--project") {
-      return "project";
-    }
-    return null;
-  };
-
-  if (subcommand === "list") {
-    const scope = parseScopeFlag(listArgs[0]);
-    const config = scope ? await readConfigForScope(scope) : await readConfig();
-    const maxKey = validKeys.reduce((max, key) => Math.max(max, `${key}:`.length), 0);
-    if (scope) {
-      printDim(`${"scope:".padEnd(maxKey + 1)} ${scope}`);
-    }
-    for (const name of validKeys) {
-      const value = config[name];
-      if (value === undefined || value === "") continue;
-      if (typeof value === "object" && value !== null) {
-        for (const [k, v] of Object.entries(value)) {
-          printDim(`${`${name}.${k}:`.padEnd(maxKey + 1)} ${String(v)}`);
-        }
-      } else {
-        printDim(`${`${name}:`.padEnd(maxKey + 1)} ${String(value)}`);
-      }
-    }
-    return;
-  }
-
-  if (subcommand === "set") {
-    const scope = parseScopeFlag(restArgs[0]);
-    const key = scope ? restArgs[1] : restArgs[0];
-    const valueParts = scope ? restArgs.slice(2) : restArgs.slice(1);
-    if (key === "apiKey") {
-      printError("Config apiKey is not supported. Use ACOLYTE_API_KEY in .env instead.");
-      process.exitCode = 1;
-      return;
-    }
-    const isDottedKey = key?.includes(".") && valid.has(key.split(".")[0] ?? "");
-    if (!key || (!valid.has(key) && !isDottedKey)) {
-      subcommandError("config", "Usage: acolyte config set <key> <value>");
-      return;
-    }
-
-    const value = valueParts.join(" ").trim();
-    if (!value) {
-      printError("Config value cannot be empty");
-      process.exitCode = 1;
-      return;
-    }
-
-    try {
-      await setConfigValue(key, value, { scope: scope ?? "user" });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : `Invalid value for ${key}`;
-      printError(message);
-      process.exitCode = 1;
-      return;
-    }
-    printDim(`Saved config ${key} (${scope ?? "user"}).`);
-    return;
-  }
-
-  if (subcommand === "unset") {
-    const scope = parseScopeFlag(restArgs[0]);
-    const key = scope ? restArgs[1] : restArgs[0];
-    if (key === "apiKey") {
-      printError("Config apiKey is not supported. Use ACOLYTE_API_KEY in .env instead.");
-      process.exitCode = 1;
-      return;
-    }
-    const isDottedUnsetKey = key?.includes(".") && valid.has(key.split(".")[0] ?? "");
-    if (!key || (!valid.has(key) && !isDottedUnsetKey)) {
-      subcommandError("config", "Usage: acolyte config unset <key>");
-      return;
-    }
-
-    await unsetConfigValue(key, { scope: scope ?? "user" });
-    printDim(`Removed config ${key} (${scope ?? "user"}).`);
-    return;
-  }
-
-  subcommandError("config");
-  printDim(`Keys: ${validKeys.join(", ")}`);
-}
-
 async function main(): Promise<void> {
   const [command, ...args] = process.argv.slice(2);
 
@@ -854,18 +398,6 @@ async function main(): Promise<void> {
     await chatModeWithOptions({ resumeLatest: false });
     return;
   }
-
-  const commands: Record<string, (args: string[]) => Promise<void>> = {
-    resume: resumeMode,
-    run: runMode,
-    dogfood: dogfoodMode,
-    history: historyMode,
-    serve: serveMode,
-    status: statusMode,
-    memory: memoryMode,
-    config: configMode,
-    tool: toolMode,
-  };
 
   const handler = commands[command];
   if (handler) {

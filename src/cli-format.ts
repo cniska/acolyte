@@ -447,6 +447,34 @@ export function formatProgressEventOutput(
     .join("\n");
 }
 
+export function formatPromptError(error: unknown): string {
+  if (!(error instanceof Error)) {
+    return "Request failed. Retry and check server logs if it keeps failing.";
+  }
+  const message = error.message.trim();
+  const lower = message.toLowerCase();
+  if (lower.includes("insufficient_quota") || lower.includes("quota exceeded") || lower.includes("quota")) {
+    return "Provider quota exceeded. Add billing/credits or switch model/provider.";
+  }
+  if (lower.includes("timed out") || lower.includes("timeout")) {
+    return "Server request timed out. Retry or reduce request scope.";
+  }
+  if (lower.includes("shell command execution is disabled in read mode")) {
+    return "Write action blocked in read mode. Run /permissions write and retry.";
+  }
+  if (
+    lower.includes("server unavailable") ||
+    lower.includes("connection refused") ||
+    lower.includes("socket connection was closed unexpectedly")
+  ) {
+    return "Server unavailable. Start the server and retry.";
+  }
+  if (lower.includes("remote server error")) {
+    return message;
+  }
+  return message || "Request failed. Retry and check server logs if it keeps failing.";
+}
+
 export function parseEditResult(raw: string): { path: string; edits: number; dryRun: boolean } | null {
   const path = raw.match(/^path=(.*)$/m)?.[1]?.trim();
   const editsText = raw.match(/^edits=(.*)$/m)?.[1]?.trim();
