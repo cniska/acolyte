@@ -30,8 +30,10 @@ Living notes for talks about building this project. Update this file as mileston
 ## Architecture Snapshot
 - CLI runtime: Bun + TypeScript (`src/cli.ts`)
 - Backend API: Bun server (`src/server.ts`)
-- Agent runtime: Mastra (`src/agent.ts`)
+- Agent lifecycle: `src/agent-lifecycle.ts` (phases + evaluators)
+- Agent helpers: `src/agent.ts` (input building, output finalization)
 - Tools: repo search/read/git/run/edit + web search/fetch (`src/mastra-tools.ts`)
+- Tool guards: `src/tool-guards.ts` (session-level validation)
 - Local persistence:
   - sessions: `~/.acolyte/sessions.json`
   - user memory: `~/.acolyte/memory/user/*.md`
@@ -48,7 +50,7 @@ Living notes for talks about building this project. Update this file as mileston
 - Built collaboratively with Codex in commit-sized slices.
 - Delivery loop: define slice -> implement -> validate -> commit.
 - Standard validation: `bun run verify` (format + lint + typecheck + test).
-- ~425 tests, zero lint issues, ~20K lines of TypeScript.
+- ~474 tests, zero lint issues, ~40K lines of TypeScript.
 
 ## Key Talking Points
 - Vibe-coding can produce production-quality software with the right constraints (verify gates, scoped slices, clear policies).
@@ -67,6 +69,9 @@ Living notes for talks about building this project. Update this file as mileston
 7. Dogfooding infrastructure: automated smoke, progress tracking, readiness gates.
 8. Live streaming: tool phases, assistant delta streaming, progress rendering.
 9. Test infrastructure: shared factory helpers to reduce test boilerplate.
+10. Agent lifecycle: composable phases (classify → prepare → generate → evaluate → finalize) with pluggable evaluators.
+11. Tool guards: session-level validation (no delete-after-read, verify tracking) with debug visibility.
+12. Skills system: extensible slash-command skills aligned with agentskills.io spec.
 
 ## Lessons Learned
 - Reliability over novelty: verify-first loops, small commits, and smoke checks keep iteration stable.
@@ -81,6 +86,9 @@ Living notes for talks about building this project. Update this file as mileston
 - Dogfooding readiness should be measurable: gate checks, scoped lookback, explicit remaining-slice signals.
 - Keep repo instructions lean: high-signal guidance improves execution quality and cost/latency.
 - Keep scope narrow early: premature abstractions (e.g. multi-agent before single-agent is reliable) add complexity without value. Ship the simplest thing that works, then layer on.
+- Agent behavior should be lifecycle, not hooks: ad-hoc post-processing in a monolithic function doesn't scale. Decomposing into phases with an evaluator loop makes behaviors composable and testable without modifying the core loop.
+- Evaluators > if-chains: plan detection and auto-verify as evaluators means adding new post-generation behavior is one interface + one array entry, not editing a 500-line function.
+- Dogfooding reveals architecture gaps: testing Acolyte on real tasks (batch conversion, multi-file refactors) exposed that edit-file needed line-range support and the agent needed structured lifecycle phases — neither was obvious from unit tests alone.
 
 ## Demo Flow (Short)
 1. `bun run dev` (starts backend + chat).
@@ -94,3 +102,4 @@ Living notes for talks about building this project. Update this file as mileston
 1. Can the autonomous loop be closed with current models, or does it need better foundation models?
 2. Is Mastra the right long-term bet, or should the agent layer be thinner?
 3. What's the distribution story for non-Bun users?
+4. How far can the evaluator pattern scale — can memory, subagents, and self-improvement all be evaluators?
