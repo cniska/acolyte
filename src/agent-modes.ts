@@ -14,13 +14,14 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
   },
   explore: {
     tools: ["find-files", "search-files", "read-file", "git-status", "git-diff", "web-search", "web-fetch"],
-    preamble: ["Minimize round trips: one targeted read is preferred over multiple."],
+    preamble: ["Batch multiple reads into one `read-file` call when possible."],
     progressText: "Exploring…",
   },
   code: {
     tools: ["edit-code", "edit-file", "create-file", "delete-file", "run-command"],
     preamble: [
       "Read the target file before editing.",
+      "Batch multiple edits to the same file into one `edit-file` or `edit-code` call.",
       "After a successful edit, do not re-read the same file unless explicitly asked.",
       "Never claim a file was edited unless confirmed by tool results.",
       "When a target file does not exist, say so instead of silently creating it.",

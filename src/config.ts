@@ -118,14 +118,15 @@ function toConfig(input: Record<string, unknown>): AcolyteConfig {
   return {
     port: parseField(parseIntegerSchema(1, 65535), input.port),
     model: parseField(nonEmptyStringSchema, input.model),
-    models: typeof input.models === "object" && input.models !== null
-      ? Object.fromEntries(
-          Object.entries(input.models as Record<string, unknown>)
-            .map(([k, v]) => [k, nonEmptyStringSchema.safeParse(v)])
-            .filter(([, r]) => (r as z.SafeParseReturnType<unknown, string>).success)
-            .map(([k, r]) => [k, (r as z.SafeParseSuccess<string>).data]),
-        )
-      : undefined,
+    models:
+      typeof input.models === "object" && input.models !== null
+        ? Object.fromEntries(
+            Object.entries(input.models as Record<string, unknown>)
+              .map(([k, v]) => [k, nonEmptyStringSchema.safeParse(v)])
+              .filter(([, r]) => (r as z.SafeParseReturnType<unknown, string>).success)
+              .map(([k, r]) => [k, (r as z.SafeParseSuccess<string>).data]),
+          )
+        : undefined,
     omModel: parseField(nonEmptyStringSchema, input.omModel),
     apiUrl: parseField(nonEmptyStringSchema, input.apiUrl),
     openaiBaseUrl: parseField(nonEmptyStringSchema, input.openaiBaseUrl),

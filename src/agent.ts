@@ -288,7 +288,20 @@ function asStringList(value: unknown): string[] {
     return trimmed.length > 0 ? [trimmed] : [];
   }
   if (Array.isArray(value)) {
-    return value.map((entry) => (typeof entry === "string" ? entry.trim() : "")).filter((entry) => entry.length > 0);
+    return value.flatMap((entry) => {
+      if (typeof entry === "string") {
+        const trimmed = entry.trim();
+        return trimmed.length > 0 ? [trimmed] : [];
+      }
+      if (typeof entry === "object" && entry !== null && "path" in entry) {
+        const p = (entry as { path: unknown }).path;
+        if (typeof p === "string") {
+          const trimmed = p.trim();
+          return trimmed.length > 0 ? [trimmed] : [];
+        }
+      }
+      return [];
+    });
   }
   return [];
 }

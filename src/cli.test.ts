@@ -57,17 +57,17 @@ describe("cli formatting helpers", () => {
   });
 
   test("parseEditResult parses strict edit metadata", () => {
-    expect(parseEditResult("path=/tmp/a.ts\nmatches=2\ndry_run=true")).toEqual({
+    expect(parseEditResult("path=/tmp/a.ts\nedits=2\ndry_run=true")).toEqual({
       path: "/tmp/a.ts",
-      matches: 2,
+      edits: 2,
       dryRun: true,
     });
-    expect(parseEditResult("path=/tmp/a.ts\nmatches=2\ndry_run=false")).toEqual({
+    expect(parseEditResult("path=/tmp/a.ts\nedits=2\ndry_run=false")).toEqual({
       path: "/tmp/a.ts",
-      matches: 2,
+      edits: 2,
       dryRun: false,
     });
-    expect(parseEditResult("path=/tmp/a.ts\nmatches=2\ndry_run=maybe")).toBeNull();
+    expect(parseEditResult("path=/tmp/a.ts\nedits=2\ndry_run=maybe")).toBeNull();
   });
 
   test("formatStatusOutput aligns flat key-value fields", () => {

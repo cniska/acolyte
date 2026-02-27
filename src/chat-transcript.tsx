@@ -99,6 +99,7 @@ function renderProgressHeader(header: { verb: string; path: string }): React.Rea
 
 function renderDiffBody(block: ToolProgressBlock): React.ReactNode {
   const { lines, lineNumberWidth } = block;
+
   return lines.map((parsed, index) => (
     <React.Fragment key={`diff-${index}`}>
       {"\n  "}
@@ -217,8 +218,7 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
               row.role === "assistant" && (row.style === "sessionStatus" || row.style === undefined)
                 ? parseSessionStatus(row.content)
                 : null;
-            const sessionsListHeader =
-              row.style === "sessionsList" ? parseSessionsHeader(row.content) : null;
+            const sessionsListHeader = row.style === "sessionsList" ? parseSessionsHeader(row.content) : null;
             const dimMarker = Boolean(row.dim) || Boolean(sessionStatus);
             let marker = "  ";
             let markerColor: string | undefined;
@@ -247,9 +247,8 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
                     <Text>
                       <Text>{sessionsListHeader.prefix}</Text>
                       <Text dimColor>{sessionsListHeader.count}</Text>
-                      {sessionsListHeader.rest.length > 0 ? (
-                        <>
-                          {sessionsListHeader.rest.split("\n").map((line, i) => {
+                      {sessionsListHeader.rest.length > 0
+                        ? sessionsListHeader.rest.split("\n").map((line, i) => {
                             const match = line.match(/^(. )(sess_\S+)(\s.*)$/);
                             if (!match) {
                               return (
@@ -265,9 +264,8 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
                                 <Text dimColor>{match[3]}</Text>
                               </React.Fragment>
                             );
-                          })}
-                        </>
-                      ) : null}
+                          })
+                        : null}
                     </Text>
                   ) : row.role === "system" && (row.style === "statusOutput" || row.style === "tokenOutput") ? (
                     <Text>{renderStatusContent(row.content)}</Text>

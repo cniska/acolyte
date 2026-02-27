@@ -658,6 +658,14 @@ export async function readSnippet(pathInput: string, start?: string, end?: strin
   return [`File: ${absPath}`, ...numbered].join("\n");
 }
 
+export async function readSnippets(entries: Array<{ path: string; start?: string; end?: string }>): Promise<string> {
+  const results: string[] = [];
+  for (const entry of entries) {
+    results.push(await readSnippet(entry.path, entry.start, entry.end));
+  }
+  return results.join("\n\n");
+}
+
 export async function gitStatusShort(): Promise<string> {
   const { code, stdout, stderr } = await runCommand(["git", "status", "--short", "--branch"]);
   if (code !== 0) {
@@ -766,37 +774,58 @@ export async function runShellCommand(
   return [headers.join("\n"), out ? `stdout:\n${out}` : "", err ? `stderr:\n${err}` : ""].filter(Boolean).join("\n\n");
 }
 
-export async function editFileReplace(input: {
+export async function editFile(input: {
   path: string;
-  find: string;
-  replace: string;
+  edits: Array<{ find: string; replace: string }>;
   dryRun?: boolean;
 }): Promise<string> {
   ensureWritePermission("File editing");
   const absPath = ensurePathWithinAllowedRoots(input.path, "Edit");
   const raw = await readFile(absPath, "utf8");
 
-  if (!input.find) {
-    throw new Error("Find text cannot be empty");
+  // Locate all match ranges in the original text.
+  const ranges: Array<{ start: number; end: number; replace: string }> = [];
+  for (const edit of input.edits) {
+    if (!edit.find) {
+      throw new Error("Find text cannot be empty");
+    }
+    if (edit.find.length > raw.length * 0.5) {
+      throw new Error(
+        "find must be a short unique snippet (a few lines), not a large portion of the file. Use just enough context to uniquely identify the edit location.",
+      );
+    }
+    const count = raw.split(edit.find).length - 1;
+    if (count === 0) {
+      throw new Error(`Find text not found in file: ${edit.find.slice(0, 60)}`);
+    }
+    if (count > 1) {
+      throw new Error(
+        `Find text matched ${count} locations (${edit.find.slice(0, 40)}…). Provide a longer, more unique snippet to match exactly one location, or use edit-code for multi-location code changes.`,
+      );
+    }
+    const start = raw.indexOf(edit.find);
+    ranges.push({ start, end: start + edit.find.length, replace: edit.replace });
   }
 
-  if (input.find.length > raw.length * 0.5) {
-    throw new Error(
-      "find must be a short unique snippet (a few lines), not a large portion of the file. Use just enough context to uniquely identify the edit location.",
-    );
+  // Check for overlaps.
+  ranges.sort((a, b) => a.start - b.start);
+  for (let i = 1; i < ranges.length; i++) {
+    const prev = ranges[i - 1];
+    const curr = ranges[i];
+    if (prev && curr && curr.start < prev.end) {
+      throw new Error("Edit regions overlap. Use fewer, non-overlapping find snippets.");
+    }
   }
 
-  const count = raw.split(input.find).length - 1;
-  if (count === 0) {
-    throw new Error("Find text not found in file");
-  }
-  if (count > 1) {
-    throw new Error(
-      `Find text matched ${count} locations. Provide a longer, more unique snippet to match exactly one location, or use edit-code for multi-location code changes.`,
-    );
+  // Apply in reverse order to preserve offsets.
+  let next = raw;
+  for (let i = ranges.length - 1; i >= 0; i--) {
+    const r = ranges[i];
+    if (r) {
+      next = next.slice(0, r.start) + r.replace + next.slice(r.end);
+    }
   }
 
-  const next = raw.replace(input.find, input.replace);
   if (!input.dryRun) {
     await mkdir(dirname(absPath), { recursive: true });
     await writeFile(absPath, next, "utf8");
@@ -804,8 +833,13 @@ export async function editFileReplace(input: {
 
   const relativePath = displayPathForDiff(absPath);
   const diff = createDiff(relativePath, raw, next);
-  const parts = [`path=${absPath}`, `matches=${count}`, `dry_run=${input.dryRun ? "true" : "false"}`, "", diff];
-  return parts.join("\n");
+  return [
+    `path=${absPath}`,
+    `edits=${input.edits.length}`,
+    `dry_run=${input.dryRun ? "true" : "false"}`,
+    "",
+    diff,
+  ].join("\n");
 }
 
 export async function writeTextFile(input: { path: string; content: string; overwrite?: boolean }): Promise<string> {
@@ -903,13 +937,12 @@ function extractMetavariables(pattern: string): string[] {
 
 export async function editCode(input: {
   path: string;
-  pattern: string;
-  replacement: string;
+  edits: Array<{ pattern: string; replacement: string }>;
   dryRun?: boolean;
 }): Promise<string> {
   ensureWritePermission("AST editing");
   const absPath = ensurePathWithinAllowedRoots(input.path, "AST edit");
-  const raw = await readFile(absPath, "utf8");
+  const original = await readFile(absPath, "utf8");
 
   let napi: typeof import("@ast-grep/napi");
   try {
@@ -922,45 +955,53 @@ export async function editCode(input: {
 
   const langName = languageFromPath(absPath);
   const langEnum = napi.Lang[langName as keyof typeof napi.Lang];
-  const tree = napi.parse(langEnum ?? langName, raw);
-  const matches = tree.root().findAll({ rule: { pattern: input.pattern } });
-  if (matches.length === 0) {
-    throw new Error(`No AST matches found for pattern: ${input.pattern}`);
-  }
+  let current = original;
+  let totalMatches = 0;
 
-  const metavars = extractMetavariables(input.pattern);
-
-  const edits: Array<{ start: number; end: number; replacement: string }> = [];
-  for (const match of matches) {
-    let replaced = input.replacement;
-    for (const metavar of metavars) {
-      // getMatch expects the name without the `$` prefix.
-      const captured = match.getMatch(metavar.slice(1));
-      if (captured) {
-        replaced = replaced.replaceAll(metavar, captured.text());
-      }
+  // Apply each pattern sequentially (reparse between patterns).
+  for (const edit of input.edits) {
+    const tree = napi.parse(langEnum ?? langName, current);
+    const matches = tree.root().findAll({ rule: { pattern: edit.pattern } });
+    if (matches.length === 0) {
+      throw new Error(`No AST matches found for pattern: ${edit.pattern}`);
     }
-    const range = match.range();
-    edits.push({ start: range.start.index, end: range.end.index, replacement: replaced });
-  }
+    totalMatches += matches.length;
 
-  // Apply in reverse offset order to preserve positions.
-  edits.sort((a, b) => b.start - a.start);
-  let next = raw;
-  for (const edit of edits) {
-    next = next.slice(0, edit.start) + edit.replacement + next.slice(edit.end);
+    const metavars = extractMetavariables(edit.pattern);
+    const replacements: Array<{ start: number; end: number; replacement: string }> = [];
+    for (const match of matches) {
+      let replaced = edit.replacement;
+      for (const metavar of metavars) {
+        const captured = match.getMatch(metavar.slice(1));
+        if (captured) {
+          replaced = replaced.replaceAll(metavar, captured.text());
+        }
+      }
+      const range = match.range();
+      replacements.push({ start: range.start.index, end: range.end.index, replacement: replaced });
+    }
+
+    replacements.sort((a, b) => b.start - a.start);
+    for (const r of replacements) {
+      current = current.slice(0, r.start) + r.replacement + current.slice(r.end);
+    }
   }
 
   if (!input.dryRun) {
     await mkdir(dirname(absPath), { recursive: true });
-    await writeFile(absPath, next, "utf8");
+    await writeFile(absPath, current, "utf8");
   }
 
   const relativePath = displayPathForDiff(absPath);
-  const diff = createDiff(relativePath, raw, next);
-  return [`path=${absPath}`, `matches=${matches.length}`, `dry_run=${input.dryRun ? "true" : "false"}`, "", diff].join(
-    "\n",
-  );
+  const diff = createDiff(relativePath, original, current);
+  return [
+    `path=${absPath}`,
+    `edits=${input.edits.length}`,
+    `matches=${totalMatches}`,
+    `dry_run=${input.dryRun ? "true" : "false"}`,
+    "",
+    diff,
+  ].join("\n");
 }
 
 export async function deleteTextFile(input: { path: string; dryRun?: boolean }): Promise<string> {

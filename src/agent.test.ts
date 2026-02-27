@@ -284,7 +284,7 @@ describe("createModeInstructions", () => {
     const code = createModeInstructions("code");
     const explore = createModeInstructions("explore");
     expect(code).toContain("Read the target file before editing");
-    expect(explore).toContain("Minimize round trips");
+    expect(explore).toContain("Batch multiple reads");
   });
 });
 
@@ -302,7 +302,8 @@ describe("createInstructions", () => {
 
   test("code mode includes code-specific instructions", () => {
     const out = createInstructions("Soul.", "code");
-    expect(out).toContain("use `edit-code` with an AST pattern");
+    expect(out).toContain("edit-code");
+    expect(out).toContain("AST");
     expect(out).toContain("Read the target file before editing");
     expect(out).toContain("call `create-file` with full content");
   });
@@ -310,18 +311,18 @@ describe("createInstructions", () => {
   test("code mode excludes explore instructions", () => {
     const out = createInstructions("Soul.", "code");
     expect(out).not.toContain("Use `find-files` to locate files by name");
-    expect(out).not.toContain("Minimize round trips");
+    expect(out).not.toContain("Batch multiple reads");
   });
 
   test("explore mode includes explore-specific instructions", () => {
     const out = createInstructions("Soul.", "explore");
     expect(out).toContain("Use `find-files` to locate files by name");
-    expect(out).toContain("Minimize round trips");
+    expect(out).toContain("Batch multiple reads");
   });
 
   test("explore mode excludes code instructions", () => {
     const out = createInstructions("Soul.", "explore");
-    expect(out).not.toContain("use `edit-code` with an AST pattern");
+    expect(out).not.toContain("edit-code` for code changes");
     expect(out).not.toContain("Read the target file before editing");
   });
 });

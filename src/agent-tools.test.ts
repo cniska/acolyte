@@ -4,7 +4,7 @@ import { join } from "node:path";
 import {
   deleteTextFile,
   editCode,
-  editFileReplace,
+  editFile,
   fetchWeb,
   readSnippet,
   runShellCommand,
@@ -33,12 +33,11 @@ describe("coding-tools workspace guards", () => {
     await expect(readSnippet("/etc/hosts")).rejects.toThrow("Read is restricted to the workspace or /tmp");
   });
 
-  test("editFileReplace blocks paths outside workspace", async () => {
+  test("editFile blocks paths outside workspace", async () => {
     await expect(
-      editFileReplace({
+      editFile({
         path: "/etc/hosts",
-        find: "a",
-        replace: "b",
+        edits: [{ find: "a", replace: "b" }],
       }),
     ).rejects.toThrow("Edit is restricted to the workspace or /tmp");
   });
@@ -57,23 +56,22 @@ describe("coding-tools workspace guards", () => {
     expect(output).toContain("hello from tmp");
   });
 
-  test("editFileReplace allows /tmp files", async () => {
+  test("editFile allows /tmp files", async () => {
     const filePath = `/tmp/acolyte-tmp-edit-${crypto.randomUUID()}.txt`;
     tempFiles.push(filePath);
     await writeFile(filePath, "alpha beta", "utf8");
-    const output = await editFileReplace({
+    const output = await editFile({
       path: filePath,
-      find: "beta",
-      replace: "gamma",
+      edits: [{ find: "beta", replace: "gamma" }],
     });
-    expect(output).toContain("matches=1");
+    expect(output).toContain("edits=1");
   });
 
-  test("editFileReplace rejects multi-match find text", async () => {
+  test("editFile rejects multi-match find text", async () => {
     const filePath = `/tmp/acolyte-tmp-multi-${crypto.randomUUID()}.txt`;
     tempFiles.push(filePath);
     await writeFile(filePath, "foo bar foo baz foo", "utf8");
-    await expect(editFileReplace({ path: filePath, find: "foo", replace: "qux" })).rejects.toThrow(
+    await expect(editFile({ path: filePath, edits: [{ find: "foo", replace: "qux" }] })).rejects.toThrow(
       "matched 3 locations",
     );
   });
@@ -111,10 +109,9 @@ describe("coding-tools workspace guards", () => {
     try {
       await expect(runShellCommand("printf 'ok'")).rejects.toThrow("Shell command execution is disabled in read mode");
       await expect(
-        editFileReplace({
+        editFile({
           path: join(process.cwd(), "README.md"),
-          find: "Acolyte",
-          replace: "Acolyte",
+          edits: [{ find: "Acolyte", replace: "Acolyte" }],
           dryRun: true,
         }),
       ).rejects.toThrow("File editing is disabled in read mode");
@@ -123,16 +120,15 @@ describe("coding-tools workspace guards", () => {
     }
   });
 
-  test("editFileReplace allows in-workspace edits", async () => {
+  test("editFile allows in-workspace edits", async () => {
     const filePath = join(process.cwd(), `tmp-coding-tools-${crypto.randomUUID()}.txt`);
     tempFiles.push(filePath);
     await writeFile(filePath, "alpha beta", "utf8");
-    const result = await editFileReplace({
+    const result = await editFile({
       path: filePath,
-      find: "beta",
-      replace: "gamma",
+      edits: [{ find: "beta", replace: "gamma" }],
     });
-    expect(result).toContain("matches=1");
+    expect(result).toContain("edits=1");
   });
 
   test("writeTextFile allows creating /tmp files", async () => {
@@ -212,8 +208,7 @@ describe("editCode", () => {
     await writeFile(filePath, 'console.log("hello");\nconsole.log("world");\n', "utf8");
     const result = await editCode({
       path: filePath,
-      pattern: "console.log($ARG)",
-      replacement: "logger.debug($ARG)",
+      edits: [{ pattern: "console.log($ARG)", replacement: "logger.debug($ARG)" }],
     });
     expect(result).toContain("matches=2");
     expect(result).toContain("+logger.debug");
@@ -229,8 +224,7 @@ describe("editCode", () => {
     await writeFile(filePath, 'console.log("keep");\n', "utf8");
     const result = await editCode({
       path: filePath,
-      pattern: "console.log($ARG)",
-      replacement: "logger.debug($ARG)",
+      edits: [{ pattern: "console.log($ARG)", replacement: "logger.debug($ARG)" }],
       dryRun: true,
     });
     expect(result).toContain("dry_run=true");
@@ -246,8 +240,7 @@ describe("editCode", () => {
     await expect(
       editCode({
         path: filePath,
-        pattern: "console.log($ARG)",
-        replacement: "logger.debug($ARG)",
+        edits: [{ pattern: "console.log($ARG)", replacement: "logger.debug($ARG)" }],
       }),
     ).rejects.toThrow("No AST matches found");
   });
@@ -256,8 +249,7 @@ describe("editCode", () => {
     await expect(
       editCode({
         path: "/etc/hosts",
-        pattern: "console.log($ARG)",
-        replacement: "logger.debug($ARG)",
+        edits: [{ pattern: "console.log($ARG)", replacement: "logger.debug($ARG)" }],
       }),
     ).rejects.toThrow("AST edit is restricted to the workspace or /tmp");
   });
@@ -267,8 +259,7 @@ describe("editCode", () => {
     await expect(
       editCode({
         path: join(process.cwd(), "src/agent.ts"),
-        pattern: "console.log($ARG)",
-        replacement: "logger.debug($ARG)",
+        edits: [{ pattern: "console.log($ARG)", replacement: "logger.debug($ARG)" }],
       }),
     ).rejects.toThrow("AST editing is disabled in read mode");
   });
@@ -279,8 +270,7 @@ describe("editCode", () => {
     await writeFile(filePath, 'print("hello")\nprint("world")\n', "utf8");
     const result = await editCode({
       path: filePath,
-      pattern: "print($ARG)",
-      replacement: "log($ARG)",
+      edits: [{ pattern: "print($ARG)", replacement: "log($ARG)" }],
     });
     expect(result).toContain("matches=2");
     const content = await readFile(filePath, "utf8");
@@ -294,8 +284,7 @@ describe("editCode", () => {
     await writeFile(filePath, 'println!("hello");\nprintln!("world");\n', "utf8");
     const result = await editCode({
       path: filePath,
-      pattern: "println!($ARGS)",
-      replacement: "eprintln!($ARGS)",
+      edits: [{ pattern: "println!($ARGS)", replacement: "eprintln!($ARGS)" }],
     });
     expect(result).toContain("matches=2");
     const content = await readFile(filePath, "utf8");
@@ -309,8 +298,7 @@ describe("editCode", () => {
     await writeFile(filePath, 'package main\n\nfunc main() {\n\tprintln("hello")\n\tprintln("world")\n}\n', "utf8");
     const result = await editCode({
       path: filePath,
-      pattern: "println($ARG)",
-      replacement: "print($ARG)",
+      edits: [{ pattern: "println($ARG)", replacement: "print($ARG)" }],
     });
     expect(result).toContain("matches=2");
     const content = await readFile(filePath, "utf8");

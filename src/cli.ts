@@ -5,7 +5,7 @@ import { stdout as output } from "node:process";
 import { z } from "zod";
 import { formatToolHeader } from "./agent";
 import {
-  editFileReplace,
+  editFile,
   fetchWeb,
   findFiles,
   gitDiff,
@@ -92,13 +92,12 @@ const dogfoodArgsSchema = z.object({
 const runExitCodeSchema = z.coerce.number().int();
 const editArgsSchema = z.object({
   path: z.string().min(1),
-  find: z.string().min(1),
-  replace: z.string(),
+  edits: z.array(z.object({ find: z.string().min(1), replace: z.string() })).min(1),
   dryRun: z.boolean(),
 });
 const editResultSchema = z.object({
   path: z.string().min(1),
-  matches: z.coerce.number().int().nonnegative(),
+  edits: z.coerce.number().int().nonnegative(),
   dryRun: z.boolean(),
 });
 
@@ -238,7 +237,6 @@ export function suggestCommands(input: string, max = 3): string[] {
     .map((row) => row.command);
 }
 
-
 function listSessions(store: SessionStore): void {
   if (store.sessions.length === 0) {
     printDim("No saved sessions.");
@@ -271,11 +269,11 @@ function countLabel(value: number, singular: string, plural: string): string {
   return `${value} ${value === 1 ? singular : plural}`;
 }
 
-export function parseEditResult(raw: string): { path: string; matches: number; dryRun: boolean } | null {
+export function parseEditResult(raw: string): { path: string; edits: number; dryRun: boolean } | null {
   const path = raw.match(/^path=(.*)$/m)?.[1]?.trim();
-  const matchesText = raw.match(/^matches=(.*)$/m)?.[1]?.trim();
+  const editsText = raw.match(/^edits=(.*)$/m)?.[1]?.trim();
   const dryRunText = raw.match(/^dry_run=(.*)$/m)?.[1]?.trim();
-  if (!path || !matchesText || !dryRunText) {
+  if (!path || !editsText || !dryRunText) {
     return null;
   }
   if (dryRunText !== "true" && dryRunText !== "false") {
@@ -283,7 +281,7 @@ export function parseEditResult(raw: string): { path: string; matches: number; d
   }
   const parsed = editResultSchema.safeParse({
     path,
-    matches: matchesText,
+    edits: editsText,
     dryRun: dryRunText === "true",
   });
   return parsed.success ? parsed.data : null;
@@ -303,7 +301,6 @@ export function truncateText(input: string, maxChars: number): string {
   }
   return `${input.slice(0, Math.max(0, maxChars - 1))}…`;
 }
-
 
 export function formatStatusOutput(status: Record<string, string>): string {
   return formatStatusOutputShared(status);
@@ -971,8 +968,7 @@ export function parseDogfoodArgs(args: string[]): { files: string[]; prompt: str
 
 function parseEditArgs(args: string[]): {
   path: string;
-  find: string;
-  replace: string;
+  edits: Array<{ find: string; replace: string }>;
   dryRun: boolean;
 } {
   const dryRun = args.includes("--dry-run");
@@ -983,8 +979,7 @@ function parseEditArgs(args: string[]): {
   const [path, find, ...replaceParts] = clean;
   return editArgsSchema.parse({
     path,
-    find,
-    replace: replaceParts.join(" "),
+    edits: [{ find, replace: replaceParts.join(" ") }],
     dryRun,
   });
 }
@@ -1456,7 +1451,7 @@ async function toolMode(args: string[]): Promise<void> {
         process.exitCode = 1;
         return;
       }
-      const result = await editFileReplace(parsed);
+      const result = await editFile(parsed);
       const summary = parseEditResult(result);
       let rendered = false;
       if (summary) {
@@ -1464,7 +1459,7 @@ async function toolMode(args: string[]): Promise<void> {
         if (summary.dryRun) {
           showToolResult(
             "Dry Run",
-            `${countLabel(summary.matches, "match", "matches")} would be changed.`,
+            `${countLabel(summary.edits, "match", "matches")} would be changed.`,
             "plain",
             shownPath,
           );
@@ -1472,14 +1467,14 @@ async function toolMode(args: string[]): Promise<void> {
         } else {
           try {
             const diff = await gitDiff(parsed.path, 1);
-            showToolResult("Edit", formatEditUpdateOutput(summary.matches, diff), "diff", shownPath);
+            showToolResult("Edit", formatEditUpdateOutput(summary.edits, diff), "diff", shownPath);
             rendered = true;
           } catch (error) {
             const message = error instanceof Error ? error.message : "Unable to render diff preview";
             if (message.includes("outside repository")) {
               showToolResult(
                 "Edit",
-                `${countLabel(summary.matches, "replacement", "replacements")} applied.`,
+                `${countLabel(summary.edits, "replacement", "replacements")} applied.`,
                 "plain",
                 shownPath,
               );

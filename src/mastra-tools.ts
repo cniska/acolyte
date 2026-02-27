@@ -3,12 +3,12 @@ import { z } from "zod";
 import {
   deleteTextFile,
   editCode,
-  editFileReplace,
+  editFile,
   fetchWeb,
   findFiles,
   gitDiff,
   gitStatusShort,
-  readSnippet,
+  readSnippets,
   runShellCommand,
   searchFiles,
   searchWeb,
@@ -36,7 +36,8 @@ export const toolMeta: Record<string, ToolMeta> = {
     aliases: ["searchFiles", "search_files", "searchRepo", "search_repo"],
   },
   "read-file": {
-    instruction: "Use `read-file` to inspect code before editing.",
+    instruction:
+      "Use `read-file` to inspect code before editing. Pass `paths` as an array; batch multiple reads into one call.",
     aliases: ["readFile", "read_file"],
   },
   "git-status": {
@@ -56,11 +57,12 @@ export const toolMeta: Record<string, ToolMeta> = {
     aliases: ["webFetch", "web_fetch"],
   },
   "edit-code": {
-    instruction: "For code changes (renames, refactors, structural edits), use `edit-code` with an AST pattern.",
+    instruction: "Use `edit-code` for code changes with AST `edits` array.",
     aliases: ["editCode", "edit_code"],
   },
   "edit-file": {
-    instruction: "For prose, config, or non-code changes, use `edit-file` with a short unique `find` snippet.",
+    instruction:
+      "For prose, config, or non-code changes, use `edit-file` with an `edits` array of {find, replace} pairs. Batch multiple edits into one call.",
     aliases: ["editFile", "edit_file"],
   },
   "create-file": {
@@ -328,25 +330,37 @@ function createReadFileTool(_onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "read-file",
     description:
-      "Read a text file snippet by line range from the local repository. Use to inspect code before editing.",
-    inputSchema: z
-      .object({
-        path: z.string().min(1),
-        start: z.number().int().min(1).optional(),
-        end: z.number().int().min(1).optional(),
-      })
-      .refine((input) => input.start === undefined || input.end === undefined || input.start <= input.end, {
-        message: "start must be less than or equal to end",
-        path: ["end"],
-      }),
+      "Read one or more text file snippets by line range. Always pass `paths` as an array of {path, start?, end?} objects, even for a single file. Use to inspect code before editing.",
+    inputSchema: z.object({
+      paths: z
+        .array(
+          z
+            .object({
+              path: z.string().min(1),
+              start: z.number().int().min(1).optional(),
+              end: z.number().int().min(1).optional(),
+            })
+            .refine((entry) => entry.start === undefined || entry.end === undefined || entry.start <= entry.end, {
+              message: "start must be less than or equal to end",
+              path: ["end"],
+            }),
+        )
+        .min(1),
+    }),
     execute: async (input) => {
       return withToolError("read-file", async () => {
-        const start = input.start != null ? String(input.start) : undefined;
-        const end = input.end != null ? String(input.end) : undefined;
-        const result = compactToolOutput(
-          await readSnippet(input.path, start, end),
-          appConfig.agent.toolOutputBudget.read,
-        );
+        const entries = input.paths.map((p) => ({
+          path: p.path,
+          start: p.start != null ? String(p.start) : undefined,
+          end: p.end != null ? String(p.end) : undefined,
+        }));
+        const baseBudget = appConfig.agent.toolOutputBudget.read;
+        const count = entries.length;
+        const budget = {
+          maxChars: Math.max(400, Math.floor(baseBudget.maxChars / count) * count),
+          maxLines: Math.max(20, Math.floor(baseBudget.maxLines / count) * count),
+        };
+        const result = compactToolOutput(await readSnippets(entries), budget);
         return { result };
       });
     },
@@ -403,21 +417,24 @@ function createEditFileTool(onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "edit-file",
     description:
-      "Edit an existing file by replacing exact text. Best for prose, config, or non-code edits. For code renames, refactors, or structural edits use `edit-code` instead. `find` must be a short, unique substring (a few lines, not the whole file). You MUST read the file first. For new files, use `create-file`.",
+      "Edit an existing file by replacing exact text. Pass `edits` as an array of {find, replace} pairs, even for a single edit. All edits are applied atomically. `find` must be a short, unique substring. You MUST read the file first. For new files, use `create-file`. For code renames or structural edits use `edit-code`.",
     inputSchema: z.object({
       path: z.string().min(1),
-      find: z.string().min(1),
-      replace: z.string(),
-      dryRun: z.boolean().optional(),
+      edits: z
+        .array(
+          z.object({
+            find: z.string().min(1),
+            replace: z.string(),
+          }),
+        )
+        .min(1),
     }),
     execute: async (input) => {
       return withToolError("edit-file", async () => {
         const toolCallId = streamCallId("edit-file");
-        const rawResult = await editFileReplace({
+        const rawResult = await editFile({
           path: input.path,
-          find: input.find,
-          replace: input.replace,
-          dryRun: input.dryRun ?? false,
+          edits: input.edits,
         });
         for (const line of numberedUnifiedDiffLines(rawResult, 30)) {
           onToolOutput?.({ toolName: "edit-file", message: line, toolCallId });
@@ -460,21 +477,24 @@ function createAstEditTool(onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "edit-code",
     description:
-      "The default tool for editing code files. Uses AST pattern matching with `$VARIABLE` metavariables. Use for renames, refactors, signature changes, call-site updates, and any structural code edit. Supports TS/TSX/JS/JSX/HTML/CSS/Python/Rust/Go. Example: pattern=`console.log($ARG)` replacement=`logger.debug($ARG)`. For prose, config, or non-code files use `edit-file` instead.",
+      "Edit code with AST pattern matching. Pass `edits` as [{pattern, replacement}] using `$VAR` metavariables (e.g. pattern=`console.log($ARG)` replacement=`logger.debug($ARG)`). For non-code files use `edit-file`.",
     inputSchema: z.object({
       path: z.string().min(1),
-      pattern: z.string().min(1),
-      replacement: z.string(),
-      dryRun: z.boolean().optional(),
+      edits: z
+        .array(
+          z.object({
+            pattern: z.string().min(1),
+            replacement: z.string(),
+          }),
+        )
+        .min(1),
     }),
     execute: async (input) => {
       return withToolError("edit-code", async () => {
         const toolCallId = streamCallId("edit-code");
         const rawResult = await editCode({
           path: input.path,
-          pattern: input.pattern,
-          replacement: input.replacement,
-          dryRun: input.dryRun ?? false,
+          edits: input.edits,
         });
         for (const line of numberedUnifiedDiffLines(rawResult, 30)) {
           onToolOutput?.({ toolName: "edit-code", message: line, toolCallId });
@@ -489,16 +509,14 @@ function createAstEditTool(onToolOutput?: ToolOutputListener) {
 function createDeleteFileTool(_onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "delete-file",
-    description: "Delete a file from the repository. Supports dry run mode.",
+    description: "Delete a file from the repository.",
     inputSchema: z.object({
       path: z.string().min(1),
-      dryRun: z.boolean().optional(),
     }),
     execute: async (input) => {
       return withToolError("delete-file", async () => {
         const rawResult = await deleteTextFile({
           path: input.path,
-          dryRun: input.dryRun ?? false,
         });
         const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.edit);
         return { result };

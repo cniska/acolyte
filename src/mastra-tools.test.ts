@@ -42,7 +42,7 @@ describe("read-file tool schema", () => {
     if (!schema) {
       throw new Error("readFileTool.inputSchema is undefined");
     }
-    expect(() => schema.parse({ path: "src/agent.ts", start: 20, end: 10 })).toThrow(
+    expect(() => schema.parse({ paths: [{ path: "src/agent.ts", start: 20, end: 10 }] })).toThrow(
       "start must be less than or equal to end",
     );
   });
@@ -53,18 +53,29 @@ describe("read-file tool schema", () => {
     if (!schema) {
       throw new Error("readFileTool.inputSchema is undefined");
     }
-    expect(schema.parse({ path: "src/agent.ts", start: 10, end: 20 })).toEqual({
-      path: "src/agent.ts",
-      start: 10,
-      end: 20,
+    expect(schema.parse({ paths: [{ path: "src/agent.ts", start: 10, end: 20 }] })).toEqual({
+      paths: [{ path: "src/agent.ts", start: 10, end: 20 }],
     });
-    expect(schema.parse({ path: "src/agent.ts", start: 10 })).toEqual({
-      path: "src/agent.ts",
-      start: 10,
+    expect(schema.parse({ paths: [{ path: "src/agent.ts", start: 10 }] })).toEqual({
+      paths: [{ path: "src/agent.ts", start: 10 }],
     });
-    expect(schema.parse({ path: "src/agent.ts", end: 20 })).toEqual({
-      path: "src/agent.ts",
-      end: 20,
+    expect(schema.parse({ paths: [{ path: "src/agent.ts", end: 20 }] })).toEqual({
+      paths: [{ path: "src/agent.ts", end: 20 }],
+    });
+  });
+
+  test("accepts multiple paths", () => {
+    const schema = readFileTool.inputSchema;
+    expect(schema).toBeDefined();
+    if (!schema) {
+      throw new Error("readFileTool.inputSchema is undefined");
+    }
+    expect(
+      schema.parse({
+        paths: [{ path: "src/agent.ts", start: 1, end: 10 }, { path: "src/cli.ts" }],
+      }),
+    ).toEqual({
+      paths: [{ path: "src/agent.ts", start: 1, end: 10 }, { path: "src/cli.ts" }],
     });
   });
 });
