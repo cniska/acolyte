@@ -10,6 +10,8 @@ import { formatToolLabel } from "./tool-labels";
 import { isToolName } from "./tool-names";
 import { detectLineWidth } from "./tools";
 
+// --- Input shaping ---
+
 const APPROX_CHARS_PER_TOKEN = 4;
 
 export function estimateTokens(input: string): number {
@@ -123,6 +125,8 @@ export function createAgentInput(req: ChatRequest): {
   };
 }
 
+// --- Output heuristics ---
+
 export function isPlanLikeOutput(text: string): boolean {
   const normalized = text.trim();
   if (normalized.length === 0) {
@@ -152,6 +156,8 @@ export function createSubagentContext(req: ChatRequest): string {
   const scope = req.history.length > 0 ? `${req.history.length} history messages` : "no history";
   return ["Agent: Acolyte", `Goal: ${req.message.trim()}`, `Context: ${scope}; model=${req.model}`].join("\n");
 }
+
+// --- Instructions ---
 
 const BASE_INSTRUCTIONS = [
   "- Act, don't narrate. Use tools directly — do not describe what you will do.",
@@ -186,6 +192,8 @@ export function createInstructions(baseInstructions: string, mode: AgentMode, wo
   const modeInstructions = createModeInstructions(mode, workspace);
   return `${baseInstructions}\n\n${BASE_INSTRUCTIONS}\n\n${modeInstructions}`;
 }
+
+// --- Model resolution ---
 
 export function resolveModelProviderState(
   model: string,
@@ -232,6 +240,8 @@ export function resolveRunnableModel(
     available: state.available,
   };
 }
+
+// --- Tool output formatting ---
 
 function extractMentionedPath(message: string): string | null {
   const match = message.match(/@([^\s]+)/);
@@ -367,6 +377,8 @@ export function formatToolHeader(toolName: string, args: Record<string, unknown>
   }
 }
 
+// --- Finalization ---
+
 export function finalizeReviewOutput(output: string, message = ""): string {
   const trimmed = output.trim();
   if (trimmed.length > 0) {
@@ -398,6 +410,8 @@ export function finalizeAssistantOutput(
   }
   return "No output from model. Check /status and server logs, then retry or switch model/provider.";
 }
+
+// --- Entrypoint ---
 
 export async function runAgent(input: {
   request: ChatRequest;

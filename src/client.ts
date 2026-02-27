@@ -28,9 +28,10 @@ export const streamEventSchema = z.discriminatedUnion("type", [
     toolCallId: z.string(),
     toolName: z.string(),
     isError: z.boolean().optional(),
+    errorCode: z.string().optional(),
   }),
   z.object({ type: z.literal("status"), message: z.string() }),
-  z.object({ type: z.literal("error"), error: z.string() }),
+  z.object({ type: z.literal("error"), error: z.string(), errorCode: z.string().optional() }),
 ]);
 
 export type StreamEvent = z.infer<typeof streamEventSchema>;

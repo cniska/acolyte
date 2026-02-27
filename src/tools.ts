@@ -5,6 +5,8 @@ import { dirname, join, resolve } from "node:path";
 import { appConfig } from "./app-config";
 import { createToolError, encodeToolError, TOOL_ERROR_CODES } from "./tool-error-codes";
 
+// --- Process and workspace helpers ---
+
 const TEMP_ROOTS = Array.from(new Set([resolve(tmpdir()), resolve("/tmp"), resolve("/private/tmp")]));
 
 async function runCommand(cmd: string[], workspace: string): Promise<{ code: number; stdout: string; stderr: string }> {
@@ -68,6 +70,8 @@ export function detectLineWidth(workspace: string): number | null {
   }
   return null;
 }
+
+// --- Workspace scanning ---
 
 const IGNORED_DIRS = new Set(["node_modules", ".git", ".acolyte", "dist", "build", ".next", "coverage"]);
 
@@ -243,6 +247,8 @@ function resolveAgentPath(pathInput: string, workspace: string): string {
   return resolve(workspace, pathInput);
 }
 
+// --- Path and permission guards ---
+
 function isWithinWorkspace(pathInput: string, workspace: string): boolean {
   const absPath = resolveAgentPath(pathInput, workspace);
   return absPath === workspace || absPath.startsWith(`${workspace}/`);
@@ -311,6 +317,8 @@ function contentLines(content: string): string[] {
   }
   return lines;
 }
+
+// --- Diff rendering ---
 
 function createDiff(path: string, previous: string | null, next: string): string {
   if (previous == null) {
@@ -449,6 +457,8 @@ function createUnifiedDeleteDiff(path: string, previous: string): string {
   return [...header, ...removed].join("\n");
 }
 
+// --- Web helpers ---
+
 function decodeHtmlEntities(input: string): string {
   return input
     .replaceAll("&amp;", "&")
@@ -522,6 +532,8 @@ function extractHtmlText(html: string): { title: string; text: string } {
     text: stripHtmlTags(withoutScripts),
   };
 }
+
+// --- Web tools ---
 
 export async function fetchWeb(urlInput: string, maxChars = 5000): Promise<string> {
   const limit = Math.max(500, Math.min(12_000, maxChars));
@@ -643,6 +655,8 @@ function toInt(value: string | undefined, fallback: number): number {
   return parsed;
 }
 
+// --- File read and git tools ---
+
 export async function readSnippet(workspace: string, pathInput: string, start?: string, end?: string): Promise<string> {
   const absPath = ensurePathWithinAllowedRoots(pathInput, "Read", workspace);
   const raw = await readFile(absPath, "utf8");
@@ -687,6 +701,8 @@ export async function gitDiff(workspace: string, pathInput?: string, contextLine
   }
   return stdout.trim() || "No unstaged changes.";
 }
+
+// --- Shell execution ---
 
 const BLOCKED_SHELL_TOKENS = ["rm -rf /", "shutdown", "reboot", "mkfs", "dd if="];
 
@@ -779,6 +795,8 @@ export async function runShellCommand(
 export type FindReplaceEdit = { find: string; replace: string };
 export type LineRangeEdit = { startLine: number; endLine: number; replace: string };
 export type FileEdit = FindReplaceEdit | LineRangeEdit;
+
+// --- Text file editing ---
 
 export async function editFile(input: {
   workspace: string;
@@ -942,6 +960,8 @@ export async function writeTextFile(input: {
 }
 
 let dynamicLangsRegistered = false;
+
+// --- AST editing and scanning ---
 
 async function ensureDynamicLanguages(napi: typeof import("@ast-grep/napi")): Promise<void> {
   if (dynamicLangsRegistered) return;

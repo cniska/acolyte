@@ -18,7 +18,13 @@ import { appConfig } from "./app-config";
 import type { StreamEvent } from "./client";
 import type { LifecycleDebugEvent, LifecycleEventName } from "./lifecycle-events";
 import { type AcolyteToolset, toolsForAgent } from "./mastra-tools";
-import { extractToolErrorCode, hasToolErrorCode, TOOL_ERROR_CODES } from "./tool-error-codes";
+import {
+  type ErrorCode,
+  extractToolErrorCode,
+  hasToolErrorCode,
+  LIFECYCLE_ERROR_CODES,
+  TOOL_ERROR_CODES,
+} from "./tool-error-codes";
 import type { SessionContext } from "./tool-guards";
 import type { ToolName } from "./tool-names";
 
@@ -27,6 +33,7 @@ const TIMEOUT_RECOVERY_MAX_STEPS = 8;
 const TIMEOUT_RECOVERY_TIMEOUT_MS = 45_000;
 const STEP_TIMEOUT_MS = 120_000;
 const VERIFY_MAX_STEPS = 30;
+const MAX_UNKNOWN_ERRORS_PER_REQUEST = 2;
 const MAX_REGENERATIONS_PER_REQUEST = 3;
 const MAX_REGENERATIONS_PER_EVALUATOR = 1;
 const WRITE_TOOLS: readonly ToolName[] = ["edit-code", "edit-file", "create-file"];
@@ -53,6 +60,19 @@ export type GenerateResult = {
 type ErrorCategory = "timeout" | "file-not-found" | "guard-blocked" | "other";
 type ParsedError = { message: string; code?: string };
 type Result<T, E> = { ok: true; value: T } | { ok: false; error: E };
+type RecoveryAction = "retry-timeout" | "stop-unknown-budget" | "none";
+type ToolOutputEvent = { toolName: string; message: string; toolCallId?: string };
+type StreamChunk = { type?: string; payload?: unknown };
+type TextDeltaPayload = { text?: string };
+type ToolCallPayload = { toolCallId?: string; toolName?: string; args?: Record<string, unknown> };
+type ToolResultPayload = { toolCallId?: string; toolName?: string; result?: unknown };
+type ToolErrorPayload = { error?: unknown; message?: string; code?: unknown; toolName?: string; toolCallId?: string };
+type SavedRegenerationState = {
+  result: GenerateResult | undefined;
+  lastError: string | undefined;
+  lastErrorCode: string | undefined;
+  lastErrorCategory: ErrorCategory | undefined;
+};
 
 export type EvalAction =
   | { type: "done" }
@@ -107,13 +127,13 @@ export type RunContext = {
   regenerationLimitHit: boolean;
   sawEditFileMultiMatchError: boolean;
   lastError?: string;
-  lastErrorCode?: string;
+  lastErrorCode?: ErrorCode | string;
   lastErrorCategory?: ErrorCategory;
   errorStats: Record<ErrorCategory, number>;
   result?: GenerateResult;
   nativeIdQueue: Map<string, string[]>;
   toolCallStartedAt: Map<string, { toolName: string; startedAtMs: number }>;
-  toolOutputHandler: ((event: { toolName: string; message: string; toolCallId?: string }) => void) | null;
+  toolOutputHandler: ((event: ToolOutputEvent) => void) | null;
 };
 
 // --- Helpers ---
@@ -174,15 +194,54 @@ function classifyErrorCategory(message: string): ErrorCategory {
   return "other";
 }
 
+function categoryFromErrorCode(code?: string): ErrorCategory | undefined {
+  switch (code) {
+    case LIFECYCLE_ERROR_CODES.timeout:
+      return "timeout";
+    case LIFECYCLE_ERROR_CODES.fileNotFound:
+      return "file-not-found";
+    case LIFECYCLE_ERROR_CODES.guardBlocked:
+      return "guard-blocked";
+    case LIFECYCLE_ERROR_CODES.unknown:
+      return "other";
+    default:
+      return undefined;
+  }
+}
+
+function errorCodeFromCategory(category: ErrorCategory): ErrorCode {
+  switch (category) {
+    case "timeout":
+      return LIFECYCLE_ERROR_CODES.timeout;
+    case "file-not-found":
+      return LIFECYCLE_ERROR_CODES.fileNotFound;
+    case "guard-blocked":
+      return LIFECYCLE_ERROR_CODES.guardBlocked;
+    case "other":
+      return LIFECYCLE_ERROR_CODES.unknown;
+  }
+}
+
+export function recoveryActionForError(input: { errorCode?: string; unknownErrorCount: number }): RecoveryAction {
+  if (input.errorCode === LIFECYCLE_ERROR_CODES.timeout) {
+    return "retry-timeout";
+  }
+  if (input.errorCode === LIFECYCLE_ERROR_CODES.unknown && input.unknownErrorCount >= MAX_UNKNOWN_ERRORS_PER_REQUEST) {
+    return "stop-unknown-budget";
+  }
+  return "none";
+}
+
 function captureError(
   ctx: RunContext,
   message: string,
   meta?: { source?: "generate" | "tool-result" | "tool-error"; tool?: string; code?: string },
 ): void {
   ctx.lastError = message;
-  const code = meta?.code ?? extractToolErrorCode(message);
+  const derivedCategory = classifyErrorCategory(message);
+  const code = meta?.code ?? extractToolErrorCode(message) ?? errorCodeFromCategory(derivedCategory);
   ctx.lastErrorCode = code;
-  const category = classifyErrorCategory(message);
+  const category = categoryFromErrorCode(code) ?? derivedCategory;
   ctx.lastErrorCategory = category;
   ctx.errorStats[category] += 1;
   if (code === TOOL_ERROR_CODES.editFileMultiMatch || isEditFileMultiMatchError(message)) {
@@ -488,11 +547,22 @@ async function phaseGenerate(
       text_chars: ctx.result.text.trim().length,
     });
   } catch (error) {
-    captureError(ctx, error instanceof Error ? error.message : String(error), { source: "generate" });
-    ctx.emit({ type: "error", error: `Tool failed: ${ctx.lastError}` });
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    const timeoutCode = /timed out/i.test(errorMsg) ? LIFECYCLE_ERROR_CODES.timeout : undefined;
+    captureError(ctx, errorMsg, { source: "generate", code: timeoutCode });
+    ctx.emit({
+      type: "error",
+      error: `Tool failed: ${ctx.lastError}`,
+      ...(ctx.lastErrorCode ? { errorCode: ctx.lastErrorCode } : {}),
+    });
     ctx.debug("lifecycle.generate.error", { model: ctx.model, error: ctx.lastError });
 
-    if (/timed out/i.test(ctx.lastError ?? "")) {
+    if (
+      recoveryActionForError({
+        errorCode: ctx.lastErrorCode,
+        unknownErrorCount: ctx.errorStats.other,
+      }) === "retry-timeout"
+    ) {
       emitModeStatus(ctx);
       ctx.debug("lifecycle.generate.retry", {
         model: ctx.model,
@@ -509,10 +579,17 @@ async function phaseGenerate(
           text_chars: ctx.result.text.trim().length,
         });
       } catch (retryError) {
-        captureError(ctx, retryError instanceof Error ? retryError.message : String(retryError), {
+        const retryMsg = retryError instanceof Error ? retryError.message : String(retryError);
+        const timeoutCode = /timed out/i.test(retryMsg) ? LIFECYCLE_ERROR_CODES.timeout : undefined;
+        captureError(ctx, retryMsg, {
           source: "generate",
+          code: timeoutCode,
         });
-        ctx.emit({ type: "error", error: `Retry failed: ${ctx.lastError}` });
+        ctx.emit({
+          type: "error",
+          error: `Retry failed: ${ctx.lastError}`,
+          ...(ctx.lastErrorCode ? { errorCode: ctx.lastErrorCode } : {}),
+        });
         ctx.debug("lifecycle.generate.retry_failed", { model: ctx.model, error: ctx.lastError });
       }
     }
@@ -574,30 +651,24 @@ async function streamWithTimeout(
   });
 }
 
-function processStreamChunk(ctx: RunContext, chunk: { type?: string; payload?: unknown }): void {
+function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
   switch (chunk.type) {
     case "text-delta": {
-      const p = chunk.payload as { text?: string } | undefined;
+      const p = chunk.payload as TextDeltaPayload | undefined;
       if (typeof p?.text === "string" && p.text.length > 0 && ctx.mode !== "verify") {
         ctx.emit({ type: "text-delta", text: p.text });
       }
       break;
     }
     case "reasoning-delta": {
-      const p = chunk.payload as { text?: string } | undefined;
+      const p = chunk.payload as TextDeltaPayload | undefined;
       if (typeof p?.text === "string" && p.text.length > 0) {
         ctx.emit({ type: "reasoning", text: p.text });
       }
       break;
     }
     case "tool-call": {
-      const p = chunk.payload as
-        | {
-            toolCallId?: string;
-            toolName?: string;
-            args?: Record<string, unknown>;
-          }
-        | undefined;
+      const p = chunk.payload as ToolCallPayload | undefined;
       if (p?.toolCallId && p?.toolName) {
         const toolName = canonicalToolId(p.toolName);
         ctx.observedTools.add(toolName);
@@ -626,13 +697,7 @@ function processStreamChunk(ctx: RunContext, chunk: { type?: string; payload?: u
       break;
     }
     case "tool-result": {
-      const p = chunk.payload as
-        | {
-            toolCallId?: string;
-            toolName?: string;
-            result?: unknown;
-          }
-        | undefined;
+      const p = chunk.payload as ToolResultPayload | undefined;
       if (p?.toolCallId && p?.toolName) {
         const toolName = canonicalToolId(p.toolName);
         const started = ctx.toolCallStartedAt.get(p.toolCallId);
@@ -673,21 +738,13 @@ function processStreamChunk(ctx: RunContext, chunk: { type?: string; payload?: u
           type: "tool-result",
           toolCallId: p.toolCallId,
           toolName,
-          ...(isError ? { isError: true } : {}),
+          ...(isError ? { isError: true, ...(ctx.lastErrorCode ? { errorCode: ctx.lastErrorCode } : {}) } : {}),
         });
       }
       break;
     }
     case "tool-error": {
-      const p = chunk.payload as
-        | {
-            error?: unknown;
-            message?: string;
-            code?: unknown;
-            toolName?: string;
-            toolCallId?: string;
-          }
-        | undefined;
+      const p = chunk.payload as ToolErrorPayload | undefined;
       const raw = p?.error ?? p?.message;
       const parsed = parseErrorInfo(raw);
       const errorInfo = parsed.ok ? parsed.value : { message: "Tool error" };
@@ -711,6 +768,7 @@ function processStreamChunk(ctx: RunContext, chunk: { type?: string; payload?: u
           toolCallId: p.toolCallId,
           toolName: canonicalToolId(p.toolName),
           isError: true,
+          ...(ctx.lastErrorCode ? { errorCode: ctx.lastErrorCode } : {}),
         });
       }
       break;
@@ -882,6 +940,27 @@ export async function runLifecycle(input: LifecycleInput): Promise<ChatResponse>
   const evaluators: Evaluator[] = [planDetector, multiMatchEditEvaluator, efficiencyEvaluator, autoVerifier];
   const regenByEvaluator = new Map<string, number>();
   while (ctx.result) {
+    if (
+      recoveryActionForError({
+        errorCode: ctx.lastErrorCode,
+        unknownErrorCount: ctx.errorStats.other,
+      }) === "stop-unknown-budget"
+    ) {
+      ctx.regenerationLimitHit = true;
+      ctx.debug("lifecycle.eval.skipped", {
+        reason: "unknown_error_budget",
+        unknown_error_count: ctx.errorStats.other,
+        unknown_error_cap: MAX_UNKNOWN_ERRORS_PER_REQUEST,
+        last_error_code: ctx.lastErrorCode ?? null,
+      });
+      if (!ctx.result.text.trim()) {
+        ctx.result = {
+          text: "Stopped after repeated unknown errors. Narrow the task scope or inspect lifecycle traces and retry.",
+          toolCalls: [],
+        };
+      }
+      break;
+    }
     let regenerated = false;
     for (const evaluator of evaluators) {
       const action = evaluator.evaluate(ctx);
@@ -910,14 +989,7 @@ export async function runLifecycle(input: LifecycleInput): Promise<ChatResponse>
         });
         continue;
       }
-      const saved:
-        | {
-            result: GenerateResult | undefined;
-            lastError: string | undefined;
-            lastErrorCode: string | undefined;
-            lastErrorCategory: ErrorCategory | undefined;
-          }
-        | undefined = action.keepResult
+      const saved: SavedRegenerationState | undefined = action.keepResult
         ? {
             result: ctx.result,
             lastError: ctx.lastError,

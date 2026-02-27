@@ -22,6 +22,8 @@ import {
   writeTextFile,
 } from "./tools";
 
+// --- Tool metadata ---
+
 type ToolOutputListener = (event: { toolName: ToolName; message: string; toolCallId?: string }) => void;
 
 export type ToolMeta = {
@@ -88,6 +90,8 @@ export const toolMeta: Record<ToolName, ToolMeta> = {
     aliases: ["runCommand", "run_command", "execute_command"],
   },
 };
+
+// --- Output helpers ---
 
 function emitResultChunks(
   toolName: ToolName,
@@ -204,6 +208,8 @@ function streamCallId(toolName: ToolName): string {
   return `${toolName}_${createId()}`;
 }
 
+// --- Guarded execution ---
+
 function createRunCommandTool(workspace: string, session: SessionContext, onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "run-command",
@@ -317,6 +323,8 @@ async function guardedExecute<T>(
   recordCall(session, toolId, args);
   return result;
 }
+
+// --- Tool factories ---
 
 function createFindFilesTool(workspace: string, session: SessionContext) {
   return createTool({
@@ -656,6 +664,8 @@ function createWebFetchTool(session: SessionContext, onToolOutput?: ToolOutputLi
   });
 }
 
+// --- Toolset assembly ---
+
 export type AcolyteToolset = ReturnType<typeof createToolset>["tools"];
 
 function createToolset(workspace: string, session: SessionContext, onToolOutput?: ToolOutputListener) {
@@ -698,6 +708,8 @@ function readOnlyTools(
     session,
   };
 }
+
+// --- Public API ---
 
 export function toolsForAgent(options?: { workspace?: string; onToolOutput?: ToolOutputListener }): {
   tools: Partial<AcolyteToolset>;

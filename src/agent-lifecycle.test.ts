@@ -5,7 +5,9 @@ import {
   multiMatchEditEvaluator,
   planDetector,
   type RunContext,
+  recoveryActionForError,
 } from "./agent-lifecycle";
+import { LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./tool-error-codes";
 import { createSessionContext } from "./tool-guards";
 
 function createMockContext(overrides: Partial<RunContext> = {}): RunContext {
@@ -287,5 +289,25 @@ describe("evaluator ordering", () => {
     expect(evaluators[1].id).toBe("multi-match-edit-evaluator");
     expect(evaluators[2].id).toBe("efficiency-evaluator");
     expect(evaluators[3].id).toBe("auto-verifier");
+  });
+});
+
+describe("recoveryActionForError", () => {
+  test("returns retry-timeout for timeout code", () => {
+    expect(recoveryActionForError({ errorCode: LIFECYCLE_ERROR_CODES.timeout, unknownErrorCount: 0 })).toBe(
+      "retry-timeout",
+    );
+  });
+
+  test("returns stop-unknown-budget for repeated unknown errors", () => {
+    expect(recoveryActionForError({ errorCode: LIFECYCLE_ERROR_CODES.unknown, unknownErrorCount: 2 })).toBe(
+      "stop-unknown-budget",
+    );
+  });
+
+  test("returns none for tool-specific multi-match errors", () => {
+    expect(recoveryActionForError({ errorCode: TOOL_ERROR_CODES.editFileMultiMatch, unknownErrorCount: 0 })).toBe(
+      "none",
+    );
   });
 });

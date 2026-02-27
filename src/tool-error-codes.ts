@@ -3,6 +3,14 @@ export const TOOL_ERROR_CODES = {
 } as const;
 
 export type ToolErrorCode = (typeof TOOL_ERROR_CODES)[keyof typeof TOOL_ERROR_CODES];
+export const LIFECYCLE_ERROR_CODES = {
+  timeout: "E_TIMEOUT",
+  fileNotFound: "E_FILE_NOT_FOUND",
+  guardBlocked: "E_GUARD_BLOCKED",
+  unknown: "E_UNKNOWN",
+} as const;
+export type LifecycleErrorCode = (typeof LIFECYCLE_ERROR_CODES)[keyof typeof LIFECYCLE_ERROR_CODES];
+export type ErrorCode = ToolErrorCode | LifecycleErrorCode;
 
 export class ToolError extends Error {
   code: string;
