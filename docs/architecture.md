@@ -3,51 +3,60 @@
 ## Layers
 
 ```
-CLI (Ink/React)
-  └─ chat-submit-handler
-       └─ Client (HTTP + SSE)
-            └─ Server (Bun HTTP)
-                 └─ Agent (Mastra)
+CLI → Submit handler → Client → Server → Lifecycle → Agent → Tools
 ```
 
-**CLI** (`cli.ts`, `chat-ui.tsx`) — Ink TUI with streaming tool output, `@path` autocomplete, `/slash` commands.
+| Layer | Key files | Role |
+|-------|-----------|------|
+| CLI | `cli.ts`, `chat-ui.tsx` | Ink TUI, `@path` autocomplete, `/slash` commands |
+| Submit handler | `chat-submit-handler.ts` | Slash commands, file refs, memory, permissions |
+| Client | `client.ts` | HTTP + SSE → typed `StreamEvent` |
+| Server | `server.ts` | Bun HTTP, routes: `/v1/chat`, `/v1/chat/stream`, `/healthz` |
+| Lifecycle | `agent-lifecycle.ts` | Request phases + evaluator loop (see below) |
+| Agent | `agent.ts`, `agent-factory.ts` | `runAgent()` → lifecycle, input/output helpers |
+| Tools | `mastra-tools.ts`, `agent-tools.ts` | 13 tools with guards, aliases, token budgets |
 
-**Submit handler** (`chat-submit-handler.ts`) — resolves slash commands, file references, memory directives, and permission checks before delegating to the client.
+## Lifecycle (`agent-lifecycle.ts`)
 
-**Client** (`client.ts`) — HTTP client that parses SSE into typed `StreamEvent` values.
+Three nested levels:
 
-**Server** (`server.ts`) — Bun HTTP. Routes: `POST /v1/chat`, `POST /v1/chat/stream` (SSE), `GET /healthz`. Passes `StreamEvent` from agent through as SSE.
+```
+Request:    classify → prepare → generate → evaluate → finalize
+Generation: model-call → [stream → tool-call → tool-result]* → done
+Tool:       validate (guards) → execute → record (session)
+```
 
-**Agent** (`agent.ts`) — wraps Mastra's `fullStream`. Classifies task mode upfront, builds mode-specific instructions, forwards native chunks as `StreamEvent`. Handles plan detection and timeout recovery.
+`classify` and `prepare` return values used to construct `RunContext` — no uninitialized fields. `generate` and `finalize` operate on the mutable context.
 
-## Agent modes (`agent-modes.ts`)
+**Evaluators** run after generation. Each inspects `RunContext` and returns `done` or `regenerate`. The runner loops until all return done.
 
-Three modes with distinct tool sets and instructions:
+| Evaluator | Trigger | Action |
+|-----------|---------|--------|
+| `planDetector` | Output is plan-like, no tools used | Re-invoke with execution nudge |
+| `autoVerifier` | Work mode, write tools used, no verify ran | Run verify mode (`keepResult` preserves work output) |
+
+New post-generation behavior = implement `Evaluator`, add to array.
+
+## Modes (`agent-modes.ts`)
 
 | Mode | Tools | Trigger |
 |------|-------|---------|
 | `plan` | find-files, search-files, read-file, scan-code, git-status, git-diff, web-search, web-fetch | Read-only keywords (default) |
 | `work` | edit-code, edit-file, create-file, delete-file, run-command | Action keywords |
-| `verify` | run-command, read-file, search-files, edit-code, scan-code, edit-file, create-file | Auto-triggered after work mode |
+| `verify` | run-command, read-file, search-files, edit-code, scan-code, edit-file, create-file | `autoVerifier` evaluator |
 
-`classifyMode(message)` picks the initial mode via keyword heuristics. Mode can switch mid-run when the model calls a tool from a different mode (except during verify, which is locked). Mode instructions are generated dynamically from `toolMeta` in `mastra-tools.ts`.
+`classifyMode()` picks the initial mode. Mode switches mid-run when the model calls a tool from a different mode (locked during verify). Instructions built dynamically from `toolMeta`.
 
-**Verify chaining:** After work mode completes with write tools used (edit-code, edit-file, create-file), the agent automatically transitions to verify mode. Verify runs the project's verify command, reads errors, fixes issues, and re-runs until clean or stuck. This is non-fatal — verification failure doesn't kill the response.
+## Tool guards (`tool-guards.ts`)
 
-## Tools (`mastra-tools.ts`, `agent-tools.ts`)
+Every tool call passes through `guardedExecute`: run guards → execute → record call.
 
-13 tools registered with Mastra. Each tool has a `ToolMeta` entry with an `instruction` (used to build mode-specific system instructions) and `aliases` (used by `canonicalToolId` to normalize model output). Tool output is compacted to per-tool token budgets. AST-based tools (`edit-code`, `scan-code`) use `@ast-grep/napi` for structural pattern matching with metavariable capture.
+`SessionContext` holds per-request state: `callLog`, `flags`, `onGuard` callback.
 
-## Streaming pipeline
-
-```
-Mastra fullStream
-  → agent.ts (forward native chunks as StreamEvent)
-    → server.ts (serialize to SSE)
-      → client.ts (parse SSE to StreamEvent)
-        → chat-progress.ts (typed event router)
-          → chat-submit-handler.ts (build UI rows)
-```
+| Guard | Action |
+|-------|--------|
+| `noRewriteGuard` | Blocks delete-file on previously-read paths |
+| `verifyRanGuard` | Sets `verifyRan` flag on verify commands |
 
 ## Storage
 
@@ -57,4 +66,4 @@ Mastra fullStream
 
 ## Configuration (`app-config.ts`)
 
-Merged from `.acolyte/config.toml` (project) and `~/.acolyte/config.toml` (user). Key settings: `model`, `models` (per-mode overrides), `port`, `apiUrl`, `permissionMode` (read/write), context token budgets. Supports dotted key syntax for nested sections (e.g. `models.work`).
+Merged from `.acolyte/config.toml` (project) and `~/.acolyte/config.toml` (user). Key settings: `model`, `models` (per-mode overrides), `port`, `apiUrl`, `permissionMode`, context token budgets.

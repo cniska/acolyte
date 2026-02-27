@@ -13,9 +13,12 @@ What's currently supported.
 
 ## Agent & Tools
 
-- Single-agent execution with direct tool usage across three modes: plan, work, verify.
-- Automatic verify chaining: after work mode edits, the agent runs the project's verify command, reads errors, fixes issues, and re-runs until clean.
-- Tool surface: search, read, write, edit (text + AST), scan (AST pattern matching), delete, git status/diff, run command, web search/fetch.
+- Lifecycle-driven execution: classify → prepare → generate → evaluate → finalize.
+- Three modes (plan, work, verify) with automatic mode switching based on tool usage.
+- Evaluator loop: plan detection (re-invokes when model plans instead of acting), auto-verify (runs project verify command after edits).
+- Tool surface: search, read, write, edit (text + AST + line-range), scan (AST pattern matching), delete, git status/diff, run command, web search/fetch.
+- Tool guards: session-level validation (no delete-after-read, verify tracking).
+- Skills system: extensible slash-command skills with inline invocation and argument passing.
 - Permission modes: `read` (default, disables writes) and `write` (full local tool capability).
 - Read-mode write confirmation picker with inline reason entry.
 - Workspace + `/tmp` path guardrails on all file operations.
@@ -46,6 +49,7 @@ What's currently supported.
 ## Run Mode
 
 - `acolyte run "prompt"` for single requests outside interactive chat.
+- `acolyte serve` for headless server mode (non-interactive).
 - File attachment support (`--file`), verify mode (`--verify`), configurable timeout.
 
 ## Current Limitations

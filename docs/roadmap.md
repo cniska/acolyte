@@ -54,6 +54,7 @@ End-to-end autonomous execution: plan, edit, verify, iterate.
 - [x] Single-match guard on edit-file to prevent unintended multi-replacements
 - [x] Skills aligned with agentskills.io spec (inline invocation, $ARGUMENTS, multi-dir scan)
 - [x] Session-level tool guards (no-rewrite, verify-ran) with composable guard system
+- [x] Agent lifecycle architecture — phases, evaluators, RunContext (replaces ad-hoc runAgent)
 
 ### Milestone 6: Memory Quality
 
@@ -121,6 +122,9 @@ What MVP is **not**:
 - Session branching — isolated sub-tasks without polluting main context.
 - Agent-authored skills — let the agent create and refine its own tools at runtime.
 - Tool output collapsing — group consecutive same-tool calls into a single summary row to reduce visual noise.
+- User-facing lifecycle hooks — notifications when agent needs input, custom evaluators.
+- Memory evaluator — persist learnings between generations within a session.
+- Shell fallback guard — block run-command when a dedicated tool exists (e.g. sed → edit-file).
 
 ## Known Issues
 
