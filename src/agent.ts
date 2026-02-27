@@ -1,6 +1,6 @@
 import { createAgent } from "./agent-factory";
 import { type AgentMode, agentModes, classifyMode, modeForTool } from "./agent-modes";
-import { getProjectLineWidth } from "./agent-tools";
+import { detectLineWidth } from "./agent-tools";
 import type { ChatRequest, ChatResponse } from "./api";
 import { appConfig } from "./app-config";
 import type { StreamEvent } from "./client";
@@ -161,7 +161,7 @@ const BASE_INSTRUCTIONS = [
   "- Keep working until done or blocked. If blocked, ask one short question.",
 ].join("\n");
 
-export function createModeInstructions(mode: AgentMode): string {
+export function createModeInstructions(mode: AgentMode, workspace?: string): string {
   const { tools, preamble } = agentModes[mode];
   const lines: string[] = preamble.map((p) => `- ${p}`);
   for (const toolId of tools) {
@@ -170,15 +170,17 @@ export function createModeInstructions(mode: AgentMode): string {
       lines.push(`- ${meta.instruction}`);
     }
   }
-  const lineWidth = getProjectLineWidth();
-  if (lineWidth && mode === "work") {
-    lines.push(`- Keep lines under ${lineWidth} characters.`);
+  if (workspace && mode === "work") {
+    const lineWidth = detectLineWidth(workspace);
+    if (lineWidth) {
+      lines.push(`- Keep lines under ${lineWidth} characters.`);
+    }
   }
   return lines.join("\n");
 }
 
-export function createInstructions(baseInstructions: string, mode: AgentMode): string {
-  const modeInstructions = createModeInstructions(mode);
+export function createInstructions(baseInstructions: string, mode: AgentMode, workspace?: string): string {
+  const modeInstructions = createModeInstructions(mode, workspace);
   return `${baseInstructions}\n\n${BASE_INSTRUCTIONS}\n\n${modeInstructions}`;
 }
 
@@ -409,6 +411,7 @@ export function finalizeAssistantOutput(
 export async function runAgent(input: {
   request: ChatRequest;
   soulPrompt: string;
+  workspace?: string;
   onEvent?: (event: StreamEvent) => void;
   onDebug?: (event: string, fields?: Record<string, unknown>) => void;
 }): Promise<ChatResponse> {
@@ -457,8 +460,9 @@ export async function runAgent(input: {
     id: "acolyte",
     name: "Acolyte",
     model,
-    instructions: createInstructions(input.soulPrompt, classifiedMode),
+    instructions: createInstructions(input.soulPrompt, classifiedMode, input.workspace),
     tools: toolsForAgent({
+      workspace: input.workspace,
       onToolOutput: (event) => {
         toolOutputHandler?.(event);
       },
@@ -839,7 +843,7 @@ export async function runAgent(input: {
     emitDebug("agent.generate.start", { model, reason: "verify" });
     try {
       modelCallCount += 1;
-      const verifyPrompt = createModeInstructions("verify");
+      const verifyPrompt = createModeInstructions("verify", input.workspace);
       const verifyResult = await streamWithTimeout(
         verifyPrompt,
         {

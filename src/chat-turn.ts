@@ -108,6 +108,7 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
           model: params.model,
           sessionId: params.sessionId,
           useMemory: params.useMemory,
+          workspace: process.cwd(),
         },
         { signal: params.signal, onEvent: params.onEvent },
       )
@@ -118,6 +119,7 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
           model: params.model,
           sessionId: params.sessionId,
           useMemory: params.useMemory,
+          workspace: process.cwd(),
         },
         { signal: params.signal },
       );

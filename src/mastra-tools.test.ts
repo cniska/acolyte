@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { appConfig, setPermissionMode } from "./app-config";
-import { readFileTool, toolsForAgent, withToolError } from "./mastra-tools";
+import { toolsForAgent, withToolError } from "./mastra-tools";
 
 const initialPermissionMode = appConfig.agent.permissions.mode;
 
@@ -46,6 +46,10 @@ describe("mastra toolsets", () => {
 });
 
 describe("read-file tool schema", () => {
+  const tools = toolsForAgent();
+  if (!tools.readFile) throw new Error("readFile tool missing");
+  const readFileTool = tools.readFile;
+
   test("rejects invalid range when start is greater than end", () => {
     const schema = readFileTool.inputSchema;
     expect(schema).toBeDefined();

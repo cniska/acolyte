@@ -1,4 +1,6 @@
 #!/usr/bin/env bun
+import { existsSync, statSync } from "node:fs";
+import { resolve } from "node:path";
 import { runAgent } from "./agent";
 import type { ChatRequest } from "./api";
 import { appConfig, setPermissionMode } from "./app-config";
@@ -78,8 +80,23 @@ function isChatRequest(value: unknown): value is ChatRequest {
     Array.isArray(req.history) &&
     (req.sessionId === undefined || typeof req.sessionId === "string") &&
     (req.resourceId === undefined || typeof req.resourceId === "string") &&
-    (req.useMemory === undefined || typeof req.useMemory === "boolean")
+    (req.useMemory === undefined || typeof req.useMemory === "boolean") &&
+    (req.workspace === undefined || typeof req.workspace === "string")
   );
+}
+
+function resolveWorkspace(input?: string): string {
+  if (!input) {
+    return resolve(process.cwd());
+  }
+  const resolved = resolve(input);
+  if (!existsSync(resolved)) {
+    throw new Error(`Workspace path does not exist: ${resolved}`);
+  }
+  if (!statSync(resolved).isDirectory()) {
+    throw new Error(`Workspace path is not a directory: ${resolved}`);
+  }
+  return resolved;
 }
 
 function hasValidAuth(req: Request): boolean {
@@ -277,6 +294,14 @@ const server = Bun.serve({
     const requestId = nextErrorId();
     const startedAt = Date.now();
     const chatRequest = payload as ChatRequest;
+
+    let workspace: string;
+    try {
+      workspace = resolveWorkspace(chatRequest.workspace);
+    } catch (error) {
+      return badRequest(error instanceof Error ? error.message : "Invalid workspace");
+    }
+
     log.info("chat request started", {
       request_id: requestId,
       session_id: chatRequest.sessionId ?? null,
@@ -319,6 +344,7 @@ const server = Bun.serve({
               const reply = await runAgent({
                 request: chatRequest,
                 soulPrompt,
+                workspace,
                 onEvent: (event) => {
                   send(event);
                 },
@@ -387,6 +413,7 @@ const server = Bun.serve({
       const reply = await runAgent({
         request: chatRequest,
         soulPrompt,
+        workspace,
         onDebug: (event, fields) => {
           log.info("agent debug", {
             request_id: requestId,

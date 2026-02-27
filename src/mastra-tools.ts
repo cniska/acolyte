@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 import {
@@ -201,7 +202,7 @@ function streamCallId(toolName: string): string {
   return `${toolName}_${createId()}`;
 }
 
-function createRunCommandTool(onToolOutput?: ToolOutputListener) {
+function createRunCommandTool(workspace: string, onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "run-command",
     description:
@@ -247,14 +248,19 @@ function createRunCommandTool(onToolOutput?: ToolOutputListener) {
             stderrBuffer = remaining;
           }
         };
-        const rawResult = await runShellCommand(input.command, input.timeoutMs ?? 60_000, ({ stream, text }) => {
-          if (stream === "stdout") {
-            stdoutBuffer += text;
-          } else {
-            stderrBuffer += text;
-          }
-          flushBufferLines(stream);
-        });
+        const rawResult = await runShellCommand(
+          workspace,
+          input.command,
+          input.timeoutMs ?? 60_000,
+          ({ stream, text }) => {
+            if (stream === "stdout") {
+              stdoutBuffer += text;
+            } else {
+              stderrBuffer += text;
+            }
+            flushBufferLines(stream);
+          },
+        );
         const flushRemainder = (stream: "stdout" | "stderr"): void => {
           const label = stream === "stdout" ? "out" : "err";
           const remainder = (stream === "stdout" ? stdoutBuffer : stderrBuffer).trimEnd();
@@ -289,7 +295,7 @@ export async function withToolError<T>(toolId: string, task: () => Promise<T>): 
   }
 }
 
-function createFindFilesTool(_onToolOutput?: ToolOutputListener) {
+function createFindFilesTool(workspace: string, _onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "find-files",
     description:
@@ -302,7 +308,7 @@ function createFindFilesTool(_onToolOutput?: ToolOutputListener) {
       return withToolError("find-files", async () => {
         const maxResults = input.maxResults ?? 40;
         const result = compactToolOutput(
-          await findFiles(input.pattern, maxResults),
+          await findFiles(workspace, input.pattern, maxResults),
           appConfig.agent.toolOutputBudget.findFiles,
         );
         return { result };
@@ -311,7 +317,7 @@ function createFindFilesTool(_onToolOutput?: ToolOutputListener) {
   });
 }
 
-function createSearchFilesTool(_onToolOutput?: ToolOutputListener) {
+function createSearchFilesTool(workspace: string, _onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "search-files",
     description:
@@ -324,7 +330,7 @@ function createSearchFilesTool(_onToolOutput?: ToolOutputListener) {
       return withToolError("search-files", async () => {
         const maxResults = input.maxResults ?? 20;
         const result = compactToolOutput(
-          await searchFiles(input.pattern, maxResults),
+          await searchFiles(workspace, input.pattern, maxResults),
           appConfig.agent.toolOutputBudget.searchFiles,
         );
         return { result };
@@ -333,7 +339,7 @@ function createSearchFilesTool(_onToolOutput?: ToolOutputListener) {
   });
 }
 
-function createScanCodeTool(_onToolOutput?: ToolOutputListener) {
+function createScanCodeTool(workspace: string, _onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "scan-code",
     description:
@@ -348,6 +354,7 @@ function createScanCodeTool(_onToolOutput?: ToolOutputListener) {
       return withToolError("scan-code", async () => {
         const result = compactToolOutput(
           await scanCode({
+            workspace,
             path: input.path,
             pattern: input.pattern,
             language: input.language,
@@ -361,7 +368,7 @@ function createScanCodeTool(_onToolOutput?: ToolOutputListener) {
   });
 }
 
-function createReadFileTool(_onToolOutput?: ToolOutputListener) {
+function createReadFileTool(workspace: string, _onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "read-file",
     description:
@@ -395,16 +402,14 @@ function createReadFileTool(_onToolOutput?: ToolOutputListener) {
           maxChars: Math.max(400, Math.floor(baseBudget.maxChars / count) * count),
           maxLines: Math.max(20, Math.floor(baseBudget.maxLines / count) * count),
         };
-        const result = compactToolOutput(await readSnippets(entries), budget);
+        const result = compactToolOutput(await readSnippets(workspace, entries), budget);
         return { result };
       });
     },
   });
 }
 
-export const readFileTool = createReadFileTool();
-
-function createGitStatusTool(onToolOutput?: ToolOutputListener) {
+function createGitStatusTool(workspace: string, onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "git-status",
     description: "Show working tree status (short format with branch) for the current repository.",
@@ -412,7 +417,7 @@ function createGitStatusTool(onToolOutput?: ToolOutputListener) {
     execute: async () => {
       return withToolError("git-status", async () => {
         const toolCallId = streamCallId("git-status");
-        const result = compactToolOutput(await gitStatusShort(), appConfig.agent.toolOutputBudget.gitStatus);
+        const result = compactToolOutput(await gitStatusShort(workspace), appConfig.agent.toolOutputBudget.gitStatus);
         emitResultChunks("git-status", result, onToolOutput, 80, toolCallId);
         return { result };
       });
@@ -420,9 +425,7 @@ function createGitStatusTool(onToolOutput?: ToolOutputListener) {
   });
 }
 
-export const gitStatusTool = createGitStatusTool();
-
-function createGitDiffTool(onToolOutput?: ToolOutputListener) {
+function createGitDiffTool(workspace: string, onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "git-diff",
     description: "Show unstaged changes (unified diff) for the repository or a specific file path.",
@@ -434,7 +437,7 @@ function createGitDiffTool(onToolOutput?: ToolOutputListener) {
       return withToolError("git-diff", async () => {
         const toolCallId = streamCallId("git-diff");
         const result = compactToolOutput(
-          await gitDiff(input.path, input.contextLines ?? 3),
+          await gitDiff(workspace, input.path, input.contextLines ?? 3),
           appConfig.agent.toolOutputBudget.gitDiff,
         );
         emitResultChunks("git-diff", result, onToolOutput, 80, toolCallId);
@@ -444,11 +447,7 @@ function createGitDiffTool(onToolOutput?: ToolOutputListener) {
   });
 }
 
-export const gitDiffTool = createGitDiffTool();
-
-export const runCommandTool = createRunCommandTool();
-
-function createEditFileTool(onToolOutput?: ToolOutputListener) {
+function createEditFileTool(workspace: string, onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "edit-file",
     description:
@@ -468,6 +467,7 @@ function createEditFileTool(onToolOutput?: ToolOutputListener) {
       return withToolError("edit-file", async () => {
         const toolCallId = streamCallId("edit-file");
         const rawResult = await editFile({
+          workspace,
           path: input.path,
           edits: input.edits,
         });
@@ -481,7 +481,7 @@ function createEditFileTool(onToolOutput?: ToolOutputListener) {
   });
 }
 
-function createCreateFileTool(onToolOutput?: ToolOutputListener) {
+function createCreateFileTool(workspace: string, onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "create-file",
     description:
@@ -494,6 +494,7 @@ function createCreateFileTool(onToolOutput?: ToolOutputListener) {
       return withToolError("create-file", async () => {
         const toolCallId = streamCallId("create-file");
         const rawResult = await writeTextFile({
+          workspace,
           path: input.path,
           content: input.content,
           overwrite: true,
@@ -508,7 +509,7 @@ function createCreateFileTool(onToolOutput?: ToolOutputListener) {
   });
 }
 
-function createAstEditTool(onToolOutput?: ToolOutputListener) {
+function createAstEditTool(workspace: string, onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "edit-code",
     description:
@@ -528,6 +529,7 @@ function createAstEditTool(onToolOutput?: ToolOutputListener) {
       return withToolError("edit-code", async () => {
         const toolCallId = streamCallId("edit-code");
         const rawResult = await editCode({
+          workspace,
           path: input.path,
           edits: input.edits,
         });
@@ -541,7 +543,7 @@ function createAstEditTool(onToolOutput?: ToolOutputListener) {
   });
 }
 
-function createDeleteFileTool(_onToolOutput?: ToolOutputListener) {
+function createDeleteFileTool(workspace: string, _onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "delete-file",
     description: "Delete a file from the repository.",
@@ -551,6 +553,7 @@ function createDeleteFileTool(_onToolOutput?: ToolOutputListener) {
     execute: async (input) => {
       return withToolError("delete-file", async () => {
         const rawResult = await deleteTextFile({
+          workspace,
           path: input.path,
         });
         const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.edit);
@@ -559,11 +562,6 @@ function createDeleteFileTool(_onToolOutput?: ToolOutputListener) {
     },
   });
 }
-
-export const editFileTool = createEditFileTool();
-export const createFileTool = createCreateFileTool();
-export const editCodeTool = createAstEditTool();
-export const deleteFileTool = createDeleteFileTool();
 
 function createWebSearchTool(onToolOutput?: ToolOutputListener) {
   return createTool({
@@ -588,8 +586,6 @@ function createWebSearchTool(onToolOutput?: ToolOutputListener) {
   });
 }
 
-export const webSearchTool = createWebSearchTool();
-
 function createWebFetchTool(onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "web-fetch",
@@ -613,62 +609,46 @@ function createWebFetchTool(onToolOutput?: ToolOutputListener) {
   });
 }
 
-export const webFetchTool = createWebFetchTool();
+export type AcolyteToolset = ReturnType<typeof createToolset>;
 
-export const scanCodeTool = createScanCodeTool();
-
-export const acolyteTools = {
-  findFiles: createFindFilesTool(),
-  searchFiles: createSearchFilesTool(),
-  scanCode: scanCodeTool,
-  readFile: readFileTool,
-  gitStatus: gitStatusTool,
-  gitDiff: gitDiffTool,
-  runCommand: runCommandTool,
-  editCode: editCodeTool,
-  editFile: editFileTool,
-  createFile: createFileTool,
-  deleteFile: deleteFileTool,
-  webSearch: webSearchTool,
-  webFetch: webFetchTool,
-};
-
-export type AcolyteToolset = typeof acolyteTools;
-
-function readOnlyTools(): Partial<AcolyteToolset> {
+function createToolset(workspace: string, onToolOutput?: ToolOutputListener) {
   return {
-    findFiles: acolyteTools.findFiles,
-    searchFiles: acolyteTools.searchFiles,
-    scanCode: acolyteTools.scanCode,
-    readFile: acolyteTools.readFile,
-    gitStatus: acolyteTools.gitStatus,
-    gitDiff: acolyteTools.gitDiff,
-    webSearch: acolyteTools.webSearch,
-    webFetch: acolyteTools.webFetch,
+    findFiles: createFindFilesTool(workspace, onToolOutput),
+    searchFiles: createSearchFilesTool(workspace, onToolOutput),
+    scanCode: createScanCodeTool(workspace, onToolOutput),
+    readFile: createReadFileTool(workspace, onToolOutput),
+    gitStatus: createGitStatusTool(workspace, onToolOutput),
+    gitDiff: createGitDiffTool(workspace, onToolOutput),
+    runCommand: createRunCommandTool(workspace, onToolOutput),
+    editCode: createAstEditTool(workspace, onToolOutput),
+    editFile: createEditFileTool(workspace, onToolOutput),
+    createFile: createCreateFileTool(workspace, onToolOutput),
+    deleteFile: createDeleteFileTool(workspace, onToolOutput),
+    webSearch: createWebSearchTool(onToolOutput),
+    webFetch: createWebFetchTool(onToolOutput),
   };
 }
 
-export function toolsForAgent(options?: { onToolOutput?: ToolOutputListener }): Partial<AcolyteToolset> {
-  if (appConfig.agent.permissions.mode === "read") {
-    return readOnlyTools();
-  }
-  if (!options?.onToolOutput) {
-    return acolyteTools;
-  }
+function readOnlyTools(workspace: string, onToolOutput?: ToolOutputListener): Partial<AcolyteToolset> {
   return {
-    ...acolyteTools,
-    findFiles: createFindFilesTool(options.onToolOutput),
-    searchFiles: createSearchFilesTool(options.onToolOutput),
-    scanCode: createScanCodeTool(options.onToolOutput),
-    readFile: createReadFileTool(options.onToolOutput),
-    gitStatus: createGitStatusTool(options.onToolOutput),
-    gitDiff: createGitDiffTool(options.onToolOutput),
-    runCommand: createRunCommandTool(options.onToolOutput),
-    editCode: createAstEditTool(options.onToolOutput),
-    editFile: createEditFileTool(options.onToolOutput),
-    createFile: createCreateFileTool(options.onToolOutput),
-    deleteFile: createDeleteFileTool(options.onToolOutput),
-    webSearch: createWebSearchTool(options.onToolOutput),
-    webFetch: createWebFetchTool(options.onToolOutput),
+    findFiles: createFindFilesTool(workspace, onToolOutput),
+    searchFiles: createSearchFilesTool(workspace, onToolOutput),
+    scanCode: createScanCodeTool(workspace, onToolOutput),
+    readFile: createReadFileTool(workspace, onToolOutput),
+    gitStatus: createGitStatusTool(workspace, onToolOutput),
+    gitDiff: createGitDiffTool(workspace, onToolOutput),
+    webSearch: createWebSearchTool(onToolOutput),
+    webFetch: createWebFetchTool(onToolOutput),
   };
+}
+
+export function toolsForAgent(options?: {
+  workspace?: string;
+  onToolOutput?: ToolOutputListener;
+}): Partial<AcolyteToolset> {
+  const workspace = options?.workspace ?? resolve(process.cwd());
+  if (appConfig.agent.permissions.mode === "read") {
+    return readOnlyTools(workspace, options?.onToolOutput);
+  }
+  return createToolset(workspace, options?.onToolOutput);
 }

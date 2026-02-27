@@ -860,6 +860,7 @@ async function handlePrompt(
         model: session.model,
         sessionId: session.id,
         resourceId: options?.resourceId,
+        workspace: process.cwd(),
       },
       {
         onEvent: (event) => {
@@ -1116,7 +1117,7 @@ async function runMode(args: string[]): Promise<void> {
     return;
   }
   if (parsed.verify) {
-    const verifyResult = await runShellCommand("bun run verify");
+    const verifyResult = await runShellCommand(process.cwd(), "bun run verify");
     showToolResult("Run", formatForTool("run", verifyResult), "tool", "bun run verify");
     const verifyExitCode = parseRunExitCode(verifyResult);
     if (verifyExitCode !== null && verifyExitCode !== 0) {
@@ -1355,7 +1356,7 @@ async function toolMode(args: string[]): Promise<void> {
         process.exitCode = 1;
         return;
       }
-      const result = await findFiles(pattern);
+      const result = await findFiles(process.cwd(), pattern);
       showToolResult("Find", formatForTool("find", result), "tool", pattern);
       return;
     }
@@ -1367,7 +1368,7 @@ async function toolMode(args: string[]): Promise<void> {
         process.exitCode = 1;
         return;
       }
-      const result = await searchFiles(pattern);
+      const result = await searchFiles(process.cwd(), pattern);
       showToolResult("Search", formatForTool("search", result), "tool", pattern);
       return;
     }
@@ -1403,13 +1404,13 @@ async function toolMode(args: string[]): Promise<void> {
         process.exitCode = 1;
         return;
       }
-      const snippet = await readSnippet(pathInput, start, end);
+      const snippet = await readSnippet(process.cwd(), pathInput, start, end);
       showToolResult("Read", formatForTool("read", snippet), "plain", formatReadDetail(pathInput, start, end));
       return;
     }
 
     if (subcommand === "git-status") {
-      const result = await gitStatusShort();
+      const result = await gitStatusShort(process.cwd());
       showToolResult("Git Status", formatForTool("status", result), "tool");
       return;
     }
@@ -1418,7 +1419,7 @@ async function toolMode(args: string[]): Promise<void> {
       const [pathInput, context] = rest;
       const ctxRaw = context ? Number.parseInt(context, 10) : undefined;
       const ctx = ctxRaw !== undefined && !Number.isNaN(ctxRaw) ? ctxRaw : 3;
-      const result = await gitDiff(pathInput, ctx);
+      const result = await gitDiff(process.cwd(), pathInput, ctx);
       showToolResult("Diff", formatForTool("diff", result), "plain", pathInput ?? ".");
       return;
     }
@@ -1430,7 +1431,7 @@ async function toolMode(args: string[]): Promise<void> {
         process.exitCode = 1;
         return;
       }
-      const result = await runShellCommand(command);
+      const result = await runShellCommand(process.cwd(), command);
       showToolResult("Run", formatForTool("run", result), "plain", command);
       return;
     }
@@ -1445,7 +1446,7 @@ async function toolMode(args: string[]): Promise<void> {
         process.exitCode = 1;
         return;
       }
-      const result = await editFile(parsed);
+      const result = await editFile({ workspace: process.cwd(), ...parsed });
       const summary = parseEditResult(result);
       let rendered = false;
       if (summary) {
@@ -1460,7 +1461,7 @@ async function toolMode(args: string[]): Promise<void> {
           rendered = true;
         } else {
           try {
-            const diff = await gitDiff(parsed.path, 1);
+            const diff = await gitDiff(process.cwd(), parsed.path, 1);
             showToolResult("Edit", formatEditUpdateOutput(summary.edits, diff), "diff", shownPath);
             rendered = true;
           } catch (error) {

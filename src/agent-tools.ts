@@ -4,13 +4,12 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { appConfig } from "./app-config";
 
-const WORKSPACE_ROOT = resolve(process.cwd());
 const TEMP_ROOTS = Array.from(new Set([resolve(tmpdir()), resolve("/tmp"), resolve("/private/tmp")]));
 
-async function runCommand(cmd: string[]): Promise<{ code: number; stdout: string; stderr: string }> {
+async function runCommand(cmd: string[], workspace: string): Promise<{ code: number; stdout: string; stderr: string }> {
   const proc = Bun.spawn({
     cmd,
-    cwd: WORKSPACE_ROOT,
+    cwd: workspace,
     stdout: "pipe",
     stderr: "pipe",
   });
@@ -26,8 +25,8 @@ async function runCommand(cmd: string[]): Promise<{ code: number; stdout: string
   };
 }
 
-function detectLineWidth(): number | null {
-  const root = WORKSPACE_ROOT;
+export function detectLineWidth(workspace: string): number | null {
+  const root = workspace;
   try {
     // biome.json
     for (const name of ["biome.json", "biome.jsonc"]) {
@@ -67,12 +66,6 @@ function detectLineWidth(): number | null {
     // Detection failed — fall back to no limit.
   }
   return null;
-}
-
-const projectLineWidth = detectLineWidth();
-
-export function getProjectLineWidth(): number | null {
-  return projectLineWidth;
 }
 
 const IGNORED_DIRS = new Set(["node_modules", ".git", ".acolyte", "dist", "build", ".next", "coverage"]);
@@ -132,9 +125,9 @@ function isBinaryExtension(path: string): boolean {
   return BINARY_EXTENSIONS.has(path.slice(dot).toLowerCase());
 }
 
-async function collectWorkspaceFiles(maxEntries = 5000): Promise<string[]> {
+async function collectWorkspaceFiles(workspace: string, maxEntries = 5000): Promise<string[]> {
   const out: string[] = [];
-  const stack: Array<{ abs: string; rel: string }> = [{ abs: WORKSPACE_ROOT, rel: "" }];
+  const stack: Array<{ abs: string; rel: string }> = [{ abs: workspace, rel: "" }];
 
   while (stack.length > 0 && out.length < maxEntries) {
     const current = stack.pop();
@@ -172,12 +165,12 @@ async function collectWorkspaceFiles(maxEntries = 5000): Promise<string[]> {
   return out;
 }
 
-export async function findFiles(pattern: string, maxResults = 40): Promise<string> {
+export async function findFiles(workspace: string, pattern: string, maxResults = 40): Promise<string> {
   const trimmed = pattern.trim();
   if (!trimmed) {
     throw new Error("Search pattern cannot be empty");
   }
-  const allFiles = await collectWorkspaceFiles();
+  const allFiles = await collectWorkspaceFiles(workspace);
   const needle = trimmed
     .replace(/^\.\/+/, "")
     .replace(/[*?]+/g, "")
@@ -201,12 +194,12 @@ export async function findFiles(pattern: string, maxResults = 40): Promise<strin
   return ranked.length > 0 ? ranked.join("\n") : "No matches.";
 }
 
-export async function searchFiles(pattern: string, maxResults = 40): Promise<string> {
+export async function searchFiles(workspace: string, pattern: string, maxResults = 40): Promise<string> {
   const trimmed = pattern.trim();
   if (!trimmed) {
     throw new Error("Search pattern cannot be empty");
   }
-  const allFiles = await collectWorkspaceFiles();
+  const allFiles = await collectWorkspaceFiles(workspace);
   const matches: string[] = [];
 
   let regex: RegExp;
@@ -223,7 +216,7 @@ export async function searchFiles(pattern: string, maxResults = 40): Promise<str
     if (isBinaryExtension(relPath)) {
       continue;
     }
-    const absPath = join(WORKSPACE_ROOT, relPath);
+    const absPath = join(workspace, relPath);
     let content: string;
     try {
       content = await Bun.file(absPath).text();
@@ -245,9 +238,9 @@ export async function searchFiles(pattern: string, maxResults = 40): Promise<str
   return matches.length > 0 ? matches.join("\n") : "No matches.";
 }
 
-function isWithinWorkspace(pathInput: string): boolean {
+function isWithinWorkspace(pathInput: string, workspace: string): boolean {
   const absPath = resolve(pathInput);
-  return absPath === WORKSPACE_ROOT || absPath.startsWith(`${WORKSPACE_ROOT}/`);
+  return absPath === workspace || absPath.startsWith(`${workspace}/`);
 }
 
 function isWithinTempRoot(pathInput: string): boolean {
@@ -255,13 +248,13 @@ function isWithinTempRoot(pathInput: string): boolean {
   return TEMP_ROOTS.some((root) => absPath === root || absPath.startsWith(`${root}/`));
 }
 
-function isAllowedPath(pathInput: string): boolean {
-  return isWithinWorkspace(pathInput) || isWithinTempRoot(pathInput);
+function isAllowedPath(pathInput: string, workspace: string): boolean {
+  return isWithinWorkspace(pathInput, workspace) || isWithinTempRoot(pathInput);
 }
 
-function ensurePathWithinAllowedRoots(pathInput: string, operation: string): string {
+function ensurePathWithinAllowedRoots(pathInput: string, operation: string, workspace: string): string {
   const absPath = resolve(pathInput);
-  if (!isAllowedPath(absPath)) {
+  if (!isAllowedPath(absPath, workspace)) {
     throw new Error(`${operation} is restricted to the workspace or /tmp`);
   }
   return absPath;
@@ -272,13 +265,13 @@ function extractAbsolutePathsFromCommand(command: string): string[] {
   return matches.map((part) => part.trim().replace(/^["'`]/, ""));
 }
 
-function ensureCommandScopedToWorkspace(command: string): void {
+function ensureCommandScopedToWorkspace(command: string, workspace: string): void {
   if (command.includes("../") || command.includes("..\\")) {
     throw new Error("Command contains path traversal outside workspace");
   }
   const absPaths = extractAbsolutePathsFromCommand(command);
   for (const absPath of absPaths) {
-    if (!isAllowedPath(absPath)) {
+    if (!isAllowedPath(absPath, workspace)) {
       throw new Error("Command references path outside workspace and /tmp");
     }
   }
@@ -293,12 +286,12 @@ function ensureWritePermission(operation: string): void {
   }
 }
 
-function displayPathForDiff(absPath: string): string {
-  if (absPath === WORKSPACE_ROOT) {
+function displayPathForDiff(absPath: string, workspace: string): string {
+  if (absPath === workspace) {
     return ".";
   }
-  if (absPath.startsWith(`${WORKSPACE_ROOT}/`)) {
-    return absPath.slice(WORKSPACE_ROOT.length + 1);
+  if (absPath.startsWith(`${workspace}/`)) {
+    return absPath.slice(workspace.length + 1);
   }
   return absPath;
 }
@@ -645,8 +638,8 @@ function toInt(value: string | undefined, fallback: number): number {
   return parsed;
 }
 
-export async function readSnippet(pathInput: string, start?: string, end?: string): Promise<string> {
-  const absPath = ensurePathWithinAllowedRoots(pathInput, "Read");
+export async function readSnippet(workspace: string, pathInput: string, start?: string, end?: string): Promise<string> {
+  const absPath = ensurePathWithinAllowedRoots(pathInput, "Read", workspace);
   const raw = await readFile(absPath, "utf8");
   const lines = raw.split("\n");
 
@@ -658,29 +651,32 @@ export async function readSnippet(pathInput: string, start?: string, end?: strin
   return [`File: ${absPath}`, ...numbered].join("\n");
 }
 
-export async function readSnippets(entries: Array<{ path: string; start?: string; end?: string }>): Promise<string> {
+export async function readSnippets(
+  workspace: string,
+  entries: Array<{ path: string; start?: string; end?: string }>,
+): Promise<string> {
   const results: string[] = [];
   for (const entry of entries) {
-    results.push(await readSnippet(entry.path, entry.start, entry.end));
+    results.push(await readSnippet(workspace, entry.path, entry.start, entry.end));
   }
   return results.join("\n\n");
 }
 
-export async function gitStatusShort(): Promise<string> {
-  const { code, stdout, stderr } = await runCommand(["git", "status", "--short", "--branch"]);
+export async function gitStatusShort(workspace: string): Promise<string> {
+  const { code, stdout, stderr } = await runCommand(["git", "status", "--short", "--branch"], workspace);
   if (code !== 0) {
     throw new Error(stderr.trim() || "git status failed");
   }
   return stdout.trim() || "Working tree clean.";
 }
 
-export async function gitDiff(pathInput?: string, contextLines = 3): Promise<string> {
+export async function gitDiff(workspace: string, pathInput?: string, contextLines = 3): Promise<string> {
   const args = ["git", "diff", `--unified=${contextLines}`];
   if (pathInput) {
-    ensurePathWithinAllowedRoots(pathInput, "Diff");
+    ensurePathWithinAllowedRoots(pathInput, "Diff", workspace);
     args.push("--", pathInput);
   }
-  const { code, stdout, stderr } = await runCommand(args);
+  const { code, stdout, stderr } = await runCommand(args, workspace);
   if (code !== 0) {
     throw new Error(stderr.trim() || "git diff failed");
   }
@@ -726,6 +722,7 @@ async function readStreamText(
 }
 
 export async function runShellCommand(
+  workspace: string,
   command: string,
   timeoutMs = 60_000,
   onChunk?: (chunk: ShellChunk) => void,
@@ -739,12 +736,12 @@ export async function runShellCommand(
   if (BLOCKED_SHELL_TOKENS.some((token) => lower.includes(token))) {
     throw new Error("Command contains blocked token");
   }
-  ensureCommandScopedToWorkspace(trimmed);
+  ensureCommandScopedToWorkspace(trimmed, workspace);
 
   const startedAt = Date.now();
   const proc = Bun.spawn({
     cmd: ["bash", "-lc", trimmed],
-    cwd: WORKSPACE_ROOT,
+    cwd: workspace,
     stdout: "pipe",
     stderr: "pipe",
   });
@@ -775,12 +772,13 @@ export async function runShellCommand(
 }
 
 export async function editFile(input: {
+  workspace: string;
   path: string;
   edits: Array<{ find: string; replace: string }>;
   dryRun?: boolean;
 }): Promise<string> {
   ensureWritePermission("File editing");
-  const absPath = ensurePathWithinAllowedRoots(input.path, "Edit");
+  const absPath = ensurePathWithinAllowedRoots(input.path, "Edit", input.workspace);
   const raw = await readFile(absPath, "utf8");
 
   // Locate all match ranges in the original text.
@@ -851,7 +849,7 @@ export async function editFile(input: {
     await writeFile(absPath, next, "utf8");
   }
 
-  const relativePath = displayPathForDiff(absPath);
+  const relativePath = displayPathForDiff(absPath, input.workspace);
   const diff = createDiff(relativePath, raw, next);
   return [
     `path=${absPath}`,
@@ -862,9 +860,14 @@ export async function editFile(input: {
   ].join("\n");
 }
 
-export async function writeTextFile(input: { path: string; content: string; overwrite?: boolean }): Promise<string> {
+export async function writeTextFile(input: {
+  workspace: string;
+  path: string;
+  content: string;
+  overwrite?: boolean;
+}): Promise<string> {
   ensureWritePermission("File writing");
-  const absPath = ensurePathWithinAllowedRoots(input.path, "Write");
+  const absPath = ensurePathWithinAllowedRoots(input.path, "Write", input.workspace);
   const overwrite = input.overwrite ?? true;
   let previousContent: string | null = null;
 
@@ -884,7 +887,7 @@ export async function writeTextFile(input: { path: string; content: string; over
 
   await mkdir(dirname(absPath), { recursive: true });
   await writeFile(absPath, input.content, "utf8");
-  const relativePath = displayPathForDiff(absPath);
+  const relativePath = displayPathForDiff(absPath, input.workspace);
   const diff = createDiff(relativePath, previousContent, input.content);
   const parts = [
     `path=${absPath}`,
@@ -959,12 +962,13 @@ function extractMetavariables(pattern: string): string[] {
 }
 
 export async function editCode(input: {
+  workspace: string;
   path: string;
   edits: Array<{ pattern: string; replacement: string }>;
   dryRun?: boolean;
 }): Promise<string> {
   ensureWritePermission("AST editing");
-  const absPath = ensurePathWithinAllowedRoots(input.path, "AST edit");
+  const absPath = ensurePathWithinAllowedRoots(input.path, "AST edit", input.workspace);
   const original = await readFile(absPath, "utf8");
 
   let napi: typeof import("@ast-grep/napi");
@@ -1015,7 +1019,7 @@ export async function editCode(input: {
     await writeFile(absPath, current, "utf8");
   }
 
-  const relativePath = displayPathForDiff(absPath);
+  const relativePath = displayPathForDiff(absPath, input.workspace);
   const diff = createDiff(relativePath, original, current);
   return [
     `path=${absPath}`,
@@ -1027,15 +1031,15 @@ export async function editCode(input: {
   ].join("\n");
 }
 
-export async function deleteTextFile(input: { path: string; dryRun?: boolean }): Promise<string> {
+export async function deleteTextFile(input: { workspace: string; path: string; dryRun?: boolean }): Promise<string> {
   ensureWritePermission("File deletion");
-  const absPath = ensurePathWithinAllowedRoots(input.path, "Delete");
+  const absPath = ensurePathWithinAllowedRoots(input.path, "Delete", input.workspace);
   const previousContent = await readFile(absPath, "utf8");
   const dryRun = input.dryRun ?? false;
   if (!dryRun) {
     await unlink(absPath);
   }
-  const relativePath = displayPathForDiff(absPath);
+  const relativePath = displayPathForDiff(absPath, input.workspace);
   const diff = createUnifiedDeleteDiff(relativePath, previousContent);
   return [
     `path=${absPath}`,
@@ -1047,12 +1051,13 @@ export async function deleteTextFile(input: { path: string; dryRun?: boolean }):
 }
 
 export async function scanCode(input: {
+  workspace: string;
   path: string;
   pattern: string;
   language?: string;
   maxResults?: number;
 }): Promise<string> {
-  const absPath = ensurePathWithinAllowedRoots(input.path, "Scan");
+  const absPath = ensurePathWithinAllowedRoots(input.path, "Scan", input.workspace);
   const maxResults = input.maxResults ?? 50;
 
   let napi: typeof import("@ast-grep/napi");
@@ -1097,7 +1102,7 @@ export async function scanCode(input: {
     const content = await readFile(absPath, "utf8");
     const lang = input.language ?? languageFromPath(absPath);
     scanned = 1;
-    scanFile(displayPathForDiff(absPath), content, lang);
+    scanFile(displayPathForDiff(absPath, input.workspace), content, lang);
   } else if (info.isDirectory()) {
     const stack: string[] = [absPath];
     const maxFiles = 500;
@@ -1123,7 +1128,7 @@ export async function scanCode(input: {
           try {
             const content = await readFile(abs, "utf8");
             scanned++;
-            scanFile(displayPathForDiff(abs), content, lang);
+            scanFile(displayPathForDiff(abs, input.workspace), content, lang);
           } catch {
             /* skip unreadable files */
           }
