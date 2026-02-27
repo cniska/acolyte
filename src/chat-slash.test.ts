@@ -1,6 +1,4 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
 import {
   applySlashSuggestion,
   isKnownSlashToken,
@@ -10,7 +8,7 @@ import {
   suggestSlashCommands,
 } from "./chat-slash";
 import { loadSkills, resetSkillCache } from "./skills";
-import { tempDirFactory } from "./test-factory";
+import { tempDir, writeSkill } from "./test-factory";
 
 describe("chat-slash helpers", () => {
   test("suggestSlashCommands filters known commands by prefix", () => {
@@ -90,17 +88,15 @@ describe("chat-slash helpers", () => {
   });
 
   describe("with loaded skills", () => {
-    const { createTempDir, cleanup } = tempDirFactory();
+    const { createDir, cleanupDirs } = tempDir();
     afterEach(() => {
       resetSkillCache();
-      cleanup();
+      cleanupDirs();
     });
 
     test("skill names appear in suggestions", async () => {
-      const tmpDir = createTempDir("acolyte-slash-skill-");
-      const skillDir = join(tmpDir, "skills", "dogfood");
-      mkdirSync(skillDir, { recursive: true });
-      writeFileSync(join(skillDir, "SKILL.md"), "---\nname: dogfood\ndescription: Test\n---\n# Test", "utf8");
+      const tmpDir = createDir("acolyte-slash-skill-");
+      writeSkill(tmpDir, "dogfood", "---\nname: dogfood\ndescription: Test\n---", "# Test");
       await loadSkills(tmpDir);
 
       const suggestions = suggestSlashCommands("/dog");
@@ -108,10 +104,8 @@ describe("chat-slash helpers", () => {
     });
 
     test("isKnownSlashToken recognizes skill names", async () => {
-      const tmpDir = createTempDir("acolyte-slash-known-");
-      const skillDir = join(tmpDir, "skills", "dogfood");
-      mkdirSync(skillDir, { recursive: true });
-      writeFileSync(join(skillDir, "SKILL.md"), "---\nname: dogfood\ndescription: Test\n---\n# Test", "utf8");
+      const tmpDir = createDir("acolyte-slash-known-");
+      writeSkill(tmpDir, "dogfood", "---\nname: dogfood\ndescription: Test\n---", "# Test");
       await loadSkills(tmpDir);
 
       expect(isKnownSlashToken("/dogfood")).toBe(true);

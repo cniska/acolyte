@@ -1,19 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { startTestServer } from "./test-factory";
 import { parseArgs, waitForServer } from "./wait-server";
-
-function startTestServer(fetch: (req: Request) => Response | Promise<Response>): { port: number; stop: () => void } {
-  const attempts = 25;
-  for (let i = 0; i < attempts; i += 1) {
-    const port = 20000 + Math.floor(Math.random() * 30000);
-    try {
-      const server = Bun.serve({ port, fetch });
-      return { port: server.port ?? port, stop: () => server.stop(true) };
-    } catch {
-      // Retry with another random port.
-    }
-  }
-  throw new Error("Unable to start test server after multiple attempts.");
-}
 
 describe("wait-server", () => {
   test("parseArgs applies defaults", () => {

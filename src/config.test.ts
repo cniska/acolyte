@@ -9,14 +9,14 @@ import {
   unsetConfigValue,
   writeConfig,
 } from "./config";
-import { tempDirFactory } from "./test-factory";
+import { tempDir } from "./test-factory";
 
-const { createTempDir, cleanup } = tempDirFactory();
-afterEach(cleanup);
+const { createDir, cleanupDirs } = tempDir();
+afterEach(cleanupDirs);
 
 describe("config store", () => {
   test("reads non-secret settings from config.toml", async () => {
-    const home = createTempDir("acolyte-config-home-");
+    const home = createDir("acolyte-config-home-");
     const dataDir = join(home, ".acolyte");
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(
@@ -33,7 +33,7 @@ describe("config store", () => {
   });
 
   test("ignores apiKey in file config (secrets are env-only)", async () => {
-    const home = createTempDir("acolyte-config-home-");
+    const home = createDir("acolyte-config-home-");
     const dataDir = join(home, ".acolyte");
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(
@@ -52,7 +52,7 @@ describe("config store", () => {
   });
 
   test("prefers config.toml when both TOML and JSON exist", async () => {
-    const home = createTempDir("acolyte-config-home-");
+    const home = createDir("acolyte-config-home-");
     const dataDir = join(home, ".acolyte");
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(join(dataDir, "config.toml"), 'model = "gemini/gemini-2.5-pro"', "utf8");
@@ -63,7 +63,7 @@ describe("config store", () => {
   });
 
   test("falls back to JSON when TOML is absent", async () => {
-    const home = createTempDir("acolyte-config-home-");
+    const home = createDir("acolyte-config-home-");
     const dataDir = join(home, ".acolyte");
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(
@@ -80,7 +80,7 @@ describe("config store", () => {
   });
 
   test("readConfigSync prefers TOML over JSON", () => {
-    const home = createTempDir("acolyte-config-home-");
+    const home = createDir("acolyte-config-home-");
     const dataDir = join(home, ".acolyte");
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(join(dataDir, "config.toml"), 'model = "gemini/gemini-2.5-pro"', "utf8");
@@ -91,7 +91,7 @@ describe("config store", () => {
   });
 
   test("readConfigSync falls back to empty config on parse errors", () => {
-    const home = createTempDir("acolyte-config-home-");
+    const home = createDir("acolyte-config-home-");
     const dataDir = join(home, ".acolyte");
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(join(dataDir, "config.toml"), "not valid toml = {", "utf8");
@@ -101,7 +101,7 @@ describe("config store", () => {
   });
 
   test("setConfigValue updates TOML when config.toml exists", async () => {
-    const home = createTempDir("acolyte-config-home-");
+    const home = createDir("acolyte-config-home-");
     const dataDir = join(home, ".acolyte");
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(join(dataDir, "config.toml"), 'model = "openai/gpt-5-mini"\n', "utf8");
@@ -113,7 +113,7 @@ describe("config store", () => {
   });
 
   test("unsetConfigValue removes field from TOML when config.toml exists", async () => {
-    const home = createTempDir("acolyte-config-home-");
+    const home = createDir("acolyte-config-home-");
     const dataDir = join(home, ".acolyte");
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(
@@ -129,7 +129,7 @@ describe("config store", () => {
   });
 
   test("writeConfig sanitizes unexpected secret fields before persisting", async () => {
-    const home = createTempDir("acolyte-config-home-");
+    const home = createDir("acolyte-config-home-");
     const dataDir = join(home, ".acolyte");
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(join(dataDir, "config.toml"), 'model = "openai/gpt-5-mini"\n', "utf8");
@@ -149,7 +149,7 @@ describe("config store", () => {
   });
 
   test("writeConfig writes TOML by default when only JSON existed", async () => {
-    const home = createTempDir("acolyte-config-home-");
+    const home = createDir("acolyte-config-home-");
     const dataDir = join(home, ".acolyte");
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(join(dataDir, "config.json"), JSON.stringify({ model: "openai/gpt-5-mini" }, null, 2), "utf8");
@@ -169,7 +169,7 @@ describe("config store", () => {
   });
 
   test("reads non-secret runtime knobs from config.toml", () => {
-    const home = createTempDir("acolyte-config-home-");
+    const home = createDir("acolyte-config-home-");
     const dataDir = join(home, ".acolyte");
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(
@@ -205,7 +205,7 @@ describe("config store", () => {
   });
 
   test("readResolvedConfigSync applies defaults and model fallbacks", () => {
-    const home = createTempDir("acolyte-config-home-");
+    const home = createDir("acolyte-config-home-");
     const dataDir = join(home, ".acolyte");
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(join(dataDir, "config.toml"), 'model = "anthropic/claude-sonnet-4"\n', "utf8");
@@ -221,7 +221,7 @@ describe("config store", () => {
   });
 
   test("readResolvedConfigSync uses per-mode models when set", () => {
-    const home = createTempDir("acolyte-config-home-");
+    const home = createDir("acolyte-config-home-");
     const dataDir = join(home, ".acolyte");
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(
@@ -237,8 +237,8 @@ describe("config store", () => {
   });
 
   test("project config overrides user config", async () => {
-    const home = createTempDir("acolyte-config-home-");
-    const project = createTempDir("acolyte-config-project-");
+    const home = createDir("acolyte-config-home-");
+    const project = createDir("acolyte-config-project-");
     const userDataDir = join(home, ".acolyte");
     const projectDataDir = join(project, ".acolyte");
     mkdirSync(userDataDir, { recursive: true });
@@ -261,8 +261,8 @@ describe("config store", () => {
   });
 
   test("project config does not clear user values when project key is missing", async () => {
-    const home = createTempDir("acolyte-config-home-");
-    const project = createTempDir("acolyte-config-project-");
+    const home = createDir("acolyte-config-home-");
+    const project = createDir("acolyte-config-project-");
     const userDataDir = join(home, ".acolyte");
     const projectDataDir = join(project, ".acolyte");
     mkdirSync(userDataDir, { recursive: true });
@@ -281,8 +281,8 @@ describe("config store", () => {
   });
 
   test("setConfigValue writes to project scope without mutating user scope", async () => {
-    const home = createTempDir("acolyte-config-home-");
-    const project = createTempDir("acolyte-config-project-");
+    const home = createDir("acolyte-config-home-");
+    const project = createDir("acolyte-config-project-");
     const userDataDir = join(home, ".acolyte");
     const projectDataDir = join(project, ".acolyte");
     mkdirSync(userDataDir, { recursive: true });
@@ -298,8 +298,8 @@ describe("config store", () => {
   });
 
   test("setConfigValue validates external values with zod", async () => {
-    const home = createTempDir("acolyte-config-home-");
-    const project = createTempDir("acolyte-config-project-");
+    const home = createDir("acolyte-config-home-");
+    const project = createDir("acolyte-config-project-");
     await expect(setConfigValue("maxMessageTokens", "not-a-number", { homeDir: home, cwd: project })).rejects.toThrow(
       "Invalid value for maxMessageTokens",
     );
@@ -309,8 +309,8 @@ describe("config store", () => {
   });
 
   test("unsetConfigValue removes key only from targeted project scope", async () => {
-    const home = createTempDir("acolyte-config-home-");
-    const project = createTempDir("acolyte-config-project-");
+    const home = createDir("acolyte-config-home-");
+    const project = createDir("acolyte-config-project-");
     const userDataDir = join(home, ".acolyte");
     const projectDataDir = join(project, ".acolyte");
     mkdirSync(userDataDir, { recursive: true });

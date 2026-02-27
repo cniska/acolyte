@@ -2,11 +2,11 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { acquireSessionLock, releaseSessionLock } from "./session-lock";
-import { tempDirFactory } from "./test-factory";
+import { tempDir } from "./test-factory";
 
-const { createTempDir, cleanup } = tempDirFactory();
-const createTempHome = () => createTempDir("acolyte-lock-test-");
-afterEach(cleanup);
+const { createDir, cleanupDirs } = tempDir();
+const createTempHome = () => createDir("acolyte-lock-test-");
+afterEach(cleanupDirs);
 
 describe("session lock", () => {
   test("allows re-acquire by same process", () => {

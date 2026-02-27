@@ -1,25 +1,54 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { appConfig, setPermissionMode } from "./app-config";
 import type { ChatRow, CommandContext, TokenUsageEntry } from "./chat-commands";
 import { createSubmitHandler } from "./chat-submit-handler";
 import type { Client, StreamEvent } from "./client";
 import type { Message, Session, SessionStore } from "./types";
 
-export function tempDirFactory(): { createTempDir: (prefix: string) => string; cleanup: () => void } {
+export function tempDir(): { createDir: (prefix: string) => string; cleanupDirs: () => void } {
   const dirs: string[] = [];
   return {
-    createTempDir(prefix: string): string {
+    createDir(prefix: string): string {
       const dir = mkdtempSync(join(tmpdir(), prefix));
       dirs.push(dir);
       return dir;
     },
-    cleanup() {
+    cleanupDirs() {
       for (const dir of dirs.splice(0, dirs.length)) {
         rmSync(dir, { recursive: true, force: true });
       }
     },
   };
+}
+
+export function startTestServer(fetch: (req: Request) => Response | Promise<Response>): {
+  port: number;
+  stop: () => void;
+} {
+  const attempts = 25;
+  for (let i = 0; i < attempts; i += 1) {
+    const port = 20000 + Math.floor(Math.random() * 30000);
+    try {
+      const server = Bun.serve({ port, fetch });
+      return { port: server.port ?? port, stop: () => server.stop(true) };
+    } catch {
+      // Retry with another random port.
+    }
+  }
+  throw new Error("Unable to start test server after multiple attempts.");
+}
+
+export function writeSkill(base: string, dirName: string, frontmatter: string, body = ""): void {
+  const skillDir = join(base, "skills", dirName);
+  mkdirSync(skillDir, { recursive: true });
+  writeFileSync(join(skillDir, "SKILL.md"), `${frontmatter}\n${body}`, "utf8");
+}
+
+export function savedPermissionMode(): () => void {
+  const prev = appConfig.agent.permissions.mode;
+  return () => setPermissionMode(prev);
 }
 
 const DEFAULT_TIME = "2026-02-20T00:00:00.000Z";

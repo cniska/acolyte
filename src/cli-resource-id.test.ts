@@ -1,49 +1,17 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { startTestServer, tempDir } from "./test-factory";
 
-const tmpHomes: string[] = [];
-const tmpProjects: string[] = [];
+const { createDir, cleanupDirs } = tempDir();
 const repoRoot = process.cwd();
 
-function startTestServer(fetch: (req: Request) => Response | Promise<Response>): { port: number; stop: () => void } {
-  const attempts = 25;
-  for (let i = 0; i < attempts; i += 1) {
-    const port = 20000 + Math.floor(Math.random() * 30000);
-    try {
-      const server = Bun.serve({ port, fetch });
-      return { port: server.port ?? port, stop: () => server.stop(true) };
-    } catch {
-      // Retry with another random port.
-    }
-  }
-  throw new Error("Unable to start test server after multiple attempts.");
-}
-
-afterEach(async () => {
-  while (tmpHomes.length > 0) {
-    const dir = tmpHomes.pop();
-    if (!dir) {
-      continue;
-    }
-    await rm(dir, { recursive: true, force: true });
-  }
-  while (tmpProjects.length > 0) {
-    const dir = tmpProjects.pop();
-    if (!dir) {
-      continue;
-    }
-    await rm(dir, { recursive: true, force: true });
-  }
-});
+afterEach(cleanupDirs);
 
 describe("cli run resource id", () => {
   test("run forwards isolated resource id to server", async () => {
-    const home = await mkdtemp(join(tmpdir(), "acolyte-resource-test-"));
-    const project = await mkdtemp(join(tmpdir(), "acolyte-resource-project-"));
-    tmpHomes.push(home);
-    tmpProjects.push(project);
+    const home = createDir("acolyte-resource-test-");
+    const project = createDir("acolyte-resource-project-");
     const userDataDir = join(home, ".acolyte");
     const projectDataDir = join(project, ".acolyte");
     await mkdir(userDataDir, { recursive: true });

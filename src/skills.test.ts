@@ -2,16 +2,10 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { listSkills, readSkillInstructions, substituteArguments, validateSkillName } from "./skills";
-import { tempDirFactory } from "./test-factory";
+import { tempDir, writeSkill } from "./test-factory";
 
-const { createTempDir, cleanup } = tempDirFactory();
-afterEach(cleanup);
-
-function writeSkill(base: string, dirName: string, frontmatter: string, body = ""): void {
-  const skillDir = join(base, "skills", dirName);
-  mkdirSync(skillDir, { recursive: true });
-  writeFileSync(join(skillDir, "SKILL.md"), `${frontmatter}\n${body}`, "utf8");
-}
+const { createDir, cleanupDirs } = tempDir();
+afterEach(cleanupDirs);
 
 describe("validateSkillName", () => {
   test("accepts valid names", () => {
@@ -46,13 +40,13 @@ describe("validateSkillName", () => {
 
 describe("skills loader", () => {
   test("returns empty when skills directory is missing", async () => {
-    const dir = createTempDir("acolyte-skills-empty-");
+    const dir = createDir("acolyte-skills-empty-");
     const skills = await listSkills(dir);
     expect(skills).toEqual([]);
   });
 
   test("reads name/description from SKILL.md frontmatter", async () => {
-    const dir = createTempDir("acolyte-skills-one-");
+    const dir = createDir("acolyte-skills-one-");
     writeSkill(dir, "demo", "---\nname: demo\ndescription: Demo description\n---", "# Demo");
     const skills = await listSkills(dir);
     expect(skills).toHaveLength(1);
@@ -61,7 +55,7 @@ describe("skills loader", () => {
   });
 
   test("scans .agents/skills/ directory", async () => {
-    const dir = createTempDir("acolyte-skills-agents-");
+    const dir = createDir("acolyte-skills-agents-");
     const skillDir = join(dir, ".agents", "skills", "helper");
     mkdirSync(skillDir, { recursive: true });
     writeFileSync(join(skillDir, "SKILL.md"), "---\nname: helper\ndescription: Helper skill\n---\n# Help", "utf8");
@@ -71,7 +65,7 @@ describe("skills loader", () => {
   });
 
   test("deduplicates by name (first wins)", async () => {
-    const dir = createTempDir("acolyte-skills-dedup-");
+    const dir = createDir("acolyte-skills-dedup-");
     writeSkill(dir, "demo", "---\nname: demo\ndescription: From skills/\n---");
     const agentDir = join(dir, ".agents", "skills", "demo");
     mkdirSync(agentDir, { recursive: true });
@@ -82,7 +76,7 @@ describe("skills loader", () => {
   });
 
   test("skips skills with invalid names", async () => {
-    const dir = createTempDir("acolyte-skills-invalid-");
+    const dir = createDir("acolyte-skills-invalid-");
     writeSkill(dir, "Bad-Name", "---\nname: Bad-Name\ndescription: Invalid\n---");
     writeSkill(dir, "good", "---\nname: good\ndescription: Valid\n---");
     const skills = await listSkills(dir);
@@ -91,14 +85,14 @@ describe("skills loader", () => {
   });
 
   test("skips skills where name mismatches directory", async () => {
-    const dir = createTempDir("acolyte-skills-mismatch-");
+    const dir = createDir("acolyte-skills-mismatch-");
     writeSkill(dir, "foo", "---\nname: bar\ndescription: Mismatched\n---");
     const skills = await listSkills(dir);
     expect(skills).toEqual([]);
   });
 
   test("parses optional fields: license, compatibility, metadata, allowed-tools", async () => {
-    const dir = createTempDir("acolyte-skills-optional-");
+    const dir = createDir("acolyte-skills-optional-");
     const fm = [
       "---",
       "name: full",
@@ -123,7 +117,7 @@ describe("skills loader", () => {
 
 describe("readSkillInstructions", () => {
   test("strips frontmatter and returns body", async () => {
-    const dir = createTempDir("acolyte-skills-body-");
+    const dir = createDir("acolyte-skills-body-");
     const file = join(dir, "SKILL.md");
     writeFileSync(file, "---\nname: demo\ndescription: Demo\n---\n\n# Demo\nUse this skill.", "utf8");
     const body = await readSkillInstructions(file);
@@ -131,7 +125,7 @@ describe("readSkillInstructions", () => {
   });
 
   test("substitutes $ARGUMENTS when args provided", async () => {
-    const dir = createTempDir("acolyte-skills-args-");
+    const dir = createDir("acolyte-skills-args-");
     const file = join(dir, "SKILL.md");
     writeFileSync(file, "---\nname: demo\ndescription: Demo\n---\n\nDo: $ARGUMENTS", "utf8");
     const body = await readSkillInstructions(file, "run tests");
@@ -139,7 +133,7 @@ describe("readSkillInstructions", () => {
   });
 
   test("cleans $ARGUMENTS placeholder when args is empty string", async () => {
-    const dir = createTempDir("acolyte-skills-empty-args-");
+    const dir = createDir("acolyte-skills-empty-args-");
     const file = join(dir, "SKILL.md");
     writeFileSync(file, "---\nname: demo\ndescription: Demo\n---\n\nDo: $ARGUMENTS", "utf8");
     const body = await readSkillInstructions(file, "");

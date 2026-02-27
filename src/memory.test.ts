@@ -2,15 +2,15 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { addMemory, listMemories, removeMemoryByPrefix } from "./memory";
-import { tempDirFactory } from "./test-factory";
+import { tempDir } from "./test-factory";
 
-const { createTempDir, cleanup } = tempDirFactory();
-afterEach(cleanup);
+const { createDir, cleanupDirs } = tempDir();
+afterEach(cleanupDirs);
 
 describe("markdown memory store", () => {
   test("writes user memory as markdown with frontmatter", async () => {
-    const homeDir = createTempDir("acolyte-memory-home-");
-    const cwd = createTempDir("acolyte-memory-cwd-");
+    const homeDir = createDir("acolyte-memory-home-");
+    const cwd = createDir("acolyte-memory-cwd-");
     const entry = await addMemory("Prefer concise answers", { scope: "user", homeDir, cwd });
 
     const memoryDir = join(homeDir, ".acolyte", "memory", "user");
@@ -25,8 +25,8 @@ describe("markdown memory store", () => {
   });
 
   test("supports separate project and user memories", async () => {
-    const homeDir = createTempDir("acolyte-memory-home-");
-    const cwd = createTempDir("acolyte-memory-cwd-");
+    const homeDir = createDir("acolyte-memory-home-");
+    const cwd = createDir("acolyte-memory-cwd-");
     await addMemory("Global preference", { scope: "user", homeDir, cwd });
     await addMemory("Project convention", { scope: "project", homeDir, cwd });
 
@@ -44,8 +44,8 @@ describe("markdown memory store", () => {
   });
 
   test("removeMemoryByPrefix removes a matching memory", async () => {
-    const homeDir = createTempDir("acolyte-memory-home-");
-    const cwd = createTempDir("acolyte-memory-cwd-");
+    const homeDir = createDir("acolyte-memory-home-");
+    const cwd = createDir("acolyte-memory-cwd-");
     const entry = await addMemory("Disposable note", { scope: "user", homeDir, cwd });
     const result = await removeMemoryByPrefix(entry.id.slice(0, 12), { homeDir, cwd });
     expect(result.kind).toBe("removed");
@@ -54,8 +54,8 @@ describe("markdown memory store", () => {
   });
 
   test("removeMemoryByPrefix returns not_found for unknown prefix", async () => {
-    const homeDir = createTempDir("acolyte-memory-home-");
-    const cwd = createTempDir("acolyte-memory-cwd-");
+    const homeDir = createDir("acolyte-memory-home-");
+    const cwd = createDir("acolyte-memory-cwd-");
     const result = await removeMemoryByPrefix("mem_missing", { homeDir, cwd });
     expect(result).toEqual({ kind: "not_found", prefix: "mem_missing" });
   });

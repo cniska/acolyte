@@ -10,25 +10,25 @@ import {
   loadSoulPrompt,
   loadSystemPrompt,
 } from "./soul";
-import { tempDirFactory } from "./test-factory";
+import { tempDir } from "./test-factory";
 
-const { createTempDir, cleanup } = tempDirFactory();
-afterEach(cleanup);
+const { createDir, cleanupDirs } = tempDir();
+afterEach(cleanupDirs);
 
 describe("soul prompt loading", () => {
   test("loadSoulPrompt uses fallback when docs/soul.md is missing", () => {
-    const dir = createTempDir("acolyte-soul-");
+    const dir = createDir("acolyte-soul-");
     const prompt = loadSoulPrompt(dir);
     expect(prompt).toContain("You are Acolyte");
   });
 
   test("loadAgentsPrompt returns empty when AGENTS.md is missing", () => {
-    const dir = createTempDir("acolyte-agents-");
+    const dir = createDir("acolyte-agents-");
     expect(loadAgentsPrompt(dir)).toBe("");
   });
 
   test("loadSystemPrompt combines soul and AGENTS.md", () => {
-    const dir = createTempDir("acolyte-system-");
+    const dir = createDir("acolyte-system-");
     mkdirSync(join(dir, "docs"), { recursive: true });
     writeFileSync(join(dir, "docs", "soul.md"), "Soul prompt body", "utf8");
     writeFileSync(join(dir, "AGENTS.md"), "Agent instruction body", "utf8");
@@ -39,8 +39,8 @@ describe("soul prompt loading", () => {
   });
 
   test("loadMemoryContextPrompt reads top memory notes", async () => {
-    const dir = createTempDir("acolyte-system-");
-    const home = createTempDir("acolyte-home-");
+    const dir = createDir("acolyte-system-");
+    const home = createDir("acolyte-home-");
     await addMemory("Prefer concise bullet lists", { cwd: dir, homeDir: home, scope: "user" });
     await addMemory("Use project-local scripts for verify", { cwd: dir, homeDir: home, scope: "project" });
     const prompt = await loadMemoryContextPrompt({ cwd: dir, homeDir: home });
@@ -50,8 +50,8 @@ describe("soul prompt loading", () => {
   });
 
   test("createSoulPrompt appends memory context", async () => {
-    const dir = createTempDir("acolyte-system-");
-    const home = createTempDir("acolyte-home-");
+    const dir = createDir("acolyte-system-");
+    const home = createDir("acolyte-home-");
     mkdirSync(join(dir, "docs"), { recursive: true });
     writeFileSync(join(dir, "docs", "soul.md"), "Soul prompt body", "utf8");
     await addMemory("Keep answers terse unless asked for details", { cwd: dir, homeDir: home, scope: "user" });
@@ -62,8 +62,8 @@ describe("soul prompt loading", () => {
   });
 
   test("getMemoryContextEntries sorts globally across scopes by createdAt desc", async () => {
-    const dir = createTempDir("acolyte-system-");
-    const home = createTempDir("acolyte-home-");
+    const dir = createDir("acolyte-system-");
+    const home = createDir("acolyte-home-");
     await addMemory("older user memory", { cwd: dir, homeDir: home, scope: "user" });
     await Bun.sleep(5);
     await addMemory("newer project memory", { cwd: dir, homeDir: home, scope: "project" });
@@ -73,8 +73,8 @@ describe("soul prompt loading", () => {
   });
 
   test("getMemoryContextEntries supports scope filtering", async () => {
-    const dir = createTempDir("acolyte-system-");
-    const home = createTempDir("acolyte-home-");
+    const dir = createDir("acolyte-system-");
+    const home = createDir("acolyte-home-");
     await addMemory("user memory", { cwd: dir, homeDir: home, scope: "user" });
     await addMemory("project memory", { cwd: dir, homeDir: home, scope: "project" });
     const userEntries = await getMemoryContextEntries({ cwd: dir, homeDir: home, scope: "user" });

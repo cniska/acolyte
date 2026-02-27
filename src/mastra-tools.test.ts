@@ -1,12 +1,11 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { appConfig, setPermissionMode } from "./app-config";
+import { setPermissionMode } from "./app-config";
 import { toolsForAgent, withToolError } from "./mastra-tools";
+import { savedPermissionMode } from "./test-factory";
 
-const initialPermissionMode = appConfig.agent.permissions.mode;
+const restorePermissions = savedPermissionMode();
 
-afterEach(() => {
-  setPermissionMode(initialPermissionMode);
-});
+afterEach(restorePermissions);
 
 describe("mastra toolsets", () => {
   test("returns full toolset in write mode", () => {

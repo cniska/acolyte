@@ -1,10 +1,16 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-import { appConfig, setPermissionMode } from "./app-config";
+import { appConfig } from "./app-config";
 import { dispatchSlashCommand, formatTokenUsageOutput, type TokenUsageEntry } from "./chat-commands";
 import { loadSkills, resetSkillCache } from "./skills";
-import { createCommandContext, createMessage, createSession, createStore, tempDirFactory } from "./test-factory";
+import {
+  createCommandContext,
+  createMessage,
+  createSession,
+  createStore,
+  savedPermissionMode,
+  tempDir,
+  writeSkill,
+} from "./test-factory";
 
 async function runCommand(text: string, overrides: Parameters<typeof createCommandContext>[1] = {}) {
   const { ctx, spies } = createCommandContext(text, overrides);
@@ -390,19 +396,19 @@ describe("chat-commands", () => {
   });
 
   test("dispatchSlashCommand shows permission mode", async () => {
-    const prev = appConfig.agent.permissions.mode;
+    const restore = savedPermissionMode();
     try {
       const { rows, stop, openedPermissions } = await runCommand("/permissions");
       expect(stop).toBe(true);
       expect(openedPermissions).toBe(true);
       expect(rows.some((row) => row.role === "user" && row.content === "/permissions")).toBe(true);
     } finally {
-      setPermissionMode(prev);
+      restore();
     }
   });
 
   test("dispatchSlashCommand applies /permissions read|write", async () => {
-    const prev = appConfig.agent.permissions.mode;
+    const restore = savedPermissionMode();
     try {
       const writes: Array<{ mode: "read" | "write"; scope: "user" | "project" }> = [];
       const setConfigPermissionMode = async (mode: "read" | "write", scope: "user" | "project") => {
@@ -427,13 +433,14 @@ describe("chat-commands", () => {
       ).toBe(true);
       expect(writes).toContainEqual({ mode: "write", scope: "user" });
     } finally {
-      setPermissionMode(prev);
+      restore();
     }
   });
 
   test("dispatchSlashCommand validates /permissions usage", async () => {
-    const prev = appConfig.agent.permissions.mode;
+    const restore = savedPermissionMode();
     try {
+      const before = appConfig.agent.permissions.mode;
       const { rows, stop } = await runCommand("/permissions maybe");
       expect(stop).toBe(true);
       expect(rows.some((row) => row.content === "Usage: /permissions [read|write] [--project|--user]")).toBe(true);
@@ -442,9 +449,9 @@ describe("chat-commands", () => {
       expect(
         invalidScope.rows.some((row) => row.content === "Usage: /permissions [read|write] [--project|--user]"),
       ).toBe(true);
-      expect(appConfig.agent.permissions.mode).toBe(prev);
+      expect(appConfig.agent.permissions.mode).toBe(before);
     } finally {
-      setPermissionMode(prev);
+      restore();
     }
   });
 
@@ -537,17 +544,15 @@ describe("chat-commands", () => {
   });
 
   describe("inline skill invocation", () => {
-    const { createTempDir, cleanup } = tempDirFactory();
+    const { createDir, cleanupDirs } = tempDir();
     afterEach(() => {
       resetSkillCache();
-      cleanup();
+      cleanupDirs();
     });
 
     test("/skillname with args continues to agent turn", async () => {
-      const tmpDir = createTempDir("acolyte-cmd-skill-");
-      const skillDir = join(tmpDir, "skills", "demo");
-      mkdirSync(skillDir, { recursive: true });
-      writeFileSync(join(skillDir, "SKILL.md"), "---\nname: demo\ndescription: Demo\n---\n# Demo", "utf8");
+      const tmpDir = createDir("acolyte-cmd-skill-");
+      writeSkill(tmpDir, "demo", "---\nname: demo\ndescription: Demo\n---", "# Demo");
       await loadSkills(tmpDir);
 
       const activated: string[] = [];
@@ -562,10 +567,8 @@ describe("chat-commands", () => {
     });
 
     test("/skillname without args stops and shows activation", async () => {
-      const tmpDir = createTempDir("acolyte-cmd-skill-");
-      const skillDir = join(tmpDir, "skills", "demo");
-      mkdirSync(skillDir, { recursive: true });
-      writeFileSync(join(skillDir, "SKILL.md"), "---\nname: demo\ndescription: Demo\n---\n# Demo", "utf8");
+      const tmpDir = createDir("acolyte-cmd-skill-");
+      writeSkill(tmpDir, "demo", "---\nname: demo\ndescription: Demo\n---", "# Demo");
       await loadSkills(tmpDir);
 
       const result = await runCommand("/demo", {

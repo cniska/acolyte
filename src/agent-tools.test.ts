@@ -12,6 +12,7 @@ import {
   writeTextFile,
 } from "./agent-tools";
 import { appConfig, setPermissionMode } from "./app-config";
+import { savedPermissionMode } from "./test-factory";
 
 const WS = resolve(process.cwd());
 const tempFiles: string[] = [];
@@ -124,7 +125,7 @@ describe("coding-tools workspace guards", () => {
   });
 
   test("read mode blocks write tools", async () => {
-    const prev = appConfig.agent.permissions.mode;
+    const restore = savedPermissionMode();
     setPermissionMode("read");
     try {
       await expect(runShellCommand(WS, "printf 'ok'")).rejects.toThrow(
@@ -139,7 +140,7 @@ describe("coding-tools workspace guards", () => {
         }),
       ).rejects.toThrow("File editing is disabled in read mode");
     } finally {
-      setPermissionMode(prev);
+      restore();
     }
   });
 
@@ -267,7 +268,7 @@ describe("coding-tools workspace guards", () => {
   });
 
   test("read mode blocks writeTextFile", async () => {
-    const prev = appConfig.agent.permissions.mode;
+    const restore = savedPermissionMode();
     setPermissionMode("read");
     try {
       await expect(
@@ -278,7 +279,7 @@ describe("coding-tools workspace guards", () => {
         }),
       ).rejects.toThrow("File writing is disabled in read mode");
     } finally {
-      setPermissionMode(prev);
+      restore();
     }
   });
 
@@ -298,14 +299,14 @@ describe("coding-tools workspace guards", () => {
   });
 
   test("read mode blocks deleteTextFile", async () => {
-    const prev = appConfig.agent.permissions.mode;
+    const restore = savedPermissionMode();
     setPermissionMode("read");
     try {
       await expect(deleteTextFile({ workspace: WS, path: join(process.cwd(), "README.md") })).rejects.toThrow(
         "File deletion is disabled in read mode",
       );
     } finally {
-      setPermissionMode(prev);
+      restore();
     }
   });
 });

@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { appConfig, setPermissionMode } from "./app-config";
+import { appConfig } from "./app-config";
 import type { ChatRow } from "./chat-commands";
 import { createPickerHandlers } from "./chat-picker-handlers";
-import { createMessage, createSession, createStore } from "./test-factory";
+import { createMessage, createSession, createStore, savedPermissionMode } from "./test-factory";
 
 describe("chat picker handlers", () => {
   test("openResumePanel shows fallback when no sessions exist", () => {
@@ -117,8 +117,7 @@ describe("chat picker handlers", () => {
   });
 
   test("openPermissionsPanel opens permissions picker and handlePickerSelect applies it", async () => {
-    const prev = appConfig.agent.permissions.mode;
-    setPermissionMode("write");
+    const restore = savedPermissionMode();
     const pickerValues: unknown[] = [];
     const rows: ChatRow[] = [];
     const persisted: Array<{ mode: "read" | "write"; scope: "project" | "user" }> = [];
@@ -173,7 +172,7 @@ describe("chat picker handlers", () => {
       ).toBe(true);
       expect(persisted).toEqual([{ mode: "read", scope: "project" }]);
     } finally {
-      setPermissionMode(prev);
+      restore();
     }
   });
 
