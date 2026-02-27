@@ -103,6 +103,10 @@ function isReviewRequest(text: string): boolean {
   return /\breview\b/i.test(text);
 }
 
+function hasStrongWriteIntent(text: string): boolean {
+  return /\b(edit|fix|implement|add|create|update|refactor|rename|change|delete|remove|migrate|convert)\b/i.test(text);
+}
+
 function emitModeStatus(ctx: RunContext): void {
   ctx.emit({ type: "status", message: `${agentModes[ctx.mode].statusText} (${ctx.model})` });
 }
@@ -147,6 +151,7 @@ export const efficiencyEvaluator: Evaluator = {
   evaluate(ctx) {
     if (!ctx.result) return { type: "done" };
     if (ctx.classifiedMode !== "work") return { type: "done" };
+    if (!hasStrongWriteIntent(ctx.request.message)) return { type: "done" };
 
     const callLog = ctx.session.callLog;
     const firstWriteIndex = callLog.findIndex((entry) => WRITE_TOOLS.includes(entry.toolName));

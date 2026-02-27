@@ -126,6 +126,7 @@ describe("efficiencyEvaluator", () => {
       { toolName: "search-files", args: {} },
     ];
     const ctx = createMockContext({
+      request: { model: "gpt-5-mini", message: "Implement the fix directly", history: [] },
       classifiedMode: "work",
       session,
       result: { text: "I found the files.", toolCalls: [] },
@@ -159,6 +160,23 @@ describe("efficiencyEvaluator", () => {
       classifiedMode: "plan",
       session,
       result: { text: "Found it.", toolCalls: [] },
+    });
+    expect(efficiencyEvaluator.evaluate(ctx).type).toBe("done");
+  });
+
+  test("returns done for work-classified prompts without strong write intent", () => {
+    const session = createSessionContext();
+    session.callLog = [
+      { toolName: "find-files", args: {} },
+      { toolName: "read-file", args: {} },
+      { toolName: "search-files", args: {} },
+      { toolName: "read-file", args: {} },
+    ];
+    const ctx = createMockContext({
+      request: { model: "gpt-5-mini", message: "Improve robustness and report findings only", history: [] },
+      classifiedMode: "work",
+      session,
+      result: { text: "Findings...", toolCalls: [] },
     });
     expect(efficiencyEvaluator.evaluate(ctx).type).toBe("done");
   });
