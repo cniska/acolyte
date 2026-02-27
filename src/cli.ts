@@ -429,7 +429,7 @@ export function formatGitStatusOutput(raw: string): string {
     out.push(branchLine);
   }
   out.push(...lines.filter((line) => !line.startsWith("## ")));
-  return clampLines(out, 20).join("\n");
+  return clampLines(out, 6).join("\n");
 }
 
 export function formatRunOutput(raw: string): string {
@@ -460,13 +460,7 @@ export function formatRunOutput(raw: string): string {
       return;
     }
     out.push(name);
-    if (payload.length <= 12) {
-      out.push(...payload);
-      return;
-    }
-    out.push(...payload.slice(0, 6));
-    out.push(`… +${payload.length - 9} lines`);
-    out.push(...payload.slice(-3));
+    out.push(...clampLines(payload, 6));
   };
 
   const nextAfterStdout = stderrIdx >= 0 ? stderrIdx : lines.length;

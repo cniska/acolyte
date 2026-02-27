@@ -34,8 +34,8 @@ describe("cli formatting helpers", () => {
     expect(out).toContain("duration_ms=42");
     expect(out).toContain("stdout:");
     expect(out).toContain("line-1");
-    expect(out).toContain("… +6 lines");
-    expect(out).toContain("line-15");
+    expect(out).toContain("… +10 lines");
+    expect(out).not.toContain("line-15");
   });
 
   test("parseRunExitCode reads exit code from run output", () => {
