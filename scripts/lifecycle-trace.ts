@@ -86,9 +86,12 @@ function compactLine(line: string): string {
     const readCalls = parseField(line, "read_calls") ?? "?";
     const searchCalls = parseField(line, "search_calls") ?? "?";
     const writeCalls = parseField(line, "write_calls") ?? "?";
+    const preWriteDiscovery = parseField(line, "pre_write_discovery_calls") ?? "?";
     const regens = parseField(line, "regeneration_count") ?? "?";
+    const guardBlocked = parseField(line, "guard_blocked_count") ?? "?";
+    const guardFlagSet = parseField(line, "guard_flag_set_count") ?? "?";
     const hasError = parseField(line, "has_error") ?? "?";
-    return `${ts} ${event} model_calls=${modelCalls} total_tool_calls=${totalCalls} read=${readCalls} search=${searchCalls} write=${writeCalls} regenerations=${regens} has_error=${hasError}`;
+    return `${ts} ${event} model_calls=${modelCalls} total_tool_calls=${totalCalls} read=${readCalls} search=${searchCalls} write=${writeCalls} pre_write_discovery=${preWriteDiscovery} regenerations=${regens} guard_blocked=${guardBlocked} guard_flag_set=${guardFlagSet} has_error=${hasError}`;
   }
 
   return `${ts} ${event}`;
