@@ -20,6 +20,12 @@ describe("modeForTool", () => {
     expect(modeForTool("run-command")).toBe("code");
   });
 
+  test("never maps tools to verify (verify is auto-triggered, not tool-inferred)", () => {
+    for (const tool of agentModes.verify.tools) {
+      expect(modeForTool(tool)).not.toBe("verify");
+    }
+  });
+
   test("falls back to code for unknown tools", () => {
     expect(modeForTool("unknown-tool")).toBe("code");
   });
@@ -68,5 +74,10 @@ describe("classifyMode", () => {
   test("falls back to think for ambiguous messages", () => {
     expect(classifyMode("hi")).toBe("think");
     expect(classifyMode("thanks")).toBe("think");
+  });
+
+  test("never classifies user messages as verify", () => {
+    expect(classifyMode("verify the code")).toBe("code");
+    expect(classifyMode("run verify")).toBe("code");
   });
 });

@@ -1,4 +1,4 @@
-export type AgentMode = "think" | "explore" | "code";
+export type AgentMode = "think" | "explore" | "code" | "verify";
 
 export type AgentModeDefinition = {
   tools: string[];
@@ -25,10 +25,20 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
       "After a successful edit, do not re-read the same file unless explicitly asked.",
       "Never claim a file was edited unless confirmed by tool results.",
       "When a target file does not exist, say so instead of silently creating it.",
-      "After making changes, run the project's verify command (e.g. `bun run verify`) before concluding.",
-      "If verification fails, read the errors, fix the issues, and re-run verification.",
+      "End with a one-line summary of what changed. No lists, no suggestions, no next steps.",
     ],
     progressText: "Coding…",
+  },
+  verify: {
+    tools: ["run-command", "read-file", "search-files", "edit-code", "edit-file", "create-file"],
+    preamble: [
+      "Run the project's verify command (e.g. `bun run verify`).",
+      "If verification fails, read the errors, fix the issues, and re-run.",
+      "Keep fixing until verification passes or you are stuck.",
+      "Do not narrate what you are about to do — just run the command.",
+      "Only produce output if verification fails and you cannot fix it.",
+    ],
+    progressText: "Verifying…",
   },
 };
 

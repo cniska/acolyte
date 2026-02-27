@@ -542,12 +542,14 @@ export async function runAgent(input: {
                 if (p?.toolCallId && p?.toolName) {
                   const toolName = canonicalToolId(p.toolName);
                   observedToolNames.add(toolName);
-                  const inferredMode = modeForTool(toolName);
-                  if (inferredMode !== currentMode) {
-                    const previousMode = currentMode;
-                    currentMode = inferredMode;
-                    emitDebug("agent.mode.changed", { from: previousMode, to: currentMode, trigger: toolName });
-                    emitModeStatus();
+                  if (currentMode !== "verify") {
+                    const inferredMode = modeForTool(toolName);
+                    if (inferredMode !== currentMode) {
+                      const previousMode = currentMode;
+                      currentMode = inferredMode;
+                      emitDebug("agent.mode.changed", { from: previousMode, to: currentMode, trigger: toolName });
+                      emitModeStatus();
+                    }
                   }
                   const args = (p.args ?? {}) as Record<string, unknown>;
                   emitDebug("agent.tool.call", {
@@ -819,6 +821,40 @@ export async function runAgent(input: {
       lastToolFailureReason = error instanceof Error ? error.message : String(error);
       emitEvent({ type: "error", error: `Execution retry failed: ${lastToolFailureReason}` });
       emitDebug("agent.plan.execution_failed", { error: lastToolFailureReason });
+    }
+  }
+
+  // Verify step: after code mode, if write tools were used, auto-verify.
+  const VERIFY_MAX_STEPS = 30;
+  const WRITE_TOOLS = ["edit-code", "edit-file", "create-file"];
+  const usedWriteTools = WRITE_TOOLS.some((t) => observedToolNames.has(t));
+
+  if (classifiedMode === "code" && usedWriteTools) {
+    currentMode = "verify";
+    emitModeStatus();
+    emitDebug("agent.generate.start", { model, reason: "verify" });
+    try {
+      modelCallCount += 1;
+      const verifyPrompt = createModeInstructions("verify");
+      result = await streamWithTimeout(
+        verifyPrompt,
+        {
+          maxSteps: VERIFY_MAX_STEPS,
+          toolChoice: "auto",
+          memory: memoryOptions,
+        },
+        STEP_TIMEOUT_MS,
+      );
+      emitDebug("agent.generate.done", {
+        model,
+        reason: "verify",
+        tool_calls: result.toolCalls.length,
+        text_chars: result.text.trim().length,
+      });
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      emitDebug("agent.verify.failed", { error: reason });
+      // Non-fatal: verification failure doesn't kill the response.
     }
   }
 

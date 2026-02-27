@@ -41,7 +41,7 @@ const DEFAULT_CONFIG = {
 export interface AcolyteConfig {
   port?: number;
   model?: string;
-  models?: Partial<Record<string, string>>;
+  models?: Record<string, string>;
   omModel?: string;
   apiUrl?: string;
   openaiBaseUrl?: string;
@@ -91,7 +91,7 @@ type ConfigOptions = {
 const CONFIG_SET_SCHEMAS: Record<keyof AcolyteConfig, z.ZodTypeAny> = {
   port: parseIntegerSchema(1, 65535),
   model: nonEmptyStringSchema,
-  models: z.record(nonEmptyStringSchema),
+  models: z.record(z.string(), nonEmptyStringSchema),
   omModel: nonEmptyStringSchema,
   apiUrl: nonEmptyStringSchema,
   openaiBaseUrl: nonEmptyStringSchema,
@@ -121,10 +121,10 @@ function toConfig(input: Record<string, unknown>): AcolyteConfig {
     models:
       typeof input.models === "object" && input.models !== null
         ? Object.fromEntries(
-            Object.entries(input.models as Record<string, unknown>)
-              .map(([k, v]) => [k, nonEmptyStringSchema.safeParse(v)])
-              .filter(([, r]) => (r as z.SafeParseReturnType<unknown, string>).success)
-              .map(([k, r]) => [k, (r as z.SafeParseSuccess<string>).data]),
+            Object.entries(input.models as Record<string, unknown>).flatMap(([k, v]) => {
+              const result = nonEmptyStringSchema.safeParse(v);
+              return result.success ? [[k, result.data]] : [];
+            }),
           )
         : undefined,
     omModel: parseField(nonEmptyStringSchema, input.omModel),

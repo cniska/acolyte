@@ -286,6 +286,17 @@ describe("createModeInstructions", () => {
     expect(code).toContain("Read the target file before editing");
     expect(explore).toContain("Batch multiple reads");
   });
+
+  test("verify mode includes verification instructions", () => {
+    const out = createModeInstructions("verify");
+    expect(out).toContain("verify command");
+    expect(out).toContain("fix the issues");
+  });
+
+  test("code mode does not include verification instructions", () => {
+    const out = createModeInstructions("code");
+    expect(out).not.toContain("verify command");
+  });
 });
 
 describe("createInstructions", () => {
