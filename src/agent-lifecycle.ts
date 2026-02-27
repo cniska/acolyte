@@ -17,7 +17,7 @@ import type { ChatRequest, ChatResponse } from "./api";
 import { appConfig } from "./app-config";
 import type { StreamEvent } from "./client";
 import type { LifecycleDebugEvent, LifecycleEventName } from "./lifecycle-events";
-import { toolsForAgent } from "./mastra-tools";
+import { type AcolyteToolset, toolsForAgent } from "./mastra-tools";
 import type { SessionContext } from "./tool-guards";
 
 const INITIAL_MAX_STEPS = 50;
@@ -68,9 +68,8 @@ export type RunContext = {
   readonly emit: (event: StreamEvent) => void;
   readonly debug: (event: LifecycleEventName, fields?: Record<string, unknown>) => void;
   readonly classifiedMode: AgentMode;
-  readonly model: string;
+  readonly tools: Partial<AcolyteToolset>;
   readonly session: SessionContext;
-  readonly agent: Agent;
   readonly agentInput: string;
   readonly memoryOptions?: { thread: string; resource: string };
   readonly promptUsage: {
@@ -80,6 +79,9 @@ export type RunContext = {
     includedHistoryMessages: number;
     totalHistoryMessages: number;
   };
+  model: string;
+  agent: Agent;
+  agentMode: AgentMode;
   mode: AgentMode;
   observedTools: Set<string>;
   modelCallCount: number;
@@ -262,9 +264,8 @@ export const multiMatchEditEvaluator: Evaluator = {
 
 // --- Phase: Classify ---
 
-function phaseClassify(request: ChatRequest, debug: RunContext["debug"]): { classifiedMode: AgentMode; model: string } {
-  const classifiedMode = classifyMode(request.message);
-  const requestedModel = appConfig.models[classifiedMode] ?? request.model;
+function resolveModeModelOrThrow(mode: AgentMode, fallbackModel: string): { model: string; provider: string } {
+  const requestedModel = appConfig.models[mode] ?? fallbackModel;
   const resolved = resolveRunnableModel(requestedModel);
   if (!resolved.available) {
     throw new Error(
@@ -272,7 +273,13 @@ function phaseClassify(request: ChatRequest, debug: RunContext["debug"]): { clas
         "Set the API key in your config or environment, or switch to another model.",
     );
   }
-  debug("lifecycle.classify", { mode: classifiedMode, model: resolved.model });
+  return { model: resolved.model, provider: resolved.provider };
+}
+
+function phaseClassify(request: ChatRequest, debug: RunContext["debug"]): { classifiedMode: AgentMode; model: string } {
+  const classifiedMode = classifyMode(request.message);
+  const resolved = resolveModeModelOrThrow(classifiedMode, request.model);
+  debug("lifecycle.classify", { mode: classifiedMode, model: resolved.model, provider: resolved.provider });
   return { classifiedMode, model: resolved.model };
 }
 
@@ -288,7 +295,7 @@ function phasePrepare(input: {
   onToolOutput: (event: { toolName: string; message: string; toolCallId?: string }) => void;
 }): {
   session: SessionContext;
-  agent: Agent;
+  tools: Partial<AcolyteToolset>;
   agentInput: string;
   memoryOptions: { thread: string; resource: string } | undefined;
   promptUsage: RunContext["promptUsage"];
@@ -317,14 +324,6 @@ function phasePrepare(input: {
     });
   };
 
-  const agent = createAgent({
-    id: "acolyte",
-    name: "Acolyte",
-    model: input.model,
-    instructions: createInstructions(input.soulPrompt, input.classifiedMode, input.workspace),
-    tools,
-  });
-
   input.debug("lifecycle.prepare", {
     model: input.model,
     mode: input.classifiedMode,
@@ -332,16 +331,42 @@ function phasePrepare(input: {
     has_memory: Boolean(memoryOptions),
   });
 
-  return { session, agent, agentInput, memoryOptions, promptUsage: requestInput.usage };
+  return { session, tools, agentInput, memoryOptions, promptUsage: requestInput.usage };
 }
 
 // --- Phase: Generate ---
+
+function ensureAgentForMode(ctx: RunContext): void {
+  const resolved = resolveModeModelOrThrow(ctx.mode, ctx.request.model);
+  const nextModel = resolved.model;
+  if (ctx.agentMode === ctx.mode && ctx.model === nextModel) return;
+
+  const previousMode = ctx.agentMode;
+  const previousModel = ctx.model;
+  ctx.model = nextModel;
+  ctx.agentMode = ctx.mode;
+  ctx.agent = createAgent({
+    id: "acolyte",
+    name: "Acolyte",
+    model: ctx.model,
+    instructions: createInstructions(ctx.soulPrompt, ctx.mode, ctx.workspace),
+    tools: ctx.tools,
+  });
+  ctx.debug("lifecycle.agent.reconfigured", {
+    from_mode: previousMode,
+    to_mode: ctx.mode,
+    from_model: previousModel,
+    to_model: ctx.model,
+    provider: resolved.provider,
+  });
+}
 
 async function phaseGenerate(
   ctx: RunContext,
   prompt: string,
   opts: { maxSteps: number; timeoutMs: number },
 ): Promise<void> {
+  ensureAgentForMode(ctx);
   ctx.generationAttempt += 1;
   emitModeStatus(ctx);
   ctx.debug("lifecycle.generate.start", {
@@ -690,10 +715,18 @@ export async function runLifecycle(input: LifecycleInput): Promise<ChatResponse>
     emit,
     debug,
     classifiedMode,
+    tools: prepared.tools,
     mode: classifiedMode,
+    agentMode: classifiedMode,
     model,
     session: prepared.session,
-    agent: prepared.agent,
+    agent: createAgent({
+      id: "acolyte",
+      name: "Acolyte",
+      model,
+      instructions: createInstructions(input.soulPrompt, classifiedMode, input.workspace),
+      tools: prepared.tools,
+    }),
     agentInput: prepared.agentInput,
     memoryOptions: prepared.memoryOptions,
     promptUsage: prepared.promptUsage,

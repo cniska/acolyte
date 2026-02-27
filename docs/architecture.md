@@ -41,7 +41,7 @@ Tool:       validate (guards) → execute → record (session)
 
 `classify` and `prepare` return values used to construct `RunContext` — no uninitialized fields. `generate` and `finalize` operate on the mutable context.
 
-**Evaluators** run after generation in order. Each inspects `RunContext` and returns `done` or `regenerate`. The runner continues through all evaluators (with caps) so multiple evaluators can chain controlled regenerations.
+**Evaluators** run after generation in order. Each inspects `RunContext` and returns `done` or `regenerate`. On the first `regenerate`, lifecycle runs a new generation attempt, then restarts evaluator checks from the top (with caps).
 
 | Evaluator | Trigger | Action |
 |-----------|---------|--------|
@@ -64,7 +64,7 @@ Regeneration limits:
 | `work` | edit-code, edit-file, create-file, delete-file, run-command | Action keywords |
 | `verify` | run-command, read-file, search-files, edit-code, scan-code, edit-file, create-file | `autoVerifier` evaluator |
 
-`classifyMode()` picks the initial mode. Mode switches mid-run when the model calls a tool from a different mode (locked during verify). Instructions built dynamically from `toolMeta`.
+`classifyMode()` picks the initial mode. Mode switches mid-run when the model calls a tool from a different mode (locked during verify). Before every generation attempt, lifecycle enforces a mode/model invariant: the active agent is rebuilt if needed so model + instructions always match the current mode.
 
 ## Tool guards (`tool-guards.ts`)
 
