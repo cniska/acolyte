@@ -352,6 +352,13 @@ export function formatToolHeader(toolName: string, args: Record<string, unknown>
       const pattern = asString(args.pattern);
       return pattern ? `${label} ${pattern}` : label;
     }
+    case "scan-code": {
+      const paths = collectPathDetails(args);
+      const formatted = formatPathList(paths);
+      const pattern = asString(args.pattern);
+      const detail = [formatted, pattern].filter(Boolean).join(" ");
+      return detail ? `${label} ${detail}` : label;
+    }
     case "git-status":
       return `${label} .`;
     case "web-search": {

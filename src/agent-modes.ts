@@ -8,7 +8,16 @@ export type AgentModeDefinition = {
 
 export const agentModes: Record<AgentMode, AgentModeDefinition> = {
   plan: {
-    tools: ["find-files", "search-files", "read-file", "git-status", "git-diff", "web-search", "web-fetch"],
+    tools: [
+      "find-files",
+      "search-files",
+      "scan-code",
+      "read-file",
+      "git-status",
+      "git-diff",
+      "web-search",
+      "web-fetch",
+    ],
     preamble: [
       "Before the first tool call, briefly explain what you're about to do.",
       "Batch multiple reads into one `read-file` call when possible.",
@@ -30,7 +39,7 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
     progressText: "Working…",
   },
   verify: {
-    tools: ["run-command", "read-file", "search-files", "edit-code", "edit-file", "create-file"],
+    tools: ["run-command", "read-file", "search-files", "scan-code", "edit-code", "edit-file", "create-file"],
     preamble: [
       "Run the project's verify command (e.g. `bun run verify`).",
       "If verification fails, read the errors, fix the issues, and re-run.",
@@ -43,7 +52,8 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
 
 const CODE_WORDS =
   /\b(edit|rename|refactor|fix|create|implement|add|delete|remove|update|write|run|verify|change|move|replace|extract|inline|wrap)\b/i;
-const EXPLORE_WORDS = /\b(find|search|read|look|show|list|what|where|how|explain|understand|check|inspect|describe)\b/i;
+const EXPLORE_WORDS =
+  /\b(find|search|scan|read|look|show|list|what|where|how|explain|understand|check|inspect|describe)\b/i;
 
 export function classifyMode(message: string): AgentMode {
   const hasCode = CODE_WORDS.test(message);

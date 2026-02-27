@@ -58,6 +58,7 @@ export const appConfig = {
       run: { maxChars: 2600, maxLines: 120 },
       edit: { maxChars: 1400, maxLines: 60 },
       astEdit: { maxChars: 1400, maxLines: 60 },
+      scanCode: { maxChars: 2400, maxLines: 80 },
       create: { maxChars: 3000, maxLines: 100 },
     },
   },

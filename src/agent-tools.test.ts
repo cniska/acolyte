@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
   deleteTextFile,
@@ -8,15 +8,18 @@ import {
   fetchWeb,
   readSnippet,
   runShellCommand,
+  scanCode,
   writeTextFile,
 } from "./agent-tools";
 import { appConfig, setPermissionMode } from "./app-config";
 
 const tempFiles: string[] = [];
+const tempDirs: string[] = [];
 const initialPermissionMode = appConfig.agent.permissions.mode;
 
 afterAll(async () => {
   await Promise.all(tempFiles.map(async (filePath) => await rm(filePath, { force: true })));
+  await Promise.all(tempDirs.map(async (dirPath) => await rm(dirPath, { recursive: true, force: true })));
   setPermissionMode(initialPermissionMode);
 });
 
@@ -304,5 +307,63 @@ describe("editCode", () => {
     const content = await readFile(filePath, "utf8");
     expect(content).toContain("print(");
     expect(content).not.toContain("println(");
+  });
+});
+
+describe("scanCode", () => {
+  test("finds matches in a single file with metavariable captures", async () => {
+    const filePath = `/tmp/acolyte-scan-${crypto.randomUUID()}.ts`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, 'console.log("hello");\nconsole.log("world");\nconst x = 1;\n', "utf8");
+    const result = await scanCode({ path: filePath, pattern: "console.log($ARG)" });
+    expect(result).toContain("scanned=1");
+    expect(result).toContain("matches=2");
+    expect(result).toContain('$ARG="hello"');
+    expect(result).toContain('$ARG="world"');
+  });
+
+  test("returns no matches when pattern is absent", async () => {
+    const filePath = `/tmp/acolyte-scan-nomatch-${crypto.randomUUID()}.ts`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, "const x = 1;\n", "utf8");
+    const result = await scanCode({ path: filePath, pattern: "console.log($ARG)" });
+    expect(result).toContain("matches=0");
+    expect(result).toContain("No matches.");
+  });
+
+  test("scans a directory recursively", async () => {
+    const dir = `/tmp/acolyte-scan-dir-${crypto.randomUUID()}`;
+    tempDirs.push(dir);
+    await mkdir(join(dir, "sub"), { recursive: true });
+    await writeFile(join(dir, "a.ts"), 'console.log("a");\n', "utf8");
+    await writeFile(join(dir, "sub", "b.ts"), 'console.log("b");\nconst y = 2;\n', "utf8");
+    const result = await scanCode({ path: dir, pattern: "console.log($ARG)" });
+    expect(result).toContain("scanned=2");
+    expect(result).toContain("matches=2");
+  });
+
+  test("respects maxResults limit", async () => {
+    const filePath = `/tmp/acolyte-scan-limit-${crypto.randomUUID()}.ts`;
+    tempFiles.push(filePath);
+    const lines = `${Array.from({ length: 10 }, (_, i) => `console.log("line${i}");`).join("\n")}\n`;
+    await writeFile(filePath, lines, "utf8");
+    const result = await scanCode({ path: filePath, pattern: "console.log($ARG)", maxResults: 3 });
+    expect(result).toContain("matches=3");
+  });
+
+  test("blocks paths outside workspace", async () => {
+    await expect(scanCode({ path: "/etc/hosts", pattern: "const $X" })).rejects.toThrow(
+      "Scan is restricted to the workspace or /tmp",
+    );
+  });
+
+  test("works in read permission mode", async () => {
+    const filePath = `/tmp/acolyte-scan-read-${crypto.randomUUID()}.ts`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, "const x = 1;\n", "utf8");
+    setPermissionMode("read");
+    const result = await scanCode({ path: filePath, pattern: "const $X = $V" });
+    setPermissionMode(initialPermissionMode);
+    expect(result).toContain("matches=1");
   });
 });

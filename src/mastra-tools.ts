@@ -10,6 +10,7 @@ import {
   gitStatusShort,
   readSnippets,
   runShellCommand,
+  scanCode,
   searchFiles,
   searchWeb,
   writeTextFile,
@@ -55,6 +56,11 @@ export const toolMeta: Record<string, ToolMeta> = {
   "web-fetch": {
     instruction: "Use `web-fetch` to read web pages, docs, or API references.",
     aliases: ["webFetch", "web_fetch"],
+  },
+  "scan-code": {
+    instruction:
+      "Use `scan-code` to find structural code patterns using AST matching. Pass an ast-grep `pattern` with `$VAR` metavariables (e.g. `console.log($ARG)`).",
+    aliases: ["scanCode", "scan_code"],
   },
   "edit-code": {
     instruction: "Use `edit-code` for code changes with AST `edits` array.",
@@ -326,6 +332,34 @@ function createSearchFilesTool(_onToolOutput?: ToolOutputListener) {
   });
 }
 
+function createScanCodeTool(_onToolOutput?: ToolOutputListener) {
+  return createTool({
+    id: "scan-code",
+    description:
+      "Scan files for structural code patterns using AST matching. Pass an ast-grep `pattern` with `$VAR` metavariables (e.g. `console.log($ARG)`, `async function $NAME($$$PARAMS)`). Path can be a file or directory.",
+    inputSchema: z.object({
+      path: z.string().min(1),
+      pattern: z.string().min(1),
+      language: z.string().optional(),
+      maxResults: z.number().int().min(1).max(200).optional(),
+    }),
+    execute: async (input) => {
+      return withToolError("scan-code", async () => {
+        const result = compactToolOutput(
+          await scanCode({
+            path: input.path,
+            pattern: input.pattern,
+            language: input.language,
+            maxResults: input.maxResults ?? 50,
+          }),
+          appConfig.agent.toolOutputBudget.scanCode,
+        );
+        return { result };
+      });
+    },
+  });
+}
+
 function createReadFileTool(_onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "read-file",
@@ -580,9 +614,12 @@ function createWebFetchTool(onToolOutput?: ToolOutputListener) {
 
 export const webFetchTool = createWebFetchTool();
 
+export const scanCodeTool = createScanCodeTool();
+
 export const acolyteTools = {
   findFiles: createFindFilesTool(),
   searchFiles: createSearchFilesTool(),
+  scanCode: scanCodeTool,
   readFile: readFileTool,
   gitStatus: gitStatusTool,
   gitDiff: gitDiffTool,
@@ -601,6 +638,7 @@ function readOnlyTools(): Partial<AcolyteToolset> {
   return {
     findFiles: acolyteTools.findFiles,
     searchFiles: acolyteTools.searchFiles,
+    scanCode: acolyteTools.scanCode,
     readFile: acolyteTools.readFile,
     gitStatus: acolyteTools.gitStatus,
     gitDiff: acolyteTools.gitDiff,
@@ -620,6 +658,7 @@ export function toolsForAgent(options?: { onToolOutput?: ToolOutputListener }): 
     ...acolyteTools,
     findFiles: createFindFilesTool(options.onToolOutput),
     searchFiles: createSearchFilesTool(options.onToolOutput),
+    scanCode: createScanCodeTool(options.onToolOutput),
     readFile: createReadFileTool(options.onToolOutput),
     gitStatus: createGitStatusTool(options.onToolOutput),
     gitDiff: createGitDiffTool(options.onToolOutput),

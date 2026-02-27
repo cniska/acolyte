@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
-import { mkdir, readdir, readFile, unlink, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { appConfig } from "./app-config";
@@ -906,25 +906,28 @@ async function ensureDynamicLanguages(napi: typeof import("@ast-grep/napi")): Pr
   dynamicLangsRegistered = true;
 }
 
+const LANGUAGE_MAP: Record<string, string> = {
+  ".ts": "TypeScript",
+  ".tsx": "Tsx",
+  ".js": "JavaScript",
+  ".jsx": "JavaScript",
+  ".html": "Html",
+  ".css": "Css",
+  ".py": "python",
+  ".pyi": "python",
+  ".rs": "rust",
+  ".go": "go",
+};
+
 function languageFromPath(filePath: string): string {
   const dot = filePath.lastIndexOf(".");
-  if (dot < 0) {
-    return "TypeScript";
-  }
-  const ext = filePath.slice(dot).toLowerCase();
-  const map: Record<string, string> = {
-    ".ts": "TypeScript",
-    ".tsx": "Tsx",
-    ".js": "JavaScript",
-    ".jsx": "JavaScript",
-    ".html": "Html",
-    ".css": "Css",
-    ".py": "python",
-    ".pyi": "python",
-    ".rs": "rust",
-    ".go": "go",
-  };
-  return map[ext] ?? "TypeScript";
+  if (dot < 0) return "TypeScript";
+  return LANGUAGE_MAP[filePath.slice(dot).toLowerCase()] ?? "TypeScript";
+}
+
+function isParseable(filePath: string): boolean {
+  const dot = filePath.lastIndexOf(".");
+  return dot >= 0 && filePath.slice(dot).toLowerCase() in LANGUAGE_MAP;
 }
 
 function extractMetavariables(pattern: string): string[] {
@@ -1021,4 +1024,107 @@ export async function deleteTextFile(input: { path: string; dryRun?: boolean }):
     "",
     diff,
   ].join("\n");
+}
+
+export async function scanCode(input: {
+  path: string;
+  pattern: string;
+  language?: string;
+  maxResults?: number;
+}): Promise<string> {
+  const absPath = ensurePathWithinAllowedRoots(input.path, "Scan");
+  const maxResults = input.maxResults ?? 50;
+
+  let napi: typeof import("@ast-grep/napi");
+  try {
+    napi = await import("@ast-grep/napi");
+  } catch {
+    throw new Error("@ast-grep/napi is not installed — run `bun add @ast-grep/napi`");
+  }
+  await ensureDynamicLanguages(napi);
+
+  const metavars = extractMetavariables(input.pattern);
+
+  type Match = { relPath: string; line: number; text: string; captures: Record<string, string> };
+  const matches: Match[] = [];
+
+  const scanFile = (relPath: string, content: string, lang: string): void => {
+    const langEnum = napi.Lang[lang as keyof typeof napi.Lang];
+    let tree: ReturnType<typeof napi.parse>;
+    try {
+      tree = napi.parse(langEnum ?? lang, content);
+    } catch {
+      return; // skip unparseable files
+    }
+    const found = tree.root().findAll({ rule: { pattern: input.pattern } });
+    for (const m of found) {
+      if (matches.length >= maxResults) return;
+      const range = m.range();
+      const text = m.text().split("\n")[0] ?? "";
+      const captures: Record<string, string> = {};
+      for (const mv of metavars) {
+        const captured = m.getMatch(mv.slice(1));
+        if (captured) captures[mv] = captured.text();
+      }
+      matches.push({ relPath, line: range.start.line + 1, text, captures });
+    }
+  };
+
+  const info = await stat(absPath);
+  let scanned = 0;
+
+  if (info.isFile()) {
+    const content = await readFile(absPath, "utf8");
+    const lang = input.language ?? languageFromPath(absPath);
+    scanned = 1;
+    scanFile(displayPathForDiff(absPath), content, lang);
+  } else if (info.isDirectory()) {
+    const stack: string[] = [absPath];
+    const maxFiles = 500;
+    while (stack.length > 0 && scanned < maxFiles && matches.length < maxResults) {
+      const dir = stack.pop();
+      if (!dir) break;
+      let entries: Array<{ name: string; isDirectory: () => boolean; isFile: () => boolean }>;
+      try {
+        entries = await readdir(dir, { withFileTypes: true });
+      } catch {
+        continue;
+      }
+      entries.sort((a, b) => a.name.localeCompare(b.name));
+      for (const entry of entries) {
+        if (entry.name.startsWith(".") && entry.isDirectory()) continue;
+        if (entry.isDirectory() && IGNORED_DIRS.has(entry.name)) continue;
+        const abs = join(dir, entry.name);
+        if (entry.isDirectory()) {
+          stack.push(abs);
+        } else if (entry.isFile() && isParseable(abs)) {
+          if (scanned >= maxFiles || matches.length >= maxResults) break;
+          const lang = input.language ?? languageFromPath(abs);
+          try {
+            const content = await readFile(abs, "utf8");
+            scanned++;
+            scanFile(displayPathForDiff(abs), content, lang);
+          } catch {
+            /* skip unreadable files */
+          }
+        }
+      }
+    }
+  } else {
+    throw new Error(`Path is not a file or directory: ${absPath}`);
+  }
+
+  const lines: string[] = [`scanned=${scanned} matches=${matches.length}`];
+  for (const m of matches) {
+    const truncated = m.text.length > 80 ? `${m.text.slice(0, 77)}...` : m.text;
+    const captureStr =
+      Object.keys(m.captures).length > 0
+        ? `  {${Object.entries(m.captures)
+            .map(([k, v]) => `${k}=${v}`)
+            .join(", ")}}`
+        : "";
+    lines.push(`${m.relPath}:${m.line}: ${truncated}${captureStr}`);
+  }
+  if (matches.length === 0) lines.push("No matches.");
+  return lines.join("\n");
 }

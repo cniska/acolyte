@@ -105,6 +105,8 @@ describe("execution intent detection", () => {
     expect(canonicalToolId("web_search")).toBe("web-search");
     expect(canonicalToolId("editCode")).toBe("edit-code");
     expect(canonicalToolId("edit_code")).toBe("edit-code");
+    expect(canonicalToolId("scanCode")).toBe("scan-code");
+    expect(canonicalToolId("scan_code")).toBe("scan-code");
   });
 });
 

@@ -36,7 +36,7 @@ Three modes with distinct tool sets and instructions:
 
 ## Tools (`mastra-tools.ts`, `agent-tools.ts`)
 
-12 tools registered with Mastra. Each tool has a `ToolMeta` entry with an `instruction` (used to build mode-specific system instructions) and `aliases` (used by `canonicalToolId` to normalize model output). Tool output is compacted to per-tool token budgets.
+13 tools registered with Mastra. Each tool has a `ToolMeta` entry with an `instruction` (used to build mode-specific system instructions) and `aliases` (used by `canonicalToolId` to normalize model output). Tool output is compacted to per-tool token budgets. AST-based tools (`edit-code`, `scan-code`) use `@ast-grep/napi` for structural pattern matching with metavariable capture.
 
 ## Streaming pipeline
 

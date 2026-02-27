@@ -15,7 +15,7 @@ What's currently supported.
 
 - Single-agent execution with direct tool usage across three modes: plan, work, verify.
 - Automatic verify chaining: after work mode edits, the agent runs the project's verify command, reads errors, fixes issues, and re-runs until clean.
-- Tool surface: search, read, write, edit (text + AST), delete, git status/diff, run command, web search/fetch.
+- Tool surface: search, read, write, edit (text + AST), scan (AST pattern matching), delete, git status/diff, run command, web search/fetch.
 - Permission modes: `read` (default, disables writes) and `write` (full local tool capability).
 - Read-mode write confirmation picker with inline reason entry.
 - Workspace + `/tmp` path guardrails on all file operations.

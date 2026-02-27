@@ -10,6 +10,7 @@ describe("modeForTool", () => {
     expect(modeForTool("git-diff")).toBe("plan");
     expect(modeForTool("web-search")).toBe("plan");
     expect(modeForTool("web-fetch")).toBe("plan");
+    expect(modeForTool("scan-code")).toBe("plan");
   });
 
   test("maps write tools to code", () => {
@@ -63,6 +64,7 @@ describe("classifyMode", () => {
     expect(classifyMode("show me the agent.ts file")).toBe("plan");
     expect(classifyMode("how does the streaming work?")).toBe("plan");
     expect(classifyMode("list all exports from client.ts")).toBe("plan");
+    expect(classifyMode("scan for unused imports")).toBe("plan");
   });
 
   test("prefers code when both signals present", () => {

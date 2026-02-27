@@ -22,6 +22,7 @@ describe("mastra toolsets", () => {
       "gitStatus",
       "readFile",
       "runCommand",
+      "scanCode",
       "searchFiles",
       "webFetch",
       "webSearch",
@@ -31,7 +32,16 @@ describe("mastra toolsets", () => {
   test("returns read-only tools in read mode", () => {
     setPermissionMode("read");
     const keys = Object.keys(toolsForAgent()).sort();
-    expect(keys).toEqual(["findFiles", "gitDiff", "gitStatus", "readFile", "searchFiles", "webFetch", "webSearch"]);
+    expect(keys).toEqual([
+      "findFiles",
+      "gitDiff",
+      "gitStatus",
+      "readFile",
+      "scanCode",
+      "searchFiles",
+      "webFetch",
+      "webSearch",
+    ]);
   });
 });
 

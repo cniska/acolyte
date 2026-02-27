@@ -9,6 +9,7 @@ const TOOL_LABELS: Record<string, string> = {
   "edit-code": "Edit",
   "create-file": "Create",
   "delete-file": "Delete",
+  "scan-code": "Scan",
   "web-search": "Search",
   "web-fetch": "Fetch",
 };
