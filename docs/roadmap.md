@@ -72,6 +72,7 @@ Reduce repeated mistakes with transparent, correctable memory behavior.
 Enable optional hosted mode for centralized memory and multi-device continuity.
 
 - [ ] Backend can run as a hosted service (not just local)
+- [ ] Explicit execution mode exists (`local` vs isolated sandbox) and is resolved per request
 - [ ] Memory syncs across devices
 - [ ] Auth and multi-tenancy work
 - [ ] Local-first mode still works without hosted backend

@@ -85,18 +85,23 @@ function isChatRequest(value: unknown): value is ChatRequest {
   );
 }
 
-function resolveWorkspace(input?: string): string {
-  if (!input) {
-    return resolve(process.cwd());
+type WorkspaceResolution = {
+  workspacePath: string;
+  workspaceMode: "default" | "path";
+};
+
+function resolveWorkspacePath(request: Pick<ChatRequest, "workspace">): WorkspaceResolution {
+  if (!request.workspace) {
+    return { workspacePath: resolve(process.cwd()), workspaceMode: "default" };
   }
-  const resolved = resolve(input);
+  const resolved = resolve(request.workspace);
   if (!existsSync(resolved)) {
     throw new Error(`Workspace path does not exist: ${resolved}`);
   }
   if (!statSync(resolved).isDirectory()) {
     throw new Error(`Workspace path is not a directory: ${resolved}`);
   }
-  return resolved;
+  return { workspacePath: resolved, workspaceMode: "path" };
 }
 
 function hasValidAuth(req: Request): boolean {
@@ -295,9 +300,9 @@ const server = Bun.serve({
     const startedAt = Date.now();
     const chatRequest = payload as ChatRequest;
 
-    let workspace: string;
+    let workspaceResolution: WorkspaceResolution;
     try {
-      workspace = resolveWorkspace(chatRequest.workspace);
+      workspaceResolution = resolveWorkspacePath(chatRequest);
     } catch (error) {
       return badRequest(error instanceof Error ? error.message : "Invalid workspace");
     }
@@ -309,6 +314,7 @@ const server = Bun.serve({
       history_messages: chatRequest.history.length,
       message_chars: chatRequest.message.length,
       has_resource_id: Boolean(chatRequest.resourceId),
+      workspace_mode: workspaceResolution.workspaceMode,
     });
     if (isChatStreamRoute) {
       const encoder = new TextEncoder();
@@ -344,7 +350,7 @@ const server = Bun.serve({
               const reply = await runAgent({
                 request: chatRequest,
                 soulPrompt,
-                workspace,
+                workspace: workspaceResolution.workspacePath,
                 onEvent: (event) => {
                   send(event);
                 },
@@ -413,7 +419,7 @@ const server = Bun.serve({
       const reply = await runAgent({
         request: chatRequest,
         soulPrompt,
-        workspace,
+        workspace: workspaceResolution.workspacePath,
         onDebug: (event, fields) => {
           log.info("agent debug", {
             request_id: requestId,

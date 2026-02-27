@@ -1,4 +1,4 @@
-import type { TokenUsage } from "./api";
+import { createWorkspaceSpecifier, type TokenUsage } from "./api";
 import { type ChatRow, createRow, type TokenUsageEntry } from "./chat-commands";
 import { extractAtReferencePaths } from "./chat-file-ref";
 import { formatThoughtDuration } from "./chat-formatters";
@@ -108,7 +108,7 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
           model: params.model,
           sessionId: params.sessionId,
           useMemory: params.useMemory,
-          workspace: process.cwd(),
+          ...createWorkspaceSpecifier(),
         },
         { signal: params.signal, onEvent: params.onEvent },
       )
@@ -119,7 +119,7 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
           model: params.model,
           sessionId: params.sessionId,
           useMemory: params.useMemory,
-          workspace: process.cwd(),
+          ...createWorkspaceSpecifier(),
         },
         { signal: params.signal },
       );

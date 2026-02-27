@@ -28,3 +28,9 @@ export interface ChatResponse {
   toolCalls?: string[];
   modelCalls?: number;
 }
+
+export type WorkspaceSpecifier = Pick<ChatRequest, "workspace">;
+
+export function createWorkspaceSpecifier(cwd: string = process.cwd()): WorkspaceSpecifier {
+  return { workspace: cwd };
+}

@@ -4,6 +4,7 @@ import { relative } from "node:path";
 import { stdout as output } from "node:process";
 import { z } from "zod";
 import { formatToolHeader } from "./agent";
+import { createWorkspaceSpecifier } from "./api";
 import {
   editFile,
   fetchWeb,
@@ -861,7 +862,7 @@ async function handlePrompt(
         model: session.model,
         sessionId: session.id,
         resourceId: options?.resourceId,
-        workspace: process.cwd(),
+        ...createWorkspaceSpecifier(),
       },
       {
         onEvent: (event) => {
