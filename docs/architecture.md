@@ -26,9 +26,9 @@ Three modes with distinct tool sets and instructions:
 
 | Mode | Tools | Trigger |
 |------|-------|---------|
-| `plan` | find-files, search-files, read-file, git-status, git-diff, web-search, web-fetch | Read-only keywords (default) |
+| `plan` | find-files, search-files, read-file, scan-code, git-status, git-diff, web-search, web-fetch | Read-only keywords (default) |
 | `work` | edit-code, edit-file, create-file, delete-file, run-command | Action keywords |
-| `verify` | run-command, read-file, search-files, edit-code, edit-file, create-file | Auto-triggered after work mode |
+| `verify` | run-command, read-file, search-files, edit-code, scan-code, edit-file, create-file | Auto-triggered after work mode |
 
 `classifyMode(message)` picks the initial mode via keyword heuristics. Mode can switch mid-run when the model calls a tool from a different mode (except during verify, which is locked). Mode instructions are generated dynamically from `toolMeta` in `mastra-tools.ts`.
 
