@@ -16,15 +16,20 @@ import { type AgentMode, agentModes, classifyMode, modeForTool } from "./agent-m
 import type { ChatRequest, ChatResponse } from "./api";
 import { appConfig } from "./app-config";
 import type { StreamEvent } from "./client";
+import {
+  categoryFromErrorCode,
+  classifyErrorCategory,
+  type ErrorCategory,
+  errorCodeFromCategory,
+  isEditFileMultiMatchError,
+  isFileNotFoundSignal,
+  parseErrorInfo,
+  type RecoveryAction,
+  recoveryActionForError as resolveRecoveryAction,
+} from "./error-handling";
 import type { LifecycleDebugEvent, LifecycleEventName } from "./lifecycle-events";
 import { type AcolyteToolset, toolsForAgent } from "./mastra-tools";
-import {
-  type ErrorCode,
-  extractToolErrorCode,
-  hasToolErrorCode,
-  LIFECYCLE_ERROR_CODES,
-  TOOL_ERROR_CODES,
-} from "./tool-error-codes";
+import { type ErrorCode, extractToolErrorCode, LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./tool-error-codes";
 import type { SessionContext } from "./tool-guards";
 import type { ToolName } from "./tool-names";
 
@@ -57,10 +62,6 @@ export type GenerateResult = {
   toolCalls: unknown[];
 };
 
-type ErrorCategory = "timeout" | "file-not-found" | "guard-blocked" | "other";
-type ParsedError = { message: string; code?: string };
-type Result<T, E> = { ok: true; value: T } | { ok: false; error: E };
-type RecoveryAction = "retry-timeout" | "stop-unknown-budget" | "none";
 type ToolOutputEvent = { toolName: string; message: string; toolCallId?: string };
 type ToolCallStart = { toolName: string; startedAtMs: number };
 type MemoryOptions = { thread: string; resource: string };
@@ -194,64 +195,8 @@ function readPathKeys(args: Record<string, unknown>): string[] {
   return out;
 }
 
-function isEditFileMultiMatchError(errorMessage: string): boolean {
-  return (
-    hasToolErrorCode(errorMessage, TOOL_ERROR_CODES.editFileMultiMatch) ||
-    /Find text matched \d+ locations?/i.test(errorMessage)
-  );
-}
-
-function isFileNotFoundSignal(text: string): boolean {
-  return /\b(?:does not exist|doesn't exist|no such file|not found|ENOENT)\b/i.test(text);
-}
-
-function isGuardBlockedSignal(text: string): boolean {
-  return /cannot delete|do not use shell commands|repeated .* detected/i.test(text);
-}
-
-function classifyErrorCategory(message: string): ErrorCategory {
-  if (/timed out|timeout/i.test(message)) return "timeout";
-  if (isFileNotFoundSignal(message)) return "file-not-found";
-  if (isGuardBlockedSignal(message)) return "guard-blocked";
-  return "other";
-}
-
-function categoryFromErrorCode(code?: string): ErrorCategory | undefined {
-  switch (code) {
-    case LIFECYCLE_ERROR_CODES.timeout:
-      return "timeout";
-    case LIFECYCLE_ERROR_CODES.fileNotFound:
-      return "file-not-found";
-    case LIFECYCLE_ERROR_CODES.guardBlocked:
-      return "guard-blocked";
-    case LIFECYCLE_ERROR_CODES.unknown:
-      return "other";
-    default:
-      return undefined;
-  }
-}
-
-function errorCodeFromCategory(category: ErrorCategory): ErrorCode {
-  switch (category) {
-    case "timeout":
-      return LIFECYCLE_ERROR_CODES.timeout;
-    case "file-not-found":
-      return LIFECYCLE_ERROR_CODES.fileNotFound;
-    case "guard-blocked":
-      return LIFECYCLE_ERROR_CODES.guardBlocked;
-    case "other":
-      return LIFECYCLE_ERROR_CODES.unknown;
-  }
-}
-
 export function recoveryActionForError(input: { errorCode?: string; unknownErrorCount: number }): RecoveryAction {
-  if (input.errorCode === LIFECYCLE_ERROR_CODES.timeout) {
-    return "retry-timeout";
-  }
-  if (input.errorCode === LIFECYCLE_ERROR_CODES.unknown && input.unknownErrorCount >= MAX_UNKNOWN_ERRORS_PER_REQUEST) {
-    return "stop-unknown-budget";
-  }
-  return "none";
+  return resolveRecoveryAction(input, MAX_UNKNOWN_ERRORS_PER_REQUEST);
 }
 
 function captureError(
@@ -276,31 +221,6 @@ function captureError(
     category,
     message: message.length > 240 ? `${message.slice(0, 239)}…` : message,
   });
-}
-
-function parseErrorInfo(value: unknown): Result<ParsedError, "invalid_error_payload"> {
-  if (typeof value === "string") {
-    return { ok: true, value: { message: value, code: extractToolErrorCode(value) } };
-  }
-  if (value instanceof Error) {
-    const code = "code" in value && typeof value.code === "string" ? value.code : extractToolErrorCode(value.message);
-    return { ok: true, value: { message: value.message, code } };
-  }
-  if (typeof value === "object" && value !== null) {
-    const rec = value as { message?: unknown; error?: unknown; code?: unknown };
-    if (typeof rec.message === "string") {
-      const code = typeof rec.code === "string" ? rec.code : extractToolErrorCode(rec.message);
-      return { ok: true, value: { message: rec.message, code } };
-    }
-    if (typeof rec.error === "string") {
-      const code = typeof rec.code === "string" ? rec.code : extractToolErrorCode(rec.error);
-      return { ok: true, value: { message: rec.error, code } };
-    }
-    if (rec.error !== undefined) {
-      return parseErrorInfo(rec.error);
-    }
-  }
-  return { ok: false, error: "invalid_error_payload" };
 }
 
 function findLastEditFilePath(ctx: RunContext): string | undefined {
@@ -541,11 +461,7 @@ function ensureAgentForMode(ctx: RunContext): void {
   });
 }
 
-async function phaseGenerate(
-  ctx: RunContext,
-  prompt: string,
-  opts: GenerateOptions,
-): Promise<void> {
+async function phaseGenerate(ctx: RunContext, prompt: string, opts: GenerateOptions): Promise<void> {
   // Evaluators should only react to signals from the current generation attempt.
   ctx.lastError = undefined;
   ctx.lastErrorCode = undefined;
