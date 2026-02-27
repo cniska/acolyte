@@ -517,7 +517,7 @@ export async function runAgent(input: {
             switch (typed.type) {
               case "text-delta": {
                 const p = typed.payload as { text?: string } | undefined;
-                if (typeof p?.text === "string" && p.text.length > 0) {
+                if (typeof p?.text === "string" && p.text.length > 0 && currentMode !== "verify") {
                   emitEvent({ type: "text-delta", text: p.text });
                 }
                 break;
