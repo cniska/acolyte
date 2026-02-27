@@ -45,7 +45,7 @@ export function isKnownSlashToken(token: string): boolean {
   return CHAT_SLASH_COMMANDS.includes(token as (typeof CHAT_SLASH_COMMANDS)[number]) || token in SLASH_ALIASES;
 }
 
-export function suggestSlashCommands(inputValue: string, max = 10): string[] {
+export function suggestSlashCommands(inputValue: string, max = 8): string[] {
   const value = inputValue.trim();
   if (!value.startsWith("/")) {
     return [];
