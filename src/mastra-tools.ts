@@ -295,7 +295,14 @@ export async function withToolError<T>(toolId: ToolName, task: () => Promise<T>)
     return await task();
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`${toolId} failed: ${message}`);
+    const wrapped = new Error(`${toolId} failed: ${message}`) as Error & { code?: string };
+    if (typeof error === "object" && error !== null && "code" in error) {
+      const code = (error as { code?: unknown }).code;
+      if (typeof code === "string" && code.length > 0) {
+        wrapped.code = code;
+      }
+    }
+    throw wrapped;
   }
 }
 

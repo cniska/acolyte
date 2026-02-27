@@ -3,7 +3,7 @@ import { mkdir, readdir, readFile, stat, unlink, writeFile } from "node:fs/promi
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { appConfig } from "./app-config";
-import { encodeToolError, TOOL_ERROR_CODES } from "./tool-error-codes";
+import { createToolError, encodeToolError, TOOL_ERROR_CODES } from "./tool-error-codes";
 
 const TEMP_ROOTS = Array.from(new Set([resolve(tmpdir()), resolve("/tmp"), resolve("/private/tmp")]));
 
@@ -809,11 +809,10 @@ export async function editFile(input: {
         throw new Error(`Find text not found in file: ${edit.find.slice(0, 60)}`);
       }
       if (count > 1) {
-        throw new Error(
-          encodeToolError(
-            TOOL_ERROR_CODES.editFileMultiMatch,
-            `Find text matched ${count} locations (${edit.find.slice(0, 40)}…). Provide a longer, more unique snippet to match exactly one location, or use edit-code for multi-location code changes.`,
-          ),
+        const message = `Find text matched ${count} locations (${edit.find.slice(0, 40)}…). Provide a longer, more unique snippet to match exactly one location, or use edit-code for multi-location code changes.`;
+        throw createToolError(
+          TOOL_ERROR_CODES.editFileMultiMatch,
+          encodeToolError(TOOL_ERROR_CODES.editFileMultiMatch, message),
         );
       }
       const start = raw.indexOf(edit.find);

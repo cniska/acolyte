@@ -18,7 +18,7 @@ import { appConfig } from "./app-config";
 import type { StreamEvent } from "./client";
 import type { LifecycleDebugEvent, LifecycleEventName } from "./lifecycle-events";
 import { type AcolyteToolset, toolsForAgent } from "./mastra-tools";
-import { hasToolErrorCode, TOOL_ERROR_CODES } from "./tool-error-codes";
+import { extractToolErrorCode, hasToolErrorCode, TOOL_ERROR_CODES } from "./tool-error-codes";
 import type { SessionContext } from "./tool-guards";
 import type { ToolName } from "./tool-names";
 
@@ -51,6 +51,8 @@ export type GenerateResult = {
 };
 
 type ErrorCategory = "timeout" | "file-not-found" | "guard-blocked" | "other";
+type ParsedError = { message: string; code?: string };
+type Result<T, E> = { ok: true; value: T } | { ok: false; error: E };
 
 export type EvalAction =
   | { type: "done" }
@@ -105,6 +107,7 @@ export type RunContext = {
   regenerationLimitHit: boolean;
   sawEditFileMultiMatchError: boolean;
   lastError?: string;
+  lastErrorCode?: string;
   lastErrorCategory?: ErrorCategory;
   errorStats: Record<ErrorCategory, number>;
   result?: GenerateResult;
@@ -174,21 +177,49 @@ function classifyErrorCategory(message: string): ErrorCategory {
 function captureError(
   ctx: RunContext,
   message: string,
-  meta?: { source?: "generate" | "tool-result" | "tool-error"; tool?: string },
+  meta?: { source?: "generate" | "tool-result" | "tool-error"; tool?: string; code?: string },
 ): void {
   ctx.lastError = message;
+  const code = meta?.code ?? extractToolErrorCode(message);
+  ctx.lastErrorCode = code;
   const category = classifyErrorCategory(message);
   ctx.lastErrorCategory = category;
   ctx.errorStats[category] += 1;
-  if (isEditFileMultiMatchError(message)) {
+  if (code === TOOL_ERROR_CODES.editFileMultiMatch || isEditFileMultiMatchError(message)) {
     ctx.sawEditFileMultiMatchError = true;
   }
   ctx.debug("lifecycle.error", {
     source: meta?.source ?? "generate",
     tool: meta?.tool ?? null,
+    code: code ?? null,
     category,
     message: message.length > 240 ? `${message.slice(0, 239)}…` : message,
   });
+}
+
+function parseErrorInfo(value: unknown): Result<ParsedError, "invalid_error_payload"> {
+  if (typeof value === "string") {
+    return { ok: true, value: { message: value, code: extractToolErrorCode(value) } };
+  }
+  if (value instanceof Error) {
+    const code = "code" in value && typeof value.code === "string" ? value.code : extractToolErrorCode(value.message);
+    return { ok: true, value: { message: value.message, code } };
+  }
+  if (typeof value === "object" && value !== null) {
+    const rec = value as { message?: unknown; error?: unknown; code?: unknown };
+    if (typeof rec.message === "string") {
+      const code = typeof rec.code === "string" ? rec.code : extractToolErrorCode(rec.message);
+      return { ok: true, value: { message: rec.message, code } };
+    }
+    if (typeof rec.error === "string") {
+      const code = typeof rec.code === "string" ? rec.code : extractToolErrorCode(rec.error);
+      return { ok: true, value: { message: rec.error, code } };
+    }
+    if (rec.error !== undefined) {
+      return parseErrorInfo(rec.error);
+    }
+  }
+  return { ok: false, error: "invalid_error_payload" };
 }
 
 function findLastEditFilePath(ctx: RunContext): string | undefined {
@@ -436,6 +467,7 @@ async function phaseGenerate(
 ): Promise<void> {
   // Evaluators should only react to signals from the current generation attempt.
   ctx.lastError = undefined;
+  ctx.lastErrorCode = undefined;
   ctx.lastErrorCategory = undefined;
   ctx.sawEditFileMultiMatchError = false;
   ensureAgentForMode(ctx);
@@ -618,12 +650,17 @@ function processStreamChunk(ctx: RunContext, chunk: { type?: string; payload?: u
         if (queue?.[queue.length - 1] === p.toolCallId) {
           queue.pop();
         }
-        const isError =
-          typeof p.result === "object" && p.result !== null && "error" in (p.result as Record<string, unknown>);
+        const resultRecord =
+          typeof p.result === "object" && p.result !== null ? (p.result as Record<string, unknown>) : null;
+        const isError = Boolean(resultRecord && "error" in resultRecord);
         if (isError) {
-          captureError(ctx, String((p.result as { error?: unknown }).error ?? "Tool error"), {
+          const parsed = parseErrorInfo(resultRecord?.error);
+          const errorInfo = parsed.ok ? parsed.value : { message: "Tool error" };
+          const resultCode = typeof resultRecord?.code === "string" ? resultRecord.code : undefined;
+          captureError(ctx, errorInfo.message, {
             source: "tool-result",
             tool: toolName,
+            code: resultCode ?? errorInfo.code,
           });
           ctx.debug("lifecycle.tool.error", { tool: toolName, error: ctx.lastError });
           ctx.debug("lifecycle.tool.result", {
@@ -646,21 +683,18 @@ function processStreamChunk(ctx: RunContext, chunk: { type?: string; payload?: u
         | {
             error?: unknown;
             message?: string;
+            code?: unknown;
             toolName?: string;
             toolCallId?: string;
           }
         | undefined;
       const raw = p?.error ?? p?.message;
-      const errorMsg =
-        typeof raw === "string"
-          ? raw
-          : raw instanceof Error
-            ? raw.message
-            : typeof raw === "object" && raw !== null && "message" in raw
-              ? String((raw as { message: unknown }).message)
-              : "Tool error";
+      const parsed = parseErrorInfo(raw);
+      const errorInfo = parsed.ok ? parsed.value : { message: "Tool error" };
+      const payloadCode = typeof p?.code === "string" ? p.code : undefined;
+      const errorMsg = errorInfo.message;
       const toolName = canonicalToolId(p?.toolName ?? "");
-      captureError(ctx, errorMsg, { source: "tool-error", tool: toolName });
+      captureError(ctx, errorMsg, { source: "tool-error", tool: toolName, code: payloadCode ?? errorInfo.code });
       ctx.debug("lifecycle.tool.error", { tool: toolName, error: errorMsg });
       if (p?.toolCallId && p?.toolName) {
         const started = ctx.toolCallStartedAt.get(p.toolCallId);
@@ -730,6 +764,7 @@ function phaseFinalize(ctx: RunContext): ChatResponse {
     regeneration_limit_hit: ctx.regenerationLimitHit,
     guard_blocked_count: guardStats.blocked,
     guard_flag_set_count: guardStats.flagSet,
+    last_error_code: ctx.lastErrorCode ?? null,
     last_error_category: ctx.lastErrorCategory ?? null,
     timeout_error_count: ctx.errorStats.timeout,
     file_not_found_error_count: ctx.errorStats["file-not-found"],
@@ -879,10 +914,16 @@ export async function runLifecycle(input: LifecycleInput): Promise<ChatResponse>
         | {
             result: GenerateResult | undefined;
             lastError: string | undefined;
+            lastErrorCode: string | undefined;
             lastErrorCategory: ErrorCategory | undefined;
           }
         | undefined = action.keepResult
-        ? { result: ctx.result, lastError: ctx.lastError, lastErrorCategory: ctx.lastErrorCategory }
+        ? {
+            result: ctx.result,
+            lastError: ctx.lastError,
+            lastErrorCode: ctx.lastErrorCode,
+            lastErrorCategory: ctx.lastErrorCategory,
+          }
         : undefined;
       if (action.mode) ctx.mode = action.mode;
       ctx.regenerationCount += 1;
@@ -905,6 +946,7 @@ export async function runLifecycle(input: LifecycleInput): Promise<ChatResponse>
       if (saved) {
         ctx.result = saved.result;
         ctx.lastError = saved.lastError;
+        ctx.lastErrorCode = saved.lastErrorCode;
         ctx.lastErrorCategory = saved.lastErrorCategory;
       }
       regenerated = true;
