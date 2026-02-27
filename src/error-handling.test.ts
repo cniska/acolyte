@@ -36,6 +36,7 @@ describe("error handling helpers", () => {
     expect(classifyErrorCategory("step timed out after 120000ms")).toBe("timeout");
     expect(classifyErrorCategory("src/utils.ts does not exist")).toBe("file-not-found");
     expect(classifyErrorCategory("do not use shell commands as fallback")).toBe("guard-blocked");
+    expect(classifyErrorCategory('Already read "src/foo.ts" this turn.')).toBe("guard-blocked");
     expect(classifyErrorCategory("something unexpected happened")).toBe("other");
   });
 

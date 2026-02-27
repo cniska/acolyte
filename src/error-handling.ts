@@ -34,7 +34,7 @@ export function isFileNotFoundSignal(text: string): boolean {
 }
 
 function isGuardBlockedSignal(text: string): boolean {
-  return /cannot delete|do not use shell commands|repeated .* detected/i.test(text);
+  return /cannot delete|do not use shell commands|repeated .* detected|already read .* this turn/i.test(text);
 }
 
 export function classifyErrorCategory(message: string): ErrorCategory {

@@ -117,10 +117,8 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
   if (durationMs >= 300) {
     const duration = formatThoughtDuration(durationMs);
     const toolCount = reply.toolCalls?.length ?? 0;
-    const modelCount = reply.modelCalls ?? 0;
     const details: string[] = [];
     if (toolCount > 0) details.push(`${toolCount} tool${toolCount !== 1 ? "s" : ""}`);
-    if (modelCount > 1) details.push(`${modelCount} model calls`);
     const suffix = details.length > 0 ? ` (${details.join(" · ")})` : "";
     rows.push(createRow("assistant", `Worked ${duration}${suffix}`, { dim: true }));
   }

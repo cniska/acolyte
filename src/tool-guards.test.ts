@@ -60,6 +60,42 @@ describe("no-shell-read-fallback guard", () => {
 });
 
 describe("excessive-file-loop guard", () => {
+  test("blocks immediate duplicate read-file call on same path and range", () => {
+    const session = createSessionContext();
+    recordCall(session, "read-file", { paths: [{ path: "src/foo.ts" }] });
+    expect(() => runGuards({ toolName: "read-file", args: { paths: [{ path: "src/foo.ts" }] }, session })).toThrow(
+      /Already read "src\/foo.ts" this turn/,
+    );
+  });
+
+  test("blocks duplicate single-file read after batched read", () => {
+    const session = createSessionContext();
+    recordCall(session, "read-file", {
+      paths: [{ path: "src/chat-commands.ts" }, { path: "src/chat-commands.test.ts" }],
+    });
+    expect(() =>
+      runGuards({ toolName: "read-file", args: { paths: [{ path: "src/chat-commands.ts" }] }, session }),
+    ).toThrow(/Already read "src\/chat-commands\.ts" this turn/);
+  });
+
+  test("allows duplicate read after edit on same path", () => {
+    const session = createSessionContext();
+    recordCall(session, "read-file", { paths: [{ path: "src/foo.ts" }] });
+    recordCall(session, "edit-file", { path: "src/foo.ts" });
+    expect(() =>
+      runGuards({ toolName: "read-file", args: { paths: [{ path: "src/foo.ts" }] }, session }),
+    ).not.toThrow();
+  });
+
+  test("allows a different read range for the same file", () => {
+    const session = createSessionContext();
+    recordCall(session, "read-file", { paths: [{ path: "src/foo.ts", start: 1, end: 40 }] });
+    recordCall(session, "read-file", { paths: [{ path: "src/foo.ts", start: 41, end: 80 }] });
+    expect(() =>
+      runGuards({ toolName: "read-file", args: { paths: [{ path: "src/foo.ts", start: 81, end: 120 }] }, session }),
+    ).not.toThrow();
+  });
+
   test("blocks repeated read/edit churn on same path before verify", () => {
     const session = createSessionContext();
     for (let i = 0; i < 6; i += 1) {

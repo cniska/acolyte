@@ -612,7 +612,8 @@ function phaseFinalize(ctx: RunContext): ChatResponse {
     mode: ctx.classifiedMode,
     model: ctx.model,
     model_calls: ctx.modelCallCount,
-    tool_calls: ctx.observedTools.size,
+    tool_calls: totalToolCalls,
+    unique_tool_count: ctx.observedTools.size,
     tools: Array.from(ctx.observedTools).join(","),
     has_error: Boolean(ctx.lastError),
     output_chars: output.length,
@@ -637,7 +638,7 @@ function phaseFinalize(ctx: RunContext): ChatResponse {
   return {
     model: ctx.model,
     output,
-    toolCalls: Array.from(ctx.observedTools),
+    toolCalls: callLog.map((entry) => entry.toolName),
     modelCalls: ctx.modelCallCount,
     usage: {
       promptTokens: ctx.promptUsage.promptTokens,

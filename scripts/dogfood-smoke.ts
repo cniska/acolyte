@@ -148,7 +148,7 @@ function hasAnyToolOutcomeSignal(output: string, verbs: Array<"Edit" | "Create" 
 }
 
 export function hasToolDiffPreviewSignal(output: string): boolean {
-  return /^\s*\d+\s+[+-]\s+.+$/m.test(output) || /^\s*[+-]\s+.+$/m.test(output);
+  return /^\s*\d+\s+[+-]\s*.+$/m.test(output) || /^\s*[+-]\s*.+$/m.test(output);
 }
 
 export function parseArgs(args: string[]): SmokeArgs {

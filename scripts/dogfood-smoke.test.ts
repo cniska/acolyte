@@ -75,6 +75,8 @@ describe("dogfood-smoke helpers", () => {
   it("detects diff preview lines in tool output", () => {
     expect(hasToolDiffPreviewSignal("12 + fn main() {}")).toBe(true);
     expect(hasToolDiffPreviewSignal("- old line")).toBe(true);
+    expect(hasToolDiffPreviewSignal("-old line")).toBe(true);
+    expect(hasToolDiffPreviewSignal("  1 -alpha")).toBe(true);
     expect(hasToolDiffPreviewSignal("Wrote /tmp/sum.rs")).toBe(false);
   });
 

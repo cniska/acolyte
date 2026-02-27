@@ -41,6 +41,23 @@ function extractReadPaths(args: Record<string, unknown>): string[] {
   return out;
 }
 
+function extractReadTargets(args: Record<string, unknown>): string[] {
+  const paths = args.paths;
+  if (!Array.isArray(paths)) return [];
+  const out: string[] = [];
+  for (const entry of paths) {
+    if (!entry || typeof entry !== "object") continue;
+    const path = (entry as { path?: unknown }).path;
+    if (typeof path !== "string" || path.trim().length === 0) continue;
+    const start = (entry as { start?: unknown }).start;
+    const end = (entry as { end?: unknown }).end;
+    const startPart = typeof start === "number" ? String(start) : "";
+    const endPart = typeof end === "number" ? String(end) : "";
+    out.push(`${normalizePath(path.trim())}:${startPart}-${endPart}`);
+  }
+  return out;
+}
+
 function isShellReadFallback(command: string): boolean {
   const trimmed = command.trim();
   if (trimmed.length === 0) return false;
@@ -94,14 +111,29 @@ const excessiveFileLoopGuard: ToolGuard = {
 
     let readCount = 0;
     let editCount = 0;
+    const currentReadTargets = toolName === "read-file" ? extractReadTargets(args) : [];
+    let duplicateReadCount = 0;
     for (const entry of session.callLog) {
       if (entry.toolName === "read-file") {
         const hasTarget = extractReadPaths(entry.args).some((path) => path === target);
         if (hasTarget) readCount += 1;
+        if (currentReadTargets.length > 0) {
+          const previousReadTargets = extractReadTargets(entry.args);
+          for (const currentReadTarget of currentReadTargets) {
+            if (previousReadTargets.includes(currentReadTarget)) duplicateReadCount += 1;
+          }
+        }
       } else if (entry.toolName === "edit-file") {
         const path = entry.args.path;
         if (typeof path === "string" && normalizePath(path) === target) editCount += 1;
       }
+    }
+
+    if (toolName === "read-file" && duplicateReadCount >= 1 && editCount === 0) {
+      session.onGuard?.({ guardId: "excessive-file-loop", toolName, action: "blocked", detail: target });
+      throw new Error(
+        `Already read "${target}" this turn. Reuse prior context and batch remaining targets into one read-file call.`,
+      );
     }
 
     const combined = readCount + editCount;
