@@ -1,8 +1,8 @@
 # Roadmap
 
-## Goal
+## Vision
 
-Build a personal AI coding delegate that can take over bounded tasks in my projects, with the long-term goal of autonomous end-to-end execution (plan -> edit -> verify -> iterate).
+A centralized AI coding assistant that handles day-to-day development across projects and machines. One assistant, shared sessions and memory, any model. Extensible with custom tools and skills. Built for autonomous execution — plan, edit, verify, iterate — with the developer in control.
 
 ## Milestones
 
