@@ -84,6 +84,7 @@ export type RunContext = {
   modelCallCount: number;
   regenerationCount: number;
   regenerationLimitHit: boolean;
+  sawEditFileMultiMatchError: boolean;
   lastError?: string;
   result?: GenerateResult;
   nativeIdQueue: Map<string, string[]>;
@@ -125,6 +126,10 @@ function readPathKeys(args: Record<string, unknown>): string[] {
     }
   }
   return out;
+}
+
+function isEditFileMultiMatchError(errorMessage: string): boolean {
+  return /Find text matched \d+ locations?/i.test(errorMessage);
 }
 
 function emitModeStatus(ctx: RunContext): void {
@@ -203,6 +208,28 @@ export const efficiencyEvaluator: Evaluator = {
         `${ctx.agentInput}\n\n` +
         "You already have enough context. Do not run find/search/read again unless absolutely required. " +
         "Proceed directly with file edits, then run verify.",
+    };
+  },
+};
+
+export const multiMatchEditEvaluator: Evaluator = {
+  id: "multi-match-edit-evaluator",
+  evaluate(ctx) {
+    if (!ctx.result) return { type: "done" };
+    if (ctx.classifiedMode !== "work") return { type: "done" };
+    if (!ctx.sawEditFileMultiMatchError) return { type: "done" };
+    if (!ctx.observedTools.has("edit-file")) return { type: "done" };
+    if (ctx.observedTools.has("edit-code")) return { type: "done" };
+
+    ctx.debug("lifecycle.eval.multi_match_edit_regenerate", { error: ctx.lastError ?? "multi_match_seen" });
+    return {
+      type: "regenerate",
+      prompt:
+        `${ctx.agentInput}\n\n` +
+        "Your previous edit-file call matched multiple locations. " +
+        "For this task, your next tool call must be edit-code (not edit-file). " +
+        "Do not run additional find/search/read calls unless edit-code fails. " +
+        "After applying edit-code changes, run verify.",
     };
   },
 };
@@ -469,6 +496,9 @@ function processStreamChunk(ctx: RunContext, chunk: { type?: string; payload?: u
           typeof p.result === "object" && p.result !== null && "error" in (p.result as Record<string, unknown>);
         if (isError) {
           ctx.lastError = String((p.result as { error?: unknown }).error ?? "Tool error");
+          if (toolName === "edit-file" && isEditFileMultiMatchError(ctx.lastError)) {
+            ctx.sawEditFileMultiMatchError = true;
+          }
           ctx.debug("lifecycle.tool.error", { tool: toolName, error: ctx.lastError });
           ctx.debug("lifecycle.tool.result", {
             tool: toolName,
@@ -504,6 +534,9 @@ function processStreamChunk(ctx: RunContext, chunk: { type?: string; payload?: u
               ? String((raw as { message: unknown }).message)
               : "Tool error";
       ctx.lastError = errorMsg;
+      if (canonicalToolId(p?.toolName ?? "") === "edit-file" && isEditFileMultiMatchError(errorMsg)) {
+        ctx.sawEditFileMultiMatchError = true;
+      }
       ctx.debug("lifecycle.tool.error", { error: errorMsg });
       if (p?.toolCallId && p?.toolName) {
         const started = ctx.toolCallStartedAt.get(p.toolCallId);
@@ -630,6 +663,7 @@ export async function runLifecycle(input: LifecycleInput): Promise<ChatResponse>
     modelCallCount: 0,
     regenerationCount: 0,
     regenerationLimitHit: false,
+    sawEditFileMultiMatchError: false,
     nativeIdQueue,
     toolCallStartedAt,
     toolOutputHandler: null,
@@ -656,7 +690,7 @@ export async function runLifecycle(input: LifecycleInput): Promise<ChatResponse>
 
   if (!ctx.result) return phaseFinalize(ctx);
 
-  const evaluators: Evaluator[] = [planDetector, efficiencyEvaluator, autoVerifier];
+  const evaluators: Evaluator[] = [planDetector, multiMatchEditEvaluator, efficiencyEvaluator, autoVerifier];
   const regenByEvaluator = new Map<string, number>();
   for (const evaluator of evaluators) {
     const action = evaluator.evaluate(ctx);

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { autoVerifier, efficiencyEvaluator, planDetector, type RunContext } from "./agent-lifecycle";
+import { autoVerifier, efficiencyEvaluator, multiMatchEditEvaluator, planDetector, type RunContext } from "./agent-lifecycle";
 import { createSessionContext } from "./tool-guards";
 
 function createMockContext(overrides: Partial<RunContext> = {}): RunContext {
@@ -26,6 +26,7 @@ function createMockContext(overrides: Partial<RunContext> = {}): RunContext {
     modelCallCount: 1,
     regenerationCount: 0,
     regenerationLimitHit: false,
+    sawEditFileMultiMatchError: false,
     nativeIdQueue: new Map(),
     toolCallStartedAt: new Map(),
     toolOutputHandler: null,
@@ -200,11 +201,42 @@ describe("efficiencyEvaluator", () => {
   });
 });
 
+describe("multiMatchEditEvaluator", () => {
+  test("returns regenerate when edit-file fails with multi-match error", () => {
+    const ctx = createMockContext({
+      request: { model: "gpt-5-mini", message: "Rename symbol everywhere", history: [] },
+      classifiedMode: "work",
+      observedTools: new Set(["read-file", "edit-file"]),
+      sawEditFileMultiMatchError: true,
+      lastError: "edit-file failed: Find text matched 3 locations (foo…).",
+      result: { text: "Attempted edit.", toolCalls: [] },
+    });
+    const action = multiMatchEditEvaluator.evaluate(ctx);
+    expect(action.type).toBe("regenerate");
+    if (action.type === "regenerate") {
+      expect(action.prompt).toContain("next tool call must be edit-code");
+    }
+  });
+
+  test("returns done when edit-code was already used", () => {
+    const ctx = createMockContext({
+      request: { model: "gpt-5-mini", message: "Rename symbol everywhere", history: [] },
+      classifiedMode: "work",
+      observedTools: new Set(["edit-file", "edit-code"]),
+      sawEditFileMultiMatchError: true,
+      lastError: "edit-file failed: Find text matched 2 locations.",
+      result: { text: "Attempted edit.", toolCalls: [] },
+    });
+    expect(multiMatchEditEvaluator.evaluate(ctx).type).toBe("done");
+  });
+});
+
 describe("evaluator ordering", () => {
-  test("plan detection and efficiency run before auto-verify", () => {
-    const evaluators = [planDetector, efficiencyEvaluator, autoVerifier];
+  test("plan detection and correction evaluators run before auto-verify", () => {
+    const evaluators = [planDetector, multiMatchEditEvaluator, efficiencyEvaluator, autoVerifier];
     expect(evaluators[0].id).toBe("plan-detector");
-    expect(evaluators[1].id).toBe("efficiency-evaluator");
-    expect(evaluators[2].id).toBe("auto-verifier");
+    expect(evaluators[1].id).toBe("multi-match-edit-evaluator");
+    expect(evaluators[2].id).toBe("efficiency-evaluator");
+    expect(evaluators[3].id).toBe("auto-verifier");
   });
 });
