@@ -69,7 +69,7 @@ export const toolMeta: Record<string, ToolMeta> = {
   },
   "edit-file": {
     instruction:
-      "Use `edit-file` for text edits with {find, replace} pairs. Batch multiple edits to the same file into one call. Prefer this over `edit-code` for simple replacements.",
+      "Use `edit-file` for text edits with {find, replace} pairs. `find` is the exact text to locate; `replace` is *only* the new text for that region — do not include surrounding lines that are already in the file. Batch multiple edits to the same file into one call.",
     aliases: ["editFile", "edit_file"],
   },
   "create-file": {

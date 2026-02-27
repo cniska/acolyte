@@ -79,6 +79,19 @@ describe("coding-tools workspace guards", () => {
     );
   });
 
+  test("editFile rejects replace text that duplicates content after edit point", async () => {
+    const filePath = `/tmp/acolyte-tmp-dup-${crypto.randomUUID()}.txt`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, "line1\nline2\nline3\nline4\nline5\nline6", "utf8");
+    // replace includes line3-line5 which already follow the edit point
+    await expect(
+      editFile({
+        path: filePath,
+        edits: [{ find: "line1\nline2", replace: "line1_new\nline2_new\nline3\nline4\nline5" }],
+      }),
+    ).rejects.toThrow("duplicate content");
+  });
+
   test("runShellCommand allows /tmp paths", async () => {
     const filePath = `/tmp/acolyte-tmp-run-${crypto.randomUUID()}.txt`;
     tempFiles.push(filePath);

@@ -817,6 +817,26 @@ export async function editFile(input: {
     }
   }
 
+  // Detect likely duplication: replace text ends with lines that already follow the edit point.
+  const DUPLICATION_MIN_LINES = 3;
+  for (const r of ranges) {
+    const afterRaw = raw.slice(r.end);
+    const afterEdit = afterRaw.startsWith("\n") ? afterRaw.slice(1) : afterRaw;
+    const replaceLines = r.replace.split("\n");
+    const afterLines = afterEdit.split("\n");
+    if (replaceLines.length >= DUPLICATION_MIN_LINES && afterLines.length >= DUPLICATION_MIN_LINES) {
+      const tail = replaceLines.slice(-DUPLICATION_MIN_LINES);
+      const head = afterLines.slice(0, DUPLICATION_MIN_LINES);
+      const allMatch = tail.every((line, i) => line === head[i]);
+      const nonTrivial = tail.some((line) => line.trim().length > 0);
+      if (allMatch && nonTrivial) {
+        throw new Error(
+          "Replace text ends with lines that already follow the edit point — this would duplicate content. Only include the new/changed lines in replace, not the surrounding context.",
+        );
+      }
+    }
+  }
+
   // Apply in reverse order to preserve offsets.
   let next = raw;
   for (let i = ranges.length - 1; i >= 0; i--) {
