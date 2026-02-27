@@ -131,6 +131,7 @@ export function buildUsageCommandRows(): Array<{ command: string; description: s
     { command: "resume [id-prefix]", description: "resume previous session" },
     { command: "run [--file path] <prompt>", description: "run a single prompt" },
     { command: "history", description: "show recent sessions" },
+    { command: "serve", description: "start the API server" },
     { command: "status", description: "show server status" },
     { command: "memory", description: "manage memory notes" },
     { command: "config", description: "manage local CLI config" },
@@ -1164,6 +1165,10 @@ async function historyMode(): Promise<void> {
   listSessions(store);
 }
 
+async function serveMode(): Promise<void> {
+  await import("./server");
+}
+
 async function statusMode(): Promise<void> {
   const client = createClient({
     apiUrl: appConfig.server.apiUrl,
@@ -1536,6 +1541,11 @@ async function main(): Promise<void> {
 
   if (command === "history") {
     await historyMode();
+    return;
+  }
+
+  if (command === "serve") {
+    await serveMode();
     return;
   }
 

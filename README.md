@@ -22,7 +22,7 @@ That starts backend watch mode and chat.
 
 ## Daily Use
 
-- Start app: `bun run start`
+- Start server: `acolyte serve`
 - Chat (backend already running): `acolyte`
 - Resume session: `acolyte resume <session-id-prefix>`
 - Run mode: `acolyte run "review src/agent.ts"`
