@@ -22,11 +22,7 @@ Patterns to follow:
 
 Development:
 - Validate: `bun run verify` (format + lint + typecheck + test)
-- Start server: `bun run src/server.ts > /tmp/acolyte-server.log 2>&1 &`
-- Restart after code changes: `kill $(lsof -t -i :6767); bun run src/server.ts > /tmp/acolyte-server.log 2>&1 &`
-- Run a prompt: `bun run src/cli.ts run '<prompt>' 2>&1`
-- Dogfood: run prompts against the playground project, check tool count, verify passes, no shell fallbacks
-- Dump current instructions: `bun -e 'import { createModeInstructions } from "./src/agent.ts"; for (const m of ["plan","work","verify"]) { console.log(`\n=== ${m.toUpperCase()} ===`); console.log(createModeInstructions(m)); }'`
+- Dogfood: see `skills/dogfood/SKILL.md` for server setup, prompt testing, and iteration workflow
 
 ## Tooling
 
@@ -54,20 +50,11 @@ Development:
 
 ## Code
 
-- Choose pragmatic solutions with low maintenance overhead.
-- Build first, tune second: prioritize delivering a working end-to-end capability before spending time on polish.
-- Polish user-facing behavior first in MVP; defer internal polish/refactors unless they unblock delivery, reliability, or safety.
-- Apply extra scrutiny to chat-feature changes (input loop, rendering, commands, pickers): require clear UX intent, regression tests for key paths, and a quick smoke run before commit.
-- Add long-lived features by default; avoid short-lived/temporary feature surface unless required to unblock immediate progress.
-- Follow YAGNI strictly: do not add new commands/features/options unless they are needed for active workflows right now.
-- Apply Rule of Three for abstractions: wait for repeated concrete use (roughly three real cases) before introducing shared abstractions.
-- Avoid unnecessary indirection and abstractions.
-- Prefer explicit `if`/`switch` branching over nested ternaries for readability in production code.
-- Prefer prompt/tool-contract improvements over adding host-side task-classification logic.
-- Keep host-side autonomy logic minimal; enforce deterministic invariants (file/tool outcomes) instead of brittle output phrasing.
-- Prefer root-cause fixes over workaround-only patches.
-- Do not add technical debt unless explicitly agreed with the user and tracked with `TODO(username):` plus a docs note.
-- Remove temporary debug code before review/commit.
+- Pragmatic solutions, low maintenance overhead. Build first, tune second.
+- YAGNI: no speculative features, commands, or abstractions. Rule of Three before abstracting.
+- Prefer root-cause fixes over workarounds. No tech debt without explicit agreement and `TODO(username):`.
+- Prefer prompt/tool-contract improvements over host-side task-classification logic.
+- Extra scrutiny on chat-feature changes: clear UX intent, regression tests, smoke run.
 
 ## Validation
 
@@ -90,11 +77,5 @@ Development:
 
 ## Communication
 
-- Ask when requirements are unclear.
-- Capture decisions, tradeoffs, and open questions.
-- Be explicit about assumptions, risks, and next steps.
-- Prioritize user-focused output: show what helps the user make decisions, not internal implementation noise.
-- Prefer concise, readable UX and response formats that surface outcomes, changed files, and actionable next steps.
-- Treat picker options as direct actions. Use action-oriented labels and descriptions that clearly state what will happen when selected.
-- Do not generate prompts that require the user to resubmit a prefilled action; execute the selected action directly in the same flow.
-- When an automatic action is taken (mode switch, memory save, etc.), always emit a concise assistant confirmation of what changed.
+- Ask when requirements are unclear. Be explicit about assumptions and next steps.
+- Prioritize user-focused output: outcomes, changed files, actionable next steps.

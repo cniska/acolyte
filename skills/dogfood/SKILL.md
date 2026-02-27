@@ -77,6 +77,11 @@ bun -e 'import { createModeInstructions } from "./src/agent.ts"; for (const m of
 | `src/agent.ts` | `BASE_INSTRUCTIONS`, `createModeInstructions()`, `createInstructions()` |
 | `src/app-config.ts` | Output budgets per tool |
 
+## Validation scripts
+
+- `bun run dogfood:progress` — commit-based delivery progress (lookback window, JSON output)
+- `bun run dogfood:smoke` — automated smoke checks (CLI commands, coding tasks, read-mode block)
+- `bun run dogfood:gate` — readiness gate (verify + smoke + progress + stability window)
 ## Cleanup
 
 ```
