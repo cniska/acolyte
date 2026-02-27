@@ -3,12 +3,10 @@ import {
   canonicalToolId,
   createAgentInput,
   createInstructions,
-  createModeInstructions,
   createSubagentContext,
   estimateTokens,
   finalizeAssistantOutput,
   finalizeReviewOutput,
-  isPlanLikeOutput,
   resolveRunnableModel,
 } from "./agent";
 import { createAcolyte } from "./agent-factory";
@@ -22,40 +20,35 @@ import {
   type ErrorCategory,
   errorCodeFromCategory,
   isEditFileMultiMatchSignal,
-  isFileNotFoundSignal,
   parseErrorInfo,
   type RecoveryAction,
   recoveryActionForError as resolveRecoveryAction,
 } from "./error-handling";
+import {
+  INITIAL_MAX_STEPS,
+  MAX_REGENERATIONS_PER_EVALUATOR,
+  MAX_REGENERATIONS_PER_REQUEST,
+  MAX_UNKNOWN_ERRORS_PER_REQUEST,
+  STEP_TIMEOUT_MS,
+  TIMEOUT_RECOVERY_MAX_STEPS,
+  TIMEOUT_RECOVERY_TIMEOUT_MS,
+} from "./lifecycle-constants";
+import {
+  autoVerifier,
+  type EvalAction,
+  type Evaluator,
+  efficiencyEvaluator,
+  multiMatchEditEvaluator,
+  planDetector,
+} from "./lifecycle-evaluators";
 import type { LifecycleDebugEvent, LifecycleEventName } from "./lifecycle-events";
 import { type AcolyteToolset, toolsForAgent } from "./mastra-tools";
 import { type ErrorCode, extractToolErrorCode, LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
+import { DISCOVERY_TOOL_SET, READ_TOOL_SET, SEARCH_TOOL_SET, WRITE_TOOL_SET } from "./tool-groups";
 import type { SessionContext } from "./tool-guards";
-import type { ToolName } from "./tool-names";
 
-const INITIAL_MAX_STEPS = 50;
-const TIMEOUT_RECOVERY_MAX_STEPS = 8;
-const TIMEOUT_RECOVERY_TIMEOUT_MS = 45_000;
-const STEP_TIMEOUT_MS = 120_000;
-const VERIFY_MAX_STEPS = 30;
-const MAX_UNKNOWN_ERRORS_PER_REQUEST = 2;
-const MAX_REGENERATIONS_PER_REQUEST = 3;
-const MAX_REGENERATIONS_PER_EVALUATOR = 1;
-const WRITE_TOOLS: readonly ToolName[] = ["edit-code", "edit-file", "create-file"];
-const READ_TOOLS: readonly ToolName[] = ["read-file"];
-const SEARCH_TOOLS: readonly ToolName[] = ["find-files", "search-files", "scan-code", "git-status", "git-diff"];
-const DISCOVERY_TOOLS: readonly ToolName[] = [
-  "find-files",
-  "search-files",
-  "read-file",
-  "scan-code",
-  "git-status",
-  "git-diff",
-];
-const WRITE_TOOL_SET = new Set<ToolName>(WRITE_TOOLS);
-const READ_TOOL_SET = new Set<ToolName>(READ_TOOLS);
-const SEARCH_TOOL_SET = new Set<ToolName>(SEARCH_TOOLS);
-const DISCOVERY_TOOL_SET = new Set<ToolName>(DISCOVERY_TOOLS);
+export { autoVerifier, efficiencyEvaluator, multiMatchEditEvaluator, planDetector };
+export type { EvalAction, Evaluator };
 
 export type GenerateResult = {
   text: string;
@@ -101,22 +94,6 @@ type SavedRegenerationState = {
   lastError: string | undefined;
   lastErrorCode: string | undefined;
   lastErrorCategory: ErrorCategory | undefined;
-};
-
-export type EvalAction =
-  | { type: "done" }
-  | {
-      type: "regenerate";
-      prompt: string;
-      mode?: AgentMode;
-      maxSteps?: number;
-      timeoutMs?: number;
-      keepResult?: boolean;
-    };
-
-export type Evaluator = {
-  id: string;
-  evaluate: (ctx: RunContext) => EvalAction;
 };
 
 export type LifecycleInput = {
@@ -177,22 +154,6 @@ function isReviewRequest(text: string): boolean {
   return /\breview\b/i.test(text);
 }
 
-function hasStrongWriteIntent(text: string): boolean {
-  return /\b(edit|fix|implement|add|create|update|refactor|rename|change|delete|remove|migrate|convert)\b/i.test(text);
-}
-
-function readPathKeys(args: Record<string, unknown>): string[] {
-  const paths = args.paths;
-  if (!Array.isArray(paths)) return [];
-  const out: string[] = [];
-  for (const entry of paths) {
-    if (!entry || typeof entry !== "object") continue;
-    const path = (entry as { path?: unknown }).path;
-    if (typeof path === "string" && path.trim().length > 0) out.push(path.trim());
-  }
-  return out;
-}
-
 export function recoveryActionForError(input: { errorCode?: string; unknownErrorCount: number }): RecoveryAction {
   return resolveRecoveryAction(input, MAX_UNKNOWN_ERRORS_PER_REQUEST);
 }
@@ -219,16 +180,6 @@ function captureError(
   });
 }
 
-function findLastEditFilePath(ctx: RunContext): string | undefined {
-  for (let i = ctx.session.callLog.length - 1; i >= 0; i -= 1) {
-    const entry = ctx.session.callLog[i];
-    if (entry?.toolName !== "edit-file") continue;
-    const path = entry.args?.path;
-    if (typeof path === "string" && path.trim().length > 0) return path.trim();
-  }
-  return undefined;
-}
-
 function guardStatsFromSession(session: SessionContext): { blocked: number; flagSet: number } {
   const value = session.flags.guardStats;
   if (!value || typeof value !== "object") return { blocked: 0, flagSet: 0 };
@@ -241,114 +192,6 @@ function guardStatsFromSession(session: SessionContext): { blocked: number; flag
 function emitModeStatus(ctx: RunContext): void {
   ctx.emit({ type: "status", message: `${agentModes[ctx.mode].statusText} (${ctx.model})` });
 }
-
-// --- Evaluators ---
-
-export const planDetector: Evaluator = {
-  id: "plan-detector",
-  evaluate(ctx) {
-    if (!ctx.result) return { type: "done" };
-    if (isPlanLikeOutput(ctx.result.text.trim()) && ctx.observedTools.size === 0) {
-      ctx.debug("lifecycle.eval.plan_detected", { text_chars: ctx.result.text.trim().length });
-      return {
-        type: "regenerate",
-        prompt: `${ctx.agentInput}\n\nExecute the task directly using tools. Do not describe a plan or ask for confirmation.`,
-      };
-    }
-    return { type: "done" };
-  },
-};
-
-export const autoVerifier: Evaluator = {
-  id: "auto-verifier",
-  evaluate(ctx) {
-    if (!ctx.result) return { type: "done" };
-    const usedWriteTools = WRITE_TOOLS.some((tool) => ctx.observedTools.has(tool));
-    if (ctx.classifiedMode === "work" && usedWriteTools && !ctx.session.flags.verifyRan) {
-      return {
-        type: "regenerate",
-        prompt: createModeInstructions("verify", ctx.workspace),
-        mode: "verify",
-        maxSteps: VERIFY_MAX_STEPS,
-        keepResult: true,
-      };
-    }
-    return { type: "done" };
-  },
-};
-
-export const efficiencyEvaluator: Evaluator = {
-  id: "efficiency-evaluator",
-  evaluate(ctx) {
-    if (!ctx.result) return { type: "done" };
-    if (ctx.classifiedMode !== "work") return { type: "done" };
-    if (!hasStrongWriteIntent(ctx.request.message)) return { type: "done" };
-
-    const callLog = ctx.session.callLog;
-    const firstWriteIndex = callLog.findIndex((entry) => WRITE_TOOL_SET.has(entry.toolName));
-    if (firstWriteIndex >= 0) return { type: "done" };
-    const fileNotFoundOutcome =
-      (ctx.lastError ? isFileNotFoundSignal(ctx.lastError) : false) || isFileNotFoundSignal(ctx.result.text);
-    if (fileNotFoundOutcome) return { type: "done" };
-
-    const discoveryCalls = callLog.filter((entry) => DISCOVERY_TOOL_SET.has(entry.toolName)).length;
-    let repeatedReadCalls = 0;
-    const readPathSeen = new Set<string>();
-    for (const entry of callLog) {
-      if (entry.toolName !== "read-file") continue;
-      const keys = readPathKeys(entry.args);
-      const key = keys.join("|");
-      if (!key) continue;
-      if (readPathSeen.has(key)) {
-        repeatedReadCalls += 1;
-      } else {
-        readPathSeen.add(key);
-      }
-    }
-    if (discoveryCalls < 3 && repeatedReadCalls < 2) return { type: "done" };
-
-    ctx.debug("lifecycle.eval.efficiency_regenerate", {
-      discovery_calls: discoveryCalls,
-      repeated_read_calls: repeatedReadCalls,
-    });
-    return {
-      type: "regenerate",
-      prompt:
-        `${ctx.agentInput}\n\n` +
-        "You already have enough context. Do not run find/search/read again unless absolutely required. " +
-        "Proceed directly with file edits, then run verify.",
-    };
-  },
-};
-
-export const multiMatchEditEvaluator: Evaluator = {
-  id: "multi-match-edit-evaluator",
-  evaluate(ctx) {
-    if (!ctx.result) return { type: "done" };
-    if (ctx.classifiedMode !== "work") return { type: "done" };
-    if (!ctx.sawEditFileMultiMatchError) return { type: "done" };
-    if (!ctx.observedTools.has("edit-file")) return { type: "done" };
-    if (ctx.observedTools.has("edit-code")) return { type: "done" };
-
-    const targetPath = findLastEditFilePath(ctx);
-    ctx.debug("lifecycle.eval.multi_match_edit_regenerate", {
-      error: ctx.lastError ?? "multi_match_seen",
-      target_path: targetPath ?? null,
-    });
-    return {
-      type: "regenerate",
-      prompt:
-        `${ctx.agentInput}\n\n` +
-        "Your previous edit-file call matched multiple locations. " +
-        "For this task, your next tool call must be edit-code (not edit-file). " +
-        (targetPath
-          ? `Use path '${targetPath}' for edit-code and do not use '.' or directory paths. `
-          : "Use a concrete file path for edit-code and do not use '.' or directory paths. ") +
-        "Do not run additional find/search/read calls unless edit-code fails. " +
-        "After applying edit-code changes, run verify.",
-    };
-  },
-};
 
 // --- Phase: Classify ---
 

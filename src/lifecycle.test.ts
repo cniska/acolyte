@@ -6,7 +6,7 @@ import {
   planDetector,
   type RunContext,
   recoveryActionForError,
-} from "./agent-lifecycle";
+} from "./lifecycle";
 import { LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./tool-error-codes";
 import { createSessionContext } from "./tool-guards";
 

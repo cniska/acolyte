@@ -1,8 +1,8 @@
-import { runLifecycle } from "./agent-lifecycle";
 import { type AgentMode, agentModes } from "./agent-modes";
 import type { ChatRequest, ChatResponse } from "./api";
 import { appConfig } from "./app-config";
 import type { StreamEvent } from "./client";
+import { runLifecycle } from "./lifecycle";
 import type { LifecycleDebugEvent } from "./lifecycle-events";
 import { toolMeta } from "./mastra-tools";
 import { isProviderAvailable, type ModelProviderName, providerFromModel } from "./provider-config";
