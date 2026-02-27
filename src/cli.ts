@@ -130,7 +130,7 @@ function usage(): void {
 export function buildUsageCommandRows(): Array<{ command: string; description: string }> {
   return [
     { command: "resume [id-prefix]", description: "resume previous session" },
-    { command: "run [--file path] <prompt>", description: "run a single prompt" },
+    { command: "run <prompt>", description: "run a single prompt" },
     { command: "history", description: "show recent sessions" },
     { command: "serve", description: "start the API server" },
     { command: "status", description: "show server status" },
@@ -764,7 +764,7 @@ async function handlePrompt(
   prompt: string,
   session: Session,
   client = createClient(),
-  options?: { resourceId?: string },
+  options?: { resourceId?: string; workspace?: string },
 ): Promise<boolean> {
   const userMsg = newMessage("user", prompt);
   session.messages.push(userMsg);
@@ -862,7 +862,7 @@ async function handlePrompt(
         model: session.model,
         sessionId: session.id,
         resourceId: options?.resourceId,
-        ...createWorkspaceSpecifier(),
+        ...createWorkspaceSpecifier(options?.workspace),
       },
       {
         onEvent: (event) => {
@@ -900,10 +900,11 @@ async function attachFileToSession(session: Session, filePath: string): Promise<
   session.updatedAt = nowIso();
 }
 
-function parseRunArgs(args: string[]): { files: string[]; prompt: string; verify: boolean } {
+function parseRunArgs(args: string[]): { files: string[]; prompt: string; verify: boolean; workspace?: string } {
   const files: string[] = [];
   const promptTokens: string[] = [];
   let verify = false;
+  let workspace: string | undefined;
 
   for (let i = 0; i < args.length; i += 1) {
     if (args[i] === "--file") {
@@ -915,6 +916,15 @@ function parseRunArgs(args: string[]): { files: string[]; prompt: string; verify
       i += 1;
       continue;
     }
+    if (args[i] === "--workspace") {
+      const next = args[i + 1];
+      if (!next) {
+        throw new Error("Usage: acolyte run --workspace <path> <prompt>");
+      }
+      workspace = next;
+      i += 1;
+      continue;
+    }
     if (args[i] === "--verify") {
       verify = true;
       continue;
@@ -923,7 +933,7 @@ function parseRunArgs(args: string[]): { files: string[]; prompt: string; verify
     promptTokens.push(args[i]);
   }
 
-  return runArgsSchema.parse({ files, prompt: promptTokens.join(" ").trim(), verify });
+  return { ...runArgsSchema.parse({ files, prompt: promptTokens.join(" ").trim(), verify }), workspace };
 }
 
 export function parseDogfoodArgs(args: string[]): { files: string[]; prompt: string; verify: boolean } {
@@ -1075,7 +1085,7 @@ async function chatModeWithOptions(options: { resumeLatest: boolean; resumePrefi
 }
 
 async function runMode(args: string[]): Promise<void> {
-  let parsed: { files: string[]; prompt: string; verify: boolean };
+  let parsed: { files: string[]; prompt: string; verify: boolean; workspace?: string };
   try {
     parsed = parseRunArgs(args);
   } catch (error) {
@@ -1087,7 +1097,7 @@ async function runMode(args: string[]): Promise<void> {
 
   const prompt = parsed.prompt;
   if (!prompt) {
-    printError("Usage: acolyte run [--file path] [--verify] <prompt>");
+    printError("Usage: acolyte run [--file path] [--workspace path] [--verify] <prompt>");
     process.exitCode = 1;
     return;
   }
@@ -1113,7 +1123,10 @@ async function runMode(args: string[]): Promise<void> {
     }
   }
 
-  const success = await handlePrompt(prompt, session, client, { resourceId: runResourceId(session.id) });
+  const success = await handlePrompt(prompt, session, client, {
+    resourceId: runResourceId(session.id),
+    workspace: parsed.workspace,
+  });
   if (!success) {
     process.exitCode = 1;
     return;
