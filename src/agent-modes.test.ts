@@ -2,14 +2,14 @@ import { describe, expect, test } from "bun:test";
 import { agentModes, classifyMode, modeForTool } from "./agent-modes";
 
 describe("modeForTool", () => {
-  test("maps read-only tools to explore", () => {
-    expect(modeForTool("read-file")).toBe("explore");
-    expect(modeForTool("find-files")).toBe("explore");
-    expect(modeForTool("search-files")).toBe("explore");
-    expect(modeForTool("git-status")).toBe("explore");
-    expect(modeForTool("git-diff")).toBe("explore");
-    expect(modeForTool("web-search")).toBe("explore");
-    expect(modeForTool("web-fetch")).toBe("explore");
+  test("maps read-only tools to plan", () => {
+    expect(modeForTool("read-file")).toBe("plan");
+    expect(modeForTool("find-files")).toBe("plan");
+    expect(modeForTool("search-files")).toBe("plan");
+    expect(modeForTool("git-status")).toBe("plan");
+    expect(modeForTool("git-diff")).toBe("plan");
+    expect(modeForTool("web-search")).toBe("plan");
+    expect(modeForTool("web-fetch")).toBe("plan");
   });
 
   test("maps write tools to code", () => {
@@ -38,9 +38,8 @@ describe("agentModes", () => {
     }
   });
 
-  test("every active mode has preamble", () => {
-    for (const [mode, def] of Object.entries(agentModes)) {
-      if (mode === "think") continue;
+  test("every mode has preamble", () => {
+    for (const def of Object.values(agentModes)) {
       expect(def.preamble.length).toBeGreaterThan(0);
     }
   });
@@ -57,13 +56,13 @@ describe("classifyMode", () => {
     expect(classifyMode("run verify")).toBe("code");
   });
 
-  test("classifies find/search/read as explore", () => {
-    expect(classifyMode("find all test files in src")).toBe("explore");
-    expect(classifyMode("search for usages of createClient")).toBe("explore");
-    expect(classifyMode("what does modeForTool do?")).toBe("explore");
-    expect(classifyMode("show me the agent.ts file")).toBe("explore");
-    expect(classifyMode("how does the streaming work?")).toBe("explore");
-    expect(classifyMode("list all exports from client.ts")).toBe("explore");
+  test("classifies find/search/read as plan", () => {
+    expect(classifyMode("find all test files in src")).toBe("plan");
+    expect(classifyMode("search for usages of createClient")).toBe("plan");
+    expect(classifyMode("what does modeForTool do?")).toBe("plan");
+    expect(classifyMode("show me the agent.ts file")).toBe("plan");
+    expect(classifyMode("how does the streaming work?")).toBe("plan");
+    expect(classifyMode("list all exports from client.ts")).toBe("plan");
   });
 
   test("prefers code when both signals present", () => {
@@ -71,9 +70,9 @@ describe("classifyMode", () => {
     expect(classifyMode("read the file then edit it")).toBe("code");
   });
 
-  test("falls back to think for ambiguous messages", () => {
-    expect(classifyMode("hi")).toBe("think");
-    expect(classifyMode("thanks")).toBe("think");
+  test("falls back to plan for ambiguous messages", () => {
+    expect(classifyMode("hi")).toBe("plan");
+    expect(classifyMode("thanks")).toBe("plan");
   });
 
   test("never classifies user messages as verify", () => {

@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
+import { agentModes } from "./agent-modes";
 
 export type ConfigPermissionMode = "read" | "write";
 export type ConfigLogFormat = "logfmt" | "json";
@@ -91,7 +92,7 @@ type ConfigOptions = {
 const CONFIG_SET_SCHEMAS: Record<keyof AcolyteConfig, z.ZodTypeAny> = {
   port: parseIntegerSchema(1, 65535),
   model: nonEmptyStringSchema,
-  models: z.record(z.string(), nonEmptyStringSchema),
+  models: z.record(z.enum(Object.keys(agentModes) as [string, ...string[]]), nonEmptyStringSchema),
   omModel: nonEmptyStringSchema,
   apiUrl: nonEmptyStringSchema,
   openaiBaseUrl: nonEmptyStringSchema,
@@ -122,6 +123,7 @@ function toConfig(input: Record<string, unknown>): AcolyteConfig {
       typeof input.models === "object" && input.models !== null
         ? Object.fromEntries(
             Object.entries(input.models as Record<string, unknown>).flatMap(([k, v]) => {
+              if (!(k in agentModes)) return [];
               const result = nonEmptyStringSchema.safeParse(v);
               return result.success ? [[k, result.data]] : [];
             }),

@@ -5,7 +5,7 @@ import { appConfig, setPermissionMode } from "./app-config";
 import { errorToLogFields, log } from "./log";
 import { mastraStorage, mastraStorageMode } from "./mastra-storage";
 import { getObservationalMemoryConfig } from "./memory-config";
-import { isProviderAvailable, presentModel, providerFromModel, resolveProvider } from "./provider-config";
+import { isProviderAvailable, formatModel, providerFromModel, resolveProvider } from "./provider-config";
 import { createId } from "./short-id";
 import { createSoulPrompt, getMemoryContextEntries } from "./soul";
 
@@ -133,7 +133,7 @@ const server = Bun.serve({
       return json({
         ok: true,
         provider,
-        model: presentModel(model),
+        model: formatModel(model),
         permissions: appConfig.agent.permissions.mode,
         service: `http://localhost:${PORT}`,
         memory: memoryContextCount > 0 ? `${mastraStorageMode} (${memoryContextCount} entries)` : mastraStorageMode,

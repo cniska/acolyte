@@ -158,9 +158,7 @@ export function createSubagentContext(req: ChatRequest): string {
 const BASE_INSTRUCTIONS = [
   "- Prefer dedicated tools over shell equivalents.",
   "- Default to tool execution over chat-only replies.",
-  "- Before the first tool call, briefly explain what you're about to do.",
   "- Keep working until done or blocked. If blocked, ask one short question.",
-  "- Keep output concise and outcome-focused. End with a brief summary.",
 ].join("\n");
 
 export function createModeInstructions(mode: AgentMode): string {
@@ -430,7 +428,7 @@ export async function runAgent(input: {
   let modelCallCount = 0;
   const observedToolNames = new Set<string>();
   let lastToolFailureReason: string | undefined;
-  let currentMode: AgentMode = "think";
+  let currentMode: AgentMode = "plan";
 
   // Map Mastra native toolCallIds to correlate with onToolOutput from mastra-tools.
   // fullStream emits tool-call with native IDs; onToolOutput uses synthetic IDs.
@@ -828,7 +826,6 @@ export async function runAgent(input: {
   const VERIFY_MAX_STEPS = 30;
   const WRITE_TOOLS = ["edit-code", "edit-file", "create-file"];
   const usedWriteTools = WRITE_TOOLS.some((t) => observedToolNames.has(t));
-
   if (classifiedMode === "code" && usedWriteTools) {
     currentMode = "verify";
     emitModeStatus();
@@ -836,7 +833,7 @@ export async function runAgent(input: {
     try {
       modelCallCount += 1;
       const verifyPrompt = createModeInstructions("verify");
-      result = await streamWithTimeout(
+      const verifyResult = await streamWithTimeout(
         verifyPrompt,
         {
           maxSteps: VERIFY_MAX_STEPS,
@@ -848,9 +845,15 @@ export async function runAgent(input: {
       emitDebug("agent.generate.done", {
         model,
         reason: "verify",
-        tool_calls: result.toolCalls.length,
-        text_chars: result.text.trim().length,
+        tool_calls: verifyResult.toolCalls.length,
+        text_chars: verifyResult.text.trim().length,
       });
+      // Only use verify output if it has something to say (i.e. failures).
+      // Otherwise keep the code mode summary.
+      const verifyText = verifyResult.text.trim();
+      if (verifyText.length > 0) {
+        result = verifyResult;
+      }
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       emitDebug("agent.verify.failed", { error: reason });

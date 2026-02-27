@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   isProviderAvailable,
   normalizeModel,
-  presentModel,
+  formatModel,
   providerFromModel,
   resolveProvider,
 } from "./provider-config";
@@ -15,13 +15,12 @@ describe("provider config", () => {
     expect(normalizeModel("openai/gpt-5-mini")).toBe("openai/gpt-5-mini");
   });
 
-  test("presentModel normalizes unqualified ids and preserves qualified ids", () => {
-    expect(presentModel("gpt-5-mini")).toBe("openai/gpt-5-mini");
-    expect(presentModel("claude-sonnet-4")).toBe("anthropic/claude-sonnet-4");
-    expect(presentModel("gemini-2.5-pro")).toBe("gemini/gemini-2.5-pro");
-    expect(presentModel("openai-compatible/qwen2.5-coder")).toBe("openai-compatible/qwen2.5-coder");
-    expect(presentModel("anthropic/claude-sonnet-4")).toBe("anthropic/claude-sonnet-4");
-    expect(presentModel("gemini/gemini-2.5-pro")).toBe("gemini/gemini-2.5-pro");
+  test("formatModel strips vendor prefix for display", () => {
+    expect(formatModel("openai/gpt-5-mini")).toBe("gpt-5-mini");
+    expect(formatModel("anthropic/claude-sonnet-4")).toBe("claude-sonnet-4");
+    expect(formatModel("gemini/gemini-2.5-pro")).toBe("gemini-2.5-pro");
+    expect(formatModel("openai-compatible/qwen2.5-coder")).toBe("qwen2.5-coder");
+    expect(formatModel("gpt-5-mini")).toBe("gpt-5-mini");
   });
 
   test("resolveProvider detects openai vs openai-compatible vs mock", () => {

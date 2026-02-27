@@ -268,7 +268,7 @@ describe("createModeInstructions", () => {
   });
 
   test("explore mode includes tool instructions from toolMeta", () => {
-    const out = createModeInstructions("explore");
+    const out = createModeInstructions("plan");
     expect(out).toContain("find-files");
     expect(out).toContain("search-files");
     expect(out).toContain("read-file");
@@ -282,7 +282,7 @@ describe("createModeInstructions", () => {
 
   test("includes preamble lines", () => {
     const code = createModeInstructions("code");
-    const explore = createModeInstructions("explore");
+    const explore = createModeInstructions("plan");
     expect(code).toContain("Read the target file before editing");
     expect(explore).toContain("Batch multiple reads");
   });
@@ -302,12 +302,11 @@ describe("createModeInstructions", () => {
 describe("createInstructions", () => {
   test("includes base instructions for all modes", () => {
     const code = createInstructions("Soul.", "code");
-    const explore = createInstructions("Soul.", "explore");
+    const explore = createInstructions("Soul.", "plan");
     for (const out of [code, explore]) {
       expect(out).toContain("Soul.");
       expect(out).toContain("Prefer dedicated tools over shell equivalents");
       expect(out).toContain("Default to tool execution");
-      expect(out).toContain("End with a brief summary");
     }
   });
 
@@ -326,13 +325,13 @@ describe("createInstructions", () => {
   });
 
   test("explore mode includes explore-specific instructions", () => {
-    const out = createInstructions("Soul.", "explore");
+    const out = createInstructions("Soul.", "plan");
     expect(out).toContain("Use `find-files` to locate files by name");
     expect(out).toContain("Batch multiple reads");
   });
 
   test("explore mode excludes code instructions", () => {
-    const out = createInstructions("Soul.", "explore");
+    const out = createInstructions("Soul.", "plan");
     expect(out).not.toContain("edit-code` for code changes");
     expect(out).not.toContain("Read the target file before editing");
   });

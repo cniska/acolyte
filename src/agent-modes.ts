@@ -1,4 +1,4 @@
-export type AgentMode = "think" | "explore" | "code" | "verify";
+export type AgentMode = "plan" | "code" | "verify";
 
 export type AgentModeDefinition = {
   tools: string[];
@@ -7,25 +7,25 @@ export type AgentModeDefinition = {
 };
 
 export const agentModes: Record<AgentMode, AgentModeDefinition> = {
-  think: {
-    tools: [],
-    preamble: [],
-    progressText: "Thinking…",
-  },
-  explore: {
+  plan: {
     tools: ["find-files", "search-files", "read-file", "git-status", "git-diff", "web-search", "web-fetch"],
-    preamble: ["Batch multiple reads into one `read-file` call when possible."],
-    progressText: "Exploring…",
+    preamble: [
+      "Before the first tool call, briefly explain what you're about to do.",
+      "Batch multiple reads into one `read-file` call when possible.",
+      "End with a brief summary.",
+    ],
+    progressText: "Thinking…",
   },
   code: {
     tools: ["edit-code", "edit-file", "create-file", "delete-file", "run-command"],
     preamble: [
+      "Before the first tool call, briefly explain what you're about to do.",
       "Read the target file before editing.",
       "Batch multiple edits to the same file into one `edit-file` or `edit-code` call.",
       "After a successful edit, do not re-read the same file unless explicitly asked.",
       "Never claim a file was edited unless confirmed by tool results.",
       "When a target file does not exist, say so instead of silently creating it.",
-      "End with a one-line summary of what changed. No lists, no suggestions, no next steps.",
+      "After the last tool call, reply with one sentence summarizing the change. Nothing else.",
     ],
     progressText: "Coding…",
   },
@@ -35,8 +35,7 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
       "Run the project's verify command (e.g. `bun run verify`).",
       "If verification fails, read the errors, fix the issues, and re-run.",
       "Keep fixing until verification passes or you are stuck.",
-      "Do not narrate what you are about to do — just run the command.",
-      "Only produce output if verification fails and you cannot fix it.",
+      "Run silently — only respond if verification fails and you cannot fix it.",
     ],
     progressText: "Verifying…",
   },
@@ -50,8 +49,8 @@ export function classifyMode(message: string): AgentMode {
   const hasCode = CODE_WORDS.test(message);
   const hasExplore = EXPLORE_WORDS.test(message);
   if (hasCode) return "code";
-  if (hasExplore) return "explore";
-  return "think";
+  if (hasExplore) return "plan";
+  return "plan";
 }
 
 export function modeForTool(toolName: string): AgentMode {

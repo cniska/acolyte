@@ -237,13 +237,13 @@ describe("config store", () => {
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(
       join(dataDir, "config.toml"),
-      'model = "anthropic/claude-sonnet-4"\n\n[models]\nexplore = "openai/gpt-5-mini"\n',
+      'model = "anthropic/claude-sonnet-4"\n\n[models]\nplan = "openai/gpt-5-mini"\n',
       "utf8",
     );
 
     const resolved = readResolvedConfigSync({ homeDir: home, cwd: home });
     expect(resolved.model).toBe("anthropic/claude-sonnet-4");
-    expect(resolved.models).toEqual({ explore: "openai/gpt-5-mini" });
+    expect(resolved.models).toEqual({ plan: "openai/gpt-5-mini" });
     expect(resolved.omModel).toBe("anthropic/claude-sonnet-4");
   });
 

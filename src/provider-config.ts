@@ -20,8 +20,9 @@ export function normalizeModel(model: string): string {
   return `${prefix}/${model}`;
 }
 
-export function presentModel(model: string): string {
-  return normalizeModel(model);
+export function formatModel(model: string): string {
+  const slash = model.indexOf("/");
+  return slash >= 0 ? model.slice(slash + 1) : model;
 }
 
 export function resolveProvider(openaiApiKey: string | undefined, openaiBaseUrl: string): ProviderName {

@@ -8,6 +8,7 @@ import { processInputChange, processInputSubmit } from "./chat-input-handlers";
 import { ChatInputPanel } from "./chat-input-panel";
 import { useChatKeybindings } from "./chat-keybindings";
 import { shownCwd } from "./chat-layout";
+import { formatModel } from "./provider-config";
 import type { PickerState } from "./chat-picker";
 import { createPickerHandlers, persistPermissionMode } from "./chat-picker-handlers";
 import { newMessage, nowIso, toRows } from "./chat-session";
@@ -75,7 +76,7 @@ function ChatApp(props: ChatAppProps) {
     { id: "title", text: "Acolyte", suffix: ` v${version}`, dim: false, brand: true },
     {
       id: "session",
-      text: `${currentSession.model} · session ${currentSession.id}`,
+      text: `${formatModel(currentSession.model)} · session ${currentSession.id}`,
       dim: false,
       brand: false,
     },
