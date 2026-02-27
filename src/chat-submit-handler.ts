@@ -309,7 +309,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       });
       input.setRows((current) => [...current, userRow]);
       input.setIsThinking(true);
-      input.setProgressText("Working…");
+      input.setProgressText("Thinking…");
       try {
         const distilled = await distillMemoryNote(
           input.client,
@@ -413,7 +413,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
     }
 
     input.setIsThinking(true);
-    input.setProgressText("Working…");
+    input.setProgressText("Thinking…");
     const abortController = new AbortController();
     input.setInterrupt(() => abortController.abort());
     const thinkingStartedAt = Date.now();

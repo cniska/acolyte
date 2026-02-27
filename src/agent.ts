@@ -403,8 +403,8 @@ export async function runAgent(input: {
     input.onDebug?.(event, fields);
   };
 
-  const initialMode = classifyMode(input.request.message);
-  const requestedModel = initialMode === "code" ? input.request.model : appConfig.exploreModel;
+  const classifiedMode = classifyMode(input.request.message);
+  const requestedModel = appConfig.models[classifiedMode] ?? input.request.model;
   const resolved = resolveRunnableModel(requestedModel);
   if (!resolved.available) {
     throw new Error(
@@ -417,7 +417,7 @@ export async function runAgent(input: {
   let modelCallCount = 0;
   const observedToolNames = new Set<string>();
   let lastToolFailureReason: string | undefined;
-  let currentMode: AgentMode = initialMode;
+  let currentMode: AgentMode = "think";
 
   // Map Mastra native toolCallIds to correlate with onToolOutput from mastra-tools.
   // fullStream emits tool-call with native IDs; onToolOutput uses synthetic IDs.
@@ -427,6 +427,10 @@ export async function runAgent(input: {
   const emitEvent = (event: StreamEvent): void => {
     input.onEvent?.(event);
   };
+  const modeProgressText = (): string => agentModes[currentMode].progressText;
+  const emitModeStatus = (): void => {
+    emitEvent({ type: "status", message: `${modeProgressText()} (${model})` });
+  };
 
   // Callback wired to mastra-tools for real-time tool execution output.
   let toolOutputHandler: ((event: { toolName: string; message: string; toolCallId?: string }) => void) | null = null;
@@ -435,7 +439,7 @@ export async function runAgent(input: {
     id: "acolyte",
     name: "Acolyte",
     model,
-    instructions: createInstructions(input.soulPrompt, initialMode),
+    instructions: createInstructions(input.soulPrompt, classifiedMode),
     tools: toolsForAgent({
       onToolOutput: (event) => {
         toolOutputHandler?.(event);
@@ -530,7 +534,7 @@ export async function runAgent(input: {
                     const previousMode = currentMode;
                     currentMode = inferredMode;
                     emitDebug("agent.mode.changed", { from: previousMode, to: currentMode, trigger: toolName });
-                    emitEvent({ type: "status", message: `${agentModes[currentMode].progressText} (${model})` });
+                    emitModeStatus();
                   }
                   const args = (p.args ?? {}) as Record<string, unknown>;
                   emitDebug("agent.tool.call", {
@@ -655,15 +659,15 @@ export async function runAgent(input: {
       ? { thread: input.request.sessionId, resource: resourceId }
       : undefined;
 
-  emitDebug("agent.mode.classified", { mode: initialMode });
+  emitDebug("agent.mode.classified", { mode: classifiedMode });
   emitDebug("agent.context.built", {
-    mode: initialMode,
+    mode: classifiedMode,
     model_selected: model,
     history_messages: input.request.history.length,
     has_memory: Boolean(memoryOptions),
   });
 
-  emitEvent({ type: "status", message: `${agentModes[initialMode].progressText} (${model})` });
+  emitModeStatus();
   emitDebug("agent.generate.start", {
     model,
     tool_choice: "auto",
@@ -693,7 +697,7 @@ export async function runAgent(input: {
     });
     // Timeout recovery: retry with reduced scope.
     if (/timed out/i.test(lastToolFailureReason)) {
-      emitEvent({ type: "status", message: `${agentModes[currentMode].progressText} (${model})` });
+      emitModeStatus();
       emitDebug("agent.generate.retry", {
         model,
         reason: "timeout_recovery",
@@ -779,7 +783,7 @@ export async function runAgent(input: {
   // Plan detection: if model described a plan without using tools, re-invoke with execution nudge.
   if (isPlanLikeOutput(result.text.trim()) && observedToolNames.size === 0) {
     emitDebug("agent.plan.detected", { text_chars: result.text.trim().length });
-    emitEvent({ type: "status", message: `${agentModes[currentMode].progressText} (${model})` });
+    emitModeStatus();
     try {
       modelCallCount += 1;
       const executionNudge = `${agentInput}\n\nExecute the task directly using tools. Do not describe a plan or ask for confirmation.`;
@@ -819,7 +823,7 @@ export async function runAgent(input: {
   }
 
   emitDebug("agent.run.summary", {
-    mode: initialMode,
+    mode: classifiedMode,
     model,
     model_calls: modelCallCount,
     tool_calls: observedToolNames.size,

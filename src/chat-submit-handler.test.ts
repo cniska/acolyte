@@ -541,7 +541,7 @@ describe("chat submit handler guards", () => {
     const submit = createSubmitHandler({
       client: createClient({
         replyStream: async (_input, options) => {
-          options.onEvent({ type: "status", message: "Working…" });
+          options.onEvent({ type: "status", message: "Thinking…" });
           options.onEvent({
             type: "tool-call",
             toolCallId: "call_1",
@@ -585,10 +585,10 @@ describe("chat submit handler guards", () => {
 
     await submit("hello");
 
-    expect(progressTexts[0]).toBe("Working…");
+    expect(progressTexts[0]).toBe("Thinking…");
     expect(progressTexts.at(-1)).toBeNull();
     expect(rows.some((row) => row.role === "assistant" && row.style === "toolProgress")).toBe(true);
-    expect(rows.some((row) => row.role === "system" && row.content.includes("Working…"))).toBe(false);
+    expect(rows.some((row) => row.role === "system" && row.content.includes("Thinking…"))).toBe(false);
     expect(rows.some((row) => row.role === "assistant" && row.content === "done")).toBe(true);
   });
 

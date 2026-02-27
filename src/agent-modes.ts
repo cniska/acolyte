@@ -1,4 +1,4 @@
-export type AgentMode = "explore" | "code";
+export type AgentMode = "think" | "explore" | "code";
 
 export type AgentModeDefinition = {
   tools: string[];
@@ -7,6 +7,11 @@ export type AgentModeDefinition = {
 };
 
 export const agentModes: Record<AgentMode, AgentModeDefinition> = {
+  think: {
+    tools: [],
+    preamble: [],
+    progressText: "Thinking…",
+  },
   explore: {
     tools: ["find-files", "search-files", "read-file", "git-status", "git-diff", "web-search", "web-fetch"],
     preamble: ["Minimize round trips: one targeted read is preferred over multiple."],
@@ -33,8 +38,9 @@ const EXPLORE_WORDS = /\b(find|search|read|look|show|list|what|where|how|explain
 export function classifyMode(message: string): AgentMode {
   const hasCode = CODE_WORDS.test(message);
   const hasExplore = EXPLORE_WORDS.test(message);
-  if (hasExplore && !hasCode) return "explore";
-  return "code";
+  if (hasCode) return "code";
+  if (hasExplore) return "explore";
+  return "think";
 }
 
 export function modeForTool(toolName: string): AgentMode {

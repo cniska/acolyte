@@ -32,8 +32,9 @@ describe("agentModes", () => {
     }
   });
 
-  test("every mode has preamble", () => {
-    for (const def of Object.values(agentModes)) {
+  test("every active mode has preamble", () => {
+    for (const [mode, def] of Object.entries(agentModes)) {
+      if (mode === "think") continue;
       expect(def.preamble.length).toBeGreaterThan(0);
     }
   });
@@ -64,8 +65,8 @@ describe("classifyMode", () => {
     expect(classifyMode("read the file then edit it")).toBe("code");
   });
 
-  test("falls back to code for ambiguous messages", () => {
-    expect(classifyMode("hi")).toBe("code");
-    expect(classifyMode("thanks")).toBe("code");
+  test("falls back to think for ambiguous messages", () => {
+    expect(classifyMode("hi")).toBe("think");
+    expect(classifyMode("thanks")).toBe("think");
   });
 });

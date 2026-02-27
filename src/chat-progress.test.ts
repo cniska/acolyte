@@ -79,9 +79,9 @@ describe("chat progress tracker", () => {
       onStatus: (message) => statuses.push(message),
     });
 
-    tracker.apply({ type: "status", message: "Working…" });
+    tracker.apply({ type: "status", message: "Thinking…" });
 
-    expect(statuses).toEqual(["Working…"]);
+    expect(statuses).toEqual(["Thinking…"]);
   });
 
   test("routes error to onError", () => {
@@ -122,7 +122,7 @@ describe("chat progress tracker", () => {
     // Should not throw
     tracker.apply({ type: "text-delta", text: "Hello" });
     tracker.apply({ type: "tool-call", toolCallId: "c1", toolName: "read-file", args: {} });
-    tracker.apply({ type: "status", message: "Working…" });
+    tracker.apply({ type: "status", message: "Thinking…" });
     tracker.apply({ type: "error", error: "boom" });
   });
 });

@@ -780,7 +780,6 @@ async function handlePrompt(
 
   try {
     printOutput(`❯ ${displayPromptForOutput(prompt)}`);
-    printDim("  Working…");
     let hasPrintedProgress = false;
     let assistantStreamStarted = false;
     let assistantLineBuffer = "";

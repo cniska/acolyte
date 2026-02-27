@@ -165,13 +165,12 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
   const thinkingText = (() => {
     const timeText = `${elapsedSec}s`;
     if (stageMatch) {
-      const stage = stageMatch[1]?.trim() || "Working…";
+      const stage = stageMatch[1]?.trim() ?? "";
       const model = stageMatch[2]?.trim() || "";
       const details = [timeText, model].filter((part) => part.length > 0).join(" · ");
       return details.length > 0 ? `${stage} (${details})` : stage;
     }
-    const base = trimmedProgressText.length > 0 ? trimmedProgressText : "Working…";
-    return `${base} (${timeText})`;
+    return `${trimmedProgressText} (${timeText})`;
   })();
   const columns = process.stdout.columns ?? 120;
   const contentWidth = Math.max(24, Math.min(MAX_TRANSCRIPT_WIDTH, columns - 2));
