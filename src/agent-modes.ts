@@ -26,11 +26,13 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
     statusText: "Thinking…",
   },
   work: {
-    tools: ["read-file", "edit-code", "edit-file", "create-file", "delete-file", "run-command"],
+    tools: ["read-file", "scan-code", "edit-code", "edit-file", "create-file", "delete-file", "run-command"],
     preamble: [
       "If the target path is explicit, skip `find-files`/`search-files` and read that file directly.",
+      "For 'add/update in file X' tasks, make `read-file` on X your first tool call.",
       "Read the target file once, then edit. Do not re-read the same file after a successful edit.",
       "Before the first write, avoid repeated `read-file` calls on the same path unless the previous edit failed.",
+      "For rename/refactor tasks or repeated pattern updates, prefer `scan-code` + `edit-code` over `edit-file`.",
       "Batch multiple edits to the same file into one `edit-file` or `edit-code` call.",
       "Never delete a file to recreate it — use `edit-file` to modify existing files.",
       "When a target file does not exist, say so instead of silently creating it.",
@@ -42,7 +44,8 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
     tools: ["run-command", "read-file", "search-files", "edit-code", "edit-file", "create-file"],
     preamble: [
       "Run the project's verify command (e.g. `bun run verify`).",
-      "If verification fails, read the errors, fix the issues, and re-run.",
+      "If verification fails, read the errors, fix only files implicated by the errors, and re-run.",
+      "Do not re-read files that were already read unless they changed or the error points to them.",
       "Keep fixing until verification passes or you are stuck.",
       "Do not narrate — only respond if verification fails and you cannot fix it.",
     ],

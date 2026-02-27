@@ -263,6 +263,7 @@ describe("createSubagentContext", () => {
 describe("createModeInstructions", () => {
   test("code mode includes tool instructions from toolMeta", () => {
     const out = createModeInstructions("work");
+    expect(out).toContain("scan-code");
     expect(out).toContain("edit-code");
     expect(out).toContain("edit-file");
     expect(out).toContain("create-file");
@@ -288,13 +289,16 @@ describe("createModeInstructions", () => {
     const code = createModeInstructions("work");
     const explore = createModeInstructions("plan");
     expect(code).toContain("Read the target file once");
+    expect(code).toContain("make `read-file` on X your first tool call");
+    expect(code).toContain("prefer `scan-code` + `edit-code`");
     expect(explore).toContain("Search first");
   });
 
   test("verify mode includes verification instructions", () => {
     const out = createModeInstructions("verify");
     expect(out).toContain("verify command");
-    expect(out).toContain("fix the issues");
+    expect(out).toContain("fix only files implicated");
+    expect(out).toContain("Do not re-read files");
   });
 
   test("code mode does not include verification instructions", () => {

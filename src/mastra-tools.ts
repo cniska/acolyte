@@ -61,17 +61,17 @@ export const toolMeta: Record<string, ToolMeta> = {
   },
   "scan-code": {
     instruction:
-      "Use `scan-code` for AST pattern matching (e.g. `console.log($ARG)`). Metavariable names (`$NAME`, `$ARG`) are wildcards — they match any node, not literal text. For keyword or regex searches prefer `search-files`.",
+      "Use `scan-code` for AST pattern matching (e.g. `console.log($ARG)`). Metavariable names (`$NAME`, `$ARG`) are wildcards — they match any node, not literal text. Use it to map rename/refactor targets before `edit-code`. For keyword or regex searches prefer `search-files`.",
     aliases: ["scanCode", "scan_code"],
   },
   "edit-code": {
     instruction:
-      "Use `edit-code` for multi-location code changes or structural rewrites with AST `edits` array. `path` must be a concrete file path (not `.` or a directory). Prefer `edit-file` for single-location text edits.",
+      "Use `edit-code` for multi-location code changes, rename/refactor updates, or structural rewrites with AST `edits` array. `path` must be a concrete file path (not `.` or a directory). Prefer `edit-file` for single-location text edits.",
     aliases: ["editCode", "edit_code"],
   },
   "edit-file": {
     instruction:
-      "Use `edit-file` for text edits. For small changes use {find, replace} pairs where `find` is exact text to locate. For larger block changes use {startLine, endLine, replace} with 1-based line numbers from `read-file`. `replace` is *only* the new text for that region — do not include surrounding lines. Batch multiple edits to the same file into one call.",
+      "Use `edit-file` for text edits. For small changes use {find, replace} pairs where `find` is exact text to locate. For larger block changes use {startLine, endLine, replace} with 1-based line numbers from `read-file`. `replace` is *only* the new text for that region — do not include surrounding lines. Batch multiple edits to the same file into one call. If `find` is likely to match multiple locations, switch to `edit-code`.",
     aliases: ["editFile", "edit_file"],
   },
   "create-file": {
