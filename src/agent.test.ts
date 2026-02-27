@@ -285,8 +285,8 @@ describe("createModeInstructions", () => {
   test("includes preamble lines", () => {
     const code = createModeInstructions("work");
     const explore = createModeInstructions("plan");
-    expect(code).toContain("Read the target file before editing");
-    expect(explore).toContain("Batch multiple reads");
+    expect(code).toContain("Read the target file once");
+    expect(explore).toContain("Search first");
   });
 
   test("verify mode includes verification instructions", () => {
@@ -308,7 +308,7 @@ describe("createInstructions", () => {
     for (const out of [code, explore]) {
       expect(out).toContain("Soul.");
       expect(out).toContain("Prefer dedicated tools over shell equivalents");
-      expect(out).toContain("Default to tool execution");
+      expect(out).toContain("Act, don't narrate");
     }
   });
 
@@ -316,26 +316,26 @@ describe("createInstructions", () => {
     const out = createInstructions("Soul.", "work");
     expect(out).toContain("edit-code");
     expect(out).toContain("AST");
-    expect(out).toContain("Read the target file before editing");
+    expect(out).toContain("Read the target file once");
     expect(out).toContain("call `create-file` with full content");
   });
 
   test("code mode excludes explore instructions", () => {
     const out = createInstructions("Soul.", "work");
     expect(out).not.toContain("Use `find-files` to locate files by name");
-    expect(out).not.toContain("Batch multiple reads");
+    expect(out).not.toContain("Search first");
   });
 
   test("explore mode includes explore-specific instructions", () => {
     const out = createInstructions("Soul.", "plan");
-    expect(out).toContain("Use `find-files` to locate files by name");
-    expect(out).toContain("Batch multiple reads");
+    expect(out).toContain("find-files");
+    expect(out).toContain("Batch multiple paths");
   });
 
   test("explore mode excludes code instructions", () => {
     const out = createInstructions("Soul.", "plan");
-    expect(out).not.toContain("edit-code` for code changes");
-    expect(out).not.toContain("Read the target file before editing");
+    expect(out).not.toContain("edit-code` for multi-location");
+    expect(out).not.toContain("Read the target file once");
   });
 });
 

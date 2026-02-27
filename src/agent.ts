@@ -156,8 +156,8 @@ export function createSubagentContext(req: ChatRequest): string {
 }
 
 const BASE_INSTRUCTIONS = [
+  "- Act, don't narrate. Use tools directly — do not describe what you will do.",
   "- Prefer dedicated tools over shell equivalents.",
-  "- Default to tool execution over chat-only replies.",
   "- Keep working until done or blocked. If blocked, ask one short question.",
 ].join("\n");
 

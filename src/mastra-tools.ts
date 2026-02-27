@@ -59,16 +59,17 @@ export const toolMeta: Record<string, ToolMeta> = {
   },
   "scan-code": {
     instruction:
-      "Use `scan-code` for structural, AST-level matching (node types, call/argument shapes, refactor targets). Pass an ast-grep `pattern` with `$VAR` metavariables (e.g. `console.log($ARG)`). Note: metavariable names like $NAME are arbitrary — they match any AST node regardless of identifier name. To match a specific identifier, use the literal text in the pattern (for example `function myFunc($ARG)`). For simple keyword or regex searches prefer `search-files`.",
+      "Use `scan-code` for AST pattern matching (e.g. `console.log($ARG)`). Metavariable names (`$NAME`, `$ARG`) are wildcards — they match any node, not literal text. For keyword or regex searches prefer `search-files`.",
     aliases: ["scanCode", "scan_code"],
   },
   "edit-code": {
-    instruction: "Use `edit-code` for code changes with AST `edits` array.",
+    instruction:
+      "Use `edit-code` for multi-location code changes or structural rewrites with AST `edits` array. Prefer `edit-file` for single-location text edits.",
     aliases: ["editCode", "edit_code"],
   },
   "edit-file": {
     instruction:
-      "For prose, config, or non-code changes, use `edit-file` with an `edits` array of {find, replace} pairs. Batch multiple edits into one call.",
+      "Use `edit-file` for text edits with {find, replace} pairs. Batch multiple edits to the same file into one call. Prefer this over `edit-code` for simple replacements.",
     aliases: ["editFile", "edit_file"],
   },
   "create-file": {
