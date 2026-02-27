@@ -198,15 +198,17 @@ class HttpClient implements Client {
       signal?: AbortSignal;
     },
   ): Promise<ChatResponse> {
+    const timeoutMs = this.replyTimeoutMs;
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
     let onAbort: (() => void) | undefined;
     let timedOut = false;
     let signal = options.signal;
+    let timeoutController: AbortController | undefined;
 
-    if (typeof this.replyTimeoutMs === "number") {
-      const timeoutController = new AbortController();
+    if (typeof timeoutMs === "number") {
+      timeoutController = new AbortController();
       signal = timeoutController.signal;
-      onAbort = () => timeoutController.abort(options.signal?.reason);
+      onAbort = () => timeoutController?.abort(options.signal?.reason);
       if (options.signal) {
         if (options.signal.aborted) {
           onAbort();
@@ -214,11 +216,35 @@ class HttpClient implements Client {
           options.signal.addEventListener("abort", onAbort, { once: true });
         }
       }
+    }
+
+    let streamReader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+
+    const resetTimeout = (): void => {
+      if (typeof timeoutMs !== "number" || !timeoutController) {
+        return;
+      }
+      if (timeoutId !== undefined) {
+        clearTimeout(timeoutId);
+      }
+      timedOut = false;
       timeoutId = setTimeout(() => {
         timedOut = true;
-        timeoutController.abort();
-      }, this.replyTimeoutMs);
-    }
+        timeoutController?.abort();
+        streamReader?.cancel().catch(() => {});
+      }, timeoutMs);
+    };
+
+    const cleanup = (): void => {
+      if (timeoutId !== undefined) {
+        clearTimeout(timeoutId);
+      }
+      if (options.signal && onAbort) {
+        options.signal.removeEventListener("abort", onAbort);
+      }
+    };
+
+    resetTimeout();
 
     let response: Response;
     try {
@@ -232,29 +258,26 @@ class HttpClient implements Client {
         body: JSON.stringify(input),
       });
     } catch (error) {
+      cleanup();
       if (timedOut) {
-        throw new Error(`Remote server reply timed out after ${this.replyTimeoutMs}ms`);
+        throw new Error(`Remote server reply timed out after ${timeoutMs}ms`);
       }
       throw error;
-    } finally {
-      if (typeof timeoutId !== "undefined") {
-        clearTimeout(timeoutId);
-      }
-      if (options.signal && onAbort) {
-        options.signal.removeEventListener("abort", onAbort);
-      }
     }
 
     if (!response.ok) {
+      cleanup();
       const body = await response.text();
       throw new Error(`Remote server stream failed (${response.status}): ${body || "no body"}`);
     }
     if (!response.body) {
+      cleanup();
       throw new Error("Remote server stream returned no body");
     }
 
     const decoder = new TextDecoder();
     const reader = response.body.getReader();
+    streamReader = reader;
     let buffer = "";
     let finalReply: ChatResponse | null = null;
 
@@ -296,26 +319,40 @@ class HttpClient implements Client {
       }
     };
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) {
-        if (buffer.trim().length > 0) {
-          processBlock(buffer);
-        }
-        break;
-      }
-      buffer += decoder.decode(value, { stream: true });
+    try {
       while (true) {
-        const boundary = buffer.indexOf("\n\n");
-        if (boundary === -1) {
+        const { done, value } = await reader.read();
+        if (done) {
+          if (buffer.trim().length > 0) {
+            processBlock(buffer);
+          }
           break;
         }
-        const block = buffer.slice(0, boundary);
-        buffer = buffer.slice(boundary + 2);
-        processBlock(block);
+        resetTimeout();
+        buffer += decoder.decode(value, { stream: true });
+        while (true) {
+          const boundary = buffer.indexOf("\n\n");
+          if (boundary === -1) {
+            break;
+          }
+          const block = buffer.slice(0, boundary);
+          buffer = buffer.slice(boundary + 2);
+          processBlock(block);
+        }
       }
+    } catch (error) {
+      cleanup();
+      if (timedOut) {
+        throw new Error(`Remote server stream timed out after ${timeoutMs}ms of inactivity`);
+      }
+      throw error;
     }
 
+    cleanup();
+
+    if (timedOut && !finalReply) {
+      throw new Error(`Remote server stream timed out after ${timeoutMs}ms of inactivity`);
+    }
     if (!finalReply) {
       throw new Error("Remote server stream ended without final reply");
     }

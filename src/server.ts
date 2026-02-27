@@ -288,14 +288,31 @@ const server = Bun.serve({
     if (isChatStreamRoute) {
       const encoder = new TextEncoder();
       let closed = false;
+      const SSE_KEEPALIVE_INTERVAL_MS = 15_000;
       const stream = new ReadableStream<Uint8Array>({
         start(controller) {
           const send = (payload: Record<string, unknown>): void => {
             if (closed) {
               return;
             }
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
+            try {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
+            } catch {
+              closed = true;
+            }
           };
+          const keepaliveId = setInterval(() => {
+            if (closed) {
+              clearInterval(keepaliveId);
+              return;
+            }
+            try {
+              controller.enqueue(encoder.encode(":\n\n"));
+            } catch {
+              closed = true;
+              clearInterval(keepaliveId);
+            }
+          }, SSE_KEEPALIVE_INTERVAL_MS);
           void (async () => {
             try {
               const soulPrompt = await createSoulPrompt();
@@ -340,9 +357,14 @@ const server = Bun.serve({
               });
               send({ type: "error", error: errorMessage });
             } finally {
+              clearInterval(keepaliveId);
               if (!closed) {
                 closed = true;
-                controller.close();
+                try {
+                  controller.close();
+                } catch {
+                  // Stream already closed by client disconnect or idle timeout.
+                }
               }
             }
           })();
@@ -402,6 +424,13 @@ const server = Bun.serve({
       );
     }
   },
+});
+
+process.on("uncaughtException", (error) => {
+  log.error("uncaught exception", errorToLogFields(error));
+});
+process.on("unhandledRejection", (reason) => {
+  log.error("unhandled rejection", errorToLogFields(reason instanceof Error ? reason : new Error(String(reason))));
 });
 
 log.info("Acolyte server listening", { url: `http://localhost:${server.port}` });

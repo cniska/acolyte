@@ -367,6 +367,88 @@ describe("remote server status parsing", () => {
   });
 });
 
+describe("replyStream keepalive and timeout", () => {
+  test("replyStream ignores SSE keepalive comments", async () => {
+    const encoder = new TextEncoder();
+    globalThis.fetch = (async () =>
+      new Response(
+        new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(encoder.encode(":\n\n"));
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "text-delta", text: "hi" })}\n\n`));
+            controller.enqueue(encoder.encode(":\n\n"));
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({ type: "done", reply: { model: "gpt-5-mini", output: "hi" } })}\n\n`,
+              ),
+            );
+            controller.close();
+          },
+        }),
+        { status: 200, headers: { "content-type": "text/event-stream" } },
+      )) as unknown as typeof fetch;
+
+    const client = createClient({ apiUrl: "http://localhost:6767" });
+    const events: string[] = [];
+    const reply = await client.replyStream(
+      { message: "ping", history: [], model: "gpt-5-mini", sessionId: "sess_test" },
+      { onEvent: (e) => events.push(e.type) },
+    );
+    expect(reply.output).toBe("hi");
+    expect(events).toEqual(["text-delta"]);
+  });
+
+  test("replyStream timeout resets on activity", async () => {
+    const encoder = new TextEncoder();
+    globalThis.fetch = (async () =>
+      new Response(
+        new ReadableStream<Uint8Array>({
+          async start(controller) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "text-delta", text: "a" })}\n\n`));
+            await new Promise((r) => setTimeout(r, 15));
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "text-delta", text: "b" })}\n\n`));
+            await new Promise((r) => setTimeout(r, 15));
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({ type: "done", reply: { model: "gpt-5-mini", output: "ab" } })}\n\n`,
+              ),
+            );
+            controller.close();
+          },
+        }),
+        { status: 200, headers: { "content-type": "text/event-stream" } },
+      )) as unknown as typeof fetch;
+
+    // 25ms timeout — would fire if not reset, but each chunk arrives within 15ms
+    const client = createClient({ apiUrl: "http://localhost:6767", replyTimeoutMs: 25 });
+    const reply = await client.replyStream(
+      { message: "ping", history: [], model: "gpt-5-mini", sessionId: "sess_test" },
+      { onEvent: () => {} },
+    );
+    expect(reply.output).toBe("ab");
+  });
+
+  test("replyStream times out on inactivity", async () => {
+    globalThis.fetch = (async () =>
+      new Response(
+        new ReadableStream<Uint8Array>({
+          start() {
+            // Never sends data — stream hangs
+          },
+        }),
+        { status: 200, headers: { "content-type": "text/event-stream" } },
+      )) as unknown as typeof fetch;
+
+    const client = createClient({ apiUrl: "http://localhost:6767", replyTimeoutMs: 10 });
+    await expect(
+      client.replyStream(
+        { message: "ping", history: [], model: "gpt-5-mini", sessionId: "sess_test" },
+        { onEvent: () => {} },
+      ),
+    ).rejects.toThrow("timed out");
+  });
+});
+
 describe("createClient", () => {
   test("throws when no apiUrl is configured", () => {
     expect(() => createClient({ apiUrl: "" })).toThrow("No API URL configured");
