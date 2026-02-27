@@ -544,7 +544,7 @@ describe("chat-commands", () => {
       if (tmpDir) rmSync(tmpDir, { recursive: true, force: true });
     });
 
-    test("/skillname activates skill via activateSkill callback", async () => {
+    test("/skillname with args continues to agent turn", async () => {
       tmpDir = mkdtempSync(join(tmpdir(), "acolyte-cmd-skill-"));
       const skillDir = join(tmpDir, "skills", "demo");
       mkdirSync(skillDir, { recursive: true });
@@ -552,14 +552,28 @@ describe("chat-commands", () => {
       await loadSkills(tmpDir);
 
       const activated: string[] = [];
-      const { stop } = await runCommand("/demo run tests", {
+      const result = await runCommand("/demo run tests", {
         activateSkill: async (name, args) => {
           activated.push(name, args);
           return true;
         },
       });
-      expect(stop).toBe(true);
+      expect(result.stop).toBe(false);
       expect(activated).toEqual(["demo", "run tests"]);
+    });
+
+    test("/skillname without args stops and shows activation", async () => {
+      tmpDir = mkdtempSync(join(tmpdir(), "acolyte-cmd-skill-"));
+      const skillDir = join(tmpDir, "skills", "demo");
+      mkdirSync(skillDir, { recursive: true });
+      writeFileSync(join(skillDir, "SKILL.md"), "---\nname: demo\ndescription: Demo\n---\n# Demo", "utf8");
+      await loadSkills(tmpDir);
+
+      const result = await runCommand("/demo", {
+        activateSkill: async () => true,
+      });
+      expect(result.stop).toBe(true);
+      expect(result.rows.some((r) => r.content.includes("Activated skill: demo"))).toBe(true);
     });
 
     test("unknown /xyz still shows unknown command", async () => {

@@ -447,12 +447,18 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     const skillName = (head ?? "").slice(1);
     const skill = findSkillByName(skillName);
     if (skill && ctx.activateSkill) {
-      pushUserCommandRow();
       const args = rest.join(" ").trim();
       const ok = await ctx.activateSkill(skill.name, args);
       if (!ok) {
+        pushUserCommandRow();
         ctx.setRows((current) => [...current, createRow("system", `Failed to activate skill: ${skill.name}`)]);
+        return { stop: true, userText: text };
       }
+      if (args) {
+        return { stop: false, userText: args };
+      }
+      pushUserCommandRow();
+      ctx.setRows((current) => [...current, createRow("system", `Activated skill: ${skill.name}`)]);
       return { stop: true, userText: text };
     }
 
