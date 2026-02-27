@@ -155,6 +155,8 @@ export function createSubagentContext(req: ChatRequest): string {
 const BASE_INSTRUCTIONS = [
   "- Act, don't narrate. Use tools directly — do not describe what you will do.",
   "- Prefer dedicated tools over shell equivalents.",
+  "- Do not use shell fallbacks for file read/search/edit when dedicated tools exist.",
+  "- Stop once evidence is decisive; do not keep searching for completeness.",
   "- Keep working until done. Make reasonable assumptions instead of asking — only ask if truly stuck with no viable path.",
 ].join("\n");
 

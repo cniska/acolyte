@@ -84,7 +84,7 @@ export const toolMeta: Record<string, ToolMeta> = {
   },
   "run-command": {
     instruction:
-      "Use `run-command` to run verification after edits and to execute build/test commands. Never use it for `cat`, `head`, `grep`, `sed`, `find`, or `wc` — use `read-file`, `search-files`, `find-files` instead.",
+      "Use `run-command` to run verification after edits and to execute build/test commands. Do not use it for file read/search/edit fallbacks (`cat`, `head`, `tail`, `nl`, `ls`, `grep`, `sed`, `find`, `rg`, `wc`) — use `read-file`, `search-files`, `find-files`, `edit-file`, or `edit-code`.",
     aliases: ["runCommand", "run_command", "execute_command"],
   },
 };
@@ -208,7 +208,7 @@ function createRunCommandTool(workspace: string, session: SessionContext, onTool
   return createTool({
     id: "run-command",
     description:
-      "Run a shell command in the repository and capture stdout/stderr. Prefer dedicated tools (`find-files`, `search-files`, `read-file`, `edit-file`, `edit-code`) over shell equivalents.",
+      "Run a shell command in the repository and capture stdout/stderr. Never use shell commands as fallbacks for file discovery/reading/editing when dedicated tools are available.",
     inputSchema: z.object({
       command: z.string().min(1),
       timeoutMs: z.number().int().min(500).max(120000).optional(),
