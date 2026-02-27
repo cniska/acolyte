@@ -3,26 +3,18 @@ function countLabel(value: number, singular: string, plural: string): string {
 }
 
 export function formatThoughtDuration(ms: number): string {
-  if (ms < 1000) {
-    return `${ms}ms`;
-  }
+  if (ms < 1000) return `${ms}ms`;
   const totalSeconds = ms / 1000;
-  if (totalSeconds < 60) {
-    return `${totalSeconds.toFixed(1)}s`;
-  }
+  if (totalSeconds < 60) return `${totalSeconds.toFixed(1)}s`;
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = Math.round(totalSeconds % 60);
-  if (seconds === 60) {
-    return `${minutes + 1}m 0s`;
-  }
+  if (seconds === 60) return `${minutes + 1}m 0s`;
   return `${minutes}m ${seconds}s`;
 }
 
 export function formatRelativeTime(iso: string, now?: number): string {
   const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) {
-    return iso;
-  }
+  if (Number.isNaN(date.getTime())) return iso;
   const seconds = Math.floor(((now ?? Date.now()) - date.getTime()) / 1000);
   if (seconds < 60) return "just now";
   const minutes = Math.floor(seconds / 60);
@@ -34,9 +26,7 @@ export function formatRelativeTime(iso: string, now?: number): string {
 }
 
 export function formatColumns(rows: string[][]): string[] {
-  if (rows.length === 0) {
-    return [];
-  }
+  if (rows.length === 0) return [];
   const colCount = rows[0].length;
   const widths: number[] = [];
   for (let c = 0; c < colCount - 1; c++) {
@@ -61,9 +51,7 @@ export function formatChangesSummary(statusRaw: string, diffRaw: string): string
       changedFilesFromDiff += 1;
       continue;
     }
-    if (line.startsWith("+++ ") || line.startsWith("--- ")) {
-      continue;
-    }
+    if (line.startsWith("+++ ") || line.startsWith("--- ")) continue;
     if (line.startsWith("+")) {
       added += 1;
     } else if (line.startsWith("-")) {
@@ -76,11 +64,7 @@ export function formatChangesSummary(statusRaw: string, diffRaw: string): string
   summary.push(
     changedFiles === 0 ? "Working tree clean." : `${countLabel(changedFiles, "changed file", "changed files")}.`,
   );
-  if (branchLine) {
-    summary.push(branchLine);
-  }
-  if (changedFiles > 0) {
-    summary.push(`Diff summary: +${added} -${removed}.`);
-  }
+  if (branchLine) summary.push(branchLine);
+  if (changedFiles > 0) summary.push(`Diff summary: +${added} -${removed}.`);
   return summary.join("\n");
 }

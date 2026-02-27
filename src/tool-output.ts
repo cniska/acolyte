@@ -2,12 +2,8 @@ const DEFAULT_MAX_CHARS = 4000;
 const DEFAULT_MAX_LINES = 120;
 
 function truncateMiddle(text: string, maxChars: number): string {
-  if (text.length <= maxChars) {
-    return text;
-  }
-  if (maxChars <= 1) {
-    return "…";
-  }
+  if (text.length <= maxChars) return text;
+  if (maxChars <= 1) return "…";
   const headChars = Math.ceil((maxChars - 1) / 2);
   const tailChars = Math.floor((maxChars - 1) / 2);
   return `${text.slice(0, headChars)}…${text.slice(text.length - tailChars)}`;
@@ -17,9 +13,7 @@ export function compactToolOutput(raw: string, options: { maxChars?: number; max
   const maxChars = options.maxChars ?? DEFAULT_MAX_CHARS;
   const maxLines = options.maxLines ?? DEFAULT_MAX_LINES;
   const source = raw.trim();
-  if (!source) {
-    return raw;
-  }
+  if (!source) return raw;
 
   let truncated = false;
   let lines = source.split("\n");
@@ -37,17 +31,13 @@ export function compactToolOutput(raw: string, options: { maxChars?: number; max
   if (text.length > maxChars) {
     // Preserve unified-diff structure so downstream preview parsers remain stable.
     if (text.includes("diff --git ")) {
-      if (!truncated) {
-        return `${text}\n… output truncated`;
-      }
+      if (!truncated) return `${text}\n… output truncated`;
       return text;
     }
     text = truncateMiddle(text, maxChars);
     truncated = true;
   }
 
-  if (!truncated) {
-    return text;
-  }
+  if (!truncated) return text;
   return `${text}\n… output truncated`;
 }

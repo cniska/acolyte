@@ -124,9 +124,7 @@ const BINARY_EXTENSIONS = new Set([
 
 function isBinaryExtension(path: string): boolean {
   const dot = path.lastIndexOf(".");
-  if (dot < 0) {
-    return false;
-  }
+  if (dot < 0) return false;
   return BINARY_EXTENSIONS.has(path.slice(dot).toLowerCase());
 }
 
@@ -136,9 +134,7 @@ async function collectWorkspaceFiles(workspace: string, maxEntries = 5000): Prom
 
   while (stack.length > 0 && out.length < maxEntries) {
     const current = stack.pop();
-    if (!current) {
-      break;
-    }
+    if (!current) break;
     let entries: Array<{ name: string; isDirectory: () => boolean; isFile: () => boolean }>;
     try {
       entries = await readdir(current.abs, { withFileTypes: true });
@@ -148,12 +144,8 @@ async function collectWorkspaceFiles(workspace: string, maxEntries = 5000): Prom
     entries.sort((a, b) => a.name.localeCompare(b.name));
 
     for (const entry of entries) {
-      if (entry.name.startsWith(".") && entry.isDirectory()) {
-        continue;
-      }
-      if (entry.isDirectory() && IGNORED_DIRS.has(entry.name)) {
-        continue;
-      }
+      if (entry.name.startsWith(".") && entry.isDirectory()) continue;
+      if (entry.isDirectory() && IGNORED_DIRS.has(entry.name)) continue;
       const rel = current.rel ? `${current.rel}/${entry.name}` : entry.name;
       const abs = join(current.abs, entry.name);
       if (entry.isDirectory()) {
@@ -161,9 +153,7 @@ async function collectWorkspaceFiles(workspace: string, maxEntries = 5000): Prom
       } else if (entry.isFile()) {
         out.push(rel);
       }
-      if (out.length >= maxEntries) {
-        break;
-      }
+      if (out.length >= maxEntries) break;
     }
   }
 
@@ -172,9 +162,7 @@ async function collectWorkspaceFiles(workspace: string, maxEntries = 5000): Prom
 
 export async function findFiles(workspace: string, pattern: string, maxResults = 40): Promise<string> {
   const trimmed = pattern.trim();
-  if (!trimmed) {
-    throw new Error("Search pattern cannot be empty");
-  }
+  if (!trimmed) throw new Error("Search pattern cannot be empty");
   const allFiles = await collectWorkspaceFiles(workspace);
   const needle = trimmed
     .replace(/^\.\/+/, "")
@@ -188,9 +176,7 @@ export async function findFiles(workspace: string, pattern: string, maxResults =
       const bLower = b.toLowerCase();
       const aScore = aLower === needle ? 0 : aLower.endsWith(`/${needle}`) ? 1 : 2;
       const bScore = bLower === needle ? 0 : bLower.endsWith(`/${needle}`) ? 1 : 2;
-      if (aScore !== bScore) {
-        return aScore - bScore;
-      }
+      if (aScore !== bScore) return aScore - bScore;
       return a.length - b.length;
     })
     .slice(0, maxResults)
@@ -201,9 +187,7 @@ export async function findFiles(workspace: string, pattern: string, maxResults =
 
 export async function searchFiles(workspace: string, pattern: string, maxResults = 40): Promise<string> {
   const trimmed = pattern.trim();
-  if (!trimmed) {
-    throw new Error("Search pattern cannot be empty");
-  }
+  if (!trimmed) throw new Error("Search pattern cannot be empty");
   const allFiles = await collectWorkspaceFiles(workspace);
   const matches: string[] = [];
 
@@ -215,12 +199,8 @@ export async function searchFiles(workspace: string, pattern: string, maxResults
   }
 
   for (const relPath of allFiles) {
-    if (matches.length >= maxResults) {
-      break;
-    }
-    if (isBinaryExtension(relPath)) {
-      continue;
-    }
+    if (matches.length >= maxResults) break;
+    if (isBinaryExtension(relPath)) continue;
     const absPath = join(workspace, relPath);
     let content: string;
     try {
@@ -233,9 +213,7 @@ export async function searchFiles(workspace: string, pattern: string, maxResults
       if (regex.test(lines[i] ?? "")) {
         const lineText = (lines[i] ?? "").trimEnd();
         matches.push(`./${relPath}:${i + 1}:${lineText}`);
-        if (matches.length >= maxResults) {
-          break;
-        }
+        if (matches.length >= maxResults) break;
       }
     }
   }
@@ -265,9 +243,7 @@ function isAllowedPath(pathInput: string, workspace: string): boolean {
 
 function ensurePathWithinAllowedRoots(pathInput: string, operation: string, workspace: string): string {
   const absPath = resolveAgentPath(pathInput, workspace);
-  if (!isAllowedPath(absPath, workspace)) {
-    throw new Error(`${operation} is restricted to the workspace or /tmp`);
-  }
+  if (!isAllowedPath(absPath, workspace)) throw new Error(`${operation} is restricted to the workspace or /tmp`);
   return absPath;
 }
 
@@ -277,44 +253,29 @@ function extractAbsolutePathsFromCommand(command: string): string[] {
 }
 
 function ensureCommandScopedToWorkspace(command: string, workspace: string): void {
-  if (command.includes("../") || command.includes("..\\")) {
+  if (command.includes("../") || command.includes("..\\"))
     throw new Error("Command contains path traversal outside workspace");
-  }
   const absPaths = extractAbsolutePathsFromCommand(command);
   for (const absPath of absPaths) {
-    if (!isAllowedPath(absPath, workspace)) {
-      throw new Error("Command references path outside workspace and /tmp");
-    }
+    if (!isAllowedPath(absPath, workspace)) throw new Error("Command references path outside workspace and /tmp");
   }
-  if (/(?:^|[\s"'`])~\//.test(command)) {
-    throw new Error("Command references home path outside allowed roots");
-  }
+  if (/(?:^|[\s"'`])~\//.test(command)) throw new Error("Command references home path outside allowed roots");
 }
 
 function ensureWritePermission(operation: string): void {
-  if (appConfig.agent.permissions.mode === "read") {
-    throw new Error(`${operation} is disabled in read mode`);
-  }
+  if (appConfig.agent.permissions.mode === "read") throw new Error(`${operation} is disabled in read mode`);
 }
 
 function displayPathForDiff(absPath: string, workspace: string): string {
-  if (absPath === workspace) {
-    return ".";
-  }
-  if (absPath.startsWith(`${workspace}/`)) {
-    return absPath.slice(workspace.length + 1);
-  }
+  if (absPath === workspace) return ".";
+  if (absPath.startsWith(`${workspace}/`)) return absPath.slice(workspace.length + 1);
   return absPath;
 }
 
 function contentLines(content: string): string[] {
-  if (content.length === 0) {
-    return [];
-  }
+  if (content.length === 0) return [];
   const lines = content.split("\n");
-  if (lines[lines.length - 1] === "") {
-    lines.pop();
-  }
+  if (lines[lines.length - 1] === "") lines.pop();
   return lines;
 }
 
@@ -480,24 +441,14 @@ function stripHtmlTags(input: string): string {
 
 function isPrivateOrLocalHost(hostname: string): boolean {
   const host = hostname.toLowerCase();
-  if (host === "localhost" || host === "::1" || host.endsWith(".local")) {
-    return true;
-  }
-  if (/^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host)) {
-    return true;
-  }
-  if (/^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host)) {
-    return true;
-  }
-  if (/^192\.168\.\d{1,3}\.\d{1,3}$/.test(host)) {
-    return true;
-  }
+  if (host === "localhost" || host === "::1" || host.endsWith(".local")) return true;
+  if (/^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host)) return true;
+  if (/^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host)) return true;
+  if (/^192\.168\.\d{1,3}\.\d{1,3}$/.test(host)) return true;
   const match172 = host.match(/^172\.(\d{1,3})\.\d{1,3}\.\d{1,3}$/);
   if (match172) {
     const second = Number.parseInt(match172[1] ?? "0", 10);
-    if (second >= 16 && second <= 31) {
-      return true;
-    }
+    if (second >= 16 && second <= 31) return true;
   }
   return false;
 }
@@ -510,12 +461,8 @@ function parseWebUrl(input: string): URL {
     throw new Error("Web fetch URL is invalid");
   }
   const protocol = parsed.protocol.toLowerCase();
-  if (protocol !== "http:" && protocol !== "https:") {
-    throw new Error("Web fetch only supports http/https URLs");
-  }
-  if (isPrivateOrLocalHost(parsed.hostname)) {
-    throw new Error("Web fetch blocks localhost/private hosts");
-  }
+  if (protocol !== "http:" && protocol !== "https:") throw new Error("Web fetch only supports http/https URLs");
+  if (isPrivateOrLocalHost(parsed.hostname)) throw new Error("Web fetch blocks localhost/private hosts");
   return parsed;
 }
 
@@ -556,33 +503,23 @@ export async function fetchWeb(urlInput: string, maxChars = 5000): Promise<strin
     }
     if (response.status >= 300 && response.status < 400) {
       const location = response.headers.get("location");
-      if (!location) {
-        throw new Error("Web fetch received redirect without location");
-      }
+      if (!location) throw new Error("Web fetch received redirect without location");
       current = parseWebUrl(new URL(location, current).toString());
       redirects += 1;
       continue;
     }
-    if (!response.ok) {
-      throw new Error(`Web fetch failed with status ${response.status}`);
-    }
+    if (!response.ok) throw new Error(`Web fetch failed with status ${response.status}`);
     const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
     const raw = await response.text();
     const rendered = contentType.includes("text/html") ? extractHtmlText(raw) : { title: "", text: raw.trim() };
     const body = rendered.text.replace(/\s+/g, " ").trim();
-    if (!body) {
-      return `Fetched: ${current.toString()}\nNo textual content found.`;
-    }
+    if (!body) return `Fetched: ${current.toString()}\nNo textual content found.`;
     const clipped = body.slice(0, limit);
     const lines = [`Fetched: ${current.toString()}`];
-    if (rendered.title) {
-      lines.push(`Title: ${rendered.title}`);
-    }
+    if (rendered.title) lines.push(`Title: ${rendered.title}`);
     lines.push("Content:");
     lines.push(clipped);
-    if (body.length > clipped.length) {
-      lines.push(`… clipped ${body.length - clipped.length} chars`);
-    }
+    if (body.length > clipped.length) lines.push(`… clipped ${body.length - clipped.length} chars`);
     return lines.join("\n");
   }
 
@@ -591,9 +528,7 @@ export async function fetchWeb(urlInput: string, maxChars = 5000): Promise<strin
 
 export async function searchWeb(query: string, maxResults = 5): Promise<string> {
   const trimmed = query.trim();
-  if (!trimmed) {
-    throw new Error("Web search query cannot be empty");
-  }
+  if (!trimmed) throw new Error("Web search query cannot be empty");
 
   const limit = Math.max(1, Math.min(10, maxResults));
   const url = `https://duckduckgo.com/html/?q=${encodeURIComponent(trimmed)}`;
@@ -603,9 +538,7 @@ export async function searchWeb(query: string, maxResults = 5): Promise<string> 
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36",
     },
   });
-  if (!response.ok) {
-    throw new Error(`Web search failed with status ${response.status}`);
-  }
+  if (!response.ok) throw new Error(`Web search failed with status ${response.status}`);
   const html = await response.text();
 
   const rows: Array<{ title: string; link: string; snippet: string }> = [];
@@ -613,45 +546,31 @@ export async function searchWeb(query: string, maxResults = 5): Promise<string> 
   const blocks = html.match(resultBlockPattern) ?? [];
   for (const block of blocks) {
     const titleMatch = block.match(/<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/);
-    if (!titleMatch) {
-      continue;
-    }
+    if (!titleMatch) continue;
     const link = decodeHtmlEntities(titleMatch[1] ?? "").trim();
     const title = stripHtmlTags(titleMatch[2] ?? "");
     const snippetMatch = block.match(/<a[^>]*class="result__snippet"[^>]*>([\s\S]*?)<\/a>/);
     const snippet = stripHtmlTags(snippetMatch?.[1] ?? "");
-    if (!link || !title) {
-      continue;
-    }
+    if (!link || !title) continue;
     rows.push({ title, link, snippet });
-    if (rows.length >= limit) {
-      break;
-    }
+    if (rows.length >= limit) break;
   }
 
-  if (rows.length === 0) {
-    return `No web results found for: ${trimmed}`;
-  }
+  if (rows.length === 0) return `No web results found for: ${trimmed}`;
 
   const output = [`Web results for: ${trimmed}`];
   for (const [index, row] of rows.entries()) {
     output.push(`${index + 1}. ${row.title}`);
     output.push(`   ${row.link}`);
-    if (row.snippet) {
-      output.push(`   ${row.snippet}`);
-    }
+    if (row.snippet) output.push(`   ${row.snippet}`);
   }
   return output.join("\n");
 }
 
 function toInt(value: string | undefined, fallback: number): number {
-  if (!value) {
-    return fallback;
-  }
+  if (!value) return fallback;
   const parsed = Number.parseInt(value, 10);
-  if (Number.isNaN(parsed) || parsed < 1) {
-    return fallback;
-  }
+  if (Number.isNaN(parsed) || parsed < 1) return fallback;
   return parsed;
 }
 
@@ -683,9 +602,7 @@ export async function readSnippets(
 
 export async function gitStatusShort(workspace: string): Promise<string> {
   const { code, stdout, stderr } = await runCommand(["git", "status", "--short", "--branch"], workspace);
-  if (code !== 0) {
-    throw new Error(stderr.trim() || "git status failed");
-  }
+  if (code !== 0) throw new Error(stderr.trim() || "git status failed");
   return stdout.trim() || "Working tree clean.";
 }
 
@@ -696,9 +613,7 @@ export async function gitDiff(workspace: string, pathInput?: string, contextLine
     args.push("--", pathInput);
   }
   const { code, stdout, stderr } = await runCommand(args, workspace);
-  if (code !== 0) {
-    throw new Error(stderr.trim() || "git diff failed");
-  }
+  if (code !== 0) throw new Error(stderr.trim() || "git diff failed");
   return stdout.trim() || "No unstaged changes.";
 }
 
@@ -716,21 +631,15 @@ async function readStreamText(
   streamName: "stdout" | "stderr",
   onChunk?: (chunk: ShellChunk) => void,
 ): Promise<string> {
-  if (!stream) {
-    return "";
-  }
+  if (!stream) return "";
   const reader = stream.getReader();
   const decoder = new TextDecoder();
   let combined = "";
   while (true) {
     const { done, value } = await reader.read();
-    if (done) {
-      break;
-    }
+    if (done) break;
     const text = decoder.decode(value, { stream: true });
-    if (!text) {
-      continue;
-    }
+    if (!text) continue;
     combined += text;
     onChunk?.({ stream: streamName, text });
   }
@@ -750,13 +659,9 @@ export async function runShellCommand(
 ): Promise<string> {
   ensureWritePermission("Shell command execution");
   const trimmed = command.trim();
-  if (!trimmed) {
-    throw new Error("Command cannot be empty");
-  }
+  if (!trimmed) throw new Error("Command cannot be empty");
   const lower = trimmed.toLowerCase();
-  if (BLOCKED_SHELL_TOKENS.some((token) => lower.includes(token))) {
-    throw new Error("Command contains blocked token");
-  }
+  if (BLOCKED_SHELL_TOKENS.some((token) => lower.includes(token))) throw new Error("Command contains blocked token");
   ensureCommandScopedToWorkspace(trimmed, workspace);
 
   const startedAt = Date.now();
@@ -786,9 +691,7 @@ export async function runShellCommand(
   const headers = [`exit_code=${exitCode}`, `duration_ms=${durationMs}`];
   const out = stdoutText.trim();
   const err = stderrText.trim();
-  if (!out && !err) {
-    return headers.join("\n");
-  }
+  if (!out && !err) return headers.join("\n");
   return [headers.join("\n"), out ? `stdout:\n${out}` : "", err ? `stderr:\n${err}` : ""].filter(Boolean).join("\n\n");
 }
 
@@ -814,18 +717,14 @@ export async function editFile(input: {
   for (const edit of input.edits) {
     if ("find" in edit) {
       // --- find/replace path ---
-      if (!edit.find) {
-        throw new Error("Find text cannot be empty");
-      }
+      if (!edit.find) throw new Error("Find text cannot be empty");
       if (edit.find.length > raw.length * 0.5) {
         throw new Error(
           "find must be a short unique snippet (a few lines), not a large portion of the file. Use just enough context to uniquely identify the edit location.",
         );
       }
       const count = raw.split(edit.find).length - 1;
-      if (count === 0) {
-        throw new Error(`Find text not found in file: ${edit.find.slice(0, 60)}`);
-      }
+      if (count === 0) throw new Error(`Find text not found in file: ${edit.find.slice(0, 60)}`);
       if (count > 1) {
         const message = `Find text matched ${count} locations (${edit.find.slice(0, 40)}…). Provide a longer, more unique snippet to match exactly one location, or use edit-code for multi-location code changes.`;
         throw createToolError(
@@ -838,12 +737,8 @@ export async function editFile(input: {
     } else {
       // --- line-range path ---
       const { startLine, endLine, replace } = edit;
-      if (startLine < 1 || endLine < 1) {
-        throw new Error("Line numbers must be >= 1");
-      }
-      if (startLine > endLine) {
-        throw new Error(`startLine (${startLine}) must be <= endLine (${endLine})`);
-      }
+      if (startLine < 1 || endLine < 1) throw new Error("Line numbers must be >= 1");
+      if (startLine > endLine) throw new Error(`startLine (${startLine}) must be <= endLine (${endLine})`);
       const clampedEnd = Math.min(endLine, lines.length);
       if (clampedEnd !== endLine) {
         // Silently clamp — the model almost always means "to end of file".
@@ -858,9 +753,7 @@ export async function editFile(input: {
         charEnd += (lines[i]?.length ?? 0) + 1;
       }
       // If clampedEnd is the last line and file doesn't end with \n, don't overshoot.
-      if (clampedEnd === lines.length && !raw.endsWith("\n")) {
-        charEnd -= 1;
-      }
+      if (clampedEnd === lines.length && !raw.endsWith("\n")) charEnd -= 1;
       ranges.push({ start: charStart, end: charEnd, replace });
     }
   }
@@ -870,9 +763,8 @@ export async function editFile(input: {
   for (let i = 1; i < ranges.length; i++) {
     const prev = ranges[i - 1];
     const curr = ranges[i];
-    if (prev && curr && curr.start < prev.end) {
+    if (prev && curr && curr.start < prev.end)
       throw new Error("Edit regions overlap. Use fewer, non-overlapping find snippets.");
-    }
   }
 
   // Detect likely duplication: replace text ends with lines that already follow the edit point.
@@ -899,9 +791,7 @@ export async function editFile(input: {
   let next = raw;
   for (let i = ranges.length - 1; i >= 0; i--) {
     const r = ranges[i];
-    if (r) {
-      next = next.slice(0, r.start) + r.replace + next.slice(r.end);
-    }
+    if (r) next = next.slice(0, r.start) + r.replace + next.slice(r.end);
   }
 
   if (!input.dryRun) {
@@ -933,14 +823,10 @@ export async function writeTextFile(input: {
 
   try {
     previousContent = await readFile(absPath, "utf8");
-    if (!overwrite) {
-      throw new Error("Target file already exists");
-    }
+    if (!overwrite) throw new Error("Target file already exists");
   } catch (error) {
     if (!(error instanceof Error) || !/ENOENT/.test(error.message)) {
-      if (error instanceof Error && error.message === "Target file already exists") {
-        throw error;
-      }
+      if (error instanceof Error && error.message === "Target file already exists") throw error;
       throw error;
     }
   }
@@ -1017,9 +903,7 @@ function isParseable(filePath: string): boolean {
 
 function extractMetavariables(pattern: string): string[] {
   const matches = pattern.match(/\$[A-Z_][A-Z0-9_]*/g);
-  if (!matches) {
-    return [];
-  }
+  if (!matches) return [];
   return Array.from(new Set(matches));
 }
 
@@ -1032,9 +916,7 @@ export async function editCode(input: {
   ensureWritePermission("AST editing");
   const absPath = ensurePathWithinAllowedRoots(input.path, "AST edit", input.workspace);
   const pathStats = await stat(absPath);
-  if (!pathStats.isFile()) {
-    throw new Error(`edit-code requires a file path, got: ${input.path}`);
-  }
+  if (!pathStats.isFile()) throw new Error(`edit-code requires a file path, got: ${input.path}`);
   const original = await readFile(absPath, "utf8");
 
   let napi: typeof import("@ast-grep/napi");
@@ -1055,9 +937,7 @@ export async function editCode(input: {
   for (const edit of input.edits) {
     const tree = napi.parse(langEnum ?? langName, current);
     const matches = tree.root().findAll({ rule: { pattern: edit.pattern } });
-    if (matches.length === 0) {
-      throw new Error(`No AST matches found for pattern: ${edit.pattern}`);
-    }
+    if (matches.length === 0) throw new Error(`No AST matches found for pattern: ${edit.pattern}`);
     totalMatches += matches.length;
 
     const metavars = extractMetavariables(edit.pattern);
@@ -1066,9 +946,7 @@ export async function editCode(input: {
       let replaced = edit.replacement;
       for (const metavar of metavars) {
         const captured = match.getMatch(metavar.slice(1));
-        if (captured) {
-          replaced = replaced.replaceAll(metavar, captured.text());
-        }
+        if (captured) replaced = replaced.replaceAll(metavar, captured.text());
       }
       const range = match.range();
       replacements.push({ start: range.start.index, end: range.end.index, replacement: replaced });
@@ -1102,9 +980,7 @@ export async function deleteTextFile(input: { workspace: string; path: string; d
   const absPath = ensurePathWithinAllowedRoots(input.path, "Delete", input.workspace);
   const previousContent = await readFile(absPath, "utf8");
   const dryRun = input.dryRun ?? false;
-  if (!dryRun) {
-    await unlink(absPath);
-  }
+  if (!dryRun) await unlink(absPath);
   const relativePath = displayPathForDiff(absPath, input.workspace);
   const diff = createUnifiedDeleteDiff(relativePath, previousContent);
   return [

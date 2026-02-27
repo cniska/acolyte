@@ -39,9 +39,7 @@ describe("session lock", () => {
       writeFileSync(lockPath, String(sleeper.pid));
       const result = acquireSessionLock("sess_test", { homeDir });
       expect(result.ok).toBe(false);
-      if (!result.ok) {
-        expect(result.ownerPid).toBe(sleeper.pid);
-      }
+      if (!result.ok) expect(result.ownerPid).toBe(sleeper.pid);
     } finally {
       sleeper.kill();
       releaseSessionLock("sess_test", { homeDir });

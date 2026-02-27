@@ -36,9 +36,7 @@ export function acquireSessionLock(
     try {
       const ownerRaw = readFileSync(lockPath, "utf8").trim();
       const ownerPid = Number.parseInt(ownerRaw, 10);
-      if (Number.isFinite(ownerPid) && ownerPid !== myPid && isProcessAlive(ownerPid)) {
-        return { ok: false, ownerPid };
-      }
+      if (Number.isFinite(ownerPid) && ownerPid !== myPid && isProcessAlive(ownerPid)) return { ok: false, ownerPid };
       unlinkSync(lockPath);
     } catch {
       try {
@@ -55,15 +53,11 @@ export function acquireSessionLock(
 
 export function releaseSessionLock(sessionId: string, options?: LockOptions): void {
   const lockPath = lockPathForSession(sessionId, options);
-  if (!existsSync(lockPath)) {
-    return;
-  }
+  if (!existsSync(lockPath)) return;
   try {
     const ownerRaw = readFileSync(lockPath, "utf8").trim();
     const ownerPid = Number.parseInt(ownerRaw, 10);
-    if (ownerPid === process.pid) {
-      unlinkSync(lockPath);
-    }
+    if (ownerPid === process.pid) unlinkSync(lockPath);
   } catch {
     // best effort
   }

@@ -34,26 +34,20 @@ describe("chat-ui helpers", () => {
   test("resolveResumeSession reports not_found for unknown prefix", () => {
     const resolved = resolveResumeSession(createUiStore(), "/resume sess_missing");
     expect(resolved.kind).toBe("not_found");
-    if (resolved.kind === "not_found") {
-      expect(resolved.prefix).toBe("sess_missing");
-    }
+    if (resolved.kind === "not_found") expect(resolved.prefix).toBe("sess_missing");
   });
 
   test("resolveResumeSession reports ambiguous for multi-match prefix", () => {
     const store = createUiStore();
     const resolved = resolveResumeSession(store, "/resume sess_");
     expect(resolved.kind).toBe("ambiguous");
-    if (resolved.kind === "ambiguous") {
-      expect(resolved.matches).toHaveLength(2);
-    }
+    if (resolved.kind === "ambiguous") expect(resolved.matches).toHaveLength(2);
   });
 
   test("resolveResumeSession returns target session for exact-ish prefix", () => {
     const resolved = resolveResumeSession(createUiStore(), "/resume sess_bbbb");
     expect(resolved.kind).toBe("ok");
-    if (resolved.kind === "ok") {
-      expect(resolved.session.id).toBe("sess_bbbb2222");
-    }
+    if (resolved.kind === "ok") expect(resolved.session.id).toBe("sess_bbbb2222");
   });
 
   test("formatSessionList marks active session", () => {

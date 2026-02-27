@@ -46,16 +46,12 @@ function serializeMemory(entry: MemoryEntry): string {
 
 function parseFrontmatter(raw: string): { meta: Record<string, string>; body: string } | null {
   const match = raw.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
-  if (!match) {
-    return null;
-  }
+  if (!match) return null;
   const metaLines = match[1].split("\n");
   const meta: Record<string, string> = {};
   for (const line of metaLines) {
     const idx = line.indexOf(":");
-    if (idx <= 0) {
-      continue;
-    }
+    if (idx <= 0) continue;
     const key = line.slice(0, idx).trim();
     const value = line.slice(idx + 1).trim();
     meta[key] = value;
@@ -64,30 +60,22 @@ function parseFrontmatter(raw: string): { meta: Record<string, string>; body: st
 }
 
 async function readMemoryDir(dir: string, scope: MemoryScope): Promise<MemoryEntry[]> {
-  if (!existsSync(dir)) {
-    return [];
-  }
+  if (!existsSync(dir)) return [];
 
   const names = await readdir(dir);
   const entries: MemoryEntry[] = [];
 
   for (const name of names) {
-    if (!name.endsWith(".md")) {
-      continue;
-    }
+    if (!name.endsWith(".md")) continue;
     const path = join(dir, name);
     try {
       const raw = await readFile(path, "utf8");
       const parsed = parseFrontmatter(raw);
-      if (!parsed) {
-        continue;
-      }
+      if (!parsed) continue;
       const id = parsed.meta.id?.trim();
       const createdAt = parsed.meta.createdAt?.trim();
       const content = parsed.body.trim();
-      if (!id || !createdAt || !content) {
-        continue;
-      }
+      if (!id || !createdAt || !content) continue;
       entries.push({
         id,
         createdAt,
@@ -120,9 +108,7 @@ export async function addMemory(
   options: Omit<MemoryOptions, "scope"> & { scope?: MemoryScope } = {},
 ): Promise<MemoryEntry> {
   const trimmed = content.trim();
-  if (!trimmed) {
-    throw new Error("Memory content cannot be empty");
-  }
+  if (!trimmed) throw new Error("Memory content cannot be empty");
 
   const { scope = "user", cwd = process.cwd(), homeDir = homedir() } = options;
   const dir = scope === "project" ? getProjectMemoryDir(cwd) : getUserMemoryDir(homeDir);
@@ -144,16 +130,10 @@ export async function removeMemoryByPrefix(
   options: Omit<MemoryOptions, "scope"> & { scope?: MemoryScope | "all" } = {},
 ): Promise<RemoveMemoryResult> {
   const trimmed = prefix.trim();
-  if (!trimmed) {
-    throw new Error("Memory id prefix cannot be empty");
-  }
+  if (!trimmed) throw new Error("Memory id prefix cannot be empty");
   const matches = (await listMemories(options)).filter((entry) => entry.id.startsWith(trimmed));
-  if (matches.length === 0) {
-    return { kind: "not_found", prefix: trimmed };
-  }
-  if (matches.length > 1) {
-    return { kind: "ambiguous", prefix: trimmed, matches };
-  }
+  if (matches.length === 0) return { kind: "not_found", prefix: trimmed };
+  if (matches.length > 1) return { kind: "ambiguous", prefix: trimmed, matches };
   const entry = matches[0];
   const { cwd = process.cwd(), homeDir = homedir() } = options;
   const dir = entry.scope === "project" ? getProjectMemoryDir(cwd) : getUserMemoryDir(homeDir);

@@ -75,9 +75,7 @@ describe("remote server connection errors", () => {
     globalThis.fetch = ((_: RequestInfo | URL, init?: RequestInit) => {
       const signal = init?.signal;
       return new Promise<Response>((_resolve, reject) => {
-        if (!signal) {
-          return;
-        }
+        if (!signal) return;
         const abortError = new Error("aborted");
         if (signal.aborted) {
           reject(abortError);
@@ -229,9 +227,7 @@ describe("remote server connection errors", () => {
       },
       {
         onEvent: (event) => {
-          if (event.type === "tool-call") {
-            received.push({ type: event.type, toolName: event.toolName });
-          }
+          if (event.type === "tool-call") received.push({ type: event.type, toolName: event.toolName });
         },
       },
     );

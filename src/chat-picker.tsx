@@ -27,9 +27,7 @@ export type PickerState =
     };
 
 function truncateText(input: string, max = 72): string {
-  if (input.length <= max) {
-    return input;
-  }
+  if (input.length <= max) return input;
   return `${input.slice(0, Math.max(0, max - 1))}…`;
 }
 

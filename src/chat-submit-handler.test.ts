@@ -345,9 +345,7 @@ describe("chat submit handler guards", () => {
       nowIso: () => "2026-02-20T00:00:00.000Z",
       setInterrupt: (handler) => {
         interruptRegistered = handler !== null;
-        if (handler) {
-          interruptHandler = handler;
-        }
+        if (handler) interruptHandler = handler;
       },
     });
 
@@ -754,9 +752,7 @@ describe("chat submit handler guards", () => {
         status: async () => ({}),
         reply: async () => {
           calls += 1;
-          if (calls === 1) {
-            throw new Error("Remote server reply timed out after 120000ms");
-          }
+          if (calls === 1) throw new Error("Remote server reply timed out after 120000ms");
           return { model: "gpt-5-mini", output: "ok" };
         },
       }),
@@ -824,9 +820,8 @@ describe("chat submit handler guards", () => {
       toRows: () => [],
       setRows: (updater) => {
         const next = updater(rows);
-        if (next.some((row) => row.role === "system" && row.content.includes("Server request timed out"))) {
+        if (next.some((row) => row.role === "system" && row.content.includes("Server request timed out")))
           sawTimeoutRow = true;
-        }
         rows.splice(0, rows.length, ...next);
       },
       setShowShortcuts: () => {},
@@ -891,9 +886,8 @@ describe("chat submit handler guards", () => {
       toRows: (messages) => messages.map((msg) => ({ id: msg.id, role: msg.role, content: msg.content })),
       setRows: (updater) => {
         const next = updater(rows);
-        if (next.some((row) => row.role === "system" && row.content.includes("Server request timed out"))) {
+        if (next.some((row) => row.role === "system" && row.content.includes("Server request timed out")))
           sawTimeoutRow = true;
-        }
         rows.splice(0, rows.length, ...next);
       },
       setShowShortcuts: () => {},

@@ -13,9 +13,7 @@ export type MemoryContextScope = "all" | "user" | "project";
 
 export function loadSoulPrompt(cwd = process.cwd()): string {
   const soulPath = join(cwd, "docs", "soul.md");
-  if (!existsSync(soulPath)) {
-    return FALLBACK_SOUL;
-  }
+  if (!existsSync(soulPath)) return FALLBACK_SOUL;
 
   try {
     const content = readFileSync(soulPath, "utf8").trim();
@@ -27,15 +25,11 @@ export function loadSoulPrompt(cwd = process.cwd()): string {
 
 export function loadAgentsPrompt(cwd = process.cwd()): string {
   const agentsPath = join(cwd, "AGENTS.md");
-  if (!existsSync(agentsPath)) {
-    return "";
-  }
+  if (!existsSync(agentsPath)) return "";
 
   try {
     const content = readFileSync(agentsPath, "utf8").trim();
-    if (content.length === 0) {
-      return "";
-    }
+    if (content.length === 0) return "";
     return ["Repository Instructions (AGENTS.md):", content].join("\n");
   } catch {
     return "";
@@ -61,9 +55,7 @@ export async function getMemoryContextEntries(options: MemoryContextLoadOptions 
 
 export async function loadMemoryContextPrompt(options: PromptLoadOptions = {}): Promise<string> {
   const top = await getMemoryContextEntries(options);
-  if (top.length === 0) {
-    return "";
-  }
+  if (top.length === 0) return "";
   const lines = top.map((entry) => `- ${entry.content}`);
   return `User memory context:\n${lines.join("\n")}`;
 }
@@ -72,8 +64,6 @@ export async function createSoulPrompt(options: PromptLoadOptions = {}): Promise
   const cwd = options.cwd ?? process.cwd();
   const base = loadSystemPrompt(cwd);
   const memoryContext = await loadMemoryContextPrompt(options);
-  if (!memoryContext) {
-    return base;
-  }
+  if (!memoryContext) return base;
   return `${base}\n\n${memoryContext}`;
 }

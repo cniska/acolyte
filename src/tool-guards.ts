@@ -36,9 +36,7 @@ function extractReadPaths(args: Record<string, unknown>): string[] {
   for (const entry of paths) {
     if (!entry || typeof entry !== "object") continue;
     const path = (entry as { path?: unknown }).path;
-    if (typeof path === "string" && path.trim().length > 0) {
-      out.push(normalizePath(path.trim()));
-    }
+    if (typeof path === "string" && path.trim().length > 0) out.push(normalizePath(path.trim()));
   }
   return out;
 }
@@ -102,9 +100,7 @@ const excessiveFileLoopGuard: ToolGuard = {
         if (hasTarget) readCount += 1;
       } else if (entry.toolName === "edit-file") {
         const path = entry.args.path;
-        if (typeof path === "string" && normalizePath(path) === target) {
-          editCount += 1;
-        }
+        if (typeof path === "string" && normalizePath(path) === target) editCount += 1;
       }
     }
 
@@ -183,9 +179,7 @@ const GUARDS: ToolGuard[] = [
 
 export function runGuards(input: GuardInput): void {
   for (const guard of GUARDS) {
-    if (guard.appliesTo !== "all" && !guard.appliesTo.includes(input.toolName)) {
-      continue;
-    }
+    if (guard.appliesTo !== "all" && !guard.appliesTo.includes(input.toolName)) continue;
     guard.check(input);
   }
 }

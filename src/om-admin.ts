@@ -21,33 +21,25 @@ function usage(): void {
 
 function baseUrl(): string {
   const configured = appConfig.server.apiUrl?.trim();
-  if (configured) {
-    return configured.replace(/\/$/, "");
-  }
+  if (configured) return configured.replace(/\/$/, "");
   return `http://localhost:${appConfig.server.port}`;
 }
 
 function buildHeaders(): Record<string, string> {
-  if (!appConfig.server.apiKey) {
-    return {};
-  }
+  if (!appConfig.server.apiKey) return {};
   return { authorization: `Bearer ${appConfig.server.apiKey}` };
 }
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
   const text = await response.text();
-  if (!response.ok) {
-    throw new Error(`Request failed (${response.status}): ${text || "no body"}`);
-  }
+  if (!response.ok) throw new Error(`Request failed (${response.status}): ${text || "no body"}`);
   return JSON.parse(text) as T;
 }
 
 async function status(resourceIdArg?: string): Promise<void> {
   const params = new URLSearchParams();
-  if (resourceIdArg?.trim()) {
-    params.set("resourceId", resourceIdArg.trim());
-  }
+  if (resourceIdArg?.trim()) params.set("resourceId", resourceIdArg.trim());
   const endpoint = `${baseUrl()}/v1/admin/om/status${params.size > 0 ? `?${params}` : ""}`;
   const payload = await fetchJson<OmStatusResponse>(endpoint, { headers: buildHeaders() });
   console.log(`OM status for ${payload.resourceId}`);
@@ -66,9 +58,7 @@ async function status(resourceIdArg?: string): Promise<void> {
 
 async function wipe(resourceIdArg?: string): Promise<void> {
   const params = new URLSearchParams();
-  if (resourceIdArg?.trim()) {
-    params.set("resourceId", resourceIdArg.trim());
-  }
+  if (resourceIdArg?.trim()) params.set("resourceId", resourceIdArg.trim());
   const endpoint = `${baseUrl()}/v1/admin/om/wipe${params.size > 0 ? `?${params}` : ""}`;
   const payload = await fetchJson<{ ok: boolean; resourceId: string; wiped: boolean }>(endpoint, {
     method: "POST",
@@ -126,9 +116,7 @@ async function main(): Promise<void> {
     return;
   }
   if (cmd === "wipe") {
-    if (!parsed.yes) {
-      throw new Error("Refusing to wipe OM without --yes.");
-    }
+    if (!parsed.yes) throw new Error("Refusing to wipe OM without --yes.");
     await wipe(parsed.resourceId);
     return;
   }

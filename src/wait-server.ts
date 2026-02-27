@@ -23,18 +23,14 @@ function parseArgs(argv: string[]): Args {
     const token = argv[i];
     if (token === "--url") {
       const value = argv[i + 1];
-      if (!value) {
-        throw new Error("Missing value for --url");
-      }
+      if (!value) throw new Error("Missing value for --url");
       raw.url = value;
       i += 1;
       continue;
     }
     if (token === "--timeout-ms") {
       const value = argv[i + 1];
-      if (!value) {
-        throw new Error("Missing value for --timeout-ms");
-      }
+      if (!value) throw new Error("Missing value for --timeout-ms");
       raw.timeoutMs = value;
       i += 1;
       continue;
@@ -42,9 +38,7 @@ function parseArgs(argv: string[]): Args {
     throw new Error(`Unknown argument: ${token}`);
   }
   const parsed = argsSchema.safeParse(raw);
-  if (!parsed.success) {
-    throw new Error("Invalid value for --timeout-ms");
-  }
+  if (!parsed.success) throw new Error("Invalid value for --timeout-ms");
   return parsed.data;
 }
 
@@ -53,9 +47,7 @@ async function waitForServer(url: string, timeoutMs: number): Promise<void> {
   while (Date.now() < deadline) {
     try {
       const response = await fetch(url);
-      if (response.ok) {
-        return;
-      }
+      if (response.ok) return;
     } catch {
       // retry
     }

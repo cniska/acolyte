@@ -26,9 +26,7 @@ export function normalizeStore(parsed: SessionStore): SessionStore {
 }
 
 export async function readStore(): Promise<SessionStore> {
-  if (!existsSync(STORE_PATH)) {
-    return EMPTY_STORE;
-  }
+  if (!existsSync(STORE_PATH)) return EMPTY_STORE;
 
   try {
     const raw = await readFile(STORE_PATH, "utf8");

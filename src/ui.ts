@@ -27,13 +27,9 @@ export function tokenizeStreamContent(content: string): string[] {
 export async function streamText(content: string): Promise<void> {
   for (const token of tokenizeStreamContent(content)) {
     stdout.write(token);
-    if (!/^\s+$/.test(token)) {
-      await Bun.sleep(12);
-    }
+    if (!/^\s+$/.test(token)) await Bun.sleep(12);
   }
-  if (!content.endsWith("\n")) {
-    stdout.write("\n");
-  }
+  if (!content.endsWith("\n")) stdout.write("\n");
 }
 
 export function printDim(content: string): void {

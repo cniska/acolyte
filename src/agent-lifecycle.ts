@@ -188,9 +188,7 @@ function readPathKeys(args: Record<string, unknown>): string[] {
   for (const entry of paths) {
     if (!entry || typeof entry !== "object") continue;
     const path = (entry as { path?: unknown }).path;
-    if (typeof path === "string" && path.trim().length > 0) {
-      out.push(path.trim());
-    }
+    if (typeof path === "string" && path.trim().length > 0) out.push(path.trim());
   }
   return out;
 }
@@ -211,9 +209,8 @@ function captureError(
   const category = categoryFromErrorCode(code) ?? derivedCategory;
   ctx.lastErrorCategory = category;
   ctx.errorStats[category] += 1;
-  if (code === TOOL_ERROR_CODES.editFileMultiMatch || isEditFileMultiMatchError(message)) {
+  if (code === TOOL_ERROR_CODES.editFileMultiMatch || isEditFileMultiMatchError(message))
     ctx.sawEditFileMultiMatchError = true;
-  }
   ctx.debug("lifecycle.error", {
     source: meta?.source ?? "generate",
     tool: meta?.tool ?? null,
@@ -235,9 +232,7 @@ function findLastEditFilePath(ctx: RunContext): string | undefined {
 
 function guardStatsFromSession(session: SessionContext): { blocked: number; flagSet: number } {
   const value = session.flags.guardStats;
-  if (!value || typeof value !== "object") {
-    return { blocked: 0, flagSet: 0 };
-  }
+  if (!value || typeof value !== "object") return { blocked: 0, flagSet: 0 };
   const stats = value as { blocked?: unknown; flagSet?: unknown };
   const blocked = typeof stats.blocked === "number" ? stats.blocked : 0;
   const flagSet = typeof stats.flagSet === "number" ? stats.flagSet : 0;
@@ -593,16 +588,13 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
   switch (chunk.type) {
     case "text-delta": {
       const p = chunk.payload as TextDeltaPayload | undefined;
-      if (typeof p?.text === "string" && p.text.length > 0 && ctx.mode !== "verify") {
+      if (typeof p?.text === "string" && p.text.length > 0 && ctx.mode !== "verify")
         ctx.emit({ type: "text-delta", text: p.text });
-      }
       break;
     }
     case "reasoning-delta": {
       const p = chunk.payload as TextDeltaPayload | undefined;
-      if (typeof p?.text === "string" && p.text.length > 0) {
-        ctx.emit({ type: "reasoning", text: p.text });
-      }
+      if (typeof p?.text === "string" && p.text.length > 0) ctx.emit({ type: "reasoning", text: p.text });
       break;
     }
     case "tool-call": {
@@ -650,9 +642,7 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
           ctx.toolCallStartedAt.delete(p.toolCallId);
         }
         const queue = ctx.nativeIdQueue.get(toolName);
-        if (queue?.[queue.length - 1] === p.toolCallId) {
-          queue.pop();
-        }
+        if (queue?.[queue.length - 1] === p.toolCallId) queue.pop();
         const resultRecord =
           typeof p.result === "object" && p.result !== null ? (p.result as Record<string, unknown>) : null;
         const isError = Boolean(resultRecord && "error" in resultRecord);

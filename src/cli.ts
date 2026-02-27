@@ -32,16 +32,13 @@ export function extractVersionFromPackageJsonText(text: string): string | null {
 }
 
 function resolveCliVersion(): string {
-  if (process.env.npm_package_version && process.env.npm_package_version.trim().length > 0) {
+  if (process.env.npm_package_version && process.env.npm_package_version.trim().length > 0)
     return process.env.npm_package_version.trim();
-  }
   const candidates = [`${process.cwd()}/package.json`, `${import.meta.dir}/../package.json`];
   for (const path of candidates) {
     try {
       const version = extractVersionFromPackageJsonText(readFileSync(path, "utf8"));
-      if (version) {
-        return version;
-      }
+      if (version) return version;
     } catch {
       // Try next candidate.
     }
@@ -101,19 +98,13 @@ export function suggestCommand(input: string): string | null {
 
 export function suggestCommands(input: string, max = 3): string[] {
   const normalized = input.trim();
-  if (!normalized.startsWith("/") && !normalized.startsWith("?")) {
-    return [];
-  }
+  if (!normalized.startsWith("/") && !normalized.startsWith("?")) return [];
   const commands = allKnownCommands();
   const prefixMatches: string[] = [];
   for (const command of commands) {
-    if (command.startsWith(normalized)) {
-      prefixMatches.push(command);
-    }
+    if (command.startsWith(normalized)) prefixMatches.push(command);
   }
-  if (prefixMatches.length > 0) {
-    return prefixMatches.slice(0, max);
-  }
+  if (prefixMatches.length > 0) return prefixMatches.slice(0, max);
 
   const scored: Array<{ command: string; score: number }> = [];
   let bestScore = Number.POSITIVE_INFINITY;
@@ -122,9 +113,7 @@ export function suggestCommands(input: string, max = 3): string[] {
     bestScore = Math.min(bestScore, score);
     scored.push({ command, score });
   }
-  if (!Number.isFinite(bestScore) || bestScore > 3) {
-    return [];
-  }
+  if (!Number.isFinite(bestScore) || bestScore > 3) return [];
   return scored
     .filter((row) => row.score === bestScore)
     .slice(0, max)
@@ -132,14 +121,10 @@ export function suggestCommands(input: string, max = 3): string[] {
 }
 
 function setSessionTitle(session: Session, inputText: string): void {
-  if (session.title !== "New Session") {
-    return;
-  }
+  if (session.title !== "New Session") return;
 
   const title = inputText.trim().replace(/\s+/g, " ").slice(0, 60);
-  if (title.length > 0) {
-    session.title = title;
-  }
+  if (title.length > 0) session.title = title;
 }
 
 export function formatResumeCommand(sessionId: string): string {
@@ -175,48 +160,34 @@ export async function handlePrompt(
     const lineNumberWidthForMessage = (message: string): number => {
       return message.split("\n").reduce((max, line) => {
         const parsed = parseToolProgressLine(line);
-        if (parsed.kind === "numberedDiff" || parsed.kind === "numberedContext") {
+        if (parsed.kind === "numberedDiff" || parsed.kind === "numberedContext")
           return Math.max(max, parsed.lineNumber.length);
-        }
         return max;
       }, 0);
     };
     const deltaForToolUpdate = (entry: { message: string; toolCallId?: string }): string => {
       const toolCallId = entry.toolCallId?.trim();
-      if (!toolCallId) {
-        return entry.message;
-      }
+      if (!toolCallId) return entry.message;
       const snapshotWidth = lineNumberWidthForMessage(entry.message);
-      if (snapshotWidth > 0) {
+      if (snapshotWidth > 0)
         toolLineWidthByCallId.set(toolCallId, Math.max(toolLineWidthByCallId.get(toolCallId) ?? 0, snapshotWidth));
-      }
       const previous = toolSnapshotByCallId.get(toolCallId);
       toolSnapshotByCallId.set(toolCallId, entry.message);
-      if (!previous) {
-        return entry.message;
-      }
+      if (!previous) return entry.message;
       const current = entry.message.trimEnd();
       const before = previous.trimEnd();
-      if (current.length === 0 || current === before) {
-        return "";
-      }
-      if (current.startsWith(`${before}\n`)) {
-        return current.slice(before.length + 1);
-      }
+      if (current.length === 0 || current === before) return "";
+      if (current.startsWith(`${before}\n`)) return current.slice(before.length + 1);
       return current;
     };
     const progressTracker = createProgressTracker({
       onStatus: () => {},
       onAssistant: (delta) => {
-        if (delta.length === 0) {
-          return;
-        }
+        if (delta.length === 0) return;
         assistantLineBuffer += delta;
         while (true) {
           const newlineIndex = assistantLineBuffer.indexOf("\n");
-          if (newlineIndex === -1) {
-            break;
-          }
+          if (newlineIndex === -1) break;
           const line = assistantLineBuffer.slice(0, newlineIndex);
           assistantLineBuffer = assistantLineBuffer.slice(newlineIndex + 1);
           flushAssistantLine(line);
@@ -231,9 +202,7 @@ export async function handlePrompt(
       },
       onToolOutput: (entry) => {
         const delta = deltaForToolUpdate({ message: entry.content, toolCallId: entry.toolCallId });
-        if (!delta) {
-          return;
-        }
+        if (!delta) return;
         const lineNumberWidth = toolLineWidthByCallId.get(entry.toolCallId);
         const includeBullet = !toolBulletPrintedByCallId.get(entry.toolCallId);
         printOutput(formatProgressEventOutput(delta, { lineNumberWidth, bullet: includeBullet }));
@@ -258,17 +227,13 @@ export async function handlePrompt(
     );
 
     printOutput("");
-    if (hasPrintedProgress) {
-      printOutput("");
-    }
+    if (hasPrintedProgress) printOutput("");
     const wrapWidth = Math.max(24, (output.columns ?? 120) - 4);
     if (assistantLineBuffer.length > 0) {
       flushAssistantLine(assistantLineBuffer);
       assistantLineBuffer = "";
     }
-    if (!assistantStreamStarted) {
-      await streamText(formatAssistantReplyOutput(reply.output, wrapWidth));
-    }
+    if (!assistantStreamStarted) await streamText(formatAssistantReplyOutput(reply.output, wrapWidth));
     session.messages.push(newMessage("assistant", reply.output));
     session.model = reply.model;
     session.updatedAt = nowIso();
@@ -297,28 +262,18 @@ function resolveResumeTarget(
 ): ResumeTarget | null {
   if (options.resumePrefix) {
     const matches = store.sessions.filter((item) => item.id.startsWith(options.resumePrefix ?? ""));
-    if (matches.length === 0) {
-      return { kind: "not_found", prefix: options.resumePrefix };
-    }
-    if (matches.length > 1) {
-      return { kind: "ambiguous", prefix: options.resumePrefix, matches };
-    }
+    if (matches.length === 0) return { kind: "not_found", prefix: options.resumePrefix };
+    if (matches.length > 1) return { kind: "ambiguous", prefix: options.resumePrefix, matches };
     return { kind: "ok", session: matches[0] };
   }
 
-  if (!options.resumeLatest) {
-    return null;
-  }
+  if (!options.resumeLatest) return null;
 
   const active = store.activeSessionId ? store.sessions.find((item) => item.id === store.activeSessionId) : undefined;
-  if (active) {
-    return { kind: "ok", session: active };
-  }
+  if (active) return { kind: "ok", session: active };
   if (store.sessions.length > 0) {
     const latest = store.sessions[0];
-    if (latest) {
-      return { kind: "ok", session: latest };
-    }
+    if (latest) return { kind: "ok", session: latest };
   }
   return null;
 }
@@ -361,9 +316,7 @@ export async function chatModeWithOptions(options: { resumeLatest: boolean; resu
   };
 
   try {
-    if (output.isTTY) {
-      clearScreen();
-    }
+    if (output.isTTY) clearScreen();
     await runInkChat({
       client,
       session,
@@ -372,9 +325,7 @@ export async function chatModeWithOptions(options: { resumeLatest: boolean; resu
       version: CLI_VERSION,
       useMemory: isResumed,
     });
-    if (output.isTTY) {
-      clearScreen();
-    }
+    if (output.isTTY) clearScreen();
     const resumeId = store.activeSessionId ?? session.id;
     printDim(`Resume with: ${formatResumeCommand(resumeId)}`);
   } finally {
@@ -409,6 +360,4 @@ async function main(): Promise<void> {
   process.exitCode = 1;
 }
 
-if (import.meta.main) {
-  await main();
-}
+if (import.meta.main) await main();

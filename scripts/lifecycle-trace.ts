@@ -111,14 +111,10 @@ async function main(): Promise<void> {
       .map((line) => parseRequestId(line))
       .find((value) => value?.startsWith("err_"));
 
-  if (!requestId) {
-    throw new Error(`No request_id found in ${logPath}`);
-  }
+  if (!requestId) throw new Error(`No request_id found in ${logPath}`);
 
   const selected = lines.filter((line) => line.includes(`request_id=${requestId}`));
-  if (selected.length === 0) {
-    throw new Error(`No lines found for request_id=${requestId} in ${logPath}`);
-  }
+  if (selected.length === 0) throw new Error(`No lines found for request_id=${requestId} in ${logPath}`);
 
   console.log(`request_id=${requestId}`);
   for (const line of selected) {

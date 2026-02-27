@@ -39,26 +39,18 @@ export function unresolvedPathRows(unresolvedPaths: string[]): ChatRow[] {
 }
 
 export function appendInputHistory(history: string[], value: string, maxEntries = 200): string[] {
-  if (history[history.length - 1] === value) {
-    return history;
-  }
+  if (history[history.length - 1] === value) return history;
   const next = [...history, value];
-  if (next.length > maxEntries) {
-    return next.slice(next.length - maxEntries);
-  }
+  if (next.length > maxEntries) return next.slice(next.length - maxEntries);
   return next;
 }
 
 export function buildInputHistory(messages: Message[], maxEntries = 200): string[] {
   let history: string[] = [];
   for (const message of messages) {
-    if (message.role !== "user") {
-      continue;
-    }
+    if (message.role !== "user") continue;
     const value = message.content.trim();
-    if (value.length === 0) {
-      continue;
-    }
+    if (value.length === 0) continue;
     history = appendInputHistory(history, value, maxEntries);
   }
   return history;
@@ -75,9 +67,8 @@ type ApplyUserTurnParams = {
 export function applyUserTurn(params: ApplyUserTurnParams): { userMessage: Message; row: ChatRow } {
   const userMessage = params.createMessage("user", params.userText);
   params.session.messages.push(userMessage);
-  if (params.session.title === "New Session") {
+  if (params.session.title === "New Session")
     params.session.title = params.displayText.trim().replace(/\s+/g, " ").slice(0, 60) || "New Session";
-  }
   params.session.updatedAt = params.nowIso();
   return { userMessage, row: { id: userMessage.id, role: "user", content: params.displayText } };
 }
@@ -126,9 +117,7 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
 
   const assistantMessage = params.createMessage("assistant", reply.output);
   const rows: ChatRow[] = [];
-  if (reply.output.trim().length > 0) {
-    rows.push(createRow("assistant", reply.output));
-  }
+  if (reply.output.trim().length > 0) rows.push(createRow("assistant", reply.output));
   const tokenEntry: TokenUsageEntry = {
     id: assistantMessage.id,
     usage: reply.usage ?? estimateTokenUsageFallback(params.userText, reply.output),

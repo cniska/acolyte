@@ -19,9 +19,7 @@ export function sanitizeAssistantContent(content: string): string {
 
 function wrapWithIndent(prefix: string, continuationPrefix: string, body: string, width: number): string[] {
   const words = body.split(/\s+/).filter((word) => word.length > 0);
-  if (words.length === 0) {
-    return [prefix.trimEnd()];
-  }
+  if (words.length === 0) return [prefix.trimEnd()];
 
   const lines: string[] = [];
   let current = prefix;
@@ -44,9 +42,7 @@ function wrapWithIndent(prefix: string, continuationPrefix: string, body: string
 }
 
 function wrapSingleLine(line: string, width: number): string[] {
-  if (line.length <= width) {
-    return [line];
-  }
+  if (line.length <= width) return [line];
 
   const numbered = line.match(/^(\s*\d+\.\s+)(.*)$/);
   if (numbered) {
@@ -69,12 +65,8 @@ export function wrapAssistantContent(content: string, width: number): string {
 }
 
 function looksLikePathRef(token: string): boolean {
-  if (token.length === 0) {
-    return false;
-  }
-  if (token.startsWith("@")) {
-    return false;
-  }
+  if (token.length === 0) return false;
+  if (token.startsWith("@")) return false;
   const fileWithExt = /^(?:\.{1,2}\/)?[\w.-]+\.[\w-]+(?::\d+(?::\d+)?)?$/.test(token);
   const slashPath = /^(?:\.{1,2}\/|~\/)?[\w.-]+(?:\/[\w.-]+)+(?:\.[\w-]+)?(?::\d+(?::\d+)?)?$/.test(token);
   return fileWithExt || slashPath;

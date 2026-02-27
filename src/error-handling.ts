@@ -62,9 +62,7 @@ export function errorCodeFromCategory(category: ErrorCategory): ErrorCode {
 }
 
 export function parseErrorInfo(value: unknown): ParseErrorResult {
-  if (typeof value === "string") {
-    return { ok: true, value: { message: value, code: extractToolErrorCode(value) } };
-  }
+  if (typeof value === "string") return { ok: true, value: { message: value, code: extractToolErrorCode(value) } };
   if (value instanceof Error) {
     const code = "code" in value && typeof value.code === "string" ? value.code : extractToolErrorCode(value.message);
     return { ok: true, value: { message: value.message, code } };
@@ -79,9 +77,7 @@ export function parseErrorInfo(value: unknown): ParseErrorResult {
       const code = typeof rec.code === "string" ? rec.code : extractToolErrorCode(rec.error);
       return { ok: true, value: { message: rec.error, code } };
     }
-    if (rec.error !== undefined) {
-      return parseErrorInfo(rec.error);
-    }
+    if (rec.error !== undefined) return parseErrorInfo(rec.error);
   }
   return { ok: false, error: "invalid_error_payload" };
 }
@@ -90,11 +86,8 @@ export function recoveryActionForError(
   input: { errorCode?: string; unknownErrorCount: number },
   unknownErrorBudget: number,
 ): RecoveryAction {
-  if (input.errorCode === LIFECYCLE_ERROR_CODES.timeout) {
-    return "retry-timeout";
-  }
-  if (input.errorCode === LIFECYCLE_ERROR_CODES.unknown && input.unknownErrorCount >= unknownErrorBudget) {
+  if (input.errorCode === LIFECYCLE_ERROR_CODES.timeout) return "retry-timeout";
+  if (input.errorCode === LIFECYCLE_ERROR_CODES.unknown && input.unknownErrorCount >= unknownErrorBudget)
     return "stop-unknown-budget";
-  }
   return "none";
 }

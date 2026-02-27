@@ -18,16 +18,12 @@ export function countLabel(value: number, singular: string, plural: string): str
 
 export function displayPath(pathInput: string): string {
   const rel = relative(process.cwd(), pathInput);
-  if (!rel || rel.startsWith("..")) {
-    return pathInput;
-  }
+  if (!rel || rel.startsWith("..")) return pathInput;
   return rel;
 }
 
 export function truncateText(input: string, maxChars: number): string {
-  if (input.length <= maxChars) {
-    return input;
-  }
+  if (input.length <= maxChars) return input;
   return `${input.slice(0, Math.max(0, maxChars - 1))}…`;
 }
 
@@ -40,18 +36,10 @@ const ANSI = {
 } as const;
 
 function colorizeDiffLine(line: string): string {
-  if (line.startsWith("@@ ")) {
-    return `${ANSI.dim}${line}${ANSI.resetDim}`;
-  }
-  if (line.startsWith("+") && !line.startsWith("+++")) {
-    return `${ANSI.green}${line}${ANSI.reset}`;
-  }
-  if (line.startsWith("-") && !line.startsWith("---")) {
-    return `${ANSI.red}${line}${ANSI.reset}`;
-  }
-  if (line.startsWith("… +")) {
-    return `${ANSI.dim}${line}${ANSI.resetDim}`;
-  }
+  if (line.startsWith("@@ ")) return `${ANSI.dim}${line}${ANSI.resetDim}`;
+  if (line.startsWith("+") && !line.startsWith("+++")) return `${ANSI.green}${line}${ANSI.reset}`;
+  if (line.startsWith("-") && !line.startsWith("---")) return `${ANSI.red}${line}${ANSI.reset}`;
+  if (line.startsWith("… +")) return `${ANSI.dim}${line}${ANSI.resetDim}`;
   return line;
 }
 
@@ -81,23 +69,18 @@ export function showToolResult(
 }
 
 export function clampLines(lines: string[], maxLines: number, overflowTolerance = 4): string[] {
-  if (lines.length <= maxLines + overflowTolerance) {
-    return lines;
-  }
+  if (lines.length <= maxLines + overflowTolerance) return lines;
   return [...lines.slice(0, maxLines - 1), `… +${lines.length - (maxLines - 1)} lines`];
 }
 
 export function formatSearchOutput(raw: string): string {
   const lines = raw.split("\n").filter((line) => line.trim().length > 0);
-  if (lines.length === 0 || (lines.length === 1 && lines[0].toLowerCase().startsWith("no matches"))) {
+  if (lines.length === 0 || (lines.length === 1 && lines[0].toLowerCase().startsWith("no matches")))
     return "No matches.";
-  }
   const files = new Set<string>();
   for (const line of lines) {
     const firstColon = line.indexOf(":");
-    if (firstColon > 0) {
-      files.add(line.slice(0, firstColon));
-    }
+    if (firstColon > 0) files.add(line.slice(0, firstColon));
   }
   const summary = `${countLabel(lines.length, "match", "matches")} in ${countLabel(files.size, "file", "files")}`;
   return [summary, ...clampLines(lines, 12)].join("\n");
@@ -125,16 +108,12 @@ export function formatDiffOutput(raw: string): string {
       filesChanged += 1;
       continue;
     }
-    if (line.startsWith("+++ ") || line.startsWith("--- ")) {
-      continue;
-    }
+    if (line.startsWith("+++ ") || line.startsWith("--- ")) continue;
     if (line.startsWith("+")) {
       added += 1;
       continue;
     }
-    if (line.startsWith("-")) {
-      removed += 1;
-    }
+    if (line.startsWith("-")) removed += 1;
   }
   const summary = `${countLabel(filesChanged, "file", "files")} changed, +${added} -${removed}`;
   return [summary, ...clampLines(lines, 64)].join("\n");
@@ -142,26 +121,20 @@ export function formatDiffOutput(raw: string): string {
 
 export function formatGitStatusOutput(raw: string): string {
   const lines = raw.split("\n").filter((line) => line.trim().length > 0);
-  if (lines.length === 0) {
-    return "working tree clean";
-  }
+  if (lines.length === 0) return "working tree clean";
 
   const branchLine = lines[0].startsWith("## ") ? lines[0] : undefined;
   const changed = lines.filter((line) => !line.startsWith("## ")).length;
   const summary = changed === 0 ? "working tree clean" : `${countLabel(changed, "changed file", "changed files")}`;
   const out: string[] = [summary];
-  if (branchLine) {
-    out.push(branchLine);
-  }
+  if (branchLine) out.push(branchLine);
   out.push(...lines.filter((line) => !line.startsWith("## ")));
   return clampLines(out, 6).join("\n");
 }
 
 export function formatRunOutput(raw: string): string {
   const lines = raw.split("\n");
-  if (lines.length === 0) {
-    return "(no output)";
-  }
+  if (lines.length === 0) return "(no output)";
 
   const exitLine = lines[0];
   const exitCode = Number.parseInt(exitLine.replace("exit_code=", "").trim(), 10);
@@ -169,21 +142,13 @@ export function formatRunOutput(raw: string): string {
   const stdoutIdx = lines.findIndex((line) => line.trim() === "stdout:");
   const stderrIdx = lines.findIndex((line) => line.trim() === "stderr:");
   const out: string[] = [exitLine];
-  if (durationLine) {
-    out.push(durationLine);
-  }
+  if (durationLine) out.push(durationLine);
 
   const section = (name: "stdout:" | "stderr:", start: number, end: number): void => {
-    if (start < 0) {
-      return;
-    }
+    if (start < 0) return;
     let payload = lines.slice(start + 1, end).filter((line) => line.trim().length > 0);
-    if (name === "stderr:" && exitCode === 0 && stdoutIdx >= 0) {
-      payload = [];
-    }
-    if (payload.length === 0) {
-      return;
-    }
+    if (name === "stderr:" && exitCode === 0 && stdoutIdx >= 0) payload = [];
+    if (payload.length === 0) return;
     out.push(name);
     out.push(...clampLines(payload, 6));
   };
@@ -198,26 +163,16 @@ export function formatRunOutput(raw: string): string {
 export function parseRunExitCode(raw: string): number | null {
   const first = raw.split("\n")[0]?.trim() ?? "";
   const match = first.match(/^exit_code=([^\\s]+)$/);
-  if (!match) {
-    return null;
-  }
+  if (!match) return null;
   const parsed = runExitCodeSchema.safeParse(match[1]);
   return parsed.success ? parsed.data : null;
 }
 
 export function formatForTool(kind: "find" | "search" | "read" | "diff" | "run" | "status", raw: string): string {
-  if (kind === "find" || kind === "search") {
-    return formatSearchOutput(raw);
-  }
-  if (kind === "read") {
-    return formatReadOutput(raw);
-  }
-  if (kind === "diff") {
-    return formatDiffOutput(raw);
-  }
-  if (kind === "run") {
-    return formatRunOutput(raw);
-  }
+  if (kind === "find" || kind === "search") return formatSearchOutput(raw);
+  if (kind === "read") return formatReadOutput(raw);
+  if (kind === "diff") return formatDiffOutput(raw);
+  if (kind === "run") return formatRunOutput(raw);
   return formatGitStatusOutput(raw);
 }
 
@@ -250,9 +205,7 @@ export function summarizeDiff(raw: string): {
       added += 1;
       continue;
     }
-    if (line.startsWith("-")) {
-      removed += 1;
-    }
+    if (line.startsWith("-")) removed += 1;
   }
 
   // Build a compact hunk-centered preview with one context line around edits.
@@ -260,9 +213,7 @@ export function summarizeDiff(raw: string): {
   let currentHunkBody: string[] = [];
   const excerpt: string[] = [];
   const flushHunk = (): void => {
-    if (!currentHunkHeader) {
-      return;
-    }
+    if (!currentHunkHeader) return;
     const changedIdxs = currentHunkBody
       .map((line, index) => ({ line, index }))
       .filter((entry) => entry.line.startsWith("+") || entry.line.startsWith("-"))
@@ -280,13 +231,9 @@ export function summarizeDiff(raw: string): {
     }
     excerpt.push(currentHunkHeader);
     for (let i = 0; i < currentHunkBody.length; i += 1) {
-      if (!include.has(i)) {
-        continue;
-      }
+      if (!include.has(i)) continue;
       const line = currentHunkBody[i];
-      if (line === undefined) {
-        continue;
-      }
+      if (line === undefined) continue;
       excerpt.push(line);
     }
     currentHunkHeader = "";
@@ -308,9 +255,7 @@ export function summarizeDiff(raw: string): {
     ) {
       continue;
     }
-    if (!currentHunkHeader) {
-      continue;
-    }
+    if (!currentHunkHeader) continue;
     currentHunkBody.push(line);
   }
   flushHunk();
@@ -335,18 +280,14 @@ export function formatEditUpdateOutput(matches: number, diff: string): string {
 }
 
 export function formatReadDetail(pathInput: string, start?: string, end?: string): string {
-  if (!start && !end) {
-    return pathInput;
-  }
+  if (!start && !end) return pathInput;
   const from = start ?? "1";
   const to = end ?? "EOF";
   return `${pathInput}:${from}-${to}`;
 }
 
 export function displayPromptForOutput(prompt: string): string {
-  if (!prompt.startsWith("Dogfood mode:")) {
-    return prompt;
-  }
+  if (!prompt.startsWith("Dogfood mode:")) return prompt;
   const lines = prompt
     .split("\n")
     .map((line) => line.trim())
@@ -357,14 +298,10 @@ export function displayPromptForOutput(prompt: string): string {
 export function formatAssistantReplyOutput(content: string, wrapWidth = 100): string {
   const wrapped = wrapAssistantContent(content, wrapWidth);
   const lines = wrapped.split("\n");
-  if (lines.length === 0) {
-    return "•";
-  }
+  if (lines.length === 0) return "•";
   return lines
     .map((line, index) => {
-      if (index === 0) {
-        return line.length > 0 ? `• ${line}` : "•";
-      }
+      if (index === 0) return line.length > 0 ? `• ${line}` : "•";
       return line.length > 0 ? `  ${line}` : "";
     })
     .join("\n");
@@ -384,9 +321,8 @@ export function formatProgressEventOutput(
   const lines = content.split("\n");
   const parsedLines = lines.map((line) => parseToolProgressLine(line));
   const inferredLineNumberWidth = parsedLines.reduce((max, parsed) => {
-    if (parsed.kind === "numberedDiff" || parsed.kind === "numberedContext") {
+    if (parsed.kind === "numberedDiff" || parsed.kind === "numberedContext")
       return Math.max(max, parsed.lineNumber.length);
-    }
     return max;
   }, 0);
   const lineNumberWidth = Math.max(3, options?.lineNumberWidth ?? 0, inferredLineNumberWidth);
@@ -394,9 +330,8 @@ export function formatProgressEventOutput(
   const colorize = (parsed: ReturnType<typeof parseToolProgressLine>): string => {
     switch (parsed.kind) {
       case "header":
-        if (["Edit", "Create", "Read", "Delete", "Diff", "Status"].includes(parsed.verb)) {
+        if (["Edit", "Create", "Read", "Delete", "Diff", "Status"].includes(parsed.verb))
           return `${bold(`${parsed.verb} `)}${path(parsed.path)}`;
-        }
         return `${bold(`${parsed.verb} `)}${dim(parsed.path)}`;
       case "numberedDiff": {
         const colorBg = parsed.marker === "+" ? greenBg : redBg;
@@ -413,9 +348,7 @@ export function formatProgressEventOutput(
         return `${dim(paddedLineNumber)}${spacing}${parsed.text}`;
       }
       case "commandOutput":
-        if (parsed.stream === "err" && !parsed.text.startsWith("$ ")) {
-          return dim(red(parsed.text));
-        }
+        if (parsed.stream === "err" && !parsed.text.startsWith("$ ")) return dim(red(parsed.text));
         return dim(parsed.text);
       case "fileDiff":
         return parsed.marker === "+" ? green(parsed.text) : red(parsed.text);
@@ -429,17 +362,13 @@ export function formatProgressEventOutput(
         return parsed.text;
     }
   };
-  if (lines.length === 0) {
-    return options?.bullet === false ? "" : "•";
-  }
+  if (lines.length === 0) return options?.bullet === false ? "" : "•";
   const includeBullet = options?.bullet ?? true;
   return lines
     .map((line, index) => {
       const parsed = parsedLines[index] ?? parseToolProgressLine(line);
       if (index === 0) {
-        if (!includeBullet) {
-          return line.length > 0 ? `    ${colorize(parsed)}` : "";
-        }
+        if (!includeBullet) return line.length > 0 ? `    ${colorize(parsed)}` : "";
         return line.length > 0 ? `• ${colorize(parsed)}` : "•";
       }
       return line.length > 0 ? `    ${colorize(parsed)}` : "";
@@ -448,20 +377,15 @@ export function formatProgressEventOutput(
 }
 
 export function formatPromptError(error: unknown): string {
-  if (!(error instanceof Error)) {
-    return "Request failed. Retry and check server logs if it keeps failing.";
-  }
+  if (!(error instanceof Error)) return "Request failed. Retry and check server logs if it keeps failing.";
   const message = error.message.trim();
   const lower = message.toLowerCase();
-  if (lower.includes("insufficient_quota") || lower.includes("quota exceeded") || lower.includes("quota")) {
+  if (lower.includes("insufficient_quota") || lower.includes("quota exceeded") || lower.includes("quota"))
     return "Provider quota exceeded. Add billing/credits or switch model/provider.";
-  }
-  if (lower.includes("timed out") || lower.includes("timeout")) {
+  if (lower.includes("timed out") || lower.includes("timeout"))
     return "Server request timed out. Retry or reduce request scope.";
-  }
-  if (lower.includes("shell command execution is disabled in read mode")) {
+  if (lower.includes("shell command execution is disabled in read mode"))
     return "Write action blocked in read mode. Run /permissions write and retry.";
-  }
   if (
     lower.includes("server unavailable") ||
     lower.includes("connection refused") ||
@@ -469,9 +393,7 @@ export function formatPromptError(error: unknown): string {
   ) {
     return "Server unavailable. Start the server and retry.";
   }
-  if (lower.includes("remote server error")) {
-    return message;
-  }
+  if (lower.includes("remote server error")) return message;
   return message || "Request failed. Retry and check server logs if it keeps failing.";
 }
 
@@ -479,12 +401,8 @@ export function parseEditResult(raw: string): { path: string; edits: number; dry
   const path = raw.match(/^path=(.*)$/m)?.[1]?.trim();
   const editsText = raw.match(/^edits=(.*)$/m)?.[1]?.trim();
   const dryRunText = raw.match(/^dry_run=(.*)$/m)?.[1]?.trim();
-  if (!path || !editsText || !dryRunText) {
-    return null;
-  }
-  if (dryRunText !== "true" && dryRunText !== "false") {
-    return null;
-  }
+  if (!path || !editsText || !dryRunText) return null;
+  if (dryRunText !== "true" && dryRunText !== "false") return null;
   const parsed = editResultSchema.safeParse({
     path,
     edits: editsText,

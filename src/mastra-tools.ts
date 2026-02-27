@@ -100,9 +100,7 @@ function emitResultChunks(
   maxLines = 80,
   toolCallId?: string,
 ): void {
-  if (!onToolOutput) {
-    return;
-  }
+  if (!onToolOutput) return;
   const allLines = result
     .split("\n")
     .map((line) => line.trimEnd())
@@ -111,33 +109,26 @@ function emitResultChunks(
   for (const line of lines) {
     onToolOutput({ toolName, message: line, toolCallId });
   }
-  if (allLines.length > maxLines) {
+  if (allLines.length > maxLines)
     onToolOutput({ toolName, message: `… ${allLines.length - maxLines} lines truncated`, toolCallId });
-  }
 }
 
 function unifiedDiffLines(rawResult: string, maxLines = 120): string[] {
   const marker = "\ndiff --git ";
   const index = rawResult.indexOf(marker);
   const start = index >= 0 ? index + 1 : rawResult.indexOf("diff --git ");
-  if (start < 0) {
-    return [];
-  }
+  if (start < 0) return [];
   const lines = rawResult
     .slice(start)
     .split("\n")
     .map((line) => line.trimEnd());
-  if (lines.length > maxLines) {
-    return lines.slice(0, maxLines);
-  }
+  if (lines.length > maxLines) return lines.slice(0, maxLines);
   return lines;
 }
 
 function numberedUnifiedDiffLines(rawResult: string, maxLines = 160): string[] {
   const lines = unifiedDiffLines(rawResult, Math.max(maxLines * 2, 240));
-  if (lines.length === 0) {
-    return [];
-  }
+  if (lines.length === 0) return [];
   const rendered: string[] = [];
   let oldLine = 0;
   let newLine = 0;
@@ -152,9 +143,7 @@ function numberedUnifiedDiffLines(rawResult: string, maxLines = 160): string[] {
       }
       continue;
     }
-    if (!inHunk || line.startsWith("diff --git ") || line.startsWith("--- ") || line.startsWith("+++ ")) {
-      continue;
-    }
+    if (!inHunk || line.startsWith("diff --git ") || line.startsWith("--- ") || line.startsWith("+++ ")) continue;
     if (line.startsWith("+")) {
       rendered.push(`${newLine} + ${line.slice(1)}`);
       newLine += 1;
@@ -177,9 +166,7 @@ function numberedUnifiedDiffLines(rawResult: string, maxLines = 160): string[] {
   const isChange = rendered.map((line) => /^\d+\s+[+-]\s/.test(line));
   const keep = new Uint8Array(rendered.length);
   for (let i = 0; i < rendered.length; i++) {
-    if (!isChange[i]) {
-      continue;
-    }
+    if (!isChange[i]) continue;
     for (let j = Math.max(0, i - contextRadius); j <= Math.min(rendered.length - 1, i + contextRadius); j++) {
       keep[j] = 1;
     }
@@ -188,9 +175,7 @@ function numberedUnifiedDiffLines(rawResult: string, maxLines = 160): string[] {
   let skippedCount = 0;
   for (let i = 0; i < rendered.length; i++) {
     if (keep[i]) {
-      if (skippedCount > 0) {
-        filtered.push("…");
-      }
+      if (skippedCount > 0) filtered.push("…");
       skippedCount = 0;
       filtered.push(rendered[i] ?? "");
     } else {
@@ -230,9 +215,7 @@ function createRunCommandTool(workspace: string, session: SessionContext, onTool
           let stderrBuffer = "";
           const emitLine = (message: string): void => {
             totalLines += 1;
-            if (streamedLines >= maxStreamLines) {
-              return;
-            }
+            if (streamedLines >= maxStreamLines) return;
             streamedLines += 1;
             onToolOutput?.({ toolName: "run-command", message, toolCallId });
           };
@@ -242,14 +225,10 @@ function createRunCommandTool(workspace: string, session: SessionContext, onTool
             let remaining = source;
             while (true) {
               const newlineIndex = remaining.indexOf("\n");
-              if (newlineIndex === -1) {
-                break;
-              }
+              if (newlineIndex === -1) break;
               const line = remaining.slice(0, newlineIndex).trimEnd();
               remaining = remaining.slice(newlineIndex + 1);
-              if (line.length > 0) {
-                emitLine(`${label} | ${line}`);
-              }
+              if (line.length > 0) emitLine(`${label} | ${line}`);
             }
             if (stream === "stdout") {
               stdoutBuffer = remaining;
@@ -273,9 +252,7 @@ function createRunCommandTool(workspace: string, session: SessionContext, onTool
           const flushRemainder = (stream: "stdout" | "stderr"): void => {
             const label = stream === "stdout" ? "out" : "err";
             const remainder = (stream === "stdout" ? stdoutBuffer : stderrBuffer).trimEnd();
-            if (remainder.length > 0) {
-              emitLine(`${label} | ${remainder}`);
-            }
+            if (remainder.length > 0) emitLine(`${label} | ${remainder}`);
             if (stream === "stdout") {
               stdoutBuffer = "";
             } else {
@@ -285,9 +262,7 @@ function createRunCommandTool(workspace: string, session: SessionContext, onTool
           flushRemainder("stdout");
           flushRemainder("stderr");
           const omitted = totalLines - streamedLines;
-          if (omitted > 0) {
-            onToolOutput?.({ toolName: "run-command", message: `… +${omitted} lines`, toolCallId });
-          }
+          if (omitted > 0) onToolOutput?.({ toolName: "run-command", message: `… +${omitted} lines`, toolCallId });
           const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.run);
           return { result };
         }),
@@ -304,9 +279,7 @@ export async function withToolError<T>(toolId: ToolName, task: () => Promise<T>)
     const wrapped = new Error(`${toolId} failed: ${message}`) as Error & { code?: string };
     if (typeof error === "object" && error !== null && "code" in error) {
       const code = (error as { code?: unknown }).code;
-      if (typeof code === "string" && code.length > 0) {
-        wrapped.code = code;
-      }
+      if (typeof code === "string" && code.length > 0) wrapped.code = code;
     }
     throw wrapped;
   }
@@ -717,8 +690,6 @@ export function toolsForAgent(options?: { workspace?: string; onToolOutput?: Too
 } {
   const workspace = options?.workspace ?? resolve(process.cwd());
   const session = createSessionContext();
-  if (appConfig.agent.permissions.mode === "read") {
-    return readOnlyTools(workspace, session, options?.onToolOutput);
-  }
+  if (appConfig.agent.permissions.mode === "read") return readOnlyTools(workspace, session, options?.onToolOutput);
   return createToolset(workspace, session, options?.onToolOutput);
 }

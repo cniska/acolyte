@@ -42,9 +42,7 @@ export function parseToolProgressBlock(content: string): ToolProgressBlock {
   const lineNumberWidth = Math.max(
     3,
     lines.reduce((max, line) => {
-      if (line.kind === "numberedDiff" || line.kind === "numberedContext") {
-        return Math.max(max, line.lineNumber.length);
-      }
+      if (line.kind === "numberedDiff" || line.kind === "numberedContext") return Math.max(max, line.lineNumber.length);
       return max;
     }, 0),
   );
@@ -87,14 +85,9 @@ export function parseToolProgressLine(line: string): ToolProgressParsedLine {
       text: commandOutput[2] ?? "",
     };
   }
-  if (line.startsWith("+ ")) {
-    return { kind: "fileDiff", marker: "+", text: line };
-  }
-  if (line.startsWith("- ")) {
-    return { kind: "fileDiff", marker: "-", text: line };
-  }
-  if (line === "…" || (/^[…(]/.test(line) && /truncat|omit|output|lines$/i.test(line))) {
+  if (line.startsWith("+ ")) return { kind: "fileDiff", marker: "+", text: line };
+  if (line.startsWith("- ")) return { kind: "fileDiff", marker: "-", text: line };
+  if (line === "…" || (/^[…(]/.test(line) && /truncat|omit|output|lines$/i.test(line)))
     return { kind: "meta", text: line };
-  }
   return { kind: "text", text: line };
 }

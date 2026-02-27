@@ -27,9 +27,7 @@ export function createPicker<K extends keyof PickerByKind>(config: CreatePickerC
 
 export function createResumePicker(store: SessionStore, limit = 20): PickerState | null {
   const items = store.sessions.slice(0, limit);
-  if (items.length === 0) {
-    return null;
-  }
+  if (items.length === 0) return null;
   const activeIndex = items.findIndex((item) => item.id === store.activeSessionId);
   return createPicker({
     kind: "resume",
@@ -79,9 +77,7 @@ export function createClarifyAnswerPicker(
   answers: Array<{ question: string; answer: string }> = [],
 ): PickerState | null {
   const trimmedQuestion = question.trim();
-  if (!trimmedQuestion) {
-    return null;
-  }
+  if (!trimmedQuestion) return null;
   return {
     kind: "clarifyAnswer",
     originalPrompt,
@@ -95,8 +91,6 @@ export function createClarifyAnswerPicker(
 }
 
 export function boundedSkillInstructions(instructions: string, maxChars: number): string {
-  if (instructions.length <= maxChars) {
-    return instructions;
-  }
+  if (instructions.length <= maxChars) return instructions;
   return `${instructions.slice(0, maxChars - 1)}…`;
 }

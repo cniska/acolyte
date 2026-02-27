@@ -52,9 +52,7 @@ export function buildPromptDisplayLines(value: string, cursorOffset: number): Pr
   const cursorColumn = clamped - lineStart;
   const lines = value.split("\n");
   return lines.map((line, index) => {
-    if (index !== cursorLine) {
-      return { before: line, cursor: null, after: "" };
-    }
+    if (index !== cursorLine) return { before: line, cursor: null, after: "" };
     if (cursorColumn < line.length) {
       return {
         before: line.slice(0, cursorColumn),
@@ -122,9 +120,7 @@ export function PromptInput({
       }
       if (action.type === "delete_word_back") {
         metaPrefixAt.current = null;
-        if (cursorOffset === 0) {
-          return;
-        }
+        if (cursorOffset === 0) return;
         const next = moveWordLeft(value, cursorOffset);
         onChange(`${value.slice(0, next)}${value.slice(cursorOffset)}`);
         setCursorOffset(next);
@@ -132,9 +128,7 @@ export function PromptInput({
       }
       if (action.type === "clear_line") {
         metaPrefixAt.current = null;
-        if (value.length === 0) {
-          return;
-        }
+        if (value.length === 0) return;
         onChange("");
         setCursorOffset(0);
         return;
@@ -149,18 +143,14 @@ export function PromptInput({
       }
       if (action.type === "delete_back") {
         metaPrefixAt.current = null;
-        if (cursorOffset === 0) {
-          return;
-        }
+        if (cursorOffset === 0) return;
         onChange(`${value.slice(0, cursorOffset - 1)}${value.slice(cursorOffset)}`);
         setCursorOffset((current) => Math.max(0, current - 1));
         return;
       }
       if (action.type === "delete_forward") {
         metaPrefixAt.current = null;
-        if (cursorOffset >= value.length) {
-          return;
-        }
+        if (cursorOffset >= value.length) return;
         onChange(`${value.slice(0, cursorOffset)}${value.slice(cursorOffset + 1)}`);
         return;
       }

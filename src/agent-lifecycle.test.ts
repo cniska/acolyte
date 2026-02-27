@@ -54,9 +54,7 @@ describe("planDetector", () => {
     });
     const action = planDetector.evaluate(ctx);
     expect(action.type).toBe("regenerate");
-    if (action.type === "regenerate") {
-      expect(action.prompt).toContain("Execute the task directly");
-    }
+    if (action.type === "regenerate") expect(action.prompt).toContain("Execute the task directly");
   });
 
   test("returns done when tools were used", () => {
@@ -264,9 +262,7 @@ describe("multiMatchEditEvaluator", () => {
     });
     const action = multiMatchEditEvaluator.evaluate(ctx);
     expect(action.type).toBe("regenerate");
-    if (action.type === "regenerate") {
-      expect(action.prompt).toContain("Use a concrete file path for edit-code");
-    }
+    if (action.type === "regenerate") expect(action.prompt).toContain("Use a concrete file path for edit-code");
   });
 
   test("returns done when edit-code was already used", () => {

@@ -37,27 +37,21 @@ function parseArgs(args: string[]): ProgressArgs {
     const token = args[i];
     if (token === "--since") {
       const value = args[i + 1];
-      if (!value) {
-        throw new Error("Missing value for --since.");
-      }
+      if (!value) throw new Error("Missing value for --since.");
       raw.since = value;
       i += 1;
       continue;
     }
     if (token === "--target") {
       const value = args[i + 1];
-      if (!value) {
-        throw new Error("Invalid --target value.");
-      }
+      if (!value) throw new Error("Invalid --target value.");
       raw.target = value;
       i += 1;
       continue;
     }
     if (token === "--lookback") {
       const value = args[i + 1];
-      if (!value) {
-        throw new Error("Invalid --lookback value.");
-      }
+      if (!value) throw new Error("Invalid --lookback value.");
       raw.lookback = value;
       i += 1;
       continue;
@@ -73,12 +67,8 @@ function parseArgs(args: string[]): ProgressArgs {
   if (!parsed.success) {
     const hasTargetError = parsed.error.issues.some((issue) => issue.path[0] === "target");
     const hasLookbackError = parsed.error.issues.some((issue) => issue.path[0] === "lookback");
-    if (hasTargetError) {
-      throw new Error("Invalid --target value.");
-    }
-    if (hasLookbackError) {
-      throw new Error("Invalid --lookback value.");
-    }
+    if (hasTargetError) throw new Error("Invalid --target value.");
+    if (hasLookbackError) throw new Error("Invalid --lookback value.");
     throw new Error("Invalid arguments.");
   }
   return parsed.data;
@@ -149,27 +139,19 @@ function commitType(subject: string): string {
 }
 
 function selectScopeCommits(commits: Commit[], args: ProgressArgs): Commit[] {
-  if (args.since) {
-    return commits;
-  }
+  if (args.since) return commits;
   const scoped: Commit[] = [];
   for (const commit of commits) {
-    if (NON_DELIVERY_EXCLUDED_TYPES.has(commitType(commit.subject))) {
-      continue;
-    }
+    if (NON_DELIVERY_EXCLUDED_TYPES.has(commitType(commit.subject))) continue;
     scoped.push(commit);
-    if (scoped.length >= args.lookback) {
-      break;
-    }
+    if (scoped.length >= args.lookback) break;
   }
   return scoped;
 }
 
 function buildGitLogCmd(args: ProgressArgs): string[] {
   const base = ["git", "log", "--date=short", "--pretty=format:%h%x09%ad%x09%s"];
-  if (args.since) {
-    return [...base, "--since", args.since];
-  }
+  if (args.since) return [...base, "--since", args.since];
   return [...base, "-n", String(args.lookback)];
 }
 
@@ -229,9 +211,7 @@ function printProgress(commits: Commit[], args: ProgressArgs): void {
   console.log("Dogfood progress");
   console.log(`- scope: ${scope}`);
   console.log(`- commits (scoped): ${total}`);
-  if (!args.since) {
-    console.log(`- commits scanned: ${commits.length}`);
-  }
+  if (!args.since) console.log(`- commits scanned: ${commits.length}`);
   console.log(`- slices (delivery): ${delivery}/${args.target} (${pct}%)`);
   console.log(`- delegated slices (feat/fix): ${delegatedSlices}`);
   console.log(
@@ -247,9 +227,8 @@ function printProgress(commits: Commit[], args: ProgressArgs): void {
       console.log(`  - ${row.type}: ${row.count}`);
     }
   }
-  if (total === 0 && args.since) {
+  if (total === 0 && args.since)
     console.log("- hint: no commits matched --since; try --lookback 30 or adjust the date.");
-  }
 }
 
 function printUsage(): void {
@@ -273,9 +252,7 @@ async function main(): Promise<void> {
   }
 }
 
-if (import.meta.main) {
-  void main();
-}
+if (import.meta.main) void main();
 
 export { buildGitLogCmd, countDeliverySlices, parseArgs, parseGitLog, summarizeByType };
 export { commitType, countDelegatedOutcomes, countDelegatedSlices, nonDeliveryCategories, selectScopeCommits };

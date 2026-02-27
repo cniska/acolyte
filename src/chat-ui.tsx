@@ -173,14 +173,10 @@ function ChatApp(props: ChatAppProps) {
     useMemory,
   });
   useEffect(() => {
-    if (isThinking || queuedMessages.length === 0) {
-      return;
-    }
+    if (isThinking || queuedMessages.length === 0) return;
     const [next, ...rest] = queuedMessages;
     setQueuedMessages(rest);
-    if (next) {
-      void handleSubmit(next);
-    }
+    if (next) void handleSubmit(next);
   }, [handleSubmit, isThinking, queuedMessages]);
 
   useChatKeybindings({
@@ -245,15 +241,9 @@ function ChatApp(props: ChatAppProps) {
             nextValue: next,
             applyingHistory: applyingHistoryRef.current,
           });
-          if (decision.ignore) {
-            return;
-          }
-          if (decision.clearApplyingHistory) {
-            applyingHistoryRef.current = false;
-          }
-          if (decision.resetHistoryIndex) {
-            setInputHistoryIndex(-1);
-          }
+          if (decision.ignore) return;
+          if (decision.clearApplyingHistory) applyingHistoryRef.current = false;
+          if (decision.resetHistoryIndex) setInputHistoryIndex(-1);
           setValue(decision.nextValue);
         }}
         onSubmit={(next) => {
@@ -270,9 +260,7 @@ function ChatApp(props: ChatAppProps) {
             return;
           }
           const queueDecision = resolveQueueSubmit({ value: resolved.value, isThinking });
-          if (queueDecision.kind === "ignore") {
-            return;
-          }
+          if (queueDecision.kind === "ignore") return;
           if (isThinking) {
             setQueuedMessages((current) => [...current, queueDecision.value]);
             setValue("");
@@ -288,9 +276,7 @@ function ChatApp(props: ChatAppProps) {
         showShortcuts={showShortcuts}
         onConfirmNoteChange={(next) => {
           setPicker((current) => {
-            if (!current || (current.kind !== "writeConfirm" && current.kind !== "clarifyAnswer")) {
-              return current;
-            }
+            if (!current || (current.kind !== "writeConfirm" && current.kind !== "clarifyAnswer")) return current;
             return { ...current, note: next };
           });
         }}

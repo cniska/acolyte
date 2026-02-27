@@ -22,9 +22,7 @@ const SERVER_IDLE_TIMEOUT_SECONDS = Math.max(30, Math.ceil(appConfig.server.repl
 const originalConsoleError = console.error.bind(console);
 console.error = (...args: unknown[]): void => {
   const first = args[0];
-  if (typeof first === "string" && first.includes(SUPPRESSED_STDERR_PREFIX)) {
-    return;
-  }
+  if (typeof first === "string" && first.includes(SUPPRESSED_STDERR_PREFIX)) return;
   originalConsoleError(...args);
 };
 
@@ -69,9 +67,7 @@ function serverError(
 }
 
 function isChatRequest(value: unknown): value is ChatRequest {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
+  if (!value || typeof value !== "object") return false;
 
   const req = value as Partial<ChatRequest>;
   return (
@@ -91,23 +87,15 @@ type WorkspaceResolution = {
 };
 
 function resolveWorkspacePath(request: Pick<ChatRequest, "workspace">): WorkspaceResolution {
-  if (!request.workspace) {
-    return { workspacePath: resolve(process.cwd()), workspaceMode: "default" };
-  }
+  if (!request.workspace) return { workspacePath: resolve(process.cwd()), workspaceMode: "default" };
   const resolved = resolve(request.workspace);
-  if (!existsSync(resolved)) {
-    throw new Error(`Workspace path does not exist: ${resolved}`);
-  }
-  if (!statSync(resolved).isDirectory()) {
-    throw new Error(`Workspace path is not a directory: ${resolved}`);
-  }
+  if (!existsSync(resolved)) throw new Error(`Workspace path does not exist: ${resolved}`);
+  if (!statSync(resolved).isDirectory()) throw new Error(`Workspace path is not a directory: ${resolved}`);
   return { workspacePath: resolved, workspaceMode: "path" };
 }
 
 function hasValidAuth(req: Request): boolean {
-  if (!API_KEY) {
-    return true;
-  }
+  if (!API_KEY) return true;
 
   const auth = req.headers.get("authorization");
   return auth === `Bearer ${API_KEY}`;
@@ -115,9 +103,7 @@ function hasValidAuth(req: Request): boolean {
 
 function resolveResourceId(url: URL): string {
   const candidate = url.searchParams.get("resourceId")?.trim();
-  if (candidate) {
-    return candidate;
-  }
+  if (candidate) return candidate;
   return appConfig.memory.resourceId;
 }
 
@@ -173,9 +159,7 @@ const server = Bun.serve({
       }
       try {
         const memoryStore = await mastraStorage.getStore("memory");
-        if (!memoryStore) {
-          return json({ error: "Memory storage is not available." }, 501);
-        }
+        if (!memoryStore) return json({ error: "Memory storage is not available." }, 501);
         const resourceId = resolveResourceId(url);
         log.info("om status requested", {
           path: url.pathname,
@@ -215,9 +199,7 @@ const server = Bun.serve({
       }
       try {
         const memoryStore = await mastraStorage.getStore("memory");
-        if (!memoryStore) {
-          return json({ error: "Memory storage is not available." }, 501);
-        }
+        if (!memoryStore) return json({ error: "Memory storage is not available." }, 501);
         const resourceId = resolveResourceId(url);
         log.warn("om wipe requested", {
           path: url.pathname,
@@ -251,9 +233,7 @@ const server = Bun.serve({
         return badRequest("Invalid JSON body");
       }
       const mode = (payload as { mode?: unknown })?.mode;
-      if (mode !== "read" && mode !== "write") {
-        return badRequest("Invalid permission mode. Expected read or write.");
-      }
+      if (mode !== "read" && mode !== "write") return badRequest("Invalid permission mode. Expected read or write.");
       setPermissionMode(mode);
       log.info("permission mode updated", {
         path: url.pathname,
@@ -265,9 +245,7 @@ const server = Bun.serve({
 
     const isChatJsonRoute = url.pathname === "/v1/chat" && req.method === "POST";
     const isChatStreamRoute = url.pathname === "/v1/chat/stream" && req.method === "POST";
-    if (!isChatJsonRoute && !isChatStreamRoute) {
-      return new Response("Not Found", { status: 404 });
-    }
+    if (!isChatJsonRoute && !isChatStreamRoute) return new Response("Not Found", { status: 404 });
 
     if (!hasValidAuth(req)) {
       log.warn("unauthorized request", {
@@ -323,9 +301,7 @@ const server = Bun.serve({
       const stream = new ReadableStream<Uint8Array>({
         start(controller) {
           const send = (payload: Record<string, unknown>): void => {
-            if (closed) {
-              return;
-            }
+            if (closed) return;
             try {
               controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
             } catch {

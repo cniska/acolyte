@@ -50,9 +50,7 @@ export interface Client {
 }
 
 function isConnectionFailure(error: unknown): boolean {
-  if (!(error instanceof Error)) {
-    return false;
-  }
+  if (!(error instanceof Error)) return false;
   const message = error.message.toLowerCase();
   return (
     message.includes("unable to connect") ||
@@ -80,9 +78,7 @@ class HttpClient implements Client {
     try {
       return await fetch(url, init);
     } catch (error) {
-      if (isConnectionFailure(error)) {
-        throw new Error(connectionHelpMessage(this.apiUrl));
-      }
+      if (isConnectionFailure(error)) throw new Error(connectionHelpMessage(this.apiUrl));
       throw error;
     }
   }
@@ -122,17 +118,11 @@ class HttpClient implements Client {
         body: JSON.stringify(input),
       });
     } catch (error) {
-      if (timedOut) {
-        throw new Error(`Remote server reply timed out after ${this.replyTimeoutMs}ms`);
-      }
+      if (timedOut) throw new Error(`Remote server reply timed out after ${this.replyTimeoutMs}ms`);
       throw error;
     } finally {
-      if (typeof timeoutId !== "undefined") {
-        clearTimeout(timeoutId);
-      }
-      if (options?.signal && onAbort) {
-        options.signal.removeEventListener("abort", onAbort);
-      }
+      if (typeof timeoutId !== "undefined") clearTimeout(timeoutId);
+      if (options?.signal && onAbort) options.signal.removeEventListener("abort", onAbort);
     }
 
     if (!response.ok) {
@@ -141,12 +131,8 @@ class HttpClient implements Client {
       let errorId: string | undefined;
       try {
         const parsed = JSON.parse(body) as { error?: unknown; errorId?: unknown };
-        if (typeof parsed.error === "string" && parsed.error.length > 0) {
-          errorMessage = parsed.error;
-        }
-        if (typeof parsed.errorId === "string" && parsed.errorId.length > 0) {
-          errorId = parsed.errorId;
-        }
+        if (typeof parsed.error === "string" && parsed.error.length > 0) errorMessage = parsed.error;
+        if (typeof parsed.errorId === "string" && parsed.errorId.length > 0) errorId = parsed.errorId;
       } catch {
         // Non-JSON error body; keep raw body text.
       }
@@ -155,9 +141,7 @@ class HttpClient implements Client {
     }
 
     const json = (await response.json()) as Partial<ChatResponse>;
-    if (typeof json.output !== "string") {
-      throw new Error("Remote server returned invalid payload: missing output");
-    }
+    if (typeof json.output !== "string") throw new Error("Remote server returned invalid payload: missing output");
 
     return {
       output: json.output,
@@ -222,12 +206,8 @@ class HttpClient implements Client {
     let streamReader: ReadableStreamDefaultReader<Uint8Array> | undefined;
 
     const resetTimeout = (): void => {
-      if (typeof timeoutMs !== "number" || !timeoutController) {
-        return;
-      }
-      if (timeoutId !== undefined) {
-        clearTimeout(timeoutId);
-      }
+      if (typeof timeoutMs !== "number" || !timeoutController) return;
+      if (timeoutId !== undefined) clearTimeout(timeoutId);
       timedOut = false;
       timeoutId = setTimeout(() => {
         timedOut = true;
@@ -237,12 +217,8 @@ class HttpClient implements Client {
     };
 
     const cleanup = (): void => {
-      if (timeoutId !== undefined) {
-        clearTimeout(timeoutId);
-      }
-      if (options.signal && onAbort) {
-        options.signal.removeEventListener("abort", onAbort);
-      }
+      if (timeoutId !== undefined) clearTimeout(timeoutId);
+      if (options.signal && onAbort) options.signal.removeEventListener("abort", onAbort);
     };
 
     resetTimeout();
@@ -260,9 +236,7 @@ class HttpClient implements Client {
       });
     } catch (error) {
       cleanup();
-      if (timedOut) {
-        throw new Error(`Remote server reply timed out after ${timeoutMs}ms`);
-      }
+      if (timedOut) throw new Error(`Remote server reply timed out after ${timeoutMs}ms`);
       throw error;
     }
 
@@ -288,13 +262,9 @@ class HttpClient implements Client {
         .map((line) => line.trimEnd())
         .filter((line) => line.length > 0);
       const dataLines = lines.filter((line) => line.startsWith("data:"));
-      if (dataLines.length === 0) {
-        return;
-      }
+      if (dataLines.length === 0) return;
       const jsonText = dataLines.map((line) => line.slice(5).trimStart()).join("\n");
-      if (!jsonText) {
-        return;
-      }
+      if (!jsonText) return;
       let payload: { type?: unknown; reply?: unknown; error?: unknown };
       try {
         payload = JSON.parse(jsonText);
@@ -303,9 +273,7 @@ class HttpClient implements Client {
       }
       if (payload.type === "done") {
         const reply = parseChatResponse(payload.reply, input.model);
-        if (!reply) {
-          throw new Error("Remote server stream returned invalid done payload");
-        }
+        if (!reply) throw new Error("Remote server stream returned invalid done payload");
         finalReply = reply;
         return;
       }
@@ -315,27 +283,21 @@ class HttpClient implements Client {
         throw new Error(errorMsg);
       }
       const event = parseStreamEvent(payload);
-      if (event) {
-        options.onEvent(event);
-      }
+      if (event) options.onEvent(event);
     };
 
     try {
       while (true) {
         const { done, value } = await reader.read();
         if (done) {
-          if (buffer.trim().length > 0) {
-            processBlock(buffer);
-          }
+          if (buffer.trim().length > 0) processBlock(buffer);
           break;
         }
         resetTimeout();
         buffer += decoder.decode(value, { stream: true });
         while (true) {
           const boundary = buffer.indexOf("\n\n");
-          if (boundary === -1) {
-            break;
-          }
+          if (boundary === -1) break;
           const block = buffer.slice(0, boundary);
           buffer = buffer.slice(boundary + 2);
           processBlock(block);
@@ -343,20 +305,14 @@ class HttpClient implements Client {
       }
     } catch (error) {
       cleanup();
-      if (timedOut) {
-        throw new Error(`Remote server stream timed out after ${timeoutMs}ms of inactivity`);
-      }
+      if (timedOut) throw new Error(`Remote server stream timed out after ${timeoutMs}ms of inactivity`);
       throw error;
     }
 
     cleanup();
 
-    if (timedOut && !finalReply) {
-      throw new Error(`Remote server stream timed out after ${timeoutMs}ms of inactivity`);
-    }
-    if (!finalReply) {
-      throw new Error("Remote server stream ended without final reply");
-    }
+    if (timedOut && !finalReply) throw new Error(`Remote server stream timed out after ${timeoutMs}ms of inactivity`);
+    if (!finalReply) throw new Error("Remote server stream ended without final reply");
     return finalReply;
   }
 
@@ -373,9 +329,7 @@ class HttpClient implements Client {
     const data = (await response.json()) as Record<string, unknown>;
     const fields: Record<string, string> = {};
     for (const [key, value] of Object.entries(data)) {
-      if (key !== "ok" && typeof value === "string") {
-        fields[key] = value;
-      }
+      if (key !== "ok" && typeof value === "string") fields[key] = value;
     }
     return fields;
   }
@@ -402,13 +356,9 @@ export function parseStreamEvent(raw: unknown): StreamEvent | null {
 }
 
 function parseChatResponse(payload: unknown, fallbackModel: string): ChatResponse | null {
-  if (!payload || typeof payload !== "object") {
-    return null;
-  }
+  if (!payload || typeof payload !== "object") return null;
   const json = payload as Partial<ChatResponse>;
-  if (typeof json.output !== "string") {
-    return null;
-  }
+  if (typeof json.output !== "string") return null;
   return {
     output: json.output,
     model: typeof json.model === "string" ? json.model : fallbackModel,
@@ -442,9 +392,7 @@ function parseChatResponse(payload: unknown, fallbackModel: string): ChatRespons
 
 export function createClient(options?: ClientOptions): Client {
   const apiUrl = options?.apiUrl ?? appConfig.server.apiUrl;
-  if (!apiUrl) {
-    throw new Error("No API URL configured. Start the server with: bun run dev");
-  }
+  if (!apiUrl) throw new Error("No API URL configured. Start the server with: bun run dev");
   const apiKey = options?.apiKey ?? appConfig.server.apiKey;
   const replyTimeoutMs = options?.replyTimeoutMs;
   return new HttpClient(apiUrl, apiKey, replyTimeoutMs);

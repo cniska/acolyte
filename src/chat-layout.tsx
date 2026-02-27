@@ -17,12 +17,8 @@ const SHORTCUT_ITEMS = [
 export function shownCwd(): string {
   const cwd = process.cwd();
   const home = homedir();
-  if (cwd === home) {
-    return "~";
-  }
-  if (cwd.startsWith(`${home}/`)) {
-    return `~${cwd.slice(home.length)}`;
-  }
+  if (cwd === home) return "~";
+  if (cwd.startsWith(`${home}/`)) return `~${cwd.slice(home.length)}`;
   return cwd;
 }
 
@@ -44,9 +40,7 @@ export function formatShortcutRows(): string[] {
     for (let col = 0; col < columns; col += 1) {
       const index = row + col * rowsPerColumn;
       const item = SHORTCUT_ITEMS[index];
-      if (!item) {
-        continue;
-      }
+      if (!item) continue;
       const chunk = `${item.key.padEnd(keyWidth)}${item.description}`;
       line += col < columns - 1 ? chunk.padEnd(colWidth) : chunk;
     }

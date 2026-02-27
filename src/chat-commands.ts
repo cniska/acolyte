@@ -41,17 +41,11 @@ export type ResumeResolution =
 
 export function resolveResumeSession(store: SessionStore, text: string): ResumeResolution {
   const parts = text.split(/\s+/).filter((part) => part.length > 0);
-  if (parts.length < 2) {
-    return { kind: "usage" };
-  }
+  if (parts.length < 2) return { kind: "usage" };
   const prefix = parts[1];
   const matches = store.sessions.filter((item) => item.id.startsWith(prefix));
-  if (matches.length === 0) {
-    return { kind: "not_found", prefix };
-  }
-  if (matches.length > 1) {
-    return { kind: "ambiguous", prefix, matches };
-  }
+  if (matches.length === 0) return { kind: "not_found", prefix };
+  if (matches.length > 1) return { kind: "ambiguous", prefix, matches };
   return { kind: "ok", session: matches[0] };
 }
 
@@ -65,9 +59,7 @@ export function formatSessionList(store: SessionStore, limit = 10): string[] {
 }
 
 export function formatTokenUsageOutput(last: TokenUsageEntry | null, all: TokenUsageEntry[]): string {
-  if (!last) {
-    return "No token data yet. Send a prompt first.";
-  }
+  if (!last) return "No token data yet. Send a prompt first.";
   const totals = all.reduce(
     (acc, entry) => {
       acc.prompt += entry.usage.promptTokens;
@@ -145,37 +137,23 @@ export type CommandContext = {
 };
 
 function parseMemoryListScope(parts: string[]): MemoryContextScope | null {
-  if (parts.length === 1) {
-    return "all";
-  }
-  if (parts.length !== 2) {
-    return null;
-  }
+  if (parts.length === 1) return "all";
+  if (parts.length !== 2) return null;
   const scope = parts[1];
-  if (scope === "all" || scope === "user" || scope === "project") {
-    return scope;
-  }
+  if (scope === "all" || scope === "user" || scope === "project") return scope;
   return null;
 }
 
 function scopeLabel(scope: MemoryContextScope): string {
-  if (scope === "user") {
-    return "User";
-  }
-  if (scope === "project") {
-    return "Project";
-  }
+  if (scope === "user") return "User";
+  if (scope === "project") return "Project";
   return "All";
 }
 
 function parsePermissionsScope(parts: string[]): ConfigScope | null {
-  if (parts.length < 2) {
-    return null;
-  }
+  if (parts.length < 2) return null;
   const flag = parts.find((part) => part === "--project" || part === "--user");
-  if (!flag) {
-    return "project";
-  }
+  if (!flag) return "project";
   return flag === "--user" ? "user" : "project";
 }
 
@@ -454,9 +432,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
         ctx.setRows((current) => [...current, createRow("system", `Failed to activate skill: ${skill.name}`)]);
         return { stop: true, userText: text };
       }
-      if (args) {
-        return { stop: false, userText: args };
-      }
+      if (args) return { stop: false, userText: args };
       pushUserCommandRow();
       ctx.setRows((current) => [...current, createRow("system", `Activated skill: ${skill.name}`)]);
       return { stop: true, userText: text };

@@ -46,9 +46,7 @@ export function hasHelpFlag(args: string[]): boolean {
 
 export function subcommandHelp(name: string): void {
   const entry = SUBCOMMANDS[name];
-  if (entry) {
-    printDim(`Usage: ${entry.usage}`);
-  }
+  if (entry) printDim(`Usage: ${entry.usage}`);
 }
 
 export function subcommandError(name: string, message?: string): void {
@@ -170,18 +168,14 @@ function parseRunArgs(args: string[]): { files: string[]; prompt: string; verify
   for (let i = 0; i < args.length; i += 1) {
     if (args[i] === "--file") {
       const next = args[i + 1];
-      if (!next) {
-        throw new Error("--file requires a path");
-      }
+      if (!next) throw new Error("--file requires a path");
       files.push(next);
       i += 1;
       continue;
     }
     if (args[i] === "--workspace") {
       const next = args[i + 1];
-      if (!next) {
-        throw new Error("--workspace requires a path");
-      }
+      if (!next) throw new Error("--workspace requires a path");
       workspace = next;
       i += 1;
       continue;
@@ -205,9 +199,7 @@ export function parseDogfoodArgs(args: string[]): { files: string[]; prompt: str
   for (let i = 0; i < args.length; i += 1) {
     if (args[i] === "--file") {
       const next = args[i + 1];
-      if (!next) {
-        throw new Error("--file requires a path");
-      }
+      if (!next) throw new Error("--file requires a path");
       files.push(next);
       i += 1;
       continue;
@@ -294,9 +286,7 @@ async function runMode(args: string[]): Promise<void> {
     const verifyResult = await runShellCommand(process.cwd(), "bun run verify");
     showToolResult("Run", formatForTool("run", verifyResult), "tool", "bun run verify");
     const verifyExitCode = parseRunExitCode(verifyResult);
-    if (verifyExitCode !== null && verifyExitCode !== 0) {
-      process.exitCode = 1;
-    }
+    if (verifyExitCode !== null && verifyExitCode !== 0) process.exitCode = 1;
   }
 }
 
@@ -438,12 +428,8 @@ async function configMode(args: string[]): Promise<void> {
   ] as const;
   const valid = new Set<string>(validKeys);
   const parseScopeFlag = (token: string | undefined): "user" | "project" | null => {
-    if (token === "--user") {
-      return "user";
-    }
-    if (token === "--project") {
-      return "project";
-    }
+    if (token === "--user") return "user";
+    if (token === "--project") return "project";
     return null;
   };
 
@@ -451,9 +437,7 @@ async function configMode(args: string[]): Promise<void> {
     const scope = parseScopeFlag(listArgs[0]);
     const config = scope ? await readConfigForScope(scope) : await readConfig();
     const maxKey = validKeys.reduce((max, key) => Math.max(max, `${key}:`.length), 0);
-    if (scope) {
-      printDim(`${"scope:".padEnd(maxKey + 1)} ${scope}`);
-    }
+    if (scope) printDim(`${"scope:".padEnd(maxKey + 1)} ${scope}`);
     for (const name of validKeys) {
       const value = config[name];
       if (value === undefined || value === "") continue;

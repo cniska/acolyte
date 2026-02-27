@@ -15,20 +15,14 @@ import { detectLineWidth } from "./tools";
 const APPROX_CHARS_PER_TOKEN = 4;
 
 export function estimateTokens(input: string): number {
-  if (input.length === 0) {
-    return 0;
-  }
+  if (input.length === 0) return 0;
   return Math.ceil(input.length / APPROX_CHARS_PER_TOKEN);
 }
 
 function truncateByTokens(input: string, maxTokens: number): string {
-  if (maxTokens <= 0) {
-    return "";
-  }
+  if (maxTokens <= 0) return "";
   const maxChars = maxTokens * APPROX_CHARS_PER_TOKEN;
-  if (input.length <= maxChars) {
-    return input;
-  }
+  if (input.length <= maxChars) return input;
   return `${input.slice(0, Math.max(0, maxChars - 1))}…`;
 }
 
@@ -57,13 +51,9 @@ function collectLinesWithinBudget(
   const recent = messages.slice(-appConfig.agent.inputBudget.maxHistoryMessages);
   for (let i = recent.length - 1; i >= 0; i -= 1) {
     const message = recent[i];
-    if (usedIds.has(message.id)) {
-      continue;
-    }
+    if (usedIds.has(message.id)) continue;
     const candidate = lineForMessage(message, maxPerMessageTokens);
-    if (candidate.tokens === 0 || consumed + candidate.tokens > remainingTokens) {
-      continue;
-    }
+    if (candidate.tokens === 0 || consumed + candidate.tokens > remainingTokens) continue;
     usedIds.add(message.id);
     lines.unshift(candidate.line);
     consumed += candidate.tokens;
@@ -107,9 +97,7 @@ export function createAgentInput(req: ChatRequest): {
   const recentResult = collectLinesWithinBudget(req.history, usedIds, remaining, budget.maxMessageTokens);
   lines.push(...recentResult.lines);
 
-  if (lines.length > 0) {
-    lines.push("");
-  }
+  if (lines.length > 0) lines.push("");
   lines.push(userLine);
   const input = lines.join("\n");
   const promptTokens = estimateTokens(input);
@@ -129,16 +117,12 @@ export function createAgentInput(req: ChatRequest): {
 
 export function isPlanLikeOutput(text: string): boolean {
   const normalized = text.trim();
-  if (normalized.length === 0) {
-    return false;
-  }
+  if (normalized.length === 0) return false;
   const lines = normalized
     .split("\n")
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
-  if (lines.length === 0) {
-    return false;
-  }
+  if (lines.length === 0) return false;
   const planSignals = [
     /^plan\b/i,
     /^steps?\b/i,
@@ -171,19 +155,13 @@ export function createModeInstructions(mode: AgentMode, workspace?: string): str
   const { tools, preamble } = agentModes[mode];
   const lines: string[] = preamble.map((p) => `- ${p}`);
   for (const toolId of tools) {
-    if (!isToolName(toolId)) {
-      continue;
-    }
+    if (!isToolName(toolId)) continue;
     const meta = toolMeta[toolId];
-    if (meta?.instruction) {
-      lines.push(`- ${meta.instruction}`);
-    }
+    if (meta?.instruction) lines.push(`- ${meta.instruction}`);
   }
   if (workspace && mode === "work") {
     const lineWidth = detectLineWidth(workspace);
-    if (lineWidth) {
-      lines.push(`- Keep lines under ${lineWidth} characters.`);
-    }
+    if (lineWidth) lines.push(`- Keep lines under ${lineWidth} characters.`);
   }
   return lines.join("\n");
 }
@@ -245,21 +223,16 @@ export function resolveRunnableModel(
 
 function extractMentionedPath(message: string): string | null {
   const match = message.match(/@([^\s]+)/);
-  if (!match) {
-    return null;
-  }
+  if (!match) return null;
   const cleaned = (match[1] ?? "").replace(/[.,;:!?]+$/g, "").trim();
   return cleaned.length > 0 ? cleaned : null;
 }
 
 function suggestNarrowerReviewScope(path: string): string {
   const clean = path.replace(/\/+$/, "");
-  if (clean.length === 0) {
-    return "@src/agent.ts";
-  }
-  if (clean.endsWith(".ts") || clean.endsWith(".tsx") || clean.endsWith(".js") || clean.endsWith(".md")) {
+  if (clean.length === 0) return "@src/agent.ts";
+  if (clean.endsWith(".ts") || clean.endsWith(".tsx") || clean.endsWith(".js") || clean.endsWith(".md"))
     return `@${clean}`;
-  }
   return `@${clean}/agent.ts`;
 }
 
@@ -277,9 +250,7 @@ export function canonicalToolId(value: string): string {
 
 function compactProgressDetail(value: string, maxChars = 80): string {
   const single = value.replace(/\s+/g, " ").trim();
-  if (single.length <= maxChars) {
-    return single;
-  }
+  if (single.length <= maxChars) return single;
   return `${single.slice(0, maxChars - 1).trimEnd()}…`;
 }
 
@@ -315,22 +286,16 @@ function collectPathDetails(args: Record<string, unknown>): string[] {
 }
 
 function formatPathList(paths: string[], maxShown = 3): string | null {
-  if (paths.length === 0) {
-    return null;
-  }
+  if (paths.length === 0) return null;
   const shown = paths.slice(0, maxShown).join(", ");
-  if (paths.length <= maxShown) {
-    return shown;
-  }
+  if (paths.length <= maxShown) return shown;
   return `${shown} (+${paths.length - maxShown})`;
 }
 
 export function formatToolHeader(toolName: string, args: Record<string, unknown>): string {
   const label = formatToolLabel(toolName);
   const asString = (value: unknown): string | null => {
-    if (typeof value !== "string") {
-      return null;
-    }
+    if (typeof value !== "string") return null;
     const trimmed = value.trim();
     return trimmed.length > 0 ? compactProgressDetail(trimmed) : null;
   };
@@ -381,13 +346,10 @@ export function formatToolHeader(toolName: string, args: Record<string, unknown>
 
 export function finalizeReviewOutput(output: string, message = ""): string {
   const trimmed = output.trim();
-  if (trimmed.length > 0) {
-    return trimmed;
-  }
+  if (trimmed.length > 0) return trimmed;
   const mentionedPath = extractMentionedPath(message);
-  if (mentionedPath) {
+  if (mentionedPath)
     return `No review output produced for @${mentionedPath}. Try narrowing the scope (for example ${suggestNarrowerReviewScope(mentionedPath)}) or rephrasing your prompt.`;
-  }
   return "No review output produced. Try narrowing to a file (for example @src/agent.ts) or rephrasing your prompt.";
 }
 
@@ -399,15 +361,9 @@ export function finalizeAssistantOutput(
 ): string {
   void message;
   const trimmed = output.trim();
-  if (trimmed.length > 0) {
-    return trimmed;
-  }
-  if (toolCallCount > 0) {
-    return "No final response after tool execution. Retry, or check server logs if this repeats.";
-  }
-  if (lastToolFailureReason) {
-    return `No output from model. Last tool error: ${lastToolFailureReason}`;
-  }
+  if (trimmed.length > 0) return trimmed;
+  if (toolCallCount > 0) return "No final response after tool execution. Retry, or check server logs if this repeats.";
+  if (lastToolFailureReason) return `No output from model. Last tool error: ${lastToolFailureReason}`;
   return "No output from model. Check /status and server logs, then retry or switch model/provider.";
 }
 

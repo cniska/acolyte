@@ -16,9 +16,7 @@ async function listDirectoryTree(root: string): Promise<{ lines: string[]; trunc
 
   while (stack.length > 0 && lines.length < MAX_DIR_ENTRIES) {
     const current = stack.pop();
-    if (!current) {
-      break;
-    }
+    if (!current) break;
     let entries: Array<{ name: string; isDirectory: () => boolean; isFile: () => boolean }> = [];
     try {
       entries = await readdir(current.abs, { withFileTypes: true });
@@ -27,9 +25,7 @@ async function listDirectoryTree(root: string): Promise<{ lines: string[]; trunc
     }
     entries.sort((a, b) => a.name.localeCompare(b.name));
     for (const entry of entries) {
-      if (entry.isDirectory() && IGNORED_DIRS.has(entry.name)) {
-        continue;
-      }
+      if (entry.isDirectory() && IGNORED_DIRS.has(entry.name)) continue;
       const rel = current.rel ? `${current.rel}/${entry.name}` : entry.name;
       const abs = join(current.abs, entry.name);
       if (entry.isDirectory()) {
@@ -65,9 +61,7 @@ export async function buildFileContext(pathInput: string): Promise<string> {
   const sliced = buf.byteLength > MAX_BYTES ? buf.subarray(0, MAX_BYTES) : buf;
   const text = sliced.toString("utf8");
 
-  if (looksBinary(text)) {
-    throw new Error(`File appears binary and cannot be inlined: ${absPath}`);
-  }
+  if (looksBinary(text)) throw new Error(`File appears binary and cannot be inlined: ${absPath}`);
 
   const truncatedNotice = buf.byteLength > MAX_BYTES ? "\n[truncated]" : "";
   return [`Attached file: ${basename(absPath)}`, "```text", `${text}${truncatedNotice}`, "```"].join("\n");

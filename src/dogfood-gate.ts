@@ -127,72 +127,56 @@ function parseArgs(args: string[]): GateArgs {
     const token = args[i];
     if (token === "--target") {
       const value = args[i + 1];
-      if (!value) {
-        throw new Error("Invalid --target value.");
-      }
+      if (!value) throw new Error("Invalid --target value.");
       raw.target = value;
       i += 1;
       continue;
     }
     if (token === "--lookback") {
       const value = args[i + 1];
-      if (!value) {
-        throw new Error("Invalid --lookback value.");
-      }
+      if (!value) throw new Error("Invalid --lookback value.");
       raw.lookback = value;
       i += 1;
       continue;
     }
     if (token === "--min-success-rate") {
       const value = args[i + 1];
-      if (!value) {
-        throw new Error("Invalid --min-success-rate value.");
-      }
+      if (!value) throw new Error("Invalid --min-success-rate value.");
       raw.minSuccessRate = value;
       i += 1;
       continue;
     }
     if (token === "--max-fallback-rate") {
       const value = args[i + 1];
-      if (!value) {
-        throw new Error("Invalid --max-fallback-rate value.");
-      }
+      if (!value) throw new Error("Invalid --max-fallback-rate value.");
       raw.maxFallbackRate = value;
       i += 1;
       continue;
     }
     if (token === "--min-delegated-slices") {
       const value = args[i + 1];
-      if (!value) {
-        throw new Error("Invalid --min-delegated-slices value.");
-      }
+      if (!value) throw new Error("Invalid --min-delegated-slices value.");
       raw.minDelegatedSlices = value;
       i += 1;
       continue;
     }
     if (token === "--min-stable-runs") {
       const value = args[i + 1];
-      if (!value) {
-        throw new Error("Invalid --min-stable-runs value.");
-      }
+      if (!value) throw new Error("Invalid --min-stable-runs value.");
       raw.minStableRuns = value;
       i += 1;
       continue;
     }
     if (token === "--min-soak-runs") {
       const value = args[i + 1];
-      if (!value) {
-        throw new Error("Invalid --min-soak-runs value.");
-      }
+      if (!value) throw new Error("Invalid --min-soak-runs value.");
       raw.minSoakRuns = value;
       i += 1;
       continue;
     }
     if (token === "--min-soak-days") {
       const value = args[i + 1];
-      if (!value) {
-        throw new Error("Invalid --min-soak-days value.");
-      }
+      if (!value) throw new Error("Invalid --min-soak-days value.");
       raw.minSoakDays = value;
       i += 1;
       continue;
@@ -235,42 +219,24 @@ function parseArgs(args: string[]): GateArgs {
   if (!parsed.success) {
     const hasTargetError = parsed.error.issues.some((issue) => issue.path[0] === "target");
     const hasLookbackError = parsed.error.issues.some((issue) => issue.path[0] === "lookback");
-    if (hasTargetError) {
-      throw new Error("Invalid --target value.");
-    }
-    if (hasLookbackError) {
-      throw new Error("Invalid --lookback value.");
-    }
+    if (hasTargetError) throw new Error("Invalid --target value.");
+    if (hasLookbackError) throw new Error("Invalid --lookback value.");
     const hasSuccessRateError = parsed.error.issues.some((issue) => issue.path[0] === "minSuccessRate");
-    if (hasSuccessRateError) {
-      throw new Error("Invalid --min-success-rate value.");
-    }
+    if (hasSuccessRateError) throw new Error("Invalid --min-success-rate value.");
     const hasFallbackRateError = parsed.error.issues.some((issue) => issue.path[0] === "maxFallbackRate");
-    if (hasFallbackRateError) {
-      throw new Error("Invalid --max-fallback-rate value.");
-    }
+    if (hasFallbackRateError) throw new Error("Invalid --max-fallback-rate value.");
     const hasDelegatedSlicesError = parsed.error.issues.some((issue) => issue.path[0] === "minDelegatedSlices");
-    if (hasDelegatedSlicesError) {
-      throw new Error("Invalid --min-delegated-slices value.");
-    }
+    if (hasDelegatedSlicesError) throw new Error("Invalid --min-delegated-slices value.");
     const hasStableRunsError = parsed.error.issues.some((issue) => issue.path[0] === "minStableRuns");
-    if (hasStableRunsError) {
-      throw new Error("Invalid --min-stable-runs value.");
-    }
+    if (hasStableRunsError) throw new Error("Invalid --min-stable-runs value.");
     const hasSoakRunsError = parsed.error.issues.some((issue) => issue.path[0] === "minSoakRuns");
-    if (hasSoakRunsError) {
-      throw new Error("Invalid --min-soak-runs value.");
-    }
+    if (hasSoakRunsError) throw new Error("Invalid --min-soak-runs value.");
     const hasSoakDaysError = parsed.error.issues.some((issue) => issue.path[0] === "minSoakDays");
-    if (hasSoakDaysError) {
-      throw new Error("Invalid --min-soak-days value.");
-    }
+    if (hasSoakDaysError) throw new Error("Invalid --min-soak-days value.");
     throw new Error("Invalid arguments.");
   }
   const parsedArgs = parsed.data;
-  if (!parsedArgs.strictAutonomy) {
-    return parsedArgs;
-  }
+  if (!parsedArgs.strictAutonomy) return parsedArgs;
   return {
     ...parsedArgs,
     minSuccessRate: Math.max(parsedArgs.minSuccessRate, 85),
@@ -307,9 +273,7 @@ export function consecutiveReadyRuns(
   strictAutonomy: boolean,
   currentReady: boolean,
 ): number {
-  if (!currentReady) {
-    return 0;
-  }
+  if (!currentReady) return 0;
   const modeHistory = history.filter((entry) => entry.strictAutonomy === strictAutonomy);
   let streak = 1;
   for (let i = modeHistory.length - 1; i >= 0; i -= 1) {
@@ -352,9 +316,7 @@ function run(cmd: string[]): { ok: boolean; stdout: string; stderr: string; code
 function firstNonEmptyLine(value: string): string | null {
   for (const line of value.split("\n")) {
     const trimmed = line.trim();
-    if (trimmed.length > 0) {
-      return trimmed;
-    }
+    if (trimmed.length > 0) return trimmed;
   }
   return null;
 }
@@ -362,28 +324,18 @@ function firstNonEmptyLine(value: string): string | null {
 function firstSignalLine(stderr: string, stdout: string): string | null {
   const candidates = [stderr, stdout].flatMap((value) => value.split("\n").map((line) => line.trim()));
   for (const line of candidates) {
-    if (line.length === 0) {
-      continue;
-    }
-    if (line.startsWith("$ ")) {
-      continue;
-    }
-    if (/^error: script\s+".+"\s+exited with code/i.test(line)) {
-      continue;
-    }
+    if (line.length === 0) continue;
+    if (line.startsWith("$ ")) continue;
+    if (/^error: script\s+".+"\s+exited with code/i.test(line)) continue;
     return line;
   }
   return null;
 }
 
 function formatCheckDetail(result: { ok: boolean; code: number }, signal: string | null): string {
-  if (result.ok) {
-    return "green";
-  }
+  if (result.ok) return "green";
   let detail = `exit ${result.code}`;
-  if (signal) {
-    detail += ` (${signal})`;
-  }
+  if (signal) detail += ` (${signal})`;
   return detail;
 }
 
@@ -413,13 +365,9 @@ function parseDeliveryProgress(raw: string): {
       // try next json-looking line
     }
   }
-  if (!found) {
-    return null;
-  }
+  if (!found) return null;
   const validated = deliveryProgressSchema.safeParse(parsed);
-  if (!validated.success) {
-    return null;
-  }
+  if (!validated.success) return null;
   return {
     delivery: validated.data.deliverySlices,
     target: validated.data.target,
@@ -497,9 +445,7 @@ function printUsage(): void {
 }
 
 function smokeCommand(strictAutonomy: boolean): string[] {
-  if (!strictAutonomy) {
-    return ["bun", "run", "dogfood:smoke"];
-  }
+  if (!strictAutonomy) return ["bun", "run", "dogfood:smoke"];
   return ["bun", "run", "dogfood:smoke", "--", "--require-provider-ready"];
 }
 
@@ -657,9 +603,7 @@ async function main(): Promise<void> {
     for (const line of summary.lines) {
       console.log(line);
     }
-    if (!summary.ok) {
-      process.exit(1);
-    }
+    if (!summary.ok) process.exit(1);
   } catch (error) {
     const message = error instanceof Error ? error.message : "dogfood gate failed";
     console.error(message);
@@ -667,9 +611,7 @@ async function main(): Promise<void> {
   }
 }
 
-if (import.meta.main) {
-  void main();
-}
+if (import.meta.main) void main();
 
 export { firstNonEmptyLine, parseArgs, parseDeliveryProgress, summarizeGate };
 export { firstSignalLine };

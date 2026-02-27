@@ -19,19 +19,13 @@ let repoPathCache: {
 } | null = null;
 
 export function invalidateRepoPathCandidates(root?: string): void {
-  if (!repoPathCache) {
-    return;
-  }
-  if (!root || repoPathCache.cwd === root) {
-    repoPathCache = null;
-  }
+  if (!repoPathCache) return;
+  if (!root || repoPathCache.cwd === root) repoPathCache = null;
 }
 
 function findActiveAtToken(inputValue: string): AtToken | null {
   const matches = [...inputValue.matchAll(/(^|\s)@([^\s@]*)/g)];
-  if (matches.length === 0) {
-    return null;
-  }
+  if (matches.length === 0) return null;
   const match = matches[matches.length - 1];
   const full = match[0] ?? "";
   const query = match[2] ?? "";
@@ -48,48 +42,32 @@ export function extractAtReferenceQuery(inputValue: string): string | null {
 
 export function rankAtReferenceSuggestions(paths: string[], query: string, max = MAX_AT_SUGGESTIONS): string[] {
   const q = query.trim().toLowerCase();
-  if (!q) {
-    return paths.slice(0, max);
-  }
+  if (!q) return paths.slice(0, max);
 
   const querySegments = q.split("/").filter((segment) => segment.length > 0);
   const matchesSegmentPrefixes = (path: string): boolean => {
-    if (querySegments.length === 0) {
-      return false;
-    }
+    if (querySegments.length === 0) return false;
     const pathSegments = path
       .toLowerCase()
       .split("/")
       .filter((segment) => segment.length > 0);
-    if (querySegments.length > pathSegments.length) {
-      return false;
-    }
+    if (querySegments.length > pathSegments.length) return false;
     return querySegments.every((segment, index) => (pathSegments[index] ?? "").startsWith(segment));
   };
   const isSubsequence = (path: string): boolean => {
     let qi = 0;
     const lower = path.toLowerCase();
     for (let i = 0; i < lower.length && qi < q.length; i += 1) {
-      if (lower[i] === q[qi]) {
-        qi += 1;
-      }
+      if (lower[i] === q[qi]) qi += 1;
     }
     return qi === q.length;
   };
   const score = (path: string): number => {
     const lower = path.toLowerCase();
-    if (lower.startsWith(q)) {
-      return 0;
-    }
-    if (matchesSegmentPrefixes(path)) {
-      return 1;
-    }
-    if (lower.includes(q)) {
-      return 2;
-    }
-    if (isSubsequence(path)) {
-      return 3;
-    }
+    if (lower.startsWith(q)) return 0;
+    if (matchesSegmentPrefixes(path)) return 1;
+    if (lower.includes(q)) return 2;
+    if (isSubsequence(path)) return 3;
     return 4;
   };
 
@@ -97,12 +75,8 @@ export function rankAtReferenceSuggestions(paths: string[], query: string, max =
     .map((path) => ({ path, score: score(path) }))
     .filter((item) => item.score < 4)
     .sort((a, b) => {
-      if (a.score !== b.score) {
-        return a.score - b.score;
-      }
-      if (a.path.length !== b.path.length) {
-        return a.path.length - b.path.length;
-      }
+      if (a.score !== b.score) return a.score - b.score;
+      if (a.path.length !== b.path.length) return a.path.length - b.path.length;
       return a.path.localeCompare(b.path);
     })
     .map((item) => item.path)
@@ -110,25 +84,17 @@ export function rankAtReferenceSuggestions(paths: string[], query: string, max =
 }
 
 export function shouldAutocompleteAtSubmit(inputValue: string, selectedSuggestion: string | undefined): boolean {
-  if (!selectedSuggestion) {
-    return false;
-  }
+  if (!selectedSuggestion) return false;
   const token = findActiveAtToken(inputValue);
-  if (!token) {
-    return false;
-  }
+  if (!token) return false;
   const currentToken = inputValue.slice(token.start, token.end);
-  if (!currentToken.startsWith("@")) {
-    return false;
-  }
+  if (!currentToken.startsWith("@")) return false;
   return currentToken !== `@${selectedSuggestion}`;
 }
 
 export function applyAtSuggestion(inputValue: string, suggestion: string): string {
   const token = findActiveAtToken(inputValue);
-  if (!token) {
-    return inputValue;
-  }
+  if (!token) return inputValue;
   const before = inputValue.slice(0, token.start);
   const after = inputValue.slice(token.end);
   const spacedAfter = after.startsWith(" ") || after.length === 0 ? after : ` ${after}`;
@@ -137,17 +103,13 @@ export function applyAtSuggestion(inputValue: string, suggestion: string): strin
 
 export function extractAtReferencePaths(inputValue: string): string[] {
   const matches = [...inputValue.matchAll(/(^|\s)@([^\s@]+)/g)];
-  if (matches.length === 0) {
-    return [];
-  }
+  if (matches.length === 0) return [];
   const seen = new Set<string>();
   const out: string[] = [];
   for (const match of matches) {
     const raw = match[2] ?? "";
     const cleaned = raw.replace(/[.,;:!?]+$/g, "").trim();
-    if (!cleaned || seen.has(cleaned)) {
-      continue;
-    }
+    if (!cleaned || seen.has(cleaned)) continue;
     seen.add(cleaned);
     out.push(cleaned);
   }
@@ -160,9 +122,7 @@ async function collectRepoPathCandidates(root = process.cwd(), maxEntries = MAX_
 
   while (stack.length > 0 && out.length < maxEntries) {
     const current = stack.pop();
-    if (!current) {
-      break;
-    }
+    if (!current) break;
     let entries: Array<{ name: string; isDirectory: () => boolean; isFile: () => boolean }> = [];
     try {
       entries = await readdir(current.abs, { withFileTypes: true });
@@ -172,9 +132,7 @@ async function collectRepoPathCandidates(root = process.cwd(), maxEntries = MAX_
     entries.sort((a, b) => a.name.localeCompare(b.name));
 
     for (const entry of entries) {
-      if (entry.isDirectory() && IGNORED_DIRS.has(entry.name)) {
-        continue;
-      }
+      if (entry.isDirectory() && IGNORED_DIRS.has(entry.name)) continue;
       const rel = current.rel ? `${current.rel}/${entry.name}` : entry.name;
       const abs = join(current.abs, entry.name);
       if (entry.isDirectory()) {
@@ -188,9 +146,7 @@ async function collectRepoPathCandidates(root = process.cwd(), maxEntries = MAX_
       } else if (entry.isFile()) {
         out.push(rel);
       }
-      if (out.length >= maxEntries) {
-        break;
-      }
+      if (out.length >= maxEntries) break;
     }
   }
 
@@ -199,9 +155,8 @@ async function collectRepoPathCandidates(root = process.cwd(), maxEntries = MAX_
 
 export async function getCachedRepoPathCandidates(root = process.cwd()): Promise<string[]> {
   const now = Date.now();
-  if (repoPathCache && repoPathCache.cwd === root && now - repoPathCache.loadedAt < PATH_CACHE_TTL_MS) {
+  if (repoPathCache && repoPathCache.cwd === root && now - repoPathCache.loadedAt < PATH_CACHE_TTL_MS)
     return repoPathCache.candidates;
-  }
   const candidates = await collectRepoPathCandidates(root);
   repoPathCache = {
     cwd: root,

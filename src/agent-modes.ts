@@ -73,9 +73,7 @@ export function classifyMode(message: string): AgentMode {
 
 export function modeForTool(toolName: string): AgentMode {
   for (const [mode, def] of Object.entries(agentModes)) {
-    if (def.tools.includes(toolName)) {
-      return mode as AgentMode;
-    }
+    if (def.tools.includes(toolName)) return mode as AgentMode;
   }
   return "work";
 }

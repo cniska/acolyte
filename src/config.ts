@@ -156,9 +156,7 @@ function toConfig(input: Record<string, unknown>): AcolyteConfig {
 function mergeConfigScopes(base: AcolyteConfig, override: AcolyteConfig): AcolyteConfig {
   const merged: AcolyteConfig = { ...base };
   for (const [key, value] of Object.entries(override) as Array<[keyof AcolyteConfig, unknown]>) {
-    if (value !== undefined) {
-      merged[key] = value as never;
-    }
+    if (value !== undefined) merged[key] = value as never;
   }
   return merged;
 }
@@ -227,62 +225,30 @@ async function readConfigScope(scope: ConfigScope, options?: ConfigOptions): Pro
 
 function serializeToml(config: AcolyteConfig): string {
   const lines: string[] = [];
-  if (typeof config.port === "number") {
-    lines.push(`port = ${config.port}`);
-  }
-  if (config.model) {
-    lines.push(`model = ${JSON.stringify(config.model)}`);
-  }
+  if (typeof config.port === "number") lines.push(`port = ${config.port}`);
+  if (config.model) lines.push(`model = ${JSON.stringify(config.model)}`);
   if (config.models) {
     for (const [mode, m] of Object.entries(config.models)) {
       lines.push(`models.${mode} = ${JSON.stringify(m)}`);
     }
   }
-  if (config.omModel) {
-    lines.push(`omModel = ${JSON.stringify(config.omModel)}`);
-  }
-  if (config.apiUrl) {
-    lines.push(`apiUrl = ${JSON.stringify(config.apiUrl)}`);
-  }
-  if (config.openaiBaseUrl) {
-    lines.push(`openaiBaseUrl = ${JSON.stringify(config.openaiBaseUrl)}`);
-  }
-  if (config.anthropicBaseUrl) {
-    lines.push(`anthropicBaseUrl = ${JSON.stringify(config.anthropicBaseUrl)}`);
-  }
-  if (config.googleBaseUrl) {
-    lines.push(`googleBaseUrl = ${JSON.stringify(config.googleBaseUrl)}`);
-  }
-  if (config.permissionMode) {
-    lines.push(`permissionMode = ${JSON.stringify(config.permissionMode)}`);
-  }
-  if (config.logFormat) {
-    lines.push(`logFormat = ${JSON.stringify(config.logFormat)}`);
-  }
-  if (typeof config.omObservationTokens === "number") {
-    lines.push(`omObservationTokens = ${config.omObservationTokens}`);
-  }
-  if (typeof config.omReflectionTokens === "number") {
-    lines.push(`omReflectionTokens = ${config.omReflectionTokens}`);
-  }
-  if (typeof config.contextMaxTokens === "number") {
-    lines.push(`contextMaxTokens = ${config.contextMaxTokens}`);
-  }
-  if (typeof config.maxHistoryMessages === "number") {
-    lines.push(`maxHistoryMessages = ${config.maxHistoryMessages}`);
-  }
-  if (typeof config.maxMessageTokens === "number") {
-    lines.push(`maxMessageTokens = ${config.maxMessageTokens}`);
-  }
-  if (typeof config.maxAttachmentMessageTokens === "number") {
+  if (config.omModel) lines.push(`omModel = ${JSON.stringify(config.omModel)}`);
+  if (config.apiUrl) lines.push(`apiUrl = ${JSON.stringify(config.apiUrl)}`);
+  if (config.openaiBaseUrl) lines.push(`openaiBaseUrl = ${JSON.stringify(config.openaiBaseUrl)}`);
+  if (config.anthropicBaseUrl) lines.push(`anthropicBaseUrl = ${JSON.stringify(config.anthropicBaseUrl)}`);
+  if (config.googleBaseUrl) lines.push(`googleBaseUrl = ${JSON.stringify(config.googleBaseUrl)}`);
+  if (config.permissionMode) lines.push(`permissionMode = ${JSON.stringify(config.permissionMode)}`);
+  if (config.logFormat) lines.push(`logFormat = ${JSON.stringify(config.logFormat)}`);
+  if (typeof config.omObservationTokens === "number") lines.push(`omObservationTokens = ${config.omObservationTokens}`);
+  if (typeof config.omReflectionTokens === "number") lines.push(`omReflectionTokens = ${config.omReflectionTokens}`);
+  if (typeof config.contextMaxTokens === "number") lines.push(`contextMaxTokens = ${config.contextMaxTokens}`);
+  if (typeof config.maxHistoryMessages === "number") lines.push(`maxHistoryMessages = ${config.maxHistoryMessages}`);
+  if (typeof config.maxMessageTokens === "number") lines.push(`maxMessageTokens = ${config.maxMessageTokens}`);
+  if (typeof config.maxAttachmentMessageTokens === "number")
     lines.push(`maxAttachmentMessageTokens = ${config.maxAttachmentMessageTokens}`);
-  }
-  if (typeof config.maxPinnedMessageTokens === "number") {
+  if (typeof config.maxPinnedMessageTokens === "number")
     lines.push(`maxPinnedMessageTokens = ${config.maxPinnedMessageTokens}`);
-  }
-  if (typeof config.replyTimeoutMs === "number") {
-    lines.push(`replyTimeoutMs = ${config.replyTimeoutMs}`);
-  }
+  if (typeof config.replyTimeoutMs === "number") lines.push(`replyTimeoutMs = ${config.replyTimeoutMs}`);
   return `${lines.join("\n")}${lines.length > 0 ? "\n" : ""}`;
 }
 
@@ -368,21 +334,15 @@ export async function setConfigValue(key: string, value: string, options?: Confi
     const existing = (current[dotted.section] ?? {}) as Record<string, unknown>;
     const merged = { ...existing, [dotted.subKey]: value };
     const parsed = schema.safeParse(merged);
-    if (!parsed.success) {
-      throw new Error(`Invalid value for ${key}`);
-    }
+    if (!parsed.success) throw new Error(`Invalid value for ${key}`);
     const next: AcolyteConfig = { ...current, [dotted.section]: parsed.data };
     await writeConfig(next, { ...options, scope });
     return;
   }
   const topKey = key as keyof AcolyteConfig;
-  if (!(topKey in CONFIG_SET_SCHEMAS)) {
-    throw new Error(`Unknown config key: ${key}`);
-  }
+  if (!(topKey in CONFIG_SET_SCHEMAS)) throw new Error(`Unknown config key: ${key}`);
   const parsed = CONFIG_SET_SCHEMAS[topKey].safeParse(value);
-  if (!parsed.success) {
-    throw new Error(`Invalid value for ${key}`);
-  }
+  if (!parsed.success) throw new Error(`Invalid value for ${key}`);
   const current = await readConfigScope(scope, options);
   const next: AcolyteConfig = { ...current, [topKey]: parsed.data };
   await writeConfig(next, { ...options, scope });

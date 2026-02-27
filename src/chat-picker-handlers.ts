@@ -102,13 +102,9 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
     const [first, ...remaining] = questions
       .map((question) => question.trim())
       .filter((question) => question.length > 0);
-    if (!first) {
-      return;
-    }
+    if (!first) return;
     const picker = createClarifyAnswerPicker(originalPrompt, first, remaining);
-    if (!picker) {
-      return;
-    }
+    if (!picker) return;
     input.setPicker(picker);
     input.setShowShortcuts(false);
   };

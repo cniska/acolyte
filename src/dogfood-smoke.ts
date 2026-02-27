@@ -83,9 +83,7 @@ async function runCommand(
   try {
     return await Promise.race([completed, timeoutResult]);
   } finally {
-    if (timeoutId !== null) {
-      clearTimeout(timeoutId);
-    }
+    if (timeoutId !== null) clearTimeout(timeoutId);
   }
 }
 
@@ -114,17 +112,13 @@ export function stripAnsi(value: string): string {
 
 export function assertCheckOutput(check: SmokeCheck, output: string): string | null {
   for (const pattern of check.expect) {
-    if (!pattern.test(output)) {
-      return `missing expected pattern ${pattern}`;
-    }
+    if (!pattern.test(output)) return `missing expected pattern ${pattern}`;
   }
   return null;
 }
 
 export function isProviderReadyFromStatusOutput(output: string): boolean {
-  if (/provider:\s*mock/i.test(output)) {
-    return false;
-  }
+  if (/provider:\s*mock/i.test(output)) return false;
   return true;
 }
 
@@ -185,26 +179,22 @@ async function configureSmokeCli(smokeEnv: Record<string, string>): Promise<void
     15_000,
     smokeEnv,
   );
-  if (setApiUrl.exitCode !== 0) {
+  if (setApiUrl.exitCode !== 0)
     throw new Error(`Failed to set apiUrl for smoke env: ${setApiUrl.stderr || setApiUrl.stdout}`);
-  }
   const setPermissions = await runCommand(
     ["bun", "run", "src/cli.ts", "config", "set", "permissionMode", "write"],
     15_000,
     smokeEnv,
   );
-  if (setPermissions.exitCode !== 0) {
+  if (setPermissions.exitCode !== 0)
     throw new Error(`Failed to set permissionMode for smoke env: ${setPermissions.stderr || setPermissions.stdout}`);
-  }
 }
 
 async function setServerPermissionMode(mode: "read" | "write"): Promise<void> {
   const headers: Record<string, string> = {
     "content-type": "application/json",
   };
-  if (process.env.ACOLYTE_API_KEY) {
-    headers.authorization = `Bearer ${process.env.ACOLYTE_API_KEY}`;
-  }
+  if (process.env.ACOLYTE_API_KEY) headers.authorization = `Bearer ${process.env.ACOLYTE_API_KEY}`;
   const response = await fetch("http://localhost:6767/v1/permissions", {
     method: "POST",
     headers,
@@ -227,13 +217,9 @@ async function runReadModeBlockSmoke(smokeEnv: Record<string, string>): Promise<
       COMMAND_TIMEOUT_MS,
       smokeEnv,
     );
-    if (result.exitCode !== 0) {
-      return { ok: false, detail: `command failed (exit ${result.exitCode})` };
-    }
+    if (result.exitCode !== 0) return { ok: false, detail: `command failed (exit ${result.exitCode})` };
     const content = await readFile(filePath, "utf8");
-    if (content !== "alpha\n") {
-      return { ok: false, detail: "file changed despite read mode" };
-    }
+    if (content !== "alpha\n") return { ok: false, detail: "file changed despite read mode" };
     return { ok: true, detail: "blocked and file unchanged" };
   } finally {
     await rm(filePath, { force: true });
@@ -265,27 +251,16 @@ async function runCodingTaskSmoke(
       COMMAND_TIMEOUT_MS,
       smokeEnv,
     );
-    if (result.exitCode !== 0) {
-      return { ok: false, detail: `command failed (exit ${result.exitCode})` };
-    }
+    if (result.exitCode !== 0) return { ok: false, detail: `command failed (exit ${result.exitCode})` };
     const output = stripAnsi(`${result.stdout}\n${result.stderr}`);
-    if (violatesEditClaimContract(output)) {
-      return { ok: false, detail: "edit claimed without edited tool outcome" };
-    }
-    if (hasAdvisoryFileWriteSignal(output)) {
-      return { ok: false, detail: "advisory file-write response detected" };
-    }
-    if (!hasToolOutcomeSignal(output, "Edit")) {
-      return { ok: false, detail: "missing edited tool outcome in output" };
-    }
-    if (!hasToolDiffPreviewSignal(output)) {
-      return { ok: false, detail: "missing diff preview in output" };
-    }
+    if (violatesEditClaimContract(output)) return { ok: false, detail: "edit claimed without edited tool outcome" };
+    if (hasAdvisoryFileWriteSignal(output)) return { ok: false, detail: "advisory file-write response detected" };
+    if (!hasToolOutcomeSignal(output, "Edit")) return { ok: false, detail: "missing edited tool outcome in output" };
+    if (!hasToolDiffPreviewSignal(output)) return { ok: false, detail: "missing diff preview in output" };
     const hasOutputChatter = hasUnwantedVerificationChatter(output);
     const content = await readFile(filePath, "utf8");
-    if (task.validate(content)) {
+    if (task.validate(content))
       return { ok: true, detail: hasOutputChatter ? "file edited (warning: verbose output chatter)" : "file edited" };
-    }
     return { ok: false, detail: "file was not edited as expected" };
   } finally {
     await rm(filePath, { force: true });
@@ -309,24 +284,16 @@ async function runCreateFileCodingTaskSmoke(
       COMMAND_TIMEOUT_MS,
       smokeEnv,
     );
-    if (result.exitCode !== 0) {
-      return { ok: false, detail: `command failed (exit ${result.exitCode})` };
-    }
+    if (result.exitCode !== 0) return { ok: false, detail: `command failed (exit ${result.exitCode})` };
     const output = stripAnsi(`${result.stdout}\n${result.stderr}`);
-    if (hasAdvisoryFileWriteSignal(output)) {
-      return { ok: false, detail: "advisory file-write response detected" };
-    }
-    if (!hasAnyToolOutcomeSignal(output, ["Edit", "Create"])) {
+    if (hasAdvisoryFileWriteSignal(output)) return { ok: false, detail: "advisory file-write response detected" };
+    if (!hasAnyToolOutcomeSignal(output, ["Edit", "Create"]))
       return { ok: false, detail: "missing create tool outcome in output" };
-    }
-    if (!hasToolDiffPreviewSignal(output)) {
-      return { ok: false, detail: "missing diff preview in output" };
-    }
+    if (!hasToolDiffPreviewSignal(output)) return { ok: false, detail: "missing diff preview in output" };
     const hasOutputChatter = hasUnwantedVerificationChatter(output);
     const content = await readFile(filePath, "utf8");
-    if (task.validate(content)) {
+    if (task.validate(content))
       return { ok: true, detail: hasOutputChatter ? "file created (warning: verbose output chatter)" : "file created" };
-    }
     return { ok: false, detail: "file was not created as expected" };
   } catch {
     return { ok: false, detail: "file was not created as expected" };
@@ -352,16 +319,10 @@ async function runDeleteFileCodingTaskSmoke(
       COMMAND_TIMEOUT_MS,
       smokeEnv,
     );
-    if (result.exitCode !== 0) {
-      return { ok: false, detail: `command failed (exit ${result.exitCode})` };
-    }
+    if (result.exitCode !== 0) return { ok: false, detail: `command failed (exit ${result.exitCode})` };
     const output = stripAnsi(`${result.stdout}\n${result.stderr}`);
-    if (hasAdvisoryFileWriteSignal(output)) {
-      return { ok: false, detail: "advisory file-write response detected" };
-    }
-    if (!hasToolOutcomeSignal(output, "Delete")) {
-      return { ok: false, detail: "missing deleted tool outcome in output" };
-    }
+    if (hasAdvisoryFileWriteSignal(output)) return { ok: false, detail: "advisory file-write response detected" };
+    if (!hasToolOutcomeSignal(output, "Delete")) return { ok: false, detail: "missing deleted tool outcome in output" };
     try {
       await readFile(filePath, "utf8");
       return { ok: false, detail: "file still exists after delete task" };
@@ -394,22 +355,12 @@ async function runMultiFileCodingTaskSmoke(
       COMMAND_TIMEOUT_MS,
       smokeEnv,
     );
-    if (result.exitCode !== 0) {
-      return { ok: false, detail: `command failed (exit ${result.exitCode})` };
-    }
+    if (result.exitCode !== 0) return { ok: false, detail: `command failed (exit ${result.exitCode})` };
     const output = stripAnsi(`${result.stdout}\n${result.stderr}`);
-    if (violatesEditClaimContract(output)) {
-      return { ok: false, detail: "edit claimed without edited tool outcome" };
-    }
-    if (hasAdvisoryFileWriteSignal(output)) {
-      return { ok: false, detail: "advisory file-write response detected" };
-    }
-    if (!hasToolOutcomeSignal(output, "Edit")) {
-      return { ok: false, detail: "missing edited tool outcome in output" };
-    }
-    if (!hasToolDiffPreviewSignal(output)) {
-      return { ok: false, detail: "missing diff preview in output" };
-    }
+    if (violatesEditClaimContract(output)) return { ok: false, detail: "edit claimed without edited tool outcome" };
+    if (hasAdvisoryFileWriteSignal(output)) return { ok: false, detail: "advisory file-write response detected" };
+    if (!hasToolOutcomeSignal(output, "Edit")) return { ok: false, detail: "missing edited tool outcome in output" };
+    if (!hasToolDiffPreviewSignal(output)) return { ok: false, detail: "missing diff preview in output" };
     const hasOutputChatter = hasUnwantedVerificationChatter(output);
     const contents: Record<string, string> = {};
     for (const filePath of filePaths) {
@@ -450,9 +401,7 @@ async function main(): Promise<void> {
     for (const check of checks) {
       const result = await runCommand(check.cmd, COMMAND_TIMEOUT_MS, smokeEnv);
       const output = stripAnsi(`${result.stdout}\n${result.stderr}`);
-      if (check.name === "status") {
-        statusOutput = output;
-      }
+      if (check.name === "status") statusOutput = output;
       if (result.exitCode !== 0 && !check.allowFailure) {
         console.error(`✗ ${check.name}: command failed (exit ${result.exitCode})`);
         if (check.name === "status" && /unable to connect/i.test(output)) {
@@ -731,12 +680,8 @@ async function main(): Promise<void> {
     console.log("Dogfood smoke checks passed.");
   } finally {
     const smokeHome = smokeEnv.HOME;
-    if (smokeHome) {
-      await rm(smokeHome, { recursive: true, force: true });
-    }
+    if (smokeHome) await rm(smokeHome, { recursive: true, force: true });
   }
 }
 
-if (import.meta.main) {
-  void main();
-}
+if (import.meta.main) void main();

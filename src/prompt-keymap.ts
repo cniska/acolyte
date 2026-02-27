@@ -72,58 +72,34 @@ type CsiLineMove = {
 
 function parseCsiArrowMove(input: string): CsiArrowMove | null {
   const prefix = `${ESCAPE_CHAR}[`;
-  if (!input.startsWith(prefix)) {
-    return null;
-  }
+  if (!input.startsWith(prefix)) return null;
   const final = input.at(-1);
-  if (final !== "C" && final !== "D") {
-    return null;
-  }
+  if (final !== "C" && final !== "D") return null;
   const payload = input.slice(prefix.length, -1);
-  if (payload.length === 0) {
-    return null;
-  }
+  if (payload.length === 0) return null;
   const parts = payload.split(";");
   const modifierPart = parts.length === 1 ? parts[0] : parts[1];
-  if (parts.length > 2 || (parts.length === 2 && parts[0] !== "1") || !modifierPart) {
-    return null;
-  }
+  if (parts.length > 2 || (parts.length === 2 && parts[0] !== "1") || !modifierPart) return null;
   const modifier = Number.parseInt(modifierPart, 10);
   const direction = final === "D" ? "left" : "right";
-  if (!Number.isFinite(modifier) || modifier <= 0) {
-    return null;
-  }
-  if (modifier >= 9) {
-    return { kind: "line", direction };
-  }
-  if (modifier >= 3) {
-    return { kind: "word", direction };
-  }
+  if (!Number.isFinite(modifier) || modifier <= 0) return null;
+  if (modifier >= 9) return { kind: "line", direction };
+  if (modifier >= 3) return { kind: "word", direction };
   return null;
 }
 
 function parseCsiLineMove(input: string): CsiLineMove | null {
   const prefix = `${ESCAPE_CHAR}[`;
-  if (!input.startsWith(prefix)) {
-    return null;
-  }
+  if (!input.startsWith(prefix)) return null;
   const final = input.at(-1);
-  if (final !== "H" && final !== "F") {
-    return null;
-  }
+  if (final !== "H" && final !== "F") return null;
   const payload = input.slice(prefix.length, -1);
-  if (payload.length === 0) {
-    return null;
-  }
+  if (payload.length === 0) return null;
   const parts = payload.split(";");
   const modifierPart = parts.length === 1 ? parts[0] : parts[1];
-  if (parts.length > 2 || (parts.length === 2 && parts[0] !== "1") || !modifierPart) {
-    return null;
-  }
+  if (parts.length > 2 || (parts.length === 2 && parts[0] !== "1") || !modifierPart) return null;
   const modifier = Number.parseInt(modifierPart, 10);
-  if (!Number.isFinite(modifier) || modifier < 3) {
-    return null;
-  }
+  if (!Number.isFinite(modifier) || modifier < 3) return null;
   return {
     kind: "line",
     direction: final === "H" ? "left" : "right",
@@ -134,15 +110,10 @@ export function resolvePromptAction(input: string, key: PromptKey, options: { ha
   const csiArrowMove = parseCsiArrowMove(input);
   const csiLineMove = parseCsiLineMove(input);
 
-  if (key.upArrow || key.downArrow || key.tab || (key.shift && key.tab) || (key.ctrl && input === CTRL.c)) {
+  if (key.upArrow || key.downArrow || key.tab || (key.shift && key.tab) || (key.ctrl && input === CTRL.c))
     return { type: "noop" };
-  }
-  if (key.return && key.shift) {
-    return { type: "insert", text: "\n" };
-  }
-  if (key.return) {
-    return { type: "submit" };
-  }
+  if (key.return && key.shift) return { type: "insert", text: "\n" };
+  if (key.return) return { type: "submit" };
 
   if (
     key.home ||
@@ -192,37 +163,24 @@ export function resolvePromptAction(input: string, key: PromptKey, options: { ha
   ) {
     return { type: "delete_word_back" };
   }
-  if ((key.ctrl && input === CTRL.u) || input === CTRL.clearLine || (key.meta && key.backspace)) {
+  if ((key.ctrl && input === CTRL.u) || input === CTRL.clearLine || (key.meta && key.backspace))
     return { type: "clear_line" };
-  }
 
-  if (key.leftArrow) {
-    return { type: "move_left" };
-  }
-  if (key.rightArrow) {
-    return { type: "move_right" };
-  }
+  if (key.leftArrow) return { type: "move_left" };
+  if (key.rightArrow) return { type: "move_right" };
 
   const isForwardDelete = input === ESC.delete;
-  if (isForwardDelete) {
-    return { type: "delete_forward" };
-  }
+  if (isForwardDelete) return { type: "delete_forward" };
 
   const isBackspaceLike = key.backspace || key.delete || input === CTRL.h || input === CHARS.backspace;
   const isMetaWordDelete =
     (isBackspaceLike && (options.hasMetaPrefix || key.meta || input.includes(ESCAPE_CHAR))) ||
     input === ESC.altBackspace ||
     input === ESC.altCtrlH;
-  if (isMetaWordDelete) {
-    return { type: "delete_word_back" };
-  }
-  if (isBackspaceLike) {
-    return { type: "delete_back" };
-  }
+  if (isMetaWordDelete) return { type: "delete_word_back" };
+  if (isBackspaceLike) return { type: "delete_back" };
 
-  if (!input || key.ctrl || key.meta || input.includes(ESCAPE_CHAR)) {
-    return { type: "noop" };
-  }
+  if (!input || key.ctrl || key.meta || input.includes(ESCAPE_CHAR)) return { type: "noop" };
 
   return { type: "insert", text: input };
 }

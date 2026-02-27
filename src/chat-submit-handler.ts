@@ -63,20 +63,15 @@ function isAbortError(error: unknown): boolean {
 }
 
 function formatSubmitError(error: unknown): string {
-  if (!(error instanceof Error)) {
-    return "Request failed. Retry and check server logs if it keeps failing.";
-  }
+  if (!(error instanceof Error)) return "Request failed. Retry and check server logs if it keeps failing.";
   const message = error.message.trim();
   const lower = message.toLowerCase();
-  if (lower.includes("insufficient_quota") || lower.includes("quota exceeded") || lower.includes("quota")) {
+  if (lower.includes("insufficient_quota") || lower.includes("quota exceeded") || lower.includes("quota"))
     return "Provider quota exceeded. Add billing/credits or switch model/provider.";
-  }
-  if (lower.includes("timed out") || lower.includes("timeout")) {
+  if (lower.includes("timed out") || lower.includes("timeout"))
     return "Server request timed out. Retry or reduce request scope.";
-  }
-  if (lower.includes("shell command execution is disabled in read mode")) {
+  if (lower.includes("shell command execution is disabled in read mode"))
     return "Write action blocked in read mode. Run /permissions write and retry.";
-  }
   if (
     lower.includes("server unavailable") ||
     lower.includes("connection refused") ||
@@ -84,9 +79,7 @@ function formatSubmitError(error: unknown): string {
   ) {
     return "Server unavailable. Start the server and retry.";
   }
-  if (lower.includes("remote server error")) {
-    return message;
-  }
+  if (lower.includes("remote server error")) return message;
   return message || "Request failed. Retry and check server logs if it keeps failing.";
 }
 
@@ -98,9 +91,7 @@ function isLikelyWritePrompt(text: string): boolean {
 
 function statusPermissionMode(status: Record<string, string>): "read" | "write" | null {
   const mode = status.permissions;
-  if (mode === "read" || mode === "write") {
-    return mode;
-  }
+  if (mode === "read" || mode === "write") return mode;
   return null;
 }
 
@@ -144,60 +135,41 @@ async function distillMemoryNote(client: Client, content: string, model: string,
 
 export function resolveNaturalRememberDirective(text: string): NaturalRememberDirective | null {
   const trimmed = text.trim();
-  if (trimmed.length === 0) {
-    return null;
-  }
+  if (trimmed.length === 0) return null;
   const trailingProjectRememberThisMatch = trimmed.match(/^(.+?)(?:,\s*|\s+)remember this for project$/i);
-  if (trailingProjectRememberThisMatch?.[1]) {
+  if (trailingProjectRememberThisMatch?.[1])
     return { scope: "project", content: trailingProjectRememberThisMatch[1].trim() };
-  }
   const trailingUserRememberThisMatch = trimmed.match(/^(.+?)(?:,\s*|\s+)remember this(?: for user)?$/i);
-  if (trailingUserRememberThisMatch?.[1]) {
-    return { scope: "user", content: trailingUserRememberThisMatch[1].trim() };
-  }
+  if (trailingUserRememberThisMatch?.[1]) return { scope: "user", content: trailingUserRememberThisMatch[1].trim() };
   const projectMatch = trimmed.match(/^remember this for project[:\s]+(.+)$/i);
-  if (projectMatch?.[1]) {
-    return { scope: "project", content: projectMatch[1].trim() };
-  }
+  if (projectMatch?.[1]) return { scope: "project", content: projectMatch[1].trim() };
   const userMatch = trimmed.match(/^remember this(?: for user)?[:\s]+(.+)$/i);
-  if (userMatch?.[1]) {
-    return { scope: "user", content: userMatch[1].trim() };
-  }
+  if (userMatch?.[1]) return { scope: "user", content: userMatch[1].trim() };
   const bareRememberMatch = trimmed.match(/^remember\s+(.+)$/i);
   if (bareRememberMatch?.[1]) {
     const content = bareRememberMatch[1].trim();
-    if (/^this$/i.test(content)) {
-      return null;
-    }
+    if (/^this$/i.test(content)) return null;
     return { scope: "user", content };
   }
   const trailingRememberMatch = trimmed.match(/^(.+?)\s+remember$/i);
-  if (trailingRememberMatch?.[1]) {
-    return { scope: "user", content: trailingRememberMatch[1].trim() };
-  }
+  if (trailingRememberMatch?.[1]) return { scope: "user", content: trailingRememberMatch[1].trim() };
   return null;
 }
 
 export function extractClarifyingQuestions(output: string): string[] {
   const lines = output.split("\n").map((line) => line.trim());
   const headingIndex = lines.findIndex((line) => /^(?:[-*]\s*)?clarifying questions\s*:?\s*$/i.test(line));
-  if (headingIndex < 0) {
-    return [];
-  }
+  if (headingIndex < 0) return [];
   const questions: string[] = [];
   for (let i = headingIndex + 1; i < lines.length; i += 1) {
     const line = lines[i] ?? "";
     if (line.length === 0) {
-      if (questions.length > 0) {
-        break;
-      }
+      if (questions.length > 0) break;
       continue;
     }
     const numbered = line.match(/^\d+[).]\s+(.+)$/);
     if (!numbered?.[1]) {
-      if (questions.length > 0) {
-        break;
-      }
+      if (questions.length > 0) break;
       continue;
     }
     questions.push(numbered[1].trim());
@@ -214,22 +186,16 @@ export function buildInternalWriteResumeTurn(prompt: string): string {
 }
 
 function parseInternalClarificationTurn(raw: string): InternalClarificationTurn | null {
-  if (!raw.startsWith(INTERNAL_CLARIFICATION_PREFIX)) {
-    return null;
-  }
+  if (!raw.startsWith(INTERNAL_CLARIFICATION_PREFIX)) return null;
   const payload = raw.slice(INTERNAL_CLARIFICATION_PREFIX.length);
   try {
     const parsed = JSON.parse(payload) as Partial<InternalClarificationTurn>;
-    if (!parsed || typeof parsed !== "object") {
-      return null;
-    }
+    if (!parsed || typeof parsed !== "object") return null;
     const originalPrompt = typeof parsed.originalPrompt === "string" ? parsed.originalPrompt.trim() : "";
     const answers = Array.isArray(parsed.answers)
       ? parsed.answers
           .map((item) => {
-            if (!item || typeof item !== "object") {
-              return null;
-            }
+            if (!item || typeof item !== "object") return null;
             const question =
               typeof (item as { question?: unknown }).question === "string"
                 ? (item as { question: string }).question.trim()
@@ -238,16 +204,12 @@ function parseInternalClarificationTurn(raw: string): InternalClarificationTurn 
               typeof (item as { answer?: unknown }).answer === "string"
                 ? (item as { answer: string }).answer.trim()
                 : "";
-            if (!question || !answer) {
-              return null;
-            }
+            if (!question || !answer) return null;
             return { question, answer };
           })
           .filter((item): item is ClarificationAnswer => Boolean(item))
       : [];
-    if (!originalPrompt || answers.length === 0) {
-      return null;
-    }
+    if (!originalPrompt || answers.length === 0) return null;
     return { originalPrompt, answers };
   } catch {
     return null;
@@ -255,13 +217,9 @@ function parseInternalClarificationTurn(raw: string): InternalClarificationTurn 
 }
 
 function parseInternalWriteResumeTurn(raw: string): InternalWriteResumeTurn | null {
-  if (!raw.startsWith(INTERNAL_WRITE_RESUME_PREFIX)) {
-    return null;
-  }
+  if (!raw.startsWith(INTERNAL_WRITE_RESUME_PREFIX)) return null;
   const prompt = raw.slice(INTERNAL_WRITE_RESUME_PREFIX.length).trim();
-  if (!prompt) {
-    return null;
-  }
+  if (!prompt) return null;
   return { prompt };
 }
 
@@ -280,12 +238,8 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       : internalWriteResume
         ? internalWriteResume.prompt
         : raw.trim();
-    if (!text || (input.isThinking && !text.startsWith("/"))) {
-      return;
-    }
-    if (!isInternalReplay && text.startsWith("/") && !text.includes(" ") && !isKnownSlashToken(text)) {
-      return;
-    }
+    if (!text || (input.isThinking && !text.startsWith("/"))) return;
+    if (!isInternalReplay && text.startsWith("/") && !text.includes(" ") && !isKnownSlashToken(text)) return;
     const resolvedText = internalClarification ? text : resolveSlashAlias(text);
     const naturalRememberDirective = isInternalReplay ? null : resolveNaturalRememberDirective(text);
     const dispatchResolvedText = resolvedText;
@@ -360,9 +314,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         setServerPermissionMode: input.client.setPermissionMode,
         tokenUsage: input.tokenUsage,
       });
-      if (commandResult.stop) {
-        return;
-      }
+      if (commandResult.stop) return;
       if (!internalWriteResume && isLikelyWritePrompt(text)) {
         try {
           const status = await input.client.status();
@@ -406,9 +358,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
 
     const { contexts, unresolvedPaths } = await resolveReferencedFileContext(userText);
     const fileContextMessages: Message[] = contexts.map((context) => input.createMessage("system", context));
-    if (unresolvedPaths.length > 0) {
-      input.setRows((current) => [...current, ...unresolvedPathRows(unresolvedPaths)]);
-    }
+    if (unresolvedPaths.length > 0) input.setRows((current) => [...current, ...unresolvedPathRows(unresolvedPaths)]);
     if (unresolvedPaths.length > 0 && contexts.length === 0) {
       await input.persist();
       return;
@@ -432,9 +382,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         clearTimeout(streamFlushTimer);
         streamFlushTimer = null;
       }
-      if (streamingAssistantContent.trim().length === 0) {
-        return;
-      }
+      if (streamingAssistantContent.trim().length === 0) return;
       input.setRows((current) => {
         if (!streamingAssistantRowId) {
           streamingAssistantRowId = `row_${createId()}`;
@@ -457,13 +405,9 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         input.setProgressText(message);
       },
       onAssistant: (delta) => {
-        if (delta.length === 0) {
-          return;
-        }
+        if (delta.length === 0) return;
         streamingAssistantContent += delta;
-        if (!streamFlushTimer) {
-          streamFlushTimer = setTimeout(flushStreamingContent, STREAM_FLUSH_MS);
-        }
+        if (!streamFlushTimer) streamFlushTimer = setTimeout(flushStreamingContent, STREAM_FLUSH_MS);
       },
       onToolCall: (entry) => {
         // Cancel any pending flush — we handle it atomically below.
@@ -485,24 +429,18 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
           toolName: entry.toolName,
         };
         // Freeze pre-tool streaming text and append tool row.
-        if (streamingAssistantContent.trim().length > 0) {
-          committedStreamingText += streamingAssistantContent;
-        }
+        if (streamingAssistantContent.trim().length > 0) committedStreamingText += streamingAssistantContent;
         streamingAssistantRowId = null;
         streamingAssistantContent = "";
         input.setRows((current) => [...current, toolRow]);
       },
       onToolOutput: (entry) => {
         const content = entry.content.trim();
-        if (!content) {
-          return;
-        }
+        if (!content) return;
         input.setRows((current) => {
           const normalizedLine = content.toLowerCase();
           const seenLines = toolSeenLinesByCallId.get(entry.toolCallId) ?? new Set<string>();
-          if (seenLines.has(normalizedLine)) {
-            return current;
-          }
+          if (seenLines.has(normalizedLine)) return current;
           seenLines.add(normalizedLine);
           toolSeenLinesByCallId.set(entry.toolCallId, seenLines);
           const existingRowId = toolRowIdByCallId.get(entry.toolCallId);
@@ -540,9 +478,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       onError: (error) => {
         input.setRows((current) => {
           const last = current[current.length - 1];
-          if (last?.style === "error" && last.content === error) {
-            return current;
-          }
+          if (last?.style === "error" && last.content === error) return current;
           return [...current, createRow("system", error, { dim: true, style: "error" })];
         });
       },
@@ -603,9 +539,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         };
         const finalRows = turn.rows
           .map((r) => {
-            if (r.role !== "assistant" || r.dim || r.style) {
-              return r;
-            }
+            if (r.role !== "assistant" || r.dim || r.style) return r;
             if (committedStreamingText && r.content.startsWith(committedStreamingText)) {
               const after = r.content.slice(committedStreamingText.length).trim();
               if (!after) return null;

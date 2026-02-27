@@ -60,9 +60,7 @@ export function isKnownSlashToken(token: string): boolean {
 
 export function suggestSlashCommands(inputValue: string, max = 8): string[] {
   const value = inputValue.trim();
-  if (!value.startsWith("/")) {
-    return [];
-  }
+  if (!value.startsWith("/")) return [];
   const candidate = inputValue.trimStart();
 
   // If input has a space, match subcommands only (resolve aliases first)
@@ -88,9 +86,7 @@ export function suggestSlashCommands(inputValue: string, max = 8): string[] {
   const all = allSlashCommands();
   const allCommands = [...all, ...Object.values(SUB_COMMANDS).flat()];
   const matches = allCommands.filter((command) => command.startsWith(value));
-  if (matches.length > 0) {
-    return matches.slice(0, max);
-  }
+  if (matches.length > 0) return matches.slice(0, max);
 
   // No prefix matches — fall back to fuzzy matching on top-level commands + skills
   const fuzzy = all
@@ -102,36 +98,22 @@ export function suggestSlashCommands(inputValue: string, max = 8): string[] {
 
 export function suggestClosestSlashCommand(inputValue: string, maxDistance = 2): string | null {
   const value = inputValue.trim();
-  if (!value.startsWith("/")) {
-    return null;
-  }
-  if (isKnownSlashToken(value)) {
-    return null;
-  }
+  if (!value.startsWith("/")) return null;
+  if (isKnownSlashToken(value)) return null;
   let best: { command: string; distance: number } | null = null;
   for (const command of allSlashCommands()) {
     const distance = editDistance(value, command);
-    if (distance > maxDistance) {
-      continue;
-    }
-    if (!best || distance < best.distance) {
-      best = { command, distance };
-    }
+    if (distance > maxDistance) continue;
+    if (!best || distance < best.distance) best = { command, distance };
   }
   return best?.command ?? null;
 }
 
 export function shouldAutocompleteSlashSubmit(inputValue: string, selectedSuggestion: string | undefined): boolean {
-  if (!selectedSuggestion) {
-    return false;
-  }
+  if (!selectedSuggestion) return false;
   const trimmed = inputValue.trim();
-  if (!trimmed.startsWith("/")) {
-    return false;
-  }
-  if (trimmed.includes(" ")) {
-    return false;
-  }
+  if (!trimmed.startsWith("/")) return false;
+  if (trimmed.includes(" ")) return false;
   return trimmed !== selectedSuggestion;
 }
 
@@ -141,13 +123,9 @@ export function applySlashSuggestion(selectedSuggestion: string): string {
 
 export function resolveSlashAlias(value: string): string {
   const trimmed = value.trim();
-  if (!trimmed.startsWith("/")) {
-    return value;
-  }
+  if (!trimmed.startsWith("/")) return value;
   const [head, ...rest] = trimmed.split(/\s+/);
   const resolvedHead = SLASH_ALIASES[head] ?? head;
-  if (rest.length === 0) {
-    return resolvedHead;
-  }
+  if (rest.length === 0) return resolvedHead;
   return `${resolvedHead} ${rest.join(" ")}`;
 }

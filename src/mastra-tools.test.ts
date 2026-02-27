@@ -54,9 +54,7 @@ describe("read-file tool schema", () => {
   test("rejects invalid range when start is greater than end", () => {
     const schema = readFileTool.inputSchema;
     expect(schema).toBeDefined();
-    if (!schema) {
-      throw new Error("readFileTool.inputSchema is undefined");
-    }
+    if (!schema) throw new Error("readFileTool.inputSchema is undefined");
     expect(() => schema.parse({ paths: [{ path: "src/agent.ts", start: 20, end: 10 }] })).toThrow(
       "start must be less than or equal to end",
     );
@@ -65,9 +63,7 @@ describe("read-file tool schema", () => {
   test("accepts bounded ranges and single-sided ranges", () => {
     const schema = readFileTool.inputSchema;
     expect(schema).toBeDefined();
-    if (!schema) {
-      throw new Error("readFileTool.inputSchema is undefined");
-    }
+    if (!schema) throw new Error("readFileTool.inputSchema is undefined");
     expect(schema.parse({ paths: [{ path: "src/agent.ts", start: 10, end: 20 }] })).toEqual({
       paths: [{ path: "src/agent.ts", start: 10, end: 20 }],
     });
@@ -82,9 +78,7 @@ describe("read-file tool schema", () => {
   test("accepts multiple paths", () => {
     const schema = readFileTool.inputSchema;
     expect(schema).toBeDefined();
-    if (!schema) {
-      throw new Error("readFileTool.inputSchema is undefined");
-    }
+    if (!schema) throw new Error("readFileTool.inputSchema is undefined");
     expect(
       schema.parse({
         paths: [{ path: "src/agent.ts", start: 1, end: 10 }, { path: "src/cli.ts" }],

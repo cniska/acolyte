@@ -35,9 +35,7 @@ export function parseEditArgs(args: string[]): {
 } {
   const dryRun = args.includes("--dry-run");
   const clean = args.filter((a) => a !== "--dry-run");
-  if (clean.length < 3) {
-    throw new Error("Usage: /edit <path> <find> <replace> [--dry-run]");
-  }
+  if (clean.length < 3) throw new Error("Usage: /edit <path> <find> <replace> [--dry-run]");
   const [path, find, ...replaceParts] = clean;
   return editArgsSchema.parse({
     path,
@@ -167,9 +165,7 @@ export async function toolMode(args: string[]): Promise<void> {
             }
           }
         }
-        if (!rendered) {
-          showToolResult("Edit", result, "plain", parsed.path);
-        }
+        if (!rendered) showToolResult("Edit", result, "plain", parsed.path);
         return;
       }
       default:

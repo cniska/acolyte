@@ -12,9 +12,7 @@ export type AcolyteEnv = z.infer<typeof EnvSchema>;
 
 export function parseEnv(source: Record<string, string | undefined>): AcolyteEnv {
   const result = EnvSchema.safeParse(source);
-  if (result.success) {
-    return result.data;
-  }
+  if (result.success) return result.data;
   const details = result.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`).join("; ");
   throw new Error(`Invalid environment configuration: ${details}`);
 }

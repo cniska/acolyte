@@ -10,16 +10,12 @@ const repoRoot = process.cwd();
 afterEach(async () => {
   while (tmpHomes.length > 0) {
     const dir = tmpHomes.pop();
-    if (!dir) {
-      continue;
-    }
+    if (!dir) continue;
     await rm(dir, { recursive: true, force: true });
   }
   while (tmpProjects.length > 0) {
     const dir = tmpProjects.pop();
-    if (!dir) {
-      continue;
-    }
+    if (!dir) continue;
     await rm(dir, { recursive: true, force: true });
   }
 });

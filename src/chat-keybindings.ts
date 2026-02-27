@@ -25,9 +25,7 @@ export function resolveHistoryUp(
   inputHistoryIndex: number,
   value: string,
 ): HistoryTransition | null {
-  if (inputHistory.length === 0) {
-    return null;
-  }
+  if (inputHistory.length === 0) return null;
   if (inputHistoryIndex === -1) {
     const nextIndex = inputHistory.length - 1;
     return {
@@ -48,9 +46,7 @@ export function resolveHistoryDown(
   inputHistoryIndex: number,
   inputHistoryDraft: string,
 ): HistoryTransition | null {
-  if (inputHistoryIndex < 0) {
-    return null;
-  }
+  if (inputHistoryIndex < 0) return null;
   if (inputHistoryIndex >= inputHistory.length - 1) {
     return {
       nextIndex: -1,
@@ -65,22 +61,16 @@ export function resolveHistoryDown(
 }
 
 export function resolveTabAutocomplete(input: ResolveTabAutocompleteInput): string | null {
-  if (!input.isTab || input.browsingInputHistory) {
-    return null;
-  }
+  if (!input.isTab || input.browsingInputHistory) return null;
   if (input.atQuery !== null && input.atSuggestions.length > 0) {
     const selected =
       input.atSuggestions[Math.max(0, Math.min(input.atSuggestionIndex, input.atSuggestions.length - 1))];
-    if (shouldAutocompleteAtSubmit(input.value, selected)) {
-      return applyAtSuggestion(input.value, selected ?? "");
-    }
+    if (shouldAutocompleteAtSubmit(input.value, selected)) return applyAtSuggestion(input.value, selected ?? "");
   }
   if (input.atQuery === null && input.slashSuggestions.length > 0) {
     const selected =
       input.slashSuggestions[Math.max(0, Math.min(input.slashSuggestionIndex, input.slashSuggestions.length - 1))];
-    if (shouldAutocompleteSlashSubmit(input.value, selected)) {
-      return applySlashSuggestion(selected ?? "");
-    }
+    if (shouldAutocompleteSlashSubmit(input.value, selected)) return applySlashSuggestion(selected ?? "");
   }
   return null;
 }
@@ -89,12 +79,8 @@ export function resolveEscapeAction(input: {
   isThinking: boolean;
   showShortcuts: boolean;
 }): "interrupt" | "hide" | null {
-  if (input.isThinking) {
-    return "interrupt";
-  }
-  if (input.showShortcuts) {
-    return "hide";
-  }
+  if (input.isThinking) return "interrupt";
+  if (input.showShortcuts) return "hide";
   return null;
 }
 
@@ -178,16 +164,10 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
       const historyTriggerUp = key.upArrow || (key.ctrl && keyInput === "p");
       const historyTriggerDown = key.downArrow || (key.ctrl && keyInput === "n");
       if (!input.isThinking && !suggestionNavActive && historyTriggerUp) {
-        if (!shouldCycleInputHistory(input.value, input.inputHistoryIndex)) {
-          return;
-        }
+        if (!shouldCycleInputHistory(input.value, input.inputHistoryIndex)) return;
         const transition = resolveHistoryUp(input.inputHistory, input.inputHistoryIndex, input.value);
-        if (!transition) {
-          return;
-        }
-        if (transition.nextDraft !== undefined) {
-          input.setInputHistoryDraft(transition.nextDraft);
-        }
+        if (!transition) return;
+        if (transition.nextDraft !== undefined) input.setInputHistoryDraft(transition.nextDraft);
         input.setInputHistoryIndex(transition.nextIndex);
         input.applyingHistoryRef.current = true;
         input.setValue(transition.nextValue);
@@ -196,9 +176,7 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
       }
       if (!input.isThinking && !suggestionNavActive && historyTriggerDown && input.inputHistoryIndex >= 0) {
         const transition = resolveHistoryDown(input.inputHistory, input.inputHistoryIndex, input.inputHistoryDraft);
-        if (!transition) {
-          return;
-        }
+        if (!transition) return;
         input.setInputHistoryIndex(transition.nextIndex);
         input.applyingHistoryRef.current = true;
         input.setValue(transition.nextValue);
@@ -269,9 +247,7 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
           input.interruptCurrentTurn();
           return;
         }
-        if (action === "hide") {
-          input.setShowShortcuts(false);
-        }
+        if (action === "hide") input.setShowShortcuts(false);
       }
     },
     { isActive: Boolean(process.stdin.isTTY) },

@@ -14,43 +14,33 @@ type OmStatusResponse = {
 
 function baseUrl(): string {
   const configured = appConfig.server.apiUrl?.trim();
-  if (configured) {
-    return configured.replace(/\/$/, "");
-  }
+  if (configured) return configured.replace(/\/$/, "");
   return `http://localhost:${appConfig.server.port}`;
 }
 
 function buildHeaders(): Record<string, string> {
-  if (!appConfig.server.apiKey) {
-    return {};
-  }
+  if (!appConfig.server.apiKey) return {};
   return { authorization: `Bearer ${appConfig.server.apiKey}` };
 }
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
   const body = await response.text();
-  if (!response.ok) {
-    throw new Error(`Request failed (${response.status}) for ${url}: ${body || "no body"}`);
-  }
+  if (!response.ok) throw new Error(`Request failed (${response.status}) for ${url}: ${body || "no body"}`);
   return JSON.parse(body) as T;
 }
 
 async function main(): Promise<void> {
-  if (!process.env.DATABASE_URL?.trim()) {
+  if (!process.env.DATABASE_URL?.trim())
     throw new Error("DATABASE_URL is not set. Add it to .env before running db:smoke.");
-  }
 
   const url = baseUrl();
   console.log(`Running Postgres smoke test against ${url}`);
 
   const health = await fetchJson<StatusResponse>(`${url}/v1/status`, { headers: buildHeaders() });
-  if (health.ok !== true) {
-    throw new Error("Status check did not return ok=true.");
-  }
-  if (!health.memory?.startsWith("postgres")) {
+  if (health.ok !== true) throw new Error("Status check did not return ok=true.");
+  if (!health.memory?.startsWith("postgres"))
     throw new Error(`Expected memory to start with postgres, got ${health.memory ?? "unknown"}.`);
-  }
   console.log("✓ status reports postgres storage");
 
   const resourceId = `smoke_${Date.now().toString(36)}`;
@@ -69,9 +59,7 @@ async function main(): Promise<void> {
   const statusAfter = await fetchJson<OmStatusResponse>(`${url}/v1/admin/om/status?${params}`, {
     headers: buildHeaders(),
   });
-  if (statusAfter.exists) {
-    throw new Error("Expected wiped resource to have exists=false after wipe.");
-  }
+  if (statusAfter.exists) throw new Error("Expected wiped resource to have exists=false after wipe.");
   console.log("✓ OM status confirms wiped state");
   console.log("Postgres smoke test passed.");
 }

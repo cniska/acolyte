@@ -33,17 +33,15 @@ export function resolveSubmitInput(input: ResolveSubmitInput): SubmitResolution 
   if (query !== null && input.atSuggestions.length > 0) {
     const selected =
       input.atSuggestions[Math.max(0, Math.min(input.atSuggestionIndex, input.atSuggestions.length - 1))];
-    if (shouldAutocompleteAtSubmit(input.value, selected)) {
+    if (shouldAutocompleteAtSubmit(input.value, selected))
       return { kind: "autocomplete", value: applyAtSuggestion(input.value, selected ?? "") };
-    }
   }
 
   if (query === null && input.slashSuggestions.length > 0) {
     const selected =
       input.slashSuggestions[Math.max(0, Math.min(input.slashSuggestionIndex, input.slashSuggestions.length - 1))];
-    if (shouldAutocompleteSlashSubmit(input.value, selected)) {
+    if (shouldAutocompleteSlashSubmit(input.value, selected))
       return { kind: "autocomplete", value: applySlashSuggestion(selected ?? "") };
-    }
   }
 
   return { kind: "submit", value: input.value };
@@ -51,11 +49,7 @@ export function resolveSubmitInput(input: ResolveSubmitInput): SubmitResolution 
 
 export function resolveQueueSubmit(input: { value: string; isThinking: boolean }): QueueSubmitResolution {
   const trimmed = input.value.trim();
-  if (!trimmed) {
-    return { kind: "ignore" };
-  }
-  if (input.isThinking) {
-    return { kind: "submit", value: trimmed };
-  }
+  if (!trimmed) return { kind: "ignore" };
+  if (input.isThinking) return { kind: "submit", value: trimmed };
   return { kind: "submit", value: input.value };
 }

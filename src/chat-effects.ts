@@ -28,9 +28,7 @@ export function useAtSuggestionsEffect(
     }
     void (async () => {
       const candidates = await getCachedRepoPathCandidates();
-      if (cancelled) {
-        return;
-      }
+      if (cancelled) return;
       const next = rankAtReferenceSuggestions(candidates, query);
       setAtSuggestions(next);
       setAtSuggestionIndex((current) => clampSuggestionIndex(current, next.length));

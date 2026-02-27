@@ -24,34 +24,20 @@ interface ParsedFrontmatter {
 const SKILL_NAME_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
 
 export function validateSkillName(name: string, dirName: string): string | null {
-  if (name.length === 0 || name.length > 64) {
-    return `name must be 1-64 characters (got ${name.length})`;
-  }
-  if (!SKILL_NAME_RE.test(name)) {
-    return `name contains invalid characters: "${name}"`;
-  }
-  if (name.includes("--")) {
-    return `name must not contain consecutive hyphens: "${name}"`;
-  }
-  if (name !== dirName) {
-    return `name "${name}" must match directory "${dirName}"`;
-  }
+  if (name.length === 0 || name.length > 64) return `name must be 1-64 characters (got ${name.length})`;
+  if (!SKILL_NAME_RE.test(name)) return `name contains invalid characters: "${name}"`;
+  if (name.includes("--")) return `name must not contain consecutive hyphens: "${name}"`;
+  if (name !== dirName) return `name "${name}" must match directory "${dirName}"`;
   return null;
 }
 
 function parseFrontmatter(input: string): ParsedFrontmatter | null {
   const trimmed = input.trimStart();
-  if (!trimmed.startsWith("---")) {
-    return null;
-  }
+  if (!trimmed.startsWith("---")) return null;
   const lines = trimmed.split("\n");
-  if (lines.length < 3 || lines[0].trim() !== "---") {
-    return null;
-  }
+  if (lines.length < 3 || lines[0].trim() !== "---") return null;
   const endIdx = lines.findIndex((line, idx) => idx > 0 && line.trim() === "---");
-  if (endIdx < 0) {
-    return null;
-  }
+  if (endIdx < 0) return null;
 
   const out: ParsedFrontmatter = {};
   let metadataMap: Record<string, string> | null = null;
@@ -69,9 +55,7 @@ function parseFrontmatter(input: string): ParsedFrontmatter | null {
           .slice(colonIdx + 1)
           .trim()
           .replace(/^["']|["']$/g, "");
-        if (key && value) {
-          metadataMap[key] = value;
-        }
+        if (key && value) metadataMap[key] = value;
       }
       continue;
     }
@@ -80,9 +64,7 @@ function parseFrontmatter(input: string): ParsedFrontmatter | null {
     metadataMap = null;
 
     const colonIdx = line.indexOf(":");
-    if (colonIdx <= 0) {
-      continue;
-    }
+    if (colonIdx <= 0) continue;
     const key = line.slice(0, colonIdx).trim();
     const value = line
       .slice(colonIdx + 1)
@@ -120,17 +102,11 @@ function parseFrontmatter(input: string): ParsedFrontmatter | null {
 
 function stripFrontmatter(input: string): string {
   const trimmed = input.trimStart();
-  if (!trimmed.startsWith("---")) {
-    return input.trim();
-  }
+  if (!trimmed.startsWith("---")) return input.trim();
   const lines = trimmed.split("\n");
-  if (lines.length < 3 || lines[0].trim() !== "---") {
-    return input.trim();
-  }
+  if (lines.length < 3 || lines[0].trim() !== "---") return input.trim();
   const endIdx = lines.findIndex((line, idx) => idx > 0 && line.trim() === "---");
-  if (endIdx < 0) {
-    return input.trim();
-  }
+  if (endIdx < 0) return input.trim();
   return lines
     .slice(endIdx + 1)
     .join("\n")
@@ -145,9 +121,7 @@ export async function listSkills(cwd = process.cwd()): Promise<SkillMeta[]> {
 
   for (const base of SKILL_DIRS) {
     const root = join(cwd, base);
-    if (!existsSync(root)) {
-      continue;
-    }
+    if (!existsSync(root)) continue;
 
     let dirs: Dirent[];
     try {
@@ -157,34 +131,22 @@ export async function listSkills(cwd = process.cwd()): Promise<SkillMeta[]> {
     }
 
     for (const entry of dirs) {
-      if (!entry.isDirectory()) {
-        continue;
-      }
+      if (!entry.isDirectory()) continue;
       const dirName = entry.name as string;
       const skillPath = join(root, dirName, "SKILL.md");
-      if (!existsSync(skillPath)) {
-        continue;
-      }
+      if (!existsSync(skillPath)) continue;
       try {
         const content = await readFile(skillPath, "utf8");
         const fm = parseFrontmatter(content);
-        if (!fm) {
-          continue;
-        }
+        if (!fm) continue;
         const name = fm.name ?? dirName;
         const nameError = validateSkillName(name, dirName);
-        if (nameError) {
-          continue;
-        }
-        if (seen.has(name)) {
-          continue;
-        }
+        if (nameError) continue;
+        if (seen.has(name)) continue;
         seen.add(name);
 
         const description = fm.description;
-        if (!description || description.length > 1024) {
-          continue;
-        }
+        if (!description || description.length > 1024) continue;
 
         found.push({
           name,
@@ -230,8 +192,6 @@ export function substituteArguments(body: string, args: string): string {
 export async function readSkillInstructions(path: string, args?: string): Promise<string> {
   const raw = await readFile(path, "utf8");
   const body = stripFrontmatter(raw);
-  if (args !== undefined) {
-    return substituteArguments(body, args);
-  }
+  if (args !== undefined) return substituteArguments(body, args);
   return body;
 }

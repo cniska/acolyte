@@ -40,17 +40,13 @@ const soakOptionsSchema = z.object({
 
 function baseUrl(): string {
   const configured = appConfig.server.apiUrl?.trim();
-  if (configured) {
-    return configured.replace(/\/$/, "");
-  }
+  if (configured) return configured.replace(/\/$/, "");
   return `http://localhost:${appConfig.server.port}`;
 }
 
 function buildHeaders(): Record<string, string> {
   const headers: Record<string, string> = { "content-type": "application/json" };
-  if (appConfig.server.apiKey) {
-    headers.authorization = `Bearer ${appConfig.server.apiKey}`;
-  }
+  if (appConfig.server.apiKey) headers.authorization = `Bearer ${appConfig.server.apiKey}`;
   return headers;
 }
 
@@ -73,36 +69,28 @@ function parseOptions(argv: string[]): SoakOptions {
     const token = argv[i];
     if (token === "--turns") {
       const value = argv[i + 1];
-      if (!value) {
-        throw new Error("Invalid --turns value.");
-      }
+      if (!value) throw new Error("Invalid --turns value.");
       raw.turns = value;
       i += 1;
       continue;
     }
     if (token === "--delay-ms" || token === "--delayMs") {
       const value = argv[i + 1];
-      if (!value) {
-        throw new Error("Invalid --delay-ms value.");
-      }
+      if (!value) throw new Error("Invalid --delay-ms value.");
       raw.delayMs = value;
       i += 1;
       continue;
     }
     if (token === "--checkpoint-every" || token === "--checkpointEvery") {
       const value = argv[i + 1];
-      if (!value) {
-        throw new Error("Invalid --checkpoint-every value.");
-      }
+      if (!value) throw new Error("Invalid --checkpoint-every value.");
       raw.checkpointEvery = value;
       i += 1;
       continue;
     }
     if (token === "--session-id" || token === "--sessionId") {
       const value = (argv[i + 1] ?? "").trim();
-      if (!value) {
-        throw new Error("Invalid --session-id value.");
-      }
+      if (!value) throw new Error("Invalid --session-id value.");
       raw.sessionId = value;
       i += 1;
       continue;
@@ -116,18 +104,12 @@ function parseOptions(argv: string[]): SoakOptions {
 
   const parsed = soakOptionsSchema.safeParse(raw);
   if (!parsed.success) {
-    if (parsed.error.issues.some((issue) => issue.path[0] === "turns")) {
-      throw new Error("Invalid --turns value.");
-    }
-    if (parsed.error.issues.some((issue) => issue.path[0] === "delayMs")) {
-      throw new Error("Invalid --delay-ms value.");
-    }
-    if (parsed.error.issues.some((issue) => issue.path[0] === "checkpointEvery")) {
+    if (parsed.error.issues.some((issue) => issue.path[0] === "turns")) throw new Error("Invalid --turns value.");
+    if (parsed.error.issues.some((issue) => issue.path[0] === "delayMs")) throw new Error("Invalid --delay-ms value.");
+    if (parsed.error.issues.some((issue) => issue.path[0] === "checkpointEvery"))
       throw new Error("Invalid --checkpoint-every value.");
-    }
-    if (parsed.error.issues.some((issue) => issue.path[0] === "sessionId")) {
+    if (parsed.error.issues.some((issue) => issue.path[0] === "sessionId"))
       throw new Error("Invalid --session-id value.");
-    }
     throw new Error("Invalid options.");
   }
 
@@ -168,9 +150,7 @@ function promptForTurn(turn: number): string {
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
   const text = await response.text();
-  if (!response.ok) {
-    throw new Error(`Request failed (${response.status}) for ${url}: ${text || "no body"}`);
-  }
+  if (!response.ok) throw new Error(`Request failed (${response.status}) for ${url}: ${text || "no body"}`);
   return JSON.parse(text) as T;
 }
 
@@ -243,12 +223,8 @@ async function main(): Promise<void> {
     history.push(makeMessage("user", prompt));
     history.push(makeMessage("assistant", output));
 
-    if (turn % options.checkpointEvery === 0 || turn === options.turns) {
-      await checkpoint(url, turn);
-    }
-    if (options.delayMs > 0) {
-      await Bun.sleep(options.delayMs);
-    }
+    if (turn % options.checkpointEvery === 0 || turn === options.turns) await checkpoint(url, turn);
+    if (options.delayMs > 0) await Bun.sleep(options.delayMs);
   }
 
   const after = await fetchOmStatus(url);

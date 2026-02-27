@@ -19,13 +19,9 @@ const SESSION_STATUS_PREFIXES = ["Started new session: ", "Resumed session: "] a
 
 function parseSessionStatus(content: string): { prefix: string; sessionId: string } | null {
   for (const prefix of SESSION_STATUS_PREFIXES) {
-    if (!content.startsWith(prefix)) {
-      continue;
-    }
+    if (!content.startsWith(prefix)) continue;
     const sessionId = content.slice(prefix.length).trim();
-    if (sessionId.length === 0) {
-      return null;
-    }
+    if (sessionId.length === 0) return null;
     return { prefix, sessionId };
   }
   return null;
@@ -34,9 +30,7 @@ function parseSessionStatus(content: string): { prefix: string; sessionId: strin
 export function parseSessionsHeader(content: string): { prefix: string; count: string; rest: string } | null {
   const [header, ...restLines] = content.split("\n");
   const match = header?.match(/^(Sessions\s+)(\d+)$/);
-  if (!match) {
-    return null;
-  }
+  if (!match) return null;
   return {
     prefix: match[1] ?? "Sessions ",
     count: match[2] ?? "0",
@@ -46,9 +40,7 @@ export function parseSessionsHeader(content: string): { prefix: string; count: s
 
 export function parseStatusLine(line: string): { indent: string; key: string; value: string } | null {
   const match = line.match(/^(\s*)([a-zA-Z0-9_]+:\s*)(.*)$/);
-  if (!match) {
-    return null;
-  }
+  if (!match) return null;
   return {
     indent: match[1] ?? "",
     key: match[2] ?? "",
@@ -228,9 +220,8 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
             } else if (row.role === "assistant") {
               marker = "• ";
             }
-            if (row.style === "toolProgress" && row.toolStatus) {
+            if (row.style === "toolProgress" && row.toolStatus)
               markerColor = row.toolStatus === "ok" ? palette.green : palette.red;
-            }
             return (
               <Box>
                 <Box width={2}>

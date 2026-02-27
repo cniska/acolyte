@@ -7,16 +7,10 @@ const config = readResolvedConfigSync();
 type LogFields = Record<string, string | number | boolean | null | undefined>;
 
 function encodeLogfmtValue(value: string | number | boolean | null | undefined): string {
-  if (value === null || value === undefined) {
-    return "null";
-  }
-  if (typeof value === "number" || typeof value === "boolean") {
-    return String(value);
-  }
+  if (value === null || value === undefined) return "null";
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
   const compact = value.replace(/\s+/g, " ").trim();
-  if (/^[a-zA-Z0-9._:/-]+$/.test(compact)) {
-    return compact;
-  }
+  if (/^[a-zA-Z0-9._:/-]+$/.test(compact)) return compact;
   return JSON.stringify(compact);
 }
 
@@ -47,9 +41,7 @@ function renderJsonLine(level: LogLevel, message: string, fields?: LogFields): s
 
 export function renderLogLine(level: LogLevel, message: string, fields?: LogFields, format?: LogFormat): string {
   const resolvedFormat = format ?? resolveLogFormat();
-  if (resolvedFormat === "json") {
-    return renderJsonLine(level, message, fields);
-  }
+  if (resolvedFormat === "json") return renderJsonLine(level, message, fields);
   return renderLogfmtLine(level, message, fields);
 }
 
