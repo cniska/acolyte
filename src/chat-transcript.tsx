@@ -117,7 +117,10 @@ function renderToolProgressContent(content: string): React.ReactNode {
                 <Text color={parsed.marker === "+" ? palette.green : palette.red}>{`  ${parsed.text}`}</Text>
               </>
             ) : parsed.kind === "numberedContext" ? (
-              <Text dimColor>{`${parsed.lineNumber.padStart(lineNumberWidth, " ")}  ${parsed.text}`}</Text>
+              <>
+                <Text dimColor>{`${parsed.lineNumber.padStart(lineNumberWidth, " ")}  `}</Text>
+                <Text>{parsed.text}</Text>
+              </>
             ) : parsed.kind === "commandOutput" ? (
               parsed.stream === "err" && !parsed.text.startsWith("$ ") ? (
                 <Text dimColor color={palette.red}>
