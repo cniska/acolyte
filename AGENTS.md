@@ -37,6 +37,15 @@ Development:
 - Default to autonomous execution for straightforward improvements and continue without explicit confirmation.
 - Only pause for confirmation when decisions are ambiguous, risky, or irreversible.
 
+## Docs
+
+- Keep docs short, conceptual, and resistant to drift.
+- Avoid repeating the same content across `README.md` and `docs/*`; prefer linking to a single canonical doc.
+- `docs/features.md` is an append-only shipped-feature inventory:
+  - add entries only when a feature is actually shipped
+  - keep entries one line and user-visible
+  - avoid implementation details
+
 ## Commits
 
 - Commit only when explicitly requested.
@@ -75,3 +84,10 @@ Development:
 
 - Ask when requirements are unclear. Be explicit about assumptions and next steps.
 - Prioritize user-focused output: outcomes, changed files, actionable next steps.
+
+## Skills
+
+- Full skill support is required.
+- When a task matches a skill, load and follow that skill workflow.
+- Prefer skill-provided scripts/templates/assets over re-implementing from scratch.
+- Keep skill usage lightweight: load only what is needed for the current task.

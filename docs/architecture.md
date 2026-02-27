@@ -1,10 +1,16 @@
 # Architecture
 
-## Mental model
+## Mental model (ELI5)
+
+Think of Acolyte like a careful helper: it uses tools to do the task, checks its own work, and leaves clear breadcrumbs so failures are easy to replay and debug.
+
+## System flow
 
 Acolyte is a layered coding assistant:
 
-`CLI -> client -> server -> lifecycle -> model + tools`
+```text
+CLI -> client -> server -> lifecycle -> model + tools
+```
 
 The lifecycle is the orchestrator. It decides how a request runs, what mode it is in, when to retry, and when to verify.
 

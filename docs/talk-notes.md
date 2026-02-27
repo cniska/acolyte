@@ -1,109 +1,55 @@
 # Talk Notes
 
-## Purpose
-Living notes for talks about building this project. Update this file as milestones ship.
+## Project Summary
 
-## Project Pitch
-- Personal AI coding delegate — an assistant that can take over bounded tasks in my projects.
-- Built as a vibe-coding project with Codex, learning what works and what doesn't in AI-assisted development.
-- CLI-first UX, persistent memory, agentic coding workflows, explicit behavior contract (`docs/soul.md`).
+- Personal AI coding delegate for bounded software tasks.
+- CLI-first workflow with tool-backed execution, verification loops, and persistent memory.
+- Built via dogfooding and iterative hardening rather than big upfront architecture.
 
-## What Actually Works Today
-- Autonomous plan → work → verify loop: the agent plans, edits, runs verification, and iterates on failures.
-- Single bounded tasks: create a script, fix a type error, add a test, simple refactors.
-- Interactive CLI chat with session management, file references, and tool-backed execution.
-- Permission-gated tool use with workspace safety guardrails.
-- Persistent memory (user + project scopes) with inspection and correction.
-- Verify-first development loop (`bun run verify` after each slice).
+## Why It Matters
 
-## What Doesn't Work Yet
-- Reliable complex multi-file changes with design decisions.
-- Memory that meaningfully reduces repeated mistakes (infrastructure exists, tuning doesn't).
-
-## Design Principles (Not Moats Yet)
-- Reliability-first: verify-first loops, small commits, smoke checks.
-- Memory-first: persistent, user-correctable memory that outlives sessions.
-- Coding-native: repo-grounded tools and behavior, not generic assistant output.
-- Operator-focused: CLI ergonomics with minimal noise and strong control.
-- Safe by default: permission modes + path guardrails.
-
-## Architecture Snapshot
-- CLI runtime: Bun + TypeScript (`src/cli.ts`)
-- Backend API: Bun server (`src/server.ts`)
-- Agent lifecycle: `src/agent-lifecycle.ts` (phases + evaluators)
-- Agent helpers: `src/agent.ts` (input building, output finalization)
-- Tools: repo search/read/git/run/edit + web search/fetch (`src/mastra-tools.ts`)
-- Tool guards: `src/tool-guards.ts` (session-level validation)
-- Local persistence:
-  - sessions: `~/.acolyte/sessions.json`
-  - user memory: `~/.acolyte/memory/user/*.md`
-  - project memory: `<repo>/.acolyte/memory/project/*.md`
-  - config: `~/.acolyte/config.toml` (+ optional `<repo>/.acolyte/config.toml`)
-
-## Why This Stack
-- Bun: fast local iteration and simple CLI/backend workflow.
-- Mastra: standardized agent/tool primitives. Biggest dependency risk — young framework.
-- Ink (React for CLI): strong interactive terminal UI without ncurses complexity.
-- Deployable contract: CLI can target local or hosted API.
-
-## Build Process
-- Built collaboratively with Codex in commit-sized slices.
-- Delivery loop: define slice -> implement -> validate -> commit.
-- Standard validation: `bun run verify` (format + lint + typecheck + test).
-- ~474 tests, zero lint issues, ~40K lines of TypeScript.
+- Most coding assistants are great at suggestions but weak at reliable execution loops.
+- Acolyte focuses on delegated execution: do the work, verify, recover, and explain.
+- The goal is not just code generation, but trustworthy autonomous progress in real repos.
 
 ## Key Talking Points
-- Vibe-coding can produce production-quality software with the right constraints (verify gates, scoped slices, clear policies).
-- The governance layer (soul contract, AGENTS.md) is what keeps AI-generated code coherent.
-- Persistent memory is the key differentiator from tools like Claude Code and Aider.
-- The hard ceiling is model reliability for chained tool use, not the scaffolding.
-- Building an AI tool with AI is the best way to understand AI tool limitations.
 
-## What's Been Shipped
-1. Core platform: CLI + backend + Mastra agent/tools + soul contract.
-2. Local persistence: sessions + memory (user/project) + layered config.
-3. Tool surface: search/read/edit/run/git/status + web search/fetch + AST edit (multi-language).
-4. Chat UX: Ink-based interface, shortcuts/pickers, resume/skills, `@path` file references.
-5. Memory UX: `/remember`, `/memory`, policy distillation groundwork.
-6. Reliability/safety: verify-first loop, permission modes, workspace path guardrails.
-7. Dogfooding infrastructure: automated smoke, progress tracking, readiness gates.
-8. Live streaming: tool phases, assistant delta streaming, progress rendering.
-9. Test infrastructure: shared factory helpers to reduce test boilerplate.
-10. Agent lifecycle: composable phases (classify → prepare → generate → evaluate → finalize) with pluggable evaluators.
-11. Tool guards: session-level validation (no delete-after-read, verify tracking) with debug visibility.
-12. Skills system: extensible slash-command skills aligned with agentskills.io spec.
+- The bottleneck is model reliability under chained tool use, not missing scaffolding.
+- Governance matters: clear behavioral contracts and repo instructions materially improve outcomes.
+- Building with AI and dogfooding continuously exposes real failure modes faster than synthetic tests.
 
-## Lessons Learned
-- Reliability over novelty: verify-first loops, small commits, and smoke checks keep iteration stable.
-- Keep execution simple: single-agent runtime, explicit permission controls, minimal user-facing complexity.
-- Streaming correctness matters more than formatting polish. When we moved to streaming, the biggest cost was carrying request/response abstractions into a streaming world — recognize when architecture shifts invalidate existing abstractions.
-- Memory trust matters: saved context must be inspectable, editable, and scoped clearly.
-- Grounded execution beats prompt gymnastics: tool-backed changes are more reliable than heavy post-processing.
-- AI-generated docs tend to be over-optimistic. Verify metrics and claims manually.
-- Safety defaults matter: read-mode first, guarded roots, explicit escalation.
-- UX clarity drives adoption: concise output, strong defaults, low-noise diagnostics.
-- Configuration should stay predictable: non-secret file config + env-only secrets with clear precedence.
-- Dogfooding readiness should be measurable: gate checks, scoped lookback, explicit remaining-slice signals.
-- Keep repo instructions lean: high-signal guidance improves execution quality and cost/latency.
-- Keep scope narrow early: premature abstractions (e.g. multi-agent before single-agent is reliable) add complexity without value. Ship the simplest thing that works, then layer on.
-- Agent behavior should be lifecycle, not hooks: ad-hoc post-processing in a monolithic function doesn't scale. Decomposing into phases with an evaluator loop makes behaviors composable and testable without modifying the core loop.
-- Evaluators > if-chains: plan detection and auto-verify as evaluators means adding new post-generation behavior is one interface + one array entry, not editing a 500-line function.
-- Dogfooding reveals architecture gaps: testing Acolyte on real tasks (batch conversion, multi-file refactors) exposed that edit-file needed line-range support and the agent needed structured lifecycle phases — neither was obvious from unit tests alone.
-- Error handling needs a clear ownership model: tools should emit stable error signals, lifecycle should own retry/regeneration policy and classification.
-- Resilience improves when error paths are observable: structured lifecycle error events and summary counters make failures debuggable without ad-hoc logging.
-- The lifecycle implementation itself is now the product core: phases + evaluators + guards form a composable policy engine, not just a request wrapper.
-- Keep architecture docs short and conceptual: file-level implementation detail drifts quickly and weakens the doc as a source of truth.
+## Differentiation
+
+- Behavior is managed as explicit policy, not fragile prompt-only tricks.
+- Verification as default behavior, not optional advice.
+- Streaming + traces make failures diagnosable after real runs.
+- Memory that is explicit, scoped, and user-correctable.
 
 ## Demo Flow (Short)
-1. `bun run dev` (starts backend + chat).
-2. Show: `@src/agent.ts review this file` — tool-backed reasoning over attached context.
-3. Show: `edit the function name to camelCase` — automatic verify after edits.
-4. Show: `/remember --project always use strict TypeScript` — persistent memory.
-5. Show: `/memory` — inspect what the assistant remembers.
-6. Show: `/status` — diagnostics and provider info.
 
-## Open Questions
-1. Can the autonomous loop be closed with current models, or does it need better foundation models?
-2. Is Mastra the right long-term bet, or should the agent layer be thinner?
-3. What's the distribution story for non-Bun users?
-4. How far can the evaluator pattern scale — can memory, subagents, and self-improvement all be evaluators?
+1. Show a bounded coding task in a real repo.
+2. Show live tool streaming (read/edit/verify/recover).
+3. Show final verification and result summary.
+4. Show trace-based diagnosis of one failure/retry.
+5. Show memory add/inspect to demonstrate continuity.
+
+## Risks and Constraints
+
+- Model quality still sets the ceiling for long autonomous runs.
+- Memory quality is only as good as retrieval/promotion heuristics.
+- More power needs stronger defaults (guards, permissions, verification gates).
+
+## Lessons Learned
+
+- Reliability beats novelty. A verify-first loop with small scoped changes outperforms bigger "smart" steps.
+- Keep policy centralized. Execution policy should be owned in one place; tools should stay execution-focused.
+- Use stable machine-readable signals between layers. String-only matching is brittle and expensive over time.
+- Errors are first-class behavior. Treat failure paths as normal paths with explicit observability, not edge cases.
+- Streaming correctness matters more than polish. Design for streaming semantics early.
+- Observability is mandatory for agent quality. Ordered lifecycle traces make dogfooding actionable instead of anecdotal.
+- Guardrails improve autonomy. Session-level checks reduce loops and unsafe actions without human intervention.
+- Prompt/tool-contract quality often beats extra host-side heuristics for everyday coding tasks.
+- Dogfooding reveals architecture gaps that unit tests miss, especially around recovery behavior.
+- Start single-agent and prove reliability before adding multi-agent complexity.
+- Keep instructions language-agnostic; avoid overfitting behavior to one stack or toolchain.
+- Keep docs conceptual and short. Implementation-detail docs drift quickly and become misleading.
