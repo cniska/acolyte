@@ -290,7 +290,10 @@ describe("createModeInstructions", () => {
     const explore = createModeInstructions("plan");
     expect(code).toContain("Read the target file once");
     expect(code).toContain("make `read-file` on X your first tool call");
+    expect(code).toContain("first assistant action should be a tool call");
     expect(code).toContain("prefer `scan-code` + `edit-code`");
+    expect(code).toContain("Trust type signatures");
+    expect(explore).toContain("negative-answer tasks");
     expect(explore).toContain("Search first");
   });
 
