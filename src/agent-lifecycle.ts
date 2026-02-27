@@ -18,6 +18,7 @@ import { appConfig } from "./app-config";
 import type { StreamEvent } from "./client";
 import type { LifecycleDebugEvent, LifecycleEventName } from "./lifecycle-events";
 import { type AcolyteToolset, toolsForAgent } from "./mastra-tools";
+import { hasToolErrorCode, TOOL_ERROR_CODES } from "./tool-error-codes";
 import type { SessionContext } from "./tool-guards";
 import type { ToolName } from "./tool-names";
 
@@ -48,6 +49,8 @@ export type GenerateResult = {
   text: string;
   toolCalls: unknown[];
 };
+
+type ErrorCategory = "timeout" | "file-not-found" | "guard-blocked" | "other";
 
 export type EvalAction =
   | { type: "done" }
@@ -102,6 +105,8 @@ export type RunContext = {
   regenerationLimitHit: boolean;
   sawEditFileMultiMatchError: boolean;
   lastError?: string;
+  lastErrorCategory?: ErrorCategory;
+  errorStats: Record<ErrorCategory, number>;
   result?: GenerateResult;
   nativeIdQueue: Map<string, string[]>;
   toolCallStartedAt: Map<string, { toolName: string; startedAtMs: number }>;
@@ -145,11 +150,45 @@ function readPathKeys(args: Record<string, unknown>): string[] {
 }
 
 function isEditFileMultiMatchError(errorMessage: string): boolean {
-  return /Find text matched \d+ locations?/i.test(errorMessage);
+  return (
+    hasToolErrorCode(errorMessage, TOOL_ERROR_CODES.editFileMultiMatch) ||
+    /Find text matched \d+ locations?/i.test(errorMessage)
+  );
 }
 
 function isFileNotFoundSignal(text: string): boolean {
   return /\b(?:does not exist|doesn't exist|no such file|not found|ENOENT)\b/i.test(text);
+}
+
+function isGuardBlockedSignal(text: string): boolean {
+  return /cannot delete|do not use shell commands|repeated .* detected/i.test(text);
+}
+
+function classifyErrorCategory(message: string): ErrorCategory {
+  if (/timed out|timeout/i.test(message)) return "timeout";
+  if (isFileNotFoundSignal(message)) return "file-not-found";
+  if (isGuardBlockedSignal(message)) return "guard-blocked";
+  return "other";
+}
+
+function captureError(
+  ctx: RunContext,
+  message: string,
+  meta?: { source?: "generate" | "tool-result" | "tool-error"; tool?: string },
+): void {
+  ctx.lastError = message;
+  const category = classifyErrorCategory(message);
+  ctx.lastErrorCategory = category;
+  ctx.errorStats[category] += 1;
+  if (isEditFileMultiMatchError(message)) {
+    ctx.sawEditFileMultiMatchError = true;
+  }
+  ctx.debug("lifecycle.error", {
+    source: meta?.source ?? "generate",
+    tool: meta?.tool ?? null,
+    category,
+    message: message.length > 240 ? `${message.slice(0, 239)}…` : message,
+  });
 }
 
 function findLastEditFilePath(ctx: RunContext): string | undefined {
@@ -397,6 +436,7 @@ async function phaseGenerate(
 ): Promise<void> {
   // Evaluators should only react to signals from the current generation attempt.
   ctx.lastError = undefined;
+  ctx.lastErrorCategory = undefined;
   ctx.sawEditFileMultiMatchError = false;
   ensureAgentForMode(ctx);
   ctx.generationAttempt += 1;
@@ -416,11 +456,11 @@ async function phaseGenerate(
       text_chars: ctx.result.text.trim().length,
     });
   } catch (error) {
-    ctx.lastError = error instanceof Error ? error.message : String(error);
+    captureError(ctx, error instanceof Error ? error.message : String(error), { source: "generate" });
     ctx.emit({ type: "error", error: `Tool failed: ${ctx.lastError}` });
     ctx.debug("lifecycle.generate.error", { model: ctx.model, error: ctx.lastError });
 
-    if (/timed out/i.test(ctx.lastError)) {
+    if (/timed out/i.test(ctx.lastError ?? "")) {
       emitModeStatus(ctx);
       ctx.debug("lifecycle.generate.retry", {
         model: ctx.model,
@@ -437,7 +477,9 @@ async function phaseGenerate(
           text_chars: ctx.result.text.trim().length,
         });
       } catch (retryError) {
-        ctx.lastError = retryError instanceof Error ? retryError.message : String(retryError);
+        captureError(ctx, retryError instanceof Error ? retryError.message : String(retryError), {
+          source: "generate",
+        });
         ctx.emit({ type: "error", error: `Retry failed: ${ctx.lastError}` });
         ctx.debug("lifecycle.generate.retry_failed", { model: ctx.model, error: ctx.lastError });
       }
@@ -579,10 +621,10 @@ function processStreamChunk(ctx: RunContext, chunk: { type?: string; payload?: u
         const isError =
           typeof p.result === "object" && p.result !== null && "error" in (p.result as Record<string, unknown>);
         if (isError) {
-          ctx.lastError = String((p.result as { error?: unknown }).error ?? "Tool error");
-          if (toolName === "edit-file" && isEditFileMultiMatchError(ctx.lastError)) {
-            ctx.sawEditFileMultiMatchError = true;
-          }
+          captureError(ctx, String((p.result as { error?: unknown }).error ?? "Tool error"), {
+            source: "tool-result",
+            tool: toolName,
+          });
           ctx.debug("lifecycle.tool.error", { tool: toolName, error: ctx.lastError });
           ctx.debug("lifecycle.tool.result", {
             tool: toolName,
@@ -617,11 +659,9 @@ function processStreamChunk(ctx: RunContext, chunk: { type?: string; payload?: u
             : typeof raw === "object" && raw !== null && "message" in raw
               ? String((raw as { message: unknown }).message)
               : "Tool error";
-      ctx.lastError = errorMsg;
-      if (canonicalToolId(p?.toolName ?? "") === "edit-file" && isEditFileMultiMatchError(errorMsg)) {
-        ctx.sawEditFileMultiMatchError = true;
-      }
-      ctx.debug("lifecycle.tool.error", { tool: canonicalToolId(p?.toolName ?? ""), error: errorMsg });
+      const toolName = canonicalToolId(p?.toolName ?? "");
+      captureError(ctx, errorMsg, { source: "tool-error", tool: toolName });
+      ctx.debug("lifecycle.tool.error", { tool: toolName, error: errorMsg });
       if (p?.toolCallId && p?.toolName) {
         const started = ctx.toolCallStartedAt.get(p.toolCallId);
         const durationMs = started ? Date.now() - started.startedAtMs : null;
@@ -690,6 +730,11 @@ function phaseFinalize(ctx: RunContext): ChatResponse {
     regeneration_limit_hit: ctx.regenerationLimitHit,
     guard_blocked_count: guardStats.blocked,
     guard_flag_set_count: guardStats.flagSet,
+    last_error_category: ctx.lastErrorCategory ?? null,
+    timeout_error_count: ctx.errorStats.timeout,
+    file_not_found_error_count: ctx.errorStats["file-not-found"],
+    guard_blocked_error_count: ctx.errorStats["guard-blocked"],
+    other_error_count: ctx.errorStats.other,
   });
 
   return {
@@ -771,6 +816,7 @@ export async function runLifecycle(input: LifecycleInput): Promise<ChatResponse>
     regenerationCount: 0,
     regenerationLimitHit: false,
     sawEditFileMultiMatchError: false,
+    errorStats: { timeout: 0, "file-not-found": 0, "guard-blocked": 0, other: 0 },
     nativeIdQueue,
     toolCallStartedAt,
     toolOutputHandler: null,
@@ -829,8 +875,14 @@ export async function runLifecycle(input: LifecycleInput): Promise<ChatResponse>
         });
         continue;
       }
-      const saved: { result: GenerateResult | undefined; lastError: string | undefined } | undefined = action.keepResult
-        ? { result: ctx.result, lastError: ctx.lastError }
+      const saved:
+        | {
+            result: GenerateResult | undefined;
+            lastError: string | undefined;
+            lastErrorCategory: ErrorCategory | undefined;
+          }
+        | undefined = action.keepResult
+        ? { result: ctx.result, lastError: ctx.lastError, lastErrorCategory: ctx.lastErrorCategory }
         : undefined;
       if (action.mode) ctx.mode = action.mode;
       ctx.regenerationCount += 1;
@@ -853,6 +905,7 @@ export async function runLifecycle(input: LifecycleInput): Promise<ChatResponse>
       if (saved) {
         ctx.result = saved.result;
         ctx.lastError = saved.lastError;
+        ctx.lastErrorCategory = saved.lastErrorCategory;
       }
       regenerated = true;
       break;

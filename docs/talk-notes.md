@@ -89,6 +89,10 @@ Living notes for talks about building this project. Update this file as mileston
 - Agent behavior should be lifecycle, not hooks: ad-hoc post-processing in a monolithic function doesn't scale. Decomposing into phases with an evaluator loop makes behaviors composable and testable without modifying the core loop.
 - Evaluators > if-chains: plan detection and auto-verify as evaluators means adding new post-generation behavior is one interface + one array entry, not editing a 500-line function.
 - Dogfooding reveals architecture gaps: testing Acolyte on real tasks (batch conversion, multi-file refactors) exposed that edit-file needed line-range support and the agent needed structured lifecycle phases — neither was obvious from unit tests alone.
+- Error handling needs a clear ownership model: tools should emit stable error signals, lifecycle should own retry/regeneration policy and classification.
+- Resilience improves when error paths are observable: structured lifecycle error events and summary counters make failures debuggable without ad-hoc logging.
+- The lifecycle implementation itself is now the product core: phases + evaluators + guards form a composable policy engine, not just a request wrapper.
+- Keep architecture docs short and conceptual: file-level implementation detail drifts quickly and weakens the doc as a source of truth.
 
 ## Demo Flow (Short)
 1. `bun run dev` (starts backend + chat).

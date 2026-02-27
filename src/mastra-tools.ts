@@ -22,7 +22,7 @@ import {
   writeTextFile,
 } from "./tools";
 
-type ToolOutputListener = (event: { toolName: string; message: string; toolCallId?: string }) => void;
+type ToolOutputListener = (event: { toolName: ToolName; message: string; toolCallId?: string }) => void;
 
 export type ToolMeta = {
   instruction: string;
@@ -90,7 +90,7 @@ export const toolMeta: Record<ToolName, ToolMeta> = {
 };
 
 function emitResultChunks(
-  toolName: string,
+  toolName: ToolName,
   result: string,
   onToolOutput?: ToolOutputListener,
   maxLines = 80,
@@ -200,7 +200,7 @@ function numberedUnifiedDiffLines(rawResult: string, maxLines = 160): string[] {
   return filtered;
 }
 
-function streamCallId(toolName: string): string {
+function streamCallId(toolName: ToolName): string {
   return `${toolName}_${createId()}`;
 }
 

@@ -1,104 +1,49 @@
 # Architecture
 
-## Mental model (ELI5)
+## Mental model
 
-Think of Acolyte as a careful helper with a checklist:
+Acolyte is a layered coding assistant:
 
-1. Understand the task.
-2. Gather what it needs.
-3. Do the work with tools.
-4. Check the result.
-5. Finish with an answer.
+`CLI -> client -> server -> lifecycle -> model + tools`
 
-While it works, it leaves numbered breadcrumbs (events) so we can replay what happened in order.
-If it starts repeating the same action too many times, safety rules stop the loop and push it to change strategy.
+The lifecycle is the orchestrator. It decides how a request runs, what mode it is in, when to retry, and when to verify.
 
-## Layers
+## Stable boundaries
 
-```
-CLI → Submit handler → Client → Server → Lifecycle → Agent → Tools
-```
+- Lifecycle: request orchestration and policy
+- Agent layer: input/output shaping and instruction assembly
+- Mode layer: mode definitions and transitions
+- Tool layer: tool wiring and concrete tool implementations
+- Guard layer: protection against unsafe or repetitive behavior
 
-| Layer | Key files | Role |
-|-------|-----------|------|
-| CLI | `cli.ts`, `chat-ui.tsx` | Ink TUI, `@path` autocomplete, `/slash` commands |
-| Submit handler | `chat-submit-handler.ts` | Slash commands, file refs, memory, permissions |
-| Client | `client.ts` | HTTP + SSE → typed `StreamEvent` |
-| Server | `server.ts` | Bun HTTP, routes: `/v1/status`, `/v1/chat`, `/v1/chat/stream` (+ OM admin endpoints) |
-| Lifecycle | `agent-lifecycle.ts` | Request phases + evaluator loop (see below) |
-| Agent | `agent.ts`, `agent-factory.ts` | `runAgent()` → lifecycle, input/output helpers |
-| Tools | `mastra-tools.ts`, `agent-tools.ts` | 13 tools with guards, aliases, token budgets |
+## Lifecycle contract
 
-## Lifecycle (`agent-lifecycle.ts`)
+Each request follows the same high-level flow:
 
-Three nested levels:
+1. Classify mode
+2. Prepare context/tools
+3. Generate with tool calls
+4. Evaluate result
+5. Finalize response
 
-```
-Request:    classify → prepare → generate → evaluate → finalize
-Generation: model-call → [stream → tool-call → tool-result]* → done
-Tool:       validate (guards) → execute → record (session)
-```
+Evaluators can request a regeneration, but caps prevent runaway loops.
 
-`classify` and `prepare` return values used to construct `RunContext` — no uninitialized fields. `generate` and `finalize` operate on the mutable context.
+## Error handling contract
 
-**Evaluators** run after generation in order. Each inspects `RunContext` and returns `done` or `regenerate`. On the first `regenerate`, lifecycle runs a new generation attempt, then restarts evaluator checks from the top (with caps).
+Error policy lives in lifecycle, not in individual tools.
 
-| Evaluator | Trigger | Action |
-|-----------|---------|--------|
-| `planDetector` | Output is plan-like, no tools used | Re-invoke with execution nudge |
-| `multiMatchEditEvaluator` | `edit-file` multi-match error seen, no `edit-code` used yet | Regenerate with explicit `edit-code` next-step guidance (file-scoped path) |
-| `efficiencyEvaluator` | Work-mode write intent + excessive pre-write discovery | Regenerate with "edit now, verify after" guidance |
-| `autoVerifier` | Work mode, write tools used, no verify ran | Run verify mode (`keepResult` preserves work output) |
+- Tools emit plain failures and (when needed) stable machine-readable error codes.
+- Lifecycle classifies and records errors, drives retries/regeneration, and emits debug signals.
+- Guards block unsafe/repetitive behavior early and are also reported through lifecycle debug events.
 
-New post-generation behavior = implement `Evaluator`, add to array.
+This keeps behavior resilient while keeping policy in one place.
 
-Regeneration limits:
-- Request cap: `MAX_REGENERATIONS_PER_REQUEST` (currently `3`)
-- Per-evaluator cap: `MAX_REGENERATIONS_PER_EVALUATOR` (currently `1`)
+## Observability
 
-## Modes (`agent-modes.ts`)
+Lifecycle emits ordered debug events for every request (calls, results, evaluator decisions, summaries, errors).
+The trace scripts consume these events so behavior can be inspected after dogfood runs without adding ad-hoc logs.
 
-| Mode | Tools | Trigger |
-|------|-------|---------|
-| `plan` | find-files, search-files, read-file, scan-code, git-status, git-diff, web-search, web-fetch | Read-only keywords (default) |
-| `work` | edit-code, edit-file, create-file, delete-file, run-command | Action keywords |
-| `verify` | run-command, read-file, search-files, edit-code, scan-code, edit-file, create-file | `autoVerifier` evaluator |
+## Configuration and state
 
-`classifyMode()` picks the initial mode. Mode switches mid-run when the model calls a tool from a different mode (locked during verify). Before every generation attempt, lifecycle enforces a mode/model invariant: the active agent is rebuilt if needed so model + instructions always match the current mode.
-
-## Tool guards (`tool-guards.ts`)
-
-Every tool call passes through `guardedExecute`: run guards → execute → record call.
-
-`SessionContext` holds per-request state: `callLog`, `flags`, `onGuard` callback.
-
-| Guard | Action |
-|-------|--------|
-| `noRewriteGuard` | Blocks delete-file on previously-read paths |
-| `excessiveFileLoopGuard` | Blocks repeated same-file read/edit churn and forces strategy change |
-| `verifyRanGuard` | Sets `verifyRan` flag on verify commands |
-
-## Lifecycle Observability
-
-Lifecycle debug events are emitted as a typed envelope (`LifecycleDebugEvent`) and logged by the server.
-
-Envelope fields:
-- `event`: lifecycle event id (for example `lifecycle.tool.call`)
-- `sequence`: per-request monotonic event number
-- `phaseAttempt`: generation attempt number (initial run + regenerations)
-- `ts`: event timestamp
-- `fields`: event-specific payload (tool, path, duration, evaluator decision, summary counters, etc.)
-
-Useful tooling:
-- `bun run trace:lifecycle` (compact trace for latest request)
-- `bun run trace:lifecycle -- --request err_...` (specific request id)
-
-## Storage
-
-- **Sessions**: `~/.acolyte/sessions.json`
-- **Saved memory**: `~/.acolyte/memory/user/` and `.acolyte/memory/project/`
-- **Observational memory**: Mastra Memory (Postgres)
-
-## Configuration (`app-config.ts`)
-
-Merged from `.acolyte/config.toml` (project) and `~/.acolyte/config.toml` (user). Key settings: `model`, `models` (per-mode overrides), `port`, `apiUrl`, `permissionMode`, context token budgets.
+- Runtime config comes from user/project config.
+- Chat/session state and memory are persisted outside lifecycle; lifecycle consumes them as inputs.

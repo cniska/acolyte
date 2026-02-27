@@ -3,6 +3,7 @@ import { mkdir, readdir, readFile, stat, unlink, writeFile } from "node:fs/promi
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { appConfig } from "./app-config";
+import { encodeToolError, TOOL_ERROR_CODES } from "./tool-error-codes";
 
 const TEMP_ROOTS = Array.from(new Set([resolve(tmpdir()), resolve("/tmp"), resolve("/private/tmp")]));
 
@@ -809,7 +810,10 @@ export async function editFile(input: {
       }
       if (count > 1) {
         throw new Error(
-          `Find text matched ${count} locations (${edit.find.slice(0, 40)}…). Provide a longer, more unique snippet to match exactly one location, or use edit-code for multi-location code changes.`,
+          encodeToolError(
+            TOOL_ERROR_CODES.editFileMultiMatch,
+            `Find text matched ${count} locations (${edit.find.slice(0, 40)}…). Provide a longer, more unique snippet to match exactly one location, or use edit-code for multi-location code changes.`,
+          ),
         );
       }
       const start = raw.indexOf(edit.find);
