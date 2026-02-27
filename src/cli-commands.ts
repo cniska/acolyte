@@ -323,16 +323,28 @@ async function dogfoodMode(args: string[]): Promise<void> {
   await runMode(runArgs);
 }
 
-async function historyMode(_args: string[]): Promise<void> {
+async function historyMode(args: string[]): Promise<void> {
+  if (hasHelpFlag(args)) {
+    subcommandHelp("history");
+    return;
+  }
   const store = await readStore();
   listSessions(store);
 }
 
-async function serveMode(_args: string[]): Promise<void> {
+async function serveMode(args: string[]): Promise<void> {
+  if (hasHelpFlag(args)) {
+    subcommandHelp("serve");
+    return;
+  }
   await import("./server");
 }
 
-async function statusMode(_args: string[]): Promise<void> {
+async function statusMode(args: string[]): Promise<void> {
+  if (hasHelpFlag(args)) {
+    subcommandHelp("status");
+    return;
+  }
   const client = createClient({
     apiUrl: appConfig.server.apiUrl,
   });
