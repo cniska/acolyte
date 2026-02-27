@@ -44,6 +44,40 @@ describe("verify-ran guard", () => {
   });
 });
 
+describe("excessive-file-loop guard", () => {
+  test("blocks repeated read/edit churn on same path before verify", () => {
+    const session = createSessionContext();
+    for (let i = 0; i < 6; i += 1) {
+      recordCall(session, "read-file", { paths: [{ path: "src/foo.ts" }] });
+      recordCall(session, "edit-file", { path: "src/foo.ts" });
+    }
+    expect(() => runGuards({ toolName: "read-file", args: { paths: [{ path: "src/foo.ts" }] }, session })).toThrow(
+      /Repeated read\/edit loop detected/,
+    );
+  });
+
+  test("does not block when verify already ran", () => {
+    const session = createSessionContext();
+    session.flags.verifyRan = true;
+    for (let i = 0; i < 8; i += 1) {
+      recordCall(session, "read-file", { paths: [{ path: "src/foo.ts" }] });
+      recordCall(session, "edit-file", { path: "src/foo.ts" });
+    }
+    expect(() => runGuards({ toolName: "edit-file", args: { path: "src/foo.ts" }, session })).not.toThrow();
+  });
+
+  test("does not block when churn is spread across files", () => {
+    const session = createSessionContext();
+    for (let i = 0; i < 6; i += 1) {
+      recordCall(session, "read-file", { paths: [{ path: "src/a.ts" }] });
+      recordCall(session, "edit-file", { path: "src/a.ts" });
+      recordCall(session, "read-file", { paths: [{ path: "src/b.ts" }] });
+      recordCall(session, "edit-file", { path: "src/b.ts" });
+    }
+    expect(() => runGuards({ toolName: "read-file", args: { paths: [{ path: "src/c.ts" }] }, session })).not.toThrow();
+  });
+});
+
 describe("recordCall", () => {
   test("appends to callLog", () => {
     const session = createSessionContext();

@@ -26,6 +26,20 @@ function normalizePath(p: string): string {
   return p.replace(/\/+$/, "").replace(/^\.\//, "");
 }
 
+function extractReadPaths(args: Record<string, unknown>): string[] {
+  const paths = args.paths;
+  if (!Array.isArray(paths)) return [];
+  const out: string[] = [];
+  for (const entry of paths) {
+    if (!entry || typeof entry !== "object") continue;
+    const path = (entry as { path?: unknown }).path;
+    if (typeof path === "string" && path.trim().length > 0) {
+      out.push(normalizePath(path.trim()));
+    }
+  }
+  return out;
+}
+
 const noRewriteGuard: ToolGuard = {
   id: "no-rewrite",
   description: "Block delete-file on a path that was previously read — use edit-file instead.",
@@ -53,6 +67,47 @@ const noRewriteGuard: ToolGuard = {
   },
 };
 
+const excessiveFileLoopGuard: ToolGuard = {
+  id: "excessive-file-loop",
+  description: "Block repeated read/edit churn on the same file to force a strategy change.",
+  check({ toolName, args, session }) {
+    if (toolName !== "read-file" && toolName !== "edit-file") return;
+    if (session.flags.verifyRan === true) return;
+
+    const targetPaths =
+      toolName === "edit-file"
+        ? typeof args.path === "string" && args.path.trim().length > 0
+          ? [normalizePath(args.path.trim())]
+          : []
+        : extractReadPaths(args);
+    if (targetPaths.length !== 1) return;
+    const target = targetPaths[0];
+
+    let readCount = 0;
+    let editCount = 0;
+    for (const entry of session.callLog) {
+      if (entry.toolName === "read-file") {
+        const hasTarget = extractReadPaths(entry.args).some((path) => path === target);
+        if (hasTarget) readCount += 1;
+      } else if (entry.toolName === "edit-file") {
+        const path = entry.args.path;
+        if (typeof path === "string" && normalizePath(path) === target) {
+          editCount += 1;
+        }
+      }
+    }
+
+    const combined = readCount + editCount;
+    if (combined < 12 || readCount < 5 || editCount < 5) return;
+
+    session.onGuard?.({ guardId: "excessive-file-loop", toolName, action: "blocked", detail: target });
+    throw new Error(
+      `Repeated read/edit loop detected for "${target}". Stop incremental tweaks. ` +
+        "Use one consolidated edit (line-range block or edit-code), then run verify.",
+    );
+  },
+};
+
 const verifyRanGuard: ToolGuard = {
   id: "verify-ran",
   description: "Set session flag when run-command executes a verify command.",
@@ -66,7 +121,7 @@ const verifyRanGuard: ToolGuard = {
   },
 };
 
-const GUARDS: ToolGuard[] = [noRewriteGuard, verifyRanGuard];
+const GUARDS: ToolGuard[] = [noRewriteGuard, excessiveFileLoopGuard, verifyRanGuard];
 
 export function runGuards(input: GuardInput): void {
   for (const guard of GUARDS) {
