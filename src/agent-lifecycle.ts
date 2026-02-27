@@ -351,10 +351,10 @@ function processStreamChunk(ctx: RunContext, chunk: { type?: string; payload?: u
         ctx.observedTools.add(toolName);
         if (ctx.mode !== "verify") {
           const inferredMode = modeForTool(toolName);
-          if (inferredMode !== ctx.mode) {
-            const previousMode = ctx.mode;
-            ctx.mode = inferredMode;
-            ctx.debug("lifecycle.mode.changed", { from: previousMode, to: ctx.mode, trigger: toolName });
+          // Only escalate (plan → work), never de-escalate
+          if (inferredMode === "work" && ctx.mode === "plan") {
+            ctx.mode = "work";
+            ctx.debug("lifecycle.mode.changed", { from: "plan", to: "work", trigger: toolName });
             emitModeStatus(ctx);
           }
         }
@@ -507,7 +507,7 @@ export async function runLifecycle(input: LifecycleInput): Promise<ChatResponse>
     emit,
     debug,
     classifiedMode,
-    mode: "plan",
+    mode: classifiedMode,
     model,
     session: prepared.session,
     agent: prepared.agent,

@@ -28,7 +28,7 @@ Tool:       validate (guards) → execute → record (session)
 
 `classify` and `prepare` return values used to construct `RunContext` — no uninitialized fields. `generate` and `finalize` operate on the mutable context.
 
-**Evaluators** run after generation. Each inspects `RunContext` and returns `done` or `regenerate`. The runner loops until all return done.
+**Evaluators** run after generation in order. Each inspects `RunContext` and returns `done` or `regenerate`. The runner makes a single pass — first `regenerate` triggers a new generation, remaining evaluators still run.
 
 | Evaluator | Trigger | Action |
 |-----------|---------|--------|
