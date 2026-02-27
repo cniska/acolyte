@@ -14,6 +14,7 @@
     "dogfood:smoke": "./scripts/with-server.sh serve:env bun run src/dogfood-smoke.ts",
     "dogfood:progress": "bun run src/dogfood-progress.ts",
     "dogfood:gate": "bun run src/dogfood-gate.ts",
+    "trace:lifecycle": "bun run scripts/lifecycle-trace.ts",
     "serve:env": "bun --env-file=.env run src/server.ts",
     "serve:env:watch": "bun --watch --env-file=.env run src/server.ts",
     "wait:server": "bun run src/wait-server.ts",
