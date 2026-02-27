@@ -259,7 +259,7 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
         void input.openSkillsPanel();
         return;
       }
-      if (!input.isThinking && keyInput === "?" && input.value.length === 0) {
+      if (keyInput === "?" && input.value.length === 0) {
         input.setShowShortcuts((current) => !current);
         return;
       }

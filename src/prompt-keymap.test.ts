@@ -7,6 +7,13 @@ describe("prompt keymap", () => {
     expect(resolvePromptAction("x", {}, { hasMetaPrefix: false })).toEqual({ type: "insert", text: "x" });
   });
 
+  test("shift+enter inserts newline instead of submitting", () => {
+    expect(resolvePromptAction("", { return: true, shift: true }, { hasMetaPrefix: false })).toEqual({
+      type: "insert",
+      text: "\n",
+    });
+  });
+
   test("maps common word navigation and deletion sequences", () => {
     expect(resolvePromptAction("\u001bb", {}, { hasMetaPrefix: false })).toEqual({ type: "move_word_left" });
     expect(resolvePromptAction("\u001bf", {}, { hasMetaPrefix: false })).toEqual({ type: "move_word_right" });

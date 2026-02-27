@@ -137,6 +137,9 @@ export function resolvePromptAction(input: string, key: PromptKey, options: { ha
   if (key.upArrow || key.downArrow || key.tab || (key.shift && key.tab) || (key.ctrl && input === CTRL.c)) {
     return { type: "noop" };
   }
+  if (key.return && key.shift) {
+    return { type: "insert", text: "\n" };
+  }
   if (key.return) {
     return { type: "submit" };
   }

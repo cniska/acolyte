@@ -10,7 +10,6 @@ type SuggestionContentInput = {
   slashSuggestions: string[];
   slashSuggestionIndex: number;
   showShortcuts: boolean;
-  queuedInput: string | null;
 };
 
 export function renderInputPanelContent(input: SuggestionContentInput): React.ReactNode {
@@ -22,7 +21,6 @@ export function renderInputPanelContent(input: SuggestionContentInput): React.Re
     slashSuggestions,
     slashSuggestionIndex,
     showShortcuts,
-    queuedInput,
   } = input;
 
   let suggestions: React.ReactNode;
@@ -52,10 +50,5 @@ export function renderInputPanelContent(input: SuggestionContentInput): React.Re
     suggestions = <Text dimColor>{"  ? help"}</Text>;
   }
 
-  return (
-    <>
-      {suggestions}
-      {queuedInput ? <Text dimColor>{` queued: ${queuedInput}`}</Text> : null}
-    </>
-  );
+  return suggestions;
 }

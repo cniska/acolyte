@@ -58,7 +58,7 @@ function ChatApp(props: ChatAppProps) {
   const [thinkingFrame, setThinkingFrame] = useState(0);
   const [thinkingStartedAt, setThinkingStartedAt] = useState<number | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
-  const [queuedInput, setQueuedInput] = useState<string | null>(null);
+  const [queuedMessages, setQueuedMessages] = useState<string[]>([]);
   const [picker, setPicker] = useState<PickerState | null>(null);
   const [tokenUsage, setTokenUsage] = useState<TokenUsageEntry[]>(() => session.tokenUsage ?? []);
   const [inputHistory, setInputHistory] = useState<string[]>([]);
@@ -120,7 +120,7 @@ function ChatApp(props: ChatAppProps) {
     setPicker: (next) => setPicker(next),
     setShowShortcuts,
     setValue,
-    queueInput: setQueuedInput,
+    queueInput: (value: string) => setQueuedMessages((current) => [...current, value]),
     buildClarificationPayload: buildInternalClarificationTurn,
     buildWriteResumePayload: buildInternalWriteResumeTurn,
     setServerPermissionMode: async (mode) => {
@@ -165,13 +165,15 @@ function ChatApp(props: ChatAppProps) {
     useMemory,
   });
   useEffect(() => {
-    if (isThinking || !queuedInput) {
+    if (isThinking || queuedMessages.length === 0) {
       return;
     }
-    const next = queuedInput;
-    setQueuedInput(null);
-    void handleSubmit(next);
-  }, [handleSubmit, isThinking, queuedInput]);
+    const [next, ...rest] = queuedMessages;
+    setQueuedMessages(rest);
+    if (next) {
+      void handleSubmit(next);
+    }
+  }, [handleSubmit, isThinking, queuedMessages]);
 
   useChatKeybindings({
     persist,
@@ -219,6 +221,7 @@ function ChatApp(props: ChatAppProps) {
         progressText={progressText}
         thinkingFrame={thinkingFrame}
         thinkingStartedAt={thinkingStartedAt}
+        queuedMessages={queuedMessages}
       />
 
       <Text> </Text>
@@ -262,8 +265,8 @@ function ChatApp(props: ChatAppProps) {
           if (queueDecision.kind === "ignore") {
             return;
           }
-          if (queueDecision.kind === "queue") {
-            setQueuedInput(queueDecision.value);
+          if (isThinking) {
+            setQueuedMessages((current) => [...current, queueDecision.value]);
             setValue("");
             return;
           }
@@ -275,7 +278,6 @@ function ChatApp(props: ChatAppProps) {
         slashSuggestions={slashSuggestions}
         slashSuggestionIndex={slashSuggestionIndex}
         showShortcuts={showShortcuts}
-        queuedInput={queuedInput}
         onConfirmNoteChange={(next) => {
           setPicker((current) => {
             if (!current || (current.kind !== "writeConfirm" && current.kind !== "clarifyAnswer")) {

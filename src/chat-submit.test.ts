@@ -39,9 +39,9 @@ describe("chat submit helpers", () => {
     expect(resolveQueueSubmit({ value: "   ", isThinking: true })).toEqual({ kind: "ignore" });
   });
 
-  test("resolveQueueSubmit queues while thinking", () => {
+  test("resolveQueueSubmit submits while thinking", () => {
     expect(resolveQueueSubmit({ value: "hello", isThinking: true })).toEqual({
-      kind: "queue",
+      kind: "submit",
       value: "hello",
     });
   });

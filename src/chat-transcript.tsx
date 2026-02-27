@@ -10,6 +10,7 @@ type ChatTranscriptProps = {
   isThinking: boolean;
   progressText?: string | null;
   thinkingFrame: number;
+  queuedMessages?: string[];
   thinkingStartedAt?: number | null;
 };
 
@@ -297,6 +298,19 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
               <Text dimColor>{thinkingText}</Text>
             </Box>
           </Box>
+          {props.queuedMessages?.map((msg, i) => (
+            <React.Fragment key={`queued-${i}`}>
+              <Text> </Text>
+              <Box>
+                <Box width={2}>
+                  <Text dimColor>{"❯ "}</Text>
+                </Box>
+                <Box width={contentWidth}>
+                  <Text dimColor>{msg}</Text>
+                </Box>
+              </Box>
+            </React.Fragment>
+          ))}
         </>
       ) : null}
     </>

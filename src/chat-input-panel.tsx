@@ -19,7 +19,6 @@ type ChatInputPanelProps = {
   slashSuggestions: string[];
   slashSuggestionIndex: number;
   showShortcuts: boolean;
-  queuedInput: string | null;
   onConfirmNoteChange: (next: string) => void;
 };
 
@@ -38,7 +37,6 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
     slashSuggestions,
     slashSuggestionIndex,
     showShortcuts,
-    queuedInput,
     onConfirmNoteChange,
   } = props;
 
@@ -139,7 +137,6 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
         slashSuggestions,
         slashSuggestionIndex,
         showShortcuts,
-        queuedInput,
       })}
     </>
   );
