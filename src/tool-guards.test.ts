@@ -44,6 +44,21 @@ describe("verify-ran guard", () => {
   });
 });
 
+describe("no-shell-read-fallback guard", () => {
+  test("blocks shell file-reading fallback commands", () => {
+    const session = createSessionContext();
+    expect(() =>
+      runGuards({ toolName: "run-command", args: { command: "sed -n '1,50p' src/cli.ts" }, session }),
+    ).toThrow(/Do not use shell commands for file reading\/searching/);
+  });
+
+  test("allows verify/test style run-command invocations", () => {
+    const session = createSessionContext();
+    expect(() => runGuards({ toolName: "run-command", args: { command: "bun run verify" }, session })).not.toThrow();
+    expect(() => runGuards({ toolName: "run-command", args: { command: "bun run test" }, session })).not.toThrow();
+  });
+});
+
 describe("excessive-file-loop guard", () => {
   test("blocks repeated read/edit churn on same path before verify", () => {
     const session = createSessionContext();

@@ -47,7 +47,8 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
   verify: {
     tools: ["run-command", "read-file", "search-files", "edit-code", "edit-file", "create-file"],
     preamble: [
-      "Run the project's verify command (e.g. `bun run verify`).",
+      "Run the project's verify command.",
+      "If you need a non-verify command, confirm it exists in project tooling files before running it; do not guess names.",
       "If verification fails, read the errors, fix only files implicated by the errors, and re-run.",
       "Do not re-read files that were already read unless they changed or the error points to them.",
       "Keep fixing until verification passes or you are stuck.",

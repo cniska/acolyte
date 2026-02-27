@@ -301,6 +301,7 @@ describe("createModeInstructions", () => {
   test("verify mode includes verification instructions", () => {
     const out = createModeInstructions("verify");
     expect(out).toContain("verify command");
+    expect(out).toContain("confirm it exists in project tooling files");
     expect(out).toContain("fix only files implicated");
     expect(out).toContain("Do not re-read files");
   });

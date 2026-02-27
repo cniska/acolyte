@@ -40,6 +40,16 @@ function extractReadPaths(args: Record<string, unknown>): string[] {
   return out;
 }
 
+function isShellReadFallback(command: string): boolean {
+  const trimmed = command.trim();
+  if (trimmed.length === 0) return false;
+  const normalized = trimmed.replace(/\s+/g, " ").toLowerCase();
+  const disallowed = /\b(cat|sed|head|tail|nl|wc|ls|find|grep|rg)\b/;
+  if (!disallowed.test(normalized)) return false;
+  const allowedContext = /\b(verify|test|build|lint|format|check|ci|coverage|compile|start|dev|serve|run)\b/;
+  return !allowedContext.test(normalized);
+}
+
 const noRewriteGuard: ToolGuard = {
   id: "no-rewrite",
   description: "Block delete-file on a path that was previously read — use edit-file instead.",
@@ -120,7 +130,21 @@ const verifyRanGuard: ToolGuard = {
   },
 };
 
-const GUARDS: ToolGuard[] = [noRewriteGuard, excessiveFileLoopGuard, verifyRanGuard];
+const noShellReadFallbackGuard: ToolGuard = {
+  id: "no-shell-read-fallback",
+  description: "Block run-command shell fallbacks for file discovery/reading tools.",
+  check({ toolName, args, session }) {
+    if (toolName !== "run-command") return;
+    const command = typeof args.command === "string" ? args.command : "";
+    if (!isShellReadFallback(command)) return;
+    session.onGuard?.({ guardId: "no-shell-read-fallback", toolName, action: "blocked", detail: command });
+    throw new Error(
+      "Do not use shell commands for file reading/searching. Use read-file, find-files, or search-files instead.",
+    );
+  },
+};
+
+const GUARDS: ToolGuard[] = [noRewriteGuard, excessiveFileLoopGuard, verifyRanGuard, noShellReadFallbackGuard];
 
 export function runGuards(input: GuardInput): void {
   for (const guard of GUARDS) {
