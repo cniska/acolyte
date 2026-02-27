@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { createClient } from "./client";
+import { createClient, parseStreamEvent } from "./client";
 
 const originalFetch = globalThis.fetch;
 
@@ -108,6 +108,14 @@ describe("remote server connection errors", () => {
         JSON.stringify({
           error: "model call failed",
           errorId: "err_abc12345",
+          errorCode: "E_TIMEOUT",
+          errorDetail: {
+            code: "E_TIMEOUT",
+            category: "timeout",
+            source: "server",
+            retryable: true,
+            recoveryAction: "retry-timeout",
+          },
         }),
         {
           status: 502,
@@ -124,6 +132,24 @@ describe("remote server connection errors", () => {
         sessionId: "sess_test",
       }),
     ).rejects.toThrow("Remote server error (502): model call failed [error_id=err_abc12345]");
+    try {
+      await client.reply({
+        message: "ping",
+        history: [],
+        model: "gpt-5-mini",
+        sessionId: "sess_test",
+      });
+      throw new Error("expected reply to throw");
+    } catch (error) {
+      const remoteError = error as Error & {
+        status?: number;
+        errorCode?: string;
+        errorDetail?: { recoveryAction?: string };
+      };
+      expect(remoteError.status).toBe(502);
+      expect(remoteError.errorCode).toBe("E_TIMEOUT");
+      expect(remoteError.errorDetail?.recoveryAction).toBe("retry-timeout");
+    }
   });
 
   test("reply ignores embedded progress payload fields", async () => {
@@ -277,6 +303,14 @@ describe("remote server connection errors", () => {
                 `data: ${JSON.stringify({
                   type: "error",
                   error: "Provider quota exceeded",
+                  errorCode: "E_PROVIDER_QUOTA",
+                  errorDetail: {
+                    code: "E_PROVIDER_QUOTA",
+                    category: "provider",
+                    source: "server",
+                    retryable: false,
+                    recoveryAction: "fail",
+                  },
                 })}\n\n`,
               ),
             );
@@ -290,8 +324,9 @@ describe("remote server connection errors", () => {
       )) as unknown as typeof fetch;
 
     const client = createClient({ apiUrl: "http://localhost:6767" });
-    await expect(
-      client.replyStream(
+    const received: Array<{ type: string; errorDetail?: { code?: string; recoveryAction?: string } }> = [];
+    try {
+      await client.replyStream(
         {
           message: "ping",
           history: [],
@@ -299,10 +334,38 @@ describe("remote server connection errors", () => {
           sessionId: "sess_test",
         },
         {
-          onEvent: () => {},
+          onEvent: (event) => {
+            if (event.type === "error") {
+              received.push({
+                type: event.type,
+                errorDetail: {
+                  code: event.errorDetail?.code,
+                  recoveryAction: event.errorDetail?.recoveryAction,
+                },
+              });
+            }
+          },
         },
-      ),
-    ).rejects.toThrow("Provider quota exceeded");
+      );
+      throw new Error("expected replyStream to throw");
+    } catch (error) {
+      const remoteError = error as Error & {
+        errorCode?: string;
+        errorDetail?: { recoveryAction?: string };
+      };
+      expect(remoteError.message).toContain("Provider quota exceeded");
+      expect(remoteError.errorCode).toBe("E_PROVIDER_QUOTA");
+      expect(remoteError.errorDetail?.recoveryAction).toBe("fail");
+    }
+    expect(received).toEqual([
+      {
+        type: "error",
+        errorDetail: {
+          code: "E_PROVIDER_QUOTA",
+          recoveryAction: "fail",
+        },
+      },
+    ]);
   });
 });
 
@@ -442,6 +505,41 @@ describe("replyStream keepalive and timeout", () => {
         { onEvent: () => {} },
       ),
     ).rejects.toThrow("timed out");
+  });
+});
+
+describe("stream event parsing", () => {
+  test("parseStreamEvent accepts structured error detail payloads", () => {
+    const event = parseStreamEvent({
+      type: "error",
+      error: "Tool failed",
+      errorCode: "E_TIMEOUT",
+      errorDetail: {
+        code: "E_TIMEOUT",
+        category: "timeout",
+        source: "generate",
+        retryable: true,
+        recoveryAction: "retry-timeout",
+      },
+    });
+    expect(event).not.toBeNull();
+    expect(event?.type).toBe("error");
+    if (!event || event.type !== "error") return;
+    expect(event.errorDetail?.retryable).toBe(true);
+    expect(event.errorDetail?.recoveryAction).toBe("retry-timeout");
+  });
+
+  test("parseStreamEvent rejects malformed structured error detail payloads", () => {
+    const event = parseStreamEvent({
+      type: "tool-result",
+      toolCallId: "call_1",
+      toolName: "edit-file",
+      isError: true,
+      errorDetail: {
+        retryable: "yes",
+      },
+    });
+    expect(event).toBeNull();
   });
 });
 

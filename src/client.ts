@@ -1,21 +1,13 @@
 import { z } from "zod";
 import type { ChatRequest, ChatResponse } from "./api";
 import { appConfig, type PermissionMode } from "./app-config";
+import { streamErrorDetailSchema } from "./stream-error";
 
 export interface ClientOptions {
   apiUrl?: string;
   apiKey?: string;
   replyTimeoutMs?: number;
 }
-
-const streamErrorDetailSchema = z.object({
-  code: z.string().optional(),
-  category: z.string().optional(),
-  source: z.string().optional(),
-  tool: z.string().optional(),
-  retryable: z.boolean().optional(),
-  recoveryAction: z.string().optional(),
-});
 
 export const streamEventSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("text-delta"), text: z.string() }),
@@ -50,6 +42,7 @@ export const streamEventSchema = z.discriminatedUnion("type", [
 ]);
 
 export type StreamEvent = z.infer<typeof streamEventSchema>;
+type StreamErrorDetail = z.infer<typeof streamErrorDetailSchema>;
 
 export interface Client {
   reply(input: ChatRequest, options?: { signal?: AbortSignal }): Promise<ChatResponse>;
@@ -62,6 +55,17 @@ export interface Client {
   ): Promise<ChatResponse>;
   status(): Promise<Record<string, string>>;
   setPermissionMode(mode: PermissionMode): Promise<void>;
+}
+
+type RemoteErrorMetadata = {
+  status?: number;
+  errorId?: string;
+  errorCode?: string;
+  errorDetail?: StreamErrorDetail;
+};
+
+function createRemoteError(message: string, metadata: RemoteErrorMetadata = {}): Error {
+  return Object.assign(new Error(message), metadata);
 }
 
 function isConnectionFailure(error: unknown): boolean {
@@ -144,15 +148,30 @@ class HttpClient implements Client {
       const body = await response.text();
       let errorMessage = body || "no body";
       let errorId: string | undefined;
+      let errorCode: string | undefined;
+      let errorDetail: StreamErrorDetail | undefined;
       try {
-        const parsed = JSON.parse(body) as { error?: unknown; errorId?: unknown };
+        const parsed = JSON.parse(body) as {
+          error?: unknown;
+          errorId?: unknown;
+          errorCode?: unknown;
+          errorDetail?: unknown;
+        };
         if (typeof parsed.error === "string" && parsed.error.length > 0) errorMessage = parsed.error;
         if (typeof parsed.errorId === "string" && parsed.errorId.length > 0) errorId = parsed.errorId;
+        if (typeof parsed.errorCode === "string" && parsed.errorCode.length > 0) errorCode = parsed.errorCode;
+        const parsedDetail = streamErrorDetailSchema.safeParse(parsed.errorDetail);
+        if (parsedDetail.success) errorDetail = parsedDetail.data;
       } catch {
         // Non-JSON error body; keep raw body text.
       }
       const errorSuffix = errorId ? ` [error_id=${errorId}]` : "";
-      throw new Error(`Remote server error (${response.status}): ${errorMessage}${errorSuffix}`);
+      throw createRemoteError(`Remote server error (${response.status}): ${errorMessage}${errorSuffix}`, {
+        status: response.status,
+        errorId,
+        errorCode,
+        errorDetail,
+      });
     }
 
     const json = (await response.json()) as Partial<ChatResponse>;
@@ -293,9 +312,19 @@ class HttpClient implements Client {
         return;
       }
       if (payload.type === "error") {
-        const errorMsg = typeof payload.error === "string" ? payload.error : "Remote server stream failed";
-        options.onEvent({ type: "error", error: errorMsg });
-        throw new Error(errorMsg);
+        const parsedErrorEvent = parseStreamEvent(payload);
+        const errorMsg =
+          parsedErrorEvent?.type === "error"
+            ? parsedErrorEvent.error
+            : typeof payload.error === "string"
+              ? payload.error
+              : "Remote server stream failed";
+        if (parsedErrorEvent?.type === "error") options.onEvent(parsedErrorEvent);
+        else options.onEvent({ type: "error", error: errorMsg });
+        throw createRemoteError(errorMsg, {
+          errorCode: parsedErrorEvent?.type === "error" ? parsedErrorEvent.errorCode : undefined,
+          errorDetail: parsedErrorEvent?.type === "error" ? parsedErrorEvent.errorDetail : undefined,
+        });
       }
       const event = parseStreamEvent(payload);
       if (event) options.onEvent(event);

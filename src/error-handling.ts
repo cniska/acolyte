@@ -1,3 +1,4 @@
+import type { StreamErrorDetail } from "./stream-error";
 import {
   type ErrorCode,
   extractToolErrorCode,
@@ -7,7 +8,7 @@ import {
 } from "./tool-error-codes";
 
 export type ErrorCategory = "timeout" | "file-not-found" | "guard-blocked" | "other";
-export type ErrorSource = "generate" | "tool-result" | "tool-error";
+export type ErrorSource = "generate" | "tool-result" | "tool-error" | "server";
 export type ParsedError = { message: string; code?: string };
 export type ParseErrorResult = { ok: true; value: ParsedError } | { ok: false; error: "invalid_error_payload" };
 export type RecoveryAction = "retry-timeout" | "stop-unknown-budget" | "none";
@@ -111,5 +112,36 @@ export function recoveryDecisionForError(
   return {
     action,
     retryable: action === "retry-timeout",
+  };
+}
+
+export function buildStreamErrorDetail(
+  input: {
+    message: string;
+    code?: string;
+    source?: ErrorSource;
+    tool?: string;
+    unknownErrorCount: number;
+  },
+  unknownErrorBudget: number,
+): { errorCode: string; category: ErrorCategory; errorDetail: StreamErrorDetail } {
+  const derivedCategory = classifyErrorCategory(input.message);
+  const errorCode = input.code ?? extractToolErrorCode(input.message) ?? errorCodeFromCategory(derivedCategory);
+  const category = categoryFromErrorCode(errorCode) ?? derivedCategory;
+  const decision = recoveryDecisionForError(
+    { errorCode, unknownErrorCount: input.unknownErrorCount },
+    unknownErrorBudget,
+  );
+  return {
+    errorCode,
+    category,
+    errorDetail: {
+      code: errorCode,
+      category,
+      source: input.source,
+      tool: input.tool,
+      retryable: decision.retryable,
+      recoveryAction: decision.action,
+    },
   };
 }

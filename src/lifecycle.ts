@@ -15,6 +15,7 @@ import type { ChatRequest, ChatResponse } from "./api";
 import { appConfig } from "./app-config";
 import type { StreamEvent } from "./client";
 import {
+  buildStreamErrorDetail,
   categoryFromErrorCode,
   classifyErrorCategory,
   type ErrorCategory,
@@ -23,7 +24,6 @@ import {
   isEditFileMultiMatchSignal,
   parseErrorInfo,
   type RecoveryAction,
-  recoveryDecisionForError,
   recoveryActionForError as resolveRecoveryAction,
 } from "./error-handling";
 import {
@@ -45,6 +45,7 @@ import {
 } from "./lifecycle-evaluators";
 import type { LifecycleDebugEvent, LifecycleEventName } from "./lifecycle-events";
 import { type AcolyteToolset, toolsForAgent } from "./mastra-tools";
+import type { StreamErrorDetail } from "./stream-error";
 import { type ErrorCode, extractToolErrorCode, LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
 import { DISCOVERY_TOOL_SET, READ_TOOL_SET, SEARCH_TOOL_SET, WRITE_TOOL_SET } from "./tool-groups";
 import type { SessionContext } from "./tool-guards";
@@ -68,14 +69,6 @@ type PromptUsage = {
   totalHistoryMessages: number;
 };
 type StreamChunk = { type?: string; payload?: unknown };
-type StreamErrorDetail = {
-  code?: string;
-  category?: string;
-  source?: string;
-  tool?: string;
-  retryable?: boolean;
-  recoveryAction?: string;
-};
 type TextDeltaPayload = { text?: string };
 type ToolCallPayload = { toolCallId?: string; toolName?: string; args?: Record<string, unknown> };
 type ToolResultPayload = { toolCallId?: string; toolName?: string; result?: unknown };
@@ -198,18 +191,16 @@ function captureError(
 
 function currentErrorDetail(ctx: RunContext): StreamErrorDetail | undefined {
   if (!ctx.lastError) return undefined;
-  const decision = recoveryDecisionForError(
-    { errorCode: ctx.lastErrorCode, unknownErrorCount: ctx.errorStats.other },
+  return buildStreamErrorDetail(
+    {
+      message: ctx.lastError,
+      code: ctx.lastErrorCode,
+      source: ctx.lastErrorSource,
+      tool: ctx.lastErrorTool,
+      unknownErrorCount: ctx.errorStats.other,
+    },
     MAX_UNKNOWN_ERRORS_PER_REQUEST,
-  );
-  return {
-    code: ctx.lastErrorCode,
-    category: ctx.lastErrorCategory,
-    source: ctx.lastErrorSource,
-    tool: ctx.lastErrorTool,
-    retryable: decision.retryable,
-    recoveryAction: decision.action,
-  };
+  ).errorDetail;
 }
 
 function guardStatsFromSession(session: SessionContext): { blocked: number; flagSet: number } {

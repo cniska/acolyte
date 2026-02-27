@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  buildStreamErrorDetail,
   categoryFromErrorCode,
   classifyErrorCategory,
   errorCodeFromCategory,
@@ -75,5 +76,25 @@ describe("error handling helpers", () => {
     expect(
       recoveryDecisionForError({ errorCode: LIFECYCLE_ERROR_CODES.unknown, unknownErrorCount: 2 }, 2),
     ).toMatchObject({ action: "stop-unknown-budget", retryable: false });
+  });
+
+  test("buildStreamErrorDetail returns normalized structured payload", () => {
+    const detail = buildStreamErrorDetail(
+      {
+        message: "request timed out after 30s",
+        source: "server",
+        unknownErrorCount: 1,
+      },
+      1,
+    );
+    expect(detail.errorCode).toBe(LIFECYCLE_ERROR_CODES.timeout);
+    expect(detail.category).toBe("timeout");
+    expect(detail.errorDetail).toMatchObject({
+      code: LIFECYCLE_ERROR_CODES.timeout,
+      category: "timeout",
+      source: "server",
+      retryable: true,
+      recoveryAction: "retry-timeout",
+    });
   });
 });

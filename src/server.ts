@@ -4,12 +4,15 @@ import { resolve } from "node:path";
 import { runAgent } from "./agent";
 import type { ChatRequest } from "./api";
 import { appConfig, setPermissionMode } from "./app-config";
+import { buildStreamErrorDetail } from "./error-handling";
 import { errorToLogFields, log } from "./log";
 import { mastraStorage, mastraStorageMode } from "./mastra-storage";
 import { getObservationalMemoryConfig } from "./memory-config";
 import { formatModel, isProviderAvailable, providerFromModel, resolveProvider } from "./provider-config";
 import { createId } from "./short-id";
 import { createSoulPrompt, getMemoryContextEntries } from "./soul";
+import type { StreamErrorDetail } from "./stream-error";
+import { extractToolErrorCode } from "./tool-error-codes";
 
 const PORT = appConfig.server.port;
 const API_KEY = appConfig.server.apiKey;
@@ -45,6 +48,25 @@ function nextErrorId(): string {
   return `err_${createId()}`;
 }
 
+function streamErrorPayload(error: unknown): { error: string; errorCode?: string; errorDetail?: StreamErrorDetail } {
+  const errorMessage = error instanceof Error ? error.message : "Unknown error";
+  const extractedCode = extractToolErrorCode(errorMessage);
+  const { errorCode, errorDetail } = buildStreamErrorDetail(
+    {
+      message: errorMessage,
+      code: extractedCode,
+      source: "server",
+      unknownErrorCount: 1,
+    },
+    1,
+  );
+  return {
+    error: errorMessage,
+    errorCode,
+    errorDetail,
+  };
+}
+
 function serverError(
   message: string,
   error: unknown,
@@ -58,12 +80,20 @@ function serverError(
     errorMessageLower.includes("insufficient_quota") || errorMessageLower.includes("exceeded your current quota")
       ? "Provider quota exceeded. Add billing/credits or switch model/provider."
       : errorMessage;
+  const { errorCode, errorDetail } = buildStreamErrorDetail(
+    {
+      message: publicMessage,
+      source: "server",
+      unknownErrorCount: 1,
+    },
+    1,
+  );
   log.error(message, {
     error_id: errorId,
     ...details,
     ...errorToLogFields(error),
   });
-  return json({ error: publicMessage, errorId }, status);
+  return json({ error: publicMessage, errorId, errorCode, errorDetail }, status);
 }
 
 function isChatRequest(value: unknown): value is ChatRequest {
@@ -357,7 +387,7 @@ const server = Bun.serve({
               });
               send({ type: "done", reply });
             } catch (error) {
-              const errorMessage = error instanceof Error ? error.message : "Unknown error";
+              const payload = streamErrorPayload(error);
               log.error("chat stream failed", {
                 request_id: requestId,
                 session_id: chatRequest.sessionId ?? null,
@@ -366,7 +396,7 @@ const server = Bun.serve({
                 model: chatRequest.model,
                 ...errorToLogFields(error),
               });
-              send({ type: "error", error: errorMessage });
+              send({ type: "error", ...payload });
             } finally {
               clearInterval(keepaliveId);
               if (!closed) {
