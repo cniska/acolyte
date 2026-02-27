@@ -33,9 +33,9 @@ describe("modeForTool", () => {
 });
 
 describe("agentModes", () => {
-  test("every mode has non-empty progressText", () => {
+  test("every mode has non-empty statusText", () => {
     for (const def of Object.values(agentModes)) {
-      expect(def.progressText.length).toBeGreaterThan(0);
+      expect(def.statusText.length).toBeGreaterThan(0);
     }
   });
 

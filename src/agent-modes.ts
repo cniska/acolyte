@@ -3,7 +3,7 @@ export type AgentMode = "plan" | "work" | "verify";
 export type AgentModeDefinition = {
   tools: string[];
   preamble: string[];
-  progressText: string;
+  statusText: string;
 };
 
 export const agentModes: Record<AgentMode, AgentModeDefinition> = {
@@ -23,7 +23,7 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
       "Batch multiple reads into one `read-file` call when possible.",
       "End with a brief summary.",
     ],
-    progressText: "Thinking…",
+    statusText: "Thinking…",
   },
   work: {
     tools: ["edit-code", "edit-file", "create-file", "delete-file", "run-command"],
@@ -36,7 +36,7 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
       "When a target file does not exist, say so instead of silently creating it.",
       "After the last tool call, reply with one sentence summarizing the change. Nothing else.",
     ],
-    progressText: "Working…",
+    statusText: "Working…",
   },
   verify: {
     tools: ["run-command", "read-file", "search-files", "scan-code", "edit-code", "edit-file", "create-file"],
@@ -46,7 +46,7 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
       "Keep fixing until verification passes or you are stuck.",
       "Run silently — only respond if verification fails and you cannot fix it.",
     ],
-    progressText: "Verifying…",
+    statusText: "Verifying…",
   },
 };
 

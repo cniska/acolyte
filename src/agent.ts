@@ -445,7 +445,7 @@ export async function runAgent(input: {
   const emitEvent = (event: StreamEvent): void => {
     input.onEvent?.(event);
   };
-  const modeProgressText = (): string => agentModes[currentMode].progressText;
+  const modeProgressText = (): string => agentModes[currentMode].statusText;
   const emitModeStatus = (): void => {
     emitEvent({ type: "status", message: `${modeProgressText()} (${model})` });
   };
