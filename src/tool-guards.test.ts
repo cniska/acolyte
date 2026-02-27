@@ -105,6 +105,36 @@ describe("excessive-file-loop guard", () => {
   });
 });
 
+describe("excessive-search-loop guard", () => {
+  test("blocks repeated search-only churn without reads/writes", () => {
+    const session = createSessionContext();
+    for (let i = 0; i < 4; i += 1) {
+      recordCall(session, "search-files", { pattern: `query-${i}` });
+    }
+    expect(() => runGuards({ toolName: "search-files", args: { pattern: "query-5" }, session })).toThrow(
+      /Repeated search-files loop detected/,
+    );
+  });
+
+  test("does not block when read-file has already been used", () => {
+    const session = createSessionContext();
+    for (let i = 0; i < 4; i += 1) {
+      recordCall(session, "search-files", { pattern: `query-${i}` });
+    }
+    recordCall(session, "read-file", { paths: [{ path: "src/a.ts" }] });
+    expect(() => runGuards({ toolName: "search-files", args: { pattern: "query-5" }, session })).not.toThrow();
+  });
+
+  test("does not block when a write tool has already been used", () => {
+    const session = createSessionContext();
+    for (let i = 0; i < 4; i += 1) {
+      recordCall(session, "search-files", { pattern: `query-${i}` });
+    }
+    recordCall(session, "edit-file", { path: "src/a.ts" });
+    expect(() => runGuards({ toolName: "search-files", args: { pattern: "query-5" }, session })).not.toThrow();
+  });
+});
+
 describe("recordCall", () => {
   test("appends to callLog", () => {
     const session = createSessionContext();
