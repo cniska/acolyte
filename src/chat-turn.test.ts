@@ -67,10 +67,6 @@ describe("chat turn helpers", () => {
   test("runAssistantTurn ignores reply progress payload rows", async () => {
     const turn = await runAssistantTurn({
       client: {
-        reply: async () => ({
-          model: "gpt-5-mini",
-          output: "done",
-        }),
         replyStream: async () => ({
           model: "gpt-5-mini",
           output: "done",

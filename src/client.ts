@@ -42,10 +42,7 @@ export const streamEventSchema = z.discriminatedUnion("type", [
 ]);
 
 export type StreamEvent = z.infer<typeof streamEventSchema>;
-type StreamErrorDetail = z.infer<typeof streamErrorDetailSchema>;
-
 export interface Client {
-  reply(input: ChatRequest, options?: { signal?: AbortSignal }): Promise<ChatResponse>;
   replyStream(
     input: ChatRequest,
     options: {
@@ -61,7 +58,7 @@ type RemoteErrorMetadata = {
   status?: number;
   errorId?: string;
   errorCode?: string;
-  errorDetail?: StreamErrorDetail;
+  errorDetail?: z.infer<typeof streamErrorDetailSchema>;
 };
 
 function createRemoteError(message: string, metadata: RemoteErrorMetadata = {}): Error {
@@ -100,114 +97,6 @@ class HttpClient implements Client {
       if (isConnectionFailure(error)) throw new Error(connectionHelpMessage(this.apiUrl));
       throw error;
     }
-  }
-
-  async reply(input: ChatRequest, options?: { signal?: AbortSignal }): Promise<ChatResponse> {
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
-    let onAbort: (() => void) | undefined;
-    let timedOut = false;
-    let signal = options?.signal;
-
-    if (typeof this.replyTimeoutMs === "number") {
-      const timeoutController = new AbortController();
-      signal = timeoutController.signal;
-      onAbort = () => timeoutController.abort(options?.signal?.reason);
-      if (options?.signal) {
-        if (options.signal.aborted) {
-          onAbort();
-        } else {
-          options.signal.addEventListener("abort", onAbort, { once: true });
-        }
-      }
-      timeoutId = setTimeout(() => {
-        timedOut = true;
-        timeoutController.abort();
-      }, this.replyTimeoutMs);
-    }
-
-    let response: Response;
-    try {
-      response = await this.fetchOrThrow("/v1/chat", {
-        method: "POST",
-        signal,
-        headers: {
-          "content-type": "application/json",
-          ...(this.apiKey ? { authorization: `Bearer ${this.apiKey}` } : {}),
-        },
-        body: JSON.stringify(input),
-      });
-    } catch (error) {
-      if (timedOut) throw new Error(`Remote server reply timed out after ${this.replyTimeoutMs}ms`);
-      throw error;
-    } finally {
-      if (typeof timeoutId !== "undefined") clearTimeout(timeoutId);
-      if (options?.signal && onAbort) options.signal.removeEventListener("abort", onAbort);
-    }
-
-    if (!response.ok) {
-      const body = await response.text();
-      let errorMessage = body || "no body";
-      let errorId: string | undefined;
-      let errorCode: string | undefined;
-      let errorDetail: StreamErrorDetail | undefined;
-      try {
-        const parsed = JSON.parse(body) as {
-          error?: unknown;
-          errorId?: unknown;
-          errorCode?: unknown;
-          errorDetail?: unknown;
-        };
-        if (typeof parsed.error === "string" && parsed.error.length > 0) errorMessage = parsed.error;
-        if (typeof parsed.errorId === "string" && parsed.errorId.length > 0) errorId = parsed.errorId;
-        if (typeof parsed.errorCode === "string" && parsed.errorCode.length > 0) errorCode = parsed.errorCode;
-        const parsedDetail = streamErrorDetailSchema.safeParse(parsed.errorDetail);
-        if (parsedDetail.success) errorDetail = parsedDetail.data;
-      } catch {
-        // Non-JSON error body; keep raw body text.
-      }
-      const errorSuffix = errorId ? ` [error_id=${errorId}]` : "";
-      throw createRemoteError(`Remote server error (${response.status}): ${errorMessage}${errorSuffix}`, {
-        status: response.status,
-        errorId,
-        errorCode,
-        errorDetail,
-      });
-    }
-
-    const json = (await response.json()) as Partial<ChatResponse>;
-    if (typeof json.output !== "string") throw new Error("Remote server returned invalid payload: missing output");
-
-    return {
-      output: json.output,
-      model: typeof json.model === "string" ? json.model : input.model,
-      modelCalls: typeof json.modelCalls === "number" ? json.modelCalls : undefined,
-      toolCalls: Array.isArray((json as { toolCalls?: unknown }).toolCalls)
-        ? ((json as { toolCalls?: unknown[] }).toolCalls ?? []).filter(
-            (item): item is string => typeof item === "string",
-          )
-        : undefined,
-      usage:
-        json.usage &&
-        typeof json.usage === "object" &&
-        typeof (json.usage as { promptTokens?: unknown }).promptTokens === "number" &&
-        typeof (json.usage as { completionTokens?: unknown }).completionTokens === "number" &&
-        typeof (json.usage as { totalTokens?: unknown }).totalTokens === "number"
-          ? {
-              promptTokens: (json.usage as { promptTokens: number }).promptTokens,
-              completionTokens: (json.usage as { completionTokens: number }).completionTokens,
-              totalTokens: (json.usage as { totalTokens: number }).totalTokens,
-              promptBudgetTokens:
-                typeof (json.usage as { promptBudgetTokens?: unknown }).promptBudgetTokens === "number"
-                  ? (json.usage as { promptBudgetTokens: number }).promptBudgetTokens
-                  : undefined,
-              promptTruncated:
-                typeof (json.usage as { promptTruncated?: unknown }).promptTruncated === "boolean"
-                  ? (json.usage as { promptTruncated: boolean }).promptTruncated
-                  : undefined,
-            }
-          : undefined,
-      budgetWarning: typeof json.budgetWarning === "string" ? json.budgetWarning : undefined,
-    };
   }
 
   async replyStream(
@@ -277,7 +166,32 @@ class HttpClient implements Client {
     if (!response.ok) {
       cleanup();
       const body = await response.text();
-      throw new Error(`Remote server stream failed (${response.status}): ${body || "no body"}`);
+      let errorMessage = body || "no body";
+      let errorId: string | undefined;
+      let errorCode: string | undefined;
+      let errorDetail: z.infer<typeof streamErrorDetailSchema> | undefined;
+      try {
+        const parsed = JSON.parse(body) as {
+          error?: unknown;
+          errorId?: unknown;
+          errorCode?: unknown;
+          errorDetail?: unknown;
+        };
+        if (typeof parsed.error === "string" && parsed.error.length > 0) errorMessage = parsed.error;
+        if (typeof parsed.errorId === "string" && parsed.errorId.length > 0) errorId = parsed.errorId;
+        if (typeof parsed.errorCode === "string" && parsed.errorCode.length > 0) errorCode = parsed.errorCode;
+        const parsedDetail = streamErrorDetailSchema.safeParse(parsed.errorDetail);
+        if (parsedDetail.success) errorDetail = parsedDetail.data;
+      } catch {
+        // Non-JSON error body; keep raw body text.
+      }
+      const errorSuffix = errorId ? ` [error_id=${errorId}]` : "";
+      throw createRemoteError(`Remote server stream failed (${response.status}): ${errorMessage}${errorSuffix}`, {
+        status: response.status,
+        errorId,
+        errorCode,
+        errorDetail,
+      });
     }
     if (!response.body) {
       cleanup();

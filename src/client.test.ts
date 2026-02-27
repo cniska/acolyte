@@ -19,90 +19,68 @@ describe("remote server connection errors", () => {
     );
   });
 
-  test("reply maps socket-close fetch errors to server-start hint", async () => {
+  test("replyStream maps socket-close fetch errors to server-start hint", async () => {
     globalThis.fetch = (async () => {
       throw new TypeError("The socket connection was closed unexpectedly.");
     }) as unknown as typeof fetch;
 
     const client = createClient({ apiUrl: "http://localhost:6767" });
     await expect(
-      client.reply({
-        message: "ping",
-        history: [],
-        model: "gpt-5-mini",
-        sessionId: "sess_test",
-      }),
+      client.replyStream(
+        {
+          message: "ping",
+          history: [],
+          model: "gpt-5-mini",
+          sessionId: "sess_test",
+        },
+        { onEvent: () => {} },
+      ),
     ).rejects.toThrow(
       "Cannot reach server at http://localhost:6767. Start it with: bun run dev (or bun run serve:env)",
     );
   });
 
-  test("reply maps url-typo fetch errors to server-start hint", async () => {
+  test("replyStream maps url-typo fetch errors to server-start hint", async () => {
     globalThis.fetch = (async () => {
       throw new TypeError("Was there a typo in the url or port?");
     }) as unknown as typeof fetch;
 
     const client = createClient({ apiUrl: "http://localhost:6767" });
     await expect(
-      client.reply({
-        message: "ping",
-        history: [],
-        model: "gpt-5-mini",
-        sessionId: "sess_test",
-      }),
+      client.replyStream(
+        {
+          message: "ping",
+          history: [],
+          model: "gpt-5-mini",
+          sessionId: "sess_test",
+        },
+        { onEvent: () => {} },
+      ),
     ).rejects.toThrow(
       "Cannot reach server at http://localhost:6767. Start it with: bun run dev (or bun run serve:env)",
     );
   });
 
-  test("reply preserves non-connection errors", async () => {
+  test("replyStream preserves non-connection errors", async () => {
     globalThis.fetch = (async () => {
       throw new Error("boom");
     }) as unknown as typeof fetch;
 
     const client = createClient({ apiUrl: "http://localhost:6767" });
     await expect(
-      client.reply({
-        message: "ping",
-        history: [],
-        model: "gpt-5-mini",
-        sessionId: "sess_test",
-      }),
+      client.replyStream(
+        {
+          message: "ping",
+          history: [],
+          model: "gpt-5-mini",
+          sessionId: "sess_test",
+        },
+        { onEvent: () => {} },
+      ),
     ).rejects.toThrow("boom");
   });
 
-  test("reply surfaces timeout for hanging chat response", async () => {
-    globalThis.fetch = ((_: RequestInfo | URL, init?: RequestInit) => {
-      const signal = init?.signal;
-      return new Promise<Response>((_resolve, reject) => {
-        if (!signal) return;
-        const abortError = new Error("aborted");
-        if (signal.aborted) {
-          reject(abortError);
-          return;
-        }
-        signal.addEventListener(
-          "abort",
-          () => {
-            reject(abortError);
-          },
-          { once: true },
-        );
-      });
-    }) as unknown as typeof fetch;
-
-    const client = createClient({ apiUrl: "http://localhost:6767", replyTimeoutMs: 5 });
-    await expect(
-      client.reply({
-        message: "ping",
-        history: [],
-        model: "gpt-5-mini",
-        sessionId: "sess_test",
-      }),
-    ).rejects.toThrow("Remote server reply timed out after 5ms");
-  });
-
-  test("reply surfaces server error_id when present", async () => {
+  test("replyStream surfaces server error_id when present", async () => {
     globalThis.fetch = (async () =>
       new Response(
         JSON.stringify({
@@ -125,20 +103,26 @@ describe("remote server connection errors", () => {
 
     const client = createClient({ apiUrl: "http://localhost:6767" });
     await expect(
-      client.reply({
-        message: "ping",
-        history: [],
-        model: "gpt-5-mini",
-        sessionId: "sess_test",
-      }),
-    ).rejects.toThrow("Remote server error (502): model call failed [error_id=err_abc12345]");
+      client.replyStream(
+        {
+          message: "ping",
+          history: [],
+          model: "gpt-5-mini",
+          sessionId: "sess_test",
+        },
+        { onEvent: () => {} },
+      ),
+    ).rejects.toThrow("Remote server stream failed (502): model call failed [error_id=err_abc12345]");
     try {
-      await client.reply({
-        message: "ping",
-        history: [],
-        model: "gpt-5-mini",
-        sessionId: "sess_test",
-      });
+      await client.replyStream(
+        {
+          message: "ping",
+          history: [],
+          model: "gpt-5-mini",
+          sessionId: "sess_test",
+        },
+        { onEvent: () => {} },
+      );
       throw new Error("expected reply to throw");
     } catch (error) {
       const remoteError = error as Error & {
@@ -150,60 +134,6 @@ describe("remote server connection errors", () => {
       expect(remoteError.errorCode).toBe("E_TIMEOUT");
       expect(remoteError.errorDetail?.recoveryAction).toBe("retry-timeout");
     }
-  });
-
-  test("reply ignores embedded progress payload fields", async () => {
-    globalThis.fetch = (async () =>
-      new Response(
-        JSON.stringify({
-          model: "gpt-5-mini",
-          output: "done",
-          progressEvents: [
-            {
-              message: "Edited sum.rs",
-              kind: "tool",
-              toolCallId: "call_1",
-              toolName: "edit-file",
-              phase: "tool_start",
-            },
-            {
-              message: "1 + fn draft() {}",
-              kind: "tool",
-              toolCallId: "call_1",
-              toolName: "edit-file",
-              phase: "tool_chunk",
-            },
-            {
-              message: "Edited sum.rs",
-              kind: "tool",
-              toolCallId: "call_1",
-              toolName: "edit-file",
-              phase: "tool_end",
-            },
-            {
-              message: "1 + fn main() {}",
-              kind: "tool",
-              toolCallId: "call_1",
-              toolName: "edit-file",
-              phase: "tool_end",
-            },
-          ],
-        }),
-        {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        },
-      )) as unknown as typeof fetch;
-
-    const client = createClient({ apiUrl: "http://localhost:6767" });
-    const reply = await client.reply({
-      message: "ping",
-      history: [],
-      model: "gpt-5-mini",
-      sessionId: "sess_test",
-    });
-    expect("progressEvents" in reply).toBe(false);
-    expect("progressMessages" in reply).toBe(false);
   });
 
   test("replyStream emits stream events and returns final reply", async () => {

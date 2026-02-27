@@ -90,7 +90,10 @@ export function createStore(overrides: Partial<SessionStore> = {}): SessionStore
 }
 
 export function createClient(overrides?: {
-  reply?: Client["reply"];
+  reply?: (
+    input: Parameters<Client["replyStream"]>[0],
+    options?: { signal?: AbortSignal },
+  ) => ReturnType<Client["replyStream"]>;
   replyStream?: Client["replyStream"];
   status?: Client["status"];
   events?: StreamEvent[];
@@ -114,7 +117,6 @@ export function createClient(overrides?: {
       return reply(input, { signal: options.signal });
     });
   return {
-    reply,
     replyStream,
     status: overrides?.status ?? (async () => ({ provider: "local", model: "gpt-5-mini", permissions: "write" })),
     setPermissionMode: overrides?.setPermissionMode ?? (async () => {}),

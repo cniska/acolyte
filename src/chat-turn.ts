@@ -91,29 +91,17 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
   tokenEntry: TokenUsageEntry;
   rows: ChatRow[];
 }> {
-  const reply = params.onEvent
-    ? await params.client.replyStream(
-        {
-          message: params.userText,
-          history: params.history,
-          model: params.model,
-          sessionId: params.sessionId,
-          useMemory: params.useMemory,
-          ...createWorkspaceSpecifier(),
-        },
-        { signal: params.signal, onEvent: params.onEvent },
-      )
-    : await params.client.reply(
-        {
-          message: params.userText,
-          history: params.history,
-          model: params.model,
-          sessionId: params.sessionId,
-          useMemory: params.useMemory,
-          ...createWorkspaceSpecifier(),
-        },
-        { signal: params.signal },
-      );
+  const reply = await params.client.replyStream(
+    {
+      message: params.userText,
+      history: params.history,
+      model: params.model,
+      sessionId: params.sessionId,
+      useMemory: params.useMemory,
+      ...createWorkspaceSpecifier(),
+    },
+    { signal: params.signal, onEvent: params.onEvent ?? (() => {}) },
+  );
 
   const assistantMessage = params.createMessage("assistant", reply.output);
   const rows: ChatRow[] = [];
