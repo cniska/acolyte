@@ -238,22 +238,26 @@ export async function searchFiles(workspace: string, pattern: string, maxResults
   return matches.length > 0 ? matches.join("\n") : "No matches.";
 }
 
+function resolveAgentPath(pathInput: string, workspace: string): string {
+  return resolve(workspace, pathInput);
+}
+
 function isWithinWorkspace(pathInput: string, workspace: string): boolean {
-  const absPath = resolve(pathInput);
+  const absPath = resolveAgentPath(pathInput, workspace);
   return absPath === workspace || absPath.startsWith(`${workspace}/`);
 }
 
-function isWithinTempRoot(pathInput: string): boolean {
-  const absPath = resolve(pathInput);
+function isWithinTempRoot(pathInput: string, workspace: string): boolean {
+  const absPath = resolveAgentPath(pathInput, workspace);
   return TEMP_ROOTS.some((root) => absPath === root || absPath.startsWith(`${root}/`));
 }
 
 function isAllowedPath(pathInput: string, workspace: string): boolean {
-  return isWithinWorkspace(pathInput, workspace) || isWithinTempRoot(pathInput);
+  return isWithinWorkspace(pathInput, workspace) || isWithinTempRoot(pathInput, workspace);
 }
 
 function ensurePathWithinAllowedRoots(pathInput: string, operation: string, workspace: string): string {
-  const absPath = resolve(pathInput);
+  const absPath = resolveAgentPath(pathInput, workspace);
   if (!isAllowedPath(absPath, workspace)) {
     throw new Error(`${operation} is restricted to the workspace or /tmp`);
   }
