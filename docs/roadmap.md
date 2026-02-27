@@ -53,6 +53,7 @@ End-to-end autonomous execution: plan, edit, verify, iterate.
 - [x] Configurable model per mode (e.g. cheaper model for plan)
 - [x] Single-match guard on edit-file to prevent unintended multi-replacements
 - [x] Skills aligned with agentskills.io spec (inline invocation, $ARGUMENTS, multi-dir scan)
+- [x] Session-level tool guards (no-rewrite, verify-ran) with composable guard system
 
 ### Milestone 6: Memory Quality
 

@@ -30,6 +30,7 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
     preamble: [
       "Read the target file once, then edit. Do not re-read the same file after a successful edit.",
       "Batch multiple edits to the same file into one `edit-file` or `edit-code` call.",
+      "Never delete a file to recreate it — use `edit-file` to modify existing files.",
       "When a target file does not exist, say so instead of silently creating it.",
       "After the last tool call, reply with one sentence summarizing the change. Nothing else.",
     ],

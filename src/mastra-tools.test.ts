@@ -11,8 +11,8 @@ afterEach(() => {
 describe("mastra toolsets", () => {
   test("returns full toolset in write mode", () => {
     setPermissionMode("write");
-    const keys = Object.keys(toolsForAgent()).sort();
-    expect(keys).toEqual([
+    const { tools, session } = toolsForAgent();
+    expect(Object.keys(tools).sort()).toEqual([
       "createFile",
       "deleteFile",
       "editCode",
@@ -27,12 +27,14 @@ describe("mastra toolsets", () => {
       "webFetch",
       "webSearch",
     ]);
+    expect(session).toBeDefined();
+    expect(session.callLog).toEqual([]);
   });
 
   test("returns read-only tools in read mode", () => {
     setPermissionMode("read");
-    const keys = Object.keys(toolsForAgent()).sort();
-    expect(keys).toEqual([
+    const { tools } = toolsForAgent();
+    expect(Object.keys(tools).sort()).toEqual([
       "findFiles",
       "gitDiff",
       "gitStatus",
@@ -46,7 +48,7 @@ describe("mastra toolsets", () => {
 });
 
 describe("read-file tool schema", () => {
-  const tools = toolsForAgent();
+  const { tools } = toolsForAgent();
   if (!tools.readFile) throw new Error("readFile tool missing");
   const readFileTool = tools.readFile;
 

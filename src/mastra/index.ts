@@ -9,7 +9,7 @@ export const acolyte = createAgent({
   name: "Acolyte",
   model: appConfig.model,
   instructions: async () => createSoulPrompt(),
-  tools: toolsForAgent(),
+  tools: toolsForAgent().tools,
 });
 
 export const mastra = new Mastra({

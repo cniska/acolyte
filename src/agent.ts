@@ -456,17 +456,19 @@ export async function runAgent(input: {
   // Callback wired to mastra-tools for real-time tool execution output.
   let toolOutputHandler: ((event: { toolName: string; message: string; toolCallId?: string }) => void) | null = null;
 
+  const { tools, session } = toolsForAgent({
+    workspace: input.workspace,
+    onToolOutput: (event) => {
+      toolOutputHandler?.(event);
+    },
+  });
+
   const agent = createAgent({
     id: "acolyte",
     name: "Acolyte",
     model,
     instructions: createInstructions(input.soulPrompt, classifiedMode, input.workspace),
-    tools: toolsForAgent({
-      workspace: input.workspace,
-      onToolOutput: (event) => {
-        toolOutputHandler?.(event);
-      },
-    }),
+    tools,
   });
 
   toolOutputHandler = (event) => {
@@ -837,7 +839,7 @@ export async function runAgent(input: {
   const VERIFY_MAX_STEPS = 30;
   const WRITE_TOOLS = ["edit-code", "edit-file", "create-file"];
   const usedWriteTools = WRITE_TOOLS.some((t) => observedToolNames.has(t));
-  if (classifiedMode === "work" && usedWriteTools) {
+  if (classifiedMode === "work" && usedWriteTools && !session.flags.verifyRan) {
     currentMode = "verify";
     emitModeStatus();
     emitDebug("agent.generate.start", { model, reason: "verify" });

@@ -29,7 +29,7 @@ export function createAgent(input: {
     instructions: input.instructions,
     model: normalizeModel(input.model),
     maxRetries: 1,
-    tools: input.tools ?? toolsForAgent(),
+    tools: input.tools ?? toolsForAgent().tools,
     memory: sharedMemory,
   });
 }
