@@ -122,7 +122,7 @@ describe("efficiencyEvaluator", () => {
     const session = createSessionContext();
     session.callLog = [
       { toolName: "find-files", args: {} },
-      { toolName: "read-file", args: {} },
+      { toolName: "read-file", args: { paths: [{ path: "src/a.ts" }] } },
       { toolName: "search-files", args: {} },
     ];
     const ctx = createMockContext({
@@ -133,6 +133,22 @@ describe("efficiencyEvaluator", () => {
     });
     const action = efficiencyEvaluator.evaluate(ctx);
     expect(action.type).toBe("regenerate");
+  });
+
+  test("returns regenerate on repeated read-file calls even with lower discovery volume", () => {
+    const session = createSessionContext();
+    session.callLog = [
+      { toolName: "read-file", args: { paths: [{ path: "src/a.ts" }] } },
+      { toolName: "read-file", args: { paths: [{ path: "src/a.ts" }] } },
+      { toolName: "read-file", args: { paths: [{ path: "src/a.ts" }] } },
+    ];
+    const ctx = createMockContext({
+      request: { model: "gpt-5-mini", message: "Implement the fix directly", history: [] },
+      classifiedMode: "work",
+      session,
+      result: { text: "I found the files.", toolCalls: [] },
+    });
+    expect(efficiencyEvaluator.evaluate(ctx).type).toBe("regenerate");
   });
 
   test("returns done when a write tool was used", () => {

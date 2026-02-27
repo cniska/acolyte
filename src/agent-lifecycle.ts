@@ -109,6 +109,20 @@ function hasStrongWriteIntent(text: string): boolean {
   return /\b(edit|fix|implement|add|create|update|refactor|rename|change|delete|remove|migrate|convert)\b/i.test(text);
 }
 
+function readPathKeys(args: Record<string, unknown>): string[] {
+  const paths = args.paths;
+  if (!Array.isArray(paths)) return [];
+  const out: string[] = [];
+  for (const entry of paths) {
+    if (!entry || typeof entry !== "object") continue;
+    const path = (entry as { path?: unknown }).path;
+    if (typeof path === "string" && path.trim().length > 0) {
+      out.push(path.trim());
+    }
+  }
+  return out;
+}
+
 function emitModeStatus(ctx: RunContext): void {
   ctx.emit({ type: "status", message: `${agentModes[ctx.mode].statusText} (${ctx.model})` });
 }
@@ -160,9 +174,25 @@ export const efficiencyEvaluator: Evaluator = {
     if (firstWriteIndex >= 0) return { type: "done" };
 
     const discoveryCalls = callLog.filter((entry) => DISCOVERY_TOOLS.includes(entry.toolName)).length;
-    if (discoveryCalls < 3) return { type: "done" };
+    let repeatedReadCalls = 0;
+    const readPathSeen = new Set<string>();
+    for (const entry of callLog) {
+      if (entry.toolName !== "read-file") continue;
+      const keys = readPathKeys(entry.args);
+      const key = keys.join("|");
+      if (!key) continue;
+      if (readPathSeen.has(key)) {
+        repeatedReadCalls += 1;
+      } else {
+        readPathSeen.add(key);
+      }
+    }
+    if (discoveryCalls < 3 && repeatedReadCalls < 2) return { type: "done" };
 
-    ctx.debug("lifecycle.eval.efficiency_regenerate", { discovery_calls: discoveryCalls });
+    ctx.debug("lifecycle.eval.efficiency_regenerate", {
+      discovery_calls: discoveryCalls,
+      repeated_read_calls: repeatedReadCalls,
+    });
     return {
       type: "regenerate",
       prompt:
