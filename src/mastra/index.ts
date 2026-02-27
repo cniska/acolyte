@@ -1,12 +1,10 @@
 import { Mastra } from "@mastra/core/mastra";
-import { createAgent } from "../agent-factory";
+import { createAcolyte } from "../agent-factory";
 import { appConfig } from "../app-config";
 import { mastraStorage } from "../mastra-storage";
 import { toolsForAgent } from "../mastra-tools";
 import { createSoulPrompt } from "../soul";
-export const acolyte = createAgent({
-  id: "acolyte",
-  name: "Acolyte",
+export const acolyte = createAcolyte({
   model: appConfig.model,
   instructions: async () => createSoulPrompt(),
   tools: toolsForAgent().tools,

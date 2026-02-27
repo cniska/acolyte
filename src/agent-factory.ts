@@ -15,6 +15,11 @@ const sharedMemory = new Memory({
 });
 
 export type AgentInstructions = string | (() => string | Promise<string>);
+export type CreateAcolyteInput = {
+  model: string;
+  instructions: AgentInstructions;
+  tools?: Partial<AcolyteToolset>;
+};
 
 export function createAgent(input: {
   model: string;
@@ -31,5 +36,13 @@ export function createAgent(input: {
     maxRetries: 1,
     tools: input.tools ?? toolsForAgent().tools,
     memory: sharedMemory,
+  });
+}
+
+export function createAcolyte(input: CreateAcolyteInput): Agent {
+  return createAgent({
+    model: input.model,
+    instructions: input.instructions,
+    tools: input.tools,
   });
 }
