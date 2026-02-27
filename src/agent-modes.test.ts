@@ -55,6 +55,9 @@ describe("classifyMode", () => {
     expect(classifyMode("create a new util function")).toBe("work");
     expect(classifyMode("delete the unused import")).toBe("work");
     expect(classifyMode("run verify")).toBe("work");
+    expect(classifyMode("improve the error handling")).toBe("work");
+    expect(classifyMode("convert the config to YAML")).toBe("work");
+    expect(classifyMode("migrate to the new API")).toBe("work");
   });
 
   test("classifies find/search/read as plan", () => {

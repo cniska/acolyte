@@ -49,7 +49,7 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
 };
 
 const CODE_WORDS =
-  /\b(edit|rename|refactor|fix|create|implement|add|delete|remove|update|write|run|verify|change|move|replace|extract|inline|wrap)\b/i;
+  /\b(edit|rename|refactor|fix|create|implement|add|delete|remove|update|write|run|verify|change|move|replace|extract|inline|wrap|improve|convert|migrate|upgrade)\b/i;
 const EXPLORE_WORDS =
   /\b(find|search|scan|read|look|show|list|what|where|how|explain|understand|check|inspect|describe)\b/i;
 

@@ -83,7 +83,8 @@ export const toolMeta: Record<string, ToolMeta> = {
     aliases: ["deleteFile", "delete_file"],
   },
   "run-command": {
-    instruction: "Use `run-command` to run verification after edits and to execute shell commands.",
+    instruction:
+      "Use `run-command` to run verification after edits and to execute build/test commands. Never use it for `cat`, `head`, `grep`, `sed`, or `find` — use `read-file`, `search-files`, `find-files` instead.",
     aliases: ["runCommand", "run_command", "execute_command"],
   },
 };
@@ -478,7 +479,7 @@ function createEditFileTool(workspace: string, session: SessionContext, onToolOu
   return createTool({
     id: "edit-file",
     description:
-      "Edit an existing file. Pass `edits` as an array of either {find, replace} pairs (for small surgical edits using exact text match) or {startLine, endLine, replace} objects (for larger block replacements using 1-based line numbers from `read-file` output). All edits are applied atomically. You MUST read the file first. For new files, use `create-file`. For code renames or structural edits use `edit-code`.",
+      "Edit an existing file. Pass `edits` as an array of either {find, replace} pairs (for small surgical edits using exact text match) or {startLine, endLine, replace} objects (for larger block replacements). Line numbers MUST come from `read-file` output — do not guess. endLine must not exceed the file length. All edits are applied atomically. You MUST read the file first. For new files, use `create-file`. For code renames or structural edits use `edit-code`.",
     inputSchema: z.object({
       path: z.string().min(1),
       edits: z

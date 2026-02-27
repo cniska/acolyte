@@ -278,8 +278,10 @@ describe("createModeInstructions", () => {
 
   test("code mode excludes explore tool instructions", () => {
     const out = createModeInstructions("work");
-    expect(out).not.toContain("find-files");
-    expect(out).not.toContain("search-files");
+    // Work mode should not include the dedicated find-files/search-files instructions
+    // (though other tools may cross-reference them as alternatives)
+    expect(out).not.toContain("Use `find-files` to locate");
+    expect(out).not.toContain("Use `search-files` to search");
   });
 
   test("includes preamble lines", () => {
