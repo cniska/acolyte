@@ -7,9 +7,15 @@ import {
 } from "./tool-error-codes";
 
 export type ErrorCategory = "timeout" | "file-not-found" | "guard-blocked" | "other";
+export type ErrorSource = "generate" | "tool-result" | "tool-error";
 export type ParsedError = { message: string; code?: string };
 export type ParseErrorResult = { ok: true; value: ParsedError } | { ok: false; error: "invalid_error_payload" };
 export type RecoveryAction = "retry-timeout" | "stop-unknown-budget" | "none";
+export type RecoveryDecision = { action: RecoveryAction; retryable: boolean };
+
+const RECOVERY_ACTION_BY_CODE: Record<string, RecoveryAction> = {
+  [LIFECYCLE_ERROR_CODES.timeout]: "retry-timeout",
+};
 
 export function isEditFileMultiMatchError(errorMessage: string): boolean {
   return (
@@ -90,8 +96,20 @@ export function recoveryActionForError(
   input: { errorCode?: string; unknownErrorCount: number },
   unknownErrorBudget: number,
 ): RecoveryAction {
-  if (input.errorCode === LIFECYCLE_ERROR_CODES.timeout) return "retry-timeout";
+  const mapped = input.errorCode ? RECOVERY_ACTION_BY_CODE[input.errorCode] : undefined;
+  if (mapped) return mapped;
   if (input.errorCode === LIFECYCLE_ERROR_CODES.unknown && input.unknownErrorCount >= unknownErrorBudget)
     return "stop-unknown-budget";
   return "none";
+}
+
+export function recoveryDecisionForError(
+  input: { errorCode?: string; unknownErrorCount: number },
+  unknownErrorBudget: number,
+): RecoveryDecision {
+  const action = recoveryActionForError(input, unknownErrorBudget);
+  return {
+    action,
+    retryable: action === "retry-timeout",
+  };
 }

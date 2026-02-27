@@ -18,10 +18,12 @@ import {
   categoryFromErrorCode,
   classifyErrorCategory,
   type ErrorCategory,
+  type ErrorSource,
   errorCodeFromCategory,
   isEditFileMultiMatchSignal,
   parseErrorInfo,
   type RecoveryAction,
+  recoveryDecisionForError,
   recoveryActionForError as resolveRecoveryAction,
 } from "./error-handling";
 import {
@@ -66,6 +68,14 @@ type PromptUsage = {
   totalHistoryMessages: number;
 };
 type StreamChunk = { type?: string; payload?: unknown };
+type StreamErrorDetail = {
+  code?: string;
+  category?: string;
+  source?: string;
+  tool?: string;
+  retryable?: boolean;
+  recoveryAction?: string;
+};
 type TextDeltaPayload = { text?: string };
 type ToolCallPayload = { toolCallId?: string; toolName?: string; args?: Record<string, unknown> };
 type ToolResultPayload = { toolCallId?: string; toolName?: string; result?: unknown };
@@ -94,6 +104,8 @@ type SavedRegenerationState = {
   lastError: string | undefined;
   lastErrorCode: string | undefined;
   lastErrorCategory: ErrorCategory | undefined;
+  lastErrorSource: ErrorSource | undefined;
+  lastErrorTool: string | undefined;
 };
 
 export type LifecycleInput = {
@@ -129,6 +141,8 @@ export type RunContext = {
   lastError?: string;
   lastErrorCode?: ErrorCode | string;
   lastErrorCategory?: ErrorCategory;
+  lastErrorSource?: ErrorSource;
+  lastErrorTool?: string;
   errorStats: Record<ErrorCategory, number>;
   result?: GenerateResult;
   nativeIdQueue: Map<string, string[]>;
@@ -161,7 +175,7 @@ export function recoveryActionForError(input: { errorCode?: string; unknownError
 function captureError(
   ctx: RunContext,
   message: string,
-  meta?: { source?: "generate" | "tool-result" | "tool-error"; tool?: string; code?: string },
+  meta?: { source?: ErrorSource; tool?: string; code?: string },
 ): void {
   ctx.lastError = message;
   const derivedCategory = classifyErrorCategory(message);
@@ -169,6 +183,8 @@ function captureError(
   ctx.lastErrorCode = code;
   const category = categoryFromErrorCode(code) ?? derivedCategory;
   ctx.lastErrorCategory = category;
+  ctx.lastErrorSource = meta?.source;
+  ctx.lastErrorTool = meta?.tool;
   ctx.errorStats[category] += 1;
   if (isEditFileMultiMatchSignal({ code, message })) ctx.sawEditFileMultiMatchError = true;
   ctx.debug("lifecycle.error", {
@@ -178,6 +194,22 @@ function captureError(
     category,
     message: message.length > 240 ? `${message.slice(0, 239)}…` : message,
   });
+}
+
+function currentErrorDetail(ctx: RunContext): StreamErrorDetail | undefined {
+  if (!ctx.lastError) return undefined;
+  const decision = recoveryDecisionForError(
+    { errorCode: ctx.lastErrorCode, unknownErrorCount: ctx.errorStats.other },
+    MAX_UNKNOWN_ERRORS_PER_REQUEST,
+  );
+  return {
+    code: ctx.lastErrorCode,
+    category: ctx.lastErrorCategory,
+    source: ctx.lastErrorSource,
+    tool: ctx.lastErrorTool,
+    retryable: decision.retryable,
+    recoveryAction: decision.action,
+  };
 }
 
 function guardStatsFromSession(session: SessionContext): { blocked: number; flagSet: number } {
@@ -303,6 +335,8 @@ async function phaseGenerate(ctx: RunContext, prompt: string, opts: GenerateOpti
   ctx.lastError = undefined;
   ctx.lastErrorCode = undefined;
   ctx.lastErrorCategory = undefined;
+  ctx.lastErrorSource = undefined;
+  ctx.lastErrorTool = undefined;
   ctx.sawEditFileMultiMatchError = false;
   ensureAgentForMode(ctx);
   ctx.generationAttempt += 1;
@@ -329,6 +363,7 @@ async function phaseGenerate(ctx: RunContext, prompt: string, opts: GenerateOpti
       type: "error",
       error: `Tool failed: ${ctx.lastError}`,
       ...(ctx.lastErrorCode ? { errorCode: ctx.lastErrorCode } : {}),
+      ...(currentErrorDetail(ctx) ? { errorDetail: currentErrorDetail(ctx) } : {}),
     });
     ctx.debug("lifecycle.generate.error", { model: ctx.model, error: ctx.lastError });
 
@@ -364,6 +399,7 @@ async function phaseGenerate(ctx: RunContext, prompt: string, opts: GenerateOpti
           type: "error",
           error: `Retry failed: ${ctx.lastError}`,
           ...(ctx.lastErrorCode ? { errorCode: ctx.lastErrorCode } : {}),
+          ...(currentErrorDetail(ctx) ? { errorDetail: currentErrorDetail(ctx) } : {}),
         });
         ctx.debug("lifecycle.generate.retry_failed", { model: ctx.model, error: ctx.lastError });
       }
@@ -508,7 +544,13 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
           type: "tool-result",
           toolCallId: p.toolCallId,
           toolName,
-          ...(isError ? { isError: true, ...(ctx.lastErrorCode ? { errorCode: ctx.lastErrorCode } : {}) } : {}),
+          ...(isError
+            ? {
+                isError: true,
+                ...(ctx.lastErrorCode ? { errorCode: ctx.lastErrorCode } : {}),
+                ...(currentErrorDetail(ctx) ? { errorDetail: currentErrorDetail(ctx) } : {}),
+              }
+            : {}),
         });
       }
       break;
@@ -539,6 +581,7 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
           toolName: canonicalToolId(p.toolName),
           isError: true,
           ...(ctx.lastErrorCode ? { errorCode: ctx.lastErrorCode } : {}),
+          ...(currentErrorDetail(ctx) ? { errorDetail: currentErrorDetail(ctx) } : {}),
         });
       }
       break;
@@ -680,6 +723,8 @@ export async function runLifecycle(input: LifecycleInput): Promise<ChatResponse>
     regenerationLimitHit: false,
     sawEditFileMultiMatchError: false,
     errorStats: { timeout: 0, "file-not-found": 0, "guard-blocked": 0, other: 0 },
+    lastErrorSource: undefined,
+    lastErrorTool: undefined,
     nativeIdQueue,
     toolCallStartedAt,
     toolOutputHandler: null,
@@ -765,6 +810,8 @@ export async function runLifecycle(input: LifecycleInput): Promise<ChatResponse>
             lastError: ctx.lastError,
             lastErrorCode: ctx.lastErrorCode,
             lastErrorCategory: ctx.lastErrorCategory,
+            lastErrorSource: ctx.lastErrorSource,
+            lastErrorTool: ctx.lastErrorTool,
           }
         : undefined;
       if (action.mode) ctx.mode = action.mode;
@@ -790,6 +837,8 @@ export async function runLifecycle(input: LifecycleInput): Promise<ChatResponse>
         ctx.lastError = saved.lastError;
         ctx.lastErrorCode = saved.lastErrorCode;
         ctx.lastErrorCategory = saved.lastErrorCategory;
+        ctx.lastErrorSource = saved.lastErrorSource;
+        ctx.lastErrorTool = saved.lastErrorTool;
       }
       regenerated = true;
       break;

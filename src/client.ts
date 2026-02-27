@@ -8,6 +8,15 @@ export interface ClientOptions {
   replyTimeoutMs?: number;
 }
 
+const streamErrorDetailSchema = z.object({
+  code: z.string().optional(),
+  category: z.string().optional(),
+  source: z.string().optional(),
+  tool: z.string().optional(),
+  retryable: z.boolean().optional(),
+  recoveryAction: z.string().optional(),
+});
+
 export const streamEventSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("text-delta"), text: z.string() }),
   z.object({ type: z.literal("reasoning"), text: z.string() }),
@@ -29,9 +38,15 @@ export const streamEventSchema = z.discriminatedUnion("type", [
     toolName: z.string(),
     isError: z.boolean().optional(),
     errorCode: z.string().optional(),
+    errorDetail: streamErrorDetailSchema.optional(),
   }),
   z.object({ type: z.literal("status"), message: z.string() }),
-  z.object({ type: z.literal("error"), error: z.string(), errorCode: z.string().optional() }),
+  z.object({
+    type: z.literal("error"),
+    error: z.string(),
+    errorCode: z.string().optional(),
+    errorDetail: streamErrorDetailSchema.optional(),
+  }),
 ]);
 
 export type StreamEvent = z.infer<typeof streamEventSchema>;

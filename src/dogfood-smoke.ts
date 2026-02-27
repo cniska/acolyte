@@ -501,6 +501,22 @@ async function main(): Promise<void> {
             ].join("\n"),
           validate: (content: string) => content.includes("greet") && !content.includes("hello"),
         },
+        {
+          id: "transient-multi-match-recovery",
+          label: "dogfood coding task transient recovery",
+          initial: ["alpha", "alpha", ""].join("\n"),
+          prompt: (filePath: string) =>
+            [
+              `Target file: ${filePath}`,
+              "Task: replace both alpha lines with beta.",
+              "Start with edit-file using find='alpha' and replace='beta'.",
+              "If that fails due to multiple matches, recover and finish the task with edit-code.",
+              "Do not stop after the first error; complete the requested change.",
+              "Return a concise summary only.",
+            ].join("\n"),
+          validate: (content: string) =>
+            content.split("\n").filter((line) => line === "beta").length >= 2 && !content.includes("alpha"),
+        },
       ] as const;
       for (const task of codingTasks) {
         const codingTask = await runCodingTaskSmoke(smokeEnv, task);
