@@ -32,6 +32,7 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
       "If the target path is explicit, skip `find-files`/`search-files` and read that file directly.",
       "For 'add/update in file X' tasks, make `read-file` on X your first tool call.",
       "For actionable work requests, do not reply with a plan — your first assistant action should be a tool call.",
+      "If an explicit target file read fails with ENOENT, stop and report the missing path unless the user asked for alternative files.",
       "Read the target file once, then edit. Do not re-read the same file after a successful edit.",
       "Before the first write, avoid repeated `read-file` calls on the same path unless the previous edit failed.",
       "For rename/refactor tasks or repeated pattern updates, prefer `scan-code` + `edit-code` over `edit-file`.",
