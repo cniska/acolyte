@@ -112,27 +112,6 @@ function cleanMemoryCandidate(value: string): string {
     .trim();
 }
 
-async function distillMemoryNote(client: Client, content: string, model: string, sessionId: string): Promise<string> {
-  const prompt = [
-    "Rewrite this into one concise memory note for future collaboration.",
-    "Rules: one sentence, concrete preference, no preamble, no quotes, no markdown.",
-    "",
-    `Input: ${content}`,
-  ].join("\n");
-  try {
-    const response = await client.reply({
-      message: prompt,
-      history: [],
-      model,
-      sessionId,
-    });
-    const line = response.output.split("\n").find((item) => item.trim().length > 0) ?? response.output;
-    return cleanMemoryCandidate(line) || cleanMemoryCandidate(content);
-  } catch {
-    return cleanMemoryCandidate(content);
-  }
-}
-
 export function resolveNaturalRememberDirective(text: string): NaturalRememberDirective | null {
   const trimmed = text.trim();
   if (trimmed.length === 0) return null;
@@ -266,12 +245,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       input.setIsThinking(true);
       input.setProgressText("Thinking…");
       try {
-        const distilled = await distillMemoryNote(
-          input.client,
-          naturalRememberDirective.content,
-          appConfig.model,
-          input.currentSession.id,
-        );
+        const distilled = cleanMemoryCandidate(naturalRememberDirective.content);
         await addMemory(distilled, { scope: naturalRememberDirective.scope });
         const label = naturalRememberDirective.scope === "project" ? "project" : "user";
         const confirmation = `Saved ${label} memory: ${distilled}`;
