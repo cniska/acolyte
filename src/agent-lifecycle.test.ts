@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { autoVerifier, planDetector, type RunContext } from "./agent-lifecycle";
+import { autoVerifier, efficiencyEvaluator, planDetector, type RunContext } from "./agent-lifecycle";
 import { createSessionContext } from "./tool-guards";
 
 function createMockContext(overrides: Partial<RunContext> = {}): RunContext {
@@ -25,6 +25,7 @@ function createMockContext(overrides: Partial<RunContext> = {}): RunContext {
     observedTools: new Set(),
     modelCallCount: 1,
     nativeIdQueue: new Map(),
+    toolCallStartedAt: new Map(),
     toolOutputHandler: null,
     ...overrides,
   };
@@ -116,10 +117,58 @@ describe("autoVerifier", () => {
   });
 });
 
+describe("efficiencyEvaluator", () => {
+  test("returns regenerate when work mode over-explores without any write", () => {
+    const session = createSessionContext();
+    session.callLog = [
+      { toolName: "find-files", args: {} },
+      { toolName: "read-file", args: {} },
+      { toolName: "search-files", args: {} },
+    ];
+    const ctx = createMockContext({
+      classifiedMode: "work",
+      session,
+      result: { text: "I found the files.", toolCalls: [] },
+    });
+    const action = efficiencyEvaluator.evaluate(ctx);
+    expect(action.type).toBe("regenerate");
+  });
+
+  test("returns done when a write tool was used", () => {
+    const session = createSessionContext();
+    session.callLog = [
+      { toolName: "read-file", args: {} },
+      { toolName: "edit-file", args: { path: "src/a.ts" } },
+    ];
+    const ctx = createMockContext({
+      classifiedMode: "work",
+      session,
+      result: { text: "Done.", toolCalls: [] },
+    });
+    expect(efficiencyEvaluator.evaluate(ctx).type).toBe("done");
+  });
+
+  test("returns done outside work mode", () => {
+    const session = createSessionContext();
+    session.callLog = [
+      { toolName: "find-files", args: {} },
+      { toolName: "read-file", args: {} },
+      { toolName: "search-files", args: {} },
+    ];
+    const ctx = createMockContext({
+      classifiedMode: "plan",
+      session,
+      result: { text: "Found it.", toolCalls: [] },
+    });
+    expect(efficiencyEvaluator.evaluate(ctx).type).toBe("done");
+  });
+});
+
 describe("evaluator ordering", () => {
-  test("plan detection runs before auto-verify", () => {
-    const evaluators = [planDetector, autoVerifier];
+  test("plan detection and efficiency run before auto-verify", () => {
+    const evaluators = [planDetector, efficiencyEvaluator, autoVerifier];
     expect(evaluators[0].id).toBe("plan-detector");
-    expect(evaluators[1].id).toBe("auto-verifier");
+    expect(evaluators[1].id).toBe("efficiency-evaluator");
+    expect(evaluators[2].id).toBe("auto-verifier");
   });
 });

@@ -25,6 +25,7 @@ const TIMEOUT_RECOVERY_TIMEOUT_MS = 45_000;
 const STEP_TIMEOUT_MS = 120_000;
 const VERIFY_MAX_STEPS = 30;
 const WRITE_TOOLS = ["edit-code", "edit-file", "create-file"];
+const DISCOVERY_TOOLS = ["find-files", "search-files", "read-file", "scan-code", "git-status", "git-diff"];
 
 export type GenerateResult = {
   text: string;
@@ -80,6 +81,7 @@ export type RunContext = {
   lastError?: string;
   result?: GenerateResult;
   nativeIdQueue: Map<string, string[]>;
+  toolCallStartedAt: Map<string, { toolName: string; startedAtMs: number }>;
   toolOutputHandler: ((event: { toolName: string; message: string; toolCallId?: string }) => void) | null;
 };
 
@@ -137,6 +139,30 @@ export const autoVerifier: Evaluator = {
       };
     }
     return { type: "done" };
+  },
+};
+
+export const efficiencyEvaluator: Evaluator = {
+  id: "efficiency-evaluator",
+  evaluate(ctx) {
+    if (!ctx.result) return { type: "done" };
+    if (ctx.classifiedMode !== "work") return { type: "done" };
+
+    const callLog = ctx.session.callLog;
+    const firstWriteIndex = callLog.findIndex((entry) => WRITE_TOOLS.includes(entry.toolName));
+    if (firstWriteIndex >= 0) return { type: "done" };
+
+    const discoveryCalls = callLog.filter((entry) => DISCOVERY_TOOLS.includes(entry.toolName)).length;
+    if (discoveryCalls < 3) return { type: "done" };
+
+    ctx.debug("lifecycle.eval.efficiency_regenerate", { discovery_calls: discoveryCalls });
+    return {
+      type: "regenerate",
+      prompt:
+        `${ctx.agentInput}\n\n` +
+        "You already have enough context. Do not run find/search/read again unless absolutely required. " +
+        "Proceed directly with file edits, then run verify.",
+    };
   },
 };
 
@@ -349,6 +375,7 @@ function processStreamChunk(ctx: RunContext, chunk: { type?: string; payload?: u
       if (p?.toolCallId && p?.toolName) {
         const toolName = canonicalToolId(p.toolName);
         ctx.observedTools.add(toolName);
+        ctx.toolCallStartedAt.set(p.toolCallId, { toolName, startedAtMs: Date.now() });
         if (ctx.mode !== "verify") {
           const inferredMode = modeForTool(toolName);
           // Only escalate (plan → work), never de-escalate
@@ -382,6 +409,17 @@ function processStreamChunk(ctx: RunContext, chunk: { type?: string; payload?: u
         | undefined;
       if (p?.toolCallId && p?.toolName) {
         const toolName = canonicalToolId(p.toolName);
+        const started = ctx.toolCallStartedAt.get(p.toolCallId);
+        if (started) {
+          const durationMs = Date.now() - started.startedAtMs;
+          ctx.debug("lifecycle.tool.result", {
+            tool: toolName,
+            tool_call_id: p.toolCallId,
+            duration_ms: durationMs,
+            is_error: false,
+          });
+          ctx.toolCallStartedAt.delete(p.toolCallId);
+        }
         const queue = ctx.nativeIdQueue.get(toolName);
         if (queue?.[queue.length - 1] === p.toolCallId) {
           queue.pop();
@@ -391,6 +429,11 @@ function processStreamChunk(ctx: RunContext, chunk: { type?: string; payload?: u
         if (isError) {
           ctx.lastError = String((p.result as { error?: unknown }).error ?? "Tool error");
           ctx.debug("lifecycle.tool.error", { tool: toolName, error: ctx.lastError });
+          ctx.debug("lifecycle.tool.result", {
+            tool: toolName,
+            tool_call_id: p.toolCallId,
+            is_error: true,
+          });
         }
         ctx.emit({
           type: "tool-result",
@@ -422,6 +465,15 @@ function processStreamChunk(ctx: RunContext, chunk: { type?: string; payload?: u
       ctx.lastError = errorMsg;
       ctx.debug("lifecycle.tool.error", { error: errorMsg });
       if (p?.toolCallId && p?.toolName) {
+        const started = ctx.toolCallStartedAt.get(p.toolCallId);
+        const durationMs = started ? Date.now() - started.startedAtMs : null;
+        ctx.debug("lifecycle.tool.result", {
+          tool: canonicalToolId(p.toolName),
+          tool_call_id: p.toolCallId,
+          duration_ms: durationMs,
+          is_error: true,
+        });
+        ctx.toolCallStartedAt.delete(p.toolCallId);
         ctx.emit({
           type: "tool-result",
           toolCallId: p.toolCallId,
@@ -486,6 +538,7 @@ export async function runLifecycle(input: LifecycleInput): Promise<ChatResponse>
   const { classifiedMode, model } = phaseClassify(input.request, debug);
 
   const nativeIdQueue = new Map<string, string[]>();
+  const toolCallStartedAt = new Map<string, { toolName: string; startedAtMs: number }>();
   let toolOutputHandler: RunContext["toolOutputHandler"] = null;
 
   const prepared = phasePrepare({
@@ -517,6 +570,7 @@ export async function runLifecycle(input: LifecycleInput): Promise<ChatResponse>
     observedTools: new Set(),
     modelCallCount: 0,
     nativeIdQueue,
+    toolCallStartedAt,
     toolOutputHandler: null,
   };
 
@@ -541,23 +595,32 @@ export async function runLifecycle(input: LifecycleInput): Promise<ChatResponse>
 
   if (!ctx.result) return phaseFinalize(ctx);
 
-  const evaluators: Evaluator[] = [planDetector, autoVerifier];
+  const evaluators: Evaluator[] = [planDetector, efficiencyEvaluator, autoVerifier];
   for (const evaluator of evaluators) {
     const action = evaluator.evaluate(ctx);
-    if (action.type === "regenerate") {
-      const saved: { result: GenerateResult | undefined; lastError: string | undefined } | undefined = action.keepResult
-        ? { result: ctx.result, lastError: ctx.lastError }
-        : undefined;
-      if (action.mode) ctx.mode = action.mode;
-      ctx.debug("lifecycle.eval.regenerate", { evaluator: evaluator.id, mode: ctx.mode });
-      await phaseGenerate(ctx, action.prompt, {
-        maxSteps: action.maxSteps ?? INITIAL_MAX_STEPS,
-        timeoutMs: action.timeoutMs ?? STEP_TIMEOUT_MS,
-      });
-      if (saved) {
-        ctx.result = saved.result;
-        ctx.lastError = saved.lastError;
-      }
+    if (action.type === "done") {
+      ctx.debug("lifecycle.eval.decision", { evaluator: evaluator.id, action: "done" });
+      continue;
+    }
+    const saved: { result: GenerateResult | undefined; lastError: string | undefined } | undefined = action.keepResult
+      ? { result: ctx.result, lastError: ctx.lastError }
+      : undefined;
+    if (action.mode) ctx.mode = action.mode;
+    ctx.debug("lifecycle.eval.decision", {
+      evaluator: evaluator.id,
+      action: "regenerate",
+      mode: ctx.mode,
+      max_steps: action.maxSteps ?? INITIAL_MAX_STEPS,
+      timeout_ms: action.timeoutMs ?? STEP_TIMEOUT_MS,
+      keep_result: Boolean(action.keepResult),
+    });
+    await phaseGenerate(ctx, action.prompt, {
+      maxSteps: action.maxSteps ?? INITIAL_MAX_STEPS,
+      timeoutMs: action.timeoutMs ?? STEP_TIMEOUT_MS,
+    });
+    if (saved) {
+      ctx.result = saved.result;
+      ctx.lastError = saved.lastError;
     }
   }
 
