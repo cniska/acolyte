@@ -775,38 +775,72 @@ export async function runShellCommand(
   return [headers.join("\n"), out ? `stdout:\n${out}` : "", err ? `stderr:\n${err}` : ""].filter(Boolean).join("\n\n");
 }
 
+export type FindReplaceEdit = { find: string; replace: string };
+export type LineRangeEdit = { startLine: number; endLine: number; replace: string };
+export type FileEdit = FindReplaceEdit | LineRangeEdit;
+
 export async function editFile(input: {
   workspace: string;
   path: string;
-  edits: Array<{ find: string; replace: string }>;
+  edits: FileEdit[];
   dryRun?: boolean;
 }): Promise<string> {
   ensureWritePermission("File editing");
   const absPath = ensurePathWithinAllowedRoots(input.path, "Edit", input.workspace);
   const raw = await readFile(absPath, "utf8");
+  const lines = raw.split("\n");
 
   // Locate all match ranges in the original text.
   const ranges: Array<{ start: number; end: number; replace: string }> = [];
   for (const edit of input.edits) {
-    if (!edit.find) {
-      throw new Error("Find text cannot be empty");
+    if ("find" in edit) {
+      // --- find/replace path ---
+      if (!edit.find) {
+        throw new Error("Find text cannot be empty");
+      }
+      if (edit.find.length > raw.length * 0.5) {
+        throw new Error(
+          "find must be a short unique snippet (a few lines), not a large portion of the file. Use just enough context to uniquely identify the edit location.",
+        );
+      }
+      const count = raw.split(edit.find).length - 1;
+      if (count === 0) {
+        throw new Error(`Find text not found in file: ${edit.find.slice(0, 60)}`);
+      }
+      if (count > 1) {
+        throw new Error(
+          `Find text matched ${count} locations (${edit.find.slice(0, 40)}…). Provide a longer, more unique snippet to match exactly one location, or use edit-code for multi-location code changes.`,
+        );
+      }
+      const start = raw.indexOf(edit.find);
+      ranges.push({ start, end: start + edit.find.length, replace: edit.replace });
+    } else {
+      // --- line-range path ---
+      const { startLine, endLine, replace } = edit;
+      if (startLine < 1 || endLine < 1) {
+        throw new Error("Line numbers must be >= 1");
+      }
+      if (startLine > endLine) {
+        throw new Error(`startLine (${startLine}) must be <= endLine (${endLine})`);
+      }
+      if (endLine > lines.length) {
+        throw new Error(`endLine (${endLine}) exceeds file length (${lines.length} lines)`);
+      }
+      // Convert 1-based inclusive line range to character offsets.
+      let charStart = 0;
+      for (let i = 0; i < startLine - 1; i++) {
+        charStart += (lines[i]?.length ?? 0) + 1;
+      }
+      let charEnd = charStart;
+      for (let i = startLine - 1; i <= endLine - 1; i++) {
+        charEnd += (lines[i]?.length ?? 0) + 1;
+      }
+      // If endLine is the last line and file doesn't end with \n, don't overshoot.
+      if (endLine === lines.length && !raw.endsWith("\n")) {
+        charEnd -= 1;
+      }
+      ranges.push({ start: charStart, end: charEnd, replace });
     }
-    if (edit.find.length > raw.length * 0.5) {
-      throw new Error(
-        "find must be a short unique snippet (a few lines), not a large portion of the file. Use just enough context to uniquely identify the edit location.",
-      );
-    }
-    const count = raw.split(edit.find).length - 1;
-    if (count === 0) {
-      throw new Error(`Find text not found in file: ${edit.find.slice(0, 60)}`);
-    }
-    if (count > 1) {
-      throw new Error(
-        `Find text matched ${count} locations (${edit.find.slice(0, 40)}…). Provide a longer, more unique snippet to match exactly one location, or use edit-code for multi-location code changes.`,
-      );
-    }
-    const start = raw.indexOf(edit.find);
-    ranges.push({ start, end: start + edit.find.length, replace: edit.replace });
   }
 
   // Check for overlaps.

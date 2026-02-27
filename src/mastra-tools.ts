@@ -71,7 +71,7 @@ export const toolMeta: Record<string, ToolMeta> = {
   },
   "edit-file": {
     instruction:
-      "Use `edit-file` for text edits with {find, replace} pairs. `find` is the exact text to locate; `replace` is *only* the new text for that region — do not include surrounding lines that are already in the file. Batch multiple edits to the same file into one call.",
+      "Use `edit-file` for text edits. For small changes use {find, replace} pairs where `find` is exact text to locate. For larger block changes use {startLine, endLine, replace} with 1-based line numbers from `read-file`. `replace` is *only* the new text for that region — do not include surrounding lines. Batch multiple edits to the same file into one call.",
     aliases: ["editFile", "edit_file"],
   },
   "create-file": {
@@ -478,15 +478,15 @@ function createEditFileTool(workspace: string, session: SessionContext, onToolOu
   return createTool({
     id: "edit-file",
     description:
-      "Edit an existing file by replacing exact text. Pass `edits` as an array of {find, replace} pairs, even for a single edit. All edits are applied atomically. `find` must be a short, unique substring. You MUST read the file first. For new files, use `create-file`. For code renames or structural edits use `edit-code`.",
+      "Edit an existing file. Pass `edits` as an array of either {find, replace} pairs (for small surgical edits using exact text match) or {startLine, endLine, replace} objects (for larger block replacements using 1-based line numbers from `read-file` output). All edits are applied atomically. You MUST read the file first. For new files, use `create-file`. For code renames or structural edits use `edit-code`.",
     inputSchema: z.object({
       path: z.string().min(1),
       edits: z
         .array(
-          z.object({
-            find: z.string().min(1),
-            replace: z.string(),
-          }),
+          z.union([
+            z.object({ find: z.string().min(1), replace: z.string() }),
+            z.object({ startLine: z.number().int().min(1), endLine: z.number().int().min(1), replace: z.string() }),
+          ]),
         )
         .min(1),
     }),

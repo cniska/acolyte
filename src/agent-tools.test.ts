@@ -155,6 +155,95 @@ describe("coding-tools workspace guards", () => {
     expect(result).toContain("edits=1");
   });
 
+  test("editFile line-range basic replacement", async () => {
+    const filePath = `/tmp/acolyte-tmp-lr-${crypto.randomUUID()}.txt`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, "line1\nline2\nline3\nline4\nline5\n", "utf8");
+    const result = await editFile({
+      workspace: WS,
+      path: filePath,
+      edits: [{ startLine: 2, endLine: 3, replace: "replaced2\nreplaced3\n" }],
+    });
+    expect(result).toContain("edits=1");
+    const content = await readFile(filePath, "utf8");
+    expect(content).toBe("line1\nreplaced2\nreplaced3\nline4\nline5\n");
+  });
+
+  test("editFile line-range rejects startLine > endLine", async () => {
+    const filePath = `/tmp/acolyte-tmp-lr2-${crypto.randomUUID()}.txt`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, "a\nb\nc\n", "utf8");
+    await expect(
+      editFile({ workspace: WS, path: filePath, edits: [{ startLine: 5, endLine: 3, replace: "x" }] }),
+    ).rejects.toThrow("startLine (5) must be <= endLine (3)");
+  });
+
+  test("editFile line-range rejects endLine beyond file", async () => {
+    const filePath = `/tmp/acolyte-tmp-lr3-${crypto.randomUUID()}.txt`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, "a\nb\nc\n", "utf8");
+    await expect(
+      editFile({ workspace: WS, path: filePath, edits: [{ startLine: 1, endLine: 10, replace: "x" }] }),
+    ).rejects.toThrow("exceeds file length");
+  });
+
+  test("editFile line-range rejects line numbers < 1", async () => {
+    const filePath = `/tmp/acolyte-tmp-lr4-${crypto.randomUUID()}.txt`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, "a\nb\n", "utf8");
+    await expect(
+      editFile({ workspace: WS, path: filePath, edits: [{ startLine: 0, endLine: 1, replace: "x" }] }),
+    ).rejects.toThrow("Line numbers must be >= 1");
+  });
+
+  test("editFile mixed find/replace and line-range", async () => {
+    const filePath = `/tmp/acolyte-tmp-lr5-${crypto.randomUUID()}.txt`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, "aaa\nbbb\nccc\nddd\neee\n", "utf8");
+    const result = await editFile({
+      workspace: WS,
+      path: filePath,
+      edits: [
+        { find: "aaa", replace: "AAA" },
+        { startLine: 4, endLine: 5, replace: "DDD\nEEE\n" },
+      ],
+    });
+    expect(result).toContain("edits=2");
+    const content = await readFile(filePath, "utf8");
+    expect(content).toBe("AAA\nbbb\nccc\nDDD\nEEE\n");
+  });
+
+  test("editFile line-range overlapping ranges rejected", async () => {
+    const filePath = `/tmp/acolyte-tmp-lr6-${crypto.randomUUID()}.txt`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, "a\nb\nc\nd\ne\n", "utf8");
+    await expect(
+      editFile({
+        workspace: WS,
+        path: filePath,
+        edits: [
+          { startLine: 1, endLine: 3, replace: "x\n" },
+          { startLine: 2, endLine: 4, replace: "y\n" },
+        ],
+      }),
+    ).rejects.toThrow("overlap");
+  });
+
+  test("editFile line-range full-file replacement", async () => {
+    const filePath = `/tmp/acolyte-tmp-lr7-${crypto.randomUUID()}.txt`;
+    tempFiles.push(filePath);
+    const original = "line1\nline2\nline3\nline4\nline5\n";
+    await writeFile(filePath, original, "utf8");
+    const result = await editFile({
+      workspace: WS,
+      path: filePath,
+      edits: [{ startLine: 1, endLine: 5, replace: "entirely\nnew\ncontent\n" }],
+    });
+    expect(result).toContain("edits=1");
+    const content = await readFile(filePath, "utf8");
+    expect(content).toBe("entirely\nnew\ncontent\n");
+  });
+
   test("writeTextFile allows creating /tmp files", async () => {
     const filePath = `/tmp/acolyte-tmp-write-${crypto.randomUUID()}.txt`;
     tempFiles.push(filePath);
