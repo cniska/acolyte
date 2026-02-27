@@ -26,7 +26,7 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
     statusText: "Thinking…",
   },
   work: {
-    tools: ["edit-code", "edit-file", "create-file", "delete-file", "run-command"],
+    tools: ["read-file", "edit-code", "edit-file", "create-file", "delete-file", "run-command"],
     preamble: [
       "Read the target file once, then edit. Do not re-read the same file after a successful edit.",
       "Batch multiple edits to the same file into one `edit-file` or `edit-code` call.",
