@@ -703,7 +703,7 @@ describe("chat submit handler guards", () => {
       client: createClient({
         status: async () => ({}),
         reply: async () => {
-          throw new Error("Remote server reply timed out after 120000ms");
+          throw new Error("Remote server stream timed out after 120000ms");
         },
       }),
       store,
@@ -752,7 +752,7 @@ describe("chat submit handler guards", () => {
         status: async () => ({}),
         reply: async () => {
           calls += 1;
-          if (calls === 1) throw new Error("Remote server reply timed out after 120000ms");
+          if (calls === 1) throw new Error("Remote server stream timed out after 120000ms");
           return { model: "gpt-5-mini", output: "ok" };
         },
       }),
@@ -809,7 +809,7 @@ describe("chat submit handler guards", () => {
         status: async () => ({}),
         reply: async () => {
           calls += 1;
-          throw new Error("Remote server reply timed out after 120000ms");
+          throw new Error("Remote server stream timed out after 120000ms");
         },
       }),
       store,
@@ -875,7 +875,7 @@ describe("chat submit handler guards", () => {
         status: async () => ({}),
         reply: async () => {
           calls += 1;
-          throw new Error("Remote server reply timed out after 120000ms");
+          throw new Error("Remote server stream timed out after 120000ms");
         },
       }),
       store,

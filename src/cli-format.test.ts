@@ -168,7 +168,7 @@ describe("cli-format", () => {
     expect(formatPromptError(new Error("insufficient_quota: exceeded"))).toBe(
       "Provider quota exceeded. Add billing/credits or switch model/provider.",
     );
-    expect(formatPromptError(new Error("Remote server reply timed out after 120000ms"))).toBe(
+    expect(formatPromptError(new Error("Remote server stream timed out after 120000ms"))).toBe(
       "Server request timed out. Retry or reduce request scope.",
     );
     expect(formatPromptError(new Error("Shell command execution is disabled in read mode"))).toBe(
