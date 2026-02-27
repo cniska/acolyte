@@ -150,6 +150,17 @@ function findLastEditFilePath(ctx: RunContext): string | undefined {
   return undefined;
 }
 
+function guardStatsFromSession(session: SessionContext): { blocked: number; flagSet: number } {
+  const value = session.flags.guardStats;
+  if (!value || typeof value !== "object") {
+    return { blocked: 0, flagSet: 0 };
+  }
+  const stats = value as { blocked?: unknown; flagSet?: unknown };
+  const blocked = typeof stats.blocked === "number" ? stats.blocked : 0;
+  const flagSet = typeof stats.flagSet === "number" ? stats.flagSet : 0;
+  return { blocked, flagSet };
+}
+
 function emitModeStatus(ctx: RunContext): void {
   ctx.emit({ type: "status", message: `${agentModes[ctx.mode].statusText} (${ctx.model})` });
 }
@@ -316,6 +327,12 @@ function phasePrepare(input: {
   });
 
   session.onGuard = (event) => {
+    const current = guardStatsFromSession(session);
+    if (event.action === "blocked") {
+      session.flags.guardStats = { blocked: current.blocked + 1, flagSet: current.flagSet };
+    } else if (event.action === "flag_set") {
+      session.flags.guardStats = { blocked: current.blocked, flagSet: current.flagSet + 1 };
+    }
     input.debug("lifecycle.guard", {
       guard: event.guardId,
       tool: event.toolName,
@@ -629,6 +646,7 @@ function phaseFinalize(ctx: RunContext): ChatResponse {
   }
 
   const callLog = ctx.session.callLog;
+  const guardStats = guardStatsFromSession(ctx.session);
   const totalToolCalls = callLog.length;
   const readCalls = callLog.filter((entry) => READ_TOOLS.includes(entry.toolName)).length;
   const searchCalls = callLog.filter((entry) => SEARCH_TOOLS.includes(entry.toolName)).length;
@@ -655,6 +673,8 @@ function phaseFinalize(ctx: RunContext): ChatResponse {
     pre_write_discovery_calls: preWriteDiscoveryCalls,
     regeneration_count: ctx.regenerationCount,
     regeneration_limit_hit: ctx.regenerationLimitHit,
+    guard_blocked_count: guardStats.blocked,
+    guard_flag_set_count: guardStats.flagSet,
   });
 
   return {
