@@ -910,7 +910,7 @@ function parseRunArgs(args: string[]): { files: string[]; prompt: string; verify
     if (args[i] === "--file") {
       const next = args[i + 1];
       if (!next) {
-        throw new Error("Usage: acolyte run --file <path> <prompt>");
+        throw new Error("--file requires a path");
       }
       files.push(next);
       i += 1;
@@ -919,7 +919,7 @@ function parseRunArgs(args: string[]): { files: string[]; prompt: string; verify
     if (args[i] === "--workspace") {
       const next = args[i + 1];
       if (!next) {
-        throw new Error("Usage: acolyte run --workspace <path> <prompt>");
+        throw new Error("--workspace requires a path");
       }
       workspace = next;
       i += 1;
@@ -945,7 +945,7 @@ export function parseDogfoodArgs(args: string[]): { files: string[]; prompt: str
     if (args[i] === "--file") {
       const next = args[i + 1];
       if (!next) {
-        throw new Error("Usage: acolyte dogfood [--file path] [--no-verify] <prompt>");
+        throw new Error("--file requires a path");
       }
       files.push(next);
       i += 1;
@@ -1097,7 +1097,7 @@ async function runMode(args: string[]): Promise<void> {
 
   const prompt = parsed.prompt;
   if (!prompt) {
-    printError("Usage: acolyte run [--file path] [--workspace path] [--verify] <prompt>");
+    printError("Usage: acolyte run [--file <path>] [--workspace <path>] [--verify] <prompt>");
     process.exitCode = 1;
     return;
   }
@@ -1152,7 +1152,7 @@ async function dogfoodMode(args: string[]): Promise<void> {
     return;
   }
   if (!parsed.prompt) {
-    printError("Usage: acolyte dogfood [--file path] [--no-verify] <prompt>");
+    printError("Usage: acolyte dogfood [--file <path>] [--no-verify] <prompt>");
     process.exitCode = 1;
     return;
   }
@@ -1244,7 +1244,7 @@ async function memoryMode(args: string[]): Promise<void> {
     return;
   }
 
-  printError("Usage: acolyte memory [list [all|user|project]|add [--user|--project] <text>]");
+  printError("Usage: acolyte memory <list|add> [options]");
   process.exitCode = 1;
 }
 
@@ -1360,7 +1360,7 @@ async function configMode(args: string[]): Promise<void> {
     return;
   }
 
-  printError("Usage: acolyte config <list|set|unset> [--user|--project] [key] [value]");
+  printError("Usage: acolyte config <list|set|unset> [options]");
   printDim(`Keys: ${validKeys.join(", ")}`);
   process.exitCode = 1;
 }

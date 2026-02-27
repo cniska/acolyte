@@ -75,9 +75,7 @@ describe("cli memory mode", () => {
 
     const result = runCli(home, project, "memory", "foo");
     expect(result.exitCode).toBe(1);
-    expect(`${result.stdout}\n${result.stderr}`).toContain(
-      "Usage: acolyte memory [list [all|user|project]|add [--user|--project] <text>]",
-    );
+    expect(`${result.stdout}\n${result.stderr}`).toContain("Usage: acolyte memory <list|add> [options]");
   });
 
   test("memory list rejects extra positional args", async () => {
