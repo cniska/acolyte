@@ -848,12 +848,7 @@ export async function runAgent(input: {
         tool_calls: verifyResult.toolCalls.length,
         text_chars: verifyResult.text.trim().length,
       });
-      // Only use verify output if it has something to say (i.e. failures).
-      // Otherwise keep the code mode summary.
-      const verifyText = verifyResult.text.trim();
-      if (verifyText.length > 0) {
-        result = verifyResult;
-      }
+      // Always keep the work mode summary — verify runs for side-effects only.
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       emitDebug("agent.verify.failed", { error: reason });
