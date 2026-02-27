@@ -13,8 +13,9 @@ What's currently supported.
 
 ## Agent & Tools
 
-- Single-agent execution with direct tool usage.
-- Tool surface: search, read, write, edit, delete, git status/diff, run command, web search/fetch.
+- Single-agent execution with direct tool usage across three modes: plan, work, verify.
+- Automatic verify chaining: after work mode edits, the agent runs the project's verify command, reads errors, fixes issues, and re-runs until clean.
+- Tool surface: search, read, write, edit (text + AST), delete, git status/diff, run command, web search/fetch.
 - Permission modes: `read` (default, disables writes) and `write` (full local tool capability).
 - Read-mode write confirmation picker with inline reason entry.
 - Workspace + `/tmp` path guardrails on all file operations.
@@ -32,6 +33,8 @@ What's currently supported.
 - Layered config precedence: project (`.acolyte/config.toml`) > user (`~/.acolyte/config.toml`) > defaults.
 - Secrets are env-only (API keys never in config files).
 - Provider inference from model ID (`anthropic/...`, `gemini/...`, `claude-*`, `gemini-*`).
+- Per-mode model overrides via `models.plan`, `models.work`, `models.verify`.
+- Dotted key syntax for nested config sections (e.g. `acolyte config set models.work gpt-5-mini`).
 - Configurable token budgets with hard max caps.
 
 ## Diagnostics
@@ -47,7 +50,5 @@ What's currently supported.
 
 ## Current Limitations
 
-- **Single bounded tasks only.** Cannot autonomously chain multi-step workflows (plan -> edit -> verify -> iterate on failures).
-- **No task chaining.** If an edit breaks something, the assistant cannot self-correct without human intervention.
 - **Memory quality is early.** Observational memory is wired up but not tuned.
 - **Provider coverage is untested.** Real behavior across providers is not validated.

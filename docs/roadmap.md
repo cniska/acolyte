@@ -44,13 +44,13 @@ Make in-flight execution and failures visible and actionable.
 
 End-to-end autonomous execution: plan, edit, verify, iterate.
 
-- [x] Mode-specific instructions (explore/code/ask) with dynamic tool metadata
+- [x] Mode-specific instructions (plan/work/verify) with dynamic tool metadata
 - [x] Plan detection re-invokes the agent when it plans instead of executing
 - [x] Auto-verify after edits (runs project verify command)
 - [x] Iterate-on-failure (read errors, fix, re-verify)
 - [x] Line width detection enforces project formatting rules
 - [x] Run summary debug event for failure tracking
-- [x] Configurable model per mode (e.g. cheaper model for explore/ask)
+- [x] Configurable model per mode (e.g. cheaper model for plan)
 - [x] Single-match guard on edit-file to prevent unintended multi-replacements
 
 ### Milestone 6: Memory Quality
@@ -73,8 +73,6 @@ Enable optional hosted mode for centralized memory and multi-device continuity.
 - [ ] Auth and multi-tenancy work
 - [ ] Local-first mode still works without hosted backend
 
-**Blocked on:** Milestone 5.
-
 ### Milestone 8: Post-MVP Friends and Family
 
 Share with trusted coders for real-world feedback.
@@ -84,7 +82,7 @@ Share with trusted coders for real-world feedback.
 - [ ] Feedback collected and acted on from 3+ users
 - [ ] Major usability issues resolved
 
-**Blocked on:** Milestones 5-7.
+**Blocked on:** Milestones 6-7.
 
 ### Milestone 9: Public OSS Release
 
@@ -116,8 +114,10 @@ What MVP is **not**:
 
 ## Post-MVP Ideas
 
-- Parallel subagents per mode (explore, code, verify) for concurrent execution.
+- Parallel subagents per mode (plan, work, verify) for concurrent execution.
 - Mode-based tool filtering at the Mastra level (currently instruction-based, not enforced).
+- Session branching — isolated sub-tasks without polluting main context.
+- Agent-authored skills — let the agent create and refine its own tools at runtime.
 
 ## Known Issues
 

@@ -2,7 +2,7 @@
 
 ![Acolyte logo](src/assets/acolyte.png)
 
-Personal AI coding delegate (CLI-first), built on Bun + Mastra. Can handle single bounded tasks today; working toward autonomous multi-step execution.
+Personal AI coding delegate (CLI-first), built on Bun + Mastra. Handles bounded coding tasks with autonomous plan → work → verify execution.
 
 ## Quickstart
 
@@ -56,8 +56,9 @@ bun run db:smoke
   - `acolyte config set --project model "anthropic/claude-sonnet-4"`
   - `acolyte config list --user`
 - Use `acolyte config set model <value>` and `acolyte config set apiUrl <url>` to update them
+- Dotted keys for nested sections: `acolyte config set models.work gpt-5-mini`
 - Secrets are env-only (`OPENAI_API_KEY`, `ACOLYTE_API_KEY`, provider keys)
-- Single configured model is used across the assistant runtime
+- Per-mode model overrides via `models.plan`, `models.work`, `models.verify` (falls back to `model`)
 
 ## Memory Layers
 

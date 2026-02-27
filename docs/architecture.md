@@ -26,11 +26,13 @@ Three modes with distinct tool sets and instructions:
 
 | Mode | Tools | Trigger |
 |------|-------|---------|
-| `explore` | find-files, search-files, read-file, git-status, git-diff, web-search, web-fetch | Read-only keywords |
-| `code` | edit-code, edit-file, create-file, delete-file, run-command | Action keywords |
-| `ask` | (none) | Fallback |
+| `plan` | find-files, search-files, read-file, git-status, git-diff, web-search, web-fetch | Read-only keywords (default) |
+| `work` | edit-code, edit-file, create-file, delete-file, run-command | Action keywords |
+| `verify` | run-command, read-file, search-files, edit-code, edit-file, create-file | Auto-triggered after work mode |
 
-`classifyMode(message)` picks the initial mode via keyword heuristics. Mode can switch mid-run when the model calls a tool from a different mode. Mode instructions are generated dynamically from `toolMeta` in `mastra-tools.ts`.
+`classifyMode(message)` picks the initial mode via keyword heuristics. Mode can switch mid-run when the model calls a tool from a different mode (except during verify, which is locked). Mode instructions are generated dynamically from `toolMeta` in `mastra-tools.ts`.
+
+**Verify chaining:** After work mode completes with write tools used (edit-code, edit-file, create-file), the agent automatically transitions to verify mode. Verify runs the project's verify command, reads errors, fixes issues, and re-runs until clean or stuck. This is non-fatal — verification failure doesn't kill the response.
 
 ## Tools (`mastra-tools.ts`, `agent-tools.ts`)
 
@@ -55,4 +57,4 @@ Mastra fullStream
 
 ## Configuration (`app-config.ts`)
 
-Merged from `.acolyte/config.toml` (project) and `~/.acolyte/config.toml` (user). Key settings: `model`, `port`, `apiUrl`, `permissionMode` (read/write), context token budgets.
+Merged from `.acolyte/config.toml` (project) and `~/.acolyte/config.toml` (user). Key settings: `model`, `models` (per-mode overrides), `port`, `apiUrl`, `permissionMode` (read/write), context token budgets. Supports dotted key syntax for nested sections (e.g. `models.work`).

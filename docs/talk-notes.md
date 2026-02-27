@@ -9,6 +9,7 @@ Living notes for talks about building this project. Update this file as mileston
 - CLI-first UX, persistent memory, agentic coding workflows, explicit behavior contract (`docs/soul.md`).
 
 ## What Actually Works Today
+- Autonomous plan → work → verify loop: the agent plans, edits, runs verification, and iterates on failures.
 - Single bounded tasks: create a script, fix a type error, add a test, simple refactors.
 - Interactive CLI chat with session management, file references, and tool-backed execution.
 - Permission-gated tool use with workspace safety guardrails.
@@ -16,8 +17,6 @@ Living notes for talks about building this project. Update this file as mileston
 - Verify-first development loop (`bun run verify` after each slice).
 
 ## What Doesn't Work Yet
-- Autonomous multi-step execution (plan -> edit -> verify -> iterate).
-- Self-correction when edits break something.
 - Reliable complex multi-file changes with design decisions.
 - Memory that meaningfully reduces repeated mistakes (infrastructure exists, tuning doesn't).
 
@@ -86,9 +85,10 @@ Living notes for talks about building this project. Update this file as mileston
 ## Demo Flow (Short)
 1. `bun run dev` (starts backend + chat).
 2. Show: `@src/agent.ts review this file` — tool-backed reasoning over attached context.
-3. Show: `/remember --project always use strict TypeScript` — persistent memory.
-4. Show: `/memory` — inspect what the assistant remembers.
-5. Show: `/status` — diagnostics and provider info.
+3. Show: `edit the function name to camelCase` — automatic verify after edits.
+4. Show: `/remember --project always use strict TypeScript` — persistent memory.
+5. Show: `/memory` — inspect what the assistant remembers.
+6. Show: `/status` — diagnostics and provider info.
 
 ## Open Questions
 1. Can the autonomous loop be closed with current models, or does it need better foundation models?
