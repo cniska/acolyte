@@ -239,7 +239,7 @@ describe("multiMatchEditEvaluator", () => {
       session,
       observedTools: new Set(["read-file", "edit-file"]),
       sawEditFileMultiMatchError: true,
-      lastError: "edit-file failed: Find text matched 3 locations (foo…).",
+      lastError: "edit-file failed: [E_EDIT_FILE_MULTI_MATCH] Find text matched 3 locations (foo…).",
       result: { text: "Attempted edit.", toolCalls: [] },
     });
     const action = multiMatchEditEvaluator.evaluate(ctx);
@@ -257,7 +257,7 @@ describe("multiMatchEditEvaluator", () => {
       classifiedMode: "work",
       observedTools: new Set(["edit-file"]),
       sawEditFileMultiMatchError: true,
-      lastError: "edit-file failed: Find text matched 2 locations.",
+      lastError: "edit-file failed: [E_EDIT_FILE_MULTI_MATCH] Find text matched 2 locations.",
       result: { text: "Attempted edit.", toolCalls: [] },
     });
     const action = multiMatchEditEvaluator.evaluate(ctx);
@@ -273,7 +273,7 @@ describe("multiMatchEditEvaluator", () => {
       classifiedMode: "work",
       observedTools: new Set(["edit-file", "edit-code"]),
       sawEditFileMultiMatchError: true,
-      lastError: "edit-file failed: Find text matched 2 locations.",
+      lastError: "edit-file failed: [E_EDIT_FILE_MULTI_MATCH] Find text matched 2 locations.",
       result: { text: "Attempted edit.", toolCalls: [] },
     });
     expect(multiMatchEditEvaluator.evaluate(ctx).type).toBe("done");
