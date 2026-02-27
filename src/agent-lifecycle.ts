@@ -21,7 +21,7 @@ import {
   classifyErrorCategory,
   type ErrorCategory,
   errorCodeFromCategory,
-  isEditFileMultiMatchError,
+  isEditFileMultiMatchSignal,
   isFileNotFoundSignal,
   parseErrorInfo,
   type RecoveryAction,
@@ -29,7 +29,7 @@ import {
 } from "./error-handling";
 import type { LifecycleDebugEvent, LifecycleEventName } from "./lifecycle-events";
 import { type AcolyteToolset, toolsForAgent } from "./mastra-tools";
-import { type ErrorCode, extractToolErrorCode, LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./tool-error-codes";
+import { type ErrorCode, extractToolErrorCode, LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
 import type { SessionContext } from "./tool-guards";
 import type { ToolName } from "./tool-names";
 
@@ -209,8 +209,7 @@ function captureError(
   const category = categoryFromErrorCode(code) ?? derivedCategory;
   ctx.lastErrorCategory = category;
   ctx.errorStats[category] += 1;
-  if (code === TOOL_ERROR_CODES.editFileMultiMatch || isEditFileMultiMatchError(message))
-    ctx.sawEditFileMultiMatchError = true;
+  if (isEditFileMultiMatchSignal({ code, message })) ctx.sawEditFileMultiMatchError = true;
   ctx.debug("lifecycle.error", {
     source: meta?.source ?? "generate",
     tool: meta?.tool ?? null,

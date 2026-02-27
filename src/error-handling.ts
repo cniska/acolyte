@@ -18,6 +18,10 @@ export function isEditFileMultiMatchError(errorMessage: string): boolean {
   );
 }
 
+export function isEditFileMultiMatchSignal(input: { code?: string; message: string }): boolean {
+  return input.code === TOOL_ERROR_CODES.editFileMultiMatch || isEditFileMultiMatchError(input.message);
+}
+
 export function isFileNotFoundSignal(text: string): boolean {
   return /\b(?:does not exist|doesn't exist|no such file|not found|ENOENT)\b/i.test(text);
 }
