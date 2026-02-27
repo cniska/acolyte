@@ -28,7 +28,9 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
   work: {
     tools: ["read-file", "edit-code", "edit-file", "create-file", "delete-file", "run-command"],
     preamble: [
+      "If the target path is explicit, skip `find-files`/`search-files` and read that file directly.",
       "Read the target file once, then edit. Do not re-read the same file after a successful edit.",
+      "Before the first write, avoid repeated `read-file` calls on the same path unless the previous edit failed.",
       "Batch multiple edits to the same file into one `edit-file` or `edit-code` call.",
       "Never delete a file to recreate it — use `edit-file` to modify existing files.",
       "When a target file does not exist, say so instead of silently creating it.",
