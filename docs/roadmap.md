@@ -2,61 +2,69 @@
 
 ## Vision
 
-A centralized AI coding assistant that handles day-to-day development across projects and machines. One assistant, shared sessions and memory, any model. Extensible with custom tools and skills. Built for autonomous execution — plan, edit, verify, iterate — with the developer in control.
+One AI coding assistant for day-to-day development across projects and machines.
+Shared sessions and memory, model-flexible, extensible via tools and skills.
+Built for autonomous execution of bounded tasks with the developer in control.
 
 ## Milestones
 
-### Milestone 1: Build Stability Baseline (completed)
+### Milestone 1: Foundations (completed)
 
-Establish quality gates and smoke coverage to prevent regressions.
+Establish baseline project quality and repeatable validation.
 
 - [x] `bun run verify` runs format, lint, typecheck, and tests in one command
 - [x] All checks pass on every commit
 - [x] Smoke test infrastructure exists and covers basic CLI paths
 
-### Milestone 2: Dogfooding Readiness (completed)
+### Milestone 2: Core UX (completed)
 
-Make the assistant dependable for daily small development slices in this repo.
+Make local setup and core interaction flows dependable.
 
 - [x] Setup and diagnostics work (`/status`, `/tokens`, `/sessions`)
 - [x] Permission flow (read/write modes) is stable
 - [x] Recovery paths handle errors gracefully
 - [x] Assistant can complete simple feature slices with verify green
 
-### Milestone 3: Delegated Switch Trial (completed)
+### Milestone 3: Execution Engine (completed)
 
-Shift from Codex-led work to assistant-led bounded tasks.
+Establish the lifecycle and tool execution core.
 
 - [x] Assistant completes bounded feature/fix slices end-to-end
-- [x] Concurrency guards prevent multi-CLI write conflicts
-- [x] Human oversight still required — not autonomous execution
+- [x] Lifecycle supports plan/work/verify execution behavior
+- [x] Tool execution and streaming events are wired end-to-end
 
-### Milestone 4: Runtime Reliability Signals (completed)
+### Milestone 4: Reliability Hardening (completed)
 
-Make in-flight execution and failures visible and actionable.
+Harden failure handling, safeguards, and runtime visibility.
 
-- [x] Tool lifecycle streaming works (`tool_start` -> `tool_chunk` -> `tool_end`)
-- [x] Progress rendering shows real-time tool output
-- [x] Empty-output failures return actionable guidance
-- [x] Diagnostics commands are useful (`/status`, `/tokens`, `/sessions`)
+- [x] Concurrency and anti-loop safeguards prevent common failure patterns
+- [x] Progress rendering and diagnostics are actionable (`/status`, `/tokens`, `/sessions`)
+- [x] Empty-output and error paths return clear guidance
+- [x] Human oversight is still expected for ambiguous/open-ended work
 
-### Milestone 5: Autonomous Soak (MVP Closure)
+### Milestone 5: Autonomous Reliability (MVP Closure)
 
-End-to-end autonomous execution: plan, edit, verify, iterate.
+The agent can do bounded coding tasks for us end-to-end.
 
-- [x] Mode-specific instructions (plan/work/verify) with dynamic tool metadata
-- [x] Plan detection re-invokes the agent when it plans instead of executing
-- [x] Auto-verify after edits (runs project verify command)
-- [x] Iterate-on-failure (read errors, fix, re-verify)
-- [x] Line width detection enforces project formatting rules
-- [x] Run summary debug event for failure tracking
-- [x] Configurable model per mode (e.g. cheaper model for plan)
-- [x] Single-match guard on edit-file to prevent unintended multi-replacements
-- [x] Skills aligned with agentskills.io spec (inline invocation, $ARGUMENTS, multi-dir scan)
-- [x] Session-level tool guards (no-rewrite, verify-ran) with composable guard system
-- [x] Agent lifecycle architecture — phases, evaluators, RunContext (replaces ad-hoc runAgent)
+- [x] Understand task and execute in the right mode (plan/work/verify)
+- [x] Edit files and run project verification automatically
+- [x] Recover from common failures and retry without manual hand-holding
+- [x] Return concise, usable outcomes without requiring manual intervention loops
+- [x] Lifecycle, guard, and evaluator architecture is explicit and observable
+- [x] Guardrails prevent known bad loops and destructive patterns
+- [x] Tool progress and error behavior are reliable for daily use
+- [x] Per-mode model controls and skill runtime behavior are stable
 
-### Milestone 6: Memory Quality
+### Milestone 6: Autonomy Proof
+
+Prove consistent autonomous performance across repeated real tasks.
+
+- [ ] Repeated soak runs complete bounded tasks with low manual intervention
+- [ ] Success rate threshold is met across dogfood task suites
+- [ ] Failure modes are explainable through traces/logs and have clear follow-up actions
+- [ ] Protocol baseline is stable (`protocolVersion`, capability handshake, stream compatibility tests)
+
+### Milestone 7: Memory Quality
 
 Reduce repeated mistakes with transparent, correctable memory behavior.
 
@@ -67,17 +75,20 @@ Reduce repeated mistakes with transparent, correctable memory behavior.
 
 **Current status:** Basic memory commands work. Observational memory is wired up but not tuned. No evals yet.
 
-### Milestone 7: Hosted Readiness
+### Milestone 8: Hosted Readiness
 
 Enable optional hosted mode for centralized memory and multi-device continuity.
 
 - [ ] Backend can run as a hosted service (not just local)
 - [ ] Explicit execution mode exists (`local` vs isolated sandbox) and is resolved per request
+- [ ] Protocol contract is versioned and transport-agnostic (RPC over HTTP/SSE/WebSocket)
+- [ ] Capability handshake exists so clients can adapt safely (`supportsSteer`, `supportsSkills`, etc.)
+- [ ] Queue semantics are explicit and stable (`steer` vs `follow-up`)
 - [ ] Memory syncs across devices
 - [ ] Auth and multi-tenancy work
 - [ ] Local-first mode still works without hosted backend
 
-### Milestone 8: Post-MVP Friends and Family
+### Milestone 9: Post-MVP Friends and Family
 
 Share with trusted coders for real-world feedback.
 
@@ -86,9 +97,9 @@ Share with trusted coders for real-world feedback.
 - [ ] Feedback collected and acted on from 3+ users
 - [ ] Major usability issues resolved
 
-**Blocked on:** Milestones 6-7.
+**Blocked on:** Milestones 6-8.
 
-### Milestone 9: Public OSS Release
+### Milestone 10: Public OSS Release
 
 Open-source core local mode with optional self-host path.
 
@@ -97,17 +108,17 @@ Open-source core local mode with optional self-host path.
 - [ ] No hardcoded secrets or internal paths
 - [ ] CI/CD pipeline for releases
 
-**Blocked on:** Milestone 8.
+**Blocked on:** Milestone 9.
 
 ## MVP Definition
 
-The MVP is reached when a coder friend can **set it up locally, try it on their own project, and find it useful**. Concretely:
+The MVP is reached when a coder friend can **set it up locally, use it on their own project, and want to keep using it**.
 
 - Setup is simple and documented: clone, install, add API key, run.
-- The assistant can handle bounded coding tasks reliably enough that a new user gets value on day one.
-- It can plan an approach, edit files, run verification, and iterate on failures — at least one cycle without hand-holding.
-- Memory works well enough that the assistant improves over a multi-session relationship, not just within one chat.
-- The experience is good enough that a friend would use it again voluntarily, not just to be polite.
+- The agent can complete bounded coding tasks end-to-end: plan, edit, verify, recover.
+- A new user gets value on day one without deep project-specific setup.
+- Memory is useful across sessions and does not introduce stale or incorrect behavior.
+- The experience is strong enough that users choose to return.
 
 What MVP is **not**:
 
@@ -119,13 +130,14 @@ What MVP is **not**:
 ## Post-MVP Ideas
 
 - Parallel subagents per mode (plan, work, verify) for concurrent execution.
-- Mode-based tool filtering at the Mastra level (currently instruction-based, not enforced).
 - Session branching — isolated sub-tasks without polluting main context.
+- Resumable RPC operations (`start`, `status`, `cancel`, `resume`) with stable IDs.
+- Stream protocol compatibility tests (event schema/version contract across client/server).
+- Stronger tool policy enforcement beyond prompt-only guidance.
 - Agent-authored skills — let the agent create and refine its own tools at runtime.
 - Tool output collapsing — group consecutive same-tool calls into a single summary row to reduce visual noise.
 - User-facing lifecycle hooks — notifications when agent needs input, custom evaluators.
-- Memory evaluator — persist learnings between generations within a session.
-- Shell fallback guard — block run-command when a dedicated tool exists (e.g. sed → edit-file).
+- Memory evaluator — persist useful learnings between generations within a session.
 
 ## Known Issues
 
