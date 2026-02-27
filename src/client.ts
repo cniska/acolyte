@@ -79,7 +79,7 @@ function isConnectionFailure(error: unknown): boolean {
 }
 
 function connectionHelpMessage(apiUrl: string): string {
-  return `Cannot reach server at ${apiUrl}. Start it with: bun run dev (or bun run serve:env)`;
+  return `Cannot reach server at ${apiUrl}. Start it with: acolyte serve`;
 }
 
 class HttpClient implements Client {
@@ -350,7 +350,7 @@ function parseChatResponse(payload: unknown, fallbackModel: string): ChatRespons
 
 export function createClient(options?: ClientOptions): Client {
   const apiUrl = options?.apiUrl ?? appConfig.server.apiUrl;
-  if (!apiUrl) throw new Error("No API URL configured. Start the server with: bun run dev");
+  if (!apiUrl) throw new Error("No API URL configured. Start the server with: acolyte serve");
   const apiKey = options?.apiKey ?? appConfig.server.apiKey;
   const replyTimeoutMs = options?.replyTimeoutMs;
   return new HttpClient(apiUrl, apiKey, replyTimeoutMs);
