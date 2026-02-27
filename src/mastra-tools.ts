@@ -59,7 +59,7 @@ export const toolMeta: Record<string, ToolMeta> = {
   },
   "scan-code": {
     instruction:
-      "Use `scan-code` to find structural code patterns using AST matching. Pass an ast-grep `pattern` with `$VAR` metavariables (e.g. `console.log($ARG)`).",
+      "Use `scan-code` when you need structural, AST-level matching (for example specific node types, call/argument shapes, or refactor targets) that text search cannot reliably find. Pass an ast-grep `pattern` with `$VAR` metavariables (e.g. `console.log($ARG)`). For simple keyword or regex searches prefer `search-files`.",
     aliases: ["scanCode", "scan_code"],
   },
   "edit-code": {
