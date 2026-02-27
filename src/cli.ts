@@ -4,7 +4,6 @@ import { relative } from "node:path";
 import { stdout as output } from "node:process";
 import { z } from "zod";
 import { formatToolHeader } from "./agent";
-import { createWorkspaceSpecifier } from "./api";
 import {
   editFile,
   fetchWeb,
@@ -16,6 +15,7 @@ import {
   searchFiles,
   searchWeb,
 } from "./agent-tools";
+import { createWorkspaceSpecifier } from "./api";
 import { appConfig } from "./app-config";
 import { wrapAssistantContent } from "./chat-content";
 import { formatColumns, formatRelativeTime } from "./chat-formatters";

@@ -84,7 +84,7 @@ export const toolMeta: Record<string, ToolMeta> = {
   },
   "run-command": {
     instruction:
-      "Use `run-command` to run verification after edits and to execute build/test commands. Never use it for `cat`, `head`, `grep`, `sed`, or `find` — use `read-file`, `search-files`, `find-files` instead.",
+      "Use `run-command` to run verification after edits and to execute build/test commands. Never use it for `cat`, `head`, `grep`, `sed`, `find`, or `wc` — use `read-file`, `search-files`, `find-files` instead.",
     aliases: ["runCommand", "run_command", "execute_command"],
   },
 };

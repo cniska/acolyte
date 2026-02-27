@@ -178,13 +178,14 @@ describe("coding-tools workspace guards", () => {
     ).rejects.toThrow("startLine (5) must be <= endLine (3)");
   });
 
-  test("editFile line-range rejects endLine beyond file", async () => {
+  test("editFile line-range clamps endLine beyond file", async () => {
     const filePath = `/tmp/acolyte-tmp-lr3-${crypto.randomUUID()}.txt`;
     tempFiles.push(filePath);
     await writeFile(filePath, "a\nb\nc\n", "utf8");
-    await expect(
-      editFile({ workspace: WS, path: filePath, edits: [{ startLine: 1, endLine: 10, replace: "x" }] }),
-    ).rejects.toThrow("exceeds file length");
+    // endLine 10 on a 3-line file should clamp to 3 and replace all content
+    await editFile({ workspace: WS, path: filePath, edits: [{ startLine: 1, endLine: 10, replace: "x" }] });
+    const result = await readFile(filePath, "utf8");
+    expect(result).toBe("x");
   });
 
   test("editFile line-range rejects line numbers < 1", async () => {

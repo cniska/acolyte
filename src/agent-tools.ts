@@ -823,8 +823,9 @@ export async function editFile(input: {
       if (startLine > endLine) {
         throw new Error(`startLine (${startLine}) must be <= endLine (${endLine})`);
       }
-      if (endLine > lines.length) {
-        throw new Error(`endLine (${endLine}) exceeds file length (${lines.length} lines)`);
+      const clampedEnd = Math.min(endLine, lines.length);
+      if (clampedEnd !== endLine) {
+        // Silently clamp — the model almost always means "to end of file".
       }
       // Convert 1-based inclusive line range to character offsets.
       let charStart = 0;
@@ -832,11 +833,11 @@ export async function editFile(input: {
         charStart += (lines[i]?.length ?? 0) + 1;
       }
       let charEnd = charStart;
-      for (let i = startLine - 1; i <= endLine - 1; i++) {
+      for (let i = startLine - 1; i <= clampedEnd - 1; i++) {
         charEnd += (lines[i]?.length ?? 0) + 1;
       }
-      // If endLine is the last line and file doesn't end with \n, don't overshoot.
-      if (endLine === lines.length && !raw.endsWith("\n")) {
+      // If clampedEnd is the last line and file doesn't end with \n, don't overshoot.
+      if (clampedEnd === lines.length && !raw.endsWith("\n")) {
         charEnd -= 1;
       }
       ranges.push({ start: charStart, end: charEnd, replace });
