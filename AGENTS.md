@@ -5,14 +5,10 @@
 Acolyte is an AI coding assistant: CLI + HTTP server + Mastra agent. See `docs/architecture.md` for full architecture.
 
 Key files:
-- `src/agent-lifecycle.ts` — request lifecycle: phases (classify → prepare → generate → evaluate → finalize) + evaluators
-- `src/agent.ts` — `runAgent()` entry point (delegates to lifecycle), input/output helpers
+- `src/agent-lifecycle.ts` — request lifecycle (classify → prepare → generate → evaluate → finalize)
 - `src/agent-modes.ts` — mode definitions (plan/work/verify), mode classification
 - `src/mastra-tools.ts` — tool factories, `guardedExecute`, `toolsForAgent()`
-- `src/agent-tools.ts` — tool implementations (edit, read, search, etc.)
 - `src/tool-guards.ts` — session-level guards (no-rewrite, verify-ran)
-- `src/app-config.ts` — configuration and token budgets
-- `docs/soul.md` — assistant personality and behavior contract
 
 Patterns to follow:
 - New post-generation behavior → implement `Evaluator` in `agent-lifecycle.ts`, add to evaluator array

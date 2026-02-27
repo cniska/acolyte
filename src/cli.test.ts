@@ -2,28 +2,30 @@ import { describe, expect, test } from "bun:test";
 import { formatColumns, formatRelativeTime } from "./chat-formatters";
 import {
   buildUsageCommandRows,
-  displayPromptForOutput,
   extractVersionFromPackageJsonText,
-  formatAssistantReplyOutput,
-  formatEditUpdateOutput,
-  formatForTool,
-  formatProgressEventOutput,
   formatPromptError,
   formatResumeCommand,
-  formatRunOutput,
   formatStatusOutput,
   isTopLevelHelpCommand,
   isTopLevelVersionCommand,
   parseDogfoodArgs,
-  parseEditResult,
-  parseRunExitCode,
   resolveCommandAlias,
   runResourceId,
   suggestCommand,
   suggestCommands,
+} from "./cli";
+import {
+  displayPromptForOutput,
+  formatAssistantReplyOutput,
+  formatEditUpdateOutput,
+  formatForTool,
+  formatProgressEventOutput,
+  formatRunOutput,
+  parseEditResult,
+  parseRunExitCode,
   summarizeDiff,
   truncateText,
-} from "./cli";
+} from "./cli-format";
 
 describe("cli formatting helpers", () => {
   test("formatRunOutput compresses long stdout", () => {
