@@ -159,7 +159,7 @@ class HttpClient implements Client {
       });
     } catch (error) {
       cleanup();
-      if (timedOut) throw new Error(`Remote server reply timed out after ${timeoutMs}ms`);
+      if (timedOut) throw new Error(`Remote server stream timed out after ${timeoutMs}ms`);
       throw error;
     }
 

@@ -1,9 +1,9 @@
 #!/usr/bin/env bun
 import { z } from "zod";
-import type { ChatRequest, ChatResponse } from "./api";
-import { appConfig } from "./app-config";
-import { createId } from "./short-id";
-import type { Message } from "./types";
+import type { ChatRequest } from "../src/api";
+import { appConfig } from "../src/app-config";
+import { createId } from "../src/short-id";
+import type { Message } from "../src/types";
 
 type OmStatusResponse = {
   ok: boolean;
@@ -180,12 +180,38 @@ async function runChatTurn(
     sessionId,
     history,
   };
-  const response = await fetchJson<ChatResponse>(`${url}/v1/chat`, {
+  const response = await fetch(`${url}/v1/chat/stream`, {
     method: "POST",
     headers: buildHeaders(),
     body: JSON.stringify(payload),
   });
-  return response.output;
+  const body = await response.text();
+  if (!response.ok)
+    throw new Error(`Request failed (${response.status}) for ${url}/v1/chat/stream: ${body || "no body"}`);
+  const blocks = body.split("\n\n");
+  for (const block of blocks) {
+    const line = block
+      .split("\n")
+      .find((row) => row.startsWith("data: "))
+      ?.slice(6);
+    if (!line) continue;
+    let payload: { type?: unknown; reply?: unknown; error?: unknown };
+    try {
+      payload = JSON.parse(line) as { type?: unknown; reply?: unknown; error?: unknown };
+    } catch {
+      continue;
+    }
+    if (payload.type === "error") {
+      const errorMessage = typeof payload.error === "string" ? payload.error : "Stream failed";
+      throw new Error(errorMessage);
+    }
+    if (payload.type === "done") {
+      const reply = payload.reply as { output?: unknown } | undefined;
+      if (reply && typeof reply.output === "string") return reply.output;
+      throw new Error("Invalid stream done payload: missing reply.output");
+    }
+  }
+  throw new Error("Stream ended without done event");
 }
 
 async function checkpoint(url: string, turn: number): Promise<void> {

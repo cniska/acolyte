@@ -44,14 +44,6 @@ describe("cli run resource id", () => {
           { headers: { "content-type": "text/event-stream" } },
         );
       }
-      if (url.pathname === "/v1/chat" && req.method === "POST") {
-        const body = (await req.json()) as { sessionId?: string; resourceId?: string; model?: string };
-        requests.push({ sessionId: body.sessionId, resourceId: body.resourceId });
-        return Response.json({
-          model: typeof body.model === "string" ? body.model : "gpt-5-mini",
-          output: "ok",
-        });
-      }
       if (url.pathname === "/v1/status" && req.method === "GET")
         return Response.json({ ok: true, provider: "mock", service: "test" });
       return new Response("not found", { status: 404 });

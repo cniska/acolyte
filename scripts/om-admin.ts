@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { z } from "zod";
-import { appConfig } from "./app-config";
+import { appConfig } from "../src/app-config";
 
 type OmStatusResponse = {
   ok: boolean;
