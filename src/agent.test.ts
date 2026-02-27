@@ -260,7 +260,7 @@ describe("createSubagentContext", () => {
 
 describe("createModeInstructions", () => {
   test("code mode includes tool instructions from toolMeta", () => {
-    const out = createModeInstructions("code");
+    const out = createModeInstructions("work");
     expect(out).toContain("edit-code");
     expect(out).toContain("edit-file");
     expect(out).toContain("create-file");
@@ -275,13 +275,13 @@ describe("createModeInstructions", () => {
   });
 
   test("code mode excludes explore tool instructions", () => {
-    const out = createModeInstructions("code");
+    const out = createModeInstructions("work");
     expect(out).not.toContain("find-files");
     expect(out).not.toContain("search-files");
   });
 
   test("includes preamble lines", () => {
-    const code = createModeInstructions("code");
+    const code = createModeInstructions("work");
     const explore = createModeInstructions("plan");
     expect(code).toContain("Read the target file before editing");
     expect(explore).toContain("Batch multiple reads");
@@ -294,14 +294,14 @@ describe("createModeInstructions", () => {
   });
 
   test("code mode does not include verification instructions", () => {
-    const out = createModeInstructions("code");
+    const out = createModeInstructions("work");
     expect(out).not.toContain("verify command");
   });
 });
 
 describe("createInstructions", () => {
   test("includes base instructions for all modes", () => {
-    const code = createInstructions("Soul.", "code");
+    const code = createInstructions("Soul.", "work");
     const explore = createInstructions("Soul.", "plan");
     for (const out of [code, explore]) {
       expect(out).toContain("Soul.");
@@ -311,7 +311,7 @@ describe("createInstructions", () => {
   });
 
   test("code mode includes code-specific instructions", () => {
-    const out = createInstructions("Soul.", "code");
+    const out = createInstructions("Soul.", "work");
     expect(out).toContain("edit-code");
     expect(out).toContain("AST");
     expect(out).toContain("Read the target file before editing");
@@ -319,7 +319,7 @@ describe("createInstructions", () => {
   });
 
   test("code mode excludes explore instructions", () => {
-    const out = createInstructions("Soul.", "code");
+    const out = createInstructions("Soul.", "work");
     expect(out).not.toContain("Use `find-files` to locate files by name");
     expect(out).not.toContain("Batch multiple reads");
   });

@@ -13,11 +13,11 @@ describe("modeForTool", () => {
   });
 
   test("maps write tools to code", () => {
-    expect(modeForTool("edit-file")).toBe("code");
-    expect(modeForTool("create-file")).toBe("code");
-    expect(modeForTool("edit-code")).toBe("code");
-    expect(modeForTool("delete-file")).toBe("code");
-    expect(modeForTool("run-command")).toBe("code");
+    expect(modeForTool("edit-file")).toBe("work");
+    expect(modeForTool("create-file")).toBe("work");
+    expect(modeForTool("edit-code")).toBe("work");
+    expect(modeForTool("delete-file")).toBe("work");
+    expect(modeForTool("run-command")).toBe("work");
   });
 
   test("never maps tools to verify (verify is auto-triggered, not tool-inferred)", () => {
@@ -27,7 +27,7 @@ describe("modeForTool", () => {
   });
 
   test("falls back to code for unknown tools", () => {
-    expect(modeForTool("unknown-tool")).toBe("code");
+    expect(modeForTool("unknown-tool")).toBe("work");
   });
 });
 
@@ -47,13 +47,13 @@ describe("agentModes", () => {
 
 describe("classifyMode", () => {
   test("classifies edit/rename/refactor as code", () => {
-    expect(classifyMode("rename the variable def to definition")).toBe("code");
-    expect(classifyMode("edit the file src/agent.ts")).toBe("code");
-    expect(classifyMode("refactor the function")).toBe("code");
-    expect(classifyMode("fix the failing test")).toBe("code");
-    expect(classifyMode("create a new util function")).toBe("code");
-    expect(classifyMode("delete the unused import")).toBe("code");
-    expect(classifyMode("run verify")).toBe("code");
+    expect(classifyMode("rename the variable def to definition")).toBe("work");
+    expect(classifyMode("edit the file src/agent.ts")).toBe("work");
+    expect(classifyMode("refactor the function")).toBe("work");
+    expect(classifyMode("fix the failing test")).toBe("work");
+    expect(classifyMode("create a new util function")).toBe("work");
+    expect(classifyMode("delete the unused import")).toBe("work");
+    expect(classifyMode("run verify")).toBe("work");
   });
 
   test("classifies find/search/read as plan", () => {
@@ -66,8 +66,8 @@ describe("classifyMode", () => {
   });
 
   test("prefers code when both signals present", () => {
-    expect(classifyMode("find and rename all usages of Backend")).toBe("code");
-    expect(classifyMode("read the file then edit it")).toBe("code");
+    expect(classifyMode("find and rename all usages of Backend")).toBe("work");
+    expect(classifyMode("read the file then edit it")).toBe("work");
   });
 
   test("falls back to plan for ambiguous messages", () => {
@@ -76,7 +76,7 @@ describe("classifyMode", () => {
   });
 
   test("never classifies user messages as verify", () => {
-    expect(classifyMode("verify the code")).toBe("code");
-    expect(classifyMode("run verify")).toBe("code");
+    expect(classifyMode("verify the code")).toBe("work");
+    expect(classifyMode("run verify")).toBe("work");
   });
 });

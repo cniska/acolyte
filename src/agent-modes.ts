@@ -1,4 +1,4 @@
-export type AgentMode = "plan" | "code" | "verify";
+export type AgentMode = "plan" | "work" | "verify";
 
 export type AgentModeDefinition = {
   tools: string[];
@@ -16,7 +16,7 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
     ],
     progressText: "Thinking…",
   },
-  code: {
+  work: {
     tools: ["edit-code", "edit-file", "create-file", "delete-file", "run-command"],
     preamble: [
       "Before the first tool call, briefly explain what you're about to do.",
@@ -27,7 +27,7 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
       "When a target file does not exist, say so instead of silently creating it.",
       "After the last tool call, reply with one sentence summarizing the change. Nothing else.",
     ],
-    progressText: "Coding…",
+    progressText: "Working…",
   },
   verify: {
     tools: ["run-command", "read-file", "search-files", "edit-code", "edit-file", "create-file"],
@@ -48,7 +48,7 @@ const EXPLORE_WORDS = /\b(find|search|read|look|show|list|what|where|how|explain
 export function classifyMode(message: string): AgentMode {
   const hasCode = CODE_WORDS.test(message);
   const hasExplore = EXPLORE_WORDS.test(message);
-  if (hasCode) return "code";
+  if (hasCode) return "work";
   if (hasExplore) return "plan";
   return "plan";
 }
@@ -59,5 +59,5 @@ export function modeForTool(toolName: string): AgentMode {
       return mode as AgentMode;
     }
   }
-  return "code";
+  return "work";
 }

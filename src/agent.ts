@@ -171,7 +171,7 @@ export function createModeInstructions(mode: AgentMode): string {
     }
   }
   const lineWidth = getProjectLineWidth();
-  if (lineWidth && mode === "code") {
+  if (lineWidth && mode === "work") {
     lines.push(`- Keep lines under ${lineWidth} characters.`);
   }
   return lines.join("\n");
@@ -826,7 +826,7 @@ export async function runAgent(input: {
   const VERIFY_MAX_STEPS = 30;
   const WRITE_TOOLS = ["edit-code", "edit-file", "create-file"];
   const usedWriteTools = WRITE_TOOLS.some((t) => observedToolNames.has(t));
-  if (classifiedMode === "code" && usedWriteTools) {
+  if (classifiedMode === "work" && usedWriteTools) {
     currentMode = "verify";
     emitModeStatus();
     emitDebug("agent.generate.start", { model, reason: "verify" });
