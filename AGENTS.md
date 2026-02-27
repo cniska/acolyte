@@ -1,5 +1,33 @@
 # Project Rules
 
+## Project Context
+
+Acolyte is an AI coding assistant: CLI + HTTP server + Mastra agent. See `docs/architecture.md` for full architecture.
+
+Key files:
+- `src/agent-lifecycle.ts` — request lifecycle: phases (classify → prepare → generate → evaluate → finalize) + evaluators
+- `src/agent.ts` — `runAgent()` entry point (delegates to lifecycle), input/output helpers
+- `src/agent-modes.ts` — mode definitions (plan/work/verify), mode classification
+- `src/mastra-tools.ts` — tool factories, `guardedExecute`, `toolsForAgent()`
+- `src/agent-tools.ts` — tool implementations (edit, read, search, etc.)
+- `src/tool-guards.ts` — session-level guards (no-rewrite, verify-ran)
+- `src/app-config.ts` — configuration and token budgets
+- `docs/soul.md` — assistant personality and behavior contract
+
+Patterns to follow:
+- New post-generation behavior → implement `Evaluator` in `agent-lifecycle.ts`, add to evaluator array
+- New tool guard → implement `ToolGuard` in `tool-guards.ts`, add to `GUARDS` array
+- New tool → add factory in `mastra-tools.ts` with `guardedExecute`, add to `createToolset`
+- All tools go through `guardedExecute` (pre-execution guards + post-execution recording)
+
+Development:
+- Validate: `bun run verify` (format + lint + typecheck + test)
+- Start server: `bun run src/server.ts > /tmp/acolyte-server.log 2>&1 &`
+- Restart after code changes: `kill $(lsof -t -i :6767); bun run src/server.ts > /tmp/acolyte-server.log 2>&1 &`
+- Run a prompt: `bun run src/cli.ts run '<prompt>' 2>&1`
+- Dogfood: run prompts against the playground project, check tool count, verify passes, no shell fallbacks
+- Dump current instructions: `bun -e 'import { createModeInstructions } from "./src/agent.ts"; for (const m of ["plan","work","verify"]) { console.log(`\n=== ${m.toUpperCase()} ===`); console.log(createModeInstructions(m)); }'`
+
 ## Tooling
 
 - Prefer repository scripts and task runners over ad-hoc commands.
