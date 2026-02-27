@@ -25,6 +25,8 @@ const TIMEOUT_RECOVERY_TIMEOUT_MS = 45_000;
 const STEP_TIMEOUT_MS = 120_000;
 const VERIFY_MAX_STEPS = 30;
 const WRITE_TOOLS = ["edit-code", "edit-file", "create-file"];
+const READ_TOOLS = ["read-file"];
+const SEARCH_TOOLS = ["find-files", "search-files", "scan-code", "git-status", "git-diff"];
 const DISCOVERY_TOOLS = ["find-files", "search-files", "read-file", "scan-code", "git-status", "git-diff"];
 
 export type GenerateResult = {
@@ -507,6 +509,17 @@ function phaseFinalize(ctx: RunContext): ChatResponse {
     budgetWarning = `context near budget (${ctx.promptUsage.promptTokens}/${ctx.promptUsage.promptBudgetTokens} tokens)`;
   }
 
+  const callLog = ctx.session.callLog;
+  const totalToolCalls = callLog.length;
+  const readCalls = callLog.filter((entry) => READ_TOOLS.includes(entry.toolName)).length;
+  const searchCalls = callLog.filter((entry) => SEARCH_TOOLS.includes(entry.toolName)).length;
+  const writeCalls = callLog.filter((entry) => WRITE_TOOLS.includes(entry.toolName)).length;
+  const firstWriteIndex = callLog.findIndex((entry) => WRITE_TOOLS.includes(entry.toolName));
+  const preWriteDiscoveryCalls =
+    firstWriteIndex >= 0
+      ? callLog.slice(0, firstWriteIndex).filter((entry) => DISCOVERY_TOOLS.includes(entry.toolName)).length
+      : callLog.filter((entry) => DISCOVERY_TOOLS.includes(entry.toolName)).length;
+
   ctx.debug("lifecycle.summary", {
     mode: ctx.classifiedMode,
     model: ctx.model,
@@ -516,6 +529,11 @@ function phaseFinalize(ctx: RunContext): ChatResponse {
     has_error: Boolean(ctx.lastError),
     output_chars: output.length,
     budget_warning: budgetWarning ?? null,
+    total_tool_calls: totalToolCalls,
+    read_calls: readCalls,
+    search_calls: searchCalls,
+    write_calls: writeCalls,
+    pre_write_discovery_calls: preWriteDiscoveryCalls,
   });
 
   return {
