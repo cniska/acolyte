@@ -66,7 +66,7 @@ export const toolMeta: Record<string, ToolMeta> = {
   },
   "edit-code": {
     instruction:
-      "Use `edit-code` for multi-location code changes or structural rewrites with AST `edits` array. Prefer `edit-file` for single-location text edits.",
+      "Use `edit-code` for multi-location code changes or structural rewrites with AST `edits` array. `path` must be a concrete file path (not `.` or a directory). Prefer `edit-file` for single-location text edits.",
     aliases: ["editCode", "edit_code"],
   },
   "edit-file": {
@@ -545,7 +545,7 @@ function createAstEditTool(workspace: string, session: SessionContext, onToolOut
   return createTool({
     id: "edit-code",
     description:
-      "Edit code with AST pattern matching. Pass `edits` as [{pattern, replacement}] using `$VAR` metavariables (e.g. pattern=`console.log($ARG)` replacement=`logger.debug($ARG)`). For non-code files use `edit-file`.",
+      "Edit code with AST pattern matching. Pass `edits` as [{pattern, replacement}] using `$VAR` metavariables (e.g. pattern=`console.log($ARG)` replacement=`logger.debug($ARG)`). `path` must be a specific file, not '.' or a directory. For non-code files use `edit-file`.",
     inputSchema: z.object({
       path: z.string().min(1),
       edits: z

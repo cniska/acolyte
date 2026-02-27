@@ -1008,6 +1008,10 @@ export async function editCode(input: {
 }): Promise<string> {
   ensureWritePermission("AST editing");
   const absPath = ensurePathWithinAllowedRoots(input.path, "AST edit", input.workspace);
+  const pathStats = await stat(absPath);
+  if (!pathStats.isFile()) {
+    throw new Error(`edit-code requires a file path, got: ${input.path}`);
+  }
   const original = await readFile(absPath, "utf8");
 
   let napi: typeof import("@ast-grep/napi");

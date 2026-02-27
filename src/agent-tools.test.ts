@@ -375,6 +375,19 @@ describe("editCode", () => {
     ).rejects.toThrow("AST edit is restricted to the workspace or /tmp");
   });
 
+  test("rejects directory paths", async () => {
+    const dirPath = `/tmp/acolyte-ast-dir-${crypto.randomUUID()}`;
+    tempDirs.push(dirPath);
+    await mkdir(dirPath, { recursive: true });
+    await expect(
+      editCode({
+        workspace: WS,
+        path: dirPath,
+        edits: [{ pattern: "console.log($ARG)", replacement: "logger.debug($ARG)" }],
+      }),
+    ).rejects.toThrow("edit-code requires a file path");
+  });
+
   test("read mode blocks editCode", async () => {
     setPermissionMode("read");
     await expect(

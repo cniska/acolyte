@@ -203,9 +203,12 @@ describe("efficiencyEvaluator", () => {
 
 describe("multiMatchEditEvaluator", () => {
   test("returns regenerate when edit-file fails with multi-match error", () => {
+    const session = createSessionContext();
+    session.callLog = [{ toolName: "edit-file", args: { path: "src/priority.ts" } }];
     const ctx = createMockContext({
       request: { model: "gpt-5-mini", message: "Rename symbol everywhere", history: [] },
       classifiedMode: "work",
+      session,
       observedTools: new Set(["read-file", "edit-file"]),
       sawEditFileMultiMatchError: true,
       lastError: "edit-file failed: Find text matched 3 locations (foo…).",
@@ -215,6 +218,24 @@ describe("multiMatchEditEvaluator", () => {
     expect(action.type).toBe("regenerate");
     if (action.type === "regenerate") {
       expect(action.prompt).toContain("next tool call must be edit-code");
+      expect(action.prompt).toContain("Use path 'src/priority.ts' for edit-code");
+      expect(action.prompt).toContain("do not use '.' or directory paths");
+    }
+  });
+
+  test("uses concrete-path guidance when no target path is available", () => {
+    const ctx = createMockContext({
+      request: { model: "gpt-5-mini", message: "Rename symbol everywhere", history: [] },
+      classifiedMode: "work",
+      observedTools: new Set(["edit-file"]),
+      sawEditFileMultiMatchError: true,
+      lastError: "edit-file failed: Find text matched 2 locations.",
+      result: { text: "Attempted edit.", toolCalls: [] },
+    });
+    const action = multiMatchEditEvaluator.evaluate(ctx);
+    expect(action.type).toBe("regenerate");
+    if (action.type === "regenerate") {
+      expect(action.prompt).toContain("Use a concrete file path for edit-code");
     }
   });
 

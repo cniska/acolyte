@@ -132,6 +132,16 @@ function isEditFileMultiMatchError(errorMessage: string): boolean {
   return /Find text matched \d+ locations?/i.test(errorMessage);
 }
 
+function findLastEditFilePath(ctx: RunContext): string | undefined {
+  for (let i = ctx.session.callLog.length - 1; i >= 0; i -= 1) {
+    const entry = ctx.session.callLog[i];
+    if (entry?.toolName !== "edit-file") continue;
+    const path = entry.args?.path;
+    if (typeof path === "string" && path.trim().length > 0) return path.trim();
+  }
+  return undefined;
+}
+
 function emitModeStatus(ctx: RunContext): void {
   ctx.emit({ type: "status", message: `${agentModes[ctx.mode].statusText} (${ctx.model})` });
 }
@@ -221,13 +231,20 @@ export const multiMatchEditEvaluator: Evaluator = {
     if (!ctx.observedTools.has("edit-file")) return { type: "done" };
     if (ctx.observedTools.has("edit-code")) return { type: "done" };
 
-    ctx.debug("lifecycle.eval.multi_match_edit_regenerate", { error: ctx.lastError ?? "multi_match_seen" });
+    const targetPath = findLastEditFilePath(ctx);
+    ctx.debug("lifecycle.eval.multi_match_edit_regenerate", {
+      error: ctx.lastError ?? "multi_match_seen",
+      target_path: targetPath ?? null,
+    });
     return {
       type: "regenerate",
       prompt:
         `${ctx.agentInput}\n\n` +
         "Your previous edit-file call matched multiple locations. " +
         "For this task, your next tool call must be edit-code (not edit-file). " +
+        (targetPath
+          ? `Use path '${targetPath}' for edit-code and do not use '.' or directory paths. `
+          : "Use a concrete file path for edit-code and do not use '.' or directory paths. ") +
         "Do not run additional find/search/read calls unless edit-code fails. " +
         "After applying edit-code changes, run verify.",
     };
