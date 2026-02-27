@@ -1243,6 +1243,7 @@ async function configMode(args: string[]): Promise<void> {
   const validKeys = [
     "port",
     "model",
+    "models",
     "omModel",
     "apiUrl",
     "openaiBaseUrl",
@@ -1257,9 +1258,9 @@ async function configMode(args: string[]): Promise<void> {
     "maxMessageTokens",
     "maxAttachmentMessageTokens",
     "maxPinnedMessageTokens",
+    "replyTimeoutMs",
   ] as const;
   const valid = new Set<string>(validKeys);
-  const validKeysHint = validKeys.join("|");
   const parseScopeFlag = (token: string | undefined): "user" | "project" | null => {
     if (token === "--user") {
       return "user";
@@ -1279,7 +1280,12 @@ async function configMode(args: string[]): Promise<void> {
     }
     for (const name of validKeys) {
       const value = config[name];
-      if (value !== undefined && value !== "") {
+      if (value === undefined || value === "") continue;
+      if (typeof value === "object" && value !== null) {
+        for (const [k, v] of Object.entries(value)) {
+          printDim(`${`${name}.${k}:`.padEnd(maxKey + 1)} ${String(v)}`);
+        }
+      } else {
         printDim(`${`${name}:`.padEnd(maxKey + 1)} ${String(value)}`);
       }
     }
@@ -1295,8 +1301,9 @@ async function configMode(args: string[]): Promise<void> {
       process.exitCode = 1;
       return;
     }
-    if (!key || !valid.has(key)) {
-      printError(`Usage: acolyte config set <${validKeysHint}> <value>`);
+    const isDottedKey = key?.includes(".") && valid.has(key.split(".")[0] ?? "");
+    if (!key || (!valid.has(key) && !isDottedKey)) {
+      printError("Usage: acolyte config set <key> <value>");
       process.exitCode = 1;
       return;
     }
@@ -1309,7 +1316,7 @@ async function configMode(args: string[]): Promise<void> {
     }
 
     try {
-      await setConfigValue(key as keyof AcolyteConfig, value, { scope: scope ?? "user" });
+      await setConfigValue(key, value, { scope: scope ?? "user" });
     } catch (error) {
       const message = error instanceof Error ? error.message : `Invalid value for ${key}`;
       printError(message);
@@ -1328,20 +1335,20 @@ async function configMode(args: string[]): Promise<void> {
       process.exitCode = 1;
       return;
     }
-    if (!key || !valid.has(key)) {
-      printError(`Usage: acolyte config unset <${validKeysHint}>`);
+    const isDottedUnsetKey = key?.includes(".") && valid.has(key.split(".")[0] ?? "");
+    if (!key || (!valid.has(key) && !isDottedUnsetKey)) {
+      printError("Usage: acolyte config unset <key>");
       process.exitCode = 1;
       return;
     }
 
-    await unsetConfigValue(key as keyof AcolyteConfig, { scope: scope ?? "user" });
+    await unsetConfigValue(key, { scope: scope ?? "user" });
     printDim(`Removed config ${key} (${scope ?? "user"}).`);
     return;
   }
 
-  printError(
-    `Usage: acolyte config list [--user|--project] | set [--user|--project] <${validKeysHint}> <value> | unset [--user|--project] <${validKeysHint}>`,
-  );
+  printError("Usage: acolyte config <list|set|unset> [--user|--project] [key] [value]");
+  printDim(`Keys: ${validKeys.join(", ")}`);
   process.exitCode = 1;
 }
 

@@ -92,7 +92,7 @@ type ConfigOptions = {
 const CONFIG_SET_SCHEMAS: Record<keyof AcolyteConfig, z.ZodTypeAny> = {
   port: parseIntegerSchema(1, 65535),
   model: nonEmptyStringSchema,
-  models: z.record(z.enum(Object.keys(agentModes) as [string, ...string[]]), nonEmptyStringSchema),
+  models: z.record(z.string(), nonEmptyStringSchema),
   omModel: nonEmptyStringSchema,
   apiUrl: nonEmptyStringSchema,
   openaiBaseUrl: nonEmptyStringSchema,
@@ -344,22 +344,65 @@ export async function writeConfig(config: AcolyteConfig, options?: ConfigOptions
   await writeFile(tomlPath, serializeToml(sanitized), "utf8");
 }
 
-export async function setConfigValue(key: keyof AcolyteConfig, value: string, options?: ConfigOptions): Promise<void> {
+const RECORD_VALID_KEYS: Partial<Record<keyof AcolyteConfig, Set<string>>> = {
+  models: new Set(Object.keys(agentModes)),
+};
+
+function parseDottedKey(key: string): { section: keyof AcolyteConfig; subKey: string } | null {
+  const dot = key.indexOf(".");
+  if (dot < 0) return null;
+  const section = key.slice(0, dot) as keyof AcolyteConfig;
+  const subKey = key.slice(dot + 1);
+  if (!(section in CONFIG_SET_SCHEMAS) || subKey.length === 0) return null;
+  const allowed = RECORD_VALID_KEYS[section];
+  if (allowed && !allowed.has(subKey)) return null;
+  return { section, subKey };
+}
+
+export async function setConfigValue(key: string, value: string, options?: ConfigOptions): Promise<void> {
   const scope = options?.scope ?? "user";
-  const parsed = CONFIG_SET_SCHEMAS[key].safeParse(value);
+  const dotted = parseDottedKey(key);
+  if (dotted) {
+    const schema = CONFIG_SET_SCHEMAS[dotted.section];
+    const current = await readConfigScope(scope, options);
+    const existing = (current[dotted.section] ?? {}) as Record<string, unknown>;
+    const merged = { ...existing, [dotted.subKey]: value };
+    const parsed = schema.safeParse(merged);
+    if (!parsed.success) {
+      throw new Error(`Invalid value for ${key}`);
+    }
+    const next: AcolyteConfig = { ...current, [dotted.section]: parsed.data };
+    await writeConfig(next, { ...options, scope });
+    return;
+  }
+  const topKey = key as keyof AcolyteConfig;
+  if (!(topKey in CONFIG_SET_SCHEMAS)) {
+    throw new Error(`Unknown config key: ${key}`);
+  }
+  const parsed = CONFIG_SET_SCHEMAS[topKey].safeParse(value);
   if (!parsed.success) {
     throw new Error(`Invalid value for ${key}`);
   }
   const current = await readConfigScope(scope, options);
-  const next: AcolyteConfig = { ...current, [key]: parsed.data };
+  const next: AcolyteConfig = { ...current, [topKey]: parsed.data };
   await writeConfig(next, { ...options, scope });
 }
 
-export async function unsetConfigValue(key: keyof AcolyteConfig, options?: ConfigOptions): Promise<void> {
+export async function unsetConfigValue(key: string, options?: ConfigOptions): Promise<void> {
   const scope = options?.scope ?? "user";
+  const dotted = parseDottedKey(key);
+  if (dotted) {
+    const current = await readConfigScope(scope, options);
+    const existing = (current[dotted.section] ?? {}) as Record<string, string>;
+    const { [dotted.subKey]: _, ...rest } = existing;
+    const next: AcolyteConfig = { ...current, [dotted.section]: Object.keys(rest).length > 0 ? rest : undefined };
+    await writeConfig(next, { ...options, scope });
+    return;
+  }
+  const topKey = key as keyof AcolyteConfig;
   const current = await readConfigScope(scope, options);
   const next: AcolyteConfig = { ...current };
-  delete next[key];
+  delete next[topKey];
   await writeConfig(next, { ...options, scope });
 }
 
