@@ -82,19 +82,32 @@ function connectionHelpMessage(apiUrl: string): string {
   return `Cannot reach server at ${apiUrl}. Start it with: acolyte serve`;
 }
 
+type ClientTransport = {
+  apiUrl: string;
+  request: (path: string, init?: RequestInit) => Promise<Response>;
+};
+
+class HttpTransport implements ClientTransport {
+  constructor(public readonly apiUrl: string) {}
+
+  async request(path: string, init?: RequestInit): Promise<Response> {
+    const url = `${this.apiUrl.replace(/\/$/, "")}${path}`;
+    return fetch(url, init);
+  }
+}
+
 class HttpClient implements Client {
   constructor(
-    private readonly apiUrl: string,
+    private readonly transport: ClientTransport,
     private readonly apiKey?: string,
     private readonly replyTimeoutMs?: number,
   ) {}
 
   private async fetchOrThrow(path: string, init?: RequestInit): Promise<Response> {
-    const url = `${this.apiUrl.replace(/\/$/, "")}${path}`;
     try {
-      return await fetch(url, init);
+      return await this.transport.request(path, init);
     } catch (error) {
-      if (isConnectionFailure(error)) throw new Error(connectionHelpMessage(this.apiUrl));
+      if (isConnectionFailure(error)) throw new Error(connectionHelpMessage(this.transport.apiUrl));
       throw error;
     }
   }
@@ -353,5 +366,5 @@ export function createClient(options?: ClientOptions): Client {
   if (!apiUrl) throw new Error("No API URL configured. Start the server with: acolyte serve");
   const apiKey = options?.apiKey ?? appConfig.server.apiKey;
   const replyTimeoutMs = options?.replyTimeoutMs;
-  return new HttpClient(apiUrl, apiKey, replyTimeoutMs);
+  return new HttpClient(new HttpTransport(apiUrl), apiKey, replyTimeoutMs);
 }

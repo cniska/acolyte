@@ -14,6 +14,7 @@ import {
 import type { Client } from "./client";
 import { addMemory } from "./memory";
 import { createId } from "./short-id";
+import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
 import type { Message, Session, SessionStore } from "./types";
 
 type CreateSubmitHandlerInput = {
@@ -348,6 +349,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
     let committedStreamingText = "";
     const toolRowIdByCallId = new Map<string, string>();
     const toolSeenLinesByCallId = new Map<string, Set<string>>();
+    const pendingToolCallById = new Map<string, { header: string; toolName: string }>();
     const toolHeaders = new Set<string>();
     let streamFlushTimer: ReturnType<typeof setTimeout> | null = null;
     const STREAM_FLUSH_MS = 50;
@@ -374,6 +376,32 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         );
       });
     };
+    const ensureToolRow = (toolCallId: string): void => {
+      const pending = pendingToolCallById.get(toolCallId);
+      if (!pending) return;
+      if (toolRowIdByCallId.get(toolCallId)) return;
+      const rowId = `row_${createId()}`;
+      toolRowIdByCallId.set(toolCallId, rowId);
+      toolSeenLinesByCallId.set(toolCallId, new Set([pending.header.toLowerCase()]));
+      toolHeaders.add(pending.header.toLowerCase());
+      const toolRow: ChatRow = {
+        id: rowId,
+        role: "assistant",
+        content: pending.header,
+        style: "toolProgress",
+        toolCallId,
+        toolName: pending.toolName,
+      };
+      if (streamingAssistantContent.trim().length > 0) committedStreamingText += streamingAssistantContent;
+      streamingAssistantRowId = null;
+      streamingAssistantContent = "";
+      input.setRows((current) => [...current, toolRow]);
+      pendingToolCallById.delete(toolCallId);
+    };
+    const flushPendingToolRows = (): void => {
+      for (const toolCallId of [...pendingToolCallById.keys()]) ensureToolRow(toolCallId);
+    };
+
     const progressTracker = createProgressTracker({
       onStatus: (message) => {
         input.setProgressText(message);
@@ -384,33 +412,13 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         if (!streamFlushTimer) streamFlushTimer = setTimeout(flushStreamingContent, STREAM_FLUSH_MS);
       },
       onToolCall: (entry) => {
-        // Cancel any pending flush — we handle it atomically below.
-        if (streamFlushTimer) {
-          clearTimeout(streamFlushTimer);
-          streamFlushTimer = null;
-        }
         const header = formatToolHeader(entry.toolName, entry.args);
-        toolHeaders.add(header.toLowerCase());
-        const rowId = `row_${createId()}`;
-        toolRowIdByCallId.set(entry.toolCallId, rowId);
-        toolSeenLinesByCallId.set(entry.toolCallId, new Set([header.toLowerCase()]));
-        const toolRow: ChatRow = {
-          id: rowId,
-          role: "assistant",
-          content: header,
-          style: "toolProgress",
-          toolCallId: entry.toolCallId,
-          toolName: entry.toolName,
-        };
-        // Freeze pre-tool streaming text and append tool row.
-        if (streamingAssistantContent.trim().length > 0) committedStreamingText += streamingAssistantContent;
-        streamingAssistantRowId = null;
-        streamingAssistantContent = "";
-        input.setRows((current) => [...current, toolRow]);
+        pendingToolCallById.set(entry.toolCallId, { header, toolName: entry.toolName });
       },
       onToolOutput: (entry) => {
         const content = entry.content.trim();
         if (!content) return;
+        ensureToolRow(entry.toolCallId);
         input.setRows((current) => {
           const normalizedLine = content.toLowerCase();
           const seenLines = toolSeenLinesByCallId.get(entry.toolCallId) ?? new Set<string>();
@@ -444,6 +452,19 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         });
       },
       onToolResult: (entry) => {
+        const guardBlocked =
+          entry.isError &&
+          (entry.errorCode === LIFECYCLE_ERROR_CODES.guardBlocked || entry.errorDetail?.category === "guard-blocked");
+        if (guardBlocked) {
+          pendingToolCallById.delete(entry.toolCallId);
+          const rowId = toolRowIdByCallId.get(entry.toolCallId);
+          toolRowIdByCallId.delete(entry.toolCallId);
+          toolSeenLinesByCallId.delete(entry.toolCallId);
+          if (!rowId) return;
+          input.setRows((current) => current.filter((row) => row.id !== rowId));
+          return;
+        }
+        ensureToolRow(entry.toolCallId);
         const rowId = toolRowIdByCallId.get(entry.toolCallId);
         if (!rowId) return;
         const status: ChatRow["toolStatus"] = entry.isError ? "error" : "ok";
@@ -476,6 +497,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       });
       const assistantMessage = turn.assistantMessage;
       const clarifyingQuestions = extractClarifyingQuestions(assistantMessage.content);
+      flushPendingToolRows();
       // Capture the streaming row id before clearing so we can remove it atomically
       // with the final rows to avoid a visual jump.
       const pendingStreamRowId = streamingAssistantRowId;

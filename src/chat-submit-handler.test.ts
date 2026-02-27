@@ -970,11 +970,14 @@ describe("chat submit handler guards", () => {
     expect(toolIndex).toBeLessThan(assistantIndex);
   });
 
-  test("creates a single tool row for header-only tool-call event", async () => {
+  test("creates a single tool row when tool-call is followed by tool-result", async () => {
     const { submit, rows } = createSubmitHandlerHarness({
       client: createClient({
         status: async () => ({}),
-        events: [{ type: "tool-call", toolCallId: "call_1", toolName: "edit-file", args: { path: "sum.rs" } }],
+        events: [
+          { type: "tool-call", toolCallId: "call_1", toolName: "edit-file", args: { path: "sum.rs" } },
+          { type: "tool-result", toolCallId: "call_1", toolName: "edit-file" },
+        ],
         reply: async () => ({
           model: "gpt-5-mini",
           output: "done",
@@ -989,6 +992,34 @@ describe("chat submit handler guards", () => {
     );
     expect(editedRows).toHaveLength(1);
     expect(editedRows[0]?.content).toBe("Edit sum.rs");
+  });
+
+  test("suppresses guard-blocked tool attempts", async () => {
+    const { submit, rows } = createSubmitHandlerHarness({
+      client: createClient({
+        status: async () => ({}),
+        events: [
+          { type: "tool-call", toolCallId: "call_1", toolName: "read-file", args: { paths: [{ path: "a.ts" }] } },
+          {
+            type: "tool-result",
+            toolCallId: "call_1",
+            toolName: "read-file",
+            isError: true,
+            errorCode: "E_GUARD_BLOCKED",
+            errorDetail: { code: "E_GUARD_BLOCKED", category: "guard-blocked" },
+          },
+        ],
+        reply: async () => ({
+          model: "gpt-5-mini",
+          output: "done",
+        }),
+      }),
+    });
+
+    await submit("hello");
+
+    const toolRows = rows.filter((row) => row.role === "assistant" && row.style === "toolProgress");
+    expect(toolRows).toHaveLength(0);
   });
 
   test("merges tool-output into tool-call row in real time", async () => {
