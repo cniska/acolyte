@@ -24,6 +24,8 @@ function createMockContext(overrides: Partial<RunContext> = {}): RunContext {
     },
     observedTools: new Set(),
     modelCallCount: 1,
+    regenerationCount: 0,
+    regenerationLimitHit: false,
     nativeIdQueue: new Map(),
     toolCallStartedAt: new Map(),
     toolOutputHandler: null,

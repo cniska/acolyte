@@ -24,6 +24,8 @@ const TIMEOUT_RECOVERY_MAX_STEPS = 8;
 const TIMEOUT_RECOVERY_TIMEOUT_MS = 45_000;
 const STEP_TIMEOUT_MS = 120_000;
 const VERIFY_MAX_STEPS = 30;
+const MAX_REGENERATIONS_PER_REQUEST = 3;
+const MAX_REGENERATIONS_PER_EVALUATOR = 1;
 const WRITE_TOOLS = ["edit-code", "edit-file", "create-file"];
 const READ_TOOLS = ["read-file"];
 const SEARCH_TOOLS = ["find-files", "search-files", "scan-code", "git-status", "git-diff"];
@@ -80,6 +82,8 @@ export type RunContext = {
   mode: AgentMode;
   observedTools: Set<string>;
   modelCallCount: number;
+  regenerationCount: number;
+  regenerationLimitHit: boolean;
   lastError?: string;
   result?: GenerateResult;
   nativeIdQueue: Map<string, string[]>;
@@ -564,6 +568,8 @@ function phaseFinalize(ctx: RunContext): ChatResponse {
     search_calls: searchCalls,
     write_calls: writeCalls,
     pre_write_discovery_calls: preWriteDiscoveryCalls,
+    regeneration_count: ctx.regenerationCount,
+    regeneration_limit_hit: ctx.regenerationLimitHit,
   });
 
   return {
@@ -622,6 +628,8 @@ export async function runLifecycle(input: LifecycleInput): Promise<ChatResponse>
     promptUsage: prepared.promptUsage,
     observedTools: new Set(),
     modelCallCount: 0,
+    regenerationCount: 0,
+    regenerationLimitHit: false,
     nativeIdQueue,
     toolCallStartedAt,
     toolOutputHandler: null,
@@ -649,16 +657,40 @@ export async function runLifecycle(input: LifecycleInput): Promise<ChatResponse>
   if (!ctx.result) return phaseFinalize(ctx);
 
   const evaluators: Evaluator[] = [planDetector, efficiencyEvaluator, autoVerifier];
+  const regenByEvaluator = new Map<string, number>();
   for (const evaluator of evaluators) {
     const action = evaluator.evaluate(ctx);
     if (action.type === "done") {
       ctx.debug("lifecycle.eval.decision", { evaluator: evaluator.id, action: "done" });
       continue;
     }
+    const evaluatorRegens = regenByEvaluator.get(evaluator.id) ?? 0;
+    if (ctx.regenerationCount >= MAX_REGENERATIONS_PER_REQUEST) {
+      ctx.regenerationLimitHit = true;
+      ctx.debug("lifecycle.eval.skipped", {
+        evaluator: evaluator.id,
+        reason: "request_cap",
+        regeneration_count: ctx.regenerationCount,
+        regeneration_cap: MAX_REGENERATIONS_PER_REQUEST,
+      });
+      continue;
+    }
+    if (evaluatorRegens >= MAX_REGENERATIONS_PER_EVALUATOR) {
+      ctx.regenerationLimitHit = true;
+      ctx.debug("lifecycle.eval.skipped", {
+        evaluator: evaluator.id,
+        reason: "evaluator_cap",
+        evaluator_regenerations: evaluatorRegens,
+        evaluator_cap: MAX_REGENERATIONS_PER_EVALUATOR,
+      });
+      continue;
+    }
     const saved: { result: GenerateResult | undefined; lastError: string | undefined } | undefined = action.keepResult
       ? { result: ctx.result, lastError: ctx.lastError }
       : undefined;
     if (action.mode) ctx.mode = action.mode;
+    ctx.regenerationCount += 1;
+    regenByEvaluator.set(evaluator.id, evaluatorRegens + 1);
     ctx.debug("lifecycle.eval.decision", {
       evaluator: evaluator.id,
       action: "regenerate",
@@ -666,6 +698,8 @@ export async function runLifecycle(input: LifecycleInput): Promise<ChatResponse>
       max_steps: action.maxSteps ?? INITIAL_MAX_STEPS,
       timeout_ms: action.timeoutMs ?? STEP_TIMEOUT_MS,
       keep_result: Boolean(action.keepResult),
+      regeneration_count: ctx.regenerationCount,
+      evaluator_regenerations: evaluatorRegens + 1,
     });
     await phaseGenerate(ctx, action.prompt, {
       maxSteps: action.maxSteps ?? INITIAL_MAX_STEPS,
