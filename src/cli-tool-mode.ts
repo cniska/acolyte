@@ -19,6 +19,7 @@ import {
   parseEditResult,
   showToolResult,
 } from "./cli-format";
+import { hasHelpFlag, subcommandHelp } from "./cli-help";
 import { printError, printWarning } from "./ui";
 
 const editArgsSchema = z.object({
@@ -55,6 +56,10 @@ function requireArg(rest: string[], usage: string): string {
 }
 
 export async function toolMode(args: string[]): Promise<void> {
+  if (hasHelpFlag(args)) {
+    subcommandHelp("tool");
+    return;
+  }
   try {
     const [subcommand, ...rest] = args;
     switch (subcommand) {

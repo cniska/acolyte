@@ -1,13 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { formatColumns, formatRelativeTime } from "./chat-formatters";
 import {
-  buildUsageCommandRows,
   extractVersionFromPackageJsonText,
   formatPromptError,
   formatResumeCommand,
   formatStatusOutput,
-  isTopLevelHelpCommand,
-  isTopLevelVersionCommand,
   parseDogfoodArgs,
   resolveCommandAlias,
   runResourceId,
@@ -26,6 +23,7 @@ import {
   summarizeDiff,
   truncateText,
 } from "./cli-format";
+import { buildUsageCommandRows, isTopLevelHelpCommand, isTopLevelVersionCommand } from "./cli-help";
 
 describe("cli formatting helpers", () => {
   test("formatRunOutput compresses long stdout", () => {

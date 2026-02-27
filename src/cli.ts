@@ -18,6 +18,14 @@ import {
   showToolResult,
   truncateText,
 } from "./cli-format";
+import {
+  hasHelpFlag,
+  isTopLevelHelpCommand,
+  isTopLevelVersionCommand,
+  subcommandError,
+  subcommandHelp,
+  usage,
+} from "./cli-help";
 import { toolMode } from "./cli-tool-mode";
 import { createClient } from "./client";
 import { readConfig, readConfigForScope, readResolvedConfigSync, setConfigValue, unsetConfigValue } from "./config";
@@ -29,7 +37,7 @@ import { formatStatusOutput as formatStatusOutputShared } from "./status-format"
 import { createSession, readStore, writeStore } from "./storage";
 import { parseToolProgressLine } from "./tool-progress";
 import type { Message, Session, SessionStore } from "./types";
-import { clearScreen, formatCliTitle, printDim, printError, printOutput, streamText } from "./ui";
+import { clearScreen, printDim, printError, printOutput, streamText } from "./ui";
 
 const FALLBACK_MODEL = "gpt-5-mini";
 export function extractVersionFromPackageJsonText(text: string): string | null {
@@ -72,64 +80,6 @@ const dogfoodArgsSchema = z.object({
   prompt: z.string(),
   verify: z.boolean(),
 });
-function usage(): void {
-  const commands = buildUsageCommandRows();
-  const options = buildUsageOptionRows();
-  const sharedPad =
-    Math.max(
-      commands.reduce((max, row) => Math.max(max, row.command.length), 0),
-      options.reduce((max, row) => Math.max(max, row.option.length), 0),
-    ) + 2;
-  const dim = (text: string): string => `\x1b[2m${text}\x1b[22m`;
-  const whiteBold = (text: string): string => `\x1b[1m\x1b[37m${text}\x1b[39m\x1b[22m`;
-
-  printOutput("");
-  printOutput(formatCliTitle(CLI_VERSION));
-  printOutput("");
-  printOutput(whiteBold("Usage"));
-  printOutput("  acolyte");
-  printOutput("  acolyte <COMMAND> [ARGS]");
-  printOutput("");
-
-  printOutput(whiteBold("Commands"));
-  for (const row of commands) {
-    printOutput(`  ${row.command.padEnd(sharedPad)}${dim(row.description)}`);
-  }
-  printOutput("");
-
-  printOutput(whiteBold("Options"));
-  for (const row of options) {
-    printOutput(`  ${row.option.padEnd(sharedPad)}${dim(row.description)}`);
-  }
-  printOutput("");
-}
-
-export function buildUsageCommandRows(): Array<{ command: string; description: string }> {
-  return [
-    { command: "resume [id-prefix]", description: "resume previous session" },
-    { command: "run <prompt>", description: "run a single prompt" },
-    { command: "history", description: "show recent sessions" },
-    { command: "serve", description: "start the API server" },
-    { command: "status", description: "show server status" },
-    { command: "memory", description: "manage memory notes" },
-    { command: "config", description: "manage local CLI config" },
-  ];
-}
-
-export function isTopLevelHelpCommand(command: string | undefined): boolean {
-  return command === "help" || command === "--help" || command === "-h";
-}
-
-export function buildUsageOptionRows(): Array<{ option: string; description: string }> {
-  return [
-    { option: "-h, --help", description: "print help" },
-    { option: "-V, --version", description: "print version" },
-  ];
-}
-
-export function isTopLevelVersionCommand(command: string | undefined): boolean {
-  return command === "version" || command === "--version" || command === "-V";
-}
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -591,6 +541,10 @@ async function chatModeWithOptions(options: { resumeLatest: boolean; resumePrefi
 }
 
 async function runMode(args: string[]): Promise<void> {
+  if (hasHelpFlag(args)) {
+    subcommandHelp("run");
+    return;
+  }
   let parsed: { files: string[]; prompt: string; verify: boolean; workspace?: string };
   try {
     parsed = parseRunArgs(args);
@@ -603,8 +557,7 @@ async function runMode(args: string[]): Promise<void> {
 
   const prompt = parsed.prompt;
   if (!prompt) {
-    printError("Usage: acolyte run [--file <path>] [--workspace <path>] [--verify] <prompt>");
-    process.exitCode = 1;
+    subcommandError("run");
     return;
   }
 
@@ -704,20 +657,22 @@ async function statusMode(): Promise<void> {
 }
 
 async function memoryMode(args: string[]): Promise<void> {
+  if (hasHelpFlag(args)) {
+    subcommandHelp("memory");
+    return;
+  }
   const [subcommand, ...rest] = args;
   const validScopes = new Set(["all", "user", "project"]);
 
   if (subcommand === "list" || !subcommand) {
     const scopeRaw = subcommand === "list" ? rest[0] : undefined;
     if (subcommand === "list" && rest.length > 1) {
-      printError("Usage: acolyte memory list [all|user|project]");
-      process.exitCode = 1;
+      subcommandError("memory", "Usage: acolyte memory list [all|user|project]");
       return;
     }
     const scope = scopeRaw && validScopes.has(scopeRaw) ? scopeRaw : "all";
     if (scopeRaw && !validScopes.has(scopeRaw)) {
-      printError("Usage: acolyte memory list [all|user|project]");
-      process.exitCode = 1;
+      subcommandError("memory", "Usage: acolyte memory list [all|user|project]");
       return;
     }
     const rows = await listMemories({ scope: scope as "all" | "user" | "project" });
@@ -741,8 +696,7 @@ async function memoryMode(args: string[]): Promise<void> {
     }
     const content = contentParts.join(" ").trim();
     if (!content) {
-      printError("Usage: acolyte memory add [--user|--project] <memory text>");
-      process.exitCode = 1;
+      subcommandError("memory", "Usage: acolyte memory add [--user|--project] <memory text>");
       return;
     }
     const entry = await addMemory(content, { scope });
@@ -750,11 +704,14 @@ async function memoryMode(args: string[]): Promise<void> {
     return;
   }
 
-  printError("Usage: acolyte memory <list|add> [options]");
-  process.exitCode = 1;
+  subcommandError("memory");
 }
 
 async function configMode(args: string[]): Promise<void> {
+  if (hasHelpFlag(args)) {
+    subcommandHelp("config");
+    return;
+  }
   const [subcommandRaw, ...restArgs] = args;
   const isImplicitList = !subcommandRaw || subcommandRaw === "--user" || subcommandRaw === "--project";
   const subcommand = isImplicitList ? "list" : subcommandRaw;
@@ -822,8 +779,7 @@ async function configMode(args: string[]): Promise<void> {
     }
     const isDottedKey = key?.includes(".") && valid.has(key.split(".")[0] ?? "");
     if (!key || (!valid.has(key) && !isDottedKey)) {
-      printError("Usage: acolyte config set <key> <value>");
-      process.exitCode = 1;
+      subcommandError("config", "Usage: acolyte config set <key> <value>");
       return;
     }
 
@@ -856,8 +812,7 @@ async function configMode(args: string[]): Promise<void> {
     }
     const isDottedUnsetKey = key?.includes(".") && valid.has(key.split(".")[0] ?? "");
     if (!key || (!valid.has(key) && !isDottedUnsetKey)) {
-      printError("Usage: acolyte config unset <key>");
-      process.exitCode = 1;
+      subcommandError("config", "Usage: acolyte config unset <key>");
       return;
     }
 
@@ -866,16 +821,15 @@ async function configMode(args: string[]): Promise<void> {
     return;
   }
 
-  printError("Usage: acolyte config <list|set|unset> [options]");
+  subcommandError("config");
   printDim(`Keys: ${validKeys.join(", ")}`);
-  process.exitCode = 1;
 }
 
 async function main(): Promise<void> {
   const [command, ...args] = process.argv.slice(2);
 
   if (isTopLevelHelpCommand(command)) {
-    usage();
+    usage(CLI_VERSION);
     return;
   }
   if (isTopLevelVersionCommand(command)) {
@@ -889,9 +843,12 @@ async function main(): Promise<void> {
   }
 
   if (command === "resume") {
+    if (hasHelpFlag(args)) {
+      subcommandHelp("resume");
+      return;
+    }
     if (args.length > 1) {
-      printError("Usage: acolyte resume [session-id-prefix]");
-      process.exitCode = 1;
+      subcommandError("resume");
       return;
     }
     const resumePrefix = args[0]?.trim() || undefined;
@@ -939,7 +896,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  usage();
+  usage(CLI_VERSION);
   process.exitCode = 1;
 }
 
