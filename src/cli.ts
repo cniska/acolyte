@@ -61,7 +61,7 @@ function resolveCliVersion(): string {
 
 const CLI_VERSION = resolveCliVersion();
 const RUN_MODE_SYSTEM_PROMPT =
-  "Run mode: answer concisely and directly (prefer <=5 lines). Avoid option menus unless the user explicitly asks for options.";
+  "Run mode: act decisively — make reasonable defaults instead of asking clarifying questions. Answer concisely (prefer <=5 lines). No option menus.";
 const runArgsSchema = z.object({
   files: z.array(z.string().min(1)),
   prompt: z.string(),

@@ -154,7 +154,7 @@ export function createSubagentContext(req: ChatRequest): string {
 const BASE_INSTRUCTIONS = [
   "- Act, don't narrate. Use tools directly — do not describe what you will do.",
   "- Prefer dedicated tools over shell equivalents.",
-  "- Keep working until done or blocked. If blocked, ask one short question.",
+  "- Keep working until done. Make reasonable assumptions instead of asking — only ask if truly stuck with no viable path.",
 ].join("\n");
 
 export function createModeInstructions(mode: AgentMode, workspace?: string): string {
