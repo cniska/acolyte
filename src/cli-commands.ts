@@ -328,6 +328,10 @@ async function historyMode(args: string[]): Promise<void> {
     subcommandHelp("history");
     return;
   }
+  if (args.length > 0) {
+    subcommandError("history");
+    return;
+  }
   const store = await readStore();
   listSessions(store);
 }
@@ -337,12 +341,20 @@ async function serveMode(args: string[]): Promise<void> {
     subcommandHelp("serve");
     return;
   }
+  if (args.length > 0) {
+    subcommandError("serve");
+    return;
+  }
   await import("./server");
 }
 
 async function statusMode(args: string[]): Promise<void> {
   if (hasHelpFlag(args)) {
     subcommandHelp("status");
+    return;
+  }
+  if (args.length > 0) {
+    subcommandError("status");
     return;
   }
   const client = createClient({
