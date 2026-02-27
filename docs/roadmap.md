@@ -118,6 +118,7 @@ What MVP is **not**:
 - Mode-based tool filtering at the Mastra level (currently instruction-based, not enforced).
 - Session branching — isolated sub-tasks without polluting main context.
 - Agent-authored skills — let the agent create and refine its own tools at runtime.
+- Tool output collapsing — group consecutive same-tool calls into a single summary row to reduce visual noise.
 
 ## Known Issues
 

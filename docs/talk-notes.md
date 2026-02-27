@@ -48,7 +48,7 @@ Living notes for talks about building this project. Update this file as mileston
 - Built collaboratively with Codex in commit-sized slices.
 - Delivery loop: define slice -> implement -> validate -> commit.
 - Standard validation: `bun run verify` (format + lint + typecheck + test).
-- ~430 tests, zero lint issues, ~22K lines of TypeScript.
+- ~425 tests, zero lint issues, ~20K lines of TypeScript.
 
 ## Key Talking Points
 - Vibe-coding can produce production-quality software with the right constraints (verify gates, scoped slices, clear policies).
