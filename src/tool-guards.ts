@@ -1,13 +1,15 @@
-export type GuardEvent = { guardId: string; toolName: string; action: "blocked" | "flag_set"; detail?: string };
+import type { ToolName } from "./tool-names";
+
+export type GuardEvent = { guardId: string; toolName: ToolName; action: "blocked" | "flag_set"; detail?: string };
 
 export type SessionContext = {
-  callLog: Array<{ toolName: string; args: Record<string, unknown> }>;
+  callLog: Array<{ toolName: ToolName; args: Record<string, unknown> }>;
   flags: Record<string, unknown>;
   onGuard?: (event: GuardEvent) => void;
 };
 
 export type GuardInput = {
-  toolName: string;
+  toolName: ToolName;
   args: Record<string, unknown>;
   session: SessionContext;
 };
@@ -15,6 +17,7 @@ export type GuardInput = {
 export type ToolGuard = {
   id: string;
   description: string;
+  appliesTo: "all" | readonly ToolName[];
   check: (input: GuardInput) => void;
 };
 
@@ -53,8 +56,8 @@ function isShellReadFallback(command: string): boolean {
 const noRewriteGuard: ToolGuard = {
   id: "no-rewrite",
   description: "Block delete-file on a path that was previously read — use edit-file instead.",
+  appliesTo: ["delete-file"],
   check({ toolName, args, session }) {
-    if (toolName !== "delete-file") return;
     const deletePath = typeof args.path === "string" ? args.path : null;
     if (!deletePath) return;
     const normalized = normalizePath(deletePath);
@@ -80,9 +83,8 @@ const noRewriteGuard: ToolGuard = {
 const excessiveFileLoopGuard: ToolGuard = {
   id: "excessive-file-loop",
   description: "Block repeated read/edit churn on the same file to force a strategy change.",
+  appliesTo: ["read-file", "edit-file"],
   check({ toolName, args, session }) {
-    if (toolName !== "read-file" && toolName !== "edit-file") return;
-
     const targetPaths =
       toolName === "edit-file"
         ? typeof args.path === "string" && args.path.trim().length > 0
@@ -120,9 +122,8 @@ const excessiveFileLoopGuard: ToolGuard = {
 const excessiveSearchLoopGuard: ToolGuard = {
   id: "excessive-search-loop",
   description: "Block repeated search-only churn to force an evidence-based conclusion.",
+  appliesTo: ["search-files"],
   check({ toolName, session }) {
-    if (toolName !== "search-files") return;
-
     let searchCount = 0;
     let readCount = 0;
     let writeCount = 0;
@@ -148,8 +149,8 @@ const excessiveSearchLoopGuard: ToolGuard = {
 const verifyRanGuard: ToolGuard = {
   id: "verify-ran",
   description: "Set session flag when run-command executes a verify command.",
+  appliesTo: ["run-command"],
   check({ toolName, args, session }) {
-    if (toolName !== "run-command") return;
     if (typeof args.command !== "string") return;
     if (/\bverify\b/i.test(args.command)) {
       session.flags.verifyRan = true;
@@ -161,8 +162,8 @@ const verifyRanGuard: ToolGuard = {
 const noShellReadFallbackGuard: ToolGuard = {
   id: "no-shell-read-fallback",
   description: "Block run-command shell fallbacks for file discovery/reading tools.",
+  appliesTo: ["run-command"],
   check({ toolName, args, session }) {
-    if (toolName !== "run-command") return;
     const command = typeof args.command === "string" ? args.command : "";
     if (!isShellReadFallback(command)) return;
     session.onGuard?.({ guardId: "no-shell-read-fallback", toolName, action: "blocked", detail: command });
@@ -182,10 +183,13 @@ const GUARDS: ToolGuard[] = [
 
 export function runGuards(input: GuardInput): void {
   for (const guard of GUARDS) {
+    if (guard.appliesTo !== "all" && !guard.appliesTo.includes(input.toolName)) {
+      continue;
+    }
     guard.check(input);
   }
 }
 
-export function recordCall(session: SessionContext, toolName: string, args: Record<string, unknown>): void {
+export function recordCall(session: SessionContext, toolName: ToolName, args: Record<string, unknown>): void {
   session.callLog.push({ toolName, args });
 }

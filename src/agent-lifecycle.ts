@@ -19,6 +19,7 @@ import type { StreamEvent } from "./client";
 import type { LifecycleDebugEvent, LifecycleEventName } from "./lifecycle-events";
 import { type AcolyteToolset, toolsForAgent } from "./mastra-tools";
 import type { SessionContext } from "./tool-guards";
+import type { ToolName } from "./tool-names";
 
 const INITIAL_MAX_STEPS = 50;
 const TIMEOUT_RECOVERY_MAX_STEPS = 8;
@@ -27,10 +28,21 @@ const STEP_TIMEOUT_MS = 120_000;
 const VERIFY_MAX_STEPS = 30;
 const MAX_REGENERATIONS_PER_REQUEST = 3;
 const MAX_REGENERATIONS_PER_EVALUATOR = 1;
-const WRITE_TOOLS = ["edit-code", "edit-file", "create-file"];
-const READ_TOOLS = ["read-file"];
-const SEARCH_TOOLS = ["find-files", "search-files", "scan-code", "git-status", "git-diff"];
-const DISCOVERY_TOOLS = ["find-files", "search-files", "read-file", "scan-code", "git-status", "git-diff"];
+const WRITE_TOOLS: readonly ToolName[] = ["edit-code", "edit-file", "create-file"];
+const READ_TOOLS: readonly ToolName[] = ["read-file"];
+const SEARCH_TOOLS: readonly ToolName[] = ["find-files", "search-files", "scan-code", "git-status", "git-diff"];
+const DISCOVERY_TOOLS: readonly ToolName[] = [
+  "find-files",
+  "search-files",
+  "read-file",
+  "scan-code",
+  "git-status",
+  "git-diff",
+];
+const WRITE_TOOL_SET = new Set<ToolName>(WRITE_TOOLS);
+const READ_TOOL_SET = new Set<ToolName>(READ_TOOLS);
+const SEARCH_TOOL_SET = new Set<ToolName>(SEARCH_TOOLS);
+const DISCOVERY_TOOL_SET = new Set<ToolName>(DISCOVERY_TOOLS);
 
 export type GenerateResult = {
   text: string;
@@ -186,7 +198,7 @@ export const autoVerifier: Evaluator = {
   id: "auto-verifier",
   evaluate(ctx) {
     if (!ctx.result) return { type: "done" };
-    const usedWriteTools = WRITE_TOOLS.some((t) => ctx.observedTools.has(t));
+    const usedWriteTools = WRITE_TOOLS.some((tool) => ctx.observedTools.has(tool));
     if (ctx.classifiedMode === "work" && usedWriteTools && !ctx.session.flags.verifyRan) {
       return {
         type: "regenerate",
@@ -208,13 +220,13 @@ export const efficiencyEvaluator: Evaluator = {
     if (!hasStrongWriteIntent(ctx.request.message)) return { type: "done" };
 
     const callLog = ctx.session.callLog;
-    const firstWriteIndex = callLog.findIndex((entry) => WRITE_TOOLS.includes(entry.toolName));
+    const firstWriteIndex = callLog.findIndex((entry) => WRITE_TOOL_SET.has(entry.toolName));
     if (firstWriteIndex >= 0) return { type: "done" };
     const fileNotFoundOutcome =
       (ctx.lastError ? isFileNotFoundSignal(ctx.lastError) : false) || isFileNotFoundSignal(ctx.result.text);
     if (fileNotFoundOutcome) return { type: "done" };
 
-    const discoveryCalls = callLog.filter((entry) => DISCOVERY_TOOLS.includes(entry.toolName)).length;
+    const discoveryCalls = callLog.filter((entry) => DISCOVERY_TOOL_SET.has(entry.toolName)).length;
     let repeatedReadCalls = 0;
     const readPathSeen = new Set<string>();
     for (const entry of callLog) {
@@ -383,6 +395,9 @@ async function phaseGenerate(
   prompt: string,
   opts: { maxSteps: number; timeoutMs: number },
 ): Promise<void> {
+  // Evaluators should only react to signals from the current generation attempt.
+  ctx.lastError = undefined;
+  ctx.sawEditFileMultiMatchError = false;
   ensureAgentForMode(ctx);
   ctx.generationAttempt += 1;
   emitModeStatus(ctx);
@@ -648,14 +663,14 @@ function phaseFinalize(ctx: RunContext): ChatResponse {
   const callLog = ctx.session.callLog;
   const guardStats = guardStatsFromSession(ctx.session);
   const totalToolCalls = callLog.length;
-  const readCalls = callLog.filter((entry) => READ_TOOLS.includes(entry.toolName)).length;
-  const searchCalls = callLog.filter((entry) => SEARCH_TOOLS.includes(entry.toolName)).length;
-  const writeCalls = callLog.filter((entry) => WRITE_TOOLS.includes(entry.toolName)).length;
-  const firstWriteIndex = callLog.findIndex((entry) => WRITE_TOOLS.includes(entry.toolName));
+  const readCalls = callLog.filter((entry) => READ_TOOL_SET.has(entry.toolName)).length;
+  const searchCalls = callLog.filter((entry) => SEARCH_TOOL_SET.has(entry.toolName)).length;
+  const writeCalls = callLog.filter((entry) => WRITE_TOOL_SET.has(entry.toolName)).length;
+  const firstWriteIndex = callLog.findIndex((entry) => WRITE_TOOL_SET.has(entry.toolName));
   const preWriteDiscoveryCalls =
     firstWriteIndex >= 0
-      ? callLog.slice(0, firstWriteIndex).filter((entry) => DISCOVERY_TOOLS.includes(entry.toolName)).length
-      : callLog.filter((entry) => DISCOVERY_TOOLS.includes(entry.toolName)).length;
+      ? callLog.slice(0, firstWriteIndex).filter((entry) => DISCOVERY_TOOL_SET.has(entry.toolName)).length
+      : callLog.filter((entry) => DISCOVERY_TOOL_SET.has(entry.toolName)).length;
 
   ctx.debug("lifecycle.summary", {
     mode: ctx.classifiedMode,

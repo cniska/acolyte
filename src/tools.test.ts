@@ -1,6 +1,8 @@
 import { afterAll, afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
+import { appConfig, setPermissionMode } from "./app-config";
+import { savedPermissionMode } from "./test-factory";
 import {
   deleteTextFile,
   editCode,
@@ -10,9 +12,7 @@ import {
   runShellCommand,
   scanCode,
   writeTextFile,
-} from "./agent-tools";
-import { appConfig, setPermissionMode } from "./app-config";
-import { savedPermissionMode } from "./test-factory";
+} from "./tools";
 
 const WS = resolve(process.cwd());
 const tempFiles: string[] = [];

@@ -1,6 +1,11 @@
 import { resolve } from "node:path";
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
+import { appConfig } from "./app-config";
+import { createId } from "./short-id";
+import { createSessionContext, recordCall, runGuards, type SessionContext } from "./tool-guards";
+import type { ToolName } from "./tool-names";
+import { compactToolOutput } from "./tool-output";
 import {
   deleteTextFile,
   editCode,
@@ -15,12 +20,7 @@ import {
   searchFiles,
   searchWeb,
   writeTextFile,
-} from "./agent-tools";
-
-import { appConfig } from "./app-config";
-import { createId } from "./short-id";
-import { createSessionContext, recordCall, runGuards, type SessionContext } from "./tool-guards";
-import { compactToolOutput } from "./tool-output";
+} from "./tools";
 
 type ToolOutputListener = (event: { toolName: string; message: string; toolCallId?: string }) => void;
 
@@ -29,7 +29,7 @@ export type ToolMeta = {
   aliases: string[];
 };
 
-export const toolMeta: Record<string, ToolMeta> = {
+export const toolMeta: Record<ToolName, ToolMeta> = {
   "find-files": {
     instruction: "Use `find-files` to locate files by name or path pattern.",
     aliases: ["findFiles", "find_files"],
@@ -290,7 +290,7 @@ function createRunCommandTool(workspace: string, session: SessionContext, onTool
   });
 }
 
-export async function withToolError<T>(toolId: string, task: () => Promise<T>): Promise<T> {
+export async function withToolError<T>(toolId: ToolName, task: () => Promise<T>): Promise<T> {
   try {
     return await task();
   } catch (error) {
@@ -300,7 +300,7 @@ export async function withToolError<T>(toolId: string, task: () => Promise<T>): 
 }
 
 async function guardedExecute<T>(
-  toolId: string,
+  toolId: ToolName,
   args: Record<string, unknown>,
   session: SessionContext,
   task: () => Promise<T>,

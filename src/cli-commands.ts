@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { runShellCommand } from "./agent-tools";
 import { appConfig } from "./app-config";
 import { formatColumns, formatRelativeTime } from "./chat-format";
 import { attachFileToSession, chatModeWithOptions, FALLBACK_MODEL, handlePrompt, newMessage } from "./cli";
@@ -10,6 +9,7 @@ import { readConfig, readConfigForScope, readResolvedConfigSync, setConfigValue,
 import { addMemory, listMemories } from "./memory";
 import { formatStatusOutput as formatStatusOutputShared } from "./status-format";
 import { createSession, readStore } from "./storage";
+import { runShellCommand } from "./tools";
 import type { SessionStore } from "./types";
 import { formatCliTitle, printDim, printError, printOutput } from "./ui";
 

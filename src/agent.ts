@@ -1,6 +1,5 @@
 import { runLifecycle } from "./agent-lifecycle";
 import { type AgentMode, agentModes } from "./agent-modes";
-import { detectLineWidth } from "./agent-tools";
 import type { ChatRequest, ChatResponse } from "./api";
 import { appConfig } from "./app-config";
 import type { StreamEvent } from "./client";
@@ -8,6 +7,8 @@ import type { LifecycleDebugEvent } from "./lifecycle-events";
 import { toolMeta } from "./mastra-tools";
 import { isProviderAvailable, type ModelProviderName, providerFromModel } from "./provider-config";
 import { formatToolLabel } from "./tool-labels";
+import { isToolName } from "./tool-names";
+import { detectLineWidth } from "./tools";
 
 const APPROX_CHARS_PER_TOKEN = 4;
 
@@ -164,6 +165,9 @@ export function createModeInstructions(mode: AgentMode, workspace?: string): str
   const { tools, preamble } = agentModes[mode];
   const lines: string[] = preamble.map((p) => `- ${p}`);
   for (const toolId of tools) {
+    if (!isToolName(toolId)) {
+      continue;
+    }
     const meta = toolMeta[toolId];
     if (meta?.instruction) {
       lines.push(`- ${meta.instruction}`);

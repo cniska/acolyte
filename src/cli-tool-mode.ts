@@ -1,15 +1,4 @@
 import { z } from "zod";
-import {
-  editFile,
-  fetchWeb,
-  findFiles,
-  gitDiff,
-  gitStatusShort,
-  readSnippet,
-  runShellCommand,
-  searchFiles,
-  searchWeb,
-} from "./agent-tools";
 import { hasHelpFlag, subcommandHelp } from "./cli-commands";
 import {
   countLabel,
@@ -20,6 +9,17 @@ import {
   parseEditResult,
   showToolResult,
 } from "./cli-format";
+import {
+  editFile,
+  fetchWeb,
+  findFiles,
+  gitDiff,
+  gitStatusShort,
+  readSnippet,
+  runShellCommand,
+  searchFiles,
+  searchWeb,
+} from "./tools";
 import { printError, printWarning } from "./ui";
 
 const editArgsSchema = z.object({
