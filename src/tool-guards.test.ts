@@ -87,13 +87,12 @@ describe("excessive-file-loop guard", () => {
     ).not.toThrow();
   });
 
-  test("allows a different read range for the same file", () => {
+  test("blocks a second read even with a different range before any edit", () => {
     const session = createSessionContext();
     recordCall(session, "read-file", { paths: [{ path: "src/foo.ts", start: 1, end: 40 }] });
-    recordCall(session, "read-file", { paths: [{ path: "src/foo.ts", start: 41, end: 80 }] });
     expect(() =>
-      runGuards({ toolName: "read-file", args: { paths: [{ path: "src/foo.ts", start: 81, end: 120 }] }, session }),
-    ).not.toThrow();
+      runGuards({ toolName: "read-file", args: { paths: [{ path: "src/foo.ts", start: 41, end: 80 }] }, session }),
+    ).toThrow(/Already read "src\/foo.ts" this turn/);
   });
 
   test("blocks repeated read/edit churn on same path before verify", () => {

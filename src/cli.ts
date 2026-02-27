@@ -18,6 +18,7 @@ import { buildFileContext } from "./file-context";
 import { acquireSessionLock, releaseSessionLock } from "./session-lock";
 import { createId } from "./short-id";
 import { createSession, readStore, writeStore } from "./storage";
+import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
 import { parseToolProgressLine } from "./tool-progress";
 import type { Message, Session, SessionStore } from "./types";
 import { clearScreen, printDim, printError, printOutput, streamText } from "./ui";
@@ -157,6 +158,17 @@ export async function handlePrompt(
     const toolSnapshotByCallId = new Map<string, string>();
     const toolLineWidthByCallId = new Map<string, number>();
     const toolBulletPrintedByCallId = new Map<string, boolean>();
+    const pendingToolHeaderByCallId = new Map<string, string>();
+    const ensureToolHeaderPrinted = (toolCallId: string): void => {
+      if (toolBulletPrintedByCallId.get(toolCallId)) return;
+      const header = pendingToolHeaderByCallId.get(toolCallId);
+      if (!header) return;
+      toolSnapshotByCallId.set(toolCallId, header);
+      printOutput(formatProgressEventOutput(header, { bullet: true }));
+      toolBulletPrintedByCallId.set(toolCallId, true);
+      pendingToolHeaderByCallId.delete(toolCallId);
+      hasPrintedProgress = true;
+    };
     const lineNumberWidthForMessage = (message: string): number => {
       return message.split("\n").reduce((max, line) => {
         const parsed = parseToolProgressLine(line);
@@ -195,12 +207,10 @@ export async function handlePrompt(
       },
       onToolCall: (entry) => {
         const header = formatToolHeader(entry.toolName, entry.args);
-        toolSnapshotByCallId.set(entry.toolCallId, header);
-        printOutput(formatProgressEventOutput(header, { bullet: true }));
-        toolBulletPrintedByCallId.set(entry.toolCallId, true);
-        hasPrintedProgress = true;
+        pendingToolHeaderByCallId.set(entry.toolCallId, header);
       },
       onToolOutput: (entry) => {
+        ensureToolHeaderPrinted(entry.toolCallId);
         const delta = deltaForToolUpdate({ message: entry.content, toolCallId: entry.toolCallId });
         if (!delta) return;
         const lineNumberWidth = toolLineWidthByCallId.get(entry.toolCallId);
@@ -208,6 +218,16 @@ export async function handlePrompt(
         printOutput(formatProgressEventOutput(delta, { lineNumberWidth, bullet: includeBullet }));
         toolBulletPrintedByCallId.set(entry.toolCallId, true);
         hasPrintedProgress = true;
+      },
+      onToolResult: (entry) => {
+        const guardBlocked =
+          entry.isError &&
+          (entry.errorCode === LIFECYCLE_ERROR_CODES.guardBlocked || entry.errorDetail?.category === "guard-blocked");
+        if (guardBlocked) {
+          pendingToolHeaderByCallId.delete(entry.toolCallId);
+          return;
+        }
+        ensureToolHeaderPrinted(entry.toolCallId);
       },
     });
     const reply = await client.replyStream(

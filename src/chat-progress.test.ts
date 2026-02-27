@@ -59,17 +59,24 @@ describe("chat progress tracker", () => {
   });
 
   test("routes tool-result to onToolResult", () => {
-    const results: Array<{ toolCallId: string; isError?: boolean }> = [];
+    const results: Array<{ toolCallId: string; isError?: boolean; errorCode?: string }> = [];
     const tracker = createProgressTracker({
-      onToolResult: (entry) => results.push({ toolCallId: entry.toolCallId, isError: entry.isError }),
+      onToolResult: (entry) =>
+        results.push({ toolCallId: entry.toolCallId, isError: entry.isError, errorCode: entry.errorCode }),
     });
 
     tracker.apply({ type: "tool-result", toolCallId: "call_1", toolName: "read-file" });
-    tracker.apply({ type: "tool-result", toolCallId: "call_2", toolName: "edit-file", isError: true });
+    tracker.apply({
+      type: "tool-result",
+      toolCallId: "call_2",
+      toolName: "edit-file",
+      isError: true,
+      errorCode: "E_GUARD_BLOCKED",
+    });
 
     expect(results).toEqual([
-      { toolCallId: "call_1", isError: undefined },
-      { toolCallId: "call_2", isError: true },
+      { toolCallId: "call_1", isError: undefined, errorCode: undefined },
+      { toolCallId: "call_2", isError: true, errorCode: "E_GUARD_BLOCKED" },
     ]);
   });
 

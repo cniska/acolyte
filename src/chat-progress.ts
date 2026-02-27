@@ -1,4 +1,5 @@
 import type { StreamEvent } from "./client";
+import type { StreamErrorDetail } from "./stream-error";
 
 export function createProgressTracker(options: {
   onStatus?: (message: string) => void;
@@ -6,7 +7,13 @@ export function createProgressTracker(options: {
   onReasoning?: (delta: string) => void;
   onToolCall?: (entry: { toolCallId: string; toolName: string; args: Record<string, unknown> }) => void;
   onToolOutput?: (entry: { toolCallId: string; toolName: string; content: string }) => void;
-  onToolResult?: (entry: { toolCallId: string; toolName: string; isError?: boolean }) => void;
+  onToolResult?: (entry: {
+    toolCallId: string;
+    toolName: string;
+    isError?: boolean;
+    errorCode?: string;
+    errorDetail?: StreamErrorDetail;
+  }) => void;
   onError?: (error: string) => void;
 }): {
   apply: (event: StreamEvent) => void;
@@ -38,6 +45,8 @@ export function createProgressTracker(options: {
           toolCallId: event.toolCallId,
           toolName: event.toolName,
           isError: event.isError,
+          errorCode: event.errorCode,
+          errorDetail: event.errorDetail,
         });
         break;
       case "status":
