@@ -273,9 +273,8 @@ const server = Bun.serve({
       return json({ ok: true, permissionMode: appConfig.agent.permissions.mode });
     }
 
-    const isChatJsonRoute = url.pathname === "/v1/chat" && req.method === "POST";
     const isChatStreamRoute = url.pathname === "/v1/chat/stream" && req.method === "POST";
-    if (!isChatJsonRoute && !isChatStreamRoute) return new Response("Not Found", { status: 404 });
+    if (!isChatStreamRoute) return new Response("Not Found", { status: 404 });
 
     if (!hasValidAuth(req)) {
       log.warn("unauthorized request", {
@@ -324,150 +323,102 @@ const server = Bun.serve({
       has_resource_id: Boolean(chatRequest.resourceId),
       workspace_mode: workspaceResolution.workspaceMode,
     });
-    if (isChatStreamRoute) {
-      const encoder = new TextEncoder();
-      let closed = false;
-      const SSE_KEEPALIVE_INTERVAL_MS = 15_000;
-      const stream = new ReadableStream<Uint8Array>({
-        start(controller) {
-          const send = (payload: Record<string, unknown>): void => {
-            if (closed) return;
-            try {
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
-            } catch {
+    const encoder = new TextEncoder();
+    let closed = false;
+    const SSE_KEEPALIVE_INTERVAL_MS = 15_000;
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        const send = (payload: Record<string, unknown>): void => {
+          if (closed) return;
+          try {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
+          } catch {
+            closed = true;
+          }
+        };
+        const keepaliveId = setInterval(() => {
+          if (closed) {
+            clearInterval(keepaliveId);
+            return;
+          }
+          try {
+            controller.enqueue(encoder.encode(":\n\n"));
+          } catch {
+            closed = true;
+            clearInterval(keepaliveId);
+          }
+        }, SSE_KEEPALIVE_INTERVAL_MS);
+        void (async () => {
+          try {
+            const soulPrompt = await createSoulPrompt();
+            const reply = await runAgent({
+              request: chatRequest,
+              soulPrompt,
+              workspace: workspaceResolution.workspacePath,
+              onEvent: (event) => {
+                send(event);
+              },
+              onDebug: (entry) => {
+                log.info("agent debug", {
+                  request_id: requestId,
+                  session_id: chatRequest.sessionId ?? null,
+                  event: entry.event,
+                  sequence: entry.sequence,
+                  phase_attempt: entry.phaseAttempt,
+                  event_ts: entry.ts,
+                  ...(entry.fields ?? {}),
+                });
+              },
+            });
+            const durationMs = Date.now() - startedAt;
+            log.info("chat request completed", {
+              request_id: requestId,
+              session_id: chatRequest.sessionId ?? null,
+              model: reply.model,
+              duration_ms: durationMs,
+              model_calls: reply.modelCalls ?? null,
+              tool_count: reply.toolCalls?.length ?? 0,
+              tools: reply.toolCalls?.join(",") ?? "",
+              prompt_tokens: reply.usage?.promptTokens ?? null,
+              completion_tokens: reply.usage?.completionTokens ?? null,
+              stream: true,
+            });
+            send({ type: "done", reply });
+          } catch (error) {
+            const payload = streamErrorPayload(error);
+            log.error("chat stream failed", {
+              request_id: requestId,
+              session_id: chatRequest.sessionId ?? null,
+              path: url.pathname,
+              method: req.method,
+              model: chatRequest.model,
+              ...errorToLogFields(error),
+            });
+            send({ type: "error", ...payload });
+          } finally {
+            clearInterval(keepaliveId);
+            if (!closed) {
               closed = true;
-            }
-          };
-          const keepaliveId = setInterval(() => {
-            if (closed) {
-              clearInterval(keepaliveId);
-              return;
-            }
-            try {
-              controller.enqueue(encoder.encode(":\n\n"));
-            } catch {
-              closed = true;
-              clearInterval(keepaliveId);
-            }
-          }, SSE_KEEPALIVE_INTERVAL_MS);
-          void (async () => {
-            try {
-              const soulPrompt = await createSoulPrompt();
-              const reply = await runAgent({
-                request: chatRequest,
-                soulPrompt,
-                workspace: workspaceResolution.workspacePath,
-                onEvent: (event) => {
-                  send(event);
-                },
-                onDebug: (entry) => {
-                  log.info("agent debug", {
-                    request_id: requestId,
-                    session_id: chatRequest.sessionId ?? null,
-                    event: entry.event,
-                    sequence: entry.sequence,
-                    phase_attempt: entry.phaseAttempt,
-                    event_ts: entry.ts,
-                    ...(entry.fields ?? {}),
-                  });
-                },
-              });
-              const durationMs = Date.now() - startedAt;
-              log.info("chat request completed", {
-                request_id: requestId,
-                session_id: chatRequest.sessionId ?? null,
-                model: reply.model,
-                duration_ms: durationMs,
-                model_calls: reply.modelCalls ?? null,
-                tool_count: reply.toolCalls?.length ?? 0,
-                tools: reply.toolCalls?.join(",") ?? "",
-                prompt_tokens: reply.usage?.promptTokens ?? null,
-                completion_tokens: reply.usage?.completionTokens ?? null,
-                stream: true,
-              });
-              send({ type: "done", reply });
-            } catch (error) {
-              const payload = streamErrorPayload(error);
-              log.error("chat stream failed", {
-                request_id: requestId,
-                session_id: chatRequest.sessionId ?? null,
-                path: url.pathname,
-                method: req.method,
-                model: chatRequest.model,
-                ...errorToLogFields(error),
-              });
-              send({ type: "error", ...payload });
-            } finally {
-              clearInterval(keepaliveId);
-              if (!closed) {
-                closed = true;
-                try {
-                  controller.close();
-                } catch {
-                  // Stream already closed by client disconnect or idle timeout.
-                }
+              try {
+                controller.close();
+              } catch {
+                // Stream already closed by client disconnect or idle timeout.
               }
             }
-          })();
-        },
-        cancel() {
-          closed = true;
-        },
-      });
-      return new Response(stream, {
-        headers: {
-          "content-type": "text/event-stream",
-          "cache-control": "no-cache",
-          connection: "keep-alive",
-        },
-      });
-    }
-
-    try {
-      const soulPrompt = await createSoulPrompt();
-      const reply = await runAgent({
-        request: chatRequest,
-        soulPrompt,
-        workspace: workspaceResolution.workspacePath,
-        onDebug: (entry) => {
-          log.info("agent debug", {
-            request_id: requestId,
-            session_id: chatRequest.sessionId ?? null,
-            event: entry.event,
-            sequence: entry.sequence,
-            phase_attempt: entry.phaseAttempt,
-            event_ts: entry.ts,
-            ...(entry.fields ?? {}),
-          });
-        },
-      });
-      const durationMs = Date.now() - startedAt;
-      log.info("chat request completed", {
-        request_id: requestId,
-        session_id: chatRequest.sessionId ?? null,
-        model: reply.model,
-        duration_ms: durationMs,
-        model_calls: reply.modelCalls ?? null,
-        tool_count: reply.toolCalls?.length ?? 0,
-        tools: reply.toolCalls?.join(",") ?? "",
-        prompt_tokens: reply.usage?.promptTokens ?? null,
-        completion_tokens: reply.usage?.completionTokens ?? null,
-      });
-      return json(reply);
-    } catch (error) {
-      return serverError(
-        "chat request failed",
-        error,
-        {
-          request_id: requestId,
-          path: url.pathname,
-          method: req.method,
-          session_id: chatRequest.sessionId ?? null,
-          model: chatRequest.model,
-        },
-        502,
-      );
-    }
+          }
+        })();
+      },
+      cancel() {
+        closed = true;
+      },
+    });
+    return new Response(stream, {
+      headers: {
+        "content-type": "text/event-stream",
+        "cache-control": "no-cache",
+        connection: "keep-alive",
+      },
+    });
   },
 });
 
