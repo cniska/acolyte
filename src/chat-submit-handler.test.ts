@@ -138,9 +138,10 @@ describe("chat submit handler guards", () => {
       "Edit sum.rs\n2 - let sum = a + b;\n2 + let sum = a + b + c;",
       "Delete sum.rs",
     ]);
-    expect(rows.some((row) => row.role === "assistant" && row.content === "Created sum.rs.")).toBe(true);
+    // "Created sum.rs." and "Removed sum.rs." are redundant with their tool headers and get filtered.
+    expect(rows.some((row) => row.role === "assistant" && row.content === "Created sum.rs.")).toBe(false);
     expect(rows.some((row) => row.role === "assistant" && row.content === "Updated sum.rs for three args.")).toBe(true);
-    expect(rows.some((row) => row.role === "assistant" && row.content === "Removed sum.rs.")).toBe(true);
+    expect(rows.some((row) => row.role === "assistant" && row.content === "Removed sum.rs.")).toBe(false);
   });
 
   test("toggles shortcuts on ? input", async () => {

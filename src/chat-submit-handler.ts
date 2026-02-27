@@ -422,6 +422,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
     let committedStreamingText = "";
     const toolRowIdByCallId = new Map<string, string>();
     const toolSeenLinesByCallId = new Map<string, Set<string>>();
+    const toolHeaders = new Set<string>();
     let streamFlushTimer: ReturnType<typeof setTimeout> | null = null;
     const STREAM_FLUSH_MS = 50;
     const flushStreamingContent = (): void => {
@@ -469,6 +470,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
           streamFlushTimer = null;
         }
         const header = formatToolHeader(entry.toolName, entry.args);
+        toolHeaders.add(header.toLowerCase());
         const rowId = `row_${createId()}`;
         toolRowIdByCallId.set(entry.toolCallId, rowId);
         toolSeenLinesByCallId.set(entry.toolCallId, new Set([header.toLowerCase()]));
@@ -587,20 +589,29 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         // When pre-tool text was committed in place, strip the prefix
         // from the final assistant row to avoid duplication. Use a
         // proper prefix check instead of blind character slicing.
-        const finalRows = committedStreamingText
-          ? turn.rows
-              .map((r) => {
-                if (r.role !== "assistant" || r.dim || r.style) {
-                  return r;
-                }
-                if (!r.content.startsWith(committedStreamingText)) {
-                  return r;
-                }
-                const after = r.content.slice(committedStreamingText.length).trim();
-                return after ? { ...r, content: after } : null;
-              })
-              .filter((r): r is ChatRow => r !== null)
-          : turn.rows;
+        const detailAfterVerb = (s: string): string =>
+          s
+            .trim()
+            .replace(/^\S+\s*/, "")
+            .replace(/\.+$/, "")
+            .toLowerCase();
+        const headerDetails = new Set([...toolHeaders].map(detailAfterVerb).filter((d) => d.length > 0));
+        const isRedundantWithHeader = (text: string): boolean => {
+          return headerDetails.size > 0 && headerDetails.has(detailAfterVerb(text));
+        };
+        const finalRows = turn.rows
+          .map((r) => {
+            if (r.role !== "assistant" || r.dim || r.style) {
+              return r;
+            }
+            if (committedStreamingText && r.content.startsWith(committedStreamingText)) {
+              const after = r.content.slice(committedStreamingText.length).trim();
+              if (!after) return null;
+              return isRedundantWithHeader(after) ? null : { ...r, content: after };
+            }
+            return isRedundantWithHeader(r.content.trim()) ? null : r;
+          })
+          .filter((r): r is ChatRow => r !== null);
         input.setRows((current) => [...finalizeRows(current), ...finalRows]);
       }
       // File tree may have changed during tool execution; refresh @path autocomplete candidates.
