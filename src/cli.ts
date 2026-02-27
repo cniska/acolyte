@@ -540,6 +540,19 @@ async function chatModeWithOptions(options: { resumeLatest: boolean; resumePrefi
   }
 }
 
+async function resumeMode(args: string[]): Promise<void> {
+  if (hasHelpFlag(args)) {
+    subcommandHelp("resume");
+    return;
+  }
+  if (args.length > 1) {
+    subcommandError("resume");
+    return;
+  }
+  const resumePrefix = args[0]?.trim() || undefined;
+  await chatModeWithOptions({ resumeLatest: true, resumePrefix });
+}
+
 async function runMode(args: string[]): Promise<void> {
   if (hasHelpFlag(args)) {
     subcommandHelp("run");
@@ -633,16 +646,16 @@ async function dogfoodMode(args: string[]): Promise<void> {
   await runMode(runArgs);
 }
 
-async function historyMode(): Promise<void> {
+async function historyMode(_args: string[]): Promise<void> {
   const store = await readStore();
   listSessions(store);
 }
 
-async function serveMode(): Promise<void> {
+async function serveMode(_args: string[]): Promise<void> {
   await import("./server");
 }
 
-async function statusMode(): Promise<void> {
+async function statusMode(_args: string[]): Promise<void> {
   const client = createClient({
     apiUrl: appConfig.server.apiUrl,
   });
@@ -842,57 +855,21 @@ async function main(): Promise<void> {
     return;
   }
 
-  if (command === "resume") {
-    if (hasHelpFlag(args)) {
-      subcommandHelp("resume");
-      return;
-    }
-    if (args.length > 1) {
-      subcommandError("resume");
-      return;
-    }
-    const resumePrefix = args[0]?.trim() || undefined;
-    await chatModeWithOptions({ resumeLatest: true, resumePrefix });
-    return;
-  }
+  const commands: Record<string, (args: string[]) => Promise<void>> = {
+    resume: resumeMode,
+    run: runMode,
+    dogfood: dogfoodMode,
+    history: historyMode,
+    serve: serveMode,
+    status: statusMode,
+    memory: memoryMode,
+    config: configMode,
+    tool: toolMode,
+  };
 
-  if (command === "run") {
-    await runMode(args);
-    return;
-  }
-
-  if (command === "dogfood") {
-    await dogfoodMode(args);
-    return;
-  }
-
-  if (command === "history") {
-    await historyMode();
-    return;
-  }
-
-  if (command === "serve") {
-    await serveMode();
-    return;
-  }
-
-  if (command === "status") {
-    await statusMode();
-    return;
-  }
-
-  if (command === "memory") {
-    await memoryMode(args);
-    return;
-  }
-
-  if (command === "config") {
-    await configMode(args);
-    return;
-  }
-
-  if (command === "tool") {
-    await toolMode(args);
+  const handler = commands[command];
+  if (handler) {
+    await handler(args);
     return;
   }
 
