@@ -4,6 +4,7 @@ import { detectLineWidth } from "./agent-tools";
 import type { ChatRequest, ChatResponse } from "./api";
 import { appConfig } from "./app-config";
 import type { StreamEvent } from "./client";
+import type { LifecycleDebugEvent } from "./lifecycle-events";
 import { toolMeta } from "./mastra-tools";
 import { isProviderAvailable, type ModelProviderName, providerFromModel } from "./provider-config";
 import { formatToolLabel } from "./tool-labels";
@@ -397,7 +398,7 @@ export async function runAgent(input: {
   soulPrompt: string;
   workspace?: string;
   onEvent?: (event: StreamEvent) => void;
-  onDebug?: (event: string, fields?: Record<string, unknown>) => void;
+  onDebug?: (event: LifecycleDebugEvent) => void;
 }): Promise<ChatResponse> {
   return runLifecycle(input);
 }

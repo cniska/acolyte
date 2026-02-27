@@ -16,6 +16,7 @@ import { type AgentMode, agentModes, classifyMode, modeForTool } from "./agent-m
 import type { ChatRequest, ChatResponse } from "./api";
 import { appConfig } from "./app-config";
 import type { StreamEvent } from "./client";
+import type { LifecycleDebugEvent, LifecycleEventName } from "./lifecycle-events";
 import { toolsForAgent } from "./mastra-tools";
 import type { SessionContext } from "./tool-guards";
 
@@ -57,7 +58,7 @@ export type LifecycleInput = {
   soulPrompt: string;
   workspace?: string;
   onEvent?: (event: StreamEvent) => void;
-  onDebug?: (event: string, fields?: Record<string, unknown>) => void;
+  onDebug?: (event: LifecycleDebugEvent) => void;
 };
 
 export type RunContext = {
@@ -65,7 +66,7 @@ export type RunContext = {
   readonly workspace: string | undefined;
   readonly soulPrompt: string;
   readonly emit: (event: StreamEvent) => void;
-  readonly debug: (event: string, fields?: Record<string, unknown>) => void;
+  readonly debug: (event: LifecycleEventName, fields?: Record<string, unknown>) => void;
   readonly classifiedMode: AgentMode;
   readonly model: string;
   readonly session: SessionContext;
@@ -82,6 +83,7 @@ export type RunContext = {
   mode: AgentMode;
   observedTools: Set<string>;
   modelCallCount: number;
+  generationAttempt: number;
   regenerationCount: number;
   regenerationLimitHit: boolean;
   sawEditFileMultiMatchError: boolean;
@@ -333,6 +335,7 @@ async function phaseGenerate(
   prompt: string,
   opts: { maxSteps: number; timeoutMs: number },
 ): Promise<void> {
+  ctx.generationAttempt += 1;
   emitModeStatus(ctx);
   ctx.debug("lifecycle.generate.start", {
     model: ctx.model,
@@ -642,7 +645,18 @@ function phaseFinalize(ctx: RunContext): ChatResponse {
 
 export async function runLifecycle(input: LifecycleInput): Promise<ChatResponse> {
   const emit = input.onEvent ?? (() => {});
-  const debug: RunContext["debug"] = input.onDebug ?? (() => {});
+  let debugSequence = 0;
+  let debugPhaseAttempt = 0;
+  const debugSink = input.onDebug ?? (() => {});
+  const debug: RunContext["debug"] = (event, fields) => {
+    debugSink({
+      event,
+      sequence: ++debugSequence,
+      phaseAttempt: debugPhaseAttempt,
+      ts: new Date().toISOString(),
+      fields,
+    });
+  };
 
   const { classifiedMode, model } = phaseClassify(input.request, debug);
 
@@ -678,6 +692,7 @@ export async function runLifecycle(input: LifecycleInput): Promise<ChatResponse>
     promptUsage: prepared.promptUsage,
     observedTools: new Set(),
     modelCallCount: 0,
+    generationAttempt: 0,
     regenerationCount: 0,
     regenerationLimitHit: false,
     sawEditFileMultiMatchError: false,
@@ -700,6 +715,7 @@ export async function runLifecycle(input: LifecycleInput): Promise<ChatResponse>
   ctx.toolOutputHandler = toolOutputHandler;
 
   ctx.debug("lifecycle.start", { mode: classifiedMode, model });
+  debugPhaseAttempt = ctx.generationAttempt + 1;
   await phaseGenerate(ctx, ctx.agentInput, {
     maxSteps: INITIAL_MAX_STEPS,
     timeoutMs: STEP_TIMEOUT_MS,
@@ -752,6 +768,7 @@ export async function runLifecycle(input: LifecycleInput): Promise<ChatResponse>
       regeneration_count: ctx.regenerationCount,
       evaluator_regenerations: evaluatorRegens + 1,
     });
+    debugPhaseAttempt = ctx.generationAttempt + 1;
     await phaseGenerate(ctx, action.prompt, {
       maxSteps: action.maxSteps ?? INITIAL_MAX_STEPS,
       timeoutMs: action.timeoutMs ?? STEP_TIMEOUT_MS,

@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { autoVerifier, efficiencyEvaluator, multiMatchEditEvaluator, planDetector, type RunContext } from "./agent-lifecycle";
+import {
+  autoVerifier,
+  efficiencyEvaluator,
+  multiMatchEditEvaluator,
+  planDetector,
+  type RunContext,
+} from "./agent-lifecycle";
 import { createSessionContext } from "./tool-guards";
 
 function createMockContext(overrides: Partial<RunContext> = {}): RunContext {
@@ -24,6 +30,7 @@ function createMockContext(overrides: Partial<RunContext> = {}): RunContext {
     },
     observedTools: new Set(),
     modelCallCount: 1,
+    generationAttempt: 0,
     regenerationCount: 0,
     regenerationLimitHit: false,
     sawEditFileMultiMatchError: false,

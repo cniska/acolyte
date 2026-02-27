@@ -56,7 +56,7 @@ function compactLine(line: string): string {
     const path = parseField(line, "path");
     const pattern = parseField(line, "pattern");
     const command = parseField(line, "command");
-    return `${ts} ${event} tool=${tool}${path ? ` path=${path}` : ""}${pattern ? ` pattern=${pattern}` : ""}${command ? ` command=\"${command}\"` : ""}`;
+    return `${ts} ${event} tool=${tool}${path ? ` path=${path}` : ""}${pattern ? ` pattern=${pattern}` : ""}${command ? ` command="${command}"` : ""}`;
   }
 
   if (event === "lifecycle.tool.result") {
@@ -69,7 +69,7 @@ function compactLine(line: string): string {
   if (event === "lifecycle.tool.error") {
     const tool = parseField(line, "tool") ?? "?";
     const error = parseField(line, "error") ?? "unknown";
-    return `${ts} ${event} tool=${tool} error=\"${error}\"`;
+    return `${ts} ${event} tool=${tool} error="${error}"`;
   }
 
   if (event.startsWith("lifecycle.eval.")) {
@@ -106,7 +106,7 @@ async function main(): Promise<void> {
     [...lines]
       .reverse()
       .map((line) => parseRequestId(line))
-      .find((value) => value && value.startsWith("err_"));
+      .find((value) => value?.startsWith("err_"));
 
   if (!requestId) {
     throw new Error(`No request_id found in ${logPath}`);

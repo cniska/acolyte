@@ -354,12 +354,15 @@ const server = Bun.serve({
                 onEvent: (event) => {
                   send(event);
                 },
-                onDebug: (event, fields) => {
+                onDebug: (entry) => {
                   log.info("agent debug", {
                     request_id: requestId,
                     session_id: chatRequest.sessionId ?? null,
-                    event,
-                    ...(fields ?? {}),
+                    event: entry.event,
+                    sequence: entry.sequence,
+                    phase_attempt: entry.phaseAttempt,
+                    event_ts: entry.ts,
+                    ...(entry.fields ?? {}),
                   });
                 },
               });
@@ -420,12 +423,15 @@ const server = Bun.serve({
         request: chatRequest,
         soulPrompt,
         workspace: workspaceResolution.workspacePath,
-        onDebug: (event, fields) => {
+        onDebug: (entry) => {
           log.info("agent debug", {
             request_id: requestId,
             session_id: chatRequest.sessionId ?? null,
-            event,
-            ...(fields ?? {}),
+            event: entry.event,
+            sequence: entry.sequence,
+            phase_attempt: entry.phaseAttempt,
+            event_ts: entry.ts,
+            ...(entry.fields ?? {}),
           });
         },
       });
