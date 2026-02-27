@@ -1,22 +1,11 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { buildFileContext } from "./file-context";
+import { tempDirFactory } from "./test-factory";
 
-const tempDirs: string[] = [];
-
-function createTempDir(prefix: string): string {
-  const dir = mkdtempSync(join(tmpdir(), prefix));
-  tempDirs.push(dir);
-  return dir;
-}
-
-afterEach(() => {
-  for (const dir of tempDirs.splice(0, tempDirs.length)) {
-    rmSync(dir, { recursive: true, force: true });
-  }
-});
+const { createTempDir, cleanup } = tempDirFactory();
+afterEach(cleanup);
 
 describe("buildFileContext", () => {
   test("attaches regular files", async () => {

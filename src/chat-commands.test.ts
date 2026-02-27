@@ -1,11 +1,10 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { appConfig, setPermissionMode } from "./app-config";
 import { dispatchSlashCommand, formatTokenUsageOutput, type TokenUsageEntry } from "./chat-commands";
 import { loadSkills, resetSkillCache } from "./skills";
-import { createCommandContext, createMessage, createSession, createStore } from "./test-factory";
+import { createCommandContext, createMessage, createSession, createStore, tempDirFactory } from "./test-factory";
 
 async function runCommand(text: string, overrides: Parameters<typeof createCommandContext>[1] = {}) {
   const { ctx, spies } = createCommandContext(text, overrides);
@@ -538,14 +537,14 @@ describe("chat-commands", () => {
   });
 
   describe("inline skill invocation", () => {
-    let tmpDir: string;
+    const { createTempDir, cleanup } = tempDirFactory();
     afterEach(() => {
       resetSkillCache();
-      if (tmpDir) rmSync(tmpDir, { recursive: true, force: true });
+      cleanup();
     });
 
     test("/skillname with args continues to agent turn", async () => {
-      tmpDir = mkdtempSync(join(tmpdir(), "acolyte-cmd-skill-"));
+      const tmpDir = createTempDir("acolyte-cmd-skill-");
       const skillDir = join(tmpDir, "skills", "demo");
       mkdirSync(skillDir, { recursive: true });
       writeFileSync(join(skillDir, "SKILL.md"), "---\nname: demo\ndescription: Demo\n---\n# Demo", "utf8");
@@ -563,7 +562,7 @@ describe("chat-commands", () => {
     });
 
     test("/skillname without args stops and shows activation", async () => {
-      tmpDir = mkdtempSync(join(tmpdir(), "acolyte-cmd-skill-"));
+      const tmpDir = createTempDir("acolyte-cmd-skill-");
       const skillDir = join(tmpDir, "skills", "demo");
       mkdirSync(skillDir, { recursive: true });
       writeFileSync(join(skillDir, "SKILL.md"), "---\nname: demo\ndescription: Demo\n---\n# Demo", "utf8");

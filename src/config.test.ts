@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   readConfig,
@@ -10,20 +9,10 @@ import {
   unsetConfigValue,
   writeConfig,
 } from "./config";
+import { tempDirFactory } from "./test-factory";
 
-const tempDirs: string[] = [];
-
-function createTempDir(prefix: string): string {
-  const dir = mkdtempSync(join(tmpdir(), prefix));
-  tempDirs.push(dir);
-  return dir;
-}
-
-afterEach(() => {
-  for (const dir of tempDirs.splice(0, tempDirs.length)) {
-    rmSync(dir, { recursive: true, force: true });
-  }
-});
+const { createTempDir, cleanup } = tempDirFactory();
+afterEach(cleanup);
 
 describe("config store", () => {
   test("reads non-secret settings from config.toml", async () => {

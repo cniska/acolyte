@@ -1,26 +1,12 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { acquireSessionLock, releaseSessionLock } from "./session-lock";
+import { tempDirFactory } from "./test-factory";
 
-const tempDirs: string[] = [];
-
-function createTempHome(): string {
-  const dir = mkdtempSync(join(tmpdir(), "acolyte-lock-test-"));
-  tempDirs.push(dir);
-  return dir;
-}
-
-afterEach(() => {
-  while (tempDirs.length > 0) {
-    const dir = tempDirs.pop();
-    if (!dir) {
-      continue;
-    }
-    rmSync(dir, { recursive: true, force: true });
-  }
-});
+const { createTempDir, cleanup } = tempDirFactory();
+const createTempHome = () => createTempDir("acolyte-lock-test-");
+afterEach(cleanup);
 
 describe("session lock", () => {
   test("allows re-acquire by same process", () => {

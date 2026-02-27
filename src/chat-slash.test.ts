@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   applySlashSuggestion,
@@ -11,6 +10,7 @@ import {
   suggestSlashCommands,
 } from "./chat-slash";
 import { loadSkills, resetSkillCache } from "./skills";
+import { tempDirFactory } from "./test-factory";
 
 describe("chat-slash helpers", () => {
   test("suggestSlashCommands filters known commands by prefix", () => {
@@ -90,14 +90,14 @@ describe("chat-slash helpers", () => {
   });
 
   describe("with loaded skills", () => {
-    let tmpDir: string;
+    const { createTempDir, cleanup } = tempDirFactory();
     afterEach(() => {
       resetSkillCache();
-      if (tmpDir) rmSync(tmpDir, { recursive: true, force: true });
+      cleanup();
     });
 
     test("skill names appear in suggestions", async () => {
-      tmpDir = mkdtempSync(join(tmpdir(), "acolyte-slash-skill-"));
+      const tmpDir = createTempDir("acolyte-slash-skill-");
       const skillDir = join(tmpDir, "skills", "dogfood");
       mkdirSync(skillDir, { recursive: true });
       writeFileSync(join(skillDir, "SKILL.md"), "---\nname: dogfood\ndescription: Test\n---\n# Test", "utf8");
@@ -108,7 +108,7 @@ describe("chat-slash helpers", () => {
     });
 
     test("isKnownSlashToken recognizes skill names", async () => {
-      tmpDir = mkdtempSync(join(tmpdir(), "acolyte-slash-known-"));
+      const tmpDir = createTempDir("acolyte-slash-known-");
       const skillDir = join(tmpDir, "skills", "dogfood");
       mkdirSync(skillDir, { recursive: true });
       writeFileSync(join(skillDir, "SKILL.md"), "---\nname: dogfood\ndescription: Test\n---\n# Test", "utf8");

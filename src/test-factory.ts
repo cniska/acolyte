@@ -1,7 +1,26 @@
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { ChatRow, CommandContext, TokenUsageEntry } from "./chat-commands";
 import { createSubmitHandler } from "./chat-submit-handler";
 import type { Client, StreamEvent } from "./client";
 import type { Message, Session, SessionStore } from "./types";
+
+export function tempDirFactory(): { createTempDir: (prefix: string) => string; cleanup: () => void } {
+  const dirs: string[] = [];
+  return {
+    createTempDir(prefix: string): string {
+      const dir = mkdtempSync(join(tmpdir(), prefix));
+      dirs.push(dir);
+      return dir;
+    },
+    cleanup() {
+      for (const dir of dirs.splice(0, dirs.length)) {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    },
+  };
+}
 
 const DEFAULT_TIME = "2026-02-20T00:00:00.000Z";
 
