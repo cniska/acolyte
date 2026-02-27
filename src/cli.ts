@@ -21,14 +21,7 @@ import { formatColumns, formatRelativeTime } from "./chat-formatters";
 import { createProgressTracker } from "./chat-progress";
 import { runInkChat } from "./chat-ui";
 import { createClient } from "./client";
-import {
-  type AcolyteConfig,
-  readConfig,
-  readConfigForScope,
-  readResolvedConfigSync,
-  setConfigValue,
-  unsetConfigValue,
-} from "./config";
+import { readConfig, readConfigForScope, readResolvedConfigSync, setConfigValue, unsetConfigValue } from "./config";
 import { buildFileContext } from "./file-context";
 import { addMemory, listMemories } from "./memory";
 import { acquireSessionLock, releaseSessionLock } from "./session-lock";

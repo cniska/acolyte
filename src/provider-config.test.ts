@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import {
+  formatModel,
   isProviderAvailable,
   normalizeModel,
-  formatModel,
   providerFromModel,
   resolveProvider,
 } from "./provider-config";

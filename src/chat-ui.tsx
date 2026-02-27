@@ -8,7 +8,6 @@ import { processInputChange, processInputSubmit } from "./chat-input-handlers";
 import { ChatInputPanel } from "./chat-input-panel";
 import { useChatKeybindings } from "./chat-keybindings";
 import { shownCwd } from "./chat-layout";
-import { formatModel } from "./provider-config";
 import type { PickerState } from "./chat-picker";
 import { createPickerHandlers, persistPermissionMode } from "./chat-picker-handlers";
 import { newMessage, nowIso, toRows } from "./chat-session";
@@ -23,6 +22,7 @@ import { ChatTranscript } from "./chat-transcript";
 import { buildInputHistory } from "./chat-turn";
 import type { Client } from "./client";
 import { palette } from "./palette";
+import { formatModel } from "./provider-config";
 import type { Session, SessionStore } from "./types";
 
 type HeaderLine = {

@@ -5,7 +5,7 @@ import { appConfig, setPermissionMode } from "./app-config";
 import { errorToLogFields, log } from "./log";
 import { mastraStorage, mastraStorageMode } from "./mastra-storage";
 import { getObservationalMemoryConfig } from "./memory-config";
-import { isProviderAvailable, formatModel, providerFromModel, resolveProvider } from "./provider-config";
+import { formatModel, isProviderAvailable, providerFromModel, resolveProvider } from "./provider-config";
 import { createId } from "./short-id";
 import { createSoulPrompt, getMemoryContextEntries } from "./soul";
 
