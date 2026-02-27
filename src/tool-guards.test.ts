@@ -56,13 +56,25 @@ describe("excessive-file-loop guard", () => {
     );
   });
 
-  test("does not block when verify already ran", () => {
+  test("still blocks heavy churn even when verify already ran", () => {
     const session = createSessionContext();
     session.flags.verifyRan = true;
     for (let i = 0; i < 8; i += 1) {
       recordCall(session, "read-file", { paths: [{ path: "src/foo.ts" }] });
       recordCall(session, "edit-file", { path: "src/foo.ts" });
     }
+    expect(() => runGuards({ toolName: "edit-file", args: { path: "src/foo.ts" }, session })).toThrow(
+      /Repeated read\/edit loop detected/,
+    );
+  });
+
+  test("does not block low-volume activity after verify", () => {
+    const session = createSessionContext();
+    session.flags.verifyRan = true;
+    recordCall(session, "read-file", { paths: [{ path: "src/foo.ts" }] });
+    recordCall(session, "edit-file", { path: "src/foo.ts" });
+    recordCall(session, "read-file", { paths: [{ path: "src/foo.ts" }] });
+    recordCall(session, "edit-file", { path: "src/foo.ts" });
     expect(() => runGuards({ toolName: "edit-file", args: { path: "src/foo.ts" }, session })).not.toThrow();
   });
 

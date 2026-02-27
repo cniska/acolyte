@@ -72,7 +72,6 @@ const excessiveFileLoopGuard: ToolGuard = {
   description: "Block repeated read/edit churn on the same file to force a strategy change.",
   check({ toolName, args, session }) {
     if (toolName !== "read-file" && toolName !== "edit-file") return;
-    if (session.flags.verifyRan === true) return;
 
     const targetPaths =
       toolName === "edit-file"

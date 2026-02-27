@@ -134,6 +134,10 @@ function isEditFileMultiMatchError(errorMessage: string): boolean {
   return /Find text matched \d+ locations?/i.test(errorMessage);
 }
 
+function isFileNotFoundSignal(text: string): boolean {
+  return /\b(?:does not exist|doesn't exist|no such file|not found|ENOENT)\b/i.test(text);
+}
+
 function findLastEditFilePath(ctx: RunContext): string | undefined {
   for (let i = ctx.session.callLog.length - 1; i >= 0; i -= 1) {
     const entry = ctx.session.callLog[i];
@@ -193,6 +197,9 @@ export const efficiencyEvaluator: Evaluator = {
     const callLog = ctx.session.callLog;
     const firstWriteIndex = callLog.findIndex((entry) => WRITE_TOOLS.includes(entry.toolName));
     if (firstWriteIndex >= 0) return { type: "done" };
+    const fileNotFoundOutcome =
+      (ctx.lastError ? isFileNotFoundSignal(ctx.lastError) : false) || isFileNotFoundSignal(ctx.result.text);
+    if (fileNotFoundOutcome) return { type: "done" };
 
     const discoveryCalls = callLog.filter((entry) => DISCOVERY_TOOLS.includes(entry.toolName)).length;
     let repeatedReadCalls = 0;
@@ -557,7 +564,7 @@ function processStreamChunk(ctx: RunContext, chunk: { type?: string; payload?: u
       if (canonicalToolId(p?.toolName ?? "") === "edit-file" && isEditFileMultiMatchError(errorMsg)) {
         ctx.sawEditFileMultiMatchError = true;
       }
-      ctx.debug("lifecycle.tool.error", { error: errorMsg });
+      ctx.debug("lifecycle.tool.error", { tool: canonicalToolId(p?.toolName ?? ""), error: errorMsg });
       if (p?.toolCallId && p?.toolName) {
         const started = ctx.toolCallStartedAt.get(p.toolCallId);
         const durationMs = started ? Date.now() - started.startedAtMs : null;

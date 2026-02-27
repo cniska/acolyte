@@ -206,6 +206,24 @@ describe("efficiencyEvaluator", () => {
     });
     expect(efficiencyEvaluator.evaluate(ctx).type).toBe("done");
   });
+
+  test("returns done when outcome indicates file-not-found with no writes", () => {
+    const session = createSessionContext();
+    session.callLog = [
+      { toolName: "search-files", args: { pattern: "src/utils.ts" } },
+      { toolName: "read-file", args: { paths: [{ path: "src" }] } },
+      { toolName: "search-files", args: { pattern: "utils.ts" } },
+      { toolName: "read-file", args: { paths: [{ path: "src/index.ts" }] } },
+    ];
+    const ctx = createMockContext({
+      request: { model: "gpt-5-mini", message: "Rename function in src/utils.ts", history: [] },
+      classifiedMode: "work",
+      session,
+      lastError: "read-file failed: ENOENT: no such file or directory, open 'src/utils.ts'",
+      result: { text: "src/utils.ts does not exist in this workspace.", toolCalls: [] },
+    });
+    expect(efficiencyEvaluator.evaluate(ctx).type).toBe("done");
+  });
 });
 
 describe("multiMatchEditEvaluator", () => {
