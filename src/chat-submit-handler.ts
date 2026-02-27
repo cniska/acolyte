@@ -28,6 +28,7 @@ type CreateSubmitHandlerInput = {
   persist: () => Promise<void>;
   exit: () => void;
   openSkillsPanel: () => Promise<void>;
+  activateSkill: (skillName: string, args: string) => Promise<boolean>;
   openResumePanel: () => void;
   openPermissionsPanel: () => void;
   openClarifyPanel: (questions: string[], originalPrompt: string) => void;
@@ -353,6 +354,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         persist: input.persist,
         exit: input.exit,
         openSkillsPanel: input.openSkillsPanel,
+        activateSkill: input.activateSkill,
         openResumePanel: input.openResumePanel,
         openPermissionsPanel: input.openPermissionsPanel,
         setServerPermissionMode: input.client.setPermissionMode,

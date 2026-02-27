@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { type Dirent, existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -6,9 +6,40 @@ export interface SkillMeta {
   name: string;
   description: string;
   path: string;
+  license?: string;
+  compatibility?: string;
+  metadata?: Record<string, string>;
+  allowedTools?: string[];
 }
 
-function parseFrontmatter(input: string): Record<string, string> | null {
+interface ParsedFrontmatter {
+  name?: string;
+  description?: string;
+  license?: string;
+  compatibility?: string;
+  metadata?: Record<string, string>;
+  allowedTools?: string[];
+}
+
+const SKILL_NAME_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
+
+export function validateSkillName(name: string, dirName: string): string | null {
+  if (name.length === 0 || name.length > 64) {
+    return `name must be 1-64 characters (got ${name.length})`;
+  }
+  if (!SKILL_NAME_RE.test(name)) {
+    return `name contains invalid characters: "${name}"`;
+  }
+  if (name.includes("--")) {
+    return `name must not contain consecutive hyphens: "${name}"`;
+  }
+  if (name !== dirName) {
+    return `name "${name}" must match directory "${dirName}"`;
+  }
+  return null;
+}
+
+function parseFrontmatter(input: string): ParsedFrontmatter | null {
   const trimmed = input.trimStart();
   if (!trimmed.startsWith("---")) {
     return null;
@@ -21,21 +52,69 @@ function parseFrontmatter(input: string): Record<string, string> | null {
   if (endIdx < 0) {
     return null;
   }
-  const out: Record<string, string> = {};
-  for (const line of lines.slice(1, endIdx)) {
-    const idx = line.indexOf(":");
-    if (idx <= 0) {
+
+  const out: ParsedFrontmatter = {};
+  let metadataMap: Record<string, string> | null = null;
+
+  for (let i = 1; i < endIdx; i++) {
+    const line = lines[i];
+    const isIndented = line.startsWith("  ") || line.startsWith("\t");
+
+    // Indented lines belong to the current metadata map
+    if (isIndented && metadataMap !== null) {
+      const colonIdx = line.indexOf(":");
+      if (colonIdx > 0) {
+        const key = line.slice(0, colonIdx).trim();
+        const value = line
+          .slice(colonIdx + 1)
+          .trim()
+          .replace(/^["']|["']$/g, "");
+        if (key && value) {
+          metadataMap[key] = value;
+        }
+      }
       continue;
     }
-    const key = line.slice(0, idx).trim();
+
+    // Non-indented line — close any open metadata map
+    metadataMap = null;
+
+    const colonIdx = line.indexOf(":");
+    if (colonIdx <= 0) {
+      continue;
+    }
+    const key = line.slice(0, colonIdx).trim();
     const value = line
-      .slice(idx + 1)
+      .slice(colonIdx + 1)
       .trim()
       .replace(/^["']|["']$/g, "");
-    if (key && value) {
-      out[key] = value;
+
+    switch (key) {
+      case "name":
+        if (value) out.name = value;
+        break;
+      case "description":
+        if (value) out.description = value;
+        break;
+      case "license":
+        if (value) out.license = value;
+        break;
+      case "compatibility":
+        if (value) out.compatibility = value;
+        break;
+      case "allowed-tools":
+        if (value) out.allowedTools = value.split(/\s+/).filter(Boolean);
+        break;
+      case "metadata":
+        if (!value) {
+          // Start collecting indented sub-keys
+          metadataMap = {};
+          out.metadata = metadataMap;
+        }
+        break;
     }
   }
+
   return out;
 }
 
@@ -58,38 +137,101 @@ function stripFrontmatter(input: string): string {
     .trim();
 }
 
-export async function listSkills(cwd = process.cwd()): Promise<SkillMeta[]> {
-  const root = join(cwd, "skills");
-  if (!existsSync(root)) {
-    return [];
-  }
+const SKILL_DIRS = ["skills", ".agents/skills"];
 
-  const dirs = await readdir(root, { withFileTypes: true });
+export async function listSkills(cwd = process.cwd()): Promise<SkillMeta[]> {
+  const seen = new Set<string>();
   const found: SkillMeta[] = [];
 
-  for (const dir of dirs) {
-    if (!dir.isDirectory()) {
+  for (const base of SKILL_DIRS) {
+    const root = join(cwd, base);
+    if (!existsSync(root)) {
       continue;
     }
-    const skillPath = join(root, dir.name, "SKILL.md");
-    if (!existsSync(skillPath)) {
-      continue;
-    }
+
+    let dirs: Dirent[];
     try {
-      const content = await readFile(skillPath, "utf8");
-      const fm = parseFrontmatter(content) ?? {};
-      const name = fm.name ?? dir.name;
-      const description = fm.description ?? "No description";
-      found.push({ name, description, path: skillPath });
+      dirs = await readdir(root, { withFileTypes: true });
     } catch {
-      // Ignore malformed/unreadable skills for now.
+      continue;
+    }
+
+    for (const entry of dirs) {
+      if (!entry.isDirectory()) {
+        continue;
+      }
+      const dirName = entry.name as string;
+      const skillPath = join(root, dirName, "SKILL.md");
+      if (!existsSync(skillPath)) {
+        continue;
+      }
+      try {
+        const content = await readFile(skillPath, "utf8");
+        const fm = parseFrontmatter(content);
+        if (!fm) {
+          continue;
+        }
+        const name = fm.name ?? dirName;
+        const nameError = validateSkillName(name, dirName);
+        if (nameError) {
+          continue;
+        }
+        if (seen.has(name)) {
+          continue;
+        }
+        seen.add(name);
+
+        const description = fm.description;
+        if (!description || description.length > 1024) {
+          continue;
+        }
+
+        found.push({
+          name,
+          description,
+          path: skillPath,
+          ...(fm.license ? { license: fm.license } : {}),
+          ...(fm.compatibility ? { compatibility: fm.compatibility } : {}),
+          ...(fm.metadata && Object.keys(fm.metadata).length > 0 ? { metadata: fm.metadata } : {}),
+          ...(fm.allowedTools && fm.allowedTools.length > 0 ? { allowedTools: fm.allowedTools } : {}),
+        });
+      } catch {
+        // Skip unreadable skills.
+      }
     }
   }
 
   return found.sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export async function readSkillInstructions(path: string): Promise<string> {
+let cachedSkills: SkillMeta[] | null = null;
+
+export async function loadSkills(cwd?: string): Promise<SkillMeta[]> {
+  cachedSkills = await listSkills(cwd);
+  return cachedSkills;
+}
+
+export function getLoadedSkills(): SkillMeta[] {
+  return cachedSkills ?? [];
+}
+
+export function findSkillByName(name: string): SkillMeta | undefined {
+  return getLoadedSkills().find((s) => s.name === name);
+}
+
+export function resetSkillCache(): void {
+  cachedSkills = null;
+}
+
+export function substituteArguments(body: string, args: string): string {
+  return body.replaceAll("$ARGUMENTS", args);
+}
+
+export async function readSkillInstructions(path: string, args?: string): Promise<string> {
   const raw = await readFile(path, "utf8");
-  return stripFrontmatter(raw);
+  const body = stripFrontmatter(raw);
+  if (args !== undefined) {
+    return substituteArguments(body, args);
+  }
+  return body;
 }

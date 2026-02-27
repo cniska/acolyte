@@ -6,6 +6,7 @@ import type { ConfigScope } from "./config";
 import { setConfigValue } from "./config";
 import { addMemory, listMemories, removeMemoryByPrefix } from "./memory";
 import { createId } from "./short-id";
+import { findSkillByName } from "./skills";
 import type { MemoryContextScope } from "./soul";
 import { formatStatusOutput } from "./status-format";
 import { createSession } from "./storage";
@@ -134,6 +135,7 @@ export type CommandContext = {
   openPermissionsPanel: () => void;
   setServerPermissionMode: (mode: "read" | "write") => Promise<void>;
   setConfigPermissionMode?: (mode: "read" | "write", scope: ConfigScope) => Promise<void>;
+  activateSkill?: (skillName: string, args: string) => Promise<boolean>;
   tokenUsage: TokenUsageEntry[];
   memoryApi?: {
     listMemories: typeof listMemories;
@@ -442,6 +444,18 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
 
   if (resolvedText.startsWith("/")) {
     const [head, ...rest] = resolvedText.split(/\s+/);
+    const skillName = (head ?? "").slice(1);
+    const skill = findSkillByName(skillName);
+    if (skill && ctx.activateSkill) {
+      pushUserCommandRow();
+      const args = rest.join(" ").trim();
+      const ok = await ctx.activateSkill(skill.name, args);
+      if (!ok) {
+        ctx.setRows((current) => [...current, createRow("system", `Failed to activate skill: ${skill.name}`)]);
+      }
+      return { stop: true, userText: text };
+    }
+
     const corrected = suggestClosestSlashCommand(head ?? resolvedText);
     if (corrected) {
       const correctedText = rest.length > 0 ? `${corrected} ${rest.join(" ")}` : corrected;

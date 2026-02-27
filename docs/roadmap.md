@@ -52,6 +52,7 @@ End-to-end autonomous execution: plan, edit, verify, iterate.
 - [x] Run summary debug event for failure tracking
 - [x] Configurable model per mode (e.g. cheaper model for plan)
 - [x] Single-match guard on edit-file to prevent unintended multi-replacements
+- [x] Skills aligned with agentskills.io spec (inline invocation, $ARGUMENTS, multi-dir scan)
 
 ### Milestone 6: Memory Quality
 

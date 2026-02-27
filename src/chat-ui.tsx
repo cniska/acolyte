@@ -23,6 +23,7 @@ import { buildInputHistory } from "./chat-turn";
 import type { Client } from "./client";
 import { palette } from "./palette";
 import { formatModel } from "./provider-config";
+import { loadSkills } from "./skills";
 import type { Session, SessionStore } from "./types";
 
 type HeaderLine = {
@@ -104,6 +105,10 @@ function ChatApp(props: ChatAppProps) {
     setTokenUsage(currentSession.tokenUsage ?? []);
   }, [currentSession]);
 
+  useEffect(() => {
+    loadSkills().catch(() => {});
+  }, []);
+
   const {
     openSkillsPanel,
     openResumePanel,
@@ -111,6 +116,7 @@ function ChatApp(props: ChatAppProps) {
     openClarifyPanel,
     openWriteConfirmPanel,
     handlePickerSelect,
+    activateSkill,
   } = createPickerHandlers({
     store,
     currentSession,
@@ -146,6 +152,7 @@ function ChatApp(props: ChatAppProps) {
     persist,
     exit,
     openSkillsPanel,
+    activateSkill,
     openResumePanel,
     openPermissionsPanel,
     openClarifyPanel,

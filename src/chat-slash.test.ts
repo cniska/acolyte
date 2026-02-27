@@ -1,4 +1,7 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   applySlashSuggestion,
   isKnownSlashToken,
@@ -7,6 +10,7 @@ import {
   suggestClosestSlashCommand,
   suggestSlashCommands,
 } from "./chat-slash";
+import { loadSkills, resetSkillCache } from "./skills";
 
 describe("chat-slash helpers", () => {
   test("suggestSlashCommands filters known commands by prefix", () => {
@@ -83,5 +87,35 @@ describe("chat-slash helpers", () => {
     expect(suggestClosestSlashCommand("/stauts")).toBe("/status");
     expect(suggestClosestSlashCommand("/status")).toBeNull();
     expect(suggestClosestSlashCommand("plain")).toBeNull();
+  });
+
+  describe("with loaded skills", () => {
+    let tmpDir: string;
+    afterEach(() => {
+      resetSkillCache();
+      if (tmpDir) rmSync(tmpDir, { recursive: true, force: true });
+    });
+
+    test("skill names appear in suggestions", async () => {
+      tmpDir = mkdtempSync(join(tmpdir(), "acolyte-slash-skill-"));
+      const skillDir = join(tmpDir, "skills", "dogfood");
+      mkdirSync(skillDir, { recursive: true });
+      writeFileSync(join(skillDir, "SKILL.md"), "---\nname: dogfood\ndescription: Test\n---\n# Test", "utf8");
+      await loadSkills(tmpDir);
+
+      const suggestions = suggestSlashCommands("/dog");
+      expect(suggestions).toContain("/dogfood");
+    });
+
+    test("isKnownSlashToken recognizes skill names", async () => {
+      tmpDir = mkdtempSync(join(tmpdir(), "acolyte-slash-known-"));
+      const skillDir = join(tmpDir, "skills", "dogfood");
+      mkdirSync(skillDir, { recursive: true });
+      writeFileSync(join(skillDir, "SKILL.md"), "---\nname: dogfood\ndescription: Test\n---\n# Test", "utf8");
+      await loadSkills(tmpDir);
+
+      expect(isKnownSlashToken("/dogfood")).toBe(true);
+      expect(isKnownSlashToken("/nonexistent")).toBe(false);
+    });
   });
 });

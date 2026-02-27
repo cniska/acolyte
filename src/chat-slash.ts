@@ -1,3 +1,5 @@
+import { getLoadedSkills } from "./skills";
+
 const CHAT_SLASH_COMMANDS = [
   "/new",
   "/permissions",
@@ -24,6 +26,11 @@ const SLASH_ALIASES: Record<string, string> = {
   "/mem": "/memory",
 };
 
+function allSlashCommands(): string[] {
+  const skillCommands = getLoadedSkills().map((s) => `/${s.name}`);
+  return [...CHAT_SLASH_COMMANDS, ...skillCommands];
+}
+
 function editDistance(a: string, b: string): number {
   const dp: number[][] = Array.from({ length: a.length + 1 }, () => Array(b.length + 1).fill(0));
   for (let i = 0; i <= a.length; i += 1) {
@@ -42,7 +49,13 @@ function editDistance(a: string, b: string): number {
 }
 
 export function isKnownSlashToken(token: string): boolean {
-  return CHAT_SLASH_COMMANDS.includes(token as (typeof CHAT_SLASH_COMMANDS)[number]) || token in SLASH_ALIASES;
+  if (CHAT_SLASH_COMMANDS.includes(token as (typeof CHAT_SLASH_COMMANDS)[number])) return true;
+  if (token in SLASH_ALIASES) return true;
+  if (token.startsWith("/")) {
+    const name = token.slice(1);
+    return getLoadedSkills().some((s) => s.name === name);
+  }
+  return false;
 }
 
 export function suggestSlashCommands(inputValue: string, max = 8): string[] {
@@ -71,15 +84,16 @@ export function suggestSlashCommands(inputValue: string, max = 8): string[] {
     return [];
   }
 
-  // No space: match top-level commands + all subcommands
-  const allCommands = [...CHAT_SLASH_COMMANDS, ...Object.values(SUB_COMMANDS).flat()];
+  // No space: match top-level commands + skill commands + all subcommands
+  const all = allSlashCommands();
+  const allCommands = [...all, ...Object.values(SUB_COMMANDS).flat()];
   const matches = allCommands.filter((command) => command.startsWith(value));
   if (matches.length > 0) {
     return matches.slice(0, max);
   }
 
-  // No prefix matches — fall back to fuzzy matching on top-level commands
-  const fuzzy = [...CHAT_SLASH_COMMANDS]
+  // No prefix matches — fall back to fuzzy matching on top-level commands + skills
+  const fuzzy = all
     .map((command) => ({ command, distance: editDistance(value, command) }))
     .filter((item) => item.distance <= 2)
     .sort((a, b) => a.distance - b.distance);
@@ -95,7 +109,7 @@ export function suggestClosestSlashCommand(inputValue: string, maxDistance = 2):
     return null;
   }
   let best: { command: string; distance: number } | null = null;
-  for (const command of CHAT_SLASH_COMMANDS) {
+  for (const command of allSlashCommands()) {
     const distance = editDistance(value, command);
     if (distance > maxDistance) {
       continue;

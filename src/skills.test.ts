@@ -2,11 +2,52 @@ import { describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { listSkills, readSkillInstructions } from "./skills";
+import { listSkills, readSkillInstructions, substituteArguments, validateSkillName } from "./skills";
+
+function tmpDir(label: string): string {
+  return mkdtempSync(join(tmpdir(), `acolyte-skills-${label}-`));
+}
+
+function writeSkill(base: string, dirName: string, frontmatter: string, body = ""): void {
+  const skillDir = join(base, "skills", dirName);
+  mkdirSync(skillDir, { recursive: true });
+  writeFileSync(join(skillDir, "SKILL.md"), `${frontmatter}\n${body}`, "utf8");
+}
+
+describe("validateSkillName", () => {
+  test("accepts valid names", () => {
+    expect(validateSkillName("dogfood", "dogfood")).toBeNull();
+    expect(validateSkillName("pdf-processing", "pdf-processing")).toBeNull();
+    expect(validateSkillName("a", "a")).toBeNull();
+    expect(validateSkillName("my-skill-123", "my-skill-123")).toBeNull();
+  });
+
+  test("rejects empty or too-long names", () => {
+    expect(validateSkillName("", "")).not.toBeNull();
+    expect(validateSkillName("a".repeat(65), "a".repeat(65))).not.toBeNull();
+  });
+
+  test("rejects uppercase", () => {
+    expect(validateSkillName("MySkill", "MySkill")).not.toBeNull();
+  });
+
+  test("rejects leading/trailing hyphens", () => {
+    expect(validateSkillName("-start", "-start")).not.toBeNull();
+    expect(validateSkillName("end-", "end-")).not.toBeNull();
+  });
+
+  test("rejects consecutive hyphens", () => {
+    expect(validateSkillName("my--skill", "my--skill")).not.toBeNull();
+  });
+
+  test("rejects name/directory mismatch", () => {
+    expect(validateSkillName("foo", "bar")).not.toBeNull();
+  });
+});
 
 describe("skills loader", () => {
   test("returns empty when skills directory is missing", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "acolyte-skills-empty-"));
+    const dir = tmpDir("empty");
     try {
       const skills = await listSkills(dir);
       expect(skills).toEqual([]);
@@ -16,37 +57,147 @@ describe("skills loader", () => {
   });
 
   test("reads name/description from SKILL.md frontmatter", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "acolyte-skills-one-"));
+    const dir = tmpDir("one");
     try {
-      const skillDir = join(dir, "skills", "demo");
-      mkdirSync(skillDir, { recursive: true });
-      writeFileSync(
-        join(skillDir, "SKILL.md"),
-        ["---", "name: demo-skill", "description: Demo description", "---", "", "# Demo"].join("\n"),
-        "utf8",
-      );
+      writeSkill(dir, "demo", "---\nname: demo\ndescription: Demo description\n---", "# Demo");
       const skills = await listSkills(dir);
       expect(skills).toHaveLength(1);
-      expect(skills[0]?.name).toBe("demo-skill");
+      expect(skills[0]?.name).toBe("demo");
       expect(skills[0]?.description).toBe("Demo description");
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
   });
 
-  test("readSkillInstructions strips frontmatter and returns body", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "acolyte-skills-body-"));
+  test("scans .agents/skills/ directory", async () => {
+    const dir = tmpDir("agents");
+    try {
+      const skillDir = join(dir, ".agents", "skills", "helper");
+      mkdirSync(skillDir, { recursive: true });
+      writeFileSync(join(skillDir, "SKILL.md"), "---\nname: helper\ndescription: Helper skill\n---\n# Help", "utf8");
+      const skills = await listSkills(dir);
+      expect(skills).toHaveLength(1);
+      expect(skills[0]?.name).toBe("helper");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("deduplicates by name (first wins)", async () => {
+    const dir = tmpDir("dedup");
+    try {
+      writeSkill(dir, "demo", "---\nname: demo\ndescription: From skills/\n---");
+      const agentDir = join(dir, ".agents", "skills", "demo");
+      mkdirSync(agentDir, { recursive: true });
+      writeFileSync(join(agentDir, "SKILL.md"), "---\nname: demo\ndescription: From .agents/skills/\n---", "utf8");
+      const skills = await listSkills(dir);
+      expect(skills).toHaveLength(1);
+      expect(skills[0]?.description).toBe("From skills/");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("skips skills with invalid names", async () => {
+    const dir = tmpDir("invalid");
+    try {
+      writeSkill(dir, "Bad-Name", "---\nname: Bad-Name\ndescription: Invalid\n---");
+      writeSkill(dir, "good", "---\nname: good\ndescription: Valid\n---");
+      const skills = await listSkills(dir);
+      expect(skills).toHaveLength(1);
+      expect(skills[0]?.name).toBe("good");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("skips skills where name mismatches directory", async () => {
+    const dir = tmpDir("mismatch");
+    try {
+      writeSkill(dir, "foo", "---\nname: bar\ndescription: Mismatched\n---");
+      const skills = await listSkills(dir);
+      expect(skills).toEqual([]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("parses optional fields: license, compatibility, metadata, allowed-tools", async () => {
+    const dir = tmpDir("optional");
+    try {
+      const fm = [
+        "---",
+        "name: full",
+        "description: Full spec skill",
+        "license: MIT",
+        "compatibility: Requires git",
+        "allowed-tools: Bash Read Write",
+        "metadata:",
+        "  author: test-org",
+        '  version: "1.0"',
+        "---",
+      ].join("\n");
+      writeSkill(dir, "full", fm);
+      const skills = await listSkills(dir);
+      expect(skills).toHaveLength(1);
+      expect(skills[0]?.license).toBe("MIT");
+      expect(skills[0]?.compatibility).toBe("Requires git");
+      expect(skills[0]?.allowedTools).toEqual(["Bash", "Read", "Write"]);
+      expect(skills[0]?.metadata).toEqual({ author: "test-org", version: "1.0" });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("readSkillInstructions", () => {
+  test("strips frontmatter and returns body", async () => {
+    const dir = tmpDir("body");
     try {
       const file = join(dir, "SKILL.md");
-      writeFileSync(
-        file,
-        ["---", "name: demo-skill", "description: Demo description", "---", "", "# Demo", "Use this skill."].join("\n"),
-        "utf8",
-      );
+      writeFileSync(file, "---\nname: demo\ndescription: Demo\n---\n\n# Demo\nUse this skill.", "utf8");
       const body = await readSkillInstructions(file);
       expect(body).toBe("# Demo\nUse this skill.");
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+
+  test("substitutes $ARGUMENTS when args provided", async () => {
+    const dir = tmpDir("args");
+    try {
+      const file = join(dir, "SKILL.md");
+      writeFileSync(file, "---\nname: demo\ndescription: Demo\n---\n\nDo: $ARGUMENTS", "utf8");
+      const body = await readSkillInstructions(file, "run tests");
+      expect(body).toBe("Do: run tests");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("cleans $ARGUMENTS placeholder when args is empty string", async () => {
+    const dir = tmpDir("empty-args");
+    try {
+      const file = join(dir, "SKILL.md");
+      writeFileSync(file, "---\nname: demo\ndescription: Demo\n---\n\nDo: $ARGUMENTS", "utf8");
+      const body = await readSkillInstructions(file, "");
+      expect(body).toBe("Do: ");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("substituteArguments", () => {
+  test("replaces $ARGUMENTS placeholder", () => {
+    expect(substituteArguments("Do: $ARGUMENTS", "run tests")).toBe("Do: run tests");
+  });
+
+  test("returns unchanged when no placeholder", () => {
+    expect(substituteArguments("No placeholder", "args")).toBe("No placeholder");
+  });
+
+  test("replaces multiple occurrences", () => {
+    expect(substituteArguments("$ARGUMENTS and $ARGUMENTS", "x")).toBe("x and x");
   });
 });

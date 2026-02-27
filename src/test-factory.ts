@@ -114,6 +114,7 @@ export function createSubmitHandlerHarness(overrides?: {
     persist: async () => {},
     exit: () => {},
     openSkillsPanel: async () => {},
+    activateSkill: async () => true,
     openResumePanel: () => {},
     openPermissionsPanel: () => {},
     openClarifyPanel: () => {},

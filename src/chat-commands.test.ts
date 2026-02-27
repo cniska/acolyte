@@ -1,6 +1,10 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { appConfig, setPermissionMode } from "./app-config";
 import { dispatchSlashCommand, formatTokenUsageOutput, type TokenUsageEntry } from "./chat-commands";
+import { loadSkills, resetSkillCache } from "./skills";
 import { createCommandContext, createMessage, createSession, createStore } from "./test-factory";
 
 async function runCommand(text: string, overrides: Parameters<typeof createCommandContext>[1] = {}) {
@@ -531,5 +535,38 @@ describe("chat-commands", () => {
     expect(resumeResult.stop).toBe(true);
     expect(store.activeSessionId).toBe(original.id);
     expect(spies.currentSessionIds).toContain(original.id);
+  });
+
+  describe("inline skill invocation", () => {
+    let tmpDir: string;
+    afterEach(() => {
+      resetSkillCache();
+      if (tmpDir) rmSync(tmpDir, { recursive: true, force: true });
+    });
+
+    test("/skillname activates skill via activateSkill callback", async () => {
+      tmpDir = mkdtempSync(join(tmpdir(), "acolyte-cmd-skill-"));
+      const skillDir = join(tmpDir, "skills", "demo");
+      mkdirSync(skillDir, { recursive: true });
+      writeFileSync(join(skillDir, "SKILL.md"), "---\nname: demo\ndescription: Demo\n---\n# Demo", "utf8");
+      await loadSkills(tmpDir);
+
+      const activated: string[] = [];
+      const { stop } = await runCommand("/demo run tests", {
+        activateSkill: async (name, args) => {
+          activated.push(name, args);
+          return true;
+        },
+      });
+      expect(stop).toBe(true);
+      expect(activated).toEqual(["demo", "run tests"]);
+    });
+
+    test("unknown /xyz still shows unknown command", async () => {
+      resetSkillCache();
+      const { rows, stop } = await runCommand("/xyz");
+      expect(stop).toBe(true);
+      expect(rows.some((r) => r.content.includes("Unknown command"))).toBe(true);
+    });
   });
 });

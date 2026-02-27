@@ -11,7 +11,7 @@ import {
   createWriteConfirmPicker,
 } from "./chat-picker-actions";
 import { setConfigValue } from "./config";
-import { listSkills, readSkillInstructions } from "./skills";
+import { findSkillByName, loadSkills, readSkillInstructions } from "./skills";
 import type { Message, Session, SessionStore } from "./types";
 
 const MAX_SKILL_INSTRUCTION_CHARS = 4000;
@@ -47,11 +47,30 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
   openClarifyPanel: (questions: string[], originalPrompt: string) => void;
   openWriteConfirmPanel: (prompt: string) => void;
   handlePickerSelect: (state: PickerState) => Promise<void>;
+  activateSkill: (skillName: string, args: string) => Promise<boolean>;
 } {
+  const activateSkill = async (skillName: string, args: string): Promise<boolean> => {
+    const skill = findSkillByName(skillName);
+    if (!skill) return false;
+    try {
+      const instructions = await readSkillInstructions(skill.path, args || undefined);
+      const bounded = boundedSkillInstructions(instructions, MAX_SKILL_INSTRUCTION_CHARS);
+      const msg = input.createMessage("system", `Active skill (${skill.name}):\n${bounded}`);
+      input.currentSession.messages.push(msg);
+      input.currentSession.updatedAt = input.nowIso();
+      const label = args ? `Activated skill: ${skill.name} (with arguments)` : `Activated skill: ${skill.name}`;
+      input.setRows((current) => [...current, createRow("system", label)]);
+      await input.persist();
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const openSkillsPanel = async (): Promise<void> => {
-    const skills = await listSkills();
+    const skills = await loadSkills();
     if (skills.length === 0) {
-      input.setRows((current) => [...current, createRow("system", "No skills found in ./skills.")]);
+      input.setRows((current) => [...current, createRow("system", "No skills found in ./skills or ./.agents/skills.")]);
       return;
     }
     input.setPicker(
@@ -105,7 +124,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
         const selected = state.items[state.index];
         if (selected) {
           try {
-            const instructions = await readSkillInstructions(selected.path);
+            const instructions = await readSkillInstructions(selected.path, "");
             const boundedInstructions = boundedSkillInstructions(instructions, MAX_SKILL_INSTRUCTION_CHARS);
             const msg = input.createMessage("system", `Active skill (${selected.name}):\n${boundedInstructions}`);
             input.currentSession.messages.push(msg);
@@ -213,6 +232,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
     openClarifyPanel,
     openWriteConfirmPanel,
     handlePickerSelect,
+    activateSkill,
   };
 }
 
