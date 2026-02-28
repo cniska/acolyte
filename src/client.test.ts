@@ -512,7 +512,7 @@ describe("rpc url helpers", () => {
 });
 
 describe("rpc websocket lifecycle", () => {
-  test("replyStream ignores rpc queue lifecycle envelopes", async () => {
+  test("replyStream ignores rpc control envelopes during active chat", async () => {
     class MockWebSocket {
       private listeners = new Map<string, Set<(event: unknown) => void>>();
       private closed = false;
@@ -539,8 +539,10 @@ describe("rpc websocket lifecycle", () => {
           this.emit("message", { data: JSON.stringify({ id: msg.id, ...body }) });
         };
         queueMicrotask(() => sendMessage({ type: "chat.accepted" }));
+        queueMicrotask(() => sendMessage({ type: "chat.queued", position: 2 }));
         queueMicrotask(() => sendMessage({ type: "chat.queued", position: 1 }));
         queueMicrotask(() => sendMessage({ type: "chat.started" }));
+        queueMicrotask(() => sendMessage({ type: "chat.abort.result", requestId: msg.id, aborted: false }));
         queueMicrotask(() =>
           sendMessage({
             type: "chat.event",

@@ -14,6 +14,20 @@ export function queuePositionUpdates(queue: QueuedRpcChatEntry[]): Array<{ id: s
   return queue.map((item, position) => ({ id: item.id, position: position + 1 }));
 }
 
+export type QueueDequeueResult<T extends QueuedRpcChatEntry> = {
+  next: T | null;
+  updates: Array<{ id: string; position: number }>;
+};
+
+export function dequeueNextQueuedChat<T extends QueuedRpcChatEntry>(queue: T[]): QueueDequeueResult<T> {
+  while (queue.length > 0) {
+    const next = queue.shift();
+    if (!next || next.state.aborted) continue;
+    return { next, updates: queuePositionUpdates(queue) };
+  }
+  return { next: null, updates: [] };
+}
+
 export function removeQueuedChatById(queue: QueuedRpcChatEntry[], requestId: string): QueueAbortResult {
   const index = queue.findIndex((item) => item.id === requestId);
   if (index === -1) return { removed: false, updates: [] };
