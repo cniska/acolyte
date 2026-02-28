@@ -92,27 +92,43 @@ const excessiveFileLoopGuard: ToolGuard = {
           ? [normalizePath(args.path.trim())]
           : []
         : extractReadPaths(args);
-    if (targetPaths.length !== 1) return;
-    const target = targetPaths[0];
-
-    let readCount = 0;
-    let editCount = 0;
+    if (targetPaths.length === 0) return;
+    const pathCounts = new Map<string, { readCount: number; editCount: number }>();
+    const countsForPath = (path: string): { readCount: number; editCount: number } => {
+      const existing = pathCounts.get(path);
+      if (existing) return existing;
+      const created = { readCount: 0, editCount: 0 };
+      pathCounts.set(path, created);
+      return created;
+    };
     for (const entry of session.callLog) {
       if (entry.toolName === "read-file") {
-        const hasTarget = extractReadPaths(entry.args).some((path) => path === target);
-        if (hasTarget) readCount += 1;
+        for (const path of extractReadPaths(entry.args)) {
+          countsForPath(path).readCount += 1;
+        }
       } else if (entry.toolName === "edit-file" || entry.toolName === "edit-code") {
         const path = entry.args.path;
-        if (typeof path === "string" && normalizePath(path) === target) editCount += 1;
+        if (typeof path !== "string") continue;
+        countsForPath(normalizePath(path)).editCount += 1;
       }
     }
 
-    if (toolName === "read-file" && readCount >= 1 && editCount === 0) {
-      session.onGuard?.({ guardId: "excessive-file-loop", toolName, action: "blocked", detail: target });
-      throw new Error(
-        `Already read "${target}" this turn. Reuse prior context and batch remaining targets into one read-file call.`,
-      );
+    if (toolName === "read-file") {
+      const duplicatePreEdit = targetPaths.find((path) => {
+        const counts = countsForPath(path);
+        return counts.readCount >= 1 && counts.editCount === 0;
+      });
+      if (duplicatePreEdit) {
+        session.onGuard?.({ guardId: "excessive-file-loop", toolName, action: "blocked", detail: duplicatePreEdit });
+        throw new Error(
+          `Already read "${duplicatePreEdit}" this turn. Reuse prior context and only read unread paths in the next batched read-file call.`,
+        );
+      }
     }
+
+    if (targetPaths.length !== 1) return;
+    const target = targetPaths[0];
+    const { readCount, editCount } = countsForPath(target);
 
     const combined = readCount + editCount;
     if (combined < 12 || readCount < 5 || editCount < 5) return;
