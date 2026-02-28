@@ -98,7 +98,7 @@ const excessiveFileLoopGuard: ToolGuard = {
       if (entry.toolName === "read-file") {
         const hasTarget = extractReadPaths(entry.args).some((path) => path === target);
         if (hasTarget) readCount += 1;
-      } else if (entry.toolName === "edit-file") {
+      } else if (entry.toolName === "edit-file" || entry.toolName === "edit-code") {
         const path = entry.args.path;
         if (typeof path === "string" && normalizePath(path) === target) editCount += 1;
       }

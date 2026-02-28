@@ -63,7 +63,7 @@ export const toolMeta: Record<ToolName, ToolMeta> = {
   },
   "scan-code": {
     instruction:
-      "Use `scan-code` for AST pattern matching (e.g. `console.log($ARG)`). Metavariable names (`$NAME`, `$ARG`) are wildcards — they match any node, not literal text. Use it to map rename/refactor targets before `edit-code`. For keyword or regex searches prefer `search-files`.",
+      "Use `scan-code` for AST pattern matching. Always pass `patterns` as an array (e.g. [`console.log($ARG)`]). Metavariable names (`$NAME`, `$ARG`) are wildcards — they match any node, not literal text. Batch multiple patterns in one call (e.g. [`export function $NAME`, `import $SPEC from $MOD`]). Use it to map rename/refactor targets before `edit-code`. For keyword or regex searches prefer `search-files`.",
     aliases: ["scanCode", "scan_code"],
   },
   "edit-code": {
@@ -292,9 +292,12 @@ async function guardedExecute<T>(
   task: () => Promise<T>,
 ): Promise<T> {
   runGuards({ toolName: toolId, args, session });
-  const result = await task();
-  recordCall(session, toolId, args);
-  return result;
+  try {
+    const result = await task();
+    return result;
+  } finally {
+    recordCall(session, toolId, args);
+  }
 }
 
 // --- Tool factories ---
@@ -351,25 +354,31 @@ function createScanCodeTool(workspace: string, session: SessionContext) {
   return createTool({
     id: "scan-code",
     description:
-      "Scan files for structural code patterns using AST matching. Pass an ast-grep `pattern` with `$VAR` metavariables (e.g. `console.log($ARG)`, `async function $NAME($$$PARAMS)`). Path can be a file or directory.",
+      "Scan files for structural code patterns using AST matching. Pass ast-grep `patterns` as an array of strings with `$VAR` metavariables (e.g. [`export function $NAME($$$PARAMS)`, `import $SPEC from $MOD`]). Path can be a file or directory.",
     inputSchema: z.object({
       path: z.string().min(1),
-      pattern: z.string().min(1),
+      patterns: z.array(z.string().min(1)).min(1),
       language: z.string().optional(),
       maxResults: z.number().int().min(1).max(200).optional(),
     }),
     execute: async (input) => {
       return withToolError("scan-code", () =>
         guardedExecute("scan-code", input as Record<string, unknown>, session, async () => {
+          const baseBudget = appConfig.agent.toolOutputBudget.scanCode;
+          const count = input.patterns.length;
+          const budget = {
+            maxChars: Math.max(400, Math.floor(baseBudget.maxChars / count) * count),
+            maxLines: Math.max(20, Math.floor(baseBudget.maxLines / count) * count),
+          };
           const result = compactToolOutput(
             await scanCode({
               workspace,
               path: input.path,
-              pattern: input.pattern,
+              pattern: input.patterns,
               language: input.language,
               maxResults: input.maxResults ?? 50,
             }),
-            appConfig.agent.toolOutputBudget.scanCode,
+            budget,
           );
           return { result };
         }),
@@ -421,7 +430,7 @@ function createReadFileTool(workspace: string, session: SessionContext) {
   });
 }
 
-function createGitStatusTool(workspace: string, session: SessionContext, onToolOutput?: ToolOutputListener) {
+function createGitStatusTool(workspace: string, session: SessionContext) {
   return createTool({
     id: "git-status",
     description: "Show working tree status (short format with branch) for the current repository.",
@@ -429,9 +438,7 @@ function createGitStatusTool(workspace: string, session: SessionContext, onToolO
     execute: async () => {
       return withToolError("git-status", () =>
         guardedExecute("git-status", {}, session, async () => {
-          const toolCallId = streamCallId("git-status");
           const result = compactToolOutput(await gitStatusShort(workspace), appConfig.agent.toolOutputBudget.gitStatus);
-          emitResultChunks("git-status", result, onToolOutput, 80, toolCallId);
           return { result };
         }),
       );
@@ -439,7 +446,7 @@ function createGitStatusTool(workspace: string, session: SessionContext, onToolO
   });
 }
 
-function createGitDiffTool(workspace: string, session: SessionContext, onToolOutput?: ToolOutputListener) {
+function createGitDiffTool(workspace: string, session: SessionContext) {
   return createTool({
     id: "git-diff",
     description: "Show unstaged changes (unified diff) for the repository or a specific file path.",
@@ -450,12 +457,10 @@ function createGitDiffTool(workspace: string, session: SessionContext, onToolOut
     execute: async (input) => {
       return withToolError("git-diff", () =>
         guardedExecute("git-diff", input as Record<string, unknown>, session, async () => {
-          const toolCallId = streamCallId("git-diff");
           const result = compactToolOutput(
             await gitDiff(workspace, input.path, input.contextLines ?? 3),
             appConfig.agent.toolOutputBudget.gitDiff,
           );
-          emitResultChunks("git-diff", result, onToolOutput, 80, toolCallId);
           return { result };
         }),
       );
@@ -648,8 +653,8 @@ function createToolset(workspace: string, session: SessionContext, onToolOutput?
       searchFiles: createSearchFilesTool(workspace, session),
       scanCode: createScanCodeTool(workspace, session),
       readFile: createReadFileTool(workspace, session),
-      gitStatus: createGitStatusTool(workspace, session, onToolOutput),
-      gitDiff: createGitDiffTool(workspace, session, onToolOutput),
+      gitStatus: createGitStatusTool(workspace, session),
+      gitDiff: createGitDiffTool(workspace, session),
       runCommand: createRunCommandTool(workspace, session, onToolOutput),
       editCode: createAstEditTool(workspace, session, onToolOutput),
       editFile: createEditFileTool(workspace, session, onToolOutput),
@@ -673,8 +678,8 @@ function readOnlyTools(
       searchFiles: createSearchFilesTool(workspace, session),
       scanCode: createScanCodeTool(workspace, session),
       readFile: createReadFileTool(workspace, session),
-      gitStatus: createGitStatusTool(workspace, session, onToolOutput),
-      gitDiff: createGitDiffTool(workspace, session, onToolOutput),
+      gitStatus: createGitStatusTool(workspace, session),
+      gitDiff: createGitDiffTool(workspace, session),
       webSearch: createWebSearchTool(session, onToolOutput),
       webFetch: createWebFetchTool(session, onToolOutput),
     },
