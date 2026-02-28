@@ -2,7 +2,12 @@
 
 ## Mental model (ELI5)
 
-Think of Acolyte like a careful helper: it uses tools to do the task, checks its own work, and leaves clear breadcrumbs so failures are easy to replay and debug.
+Think of Acolyte like a careful helper doing one task at a time:
+
+- It works on the current task using tools.
+- It checks for new important messages at safe checkpoints ("yield points"), not in the middle of a tool action.
+- If a newer message should take priority, it can yield and handle that next.
+- It leaves clear breadcrumbs so failures are easy to replay and debug.
 
 ## System flow
 
@@ -34,6 +39,7 @@ Each request follows the same high-level flow:
 5. Finalize response
 
 Evaluators can request a regeneration, but caps prevent runaway loops.
+Yield checks happen between lifecycle decisions so newer queued work can be picked up without unsafe mid-step interruption.
 
 ## Error handling contract
 

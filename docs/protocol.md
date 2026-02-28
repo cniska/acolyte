@@ -50,12 +50,17 @@ Client methods:
 - `status.get`
 - `permissions.set` (`read` | `write`)
 - `chat.start` (request payload)
+- `chat.abort` (request id)
 
 Server responses:
 
 - `status.result`
 - `permissions.result`
+- `chat.accepted`
+- `chat.queued`
+- `chat.started`
 - `chat.event`
 - `chat.done`
 - `chat.error`
+- `chat.abort.result`
 - `error`
