@@ -12,6 +12,7 @@ import { getObservationalMemoryConfig } from "./memory-config";
 import { formatServerCapabilities, PROTOCOL_VERSION } from "./protocol";
 import { formatModel, isProviderAvailable, providerFromModel, resolveProvider } from "./provider-config";
 import { rpcClientMessageSchema } from "./rpc-protocol";
+import { removeQueuedChatById } from "./rpc-queue";
 import { createId } from "./short-id";
 import { createSoulPrompt, getMemoryContextEntries } from "./soul";
 import type { StreamErrorDetail } from "./stream-error";
@@ -626,13 +627,11 @@ const server = Bun.serve<RpcConnectionState>({
           send({ type: "chat.abort.result", requestId, aborted: true });
           return;
         }
-        const queueIndex = ws.data.queue.findIndex((item) => item.id === requestId);
-        if (queueIndex !== -1) {
-          ws.data.queue[queueIndex].state.aborted = true;
-          ws.data.queue.splice(queueIndex, 1);
-          ws.data.queue.forEach((item, index) => {
-            sendForId(item.id, { type: "chat.queued", position: index + 1 });
-          });
+        const queueResult = removeQueuedChatById(ws.data.queue, requestId);
+        if (queueResult.removed) {
+          for (const update of queueResult.updates) {
+            sendForId(update.id, { type: "chat.queued", position: update.position });
+          }
           send({ type: "chat.abort.result", requestId, aborted: true });
           return;
         }

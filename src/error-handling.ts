@@ -13,10 +13,18 @@ export type ParsedError = { message: string; code?: string };
 export type ParseErrorResult = { ok: true; value: ParsedError } | { ok: false; error: "invalid_error_payload" };
 export type RecoveryAction = "retry-timeout" | "stop-unknown-budget" | "none";
 export type RecoveryDecision = { action: RecoveryAction; retryable: boolean };
+export const ERROR_CATEGORIES = ["timeout", "file-not-found", "guard-blocked", "other"] as const;
 
 const RECOVERY_ACTION_BY_CODE: Record<string, RecoveryAction> = {
   [LIFECYCLE_ERROR_CODES.timeout]: "retry-timeout",
 };
+
+export function createErrorStats(initialValue = 0): Record<ErrorCategory, number> {
+  return Object.fromEntries(ERROR_CATEGORIES.map((category) => [category, initialValue])) as Record<
+    ErrorCategory,
+    number
+  >;
+}
 
 export function isEditFileMultiMatchError(errorMessage: string): boolean {
   return (

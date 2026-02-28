@@ -3,6 +3,7 @@ import {
   buildStreamErrorDetail,
   categoryFromErrorCode,
   classifyErrorCategory,
+  createErrorStats,
   errorCodeFromCategory,
   isEditFileMultiMatchSignal,
   parseErrorInfo,
@@ -96,6 +97,21 @@ describe("error handling helpers", () => {
       source: "server",
       retryable: true,
       recoveryAction: "retry-timeout",
+    });
+  });
+
+  test("createErrorStats initializes all known categories", () => {
+    expect(createErrorStats()).toEqual({
+      timeout: 0,
+      "file-not-found": 0,
+      "guard-blocked": 0,
+      other: 0,
+    });
+    expect(createErrorStats(2)).toEqual({
+      timeout: 2,
+      "file-not-found": 2,
+      "guard-blocked": 2,
+      other: 2,
     });
   });
 });
