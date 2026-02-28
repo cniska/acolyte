@@ -39,6 +39,8 @@ function parseField(line: string, key: string): string | undefined {
 
 function compactLine(line: string): string {
   const ts = parseTimestamp(line);
+  const taskId = parseTaskId(line);
+  const taskPrefix = taskId ? ` task_id=${taskId}` : "";
   const msg = parseField(line, "msg");
   const event = parseField(line, "event");
 
@@ -46,37 +48,37 @@ function compactLine(line: string): string {
     const model = parseField(line, "model") ?? "?";
     const mode = parseField(line, "workspace_mode") ?? "?";
     const chars = parseField(line, "message_chars") ?? "?";
-    return `${ts} start model=${model} workspace_mode=${mode} message_chars=${chars}`;
+    return `${ts}${taskPrefix} start model=${model} workspace_mode=${mode} message_chars=${chars}`;
   }
 
   if (msg === "chat request completed") {
     const duration = parseField(line, "duration_ms") ?? "?";
     const modelCalls = parseField(line, "model_calls") ?? "?";
     const toolCount = parseField(line, "tool_count") ?? "?";
-    return `${ts} completed duration_ms=${duration} model_calls=${modelCalls} tool_count=${toolCount}`;
+    return `${ts}${taskPrefix} completed duration_ms=${duration} model_calls=${modelCalls} tool_count=${toolCount}`;
   }
 
-  if (!event) return `${ts} ${line}`;
+  if (!event) return `${ts}${taskPrefix} ${line}`;
 
   if (event === "lifecycle.tool.call") {
     const tool = parseField(line, "tool") ?? "?";
     const path = parseField(line, "path");
     const pattern = parseField(line, "pattern");
     const command = parseField(line, "command");
-    return `${ts} ${event} tool=${tool}${path ? ` path=${path}` : ""}${pattern ? ` pattern=${pattern}` : ""}${command ? ` command="${command}"` : ""}`;
+    return `${ts}${taskPrefix} ${event} tool=${tool}${path ? ` path=${path}` : ""}${pattern ? ` pattern=${pattern}` : ""}${command ? ` command="${command}"` : ""}`;
   }
 
   if (event === "lifecycle.tool.result") {
     const tool = parseField(line, "tool") ?? "?";
     const duration = parseField(line, "duration_ms") ?? "?";
     const isError = parseField(line, "is_error") ?? "?";
-    return `${ts} ${event} tool=${tool} duration_ms=${duration} is_error=${isError}`;
+    return `${ts}${taskPrefix} ${event} tool=${tool} duration_ms=${duration} is_error=${isError}`;
   }
 
   if (event === "lifecycle.tool.error") {
     const tool = parseField(line, "tool") ?? "?";
     const error = parseField(line, "error") ?? "unknown";
-    return `${ts} ${event} tool=${tool} error="${error}"`;
+    return `${ts}${taskPrefix} ${event} tool=${tool} error="${error}"`;
   }
 
   if (event.startsWith("lifecycle.eval.")) {
@@ -84,7 +86,7 @@ function compactLine(line: string): string {
     const action = parseField(line, "action") ?? "?";
     const targetPath = parseField(line, "target_path");
     const regen = parseField(line, "regeneration_count");
-    return `${ts} ${event} evaluator=${evaluator} action=${action}${targetPath ? ` target_path=${targetPath}` : ""}${regen ? ` regeneration_count=${regen}` : ""}`;
+    return `${ts}${taskPrefix} ${event} evaluator=${evaluator} action=${action}${targetPath ? ` target_path=${targetPath}` : ""}${regen ? ` regeneration_count=${regen}` : ""}`;
   }
 
   if (event === "lifecycle.summary") {
@@ -98,10 +100,10 @@ function compactLine(line: string): string {
     const guardBlocked = parseField(line, "guard_blocked_count") ?? "?";
     const guardFlagSet = parseField(line, "guard_flag_set_count") ?? "?";
     const hasError = parseField(line, "has_error") ?? "?";
-    return `${ts} ${event} model_calls=${modelCalls} total_tool_calls=${totalCalls} read=${readCalls} search=${searchCalls} write=${writeCalls} pre_write_discovery=${preWriteDiscovery} regenerations=${regens} guard_blocked=${guardBlocked} guard_flag_set=${guardFlagSet} has_error=${hasError}`;
+    return `${ts}${taskPrefix} ${event} model_calls=${modelCalls} total_tool_calls=${totalCalls} read=${readCalls} search=${searchCalls} write=${writeCalls} pre_write_discovery=${preWriteDiscovery} regenerations=${regens} guard_blocked=${guardBlocked} guard_flag_set=${guardFlagSet} has_error=${hasError}`;
   }
 
-  return `${ts} ${event}`;
+  return `${ts}${taskPrefix} ${event}`;
 }
 
 async function main(): Promise<void> {
