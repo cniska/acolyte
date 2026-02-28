@@ -218,6 +218,19 @@ function buildClarifiedUserText(turn: InternalClarificationTurn): string {
   return `${turn.originalPrompt}\n\nClarifications:\n${lines.join("\n")}`;
 }
 
+function mergeAssistantTranscript(streamed: string, finalOutput: string): string {
+  if (streamed.length === 0) return finalOutput;
+  if (finalOutput.length === 0) return streamed;
+  if (finalOutput === streamed) return finalOutput;
+  if (finalOutput.startsWith(streamed)) return finalOutput;
+  if (streamed.startsWith(finalOutput)) return streamed;
+  const maxOverlap = Math.min(streamed.length, finalOutput.length);
+  for (let overlap = maxOverlap; overlap > 0; overlap -= 1) {
+    if (streamed.endsWith(finalOutput.slice(0, overlap))) return streamed + finalOutput.slice(overlap);
+  }
+  return streamed;
+}
+
 export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: string) => Promise<void> {
   const startWorking = (): void => {
     if (input.startWorking) {
@@ -525,11 +538,14 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       const assistantMessage = turn.assistantMessage;
       const clarifyingQuestions = extractClarifyingQuestions(assistantMessage.content);
       flushPendingToolRows();
+      const streamedAssistantText = `${committedStreamingText}${streamingAssistantContent}`;
       // Capture the streaming row id before clearing so we can remove it atomically
       // with the final rows to avoid a visual jump.
       const pendingStreamRowId = streamingAssistantRowId;
       streamingAssistantRowId = null;
       streamingAssistantContent = "";
+      const mergedAssistantOutput = mergeAssistantTranscript(streamedAssistantText, assistantMessage.content);
+      assistantMessage.content = mergedAssistantOutput;
 
       const finalizeRows = (rows: ChatRow[]): ChatRow[] =>
         rows
@@ -563,12 +579,13 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         const finalRows = turn.rows
           .map((r) => {
             if (r.role !== "assistant" || r.dim || r.style) return r;
-            if (committedStreamingText && r.content.startsWith(committedStreamingText)) {
-              const after = r.content.slice(committedStreamingText.length).trim();
+            const mergedContent = mergeAssistantTranscript(streamedAssistantText, r.content);
+            if (committedStreamingText && mergedContent.startsWith(committedStreamingText)) {
+              const after = mergedContent.slice(committedStreamingText.length).trim();
               if (!after) return null;
               return isRedundantWithHeader(after) ? null : { ...r, content: after };
             }
-            return isRedundantWithHeader(r.content.trim()) ? null : r;
+            return isRedundantWithHeader(mergedContent.trim()) ? null : { ...r, content: mergedContent };
           })
           .filter((r): r is ChatRow => r !== null);
         input.setRows((current) => [...finalizeRows(current), ...finalRows]);

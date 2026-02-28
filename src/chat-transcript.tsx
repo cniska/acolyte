@@ -272,7 +272,10 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
                       {row.content}
                     </Text>
                   ) : (
-                    <Text dimColor={Boolean(row.dim)} italic={row.role === "assistant" && !row.dim}>
+                    <Text
+                      dimColor={Boolean(row.dim)}
+                      color={row.role === "assistant" && !row.dim ? palette.brand : undefined}
+                    >
                       {row.role === "assistant" ? renderAssistantContent(row.content, contentWidth) : row.content}
                     </Text>
                   )}

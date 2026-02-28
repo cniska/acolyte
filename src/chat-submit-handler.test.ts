@@ -1043,6 +1043,25 @@ describe("chat submit handler guards", () => {
     expect(toolIndex).toBeLessThan(assistantIndex);
   });
 
+  test("keeps full streamed assistant output when final reply is shorter", async () => {
+    const streamed = "This is a long streamed answer that should not be truncated at finalize.";
+    const { submit, rows, session } = createSubmitHandlerHarness({
+      client: createClient({
+        status: async () => ({}),
+        events: [{ type: "text-delta", text: streamed }],
+        reply: async () => ({
+          model: "gpt-5-mini",
+          output: "This is a long streamed answer",
+        }),
+      }),
+    });
+
+    await submit("hello");
+
+    expect(rows.some((row) => row.role === "assistant" && row.content === streamed)).toBe(true);
+    expect(session.messages.some((message) => message.role === "assistant" && message.content === streamed)).toBe(true);
+  });
+
   test("creates a single tool row when tool-call is followed by tool-result", async () => {
     const { submit, rows } = createSubmitHandlerHarness({
       client: createClient({
