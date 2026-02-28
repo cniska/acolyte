@@ -9,9 +9,9 @@ export type AgentModeDefinition = {
 export const agentModes: Record<AgentMode, AgentModeDefinition> = {
   plan: {
     tools: [
+      "find-files",
       "search-files",
       "read-file",
-      "find-files",
       "scan-code",
       "git-status",
       "git-diff",
@@ -27,7 +27,17 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
     statusText: "Thinking…",
   },
   work: {
-    tools: ["read-file", "scan-code", "edit-code", "edit-file", "create-file", "delete-file", "run-command"],
+    tools: [
+      "find-files",
+      "search-files",
+      "read-file",
+      "scan-code",
+      "edit-file",
+      "edit-code",
+      "create-file",
+      "delete-file",
+      "run-command",
+    ],
     preamble: [
       "If the target path is explicit, skip `find-files`/`search-files` and read that file directly.",
       "For 'add/update in file X' tasks, make `read-file` on X your first tool call.",
@@ -45,14 +55,12 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
     statusText: "Working…",
   },
   verify: {
-    tools: ["run-command", "read-file", "search-files", "edit-code", "edit-file", "create-file"],
+    tools: ["scan-code", "run-command", "read-file", "git-status", "git-diff"],
     preamble: [
-      "Run the project's verify command.",
-      "If you need a non-verify command, confirm it exists in project tooling files before running it; do not guess names.",
-      "If verification fails, read the errors, fix only files implicated by the errors, and re-run.",
-      "Do not re-read files that were already read unless they changed or the error points to them.",
-      "Keep fixing until verification passes or you are stuck.",
-      "Do not narrate — only respond if verification fails and you cannot fix it.",
+      "Review the changes: one `scan-code` call per edited file with patterns like [`export function $NAME`, `import $SPEC from $MOD`]. No extra reads or searches.",
+      "Then run the project's verify/test/build command if one exists. If it fails with 'script not found', stop — your scan-code review is sufficient.",
+      "Report any issues found. Do not fix them — work mode will handle fixes.",
+      "Do not narrate — only respond if you found issues.",
     ],
     statusText: "Verifying…",
   },
