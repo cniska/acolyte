@@ -56,6 +56,21 @@ async function startServerForRpcTest(port: number, apiKey: string): Promise<void
   await waitForServer(`http://127.0.0.1:${port}/v1/status`, 10_000);
 }
 
+async function setServerPermissionMode(port: number, apiKey: string, mode: "read" | "write"): Promise<void> {
+  const response = await fetch(`http://127.0.0.1:${port}/v1/permissions`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({ mode }),
+  });
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`failed to set permission mode to ${mode}: ${body}`);
+  }
+}
+
 type RpcEnvelope = { id: string; type: string; [key: string]: unknown };
 
 describe("rpc server websocket queue", () => {
@@ -340,4 +355,307 @@ describe("rpc server websocket queue", () => {
     ws.send(JSON.stringify({ id: "rpc_task_status_abort", type: "chat.abort", payload: { requestId: chatId } }));
     ws.close();
   }, 20_000);
+
+  test("keeps queued task states isolated when aborting the active task", async () => {
+    const port = randomTestPort();
+    const apiKey = "rpc_test_key";
+    await startServerForRpcTest(port, apiKey);
+
+    const messages: RpcEnvelope[] = [];
+    const ws = new WebSocket(`ws://127.0.0.1:${port}/v1/rpc?apiKey=${apiKey}`);
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("websocket open timed out")), 5000);
+      ws.addEventListener("open", () => {
+        clearTimeout(timeout);
+        resolve();
+      });
+      ws.addEventListener("error", () => {
+        clearTimeout(timeout);
+        reject(new Error("websocket failed to open"));
+      });
+    });
+
+    ws.addEventListener("message", (event) => {
+      try {
+        messages.push(JSON.parse(typeof event.data === "string" ? event.data : String(event.data)) as RpcEnvelope);
+      } catch {
+        // Ignore malformed messages from test perspective.
+      }
+    });
+
+    const activeTaskId = "rpc_isolation_active";
+    const queuedTaskId = "rpc_isolation_queued";
+    const activeSession = "sess_rpc_isolation_active";
+    const queuedSession = "sess_rpc_isolation_queued";
+
+    ws.send(
+      JSON.stringify({
+        id: activeTaskId,
+        type: "chat.start",
+        payload: {
+          request: {
+            message: "Do a long-running analysis with many steps before answering.",
+            history: [],
+            model: "gpt-5-mini",
+            sessionId: activeSession,
+          },
+        },
+      }),
+    );
+    ws.send(
+      JSON.stringify({
+        id: queuedTaskId,
+        type: "chat.start",
+        payload: {
+          request: {
+            message: "Do a long-running analysis with many steps before answering.",
+            history: [],
+            model: "gpt-5-mini",
+            sessionId: queuedSession,
+          },
+        },
+      }),
+    );
+
+    await new Promise<void>((resolve, reject) => {
+      const startedAt = Date.now();
+      const interval = setInterval(() => {
+        const activeStarted = messages.some((m) => m.id === activeTaskId && m.type === "chat.started");
+        const queuedQueued = messages.some(
+          (m) => m.id === queuedTaskId && m.type === "chat.queued" && m.position === 1,
+        );
+        if (activeStarted && queuedQueued) {
+          clearInterval(interval);
+          resolve();
+          return;
+        }
+        if (Date.now() - startedAt > 8000) {
+          clearInterval(interval);
+          reject(new Error(`timed out waiting for running+queued envelopes: ${JSON.stringify(messages)}`));
+        }
+      }, 20);
+    });
+
+    ws.send(
+      JSON.stringify({ id: "rpc_isolation_status_active_pre", type: "task.status", payload: { taskId: activeTaskId } }),
+    );
+    ws.send(
+      JSON.stringify({ id: "rpc_isolation_status_queued_pre", type: "task.status", payload: { taskId: queuedTaskId } }),
+    );
+
+    await new Promise<void>((resolve, reject) => {
+      const startedAt = Date.now();
+      const interval = setInterval(() => {
+        const active = messages.find(
+          (m) => m.id === "rpc_isolation_status_active_pre" && m.type === "task.status.result",
+        );
+        const queued = messages.find(
+          (m) => m.id === "rpc_isolation_status_queued_pre" && m.type === "task.status.result",
+        );
+        if (active && queued) {
+          clearInterval(interval);
+          const activeTask = active.task as { id: unknown; state: unknown };
+          const queuedTask = queued.task as { id: unknown; state: unknown };
+          expect(activeTask.id).toBe(activeTaskId);
+          expect(activeTask.state).toBe("running");
+          expect(queuedTask.id).toBe(queuedTaskId);
+          expect(queuedTask.state).toBe("running");
+          resolve();
+          return;
+        }
+        if (Date.now() - startedAt > 8000) {
+          clearInterval(interval);
+          reject(new Error(`timed out waiting for pre-abort task statuses: ${JSON.stringify(messages)}`));
+        }
+      }, 20);
+    });
+
+    ws.send(
+      JSON.stringify({ id: "rpc_isolation_abort_active", type: "chat.abort", payload: { requestId: activeTaskId } }),
+    );
+
+    await new Promise<void>((resolve, reject) => {
+      const startedAt = Date.now();
+      const interval = setInterval(() => {
+        const abortResult = messages.find(
+          (m) =>
+            m.id === "rpc_isolation_abort_active" &&
+            m.type === "chat.abort.result" &&
+            m.requestId === activeTaskId &&
+            m.aborted === true,
+        );
+        if (abortResult) {
+          clearInterval(interval);
+          resolve();
+          return;
+        }
+        if (Date.now() - startedAt > 8000) {
+          clearInterval(interval);
+          reject(new Error(`timed out waiting for active abort result: ${JSON.stringify(messages)}`));
+        }
+      }, 20);
+    });
+
+    ws.send(
+      JSON.stringify({
+        id: "rpc_isolation_status_active_post",
+        type: "task.status",
+        payload: { taskId: activeTaskId },
+      }),
+    );
+    ws.send(
+      JSON.stringify({
+        id: "rpc_isolation_status_queued_post",
+        type: "task.status",
+        payload: { taskId: queuedTaskId },
+      }),
+    );
+
+    await new Promise<void>((resolve, reject) => {
+      const startedAt = Date.now();
+      const interval = setInterval(() => {
+        const active = messages.find(
+          (m) => m.id === "rpc_isolation_status_active_post" && m.type === "task.status.result",
+        );
+        const queued = messages.find(
+          (m) => m.id === "rpc_isolation_status_queued_post" && m.type === "task.status.result",
+        );
+        if (active && queued) {
+          clearInterval(interval);
+          const activeTask = active.task as { id: unknown; state: unknown };
+          const queuedTask = queued.task as { id: unknown; state: unknown };
+          expect(activeTask.id).toBe(activeTaskId);
+          expect(activeTask.state).toBe("cancelled");
+          expect(queuedTask.id).toBe(queuedTaskId);
+          expect(queuedTask.state).toBe("running");
+          resolve();
+          return;
+        }
+        if (Date.now() - startedAt > 8000) {
+          clearInterval(interval);
+          reject(new Error(`timed out waiting for post-abort task statuses: ${JSON.stringify(messages)}`));
+        }
+      }, 20);
+    });
+
+    ws.send(
+      JSON.stringify({ id: "rpc_isolation_abort_queued", type: "chat.abort", payload: { requestId: queuedTaskId } }),
+    );
+    ws.close();
+  }, 20_000);
+
+  test("does not leak tool-call path args across task ids", async () => {
+    const port = randomTestPort();
+    const apiKey = "rpc_test_key";
+    await startServerForRpcTest(port, apiKey);
+    await setServerPermissionMode(port, apiKey, "write");
+
+    const messages: RpcEnvelope[] = [];
+    const ws = new WebSocket(`ws://127.0.0.1:${port}/v1/rpc?apiKey=${apiKey}`);
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("websocket open timed out")), 5000);
+      ws.addEventListener("open", () => {
+        clearTimeout(timeout);
+        resolve();
+      });
+      ws.addEventListener("error", () => {
+        clearTimeout(timeout);
+        reject(new Error("websocket failed to open"));
+      });
+    });
+
+    ws.addEventListener("message", (event) => {
+      try {
+        messages.push(JSON.parse(typeof event.data === "string" ? event.data : String(event.data)) as RpcEnvelope);
+      } catch {
+        // Ignore malformed messages from test perspective.
+      }
+    });
+
+    const taskA = "rpc_task_path_iso_a";
+    const taskB = "rpc_task_path_iso_b";
+    const fileA = "tmp_path_iso_a.txt";
+    const fileB = "tmp_path_iso_b.txt";
+
+    ws.send(
+      JSON.stringify({
+        id: taskA,
+        type: "chat.start",
+        payload: {
+          request: {
+            message: `Create ${fileA} with exactly: alpha path isolation`,
+            history: [],
+            model: "gpt-5-mini",
+            sessionId: "sess_rpc_path_iso_a",
+            skipAutoVerify: true,
+          },
+        },
+      }),
+    );
+    ws.send(
+      JSON.stringify({
+        id: taskB,
+        type: "chat.start",
+        payload: {
+          request: {
+            message: `Create ${fileB} with exactly: beta path isolation`,
+            history: [],
+            model: "gpt-5-mini",
+            sessionId: "sess_rpc_path_iso_b",
+            skipAutoVerify: true,
+          },
+        },
+      }),
+    );
+
+    await new Promise<void>((resolve, reject) => {
+      const startedAt = Date.now();
+      const interval = setInterval(() => {
+        const doneA = messages.some((m) => m.id === taskA && m.type === "chat.done");
+        const doneB = messages.some((m) => m.id === taskB && m.type === "chat.done");
+        if (doneA && doneB) {
+          clearInterval(interval);
+          resolve();
+          return;
+        }
+        if (Date.now() - startedAt > 25_000) {
+          clearInterval(interval);
+          reject(new Error(`timed out waiting for both chat.done envelopes: ${JSON.stringify(messages)}`));
+        }
+      }, 20);
+    });
+
+    const toolCallsFor = (taskId: string): RpcEnvelope[] =>
+      messages.filter(
+        (m) =>
+          m.id === taskId &&
+          m.type === "chat.event" &&
+          typeof m.event === "object" &&
+          m.event !== null &&
+          (m.event as { type?: unknown }).type === "tool-call",
+      );
+
+    const argsBlob = (events: RpcEnvelope[]): string =>
+      events
+        .map((m) => {
+          const event = m.event as { args?: unknown };
+          return JSON.stringify(event.args ?? {});
+        })
+        .join("\n")
+        .toLowerCase();
+
+    const taskAEvents = toolCallsFor(taskA);
+    const taskBEvents = toolCallsFor(taskB);
+    const taskAArgs = argsBlob(taskAEvents);
+    const taskBArgs = argsBlob(taskBEvents);
+
+    expect(taskAEvents.length).toBeGreaterThan(0);
+    expect(taskBEvents.length).toBeGreaterThan(0);
+    expect(taskAArgs).toContain(fileA);
+    expect(taskBArgs).toContain(fileB);
+    expect(taskAArgs).not.toContain(fileB);
+    expect(taskBArgs).not.toContain(fileA);
+
+    ws.close();
+  }, 35_000);
 });
