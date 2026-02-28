@@ -26,6 +26,12 @@ type EnsureLocalServerResult = {
   started: boolean;
 };
 
+type LocalServerStatus = {
+  running: boolean;
+  pid: number | null;
+  apiUrl: string | null;
+};
+
 function daemonDir(homeDir = homedir()): string {
   return join(homeDir, ".acolyte");
 }
@@ -179,6 +185,39 @@ export async function ensureLocalServer(input: EnsureLocalServerInput): Promise<
   } finally {
     await releaseStartupLock(startLockPath);
   }
+}
+
+export async function localServerStatus(input?: { homeDir?: string; apiKey?: string }): Promise<LocalServerStatus> {
+  const lockPath = serverLockPath(input?.homeDir);
+  const lock = await readServerLock(lockPath);
+  if (!lock) return { running: false, pid: null, apiUrl: null };
+  if (!isProcessAlive(lock.pid)) {
+    await rm(lockPath, { force: true });
+    return { running: false, pid: null, apiUrl: null };
+  }
+  if (!(await isServerHealthy(lock.apiUrl, input?.apiKey))) {
+    await rm(lockPath, { force: true });
+    return { running: false, pid: null, apiUrl: null };
+  }
+  return { running: true, pid: lock.pid, apiUrl: lock.apiUrl };
+}
+
+export async function stopLocalServer(input?: { homeDir?: string; apiKey?: string }): Promise<boolean> {
+  const lockPath = serverLockPath(input?.homeDir);
+  const lock = await readServerLock(lockPath);
+  if (!lock) return false;
+  const healthy = await isServerHealthy(lock.apiUrl, input?.apiKey);
+  if (!healthy) {
+    await rm(lockPath, { force: true });
+    return false;
+  }
+  try {
+    if (isProcessAlive(lock.pid)) process.kill(lock.pid, "SIGTERM");
+  } catch {
+    // Ignore; lock cleanup still proceeds.
+  }
+  await rm(lockPath, { force: true });
+  return true;
 }
 
 export const serverDaemonInternals = {

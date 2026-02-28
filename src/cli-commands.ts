@@ -352,7 +352,7 @@ async function serveMode(args: string[]): Promise<void> {
   }
   if (action === "status") {
     if (args.length > 1) return subcommandError("server");
-    const status = await localServerStatus();
+    const status = await localServerStatus({ apiKey: appConfig.server.apiKey });
     if (!status.running) {
       printDim("Local server is not running.");
       return;
@@ -362,7 +362,7 @@ async function serveMode(args: string[]): Promise<void> {
   }
   if (action === "stop") {
     if (args.length > 1) return subcommandError("server");
-    const stopped = await stopLocalServer();
+    const stopped = await stopLocalServer({ apiKey: appConfig.server.apiKey });
     printDim(stopped ? "Stopped local server." : "Local server is not running.");
     return;
   }

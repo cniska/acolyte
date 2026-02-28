@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { serverDaemonInternals } from "./server-daemon";
+import { localServerStatus, serverDaemonInternals, stopLocalServer } from "./server-daemon";
 
 describe("server daemon internals", () => {
   test("parseServerLock accepts valid payload", () => {
@@ -49,5 +49,45 @@ describe("server daemon internals", () => {
     await writeFile(path, String(process.pid), "utf8");
     await expect(serverDaemonInternals.clearStaleStartupLock(path)).resolves.toBe(false);
     await expect(Bun.file(path).exists()).resolves.toBe(true);
+  });
+
+  test("localServerStatus removes stale server lock when endpoint is not healthy", async () => {
+    const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
+    const lockPath = serverDaemonInternals.serverLockPath(home);
+    await mkdir(join(home, ".acolyte"), { recursive: true });
+    await writeFile(
+      lockPath,
+      JSON.stringify({
+        pid: process.pid,
+        apiUrl: "http://127.0.0.1:9",
+        port: 9,
+        startedAt: "2026-02-28T00:00:00.000Z",
+      }),
+      "utf8",
+    );
+    await expect(localServerStatus({ homeDir: home })).resolves.toEqual({
+      running: false,
+      pid: null,
+      apiUrl: null,
+    });
+    await expect(Bun.file(lockPath).exists()).resolves.toBe(false);
+  });
+
+  test("stopLocalServer returns false and removes stale lock when endpoint is not healthy", async () => {
+    const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
+    const lockPath = serverDaemonInternals.serverLockPath(home);
+    await mkdir(join(home, ".acolyte"), { recursive: true });
+    await writeFile(
+      lockPath,
+      JSON.stringify({
+        pid: process.pid,
+        apiUrl: "http://127.0.0.1:9",
+        port: 9,
+        startedAt: "2026-02-28T00:00:00.000Z",
+      }),
+      "utf8",
+    );
+    await expect(stopLocalServer({ homeDir: home })).resolves.toBe(false);
+    await expect(Bun.file(lockPath).exists()).resolves.toBe(false);
   });
 });
