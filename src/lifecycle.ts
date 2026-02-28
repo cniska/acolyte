@@ -29,6 +29,7 @@ import {
 } from "./error-handling";
 import {
   INITIAL_MAX_STEPS,
+  MAX_EVALUATOR_CHAIN_REGENERATIONS,
   MAX_REGENERATIONS_PER_EVALUATOR,
   MAX_REGENERATIONS_PER_REQUEST,
   MAX_UNKNOWN_ERRORS_PER_REQUEST,
@@ -734,6 +735,7 @@ export async function runLifecycle(input: LifecycleInput): Promise<ChatResponse>
     verifyFailure,
   ];
   const regenByEvaluator = new Map<string, number>();
+  let evaluatorChainRegenerations = 0;
   while (ctx.result) {
     if (shouldYieldNow(ctx, input.shouldYield)) break;
     if (
@@ -766,6 +768,16 @@ export async function runLifecycle(input: LifecycleInput): Promise<ChatResponse>
         continue;
       }
       const evaluatorRegens = regenByEvaluator.get(evaluator.id) ?? 0;
+      if (evaluatorChainRegenerations >= MAX_EVALUATOR_CHAIN_REGENERATIONS) {
+        ctx.regenerationLimitHit = true;
+        ctx.debug("lifecycle.eval.skipped", {
+          evaluator: evaluator.id,
+          reason: "chain_cap",
+          chain_regenerations: evaluatorChainRegenerations,
+          chain_cap: MAX_EVALUATOR_CHAIN_REGENERATIONS,
+        });
+        continue;
+      }
       if (ctx.regenerationCount >= MAX_REGENERATIONS_PER_REQUEST) {
         ctx.regenerationLimitHit = true;
         ctx.debug("lifecycle.eval.skipped", {
@@ -798,6 +810,7 @@ export async function runLifecycle(input: LifecycleInput): Promise<ChatResponse>
         : undefined;
       if (action.mode) ctx.mode = action.mode;
       ctx.regenerationCount += 1;
+      evaluatorChainRegenerations += 1;
       regenByEvaluator.set(evaluator.id, evaluatorRegens + 1);
       ctx.debug("lifecycle.eval.decision", {
         evaluator: evaluator.id,

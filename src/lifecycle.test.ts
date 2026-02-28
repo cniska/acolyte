@@ -302,9 +302,12 @@ describe("evaluator ordering", () => {
 
 describe("verifyFailure", () => {
   test("returns regenerate to work mode when verify reports issues", () => {
+    const session = createSessionContext();
+    session.flags.verifyRan = true;
     const ctx = createMockContext({
       mode: "verify",
       classifiedMode: "work",
+      session,
       result: { text: "Error: missing export updatePost in post-store.ts", toolCalls: [] },
       observedTools: new Set(["scan-code"]),
     });
@@ -326,10 +329,25 @@ describe("verifyFailure", () => {
   });
 
   test("returns done when verify passes cleanly", () => {
+    const session = createSessionContext();
+    session.flags.verifyRan = true;
     const ctx = createMockContext({
       mode: "verify",
       classifiedMode: "work",
+      session,
       result: { text: "", toolCalls: [] },
+    });
+    expect(verifyFailure.evaluate(ctx).type).toBe("done");
+  });
+
+  test("returns done for explicit no-issue verification summaries", () => {
+    const session = createSessionContext();
+    session.flags.verifyRan = true;
+    const ctx = createMockContext({
+      mode: "verify",
+      classifiedMode: "work",
+      session,
+      result: { text: "No issues found. 0 errors.", toolCalls: [] },
     });
     expect(verifyFailure.evaluate(ctx).type).toBe("done");
   });

@@ -117,7 +117,14 @@ export const verifyFailure: Evaluator = {
     if (!ctx.result) return { type: "done" };
     const text = ctx.result.text.trim().toLowerCase();
     if (text.length === 0) return { type: "done" };
-    const hasIssues = ctx.lastError != null || /\b(error|fail|issue|broken|missing|undefined|unresolved)\b/.test(text);
+    const hasVerifyRunSignal = Boolean(ctx.session.flags.verifyRan);
+    if (!ctx.lastError && !hasVerifyRunSignal) return { type: "done" };
+    if (/\b(no|zero|0)\s+(errors?|issues?|failures?)\b/.test(text)) return { type: "done" };
+    if (/\b(all checks passed|verify passed|verification passed|passed cleanly|looks good|clean)\b/.test(text))
+      return { type: "done" };
+    const hasIssues =
+      ctx.lastError != null ||
+      /\b(error|failed?|issue|broken|missing|undefined|unresolved|cannot find|not found)\b/.test(text);
     if (!hasIssues) return { type: "done" };
     ctx.debug("lifecycle.eval.verify_failure", { text_chars: ctx.result.text.length });
     return {

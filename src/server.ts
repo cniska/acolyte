@@ -12,7 +12,7 @@ import { getObservationalMemoryConfig } from "./memory-config";
 import { formatServerCapabilities, PROTOCOL_VERSION } from "./protocol";
 import { formatModel, isProviderAvailable, providerFromModel, resolveProvider } from "./provider-config";
 import { rpcClientMessageSchema } from "./rpc-protocol";
-import { dequeueNextQueuedChat, queuePositionUpdates, removeQueuedChatById } from "./rpc-queue";
+import { dequeueNextQueuedChat, removeQueuedChatById } from "./rpc-queue";
 import { createId } from "./short-id";
 import { createSoulPrompt, getMemoryContextEntries } from "./soul";
 import type { StreamErrorDetail } from "./stream-error";
