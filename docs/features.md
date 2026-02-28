@@ -13,7 +13,7 @@ Update rule:
 - One-shot run mode.
 - Session resume and session listing.
 - Automatic local server startup/reuse for chat sessions.
-- Local server control commands (`server status`, `server stop`).
+- Local server control commands (`server start`, `server status`, `server stop`).
 - `@path` file/directory attachments.
 - Slash command support.
 - Skill invocation via slash commands.

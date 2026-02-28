@@ -24,6 +24,7 @@ That starts backend watch mode and chat.
 
 - Chat (auto-starts/reuses local server): `acolyte`
 - Start server in foreground: `acolyte server`
+- Start/reuse local daemon server: `acolyte server start`
 - Local server status: `acolyte server status`
 - Stop local daemon server: `acolyte server stop`
 - Resume session: `acolyte resume <session-id-prefix>`

@@ -7,7 +7,7 @@ import { toolMode } from "./cli-tool-mode";
 import { createClient } from "./client";
 import { readConfig, readConfigForScope, readResolvedConfigSync, setConfigValue, unsetConfigValue } from "./config";
 import { addMemory, listMemories } from "./memory";
-import { localServerStatus, stopLocalServer } from "./server-daemon";
+import { ensureLocalServer, localServerStatus, stopLocalServer } from "./server-daemon";
 import { formatStatusOutput as formatStatusOutputShared } from "./status-format";
 import { createSession, readStore } from "./storage";
 import { runShellCommand } from "./tools";
@@ -26,7 +26,7 @@ const SUBCOMMANDS: Record<string, { command: string; usage: string; description:
     description: "run a single prompt",
   },
   history: { command: "history", usage: "acolyte history", description: "show recent sessions" },
-  server: { command: "server", usage: "acolyte server [status|stop]", description: "manage local API server" },
+  server: { command: "server", usage: "acolyte server [start|status|stop]", description: "manage local API server" },
   status: { command: "status", usage: "acolyte status", description: "show server status" },
   memory: { command: "memory", usage: "acolyte memory <list|add> [options]", description: "manage memory notes" },
   config: {
@@ -350,23 +350,37 @@ async function serveMode(args: string[]): Promise<void> {
     await import("./server");
     return;
   }
-  if (action === "status") {
-    if (args.length > 1) return subcommandError("server");
-    const status = await localServerStatus({ apiKey: appConfig.server.apiKey });
-    if (!status.running) {
-      printDim("Local server is not running.");
+  switch (action) {
+    case "start": {
+      if (args.length > 1) return subcommandError("server");
+      const daemon = await ensureLocalServer({
+        apiUrl: `http://127.0.0.1:${appConfig.server.port}`,
+        port: appConfig.server.port,
+        apiKey: appConfig.server.apiKey,
+        serverEntry: `${import.meta.dir}/server.ts`,
+      });
+      printDim(`${daemon.started ? "Started" : "Using"} local server at ${daemon.apiUrl}`);
       return;
     }
-    printDim(`Local server running (pid ${status.pid}) at ${status.apiUrl}`);
-    return;
+    case "status": {
+      if (args.length > 1) return subcommandError("server");
+      const status = await localServerStatus({ apiKey: appConfig.server.apiKey });
+      if (!status.running) {
+        printDim("Local server is not running.");
+        return;
+      }
+      printDim(`Local server running (pid ${status.pid}) at ${status.apiUrl}`);
+      return;
+    }
+    case "stop": {
+      if (args.length > 1) return subcommandError("server");
+      const stopped = await stopLocalServer({ apiKey: appConfig.server.apiKey });
+      printDim(stopped ? "Stopped local server." : "Local server is not running.");
+      return;
+    }
+    default:
+      subcommandError("server");
   }
-  if (action === "stop") {
-    if (args.length > 1) return subcommandError("server");
-    const stopped = await stopLocalServer({ apiKey: appConfig.server.apiKey });
-    printDim(stopped ? "Stopped local server." : "Local server is not running.");
-    return;
-  }
-  subcommandError("server");
 }
 
 async function statusMode(args: string[]): Promise<void> {

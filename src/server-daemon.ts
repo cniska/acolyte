@@ -167,7 +167,9 @@ export async function ensureLocalServer(input: EnsureLocalServerInput): Promise<
     env: { ...process.env },
     stdout: "ignore",
     stderr: "ignore",
+    detached: true,
   });
+  proc.unref();
 
   try {
     await waitForHealthyServer(apiUrl, input.apiKey, timeoutMs);

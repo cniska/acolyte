@@ -101,10 +101,12 @@ describe("cli subcommand help", () => {
     }
   });
 
-  test("server supports status and stop actions", async () => {
+  test("server supports start/status/stop actions", async () => {
     const { home, project } = await createTestEnv();
+    const startResult = runCli(home, project, "server", "start");
     const statusResult = runCli(home, project, "server", "status");
     const stopResult = runCli(home, project, "server", "stop");
+    expect(startResult.exitCode).toBe(0);
     expect(statusResult.exitCode).toBe(0);
     expect(stopResult.exitCode).toBe(0);
   });
