@@ -159,7 +159,7 @@ function resolveResourceId(url: URL): string {
 
 function transitionTaskState(
   taskId: string,
-  patch: { state?: "running" | "completed" | "failed" | "cancelled"; summary?: string },
+  patch: { state?: "running" | "detached" | "completed" | "failed" | "cancelled"; summary?: string },
   meta?: { reason?: string; transport?: string },
 ): void {
   const previous = taskRegistry.get(taskId);
@@ -330,6 +330,51 @@ type RpcConnectionState = {
   runningChatId: string | null;
   queue: QueuedRpcChat[];
 };
+
+type WorkerRunInput = {
+  taskId: string;
+  request: ChatRequest;
+  state: ActiveRpcChatState;
+  shouldYield: () => boolean;
+  emitEvent: (event: Record<string, unknown>) => void;
+  emitDone: (reply: Awaited<ReturnType<typeof runAgent>>) => void;
+  emitError: (payload: ReturnType<typeof streamErrorPayload>) => void;
+};
+
+function runWorkerTask(input: WorkerRunInput): Promise<void> {
+  transitionTaskState(input.taskId, { state: "running" }, { reason: "chat_started", transport: "rpc" });
+  log.info("rpc task started", {
+    task_id: input.taskId,
+    session_id: input.request.sessionId ?? null,
+  });
+  return runChatRequest(input.request, {
+    path: "/v1/rpc",
+    method: "WS",
+    taskId: input.taskId,
+    isCancelled: () => input.state.aborted,
+    shouldYield: input.shouldYield,
+    onEvent: input.emitEvent,
+    onDone: (reply) => {
+      transitionTaskState(
+        input.taskId,
+        {
+          state: "completed",
+          summary: typeof reply.output === "string" ? reply.output.slice(0, 240) : undefined,
+        },
+        { reason: "chat_completed", transport: "rpc" },
+      );
+      input.emitDone(reply);
+    },
+    onError: (payload) => {
+      transitionTaskState(
+        input.taskId,
+        { state: "failed", summary: payload.error },
+        { reason: "chat_failed", transport: "rpc" },
+      );
+      input.emitError(payload);
+    },
+  });
+}
 
 type ParsedRpcEnvelope = {
   id: string | null;
@@ -621,39 +666,20 @@ const server = Bun.serve<RpcConnectionState>({
       const startChat = (chatId: string, request: ChatRequest, state: ActiveRpcChatState): void => {
         ws.data.runningChatId = chatId;
         ws.data.activeChats.set(chatId, state);
-        transitionTaskState(chatId, { state: "running" }, { reason: "chat_started", transport: "rpc" });
-        log.info("rpc task started", {
+        log.info("rpc worker task scheduled", {
           task_id: chatId,
           session_id: request.sessionId ?? null,
           queued_task_count: ws.data.queue.length,
         });
         sendForId(chatId, { type: "chat.started" });
-        void runChatRequest(request, {
-          path: "/v1/rpc",
-          method: "WS",
+        void runWorkerTask({
           taskId: chatId,
-          isCancelled: () => state.aborted,
+          request,
+          state,
           shouldYield: () => ws.data.queue.length > 0,
-          onEvent: (event) => sendForId(chatId, { type: "chat.event", event }),
-          onDone: (reply) => {
-            transitionTaskState(
-              chatId,
-              {
-                state: "completed",
-                summary: typeof reply.output === "string" ? reply.output.slice(0, 240) : undefined,
-              },
-              { reason: "chat_completed", transport: "rpc" },
-            );
-            sendForId(chatId, { type: "chat.done", reply });
-          },
-          onError: (payload) => {
-            transitionTaskState(
-              chatId,
-              { state: "failed", summary: payload.error },
-              { reason: "chat_failed", transport: "rpc" },
-            );
-            sendForId(chatId, { type: "chat.error", ...payload });
-          },
+          emitEvent: (event) => sendForId(chatId, { type: "chat.event", event }),
+          emitDone: (reply) => sendForId(chatId, { type: "chat.done", reply }),
+          emitError: (payload) => sendForId(chatId, { type: "chat.error", ...payload }),
         }).finally(() => {
           ws.data.activeChats.delete(chatId);
           if (ws.data.runningChatId === chatId) ws.data.runningChatId = null;
