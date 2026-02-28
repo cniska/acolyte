@@ -88,7 +88,10 @@ function isConnectionFailure(error: unknown): boolean {
 
 function connectionHelpMessage(apiUrl: string): string {
   try {
-    const hostname = new URL(apiUrl).hostname.toLowerCase();
+    const parsed = new URL(apiUrl);
+    const hostname = parsed.hostname.toLowerCase();
+    if (parsed.protocol === "https:" && (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1"))
+      return `Cannot reach server at ${apiUrl}. Local daemon uses http:// (not https://); update apiUrl or run an HTTPS server.`;
     if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1")
       return `Cannot reach server at ${apiUrl}. Start it with: acolyte server start`;
   } catch {

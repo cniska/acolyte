@@ -32,6 +32,17 @@ describe("remote server connection errors", () => {
     );
   });
 
+  test("status explains https localhost mismatch for local daemon setups", async () => {
+    globalThis.fetch = (async () => {
+      throw new TypeError("Unable to connect. Is the computer able to access the url?");
+    }) as unknown as typeof fetch;
+
+    const client = createClient({ apiUrl: "https://localhost:6767" });
+    await expect(client.status()).rejects.toThrow(
+      "Cannot reach server at https://localhost:6767. Local daemon uses http:// (not https://); update apiUrl or run an HTTPS server.",
+    );
+  });
+
   test("replyStream maps socket-close fetch errors to server-start hint", async () => {
     globalThis.fetch = (async () => {
       throw new TypeError("The socket connection was closed unexpectedly.");
