@@ -1,4 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { serverDaemonInternals } from "./server-daemon";
 
 describe("server daemon internals", () => {
@@ -30,5 +33,21 @@ describe("server daemon internals", () => {
 
   test("isProcessAlive rejects impossible pid", () => {
     expect(serverDaemonInternals.isProcessAlive(-1)).toBe(false);
+  });
+
+  test("clearStaleStartupLock removes invalid owner lock", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "acolyte-daemon-lock-"));
+    const path = join(dir, "server.start.lock");
+    await writeFile(path, "not-a-pid", "utf8");
+    await expect(serverDaemonInternals.clearStaleStartupLock(path)).resolves.toBe(true);
+    await expect(Bun.file(path).exists()).resolves.toBe(false);
+  });
+
+  test("clearStaleStartupLock keeps lock when owner process is alive", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "acolyte-daemon-lock-"));
+    const path = join(dir, "server.start.lock");
+    await writeFile(path, String(process.pid), "utf8");
+    await expect(serverDaemonInternals.clearStaleStartupLock(path)).resolves.toBe(false);
+    await expect(Bun.file(path).exists()).resolves.toBe(true);
   });
 });

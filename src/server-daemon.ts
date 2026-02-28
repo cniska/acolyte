@@ -104,18 +104,36 @@ async function waitForHealthyServer(apiUrl: string, apiKey: string | undefined, 
 
 async function tryAcquireStartupLock(path: string): Promise<boolean> {
   await mkdir(dirname(path), { recursive: true });
-  try {
-    await writeFile(path, String(process.pid), { flag: "wx" });
-    return true;
-  } catch (error) {
-    const code = (error as { code?: string }).code;
-    if (code === "EEXIST") return false;
-    throw error;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      await writeFile(path, String(process.pid), { flag: "wx" });
+      return true;
+    } catch (error) {
+      const code = (error as { code?: string }).code;
+      if (code !== "EEXIST") throw error;
+      const staleCleared = await clearStaleStartupLock(path);
+      if (!staleCleared) return false;
+    }
   }
+  return false;
 }
 
 async function releaseStartupLock(path: string): Promise<void> {
   await rm(path, { force: true });
+}
+
+async function clearStaleStartupLock(path: string): Promise<boolean> {
+  let ownerPid: number | null = null;
+  try {
+    const raw = (await readFile(path, "utf8")).trim();
+    const parsed = Number(raw);
+    if (Number.isInteger(parsed) && parsed > 0) ownerPid = parsed;
+  } catch {
+    // If we can't read/parse lock owner, treat it as stale and try removing it.
+  }
+  if (ownerPid && isProcessAlive(ownerPid)) return false;
+  await rm(path, { force: true });
+  return true;
 }
 
 export async function ensureLocalServer(input: EnsureLocalServerInput): Promise<EnsureLocalServerResult> {
@@ -169,4 +187,5 @@ export const serverDaemonInternals = {
   startupLockPath,
   parseServerLock,
   isProcessAlive,
+  clearStaleStartupLock,
 };

@@ -12,6 +12,7 @@ Update rule:
 - Interactive chat mode.
 - One-shot run mode.
 - Session resume and session listing.
+- Automatic local server startup/reuse for chat sessions.
 - `@path` file/directory attachments.
 - Slash command support.
 - Skill invocation via slash commands.
