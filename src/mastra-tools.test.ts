@@ -1,4 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { setPermissionMode } from "./app-config";
 import { toolsForAgent, withToolError } from "./mastra-tools";
 import { savedPermissionMode } from "./test-factory";
@@ -106,6 +109,73 @@ describe("tool error wrapper", () => {
       const wrapped = error as Error & { code?: string };
       expect(wrapped.message).toBe("edit-file failed: multi-match");
       expect(wrapped.code).toBe("E_EDIT_FILE_MULTI_MATCH");
+    }
+  });
+});
+
+describe("write tool output contract", () => {
+  test("edit/create/delete/edit-code emit numbered diff preview lines", async () => {
+    setPermissionMode("write");
+    const workspace = await mkdtemp(join(tmpdir(), "acolyte-tools-contract-"));
+    try {
+      const tsPath = join(workspace, "example.ts");
+      const txtPath = join(workspace, "notes.txt");
+      await writeFile(tsPath, 'export function hello(): string {\n  return "world";\n}\n', "utf8");
+      await writeFile(txtPath, "alpha\n", "utf8");
+      const outputByTool = new Map<string, string[]>();
+      const pushOutput = (toolName: string, message: string): void => {
+        const bucket = outputByTool.get(toolName) ?? [];
+        bucket.push(message);
+        outputByTool.set(toolName, bucket);
+      };
+      const { tools } = toolsForAgent({
+        workspace,
+        onToolOutput: (event) => pushOutput(event.toolName, event.message),
+      });
+      const editFileTool = tools.editFile;
+      const createFileTool = tools.createFile;
+      const editCodeTool = tools.editCode;
+      const deleteFileTool = tools.deleteFile;
+      if (!editFileTool || !createFileTool || !editCodeTool || !deleteFileTool)
+        throw new Error("expected write tools to be available in write mode");
+      const editFileExecute = editFileTool.execute;
+      const createFileExecute = createFileTool.execute;
+      const editCodeExecute = editCodeTool.execute;
+      const deleteFileExecute = deleteFileTool.execute;
+      if (!editFileExecute || !createFileExecute || !editCodeExecute || !deleteFileExecute)
+        throw new Error("expected write tool execute methods");
+      const runtime = {} as never;
+
+      await editFileExecute(
+        {
+          path: txtPath,
+          edits: [{ startLine: 1, endLine: 1, replace: "beta" }],
+        },
+        runtime,
+      );
+      await createFileExecute(
+        {
+          path: join(workspace, "created.txt"),
+          content: "first\nsecond\n",
+        },
+        runtime,
+      );
+      await editCodeExecute(
+        {
+          path: tsPath,
+          edits: [{ pattern: "function hello(): string { $BODY }", replacement: "function greet(): string { $BODY }" }],
+        },
+        runtime,
+      );
+      await deleteFileExecute({ path: join(workspace, "created.txt") }, runtime);
+
+      const hasNumberedDiff = (lines: string[]): boolean => lines.some((line) => /^\d+\s+[+-]\s/.test(line));
+      expect(hasNumberedDiff(outputByTool.get("edit-file") ?? [])).toBe(true);
+      expect(hasNumberedDiff(outputByTool.get("create-file") ?? [])).toBe(true);
+      expect(hasNumberedDiff(outputByTool.get("edit-code") ?? [])).toBe(true);
+      expect(hasNumberedDiff(outputByTool.get("delete-file") ?? [])).toBe(true);
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
     }
   });
 });

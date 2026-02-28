@@ -157,6 +157,17 @@ export async function ensureLocalServer(input: EnsureLocalServerInput): Promise<
       const lockHealthy = await isServerHealthy(lock.apiUrl, input.apiKey);
       if (!lockHealthy) await rm(lockPath, { force: true });
       else if (lock.apiUrl === apiUrl) return { apiUrl, started: false, managed: true };
+      else if (!(await isServerHealthy(apiUrl, input.apiKey))) {
+        // Replace the old managed daemon only when switching to a different, currently-unhealthy target.
+        if (lock.pid !== process.pid) {
+          try {
+            process.kill(lock.pid, "SIGTERM");
+          } catch {
+            // Best effort; stale lock cleanup still proceeds.
+          }
+        }
+        await rm(lockPath, { force: true });
+      }
     }
   }
 

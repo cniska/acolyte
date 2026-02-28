@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ensureLocalServer, localServerStatus, serverDaemonInternals, stopLocalServer } from "./server-daemon";
@@ -263,6 +263,51 @@ describe("server daemon internals", () => {
     } finally {
       lockedServer.stop();
       targetServer.stop();
+    }
+  });
+
+  test("ensureLocalServer clears managed lock and terminates old pid when switching target", async () => {
+    const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
+    const lockedServer = startTestServer(() => Response.json({ ok: true }));
+    const lockApiUrl = `http://127.0.0.1:${lockedServer.port}`;
+    const targetApiUrl = "http://127.0.0.1:9";
+    const lockPath = serverDaemonInternals.serverLockPath(home);
+    const startLockPath = serverDaemonInternals.startupLockPath(home);
+    const worker = Bun.spawn([process.execPath, "-e", "setInterval(() => {}, 1000)"], {
+      stdout: "ignore",
+      stderr: "ignore",
+    });
+    await mkdir(join(home, ".acolyte"), { recursive: true });
+    await writeFile(
+      lockPath,
+      JSON.stringify({
+        pid: worker.pid,
+        apiUrl: lockApiUrl,
+        port: lockedServer.port,
+        startedAt: "2026-02-28T00:00:00.000Z",
+      }),
+      "utf8",
+    );
+    await writeFile(startLockPath, String(process.pid), "utf8");
+    try {
+      await expect(
+        ensureLocalServer({
+          apiUrl: targetApiUrl,
+          port: 9,
+          apiKey: undefined,
+          serverEntry: join(process.cwd(), "src/server.ts"),
+          homeDir: home,
+          timeoutMs: 250,
+        }),
+      ).rejects.toThrow(`Timed out waiting for server at ${targetApiUrl}`);
+      await Bun.sleep(120);
+      expect(serverDaemonInternals.isProcessAlive(worker.pid)).toBe(false);
+      await expect(Bun.file(lockPath).exists()).resolves.toBe(false);
+    } finally {
+      lockedServer.stop();
+      if (serverDaemonInternals.isProcessAlive(worker.pid)) worker.kill();
+      await worker.exited.catch(() => {});
+      await rm(startLockPath, { force: true });
     }
   });
 

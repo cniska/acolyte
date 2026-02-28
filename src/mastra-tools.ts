@@ -25,6 +25,7 @@ import {
 // --- Tool metadata ---
 
 type ToolOutputListener = (event: { toolName: ToolName; message: string; toolCallId?: string }) => void;
+const WRITE_TOOL_PREVIEW_MAX_LINES = 30;
 
 export type ToolMeta = {
   instruction: string;
@@ -163,6 +164,30 @@ function numberedUnifiedDiffLines(rawResult: string, maxLines = 160): string[] {
     }
     rendered.push(line);
   }
+  if (rendered.length === 0) {
+    oldLine = 1;
+    newLine = 1;
+    for (const line of lines) {
+      if (line.startsWith("diff --git ") || line.startsWith("--- ") || line.startsWith("+++ ") || line.startsWith("@@"))
+        continue;
+      if (line.startsWith("+")) {
+        rendered.push(`${newLine} + ${line.slice(1)}`);
+        newLine += 1;
+        continue;
+      }
+      if (line.startsWith("-")) {
+        rendered.push(`${oldLine} - ${line.slice(1)}`);
+        oldLine += 1;
+        continue;
+      }
+      if (line.startsWith(" ")) {
+        rendered.push(`${newLine}  ${line.slice(1)}`);
+        oldLine += 1;
+        newLine += 1;
+      }
+    }
+  }
+  if (rendered.length === 0) return [];
   const contextRadius = 3;
   const isChange = rendered.map((line) => /^\d+\s+[+-]\s/.test(line));
   const keep = new Uint8Array(rendered.length);
@@ -497,7 +522,7 @@ function createEditFileTool(workspace: string, session: SessionContext, onToolOu
             path: input.path,
             edits: input.edits,
           });
-          for (const line of numberedUnifiedDiffLines(rawResult, 30)) {
+          for (const line of numberedUnifiedDiffLines(rawResult, WRITE_TOOL_PREVIEW_MAX_LINES)) {
             onToolOutput?.({ toolName: "edit-file", message: line, toolCallId });
           }
           const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.edit);
@@ -527,7 +552,7 @@ function createCreateFileTool(workspace: string, session: SessionContext, onTool
             content: input.content,
             overwrite: true,
           });
-          for (const line of numberedUnifiedDiffLines(rawResult, 30)) {
+          for (const line of numberedUnifiedDiffLines(rawResult, WRITE_TOOL_PREVIEW_MAX_LINES)) {
             onToolOutput?.({ toolName: "create-file", message: line, toolCallId });
           }
           const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.create);
@@ -563,7 +588,7 @@ function createAstEditTool(workspace: string, session: SessionContext, onToolOut
             path: input.path,
             edits: input.edits,
           });
-          for (const line of numberedUnifiedDiffLines(rawResult, 30)) {
+          for (const line of numberedUnifiedDiffLines(rawResult, WRITE_TOOL_PREVIEW_MAX_LINES)) {
             onToolOutput?.({ toolName: "edit-code", message: line, toolCallId });
           }
           const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.astEdit);
@@ -574,7 +599,7 @@ function createAstEditTool(workspace: string, session: SessionContext, onToolOut
   });
 }
 
-function createDeleteFileTool(workspace: string, session: SessionContext) {
+function createDeleteFileTool(workspace: string, session: SessionContext, onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "delete-file",
     description: "Delete a file from the repository.",
@@ -588,6 +613,10 @@ function createDeleteFileTool(workspace: string, session: SessionContext) {
             workspace,
             path: input.path,
           });
+          const toolCallId = streamCallId("delete-file");
+          for (const line of numberedUnifiedDiffLines(rawResult, WRITE_TOOL_PREVIEW_MAX_LINES)) {
+            onToolOutput?.({ toolName: "delete-file", message: line, toolCallId });
+          }
           const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.edit);
           return { result };
         }),
@@ -663,7 +692,7 @@ function createToolset(workspace: string, session: SessionContext, onToolOutput?
       editCode: createAstEditTool(workspace, session, onToolOutput),
       editFile: createEditFileTool(workspace, session, onToolOutput),
       createFile: createCreateFileTool(workspace, session, onToolOutput),
-      deleteFile: createDeleteFileTool(workspace, session),
+      deleteFile: createDeleteFileTool(workspace, session, onToolOutput),
       webSearch: createWebSearchTool(session, onToolOutput),
       webFetch: createWebFetchTool(session, onToolOutput),
     },

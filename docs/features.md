@@ -16,6 +16,7 @@ Update rule:
 - Local server control commands (`server start`, `server status`, `server stop`).
 - Local-first status guidance when daemon server is not running.
 - Managed vs unmanaged local server state visibility in CLI status/stop flows.
+- Managed local server replacement when local daemon target changes.
 - `@path` file/directory attachments.
 - Slash command support.
 - Skill invocation via slash commands.

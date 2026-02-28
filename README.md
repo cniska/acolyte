@@ -28,6 +28,7 @@ That starts backend watch mode and chat.
 - Local server status: `acolyte server status`
 - Stop local daemon server: `acolyte server stop`
 - If status shows `unmanaged`, server was started outside Acolyte; stop it manually.
+- If local daemon target changes, Acolyte replaces the previous managed local server.
 - Resume session: `acolyte resume <session-id-prefix>`
 - Run mode (auto-starts/reuses local server when using local defaults): `acolyte run "review src/agent.ts"`
 - Verify: `bun run verify`
