@@ -546,6 +546,10 @@ class RpcClient implements Client {
         }
         const msg = parseRpcServerMessage(raw);
         if (!msg || msg.id !== id) return;
+        if (msg.type === "chat.accepted") return;
+        if (msg.type === "chat.queued") return;
+        if (msg.type === "chat.started") return;
+        if (msg.type === "chat.abort.result") return;
         if (msg.type === "chat.event") {
           const parsed = parseStreamEvent(msg.event);
           if (parsed) options.onEvent(parsed);

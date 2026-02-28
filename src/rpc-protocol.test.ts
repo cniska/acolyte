@@ -58,4 +58,23 @@ describe("rpc protocol schema", () => {
     });
     expect(parsed.success).toBe(true);
   });
+
+  test("accepts chat lifecycle server messages", () => {
+    const accepted = rpcServerMessageSchema.safeParse({
+      id: "rpc_4",
+      type: "chat.accepted",
+    });
+    const queued = rpcServerMessageSchema.safeParse({
+      id: "rpc_4",
+      type: "chat.queued",
+      position: 1,
+    });
+    const started = rpcServerMessageSchema.safeParse({
+      id: "rpc_4",
+      type: "chat.started",
+    });
+    expect(accepted.success).toBe(true);
+    expect(queued.success).toBe(true);
+    expect(started.success).toBe(true);
+  });
 });

@@ -375,6 +375,7 @@ export async function runAgent(input: {
   workspace?: string;
   onEvent?: (event: StreamEvent) => void;
   onDebug?: (event: LifecycleDebugEvent) => void;
+  shouldYield?: () => boolean;
 }): Promise<ChatResponse> {
   return runLifecycle(input);
 }

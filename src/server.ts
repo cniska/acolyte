@@ -278,9 +278,17 @@ type ActiveRpcChatState = {
   aborted: boolean;
 };
 
+type QueuedRpcChat = {
+  id: string;
+  request: ChatRequest;
+  state: ActiveRpcChatState;
+};
+
 type RpcConnectionState = {
   authed: boolean;
   activeChats: Map<string, ActiveRpcChatState>;
+  runningChatId: string | null;
+  queue: QueuedRpcChat[];
 };
 
 type ParsedRpcEnvelope = {
@@ -430,7 +438,8 @@ const server = Bun.serve<RpcConnectionState>({
         });
         return unauthorized();
       }
-      if (server.upgrade(req, { data: { authed: true, activeChats: new Map() } })) return;
+      if (server.upgrade(req, { data: { authed: true, activeChats: new Map(), runningChatId: null, queue: [] } }))
+        return;
       return badRequest("WebSocket upgrade failed");
     }
 
@@ -530,6 +539,11 @@ const server = Bun.serve<RpcConnectionState>({
       for (const state of ws.data.activeChats.values()) {
         state.aborted = true;
       }
+      for (const item of ws.data.queue) {
+        item.state.aborted = true;
+      }
+      ws.data.queue = [];
+      ws.data.runningChatId = null;
     },
     async message(ws, raw) {
       if (!ws.data.authed) {
@@ -543,8 +557,32 @@ const server = Bun.serve<RpcConnectionState>({
       }
       const message = envelope.message;
 
-      const send = (payload: Record<string, unknown>): void => {
-        ws.send(JSON.stringify({ id: message.id, ...payload }));
+      const sendForId = (id: string, payload: Record<string, unknown>): void => {
+        ws.send(JSON.stringify({ id, ...payload }));
+      };
+      const send = (payload: Record<string, unknown>): void => sendForId(message.id, payload);
+
+      const startChat = (chatId: string, request: ChatRequest, state: ActiveRpcChatState): void => {
+        ws.data.runningChatId = chatId;
+        ws.data.activeChats.set(chatId, state);
+        sendForId(chatId, { type: "chat.started" });
+        void runChatRequest(request, {
+          path: "/v1/rpc",
+          method: "WS",
+          isCancelled: () => state.aborted,
+          onEvent: (event) => sendForId(chatId, { type: "chat.event", event }),
+          onDone: (reply) => sendForId(chatId, { type: "chat.done", reply }),
+          onError: (payload) => sendForId(chatId, { type: "chat.error", ...payload }),
+        }).finally(() => {
+          ws.data.activeChats.delete(chatId);
+          if (ws.data.runningChatId === chatId) ws.data.runningChatId = null;
+          while (ws.data.queue.length > 0) {
+            const next = ws.data.queue.shift();
+            if (!next || next.state.aborted) continue;
+            startChat(next.id, next.request, next.state);
+            return;
+          }
+        });
       };
 
       if (message.type === "status.get") {
@@ -560,32 +598,42 @@ const server = Bun.serve<RpcConnectionState>({
       }
 
       if (message.type === "chat.start") {
-        if (ws.data.activeChats.has(message.id)) {
+        if (ws.data.activeChats.has(message.id) || ws.data.queue.some((item) => item.id === message.id)) {
           send({ type: "error", error: `Chat request already running for id: ${message.id}` });
           return;
         }
         const request = message.payload.request;
         if (!isChatRequest(request)) return send({ type: "error", error: "Invalid request shape" });
         const state: ActiveRpcChatState = { aborted: false };
-        ws.data.activeChats.set(message.id, state);
-        void runChatRequest(request, {
-          path: "/v1/rpc",
-          method: "WS",
-          isCancelled: () => state.aborted,
-          onEvent: (event) => send({ type: "chat.event", event }),
-          onDone: (reply) => send({ type: "chat.done", reply }),
-          onError: (payload) => send({ type: "chat.error", ...payload }),
-        }).finally(() => {
-          ws.data.activeChats.delete(message.id);
-        });
+        send({ type: "chat.accepted" });
+        if (ws.data.runningChatId) {
+          ws.data.queue.push({ id: message.id, request, state });
+          send({ type: "chat.queued", position: ws.data.queue.length });
+          return;
+        }
+        startChat(message.id, request, state);
         return;
       }
 
       if (message.type === "chat.abort") {
         const requestId = message.payload.requestId;
-        const state = ws.data.activeChats.get(requestId);
-        if (state) state.aborted = true;
-        send({ type: "chat.abort.result", requestId, aborted: Boolean(state) });
+        const activeState = ws.data.activeChats.get(requestId);
+        if (activeState) {
+          activeState.aborted = true;
+          send({ type: "chat.abort.result", requestId, aborted: true });
+          return;
+        }
+        const queueIndex = ws.data.queue.findIndex((item) => item.id === requestId);
+        if (queueIndex !== -1) {
+          ws.data.queue[queueIndex].state.aborted = true;
+          ws.data.queue.splice(queueIndex, 1);
+          ws.data.queue.forEach((item, index) => {
+            sendForId(item.id, { type: "chat.queued", position: index + 1 });
+          });
+          send({ type: "chat.abort.result", requestId, aborted: true });
+          return;
+        }
+        send({ type: "chat.abort.result", requestId, aborted: false });
         return;
       }
 

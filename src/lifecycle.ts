@@ -107,6 +107,7 @@ export type LifecycleInput = {
   workspace?: string;
   onEvent?: (event: StreamEvent) => void;
   onDebug?: (event: LifecycleDebugEvent) => void;
+  shouldYield?: () => boolean;
 };
 
 export type RunContext = {
@@ -159,6 +160,22 @@ function formatToolArgs(args: Record<string, unknown>): Record<string, string | 
 
 function isReviewRequest(text: string): boolean {
   return /\breview\b/i.test(text);
+}
+
+function shouldYieldNow(ctx: RunContext, shouldYield?: () => boolean): boolean {
+  if (!shouldYield) return false;
+  if (!shouldYield()) return false;
+  ctx.debug("lifecycle.yield", {
+    generation_attempt: ctx.generationAttempt,
+    regeneration_count: ctx.regenerationCount,
+  });
+  if (!ctx.result?.text.trim()) {
+    ctx.result = {
+      text: "Yielding to a newer pending message.",
+      toolCalls: ctx.result?.toolCalls ?? [],
+    };
+  }
+  return true;
 }
 
 export function recoveryActionForError(input: { errorCode?: string; unknownErrorCount: number }): RecoveryAction {
@@ -743,10 +760,12 @@ export async function runLifecycle(input: LifecycleInput): Promise<ChatResponse>
   });
 
   if (!ctx.result) return phaseFinalize(ctx);
+  if (shouldYieldNow(ctx, input.shouldYield)) return phaseFinalize(ctx);
 
   const evaluators: Evaluator[] = [planDetector, multiMatchEditEvaluator, efficiencyEvaluator, autoVerifier];
   const regenByEvaluator = new Map<string, number>();
   while (ctx.result) {
+    if (shouldYieldNow(ctx, input.shouldYield)) break;
     if (
       recoveryActionForError({
         errorCode: ctx.lastErrorCode,
@@ -770,6 +789,7 @@ export async function runLifecycle(input: LifecycleInput): Promise<ChatResponse>
     }
     let regenerated = false;
     for (const evaluator of evaluators) {
+      if (shouldYieldNow(ctx, input.shouldYield)) break;
       const action = evaluator.evaluate(ctx);
       if (action.type === "done") {
         ctx.debug("lifecycle.eval.decision", { evaluator: evaluator.id, action: "done" });
@@ -824,6 +844,7 @@ export async function runLifecycle(input: LifecycleInput): Promise<ChatResponse>
         maxSteps: action.maxSteps ?? INITIAL_MAX_STEPS,
         timeoutMs: action.timeoutMs ?? STEP_TIMEOUT_MS,
       });
+      if (shouldYieldNow(ctx, input.shouldYield)) break;
       if (saved) {
         ctx.result = saved.result;
         ctx.lastError = saved.lastError;

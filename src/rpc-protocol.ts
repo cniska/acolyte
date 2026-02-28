@@ -60,6 +60,19 @@ export const rpcServerMessageSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     id: z.string().min(1),
+    type: z.literal("chat.accepted"),
+  }),
+  z.object({
+    id: z.string().min(1),
+    type: z.literal("chat.queued"),
+    position: z.number().int().min(1),
+  }),
+  z.object({
+    id: z.string().min(1),
+    type: z.literal("chat.started"),
+  }),
+  z.object({
+    id: z.string().min(1),
     type: z.literal("chat.done"),
     reply: z.unknown(),
   }),
