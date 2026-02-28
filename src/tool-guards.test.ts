@@ -37,6 +37,21 @@ describe("verify-ran guard", () => {
     expect(session.flags.verifyRan).toBe(true);
   });
 
+  test("blocks duplicate verify when no writes happened since last verify", () => {
+    const session = createSessionContext();
+    recordCall(session, "run-command", { command: "bun run verify" });
+    expect(() => runGuards({ toolName: "run-command", args: { command: "bun run verify" }, session })).toThrow(
+      /verify already ran this turn/,
+    );
+  });
+
+  test("allows verify rerun after a write", () => {
+    const session = createSessionContext();
+    recordCall(session, "run-command", { command: "bun run verify" });
+    recordCall(session, "edit-file", { path: "src/foo.ts" });
+    expect(() => runGuards({ toolName: "run-command", args: { command: "bun run verify" }, session })).not.toThrow();
+  });
+
   test("does not set flag for unrelated commands", () => {
     const session = createSessionContext();
     runGuards({ toolName: "run-command", args: { command: "bun run build" }, session });

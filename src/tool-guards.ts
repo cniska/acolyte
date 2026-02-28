@@ -174,10 +174,35 @@ const verifyRanGuard: ToolGuard = {
   appliesTo: ["run-command"],
   check({ toolName, args, session }) {
     if (typeof args.command !== "string") return;
-    if (/\bverify\b/i.test(args.command)) {
-      session.flags.verifyRan = true;
-      session.onGuard?.({ guardId: "verify-ran", toolName, action: "flag_set", detail: "verifyRan" });
+    if (!/\bverify\b/i.test(args.command)) return;
+
+    const lastVerifyIndex = (() => {
+      for (let i = session.callLog.length - 1; i >= 0; i -= 1) {
+        const entry = session.callLog[i];
+        if (entry.toolName !== "run-command") continue;
+        const cmd = typeof entry.args.command === "string" ? entry.args.command : "";
+        if (/\bverify\b/i.test(cmd)) return i;
+      }
+      return -1;
+    })();
+
+    if (lastVerifyIndex >= 0) {
+      let wroteAfterLastVerify = false;
+      for (let i = lastVerifyIndex + 1; i < session.callLog.length; i += 1) {
+        const tool = session.callLog[i]?.toolName;
+        if (tool === "edit-file" || tool === "edit-code" || tool === "create-file" || tool === "delete-file") {
+          wroteAfterLastVerify = true;
+          break;
+        }
+      }
+      if (!wroteAfterLastVerify) {
+        session.onGuard?.({ guardId: "verify-ran", toolName, action: "blocked", detail: "duplicate-verify" });
+        throw new Error("verify already ran this turn and no writes happened since; avoid redundant verify reruns.");
+      }
     }
+
+    session.flags.verifyRan = true;
+    session.onGuard?.({ guardId: "verify-ran", toolName, action: "flag_set", detail: "verifyRan" });
   },
 };
 
