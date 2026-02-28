@@ -5,6 +5,7 @@ import {
   attachFileToSession,
   chatModeWithOptions,
   FALLBACK_MODEL,
+  formatLocalServerReadyMessage,
   handlePrompt,
   newMessage,
   resolveChatApiUrl,
@@ -281,9 +282,7 @@ async function runMode(args: string[], options?: { skipAutoVerify?: boolean }): 
       serverEntry: `${import.meta.dir}/server.ts`,
     });
     apiUrl = daemon.apiUrl;
-    if (daemon.started) printDim(`Started local server at ${daemon.apiUrl}`);
-    else if (daemon.managed) printDim(`Using local server at ${daemon.apiUrl}`);
-    else printDim(`Using unmanaged local server at ${daemon.apiUrl} (started outside Acolyte).`);
+    printDim(formatLocalServerReadyMessage(daemon));
   }
   const client = createClient({
     apiUrl,
@@ -387,9 +386,7 @@ async function serveMode(args: string[]): Promise<void> {
         apiKey: appConfig.server.apiKey,
         serverEntry: `${import.meta.dir}/server.ts`,
       });
-      if (daemon.started) printDim(`Started local server at ${daemon.apiUrl}`);
-      else if (daemon.managed) printDim(`Using local server at ${daemon.apiUrl}`);
-      else printDim(`Using unmanaged local server at ${daemon.apiUrl} (started outside Acolyte).`);
+      printDim(formatLocalServerReadyMessage(daemon));
       return;
     }
     case "status": {

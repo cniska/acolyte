@@ -86,6 +86,12 @@ export function resolveLocalDaemonApiUrl(configuredApiUrl: string | undefined, p
   return resolveChatApiUrl(undefined, port);
 }
 
+export function formatLocalServerReadyMessage(result: { apiUrl: string; started: boolean; managed: boolean }): string {
+  if (result.started) return `Started local server at ${result.apiUrl}`;
+  if (result.managed) return `Using local server at ${result.apiUrl}`;
+  return `Using unmanaged local server at ${result.apiUrl} (started outside Acolyte).`;
+}
+
 export function newMessage(role: Message["role"], content: string): Message {
   return {
     id: `msg_${createId()}`,
@@ -369,9 +375,7 @@ export async function chatModeWithOptions(options: { resumeLatest: boolean; resu
       serverEntry: `${import.meta.dir}/server.ts`,
     });
     apiUrl = daemon.apiUrl;
-    if (daemon.started) printDim(`Started local server at ${daemon.apiUrl}`);
-    else if (daemon.managed) printDim(`Using local server at ${daemon.apiUrl}`);
-    else printDim(`Using unmanaged local server at ${daemon.apiUrl} (started outside Acolyte).`);
+    printDim(formatLocalServerReadyMessage(daemon));
   }
   const client = createClient({ apiUrl });
   const persist = async (): Promise<void> => {

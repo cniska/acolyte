@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   extractVersionFromPackageJsonText,
+  formatLocalServerReadyMessage,
   formatResumeCommand,
   resolveChatApiUrl,
   resolveCommandAlias,
@@ -66,5 +67,17 @@ describe("cli", () => {
     expect(resolveLocalDaemonApiUrl("http://localhost:7777", 6767)).toBe("http://localhost:7777");
     expect(resolveLocalDaemonApiUrl("http://127.0.0.1:8888", 6767)).toBe("http://127.0.0.1:8888");
     expect(resolveLocalDaemonApiUrl("https://api.example.com", 6767)).toBe("http://127.0.0.1:6767");
+  });
+
+  test("formatLocalServerReadyMessage maps started/managed/unmanaged states", () => {
+    expect(formatLocalServerReadyMessage({ apiUrl: "http://127.0.0.1:6767", started: true, managed: true })).toBe(
+      "Started local server at http://127.0.0.1:6767",
+    );
+    expect(formatLocalServerReadyMessage({ apiUrl: "http://127.0.0.1:6767", started: false, managed: true })).toBe(
+      "Using local server at http://127.0.0.1:6767",
+    );
+    expect(formatLocalServerReadyMessage({ apiUrl: "http://127.0.0.1:6767", started: false, managed: false })).toBe(
+      "Using unmanaged local server at http://127.0.0.1:6767 (started outside Acolyte).",
+    );
   });
 });
