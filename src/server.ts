@@ -162,7 +162,19 @@ function upsertTaskState(
   meta?: { reason?: string; transport?: string },
 ): void {
   const previous = taskRegistry.get(taskId);
-  const next = taskRegistry.upsert(taskId, patch);
+  const result = taskRegistry.upsert(taskId, patch);
+  if (!result.ok) {
+    log.warn("task state transition rejected", {
+      task_id: taskId,
+      code: result.code,
+      from_state: result.fromState,
+      to_state: result.toState,
+      reason: meta?.reason ?? null,
+      transport: meta?.transport ?? null,
+    });
+    return;
+  }
+  const next = result.task;
   log.info("task state updated", {
     task_id: taskId,
     from_state: previous?.state ?? null,
