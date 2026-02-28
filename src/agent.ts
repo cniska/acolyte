@@ -148,6 +148,8 @@ const BASE_INSTRUCTIONS = [
   "- Prefer dedicated tools over shell equivalents.",
   "- Do not use shell fallbacks for file read/search/edit when dedicated tools exist.",
   "- Stop once evidence is decisive; do not keep searching for completeness.",
+  "- Keep responses short by default: answer in about 2-5 sentences unless the user asks for deeper detail.",
+  "- Avoid long essays; include only what the user needs for the current step.",
   "- Keep working until done. Make reasonable assumptions instead of asking — only ask if truly stuck with no viable path.",
 ].join("\n");
 
