@@ -31,6 +31,7 @@ describe("dogfood gate", () => {
       skipSessionDiagnostics: false,
       skipConcurrencySafety: false,
       skipToolOutputUx: false,
+      transportMode: "auto",
     });
   });
 
@@ -56,6 +57,8 @@ describe("dogfood gate", () => {
         "--skip-session-diagnostics",
         "--skip-concurrency-safety",
         "--skip-tool-output-ux",
+        "--transport",
+        "rpc",
       ]),
     ).toEqual({
       target: 6,
@@ -74,6 +77,7 @@ describe("dogfood gate", () => {
       skipSessionDiagnostics: true,
       skipConcurrencySafety: true,
       skipToolOutputUx: true,
+      transportMode: "rpc",
     });
   });
 
@@ -109,6 +113,7 @@ describe("dogfood gate", () => {
       skipSessionDiagnostics: true,
       skipConcurrencySafety: true,
       skipToolOutputUx: true,
+      transportMode: "auto",
     });
   });
 
@@ -154,6 +159,7 @@ describe("dogfood gate", () => {
       skipSessionDiagnostics: false,
       skipConcurrencySafety: false,
       skipToolOutputUx: false,
+      transportMode: "auto",
     });
     expect(
       parseArgs([
@@ -188,7 +194,12 @@ describe("dogfood gate", () => {
       skipSessionDiagnostics: false,
       skipConcurrencySafety: false,
       skipToolOutputUx: false,
+      transportMode: "auto",
     });
+  });
+
+  test("parseArgs rejects invalid transport mode", () => {
+    expect(() => parseArgs(["--transport", "grpc"])).toThrow("Invalid --transport value.");
   });
 
   test("consecutiveReadyRuns counts matching-mode streak including current run", () => {
@@ -308,7 +319,15 @@ describe("dogfood gate", () => {
   });
 
   test("smokeCommand requires provider-ready only in strict autonomy mode", () => {
-    expect(smokeCommand(false)).toEqual(["bun", "run", "dogfood:smoke"]);
-    expect(smokeCommand(true)).toEqual(["bun", "run", "dogfood:smoke", "--", "--require-provider-ready"]);
+    expect(smokeCommand(false, "auto")).toEqual(["bun", "run", "dogfood:smoke", "--", "--transport", "auto"]);
+    expect(smokeCommand(true, "rpc")).toEqual([
+      "bun",
+      "run",
+      "dogfood:smoke",
+      "--",
+      "--transport",
+      "rpc",
+      "--require-provider-ready",
+    ]);
   });
 });

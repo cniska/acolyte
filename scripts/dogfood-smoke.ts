@@ -17,6 +17,7 @@ type RunResult = {
 
 type SmokeArgs = {
   requireProviderReady: boolean;
+  transportMode: "auto" | "http" | "rpc";
 };
 
 const COMMAND_TIMEOUT_MS = 120_000;
@@ -152,10 +153,19 @@ export function hasToolDiffPreviewSignal(output: string): boolean {
 }
 
 export function parseArgs(args: string[]): SmokeArgs {
-  const parsed: SmokeArgs = { requireProviderReady: false };
-  for (const token of args) {
+  const parsed: SmokeArgs = { requireProviderReady: false, transportMode: "auto" };
+  for (let i = 0; i < args.length; i += 1) {
+    const token = args[i];
     if (token === "--require-provider-ready") {
       parsed.requireProviderReady = true;
+      continue;
+    }
+    if (token === "--transport") {
+      const mode = args[i + 1];
+      if (mode !== "auto" && mode !== "http" && mode !== "rpc")
+        throw new Error("Invalid value for --transport. Expected auto, http, or rpc.");
+      parsed.transportMode = mode;
+      i += 1;
       continue;
     }
     throw new Error(`Unknown argument: ${token}`);
@@ -164,7 +174,7 @@ export function parseArgs(args: string[]): SmokeArgs {
 }
 
 function printUsage(): void {
-  console.log("Usage: bun run dogfood:smoke [--require-provider-ready]");
+  console.log("Usage: bun run dogfood:smoke [--require-provider-ready] [--transport auto|http|rpc]");
 }
 
 async function prepareSmokeEnv(): Promise<Record<string, string>> {
@@ -173,7 +183,10 @@ async function prepareSmokeEnv(): Promise<Record<string, string>> {
   return { HOME: homeDir };
 }
 
-async function configureSmokeCli(smokeEnv: Record<string, string>): Promise<void> {
+async function configureSmokeCli(
+  smokeEnv: Record<string, string>,
+  transportMode: "auto" | "http" | "rpc",
+): Promise<void> {
   const setApiUrl = await runCommand(
     ["bun", "run", "src/cli.ts", "config", "set", "apiUrl", "http://localhost:6767"],
     15_000,
@@ -188,6 +201,13 @@ async function configureSmokeCli(smokeEnv: Record<string, string>): Promise<void
   );
   if (setPermissions.exitCode !== 0)
     throw new Error(`Failed to set permissionMode for smoke env: ${setPermissions.stderr || setPermissions.stdout}`);
+  const setTransport = await runCommand(
+    ["bun", "run", "src/cli.ts", "config", "set", "transportMode", transportMode],
+    15_000,
+    smokeEnv,
+  );
+  if (setTransport.exitCode !== 0)
+    throw new Error(`Failed to set transportMode for smoke env: ${setTransport.stderr || setTransport.stdout}`);
 }
 
 async function setServerPermissionMode(mode: "read" | "write"): Promise<void> {
@@ -386,11 +406,11 @@ async function main(): Promise<void> {
   }
   const args = parseArgs(argv);
 
-  console.log("Running dogfood smoke checks...");
+  console.log(`Running dogfood smoke checks (transport=${args.transportMode})...`);
   const smokeEnv = await prepareSmokeEnv();
   try {
     try {
-      await configureSmokeCli(smokeEnv);
+      await configureSmokeCli(smokeEnv, args.transportMode);
     } catch (error) {
       console.error(error instanceof Error ? error.message : "Failed to configure smoke environment");
       process.exit(1);

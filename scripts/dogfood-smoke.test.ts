@@ -81,11 +81,21 @@ describe("dogfood-smoke helpers", () => {
   });
 
   it("parseArgs defaults to optional provider readiness", () => {
-    expect(parseArgs([])).toEqual({ requireProviderReady: false });
+    expect(parseArgs([])).toEqual({ requireProviderReady: false, transportMode: "auto" });
   });
 
   it("parseArgs enables required provider readiness", () => {
-    expect(parseArgs(["--require-provider-ready"])).toEqual({ requireProviderReady: true });
+    expect(parseArgs(["--require-provider-ready"])).toEqual({ requireProviderReady: true, transportMode: "auto" });
+  });
+
+  it("parseArgs parses explicit transport mode", () => {
+    expect(parseArgs(["--transport", "rpc"])).toEqual({ requireProviderReady: false, transportMode: "rpc" });
+  });
+
+  it("parseArgs rejects invalid transport mode", () => {
+    expect(() => parseArgs(["--transport", "grpc"])).toThrow(
+      "Invalid value for --transport. Expected auto, http, or rpc.",
+    );
   });
 
   it("parseArgs rejects unknown flags", () => {

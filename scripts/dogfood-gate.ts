@@ -20,6 +20,7 @@ type GateArgs = {
   skipSessionDiagnostics: boolean;
   skipConcurrencySafety: boolean;
   skipToolOutputUx: boolean;
+  transportMode: "auto" | "http" | "rpc";
 };
 
 type GateCheck = {
@@ -59,6 +60,7 @@ const gateArgsSchema = z.object({
   skipSessionDiagnostics: z.boolean(),
   skipConcurrencySafety: z.boolean(),
   skipToolOutputUx: z.boolean(),
+  transportMode: z.enum(["auto", "http", "rpc"]),
 });
 const deliveryProgressSchema = z.object({
   deliverySlices: z.number().finite(),
@@ -105,6 +107,7 @@ function parseArgs(args: string[]): GateArgs {
     skipSessionDiagnostics: boolean;
     skipConcurrencySafety: boolean;
     skipToolOutputUx: boolean;
+    transportMode: "auto" | "http" | "rpc";
   } = {
     target: DEFAULT_TARGET,
     lookback: DEFAULT_LOOKBACK,
@@ -122,6 +125,7 @@ function parseArgs(args: string[]): GateArgs {
     skipSessionDiagnostics: false,
     skipConcurrencySafety: false,
     skipToolOutputUx: false,
+    transportMode: "auto",
   };
   for (let i = 0; i < args.length; i += 1) {
     const token = args[i];
@@ -211,6 +215,15 @@ function parseArgs(args: string[]): GateArgs {
     }
     if (token === "--skip-tool-output-ux" || token === "--no-tool-output-ux") {
       raw.skipToolOutputUx = true;
+      continue;
+    }
+    if (token === "--transport") {
+      const value = args[i + 1];
+      if (!value) throw new Error("Invalid --transport value.");
+      if (value !== "auto" && value !== "http" && value !== "rpc")
+        throw new Error("Invalid --transport value.");
+      raw.transportMode = value;
+      i += 1;
       continue;
     }
     throw new Error(`Unknown argument: ${token}`);
@@ -441,12 +454,14 @@ function printUsage(): void {
     "       [--skip-session-diagnostics|--no-session-diagnostics]",
     "       [--skip-concurrency-safety|--no-concurrency-safety]",
     "       [--skip-tool-output-ux|--no-tool-output-ux]",
+    "       [--transport auto|http|rpc]",
   );
 }
 
-function smokeCommand(strictAutonomy: boolean): string[] {
-  if (!strictAutonomy) return ["bun", "run", "dogfood:smoke"];
-  return ["bun", "run", "dogfood:smoke", "--", "--require-provider-ready"];
+function smokeCommand(strictAutonomy: boolean, transportMode: "auto" | "http" | "rpc"): string[] {
+  const args: string[] = ["bun", "run", "dogfood:smoke", "--", "--transport", transportMode];
+  if (strictAutonomy) args.push("--require-provider-ready");
+  return args;
 }
 
 async function main(): Promise<void> {
@@ -470,7 +485,7 @@ async function main(): Promise<void> {
     }
 
     if (!args.skipSmoke) {
-      const smoke = run(smokeCommand(args.strictAutonomy));
+      const smoke = run(smokeCommand(args.strictAutonomy, args.transportMode));
       const smokeError = firstSignalLine(smoke.stderr, smoke.stdout);
       checks.push({
         name: "smoke",
