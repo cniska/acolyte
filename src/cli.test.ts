@@ -4,6 +4,7 @@ import {
   formatResumeCommand,
   resolveChatApiUrl,
   resolveCommandAlias,
+  shouldAutoStartLocalServerForChat,
   suggestCommand,
   suggestCommands,
 } from "./cli";
@@ -42,5 +43,19 @@ describe("cli", () => {
   test("resolveChatApiUrl defaults to localhost:6767 when apiUrl is missing", () => {
     expect(resolveChatApiUrl(undefined)).toBe("http://127.0.0.1:6767");
     expect(resolveChatApiUrl("")).toBe("http://127.0.0.1:6767");
+  });
+
+  test("shouldAutoStartLocalServerForChat treats empty and loopback apiUrl as local mode", () => {
+    expect(shouldAutoStartLocalServerForChat(undefined)).toBe(true);
+    expect(shouldAutoStartLocalServerForChat("")).toBe(true);
+    expect(shouldAutoStartLocalServerForChat("http://localhost:6767")).toBe(true);
+    expect(shouldAutoStartLocalServerForChat("http://127.0.0.1:6767")).toBe(true);
+    expect(shouldAutoStartLocalServerForChat("http://[::1]:6767")).toBe(true);
+  });
+
+  test("shouldAutoStartLocalServerForChat leaves remote/non-http apiUrl as external mode", () => {
+    expect(shouldAutoStartLocalServerForChat("https://api.example.com")).toBe(false);
+    expect(shouldAutoStartLocalServerForChat("ws://localhost:6767/v1/rpc")).toBe(false);
+    expect(shouldAutoStartLocalServerForChat("not-a-url")).toBe(false);
   });
 });
