@@ -231,6 +231,41 @@ describe("server daemon internals", () => {
     }
   });
 
+  test("ensureLocalServer keeps healthy lock when requested target differs", async () => {
+    const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
+    const lockedServer = startTestServer(() => Response.json({ ok: true }));
+    const targetServer = startTestServer(() => Response.json({ ok: true }));
+    const lockApiUrl = `http://127.0.0.1:${lockedServer.port}`;
+    const targetApiUrl = `http://127.0.0.1:${targetServer.port}`;
+    const lockPath = serverDaemonInternals.serverLockPath(home);
+    await mkdir(join(home, ".acolyte"), { recursive: true });
+    await writeFile(
+      lockPath,
+      JSON.stringify({
+        pid: process.pid,
+        apiUrl: lockApiUrl,
+        port: lockedServer.port,
+        startedAt: "2026-02-28T00:00:00.000Z",
+      }),
+      "utf8",
+    );
+    try {
+      await expect(
+        ensureLocalServer({
+          apiUrl: targetApiUrl,
+          port: targetServer.port,
+          apiKey: undefined,
+          serverEntry: join(process.cwd(), "src/server.ts"),
+          homeDir: home,
+        }),
+      ).resolves.toEqual({ apiUrl: targetApiUrl, started: false, managed: false });
+      await expect(Bun.file(lockPath).exists()).resolves.toBe(true);
+    } finally {
+      lockedServer.stop();
+      targetServer.stop();
+    }
+  });
+
   test("stopLocalServer returns false and removes stale lock when endpoint is not healthy", async () => {
     const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
     const lockPath = serverDaemonInternals.serverLockPath(home);

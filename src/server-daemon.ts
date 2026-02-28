@@ -151,11 +151,14 @@ export async function ensureLocalServer(input: EnsureLocalServerInput): Promise<
   const startLockPath = startupLockPath(input.homeDir);
 
   const lock = await readServerLock(lockPath);
-  if (lock && lock.apiUrl === apiUrl && isProcessAlive(lock.pid) && (await isServerHealthy(apiUrl, input.apiKey)))
-    return { apiUrl, started: false, managed: true };
-
-  if (lock && (!isProcessAlive(lock.pid) || lock.apiUrl !== apiUrl || !(await isServerHealthy(apiUrl, input.apiKey))))
-    await rm(lockPath, { force: true });
+  if (lock) {
+    if (!isProcessAlive(lock.pid)) await rm(lockPath, { force: true });
+    else {
+      const lockHealthy = await isServerHealthy(lock.apiUrl, input.apiKey);
+      if (!lockHealthy) await rm(lockPath, { force: true });
+      else if (lock.apiUrl === apiUrl) return { apiUrl, started: false, managed: true };
+    }
+  }
 
   if (await isServerHealthy(apiUrl, input.apiKey)) return { apiUrl, started: false, managed: false };
 
