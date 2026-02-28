@@ -156,6 +156,22 @@ function resolveResourceId(url: URL): string {
   return appConfig.memory.resourceId;
 }
 
+function upsertTaskState(
+  taskId: string,
+  patch: { state?: "running" | "completed" | "failed" | "cancelled"; summary?: string },
+  meta?: { reason?: string; transport?: string },
+): void {
+  const previous = taskRegistry.get(taskId);
+  const next = taskRegistry.upsert(taskId, patch);
+  log.info("task state updated", {
+    task_id: taskId,
+    from_state: previous?.state ?? null,
+    to_state: next.state,
+    reason: meta?.reason ?? null,
+    transport: meta?.transport ?? null,
+  });
+}
+
 async function buildStatusPayload(): Promise<StatusPayload> {
   const model = appConfig.model;
   const providerConfig = {
@@ -553,12 +569,20 @@ const server = Bun.serve<RpcConnectionState>({
       });
       for (const [taskId, state] of ws.data.activeChats.entries()) {
         state.aborted = true;
-        taskRegistry.upsert(taskId, { state: "cancelled", summary: "Connection closed before completion." });
+        upsertTaskState(
+          taskId,
+          { state: "cancelled", summary: "Connection closed before completion." },
+          { reason: "connection_closed", transport: "rpc" },
+        );
         log.info("rpc task cancelled on disconnect", { task_id: taskId, state: "running" });
       }
       for (const item of ws.data.queue) {
         item.state.aborted = true;
-        taskRegistry.upsert(item.id, { state: "cancelled", summary: "Connection closed while queued." });
+        upsertTaskState(
+          item.id,
+          { state: "cancelled", summary: "Connection closed while queued." },
+          { reason: "connection_closed", transport: "rpc" },
+        );
         log.info("rpc task cancelled on disconnect", { task_id: item.id, state: "queued" });
       }
       ws.data.queue = [];
@@ -584,7 +608,7 @@ const server = Bun.serve<RpcConnectionState>({
       const startChat = (chatId: string, request: ChatRequest, state: ActiveRpcChatState): void => {
         ws.data.runningChatId = chatId;
         ws.data.activeChats.set(chatId, state);
-        taskRegistry.upsert(chatId, { state: "running" });
+        upsertTaskState(chatId, { state: "running" }, { reason: "chat_started", transport: "rpc" });
         log.info("rpc task started", {
           task_id: chatId,
           session_id: request.sessionId ?? null,
@@ -599,14 +623,22 @@ const server = Bun.serve<RpcConnectionState>({
           shouldYield: () => ws.data.queue.length > 0,
           onEvent: (event) => sendForId(chatId, { type: "chat.event", event }),
           onDone: (reply) => {
-            taskRegistry.upsert(chatId, {
-              state: "completed",
-              summary: typeof reply.output === "string" ? reply.output.slice(0, 240) : undefined,
-            });
+            upsertTaskState(
+              chatId,
+              {
+                state: "completed",
+                summary: typeof reply.output === "string" ? reply.output.slice(0, 240) : undefined,
+              },
+              { reason: "chat_completed", transport: "rpc" },
+            );
             sendForId(chatId, { type: "chat.done", reply });
           },
           onError: (payload) => {
-            taskRegistry.upsert(chatId, { state: "failed", summary: payload.error });
+            upsertTaskState(
+              chatId,
+              { state: "failed", summary: payload.error },
+              { reason: "chat_failed", transport: "rpc" },
+            );
             sendForId(chatId, { type: "chat.error", ...payload });
           },
         }).finally(() => {
@@ -644,7 +676,7 @@ const server = Bun.serve<RpcConnectionState>({
         const request = message.payload.request;
         if (!isChatRequest(request)) return send({ type: "error", error: "Invalid request shape" });
         const state: ActiveRpcChatState = { aborted: false };
-        taskRegistry.upsert(message.id, { state: "running" });
+        upsertTaskState(message.id, { state: "running" }, { reason: "chat_accepted", transport: "rpc" });
         log.info("rpc task accepted", {
           task_id: message.id,
           session_id: request.sessionId ?? null,
@@ -671,14 +703,22 @@ const server = Bun.serve<RpcConnectionState>({
         const activeState = ws.data.activeChats.get(requestId);
         if (activeState) {
           activeState.aborted = true;
-          taskRegistry.upsert(requestId, { state: "cancelled", summary: "Cancelled by client request." });
+          upsertTaskState(
+            requestId,
+            { state: "cancelled", summary: "Cancelled by client request." },
+            { reason: "abort_requested", transport: "rpc" },
+          );
           log.info("rpc task abort acknowledged", { task_id: requestId, state: "running" });
           send({ type: "chat.abort.result", requestId, aborted: true });
           return;
         }
         const queueResult = removeQueuedChatById(ws.data.queue, requestId);
         if (queueResult.removed) {
-          taskRegistry.upsert(requestId, { state: "cancelled", summary: "Cancelled while queued." });
+          upsertTaskState(
+            requestId,
+            { state: "cancelled", summary: "Cancelled while queued." },
+            { reason: "abort_requested", transport: "rpc" },
+          );
           log.info("rpc task abort acknowledged", { task_id: requestId, state: "queued" });
           for (const update of queueResult.updates) {
             sendForId(update.id, { type: "chat.queued", position: update.position });

@@ -54,7 +54,8 @@ This keeps behavior resilient while keeping policy in one place.
 ## Observability
 
 Lifecycle emits ordered debug events for every request (calls, results, evaluator decisions, summaries, errors).
-The trace scripts consume these events so behavior can be inspected after dogfood runs without adding ad-hoc logs.
+RPC task execution also emits explicit task-state transitions (`accepted/queued/running/completed/failed/cancelled`) with a stable `task_id`.
+This makes it possible to trace one task end-to-end across queueing, execution, and completion without ad-hoc logging.
 
 ## Configuration and state
 
