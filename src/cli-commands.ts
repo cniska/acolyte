@@ -402,7 +402,17 @@ async function serveMode(args: string[]): Promise<void> {
     case "stop": {
       if (args.length > 1) return subcommandError("server");
       const stopped = await stopLocalServer({ apiKey: appConfig.server.apiKey });
-      printDim(stopped ? "Stopped local server." : "Local server is not running.");
+      if (stopped) {
+        printDim("Stopped local server.");
+        return;
+      }
+      const localApiUrl = resolveChatApiUrl(undefined, appConfig.server.port);
+      const status = await localServerStatus({ apiKey: appConfig.server.apiKey, apiUrl: localApiUrl });
+      if (status.running && !status.pid) {
+        printDim(`Local server is running unmanaged at ${status.apiUrl}. Stop it manually.`);
+        return;
+      }
+      printDim("Local server is not running.");
       return;
     }
     default:
