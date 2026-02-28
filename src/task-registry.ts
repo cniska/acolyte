@@ -13,7 +13,7 @@ const ALLOWED_TRANSITIONS: Record<TaskState, readonly TaskState[]> = {
   cancelled: [],
 };
 
-export type TaskUpsertResult =
+export type TaskTransitionResult =
   | { ok: true; task: TaskRecord }
   | {
       ok: false;
@@ -31,7 +31,7 @@ export function canTransitionTaskState(fromState: TaskState, toState: TaskState)
 export class TaskRegistry {
   private readonly tasks = new Map<string, TaskRecord>();
 
-  upsert(taskId: string, patch: TaskPatch): TaskUpsertResult {
+  transitionTask(taskId: string, patch: TaskPatch): TaskTransitionResult {
     const now = new Date().toISOString();
     const existing = this.tasks.get(taskId);
     if (existing && patch.state && !canTransitionTaskState(existing.state, patch.state)) {

@@ -156,13 +156,13 @@ function resolveResourceId(url: URL): string {
   return appConfig.memory.resourceId;
 }
 
-function upsertTaskState(
+function transitionTaskState(
   taskId: string,
   patch: { state?: "running" | "completed" | "failed" | "cancelled"; summary?: string },
   meta?: { reason?: string; transport?: string },
 ): void {
   const previous = taskRegistry.get(taskId);
-  const result = taskRegistry.upsert(taskId, patch);
+  const result = taskRegistry.transitionTask(taskId, patch);
   if (!result.ok) {
     log.warn("task state transition rejected", {
       task_id: taskId,
@@ -581,7 +581,7 @@ const server = Bun.serve<RpcConnectionState>({
       });
       for (const [taskId, state] of ws.data.activeChats.entries()) {
         state.aborted = true;
-        upsertTaskState(
+        transitionTaskState(
           taskId,
           { state: "cancelled", summary: "Connection closed before completion." },
           { reason: "connection_closed", transport: "rpc" },
@@ -590,7 +590,7 @@ const server = Bun.serve<RpcConnectionState>({
       }
       for (const item of ws.data.queue) {
         item.state.aborted = true;
-        upsertTaskState(
+        transitionTaskState(
           item.id,
           { state: "cancelled", summary: "Connection closed while queued." },
           { reason: "connection_closed", transport: "rpc" },
@@ -620,7 +620,7 @@ const server = Bun.serve<RpcConnectionState>({
       const startChat = (chatId: string, request: ChatRequest, state: ActiveRpcChatState): void => {
         ws.data.runningChatId = chatId;
         ws.data.activeChats.set(chatId, state);
-        upsertTaskState(chatId, { state: "running" }, { reason: "chat_started", transport: "rpc" });
+        transitionTaskState(chatId, { state: "running" }, { reason: "chat_started", transport: "rpc" });
         log.info("rpc task started", {
           task_id: chatId,
           session_id: request.sessionId ?? null,
@@ -635,7 +635,7 @@ const server = Bun.serve<RpcConnectionState>({
           shouldYield: () => ws.data.queue.length > 0,
           onEvent: (event) => sendForId(chatId, { type: "chat.event", event }),
           onDone: (reply) => {
-            upsertTaskState(
+            transitionTaskState(
               chatId,
               {
                 state: "completed",
@@ -646,7 +646,7 @@ const server = Bun.serve<RpcConnectionState>({
             sendForId(chatId, { type: "chat.done", reply });
           },
           onError: (payload) => {
-            upsertTaskState(
+            transitionTaskState(
               chatId,
               { state: "failed", summary: payload.error },
               { reason: "chat_failed", transport: "rpc" },
@@ -688,7 +688,7 @@ const server = Bun.serve<RpcConnectionState>({
         const request = message.payload.request;
         if (!isChatRequest(request)) return send({ type: "error", error: "Invalid request shape" });
         const state: ActiveRpcChatState = { aborted: false };
-        upsertTaskState(message.id, { state: "running" }, { reason: "chat_accepted", transport: "rpc" });
+        transitionTaskState(message.id, { state: "running" }, { reason: "chat_accepted", transport: "rpc" });
         log.info("rpc task accepted", {
           task_id: message.id,
           session_id: request.sessionId ?? null,
@@ -715,7 +715,7 @@ const server = Bun.serve<RpcConnectionState>({
         const activeState = ws.data.activeChats.get(requestId);
         if (activeState) {
           activeState.aborted = true;
-          upsertTaskState(
+          transitionTaskState(
             requestId,
             { state: "cancelled", summary: "Cancelled by client request." },
             { reason: "abort_requested", transport: "rpc" },
@@ -726,7 +726,7 @@ const server = Bun.serve<RpcConnectionState>({
         }
         const queueResult = removeQueuedChatById(ws.data.queue, requestId);
         if (queueResult.removed) {
-          upsertTaskState(
+          transitionTaskState(
             requestId,
             { state: "cancelled", summary: "Cancelled while queued." },
             { reason: "abort_requested", transport: "rpc" },

@@ -5,7 +5,7 @@ describe("task registry", () => {
   test("creates and updates task records", async () => {
     const registry = new TaskRegistry();
 
-    const createdResult = registry.upsert("task_1", { state: "running" });
+    const createdResult = registry.transitionTask("task_1", { state: "running" });
     expect(createdResult.ok).toBe(true);
     if (!createdResult.ok) throw new Error("Expected successful upsert");
     const created = createdResult.task;
@@ -15,7 +15,7 @@ describe("task registry", () => {
     expect(typeof created.updatedAt).toBe("string");
 
     await Bun.sleep(1);
-    const updatedResult = registry.upsert("task_1", { state: "completed", summary: "done" });
+    const updatedResult = registry.transitionTask("task_1", { state: "completed", summary: "done" });
     expect(updatedResult.ok).toBe(true);
     if (!updatedResult.ok) throw new Error("Expected successful upsert");
     const updated = updatedResult.task;
@@ -31,10 +31,10 @@ describe("task registry", () => {
 
   test("rejects invalid transitions from terminal states", () => {
     const registry = new TaskRegistry();
-    const createdResult = registry.upsert("task_1", { state: "completed" });
+    const createdResult = registry.transitionTask("task_1", { state: "completed" });
     expect(createdResult.ok).toBe(true);
 
-    const invalid = registry.upsert("task_1", { state: "running" });
+    const invalid = registry.transitionTask("task_1", { state: "running" });
     expect(invalid).toEqual({
       ok: false,
       code: "E_TASK_INVALID_TRANSITION",
@@ -47,9 +47,9 @@ describe("task registry", () => {
 
   test("allows detached and resumed transitions", () => {
     const registry = new TaskRegistry();
-    expect(registry.upsert("task_2", { state: "running" }).ok).toBe(true);
-    expect(registry.upsert("task_2", { state: "detached" }).ok).toBe(true);
-    expect(registry.upsert("task_2", { state: "running" }).ok).toBe(true);
+    expect(registry.transitionTask("task_2", { state: "running" }).ok).toBe(true);
+    expect(registry.transitionTask("task_2", { state: "detached" }).ok).toBe(true);
+    expect(registry.transitionTask("task_2", { state: "running" }).ok).toBe(true);
     expect(registry.get("task_2")?.state).toBe("running");
   });
 });
