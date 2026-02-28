@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { localServerStatus, serverDaemonInternals, stopLocalServer } from "./server-daemon";
+import { ensureLocalServer, localServerStatus, serverDaemonInternals, stopLocalServer } from "./server-daemon";
 import { startTestServer } from "./test-factory";
 
 describe("server daemon internals", () => {
@@ -86,6 +86,56 @@ describe("server daemon internals", () => {
         apiUrl,
         managed: false,
       });
+    } finally {
+      server.stop();
+    }
+  });
+
+  test("ensureLocalServer returns unmanaged reuse when server is healthy without lock", async () => {
+    const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
+    const server = startTestServer(() => Response.json({ ok: true }));
+    const apiUrl = `http://127.0.0.1:${server.port}`;
+    try {
+      await expect(
+        ensureLocalServer({
+          apiUrl,
+          port: server.port,
+          apiKey: undefined,
+          serverEntry: join(process.cwd(), "src/server.ts"),
+          homeDir: home,
+        }),
+      ).resolves.toEqual({ apiUrl, started: false, managed: false });
+    } finally {
+      server.stop();
+    }
+  });
+
+  test("ensureLocalServer returns managed reuse when lock and healthy server match", async () => {
+    const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
+    const server = startTestServer(() => Response.json({ ok: true }));
+    const apiUrl = `http://127.0.0.1:${server.port}`;
+    const lockPath = serverDaemonInternals.serverLockPath(home);
+    await mkdir(join(home, ".acolyte"), { recursive: true });
+    await writeFile(
+      lockPath,
+      JSON.stringify({
+        pid: process.pid,
+        apiUrl,
+        port: server.port,
+        startedAt: "2026-02-28T00:00:00.000Z",
+      }),
+      "utf8",
+    );
+    try {
+      await expect(
+        ensureLocalServer({
+          apiUrl,
+          port: server.port,
+          apiKey: undefined,
+          serverEntry: join(process.cwd(), "src/server.ts"),
+          homeDir: home,
+        }),
+      ).resolves.toEqual({ apiUrl, started: false, managed: true });
     } finally {
       server.stop();
     }
