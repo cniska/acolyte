@@ -42,7 +42,13 @@ async function startServerForRpcTest(port: number, apiKey: string): Promise<void
 
   const proc = Bun.spawn([process.execPath, "run", join(repoRoot, "src/server.ts")], {
     cwd: project,
-    env: { ...process.env, HOME: home, ACOLYTE_API_KEY: apiKey, NO_COLOR: "1" },
+    env: {
+      ...process.env,
+      HOME: home,
+      ACOLYTE_API_KEY: apiKey,
+      OPENAI_API_KEY: process.env.OPENAI_API_KEY ?? "sk-test-rpc",
+      NO_COLOR: "1",
+    },
     stdout: "pipe",
     stderr: "pipe",
   });
