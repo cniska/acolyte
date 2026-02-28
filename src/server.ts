@@ -189,6 +189,7 @@ type RunChatHandlers = {
   onDone: (reply: Awaited<ReturnType<typeof runAgent>>) => void;
   onError: (payload: ReturnType<typeof streamErrorPayload>) => void;
   isCancelled?: () => boolean;
+  shouldYield?: () => boolean;
 };
 
 async function runChatRequest(chatRequest: ChatRequest, handlers: RunChatHandlers): Promise<void> {
@@ -220,6 +221,7 @@ async function runChatRequest(chatRequest: ChatRequest, handlers: RunChatHandler
       request: chatRequest,
       soulPrompt,
       workspace: workspaceResolution.workspacePath,
+      shouldYield: handlers.shouldYield,
       onEvent: (event) => {
         if (handlers.isCancelled?.()) return;
         handlers.onEvent(event as Record<string, unknown>);
@@ -570,6 +572,7 @@ const server = Bun.serve<RpcConnectionState>({
           path: "/v1/rpc",
           method: "WS",
           isCancelled: () => state.aborted,
+          shouldYield: () => ws.data.queue.length > 0,
           onEvent: (event) => sendForId(chatId, { type: "chat.event", event }),
           onDone: (reply) => sendForId(chatId, { type: "chat.done", reply }),
           onError: (payload) => sendForId(chatId, { type: "chat.error", ...payload }),
