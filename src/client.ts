@@ -640,7 +640,13 @@ class RpcClient implements Client {
 
       ws.addEventListener("message", onMessage);
       ws.addEventListener("close", onClose);
-      if (options.signal) options.signal.addEventListener("abort", onAbort, { once: true });
+      if (options.signal) {
+        if (options.signal.aborted) {
+          onAbort();
+          return;
+        }
+        options.signal.addEventListener("abort", onAbort, { once: true });
+      }
       ws.send(JSON.stringify({ id, type: "chat.start", payload: { request: input } }));
     });
   }

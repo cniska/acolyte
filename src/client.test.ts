@@ -638,7 +638,9 @@ describe("rpc websocket lifecycle", () => {
       { onEvent: () => {}, signal: abortController.signal },
     );
 
-    await Promise.resolve();
+    for (let i = 0; i < 100 && !sent.some((msg) => msg.type === "chat.start"); i += 1) {
+      await Promise.resolve();
+    }
     abortController.abort();
 
     await expect(run).rejects.toThrow("Request aborted");
