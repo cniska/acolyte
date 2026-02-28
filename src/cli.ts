@@ -136,7 +136,7 @@ export async function handlePrompt(
   prompt: string,
   session: Session,
   client = createClient(),
-  options?: { resourceId?: string; workspace?: string },
+  options?: { resourceId?: string; workspace?: string; skipAutoVerify?: boolean },
 ): Promise<boolean> {
   const userMsg = newMessage("user", prompt);
   session.messages.push(userMsg);
@@ -237,6 +237,7 @@ export async function handlePrompt(
         model: session.model,
         sessionId: session.id,
         resourceId: options?.resourceId,
+        skipAutoVerify: options?.skipAutoVerify,
         ...createWorkspaceSpecifier(options?.workspace),
       },
       {

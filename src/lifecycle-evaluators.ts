@@ -26,7 +26,7 @@ export type EvaluatorContext = {
   mode: AgentMode;
   session: SessionContext;
   workspace: string | undefined;
-  request: { message: string };
+  request: { message: string; skipAutoVerify?: boolean };
   sawEditFileMultiMatchError: boolean;
   lastError?: string;
   lastErrorCategory?: ErrorCategory;
@@ -96,6 +96,7 @@ export const autoVerifier: Evaluator = {
   id: "auto-verifier",
   evaluate(ctx) {
     if (!ctx.result) return { type: "done" };
+    if (ctx.request.skipAutoVerify) return { type: "done" };
     const usedWriteTools = WRITE_TOOLS.some((tool) => ctx.observedTools.has(tool));
     if (ctx.classifiedMode === "work" && usedWriteTools && !ctx.session.flags.verifyRan) {
       return {

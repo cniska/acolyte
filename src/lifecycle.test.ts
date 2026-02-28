@@ -131,6 +131,16 @@ describe("autoVerifier", () => {
     const ctx = createMockContext({ result: undefined });
     expect(autoVerifier.evaluate(ctx).type).toBe("done");
   });
+
+  test("returns done when request disables auto-verify", () => {
+    const ctx = createMockContext({
+      request: { model: "gpt-5-mini", message: "Implement fix", history: [], skipAutoVerify: true },
+      classifiedMode: "work",
+      result: { text: "Done.", toolCalls: [] },
+      observedTools: new Set(["edit-file"]),
+    });
+    expect(autoVerifier.evaluate(ctx).type).toBe("done");
+  });
 });
 
 describe("efficiencyEvaluator", () => {

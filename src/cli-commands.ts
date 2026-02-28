@@ -232,7 +232,7 @@ async function resumeMode(args: string[]): Promise<void> {
   await chatModeWithOptions({ resumeLatest: true, resumePrefix });
 }
 
-async function runMode(args: string[]): Promise<void> {
+async function runMode(args: string[], options?: { skipAutoVerify?: boolean }): Promise<void> {
   if (hasHelpFlag(args)) {
     subcommandHelp("run");
     return;
@@ -277,6 +277,7 @@ async function runMode(args: string[]): Promise<void> {
   const success = await handlePrompt(prompt, session, client, {
     resourceId: runResourceId(session.id),
     workspace: parsed.workspace,
+    skipAutoVerify: options?.skipAutoVerify,
   });
   if (!success) {
     process.exitCode = 1;
@@ -322,7 +323,7 @@ async function dogfoodMode(args: string[]): Promise<void> {
     ...(parsed.verify ? ["--verify"] : []),
     `${preamble}${parsed.prompt}`,
   ];
-  await runMode(runArgs);
+  await runMode(runArgs, { skipAutoVerify: !parsed.verify });
 }
 
 async function historyMode(args: string[]): Promise<void> {
