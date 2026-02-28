@@ -24,6 +24,7 @@ type EnsureLocalServerInput = {
 type EnsureLocalServerResult = {
   apiUrl: string;
   started: boolean;
+  managed: boolean;
 };
 
 type LocalServerStatus = {
@@ -151,17 +152,23 @@ export async function ensureLocalServer(input: EnsureLocalServerInput): Promise<
 
   const lock = await readServerLock(lockPath);
   if (lock && lock.apiUrl === apiUrl && isProcessAlive(lock.pid) && (await isServerHealthy(apiUrl, input.apiKey)))
-    return { apiUrl, started: false };
+    return { apiUrl, started: false, managed: true };
 
   if (lock && (!isProcessAlive(lock.pid) || lock.apiUrl !== apiUrl || !(await isServerHealthy(apiUrl, input.apiKey))))
     await rm(lockPath, { force: true });
 
-  if (await isServerHealthy(apiUrl, input.apiKey)) return { apiUrl, started: false };
+  if (await isServerHealthy(apiUrl, input.apiKey)) return { apiUrl, started: false, managed: false };
 
   const startupClaimed = await tryAcquireStartupLock(startLockPath);
   if (!startupClaimed) {
     await waitForHealthyServer(apiUrl, input.apiKey, timeoutMs);
-    return { apiUrl, started: false };
+    const waitedLock = await readServerLock(lockPath);
+    const managed =
+      !!waitedLock &&
+      waitedLock.apiUrl === apiUrl &&
+      isProcessAlive(waitedLock.pid) &&
+      (await isServerHealthy(apiUrl, input.apiKey));
+    return { apiUrl, started: false, managed };
   }
 
   const proc = Bun.spawn([process.execPath, "run", input.serverEntry], {
@@ -180,7 +187,7 @@ export async function ensureLocalServer(input: EnsureLocalServerInput): Promise<
       port: input.port,
       startedAt: new Date().toISOString(),
     });
-    return { apiUrl, started: true };
+    return { apiUrl, started: true, managed: true };
   } catch (error) {
     proc.kill();
     await proc.exited.catch(() => {});
