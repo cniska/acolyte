@@ -59,10 +59,8 @@ describe("error handling helpers", () => {
     expect(isEditFileMultiMatchSignal({ message: "random error", code: undefined })).toBe(false);
   });
 
-  test("recoveryActionForError uses timeout and unknown budget", () => {
-    expect(recoveryActionForError({ errorCode: LIFECYCLE_ERROR_CODES.timeout, unknownErrorCount: 0 }, 2)).toBe(
-      "retry-timeout",
-    );
+  test("recoveryActionForError uses unknown budget only", () => {
+    expect(recoveryActionForError({ errorCode: LIFECYCLE_ERROR_CODES.timeout, unknownErrorCount: 0 }, 2)).toBe("none");
     expect(recoveryActionForError({ errorCode: LIFECYCLE_ERROR_CODES.unknown, unknownErrorCount: 2 }, 2)).toBe(
       "stop-unknown-budget",
     );
@@ -74,7 +72,7 @@ describe("error handling helpers", () => {
   test("recoveryDecisionForError marks retryability", () => {
     expect(
       recoveryDecisionForError({ errorCode: LIFECYCLE_ERROR_CODES.timeout, unknownErrorCount: 0 }, 2),
-    ).toMatchObject({ action: "retry-timeout", retryable: true });
+    ).toMatchObject({ action: "none", retryable: false });
     expect(
       recoveryDecisionForError({ errorCode: LIFECYCLE_ERROR_CODES.unknown, unknownErrorCount: 2 }, 2),
     ).toMatchObject({ action: "stop-unknown-budget", retryable: false });
@@ -85,9 +83,9 @@ describe("error handling helpers", () => {
       {
         message: "request timed out after 30s",
         source: "server",
-        unknownErrorCount: 1,
+        unknownErrorCount: 0,
       },
-      1,
+      2,
     );
     expect(detail.errorCode).toBe(LIFECYCLE_ERROR_CODES.timeout);
     expect(detail.category).toBe("timeout");
@@ -95,8 +93,8 @@ describe("error handling helpers", () => {
       code: LIFECYCLE_ERROR_CODES.timeout,
       category: "timeout",
       source: "server",
-      retryable: true,
-      recoveryAction: "retry-timeout",
+      retryable: false,
+      recoveryAction: "none",
     });
   });
 

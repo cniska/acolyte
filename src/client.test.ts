@@ -89,8 +89,8 @@ describe("remote server connection errors", () => {
             code: "E_TIMEOUT",
             category: "timeout",
             source: "server",
-            retryable: true,
-            recoveryAction: "retry-timeout",
+            retryable: false,
+            recoveryAction: "none",
           },
         }),
         {
@@ -130,7 +130,7 @@ describe("remote server connection errors", () => {
       };
       expect(remoteError.status).toBe(502);
       expect(remoteError.errorCode).toBe("E_TIMEOUT");
-      expect(remoteError.errorDetail?.recoveryAction).toBe("retry-timeout");
+      expect(remoteError.errorDetail?.recoveryAction).toBe("none");
     }
   });
 
@@ -450,15 +450,15 @@ describe("stream event parsing", () => {
         code: "E_TIMEOUT",
         category: "timeout",
         source: "generate",
-        retryable: true,
-        recoveryAction: "retry-timeout",
+        retryable: false,
+        recoveryAction: "none",
       },
     });
     expect(event).not.toBeNull();
     expect(event?.type).toBe("error");
     if (!event || event.type !== "error") return;
-    expect(event.errorDetail?.retryable).toBe(true);
-    expect(event.errorDetail?.recoveryAction).toBe("retry-timeout");
+    expect(event.errorDetail?.retryable).toBe(false);
+    expect(event.errorDetail?.recoveryAction).toBe("none");
   });
 
   test("parseStreamEvent rejects malformed structured error detail payloads", () => {

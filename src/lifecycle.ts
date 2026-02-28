@@ -33,8 +33,6 @@ import {
   MAX_REGENERATIONS_PER_REQUEST,
   MAX_UNKNOWN_ERRORS_PER_REQUEST,
   STEP_TIMEOUT_MS,
-  TIMEOUT_RECOVERY_MAX_STEPS,
-  TIMEOUT_RECOVERY_TIMEOUT_MS,
 } from "./lifecycle-constants";
 import {
   autoVerifier,
@@ -43,6 +41,7 @@ import {
   efficiencyEvaluator,
   multiMatchEditEvaluator,
   planDetector,
+  timeoutRecovery,
 } from "./lifecycle-evaluators";
 import type { LifecycleDebugEvent, LifecycleEventName } from "./lifecycle-events";
 import { type AcolyteToolset, toolsForAgent } from "./mastra-tools";
@@ -51,7 +50,7 @@ import { type ErrorCode, extractToolErrorCode, LIFECYCLE_ERROR_CODES } from "./t
 import { DISCOVERY_TOOL_SET, READ_TOOL_SET, SEARCH_TOOL_SET, WRITE_TOOL_SET } from "./tool-groups";
 import type { SessionContext } from "./tool-guards";
 
-export { autoVerifier, efficiencyEvaluator, multiMatchEditEvaluator, planDetector };
+export { autoVerifier, efficiencyEvaluator, multiMatchEditEvaluator, planDetector, timeoutRecovery };
 export type { EvalAction, Evaluator };
 
 export type GenerateResult = {
@@ -375,44 +374,6 @@ async function phaseGenerate(ctx: RunContext, prompt: string, opts: GenerateOpti
       ...(currentErrorDetail(ctx) ? { errorDetail: currentErrorDetail(ctx) } : {}),
     });
     ctx.debug("lifecycle.generate.error", { model: ctx.model, error: ctx.lastError });
-
-    if (
-      recoveryActionForError({
-        errorCode: ctx.lastErrorCode,
-        unknownErrorCount: ctx.errorStats.other,
-      }) === "retry-timeout"
-    ) {
-      emitModeStatus(ctx);
-      ctx.debug("lifecycle.generate.retry", {
-        model: ctx.model,
-        reason: "timeout_recovery",
-        max_steps: TIMEOUT_RECOVERY_MAX_STEPS,
-      });
-      try {
-        ctx.modelCallCount += 1;
-        ctx.result = await streamWithTimeout(ctx, prompt, TIMEOUT_RECOVERY_MAX_STEPS, TIMEOUT_RECOVERY_TIMEOUT_MS);
-        ctx.debug("lifecycle.generate.done", {
-          model: ctx.model,
-          reason: "timeout_recovery",
-          tool_calls: ctx.result.toolCalls.length,
-          text_chars: ctx.result.text.trim().length,
-        });
-      } catch (retryError) {
-        const retryMsg = retryError instanceof Error ? retryError.message : String(retryError);
-        const timeoutCode = /timed out/i.test(retryMsg) ? LIFECYCLE_ERROR_CODES.timeout : undefined;
-        captureError(ctx, retryMsg, {
-          source: "generate",
-          code: timeoutCode,
-        });
-        ctx.emit({
-          type: "error",
-          error: `Retry failed: ${ctx.lastError}`,
-          ...(ctx.lastErrorCode ? { errorCode: ctx.lastErrorCode } : {}),
-          ...(currentErrorDetail(ctx) ? { errorDetail: currentErrorDetail(ctx) } : {}),
-        });
-        ctx.debug("lifecycle.generate.retry_failed", { model: ctx.model, error: ctx.lastError });
-      }
-    }
   }
 }
 
@@ -763,7 +724,13 @@ export async function runLifecycle(input: LifecycleInput): Promise<ChatResponse>
   if (!ctx.result) return phaseFinalize(ctx);
   if (shouldYieldNow(ctx, input.shouldYield)) return phaseFinalize(ctx);
 
-  const evaluators: Evaluator[] = [planDetector, multiMatchEditEvaluator, efficiencyEvaluator, autoVerifier];
+  const evaluators: Evaluator[] = [
+    planDetector,
+    multiMatchEditEvaluator,
+    efficiencyEvaluator,
+    timeoutRecovery,
+    autoVerifier,
+  ];
   const regenByEvaluator = new Map<string, number>();
   while (ctx.result) {
     if (shouldYieldNow(ctx, input.shouldYield)) break;

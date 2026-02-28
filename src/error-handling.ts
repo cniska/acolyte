@@ -11,13 +11,9 @@ export type ErrorCategory = "timeout" | "file-not-found" | "guard-blocked" | "ot
 export type ErrorSource = "generate" | "tool-result" | "tool-error" | "server";
 export type ParsedError = { message: string; code?: string };
 export type ParseErrorResult = { ok: true; value: ParsedError } | { ok: false; error: "invalid_error_payload" };
-export type RecoveryAction = "retry-timeout" | "stop-unknown-budget" | "none";
+export type RecoveryAction = "stop-unknown-budget" | "none";
 export type RecoveryDecision = { action: RecoveryAction; retryable: boolean };
 export const ERROR_CATEGORIES = ["timeout", "file-not-found", "guard-blocked", "other"] as const;
-
-const RECOVERY_ACTION_BY_CODE: Record<string, RecoveryAction> = {
-  [LIFECYCLE_ERROR_CODES.timeout]: "retry-timeout",
-};
 
 export function createErrorStats(initialValue = 0): Record<ErrorCategory, number> {
   return Object.fromEntries(ERROR_CATEGORIES.map((category) => [category, initialValue])) as Record<
@@ -105,8 +101,6 @@ export function recoveryActionForError(
   input: { errorCode?: string; unknownErrorCount: number },
   unknownErrorBudget: number,
 ): RecoveryAction {
-  const mapped = input.errorCode ? RECOVERY_ACTION_BY_CODE[input.errorCode] : undefined;
-  if (mapped) return mapped;
   if (input.errorCode === LIFECYCLE_ERROR_CODES.unknown && input.unknownErrorCount >= unknownErrorBudget)
     return "stop-unknown-budget";
   return "none";
@@ -117,10 +111,7 @@ export function recoveryDecisionForError(
   unknownErrorBudget: number,
 ): RecoveryDecision {
   const action = recoveryActionForError(input, unknownErrorBudget);
-  return {
-    action,
-    retryable: action === "retry-timeout",
-  };
+  return { action, retryable: false };
 }
 
 export function buildStreamErrorDetail(

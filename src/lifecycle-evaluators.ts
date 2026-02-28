@@ -1,7 +1,7 @@
 import { createModeInstructions, isPlanLikeOutput } from "./agent";
 import type { AgentMode } from "./agent-modes";
-import { isFileNotFoundSignal } from "./error-handling";
-import { VERIFY_MAX_STEPS } from "./lifecycle-constants";
+import { type ErrorCategory, isFileNotFoundSignal } from "./error-handling";
+import { TIMEOUT_RECOVERY_MAX_STEPS, TIMEOUT_RECOVERY_TIMEOUT_MS, VERIFY_MAX_STEPS } from "./lifecycle-constants";
 import type { LifecycleEventName } from "./lifecycle-events";
 import { DISCOVERY_TOOL_SET, WRITE_TOOL_SET, WRITE_TOOLS } from "./tool-groups";
 import type { SessionContext } from "./tool-guards";
@@ -28,6 +28,7 @@ export type EvaluatorContext = {
   request: { message: string };
   sawEditFileMultiMatchError: boolean;
   lastError?: string;
+  lastErrorCategory?: ErrorCategory;
 };
 
 export type Evaluator = {
@@ -73,6 +74,20 @@ export const planDetector: Evaluator = {
       };
     }
     return { type: "done" };
+  },
+};
+
+export const timeoutRecovery: Evaluator = {
+  id: "timeout-recovery",
+  evaluate(ctx) {
+    if (!ctx.lastError) return { type: "done" };
+    if (ctx.lastErrorCategory !== "timeout") return { type: "done" };
+    return {
+      type: "regenerate",
+      prompt: ctx.agentInput,
+      maxSteps: TIMEOUT_RECOVERY_MAX_STEPS,
+      timeoutMs: TIMEOUT_RECOVERY_TIMEOUT_MS,
+    };
   },
 };
 
