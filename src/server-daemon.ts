@@ -202,25 +202,24 @@ export async function localServerStatus(input?: {
   apiKey?: string;
   apiUrl?: string;
 }): Promise<LocalServerStatus> {
+  const fallbackToTargetStatus = async (): Promise<LocalServerStatus> => {
+    if (input?.apiUrl && (await isServerHealthy(input.apiUrl, input.apiKey)))
+      return { running: true, pid: null, apiUrl: input.apiUrl, managed: false };
+    return { running: false, pid: null, apiUrl: null, managed: false };
+  };
+
   const lockPath = serverLockPath(input?.homeDir);
   const lock = await readServerLock(lockPath);
-  if (!lock) {
-    if (input?.apiUrl && (await isServerHealthy(input.apiUrl, input.apiKey)))
-      return { running: true, pid: null, apiUrl: input.apiUrl, managed: false };
-    return { running: false, pid: null, apiUrl: null, managed: false };
-  }
+  if (!lock) return fallbackToTargetStatus();
   if (!isProcessAlive(lock.pid)) {
     await rm(lockPath, { force: true });
-    if (input?.apiUrl && (await isServerHealthy(input.apiUrl, input.apiKey)))
-      return { running: true, pid: null, apiUrl: input.apiUrl, managed: false };
-    return { running: false, pid: null, apiUrl: null, managed: false };
+    return fallbackToTargetStatus();
   }
   if (!(await isServerHealthy(lock.apiUrl, input?.apiKey))) {
     await rm(lockPath, { force: true });
-    if (input?.apiUrl && (await isServerHealthy(input.apiUrl, input.apiKey)))
-      return { running: true, pid: null, apiUrl: input.apiUrl, managed: false };
-    return { running: false, pid: null, apiUrl: null, managed: false };
+    return fallbackToTargetStatus();
   }
+  if (input?.apiUrl && lock.apiUrl !== input.apiUrl) return fallbackToTargetStatus();
   return { running: true, pid: lock.pid, apiUrl: lock.apiUrl, managed: true };
 }
 
