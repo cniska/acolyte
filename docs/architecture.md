@@ -2,11 +2,12 @@
 
 ## Mental model (ELI5)
 
-Think of Acolyte like a careful helper doing one task at a time:
+Think of Acolyte like a careful helper with task cards:
 
-- It works on the current task using tools.
-- It checks for new important messages at safe checkpoints ("yield points"), not in the middle of a tool action.
-- If a newer message should take priority, it can yield and handle that next.
+- Every user message gets its own task card (with id + state).
+- It works on one card at a time using tools.
+- New cards can wait in order.
+- At safe checkpoints ("yield points"), it can pause the current card and switch to a newer one if needed.
 - It leaves clear breadcrumbs so failures are easy to replay and debug.
 
 ## System flow
@@ -40,6 +41,7 @@ Each request follows the same high-level flow:
 
 Evaluators can request a regeneration, but caps prevent runaway loops.
 Yield checks happen between lifecycle decisions so newer queued work can be picked up without unsafe mid-step interruption.
+Evaluator and summary metrics are task-scoped: they use tool history tagged to the active task id.
 
 ## Error handling contract
 

@@ -62,6 +62,7 @@ Development:
 - Extra scrutiny on chat-feature changes: clear UX intent, regression tests, smoke run.
 - Prefer interface-first seams at subsystem boundaries (client transport, lifecycle policy, guards, tools).
 - Keep behavior behind stable contracts so new transports/integrations are additive, not rewrites.
+- Prefer Zod schema definitions as the single source of truth for string unions and infer TS types from schemas.
 
 ## Validation
 

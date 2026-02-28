@@ -3,7 +3,7 @@ import { existsSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import type { z } from "zod";
 import { runAgent } from "./agent";
-import type { ChatRequest } from "./api";
+import { type ChatRequest, verifyScopeSchema } from "./api";
 import { appConfig, setPermissionMode } from "./app-config";
 import { buildStreamErrorDetail } from "./error-handling";
 import { errorToLogFields, log } from "./log";
@@ -114,6 +114,7 @@ function isChatRequest(value: unknown): value is ChatRequest {
     (req.resourceId === undefined || typeof req.resourceId === "string") &&
     (req.useMemory === undefined || typeof req.useMemory === "boolean") &&
     (req.skipAutoVerify === undefined || typeof req.skipAutoVerify === "boolean") &&
+    (req.verifyScope === undefined || verifyScopeSchema.safeParse(req.verifyScope).success) &&
     (req.workspace === undefined || typeof req.workspace === "string")
   );
 }
@@ -255,6 +256,7 @@ async function runChatRequest(chatRequest: ChatRequest, handlers: RunChatHandler
       request: chatRequest,
       soulPrompt,
       workspace: workspaceResolution.workspacePath,
+      taskId: handlers.taskId,
       shouldYield: handlers.shouldYield,
       onEvent: (event) => {
         if (handlers.isCancelled?.()) return;

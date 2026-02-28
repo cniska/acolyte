@@ -1,5 +1,6 @@
 import { createModeInstructions, isPlanLikeOutput } from "./agent";
 import type { AgentMode } from "./agent-modes";
+import type { VerifyScope } from "./api";
 import { type ErrorCategory, isFileNotFoundSignal } from "./error-handling";
 import { TIMEOUT_RECOVERY_MAX_STEPS, TIMEOUT_RECOVERY_TIMEOUT_MS, VERIFY_MAX_STEPS } from "./lifecycle-constants";
 import type { LifecycleEventName } from "./lifecycle-events";
@@ -24,13 +25,19 @@ export type EvaluatorContext = {
   agentInput: string;
   classifiedMode: AgentMode;
   mode: AgentMode;
+  taskId: string | undefined;
   session: SessionContext;
   workspace: string | undefined;
-  request: { message: string; skipAutoVerify?: boolean };
+  request: { message: string; skipAutoVerify?: boolean; verifyScope?: VerifyScope };
   sawEditFileMultiMatchError: boolean;
   lastError?: string;
   lastErrorCategory?: ErrorCategory;
 };
+
+function taskScopedCallLog(ctx: EvaluatorContext) {
+  if (!ctx.taskId) return ctx.session.callLog;
+  return ctx.session.callLog.filter((entry) => entry.taskId === ctx.taskId);
+}
 
 export type Evaluator = {
   id: string;
@@ -54,8 +61,9 @@ function readPathKeys(args: Record<string, unknown>): string[] {
 }
 
 function findLastEditFilePath(ctx: EvaluatorContext): string | undefined {
-  for (let i = ctx.session.callLog.length - 1; i >= 0; i -= 1) {
-    const entry = ctx.session.callLog[i];
+  const callLog = taskScopedCallLog(ctx);
+  for (let i = callLog.length - 1; i >= 0; i -= 1) {
+    const entry = callLog[i];
     if (entry?.toolName !== "edit-file") continue;
     const path = entry.args?.path;
     if (typeof path === "string" && path.trim().length > 0) return path.trim();
@@ -65,7 +73,7 @@ function findLastEditFilePath(ctx: EvaluatorContext): string | undefined {
 
 function writePathsForCurrentTask(ctx: EvaluatorContext): string[] {
   const out = new Set<string>();
-  for (const entry of ctx.session.callLog) {
+  for (const entry of taskScopedCallLog(ctx)) {
     if (!WRITE_TOOL_SET.has(entry.toolName)) continue;
     const path = entry.args?.path;
     if (typeof path !== "string") continue;
@@ -76,17 +84,46 @@ function writePathsForCurrentTask(ctx: EvaluatorContext): string[] {
   return Array.from(out);
 }
 
+function readPathsForCurrentTask(ctx: EvaluatorContext): string[] {
+  const out = new Set<string>();
+  for (const entry of taskScopedCallLog(ctx)) {
+    if (entry.toolName === "read-file") {
+      for (const key of readPathKeys(entry.args)) out.add(key);
+      continue;
+    }
+    if (entry.toolName === "scan-code") {
+      const paths = entry.args?.paths;
+      if (!Array.isArray(paths)) continue;
+      for (const value of paths) {
+        if (typeof value !== "string") continue;
+        const trimmed = value.trim();
+        if (trimmed.length > 0) out.add(trimmed);
+      }
+    }
+  }
+  return Array.from(out);
+}
+
 function scopedVerifyPrompt(ctx: EvaluatorContext): string {
   const base = createModeInstructions("verify", ctx.workspace);
+  if (ctx.request.verifyScope === "global") return base;
   const paths = writePathsForCurrentTask(ctx);
   if (paths.length === 0) return base;
+  const supportingPaths = readPathsForCurrentTask(ctx).filter((path) => !paths.includes(path));
   return [
     base,
     "",
     "Task boundary:",
-    `Review ONLY these files changed in this task (${paths.length}):`,
+    `Primary scope (changed in this task, ${paths.length}):`,
     ...paths.map((path) => `- ${path}`),
-    "Do not review other repository changes from earlier tasks.",
+    ...(supportingPaths.length > 0
+      ? [
+          "",
+          `Allowed supporting reads (already read this task, ${supportingPaths.length}):`,
+          ...supportingPaths.map((path) => `- ${path}`),
+        ]
+      : []),
+    "Do not review unrelated repository changes from earlier tasks.",
   ].join("\n");
 }
 
@@ -170,7 +207,7 @@ export const efficiencyEvaluator: Evaluator = {
     if (ctx.classifiedMode !== "work") return { type: "done" };
     if (!hasStrongWriteIntent(ctx.request.message)) return { type: "done" };
 
-    const callLog = ctx.session.callLog;
+    const callLog = taskScopedCallLog(ctx);
     const firstWriteIndex = callLog.findIndex((entry) => WRITE_TOOL_SET.has(entry.toolName));
     if (firstWriteIndex >= 0) return { type: "done" };
     const fileNotFoundOutcome =

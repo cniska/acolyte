@@ -1,4 +1,8 @@
+import { z } from "zod";
 import type { Message } from "./types";
+
+export const verifyScopeSchema = z.enum(["task", "global"]);
+export type VerifyScope = z.infer<typeof verifyScopeSchema>;
 
 export interface TokenUsage {
   promptTokens: number;
@@ -18,6 +22,8 @@ export interface ChatRequest {
   useMemory?: boolean;
   /** When true, lifecycle auto-verifier is disabled for this request. */
   skipAutoVerify?: boolean;
+  /** Verifier read scope: task-bound by default; global only when explicitly requested. */
+  verifyScope?: VerifyScope;
   /** Client working directory. Falls back to server CWD when omitted. */
   workspace?: string;
 }

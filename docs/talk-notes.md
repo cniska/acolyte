@@ -49,6 +49,7 @@
 - Streaming correctness matters more than polish. Design for streaming semantics early.
 - Observability is mandatory for agent quality. Ordered lifecycle traces make dogfooding actionable instead of anecdotal.
 - Guardrails improve autonomy. Session-level checks reduce loops and unsafe actions without human intervention.
+- Boundaries keep autonomy safe. Task-scoped verification prevents cross-task drift while preserving opt-in global review when needed.
 - Prompt/tool-contract quality often beats extra host-side heuristics for everyday coding tasks.
 - Dogfooding reveals architecture gaps that unit tests miss, especially around recovery behavior.
 - Start single-agent and prove reliability before adding multi-agent complexity.

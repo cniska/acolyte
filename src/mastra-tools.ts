@@ -722,12 +722,12 @@ function readOnlyTools(
 
 // --- Public API ---
 
-export function toolsForAgent(options?: { workspace?: string; onToolOutput?: ToolOutputListener }): {
+export function toolsForAgent(options?: { workspace?: string; onToolOutput?: ToolOutputListener; taskId?: string }): {
   tools: Partial<AcolyteToolset>;
   session: SessionContext;
 } {
   const workspace = options?.workspace ?? resolve(process.cwd());
-  const session = createSessionContext();
+  const session = createSessionContext(options?.taskId);
   if (appConfig.agent.permissions.mode === "read") return readOnlyTools(workspace, session, options?.onToolOutput);
   return createToolset(workspace, session, options?.onToolOutput);
 }

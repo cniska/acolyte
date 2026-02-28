@@ -2,8 +2,11 @@ import type { ToolName } from "./tool-names";
 
 export type GuardEvent = { guardId: string; toolName: ToolName; action: "blocked" | "flag_set"; detail?: string };
 
+export type ToolCallRecord = { toolName: ToolName; args: Record<string, unknown>; taskId?: string };
+
 export type SessionContext = {
-  callLog: Array<{ toolName: ToolName; args: Record<string, unknown> }>;
+  callLog: ToolCallRecord[];
+  taskId?: string;
   flags: Record<string, unknown>;
   onGuard?: (event: GuardEvent) => void;
 };
@@ -21,8 +24,8 @@ export type ToolGuard = {
   check: (input: GuardInput) => void;
 };
 
-export function createSessionContext(): SessionContext {
-  return { callLog: [], flags: {} };
+export function createSessionContext(taskId?: string): SessionContext {
+  return { callLog: [], taskId, flags: {} };
 }
 
 function normalizePath(p: string): string {
@@ -192,5 +195,5 @@ export function runGuards(input: GuardInput): void {
 }
 
 export function recordCall(session: SessionContext, toolName: ToolName, args: Record<string, unknown>): void {
-  session.callLog.push({ toolName, args });
+  session.callLog.push({ toolName, args, taskId: session.taskId });
 }

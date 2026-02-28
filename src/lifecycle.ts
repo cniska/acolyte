@@ -80,6 +80,7 @@ type PhaseClassifyResult = { classifiedMode: AgentMode; model: string };
 type PhasePrepareInput = {
   request: ChatRequest;
   workspace: string | undefined;
+  taskId: string | undefined;
   soulPrompt: string;
   classifiedMode: AgentMode;
   model: string;
@@ -107,6 +108,7 @@ export type LifecycleInput = {
   request: ChatRequest;
   soulPrompt: string;
   workspace?: string;
+  taskId?: string;
   onEvent?: (event: StreamEvent) => void;
   onDebug?: (event: LifecycleDebugEvent) => void;
   shouldYield?: () => boolean;
@@ -115,6 +117,7 @@ export type LifecycleInput = {
 export type RunContext = {
   readonly request: ChatRequest;
   readonly workspace: string | undefined;
+  readonly taskId: string | undefined;
   readonly soulPrompt: string;
   readonly emit: (event: StreamEvent) => void;
   readonly debug: (event: LifecycleEventName, fields?: Record<string, unknown>) => void;
@@ -231,6 +234,11 @@ function guardStatsFromSession(session: SessionContext): { blocked: number; flag
   return { blocked, flagSet };
 }
 
+function taskScopedCallLog(session: SessionContext, taskId: string | undefined) {
+  if (!taskId) return session.callLog;
+  return session.callLog.filter((entry) => entry.taskId === taskId);
+}
+
 function emitModeStatus(ctx: RunContext): void {
   ctx.emit({ type: "status", message: `${agentModes[ctx.mode].statusText} (${ctx.model})` });
 }
@@ -272,6 +280,7 @@ function phasePrepare(input: PhasePrepareInput): PhasePrepareResult {
   const { tools, session } = toolsForAgent({
     workspace: input.workspace,
     onToolOutput: input.onToolOutput,
+    taskId: input.taskId,
   });
 
   session.onGuard = (event) => {
@@ -290,6 +299,7 @@ function phasePrepare(input: PhasePrepareInput): PhasePrepareResult {
   };
 
   input.debug("lifecycle.prepare", {
+    task_id: input.taskId ?? null,
     model: input.model,
     mode: input.classifiedMode,
     history_messages: input.request.history.length,
@@ -577,7 +587,7 @@ function phaseFinalize(ctx: RunContext): ChatResponse {
     budgetWarning = `context near budget (${ctx.promptUsage.promptTokens}/${ctx.promptUsage.promptBudgetTokens} tokens)`;
   }
 
-  const callLog = ctx.session.callLog;
+  const callLog = taskScopedCallLog(ctx.session, ctx.taskId);
   const guardStats = guardStatsFromSession(ctx.session);
   const totalToolCalls = callLog.length;
   const readCalls = callLog.filter((entry) => READ_TOOL_SET.has(entry.toolName)).length;
@@ -590,6 +600,7 @@ function phaseFinalize(ctx: RunContext): ChatResponse {
       : callLog.filter((entry) => DISCOVERY_TOOL_SET.has(entry.toolName)).length;
 
   ctx.debug("lifecycle.summary", {
+    task_id: ctx.taskId ?? null,
     mode: ctx.classifiedMode,
     model: ctx.model,
     model_calls: ctx.modelCallCount,
@@ -658,6 +669,7 @@ export async function runLifecycle(input: LifecycleInput): Promise<ChatResponse>
   const prepared = phasePrepare({
     request: input.request,
     workspace: input.workspace,
+    taskId: input.taskId,
     soulPrompt: input.soulPrompt,
     classifiedMode,
     model,
@@ -670,6 +682,7 @@ export async function runLifecycle(input: LifecycleInput): Promise<ChatResponse>
   const ctx: RunContext = {
     request: input.request,
     workspace: input.workspace,
+    taskId: input.taskId,
     soulPrompt: input.soulPrompt,
     emit,
     debug,
@@ -716,7 +729,7 @@ export async function runLifecycle(input: LifecycleInput): Promise<ChatResponse>
   };
   ctx.toolOutputHandler = toolOutputHandler;
 
-  ctx.debug("lifecycle.start", { mode: classifiedMode, model });
+  ctx.debug("lifecycle.start", { task_id: input.taskId ?? null, mode: classifiedMode, model });
   debugPhaseAttempt = ctx.generationAttempt + 1;
   await phaseGenerate(ctx, ctx.agentInput, {
     maxSteps: INITIAL_MAX_STEPS,

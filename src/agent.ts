@@ -375,6 +375,7 @@ export async function runAgent(input: {
   request: ChatRequest;
   soulPrompt: string;
   workspace?: string;
+  taskId?: string;
   onEvent?: (event: StreamEvent) => void;
   onDebug?: (event: LifecycleDebugEvent) => void;
   shouldYield?: () => boolean;

@@ -171,13 +171,15 @@ describe("excessive-search-loop guard", () => {
 });
 
 describe("recordCall", () => {
-  test("appends to callLog", () => {
-    const session = createSessionContext();
+  test("appends to callLog with active task id", () => {
+    const session = createSessionContext("task_1");
     expect(session.callLog).toHaveLength(0);
     recordCall(session, "read-file", { paths: [{ path: "a.ts" }] });
     recordCall(session, "edit-file", { path: "a.ts" });
     expect(session.callLog).toHaveLength(2);
     expect(session.callLog[0]?.toolName).toBe("read-file");
+    expect(session.callLog[0]?.taskId).toBe("task_1");
     expect(session.callLog[1]?.toolName).toBe("edit-file");
+    expect(session.callLog[1]?.taskId).toBe("task_1");
   });
 });

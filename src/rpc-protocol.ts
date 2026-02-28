@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { verifyScopeSchema } from "./api";
 import { streamErrorDetailSchema } from "./stream-error";
 import { taskRecordSchema } from "./task-state";
 
@@ -14,6 +15,7 @@ const chatRequestSchema = z.object({
   resourceId: z.string().optional(),
   useMemory: z.boolean().optional(),
   skipAutoVerify: z.boolean().optional(),
+  verifyScope: verifyScopeSchema.optional(),
   workspace: z.string().optional(),
 });
 

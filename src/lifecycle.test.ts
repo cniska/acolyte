@@ -17,6 +17,7 @@ function createMockContext(overrides: Partial<RunContext> = {}): RunContext {
   return {
     request: { model: "gpt-5-mini", message: "test", history: [] },
     workspace: undefined,
+    taskId: undefined,
     soulPrompt: "",
     emit: () => {},
     debug: () => {},
@@ -84,14 +85,18 @@ describe("planDetector", () => {
 
 describe("autoVerifier", () => {
   test("returns regenerate when write tools used without verify", () => {
-    const session = createSessionContext();
+    const session = createSessionContext("task_new");
     session.callLog = [
-      { toolName: "read-file", args: { paths: [{ path: "src/a.ts" }] } },
-      { toolName: "edit-file", args: { path: "src/a.ts" } },
-      { toolName: "edit-code", args: { path: "src/b.ts" } },
+      { toolName: "edit-file", args: { path: "src/old.ts" }, taskId: "task_old" },
+      { toolName: "read-file", args: { paths: [{ path: "src/a.ts" }] }, taskId: "task_new" },
+      { toolName: "read-file", args: { paths: [{ path: "src/c.ts" }] }, taskId: "task_new" },
+      { toolName: "scan-code", args: { paths: ["src/d.ts"], patterns: ["export function $NAME"] }, taskId: "task_new" },
+      { toolName: "edit-file", args: { path: "src/a.ts" }, taskId: "task_new" },
+      { toolName: "edit-code", args: { path: "src/b.ts" }, taskId: "task_new" },
     ];
     const ctx = createMockContext({
       classifiedMode: "work",
+      taskId: "task_new",
       session,
       result: { text: "Done.", toolCalls: [] },
       observedTools: new Set(["read-file", "edit-file"]),
@@ -104,12 +109,31 @@ describe("autoVerifier", () => {
       expect(action.prompt).toContain("Task boundary:");
       expect(action.prompt).toContain("- src/a.ts");
       expect(action.prompt).toContain("- src/b.ts");
+      expect(action.prompt).toContain("Allowed supporting reads");
+      expect(action.prompt).toContain("- src/c.ts");
+      expect(action.prompt).toContain("- src/d.ts");
+      expect(action.prompt).not.toContain("- src/old.ts");
     }
   });
 
   test("uses base verify prompt when no write paths are available", () => {
     const ctx = createMockContext({
       classifiedMode: "work",
+      result: { text: "Done.", toolCalls: [] },
+      observedTools: new Set(["edit-file"]),
+    });
+    const action = autoVerifier.evaluate(ctx);
+    expect(action.type).toBe("regenerate");
+    if (action.type === "regenerate") expect(action.prompt).not.toContain("Task boundary:");
+  });
+
+  test("uses global verify prompt when request explicitly opts into global scope", () => {
+    const session = createSessionContext();
+    session.callLog = [{ toolName: "edit-file", args: { path: "src/a.ts" } }];
+    const ctx = createMockContext({
+      request: { model: "gpt-5-mini", message: "Implement fix", history: [], verifyScope: "global" },
+      classifiedMode: "work",
+      session,
       result: { text: "Done.", toolCalls: [] },
       observedTools: new Set(["edit-file"]),
     });
