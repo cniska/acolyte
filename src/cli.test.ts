@@ -3,6 +3,7 @@ import {
   extractVersionFromPackageJsonText,
   formatLocalServerReadyMessage,
   formatResumeCommand,
+  mergeAssistantStreamOutput,
   missingAssistantStreamTail,
   resolveChatApiUrl,
   resolveCommandAlias,
@@ -96,5 +97,13 @@ describe("cli", () => {
 
   test("missingAssistantStreamTail returns empty tail when streamed content is not a prefix", () => {
     expect(missingAssistantStreamTail("hello there", "hello world")).toBe("");
+  });
+
+  test("mergeAssistantStreamOutput keeps streamed content when final output is shorter", () => {
+    expect(mergeAssistantStreamOutput("hello world from stream", "hello world")).toBe("hello world from stream");
+  });
+
+  test("mergeAssistantStreamOutput appends only missing suffix when final output extends stream", () => {
+    expect(mergeAssistantStreamOutput("hello ", "hello world")).toBe("hello world");
   });
 });
