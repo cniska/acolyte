@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -49,6 +49,39 @@ export function acquireSessionLock(
 
   writeFileSync(lockPath, String(myPid), { encoding: "utf8", mode: 0o644 });
   return { ok: true };
+}
+
+export function sweepStaleSessionLocks(options?: LockOptions): { removed: number; kept: number } {
+  const dir = locksDir(options);
+  if (!existsSync(dir)) return { removed: 0, kept: 0 };
+
+  let removed = 0;
+  let kept = 0;
+
+  for (const entry of readdirSync(dir)) {
+    if (!entry.endsWith(".lock")) continue;
+    const path = join(dir, entry);
+    let ownerPid: number | null = null;
+    try {
+      const ownerRaw = readFileSync(path, "utf8").trim();
+      const parsed = Number.parseInt(ownerRaw, 10);
+      if (Number.isFinite(parsed) && parsed > 0) ownerPid = parsed;
+    } catch {
+      // invalid/unreadable lock is treated as stale
+    }
+    if (ownerPid && isProcessAlive(ownerPid)) {
+      kept += 1;
+      continue;
+    }
+    try {
+      unlinkSync(path);
+      removed += 1;
+    } catch {
+      // best effort
+    }
+  }
+
+  return { removed, kept };
 }
 
 export function releaseSessionLock(sessionId: string, options?: LockOptions): void {

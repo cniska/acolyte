@@ -16,7 +16,7 @@ import {
 import { createClient } from "./client";
 import { buildFileContext } from "./file-context";
 import { ensureLocalServer } from "./server-daemon";
-import { acquireSessionLock, releaseSessionLock } from "./session-lock";
+import { acquireSessionLock, releaseSessionLock, sweepStaleSessionLocks } from "./session-lock";
 import { createId } from "./short-id";
 import { createSession, readStore, writeStore } from "./storage";
 import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
@@ -335,6 +335,7 @@ export async function chatModeWithOptions(options: { resumeLatest: boolean; resu
     store.sessions.unshift(session);
   }
   store.activeSessionId = session.id;
+  sweepStaleSessionLocks();
   const lock = acquireSessionLock(session.id);
   if (!lock.ok) {
     printError(`Session is already open in another process (pid ${lock.ownerPid}).`);
