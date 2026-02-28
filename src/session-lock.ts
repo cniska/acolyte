@@ -28,6 +28,7 @@ export function acquireSessionLock(
   sessionId: string,
   options?: LockOptions,
 ): { ok: true } | { ok: false; ownerPid: number } {
+  sweepStaleSessionLocks(options);
   mkdirSync(locksDir(options), { recursive: true });
   const lockPath = lockPathForSession(sessionId, options);
   const myPid = process.pid;
