@@ -261,7 +261,7 @@ describe("createSubagentContext", () => {
 });
 
 describe("createModeInstructions", () => {
-  test("code mode includes tool instructions from toolMeta", () => {
+  test("work mode includes tool instructions from toolMeta", () => {
     const out = createModeInstructions("work");
     expect(out).toContain("scan-code");
     expect(out).toContain("edit-code");
@@ -270,19 +270,17 @@ describe("createModeInstructions", () => {
     expect(out).toContain("run-command");
   });
 
-  test("explore mode includes tool instructions from toolMeta", () => {
+  test("plan mode includes tool instructions from toolMeta", () => {
     const out = createModeInstructions("plan");
     expect(out).toContain("find-files");
     expect(out).toContain("search-files");
     expect(out).toContain("read-file");
   });
 
-  test("code mode excludes explore tool instructions", () => {
+  test("work mode includes discovery tool instructions", () => {
     const out = createModeInstructions("work");
-    // Work mode should not include the dedicated find-files/search-files instructions
-    // (though other tools may cross-reference them as alternatives)
-    expect(out).not.toContain("Use `find-files` to locate");
-    expect(out).not.toContain("Use `search-files` to search");
+    expect(out).toContain("Use `find-files` to locate");
+    expect(out).toContain("Use `search-files` to search");
   });
 
   test("includes preamble lines", () => {
@@ -300,15 +298,14 @@ describe("createModeInstructions", () => {
 
   test("verify mode includes verification instructions", () => {
     const out = createModeInstructions("verify");
-    expect(out).toContain("verify command");
-    expect(out).toContain("confirm it exists in project tooling files");
-    expect(out).toContain("fix only files implicated");
-    expect(out).toContain("Do not re-read files");
+    expect(out).toContain("Review the changes");
+    expect(out).toContain("Report any issues found");
+    expect(out).toContain("Do not fix them");
   });
 
-  test("code mode does not include verification instructions", () => {
+  test("work mode does not include verification instructions", () => {
     const out = createModeInstructions("work");
-    expect(out).not.toContain("verify command");
+    expect(out).not.toContain("Review the changes");
   });
 });
 
@@ -323,7 +320,7 @@ describe("createInstructions", () => {
     }
   });
 
-  test("code mode includes code-specific instructions", () => {
+  test("work mode includes work-specific instructions", () => {
     const out = createInstructions("Soul.", "work");
     expect(out).toContain("edit-code");
     expect(out).toContain("AST");
@@ -331,19 +328,18 @@ describe("createInstructions", () => {
     expect(out).toContain("call `create-file` with full content");
   });
 
-  test("code mode excludes explore instructions", () => {
+  test("work mode excludes plan-only instructions", () => {
     const out = createInstructions("Soul.", "work");
-    expect(out).not.toContain("Use `find-files` to locate files by name");
     expect(out).not.toContain("Search first");
   });
 
-  test("explore mode includes explore-specific instructions", () => {
+  test("plan mode includes plan-specific instructions", () => {
     const out = createInstructions("Soul.", "plan");
     expect(out).toContain("find-files");
     expect(out).toContain("Batch multiple paths");
   });
 
-  test("explore mode excludes code instructions", () => {
+  test("plan mode excludes work instructions", () => {
     const out = createInstructions("Soul.", "plan");
     expect(out).not.toContain("edit-code` for multi-location");
     expect(out).not.toContain("Read the target file once");
@@ -365,5 +361,11 @@ describe("formatToolHeader", () => {
 
   test("formats edit-code with file path", () => {
     expect(formatToolHeader("edit-code", { path: "src/agent.ts" })).toBe("Edit src/agent.ts");
+  });
+
+  test("formats scan-code with paths only (no pattern)", () => {
+    expect(
+      formatToolHeader("scan-code", { paths: ["src/api.ts", "src/store.ts"], patterns: ["export function $NAME"] }),
+    ).toBe("Review src/api.ts, src/store.ts");
   });
 });

@@ -160,29 +160,38 @@ async function collectWorkspaceFiles(workspace: string, maxEntries = 5000): Prom
   return out;
 }
 
-export async function findFiles(workspace: string, pattern: string, maxResults = 40): Promise<string> {
-  const trimmed = pattern.trim();
-  if (!trimmed) throw new Error("Search pattern cannot be empty");
+export async function findFiles(workspace: string, patterns: string[], maxResults = 40): Promise<string> {
+  if (patterns.length === 0) throw new Error("At least one pattern is required");
   const allFiles = await collectWorkspaceFiles(workspace);
-  const needle = trimmed
-    .replace(/^\.\/+/, "")
-    .replace(/[*?]+/g, "")
-    .toLowerCase();
+  const multi = patterns.length > 1;
+  const sections: string[] = [];
 
-  const ranked = allFiles
-    .filter((path) => path.toLowerCase().includes(needle))
-    .sort((a, b) => {
-      const aLower = a.toLowerCase();
-      const bLower = b.toLowerCase();
-      const aScore = aLower === needle ? 0 : aLower.endsWith(`/${needle}`) ? 1 : 2;
-      const bScore = bLower === needle ? 0 : bLower.endsWith(`/${needle}`) ? 1 : 2;
-      if (aScore !== bScore) return aScore - bScore;
-      return a.length - b.length;
-    })
-    .slice(0, maxResults)
-    .map((path) => `./${path}`);
+  for (const pattern of patterns) {
+    const trimmed = pattern.trim();
+    if (!trimmed) continue;
+    const needle = trimmed
+      .replace(/^\.\/+/, "")
+      .replace(/[*?]+/g, "")
+      .toLowerCase();
 
-  return ranked.length > 0 ? ranked.join("\n") : "No matches.";
+    const ranked = allFiles
+      .filter((path) => path.toLowerCase().includes(needle))
+      .sort((a, b) => {
+        const aLower = a.toLowerCase();
+        const bLower = b.toLowerCase();
+        const aScore = aLower === needle ? 0 : aLower.endsWith(`/${needle}`) ? 1 : 2;
+        const bScore = bLower === needle ? 0 : bLower.endsWith(`/${needle}`) ? 1 : 2;
+        if (aScore !== bScore) return aScore - bScore;
+        return a.length - b.length;
+      })
+      .slice(0, maxResults)
+      .map((path) => `./${path}`);
+
+    if (multi) sections.push(`--- ${trimmed} ---`);
+    sections.push(ranked.length > 0 ? ranked.join("\n") : "No matches.");
+  }
+
+  return sections.join("\n");
 }
 
 export async function searchFiles(workspace: string, pattern: string, maxResults = 40): Promise<string> {
@@ -994,13 +1003,13 @@ export async function deleteTextFile(input: { workspace: string; path: string; d
 
 export async function scanCode(input: {
   workspace: string;
-  path: string;
-  pattern: string;
+  paths: string[];
+  pattern: string | string[];
   language?: string;
   maxResults?: number;
 }): Promise<string> {
-  const absPath = ensurePathWithinAllowedRoots(input.path, "Scan", input.workspace);
   const maxResults = input.maxResults ?? 50;
+  const patterns = Array.isArray(input.pattern) ? input.pattern : [input.pattern];
 
   let napi: typeof import("@ast-grep/napi");
   try {
@@ -1010,10 +1019,11 @@ export async function scanCode(input: {
   }
   await ensureDynamicLanguages(napi);
 
-  const metavars = extractMetavariables(input.pattern);
-
   type Match = { relPath: string; line: number; text: string; captures: Record<string, string> };
-  const matches: Match[] = [];
+  type PatternResult = { pattern: string; matches: Match[] };
+  const results: PatternResult[] = patterns.map((p) => ({ pattern: p, matches: [] }));
+
+  const totalMatches = () => results.reduce((sum, r) => sum + r.matches.length, 0);
 
   const scanFile = (relPath: string, content: string, lang: string): void => {
     const langEnum = napi.Lang[lang as keyof typeof napi.Lang];
@@ -1023,75 +1033,94 @@ export async function scanCode(input: {
     } catch {
       return; // skip unparseable files
     }
-    const found = tree.root().findAll({ rule: { pattern: input.pattern } });
-    for (const m of found) {
-      if (matches.length >= maxResults) return;
-      const range = m.range();
-      const text = m.text().split("\n")[0] ?? "";
-      const captures: Record<string, string> = {};
-      for (const mv of metavars) {
-        const captured = m.getMatch(mv.slice(1));
-        if (captured) captures[mv] = captured.text();
+    for (const pr of results) {
+      if (totalMatches() >= maxResults) return;
+      const metavars = extractMetavariables(pr.pattern);
+      const found = tree.root().findAll({ rule: { pattern: pr.pattern } });
+      for (const m of found) {
+        if (totalMatches() >= maxResults) return;
+        const range = m.range();
+        const text = m.text().split("\n")[0] ?? "";
+        const captures: Record<string, string> = {};
+        for (const mv of metavars) {
+          const captured = m.getMatch(mv.slice(1));
+          if (captured) captures[mv] = captured.text();
+        }
+        pr.matches.push({ relPath, line: range.start.line + 1, text, captures });
       }
-      matches.push({ relPath, line: range.start.line + 1, text, captures });
     }
   };
 
-  const info = await stat(absPath);
   let scanned = 0;
 
-  if (info.isFile()) {
-    const content = await readFile(absPath, "utf8");
-    const lang = input.language ?? languageFromPath(absPath);
-    scanned = 1;
-    scanFile(displayPathForDiff(absPath, input.workspace), content, lang);
-  } else if (info.isDirectory()) {
-    const stack: string[] = [absPath];
-    const maxFiles = 500;
-    while (stack.length > 0 && scanned < maxFiles && matches.length < maxResults) {
-      const dir = stack.pop();
-      if (!dir) break;
-      let entries: Array<{ name: string; isDirectory: () => boolean; isFile: () => boolean }>;
-      try {
-        entries = await readdir(dir, { withFileTypes: true });
-      } catch {
-        continue;
-      }
-      entries.sort((a, b) => a.name.localeCompare(b.name));
-      for (const entry of entries) {
-        if (entry.name.startsWith(".") && entry.isDirectory()) continue;
-        if (entry.isDirectory() && IGNORED_DIRS.has(entry.name)) continue;
-        const abs = join(dir, entry.name);
-        if (entry.isDirectory()) {
-          stack.push(abs);
-        } else if (entry.isFile() && isParseable(abs)) {
-          if (scanned >= maxFiles || matches.length >= maxResults) break;
-          const lang = input.language ?? languageFromPath(abs);
-          try {
-            const content = await readFile(abs, "utf8");
-            scanned++;
-            scanFile(displayPathForDiff(abs, input.workspace), content, lang);
-          } catch {
-            /* skip unreadable files */
+  const scanPath = async (rawPath: string) => {
+    const absPath = ensurePathWithinAllowedRoots(rawPath, "Scan", input.workspace);
+    const info = await stat(absPath);
+
+    if (info.isFile()) {
+      const content = await readFile(absPath, "utf8");
+      const lang = input.language ?? languageFromPath(absPath);
+      scanned++;
+      scanFile(displayPathForDiff(absPath, input.workspace), content, lang);
+    } else if (info.isDirectory()) {
+      const stack: string[] = [absPath];
+      const maxFiles = 500;
+      while (stack.length > 0 && scanned < maxFiles && totalMatches() < maxResults) {
+        const dir = stack.pop();
+        if (!dir) break;
+        let entries: Array<{ name: string; isDirectory: () => boolean; isFile: () => boolean }>;
+        try {
+          entries = await readdir(dir, { withFileTypes: true });
+        } catch {
+          continue;
+        }
+        entries.sort((a, b) => a.name.localeCompare(b.name));
+        for (const entry of entries) {
+          if (entry.name.startsWith(".") && entry.isDirectory()) continue;
+          if (entry.isDirectory() && IGNORED_DIRS.has(entry.name)) continue;
+          const abs = join(dir, entry.name);
+          if (entry.isDirectory()) {
+            stack.push(abs);
+          } else if (entry.isFile() && isParseable(abs)) {
+            if (scanned >= maxFiles || totalMatches() >= maxResults) break;
+            const lang = input.language ?? languageFromPath(abs);
+            try {
+              const content = await readFile(abs, "utf8");
+              scanned++;
+              scanFile(displayPathForDiff(abs, input.workspace), content, lang);
+            } catch {
+              /* skip unreadable files */
+            }
           }
         }
       }
+    } else {
+      throw new Error(`Path is not a file or directory: ${absPath}`);
     }
-  } else {
-    throw new Error(`Path is not a file or directory: ${absPath}`);
+  };
+
+  for (const p of input.paths) {
+    if (totalMatches() >= maxResults) break;
+    await scanPath(p);
   }
 
-  const lines: string[] = [`scanned=${scanned} matches=${matches.length}`];
-  for (const m of matches) {
-    const truncated = m.text.length > 80 ? `${m.text.slice(0, 77)}...` : m.text;
-    const captureStr =
-      Object.keys(m.captures).length > 0
-        ? `  {${Object.entries(m.captures)
-            .map(([k, v]) => `${k}=${v}`)
-            .join(", ")}}`
-        : "";
-    lines.push(`${m.relPath}:${m.line}: ${truncated}${captureStr}`);
+  const total = totalMatches();
+  const lines: string[] = [`scanned=${scanned} matches=${total}`];
+  const multi = patterns.length > 1;
+  for (const pr of results) {
+    if (multi) lines.push(`--- pattern: ${pr.pattern} ---`);
+    for (const m of pr.matches) {
+      const truncated = m.text.length > 80 ? `${m.text.slice(0, 77)}...` : m.text;
+      const captureStr =
+        Object.keys(m.captures).length > 0
+          ? `  {${Object.entries(m.captures)
+              .map(([k, v]) => `${k}=${v}`)
+              .join(", ")}}`
+          : "";
+      lines.push(`${m.relPath}:${m.line}: ${truncated}${captureStr}`);
+    }
+    if (multi && pr.matches.length === 0) lines.push("No matches.");
   }
-  if (matches.length === 0) lines.push("No matches.");
+  if (!multi && total === 0) lines.push("No matches.");
   return lines.join("\n");
 }

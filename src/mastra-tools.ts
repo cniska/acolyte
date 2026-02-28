@@ -33,7 +33,8 @@ export type ToolMeta = {
 
 export const toolMeta: Record<ToolName, ToolMeta> = {
   "find-files": {
-    instruction: "Use `find-files` to locate files by name or path pattern.",
+    instruction:
+      "Use `find-files` to locate files by name or path pattern. Always pass `patterns` as an array (e.g. [`api.ts`, `store.ts`]).",
     aliases: ["findFiles", "find_files"],
   },
   "search-files": {
@@ -63,7 +64,7 @@ export const toolMeta: Record<ToolName, ToolMeta> = {
   },
   "scan-code": {
     instruction:
-      "Use `scan-code` for AST pattern matching. Always pass `patterns` as an array (e.g. [`console.log($ARG)`]). Metavariable names (`$NAME`, `$ARG`) are wildcards — they match any node, not literal text. Batch multiple patterns in one call (e.g. [`export function $NAME`, `import $SPEC from $MOD`]). Use it to map rename/refactor targets before `edit-code`. For keyword or regex searches prefer `search-files`.",
+      "Use `scan-code` for AST pattern matching. Always pass `paths` and `patterns` as arrays. Batch multiple files and patterns in one call (e.g. paths=[`src/a.ts`, `src/b.ts`], patterns=[`export function $NAME`, `import $SPEC from $MOD`]). Metavariable names (`$NAME`, `$ARG`) are wildcards — they match any node, not literal text. Use it to map rename/refactor targets before `edit-code`. For keyword or regex searches prefer `search-files`.",
     aliases: ["scanCode", "scan_code"],
   },
   "edit-code": {
@@ -306,19 +307,22 @@ function createFindFilesTool(workspace: string, session: SessionContext) {
   return createTool({
     id: "find-files",
     description:
-      "Find files in the repository by name or path pattern. To search file contents use `search-files` instead.",
+      "Find files in the repository by name or path pattern. Pass `patterns` as an array to batch multiple lookups in one call. To search file contents use `search-files` instead.",
     inputSchema: z.object({
-      pattern: z.string().min(1),
+      patterns: z.array(z.string().min(1)).min(1),
       maxResults: z.number().int().min(1).max(200).optional(),
     }),
     execute: async (input) => {
       return withToolError("find-files", () =>
         guardedExecute("find-files", input as Record<string, unknown>, session, async () => {
           const maxResults = input.maxResults ?? 40;
-          const result = compactToolOutput(
-            await findFiles(workspace, input.pattern, maxResults),
-            appConfig.agent.toolOutputBudget.findFiles,
-          );
+          const count = input.patterns.length;
+          const baseBudget = appConfig.agent.toolOutputBudget.findFiles;
+          const budget = {
+            maxChars: Math.max(400, Math.floor(baseBudget.maxChars / count) * count),
+            maxLines: Math.max(20, Math.floor(baseBudget.maxLines / count) * count),
+          };
+          const result = compactToolOutput(await findFiles(workspace, input.patterns, maxResults), budget);
           return { result };
         }),
       );
@@ -354,9 +358,9 @@ function createScanCodeTool(workspace: string, session: SessionContext) {
   return createTool({
     id: "scan-code",
     description:
-      "Scan files for structural code patterns using AST matching. Pass ast-grep `patterns` as an array of strings with `$VAR` metavariables (e.g. [`export function $NAME($$$PARAMS)`, `import $SPEC from $MOD`]). Path can be a file or directory.",
+      "Scan files for structural code patterns using AST matching. Pass `paths` as an array of file or directory paths and `patterns` as an array of ast-grep patterns with `$VAR` metavariables (e.g. [`export function $NAME($$$PARAMS)`, `import $SPEC from $MOD`]).",
     inputSchema: z.object({
-      path: z.string().min(1),
+      paths: z.array(z.string().min(1)).min(1),
       patterns: z.array(z.string().min(1)).min(1),
       language: z.string().optional(),
       maxResults: z.number().int().min(1).max(200).optional(),
@@ -365,7 +369,7 @@ function createScanCodeTool(workspace: string, session: SessionContext) {
       return withToolError("scan-code", () =>
         guardedExecute("scan-code", input as Record<string, unknown>, session, async () => {
           const baseBudget = appConfig.agent.toolOutputBudget.scanCode;
-          const count = input.patterns.length;
+          const count = input.paths.length * input.patterns.length;
           const budget = {
             maxChars: Math.max(400, Math.floor(baseBudget.maxChars / count) * count),
             maxLines: Math.max(20, Math.floor(baseBudget.maxLines / count) * count),
@@ -373,7 +377,7 @@ function createScanCodeTool(workspace: string, session: SessionContext) {
           const result = compactToolOutput(
             await scanCode({
               workspace,
-              path: input.path,
+              paths: input.paths,
               pattern: input.patterns,
               language: input.language,
               maxResults: input.maxResults ?? 50,

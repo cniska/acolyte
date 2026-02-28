@@ -57,7 +57,7 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
   verify: {
     tools: ["scan-code", "run-command", "read-file", "git-status", "git-diff"],
     preamble: [
-      "Review the changes: one `scan-code` call per edited file with patterns like [`export function $NAME`, `import $SPEC from $MOD`]. No extra reads or searches.",
+      "Review the changes: one `scan-code` call with all edited files as `paths` and patterns like [`export function $NAME`, `import $SPEC from $MOD`]. No extra reads or searches.",
       "Then run the project's verify/test/build command if one exists. If it fails with 'script not found', stop — your scan-code review is sufficient.",
       "Report any issues found. Do not fix them — work mode will handle fixes.",
       "Do not narrate — only respond if you found issues.",

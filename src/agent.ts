@@ -315,7 +315,11 @@ export function formatToolHeader(toolName: string, args: Record<string, unknown>
       const formatted = formatPathList(paths);
       return formatted ? `${label} ${formatted}` : label;
     }
-    case "find-files":
+    case "find-files": {
+      const patterns = asStringList(args.patterns ?? args.pattern).map((p) => compactProgressDetail(p));
+      const formatted = formatPathList(patterns);
+      return formatted ? `${label} ${formatted}` : label;
+    }
     case "search-files": {
       const pattern = asString(args.pattern);
       return pattern ? `${label} ${pattern}` : label;
@@ -323,9 +327,7 @@ export function formatToolHeader(toolName: string, args: Record<string, unknown>
     case "scan-code": {
       const paths = collectPathDetails(args);
       const formatted = formatPathList(paths);
-      const pattern = asString(args.pattern);
-      const detail = [formatted, pattern].filter(Boolean).join(" ");
-      return detail ? `${label} ${detail}` : label;
+      return formatted ? `${label} ${formatted}` : label;
     }
     case "git-status":
       return `${label} .`;

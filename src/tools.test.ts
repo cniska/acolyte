@@ -451,7 +451,7 @@ describe("scanCode", () => {
     const filePath = `/tmp/acolyte-scan-${crypto.randomUUID()}.ts`;
     tempFiles.push(filePath);
     await writeFile(filePath, 'console.log("hello");\nconsole.log("world");\nconst x = 1;\n', "utf8");
-    const result = await scanCode({ workspace: WS, path: filePath, pattern: "console.log($ARG)" });
+    const result = await scanCode({ workspace: WS, paths: [filePath], pattern: "console.log($ARG)" });
     expect(result).toContain("scanned=1");
     expect(result).toContain("matches=2");
     expect(result).toContain('$ARG="hello"');
@@ -462,7 +462,7 @@ describe("scanCode", () => {
     const filePath = `/tmp/acolyte-scan-nomatch-${crypto.randomUUID()}.ts`;
     tempFiles.push(filePath);
     await writeFile(filePath, "const x = 1;\n", "utf8");
-    const result = await scanCode({ workspace: WS, path: filePath, pattern: "console.log($ARG)" });
+    const result = await scanCode({ workspace: WS, paths: [filePath], pattern: "console.log($ARG)" });
     expect(result).toContain("matches=0");
     expect(result).toContain("No matches.");
   });
@@ -473,7 +473,7 @@ describe("scanCode", () => {
     await mkdir(join(dir, "sub"), { recursive: true });
     await writeFile(join(dir, "a.ts"), 'console.log("a");\n', "utf8");
     await writeFile(join(dir, "sub", "b.ts"), 'console.log("b");\nconst y = 2;\n', "utf8");
-    const result = await scanCode({ workspace: WS, path: dir, pattern: "console.log($ARG)" });
+    const result = await scanCode({ workspace: WS, paths: [dir], pattern: "console.log($ARG)" });
     expect(result).toContain("scanned=2");
     expect(result).toContain("matches=2");
   });
@@ -483,12 +483,12 @@ describe("scanCode", () => {
     tempFiles.push(filePath);
     const lines = `${Array.from({ length: 10 }, (_, i) => `console.log("line${i}");`).join("\n")}\n`;
     await writeFile(filePath, lines, "utf8");
-    const result = await scanCode({ workspace: WS, path: filePath, pattern: "console.log($ARG)", maxResults: 3 });
+    const result = await scanCode({ workspace: WS, paths: [filePath], pattern: "console.log($ARG)", maxResults: 3 });
     expect(result).toContain("matches=3");
   });
 
   test("blocks paths outside workspace", async () => {
-    await expect(scanCode({ workspace: WS, path: "/etc/hosts", pattern: "const $X" })).rejects.toThrow(
+    await expect(scanCode({ workspace: WS, paths: ["/etc/hosts"], pattern: "const $X" })).rejects.toThrow(
       "Scan is restricted to the workspace or /tmp",
     );
   });
@@ -498,8 +498,55 @@ describe("scanCode", () => {
     tempFiles.push(filePath);
     await writeFile(filePath, "const x = 1;\n", "utf8");
     setPermissionMode("read");
-    const result = await scanCode({ workspace: WS, path: filePath, pattern: "const $X = $V" });
+    const result = await scanCode({ workspace: WS, paths: [filePath], pattern: "const $X = $V" });
     setPermissionMode(initialPermissionMode);
     expect(result).toContain("matches=1");
+  });
+
+  test("batches multiple patterns and groups output", async () => {
+    const filePath = `/tmp/acolyte-scan-batch-${crypto.randomUUID()}.ts`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, 'export function hello() {}\nexport const x = 1;\nconsole.log("test");\n', "utf8");
+    const result = await scanCode({
+      workspace: WS,
+      paths: [filePath],
+      pattern: ["export function $NAME() {}", "console.log($ARG)"],
+    });
+    expect(result).toContain("matches=2");
+    expect(result).toContain("--- pattern: export function $NAME() {} ---");
+    expect(result).toContain("--- pattern: console.log($ARG) ---");
+    expect(result).toContain("$NAME=hello");
+    expect(result).toContain('$ARG="test"');
+  });
+
+  test("multi-pattern shows No matches per pattern when empty", async () => {
+    const filePath = `/tmp/acolyte-scan-batch-empty-${crypto.randomUUID()}.ts`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, "const x = 1;\n", "utf8");
+    const result = await scanCode({
+      workspace: WS,
+      paths: [filePath],
+      pattern: ["console.log($ARG)", "import $SPEC from $MOD"],
+    });
+    expect(result).toContain("matches=0");
+    expect(result).toContain("--- pattern: console.log($ARG) ---");
+    expect(result).toContain("No matches.");
+  });
+
+  test("scans multiple files in one call", async () => {
+    const fileA = `/tmp/acolyte-scan-multi-a-${crypto.randomUUID()}.ts`;
+    const fileB = `/tmp/acolyte-scan-multi-b-${crypto.randomUUID()}.ts`;
+    tempFiles.push(fileA, fileB);
+    await writeFile(fileA, "export function foo() {}\n", "utf8");
+    await writeFile(fileB, "export function bar() {}\n", "utf8");
+    const result = await scanCode({
+      workspace: WS,
+      paths: [fileA, fileB],
+      pattern: "export function $NAME() {}",
+    });
+    expect(result).toContain("scanned=2");
+    expect(result).toContain("matches=2");
+    expect(result).toContain("$NAME=foo");
+    expect(result).toContain("$NAME=bar");
   });
 });
