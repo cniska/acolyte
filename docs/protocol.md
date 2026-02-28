@@ -64,3 +64,9 @@ Server responses:
 - `chat.error`
 - `chat.abort.result`
 - `error`
+
+Queue semantics:
+
+- Only one chat request runs per connection at a time.
+- Additional `chat.start` requests are accepted and reported as `chat.queued` with a 1-based position.
+- Queue positions are re-emitted on queue changes (abort/dequeue) so clients can keep ordering accurate.

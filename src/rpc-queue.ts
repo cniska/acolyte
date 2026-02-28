@@ -10,6 +10,10 @@ export type QueueAbortResult = {
   updates: Array<{ id: string; position: number }>;
 };
 
+export function queuePositionUpdates(queue: QueuedRpcChatEntry[]): Array<{ id: string; position: number }> {
+  return queue.map((item, position) => ({ id: item.id, position: position + 1 }));
+}
+
 export function removeQueuedChatById(queue: QueuedRpcChatEntry[], requestId: string): QueueAbortResult {
   const index = queue.findIndex((item) => item.id === requestId);
   if (index === -1) return { removed: false, updates: [] };
@@ -17,6 +21,6 @@ export function removeQueuedChatById(queue: QueuedRpcChatEntry[], requestId: str
   queue.splice(index, 1);
   return {
     removed: true,
-    updates: queue.map((item, position) => ({ id: item.id, position: position + 1 })),
+    updates: queuePositionUpdates(queue),
   };
 }

@@ -577,4 +577,65 @@ describe("rpc websocket lifecycle", () => {
     expect(reply.output).toBe("done");
     expect(receivedEventTypes).toEqual(["tool-call"]);
   });
+
+  test("replyStream sends chat.abort control message on abort signal", async () => {
+    const sent: Array<{ id?: string; type?: string; payload?: Record<string, unknown> }> = [];
+
+    class MockWebSocket {
+      private listeners = new Map<string, Set<(event: unknown) => void>>();
+      private closed = false;
+
+      constructor(public readonly url: string) {
+        void this.url;
+        queueMicrotask(() => this.emit("open", {}));
+      }
+
+      addEventListener(type: string, listener: (event: unknown) => void): void {
+        const set = this.listeners.get(type) ?? new Set();
+        set.add(listener);
+        this.listeners.set(type, set);
+      }
+
+      removeEventListener(type: string, listener: (event: unknown) => void): void {
+        this.listeners.get(type)?.delete(listener);
+      }
+
+      send(payload: string): void {
+        sent.push(JSON.parse(payload) as { id?: string; type?: string; payload?: Record<string, unknown> });
+      }
+
+      close(): void {
+        if (this.closed) return;
+        this.closed = true;
+        this.emit("close", {});
+      }
+
+      private emit(type: string, event: unknown): void {
+        for (const listener of this.listeners.get(type) ?? []) listener(event);
+      }
+    }
+
+    globalThis.WebSocket = MockWebSocket as unknown as typeof WebSocket;
+    const client = createClient({ apiUrl: "http://localhost:6767", transportMode: "rpc" });
+    const abortController = new AbortController();
+
+    const run = client.replyStream(
+      { message: "hi", history: [], model: "gpt-5-mini", sessionId: "sess_rpc_abort" },
+      { onEvent: () => {}, signal: abortController.signal },
+    );
+
+    await Promise.resolve();
+    abortController.abort();
+
+    await expect(run).rejects.toThrow("Request aborted");
+    expect(sent.some((msg) => msg.type === "chat.start")).toBe(true);
+    expect(
+      sent.some(
+        (msg) =>
+          msg.type === "chat.abort" &&
+          typeof msg.payload?.requestId === "string" &&
+          msg.payload.requestId.startsWith("rpc_"),
+      ),
+    ).toBe(true);
+  });
 });

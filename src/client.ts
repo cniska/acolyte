@@ -490,6 +490,7 @@ class RpcClient implements Client {
     const id = `rpc_${createId()}`;
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
     const timeoutMs = this.replyTimeoutMs;
+    const RPC_ABORT_CLOSE_GRACE_MS = 120;
 
     const resetTimeout = (): void => {
       if (typeof timeoutMs !== "number") return;
@@ -525,11 +526,13 @@ class RpcClient implements Client {
           // Best effort only.
         }
         cleanup();
-        try {
-          ws.close();
-        } catch {
-          // ignore
-        }
+        setTimeout(() => {
+          try {
+            ws.close();
+          } catch {
+            // ignore
+          }
+        }, RPC_ABORT_CLOSE_GRACE_MS);
         reject(new Error("Request aborted"));
       };
       const onClose = () => {

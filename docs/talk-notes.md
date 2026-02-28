@@ -24,6 +24,7 @@
 - Verification as default behavior, not optional advice.
 - Streaming + traces make failures diagnosable after real runs.
 - Memory that is explicit, scoped, and user-correctable.
+- Transport-ready architecture: HTTP baseline plus RPC for two-way control (queueing, cancellation, fast handoff).
 
 ## Demo Flow (Short)
 

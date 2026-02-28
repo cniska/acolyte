@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { type QueuedRpcChatEntry, removeQueuedChatById } from "./rpc-queue";
+import { type QueuedRpcChatEntry, queuePositionUpdates, removeQueuedChatById } from "./rpc-queue";
 
 describe("rpc queue", () => {
   test("removeQueuedChatById removes target and reindexes remaining queue", () => {
@@ -25,5 +25,17 @@ describe("rpc queue", () => {
     expect(result.removed).toBe(false);
     expect(queue.map((item) => item.id)).toEqual(["chat_1"]);
     expect(result.updates).toEqual([]);
+  });
+
+  test("queuePositionUpdates returns 1-based positions for queued chats", () => {
+    const queue: QueuedRpcChatEntry[] = [
+      { id: "chat_1", state: { aborted: false } },
+      { id: "chat_2", state: { aborted: false } },
+    ];
+
+    expect(queuePositionUpdates(queue)).toEqual([
+      { id: "chat_1", position: 1 },
+      { id: "chat_2", position: 2 },
+    ]);
   });
 });

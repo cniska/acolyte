@@ -60,6 +60,8 @@ Development:
 - Prefer root-cause fixes over workarounds. No tech debt without explicit agreement and `TODO(username):`.
 - Prefer prompt/tool-contract improvements over host-side task-classification logic.
 - Extra scrutiny on chat-feature changes: clear UX intent, regression tests, smoke run.
+- Prefer interface-first seams at subsystem boundaries (client transport, lifecycle policy, guards, tools).
+- Keep behavior behind stable contracts so new transports/integrations are additive, not rewrites.
 
 ## Validation
 

@@ -15,6 +15,7 @@ Update rule:
 - `@path` file/directory attachments.
 - Slash command support.
 - Skill invocation via slash commands.
+- HTTP and RPC transport support.
 
 ## Agent Execution
 
@@ -43,6 +44,7 @@ Update rule:
 - Read/write permission modes.
 - Workspace and temp-root path guardrails.
 - Write confirmation flow in read mode.
+- Cooperative interruption and queued message handling over RPC.
 
 ## Diagnostics
 

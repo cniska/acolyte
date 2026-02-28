@@ -12,7 +12,7 @@ import { getObservationalMemoryConfig } from "./memory-config";
 import { formatServerCapabilities, PROTOCOL_VERSION } from "./protocol";
 import { formatModel, isProviderAvailable, providerFromModel, resolveProvider } from "./provider-config";
 import { rpcClientMessageSchema } from "./rpc-protocol";
-import { removeQueuedChatById } from "./rpc-queue";
+import { queuePositionUpdates, removeQueuedChatById } from "./rpc-queue";
 import { createId } from "./short-id";
 import { createSoulPrompt, getMemoryContextEntries } from "./soul";
 import type { StreamErrorDetail } from "./stream-error";
@@ -583,6 +583,9 @@ const server = Bun.serve<RpcConnectionState>({
           while (ws.data.queue.length > 0) {
             const next = ws.data.queue.shift();
             if (!next || next.state.aborted) continue;
+            for (const update of queuePositionUpdates(ws.data.queue)) {
+              sendForId(update.id, { type: "chat.queued", position: update.position });
+            }
             startChat(next.id, next.request, next.state);
             return;
           }
