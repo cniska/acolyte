@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { createClient, parseStreamEvent } from "./client";
+import { createClient, parseStreamEvent, rpcUrlFromApiUrl } from "./client";
 
 const originalFetch = globalThis.fetch;
 
@@ -303,6 +303,8 @@ describe("remote server status parsing", () => {
           ok: true,
           provider: "openai",
           model: "gpt-5-mini",
+          protocolVersion: "1",
+          capabilities: "stream.sse, error.structured",
           permissions: "write",
           service: "http://localhost:6767",
           memory: "postgres (4 entries)",
@@ -320,6 +322,8 @@ describe("remote server status parsing", () => {
     expect(status).toEqual({
       provider: "openai",
       model: "gpt-5-mini",
+      protocolVersion: "1",
+      capabilities: "stream.sse, error.structured",
       permissions: "write",
       service: "http://localhost:6767",
       memory: "postgres (4 entries)",
@@ -472,5 +476,35 @@ describe("stream event parsing", () => {
 describe("createClient", () => {
   test("throws when no apiUrl is configured", () => {
     expect(() => createClient({ apiUrl: "" })).toThrow("No API URL configured");
+  });
+
+  test("uses injected transport when provided", async () => {
+    const calls: Array<{ path: string; method: string | null }> = [];
+    const client = createClient({
+      transport: {
+        apiUrl: "rpc://local",
+        request: async (path, init) => {
+          calls.push({ path, method: init?.method ?? null });
+          if (path === "/v1/status") {
+            return new Response(JSON.stringify({ ok: true, provider: "mock" }), { status: 200 });
+          }
+          throw new Error("unexpected path");
+        },
+      },
+    });
+
+    const status = await client.status();
+    expect(status).toEqual({ provider: "mock" });
+    expect(calls).toEqual([{ path: "/v1/status", method: null }]);
+  });
+});
+
+describe("rpc url helpers", () => {
+  test("rpcUrlFromApiUrl maps http base url to ws rpc endpoint", () => {
+    expect(rpcUrlFromApiUrl("http://localhost:6767")).toBe("ws://localhost:6767/v1/rpc");
+  });
+
+  test("rpcUrlFromApiUrl preserves explicit rpc path", () => {
+    expect(rpcUrlFromApiUrl("ws://localhost:6767/v1/rpc")).toBe("ws://localhost:6767/v1/rpc");
   });
 });

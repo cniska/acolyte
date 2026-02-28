@@ -1,6 +1,7 @@
 import { appConfig } from "./app-config";
 import { type ChatRow, createRow } from "./chat-commands";
 import type { PickerState } from "./chat-picker";
+import type { PermissionMode } from "./config-modes";
 import type { Session, SessionStore } from "./types";
 
 type PickerByKind = {
@@ -44,7 +45,7 @@ export function createResumeRows(session: Session, toRows: (messages: Session["m
 }
 
 export function createPermissionsPicker(): PickerState {
-  const items: Array<{ mode: "read" | "write"; description: string }> = [
+  const items: Array<{ mode: PermissionMode; description: string }> = [
     { mode: "read", description: "inspect/search only" },
     { mode: "write", description: "allow edits and shell commands" },
   ];

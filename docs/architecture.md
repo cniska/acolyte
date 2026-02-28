@@ -21,6 +21,7 @@ The lifecycle is the orchestrator. It decides how a request runs, what mode it i
 - Mode layer: mode definitions and transitions
 - Tool layer: tool wiring and concrete tool implementations
 - Guard layer: protection against unsafe or repetitive behavior
+- Protocol layer: transport-agnostic client/server contract (see `docs/protocol.md`)
 
 ## Lifecycle contract
 

@@ -441,6 +441,7 @@ async function configMode(args: string[]): Promise<void> {
     "googleBaseUrl",
     "permissionMode",
     "logFormat",
+    "transportMode",
     "omObservationTokens",
     "omReflectionTokens",
     "contextMaxTokens",

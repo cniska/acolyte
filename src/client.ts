@@ -1,12 +1,17 @@
 import { z } from "zod";
 import type { ChatRequest, ChatResponse } from "./api";
-import { appConfig, type PermissionMode } from "./app-config";
+import { appConfig } from "./app-config";
+import type { PermissionMode, TransportMode } from "./config-modes";
+import { rpcServerMessageSchema } from "./rpc-protocol";
+import { createId } from "./short-id";
 import { streamErrorDetailSchema } from "./stream-error";
 
 export interface ClientOptions {
   apiUrl?: string;
   apiKey?: string;
   replyTimeoutMs?: number;
+  transport?: ClientTransport;
+  transportMode?: TransportMode;
 }
 
 export const streamEventSchema = z.discriminatedUnion("type", [
@@ -82,7 +87,26 @@ function connectionHelpMessage(apiUrl: string): string {
   return `Cannot reach server at ${apiUrl}. Start it with: acolyte serve`;
 }
 
-type ClientTransport = {
+export function rpcUrlFromApiUrl(apiUrl: string): string {
+  const source = new URL(apiUrl);
+  const protocol = source.protocol === "https:" ? "wss:" : source.protocol === "http:" ? "ws:" : source.protocol;
+  const basePath = source.pathname.replace(/\/$/, "");
+  const path = basePath.endsWith("/v1/rpc") ? basePath : `${basePath}/v1/rpc`;
+  source.protocol = protocol;
+  source.pathname = path;
+  source.search = "";
+  source.hash = "";
+  return source.toString();
+}
+
+function resolveTransportMode(apiUrl: string | undefined, explicit?: TransportMode): "http" | "rpc" {
+  if (explicit === "http" || explicit === "rpc") return explicit;
+  if (!apiUrl) return "http";
+  if (apiUrl.startsWith("ws://") || apiUrl.startsWith("wss://")) return "rpc";
+  return "http";
+}
+
+export type ClientTransport = {
   apiUrl: string;
   request: (path: string, init?: RequestInit) => Promise<Response>;
 };
@@ -94,6 +118,10 @@ class HttpTransport implements ClientTransport {
     const url = `${this.apiUrl.replace(/\/$/, "")}${path}`;
     return fetch(url, init);
   }
+}
+
+export function createHttpTransport(apiUrl: string): ClientTransport {
+  return new HttpTransport(apiUrl);
 }
 
 class HttpClient implements Client {
@@ -321,6 +349,224 @@ class HttpClient implements Client {
   }
 }
 
+function parseRpcServerMessage(raw: unknown): z.infer<typeof rpcServerMessageSchema> | null {
+  const parsed = rpcServerMessageSchema.safeParse(raw);
+  return parsed.success ? parsed.data : null;
+}
+
+class RpcClient implements Client {
+  constructor(
+    private readonly apiUrl: string,
+    private readonly apiKey?: string,
+    private readonly replyTimeoutMs?: number,
+  ) {}
+
+  private rpcUrl(): string {
+    const url = new URL(rpcUrlFromApiUrl(this.apiUrl));
+    if (this.apiKey) url.searchParams.set("apiKey", this.apiKey);
+    return url.toString();
+  }
+
+  private async openSocket(): Promise<WebSocket> {
+    const url = this.rpcUrl();
+    return await new Promise<WebSocket>((resolve, reject) => {
+      let settled = false;
+      let socket: WebSocket;
+      try {
+        socket = new WebSocket(url);
+      } catch (error) {
+        if (isConnectionFailure(error)) reject(new Error(connectionHelpMessage(this.apiUrl)));
+        else reject(error);
+        return;
+      }
+      const cleanup = () => {
+        socket.removeEventListener("open", onOpen);
+        socket.removeEventListener("error", onError);
+      };
+      const onOpen = () => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        resolve(socket);
+      };
+      const onError = () => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(new Error(connectionHelpMessage(this.apiUrl)));
+      };
+      socket.addEventListener("open", onOpen);
+      socket.addEventListener("error", onError);
+    });
+  }
+
+  async status(): Promise<Record<string, string>> {
+    const ws = await this.openSocket();
+    const id = `rpc_${createId()}`;
+    return await new Promise<Record<string, string>>((resolve, reject) => {
+      const cleanup = () => {
+        ws.removeEventListener("message", onMessage);
+        ws.removeEventListener("close", onClose);
+        try {
+          ws.close();
+        } catch {
+          // ignore
+        }
+      };
+      const onClose = () => {
+        cleanup();
+        reject(new Error("RPC connection closed before status response"));
+      };
+      const onMessage = (event: MessageEvent) => {
+        let raw: unknown;
+        try {
+          raw = JSON.parse(typeof event.data === "string" ? event.data : String(event.data));
+        } catch {
+          return;
+        }
+        const msg = parseRpcServerMessage(raw);
+        if (!msg || msg.id !== id) return;
+        cleanup();
+        if (msg.type === "status.result") resolve(msg.status);
+        else if (msg.type === "error") reject(new Error(msg.error));
+        else reject(new Error(`Unexpected RPC response: ${msg.type}`));
+      };
+      ws.addEventListener("message", onMessage);
+      ws.addEventListener("close", onClose);
+      ws.send(JSON.stringify({ id, type: "status.get" }));
+    });
+  }
+
+  async setPermissionMode(mode: PermissionMode): Promise<void> {
+    const ws = await this.openSocket();
+    const id = `rpc_${createId()}`;
+    return await new Promise<void>((resolve, reject) => {
+      const cleanup = () => {
+        ws.removeEventListener("message", onMessage);
+        ws.removeEventListener("close", onClose);
+        try {
+          ws.close();
+        } catch {
+          // ignore
+        }
+      };
+      const onClose = () => {
+        cleanup();
+        reject(new Error("RPC connection closed before permission response"));
+      };
+      const onMessage = (event: MessageEvent) => {
+        let raw: unknown;
+        try {
+          raw = JSON.parse(typeof event.data === "string" ? event.data : String(event.data));
+        } catch {
+          return;
+        }
+        const msg = parseRpcServerMessage(raw);
+        if (!msg || msg.id !== id) return;
+        cleanup();
+        if (msg.type === "permissions.result") resolve();
+        else if (msg.type === "error") reject(new Error(msg.error));
+        else reject(new Error(`Unexpected RPC response: ${msg.type}`));
+      };
+      ws.addEventListener("message", onMessage);
+      ws.addEventListener("close", onClose);
+      ws.send(JSON.stringify({ id, type: "permissions.set", payload: { mode } }));
+    });
+  }
+
+  async replyStream(
+    input: ChatRequest,
+    options: {
+      onEvent: (event: StreamEvent) => void;
+      signal?: AbortSignal;
+    },
+  ): Promise<ChatResponse> {
+    const ws = await this.openSocket();
+    const id = `rpc_${createId()}`;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const timeoutMs = this.replyTimeoutMs;
+
+    const resetTimeout = (): void => {
+      if (typeof timeoutMs !== "number") return;
+      if (timeoutId !== undefined) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        try {
+          ws.close();
+        } catch {
+          // ignore
+        }
+      }, timeoutMs);
+    };
+
+    resetTimeout();
+
+    return await new Promise<ChatResponse>((resolve, reject) => {
+      const cleanup = () => {
+        if (timeoutId !== undefined) clearTimeout(timeoutId);
+        ws.removeEventListener("message", onMessage);
+        ws.removeEventListener("close", onClose);
+        if (options.signal) options.signal.removeEventListener("abort", onAbort);
+      };
+      const onAbort = () => {
+        cleanup();
+        try {
+          ws.close();
+        } catch {
+          // ignore
+        }
+        reject(new Error("Request aborted"));
+      };
+      const onClose = () => {
+        cleanup();
+        reject(new Error("RPC stream closed before final reply"));
+      };
+      const onMessage = (event: MessageEvent) => {
+        resetTimeout();
+        let raw: unknown;
+        try {
+          raw = JSON.parse(typeof event.data === "string" ? event.data : String(event.data));
+        } catch {
+          return;
+        }
+        const msg = parseRpcServerMessage(raw);
+        if (!msg || msg.id !== id) return;
+        if (msg.type === "chat.event") {
+          const parsed = parseStreamEvent(msg.event);
+          if (parsed) options.onEvent(parsed);
+          return;
+        }
+        cleanup();
+        try {
+          ws.close();
+        } catch {
+          // ignore
+        }
+        if (msg.type === "chat.done") {
+          const reply = parseChatResponse(msg.reply, input.model);
+          if (!reply) return reject(new Error("RPC stream returned invalid done payload"));
+          return resolve(reply);
+        }
+        if (msg.type === "chat.error") {
+          options.onEvent({
+            type: "error",
+            error: msg.error,
+            errorCode: msg.errorCode,
+            errorDetail: msg.errorDetail,
+          });
+          return reject(createRemoteError(msg.error, { errorCode: msg.errorCode, errorDetail: msg.errorDetail }));
+        }
+        if (msg.type === "error") return reject(new Error(msg.error));
+        reject(new Error(`Unexpected RPC response: ${msg.type}`));
+      };
+
+      ws.addEventListener("message", onMessage);
+      ws.addEventListener("close", onClose);
+      if (options.signal) options.signal.addEventListener("abort", onAbort, { once: true });
+      ws.send(JSON.stringify({ id, type: "chat.start", payload: { request: input } }));
+    });
+  }
+}
+
 export function parseStreamEvent(raw: unknown): StreamEvent | null {
   const result = streamEventSchema.safeParse(raw);
   return result.success ? result.data : null;
@@ -363,8 +609,16 @@ function parseChatResponse(payload: unknown, fallbackModel: string): ChatRespons
 
 export function createClient(options?: ClientOptions): Client {
   const apiUrl = options?.apiUrl ?? appConfig.server.apiUrl;
-  if (!apiUrl) throw new Error("No API URL configured. Start the server with: acolyte serve");
   const apiKey = options?.apiKey ?? appConfig.server.apiKey;
   const replyTimeoutMs = options?.replyTimeoutMs;
-  return new HttpClient(new HttpTransport(apiUrl), apiKey, replyTimeoutMs);
+  const mode = resolveTransportMode(apiUrl, options?.transportMode ?? appConfig.server.transportMode);
+
+  if (mode === "rpc") {
+    if (!apiUrl) throw new Error("No API URL configured. Start the server with: acolyte serve");
+    return new RpcClient(apiUrl, apiKey, replyTimeoutMs);
+  }
+
+  const transport = options?.transport ?? (apiUrl ? createHttpTransport(apiUrl) : null);
+  if (!transport) throw new Error("No API URL configured. Start the server with: acolyte serve");
+  return new HttpClient(transport, apiKey, replyTimeoutMs);
 }

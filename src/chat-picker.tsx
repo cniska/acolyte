@@ -1,13 +1,14 @@
 import { Text } from "ink";
 import type React from "react";
 import { formatRelativeTime } from "./chat-format";
+import type { PermissionMode } from "./config-modes";
 import type { SkillMeta } from "./skills";
 import type { Session } from "./types";
 
 export type PickerState =
   | { kind: "skills"; items: SkillMeta[]; index: number }
   | { kind: "resume"; items: Session[]; index: number }
-  | { kind: "permissions"; items: Array<{ mode: "read" | "write"; description: string }>; index: number }
+  | { kind: "permissions"; items: Array<{ mode: PermissionMode; description: string }>; index: number }
   | {
       kind: "clarifyAnswer";
       originalPrompt: string;

@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import { existsSync, statSync } from "node:fs";
 import { resolve } from "node:path";
+import type { z } from "zod";
 import { runAgent } from "./agent";
 import type { ChatRequest } from "./api";
 import { appConfig, setPermissionMode } from "./app-config";
@@ -8,7 +9,9 @@ import { buildStreamErrorDetail } from "./error-handling";
 import { errorToLogFields, log } from "./log";
 import { mastraStorage, mastraStorageMode } from "./mastra-storage";
 import { getObservationalMemoryConfig } from "./memory-config";
+import { formatServerCapabilities, PROTOCOL_VERSION } from "./protocol";
 import { formatModel, isProviderAvailable, providerFromModel, resolveProvider } from "./provider-config";
+import { rpcClientMessageSchema } from "./rpc-protocol";
 import { createId } from "./short-id";
 import { createSoulPrompt, getMemoryContextEntries } from "./soul";
 import type { StreamErrorDetail } from "./stream-error";
@@ -116,6 +119,18 @@ type WorkspaceResolution = {
   workspaceMode: "default" | "path";
 };
 
+type StatusPayload = {
+  ok: true;
+  provider: string;
+  model: string;
+  protocolVersion: string;
+  capabilities: string;
+  permissions: string;
+  service: string;
+  memory: string;
+  observational_memory: string;
+};
+
 function resolveWorkspacePath(request: Pick<ChatRequest, "workspace">): WorkspaceResolution {
   if (!request.workspace) return { workspacePath: resolve(process.cwd()), workspaceMode: "default" };
   const resolved = resolve(request.workspace);
@@ -124,17 +139,144 @@ function resolveWorkspacePath(request: Pick<ChatRequest, "workspace">): Workspac
   return { workspacePath: resolved, workspaceMode: "path" };
 }
 
-function hasValidAuth(req: Request): boolean {
+function hasValidAuth(req: Request, url?: URL): boolean {
   if (!API_KEY) return true;
 
   const auth = req.headers.get("authorization");
-  return auth === `Bearer ${API_KEY}`;
+  if (auth === `Bearer ${API_KEY}`) return true;
+  return url?.searchParams.get("apiKey") === API_KEY;
 }
 
 function resolveResourceId(url: URL): string {
   const candidate = url.searchParams.get("resourceId")?.trim();
   if (candidate) return candidate;
   return appConfig.memory.resourceId;
+}
+
+async function buildStatusPayload(): Promise<StatusPayload> {
+  const model = appConfig.model;
+  const providerConfig = {
+    openaiApiKey: OPENAI_API_KEY,
+    openaiBaseUrl: OPENAI_BASE_URL,
+    anthropicApiKey: appConfig.anthropic.apiKey,
+    googleApiKey: appConfig.google.apiKey,
+  };
+  const modelProvider = providerFromModel(model);
+  const providerReady = isProviderAvailable({ provider: modelProvider, ...providerConfig });
+  const provider = providerReady
+    ? modelProvider === "openai"
+      ? resolveProvider(OPENAI_API_KEY, OPENAI_BASE_URL)
+      : modelProvider
+    : "mock";
+  const memoryContextCount = (await getMemoryContextEntries()).length;
+  return {
+    ok: true,
+    provider,
+    model: formatModel(model),
+    protocolVersion: PROTOCOL_VERSION,
+    capabilities: formatServerCapabilities(),
+    permissions: appConfig.agent.permissions.mode,
+    service: `http://localhost:${PORT}`,
+    memory: memoryContextCount > 0 ? `${mastraStorageMode} (${memoryContextCount} entries)` : mastraStorageMode,
+    observational_memory: `enabled (${omConfig.scope})`,
+  };
+}
+
+type RunChatHandlers = {
+  path: string;
+  method: string;
+  onEvent: (event: Record<string, unknown>) => void;
+  onDone: (reply: Awaited<ReturnType<typeof runAgent>>) => void;
+  onError: (payload: ReturnType<typeof streamErrorPayload>) => void;
+};
+
+async function runChatRequest(chatRequest: ChatRequest, handlers: RunChatHandlers): Promise<void> {
+  const requestId = nextErrorId();
+  const startedAt = Date.now();
+  let workspaceResolution: WorkspaceResolution;
+  try {
+    workspaceResolution = resolveWorkspacePath(chatRequest);
+  } catch (error) {
+    const payload = streamErrorPayload(error);
+    handlers.onError(payload);
+    return;
+  }
+
+  log.info("chat request started", {
+    request_id: requestId,
+    session_id: chatRequest.sessionId ?? null,
+    model: chatRequest.model,
+    history_messages: chatRequest.history.length,
+    message_chars: chatRequest.message.length,
+    has_resource_id: Boolean(chatRequest.resourceId),
+    workspace_mode: workspaceResolution.workspaceMode,
+    transport_path: handlers.path,
+  });
+
+  try {
+    const soulPrompt = await createSoulPrompt();
+    const reply = await runAgent({
+      request: chatRequest,
+      soulPrompt,
+      workspace: workspaceResolution.workspacePath,
+      onEvent: (event) => {
+        handlers.onEvent(event as Record<string, unknown>);
+      },
+      onDebug: (entry) => {
+        log.info("agent debug", {
+          request_id: requestId,
+          session_id: chatRequest.sessionId ?? null,
+          event: entry.event,
+          sequence: entry.sequence,
+          phase_attempt: entry.phaseAttempt,
+          event_ts: entry.ts,
+          ...(entry.fields ?? {}),
+        });
+      },
+    });
+    const durationMs = Date.now() - startedAt;
+    log.info("chat request completed", {
+      request_id: requestId,
+      session_id: chatRequest.sessionId ?? null,
+      model: reply.model,
+      duration_ms: durationMs,
+      model_calls: reply.modelCalls ?? null,
+      tool_count: reply.toolCalls?.length ?? 0,
+      tools: reply.toolCalls?.join(",") ?? "",
+      prompt_tokens: reply.usage?.promptTokens ?? null,
+      completion_tokens: reply.usage?.completionTokens ?? null,
+      stream: true,
+      transport_path: handlers.path,
+    });
+    handlers.onDone(reply);
+  } catch (error) {
+    const payload = streamErrorPayload(error);
+    log.error("chat stream failed", {
+      request_id: requestId,
+      session_id: chatRequest.sessionId ?? null,
+      path: handlers.path,
+      method: handlers.method,
+      model: chatRequest.model,
+      ...errorToLogFields(error),
+    });
+    handlers.onError(payload);
+  }
+}
+
+type RpcConnectionState = {
+  authed: boolean;
+};
+
+function parseRpcMessage(raw: string | Buffer | Uint8Array): z.infer<typeof rpcClientMessageSchema> | null {
+  const text = typeof raw === "string" ? raw : Buffer.from(raw).toString("utf8");
+  let parsedJson: unknown;
+  try {
+    parsedJson = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  const parsed = rpcClientMessageSchema.safeParse(parsedJson);
+  return parsed.success ? parsed.data : null;
 }
 
 try {
@@ -146,37 +288,14 @@ try {
   process.exit(1);
 }
 
-const server = Bun.serve({
+const server = Bun.serve<RpcConnectionState>({
   port: PORT,
   idleTimeout: SERVER_IDLE_TIMEOUT_SECONDS,
   async fetch(req) {
     const url = new URL(req.url);
 
     if (url.pathname === "/v1/status" && req.method === "GET") {
-      const model = appConfig.model;
-      const providerConfig = {
-        openaiApiKey: OPENAI_API_KEY,
-        openaiBaseUrl: OPENAI_BASE_URL,
-        anthropicApiKey: appConfig.anthropic.apiKey,
-        googleApiKey: appConfig.google.apiKey,
-      };
-      const modelProvider = providerFromModel(model);
-      const providerReady = isProviderAvailable({ provider: modelProvider, ...providerConfig });
-      const provider = providerReady
-        ? modelProvider === "openai"
-          ? resolveProvider(OPENAI_API_KEY, OPENAI_BASE_URL)
-          : modelProvider
-        : "mock";
-      const memoryContextCount = (await getMemoryContextEntries()).length;
-      return json({
-        ok: true,
-        provider,
-        model: formatModel(model),
-        permissions: appConfig.agent.permissions.mode,
-        service: `http://localhost:${PORT}`,
-        memory: memoryContextCount > 0 ? `${mastraStorageMode} (${memoryContextCount} entries)` : mastraStorageMode,
-        observational_memory: `enabled (${omConfig.scope})`,
-      });
+      return json(await buildStatusPayload());
     }
 
     if (url.pathname === "/v1/admin/om/status" && req.method === "GET") {
@@ -273,6 +392,18 @@ const server = Bun.serve({
       return json({ ok: true, permissionMode: appConfig.agent.permissions.mode });
     }
 
+    if (url.pathname === "/v1/rpc") {
+      if (!hasValidAuth(req, url)) {
+        log.warn("unauthorized request", {
+          path: url.pathname,
+          method: req.method,
+        });
+        return unauthorized();
+      }
+      if (server.upgrade(req, { data: { authed: true } })) return;
+      return badRequest("WebSocket upgrade failed");
+    }
+
     const isChatStreamRoute = url.pathname === "/v1/chat/stream" && req.method === "POST";
     if (!isChatStreamRoute) return new Response("Not Found", { status: 404 });
 
@@ -303,26 +434,8 @@ const server = Bun.serve({
       return badRequest("Invalid request shape");
     }
 
-    const requestId = nextErrorId();
-    const startedAt = Date.now();
     const chatRequest = payload as ChatRequest;
 
-    let workspaceResolution: WorkspaceResolution;
-    try {
-      workspaceResolution = resolveWorkspacePath(chatRequest);
-    } catch (error) {
-      return badRequest(error instanceof Error ? error.message : "Invalid workspace");
-    }
-
-    log.info("chat request started", {
-      request_id: requestId,
-      session_id: chatRequest.sessionId ?? null,
-      model: chatRequest.model,
-      history_messages: chatRequest.history.length,
-      message_chars: chatRequest.message.length,
-      has_resource_id: Boolean(chatRequest.resourceId),
-      workspace_mode: workspaceResolution.workspaceMode,
-    });
     const encoder = new TextEncoder();
     let closed = false;
     const SSE_KEEPALIVE_INTERVAL_MS = 15_000;
@@ -350,51 +463,13 @@ const server = Bun.serve({
         }, SSE_KEEPALIVE_INTERVAL_MS);
         void (async () => {
           try {
-            const soulPrompt = await createSoulPrompt();
-            const reply = await runAgent({
-              request: chatRequest,
-              soulPrompt,
-              workspace: workspaceResolution.workspacePath,
-              onEvent: (event) => {
-                send(event);
-              },
-              onDebug: (entry) => {
-                log.info("agent debug", {
-                  request_id: requestId,
-                  session_id: chatRequest.sessionId ?? null,
-                  event: entry.event,
-                  sequence: entry.sequence,
-                  phase_attempt: entry.phaseAttempt,
-                  event_ts: entry.ts,
-                  ...(entry.fields ?? {}),
-                });
-              },
-            });
-            const durationMs = Date.now() - startedAt;
-            log.info("chat request completed", {
-              request_id: requestId,
-              session_id: chatRequest.sessionId ?? null,
-              model: reply.model,
-              duration_ms: durationMs,
-              model_calls: reply.modelCalls ?? null,
-              tool_count: reply.toolCalls?.length ?? 0,
-              tools: reply.toolCalls?.join(",") ?? "",
-              prompt_tokens: reply.usage?.promptTokens ?? null,
-              completion_tokens: reply.usage?.completionTokens ?? null,
-              stream: true,
-            });
-            send({ type: "done", reply });
-          } catch (error) {
-            const payload = streamErrorPayload(error);
-            log.error("chat stream failed", {
-              request_id: requestId,
-              session_id: chatRequest.sessionId ?? null,
+            await runChatRequest(chatRequest, {
               path: url.pathname,
               method: req.method,
-              model: chatRequest.model,
-              ...errorToLogFields(error),
+              onEvent: (event) => send(event),
+              onDone: (reply) => send({ type: "done", reply }),
+              onError: (payload) => send({ type: "error", ...payload }),
             });
-            send({ type: "error", ...payload });
           } finally {
             clearInterval(keepaliveId);
             if (!closed) {
@@ -419,6 +494,50 @@ const server = Bun.serve({
         connection: "keep-alive",
       },
     });
+  },
+  websocket: {
+    async message(ws, raw) {
+      if (!ws.data.authed) {
+        ws.close(1008, "unauthorized");
+        return;
+      }
+      const message = parseRpcMessage(raw);
+      if (!message) {
+        ws.send(JSON.stringify({ id: "unknown", type: "error", error: "Invalid RPC message" }));
+        return;
+      }
+
+      const send = (payload: Record<string, unknown>): void => {
+        ws.send(JSON.stringify({ id: message.id, ...payload }));
+      };
+
+      if (message.type === "status.get") {
+        send({ type: "status.result", status: await buildStatusPayload() });
+        return;
+      }
+
+      if (message.type === "permissions.set") {
+        const mode = message.payload.mode;
+        setPermissionMode(mode);
+        send({ type: "permissions.result", permissionMode: appConfig.agent.permissions.mode });
+        return;
+      }
+
+      if (message.type === "chat.start") {
+        const request = message.payload.request;
+        if (!isChatRequest(request)) return send({ type: "error", error: "Invalid request shape" });
+        await runChatRequest(request, {
+          path: "/v1/rpc",
+          method: "WS",
+          onEvent: (event) => send({ type: "chat.event", event }),
+          onDone: (reply) => send({ type: "chat.done", reply }),
+          onError: (payload) => send({ type: "chat.error", ...payload }),
+        });
+        return;
+      }
+
+      send({ type: "error", error: "Unsupported RPC method" });
+    },
   },
 });
 

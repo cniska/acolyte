@@ -29,6 +29,7 @@ That starts backend watch mode and chat.
 - Verify: `bun run verify`
 - Status: `bun run src/cli.ts status`
 - Mastra Studio: `bun run studio` (loads `.env` automatically)
+- RPC transport: set `transportMode = "rpc"` in config (or use `ws://` `apiUrl`)
 
 ## Common In-Chat Commands
 
@@ -56,6 +57,7 @@ anthropicBaseUrl = "https://api.anthropic.com"
 openaiBaseUrl = "https://api.openai.com/v1"
 permissionMode = "read"
 logFormat = "logfmt"
+transportMode = "auto"
 contextMaxTokens = 8000
 maxHistoryMessages = 40
 maxMessageTokens = 600

@@ -1,7 +1,6 @@
 import { readResolvedConfigSync } from "./config";
+import type { PermissionMode } from "./config-modes";
 import { env } from "./env";
-
-export type PermissionMode = "read" | "write";
 
 const fileConfig = readResolvedConfigSync();
 
@@ -10,6 +9,7 @@ export const appConfig = {
     port: fileConfig.port,
     apiKey: env.ACOLYTE_API_KEY,
     apiUrl: fileConfig.apiUrl,
+    transportMode: fileConfig.transportMode,
     replyTimeoutMs: fileConfig.replyTimeoutMs,
   },
   openai: {

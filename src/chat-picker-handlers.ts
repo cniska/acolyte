@@ -11,6 +11,7 @@ import {
   createWriteConfirmPicker,
 } from "./chat-picker-actions";
 import { setConfigValue } from "./config";
+import type { ConfigScope, PermissionMode } from "./config-modes";
 import { findSkillByName, loadSkills, readSkillInstructions } from "./skills";
 import type { Message, Session, SessionStore } from "./types";
 
@@ -32,8 +33,8 @@ type CreatePickerHandlersInput = {
     answers: Array<{ question: string; answer: string }>;
   }) => string;
   buildWriteResumePayload: (prompt: string) => string;
-  setServerPermissionMode: (mode: "read" | "write") => Promise<void>;
-  persistPermissionMode: (mode: "read" | "write", scope: "project" | "user") => Promise<void>;
+  setServerPermissionMode: (mode: PermissionMode) => Promise<void>;
+  persistPermissionMode: (mode: PermissionMode, scope: ConfigScope) => Promise<void>;
   persist: () => Promise<void>;
   toRows: (messages: Message[]) => ChatRow[];
   createMessage: (role: Message["role"], content: string) => Message;
@@ -232,6 +233,6 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
   };
 }
 
-export async function persistPermissionMode(mode: "read" | "write", scope: "project" | "user"): Promise<void> {
+export async function persistPermissionMode(mode: PermissionMode, scope: ConfigScope): Promise<void> {
   await setConfigValue("permissionMode", mode, { scope });
 }

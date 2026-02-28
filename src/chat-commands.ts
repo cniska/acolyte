@@ -2,9 +2,9 @@ import { appConfig, setPermissionMode } from "./app-config";
 import { formatColumns, formatRelativeTime } from "./chat-format";
 import { suggestClosestSlashCommand } from "./chat-slash";
 import type { Client } from "./client";
-import type { ConfigScope } from "./config";
 import { setConfigValue } from "./config";
-import { addMemory, listMemories, removeMemoryByPrefix } from "./memory";
+import type { ConfigScope, PermissionMode } from "./config-modes";
+import { addMemory, listMemories, type MemoryScope, removeMemoryByPrefix } from "./memory";
 import { createId } from "./short-id";
 import { findSkillByName } from "./skills";
 import type { MemoryContextScope } from "./soul";
@@ -125,8 +125,8 @@ export type CommandContext = {
   openSkillsPanel: () => Promise<void>;
   openResumePanel: () => void;
   openPermissionsPanel: () => void;
-  setServerPermissionMode: (mode: "read" | "write") => Promise<void>;
-  setConfigPermissionMode?: (mode: "read" | "write", scope: ConfigScope) => Promise<void>;
+  setServerPermissionMode: (mode: PermissionMode) => Promise<void>;
+  persistPermissionMode?: (mode: PermissionMode, scope: ConfigScope) => Promise<void>;
   activateSkill?: (skillName: string, args: string) => Promise<boolean>;
   tokenUsage: TokenUsageEntry[];
   memoryApi?: {
@@ -272,8 +272,8 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     }
     try {
       await ctx.setServerPermissionMode(mode);
-      if (ctx.setConfigPermissionMode) {
-        await ctx.setConfigPermissionMode(mode, scope);
+      if (ctx.persistPermissionMode) {
+        await ctx.persistPermissionMode(mode, scope);
       } else {
         await setConfigValue("permissionMode", mode, { scope });
       }
@@ -361,7 +361,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
   if (resolvedText.startsWith("/remember")) {
     pushUserCommandRow();
     const parts = resolvedText.split(/\s+/).slice(1);
-    let scope: "user" | "project" = "user";
+    let scope: MemoryScope = "user";
     const contentParts: string[] = [];
     for (const part of parts) {
       if (part === "--project") {

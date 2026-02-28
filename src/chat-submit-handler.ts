@@ -12,7 +12,8 @@ import {
   unresolvedPathRows,
 } from "./chat-turn";
 import type { Client } from "./client";
-import { addMemory } from "./memory";
+import type { PermissionMode } from "./config-modes";
+import { addMemory, type MemoryScope } from "./memory";
 import { createId } from "./short-id";
 import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
 import type { Message, Session, SessionStore } from "./types";
@@ -90,16 +91,14 @@ function isLikelyWritePrompt(text: string): boolean {
   );
 }
 
-function statusPermissionMode(status: Record<string, string>): "read" | "write" | null {
+function statusPermissionMode(status: Record<string, string>): PermissionMode | null {
   const mode = status.permissions;
   if (mode === "read" || mode === "write") return mode;
   return null;
 }
 
-type RememberScope = "user" | "project";
-
 type NaturalRememberDirective = {
-  scope: RememberScope;
+  scope: MemoryScope;
   content: string;
 };
 

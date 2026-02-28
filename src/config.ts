@@ -4,9 +4,15 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
 import { agentModes } from "./agent-modes";
-
-export type ConfigPermissionMode = "read" | "write";
-export type ConfigLogFormat = "logfmt" | "json";
+import {
+  type ConfigScope,
+  type LogFormat,
+  logFormatSchema,
+  type PermissionMode,
+  permissionModeSchema,
+  type TransportMode,
+  transportModeSchema,
+} from "./config-modes";
 
 const MAX_CONTEXT_TOKENS = 32_000;
 const MAX_OM_OBSERVATION_TOKENS = 12_000;
@@ -27,8 +33,9 @@ const DEFAULT_CONFIG = {
   model: "gpt-5-mini",
   openaiBaseUrl: "https://api.openai.com/v1",
   anthropicBaseUrl: "https://api.anthropic.com",
-  permissionMode: "read" as ConfigPermissionMode,
-  logFormat: "logfmt" as ConfigLogFormat,
+  permissionMode: "read" as PermissionMode,
+  logFormat: "logfmt" as LogFormat,
+  transportMode: "auto" as TransportMode,
   omObservationTokens: 3_000,
   omReflectionTokens: 8_000,
   contextMaxTokens: 8_000,
@@ -48,8 +55,9 @@ export interface AcolyteConfig {
   openaiBaseUrl?: string;
   anthropicBaseUrl?: string;
   googleBaseUrl?: string;
-  permissionMode?: ConfigPermissionMode;
-  logFormat?: ConfigLogFormat;
+  permissionMode?: PermissionMode;
+  logFormat?: LogFormat;
+  transportMode?: TransportMode;
   omObservationTokens?: number;
   omReflectionTokens?: number;
   contextMaxTokens?: number;
@@ -69,8 +77,9 @@ export interface ResolvedAcolyteConfig {
   openaiBaseUrl: string;
   anthropicBaseUrl: string;
   googleBaseUrl?: string;
-  permissionMode: ConfigPermissionMode;
-  logFormat: ConfigLogFormat;
+  permissionMode: PermissionMode;
+  logFormat: LogFormat;
+  transportMode: TransportMode;
   omObservationTokens: number;
   omReflectionTokens: number;
   contextMaxTokens: number;
@@ -80,8 +89,6 @@ export interface ResolvedAcolyteConfig {
   maxPinnedMessageTokens: number;
   replyTimeoutMs: number;
 }
-
-export type ConfigScope = "user" | "project";
 
 type ConfigOptions = {
   homeDir?: string;
@@ -98,8 +105,9 @@ const CONFIG_SET_SCHEMAS: Record<keyof AcolyteConfig, z.ZodTypeAny> = {
   openaiBaseUrl: nonEmptyStringSchema,
   anthropicBaseUrl: nonEmptyStringSchema,
   googleBaseUrl: nonEmptyStringSchema,
-  permissionMode: z.enum(["read", "write"]),
-  logFormat: z.enum(["logfmt", "json"]),
+  permissionMode: permissionModeSchema,
+  logFormat: logFormatSchema,
+  transportMode: transportModeSchema,
   omObservationTokens: parseIntegerSchema(500, MAX_OM_OBSERVATION_TOKENS),
   omReflectionTokens: parseIntegerSchema(1000, MAX_OM_REFLECTION_TOKENS),
   contextMaxTokens: parseIntegerSchema(1000, MAX_CONTEXT_TOKENS),
@@ -134,8 +142,9 @@ function toConfig(input: Record<string, unknown>): AcolyteConfig {
     openaiBaseUrl: parseField(nonEmptyStringSchema, input.openaiBaseUrl),
     anthropicBaseUrl: parseField(nonEmptyStringSchema, input.anthropicBaseUrl),
     googleBaseUrl: parseField(nonEmptyStringSchema, input.googleBaseUrl),
-    permissionMode: parseField(z.enum(["read", "write"]), input.permissionMode),
-    logFormat: parseField(z.enum(["logfmt", "json"]), input.logFormat),
+    permissionMode: parseField(permissionModeSchema, input.permissionMode),
+    logFormat: parseField(logFormatSchema, input.logFormat),
+    transportMode: parseField(transportModeSchema, input.transportMode),
     omObservationTokens: parseField(parseIntegerSchema(500, MAX_OM_OBSERVATION_TOKENS), input.omObservationTokens),
     omReflectionTokens: parseField(parseIntegerSchema(1000, MAX_OM_REFLECTION_TOKENS), input.omReflectionTokens),
     contextMaxTokens: parseField(parseIntegerSchema(1000, MAX_CONTEXT_TOKENS), input.contextMaxTokens),
@@ -239,6 +248,7 @@ function serializeToml(config: AcolyteConfig): string {
   if (config.googleBaseUrl) lines.push(`googleBaseUrl = ${JSON.stringify(config.googleBaseUrl)}`);
   if (config.permissionMode) lines.push(`permissionMode = ${JSON.stringify(config.permissionMode)}`);
   if (config.logFormat) lines.push(`logFormat = ${JSON.stringify(config.logFormat)}`);
+  if (config.transportMode) lines.push(`transportMode = ${JSON.stringify(config.transportMode)}`);
   if (typeof config.omObservationTokens === "number") lines.push(`omObservationTokens = ${config.omObservationTokens}`);
   if (typeof config.omReflectionTokens === "number") lines.push(`omReflectionTokens = ${config.omReflectionTokens}`);
   if (typeof config.contextMaxTokens === "number") lines.push(`contextMaxTokens = ${config.contextMaxTokens}`);
@@ -265,6 +275,7 @@ function resolveConfig(config: AcolyteConfig): ResolvedAcolyteConfig {
     googleBaseUrl: config.googleBaseUrl,
     permissionMode: config.permissionMode ?? DEFAULT_CONFIG.permissionMode,
     logFormat: config.logFormat ?? DEFAULT_CONFIG.logFormat,
+    transportMode: config.transportMode ?? DEFAULT_CONFIG.transportMode,
     omObservationTokens: config.omObservationTokens ?? DEFAULT_CONFIG.omObservationTokens,
     omReflectionTokens: config.omReflectionTokens ?? DEFAULT_CONFIG.omReflectionTokens,
     contextMaxTokens: config.contextMaxTokens ?? DEFAULT_CONFIG.contextMaxTokens,

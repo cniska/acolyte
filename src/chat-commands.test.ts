@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { appConfig } from "./app-config";
 import { dispatchSlashCommand, formatTokenUsageOutput, type TokenUsageEntry } from "./chat-commands";
+import type { ConfigScope, PermissionMode } from "./config-modes";
 import { loadSkills, resetSkillCache } from "./skills";
 import {
   createCommandContext,
@@ -410,12 +411,12 @@ describe("chat-commands", () => {
   test("dispatchSlashCommand applies /permissions read|write", async () => {
     const restore = savedPermissionMode();
     try {
-      const writes: Array<{ mode: "read" | "write"; scope: "user" | "project" }> = [];
-      const setConfigPermissionMode = async (mode: "read" | "write", scope: "user" | "project") => {
+      const writes: Array<{ mode: PermissionMode; scope: ConfigScope }> = [];
+      const persistPermissionMode = async (mode: PermissionMode, scope: ConfigScope) => {
         writes.push({ mode, scope });
       };
 
-      const readResult = await runCommand("/permissions read", { setConfigPermissionMode });
+      const readResult = await runCommand("/permissions read", { persistPermissionMode });
       expect(readResult.stop).toBe(true);
       expect(appConfig.agent.permissions.mode).toBe("read");
       expect(
@@ -425,7 +426,7 @@ describe("chat-commands", () => {
       ).toBe(true);
       expect(writes).toContainEqual({ mode: "read", scope: "project" });
 
-      const writeResult = await runCommand("/permissions write --user", { setConfigPermissionMode });
+      const writeResult = await runCommand("/permissions write --user", { persistPermissionMode });
       expect(writeResult.stop).toBe(true);
       expect(appConfig.agent.permissions.mode).toBe("write");
       expect(

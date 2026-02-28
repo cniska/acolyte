@@ -183,6 +183,7 @@ describe("config store", () => {
         'googleBaseUrl = "https://google.example.com"',
         'permissionMode = "write"',
         'logFormat = "json"',
+        'transportMode = "rpc"',
         "omObservationTokens = 3500",
         "omReflectionTokens = 9000",
         "contextMaxTokens = 7000",
@@ -200,6 +201,7 @@ describe("config store", () => {
     expect(loaded.model).toBe("openai/gpt-5-mini");
     expect(loaded.permissionMode).toBe("write");
     expect(loaded.logFormat).toBe("json");
+    expect(loaded.transportMode).toBe("rpc");
     expect(loaded.maxMessageTokens).toBe(700);
     expect(loaded.replyTimeoutMs).toBe(220000);
   });
@@ -217,6 +219,7 @@ describe("config store", () => {
     expect(resolved.omModel).toBe("anthropic/claude-sonnet-4");
     expect(resolved.permissionMode).toBe("read");
     expect(resolved.logFormat).toBe("logfmt");
+    expect(resolved.transportMode).toBe("auto");
     expect(resolved.replyTimeoutMs).toBe(180000);
   });
 
