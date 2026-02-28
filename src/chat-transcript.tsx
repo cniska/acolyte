@@ -171,14 +171,6 @@ function renderToolProgressContent(content: string): React.ReactNode {
 export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
   const { rows, isWorking, progressText, thinkingFrame, thinkingStartedAt } = props;
   const pulsePeriod = 16;
-  const phase = ((Math.abs(thinkingFrame) % pulsePeriod) / pulsePeriod) * Math.PI * 2;
-  const baseIntensity = (Math.cos(phase) + 1) / 2;
-  const holdThreshold = 0.9;
-  const heldIntensity = baseIntensity >= holdThreshold ? 1 : Math.max(0, Math.min(1, baseIntensity / holdThreshold));
-  const easedIntensity = heldIntensity * heldIntensity * (3 - 2 * heldIntensity);
-  const gray = Math.round(60 + easedIntensity * (140 - 60));
-  const channel = gray.toString(16).padStart(2, "0");
-  const pulseColor = `#${channel}${channel}${channel}`;
   const hasContent = rows.length > 0 || isWorking;
   const elapsedSec =
     isWorking && typeof thinkingStartedAt === "number"
@@ -198,7 +190,7 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
     if (stageMatch) {
       const stage = stageMatch[1]?.trim() ?? "";
       const model = stageMatch[2]?.trim() || "";
-      const details = [timeText, model].filter((part) => part.length > 0).join(" · ");
+      const details = [timeText, model].filter((part) => part.length > 0).join(" • ");
       return details.length > 0 ? `${stage} (${details})` : stage;
     }
     return `${trimmedProgressText} (${timeText})`;
@@ -228,6 +220,7 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
             } else if (row.role === "system" && (row.style === "cancelled" || row.style === "error")) {
               marker = "• ";
             }
+            if (row.style === "toolProgress") marker = "· ";
             if (row.style === "toolProgress" && row.toolStatus)
               markerColor = row.toolStatus === "ok" ? palette.success : palette.error;
             if (row.style === "worked") markerColor = palette.success;

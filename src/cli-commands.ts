@@ -311,7 +311,9 @@ async function dogfoodMode(args: string[]): Promise<void> {
     "- Work in small, verifiable steps.",
     "- Keep response concise and action-focused.",
     "- Return one immediate next action; avoid multi-option menus unless asked.",
-    "- If edits are made, verify with bun run verify.",
+    ...(parsed.verify
+      ? ["- If edits are made, verify with bun run verify."]
+      : ["- Verification is disabled for this turn. Do not run verify/test commands."]),
     "",
   ].join("\n");
 

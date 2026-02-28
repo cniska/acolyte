@@ -594,10 +594,16 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
                   if (!next || next.state === "running" || next.state === "detached") continue;
                   if (next.state === "failed") {
                     const detail = next.summary?.trim() || "Task failed on server.";
-                    input.setRows((current) => [...current, createRow("system", detail, { dim: true, style: "error" })]);
+                    input.setRows((current) => [
+                      ...current,
+                      createRow("system", detail, { dim: true, style: "error" }),
+                    ]);
                   } else if (next.state === "cancelled") {
                     const detail = next.summary?.trim() || "Task cancelled.";
-                    input.setRows((current) => [...current, createRow("system", detail, { dim: true, style: "cancelled" })]);
+                    input.setRows((current) => [
+                      ...current,
+                      createRow("system", detail, { dim: true, style: "cancelled" }),
+                    ]);
                   }
                   await input.persist();
                   return;
@@ -634,7 +640,10 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       const errorContent = isAbortError(error) ? "Interrupted" : formatSubmitError(error);
       input.setRows((current) => [
         ...current,
-        createRow("system", errorContent, { dim: isAbortError(error), style: isAbortError(error) ? "cancelled" : "error" }),
+        createRow("system", errorContent, {
+          dim: isAbortError(error),
+          style: isAbortError(error) ? "cancelled" : "error",
+        }),
       ]);
     } finally {
       if (streamFlushTimer) {

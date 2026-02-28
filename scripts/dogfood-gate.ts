@@ -220,8 +220,7 @@ function parseArgs(args: string[]): GateArgs {
     if (token === "--transport") {
       const value = args[i + 1];
       if (!value) throw new Error("Invalid --transport value.");
-      if (value !== "auto" && value !== "http" && value !== "rpc")
-        throw new Error("Invalid --transport value.");
+      if (value !== "auto" && value !== "http" && value !== "rpc") throw new Error("Invalid --transport value.");
       raw.transportMode = value;
       i += 1;
       continue;
