@@ -2,9 +2,7 @@ import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-const DEFAULT_LOG_PATH = "/tmp/acolyte-server.log";
 const DAEMON_LOG_PATH = join(homedir(), ".acolyte", "server.log");
-const LOG_CANDIDATES = [DAEMON_LOG_PATH, DEFAULT_LOG_PATH] as const;
 
 function parseArg(flag: string): string | undefined {
   const index = Bun.argv.indexOf(flag);
@@ -19,28 +17,6 @@ function parseTaskIdsArg(value: string | undefined): string[] {
     .map((part) => part.trim())
     .filter((part) => part.length > 0);
   return Array.from(new Set(out));
-}
-
-async function hasTraceSignals(path: string): Promise<boolean> {
-  try {
-    const raw = await readFile(path, "utf8");
-    return raw.includes("request_id=") || raw.includes("task_id=");
-  } catch {
-    return false;
-  }
-}
-
-async function pickDefaultLogPath(): Promise<string> {
-  const existing: { path: string; mtime: number; hasTrace: boolean }[] = [];
-  for (const path of LOG_CANDIDATES) {
-    const file = Bun.file(path);
-    if (!(await file.exists())) continue;
-    const [stat, hasTrace] = await Promise.all([file.stat(), hasTraceSignals(path)]);
-    existing.push({ path, mtime: stat.mtime.getTime(), hasTrace });
-  }
-  if (existing.length === 0) return DAEMON_LOG_PATH;
-  existing.sort((a, b) => Number(b.hasTrace) - Number(a.hasTrace) || b.mtime - a.mtime);
-  return existing[0]?.path ?? DAEMON_LOG_PATH;
 }
 
 function parseRequestId(line: string): string | undefined {
@@ -176,7 +152,7 @@ function compactLine(line: string): string {
 }
 
 async function main(): Promise<void> {
-  const logPath = parseArg("--log") ?? (await pickDefaultLogPath());
+  const logPath = parseArg("--log") ?? DAEMON_LOG_PATH;
   const requestedId = parseArg("--request");
   const requestedTaskIds = parseTaskIdsArg(parseArg("--task"));
 

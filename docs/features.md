@@ -56,5 +56,5 @@ Update rule:
 
 - Status command.
 - Token usage reporting.
-- Lifecycle trace logging (auto-picks daemon or legacy log path).
+- Lifecycle trace logging (defaults to daemon log path, overrideable via `--log`).
 - Managed local daemon log file at `~/.acolyte/server.log`.

@@ -29,10 +29,12 @@ That starts backend watch mode and chat.
 - Stop local daemon server: `acolyte server stop`
 - If status shows `unmanaged`, server was started outside Acolyte; stop it manually.
 - If local daemon target changes, Acolyte replaces the previous managed local server.
+- Managed daemon log: `~/.acolyte/server.log`
 - Resume session: `acolyte resume <session-id-prefix>`
 - Run mode (auto-starts/reuses local server when using local defaults): `acolyte run "review src/agent.ts"`
 - Verify: `bun run verify`
 - Status: `acolyte status`
+- Lifecycle trace: `bun run trace:lifecycle` (defaults to `~/.acolyte/server.log`; use `--log <path>` to override)
 - Mastra Studio: `bun run studio` (loads `.env` automatically)
 - RPC transport: set `transportMode = "rpc"` in config (or use `ws://` `apiUrl`)
 

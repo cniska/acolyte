@@ -9,7 +9,7 @@ fi
 serve_script="$1"
 shift
 
-log_path="${ACOLYTE_SERVER_LOG:-/tmp/acolyte-server.log}"
+log_path="${ACOLYTE_SERVER_LOG:-$HOME/.acolyte/server.log}"
 wait_url="${ACOLYTE_SERVER_WAIT_URL:-http://localhost:6767/v1/status}"
 wait_timeout_ms="${ACOLYTE_SERVER_WAIT_TIMEOUT_MS:-10000}"
 api_url="${ACOLYTE_API_URL:-http://localhost:6767}"
