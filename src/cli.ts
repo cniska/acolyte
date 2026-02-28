@@ -81,6 +81,11 @@ export function shouldAutoStartLocalServerForChat(configuredApiUrl: string | und
   return isLocalLoopbackApiUrl(trimmed);
 }
 
+export function resolveLocalDaemonApiUrl(configuredApiUrl: string | undefined, port = DEFAULT_LOCAL_API_PORT): string {
+  if (shouldAutoStartLocalServerForChat(configuredApiUrl)) return resolveChatApiUrl(configuredApiUrl, port);
+  return resolveChatApiUrl(undefined, port);
+}
+
 export function newMessage(role: Message["role"], content: string): Message {
   return {
     id: `msg_${createId()}`,

@@ -4,6 +4,7 @@ import {
   formatResumeCommand,
   resolveChatApiUrl,
   resolveCommandAlias,
+  resolveLocalDaemonApiUrl,
   shouldAutoStartLocalServerForChat,
   suggestCommand,
   suggestCommands,
@@ -58,5 +59,12 @@ describe("cli", () => {
     expect(shouldAutoStartLocalServerForChat("https://localhost:6767")).toBe(false);
     expect(shouldAutoStartLocalServerForChat("ws://localhost:6767/v1/rpc")).toBe(false);
     expect(shouldAutoStartLocalServerForChat("not-a-url")).toBe(false);
+  });
+
+  test("resolveLocalDaemonApiUrl uses configured loopback apiUrl and ignores remote apiUrl", () => {
+    expect(resolveLocalDaemonApiUrl(undefined, 6767)).toBe("http://127.0.0.1:6767");
+    expect(resolveLocalDaemonApiUrl("http://localhost:7777", 6767)).toBe("http://localhost:7777");
+    expect(resolveLocalDaemonApiUrl("http://127.0.0.1:8888", 6767)).toBe("http://127.0.0.1:8888");
+    expect(resolveLocalDaemonApiUrl("https://api.example.com", 6767)).toBe("http://127.0.0.1:6767");
   });
 });

@@ -8,6 +8,7 @@ import {
   handlePrompt,
   newMessage,
   resolveChatApiUrl,
+  resolveLocalDaemonApiUrl,
   shouldAutoStartLocalServerForChat,
 } from "./cli";
 import { formatForTool, parseRunExitCode, showToolResult, truncateText } from "./cli-format";
@@ -377,7 +378,7 @@ async function serveMode(args: string[]): Promise<void> {
   switch (action) {
     case "start": {
       if (args.length > 1) return subcommandError("server");
-      const localApiUrl = resolveChatApiUrl(undefined, appConfig.server.port);
+      const localApiUrl = resolveLocalDaemonApiUrl(appConfig.server.apiUrl, appConfig.server.port);
       const daemon = await ensureLocalServer({
         apiUrl: localApiUrl,
         port: appConfig.server.port,
@@ -389,7 +390,7 @@ async function serveMode(args: string[]): Promise<void> {
     }
     case "status": {
       if (args.length > 1) return subcommandError("server");
-      const localApiUrl = resolveChatApiUrl(undefined, appConfig.server.port);
+      const localApiUrl = resolveLocalDaemonApiUrl(appConfig.server.apiUrl, appConfig.server.port);
       const status = await localServerStatus({ apiKey: appConfig.server.apiKey, apiUrl: localApiUrl });
       if (!status.running) {
         printDim("Local server is not running.");
@@ -406,7 +407,7 @@ async function serveMode(args: string[]): Promise<void> {
         printDim("Stopped local server.");
         return;
       }
-      const localApiUrl = resolveChatApiUrl(undefined, appConfig.server.port);
+      const localApiUrl = resolveLocalDaemonApiUrl(appConfig.server.apiUrl, appConfig.server.port);
       const status = await localServerStatus({ apiKey: appConfig.server.apiKey, apiUrl: localApiUrl });
       if (status.running && !status.pid) {
         printDim(`Local server is running unmanaged at ${status.apiUrl}. Stop it manually.`);
@@ -438,7 +439,7 @@ async function statusMode(args: string[]): Promise<void> {
     printDim(formatStatusOutput(status));
   } catch (error) {
     if (shouldAutoStartLocalServerForChat(appConfig.server.apiUrl) && isServerConnectionFailure(error)) {
-      const localApiUrl = resolveChatApiUrl(undefined, appConfig.server.port);
+      const localApiUrl = resolveLocalDaemonApiUrl(appConfig.server.apiUrl, appConfig.server.port);
       const localStatus = await localServerStatus({ apiKey: appConfig.server.apiKey, apiUrl: localApiUrl });
       if (!localStatus.running) {
         printDim("Local server is not running. Start it with: acolyte server start");
