@@ -13,6 +13,13 @@ function parseRequestId(line: string): string | undefined {
   return match?.[1];
 }
 
+function parseTaskId(line: string): string | undefined {
+  const match = line.match(/\btask_id=([^\s]+)/);
+  const value = match?.[1];
+  if (!value || value === "null") return undefined;
+  return value;
+}
+
 function parseTimestamp(line: string): string {
   const firstSpace = line.indexOf(" ");
   return firstSpace > 0 ? line.slice(0, firstSpace) : line;
@@ -100,9 +107,32 @@ function compactLine(line: string): string {
 async function main(): Promise<void> {
   const logPath = parseArg("--log") ?? DEFAULT_LOG_PATH;
   const requestedId = parseArg("--request");
+  const requestedTaskId = parseArg("--task");
 
   const raw = await readFile(logPath, "utf8");
   const lines = raw.split("\n").filter((line) => line.trim().length > 0);
+
+  if (requestedId && requestedTaskId) {
+    throw new Error("Pass either --request or --task, not both.");
+  }
+
+  const taskId =
+    requestedTaskId ??
+    [...lines]
+      .reverse()
+      .map((line) => parseTaskId(line))
+      .find((value) => value && value.length > 0);
+
+  if (requestedTaskId || taskId) {
+    if (!taskId) throw new Error(`No task_id found in ${logPath}`);
+    const selected = lines.filter((line) => line.includes(`task_id=${taskId}`));
+    if (selected.length === 0) throw new Error(`No lines found for task_id=${taskId} in ${logPath}`);
+    console.log(`task_id=${taskId}`);
+    for (const line of selected) {
+      console.log(compactLine(line));
+    }
+    return;
+  }
 
   const requestId =
     requestedId ??
