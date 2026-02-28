@@ -131,7 +131,8 @@ What MVP is **not**:
 
 - Parallel subagents per mode (plan, work, verify) for concurrent execution.
 - Session branching — isolated sub-tasks without polluting main context.
-- Resumable RPC operations (`start`, `status`, `cancel`, `resume`) with stable IDs.
+- Assistant-managed background tasks with stable IDs (`start`, `status`, `cancel`, `attach`).
+- Automatic foreground-to-background detachment for long-running work while chat remains responsive.
 - Stream protocol compatibility tests (event schema/version contract across client/server).
 - Stronger tool policy enforcement beyond prompt-only guidance.
 - Agent-authored skills — let the agent create and refine its own tools at runtime.

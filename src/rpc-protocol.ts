@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { streamErrorDetailSchema } from "./stream-error";
 
+// Reserved method names for future background task support.
+export const RESERVED_RPC_TASK_CLIENT_METHODS = ["task.start", "task.status", "task.cancel", "task.attach"] as const;
+export const RESERVED_RPC_TASK_SERVER_METHODS = ["task.accepted", "task.updated", "task.done", "task.error"] as const;
+
 const chatRequestSchema = z.object({
   message: z.string(),
   history: z.array(z.unknown()),

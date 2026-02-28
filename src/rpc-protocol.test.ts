@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { rpcClientMessageSchema, rpcServerMessageSchema } from "./rpc-protocol";
+import {
+  RESERVED_RPC_TASK_CLIENT_METHODS,
+  RESERVED_RPC_TASK_SERVER_METHODS,
+  rpcClientMessageSchema,
+  rpcServerMessageSchema,
+} from "./rpc-protocol";
 
 describe("rpc protocol schema", () => {
   test("accepts chat.start client messages", () => {
@@ -76,5 +81,10 @@ describe("rpc protocol schema", () => {
     expect(accepted.success).toBe(true);
     expect(queued.success).toBe(true);
     expect(started.success).toBe(true);
+  });
+
+  test("exposes reserved rpc task method names", () => {
+    expect(RESERVED_RPC_TASK_CLIENT_METHODS).toEqual(["task.start", "task.status", "task.cancel", "task.attach"]);
+    expect(RESERVED_RPC_TASK_SERVER_METHODS).toEqual(["task.accepted", "task.updated", "task.done", "task.error"]);
   });
 });
