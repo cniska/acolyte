@@ -1,7 +1,14 @@
 import { z } from "zod";
 import { appConfig } from "./app-config";
 import { formatColumns, formatRelativeTime } from "./chat-format";
-import { attachFileToSession, chatModeWithOptions, FALLBACK_MODEL, handlePrompt, newMessage } from "./cli";
+import {
+  attachFileToSession,
+  chatModeWithOptions,
+  FALLBACK_MODEL,
+  handlePrompt,
+  newMessage,
+  resolveChatApiUrl,
+} from "./cli";
 import { formatForTool, parseRunExitCode, showToolResult, truncateText } from "./cli-format";
 import { toolMode } from "./cli-tool-mode";
 import { createClient } from "./client";
@@ -258,8 +265,9 @@ async function runMode(args: string[], options?: { skipAutoVerify?: boolean }): 
   const resolvedConfig = readResolvedConfigSync();
   const session = createSession(defaultModel);
   session.messages.push(newMessage("system", RUN_MODE_SYSTEM_PROMPT));
+  const apiUrl = resolveChatApiUrl(appConfig.server.apiUrl, appConfig.server.port);
   const client = createClient({
-    apiUrl: appConfig.server.apiUrl,
+    apiUrl,
     replyTimeoutMs: resolvedConfig.replyTimeoutMs,
   });
 
@@ -392,8 +400,9 @@ async function statusMode(args: string[]): Promise<void> {
     subcommandError("status");
     return;
   }
+  const apiUrl = resolveChatApiUrl(appConfig.server.apiUrl, appConfig.server.port);
   const client = createClient({
-    apiUrl: appConfig.server.apiUrl,
+    apiUrl,
   });
   try {
     const status = await client.status();

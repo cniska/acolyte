@@ -9,11 +9,14 @@ const repoRoot = process.cwd();
 afterEach(cleanupDirs);
 
 describe("cli run mode", () => {
-  test("run command exits non-zero when no server is configured", async () => {
+  test("run command exits non-zero when default local server is unreachable", async () => {
     const home = createDir("acolyte-run-test-");
     const project = createDir("acolyte-run-project-");
-    const dataDir = join(home, ".acolyte");
-    await mkdir(dataDir, { recursive: true });
+    const userDataDir = join(home, ".acolyte");
+    const projectDataDir = join(project, ".acolyte");
+    await mkdir(userDataDir, { recursive: true });
+    await mkdir(projectDataDir, { recursive: true });
+    await writeFile(join(projectDataDir, "config.toml"), 'port = 1\nmodel = "gpt-5-mini"\n', "utf8");
 
     const result = Bun.spawnSync({
       cmd: [process.execPath, "run", join(repoRoot, "src/cli.ts"), "run", "hello"],
@@ -26,9 +29,9 @@ describe("cli run mode", () => {
       stderr: "pipe",
     });
 
-    const stderr = Buffer.from(result.stderr).toString("utf8");
+    const stdout = Buffer.from(result.stdout).toString("utf8");
     expect(result.exitCode).toBe(1);
-    expect(stderr).toContain("No API URL configured");
+    expect(stdout).toContain("Cannot reach server at http://127.0.0.1:1");
   });
 
   test("run command exits non-zero when remote server is unreachable", async () => {
