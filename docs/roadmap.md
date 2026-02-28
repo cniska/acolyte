@@ -107,6 +107,7 @@ Open-source core local mode with optional self-host path.
 - [ ] License chosen and applied
 - [ ] No hardcoded secrets or internal paths
 - [ ] CI/CD pipeline for releases
+- [ ] Pre-OSS security baseline complete (secure defaults, auth coverage, workspace boundary checks, redaction tests)
 
 **Blocked on:** Milestone 9.
 
@@ -129,6 +130,8 @@ What MVP is **not**:
 
 ## Post-MVP Ideas
 
+- Local daemon mode for server/client:
+  one reusable local server process per machine (auto-discovered/reused), with chat/run clients attaching without manual `serve` management.
 - Parallel subagents per mode (plan, work, verify) for concurrent execution.
 - Session branching — isolated sub-tasks without polluting main context.
 - Assistant-managed background tasks with stable IDs (`start`, `status`, `cancel`, `attach`).

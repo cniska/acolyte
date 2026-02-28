@@ -15,6 +15,7 @@ import {
 } from "./cli-format";
 import { createClient } from "./client";
 import { buildFileContext } from "./file-context";
+import { ensureLocalServer } from "./server-daemon";
 import { acquireSessionLock, releaseSessionLock } from "./session-lock";
 import { createId } from "./short-id";
 import { createSession, readStore, writeStore } from "./storage";
@@ -50,9 +51,21 @@ function resolveCliVersion(): string {
 const CLI_VERSION = resolveCliVersion();
 
 export const FALLBACK_MODEL = "gpt-5-mini";
+const DEFAULT_LOCAL_API_HOST = "127.0.0.1";
+const DEFAULT_LOCAL_API_PORT = 6767;
 
 function nowIso(): string {
   return new Date().toISOString();
+}
+
+export function resolveChatApiUrl(configuredApiUrl: string | undefined, port = DEFAULT_LOCAL_API_PORT): string {
+  const trimmed = configuredApiUrl?.trim();
+  if (trimmed) return trimmed;
+  return `http://${DEFAULT_LOCAL_API_HOST}:${port}`;
+}
+
+export function shouldAutoStartLocalServerForChat(configuredApiUrl: string | undefined): boolean {
+  return !configuredApiUrl?.trim();
 }
 
 export function newMessage(role: Message["role"], content: string): Message {
@@ -329,9 +342,18 @@ export async function chatModeWithOptions(options: { resumeLatest: boolean; resu
     process.exitCode = 1;
     return;
   }
-  const client = createClient({
-    apiUrl: appConfig.server.apiUrl,
-  });
+  let apiUrl = resolveChatApiUrl(appConfig.server.apiUrl, appConfig.server.port);
+  if (shouldAutoStartLocalServerForChat(appConfig.server.apiUrl)) {
+    const daemon = await ensureLocalServer({
+      apiUrl,
+      port: appConfig.server.port,
+      apiKey: appConfig.server.apiKey,
+      serverEntry: `${import.meta.dir}/server.ts`,
+    });
+    apiUrl = daemon.apiUrl;
+    printDim(`${daemon.started ? "Started" : "Using"} local server at ${daemon.apiUrl}`);
+  }
+  const client = createClient({ apiUrl });
   const persist = async (): Promise<void> => {
     await writeStore(store);
   };
