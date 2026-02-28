@@ -42,6 +42,7 @@ import {
   multiMatchEditEvaluator,
   planDetector,
   timeoutRecovery,
+  verifyFailure,
 } from "./lifecycle-evaluators";
 import type { LifecycleDebugEvent, LifecycleEventName } from "./lifecycle-events";
 import { type AcolyteToolset, toolsForAgent } from "./mastra-tools";
@@ -50,7 +51,7 @@ import { type ErrorCode, extractToolErrorCode, LIFECYCLE_ERROR_CODES } from "./t
 import { DISCOVERY_TOOL_SET, READ_TOOL_SET, SEARCH_TOOL_SET, WRITE_TOOL_SET } from "./tool-groups";
 import type { SessionContext } from "./tool-guards";
 
-export { autoVerifier, efficiencyEvaluator, multiMatchEditEvaluator, planDetector, timeoutRecovery };
+export { autoVerifier, efficiencyEvaluator, multiMatchEditEvaluator, planDetector, timeoutRecovery, verifyFailure };
 export type { EvalAction, Evaluator };
 
 export type GenerateResult = {
@@ -730,6 +731,7 @@ export async function runLifecycle(input: LifecycleInput): Promise<ChatResponse>
     efficiencyEvaluator,
     timeoutRecovery,
     autoVerifier,
+    verifyFailure,
   ];
   const regenByEvaluator = new Map<string, number>();
   while (ctx.result) {

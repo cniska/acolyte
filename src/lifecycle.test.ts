@@ -8,6 +8,7 @@ import {
   type RunContext,
   recoveryActionForError,
   timeoutRecovery,
+  verifyFailure,
 } from "./lifecycle";
 import { LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./tool-error-codes";
 import { createSessionContext } from "./tool-guards";
@@ -281,13 +282,56 @@ describe("multiMatchEditEvaluator", () => {
 });
 
 describe("evaluator ordering", () => {
-  test("plan detection and correction evaluators run before auto-verify", () => {
-    const evaluators = [planDetector, multiMatchEditEvaluator, efficiencyEvaluator, timeoutRecovery, autoVerifier];
+  test("evaluators run in correct order", () => {
+    const evaluators = [
+      planDetector,
+      multiMatchEditEvaluator,
+      efficiencyEvaluator,
+      timeoutRecovery,
+      autoVerifier,
+      verifyFailure,
+    ];
     expect(evaluators[0].id).toBe("plan-detector");
     expect(evaluators[1].id).toBe("multi-match-edit-evaluator");
     expect(evaluators[2].id).toBe("efficiency-evaluator");
     expect(evaluators[3].id).toBe("timeout-recovery");
     expect(evaluators[4].id).toBe("auto-verifier");
+    expect(evaluators[5].id).toBe("verify-failure");
+  });
+});
+
+describe("verifyFailure", () => {
+  test("returns regenerate to work mode when verify reports issues", () => {
+    const ctx = createMockContext({
+      mode: "verify",
+      classifiedMode: "work",
+      result: { text: "Error: missing export updatePost in post-store.ts", toolCalls: [] },
+      observedTools: new Set(["scan-code"]),
+    });
+    const action = verifyFailure.evaluate(ctx);
+    expect(action.type).toBe("regenerate");
+    if (action.type === "regenerate") {
+      expect(action.mode).toBe("work");
+      expect(action.prompt).toContain("missing export updatePost");
+    }
+  });
+
+  test("returns done when not in verify mode", () => {
+    const ctx = createMockContext({
+      mode: "work",
+      classifiedMode: "work",
+      result: { text: "Error in code", toolCalls: [] },
+    });
+    expect(verifyFailure.evaluate(ctx).type).toBe("done");
+  });
+
+  test("returns done when verify passes cleanly", () => {
+    const ctx = createMockContext({
+      mode: "verify",
+      classifiedMode: "work",
+      result: { text: "", toolCalls: [] },
+    });
+    expect(verifyFailure.evaluate(ctx).type).toBe("done");
   });
 });
 

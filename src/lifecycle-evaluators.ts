@@ -23,6 +23,7 @@ export type EvaluatorContext = {
   debug: (event: LifecycleEventName, fields?: Record<string, unknown>) => void;
   agentInput: string;
   classifiedMode: AgentMode;
+  mode: AgentMode;
   session: SessionContext;
   workspace: string | undefined;
   request: { message: string };
@@ -106,6 +107,24 @@ export const autoVerifier: Evaluator = {
       };
     }
     return { type: "done" };
+  },
+};
+
+export const verifyFailure: Evaluator = {
+  id: "verify-failure",
+  evaluate(ctx) {
+    if (ctx.mode !== "verify") return { type: "done" };
+    if (!ctx.result) return { type: "done" };
+    const text = ctx.result.text.trim().toLowerCase();
+    if (text.length === 0) return { type: "done" };
+    const hasIssues = ctx.lastError != null || /\b(error|fail|issue|broken|missing|undefined|unresolved)\b/.test(text);
+    if (!hasIssues) return { type: "done" };
+    ctx.debug("lifecycle.eval.verify_failure", { text_chars: ctx.result.text.length });
+    return {
+      type: "regenerate",
+      prompt: `${ctx.agentInput}\n\nVerification found issues:\n${ctx.result.text}\n\nFix the issues above, then stop.`,
+      mode: "work",
+    };
   },
 };
 
