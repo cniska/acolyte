@@ -126,6 +126,14 @@ function compactLine(line: string): string {
     return `${ts}${taskPrefix} ${event} tool=${tool} error="${error}"`;
   }
 
+  if (event === "lifecycle.guard") {
+    const guard = parseField(line, "guard") ?? "?";
+    const tool = parseField(line, "tool") ?? "?";
+    const action = parseField(line, "action") ?? "?";
+    const detail = parseField(line, "detail");
+    return `${ts}${taskPrefix} ${event} guard=${guard} tool=${tool} action=${action}${detail ? ` detail=${detail}` : ""}`;
+  }
+
   if (event.startsWith("lifecycle.eval.")) {
     const evaluator = parseField(line, "evaluator") ?? "?";
     const action = parseField(line, "action") ?? "?";
