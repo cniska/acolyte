@@ -7,7 +7,7 @@ import { parseToolProgressBlock, type ToolProgressBlock } from "./tool-progress"
 
 type ChatTranscriptProps = {
   rows: ChatRow[];
-  isThinking: boolean;
+  isWorking: boolean;
   progressText?: string | null;
   thinkingFrame: number;
   queuedMessages?: string[];
@@ -169,7 +169,7 @@ function renderToolProgressContent(content: string): React.ReactNode {
 }
 
 export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
-  const { rows, isThinking, progressText, thinkingFrame, thinkingStartedAt } = props;
+  const { rows, isWorking, progressText, thinkingFrame, thinkingStartedAt } = props;
   const pulsePeriod = 16;
   const phase = ((Math.abs(thinkingFrame) % pulsePeriod) / pulsePeriod) * Math.PI * 2;
   const baseIntensity = (Math.cos(phase) + 1) / 2;
@@ -179,14 +179,20 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
   const gray = Math.round(60 + easedIntensity * (140 - 60));
   const channel = gray.toString(16).padStart(2, "0");
   const pulseColor = `#${channel}${channel}${channel}`;
-  const pulseGlyph = "•";
-  const hasContent = rows.length > 0 || isThinking;
+  const hasContent = rows.length > 0 || isWorking;
   const elapsedSec =
-    isThinking && typeof thinkingStartedAt === "number"
+    isWorking && typeof thinkingStartedAt === "number"
       ? Math.max(0, Math.floor((Date.now() - thinkingStartedAt) / 1000))
       : 0;
   const trimmedProgressText = progressText?.trim() ?? "";
   const stageMatch = trimmedProgressText.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+  const normalizedProgress = trimmedProgressText.toLowerCase();
+  const isQueued = normalizedProgress.startsWith("queued");
+  const isAccepted = normalizedProgress.startsWith("accepted");
+  const isRunning = isWorking && !isQueued && !isAccepted;
+  const runningBlinkOn = Math.abs(thinkingFrame) % pulsePeriod < pulsePeriod / 2;
+  const pulseGlyph = isRunning ? (runningBlinkOn ? "•" : " ") : "•";
+  const indicatorColor: string = isQueued ? palette.queued : isAccepted ? palette.accepted : palette.running;
   const thinkingText = (() => {
     const timeText = `${elapsedSec}s`;
     if (stageMatch) {
@@ -219,9 +225,14 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
               marker = "❯ ";
             } else if (row.role === "assistant") {
               marker = "• ";
+            } else if (row.role === "system" && (row.style === "cancelled" || row.style === "error")) {
+              marker = "• ";
             }
             if (row.style === "toolProgress" && row.toolStatus)
-              markerColor = row.toolStatus === "ok" ? palette.green : palette.red;
+              markerColor = row.toolStatus === "ok" ? palette.success : palette.error;
+            if (row.style === "worked") markerColor = palette.success;
+            if (row.style === "error") markerColor = palette.error;
+            if (row.style === "cancelled") markerColor = palette.cancelled;
             return (
               <Box>
                 <Box width={2}>
@@ -264,7 +275,7 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
                   ) : row.role === "assistant" && row.style === "toolProgress" ? (
                     <Text>{renderToolProgressContent(row.content)}</Text>
                   ) : row.style === "error" ? (
-                    <Text dimColor color={palette.red}>
+                    <Text dimColor color={palette.error}>
                       {row.content}
                     </Text>
                   ) : (
@@ -278,12 +289,12 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
           })()}
         </React.Fragment>
       ))}
-      {isThinking ? (
+      {isWorking ? (
         <>
           {rows.length > 0 ? <Text> </Text> : null}
           <Box>
             <Box width={2}>
-              <Text color={pulseColor}>{`${pulseGlyph} `}</Text>
+              <Text color={indicatorColor}>{`${pulseGlyph} `}</Text>
             </Box>
             <Box width={contentWidth}>
               <Text dimColor>{thinkingText}</Text>

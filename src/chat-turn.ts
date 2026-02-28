@@ -120,7 +120,7 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
     const details: string[] = [];
     if (toolCount > 0) details.push(`${toolCount} tool${toolCount !== 1 ? "s" : ""}`);
     const suffix = details.length > 0 ? ` (${details.join(" · ")})` : "";
-    rows.push(createRow("assistant", `Worked ${duration}${suffix}`, { dim: true }));
+    rows.push(createRow("assistant", `Worked ${duration}${suffix}`, { dim: true, style: "worked" }));
   }
 
   return {

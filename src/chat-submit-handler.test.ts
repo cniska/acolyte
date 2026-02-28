@@ -75,14 +75,14 @@ describe("chat submit handler guards", () => {
   });
 
   test("ignores input while thinking", async () => {
-    const { submit, calls } = createSubmitHandlerHarness({ isThinking: true });
+    const { submit, calls } = createSubmitHandlerHarness({ isWorking: true });
     await submit("hello");
     expect(calls.setInputHistory).toBe(0);
     expect(calls.setValue).toEqual([]);
   });
 
   test("handles slash command while thinking", async () => {
-    const { submit, calls } = createSubmitHandlerHarness({ isThinking: true });
+    const { submit, calls } = createSubmitHandlerHarness({ isWorking: true });
     await submit("/sessions");
     expect(calls.setInputHistory).toBe(1);
     expect(calls.setValue).toEqual([""]);
@@ -180,11 +180,11 @@ describe("chat submit handler guards", () => {
         openWriteConfirmWith = prompt;
       },
       tokenUsage: [],
-      isThinking: false,
+      isWorking: false,
       setInputHistory: () => {},
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
-      setIsThinking: () => {},
+      setIsWorking: () => {},
       setProgressText: () => {},
       setTokenUsage: () => {},
       createMessage,
@@ -223,11 +223,11 @@ describe("chat submit handler guards", () => {
         openWriteConfirmWith = prompt;
       },
       tokenUsage: [],
-      isThinking: false,
+      isWorking: false,
       setInputHistory: () => {},
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
-      setIsThinking: () => {},
+      setIsWorking: () => {},
       setProgressText: () => {},
       setTokenUsage: () => {},
       createMessage,
@@ -273,11 +273,11 @@ describe("chat submit handler guards", () => {
         openWriteConfirmWith = prompt;
       },
       tokenUsage: [],
-      isThinking: false,
+      isWorking: false,
       setInputHistory: () => {},
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
-      setIsThinking: () => {},
+      setIsWorking: () => {},
       setProgressText: () => {},
       setTokenUsage: () => {},
       createMessage,
@@ -334,11 +334,11 @@ describe("chat submit handler guards", () => {
       openClarifyPanel: (_questions, _originalPrompt) => {},
       openWriteConfirmPanel: () => {},
       tokenUsage: [],
-      isThinking: false,
+      isWorking: false,
       setInputHistory: () => {},
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
-      setIsThinking: () => {},
+      setIsWorking: () => {},
       setProgressText: () => {},
       setTokenUsage: () => {},
       createMessage,
@@ -359,7 +359,7 @@ describe("chat submit handler guards", () => {
 
     const last = rows[rows.length - 1];
     expect(last?.role).toBe("system");
-    expect(last?.content).toBe("Interrupted.");
+    expect(last?.content).toBe("Interrupted");
     expect(last?.dim).toBe(true);
   });
 
@@ -402,11 +402,11 @@ describe("chat submit handler guards", () => {
       },
       openWriteConfirmPanel: () => {},
       tokenUsage: [],
-      isThinking: false,
+      isWorking: false,
       setInputHistory: () => {},
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
-      setIsThinking: () => {},
+      setIsWorking: () => {},
       setProgressText: () => {},
       setTokenUsage: () => {},
       createMessage,
@@ -460,11 +460,11 @@ describe("chat submit handler guards", () => {
       openClarifyPanel: (_questions, _originalPrompt) => {},
       openWriteConfirmPanel: () => {},
       tokenUsage: [],
-      isThinking: false,
+      isWorking: false,
       setInputHistory: () => {},
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
-      setIsThinking: () => {},
+      setIsWorking: () => {},
       setProgressText: () => {},
       setTokenUsage: () => {},
       createMessage,
@@ -515,11 +515,11 @@ describe("chat submit handler guards", () => {
         openClarifyPanel: (_questions, _originalPrompt) => {},
         openWriteConfirmPanel: () => {},
         tokenUsage: [],
-        isThinking: false,
+        isWorking: false,
         setInputHistory: () => {},
         setInputHistoryIndex: () => {},
         setInputHistoryDraft: () => {},
-        setIsThinking: () => {},
+        setIsWorking: () => {},
         setProgressText: () => {},
         setTokenUsage: () => {},
         createMessage,
@@ -576,11 +576,11 @@ describe("chat submit handler guards", () => {
       openClarifyPanel: (_questions, _originalPrompt) => {},
       openWriteConfirmPanel: () => {},
       tokenUsage: [],
-      isThinking: false,
+      isWorking: false,
       setInputHistory: () => {},
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
-      setIsThinking: () => {},
+      setIsWorking: () => {},
       setProgressText: (next) => {
         progressTexts.push(next);
       },
@@ -631,11 +631,11 @@ describe("chat submit handler guards", () => {
       openClarifyPanel: () => {},
       openWriteConfirmPanel: () => {},
       tokenUsage: [],
-      isThinking: false,
+      isWorking: false,
       setInputHistory: () => {},
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
-      setIsThinking: () => {},
+      setIsWorking: () => {},
       setProgressText: () => {},
       setTokenUsage: () => {},
       createMessage,
@@ -678,11 +678,11 @@ describe("chat submit handler guards", () => {
       openClarifyPanel: (_questions, _originalPrompt) => {},
       openWriteConfirmPanel: () => {},
       tokenUsage: [],
-      isThinking: false,
+      isWorking: false,
       setInputHistory: () => {},
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
-      setIsThinking: () => {},
+      setIsWorking: () => {},
       setProgressText: () => {},
       setTokenUsage: () => {},
       createMessage,
@@ -724,11 +724,11 @@ describe("chat submit handler guards", () => {
       openClarifyPanel: (_questions, _originalPrompt) => {},
       openWriteConfirmPanel: () => {},
       tokenUsage: [],
-      isThinking: false,
+      isWorking: false,
       setInputHistory: () => {},
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
-      setIsThinking: () => {},
+      setIsWorking: () => {},
       setProgressText: () => {},
       setTokenUsage: () => {},
       createMessage,
@@ -774,11 +774,11 @@ describe("chat submit handler guards", () => {
       openClarifyPanel: (_questions, _originalPrompt) => {},
       openWriteConfirmPanel: () => {},
       tokenUsage: [],
-      isThinking: false,
+      isWorking: false,
       setInputHistory: () => {},
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
-      setIsThinking: (next) => {
+      setIsWorking: (next) => {
         thinkingTransitions.push(next);
       },
       setProgressText: () => {},
@@ -795,6 +795,79 @@ describe("chat submit handler guards", () => {
     expect(thinkingTransitions).toEqual([true, false, true, false]);
     expect(rows.some((row) => row.role === "system" && row.content.includes("Server request timed out"))).toBe(true);
     expect(rows.some((row) => row.role === "assistant" && row.content === "ok")).toBe(true);
+  });
+
+  test("keeps thinking indicator active while remote task is still running", async () => {
+    const rows: ChatRow[] = [];
+    const thinkingTransitions: boolean[] = [];
+    const progressTransitions: Array<string | null> = [];
+    const session = createSession({ id: "sess_test" });
+    const store = createStore({ activeSessionId: session.id, sessions: [session] });
+    let statusChecks = 0;
+    const submit = createSubmitHandler({
+      client: createClient({
+        status: async () => ({}),
+        reply: async () => {
+          throw Object.assign(new Error("RPC stream closed before final reply"), { taskId: "rpc_task_1" });
+        },
+        taskStatus: async () => {
+          statusChecks += 1;
+          if (statusChecks === 1) {
+            return {
+              id: "rpc_task_1",
+              state: "running",
+              createdAt: "2026-02-20T00:00:00.000Z",
+              updatedAt: "2026-02-20T00:00:01.000Z",
+            };
+          }
+          return {
+            id: "rpc_task_1",
+            state: "completed",
+            createdAt: "2026-02-20T00:00:00.000Z",
+            updatedAt: "2026-02-20T00:00:02.000Z",
+            summary: "done",
+          };
+        },
+      }),
+      store,
+      currentSession: session,
+      setCurrentSession: () => {},
+      toRows: () => [],
+      setRows: (updater) => {
+        rows.splice(0, rows.length, ...updater(rows));
+      },
+      setShowShortcuts: () => {},
+      setValue: () => {},
+      persist: async () => {},
+      exit: () => {},
+      openSkillsPanel: async () => {},
+      activateSkill: async () => true,
+      openResumePanel: () => {},
+      openPermissionsPanel: () => {},
+      openClarifyPanel: () => {},
+      openWriteConfirmPanel: () => {},
+      tokenUsage: [],
+      isWorking: false,
+      setInputHistory: () => {},
+      setInputHistoryIndex: () => {},
+      setInputHistoryDraft: () => {},
+      setIsWorking: (next) => {
+        thinkingTransitions.push(next);
+      },
+      setProgressText: (next) => {
+        progressTransitions.push(next);
+      },
+      setTokenUsage: () => {},
+      createMessage,
+      nowIso: () => "2026-02-20T00:00:00.000Z",
+      setInterrupt: () => {},
+    });
+
+    await submit("first");
+    expect(thinkingTransitions).toEqual([true]);
+    expect(progressTransitions).toContain("Still running on server…");
+    await Bun.sleep(800);
+    expect(thinkingTransitions).toEqual([true, false]);
   });
 
   test("allows /new recovery after a timed-out turn", async () => {
@@ -835,11 +908,11 @@ describe("chat submit handler guards", () => {
       openClarifyPanel: (_questions, _originalPrompt) => {},
       openWriteConfirmPanel: () => {},
       tokenUsage: [],
-      isThinking: false,
+      isWorking: false,
       setInputHistory: () => {},
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
-      setIsThinking: () => {},
+      setIsWorking: () => {},
       setProgressText: () => {},
       setTokenUsage: () => {},
       createMessage,
@@ -901,11 +974,11 @@ describe("chat submit handler guards", () => {
       openClarifyPanel: (_questions, _originalPrompt) => {},
       openWriteConfirmPanel: () => {},
       tokenUsage: [],
-      isThinking: false,
+      isWorking: false,
       setInputHistory: () => {},
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
-      setIsThinking: () => {},
+      setIsWorking: () => {},
       setProgressText: () => {},
       setTokenUsage: () => {},
       createMessage,
@@ -1174,11 +1247,11 @@ describe("chat submit handler guards", () => {
       openClarifyPanel: () => {},
       openWriteConfirmPanel: () => {},
       tokenUsage: [],
-      isThinking: false,
+      isWorking: false,
       setInputHistory: () => {},
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
-      setIsThinking: () => {},
+      setIsWorking: () => {},
       setProgressText: () => {},
       setTokenUsage: (updater) => {
         tokenUsageSnapshots.push(updater([]));

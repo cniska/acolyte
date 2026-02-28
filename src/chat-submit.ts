@@ -47,9 +47,9 @@ export function resolveSubmitInput(input: ResolveSubmitInput): SubmitResolution 
   return { kind: "submit", value: input.value };
 }
 
-export function resolveQueueSubmit(input: { value: string; isThinking: boolean }): QueueSubmitResolution {
+export function resolveQueueSubmit(input: { value: string; isWorking: boolean }): QueueSubmitResolution {
   const trimmed = input.value.trim();
   if (!trimmed) return { kind: "ignore" };
-  if (input.isThinking) return { kind: "submit", value: trimmed };
+  if (input.isWorking) return { kind: "submit", value: trimmed };
   return { kind: "submit", value: input.value };
 }

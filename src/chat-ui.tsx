@@ -55,7 +55,7 @@ function ChatApp(props: ChatAppProps) {
   const [rows, setRows] = useState<ChatRow[]>(() => initialTranscriptRows(session));
   const [value, setValue] = useState("");
   const [inputRevision, setInputRevision] = useState(0);
-  const [isThinking, setIsThinking] = useState(false);
+  const [isWorking, setIsWorking] = useState(false);
   const [progressText, setProgressText] = useState<string | null>(null);
   const [thinkingFrame, setThinkingFrame] = useState(0);
   const [thinkingStartedAt, setThinkingStartedAt] = useState<number | null>(null);
@@ -86,14 +86,14 @@ function ChatApp(props: ChatAppProps) {
 
   useAtSuggestionsEffect(atQuery, setAtSuggestions, setAtSuggestionIndex);
   useSlashSuggestionsEffect(slashSuggestions, setSlashSuggestionIndex);
-  useThinkingAnimationEffect(isThinking, THINKING_PULSE_FRAMES, setThinkingFrame);
+  useThinkingAnimationEffect(isWorking, THINKING_PULSE_FRAMES, setThinkingFrame);
   useEffect(() => {
-    if (isThinking) {
+    if (isWorking) {
       setThinkingStartedAt((current) => current ?? Date.now());
       return;
     }
     setThinkingStartedAt(null);
-  }, [isThinking]);
+  }, [isWorking]);
 
   useEffect(() => {
     setInputHistory(buildInputHistory(currentSession.messages));
@@ -158,11 +158,12 @@ function ChatApp(props: ChatAppProps) {
     openClarifyPanel,
     openWriteConfirmPanel,
     tokenUsage,
-    isThinking,
+    isWorking,
     setInputHistory,
     setInputHistoryIndex,
     setInputHistoryDraft,
-    setIsThinking,
+    startWorking: () => setIsWorking(true),
+    stopWorking: () => setIsWorking(false),
     setProgressText,
     setTokenUsage,
     createMessage: newMessage,
@@ -173,11 +174,11 @@ function ChatApp(props: ChatAppProps) {
     useMemory,
   });
   useEffect(() => {
-    if (isThinking || queuedMessages.length === 0) return;
+    if (isWorking || queuedMessages.length === 0) return;
     const [next, ...rest] = queuedMessages;
     setQueuedMessages(rest);
     if (next) void handleSubmit(next);
-  }, [handleSubmit, isThinking, queuedMessages]);
+  }, [handleSubmit, isWorking, queuedMessages]);
 
   useChatKeybindings({
     persist,
@@ -192,7 +193,7 @@ function ChatApp(props: ChatAppProps) {
     setValue,
     setInputRevision,
     applyingHistoryRef,
-    isThinking,
+    isWorking,
     atQuery,
     atSuggestions,
     atSuggestionIndex,
@@ -221,7 +222,7 @@ function ChatApp(props: ChatAppProps) {
       />
       <ChatTranscript
         rows={rows}
-        isThinking={isThinking}
+        isWorking={isWorking}
         progressText={progressText}
         thinkingFrame={thinkingFrame}
         thinkingStartedAt={thinkingStartedAt}
@@ -259,9 +260,9 @@ function ChatApp(props: ChatAppProps) {
             setInputRevision((current) => current + 1);
             return;
           }
-          const queueDecision = resolveQueueSubmit({ value: resolved.value, isThinking });
+          const queueDecision = resolveQueueSubmit({ value: resolved.value, isWorking });
           if (queueDecision.kind === "ignore") return;
-          if (isThinking) {
+          if (isWorking) {
             setQueuedMessages((current) => [...current, queueDecision.value]);
             setValue("");
             return;

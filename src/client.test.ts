@@ -499,6 +499,18 @@ describe("createClient", () => {
     expect(status).toEqual({ provider: "mock" });
     expect(calls).toEqual([{ path: "/v1/status", method: null }]);
   });
+
+  test("http transport rejects taskStatus calls", async () => {
+    const client = createClient({
+      transport: {
+        apiUrl: "http://localhost:6767",
+        request: async () => {
+          throw new Error("unexpected");
+        },
+      },
+    });
+    await expect(client.taskStatus("task_1")).rejects.toThrow("task.status is only supported over RPC transport");
+  });
 });
 
 describe("rpc url helpers", () => {
@@ -512,7 +524,7 @@ describe("rpc url helpers", () => {
 });
 
 describe("rpc websocket lifecycle", () => {
-  test("replyStream ignores rpc control envelopes during active chat", async () => {
+  test("replyStream emits rpc status phases and forwards tool events", async () => {
     class MockWebSocket {
       private listeners = new Map<string, Set<(event: unknown) => void>>();
       private closed = false;
@@ -577,7 +589,7 @@ describe("rpc websocket lifecycle", () => {
     );
 
     expect(reply.output).toBe("done");
-    expect(receivedEventTypes).toEqual(["tool-call"]);
+    expect(receivedEventTypes).toEqual(["status", "status", "status", "status", "tool-call"]);
   });
 
   test("replyStream sends chat.abort control message on abort signal", async () => {
@@ -639,5 +651,62 @@ describe("rpc websocket lifecycle", () => {
           msg.payload.requestId.startsWith("rpc_"),
       ),
     ).toBe(true);
+  });
+
+  test("taskStatus requests and parses rpc task status payloads", async () => {
+    class MockWebSocket {
+      private listeners = new Map<string, Set<(event: unknown) => void>>();
+      private closed = false;
+
+      constructor(public readonly url: string) {
+        void this.url;
+        queueMicrotask(() => this.emit("open", {}));
+      }
+
+      addEventListener(type: string, listener: (event: unknown) => void): void {
+        const set = this.listeners.get(type) ?? new Set();
+        set.add(listener);
+        this.listeners.set(type, set);
+      }
+
+      removeEventListener(type: string, listener: (event: unknown) => void): void {
+        this.listeners.get(type)?.delete(listener);
+      }
+
+      send(payload: string): void {
+        const msg = JSON.parse(payload) as { id?: string; type?: string; payload?: { taskId?: string } };
+        if (msg.type !== "task.status" || typeof msg.id !== "string") return;
+        queueMicrotask(() =>
+          this.emit("message", {
+            data: JSON.stringify({
+              id: msg.id,
+              type: "task.status.result",
+              task: {
+                id: msg.payload?.taskId ?? "task_unknown",
+                state: "running",
+                createdAt: "2026-02-28T00:00:00.000Z",
+                updatedAt: "2026-02-28T00:00:01.000Z",
+              },
+            }),
+          }),
+        );
+      }
+
+      close(): void {
+        if (this.closed) return;
+        this.closed = true;
+        this.emit("close", {});
+      }
+
+      private emit(type: string, event: unknown): void {
+        for (const listener of this.listeners.get(type) ?? []) listener(event);
+      }
+    }
+
+    globalThis.WebSocket = MockWebSocket as unknown as typeof WebSocket;
+    const client = createClient({ apiUrl: "http://localhost:6767", transportMode: "rpc" });
+    const task = await client.taskStatus("task_123");
+    expect(task?.id).toBe("task_123");
+    expect(task?.state).toBe("running");
   });
 });

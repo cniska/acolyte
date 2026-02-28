@@ -98,6 +98,7 @@ export function createClient(overrides?: {
   status?: Client["status"];
   events?: StreamEvent[];
   setPermissionMode?: Client["setPermissionMode"];
+  taskStatus?: Client["taskStatus"];
 }): Client {
   const reply =
     overrides?.reply ??
@@ -120,6 +121,7 @@ export function createClient(overrides?: {
     replyStream,
     status: overrides?.status ?? (async () => ({ provider: "local", model: "gpt-5-mini", permissions: "write" })),
     setPermissionMode: overrides?.setPermissionMode ?? (async () => {}),
+    taskStatus: overrides?.taskStatus ?? (async () => null),
   };
 }
 
@@ -135,7 +137,7 @@ export type SubmitHandlerHarness = {
 };
 
 export function createSubmitHandlerHarness(overrides?: {
-  isThinking?: boolean;
+  isWorking?: boolean;
   client?: Client;
 }): SubmitHandlerHarness {
   const rows: ChatRow[] = [];
@@ -170,13 +172,13 @@ export function createSubmitHandlerHarness(overrides?: {
     openClarifyPanel: () => {},
     openWriteConfirmPanel: () => {},
     tokenUsage: [],
-    isThinking: overrides?.isThinking ?? false,
+    isWorking: overrides?.isWorking ?? false,
     setInputHistory: () => {
       calls.setInputHistory += 1;
     },
     setInputHistoryIndex: () => {},
     setInputHistoryDraft: () => {},
-    setIsThinking: () => {},
+    setIsWorking: () => {},
     setProgressText: () => {},
     setTokenUsage: () => {},
     createMessage,

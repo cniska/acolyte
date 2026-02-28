@@ -5,6 +5,7 @@ import type { PermissionMode, TransportMode } from "./config-modes";
 import { rpcServerMessageSchema } from "./rpc-protocol";
 import { createId } from "./short-id";
 import { streamErrorDetailSchema } from "./stream-error";
+import type { TaskRecord } from "./task-state";
 
 export interface ClientOptions {
   apiUrl?: string;
@@ -57,6 +58,7 @@ export interface Client {
   ): Promise<ChatResponse>;
   status(): Promise<Record<string, string>>;
   setPermissionMode(mode: PermissionMode): Promise<void>;
+  taskStatus(taskId: string): Promise<TaskRecord | null>;
 }
 
 type RemoteErrorMetadata = {
@@ -64,6 +66,7 @@ type RemoteErrorMetadata = {
   errorId?: string;
   errorCode?: string;
   errorDetail?: z.infer<typeof streamErrorDetailSchema>;
+  taskId?: string;
 };
 
 function createRemoteError(message: string, metadata: RemoteErrorMetadata = {}): Error {
@@ -347,6 +350,11 @@ class HttpClient implements Client {
       throw new Error(`Failed to set permission mode (${response.status}): ${body || "no body"}`);
     }
   }
+
+  async taskStatus(taskId: string): Promise<TaskRecord | null> {
+    void taskId;
+    throw new Error("task.status is only supported over RPC transport");
+  }
 }
 
 function parseRpcServerMessage(raw: unknown): z.infer<typeof rpcServerMessageSchema> | null {
@@ -479,6 +487,43 @@ class RpcClient implements Client {
     });
   }
 
+  async taskStatus(taskId: string): Promise<TaskRecord | null> {
+    const ws = await this.openSocket();
+    const id = `rpc_${createId()}`;
+    return await new Promise<TaskRecord | null>((resolve, reject) => {
+      const cleanup = () => {
+        ws.removeEventListener("message", onMessage);
+        ws.removeEventListener("close", onClose);
+        try {
+          ws.close();
+        } catch {
+          // ignore
+        }
+      };
+      const onClose = () => {
+        cleanup();
+        reject(new Error("RPC connection closed before task status response"));
+      };
+      const onMessage = (event: MessageEvent) => {
+        let raw: unknown;
+        try {
+          raw = JSON.parse(typeof event.data === "string" ? event.data : String(event.data));
+        } catch {
+          return;
+        }
+        const msg = parseRpcServerMessage(raw);
+        if (!msg || msg.id !== id) return;
+        cleanup();
+        if (msg.type === "task.status.result") resolve(msg.task);
+        else if (msg.type === "error") reject(new Error(msg.error));
+        else reject(new Error(`Unexpected RPC response: ${msg.type}`));
+      };
+      ws.addEventListener("message", onMessage);
+      ws.addEventListener("close", onClose);
+      ws.send(JSON.stringify({ id, type: "task.status", payload: { taskId } }));
+    });
+  }
+
   async replyStream(
     input: ChatRequest,
     options: {
@@ -533,11 +578,13 @@ class RpcClient implements Client {
             // ignore
           }
         }, RPC_ABORT_CLOSE_GRACE_MS);
-        reject(new Error("Request aborted"));
+        const abortError = new Error("Request aborted");
+        abortError.name = "AbortError";
+        reject(abortError);
       };
       const onClose = () => {
         cleanup();
-        reject(new Error("RPC stream closed before final reply"));
+        reject(createRemoteError("RPC stream closed before final reply", { taskId: id }));
       };
       const onMessage = (event: MessageEvent) => {
         resetTimeout();
@@ -549,9 +596,18 @@ class RpcClient implements Client {
         }
         const msg = parseRpcServerMessage(raw);
         if (!msg || msg.id !== id) return;
-        if (msg.type === "chat.accepted") return;
-        if (msg.type === "chat.queued") return;
-        if (msg.type === "chat.started") return;
+        if (msg.type === "chat.accepted") {
+          options.onEvent({ type: "status", message: "Accepted by server…" });
+          return;
+        }
+        if (msg.type === "chat.queued") {
+          options.onEvent({ type: "status", message: `Queued (position ${msg.position})…` });
+          return;
+        }
+        if (msg.type === "chat.started") {
+          options.onEvent({ type: "status", message: "Running…" });
+          return;
+        }
         if (msg.type === "chat.abort.result") return;
         if (msg.type === "chat.event") {
           const parsed = parseStreamEvent(msg.event);

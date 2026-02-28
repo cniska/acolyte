@@ -73,6 +73,7 @@ describe("chat turn helpers", () => {
         }),
         status: async () => ({}),
         setPermissionMode: async () => {},
+        taskStatus: async () => null,
       },
       userText: "create a rust script",
       history: [],

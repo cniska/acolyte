@@ -36,11 +36,13 @@ type CreateSubmitHandlerInput = {
   openClarifyPanel: (questions: string[], originalPrompt: string) => void;
   openWriteConfirmPanel: (prompt: string) => void;
   tokenUsage: TokenUsageEntry[];
-  isThinking: boolean;
+  isWorking: boolean;
   setInputHistory: (updater: (current: string[]) => string[]) => void;
   setInputHistoryIndex: (next: number) => void;
   setInputHistoryDraft: (next: string) => void;
-  setIsThinking: (next: boolean) => void;
+  startWorking?: () => void;
+  stopWorking?: () => void;
+  setIsWorking?: (next: boolean) => void;
   setProgressText: (next: string | null) => void;
   setTokenUsage: (updater: (current: TokenUsageEntry[]) => TokenUsageEntry[]) => void;
   createMessage: (role: Message["role"], content: string) => Message;
@@ -61,7 +63,10 @@ const INTERNAL_CLARIFICATION_PREFIX = "\u0000acolyte_clarify:";
 const INTERNAL_WRITE_RESUME_PREFIX = "\u0000acolyte_write_resume:";
 
 function isAbortError(error: unknown): boolean {
-  return error instanceof Error && error.name === "AbortError";
+  if (!(error instanceof Error)) return false;
+  if (error.name === "AbortError") return true;
+  const message = error.message.toLowerCase();
+  return message.includes("request aborted") || message.includes("aborted");
 }
 
 function formatSubmitError(error: unknown): string {
@@ -202,12 +207,34 @@ function parseInternalWriteResumeTurn(raw: string): InternalWriteResumeTurn | nu
   return { prompt };
 }
 
+function remoteTaskIdFromError(error: unknown): string | null {
+  if (!(error instanceof Error)) return null;
+  const taskId = (error as Error & { taskId?: unknown }).taskId;
+  return typeof taskId === "string" && taskId.length > 0 ? taskId : null;
+}
+
 function buildClarifiedUserText(turn: InternalClarificationTurn): string {
   const lines = turn.answers.map((item) => `- ${item.question}: ${item.answer}`);
   return `${turn.originalPrompt}\n\nClarifications:\n${lines.join("\n")}`;
 }
 
 export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: string) => Promise<void> {
+  const startWorking = (): void => {
+    if (input.startWorking) {
+      input.startWorking();
+      return;
+    }
+    input.setIsWorking?.(true);
+  };
+
+  const stopWorking = (): void => {
+    if (input.stopWorking) {
+      input.stopWorking();
+      return;
+    }
+    input.setIsWorking?.(false);
+  };
+
   return async (raw: string): Promise<void> => {
     const internalClarification = parseInternalClarificationTurn(raw);
     const internalWriteResume = parseInternalWriteResumeTurn(raw);
@@ -217,7 +244,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       : internalWriteResume
         ? internalWriteResume.prompt
         : raw.trim();
-    if (!text || (input.isThinking && !text.startsWith("/"))) return;
+    if (!text || (input.isWorking && !text.startsWith("/"))) return;
     if (!isInternalReplay && text.startsWith("/") && !text.includes(" ") && !isKnownSlashToken(text)) return;
     const resolvedText = internalClarification ? text : resolveSlashAlias(text);
     const naturalRememberDirective = isInternalReplay ? null : resolveNaturalRememberDirective(text);
@@ -242,7 +269,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         createMessage: input.createMessage,
       });
       input.setRows((current) => [...current, userRow]);
-      input.setIsThinking(true);
+      startWorking();
       input.setProgressText("Thinking…");
       try {
         const distilled = cleanMemoryCandidate(naturalRememberDirective.content);
@@ -260,7 +287,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
           createRow("system", error instanceof Error ? error.message : "Failed to save memory.", { dim: true }),
         ]);
       } finally {
-        input.setIsThinking(false);
+        stopWorking();
         input.setProgressText(null);
       }
       return;
@@ -338,7 +365,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       return;
     }
 
-    input.setIsThinking(true);
+    startWorking();
     input.setProgressText("Thinking…");
     const abortController = new AbortController();
     input.setInterrupt(() => abortController.abort());
@@ -478,6 +505,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       },
     });
     await input.persist();
+    let keepThinkingForRemoteTask = false;
 
     try {
       const turn = await runAssistantTurn({
@@ -551,6 +579,50 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
       input.setTokenUsage(() => [...input.currentSession.tokenUsage]);
       await input.persist();
     } catch (error) {
+      const remoteTaskId = remoteTaskIdFromError(error);
+      if (!isAbortError(error) && remoteTaskId) {
+        try {
+          const task = await input.client.taskStatus(remoteTaskId);
+          if (task && (task.state === "running" || task.state === "detached")) {
+            keepThinkingForRemoteTask = true;
+            input.setProgressText("Still running on server…");
+            void (async () => {
+              try {
+                for (let pollCount = 0; pollCount < 300; pollCount += 1) {
+                  await Bun.sleep(700);
+                  const next = await input.client.taskStatus(remoteTaskId);
+                  if (!next || next.state === "running" || next.state === "detached") continue;
+                  if (next.state === "failed") {
+                    const detail = next.summary?.trim() || "Task failed on server.";
+                    input.setRows((current) => [...current, createRow("system", detail, { dim: true, style: "error" })]);
+                  } else if (next.state === "cancelled") {
+                    const detail = next.summary?.trim() || "Task cancelled.";
+                    input.setRows((current) => [...current, createRow("system", detail, { dim: true, style: "cancelled" })]);
+                  }
+                  await input.persist();
+                  return;
+                }
+                input.setRows((current) => [
+                  ...current,
+                  createRow("system", "Task is still running. Use /status to check server health.", { dim: true }),
+                ]);
+              } catch {
+                input.setRows((current) => [
+                  ...current,
+                  createRow("system", "Lost task tracking after stream disconnect.", { dim: true, style: "error" }),
+                ]);
+              } finally {
+                stopWorking();
+                input.setProgressText(null);
+                await input.persist().catch(() => {});
+              }
+            })();
+            return;
+          }
+        } catch {
+          // Fall through to normal error handling if task status lookup fails.
+        }
+      }
       // Persist any partial assistant content so context isn't lost on timeout/error.
       const partialContent = (committedStreamingText + streamingAssistantContent).trim();
       if (partialContent.length > 0 && !isAbortError(error)) {
@@ -559,16 +631,21 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         input.currentSession.updatedAt = input.nowIso();
         await input.persist().catch(() => {});
       }
-      const errorContent = isAbortError(error) ? "Interrupted." : formatSubmitError(error);
-      input.setRows((current) => [...current, createRow("system", errorContent, { dim: isAbortError(error) })]);
+      const errorContent = isAbortError(error) ? "Interrupted" : formatSubmitError(error);
+      input.setRows((current) => [
+        ...current,
+        createRow("system", errorContent, { dim: isAbortError(error), style: isAbortError(error) ? "cancelled" : "error" }),
+      ]);
     } finally {
       if (streamFlushTimer) {
         clearTimeout(streamFlushTimer);
         streamFlushTimer = null;
       }
       input.setInterrupt(null);
-      input.setIsThinking(false);
-      input.setProgressText(null);
+      if (!keepThinkingForRemoteTask) {
+        stopWorking();
+        input.setProgressText(null);
+      }
     }
   };
 }

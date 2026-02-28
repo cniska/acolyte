@@ -76,10 +76,10 @@ export function resolveTabAutocomplete(input: ResolveTabAutocompleteInput): stri
 }
 
 export function resolveEscapeAction(input: {
-  isThinking: boolean;
+  isWorking: boolean;
   showShortcuts: boolean;
 }): "interrupt" | "hide" | null {
-  if (input.isThinking) return "interrupt";
+  if (input.isWorking) return "interrupt";
   if (input.showShortcuts) return "hide";
   return null;
 }
@@ -102,7 +102,7 @@ type UseChatKeybindingsInput = {
   setValue: (next: string) => void;
   setInputRevision: (next: number | ((current: number) => number)) => void;
   applyingHistoryRef: { current: boolean };
-  isThinking: boolean;
+  isWorking: boolean;
   atQuery: string | null;
   atSuggestions: string[];
   atSuggestionIndex: number;
@@ -163,7 +163,7 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
         (input.atQuery !== null || (input.atQuery === null && input.slashSuggestions.length > 0));
       const historyTriggerUp = key.upArrow || (key.ctrl && keyInput === "p");
       const historyTriggerDown = key.downArrow || (key.ctrl && keyInput === "n");
-      if (!input.isThinking && !suggestionNavActive && historyTriggerUp) {
+      if (!input.isWorking && !suggestionNavActive && historyTriggerUp) {
         if (!shouldCycleInputHistory(input.value, input.inputHistoryIndex)) return;
         const transition = resolveHistoryUp(input.inputHistory, input.inputHistoryIndex, input.value);
         if (!transition) return;
@@ -174,7 +174,7 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
         input.setInputRevision((current) => current + 1);
         return;
       }
-      if (!input.isThinking && !suggestionNavActive && historyTriggerDown && input.inputHistoryIndex >= 0) {
+      if (!input.isWorking && !suggestionNavActive && historyTriggerDown && input.inputHistoryIndex >= 0) {
         const transition = resolveHistoryDown(input.inputHistory, input.inputHistoryIndex, input.inputHistoryDraft);
         if (!transition) return;
         input.setInputHistoryIndex(transition.nextIndex);
@@ -233,7 +233,7 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
           return;
         }
       }
-      if (!input.isThinking && keyInput === "$" && input.value.length === 0) {
+      if (!input.isWorking && keyInput === "$" && input.value.length === 0) {
         void input.openSkillsPanel();
         return;
       }
@@ -242,7 +242,7 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
         return;
       }
       if (key.escape) {
-        const action = resolveEscapeAction({ isThinking: input.isThinking, showShortcuts: input.showShortcuts });
+        const action = resolveEscapeAction({ isWorking: input.isWorking, showShortcuts: input.showShortcuts });
         if (action === "interrupt") {
           input.interruptCurrentTurn();
           return;

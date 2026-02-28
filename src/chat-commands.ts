@@ -17,7 +17,15 @@ export type ChatRow = {
   role: "user" | "assistant" | "system";
   content: string;
   dim?: boolean;
-  style?: "sessionStatus" | "sessionsList" | "toolProgress" | "statusOutput" | "tokenOutput" | "error";
+  style?:
+    | "sessionStatus"
+    | "sessionsList"
+    | "toolProgress"
+    | "statusOutput"
+    | "tokenOutput"
+    | "error"
+    | "worked"
+    | "cancelled";
   toolCallId?: string;
   toolName?: string;
   toolStatus?: "ok" | "error";
