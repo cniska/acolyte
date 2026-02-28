@@ -3,6 +3,7 @@ import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 import { appConfig } from "./app-config";
 import { createId } from "./short-id";
+import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
 import { createSessionContext, recordCall, runGuards, type SessionContext } from "./tool-guards";
 import type { ToolName } from "./tool-names";
 import { compactToolOutput } from "./tool-output";
@@ -317,7 +318,14 @@ async function guardedExecute<T>(
   session: SessionContext,
   task: () => Promise<T>,
 ): Promise<T> {
-  runGuards({ toolName: toolId, args, session });
+  try {
+    runGuards({ toolName: toolId, args, session });
+  } catch (error) {
+    const wrapped = error instanceof Error ? error : new Error(typeof error === "string" ? error : "Guard blocked");
+    const coded = wrapped as Error & { code?: string };
+    if (typeof coded.code !== "string" || coded.code.length === 0) coded.code = LIFECYCLE_ERROR_CODES.guardBlocked;
+    throw coded;
+  }
   try {
     const result = await task();
     return result;

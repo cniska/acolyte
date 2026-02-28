@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { setPermissionMode } from "./app-config";
 import { toolsForAgent, withToolError } from "./mastra-tools";
 import { savedPermissionMode } from "./test-factory";
+import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
 
 const restorePermissions = savedPermissionMode();
 
@@ -109,6 +110,24 @@ describe("tool error wrapper", () => {
       const wrapped = error as Error & { code?: string };
       expect(wrapped.message).toBe("edit-file failed: multi-match");
       expect(wrapped.code).toBe("E_EDIT_FILE_MULTI_MATCH");
+    }
+  });
+
+  test("preserves guard-blocked code from guarded execution", async () => {
+    setPermissionMode("write");
+    const { tools } = toolsForAgent({ workspace: process.cwd() });
+    const runCommand = tools.runCommand;
+    if (!runCommand?.execute) throw new Error("runCommand tool missing");
+    const runtime = {} as never;
+    await runCommand.execute({ command: "echo verify" }, runtime);
+    try {
+      await runCommand.execute({ command: "echo verify" }, runtime);
+      throw new Error("expected duplicate verify guard to block");
+    } catch (error) {
+      expect(error).toBeInstanceOf(Error);
+      const wrapped = error as Error & { code?: string };
+      expect(wrapped.code).toBe(LIFECYCLE_ERROR_CODES.guardBlocked);
+      expect(wrapped.message).toContain("run-command failed:");
     }
   });
 });
