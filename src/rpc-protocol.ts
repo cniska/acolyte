@@ -11,6 +11,18 @@ const chatRequestSchema = z.object({
   workspace: z.string().optional(),
 });
 
+const statusPayloadSchema = z.object({
+  ok: z.literal(true),
+  provider: z.string(),
+  model: z.string(),
+  protocolVersion: z.string(),
+  capabilities: z.string(),
+  permissions: z.string(),
+  service: z.string(),
+  memory: z.string(),
+  observational_memory: z.string(),
+});
+
 export const rpcClientMessageSchema = z.discriminatedUnion("type", [
   z.object({ id: z.string().min(1), type: z.literal("status.get") }),
   z.object({
@@ -23,13 +35,18 @@ export const rpcClientMessageSchema = z.discriminatedUnion("type", [
     type: z.literal("chat.start"),
     payload: z.object({ request: chatRequestSchema }),
   }),
+  z.object({
+    id: z.string().min(1),
+    type: z.literal("chat.abort"),
+    payload: z.object({ requestId: z.string().min(1) }),
+  }),
 ]);
 
 export const rpcServerMessageSchema = z.discriminatedUnion("type", [
   z.object({
     id: z.string().min(1),
     type: z.literal("status.result"),
-    status: z.record(z.string(), z.string()),
+    status: statusPayloadSchema,
   }),
   z.object({
     id: z.string().min(1),
@@ -52,6 +69,12 @@ export const rpcServerMessageSchema = z.discriminatedUnion("type", [
     error: z.string(),
     errorCode: z.string().optional(),
     errorDetail: streamErrorDetailSchema.optional(),
+  }),
+  z.object({
+    id: z.string().min(1),
+    type: z.literal("chat.abort.result"),
+    requestId: z.string().min(1),
+    aborted: z.boolean(),
   }),
   z.object({
     id: z.string().min(1),

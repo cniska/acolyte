@@ -188,6 +188,7 @@ type RunChatHandlers = {
   onEvent: (event: Record<string, unknown>) => void;
   onDone: (reply: Awaited<ReturnType<typeof runAgent>>) => void;
   onError: (payload: ReturnType<typeof streamErrorPayload>) => void;
+  isCancelled?: () => boolean;
 };
 
 async function runChatRequest(chatRequest: ChatRequest, handlers: RunChatHandlers): Promise<void> {
@@ -220,6 +221,7 @@ async function runChatRequest(chatRequest: ChatRequest, handlers: RunChatHandler
       soulPrompt,
       workspace: workspaceResolution.workspacePath,
       onEvent: (event) => {
+        if (handlers.isCancelled?.()) return;
         handlers.onEvent(event as Record<string, unknown>);
       },
       onDebug: (entry) => {
@@ -234,6 +236,14 @@ async function runChatRequest(chatRequest: ChatRequest, handlers: RunChatHandler
         });
       },
     });
+    if (handlers.isCancelled?.()) {
+      log.info("chat request cancelled", {
+        request_id: requestId,
+        session_id: chatRequest.sessionId ?? null,
+        transport_path: handlers.path,
+      });
+      return;
+    }
     const durationMs = Date.now() - startedAt;
     log.info("chat request completed", {
       request_id: requestId,
@@ -250,6 +260,7 @@ async function runChatRequest(chatRequest: ChatRequest, handlers: RunChatHandler
     });
     handlers.onDone(reply);
   } catch (error) {
+    if (handlers.isCancelled?.()) return;
     const payload = streamErrorPayload(error);
     log.error("chat stream failed", {
       request_id: requestId,
@@ -263,20 +274,39 @@ async function runChatRequest(chatRequest: ChatRequest, handlers: RunChatHandler
   }
 }
 
-type RpcConnectionState = {
-  authed: boolean;
+type ActiveRpcChatState = {
+  aborted: boolean;
 };
 
-function parseRpcMessage(raw: string | Buffer | Uint8Array): z.infer<typeof rpcClientMessageSchema> | null {
+type RpcConnectionState = {
+  authed: boolean;
+  activeChats: Map<string, ActiveRpcChatState>;
+};
+
+type ParsedRpcEnvelope = {
+  id: string | null;
+  message: z.infer<typeof rpcClientMessageSchema> | null;
+};
+
+function parseRpcMessageEnvelope(raw: string | Buffer | Uint8Array): ParsedRpcEnvelope {
   const text = typeof raw === "string" ? raw : Buffer.from(raw).toString("utf8");
   let parsedJson: unknown;
   try {
     parsedJson = JSON.parse(text);
   } catch {
-    return null;
+    return { id: null, message: null };
   }
+  const id =
+    typeof parsedJson === "object" &&
+    parsedJson !== null &&
+    "id" in parsedJson &&
+    typeof parsedJson.id === "string" &&
+    parsedJson.id.length > 0
+      ? parsedJson.id
+      : null;
   const parsed = rpcClientMessageSchema.safeParse(parsedJson);
-  return parsed.success ? parsed.data : null;
+  if (!parsed.success) return { id, message: null };
+  return { id: parsed.data.id, message: parsed.data };
 }
 
 try {
@@ -400,7 +430,7 @@ const server = Bun.serve<RpcConnectionState>({
         });
         return unauthorized();
       }
-      if (server.upgrade(req, { data: { authed: true } })) return;
+      if (server.upgrade(req, { data: { authed: true, activeChats: new Map() } })) return;
       return badRequest("WebSocket upgrade failed");
     }
 
@@ -496,16 +526,22 @@ const server = Bun.serve<RpcConnectionState>({
     });
   },
   websocket: {
+    close(ws) {
+      for (const state of ws.data.activeChats.values()) {
+        state.aborted = true;
+      }
+    },
     async message(ws, raw) {
       if (!ws.data.authed) {
         ws.close(1008, "unauthorized");
         return;
       }
-      const message = parseRpcMessage(raw);
-      if (!message) {
-        ws.send(JSON.stringify({ id: "unknown", type: "error", error: "Invalid RPC message" }));
+      const envelope = parseRpcMessageEnvelope(raw);
+      if (!envelope.message) {
+        ws.send(JSON.stringify({ id: envelope.id ?? "unknown", type: "error", error: "Invalid RPC message" }));
         return;
       }
+      const message = envelope.message;
 
       const send = (payload: Record<string, unknown>): void => {
         ws.send(JSON.stringify({ id: message.id, ...payload }));
@@ -524,15 +560,32 @@ const server = Bun.serve<RpcConnectionState>({
       }
 
       if (message.type === "chat.start") {
+        if (ws.data.activeChats.has(message.id)) {
+          send({ type: "error", error: `Chat request already running for id: ${message.id}` });
+          return;
+        }
         const request = message.payload.request;
         if (!isChatRequest(request)) return send({ type: "error", error: "Invalid request shape" });
-        await runChatRequest(request, {
+        const state: ActiveRpcChatState = { aborted: false };
+        ws.data.activeChats.set(message.id, state);
+        void runChatRequest(request, {
           path: "/v1/rpc",
           method: "WS",
+          isCancelled: () => state.aborted,
           onEvent: (event) => send({ type: "chat.event", event }),
           onDone: (reply) => send({ type: "chat.done", reply }),
           onError: (payload) => send({ type: "chat.error", ...payload }),
+        }).finally(() => {
+          ws.data.activeChats.delete(message.id);
         });
+        return;
+      }
+
+      if (message.type === "chat.abort") {
+        const requestId = message.payload.requestId;
+        const state = ws.data.activeChats.get(requestId);
+        if (state) state.aborted = true;
+        send({ type: "chat.abort.result", requestId, aborted: Boolean(state) });
         return;
       }
 

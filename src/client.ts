@@ -427,8 +427,13 @@ class RpcClient implements Client {
         const msg = parseRpcServerMessage(raw);
         if (!msg || msg.id !== id) return;
         cleanup();
-        if (msg.type === "status.result") resolve(msg.status);
-        else if (msg.type === "error") reject(new Error(msg.error));
+        if (msg.type === "status.result") {
+          const fields: Record<string, string> = {};
+          for (const [key, value] of Object.entries(msg.status)) {
+            if (key !== "ok" && typeof value === "string") fields[key] = value;
+          }
+          resolve(fields);
+        } else if (msg.type === "error") reject(new Error(msg.error));
         else reject(new Error(`Unexpected RPC response: ${msg.type}`));
       };
       ws.addEventListener("message", onMessage);
@@ -508,6 +513,17 @@ class RpcClient implements Client {
         if (options.signal) options.signal.removeEventListener("abort", onAbort);
       };
       const onAbort = () => {
+        try {
+          ws.send(
+            JSON.stringify({
+              id: `rpc_abort_${createId()}`,
+              type: "chat.abort",
+              payload: { requestId: id },
+            }),
+          );
+        } catch {
+          // Best effort only.
+        }
         cleanup();
         try {
           ws.close();

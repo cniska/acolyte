@@ -28,4 +28,34 @@ describe("rpc protocol schema", () => {
     });
     expect(parsed.success).toBe(true);
   });
+
+  test("accepts chat.abort client messages", () => {
+    const parsed = rpcClientMessageSchema.safeParse({
+      id: "rpc_2",
+      type: "chat.abort",
+      payload: {
+        requestId: "rpc_1",
+      },
+    });
+    expect(parsed.success).toBe(true);
+  });
+
+  test("accepts status.result with typed payload", () => {
+    const parsed = rpcServerMessageSchema.safeParse({
+      id: "rpc_3",
+      type: "status.result",
+      status: {
+        ok: true,
+        provider: "openai",
+        model: "gpt-5-mini",
+        protocolVersion: "v1",
+        capabilities: "chat,permissions",
+        permissions: "write",
+        service: "http://localhost:6767",
+        memory: "enabled",
+        observational_memory: "enabled (resource)",
+      },
+    });
+    expect(parsed.success).toBe(true);
+  });
 });
