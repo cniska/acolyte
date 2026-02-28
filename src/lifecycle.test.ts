@@ -84,8 +84,15 @@ describe("planDetector", () => {
 
 describe("autoVerifier", () => {
   test("returns regenerate when write tools used without verify", () => {
+    const session = createSessionContext();
+    session.callLog = [
+      { toolName: "read-file", args: { paths: [{ path: "src/a.ts" }] } },
+      { toolName: "edit-file", args: { path: "src/a.ts" } },
+      { toolName: "edit-code", args: { path: "src/b.ts" } },
+    ];
     const ctx = createMockContext({
       classifiedMode: "work",
+      session,
       result: { text: "Done.", toolCalls: [] },
       observedTools: new Set(["read-file", "edit-file"]),
     });
@@ -94,7 +101,21 @@ describe("autoVerifier", () => {
     if (action.type === "regenerate") {
       expect(action.mode).toBe("verify");
       expect(action.keepResult).toBe(true);
+      expect(action.prompt).toContain("Task boundary:");
+      expect(action.prompt).toContain("- src/a.ts");
+      expect(action.prompt).toContain("- src/b.ts");
     }
+  });
+
+  test("uses base verify prompt when no write paths are available", () => {
+    const ctx = createMockContext({
+      classifiedMode: "work",
+      result: { text: "Done.", toolCalls: [] },
+      observedTools: new Set(["edit-file"]),
+    });
+    const action = autoVerifier.evaluate(ctx);
+    expect(action.type).toBe("regenerate");
+    if (action.type === "regenerate") expect(action.prompt).not.toContain("Task boundary:");
   });
 
   test("returns done when verifyRan flag is set", () => {

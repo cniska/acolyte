@@ -63,6 +63,33 @@ function findLastEditFilePath(ctx: EvaluatorContext): string | undefined {
   return undefined;
 }
 
+function writePathsForCurrentTask(ctx: EvaluatorContext): string[] {
+  const out = new Set<string>();
+  for (const entry of ctx.session.callLog) {
+    if (!WRITE_TOOL_SET.has(entry.toolName)) continue;
+    const path = entry.args?.path;
+    if (typeof path !== "string") continue;
+    const trimmed = path.trim();
+    if (trimmed.length === 0) continue;
+    out.add(trimmed);
+  }
+  return Array.from(out);
+}
+
+function scopedVerifyPrompt(ctx: EvaluatorContext): string {
+  const base = createModeInstructions("verify", ctx.workspace);
+  const paths = writePathsForCurrentTask(ctx);
+  if (paths.length === 0) return base;
+  return [
+    base,
+    "",
+    "Task boundary:",
+    `Review ONLY these files changed in this task (${paths.length}):`,
+    ...paths.map((path) => `- ${path}`),
+    "Do not review other repository changes from earlier tasks.",
+  ].join("\n");
+}
+
 export const planDetector: Evaluator = {
   id: "plan-detector",
   evaluate(ctx) {
@@ -101,7 +128,7 @@ export const autoVerifier: Evaluator = {
     if (ctx.classifiedMode === "work" && usedWriteTools && !ctx.session.flags.verifyRan) {
       return {
         type: "regenerate",
-        prompt: createModeInstructions("verify", ctx.workspace),
+        prompt: scopedVerifyPrompt(ctx),
         mode: "verify",
         maxSteps: VERIFY_MAX_STEPS,
         keepResult: true,
