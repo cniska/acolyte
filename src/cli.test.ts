@@ -55,6 +55,7 @@ describe("cli", () => {
 
   test("shouldAutoStartLocalServerForChat leaves remote/non-http apiUrl as external mode", () => {
     expect(shouldAutoStartLocalServerForChat("https://api.example.com")).toBe(false);
+    expect(shouldAutoStartLocalServerForChat("https://localhost:6767")).toBe(false);
     expect(shouldAutoStartLocalServerForChat("ws://localhost:6767/v1/rpc")).toBe(false);
     expect(shouldAutoStartLocalServerForChat("not-a-url")).toBe(false);
   });

@@ -67,7 +67,7 @@ export function resolveChatApiUrl(configuredApiUrl: string | undefined, port = D
 function isLocalLoopbackApiUrl(apiUrl: string): boolean {
   try {
     const parsed = new URL(apiUrl);
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return false;
+    if (parsed.protocol !== "http:") return false;
     const host = parsed.hostname.toLowerCase().replace(/^\[(.*)\]$/, "$1");
     return host === "localhost" || host === "127.0.0.1" || host === "::1";
   } catch {
