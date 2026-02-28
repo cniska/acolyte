@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { dequeueNextQueuedChat, type QueuedRpcChatEntry, queuePositionUpdates, removeQueuedChatById } from "./rpc-queue";
+import {
+  dequeueNextQueuedChat,
+  type QueuedRpcChatEntry,
+  queuePositionUpdates,
+  removeQueuedChatById,
+} from "./rpc-queue";
 
 describe("rpc queue", () => {
   test("removeQueuedChatById removes target and reindexes remaining queue", () => {

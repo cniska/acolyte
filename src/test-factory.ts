@@ -136,10 +136,7 @@ export type SubmitHandlerHarness = {
   };
 };
 
-export function createSubmitHandlerHarness(overrides?: {
-  isWorking?: boolean;
-  client?: Client;
-}): SubmitHandlerHarness {
+export function createSubmitHandlerHarness(overrides?: { isWorking?: boolean; client?: Client }): SubmitHandlerHarness {
   const rows: ChatRow[] = [];
   const calls = {
     setInputHistory: 0,
