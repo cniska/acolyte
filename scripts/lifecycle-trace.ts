@@ -1,6 +1,10 @@
 import { readFile } from "node:fs/promises";
+import { homedir } from "node:os";
+import { join } from "node:path";
 
 const DEFAULT_LOG_PATH = "/tmp/acolyte-server.log";
+const DAEMON_LOG_PATH = join(homedir(), ".acolyte", "server.log");
+const LOG_CANDIDATES = [DAEMON_LOG_PATH, DEFAULT_LOG_PATH] as const;
 
 function parseArg(flag: string): string | undefined {
   const index = Bun.argv.indexOf(flag);
@@ -15,6 +19,28 @@ function parseTaskIdsArg(value: string | undefined): string[] {
     .map((part) => part.trim())
     .filter((part) => part.length > 0);
   return Array.from(new Set(out));
+}
+
+async function hasTraceSignals(path: string): Promise<boolean> {
+  try {
+    const raw = await readFile(path, "utf8");
+    return raw.includes("request_id=") || raw.includes("task_id=");
+  } catch {
+    return false;
+  }
+}
+
+async function pickDefaultLogPath(): Promise<string> {
+  const existing: { path: string; mtime: number; hasTrace: boolean }[] = [];
+  for (const path of LOG_CANDIDATES) {
+    const file = Bun.file(path);
+    if (!(await file.exists())) continue;
+    const [stat, hasTrace] = await Promise.all([file.stat(), hasTraceSignals(path)]);
+    existing.push({ path, mtime: stat.mtime.getTime(), hasTrace });
+  }
+  if (existing.length === 0) return DAEMON_LOG_PATH;
+  existing.sort((a, b) => Number(b.hasTrace) - Number(a.hasTrace) || b.mtime - a.mtime);
+  return existing[0]?.path ?? DAEMON_LOG_PATH;
 }
 
 function parseRequestId(line: string): string | undefined {
@@ -53,6 +79,40 @@ function compactLine(line: string): string {
   const msg = parseField(line, "msg");
   const event = parseField(line, "event");
 
+  if (msg === "task state updated") {
+    const from = parseField(line, "from_state") ?? "null";
+    const to = parseField(line, "to_state") ?? "?";
+    const reason = parseField(line, "reason") ?? "?";
+    const transport = parseField(line, "transport") ?? "?";
+    return `${ts}${taskPrefix} state from=${from} to=${to} reason=${reason} transport=${transport}`;
+  }
+
+  if (msg === "rpc task accepted") {
+    const session = parseField(line, "session_id") ?? "?";
+    const queued = parseField(line, "queued_task_count") ?? "?";
+    const hasRunning = parseField(line, "has_running_task") ?? "?";
+    return `${ts}${taskPrefix} accepted session=${session} queued=${queued} has_running=${hasRunning}`;
+  }
+
+  if (msg === "rpc task queued") {
+    const position = parseField(line, "queue_position") ?? "?";
+    const runningTaskId = parseField(line, "running_task_id") ?? "none";
+    return `${ts}${taskPrefix} queued position=${position} running_task_id=${runningTaskId}`;
+  }
+
+  if (msg === "rpc task dequeued") return `${ts}${taskPrefix} dequeued`;
+
+  if (msg === "rpc worker task scheduled") {
+    const session = parseField(line, "session_id") ?? "?";
+    const queued = parseField(line, "queued_task_count") ?? "?";
+    return `${ts}${taskPrefix} worker_scheduled session=${session} queued=${queued}`;
+  }
+
+  if (msg === "rpc task started") {
+    const session = parseField(line, "session_id") ?? "?";
+    return `${ts}${taskPrefix} rpc_started session=${session}`;
+  }
+
   if (msg === "chat request started") {
     const model = parseField(line, "model") ?? "?";
     const mode = parseField(line, "workspace_mode") ?? "?";
@@ -67,7 +127,7 @@ function compactLine(line: string): string {
     return `${ts}${taskPrefix} completed duration_ms=${duration} model_calls=${modelCalls} tool_count=${toolCount}`;
   }
 
-  if (!event) return `${ts}${taskPrefix} ${line}`;
+  if (!event) return `${ts}${taskPrefix}${msg ? ` ${msg}` : " log"}`;
 
   if (event === "lifecycle.tool.call") {
     const tool = parseField(line, "tool") ?? "?";
@@ -116,7 +176,7 @@ function compactLine(line: string): string {
 }
 
 async function main(): Promise<void> {
-  const logPath = parseArg("--log") ?? DEFAULT_LOG_PATH;
+  const logPath = parseArg("--log") ?? (await pickDefaultLogPath());
   const requestedId = parseArg("--request");
   const requestedTaskIds = parseTaskIdsArg(parseArg("--task"));
 
@@ -154,7 +214,14 @@ async function main(): Promise<void> {
       .map((line) => parseRequestId(line))
       .find((value) => value?.startsWith("err_"));
 
-  if (!requestId) throw new Error(`No request_id found in ${logPath}`);
+  if (!requestId) {
+    const tail = lines.slice(-40);
+    console.log(`no request_id/task_id found in ${logPath}; showing latest ${tail.length} lines`);
+    for (const line of tail) {
+      console.log(compactLine(line));
+    }
+    return;
+  }
 
   const selected = lines.filter((line) => line.includes(`request_id=${requestId}`));
   if (selected.length === 0) throw new Error(`No lines found for request_id=${requestId} in ${logPath}`);

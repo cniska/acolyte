@@ -1,3 +1,4 @@
+import { closeSync, openSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
@@ -44,6 +45,10 @@ function serverLockPath(homeDir = homedir()): string {
 
 function startupLockPath(homeDir = homedir()): string {
   return join(daemonDir(homeDir), "server.start.lock");
+}
+
+function serverLogPath(homeDir = homedir()): string {
+  return join(daemonDir(homeDir), "server.log");
 }
 
 function parseServerLock(raw: string): ServerLock | null {
@@ -185,12 +190,16 @@ export async function ensureLocalServer(input: EnsureLocalServerInput): Promise<
     return { apiUrl, started: false, managed };
   }
 
+  const logPath = serverLogPath(input.homeDir);
+  await mkdir(dirname(logPath), { recursive: true });
+  const logFd = openSync(logPath, "a");
   const proc = Bun.spawn([process.execPath, "run", input.serverEntry], {
     env: { ...process.env },
-    stdout: "ignore",
-    stderr: "ignore",
+    stdout: logFd,
+    stderr: logFd,
     detached: true,
   });
+  closeSync(logFd);
   proc.unref();
 
   try {
@@ -259,6 +268,7 @@ export const serverDaemonInternals = {
   daemonDir,
   serverLockPath,
   startupLockPath,
+  serverLogPath,
   parseServerLock,
   isProcessAlive,
   clearStaleStartupLock,

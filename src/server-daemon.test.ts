@@ -6,6 +6,11 @@ import { ensureLocalServer, localServerStatus, serverDaemonInternals, stopLocalS
 import { startTestServer } from "./test-factory";
 
 describe("server daemon internals", () => {
+  test("serverLogPath resolves under ~/.acolyte", () => {
+    const path = serverDaemonInternals.serverLogPath("/tmp/acolyte-home");
+    expect(path).toBe("/tmp/acolyte-home/.acolyte/server.log");
+  });
+
   test("parseServerLock accepts valid payload", () => {
     const parsed = serverDaemonInternals.parseServerLock(
       JSON.stringify({
