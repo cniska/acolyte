@@ -7,6 +7,7 @@ import { toolMode } from "./cli-tool-mode";
 import { createClient } from "./client";
 import { readConfig, readConfigForScope, readResolvedConfigSync, setConfigValue, unsetConfigValue } from "./config";
 import { addMemory, listMemories } from "./memory";
+import { localServerStatus, stopLocalServer } from "./server-daemon";
 import { formatStatusOutput as formatStatusOutputShared } from "./status-format";
 import { createSession, readStore } from "./storage";
 import { runShellCommand } from "./tools";
@@ -25,7 +26,7 @@ const SUBCOMMANDS: Record<string, { command: string; usage: string; description:
     description: "run a single prompt",
   },
   history: { command: "history", usage: "acolyte history", description: "show recent sessions" },
-  serve: { command: "serve", usage: "acolyte serve", description: "start the API server" },
+  server: { command: "server", usage: "acolyte server [status|stop]", description: "manage local API server" },
   status: { command: "status", usage: "acolyte status", description: "show server status" },
   memory: { command: "memory", usage: "acolyte memory <list|add> [options]", description: "manage memory notes" },
   config: {
@@ -341,14 +342,31 @@ async function historyMode(args: string[]): Promise<void> {
 
 async function serveMode(args: string[]): Promise<void> {
   if (hasHelpFlag(args)) {
-    subcommandHelp("serve");
+    subcommandHelp("server");
     return;
   }
-  if (args.length > 0) {
-    subcommandError("serve");
+  const action = args[0];
+  if (!action) {
+    await import("./server");
     return;
   }
-  await import("./server");
+  if (action === "status") {
+    if (args.length > 1) return subcommandError("server");
+    const status = await localServerStatus();
+    if (!status.running) {
+      printDim("Local server is not running.");
+      return;
+    }
+    printDim(`Local server running (pid ${status.pid}) at ${status.apiUrl}`);
+    return;
+  }
+  if (action === "stop") {
+    if (args.length > 1) return subcommandError("server");
+    const stopped = await stopLocalServer();
+    printDim(stopped ? "Stopped local server." : "Local server is not running.");
+    return;
+  }
+  subcommandError("server");
 }
 
 async function statusMode(args: string[]): Promise<void> {
@@ -542,7 +560,7 @@ export const commands: Record<string, (args: string[]) => Promise<void>> = {
   run: runMode,
   dogfood: dogfoodMode,
   history: historyMode,
-  serve: serveMode,
+  server: serveMode,
   status: statusMode,
   memory: memoryMode,
   config: configMode,

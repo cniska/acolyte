@@ -87,7 +87,7 @@ function isConnectionFailure(error: unknown): boolean {
 }
 
 function connectionHelpMessage(apiUrl: string): string {
-  return `Cannot reach server at ${apiUrl}. Start it with: acolyte serve`;
+  return `Cannot reach server at ${apiUrl}. Start it with: acolyte server`;
 }
 
 export function rpcUrlFromApiUrl(apiUrl: string): string {
@@ -699,11 +699,11 @@ export function createClient(options?: ClientOptions): Client {
   const mode = resolveTransportMode(apiUrl, options?.transportMode ?? appConfig.server.transportMode);
 
   if (mode === "rpc") {
-    if (!apiUrl) throw new Error("No API URL configured. Start the server with: acolyte serve");
+    if (!apiUrl) throw new Error("No API URL configured. Start the server with: acolyte server");
     return new RpcClient(apiUrl, apiKey, replyTimeoutMs);
   }
 
   const transport = options?.transport ?? (apiUrl ? createHttpTransport(apiUrl) : null);
-  if (!transport) throw new Error("No API URL configured. Start the server with: acolyte serve");
+  if (!transport) throw new Error("No API URL configured. Start the server with: acolyte server");
   return new HttpClient(transport, apiKey, replyTimeoutMs);
 }

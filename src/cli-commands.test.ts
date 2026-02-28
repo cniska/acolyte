@@ -55,7 +55,7 @@ describe("cli-commands", () => {
     expect(commands.resume).toBeFunction();
     expect(commands.run).toBeFunction();
     expect(commands.history).toBeFunction();
-    expect(commands.serve).toBeFunction();
+    expect(commands.server).toBeFunction();
     expect(commands.status).toBeFunction();
     expect(commands.memory).toBeFunction();
     expect(commands.config).toBeFunction();

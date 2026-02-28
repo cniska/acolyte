@@ -22,8 +22,10 @@ That starts backend watch mode and chat.
 
 ## Daily Use
 
-- Start server: `acolyte serve`
-- Chat (backend already running): `acolyte`
+- Chat (auto-starts/reuses local server): `acolyte`
+- Start server in foreground: `acolyte server`
+- Local server status: `acolyte server status`
+- Stop local daemon server: `acolyte server stop`
 - Resume session: `acolyte resume <session-id-prefix>`
 - Run mode: `acolyte run "review src/agent.ts"`
 - Verify: `bun run verify`

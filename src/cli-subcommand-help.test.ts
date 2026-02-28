@@ -55,7 +55,7 @@ async function createTestEnv(): Promise<{ home: string; project: string }> {
 describe("cli subcommand help", () => {
   test("all subcommands accept --help", async () => {
     const { home, project } = await createTestEnv();
-    const subcommands = ["resume", "run", "history", "serve", "status", "memory", "config", "tool"] as const;
+    const subcommands = ["resume", "run", "history", "server", "status", "memory", "config", "tool"] as const;
 
     for (const subcommand of subcommands) {
       const result = runCli(home, project, subcommand, "--help");
@@ -65,13 +65,13 @@ describe("cli subcommand help", () => {
     }
   }, 10_000);
 
-  test("serve help does not start server", async () => {
+  test("server help does not start server", async () => {
     const { home, project } = await createTestEnv();
-    const result = runCli(home, project, "serve", "help");
+    const result = runCli(home, project, "server", "help");
     const output = `${result.stdout}\n${result.stderr}`;
 
     expect(result.exitCode).toBe(0);
-    expect(output).toContain("Usage: acolyte serve");
+    expect(output).toContain("Usage: acolyte server");
     expect(output).not.toContain("Acolyte server listening");
   });
 
@@ -91,7 +91,7 @@ describe("cli subcommand help", () => {
 
   test("zero-arg subcommands reject unexpected arguments", async () => {
     const { home, project } = await createTestEnv();
-    const subcommands = ["history", "serve", "status"] as const;
+    const subcommands = ["history", "status"] as const;
 
     for (const subcommand of subcommands) {
       const result = runCli(home, project, subcommand, "unexpected");
@@ -99,5 +99,13 @@ describe("cli subcommand help", () => {
       expect(result.exitCode).toBe(1);
       expect(output).toContain(`Usage: acolyte ${subcommand}`);
     }
+  });
+
+  test("server supports status and stop actions", async () => {
+    const { home, project } = await createTestEnv();
+    const statusResult = runCli(home, project, "server", "status");
+    const stopResult = runCli(home, project, "server", "stop");
+    expect(statusResult.exitCode).toBe(0);
+    expect(stopResult.exitCode).toBe(0);
   });
 });
