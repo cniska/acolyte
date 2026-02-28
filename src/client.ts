@@ -87,7 +87,14 @@ function isConnectionFailure(error: unknown): boolean {
 }
 
 function connectionHelpMessage(apiUrl: string): string {
-  return `Cannot reach server at ${apiUrl}. Start it with: acolyte server`;
+  try {
+    const hostname = new URL(apiUrl).hostname.toLowerCase();
+    if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1")
+      return `Cannot reach server at ${apiUrl}. Start it with: acolyte server start`;
+  } catch {
+    // Fall through to generic guidance for malformed URLs.
+  }
+  return `Cannot reach server at ${apiUrl}. Check apiUrl and server availability.`;
 }
 
 export function rpcUrlFromApiUrl(apiUrl: string): string {

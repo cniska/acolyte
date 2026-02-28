@@ -28,9 +28,9 @@ That starts backend watch mode and chat.
 - Local server status: `acolyte server status`
 - Stop local daemon server: `acolyte server stop`
 - Resume session: `acolyte resume <session-id-prefix>`
-- Run mode: `acolyte run "review src/agent.ts"`
+- Run mode (auto-starts/reuses local server when using local defaults): `acolyte run "review src/agent.ts"`
 - Verify: `bun run verify`
-- Status: `bun run src/cli.ts status`
+- Status: `acolyte status`
 - Mastra Studio: `bun run studio` (loads `.env` automatically)
 - RPC transport: set `transportMode = "rpc"` in config (or use `ws://` `apiUrl`)
 

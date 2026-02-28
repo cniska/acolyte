@@ -8,6 +8,7 @@ import {
   handlePrompt,
   newMessage,
   resolveChatApiUrl,
+  shouldAutoStartLocalServerForChat,
 } from "./cli";
 import { formatForTool, parseRunExitCode, showToolResult, truncateText } from "./cli-format";
 import { toolMode } from "./cli-tool-mode";
@@ -139,6 +140,11 @@ export function formatStatusOutput(status: Record<string, string>): string {
   return formatStatusOutputShared(status);
 }
 
+export function isServerConnectionFailure(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  return error.message.includes("Cannot reach server at ");
+}
+
 function listSessions(store: SessionStore): void {
   if (store.sessions.length === 0) {
     printDim("No saved sessions.");
@@ -265,7 +271,17 @@ async function runMode(args: string[], options?: { skipAutoVerify?: boolean }): 
   const resolvedConfig = readResolvedConfigSync();
   const session = createSession(defaultModel);
   session.messages.push(newMessage("system", RUN_MODE_SYSTEM_PROMPT));
-  const apiUrl = resolveChatApiUrl(appConfig.server.apiUrl, appConfig.server.port);
+  let apiUrl = resolveChatApiUrl(appConfig.server.apiUrl, appConfig.server.port);
+  if (shouldAutoStartLocalServerForChat(appConfig.server.apiUrl)) {
+    const daemon = await ensureLocalServer({
+      apiUrl,
+      port: appConfig.server.port,
+      apiKey: appConfig.server.apiKey,
+      serverEntry: `${import.meta.dir}/server.ts`,
+    });
+    apiUrl = daemon.apiUrl;
+    printDim(`${daemon.started ? "Started" : "Using"} local server at ${daemon.apiUrl}`);
+  }
   const client = createClient({
     apiUrl,
     replyTimeoutMs: resolvedConfig.replyTimeoutMs,
@@ -361,8 +377,9 @@ async function serveMode(args: string[]): Promise<void> {
   switch (action) {
     case "start": {
       if (args.length > 1) return subcommandError("server");
+      const localApiUrl = resolveChatApiUrl(undefined, appConfig.server.port);
       const daemon = await ensureLocalServer({
-        apiUrl: `http://127.0.0.1:${appConfig.server.port}`,
+        apiUrl: localApiUrl,
         port: appConfig.server.port,
         apiKey: appConfig.server.apiKey,
         serverEntry: `${import.meta.dir}/server.ts`,
@@ -372,8 +389,8 @@ async function serveMode(args: string[]): Promise<void> {
     }
     case "status": {
       if (args.length > 1) return subcommandError("server");
-      const apiUrl = resolveChatApiUrl(appConfig.server.apiUrl, appConfig.server.port);
-      const status = await localServerStatus({ apiKey: appConfig.server.apiKey, apiUrl });
+      const localApiUrl = resolveChatApiUrl(undefined, appConfig.server.port);
+      const status = await localServerStatus({ apiKey: appConfig.server.apiKey, apiUrl: localApiUrl });
       if (!status.running) {
         printDim("Local server is not running.");
         return;
@@ -410,6 +427,14 @@ async function statusMode(args: string[]): Promise<void> {
     const status = await client.status();
     printDim(formatStatusOutput(status));
   } catch (error) {
+    if (shouldAutoStartLocalServerForChat(appConfig.server.apiUrl) && isServerConnectionFailure(error)) {
+      const localApiUrl = resolveChatApiUrl(undefined, appConfig.server.port);
+      const localStatus = await localServerStatus({ apiKey: appConfig.server.apiKey, apiUrl: localApiUrl });
+      if (!localStatus.running) {
+        printDim("Local server is not running. Start it with: acolyte server start");
+        return;
+      }
+    }
     const message = error instanceof Error ? error.message : "Unknown error";
     printError(message);
     process.exitCode = 1;

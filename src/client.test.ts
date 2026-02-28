@@ -17,7 +17,18 @@ describe("remote server connection errors", () => {
 
     const client = createClient({ apiUrl: "http://localhost:6767" });
     await expect(client.status()).rejects.toThrow(
-      "Cannot reach server at http://localhost:6767. Start it with: acolyte server",
+      "Cannot reach server at http://localhost:6767. Start it with: acolyte server start",
+    );
+  });
+
+  test("status surfaces generic guidance for non-local apiUrl connection failures", async () => {
+    globalThis.fetch = (async () => {
+      throw new TypeError("Unable to connect. Is the computer able to access the url?");
+    }) as unknown as typeof fetch;
+
+    const client = createClient({ apiUrl: "https://api.example.com" });
+    await expect(client.status()).rejects.toThrow(
+      "Cannot reach server at https://api.example.com. Check apiUrl and server availability.",
     );
   });
 
@@ -37,7 +48,7 @@ describe("remote server connection errors", () => {
         },
         { onEvent: () => {} },
       ),
-    ).rejects.toThrow("Cannot reach server at http://localhost:6767. Start it with: acolyte server");
+    ).rejects.toThrow("Cannot reach server at http://localhost:6767. Start it with: acolyte server start");
   });
 
   test("replyStream maps url-typo fetch errors to server-start hint", async () => {
@@ -56,7 +67,7 @@ describe("remote server connection errors", () => {
         },
         { onEvent: () => {} },
       ),
-    ).rejects.toThrow("Cannot reach server at http://localhost:6767. Start it with: acolyte server");
+    ).rejects.toThrow("Cannot reach server at http://localhost:6767. Start it with: acolyte server start");
   });
 
   test("replyStream preserves non-connection errors", async () => {

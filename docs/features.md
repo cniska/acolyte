@@ -12,8 +12,9 @@ Update rule:
 - Interactive chat mode.
 - One-shot run mode.
 - Session resume and session listing.
-- Automatic local server startup/reuse for chat sessions.
+- Automatic local server startup/reuse for chat and run mode (local-default config).
 - Local server control commands (`server start`, `server status`, `server stop`).
+- Local-first status guidance when daemon server is not running.
 - `@path` file/directory attachments.
 - Slash command support.
 - Skill invocation via slash commands.

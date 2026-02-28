@@ -5,6 +5,7 @@ import {
   commands,
   formatStatusOutput,
   hasHelpFlag,
+  isServerConnectionFailure,
   isTopLevelHelpCommand,
   isTopLevelVersionCommand,
   parseDogfoodArgs,
@@ -93,5 +94,12 @@ describe("cli-commands", () => {
     expect(out).toMatch(/^permissions:\s+write$/m);
     expect(out).toMatch(/^memory:\s+postgres \(7 entries\)$/m);
     expect(out).toMatch(/^observational_memory:\s+enabled \(resource\)$/m);
+  });
+
+  test("isServerConnectionFailure matches only reachability errors", () => {
+    expect(isServerConnectionFailure(new Error("Cannot reach server at http://127.0.0.1:6767"))).toBe(true);
+    expect(isServerConnectionFailure(new Error("Status check failed (401): unauthorized"))).toBe(false);
+    expect(isServerConnectionFailure(new Error("boom"))).toBe(false);
+    expect(isServerConnectionFailure("Cannot reach server")).toBe(false);
   });
 });
