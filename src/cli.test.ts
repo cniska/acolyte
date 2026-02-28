@@ -3,6 +3,7 @@ import {
   extractVersionFromPackageJsonText,
   formatLocalServerReadyMessage,
   formatResumeCommand,
+  missingAssistantStreamTail,
   resolveChatApiUrl,
   resolveCommandAlias,
   resolveLocalDaemonApiUrl,
@@ -79,5 +80,21 @@ describe("cli", () => {
     expect(formatLocalServerReadyMessage({ apiUrl: "http://127.0.0.1:6767", started: false, managed: false })).toBe(
       "Using unmanaged local server at http://127.0.0.1:6767 (started outside Acolyte).",
     );
+  });
+
+  test("missingAssistantStreamTail returns full output when no stream text was captured", () => {
+    expect(missingAssistantStreamTail("", "hello world")).toBe("hello world");
+  });
+
+  test("missingAssistantStreamTail returns empty tail when stream already matches final output", () => {
+    expect(missingAssistantStreamTail("hello world", "hello world")).toBe("");
+  });
+
+  test("missingAssistantStreamTail returns only missing suffix when stream is a prefix", () => {
+    expect(missingAssistantStreamTail("hello ", "hello world")).toBe("world");
+  });
+
+  test("missingAssistantStreamTail returns empty tail when streamed content is not a prefix", () => {
+    expect(missingAssistantStreamTail("hello there", "hello world")).toBe("");
   });
 });

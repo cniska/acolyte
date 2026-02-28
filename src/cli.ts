@@ -169,6 +169,13 @@ export function formatResumeCommand(sessionId: string): string {
   return `acolyte resume ${sessionId}`;
 }
 
+export function missingAssistantStreamTail(streamed: string, finalOutput: string): string {
+  if (streamed.length === 0) return finalOutput;
+  if (finalOutput === streamed) return "";
+  if (finalOutput.startsWith(streamed)) return finalOutput.slice(streamed.length);
+  return "";
+}
+
 export async function handlePrompt(
   prompt: string,
   session: Session,
@@ -183,6 +190,7 @@ export async function handlePrompt(
     printOutput(`❯ ${displayPromptForOutput(prompt)}`);
     let hasPrintedProgress = false;
     let assistantStreamStarted = false;
+    let assistantStreamText = "";
     let assistantLineBuffer = "";
     const flushAssistantLine = (line: string): void => {
       if (!assistantStreamStarted) {
@@ -233,6 +241,7 @@ export async function handlePrompt(
       onStatus: () => {},
       onAssistant: (delta) => {
         if (delta.length === 0) return;
+        assistantStreamText += delta;
         assistantLineBuffer += delta;
         while (true) {
           const newlineIndex = assistantLineBuffer.indexOf("\n");
@@ -291,7 +300,23 @@ export async function handlePrompt(
       flushAssistantLine(assistantLineBuffer);
       assistantLineBuffer = "";
     }
-    if (!assistantStreamStarted) await streamText(formatAssistantReplyOutput(reply.output, wrapWidth));
+    const missingTail = missingAssistantStreamTail(assistantStreamText, reply.output);
+    if (missingTail.length > 0) {
+      assistantLineBuffer += missingTail;
+      while (true) {
+        const newlineIndex = assistantLineBuffer.indexOf("\n");
+        if (newlineIndex === -1) break;
+        const line = assistantLineBuffer.slice(0, newlineIndex);
+        assistantLineBuffer = assistantLineBuffer.slice(newlineIndex + 1);
+        flushAssistantLine(line);
+      }
+      if (assistantLineBuffer.length > 0) {
+        flushAssistantLine(assistantLineBuffer);
+        assistantLineBuffer = "";
+      }
+    } else if (!assistantStreamStarted) {
+      await streamText(formatAssistantReplyOutput(reply.output, wrapWidth));
+    }
     session.messages.push(newMessage("assistant", reply.output));
     session.model = reply.model;
     session.updatedAt = nowIso();
