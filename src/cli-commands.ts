@@ -372,12 +372,14 @@ async function serveMode(args: string[]): Promise<void> {
     }
     case "status": {
       if (args.length > 1) return subcommandError("server");
-      const status = await localServerStatus({ apiKey: appConfig.server.apiKey });
+      const apiUrl = resolveChatApiUrl(appConfig.server.apiUrl, appConfig.server.port);
+      const status = await localServerStatus({ apiKey: appConfig.server.apiKey, apiUrl });
       if (!status.running) {
         printDim("Local server is not running.");
         return;
       }
-      printDim(`Local server running (pid ${status.pid}) at ${status.apiUrl}`);
+      if (status.pid) printDim(`Local server running (pid ${status.pid}) at ${status.apiUrl}`);
+      else printDim(`Local server running (unmanaged) at ${status.apiUrl}`);
       return;
     }
     case "stop": {

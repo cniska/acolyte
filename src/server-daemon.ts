@@ -30,6 +30,7 @@ type LocalServerStatus = {
   running: boolean;
   pid: number | null;
   apiUrl: string | null;
+  managed: boolean;
 };
 
 function daemonDir(homeDir = homedir()): string {
@@ -189,19 +190,27 @@ export async function ensureLocalServer(input: EnsureLocalServerInput): Promise<
   }
 }
 
-export async function localServerStatus(input?: { homeDir?: string; apiKey?: string }): Promise<LocalServerStatus> {
+export async function localServerStatus(input?: {
+  homeDir?: string;
+  apiKey?: string;
+  apiUrl?: string;
+}): Promise<LocalServerStatus> {
   const lockPath = serverLockPath(input?.homeDir);
   const lock = await readServerLock(lockPath);
-  if (!lock) return { running: false, pid: null, apiUrl: null };
+  if (!lock) {
+    if (input?.apiUrl && (await isServerHealthy(input.apiUrl, input.apiKey)))
+      return { running: true, pid: null, apiUrl: input.apiUrl, managed: false };
+    return { running: false, pid: null, apiUrl: null, managed: false };
+  }
   if (!isProcessAlive(lock.pid)) {
     await rm(lockPath, { force: true });
-    return { running: false, pid: null, apiUrl: null };
+    return { running: false, pid: null, apiUrl: null, managed: false };
   }
   if (!(await isServerHealthy(lock.apiUrl, input?.apiKey))) {
     await rm(lockPath, { force: true });
-    return { running: false, pid: null, apiUrl: null };
+    return { running: false, pid: null, apiUrl: null, managed: false };
   }
-  return { running: true, pid: lock.pid, apiUrl: lock.apiUrl };
+  return { running: true, pid: lock.pid, apiUrl: lock.apiUrl, managed: true };
 }
 
 export async function stopLocalServer(input?: { homeDir?: string; apiKey?: string }): Promise<boolean> {

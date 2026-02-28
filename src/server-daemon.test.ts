@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { localServerStatus, serverDaemonInternals, stopLocalServer } from "./server-daemon";
+import { startTestServer } from "./test-factory";
 
 describe("server daemon internals", () => {
   test("parseServerLock accepts valid payload", () => {
@@ -69,8 +70,25 @@ describe("server daemon internals", () => {
       running: false,
       pid: null,
       apiUrl: null,
+      managed: false,
     });
     await expect(Bun.file(lockPath).exists()).resolves.toBe(false);
+  });
+
+  test("localServerStatus reports unmanaged running server when lock is missing", async () => {
+    const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
+    const server = startTestServer(() => Response.json({ ok: true }));
+    const apiUrl = `http://127.0.0.1:${server.port}`;
+    try {
+      await expect(localServerStatus({ homeDir: home, apiUrl })).resolves.toEqual({
+        running: true,
+        pid: null,
+        apiUrl,
+        managed: false,
+      });
+    } finally {
+      server.stop();
+    }
   });
 
   test("stopLocalServer returns false and removes stale lock when endpoint is not healthy", async () => {
