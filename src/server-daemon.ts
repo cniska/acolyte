@@ -211,10 +211,14 @@ export async function localServerStatus(input?: {
   }
   if (!isProcessAlive(lock.pid)) {
     await rm(lockPath, { force: true });
+    if (input?.apiUrl && (await isServerHealthy(input.apiUrl, input.apiKey)))
+      return { running: true, pid: null, apiUrl: input.apiUrl, managed: false };
     return { running: false, pid: null, apiUrl: null, managed: false };
   }
   if (!(await isServerHealthy(lock.apiUrl, input?.apiKey))) {
     await rm(lockPath, { force: true });
+    if (input?.apiUrl && (await isServerHealthy(input.apiUrl, input.apiKey)))
+      return { running: true, pid: null, apiUrl: input.apiUrl, managed: false };
     return { running: false, pid: null, apiUrl: null, managed: false };
   }
   return { running: true, pid: lock.pid, apiUrl: lock.apiUrl, managed: true };

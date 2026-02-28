@@ -75,6 +75,64 @@ describe("server daemon internals", () => {
     await expect(Bun.file(lockPath).exists()).resolves.toBe(false);
   });
 
+  test("localServerStatus falls back to unmanaged target when stale lock endpoint is unhealthy", async () => {
+    const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
+    const lockPath = serverDaemonInternals.serverLockPath(home);
+    const server = startTestServer(() => Response.json({ ok: true }));
+    const targetApiUrl = `http://127.0.0.1:${server.port}`;
+    await mkdir(join(home, ".acolyte"), { recursive: true });
+    await writeFile(
+      lockPath,
+      JSON.stringify({
+        pid: process.pid,
+        apiUrl: "http://127.0.0.1:9",
+        port: 9,
+        startedAt: "2026-02-28T00:00:00.000Z",
+      }),
+      "utf8",
+    );
+    try {
+      await expect(localServerStatus({ homeDir: home, apiUrl: targetApiUrl })).resolves.toEqual({
+        running: true,
+        pid: null,
+        apiUrl: targetApiUrl,
+        managed: false,
+      });
+      await expect(Bun.file(lockPath).exists()).resolves.toBe(false);
+    } finally {
+      server.stop();
+    }
+  });
+
+  test("localServerStatus falls back to unmanaged target when lock pid is dead", async () => {
+    const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
+    const lockPath = serverDaemonInternals.serverLockPath(home);
+    const server = startTestServer(() => Response.json({ ok: true }));
+    const targetApiUrl = `http://127.0.0.1:${server.port}`;
+    await mkdir(join(home, ".acolyte"), { recursive: true });
+    await writeFile(
+      lockPath,
+      JSON.stringify({
+        pid: 999999,
+        apiUrl: targetApiUrl,
+        port: server.port,
+        startedAt: "2026-02-28T00:00:00.000Z",
+      }),
+      "utf8",
+    );
+    try {
+      await expect(localServerStatus({ homeDir: home, apiUrl: targetApiUrl })).resolves.toEqual({
+        running: true,
+        pid: null,
+        apiUrl: targetApiUrl,
+        managed: false,
+      });
+      await expect(Bun.file(lockPath).exists()).resolves.toBe(false);
+    } finally {
+      server.stop();
+    }
+  });
+
   test("localServerStatus reports unmanaged running server when lock is missing", async () => {
     const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
     const server = startTestServer(() => Response.json({ ok: true }));
