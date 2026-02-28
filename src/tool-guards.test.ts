@@ -212,6 +212,36 @@ describe("excessive-search-loop guard", () => {
   });
 });
 
+describe("excessive-find-loop guard", () => {
+  test("blocks repeated find-only churn without reads/writes", () => {
+    const session = createSessionContext();
+    for (let i = 0; i < 4; i += 1) {
+      recordCall(session, "find-files", { patterns: [`query-${i}`] });
+    }
+    expect(() => runGuards({ toolName: "find-files", args: { patterns: ["query-5"] }, session })).toThrow(
+      /Repeated find-files loop detected/,
+    );
+  });
+
+  test("does not block when read-file has already been used", () => {
+    const session = createSessionContext();
+    for (let i = 0; i < 4; i += 1) {
+      recordCall(session, "find-files", { patterns: [`query-${i}`] });
+    }
+    recordCall(session, "read-file", { paths: [{ path: "src/a.ts" }] });
+    expect(() => runGuards({ toolName: "find-files", args: { patterns: ["query-5"] }, session })).not.toThrow();
+  });
+
+  test("does not block when a write tool has already been used", () => {
+    const session = createSessionContext();
+    for (let i = 0; i < 4; i += 1) {
+      recordCall(session, "find-files", { patterns: [`query-${i}`] });
+    }
+    recordCall(session, "edit-file", { path: "src/a.ts" });
+    expect(() => runGuards({ toolName: "find-files", args: { patterns: ["query-5"] }, session })).not.toThrow();
+  });
+});
+
 describe("recordCall", () => {
   test("appends to callLog with active task id", () => {
     const session = createSessionContext("task_1");

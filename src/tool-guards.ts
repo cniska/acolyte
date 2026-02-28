@@ -168,6 +168,33 @@ const excessiveSearchLoopGuard: ToolGuard = {
   },
 };
 
+const excessiveFindLoopGuard: ToolGuard = {
+  id: "excessive-find-loop",
+  description: "Block repeated find-only churn to force direct reads or a conclusion.",
+  appliesTo: ["find-files"],
+  check({ toolName, session }) {
+    let findCount = 0;
+    let readCount = 0;
+    let writeCount = 0;
+    for (const entry of session.callLog) {
+      if (entry.toolName === "find-files") {
+        findCount += 1;
+      } else if (entry.toolName === "read-file") {
+        readCount += 1;
+      } else if (entry.toolName === "edit-file" || entry.toolName === "edit-code" || entry.toolName === "create-file") {
+        writeCount += 1;
+      }
+    }
+
+    if (findCount < 4 || readCount > 0 || writeCount > 0) return;
+
+    session.onGuard?.({ guardId: "excessive-find-loop", toolName, action: "blocked", detail: String(findCount) });
+    throw new Error(
+      "Repeated find-files loop detected without reads/writes. Stop broad discovery and read the best candidate file(s) directly.",
+    );
+  },
+};
+
 const verifyRanGuard: ToolGuard = {
   id: "verify-ran",
   description: "Set session flag when run-command executes a verify command.",
@@ -223,6 +250,7 @@ const noShellReadFallbackGuard: ToolGuard = {
 const GUARDS: ToolGuard[] = [
   noRewriteGuard,
   excessiveFileLoopGuard,
+  excessiveFindLoopGuard,
   excessiveSearchLoopGuard,
   verifyRanGuard,
   noShellReadFallbackGuard,
