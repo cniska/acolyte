@@ -45,6 +45,17 @@ describe("rpc protocol schema", () => {
     expect(parsed.success).toBe(true);
   });
 
+  test("accepts task.status client messages", () => {
+    const parsed = rpcClientMessageSchema.safeParse({
+      id: "rpc_2b",
+      type: "task.status",
+      payload: {
+        taskId: "rpc_1",
+      },
+    });
+    expect(parsed.success).toBe(true);
+  });
+
   test("accepts status.result with typed payload", () => {
     const parsed = rpcServerMessageSchema.safeParse({
       id: "rpc_3",
@@ -81,6 +92,26 @@ describe("rpc protocol schema", () => {
     expect(accepted.success).toBe(true);
     expect(queued.success).toBe(true);
     expect(started.success).toBe(true);
+  });
+
+  test("accepts task.status.result server messages", () => {
+    const found = rpcServerMessageSchema.safeParse({
+      id: "rpc_5",
+      type: "task.status.result",
+      task: {
+        id: "task_1",
+        state: "running",
+        createdAt: "2026-02-28T00:00:00.000Z",
+        updatedAt: "2026-02-28T00:00:01.000Z",
+      },
+    });
+    const missing = rpcServerMessageSchema.safeParse({
+      id: "rpc_6",
+      type: "task.status.result",
+      task: null,
+    });
+    expect(found.success).toBe(true);
+    expect(missing.success).toBe(true);
   });
 
   test("exposes reserved rpc task method names", () => {

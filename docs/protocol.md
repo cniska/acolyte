@@ -51,6 +51,7 @@ Client methods:
 - `permissions.set` (`read` | `write`)
 - `chat.start` (request payload)
 - `chat.abort` (request id)
+- `task.status` (task id)
 
 Server responses:
 
@@ -63,6 +64,7 @@ Server responses:
 - `chat.done`
 - `chat.error`
 - `chat.abort.result`
+- `task.status.result`
 - `error`
 
 Queue semantics:

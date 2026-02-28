@@ -233,4 +233,113 @@ describe("rpc server websocket queue", () => {
     },
     20_000,
   );
+
+  test(
+    "returns task status for missing and active rpc chat tasks",
+    async () => {
+      const port = randomTestPort();
+      const apiKey = "rpc_test_key";
+      await startServerForRpcTest(port, apiKey);
+
+      const messages: RpcEnvelope[] = [];
+      const ws = new WebSocket(`ws://127.0.0.1:${port}/v1/rpc?apiKey=${apiKey}`);
+      await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error("websocket open timed out")), 5000);
+        ws.addEventListener("open", () => {
+          clearTimeout(timeout);
+          resolve();
+        });
+        ws.addEventListener("error", () => {
+          clearTimeout(timeout);
+          reject(new Error("websocket failed to open"));
+        });
+      });
+
+      ws.addEventListener("message", (event) => {
+        try {
+          messages.push(JSON.parse(typeof event.data === "string" ? event.data : String(event.data)) as RpcEnvelope);
+        } catch {
+          // Ignore malformed messages from test perspective.
+        }
+      });
+
+      ws.send(JSON.stringify({ id: "rpc_task_status_missing", type: "task.status", payload: { taskId: "missing_task" } }));
+
+      await new Promise<void>((resolve, reject) => {
+        const startedAt = Date.now();
+        const interval = setInterval(() => {
+          const missingResult = messages.find(
+            (m) => m.id === "rpc_task_status_missing" && m.type === "task.status.result",
+          );
+          if (missingResult) {
+            clearInterval(interval);
+            expect(missingResult.task).toBeNull();
+            resolve();
+            return;
+          }
+          if (Date.now() - startedAt > 8000) {
+            clearInterval(interval);
+            reject(new Error(`timed out waiting for missing task status: ${JSON.stringify(messages)}`));
+          }
+        }, 20);
+      });
+
+      const chatId = "rpc_task_status_chat";
+      ws.send(
+        JSON.stringify({
+          id: chatId,
+          type: "chat.start",
+          payload: {
+            request: {
+              message: "Do a long-running analysis with many steps before answering.",
+              history: [],
+              model: "gpt-5-mini",
+              sessionId: "sess_rpc_task_status",
+            },
+          },
+        }),
+      );
+
+      await new Promise<void>((resolve, reject) => {
+        const startedAt = Date.now();
+        const interval = setInterval(() => {
+          if (messages.some((m) => m.id === chatId && m.type === "chat.accepted")) {
+            clearInterval(interval);
+            resolve();
+            return;
+          }
+          if (Date.now() - startedAt > 8000) {
+            clearInterval(interval);
+            reject(new Error(`timed out waiting for chat.accepted: ${JSON.stringify(messages)}`));
+          }
+        }, 20);
+      });
+
+      ws.send(JSON.stringify({ id: "rpc_task_status_active", type: "task.status", payload: { taskId: chatId } }));
+
+      await new Promise<void>((resolve, reject) => {
+        const startedAt = Date.now();
+        const interval = setInterval(() => {
+          const activeResult = messages.find((m) => m.id === "rpc_task_status_active" && m.type === "task.status.result");
+          if (activeResult) {
+            clearInterval(interval);
+            expect(activeResult.task && typeof activeResult.task === "object").toBe(true);
+            const task = activeResult.task as { id: unknown; state: unknown };
+            expect(task.id).toBe(chatId);
+            expect(task.state).toBe("running");
+            resolve();
+            return;
+          }
+          if (Date.now() - startedAt > 8000) {
+            clearInterval(interval);
+            reject(new Error(`timed out waiting for active task status: ${JSON.stringify(messages)}`));
+          }
+        }, 20);
+      });
+
+      ws.send(JSON.stringify({ id: "rpc_task_status_abort", type: "chat.abort", payload: { requestId: chatId } }));
+      ws.close();
+    },
+    20_000,
+  );
 });
