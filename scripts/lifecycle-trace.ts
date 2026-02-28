@@ -8,6 +8,15 @@ function parseArg(flag: string): string | undefined {
   return Bun.argv[index + 1];
 }
 
+function parseTaskIdsArg(value: string | undefined): string[] {
+  if (!value) return [];
+  const out = value
+    .split(",")
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+  return Array.from(new Set(out));
+}
+
 function parseRequestId(line: string): string | undefined {
   const match = line.match(/\brequest_id=([^\s]+)/);
   return match?.[1];
@@ -109,29 +118,31 @@ function compactLine(line: string): string {
 async function main(): Promise<void> {
   const logPath = parseArg("--log") ?? DEFAULT_LOG_PATH;
   const requestedId = parseArg("--request");
-  const requestedTaskId = parseArg("--task");
+  const requestedTaskIds = parseTaskIdsArg(parseArg("--task"));
 
   const raw = await readFile(logPath, "utf8");
   const lines = raw.split("\n").filter((line) => line.trim().length > 0);
 
-  if (requestedId && requestedTaskId) {
+  if (requestedId && requestedTaskIds.length > 0) {
     throw new Error("Pass either --request or --task, not both.");
   }
 
-  const taskId =
-    requestedTaskId ??
-    [...lines]
-      .reverse()
-      .map((line) => parseTaskId(line))
-      .find((value) => value && value.length > 0);
+  const latestTaskId = [...lines]
+    .reverse()
+    .map((line) => parseTaskId(line))
+    .find((value) => value && value.length > 0);
+  const taskIds = requestedTaskIds.length > 0 ? requestedTaskIds : latestTaskId ? [latestTaskId] : [];
 
-  if (requestedTaskId || taskId) {
-    if (!taskId) throw new Error(`No task_id found in ${logPath}`);
-    const selected = lines.filter((line) => line.includes(`task_id=${taskId}`));
-    if (selected.length === 0) throw new Error(`No lines found for task_id=${taskId} in ${logPath}`);
-    console.log(`task_id=${taskId}`);
-    for (const line of selected) {
-      console.log(compactLine(line));
+  if (taskIds.length > 0) {
+    for (let i = 0; i < taskIds.length; i += 1) {
+      const taskId = taskIds[i];
+      const selected = lines.filter((line) => line.includes(`task_id=${taskId}`));
+      if (selected.length === 0) throw new Error(`No lines found for task_id=${taskId} in ${logPath}`);
+      if (i > 0) console.log("");
+      console.log(`task_id=${taskId}`);
+      for (const line of selected) {
+        console.log(compactLine(line));
+      }
     }
     return;
   }
