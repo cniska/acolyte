@@ -283,7 +283,7 @@ async function runMode(args: string[], options?: { skipAutoVerify?: boolean }): 
     apiUrl = daemon.apiUrl;
     if (daemon.started) printDim(`Started local server at ${daemon.apiUrl}`);
     else if (daemon.managed) printDim(`Using local server at ${daemon.apiUrl}`);
-    else printDim(`Using unmanaged local server at ${daemon.apiUrl}`);
+    else printDim(`Using unmanaged local server at ${daemon.apiUrl} (started outside Acolyte).`);
   }
   const client = createClient({
     apiUrl,
@@ -389,7 +389,7 @@ async function serveMode(args: string[]): Promise<void> {
       });
       if (daemon.started) printDim(`Started local server at ${daemon.apiUrl}`);
       else if (daemon.managed) printDim(`Using local server at ${daemon.apiUrl}`);
-      else printDim(`Using unmanaged local server at ${daemon.apiUrl}`);
+      else printDim(`Using unmanaged local server at ${daemon.apiUrl} (started outside Acolyte).`);
       return;
     }
     case "status": {

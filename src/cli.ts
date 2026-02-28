@@ -371,7 +371,7 @@ export async function chatModeWithOptions(options: { resumeLatest: boolean; resu
     apiUrl = daemon.apiUrl;
     if (daemon.started) printDim(`Started local server at ${daemon.apiUrl}`);
     else if (daemon.managed) printDim(`Using local server at ${daemon.apiUrl}`);
-    else printDim(`Using unmanaged local server at ${daemon.apiUrl}`);
+    else printDim(`Using unmanaged local server at ${daemon.apiUrl} (started outside Acolyte).`);
   }
   const client = createClient({ apiUrl });
   const persist = async (): Promise<void> => {
