@@ -327,6 +327,7 @@ export function formatProgressOutput(
     lines.push(line);
   }
   const parsedLines = lines.map((line) => parseToolProgressLine(line));
+  const rootHeaderLabel = parsedLines[0]?.kind === "header" ? parsedLines[0].label : undefined;
   const inferredLineNumberWidth = parsedLines.reduce((max, parsed) => {
     if (parsed.kind === "numberedDiff" || parsed.kind === "numberedContext")
       return Math.max(max, parsed.lineNumber.length);
@@ -433,8 +434,13 @@ export function formatProgressOutput(
       case "meta":
         if (parsed.text === TOOL_OUTPUT_MARKERS.noOutput) return dim("(No output)");
         if (parsed.text === TOOL_OUTPUT_MARKERS.truncated) return dim("…".padStart(Math.max(1, lineNumberWidth), " "));
-        if (parsed.text.startsWith(`${TOOL_OUTPUT_MARKERS.truncated} +`))
+        if (parsed.text.startsWith(`${TOOL_OUTPUT_MARKERS.truncated} +`)) {
+          const amount = parsed.text.match(/^\[truncated\] \+(\d+)$/)?.[1];
+          if (amount && (rootHeaderLabel === "Find" || rootHeaderLabel === "Search")) {
+            return dim(`… +${countLabel(Number.parseInt(amount, 10), "match", "matches")}`.padStart(Math.max(1, lineNumberWidth), " "));
+          }
           return dim(`…${parsed.text.slice(TOOL_OUTPUT_MARKERS.truncated.length)}`.padStart(Math.max(1, lineNumberWidth), " "));
+        }
         if (options?.lineNumberWidth != null) {
           const rest = parsed.text.length > 1 ? parsed.text.slice(1) : "";
           return `${dim("…".padStart(lineNumberWidth, " "))}${dim(rest)}`;

@@ -8,6 +8,7 @@ import {
   editCode,
   editFile,
   fetchWeb,
+  gitLog,
   readSnippet,
   runShellCommand,
   scanCode,
@@ -586,5 +587,28 @@ describe("searchFiles", () => {
       .replace(/\\/g, "/");
     expect(result).toContain(`./${relInside}:1:`);
     expect(result).not.toContain(outside.split("/").at(-1) ?? "");
+  });
+});
+
+describe("gitLog", () => {
+  test("returns compact decorated commit history", async () => {
+    setPermissionMode("write");
+    const dirPath = `/tmp/acolyte-gitlog-${crypto.randomUUID()}`;
+    tempDirs.push(dirPath);
+    await mkdir(dirPath, { recursive: true });
+    await runShellCommand(dirPath, "git init -b main");
+    await runShellCommand(dirPath, "git config user.email test@example.com");
+    await runShellCommand(dirPath, "git config user.name Test");
+    await writeFile(join(dirPath, "a.txt"), "a\n", "utf8");
+    await runShellCommand(dirPath, "git add a.txt");
+    await runShellCommand(dirPath, "git commit -m first");
+    await writeFile(join(dirPath, "b.txt"), "b\n", "utf8");
+    await runShellCommand(dirPath, "git add b.txt");
+    await runShellCommand(dirPath, "git commit -m second");
+    const log = await gitLog(dirPath, { limit: 2 });
+    const lines = log.split("\n").filter((line) => line.trim().length > 0);
+    expect(lines.length).toBe(2);
+    expect(lines[0]).toContain("second");
+    expect(lines[1]).toContain("first");
   });
 });

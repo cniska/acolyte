@@ -301,7 +301,15 @@ function formatPathList(paths: string[], maxShown = TOOL_HEADER_PATHS_MAX_SHOWN)
 export function formatToolHeader(toolName: string, args: Record<string, unknown>): string {
   const label = formatToolLabel(toolName);
   const labelOnlyTools = new Set(["find-files", "search-files", "read-file", "git-status"]);
-  const pathDetailTools = new Set(["edit-file", "edit-code", "create-file", "delete-file", "git-diff", "scan-code"]);
+  const pathDetailTools = new Set([
+    "edit-file",
+    "edit-code",
+    "create-file",
+    "delete-file",
+    "git-diff",
+    "git-log",
+    "scan-code",
+  ]);
   const asString = (value: unknown): string | null => {
     if (typeof value !== "string") return null;
     const trimmed = value.trim();

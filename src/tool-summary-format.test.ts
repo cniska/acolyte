@@ -20,7 +20,7 @@ describe("tool summary format", () => {
 
   test("merges count and structured lines into full headers", () => {
     expect(mergeToolOutputHeader("Find", "find-files", "scope=workspace patterns=[*.ts] matches=3")).toBe(
-      "Find scope=workspace patterns=[*.ts] matches=3",
+      "Find *.ts",
     );
     expect(
       mergeToolOutputHeader("Search", "search-files", "scope=paths:2 patterns=[tool] matches=2"),
@@ -56,6 +56,12 @@ describe("tool summary format", () => {
     expect(
       mergeToolOutputHeader("Search", "search-files", "scope=workspace patterns=[any, process.env., foo, bar] matches=4"),
     ).toBe("Search [any, process.env., foo, +1]");
+    expect(
+      mergeToolOutputHeader("Find", "find-files", "scope=workspace patterns=[*.ts, *.md, *.json, *.yaml] matches=4"),
+    ).toBe("Find *.ts, *.md, *.json, +1");
+    expect(
+      mergeToolOutputHeader("Find", "find-files", "scope=src/ patterns=[*.ts, *.md, *.json, *.yaml] matches=4"),
+    ).toBe("Find src/ *.ts, *.md, *.json, +1");
     expect(
       mergeToolOutputHeader("Search", "search-files", "scope=src/ patterns=[any, process.env., foo, bar] matches=4"),
     ).toBe("Search src/ [any, process.env., foo, +1]");

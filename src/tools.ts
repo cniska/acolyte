@@ -675,6 +675,18 @@ export async function gitDiff(workspace: string, pathInput?: string, contextLine
   return stdout.trim();
 }
 
+export async function gitLog(workspace: string, options?: { path?: string; limit?: number }): Promise<string> {
+  const limit = Math.max(1, Math.min(50, options?.limit ?? 10));
+  const args = ["git", "log", "--oneline", "--decorate", `-n`, String(limit)];
+  if (options?.path) {
+    ensurePathWithinAllowedRoots(options.path, "Log", workspace);
+    args.push("--", options.path);
+  }
+  const { code, stdout, stderr } = await runCommand(args, workspace);
+  if (code !== 0) throw new Error(stderr.trim() || "git log failed");
+  return stdout.trim();
+}
+
 // --- Shell execution ---
 
 const BLOCKED_SHELL_TOKENS = ["rm -rf /", "shutdown", "reboot", "mkfs", "dd if="];

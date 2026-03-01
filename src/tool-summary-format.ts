@@ -19,6 +19,16 @@ function compactBracketList(value: string, maxItems = 3): string {
   return `[${shown}, +${items.length - maxItems}]`;
 }
 
+function compactList(value: string, maxItems = 3): string {
+  const items = value
+    .split(",")
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+  if (items.length <= maxItems) return items.join(", ");
+  const shown = items.slice(0, maxItems).join(", ");
+  return `${shown}, +${items.length - maxItems}`;
+}
+
 export function formatToolFileSummaryHeader(toolName: string, fileCount: number): string {
   if (!SUMMARY_TOOL_NAMES.has(toolName as ToolName)) return countLabel(fileCount, "file", "files");
   const label = formatToolLabel(toolName);
@@ -35,8 +45,14 @@ export function mergeToolOutputHeader(header: string, toolName: string, line: st
   if (
     toolName === "find-files" &&
     new RegExp(`^scope=.+\\s+patterns=\\[[^\\]]*\\]\\s+matches=\\d+$`, "i").test(trimmed)
-  )
-    return `${label} ${trimmed}`;
+  ) {
+    const match = trimmed.match(/^scope=(.+)\s+patterns=\[([^\]]*)\]\s+matches=\d+$/i);
+    if (!match?.[1]) return `${label} ${trimmed}`;
+    const scope = match[1].trim();
+    const patterns = compactList(match[2] ?? "");
+    if (scope === "workspace") return `${label} ${patterns}`;
+    return `${label} ${scope} ${patterns}`;
+  }
   if (
     toolName === "search-files" &&
     new RegExp(`^scope=.+\\s+patterns=\\[[^\\]]*\\]\\s+matches=\\d+$`, "i").test(trimmed)

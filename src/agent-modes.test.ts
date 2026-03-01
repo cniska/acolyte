@@ -8,6 +8,7 @@ describe("modeForTool", () => {
     expect(modeForTool("search-files")).toBe("plan");
     expect(modeForTool("git-status")).toBe("plan");
     expect(modeForTool("git-diff")).toBe("plan");
+    expect(modeForTool("git-log")).toBe("plan");
     expect(modeForTool("web-search")).toBe("plan");
     expect(modeForTool("web-fetch")).toBe("plan");
     expect(modeForTool("scan-code")).toBe("plan");

@@ -22,6 +22,7 @@ describe("mastra toolsets", () => {
       "editFile",
       "findFiles",
       "gitDiff",
+      "gitLog",
       "gitStatus",
       "readFile",
       "runCommand",
@@ -40,6 +41,7 @@ describe("mastra toolsets", () => {
     expect(Object.keys(tools).sort()).toEqual([
       "findFiles",
       "gitDiff",
+      "gitLog",
       "gitStatus",
       "readFile",
       "scanCode",

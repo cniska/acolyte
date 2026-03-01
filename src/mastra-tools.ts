@@ -27,6 +27,7 @@ import {
   fetchWeb,
   findFiles,
   gitDiff,
+  gitLog,
   gitStatusShort,
   readSnippets,
   runShellCommand,
@@ -70,6 +71,10 @@ export const toolMeta: Record<ToolName, ToolMeta> = {
   "git-diff": {
     instruction: "Use `git-diff` for change inspection.",
     aliases: ["gitDiff", "git_diff"],
+  },
+  "git-log": {
+    instruction: "Use `git-log` to inspect recent commits quickly (optionally scoped by path).",
+    aliases: ["gitLog", "git_log"],
   },
   "web-search": {
     instruction: "Use `web-search` for external information lookup.",
@@ -612,6 +617,28 @@ function createGitDiffTool(workspace: string, session: SessionContext, onToolOut
   });
 }
 
+function createGitLogTool(workspace: string, session: SessionContext, onToolOutput?: ToolOutputListener) {
+  return createTool({
+    id: "git-log",
+    description: "Show recent commits in compact one-line form (optionally scoped to a file/path).",
+    inputSchema: z.object({
+      path: z.string().optional(),
+      limit: z.number().int().min(1).max(50).optional(),
+    }),
+    execute: async (input) => {
+      return withToolError("git-log", () =>
+        guardedExecute("git-log", input as Record<string, unknown>, session, async () => {
+          const toolCallId = streamCallId("git-log");
+          const rawLog = await gitLog(workspace, { path: input.path, limit: input.limit });
+          emitHeadTailLines("git-log", rawLog, onToolOutput, toolCallId, { trimStart: true });
+          const result = compactToolOutput(rawLog, appConfig.agent.toolOutputBudget.gitStatus);
+          return { result };
+        }),
+      );
+    },
+  });
+}
+
 function createEditFileTool(workspace: string, session: SessionContext, onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "edit-file",
@@ -803,6 +830,7 @@ function createToolset(workspace: string, session: SessionContext, onToolOutput?
       readFile: createReadFileTool(workspace, session, onToolOutput),
       gitStatus: createGitStatusTool(workspace, session, onToolOutput),
       gitDiff: createGitDiffTool(workspace, session, onToolOutput),
+      gitLog: createGitLogTool(workspace, session, onToolOutput),
       runCommand: createRunCommandTool(workspace, session, onToolOutput),
       editCode: createAstEditTool(workspace, session, onToolOutput),
       editFile: createEditFileTool(workspace, session, onToolOutput),
@@ -828,6 +856,7 @@ function readOnlyTools(
       readFile: createReadFileTool(workspace, session, onToolOutput),
       gitStatus: createGitStatusTool(workspace, session, onToolOutput),
       gitDiff: createGitDiffTool(workspace, session, onToolOutput),
+      gitLog: createGitLogTool(workspace, session, onToolOutput),
       webSearch: createWebSearchTool(session, onToolOutput),
       webFetch: createWebFetchTool(session, onToolOutput),
     },

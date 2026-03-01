@@ -189,7 +189,7 @@ describe("chat submit handler guards", () => {
     const toolRow = rows.find(
       (row) => row.role === "assistant" && row.style === "toolProgress" && row.toolName === "find-files",
     );
-    expect(toolRow?.content).toBe("Find scope=workspace patterns=[*.ts] matches=3\nsrc/a.ts\nsrc/b.ts\nsrc/c.ts");
+    expect(toolRow?.content).toBe("Find *.ts\nsrc/a.ts\nsrc/b.ts\nsrc/c.ts");
   });
 
   test("merges search summary with pattern context into header", async () => {
@@ -231,7 +231,7 @@ describe("chat submit handler guards", () => {
     const toolRow = rows.find(
       (row) => row.role === "assistant" && row.style === "toolProgress" && row.toolName === "search-files",
     );
-    expect(toolRow?.content).toBe("Search scope=paths:2 patterns=[tool] matches=2\nsrc/a.ts \\btool\\b\nsrc/b.ts \\btool\\b");
+    expect(toolRow?.content).toBe("Search paths:2 [tool]\nsrc/a.ts \\btool\\b\nsrc/b.ts \\btool\\b");
   });
 
   test("toggles shortcuts on ? input", async () => {

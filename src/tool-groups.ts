@@ -2,7 +2,14 @@ import type { ToolName } from "./tool-names";
 
 export const WRITE_TOOLS: readonly ToolName[] = ["edit-code", "edit-file", "create-file"];
 export const READ_TOOLS: readonly ToolName[] = ["read-file"];
-export const SEARCH_TOOLS: readonly ToolName[] = ["find-files", "search-files", "scan-code", "git-status", "git-diff"];
+export const SEARCH_TOOLS: readonly ToolName[] = [
+  "find-files",
+  "search-files",
+  "scan-code",
+  "git-status",
+  "git-diff",
+  "git-log",
+];
 export const DISCOVERY_TOOLS: readonly ToolName[] = [
   "find-files",
   "search-files",
@@ -10,6 +17,7 @@ export const DISCOVERY_TOOLS: readonly ToolName[] = [
   "scan-code",
   "git-status",
   "git-diff",
+  "git-log",
 ];
 
 export const WRITE_TOOL_SET = new Set<ToolName>(WRITE_TOOLS);

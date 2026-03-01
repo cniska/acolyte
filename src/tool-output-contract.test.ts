@@ -56,15 +56,28 @@ function renderMergedToolOutput(toolName: string, args: Record<string, unknown>,
   return trimRightLines(stripAnsi(formatProgressOutput(merged)));
 }
 
+type ToolOutputExpectation = {
+  raw: string[];
+  formatted?: string;
+};
+
+const normalizeDynamicToken = (value: string): string =>
+  value
+    .replace(/^index [0-9a-f]+\.\.[0-9a-f]+ (\d+)$/gm, "index <hash>..<hash> $1")
+    .replace(/^([0-9a-f]{7,40})\s+\([^)]+\)\s+/gm, "<hash> ")
+    .replace(/^([0-9a-f]{7,40})\s+/gm, "<hash> ");
+
 function assertToolOutput(
   outputByTool: Map<string, string[]>,
   toolName: string,
   args: Record<string, unknown>,
-  expected: { raw: string[]; formatted: string },
+  expected: ToolOutputExpectation,
 ): void {
-  const raw = rawLines(outputByTool, toolName);
-  expect(raw).toEqual(expected.raw);
-  expect(renderMergedToolOutput(toolName, args, raw)).toBe(expected.formatted);
+  const raw = rawLines(outputByTool, toolName).map(normalizeDynamicToken);
+  expect(raw).toEqual(expected.raw.map(normalizeDynamicToken));
+  if (expected.formatted === undefined) return;
+  const formatted = normalizeDynamicToken(renderMergedToolOutput(toolName, args, raw));
+  expect(formatted).toBe(normalizeDynamicToken(expected.formatted));
 }
 
 afterEach(restorePermissions);
@@ -168,7 +181,7 @@ describe("tool output contract: find-files", () => {
       assertToolOutput(outputByTool, "find-files", { patterns: ["*.ts"], maxResults: 10 }, {
         raw: ["scope=workspace patterns=[*.ts] matches=2", "beta.ts", "alpha.ts"],
         formatted: dedent(`
-          • Find scope=workspace patterns=[*.ts] matches=2
+          • Find *.ts
               beta.ts
               alpha.ts
         `),
@@ -197,13 +210,13 @@ describe("tool output contract: find-files", () => {
           "[truncated] +3",
         ],
         formatted: dedent(`
-          • Find scope=workspace patterns=[*.ts] matches=8
+          • Find *.ts
               f1.ts
               f2.ts
               f3.ts
               f4.ts
               f5.ts
-              … +3
+              … +3 matches
         `),
       });
     } finally {
@@ -219,7 +232,7 @@ describe("tool output contract: find-files", () => {
       if (!tools.findFiles?.execute) throw new Error("expected findFiles tool to be available");
       await tools.findFiles.execute({ patterns: ["*.md"], maxResults: 10 }, {} as never);
 
-      expect(rawLines(outputByTool, "find-files")).toEqual([]);
+      assertToolOutput(outputByTool, "find-files", { patterns: ["*.md"], maxResults: 10 }, { raw: [] });
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -238,7 +251,7 @@ describe("tool output contract: find-files", () => {
       assertToolOutput(outputByTool, "find-files", { patterns: ["*.ts"], maxResults: 20 }, {
         raw: ["scope=workspace patterns=[*.ts] matches=5", "f1.ts", "f2.ts", "f3.ts", "f4.ts", "f5.ts"],
         formatted: dedent(`
-          • Find scope=workspace patterns=[*.ts] matches=5
+          • Find *.ts
               f1.ts
               f2.ts
               f3.ts
@@ -261,14 +274,15 @@ describe("tool output contract: find-files", () => {
       if (!tools.findFiles?.execute) throw new Error("expected findFiles tool to be available");
       await tools.findFiles.execute({ patterns: ["*.ts", "*.md"], maxResults: 20 }, {} as never);
 
-      const raw = rawLines(outputByTool, "find-files");
-      expect(raw[0]).toBe("scope=workspace patterns=[*.ts, *.md] matches=3");
-      expect(raw.slice(1).sort()).toEqual(["alpha.ts", "beta.md", "gamma.ts"]);
-      const formatted = renderMergedToolOutput("find-files", { patterns: ["*.ts", "*.md"], maxResults: 20 }, raw);
-      expect(formatted.startsWith("• Find scope=workspace patterns=[*.ts, *.md] matches=3\n")).toBe(true);
-      expect(formatted.includes("alpha.ts")).toBe(true);
-      expect(formatted.includes("beta.md")).toBe(true);
-      expect(formatted.includes("gamma.ts")).toBe(true);
+      assertToolOutput(outputByTool, "find-files", { patterns: ["*.ts", "*.md"], maxResults: 20 }, {
+        raw: ["scope=workspace patterns=[*.ts, *.md] matches=3", "alpha.ts", "gamma.ts", "beta.md"],
+        formatted: dedent(`
+          • Find *.ts, *.md
+              alpha.ts
+              gamma.ts
+              beta.md
+        `),
+      });
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -359,17 +373,14 @@ describe("tool output contract: search-files", () => {
       if (!tools.searchFiles?.execute) throw new Error("expected searchFiles tool to be available");
       await tools.searchFiles.execute({ patterns: ["needle"], paths: [srcDir, docsDir], maxResults: 20 }, {} as never);
 
-      const raw = rawLines(outputByTool, "search-files");
-      expect(raw[0]).toBe("scope=src/, docs/ patterns=[needle] matches=2");
-      expect(raw.slice(1).sort()).toEqual(["docs/readme.md [needle@1]", "src/alpha.ts [needle@1]"]);
-      const formatted = renderMergedToolOutput(
-        "search-files",
-        { patterns: ["needle"], paths: [srcDir, docsDir], maxResults: 20 },
-        raw,
-      );
-      expect(formatted.startsWith("• Search src/, docs/ [needle]\n")).toBe(true);
-      expect(formatted.includes("docs/readme.md [needle@1]")).toBe(true);
-      expect(formatted.includes("src/alpha.ts [needle@1]")).toBe(true);
+      assertToolOutput(outputByTool, "search-files", { patterns: ["needle"], paths: [srcDir, docsDir], maxResults: 20 }, {
+        raw: ["scope=src/, docs/ patterns=[needle] matches=2", "src/alpha.ts [needle@1]", "docs/readme.md [needle@1]"],
+        formatted: dedent(`
+          • Search src/, docs/ [needle]
+              src/alpha.ts [needle@1]
+              docs/readme.md [needle@1]
+        `),
+      });
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -429,7 +440,7 @@ describe("tool output contract: search-files", () => {
       if (!tools.searchFiles?.execute) throw new Error("expected searchFiles tool to be available");
       await tools.searchFiles.execute({ patterns: ["nomatch"], maxResults: 10 }, {} as never);
 
-      expect(rawLines(outputByTool, "search-files")).toEqual([]);
+      assertToolOutput(outputByTool, "search-files", { patterns: ["nomatch"], maxResults: 10 }, { raw: [] });
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -497,7 +508,7 @@ describe("tool output contract: search-files", () => {
               f3.ts [p3@1]
               f4.ts [p4@1]
               f5.ts [p5@1]
-              … +1
+              … +1 match
         `),
       });
     } finally {
@@ -707,15 +718,9 @@ describe("tool output contract: git-status", () => {
       setPermissionMode("read");
       if (!tools.gitStatus?.execute) throw new Error("expected gitStatus tool to be available");
       await tools.gitStatus.execute({}, {} as never);
-      const raw = rawLines(outputByTool, "git-status");
-      expect(raw.length).toBe(5);
-      expect(raw[0]).toBe("M u1.txt");
-      expect(raw[1]).toBe("M u2.txt");
-      expect(raw[2]).toBe("[truncated] +2 lines");
-      expect(raw[3]).toBe("M u5.txt");
-      expect(raw[4]).toBe("M u6.txt");
-      expect(renderMergedToolOutput("git-status", {}, raw)).toBe(
-        dedent(`
+      assertToolOutput(outputByTool, "git-status", {}, {
+        raw: ["M u1.txt", "M u2.txt", "[truncated] +2 lines", "M u5.txt", "M u6.txt"],
+        formatted: dedent(`
           • Git Status
               M u1.txt
               M u2.txt
@@ -723,7 +728,7 @@ describe("tool output contract: git-status", () => {
               M u5.txt
               M u6.txt
         `),
-      );
+      });
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -812,15 +817,31 @@ describe("tool output contract: git-diff", () => {
 
       if (!tools.gitDiff?.execute) throw new Error("expected gitDiff tool to be available");
       await tools.gitDiff.execute({ path: "a.ts", contextLines: 1 }, {} as never);
-      const raw = rawLines(outputByTool, "git-diff");
-      expect(raw.length).toBeGreaterThanOrEqual(9);
-      expect(raw[0]).toBe("diff --git a/a.ts b/a.ts");
-      expect(raw[1]?.startsWith("index ")).toBe(true);
-      expect(raw.some((line) => line.startsWith("[truncated] +"))).toBe(true);
-      expect(raw.some((line) => line.startsWith("+export const "))).toBe(true);
-      const formatted = renderMergedToolOutput("git-diff", { path: "a.ts", contextLines: 1 }, raw);
-      expect(formatted.startsWith("• Git Diff a.ts\n    diff --git a/a.ts b/a.ts\n")).toBe(true);
-      expect(formatted.includes("… +")).toBe(true);
+      assertToolOutput(outputByTool, "git-diff", { path: "a.ts", contextLines: 1 }, {
+        raw: [
+          "diff --git a/a.ts b/a.ts",
+          "index <hash>..<hash> 100644",
+          "--- a/a.ts",
+          "+++ b/a.ts",
+          "[truncated] +5 lines",
+          "+export const a = 10;",
+          "+export const b = 20;",
+          "+export const c = 30;",
+          "+export const d = 40;",
+        ],
+        formatted: dedent(`
+          • Git Diff a.ts
+              diff --git a/a.ts b/a.ts
+              index <hash>..<hash> 100644
+              --- a/a.ts
+              +++ b/a.ts
+              … +5 lines
+              +export const a = 10;
+              +export const b = 20;
+              +export const c = 30;
+              +export const d = 40;
+        `),
+      });
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -842,16 +863,27 @@ describe("tool output contract: git-diff", () => {
       if (!tools.gitDiff?.execute) throw new Error("expected gitDiff tool to be available");
       await tools.gitDiff.execute({ path: "a.ts", contextLines: 0 }, {} as never);
 
-      const raw = rawLines(outputByTool, "git-diff");
-      expect(raw.some((line) => line.startsWith("[truncated] +"))).toBe(false);
-      expect(raw.some((line) => line.startsWith("@@ -1 +1 @@"))).toBe(true);
-      expect(raw.some((line) => line === "-export const a = 1;")).toBe(true);
-      expect(raw.some((line) => line === "+export const a = 2;")).toBe(true);
-      const formatted = renderMergedToolOutput("git-diff", { path: "a.ts", contextLines: 0 }, raw);
-      expect(formatted.startsWith("• Git Diff a.ts\n")).toBe(true);
-      expect(formatted.includes("… +")).toBe(false);
-      expect(formatted.includes("-export const a = 1;")).toBe(true);
-      expect(formatted.includes("+export const a = 2;")).toBe(true);
+      assertToolOutput(outputByTool, "git-diff", { path: "a.ts", contextLines: 0 }, {
+        raw: [
+          "diff --git a/a.ts b/a.ts",
+          "index <hash>..<hash> 100644",
+          "--- a/a.ts",
+          "+++ b/a.ts",
+          "@@ -1 +1 @@",
+          "-export const a = 1;",
+          "+export const a = 2;",
+        ],
+        formatted: dedent(`
+          • Git Diff a.ts
+              diff --git a/a.ts b/a.ts
+              index <hash>..<hash> 100644
+              --- a/a.ts
+              +++ b/a.ts
+              @@ -1 +1 @@
+              -export const a = 1;
+              +export const a = 2;
+        `),
+      });
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -877,6 +909,70 @@ describe("tool output contract: git-diff", () => {
         formatted: dedent(`
           • Git Diff a.ts
               (No output)
+        `),
+      });
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("tool output contract: git-log", () => {
+  test("shows deterministic raw and formatted output", async () => {
+    const { workspace, tools, outputByTool } = await createHarness("read");
+    try {
+      setPermissionMode("write");
+      await runShellCommand(workspace, "git init -b main");
+      await runShellCommand(workspace, "git config user.email test@example.com");
+      await runShellCommand(workspace, "git config user.name Test");
+      for (let i = 1; i <= 6; i += 1) {
+        await writeFile(join(workspace, `c${i}.txt`), `${i}\n`, "utf8");
+        await runShellCommand(workspace, `git add c${i}.txt`);
+        await runShellCommand(workspace, `git commit -m c${i}`);
+      }
+      setPermissionMode("read");
+
+      if (!tools.gitLog?.execute) throw new Error("expected gitLog tool to be available");
+      await tools.gitLog.execute({ limit: 6 }, {} as never);
+      assertToolOutput(outputByTool, "git-log", { limit: 6 }, {
+        raw: ["<hash> c6", "<hash> c5", "[truncated] +2 lines", "<hash> c2", "<hash> c1"],
+        formatted: dedent(`
+          • Git Log
+              <hash> c6
+              <hash> c5
+              … +2 lines
+              <hash> c2
+              <hash> c1
+        `),
+      });
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+
+  test("shows non-truncated body when log output fits preview window", async () => {
+    const { workspace, tools, outputByTool } = await createHarness("read");
+    try {
+      setPermissionMode("write");
+      await runShellCommand(workspace, "git init -b main");
+      await runShellCommand(workspace, "git config user.email test@example.com");
+      await runShellCommand(workspace, "git config user.name Test");
+      await writeFile(join(workspace, "a.txt"), "a\n", "utf8");
+      await runShellCommand(workspace, "git add a.txt");
+      await runShellCommand(workspace, "git commit -m first");
+      await writeFile(join(workspace, "b.txt"), "b\n", "utf8");
+      await runShellCommand(workspace, "git add b.txt");
+      await runShellCommand(workspace, "git commit -m second");
+      setPermissionMode("read");
+
+      if (!tools.gitLog?.execute) throw new Error("expected gitLog tool to be available");
+      await tools.gitLog.execute({ limit: 2 }, {} as never);
+      assertToolOutput(outputByTool, "git-log", { limit: 2 }, {
+        raw: ["<hash> second", "<hash> first"],
+        formatted: dedent(`
+          • Git Log
+              <hash> second
+              <hash> first
         `),
       });
     } finally {
