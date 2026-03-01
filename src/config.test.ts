@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   readConfig,
+  readConfigForScope,
   readConfigSync,
   readResolvedConfigSync,
   setConfigValue,
@@ -184,6 +185,8 @@ describe("config store", () => {
         'permissionMode = "write"',
         'logFormat = "json"',
         'transportMode = "rpc"',
+        "temperatures.plan = 0.2",
+        "temperatures.work = 0.3",
         "omObservationTokens = 3500",
         "omReflectionTokens = 9000",
         "contextMaxTokens = 7000",
@@ -202,6 +205,7 @@ describe("config store", () => {
     expect(loaded.permissionMode).toBe("write");
     expect(loaded.logFormat).toBe("json");
     expect(loaded.transportMode).toBe("rpc");
+    expect(loaded.temperatures).toEqual({ plan: 0.2, work: 0.3 });
     expect(loaded.maxMessageTokens).toBe(700);
     expect(loaded.replyTimeoutMs).toBe(220000);
   });
@@ -216,6 +220,7 @@ describe("config store", () => {
     expect(resolved.port).toBe(6767);
     expect(resolved.model).toBe("anthropic/claude-sonnet-4");
     expect(resolved.models).toEqual({});
+    expect(resolved.temperatures).toEqual({});
     expect(resolved.omModel).toBe("anthropic/claude-sonnet-4");
     expect(resolved.permissionMode).toBe("read");
     expect(resolved.logFormat).toBe("logfmt");
@@ -237,6 +242,21 @@ describe("config store", () => {
     expect(resolved.model).toBe("anthropic/claude-sonnet-4");
     expect(resolved.models).toEqual({ plan: "openai/gpt-5-mini" });
     expect(resolved.omModel).toBe("anthropic/claude-sonnet-4");
+  });
+
+  test("readResolvedConfigSync uses per-mode temperatures when set", () => {
+    const home = createDir("acolyte-config-home-");
+    const dataDir = join(home, ".acolyte");
+    mkdirSync(dataDir, { recursive: true });
+    writeFileSync(
+      join(dataDir, "config.toml"),
+      'model = "anthropic/claude-sonnet-4"\n\ntemperatures.plan = 0.2\ntemperatures.verify = 0.1\n',
+      "utf8",
+    );
+
+    const resolved = readResolvedConfigSync({ homeDir: home, cwd: home });
+    expect(resolved.model).toBe("anthropic/claude-sonnet-4");
+    expect(resolved.temperatures).toEqual({ plan: 0.2, verify: 0.1 });
   });
 
   test("project config overrides user config", async () => {
@@ -309,6 +329,22 @@ describe("config store", () => {
     await expect(setConfigValue("permissionMode", "admin", { homeDir: home, cwd: project })).rejects.toThrow(
       "Invalid value for permissionMode",
     );
+    await expect(setConfigValue("temperatures.plan", "3", { homeDir: home, cwd: project })).rejects.toThrow(
+      "Invalid value for temperatures.plan",
+    );
+  });
+
+  test("setConfigValue supports per-mode temperatures through dotted keys", async () => {
+    const home = createDir("acolyte-config-home-");
+    const project = createDir("acolyte-config-project-");
+    const projectDataDir = join(project, ".acolyte");
+    mkdirSync(projectDataDir, { recursive: true });
+
+    await setConfigValue("temperatures.plan", "0.2", { homeDir: home, cwd: project, scope: "project" });
+    await setConfigValue("temperatures.work", "0.4", { homeDir: home, cwd: project, scope: "project" });
+
+    const loaded = await readConfigForScope("project", { homeDir: home, cwd: project });
+    expect(loaded.temperatures).toEqual({ plan: 0.2, work: 0.4 });
   });
 
   test("unsetConfigValue removes key only from targeted project scope", async () => {

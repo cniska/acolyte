@@ -26,6 +26,7 @@ export const appConfig = {
   },
   model: fileConfig.model,
   models: fileConfig.models,
+  temperatures: fileConfig.temperatures,
   omModel: fileConfig.omModel,
   memory: {
     resourceId: "acolyte-local",

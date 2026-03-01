@@ -21,12 +21,26 @@ const MAX_MESSAGE_TOKENS = 4_000;
 const MAX_ATTACHMENT_MESSAGE_TOKENS = 12_000;
 const MAX_PINNED_MESSAGE_TOKENS = 4_000;
 const MAX_RUN_REPLY_TIMEOUT_MS = 600_000;
+const MAX_TEMPERATURE = 2;
 const nonEmptyStringSchema = z.string().trim().min(1);
 const parseIntegerSchema = (min: number, max: number): z.ZodType<number> =>
   z.preprocess(
     (value) => (typeof value === "string" && value.trim().length > 0 ? Number(value) : value),
     z.number().int().min(min).max(max),
   );
+const parseTemperatureSchema = z.preprocess(
+  (value) => (typeof value === "string" && value.trim().length > 0 ? Number(value) : value),
+  z.number().min(0).max(MAX_TEMPERATURE),
+);
+const modeTemperatureMapSchema = z
+  .record(
+    z.string(),
+    z.preprocess(
+      (value) => (typeof value === "string" && value.trim().length > 0 ? Number(value) : value),
+      z.number().min(0).max(MAX_TEMPERATURE),
+    ),
+  )
+  .transform((input) => Object.fromEntries(Object.entries(input).filter(([mode]) => mode in agentModes)));
 
 const DEFAULT_CONFIG = {
   port: 6767,
@@ -50,6 +64,7 @@ export interface AcolyteConfig {
   port?: number;
   model?: string;
   models?: Record<string, string>;
+  temperatures?: Record<string, number>;
   omModel?: string;
   apiUrl?: string;
   openaiBaseUrl?: string;
@@ -72,6 +87,7 @@ export interface ResolvedAcolyteConfig {
   port: number;
   model: string;
   models: Record<string, string>;
+  temperatures: Record<string, number>;
   omModel: string;
   apiUrl?: string;
   openaiBaseUrl: string;
@@ -100,6 +116,7 @@ const CONFIG_SET_SCHEMAS: Record<keyof AcolyteConfig, z.ZodTypeAny> = {
   port: parseIntegerSchema(1, 65535),
   model: nonEmptyStringSchema,
   models: z.record(z.string(), nonEmptyStringSchema),
+  temperatures: modeTemperatureMapSchema,
   omModel: nonEmptyStringSchema,
   apiUrl: nonEmptyStringSchema,
   openaiBaseUrl: nonEmptyStringSchema,
@@ -133,6 +150,16 @@ function toConfig(input: Record<string, unknown>): AcolyteConfig {
             Object.entries(input.models as Record<string, unknown>).flatMap(([k, v]) => {
               if (!(k in agentModes)) return [];
               const result = nonEmptyStringSchema.safeParse(v);
+              return result.success ? [[k, result.data]] : [];
+            }),
+          )
+        : undefined,
+    temperatures:
+      typeof input.temperatures === "object" && input.temperatures !== null
+        ? Object.fromEntries(
+            Object.entries(input.temperatures as Record<string, unknown>).flatMap(([k, v]) => {
+              if (!(k in agentModes)) return [];
+              const result = parseTemperatureSchema.safeParse(v);
               return result.success ? [[k, result.data]] : [];
             }),
           )
@@ -241,6 +268,11 @@ function serializeToml(config: AcolyteConfig): string {
       lines.push(`models.${mode} = ${JSON.stringify(m)}`);
     }
   }
+  if (config.temperatures) {
+    for (const [mode, value] of Object.entries(config.temperatures)) {
+      lines.push(`temperatures.${mode} = ${value}`);
+    }
+  }
   if (config.omModel) lines.push(`omModel = ${JSON.stringify(config.omModel)}`);
   if (config.apiUrl) lines.push(`apiUrl = ${JSON.stringify(config.apiUrl)}`);
   if (config.openaiBaseUrl) lines.push(`openaiBaseUrl = ${JSON.stringify(config.openaiBaseUrl)}`);
@@ -268,6 +300,7 @@ function resolveConfig(config: AcolyteConfig): ResolvedAcolyteConfig {
     port: config.port ?? DEFAULT_CONFIG.port,
     model,
     models: config.models ?? {},
+    temperatures: config.temperatures ?? {},
     omModel: config.omModel ?? model,
     apiUrl: config.apiUrl,
     openaiBaseUrl: config.openaiBaseUrl ?? DEFAULT_CONFIG.openaiBaseUrl,
@@ -323,6 +356,7 @@ export async function writeConfig(config: AcolyteConfig, options?: ConfigOptions
 
 const RECORD_VALID_KEYS: Partial<Record<keyof AcolyteConfig, Set<string>>> = {
   models: new Set(Object.keys(agentModes)),
+  temperatures: new Set(Object.keys(agentModes)),
 };
 
 function parseDottedKey(key: string): { section: keyof AcolyteConfig; subKey: string } | null {

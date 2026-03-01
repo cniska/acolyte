@@ -410,12 +410,15 @@ async function streamWithTimeout(
       }, timeoutMs);
     };
     resetTimeout();
+    const temperature = appConfig.temperatures[ctx.mode];
+    const modelSettings = typeof temperature === "number" ? { temperature } : undefined;
 
     ctx.agent
       .stream(prompt, {
         maxSteps,
         toolChoice: "auto",
         memory: ctx.memoryOptions,
+        modelSettings,
       })
       .then(async (streamOutput) => {
         const reader = streamOutput.fullStream.getReader();
