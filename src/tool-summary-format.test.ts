@@ -34,6 +34,12 @@ describe("tool summary format", () => {
     expect(normalizeToolFileSummaryHeader("Search", "search-files", "Search using [tool, agent]")).toBe(
       "Search using [tool, agent]",
     );
+    expect(normalizeToolFileSummaryHeader("Read", "read-file", "Read a.ts, b.ts, c.ts +2 files")).toBe(
+      "Read a.ts, b.ts, c.ts +2 files",
+    );
+    expect(normalizeToolFileSummaryHeader("Scan", "scan-code", "Scan src/a.ts, src/b.ts")).toBe(
+      "Scan src/a.ts, src/b.ts",
+    );
   });
 
   test("returns null when line is not a count summary", () => {

@@ -8,12 +8,13 @@ import { createSessionContext, recordCall, runGuards, type SessionContext } from
 import type { ToolName } from "./tool-names";
 import { compactToolOutput } from "./tool-output";
 import {
+  emitFindSummary,
   emitFileListSummary,
   emitResultChunks,
   emitSearchSummary,
   findResultPaths,
   numberedUnifiedDiffLines,
-  searchResultPaths,
+  searchResultSummaryEntries,
   TOOL_OUTPUT_FILES_MAX_ROWS,
   TOOL_OUTPUT_RUN_MAX_ROWS,
 } from "./tool-output-format";
@@ -50,7 +51,8 @@ export const toolMeta: Record<ToolName, ToolMeta> = {
     aliases: ["findFiles", "find_files"],
   },
   "search-files": {
-    instruction: "Use `search-files` to search file contents by text or regex.",
+    instruction:
+      "Use `search-files` to search file contents by text or regex. Always batch related queries via `patterns`; optionally scope with `paths`.",
     aliases: ["searchFiles", "search_files", "searchRepo", "search_repo"],
   },
   "read-file": {
@@ -110,6 +112,43 @@ function streamCallId(toolName: ToolName): string {
   return `${toolName}_${createId()}`;
 }
 
+function diffTotals(rawResult: string): { files: number; added: number; removed: number } {
+  let files = 0;
+  let added = 0;
+  let removed = 0;
+  for (const line of rawResult.split("\n")) {
+    if (line.startsWith("diff --git ")) {
+      files += 1;
+      continue;
+    }
+    if (line.startsWith("+++ ") || line.startsWith("--- ")) continue;
+    if (line.startsWith("+")) {
+      added += 1;
+      continue;
+    }
+    if (line.startsWith("-")) removed += 1;
+  }
+  return { files, added, removed };
+}
+
+function emitDiffSummaryHeader(
+  toolName: "edit-file" | "edit-code" | "create-file",
+  path: string,
+  rawResult: string,
+  onToolOutput: ToolOutputListener | undefined,
+  toolCallId: string,
+): void {
+  const { files, added, removed } = diffTotals(rawResult);
+  const touchedFiles = files > 0 ? files : 1;
+  const verb = toolName === "create-file" ? "Create" : "Edit";
+  const target = touchedFiles > 1 ? `${touchedFiles} files` : path;
+  onToolOutput?.({
+    toolName,
+    message: `${verb} ${target} (+${added} -${removed})`,
+    toolCallId,
+  });
+}
+
 // --- Guarded execution ---
 
 function createRunCommandTool(workspace: string, session: SessionContext, onToolOutput?: ToolOutputListener) {
@@ -125,16 +164,13 @@ function createRunCommandTool(workspace: string, session: SessionContext, onTool
       return withToolError("run-command", () =>
         guardedExecute("run-command", input as Record<string, unknown>, session, async () => {
           const toolCallId = streamCallId("run-command");
-          const maxStreamLines = TOOL_OUTPUT_RUN_MAX_ROWS;
-          let streamedLines = 0;
-          let totalLines = 0;
+          const headRows = 2;
+          const tailRows = 2;
+          const streamed: string[] = [];
           let stdoutBuffer = "";
           let stderrBuffer = "";
-          const emitLine = (message: string): void => {
-            totalLines += 1;
-            if (streamedLines >= maxStreamLines) return;
-            streamedLines += 1;
-            onToolOutput?.({ toolName: "run-command", message, toolCallId });
+          const recordLine = (message: string): void => {
+            streamed.push(message);
           };
           const flushBufferLines = (stream: "stdout" | "stderr"): void => {
             const label = stream === "stdout" ? "out" : "err";
@@ -145,7 +181,7 @@ function createRunCommandTool(workspace: string, session: SessionContext, onTool
               if (newlineIndex === -1) break;
               const line = remaining.slice(0, newlineIndex).trimEnd();
               remaining = remaining.slice(newlineIndex + 1);
-              if (line.length > 0) emitLine(`${label} | ${line}`);
+              if (line.length > 0) recordLine(`${label} | ${line}`);
             }
             if (stream === "stdout") {
               stdoutBuffer = remaining;
@@ -169,7 +205,7 @@ function createRunCommandTool(workspace: string, session: SessionContext, onTool
           const flushRemainder = (stream: "stdout" | "stderr"): void => {
             const label = stream === "stdout" ? "out" : "err";
             const remainder = (stream === "stdout" ? stdoutBuffer : stderrBuffer).trimEnd();
-            if (remainder.length > 0) emitLine(`${label} | ${remainder}`);
+            if (remainder.length > 0) recordLine(`${label} | ${remainder}`);
             if (stream === "stdout") {
               stdoutBuffer = "";
             } else {
@@ -178,8 +214,19 @@ function createRunCommandTool(workspace: string, session: SessionContext, onTool
           };
           flushRemainder("stdout");
           flushRemainder("stderr");
-          const omitted = totalLines - streamedLines;
-          if (omitted > 0) onToolOutput?.({ toolName: "run-command", message: `… +${omitted} lines`, toolCallId });
+          if (streamed.length > headRows + tailRows) {
+            const omitted = streamed.length - (headRows + tailRows);
+            const preview = [
+              ...streamed.slice(0, headRows),
+              `… +${countLabel(omitted, "line", "lines")}`,
+              ...streamed.slice(streamed.length - tailRows),
+            ];
+            for (const line of preview) onToolOutput?.({ toolName: "run-command", message: line, toolCallId });
+          } else {
+            for (const line of streamed.slice(0, TOOL_OUTPUT_RUN_MAX_ROWS)) {
+              onToolOutput?.({ toolName: "run-command", message: line, toolCallId });
+            }
+          }
           const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.run);
           return { result };
         }),
@@ -248,14 +295,7 @@ function createFindFilesTool(workspace: string, session: SessionContext, onToolO
           };
           const result = compactToolOutput(await findFiles(workspace, input.patterns, maxResults), budget);
           const paths = findResultPaths(result);
-          emitFileListSummary(
-            "find-files",
-            paths,
-            onToolOutput,
-            toolCallId,
-            TOOL_OUTPUT_FILES_MAX_ROWS,
-            workspace,
-          );
+          emitFindSummary(paths, input.patterns, onToolOutput, toolCallId, TOOL_OUTPUT_FILES_MAX_ROWS, workspace);
           return { result };
         }),
       );
@@ -267,24 +307,34 @@ function createSearchFilesTool(workspace: string, session: SessionContext, onToo
   return createTool({
     id: "search-files",
     description:
-      "Search file contents in the repository for a text or regex pattern. To locate files by name use `find-files` instead.",
-    inputSchema: z.object({
-      pattern: z.string().min(1),
-      maxResults: z.number().int().min(1).max(200).optional(),
-    }),
+      "Search file contents in the repository for text or regex patterns. Optionally scope with `paths` (files or directories). To locate files by name use `find-files` instead.",
+    inputSchema: z
+      .object({
+        pattern: z.string().min(1).optional(),
+        patterns: z.array(z.string().min(1)).min(1).optional(),
+        paths: z.array(z.string().min(1)).min(1).optional(),
+        maxResults: z.number().int().min(1).max(200).optional(),
+      })
+      .refine((input) => Boolean(input.pattern) || Boolean(input.patterns && input.patterns.length > 0), {
+        message: "Provide pattern or patterns",
+        path: ["patterns"],
+      }),
     execute: async (input) => {
       return withToolError("search-files", () =>
         guardedExecute("search-files", input as Record<string, unknown>, session, async () => {
           const toolCallId = streamCallId("search-files");
           const maxResults = input.maxResults ?? 20;
+          const patterns =
+            input.patterns && input.patterns.length > 0 ? input.patterns : input.pattern ? [input.pattern] : [];
           const result = compactToolOutput(
-            await searchFiles(workspace, input.pattern, maxResults),
+            await searchFiles(workspace, patterns, maxResults, input.paths),
             appConfig.agent.toolOutputBudget.searchFiles,
           );
-          const paths = searchResultPaths(result);
+          const summaryEntries = searchResultSummaryEntries(result, patterns);
           emitSearchSummary(
-            paths,
-            input.pattern,
+            summaryEntries,
+            patterns,
+            input.paths,
             onToolOutput,
             toolCallId,
             TOOL_OUTPUT_FILES_MAX_ROWS,
@@ -458,6 +508,7 @@ function createEditFileTool(workspace: string, session: SessionContext, onToolOu
             path: input.path,
             edits: input.edits,
           });
+          emitDiffSummaryHeader("edit-file", input.path, rawResult, onToolOutput, toolCallId);
           for (const line of numberedUnifiedDiffLines(rawResult, WRITE_TOOL_PREVIEW_MAX_LINES)) {
             onToolOutput?.({ toolName: "edit-file", message: line, toolCallId });
           }
@@ -488,6 +539,7 @@ function createCreateFileTool(workspace: string, session: SessionContext, onTool
             content: input.content,
             overwrite: true,
           });
+          emitDiffSummaryHeader("create-file", input.path, rawResult, onToolOutput, toolCallId);
           for (const line of numberedUnifiedDiffLines(rawResult, WRITE_TOOL_PREVIEW_MAX_LINES)) {
             onToolOutput?.({ toolName: "create-file", message: line, toolCallId });
           }
@@ -524,6 +576,7 @@ function createAstEditTool(workspace: string, session: SessionContext, onToolOut
             path: input.path,
             edits: input.edits,
           });
+          emitDiffSummaryHeader("edit-code", input.path, rawResult, onToolOutput, toolCallId);
           for (const line of numberedUnifiedDiffLines(rawResult, WRITE_TOOL_PREVIEW_MAX_LINES)) {
             onToolOutput?.({ toolName: "edit-code", message: line, toolCallId });
           }

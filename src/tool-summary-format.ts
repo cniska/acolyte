@@ -27,6 +27,8 @@ export function normalizeToolFileSummaryHeader(header: string, toolName: string,
     return trimmed;
   if (toolName === "search-files" && new RegExp(`^${escapeRegExp(label)}(?:\\s+.+)?\\s+using\\s+.+$`, "i").test(trimmed))
     return trimmed;
+  if ((toolName === "read-file" || toolName === "scan-code") && new RegExp(`^${escapeRegExp(label)}\\s+.+$`, "i").test(trimmed))
+    return trimmed;
   if (/^\d+\s+files?\b/i.test(trimmed)) return `${label} ${trimmed}`;
   if (new RegExp(`^${escapeRegExp(label)}\\b.*\\b\\d+\\s+files?\\b`, "i").test(trimmed)) return trimmed;
   if (new RegExp(`^${escapeRegExp(label)}\\s+\\d+\\s+files?\\b`, "i").test(trimmed)) return trimmed;

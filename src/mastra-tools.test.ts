@@ -202,7 +202,7 @@ describe("write tool output contract", () => {
 });
 
 describe("read/scan tool output contract", () => {
-  test("read-file emits compact file list summary capped to five files", async () => {
+  test("read-file emits compact inline file summary", async () => {
     setPermissionMode("read");
     const workspace = await mkdtemp(join(tmpdir(), "acolyte-read-contract-"));
     try {
@@ -230,9 +230,8 @@ describe("read/scan tool output contract", () => {
 
       const lines = outputByTool.get("read-file") ?? [];
       const plain = lines.map(stripOsc8);
-      expect(lines[0]).toBe("Read 7 files");
-      expect(plain.slice(1, 6)).toEqual(["a.ts", "b.ts", "c.ts", "d.ts", "e.ts"]);
-      expect(plain[6]).toBe("… +2 files");
+      expect(lines).toHaveLength(1);
+      expect(plain[0]).toBe("Read a.ts, b.ts, c.ts +4 files");
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }

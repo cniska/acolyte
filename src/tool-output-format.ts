@@ -6,6 +6,7 @@ import type { ToolName } from "./tool-names";
 type ToolOutputListener = (event: { toolName: ToolName; message: string; toolCallId?: string }) => void;
 export const TOOL_OUTPUT_RUN_MAX_ROWS = 5;
 export const TOOL_OUTPUT_FILES_MAX_ROWS = 5;
+export const TOOL_OUTPUT_INLINE_FILES_MAX = 3;
 
 export function emitResultChunks(
   toolName: ToolName,
@@ -40,6 +41,20 @@ export function emitFileListSummary(
   workspace?: string,
 ): void {
   if (!onToolOutput) return;
+  if (toolName === "read-file" || toolName === "scan-code") {
+    const unique = uniquePaths(filePaths).map((path) => toDisplayPath(path, workspace));
+    if (unique.length === 0) return;
+    const shown = unique.slice(0, TOOL_OUTPUT_INLINE_FILES_MAX);
+    const remaining = unique.length - shown.length;
+    const label = toolName === "read-file" ? "Read" : "Scan";
+    const suffix = remaining > 0 ? ` +${countLabel(remaining, "file", "files")}` : "";
+    onToolOutput({
+      toolName,
+      message: `${label} ${shown.join(", ")}${suffix}`,
+      toolCallId,
+    });
+    return;
+  }
   emitSummaryFileRows({
     toolName,
     filePaths,
