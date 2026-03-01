@@ -9,7 +9,7 @@ type SuggestionContentInput = {
   atSuggestionIndex: number;
   slashSuggestions: string[];
   slashSuggestionIndex: number;
-  showShortcuts: boolean;
+  showHelp: boolean;
 };
 
 export function renderInputPanelContent(input: SuggestionContentInput): React.ReactNode {
@@ -20,10 +20,10 @@ export function renderInputPanelContent(input: SuggestionContentInput): React.Re
     atSuggestionIndex,
     slashSuggestions,
     slashSuggestionIndex,
-    showShortcuts,
+    showHelp,
   } = input;
 
-  let suggestions: React.ReactNode;
+  let suggestions: React.ReactNode = null;
   if (atQuery !== null && atSuggestions.length > 0) {
     suggestions = atSuggestions.map((item) => (
       <Text key={`at-suggestion-${item}`} color={item === atSuggestions[atSuggestionIndex] ? brandColor : undefined}>
@@ -40,14 +40,12 @@ export function renderInputPanelContent(input: SuggestionContentInput): React.Re
         dimColor={index !== slashSuggestionIndex}
       >{`  ${item}`}</Text>
     ));
-  } else if (showShortcuts) {
+  } else if (showHelp) {
     suggestions = formatShortcutRows().map((line) => (
       <Text key={`shortcut-row-${line}`} dimColor>
         {line}
       </Text>
     ));
-  } else {
-    suggestions = <Text dimColor>{"  ? help"}</Text>;
   }
 
   return suggestions;

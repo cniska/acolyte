@@ -16,7 +16,7 @@ import type { PermissionMode } from "./config-modes";
 import { addMemory, type MemoryScope } from "./memory";
 import { createId } from "./short-id";
 import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
-import { normalizeToolFileSummaryHeader, shouldSuppressEmptyToolProgressRow } from "./tool-summary-format";
+import { mergeToolOutputHeader, shouldSuppressEmptyToolProgressRow } from "./tool-summary-format";
 import type { Message, Session, SessionStore } from "./types";
 
 type CreateSubmitHandlerInput = {
@@ -26,7 +26,7 @@ type CreateSubmitHandlerInput = {
   setCurrentSession: (next: Session) => void;
   toRows: (messages: Message[]) => ChatRow[];
   setRows: (updater: (current: ChatRow[]) => ChatRow[]) => void;
-  setShowShortcuts: (next: boolean | ((current: boolean) => boolean)) => void;
+  setShowHelp: (next: boolean | ((current: boolean) => boolean)) => void;
   setValue: (next: string) => void;
   persist: () => Promise<void>;
   exit: () => void;
@@ -271,7 +271,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
     input.setValue("");
 
     if (!internalClarification && resolvedText === "?") {
-      input.setShowShortcuts((current) => !current);
+      input.setShowHelp((current) => !current);
       return;
     }
     if (naturalRememberDirective) {
@@ -318,7 +318,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         setTokenUsage: input.setTokenUsage,
         toRows: (messages) => input.toRows(messages),
         setRows: input.setRows,
-        setShowShortcuts: input.setShowShortcuts,
+        setShowHelp: input.setShowHelp,
         setValue: input.setValue,
         persist: input.persist,
         exit: input.exit,
@@ -486,7 +486,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
           }
           const next = [...current];
           const mergedHeader = !existingRow.content.includes("\n")
-            ? normalizeToolFileSummaryHeader(existingRow.content, entry.toolName, content)
+            ? mergeToolOutputHeader(existingRow.content, entry.toolName, content)
             : null;
           if (mergedHeader) {
             toolHasBodyOutputByCallId.add(entry.toolCallId);

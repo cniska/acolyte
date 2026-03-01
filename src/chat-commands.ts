@@ -126,7 +126,7 @@ export type CommandContext = {
   setTokenUsage?: (updater: (current: TokenUsageEntry[]) => TokenUsageEntry[]) => void;
   toRows: (messages: Session["messages"]) => ChatRow[];
   setRows: (updater: (current: ChatRow[]) => ChatRow[]) => void;
-  setShowShortcuts: (updater: (current: boolean) => boolean) => void;
+  setShowHelp: (updater: (current: boolean) => boolean) => void;
   setValue: (next: string) => void;
   persist: () => Promise<void>;
   exit: () => void;
@@ -217,7 +217,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       ...ctx.toRows(target.messages),
       createRow("system", `Resumed session: ${target.id}`, { dim: true, style: "sessionStatus" }),
     ]);
-    ctx.setShowShortcuts(() => false);
+    ctx.setShowHelp(() => false);
     await ctx.persist();
     return { stop: true, userText: text };
   }
@@ -416,7 +416,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       createRow("system", `Started new session: ${next.id}`, { dim: true, style: "sessionStatus" }),
     ]);
     ctx.setValue("");
-    ctx.setShowShortcuts(() => false);
+    ctx.setShowHelp(() => false);
     await ctx.persist();
     return { stop: true, userText: text };
   }

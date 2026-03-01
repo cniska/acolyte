@@ -77,10 +77,10 @@ export function resolveTabAutocomplete(input: ResolveTabAutocompleteInput): stri
 
 export function resolveEscapeAction(input: {
   isWorking: boolean;
-  showShortcuts: boolean;
+  showHelp: boolean;
 }): "interrupt" | "hide" | null {
   if (input.isWorking) return "interrupt";
-  if (input.showShortcuts) return "hide";
+  if (input.showHelp) return "hide";
   return null;
 }
 
@@ -113,8 +113,8 @@ type UseChatKeybindingsInput = {
   setInputHistoryIndex: (next: number | ((current: number) => number)) => void;
   setInputHistoryDraft: (next: string) => void;
   openSkillsPanel: () => Promise<void>;
-  showShortcuts: boolean;
-  setShowShortcuts: (next: boolean | ((current: boolean) => boolean)) => void;
+  showHelp: boolean;
+  setShowHelp: (next: boolean | ((current: boolean) => boolean)) => void;
   interruptCurrentTurn: () => void;
 };
 
@@ -238,16 +238,16 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
         return;
       }
       if (keyInput === "?" && input.value.length === 0) {
-        input.setShowShortcuts((current) => !current);
+        input.setShowHelp((current) => !current);
         return;
       }
       if (key.escape) {
-        const action = resolveEscapeAction({ isWorking: input.isWorking, showShortcuts: input.showShortcuts });
+        const action = resolveEscapeAction({ isWorking: input.isWorking, showHelp: input.showHelp });
         if (action === "interrupt") {
           input.interruptCurrentTurn();
           return;
         }
-        if (action === "hide") input.setShowShortcuts(false);
+        if (action === "hide") input.setShowHelp(false);
       }
     },
     { isActive: Boolean(process.stdin.isTTY) },

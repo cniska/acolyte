@@ -7,7 +7,7 @@ import { ChatHeader } from "./chat-header";
 import { processInputChange, processInputSubmit } from "./chat-input-handlers";
 import { ChatInputPanel } from "./chat-input-panel";
 import { useChatKeybindings } from "./chat-keybindings";
-import { formatHeaderContextLine, shownBranch, shownCwd } from "./chat-layout";
+import { shownBranch, shownCwd } from "./chat-layout";
 import type { PickerState } from "./chat-picker";
 import { createPickerHandlers, persistPermissionMode } from "./chat-picker-handlers";
 import { newMessage, nowIso, toRows } from "./chat-session";
@@ -59,7 +59,7 @@ function ChatApp(props: ChatAppProps) {
   const [progressText, setProgressText] = useState<string | null>(null);
   const [thinkingFrame, setThinkingFrame] = useState(0);
   const [thinkingStartedAt, setThinkingStartedAt] = useState<number | null>(null);
-  const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const [queuedMessages, setQueuedMessages] = useState<string[]>([]);
   const [branch, setBranch] = useState<string | null>(null);
   const [picker, setPicker] = useState<PickerState | null>(null);
@@ -75,17 +75,18 @@ function ChatApp(props: ChatAppProps) {
   const [atSuggestionIndex, setAtSuggestionIndex] = useState(0);
   const interruptRef = useRef<(() => void) | null>(null);
   const workspace = shownCwd();
+  const modelName = formatModel(currentSession.model);
   const headerLines: HeaderLine[] = [
-    { id: "title", text: "Acolyte", suffix: ` v${version}`, dim: false, brand: true },
+    { id: "title", text: "Acolyte", suffix: "", dim: false, brand: true },
     {
       id: "session",
-      text: `session ${currentSession.id}`,
+      text: `version ${version}`,
       dim: false,
       brand: false,
     },
     {
       id: "context",
-      text: formatHeaderContextLine(workspace, branch, formatModel(currentSession.model)),
+      text: `session ${currentSession.id}`,
       dim: true,
       brand: false,
     },
@@ -146,7 +147,7 @@ function ChatApp(props: ChatAppProps) {
     setRows,
     setRowsDirect: setRows,
     setPicker: (next) => setPicker(next),
-    setShowShortcuts,
+    setShowHelp,
     setValue,
     queueInput: (value: string) => setQueuedMessages((current) => [...current, value]),
     buildClarificationPayload: buildInternalClarificationTurn,
@@ -168,7 +169,7 @@ function ChatApp(props: ChatAppProps) {
     setCurrentSession,
     toRows,
     setRows,
-    setShowShortcuts,
+    setShowHelp,
     setValue,
     persist,
     exit,
@@ -225,8 +226,8 @@ function ChatApp(props: ChatAppProps) {
     setInputHistoryIndex,
     setInputHistoryDraft,
     openSkillsPanel,
-    showShortcuts,
-    setShowShortcuts,
+    showHelp,
+    setShowHelp,
     interruptCurrentTurn: () => {
       interruptRef.current?.();
     },
@@ -255,6 +256,7 @@ function ChatApp(props: ChatAppProps) {
         picker={picker}
         activeSessionId={store.activeSessionId}
         brandColor={palette.brand}
+        footerContext={`${workspace} · ${branch ?? "—"} · ${modelName}`}
         value={value}
         inputRevision={inputRevision}
         onChange={(next) => {
@@ -295,7 +297,7 @@ function ChatApp(props: ChatAppProps) {
         atSuggestionIndex={atSuggestionIndex}
         slashSuggestions={slashSuggestions}
         slashSuggestionIndex={slashSuggestionIndex}
-        showShortcuts={showShortcuts}
+        showHelp={showHelp}
         onConfirmNoteChange={(next) => {
           setPicker((current) => {
             if (!current || (current.kind !== "writeConfirm" && current.kind !== "clarifyAnswer")) return current;

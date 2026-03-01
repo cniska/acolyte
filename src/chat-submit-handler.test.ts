@@ -71,7 +71,7 @@ describe("chat submit handler guards", () => {
     await submit("   ");
     expect(calls.setInputHistory).toBe(0);
     expect(calls.setValue).toEqual([]);
-    expect(calls.setShowShortcuts).toEqual([]);
+    expect(calls.setShowHelp).toEqual([]);
   });
 
   test("ignores input while thinking", async () => {
@@ -159,7 +159,7 @@ describe("chat submit handler guards", () => {
             type: "tool-output",
             toolCallId: "call_find",
             toolName: "find-files",
-            content: "Find using [*.ts]",
+            content: "scope=workspace patterns=[*.ts] matches=3",
           });
           options.onEvent({
             type: "tool-output",
@@ -189,7 +189,7 @@ describe("chat submit handler guards", () => {
     const toolRow = rows.find(
       (row) => row.role === "assistant" && row.style === "toolProgress" && row.toolName === "find-files",
     );
-    expect(toolRow?.content).toBe("Find using [*.ts]\nsrc/a.ts\nsrc/b.ts\nsrc/c.ts");
+    expect(toolRow?.content).toBe("Find scope=workspace patterns=[*.ts] matches=3\nsrc/a.ts\nsrc/b.ts\nsrc/c.ts");
   });
 
   test("merges search summary with pattern context into header", async () => {
@@ -207,7 +207,7 @@ describe("chat submit handler guards", () => {
             type: "tool-output",
             toolCallId: "call_search",
             toolName: "search-files",
-            content: "Search 2 files using 1 pattern",
+            content: "scope=paths:2 patterns=[tool] matches=2",
           });
           options.onEvent({
             type: "tool-output",
@@ -231,7 +231,7 @@ describe("chat submit handler guards", () => {
     const toolRow = rows.find(
       (row) => row.role === "assistant" && row.style === "toolProgress" && row.toolName === "search-files",
     );
-    expect(toolRow?.content).toBe("Search 2 files using 1 pattern\nsrc/a.ts \\btool\\b\nsrc/b.ts \\btool\\b");
+    expect(toolRow?.content).toBe("Search scope=paths:2 patterns=[tool] matches=2\nsrc/a.ts \\btool\\b\nsrc/b.ts \\btool\\b");
   });
 
   test("toggles shortcuts on ? input", async () => {
@@ -239,8 +239,8 @@ describe("chat submit handler guards", () => {
     await submit("?");
     expect(calls.setInputHistory).toBe(1);
     expect(calls.setValue).toEqual([""]);
-    expect(calls.setShowShortcuts).toHaveLength(1);
-    expect(typeof calls.setShowShortcuts[0]).toBe("function");
+    expect(calls.setShowHelp).toHaveLength(1);
+    expect(typeof calls.setShowHelp[0]).toBe("function");
   });
 
   test("opens write confirm panel for likely write prompt in read mode", async () => {
@@ -257,7 +257,7 @@ describe("chat submit handler guards", () => {
       setCurrentSession: () => {},
       toRows: () => [],
       setRows: () => {},
-      setShowShortcuts: () => {},
+      setShowHelp: () => {},
       setValue: () => {},
       persist: async () => {},
       exit: () => {},
@@ -300,7 +300,7 @@ describe("chat submit handler guards", () => {
       setCurrentSession: () => {},
       toRows: () => [],
       setRows: () => {},
-      setShowShortcuts: () => {},
+      setShowHelp: () => {},
       setValue: () => {},
       persist: async () => {},
       exit: () => {},
@@ -350,7 +350,7 @@ describe("chat submit handler guards", () => {
       setRows: (updater) => {
         rows.splice(0, rows.length, ...updater(rows));
       },
-      setShowShortcuts: () => {},
+      setShowHelp: () => {},
       setValue: () => {},
       persist: async () => {},
       exit: () => {},
@@ -413,7 +413,7 @@ describe("chat submit handler guards", () => {
       setRows: (updater) => {
         rows.splice(0, rows.length, ...updater(rows));
       },
-      setShowShortcuts: () => {},
+      setShowHelp: () => {},
       setValue: () => {},
       persist: async () => {},
       exit: () => {},
@@ -479,7 +479,7 @@ describe("chat submit handler guards", () => {
       setRows: (updater) => {
         rows.splice(0, rows.length, ...updater(rows));
       },
-      setShowShortcuts: () => {},
+      setShowHelp: () => {},
       setValue: () => {},
       persist: async () => {},
       exit: () => {},
@@ -539,7 +539,7 @@ describe("chat submit handler guards", () => {
       setRows: (updater) => {
         rows.splice(0, rows.length, ...updater(rows));
       },
-      setShowShortcuts: () => {},
+      setShowHelp: () => {},
       setValue: () => {},
       persist: async () => {},
       exit: () => {},
@@ -594,7 +594,7 @@ describe("chat submit handler guards", () => {
         setRows: (updater) => {
           rows.splice(0, rows.length, ...updater(rows));
         },
-        setShowShortcuts: () => {},
+        setShowHelp: () => {},
         setValue: () => {},
         persist: async () => {},
         exit: () => {},
@@ -655,7 +655,7 @@ describe("chat submit handler guards", () => {
       setRows: (updater) => {
         rows.splice(0, rows.length, ...updater(rows));
       },
-      setShowShortcuts: () => {},
+      setShowHelp: () => {},
       setValue: () => {},
       persist: async () => {},
       exit: () => {},
@@ -710,7 +710,7 @@ describe("chat submit handler guards", () => {
       setRows: (updater) => {
         rows.splice(0, rows.length, ...updater(rows));
       },
-      setShowShortcuts: () => {},
+      setShowHelp: () => {},
       setValue: () => {},
       persist: async () => {},
       exit: () => {},
@@ -787,7 +787,7 @@ describe("chat submit handler guards", () => {
       setRows: (updater) => {
         rows.splice(0, rows.length, ...updater(rows));
       },
-      setShowShortcuts: () => {},
+      setShowHelp: () => {},
       setValue: () => {},
       persist: async () => {},
       exit: () => {},
@@ -833,7 +833,7 @@ describe("chat submit handler guards", () => {
       setRows: (updater) => {
         rows.splice(0, rows.length, ...updater(rows));
       },
-      setShowShortcuts: () => {},
+      setShowHelp: () => {},
       setValue: () => {},
       persist: async () => {},
       exit: () => {},
@@ -883,7 +883,7 @@ describe("chat submit handler guards", () => {
       setRows: (updater) => {
         rows.splice(0, rows.length, ...updater(rows));
       },
-      setShowShortcuts: () => {},
+      setShowHelp: () => {},
       setValue: () => {},
       persist: async () => {},
       exit: () => {},
@@ -956,7 +956,7 @@ describe("chat submit handler guards", () => {
       setRows: (updater) => {
         rows.splice(0, rows.length, ...updater(rows));
       },
-      setShowShortcuts: () => {},
+      setShowHelp: () => {},
       setValue: () => {},
       persist: async () => {},
       exit: () => {},
@@ -1017,7 +1017,7 @@ describe("chat submit handler guards", () => {
           sawTimeoutRow = true;
         rows.splice(0, rows.length, ...next);
       },
-      setShowShortcuts: () => {},
+      setShowHelp: () => {},
       setValue: () => {},
       persist: async () => {},
       exit: () => {},
@@ -1083,7 +1083,7 @@ describe("chat submit handler guards", () => {
           sawTimeoutRow = true;
         rows.splice(0, rows.length, ...next);
       },
-      setShowShortcuts: () => {},
+      setShowHelp: () => {},
       setValue: () => {},
       persist: async () => {},
       exit: () => {},
@@ -1375,7 +1375,7 @@ describe("chat submit handler guards", () => {
       setCurrentSession: () => {},
       toRows: () => [],
       setRows: () => {},
-      setShowShortcuts: () => {},
+      setShowHelp: () => {},
       setValue: () => {},
       persist: async () => {},
       exit: () => {},

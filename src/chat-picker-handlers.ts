@@ -25,7 +25,7 @@ type CreatePickerHandlersInput = {
   setRows: (updater: (current: ChatRow[]) => ChatRow[]) => void;
   setRowsDirect: (next: ChatRow[]) => void;
   setPicker: (next: PickerState | null) => void;
-  setShowShortcuts: (next: boolean | ((current: boolean) => boolean)) => void;
+  setShowHelp: (next: boolean | ((current: boolean) => boolean)) => void;
   setValue: (next: string) => void;
   queueInput: (next: string) => void;
   buildClarificationPayload: (input: {
@@ -81,7 +81,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
         index: 0,
       }),
     );
-    input.setShowShortcuts(false);
+    input.setShowHelp(false);
   };
 
   const openResumePanel = (): void => {
@@ -91,12 +91,12 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
       return;
     }
     input.setPicker(nextPicker);
-    input.setShowShortcuts(false);
+    input.setShowHelp(false);
   };
 
   const openPermissionsPanel = (): void => {
     input.setPicker(createPermissionsPicker());
-    input.setShowShortcuts(false);
+    input.setShowHelp(false);
   };
 
   const openClarifyPanel = (questions: string[], originalPrompt: string): void => {
@@ -107,12 +107,12 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
     const picker = createClarifyAnswerPicker(originalPrompt, first, remaining);
     if (!picker) return;
     input.setPicker(picker);
-    input.setShowShortcuts(false);
+    input.setShowHelp(false);
   };
 
   const openWriteConfirmPanel = (prompt: string): void => {
     input.setPicker(createWriteConfirmPicker(prompt));
-    input.setShowShortcuts(false);
+    input.setShowHelp(false);
   };
 
   const handlePickerSelect = async (state: PickerState): Promise<void> => {

@@ -28,6 +28,24 @@ export async function createTempDir(prefix: string): Promise<string> {
   return mkdtemp(join(tmpdir(), prefix));
 }
 
+export function dedent(value: string): string {
+  const lines = value.split("\n");
+  let start = 0;
+  while (start < lines.length && lines[start]?.trim().length === 0) start += 1;
+  let end = lines.length - 1;
+  while (end >= start && lines[end]?.trim().length === 0) end -= 1;
+  if (start > end) return "";
+
+  const first = lines[start] ?? "";
+  const indent = first.match(/^ */)?.[0].length ?? 0;
+  const prefix = " ".repeat(indent);
+
+  return lines
+    .slice(start, end + 1)
+    .map((line) => (line.startsWith(prefix) ? line.slice(prefix.length) : line))
+    .join("\n");
+}
+
 export function startTestServer(fetch: (req: Request) => Response | Promise<Response>): {
   port: number;
   stop: () => void;
@@ -137,7 +155,7 @@ export type SubmitHandlerHarness = {
   calls: {
     setInputHistory: number;
     setValue: string[];
-    setShowShortcuts: Array<boolean | ((current: boolean) => boolean)>;
+    setShowHelp: Array<boolean | ((current: boolean) => boolean)>;
   };
 };
 
@@ -146,7 +164,7 @@ export function createSubmitHandlerHarness(overrides?: { isWorking?: boolean; cl
   const calls = {
     setInputHistory: 0,
     setValue: [] as string[],
-    setShowShortcuts: [] as Array<boolean | ((current: boolean) => boolean)>,
+    setShowHelp: [] as Array<boolean | ((current: boolean) => boolean)>,
   };
   const session = createSession({ id: "sess_test" });
   const store = createStore({ activeSessionId: session.id, sessions: [session] });
@@ -159,8 +177,8 @@ export function createSubmitHandlerHarness(overrides?: { isWorking?: boolean; cl
     setRows: (updater) => {
       rows.splice(0, rows.length, ...updater(rows));
     },
-    setShowShortcuts: (next) => {
-      calls.setShowShortcuts.push(next);
+    setShowHelp: (next) => {
+      calls.setShowHelp.push(next);
     },
     setValue: (next) => {
       calls.setValue.push(next);
@@ -223,7 +241,7 @@ export function createCommandContext(
     setRows: (updater) => {
       spies.rows = updater(spies.rows);
     },
-    setShowShortcuts: () => {},
+    setShowHelp: () => {},
     setValue: () => {},
     persist: async () => {},
     exit: () => {},

@@ -1,7 +1,7 @@
 import { Box, Text } from "ink";
 import type React from "react";
 import { renderInputPanelContent } from "./chat-input-panel-content";
-import { borderLine } from "./chat-layout";
+import { borderLine, justifyLineSpaceBetween } from "./chat-layout";
 import { type PickerState, pickerHint, pickerTitle, renderPickerItems } from "./chat-picker";
 import { PromptInput } from "./prompt-input";
 
@@ -9,6 +9,7 @@ type ChatInputPanelProps = {
   picker: PickerState | null;
   activeSessionId: string | undefined;
   brandColor: string;
+  footerContext: string;
   value: string;
   inputRevision: number;
   onChange: (next: string) => void;
@@ -18,7 +19,7 @@ type ChatInputPanelProps = {
   atSuggestionIndex: number;
   slashSuggestions: string[];
   slashSuggestionIndex: number;
-  showShortcuts: boolean;
+  showHelp: boolean;
   onConfirmNoteChange: (next: string) => void;
 };
 
@@ -27,6 +28,7 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
     picker,
     activeSessionId,
     brandColor,
+    footerContext,
     value,
     inputRevision,
     onChange,
@@ -36,7 +38,7 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
     atSuggestionIndex,
     slashSuggestions,
     slashSuggestionIndex,
-    showShortcuts,
+    showHelp,
     onConfirmNoteChange,
   } = props;
 
@@ -128,8 +130,9 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
         atSuggestionIndex,
         slashSuggestions,
         slashSuggestionIndex,
-        showShortcuts,
+        showHelp,
       })}
+      {!showHelp ? <Text dimColor>{justifyLineSpaceBetween("? help", footerContext, 2)}</Text> : null}
     </>
   );
 }

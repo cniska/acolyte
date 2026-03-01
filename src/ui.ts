@@ -17,7 +17,7 @@ const color = {
 };
 
 export function formatCliTitle(version: string): string {
-  return `${color.bold(color.brand("Acolyte"))}${color.dim(color.brand(` v${version}`))}`;
+  return `${color.brand("Acolyte")}${color.dim(color.white(` v${version}`))}`;
 }
 
 export function tokenizeStreamContent(content: string): string[] {

@@ -23,7 +23,7 @@ describe("chat picker handlers", () => {
       setPicker: (next) => {
         pickerValues.push(next);
       },
-      setShowShortcuts: () => {},
+      setShowHelp: () => {},
       setValue: () => {},
       queueInput: () => {},
       buildClarificationPayload: () => "",
@@ -55,7 +55,7 @@ describe("chat picker handlers", () => {
       setPicker: (next) => {
         pickerValues.push(next);
       },
-      setShowShortcuts: () => {},
+      setShowHelp: () => {},
       setValue: () => {},
       queueInput: () => {},
       buildClarificationPayload: () => "",
@@ -96,7 +96,7 @@ describe("chat picker handlers", () => {
       setPicker: (next) => {
         pickerValues.push(next);
       },
-      setShowShortcuts: () => {},
+      setShowHelp: () => {},
       setValue: () => {},
       queueInput: () => {},
       buildClarificationPayload: () => "",
@@ -136,7 +136,7 @@ describe("chat picker handlers", () => {
       setPicker: (next) => {
         pickerValues.push(next);
       },
-      setShowShortcuts: () => {},
+      setShowHelp: () => {},
       setValue: () => {},
       queueInput: () => {},
       buildClarificationPayload: () => "",
@@ -195,7 +195,7 @@ describe("chat picker handlers", () => {
       setPicker: (next) => {
         pickerValues.push(next);
       },
-      setShowShortcuts: () => {},
+      setShowHelp: () => {},
       setValue: () => {},
       queueInput: (next) => {
         queued.push(next);
@@ -259,7 +259,7 @@ describe("chat picker handlers", () => {
       },
       setRowsDirect: () => {},
       setPicker: () => {},
-      setShowShortcuts: () => {},
+      setShowHelp: () => {},
       setValue: (next) => {
         values.push(next);
       },
