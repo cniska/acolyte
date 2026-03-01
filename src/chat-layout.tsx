@@ -22,6 +22,24 @@ export function shownCwd(): string {
   return cwd;
 }
 
+export async function shownBranch(cwd = process.cwd()): Promise<string | null> {
+  const proc = Bun.spawn({
+    cmd: ["git", "branch", "--show-current"],
+    cwd,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  const [stdoutText] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
+  const exitCode = await proc.exited;
+  if (exitCode !== 0) return null;
+  const branch = stdoutText.trim();
+  return branch.length > 0 ? branch : null;
+}
+
+export function formatHeaderContextLine(workspace: string, branch: string | null, model: string): string {
+  return `${workspace} · ${branch ?? "—"} · ${model}`;
+}
+
 export function borderLine(): string {
   const width = process.stdout.columns ?? 96;
   return "─".repeat(Math.max(24, width));

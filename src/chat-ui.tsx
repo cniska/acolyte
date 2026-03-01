@@ -7,7 +7,7 @@ import { ChatHeader } from "./chat-header";
 import { processInputChange, processInputSubmit } from "./chat-input-handlers";
 import { ChatInputPanel } from "./chat-input-panel";
 import { useChatKeybindings } from "./chat-keybindings";
-import { shownCwd } from "./chat-layout";
+import { formatHeaderContextLine, shownBranch, shownCwd } from "./chat-layout";
 import type { PickerState } from "./chat-picker";
 import { createPickerHandlers, persistPermissionMode } from "./chat-picker-handlers";
 import { newMessage, nowIso, toRows } from "./chat-session";
@@ -61,6 +61,7 @@ function ChatApp(props: ChatAppProps) {
   const [thinkingStartedAt, setThinkingStartedAt] = useState<number | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [queuedMessages, setQueuedMessages] = useState<string[]>([]);
+  const [branch, setBranch] = useState<string | null>(null);
   const [picker, setPicker] = useState<PickerState | null>(null);
   const [tokenUsage, setTokenUsage] = useState<TokenUsageEntry[]>(() => session.tokenUsage ?? []);
   const [inputHistory, setInputHistory] = useState<string[]>([]);
@@ -73,15 +74,21 @@ function ChatApp(props: ChatAppProps) {
   const [atSuggestions, setAtSuggestions] = useState<string[]>([]);
   const [atSuggestionIndex, setAtSuggestionIndex] = useState(0);
   const interruptRef = useRef<(() => void) | null>(null);
+  const workspace = shownCwd();
   const headerLines: HeaderLine[] = [
     { id: "title", text: "Acolyte", suffix: ` v${version}`, dim: false, brand: true },
     {
       id: "session",
-      text: `${formatModel(currentSession.model)} · session ${currentSession.id}`,
+      text: `session ${currentSession.id}`,
       dim: false,
       brand: false,
     },
-    { id: "cwd", text: shownCwd(), dim: true, brand: false },
+    {
+      id: "context",
+      text: formatHeaderContextLine(workspace, branch, formatModel(currentSession.model)),
+      dim: true,
+      brand: false,
+    },
   ];
 
   useAtSuggestionsEffect(atQuery, setAtSuggestions, setAtSuggestionIndex);
@@ -107,6 +114,20 @@ function ChatApp(props: ChatAppProps) {
 
   useEffect(() => {
     loadSkills().catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    shownBranch()
+      .then((value) => {
+        if (!cancelled) setBranch(value);
+      })
+      .catch(() => {
+        if (!cancelled) setBranch(null);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const {

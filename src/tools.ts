@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { mkdir, readdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { appConfig } from "./app-config";
 import { createToolError, encodeToolError, TOOL_ERROR_CODES } from "./tool-error-codes";
 
@@ -194,18 +194,66 @@ export async function findFiles(workspace: string, patterns: string[], maxResult
   return sections.join("\n");
 }
 
-export async function searchFiles(workspace: string, pattern: string, maxResults = 40): Promise<string> {
-  const trimmed = pattern.trim();
-  if (!trimmed) throw new Error("Search pattern cannot be empty");
-  const allFiles = await collectWorkspaceFiles(workspace);
-  const matches: string[] = [];
+function normalizeRelPath(value: string): string {
+  return value
+    .replace(/\\/g, "/")
+    .replace(/^\.\/+/, "")
+    .replace(/\/+$/, "");
+}
 
-  let regex: RegExp;
-  try {
-    regex = new RegExp(trimmed, "i");
-  } catch {
-    regex = new RegExp(trimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+function isWithinWorkspacePath(absPath: string, workspace: string): boolean {
+  return absPath === workspace || absPath.startsWith(`${workspace}/`);
+}
+
+async function resolveSearchScopeFiles(workspace: string, paths: string[] | undefined): Promise<string[]> {
+  const allFiles = await collectWorkspaceFiles(workspace);
+  const normalizedPaths = (paths ?? []).map((path) => path.trim()).filter((path) => path.length > 0);
+  if (normalizedPaths.length === 0) return allFiles;
+  const include = new Set<string>();
+  for (const rawPath of normalizedPaths) {
+    const absPath = ensurePathWithinAllowedRoots(rawPath, "Search", workspace);
+    if (!isWithinWorkspacePath(absPath, workspace)) throw new Error("Search paths must be within the workspace");
+    let entryStat;
+    try {
+      entryStat = await stat(absPath);
+    } catch {
+      continue;
+    }
+    const relPath = normalizeRelPath(relative(workspace, absPath));
+    if (entryStat.isFile()) {
+      if (relPath.length > 0) include.add(relPath);
+      continue;
+    }
+    if (!entryStat.isDirectory()) continue;
+    if (relPath.length === 0) {
+      for (const file of allFiles) include.add(file);
+      continue;
+    }
+    const prefix = `${relPath}/`;
+    for (const file of allFiles) {
+      if (file === relPath || file.startsWith(prefix)) include.add(file);
+    }
   }
+  return Array.from(include);
+}
+
+export async function searchFiles(
+  workspace: string,
+  patterns: string[],
+  maxResults = 40,
+  paths?: string[],
+): Promise<string> {
+  const normalized = patterns.map((pattern) => pattern.trim()).filter((pattern) => pattern.length > 0);
+  if (normalized.length === 0) throw new Error("Search pattern cannot be empty");
+  const allFiles = await resolveSearchScopeFiles(workspace, paths);
+  const matches: string[] = [];
+  const regexes = normalized.map((pattern) => {
+    try {
+      return new RegExp(pattern, "i");
+    } catch {
+      return new RegExp(pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+    }
+  });
 
   for (const relPath of allFiles) {
     if (matches.length >= maxResults) break;
@@ -219,7 +267,8 @@ export async function searchFiles(workspace: string, pattern: string, maxResults
     }
     const lines = content.split("\n");
     for (let i = 0; i < lines.length; i++) {
-      if (regex.test(lines[i] ?? "")) {
+      const line = lines[i] ?? "";
+      if (regexes.some((regex) => regex.test(line))) {
         const lineText = (lines[i] ?? "").trimEnd();
         matches.push(`./${relPath}:${i + 1}:${lineText}`);
         if (matches.length >= maxResults) break;
@@ -610,7 +659,7 @@ export async function readSnippets(
 }
 
 export async function gitStatusShort(workspace: string): Promise<string> {
-  const { code, stdout, stderr } = await runCommand(["git", "status", "--short", "--branch"], workspace);
+  const { code, stdout, stderr } = await runCommand(["git", "status", "--short"], workspace);
   if (code !== 0) throw new Error(stderr.trim() || "git status failed");
   return stdout.trim() || "Working tree clean.";
 }

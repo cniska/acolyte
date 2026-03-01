@@ -20,7 +20,7 @@ export function ChatHeader(props: ChatHeaderProps): React.ReactNode {
   const { lines, brandColor, logoColor, logoEyeColor } = props;
   const title = lines.find((line) => line.id === "title");
   const session = lines.find((line) => line.id === "session");
-  const cwd = lines.find((line) => line.id === "cwd");
+  const context = lines.find((line) => line.id === "context");
   const logoColumnWidth = 11;
 
   const rows: { key: string; logo: React.ReactNode; text: React.ReactNode }[] = [
@@ -50,9 +50,9 @@ export function ChatHeader(props: ChatHeaderProps): React.ReactNode {
       text: <Text dimColor={Boolean(session?.dim)}>{session?.text ?? ""}</Text>,
     },
     {
-      key: "cwd",
+      key: "context",
       logo: <Text color={logoColor}>{" ▜█▄▄▄▄▄█▛ "}</Text>,
-      text: <Text dimColor={Boolean(cwd?.dim)}>{cwd?.text ?? ""}</Text>,
+      text: <Text dimColor={Boolean(context?.dim)}>{context?.text ?? ""}</Text>,
     },
   ];
 
