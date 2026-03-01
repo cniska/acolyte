@@ -31,9 +31,13 @@ Development:
 - Start from latest `main` before new work.
 - Read relevant files before editing.
 - Keep changes scoped, minimal, and well-engineered.
+- Preserve established local intent (code/tests/docs) unless explicitly asked to change it.
 - Prefer editing existing files over creating new ones unless necessary.
 - Do not guess; use concrete evidence (errors, logs, tests, source) before changing code.
+- Respect contract-first development: if behavior and expectations diverge, change implementation unless expectation changes are explicitly requested.
+- Avoid incidental rewrites: fix the requested problem without opportunistic restyling/refactors.
 - Stop and ask if unexpected diffs or artifacts appear.
+- If execution drifts, pause, restate constraints, and continue in small verified steps.
 - Default to autonomous execution for straightforward improvements and continue without explicit confirmation.
 - Only pause for confirmation when decisions are ambiguous, risky, or irreversible.
 
