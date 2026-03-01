@@ -298,44 +298,33 @@ function formatPathList(paths: string[], maxShown = 3): string | null {
 
 export function formatToolHeader(toolName: string, args: Record<string, unknown>): string {
   const label = formatToolLabel(toolName);
+  const labelOnlyTools = new Set(["find-files", "search-files", "read-file", "git-status"]);
+  const pathDetailTools = new Set(["edit-file", "edit-code", "create-file", "delete-file", "git-diff", "scan-code"]);
   const asString = (value: unknown): string | null => {
     if (typeof value !== "string") return null;
     const trimmed = value.trim();
     return trimmed.length > 0 ? compactProgressDetail(trimmed) : null;
   };
 
-  switch (toolName) {
-    case "run-command": {
-      const command = asString(args.command);
-      return command ? `${label} ${command}` : label;
-    }
-    case "edit-file":
-    case "edit-code":
-    case "create-file":
-    case "delete-file":
-    case "git-diff": {
-      const paths = collectPathDetails(args);
-      const formatted = formatPathList(paths);
-      return formatted ? `${label} ${formatted}` : label;
-    }
-    case "find-files":
-    case "search-files":
-    case "read-file":
-    case "scan-code":
-      return label;
-    case "git-status":
-      return `${label} .`;
-    case "web-search": {
-      const query = asString(args.query);
-      return query ? `${label} ${query}` : label;
-    }
-    case "web-fetch": {
-      const url = asString(args.url);
-      return url ? `${label} ${url}` : label;
-    }
-    default:
-      return label;
+  if (toolName === "run-command") {
+    const command = asString(args.command);
+    return command ? `${label} ${command}` : label;
   }
+  if (pathDetailTools.has(toolName)) {
+    const paths = collectPathDetails(args);
+    const formatted = formatPathList(paths);
+    return formatted ? `${label} ${formatted}` : label;
+  }
+  if (labelOnlyTools.has(toolName)) return label;
+  if (toolName === "web-search") {
+    const query = asString(args.query);
+    return query ? `${label} "${query}"` : label;
+  }
+  if (toolName === "web-fetch") {
+    const url = asString(args.url);
+    return url ? `${label} ${url}` : label;
+  }
+  return label;
 }
 
 // --- Finalization ---

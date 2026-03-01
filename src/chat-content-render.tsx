@@ -2,7 +2,7 @@ import { Text } from "ink";
 import React from "react";
 import { sanitizeAssistantContent, tokenizeForHighlighting, wrapAssistantContent } from "./chat-content";
 import { palette } from "./palette";
-import { TOOL_HEADER_VERBS } from "./tool-labels";
+import { TOOL_HEADER_LABELS } from "./tool-labels";
 
 export function renderAssistantContent(content: string, wrapWidth: number): React.ReactNode {
   const cleaned = sanitizeAssistantContent(content);
@@ -56,7 +56,7 @@ export function renderAssistantContent(content: string, wrapWidth: number): Reac
     );
   };
 
-  for (const label of TOOL_HEADER_VERBS) {
+  for (const label of TOOL_HEADER_LABELS) {
     if (wrapped.startsWith(`${label} `) || wrapped.startsWith(`${label}(`) || wrapped.startsWith(`${label}:`)) {
       return (
         <>

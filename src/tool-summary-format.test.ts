@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   formatToolFileSummaryHeader,
-  normalizeToolFileSummaryHeader,
+  mergeToolOutputHeader,
   shouldSuppressEmptyToolProgressRow,
 } from "./tool-summary-format";
 
@@ -11,40 +11,62 @@ describe("tool summary format", () => {
     expect(formatToolFileSummaryHeader("search-files", 1)).toBe("Search 1 file");
     expect(formatToolFileSummaryHeader("read-file", 2)).toBe("Read 2 files");
     expect(formatToolFileSummaryHeader("scan-code", 4)).toBe("Review 4 files");
+    expect(formatToolFileSummaryHeader("web-search", 1)).toBe("Web Search 1 file");
   });
 
   test("falls back to generic count for non-discovery tools", () => {
     expect(formatToolFileSummaryHeader("run-command", 4)).toBe("4 files");
   });
 
-  test("normalizes count lines into full headers for merge", () => {
-    expect(normalizeToolFileSummaryHeader("Find", "find-files", "3 files")).toBe("Find 3 files");
-    expect(normalizeToolFileSummaryHeader("Find", "find-files", "Find using [tool, agent]")).toBe(
+  test("merges count and structured lines into full headers", () => {
+    expect(mergeToolOutputHeader("Find", "find-files", "scope=workspace patterns=[*.ts] matches=3")).toBe(
+      "Find scope=workspace patterns=[*.ts] matches=3",
+    );
+    expect(
+      mergeToolOutputHeader("Search", "search-files", "scope=paths:2 patterns=[tool] matches=2"),
+    ).toBe("Search scope=paths:2 patterns=[tool] matches=2");
+    expect(mergeToolOutputHeader("Read", "read-file", "paths=2 targets=[a.ts, b.ts]")).toBe(
+      "Read a.ts, b.ts",
+    );
+    expect(mergeToolOutputHeader("Review", "scan-code", "paths=1 targets=[src/a.ts]")).toBe(
+      "Review src/a.ts",
+    );
+    expect(mergeToolOutputHeader("Create", "create-file", "path=src/a.ts files=1")).toBe(
+      "Create path=src/a.ts files=1",
+    );
+    expect(mergeToolOutputHeader("Edit", "edit-file", "path=src/a.ts files=1 added=2 removed=1")).toBe(
+      "Edit path=src/a.ts files=1 added=2 removed=1",
+    );
+    expect(mergeToolOutputHeader("Find", "find-files", "3 files")).toBe("Find 3 files");
+    expect(mergeToolOutputHeader("Find", "find-files", "Find using [tool, agent]")).toBe(
       "Find using [tool, agent]",
     );
-    expect(normalizeToolFileSummaryHeader("Search", "search-files", "Search 2 files")).toBe("Search 2 files");
-    expect(normalizeToolFileSummaryHeader("Read", "read-file", "Read 1 file")).toBe("Read 1 file");
-    expect(normalizeToolFileSummaryHeader("Review", "scan-code", "Review 4 files")).toBe("Review 4 files");
-    expect(normalizeToolFileSummaryHeader("Search", "search-files", "2 files using 5 patterns")).toBe(
+    expect(mergeToolOutputHeader("Search", "search-files", "Search 2 files")).toBe("Search 2 files");
+    expect(mergeToolOutputHeader("Read", "read-file", "Read 1 file")).toBe("Read 1 file");
+    expect(mergeToolOutputHeader("Review", "scan-code", "Review 4 files")).toBe("Review 4 files");
+    expect(mergeToolOutputHeader("Search", "search-files", "2 files using 5 patterns")).toBe(
       "Search 2 files using 5 patterns",
     );
-    expect(normalizeToolFileSummaryHeader("Search", "search-files", "Search 2 files using 1 pattern")).toBe(
+    expect(mergeToolOutputHeader("Search", "search-files", "Search 2 files using 1 pattern")).toBe(
       "Search 2 files using 1 pattern",
     );
-    expect(normalizeToolFileSummaryHeader("Search", "search-files", "Search using [tool, agent]")).toBe(
+    expect(mergeToolOutputHeader("Search", "search-files", "Search using [tool, agent]")).toBe(
       "Search using [tool, agent]",
     );
-    expect(normalizeToolFileSummaryHeader("Read", "read-file", "Read a.ts, b.ts, c.ts +2 files")).toBe(
+    expect(mergeToolOutputHeader("Read", "read-file", "Read a.ts, b.ts, c.ts +2 files")).toBe(
       "Read a.ts, b.ts, c.ts +2 files",
     );
-    expect(normalizeToolFileSummaryHeader("Review", "scan-code", "Review src/a.ts, src/b.ts")).toBe(
+    expect(mergeToolOutputHeader("Review", "scan-code", "Review src/a.ts, src/b.ts")).toBe(
       "Review src/a.ts, src/b.ts",
+    );
+    expect(mergeToolOutputHeader("Web Search", "web-search", 'query="bun test" results=2')).toBe(
+      'Web Search "bun test"',
     );
   });
 
   test("returns null when line is not a count summary", () => {
-    expect(normalizeToolFileSummaryHeader("Find", "find-files", "src/a.ts")).toBeNull();
-    expect(normalizeToolFileSummaryHeader("Run", "run-command", "3 files")).toBeNull();
+    expect(mergeToolOutputHeader("Find", "find-files", "src/a.ts")).toBeNull();
+    expect(mergeToolOutputHeader("Run", "run-command", "3 files")).toBeNull();
   });
 
   test("marks discovery/read/scan tools for empty-row suppression", () => {

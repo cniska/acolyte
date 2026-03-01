@@ -1,28 +1,70 @@
 import { countLabel } from "./plural";
+import { formatToolLabel } from "./tool-labels";
+import type { ToolName } from "./tool-names";
 
-const FILE_SUMMARY_TOOL_LABELS: Record<string, string> = {
-  "find-files": "Find",
-  "search-files": "Search",
-  "read-file": "Read",
-  "scan-code": "Review",
-};
 const EMPTY_TOOL_PROGRESS_SUPPRESS = new Set(["find-files", "search-files", "read-file", "scan-code"]);
+const SUMMARY_TOOL_NAMES = new Set<ToolName>(["find-files", "search-files", "read-file", "scan-code", "web-search"]);
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 export function formatToolFileSummaryHeader(toolName: string, fileCount: number): string {
-  const label = FILE_SUMMARY_TOOL_LABELS[toolName];
+  if (!SUMMARY_TOOL_NAMES.has(toolName as ToolName)) return countLabel(fileCount, "file", "files");
+  const label = formatToolLabel(toolName);
   const count = countLabel(fileCount, "file", "files");
-  if (!label) return count;
   return `${label} ${count}`;
 }
 
-export function normalizeToolFileSummaryHeader(header: string, toolName: string, line: string): string | null {
-  const label = FILE_SUMMARY_TOOL_LABELS[toolName];
-  if (!label) return null;
+export function mergeToolOutputHeader(header: string, toolName: string, line: string): string | null {
+  const isSummaryTool = SUMMARY_TOOL_NAMES.has(toolName as ToolName);
+  const label = formatToolLabel(toolName);
+  if (!isSummaryTool && toolName !== "create-file" && toolName !== "edit-file" && toolName !== "edit-code")
+    return null;
   const trimmed = line.trim();
+  if (
+    toolName === "find-files" &&
+    new RegExp(`^scope=.+\\s+patterns=\\[[^\\]]*\\]\\s+matches=\\d+$`, "i").test(trimmed)
+  )
+    return `${label} ${trimmed}`;
+  if (
+    toolName === "search-files" &&
+    new RegExp(`^scope=.+\\s+patterns=\\[[^\\]]*\\]\\s+matches=\\d+$`, "i").test(trimmed)
+  )
+    return `${label} ${trimmed}`;
+  if (toolName === "web-search") {
+    const match = trimmed.match(/^query=("(?:\\.|[^"])*")\s+results=(\d+)$/i);
+    if (match?.[1]) {
+      const quoted = match[1];
+      return `${label} ${quoted}`;
+    }
+  }
+  if (
+    (toolName === "read-file" || toolName === "scan-code") &&
+    new RegExp(`^paths=\\d+\\s+targets=\\[[^\\]]*\\](?:\\s+omitted=\\d+)?$`, "i").test(trimmed)
+  ) {
+    const match = trimmed.match(/^paths=(\d+)\s+targets=\[([^\]]*)\](?:\s+omitted=(\d+))?$/i);
+    if (!match) return `${label} ${trimmed}`;
+    const targets = (match[2] ?? "")
+      .split(",")
+      .map((part) => part.trim())
+      .filter((part) => part.length > 0);
+    const omitted = Number.parseInt(match[3] ?? "0", 10);
+    if (targets.length === 0) return `${label}`;
+    const list = targets.join(", ");
+    if (Number.isFinite(omitted) && omitted > 0) return `${label} ${list} +${countLabel(omitted, "file", "files")}`;
+    return `${label} ${list}`;
+  }
+  if (
+    toolName === "create-file" &&
+    /^path=.+\s+files=\d+$/i.test(trimmed)
+  )
+    return `Create ${trimmed}`;
+  if (
+    (toolName === "edit-file" || toolName === "edit-code") &&
+    /^path=.+\s+files=\d+\s+added=\d+\s+removed=\d+$/i.test(trimmed)
+  )
+    return `Edit ${trimmed}`;
   if (toolName === "find-files" && new RegExp(`^${escapeRegExp(label)}(?:\\s+.+)?\\s+using\\s+.+$`, "i").test(trimmed))
     return trimmed;
   if (toolName === "search-files" && new RegExp(`^${escapeRegExp(label)}(?:\\s+.+)?\\s+using\\s+.+$`, "i").test(trimmed))

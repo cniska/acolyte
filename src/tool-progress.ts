@@ -1,5 +1,7 @@
+import { TOOL_OUTPUT_MARKERS } from "./tool-output-format";
+
 export type ToolProgressParsedLine =
-  | { kind: "header"; verb: string; path: string }
+  | { kind: "header"; label: string; detail?: string }
   | { kind: "numberedDiff"; lineNumber: string; spacing: string; marker: "+" | "-"; text: string }
   | { kind: "numberedContext"; lineNumber: string; spacing: string; text: string }
   | { kind: "fileDiff"; marker: "+" | "-"; text: string }
@@ -11,17 +13,17 @@ export type ToolOutputKind = "diff" | "command" | "plain";
 
 export type ToolProgressBlock = {
   kind: ToolOutputKind;
-  header: { verb: string; path: string } | null;
+  header: { label: string; detail?: string } | null;
   lines: ToolProgressParsedLine[];
   lineNumberWidth: number;
 };
 
-import { TOOL_HEADER_VERBS } from "./tool-labels";
+import { TOOL_HEADER_LABELS } from "./tool-labels";
 
-const HEADER_PATTERN = new RegExp(`^(${TOOL_HEADER_VERBS.join("|")})\\s+(.+)$`);
+const HEADER_PATTERN = new RegExp(`^(${TOOL_HEADER_LABELS.join("|")})(?:\\s+(.+))?$`);
 
-function outputKindFromVerb(verb: string): ToolOutputKind {
-  switch (verb) {
+function outputKindFromVerb(label: string): ToolOutputKind {
+  switch (label) {
     case "Edit":
     case "Create":
       return "diff";
@@ -36,9 +38,9 @@ export function parseToolProgressBlock(content: string): ToolProgressBlock {
   const allLines = content.split("\n");
   const parsed = allLines.map(parseToolProgressLine);
   const first = parsed[0];
-  const header = first?.kind === "header" ? { verb: first.verb, path: first.path } : null;
+  const header = first?.kind === "header" ? { label: first.label, detail: first.detail } : null;
   const lines = header ? parsed.slice(1) : parsed;
-  const kind = header ? outputKindFromVerb(header.verb) : "plain";
+  const kind = header ? outputKindFromVerb(header.label) : "plain";
   const lineNumberWidth = Math.max(
     3,
     lines.reduce((max, line) => {
@@ -54,8 +56,8 @@ export function parseToolProgressLine(line: string): ToolProgressParsedLine {
   if (header) {
     return {
       kind: "header",
-      verb: header[1] ?? "",
-      path: header[2] ?? "",
+      label: header[1] ?? "",
+      detail: header[2]?.trim() || undefined,
     };
   }
   const numberedDiff = line.match(/^(\d+)(\s+)([+-])(?:\s(.*))?$/);
@@ -87,7 +89,13 @@ export function parseToolProgressLine(line: string): ToolProgressParsedLine {
   }
   if (line.startsWith("+ ")) return { kind: "fileDiff", marker: "+", text: line };
   if (line.startsWith("- ")) return { kind: "fileDiff", marker: "-", text: line };
-  if (line === "…" || (/^[…(]/.test(line) && /truncat|omit|output|lines$/i.test(line)))
+  if (
+    line === "…" ||
+    line === TOOL_OUTPUT_MARKERS.truncated ||
+    line === TOOL_OUTPUT_MARKERS.noOutput ||
+    line.startsWith(`${TOOL_OUTPUT_MARKERS.truncated} +`) ||
+    (/^[…(]/.test(line) && /truncat|omit|output|lines$/i.test(line))
+  )
     return { kind: "meta", text: line };
   return { kind: "text", text: line };
 }

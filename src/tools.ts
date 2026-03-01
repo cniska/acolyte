@@ -661,7 +661,7 @@ export async function readSnippets(
 export async function gitStatusShort(workspace: string): Promise<string> {
   const { code, stdout, stderr } = await runCommand(["git", "status", "--short"], workspace);
   if (code !== 0) throw new Error(stderr.trim() || "git status failed");
-  return stdout.trim() || "Working tree clean.";
+  return stdout.trim();
 }
 
 export async function gitDiff(workspace: string, pathInput?: string, contextLines = 3): Promise<string> {
@@ -672,7 +672,7 @@ export async function gitDiff(workspace: string, pathInput?: string, contextLine
   }
   const { code, stdout, stderr } = await runCommand(args, workspace);
   if (code !== 0) throw new Error(stderr.trim() || "git diff failed");
-  return stdout.trim() || "No unstaged changes.";
+  return stdout.trim();
 }
 
 // --- Shell execution ---

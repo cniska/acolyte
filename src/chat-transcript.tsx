@@ -73,11 +73,11 @@ function renderStatusContent(content: string): React.ReactNode {
   );
 }
 
-function renderProgressHeader(header: { verb: string; path: string }): React.ReactNode {
+function renderProgressHeader(header: { label: string; detail?: string }): React.ReactNode {
   return (
     <>
-      <Text bold>{`${header.verb} `}</Text>
-      <Text>{header.path}</Text>
+      <Text bold>{header.label}</Text>
+      {header.detail ? <Text>{` ${header.detail}`}</Text> : null}
     </>
   );
 }

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { wrapAssistantContent } from "./chat-content";
 import { countLabel } from "./plural";
 import { parseToolProgressLine } from "./tool-progress";
-import { TOOL_OUTPUT_RUN_MAX_ROWS } from "./tool-output-format";
+import { TOOL_OUTPUT_MARKERS, TOOL_OUTPUT_RUN_MAX_ROWS } from "./tool-output-format";
 import { printDim, printOutput, printToolHeader } from "./ui";
 
 export { countLabel } from "./plural";
@@ -307,7 +307,7 @@ export function formatAssistantReplyOutput(content: string, wrapWidth = 100): st
     .join("\n");
 }
 
-export function formatProgressEventOutput(
+export function formatProgressOutput(
   content: string,
   options?: { lineNumberWidth?: number; bullet?: boolean },
 ): string {
@@ -318,24 +318,104 @@ export function formatProgressEventOutput(
   const greenBg = (value: string): string => `\x1b[32m\x1b[48;2;13;40;24m${value}\x1b[49m\x1b[39m`;
   const redBg = (value: string): string => `\x1b[31m\x1b[48;2;45;11;11m${value}\x1b[49m\x1b[39m`;
   const normalizedContent = content.replace(/^\n+/, "");
-  const lines = normalizedContent.split("\n");
+  const rawLines = normalizedContent.split("\n");
+  const lines: string[] = [];
+  for (let i = 0; i < rawLines.length; i += 1) {
+    const line = rawLines[i] ?? "";
+    const previous = lines[lines.length - 1] ?? "";
+    if (line === TOOL_OUTPUT_MARKERS.noOutput && /^query="(?:\\.|[^"])*"\s+results=0$/i.test(previous)) continue;
+    lines.push(line);
+  }
   const parsedLines = lines.map((line) => parseToolProgressLine(line));
   const inferredLineNumberWidth = parsedLines.reduce((max, parsed) => {
     if (parsed.kind === "numberedDiff" || parsed.kind === "numberedContext")
       return Math.max(max, parsed.lineNumber.length);
     return max;
   }, 0);
-  const lineNumberWidth = Math.max(3, options?.lineNumberWidth ?? 0, inferredLineNumberWidth);
+  const lineNumberWidth = Math.max(options?.lineNumberWidth ?? 0, inferredLineNumberWidth);
+  const terminalWidth = process.stdout.columns ?? 120;
+
+  const wrapText = (text: string, maxWidth: number): string[] => {
+    if (maxWidth <= 0 || text.length <= maxWidth) return [text];
+    const words = text.split(/\s+/).filter((word) => word.length > 0);
+    if (words.length === 0) return [text];
+    const out: string[] = [];
+    let current = "";
+    const pushCurrent = (): void => {
+      if (current.length > 0) out.push(current);
+      current = "";
+    };
+    for (const word of words) {
+      if (word.length > maxWidth) {
+        pushCurrent();
+        for (let i = 0; i < word.length; i += maxWidth) out.push(word.slice(i, i + maxWidth));
+        continue;
+      }
+      if (current.length === 0) {
+        current = word;
+        continue;
+      }
+      const next = `${current} ${word}`;
+      if (next.length <= maxWidth) {
+        current = next;
+        continue;
+      }
+      pushCurrent();
+      current = word;
+    }
+    pushCurrent();
+    return out.length > 0 ? out : [text];
+  };
+
+  const formatWrappedHeader = (
+    parsed: Extract<ReturnType<typeof parseToolProgressLine>, { kind: "header" }>,
+    includeBullet: boolean,
+  ): string => {
+    const prefix = includeBullet ? "• " : "    ";
+    const labelToken = parsed.detail ? `${parsed.label} ` : parsed.label;
+    if (!parsed.detail) return `${prefix}${bold(labelToken)}`;
+    const detailIndent = " ".repeat(prefix.length + labelToken.length);
+    const firstLineWidth = Math.max(8, terminalWidth - prefix.length - labelToken.length);
+    const continuationWidth = Math.max(8, terminalWidth - detailIndent.length);
+    const wrappedDetail = wrapText(parsed.detail, firstLineWidth);
+    const first = `${prefix}${bold(labelToken)}${dim(wrappedDetail[0] ?? "")}`;
+    if (wrappedDetail.length === 1) return first;
+    const restLines = wrappedDetail.slice(1).flatMap((line) => wrapText(line, continuationWidth));
+    const rest = restLines.map((line) => `${detailIndent}${dim(line)}`).join("\n");
+    return `${first}\n${rest}`;
+  };
 
   const colorize = (parsed: ReturnType<typeof parseToolProgressLine>): string => {
+    const parseQuoted = (token: string): string => {
+      try {
+        return JSON.parse(token) as string;
+      } catch {
+        return token.replace(/^"|"$/g, "");
+      }
+    };
+    const formatWebMachineLine = (line: string): string | null => {
+      const summary = line.match(/^query=(".*")\s+results=(\d+)$/);
+      if (summary?.[1] && summary[2]) {
+        const query = parseQuoted(summary[1]);
+        return `Search "${query}"`;
+      }
+      const result = line.match(/^result rank=(\d+)(?: url=(".*"))?$/);
+      if (result?.[1]) {
+        const rank = result[1];
+        const url = result[2] ? parseQuoted(result[2]) : null;
+        return url ? `${rank}. ${url}` : `${rank}.`;
+      }
+      return null;
+    };
     switch (parsed.kind) {
       case "header":
-        return `${bold(`${parsed.verb} `)}${dim(parsed.path)}`;
+        return parsed.detail ? `${bold(`${parsed.label} `)}${dim(parsed.detail)}` : bold(parsed.label);
       case "numberedDiff": {
         const colorBg = parsed.marker === "+" ? greenBg : redBg;
         const paddedLineNumber =
           lineNumberWidth > 0 ? parsed.lineNumber.padStart(lineNumberWidth, " ") : parsed.lineNumber;
-        const raw = `${paddedLineNumber} ${parsed.marker}${parsed.text.length > 0 ? parsed.text : " "}`;
+        // Keep line content aligned with context rows while hiding +/- in formatted output.
+        const raw = `${paddedLineNumber}${parsed.spacing} ${parsed.text.length > 0 ? parsed.text : " "}`;
         const cols = process.stdout.columns ?? 120;
         return colorBg(raw.length < cols - 4 ? raw.padEnd(cols - 4) : raw);
       }
@@ -351,13 +431,21 @@ export function formatProgressEventOutput(
       case "fileDiff":
         return parsed.marker === "+" ? green(parsed.text) : red(parsed.text);
       case "meta":
+        if (parsed.text === TOOL_OUTPUT_MARKERS.noOutput) return dim("(No output)");
+        if (parsed.text === TOOL_OUTPUT_MARKERS.truncated) return dim("…".padStart(Math.max(1, lineNumberWidth), " "));
+        if (parsed.text.startsWith(`${TOOL_OUTPUT_MARKERS.truncated} +`))
+          return dim(`…${parsed.text.slice(TOOL_OUTPUT_MARKERS.truncated.length)}`.padStart(Math.max(1, lineNumberWidth), " "));
         if (options?.lineNumberWidth != null) {
           const rest = parsed.text.length > 1 ? parsed.text.slice(1) : "";
           return `${dim("…".padStart(lineNumberWidth, " "))}${dim(rest)}`;
         }
         return dim(parsed.text);
+      case "text": {
+        const formatted = formatWebMachineLine(parsed.text);
+        return formatted ?? parsed.text;
+      }
       default:
-        return parsed.text;
+        return "";
     }
   };
   if (lines.length === 0) return options?.bullet === false ? "" : "•";
@@ -366,6 +454,7 @@ export function formatProgressEventOutput(
     .map((line, index) => {
       const parsed = parsedLines[index] ?? parseToolProgressLine(line);
       if (index === 0) {
+        if (parsed.kind === "header") return formatWrappedHeader(parsed, includeBullet);
         if (!includeBullet) return line.length > 0 ? `    ${colorize(parsed)}` : "";
         return line.length > 0 ? `• ${colorize(parsed)}` : "•";
       }

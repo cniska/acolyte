@@ -10,7 +10,7 @@ import { commands, isTopLevelHelpCommand, isTopLevelVersionCommand, usage } from
 import {
   displayPromptForOutput,
   formatAssistantReplyOutput,
-  formatProgressEventOutput,
+  formatProgressOutput,
   formatPromptError,
 } from "./cli-format";
 import { createClient } from "./client";
@@ -19,7 +19,7 @@ import { buildFileContext } from "./file-context";
 import { ensureLocalServer } from "./server-daemon";
 import { acquireSessionLock, releaseSessionLock } from "./session-lock";
 import { createId } from "./short-id";
-import { normalizeToolFileSummaryHeader, shouldSuppressEmptyToolProgressRow } from "./tool-summary-format";
+import { mergeToolOutputHeader, shouldSuppressEmptyToolProgressRow } from "./tool-summary-format";
 import { createSession, readStore, writeStore } from "./storage";
 import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
 import { parseToolProgressLine } from "./tool-progress";
@@ -230,7 +230,7 @@ export async function handlePrompt(
       const header = pendingToolHeaderByCallId.get(toolCallId);
       if (!header) return;
       toolSnapshotByCallId.set(toolCallId, header);
-      printOutput(formatProgressEventOutput(header, { bullet: true }));
+      printOutput(formatProgressOutput(header, { bullet: true }));
       toolBulletPrintedByCallId.set(toolCallId, true);
       pendingToolHeaderByCallId.delete(toolCallId);
       hasPrintedProgress = true;
@@ -282,7 +282,7 @@ export async function handlePrompt(
           tool: entry.toolName,
           content: entry.content,
         });
-        const summaryHeader = normalizeToolFileSummaryHeader(
+        const summaryHeader = mergeToolOutputHeader(
           pendingToolHeaderByCallId.get(entry.toolCallId) ?? "",
           entry.toolName,
           entry.content,
@@ -300,7 +300,7 @@ export async function handlePrompt(
         if (!delta) return;
         const lineNumberWidth = toolLineWidthByCallId.get(entry.toolCallId);
         const includeBullet = !toolBulletPrintedByCallId.get(entry.toolCallId);
-        printOutput(formatProgressEventOutput(delta, { lineNumberWidth, bullet: includeBullet }));
+        printOutput(formatProgressOutput(delta, { lineNumberWidth, bullet: includeBullet }));
         toolBulletPrintedByCallId.set(entry.toolCallId, true);
         hasPrintedProgress = true;
       },

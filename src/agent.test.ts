@@ -383,6 +383,14 @@ describe("formatToolHeader", () => {
     expect(formatToolHeader("run-command", { command: "bun run verify" })).toBe("Run bun run verify");
   });
 
+  test("compacts multiline run commands into a single header row", () => {
+    expect(
+      formatToolHeader("run-command", {
+        command: "sh -c 'echo one'\n\n  &&   sh -c 'echo two'",
+      }),
+    ).toBe("Run sh -c 'echo one' && sh -c 'echo two'");
+  });
+
   test("keeps discovery and read headers concise", () => {
     expect(formatToolHeader("find-files", { patterns: ["src/lifecycle.ts", "src/agent.ts"] })).toBe("Find");
     expect(formatToolHeader("search-files", { pattern: "createAcolyte" })).toBe("Search");

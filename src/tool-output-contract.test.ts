@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { rm, writeFile } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { runShellCommand } from "./tools";
 import { formatToolHeader } from "./agent";
@@ -83,7 +83,7 @@ describe("tool output contract: read-file", () => {
 
       assertToolOutput(outputByTool, "read-file", { paths: [{ path: alphaPath }, { path: betaPath }] }, {
         raw: ["paths=2 targets=[alpha.ts, beta.ts]"],
-        formatted: "• Read paths=2 targets=[alpha.ts, beta.ts]",
+        formatted: "• Read alpha.ts, beta.ts",
       });
     } finally {
       await rm(workspace, { recursive: true, force: true });
@@ -101,8 +101,52 @@ describe("tool output contract: read-file", () => {
 
       assertToolOutput(outputByTool, "read-file", { paths: files.map((path) => ({ path })) }, {
         raw: ["paths=4 targets=[a.ts, b.ts, c.ts] omitted=1"],
-        formatted: "• Read paths=4 targets=[a.ts, b.ts, c.ts] omitted=1",
+        formatted: "• Read a.ts, b.ts, c.ts +1 file",
       });
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+
+  test("shows inline summary for exactly three unique targets", async () => {
+    const { workspace, tools, outputByTool } = await createHarness("read");
+    try {
+      const files = ["a.ts", "b.ts", "c.ts"].map((name) => join(workspace, name));
+      for (const file of files) await writeFile(file, "export const v = 1;\n", "utf8");
+
+      if (!tools.readFile?.execute) throw new Error("expected readFile tool to be available");
+      await tools.readFile.execute({ paths: files.map((path) => ({ path })) }, {} as never);
+
+      assertToolOutput(outputByTool, "read-file", { paths: files.map((path) => ({ path })) }, {
+        raw: ["paths=3 targets=[a.ts, b.ts, c.ts]"],
+        formatted: "• Read a.ts, b.ts, c.ts",
+      });
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+
+  test("deduplicates repeated read targets in summary", async () => {
+    const { workspace, tools, outputByTool } = await createHarness("read");
+    try {
+      const alphaPath = join(workspace, "alpha.ts");
+      await writeFile(alphaPath, 'export const alpha = "needle";\n', "utf8");
+
+      if (!tools.readFile?.execute) throw new Error("expected readFile tool to be available");
+      await tools.readFile.execute(
+        { paths: [{ path: alphaPath }, { path: alphaPath }, { path: alphaPath, start: 1, end: 1 }] },
+        {} as never,
+      );
+
+      assertToolOutput(
+        outputByTool,
+        "read-file",
+        { paths: [{ path: alphaPath }, { path: alphaPath }, { path: alphaPath, start: 1, end: 1 }] },
+        {
+          raw: ["paths=1 targets=[alpha.ts]"],
+          formatted: "• Read alpha.ts",
+        },
+      );
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -166,6 +210,69 @@ describe("tool output contract: find-files", () => {
       await rm(workspace, { recursive: true, force: true });
     }
   });
+
+  test("suppresses output rows when no files match", async () => {
+    const { workspace, tools, outputByTool } = await createHarness("read");
+    try {
+      await writeFile(join(workspace, "alpha.ts"), "export const alpha = 1;\n", "utf8");
+
+      if (!tools.findFiles?.execute) throw new Error("expected findFiles tool to be available");
+      await tools.findFiles.execute({ patterns: ["*.md"], maxResults: 10 }, {} as never);
+
+      expect(rawLines(outputByTool, "find-files")).toEqual([]);
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+
+  test("shows full body without truncation at file-row boundary", async () => {
+    const { workspace, tools, outputByTool } = await createHarness("read");
+    try {
+      for (let i = 1; i <= 5; i += 1) {
+        await writeFile(join(workspace, `f${i}.ts`), `export const n${i} = ${i};\n`, "utf8");
+      }
+
+      if (!tools.findFiles?.execute) throw new Error("expected findFiles tool to be available");
+      await tools.findFiles.execute({ patterns: ["*.ts"], maxResults: 20 }, {} as never);
+
+      assertToolOutput(outputByTool, "find-files", { patterns: ["*.ts"], maxResults: 20 }, {
+        raw: ["scope=workspace patterns=[*.ts] matches=5", "f1.ts", "f2.ts", "f3.ts", "f4.ts", "f5.ts"],
+        formatted: dedent(`
+          • Find scope=workspace patterns=[*.ts] matches=5
+              f1.ts
+              f2.ts
+              f3.ts
+              f4.ts
+              f5.ts
+        `),
+      });
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+
+  test("supports multiple patterns in one call with combined matches", async () => {
+    const { workspace, tools, outputByTool } = await createHarness("read");
+    try {
+      await writeFile(join(workspace, "alpha.ts"), "export const alpha = 1;\n", "utf8");
+      await writeFile(join(workspace, "beta.md"), "# beta\n", "utf8");
+      await writeFile(join(workspace, "gamma.ts"), "export const gamma = 1;\n", "utf8");
+
+      if (!tools.findFiles?.execute) throw new Error("expected findFiles tool to be available");
+      await tools.findFiles.execute({ patterns: ["*.ts", "*.md"], maxResults: 20 }, {} as never);
+
+      const raw = rawLines(outputByTool, "find-files");
+      expect(raw[0]).toBe("scope=workspace patterns=[*.ts, *.md] matches=3");
+      expect(raw.slice(1).sort()).toEqual(["alpha.ts", "beta.md", "gamma.ts"]);
+      const formatted = renderMergedToolOutput("find-files", { patterns: ["*.ts", "*.md"], maxResults: 20 }, raw);
+      expect(formatted.startsWith("• Find scope=workspace patterns=[*.ts, *.md] matches=3\n")).toBe(true);
+      expect(formatted.includes("alpha.ts")).toBe(true);
+      expect(formatted.includes("beta.md")).toBe(true);
+      expect(formatted.includes("gamma.ts")).toBe(true);
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
 });
 
 describe("tool output contract: search-files", () => {
@@ -213,6 +320,190 @@ describe("tool output contract: search-files", () => {
       await rm(workspace, { recursive: true, force: true });
     }
   });
+
+  test("uses single-path scope label when one path is provided", async () => {
+    const { workspace, tools, outputByTool } = await createHarness("read");
+    try {
+      const srcDir = join(workspace, "src");
+      const docsDir = join(workspace, "docs");
+      await mkdir(srcDir, { recursive: true });
+      await mkdir(docsDir, { recursive: true });
+      await writeFile(join(srcDir, "alpha.ts"), 'export const alpha = "needle";\n', "utf8");
+      await writeFile(join(docsDir, "readme.md"), "needle in docs\n", "utf8");
+
+      if (!tools.searchFiles?.execute) throw new Error("expected searchFiles tool to be available");
+      await tools.searchFiles.execute({ patterns: ["needle"], paths: [srcDir], maxResults: 20 }, {} as never);
+
+      assertToolOutput(outputByTool, "search-files", { patterns: ["needle"], paths: [srcDir], maxResults: 20 }, {
+        raw: ["scope=src patterns=[needle] matches=1", "src/alpha.ts [needle@1]"],
+        formatted: dedent(`
+          • Search scope=src patterns=[needle] matches=1
+              src/alpha.ts [needle@1]
+        `),
+      });
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+
+  test("uses multi-path scope label when multiple paths are provided", async () => {
+    const { workspace, tools, outputByTool } = await createHarness("read");
+    try {
+      const srcDir = join(workspace, "src");
+      const docsDir = join(workspace, "docs");
+      await mkdir(srcDir, { recursive: true });
+      await mkdir(docsDir, { recursive: true });
+      await writeFile(join(srcDir, "alpha.ts"), 'export const alpha = "needle";\n', "utf8");
+      await writeFile(join(docsDir, "readme.md"), "needle in docs\n", "utf8");
+
+      if (!tools.searchFiles?.execute) throw new Error("expected searchFiles tool to be available");
+      await tools.searchFiles.execute({ patterns: ["needle"], paths: [srcDir, docsDir], maxResults: 20 }, {} as never);
+
+      const raw = rawLines(outputByTool, "search-files");
+      expect(raw[0]).toBe("scope=paths:2 patterns=[needle] matches=2");
+      expect(raw.slice(1).sort()).toEqual(["docs/readme.md [needle@1]", "src/alpha.ts [needle@1]"]);
+      const formatted = renderMergedToolOutput(
+        "search-files",
+        { patterns: ["needle"], paths: [srcDir, docsDir], maxResults: 20 },
+        raw,
+      );
+      expect(formatted.startsWith("• Search scope=paths:2 patterns=[needle] matches=2\n")).toBe(true);
+      expect(formatted.includes("docs/readme.md [needle@1]")).toBe(true);
+      expect(formatted.includes("src/alpha.ts [needle@1]")).toBe(true);
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+
+  test("deduplicates repeated patterns in header labels", async () => {
+    const { workspace, tools, outputByTool } = await createHarness("read");
+    try {
+      await writeFile(join(workspace, "alpha.ts"), 'export const alpha = "needle";\n', "utf8");
+
+      if (!tools.searchFiles?.execute) throw new Error("expected searchFiles tool to be available");
+      await tools.searchFiles.execute({ patterns: ["needle", "needle", "\\bneedle\\b"], maxResults: 20 }, {} as never);
+
+      assertToolOutput(
+        outputByTool,
+        "search-files",
+        { patterns: ["needle", "needle", "\\bneedle\\b"], maxResults: 20 },
+        {
+          raw: ["scope=workspace patterns=[needle] matches=1", "alpha.ts [needle@1]"],
+          formatted: dedent(`
+            • Search scope=workspace patterns=[needle] matches=1
+                alpha.ts [needle@1]
+          `),
+        },
+      );
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+
+  test("compacts per-file hit lists with +N overflow token", async () => {
+    const { workspace, tools, outputByTool } = await createHarness("read");
+    try {
+      await writeFile(join(workspace, "alpha.ts"), "a b c d e f g h i j\n", "utf8");
+
+      if (!tools.searchFiles?.execute) throw new Error("expected searchFiles tool to be available");
+      await tools.searchFiles.execute({ patterns: ["a", "b", "c", "d", "e", "f"], maxResults: 20 }, {} as never);
+
+      assertToolOutput(outputByTool, "search-files", { patterns: ["a", "b", "c", "d", "e", "f"], maxResults: 20 }, {
+        raw: ["scope=workspace patterns=[a, b, c, d, e, f] matches=1", "alpha.ts [a@1, b@1, c@1, d@1, +2]"],
+        formatted: dedent(`
+          • Search scope=workspace patterns=[a, b, c, d, e, f] matches=1
+              alpha.ts [a@1, b@1, c@1, d@1, +2]
+        `),
+      });
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+
+  test("suppresses output rows when there are no content matches", async () => {
+    const { workspace, tools, outputByTool } = await createHarness("read");
+    try {
+      const alphaPath = join(workspace, "alpha.ts");
+      await writeFile(alphaPath, 'export const alpha = "needle";\n', "utf8");
+
+      if (!tools.searchFiles?.execute) throw new Error("expected searchFiles tool to be available");
+      await tools.searchFiles.execute({ patterns: ["nomatch"], maxResults: 10 }, {} as never);
+
+      expect(rawLines(outputByTool, "search-files")).toEqual([]);
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+
+  test("shows full body without truncation at file-row boundary for batched needles", async () => {
+    const { workspace, tools, outputByTool } = await createHarness("read");
+    try {
+      const patterns = ["needle-one", "needle-two", "needle-three", "needle-four", "needle-five"];
+      for (let i = 1; i <= 5; i += 1) {
+        await writeFile(join(workspace, `f${i}.ts`), `export const value${i} = "${patterns[i - 1]}";\n`, "utf8");
+      }
+
+      if (!tools.searchFiles?.execute) throw new Error("expected searchFiles tool to be available");
+      await tools.searchFiles.execute({ patterns, maxResults: 20 }, {} as never);
+
+      assertToolOutput(outputByTool, "search-files", { patterns, maxResults: 20 }, {
+        raw: [
+          "scope=workspace patterns=[needle-one, needle-two, needle-three, needle-four, needle-five] matches=5",
+          "f1.ts [needle-one@1]",
+          "f2.ts [needle-two@1]",
+          "f3.ts [needle-three@1]",
+          "f4.ts [needle-four@1]",
+          "f5.ts [needle-five@1]",
+        ],
+        formatted: dedent(`
+          • Search scope=workspace patterns=[needle-one, needle-two, needle-three, needle-four, needle-five] matches=5
+              f1.ts [needle-one@1]
+              f2.ts [needle-two@1]
+              f3.ts [needle-three@1]
+              f4.ts [needle-four@1]
+              f5.ts [needle-five@1]
+        `),
+      });
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+
+  test("truncates body with marker when matched file rows exceed boundary", async () => {
+    const { workspace, tools, outputByTool } = await createHarness("read");
+    try {
+      const patterns = ["p1", "p2", "p3", "p4", "p5", "p6"];
+      for (let i = 1; i <= 6; i += 1) {
+        await writeFile(join(workspace, `f${i}.ts`), `export const value${i} = "${patterns[i - 1]}";\n`, "utf8");
+      }
+
+      if (!tools.searchFiles?.execute) throw new Error("expected searchFiles tool to be available");
+      await tools.searchFiles.execute({ patterns, maxResults: 20 }, {} as never);
+
+      assertToolOutput(outputByTool, "search-files", { patterns, maxResults: 20 }, {
+        raw: [
+          "scope=workspace patterns=[p1, p2, p3, p4, p5, p6] matches=6",
+          "f1.ts [p1@1]",
+          "f2.ts [p2@1]",
+          "f3.ts [p3@1]",
+          "f4.ts [p4@1]",
+          "f5.ts [p5@1]",
+          "[truncated] +1 file",
+        ],
+        formatted: dedent(`
+          • Search scope=workspace patterns=[p1, p2, p3, p4, p5, p6] matches=6
+              f1.ts [p1@1]
+              f2.ts [p2@1]
+              f3.ts [p3@1]
+              f4.ts [p4@1]
+              f5.ts [p5@1]
+              … +1 file
+        `),
+      });
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
 });
 
 describe("tool output contract: scan-code", () => {
@@ -236,7 +527,7 @@ describe("tool output contract: scan-code", () => {
         { paths: [alphaPath, betaPath], patterns: ["export const $NAME = $VALUE;"], maxResults: 10 },
         {
           raw: ["paths=2 targets=[alpha.ts, beta.ts]"],
-          formatted: "• Review paths=2 targets=[alpha.ts, beta.ts]",
+          formatted: "• Review alpha.ts, beta.ts",
         },
       );
     } finally {
@@ -259,13 +550,63 @@ describe("tool output contract: scan-code", () => {
         { paths: files, patterns: ["export const $NAME = $VALUE;"], maxResults: 10 },
         {
           raw: ["paths=4 targets=[a.ts, b.ts, c.ts] omitted=1"],
-          formatted: "• Review paths=4 targets=[a.ts, b.ts, c.ts] omitted=1",
+          formatted: "• Review a.ts, b.ts, c.ts +1 file",
         },
       );
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
   });
+
+  test("shows inline summary for exactly three unique scan targets", async () => {
+    const { workspace, tools, outputByTool } = await createHarness("read");
+    try {
+      const files = ["a.ts", "b.ts", "c.ts"].map((name) => join(workspace, name));
+      for (const file of files) await writeFile(file, "export const value = 1;\n", "utf8");
+
+      if (!tools.scanCode?.execute) throw new Error("expected scanCode tool to be available");
+      await tools.scanCode.execute({ paths: files, patterns: ["export const $NAME = $VALUE;"], maxResults: 10 }, {} as never);
+
+      assertToolOutput(
+        outputByTool,
+        "scan-code",
+        { paths: files, patterns: ["export const $NAME = $VALUE;"], maxResults: 10 },
+        {
+          raw: ["paths=3 targets=[a.ts, b.ts, c.ts]"],
+          formatted: "• Review a.ts, b.ts, c.ts",
+        },
+      );
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+
+  test("deduplicates repeated scan targets in summary", async () => {
+    const { workspace, tools, outputByTool } = await createHarness("read");
+    try {
+      const alphaPath = join(workspace, "alpha.ts");
+      await writeFile(alphaPath, 'export const alpha = "needle";\n', "utf8");
+
+      if (!tools.scanCode?.execute) throw new Error("expected scanCode tool to be available");
+      await tools.scanCode.execute(
+        { paths: [alphaPath, alphaPath, alphaPath], patterns: ["export const $NAME = $VALUE;"], maxResults: 10 },
+        {} as never,
+      );
+
+      assertToolOutput(
+        outputByTool,
+        "scan-code",
+        { paths: [alphaPath, alphaPath, alphaPath], patterns: ["export const $NAME = $VALUE;"], maxResults: 10 },
+        {
+          raw: ["paths=1 targets=[alpha.ts]"],
+          formatted: "• Review alpha.ts",
+        },
+      );
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+
 });
 
 describe("tool output contract: create-file", () => {
@@ -351,10 +692,105 @@ describe("tool output contract: git-status", () => {
       await rm(workspace, { recursive: true, force: true });
     }
   });
+
+  test("shows non-truncated body when status output fits preview window", async () => {
+    const { workspace, tools, outputByTool } = await createHarness("read");
+    try {
+      setPermissionMode("write");
+      await runShellCommand(workspace, "git init -b main");
+      await runShellCommand(workspace, "git config user.email test@example.com");
+      await runShellCommand(workspace, "git config user.name Test");
+      await writeFile(join(workspace, "a.txt"), "a\n", "utf8");
+      await writeFile(join(workspace, "b.txt"), "b\n", "utf8");
+      await runShellCommand(workspace, "git add .");
+      await runShellCommand(workspace, "git commit -m seed");
+      await writeFile(join(workspace, "a.txt"), "a changed\n", "utf8");
+      await writeFile(join(workspace, "b.txt"), "b changed\n", "utf8");
+      setPermissionMode("read");
+
+      if (!tools.gitStatus?.execute) throw new Error("expected gitStatus tool to be available");
+      await tools.gitStatus.execute({}, {} as never);
+
+      assertToolOutput(outputByTool, "git-status", {}, {
+        raw: ["M a.txt", "M b.txt"],
+        formatted: dedent(`
+          • Git Status
+              M a.txt
+              M b.txt
+        `),
+      });
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+
+  test("shows no-output body marker when working tree is clean", async () => {
+    const { workspace, tools, outputByTool } = await createHarness("read");
+    try {
+      setPermissionMode("write");
+      await runShellCommand(workspace, "git init -b main");
+      await runShellCommand(workspace, "git config user.email test@example.com");
+      await runShellCommand(workspace, "git config user.name Test");
+      await writeFile(join(workspace, "tracked.txt"), "x\n", "utf8");
+      await runShellCommand(workspace, "git add tracked.txt");
+      await runShellCommand(workspace, "git commit -m init");
+      setPermissionMode("read");
+
+      if (!tools.gitStatus?.execute) throw new Error("expected gitStatus tool to be available");
+      await tools.gitStatus.execute({}, {} as never);
+
+      assertToolOutput(outputByTool, "git-status", {}, {
+        raw: ["[no-output]"],
+        formatted: dedent(`
+          • Git Status
+              (No output)
+        `),
+      });
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
 });
 
 describe("tool output contract: git-diff", () => {
   test("shows deterministic raw and formatted output", async () => {
+    const { workspace, tools, outputByTool } = await createHarness("read");
+    try {
+      setPermissionMode("write");
+      await runShellCommand(workspace, "git init -b main");
+      await runShellCommand(workspace, "git config user.email test@example.com");
+      await runShellCommand(workspace, "git config user.name Test");
+      await writeFile(
+        join(workspace, "a.ts"),
+        ["export const a = 1;", "export const b = 2;", "export const c = 3;", "export const d = 4;"].join("\n") + "\n",
+        "utf8",
+      );
+      await runShellCommand(workspace, "git add a.ts");
+      await runShellCommand(workspace, "git commit -m init");
+      await writeFile(
+        join(workspace, "a.ts"),
+        ["export const a = 10;", "export const b = 20;", "export const c = 30;", "export const d = 40;"].join("\n") + "\n",
+        "utf8",
+      );
+      setPermissionMode("read");
+
+      if (!tools.gitDiff?.execute) throw new Error("expected gitDiff tool to be available");
+      await tools.gitDiff.execute({ path: "a.ts", contextLines: 1 }, {} as never);
+      const raw = rawLines(outputByTool, "git-diff");
+      expect(raw.length).toBeGreaterThanOrEqual(9);
+      expect(raw[0]).toBe("diff --git a/a.ts b/a.ts");
+      expect(raw[1]?.startsWith("index ")).toBe(true);
+      expect(raw.some((line) => line.startsWith("[truncated] +"))).toBe(true);
+      expect(raw.some((line) => line.startsWith("+export const "))).toBe(true);
+      const formatted = renderMergedToolOutput("git-diff", { path: "a.ts", contextLines: 1 }, raw);
+      expect(formatted.startsWith("• Git Diff a.ts\n    diff --git a/a.ts b/a.ts\n")).toBe(true);
+      expect(formatted.includes("… +")).toBe(true);
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+
+  test("shows non-truncated body when diff output fits preview window", async () => {
     const { workspace, tools, outputByTool } = await createHarness("read");
     try {
       setPermissionMode("write");
@@ -368,24 +804,45 @@ describe("tool output contract: git-diff", () => {
       setPermissionMode("read");
 
       if (!tools.gitDiff?.execute) throw new Error("expected gitDiff tool to be available");
-      await tools.gitDiff.execute({ path: "a.ts", contextLines: 1 }, {} as never);
+      await tools.gitDiff.execute({ path: "a.ts", contextLines: 0 }, {} as never);
+
       const raw = rawLines(outputByTool, "git-diff");
-      expect(raw).toHaveLength(5);
-      expect(raw[0]).toBe("diff --git a/a.ts b/a.ts");
-      expect(raw[1]?.startsWith("index ")).toBe(true);
-      expect(raw[2]).toBe("[truncated] +3 lines");
-      expect(raw[3]).toBe("-export const a = 1;");
-      expect(raw[4]).toBe("+export const a = 2;");
-      expect(renderMergedToolOutput("git-diff", { path: "a.ts", contextLines: 1 }, raw)).toBe(
-        dedent(`
+      expect(raw.some((line) => line.startsWith("[truncated] +"))).toBe(false);
+      expect(raw.some((line) => line.startsWith("@@ -1 +1 @@"))).toBe(true);
+      expect(raw.some((line) => line === "-export const a = 1;")).toBe(true);
+      expect(raw.some((line) => line === "+export const a = 2;")).toBe(true);
+      const formatted = renderMergedToolOutput("git-diff", { path: "a.ts", contextLines: 0 }, raw);
+      expect(formatted.startsWith("• Git Diff a.ts\n")).toBe(true);
+      expect(formatted.includes("… +")).toBe(false);
+      expect(formatted.includes("-export const a = 1;")).toBe(true);
+      expect(formatted.includes("+export const a = 2;")).toBe(true);
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+
+  test("shows no-output body marker when there are no unstaged changes", async () => {
+    const { workspace, tools, outputByTool } = await createHarness("read");
+    try {
+      setPermissionMode("write");
+      await runShellCommand(workspace, "git init -b main");
+      await runShellCommand(workspace, "git config user.email test@example.com");
+      await runShellCommand(workspace, "git config user.name Test");
+      await writeFile(join(workspace, "a.ts"), "export const a = 1;\n", "utf8");
+      await runShellCommand(workspace, "git add a.ts");
+      await runShellCommand(workspace, "git commit -m init");
+      setPermissionMode("read");
+
+      if (!tools.gitDiff?.execute) throw new Error("expected gitDiff tool to be available");
+      await tools.gitDiff.execute({ path: "a.ts", contextLines: 0 }, {} as never);
+
+      assertToolOutput(outputByTool, "git-diff", { path: "a.ts", contextLines: 0 }, {
+        raw: ["[no-output]"],
+        formatted: dedent(`
           • Git Diff a.ts
-              diff --git a/a.ts b/a.ts
-              ${raw[1]}
-              … +3 lines
-              -export const a = 1;
-              +export const a = 2;
+              (No output)
         `),
-      );
+      });
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -573,6 +1030,28 @@ describe("tool output contract: run-command", () => {
     }
   });
 
+  test("shows full body without truncation at line boundary", async () => {
+    const { workspace, tools, outputByTool } = await createHarness("write");
+    try {
+      if (!tools.runCommand?.execute) throw new Error("expected runCommand tool to be available");
+      const command = `printf '%s\\n' line1 line2 line3 line4`;
+      await tools.runCommand.execute({ command }, {} as never);
+
+      assertToolOutput(outputByTool, "run-command", { command }, {
+        raw: ["out | line1", "out | line2", "out | line3", "out | line4"],
+        formatted: dedent(`
+          • Run printf '%s\\n' line1 line2 line3 line4
+              line1
+              line2
+              line3
+              line4
+        `),
+      });
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+
   test("shows stderr output rows when command fails", async () => {
     const { workspace, tools, outputByTool } = await createHarness("write");
     try {
@@ -586,6 +1065,29 @@ describe("tool output contract: run-command", () => {
           • Run sh -c 'echo out; echo err 1>&2; exit 1'
               out
               err
+        `),
+      });
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+
+  test("compacts multiline command text in run header", async () => {
+    const { workspace, tools, outputByTool } = await createHarness("write");
+    try {
+      if (!tools.runCommand?.execute) throw new Error("expected runCommand tool to be available");
+      const command = `printf '%s\\n' line1 line2
+printf '%s\\n' line3 line4`;
+      await tools.runCommand.execute({ command }, {} as never);
+
+      assertToolOutput(outputByTool, "run-command", { command }, {
+        raw: ["out | line1", "out | line2", "out | line3", "out | line4"],
+        formatted: dedent(`
+          • Run printf '%s\\n' line1 line2 printf '%s\\n' line3 line4
+              line1
+              line2
+              line3
+              line4
         `),
       });
     } finally {
@@ -610,5 +1112,80 @@ describe("tool output contract: run-command", () => {
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
+  });
+});
+
+describe("tool output contract: web-search", () => {
+  test("renders compacted query in header and URL result rows", () => {
+    const outputByTool = new Map<string, string[]>();
+    const raw = ['query="bun test" results=1', 'result rank=1 url="https://bun.sh/docs"'];
+    outputByTool.set("web-search", raw);
+
+    assertToolOutput(outputByTool, "web-search", { query: "  bun   test  " }, {
+      raw,
+      formatted: dedent(`
+        • Web Search "bun test"
+            1. https://bun.sh/docs
+      `),
+    });
+  });
+
+  test("compacts multiline query text into a single header detail", () => {
+    const outputByTool = new Map<string, string[]>();
+    assertToolOutput(outputByTool, "web-search", { query: "bun\n\n test\n docs" }, {
+      raw: [],
+      formatted: '• Web Search "bun test docs"',
+    });
+  });
+
+  test("renders no-results stream rows", () => {
+    const outputByTool = new Map<string, string[]>();
+    const raw = ['query="missing query" results=0', "[no-output]"];
+    outputByTool.set("web-search", raw);
+
+    assertToolOutput(outputByTool, "web-search", { query: "missing query" }, {
+      raw,
+      formatted: dedent(`
+        • Web Search "missing query"
+            (No output)
+      `),
+    });
+  });
+
+  test("truncates result rows after five matches", () => {
+    const outputByTool = new Map<string, string[]>();
+    const raw = [
+      'query="acolyte" results=7',
+      'result rank=1 url="https://one.test"',
+      'result rank=2 url="https://two.test"',
+      'result rank=3 url="https://three.test"',
+      'result rank=4 url="https://four.test"',
+      'result rank=5 url="https://five.test"',
+      "[truncated] +2 results",
+    ];
+    outputByTool.set("web-search", raw);
+
+    assertToolOutput(outputByTool, "web-search", { query: "acolyte" }, {
+      raw,
+      formatted: dedent(`
+        • Web Search "acolyte"
+            1. https://one.test
+            2. https://two.test
+            3. https://three.test
+            4. https://four.test
+            5. https://five.test
+            … +2 results
+      `),
+    });
+  });
+});
+
+describe("tool output contract: web-fetch", () => {
+  test("shows header-only formatted output", () => {
+    const outputByTool = new Map<string, string[]>();
+    assertToolOutput(outputByTool, "web-fetch", { url: "https://example.com/docs" }, {
+      raw: [],
+      formatted: "• Web Fetch https://example.com/docs",
+    });
   });
 });

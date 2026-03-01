@@ -2,19 +2,19 @@ const TOOL_LABELS: Record<string, string> = {
   "find-files": "Find",
   "search-files": "Search",
   "read-file": "Read",
-  "git-status": "Status",
-  "git-diff": "Diff",
+  "git-status": "Git Status",
+  "git-diff": "Git Diff",
   "run-command": "Run",
   "edit-file": "Edit",
   "edit-code": "Edit",
   "create-file": "Create",
   "delete-file": "Delete",
   "scan-code": "Review",
-  "web-search": "Search",
-  "web-fetch": "Fetch",
+  "web-search": "Web Search",
+  "web-fetch": "Web Fetch",
 };
 
-export const TOOL_HEADER_VERBS = Object.values(TOOL_LABELS).filter(
+export const TOOL_HEADER_LABELS = Object.values(TOOL_LABELS).filter(
   (value, index, self) => self.indexOf(value) === index,
 );
 

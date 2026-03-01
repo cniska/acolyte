@@ -7,7 +7,7 @@ import {
   formatAssistantReplyOutput,
   formatEditUpdateOutput,
   formatForTool,
-  formatProgressEventOutput,
+  formatProgressOutput,
   formatPromptError,
   formatRunOutput,
   parseEditResult,
@@ -15,6 +15,18 @@ import {
   summarizeDiff,
   truncateText,
 } from "./cli-format";
+
+const stripAnsi = (value: string): string => value.replace(/\x1b\[[0-9;]*m/g, "");
+function withColumns(width: number, task: () => void): void {
+  const descriptor = Object.getOwnPropertyDescriptor(process.stdout, "columns");
+  Object.defineProperty(process.stdout, "columns", { configurable: true, value: width });
+  try {
+    task();
+  } finally {
+    if (descriptor) Object.defineProperty(process.stdout, "columns", descriptor);
+    else delete (process.stdout as { columns?: number }).columns;
+  }
+}
 
 describe("cli-format", () => {
   test("formatRunOutput compresses long stdout", () => {
@@ -203,42 +215,62 @@ describe("cli-format", () => {
     expect(lines[1]).toMatch(/^\s+fourth fifth$/);
   });
 
-  test("formatProgressEventOutput styles Edit header like file tools", () => {
-    const out = formatProgressEventOutput("Edit src/main.rs");
+  test("formatProgressOutput styles Edit header like file tools", () => {
+    const out = formatProgressOutput("Edit src/main.rs");
     expect(out).toContain("• ");
     expect(out).toContain("\x1b[1mEdit \x1b[22m");
     expect(out).toContain("\x1b[2msrc/main.rs\x1b[22m");
   });
 
-  test("formatProgressEventOutput styles Run header with dim command", () => {
-    const out = formatProgressEventOutput("Run rustc ./sum.rs -o ./sum && ./sum 1 2 3 4");
+  test("formatProgressOutput styles Run header with dim command", () => {
+    const out = formatProgressOutput("Run rustc ./sum.rs -o ./sum && ./sum 1 2 3 4");
     expect(out).toContain("• ");
     expect(out).toContain("\x1b[1mRun \x1b[22m");
     expect(out).toContain("\x1b[2mrustc ./sum.rs -o ./sum && ./sum 1 2 3 4\x1b[22m");
   });
 
-  test("formatProgressEventOutput styles numbered diff markers with spacing", () => {
-    const out = formatProgressEventOutput("12 + fn main() {}");
-    expect(out).toContain("• ");
-    expect(out).toContain(" 12 +fn main() {}");
+  test("formatProgressOutput wraps long Run header and aligns continuation with detail", () => {
+    withColumns(56, () => {
+      const longCommand =
+        "bun run verify --filter=very-long-module-name --module another-super-long-module-name";
+      const plain = stripAnsi(formatProgressOutput(`Run ${longCommand}`));
+      const lines = plain.split("\n");
+      expect(lines.length).toBeGreaterThan(1);
+      expect(lines[0]?.startsWith("• Run ")).toBe(true);
+      expect(lines[1]?.startsWith("      ")).toBe(true);
+      expect(lines[1]?.startsWith("• ")).toBe(false);
+    });
   });
 
-  test("formatProgressEventOutput keeps single bullet for multiline tool output", () => {
-    const out = formatProgressEventOutput("Edit src/sum.rs\n\n1 + fn main() {}");
-    const lines = out.split("\n");
-    expect(lines[0]).toContain("• ");
-    expect(lines[1]).toBe("");
-    expect(lines[2]).toMatch(/^\s{4}/);
-    expect(lines[2]).toContain("1 +fn main() {}");
-    expect(lines.filter((line) => line.startsWith("• ")).length).toBe(1);
-  });
-
-  test("formatProgressEventOutput ignores leading blank lines", () => {
-    const out = formatProgressEventOutput("\nReview 1 file\nscripts/reverse-word.ts");
+  test("formatProgressOutput ignores leading blank lines", () => {
+    const out = formatProgressOutput("\nReview 1 file\nscripts/reverse-word.ts");
     const lines = out.split("\n");
     expect(lines[0]).toContain("• ");
     expect(lines[0]).toContain("Review");
     expect(lines[1]).toContain("scripts/reverse-word.ts");
     expect(lines.filter((line) => line === "•").length).toBe(0);
+  });
+
+  test("formatProgressOutput renders structured read header and body rows", () => {
+    const out = formatProgressOutput("Read paths=2 targets=[a.ts, b.ts]\na.ts\nb.ts");
+    expect(stripAnsi(out)).toBe("• Read paths=2 targets=[a.ts, b.ts]\n    a.ts\n    b.ts");
+  });
+
+  test("formatProgressOutput renders structured edit header and hides +/- markers", () => {
+    const out = formatProgressOutput(
+      [
+        "Edit path=src/a.ts files=1 added=1 removed=1",
+        "9  const x = 1;",
+        "10 - const y = 2;",
+        "10 + const y = 3;",
+      ].join("\n"),
+    );
+    const plain = stripAnsi(out);
+    expect(plain).toContain("• Edit path=src/a.ts files=1 added=1 removed=1");
+    expect(plain).toContain("    9  const x = 1;");
+    expect(plain).toContain("   10  const y = 2;");
+    expect(plain).toContain("   10  const y = 3;");
+    expect(plain).not.toContain("10 - const y = 2;");
+    expect(plain).not.toContain("10 + const y = 3;");
   });
 });

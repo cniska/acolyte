@@ -16,6 +16,7 @@ import {
   findResultPaths,
   numberedUnifiedDiffLines,
   searchResultSummaryEntries,
+  TOOL_OUTPUT_MARKERS,
   TOOL_OUTPUT_FILES_MAX_ROWS,
   TOOL_OUTPUT_RUN_MAX_ROWS,
 } from "./tool-output-format";
@@ -39,6 +40,7 @@ import {
 
 type ToolOutputListener = (event: { toolName: ToolName; message: string; toolCallId?: string }) => void;
 const WRITE_TOOL_PREVIEW_MAX_LINES = 30;
+const WEB_SEARCH_MAX_RESULTS = 5;
 
 export type ToolMeta = {
   instruction: string;
@@ -141,13 +143,114 @@ function emitDiffSummaryHeader(
 ): void {
   const { files, added, removed } = diffTotals(rawResult);
   const touchedFiles = files > 0 ? files : 1;
-  const verb = toolName === "create-file" ? "Create" : "Edit";
-  const target = touchedFiles > 1 ? `${touchedFiles} files` : path;
+  if (toolName === "create-file") {
+    onToolOutput?.({
+      toolName,
+      message: `path=${path} files=${touchedFiles}`,
+      toolCallId,
+    });
+    return;
+  }
   onToolOutput?.({
     toolName,
-    message: `${verb} ${target} (+${added} -${removed})`,
+    message: `path=${path} files=${touchedFiles} added=${added} removed=${removed}`,
     toolCallId,
   });
+}
+
+function createFilePreviewLine(line: string): string {
+  const numberedDiff = line.match(/^(\d+)\s+[+-]\s(.*)$/);
+  if (!numberedDiff) return line;
+  const lineNumber = numberedDiff[1] ?? "";
+  const text = numberedDiff[2] ?? "";
+  return `${lineNumber}  ${text}`;
+}
+
+function emitHeadTailLines(
+  toolName: ToolName,
+  rawText: string,
+  onToolOutput: ToolOutputListener | undefined,
+  toolCallId: string,
+  options?: { headRows?: number; tailRows?: number; trimStart?: boolean },
+): void {
+  if (!onToolOutput) return;
+  const headRows = options?.headRows ?? 2;
+  const tailRows = options?.tailRows ?? 2;
+  const lines = rawText
+    .split("\n")
+    .map((line) => {
+      const base = line.trimEnd();
+      return options?.trimStart ? base.trimStart() : base;
+    })
+    .filter((line) => line.length > 0);
+  if (lines.length === 0) {
+    onToolOutput({ toolName, message: TOOL_OUTPUT_MARKERS.noOutput, toolCallId });
+    return;
+  }
+  if (lines.length > headRows + tailRows) {
+    const omitted = lines.length - (headRows + tailRows);
+    const preview = [
+      ...lines.slice(0, headRows),
+      `${TOOL_OUTPUT_MARKERS.truncated} +${countLabel(omitted, "line", "lines")}`,
+      ...lines.slice(lines.length - tailRows),
+    ];
+    for (const line of preview) onToolOutput({ toolName, message: line, toolCallId });
+    return;
+  }
+  for (const line of lines) onToolOutput({ toolName, message: line, toolCallId });
+}
+
+function encodeValue(value: string): string {
+  return JSON.stringify(value);
+}
+
+export function webSearchStreamRows(result: string): string {
+  const normalizeQuery = (value: string, maxChars = 120): string => {
+    const single = value.replace(/\s+/g, " ").trim();
+    if (single.length <= maxChars) return single.replace(/\]/g, "\\]");
+    return `${single.slice(0, maxChars - 1).trimEnd()}…`.replace(/\]/g, "\\]");
+  };
+  const lines = result
+    .split("\n")
+    .map((line) => line.trimEnd())
+    .filter((line) => line.trim().length > 0);
+  if (lines.length === 0) return "";
+
+  const noResultsMatch = lines[0]?.match(/^No web results found for:\s*(.+)$/i);
+  if (noResultsMatch?.[1]) {
+    return [`query=${encodeValue(normalizeQuery(noResultsMatch[1]))} results=0`, TOOL_OUTPUT_MARKERS.noOutput].join("\n");
+  }
+
+  const headerMatch = lines[0]?.match(/^Web results for:\s*(.+)$/i);
+  if (!headerMatch?.[1]) return result;
+  const query = headerMatch[1].trim();
+  const out: string[] = [];
+  const entries: Array<{ rank: number; url?: string }> = [];
+
+  for (let i = 1; i < lines.length; i += 1) {
+    const line = lines[i] ?? "";
+    const titleMatch = line.match(/^(\d+)\.\s+(.+)$/);
+    if (!titleMatch?.[1] || !titleMatch?.[2]) continue;
+    const rank = Number.parseInt(titleMatch[1], 10);
+    const title = titleMatch[2].trim();
+    let url: string | undefined;
+    const next = lines[i + 1]?.trim();
+    if (next && /^https?:\/\//i.test(next)) {
+      url = next;
+      i += 1;
+    }
+    if (!url && title.startsWith("http")) url = title;
+    entries.push({ rank: Number.isFinite(rank) ? rank : entries.length + 1, url });
+  }
+
+  out.push(`query=${encodeValue(normalizeQuery(query))} results=${entries.length}`);
+  const visible = entries.slice(0, WEB_SEARCH_MAX_RESULTS);
+  for (const entry of visible)
+    out.push(`result rank=${entry.rank}${entry.url ? ` url=${encodeValue(entry.url)}` : ""}`);
+  if (entries.length > WEB_SEARCH_MAX_RESULTS)
+    out.push(`${TOOL_OUTPUT_MARKERS.truncated} +${countLabel(entries.length - WEB_SEARCH_MAX_RESULTS, "result", "results")}`);
+  if (entries.length === 0) out.push(TOOL_OUTPUT_MARKERS.noOutput);
+  return out.join("\n");
 }
 
 // --- Guarded execution ---
@@ -219,10 +322,12 @@ function createRunCommandTool(workspace: string, session: SessionContext, onTool
             const omitted = streamed.length - (headRows + tailRows);
             const preview = [
               ...streamed.slice(0, headRows),
-              `… +${countLabel(omitted, "line", "lines")}`,
+              `[truncated] +${countLabel(omitted, "line", "lines")}`,
               ...streamed.slice(streamed.length - tailRows),
             ];
             for (const line of preview) onToolOutput?.({ toolName: "run-command", message: line, toolCallId });
+          } else if (streamed.length === 0) {
+            onToolOutput?.({ toolName: "run-command", message: TOOL_OUTPUT_MARKERS.noOutput, toolCallId });
           } else {
             for (const line of streamed.slice(0, TOOL_OUTPUT_RUN_MAX_ROWS)) {
               onToolOutput?.({ toolName: "run-command", message: line, toolCallId });
@@ -446,7 +551,7 @@ function createReadFileTool(workspace: string, session: SessionContext, onToolOu
   });
 }
 
-function createGitStatusTool(workspace: string, session: SessionContext) {
+function createGitStatusTool(workspace: string, session: SessionContext, onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "git-status",
     description: "Show working tree status (short format with branch) for the current repository.",
@@ -454,7 +559,10 @@ function createGitStatusTool(workspace: string, session: SessionContext) {
     execute: async () => {
       return withToolError("git-status", () =>
         guardedExecute("git-status", {}, session, async () => {
-          const result = compactToolOutput(await gitStatusShort(workspace), appConfig.agent.toolOutputBudget.gitStatus);
+          const toolCallId = streamCallId("git-status");
+          const rawStatus = await gitStatusShort(workspace);
+          emitHeadTailLines("git-status", rawStatus, onToolOutput, toolCallId, { trimStart: true });
+          const result = compactToolOutput(rawStatus, appConfig.agent.toolOutputBudget.gitStatus);
           return { result };
         }),
       );
@@ -462,7 +570,7 @@ function createGitStatusTool(workspace: string, session: SessionContext) {
   });
 }
 
-function createGitDiffTool(workspace: string, session: SessionContext) {
+function createGitDiffTool(workspace: string, session: SessionContext, onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "git-diff",
     description: "Show unstaged changes (unified diff) for the repository or a specific file path.",
@@ -473,10 +581,10 @@ function createGitDiffTool(workspace: string, session: SessionContext) {
     execute: async (input) => {
       return withToolError("git-diff", () =>
         guardedExecute("git-diff", input as Record<string, unknown>, session, async () => {
-          const result = compactToolOutput(
-            await gitDiff(workspace, input.path, input.contextLines ?? 3),
-            appConfig.agent.toolOutputBudget.gitDiff,
-          );
+          const toolCallId = streamCallId("git-diff");
+          const rawDiff = await gitDiff(workspace, input.path, input.contextLines ?? 3);
+          emitHeadTailLines("git-diff", rawDiff, onToolOutput, toolCallId, { headRows: 4, tailRows: 4 });
+          const result = compactToolOutput(rawDiff, appConfig.agent.toolOutputBudget.gitDiff);
           return { result };
         }),
       );
@@ -542,7 +650,7 @@ function createCreateFileTool(workspace: string, session: SessionContext, onTool
           });
           emitDiffSummaryHeader("create-file", input.path, rawResult, onToolOutput, toolCallId);
           for (const line of numberedUnifiedDiffLines(rawResult, WRITE_TOOL_PREVIEW_MAX_LINES)) {
-            onToolOutput?.({ toolName: "create-file", message: line, toolCallId });
+            onToolOutput?.({ toolName: "create-file", message: createFilePreviewLine(line), toolCallId });
           }
           const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.create);
           return { result };
@@ -628,7 +736,7 @@ function createWebSearchTool(session: SessionContext, onToolOutput?: ToolOutputL
             await searchWeb(input.query, input.maxResults ?? 5),
             appConfig.agent.toolOutputBudget.webSearch,
           );
-          emitResultChunks("web-search", result, onToolOutput, 80, toolCallId);
+          emitResultChunks("web-search", webSearchStreamRows(result), onToolOutput, 80, toolCallId);
           return { result };
         }),
       );
@@ -648,12 +756,10 @@ function createWebFetchTool(session: SessionContext, onToolOutput?: ToolOutputLi
     execute: async (input) => {
       return withToolError("web-fetch", () =>
         guardedExecute("web-fetch", input as Record<string, unknown>, session, async () => {
-          const toolCallId = streamCallId("web-fetch");
           const result = compactToolOutput(
             await fetchWeb(input.url, input.maxChars ?? 5000),
             appConfig.agent.toolOutputBudget.webFetch,
           );
-          emitResultChunks("web-fetch", result, onToolOutput, 80, toolCallId);
           return { result };
         }),
       );
@@ -672,8 +778,8 @@ function createToolset(workspace: string, session: SessionContext, onToolOutput?
       searchFiles: createSearchFilesTool(workspace, session, onToolOutput),
       scanCode: createScanCodeTool(workspace, session, onToolOutput),
       readFile: createReadFileTool(workspace, session, onToolOutput),
-      gitStatus: createGitStatusTool(workspace, session),
-      gitDiff: createGitDiffTool(workspace, session),
+      gitStatus: createGitStatusTool(workspace, session, onToolOutput),
+      gitDiff: createGitDiffTool(workspace, session, onToolOutput),
       runCommand: createRunCommandTool(workspace, session, onToolOutput),
       editCode: createAstEditTool(workspace, session, onToolOutput),
       editFile: createEditFileTool(workspace, session, onToolOutput),
@@ -697,8 +803,8 @@ function readOnlyTools(
       searchFiles: createSearchFilesTool(workspace, session, onToolOutput),
       scanCode: createScanCodeTool(workspace, session, onToolOutput),
       readFile: createReadFileTool(workspace, session, onToolOutput),
-      gitStatus: createGitStatusTool(workspace, session),
-      gitDiff: createGitDiffTool(workspace, session),
+      gitStatus: createGitStatusTool(workspace, session, onToolOutput),
+      gitDiff: createGitDiffTool(workspace, session, onToolOutput),
       webSearch: createWebSearchTool(session, onToolOutput),
       webFetch: createWebFetchTool(session, onToolOutput),
     },

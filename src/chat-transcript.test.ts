@@ -37,16 +37,16 @@ describe("chat transcript helpers", () => {
   test("parseToolProgressLine parses edit headers", () => {
     expect(parseToolProgressLine("Edit src/main.ts")).toEqual({
       kind: "header",
-      verb: "Edit",
-      path: "src/main.ts",
+      label: "Edit",
+      detail: "src/main.ts",
     });
   });
 
   test("parseToolProgressLine parses run headers", () => {
     expect(parseToolProgressLine("Run rustc ./sum.rs -o ./sum && ./sum 1 2 3 4")).toEqual({
       kind: "header",
-      verb: "Run",
-      path: "rustc ./sum.rs -o ./sum && ./sum 1 2 3 4",
+      label: "Run",
+      detail: "rustc ./sum.rs -o ./sum && ./sum 1 2 3 4",
     });
   });
 
@@ -72,7 +72,7 @@ describe("chat transcript helpers", () => {
   test("parseToolProgressBlock classifies edit output as diff", () => {
     const block = parseToolProgressBlock("Edit src/main.ts\n5  const a = 1;\n6 +const b = 2;\n… +3 lines");
     expect(block.kind).toBe("diff");
-    expect(block.header).toEqual({ verb: "Edit", path: "src/main.ts" });
+    expect(block.header).toEqual({ label: "Edit", detail: "src/main.ts" });
     expect(block.lines).toHaveLength(3);
     expect(block.lineNumberWidth).toBe(3);
   });
@@ -80,7 +80,7 @@ describe("chat transcript helpers", () => {
   test("parseToolProgressBlock classifies run output as command", () => {
     const block = parseToolProgressBlock("Run bun test\nout | 3 pass\nerr | warning\n… +5 lines");
     expect(block.kind).toBe("command");
-    expect(block.header).toEqual({ verb: "Run", path: "bun test" });
+    expect(block.header).toEqual({ label: "Run", detail: "bun test" });
     expect(block.lines).toHaveLength(3);
   });
 

@@ -1,13 +1,15 @@
 import { isAbsolute, relative } from "node:path";
 import { countLabel } from "./plural";
-import { formatToolLabel } from "./tool-labels";
-import { formatToolFileSummaryHeader } from "./tool-summary-format";
 import type { ToolName } from "./tool-names";
 
 type ToolOutputListener = (event: { toolName: ToolName; message: string; toolCallId?: string }) => void;
 export const TOOL_OUTPUT_RUN_MAX_ROWS = 5;
 export const TOOL_OUTPUT_FILES_MAX_ROWS = 5;
 export const TOOL_OUTPUT_INLINE_FILES_MAX = 3;
+export const TOOL_OUTPUT_MARKERS = {
+  truncated: "[truncated]",
+  noOutput: "[no-output]",
+} as const;
 
 export function emitResultChunks(
   toolName: ToolName,
@@ -28,7 +30,7 @@ export function emitResultChunks(
   if (allLines.length > maxLines)
     onToolOutput({
       toolName,
-      message: `… ${countLabel(allLines.length - maxLines, "line", "lines")} truncated`,
+      message: `${TOOL_OUTPUT_MARKERS.truncated} +${countLabel(allLines.length - maxLines, "line", "lines")}`,
       toolCallId,
     });
 }
@@ -47,11 +49,9 @@ export function emitFileListSummary(
     if (unique.length === 0) return;
     const shown = unique.slice(0, TOOL_OUTPUT_INLINE_FILES_MAX);
     const remaining = unique.length - shown.length;
-    const label = formatToolLabel(toolName);
-    const suffix = remaining > 0 ? ` +${countLabel(remaining, "file", "files")}` : "";
     onToolOutput({
       toolName,
-      message: `${label} ${shown.join(", ")}${suffix}`,
+      message: `paths=${unique.length} targets=[${shown.join(", ")}]${remaining > 0 ? ` omitted=${remaining}` : ""}`,
       toolCallId,
     });
     return;
@@ -62,7 +62,7 @@ export function emitFileListSummary(
     onToolOutput,
     toolCallId,
     maxFiles,
-    header: (count) => formatToolFileSummaryHeader(toolName, count),
+    header: (count) => `files=${count}`,
     lineForPath: (path) => toDisplayPath(path, workspace),
   });
 }
@@ -82,9 +82,9 @@ export function emitFindSummary(
     onToolOutput,
     toolCallId,
     maxFiles,
-    header: () => {
-      if (labels.length > 0 && labels.length <= 3) return `Find using [${labels.join(", ")}]`;
-      return `Find using ${countLabel(Math.max(1, labels.length), "pattern", "patterns")}`;
+    header: (count) => {
+      const patternToken = labels.length > 0 ? `[${labels.join(", ")}]` : "[]";
+      return `scope=workspace patterns=${patternToken} matches=${count}`;
     },
     lineForPath: (path) => toDisplayPath(path, workspace),
   });
@@ -149,7 +149,7 @@ export type SearchSummaryEntry = {
 export function searchResultSummaryEntries(result: string, patterns: string[]): SearchSummaryEntry[] {
   const normalized = patterns.map((pattern) => pattern.trim()).filter((pattern) => pattern.length > 0);
   const regexes = normalized.map((pattern) => asSearchRegex(pattern));
-  const labels = compactPatternLabels(normalized);
+  const labels = normalized.map((pattern) => compactPatternLabel(pattern));
   const byPath = new Map<string, Map<string, Set<number>>>();
   for (const line of result.split("\n")) {
     const firstColon = line.indexOf(":");
@@ -237,7 +237,11 @@ function emitSummaryFileRows(input: {
     });
   }
   if (unique.length > maxFiles)
-    onToolOutput({ toolName, message: `… +${countLabel(unique.length - maxFiles, "file", "files")}`, toolCallId });
+    onToolOutput({
+      toolName,
+      message: `${TOOL_OUTPUT_MARKERS.truncated} +${countLabel(unique.length - maxFiles, "file", "files")}`,
+      toolCallId,
+    });
 }
 
 function escapeControlChars(value: string): string {
@@ -275,18 +279,15 @@ export function emitSearchSummary(
     onToolOutput,
     toolCallId,
     maxFiles,
-    header: () => {
-      const patternSegment =
-        labels.length > 0 && labels.length <= 3
-          ? `[${labels.join(", ")}]`
-          : countLabel(Math.max(1, labels.length), "pattern", "patterns");
+    header: (count) => {
+      const patternToken = labels.length > 0 ? `[${labels.join(", ")}]` : "[]";
       if (normalizedPaths.length === 1) {
         const scope = toDisplayPath(normalizedPaths[0] ?? "", workspace);
-        return `Search ${scope} using ${patternSegment}`;
+        return `scope=${scope} patterns=${patternToken} matches=${count}`;
       }
       if (normalizedPaths.length > 1)
-        return `Search ${countLabel(normalizedPaths.length, "path", "paths")} using ${patternSegment}`;
-      return `Search using ${patternSegment}`;
+        return `scope=paths:${normalizedPaths.length} patterns=${patternToken} matches=${count}`;
+      return `scope=workspace patterns=${patternToken} matches=${count}`;
     },
     lineForPath: (path) => {
       const display = toDisplayPath(path, workspace);
@@ -383,16 +384,17 @@ export function numberedUnifiedDiffLines(rawResult: string, maxLines = 160): str
   let skippedCount = 0;
   for (let i = 0; i < rendered.length; i++) {
     if (keep[i]) {
-      if (skippedCount > 0) filtered.push("…");
+      if (skippedCount > 0) filtered.push(TOOL_OUTPUT_MARKERS.truncated);
       skippedCount = 0;
       filtered.push(rendered[i] ?? "");
     } else {
       skippedCount += 1;
     }
   }
+  if (skippedCount > 0) filtered.push(TOOL_OUTPUT_MARKERS.truncated);
   if (filtered.length > maxLines) {
     const omitted = filtered.length - maxLines;
-    return [...filtered.slice(0, maxLines), `… +${omitted} lines`];
+    return [...filtered.slice(0, maxLines), `${TOOL_OUTPUT_MARKERS.truncated} +${omitted} lines`];
   }
   return filtered;
 }
