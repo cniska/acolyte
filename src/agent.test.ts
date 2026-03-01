@@ -245,7 +245,7 @@ describe("createSubagentContext", () => {
     const context = createSubagentContext(req);
     expect(context).toContain("Agent: Acolyte");
     expect(context).toContain("Goal: review @src/agent.ts");
-    expect(context).toContain("Context: 1 history messages; model=gpt-5-mini");
+    expect(context).toContain("Context: 1 history message; model=gpt-5-mini");
   });
 
   test("does not add prompt-specific what-next guidance", () => {

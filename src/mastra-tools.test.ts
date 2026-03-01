@@ -198,3 +198,40 @@ describe("write tool output contract", () => {
     }
   });
 });
+
+describe("read/scan tool output contract", () => {
+  test("read-file emits compact file list summary capped to five files", async () => {
+    setPermissionMode("read");
+    const workspace = await mkdtemp(join(tmpdir(), "acolyte-read-contract-"));
+    try {
+      const paths = ["a.ts", "b.ts", "c.ts", "d.ts", "e.ts", "f.ts"].map((file) => join(workspace, file));
+      for (const [index, path] of paths.entries())
+        await writeFile(path, `export const v${index + 1} = ${index + 1};\n`, "utf8");
+
+      const outputByTool = new Map<string, string[]>();
+      const { tools } = toolsForAgent({
+        workspace,
+        onToolOutput: (event) => {
+          const bucket = outputByTool.get(event.toolName) ?? [];
+          bucket.push(event.message);
+          outputByTool.set(event.toolName, bucket);
+        },
+      });
+      const readFileTool = tools.readFile;
+      if (!readFileTool?.execute) throw new Error("expected readFile tool to be available");
+      await readFileTool.execute(
+        {
+          paths: paths.map((path) => ({ path })),
+        },
+        {} as never,
+      );
+
+      const lines = outputByTool.get("read-file") ?? [];
+      expect(lines[0]).toBe("Read 6 files");
+      expect(lines.slice(1, 6)).toEqual(paths.slice(0, 5).map((path) => `  ${path}`));
+      expect(lines[6]).toBe("  … +1 file");
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+});

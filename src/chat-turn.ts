@@ -4,6 +4,7 @@ import { extractAtReferencePaths } from "./chat-file-ref";
 import { formatThoughtDuration } from "./chat-format";
 import type { Client, StreamEvent } from "./client";
 import { buildFileContext } from "./file-context";
+import { countLabel } from "./plural";
 import type { Message, Session } from "./types";
 
 export function estimateTokenUsageFallback(prompt: string, output: string): TokenUsage {
@@ -118,7 +119,7 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
     const duration = formatThoughtDuration(durationMs);
     const toolCount = reply.toolCalls?.length ?? 0;
     const details: string[] = [];
-    if (toolCount > 0) details.push(`${toolCount} tool${toolCount !== 1 ? "s" : ""}`);
+    if (toolCount > 0) details.push(countLabel(toolCount, "tool", "tools"));
     const suffix = details.length > 0 ? ` (${details.join(" · ")})` : "";
     rows.push(createRow("assistant", `Worked ${duration}${suffix}`, { dim: true, style: "worked" }));
   }

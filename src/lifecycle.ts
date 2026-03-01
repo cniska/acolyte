@@ -47,6 +47,7 @@ import {
 } from "./lifecycle-evaluators";
 import type { LifecycleDebugEvent, LifecycleEventName } from "./lifecycle-events";
 import { type AcolyteToolset, toolsForAgent } from "./mastra-tools";
+import { countLabel } from "./plural";
 import type { StreamErrorDetail } from "./stream-error";
 import { type ErrorCode, extractToolErrorCode, LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
 import { DISCOVERY_TOOL_SET, READ_TOOL_SET, SEARCH_TOOL_SET, WRITE_TOOL_SET } from "./tool-groups";
@@ -585,7 +586,13 @@ function phaseFinalize(ctx: RunContext): ChatResponse {
   const completionTokens = estimateTokens(output);
   let budgetWarning: string | undefined;
   if (ctx.promptUsage.promptTruncated) {
-    budgetWarning = `context trimmed (${ctx.promptUsage.includedHistoryMessages}/${ctx.promptUsage.totalHistoryMessages} history messages)`;
+    const historyUnit = countLabel(ctx.promptUsage.totalHistoryMessages, "history message", "history messages").replace(
+      /^\d+\s+/,
+      "",
+    );
+    budgetWarning =
+      `context trimmed (${ctx.promptUsage.includedHistoryMessages}/${ctx.promptUsage.totalHistoryMessages} ` +
+      `${historyUnit})`;
   } else if (ctx.promptUsage.promptTokens >= Math.floor(ctx.promptUsage.promptBudgetTokens * 0.9)) {
     budgetWarning = `context near budget (${ctx.promptUsage.promptTokens}/${ctx.promptUsage.promptBudgetTokens} tokens)`;
   }

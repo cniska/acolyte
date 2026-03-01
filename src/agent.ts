@@ -5,6 +5,7 @@ import type { StreamEvent } from "./client";
 import { runLifecycle } from "./lifecycle";
 import type { LifecycleDebugEvent } from "./lifecycle-events";
 import { toolMeta } from "./mastra-tools";
+import { countLabel } from "./plural";
 import { isProviderAvailable, type ModelProviderName, providerFromModel } from "./provider-config";
 import { formatToolLabel } from "./tool-labels";
 import { isToolName } from "./tool-names";
@@ -137,7 +138,8 @@ export function isPlanLikeOutput(text: string): boolean {
 }
 
 export function createSubagentContext(req: ChatRequest): string {
-  const scope = req.history.length > 0 ? `${req.history.length} history messages` : "no history";
+  const scope =
+    req.history.length > 0 ? countLabel(req.history.length, "history message", "history messages") : "no history";
   return ["Agent: Acolyte", `Goal: ${req.message.trim()}`, `Context: ${scope}; model=${req.model}`].join("\n");
 }
 

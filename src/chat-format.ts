@@ -1,6 +1,4 @@
-function countLabel(value: number, singular: string, plural: string): string {
-  return `${value} ${value === 1 ? singular : plural}`;
-}
+import { countLabel } from "./plural";
 
 export function formatThoughtDuration(ms: number): string {
   if (ms < 1000) return `${ms}ms`;

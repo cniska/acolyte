@@ -1,8 +1,11 @@
 import { relative } from "node:path";
 import { z } from "zod";
 import { wrapAssistantContent } from "./chat-content";
+import { countLabel } from "./plural";
 import { parseToolProgressLine } from "./tool-progress";
 import { printDim, printOutput, printToolHeader } from "./ui";
+
+export { countLabel } from "./plural";
 
 const editResultSchema = z.object({
   path: z.string().min(1),
@@ -11,10 +14,6 @@ const editResultSchema = z.object({
 });
 
 const runExitCodeSchema = z.coerce.number().int();
-
-export function countLabel(value: number, singular: string, plural: string): string {
-  return `${value} ${value === 1 ? singular : plural}`;
-}
 
 export function displayPath(pathInput: string): string {
   const rel = relative(process.cwd(), pathInput);
@@ -70,7 +69,7 @@ export function showToolResult(
 
 export function clampLines(lines: string[], maxLines: number, overflowTolerance = 4): string[] {
   if (lines.length <= maxLines + overflowTolerance) return lines;
-  return [...lines.slice(0, maxLines - 1), `… +${lines.length - (maxLines - 1)} lines`];
+  return [...lines.slice(0, maxLines - 1), `… +${countLabel(lines.length - (maxLines - 1), "line", "lines")}`];
 }
 
 export function formatSearchOutput(raw: string): string {

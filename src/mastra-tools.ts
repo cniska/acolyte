@@ -2,9 +2,11 @@ import { resolve } from "node:path";
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 import { appConfig } from "./app-config";
+import { countLabel } from "./plural";
 import { createId } from "./short-id";
 import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
 import { createSessionContext, recordCall, runGuards, type SessionContext } from "./tool-guards";
+import { formatToolLabel } from "./tool-labels";
 import type { ToolName } from "./tool-names";
 import { compactToolOutput } from "./tool-output";
 import {
@@ -113,7 +115,31 @@ function emitResultChunks(
     onToolOutput({ toolName, message: line, toolCallId });
   }
   if (allLines.length > maxLines)
-    onToolOutput({ toolName, message: `… ${allLines.length - maxLines} lines truncated`, toolCallId });
+    onToolOutput({
+      toolName,
+      message: `… ${countLabel(allLines.length - maxLines, "line", "lines")} truncated`,
+      toolCallId,
+    });
+}
+
+function emitFileListSummary(
+  toolName: ToolName,
+  filePaths: string[],
+  onToolOutput?: ToolOutputListener,
+  toolCallId?: string,
+  maxFiles = 5,
+): void {
+  if (!onToolOutput) return;
+  const unique = Array.from(new Set(filePaths.map((path) => path.trim()).filter((path) => path.length > 0)));
+  if (unique.length === 0) return;
+  onToolOutput({
+    toolName,
+    message: `${formatToolLabel(toolName)} ${countLabel(unique.length, "file", "files")}`,
+    toolCallId,
+  });
+  for (const path of unique.slice(0, maxFiles)) onToolOutput({ toolName, message: `  ${path}`, toolCallId });
+  if (unique.length > maxFiles)
+    onToolOutput({ toolName, message: `  … +${countLabel(unique.length - maxFiles, "file", "files")}`, toolCallId });
 }
 
 function unifiedDiffLines(rawResult: string, maxLines = 120): string[] {
@@ -387,7 +413,7 @@ function createSearchFilesTool(workspace: string, session: SessionContext) {
   });
 }
 
-function createScanCodeTool(workspace: string, session: SessionContext) {
+function createScanCodeTool(workspace: string, session: SessionContext, onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "scan-code",
     description:
@@ -401,6 +427,8 @@ function createScanCodeTool(workspace: string, session: SessionContext) {
     execute: async (input) => {
       return withToolError("scan-code", () =>
         guardedExecute("scan-code", input as Record<string, unknown>, session, async () => {
+          const toolCallId = streamCallId("scan-code");
+          emitFileListSummary("scan-code", input.paths, onToolOutput, toolCallId);
           const baseBudget = appConfig.agent.toolOutputBudget.scanCode;
           const count = input.paths.length * input.patterns.length;
           const budget = {
@@ -424,7 +452,7 @@ function createScanCodeTool(workspace: string, session: SessionContext) {
   });
 }
 
-function createReadFileTool(workspace: string, session: SessionContext) {
+function createReadFileTool(workspace: string, session: SessionContext, onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "read-file",
     description:
@@ -448,6 +476,13 @@ function createReadFileTool(workspace: string, session: SessionContext) {
     execute: async (input) => {
       return withToolError("read-file", () =>
         guardedExecute("read-file", input as Record<string, unknown>, session, async () => {
+          const toolCallId = streamCallId("read-file");
+          emitFileListSummary(
+            "read-file",
+            input.paths.map((entry) => entry.path),
+            onToolOutput,
+            toolCallId,
+          );
           const entries = input.paths.map((p) => ({
             path: p.path,
             start: p.start != null ? String(p.start) : undefined,
@@ -692,8 +727,8 @@ function createToolset(workspace: string, session: SessionContext, onToolOutput?
     tools: {
       findFiles: createFindFilesTool(workspace, session),
       searchFiles: createSearchFilesTool(workspace, session),
-      scanCode: createScanCodeTool(workspace, session),
-      readFile: createReadFileTool(workspace, session),
+      scanCode: createScanCodeTool(workspace, session, onToolOutput),
+      readFile: createReadFileTool(workspace, session, onToolOutput),
       gitStatus: createGitStatusTool(workspace, session),
       gitDiff: createGitDiffTool(workspace, session),
       runCommand: createRunCommandTool(workspace, session, onToolOutput),
@@ -717,8 +752,8 @@ function readOnlyTools(
     tools: {
       findFiles: createFindFilesTool(workspace, session),
       searchFiles: createSearchFilesTool(workspace, session),
-      scanCode: createScanCodeTool(workspace, session),
-      readFile: createReadFileTool(workspace, session),
+      scanCode: createScanCodeTool(workspace, session, onToolOutput),
+      readFile: createReadFileTool(workspace, session, onToolOutput),
       gitStatus: createGitStatusTool(workspace, session),
       gitDiff: createGitDiffTool(workspace, session),
       webSearch: createWebSearchTool(session, onToolOutput),
