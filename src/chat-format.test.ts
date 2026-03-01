@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { formatChangesSummary, formatColumns, formatRelativeTime, formatThoughtDuration } from "./chat-format";
+import {
+  formatChangesSummary,
+  formatColumns,
+  formatRelativeTime,
+  formatThoughtDuration,
+} from "./chat-format";
 
 describe("chat-formatters helpers", () => {
   test("formatThoughtDuration renders ms and s forms", () => {

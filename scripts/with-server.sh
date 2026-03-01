@@ -13,6 +13,7 @@ log_path="${ACOLYTE_SERVER_LOG:-$HOME/.acolyte/server.log}"
 wait_url="${ACOLYTE_SERVER_WAIT_URL:-http://localhost:6767/v1/status}"
 wait_timeout_ms="${ACOLYTE_SERVER_WAIT_TIMEOUT_MS:-10000}"
 api_url="${ACOLYTE_API_URL:-http://localhost:6767}"
+restart_server="${ACOLYTE_SERVER_RESTART:-0}"
 
 server_pid=""
 started_server=0
@@ -20,6 +21,15 @@ started_server=0
 wait_for_server() {
   bun run wait:server --url "$wait_url" --timeout-ms "$wait_timeout_ms" >/dev/null
 }
+
+if [[ "$restart_server" == "1" ]]; then
+  bun run src/cli.ts server stop >/dev/null 2>&1 || true
+  if bun run wait:server --url "$wait_url" --timeout-ms "300" >/dev/null 2>&1; then
+    echo "Server still running at ${wait_url} after requested restart." >&2
+    echo "Stop unmanaged server manually, then retry." >&2
+    exit 1
+  fi
+fi
 
 if ! bun run wait:server --url "$wait_url" --timeout-ms "300" >/dev/null 2>&1; then
   bun run "$serve_script" >"$log_path" 2>&1 &

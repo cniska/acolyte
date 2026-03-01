@@ -144,6 +144,69 @@ describe("chat submit handler guards", () => {
     expect(rows.some((row) => row.role === "assistant" && row.content === "Removed sum.rs.")).toBe(false);
   });
 
+  test("merges discovery/read file count into tool header", async () => {
+    const { submit, rows } = createSubmitHandlerHarness({
+      client: createClient({
+        status: async () => ({}),
+        replyStream: async (_input, options) => {
+          options.onEvent({ type: "tool-call", toolCallId: "call_find", toolName: "find-files", args: { patterns: ["*.ts"] } });
+          options.onEvent({ type: "tool-output", toolCallId: "call_find", toolName: "find-files", content: "3 files" });
+          options.onEvent({ type: "tool-output", toolCallId: "call_find", toolName: "find-files", content: "  src/a.ts" });
+          options.onEvent({ type: "tool-output", toolCallId: "call_find", toolName: "find-files", content: "  src/b.ts" });
+          options.onEvent({ type: "tool-output", toolCallId: "call_find", toolName: "find-files", content: "  src/c.ts" });
+          return { model: "gpt-5-mini", output: "Done." };
+        },
+      }),
+    });
+
+    await submit("find all ts files");
+
+    const toolRow = rows.find((row) => row.role === "assistant" && row.style === "toolProgress" && row.toolName === "find-files");
+    expect(toolRow?.content).toBe("Find 3 files\nsrc/a.ts\nsrc/b.ts\nsrc/c.ts");
+  });
+
+  test("merges search summary with pattern context into header", async () => {
+    const { submit, rows } = createSubmitHandlerHarness({
+      client: createClient({
+        status: async () => ({}),
+        replyStream: async (_input, options) => {
+          options.onEvent({
+            type: "tool-call",
+            toolCallId: "call_search",
+            toolName: "search-files",
+            args: { pattern: "\\btool\\b" },
+          });
+          options.onEvent({
+            type: "tool-output",
+            toolCallId: "call_search",
+            toolName: "search-files",
+            content: "Search 2 files using 1 pattern",
+          });
+          options.onEvent({
+            type: "tool-output",
+            toolCallId: "call_search",
+            toolName: "search-files",
+            content: "  src/a.ts \\btool\\b",
+          });
+          options.onEvent({
+            type: "tool-output",
+            toolCallId: "call_search",
+            toolName: "search-files",
+            content: "  src/b.ts \\btool\\b",
+          });
+          return { model: "gpt-5-mini", output: "Done." };
+        },
+      }),
+    });
+
+    await submit("search tool pattern");
+
+    const toolRow = rows.find(
+      (row) => row.role === "assistant" && row.style === "toolProgress" && row.toolName === "search-files",
+    );
+    expect(toolRow?.content).toBe("Search 2 files using 1 pattern\nsrc/a.ts \\btool\\b\nsrc/b.ts \\btool\\b");
+  });
+
   test("toggles shortcuts on ? input", async () => {
     const { submit, calls } = createSubmitHandlerHarness();
     await submit("?");
@@ -647,6 +710,36 @@ describe("chat submit handler guards", () => {
 
     expect(rows.some((row) => row.role === "assistant" && row.style === "toolProgress")).toBe(false);
     expect(rows.some((row) => row.role === "assistant" && row.content === "done")).toBe(true);
+  });
+
+  test("suppresses empty discovery/read tool rows when no body output arrives", async () => {
+    const { submit, rows } = createSubmitHandlerHarness({
+      client: createClient({
+        status: async () => ({}),
+        replyStream: async (_input, options) => {
+          options.onEvent({
+            type: "tool-call",
+            toolCallId: "call_search",
+            toolName: "search-files",
+            args: { pattern: "needle" },
+          });
+          options.onEvent({
+            type: "tool-result",
+            toolCallId: "call_search",
+            toolName: "search-files",
+            isError: false,
+          });
+          return { model: "gpt-5-mini", output: "No matches found." };
+        },
+      }),
+    });
+
+    await submit("search for needle");
+
+    expect(
+      rows.some((row) => row.role === "assistant" && row.style === "toolProgress" && row.toolName === "search-files"),
+    ).toBe(false);
+    expect(rows.some((row) => row.role === "assistant" && row.content === "No matches found.")).toBe(true);
   });
 
   test("maps quota errors to user-facing submit error", async () => {

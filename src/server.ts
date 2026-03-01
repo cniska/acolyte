@@ -18,6 +18,7 @@ import { createSoulPrompt, getMemoryContextEntries } from "./soul";
 import type { StreamErrorDetail } from "./stream-error";
 import { TaskRegistry } from "./task-registry";
 import { extractToolErrorCode } from "./tool-error-codes";
+import { createDebugLogger } from "./debug-flags";
 
 const PORT = appConfig.server.port;
 const API_KEY = appConfig.server.apiKey;
@@ -27,6 +28,10 @@ const omConfig = getObservationalMemoryConfig();
 const SUPPRESSED_STDERR_PREFIX = "Upstream LLM API error from";
 const SERVER_IDLE_TIMEOUT_SECONDS = Math.max(30, Math.ceil(appConfig.server.replyTimeoutMs / 1000) + 30);
 const taskRegistry = new TaskRegistry();
+const debug = createDebugLogger({
+  scope: "server",
+  sink: (line) => log.debug(line),
+});
 
 const originalConsoleError = console.error.bind(console);
 console.error = (...args: unknown[]): void => {
@@ -260,6 +265,13 @@ async function runChatRequest(chatRequest: ChatRequest, handlers: RunChatHandler
       shouldYield: handlers.shouldYield,
       onEvent: (event) => {
         if (handlers.isCancelled?.()) return;
+        if ((event as { type?: string }).type === "tool-output")
+          debug.log("tool-stream-forward", {
+            task_id: handlers.taskId ?? null,
+            type: "tool-output",
+            tool: (event as { toolName?: unknown }).toolName,
+            tool_call_id: (event as { toolCallId?: unknown }).toolCallId,
+          });
         handlers.onEvent(event as Record<string, unknown>);
       },
       onDebug: (entry) => {

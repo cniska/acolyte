@@ -146,6 +146,30 @@ describe("finalizeAssistantOutput", () => {
     expect(out).toBe(raw);
   });
 
+  test("compresses verbose tool-backed output into a short outcome", () => {
+    const raw = [
+      "Done — I applied both edits.",
+      "",
+      "What I changed",
+      "- File: scripts/reverse_word.py",
+      "- Added flags and examples.",
+    ].join("\n");
+    const out = finalizeAssistantOutput(raw, "update script", 2);
+    expect(out).toBe("I applied both edits.");
+  });
+
+  test("keeps verbose tool-backed output when user asks for details", () => {
+    const raw = [
+      "Done — I applied both edits.",
+      "",
+      "What I changed",
+      "- File: scripts/reverse_word.py",
+      "- Added flags and examples.",
+    ].join("\n");
+    const out = finalizeAssistantOutput(raw, "explain what changed in detail", 2);
+    expect(out).toBe(raw);
+  });
+
   test("returns tool-executed fallback when output is empty after tool calls", () => {
     expect(finalizeAssistantOutput("   ", "check status", 2)).toBe(
       "No final response after tool execution. Retry, or check server logs if this repeats.",
@@ -357,6 +381,12 @@ describe("formatToolHeader", () => {
 
   test("formats run command with command text", () => {
     expect(formatToolHeader("run-command", { command: "bun run verify" })).toBe("Run bun run verify");
+  });
+
+  test("keeps discovery and read headers concise", () => {
+    expect(formatToolHeader("find-files", { patterns: ["src/lifecycle.ts", "src/agent.ts"] })).toBe("Find");
+    expect(formatToolHeader("search-files", { pattern: "createAcolyte" })).toBe("Search");
+    expect(formatToolHeader("read-file", { paths: [{ path: "src/lifecycle.ts" }] })).toBe("Read");
   });
 
   test("formats edit-code with file path", () => {

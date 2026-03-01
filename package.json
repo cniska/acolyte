@@ -7,11 +7,12 @@
     "acolyte": "./src/cli.ts"
   },
   "scripts": {
-    "dev": "ACOLYTE_SET_API_URL=1 ./scripts/with-server.sh serve:env:watch bun run src/cli.ts",
-    "start": "ACOLYTE_SET_API_URL=1 ./scripts/with-server.sh serve:env bun run src/cli.ts",
+    "client": "bun run src/cli.ts",
+    "dev": "ACOLYTE_SERVER_RESTART=1 ACOLYTE_SET_API_URL=1 ./scripts/with-server.sh serve:env:watch bun run src/cli.ts",
+    "start": "bun run client",
     "run": "bun run src/cli.ts run",
     "dogfood": "bun run src/cli.ts dogfood",
-    "dogfood:smoke": "./scripts/with-server.sh serve:env bun run scripts/dogfood-smoke.ts",
+    "dogfood:smoke": "ACOLYTE_SERVER_RESTART=1 ./scripts/with-server.sh serve:env bun run scripts/dogfood-smoke.ts",
     "dogfood:progress": "bun run scripts/dogfood-progress.ts",
     "dogfood:gate": "bun run scripts/dogfood-gate.ts",
     "trace:lifecycle": "bun run scripts/lifecycle-trace.ts",

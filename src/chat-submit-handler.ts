@@ -16,6 +16,7 @@ import type { PermissionMode } from "./config-modes";
 import { addMemory, type MemoryScope } from "./memory";
 import { createId } from "./short-id";
 import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
+import { normalizeToolFileSummaryHeader, shouldSuppressEmptyToolProgressRow } from "./tool-summary-format";
 import type { Message, Session, SessionStore } from "./types";
 
 type CreateSubmitHandlerInput = {
@@ -389,6 +390,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
     const toolRowIdByCallId = new Map<string, string>();
     const toolSeenLinesByCallId = new Map<string, Set<string>>();
     const pendingToolCallById = new Map<string, { header: string; toolName: string }>();
+    const toolHasBodyOutputByCallId = new Set<string>();
     const toolHeaders = new Set<string>();
     let streamFlushTimer: ReturnType<typeof setTimeout> | null = null;
     const STREAM_FLUSH_MS = 50;
@@ -483,6 +485,18 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
             ];
           }
           const next = [...current];
+          const mergedHeader = !existingRow.content.includes("\n")
+            ? normalizeToolFileSummaryHeader(existingRow.content, entry.toolName, content)
+            : null;
+          if (mergedHeader) {
+            toolHasBodyOutputByCallId.add(entry.toolCallId);
+            next[existingIndex] = {
+              ...existingRow,
+              content: mergedHeader,
+            };
+            return next;
+          }
+          toolHasBodyOutputByCallId.add(entry.toolCallId);
           next[existingIndex] = {
             ...existingRow,
             content: `${existingRow.content}\n${content}`,
@@ -495,6 +509,16 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
           entry.isError &&
           (entry.errorCode === LIFECYCLE_ERROR_CODES.guardBlocked || entry.errorDetail?.category === "guard-blocked");
         if (guardBlocked) {
+          pendingToolCallById.delete(entry.toolCallId);
+          const rowId = toolRowIdByCallId.get(entry.toolCallId);
+          toolRowIdByCallId.delete(entry.toolCallId);
+          toolSeenLinesByCallId.delete(entry.toolCallId);
+          toolHasBodyOutputByCallId.delete(entry.toolCallId);
+          if (!rowId) return;
+          input.setRows((current) => current.filter((row) => row.id !== rowId));
+          return;
+        }
+        if (!toolHasBodyOutputByCallId.has(entry.toolCallId) && shouldSuppressEmptyToolProgressRow(entry.toolName)) {
           pendingToolCallById.delete(entry.toolCallId);
           const rowId = toolRowIdByCallId.get(entry.toolCallId);
           toolRowIdByCallId.delete(entry.toolCallId);

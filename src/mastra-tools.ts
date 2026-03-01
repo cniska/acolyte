@@ -10,9 +10,12 @@ import { compactToolOutput } from "./tool-output";
 import {
   emitFileListSummary,
   emitResultChunks,
+  emitSearchSummary,
   findResultPaths,
   numberedUnifiedDiffLines,
   searchResultPaths,
+  TOOL_OUTPUT_FILES_MAX_ROWS,
+  TOOL_OUTPUT_RUN_MAX_ROWS,
 } from "./tool-output-format";
 import {
   deleteTextFile,
@@ -122,7 +125,7 @@ function createRunCommandTool(workspace: string, session: SessionContext, onTool
       return withToolError("run-command", () =>
         guardedExecute("run-command", input as Record<string, unknown>, session, async () => {
           const toolCallId = streamCallId("run-command");
-          const maxStreamLines = 5;
+          const maxStreamLines = TOOL_OUTPUT_RUN_MAX_ROWS;
           let streamedLines = 0;
           let totalLines = 0;
           let stdoutBuffer = "";
@@ -244,7 +247,15 @@ function createFindFilesTool(workspace: string, session: SessionContext, onToolO
             maxLines: Math.max(20, Math.floor(baseBudget.maxLines / count) * count),
           };
           const result = compactToolOutput(await findFiles(workspace, input.patterns, maxResults), budget);
-          emitFileListSummary("find-files", findResultPaths(result), onToolOutput, toolCallId);
+          const paths = findResultPaths(result);
+          emitFileListSummary(
+            "find-files",
+            paths,
+            onToolOutput,
+            toolCallId,
+            TOOL_OUTPUT_FILES_MAX_ROWS,
+            workspace,
+          );
           return { result };
         }),
       );
@@ -270,7 +281,15 @@ function createSearchFilesTool(workspace: string, session: SessionContext, onToo
             await searchFiles(workspace, input.pattern, maxResults),
             appConfig.agent.toolOutputBudget.searchFiles,
           );
-          emitFileListSummary("search-files", searchResultPaths(result), onToolOutput, toolCallId);
+          const paths = searchResultPaths(result);
+          emitSearchSummary(
+            paths,
+            input.pattern,
+            onToolOutput,
+            toolCallId,
+            TOOL_OUTPUT_FILES_MAX_ROWS,
+            workspace,
+          );
           return { result };
         }),
       );
@@ -293,7 +312,14 @@ function createScanCodeTool(workspace: string, session: SessionContext, onToolOu
       return withToolError("scan-code", () =>
         guardedExecute("scan-code", input as Record<string, unknown>, session, async () => {
           const toolCallId = streamCallId("scan-code");
-          emitFileListSummary("scan-code", input.paths, onToolOutput, toolCallId);
+          emitFileListSummary(
+            "scan-code",
+            input.paths,
+            onToolOutput,
+            toolCallId,
+            TOOL_OUTPUT_FILES_MAX_ROWS,
+            workspace,
+          );
           const baseBudget = appConfig.agent.toolOutputBudget.scanCode;
           const count = input.paths.length * input.patterns.length;
           const budget = {
@@ -347,6 +373,8 @@ function createReadFileTool(workspace: string, session: SessionContext, onToolOu
             input.paths.map((entry) => entry.path),
             onToolOutput,
             toolCallId,
+            TOOL_OUTPUT_FILES_MAX_ROWS,
+            workspace,
           );
           const entries = input.paths.map((p) => ({
             path: p.path,

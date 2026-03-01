@@ -25,7 +25,7 @@ describe("cli-format", () => {
     expect(out).toContain("duration_ms=42");
     expect(out).toContain("stdout:");
     expect(out).toContain("line-1");
-    expect(out).toContain("… +10 lines");
+    expect(out).toContain("… +11 lines");
     expect(out).not.toContain("line-15");
   });
 

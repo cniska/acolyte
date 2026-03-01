@@ -14,15 +14,22 @@ import {
   formatPromptError,
 } from "./cli-format";
 import { createClient } from "./client";
+import { createDebugLogger } from "./debug-flags";
 import { buildFileContext } from "./file-context";
 import { ensureLocalServer } from "./server-daemon";
 import { acquireSessionLock, releaseSessionLock } from "./session-lock";
 import { createId } from "./short-id";
+import { normalizeToolFileSummaryHeader, shouldSuppressEmptyToolProgressRow } from "./tool-summary-format";
 import { createSession, readStore, writeStore } from "./storage";
 import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
 import { parseToolProgressLine } from "./tool-progress";
 import type { Message, Session, SessionStore } from "./types";
 import { clearScreen, printDim, printError, printOutput, streamText } from "./ui";
+
+const debug = createDebugLogger({
+  scope: "cli",
+  sink: (line) => printDim(line),
+});
 
 export function extractVersionFromPackageJsonText(text: string): string | null {
   try {
@@ -217,6 +224,7 @@ export async function handlePrompt(
     const toolLineWidthByCallId = new Map<string, number>();
     const toolBulletPrintedByCallId = new Map<string, boolean>();
     const pendingToolHeaderByCallId = new Map<string, string>();
+    const toolHasBodyOutputByCallId = new Set<string>();
     const ensureToolHeaderPrinted = (toolCallId: string): void => {
       if (toolBulletPrintedByCallId.get(toolCallId)) return;
       const header = pendingToolHeaderByCallId.get(toolCallId);
@@ -269,8 +277,26 @@ export async function handlePrompt(
         pendingToolHeaderByCallId.set(entry.toolCallId, header);
       },
       onToolOutput: (entry) => {
+        debug.log("tool-stream", {
+          id: entry.toolCallId,
+          tool: entry.toolName,
+          content: entry.content,
+        });
+        const summaryHeader = normalizeToolFileSummaryHeader(
+          pendingToolHeaderByCallId.get(entry.toolCallId) ?? "",
+          entry.toolName,
+          entry.content,
+        );
+        if (summaryHeader && !toolBulletPrintedByCallId.get(entry.toolCallId)) {
+          pendingToolHeaderByCallId.set(entry.toolCallId, summaryHeader);
+          ensureToolHeaderPrinted(entry.toolCallId);
+          toolHasBodyOutputByCallId.add(entry.toolCallId);
+          return;
+        }
+        toolHasBodyOutputByCallId.add(entry.toolCallId);
         ensureToolHeaderPrinted(entry.toolCallId);
         const delta = deltaForToolUpdate({ message: entry.content, toolCallId: entry.toolCallId });
+        debug.log("tool-stream-delta", { content: delta });
         if (!delta) return;
         const lineNumberWidth = toolLineWidthByCallId.get(entry.toolCallId);
         const includeBullet = !toolBulletPrintedByCallId.get(entry.toolCallId);
@@ -283,6 +309,10 @@ export async function handlePrompt(
           entry.isError &&
           (entry.errorCode === LIFECYCLE_ERROR_CODES.guardBlocked || entry.errorDetail?.category === "guard-blocked");
         if (guardBlocked) {
+          pendingToolHeaderByCallId.delete(entry.toolCallId);
+          return;
+        }
+        if (!toolHasBodyOutputByCallId.has(entry.toolCallId) && shouldSuppressEmptyToolProgressRow(entry.toolName)) {
           pendingToolHeaderByCallId.delete(entry.toolCallId);
           return;
         }

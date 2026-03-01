@@ -1,8 +1,11 @@
+import { isAbsolute, relative } from "node:path";
 import { countLabel } from "./plural";
-import { formatToolLabel } from "./tool-labels";
+import { formatToolFileSummaryHeader } from "./tool-summary-format";
 import type { ToolName } from "./tool-names";
 
 type ToolOutputListener = (event: { toolName: ToolName; message: string; toolCallId?: string }) => void;
+export const TOOL_OUTPUT_RUN_MAX_ROWS = 5;
+export const TOOL_OUTPUT_FILES_MAX_ROWS = 5;
 
 export function emitResultChunks(
   toolName: ToolName,
@@ -33,19 +36,19 @@ export function emitFileListSummary(
   filePaths: string[],
   onToolOutput?: ToolOutputListener,
   toolCallId?: string,
-  maxFiles = 5,
+  maxFiles = TOOL_OUTPUT_FILES_MAX_ROWS,
+  workspace?: string,
 ): void {
   if (!onToolOutput) return;
-  const unique = Array.from(new Set(filePaths.map((path) => path.trim()).filter((path) => path.length > 0)));
-  if (unique.length === 0) return;
-  onToolOutput({
+  emitSummaryFileRows({
     toolName,
-    message: `${formatToolLabel(toolName)} ${countLabel(unique.length, "file", "files")}`,
+    filePaths,
+    onToolOutput,
     toolCallId,
+    maxFiles,
+    header: (count) => formatToolFileSummaryHeader(toolName, count),
+    lineForPath: (path) => toDisplayPath(path, workspace),
   });
-  for (const path of unique.slice(0, maxFiles)) onToolOutput({ toolName, message: `  ${path}`, toolCallId });
-  if (unique.length > maxFiles)
-    onToolOutput({ toolName, message: `  … +${countLabel(unique.length - maxFiles, "file", "files")}`, toolCallId });
 }
 
 export function findResultPaths(result: string): string[] {
@@ -64,6 +67,84 @@ export function searchResultPaths(result: string): string[] {
     if (path.startsWith("./")) files.add(path);
   }
   return Array.from(files);
+}
+
+function toDisplayPath(path: string, workspace?: string): string {
+  const trimmed = path.trim().replace(/\\/g, "/");
+  if (trimmed.startsWith("./")) return trimmed.slice(2);
+  if (!workspace || !isAbsolute(trimmed)) return trimmed;
+  const rel = relative(workspace, trimmed).replace(/\\/g, "/");
+  if (rel.length === 0 || rel.startsWith("../")) return trimmed;
+  return rel;
+}
+
+function uniquePaths(filePaths: string[]): string[] {
+  return Array.from(new Set(filePaths.map((path) => path.trim()).filter((path) => path.length > 0)));
+}
+
+function emitSummaryFileRows(input: {
+  toolName: ToolName;
+  filePaths: string[];
+  onToolOutput?: ToolOutputListener;
+  toolCallId?: string;
+  maxFiles: number;
+  header: (count: number) => string;
+  lineForPath: (path: string) => string;
+}): void {
+  const { toolName, filePaths, onToolOutput, toolCallId, maxFiles, header, lineForPath } = input;
+  if (!onToolOutput) return;
+  const unique = uniquePaths(filePaths);
+  if (unique.length === 0) return;
+  onToolOutput({
+    toolName,
+    message: header(unique.length),
+    toolCallId,
+  });
+  for (const path of unique.slice(0, maxFiles)) {
+    onToolOutput({
+      toolName,
+      message: lineForPath(path),
+      toolCallId,
+    });
+  }
+  if (unique.length > maxFiles)
+    onToolOutput({ toolName, message: `… +${countLabel(unique.length - maxFiles, "file", "files")}`, toolCallId });
+}
+
+function escapeControlChars(value: string): string {
+  return value.replace(/[\x00-\x1F\x7F]/g, (char) => {
+    if (char === "\b") return "\\b";
+    if (char === "\t") return "\\t";
+    if (char === "\n") return "\\n";
+    if (char === "\r") return "\\r";
+    const code = char.charCodeAt(0).toString(16).padStart(2, "0");
+    return `\\x${code}`;
+  });
+}
+
+function truncateValue(value: string, maxChars: number): string {
+  if (value.length <= maxChars) return value;
+  return `${value.slice(0, Math.max(0, maxChars - 1))}…`;
+}
+
+export function emitSearchSummary(
+  filePaths: string[],
+  pattern: string,
+  onToolOutput?: ToolOutputListener,
+  toolCallId?: string,
+  maxFiles = TOOL_OUTPUT_FILES_MAX_ROWS,
+  workspace?: string,
+): void {
+  const compactPattern = escapeControlChars(truncateValue(pattern.trim(), 48));
+  emitSummaryFileRows({
+    toolName: "search-files",
+    filePaths,
+    onToolOutput,
+    toolCallId,
+    maxFiles,
+    header: (count) => `Search ${countLabel(count, "file", "files")} using ${countLabel(1, "pattern", "patterns")}`,
+    lineForPath: (path) => `${toDisplayPath(path, workspace)} ${compactPattern}`,
+  });
 }
 
 function unifiedDiffLines(rawResult: string, maxLines = 120): string[] {

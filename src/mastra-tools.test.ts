@@ -8,6 +8,7 @@ import { savedPermissionMode } from "./test-factory";
 import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
 
 const restorePermissions = savedPermissionMode();
+const stripOsc8 = (value: string): string => value.replace(/\u001B\]8;;[^\u0007]*\u0007/g, "").replace(/\u001B\]8;;\u0007/g, "");
 
 afterEach(restorePermissions);
 
@@ -204,7 +205,7 @@ describe("read/scan tool output contract", () => {
     setPermissionMode("read");
     const workspace = await mkdtemp(join(tmpdir(), "acolyte-read-contract-"));
     try {
-      const paths = ["a.ts", "b.ts", "c.ts", "d.ts", "e.ts", "f.ts"].map((file) => join(workspace, file));
+      const paths = ["a.ts", "b.ts", "c.ts", "d.ts", "e.ts", "f.ts", "g.ts"].map((file) => join(workspace, file));
       for (const [index, path] of paths.entries())
         await writeFile(path, `export const v${index + 1} = ${index + 1};\n`, "utf8");
 
@@ -227,9 +228,10 @@ describe("read/scan tool output contract", () => {
       );
 
       const lines = outputByTool.get("read-file") ?? [];
-      expect(lines[0]).toBe("Read 6 files");
-      expect(lines.slice(1, 6)).toEqual(paths.slice(0, 5).map((path) => `  ${path}`));
-      expect(lines[6]).toBe("  … +1 file");
+      const plain = lines.map(stripOsc8);
+      expect(lines[0]).toBe("Read 7 files");
+      expect(plain.slice(1, 6)).toEqual(["a.ts", "b.ts", "c.ts", "d.ts", "e.ts"]);
+      expect(plain[6]).toBe("… +2 files");
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -263,14 +265,16 @@ describe("read/scan tool output contract", () => {
       await searchFilesTool.execute({ pattern: "needle", maxResults: 10 }, {} as never);
 
       const findLines = outputByTool.get("find-files") ?? [];
+      const plainFind = findLines.map(stripOsc8);
       expect(findLines[0]).toBe("Find 2 files");
-      expect(findLines).toContain("  ./alpha.ts");
-      expect(findLines).toContain("  ./beta.ts");
+      expect(plainFind).toContain("alpha.ts");
+      expect(plainFind).toContain("beta.ts");
 
       const searchLines = outputByTool.get("search-files") ?? [];
-      expect(searchLines[0]).toBe("Search 2 files");
-      expect(searchLines).toContain("  ./alpha.ts");
-      expect(searchLines).toContain("  ./beta.ts");
+      const plainSearch = searchLines.map(stripOsc8);
+      expect(searchLines[0]).toBe("Search 2 files using 1 pattern");
+      expect(plainSearch).toContain("alpha.ts needle");
+      expect(plainSearch).toContain("beta.ts needle");
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }

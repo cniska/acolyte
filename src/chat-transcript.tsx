@@ -73,19 +73,11 @@ function renderStatusContent(content: string): React.ReactNode {
   );
 }
 
-const FILE_HEADER_VERBS = ["Edit", "Create", "Read", "Delete", "Diff", "Status"];
-
 function renderProgressHeader(header: { verb: string; path: string }): React.ReactNode {
   return (
     <>
       <Text bold>{`${header.verb} `}</Text>
-      {FILE_HEADER_VERBS.includes(header.verb) ? (
-        <Text underline color={palette.textPath}>
-          {header.path}
-        </Text>
-      ) : (
-        <Text dimColor>{header.path}</Text>
-      )}
+      <Text>{header.path}</Text>
     </>
   );
 }

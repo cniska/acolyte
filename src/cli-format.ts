@@ -3,6 +3,7 @@ import { z } from "zod";
 import { wrapAssistantContent } from "./chat-content";
 import { countLabel } from "./plural";
 import { parseToolProgressLine } from "./tool-progress";
+import { TOOL_OUTPUT_RUN_MAX_ROWS } from "./tool-output-format";
 import { printDim, printOutput, printToolHeader } from "./ui";
 
 export { countLabel } from "./plural";
@@ -149,7 +150,7 @@ export function formatRunOutput(raw: string): string {
     if (name === "stderr:" && exitCode === 0 && stdoutIdx >= 0) payload = [];
     if (payload.length === 0) return;
     out.push(name);
-    out.push(...clampLines(payload, 6));
+    out.push(...clampLines(payload, TOOL_OUTPUT_RUN_MAX_ROWS));
   };
 
   const nextAfterStdout = stderrIdx >= 0 ? stderrIdx : lines.length;

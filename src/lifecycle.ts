@@ -730,6 +730,12 @@ export async function runLifecycle(input: LifecycleInput): Promise<ChatResponse>
     if (!event.message.trim()) return;
     const queue = ctx.nativeIdQueue.get(event.toolName);
     const nativeId = queue?.[queue.length - 1] ?? event.toolCallId ?? event.toolName;
+    ctx.debug("lifecycle.tool.output", {
+      tool: event.toolName,
+      stream_tool_call_id: event.toolCallId ?? null,
+      emitted_tool_call_id: nativeId,
+      preview: event.message.length > 120 ? `${event.message.slice(0, 119)}…` : event.message,
+    });
     ctx.emit({
       type: "tool-output",
       toolCallId: nativeId,
