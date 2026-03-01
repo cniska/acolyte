@@ -101,7 +101,7 @@ describe("tool output contract: read-file", () => {
 
       assertToolOutput(outputByTool, "read-file", { paths: files.map((path) => ({ path })) }, {
         raw: ["paths=4 targets=[a.ts, b.ts, c.ts] omitted=1"],
-        formatted: "• Read a.ts, b.ts, c.ts +1 file",
+        formatted: "• Read a.ts, b.ts, c.ts, +1",
       });
     } finally {
       await rm(workspace, { recursive: true, force: true });
@@ -194,7 +194,7 @@ describe("tool output contract: find-files", () => {
           "f3.ts",
           "f4.ts",
           "f5.ts",
-          "[truncated] +3 files",
+          "[truncated] +3",
         ],
         formatted: dedent(`
           • Find scope=workspace patterns=[*.ts] matches=8
@@ -203,7 +203,7 @@ describe("tool output contract: find-files", () => {
               f3.ts
               f4.ts
               f5.ts
-              … +3 files
+              … +3
         `),
       });
     } finally {
@@ -488,7 +488,7 @@ describe("tool output contract: search-files", () => {
           "f3.ts [p3@1]",
           "f4.ts [p4@1]",
           "f5.ts [p5@1]",
-          "[truncated] +1 file",
+          "[truncated] +1",
         ],
         formatted: dedent(`
           • Search scope=workspace patterns=[p1, p2, p3, p4, p5, p6] matches=6
@@ -497,7 +497,7 @@ describe("tool output contract: search-files", () => {
               f3.ts [p3@1]
               f4.ts [p4@1]
               f5.ts [p5@1]
-              … +1 file
+              … +1
         `),
       });
     } finally {
@@ -550,7 +550,7 @@ describe("tool output contract: scan-code", () => {
         { paths: files, patterns: ["export const $NAME = $VALUE;"], maxResults: 10 },
         {
           raw: ["paths=4 targets=[a.ts, b.ts, c.ts] omitted=1"],
-          formatted: "• Review a.ts, b.ts, c.ts +1 file",
+          formatted: "• Review a.ts, b.ts, c.ts, +1",
         },
       );
     } finally {

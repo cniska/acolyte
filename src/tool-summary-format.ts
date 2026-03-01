@@ -52,7 +52,7 @@ export function mergeToolOutputHeader(header: string, toolName: string, line: st
     const omitted = Number.parseInt(match[3] ?? "0", 10);
     if (targets.length === 0) return `${label}`;
     const list = targets.join(", ");
-    if (Number.isFinite(omitted) && omitted > 0) return `${label} ${list} +${countLabel(omitted, "file", "files")}`;
+    if (Number.isFinite(omitted) && omitted > 0) return `${label} ${list}, +${omitted}`;
     return `${label} ${list}`;
   }
   if (

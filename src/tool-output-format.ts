@@ -239,7 +239,7 @@ function emitSummaryFileRows(input: {
   if (unique.length > maxFiles)
     onToolOutput({
       toolName,
-      message: `${TOOL_OUTPUT_MARKERS.truncated} +${countLabel(unique.length - maxFiles, "file", "files")}`,
+      message: `${TOOL_OUTPUT_MARKERS.truncated} +${unique.length - maxFiles}`,
       toolCallId,
     });
 }
