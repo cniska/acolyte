@@ -71,7 +71,7 @@ export async function toolMode(args: string[]): Promise<void> {
       case "search": {
         const pattern = requireArg(rest, "Usage: acolyte tool search <pattern>");
         if (!pattern) return;
-        const result = await searchFiles(process.cwd(), pattern);
+        const result = await searchFiles(process.cwd(), [pattern]);
         showToolResult("Search", formatForTool("search", result), "tool", pattern);
         return;
       }
