@@ -31,6 +31,7 @@ Development:
 - Start from latest `main` before new work.
 - Read relevant files before editing.
 - Keep changes scoped, minimal, and well-engineered.
+- Do not edit out-of-scope files without explicit approval.
 - Preserve established local intent (code/tests/docs) unless explicitly asked to change it.
 - Prefer editing existing files over creating new ones unless necessary.
 - Do not guess; use concrete evidence (errors, logs, tests, source) before changing code.
