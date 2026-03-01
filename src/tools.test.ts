@@ -11,10 +11,11 @@ import {
   readSnippet,
   runShellCommand,
   scanCode,
+  searchFiles,
   writeTextFile,
 } from "./tools";
 
-const WS = resolve(process.cwd());
+const WORKSPACE = resolve(process.cwd());
 const tempFiles: string[] = [];
 const tempDirs: string[] = [];
 const initialPermissionMode = appConfig.agent.permissions.mode;
@@ -35,13 +36,13 @@ describe("coding-tools workspace guards", () => {
   });
 
   test("readSnippet blocks paths outside workspace", async () => {
-    await expect(readSnippet(WS, "/etc/hosts")).rejects.toThrow("Read is restricted to the workspace or /tmp");
+    await expect(readSnippet(WORKSPACE, "/etc/hosts")).rejects.toThrow("Read is restricted to the workspace or /tmp");
   });
 
   test("editFile blocks paths outside workspace", async () => {
     await expect(
       editFile({
-        workspace: WS,
+        workspace: WORKSPACE,
         path: "/etc/hosts",
         edits: [{ find: "a", replace: "b" }],
       }),
@@ -49,7 +50,7 @@ describe("coding-tools workspace guards", () => {
   });
 
   test("runShellCommand blocks absolute paths outside workspace", async () => {
-    await expect(runShellCommand(WS, "echo hi > /etc/acolyte-outside.txt")).rejects.toThrow(
+    await expect(runShellCommand(WORKSPACE, "echo hi > /etc/acolyte-outside.txt")).rejects.toThrow(
       "Command references path outside workspace and /tmp",
     );
   });
@@ -58,7 +59,7 @@ describe("coding-tools workspace guards", () => {
     const filePath = `/tmp/acolyte-tmp-read-${crypto.randomUUID()}.txt`;
     tempFiles.push(filePath);
     await writeFile(filePath, "hello from tmp", "utf8");
-    const output = await readSnippet(WS, filePath, "1", "1");
+    const output = await readSnippet(WORKSPACE, filePath, "1", "1");
     expect(output).toContain("hello from tmp");
   });
 
@@ -67,7 +68,7 @@ describe("coding-tools workspace guards", () => {
     tempFiles.push(filePath);
     await writeFile(filePath, "alpha beta", "utf8");
     const output = await editFile({
-      workspace: WS,
+      workspace: WORKSPACE,
       path: filePath,
       edits: [{ find: "beta", replace: "gamma" }],
     });
@@ -78,9 +79,9 @@ describe("coding-tools workspace guards", () => {
     const filePath = `/tmp/acolyte-tmp-multi-${crypto.randomUUID()}.txt`;
     tempFiles.push(filePath);
     await writeFile(filePath, "foo bar foo baz foo", "utf8");
-    await expect(editFile({ workspace: WS, path: filePath, edits: [{ find: "foo", replace: "qux" }] })).rejects.toThrow(
-      "matched 3 locations",
-    );
+    await expect(
+      editFile({ workspace: WORKSPACE, path: filePath, edits: [{ find: "foo", replace: "qux" }] }),
+    ).rejects.toThrow("matched 3 locations");
   });
 
   test("editFile rejects replace text that duplicates content after edit point", async () => {
@@ -90,7 +91,7 @@ describe("coding-tools workspace guards", () => {
     // replace includes line3-line5 which already follow the edit point
     await expect(
       editFile({
-        workspace: WS,
+        workspace: WORKSPACE,
         path: filePath,
         edits: [{ find: "line1\nline2", replace: "line1_new\nline2_new\nline3\nline4\nline5" }],
       }),
@@ -100,18 +101,18 @@ describe("coding-tools workspace guards", () => {
   test("runShellCommand allows /tmp paths", async () => {
     const filePath = `/tmp/acolyte-tmp-run-${crypto.randomUUID()}.txt`;
     tempFiles.push(filePath);
-    const output = await runShellCommand(WS, `printf 'ok' > ${filePath}`);
+    const output = await runShellCommand(WORKSPACE, `printf 'ok' > ${filePath}`);
     expect(output).toContain("exit_code=0");
   });
 
   test("runShellCommand allows in-workspace commands", async () => {
-    const output = await runShellCommand(WS, "printf 'ok'");
+    const output = await runShellCommand(WORKSPACE, "printf 'ok'");
     expect(output).toContain("exit_code=0");
     expect(output).toContain("ok");
   });
 
   test("runShellCommand blocks home paths", async () => {
-    await expect(runShellCommand(WS, "cat ~/Documents")).rejects.toThrow(
+    await expect(runShellCommand(WORKSPACE, "cat ~/Documents")).rejects.toThrow(
       "Command references home path outside allowed roots",
     );
   });
@@ -128,12 +129,12 @@ describe("coding-tools workspace guards", () => {
     const restore = savedPermissionMode();
     setPermissionMode("read");
     try {
-      await expect(runShellCommand(WS, "printf 'ok'")).rejects.toThrow(
+      await expect(runShellCommand(WORKSPACE, "printf 'ok'")).rejects.toThrow(
         "Shell command execution is disabled in read mode",
       );
       await expect(
         editFile({
-          workspace: WS,
+          workspace: WORKSPACE,
           path: join(process.cwd(), "README.md"),
           edits: [{ find: "Acolyte", replace: "Acolyte" }],
           dryRun: true,
@@ -149,7 +150,7 @@ describe("coding-tools workspace guards", () => {
     tempFiles.push(filePath);
     await writeFile(filePath, "alpha beta", "utf8");
     const result = await editFile({
-      workspace: WS,
+      workspace: WORKSPACE,
       path: filePath,
       edits: [{ find: "beta", replace: "gamma" }],
     });
@@ -161,7 +162,7 @@ describe("coding-tools workspace guards", () => {
     tempFiles.push(filePath);
     await writeFile(filePath, "line1\nline2\nline3\nline4\nline5\n", "utf8");
     const result = await editFile({
-      workspace: WS,
+      workspace: WORKSPACE,
       path: filePath,
       edits: [{ startLine: 2, endLine: 3, replace: "replaced2\nreplaced3\n" }],
     });
@@ -175,7 +176,7 @@ describe("coding-tools workspace guards", () => {
     tempFiles.push(filePath);
     await writeFile(filePath, "a\nb\nc\n", "utf8");
     await expect(
-      editFile({ workspace: WS, path: filePath, edits: [{ startLine: 5, endLine: 3, replace: "x" }] }),
+      editFile({ workspace: WORKSPACE, path: filePath, edits: [{ startLine: 5, endLine: 3, replace: "x" }] }),
     ).rejects.toThrow("startLine (5) must be <= endLine (3)");
   });
 
@@ -184,7 +185,7 @@ describe("coding-tools workspace guards", () => {
     tempFiles.push(filePath);
     await writeFile(filePath, "a\nb\nc\n", "utf8");
     // endLine 10 on a 3-line file should clamp to 3 and replace all content
-    await editFile({ workspace: WS, path: filePath, edits: [{ startLine: 1, endLine: 10, replace: "x" }] });
+    await editFile({ workspace: WORKSPACE, path: filePath, edits: [{ startLine: 1, endLine: 10, replace: "x" }] });
     const result = await readFile(filePath, "utf8");
     expect(result).toBe("x");
   });
@@ -194,7 +195,7 @@ describe("coding-tools workspace guards", () => {
     tempFiles.push(filePath);
     await writeFile(filePath, "a\nb\n", "utf8");
     await expect(
-      editFile({ workspace: WS, path: filePath, edits: [{ startLine: 0, endLine: 1, replace: "x" }] }),
+      editFile({ workspace: WORKSPACE, path: filePath, edits: [{ startLine: 0, endLine: 1, replace: "x" }] }),
     ).rejects.toThrow("Line numbers must be >= 1");
   });
 
@@ -203,7 +204,7 @@ describe("coding-tools workspace guards", () => {
     tempFiles.push(filePath);
     await writeFile(filePath, "aaa\nbbb\nccc\nddd\neee\n", "utf8");
     const result = await editFile({
-      workspace: WS,
+      workspace: WORKSPACE,
       path: filePath,
       edits: [
         { find: "aaa", replace: "AAA" },
@@ -221,7 +222,7 @@ describe("coding-tools workspace guards", () => {
     await writeFile(filePath, "a\nb\nc\nd\ne\n", "utf8");
     await expect(
       editFile({
-        workspace: WS,
+        workspace: WORKSPACE,
         path: filePath,
         edits: [
           { startLine: 1, endLine: 3, replace: "x\n" },
@@ -237,7 +238,7 @@ describe("coding-tools workspace guards", () => {
     const original = "line1\nline2\nline3\nline4\nline5\n";
     await writeFile(filePath, original, "utf8");
     const result = await editFile({
-      workspace: WS,
+      workspace: WORKSPACE,
       path: filePath,
       edits: [{ startLine: 1, endLine: 5, replace: "entirely\nnew\ncontent\n" }],
     });
@@ -250,7 +251,7 @@ describe("coding-tools workspace guards", () => {
     const filePath = `/tmp/acolyte-tmp-write-${crypto.randomUUID()}.txt`;
     tempFiles.push(filePath);
     const result = await writeTextFile({
-      workspace: WS,
+      workspace: WORKSPACE,
       path: filePath,
       content: "hello",
     });
@@ -260,7 +261,7 @@ describe("coding-tools workspace guards", () => {
   test("writeTextFile blocks paths outside workspace", async () => {
     await expect(
       writeTextFile({
-        workspace: WS,
+        workspace: WORKSPACE,
         path: "/etc/acolyte.txt",
         content: "x",
       }),
@@ -273,7 +274,7 @@ describe("coding-tools workspace guards", () => {
     try {
       await expect(
         writeTextFile({
-          workspace: WS,
+          workspace: WORKSPACE,
           path: join(process.cwd(), `tmp-read-block-${crypto.randomUUID()}.txt`),
           content: "x",
         }),
@@ -287,13 +288,13 @@ describe("coding-tools workspace guards", () => {
     const filePath = `/tmp/acolyte-tmp-delete-${crypto.randomUUID()}.txt`;
     tempFiles.push(filePath);
     await writeFile(filePath, "alpha\nbeta\n", "utf8");
-    const result = await deleteTextFile({ workspace: WS, path: filePath });
+    const result = await deleteTextFile({ workspace: WORKSPACE, path: filePath });
     expect(result).toContain("bytes=");
-    await expect(readSnippet(WS, filePath)).rejects.toThrow();
+    await expect(readSnippet(WORKSPACE, filePath)).rejects.toThrow();
   });
 
   test("deleteTextFile blocks paths outside workspace", async () => {
-    await expect(deleteTextFile({ workspace: WS, path: "/etc/hosts" })).rejects.toThrow(
+    await expect(deleteTextFile({ workspace: WORKSPACE, path: "/etc/hosts" })).rejects.toThrow(
       "Delete is restricted to the workspace or /tmp",
     );
   });
@@ -302,7 +303,7 @@ describe("coding-tools workspace guards", () => {
     const restore = savedPermissionMode();
     setPermissionMode("read");
     try {
-      await expect(deleteTextFile({ workspace: WS, path: join(process.cwd(), "README.md") })).rejects.toThrow(
+      await expect(deleteTextFile({ workspace: WORKSPACE, path: join(process.cwd(), "README.md") })).rejects.toThrow(
         "File deletion is disabled in read mode",
       );
     } finally {
@@ -325,7 +326,7 @@ describe("editCode", () => {
     tempFiles.push(filePath);
     await writeFile(filePath, 'console.log("hello");\nconsole.log("world");\n', "utf8");
     const result = await editCode({
-      workspace: WS,
+      workspace: WORKSPACE,
       path: filePath,
       edits: [{ pattern: "console.log($ARG)", replacement: "logger.debug($ARG)" }],
     });
@@ -342,7 +343,7 @@ describe("editCode", () => {
     tempFiles.push(filePath);
     await writeFile(filePath, 'console.log("keep");\n', "utf8");
     const result = await editCode({
-      workspace: WS,
+      workspace: WORKSPACE,
       path: filePath,
       edits: [{ pattern: "console.log($ARG)", replacement: "logger.debug($ARG)" }],
       dryRun: true,
@@ -359,7 +360,7 @@ describe("editCode", () => {
     await writeFile(filePath, "const x = 1;\n", "utf8");
     await expect(
       editCode({
-        workspace: WS,
+        workspace: WORKSPACE,
         path: filePath,
         edits: [{ pattern: "console.log($ARG)", replacement: "logger.debug($ARG)" }],
       }),
@@ -369,7 +370,7 @@ describe("editCode", () => {
   test("blocks paths outside workspace", async () => {
     await expect(
       editCode({
-        workspace: WS,
+        workspace: WORKSPACE,
         path: "/etc/hosts",
         edits: [{ pattern: "console.log($ARG)", replacement: "logger.debug($ARG)" }],
       }),
@@ -382,7 +383,7 @@ describe("editCode", () => {
     await mkdir(dirPath, { recursive: true });
     await expect(
       editCode({
-        workspace: WS,
+        workspace: WORKSPACE,
         path: dirPath,
         edits: [{ pattern: "console.log($ARG)", replacement: "logger.debug($ARG)" }],
       }),
@@ -393,7 +394,7 @@ describe("editCode", () => {
     setPermissionMode("read");
     await expect(
       editCode({
-        workspace: WS,
+        workspace: WORKSPACE,
         path: join(process.cwd(), "src/agent.ts"),
         edits: [{ pattern: "console.log($ARG)", replacement: "logger.debug($ARG)" }],
       }),
@@ -405,7 +406,7 @@ describe("editCode", () => {
     tempFiles.push(filePath);
     await writeFile(filePath, 'print("hello")\nprint("world")\n', "utf8");
     const result = await editCode({
-      workspace: WS,
+      workspace: WORKSPACE,
       path: filePath,
       edits: [{ pattern: "print($ARG)", replacement: "log($ARG)" }],
     });
@@ -420,7 +421,7 @@ describe("editCode", () => {
     tempFiles.push(filePath);
     await writeFile(filePath, 'println!("hello");\nprintln!("world");\n', "utf8");
     const result = await editCode({
-      workspace: WS,
+      workspace: WORKSPACE,
       path: filePath,
       edits: [{ pattern: "println!($ARGS)", replacement: "eprintln!($ARGS)" }],
     });
@@ -435,7 +436,7 @@ describe("editCode", () => {
     tempFiles.push(filePath);
     await writeFile(filePath, 'package main\n\nfunc main() {\n\tprintln("hello")\n\tprintln("world")\n}\n', "utf8");
     const result = await editCode({
-      workspace: WS,
+      workspace: WORKSPACE,
       path: filePath,
       edits: [{ pattern: "println($ARG)", replacement: "print($ARG)" }],
     });
@@ -451,7 +452,7 @@ describe("scanCode", () => {
     const filePath = `/tmp/acolyte-scan-${crypto.randomUUID()}.ts`;
     tempFiles.push(filePath);
     await writeFile(filePath, 'console.log("hello");\nconsole.log("world");\nconst x = 1;\n', "utf8");
-    const result = await scanCode({ workspace: WS, paths: [filePath], pattern: "console.log($ARG)" });
+    const result = await scanCode({ workspace: WORKSPACE, paths: [filePath], pattern: "console.log($ARG)" });
     expect(result).toContain("scanned=1");
     expect(result).toContain("matches=2");
     expect(result).toContain('$ARG="hello"');
@@ -462,7 +463,7 @@ describe("scanCode", () => {
     const filePath = `/tmp/acolyte-scan-nomatch-${crypto.randomUUID()}.ts`;
     tempFiles.push(filePath);
     await writeFile(filePath, "const x = 1;\n", "utf8");
-    const result = await scanCode({ workspace: WS, paths: [filePath], pattern: "console.log($ARG)" });
+    const result = await scanCode({ workspace: WORKSPACE, paths: [filePath], pattern: "console.log($ARG)" });
     expect(result).toContain("matches=0");
     expect(result).toContain("No matches.");
   });
@@ -473,7 +474,7 @@ describe("scanCode", () => {
     await mkdir(join(dir, "sub"), { recursive: true });
     await writeFile(join(dir, "a.ts"), 'console.log("a");\n', "utf8");
     await writeFile(join(dir, "sub", "b.ts"), 'console.log("b");\nconst y = 2;\n', "utf8");
-    const result = await scanCode({ workspace: WS, paths: [dir], pattern: "console.log($ARG)" });
+    const result = await scanCode({ workspace: WORKSPACE, paths: [dir], pattern: "console.log($ARG)" });
     expect(result).toContain("scanned=2");
     expect(result).toContain("matches=2");
   });
@@ -483,12 +484,17 @@ describe("scanCode", () => {
     tempFiles.push(filePath);
     const lines = `${Array.from({ length: 10 }, (_, i) => `console.log("line${i}");`).join("\n")}\n`;
     await writeFile(filePath, lines, "utf8");
-    const result = await scanCode({ workspace: WS, paths: [filePath], pattern: "console.log($ARG)", maxResults: 3 });
+    const result = await scanCode({
+      workspace: WORKSPACE,
+      paths: [filePath],
+      pattern: "console.log($ARG)",
+      maxResults: 3,
+    });
     expect(result).toContain("matches=3");
   });
 
   test("blocks paths outside workspace", async () => {
-    await expect(scanCode({ workspace: WS, paths: ["/etc/hosts"], pattern: "const $X" })).rejects.toThrow(
+    await expect(scanCode({ workspace: WORKSPACE, paths: ["/etc/hosts"], pattern: "const $X" })).rejects.toThrow(
       "Scan is restricted to the workspace or /tmp",
     );
   });
@@ -498,7 +504,7 @@ describe("scanCode", () => {
     tempFiles.push(filePath);
     await writeFile(filePath, "const x = 1;\n", "utf8");
     setPermissionMode("read");
-    const result = await scanCode({ workspace: WS, paths: [filePath], pattern: "const $X = $V" });
+    const result = await scanCode({ workspace: WORKSPACE, paths: [filePath], pattern: "const $X = $V" });
     setPermissionMode(initialPermissionMode);
     expect(result).toContain("matches=1");
   });
@@ -508,7 +514,7 @@ describe("scanCode", () => {
     tempFiles.push(filePath);
     await writeFile(filePath, 'export function hello() {}\nexport const x = 1;\nconsole.log("test");\n', "utf8");
     const result = await scanCode({
-      workspace: WS,
+      workspace: WORKSPACE,
       paths: [filePath],
       pattern: ["export function $NAME() {}", "console.log($ARG)"],
     });
@@ -524,7 +530,7 @@ describe("scanCode", () => {
     tempFiles.push(filePath);
     await writeFile(filePath, "const x = 1;\n", "utf8");
     const result = await scanCode({
-      workspace: WS,
+      workspace: WORKSPACE,
       paths: [filePath],
       pattern: ["console.log($ARG)", "import $SPEC from $MOD"],
     });
@@ -540,7 +546,7 @@ describe("scanCode", () => {
     await writeFile(fileA, "export function foo() {}\n", "utf8");
     await writeFile(fileB, "export function bar() {}\n", "utf8");
     const result = await scanCode({
-      workspace: WS,
+      workspace: WORKSPACE,
       paths: [fileA, fileB],
       pattern: "export function $NAME() {}",
     });
@@ -548,5 +554,37 @@ describe("scanCode", () => {
     expect(result).toContain("matches=2");
     expect(result).toContain("$NAME=foo");
     expect(result).toContain("$NAME=bar");
+  });
+});
+
+describe("searchFiles", () => {
+  test("scopes matches to a single file path", async () => {
+    const dir = join(WORKSPACE, `acolyte-search-file-scope-${crypto.randomUUID()}`);
+    tempDirs.push(dir);
+    await mkdir(dir, { recursive: true });
+    const first = join(dir, "first.ts");
+    const second = join(dir, "second.ts");
+    await writeFile(first, 'export const first = "needle";\n', "utf8");
+    await writeFile(second, 'export const second = "needle";\n', "utf8");
+    const result = await searchFiles(WORKSPACE, ["needle"], 20, [first]);
+    const relFirst = first.slice(WORKSPACE.length + 1).replace(/\\/g, "/");
+    expect(result).toContain(`./${relFirst}:1:`);
+    expect(result).not.toContain("./second.ts:1:");
+  });
+
+  test("scopes matches to a directory path", async () => {
+    const dir = join(WORKSPACE, `acolyte-search-dir-scope-${crypto.randomUUID()}`);
+    tempDirs.push(dir);
+    await mkdir(join(dir, "sub"), { recursive: true });
+    await writeFile(join(dir, "sub", "inside.ts"), 'export const inside = "needle";\n', "utf8");
+    const outside = join(WORKSPACE, `acolyte-search-outside-${crypto.randomUUID()}.ts`);
+    tempFiles.push(outside);
+    await writeFile(outside, 'export const outside = "needle";\n', "utf8");
+    const result = await searchFiles(WORKSPACE, ["needle"], 20, [dir]);
+    const relInside = join(dir, "sub", "inside.ts")
+      .slice(WORKSPACE.length + 1)
+      .replace(/\\/g, "/");
+    expect(result).toContain(`./${relInside}:1:`);
+    expect(result).not.toContain(outside.split("/").at(-1) ?? "");
   });
 });
