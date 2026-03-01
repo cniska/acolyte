@@ -133,7 +133,7 @@ describe("tool error wrapper", () => {
 });
 
 describe("write tool output contract", () => {
-  test("edit/create/delete/edit-code emit numbered diff preview lines", async () => {
+  test("edit/create/edit-code emit numbered diff preview lines while delete stays header-only", async () => {
     setPermissionMode("write");
     const workspace = await mkdtemp(join(tmpdir(), "acolyte-tools-contract-"));
     try {
@@ -192,7 +192,7 @@ describe("write tool output contract", () => {
       expect(hasNumberedDiff(outputByTool.get("edit-file") ?? [])).toBe(true);
       expect(hasNumberedDiff(outputByTool.get("create-file") ?? [])).toBe(true);
       expect(hasNumberedDiff(outputByTool.get("edit-code") ?? [])).toBe(true);
-      expect(hasNumberedDiff(outputByTool.get("delete-file") ?? [])).toBe(true);
+      expect(outputByTool.get("delete-file") ?? []).toEqual([]);
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -230,6 +230,47 @@ describe("read/scan tool output contract", () => {
       expect(lines[0]).toBe("Read 6 files");
       expect(lines.slice(1, 6)).toEqual(paths.slice(0, 5).map((path) => `  ${path}`));
       expect(lines[6]).toBe("  … +1 file");
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+
+  test("find-files and search-files emit compact file list summaries", async () => {
+    setPermissionMode("read");
+    const workspace = await mkdtemp(join(tmpdir(), "acolyte-discovery-contract-"));
+    try {
+      const alphaPath = join(workspace, "alpha.ts");
+      const betaPath = join(workspace, "beta.ts");
+      await writeFile(alphaPath, 'export const alpha = "needle";\n', "utf8");
+      await writeFile(betaPath, 'export const beta = "needle";\n', "utf8");
+
+      const outputByTool = new Map<string, string[]>();
+      const { tools } = toolsForAgent({
+        workspace,
+        onToolOutput: (event) => {
+          const bucket = outputByTool.get(event.toolName) ?? [];
+          bucket.push(event.message);
+          outputByTool.set(event.toolName, bucket);
+        },
+      });
+
+      const findFilesTool = tools.findFiles;
+      const searchFilesTool = tools.searchFiles;
+      if (!findFilesTool?.execute || !searchFilesTool?.execute)
+        throw new Error("expected findFiles/searchFiles tools to be available");
+
+      await findFilesTool.execute({ patterns: ["*.ts"], maxResults: 10 }, {} as never);
+      await searchFilesTool.execute({ pattern: "needle", maxResults: 10 }, {} as never);
+
+      const findLines = outputByTool.get("find-files") ?? [];
+      expect(findLines[0]).toBe("Find 2 files");
+      expect(findLines).toContain("  ./alpha.ts");
+      expect(findLines).toContain("  ./beta.ts");
+
+      const searchLines = outputByTool.get("search-files") ?? [];
+      expect(searchLines[0]).toBe("Search 2 files");
+      expect(searchLines).toContain("  ./alpha.ts");
+      expect(searchLines).toContain("  ./beta.ts");
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }

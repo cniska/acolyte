@@ -207,7 +207,7 @@ describe("cli-format", () => {
     const out = formatProgressEventOutput("Edit src/main.rs");
     expect(out).toContain("• ");
     expect(out).toContain("\x1b[1mEdit \x1b[22m");
-    expect(out).toContain("\x1b[4m\x1b[38;2;168;177;188msrc/main.rs\x1b[39m\x1b[24m");
+    expect(out).toContain("\x1b[2msrc/main.rs\x1b[22m");
   });
 
   test("formatProgressEventOutput styles Run header with dim command", () => {

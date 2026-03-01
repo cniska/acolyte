@@ -312,7 +312,6 @@ export function formatProgressEventOutput(
 ): string {
   const dim = (value: string): string => `\x1b[2m${value}\x1b[22m`;
   const bold = (value: string): string => `\x1b[1m${value}\x1b[22m`;
-  const path = (value: string): string => `\x1b[4m\x1b[38;2;168;177;188m${value}\x1b[39m\x1b[24m`;
   const green = (value: string): string => `\x1b[32m${value}\x1b[39m`;
   const red = (value: string): string => `\x1b[31m${value}\x1b[39m`;
   const greenBg = (value: string): string => `\x1b[32m\x1b[48;2;13;40;24m${value}\x1b[49m\x1b[39m`;
@@ -329,8 +328,6 @@ export function formatProgressEventOutput(
   const colorize = (parsed: ReturnType<typeof parseToolProgressLine>): string => {
     switch (parsed.kind) {
       case "header":
-        if (["Edit", "Create", "Read", "Delete", "Diff", "Status"].includes(parsed.verb))
-          return `${bold(`${parsed.verb} `)}${path(parsed.path)}`;
         return `${bold(`${parsed.verb} `)}${dim(parsed.path)}`;
       case "numberedDiff": {
         const colorBg = parsed.marker === "+" ? greenBg : redBg;
