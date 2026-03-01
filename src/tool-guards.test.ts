@@ -183,6 +183,38 @@ describe("excessive-file-loop guard", () => {
 });
 
 describe("excessive-search-loop guard", () => {
+  test("blocks duplicate search in same scope", () => {
+    const session = createSessionContext();
+    recordCall(session, "search-files", { patterns: ["agent", "tool"] });
+    expect(() => runGuards({ toolName: "search-files", args: { patterns: ["tool", "agent"] }, session })).toThrow(
+      /Duplicate search-files call detected/,
+    );
+  });
+
+  test("blocks narrower search when prior search already covered patterns", () => {
+    const session = createSessionContext();
+    recordCall(session, "search-files", { patterns: ["agent", "tool"] });
+    expect(() => runGuards({ toolName: "search-files", args: { patterns: ["agent"] }, session })).toThrow(
+      /Redundant narrower search-files call detected/,
+    );
+  });
+
+  test("does not block narrower search across different scope", () => {
+    const session = createSessionContext();
+    recordCall(session, "search-files", { patterns: ["agent", "tool"] });
+    expect(() =>
+      runGuards({ toolName: "search-files", args: { patterns: ["agent", "memory"], paths: ["AGENTS.md"] }, session }),
+    ).not.toThrow();
+  });
+
+  test("blocks redundant scope narrowing after workspace search", () => {
+    const session = createSessionContext();
+    recordCall(session, "search-files", { patterns: ["agent", "tool"] });
+    expect(() =>
+      runGuards({ toolName: "search-files", args: { patterns: ["agent"], paths: ["AGENTS.md"] }, session }),
+    ).toThrow(/Redundant scoped search-files call detected/);
+  });
+
   test("blocks repeated search-only churn without reads/writes", () => {
     const session = createSessionContext();
     for (let i = 0; i < 4; i += 1) {
@@ -213,6 +245,22 @@ describe("excessive-search-loop guard", () => {
 });
 
 describe("excessive-find-loop guard", () => {
+  test("blocks duplicate find in same scope", () => {
+    const session = createSessionContext();
+    recordCall(session, "find-files", { patterns: ["agent", "tool"] });
+    expect(() => runGuards({ toolName: "find-files", args: { patterns: ["tool", "agent"] }, session })).toThrow(
+      /Duplicate find-files call detected/,
+    );
+  });
+
+  test("blocks narrower find when prior find already covered patterns", () => {
+    const session = createSessionContext();
+    recordCall(session, "find-files", { patterns: ["agent", "tool"] });
+    expect(() => runGuards({ toolName: "find-files", args: { patterns: ["agent"] }, session })).toThrow(
+      /Redundant narrower find-files call detected/,
+    );
+  });
+
   test("blocks repeated find-only churn without reads/writes", () => {
     const session = createSessionContext();
     for (let i = 0; i < 4; i += 1) {

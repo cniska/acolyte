@@ -44,6 +44,88 @@ function extractReadPaths(args: Record<string, unknown>): string[] {
   return out;
 }
 
+function extractSearchPatterns(args: Record<string, unknown>): string[] {
+  const patterns = new Set<string>();
+  const single = args.pattern;
+  if (typeof single === "string" && single.trim().length > 0) patterns.add(single.trim().toLowerCase());
+  const multi = args.patterns;
+  if (Array.isArray(multi)) {
+    for (const entry of multi) {
+      if (typeof entry !== "string") continue;
+      const trimmed = entry.trim().toLowerCase();
+      if (trimmed.length > 0) patterns.add(trimmed);
+    }
+  }
+  return Array.from(patterns).sort();
+}
+
+function extractSearchScope(args: Record<string, unknown>): string[] {
+  const raw = args.paths;
+  if (!Array.isArray(raw) || raw.length === 0) return ["__workspace__"];
+  const scope = new Set<string>();
+  for (const entry of raw) {
+    if (typeof entry !== "string") continue;
+    const trimmed = normalizePath(entry.trim().toLowerCase());
+    if (trimmed.length > 0) scope.add(trimmed);
+  }
+  if (scope.size === 0) return ["__workspace__"];
+  return Array.from(scope).sort();
+}
+
+function extractFindPatterns(args: Record<string, unknown>): string[] {
+  const patterns = args.patterns;
+  if (!Array.isArray(patterns)) return [];
+  const normalized = new Set<string>();
+  for (const entry of patterns) {
+    if (typeof entry !== "string") continue;
+    const trimmed = entry.trim().toLowerCase();
+    if (trimmed.length > 0) normalized.add(trimmed);
+  }
+  return Array.from(normalized).sort();
+}
+
+function sameArray(a: readonly string[], b: readonly string[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
+
+function isSubsetSet(subset: readonly string[], superset: readonly string[]): boolean {
+  if (subset.length > superset.length) return false;
+  const sup = new Set(superset);
+  return subset.every((item) => sup.has(item));
+}
+
+function isWorkspaceScope(scope: readonly string[]): boolean {
+  return scope.length === 1 && scope[0] === "__workspace__";
+}
+
+type RedundantQueryKind = "duplicate" | "narrower" | "scope-narrowing";
+
+function redundantQueryKind(input: {
+  toolName: ToolName;
+  session: SessionContext;
+  currentPatterns: readonly string[];
+  currentScope: readonly string[];
+  extractPatterns: (args: Record<string, unknown>) => string[];
+  extractScope: (args: Record<string, unknown>) => string[];
+}): RedundantQueryKind | null {
+  const { toolName, session, currentPatterns, currentScope, extractPatterns, extractScope } = input;
+  for (const entry of session.callLog) {
+    if (entry.toolName !== toolName) continue;
+    const priorPatterns = extractPatterns(entry.args);
+    const priorScope = extractScope(entry.args);
+    const sameScope = sameArray(priorScope, currentScope);
+    const narrowingScope = isWorkspaceScope(priorScope) && !isWorkspaceScope(currentScope);
+    if (!sameScope && !narrowingScope) continue;
+    if (sameScope && sameArray(priorPatterns, currentPatterns)) return "duplicate";
+    if (isSubsetSet(currentPatterns, priorPatterns)) return narrowingScope ? "scope-narrowing" : "narrower";
+  }
+  return null;
+}
+
 function isShellReadFallback(command: string): boolean {
   const trimmed = command.trim();
   if (trimmed.length === 0) return false;
@@ -145,7 +227,32 @@ const excessiveSearchLoopGuard: ToolGuard = {
   id: "excessive-search-loop",
   description: "Block repeated search-only churn to force an evidence-based conclusion.",
   appliesTo: ["search-files"],
-  check({ toolName, session }) {
+  check({ toolName, args, session }) {
+    const currentPatterns = extractSearchPatterns(args);
+    const currentScope = extractSearchScope(args);
+    const redundant = redundantQueryKind({
+      toolName,
+      session,
+      currentPatterns,
+      currentScope,
+      extractPatterns: extractSearchPatterns,
+      extractScope: extractSearchScope,
+    });
+    if (redundant === "duplicate") {
+      session.onGuard?.({ guardId: "excessive-search-loop", toolName, action: "blocked", detail: "duplicate-search" });
+      throw new Error("Duplicate search-files call detected with same scope/patterns. Reuse existing search results.");
+    }
+    if (redundant === "scope-narrowing") {
+      session.onGuard?.({ guardId: "excessive-search-loop", toolName, action: "blocked", detail: "redundant-scope-narrowing" });
+      throw new Error("Redundant scoped search-files call detected. Prior workspace search already covers these patterns.");
+    }
+    if (redundant === "narrower") {
+      session.onGuard?.({ guardId: "excessive-search-loop", toolName, action: "blocked", detail: "narrower-than-prior" });
+      throw new Error(
+        "Redundant narrower search-files call detected. Current patterns are already covered by a prior search in the same scope.",
+      );
+    }
+
     let searchCount = 0;
     let readCount = 0;
     let writeCount = 0;
@@ -172,7 +279,32 @@ const excessiveFindLoopGuard: ToolGuard = {
   id: "excessive-find-loop",
   description: "Block repeated find-only churn to force direct reads or a conclusion.",
   appliesTo: ["find-files"],
-  check({ toolName, session }) {
+  check({ toolName, args, session }) {
+    const currentPatterns = extractFindPatterns(args);
+    const currentScope = extractSearchScope(args);
+    const redundant = redundantQueryKind({
+      toolName,
+      session,
+      currentPatterns,
+      currentScope,
+      extractPatterns: extractFindPatterns,
+      extractScope: extractSearchScope,
+    });
+    if (redundant === "duplicate") {
+      session.onGuard?.({ guardId: "excessive-find-loop", toolName, action: "blocked", detail: "duplicate-find" });
+      throw new Error("Duplicate find-files call detected with same scope/patterns. Reuse existing find results.");
+    }
+    if (redundant === "scope-narrowing") {
+      session.onGuard?.({ guardId: "excessive-find-loop", toolName, action: "blocked", detail: "redundant-scope-narrowing" });
+      throw new Error("Redundant scoped find-files call detected. Prior workspace find already covers these patterns.");
+    }
+    if (redundant === "narrower") {
+      session.onGuard?.({ guardId: "excessive-find-loop", toolName, action: "blocked", detail: "narrower-than-prior" });
+      throw new Error(
+        "Redundant narrower find-files call detected. Current patterns are already covered by a prior find in the same scope.",
+      );
+    }
+
     let findCount = 0;
     let readCount = 0;
     let writeCount = 0;
