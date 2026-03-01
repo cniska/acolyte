@@ -1,4 +1,4 @@
-import { TOOL_OUTPUT_MARKERS } from "./tool-output-format";
+import { parseToolOutputMarker } from "./tool-output-parser";
 
 export type ToolProgressParsedLine =
   | { kind: "header"; label: string; detail?: string }
@@ -89,13 +89,8 @@ export function parseToolProgressLine(line: string): ToolProgressParsedLine {
   }
   if (line.startsWith("+ ")) return { kind: "fileDiff", marker: "+", text: line };
   if (line.startsWith("- ")) return { kind: "fileDiff", marker: "-", text: line };
-  if (
-    line === "…" ||
-    line === TOOL_OUTPUT_MARKERS.truncated ||
-    line === TOOL_OUTPUT_MARKERS.noOutput ||
-    line.startsWith(`${TOOL_OUTPUT_MARKERS.truncated} +`) ||
-    (/^[…(]/.test(line) && /truncat|omit|output|lines$/i.test(line))
-  )
+  const marker = parseToolOutputMarker(line);
+  if (line === "…" || marker.kind !== "none" || (/^[…(]/.test(line) && /truncat|omit|output|lines$/i.test(line)))
     return { kind: "meta", text: line };
   return { kind: "text", text: line };
 }

@@ -1,15 +1,14 @@
 import { isAbsolute, relative } from "node:path";
 import { countLabel } from "./plural";
 import type { ToolName } from "./tool-names";
+import { TOOL_OUTPUT_MARKERS } from "./tool-output-parser";
+
+export { TOOL_OUTPUT_MARKERS } from "./tool-output-parser";
 
 type ToolOutputListener = (event: { toolName: ToolName; message: string; toolCallId?: string }) => void;
 export const TOOL_OUTPUT_RUN_MAX_ROWS = 5;
 export const TOOL_OUTPUT_FILES_MAX_ROWS = 5;
 export const TOOL_OUTPUT_INLINE_FILES_MAX = 3;
-export const TOOL_OUTPUT_MARKERS = {
-  truncated: "[truncated]",
-  noOutput: "[no-output]",
-} as const;
 
 export function emitResultChunks(
   toolName: ToolName,
@@ -254,14 +253,33 @@ function emitSummaryFileRows(input: {
 }
 
 function escapeControlChars(value: string): string {
-  return value.replace(/[\x00-\x1F\x7F]/g, (char) => {
-    if (char === "\b") return "\\b";
-    if (char === "\t") return "\\t";
-    if (char === "\n") return "\\n";
-    if (char === "\r") return "\\r";
-    const code = char.charCodeAt(0).toString(16).padStart(2, "0");
-    return `\\x${code}`;
-  });
+  let out = "";
+  for (const char of value) {
+    const code = char.charCodeAt(0);
+    const isControl = (code >= 0 && code <= 31) || code === 127;
+    if (!isControl) {
+      out += char;
+      continue;
+    }
+    if (char === "\b") {
+      out += "\\b";
+      continue;
+    }
+    if (char === "\t") {
+      out += "\\t";
+      continue;
+    }
+    if (char === "\n") {
+      out += "\\n";
+      continue;
+    }
+    if (char === "\r") {
+      out += "\\r";
+      continue;
+    }
+    out += `\\x${code.toString(16).padStart(2, "0")}`;
+  }
+  return out;
 }
 
 function truncateValue(value: string, maxChars: number): string {

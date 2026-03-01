@@ -9,15 +9,15 @@ import { createSessionContext, recordCall, runGuards, type SessionContext } from
 import type { ToolName } from "./tool-names";
 import { compactToolOutput } from "./tool-output";
 import {
-  emitFindSummary,
   emitFileListSummary,
+  emitFindSummary,
   emitResultChunks,
   emitSearchSummary,
   findResultPaths,
   numberedUnifiedDiffLines,
   searchResultSummaryEntries,
-  TOOL_OUTPUT_MARKERS,
   TOOL_OUTPUT_FILES_MAX_ROWS,
+  TOOL_OUTPUT_MARKERS,
   TOOL_OUTPUT_RUN_MAX_ROWS,
 } from "./tool-output-format";
 import {
@@ -245,7 +245,9 @@ export function webSearchStreamRows(result: string): string {
 
   const noResultsMatch = lines[0]?.match(/^No web results found for:\s*(.+)$/i);
   if (noResultsMatch?.[1]) {
-    return [`query=${encodeValue(normalizeQuery(noResultsMatch[1]))} results=0`, TOOL_OUTPUT_MARKERS.noOutput].join("\n");
+    return [`query=${encodeValue(normalizeQuery(noResultsMatch[1]))} results=0`, TOOL_OUTPUT_MARKERS.noOutput].join(
+      "\n",
+    );
   }
 
   const headerMatch = lines[0]?.match(/^Web results for:\s*(.+)$/i);
@@ -275,7 +277,9 @@ export function webSearchStreamRows(result: string): string {
   for (const entry of visible)
     out.push(`result rank=${entry.rank}${entry.url ? ` url=${encodeValue(entry.url)}` : ""}`);
   if (entries.length > WEB_SEARCH_MAX_RESULTS)
-    out.push(`${TOOL_OUTPUT_MARKERS.truncated} +${countLabel(entries.length - WEB_SEARCH_MAX_RESULTS, "result", "results")}`);
+    out.push(
+      `${TOOL_OUTPUT_MARKERS.truncated} +${countLabel(entries.length - WEB_SEARCH_MAX_RESULTS, "result", "results")}`,
+    );
   if (entries.length === 0) out.push(TOOL_OUTPUT_MARKERS.noOutput);
   return out.join("\n");
 }
@@ -496,14 +500,7 @@ function createScanCodeTool(workspace: string, session: SessionContext, onToolOu
         guardedExecute("scan-code", input as Record<string, unknown>, session, async () => {
           const toolCallId = streamCallId("scan-code");
           const paths = normalizeUniquePaths(input.paths);
-          emitFileListSummary(
-            "scan-code",
-            paths,
-            onToolOutput,
-            toolCallId,
-            TOOL_OUTPUT_FILES_MAX_ROWS,
-            workspace,
-          );
+          emitFileListSummary("scan-code", paths, onToolOutput, toolCallId, TOOL_OUTPUT_FILES_MAX_ROWS, workspace);
           const baseBudget = appConfig.agent.toolOutputBudget.scanCode;
           const count = paths.length * input.patterns.length;
           const budget = {
@@ -794,7 +791,7 @@ function createWebSearchTool(session: SessionContext, onToolOutput?: ToolOutputL
   });
 }
 
-function createWebFetchTool(session: SessionContext, onToolOutput?: ToolOutputListener) {
+function createWebFetchTool(session: SessionContext) {
   return createTool({
     id: "web-fetch",
     description:
@@ -837,7 +834,7 @@ function createToolset(workspace: string, session: SessionContext, onToolOutput?
       createFile: createCreateFileTool(workspace, session, onToolOutput),
       deleteFile: createDeleteFileTool(workspace, session),
       webSearch: createWebSearchTool(session, onToolOutput),
-      webFetch: createWebFetchTool(session, onToolOutput),
+      webFetch: createWebFetchTool(session),
     },
     session,
   };
@@ -858,7 +855,7 @@ function readOnlyTools(
       gitDiff: createGitDiffTool(workspace, session, onToolOutput),
       gitLog: createGitLogTool(workspace, session, onToolOutput),
       webSearch: createWebSearchTool(session, onToolOutput),
-      webFetch: createWebFetchTool(session, onToolOutput),
+      webFetch: createWebFetchTool(session),
     },
     session,
   };

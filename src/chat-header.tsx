@@ -40,9 +40,7 @@ export function ChatHeader(props: ChatHeaderProps): React.ReactNode {
       logo: <Text color={logoColor}>{"  ▗█████▖  "}</Text>,
       text: (
         <>
-          <Text color={brandColor}>
-            {title?.text ?? ""}
-          </Text>
+          <Text color={brandColor}>{title?.text ?? ""}</Text>
           <Text color={brandColor} dimColor>
             {title?.suffix ?? ""}
           </Text>

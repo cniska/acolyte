@@ -75,10 +75,7 @@ export function resolveTabAutocomplete(input: ResolveTabAutocompleteInput): stri
   return null;
 }
 
-export function resolveEscapeAction(input: {
-  isWorking: boolean;
-  showHelp: boolean;
-}): "interrupt" | "hide" | null {
+export function resolveEscapeAction(input: { isWorking: boolean; showHelp: boolean }): "interrupt" | "hide" | null {
   if (input.isWorking) return "interrupt";
   if (input.showHelp) return "hide";
   return null;

@@ -13,15 +13,8 @@ type SuggestionContentInput = {
 };
 
 export function renderInputPanelContent(input: SuggestionContentInput): React.ReactNode {
-  const {
-    brandColor,
-    atQuery,
-    atSuggestions,
-    atSuggestionIndex,
-    slashSuggestions,
-    slashSuggestionIndex,
-    showHelp,
-  } = input;
+  const { brandColor, atQuery, atSuggestions, atSuggestionIndex, slashSuggestions, slashSuggestionIndex, showHelp } =
+    input;
 
   let suggestions: React.ReactNode = null;
   if (atQuery !== null && atSuggestions.length > 0) {

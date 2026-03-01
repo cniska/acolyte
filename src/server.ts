@@ -5,6 +5,7 @@ import type { z } from "zod";
 import { runAgent } from "./agent";
 import { type ChatRequest, verifyScopeSchema } from "./api";
 import { appConfig, setPermissionMode } from "./app-config";
+import { createDebugLogger } from "./debug-flags";
 import { buildStreamErrorDetail } from "./error-handling";
 import { errorToLogFields, log } from "./log";
 import { mastraStorage, mastraStorageMode } from "./mastra-storage";
@@ -18,7 +19,6 @@ import { createSoulPrompt, getMemoryContextEntries } from "./soul";
 import type { StreamErrorDetail } from "./stream-error";
 import { TaskRegistry } from "./task-registry";
 import { extractToolErrorCode } from "./tool-error-codes";
-import { createDebugLogger } from "./debug-flags";
 
 const PORT = appConfig.server.port;
 const API_KEY = appConfig.server.apiKey;

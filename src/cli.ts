@@ -19,10 +19,10 @@ import { buildFileContext } from "./file-context";
 import { ensureLocalServer } from "./server-daemon";
 import { acquireSessionLock, releaseSessionLock } from "./session-lock";
 import { createId } from "./short-id";
-import { mergeToolOutputHeader, shouldSuppressEmptyToolProgressRow } from "./tool-summary-format";
 import { createSession, readStore, writeStore } from "./storage";
 import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
 import { parseToolProgressLine } from "./tool-progress";
+import { mergeToolOutputHeader, shouldSuppressEmptyToolProgressRow } from "./tool-summary-format";
 import type { Message, Session, SessionStore } from "./types";
 import { clearScreen, printDim, printError, printOutput, streamText } from "./ui";
 

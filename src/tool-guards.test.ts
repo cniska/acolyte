@@ -346,9 +346,9 @@ describe("duplicate-consecutive-call guard", () => {
   test("treats whitespace-only arg changes as duplicates", () => {
     const session = createSessionContext();
     recordCall(session, "run-command", { command: "bun run verify" });
-    expect(() =>
-      runGuards({ toolName: "run-command", args: { command: "  bun run verify  " }, session }),
-    ).toThrow(/Duplicate run-command call detected/);
+    expect(() => runGuards({ toolName: "run-command", args: { command: "  bun run verify  " }, session })).toThrow(
+      /Duplicate run-command call detected/,
+    );
   });
 
   test("is task-scoped: duplicate in prior task does not block current task", () => {

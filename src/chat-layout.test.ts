@@ -17,9 +17,7 @@ function withColumns(width: number, task: () => void): void {
 
 describe("chat-layout", () => {
   test("formatHeaderContextLine composes workspace, branch, and model", () => {
-    expect(formatHeaderContextLine("~/code/acolyte", "main", "gpt-5-mini")).toBe(
-      "~/code/acolyte · main · gpt-5-mini",
-    );
+    expect(formatHeaderContextLine("~/code/acolyte", "main", "gpt-5-mini")).toBe("~/code/acolyte · main · gpt-5-mini");
     expect(formatHeaderContextLine("~/code/acolyte", null, "gpt-5-mini")).toBe("~/code/acolyte · — · gpt-5-mini");
   });
 

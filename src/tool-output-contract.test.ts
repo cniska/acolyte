@@ -1,18 +1,42 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { runShellCommand } from "./tools";
 import { formatToolHeader } from "./agent";
 import { setPermissionMode } from "./app-config";
 import { formatProgressOutput } from "./cli-format";
 import { toolsForAgent } from "./mastra-tools";
 import { createTempDir, dedent, savedPermissionMode } from "./test-factory";
 import { mergeToolOutputHeader } from "./tool-summary-format";
+import { runShellCommand } from "./tools";
 
 const restorePermissions = savedPermissionMode();
-const stripAnsi = (value: string): string => value.replace(/\x1b\[[0-9;]*m/g, "");
-const stripOsc8 = (value: string): string =>
-  value.replace(/\u001B\]8;;[^\u0007]*\u0007/g, "").replace(/\u001B\]8;;\u0007/g, "");
+const stripAnsi = (value: string): string => {
+  let out = "";
+  for (let i = 0; i < value.length; i += 1) {
+    const ch = value[i];
+    if (ch === "\u001b" && value[i + 1] === "[") {
+      i += 2;
+      while (i < value.length && value[i] !== "m") i += 1;
+      continue;
+    }
+    if (ch != null) out += ch;
+  }
+  return out;
+};
+const stripOsc8 = (value: string): string => {
+  let out = "";
+  for (let i = 0; i < value.length; i += 1) {
+    if (value[i] === "\u001b" && value.slice(i, i + 5) === "\u001b]8;;") {
+      i += 5;
+      while (i < value.length && value[i] !== "\u0007") i += 1;
+      continue;
+    }
+    if (value[i] === "\u0007") continue;
+    const ch = value[i];
+    if (ch != null) out += ch;
+  }
+  return out;
+};
 const trimRightLines = (value: string): string =>
   value
     .split("\n")
@@ -94,10 +118,15 @@ describe("tool output contract: read-file", () => {
       if (!tools.readFile?.execute) throw new Error("expected readFile tool to be available");
       await tools.readFile.execute({ paths: [{ path: alphaPath }, { path: betaPath }] }, {} as never);
 
-      assertToolOutput(outputByTool, "read-file", { paths: [{ path: alphaPath }, { path: betaPath }] }, {
-        raw: ["paths=2 targets=[alpha.ts, beta.ts]"],
-        formatted: "• Read alpha.ts, beta.ts",
-      });
+      assertToolOutput(
+        outputByTool,
+        "read-file",
+        { paths: [{ path: alphaPath }, { path: betaPath }] },
+        {
+          raw: ["paths=2 targets=[alpha.ts, beta.ts]"],
+          formatted: "• Read alpha.ts, beta.ts",
+        },
+      );
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -112,10 +141,15 @@ describe("tool output contract: read-file", () => {
       if (!tools.readFile?.execute) throw new Error("expected readFile tool to be available");
       await tools.readFile.execute({ paths: files.map((path) => ({ path })) }, {} as never);
 
-      assertToolOutput(outputByTool, "read-file", { paths: files.map((path) => ({ path })) }, {
-        raw: ["paths=4 targets=[a.ts, b.ts, c.ts] omitted=1"],
-        formatted: "• Read a.ts, b.ts, c.ts, +1",
-      });
+      assertToolOutput(
+        outputByTool,
+        "read-file",
+        { paths: files.map((path) => ({ path })) },
+        {
+          raw: ["paths=4 targets=[a.ts, b.ts, c.ts] omitted=1"],
+          formatted: "• Read a.ts, b.ts, c.ts, +1",
+        },
+      );
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -130,10 +164,15 @@ describe("tool output contract: read-file", () => {
       if (!tools.readFile?.execute) throw new Error("expected readFile tool to be available");
       await tools.readFile.execute({ paths: files.map((path) => ({ path })) }, {} as never);
 
-      assertToolOutput(outputByTool, "read-file", { paths: files.map((path) => ({ path })) }, {
-        raw: ["paths=3 targets=[a.ts, b.ts, c.ts]"],
-        formatted: "• Read a.ts, b.ts, c.ts",
-      });
+      assertToolOutput(
+        outputByTool,
+        "read-file",
+        { paths: files.map((path) => ({ path })) },
+        {
+          raw: ["paths=3 targets=[a.ts, b.ts, c.ts]"],
+          formatted: "• Read a.ts, b.ts, c.ts",
+        },
+      );
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -178,14 +217,19 @@ describe("tool output contract: find-files", () => {
       if (!tools.findFiles?.execute) throw new Error("expected findFiles tool to be available");
       await tools.findFiles.execute({ patterns: ["*.ts"], maxResults: 10 }, {} as never);
 
-      assertToolOutput(outputByTool, "find-files", { patterns: ["*.ts"], maxResults: 10 }, {
-        raw: ["scope=workspace patterns=[*.ts] matches=2", "beta.ts", "alpha.ts"],
-        formatted: dedent(`
+      assertToolOutput(
+        outputByTool,
+        "find-files",
+        { patterns: ["*.ts"], maxResults: 10 },
+        {
+          raw: ["scope=workspace patterns=[*.ts] matches=2", "beta.ts", "alpha.ts"],
+          formatted: dedent(`
           • Find *.ts
               beta.ts
               alpha.ts
         `),
-      });
+        },
+      );
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -194,22 +238,27 @@ describe("tool output contract: find-files", () => {
   test("truncates long file lists with marker", async () => {
     const { workspace, tools, outputByTool } = await createHarness("read");
     try {
-      for (let i = 1; i <= 8; i += 1) await writeFile(join(workspace, `f${i}.ts`), `export const n${i} = ${i};\n`, "utf8");
+      for (let i = 1; i <= 8; i += 1)
+        await writeFile(join(workspace, `f${i}.ts`), `export const n${i} = ${i};\n`, "utf8");
 
       if (!tools.findFiles?.execute) throw new Error("expected findFiles tool to be available");
       await tools.findFiles.execute({ patterns: ["*.ts"], maxResults: 20 }, {} as never);
 
-      assertToolOutput(outputByTool, "find-files", { patterns: ["*.ts"], maxResults: 20 }, {
-        raw: [
-          "scope=workspace patterns=[*.ts] matches=8",
-          "f1.ts",
-          "f2.ts",
-          "f3.ts",
-          "f4.ts",
-          "f5.ts",
-          "[truncated] +3",
-        ],
-        formatted: dedent(`
+      assertToolOutput(
+        outputByTool,
+        "find-files",
+        { patterns: ["*.ts"], maxResults: 20 },
+        {
+          raw: [
+            "scope=workspace patterns=[*.ts] matches=8",
+            "f1.ts",
+            "f2.ts",
+            "f3.ts",
+            "f4.ts",
+            "f5.ts",
+            "[truncated] +3",
+          ],
+          formatted: dedent(`
           • Find *.ts
               f1.ts
               f2.ts
@@ -218,7 +267,8 @@ describe("tool output contract: find-files", () => {
               f5.ts
               … +3 matches
         `),
-      });
+        },
+      );
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -248,9 +298,13 @@ describe("tool output contract: find-files", () => {
       if (!tools.findFiles?.execute) throw new Error("expected findFiles tool to be available");
       await tools.findFiles.execute({ patterns: ["*.ts"], maxResults: 20 }, {} as never);
 
-      assertToolOutput(outputByTool, "find-files", { patterns: ["*.ts"], maxResults: 20 }, {
-        raw: ["scope=workspace patterns=[*.ts] matches=5", "f1.ts", "f2.ts", "f3.ts", "f4.ts", "f5.ts"],
-        formatted: dedent(`
+      assertToolOutput(
+        outputByTool,
+        "find-files",
+        { patterns: ["*.ts"], maxResults: 20 },
+        {
+          raw: ["scope=workspace patterns=[*.ts] matches=5", "f1.ts", "f2.ts", "f3.ts", "f4.ts", "f5.ts"],
+          formatted: dedent(`
           • Find *.ts
               f1.ts
               f2.ts
@@ -258,7 +312,8 @@ describe("tool output contract: find-files", () => {
               f4.ts
               f5.ts
         `),
-      });
+        },
+      );
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -274,15 +329,20 @@ describe("tool output contract: find-files", () => {
       if (!tools.findFiles?.execute) throw new Error("expected findFiles tool to be available");
       await tools.findFiles.execute({ patterns: ["*.ts", "*.md"], maxResults: 20 }, {} as never);
 
-      assertToolOutput(outputByTool, "find-files", { patterns: ["*.ts", "*.md"], maxResults: 20 }, {
-        raw: ["scope=workspace patterns=[*.ts, *.md] matches=3", "alpha.ts", "gamma.ts", "beta.md"],
-        formatted: dedent(`
+      assertToolOutput(
+        outputByTool,
+        "find-files",
+        { patterns: ["*.ts", "*.md"], maxResults: 20 },
+        {
+          raw: ["scope=workspace patterns=[*.ts, *.md] matches=3", "alpha.ts", "gamma.ts", "beta.md"],
+          formatted: dedent(`
           • Find *.ts, *.md
               alpha.ts
               gamma.ts
               beta.md
         `),
-      });
+        },
+      );
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -299,16 +359,24 @@ describe("tool output contract: search-files", () => {
       await writeFile(betaPath, 'export const beta = "needle";\n', "utf8");
 
       if (!tools.searchFiles?.execute) throw new Error("expected searchFiles tool to be available");
-      await tools.searchFiles.execute({ patterns: ["needle"], paths: [alphaPath, betaPath], maxResults: 10 }, {} as never);
+      await tools.searchFiles.execute(
+        { patterns: ["needle"], paths: [alphaPath, betaPath], maxResults: 10 },
+        {} as never,
+      );
 
-      assertToolOutput(outputByTool, "search-files", { patterns: ["needle"], paths: [alphaPath, betaPath], maxResults: 10 }, {
-        raw: ["scope=alpha.ts, beta.ts patterns=[needle] matches=2", "alpha.ts [needle@1]", "beta.ts [needle@1]"],
-        formatted: dedent(`
+      assertToolOutput(
+        outputByTool,
+        "search-files",
+        { patterns: ["needle"], paths: [alphaPath, betaPath], maxResults: 10 },
+        {
+          raw: ["scope=alpha.ts, beta.ts patterns=[needle] matches=2", "alpha.ts [needle@1]", "beta.ts [needle@1]"],
+          formatted: dedent(`
           • Search alpha.ts, beta.ts [needle]
               alpha.ts [needle@1]
               beta.ts [needle@1]
         `),
-      });
+        },
+      );
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -323,13 +391,18 @@ describe("tool output contract: search-files", () => {
       if (!tools.searchFiles?.execute) throw new Error("expected searchFiles tool to be available");
       await tools.searchFiles.execute({ patterns: ["needle"], maxResults: 10 }, {} as never);
 
-      assertToolOutput(outputByTool, "search-files", { patterns: ["needle"], maxResults: 10 }, {
-        raw: ["scope=workspace patterns=[needle] matches=1", "alpha.ts [needle@1]"],
-        formatted: dedent(`
+      assertToolOutput(
+        outputByTool,
+        "search-files",
+        { patterns: ["needle"], maxResults: 10 },
+        {
+          raw: ["scope=workspace patterns=[needle] matches=1", "alpha.ts [needle@1]"],
+          formatted: dedent(`
           • Search [needle]
               alpha.ts [needle@1]
         `),
-      });
+        },
+      );
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -348,13 +421,18 @@ describe("tool output contract: search-files", () => {
       if (!tools.searchFiles?.execute) throw new Error("expected searchFiles tool to be available");
       await tools.searchFiles.execute({ patterns: ["needle"], paths: [srcDir], maxResults: 20 }, {} as never);
 
-      assertToolOutput(outputByTool, "search-files", { patterns: ["needle"], paths: [srcDir], maxResults: 20 }, {
-        raw: ["scope=src/ patterns=[needle] matches=1", "src/alpha.ts [needle@1]"],
-        formatted: dedent(`
+      assertToolOutput(
+        outputByTool,
+        "search-files",
+        { patterns: ["needle"], paths: [srcDir], maxResults: 20 },
+        {
+          raw: ["scope=src/ patterns=[needle] matches=1", "src/alpha.ts [needle@1]"],
+          formatted: dedent(`
           • Search src/ [needle]
               src/alpha.ts [needle@1]
         `),
-      });
+        },
+      );
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -373,14 +451,23 @@ describe("tool output contract: search-files", () => {
       if (!tools.searchFiles?.execute) throw new Error("expected searchFiles tool to be available");
       await tools.searchFiles.execute({ patterns: ["needle"], paths: [srcDir, docsDir], maxResults: 20 }, {} as never);
 
-      assertToolOutput(outputByTool, "search-files", { patterns: ["needle"], paths: [srcDir, docsDir], maxResults: 20 }, {
-        raw: ["scope=src/, docs/ patterns=[needle] matches=2", "src/alpha.ts [needle@1]", "docs/readme.md [needle@1]"],
-        formatted: dedent(`
+      assertToolOutput(
+        outputByTool,
+        "search-files",
+        { patterns: ["needle"], paths: [srcDir, docsDir], maxResults: 20 },
+        {
+          raw: [
+            "scope=src/, docs/ patterns=[needle] matches=2",
+            "src/alpha.ts [needle@1]",
+            "docs/readme.md [needle@1]",
+          ],
+          formatted: dedent(`
           • Search src/, docs/ [needle]
               src/alpha.ts [needle@1]
               docs/readme.md [needle@1]
         `),
-      });
+        },
+      );
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -419,13 +506,18 @@ describe("tool output contract: search-files", () => {
       if (!tools.searchFiles?.execute) throw new Error("expected searchFiles tool to be available");
       await tools.searchFiles.execute({ patterns: ["a", "b", "c", "d", "e", "f"], maxResults: 20 }, {} as never);
 
-      assertToolOutput(outputByTool, "search-files", { patterns: ["a", "b", "c", "d", "e", "f"], maxResults: 20 }, {
-        raw: ["scope=workspace patterns=[a, b, c, d, e, f] matches=1", "alpha.ts [a@1, b@1, c@1, d@1, +2]"],
-        formatted: dedent(`
+      assertToolOutput(
+        outputByTool,
+        "search-files",
+        { patterns: ["a", "b", "c", "d", "e", "f"], maxResults: 20 },
+        {
+          raw: ["scope=workspace patterns=[a, b, c, d, e, f] matches=1", "alpha.ts [a@1, b@1, c@1, d@1, +2]"],
+          formatted: dedent(`
           • Search [a, b, c, +3]
               alpha.ts [a@1, b@1, c@1, d@1, +2]
         `),
-      });
+        },
+      );
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -457,16 +549,20 @@ describe("tool output contract: search-files", () => {
       if (!tools.searchFiles?.execute) throw new Error("expected searchFiles tool to be available");
       await tools.searchFiles.execute({ patterns, maxResults: 20 }, {} as never);
 
-      assertToolOutput(outputByTool, "search-files", { patterns, maxResults: 20 }, {
-        raw: [
-          "scope=workspace patterns=[needle-one, needle-two, needle-three, needle-four, needle-five] matches=5",
-          "f1.ts [needle-one@1]",
-          "f2.ts [needle-two@1]",
-          "f3.ts [needle-three@1]",
-          "f4.ts [needle-four@1]",
-          "f5.ts [needle-five@1]",
-        ],
-        formatted: dedent(`
+      assertToolOutput(
+        outputByTool,
+        "search-files",
+        { patterns, maxResults: 20 },
+        {
+          raw: [
+            "scope=workspace patterns=[needle-one, needle-two, needle-three, needle-four, needle-five] matches=5",
+            "f1.ts [needle-one@1]",
+            "f2.ts [needle-two@1]",
+            "f3.ts [needle-three@1]",
+            "f4.ts [needle-four@1]",
+            "f5.ts [needle-five@1]",
+          ],
+          formatted: dedent(`
           • Search [needle-one, needle-two, needle-three, +2]
               f1.ts [needle-one@1]
               f2.ts [needle-two@1]
@@ -474,7 +570,8 @@ describe("tool output contract: search-files", () => {
               f4.ts [needle-four@1]
               f5.ts [needle-five@1]
         `),
-      });
+        },
+      );
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -491,17 +588,21 @@ describe("tool output contract: search-files", () => {
       if (!tools.searchFiles?.execute) throw new Error("expected searchFiles tool to be available");
       await tools.searchFiles.execute({ patterns, maxResults: 20 }, {} as never);
 
-      assertToolOutput(outputByTool, "search-files", { patterns, maxResults: 20 }, {
-        raw: [
-          "scope=workspace patterns=[p1, p2, p3, p4, p5, p6] matches=6",
-          "f1.ts [p1@1]",
-          "f2.ts [p2@1]",
-          "f3.ts [p3@1]",
-          "f4.ts [p4@1]",
-          "f5.ts [p5@1]",
-          "[truncated] +1",
-        ],
-        formatted: dedent(`
+      assertToolOutput(
+        outputByTool,
+        "search-files",
+        { patterns, maxResults: 20 },
+        {
+          raw: [
+            "scope=workspace patterns=[p1, p2, p3, p4, p5, p6] matches=6",
+            "f1.ts [p1@1]",
+            "f2.ts [p2@1]",
+            "f3.ts [p3@1]",
+            "f4.ts [p4@1]",
+            "f5.ts [p5@1]",
+            "[truncated] +1",
+          ],
+          formatted: dedent(`
           • Search [p1, p2, p3, +3]
               f1.ts [p1@1]
               f2.ts [p2@1]
@@ -510,7 +611,8 @@ describe("tool output contract: search-files", () => {
               f5.ts [p5@1]
               … +1 match
         `),
-      });
+        },
+      );
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -553,7 +655,10 @@ describe("tool output contract: scan-code", () => {
       for (const file of files) await writeFile(file, "export const value = 1;\n", "utf8");
 
       if (!tools.scanCode?.execute) throw new Error("expected scanCode tool to be available");
-      await tools.scanCode.execute({ paths: files, patterns: ["export const $NAME = $VALUE;"], maxResults: 10 }, {} as never);
+      await tools.scanCode.execute(
+        { paths: files, patterns: ["export const $NAME = $VALUE;"], maxResults: 10 },
+        {} as never,
+      );
 
       assertToolOutput(
         outputByTool,
@@ -576,7 +681,10 @@ describe("tool output contract: scan-code", () => {
       for (const file of files) await writeFile(file, "export const value = 1;\n", "utf8");
 
       if (!tools.scanCode?.execute) throw new Error("expected scanCode tool to be available");
-      await tools.scanCode.execute({ paths: files, patterns: ["export const $NAME = $VALUE;"], maxResults: 10 }, {} as never);
+      await tools.scanCode.execute(
+        { paths: files, patterns: ["export const $NAME = $VALUE;"], maxResults: 10 },
+        {} as never,
+      );
 
       assertToolOutput(
         outputByTool,
@@ -617,7 +725,6 @@ describe("tool output contract: scan-code", () => {
       await rm(workspace, { recursive: true, force: true });
     }
   });
-
 });
 
 describe("tool output contract: create-file", () => {
@@ -627,14 +734,19 @@ describe("tool output contract: create-file", () => {
       if (!tools.createFile?.execute) throw new Error("expected createFile tool to be available");
       await tools.createFile.execute({ path: "created.txt", content: "first\nsecond\n" }, {} as never);
 
-      assertToolOutput(outputByTool, "create-file", { path: "created.txt", content: "first\nsecond\n" }, {
-        raw: ["path=created.txt files=1", "1  first", "2  second"],
-        formatted: dedent(`
+      assertToolOutput(
+        outputByTool,
+        "create-file",
+        { path: "created.txt", content: "first\nsecond\n" },
+        {
+          raw: ["path=created.txt files=1", "1  first", "2  second"],
+          formatted: dedent(`
           • Create path=created.txt files=1
               1  first
               2  second
         `),
-      });
+        },
+      );
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -650,10 +762,15 @@ describe("tool output contract: delete-file", () => {
       if (!tools.deleteFile?.execute) throw new Error("expected deleteFile tool to be available");
       await tools.deleteFile.execute({ paths: [path] }, {} as never);
 
-      assertToolOutput(outputByTool, "delete-file", { paths: [path] }, {
-        raw: [],
-        formatted: "• Delete doomed.txt",
-      });
+      assertToolOutput(
+        outputByTool,
+        "delete-file",
+        { paths: [path] },
+        {
+          raw: [],
+          formatted: "• Delete doomed.txt",
+        },
+      );
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -669,10 +786,15 @@ describe("tool output contract: delete-file", () => {
       if (!tools.deleteFile?.execute) throw new Error("expected deleteFile tool to be available");
       await tools.deleteFile.execute({ paths: [first, second] }, {} as never);
 
-      assertToolOutput(outputByTool, "delete-file", { paths: [first, second] }, {
-        raw: [],
-        formatted: "• Delete first.txt, second.txt",
-      });
+      assertToolOutput(
+        outputByTool,
+        "delete-file",
+        { paths: [first, second] },
+        {
+          raw: [],
+          formatted: "• Delete first.txt, second.txt",
+        },
+      );
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -686,10 +808,15 @@ describe("tool output contract: delete-file", () => {
       if (!tools.deleteFile?.execute) throw new Error("expected deleteFile tool to be available");
       await tools.deleteFile.execute({ paths }, {} as never);
 
-      assertToolOutput(outputByTool, "delete-file", { paths }, {
-        raw: [],
-        formatted: "• Delete a.txt, b.txt, c.txt (+1)",
-      });
+      assertToolOutput(
+        outputByTool,
+        "delete-file",
+        { paths },
+        {
+          raw: [],
+          formatted: "• Delete a.txt, b.txt, c.txt (+1)",
+        },
+      );
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -718,9 +845,13 @@ describe("tool output contract: git-status", () => {
       setPermissionMode("read");
       if (!tools.gitStatus?.execute) throw new Error("expected gitStatus tool to be available");
       await tools.gitStatus.execute({}, {} as never);
-      assertToolOutput(outputByTool, "git-status", {}, {
-        raw: ["M u1.txt", "M u2.txt", "[truncated] +2 lines", "M u5.txt", "M u6.txt"],
-        formatted: dedent(`
+      assertToolOutput(
+        outputByTool,
+        "git-status",
+        {},
+        {
+          raw: ["M u1.txt", "M u2.txt", "[truncated] +2 lines", "M u5.txt", "M u6.txt"],
+          formatted: dedent(`
           • Git Status
               M u1.txt
               M u2.txt
@@ -728,7 +859,8 @@ describe("tool output contract: git-status", () => {
               M u5.txt
               M u6.txt
         `),
-      });
+        },
+      );
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -752,14 +884,19 @@ describe("tool output contract: git-status", () => {
       if (!tools.gitStatus?.execute) throw new Error("expected gitStatus tool to be available");
       await tools.gitStatus.execute({}, {} as never);
 
-      assertToolOutput(outputByTool, "git-status", {}, {
-        raw: ["M a.txt", "M b.txt"],
-        formatted: dedent(`
+      assertToolOutput(
+        outputByTool,
+        "git-status",
+        {},
+        {
+          raw: ["M a.txt", "M b.txt"],
+          formatted: dedent(`
           • Git Status
               M a.txt
               M b.txt
         `),
-      });
+        },
+      );
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -780,13 +917,18 @@ describe("tool output contract: git-status", () => {
       if (!tools.gitStatus?.execute) throw new Error("expected gitStatus tool to be available");
       await tools.gitStatus.execute({}, {} as never);
 
-      assertToolOutput(outputByTool, "git-status", {}, {
-        raw: ["[no-output]"],
-        formatted: dedent(`
+      assertToolOutput(
+        outputByTool,
+        "git-status",
+        {},
+        {
+          raw: ["[no-output]"],
+          formatted: dedent(`
           • Git Status
               (No output)
         `),
-      });
+        },
+      );
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -803,33 +945,38 @@ describe("tool output contract: git-diff", () => {
       await runShellCommand(workspace, "git config user.name Test");
       await writeFile(
         join(workspace, "a.ts"),
-        ["export const a = 1;", "export const b = 2;", "export const c = 3;", "export const d = 4;"].join("\n") + "\n",
+        `${["export const a = 1;", "export const b = 2;", "export const c = 3;", "export const d = 4;"].join("\n")}\n`,
         "utf8",
       );
       await runShellCommand(workspace, "git add a.ts");
       await runShellCommand(workspace, "git commit -m init");
       await writeFile(
         join(workspace, "a.ts"),
-        ["export const a = 10;", "export const b = 20;", "export const c = 30;", "export const d = 40;"].join("\n") + "\n",
+        ["export const a = 10;", "export const b = 20;", "export const c = 30;", "export const d = 40;"].join("\n") +
+          "\n",
         "utf8",
       );
       setPermissionMode("read");
 
       if (!tools.gitDiff?.execute) throw new Error("expected gitDiff tool to be available");
       await tools.gitDiff.execute({ path: "a.ts", contextLines: 1 }, {} as never);
-      assertToolOutput(outputByTool, "git-diff", { path: "a.ts", contextLines: 1 }, {
-        raw: [
-          "diff --git a/a.ts b/a.ts",
-          "index <hash>..<hash> 100644",
-          "--- a/a.ts",
-          "+++ b/a.ts",
-          "[truncated] +5 lines",
-          "+export const a = 10;",
-          "+export const b = 20;",
-          "+export const c = 30;",
-          "+export const d = 40;",
-        ],
-        formatted: dedent(`
+      assertToolOutput(
+        outputByTool,
+        "git-diff",
+        { path: "a.ts", contextLines: 1 },
+        {
+          raw: [
+            "diff --git a/a.ts b/a.ts",
+            "index <hash>..<hash> 100644",
+            "--- a/a.ts",
+            "+++ b/a.ts",
+            "[truncated] +5 lines",
+            "+export const a = 10;",
+            "+export const b = 20;",
+            "+export const c = 30;",
+            "+export const d = 40;",
+          ],
+          formatted: dedent(`
           • Git Diff a.ts
               diff --git a/a.ts b/a.ts
               index <hash>..<hash> 100644
@@ -841,7 +988,8 @@ describe("tool output contract: git-diff", () => {
               +export const c = 30;
               +export const d = 40;
         `),
-      });
+        },
+      );
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -863,17 +1011,21 @@ describe("tool output contract: git-diff", () => {
       if (!tools.gitDiff?.execute) throw new Error("expected gitDiff tool to be available");
       await tools.gitDiff.execute({ path: "a.ts", contextLines: 0 }, {} as never);
 
-      assertToolOutput(outputByTool, "git-diff", { path: "a.ts", contextLines: 0 }, {
-        raw: [
-          "diff --git a/a.ts b/a.ts",
-          "index <hash>..<hash> 100644",
-          "--- a/a.ts",
-          "+++ b/a.ts",
-          "@@ -1 +1 @@",
-          "-export const a = 1;",
-          "+export const a = 2;",
-        ],
-        formatted: dedent(`
+      assertToolOutput(
+        outputByTool,
+        "git-diff",
+        { path: "a.ts", contextLines: 0 },
+        {
+          raw: [
+            "diff --git a/a.ts b/a.ts",
+            "index <hash>..<hash> 100644",
+            "--- a/a.ts",
+            "+++ b/a.ts",
+            "@@ -1 +1 @@",
+            "-export const a = 1;",
+            "+export const a = 2;",
+          ],
+          formatted: dedent(`
           • Git Diff a.ts
               diff --git a/a.ts b/a.ts
               index <hash>..<hash> 100644
@@ -883,7 +1035,8 @@ describe("tool output contract: git-diff", () => {
               -export const a = 1;
               +export const a = 2;
         `),
-      });
+        },
+      );
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -904,13 +1057,18 @@ describe("tool output contract: git-diff", () => {
       if (!tools.gitDiff?.execute) throw new Error("expected gitDiff tool to be available");
       await tools.gitDiff.execute({ path: "a.ts", contextLines: 0 }, {} as never);
 
-      assertToolOutput(outputByTool, "git-diff", { path: "a.ts", contextLines: 0 }, {
-        raw: ["[no-output]"],
-        formatted: dedent(`
+      assertToolOutput(
+        outputByTool,
+        "git-diff",
+        { path: "a.ts", contextLines: 0 },
+        {
+          raw: ["[no-output]"],
+          formatted: dedent(`
           • Git Diff a.ts
               (No output)
         `),
-      });
+        },
+      );
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -934,9 +1092,13 @@ describe("tool output contract: git-log", () => {
 
       if (!tools.gitLog?.execute) throw new Error("expected gitLog tool to be available");
       await tools.gitLog.execute({ limit: 6 }, {} as never);
-      assertToolOutput(outputByTool, "git-log", { limit: 6 }, {
-        raw: ["<hash> c6", "<hash> c5", "[truncated] +2 lines", "<hash> c2", "<hash> c1"],
-        formatted: dedent(`
+      assertToolOutput(
+        outputByTool,
+        "git-log",
+        { limit: 6 },
+        {
+          raw: ["<hash> c6", "<hash> c5", "[truncated] +2 lines", "<hash> c2", "<hash> c1"],
+          formatted: dedent(`
           • Git Log
               <hash> c6
               <hash> c5
@@ -944,7 +1106,8 @@ describe("tool output contract: git-log", () => {
               <hash> c2
               <hash> c1
         `),
-      });
+        },
+      );
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -967,14 +1130,19 @@ describe("tool output contract: git-log", () => {
 
       if (!tools.gitLog?.execute) throw new Error("expected gitLog tool to be available");
       await tools.gitLog.execute({ limit: 2 }, {} as never);
-      assertToolOutput(outputByTool, "git-log", { limit: 2 }, {
-        raw: ["<hash> second", "<hash> first"],
-        formatted: dedent(`
+      assertToolOutput(
+        outputByTool,
+        "git-log",
+        { limit: 2 },
+        {
+          raw: ["<hash> second", "<hash> first"],
+          formatted: dedent(`
           • Git Log
               <hash> second
               <hash> first
         `),
-      });
+        },
+      );
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -982,7 +1150,8 @@ describe("tool output contract: git-log", () => {
 });
 
 describe("tool output contract: edit tools", () => {
-  const buildLines = (count: number): string[] => Array.from({ length: count }, (_, i) => `const line${i + 1} = ${i + 1};`);
+  const buildLines = (count: number): string[] =>
+    Array.from({ length: count }, (_, i) => `const line${i + 1} = ${i + 1};`);
   const editTools: Array<"edit-file" | "edit-code"> = ["edit-file", "edit-code"];
 
   async function applyEdits(
@@ -996,7 +1165,10 @@ describe("tool output contract: edit tools", () => {
       await tools.editFile.execute(
         {
           path,
-          edits: targets.map((line) => ({ find: `const line${line} = ${line};`, replace: `const line${line} = ${line}000;` })),
+          edits: targets.map((line) => ({
+            find: `const line${line} = ${line};`,
+            replace: `const line${line} = ${line}000;`,
+          })),
         },
         {} as never,
       );
@@ -1006,33 +1178,42 @@ describe("tool output contract: edit tools", () => {
     await tools.editCode.execute(
       {
         path,
-        edits: targets.map((line) => ({ pattern: `const line${line} = $VALUE;`, replacement: `const line${line} = ${line}000;` })),
+        edits: targets.map((line) => ({
+          pattern: `const line${line} = $VALUE;`,
+          replacement: `const line${line} = ${line}000;`,
+        })),
       },
       {} as never,
     );
   }
 
-  test.each(editTools.map((toolName) => [toolName] as const))("%s: single edit emits deterministic output", async (toolName) => {
+  test.each(
+    editTools.map((toolName) => [toolName] as const),
+  )("%s: single edit emits deterministic output", async (toolName) => {
     const { workspace, tools, outputByTool } = await createHarness("write");
     try {
       await writeFile(join(workspace, "notes.ts"), `${buildLines(20).join("\n")}\n`, "utf8");
       await applyEdits(toolName, tools, "notes.ts", [10]);
 
-      assertToolOutput(outputByTool, toolName, { path: "notes.ts" }, {
-        raw: [
-          "path=notes.ts files=1 added=1 removed=1",
-          "[truncated]",
-          "7  const line7 = 7;",
-          "8  const line8 = 8;",
-          "9  const line9 = 9;",
-          "10 - const line10 = 10;",
-          "10 + const line10 = 10000;",
-          "11  const line11 = 11;",
-          "12  const line12 = 12;",
-          "13  const line13 = 13;",
-          "[truncated]",
-        ],
-        formatted: dedent(`
+      assertToolOutput(
+        outputByTool,
+        toolName,
+        { path: "notes.ts" },
+        {
+          raw: [
+            "path=notes.ts files=1 added=1 removed=1",
+            "[truncated]",
+            "7  const line7 = 7;",
+            "8  const line8 = 8;",
+            "9  const line9 = 9;",
+            "10 - const line10 = 10;",
+            "10 + const line10 = 10000;",
+            "11  const line11 = 11;",
+            "12  const line12 = 12;",
+            "13  const line13 = 13;",
+            "[truncated]",
+          ],
+          formatted: dedent(`
           • Edit path=notes.ts files=1 added=1 removed=1
                …
                7  const line7 = 7;
@@ -1045,40 +1226,47 @@ describe("tool output contract: edit tools", () => {
               13  const line13 = 13;
                …
         `),
-      });
+        },
+      );
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
   });
 
-  test.each(editTools.map((toolName) => [toolName] as const))("%s: middle truncation between edit windows", async (toolName) => {
+  test.each(
+    editTools.map((toolName) => [toolName] as const),
+  )("%s: middle truncation between edit windows", async (toolName) => {
     const { workspace, tools, outputByTool } = await createHarness("write");
     try {
       await writeFile(join(workspace, "notes.ts"), `${buildLines(30).join("\n")}\n`, "utf8");
       await applyEdits(toolName, tools, "notes.ts", [10, 28]);
 
-      assertToolOutput(outputByTool, toolName, { path: "notes.ts" }, {
-        raw: [
-          "path=notes.ts files=1 added=2 removed=2",
-          "[truncated]",
-          "7  const line7 = 7;",
-          "8  const line8 = 8;",
-          "9  const line9 = 9;",
-          "10 - const line10 = 10;",
-          "10 + const line10 = 10000;",
-          "11  const line11 = 11;",
-          "12  const line12 = 12;",
-          "13  const line13 = 13;",
-          "[truncated]",
-          "25  const line25 = 25;",
-          "26  const line26 = 26;",
-          "27  const line27 = 27;",
-          "28 - const line28 = 28;",
-          "28 + const line28 = 28000;",
-          "29  const line29 = 29;",
-          "30  const line30 = 30;",
-        ],
-        formatted: dedent(`
+      assertToolOutput(
+        outputByTool,
+        toolName,
+        { path: "notes.ts" },
+        {
+          raw: [
+            "path=notes.ts files=1 added=2 removed=2",
+            "[truncated]",
+            "7  const line7 = 7;",
+            "8  const line8 = 8;",
+            "9  const line9 = 9;",
+            "10 - const line10 = 10;",
+            "10 + const line10 = 10000;",
+            "11  const line11 = 11;",
+            "12  const line12 = 12;",
+            "13  const line13 = 13;",
+            "[truncated]",
+            "25  const line25 = 25;",
+            "26  const line26 = 26;",
+            "27  const line27 = 27;",
+            "28 - const line28 = 28;",
+            "28 + const line28 = 28000;",
+            "29  const line29 = 29;",
+            "30  const line30 = 30;",
+          ],
+          formatted: dedent(`
           • Edit path=notes.ts files=1 added=2 removed=2
                …
                7  const line7 = 7;
@@ -1098,30 +1286,37 @@ describe("tool output contract: edit tools", () => {
               29  const line29 = 29;
               30  const line30 = 30;
         `),
-      });
+        },
+      );
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
   });
 
-  test.each(editTools.map((toolName) => [toolName] as const))("%s: near end truncates only at start", async (toolName) => {
+  test.each(
+    editTools.map((toolName) => [toolName] as const),
+  )("%s: near end truncates only at start", async (toolName) => {
     const { workspace, tools, outputByTool } = await createHarness("write");
     try {
       await writeFile(join(workspace, "notes.ts"), `${buildLines(120).join("\n")}\n`, "utf8");
       await applyEdits(toolName, tools, "notes.ts", [119]);
 
-      assertToolOutput(outputByTool, toolName, { path: "notes.ts" }, {
-        raw: [
-          "path=notes.ts files=1 added=1 removed=1",
-          "[truncated]",
-          "116  const line116 = 116;",
-          "117  const line117 = 117;",
-          "118  const line118 = 118;",
-          "119 - const line119 = 119;",
-          "119 + const line119 = 119000;",
-          "120  const line120 = 120;",
-        ],
-        formatted: dedent(`
+      assertToolOutput(
+        outputByTool,
+        toolName,
+        { path: "notes.ts" },
+        {
+          raw: [
+            "path=notes.ts files=1 added=1 removed=1",
+            "[truncated]",
+            "116  const line116 = 116;",
+            "117  const line117 = 117;",
+            "118  const line118 = 118;",
+            "119 - const line119 = 119;",
+            "119 + const line119 = 119000;",
+            "120  const line120 = 120;",
+          ],
+          formatted: dedent(`
           • Edit path=notes.ts files=1 added=1 removed=1
                 …
               116  const line116 = 116;
@@ -1131,7 +1326,8 @@ describe("tool output contract: edit tools", () => {
               119  const line119 = 119000;
               120  const line120 = 120;
         `),
-      });
+        },
+      );
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -1146,9 +1342,13 @@ describe("tool output contract: run-command", () => {
       const command = `printf '%s\\n' line1 line2 line3 line4 line5 line6`;
       await tools.runCommand.execute({ command }, {} as never);
 
-      assertToolOutput(outputByTool, "run-command", { command }, {
-        raw: ["out | line1", "out | line2", "[truncated] +2 lines", "out | line5", "out | line6"],
-        formatted: dedent(`
+      assertToolOutput(
+        outputByTool,
+        "run-command",
+        { command },
+        {
+          raw: ["out | line1", "out | line2", "[truncated] +2 lines", "out | line5", "out | line6"],
+          formatted: dedent(`
           • Run printf '%s\\n' line1 line2 line3 line4 line5 line6
               line1
               line2
@@ -1156,7 +1356,8 @@ describe("tool output contract: run-command", () => {
               line5
               line6
         `),
-      });
+        },
+      );
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -1169,16 +1370,21 @@ describe("tool output contract: run-command", () => {
       const command = `printf '%s\\n' line1 line2 line3 line4`;
       await tools.runCommand.execute({ command }, {} as never);
 
-      assertToolOutput(outputByTool, "run-command", { command }, {
-        raw: ["out | line1", "out | line2", "out | line3", "out | line4"],
-        formatted: dedent(`
+      assertToolOutput(
+        outputByTool,
+        "run-command",
+        { command },
+        {
+          raw: ["out | line1", "out | line2", "out | line3", "out | line4"],
+          formatted: dedent(`
           • Run printf '%s\\n' line1 line2 line3 line4
               line1
               line2
               line3
               line4
         `),
-      });
+        },
+      );
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -1191,14 +1397,19 @@ describe("tool output contract: run-command", () => {
       const command = `sh -c 'echo out; echo err 1>&2; exit 1'`;
       await tools.runCommand.execute({ command }, {} as never);
 
-      assertToolOutput(outputByTool, "run-command", { command }, {
-        raw: ["out | out", "err | err"],
-        formatted: dedent(`
+      assertToolOutput(
+        outputByTool,
+        "run-command",
+        { command },
+        {
+          raw: ["out | out", "err | err"],
+          formatted: dedent(`
           • Run sh -c 'echo out; echo err 1>&2; exit 1'
               out
               err
         `),
-      });
+        },
+      );
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -1212,16 +1423,21 @@ describe("tool output contract: run-command", () => {
 printf '%s\\n' line3 line4`;
       await tools.runCommand.execute({ command }, {} as never);
 
-      assertToolOutput(outputByTool, "run-command", { command }, {
-        raw: ["out | line1", "out | line2", "out | line3", "out | line4"],
-        formatted: dedent(`
+      assertToolOutput(
+        outputByTool,
+        "run-command",
+        { command },
+        {
+          raw: ["out | line1", "out | line2", "out | line3", "out | line4"],
+          formatted: dedent(`
           • Run printf '%s\\n' line1 line2 printf '%s\\n' line3 line4
               line1
               line2
               line3
               line4
         `),
-      });
+        },
+      );
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -1234,13 +1450,18 @@ printf '%s\\n' line3 line4`;
       const command = `sh -c ':'`;
       await tools.runCommand.execute({ command }, {} as never);
 
-      assertToolOutput(outputByTool, "run-command", { command }, {
-        raw: ["[no-output]"],
-        formatted: dedent(`
+      assertToolOutput(
+        outputByTool,
+        "run-command",
+        { command },
+        {
+          raw: ["[no-output]"],
+          formatted: dedent(`
           • Run sh -c ':'
               (No output)
         `),
-      });
+        },
+      );
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -1253,21 +1474,31 @@ describe("tool output contract: web-search", () => {
     const raw = ['query="bun test" results=1', 'result rank=1 url="https://bun.sh/docs"'];
     outputByTool.set("web-search", raw);
 
-    assertToolOutput(outputByTool, "web-search", { query: "  bun   test  " }, {
-      raw,
-      formatted: dedent(`
+    assertToolOutput(
+      outputByTool,
+      "web-search",
+      { query: "  bun   test  " },
+      {
+        raw,
+        formatted: dedent(`
         • Web Search "bun test"
             1. https://bun.sh/docs
       `),
-    });
+      },
+    );
   });
 
   test("compacts multiline query text into a single header detail", () => {
     const outputByTool = new Map<string, string[]>();
-    assertToolOutput(outputByTool, "web-search", { query: "bun\n\n test\n docs" }, {
-      raw: [],
-      formatted: '• Web Search "bun test docs"',
-    });
+    assertToolOutput(
+      outputByTool,
+      "web-search",
+      { query: "bun\n\n test\n docs" },
+      {
+        raw: [],
+        formatted: '• Web Search "bun test docs"',
+      },
+    );
   });
 
   test("renders no-results stream rows", () => {
@@ -1275,13 +1506,18 @@ describe("tool output contract: web-search", () => {
     const raw = ['query="missing query" results=0', "[no-output]"];
     outputByTool.set("web-search", raw);
 
-    assertToolOutput(outputByTool, "web-search", { query: "missing query" }, {
-      raw,
-      formatted: dedent(`
+    assertToolOutput(
+      outputByTool,
+      "web-search",
+      { query: "missing query" },
+      {
+        raw,
+        formatted: dedent(`
         • Web Search "missing query"
             (No output)
       `),
-    });
+      },
+    );
   });
 
   test("truncates result rows after five matches", () => {
@@ -1297,9 +1533,13 @@ describe("tool output contract: web-search", () => {
     ];
     outputByTool.set("web-search", raw);
 
-    assertToolOutput(outputByTool, "web-search", { query: "acolyte" }, {
-      raw,
-      formatted: dedent(`
+    assertToolOutput(
+      outputByTool,
+      "web-search",
+      { query: "acolyte" },
+      {
+        raw,
+        formatted: dedent(`
         • Web Search "acolyte"
             1. https://one.test
             2. https://two.test
@@ -1308,16 +1548,22 @@ describe("tool output contract: web-search", () => {
             5. https://five.test
             … +2 results
       `),
-    });
+      },
+    );
   });
 });
 
 describe("tool output contract: web-fetch", () => {
   test("shows header-only formatted output", () => {
     const outputByTool = new Map<string, string[]>();
-    assertToolOutput(outputByTool, "web-fetch", { url: "https://example.com/docs" }, {
-      raw: [],
-      formatted: "• Web Fetch https://example.com/docs",
-    });
+    assertToolOutput(
+      outputByTool,
+      "web-fetch",
+      { url: "https://example.com/docs" },
+      {
+        raw: [],
+        formatted: "• Web Fetch https://example.com/docs",
+      },
+    );
   });
 });

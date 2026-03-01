@@ -1,13 +1,10 @@
 import { countLabel } from "./plural";
 import { formatToolLabel } from "./tool-labels";
 import type { ToolName } from "./tool-names";
+import { parseToolOutputRow } from "./tool-output-parser";
 
 const EMPTY_TOOL_PROGRESS_SUPPRESS = new Set(["find-files", "search-files", "read-file", "scan-code"]);
 const SUMMARY_TOOL_NAMES = new Set<ToolName>(["find-files", "search-files", "read-file", "scan-code", "web-search"]);
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
 
 function compactBracketList(value: string, maxItems = 3): string {
   const items = value
@@ -36,77 +33,33 @@ export function formatToolFileSummaryHeader(toolName: string, fileCount: number)
   return `${label} ${count}`;
 }
 
-export function mergeToolOutputHeader(header: string, toolName: string, line: string): string | null {
+export function mergeToolOutputHeader(_header: string, toolName: string, line: string): string | null {
   const isSummaryTool = SUMMARY_TOOL_NAMES.has(toolName as ToolName);
   const label = formatToolLabel(toolName);
-  if (!isSummaryTool && toolName !== "create-file" && toolName !== "edit-file" && toolName !== "edit-code")
-    return null;
+  if (!isSummaryTool && toolName !== "create-file" && toolName !== "edit-file" && toolName !== "edit-code") return null;
   const trimmed = line.trim();
-  if (
-    toolName === "find-files" &&
-    new RegExp(`^scope=.+\\s+patterns=\\[[^\\]]*\\]\\s+matches=\\d+$`, "i").test(trimmed)
-  ) {
-    const match = trimmed.match(/^scope=(.+)\s+patterns=\[([^\]]*)\]\s+matches=\d+$/i);
-    if (!match?.[1]) return `${label} ${trimmed}`;
-    const scope = match[1].trim();
-    const patterns = compactList(match[2] ?? "");
-    if (scope === "workspace") return `${label} ${patterns}`;
-    return `${label} ${scope} ${patterns}`;
+  const parsed = parseToolOutputRow(toolName, trimmed);
+  if (parsed.kind === "find-summary") {
+    const patterns = compactList(parsed.patterns.join(", "));
+    if (parsed.scope === "workspace") return `${label} ${patterns}`;
+    return `${label} ${parsed.scope} ${patterns}`;
   }
-  if (
-    toolName === "search-files" &&
-    new RegExp(`^scope=.+\\s+patterns=\\[[^\\]]*\\]\\s+matches=\\d+$`, "i").test(trimmed)
-  ) {
-    const match = trimmed.match(/^scope=(.+)\s+patterns=\[([^\]]*)\]\s+matches=\d+$/i);
-    if (!match?.[1]) return `${label} ${trimmed}`;
-    const scope = match[1].trim();
-    const patterns = compactBracketList(match[2] ?? "");
-    if (scope === "workspace") return `${label} ${patterns}`;
-    return `${label} ${scope} ${patterns}`;
+  if (parsed.kind === "search-summary") {
+    const patterns = compactBracketList(parsed.patterns.join(", "));
+    if (parsed.scope === "workspace") return `${label} ${patterns}`;
+    return `${label} ${parsed.scope} ${patterns}`;
   }
-  if (toolName === "web-search") {
-    const match = trimmed.match(/^query=("(?:\\.|[^"])*")\s+results=(\d+)$/i);
-    if (match?.[1]) {
-      const quoted = match[1];
-      return `${label} ${quoted}`;
-    }
-  }
-  if (
-    (toolName === "read-file" || toolName === "scan-code") &&
-    new RegExp(`^paths=\\d+\\s+targets=\\[[^\\]]*\\](?:\\s+omitted=\\d+)?$`, "i").test(trimmed)
-  ) {
-    const match = trimmed.match(/^paths=(\d+)\s+targets=\[([^\]]*)\](?:\s+omitted=(\d+))?$/i);
-    if (!match) return `${label} ${trimmed}`;
-    const targets = (match[2] ?? "")
-      .split(",")
-      .map((part) => part.trim())
-      .filter((part) => part.length > 0);
-    const omitted = Number.parseInt(match[3] ?? "0", 10);
-    if (targets.length === 0) return `${label}`;
-    const list = targets.join(", ");
-    if (Number.isFinite(omitted) && omitted > 0) return `${label} ${list}, +${omitted}`;
+  if (parsed.kind === "web-search-summary") return `${label} ${parsed.query}`;
+  if (parsed.kind === "read-summary") {
+    if (parsed.targets.length === 0) return `${label}`;
+    const list = parsed.targets.join(", ");
+    if (parsed.omitted > 0) return `${label} ${list}, +${parsed.omitted}`;
     return `${label} ${list}`;
   }
-  if (
-    toolName === "create-file" &&
-    /^path=.+\s+files=\d+$/i.test(trimmed)
-  )
-    return `Create ${trimmed}`;
-  if (
-    (toolName === "edit-file" || toolName === "edit-code") &&
-    /^path=.+\s+files=\d+\s+added=\d+\s+removed=\d+$/i.test(trimmed)
-  )
-    return `Edit ${trimmed}`;
-  if (toolName === "find-files" && new RegExp(`^${escapeRegExp(label)}(?:\\s+.+)?\\s+using\\s+.+$`, "i").test(trimmed))
-    return trimmed;
-  if (toolName === "search-files" && new RegExp(`^${escapeRegExp(label)}(?:\\s+.+)?\\s+using\\s+.+$`, "i").test(trimmed))
-    return trimmed;
-  if ((toolName === "read-file" || toolName === "scan-code") && new RegExp(`^${escapeRegExp(label)}\\s+.+$`, "i").test(trimmed))
-    return trimmed;
-  if (/^\d+\s+files?\b/i.test(trimmed)) return `${label} ${trimmed}`;
-  if (new RegExp(`^${escapeRegExp(label)}\\b.*\\b\\d+\\s+files?\\b`, "i").test(trimmed)) return trimmed;
-  if (new RegExp(`^${escapeRegExp(label)}\\s+\\d+\\s+files?\\b`, "i").test(trimmed)) return trimmed;
-  if (new RegExp(`^${escapeRegExp(header)}\\s+\\d+\\s+files?\\b`, "i").test(trimmed)) return trimmed;
+  if (parsed.kind === "create-summary") return `Create path=${parsed.path} files=${parsed.files}`;
+  if (parsed.kind === "edit-summary")
+    return `Edit path=${parsed.path} files=${parsed.files} added=${parsed.added} removed=${parsed.removed}`;
+  if (parsed.kind === "files-count") return `${label} ${parsed.files} ${parsed.files === 1 ? "file" : "files"}`;
   return null;
 }
 

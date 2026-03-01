@@ -140,8 +140,7 @@ function redundantQueryKind(input: {
     const narrowingScope = isWorkspaceScope(priorScope) && !isWorkspaceScope(currentScope);
     if (!sameScope && !narrowingScope) continue;
     if (sameScope && sameArray(priorPatterns, currentPatterns)) continue;
-    const isProperSubset =
-      currentPatterns.length < priorPatterns.length && isSubsetSet(currentPatterns, priorPatterns);
+    const isProperSubset = currentPatterns.length < priorPatterns.length && isSubsetSet(currentPatterns, priorPatterns);
     if (isProperSubset) return narrowingScope ? "scope-narrowing" : "narrower";
   }
   return null;
@@ -189,7 +188,9 @@ const duplicateConsecutiveCallGuard: ToolGuard = {
     if (!last || last.toolName !== toolName) return;
     if (!guardArgsEqual(last.args, args)) return;
     session.onGuard?.({ guardId: "duplicate-consecutive-call", toolName, action: "blocked", detail: "duplicate-call" });
-    throw new Error(`Duplicate ${toolName} call detected with unchanged arguments. Reuse previous result or change inputs.`);
+    throw new Error(
+      `Duplicate ${toolName} call detected with unchanged arguments. Reuse previous result or change inputs.`,
+    );
   },
 };
 
@@ -360,7 +361,12 @@ const excessiveFindLoopGuard: ToolGuard = {
       const narrowingScope = isWorkspaceScope(priorScope) && !isWorkspaceScope(currentScope);
       if (!sameScope && !narrowingScope) continue;
       if (includesUniversalFindPattern(priorPatterns)) {
-        session.onGuard?.({ guardId: "excessive-find-loop", toolName, action: "blocked", detail: "covered-by-universal-find" });
+        session.onGuard?.({
+          guardId: "excessive-find-loop",
+          toolName,
+          action: "blocked",
+          detail: "covered-by-universal-find",
+        });
         throw new Error("Redundant find-files call detected. Prior universal find already covers this scope.");
       }
     }

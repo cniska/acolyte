@@ -19,42 +19,24 @@ describe("tool summary format", () => {
   });
 
   test("merges count and structured lines into full headers", () => {
-    expect(mergeToolOutputHeader("Find", "find-files", "scope=workspace patterns=[*.ts] matches=3")).toBe(
-      "Find *.ts",
+    expect(mergeToolOutputHeader("Find", "find-files", "scope=workspace patterns=[*.ts] matches=3")).toBe("Find *.ts");
+    expect(mergeToolOutputHeader("Search", "search-files", "scope=paths:2 patterns=[tool] matches=2")).toBe(
+      "Search paths:2 [tool]",
     );
-    expect(
-      mergeToolOutputHeader("Search", "search-files", "scope=paths:2 patterns=[tool] matches=2"),
-    ).toBe("Search paths:2 [tool]");
-    expect(mergeToolOutputHeader("Read", "read-file", "paths=2 targets=[a.ts, b.ts]")).toBe(
-      "Read a.ts, b.ts",
-    );
-    expect(mergeToolOutputHeader("Review", "scan-code", "paths=1 targets=[src/a.ts]")).toBe(
-      "Review src/a.ts",
-    );
+    expect(mergeToolOutputHeader("Read", "read-file", "paths=2 targets=[a.ts, b.ts]")).toBe("Read a.ts, b.ts");
+    expect(mergeToolOutputHeader("Review", "scan-code", "paths=1 targets=[src/a.ts]")).toBe("Review src/a.ts");
     expect(mergeToolOutputHeader("Create", "create-file", "path=src/a.ts files=1")).toBe(
       "Create path=src/a.ts files=1",
     );
     expect(mergeToolOutputHeader("Edit", "edit-file", "path=src/a.ts files=1 added=2 removed=1")).toBe(
       "Edit path=src/a.ts files=1 added=2 removed=1",
     );
-    expect(mergeToolOutputHeader("Find", "find-files", "3 files")).toBe("Find 3 files");
-    expect(mergeToolOutputHeader("Find", "find-files", "Find using [tool, agent]")).toBe(
-      "Find using [tool, agent]",
-    );
-    expect(mergeToolOutputHeader("Search", "search-files", "Search 2 files")).toBe("Search 2 files");
-    expect(mergeToolOutputHeader("Read", "read-file", "Read 1 file")).toBe("Read 1 file");
-    expect(mergeToolOutputHeader("Review", "scan-code", "Review 4 files")).toBe("Review 4 files");
-    expect(mergeToolOutputHeader("Search", "search-files", "2 files using 5 patterns")).toBe(
-      "Search 2 files using 5 patterns",
-    );
-    expect(mergeToolOutputHeader("Search", "search-files", "Search 2 files using 1 pattern")).toBe(
-      "Search 2 files using 1 pattern",
-    );
-    expect(mergeToolOutputHeader("Search", "search-files", "Search using [tool, agent]")).toBe(
-      "Search using [tool, agent]",
-    );
     expect(
-      mergeToolOutputHeader("Search", "search-files", "scope=workspace patterns=[any, process.env., foo, bar] matches=4"),
+      mergeToolOutputHeader(
+        "Search",
+        "search-files",
+        "scope=workspace patterns=[any, process.env., foo, bar] matches=4",
+      ),
     ).toBe("Search [any, process.env., foo, +1]");
     expect(
       mergeToolOutputHeader("Find", "find-files", "scope=workspace patterns=[*.ts, *.md, *.json, *.yaml] matches=4"),
@@ -72,10 +54,10 @@ describe("tool summary format", () => {
         "scope=foo/, bar/, baz, +5 patterns=[any, process.env., alpha, beta, gamma] matches=9",
       ),
     ).toBe("Search foo/, bar/, baz, +5 [any, process.env., alpha, +2]");
-    expect(mergeToolOutputHeader("Read", "read-file", "Read a.ts, b.ts, c.ts +2 files")).toBe(
-      "Read a.ts, b.ts, c.ts +2 files",
+    expect(mergeToolOutputHeader("Read", "read-file", "paths=4 targets=[a.ts, b.ts, c.ts] omitted=1")).toBe(
+      "Read a.ts, b.ts, c.ts, +1",
     );
-    expect(mergeToolOutputHeader("Review", "scan-code", "Review src/a.ts, src/b.ts")).toBe(
+    expect(mergeToolOutputHeader("Review", "scan-code", "paths=2 targets=[src/a.ts, src/b.ts]")).toBe(
       "Review src/a.ts, src/b.ts",
     );
     expect(mergeToolOutputHeader("Web Search", "web-search", 'query="bun test" results=2')).toBe(

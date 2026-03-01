@@ -1,7 +1,4 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { setPermissionMode } from "./app-config";
 import { toolsForAgent, webSearchStreamRows, withToolError } from "./mastra-tools";
 import { savedPermissionMode } from "./test-factory";
@@ -154,10 +151,7 @@ describe("web-search stream rows", () => {
       "   Fast all-in-one JavaScript runtime and toolkit.",
     ].join("\n");
     expect(webSearchStreamRows(raw)).toBe(
-      [
-        'query="bun test" results=1',
-        'result rank=1 url="https://bun.sh/docs"',
-      ].join("\n"),
+      ['query="bun test" results=1', 'result rank=1 url="https://bun.sh/docs"'].join("\n"),
     );
   });
 

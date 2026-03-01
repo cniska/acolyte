@@ -2,8 +2,9 @@ import { relative } from "node:path";
 import { z } from "zod";
 import { wrapAssistantContent } from "./chat-content";
 import { countLabel } from "./plural";
-import { parseToolProgressLine } from "./tool-progress";
 import { TOOL_OUTPUT_MARKERS, TOOL_OUTPUT_RUN_MAX_ROWS } from "./tool-output-format";
+import { parseToolOutputMarker } from "./tool-output-parser";
+import { parseToolProgressLine } from "./tool-progress";
 import { printDim, printOutput, printToolHeader } from "./ui";
 
 export { countLabel } from "./plural";
@@ -434,12 +435,17 @@ export function formatProgressOutput(
       case "meta":
         if (parsed.text === TOOL_OUTPUT_MARKERS.noOutput) return dim("(No output)");
         if (parsed.text === TOOL_OUTPUT_MARKERS.truncated) return dim("…".padStart(Math.max(1, lineNumberWidth), " "));
-        if (parsed.text.startsWith(`${TOOL_OUTPUT_MARKERS.truncated} +`)) {
-          const amount = parsed.text.match(/^\[truncated\] \+(\d+)$/)?.[1];
-          if (amount && (rootHeaderLabel === "Find" || rootHeaderLabel === "Search")) {
-            return dim(`… +${countLabel(Number.parseInt(amount, 10), "match", "matches")}`.padStart(Math.max(1, lineNumberWidth), " "));
+        {
+          const marker = parseToolOutputMarker(parsed.text);
+          if (marker.kind === "truncated") {
+            if ((rootHeaderLabel === "Find" || rootHeaderLabel === "Search") && !marker.unit)
+              return dim(
+                `… +${countLabel(marker.count, "match", "matches")}`.padStart(Math.max(1, lineNumberWidth), " "),
+              );
+            if (marker.count <= 0) return dim("…".padStart(Math.max(1, lineNumberWidth), " "));
+            const suffix = marker.unit ? ` ${marker.unit}` : "";
+            return dim(`… +${marker.count}${suffix}`.padStart(Math.max(1, lineNumberWidth), " "));
           }
-          return dim(`…${parsed.text.slice(TOOL_OUTPUT_MARKERS.truncated.length)}`.padStart(Math.max(1, lineNumberWidth), " "));
         }
         if (options?.lineNumberWidth != null) {
           const rest = parsed.text.length > 1 ? parsed.text.slice(1) : "";

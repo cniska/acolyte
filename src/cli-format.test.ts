@@ -16,7 +16,19 @@ import {
   truncateText,
 } from "./cli-format";
 
-const stripAnsi = (value: string): string => value.replace(/\x1b\[[0-9;]*m/g, "");
+const stripAnsi = (value: string): string => {
+  let out = "";
+  for (let i = 0; i < value.length; i += 1) {
+    const ch = value[i];
+    if (ch === "\u001b" && value[i + 1] === "[") {
+      i += 2;
+      while (i < value.length && value[i] !== "m") i += 1;
+      continue;
+    }
+    if (ch != null) out += ch;
+  }
+  return out;
+};
 function withColumns(width: number, task: () => void): void {
   const descriptor = Object.getOwnPropertyDescriptor(process.stdout, "columns");
   Object.defineProperty(process.stdout, "columns", { configurable: true, value: width });
@@ -231,8 +243,7 @@ describe("cli-format", () => {
 
   test("formatProgressOutput wraps long Run header and aligns continuation with detail", () => {
     withColumns(56, () => {
-      const longCommand =
-        "bun run verify --filter=very-long-module-name --module another-super-long-module-name";
+      const longCommand = "bun run verify --filter=very-long-module-name --module another-super-long-module-name";
       const plain = stripAnsi(formatProgressOutput(`Run ${longCommand}`));
       const lines = plain.split("\n");
       expect(lines.length).toBeGreaterThan(1);

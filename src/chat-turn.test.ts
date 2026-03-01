@@ -57,7 +57,7 @@ describe("chat turn helpers", () => {
   test("formatToolLabel maps known tool ids to user-facing labels", () => {
     expect(formatToolLabel("run-command")).toBe("Run");
     expect(formatToolLabel("read-file")).toBe("Read");
-    expect(formatToolLabel("web-search")).toBe("Search");
+    expect(formatToolLabel("web-search")).toBe("Web Search");
   });
 
   test("formatToolLabel title-cases unknown tool ids", () => {

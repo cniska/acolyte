@@ -213,7 +213,7 @@ async function resolveSearchScopeFiles(workspace: string, paths: string[] | unde
   for (const rawPath of normalizedPaths) {
     const absPath = ensurePathWithinAllowedRoots(rawPath, "Search", workspace);
     if (!isWithinWorkspacePath(absPath, workspace)) throw new Error("Search paths must be within the workspace");
-    let entryStat;
+    let entryStat: Awaited<ReturnType<typeof stat>>;
     try {
       entryStat = await stat(absPath);
     } catch {
