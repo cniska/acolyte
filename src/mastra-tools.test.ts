@@ -8,7 +8,8 @@ import { savedPermissionMode } from "./test-factory";
 import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
 
 const restorePermissions = savedPermissionMode();
-const stripOsc8 = (value: string): string => value.replace(/\u001B\]8;;[^\u0007]*\u0007/g, "").replace(/\u001B\]8;;\u0007/g, "");
+const stripOsc8 = (value: string): string =>
+  value.replace(/\u001B\]8;;[^\u0007]*\u0007/g, "").replace(/\u001B\]8;;\u0007/g, "");
 
 afterEach(restorePermissions);
 
@@ -266,15 +267,48 @@ describe("read/scan tool output contract", () => {
 
       const findLines = outputByTool.get("find-files") ?? [];
       const plainFind = findLines.map(stripOsc8);
-      expect(findLines[0]).toBe("Find 2 files");
+      expect(findLines[0]).toBe("Find using [*.ts]");
       expect(plainFind).toContain("alpha.ts");
       expect(plainFind).toContain("beta.ts");
 
       const searchLines = outputByTool.get("search-files") ?? [];
       const plainSearch = searchLines.map(stripOsc8);
-      expect(searchLines[0]).toBe("Search 2 files using 1 pattern");
-      expect(plainSearch).toContain("alpha.ts needle");
-      expect(plainSearch).toContain("beta.ts needle");
+      expect(searchLines[0]).toBe("Search using [needle]");
+      expect(plainSearch).toContain("alpha.ts [needle@1]");
+      expect(plainSearch).toContain("beta.ts [needle@1]");
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+
+  test("search-files emits scoped header and pattern line hits", async () => {
+    setPermissionMode("read");
+    const workspace = await mkdtemp(join(tmpdir(), "acolyte-search-summary-"));
+    try {
+      const filePath = join(workspace, "alpha.ts");
+      await writeFile(filePath, 'export const tool = "x";\nexport const agent = "y";\n', "utf8");
+
+      const outputByTool = new Map<string, string[]>();
+      const { tools } = toolsForAgent({
+        workspace,
+        onToolOutput: (event) => {
+          const bucket = outputByTool.get(event.toolName) ?? [];
+          bucket.push(event.message);
+          outputByTool.set(event.toolName, bucket);
+        },
+      });
+
+      const searchFilesTool = tools.searchFiles;
+      if (!searchFilesTool?.execute) throw new Error("expected searchFiles tool to be available");
+
+      await searchFilesTool.execute(
+        { patterns: ["\\btool\\b", "\\bagent\\b"], paths: [filePath], maxResults: 20 },
+        {} as never,
+      );
+
+      const searchLines = (outputByTool.get("search-files") ?? []).map(stripOsc8);
+      expect(searchLines[0]).toBe("Search alpha.ts using [tool, agent]");
+      expect(searchLines[1]).toBe("alpha.ts [tool@1, agent@2]");
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }

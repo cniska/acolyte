@@ -199,6 +199,14 @@ describe("excessive-search-loop guard", () => {
     );
   });
 
+  test("blocks equivalent regex-boundary search as duplicate", () => {
+    const session = createSessionContext();
+    recordCall(session, "search-files", { patterns: ["\\bagent\\b", "\\btool\\b"] });
+    expect(() => runGuards({ toolName: "search-files", args: { patterns: ["agent", "tool"] }, session })).toThrow(
+      /Duplicate search-files call detected/,
+    );
+  });
+
   test("does not block narrower search across different scope", () => {
     const session = createSessionContext();
     recordCall(session, "search-files", { patterns: ["agent", "tool"] });
@@ -258,6 +266,14 @@ describe("excessive-find-loop guard", () => {
     recordCall(session, "find-files", { patterns: ["agent", "tool"] });
     expect(() => runGuards({ toolName: "find-files", args: { patterns: ["agent"] }, session })).toThrow(
       /Redundant narrower find-files call detected/,
+    );
+  });
+
+  test("blocks narrower find after universal find", () => {
+    const session = createSessionContext();
+    recordCall(session, "find-files", { patterns: ["**/*"] });
+    expect(() => runGuards({ toolName: "find-files", args: { patterns: ["**/*agent*"] }, session })).toThrow(
+      /Prior universal find already covers this scope/,
     );
   });
 

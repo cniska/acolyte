@@ -317,7 +317,8 @@ export function formatProgressEventOutput(
   const red = (value: string): string => `\x1b[31m${value}\x1b[39m`;
   const greenBg = (value: string): string => `\x1b[32m\x1b[48;2;13;40;24m${value}\x1b[49m\x1b[39m`;
   const redBg = (value: string): string => `\x1b[31m\x1b[48;2;45;11;11m${value}\x1b[49m\x1b[39m`;
-  const lines = content.split("\n");
+  const normalizedContent = content.replace(/^\n+/, "");
+  const lines = normalizedContent.split("\n");
   const parsedLines = lines.map((line) => parseToolProgressLine(line));
   const inferredLineNumberWidth = parsedLines.reduce((max, parsed) => {
     if (parsed.kind === "numberedDiff" || parsed.kind === "numberedContext")

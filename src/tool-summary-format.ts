@@ -23,7 +23,12 @@ export function normalizeToolFileSummaryHeader(header: string, toolName: string,
   const label = FILE_SUMMARY_TOOL_LABELS[toolName];
   if (!label) return null;
   const trimmed = line.trim();
+  if (toolName === "find-files" && new RegExp(`^${escapeRegExp(label)}(?:\\s+.+)?\\s+using\\s+.+$`, "i").test(trimmed))
+    return trimmed;
+  if (toolName === "search-files" && new RegExp(`^${escapeRegExp(label)}(?:\\s+.+)?\\s+using\\s+.+$`, "i").test(trimmed))
+    return trimmed;
   if (/^\d+\s+files?\b/i.test(trimmed)) return `${label} ${trimmed}`;
+  if (new RegExp(`^${escapeRegExp(label)}\\b.*\\b\\d+\\s+files?\\b`, "i").test(trimmed)) return trimmed;
   if (new RegExp(`^${escapeRegExp(label)}\\s+\\d+\\s+files?\\b`, "i").test(trimmed)) return trimmed;
   if (new RegExp(`^${escapeRegExp(header)}\\s+\\d+\\s+files?\\b`, "i").test(trimmed)) return trimmed;
   return null;

@@ -149,11 +149,36 @@ describe("chat submit handler guards", () => {
       client: createClient({
         status: async () => ({}),
         replyStream: async (_input, options) => {
-          options.onEvent({ type: "tool-call", toolCallId: "call_find", toolName: "find-files", args: { patterns: ["*.ts"] } });
-          options.onEvent({ type: "tool-output", toolCallId: "call_find", toolName: "find-files", content: "3 files" });
-          options.onEvent({ type: "tool-output", toolCallId: "call_find", toolName: "find-files", content: "  src/a.ts" });
-          options.onEvent({ type: "tool-output", toolCallId: "call_find", toolName: "find-files", content: "  src/b.ts" });
-          options.onEvent({ type: "tool-output", toolCallId: "call_find", toolName: "find-files", content: "  src/c.ts" });
+          options.onEvent({
+            type: "tool-call",
+            toolCallId: "call_find",
+            toolName: "find-files",
+            args: { patterns: ["*.ts"] },
+          });
+          options.onEvent({
+            type: "tool-output",
+            toolCallId: "call_find",
+            toolName: "find-files",
+            content: "Find using [*.ts]",
+          });
+          options.onEvent({
+            type: "tool-output",
+            toolCallId: "call_find",
+            toolName: "find-files",
+            content: "  src/a.ts",
+          });
+          options.onEvent({
+            type: "tool-output",
+            toolCallId: "call_find",
+            toolName: "find-files",
+            content: "  src/b.ts",
+          });
+          options.onEvent({
+            type: "tool-output",
+            toolCallId: "call_find",
+            toolName: "find-files",
+            content: "  src/c.ts",
+          });
           return { model: "gpt-5-mini", output: "Done." };
         },
       }),
@@ -161,8 +186,10 @@ describe("chat submit handler guards", () => {
 
     await submit("find all ts files");
 
-    const toolRow = rows.find((row) => row.role === "assistant" && row.style === "toolProgress" && row.toolName === "find-files");
-    expect(toolRow?.content).toBe("Find 3 files\nsrc/a.ts\nsrc/b.ts\nsrc/c.ts");
+    const toolRow = rows.find(
+      (row) => row.role === "assistant" && row.style === "toolProgress" && row.toolName === "find-files",
+    );
+    expect(toolRow?.content).toBe("Find using [*.ts]\nsrc/a.ts\nsrc/b.ts\nsrc/c.ts");
   });
 
   test("merges search summary with pattern context into header", async () => {

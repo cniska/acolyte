@@ -51,6 +51,29 @@ export function emitFileListSummary(
   });
 }
 
+export function emitFindSummary(
+  filePaths: string[],
+  patterns: string[],
+  onToolOutput?: ToolOutputListener,
+  toolCallId?: string,
+  maxFiles = TOOL_OUTPUT_FILES_MAX_ROWS,
+  workspace?: string,
+): void {
+  const labels = compactPatternLabels(patterns);
+  emitSummaryFileRows({
+    toolName: "find-files",
+    filePaths,
+    onToolOutput,
+    toolCallId,
+    maxFiles,
+    header: () => {
+      if (labels.length > 0 && labels.length <= 3) return `Find using [${labels.join(", ")}]`;
+      return `Find using ${countLabel(Math.max(1, labels.length), "pattern", "patterns")}`;
+    },
+    lineForPath: (path) => toDisplayPath(path, workspace),
+  });
+}
+
 export function findResultPaths(result: string): string[] {
   return result
     .split("\n")
@@ -67,6 +90,96 @@ export function searchResultPaths(result: string): string[] {
     if (path.startsWith("./")) files.add(path);
   }
   return Array.from(files);
+}
+
+function asSearchRegex(pattern: string): RegExp {
+  try {
+    return new RegExp(pattern, "i");
+  } catch {
+    return new RegExp(pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+  }
+}
+
+function compactPatternLabel(pattern: string): string {
+  const trimmed = pattern.trim();
+  const boundaryMatch = trimmed.match(/^\\b(.+)\\b$/);
+  const core = boundaryMatch?.[1]?.trim() ?? trimmed;
+  const unquoted = core.replace(/^["'`](.+)["'`]$/, "$1");
+  return escapeControlChars(truncateValue(unquoted, 32));
+}
+
+function compactPatternLabels(patterns: string[]): string[] {
+  const labels = patterns
+    .map((pattern) => pattern.trim())
+    .filter((pattern) => pattern.length > 0)
+    .map((pattern) => compactPatternLabel(pattern))
+    .filter((label) => label.length > 0);
+  const seen = new Set<string>();
+  const deduped: string[] = [];
+  for (const label of labels) {
+    const key = label.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(label);
+  }
+  return deduped;
+}
+
+export type SearchSummaryEntry = {
+  path: string;
+  hits: string[];
+};
+
+export function searchResultSummaryEntries(result: string, patterns: string[]): SearchSummaryEntry[] {
+  const normalized = patterns.map((pattern) => pattern.trim()).filter((pattern) => pattern.length > 0);
+  const regexes = normalized.map((pattern) => asSearchRegex(pattern));
+  const labels = compactPatternLabels(normalized);
+  const byPath = new Map<string, Map<string, Set<number>>>();
+  for (const line of result.split("\n")) {
+    const firstColon = line.indexOf(":");
+    if (firstColon <= 0) continue;
+    const secondColon = line.indexOf(":", firstColon + 1);
+    if (secondColon <= firstColon) continue;
+    const path = line.slice(0, firstColon).trim();
+    if (!path.startsWith("./")) continue;
+    const lineNumber = Number.parseInt(line.slice(firstColon + 1, secondColon), 10);
+    const text = line.slice(secondColon + 1);
+    const forPath = byPath.get(path) ?? new Map<string, Set<number>>();
+    for (let i = 0; i < regexes.length; i += 1) {
+      if (!regexes[i]?.test(text)) continue;
+      const label = labels[i] ?? normalized[i] ?? "";
+      if (!label) continue;
+      const lines = forPath.get(label) ?? new Set<number>();
+      if (Number.isFinite(lineNumber) && lineNumber > 0) lines.add(lineNumber);
+      forPath.set(label, lines);
+    }
+    if (forPath.size === 0 && labels.length > 0) {
+      const label = labels[0] ?? normalized[0] ?? "";
+      if (label) {
+        const lines = new Set<number>();
+        if (Number.isFinite(lineNumber) && lineNumber > 0) lines.add(lineNumber);
+        forPath.set(label, lines);
+      }
+    }
+    byPath.set(path, forPath);
+  }
+  return Array.from(byPath.entries()).map(([path, matches]) => {
+    const hitTokens: string[] = [];
+    for (const [label, lineNumbers] of matches.entries()) {
+      const sortedLines = Array.from(lineNumbers).sort((a, b) => a - b);
+      if (sortedLines.length === 0) {
+        hitTokens.push(label);
+        continue;
+      }
+      for (const ln of sortedLines) hitTokens.push(`${label}@${ln}`);
+    }
+    const maxHits = 4;
+    if (hitTokens.length > maxHits) {
+      const extra = hitTokens.length - maxHits;
+      return { path, hits: [...hitTokens.slice(0, maxHits), `+${extra}`] };
+    }
+    return { path, hits: hitTokens };
+  });
 }
 
 function toDisplayPath(path: string, workspace?: string): string {
@@ -128,22 +241,43 @@ function truncateValue(value: string, maxChars: number): string {
 }
 
 export function emitSearchSummary(
-  filePaths: string[],
-  pattern: string,
+  entries: SearchSummaryEntry[],
+  patterns: string[],
+  paths: string[] | undefined,
   onToolOutput?: ToolOutputListener,
   toolCallId?: string,
   maxFiles = TOOL_OUTPUT_FILES_MAX_ROWS,
   workspace?: string,
 ): void {
-  const compactPattern = escapeControlChars(truncateValue(pattern.trim(), 48));
+  const filePaths = entries.map((entry) => entry.path);
+  const hitsByPath = new Map(entries.map((entry) => [entry.path, entry.hits] as const));
+  const labels = compactPatternLabels(patterns);
+  const normalizedPaths = (paths ?? []).map((path) => path.trim()).filter((path) => path.length > 0);
   emitSummaryFileRows({
     toolName: "search-files",
     filePaths,
     onToolOutput,
     toolCallId,
     maxFiles,
-    header: (count) => `Search ${countLabel(count, "file", "files")} using ${countLabel(1, "pattern", "patterns")}`,
-    lineForPath: (path) => `${toDisplayPath(path, workspace)} ${compactPattern}`,
+    header: () => {
+      const patternSegment =
+        labels.length > 0 && labels.length <= 3
+          ? `[${labels.join(", ")}]`
+          : countLabel(Math.max(1, labels.length), "pattern", "patterns");
+      if (normalizedPaths.length === 1) {
+        const scope = toDisplayPath(normalizedPaths[0] ?? "", workspace);
+        return `Search ${scope} using ${patternSegment}`;
+      }
+      if (normalizedPaths.length > 1)
+        return `Search ${countLabel(normalizedPaths.length, "path", "paths")} using ${patternSegment}`;
+      return `Search using ${patternSegment}`;
+    },
+    lineForPath: (path) => {
+      const display = toDisplayPath(path, workspace);
+      const hits = hitsByPath.get(path) ?? [];
+      if (hits.length === 0) return display;
+      return `${display} [${hits.join(", ")}]`;
+    },
   });
 }
 

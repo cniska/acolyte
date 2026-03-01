@@ -19,6 +19,9 @@ describe("tool summary format", () => {
 
   test("normalizes count lines into full headers for merge", () => {
     expect(normalizeToolFileSummaryHeader("Find", "find-files", "3 files")).toBe("Find 3 files");
+    expect(normalizeToolFileSummaryHeader("Find", "find-files", "Find using [tool, agent]")).toBe(
+      "Find using [tool, agent]",
+    );
     expect(normalizeToolFileSummaryHeader("Search", "search-files", "Search 2 files")).toBe("Search 2 files");
     expect(normalizeToolFileSummaryHeader("Read", "read-file", "Read 1 file")).toBe("Read 1 file");
     expect(normalizeToolFileSummaryHeader("Scan", "scan-code", "Scan 4 files")).toBe("Scan 4 files");
@@ -27,6 +30,9 @@ describe("tool summary format", () => {
     );
     expect(normalizeToolFileSummaryHeader("Search", "search-files", "Search 2 files using 1 pattern")).toBe(
       "Search 2 files using 1 pattern",
+    );
+    expect(normalizeToolFileSummaryHeader("Search", "search-files", "Search using [tool, agent]")).toBe(
+      "Search using [tool, agent]",
     );
   });
 
