@@ -38,6 +38,10 @@ That starts backend watch mode and chat.
 - Mastra Studio: `bun run studio` (loads `.env` automatically)
 - RPC transport: set `transportMode = "rpc"` in config (or use `ws://` `apiUrl`)
 
+## Debug
+
+- Debug logs: set `ACOLYTE_DEBUG=<tag[,tag2|prefix*]>` when needed.
+
 ## Common In-Chat Commands
 
 - `?` shortcuts
