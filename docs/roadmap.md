@@ -108,6 +108,7 @@ Open-source core local mode with optional self-host path.
 - [ ] No hardcoded secrets or internal paths
 - [ ] CI/CD pipeline for releases
 - [ ] Pre-OSS security baseline complete (secure defaults, auth coverage, workspace boundary checks, redaction tests)
+- [ ] Localization baseline: translatable CLI/TUI copy, with raw protocol/tool output kept language-neutral
 
 **Blocked on:** Milestone 9.
 
@@ -137,6 +138,7 @@ What MVP is **not**:
 - Assistant-managed background tasks with stable IDs (`start`, `status`, `cancel`, `attach`).
 - Automatic foreground-to-background detachment for long-running work while chat remains responsive.
 - Stream protocol compatibility tests (event schema/version contract across client/server).
+- Structured tool progress payloads (typed header/body metadata) to replace line-based regex parsing.
 - Stronger tool policy enforcement beyond prompt-only guidance.
 - Agent-authored skills — let the agent create and refine its own tools at runtime.
 - Tool output collapsing — group consecutive same-tool calls into a single summary row to reduce visual noise.
