@@ -10,7 +10,7 @@ describe("tool summary format", () => {
     expect(formatToolFileSummaryHeader("find-files", 3)).toBe("Find 3 files");
     expect(formatToolFileSummaryHeader("search-files", 1)).toBe("Search 1 file");
     expect(formatToolFileSummaryHeader("read-file", 2)).toBe("Read 2 files");
-    expect(formatToolFileSummaryHeader("scan-code", 4)).toBe("Scan 4 files");
+    expect(formatToolFileSummaryHeader("scan-code", 4)).toBe("Review 4 files");
   });
 
   test("falls back to generic count for non-discovery tools", () => {
@@ -24,7 +24,7 @@ describe("tool summary format", () => {
     );
     expect(normalizeToolFileSummaryHeader("Search", "search-files", "Search 2 files")).toBe("Search 2 files");
     expect(normalizeToolFileSummaryHeader("Read", "read-file", "Read 1 file")).toBe("Read 1 file");
-    expect(normalizeToolFileSummaryHeader("Scan", "scan-code", "Scan 4 files")).toBe("Scan 4 files");
+    expect(normalizeToolFileSummaryHeader("Review", "scan-code", "Review 4 files")).toBe("Review 4 files");
     expect(normalizeToolFileSummaryHeader("Search", "search-files", "2 files using 5 patterns")).toBe(
       "Search 2 files using 5 patterns",
     );
@@ -37,8 +37,8 @@ describe("tool summary format", () => {
     expect(normalizeToolFileSummaryHeader("Read", "read-file", "Read a.ts, b.ts, c.ts +2 files")).toBe(
       "Read a.ts, b.ts, c.ts +2 files",
     );
-    expect(normalizeToolFileSummaryHeader("Scan", "scan-code", "Scan src/a.ts, src/b.ts")).toBe(
-      "Scan src/a.ts, src/b.ts",
+    expect(normalizeToolFileSummaryHeader("Review", "scan-code", "Review src/a.ts, src/b.ts")).toBe(
+      "Review src/a.ts, src/b.ts",
     );
   });
 

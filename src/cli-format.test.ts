@@ -234,10 +234,10 @@ describe("cli-format", () => {
   });
 
   test("formatProgressEventOutput ignores leading blank lines", () => {
-    const out = formatProgressEventOutput("\nScan 1 file\nscripts/reverse-word.ts");
+    const out = formatProgressEventOutput("\nReview 1 file\nscripts/reverse-word.ts");
     const lines = out.split("\n");
     expect(lines[0]).toContain("• ");
-    expect(lines[0]).toContain("Scan");
+    expect(lines[0]).toContain("Review");
     expect(lines[1]).toContain("scripts/reverse-word.ts");
     expect(lines.filter((line) => line === "•").length).toBe(0);
   });

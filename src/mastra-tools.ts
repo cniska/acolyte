@@ -2,6 +2,7 @@ import { resolve } from "node:path";
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 import { appConfig } from "./app-config";
+import { countLabel } from "./plural";
 import { createId } from "./short-id";
 import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
 import { createSessionContext, recordCall, runGuards, type SessionContext } from "./tool-guards";

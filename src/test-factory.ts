@@ -1,4 +1,5 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { appConfig, setPermissionMode } from "./app-config";
@@ -21,6 +22,10 @@ export function tempDir(): { createDir: (prefix: string) => string; cleanupDirs:
       }
     },
   };
+}
+
+export async function createTempDir(prefix: string): Promise<string> {
+  return mkdtemp(join(tmpdir(), prefix));
 }
 
 export function startTestServer(fetch: (req: Request) => Response | Promise<Response>): {

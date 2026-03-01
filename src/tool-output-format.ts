@@ -1,5 +1,6 @@
 import { isAbsolute, relative } from "node:path";
 import { countLabel } from "./plural";
+import { formatToolLabel } from "./tool-labels";
 import { formatToolFileSummaryHeader } from "./tool-summary-format";
 import type { ToolName } from "./tool-names";
 
@@ -46,7 +47,7 @@ export function emitFileListSummary(
     if (unique.length === 0) return;
     const shown = unique.slice(0, TOOL_OUTPUT_INLINE_FILES_MAX);
     const remaining = unique.length - shown.length;
-    const label = toolName === "read-file" ? "Read" : "Scan";
+    const label = formatToolLabel(toolName);
     const suffix = remaining > 0 ? ` +${countLabel(remaining, "file", "files")}` : "";
     onToolOutput({
       toolName,

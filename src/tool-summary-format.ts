@@ -4,7 +4,7 @@ const FILE_SUMMARY_TOOL_LABELS: Record<string, string> = {
   "find-files": "Find",
   "search-files": "Search",
   "read-file": "Read",
-  "scan-code": "Scan",
+  "scan-code": "Review",
 };
 const EMPTY_TOOL_PROGRESS_SUPPRESS = new Set(["find-files", "search-files", "read-file", "scan-code"]);
 
