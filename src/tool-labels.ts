@@ -5,6 +5,7 @@ const TOOL_LABELS: Record<string, string> = {
   "git-status": "Git Status",
   "git-diff": "Git Diff",
   "git-log": "Git Log",
+  "git-show": "Git Show",
   "run-command": "Run",
   "edit-file": "Edit",
   "edit-code": "Edit",

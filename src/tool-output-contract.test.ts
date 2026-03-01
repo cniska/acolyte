@@ -87,6 +87,8 @@ type ToolOutputExpectation = {
 
 const normalizeDynamicToken = (value: string): string =>
   value
+    .replace(/^commit [0-9a-f]{7,40}$/gm, "commit <hash>")
+    .replace(/^Date:\s+.+$/gm, "Date:   <date>")
     .replace(/^index [0-9a-f]+\.\.[0-9a-f]+ (\d+)$/gm, "index <hash>..<hash> $1")
     .replace(/^([0-9a-f]{7,40})\s+\([^)]+\)\s+/gm, "<hash> ")
     .replace(/^([0-9a-f]{7,40})\s+/gm, "<hash> ");
@@ -1141,6 +1143,112 @@ describe("tool output contract: git-log", () => {
               <hash> second
               <hash> first
         `),
+        },
+      );
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("tool output contract: git-show", () => {
+  test("shows deterministic raw and formatted output", async () => {
+    const { workspace, tools, outputByTool } = await createHarness("read");
+    try {
+      setPermissionMode("write");
+      await runShellCommand(workspace, "git init -b main");
+      await runShellCommand(workspace, "git config user.email test@example.com");
+      await runShellCommand(workspace, "git config user.name Test");
+      await writeFile(join(workspace, "a.ts"), "export const a = 1;\n", "utf8");
+      await runShellCommand(workspace, "git add a.ts");
+      await runShellCommand(workspace, "git commit -m first");
+      await writeFile(join(workspace, "a.ts"), "export const a = 2;\n", "utf8");
+      await runShellCommand(workspace, "git add a.ts");
+      await runShellCommand(workspace, "git commit -m second");
+      setPermissionMode("read");
+
+      if (!tools.gitShow?.execute) throw new Error("expected gitShow tool to be available");
+      await tools.gitShow.execute({ ref: "HEAD", path: "a.ts", contextLines: 0 }, {} as never);
+      assertToolOutput(
+        outputByTool,
+        "git-show",
+        { ref: "HEAD", path: "a.ts", contextLines: 0 },
+        {
+          raw: [
+            "commit <hash>",
+            "second",
+            "diff --git a/a.ts b/a.ts",
+            "index <hash>..<hash> 100644",
+            "[truncated] +1 line",
+            "+++ b/a.ts",
+            "@@ -1 +1 @@",
+            "-export const a = 1;",
+            "+export const a = 2;",
+          ],
+          formatted: dedent(`
+            • Git Show a.ts
+                commit <hash>
+                second
+                diff --git a/a.ts b/a.ts
+                index <hash>..<hash> 100644
+                … +1 line
+                +++ b/a.ts
+                @@ -1 +1 @@
+                -export const a = 1;
+                +export const a = 2;
+          `),
+        },
+      );
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+
+  test("normalizes multiline commit messages in preview output", async () => {
+    const { workspace, tools, outputByTool } = await createHarness("read");
+    try {
+      setPermissionMode("write");
+      await runShellCommand(workspace, "git init -b main");
+      await runShellCommand(workspace, "git config user.email test@example.com");
+      await runShellCommand(workspace, "git config user.name Test");
+      await writeFile(join(workspace, "a.ts"), "export const a = 1;\n", "utf8");
+      await runShellCommand(workspace, "git add a.ts");
+      await runShellCommand(workspace, "git commit -m first");
+      await writeFile(join(workspace, "a.ts"), "export const a = 2;\n", "utf8");
+      await runShellCommand(workspace, "git add a.ts");
+      await runShellCommand(workspace, 'git commit -m "subject" -m "body line 1" -m "body line 2"');
+      setPermissionMode("read");
+
+      if (!tools.gitShow?.execute) throw new Error("expected gitShow tool to be available");
+      await tools.gitShow.execute({ ref: "HEAD", path: "a.ts", contextLines: 0 }, {} as never);
+      assertToolOutput(
+        outputByTool,
+        "git-show",
+        { ref: "HEAD", path: "a.ts", contextLines: 0 },
+        {
+          raw: [
+            "commit <hash>",
+            "subject",
+            "body line 1",
+            "body line 2",
+            "[truncated] +3 lines",
+            "+++ b/a.ts",
+            "@@ -1 +1 @@",
+            "-export const a = 1;",
+            "+export const a = 2;",
+          ],
+          formatted: dedent(`
+            • Git Show a.ts
+                commit <hash>
+                subject
+                body line 1
+                body line 2
+                … +3 lines
+                +++ b/a.ts
+                @@ -1 +1 @@
+                -export const a = 1;
+                +export const a = 2;
+          `),
         },
       );
     } finally {

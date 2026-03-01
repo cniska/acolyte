@@ -9,6 +9,7 @@ import {
   editFile,
   fetchWeb,
   gitLog,
+  gitShow,
   readSnippet,
   runShellCommand,
   scanCode,
@@ -610,5 +611,27 @@ describe("gitLog", () => {
     expect(lines.length).toBe(2);
     expect(lines[0]).toContain("second");
     expect(lines[1]).toContain("first");
+  });
+});
+
+describe("gitShow", () => {
+  test("returns commit patch for provided ref", async () => {
+    setPermissionMode("write");
+    const dirPath = `/tmp/acolyte-gitshow-${crypto.randomUUID()}`;
+    tempDirs.push(dirPath);
+    await mkdir(dirPath, { recursive: true });
+    await runShellCommand(dirPath, "git init -b main");
+    await runShellCommand(dirPath, "git config user.email test@example.com");
+    await runShellCommand(dirPath, "git config user.name Test");
+    await writeFile(join(dirPath, "a.txt"), "a\n", "utf8");
+    await runShellCommand(dirPath, "git add a.txt");
+    await runShellCommand(dirPath, "git commit -m first");
+    await writeFile(join(dirPath, "a.txt"), "a changed\n", "utf8");
+    await runShellCommand(dirPath, "git add a.txt");
+    await runShellCommand(dirPath, "git commit -m second");
+    const output = await gitShow(dirPath, { ref: "HEAD", contextLines: 0 });
+    expect(output).toContain("second");
+    expect(output).toContain("diff --git a/a.txt b/a.txt");
+    expect(output).toContain("+a changed");
   });
 });

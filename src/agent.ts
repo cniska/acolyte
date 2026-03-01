@@ -308,6 +308,7 @@ export function formatToolHeader(toolName: string, args: Record<string, unknown>
     "delete-file",
     "git-diff",
     "git-log",
+    "git-show",
     "scan-code",
   ]);
   const asString = (value: unknown): string | null => {

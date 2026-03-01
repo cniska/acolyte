@@ -9,6 +9,7 @@ export const SEARCH_TOOLS: readonly ToolName[] = [
   "git-status",
   "git-diff",
   "git-log",
+  "git-show",
 ];
 export const DISCOVERY_TOOLS: readonly ToolName[] = [
   "find-files",
@@ -18,6 +19,7 @@ export const DISCOVERY_TOOLS: readonly ToolName[] = [
   "git-status",
   "git-diff",
   "git-log",
+  "git-show",
 ];
 
 export const WRITE_TOOL_SET = new Set<ToolName>(WRITE_TOOLS);

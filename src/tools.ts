@@ -687,6 +687,22 @@ export async function gitLog(workspace: string, options?: { path?: string; limit
   return stdout.trim();
 }
 
+export async function gitShow(
+  workspace: string,
+  options?: { ref?: string; path?: string; contextLines?: number },
+): Promise<string> {
+  const contextLines = Math.max(0, Math.min(20, options?.contextLines ?? 3));
+  const ref = options?.ref?.trim() ? options.ref.trim() : "HEAD";
+  const args = ["git", "show", "--no-color", `--unified=${contextLines}`, ref];
+  if (options?.path) {
+    ensurePathWithinAllowedRoots(options.path, "Show", workspace);
+    args.push("--", options.path);
+  }
+  const { code, stdout, stderr } = await runCommand(args, workspace);
+  if (code !== 0) throw new Error(stderr.trim() || "git show failed");
+  return stdout.trim();
+}
+
 // --- Shell execution ---
 
 const BLOCKED_SHELL_TOKENS = ["rm -rf /", "shutdown", "reboot", "mkfs", "dd if="];

@@ -28,6 +28,7 @@ import {
   findFiles,
   gitDiff,
   gitLog,
+  gitShow,
   gitStatusShort,
   readSnippets,
   runShellCommand,
@@ -75,6 +76,10 @@ export const toolMeta: Record<ToolName, ToolMeta> = {
   "git-log": {
     instruction: "Use `git-log` to inspect recent commits quickly (optionally scoped by path).",
     aliases: ["gitLog", "git_log"],
+  },
+  "git-show": {
+    instruction: "Use `git-show` to inspect a specific commit/tag/ref with patch details (optionally scoped by path).",
+    aliases: ["gitShow", "git_show"],
   },
   "web-search": {
     instruction: "Use `web-search` for external information lookup.",
@@ -204,6 +209,23 @@ function emitHeadTailLines(
     return;
   }
   for (const line of lines) onToolOutput({ toolName, message: line, toolCallId });
+}
+
+function stripGitShowMetadataForPreview(rawText: string): string {
+  let inPatch = false;
+  return rawText
+    .split("\n")
+    .filter((line) => {
+      const trimmed = line.trimStart();
+      return !trimmed.startsWith("Author:") && !trimmed.startsWith("Date:");
+    })
+    .map((line) => {
+      const trimmed = line.trimStart();
+      if (trimmed.startsWith("diff --git ")) inPatch = true;
+      if (!inPatch && line.startsWith("    ")) return line.slice(4);
+      return line;
+    })
+    .join("\n");
 }
 
 function encodeValue(value: string): string {
@@ -636,6 +658,36 @@ function createGitLogTool(workspace: string, session: SessionContext, onToolOutp
   });
 }
 
+function createGitShowTool(workspace: string, session: SessionContext, onToolOutput?: ToolOutputListener) {
+  return createTool({
+    id: "git-show",
+    description: "Show commit details and patch for a ref (default HEAD), optionally scoped to a path.",
+    inputSchema: z.object({
+      ref: z.string().optional(),
+      path: z.string().optional(),
+      contextLines: z.number().int().min(0).max(20).optional(),
+    }),
+    execute: async (input) => {
+      return withToolError("git-show", () =>
+        guardedExecute("git-show", input as Record<string, unknown>, session, async () => {
+          const toolCallId = streamCallId("git-show");
+          const rawShow = await gitShow(workspace, {
+            ref: input.ref,
+            path: input.path,
+            contextLines: input.contextLines ?? 3,
+          });
+          emitHeadTailLines("git-show", stripGitShowMetadataForPreview(rawShow), onToolOutput, toolCallId, {
+            headRows: 4,
+            tailRows: 4,
+          });
+          const result = compactToolOutput(rawShow, appConfig.agent.toolOutputBudget.gitDiff);
+          return { result };
+        }),
+      );
+    },
+  });
+}
+
 function createEditFileTool(workspace: string, session: SessionContext, onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "edit-file",
@@ -828,6 +880,7 @@ function createToolset(workspace: string, session: SessionContext, onToolOutput?
       gitStatus: createGitStatusTool(workspace, session, onToolOutput),
       gitDiff: createGitDiffTool(workspace, session, onToolOutput),
       gitLog: createGitLogTool(workspace, session, onToolOutput),
+      gitShow: createGitShowTool(workspace, session, onToolOutput),
       runCommand: createRunCommandTool(workspace, session, onToolOutput),
       editCode: createAstEditTool(workspace, session, onToolOutput),
       editFile: createEditFileTool(workspace, session, onToolOutput),
@@ -854,6 +907,7 @@ function readOnlyTools(
       gitStatus: createGitStatusTool(workspace, session, onToolOutput),
       gitDiff: createGitDiffTool(workspace, session, onToolOutput),
       gitLog: createGitLogTool(workspace, session, onToolOutput),
+      gitShow: createGitShowTool(workspace, session, onToolOutput),
       webSearch: createWebSearchTool(session, onToolOutput),
       webFetch: createWebFetchTool(session),
     },

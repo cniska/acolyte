@@ -6,6 +6,7 @@ export const TOOL_NAMES = [
   "git-status",
   "git-diff",
   "git-log",
+  "git-show",
   "run-command",
   "edit-code",
   "edit-file",
