@@ -99,7 +99,8 @@ export const toolMeta: Record<ToolName, ToolMeta> = {
     aliases: ["createFile", "create_file", "writeFile", "write_file"],
   },
   "delete-file": {
-    instruction: "Use `delete-file` to remove files from the repository.",
+    instruction:
+      "Use `delete-file` to remove files from the repository. Pass `paths` as an array and batch related deletes in one call.",
     aliases: ["deleteFile", "delete_file"],
   },
   "run-command": {
@@ -202,6 +203,27 @@ function emitHeadTailLines(
 
 function encodeValue(value: string): string {
   return JSON.stringify(value);
+}
+
+function normalizeUniquePaths(paths: string[]): string[] {
+  const normalized = paths.map((path) => path.trim()).filter((path) => path.length > 0);
+  return Array.from(new Set(normalized));
+}
+
+type ReadPathInput = { path: string; start?: number; end?: number };
+type NormalizedReadEntry = { path: string; start?: string; end?: string };
+
+function normalizeReadEntries(paths: ReadPathInput[]): NormalizedReadEntry[] {
+  const deduped = new Map<string, NormalizedReadEntry>();
+  for (const entry of paths) {
+    const path = entry.path.trim();
+    if (path.length === 0) continue;
+    const start = entry.start != null ? String(entry.start) : undefined;
+    const end = entry.end != null ? String(entry.end) : undefined;
+    const key = `${path}\u0000${start ?? ""}\u0000${end ?? ""}`;
+    if (!deduped.has(key)) deduped.set(key, { path, start, end });
+  }
+  return Array.from(deduped.values());
 }
 
 export function webSearchStreamRows(result: string): string {
@@ -468,16 +490,17 @@ function createScanCodeTool(workspace: string, session: SessionContext, onToolOu
       return withToolError("scan-code", () =>
         guardedExecute("scan-code", input as Record<string, unknown>, session, async () => {
           const toolCallId = streamCallId("scan-code");
+          const paths = normalizeUniquePaths(input.paths);
           emitFileListSummary(
             "scan-code",
-            input.paths,
+            paths,
             onToolOutput,
             toolCallId,
             TOOL_OUTPUT_FILES_MAX_ROWS,
             workspace,
           );
           const baseBudget = appConfig.agent.toolOutputBudget.scanCode;
-          const count = input.paths.length * input.patterns.length;
+          const count = paths.length * input.patterns.length;
           const budget = {
             maxChars: Math.max(400, Math.floor(baseBudget.maxChars / count) * count),
             maxLines: Math.max(20, Math.floor(baseBudget.maxLines / count) * count),
@@ -485,7 +508,7 @@ function createScanCodeTool(workspace: string, session: SessionContext, onToolOu
           const result = compactToolOutput(
             await scanCode({
               workspace,
-              paths: input.paths,
+              paths,
               pattern: input.patterns,
               language: input.language,
               maxResults: input.maxResults ?? 50,
@@ -524,19 +547,16 @@ function createReadFileTool(workspace: string, session: SessionContext, onToolOu
       return withToolError("read-file", () =>
         guardedExecute("read-file", input as Record<string, unknown>, session, async () => {
           const toolCallId = streamCallId("read-file");
+          const entries = normalizeReadEntries(input.paths);
+          if (entries.length === 0) throw new Error("Read requires at least one non-empty path");
           emitFileListSummary(
             "read-file",
-            input.paths.map((entry) => entry.path),
+            entries.map((entry) => entry.path),
             onToolOutput,
             toolCallId,
             TOOL_OUTPUT_FILES_MAX_ROWS,
             workspace,
           );
-          const entries = input.paths.map((p) => ({
-            path: p.path,
-            start: p.start != null ? String(p.start) : undefined,
-            end: p.end != null ? String(p.end) : undefined,
-          }));
           const baseBudget = appConfig.agent.toolOutputBudget.read;
           const count = entries.length;
           const budget = {
@@ -702,15 +722,18 @@ function createDeleteFileTool(workspace: string, session: SessionContext) {
     id: "delete-file",
     description: "Delete a file from the repository.",
     inputSchema: z.object({
-      path: z.string().min(1),
+      paths: z.array(z.string().min(1)).min(1),
     }),
     execute: async (input) => {
       return withToolError("delete-file", () =>
         guardedExecute("delete-file", input as Record<string, unknown>, session, async () => {
-          const rawResult = await deleteTextFile({
-            workspace,
-            path: input.path,
-          });
+          const paths = normalizeUniquePaths(input.paths);
+          const resultParts: string[] = [];
+          for (const path of paths) {
+            const rawResult = await deleteTextFile({ workspace, path });
+            resultParts.push(rawResult);
+          }
+          const rawResult = resultParts.join("\n\n");
           const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.edit);
           return { result };
         }),

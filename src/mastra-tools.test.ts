@@ -53,10 +53,9 @@ describe("mastra toolsets", () => {
 describe("read-file tool schema", () => {
   const { tools } = toolsForAgent();
   if (!tools.readFile) throw new Error("readFile tool missing");
-  const readFileTool = tools.readFile;
 
   test("rejects invalid range when start is greater than end", () => {
-    const schema = readFileTool.inputSchema;
+    const schema = tools.readFile?.inputSchema;
     expect(schema).toBeDefined();
     if (!schema) throw new Error("readFileTool.inputSchema is undefined");
     expect(() => schema.parse({ paths: [{ path: "src/agent.ts", start: 20, end: 10 }] })).toThrow(
@@ -65,7 +64,7 @@ describe("read-file tool schema", () => {
   });
 
   test("accepts bounded ranges and single-sided ranges", () => {
-    const schema = readFileTool.inputSchema;
+    const schema = tools.readFile?.inputSchema;
     expect(schema).toBeDefined();
     if (!schema) throw new Error("readFileTool.inputSchema is undefined");
     expect(schema.parse({ paths: [{ path: "src/agent.ts", start: 10, end: 20 }] })).toEqual({
@@ -80,7 +79,7 @@ describe("read-file tool schema", () => {
   });
 
   test("accepts multiple paths", () => {
-    const schema = readFileTool.inputSchema;
+    const schema = tools.readFile?.inputSchema;
     expect(schema).toBeDefined();
     if (!schema) throw new Error("readFileTool.inputSchema is undefined");
     expect(
@@ -90,6 +89,19 @@ describe("read-file tool schema", () => {
     ).toEqual({
       paths: [{ path: "src/agent.ts", start: 1, end: 10 }, { path: "src/cli.ts" }],
     });
+  });
+});
+
+describe("delete-file tool schema", () => {
+  const { tools } = toolsForAgent();
+  if (!tools.deleteFile) throw new Error("deleteFile tool missing");
+
+  test("requires paths array and rejects legacy single path input", () => {
+    const schema = tools.deleteFile?.inputSchema;
+    expect(schema).toBeDefined();
+    if (!schema) throw new Error("deleteFileTool.inputSchema is undefined");
+    expect(() => schema.parse({ path: "src/agent.ts" })).toThrow();
+    expect(schema.parse({ paths: ["src/agent.ts"] })).toEqual({ paths: ["src/agent.ts"] });
   });
 });
 
@@ -116,12 +128,11 @@ describe("tool error wrapper", () => {
   test("preserves guard-blocked code from guarded execution", async () => {
     setPermissionMode("write");
     const { tools } = toolsForAgent({ workspace: process.cwd() });
-    const runCommand = tools.runCommand;
-    if (!runCommand?.execute) throw new Error("runCommand tool missing");
+    if (!tools.runCommand?.execute) throw new Error("runCommand tool missing");
     const runtime = {} as never;
-    await runCommand.execute({ command: "echo verify" }, runtime);
+    await tools.runCommand.execute({ command: "echo verify" }, runtime);
     try {
-      await runCommand.execute({ command: "echo verify" }, runtime);
+      await tools.runCommand.execute({ command: "echo verify" }, runtime);
       throw new Error("expected duplicate verify guard to block");
     } catch (error) {
       expect(error).toBeInstanceOf(Error);

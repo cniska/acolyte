@@ -252,6 +252,8 @@ export function canonicalToolId(value: string): string {
   return aliasMap.get(normalized) ?? normalized;
 }
 
+const TOOL_HEADER_PATHS_MAX_SHOWN = 3;
+
 function compactProgressDetail(value: string, maxChars = 80): string {
   const single = value.replace(/\s+/g, " ").trim();
   if (single.length <= maxChars) return single;
@@ -289,7 +291,7 @@ function collectPathDetails(args: Record<string, unknown>): string[] {
   return Array.from(new Set(candidates));
 }
 
-function formatPathList(paths: string[], maxShown = 3): string | null {
+function formatPathList(paths: string[], maxShown = TOOL_HEADER_PATHS_MAX_SHOWN): string | null {
   if (paths.length === 0) return null;
   const shown = paths.slice(0, maxShown).join(", ");
   if (paths.length <= maxShown) return shown;

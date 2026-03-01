@@ -406,4 +406,16 @@ describe("formatToolHeader", () => {
       formatToolHeader("scan-code", { paths: ["src/api.ts", "src/store.ts"], patterns: ["export function $NAME"] }),
     ).toBe("Review src/api.ts, src/store.ts");
   });
+
+  test("compacts delete-file header paths beyond max shown", () => {
+    expect(formatToolHeader("delete-file", { paths: ["a.ts", "b.ts", "c.ts", "d.ts"] })).toBe(
+      "Delete a.ts, b.ts, c.ts (+1)",
+    );
+  });
+
+  test("compacts scan-code header paths beyond max shown", () => {
+    expect(
+      formatToolHeader("scan-code", { paths: ["a.ts", "b.ts", "c.ts", "d.ts"], patterns: ["const $X = $Y"] }),
+    ).toBe("Review a.ts, b.ts, c.ts (+1)");
+  });
 });

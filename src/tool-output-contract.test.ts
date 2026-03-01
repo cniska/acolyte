@@ -637,11 +637,47 @@ describe("tool output contract: delete-file", () => {
       const path = "doomed.txt";
       await writeFile(join(workspace, path), "remove me\n", "utf8");
       if (!tools.deleteFile?.execute) throw new Error("expected deleteFile tool to be available");
-      await tools.deleteFile.execute({ path }, {} as never);
+      await tools.deleteFile.execute({ paths: [path] }, {} as never);
 
-      assertToolOutput(outputByTool, "delete-file", { path }, {
+      assertToolOutput(outputByTool, "delete-file", { paths: [path] }, {
         raw: [],
         formatted: "• Delete doomed.txt",
+      });
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+
+  test("supports batch delete with concise multi-path header", async () => {
+    const { workspace, tools, outputByTool } = await createHarness("write");
+    try {
+      const first = "first.txt";
+      const second = "second.txt";
+      await writeFile(join(workspace, first), "remove one\n", "utf8");
+      await writeFile(join(workspace, second), "remove two\n", "utf8");
+      if (!tools.deleteFile?.execute) throw new Error("expected deleteFile tool to be available");
+      await tools.deleteFile.execute({ paths: [first, second] }, {} as never);
+
+      assertToolOutput(outputByTool, "delete-file", { paths: [first, second] }, {
+        raw: [],
+        formatted: "• Delete first.txt, second.txt",
+      });
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+
+  test("compacts delete header when deleting more than three files", async () => {
+    const { workspace, tools, outputByTool } = await createHarness("write");
+    try {
+      const paths = ["a.txt", "b.txt", "c.txt", "d.txt"];
+      for (const path of paths) await writeFile(join(workspace, path), `remove ${path}\n`, "utf8");
+      if (!tools.deleteFile?.execute) throw new Error("expected deleteFile tool to be available");
+      await tools.deleteFile.execute({ paths }, {} as never);
+
+      assertToolOutput(outputByTool, "delete-file", { paths }, {
+        raw: [],
+        formatted: "• Delete a.txt, b.txt, c.txt (+1)",
       });
     } finally {
       await rm(workspace, { recursive: true, force: true });
