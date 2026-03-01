@@ -288,9 +288,9 @@ describe("tool output contract: search-files", () => {
       await tools.searchFiles.execute({ patterns: ["needle"], paths: [alphaPath, betaPath], maxResults: 10 }, {} as never);
 
       assertToolOutput(outputByTool, "search-files", { patterns: ["needle"], paths: [alphaPath, betaPath], maxResults: 10 }, {
-        raw: ["scope=paths:2 patterns=[needle] matches=2", "alpha.ts [needle@1]", "beta.ts [needle@1]"],
+        raw: ["scope=alpha.ts, beta.ts patterns=[needle] matches=2", "alpha.ts [needle@1]", "beta.ts [needle@1]"],
         formatted: dedent(`
-          • Search scope=paths:2 patterns=[needle] matches=2
+          • Search alpha.ts, beta.ts [needle]
               alpha.ts [needle@1]
               beta.ts [needle@1]
         `),
@@ -312,7 +312,7 @@ describe("tool output contract: search-files", () => {
       assertToolOutput(outputByTool, "search-files", { patterns: ["needle"], maxResults: 10 }, {
         raw: ["scope=workspace patterns=[needle] matches=1", "alpha.ts [needle@1]"],
         formatted: dedent(`
-          • Search scope=workspace patterns=[needle] matches=1
+          • Search [needle]
               alpha.ts [needle@1]
         `),
       });
@@ -335,9 +335,9 @@ describe("tool output contract: search-files", () => {
       await tools.searchFiles.execute({ patterns: ["needle"], paths: [srcDir], maxResults: 20 }, {} as never);
 
       assertToolOutput(outputByTool, "search-files", { patterns: ["needle"], paths: [srcDir], maxResults: 20 }, {
-        raw: ["scope=src patterns=[needle] matches=1", "src/alpha.ts [needle@1]"],
+        raw: ["scope=src/ patterns=[needle] matches=1", "src/alpha.ts [needle@1]"],
         formatted: dedent(`
-          • Search scope=src patterns=[needle] matches=1
+          • Search src/ [needle]
               src/alpha.ts [needle@1]
         `),
       });
@@ -360,14 +360,14 @@ describe("tool output contract: search-files", () => {
       await tools.searchFiles.execute({ patterns: ["needle"], paths: [srcDir, docsDir], maxResults: 20 }, {} as never);
 
       const raw = rawLines(outputByTool, "search-files");
-      expect(raw[0]).toBe("scope=paths:2 patterns=[needle] matches=2");
+      expect(raw[0]).toBe("scope=src/, docs/ patterns=[needle] matches=2");
       expect(raw.slice(1).sort()).toEqual(["docs/readme.md [needle@1]", "src/alpha.ts [needle@1]"]);
       const formatted = renderMergedToolOutput(
         "search-files",
         { patterns: ["needle"], paths: [srcDir, docsDir], maxResults: 20 },
         raw,
       );
-      expect(formatted.startsWith("• Search scope=paths:2 patterns=[needle] matches=2\n")).toBe(true);
+      expect(formatted.startsWith("• Search src/, docs/ [needle]\n")).toBe(true);
       expect(formatted.includes("docs/readme.md [needle@1]")).toBe(true);
       expect(formatted.includes("src/alpha.ts [needle@1]")).toBe(true);
     } finally {
@@ -390,7 +390,7 @@ describe("tool output contract: search-files", () => {
         {
           raw: ["scope=workspace patterns=[needle] matches=1", "alpha.ts [needle@1]"],
           formatted: dedent(`
-            • Search scope=workspace patterns=[needle] matches=1
+            • Search [needle]
                 alpha.ts [needle@1]
           `),
         },
@@ -411,7 +411,7 @@ describe("tool output contract: search-files", () => {
       assertToolOutput(outputByTool, "search-files", { patterns: ["a", "b", "c", "d", "e", "f"], maxResults: 20 }, {
         raw: ["scope=workspace patterns=[a, b, c, d, e, f] matches=1", "alpha.ts [a@1, b@1, c@1, d@1, +2]"],
         formatted: dedent(`
-          • Search scope=workspace patterns=[a, b, c, d, e, f] matches=1
+          • Search [a, b, c, +3]
               alpha.ts [a@1, b@1, c@1, d@1, +2]
         `),
       });
@@ -456,7 +456,7 @@ describe("tool output contract: search-files", () => {
           "f5.ts [needle-five@1]",
         ],
         formatted: dedent(`
-          • Search scope=workspace patterns=[needle-one, needle-two, needle-three, needle-four, needle-five] matches=5
+          • Search [needle-one, needle-two, needle-three, +2]
               f1.ts [needle-one@1]
               f2.ts [needle-two@1]
               f3.ts [needle-three@1]
@@ -491,7 +491,7 @@ describe("tool output contract: search-files", () => {
           "[truncated] +1",
         ],
         formatted: dedent(`
-          • Search scope=workspace patterns=[p1, p2, p3, p4, p5, p6] matches=6
+          • Search [p1, p2, p3, +3]
               f1.ts [p1@1]
               f2.ts [p2@1]
               f3.ts [p3@1]

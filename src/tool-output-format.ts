@@ -207,6 +207,15 @@ function toDisplayPath(path: string, workspace?: string): string {
   return rel;
 }
 
+function normalizeScopeLabel(path: string): string {
+  const trimmed = path.trim().replace(/^\.\/+/, "");
+  if (trimmed.length === 0) return trimmed;
+  if (trimmed.endsWith("/") || trimmed.includes("*")) return trimmed;
+  const leaf = trimmed.split("/").at(-1) ?? trimmed;
+  if (leaf.includes(".")) return trimmed;
+  return `${trimmed}/`;
+}
+
 function uniquePaths(filePaths: string[]): string[] {
   return Array.from(new Set(filePaths.map((path) => path.trim()).filter((path) => path.length > 0)));
 }
@@ -273,6 +282,9 @@ export function emitSearchSummary(
   const hitsByPath = new Map(entries.map((entry) => [entry.path, entry.hits] as const));
   const labels = compactPatternLabels(patterns);
   const normalizedPaths = (paths ?? []).map((path) => path.trim()).filter((path) => path.length > 0);
+  const scopeLabels = Array.from(
+    new Set(normalizedPaths.map((path) => normalizeScopeLabel(toDisplayPath(path, workspace)))),
+  );
   emitSummaryFileRows({
     toolName: "search-files",
     filePaths,
@@ -282,11 +294,15 @@ export function emitSearchSummary(
     header: (count) => {
       const patternToken = labels.length > 0 ? `[${labels.join(", ")}]` : "[]";
       if (normalizedPaths.length === 1) {
-        const scope = toDisplayPath(normalizedPaths[0] ?? "", workspace);
+        const scope = scopeLabels[0] ?? toDisplayPath(normalizedPaths[0] ?? "", workspace);
         return `scope=${scope} patterns=${patternToken} matches=${count}`;
       }
-      if (normalizedPaths.length > 1)
-        return `scope=paths:${normalizedPaths.length} patterns=${patternToken} matches=${count}`;
+      if (normalizedPaths.length > 1) {
+        const shown = scopeLabels.slice(0, 3).join(", ");
+        const remaining = scopeLabels.length - Math.min(scopeLabels.length, 3);
+        const scope = remaining > 0 ? `${shown}, +${remaining}` : shown;
+        return `scope=${scope} patterns=${patternToken} matches=${count}`;
+      }
       return `scope=workspace patterns=${patternToken} matches=${count}`;
     },
     lineForPath: (path) => {

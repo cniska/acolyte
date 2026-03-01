@@ -24,7 +24,7 @@ describe("tool summary format", () => {
     );
     expect(
       mergeToolOutputHeader("Search", "search-files", "scope=paths:2 patterns=[tool] matches=2"),
-    ).toBe("Search scope=paths:2 patterns=[tool] matches=2");
+    ).toBe("Search paths:2 [tool]");
     expect(mergeToolOutputHeader("Read", "read-file", "paths=2 targets=[a.ts, b.ts]")).toBe(
       "Read a.ts, b.ts",
     );
@@ -53,6 +53,19 @@ describe("tool summary format", () => {
     expect(mergeToolOutputHeader("Search", "search-files", "Search using [tool, agent]")).toBe(
       "Search using [tool, agent]",
     );
+    expect(
+      mergeToolOutputHeader("Search", "search-files", "scope=workspace patterns=[any, process.env., foo, bar] matches=4"),
+    ).toBe("Search [any, process.env., foo, +1]");
+    expect(
+      mergeToolOutputHeader("Search", "search-files", "scope=src/ patterns=[any, process.env., foo, bar] matches=4"),
+    ).toBe("Search src/ [any, process.env., foo, +1]");
+    expect(
+      mergeToolOutputHeader(
+        "Search",
+        "search-files",
+        "scope=foo/, bar/, baz, +5 patterns=[any, process.env., alpha, beta, gamma] matches=9",
+      ),
+    ).toBe("Search foo/, bar/, baz, +5 [any, process.env., alpha, +2]");
     expect(mergeToolOutputHeader("Read", "read-file", "Read a.ts, b.ts, c.ts +2 files")).toBe(
       "Read a.ts, b.ts, c.ts +2 files",
     );
