@@ -28,6 +28,13 @@ describe("no-rewrite guard", () => {
     recordCall(session, "read-file", { paths: [{ path: "src/foo.ts" }] });
     expect(() => runGuards({ toolName: "edit-file", args: { path: "src/foo.ts" }, session })).not.toThrow();
   });
+
+  test("is task-scoped: read in prior task does not block delete in new task", () => {
+    const session = createSessionContext("task_a");
+    recordCall(session, "read-file", { paths: [{ path: "src/foo.ts" }] });
+    session.taskId = "task_b";
+    expect(() => runGuards({ toolName: "delete-file", args: { paths: ["src/foo.ts"] }, session })).not.toThrow();
+  });
 });
 
 describe("verify-ran guard", () => {
@@ -41,7 +48,7 @@ describe("verify-ran guard", () => {
     const session = createSessionContext();
     recordCall(session, "run-command", { command: "bun run verify" });
     expect(() => runGuards({ toolName: "run-command", args: { command: "bun run verify" }, session })).toThrow(
-      /verify already ran this turn/,
+      /Duplicate run-command call detected|verify already ran this turn/,
     );
   });
 
@@ -79,7 +86,7 @@ describe("excessive-file-loop guard", () => {
     const session = createSessionContext();
     recordCall(session, "read-file", { paths: [{ path: "src/foo.ts" }] });
     expect(() => runGuards({ toolName: "read-file", args: { paths: [{ path: "src/foo.ts" }] }, session })).toThrow(
-      /Already read "src\/foo.ts" this turn/,
+      /Duplicate read-file call detected|Already read "src\/foo.ts" this turn/,
     );
   });
 
@@ -156,18 +163,20 @@ describe("excessive-file-loop guard", () => {
       recordCall(session, "edit-file", { path: "src/foo.ts" });
     }
     expect(() => runGuards({ toolName: "edit-file", args: { path: "src/foo.ts" }, session })).toThrow(
-      /Repeated read\/edit loop detected/,
+      /Duplicate edit-file call detected|Repeated read\/edit loop detected/,
     );
   });
 
-  test("does not block low-volume activity after verify", () => {
+  test("still blocks immediate duplicate edit calls after verify", () => {
     const session = createSessionContext();
     session.flags.verifyRan = true;
     recordCall(session, "read-file", { paths: [{ path: "src/foo.ts" }] });
     recordCall(session, "edit-file", { path: "src/foo.ts" });
     recordCall(session, "read-file", { paths: [{ path: "src/foo.ts" }] });
     recordCall(session, "edit-file", { path: "src/foo.ts" });
-    expect(() => runGuards({ toolName: "edit-file", args: { path: "src/foo.ts" }, session })).not.toThrow();
+    expect(() => runGuards({ toolName: "edit-file", args: { path: "src/foo.ts" }, session })).toThrow(
+      /Duplicate edit-file call detected/,
+    );
   });
 
   test("does not block when churn is spread across files", () => {
@@ -199,12 +208,10 @@ describe("excessive-search-loop guard", () => {
     );
   });
 
-  test("blocks equivalent regex-boundary search as duplicate", () => {
+  test("does not treat regex-boundary variant as identical duplicate", () => {
     const session = createSessionContext();
     recordCall(session, "search-files", { patterns: ["\\bagent\\b", "\\btool\\b"] });
-    expect(() => runGuards({ toolName: "search-files", args: { patterns: ["agent", "tool"] }, session })).toThrow(
-      /Duplicate search-files call detected/,
-    );
+    expect(() => runGuards({ toolName: "search-files", args: { patterns: ["agent", "tool"] }, session })).not.toThrow();
   });
 
   test("does not block narrower search across different scope", () => {
@@ -317,5 +324,37 @@ describe("recordCall", () => {
     expect(session.callLog[0]?.taskId).toBe("task_1");
     expect(session.callLog[1]?.toolName).toBe("edit-file");
     expect(session.callLog[1]?.taskId).toBe("task_1");
+  });
+});
+
+describe("duplicate-consecutive-call guard", () => {
+  test("blocks immediate duplicate tool calls with same args", () => {
+    const session = createSessionContext();
+    recordCall(session, "git-status", {});
+    expect(() => runGuards({ toolName: "git-status", args: {}, session })).toThrow(
+      /Duplicate git-status call detected/,
+    );
+  });
+
+  test("allows same tool call after a different tool call", () => {
+    const session = createSessionContext();
+    recordCall(session, "git-status", {});
+    recordCall(session, "read-file", { paths: [{ path: "src/a.ts" }] });
+    expect(() => runGuards({ toolName: "git-status", args: {}, session })).not.toThrow();
+  });
+
+  test("treats whitespace-only arg changes as duplicates", () => {
+    const session = createSessionContext();
+    recordCall(session, "run-command", { command: "bun run verify" });
+    expect(() =>
+      runGuards({ toolName: "run-command", args: { command: "  bun run verify  " }, session }),
+    ).toThrow(/Duplicate run-command call detected/);
+  });
+
+  test("is task-scoped: duplicate in prior task does not block current task", () => {
+    const session = createSessionContext("task_a");
+    recordCall(session, "git-status", {});
+    session.taskId = "task_b";
+    expect(() => runGuards({ toolName: "git-status", args: {}, session })).not.toThrow();
   });
 });

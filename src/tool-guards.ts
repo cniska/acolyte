@@ -28,6 +28,12 @@ export function createSessionContext(taskId?: string): SessionContext {
   return { callLog: [], taskId, flags: {} };
 }
 
+function scopedCallLog(session: SessionContext): ToolCallRecord[] {
+  const taskId = session.taskId;
+  if (!taskId) return session.callLog;
+  return session.callLog.filter((entry) => entry.taskId === taskId);
+}
+
 function normalizePath(p: string): string {
   return p.replace(/\/+$/, "").replace(/^\.\//, "");
 }
@@ -115,7 +121,7 @@ function isWorkspaceScope(scope: readonly string[]): boolean {
   return scope.length === 1 && scope[0] === "__workspace__";
 }
 
-type RedundantQueryKind = "duplicate" | "narrower" | "scope-narrowing";
+type RedundantQueryKind = "narrower" | "scope-narrowing";
 
 function redundantQueryKind(input: {
   toolName: ToolName;
@@ -126,15 +132,17 @@ function redundantQueryKind(input: {
   extractScope: (args: Record<string, unknown>) => string[];
 }): RedundantQueryKind | null {
   const { toolName, session, currentPatterns, currentScope, extractPatterns, extractScope } = input;
-  for (const entry of session.callLog) {
+  for (const entry of scopedCallLog(session)) {
     if (entry.toolName !== toolName) continue;
     const priorPatterns = extractPatterns(entry.args);
     const priorScope = extractScope(entry.args);
     const sameScope = sameArray(priorScope, currentScope);
     const narrowingScope = isWorkspaceScope(priorScope) && !isWorkspaceScope(currentScope);
     if (!sameScope && !narrowingScope) continue;
-    if (sameScope && sameArray(priorPatterns, currentPatterns)) return "duplicate";
-    if (isSubsetSet(currentPatterns, priorPatterns)) return narrowingScope ? "scope-narrowing" : "narrower";
+    if (sameScope && sameArray(priorPatterns, currentPatterns)) continue;
+    const isProperSubset =
+      currentPatterns.length < priorPatterns.length && isSubsetSet(currentPatterns, priorPatterns);
+    if (isProperSubset) return narrowingScope ? "scope-narrowing" : "narrower";
   }
   return null;
 }
@@ -149,25 +157,66 @@ function isShellReadFallback(command: string): boolean {
   return !allowedContext.test(normalized);
 }
 
+function normalizeGuardArgValue(value: unknown): unknown {
+  if (typeof value === "string") return value.trim();
+  if (Array.isArray(value)) {
+    const normalized = value.map((entry) => normalizeGuardArgValue(entry));
+    if (normalized.every((entry) => typeof entry === "string")) {
+      return (normalized as string[]).slice().sort();
+    }
+    return normalized;
+  }
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b));
+    const out: Record<string, unknown> = {};
+    for (const [key, entry] of entries) out[key] = normalizeGuardArgValue(entry);
+    return out;
+  }
+  return value;
+}
+
+function guardArgsEqual(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
+  return JSON.stringify(normalizeGuardArgValue(a)) === JSON.stringify(normalizeGuardArgValue(b));
+}
+
+const duplicateConsecutiveCallGuard: ToolGuard = {
+  id: "duplicate-consecutive-call",
+  description: "Block immediate duplicate tool calls with effectively identical arguments.",
+  appliesTo: "all",
+  check({ toolName, args, session }) {
+    const calls = scopedCallLog(session);
+    const last = calls[calls.length - 1];
+    if (!last || last.toolName !== toolName) return;
+    if (!guardArgsEqual(last.args, args)) return;
+    session.onGuard?.({ guardId: "duplicate-consecutive-call", toolName, action: "blocked", detail: "duplicate-call" });
+    throw new Error(`Duplicate ${toolName} call detected with unchanged arguments. Reuse previous result or change inputs.`);
+  },
+};
+
 const noRewriteGuard: ToolGuard = {
   id: "no-rewrite",
   description: "Block delete-file on a path that was previously read — use edit-file instead.",
   appliesTo: ["delete-file"],
   check({ toolName, args, session }) {
-    const deletePath = typeof args.path === "string" ? args.path : null;
-    if (!deletePath) return;
-    const normalized = normalizePath(deletePath);
-    const wasRead = session.callLog.some((entry) => {
-      if (entry.toolName !== "read-file") return false;
-      const paths = entry.args.paths;
-      if (!Array.isArray(paths)) return false;
-      return (paths as Array<{ path?: string }>).some((p) => {
-        if (typeof p.path !== "string") return false;
-        const n = normalizePath(p.path);
-        return n === normalized || n.endsWith(`/${normalized}`) || normalized.endsWith(`/${n}`);
+    const rawPaths = Array.isArray(args.paths) ? args.paths : typeof args.path === "string" ? [args.path] : [];
+    const deletePaths = rawPaths
+      .filter((entry): entry is string => typeof entry === "string")
+      .map((entry) => entry.trim())
+      .filter((entry) => entry.length > 0);
+    if (deletePaths.length === 0) return;
+    for (const deletePath of deletePaths) {
+      const normalized = normalizePath(deletePath);
+      const wasRead = scopedCallLog(session).some((entry) => {
+        if (entry.toolName !== "read-file") return false;
+        const paths = entry.args.paths;
+        if (!Array.isArray(paths)) return false;
+        return (paths as Array<{ path?: string }>).some((p) => {
+          if (typeof p.path !== "string") return false;
+          const n = normalizePath(p.path);
+          return n === normalized || n.endsWith(`/${normalized}`) || normalized.endsWith(`/${n}`);
+        });
       });
-    });
-    if (wasRead) {
+      if (!wasRead) continue;
       session.onGuard?.({ guardId: "no-rewrite", toolName, action: "blocked", detail: deletePath });
       throw new Error(
         `Cannot delete "${deletePath}" — it was read this session. Use edit-file to modify it instead of deleting and recreating.`,
@@ -196,7 +245,7 @@ const excessiveFileLoopGuard: ToolGuard = {
       pathCounts.set(path, created);
       return created;
     };
-    for (const entry of session.callLog) {
+    for (const entry of scopedCallLog(session)) {
       if (entry.toolName === "read-file") {
         for (const path of extractReadPaths(entry.args)) {
           countsForPath(path).readCount += 1;
@@ -251,10 +300,6 @@ const excessiveSearchLoopGuard: ToolGuard = {
       extractPatterns: extractSearchPatterns,
       extractScope: extractSearchScope,
     });
-    if (redundant === "duplicate") {
-      session.onGuard?.({ guardId: "excessive-search-loop", toolName, action: "blocked", detail: "duplicate-search" });
-      throw new Error("Duplicate search-files call detected with same scope/patterns. Reuse existing search results.");
-    }
     if (redundant === "scope-narrowing") {
       session.onGuard?.({
         guardId: "excessive-search-loop",
@@ -281,7 +326,7 @@ const excessiveSearchLoopGuard: ToolGuard = {
     let searchCount = 0;
     let readCount = 0;
     let writeCount = 0;
-    for (const entry of session.callLog) {
+    for (const entry of scopedCallLog(session)) {
       if (entry.toolName === "search-files") {
         searchCount += 1;
       } else if (entry.toolName === "read-file") {
@@ -307,7 +352,7 @@ const excessiveFindLoopGuard: ToolGuard = {
   check({ toolName, args, session }) {
     const currentPatterns = extractFindPatterns(args);
     const currentScope = extractSearchScope(args);
-    for (const entry of session.callLog) {
+    for (const entry of scopedCallLog(session)) {
       if (entry.toolName !== "find-files") continue;
       const priorPatterns = extractFindPatterns(entry.args);
       const priorScope = extractSearchScope(entry.args);
@@ -327,10 +372,6 @@ const excessiveFindLoopGuard: ToolGuard = {
       extractPatterns: extractFindPatterns,
       extractScope: extractSearchScope,
     });
-    if (redundant === "duplicate") {
-      session.onGuard?.({ guardId: "excessive-find-loop", toolName, action: "blocked", detail: "duplicate-find" });
-      throw new Error("Duplicate find-files call detected with same scope/patterns. Reuse existing find results.");
-    }
     if (redundant === "scope-narrowing") {
       session.onGuard?.({
         guardId: "excessive-find-loop",
@@ -350,7 +391,7 @@ const excessiveFindLoopGuard: ToolGuard = {
     let findCount = 0;
     let readCount = 0;
     let writeCount = 0;
-    for (const entry of session.callLog) {
+    for (const entry of scopedCallLog(session)) {
       if (entry.toolName === "find-files") {
         findCount += 1;
       } else if (entry.toolName === "read-file") {
@@ -377,9 +418,10 @@ const verifyRanGuard: ToolGuard = {
     if (typeof args.command !== "string") return;
     if (!/\bverify\b/i.test(args.command)) return;
 
+    const calls = scopedCallLog(session);
     const lastVerifyIndex = (() => {
-      for (let i = session.callLog.length - 1; i >= 0; i -= 1) {
-        const entry = session.callLog[i];
+      for (let i = calls.length - 1; i >= 0; i -= 1) {
+        const entry = calls[i];
         if (entry.toolName !== "run-command") continue;
         const cmd = typeof entry.args.command === "string" ? entry.args.command : "";
         if (/\bverify\b/i.test(cmd)) return i;
@@ -389,8 +431,8 @@ const verifyRanGuard: ToolGuard = {
 
     if (lastVerifyIndex >= 0) {
       let wroteAfterLastVerify = false;
-      for (let i = lastVerifyIndex + 1; i < session.callLog.length; i += 1) {
-        const tool = session.callLog[i]?.toolName;
+      for (let i = lastVerifyIndex + 1; i < calls.length; i += 1) {
+        const tool = calls[i]?.toolName;
         if (tool === "edit-file" || tool === "edit-code" || tool === "create-file" || tool === "delete-file") {
           wroteAfterLastVerify = true;
           break;
@@ -422,6 +464,7 @@ const noShellReadFallbackGuard: ToolGuard = {
 };
 
 const GUARDS: ToolGuard[] = [
+  duplicateConsecutiveCallGuard,
   noRewriteGuard,
   excessiveFileLoopGuard,
   excessiveFindLoopGuard,
