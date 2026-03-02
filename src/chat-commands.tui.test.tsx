@@ -66,26 +66,30 @@ describe("chat slash command visual regression", () => {
   });
 
   test("renders /sessions transcript output with multiple sessions", async () => {
+    const realNow = Date.now;
+    Date.now = () => new Date("2026-03-02T00:00:00.000Z").getTime();
     const store = createStore({
       activeSessionId: "sess_active",
       sessions: [
-        createSession({ id: "sess_active", title: "Current Session" }),
-        createSession({ id: "sess_prev", title: "Previous Session" }),
+        createSession({ id: "sess_active", title: "Current Session", updatedAt: "2026-03-02T00:00:00.000Z" }),
+        createSession({ id: "sess_prev", title: "Previous Session", updatedAt: "2026-03-02T00:00:00.000Z" }),
       ],
     });
-    const { submit, rows } = createSubmitHandlerHarness({ store });
+    try {
+      const { submit, rows } = createSubmitHandlerHarness({ store });
 
-    await submit("/sessions");
+      await submit("/sessions");
 
-    const rendered = renderTranscript(rows).replace(/(?:in moments|just now|\d+[smhdw] ago)/g, "<relative>");
-
-    expect(rendered).toBe(dedent(`
-      ❯ /sessions
-      
-        Sessions 2
-      
-        ● sess_active  Current Session   <relative>
-          sess_prev    Previous Session  <relative>
-    `));
+      expect(renderTranscript(rows)).toBe(dedent(`
+        ❯ /sessions
+        
+          Sessions 2
+        
+          ● sess_active  Current Session   just now
+            sess_prev    Previous Session  just now
+      `));
+    } finally {
+      Date.now = realNow;
+    }
   });
 });
