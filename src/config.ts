@@ -13,6 +13,7 @@ import {
   type TransportMode,
   transportModeSchema,
 } from "./config-modes";
+import { guardIdSchema } from "./tool-guards";
 
 const MAX_CONTEXT_TOKENS = 32_000;
 const MAX_OM_OBSERVATION_TOKENS = 12_000;
@@ -81,6 +82,7 @@ export interface AcolyteConfig {
   maxAttachmentMessageTokens?: number;
   maxPinnedMessageTokens?: number;
   replyTimeoutMs?: number;
+  disabledGuards?: string[];
 }
 
 export interface ResolvedAcolyteConfig {
@@ -104,6 +106,7 @@ export interface ResolvedAcolyteConfig {
   maxAttachmentMessageTokens: number;
   maxPinnedMessageTokens: number;
   replyTimeoutMs: number;
+  disabledGuards: string[];
 }
 
 type ConfigOptions = {
@@ -133,6 +136,7 @@ const CONFIG_SET_SCHEMAS: Record<keyof AcolyteConfig, z.ZodTypeAny> = {
   maxAttachmentMessageTokens: parseIntegerSchema(100, MAX_ATTACHMENT_MESSAGE_TOKENS),
   maxPinnedMessageTokens: parseIntegerSchema(100, MAX_PINNED_MESSAGE_TOKENS),
   replyTimeoutMs: parseIntegerSchema(1_000, MAX_RUN_REPLY_TIMEOUT_MS),
+  disabledGuards: z.array(guardIdSchema),
 };
 
 function toConfig(input: Record<string, unknown>): AcolyteConfig {
@@ -186,6 +190,7 @@ function toConfig(input: Record<string, unknown>): AcolyteConfig {
       input.maxPinnedMessageTokens,
     ),
     replyTimeoutMs: parseField(parseIntegerSchema(1_000, MAX_RUN_REPLY_TIMEOUT_MS), input.replyTimeoutMs),
+    disabledGuards: parseField(z.array(guardIdSchema), input.disabledGuards),
   };
 }
 
@@ -291,6 +296,8 @@ function serializeToml(config: AcolyteConfig): string {
   if (typeof config.maxPinnedMessageTokens === "number")
     lines.push(`maxPinnedMessageTokens = ${config.maxPinnedMessageTokens}`);
   if (typeof config.replyTimeoutMs === "number") lines.push(`replyTimeoutMs = ${config.replyTimeoutMs}`);
+  if (config.disabledGuards && config.disabledGuards.length > 0)
+    lines.push(`disabledGuards = ${JSON.stringify(config.disabledGuards)}`);
   return `${lines.join("\n")}${lines.length > 0 ? "\n" : ""}`;
 }
 
@@ -317,6 +324,7 @@ function resolveConfig(config: AcolyteConfig): ResolvedAcolyteConfig {
     maxAttachmentMessageTokens: config.maxAttachmentMessageTokens ?? DEFAULT_CONFIG.maxAttachmentMessageTokens,
     maxPinnedMessageTokens: config.maxPinnedMessageTokens ?? DEFAULT_CONFIG.maxPinnedMessageTokens,
     replyTimeoutMs: config.replyTimeoutMs ?? DEFAULT_CONFIG.replyTimeoutMs,
+    disabledGuards: config.disabledGuards ?? [],
   };
 }
 

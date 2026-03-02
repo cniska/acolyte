@@ -923,6 +923,7 @@ export function toolsForAgent(options?: { workspace?: string; onToolOutput?: Too
 } {
   const workspace = options?.workspace ?? resolve(process.cwd());
   const session = createSessionContext(options?.taskId);
+  session.flags.disabledGuards = [...appConfig.agent.guards.disabled];
   if (appConfig.agent.permissions.mode === "read") return readOnlyTools(workspace, session, options?.onToolOutput);
   return createToolset(workspace, session, options?.onToolOutput);
 }

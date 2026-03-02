@@ -1,3 +1,4 @@
+import { z } from "zod";
 import type { ToolName } from "./tool-names";
 
 export type GuardEvent = { guardId: string; toolName: ToolName; action: "blocked" | "flag_set"; detail?: string };
@@ -469,6 +470,19 @@ const noShellReadFallbackGuard: ToolGuard = {
   },
 };
 
+export const guardIdSchema = z.enum([
+  "duplicate-consecutive-call",
+  "no-rewrite",
+  "excessive-file-loop",
+  "excessive-find-loop",
+  "excessive-search-loop",
+  "verify-ran",
+  "no-shell-read-fallback",
+]);
+
+export type GuardId = z.infer<typeof guardIdSchema>;
+const GUARD_ID_SET = new Set<string>(guardIdSchema.options);
+
 const GUARDS: ToolGuard[] = [
   duplicateConsecutiveCallGuard,
   noRewriteGuard,
@@ -479,8 +493,20 @@ const GUARDS: ToolGuard[] = [
   noShellReadFallbackGuard,
 ];
 
+function disabledGuardIds(session: SessionContext): Set<string> {
+  const value = session.flags.disabledGuards;
+  if (!Array.isArray(value)) return new Set();
+  const ids = value
+    .filter((entry): entry is string => typeof entry === "string")
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0 && GUARD_ID_SET.has(entry));
+  return new Set(ids);
+}
+
 export function runGuards(input: GuardInput): void {
+  const disabled = disabledGuardIds(input.session);
   for (const guard of GUARDS) {
+    if (disabled.has(guard.id)) continue;
     if (guard.appliesTo !== "all" && !guard.appliesTo.includes(input.toolName)) continue;
     guard.check(input);
   }
