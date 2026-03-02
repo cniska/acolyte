@@ -4,7 +4,8 @@
 
 One AI coding assistant for day-to-day development across projects and machines.
 Shared sessions and memory, model-flexible, extensible via tools and skills.
-Built for autonomous execution of bounded tasks with the developer in control.
+Chat-first and opinionated for the 80% default workflow, with stable seams for customization.
+Built for safe autonomous execution of bounded tasks with explicit policy and the developer in control.
 
 ## Milestones
 
@@ -55,7 +56,21 @@ The agent can do bounded coding tasks for us end-to-end.
 - [x] Tool progress and error behavior are reliable for daily use
 - [x] Per-mode model controls and skill runtime behavior are stable
 
-### Milestone 6: Autonomy Proof
+### Milestone 6: Pre-MVP Product Polish
+
+Consolidate core UX quality and extension-ready seams before MVP freeze.
+
+- [x] Single primary UX path (chat-first), with transports as implementation detail
+- [x] Typed RPC protocol with request correlation and lifecycle envelopes
+- [x] Task-centric execution model with explicit task states and tracing
+- [x] Visual regression coverage for TUI/CLI output contracts
+- [x] Integration suite split (`*.int.test`) with dedicated `test:int` workflow
+- [ ] Full codebase audit and cleanup pass (architecture, reliability, UX consistency, tests)
+- [ ] Extension-ready seams in core (interface-first boundaries for lifecycle/tools/guards/tasks/transports), without shipping plugin runtime
+- [ ] Queue delivery policy controls (`one-at-a-time` vs `all`) for steering/follow-up (Pi-inspired)
+- [ ] Resource-loading diagnostics surface (skills/prompts/config/reload collisions and failures) (Pi-inspired)
+
+### Milestone 7: Autonomy Proof
 
 Prove consistent autonomous performance across repeated real tasks.
 
@@ -64,7 +79,7 @@ Prove consistent autonomous performance across repeated real tasks.
 - [ ] Failure modes are explainable through traces/logs and have clear follow-up actions
 - [ ] Protocol baseline is stable (`protocolVersion`, capability handshake, stream compatibility tests)
 
-### Milestone 7: Memory Quality
+### Milestone 8: Memory Quality
 
 Reduce repeated mistakes with transparent, correctable memory behavior.
 
@@ -75,7 +90,7 @@ Reduce repeated mistakes with transparent, correctable memory behavior.
 
 **Current status:** Basic memory commands work. Observational memory is wired up but not tuned. No evals yet.
 
-### Milestone 8: Hosted Readiness
+### Milestone 9: Hosted Readiness
 
 Enable optional hosted mode for centralized memory and multi-device continuity.
 
@@ -88,7 +103,7 @@ Enable optional hosted mode for centralized memory and multi-device continuity.
 - [ ] Auth and multi-tenancy work
 - [ ] Local-first mode still works without hosted backend
 
-### Milestone 9: Post-MVP Friends and Family
+### Milestone 10: Post-MVP Friends and Family
 
 Share with trusted coders for real-world feedback.
 
@@ -97,9 +112,9 @@ Share with trusted coders for real-world feedback.
 - [ ] Feedback collected and acted on from 3+ users
 - [ ] Major usability issues resolved
 
-**Blocked on:** Milestones 6-8.
+**Blocked on:** Milestones 7-9.
 
-### Milestone 10: Public OSS Release
+### Milestone 11: Public OSS Release
 
 Open-source core local mode with optional self-host path.
 
@@ -110,7 +125,7 @@ Open-source core local mode with optional self-host path.
 - [ ] Pre-OSS security baseline complete (secure defaults, auth coverage, workspace boundary checks, redaction tests)
 - [ ] Localization baseline: translatable CLI/TUI copy, with raw protocol/tool output kept language-neutral
 
-**Blocked on:** Milestone 9.
+**Blocked on:** Milestone 10.
 
 ## MVP Definition
 
@@ -135,6 +150,7 @@ What MVP is **not**:
   one reusable local server process per machine (auto-discovered/reused), with chat/run clients attaching without manual server process management.
 - Parallel subagents per mode (plan, work, verify) for concurrent execution.
 - Session branching — isolated sub-tasks without polluting main context.
+- Session tree UX for branch navigation, labels, and jump-back workflows.
 - Assistant-managed background tasks with stable IDs (`start`, `status`, `cancel`, `attach`).
 - Automatic foreground-to-background detachment for long-running work while chat remains responsive.
 - Stream protocol compatibility tests (event schema/version contract across client/server).
@@ -144,6 +160,10 @@ What MVP is **not**:
 - Tool output collapsing — group consecutive same-tool calls into a single summary row to reduce visual noise.
 - User-facing lifecycle hooks — notifications when agent needs input, custom evaluators.
 - Memory evaluator — persist useful learnings between generations within a session.
+- Extension runtime hooks (events + tool interceptors + custom slash commands) with explicit safety boundaries.
+- Resource loader diagnostics and collision reporting across user/project/package layers (skills, prompts, themes, extensions).
+- Queue policy controls for steering/follow-up delivery (`one-at-a-time` vs `all`) with predictable semantics.
+- SDK-first embedding API (local in-process integration) alongside CLI/RPC.
 
 ## Known Issues
 

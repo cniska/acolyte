@@ -2,7 +2,15 @@
 
 ![Acolyte logo](src/assets/acolyte.png)
 
-Personal AI coding delegate (CLI-first), built on Bun + Mastra.
+Acolyte is the coding agent you want to work with every day: fast, predictable, and trustworthy.
+
+## Core Principles
+
+- One primary UX: chat-first workflow with predictable behavior.
+- Execution policy is explicit: lifecycle + guards + evaluators, not prompt-only heuristics.
+- Safety-first by default: guardrails and bounded autonomy over risky shortcuts.
+- Output contracts matter: stable, test-backed CLI/TUI output and minimal noise.
+- Build for extension: stable seams now, plugin runtime later.
 
 ## Quickstart
 

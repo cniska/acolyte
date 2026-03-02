@@ -52,6 +52,7 @@
 - Boundaries keep autonomy safe. Task-scoped verification prevents cross-task drift while preserving opt-in global review when needed.
 - Prompt/tool-contract quality often beats extra host-side heuristics for everyday coding tasks.
 - Dogfooding reveals architecture gaps that unit tests miss, especially around recovery behavior.
+- Benchmarking adjacent projects is high leverage: borrow proven patterns, validate tradeoffs, and keep product differentiation intentional.
 - Start single-agent and prove reliability before adding multi-agent complexity.
 - Keep instructions language-agnostic; avoid overfitting behavior to one stack or toolchain.
 - Keep docs conceptual and short. Implementation-detail docs drift quickly and become misleading.
