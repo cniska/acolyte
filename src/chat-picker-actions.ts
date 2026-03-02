@@ -63,8 +63,8 @@ export function createWriteConfirmPicker(prompt: string): PickerState {
     kind: "writeConfirm",
     prompt,
     items: [
-      { value: "switch", description: "switch to write mode" },
-      { value: "cancel", description: "stay in read mode" },
+      { value: "switch", description: "enable write mode and continue this task" },
+      { value: "cancel", description: "keep read mode" },
     ],
     index: 0,
     note: "",
@@ -85,7 +85,10 @@ export function createClarifyAnswerPicker(
     question: trimmedQuestion,
     remaining: remaining.map((item) => item.trim()).filter((item) => item.length > 0),
     answers,
-    items: [{ value: "continue", description: "continue to next question" }],
+    items: [
+      { value: "answer", description: "use this answer" },
+      { value: "other", description: "use a different option" },
+    ],
     index: 0,
     note: "",
   };

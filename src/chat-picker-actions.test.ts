@@ -84,6 +84,10 @@ describe("chat picker actions", () => {
       kind: "clarifyAnswer",
       question: "First question?",
       remaining: ["Second question?"],
+      items: [
+        { value: "answer", description: "use this answer" },
+        { value: "other", description: "use a different option" },
+      ],
       index: 0,
       note: "",
     });

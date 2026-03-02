@@ -2,7 +2,7 @@ import { Box, Text } from "ink";
 import type React from "react";
 import { renderInputPanelContent } from "./chat-input-panel-content";
 import { borderLine, justifyLineSpaceBetween } from "./chat-layout";
-import { type PickerState, pickerHint, pickerTitle, renderPickerItems } from "./chat-picker";
+import { PICKER_LABEL_WIDTH, type PickerState, pickerHint, pickerTitle, renderPickerItems } from "./chat-picker";
 import { PromptInput } from "./prompt-input";
 
 type ChatInputPanelProps = {
@@ -59,52 +59,40 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
   }
 
   if (picker?.kind === "writeConfirm" || picker?.kind === "clarifyAnswer") {
-    const selected = picker.items[picker.index];
-    const isWrite = picker.kind === "writeConfirm";
     const isClarify = picker.kind === "clarifyAnswer";
-    let firstSelected = true;
-    if (isWrite) firstSelected = selected?.value === "switch";
-
-    let secondSelected = false;
-    if (isWrite) secondSelected = selected?.value === "cancel";
-
-    let firstLabel = "answer";
-    if (isWrite) firstLabel = "switch";
-
-    const secondLabel = "cancel";
-    let firstHint = "continue";
-    if (isWrite) firstHint = "switch to write mode";
-    const secondHint = "stay in read mode";
-    const labelWidth = Math.max(firstLabel.length, secondLabel.length);
     return (
       <>
         <Text dimColor>{borderLine()}</Text>
         <Text>{pickerTitle(picker)}</Text>
         <Text> </Text>
-        <Box>
-          <Text>{firstSelected ? "› " : "  "}</Text>
-          <Text color={firstSelected ? brandColor : undefined}>{firstLabel.padEnd(labelWidth, " ")}</Text>
-          <Text> </Text>
-          {firstSelected && !isWrite ? (
-            <PromptInput
-              value={picker.note}
-              placeholder={isClarify ? "answer…" : "reason…"}
-              onChange={onConfirmNoteChange}
-              onSubmit={() => {}}
-              key={`confirm-yes-${inputRevision}`}
-            />
-          ) : (
-            <Text dimColor>{firstHint}</Text>
-          )}
-        </Box>
-        {!isClarify && (
-          <Box>
-            <Text>{secondSelected ? "› " : "  "}</Text>
-            <Text color={secondSelected ? brandColor : undefined}>{secondLabel.padEnd(labelWidth, " ")}</Text>
-            <Text> </Text>
-            <Text dimColor>{secondHint}</Text>
-          </Box>
-        )}
+        {picker.items.map((item, index) => {
+          const selected = index === picker.index;
+          if (isClarify && selected) {
+            const placeholder = item.value === "other" ? "other option…" : "answer…";
+            return (
+              <Box key={item.value}>
+                <Text>{selected ? "› " : "  "}</Text>
+                <Text color={selected ? brandColor : undefined}>{item.value.padEnd(PICKER_LABEL_WIDTH, " ")}</Text>
+                <Text> </Text>
+                <PromptInput
+                  value={picker.note}
+                  placeholder={placeholder}
+                  onChange={onConfirmNoteChange}
+                  onSubmit={() => {}}
+                  key={`confirm-${item.value}-${inputRevision}`}
+                />
+              </Box>
+            );
+          }
+          return (
+            <Box key={item.value}>
+              <Text>{selected ? "› " : "  "}</Text>
+              <Text color={selected ? brandColor : undefined}>{item.value.padEnd(PICKER_LABEL_WIDTH, " ")}</Text>
+              <Text> </Text>
+              <Text dimColor>{item.description}</Text>
+            </Box>
+          );
+        })}
         <Text> </Text>
         <Text dimColor>{pickerHint(picker)}</Text>
         <Text dimColor>{borderLine()}</Text>

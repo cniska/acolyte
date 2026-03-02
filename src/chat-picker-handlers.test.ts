@@ -219,7 +219,10 @@ describe("chat picker handlers", () => {
       question: "First question?",
       remaining: ["Second question?"],
       answers: [],
-      items: [{ value: "continue", description: "continue to next question" }],
+      items: [
+        { value: "answer", description: "use this answer" },
+        { value: "other", description: "use a different option" },
+      ],
       index: 0,
       note: "first answer",
     });
@@ -231,8 +234,11 @@ describe("chat picker handlers", () => {
       question: "Second question?",
       remaining: [],
       answers: [{ question: "First question?", answer: "first answer" }],
-      items: [{ value: "continue", description: "continue to next question" }],
-      index: 0,
+      items: [
+        { value: "answer", description: "use this answer" },
+        { value: "other", description: "use a different option" },
+      ],
+      index: 1,
       note: "second answer",
     });
     expect(queued).toHaveLength(1);
@@ -285,8 +291,8 @@ describe("chat picker handlers", () => {
       kind: "writeConfirm",
       prompt: "edit src/cli.ts",
       items: [
-        { value: "switch", description: "switch to write mode" },
-        { value: "cancel", description: "stay in read mode" },
+        { value: "switch", description: "enable write mode and continue this task" },
+        { value: "cancel", description: "keep read mode" },
       ],
       index: 0,
       note: "",

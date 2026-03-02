@@ -1,6 +1,6 @@
 import { Text } from "ink";
 import type React from "react";
-import { formatRelativeTime } from "./chat-format";
+import { formatColumns, formatRelativeTime } from "./chat-format";
 import type { PermissionMode } from "./config-modes";
 import type { SkillMeta } from "./skills";
 import type { Session } from "./types";
@@ -15,7 +15,7 @@ export type PickerState =
       question: string;
       remaining: string[];
       answers: Array<{ question: string; answer: string }>;
-      items: Array<{ value: "continue"; description: string }>;
+      items: Array<{ value: "answer" | "other"; description: string }>;
       index: number;
       note: string;
     }
@@ -30,6 +30,25 @@ export type PickerState =
 function truncateText(input: string, max = 72): string {
   if (input.length <= max) return input;
   return `${input.slice(0, Math.max(0, max - 1))}…`;
+}
+
+export const PICKER_LABEL_WIDTH = 16;
+
+function renderPickerRows(
+  items: Array<{ key: string; label: string; detail: string }>,
+  selectedIndex: number,
+  brandColor: string,
+): React.ReactNode {
+  return items.map((item, index) => {
+    const selected = index === selectedIndex;
+    return (
+      <Text key={item.key}>
+        {selected ? "› " : "  "}
+        <Text color={selected ? brandColor : undefined}>{item.label.padEnd(PICKER_LABEL_WIDTH)}</Text>{" "}
+        <Text dimColor>{item.detail}</Text>
+      </Text>
+    );
+  });
 }
 
 export function pickerTitle(picker: PickerState): string {
@@ -50,15 +69,15 @@ export function pickerTitle(picker: PickerState): string {
 export function pickerHint(picker: PickerState): string {
   switch (picker.kind) {
     case "skills":
-      return "Esc to close · Enter to select";
+      return "Enter to select · Esc to close";
     case "resume":
-      return "Esc to close · Enter to resume";
+      return "Enter to resume · Esc to close";
     case "permissions":
-      return "Esc to close · Enter to apply";
+      return "Enter to apply · Esc to close";
     case "clarifyAnswer":
-      return "Esc to close · Type answer inline · Enter to continue";
+      return "Type answer inline · Enter to continue · Esc to close";
     case "writeConfirm":
-      return "Esc to close · Type reason inline · Enter to apply";
+      return "Enter to apply · Esc to cancel";
   }
 }
 
@@ -69,75 +88,64 @@ export function renderPickerItems(
 ): React.ReactNode {
   switch (picker.kind) {
     case "skills": {
-      const nameWidth = Math.min(28, Math.max(8, ...picker.items.map((item) => item.name.length)));
-      return picker.items.map((skill, index) => {
-        const selected = index === picker.index;
-        return (
-          <Text key={skill.path}>
-            {selected ? "› " : "  "}
-            <Text color={selected ? brandColor : undefined}>{skill.name.padEnd(nameWidth)}</Text>{" "}
-            {truncateText(skill.description)}
-          </Text>
-        );
-      });
+      return renderPickerRows(
+        picker.items.map((skill) => ({
+          key: skill.path,
+          label: truncateText(skill.name, PICKER_LABEL_WIDTH),
+          detail: truncateText(skill.description),
+        })),
+        picker.index,
+        brandColor,
+      );
     }
     case "permissions":
-      return picker.items.map((item, index) => {
-        const selected = index === picker.index;
-        return (
-          <Text key={item.mode}>
-            {selected ? "› " : "  "}
-            <Text color={selected ? brandColor : undefined}>{item.mode.padEnd(10)}</Text>
-            <Text dimColor>{item.description}</Text>
-          </Text>
-        );
-      });
+      return renderPickerRows(
+        picker.items.map((item) => ({
+          key: item.mode,
+          label: item.mode,
+          detail: item.description,
+        })),
+        picker.index,
+        brandColor,
+      );
     case "clarifyAnswer":
-      return (
-        <>
-          {picker.items.map((item, index) => {
-            const selected = index === picker.index;
-            return (
-              <Text key={item.value}>
-                {selected ? "› " : "  "}
-                <Text color={selected ? brandColor : undefined}>{item.value.padEnd(8)}</Text>
-                <Text dimColor>{item.description}</Text>
-              </Text>
-            );
-          })}
-        </>
+      return renderPickerRows(
+        picker.items.map((item) => ({
+          key: item.value,
+          label: item.value,
+          detail: item.description,
+        })),
+        picker.index,
+        brandColor,
       );
     case "writeConfirm":
       return (
         <>
           <Text dimColor>{`  prompt: ${truncateText(picker.prompt, 72)}`}</Text>
-          {picker.items.map((item, index) => {
-            const selected = index === picker.index;
-            return (
-              <Text key={item.value}>
-                {selected ? "› " : "  "}
-                <Text color={selected ? brandColor : undefined}>{item.value.padEnd(8)}</Text>
-                <Text dimColor>{item.description}</Text>
-              </Text>
-            );
-          })}
+          {renderPickerRows(
+            picker.items.map((item) => ({
+              key: item.value,
+              label: item.value,
+              detail: item.description,
+            })),
+            picker.index,
+            brandColor,
+          )}
         </>
       );
     case "resume": {
-      const titleWidth = picker.items.reduce(
-        (max, item) => Math.max(max, truncateText(item.title || "New Session", 40).length),
-        0,
-      );
-      return picker.items.map((item, index) => {
+      const rows = picker.items.map((item) => [
+        `${item.id === activeSessionId ? "●" : " "} ${item.id}`,
+        truncateText(item.title || "New Session", 40),
+        formatRelativeTime(item.updatedAt),
+      ]);
+      const formattedRows = formatColumns(rows);
+      return formattedRows.map((line, index) => {
         const selected = index === picker.index;
-        const active = item.id === activeSessionId ? "●" : " ";
-        const title = truncateText(item.title || "New Session", 40).padEnd(titleWidth);
         return (
-          <Text key={item.id}>
+          <Text key={picker.items[index]?.id ?? `${index}`}>
             {selected ? "› " : "  "}
-            <Text color={selected ? brandColor : undefined}>{`${active} ${item.id}`}</Text>
-            {"  "}
-            <Text dimColor>{`${title}  ${formatRelativeTime(item.updatedAt)}`}</Text>
+            <Text color={selected ? brandColor : undefined}>{line}</Text>
           </Text>
         );
       });
