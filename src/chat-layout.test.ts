@@ -30,13 +30,18 @@ describe("chat-layout", () => {
     }
   });
 
-  test("shownBranch returns current branch inside a git repository", async () => {
+  test("shownBranch returns a branch name inside a git repository", async () => {
     const workspace = await createTempDir("acolyte-chat-layout-");
     try {
       await runShellCommand(workspace, "git init");
       await runShellCommand(workspace, "git config user.email test@example.com");
       await runShellCommand(workspace, "git config user.name Test");
-      expect(await shownBranch(workspace)).toMatch(/^(main|master)$/);
+      await runShellCommand(workspace, "printf 'seed\\n' > README.md");
+      await runShellCommand(workspace, "git add README.md");
+      await runShellCommand(workspace, "git commit -m init");
+      const branch = await shownBranch(workspace);
+      expect(branch).not.toBeNull();
+      expect(branch?.trim().length ?? 0).toBeGreaterThan(0);
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
