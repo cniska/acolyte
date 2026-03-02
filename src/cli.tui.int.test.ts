@@ -2,8 +2,71 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { runCliPlain, withCliTestEnv, withTestHttpServer } from "./int-test-utils";
 import { dedent } from "./test-utils";
-import { runCliPlain, withCliTestEnv, withTestHttpServer } from "./tui-test-utils";
+
+async function withDualTransportChatServer<T>(fn: (baseUrl: string) => Promise<T>): Promise<T> {
+  const reply = {
+    model: "gpt-5-mini",
+    output: "Transport parity ok.",
+  };
+  const server = Bun.serve({
+    port: 0,
+    fetch(request, srv) {
+      const url = new URL(request.url);
+      if (url.pathname === "/v1/chat/stream") {
+        const body = `data: ${JSON.stringify({ type: "done", reply })}\n\n`;
+        return new Response(body, {
+          status: 200,
+          headers: { "content-type": "text/event-stream" },
+        });
+      }
+      if (url.pathname === "/v1/rpc") {
+        if (srv.upgrade(request)) return;
+        return new Response("upgrade required", { status: 426 });
+      }
+      return new Response("not found", { status: 404 });
+    },
+    websocket: {
+      message(ws, message) {
+        let payload: unknown;
+        try {
+          payload = JSON.parse(typeof message === "string" ? message : Buffer.from(message).toString("utf8"));
+        } catch {
+          return;
+        }
+        if (!payload || typeof payload !== "object") return;
+        const envelope = payload as { id?: unknown; type?: unknown };
+        if (typeof envelope.id !== "string" || typeof envelope.type !== "string") return;
+
+        if (envelope.type === "status.get") {
+          ws.send(
+            JSON.stringify({
+              id: envelope.id,
+              type: "status.result",
+              status: { provider: "openai", model: "gpt-5-mini", permissions: "write" },
+            }),
+          );
+          return;
+        }
+        if (envelope.type === "chat.start") {
+          ws.send(JSON.stringify({ id: envelope.id, type: "chat.accepted" }));
+          ws.send(JSON.stringify({ id: envelope.id, type: "chat.started" }));
+          ws.send(JSON.stringify({ id: envelope.id, type: "chat.done", reply }));
+        }
+      },
+    },
+  });
+  try {
+    return await fn(`http://0.0.0.0:${server.port}`);
+  } finally {
+    server.stop(true);
+  }
+}
+
+function normalizeRunOutput(value: string): string {
+  return value.replace(/Worked [0-9.]+s/g, "Worked <duration>");
+}
 
 describe("cli visual regression", () => {
   test("version command prints current package version", async () => {
@@ -207,6 +270,23 @@ describe("cli visual regression", () => {
       },
     );
   });
+
+  test("run output is transport-parity stable across http and rpc", async () => {
+    await withDualTransportChatServer(async (baseUrl) => {
+      await withCliTestEnv(async ({ run }) => {
+        await run(["config", "set", "apiUrl", baseUrl]);
+
+        await run(["config", "set", "transportMode", "http"]);
+        const httpOut = normalizeRunOutput(await run(["run", "hello transport parity"]));
+
+        await run(["config", "set", "transportMode", "rpc"]);
+        const rpcOut = normalizeRunOutput(await run(["run", "hello transport parity"]));
+
+        expect(httpOut).toBe(rpcOut);
+        expect(httpOut).toContain("Transport parity ok.");
+      });
+    });
+  }, 20_000);
 
   test.each([
     {
