@@ -21,6 +21,7 @@ Update rule:
 - Slash command support.
 - Skill invocation via slash commands.
 - HTTP and RPC transport support.
+- Polished TUI with visual regression tests.
 
 ## Agent Execution
 

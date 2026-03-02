@@ -55,3 +55,4 @@
 - Start single-agent and prove reliability before adding multi-agent complexity.
 - Keep instructions language-agnostic; avoid overfitting behavior to one stack or toolchain.
 - Keep docs conceptual and short. Implementation-detail docs drift quickly and become misleading.
+- Visual TUI regression tests are worth the investment; they lock layout quality while enabling fast iteration.
