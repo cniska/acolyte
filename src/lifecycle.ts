@@ -250,10 +250,7 @@ function resolveModeModelOrThrow(mode: AgentMode, fallbackModel: string): ModeRe
   const requestedModel = appConfig.models[mode] ?? fallbackModel;
   const resolved = resolveRunnableModel(requestedModel);
   if (!resolved.available) {
-    throw new Error(
-      `Provider '${resolved.provider}' is not configured for model '${resolved.model}'. ` +
-        "Set the API key in your config or environment, or switch to another model.",
-    );
+    throw new Error("No real model is configured. Configure a real model in config or environment.");
   }
   return { model: resolved.model, provider: resolved.provider };
 }
