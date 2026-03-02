@@ -51,6 +51,8 @@ const SUBCOMMANDS: Record<string, { command: string; usage: string; description:
   },
 };
 
+const CONFIG_LIST_KEY_COLUMN_WIDTH = 16;
+
 export function hasHelpFlag(args: string[]): boolean {
   return args.includes("--help") || args.includes("-h") || args.includes("help");
 }
@@ -544,17 +546,16 @@ async function configMode(args: string[]): Promise<void> {
   if (subcommand === "list") {
     const scope = parseScopeFlag(listArgs[0]);
     const config = scope ? await readConfigForScope(scope) : await readConfig();
-    const maxKey = validKeys.reduce((max, key) => Math.max(max, `${key}:`.length), 0);
-    if (scope) printDim(`${"scope:".padEnd(maxKey + 1)} ${scope}`);
+    if (scope) printDim(`${"scope:".padEnd(CONFIG_LIST_KEY_COLUMN_WIDTH)} ${scope}`);
     for (const name of validKeys) {
       const value = config[name];
       if (value === undefined || value === "") continue;
       if (typeof value === "object" && value !== null) {
         for (const [k, v] of Object.entries(value)) {
-          printDim(`${`${name}.${k}:`.padEnd(maxKey + 1)} ${String(v)}`);
+          printDim(`${`${name}.${k}:`.padEnd(CONFIG_LIST_KEY_COLUMN_WIDTH)} ${String(v)}`);
         }
       } else {
-        printDim(`${`${name}:`.padEnd(maxKey + 1)} ${String(value)}`);
+        printDim(`${`${name}:`.padEnd(CONFIG_LIST_KEY_COLUMN_WIDTH)} ${String(value)}`);
       }
     }
     return;

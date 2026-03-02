@@ -25,6 +25,7 @@
     "lint": "bunx biome check .",
     "typecheck": "bunx tsc --noEmit",
     "test": "bun test",
+    "test:tui": "bun test src/chat.tui.test.tsx src/chat-commands.tui.test.tsx src/chat-picker.tui.test.tsx src/cli.tui.test.ts",
     "verify": "bun run format && bun run lint && bun run typecheck && bun run test",
     "db:up": "docker compose up -d postgres",
     "db:down": "docker compose down",
