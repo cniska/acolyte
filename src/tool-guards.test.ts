@@ -358,12 +358,3 @@ describe("duplicate-consecutive-call guard", () => {
     expect(() => runGuards({ toolName: "git-status", args: {}, session })).not.toThrow();
   });
 });
-
-describe("guard policy config", () => {
-  test("allows disabling a built-in guard via session flags", () => {
-    const session = createSessionContext();
-    session.flags.disabledGuards = ["duplicate-consecutive-call"];
-    recordCall(session, "git-status", {});
-    expect(() => runGuards({ toolName: "git-status", args: {}, session })).not.toThrow();
-  });
-});

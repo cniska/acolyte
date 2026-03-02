@@ -41,9 +41,6 @@ export const appConfig = {
     permissions: {
       mode: fileConfig.permissionMode,
     },
-    guards: {
-      disabled: fileConfig.disabledGuards,
-    },
     contextMaxTokens: fileConfig.contextMaxTokens,
     inputBudget: {
       maxHistoryMessages: fileConfig.maxHistoryMessages,

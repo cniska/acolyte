@@ -195,7 +195,6 @@ describe("config store", () => {
         "maxAttachmentMessageTokens = 4500",
         "maxPinnedMessageTokens = 1600",
         "replyTimeoutMs = 220000",
-        'disabledGuards = ["duplicate-consecutive-call"]',
       ].join("\n"),
       "utf8",
     );
@@ -209,7 +208,6 @@ describe("config store", () => {
     expect(loaded.temperatures).toEqual({ plan: 0.2, work: 0.3 });
     expect(loaded.maxMessageTokens).toBe(700);
     expect(loaded.replyTimeoutMs).toBe(220000);
-    expect(loaded.disabledGuards).toEqual(["duplicate-consecutive-call"]);
   });
 
   test("readResolvedConfigSync applies defaults and model fallbacks", () => {
@@ -228,7 +226,6 @@ describe("config store", () => {
     expect(resolved.logFormat).toBe("logfmt");
     expect(resolved.transportMode).toBe("auto");
     expect(resolved.replyTimeoutMs).toBe(180000);
-    expect(resolved.disabledGuards).toEqual([]);
   });
 
   test("readResolvedConfigSync uses per-mode models when set", () => {
