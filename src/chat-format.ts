@@ -1,5 +1,7 @@
 import { countLabel } from "./plural";
 
+export const COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH = 20;
+
 export function formatThoughtDuration(ms: number): string {
   if (ms < 1000) return `${ms}ms`;
   const totalSeconds = ms / 1000;

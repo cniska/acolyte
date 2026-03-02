@@ -10,6 +10,7 @@ import {
 } from "./chat-submit-handler";
 import type { StreamEvent } from "./client";
 import { createClient, createMessage, createSession, createStore, createSubmitHandlerHarness } from "./test-factory";
+import { dedent } from "./test-factory";
 
 describe("chat submit handler guards", () => {
   test("extractClarifyingQuestions reads numbered clarify blocks", () => {
@@ -93,6 +94,75 @@ describe("chat submit handler guards", () => {
     await submit("/not-a-command");
     expect(calls.setInputHistory).toBe(0);
     expect(calls.setValue).toEqual([]);
+  });
+
+  test("routes /status through submit handler and renders status output row", async () => {
+    const { submit, rows, calls } = createSubmitHandlerHarness({
+      client: createClient({
+        status: async () => ({
+          provider: "openai",
+          model: "gpt-5-mini",
+          permissions: "write",
+        }),
+      }),
+    });
+
+    await submit("/status");
+
+    expect(calls.setInputHistory).toBe(1);
+    expect(calls.setValue).toEqual([""]);
+    const rendered = rows
+      .map((row) => `${row.role} ${row.style ?? "none"}\n${row.content}`)
+      .join("\n\n")
+      .replace(/:\s+/g, ": ");
+    expect(rendered).toBe(dedent(`
+      user none
+      /status
+
+      system statusOutput
+      provider: openai
+      model: gpt-5-mini
+      permissions: write
+    `));
+  });
+
+  test("routes /sessions through submit handler and renders sessions list row", async () => {
+    const { submit, rows, calls } = createSubmitHandlerHarness();
+
+    await submit("/sessions");
+
+    expect(calls.setInputHistory).toBe(1);
+    expect(calls.setValue).toEqual([""]);
+    const rendered = rows
+      .map((row) => `${row.role} ${row.style ?? "none"}\n${row.content}`)
+      .join("\n\n")
+      .replace(/(\s{2})(?:in moments|\d+[smhdw] ago)$/gm, "$1<relative>");
+    expect(rendered).toBe(dedent(`
+      user none
+      /sessions
+
+      system sessionsList
+      Sessions 1
+
+      ● sess_test  New Session  <relative>
+    `));
+  });
+
+  test("routes /tokens through submit handler and renders token output row", async () => {
+    const { submit, rows, calls } = createSubmitHandlerHarness();
+
+    await submit("/tokens");
+
+    expect(calls.setInputHistory).toBe(1);
+    expect(calls.setValue).toEqual([""]);
+    const rendered = rows.map((row) => `${row.role} ${row.style ?? "none"}\n${row.content}`).join("\n\n");
+    expect(rendered).toBe(dedent(`
+      user none
+      /tokens
+
+      system tokenOutput
+      No token data yet. Send a prompt first.
+    `));
   });
 
   test("keeps create-edit-delete tool output visible across submits", async () => {

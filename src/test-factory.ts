@@ -28,7 +28,7 @@ export async function createTempDir(prefix: string): Promise<string> {
   return mkdtemp(join(tmpdir(), prefix));
 }
 
-export function dedent(value: string): string {
+export function dedent(value: string, gutter = 0): string {
   const lines = value.split("\n");
   let start = 0;
   while (start < lines.length && lines[start]?.trim().length === 0) start += 1;
@@ -36,13 +36,24 @@ export function dedent(value: string): string {
   while (end >= start && lines[end]?.trim().length === 0) end -= 1;
   if (start > end) return "";
 
-  const first = lines[start] ?? "";
-  const indent = first.match(/^ */)?.[0].length ?? 0;
+  const indent = lines
+    .slice(start, end + 1)
+    .filter((line) => line.trim().length > 0)
+    .reduce((min, line) => {
+      const current = line.match(/^ */)?.[0].length ?? 0;
+      return Math.min(min, current);
+    }, Number.POSITIVE_INFINITY);
   const prefix = " ".repeat(indent);
 
-  return lines
+  const dedented = lines
     .slice(start, end + 1)
     .map((line) => (line.startsWith(prefix) ? line.slice(prefix.length) : line))
+    .join("\n");
+  if (gutter <= 0) return dedented;
+  const pad = " ".repeat(gutter);
+  return dedented
+    .split("\n")
+    .map((line) => `${pad}${line}`)
     .join("\n");
 }
 
@@ -159,15 +170,22 @@ export type SubmitHandlerHarness = {
   };
 };
 
-export function createSubmitHandlerHarness(overrides?: { isWorking?: boolean; client?: Client }): SubmitHandlerHarness {
+export function createSubmitHandlerHarness(overrides?: {
+  isWorking?: boolean;
+  client?: Client;
+  session?: Session;
+  store?: SessionStore;
+  tokenUsage?: TokenUsageEntry[];
+}): SubmitHandlerHarness {
   const rows: ChatRow[] = [];
   const calls = {
     setInputHistory: 0,
     setValue: [] as string[],
     setShowHelp: [] as Array<boolean | ((current: boolean) => boolean)>,
   };
-  const session = createSession({ id: "sess_test" });
-  const store = createStore({ activeSessionId: session.id, sessions: [session] });
+  const session = overrides?.session ?? createSession({ id: "sess_test" });
+  const store = overrides?.store ?? createStore({ activeSessionId: session.id, sessions: [session] });
+  const tokenUsage = overrides?.tokenUsage ?? session.tokenUsage ?? [];
   const submit = createSubmitHandler({
     client: overrides?.client ?? createClient({ status: async () => ({}) }),
     store,
@@ -191,7 +209,7 @@ export function createSubmitHandlerHarness(overrides?: { isWorking?: boolean; cl
     openPermissionsPanel: () => {},
     openClarifyPanel: () => {},
     openWriteConfirmPanel: () => {},
-    tokenUsage: [],
+    tokenUsage,
     isWorking: overrides?.isWorking ?? false,
     setInputHistory: () => {
       calls.setInputHistory += 1;

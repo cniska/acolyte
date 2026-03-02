@@ -1,5 +1,5 @@
 import { appConfig, setPermissionMode } from "./app-config";
-import { formatColumns, formatRelativeTime } from "./chat-format";
+import { COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH, formatColumns, formatRelativeTime } from "./chat-format";
 import { suggestClosestSlashCommand } from "./chat-slash";
 import type { Client } from "./client";
 import { setConfigValue } from "./config";
@@ -107,8 +107,35 @@ export function formatTokenUsageOutput(last: TokenUsageEntry | null, all: TokenU
       value: latestWarning,
     });
   }
-  const maxKey = rows.reduce((max, row) => Math.max(max, row.key.length), 0);
+  const maxKey = Math.max(COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH, rows.reduce((max, row) => Math.max(max, row.key.length), 0));
   return rows.map((row) => `${row.key.padEnd(maxKey, " ")} ${row.value}`).join("\n");
+}
+
+export type CommandPresentation = {
+  content: string;
+  style: ChatRow["style"];
+};
+
+export function presentSessionsOutput(store: SessionStore, limit = 10): CommandPresentation {
+  const recent = formatSessionList(store, limit);
+  return {
+    content: [`Sessions ${store.sessions.length}`, "", ...recent].join("\n"),
+    style: "sessionsList",
+  };
+}
+
+export function presentStatusOutput(status: Record<string, string>): CommandPresentation {
+  return {
+    content: formatStatusOutput(status),
+    style: "statusOutput",
+  };
+}
+
+export function presentTokensOutput(last: TokenUsageEntry | null, all: TokenUsageEntry[]): CommandPresentation {
+  return {
+    content: formatTokenUsageOutput(last, all),
+    style: "tokenOutput",
+  };
 }
 
 type CommandResult = {
@@ -224,9 +251,8 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
 
   if (resolvedText === "/sessions") {
     pushUserCommandRow();
-    const recent = formatSessionList(ctx.store, 10);
-    const sections = [`Sessions ${ctx.store.sessions.length}`, "", ...recent];
-    ctx.setRows((current) => [...current, createRow("system", sections.join("\n"), { style: "sessionsList" })]);
+    const rendered = presentSessionsOutput(ctx.store, 10);
+    ctx.setRows((current) => [...current, createRow("system", rendered.content, { style: rendered.style })]);
     return { stop: true, userText: text };
   }
 
@@ -234,9 +260,10 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     pushUserCommandRow();
     try {
       const status = await ctx.client.status();
+      const rendered = presentStatusOutput(status);
       ctx.setRows((current) => [
         ...current,
-        createRow("system", formatStatusOutput(status), { style: "statusOutput" }),
+        createRow("system", rendered.content, { style: rendered.style }),
       ]);
     } catch (error) {
       ctx.setRows((current) => [
@@ -359,9 +386,10 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
   if (resolvedText === "/tokens") {
     pushUserCommandRow();
     const last = ctx.tokenUsage.length > 0 ? ctx.tokenUsage[ctx.tokenUsage.length - 1] : null;
+    const rendered = presentTokensOutput(last, ctx.tokenUsage);
     ctx.setRows((current) => [
       ...current,
-      createRow("system", formatTokenUsageOutput(last, ctx.tokenUsage), { style: "tokenOutput" }),
+      createRow("system", rendered.content, { style: rendered.style }),
     ]);
     return { stop: true, userText: text };
   }

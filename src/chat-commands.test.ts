@@ -1,6 +1,13 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { appConfig } from "./app-config";
-import { dispatchSlashCommand, formatTokenUsageOutput, type TokenUsageEntry } from "./chat-commands";
+import {
+  dispatchSlashCommand,
+  formatTokenUsageOutput,
+  presentSessionsOutput,
+  presentStatusOutput,
+  presentTokensOutput,
+  type TokenUsageEntry,
+} from "./chat-commands";
 import type { ConfigScope, PermissionMode } from "./config-modes";
 import { loadSkills, resetSkillCache } from "./skills";
 import {
@@ -8,6 +15,7 @@ import {
   createMessage,
   createSession,
   createStore,
+  dedent,
   savedPermissionMode,
   tempDir,
   writeSkill,
@@ -55,6 +63,37 @@ describe("chat-commands", () => {
     const output = formatTokenUsageOutput(usage, [usage]);
     expect(output).toContain("warning:");
     expect(output).toContain("context trimmed (8/42 history messages)");
+  });
+
+  test("presentStatusOutput renders command presentation block", () => {
+    const rendered = presentStatusOutput({
+      provider: "openai",
+      model: "gpt-5-mini",
+      permissions: "write",
+    });
+    expect(rendered.style).toBe("statusOutput");
+    expect(rendered.content).toBe(dedent(`
+      provider:           openai
+      model:              gpt-5-mini
+      permissions:        write
+    `));
+  });
+
+  test("presentSessionsOutput renders command presentation block", () => {
+    const store = createStore({
+      activeSessionId: "sess_aaaa1111",
+      sessions: [createSession({ id: "sess_aaaa1111", title: "First" })],
+    });
+    const rendered = presentSessionsOutput(store, 10);
+    expect(rendered.style).toBe("sessionsList");
+    expect(rendered.content).toContain("Sessions 1");
+    expect(rendered.content).toContain("● sess_aaaa1111  First");
+  });
+
+  test("presentTokensOutput renders empty-state command presentation block", () => {
+    const rendered = presentTokensOutput(null, []);
+    expect(rendered.style).toBe("tokenOutput");
+    expect(rendered.content).toBe("No token data yet. Send a prompt first.");
   });
 
   test("formatTokenUsageOutput shows latest session warning even when last turn has none", () => {
