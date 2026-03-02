@@ -26,7 +26,6 @@ describe("chat picker handlers", () => {
       setShowHelp: () => {},
       setValue: () => {},
       queueInput: () => {},
-      buildClarificationPayload: () => "",
       buildWriteResumePayload: (prompt) => prompt,
       setServerPermissionMode: async () => {},
       persistPermissionMode: async () => {},
@@ -58,7 +57,6 @@ describe("chat picker handlers", () => {
       setShowHelp: () => {},
       setValue: () => {},
       queueInput: () => {},
-      buildClarificationPayload: () => "",
       buildWriteResumePayload: (prompt) => prompt,
       setServerPermissionMode: async () => {},
       persistPermissionMode: async () => {},
@@ -99,7 +97,6 @@ describe("chat picker handlers", () => {
       setShowHelp: () => {},
       setValue: () => {},
       queueInput: () => {},
-      buildClarificationPayload: () => "",
       buildWriteResumePayload: (prompt) => prompt,
       setServerPermissionMode: async () => {},
       persistPermissionMode: async () => {},
@@ -139,7 +136,6 @@ describe("chat picker handlers", () => {
       setShowHelp: () => {},
       setValue: () => {},
       queueInput: () => {},
-      buildClarificationPayload: () => "",
       buildWriteResumePayload: (prompt) => prompt,
       setServerPermissionMode: async () => {},
       persistPermissionMode: async (mode, scope) => {
@@ -176,78 +172,6 @@ describe("chat picker handlers", () => {
     }
   });
 
-  test("openClarifyPanel opens one-question clarify picker and captures answers sequentially", async () => {
-    const pickerValues: unknown[] = [];
-    const rows: ChatRow[] = [];
-    const queued: string[] = [];
-    const currentSession = createSession({ id: "sess_current" });
-    const store = createStore({ sessions: [currentSession], activeSessionId: currentSession.id });
-    const handlers = createPickerHandlers({
-      store,
-      currentSession,
-      setCurrentSession: () => {},
-      setRows: (updater) => {
-        const next = updater(rows);
-        rows.length = 0;
-        rows.push(...next);
-      },
-      setRowsDirect: () => {},
-      setPicker: (next) => {
-        pickerValues.push(next);
-      },
-      setShowHelp: () => {},
-      setValue: () => {},
-      queueInput: (next) => {
-        queued.push(next);
-      },
-      buildClarificationPayload: ({ originalPrompt, answers }) => JSON.stringify({ originalPrompt, answers }),
-      buildWriteResumePayload: (prompt) => prompt,
-      setServerPermissionMode: async () => {},
-      persistPermissionMode: async () => {},
-      persist: async () => {},
-      toRows: () => [],
-      createMessage,
-      nowIso: () => "2026-02-20T00:00:00.000Z",
-    });
-
-    handlers.openClarifyPanel(["First question?", "Second question?"], "implement feature x");
-    expect(pickerValues.at(-1)).toMatchObject({ kind: "clarifyAnswer", question: "First question?" });
-
-    await handlers.handlePickerSelect({
-      kind: "clarifyAnswer",
-      originalPrompt: "implement feature x",
-      question: "First question?",
-      remaining: ["Second question?"],
-      answers: [],
-      items: [
-        { value: "answer", description: "use this answer" },
-        { value: "other", description: "use a different option" },
-      ],
-      index: 0,
-      note: "first answer",
-    });
-    expect(pickerValues.at(-1)).toMatchObject({ kind: "clarifyAnswer", question: "Second question?" });
-
-    await handlers.handlePickerSelect({
-      kind: "clarifyAnswer",
-      originalPrompt: "implement feature x",
-      question: "Second question?",
-      remaining: [],
-      answers: [{ question: "First question?", answer: "first answer" }],
-      items: [
-        { value: "answer", description: "use this answer" },
-        { value: "other", description: "use a different option" },
-      ],
-      index: 1,
-      note: "second answer",
-    });
-    expect(queued).toHaveLength(1);
-    expect(queued[0]).toContain('"originalPrompt":"implement feature x"');
-    expect(queued[0]).toContain('"answer":"second answer"');
-    expect(rows.some((row) => row.content.includes("Captured 2 clarifications."))).toBe(true);
-    expect(pickerValues.at(-1)).toBeNull();
-  });
-
   test("handlePickerSelect writeConfirm switch updates mode and auto-queues prompt", async () => {
     const rows: ChatRow[] = [];
     const values: string[] = [];
@@ -272,7 +196,6 @@ describe("chat picker handlers", () => {
       queueInput: (next) => {
         queued.push(next);
       },
-      buildClarificationPayload: () => "",
       buildWriteResumePayload: (prompt) => `resume:${prompt}`,
       setServerPermissionMode: async (next) => {
         expect(next).toBe("write");

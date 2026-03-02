@@ -3,7 +3,6 @@ import { type ChatRow, createRow, type TokenUsageEntry } from "./chat-commands";
 import type { PickerState } from "./chat-picker";
 import {
   boundedSkillInstructions,
-  createClarifyAnswerPicker,
   createPermissionsPicker,
   createPicker,
   createResumePicker,
@@ -28,10 +27,6 @@ type CreatePickerHandlersInput = {
   setShowHelp: (next: boolean | ((current: boolean) => boolean)) => void;
   setValue: (next: string) => void;
   queueInput: (next: string) => void;
-  buildClarificationPayload: (input: {
-    originalPrompt: string;
-    answers: Array<{ question: string; answer: string }>;
-  }) => string;
   buildWriteResumePayload: (prompt: string) => string;
   setServerPermissionMode: (mode: PermissionMode) => Promise<void>;
   persistPermissionMode: (mode: PermissionMode, scope: ConfigScope) => Promise<void>;
@@ -45,7 +40,6 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
   openSkillsPanel: () => Promise<void>;
   openResumePanel: () => void;
   openPermissionsPanel: () => void;
-  openClarifyPanel: (questions: string[], originalPrompt: string) => void;
   openWriteConfirmPanel: (prompt: string) => void;
   handlePickerSelect: (state: PickerState) => Promise<void>;
   activateSkill: (skillName: string, args: string) => Promise<boolean>;
@@ -96,17 +90,6 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
 
   const openPermissionsPanel = (): void => {
     input.setPicker(createPermissionsPicker());
-    input.setShowHelp(false);
-  };
-
-  const openClarifyPanel = (questions: string[], originalPrompt: string): void => {
-    const [first, ...remaining] = questions
-      .map((question) => question.trim())
-      .filter((question) => question.length > 0);
-    if (!first) return;
-    const picker = createClarifyAnswerPicker(originalPrompt, first, remaining);
-    if (!picker) return;
-    input.setPicker(picker);
     input.setShowHelp(false);
   };
 
@@ -168,35 +151,6 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
         input.setPicker(null);
         return;
       }
-      case "clarifyAnswer": {
-        const answer = state.note.trim();
-        if (answer.length === 0) {
-          input.setRows((current) => [...current, createRow("system", "Please enter an answer before continuing.")]);
-          return;
-        }
-        const answers = [...state.answers, { question: state.question, answer }];
-        const [nextQuestion, ...remaining] = state.remaining;
-        if (nextQuestion) {
-          input.setPicker(createClarifyAnswerPicker(state.originalPrompt, nextQuestion, remaining, answers));
-          return;
-        }
-        input.queueInput(
-          input.buildClarificationPayload({
-            originalPrompt: state.originalPrompt,
-            answers,
-          }),
-        );
-        input.setRows((current) => [
-          ...current,
-          createRow(
-            "assistant",
-            `Captured ${answers.length} clarification${answers.length === 1 ? "" : "s"}. Continuing…`,
-            { dim: true },
-          ),
-        ]);
-        input.setPicker(null);
-        return;
-      }
       case "writeConfirm": {
         const selected = state.items[state.index];
         if (selected.value === "switch") {
@@ -226,7 +180,6 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
     openSkillsPanel,
     openResumePanel,
     openPermissionsPanel,
-    openClarifyPanel,
     openWriteConfirmPanel,
     handlePickerSelect,
     activateSkill,

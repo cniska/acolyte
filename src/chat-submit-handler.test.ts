@@ -5,7 +5,6 @@ import type { ChatRow } from "./chat-commands";
 import {
   buildInternalWriteResumeTurn,
   createSubmitHandler,
-  extractClarifyingQuestions,
   resolveNaturalRememberDirective,
 } from "./chat-submit-handler";
 import type { StreamEvent } from "./client";
@@ -13,24 +12,6 @@ import { createClient, createMessage, createSession, createStore, createSubmitHa
 import { dedent } from "./test-factory";
 
 describe("chat submit handler guards", () => {
-  test("extractClarifyingQuestions reads numbered clarify blocks", () => {
-    const output = [
-      "Risks/assumptions: unsure where release-note automation lives.",
-      "",
-      "Clarifying questions:",
-      "1. Where is release-notes generation triggered?",
-      "2. Should filters be case-insensitive?",
-      "3. Any CI consumer to adjust?",
-      "",
-      "Next steps: answer these first.",
-    ].join("\n");
-    expect(extractClarifyingQuestions(output)).toEqual([
-      "Where is release-notes generation triggered?",
-      "Should filters be case-insensitive?",
-      "Any CI consumer to adjust?",
-    ]);
-  });
-
   test("resolveNaturalRememberDirective parses user and project forms", () => {
     expect(resolveNaturalRememberDirective("remember this: keep output concise")).toEqual({
       scope: "user",
@@ -335,7 +316,6 @@ describe("chat submit handler guards", () => {
       activateSkill: async () => true,
       openResumePanel: () => {},
       openPermissionsPanel: () => {},
-      openClarifyPanel: (_questions, _originalPrompt) => {},
       openWriteConfirmPanel: (prompt) => {
         openWriteConfirmWith = prompt;
       },
@@ -378,7 +358,6 @@ describe("chat submit handler guards", () => {
       activateSkill: async () => true,
       openResumePanel: () => {},
       openPermissionsPanel: () => {},
-      openClarifyPanel: (_questions, _originalPrompt) => {},
       openWriteConfirmPanel: (prompt) => {
         openWriteConfirmWith = prompt;
       },
@@ -428,7 +407,6 @@ describe("chat submit handler guards", () => {
       activateSkill: async () => true,
       openResumePanel: () => {},
       openPermissionsPanel: () => {},
-      openClarifyPanel: (_questions, _originalPrompt) => {},
       openWriteConfirmPanel: (prompt) => {
         openWriteConfirmWith = prompt;
       },
@@ -491,7 +469,6 @@ describe("chat submit handler guards", () => {
       activateSkill: async () => true,
       openResumePanel: () => {},
       openPermissionsPanel: () => {},
-      openClarifyPanel: (_questions, _originalPrompt) => {},
       openWriteConfirmPanel: () => {},
       tokenUsage: [],
       isWorking: false,
@@ -521,70 +498,6 @@ describe("chat submit handler guards", () => {
     expect(last?.role).toBe("system");
     expect(last?.content).toBe("Interrupted");
     expect(last?.dim).toBe(true);
-  });
-
-  test("suppresses raw assistant output and opens clarify picker when clarification is needed", async () => {
-    const rows: ChatRow[] = [];
-    const openedClarify: string[][] = [];
-    const session = createSession({ id: "sess_test" });
-    const store = createStore({ activeSessionId: session.id, sessions: [session] });
-    const submit = createSubmitHandler({
-      client: createClient({
-        status: async () => ({}),
-        reply: async () => ({
-          model: "gpt-5-mini",
-          output: [
-            "Risks/assumptions: unsure where release-note automation lives.",
-            "",
-            "Clarifying questions:",
-            "1. Where is release-notes generation triggered?",
-            "2. Should filters be case-insensitive?",
-          ].join("\n"),
-        }),
-      }),
-      store,
-      currentSession: session,
-      setCurrentSession: () => {},
-      toRows: () => [],
-      setRows: (updater) => {
-        rows.splice(0, rows.length, ...updater(rows));
-      },
-      setShowHelp: () => {},
-      setValue: () => {},
-      persist: async () => {},
-      exit: () => {},
-      openSkillsPanel: async () => {},
-      activateSkill: async () => true,
-      openResumePanel: () => {},
-      openPermissionsPanel: () => {},
-      openClarifyPanel: (questions, _originalPrompt) => {
-        openedClarify.push(questions);
-      },
-      openWriteConfirmPanel: () => {},
-      tokenUsage: [],
-      isWorking: false,
-      setInputHistory: () => {},
-      setInputHistoryIndex: () => {},
-      setInputHistoryDraft: () => {},
-      setIsWorking: () => {},
-      setProgressText: () => {},
-      setTokenUsage: () => {},
-      createMessage,
-      nowIso: () => "2026-02-20T00:00:00.000Z",
-      setInterrupt: () => {},
-    });
-
-    await submit("what next");
-    expect(openedClarify).toHaveLength(1);
-    expect(openedClarify[0]).toEqual([
-      "Where is release-notes generation triggered?",
-      "Should filters be case-insensitive?",
-    ]);
-    expect(rows.some((row) => row.content.includes("Clarification needed before continuing:"))).toBe(false);
-    expect(rows.some((row) => row.content.includes("Risks/assumptions"))).toBe(false);
-    expect(
-      session.messages.some((message) => message.role === "assistant" && message.content.includes("Risks/assumptions")),
-    ).toBe(false);
   });
 
   test("stops before server call when all @references are unresolved", async () => {
@@ -617,7 +530,6 @@ describe("chat submit handler guards", () => {
       activateSkill: async () => true,
       openResumePanel: () => {},
       openPermissionsPanel: () => {},
-      openClarifyPanel: (_questions, _originalPrompt) => {},
       openWriteConfirmPanel: () => {},
       tokenUsage: [],
       isWorking: false,
@@ -672,7 +584,6 @@ describe("chat submit handler guards", () => {
         activateSkill: async () => true,
         openResumePanel: () => {},
         openPermissionsPanel: () => {},
-        openClarifyPanel: (_questions, _originalPrompt) => {},
         openWriteConfirmPanel: () => {},
         tokenUsage: [],
         isWorking: false,
@@ -733,7 +644,6 @@ describe("chat submit handler guards", () => {
       activateSkill: async () => true,
       openResumePanel: () => {},
       openPermissionsPanel: () => {},
-      openClarifyPanel: (_questions, _originalPrompt) => {},
       openWriteConfirmPanel: () => {},
       tokenUsage: [],
       isWorking: false,
@@ -788,7 +698,6 @@ describe("chat submit handler guards", () => {
       activateSkill: async () => true,
       openResumePanel: () => {},
       openPermissionsPanel: () => {},
-      openClarifyPanel: () => {},
       openWriteConfirmPanel: () => {},
       tokenUsage: [],
       isWorking: false,
@@ -865,7 +774,6 @@ describe("chat submit handler guards", () => {
       activateSkill: async () => true,
       openResumePanel: () => {},
       openPermissionsPanel: () => {},
-      openClarifyPanel: (_questions, _originalPrompt) => {},
       openWriteConfirmPanel: () => {},
       tokenUsage: [],
       isWorking: false,
@@ -911,7 +819,6 @@ describe("chat submit handler guards", () => {
       activateSkill: async () => true,
       openResumePanel: () => {},
       openPermissionsPanel: () => {},
-      openClarifyPanel: (_questions, _originalPrompt) => {},
       openWriteConfirmPanel: () => {},
       tokenUsage: [],
       isWorking: false,
@@ -961,7 +868,6 @@ describe("chat submit handler guards", () => {
       activateSkill: async () => true,
       openResumePanel: () => {},
       openPermissionsPanel: () => {},
-      openClarifyPanel: (_questions, _originalPrompt) => {},
       openWriteConfirmPanel: () => {},
       tokenUsage: [],
       isWorking: false,
@@ -1034,7 +940,6 @@ describe("chat submit handler guards", () => {
       activateSkill: async () => true,
       openResumePanel: () => {},
       openPermissionsPanel: () => {},
-      openClarifyPanel: () => {},
       openWriteConfirmPanel: () => {},
       tokenUsage: [],
       isWorking: false,
@@ -1095,7 +1000,6 @@ describe("chat submit handler guards", () => {
       activateSkill: async () => true,
       openResumePanel: () => {},
       openPermissionsPanel: () => {},
-      openClarifyPanel: (_questions, _originalPrompt) => {},
       openWriteConfirmPanel: () => {},
       tokenUsage: [],
       isWorking: false,
@@ -1161,7 +1065,6 @@ describe("chat submit handler guards", () => {
       activateSkill: async () => true,
       openResumePanel: () => {},
       openPermissionsPanel: () => {},
-      openClarifyPanel: (_questions, _originalPrompt) => {},
       openWriteConfirmPanel: () => {},
       tokenUsage: [],
       isWorking: false,
@@ -1453,7 +1356,6 @@ describe("chat submit handler guards", () => {
       activateSkill: async () => true,
       openResumePanel: () => {},
       openPermissionsPanel: () => {},
-      openClarifyPanel: () => {},
       openWriteConfirmPanel: () => {},
       tokenUsage: [],
       isWorking: false,

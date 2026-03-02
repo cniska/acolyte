@@ -20,7 +20,6 @@ type ChatInputPanelProps = {
   slashSuggestions?: string[];
   slashSuggestionIndex?: number;
   showHelp?: boolean;
-  onConfirmNoteChange?: (next: string) => void;
 };
 
 const noop = (): void => {};
@@ -41,10 +40,9 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
     slashSuggestions = [],
     slashSuggestionIndex = 0,
     showHelp = false,
-    onConfirmNoteChange = noop,
   } = props;
 
-  if (picker && picker.kind !== "writeConfirm" && picker.kind !== "clarifyAnswer") {
+  if (picker && picker.kind !== "writeConfirm") {
     return (
       <>
         <Text dimColor>{borderLine()}</Text>
@@ -58,8 +56,7 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
     );
   }
 
-  if (picker?.kind === "writeConfirm" || picker?.kind === "clarifyAnswer") {
-    const isClarify = picker.kind === "clarifyAnswer";
+  if (picker?.kind === "writeConfirm") {
     return (
       <>
         <Text dimColor>{borderLine()}</Text>
@@ -67,23 +64,6 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
         <Text> </Text>
         {picker.items.map((item, index) => {
           const selected = index === picker.index;
-          if (isClarify && selected) {
-            const placeholder = item.value === "other" ? "other option…" : "answer…";
-            return (
-              <Box key={item.value}>
-                <Text>{selected ? "› " : "  "}</Text>
-                <Text color={selected ? brandColor : undefined}>{item.value.padEnd(PICKER_LABEL_WIDTH, " ")}</Text>
-                <Text> </Text>
-                <PromptInput
-                  value={picker.note}
-                  placeholder={placeholder}
-                  onChange={onConfirmNoteChange}
-                  onSubmit={() => {}}
-                  key={`confirm-${item.value}-${inputRevision}`}
-                />
-              </Box>
-            );
-          }
           return (
             <Box key={item.value}>
               <Text>{selected ? "› " : "  "}</Text>

@@ -8,7 +8,6 @@ type PickerByKind = {
   skills: Extract<PickerState, { kind: "skills" }>;
   resume: Extract<PickerState, { kind: "resume" }>;
   permissions: Extract<PickerState, { kind: "permissions" }>;
-  clarifyAnswer: Extract<PickerState, { kind: "clarifyAnswer" }>;
   writeConfirm: Extract<PickerState, { kind: "writeConfirm" }>;
 };
 
@@ -65,29 +64,6 @@ export function createWriteConfirmPicker(prompt: string): PickerState {
     items: [
       { value: "switch", description: "enable write mode and continue this task" },
       { value: "cancel", description: "keep read mode" },
-    ],
-    index: 0,
-    note: "",
-  };
-}
-
-export function createClarifyAnswerPicker(
-  originalPrompt: string,
-  question: string,
-  remaining: string[],
-  answers: Array<{ question: string; answer: string }> = [],
-): PickerState | null {
-  const trimmedQuestion = question.trim();
-  if (!trimmedQuestion) return null;
-  return {
-    kind: "clarifyAnswer",
-    originalPrompt,
-    question: trimmedQuestion,
-    remaining: remaining.map((item) => item.trim()).filter((item) => item.length > 0),
-    answers,
-    items: [
-      { value: "answer", description: "use this answer" },
-      { value: "other", description: "use a different option" },
     ],
     index: 0,
     note: "",

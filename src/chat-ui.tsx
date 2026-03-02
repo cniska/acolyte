@@ -13,11 +13,7 @@ import { createPickerHandlers, persistPermissionMode } from "./chat-picker-handl
 import { newMessage, nowIso, toRows } from "./chat-session";
 import { suggestSlashCommands } from "./chat-slash";
 import { resolveQueueSubmit } from "./chat-submit";
-import {
-  buildInternalClarificationTurn,
-  buildInternalWriteResumeTurn,
-  createSubmitHandler,
-} from "./chat-submit-handler";
+import { buildInternalWriteResumeTurn, createSubmitHandler } from "./chat-submit-handler";
 import { ChatTranscript } from "./chat-transcript";
 import { buildInputHistory } from "./chat-turn";
 import type { Client } from "./client";
@@ -135,7 +131,6 @@ function ChatApp(props: ChatAppProps) {
     openSkillsPanel,
     openResumePanel,
     openPermissionsPanel,
-    openClarifyPanel,
     openWriteConfirmPanel,
     handlePickerSelect,
     activateSkill,
@@ -150,7 +145,6 @@ function ChatApp(props: ChatAppProps) {
     setShowHelp,
     setValue,
     queueInput: (value: string) => setQueuedMessages((current) => [...current, value]),
-    buildClarificationPayload: buildInternalClarificationTurn,
     buildWriteResumePayload: buildInternalWriteResumeTurn,
     setServerPermissionMode: async (mode) => {
       await client.setPermissionMode(mode);
@@ -177,7 +171,6 @@ function ChatApp(props: ChatAppProps) {
     activateSkill,
     openResumePanel,
     openPermissionsPanel,
-    openClarifyPanel,
     openWriteConfirmPanel,
     tokenUsage,
     isWorking,
@@ -298,12 +291,6 @@ function ChatApp(props: ChatAppProps) {
         slashSuggestions={slashSuggestions}
         slashSuggestionIndex={slashSuggestionIndex}
         showHelp={showHelp}
-        onConfirmNoteChange={(next) => {
-          setPicker((current) => {
-            if (!current || (current.kind !== "writeConfirm" && current.kind !== "clarifyAnswer")) return current;
-            return { ...current, note: next };
-          });
-        }}
       />
     </Box>
   );

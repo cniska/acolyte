@@ -34,7 +34,6 @@ type CreateSubmitHandlerInput = {
   activateSkill: (skillName: string, args: string) => Promise<boolean>;
   openResumePanel: () => void;
   openPermissionsPanel: () => void;
-  openClarifyPanel: (questions: string[], originalPrompt: string) => void;
   openWriteConfirmPanel: (prompt: string) => void;
   tokenUsage: TokenUsageEntry[];
   isWorking: boolean;
@@ -52,15 +51,9 @@ type CreateSubmitHandlerInput = {
   useMemory?: boolean;
 };
 
-type ClarificationAnswer = { question: string; answer: string };
-type InternalClarificationTurn = {
-  originalPrompt: string;
-  answers: ClarificationAnswer[];
-};
 type InternalWriteResumeTurn = {
   prompt: string;
 };
-const INTERNAL_CLARIFICATION_PREFIX = "\u0000acolyte_clarify:";
 const INTERNAL_WRITE_RESUME_PREFIX = "\u0000acolyte_write_resume:";
 
 function isAbortError(error: unknown): boolean {
@@ -141,64 +134,8 @@ export function resolveNaturalRememberDirective(text: string): NaturalRememberDi
   return null;
 }
 
-export function extractClarifyingQuestions(output: string): string[] {
-  const lines = output.split("\n").map((line) => line.trim());
-  const headingIndex = lines.findIndex((line) => /^(?:[-*]\s*)?clarifying questions\s*:?\s*$/i.test(line));
-  if (headingIndex < 0) return [];
-  const questions: string[] = [];
-  for (let i = headingIndex + 1; i < lines.length; i += 1) {
-    const line = lines[i] ?? "";
-    if (line.length === 0) {
-      if (questions.length > 0) break;
-      continue;
-    }
-    const numbered = line.match(/^\d+[).]\s+(.+)$/);
-    if (!numbered?.[1]) {
-      if (questions.length > 0) break;
-      continue;
-    }
-    questions.push(numbered[1].trim());
-  }
-  return questions;
-}
-
-export function buildInternalClarificationTurn(turn: InternalClarificationTurn): string {
-  return `${INTERNAL_CLARIFICATION_PREFIX}${JSON.stringify(turn)}`;
-}
-
 export function buildInternalWriteResumeTurn(prompt: string): string {
   return `${INTERNAL_WRITE_RESUME_PREFIX}${prompt}`;
-}
-
-function parseInternalClarificationTurn(raw: string): InternalClarificationTurn | null {
-  if (!raw.startsWith(INTERNAL_CLARIFICATION_PREFIX)) return null;
-  const payload = raw.slice(INTERNAL_CLARIFICATION_PREFIX.length);
-  try {
-    const parsed = JSON.parse(payload) as Partial<InternalClarificationTurn>;
-    if (!parsed || typeof parsed !== "object") return null;
-    const originalPrompt = typeof parsed.originalPrompt === "string" ? parsed.originalPrompt.trim() : "";
-    const answers = Array.isArray(parsed.answers)
-      ? parsed.answers
-          .map((item) => {
-            if (!item || typeof item !== "object") return null;
-            const question =
-              typeof (item as { question?: unknown }).question === "string"
-                ? (item as { question: string }).question.trim()
-                : "";
-            const answer =
-              typeof (item as { answer?: unknown }).answer === "string"
-                ? (item as { answer: string }).answer.trim()
-                : "";
-            if (!question || !answer) return null;
-            return { question, answer };
-          })
-          .filter((item): item is ClarificationAnswer => Boolean(item))
-      : [];
-    if (!originalPrompt || answers.length === 0) return null;
-    return { originalPrompt, answers };
-  } catch {
-    return null;
-  }
 }
 
 function parseInternalWriteResumeTurn(raw: string): InternalWriteResumeTurn | null {
@@ -212,11 +149,6 @@ function remoteTaskIdFromError(error: unknown): string | null {
   if (!(error instanceof Error)) return null;
   const taskId = (error as Error & { taskId?: unknown }).taskId;
   return typeof taskId === "string" && taskId.length > 0 ? taskId : null;
-}
-
-function buildClarifiedUserText(turn: InternalClarificationTurn): string {
-  const lines = turn.answers.map((item) => `- ${item.question}: ${item.answer}`);
-  return `${turn.originalPrompt}\n\nClarifications:\n${lines.join("\n")}`;
 }
 
 function mergeAssistantTranscript(streamed: string, finalOutput: string): string {
@@ -250,17 +182,12 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
   };
 
   return async (raw: string): Promise<void> => {
-    const internalClarification = parseInternalClarificationTurn(raw);
     const internalWriteResume = parseInternalWriteResumeTurn(raw);
-    const isInternalReplay = Boolean(internalClarification || internalWriteResume);
-    const text = internalClarification
-      ? internalClarification.originalPrompt
-      : internalWriteResume
-        ? internalWriteResume.prompt
-        : raw.trim();
+    const isInternalReplay = Boolean(internalWriteResume);
+    const text = internalWriteResume ? internalWriteResume.prompt : raw.trim();
     if (!text || (input.isWorking && !text.startsWith("/"))) return;
     if (!isInternalReplay && text.startsWith("/") && !text.includes(" ") && !isKnownSlashToken(text)) return;
-    const resolvedText = internalClarification ? text : resolveSlashAlias(text);
+    const resolvedText = resolveSlashAlias(text);
     const naturalRememberDirective = isInternalReplay ? null : resolveNaturalRememberDirective(text);
     const dispatchResolvedText = resolvedText;
     if (!isInternalReplay) {
@@ -270,7 +197,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
     }
     input.setValue("");
 
-    if (!internalClarification && resolvedText === "?") {
+    if (resolvedText === "?") {
       input.setShowHelp((current) => !current);
       return;
     }
@@ -346,30 +273,17 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         }
       }
       userText = commandResult.userText;
-    } else if (internalClarification) {
-      userText = buildClarifiedUserText(internalClarification);
     } else {
       userText = text;
     }
-
-    if (internalClarification) {
-      const userMessage = input.createMessage("user", userText);
-      input.currentSession.messages.push(userMessage);
-      if (input.currentSession.title === "New Session") {
-        input.currentSession.title =
-          internalClarification.originalPrompt.trim().replace(/\s+/g, " ").slice(0, 60) || "New Session";
-      }
-      input.currentSession.updatedAt = input.nowIso();
-    } else {
-      const { row: userRow } = applyUserTurn({
-        session: input.currentSession,
-        displayText: text,
-        userText,
-        nowIso: input.nowIso,
-        createMessage: input.createMessage,
-      });
-      input.setRows((current) => [...current, userRow]);
-    }
+    const { row: userRow } = applyUserTurn({
+      session: input.currentSession,
+      displayText: text,
+      userText,
+      nowIso: input.nowIso,
+      createMessage: input.createMessage,
+    });
+    input.setRows((current) => [...current, userRow]);
 
     const { contexts, unresolvedPaths } = await resolveReferencedFileContext(userText);
     const fileContextMessages: Message[] = contexts.map((context) => input.createMessage("system", context));
@@ -560,7 +474,6 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         createMessage: input.createMessage,
       });
       const assistantMessage = turn.assistantMessage;
-      const clarifyingQuestions = extractClarifyingQuestions(assistantMessage.content);
       flushPendingToolRows();
       const streamedAssistantText = `${committedStreamingText}${streamingAssistantContent}`;
       // Capture the streaming row id before clearing so we can remove it atomically
@@ -580,40 +493,34 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
             return row;
           });
 
-      if (clarifyingQuestions.length > 0) {
-        const nonAssistantRows = turn.rows.filter((row) => row.role !== "assistant");
-        input.setRows((current) => [...finalizeRows(current), ...nonAssistantRows]);
-        input.openClarifyPanel(clarifyingQuestions, text);
-      } else {
-        input.currentSession.messages.push(assistantMessage);
-        input.currentSession.updatedAt = input.nowIso();
-        // When pre-tool text was committed in place, strip the prefix
-        // from the final assistant row to avoid duplication. Use a
-        // proper prefix check instead of blind character slicing.
-        const detailAfterVerb = (s: string): string =>
-          s
-            .trim()
-            .replace(/^\S+\s*/, "")
-            .replace(/\.+$/, "")
-            .toLowerCase();
-        const headerDetails = new Set([...toolHeaders].map(detailAfterVerb).filter((d) => d.length > 0));
-        const isRedundantWithHeader = (text: string): boolean => {
-          return headerDetails.size > 0 && headerDetails.has(detailAfterVerb(text));
-        };
-        const finalRows = turn.rows
-          .map((r) => {
-            if (r.role !== "assistant" || r.dim || r.style) return r;
-            const mergedContent = mergeAssistantTranscript(streamedAssistantText, r.content);
-            if (committedStreamingText && mergedContent.startsWith(committedStreamingText)) {
-              const after = mergedContent.slice(committedStreamingText.length).trim();
-              if (!after) return null;
-              return isRedundantWithHeader(after) ? null : { ...r, content: after };
-            }
-            return isRedundantWithHeader(mergedContent.trim()) ? null : { ...r, content: mergedContent };
-          })
-          .filter((r): r is ChatRow => r !== null);
-        input.setRows((current) => [...finalizeRows(current), ...finalRows]);
-      }
+      input.currentSession.messages.push(assistantMessage);
+      input.currentSession.updatedAt = input.nowIso();
+      // When pre-tool text was committed in place, strip the prefix
+      // from the final assistant row to avoid duplication. Use a
+      // proper prefix check instead of blind character slicing.
+      const detailAfterVerb = (s: string): string =>
+        s
+          .trim()
+          .replace(/^\S+\s*/, "")
+          .replace(/\.+$/, "")
+          .toLowerCase();
+      const headerDetails = new Set([...toolHeaders].map(detailAfterVerb).filter((d) => d.length > 0));
+      const isRedundantWithHeader = (text: string): boolean => {
+        return headerDetails.size > 0 && headerDetails.has(detailAfterVerb(text));
+      };
+      const finalRows = turn.rows
+        .map((r) => {
+          if (r.role !== "assistant" || r.dim || r.style) return r;
+          const mergedContent = mergeAssistantTranscript(streamedAssistantText, r.content);
+          if (committedStreamingText && mergedContent.startsWith(committedStreamingText)) {
+            const after = mergedContent.slice(committedStreamingText.length).trim();
+            if (!after) return null;
+            return isRedundantWithHeader(after) ? null : { ...r, content: after };
+          }
+          return isRedundantWithHeader(mergedContent.trim()) ? null : { ...r, content: mergedContent };
+        })
+        .filter((r): r is ChatRow => r !== null);
+      input.setRows((current) => [...finalizeRows(current), ...finalRows]);
       // File tree may have changed during tool execution; refresh @path autocomplete candidates.
       invalidateRepoPathCandidates();
       input.currentSession.tokenUsage.push(turn.tokenEntry);

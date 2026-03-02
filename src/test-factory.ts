@@ -207,7 +207,6 @@ export function createSubmitHandlerHarness(overrides?: {
     activateSkill: async () => true,
     openResumePanel: () => {},
     openPermissionsPanel: () => {},
-    openClarifyPanel: () => {},
     openWriteConfirmPanel: () => {},
     tokenUsage,
     isWorking: overrides?.isWorking ?? false,

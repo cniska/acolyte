@@ -111,30 +111,4 @@ describe("chat picker visual regression", () => {
       ────────────────────────────────────────────────────────────────────────────────────────────────
     `));
   });
-
-  test("renders clarify-answer picker", () => {
-    const out = renderInputPanelWithPicker({
-      kind: "clarifyAnswer",
-      originalPrompt: "add tests",
-      question: "Which file should we update first?",
-      remaining: [],
-      answers: [],
-      items: [
-        { value: "answer", description: "use this answer" },
-        { value: "other", description: "use a different option" },
-      ],
-      index: 0,
-      note: "src/chat-commands.ts",
-    });
-    expect(out).toBe(dedent(`
-      ────────────────────────────────────────────────────────────────────────────────────────────────
-      Which file should we update first?
-      
-      › answer           src/chat-commands.ts
-        other            use a different option
-      
-      Type answer inline · Enter to continue · Esc to close
-      ────────────────────────────────────────────────────────────────────────────────────────────────
-    `));
-  });
 });

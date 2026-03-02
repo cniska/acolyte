@@ -10,16 +10,6 @@ export type PickerState =
   | { kind: "resume"; items: Session[]; index: number }
   | { kind: "permissions"; items: Array<{ mode: PermissionMode; description: string }>; index: number }
   | {
-      kind: "clarifyAnswer";
-      originalPrompt: string;
-      question: string;
-      remaining: string[];
-      answers: Array<{ question: string; answer: string }>;
-      items: Array<{ value: "answer" | "other"; description: string }>;
-      index: number;
-      note: string;
-    }
-  | {
       kind: "writeConfirm";
       prompt: string;
       items: Array<{ value: "switch" | "cancel"; description: string }>;
@@ -59,8 +49,6 @@ export function pickerTitle(picker: PickerState): string {
       return "Resume Session";
     case "permissions":
       return "Permissions";
-    case "clarifyAnswer":
-      return truncateText(picker.question, 72);
     case "writeConfirm":
       return "Confirm Write Access";
   }
@@ -74,8 +62,6 @@ export function pickerHint(picker: PickerState): string {
       return "Enter to resume · Esc to close";
     case "permissions":
       return "Enter to apply · Esc to close";
-    case "clarifyAnswer":
-      return "Type answer inline · Enter to continue · Esc to close";
     case "writeConfirm":
       return "Enter to apply · Esc to cancel";
   }
@@ -103,16 +89,6 @@ export function renderPickerItems(
         picker.items.map((item) => ({
           key: item.mode,
           label: item.mode,
-          detail: item.description,
-        })),
-        picker.index,
-        brandColor,
-      );
-    case "clarifyAnswer":
-      return renderPickerRows(
-        picker.items.map((item) => ({
-          key: item.value,
-          label: item.value,
           detail: item.description,
         })),
         picker.index,
