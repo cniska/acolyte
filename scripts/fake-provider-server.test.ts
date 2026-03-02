@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { withFakeProviderServer } from "./fake-provider-server";
+import { createMessagePayload, createToolCallsPayload, withFakeProviderServer } from "./fake-provider-server";
 
 describe("fake provider server", () => {
   test("returns deterministic response text for known prompt", async () => {
@@ -32,7 +32,7 @@ describe("fake provider server", () => {
     });
   });
 
-  test("advances read-summarize scenario from tool-call phase to final message", async () => {
+  test("supports custom request handlers from consumers", async () => {
     await withFakeProviderServer(async (baseUrl) => {
       const first = await fetch(`${baseUrl}/responses`, {
         method: "POST",
@@ -40,7 +40,7 @@ describe("fake provider server", () => {
         body: JSON.stringify({
           model: "gpt-5-mini",
           input: [
-            { role: "user", content: [{ type: "input_text", text: "[bench:read-summarize] summarize scripts" }] },
+            { role: "user", content: [{ type: "input_text", text: "use tool then answer" }] },
           ],
           tools: [{ type: "function", name: "read-file" }],
         }),
@@ -67,7 +67,21 @@ describe("fake provider server", () => {
       };
       expect(secondJson.output?.[0]?.type).toBe("message");
       const text = secondJson.output?.[0]?.content?.find((part) => part.type === "output_text")?.text ?? "";
-      expect(text).toContain("scripts");
+      expect(text).toBe("done");
+    }, {
+      handleRequest: ({ model, responseCounter, previousResponseId }) => {
+        if (!previousResponseId) {
+          return createToolCallsPayload(model, responseCounter, [
+            {
+              id: "fc_read_pkg",
+              callId: "call_read_pkg",
+              name: "read-file",
+              args: JSON.stringify({ paths: [{ path: "package.json" }] }),
+            },
+          ]);
+        }
+        return createMessagePayload(model, responseCounter, "done");
+      },
     });
   });
 });

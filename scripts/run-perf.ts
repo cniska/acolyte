@@ -2,14 +2,13 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createClient, type StreamEvent } from "../src/client";
-import { withFakeProviderServer } from "./fake-provider-server";
+import { createMessagePayload, withFakeProviderServer } from "./fake-provider-server";
 import { average, median, percentile, runTimedCommand, toPrettyJson } from "./perf-test-utils";
 
-type BenchmarkArgs = {
+type PerfArgs = {
   runs: number;
   warmup: boolean;
-  json: boolean;
-  scenarioFilter: Set<string>;
+  failMedianMs: number | null;
 };
 
 type Scenario = {
@@ -41,30 +40,19 @@ type ScenarioSummary = {
 };
 
 const DEFAULT_RUNS = 3;
-const BENCH_SERVER_START_TIMEOUT_MS = 30_000;
-const BENCH_SERVER_STOP_TIMEOUT_MS = 5_000;
-const BENCH_SERVER_STDOUT_LINES = 120;
+const PERF_SERVER_START_TIMEOUT_MS = 30_000;
+const PERF_SERVER_STOP_TIMEOUT_MS = 5_000;
+const PERF_SERVER_STDOUT_LINES = 120;
 const REPO_DIR = join(import.meta.dir, "..");
 const SERVER_ENTRY = join(REPO_DIR, "src", "server.ts");
 const WAIT_SERVER_ENTRY = join(REPO_DIR, "src", "wait-server.ts");
-const BENCH_MODEL = "gpt-5-mini";
+const PERF_MODEL = "gpt-5-mini";
 
 const SCENARIOS: Scenario[] = [
   {
     id: "quick-answer",
     description: "No-tool baseline (model-only response).",
     prompt: '[bench:quick-answer] Reply with exactly "ok".',
-  },
-  {
-    id: "read-summarize",
-    description: "Typical read flow on one file.",
-    prompt: "[bench:read-summarize] Read package.json and summarize scripts in two short bullets.",
-  },
-  {
-    id: "redundancy-guard-probe",
-    description: "Guard-sensitive probe with repeated read intents.",
-    prompt:
-      "[bench:redundancy-guard-probe] Read src/lifecycle.ts. Then read src/lifecycle.ts again. Then read src/lifecycle.ts once more. Finally answer with one short sentence.",
   },
 ];
 
@@ -97,11 +85,10 @@ function summarizeRunError(error: unknown): string | null {
   return null;
 }
 
-export function parseArgs(args: string[]): BenchmarkArgs {
+export function parseArgs(args: string[]): PerfArgs {
   let runs = DEFAULT_RUNS;
   let warmup = true;
-  let json = false;
-  const scenarioFilter = new Set<string>();
+  let failMedianMs: number | null = null;
 
   for (let i = 0; i < args.length; i += 1) {
     const token = args[i];
@@ -118,14 +105,8 @@ export function parseArgs(args: string[]): BenchmarkArgs {
       warmup = false;
       continue;
     }
-    if (token === "--json") {
-      json = true;
-      continue;
-    }
-    if (token === "--scenario") {
-      const id = args[i + 1]?.trim();
-      if (!id) throw new Error("Missing value for --scenario");
-      scenarioFilter.add(id);
+    if (token === "--fail-median-ms") {
+      failMedianMs = parseInteger(args[i + 1], "--fail-median-ms");
       i += 1;
       continue;
     }
@@ -136,27 +117,20 @@ export function parseArgs(args: string[]): BenchmarkArgs {
     throw new Error(`Unknown argument: ${token}`);
   }
 
-  return { runs, warmup, json, scenarioFilter };
+  return { runs, warmup, failMedianMs };
 }
 
 function printUsage(): void {
-  console.log("Usage: bun run scripts/run-bench.ts [--runs N] [--warmup|--no-warmup] [--scenario id] [--json]");
+  console.log("Usage: bun run scripts/run-perf.ts [--runs N] [--warmup|--no-warmup] [--fail-median-ms N]");
 }
 
-function selectedScenarios(filter: Set<string>): Scenario[] {
-  if (filter.size === 0) return SCENARIOS;
-  const selected = SCENARIOS.filter((scenario) => filter.has(scenario.id));
-  if (selected.length === 0) throw new Error(`No scenarios matched --scenario filter (${[...filter].join(", ")})`);
-  return selected;
-}
-
-async function writeBenchConfig(homeDir: string, port: number, providerBaseUrl: string): Promise<void> {
+async function writePerfConfig(homeDir: string, port: number, providerBaseUrl: string): Promise<void> {
   const configDir = join(homeDir, ".acolyte");
   await mkdir(configDir, { recursive: true });
   const config = {
     port,
     apiUrl: `http://localhost:${port}`,
-    model: BENCH_MODEL,
+    model: PERF_MODEL,
     openaiBaseUrl: providerBaseUrl,
     transportMode: "http",
     permissionMode: "write",
@@ -164,12 +138,12 @@ async function writeBenchConfig(homeDir: string, port: number, providerBaseUrl: 
   await writeFile(join(configDir, "config.toml"), `${toTomlRecord(config)}\n`, "utf8");
 }
 
-async function prepareBenchWorkspace(): Promise<string> {
-  const workspaceDir = await mkdtemp(join(tmpdir(), "acolyte-run-bench-workspace-"));
+async function preparePerfWorkspace(): Promise<string> {
+  const workspaceDir = await mkdtemp(join(tmpdir(), "acolyte-run-perf-workspace-"));
   await mkdir(join(workspaceDir, "src"), { recursive: true });
   await writeFile(
     join(workspaceDir, "package.json"),
-    JSON.stringify({ name: "bench-workspace", scripts: { test: "bun test", verify: "bun run verify" } }, null, 2),
+    JSON.stringify({ name: "perf-workspace", scripts: { test: "bun test", verify: "bun run verify" } }, null, 2),
     "utf8",
   );
   await writeFile(
@@ -180,7 +154,7 @@ async function prepareBenchWorkspace(): Promise<string> {
   return workspaceDir;
 }
 
-async function startBenchServer(
+async function startPerfServer(
   homeDir: string,
   workspaceDir: string,
   port: number,
@@ -206,7 +180,7 @@ async function startBenchServer(
   const waitResult = await runTimedCommand(
     ["bun", "run", WAIT_SERVER_ENTRY, "--url", `http://localhost:${port}/v1/status`, "--timeout-ms", "30000"],
     env,
-    BENCH_SERVER_START_TIMEOUT_MS,
+    PERF_SERVER_START_TIMEOUT_MS,
     workspaceDir,
   );
 
@@ -214,14 +188,14 @@ async function startBenchServer(
     proc.kill();
     const [stdout, stderr] = await Promise.all([stdoutPromise.catch(() => ""), stderrPromise.catch(() => "")]);
     throw new Error(
-      `Failed to start bench server on port ${port}\n${stdout.split("\n").slice(-BENCH_SERVER_STDOUT_LINES).join("\n")}\n${stderr}`,
+      `Failed to start perf server on port ${port}\n${stdout.split("\n").slice(-PERF_SERVER_STDOUT_LINES).join("\n")}\n${stderr}`,
     );
   }
 
   return {
     stop: async () => {
       proc.kill();
-      await Promise.race([proc.exited, Bun.sleep(BENCH_SERVER_STOP_TIMEOUT_MS)]);
+      await Promise.race([proc.exited, Bun.sleep(PERF_SERVER_STOP_TIMEOUT_MS)]);
     },
   };
 }
@@ -235,8 +209,8 @@ async function runScenario(apiUrl: string, workspaceDir: string, scenario: Scena
       {
         message: scenario.prompt,
         history: [],
-        model: BENCH_MODEL,
-        sessionId: `bench_${scenario.id}_${run}`,
+        model: PERF_MODEL,
+        sessionId: `perf_${scenario.id}_${run}`,
         workspace: workspaceDir,
       },
       { onEvent: (_event: StreamEvent) => {} },
@@ -282,72 +256,71 @@ export function summarizeScenarioRuns(scenario: Scenario, runs: ScenarioRun[]): 
 
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
-  const scenarios = selectedScenarios(args.scenarioFilter);
 
-  await withFakeProviderServer(async (providerBaseUrl) => {
-    const homeDir = await mkdtemp(join(tmpdir(), "acolyte-run-bench-home-"));
-    const workspaceDir = await prepareBenchWorkspace();
-    const port = reserveFreePort();
-    const apiUrl = `http://localhost:${port}`;
+  await withFakeProviderServer(
+    async (providerBaseUrl) => {
+      const homeDir = await mkdtemp(join(tmpdir(), "acolyte-run-perf-home-"));
+      const workspaceDir = await preparePerfWorkspace();
+      const port = reserveFreePort();
+      const apiUrl = `http://localhost:${port}`;
 
-    await writeBenchConfig(homeDir, port, providerBaseUrl);
-    const server = await startBenchServer(homeDir, workspaceDir, port, providerBaseUrl);
+      await writePerfConfig(homeDir, port, providerBaseUrl);
+      const server = await startPerfServer(homeDir, workspaceDir, port, providerBaseUrl);
 
-    try {
-      const warmupScenario = SCENARIOS.find((scenario) => scenario.id === "quick-answer");
-      if (args.warmup && warmupScenario) {
-        await runScenario(apiUrl, workspaceDir, warmupScenario, 0);
-      }
-
-      const allRuns: ScenarioRun[] = [];
-      for (const scenario of scenarios) {
-        for (let i = 0; i < args.runs; i += 1) {
-          allRuns.push(await runScenario(apiUrl, workspaceDir, scenario, i + 1));
+      try {
+        const warmupScenario = SCENARIOS[0];
+        if (args.warmup) {
+          await runScenario(apiUrl, workspaceDir, warmupScenario, 0);
         }
-      }
 
-      const summaries = scenarios.map((scenario) =>
-        summarizeScenarioRuns(
-          scenario,
-          allRuns.filter((run) => run.scenarioId === scenario.id),
-        ),
-      );
+        const allRuns: ScenarioRun[] = [];
+        for (const scenario of SCENARIOS) {
+          for (let i = 0; i < args.runs; i += 1) {
+            allRuns.push(await runScenario(apiUrl, workspaceDir, scenario, i + 1));
+          }
+        }
 
-      if (args.json) {
+        const summaries = SCENARIOS.map((scenario) =>
+          summarizeScenarioRuns(
+            scenario,
+            allRuns.filter((run) => run.scenarioId === scenario.id),
+          ),
+        );
+        const failedRun = allRuns.find((run) => run.exitCode !== 0);
+        if (failedRun) {
+          throw new Error(
+            `Perf run failed on scenario=${failedRun.scenarioId} run=${failedRun.run}: ${failedRun.error ?? "unknown error"}`,
+          );
+        }
+
+        const baseline = summaries[0];
+        if (args.failMedianMs !== null && baseline.medianMs > args.failMedianMs) {
+          throw new Error(
+            `Perf regression: median ${baseline.medianMs.toFixed(1)}ms exceeds threshold ${args.failMedianMs}ms`,
+          );
+        }
+
         console.log(
           toPrettyJson({
             config: {
               runs: args.runs,
               warmup: args.warmup,
-              json: args.json,
-              scenarioFilter: [...args.scenarioFilter],
+              failMedianMs: args.failMedianMs,
             },
             summaries,
             runs: allRuns,
           }),
         );
-        return;
+      } finally {
+        await server.stop();
+        await rm(homeDir, { recursive: true, force: true });
+        await rm(workspaceDir, { recursive: true, force: true });
       }
-
-      console.log("Acolyte run benchmark");
-      console.log(`runs=${args.runs} warmup=${args.warmup} backend=fake-provider mode=e2e`);
-      for (const summary of summaries) {
-        console.log("");
-        console.log(`${summary.scenarioId} - ${summary.description}`);
-        console.log(
-          `  samples=${summary.samples} success=${summary.successRate.toFixed(0)}% median=${summary.medianMs.toFixed(0)}ms p95=${summary.p95Ms.toFixed(0)}ms avgModelCalls=${summary.avgModelCalls.toFixed(1)}`,
-        );
-        const failed = allRuns.find((run) => run.scenarioId === summary.scenarioId && run.exitCode !== 0);
-        if (failed?.error) console.log(`  error=${failed.error}`);
-      }
-      console.log("");
-      console.log("Note: deterministic fake provider keeps runs repeatable and comparable.");
-    } finally {
-      await server.stop();
-      await rm(homeDir, { recursive: true, force: true });
-      await rm(workspaceDir, { recursive: true, force: true });
-    }
-  });
+    },
+    {
+      handleRequest: ({ model, responseCounter }) => createMessagePayload(model, responseCounter, "ok"),
+    },
+  );
 }
 
 if (import.meta.main) {

@@ -1,22 +1,20 @@
 import { describe, expect, test } from "bun:test";
-import { parseArgs, summarizeScenarioRuns } from "./run-bench";
+import { parseArgs, summarizeScenarioRuns } from "./run-perf";
 
-describe("run-bench args", () => {
+describe("run-perf args", () => {
   test("parseArgs applies defaults", () => {
     expect(parseArgs([])).toEqual({
       runs: 3,
       warmup: true,
-      json: false,
-      scenarioFilter: new Set<string>(),
+      failMedianMs: null,
     });
   });
 
   test("parseArgs parses explicit flags", () => {
-    expect(parseArgs(["--runs", "5", "--no-warmup", "--json", "--scenario", "quick-answer"])).toEqual({
+    expect(parseArgs(["--runs", "5", "--no-warmup", "--fail-median-ms", "800"])).toEqual({
       runs: 5,
       warmup: false,
-      json: true,
-      scenarioFilter: new Set<string>(["quick-answer"]),
+      failMedianMs: 800,
     });
   });
 
@@ -25,7 +23,7 @@ describe("run-bench args", () => {
   });
 });
 
-describe("run-bench summarize", () => {
+describe("run-perf summarize", () => {
   test("summarizeScenarioRuns computes aggregate metrics", () => {
     const summary = summarizeScenarioRuns(
       {

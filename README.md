@@ -89,6 +89,7 @@ omReflectionTokens = 8000
 ## Docs
 
 - Overview: [`docs/architecture.md`](docs/architecture.md)
+- Testing strategy: [`docs/testing.md`](docs/testing.md)
 - Feature inventory: [`docs/features.md`](docs/features.md)
 - Direction and milestones: [`docs/roadmap.md`](docs/roadmap.md)
 - Talk prep notes: [`docs/talk-notes.md`](docs/talk-notes.md)
