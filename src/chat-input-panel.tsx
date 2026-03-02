@@ -6,40 +6,42 @@ import { type PickerState, pickerHint, pickerTitle, renderPickerItems } from "./
 import { PromptInput } from "./prompt-input";
 
 type ChatInputPanelProps = {
-  picker: PickerState | null;
-  activeSessionId: string | undefined;
-  brandColor: string;
-  footerContext: string;
-  value: string;
-  inputRevision: number;
-  onChange: (next: string) => void;
-  onSubmit: (next: string) => void;
-  atQuery: string | null;
-  atSuggestions: string[];
-  atSuggestionIndex: number;
-  slashSuggestions: string[];
-  slashSuggestionIndex: number;
-  showHelp: boolean;
-  onConfirmNoteChange: (next: string) => void;
+  picker?: PickerState | null;
+  activeSessionId?: string | undefined;
+  brandColor?: string;
+  footerContext?: string;
+  value?: string;
+  inputRevision?: number;
+  onChange?: (next: string) => void;
+  onSubmit?: (next: string) => void;
+  atQuery?: string | null;
+  atSuggestions?: string[];
+  atSuggestionIndex?: number;
+  slashSuggestions?: string[];
+  slashSuggestionIndex?: number;
+  showHelp?: boolean;
+  onConfirmNoteChange?: (next: string) => void;
 };
+
+const noop = (): void => {};
 
 export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
   const {
-    picker,
+    picker = null,
     activeSessionId,
-    brandColor,
-    footerContext,
-    value,
-    inputRevision,
-    onChange,
-    onSubmit,
-    atQuery,
-    atSuggestions,
-    atSuggestionIndex,
-    slashSuggestions,
-    slashSuggestionIndex,
-    showHelp,
-    onConfirmNoteChange,
+    brandColor = "white",
+    footerContext = "",
+    value = "",
+    inputRevision = 0,
+    onChange = noop,
+    onSubmit = noop,
+    atQuery = null,
+    atSuggestions = [],
+    atSuggestionIndex = 0,
+    slashSuggestions = [],
+    slashSuggestionIndex = 0,
+    showHelp = false,
+    onConfirmNoteChange = noop,
   } = props;
 
   if (picker && picker.kind !== "writeConfirm" && picker.kind !== "clarifyAnswer") {
