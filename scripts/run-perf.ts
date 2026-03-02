@@ -2,7 +2,9 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createClient, type StreamEvent } from "../src/client";
-import { createMessagePayload, withFakeProviderServer } from "./fake-provider-server";
+import { withFakeProviderServer } from "./fake-provider-server";
+import { PERF_SCENARIO_LIST, type Scenario, type ScenarioId } from "./perf-scenarios";
+import { createPerfProviderHandler } from "./perf-utils";
 import { average, median, percentile, runTimedCommand, toPrettyJson } from "./perf-test-utils";
 
 type PerfArgs = {
@@ -11,14 +13,8 @@ type PerfArgs = {
   failMedianMs: number | null;
 };
 
-type Scenario = {
-  id: string;
-  description: string;
-  prompt: string;
-};
-
 type ScenarioRun = {
-  scenarioId: string;
+  scenarioId: ScenarioId;
   run: number;
   durationMs: number;
   exitCode: number;
@@ -27,7 +23,7 @@ type ScenarioRun = {
 };
 
 type ScenarioSummary = {
-  scenarioId: string;
+  scenarioId: ScenarioId;
   description: string;
   samples: number;
   successRate: number;
@@ -39,6 +35,12 @@ type ScenarioSummary = {
   avgModelCalls: number;
 };
 
+type PerfSummary = {
+  scenarioCount: number;
+  totalRuns: number;
+  failedRuns: number;
+};
+
 const DEFAULT_RUNS = 3;
 const PERF_SERVER_START_TIMEOUT_MS = 30_000;
 const PERF_SERVER_STOP_TIMEOUT_MS = 5_000;
@@ -47,14 +49,7 @@ const REPO_DIR = join(import.meta.dir, "..");
 const SERVER_ENTRY = join(REPO_DIR, "src", "server.ts");
 const WAIT_SERVER_ENTRY = join(REPO_DIR, "src", "wait-server.ts");
 const PERF_MODEL = "gpt-5-mini";
-
-const SCENARIOS: Scenario[] = [
-  {
-    id: "quick-answer",
-    description: "No-tool baseline (model-only response).",
-    prompt: '[bench:quick-answer] Reply with exactly "ok".',
-  },
-];
+const SCENARIOS: Scenario[] = PERF_SCENARIO_LIST;
 
 function parseInteger(token: string | undefined, flag: string): number {
   if (!token) throw new Error(`Missing value for ${flag}`);
@@ -200,7 +195,12 @@ async function startPerfServer(
   };
 }
 
-async function runScenario(apiUrl: string, workspaceDir: string, scenario: Scenario, run: number): Promise<ScenarioRun> {
+async function runScenario(
+  apiUrl: string,
+  workspaceDir: string,
+  scenario: Scenario,
+  run: number,
+): Promise<ScenarioRun> {
   const startedAt = performance.now();
   const client = createClient({ apiUrl, transportMode: "http" });
 
@@ -256,6 +256,7 @@ export function summarizeScenarioRuns(scenario: Scenario, runs: ScenarioRun[]): 
 
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
+  const perfProviderHandler = createPerfProviderHandler();
 
   await withFakeProviderServer(
     async (providerBaseUrl) => {
@@ -269,7 +270,7 @@ async function main(): Promise<void> {
 
       try {
         const warmupScenario = SCENARIOS[0];
-        if (args.warmup) {
+        if (args.warmup && warmupScenario) {
           await runScenario(apiUrl, workspaceDir, warmupScenario, 0);
         }
 
@@ -294,11 +295,30 @@ async function main(): Promise<void> {
         }
 
         const baseline = summaries[0];
-        if (args.failMedianMs !== null && baseline.medianMs > args.failMedianMs) {
+        if (baseline && args.failMedianMs !== null && baseline.medianMs > args.failMedianMs) {
           throw new Error(
             `Perf regression: median ${baseline.medianMs.toFixed(1)}ms exceeds threshold ${args.failMedianMs}ms`,
           );
         }
+
+        const scenarios = Object.fromEntries(
+          SCENARIOS.map((scenario) => {
+            const scenarioRuns = allRuns.filter((run) => run.scenarioId === scenario.id);
+            const summary = summaries.find((entry) => entry.scenarioId === scenario.id);
+            return [
+              scenario.id,
+              {
+                summary,
+                runs: scenarioRuns,
+              },
+            ];
+          }),
+        ) as Record<ScenarioId, { summary: ScenarioSummary | undefined; runs: ScenarioRun[] }>;
+        const summary: PerfSummary = {
+          scenarioCount: SCENARIOS.length,
+          totalRuns: allRuns.length,
+          failedRuns: allRuns.filter((run) => run.exitCode !== 0).length,
+        };
 
         console.log(
           toPrettyJson({
@@ -307,8 +327,8 @@ async function main(): Promise<void> {
               warmup: args.warmup,
               failMedianMs: args.failMedianMs,
             },
-            summaries,
-            runs: allRuns,
+            summary,
+            scenarios,
           }),
         );
       } finally {
@@ -318,7 +338,7 @@ async function main(): Promise<void> {
       }
     },
     {
-      handleRequest: ({ model, responseCounter }) => createMessagePayload(model, responseCounter, "ok"),
+      handleRequest: perfProviderHandler,
     },
   );
 }

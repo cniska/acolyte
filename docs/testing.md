@@ -18,7 +18,7 @@ Use the smallest test type that gives strong confidence.
 
 ## Perf policy
 
-- Keep scenarios deterministic and cheap (fake provider only).
+- Keep scenarios deterministic and free (fake provider only).
 - Use multiple runs and compare median/p95 over time.
 - Fail on meaningful regressions with a median threshold.
 - Add scenarios only when they represent a real user-critical path.

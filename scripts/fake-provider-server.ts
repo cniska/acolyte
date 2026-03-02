@@ -37,6 +37,12 @@ export type FakeProviderServerOptions = {
   handleRequest?: FakeProviderHandler;
 };
 
+export type MarkerScenario<Id extends string> = {
+  id: Id;
+  marker: string;
+  handle: (ctx: FakeProviderRequestContext) => Record<string, unknown>;
+};
+
 function s(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
@@ -161,6 +167,30 @@ export function createToolCallsPayload(
     calls.length,
     calls.length + 1,
   );
+}
+
+export function createMarkerScenarioHandler<Id extends string>(
+  scenarios: readonly MarkerScenario<Id>[],
+  defaultText = "ok",
+): FakeProviderHandler {
+  const scenarioByResponseId = new Map<string, Id>();
+  const scenarioById = new Map<Id, MarkerScenario<Id>>(scenarios.map((scenario) => [scenario.id, scenario]));
+
+  return (ctx: FakeProviderRequestContext): Record<string, unknown> => {
+    let scenarioId: Id | undefined;
+    if (ctx.previousResponseId) {
+      scenarioId = scenarioByResponseId.get(ctx.previousResponseId);
+    }
+    if (!scenarioId) {
+      scenarioId = scenarios.find((entry) => ctx.sourceText.includes(entry.marker))?.id;
+    }
+    if (!scenarioId) return createMessagePayload(ctx.model, ctx.responseCounter, defaultText);
+
+    scenarioByResponseId.set(fakeResponseId(ctx.responseCounter), scenarioId);
+    const scenario = scenarioById.get(scenarioId);
+    if (!scenario) return createMessagePayload(ctx.model, ctx.responseCounter, defaultText);
+    return scenario.handle(ctx);
+  };
 }
 
 function parseResponsesRequest(raw: string): ResponseRequest {

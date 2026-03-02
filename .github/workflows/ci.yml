@@ -25,3 +25,6 @@ jobs:
 
       - name: Run verify
         run: bun run verify
+
+      - name: Run perf baseline
+        run: bun run test:perf
