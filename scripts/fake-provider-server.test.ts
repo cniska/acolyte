@@ -33,55 +33,56 @@ describe("fake provider server", () => {
   });
 
   test("supports custom request handlers from consumers", async () => {
-    await withFakeProviderServer(async (baseUrl) => {
-      const first = await fetch(`${baseUrl}/responses`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          model: "gpt-5-mini",
-          input: [
-            { role: "user", content: [{ type: "input_text", text: "use tool then answer" }] },
-          ],
-          tools: [{ type: "function", name: "read-file" }],
-        }),
-      });
-      const firstJson = (await first.json()) as {
-        id?: string;
-        output?: Array<{ type?: string; call_id?: string; name?: string }>;
-      };
-      expect(firstJson.output?.[0]?.type).toBe("function_call");
-      expect(firstJson.output?.[0]?.call_id).toBe("call_read_pkg");
-      expect(firstJson.output?.[0]?.name).toBe("read-file");
+    await withFakeProviderServer(
+      async (baseUrl) => {
+        const first = await fetch(`${baseUrl}/responses`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            model: "gpt-5-mini",
+            input: [{ role: "user", content: [{ type: "input_text", text: "use tool then answer" }] }],
+            tools: [{ type: "function", name: "read-file" }],
+          }),
+        });
+        const firstJson = (await first.json()) as {
+          id?: string;
+          output?: Array<{ type?: string; call_id?: string; name?: string }>;
+        };
+        expect(firstJson.output?.[0]?.type).toBe("function_call");
+        expect(firstJson.output?.[0]?.call_id).toBe("call_read_pkg");
+        expect(firstJson.output?.[0]?.name).toBe("read-file");
 
-      const second = await fetch(`${baseUrl}/responses`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          model: "gpt-5-mini",
-          previous_response_id: firstJson.id,
-          input: [{ type: "function_call_output", call_id: "call_read_pkg", output: "Read package.json" }],
-        }),
-      });
-      const secondJson = (await second.json()) as {
-        output?: Array<{ type?: string; content?: Array<{ type?: string; text?: string }> }>;
-      };
-      expect(secondJson.output?.[0]?.type).toBe("message");
-      const text = secondJson.output?.[0]?.content?.find((part) => part.type === "output_text")?.text ?? "";
-      expect(text).toBe("done");
-    }, {
-      handleRequest: ({ model, responseCounter, previousResponseId }) => {
-        if (!previousResponseId) {
-          return createToolCallsPayload(model, responseCounter, [
-            {
-              id: "fc_read_pkg",
-              callId: "call_read_pkg",
-              name: "read-file",
-              args: JSON.stringify({ paths: [{ path: "package.json" }] }),
-            },
-          ]);
-        }
-        return createMessagePayload(model, responseCounter, "done");
+        const second = await fetch(`${baseUrl}/responses`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            model: "gpt-5-mini",
+            previous_response_id: firstJson.id,
+            input: [{ type: "function_call_output", call_id: "call_read_pkg", output: "Read package.json" }],
+          }),
+        });
+        const secondJson = (await second.json()) as {
+          output?: Array<{ type?: string; content?: Array<{ type?: string; text?: string }> }>;
+        };
+        expect(secondJson.output?.[0]?.type).toBe("message");
+        const text = secondJson.output?.[0]?.content?.find((part) => part.type === "output_text")?.text ?? "";
+        expect(text).toBe("done");
       },
-    });
+      {
+        handleRequest: ({ model, responseCounter, previousResponseId }) => {
+          if (!previousResponseId) {
+            return createToolCallsPayload(model, responseCounter, [
+              {
+                id: "fc_read_pkg",
+                callId: "call_read_pkg",
+                name: "read-file",
+                args: JSON.stringify({ paths: [{ path: "package.json" }] }),
+              },
+            ]);
+          }
+          return createMessagePayload(model, responseCounter, "done");
+        },
+      },
+    );
   });
 });

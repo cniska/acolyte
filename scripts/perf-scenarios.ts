@@ -1,8 +1,8 @@
 import {
   createMessagePayload,
   createToolCallsPayload,
-  pickFunctionToolName,
   type FakeProviderRequestContext,
+  pickFunctionToolName,
 } from "./fake-provider-server";
 
 export type ScenarioId = "quick-answer" | "tool-read-roundtrip" | "edit-then-verify";

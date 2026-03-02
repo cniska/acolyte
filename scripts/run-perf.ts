@@ -4,8 +4,8 @@ import { join } from "node:path";
 import { createClient, type StreamEvent } from "../src/client";
 import { withFakeProviderServer } from "./fake-provider-server";
 import { PERF_SCENARIO_LIST, type Scenario, type ScenarioId } from "./perf-scenarios";
-import { createPerfProviderHandler } from "./perf-utils";
 import { average, median, percentile, runTimedCommand, toPrettyJson } from "./perf-test-utils";
+import { createPerfProviderHandler } from "./perf-utils";
 
 type PerfArgs = {
   runs: number;
