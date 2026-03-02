@@ -24,30 +24,61 @@ import { runShellCommand } from "./tools";
 import type { SessionStore } from "./types";
 import { formatCliTitle, printDim, printError, printOutput } from "./ui";
 
-const SUBCOMMANDS: Record<string, { command: string; usage: string; description: string }> = {
+type SubcommandDoc = {
+  command: string;
+  usage: string;
+  description: string;
+  examples: string[];
+};
+
+const SUBCOMMANDS: Record<string, SubcommandDoc> = {
   resume: {
     command: "resume [id-prefix]",
     usage: "acolyte resume [id-prefix]",
     description: "resume previous session",
+    examples: ["acolyte resume", "acolyte resume sess_abc123"],
   },
   run: {
     command: "run <prompt>",
     usage: "acolyte run [--file <path>] [--workspace <path>] [--verify] <prompt>",
     description: "run a single prompt",
+    examples: ["acolyte run \"summarize README.md\"", "acolyte run --file src/cli.ts --verify \"refactor help text\""],
   },
-  history: { command: "history", usage: "acolyte history", description: "show recent sessions" },
-  server: { command: "server", usage: "acolyte server [start|status|stop]", description: "manage local API server" },
-  status: { command: "status", usage: "acolyte status", description: "show server status" },
-  memory: { command: "memory", usage: "acolyte memory <list|add> [options]", description: "manage memory notes" },
+  history: {
+    command: "history",
+    usage: "acolyte history",
+    description: "show recent sessions",
+    examples: ["acolyte history"],
+  },
+  server: {
+    command: "server",
+    usage: "acolyte server [start|status|stop]",
+    description: "manage local API server",
+    examples: ["acolyte server start", "acolyte server status", "acolyte server stop"],
+  },
+  status: {
+    command: "status",
+    usage: "acolyte status",
+    description: "show server status",
+    examples: ["acolyte status"],
+  },
+  memory: {
+    command: "memory",
+    usage: "acolyte memory <list|add> [options]",
+    description: "manage memory notes",
+    examples: ["acolyte memory list", "acolyte memory add --project \"prefer bun run verify\""],
+  },
   config: {
     command: "config",
     usage: "acolyte config <list|set|unset> [options]",
     description: "manage local CLI config",
+    examples: ["acolyte config list", "acolyte config set model gpt-5-mini", "acolyte config unset apiUrl"],
   },
   tool: {
     command: "tool",
     usage: "acolyte tool <find|search|web|fetch|read|git-status|git-diff|run|edit> ...",
     description: "run a tool directly",
+    examples: ["acolyte tool find \"src/**/*.ts\"", "acolyte tool run \"bun run verify\""],
   },
 };
 
@@ -59,7 +90,14 @@ export function hasHelpFlag(args: string[]): boolean {
 
 export function subcommandHelp(name: string): void {
   const entry = SUBCOMMANDS[name];
-  if (entry) printDim(`Usage: ${entry.usage}`);
+  if (!entry) return;
+  printDim(`Usage: ${entry.usage}`);
+  printDim("");
+  printDim(`Description: ${entry.description}`);
+  if (entry.examples.length === 0) return;
+  printDim("");
+  printDim("Examples:");
+  for (const example of entry.examples) printDim(`  ${example}`);
 }
 
 export function subcommandError(name: string, message?: string): void {

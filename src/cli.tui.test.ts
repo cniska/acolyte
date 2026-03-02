@@ -183,4 +183,106 @@ describe("cli visual regression", () => {
       });
     });
   });
+
+  test.each([
+    {
+      args: ["resume", "help"],
+      output: dedent(`
+        Usage: acolyte resume [id-prefix]
+        
+        Description: resume previous session
+        
+        Examples:
+          acolyte resume
+          acolyte resume sess_abc123
+      `),
+    },
+    {
+      args: ["run", "help"],
+      output: dedent(`
+        Usage: acolyte run [--file <path>] [--workspace <path>] [--verify] <prompt>
+        
+        Description: run a single prompt
+        
+        Examples:
+          acolyte run "summarize README.md"
+          acolyte run --file src/cli.ts --verify "refactor help text"
+      `),
+    },
+    {
+      args: ["history", "help"],
+      output: dedent(`
+        Usage: acolyte history
+        
+        Description: show recent sessions
+        
+        Examples:
+          acolyte history
+      `),
+    },
+    {
+      args: ["server", "help"],
+      output: dedent(`
+        Usage: acolyte server [start|status|stop]
+        
+        Description: manage local API server
+        
+        Examples:
+          acolyte server start
+          acolyte server status
+          acolyte server stop
+      `),
+    },
+    {
+      args: ["status", "help"],
+      output: dedent(`
+        Usage: acolyte status
+        
+        Description: show server status
+        
+        Examples:
+          acolyte status
+      `),
+    },
+    {
+      args: ["memory", "help"],
+      output: dedent(`
+        Usage: acolyte memory <list|add> [options]
+        
+        Description: manage memory notes
+        
+        Examples:
+          acolyte memory list
+          acolyte memory add --project "prefer bun run verify"
+      `),
+    },
+    {
+      args: ["config", "help"],
+      output: dedent(`
+        Usage: acolyte config <list|set|unset> [options]
+        
+        Description: manage local CLI config
+        
+        Examples:
+          acolyte config list
+          acolyte config set model gpt-5-mini
+          acolyte config unset apiUrl
+      `),
+    },
+    {
+      args: ["tool", "help"],
+      output: dedent(`
+        Usage: acolyte tool <find|search|web|fetch|read|git-status|git-diff|run|edit> ...
+        
+        Description: run a tool directly
+        
+        Examples:
+          acolyte tool find "src/**/*.ts"
+          acolyte tool run "bun run verify"
+      `),
+    },
+  ])("renders subcommand help output %#", async ({ args, output }) => {
+    const out = await runCliPlain(args);
+    expect(out).toBe(output);
+  });
 });
