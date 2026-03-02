@@ -29,7 +29,7 @@ export async function createTempDir(prefix: string): Promise<string> {
   return mkdtemp(join(tmpdir(), prefix));
 }
 
-export function dedent(value: string, gutter = 0): string {
+export function dedentString(value: string): string {
   const lines = value.split("\n");
   let start = 0;
   while (start < lines.length && lines[start]?.trim().length === 0) start += 1;
@@ -37,19 +37,33 @@ export function dedent(value: string, gutter = 0): string {
   while (end >= start && lines[end]?.trim().length === 0) end -= 1;
   if (start > end) return "";
 
-  const indent = lines
+  let prefix: string | null = null;
+  for (const line of lines.slice(start, end + 1)) {
+    if (line.trim().length === 0) continue;
+    const current = line.match(/^[ \t]*/)?.[0] ?? "";
+    if (prefix === null || current.length < prefix.length) prefix = current;
+  }
+  const normalizedPrefix = prefix ?? "";
+  return lines
     .slice(start, end + 1)
-    .filter((line) => line.trim().length > 0)
-    .reduce((min, line) => {
-      const current = line.match(/^ */)?.[0].length ?? 0;
-      return Math.min(min, current);
-    }, Number.POSITIVE_INFINITY);
-  const prefix = " ".repeat(indent);
-
-  const dedented = lines
-    .slice(start, end + 1)
-    .map((line) => (line.startsWith(prefix) ? line.slice(prefix.length) : line))
+    .map((line) => (line.startsWith(normalizedPrefix) ? line.slice(normalizedPrefix.length) : line))
     .join("\n");
+}
+
+export function dedent(value: string, gutter?: number): string;
+export function dedent(strings: ReadonlyArray<string>, ...values: ReadonlyArray<unknown>): string;
+export function dedent(
+  valueOrStrings: string | ReadonlyArray<string>,
+  ...rest: [number?] | ReadonlyArray<unknown>
+): string {
+  if (Array.isArray(valueOrStrings)) {
+    let out = valueOrStrings[0] ?? "";
+    for (let i = 1; i < valueOrStrings.length; i += 1) out += String(rest[i - 1] ?? "") + valueOrStrings[i];
+    return dedentString(out);
+  }
+  if (typeof valueOrStrings !== "string") throw new Error("Invalid dedent input");
+  const gutter = typeof rest[0] === "number" ? rest[0] : 0;
+  const dedented = dedentString(valueOrStrings);
   if (gutter <= 0) return dedented;
   const pad = " ".repeat(gutter);
   return dedented
@@ -81,6 +95,31 @@ export function expectJSON(actual: unknown): {
     },
     toMatchObject(expected: Record<string, unknown>): void {
       expect(actualJSON).toMatchObject(toJSONDeep(expected) as Record<string, unknown>);
+    },
+  };
+}
+
+export function expectToThrowJSON(fn: () => unknown): {
+  toDeepEqual: (expected: unknown) => void;
+  toMatchObject: (expected: Record<string, unknown>) => void;
+} {
+  let thrown = false;
+  let actual: unknown;
+  try {
+    fn();
+  } catch (error) {
+    thrown = true;
+    actual = toJSONDeep(error);
+  }
+  if (!thrown) {
+    throw new Error("Expected function to throw");
+  }
+  return {
+    toDeepEqual(expected: unknown): void {
+      expect(actual).toEqual(toJSONDeep(expected));
+    },
+    toMatchObject(expected: Record<string, unknown>): void {
+      expect(actual).toMatchObject(toJSONDeep(expected) as Record<string, unknown>);
     },
   };
 }
