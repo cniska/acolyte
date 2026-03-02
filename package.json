@@ -27,7 +27,7 @@
     "lint": "bunx biome check .",
     "typecheck": "bunx tsc --noEmit",
     "test": "bun test",
-    "test:coverage": "bun test --coverage --coverage-reporter=text --coverage-reporter=lcov --coverage-dir coverage",
+    "test:coverage": "bun run scripts/run-unit-coverage.ts",
     "test:tui": "bun test src/*.tui.test.ts src/*.tui.test.tsx",
     "test:int": "bun test src/*.int.test.ts src/*.int.test.tsx",
     "verify": "bun run format && bun run lint && bun run typecheck && bun run test",
