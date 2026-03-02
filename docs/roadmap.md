@@ -67,6 +67,7 @@ Consolidate core UX quality and extension-ready seams before MVP freeze.
 - [x] Integration suite split (`*.int.test`) with dedicated `test:int` workflow
 - [ ] Full codebase audit and cleanup pass (architecture, reliability, UX consistency, tests)
 - [ ] Extension-ready seams in core (interface-first boundaries for lifecycle/tools/guards/tasks/transports), without shipping plugin runtime
+- [ ] Minimal policy configurability: guard enable/disable via explicit config with safe defaults and visible active policy
 - [ ] Queue delivery policy controls (`one-at-a-time` vs `all`) for steering/follow-up (Pi-inspired)
 - [ ] Resource-loading diagnostics surface (skills/prompts/config/reload collisions and failures) (Pi-inspired)
 
@@ -159,6 +160,7 @@ What MVP is **not**:
 - Agent-authored skills — let the agent create and refine its own tools at runtime.
 - Tool output collapsing — group consecutive same-tool calls into a single summary row to reduce visual noise.
 - User-facing lifecycle hooks — notifications when agent needs input, custom evaluators.
+- Evaluator policy controls — opt-in evaluator enable/disable after evaluator observability and safety caps are proven.
 - Memory evaluator — persist useful learnings between generations within a session.
 - Extension runtime hooks (events + tool interceptors + custom slash commands) with explicit safety boundaries.
 - Resource loader diagnostics and collision reporting across user/project/package layers (skills, prompts, themes, extensions).
