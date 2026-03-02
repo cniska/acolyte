@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { acquireSessionLock, releaseSessionLock, sweepStaleSessionLocks } from "./session-lock";
-import { tempDir } from "./test-factory";
+import { tempDir } from "./test-utils";
 
 const { createDir, cleanupDirs } = tempDir();
 const createTempHome = () => createDir("acolyte-lock-test-");

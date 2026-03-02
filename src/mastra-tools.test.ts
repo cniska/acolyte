@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { setPermissionMode } from "./app-config";
 import { toolsForAgent, webSearchStreamRows, withToolError } from "./mastra-tools";
-import { savedPermissionMode } from "./test-factory";
+import { savedPermissionMode } from "./test-utils";
 import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
 
 const restorePermissions = savedPermissionMode();

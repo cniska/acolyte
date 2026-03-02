@@ -19,7 +19,7 @@ import {
   savedPermissionMode,
   tempDir,
   writeSkill,
-} from "./test-factory";
+} from "./test-utils";
 
 async function runCommand(text: string, overrides: Parameters<typeof createCommandContext>[1] = {}) {
   const { ctx, spies } = createCommandContext(text, overrides);

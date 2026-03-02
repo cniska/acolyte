@@ -3,8 +3,8 @@ import React from "react";
 import { ChatInputPanel } from "./chat-input-panel";
 import type { PickerState } from "./chat-picker";
 import { palette } from "./palette";
-import { createSession, dedent } from "./test-factory";
-import { renderInkPlain } from "./test-tui";
+import { createSession, dedent } from "./test-utils";
+import { renderInkPlain } from "./tui-test-utils";
 
 function renderInputPanelWithPicker(picker: PickerState, columns = 96): string {
   return renderInkPlain(

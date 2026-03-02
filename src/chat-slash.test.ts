@@ -8,7 +8,7 @@ import {
   suggestSlashCommands,
 } from "./chat-slash";
 import { loadSkills, resetSkillCache } from "./skills";
-import { tempDir, writeSkill } from "./test-factory";
+import { tempDir, writeSkill } from "./test-utils";
 
 describe("chat-slash helpers", () => {
   test("suggestSlashCommands filters known commands by prefix", () => {

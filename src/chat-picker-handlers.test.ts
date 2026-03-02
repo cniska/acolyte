@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { appConfig } from "./app-config";
 import type { ChatRow } from "./chat-commands";
 import { createPickerHandlers } from "./chat-picker-handlers";
-import { createMessage, createSession, createStore, savedPermissionMode } from "./test-factory";
+import { createMessage, createSession, createStore, savedPermissionMode } from "./test-utils";
 
 describe("chat picker handlers", () => {
   test("openResumePanel shows fallback when no sessions exist", () => {

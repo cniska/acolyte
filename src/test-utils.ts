@@ -1,3 +1,4 @@
+import { expect } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -55,6 +56,33 @@ export function dedent(value: string, gutter = 0): string {
     .split("\n")
     .map((line) => `${pad}${line}`)
     .join("\n");
+}
+
+function toJSONDeep(value: unknown): unknown {
+  if (value === null || value === undefined) return value;
+  if (typeof value !== "object") return value;
+  if (typeof (value as { toJSON?: unknown }).toJSON === "function") {
+    return toJSONDeep((value as { toJSON: () => unknown }).toJSON());
+  }
+  if (Array.isArray(value)) return value.map(toJSONDeep);
+  const output: Record<string, unknown> = {};
+  for (const [key, nested] of Object.entries(value)) output[key] = toJSONDeep(nested);
+  return output;
+}
+
+export function expectJSON(actual: unknown): {
+  toDeepEqual: (expected: unknown) => void;
+  toMatchObject: (expected: Record<string, unknown>) => void;
+} {
+  const actualJSON = toJSONDeep(actual);
+  return {
+    toDeepEqual(expected: unknown): void {
+      expect(actualJSON).toEqual(toJSONDeep(expected));
+    },
+    toMatchObject(expected: Record<string, unknown>): void {
+      expect(actualJSON).toMatchObject(toJSONDeep(expected) as Record<string, unknown>);
+    },
+  };
 }
 
 export function startTestServer(fetch: (req: Request) => Response | Promise<Response>): {

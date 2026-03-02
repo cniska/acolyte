@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ensureLocalServer, localServerStatus, serverDaemonInternals, stopLocalServer } from "./server-daemon";
-import { startTestServer } from "./test-factory";
+import { startTestServer } from "./test-utils";
 
 describe("server daemon internals", () => {
   test("serverLogPath resolves under ~/.acolyte", () => {

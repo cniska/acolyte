@@ -45,7 +45,7 @@ type RunCliPlainOptions = {
   env?: Record<string, string | undefined>;
 };
 
-export async function runCliPlain(args: string[], options: RunCliPlainOptions = {}): Promise<string> {
+export async function runCliPlain(args: readonly string[], options: RunCliPlainOptions = {}): Promise<string> {
   const env = {
     ...process.env,
     ...options.env,
@@ -67,14 +67,14 @@ export async function runCliPlain(args: string[], options: RunCliPlainOptions = 
 export type CliTestEnv = {
   homeDir: string;
   workspaceDir: string;
-  run: (args: string[], options?: { env?: Record<string, string | undefined> }) => Promise<string>;
+  run: (args: readonly string[], options?: { env?: Record<string, string | undefined> }) => Promise<string>;
   writeSessionsStore: (store: SessionStore) => Promise<void>;
 };
 
 export async function withCliTestEnv<T>(fn: (env: CliTestEnv) => Promise<T>): Promise<T> {
   const homeDir = await mkdtemp(join(tmpdir(), "acolyte-cli-home-"));
   const workspaceDir = await mkdtemp(join(tmpdir(), "acolyte-cli-cwd-"));
-  const run = (args: string[], options?: { env?: Record<string, string | undefined> }): Promise<string> =>
+  const run = (args: readonly string[], options?: { env?: Record<string, string | undefined> }): Promise<string> =>
     runCliPlain(args, {
       cwd: workspaceDir,
       env: {

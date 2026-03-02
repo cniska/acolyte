@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { rm } from "node:fs/promises";
 import { formatHeaderContextLine, justifyLineSpaceBetween, shownBranch } from "./chat-layout";
-import { createTempDir } from "./test-factory";
+import { createTempDir } from "./test-utils";
 import { runShellCommand } from "./tools";
 
 function withColumns(width: number, task: () => void): void {

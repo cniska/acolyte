@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { listSkills, readSkillInstructions, substituteArguments, validateSkillName } from "./skills";
-import { tempDir, writeSkill } from "./test-factory";
+import { tempDir, writeSkill } from "./test-utils";
 
 const { createDir, cleanupDirs } = tempDir();
 afterEach(cleanupDirs);

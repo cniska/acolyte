@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { addMemory, listMemories, removeMemoryByPrefix } from "./memory";
-import { tempDir } from "./test-factory";
+import { tempDir } from "./test-utils";
 
 const { createDir, cleanupDirs } = tempDir();
 afterEach(cleanupDirs);

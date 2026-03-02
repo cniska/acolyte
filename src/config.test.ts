@@ -10,7 +10,7 @@ import {
   unsetConfigValue,
   writeConfig,
 } from "./config";
-import { tempDir } from "./test-factory";
+import { tempDir } from "./test-utils";
 
 const { createDir, cleanupDirs } = tempDir();
 afterEach(cleanupDirs);

@@ -3,8 +3,8 @@ import React from "react";
 import { ChatHeader } from "./chat-header";
 import { ChatInputPanel } from "./chat-input-panel";
 import { palette } from "./palette";
-import { dedent } from "./test-factory";
-import { renderInkPlain } from "./test-tui";
+import { dedent } from "./test-utils";
+import { renderInkPlain } from "./tui-test-utils";
 
 const DEFAULT_FOOTER_CONTEXT = "~/code/acolyte · main · gpt-5-mini";
 

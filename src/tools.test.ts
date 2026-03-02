@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, test } from "bun:tes
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { appConfig, setPermissionMode } from "./app-config";
-import { savedPermissionMode } from "./test-factory";
+import { savedPermissionMode } from "./test-utils";
 import {
   deleteTextFile,
   editCode,

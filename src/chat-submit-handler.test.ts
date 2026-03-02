@@ -8,8 +8,8 @@ import {
   resolveNaturalRememberDirective,
 } from "./chat-submit-handler";
 import type { StreamEvent } from "./client";
-import { createClient, createMessage, createSession, createStore, createSubmitHandlerHarness } from "./test-factory";
-import { dedent } from "./test-factory";
+import { createClient, createMessage, createSession, createStore, createSubmitHandlerHarness } from "./test-utils";
+import { dedent } from "./test-utils";
 
 describe("chat submit handler guards", () => {
   test("resolveNaturalRememberDirective parses user and project forms", () => {

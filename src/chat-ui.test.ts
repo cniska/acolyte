@@ -13,7 +13,7 @@ import {
   shouldAutocompleteAtSubmit,
 } from "./chat-file-ref";
 import { initialTranscriptRows } from "./chat-ui";
-import { createSession, createStore } from "./test-factory";
+import { createSession, createStore } from "./test-utils";
 
 function createUiStore() {
   return createStore({

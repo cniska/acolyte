@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { startTestServer } from "./test-factory";
+import { startTestServer } from "./test-utils";
 import { parseArgs, waitForServer } from "./wait-server";
 
 describe("wait-server", () => {

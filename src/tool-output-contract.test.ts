@@ -5,7 +5,7 @@ import { formatToolHeader } from "./agent";
 import { setPermissionMode } from "./app-config";
 import { formatProgressOutput } from "./cli-format";
 import { toolsForAgent } from "./mastra-tools";
-import { createTempDir, dedent, savedPermissionMode } from "./test-factory";
+import { createTempDir, dedent, savedPermissionMode } from "./test-utils";
 import { mergeToolOutputHeader } from "./tool-summary-format";
 import { runShellCommand } from "./tools";
 

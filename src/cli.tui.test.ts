@@ -2,8 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { dedent } from "./test-factory";
-import { runCliPlain, withCliTestEnv, withTestHttpServer } from "./test-tui";
+import { dedent } from "./test-utils";
+import { runCliPlain, withCliTestEnv, withTestHttpServer } from "./tui-test-utils";
 
 describe("cli visual regression", () => {
   test("version command prints current package version", async () => {

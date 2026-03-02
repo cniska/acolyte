@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import React from "react";
 import { ChatTranscript } from "./chat-transcript";
-import { createClient, createSession, createStore, createSubmitHandlerHarness, dedent } from "./test-factory";
-import { renderInkPlain } from "./test-tui";
+import { createClient, createSession, createStore, createSubmitHandlerHarness, dedent } from "./test-utils";
+import { renderInkPlain } from "./tui-test-utils";
 
 function renderTranscript(rows: Parameters<typeof ChatTranscript>[0]["rows"], columns = 96): string {
   return renderInkPlain(<ChatTranscript rows={rows} isWorking={false} thinkingFrame={0} />, columns);

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import { tempDir } from "./test-factory";
+import { tempDir } from "./test-utils";
 
 const { createDir, cleanupDirs } = tempDir();
 const repoRoot = process.cwd();

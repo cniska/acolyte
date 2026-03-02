@@ -1,11 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { parseToolOutputMarker, parseToolOutputRow, TextToolOutputParser } from "./tool-output-parser";
+import { expectJSON } from "./test-utils";
 
 describe("tool output parser", () => {
   const parser = new TextToolOutputParser();
 
   test("parses find summary rows", () => {
-    expect(parseToolOutputRow("find-files", "scope=workspace patterns=[*.ts, *.md] matches=3")).toEqual({
+    expectJSON(parseToolOutputRow("find-files", "scope=workspace patterns=[*.ts, *.md] matches=3")).toDeepEqual({
       kind: "find-summary",
       scope: "workspace",
       patterns: ["*.ts", "*.md"],
