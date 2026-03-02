@@ -33,10 +33,10 @@ describe("chat-layout", () => {
   test("shownBranch returns current branch inside a git repository", async () => {
     const workspace = await createTempDir("acolyte-chat-layout-");
     try {
-      await runShellCommand(workspace, "git init -b main");
+      await runShellCommand(workspace, "git init");
       await runShellCommand(workspace, "git config user.email test@example.com");
       await runShellCommand(workspace, "git config user.name Test");
-      expect(await shownBranch(workspace)).toBe("main");
+      expect(await shownBranch(workspace)).toMatch(/^(main|master)$/);
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }

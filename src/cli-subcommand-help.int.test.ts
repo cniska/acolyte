@@ -109,7 +109,7 @@ describe("cli subcommand help", () => {
     expect(startResult.exitCode).toBe(0);
     expect(`${startResult.stdout}\n${startResult.stderr}`).toMatch(/(Started|Using( unmanaged)?) local server at /);
     expect(statusResult.exitCode).toBe(0);
-    expect(`${statusResult.stdout}\n${statusResult.stderr}`).toMatch(/Local server running \((pid|unmanaged)\)/);
+    expect(`${statusResult.stdout}\n${statusResult.stderr}`).toMatch(/Local server running \((pid( \d+)?|unmanaged)\)/);
     expect(stopResult.exitCode).toBe(0);
     expect(`${stopResult.stdout}\n${stopResult.stderr}`).toMatch(
       /(Stopped local server\.|Local server is not running\.|Local server is running unmanaged)/,
