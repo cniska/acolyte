@@ -15,7 +15,7 @@ Use the smallest test type that gives strong confidence.
 - Integration only: `bun run test:int`
 - Visual only: `bun run test:tui`
 - Perf baseline: `bun run test:perf`
-- Coverage report: `bun run test:coverage`
+- Coverage report (unit tests only): `bun run test:coverage`
 
 ## Perf policy
 
