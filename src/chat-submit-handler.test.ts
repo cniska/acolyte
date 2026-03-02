@@ -512,6 +512,86 @@ describe("chat submit handler guards", () => {
     expect(last?.dim).toBe(true);
   });
 
+  test("interrupt followed by next prompt yields clean transcript flow", async () => {
+    const rows: ChatRow[] = [];
+    let interruptHandler: () => void = () => {};
+    let interruptRegistered = false;
+    let callCount = 0;
+
+    const session = createSession({ id: "sess_test" });
+    const store = createStore({ activeSessionId: session.id, sessions: [session] });
+
+    const submit = createSubmitHandler({
+      client: createClient({
+        reply: async (_input, options) => {
+          const call = callCount++;
+          if (call === 0) {
+            return await new Promise((_, reject) => {
+              const abort = (): void => {
+                const error = new Error("Aborted");
+                error.name = "AbortError";
+                reject(error);
+              };
+              if (options?.signal?.aborted) {
+                abort();
+                return;
+              }
+              options?.signal?.addEventListener("abort", abort, { once: true });
+            });
+          }
+          return { model: "gpt-5-mini", output: "Second answer." };
+        },
+        status: async () => ({}),
+      }),
+      store,
+      currentSession: session,
+      setCurrentSession: () => {},
+      toRows: () => [],
+      setRows: (updater) => {
+        rows.splice(0, rows.length, ...updater(rows));
+      },
+      setShowHelp: () => {},
+      setValue: () => {},
+      persist: async () => {},
+      exit: () => {},
+      openSkillsPanel: async () => {},
+      activateSkill: async () => true,
+      openResumePanel: () => {},
+      openPermissionsPanel: () => {},
+      openWriteConfirmPanel: () => {},
+      tokenUsage: [],
+      isWorking: false,
+      setInputHistory: () => {},
+      setInputHistoryIndex: () => {},
+      setInputHistoryDraft: () => {},
+      setIsWorking: () => {},
+      setProgressText: () => {},
+      setTokenUsage: () => {},
+      createMessage,
+      nowIso: () => "2026-02-20T00:00:00.000Z",
+      setInterrupt: (handler) => {
+        interruptRegistered = handler !== null;
+        if (handler) interruptHandler = handler;
+      },
+    });
+
+    const firstPending = submit("First question");
+    for (let i = 0; i < 20 && !interruptRegistered; i += 1) {
+      await Bun.sleep(1);
+    }
+    expect(interruptRegistered).toBe(true);
+    interruptHandler();
+    await firstPending;
+    await submit("Second question");
+
+    expect(rows.map((row) => `${row.role}:${row.content}`)).toEqual([
+      "user:First question",
+      "system:Interrupted",
+      "user:Second question",
+      "assistant:Second answer.",
+    ]);
+  });
+
   test("stops before server call when all @references are unresolved", async () => {
     const rows: ChatRow[] = [];
     let replyCalls = 0;
@@ -1217,6 +1297,37 @@ describe("chat submit handler guards", () => {
 
     const toolRows = rows.filter((row) => row.role === "assistant" && row.style === "toolProgress");
     expect(toolRows).toHaveLength(0);
+  });
+
+  test("never surfaces blocked tool rows when mixed with allowed tool work", async () => {
+    const { submit, rows } = createSubmitHandlerHarness({
+      client: createClient({
+        status: async () => ({}),
+        events: [
+          { type: "tool-call", toolCallId: "call_blocked", toolName: "read-file", args: { paths: [{ path: "a.ts" }] } },
+          {
+            type: "tool-result",
+            toolCallId: "call_blocked",
+            toolName: "read-file",
+            isError: true,
+            errorCode: "E_GUARD_BLOCKED",
+            errorDetail: { code: "E_GUARD_BLOCKED", category: "guard-blocked" },
+          },
+          { type: "tool-call", toolCallId: "call_ok", toolName: "edit-file", args: { path: "b.ts" } },
+          { type: "tool-output", toolCallId: "call_ok", toolName: "edit-file", content: "2 + export const b = 2;" },
+        ],
+        reply: async () => ({
+          model: "gpt-5-mini",
+          output: "done",
+        }),
+      }),
+    });
+
+    await submit("hello");
+
+    const toolRows = rows.filter((row) => row.role === "assistant" && row.style === "toolProgress");
+    expect(toolRows.map((row) => row.content)).toEqual(["Edit b.ts\n2 + export const b = 2;"]);
+    expect(rows.some((row) => row.content.includes("Read a.ts"))).toBe(false);
   });
 
   test("merges tool-output into tool-call row in real time", async () => {
