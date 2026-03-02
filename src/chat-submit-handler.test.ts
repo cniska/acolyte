@@ -8,8 +8,14 @@ import {
   resolveNaturalRememberDirective,
 } from "./chat-submit-handler";
 import type { StreamEvent } from "./client";
-import { createClient, createMessage, createSession, createStore, createSubmitHandlerHarness } from "./test-utils";
-import { dedent } from "./test-utils";
+import {
+  createClient,
+  createMessage,
+  createSession,
+  createStore,
+  createSubmitHandlerHarness,
+  dedent,
+} from "./test-utils";
 
 describe("chat submit handler guards", () => {
   test("resolveNaturalRememberDirective parses user and project forms", () => {
@@ -96,7 +102,8 @@ describe("chat submit handler guards", () => {
       .map((row) => `${row.role} ${row.style ?? "none"}\n${row.content}`)
       .join("\n\n")
       .replace(/:\s+/g, ": ");
-    expect(rendered).toBe(dedent(`
+    expect(rendered).toBe(
+      dedent(`
       user none
       /status
 
@@ -104,7 +111,8 @@ describe("chat submit handler guards", () => {
       provider: openai
       model: gpt-5-mini
       permissions: write
-    `));
+    `),
+    );
   });
 
   test("routes /sessions through submit handler and renders sessions list row", async () => {
@@ -118,7 +126,8 @@ describe("chat submit handler guards", () => {
       .map((row) => `${row.role} ${row.style ?? "none"}\n${row.content}`)
       .join("\n\n")
       .replace(/(\s{2})(?:in moments|\d+[smhdw] ago)$/gm, "$1<relative>");
-    expect(rendered).toBe(dedent(`
+    expect(rendered).toBe(
+      dedent(`
       user none
       /sessions
 
@@ -126,7 +135,8 @@ describe("chat submit handler guards", () => {
       Sessions 1
 
       ● sess_test  New Session  <relative>
-    `));
+    `),
+    );
   });
 
   test("routes /tokens through submit handler and renders token output row", async () => {
@@ -137,13 +147,15 @@ describe("chat submit handler guards", () => {
     expect(calls.setInputHistory).toBe(1);
     expect(calls.setValue).toEqual([""]);
     const rendered = rows.map((row) => `${row.role} ${row.style ?? "none"}\n${row.content}`).join("\n\n");
-    expect(rendered).toBe(dedent(`
+    expect(rendered).toBe(
+      dedent(`
       user none
       /tokens
 
       system tokenOutput
       No token data yet. Send a prompt first.
-    `));
+    `),
+    );
   });
 
   test("keeps create-edit-delete tool output visible across submits", async () => {

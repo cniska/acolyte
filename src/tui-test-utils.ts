@@ -1,7 +1,7 @@
-import { renderToString } from "ink";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { renderToString } from "ink";
 import type { ReactNode } from "react";
 import type { SessionStore } from "./types";
 
@@ -58,7 +58,10 @@ export async function runCliPlain(args: readonly string[], options: RunCliPlainO
     stderr: "pipe",
     env,
   });
-  const [stdoutText, stderrText] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
+  const [stdoutText, stderrText] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+  ]);
   const code = await proc.exited;
   if (code !== 0) throw new Error(`cli exited with code ${code}: ${stderrText}`);
   return trimRightLines(stripAnsi(stdoutText)).replace(/^\n+/, "").replace(/\n+$/, "");

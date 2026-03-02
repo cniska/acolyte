@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import React from "react";
+import type { ComponentProps } from "react";
 import { ChatHeader } from "./chat-header";
 import { ChatInputPanel } from "./chat-input-panel";
 import { palette } from "./palette";
@@ -8,7 +8,7 @@ import { renderInkPlain } from "./tui-test-utils";
 
 const DEFAULT_FOOTER_CONTEXT = "~/code/acolyte · main · gpt-5-mini";
 
-function renderInputPanel(overrides: React.ComponentProps<typeof ChatInputPanel> = {}, columns = 96): string {
+function renderInputPanel(overrides: ComponentProps<typeof ChatInputPanel> = {}, columns = 96): string {
   return renderInkPlain(
     <ChatInputPanel brandColor={palette.brand} footerContext={DEFAULT_FOOTER_CONTEXT} {...overrides} />,
     columns,
@@ -29,28 +29,36 @@ describe("chat tui visual regression: header", () => {
         logoEyeColor={palette.logoAccent}
       />,
     );
-    expect(out).toBe(dedent(`
+    expect(out).toBe(
+      dedent(
+        `
      ▗█████▖   Acolyte
     ▟█ ● ● █▙  version 0.1.0
     ▜█▄▄▄▄▄█▛  session sess_demo1234
-    `, 2));
+    `,
+        2,
+      ),
+    );
   });
 });
 
 describe("chat tui visual regression: footer and help", () => {
   test("renders stable footer context row", () => {
     const out = renderInputPanel();
-    expect(out).toBe(dedent(`
+    expect(out).toBe(
+      dedent(`
       ────────────────────────────────────────────────────────────────────────────────────────────────
       ❯ Ask anything…
       ────────────────────────────────────────────────────────────────────────────────────────────────
         ? help                                                    ~/code/acolyte · main · gpt-5-mini
-    `));
+    `),
+    );
   });
 
   test("renders stable help pane rows", () => {
     const out = renderInputPanel({ showHelp: true });
-    expect(out).toBe(dedent(`
+    expect(out).toBe(
+      dedent(`
       ────────────────────────────────────────────────────────────────────────────────────────────────
       ❯ Ask anything…
       ────────────────────────────────────────────────────────────────────────────────────────────────
@@ -60,12 +68,14 @@ describe("chat tui visual regression: footer and help", () => {
         /sessions           session history     /skills             skills
         /permissions        permissions         /exit               exit
         /status             server status
-    `));
+    `),
+    );
   });
 
   test("renders stable single-column help pane rows at narrow width", () => {
     const out = renderInputPanel({ showHelp: true }, 80);
-    expect(out).toBe(dedent(`
+    expect(out).toBe(
+      dedent(`
       ────────────────────────────────────────────────────────────────────────────────
       ❯ Ask anything…
       ────────────────────────────────────────────────────────────────────────────────
@@ -80,6 +90,7 @@ describe("chat tui visual regression: footer and help", () => {
         /tokens             token usage
         /skills             skills
         /exit               exit
-    `));
+    `),
+    );
   });
 });

@@ -72,11 +72,13 @@ describe("chat-commands", () => {
       permissions: "write",
     });
     expect(rendered.style).toBe("statusOutput");
-    expect(rendered.content).toBe(dedent(`
+    expect(rendered.content).toBe(
+      dedent(`
       provider:           openai
       model:              gpt-5-mini
       permissions:        write
-    `));
+    `),
+    );
   });
 
   test("presentSessionsOutput renders command presentation block", () => {

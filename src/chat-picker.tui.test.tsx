@@ -1,5 +1,4 @@
 import { describe, expect, test } from "bun:test";
-import React from "react";
 import { ChatInputPanel } from "./chat-input-panel";
 import type { PickerState } from "./chat-picker";
 import { palette } from "./palette";
@@ -28,7 +27,8 @@ describe("chat picker visual regression", () => {
       ],
       index: 0,
     });
-    expect(out).toBe(dedent(`
+    expect(out).toBe(
+      dedent(`
       ────────────────────────────────────────────────────────────────────────────────────────────────
       Skills
       
@@ -37,7 +37,8 @@ describe("chat picker visual regression", () => {
       
       Enter to select · Esc to close
       ────────────────────────────────────────────────────────────────────────────────────────────────
-    `));
+    `),
+    );
   });
 
   test("renders resume picker", () => {
@@ -53,7 +54,8 @@ describe("chat picker visual regression", () => {
         index: 1,
       });
 
-      expect(out).toBe(dedent(`
+      expect(out).toBe(
+        dedent(`
         ────────────────────────────────────────────────────────────────────────────────────────────────
         Resume Session
         
@@ -62,7 +64,8 @@ describe("chat picker visual regression", () => {
         
         Enter to resume · Esc to close
         ────────────────────────────────────────────────────────────────────────────────────────────────
-      `));
+      `),
+      );
     } finally {
       Date.now = realNow;
     }
@@ -77,7 +80,8 @@ describe("chat picker visual regression", () => {
       ],
       index: 1,
     });
-    expect(out).toBe(dedent(`
+    expect(out).toBe(
+      dedent(`
       ────────────────────────────────────────────────────────────────────────────────────────────────
       Permissions
       
@@ -86,7 +90,8 @@ describe("chat picker visual regression", () => {
       
       Enter to apply · Esc to close
       ────────────────────────────────────────────────────────────────────────────────────────────────
-    `));
+    `),
+    );
   });
 
   test("renders write-confirm picker", () => {
@@ -100,7 +105,8 @@ describe("chat picker visual regression", () => {
       index: 0,
       note: "",
     });
-    expect(out).toBe(dedent(`
+    expect(out).toBe(
+      dedent(`
       ────────────────────────────────────────────────────────────────────────────────────────────────
       Confirm Write Access
       
@@ -109,6 +115,7 @@ describe("chat picker visual regression", () => {
       
       Enter to apply · Esc to cancel
       ────────────────────────────────────────────────────────────────────────────────────────────────
-    `));
+    `),
+    );
   });
 });

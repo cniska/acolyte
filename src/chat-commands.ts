@@ -107,7 +107,10 @@ export function formatTokenUsageOutput(last: TokenUsageEntry | null, all: TokenU
       value: latestWarning,
     });
   }
-  const maxKey = Math.max(COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH, rows.reduce((max, row) => Math.max(max, row.key.length), 0));
+  const maxKey = Math.max(
+    COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH,
+    rows.reduce((max, row) => Math.max(max, row.key.length), 0),
+  );
   return rows.map((row) => `${row.key.padEnd(maxKey, " ")} ${row.value}`).join("\n");
 }
 
@@ -261,10 +264,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     try {
       const status = await ctx.client.status();
       const rendered = presentStatusOutput(status);
-      ctx.setRows((current) => [
-        ...current,
-        createRow("system", rendered.content, { style: rendered.style }),
-      ]);
+      ctx.setRows((current) => [...current, createRow("system", rendered.content, { style: rendered.style })]);
     } catch (error) {
       ctx.setRows((current) => [
         ...current,
@@ -387,10 +387,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     pushUserCommandRow();
     const last = ctx.tokenUsage.length > 0 ? ctx.tokenUsage[ctx.tokenUsage.length - 1] : null;
     const rendered = presentTokensOutput(last, ctx.tokenUsage);
-    ctx.setRows((current) => [
-      ...current,
-      createRow("system", rendered.content, { style: rendered.style }),
-    ]);
+    ctx.setRows((current) => [...current, createRow("system", rendered.content, { style: rendered.style })]);
     return { stop: true, userText: text };
   }
 

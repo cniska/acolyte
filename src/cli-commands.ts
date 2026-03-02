@@ -42,7 +42,7 @@ const SUBCOMMANDS: Record<string, SubcommandDoc> = {
     command: "run <prompt>",
     usage: "acolyte run [--file <path>] [--workspace <path>] [--verify] <prompt>",
     description: "run a single prompt",
-    examples: ["acolyte run \"summarize README.md\"", "acolyte run --file src/cli.ts --verify \"refactor help text\""],
+    examples: ['acolyte run "summarize README.md"', 'acolyte run --file src/cli.ts --verify "refactor help text"'],
   },
   history: {
     command: "history",
@@ -66,7 +66,7 @@ const SUBCOMMANDS: Record<string, SubcommandDoc> = {
     command: "memory",
     usage: "acolyte memory <list|add> [options]",
     description: "manage memory notes",
-    examples: ["acolyte memory list", "acolyte memory add --project \"prefer bun run verify\""],
+    examples: ["acolyte memory list", 'acolyte memory add --project "prefer bun run verify"'],
   },
   config: {
     command: "config",
@@ -78,7 +78,7 @@ const SUBCOMMANDS: Record<string, SubcommandDoc> = {
     command: "tool",
     usage: "acolyte tool <find|search|web|fetch|read|git-status|git-diff|run|edit> ...",
     description: "run a tool directly",
-    examples: ["acolyte tool find \"src/**/*.ts\"", "acolyte tool run \"bun run verify\""],
+    examples: ['acolyte tool find "src/**/*.ts"', 'acolyte tool run "bun run verify"'],
   },
 };
 

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { parseToolOutputMarker, parseToolOutputRow, TextToolOutputParser } from "./tool-output-parser";
 import { expectJSON } from "./test-utils";
+import { parseToolOutputMarker, parseToolOutputRow, TextToolOutputParser } from "./tool-output-parser";
 
 describe("tool output parser", () => {
   const parser = new TextToolOutputParser();

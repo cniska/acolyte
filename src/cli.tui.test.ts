@@ -14,7 +14,8 @@ describe("cli visual regression", () => {
 
   test("top-level help output stays stable", async () => {
     const out = await runCliPlain(["--help"]);
-    expect(out).toBe(dedent(`
+    expect(out).toBe(
+      dedent(`
       Acolyte v0.1.0
       
       Usage
@@ -33,7 +34,8 @@ describe("cli visual regression", () => {
       Options
         -h, --help          print help
         -V, --version       print version
-    `));
+    `),
+    );
   });
 
   test("history command renders aligned session rows", async () => {
@@ -63,10 +65,12 @@ describe("cli visual regression", () => {
       });
 
       const out = await run(["history"]);
-      expect(out).toBe(dedent(`
+      expect(out).toBe(
+        dedent(`
         sess_a  Current   invalid-time
         sess_b  Previous  invalid-time
-      `));
+      `),
+      );
     });
   });
 
@@ -79,8 +83,7 @@ describe("cli visual regression", () => {
             id: "sess_long",
             createdAt: "2026-03-02T00:00:00.000Z",
             updatedAt: "invalid-time",
-            title:
-              "This title is intentionally made very long so we can verify truncation in history output rows",
+            title: "This title is intentionally made very long so we can verify truncation in history output rows",
             model: "gpt-5-mini",
             messages: [],
             tokenUsage: [],
@@ -88,18 +91,22 @@ describe("cli visual regression", () => {
         ],
       });
       const out = await run(["history"]);
-      expect(out).toBe(dedent(`
+      expect(out).toBe(
+        dedent(`
         sess_long  This title is intentionally made very long so we can verify…  invalid-time
-      `));
+      `),
+      );
     });
   });
 
   test("memory list shows empty-state output", async () => {
     await withCliTestEnv(async ({ run }) => {
       const out = await run(["memory", "list"]);
-      expect(out).toBe(dedent(`
+      expect(out).toBe(
+        dedent(`
         No memories saved.
-      `));
+      `),
+      );
     });
   });
 
@@ -120,9 +127,11 @@ describe("cli visual regression", () => {
         "utf8",
       );
       const out = await run(["memory", "list"]);
-      expect(out).toBe(dedent(`
+      expect(out).toBe(
+        dedent(`
         mem_abc123  Prefer concise output.  invalid-time
-      `));
+      `),
+      );
     });
   });
 
@@ -130,58 +139,73 @@ describe("cli visual regression", () => {
     await withCliTestEnv(async ({ run }) => {
       await run(["config", "set", "apiUrl", "http://127.0.0.1:9"]);
       const out = await run(["status"]);
-      expect(out).toBe(dedent(`
+      expect(out).toBe(
+        dedent(`
         Local server is not running. Start it with: acolyte server start
-      `));
+      `),
+      );
     });
   });
 
   test("config set/list renders aligned persisted values", async () => {
     await withCliTestEnv(async ({ run }) => {
       const saved = await run(["config", "set", "model", "gpt-5-mini"]);
-      expect(saved).toBe(dedent(`
+      expect(saved).toBe(
+        dedent(`
         Saved config model (user).
-      `));
+      `),
+      );
 
       const listed = await run(["config", "list"]);
-      expect(listed).toBe(dedent(`
+      expect(listed).toBe(
+        dedent(`
         model:           gpt-5-mini
-      `));
+      `),
+      );
 
       const savedProject = await run(["config", "set", "--project", "transportMode", "rpc"]);
-      expect(savedProject).toBe(dedent(`
+      expect(savedProject).toBe(
+        dedent(`
         Saved config transportMode (project).
-      `));
+      `),
+      );
 
       const listedProject = await run(["config", "list", "--project"]);
-      expect(listedProject).toBe(dedent(`
+      expect(listedProject).toBe(
+        dedent(`
         scope:           project
         transportMode:   rpc
-      `));
+      `),
+      );
     });
   });
 
   test("status shows formatted fields on success", async () => {
-    await withTestHttpServer(async (request) => {
-      if (new URL(request.url).pathname !== "/v1/status") return new Response("not found", { status: 404 });
-      return Response.json({
-        provider: "openai",
-        model: "gpt-5-mini",
-        permissions: "read",
-        service: "http://localhost:6767",
-      });
-    }, async (baseUrl) => {
-      await withCliTestEnv(async ({ run }) => {
-        await run(["config", "set", "apiUrl", baseUrl]);
-        const out = await run(["status"]);
-        expect(out).toBe(dedent(`
+    await withTestHttpServer(
+      async (request) => {
+        if (new URL(request.url).pathname !== "/v1/status") return new Response("not found", { status: 404 });
+        return Response.json({
+          provider: "openai",
+          model: "gpt-5-mini",
+          permissions: "read",
+          service: "http://localhost:6767",
+        });
+      },
+      async (baseUrl) => {
+        await withCliTestEnv(async ({ run }) => {
+          await run(["config", "set", "apiUrl", baseUrl]);
+          const out = await run(["status"]);
+          expect(out).toBe(
+            dedent(`
           provider:           openai
           model:              gpt-5-mini
           permissions:        read
           service:            http://localhost:6767
-        `));
-      });
-    });
+        `),
+          );
+        });
+      },
+    );
   });
 
   test.each([

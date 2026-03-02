@@ -1,5 +1,4 @@
 import { describe, expect, test } from "bun:test";
-import React from "react";
 import { ChatTranscript } from "./chat-transcript";
 import { createClient, createSession, createStore, createSubmitHandlerHarness, dedent } from "./test-utils";
 import { renderInkPlain } from "./tui-test-utils";
@@ -22,13 +21,15 @@ describe("chat slash command visual regression", () => {
 
     await submit("/status");
 
-    expect(renderTranscript(rows)).toBe(dedent(`
+    expect(renderTranscript(rows)).toBe(
+      dedent(`
       ❯ /status
       
         provider:           openai
         model:              gpt-5-mini
         permissions:        write
-    `));
+    `),
+    );
   });
 
   test("renders /tokens transcript output with usage data", async () => {
@@ -56,13 +57,15 @@ describe("chat slash command visual regression", () => {
 
     await submit("/tokens");
 
-    expect(renderTranscript(rows)).toBe(dedent(`
+    expect(renderTranscript(rows)).toBe(
+      dedent(`
       ❯ /tokens
       
         last_turn:           prompt=40 completion=10 total=50
         session:             prompt=160 completion=40 total=200 (2 turns)
         model_calls:         last=1 session=3
-    `));
+    `),
+    );
   });
 
   test("renders /sessions transcript output with multiple sessions", async () => {
@@ -80,14 +83,16 @@ describe("chat slash command visual regression", () => {
 
       await submit("/sessions");
 
-      expect(renderTranscript(rows)).toBe(dedent(`
+      expect(renderTranscript(rows)).toBe(
+        dedent(`
         ❯ /sessions
         
           Sessions 2
         
           ● sess_active  Current Session   just now
             sess_prev    Previous Session  just now
-      `));
+      `),
+      );
     } finally {
       Date.now = realNow;
     }
