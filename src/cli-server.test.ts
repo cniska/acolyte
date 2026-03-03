@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { formatLocalServerReadyMessage, resolveChatApiUrl, resolveLocalDaemonApiUrl, shouldAutoStartLocalServerForChat } from "./cli-server";
+import {
+  formatLocalServerReadyMessage,
+  resolveChatApiUrl,
+  resolveLocalDaemonApiUrl,
+  shouldAutoStartLocalServerForChat,
+} from "./cli-server";
 
 describe("cli-server", () => {
   test("resolveChatApiUrl defaults to localhost:6767 when apiUrl is missing", () => {
