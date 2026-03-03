@@ -124,7 +124,7 @@ describe("cli visual regression", () => {
           {
             id: "sess_a",
             createdAt: "2026-03-02T00:00:00.000Z",
-            updatedAt: "invalid-time",
+            updatedAt: "9999-01-01T00:00:00.000Z",
             title: "Current",
             model: "gpt-5-mini",
             messages: [],
@@ -133,7 +133,7 @@ describe("cli visual regression", () => {
           {
             id: "sess_b",
             createdAt: "2026-03-02T00:00:00.000Z",
-            updatedAt: "invalid-time",
+            updatedAt: "9999-01-01T00:00:00.000Z",
             title: "Previous",
             model: "gpt-5-mini",
             messages: [],
@@ -145,8 +145,8 @@ describe("cli visual regression", () => {
       const out = await run(["history"]);
       expect(out).toBe(
         dedent(`
-        sess_a  Current   invalid-time
-        sess_b  Previous  invalid-time
+        sess_a  Current   just now
+        sess_b  Previous  just now
       `),
       );
     });
@@ -160,7 +160,7 @@ describe("cli visual regression", () => {
           {
             id: "sess_long",
             createdAt: "2026-03-02T00:00:00.000Z",
-            updatedAt: "invalid-time",
+            updatedAt: "9999-01-01T00:00:00.000Z",
             title: "This title is intentionally made very long so we can verify truncation in history output rows",
             model: "gpt-5-mini",
             messages: [],
@@ -171,7 +171,7 @@ describe("cli visual regression", () => {
       const out = await run(["history"]);
       expect(out).toBe(
         dedent(`
-        sess_long  This title is intentionally made very long so we can verify…  invalid-time
+        sess_long  This title is intentionally made very long so we can verify…  just now
       `),
       );
     });
@@ -197,7 +197,7 @@ describe("cli visual regression", () => {
         dedent(`
           ---
           id: mem_abc123
-          createdAt: invalid-time
+          createdAt: 9999-01-01T00:00:00.000Z
           scope: user
           ---
           Prefer concise output.
@@ -207,7 +207,7 @@ describe("cli visual regression", () => {
       const out = await run(["memory", "list"]);
       expect(out).toBe(
         dedent(`
-        mem_abc123  Prefer concise output.  invalid-time
+        mem_abc123  Prefer concise output.  just now
       `),
       );
     });

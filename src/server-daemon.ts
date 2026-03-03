@@ -2,6 +2,8 @@ import { closeSync, openSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { z } from "zod";
+import { type IsoDateTimeString, isoDateTimeSchema } from "./datetime";
 
 const SERVER_START_TIMEOUT_MS = 10_000;
 const HEALTHCHECK_TIMEOUT_MS = 1_200;
@@ -10,8 +12,15 @@ type ServerLock = {
   pid: number;
   apiUrl: string;
   port: number;
-  startedAt: string;
+  startedAt: IsoDateTimeString;
 };
+
+const serverLockSchema = z.object({
+  pid: z.number().int().positive(),
+  apiUrl: z.string().trim().min(1),
+  port: z.number().int().positive(),
+  startedAt: isoDateTimeSchema,
+});
 
 type EnsureLocalServerInput = {
   apiUrl: string;
@@ -53,14 +62,10 @@ function serverLogPath(homeDir = homedir()): string {
 
 function parseServerLock(raw: string): ServerLock | null {
   try {
-    const value = JSON.parse(raw) as Partial<ServerLock>;
-    const pid = value.pid;
-    if (typeof pid !== "number" || !Number.isInteger(pid) || pid <= 0) return null;
-    if (typeof value.apiUrl !== "string" || value.apiUrl.trim().length === 0) return null;
-    const port = value.port;
-    if (typeof port !== "number" || !Number.isInteger(port) || port <= 0) return null;
-    if (typeof value.startedAt !== "string" || value.startedAt.length === 0) return null;
-    return { pid, apiUrl: value.apiUrl, port, startedAt: value.startedAt };
+    const value = JSON.parse(raw);
+    const parsed = serverLockSchema.safeParse(value);
+    if (!parsed.success) return null;
+    return parsed.data;
   } catch {
     return null;
   }

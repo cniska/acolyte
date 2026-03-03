@@ -3,7 +3,8 @@
 ## Naming rules
 
 - **Domain noun** (`Session`, `Task`): in-memory domain entity used by core logic.
-- **`*Record`** (`SessionRecord`, `TaskRecord`): persisted storage shape.
+- **`*Record`** (`SessionRecord`, `TaskRecord`): one persisted entity record.
+- **`*State`** (`SessionState`): aggregate runtime/persisted state container.
 - **`*Contract`** (`TaskContract`, `StatusContract`): boundary shape for protocol/config/transport.
 - **`*Store`** (`SessionStore`, `TaskStore`): behavior interface for persistence operations.
 - **`*Schema`** (`sessionSchema`, `taskSchema`): Zod runtime validator and source of truth for unions.
@@ -11,8 +12,9 @@
 
 ## Core terms
 
-- **Session**: one chat session (messages, model, token usage, timestamps).
-- **SessionRecord**: persisted sessions payload (`sessions[]`, `activeSessionId`).
+- **Session**: one chat session in memory (messages, model, token usage, timestamps).
+- **SessionRecord**: one stored session record.
+- **SessionState**: sessions aggregate (`sessions[]`, `activeSessionId`).
 - **SessionStore**: read/write/create interface for session persistence.
 - **Task**: lifecycle work request flowing through accept/queue/run/terminal states.
 - **Guard**: pre-tool execution rule that may block calls.
