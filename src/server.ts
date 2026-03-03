@@ -12,7 +12,7 @@ import { mastraStorage, mastraStorageMode } from "./mastra-storage";
 import { getObservationalMemoryConfig } from "./memory-config";
 import { formatServerCapabilities, PROTOCOL_VERSION } from "./protocol";
 import { formatModel, isProviderAvailable, providerFromModel, resolveProvider } from "./provider-config";
-import { rpcClientMessageSchema } from "./rpc-protocol";
+import { rpcClientMessageSchema, statusPayloadSchema } from "./rpc-protocol";
 import { createSerialPerConnectionQueuePolicy } from "./rpc-queue";
 import { createId } from "./short-id";
 import { createSoulPrompt, getMemoryContextEntries } from "./soul";
@@ -132,21 +132,7 @@ type WorkspaceResolution = {
   workspaceMode: "default" | "path";
 };
 
-type StatusPayload = {
-  ok: true;
-  provider: string;
-  model: string;
-  protocolVersion: string;
-  capabilities: string;
-  permissions: string;
-  service: string;
-  memory: string;
-  observational_memory: string;
-  tasks_total: string;
-  tasks_running: string;
-  tasks_detached: string;
-  rpc_queue_depth: string;
-};
+type StatusPayload = z.infer<typeof statusPayloadSchema>;
 
 function resolveWorkspacePath(request: Pick<ChatRequest, "workspace">): WorkspaceResolution {
   if (!request.workspace) return { workspacePath: resolve(process.cwd()), workspaceMode: "default" };
@@ -223,7 +209,7 @@ async function buildStatusPayload(): Promise<StatusPayload> {
     tasks_total: String(taskSummary.total),
     tasks_running: String(taskSummary.running),
     tasks_detached: String(taskSummary.detached),
-    rpc_queue_depth: String(rpcQueuedTaskCount),
+    rpc_queue_length: String(rpcQueuedTaskCount),
   };
 }
 

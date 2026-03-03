@@ -19,7 +19,7 @@ const chatRequestSchema = z.object({
   workspace: z.string().optional(),
 });
 
-const statusPayloadSchema = z.object({
+export const statusPayloadSchema = z.object({
   ok: z.literal(true),
   provider: z.string(),
   model: z.string(),
@@ -29,6 +29,10 @@ const statusPayloadSchema = z.object({
   service: z.string(),
   memory: z.string(),
   observational_memory: z.string(),
+  tasks_total: z.string(),
+  tasks_running: z.string(),
+  tasks_detached: z.string(),
+  rpc_queue_length: z.string(),
 });
 
 export const rpcClientMessageSchema = z.discriminatedUnion("type", [

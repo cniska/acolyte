@@ -44,7 +44,21 @@ async function withDualTransportChatServer<T>(fn: (baseUrl: string) => Promise<T
             JSON.stringify({
               id: envelope.id,
               type: "status.result",
-              status: { provider: "openai", model: "gpt-5-mini", permissions: "write" },
+              status: {
+                ok: true,
+                provider: "openai",
+                model: "gpt-5-mini",
+                protocolVersion: "1",
+                capabilities: "stream.sse,error.structured",
+                permissions: "write",
+                service: "http://localhost:6767",
+                memory: "enabled",
+                observational_memory: "enabled (resource)",
+                tasks_total: "0",
+                tasks_running: "0",
+                tasks_detached: "0",
+                rpc_queue_length: "0",
+              },
             }),
           );
           return;

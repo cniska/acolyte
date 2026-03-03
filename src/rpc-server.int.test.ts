@@ -284,7 +284,7 @@ describe("rpc server websocket queue", () => {
     const response = await fetch(`http://127.0.0.1:${port}/v1/status`);
     expect(response.status).toBe(200);
     const status = (await response.json()) as Record<string, unknown>;
-    expect(status.rpc_queue_depth).toBe("1");
+    expect(status.rpc_queue_length).toBe("1");
     expect(status.tasks_total).toBe("2");
     expect(status.tasks_running).toBe("2");
     expect(typeof status.tasks_detached).toBe("string");

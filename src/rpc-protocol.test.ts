@@ -86,6 +86,10 @@ describe("rpc protocol schema", () => {
         service: "http://localhost:6767",
         memory: "enabled",
         observational_memory: "enabled (resource)",
+        tasks_total: "3",
+        tasks_running: "1",
+        tasks_detached: "0",
+        rpc_queue_length: "2",
       },
     });
     expect(parsed.success).toBe(true);
