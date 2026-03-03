@@ -5,7 +5,7 @@ import type { PermissionMode, TransportMode } from "./config-contract";
 import { rpcServerMessageSchema } from "./rpc-protocol";
 import type { StatusFields } from "./status-contract";
 import { streamErrorDetailSchema } from "./stream-error";
-import type { TaskRecord } from "./task-contract";
+import type { TaskId, TaskRecord } from "./task-contract";
 
 export interface ClientOptions {
   apiUrl?: string;
@@ -58,7 +58,7 @@ export interface Client {
   ): Promise<ChatResponse>;
   status(): Promise<StatusFields>;
   setPermissionMode(mode: PermissionMode): Promise<void>;
-  taskStatus(taskId: string): Promise<TaskRecord | null>;
+  taskStatus(taskId: TaskId): Promise<TaskRecord | null>;
 }
 
 export type ClientTransport = {
@@ -71,7 +71,7 @@ export type RemoteErrorMetadata = {
   errorId?: string;
   errorCode?: string;
   errorDetail?: z.infer<typeof streamErrorDetailSchema>;
-  taskId?: string;
+  taskId?: TaskId;
 };
 
 export function createRemoteError(message: string, metadata: RemoteErrorMetadata = {}): Error {

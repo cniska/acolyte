@@ -24,7 +24,7 @@ export type TaskState = z.infer<typeof taskStateSchema>;
 export type TaskTransitionReason = z.infer<typeof taskTransitionReasonSchema>;
 
 export const TERMINAL_TASK_STATES = ["completed", "failed", "cancelled"] as const;
-export const taskIdSchema = z.union([domainIdSchema("task"), domainIdSchema("rpc")]);
+export const taskIdSchema = domainIdSchema("task");
 export type TaskId = z.infer<typeof taskIdSchema>;
 
 export const taskRecordSchema = z.object({

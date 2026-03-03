@@ -66,7 +66,7 @@ describe("rpc protocol schema", () => {
       id: "rpc_2b",
       type: "task.status",
       payload: {
-        taskId: "rpc_1",
+        taskId: "task_1",
       },
     });
     expect(parsed.success).toBe(true);
@@ -99,6 +99,7 @@ describe("rpc protocol schema", () => {
     const accepted = rpcServerMessageSchema.safeParse({
       id: "rpc_4",
       type: "chat.accepted",
+      taskId: "task_4",
     });
     const queued = rpcServerMessageSchema.safeParse({
       id: "rpc_4",

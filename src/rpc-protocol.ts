@@ -2,6 +2,7 @@ import { z } from "zod";
 import { verifyScopeSchema } from "./api";
 import { domainIdSchema } from "./id-contract";
 import { sessionIdSchema } from "./session-contract";
+import { createId } from "./short-id";
 import { streamErrorDetailSchema } from "./stream-error";
 import { taskIdSchema, taskRecordSchema } from "./task-contract";
 
@@ -10,6 +11,10 @@ export const RESERVED_RPC_CLIENT_TASK_METHODS = ["task.start", "task.status", "t
 export const RESERVED_RPC_SERVER_TASK_METHODS = ["task.accepted", "task.updated", "task.done", "task.error"] as const;
 export const rpcRequestIdSchema = domainIdSchema("rpc");
 export type RpcRequestId = z.infer<typeof rpcRequestIdSchema>;
+
+export function createRpcRequestId(): RpcRequestId {
+  return rpcRequestIdSchema.parse(`rpc_${createId()}`);
+}
 
 const chatRequestSchema = z.object({
   message: z.string(),
@@ -81,6 +86,7 @@ export const rpcServerMessageSchema = z.discriminatedUnion("type", [
   z.object({
     id: rpcRequestIdSchema,
     type: z.literal("chat.accepted"),
+    taskId: taskIdSchema,
   }),
   z.object({
     id: rpcRequestIdSchema,

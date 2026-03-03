@@ -10,9 +10,9 @@ import {
 } from "./client-contract";
 import type { PermissionMode } from "./config-contract";
 import { connectionHelpMessage } from "./error-messages";
-import { createId } from "./short-id";
+import { createRpcRequestId } from "./rpc-protocol";
 import type { StatusFields } from "./status-contract";
-import type { TaskRecord } from "./task-contract";
+import type { TaskId, TaskRecord } from "./task-contract";
 
 type RpcServerMessage = NonNullable<ReturnType<typeof parseRpcServerMessage>>;
 
@@ -86,7 +86,7 @@ export class RpcClient implements Client {
     resolve: (msg: RpcServerMessage) => T | Error;
   }): Promise<T> {
     const ws = await this.openSocket();
-    const id = `rpc_${createId()}`;
+    const id = createRpcRequestId();
 
     return await new Promise<T>((resolve, reject) => {
       const cleanup = () => {
@@ -145,7 +145,7 @@ export class RpcClient implements Client {
     });
   }
 
-  async taskStatus(taskId: string): Promise<TaskRecord | null> {
+  async taskStatus(taskId: TaskId): Promise<TaskRecord | null> {
     return await this.runUnaryRequest<TaskRecord | null>({
       request: (id) => ({ id, type: "task.status", payload: { taskId } }),
       closeError: "RPC connection closed before task status response",
@@ -165,7 +165,8 @@ export class RpcClient implements Client {
     },
   ): Promise<ChatResponse> {
     const ws = await this.openSocket();
-    const id = `rpc_${createId()}`;
+    const id = createRpcRequestId();
+    let acceptedTaskId: TaskId | undefined;
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
     const timeoutMs = this.replyTimeoutMs;
     const RPC_ABORT_CLOSE_GRACE_MS = 120;
@@ -191,7 +192,7 @@ export class RpcClient implements Client {
         try {
           ws.send(
             JSON.stringify({
-              id: `rpc_abort_${createId()}`,
+              id: createRpcRequestId(),
               type: "chat.abort",
               payload: { requestId: id },
             }),
@@ -209,13 +210,14 @@ export class RpcClient implements Client {
       };
       const onClose = () => {
         cleanup();
-        reject(createRemoteError("RPC stream closed before final reply", { taskId: id }));
+        reject(createRemoteError("RPC stream closed before final reply", { taskId: acceptedTaskId }));
       };
       const onMessage = (event: MessageEvent) => {
         resetTimeout();
         const msg = this.parseSocketMessage(event);
         if (!msg || msg.id !== id) return;
         if (msg.type === "chat.accepted") {
+          acceptedTaskId = msg.taskId;
           options.onEvent({ type: "status", message: "Accepted by server…" });
           return;
         }

@@ -44,7 +44,7 @@ describe("rpc websocket lifecycle", () => {
         const sendMessage = (body: Record<string, unknown>) => {
           this.emit("message", { data: JSON.stringify({ id: msg.id, ...body }) });
         };
-        queueMicrotask(() => sendMessage({ type: "chat.accepted" }));
+        queueMicrotask(() => sendMessage({ type: "chat.accepted", taskId: "task_rpc_1" }));
         queueMicrotask(() => sendMessage({ type: "chat.queued", position: 2 }));
         queueMicrotask(() => sendMessage({ type: "chat.queued", position: 1 }));
         queueMicrotask(() => sendMessage({ type: "chat.started" }));
@@ -175,7 +175,7 @@ describe("rpc websocket lifecycle", () => {
         const sendMessage = (body: Record<string, unknown>) => {
           this.emit("message", { data: JSON.stringify({ id: msg.id, ...body }) });
         };
-        queueMicrotask(() => sendMessage({ type: "chat.accepted" }));
+        queueMicrotask(() => sendMessage({ type: "chat.accepted", taskId: "task_rpc_2" }));
         queueMicrotask(() => sendMessage({ type: "chat.started" }));
         queueMicrotask(() =>
           sendMessage({
@@ -216,7 +216,7 @@ describe("rpc websocket lifecycle", () => {
       const rpcError = error as Error & { taskId?: string };
       expect(rpcError.message).toBe("RPC stream closed before final reply");
       expect(typeof rpcError.taskId).toBe("string");
-      expect(rpcError.taskId?.startsWith("rpc_")).toBe(true);
+      expect(rpcError.taskId?.startsWith("task_")).toBe(true);
     }
 
     expect(receivedEventTypes).toEqual(["status", "status", "tool-call"]);

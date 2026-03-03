@@ -2,33 +2,35 @@ import type { z } from "zod";
 import type { ChatRequest, ChatResponse } from "./api";
 import { appConfig, setPermissionMode } from "./app-config";
 import { log } from "./log";
-import { rpcClientMessageSchema } from "./rpc-protocol";
+import { rpcClientMessageSchema, rpcRequestIdSchema, type RpcRequestId } from "./rpc-protocol";
 import { createSerialPerConnectionQueuePolicy } from "./rpc-queue";
 import type { RunChatHandlers, StatusPayload, StreamErrorPayload } from "./server-contract";
-import type { TaskId, TaskState, TaskTransitionReason } from "./task-contract";
+import { createId } from "./short-id";
+import { taskIdSchema, type TaskId, type TaskState, type TaskTransitionReason } from "./task-contract";
 import type { TaskRegistry } from "./task-registry";
 
 const RPC_MAX_QUEUED_TASKS_PER_CONNECTION = 25;
 
 export type ActiveRpcChatState = {
   aborted: boolean;
+  taskId: TaskId;
 };
 
 export type QueuedRpcChat = {
-  id: string;
+  id: RpcRequestId;
   request: ChatRequest;
   state: ActiveRpcChatState;
 };
 
 export type RpcConnectionState = {
   authed: boolean;
-  activeChats: Map<string, ActiveRpcChatState>;
-  runningChatId: string | null;
+  activeChats: Map<RpcRequestId, ActiveRpcChatState>;
+  runningChatId: RpcRequestId | null;
   queue: QueuedRpcChat[];
 };
 
 type ParsedRpcEnvelope = {
-  id: string | null;
+  id: RpcRequestId | null;
   message: z.infer<typeof rpcClientMessageSchema> | null;
 };
 type RpcClientMessage = z.infer<typeof rpcClientMessageSchema>;
@@ -68,6 +70,10 @@ export function getRpcQueuedTaskCount(): number {
   return rpcQueuedTaskCount;
 }
 
+function nextTaskId(): TaskId {
+  return taskIdSchema.parse(`task_${createId()}`);
+}
+
 function parseRpcMessageEnvelope(raw: string | Buffer | Uint8Array): ParsedRpcEnvelope {
   const text = typeof raw === "string" ? raw : Buffer.from(raw).toString("utf8");
   let parsedJson: unknown;
@@ -76,7 +82,7 @@ function parseRpcMessageEnvelope(raw: string | Buffer | Uint8Array): ParsedRpcEn
   } catch {
     return { id: null, message: null };
   }
-  const id =
+  const idCandidate =
     typeof parsedJson === "object" &&
     parsedJson !== null &&
     "id" in parsedJson &&
@@ -84,6 +90,7 @@ function parseRpcMessageEnvelope(raw: string | Buffer | Uint8Array): ParsedRpcEn
     parsedJson.id.length > 0
       ? parsedJson.id
       : null;
+  const id = idCandidate && rpcRequestIdSchema.safeParse(idCandidate).success ? idCandidate : null;
   const parsed = rpcClientMessageSchema.safeParse(parsedJson);
   if (!parsed.success) return { id, message: null };
   return { id: parsed.data.id, message: parsed.data };
@@ -128,8 +135,8 @@ export function createRpcWebsocketHandlers(deps: RpcDeps): Bun.WebSocketHandler<
   type RpcHandlerContext = {
     wsData: RpcConnectionState;
     send: (payload: Record<string, unknown>) => void;
-    sendForId: (id: string, payload: Record<string, unknown>) => void;
-    startChat: (chatId: string, request: ChatRequest, state: ActiveRpcChatState) => void;
+    sendForId: (id: RpcRequestId, payload: Record<string, unknown>) => void;
+    startChat: (requestId: RpcRequestId, request: ChatRequest, state: ActiveRpcChatState) => void;
   };
 
   const handleStatusGet = async (
@@ -158,7 +165,8 @@ export function createRpcWebsocketHandlers(deps: RpcDeps): Bun.WebSocketHandler<
       ctx.send({ type: "error", error: "Invalid request shape" });
       return;
     }
-    const state: ActiveRpcChatState = { aborted: false };
+
+    const state: ActiveRpcChatState = { aborted: false, taskId: nextTaskId() };
     const startResult = rpcQueuePolicy.onStart({
       runningChatId: ctx.wsData.runningChatId,
       queue: ctx.wsData.queue,
@@ -169,25 +177,28 @@ export function createRpcWebsocketHandlers(deps: RpcDeps): Bun.WebSocketHandler<
       ctx.send({ type: "error", error: startResult.error });
       return;
     }
-    deps.transitionTaskState(msg.id, { state: "accepted" }, { reason: "chat_accepted", transport: "rpc" });
+
+    deps.transitionTaskState(state.taskId, { state: "accepted" }, { reason: "chat_accepted", transport: "rpc" });
     log.info("rpc task accepted", {
-      task_id: msg.id,
+      task_id: state.taskId,
       session_id: request.sessionId ?? null,
       queued_task_count: ctx.wsData.queue.length,
       has_running_task: Boolean(ctx.wsData.runningChatId),
     });
-    ctx.send({ type: "chat.accepted" });
+    ctx.send({ type: "chat.accepted", taskId: state.taskId });
+
     if (startResult.type === "queued") {
-      deps.transitionTaskState(msg.id, { state: "queued" }, { reason: "chat_accepted", transport: "rpc" });
+      deps.transitionTaskState(state.taskId, { state: "queued" }, { reason: "chat_accepted", transport: "rpc" });
       rpcQueuedTaskCount += 1;
       log.info("rpc task queued", {
-        task_id: msg.id,
+        task_id: state.taskId,
         queue_position: startResult.position,
         running_task_id: ctx.wsData.runningChatId,
       });
       ctx.send({ type: "chat.queued", position: startResult.position });
       return;
     }
+
     ctx.startChat(msg.id, request, state);
   };
 
@@ -197,31 +208,37 @@ export function createRpcWebsocketHandlers(deps: RpcDeps): Bun.WebSocketHandler<
     if (activeState) {
       activeState.aborted = true;
       deps.transitionTaskState(
-        requestId,
+        activeState.taskId,
         { state: "cancelled", summary: "Cancelled by client request." },
         { reason: "abort_requested", transport: "rpc" },
       );
-      log.info("rpc task abort acknowledged", { task_id: requestId, state: "running" });
+      log.info("rpc task abort acknowledged", { task_id: activeState.taskId, state: "running" });
       ctx.send({ type: "chat.abort.result", requestId, aborted: true });
       return;
     }
+
+    const queuedItem = ctx.wsData.queue.find((item) => item.id === requestId);
     const queueResult = rpcQueuePolicy.onAbort(ctx.wsData.queue, requestId);
     if (queueResult.removed) {
       rpcQueuedTaskCount = Math.max(0, rpcQueuedTaskCount - 1);
-      deps.transitionTaskState(
-        requestId,
-        { state: "cancelled", summary: "Cancelled while queued." },
-        { reason: "abort_requested", transport: "rpc" },
-      );
-      log.info("rpc task abort acknowledged", { task_id: requestId, state: "queued" });
+      if (queuedItem)
+        deps.transitionTaskState(
+          queuedItem.state.taskId,
+          { state: "cancelled", summary: "Cancelled while queued." },
+          { reason: "abort_requested", transport: "rpc" },
+        );
+      log.info("rpc task abort acknowledged", { task_id: queuedItem?.state.taskId ?? null, state: "queued" });
       for (const update of queueResult.updates) {
-        ctx.sendForId(update.id, { type: "chat.queued", position: update.position });
-        log.info("rpc task reindexed", { task_id: update.id, queue_position: update.position });
+        const requestId = update.id as RpcRequestId;
+        ctx.sendForId(requestId, { type: "chat.queued", position: update.position });
+        const updatedTaskId = ctx.wsData.queue.find((item) => item.id === requestId)?.state.taskId ?? null;
+        log.info("rpc task reindexed", { task_id: updatedTaskId, queue_position: update.position });
       }
       ctx.send({ type: "chat.abort.result", requestId, aborted: true });
       return;
     }
-    log.info("rpc task abort ignored", { task_id: requestId });
+
+    log.info("rpc task abort ignored", { request_id: requestId });
     ctx.send({ type: "chat.abort.result", requestId, aborted: false });
   };
 
@@ -235,23 +252,23 @@ export function createRpcWebsocketHandlers(deps: RpcDeps): Bun.WebSocketHandler<
         active_task_count: ws.data.activeChats.size,
         queued_task_count: ws.data.queue.length,
       });
-      for (const [taskId, state] of ws.data.activeChats.entries()) {
+      for (const [requestId, state] of ws.data.activeChats.entries()) {
         state.aborted = true;
         deps.transitionTaskState(
-          taskId,
+          state.taskId,
           { state: "cancelled", summary: "Connection closed before completion." },
           { reason: "connection_closed", transport: "rpc" },
         );
-        log.info("rpc task cancelled on disconnect", { task_id: taskId, state: "running" });
+        log.info("rpc task cancelled on disconnect", { task_id: state.taskId, request_id: requestId, state: "running" });
       }
       for (const item of ws.data.queue) {
         item.state.aborted = true;
         deps.transitionTaskState(
-          item.id,
+          item.state.taskId,
           { state: "cancelled", summary: "Connection closed while queued." },
           { reason: "connection_closed", transport: "rpc" },
         );
-        log.info("rpc task cancelled on disconnect", { task_id: item.id, state: "queued" });
+        log.info("rpc task cancelled on disconnect", { task_id: item.state.taskId, request_id: item.id, state: "queued" });
       }
       rpcQueuedTaskCount = Math.max(0, rpcQueuedTaskCount - ws.data.queue.length);
       ws.data.queue = [];
@@ -265,49 +282,51 @@ export function createRpcWebsocketHandlers(deps: RpcDeps): Bun.WebSocketHandler<
       }
       const envelope = parseRpcMessageEnvelope(raw);
       if (!envelope.message) {
-        ws.send(JSON.stringify({ id: envelope.id ?? "unknown", type: "error", error: "Invalid RPC message" }));
+        ws.send(JSON.stringify({ id: envelope.id ?? "rpc_unknown", type: "error", error: "Invalid RPC message" }));
         return;
       }
       const message = envelope.message;
 
-      const sendForId = (id: string, payload: Record<string, unknown>): void => {
+      const sendForId = (id: RpcRequestId, payload: Record<string, unknown>): void => {
         ws.send(JSON.stringify({ id, ...payload }));
       };
       const send = (payload: Record<string, unknown>): void => sendForId(message.id, payload);
 
-      const startChat = (chatId: string, request: ChatRequest, state: ActiveRpcChatState): void => {
-        ws.data.runningChatId = chatId;
-        ws.data.activeChats.set(chatId, state);
+      const startChat = (requestId: RpcRequestId, request: ChatRequest, state: ActiveRpcChatState): void => {
+        ws.data.runningChatId = requestId;
+        ws.data.activeChats.set(requestId, state);
         log.info("rpc worker task scheduled", {
-          task_id: chatId,
+          task_id: state.taskId,
           session_id: request.sessionId ?? null,
           queued_task_count: ws.data.queue.length,
         });
-        sendForId(chatId, { type: "chat.started" });
+        sendForId(requestId, { type: "chat.started" });
         void runWorkerTask(
           {
-            taskId: chatId,
+            taskId: state.taskId,
             request,
             state,
             shouldYield: () => rpcQueuePolicy.shouldYield(ws.data.queue),
-            emitEvent: (event) => sendForId(chatId, { type: "chat.event", event }),
-            emitDone: (reply) => sendForId(chatId, { type: "chat.done", reply }),
-            emitError: (payload) => sendForId(chatId, { type: "chat.error", ...payload }),
+            emitEvent: (event) => sendForId(requestId, { type: "chat.event", event }),
+            emitDone: (reply) => sendForId(requestId, { type: "chat.done", reply }),
+            emitError: (payload) => sendForId(requestId, { type: "chat.error", ...payload }),
           },
           deps,
         ).finally(() => {
-          ws.data.activeChats.delete(chatId);
-          if (ws.data.runningChatId === chatId) ws.data.runningChatId = null;
+          ws.data.activeChats.delete(requestId);
+          if (ws.data.runningChatId === requestId) ws.data.runningChatId = null;
           const queuedBefore = ws.data.queue.length;
           const dequeue = rpcQueuePolicy.onFinished(ws.data.queue);
           const removedFromQueue = queuedBefore - ws.data.queue.length;
           rpcQueuedTaskCount = Math.max(0, rpcQueuedTaskCount - removedFromQueue);
           for (const update of dequeue.updates) {
-            sendForId(update.id, { type: "chat.queued", position: update.position });
-            log.info("rpc task reindexed", { task_id: update.id, queue_position: update.position });
+            const updateRequestId = update.id as RpcRequestId;
+            sendForId(updateRequestId, { type: "chat.queued", position: update.position });
+            const updatedTaskId = ws.data.queue.find((item) => item.id === updateRequestId)?.state.taskId ?? null;
+            log.info("rpc task reindexed", { task_id: updatedTaskId, queue_position: update.position });
           }
           if (dequeue.next) {
-            log.info("rpc task dequeued", { task_id: dequeue.next.id });
+            log.info("rpc task dequeued", { task_id: dequeue.next.state.taskId });
             startChat(dequeue.next.id, dequeue.next.request, dequeue.next.state);
           }
         });
