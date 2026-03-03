@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  createSerialPerConnectionQueuePolicy,
   dequeueNextQueuedChat,
   type QueuedRpcChatEntry,
   queuePositionUpdates,
@@ -73,5 +74,39 @@ describe("rpc queue", () => {
     expect(abortedResult.next).toBeNull();
     expect(abortedResult.updates).toEqual([]);
     expect(abortedOnly).toEqual([]);
+  });
+
+  test("serial policy queues when a chat is already running", () => {
+    const policy = createSerialPerConnectionQueuePolicy({
+      queueFullError: (maxQueued) => `full:${maxQueued}`,
+    });
+    const queue: QueuedRpcChatEntry[] = [{ id: "chat_1", state: { aborted: false } }];
+
+    const result = policy.onStart({
+      runningChatId: "chat_running",
+      queue,
+      entry: { id: "chat_2", state: { aborted: false } },
+      maxQueued: 25,
+    });
+
+    expect(result).toEqual({ type: "queued", position: 2 });
+    expect(queue.map((item) => item.id)).toEqual(["chat_1", "chat_2"]);
+  });
+
+  test("serial policy rejects when queue cap is reached", () => {
+    const policy = createSerialPerConnectionQueuePolicy({
+      queueFullError: (maxQueued) => `full:${maxQueued}`,
+    });
+    const queue: QueuedRpcChatEntry[] = [{ id: "chat_1", state: { aborted: false } }];
+
+    const result = policy.onStart({
+      runningChatId: "chat_running",
+      queue,
+      entry: { id: "chat_2", state: { aborted: false } },
+      maxQueued: 1,
+    });
+
+    expect(result).toEqual({ type: "rejected", error: "full:1" });
+    expect(queue.map((item) => item.id)).toEqual(["chat_1"]);
   });
 });

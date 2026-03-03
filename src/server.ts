@@ -13,7 +13,7 @@ import { getObservationalMemoryConfig } from "./memory-config";
 import { formatServerCapabilities, PROTOCOL_VERSION } from "./protocol";
 import { formatModel, isProviderAvailable, providerFromModel, resolveProvider } from "./provider-config";
 import { rpcClientMessageSchema } from "./rpc-protocol";
-import { dequeueNextQueuedChat, removeQueuedChatById } from "./rpc-queue";
+import { createSerialPerConnectionQueuePolicy } from "./rpc-queue";
 import { createId } from "./short-id";
 import { createSoulPrompt, getMemoryContextEntries } from "./soul";
 import type { StreamErrorDetail } from "./stream-error";
@@ -349,6 +349,10 @@ type QueuedRpcChat = {
   state: ActiveRpcChatState;
 };
 
+const rpcQueuePolicy = createSerialPerConnectionQueuePolicy<QueuedRpcChat>({
+  queueFullError: (maxQueued) => `RPC queue is full (${maxQueued} queued). Try again shortly.`,
+});
+
 type RpcConnectionState = {
   authed: boolean;
   activeChats: Map<string, ActiveRpcChatState>;
@@ -405,6 +409,106 @@ type ParsedRpcEnvelope = {
   id: string | null;
   message: z.infer<typeof rpcClientMessageSchema> | null;
 };
+type RpcClientMessage = z.infer<typeof rpcClientMessageSchema>;
+type RpcHandlerMap = {
+  [K in RpcClientMessage["type"]]: (msg: Extract<RpcClientMessage, { type: K }>) => Promise<void> | void;
+};
+type RpcHandlerContext = {
+  wsData: RpcConnectionState;
+  send: (payload: Record<string, unknown>) => void;
+  sendForId: (id: string, payload: Record<string, unknown>) => void;
+  startChat: (chatId: string, request: ChatRequest, state: ActiveRpcChatState) => void;
+};
+
+async function handleStatusGet(_msg: Extract<RpcClientMessage, { type: "status.get" }>, ctx: RpcHandlerContext): Promise<void> {
+  ctx.send({ type: "status.result", status: await buildStatusPayload() });
+}
+
+function handlePermissionsSet(msg: Extract<RpcClientMessage, { type: "permissions.set" }>, ctx: RpcHandlerContext): void {
+  const mode = msg.payload.mode;
+  setPermissionMode(mode);
+  ctx.send({ type: "permissions.result", permissionMode: appConfig.agent.permissions.mode });
+}
+
+function handleChatStart(msg: Extract<RpcClientMessage, { type: "chat.start" }>, ctx: RpcHandlerContext): void {
+  if (ctx.wsData.activeChats.has(msg.id) || ctx.wsData.queue.some((item) => item.id === msg.id)) {
+    ctx.send({ type: "error", error: `Chat request already running for id: ${msg.id}` });
+    return;
+  }
+  const request = msg.payload.request;
+  if (!isChatRequest(request)) {
+    ctx.send({ type: "error", error: "Invalid request shape" });
+    return;
+  }
+  const state: ActiveRpcChatState = { aborted: false };
+  const startResult = rpcQueuePolicy.onStart({
+    runningChatId: ctx.wsData.runningChatId,
+    queue: ctx.wsData.queue,
+    entry: { id: msg.id, request, state },
+    maxQueued: RPC_MAX_QUEUED_TASKS_PER_CONNECTION,
+  });
+  if (startResult.type === "rejected") {
+    ctx.send({ type: "error", error: startResult.error });
+    return;
+  }
+  transitionTaskState(msg.id, { state: "running" }, { reason: "chat_accepted", transport: "rpc" });
+  log.info("rpc task accepted", {
+    task_id: msg.id,
+    session_id: request.sessionId ?? null,
+    queued_task_count: ctx.wsData.queue.length,
+    has_running_task: Boolean(ctx.wsData.runningChatId),
+  });
+  ctx.send({ type: "chat.accepted" });
+  if (startResult.type === "queued") {
+    rpcQueuedTaskCount += 1;
+    log.info("rpc task queued", {
+      task_id: msg.id,
+      queue_position: startResult.position,
+      running_task_id: ctx.wsData.runningChatId,
+    });
+    ctx.send({ type: "chat.queued", position: startResult.position });
+    return;
+  }
+  ctx.startChat(msg.id, request, state);
+}
+
+function handleChatAbort(msg: Extract<RpcClientMessage, { type: "chat.abort" }>, ctx: RpcHandlerContext): void {
+  const requestId = msg.payload.requestId;
+  const activeState = ctx.wsData.activeChats.get(requestId);
+  if (activeState) {
+    activeState.aborted = true;
+    transitionTaskState(
+      requestId,
+      { state: "cancelled", summary: "Cancelled by client request." },
+      { reason: "abort_requested", transport: "rpc" },
+    );
+    log.info("rpc task abort acknowledged", { task_id: requestId, state: "running" });
+    ctx.send({ type: "chat.abort.result", requestId, aborted: true });
+    return;
+  }
+  const queueResult = rpcQueuePolicy.onAbort(ctx.wsData.queue, requestId);
+  if (queueResult.removed) {
+    rpcQueuedTaskCount = Math.max(0, rpcQueuedTaskCount - 1);
+    transitionTaskState(
+      requestId,
+      { state: "cancelled", summary: "Cancelled while queued." },
+      { reason: "abort_requested", transport: "rpc" },
+    );
+    log.info("rpc task abort acknowledged", { task_id: requestId, state: "queued" });
+    for (const update of queueResult.updates) {
+      ctx.sendForId(update.id, { type: "chat.queued", position: update.position });
+      log.info("rpc task reindexed", { task_id: update.id, queue_position: update.position });
+    }
+    ctx.send({ type: "chat.abort.result", requestId, aborted: true });
+    return;
+  }
+  log.info("rpc task abort ignored", { task_id: requestId });
+  ctx.send({ type: "chat.abort.result", requestId, aborted: false });
+}
+
+function handleTaskStatus(msg: Extract<RpcClientMessage, { type: "task.status" }>, ctx: RpcHandlerContext): void {
+  ctx.send({ type: "task.status.result", task: taskRegistry.get(msg.payload.taskId) });
+}
 
 function parseRpcMessageEnvelope(raw: string | Buffer | Uint8Array): ParsedRpcEnvelope {
   const text = typeof raw === "string" ? raw : Buffer.from(raw).toString("utf8");
@@ -702,7 +806,7 @@ const server = Bun.serve<RpcConnectionState>({
           taskId: chatId,
           request,
           state,
-          shouldYield: () => ws.data.queue.length > 0,
+          shouldYield: () => rpcQueuePolicy.shouldYield(ws.data.queue),
           emitEvent: (event) => sendForId(chatId, { type: "chat.event", event }),
           emitDone: (reply) => sendForId(chatId, { type: "chat.done", reply }),
           emitError: (payload) => sendForId(chatId, { type: "chat.error", ...payload }),
@@ -710,7 +814,7 @@ const server = Bun.serve<RpcConnectionState>({
           ws.data.activeChats.delete(chatId);
           if (ws.data.runningChatId === chatId) ws.data.runningChatId = null;
           const queuedBefore = ws.data.queue.length;
-          const dequeue = dequeueNextQueuedChat(ws.data.queue);
+          const dequeue = rpcQueuePolicy.onFinished(ws.data.queue);
           const removedFromQueue = queuedBefore - ws.data.queue.length;
           rpcQueuedTaskCount = Math.max(0, rpcQueuedTaskCount - removedFromQueue);
           for (const update of dequeue.updates) {
@@ -724,97 +828,21 @@ const server = Bun.serve<RpcConnectionState>({
         });
       };
 
-      if (message.type === "status.get") {
-        send({ type: "status.result", status: await buildStatusPayload() });
+      const context: RpcHandlerContext = { wsData: ws.data, send, sendForId, startChat };
+      const handlers: RpcHandlerMap = {
+        "status.get": (msg) => handleStatusGet(msg, context),
+        "permissions.set": (msg) => handlePermissionsSet(msg, context),
+        "chat.start": (msg) => handleChatStart(msg, context),
+        "chat.abort": (msg) => handleChatAbort(msg, context),
+        "task.status": (msg) => handleTaskStatus(msg, context),
+      };
+
+      const handler = handlers[message.type];
+      if (!handler) {
+        send({ type: "error", error: "Unsupported RPC method" });
         return;
       }
-
-      if (message.type === "permissions.set") {
-        const mode = message.payload.mode;
-        setPermissionMode(mode);
-        send({ type: "permissions.result", permissionMode: appConfig.agent.permissions.mode });
-        return;
-      }
-
-      if (message.type === "chat.start") {
-        if (ws.data.activeChats.has(message.id) || ws.data.queue.some((item) => item.id === message.id)) {
-          send({ type: "error", error: `Chat request already running for id: ${message.id}` });
-          return;
-        }
-        const request = message.payload.request;
-        if (!isChatRequest(request)) return send({ type: "error", error: "Invalid request shape" });
-        if (ws.data.runningChatId && ws.data.queue.length >= RPC_MAX_QUEUED_TASKS_PER_CONNECTION) {
-          send({
-            type: "error",
-            error: `RPC queue is full (${RPC_MAX_QUEUED_TASKS_PER_CONNECTION} queued). Retry after tasks finish.`,
-          });
-          return;
-        }
-        const state: ActiveRpcChatState = { aborted: false };
-        transitionTaskState(message.id, { state: "running" }, { reason: "chat_accepted", transport: "rpc" });
-        log.info("rpc task accepted", {
-          task_id: message.id,
-          session_id: request.sessionId ?? null,
-          queued_task_count: ws.data.queue.length,
-          has_running_task: Boolean(ws.data.runningChatId),
-        });
-        send({ type: "chat.accepted" });
-        if (ws.data.runningChatId) {
-          ws.data.queue.push({ id: message.id, request, state });
-          rpcQueuedTaskCount += 1;
-          log.info("rpc task queued", {
-            task_id: message.id,
-            queue_position: ws.data.queue.length,
-            running_task_id: ws.data.runningChatId,
-          });
-          send({ type: "chat.queued", position: ws.data.queue.length });
-          return;
-        }
-        startChat(message.id, request, state);
-        return;
-      }
-
-      if (message.type === "chat.abort") {
-        const requestId = message.payload.requestId;
-        const activeState = ws.data.activeChats.get(requestId);
-        if (activeState) {
-          activeState.aborted = true;
-          transitionTaskState(
-            requestId,
-            { state: "cancelled", summary: "Cancelled by client request." },
-            { reason: "abort_requested", transport: "rpc" },
-          );
-          log.info("rpc task abort acknowledged", { task_id: requestId, state: "running" });
-          send({ type: "chat.abort.result", requestId, aborted: true });
-          return;
-        }
-        const queueResult = removeQueuedChatById(ws.data.queue, requestId);
-        if (queueResult.removed) {
-          rpcQueuedTaskCount = Math.max(0, rpcQueuedTaskCount - 1);
-          transitionTaskState(
-            requestId,
-            { state: "cancelled", summary: "Cancelled while queued." },
-            { reason: "abort_requested", transport: "rpc" },
-          );
-          log.info("rpc task abort acknowledged", { task_id: requestId, state: "queued" });
-          for (const update of queueResult.updates) {
-            sendForId(update.id, { type: "chat.queued", position: update.position });
-            log.info("rpc task reindexed", { task_id: update.id, queue_position: update.position });
-          }
-          send({ type: "chat.abort.result", requestId, aborted: true });
-          return;
-        }
-        log.info("rpc task abort ignored", { task_id: requestId });
-        send({ type: "chat.abort.result", requestId, aborted: false });
-        return;
-      }
-
-      if (message.type === "task.status") {
-        send({ type: "task.status.result", task: taskRegistry.get(message.payload.taskId) });
-        return;
-      }
-
-      send({ type: "error", error: "Unsupported RPC method" });
+      await handler(message as never);
     },
   },
 });

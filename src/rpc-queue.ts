@@ -10,6 +10,25 @@ export type QueueAbortResult = {
   updates: Array<{ id: string; position: number }>;
 };
 
+export type QueueStartResult =
+  | { type: "start_now" }
+  | { type: "queued"; position: number }
+  | { type: "rejected"; error: string };
+
+export type QueueStartInput<T extends QueuedRpcChatEntry> = {
+  runningChatId: string | null;
+  queue: T[];
+  entry: T;
+  maxQueued: number;
+};
+
+export type RpcQueuePolicy<T extends QueuedRpcChatEntry> = {
+  onStart: (input: QueueStartInput<T>) => QueueStartResult;
+  onFinished: (queue: T[]) => QueueDequeueResult<T>;
+  onAbort: (queue: T[], requestId: string) => QueueAbortResult;
+  shouldYield: (queue: T[]) => boolean;
+};
+
 export function queuePositionUpdates(queue: QueuedRpcChatEntry[]): Array<{ id: string; position: number }> {
   return queue.map((item, position) => ({ id: item.id, position: position + 1 }));
 }
@@ -36,5 +55,31 @@ export function removeQueuedChatById(queue: QueuedRpcChatEntry[], requestId: str
   return {
     removed: true,
     updates: queuePositionUpdates(queue),
+  };
+}
+
+export function createSerialPerConnectionQueuePolicy<T extends QueuedRpcChatEntry>(options: {
+  queueFullError: (maxQueued: number) => string;
+}): RpcQueuePolicy<T> {
+  return {
+    onStart({ runningChatId, queue, entry, maxQueued }): QueueStartResult {
+      if (runningChatId && queue.length >= maxQueued) {
+        return { type: "rejected", error: options.queueFullError(maxQueued) };
+      }
+      if (runningChatId) {
+        queue.push(entry);
+        return { type: "queued", position: queue.length };
+      }
+      return { type: "start_now" };
+    },
+    onFinished(queue): QueueDequeueResult<T> {
+      return dequeueNextQueuedChat(queue);
+    },
+    onAbort(queue, requestId): QueueAbortResult {
+      return removeQueuedChatById(queue, requestId);
+    },
+    shouldYield(queue): boolean {
+      return queue.length > 0;
+    },
   };
 }

@@ -479,7 +479,8 @@ describe("rpc server websocket queue", () => {
             m.id === "rpc_queue_limit_overflow" &&
             m.type === "error" &&
             typeof m.error === "string" &&
-            m.error.includes("RPC queue is full"),
+            m.error.includes("RPC queue is full") &&
+            m.error.includes("Try again shortly."),
         );
         if (overflowError) {
           clearInterval(interval);
