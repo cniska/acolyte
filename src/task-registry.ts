@@ -31,6 +31,36 @@ export function canTransitionTaskState(fromState: TaskState, toState: TaskState)
 export class TaskRegistry {
   private readonly tasks = new Map<string, TaskRecord>();
 
+  summary(): {
+    total: number;
+    running: number;
+    detached: number;
+    completed: number;
+    failed: number;
+    cancelled: number;
+  } {
+    let running = 0;
+    let detached = 0;
+    let completed = 0;
+    let failed = 0;
+    let cancelled = 0;
+    for (const task of this.tasks.values()) {
+      if (task.state === "running") running += 1;
+      if (task.state === "detached") detached += 1;
+      if (task.state === "completed") completed += 1;
+      if (task.state === "failed") failed += 1;
+      if (task.state === "cancelled") cancelled += 1;
+    }
+    return {
+      total: this.tasks.size,
+      running,
+      detached,
+      completed,
+      failed,
+      cancelled,
+    };
+  }
+
   transitionTask(taskId: string, patch: TaskPatch): TaskTransitionResult {
     const now = new Date().toISOString();
     const existing = this.tasks.get(taskId);

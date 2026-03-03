@@ -52,6 +52,24 @@ describe("task registry", () => {
     expect(registry.transitionTask("task_2", { state: "running" }).ok).toBe(true);
     expect(registry.get("task_2")?.state).toBe("running");
   });
+
+  test("reports per-state summary counts", () => {
+    const registry = new TaskRegistry();
+    expect(registry.transitionTask("task_running", { state: "running" }).ok).toBe(true);
+    expect(registry.transitionTask("task_detached", { state: "detached" }).ok).toBe(true);
+    expect(registry.transitionTask("task_completed", { state: "completed" }).ok).toBe(true);
+    expect(registry.transitionTask("task_failed", { state: "failed" }).ok).toBe(true);
+    expect(registry.transitionTask("task_cancelled", { state: "cancelled" }).ok).toBe(true);
+
+    expect(registry.summary()).toEqual({
+      total: 5,
+      running: 1,
+      detached: 1,
+      completed: 1,
+      failed: 1,
+      cancelled: 1,
+    });
+  });
 });
 
 describe("task transition rules", () => {

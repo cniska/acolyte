@@ -28,6 +28,7 @@ const omConfig = getObservationalMemoryConfig();
 const SUPPRESSED_STDERR_PREFIX = "Upstream LLM API error from";
 const SERVER_IDLE_TIMEOUT_SECONDS = Math.max(30, Math.ceil(appConfig.server.replyTimeoutMs / 1000) + 30);
 const taskRegistry = new TaskRegistry();
+let rpcQueuedTaskCount = 0;
 const debug = createDebugLogger({
   scope: "server",
   sink: (line) => log.debug(line),
@@ -139,6 +140,10 @@ type StatusPayload = {
   service: string;
   memory: string;
   observational_memory: string;
+  tasks_total: string;
+  tasks_running: string;
+  tasks_detached: string;
+  rpc_queue_depth: string;
 };
 
 function resolveWorkspacePath(request: Pick<ChatRequest, "workspace">): WorkspaceResolution {
@@ -207,6 +212,7 @@ async function buildStatusPayload(): Promise<StatusPayload> {
       : modelProvider
     : "mock";
   const memoryContextCount = (await getMemoryContextEntries()).length;
+  const taskSummary = taskRegistry.summary();
   return {
     ok: true,
     provider,
@@ -217,6 +223,10 @@ async function buildStatusPayload(): Promise<StatusPayload> {
     service: `http://localhost:${PORT}`,
     memory: memoryContextCount > 0 ? `${mastraStorageMode} (${memoryContextCount} entries)` : mastraStorageMode,
     observational_memory: `enabled (${omConfig.scope})`,
+    tasks_total: String(taskSummary.total),
+    tasks_running: String(taskSummary.running),
+    tasks_detached: String(taskSummary.detached),
+    rpc_queue_depth: String(rpcQueuedTaskCount),
   };
 }
 
@@ -657,6 +667,7 @@ const server = Bun.serve<RpcConnectionState>({
         );
         log.info("rpc task cancelled on disconnect", { task_id: item.id, state: "queued" });
       }
+      rpcQueuedTaskCount = Math.max(0, rpcQueuedTaskCount - ws.data.queue.length);
       ws.data.queue = [];
       ws.data.runningChatId = null;
     },
@@ -697,7 +708,10 @@ const server = Bun.serve<RpcConnectionState>({
         }).finally(() => {
           ws.data.activeChats.delete(chatId);
           if (ws.data.runningChatId === chatId) ws.data.runningChatId = null;
+          const queuedBefore = ws.data.queue.length;
           const dequeue = dequeueNextQueuedChat(ws.data.queue);
+          const removedFromQueue = queuedBefore - ws.data.queue.length;
+          rpcQueuedTaskCount = Math.max(0, rpcQueuedTaskCount - removedFromQueue);
           for (const update of dequeue.updates) {
             sendForId(update.id, { type: "chat.queued", position: update.position });
             log.info("rpc task reindexed", { task_id: update.id, queue_position: update.position });
@@ -739,6 +753,7 @@ const server = Bun.serve<RpcConnectionState>({
         send({ type: "chat.accepted" });
         if (ws.data.runningChatId) {
           ws.data.queue.push({ id: message.id, request, state });
+          rpcQueuedTaskCount += 1;
           log.info("rpc task queued", {
             task_id: message.id,
             queue_position: ws.data.queue.length,
@@ -767,6 +782,7 @@ const server = Bun.serve<RpcConnectionState>({
         }
         const queueResult = removeQueuedChatById(ws.data.queue, requestId);
         if (queueResult.removed) {
+          rpcQueuedTaskCount = Math.max(0, rpcQueuedTaskCount - 1);
           transitionTaskState(
             requestId,
             { state: "cancelled", summary: "Cancelled while queued." },

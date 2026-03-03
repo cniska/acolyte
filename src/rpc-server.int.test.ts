@@ -194,6 +194,105 @@ describe("rpc server websocket queue", () => {
     ws.close();
   }, 20_000);
 
+  test("status reports rpc queue depth and task counters", async () => {
+    const port = randomTestPort();
+    const apiKey = "rpc_test_key";
+    await startServerForRpcTest(port, apiKey);
+
+    const ws = new WebSocket(`ws://127.0.0.1:${port}/v1/rpc?apiKey=${apiKey}`);
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("websocket open timed out")), 5000);
+      ws.addEventListener("open", () => {
+        clearTimeout(timeout);
+        resolve();
+      });
+      ws.addEventListener("error", () => {
+        clearTimeout(timeout);
+        reject(new Error("websocket failed to open"));
+      });
+    });
+
+    const messages: RpcEnvelope[] = [];
+    ws.addEventListener("message", (event) => {
+      try {
+        messages.push(JSON.parse(typeof event.data === "string" ? event.data : String(event.data)) as RpcEnvelope);
+      } catch {
+        // Ignore malformed messages from test perspective.
+      }
+    });
+
+    ws.send(
+      JSON.stringify({
+        id: "rpc_status_queue_a",
+        type: "chat.start",
+        payload: {
+          request: {
+            message: "Do a long-running analysis with many steps before answering.",
+            history: [],
+            model: "gpt-5-mini",
+            sessionId: "sess_rpc_status_queue_a",
+          },
+        },
+      }),
+    );
+    ws.send(
+      JSON.stringify({
+        id: "rpc_status_queue_b",
+        type: "chat.start",
+        payload: {
+          request: {
+            message: "Do a long-running analysis with many steps before answering.",
+            history: [],
+            model: "gpt-5-mini",
+            sessionId: "sess_rpc_status_queue_b",
+          },
+        },
+      }),
+    );
+
+    await new Promise<void>((resolve, reject) => {
+      const startedAt = Date.now();
+      const interval = setInterval(() => {
+        const queued = messages.some(
+          (m) => m.id === "rpc_status_queue_b" && m.type === "chat.queued" && m.position === 1,
+        );
+        if (queued) {
+          clearInterval(interval);
+          resolve();
+          return;
+        }
+        if (Date.now() - startedAt > 8000) {
+          clearInterval(interval);
+          reject(new Error(`timed out waiting for queued envelope: ${JSON.stringify(messages)}`));
+        }
+      }, 20);
+    });
+
+    const response = await fetch(`http://127.0.0.1:${port}/v1/status`);
+    expect(response.status).toBe(200);
+    const status = (await response.json()) as Record<string, unknown>;
+    expect(status.rpc_queue_depth).toBe("1");
+    expect(status.tasks_total).toBe("2");
+    expect(status.tasks_running).toBe("2");
+    expect(typeof status.tasks_detached).toBe("string");
+
+    ws.send(
+      JSON.stringify({
+        id: "rpc_status_abort_a",
+        type: "chat.abort",
+        payload: { requestId: "rpc_status_queue_a" },
+      }),
+    );
+    ws.send(
+      JSON.stringify({
+        id: "rpc_status_abort_b",
+        type: "chat.abort",
+        payload: { requestId: "rpc_status_queue_b" },
+      }),
+    );
+    ws.close();
+  }, 20_000);
+
   test("emits queue/abort envelopes and reindexes queued positions", async () => {
     const port = randomTestPort();
     const apiKey = "rpc_test_key";
