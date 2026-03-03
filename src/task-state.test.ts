@@ -3,6 +3,8 @@ import { isTerminalTaskState, taskRecordSchema, taskStateSchema } from "./task-s
 
 describe("task state contract", () => {
   test("accepts all planned task states", () => {
+    expect(taskStateSchema.safeParse("accepted").success).toBe(true);
+    expect(taskStateSchema.safeParse("queued").success).toBe(true);
     expect(taskStateSchema.safeParse("running").success).toBe(true);
     expect(taskStateSchema.safeParse("detached").success).toBe(true);
     expect(taskStateSchema.safeParse("completed").success).toBe(true);
@@ -23,6 +25,8 @@ describe("task state contract", () => {
   });
 
   test("detects terminal vs non-terminal states", () => {
+    expect(isTerminalTaskState("accepted")).toBe(false);
+    expect(isTerminalTaskState("queued")).toBe(false);
     expect(isTerminalTaskState("running")).toBe(false);
     expect(isTerminalTaskState("detached")).toBe(false);
     expect(isTerminalTaskState("completed")).toBe(true);

@@ -13,7 +13,7 @@ import { createRpcWebsocketHandlers, getRpcQueuedTaskCount, type RpcConnectionSt
 import { createId } from "./short-id";
 import { getMemoryContextEntries } from "./soul";
 import { TaskRegistry } from "./task-registry";
-import type { TaskTransitionReason } from "./task-state";
+import type { TaskState, TaskTransitionReason } from "./task-state";
 
 const PORT = appConfig.server.port;
 const API_KEY = appConfig.server.apiKey;
@@ -83,7 +83,7 @@ function resolveResourceId(url: URL): string {
 
 function transitionTaskState(
   taskId: string,
-  patch: { state?: "running" | "detached" | "completed" | "failed" | "cancelled"; summary?: string },
+  patch: { state?: TaskState; summary?: string },
   meta?: { reason?: TaskTransitionReason; transport?: string },
 ): void {
   const previous = taskRegistry.get(taskId);

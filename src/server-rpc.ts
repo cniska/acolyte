@@ -6,7 +6,7 @@ import { rpcClientMessageSchema } from "./rpc-protocol";
 import { createSerialPerConnectionQueuePolicy } from "./rpc-queue";
 import type { RunChatHandlers, StatusPayload, StreamErrorPayload } from "./server-contract";
 import type { TaskRegistry } from "./task-registry";
-import type { TaskTransitionReason } from "./task-state";
+import type { TaskState, TaskTransitionReason } from "./task-state";
 
 const RPC_MAX_QUEUED_TASKS_PER_CONNECTION = 25;
 
@@ -53,7 +53,7 @@ type RpcDeps = {
   taskRegistry: TaskRegistry;
   transitionTaskState: (
     taskId: string,
-    patch: { state?: "running" | "detached" | "completed" | "failed" | "cancelled"; summary?: string },
+    patch: { state?: TaskState; summary?: string },
     meta?: { reason?: TaskTransitionReason; transport?: string },
   ) => void;
 };
@@ -169,7 +169,7 @@ export function createRpcWebsocketHandlers(deps: RpcDeps): Bun.WebSocketHandler<
       ctx.send({ type: "error", error: startResult.error });
       return;
     }
-    deps.transitionTaskState(msg.id, { state: "running" }, { reason: "chat_accepted", transport: "rpc" });
+    deps.transitionTaskState(msg.id, { state: "accepted" }, { reason: "chat_accepted", transport: "rpc" });
     log.info("rpc task accepted", {
       task_id: msg.id,
       session_id: request.sessionId ?? null,
@@ -178,6 +178,7 @@ export function createRpcWebsocketHandlers(deps: RpcDeps): Bun.WebSocketHandler<
     });
     ctx.send({ type: "chat.accepted" });
     if (startResult.type === "queued") {
+      deps.transitionTaskState(msg.id, { state: "queued" }, { reason: "chat_accepted", transport: "rpc" });
       rpcQueuedTaskCount += 1;
       log.info("rpc task queued", {
         task_id: msg.id,

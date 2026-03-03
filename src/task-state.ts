@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const taskStateSchema = z.enum(["running", "detached", "completed", "failed", "cancelled"]);
+export const taskStateSchema = z.enum(["accepted", "queued", "running", "detached", "completed", "failed", "cancelled"]);
 export const taskTransitionReasonSchema = z.enum([
   "chat_accepted",
   "chat_started",

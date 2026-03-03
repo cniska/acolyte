@@ -6,6 +6,8 @@ type TaskPatch = {
 };
 
 const ALLOWED_TRANSITIONS: Record<TaskState, readonly TaskState[]> = {
+  accepted: ["queued", "running", "cancelled"],
+  queued: ["running", "cancelled"],
   running: ["detached", "completed", "failed", "cancelled"],
   detached: ["running", "completed", "failed", "cancelled"],
   completed: [],
@@ -96,7 +98,7 @@ export class TaskRegistry {
     }
     const next: TaskRecord = {
       id: taskId,
-      state: patch.state ?? existing?.state ?? "running",
+      state: patch.state ?? existing?.state ?? "accepted",
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
       summary: patch.summary ?? existing?.summary,
