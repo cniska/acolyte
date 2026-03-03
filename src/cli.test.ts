@@ -71,7 +71,7 @@ describe("cli", () => {
     expect(resolveLocalDaemonApiUrl("https://api.example.com", 6767)).toBe("http://127.0.0.1:6767");
   });
 
-  test("formatLocalServerReadyMessage maps started/managed/unmanaged states", () => {
+  test("formatLocalServerReadyMessage maps started/managed/external states", () => {
     expect(formatLocalServerReadyMessage({ apiUrl: "http://127.0.0.1:6767", started: true, managed: true })).toBe(
       "Started local server at http://127.0.0.1:6767",
     );
@@ -79,7 +79,7 @@ describe("cli", () => {
       "Using local server at http://127.0.0.1:6767",
     );
     expect(formatLocalServerReadyMessage({ apiUrl: "http://127.0.0.1:6767", started: false, managed: false })).toBe(
-      "Using unmanaged local server at http://127.0.0.1:6767 (started outside Acolyte).",
+      "Using external local server at http://127.0.0.1:6767 (started outside this client).",
     );
   });
 

@@ -26,7 +26,7 @@ if [[ "$restart_server" == "1" ]]; then
   bun run src/cli.ts server stop >/dev/null 2>&1 || true
   if bun run wait:server --url "$wait_url" --timeout-ms "300" >/dev/null 2>&1; then
     echo "Server still running at ${wait_url} after requested restart." >&2
-    echo "Stop unmanaged server manually, then retry." >&2
+    echo "Stop external server manually, then retry." >&2
     exit 1
   fi
 fi

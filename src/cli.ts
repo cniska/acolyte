@@ -92,7 +92,7 @@ export function resolveLocalDaemonApiUrl(configuredApiUrl: string | undefined, p
 export function formatLocalServerReadyMessage(result: { apiUrl: string; started: boolean; managed: boolean }): string {
   if (result.started) return `Started local server at ${result.apiUrl}`;
   if (result.managed) return `Using local server at ${result.apiUrl}`;
-  return `Using unmanaged local server at ${result.apiUrl} (started outside Acolyte).`;
+  return `Using external local server at ${result.apiUrl} (started outside this client).`;
 }
 
 export function newMessage(role: Message["role"], content: string): Message {

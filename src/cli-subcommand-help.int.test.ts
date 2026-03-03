@@ -107,12 +107,12 @@ describe("cli subcommand help", () => {
     const statusResult = runCli(home, project, "server", "status");
     const stopResult = runCli(home, project, "server", "stop");
     expect(startResult.exitCode).toBe(0);
-    expect(`${startResult.stdout}\n${startResult.stderr}`).toMatch(/(Started|Using( unmanaged)?) local server at /);
+    expect(`${startResult.stdout}\n${startResult.stderr}`).toMatch(/(Started|Using( external)?) local server at /);
     expect(statusResult.exitCode).toBe(0);
-    expect(`${statusResult.stdout}\n${statusResult.stderr}`).toMatch(/Local server running \((pid( \d+)?|unmanaged)\)/);
+    expect(`${statusResult.stdout}\n${statusResult.stderr}`).toMatch(/Local server running \((pid( \d+)?|external)\)/);
     expect(stopResult.exitCode).toBe(0);
     expect(`${stopResult.stdout}\n${stopResult.stderr}`).toMatch(
-      /(Stopped local server\.|Local server is not running\.|Local server is running unmanaged)/,
+      /(Stopped local server\.|Local server is not running\.|Local server is running as an external process)/,
     );
   });
 });

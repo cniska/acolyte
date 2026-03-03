@@ -502,7 +502,7 @@ async function serveMode(args: string[]): Promise<void> {
         return;
       }
       if (status.pid) printDim(`Local server running (pid ${status.pid}) at ${status.apiUrl}`);
-      else printDim(`Local server running (unmanaged) at ${status.apiUrl}`);
+      else printDim(`Local server running (external) at ${status.apiUrl}`);
       return;
     }
     case "stop": {
@@ -515,7 +515,7 @@ async function serveMode(args: string[]): Promise<void> {
       const localApiUrl = resolveLocalDaemonApiUrl(appConfig.server.apiUrl, appConfig.server.port);
       const status = await localServerStatus({ apiKey: appConfig.server.apiKey, apiUrl: localApiUrl });
       if (status.running && !status.pid) {
-        printDim(`Local server is running unmanaged at ${status.apiUrl}. Stop it manually.`);
+        printDim(`Local server is running as an external process at ${status.apiUrl}. Stop it manually.`);
         return;
       }
       printDim("Local server is not running.");
