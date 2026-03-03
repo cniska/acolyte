@@ -88,6 +88,7 @@ describe("cli visual regression", () => {
       Commands
         resume [id-prefix]  resume previous session
         run <prompt>        run a single prompt
+        init [provider]     initialize provider API key
         history             show recent sessions
         server              manage local API server
         status              show server status
@@ -289,6 +290,18 @@ describe("cli visual regression", () => {
   }, 20_000);
 
   test.each([
+    {
+      args: ["init", "help"],
+      output: dedent(`
+        Usage: acolyte init [openai|anthropic|gemini]
+        
+        Description: initialize provider API key
+        
+        Examples:
+          acolyte init
+          acolyte init openai
+      `),
+    },
     {
       args: ["resume", "help"],
       output: dedent(`

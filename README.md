@@ -8,13 +8,10 @@ Acolyte is a chat-first coding agent with an explicit lifecycle, tool guards, an
 
 ```bash
 bun install
-cp .env.example .env
+bun run client init
 ```
 
-Set at least one provider key in `.env`:
-- `OPENAI_API_KEY`
-- `ANTHROPIC_API_KEY`
-- `GOOGLE_API_KEY`
+This command prompts for one provider API key and writes it to local `.env`.
 
 Start the development chat workflow:
 

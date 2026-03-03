@@ -1,3 +1,5 @@
+import { readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { z } from "zod";
 import { appConfig } from "./app-config";
 import { formatColumns, formatRelativeTime } from "./chat-format";
@@ -43,6 +45,12 @@ const SUBCOMMANDS: Record<string, SubcommandDoc> = {
     usage: "acolyte run [--file <path>] [--workspace <path>] [--verify] <prompt>",
     description: "run a single prompt",
     examples: ['acolyte run "summarize README.md"', 'acolyte run --file src/cli.ts --verify "refactor help text"'],
+  },
+  init: {
+    command: "init [provider]",
+    usage: "acolyte init [openai|anthropic|gemini]",
+    description: "initialize provider API key",
+    examples: ["acolyte init", "acolyte init openai"],
   },
   history: {
     command: "history",
@@ -174,6 +182,90 @@ const dogfoodArgsSchema = z.object({
   verify: z.boolean(),
 });
 
+type InitProvider = "openai" | "anthropic" | "gemini";
+const PROVIDER_ENV_KEYS = ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GOOGLE_API_KEY"] as const;
+const initProviderSchema = z.enum(["openai", "anthropic", "gemini"]);
+
+function parseInitProvider(value: string | undefined): InitProvider | null {
+  if (!value || value.trim().length === 0) return null;
+  const parsed = initProviderSchema.safeParse(value.trim().toLowerCase());
+  return parsed.success ? parsed.data : null;
+}
+
+function envKeyForProvider(provider: InitProvider): "OPENAI_API_KEY" | "ANTHROPIC_API_KEY" | "GOOGLE_API_KEY" {
+  if (provider === "anthropic") return "ANTHROPIC_API_KEY";
+  if (provider === "gemini") return "GOOGLE_API_KEY";
+  return "OPENAI_API_KEY";
+}
+
+function upsertDotEnvValue(existing: string, key: string, value: string): string {
+  const lines = existing.length > 0 ? existing.split(/\r?\n/) : [];
+  const matcher = new RegExp(`^\\s*${key}\\s*=`);
+  const nextLines: string[] = [];
+  let replaced = false;
+
+  for (const line of lines) {
+    if (matcher.test(line)) {
+      if (!replaced) {
+        nextLines.push(`${key}=${value}`);
+        replaced = true;
+      }
+      continue;
+    }
+    nextLines.push(line);
+  }
+
+  if (!replaced) nextLines.push(`${key}=${value}`);
+  const cleaned = nextLines.filter((line, index, arr) => !(index === arr.length - 1 && line.trim() === ""));
+  return `${cleaned.join("\n")}\n`;
+}
+
+function hasAnyProviderApiKey(existing: string): boolean {
+  return PROVIDER_ENV_KEYS.some((key) => new RegExp(`^\\s*${key}\\s*=`, "m").test(existing));
+}
+
+async function promptHidden(question: string): Promise<string | undefined> {
+  if (!process.stdin.isTTY) return prompt(question)?.trim();
+
+  return new Promise((resolve) => {
+    let value = "";
+    const onData = (chunk: Buffer): void => {
+      const text = chunk.toString("utf8");
+      for (const char of text) {
+        if (char === "\u0003") {
+          process.stdout.write("\n");
+          cleanup();
+          process.exitCode = 1;
+          resolve(undefined);
+          return;
+        }
+        if (char === "\r" || char === "\n") {
+          process.stdout.write("\n");
+          cleanup();
+          resolve(value.trim());
+          return;
+        }
+        if (char === "\u007f") {
+          value = value.slice(0, -1);
+          continue;
+        }
+        value += char;
+      }
+    };
+
+    const cleanup = (): void => {
+      process.stdin.off("data", onData);
+      process.stdin.setRawMode(false);
+      process.stdin.pause();
+    };
+
+    process.stdout.write(question);
+    process.stdin.setRawMode(true);
+    process.stdin.resume();
+    process.stdin.on("data", onData);
+  });
+}
+
 export function runResourceId(sessionId: string): string {
   return `run-${sessionId.replace(/^sess_/, "").slice(0, 24)}`;
 }
@@ -273,6 +365,51 @@ export function parseDogfoodArgs(args: string[]): { files: string[]; prompt: str
   }
 
   return dogfoodArgsSchema.parse({ files, prompt: promptTokens.join(" ").trim(), verify });
+}
+
+async function initMode(args: string[]): Promise<void> {
+  if (hasHelpFlag(args)) {
+    subcommandHelp("init");
+    return;
+  }
+  if (args.length > 1) {
+    subcommandError("init");
+    return;
+  }
+
+  let provider = parseInitProvider(args[0]);
+  if (!provider) provider = parseInitProvider(prompt("Provider [openai|anthropic|gemini]: ")?.trim());
+  if (!provider) {
+    printError("Invalid provider. Use openai, anthropic, or gemini.");
+    process.exitCode = 1;
+    return;
+  }
+
+  const envKey = envKeyForProvider(provider);
+  const apiKey = await promptHidden("API key: ");
+  if (!apiKey) {
+    printError(`${envKey} cannot be empty.`);
+    process.exitCode = 1;
+    return;
+  }
+
+  const envPath = join(process.cwd(), ".env");
+  let existing = "";
+  try {
+    existing = await readFile(envPath, "utf8");
+  } catch {
+    existing = "";
+  }
+  if (hasAnyProviderApiKey(existing)) {
+    printError("A provider API key already exists in .env. Remove it first to re-run init.");
+    process.exitCode = 1;
+    return;
+  }
+  const next = upsertDotEnvValue(existing, envKey, apiKey);
+  await writeFile(envPath, next, "utf8");
+
+  printDim(`Saved ${envKey} in ${envPath}`);
+  printDim("Next: bun run dev");
 }
 
 async function resumeMode(args: string[]): Promise<void> {
@@ -657,6 +794,7 @@ async function configMode(args: string[]): Promise<void> {
 }
 
 export const commands: Record<string, (args: string[]) => Promise<void>> = {
+  init: initMode,
   resume: resumeMode,
   run: runMode,
   dogfood: dogfoodMode,

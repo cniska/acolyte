@@ -55,7 +55,7 @@ async function createTestEnv(): Promise<{ home: string; project: string }> {
 describe("cli subcommand help", () => {
   test("all subcommands accept --help", async () => {
     const { home, project } = await createTestEnv();
-    const subcommands = ["resume", "run", "history", "server", "status", "memory", "config", "tool"] as const;
+    const subcommands = ["init", "resume", "run", "history", "server", "status", "memory", "config", "tool"] as const;
 
     for (const subcommand of subcommands) {
       const result = runCli(home, project, subcommand, "--help");

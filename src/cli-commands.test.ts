@@ -38,6 +38,7 @@ describe("cli-commands", () => {
 
   test("buildUsageCommandRows includes core commands", () => {
     const rows = buildUsageCommandRows();
+    expect(rows.some((row) => row.command.startsWith("init"))).toBe(true);
     expect(rows.some((row) => row.command.startsWith("resume"))).toBe(true);
     expect(rows.some((row) => row.command.startsWith("run"))).toBe(true);
     expect(rows.some((row) => row.command.startsWith("chat"))).toBe(false);
@@ -53,6 +54,7 @@ describe("cli-commands", () => {
   });
 
   test("commands table covers all registered subcommands", () => {
+    expect(commands.init).toBeFunction();
     expect(commands.resume).toBeFunction();
     expect(commands.run).toBeFunction();
     expect(commands.history).toBeFunction();
