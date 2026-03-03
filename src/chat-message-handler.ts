@@ -22,6 +22,7 @@ import {
   resolveNaturalRememberDirective,
   statusPermissionMode,
 } from "./chat-message-handler-helpers";
+import { startRemoteTaskFollowup } from "./chat-message-handler-task-followup";
 import type { Client } from "./client";
 import { addMemory } from "./memory";
 import type { Session, SessionStore } from "./session-types";
@@ -290,52 +291,17 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
     } catch (error) {
       const remoteTaskId = remoteTaskIdFromError(error);
       if (!isAbortError(error) && remoteTaskId) {
-        try {
-          const task = await input.client.taskStatus(remoteTaskId);
-          if (task && (task.state === "running" || task.state === "detached")) {
-            keepThinkingForRemoteTask = true;
-            input.setProgressText("Still running on server…");
-            void (async () => {
-              try {
-                for (let pollCount = 0; pollCount < 300; pollCount += 1) {
-                  await Bun.sleep(700);
-                  const next = await input.client.taskStatus(remoteTaskId);
-                  if (!next || next.state === "running" || next.state === "detached") continue;
-                  if (next.state === "failed") {
-                    const detail = next.summary?.trim() || "Task failed on server.";
-                    input.setRows((current) => [
-                      ...current,
-                      createRow("system", detail, { dim: true, style: "error" }),
-                    ]);
-                  } else if (next.state === "cancelled") {
-                    const detail = next.summary?.trim() || "Task cancelled.";
-                    input.setRows((current) => [
-                      ...current,
-                      createRow("system", detail, { dim: true, style: "cancelled" }),
-                    ]);
-                  }
-                  await input.persist();
-                  return;
-                }
-                input.setRows((current) => [
-                  ...current,
-                  createRow("system", "Task is still running. Use /status to check server health.", { dim: true }),
-                ]);
-              } catch {
-                input.setRows((current) => [
-                  ...current,
-                  createRow("system", "Lost task tracking after stream disconnect.", { dim: true, style: "error" }),
-                ]);
-              } finally {
-                stopWorking();
-                input.setProgressText(null);
-                await input.persist().catch(() => {});
-              }
-            })();
-            return;
-          }
-        } catch {
-          // Fall through to normal error handling if task status lookup fails.
+        const startedFollowup = await startRemoteTaskFollowup({
+          client: input.client,
+          remoteTaskId,
+          setRows: input.setRows,
+          setProgressText: input.setProgressText,
+          persist: input.persist,
+          stopWorking,
+        });
+        if (startedFollowup) {
+          keepThinkingForRemoteTask = true;
+          return;
         }
       }
       // Persist any partial assistant content so context isn't lost on timeout/error.
