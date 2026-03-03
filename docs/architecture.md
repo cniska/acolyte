@@ -1,65 +1,74 @@
 # Architecture
 
-## Mental model (ELI5)
-
-Think of Acolyte like a careful helper with task cards:
-
-- Every user message gets its own task card (with id + state).
-- It works on one card at a time using tools.
-- New cards can wait in order.
-- At safe checkpoints ("yield points"), it can pause the current card and switch to a newer one if needed.
-- It leaves clear breadcrumbs so failures are easy to replay and debug.
-
 ## System flow
-
-Acolyte is a layered coding assistant:
 
 ```text
 CLI -> client -> server -> lifecycle -> model + tools
 ```
 
-The lifecycle is the orchestrator. It decides how a request runs, what mode it is in, when to retry, and when to verify.
+- **execution model:** one active task per session, with ordered queued tasks.
+- **yielding:** lifecycle only yields at safe checkpoints (never mid-step).
 
-## Stable boundaries
+## Daemon flow
 
-- Lifecycle: request orchestration and policy
-- Agent layer: input/output shaping and instruction assembly
-- Mode layer: mode definitions and transitions
-- Tool layer: tool wiring and concrete tool implementations
-- Guard layer: protection against unsafe or repetitive behavior
-- Protocol layer: transport-agnostic client/server contract (see `docs/protocol.md`)
+```text
+client -> rpc server -> task queue -> lifecycle worker
+```
 
-## Lifecycle contract
+- **rpc server:** accepts requests, exposes task/status streams, and routes to queue/lifecycle.
+- **task queue:** enforces ordering, capacity, and cancellation boundaries.
+- **lifecycle worker:** executes accepted tasks through lifecycle phases.
 
-Each request follows the same high-level flow:
+## Task flow
 
-1. Classify mode
-2. Prepare context/tools
-3. Generate with tool calls
-4. Evaluate result
-5. Finalize response
+```text
+accept -> queue -> run -> complete|fail|cancel
+```
 
-Evaluators can request a regeneration, but caps prevent runaway loops.
-Yield checks happen between lifecycle decisions so newer queued work can be picked up without unsafe mid-step interruption.
-Evaluator and summary metrics are task-scoped: they use tool history tagged to the active task id.
+- **accept:** validate request and assign `task_id`.
+- **queue:** hold until runnable under queue policy.
+- **run:** execute lifecycle for active task.
+- **complete|fail|cancel:** emit terminal state and persist task outcome.
 
-## Error handling contract
+## Tool layering
 
-Error policy lives in lifecycle, not in individual tools.
+```text
+lifecycle -> guard -> toolkit -> adapter -> composition
+```
 
-- Tools emit plain failures and (when needed) stable machine-readable error codes.
-- Lifecycle classifies and records errors, drives retries/regeneration, and emits debug signals.
-- Guards block unsafe/repetitive behavior early and are also reported through lifecycle debug events.
+- **guard:** pre-execution safety/redundancy checks and post-execution call recording.
+- **toolkit:** domain operations with minimal framework coupling.
+- **adapter:** framework tool wrappers and tool metadata.
+- **composition:** toolkit registration, permission filtering, and agent-facing tool/meta surface.
 
-This keeps behavior resilient while keeping policy in one place.
+## Lifecycle flow
 
-## Observability
+```text
+classify -> prepare -> generate -> evaluate -> finalize
+```
 
-Lifecycle emits ordered debug events for every request (calls, results, evaluator decisions, summaries, errors).
-RPC task execution also emits explicit task-state transitions (`accepted/queued/running/completed/failed/cancelled`) with a stable `task_id`.
-This makes it possible to trace one task end-to-end across queueing, execution, and completion without ad-hoc logging.
+- **classify:** choose mode and policy.
+- **prepare:** build inputs, context, and tools.
+- **generate:** run model + tool calls.
+- **evaluate:** decide accept/retry/regenerate (bounded).
+- **finalize:** persist outputs and emit final response.
 
-## Configuration and state
+- **regeneration:** evaluators may request regeneration, bounded by caps.
+- **scheduling:** yield checks happen between lifecycle decisions, never mid-step.
+- **task metrics:** evaluator and summary metrics are scoped by `task_id`.
 
-- Runtime config comes from user/project config.
-- Chat/session state and memory are persisted outside lifecycle; lifecycle consumes them as inputs.
+## Contracts
+
+- **error handling:** tools emit failures/error codes; lifecycle owns retry/regeneration policy.
+- **guarding:** guards run before tool execution, can block calls, and are reported through lifecycle events.
+- **protocol:** transport contract is transport-agnostic; see `docs/protocol.md`.
+
+## Observability and state
+
+- **observability:** lifecycle emits ordered debug events per request (calls, tool results, evaluator decisions, summaries, errors).
+- **runtime config:** loaded from user/project config.
+- **state ownership:** chat/session state and memory are persisted outside lifecycle and passed in as inputs.
+- **task trace:** RPC emits task-state transitions with stable `task_id`:
+```text
+accepted -> queued -> running -> completed|failed|cancelled
+```
