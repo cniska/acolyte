@@ -112,7 +112,6 @@ function isChatRequest(value: unknown): value is ChatRequest {
     (req.sessionId === undefined || typeof req.sessionId === "string") &&
     (req.resourceId === undefined || typeof req.resourceId === "string") &&
     (req.useMemory === undefined || typeof req.useMemory === "boolean") &&
-    (req.skipAutoVerify === undefined || typeof req.skipAutoVerify === "boolean") &&
     (req.verifyScope === undefined || verifyScopeSchema.safeParse(req.verifyScope).success) &&
     (req.workspace === undefined || typeof req.workspace === "string")
   );

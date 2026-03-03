@@ -30,7 +30,7 @@ export type EvaluatorContext = {
   taskId: string | undefined;
   session: SessionContext;
   workspace: string | undefined;
-  request: { message: string; skipAutoVerify?: boolean; verifyScope?: VerifyScope };
+  request: { message: string; verifyScope?: VerifyScope };
   sawEditFileMultiMatchError: boolean;
   lastError?: string;
   lastErrorCategory?: ErrorCategory;
@@ -162,7 +162,6 @@ export const autoVerifier: Evaluator = {
   id: "auto-verifier",
   evaluate(ctx) {
     if (!ctx.result) return { type: "done" };
-    if (ctx.request.skipAutoVerify) return { type: "done" };
     const usedWriteTools = WRITE_TOOLS.some((tool) => ctx.observedTools.has(tool));
     if (ctx.classifiedMode === "work" && usedWriteTools && !ctx.session.flags.verifyRan) {
       return {

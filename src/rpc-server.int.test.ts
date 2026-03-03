@@ -1012,7 +1012,6 @@ describe("rpc server websocket queue", () => {
             history: [],
             model: "gpt-5-mini",
             sessionId: "sess_rpc_path_iso_a",
-            skipAutoVerify: true,
           },
         },
       }),
@@ -1027,7 +1026,6 @@ describe("rpc server websocket queue", () => {
             history: [],
             model: "gpt-5-mini",
             sessionId: "sess_rpc_path_iso_b",
-            skipAutoVerify: true,
           },
         },
       }),
@@ -1043,7 +1041,7 @@ describe("rpc server websocket queue", () => {
           resolve();
           return;
         }
-        if (Date.now() - startedAt > 25_000) {
+        if (Date.now() - startedAt > 45_000) {
           clearInterval(interval);
           reject(new Error(`timed out waiting for both terminal chat envelopes: ${JSON.stringify(messages)}`));
         }

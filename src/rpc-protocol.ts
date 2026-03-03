@@ -14,7 +14,6 @@ const chatRequestSchema = z.object({
   sessionId: z.string().optional(),
   resourceId: z.string().optional(),
   useMemory: z.boolean().optional(),
-  skipAutoVerify: z.boolean().optional(),
   verifyScope: verifyScopeSchema.optional(),
   workspace: z.string().optional(),
 });

@@ -20,8 +20,6 @@ export interface ChatRequest {
   resourceId?: string;
   /** When true, Mastra memory (thread history + observational memory) is enabled. */
   useMemory?: boolean;
-  /** When true, lifecycle auto-verifier is disabled for this request. */
-  skipAutoVerify?: boolean;
   /** Verifier read scope: task-bound by default; global only when explicitly requested. */
   verifyScope?: VerifyScope;
   /** Client working directory. Falls back to server CWD when omitted. */
