@@ -339,8 +339,8 @@ describe("createInstructions", () => {
     const explore = createInstructions("Soul.", "plan");
     for (const out of [code, explore]) {
       expect(out).toContain("Soul.");
-      expect(out).toContain("Prefer dedicated tools over shell equivalents");
-      expect(out).toContain("Act, don't narrate");
+      expect(out).toContain("Prefer dedicated project tools; use shell only when no dedicated tool exists.");
+      expect(out).toContain("Execute the task directly; avoid meta narration about your process.");
     }
   });
 
