@@ -2,10 +2,9 @@ import { describe, expect, test } from "bun:test";
 import { rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { ChatRow } from "./chat-commands";
+import { buildInternalWriteResumeTurn, resolveNaturalRememberDirective } from "./chat-message-handler-helpers";
 import {
-  buildInternalWriteResumeTurn,
   createMessageHandler,
-  resolveNaturalRememberDirective,
 } from "./chat-message-handler";
 import type { StreamEvent } from "./client";
 import {
@@ -55,36 +54,36 @@ describe("chat message handler guards", () => {
   });
 
   test("ignores empty input", async () => {
-    const { submit, calls } = createMessageHandlerHarness();
-    await submit("   ");
+    const { handleMessage, calls } = createMessageHandlerHarness();
+    await handleMessage("   ");
     expect(calls.setInputHistory).toBe(0);
     expect(calls.setValue).toEqual([]);
     expect(calls.setShowHelp).toEqual([]);
   });
 
   test("ignores input while thinking", async () => {
-    const { submit, calls } = createMessageHandlerHarness({ isWorking: true });
-    await submit("hello");
+    const { handleMessage, calls } = createMessageHandlerHarness({ isWorking: true });
+    await handleMessage("hello");
     expect(calls.setInputHistory).toBe(0);
     expect(calls.setValue).toEqual([]);
   });
 
   test("handles slash command while thinking", async () => {
-    const { submit, calls } = createMessageHandlerHarness({ isWorking: true });
-    await submit("/sessions");
+    const { handleMessage, calls } = createMessageHandlerHarness({ isWorking: true });
+    await handleMessage("/sessions");
     expect(calls.setInputHistory).toBe(1);
     expect(calls.setValue).toEqual([""]);
   });
 
   test("ignores unknown single-token slash commands", async () => {
-    const { submit, calls } = createMessageHandlerHarness();
-    await submit("/not-a-command");
+    const { handleMessage, calls } = createMessageHandlerHarness();
+    await handleMessage("/not-a-command");
     expect(calls.setInputHistory).toBe(0);
     expect(calls.setValue).toEqual([]);
   });
 
-  test("routes /status through submit handler and renders status output row", async () => {
-    const { submit, rows, calls } = createMessageHandlerHarness({
+  test("routes /status through message handler and renders status output row", async () => {
+    const { handleMessage, rows, calls } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({
           provider: "openai",
@@ -94,7 +93,7 @@ describe("chat message handler guards", () => {
       }),
     });
 
-    await submit("/status");
+    await handleMessage("/status");
 
     expect(calls.setInputHistory).toBe(1);
     expect(calls.setValue).toEqual([""]);
@@ -115,10 +114,10 @@ describe("chat message handler guards", () => {
     );
   });
 
-  test("routes /sessions through submit handler and renders sessions list row", async () => {
-    const { submit, rows, calls } = createMessageHandlerHarness();
+  test("routes /sessions through message handler and renders sessions list row", async () => {
+    const { handleMessage, rows, calls } = createMessageHandlerHarness();
 
-    await submit("/sessions");
+    await handleMessage("/sessions");
 
     expect(calls.setInputHistory).toBe(1);
     expect(calls.setValue).toEqual([""]);
@@ -139,10 +138,10 @@ describe("chat message handler guards", () => {
     );
   });
 
-  test("routes /tokens through submit handler and renders token output row", async () => {
-    const { submit, rows, calls } = createMessageHandlerHarness();
+  test("routes /tokens through message handler and renders token output row", async () => {
+    const { handleMessage, rows, calls } = createMessageHandlerHarness();
 
-    await submit("/tokens");
+    await handleMessage("/tokens");
 
     expect(calls.setInputHistory).toBe(1);
     expect(calls.setValue).toEqual([""]);
@@ -177,7 +176,7 @@ describe("chat message handler guards", () => {
       [{ type: "tool-call", toolCallId: "call_3", toolName: "delete-file", args: { path: "sum.rs" } }],
     ];
     let replyCount = 0;
-    const { submit, rows } = createMessageHandlerHarness({
+    const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         replyStream: async (_input, options) => {
@@ -191,9 +190,9 @@ describe("chat message handler guards", () => {
       }),
     });
 
-    await submit("create a rust script that sums two numbers");
-    await submit("update sum.rs to take three instead of two");
-    await submit("delete sum.rs");
+    await handleMessage("create a rust script that sums two numbers");
+    await handleMessage("update sum.rs to take three instead of two");
+    await handleMessage("delete sum.rs");
 
     const toolRows = rows.filter((row) => row.role === "assistant" && row.style === "toolProgress");
     expect(toolRows.map((row) => row.content)).toEqual([
@@ -208,7 +207,7 @@ describe("chat message handler guards", () => {
   });
 
   test("merges discovery/read file count into tool header", async () => {
-    const { submit, rows } = createMessageHandlerHarness({
+    const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         replyStream: async (_input, options) => {
@@ -247,7 +246,7 @@ describe("chat message handler guards", () => {
       }),
     });
 
-    await submit("find all ts files");
+    await handleMessage("find all ts files");
 
     const toolRow = rows.find(
       (row) => row.role === "assistant" && row.style === "toolProgress" && row.toolName === "find-files",
@@ -256,7 +255,7 @@ describe("chat message handler guards", () => {
   });
 
   test("merges search summary with pattern context into header", async () => {
-    const { submit, rows } = createMessageHandlerHarness({
+    const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         replyStream: async (_input, options) => {
@@ -289,7 +288,7 @@ describe("chat message handler guards", () => {
       }),
     });
 
-    await submit("search tool pattern");
+    await handleMessage("search tool pattern");
 
     const toolRow = rows.find(
       (row) => row.role === "assistant" && row.style === "toolProgress" && row.toolName === "search-files",
@@ -298,8 +297,8 @@ describe("chat message handler guards", () => {
   });
 
   test("toggles shortcuts on ? input", async () => {
-    const { submit, calls } = createMessageHandlerHarness();
-    await submit("?");
+    const { handleMessage, calls } = createMessageHandlerHarness();
+    await handleMessage("?");
     expect(calls.setInputHistory).toBe(1);
     expect(calls.setValue).toEqual([""]);
     expect(calls.setShowHelp).toHaveLength(1);
@@ -310,7 +309,7 @@ describe("chat message handler guards", () => {
     let openWriteConfirmWith = "";
     const session = createSession({ id: "sess_test" });
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
-    const submit = createMessageHandler({
+    const handleMessage = createMessageHandler({
       client: createClient({
         status: async () => ({ permissions: "read" }),
         reply: async () => ({ model: "gpt-5-mini", output: "ok" }),
@@ -345,7 +344,7 @@ describe("chat message handler guards", () => {
       setInterrupt: () => {},
     });
 
-    await submit("edit src/cli.ts to rename x to y");
+    await handleMessage("edit src/cli.ts to rename x to y");
     expect(openWriteConfirmWith).toBe("edit src/cli.ts to rename x to y");
   });
 
@@ -353,7 +352,7 @@ describe("chat message handler guards", () => {
     let openWriteConfirmWith = "";
     const session = createSession({ id: "sess_test" });
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
-    const submit = createMessageHandler({
+    const handleMessage = createMessageHandler({
       client: createClient({
         status: async () => ({ permissions: "read" }),
         reply: async () => ({ model: "gpt-5-mini", output: "ok" }),
@@ -388,7 +387,7 @@ describe("chat message handler guards", () => {
       setInterrupt: () => {},
     });
 
-    await submit("add a line break before the resume message");
+    await handleMessage("add a line break before the resume message");
     expect(openWriteConfirmWith).toBe("add a line break before the resume message");
   });
 
@@ -398,7 +397,7 @@ describe("chat message handler guards", () => {
     const rows: ChatRow[] = [];
     const session = createSession({ id: "sess_test" });
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
-    const submit = createMessageHandler({
+    const handleMessage = createMessageHandler({
       client: createClient({
         status: async () => ({ permissions: "read" }),
         reply: async () => {
@@ -438,7 +437,7 @@ describe("chat message handler guards", () => {
       setInterrupt: () => {},
     });
 
-    await submit(buildInternalWriteResumeTurn("edit src/cli.ts to rename x to y"));
+    await handleMessage(buildInternalWriteResumeTurn("edit src/cli.ts to rename x to y"));
     expect(openWriteConfirmWith).toBe("");
     expect(replyCalls).toBe(1);
     expect(rows.some((row) => row.role === "assistant" && row.content === "done")).toBe(true);
@@ -452,7 +451,7 @@ describe("chat message handler guards", () => {
     const session = createSession({ id: "sess_test" });
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
 
-    const submit = createMessageHandler({
+    const handleMessage = createMessageHandler({
       client: createClient({
         reply: async (_input, options) =>
           await new Promise((_, reject) => {
@@ -502,7 +501,7 @@ describe("chat message handler guards", () => {
       },
     });
 
-    const pending = submit("hello");
+    const pending = handleMessage("hello");
     for (let i = 0; i < 20 && !interruptRegistered; i += 1) {
       await Bun.sleep(1);
     }
@@ -525,7 +524,7 @@ describe("chat message handler guards", () => {
     const session = createSession({ id: "sess_test" });
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
 
-    const submit = createMessageHandler({
+    const handleMessage = createMessageHandler({
       client: createClient({
         reply: async (_input, options) => {
           const call = callCount++;
@@ -580,14 +579,14 @@ describe("chat message handler guards", () => {
       },
     });
 
-    const firstPending = submit("First question");
+    const firstPending = handleMessage("First question");
     for (let i = 0; i < 20 && !interruptRegistered; i += 1) {
       await Bun.sleep(1);
     }
     expect(interruptRegistered).toBe(true);
     interruptHandler();
     await firstPending;
-    await submit("Second question");
+    await handleMessage("Second question");
 
     expect(rows.map((row) => `${row.role}:${row.content}`)).toEqual([
       "user:First question",
@@ -604,7 +603,7 @@ describe("chat message handler guards", () => {
     const session = createSession({ id: "sess_test" });
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
 
-    const submit = createMessageHandler({
+    const handleMessage = createMessageHandler({
       client: createClient({
         reply: async () => {
           replyCalls += 1;
@@ -642,7 +641,7 @@ describe("chat message handler guards", () => {
       setInterrupt: () => {},
     });
 
-    await submit("review @definitely-not-a-real-file-xyz");
+    await handleMessage("review @definitely-not-a-real-file-xyz");
 
     expect(replyCalls).toBe(0);
     expect(rows.some((row) => row.content.includes("No file or folder found"))).toBe(true);
@@ -651,7 +650,7 @@ describe("chat message handler guards", () => {
   test("continues with resolved @references even when some are unresolved", async () => {
     const rows: ChatRow[] = [];
     let replyCalls = 0;
-    const fixture = `tmp-chat-submit-${crypto.randomUUID()}.txt`;
+    const fixture = `tmp-chat-handleMessage-${crypto.randomUUID()}.txt`;
     const fixturePath = join(process.cwd(), fixture);
     await writeFile(fixturePath, "fixture");
 
@@ -659,7 +658,7 @@ describe("chat message handler guards", () => {
       const session = createSession({ id: "sess_test" });
       const store = createStore({ activeSessionId: session.id, sessions: [session] });
 
-      const submit = createMessageHandler({
+      const handleMessage = createMessageHandler({
         client: createClient({
           reply: async () => {
             replyCalls += 1;
@@ -697,7 +696,7 @@ describe("chat message handler guards", () => {
         setInterrupt: () => {},
       });
 
-      await submit(`review @${fixture} and @definitely-not-a-real-file-xyz`);
+      await handleMessage(`review @${fixture} and @definitely-not-a-real-file-xyz`);
 
       expect(replyCalls).toBe(1);
       expect(rows.some((row) => row.content.includes("No file or folder found"))).toBe(true);
@@ -714,7 +713,7 @@ describe("chat message handler guards", () => {
     const session = createSession({ id: "sess_test" });
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
 
-    const submit = createMessageHandler({
+    const handleMessage = createMessageHandler({
       client: createClient({
         replyStream: async (_input, options) => {
           options.onEvent({ type: "status", message: "Thinking…" });
@@ -760,7 +759,7 @@ describe("chat message handler guards", () => {
       setInterrupt: () => {},
     });
 
-    await submit("hello");
+    await handleMessage("hello");
 
     expect(progressTexts[0]).toBe("Thinking…");
     expect(progressTexts.at(-1)).toBeNull();
@@ -774,7 +773,7 @@ describe("chat message handler guards", () => {
     const session = createSession({ id: "sess_test" });
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
 
-    const submit = createMessageHandler({
+    const handleMessage = createMessageHandler({
       client: createClient({
         reply: async () => ({
           model: "gpt-5-mini",
@@ -813,14 +812,14 @@ describe("chat message handler guards", () => {
       setInterrupt: () => {},
     });
 
-    await submit("hello");
+    await handleMessage("hello");
 
     expect(rows.some((row) => row.role === "assistant" && row.style === "toolProgress")).toBe(false);
     expect(rows.some((row) => row.role === "assistant" && row.content === "done")).toBe(true);
   });
 
   test("suppresses empty discovery/read tool rows when no body output arrives", async () => {
-    const { submit, rows } = createMessageHandlerHarness({
+    const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         replyStream: async (_input, options) => {
@@ -841,7 +840,7 @@ describe("chat message handler guards", () => {
       }),
     });
 
-    await submit("search for needle");
+    await handleMessage("search for needle");
 
     expect(
       rows.some((row) => row.role === "assistant" && row.style === "toolProgress" && row.toolName === "search-files"),
@@ -849,11 +848,11 @@ describe("chat message handler guards", () => {
     expect(rows.some((row) => row.role === "assistant" && row.content === "No matches found.")).toBe(true);
   });
 
-  test("maps quota errors to user-facing submit error", async () => {
+  test("maps quota errors to user-facing message handler error", async () => {
     const rows: ChatRow[] = [];
     const session = createSession({ id: "sess_test" });
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
-    const submit = createMessageHandler({
+    const handleMessage = createMessageHandler({
       client: createClient({
         status: async () => ({}),
         reply: async () => {
@@ -890,16 +889,16 @@ describe("chat message handler guards", () => {
       setInterrupt: () => {},
     });
 
-    await submit("hello");
+    await handleMessage("hello");
 
     expect(rows.some((row) => row.role === "system" && row.content.includes("Provider quota exceeded"))).toBe(true);
   });
 
-  test("maps timeout errors to user-facing submit error", async () => {
+  test("maps timeout errors to user-facing message handler error", async () => {
     const rows: ChatRow[] = [];
     const session = createSession({ id: "sess_test" });
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
-    const submit = createMessageHandler({
+    const handleMessage = createMessageHandler({
       client: createClient({
         status: async () => ({}),
         reply: async () => {
@@ -936,18 +935,18 @@ describe("chat message handler guards", () => {
       setInterrupt: () => {},
     });
 
-    await submit("hello");
+    await handleMessage("hello");
 
     expect(rows.some((row) => row.role === "system" && row.content.includes("Server request timed out"))).toBe(true);
   });
 
-  test("recovers cleanly after timeout and allows next submit", async () => {
+  test("recovers cleanly after timeout and allows next message", async () => {
     const rows: ChatRow[] = [];
     const thinkingTransitions: boolean[] = [];
     const session = createSession({ id: "sess_test" });
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
     let calls = 0;
-    const submit = createMessageHandler({
+    const handleMessage = createMessageHandler({
       client: createClient({
         status: async () => ({}),
         reply: async () => {
@@ -988,8 +987,8 @@ describe("chat message handler guards", () => {
       setInterrupt: () => {},
     });
 
-    await submit("first");
-    await submit("second");
+    await handleMessage("first");
+    await handleMessage("second");
 
     expect(calls).toBe(2);
     expect(thinkingTransitions).toEqual([true, false, true, false]);
@@ -1004,7 +1003,7 @@ describe("chat message handler guards", () => {
     const session = createSession({ id: "sess_test" });
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
     let statusChecks = 0;
-    const submit = createMessageHandler({
+    const handleMessage = createMessageHandler({
       client: createClient({
         status: async () => ({}),
         reply: async () => {
@@ -1063,7 +1062,7 @@ describe("chat message handler guards", () => {
       setInterrupt: () => {},
     });
 
-    await submit("first");
+    await handleMessage("first");
     expect(thinkingTransitions).toEqual([true]);
     expect(progressTransitions).toContain("Still running on server…");
     await Bun.sleep(800);
@@ -1077,7 +1076,7 @@ describe("chat message handler guards", () => {
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
     const setCurrentSessionCalls: string[] = [];
     let calls = 0;
-    const submit = createMessageHandler({
+    const handleMessage = createMessageHandler({
       client: createClient({
         status: async () => ({}),
         reply: async () => {
@@ -1120,8 +1119,8 @@ describe("chat message handler guards", () => {
       setInterrupt: () => {},
     });
 
-    await submit("first");
-    await submit("/new");
+    await handleMessage("first");
+    await handleMessage("/new");
 
     expect(calls).toBe(1);
     expect(sawTimeoutRow).toBe(true);
@@ -1143,7 +1142,7 @@ describe("chat message handler guards", () => {
     const store = createStore({ activeSessionId: session.id, sessions: [session, target] });
     const setCurrentSessionCalls: string[] = [];
     let calls = 0;
-    const submit = createMessageHandler({
+    const handleMessage = createMessageHandler({
       client: createClient({
         status: async () => ({}),
         reply: async () => {
@@ -1186,8 +1185,8 @@ describe("chat message handler guards", () => {
       setInterrupt: () => {},
     });
 
-    await submit("first");
-    await submit(`/resume ${target.id.slice(0, 12)}`);
+    await handleMessage("first");
+    await handleMessage(`/resume ${target.id.slice(0, 12)}`);
 
     expect(calls).toBe(1);
     expect(sawTimeoutRow).toBe(true);
@@ -1197,7 +1196,7 @@ describe("chat message handler guards", () => {
   });
 
   test("creates a single tool row per streamed tool-call event", async () => {
-    const { submit, rows } = createMessageHandlerHarness({
+    const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         events: [{ type: "tool-call", toolCallId: "call_1", toolName: "run-command", args: { command: "echo hi" } }],
@@ -1208,7 +1207,7 @@ describe("chat message handler guards", () => {
       }),
     });
 
-    await submit("hello");
+    await handleMessage("hello");
 
     const runRows = rows.filter(
       (row) => row.role === "assistant" && row.style === "toolProgress" && row.content.startsWith("Run"),
@@ -1218,7 +1217,7 @@ describe("chat message handler guards", () => {
   });
 
   test("renders streamed tool rows before assistant summary row", async () => {
-    const { submit, rows } = createMessageHandlerHarness({
+    const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         events: [
@@ -1232,7 +1231,7 @@ describe("chat message handler guards", () => {
       }),
     });
 
-    await submit("hello");
+    await handleMessage("hello");
 
     const toolIndex = rows.findIndex(
       (row) => row.role === "assistant" && row.style === "toolProgress" && row.content.startsWith("Edit sum.rs"),
@@ -1245,7 +1244,7 @@ describe("chat message handler guards", () => {
 
   test("keeps full streamed assistant output when final reply is shorter", async () => {
     const streamed = "This is a long streamed answer that should not be truncated at finalize.";
-    const { submit, rows, session } = createMessageHandlerHarness({
+    const { handleMessage, rows, session } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         events: [{ type: "text-delta", text: streamed }],
@@ -1256,14 +1255,14 @@ describe("chat message handler guards", () => {
       }),
     });
 
-    await submit("hello");
+    await handleMessage("hello");
 
     expect(rows.some((row) => row.role === "assistant" && row.content === streamed)).toBe(true);
     expect(session.messages.some((message) => message.role === "assistant" && message.content === streamed)).toBe(true);
   });
 
   test("creates a single tool row when tool-call is followed by tool-result", async () => {
-    const { submit, rows } = createMessageHandlerHarness({
+    const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         events: [
@@ -1277,7 +1276,7 @@ describe("chat message handler guards", () => {
       }),
     });
 
-    await submit("hello");
+    await handleMessage("hello");
 
     const editedRows = rows.filter(
       (row) => row.role === "assistant" && row.style === "toolProgress" && row.content.startsWith("Edit sum.rs"),
@@ -1287,7 +1286,7 @@ describe("chat message handler guards", () => {
   });
 
   test("suppresses guard-blocked tool attempts", async () => {
-    const { submit, rows } = createMessageHandlerHarness({
+    const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         events: [
@@ -1308,14 +1307,14 @@ describe("chat message handler guards", () => {
       }),
     });
 
-    await submit("hello");
+    await handleMessage("hello");
 
     const toolRows = rows.filter((row) => row.role === "assistant" && row.style === "toolProgress");
     expect(toolRows).toHaveLength(0);
   });
 
   test("never surfaces blocked tool rows when mixed with allowed tool work", async () => {
-    const { submit, rows } = createMessageHandlerHarness({
+    const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         events: [
@@ -1338,7 +1337,7 @@ describe("chat message handler guards", () => {
       }),
     });
 
-    await submit("hello");
+    await handleMessage("hello");
 
     const toolRows = rows.filter((row) => row.role === "assistant" && row.style === "toolProgress");
     expect(toolRows.map((row) => row.content)).toEqual(["Edit b.ts\n2 + export const b = 2;"]);
@@ -1346,7 +1345,7 @@ describe("chat message handler guards", () => {
   });
 
   test("merges tool-output into tool-call row in real time", async () => {
-    const { submit, rows } = createMessageHandlerHarness({
+    const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         events: [
@@ -1360,7 +1359,7 @@ describe("chat message handler guards", () => {
       }),
     });
 
-    await submit("hello");
+    await handleMessage("hello");
 
     const editedRows = rows.filter(
       (row) => row.role === "assistant" && row.style === "toolProgress" && row.content.startsWith("Edit sum.rs"),
@@ -1370,7 +1369,7 @@ describe("chat message handler guards", () => {
   });
 
   test("ignores duplicate tool-output lines for the same tool row", async () => {
-    const { submit, rows } = createMessageHandlerHarness({
+    const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         events: [
@@ -1385,7 +1384,7 @@ describe("chat message handler guards", () => {
       }),
     });
 
-    await submit("hello");
+    await handleMessage("hello");
 
     const editedRows = rows.filter(
       (row) => row.role === "assistant" && row.style === "toolProgress" && row.content.startsWith("Edit sum.rs"),
@@ -1410,7 +1409,7 @@ describe("chat message handler guards", () => {
       ],
     ];
     let replyCount = 0;
-    const { submit, rows } = createMessageHandlerHarness({
+    const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         replyStream: async (_input, options) => {
@@ -1424,8 +1423,8 @@ describe("chat message handler guards", () => {
       }),
     });
 
-    await submit("create file");
-    await submit("edit file");
+    await handleMessage("create file");
+    await handleMessage("edit file");
 
     const editedRows = rows.filter(
       (row) => row.role === "assistant" && row.style === "toolProgress" && row.content.startsWith("Edit sum.rs"),
@@ -1436,7 +1435,7 @@ describe("chat message handler guards", () => {
   });
 
   test("keeps same-header tool rows separate when toolCallId differs in one turn", async () => {
-    const { submit, rows } = createMessageHandlerHarness({
+    const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         events: [
@@ -1452,7 +1451,7 @@ describe("chat message handler guards", () => {
       }),
     });
 
-    await submit("hello");
+    await handleMessage("hello");
 
     const editedRows = rows.filter(
       (row) => row.role === "assistant" && row.style === "toolProgress" && row.content.startsWith("Edit sum.rs"),
@@ -1467,7 +1466,7 @@ describe("chat message handler guards", () => {
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
     const tokenUsageSnapshots: Array<typeof session.tokenUsage> = [];
 
-    const submit = createMessageHandler({
+    const handleMessage = createMessageHandler({
       client: createClient({
         status: async () => ({}),
         reply: async () => ({
@@ -1511,7 +1510,7 @@ describe("chat message handler guards", () => {
       setInterrupt: () => {},
     });
 
-    await submit("hello");
+    await handleMessage("hello");
 
     expect(session.tokenUsage.length).toBe(1);
     expect(session.tokenUsage[0]?.usage.totalTokens).toBe(20);

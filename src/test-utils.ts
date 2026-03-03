@@ -228,7 +228,7 @@ export function createClient(overrides?: {
 }
 
 export type MessageHandlerHarness = {
-  submit: (raw: string) => Promise<void>;
+  handleMessage: (raw: string) => Promise<void>;
   rows: ChatRow[];
   session: Session;
   calls: {
@@ -254,7 +254,7 @@ export function createMessageHandlerHarness(overrides?: {
   const session = overrides?.session ?? createSession({ id: "sess_test" });
   const store = overrides?.store ?? createStore({ activeSessionId: session.id, sessions: [session] });
   const tokenUsage = overrides?.tokenUsage ?? session.tokenUsage ?? [];
-  const submit = createMessageHandler({
+  const handleMessage = createMessageHandler({
     client: overrides?.client ?? createClient({ status: async () => ({}) }),
     store,
     currentSession: session,
@@ -291,7 +291,7 @@ export function createMessageHandlerHarness(overrides?: {
     nowIso: () => DEFAULT_TIME,
     setInterrupt: () => {},
   });
-  return { submit, rows, session, calls };
+  return { handleMessage, rows, session, calls };
 }
 
 export type CommandContextSpies = {

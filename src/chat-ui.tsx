@@ -13,7 +13,8 @@ import { createPickerHandlers, persistPermissionMode } from "./chat-picker-handl
 import { newMessage, nowIso, toRows } from "./chat-session";
 import { suggestSlashCommands } from "./chat-slash";
 import { resolveQueueSubmit } from "./chat-submit";
-import { buildInternalWriteResumeTurn, createMessageHandler } from "./chat-message-handler";
+import { buildInternalWriteResumeTurn } from "./chat-message-handler-helpers";
+import { createMessageHandler } from "./chat-message-handler";
 import { ChatTranscript } from "./chat-transcript";
 import { buildInputHistory } from "./chat-turn";
 import type { Client } from "./client";
