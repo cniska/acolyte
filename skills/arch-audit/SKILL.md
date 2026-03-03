@@ -14,13 +14,12 @@ Focus on:
 - tool architecture (toolkits, registry, guarded execution)
 - contracts/schemas as source of truth (Zod + inferred types)
 - transport and protocol consistency (HTTP/RPC parity)
-- reliability contracts (timeouts, retries, cancellation semantics, queue/backpressure behavior)
-- observability contracts (stable codes/events, actionable errors, traceability across layers)
 - guard/evaluator extensibility without test-only production hacks
-- error contracts and user-facing message consistency
+- error contracts and typed error model consistency
 - assert patterns and exhaustiveness (`invariant`, `unreachable`, `switch` with `default`)
 - design-pattern consistency for extension seams (policy/strategy tables, adapter boundaries)
 - ERC/error-model consistency (`AppError`/coded errors, stable searchable codes, clear UX messages)
+- file cohesion and split hygiene (flag oversized/multi-responsibility files; prefer small focused modules)
 
 ## Canonical References
 

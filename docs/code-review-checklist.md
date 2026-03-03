@@ -4,46 +4,46 @@ Review in this order.
 
 ## 1. Protocol and contracts
 
-- [ ] [`src/protocol.ts`](../src/protocol.ts)
-- [ ] [`src/rpc-protocol.ts`](../src/rpc-protocol.ts)
-- [ ] [`src/api.ts`](../src/api.ts)
-- [ ] [`src/types.ts`](../src/types.ts)
-- [ ] [`src/task-state.ts`](../src/task-state.ts)
-- [ ] [`src/tool-error-codes.ts`](../src/tool-error-codes.ts)
+- [x] [`src/protocol.ts`](../src/protocol.ts)
+- [x] [`src/rpc-protocol.ts`](../src/rpc-protocol.ts)
+- [x] [`src/api.ts`](../src/api.ts)
+- [x] [`src/types.ts`](../src/types.ts) deleted
+- [x] [`src/task-state.ts`](../src/task-state.ts)
+- [x] [`src/tool-error-codes.ts`](../src/tool-error-codes.ts)
 
 ## 2. Config and provider behavior
 
-- [ ] [`src/config.ts`](../src/config.ts)
-- [ ] [`src/config-modes.ts`](../src/config-modes.ts)
-- [ ] [`src/app-config.ts`](../src/app-config.ts)
-- [ ] [`src/env.ts`](../src/env.ts)
-- [ ] [`src/provider-config.ts`](../src/provider-config.ts)
+- [x] [`src/config.ts`](../src/config.ts)
+- [x] [`src/config-modes.ts`](../src/config-modes.ts) config-contract
+- [x] [`src/app-config.ts`](../src/app-config.ts)
+- [x] [`src/env.ts`](../src/env.ts)
+- [x] [`src/provider-config.ts`](../src/provider-config.ts)
 
 ## 3. Lifecycle and agent policy
 
-- [ ] [`src/lifecycle.ts`](../src/lifecycle.ts)
-- [ ] [`src/lifecycle-evaluators.ts`](../src/lifecycle-evaluators.ts)
-- [ ] [`src/lifecycle-events.ts`](../src/lifecycle-events.ts)
-- [ ] [`src/agent.ts`](../src/agent.ts)
-- [ ] [`src/agent-modes.ts`](../src/agent-modes.ts)
+- [x] [`src/lifecycle.ts`](../src/lifecycle.ts) split
+- [x] [`src/lifecycle-evaluators.ts`](../src/lifecycle-evaluators.ts)
+- [x] [`src/lifecycle-events.ts`](../src/lifecycle-events.ts)
+- [x] [`src/agent.ts`](../src/agent.ts) split
+- [x] [`src/agent-modes.ts`](../src/agent-modes.ts)
 
 ## 4. Tools and guardrails
 
-- [ ] [`src/mastra-tools.ts`](../src/mastra-tools.ts)
-- [ ] [`src/tools.ts`](../src/tools.ts)
-- [ ] [`src/tool-guards.ts`](../src/tool-guards.ts)
-- [ ] [`src/tool-output.ts`](../src/tool-output.ts)
-- [ ] [`src/tool-output-format.ts`](../src/tool-output-format.ts)
-- [ ] [`src/tool-output-parser.ts`](../src/tool-output-parser.ts)
-- [ ] [`src/tool-summary-format.ts`](../src/tool-summary-format.ts)
+- [x] [`src/mastra-tools.ts`](../src/mastra-tools.ts) split
+- [x] [`src/tools.ts`](../src/tools.ts) core-tools
+- [x] [`src/tool-guards.ts`](../src/tool-guards.ts)
+- [x] [`src/tool-output.ts`](../src/tool-output.ts)
+- [x] [`src/tool-output-format.ts`](../src/tool-output-format.ts)
+- [x] [`src/tool-output-parser.ts`](../src/tool-output-parser.ts)
+- [x] [`src/tool-summary-format.ts`](../src/tool-summary-format.ts)
 
 ## 5. RPC, task runtime, and server
 
-- [ ] [`src/server.ts`](../src/server.ts)
-- [ ] [`src/client.ts`](../src/client.ts)
-- [ ] [`src/rpc-queue.ts`](../src/rpc-queue.ts)
-- [ ] [`src/task-registry.ts`](../src/task-registry.ts)
-- [ ] [`src/server-daemon.ts`](../src/server-daemon.ts)
+- [x] [`src/server.ts`](../src/server.ts) split
+- [x] [`src/client.ts`](../src/client.ts) split
+- [x] [`src/rpc-queue.ts`](../src/rpc-queue.ts)
+- [x] [`src/task-registry.ts`](../src/task-registry.ts)
+- [x] [`src/server-daemon.ts`](../src/server-daemon.ts)
 
 ## 6. CLI command surface
 
