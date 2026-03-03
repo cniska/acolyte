@@ -1,7 +1,7 @@
 import { type AgentMode, agentModes } from "./agent-modes";
-import { toolMeta } from "./tool-meta";
+import { detectLineWidth } from "./core-tools";
+import { toolMeta } from "./mastra-tools";
 import { isToolName } from "./tool-names";
-import { detectLineWidth } from "./tools";
 
 const BASE_INSTRUCTIONS = [
   "- Execute the task directly; avoid meta narration about your process.",

@@ -2,7 +2,6 @@ import { afterAll, afterEach, beforeEach, describe, expect, test } from "bun:tes
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { appConfig, setPermissionMode } from "./app-config";
-import { savedPermissionMode } from "./test-utils";
 import {
   deleteTextFile,
   editCode,
@@ -15,7 +14,8 @@ import {
   scanCode,
   searchFiles,
   writeTextFile,
-} from "./tools";
+} from "./core-tools";
+import { savedPermissionMode } from "./test-utils";
 
 const WORKSPACE = resolve(process.cwd());
 const tempFiles: string[] = [];

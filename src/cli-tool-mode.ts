@@ -19,7 +19,7 @@ import {
   runShellCommand,
   searchFiles,
   searchWeb,
-} from "./tools";
+} from "./core-tools";
 import { printError, printWarning } from "./ui";
 
 const editArgsSchema = z.object({

@@ -1,10 +1,24 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 import { appConfig } from "./app-config";
+import {
+  deleteTextFile,
+  editCode,
+  editFile,
+  fetchWeb,
+  findFiles,
+  readSnippets,
+  runShellCommand,
+  scanCode,
+  searchFiles,
+  searchWeb,
+  writeTextFile,
+} from "./core-tools";
 import { countLabel } from "./plural";
 import { createId } from "./short-id";
 import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
 import { recordCall, runGuards, type SessionContext } from "./tool-guards";
+import type { ToolMeta } from "./tool-meta-types";
 import type { ToolName } from "./tool-names";
 import { compactToolOutput } from "./tool-output";
 import {
@@ -20,22 +34,98 @@ import {
   TOOL_OUTPUT_RUN_MAX_ROWS,
   type ToolOutputListener,
 } from "./tool-output-format";
-import {
-  deleteTextFile,
-  editCode,
-  editFile,
-  fetchWeb,
-  findFiles,
-  readSnippets,
-  runShellCommand,
-  scanCode,
-  searchFiles,
-  searchWeb,
-  writeTextFile,
-} from "./tools";
 
 const WRITE_TOOL_PREVIEW_MAX_LINES = 30;
 const WEB_SEARCH_MAX_RESULTS = 5;
+
+type CoreToolName =
+  | "find-files"
+  | "search-files"
+  | "read-file"
+  | "web-search"
+  | "web-fetch"
+  | "scan-code"
+  | "edit-code"
+  | "edit-file"
+  | "create-file"
+  | "delete-file"
+  | "run-command";
+
+const CORE_TOOL_META: Record<CoreToolName, ToolMeta> = {
+  "find-files": {
+    description:
+      "Find files in the repository by name or path pattern. Pass `patterns` as an array to batch multiple lookups in one call. To search file contents use `search-files` instead.",
+    instruction:
+      "Use `find-files` to locate files by name or path pattern. Always pass `patterns` as an array (e.g. [`api.ts`, `store.ts`]).",
+    aliases: ["findFiles", "find_files"],
+  },
+  "search-files": {
+    description:
+      "Search file contents in the repository for text or regex patterns. Optionally scope with `paths` (files or directories). To locate files by name use `find-files` instead.",
+    instruction:
+      "Use `search-files` to search file contents by text or regex. Always batch related queries via `patterns`; optionally scope with `paths`.",
+    aliases: ["searchFiles", "search_files", "searchRepo", "search_repo"],
+  },
+  "read-file": {
+    description:
+      "Read one or more text file snippets by line range. Always pass `paths` as an array of {path, start?, end?} objects, even for a single file. Use to inspect code before editing.",
+    instruction:
+      "Use `read-file` to inspect code before editing. Pass `paths` as an array; batch multiple reads into one call.",
+    aliases: ["readFile", "read_file"],
+  },
+  "web-search": {
+    description:
+      "Search the public web for recent information and return top results. Use for questions not answerable from the repo.",
+    instruction: "Use `web-search` for external information lookup.",
+    aliases: ["webSearch", "web_search"],
+  },
+  "web-fetch": {
+    description:
+      "Fetch a public URL and return extracted text content. Use to read docs, API references, or linked resources by URL.",
+    instruction: "Use `web-fetch` to read web pages, docs, or API references.",
+    aliases: ["webFetch", "web_fetch"],
+  },
+  "scan-code": {
+    description:
+      "Scan files for structural code patterns using AST matching. Pass `paths` as an array of file or directory paths and `patterns` as an array of ast-grep patterns with `$VAR` metavariables (e.g. [`export function $NAME($$$PARAMS)`, `import $SPEC from $MOD`]).",
+    instruction:
+      "Use `scan-code` for AST pattern matching. Always pass `paths` and `patterns` as arrays. Batch multiple files and patterns in one call (e.g. paths=[`src/a.ts`, `src/b.ts`], patterns=[`export function $NAME`, `import $SPEC from $MOD`]). Metavariable names (`$NAME`, `$ARG`) are wildcards — they match any node, not literal text. Use it to map rename/refactor targets before `edit-code`. For keyword or regex searches prefer `search-files`.",
+    aliases: ["scanCode", "scan_code"],
+  },
+  "edit-code": {
+    description:
+      "Edit code with AST pattern matching. Pass `edits` as [{pattern, replacement}] using `$VAR` metavariables (e.g. pattern=`console.log($ARG)` replacement=`logger.debug($ARG)`). `path` must be a specific file, not '.' or a directory. For non-code files use `edit-file`.",
+    instruction:
+      "Use `edit-code` for multi-location code changes, rename/refactor updates, or structural rewrites with AST `edits` array. `path` must be a concrete file path (not `.` or a directory). Prefer `edit-file` for single-location text edits.",
+    aliases: ["editCode", "edit_code"],
+  },
+  "edit-file": {
+    description:
+      "Edit an existing file. Pass `edits` as an array of either {find, replace} pairs (for small surgical edits using exact text match) or {startLine, endLine, replace} objects (for larger block replacements). Line numbers MUST come from `read-file` output — do not guess. endLine must not exceed the file length. All edits are applied atomically. You MUST read the file first. For new files, use `create-file`. For code renames or structural edits use `edit-code`.",
+    instruction:
+      "Use `edit-file` for text edits. For small changes use {find, replace} pairs where `find` is exact text to locate. For larger block changes use {startLine, endLine, replace} with 1-based line numbers from `read-file`. `replace` is *only* the new text for that region — do not include surrounding lines. Batch multiple edits to the same file into one call. If `find` is likely to match multiple locations, switch to `edit-code`.",
+    aliases: ["editFile", "edit_file"],
+  },
+  "create-file": {
+    description:
+      "Create a new file with full content. For editing existing files, use `edit-file` or `edit-code` instead.",
+    instruction: "For new files, call `create-file` with full content directly.",
+    aliases: ["createFile", "create_file", "writeFile", "write_file"],
+  },
+  "delete-file": {
+    description: "Delete a file from the repository.",
+    instruction:
+      "Use `delete-file` to remove files from the repository. Pass `paths` as an array and batch related deletes in one call.",
+    aliases: ["deleteFile", "delete_file"],
+  },
+  "run-command": {
+    description:
+      "Run a shell command in the repository and capture stdout/stderr. Never use shell commands as fallbacks for file discovery/reading/editing when dedicated tools are available.",
+    instruction:
+      "Use `run-command` to run verification after edits and to execute build/test commands. Do not use it for file read/search/edit fallbacks (`cat`, `head`, `tail`, `nl`, `ls`, `grep`, `sed`, `find`, `rg`, `wc`) — use `read-file`, `search-files`, `find-files`, `edit-file`, or `edit-code`.",
+    aliases: ["runCommand", "run_command", "execute_command"],
+  },
+};
 
 export function streamCallId(toolName: ToolName): string {
   return `${toolName}_${createId()}`;
@@ -224,8 +314,7 @@ export function webSearchStreamRows(result: string): string {
 function createRunCommandTool(workspace: string, session: SessionContext, onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "run-command",
-    description:
-      "Run a shell command in the repository and capture stdout/stderr. Never use shell commands as fallbacks for file discovery/reading/editing when dedicated tools are available.",
+    description: CORE_TOOL_META["run-command"].description,
     inputSchema: z.object({
       command: z.string().min(1),
       timeoutMs: z.number().int().min(500).max(120000).optional(),
@@ -346,8 +435,7 @@ export async function guardedExecute<T>(
 function createFindFilesTool(workspace: string, session: SessionContext, onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "find-files",
-    description:
-      "Find files in the repository by name or path pattern. Pass `patterns` as an array to batch multiple lookups in one call. To search file contents use `search-files` instead.",
+    description: CORE_TOOL_META["find-files"].description,
     inputSchema: z.object({
       patterns: z.array(z.string().min(1)).min(1),
       maxResults: z.number().int().min(1).max(200).optional(),
@@ -376,8 +464,7 @@ function createFindFilesTool(workspace: string, session: SessionContext, onToolO
 function createSearchFilesTool(workspace: string, session: SessionContext, onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "search-files",
-    description:
-      "Search file contents in the repository for text or regex patterns. Optionally scope with `paths` (files or directories). To locate files by name use `find-files` instead.",
+    description: CORE_TOOL_META["search-files"].description,
     inputSchema: z
       .object({
         pattern: z.string().min(1).optional(),
@@ -420,8 +507,7 @@ function createSearchFilesTool(workspace: string, session: SessionContext, onToo
 function createScanCodeTool(workspace: string, session: SessionContext, onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "scan-code",
-    description:
-      "Scan files for structural code patterns using AST matching. Pass `paths` as an array of file or directory paths and `patterns` as an array of ast-grep patterns with `$VAR` metavariables (e.g. [`export function $NAME($$$PARAMS)`, `import $SPEC from $MOD`]).",
+    description: CORE_TOOL_META["scan-code"].description,
     inputSchema: z.object({
       paths: z.array(z.string().min(1)).min(1),
       patterns: z.array(z.string().min(1)).min(1),
@@ -460,8 +546,7 @@ function createScanCodeTool(workspace: string, session: SessionContext, onToolOu
 function createReadFileTool(workspace: string, session: SessionContext, onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "read-file",
-    description:
-      "Read one or more text file snippets by line range. Always pass `paths` as an array of {path, start?, end?} objects, even for a single file. Use to inspect code before editing.",
+    description: CORE_TOOL_META["read-file"].description,
     inputSchema: z.object({
       paths: z
         .array(
@@ -509,8 +594,7 @@ function createReadFileTool(workspace: string, session: SessionContext, onToolOu
 function createEditFileTool(workspace: string, session: SessionContext, onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "edit-file",
-    description:
-      "Edit an existing file. Pass `edits` as an array of either {find, replace} pairs (for small surgical edits using exact text match) or {startLine, endLine, replace} objects (for larger block replacements). Line numbers MUST come from `read-file` output — do not guess. endLine must not exceed the file length. All edits are applied atomically. You MUST read the file first. For new files, use `create-file`. For code renames or structural edits use `edit-code`.",
+    description: CORE_TOOL_META["edit-file"].description,
     inputSchema: z.object({
       path: z.string().min(1),
       edits: z
@@ -546,8 +630,7 @@ function createEditFileTool(workspace: string, session: SessionContext, onToolOu
 function createCreateFileTool(workspace: string, session: SessionContext, onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "create-file",
-    description:
-      "Create a new file with full content. For editing existing files, use `edit-file` or `edit-code` instead.",
+    description: CORE_TOOL_META["create-file"].description,
     inputSchema: z.object({
       path: z.string().min(1),
       content: z.string(),
@@ -577,8 +660,7 @@ function createCreateFileTool(workspace: string, session: SessionContext, onTool
 function createAstEditTool(workspace: string, session: SessionContext, onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "edit-code",
-    description:
-      "Edit code with AST pattern matching. Pass `edits` as [{pattern, replacement}] using `$VAR` metavariables (e.g. pattern=`console.log($ARG)` replacement=`logger.debug($ARG)`). `path` must be a specific file, not '.' or a directory. For non-code files use `edit-file`.",
+    description: CORE_TOOL_META["edit-code"].description,
     inputSchema: z.object({
       path: z.string().min(1),
       edits: z
@@ -614,7 +696,7 @@ function createAstEditTool(workspace: string, session: SessionContext, onToolOut
 function createDeleteFileTool(workspace: string, session: SessionContext) {
   return createTool({
     id: "delete-file",
-    description: "Delete a file from the repository.",
+    description: CORE_TOOL_META["delete-file"].description,
     inputSchema: z.object({
       paths: z.array(z.string().min(1)).min(1),
     }),
@@ -639,8 +721,7 @@ function createDeleteFileTool(workspace: string, session: SessionContext) {
 function createWebSearchTool(session: SessionContext, onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "web-search",
-    description:
-      "Search the public web for recent information and return top results. Use for questions not answerable from the repo.",
+    description: CORE_TOOL_META["web-search"].description,
     inputSchema: z.object({
       query: z.string().min(1),
       maxResults: z.number().int().min(1).max(10).optional(),
@@ -664,8 +745,7 @@ function createWebSearchTool(session: SessionContext, onToolOutput?: ToolOutputL
 function createWebFetchTool(session: SessionContext) {
   return createTool({
     id: "web-fetch",
-    description:
-      "Fetch a public URL and return extracted text content. Use to read docs, API references, or linked resources by URL.",
+    description: CORE_TOOL_META["web-fetch"].description,
     inputSchema: z.object({
       url: z.string().min(1),
       maxChars: z.number().int().min(500).max(12000).optional(),
@@ -690,25 +770,120 @@ export type CoreToolkitFactoryInput = {
   onToolOutput?: ToolOutputListener;
 };
 
-export function createCoreBaseToolkitTools(input: CoreToolkitFactoryInput) {
+export function createCoreBaseToolkit(input: CoreToolkitFactoryInput) {
   const { workspace, session, onToolOutput } = input;
   return {
-    findFiles: createFindFilesTool(workspace, session, onToolOutput),
-    searchFiles: createSearchFilesTool(workspace, session, onToolOutput),
-    scanCode: createScanCodeTool(workspace, session, onToolOutput),
-    readFile: createReadFileTool(workspace, session, onToolOutput),
-    webSearch: createWebSearchTool(session, onToolOutput),
-    webFetch: createWebFetchTool(session),
+    findFiles: {
+      tool: createFindFilesTool(workspace, session, onToolOutput),
+      meta: {
+        description:
+          "Find files in the repository by name or path pattern. Pass `patterns` as an array to batch multiple lookups in one call. To search file contents use `search-files` instead.",
+        instruction:
+          "Use `find-files` to locate files by name or path pattern. Always pass `patterns` as an array (e.g. [`api.ts`, `store.ts`]).",
+        aliases: ["findFiles", "find_files"],
+      },
+    },
+    searchFiles: {
+      tool: createSearchFilesTool(workspace, session, onToolOutput),
+      meta: {
+        description:
+          "Search file contents in the repository for text or regex patterns. Optionally scope with `paths` (files or directories). To locate files by name use `find-files` instead.",
+        instruction:
+          "Use `search-files` to search file contents by text or regex. Always batch related queries via `patterns`; optionally scope with `paths`.",
+        aliases: ["searchFiles", "search_files", "searchRepo", "search_repo"],
+      },
+    },
+    scanCode: {
+      tool: createScanCodeTool(workspace, session, onToolOutput),
+      meta: {
+        description:
+          "Scan files for structural code patterns using AST matching. Pass `paths` as an array of file or directory paths and `patterns` as an array of ast-grep patterns with `$VAR` metavariables (e.g. [`export function $NAME($$$PARAMS)`, `import $SPEC from $MOD`]).",
+        instruction:
+          "Use `scan-code` for AST pattern matching. Always pass `paths` and `patterns` as arrays. Batch multiple files and patterns in one call (e.g. paths=[`src/a.ts`, `src/b.ts`], patterns=[`export function $NAME`, `import $SPEC from $MOD`]). Metavariable names (`$NAME`, `$ARG`) are wildcards — they match any node, not literal text. Use it to map rename/refactor targets before `edit-code`. For keyword or regex searches prefer `search-files`.",
+        aliases: ["scanCode", "scan_code"],
+      },
+    },
+    readFile: {
+      tool: createReadFileTool(workspace, session, onToolOutput),
+      meta: {
+        description:
+          "Read one or more text file snippets by line range. Always pass `paths` as an array of {path, start?, end?} objects, even for a single file. Use to inspect code before editing.",
+        instruction:
+          "Use `read-file` to inspect code before editing. Pass `paths` as an array; batch multiple reads into one call.",
+        aliases: ["readFile", "read_file"],
+      },
+    },
+    webSearch: {
+      tool: createWebSearchTool(session, onToolOutput),
+      meta: {
+        description:
+          "Search the public web for recent information and return top results. Use for questions not answerable from the repo.",
+        instruction: "Use `web-search` for external information lookup.",
+        aliases: ["webSearch", "web_search"],
+      },
+    },
+    webFetch: {
+      tool: createWebFetchTool(session),
+      meta: {
+        description:
+          "Fetch a public URL and return extracted text content. Use to read docs, API references, or linked resources by URL.",
+        instruction: "Use `web-fetch` to read web pages, docs, or API references.",
+        aliases: ["webFetch", "web_fetch"],
+      },
+    },
   };
 }
 
-export function createCoreWriteToolkitTools(input: CoreToolkitFactoryInput) {
+export function createCoreWriteToolkit(input: CoreToolkitFactoryInput) {
   const { workspace, session, onToolOutput } = input;
   return {
-    runCommand: createRunCommandTool(workspace, session, onToolOutput),
-    editCode: createAstEditTool(workspace, session, onToolOutput),
-    editFile: createEditFileTool(workspace, session, onToolOutput),
-    createFile: createCreateFileTool(workspace, session, onToolOutput),
-    deleteFile: createDeleteFileTool(workspace, session),
+    runCommand: {
+      tool: createRunCommandTool(workspace, session, onToolOutput),
+      meta: {
+        description:
+          "Run a shell command in the repository and capture stdout/stderr. Never use shell commands as fallbacks for file discovery/reading/editing when dedicated tools are available.",
+        instruction:
+          "Use `run-command` to run verification after edits and to execute build/test commands. Do not use it for file read/search/edit fallbacks (`cat`, `head`, `tail`, `nl`, `ls`, `grep`, `sed`, `find`, `rg`, `wc`) — use `read-file`, `search-files`, `find-files`, `edit-file`, or `edit-code`.",
+        aliases: ["runCommand", "run_command", "execute_command"],
+      },
+    },
+    editCode: {
+      tool: createAstEditTool(workspace, session, onToolOutput),
+      meta: {
+        description:
+          "Edit code with AST pattern matching. Pass `edits` as [{pattern, replacement}] using `$VAR` metavariables (e.g. pattern=`console.log($ARG)` replacement=`logger.debug($ARG)`). `path` must be a specific file, not '.' or a directory. For non-code files use `edit-file`.",
+        instruction:
+          "Use `edit-code` for multi-location code changes, rename/refactor updates, or structural rewrites with AST `edits` array. `path` must be a concrete file path (not `.` or a directory). Prefer `edit-file` for single-location text edits.",
+        aliases: ["editCode", "edit_code"],
+      },
+    },
+    editFile: {
+      tool: createEditFileTool(workspace, session, onToolOutput),
+      meta: {
+        description:
+          "Edit an existing file. Pass `edits` as an array of either {find, replace} pairs (for small surgical edits using exact text match) or {startLine, endLine, replace} objects (for larger block replacements). Line numbers MUST come from `read-file` output — do not guess. endLine must not exceed the file length. All edits are applied atomically. You MUST read the file first. For new files, use `create-file`. For code renames or structural edits use `edit-code`.",
+        instruction:
+          "Use `edit-file` for text edits. For small changes use {find, replace} pairs where `find` is exact text to locate. For larger block changes use {startLine, endLine, replace} with 1-based line numbers from `read-file`. `replace` is *only* the new text for that region — do not include surrounding lines. Batch multiple edits to the same file into one call. If `find` is likely to match multiple locations, switch to `edit-code`.",
+        aliases: ["editFile", "edit_file"],
+      },
+    },
+    createFile: {
+      tool: createCreateFileTool(workspace, session, onToolOutput),
+      meta: {
+        description:
+          "Create a new file with full content. For editing existing files, use `edit-file` or `edit-code` instead.",
+        instruction: "For new files, call `create-file` with full content directly.",
+        aliases: ["createFile", "create_file", "writeFile", "write_file"],
+      },
+    },
+    deleteFile: {
+      tool: createDeleteFileTool(workspace, session),
+      meta: {
+        description: "Delete a file from the repository.",
+        instruction:
+          "Use `delete-file` to remove files from the repository. Pass `paths` as an array and batch related deletes in one call.",
+        aliases: ["deleteFile", "delete_file"],
+      },
+    },
   };
 }

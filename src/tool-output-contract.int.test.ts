@@ -4,10 +4,10 @@ import { join } from "node:path";
 import { formatToolHeader } from "./agent-output";
 import { setPermissionMode } from "./app-config";
 import { formatProgressOutput } from "./cli-format";
+import { runShellCommand } from "./core-tools";
 import { toolsForAgent } from "./mastra-tools";
 import { createTempDir, dedent, savedPermissionMode } from "./test-utils";
 import { mergeToolOutputHeader } from "./tool-summary-format";
-import { runShellCommand } from "./tools";
 
 const restorePermissions = savedPermissionMode();
 const stripAnsi = (value: string): string => {

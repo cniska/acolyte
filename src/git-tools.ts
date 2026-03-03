@@ -1,26 +1,7 @@
-import { gitDiff, gitLog, gitShow, gitStatusShort } from "./tools";
+import { gitDiff, gitLog, gitShow, gitStatusShort } from "./core-tools";
 
 export const GIT_TOOLKIT_OPERATIONS = ["statusShort", "diff", "log", "show"] as const;
 export type GitToolkitOperation = (typeof GIT_TOOLKIT_OPERATIONS)[number];
-
-export const gitToolMeta = {
-  "git-status": {
-    instruction: "Use `git-status` for working tree status.",
-    aliases: ["gitStatus", "git_status"],
-  },
-  "git-diff": {
-    instruction: "Use `git-diff` for change inspection.",
-    aliases: ["gitDiff", "git_diff"],
-  },
-  "git-log": {
-    instruction: "Use `git-log` to inspect recent commits quickly (optionally scoped by path).",
-    aliases: ["gitLog", "git_log"],
-  },
-  "git-show": {
-    instruction: "Use `git-show` to inspect a specific commit/tag/ref with patch details (optionally scoped by path).",
-    aliases: ["gitShow", "git_show"],
-  },
-} as const;
 
 export type GitDiffInput = { path?: string; contextLines?: number };
 export type GitLogInput = { path?: string; limit?: number };
@@ -52,7 +33,7 @@ async function runGitToolkitOperation(operation: GitToolkitOperation, execute: (
     return await execute();
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`[git-toolkit:${operation}] ${message}`);
+    throw new Error(`[git-tools:${operation}] ${message}`);
   }
 }
 

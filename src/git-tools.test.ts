@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createGitToolkit, type GitToolkitDeps } from "./git-toolkit";
+import { createGitToolkit, type GitToolkitDeps } from "./git-tools";
 
 function createDeps(overrides?: Partial<GitToolkitDeps>): GitToolkitDeps {
   return {
@@ -86,6 +86,6 @@ describe("git toolkit", () => {
       }),
     );
 
-    await expect(toolkit.diff()).rejects.toThrow("[git-toolkit:diff] boom");
+    await expect(toolkit.diff()).rejects.toThrow("[git-tools:diff] boom");
   });
 });

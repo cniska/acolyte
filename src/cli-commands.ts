@@ -18,13 +18,13 @@ import { formatForTool, parseRunExitCode, showToolResult, truncateText } from ".
 import { toolMode } from "./cli-tool-mode";
 import { createClient } from "./client";
 import { readConfig, readConfigForScope, readResolvedConfigSync, setConfigValue, unsetConfigValue } from "./config";
+import { runShellCommand } from "./core-tools";
 import { addMemory, listMemories } from "./memory";
 import { ensureLocalServer, localServerStatus, stopLocalServer } from "./server-daemon";
 import type { SessionStore } from "./session-types";
 import type { StatusFields } from "./status-contract";
 import { formatStatusOutput as formatStatusOutputShared } from "./status-format";
 import { createSession, readStore } from "./storage";
-import { runShellCommand } from "./tools";
 import { formatCliTitle, printDim, printError, printOutput } from "./ui";
 
 type SubcommandDoc = {

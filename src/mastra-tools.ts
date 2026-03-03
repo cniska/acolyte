@@ -1,10 +1,10 @@
 import { resolve } from "node:path";
 import { appConfig } from "./app-config";
-import { createGitToolkit } from "./git-toolkit";
+import { createGitToolkit } from "./git-tools";
 import {
   type CoreToolkitFactoryInput,
-  createCoreBaseToolkitTools,
-  createCoreWriteToolkitTools,
+  createCoreBaseToolkit,
+  createCoreWriteToolkit,
   emitHeadTailLines,
   guardedExecute,
   streamCallId,
@@ -14,78 +14,100 @@ import {
 } from "./mastra-core-tools";
 import { createMastraGitTools } from "./mastra-git-tools";
 import { createSessionContext, type SessionContext } from "./tool-guards";
+import type { ToolMeta } from "./tool-meta-types";
+import type { ToolName } from "./tool-names";
 import type { ToolOutputListener } from "./tool-output-format";
 
 type ToolkitMode = "read" | "write";
 
-type GitTools = ReturnType<typeof createMastraGitTools>;
+type ToolkitTool = { id?: string };
+type ToolWithMeta = { tool: ToolkitTool; meta: ToolMeta };
+type ToolkitEntries = Record<string, ToolWithMeta>;
 
-export type Toolset = ReturnType<typeof createCoreBaseToolkitTools> &
-  ReturnType<typeof createCoreWriteToolkitTools> & {
-    gitStatus: GitTools["gitStatus"];
-    gitDiff: GitTools["gitDiff"];
-    gitLog: GitTools["gitLog"];
-    gitShow: GitTools["gitShow"];
-  };
+type CoreBaseToolkitEntries = ReturnType<typeof createCoreBaseToolkit>;
+type CoreWriteToolkitEntries = ReturnType<typeof createCoreWriteToolkit>;
+type GitToolkitEntries = ReturnType<typeof createMastraGitTools>;
+type RegisteredToolkitEntries = CoreBaseToolkitEntries & CoreWriteToolkitEntries & GitToolkitEntries;
+
+export type Toolset = {
+  [Key in keyof RegisteredToolkitEntries]: RegisteredToolkitEntries[Key]["tool"];
+};
 
 type ToolkitRegistration = {
   id: string;
   appliesTo: "all" | readonly ToolkitMode[];
-  createTools: (input: CoreToolkitFactoryInput) => Partial<Toolset>;
+  createToolkit: (input: CoreToolkitFactoryInput) => ToolkitEntries;
 };
 
-function createGitToolkitTools(input: CoreToolkitFactoryInput): Partial<Toolset> {
+function createGitToolkitEntries(input: CoreToolkitFactoryInput): GitToolkitEntries {
   const { workspace, session, onToolOutput } = input;
   const git = createGitToolkit(workspace);
   const runtime = { session, guardedExecute, withToolError, streamCallId };
-  return {
-    ...createMastraGitTools({
-      git,
-      runtime,
-      onToolOutput,
-      emitHeadTailLines,
-      stripGitShowMetadataForPreview,
-    }),
-  };
+  return createMastraGitTools({
+    git,
+    runtime,
+    onToolOutput,
+    emitHeadTailLines,
+    stripGitShowMetadataForPreview,
+  });
 }
 
-const TOOLKIT_REGISTRY: ToolkitRegistration[] = [
+export const TOOLKIT_REGISTRY: ToolkitRegistration[] = [
   {
     id: "core-base",
     appliesTo: "all",
-    createTools: createCoreBaseToolkitTools,
+    createToolkit: (input) => createCoreBaseToolkit(input),
   },
   {
     id: "core-write",
     appliesTo: ["write"],
-    createTools: createCoreWriteToolkitTools,
+    createToolkit: (input) => createCoreWriteToolkit(input),
   },
   {
     id: "git",
     appliesTo: "all",
-    createTools: createGitToolkitTools,
+    createToolkit: (input) => createGitToolkitEntries(input),
   },
 ];
 
-function toolkitTools(
+function collectToolkitEntries(
   workspace: string,
   session: SessionContext,
-  onToolOutput: ToolOutputListener | undefined,
   mode: ToolkitMode,
-): Partial<Toolset> {
-  const combined: Partial<Toolset> = {};
+  onToolOutput?: ToolOutputListener,
+): ToolkitEntries {
+  const combined: ToolkitEntries = {};
   for (const toolkit of TOOLKIT_REGISTRY) {
     if (toolkit.appliesTo !== "all" && !toolkit.appliesTo.includes(mode)) continue;
-    const tools = toolkit.createTools({ workspace, session, onToolOutput });
-    Object.assign(combined, tools);
+    Object.assign(combined, toolkit.createToolkit({ workspace, session, onToolOutput }));
   }
   return combined;
 }
 
+function asToolset(entries: ToolkitEntries): Partial<Toolset> {
+  const tools: Partial<Toolset> = {};
+  for (const [name, entry] of Object.entries(entries)) {
+    (tools as Record<string, ToolkitTool>)[name] = entry.tool;
+  }
+  return tools;
+}
+
+function asToolMeta(entries: ToolkitEntries): Record<ToolName, ToolMeta> {
+  const meta: Record<string, ToolMeta> = {};
+  for (const entry of Object.values(entries)) {
+    if (typeof entry.tool.id !== "string") continue;
+    meta[entry.tool.id] = entry.meta;
+  }
+  return meta as Record<ToolName, ToolMeta>;
+}
+
+export const toolMeta: Record<ToolName, ToolMeta> = asToolMeta(
+  collectToolkitEntries(resolve(process.cwd()), createSessionContext(), "write"),
+);
+
 function createToolset(workspace: string, session: SessionContext, onToolOutput?: ToolOutputListener) {
-  const tools = toolkitTools(workspace, session, onToolOutput, "write");
   return {
-    tools: tools as Toolset,
+    tools: asToolset(collectToolkitEntries(workspace, session, "write", onToolOutput)) as Toolset,
     session,
   };
 }
@@ -96,7 +118,7 @@ function readOnlyTools(
   onToolOutput?: ToolOutputListener,
 ): { tools: Partial<Toolset>; session: SessionContext } {
   return {
-    tools: toolkitTools(workspace, session, onToolOutput, "read"),
+    tools: asToolset(collectToolkitEntries(workspace, session, "read", onToolOutput)),
     session,
   };
 }
