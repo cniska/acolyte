@@ -1,5 +1,6 @@
 import { appConfig } from "./app-config";
 import { buildStreamErrorDetail } from "./error-handling";
+import { mapQuotaErrorMessage } from "./error-messages";
 import { errorToLogFields, log } from "./log";
 import { mastraStorage, mastraStorageMode } from "./mastra-storage";
 import { getObservationalMemoryConfig } from "./memory-config";
@@ -49,11 +50,7 @@ function serverError(
 ): Response {
   const errorId = nextErrorId();
   const errorMessage = error instanceof Error ? error.message : "Unknown error";
-  const errorMessageLower = errorMessage.toLowerCase();
-  const publicMessage =
-    errorMessageLower.includes("insufficient_quota") || errorMessageLower.includes("exceeded your current quota")
-      ? "Provider quota exceeded. Add billing/credits or switch model/provider."
-      : errorMessage;
+  const publicMessage = mapQuotaErrorMessage(errorMessage);
   const { errorCode, errorDetail } = buildStreamErrorDetail(
     {
       message: publicMessage,

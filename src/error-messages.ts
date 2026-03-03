@@ -1,5 +1,6 @@
 import { unreachable } from "./assert";
 import { type AppError, createAppError } from "./error-handling";
+import { isLoopbackHost } from "./network-host";
 import type { ModelProviderName } from "./provider-config";
 
 export const USER_ERROR_MESSAGES = {
@@ -17,11 +18,6 @@ const CONNECTION_HELP_MESSAGES = {
   loopbackDefault: (apiUrl: string) => `Cannot reach server at ${apiUrl}. Start it with: acolyte server start`,
   generic: (apiUrl: string) => `Cannot reach server at ${apiUrl}. Check apiUrl and server availability.`,
 } as const;
-
-function isLoopbackHost(hostname: string): boolean {
-  const normalized = hostname.toLowerCase().replace(/^\[(.*)\]$/, "$1");
-  return normalized === "localhost" || normalized === "127.0.0.1" || normalized === "::1";
-}
 
 export type UserErrorCode = "E_MODEL_NOT_CONFIGURED" | "E_MODEL_PROVIDER_UNAVAILABLE";
 
@@ -58,34 +54,59 @@ export function createUserError<C extends UserErrorCode>(code: C, meta?: UserErr
   return createAppError(code, messageForUserError(code, meta), meta);
 }
 
-export function mapQuotaMessage(message: string): string {
-  const lower = message.toLowerCase();
-  if (
+type PromptErrorRule = {
+  matches: (lower: string) => boolean;
+  message: (trimmed: string) => string;
+};
+
+function isQuotaErrorMessage(lower: string): boolean {
+  return (
     lower.includes("insufficient_quota") ||
     lower.includes("quota exceeded") ||
     lower.includes("exceeded your current quota")
-  )
-    return USER_ERROR_MESSAGES.providerQuotaExceeded;
+  );
+}
+
+const PROMPT_ERROR_RULES: readonly PromptErrorRule[] = [
+  {
+    matches: isQuotaErrorMessage,
+    message: () => USER_ERROR_MESSAGES.providerQuotaExceeded,
+  },
+  {
+    matches: (lower) => lower.includes("timed out") || lower.includes("timeout"),
+    message: () => USER_ERROR_MESSAGES.serverTimedOut,
+  },
+  {
+    matches: (lower) => lower.includes("shell command execution is disabled in read mode"),
+    message: () => USER_ERROR_MESSAGES.writeBlockedInReadMode,
+  },
+  {
+    matches: (lower) =>
+      lower.includes("server unavailable") ||
+      lower.includes("connection refused") ||
+      lower.includes("socket connection was closed unexpectedly"),
+    message: () => USER_ERROR_MESSAGES.serverUnavailable,
+  },
+  {
+    matches: (lower) => lower.includes("remote server error"),
+    message: (trimmed) => trimmed,
+  },
+];
+
+export function mapQuotaErrorMessage(message: string): string {
+  const trimmed = message.trim();
+  const lower = trimmed.toLowerCase();
+  if (isQuotaErrorMessage(lower)) return USER_ERROR_MESSAGES.providerQuotaExceeded;
   return message;
 }
 
-export function formatPromptErrorMessage(message: string): string {
+export function formatPromptError(message: string): string {
   const trimmed = message.trim();
   if (trimmed.length === 0) return USER_ERROR_MESSAGES.requestFailed;
   const lower = trimmed.toLowerCase();
-  if (mapQuotaMessage(trimmed) === USER_ERROR_MESSAGES.providerQuotaExceeded)
-    return USER_ERROR_MESSAGES.providerQuotaExceeded;
-  if (lower.includes("timed out") || lower.includes("timeout")) return USER_ERROR_MESSAGES.serverTimedOut;
-  if (lower.includes("shell command execution is disabled in read mode"))
-    return USER_ERROR_MESSAGES.writeBlockedInReadMode;
-  if (
-    lower.includes("server unavailable") ||
-    lower.includes("connection refused") ||
-    lower.includes("socket connection was closed unexpectedly")
-  ) {
-    return USER_ERROR_MESSAGES.serverUnavailable;
+  for (const rule of PROMPT_ERROR_RULES) {
+    if (rule.matches(lower)) return rule.message(trimmed);
   }
-  if (lower.includes("remote server error")) return trimmed;
   return trimmed;
 }
 

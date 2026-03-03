@@ -7,13 +7,13 @@ import {
   formatEditUpdateOutput,
   formatForTool,
   formatProgressOutput,
-  formatPromptError,
   formatRunOutput,
   parseEditResult,
   parseRunExitCode,
   summarizeDiff,
   truncateText,
 } from "./cli-format";
+import { formatPromptError } from "./error-messages";
 
 const stripAnsi = (value: string): string => {
   let out = "";
@@ -188,19 +188,19 @@ describe("cli-format", () => {
   });
 
   test("formatPromptError maps actionable one-shot failures", () => {
-    expect(formatPromptError(new Error("insufficient_quota: exceeded"))).toBe(
+    expect(formatPromptError("insufficient_quota: exceeded")).toBe(
       "Provider quota exceeded. Add billing/credits or switch model/provider.",
     );
-    expect(formatPromptError(new Error("Remote server stream timed out after 120000ms"))).toBe(
+    expect(formatPromptError("Remote server stream timed out after 120000ms")).toBe(
       "Server request timed out. Retry or reduce request scope.",
     );
-    expect(formatPromptError(new Error("Shell command execution is disabled in read mode"))).toBe(
+    expect(formatPromptError("Shell command execution is disabled in read mode")).toBe(
       "Write action blocked in read mode. Run /permissions write and retry.",
     );
-    expect(formatPromptError(new Error("The socket connection was closed unexpectedly."))).toBe(
+    expect(formatPromptError("The socket connection was closed unexpectedly.")).toBe(
       "Server unavailable. Start the server and retry.",
     );
-    expect(formatPromptError(new Error("Remote server error (502): boom"))).toBe("Remote server error (502): boom");
+    expect(formatPromptError("Remote server error (502): boom")).toBe("Remote server error (502): boom");
   });
 
   test("formatAssistantReplyOutput indents multiline assistant output", () => {

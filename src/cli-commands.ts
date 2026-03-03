@@ -4,12 +4,11 @@ import { z } from "zod";
 import { appConfig } from "./app-config";
 import { formatColumns, formatRelativeTime } from "./chat-format";
 import { resolveCommandAlias } from "./cli-command-suggest";
+import { handlePrompt, newMessage } from "./cli-prompt";
 import {
   attachFileToSession,
   chatModeWithOptions,
   FALLBACK_MODEL,
-  handlePrompt,
-  newMessage,
 } from "./cli";
 import { formatForTool, parseRunExitCode, showToolResult, truncateText } from "./cli-format";
 import {

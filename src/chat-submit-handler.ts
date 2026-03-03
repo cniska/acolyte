@@ -14,6 +14,7 @@ import {
 } from "./chat-turn";
 import type { Client } from "./client";
 import type { PermissionMode } from "./config-contract";
+import { formatPromptError, USER_ERROR_MESSAGES } from "./error-messages";
 import { addMemory, type MemoryScope } from "./memory";
 import type { Session, SessionStore } from "./session-types";
 import { createId } from "./short-id";
@@ -67,24 +68,8 @@ function isAbortError(error: unknown): boolean {
 }
 
 function formatSubmitError(error: unknown): string {
-  if (!(error instanceof Error)) return "Request failed. Retry and check server logs if it keeps failing.";
-  const message = error.message.trim();
-  const lower = message.toLowerCase();
-  if (lower.includes("insufficient_quota") || lower.includes("quota exceeded") || lower.includes("quota"))
-    return "Provider quota exceeded. Add billing/credits or switch model/provider.";
-  if (lower.includes("timed out") || lower.includes("timeout"))
-    return "Server request timed out. Retry or reduce request scope.";
-  if (lower.includes("shell command execution is disabled in read mode"))
-    return "Write action blocked in read mode. Run /permissions write and retry.";
-  if (
-    lower.includes("server unavailable") ||
-    lower.includes("connection refused") ||
-    lower.includes("socket connection was closed unexpectedly")
-  ) {
-    return "Server unavailable. Start the server and retry.";
-  }
-  if (lower.includes("remote server error")) return message;
-  return message || "Request failed. Retry and check server logs if it keeps failing.";
+  if (!(error instanceof Error)) return USER_ERROR_MESSAGES.requestFailed;
+  return formatPromptError(error.message);
 }
 
 function isLikelyWritePrompt(text: string): boolean {
