@@ -2,7 +2,8 @@
 import { stdout as output } from "node:process";
 import { appConfig } from "./app-config";
 import { runInkChat } from "./chat-ui";
-import { commands, isTopLevelHelpCommand, isTopLevelVersionCommand, usage } from "./cli-commands";
+import { isTopLevelHelpCommand, isTopLevelVersionCommand } from "./cli-command-routing";
+import { commands, usage } from "./cli-commands";
 import { newMessage } from "./cli-prompt";
 import { formatLocalServerReadyMessage, resolveChatApiUrl, shouldAutoStartLocalServerForChat } from "./cli-server";
 import { resolveCliVersion } from "./cli-version";

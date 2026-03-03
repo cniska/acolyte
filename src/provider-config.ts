@@ -1,5 +1,7 @@
-export type ProviderName = "openai" | "openai-compatible" | "anthropic" | "gemini";
-export type ModelProviderName = ProviderName;
+import type { ModelProvider } from "./provider-contract";
+
+export type ModelProviderName = ModelProvider;
+export type ProviderName = ModelProviderName;
 type SupportedProviderName = Exclude<ModelProviderName, "openai-compatible">;
 
 const SUGGESTED_MODELS: Record<SupportedProviderName, string[]> = {

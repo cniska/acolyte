@@ -1,0 +1,81 @@
+import { formatColumns, formatRelativeTime } from "./chat-format";
+import { truncateText } from "./cli-format";
+import type { addMemory as addMemoryType, listMemories as listMemoriesType } from "./memory";
+
+type MemoryModeDeps = {
+  addMemory: typeof addMemoryType;
+  hasHelpFlag: (args: string[]) => boolean;
+  listMemories: typeof listMemoriesType;
+  printDim: (message: string) => void;
+  subcommandError: (name: string, message?: string) => void;
+  subcommandHelp: (name: string) => void;
+};
+
+function printMemoryRows(
+  rows: Awaited<ReturnType<typeof listMemoriesType>>,
+  printDim: (message: string) => void,
+): void {
+  if (rows.length === 0) {
+    printDim("No memories saved.");
+    return;
+  }
+
+  const formatted = rows
+    .slice(0, 50)
+    .map((row) => [row.id, truncateText(row.content, 80), formatRelativeTime(row.createdAt)]);
+  for (const line of formatColumns(formatted)) {
+    printDim(line);
+  }
+}
+
+export async function memoryMode(args: string[], deps: MemoryModeDeps): Promise<void> {
+  const { addMemory, hasHelpFlag, listMemories, printDim, subcommandError, subcommandHelp } = deps;
+  if (hasHelpFlag(args)) {
+    subcommandHelp("memory");
+    return;
+  }
+  const [subcommand, ...rest] = args;
+  const validScopes = new Set(["all", "user", "project"]);
+
+  if (subcommand === "list" || !subcommand) {
+    const scopeRaw = subcommand === "list" ? rest[0] : undefined;
+    if (subcommand === "list" && rest.length > 1) {
+      subcommandError("memory", "Usage: acolyte memory list [all|user|project]");
+      return;
+    }
+    const scope = scopeRaw && validScopes.has(scopeRaw) ? scopeRaw : "all";
+    if (scopeRaw && !validScopes.has(scopeRaw)) {
+      subcommandError("memory", "Usage: acolyte memory list [all|user|project]");
+      return;
+    }
+    const rows = await listMemories({ scope: scope as "all" | "user" | "project" });
+    printMemoryRows(rows, printDim);
+    return;
+  }
+
+  if (subcommand === "add") {
+    let scope: "user" | "project" = "user";
+    const contentParts: string[] = [];
+    for (const token of rest) {
+      if (token === "--project") {
+        scope = "project";
+        continue;
+      }
+      if (token === "--user") {
+        scope = "user";
+        continue;
+      }
+      contentParts.push(token);
+    }
+    const content = contentParts.join(" ").trim();
+    if (!content) {
+      subcommandError("memory", "Usage: acolyte memory add [--user|--project] <memory text>");
+      return;
+    }
+    const entry = await addMemory(content, { scope });
+    printDim(`Saved ${scope} memory ${entry.id}.`);
+    return;
+  }
+
+  subcommandError("memory");
+}

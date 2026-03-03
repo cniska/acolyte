@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { hasHelpFlag, subcommandHelp } from "./cli-commands";
+import { hasHelpFlag } from "./cli-command-routing";
+import { subcommandHelp } from "./cli-commands";
 import {
   countLabel,
   displayPath,
