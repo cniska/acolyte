@@ -270,7 +270,7 @@ export function runResourceId(sessionId: string): string {
   return `run-${sessionId.replace(/^sess_/, "").slice(0, 24)}`;
 }
 
-export function formatStatusOutput(status: Record<string, string>): string {
+export function formatStatusOutput(status: Record<string, string | number>): string {
   return formatStatusOutputShared(status);
 }
 
@@ -718,79 +718,79 @@ async function configMode(args: string[]): Promise<void> {
     return null;
   };
 
-  if (subcommand === "list") {
-    const scope = parseScopeFlag(listArgs[0]);
-    const config = scope ? await readConfigForScope(scope) : await readConfig();
-    if (scope) printDim(`${"scope:".padEnd(CONFIG_LIST_KEY_COLUMN_WIDTH)} ${scope}`);
-    for (const name of validKeys) {
-      const value = config[name];
-      if (value === undefined || value === "") continue;
-      if (typeof value === "object" && value !== null) {
-        for (const [k, v] of Object.entries(value)) {
-          printDim(`${`${name}.${k}:`.padEnd(CONFIG_LIST_KEY_COLUMN_WIDTH)} ${String(v)}`);
+  switch (subcommand) {
+    case "list": {
+      const scope = parseScopeFlag(listArgs[0]);
+      const config = scope ? await readConfigForScope(scope) : await readConfig();
+      if (scope) printDim(`${"scope:".padEnd(CONFIG_LIST_KEY_COLUMN_WIDTH)} ${scope}`);
+      for (const name of validKeys) {
+        const value = config[name];
+        if (value === undefined || value === "") continue;
+        if (typeof value === "object" && value !== null) {
+          for (const [k, v] of Object.entries(value)) {
+            printDim(`${`${name}.${k}:`.padEnd(CONFIG_LIST_KEY_COLUMN_WIDTH)} ${String(v)}`);
+          }
+        } else {
+          printDim(`${`${name}:`.padEnd(CONFIG_LIST_KEY_COLUMN_WIDTH)} ${String(value)}`);
         }
-      } else {
-        printDim(`${`${name}:`.padEnd(CONFIG_LIST_KEY_COLUMN_WIDTH)} ${String(value)}`);
       }
+      return;
     }
-    return;
+    case "set": {
+      const scope = parseScopeFlag(restArgs[0]);
+      const key = scope ? restArgs[1] : restArgs[0];
+      const valueParts = scope ? restArgs.slice(2) : restArgs.slice(1);
+      if (key === "apiKey") {
+        printError("Config apiKey is not supported. Use ACOLYTE_API_KEY in .env instead.");
+        process.exitCode = 1;
+        return;
+      }
+      const isDottedKey = key?.includes(".") && valid.has(key.split(".")[0] ?? "");
+      if (!key || (!valid.has(key) && !isDottedKey)) {
+        subcommandError("config", "Usage: acolyte config set <key> <value>");
+        return;
+      }
+
+      const value = valueParts.join(" ").trim();
+      if (!value) {
+        printError("Config value cannot be empty");
+        process.exitCode = 1;
+        return;
+      }
+
+      try {
+        await setConfigValue(key, value, { scope: scope ?? "user" });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : `Invalid value for ${key}`;
+        printError(message);
+        process.exitCode = 1;
+        return;
+      }
+      printDim(`Saved config ${key} (${scope ?? "user"}).`);
+      return;
+    }
+    case "unset": {
+      const scope = parseScopeFlag(restArgs[0]);
+      const key = scope ? restArgs[1] : restArgs[0];
+      if (key === "apiKey") {
+        printError("Config apiKey is not supported. Use ACOLYTE_API_KEY in .env instead.");
+        process.exitCode = 1;
+        return;
+      }
+      const isDottedUnsetKey = key?.includes(".") && valid.has(key.split(".")[0] ?? "");
+      if (!key || (!valid.has(key) && !isDottedUnsetKey)) {
+        subcommandError("config", "Usage: acolyte config unset <key>");
+        return;
+      }
+
+      await unsetConfigValue(key, { scope: scope ?? "user" });
+      printDim(`Removed config ${key} (${scope ?? "user"}).`);
+      return;
+    }
+    default:
+      subcommandError("config");
+      printDim(`Keys: ${validKeys.join(", ")}`);
   }
-
-  if (subcommand === "set") {
-    const scope = parseScopeFlag(restArgs[0]);
-    const key = scope ? restArgs[1] : restArgs[0];
-    const valueParts = scope ? restArgs.slice(2) : restArgs.slice(1);
-    if (key === "apiKey") {
-      printError("Config apiKey is not supported. Use ACOLYTE_API_KEY in .env instead.");
-      process.exitCode = 1;
-      return;
-    }
-    const isDottedKey = key?.includes(".") && valid.has(key.split(".")[0] ?? "");
-    if (!key || (!valid.has(key) && !isDottedKey)) {
-      subcommandError("config", "Usage: acolyte config set <key> <value>");
-      return;
-    }
-
-    const value = valueParts.join(" ").trim();
-    if (!value) {
-      printError("Config value cannot be empty");
-      process.exitCode = 1;
-      return;
-    }
-
-    try {
-      await setConfigValue(key, value, { scope: scope ?? "user" });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : `Invalid value for ${key}`;
-      printError(message);
-      process.exitCode = 1;
-      return;
-    }
-    printDim(`Saved config ${key} (${scope ?? "user"}).`);
-    return;
-  }
-
-  if (subcommand === "unset") {
-    const scope = parseScopeFlag(restArgs[0]);
-    const key = scope ? restArgs[1] : restArgs[0];
-    if (key === "apiKey") {
-      printError("Config apiKey is not supported. Use ACOLYTE_API_KEY in .env instead.");
-      process.exitCode = 1;
-      return;
-    }
-    const isDottedUnsetKey = key?.includes(".") && valid.has(key.split(".")[0] ?? "");
-    if (!key || (!valid.has(key) && !isDottedUnsetKey)) {
-      subcommandError("config", "Usage: acolyte config unset <key>");
-      return;
-    }
-
-    await unsetConfigValue(key, { scope: scope ?? "user" });
-    printDim(`Removed config ${key} (${scope ?? "user"}).`);
-    return;
-  }
-
-  subcommandError("config");
-  printDim(`Keys: ${validKeys.join(", ")}`);
 }
 
 export const commands: Record<string, (args: string[]) => Promise<void>> = {
