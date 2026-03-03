@@ -9,6 +9,12 @@ Use the smallest test type that gives strong confidence.
 - Visual: stable TUI rendering and interaction snapshots.
 - Performance: trend detection for latency regressions, not correctness.
 
+## Unit test boundary
+
+- `*.test.ts` and `*.test.tsx` should avoid filesystem writes, subprocesses, and network calls.
+- If a test needs real fs/process/network behavior, use `*.int.test.ts` instead.
+- Prefer mocks for UI/layout-focused unit tests.
+
 ## Commands
 
 - Full baseline: `bun run verify`

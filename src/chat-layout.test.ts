@@ -1,16 +1,14 @@
 import { describe, expect, test } from "bun:test";
-import { rm } from "node:fs/promises";
 import { formatHeaderContextLine, justifyLineSpaceBetween, shownBranch } from "./chat-layout";
-import { createTempDir } from "./test-utils";
 
-async function runGit(cwd: string, ...args: string[]): Promise<void> {
-  const proc = Bun.spawn({ cmd: ["git", ...args], cwd, stdout: "pipe", stderr: "pipe" });
-  const [stdout, stderr, exitCode] = await Promise.all([
-    new Response(proc.stdout).text(),
-    new Response(proc.stderr).text(),
-    proc.exited,
-  ]);
-  if (exitCode !== 0) throw new Error(`git ${args.join(" ")} failed (${exitCode}): ${stderr || stdout}`);
+function streamFromText(text: string): ReadableStream<Uint8Array> {
+  const encoder = new TextEncoder();
+  return new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(encoder.encode(text));
+      controller.close();
+    },
+  });
 }
 
 function withColumns(width: number, task: () => void): void {
@@ -31,28 +29,32 @@ describe("chat-layout", () => {
   });
 
   test("shownBranch returns null outside git repositories", async () => {
-    const workspace = await createTempDir("acolyte-chat-layout-");
+    const originalSpawn = Bun.spawn;
+    (Bun as { spawn: typeof Bun.spawn }).spawn = (() =>
+      ({
+        stdout: streamFromText(""),
+        stderr: streamFromText("fatal: not a git repository\n"),
+        exited: Promise.resolve(128),
+      }) as Bun.Subprocess) as typeof Bun.spawn;
     try {
-      expect(await shownBranch(workspace)).toBeNull();
+      expect(await shownBranch("/tmp/mock-repo")).toBeNull();
     } finally {
-      await rm(workspace, { recursive: true, force: true });
+      (Bun as { spawn: typeof Bun.spawn }).spawn = originalSpawn;
     }
   });
 
   test("shownBranch returns a branch name inside a git repository", async () => {
-    const workspace = await createTempDir("acolyte-chat-layout-");
+    const originalSpawn = Bun.spawn;
+    (Bun as { spawn: typeof Bun.spawn }).spawn = (() =>
+      ({
+        stdout: streamFromText("main\n"),
+        stderr: streamFromText(""),
+        exited: Promise.resolve(0),
+      }) as Bun.Subprocess) as typeof Bun.spawn;
     try {
-      await runGit(workspace, "init");
-      await runGit(workspace, "config", "user.email", "test@example.com");
-      await runGit(workspace, "config", "user.name", "Test");
-      await Bun.write(`${workspace}/README.md`, "seed\n");
-      await runGit(workspace, "add", "README.md");
-      await runGit(workspace, "commit", "-m", "init");
-      const branch = await shownBranch(workspace);
-      expect(branch).not.toBeNull();
-      expect(branch?.trim().length ?? 0).toBeGreaterThan(0);
+      expect(await shownBranch("/tmp/mock-repo")).toBe("main");
     } finally {
-      await rm(workspace, { recursive: true, force: true });
+      (Bun as { spawn: typeof Bun.spawn }).spawn = originalSpawn;
     }
   });
 
