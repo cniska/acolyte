@@ -29,3 +29,10 @@ Use the smallest test type that gives strong confidence.
 - Use multiple runs and compare median/p95 over time.
 - Fail on meaningful regressions with a median threshold.
 - Add scenarios only when they represent a real user-critical path.
+
+## CI perf artifact
+
+- CI uploads `perf-baseline.json` as the `perf-baseline` artifact.
+- Read `scenarios.<id>.summary.medianMs` as the primary regression signal.
+- Use `p95Ms` to detect tail-latency regressions that median may hide.
+- Use `scenarios.<id>.runs` for per-run debugging and outlier checks.
