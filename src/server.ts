@@ -18,6 +18,7 @@ import { createId } from "./short-id";
 import { createSoulPrompt, getMemoryContextEntries } from "./soul";
 import type { StreamErrorDetail } from "./stream-error";
 import { TaskRegistry } from "./task-registry";
+import type { TaskTransitionReason } from "./task-state";
 import { extractToolErrorCode } from "./tool-error-codes";
 
 const PORT = appConfig.server.port;
@@ -172,7 +173,7 @@ function resolveResourceId(url: URL): string {
 function transitionTaskState(
   taskId: string,
   patch: { state?: "running" | "detached" | "completed" | "failed" | "cancelled"; summary?: string },
-  meta?: { reason?: string; transport?: string },
+  meta?: { reason?: TaskTransitionReason; transport?: string },
 ): void {
   const previous = taskRegistry.get(taskId);
   const result = taskRegistry.transitionTask(taskId, patch);
