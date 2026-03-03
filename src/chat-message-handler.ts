@@ -1,18 +1,8 @@
 import { appConfig } from "./app-config";
 import { type ChatRow, createRow, dispatchSlashCommand, type TokenUsageEntry } from "./chat-commands";
 import { invalidateRepoPathCandidates } from "./chat-file-ref";
-import { buildFinalAssistantRows, finalizeToolProgressRows } from "./chat-message-handler-finalize";
 import type { Message } from "./chat-message";
-import { createMessageStreamState } from "./chat-message-handler-stream";
-import { createProgressTracker } from "./chat-progress";
-import { isKnownSlashToken, resolveSlashAlias } from "./chat-slash";
-import {
-  appendInputHistory,
-  applyUserTurn,
-  resolveReferencedFileContext,
-  runAssistantTurn,
-  unresolvedPathRows,
-} from "./chat-turn";
+import { buildFinalAssistantRows, finalizeToolProgressRows } from "./chat-message-handler-finalize";
 import {
   distillMemoryCandidate,
   formatSubmitError,
@@ -23,7 +13,17 @@ import {
   resolveNaturalRememberDirective,
   statusPermissionMode,
 } from "./chat-message-handler-helpers";
+import { createMessageStreamState } from "./chat-message-handler-stream";
 import { startRemoteTaskFollowup } from "./chat-message-handler-task-followup";
+import { createProgressTracker } from "./chat-progress";
+import { isKnownSlashToken, resolveSlashAlias } from "./chat-slash";
+import {
+  appendInputHistory,
+  applyUserTurn,
+  resolveReferencedFileContext,
+  runAssistantTurn,
+  unresolvedPathRows,
+} from "./chat-turn";
 import type { Client } from "./client";
 import { addMemory } from "./memory";
 import type { Session, SessionStore } from "./session-types";

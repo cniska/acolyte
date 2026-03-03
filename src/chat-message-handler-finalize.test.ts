@@ -15,9 +15,7 @@ describe("chat-message-handler-finalize", () => {
 
   test("buildFinalAssistantRows suppresses redundant assistant header echoes", () => {
     const result = buildFinalAssistantRows({
-      rows: [
-        { id: "a", role: "assistant", content: "Created src/a.ts" },
-      ] as never,
+      rows: [{ id: "a", role: "assistant", content: "Created src/a.ts" }] as never,
       streamedAssistantText: "Created src/a.ts",
       committedStreamingText: "Created src/a.ts",
       toolHeaders: new Set(["Created src/a.ts"]),

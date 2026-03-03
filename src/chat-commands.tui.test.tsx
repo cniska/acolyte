@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { ChatTranscript } from "./chat-transcript";
-import { createClient, createSession, createStore, createMessageHandlerHarness, dedent } from "./test-utils";
+import { createClient, createMessageHandlerHarness, createSession, createStore, dedent } from "./test-utils";
 import { renderInkPlain } from "./tui-test-utils";
 
 function renderTranscript(rows: Parameters<typeof ChatTranscript>[0]["rows"], columns = 96): string {

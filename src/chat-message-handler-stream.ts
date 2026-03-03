@@ -1,5 +1,5 @@
 import { formatToolHeader } from "./agent-output";
-import { createRow, type ChatRow } from "./chat-commands";
+import { type ChatRow, createRow } from "./chat-commands";
 import { createId } from "./short-id";
 import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
 import { mergeToolOutputHeader, shouldSuppressEmptyToolProgressRow } from "./tool-summary-format";
@@ -73,7 +73,9 @@ export function createMessageStreamState(input: {
           },
         ];
       }
-      return current.map((row) => (row.id === streamingAssistantRowId ? { ...row, content: streamingAssistantContent } : row));
+      return current.map((row) =>
+        row.id === streamingAssistantRowId ? { ...row, content: streamingAssistantContent } : row,
+      );
     });
   };
 

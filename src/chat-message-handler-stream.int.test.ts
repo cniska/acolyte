@@ -1,20 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
 import type { ChatRow } from "./chat-commands";
-import { buildInternalWriteResumeTurn, resolveNaturalRememberDirective } from "./chat-message-handler-helpers";
-import {
-  createMessageHandler,
-} from "./chat-message-handler";
+import { createMessageHandler } from "./chat-message-handler";
 import type { StreamEvent } from "./client";
-import {
-  createClient,
-  createMessage,
-  createSession,
-  createStore,
-  createMessageHandlerHarness,
-  dedent,
-} from "./test-utils";
+import { createClient, createMessage, createMessageHandlerHarness, createSession, createStore } from "./test-utils";
 
 describe("chat message handler stream behavior", () => {
   test("streams tool-call events into tool progress rows", async () => {
