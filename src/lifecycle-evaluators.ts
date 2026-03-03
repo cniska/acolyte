@@ -1,4 +1,5 @@
-import { createModeInstructions, isPlanLikeOutput } from "./agent";
+import { createModeInstructions } from "./agent-instructions";
+import { isPlanLikeOutput } from "./agent-output";
 import type { AgentMode } from "./agent-modes";
 import type { VerifyScope } from "./api";
 import { type ErrorCategory, isFileNotFoundSignal } from "./error-handling";

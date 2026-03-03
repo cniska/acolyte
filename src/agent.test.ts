@@ -1,17 +1,14 @@
 import { describe, expect, test } from "bun:test";
+import { createAgentInput, createSubagentContext } from "./agent-input";
+import { createInstructions, createModeInstructions } from "./agent-instructions";
+import { resolveModelProviderState, resolveRunnableModel } from "./agent-model";
 import {
   canonicalToolId,
-  createAgentInput,
-  createInstructions,
-  createModeInstructions,
-  createSubagentContext,
   finalizeAssistantOutput,
   finalizeReviewOutput,
   formatToolHeader,
   isPlanLikeOutput,
-  resolveModelProviderState,
-  resolveRunnableModel,
-} from "./agent";
+} from "./agent-output";
 import type { ChatRequest } from "./api";
 
 function createRequest(content: string): ChatRequest {

@@ -10,7 +10,7 @@ import {
 } from "./lifecycle-evaluators";
 import type { LifecycleEventName } from "./lifecycle-events";
 import { createErrorStats } from "./error-handling";
-import { canonicalToolId } from "./agent";
+import { canonicalToolId } from "./agent-output";
 import { createLifecycleAgent, phaseGenerate, shouldYieldNow } from "./lifecycle-generate";
 import { phaseFinalize } from "./lifecycle-finalize";
 import { phasePrepare } from "./lifecycle-prepare";

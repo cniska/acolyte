@@ -1,7 +1,7 @@
 import { classifyMode } from "./agent-modes";
 import { appConfig } from "./app-config";
 import { type PhaseClassifyResult, type ModeResolution, type RunContext } from "./lifecycle-contract";
-import { resolveRunnableModel } from "./agent";
+import { resolveRunnableModel } from "./agent-model";
 import type { AgentMode } from "./agent-modes";
 import type { ChatRequest } from "./api";
 

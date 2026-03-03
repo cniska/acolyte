@@ -1,4 +1,4 @@
-import { formatToolHeader } from "./agent";
+import { formatToolHeader } from "./agent-output";
 import { appConfig } from "./app-config";
 import { type ChatRow, createRow, dispatchSlashCommand, type TokenUsageEntry } from "./chat-commands";
 import { invalidateRepoPathCandidates } from "./chat-file-ref";

@@ -1,5 +1,6 @@
 import type { Agent } from "@mastra/core/agent";
-import { canonicalToolId, createInstructions } from "./agent";
+import { createInstructions } from "./agent-instructions";
+import { canonicalToolId } from "./agent-output";
 import { createAcolyte } from "./agent-factory";
 import { agentModes, modeForTool } from "./agent-modes";
 import { appConfig } from "./app-config";

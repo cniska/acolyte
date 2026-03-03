@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 import { readFileSync } from "node:fs";
 import { stdout as output } from "node:process";
-import { formatToolHeader } from "./agent";
+import { formatToolHeader } from "./agent-output";
 import { createWorkspaceSpecifier } from "./api";
 import { appConfig } from "./app-config";
 import { createProgressTracker } from "./chat-progress";

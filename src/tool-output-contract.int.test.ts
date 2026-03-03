@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { formatToolHeader } from "./agent";
+import { formatToolHeader } from "./agent-output";
 import { setPermissionMode } from "./app-config";
 import { formatProgressOutput } from "./cli-format";
 import { toolsForAgent } from "./mastra-tools";
