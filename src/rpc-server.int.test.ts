@@ -35,10 +35,22 @@ async function startServerForRpcTest(port: number, apiKey: string): Promise<void
   const project = await mkdtemp(join(tmpdir(), "acolyte-rpc-project-"));
   tmpHomes.push(home);
   tmpProjects.push(project);
+  await prepareRpcTestProject(project, port);
+  await startRpcTestServerProcess(home, project, apiKey, port);
+}
 
-  await mkdir(join(home, ".acolyte"), { recursive: true });
+async function prepareRpcTestProject(project: string, port: number): Promise<void> {
   await mkdir(join(project, ".acolyte"), { recursive: true });
   await writeFile(join(project, ".acolyte/config.toml"), `port = ${port}\nmodel = "gpt-5-mini"\n`, "utf8");
+}
+
+async function startRpcTestServerProcess(
+  home: string,
+  project: string,
+  apiKey: string,
+  port: number,
+): Promise<Bun.Subprocess> {
+  await mkdir(join(home, ".acolyte"), { recursive: true });
 
   const proc = Bun.spawn([process.execPath, "run", join(repoRoot, "src/server.ts")], {
     cwd: project,
@@ -54,6 +66,7 @@ async function startServerForRpcTest(port: number, apiKey: string): Promise<void
   });
   serverProcs.push(proc);
   await waitForServer(`http://127.0.0.1:${port}/v1/status`, 10_000);
+  return proc;
 }
 
 async function setServerPermissionMode(port: number, apiKey: string, mode: "read" | "write"): Promise<void> {
@@ -292,6 +305,125 @@ describe("rpc server websocket queue", () => {
     );
     ws.close();
   }, 20_000);
+
+  test("task.status returns null after server restart", async () => {
+    const port = randomTestPort();
+    const apiKey = "rpc_test_key";
+    const home = await mkdtemp(join(tmpdir(), "acolyte-rpc-home-"));
+    const project = await mkdtemp(join(tmpdir(), "acolyte-rpc-project-"));
+    tmpHomes.push(home);
+    tmpProjects.push(project);
+    await prepareRpcTestProject(project, port);
+
+    const proc = await startRpcTestServerProcess(home, project, apiKey, port);
+    const ws = new WebSocket(`ws://127.0.0.1:${port}/v1/rpc?apiKey=${apiKey}`);
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("websocket open timed out")), 5000);
+      ws.addEventListener("open", () => {
+        clearTimeout(timeout);
+        resolve();
+      });
+      ws.addEventListener("error", () => {
+        clearTimeout(timeout);
+        reject(new Error("websocket failed to open"));
+      });
+    });
+
+    const messages: RpcEnvelope[] = [];
+    ws.addEventListener("message", (event) => {
+      try {
+        messages.push(JSON.parse(typeof event.data === "string" ? event.data : String(event.data)) as RpcEnvelope);
+      } catch {
+        // Ignore malformed messages from test perspective.
+      }
+    });
+
+    const taskId = "rpc_restart_task_status";
+    ws.send(
+      JSON.stringify({
+        id: taskId,
+        type: "chat.start",
+        payload: {
+          request: {
+            message: "Do a long-running analysis with many steps before answering.",
+            history: [],
+            model: "gpt-5-mini",
+            sessionId: "sess_rpc_restart_task_status",
+          },
+        },
+      }),
+    );
+    ws.send(JSON.stringify({ id: "rpc_restart_status_before", type: "task.status", payload: { taskId } }));
+
+    await new Promise<void>((resolve, reject) => {
+      const startedAt = Date.now();
+      const interval = setInterval(() => {
+        const statusResult = messages.find(
+          (m) => m.id === "rpc_restart_status_before" && m.type === "task.status.result",
+        );
+        if (statusResult) {
+          clearInterval(interval);
+          expect(statusResult.task).not.toBeNull();
+          resolve();
+          return;
+        }
+        if (Date.now() - startedAt > 8000) {
+          clearInterval(interval);
+          reject(new Error(`timed out waiting for pre-restart task status: ${JSON.stringify(messages)}`));
+        }
+      }, 20);
+    });
+
+    ws.close();
+    proc.kill();
+    await proc.exited.catch(() => {});
+
+    await startRpcTestServerProcess(home, project, apiKey, port);
+    const wsAfter = new WebSocket(`ws://127.0.0.1:${port}/v1/rpc?apiKey=${apiKey}`);
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("websocket open timed out")), 5000);
+      wsAfter.addEventListener("open", () => {
+        clearTimeout(timeout);
+        resolve();
+      });
+      wsAfter.addEventListener("error", () => {
+        clearTimeout(timeout);
+        reject(new Error("websocket failed to open"));
+      });
+    });
+
+    const messagesAfter: RpcEnvelope[] = [];
+    wsAfter.addEventListener("message", (event) => {
+      try {
+        messagesAfter.push(JSON.parse(typeof event.data === "string" ? event.data : String(event.data)) as RpcEnvelope);
+      } catch {
+        // Ignore malformed messages from test perspective.
+      }
+    });
+
+    wsAfter.send(JSON.stringify({ id: "rpc_restart_status_after", type: "task.status", payload: { taskId } }));
+
+    await new Promise<void>((resolve, reject) => {
+      const startedAt = Date.now();
+      const interval = setInterval(() => {
+        const statusResult = messagesAfter.find(
+          (m) => m.id === "rpc_restart_status_after" && m.type === "task.status.result",
+        );
+        if (statusResult) {
+          clearInterval(interval);
+          expect(statusResult.task).toBeNull();
+          resolve();
+          return;
+        }
+        if (Date.now() - startedAt > 8000) {
+          clearInterval(interval);
+          reject(new Error(`timed out waiting for post-restart task status: ${JSON.stringify(messagesAfter)}`));
+        }
+      }, 20);
+    });
+
+    wsAfter.close();
+  }, 30_000);
 
   test("emits queue/abort envelopes and reindexes queued positions", async () => {
     const port = randomTestPort();
