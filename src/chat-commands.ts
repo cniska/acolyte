@@ -3,7 +3,7 @@ import { COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH, formatColumns, formatRelativeTime 
 import { suggestClosestSlashCommand } from "./chat-slash";
 import type { Client } from "./client";
 import { setConfigValue } from "./config";
-import type { ConfigScope, PermissionMode } from "./config-modes";
+import type { ConfigScope, PermissionMode } from "./config-contract";
 import { addMemory, listMemories, type MemoryScope, removeMemoryByPrefix } from "./memory";
 import { createId } from "./short-id";
 import { findSkillByName } from "./skills";

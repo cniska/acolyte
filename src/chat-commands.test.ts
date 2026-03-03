@@ -8,7 +8,7 @@ import {
   presentTokensOutput,
   type TokenUsageEntry,
 } from "./chat-commands";
-import type { ConfigScope, PermissionMode } from "./config-modes";
+import type { ConfigScope, PermissionMode } from "./config-contract";
 import { loadSkills, resetSkillCache } from "./skills";
 import {
   createCommandContext,

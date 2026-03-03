@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { ChatRequest, ChatResponse } from "./api";
 import { appConfig } from "./app-config";
-import type { PermissionMode, TransportMode } from "./config-modes";
+import type { PermissionMode, TransportMode } from "./config-contract";
 import { rpcServerMessageSchema } from "./rpc-protocol";
 import { createId } from "./short-id";
 import { streamErrorDetailSchema } from "./stream-error";

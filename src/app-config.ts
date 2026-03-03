@@ -1,5 +1,5 @@
 import { readResolvedConfigSync } from "./config";
-import type { PermissionMode } from "./config-modes";
+import type { PermissionMode } from "./config-contract";
 import { env } from "./env";
 
 const fileConfig = readResolvedConfigSync();

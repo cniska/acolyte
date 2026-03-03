@@ -1,7 +1,7 @@
 import { Text } from "ink";
 import type React from "react";
 import { formatColumns, formatRelativeTime } from "./chat-format";
-import type { PermissionMode } from "./config-modes";
+import type { PermissionMode } from "./config-contract";
 import type { SkillMeta } from "./skills";
 import type { Session } from "./session-types";
 

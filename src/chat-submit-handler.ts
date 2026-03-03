@@ -12,7 +12,7 @@ import {
   unresolvedPathRows,
 } from "./chat-turn";
 import type { Client } from "./client";
-import type { PermissionMode } from "./config-modes";
+import type { PermissionMode } from "./config-contract";
 import { addMemory, type MemoryScope } from "./memory";
 import { createId } from "./short-id";
 import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";

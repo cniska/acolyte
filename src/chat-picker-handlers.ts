@@ -10,7 +10,7 @@ import {
   createWriteConfirmPicker,
 } from "./chat-picker-actions";
 import { setConfigValue } from "./config";
-import type { ConfigScope, PermissionMode } from "./config-modes";
+import type { ConfigScope, PermissionMode } from "./config-contract";
 import { findSkillByName, loadSkills, readSkillInstructions } from "./skills";
 import type { Message } from "./chat-message";
 import type { Session, SessionStore } from "./session-types";
