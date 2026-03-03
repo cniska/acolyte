@@ -1,4 +1,4 @@
-import type { ChatRequest, ChatResponse } from "./api";
+import type { ChatResponse } from "./api";
 import type { statusPayloadSchema } from "./rpc-protocol";
 import type { StreamErrorDetail } from "./stream-error";
 import type { z } from "zod";
@@ -21,5 +21,3 @@ export type RunChatHandlers = {
   isCancelled?: () => boolean;
   shouldYield?: () => boolean;
 };
-
-export type RunChatRequest = (chatRequest: ChatRequest, handlers: RunChatHandlers) => Promise<void>;

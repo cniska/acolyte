@@ -325,7 +325,7 @@ export async function startServer(): Promise<void> {
   }
 
   const rpcWebsocketHandlers = createRpcWebsocketHandlers({
-    buildStatusPayload: async () => await buildStatusPayload(),
+    buildStatusPayload,
     isChatRequest,
     runChatRequest,
     taskRegistry,
@@ -334,7 +334,7 @@ export async function startServer(): Promise<void> {
 
   let server: Bun.Server<RpcConnectionState>;
   const fetchHandler = createServerFetchHandler({
-    buildStatusPayload: async () => await buildStatusPayload(),
+    buildStatusPayload,
     hasValidAuth,
     isChatRequest,
     resolveResourceId,
