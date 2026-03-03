@@ -56,7 +56,7 @@ Review in this order.
 ## 7. Chat/TUI UX
 
 - [ ] [`src/chat-ui.tsx`](../src/chat-ui.tsx)
-- [ ] [`src/chat-submit-handler.ts`](../src/chat-submit-handler.ts)
+- [ ] [`src/chat-message-handler.ts`](../src/chat-message-handler.ts)
 - [ ] [`src/chat-commands.ts`](../src/chat-commands.ts)
 - [ ] [`src/chat-layout.tsx`](../src/chat-layout.tsx)
 - [ ] [`src/chat-transcript.tsx`](../src/chat-transcript.tsx)
