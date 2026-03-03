@@ -8,6 +8,7 @@ import { addMemory, listMemories, type MemoryScope, removeMemoryByPrefix } from 
 import { providerFromModel, suggestedModelsForProvider } from "./provider-config";
 import { createId } from "./short-id";
 import { findSkillByName } from "./skills";
+import type { StatusFields } from "./status-contract";
 import type { MemoryContextScope } from "./soul";
 import { formatStatusOutput } from "./status-format";
 import { createSession } from "./storage";
@@ -129,7 +130,7 @@ export function presentSessionsOutput(store: SessionStore, limit = 10): CommandP
   };
 }
 
-export function presentStatusOutput(status: Record<string, string>): CommandPresentation {
+export function presentStatusOutput(status: StatusFields): CommandPresentation {
   return {
     content: formatStatusOutput(status),
     style: "statusOutput",

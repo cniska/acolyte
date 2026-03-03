@@ -15,6 +15,7 @@ import type { Client } from "./client";
 import type { PermissionMode } from "./config-contract";
 import { addMemory, type MemoryScope } from "./memory";
 import { createId } from "./short-id";
+import type { StatusFields } from "./status-contract";
 import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
 import { mergeToolOutputHeader, shouldSuppressEmptyToolProgressRow } from "./tool-summary-format";
 import type { Message } from "./chat-message";
@@ -92,7 +93,7 @@ function isLikelyWritePrompt(text: string): boolean {
   );
 }
 
-function statusPermissionMode(status: Record<string, string>): PermissionMode | null {
+function statusPermissionMode(status: StatusFields): PermissionMode | null {
   const mode = status.permissions;
   if (mode === "read" || mode === "write") return mode;
   return null;

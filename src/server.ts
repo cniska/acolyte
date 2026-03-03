@@ -206,10 +206,10 @@ async function buildStatusPayload(): Promise<StatusPayload> {
     service: `http://localhost:${PORT}`,
     memory: memoryContextCount > 0 ? `${mastraStorageMode} (${memoryContextCount} entries)` : mastraStorageMode,
     observational_memory: `enabled (${omConfig.scope})`,
-    tasks_total: String(taskSummary.total),
-    tasks_running: String(taskSummary.running),
-    tasks_detached: String(taskSummary.detached),
-    rpc_queue_length: String(rpcQueuedTaskCount),
+    tasks_total: taskSummary.total,
+    tasks_running: taskSummary.running,
+    tasks_detached: taskSummary.detached,
+    rpc_queue_length: rpcQueuedTaskCount,
   };
 }
 

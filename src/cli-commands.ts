@@ -23,6 +23,7 @@ import { ensureLocalServer, localServerStatus, stopLocalServer } from "./server-
 import { formatStatusOutput as formatStatusOutputShared } from "./status-format";
 import { createSession, readStore } from "./storage";
 import { runShellCommand } from "./tools";
+import type { StatusFields } from "./status-contract";
 import type { SessionStore } from "./session-types";
 import { formatCliTitle, printDim, printError, printOutput } from "./ui";
 
@@ -270,7 +271,7 @@ export function runResourceId(sessionId: string): string {
   return `run-${sessionId.replace(/^sess_/, "").slice(0, 24)}`;
 }
 
-export function formatStatusOutput(status: Record<string, string | number>): string {
+export function formatStatusOutput(status: StatusFields): string {
   return formatStatusOutputShared(status);
 }
 

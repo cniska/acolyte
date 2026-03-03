@@ -4,6 +4,7 @@ import { appConfig } from "./app-config";
 import type { PermissionMode, TransportMode } from "./config-contract";
 import { rpcServerMessageSchema } from "./rpc-protocol";
 import { createId } from "./short-id";
+import type { StatusFields } from "./status-contract";
 import { streamErrorDetailSchema } from "./stream-error";
 import type { TaskRecord } from "./task-state";
 
@@ -56,7 +57,7 @@ export interface Client {
       signal?: AbortSignal;
     },
   ): Promise<ChatResponse>;
-  status(): Promise<Record<string, string>>;
+  status(): Promise<StatusFields>;
   setPermissionMode(mode: PermissionMode): Promise<void>;
   taskStatus(taskId: string): Promise<TaskRecord | null>;
 }
@@ -328,7 +329,7 @@ class HttpClient implements Client {
     return finalReply;
   }
 
-  async status(): Promise<Record<string, string>> {
+  async status(): Promise<StatusFields> {
     const response = await this.fetchOrThrow("/v1/status", {
       headers: this.apiKey ? { authorization: `Bearer ${this.apiKey}` } : undefined,
     });
@@ -339,9 +340,15 @@ class HttpClient implements Client {
     }
 
     const data = (await response.json()) as Record<string, unknown>;
-    const fields: Record<string, string> = {};
+    const fields: StatusFields = {};
+    const numericStatusKeys = new Set(["tasks_total", "tasks_running", "tasks_detached", "rpc_queue_length"]);
     for (const [key, value] of Object.entries(data)) {
-      if (key !== "ok" && typeof value === "string") fields[key] = value;
+      if (key === "ok") continue;
+      if (typeof value === "string") {
+        fields[key] = value;
+        continue;
+      }
+      if (typeof value === "number" && numericStatusKeys.has(key)) fields[key] = value;
     }
     return fields;
   }
@@ -418,10 +425,10 @@ class RpcClient implements Client {
     });
   }
 
-  async status(): Promise<Record<string, string>> {
+  async status(): Promise<StatusFields> {
     const ws = await this.openSocket();
     const id = `rpc_${createId()}`;
-    return await new Promise<Record<string, string>>((resolve, reject) => {
+    return await new Promise<StatusFields>((resolve, reject) => {
       const cleanup = () => {
         ws.removeEventListener("message", onMessage);
         ws.removeEventListener("close", onClose);
@@ -446,9 +453,9 @@ class RpcClient implements Client {
         if (!msg || msg.id !== id) return;
         cleanup();
         if (msg.type === "status.result") {
-          const fields: Record<string, string> = {};
+          const fields: StatusFields = {};
           for (const [key, value] of Object.entries(msg.status)) {
-            if (key !== "ok" && typeof value === "string") fields[key] = value;
+            if (key !== "ok" && (typeof value === "string" || typeof value === "number")) fields[key] = value;
           }
           resolve(fields);
         } else if (msg.type === "error") reject(new Error(msg.error));

@@ -29,10 +29,10 @@ export const statusPayloadSchema = z.object({
   service: z.string(),
   memory: z.string(),
   observational_memory: z.string(),
-  tasks_total: z.string(),
-  tasks_running: z.string(),
-  tasks_detached: z.string(),
-  rpc_queue_length: z.string(),
+  tasks_total: z.number().int().min(0),
+  tasks_running: z.number().int().min(0),
+  tasks_detached: z.number().int().min(0),
+  rpc_queue_length: z.number().int().min(0),
 });
 
 export const rpcClientMessageSchema = z.discriminatedUnion("type", [
