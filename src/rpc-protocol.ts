@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { verifyScopeSchema } from "./api";
 import { streamErrorDetailSchema } from "./stream-error";
-import { taskRecordSchema } from "./task-state";
+import { taskRecordSchema } from "./task-contract";
 
 // Reserved method names for future background task support.
 export const RESERVED_RPC_CLIENT_TASK_METHODS = ["task.start", "task.status", "task.cancel", "task.attach"] as const;

@@ -12,7 +12,7 @@ import type { PermissionMode } from "./config-contract";
 import { connectionHelpMessage } from "./error-messages";
 import { createId } from "./short-id";
 import type { StatusFields } from "./status-contract";
-import type { TaskRecord } from "./task-state";
+import type { TaskRecord } from "./task-contract";
 
 type RpcServerMessage = NonNullable<ReturnType<typeof parseRpcServerMessage>>;
 

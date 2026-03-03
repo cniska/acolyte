@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { isTerminalTaskState, taskRecordSchema, taskStateSchema } from "./task-state";
+import { isTerminalTaskState, taskRecordSchema, taskStateSchema } from "./task-contract";
 
 describe("task state contract", () => {
   test("accepts all planned task states", () => {

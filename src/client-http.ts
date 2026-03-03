@@ -13,7 +13,7 @@ import type { PermissionMode } from "./config-contract";
 import { connectionHelpMessage } from "./error-messages";
 import type { StatusFields } from "./status-contract";
 import { streamErrorDetailSchema } from "./stream-error";
-import type { TaskRecord } from "./task-state";
+import type { TaskRecord } from "./task-contract";
 
 const NUMERIC_STATUS_KEYS = new Set(["tasks_total", "tasks_running", "tasks_detached", "rpc_queue_length"]);
 

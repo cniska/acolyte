@@ -5,8 +5,8 @@ import { log } from "./log";
 import { rpcClientMessageSchema } from "./rpc-protocol";
 import { createSerialPerConnectionQueuePolicy } from "./rpc-queue";
 import type { RunChatHandlers, StatusPayload, StreamErrorPayload } from "./server-contract";
+import type { TaskState, TaskTransitionReason } from "./task-contract";
 import type { TaskRegistry } from "./task-registry";
-import type { TaskState, TaskTransitionReason } from "./task-state";
 
 const RPC_MAX_QUEUED_TASKS_PER_CONNECTION = 25;
 

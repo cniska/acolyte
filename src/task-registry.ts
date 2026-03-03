@@ -1,4 +1,4 @@
-import { isTerminalTaskState, type TaskRecord, type TaskState } from "./task-state";
+import { isTerminalTaskState, type TaskRecord, type TaskState } from "./task-contract";
 
 type TaskPatch = {
   state?: TaskState;

@@ -5,7 +5,7 @@ import type { PermissionMode, TransportMode } from "./config-contract";
 import { rpcServerMessageSchema } from "./rpc-protocol";
 import type { StatusFields } from "./status-contract";
 import { streamErrorDetailSchema } from "./stream-error";
-import type { TaskRecord } from "./task-state";
+import type { TaskRecord } from "./task-contract";
 
 export interface ClientOptions {
   apiUrl?: string;

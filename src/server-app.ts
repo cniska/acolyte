@@ -12,8 +12,8 @@ import { createServerFetchHandler } from "./server-http";
 import { createRpcWebsocketHandlers, getRpcQueuedTaskCount, type RpcConnectionState } from "./server-rpc";
 import { createId } from "./short-id";
 import { getMemoryContextEntries } from "./soul";
+import type { TaskState, TaskTransitionReason } from "./task-contract";
 import { TaskRegistry } from "./task-registry";
-import type { TaskState, TaskTransitionReason } from "./task-state";
 
 const PORT = appConfig.server.port;
 const API_KEY = appConfig.server.apiKey;

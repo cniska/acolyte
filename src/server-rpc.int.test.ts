@@ -356,7 +356,7 @@ describe("server rpc websocket queue", () => {
     const status = (await response.json()) as Record<string, unknown>;
     expect(status.rpc_queue_length).toBe(1);
     expect(status.tasks_total).toBe(2);
-    expect(status.tasks_running).toBe(2);
+    expect(status.tasks_running).toBe(1);
     expect(typeof status.tasks_detached).toBe("number");
 
     ws.send(
@@ -916,7 +916,7 @@ describe("server rpc websocket queue", () => {
           expect(activeTask.id).toBe(activeTaskId);
           expect(activeTask.state).toBe("running");
           expect(queuedTask.id).toBe(queuedTaskId);
-          expect(queuedTask.state).toBe("running");
+          expect(queuedTask.state).toBe("queued");
           resolve();
           return;
         }
@@ -970,7 +970,7 @@ describe("server rpc websocket queue", () => {
           expect(activeTask.id).toBe(activeTaskId);
           expect(activeTask.state).toBe("cancelled");
           expect(queuedTask.id).toBe(queuedTaskId);
-          expect(queuedTask.state).toBe("running");
+          expect(queuedTask.state).toBe("queued");
           resolve();
           return;
         }
