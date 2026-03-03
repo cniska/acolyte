@@ -38,10 +38,7 @@ export function createResumePicker(store: SessionState, limit = 20): PickerState
   });
 }
 
-export function createResumeRows(
-  session: Session,
-  toRows: (messages: Session["messages"]) => ChatRow[],
-): ChatRow[] {
+export function createResumeRows(session: Session, toRows: (messages: Session["messages"]) => ChatRow[]): ChatRow[] {
   return [
     ...toRows(session.messages),
     createRow("assistant", `Resumed session: ${session.id}`, { style: "sessionStatus" }),

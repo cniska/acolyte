@@ -43,7 +43,8 @@ Events are append-only and ordered per request.
 
 ## RPC baseline (WebSocket)
 
-RPC uses JSON envelopes with `id`, `type`, and optional `payload`.
+RPC uses JSON envelopes with transport request `id` (`rpc_*`), `type`, and optional `payload`.
+Domain task ids are separate (`task_*`).
 
 Client methods:
 
@@ -57,12 +58,12 @@ Server responses:
 
 - `status.result`
 - `permissions.result`
-- `chat.accepted`
+- `chat.accepted` (includes `taskId`)
 - `chat.queued`
 - `chat.started`
 - `chat.event`
 - `chat.done`
-- `chat.error`
+- `chat.error` (may include `errorId`)
 - `chat.abort.result`
 - `task.status.result`
 - `error`
@@ -72,3 +73,4 @@ Queue semantics:
 - Only one chat request runs per connection at a time.
 - Additional `chat.start` requests are accepted and reported as `chat.queued` with a 1-based position.
 - Queue positions are re-emitted on queue changes (abort/dequeue) so clients can keep ordering accurate.
+- `chat.abort` targets request id, while task lifecycle/state uses task id.

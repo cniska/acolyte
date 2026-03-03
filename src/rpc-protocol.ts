@@ -6,6 +6,8 @@ import { createId } from "./short-id";
 import { streamErrorDetailSchema } from "./stream-error";
 import { taskIdSchema, taskRecordSchema } from "./task-contract";
 
+const errorIdSchema = domainIdSchema("err");
+
 // Reserved method names for future background task support.
 export const RESERVED_RPC_CLIENT_TASK_METHODS = ["task.start", "task.status", "task.cancel", "task.attach"] as const;
 export const RESERVED_RPC_SERVER_TASK_METHODS = ["task.accepted", "task.updated", "task.done", "task.error"] as const;
@@ -106,6 +108,7 @@ export const rpcServerMessageSchema = z.discriminatedUnion("type", [
     id: rpcRequestIdSchema,
     type: z.literal("chat.error"),
     error: z.string(),
+    errorId: errorIdSchema.optional(),
     errorCode: z.string().optional(),
     errorDetail: streamErrorDetailSchema.optional(),
   }),

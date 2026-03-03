@@ -1,4 +1,4 @@
-import { z } from "zod";
+import type { z } from "zod";
 import { unreachable } from "./assert";
 import { domainIdSchema } from "./id-contract";
 import type { StreamErrorDetail } from "./stream-error";

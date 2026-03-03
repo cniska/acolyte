@@ -64,7 +64,7 @@ async function withDualTransportChatServer<T>(fn: (baseUrl: string) => Promise<T
           return;
         }
         if (envelope.type === "chat.start") {
-          ws.send(JSON.stringify({ id: envelope.id, type: "chat.accepted" }));
+          ws.send(JSON.stringify({ id: envelope.id, type: "chat.accepted", taskId: "task_cli_visual" }));
           ws.send(JSON.stringify({ id: envelope.id, type: "chat.started" }));
           ws.send(JSON.stringify({ id: envelope.id, type: "chat.done", reply }));
         }

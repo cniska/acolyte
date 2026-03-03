@@ -47,7 +47,7 @@ Review in this order.
 
 ## 6. CLI command surface
 
-- [ ] [`src/cli.ts`](../src/cli.ts)
+- [x] [`src/cli.ts`](../src/cli.ts) split
 - [ ] [`src/cli-commands.ts`](../src/cli-commands.ts)
 - [ ] [`src/cli-format.ts`](../src/cli-format.ts)
 - [ ] [`src/cli-tool-mode.ts`](../src/cli-tool-mode.ts)

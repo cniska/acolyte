@@ -156,6 +156,13 @@ async function waitForRpcCondition(
   });
 }
 
+function acceptedTaskIdFor(messages: RpcEnvelope[], requestId: string): string | null {
+  const accepted = messages.find(
+    (m) => m.id === requestId && m.type === "chat.accepted" && typeof m.taskId === "string",
+  );
+  return (accepted?.taskId as string | undefined) ?? null;
+}
+
 describe("server rpc websocket queue", () => {
   test("rejects unauthorized rpc endpoint access", async () => {
     const port = randomTestPort();
@@ -228,7 +235,9 @@ describe("server rpc websocket queue", () => {
       }, 20);
     });
 
-    ws.send(JSON.stringify({ id: "rpc_read_mode_status", type: "task.status", payload: { taskId: chatId } }));
+    const runningTaskId = acceptedTaskIdFor(messages, chatId);
+    expect(runningTaskId).not.toBeNull();
+    ws.send(JSON.stringify({ id: "rpc_read_mode_status", type: "task.status", payload: { taskId: runningTaskId } }));
 
     await new Promise<void>((resolve, reject) => {
       const startedAt = Date.now();
@@ -238,7 +247,7 @@ describe("server rpc websocket queue", () => {
           clearInterval(interval);
           expect(statusResult.task && typeof statusResult.task === "object").toBe(true);
           const task = statusResult.task as { id: unknown; state: unknown };
-          expect(task.id).toBe(chatId);
+          expect(task.id).toBe(runningTaskId);
           expect(task.state).toBe("running");
           resolve();
           return;
@@ -408,10 +417,10 @@ describe("server rpc websocket queue", () => {
       }
     });
 
-    const taskId = "rpc_restart_task_status";
+    const requestId = "rpc_restart_task_status";
     ws.send(
       JSON.stringify({
-        id: taskId,
+        id: requestId,
         type: "chat.start",
         payload: {
           request: {
@@ -423,6 +432,14 @@ describe("server rpc websocket queue", () => {
         },
       }),
     );
+    await waitForRpcCondition(
+      messages,
+      (all) => Boolean(acceptedTaskIdFor(all, requestId)),
+      8000,
+      "pre-restart accepted task id",
+    );
+    const taskId = acceptedTaskIdFor(messages, requestId);
+    expect(taskId).not.toBeNull();
     ws.send(JSON.stringify({ id: "rpc_restart_status_before", type: "task.status", payload: { taskId } }));
 
     await new Promise<void>((resolve, reject) => {
@@ -772,7 +789,7 @@ describe("server rpc websocket queue", () => {
     });
 
     ws.send(
-      JSON.stringify({ id: "rpc_task_status_missing", type: "task.status", payload: { taskId: "missing_task" } }),
+      JSON.stringify({ id: "rpc_task_status_missing", type: "task.status", payload: { taskId: "task_missing" } }),
     );
 
     await new Promise<void>((resolve, reject) => {
@@ -825,7 +842,9 @@ describe("server rpc websocket queue", () => {
       }, 20);
     });
 
-    ws.send(JSON.stringify({ id: "rpc_task_status_active", type: "task.status", payload: { taskId: chatId } }));
+    const activeTaskId = acceptedTaskIdFor(messages, chatId);
+    expect(activeTaskId).not.toBeNull();
+    ws.send(JSON.stringify({ id: "rpc_task_status_active", type: "task.status", payload: { taskId: activeTaskId } }));
 
     await new Promise<void>((resolve, reject) => {
       const startedAt = Date.now();
@@ -835,7 +854,7 @@ describe("server rpc websocket queue", () => {
           clearInterval(interval);
           expect(activeResult.task && typeof activeResult.task === "object").toBe(true);
           const task = activeResult.task as { id: unknown; state: unknown };
-          expect(task.id).toBe(chatId);
+          expect(task.id).toBe(activeTaskId);
           expect(task.state).toBe("running");
           resolve();
           return;
@@ -858,13 +877,13 @@ describe("server rpc websocket queue", () => {
 
     const { ws, messages } = await openRpcSession(port, apiKey);
 
-    const activeTaskId = "rpc_isolation_active";
-    const queuedTaskId = "rpc_isolation_queued";
+    const activeRequestId = "rpc_isolation_active";
+    const queuedRequestId = "rpc_isolation_queued";
     const activeSession = "sess_rpc_isolation_active";
     const queuedSession = "sess_rpc_isolation_queued";
 
     sendRpc(ws, {
-      id: activeTaskId,
+      id: activeRequestId,
       type: "chat.start",
       payload: {
         request: {
@@ -876,7 +895,7 @@ describe("server rpc websocket queue", () => {
       },
     });
     sendRpc(ws, {
-      id: queuedTaskId,
+      id: queuedRequestId,
       type: "chat.start",
       payload: {
         request: {
@@ -891,11 +910,16 @@ describe("server rpc websocket queue", () => {
     await waitForRpcCondition(
       messages,
       (all) =>
-        all.some((m) => m.id === activeTaskId && m.type === "chat.started") &&
-        all.some((m) => m.id === queuedTaskId && m.type === "chat.queued" && m.position === 1),
+        all.some((m) => m.id === activeRequestId && m.type === "chat.started") &&
+        all.some((m) => m.id === queuedRequestId && m.type === "chat.queued" && m.position === 1),
       8000,
       "running+queued envelopes",
     );
+
+    const activeTaskId = acceptedTaskIdFor(messages, activeRequestId);
+    const queuedTaskId = acceptedTaskIdFor(messages, queuedRequestId);
+    expect(activeTaskId).not.toBeNull();
+    expect(queuedTaskId).not.toBeNull();
 
     sendRpc(ws, { id: "rpc_isolation_status_active_pre", type: "task.status", payload: { taskId: activeTaskId } });
     sendRpc(ws, { id: "rpc_isolation_status_queued_pre", type: "task.status", payload: { taskId: queuedTaskId } });
@@ -927,7 +951,7 @@ describe("server rpc websocket queue", () => {
       }, 20);
     });
 
-    sendRpc(ws, { id: "rpc_isolation_abort_active", type: "chat.abort", payload: { requestId: activeTaskId } });
+    sendRpc(ws, { id: "rpc_isolation_abort_active", type: "chat.abort", payload: { requestId: activeRequestId } });
 
     await new Promise<void>((resolve, reject) => {
       const startedAt = Date.now();
@@ -936,7 +960,7 @@ describe("server rpc websocket queue", () => {
           (m) =>
             m.id === "rpc_isolation_abort_active" &&
             m.type === "chat.abort.result" &&
-            m.requestId === activeTaskId &&
+            m.requestId === activeRequestId &&
             m.aborted === true,
         );
         if (abortResult) {
@@ -981,7 +1005,7 @@ describe("server rpc websocket queue", () => {
       }, 20);
     });
 
-    sendRpc(ws, { id: "rpc_isolation_abort_queued", type: "chat.abort", payload: { requestId: queuedTaskId } });
+    sendRpc(ws, { id: "rpc_isolation_abort_queued", type: "chat.abort", payload: { requestId: queuedRequestId } });
     ws.close();
   }, 20_000);
 

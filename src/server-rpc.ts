@@ -2,11 +2,11 @@ import type { z } from "zod";
 import type { ChatRequest, ChatResponse } from "./api";
 import { appConfig, setPermissionMode } from "./app-config";
 import { log } from "./log";
-import { rpcClientMessageSchema, rpcRequestIdSchema, type RpcRequestId } from "./rpc-protocol";
+import { type RpcRequestId, rpcClientMessageSchema, rpcRequestIdSchema } from "./rpc-protocol";
 import { createSerialPerConnectionQueuePolicy } from "./rpc-queue";
 import type { RunChatHandlers, StatusPayload, StreamErrorPayload } from "./server-contract";
 import { createId } from "./short-id";
-import { taskIdSchema, type TaskId, type TaskState, type TaskTransitionReason } from "./task-contract";
+import { type TaskId, type TaskState, type TaskTransitionReason, taskIdSchema } from "./task-contract";
 import type { TaskRegistry } from "./task-registry";
 
 const RPC_MAX_QUEUED_TASKS_PER_CONNECTION = 25;
@@ -259,7 +259,11 @@ export function createRpcWebsocketHandlers(deps: RpcDeps): Bun.WebSocketHandler<
           { state: "cancelled", summary: "Connection closed before completion." },
           { reason: "connection_closed", transport: "rpc" },
         );
-        log.info("rpc task cancelled on disconnect", { task_id: state.taskId, request_id: requestId, state: "running" });
+        log.info("rpc task cancelled on disconnect", {
+          task_id: state.taskId,
+          request_id: requestId,
+          state: "running",
+        });
       }
       for (const item of ws.data.queue) {
         item.state.aborted = true;
@@ -268,7 +272,11 @@ export function createRpcWebsocketHandlers(deps: RpcDeps): Bun.WebSocketHandler<
           { state: "cancelled", summary: "Connection closed while queued." },
           { reason: "connection_closed", transport: "rpc" },
         );
-        log.info("rpc task cancelled on disconnect", { task_id: item.state.taskId, request_id: item.id, state: "queued" });
+        log.info("rpc task cancelled on disconnect", {
+          task_id: item.state.taskId,
+          request_id: item.id,
+          state: "queued",
+        });
       }
       rpcQueuedTaskCount = Math.max(0, rpcQueuedTaskCount - ws.data.queue.length);
       ws.data.queue = [];

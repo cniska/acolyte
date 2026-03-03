@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
 import { stdout as output } from "node:process";
 import { appConfig } from "./app-config";
-import { runInkChat } from "./chat-ui";
 import { newMessage } from "./chat-session";
+import { runInkChat } from "./chat-ui";
 import { commands, usage } from "./cli-commands";
 import { formatLocalServerReadyMessage, resolveChatApiUrl, shouldAutoStartLocalServerForChat } from "./cli-server";
 import { resolveCliVersion } from "./cli-version";

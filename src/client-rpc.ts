@@ -243,10 +243,17 @@ export class RpcClient implements Client {
           options.onEvent({
             type: "error",
             error: msg.error,
+            errorId: msg.errorId,
             errorCode: msg.errorCode,
             errorDetail: msg.errorDetail,
           });
-          return reject(createRemoteError(msg.error, { errorCode: msg.errorCode, errorDetail: msg.errorDetail }));
+          return reject(
+            createRemoteError(msg.error, {
+              errorId: msg.errorId,
+              errorCode: msg.errorCode,
+              errorDetail: msg.errorDetail,
+            }),
+          );
         }
         if (msg.type === "error") return reject(new Error(msg.error));
         reject(new Error(`Unexpected RPC response: ${msg.type}`));

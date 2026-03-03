@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { appConfig as appConfigType } from "./app-config";
+import type { newMessage as newMessageType } from "./chat-session";
 import type { attachFileToSession as attachFileToSessionType } from "./cli";
 import type {
   formatForTool as formatForToolType,
@@ -7,7 +8,6 @@ import type {
   showToolResult as showToolResultType,
 } from "./cli-format";
 import type { handlePrompt as handlePromptType } from "./cli-prompt";
-import type { newMessage as newMessageType } from "./chat-session";
 import type {
   formatLocalServerReadyMessage as formatLocalServerReadyMessageType,
   resolveChatApiUrl as resolveChatApiUrlType,

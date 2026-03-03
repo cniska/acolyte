@@ -1,4 +1,4 @@
-import { z } from "zod";
+import type { z } from "zod";
 import { appConfig } from "./app-config";
 import { buildStreamErrorDetail } from "./error-handling";
 import { mapQuotaErrorMessage } from "./error-messages";

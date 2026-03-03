@@ -1,15 +1,14 @@
 import { stdout as output } from "node:process";
 import { formatToolHeader } from "./agent-output";
 import { createWorkspaceSpecifier } from "./api";
-import type { Message } from "./chat-message";
 import { createProgressTracker } from "./chat-progress";
+import { newMessage } from "./chat-session";
 import { formatAssistantReplyOutput, formatProgressOutput } from "./cli-format";
 import { mergeAssistantStreamOutput, missingAssistantStreamTail } from "./cli-stream-output";
 import { type Client, createClient } from "./client";
+import { nowIso } from "./datetime";
 import { createDebugLogger } from "./debug-flags";
 import { formatPromptError, USER_ERROR_MESSAGES } from "./error-messages";
-import { newMessage } from "./chat-session";
-import { nowIso } from "./datetime";
 import type { Session } from "./session-contract";
 import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
 import { parseToolProgressLine } from "./tool-progress";

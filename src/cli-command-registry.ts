@@ -1,5 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { appConfig } from "./app-config";
+import { newMessage } from "./chat-session";
 import { attachFileToSession, chatModeWithOptions, FALLBACK_MODEL } from "./cli";
 import { configMode } from "./cli-config";
 import type { CliCommandHandler } from "./cli-contract";
@@ -26,7 +27,6 @@ import { addMemory, listMemories } from "./memory";
 import { ensureLocalServer, localServerStatus, stopLocalServer } from "./server-daemon";
 import { formatStatusOutput as formatStatusOutputShared } from "./status-format";
 import { createSession, readStore } from "./storage";
-import { newMessage } from "./chat-session";
 import { printDim, printError } from "./ui";
 
 function subcommandHelp(name: string): void {
