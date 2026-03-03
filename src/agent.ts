@@ -251,6 +251,17 @@ export function canonicalToolId(value: string): string {
 }
 
 const TOOL_HEADER_PATHS_MAX_SHOWN = 3;
+const TOOL_HEADER_LABEL_ONLY_TOOLS = new Set(["find-files", "search-files", "read-file", "git-status"]);
+const TOOL_HEADER_PATH_DETAIL_TOOLS = new Set([
+  "edit-file",
+  "edit-code",
+  "create-file",
+  "delete-file",
+  "git-diff",
+  "git-log",
+  "git-show",
+  "scan-code",
+]);
 
 function compactProgressDetail(value: string, maxChars = 80): string {
   const single = value.replace(/\s+/g, " ").trim();
@@ -298,17 +309,6 @@ function formatPathList(paths: string[], maxShown = TOOL_HEADER_PATHS_MAX_SHOWN)
 
 export function formatToolHeader(toolName: string, args: Record<string, unknown>): string {
   const label = formatToolLabel(toolName);
-  const labelOnlyTools = new Set(["find-files", "search-files", "read-file", "git-status"]);
-  const pathDetailTools = new Set([
-    "edit-file",
-    "edit-code",
-    "create-file",
-    "delete-file",
-    "git-diff",
-    "git-log",
-    "git-show",
-    "scan-code",
-  ]);
   const asString = (value: unknown): string | null => {
     if (typeof value !== "string") return null;
     const trimmed = value.trim();
@@ -319,12 +319,12 @@ export function formatToolHeader(toolName: string, args: Record<string, unknown>
     const command = asString(args.command);
     return command ? `${label} ${command}` : label;
   }
-  if (pathDetailTools.has(toolName)) {
+  if (TOOL_HEADER_PATH_DETAIL_TOOLS.has(toolName)) {
     const paths = collectPathDetails(args);
     const formatted = formatPathList(paths);
     return formatted ? `${label} ${formatted}` : label;
   }
-  if (labelOnlyTools.has(toolName)) return label;
+  if (TOOL_HEADER_LABEL_ONLY_TOOLS.has(toolName)) return label;
   if (toolName === "web-search") {
     const query = asString(args.query);
     return query ? `${label} "${query}"` : label;
