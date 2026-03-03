@@ -2,12 +2,14 @@ import { resolve } from "node:path";
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 import { appConfig } from "./app-config";
+import { createMastraGitTools } from "./mastra-git-tools";
 import { countLabel } from "./plural";
 import { createId } from "./short-id";
 import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
 import { createSessionContext, recordCall, runGuards, type SessionContext } from "./tool-guards";
 import type { ToolName } from "./tool-names";
 import { compactToolOutput } from "./tool-output";
+import { createGitToolkit, type GitToolkit } from "./git-toolkit";
 import {
   emitFileListSummary,
   emitFindSummary,
@@ -26,10 +28,6 @@ import {
   editFile,
   fetchWeb,
   findFiles,
-  gitDiff,
-  gitLog,
-  gitShow,
-  gitStatusShort,
   readSnippets,
   runShellCommand,
   scanCode,
@@ -595,99 +593,6 @@ function createReadFileTool(workspace: string, session: SessionContext, onToolOu
   });
 }
 
-function createGitStatusTool(workspace: string, session: SessionContext, onToolOutput?: ToolOutputListener) {
-  return createTool({
-    id: "git-status",
-    description: "Show working tree status (short format with branch) for the current repository.",
-    inputSchema: z.object({}),
-    execute: async () => {
-      return withToolError("git-status", () =>
-        guardedExecute("git-status", {}, session, async () => {
-          const toolCallId = streamCallId("git-status");
-          const rawStatus = await gitStatusShort(workspace);
-          emitHeadTailLines("git-status", rawStatus, onToolOutput, toolCallId, { trimStart: true });
-          const result = compactToolOutput(rawStatus, appConfig.agent.toolOutputBudget.gitStatus);
-          return { result };
-        }),
-      );
-    },
-  });
-}
-
-function createGitDiffTool(workspace: string, session: SessionContext, onToolOutput?: ToolOutputListener) {
-  return createTool({
-    id: "git-diff",
-    description: "Show unstaged changes (unified diff) for the repository or a specific file path.",
-    inputSchema: z.object({
-      path: z.string().optional(),
-      contextLines: z.number().int().min(0).max(20).optional(),
-    }),
-    execute: async (input) => {
-      return withToolError("git-diff", () =>
-        guardedExecute("git-diff", input as Record<string, unknown>, session, async () => {
-          const toolCallId = streamCallId("git-diff");
-          const rawDiff = await gitDiff(workspace, input.path, input.contextLines ?? 3);
-          emitHeadTailLines("git-diff", rawDiff, onToolOutput, toolCallId, { headRows: 4, tailRows: 4 });
-          const result = compactToolOutput(rawDiff, appConfig.agent.toolOutputBudget.gitDiff);
-          return { result };
-        }),
-      );
-    },
-  });
-}
-
-function createGitLogTool(workspace: string, session: SessionContext, onToolOutput?: ToolOutputListener) {
-  return createTool({
-    id: "git-log",
-    description: "Show recent commits in compact one-line form (optionally scoped to a file/path).",
-    inputSchema: z.object({
-      path: z.string().optional(),
-      limit: z.number().int().min(1).max(50).optional(),
-    }),
-    execute: async (input) => {
-      return withToolError("git-log", () =>
-        guardedExecute("git-log", input as Record<string, unknown>, session, async () => {
-          const toolCallId = streamCallId("git-log");
-          const rawLog = await gitLog(workspace, { path: input.path, limit: input.limit });
-          emitHeadTailLines("git-log", rawLog, onToolOutput, toolCallId, { trimStart: true });
-          const result = compactToolOutput(rawLog, appConfig.agent.toolOutputBudget.gitStatus);
-          return { result };
-        }),
-      );
-    },
-  });
-}
-
-function createGitShowTool(workspace: string, session: SessionContext, onToolOutput?: ToolOutputListener) {
-  return createTool({
-    id: "git-show",
-    description: "Show commit details and patch for a ref (default HEAD), optionally scoped to a path.",
-    inputSchema: z.object({
-      ref: z.string().optional(),
-      path: z.string().optional(),
-      contextLines: z.number().int().min(0).max(20).optional(),
-    }),
-    execute: async (input) => {
-      return withToolError("git-show", () =>
-        guardedExecute("git-show", input as Record<string, unknown>, session, async () => {
-          const toolCallId = streamCallId("git-show");
-          const rawShow = await gitShow(workspace, {
-            ref: input.ref,
-            path: input.path,
-            contextLines: input.contextLines ?? 3,
-          });
-          emitHeadTailLines("git-show", stripGitShowMetadataForPreview(rawShow), onToolOutput, toolCallId, {
-            headRows: 4,
-            tailRows: 4,
-          });
-          const result = compactToolOutput(rawShow, appConfig.agent.toolOutputBudget.gitDiff);
-          return { result };
-        }),
-      );
-    },
-  });
-}
-
 function createEditFileTool(workspace: string, session: SessionContext, onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "edit-file",
@@ -871,16 +776,27 @@ function createWebFetchTool(session: SessionContext) {
 export type AcolyteToolset = ReturnType<typeof createToolset>["tools"];
 
 function createToolset(workspace: string, session: SessionContext, onToolOutput?: ToolOutputListener) {
+  const git = createGitToolkit(workspace);
+  const gitTools = createMastraGitTools({
+    git,
+    session,
+    onToolOutput,
+    guardedExecute,
+    withToolError,
+    streamCallId,
+    emitHeadTailLines,
+    stripGitShowMetadataForPreview,
+  });
   return {
     tools: {
       findFiles: createFindFilesTool(workspace, session, onToolOutput),
       searchFiles: createSearchFilesTool(workspace, session, onToolOutput),
       scanCode: createScanCodeTool(workspace, session, onToolOutput),
       readFile: createReadFileTool(workspace, session, onToolOutput),
-      gitStatus: createGitStatusTool(workspace, session, onToolOutput),
-      gitDiff: createGitDiffTool(workspace, session, onToolOutput),
-      gitLog: createGitLogTool(workspace, session, onToolOutput),
-      gitShow: createGitShowTool(workspace, session, onToolOutput),
+      gitStatus: gitTools.gitStatus,
+      gitDiff: gitTools.gitDiff,
+      gitLog: gitTools.gitLog,
+      gitShow: gitTools.gitShow,
       runCommand: createRunCommandTool(workspace, session, onToolOutput),
       editCode: createAstEditTool(workspace, session, onToolOutput),
       editFile: createEditFileTool(workspace, session, onToolOutput),
@@ -898,16 +814,27 @@ function readOnlyTools(
   session: SessionContext,
   onToolOutput?: ToolOutputListener,
 ): { tools: Partial<AcolyteToolset>; session: SessionContext } {
+  const git = createGitToolkit(workspace);
+  const gitTools = createMastraGitTools({
+    git,
+    session,
+    onToolOutput,
+    guardedExecute,
+    withToolError,
+    streamCallId,
+    emitHeadTailLines,
+    stripGitShowMetadataForPreview,
+  });
   return {
     tools: {
       findFiles: createFindFilesTool(workspace, session, onToolOutput),
       searchFiles: createSearchFilesTool(workspace, session, onToolOutput),
       scanCode: createScanCodeTool(workspace, session, onToolOutput),
       readFile: createReadFileTool(workspace, session, onToolOutput),
-      gitStatus: createGitStatusTool(workspace, session, onToolOutput),
-      gitDiff: createGitDiffTool(workspace, session, onToolOutput),
-      gitLog: createGitLogTool(workspace, session, onToolOutput),
-      gitShow: createGitShowTool(workspace, session, onToolOutput),
+      gitStatus: gitTools.gitStatus,
+      gitDiff: gitTools.gitDiff,
+      gitLog: gitTools.gitLog,
+      gitShow: gitTools.gitShow,
       webSearch: createWebSearchTool(session, onToolOutput),
       webFetch: createWebFetchTool(session),
     },
