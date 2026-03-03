@@ -477,24 +477,40 @@ export function formatProgressOutput(
 }
 
 export function formatPromptError(error: unknown): string {
-  if (!(error instanceof Error)) return "Request failed. Retry and check server logs if it keeps failing.";
+  const fallback = "Request failed. Retry and check server logs if it keeps failing.";
+  if (!(error instanceof Error)) return fallback;
   const message = error.message.trim();
   const lower = message.toLowerCase();
-  if (lower.includes("insufficient_quota") || lower.includes("quota exceeded") || lower.includes("quota"))
-    return "Provider quota exceeded. Add billing/credits or switch model/provider.";
-  if (lower.includes("timed out") || lower.includes("timeout"))
-    return "Server request timed out. Retry or reduce request scope.";
-  if (lower.includes("shell command execution is disabled in read mode"))
-    return "Write action blocked in read mode. Run /permissions write and retry.";
-  if (
-    lower.includes("server unavailable") ||
-    lower.includes("connection refused") ||
-    lower.includes("socket connection was closed unexpectedly")
-  ) {
-    return "Server unavailable. Start the server and retry.";
+  const rules: Array<{ matches: (value: string) => boolean; format: () => string }> = [
+    {
+      matches: (value) =>
+        value.includes("insufficient_quota") || value.includes("quota exceeded") || value.includes("quota"),
+      format: () => "Provider quota exceeded. Add billing/credits or switch model/provider.",
+    },
+    {
+      matches: (value) => value.includes("timed out") || value.includes("timeout"),
+      format: () => "Server request timed out. Retry or reduce request scope.",
+    },
+    {
+      matches: (value) => value.includes("shell command execution is disabled in read mode"),
+      format: () => "Write action blocked in read mode. Run /permissions write and retry.",
+    },
+    {
+      matches: (value) =>
+        value.includes("server unavailable") ||
+        value.includes("connection refused") ||
+        value.includes("socket connection was closed unexpectedly"),
+      format: () => "Server unavailable. Start the server and retry.",
+    },
+    {
+      matches: (value) => value.includes("remote server error"),
+      format: () => message,
+    },
+  ];
+  for (const rule of rules) {
+    if (rule.matches(lower)) return rule.format();
   }
-  if (lower.includes("remote server error")) return message;
-  return message || "Request failed. Retry and check server logs if it keeps failing.";
+  return message || fallback;
 }
 
 export function parseEditResult(raw: string): { path: string; edits: number; dryRun: boolean } | null {

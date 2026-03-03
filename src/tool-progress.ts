@@ -22,16 +22,14 @@ import { TOOL_HEADER_LABELS } from "./tool-labels";
 
 const HEADER_PATTERN = new RegExp(`^(${TOOL_HEADER_LABELS.join("|")})(?:\\s+(.+))?$`);
 
+const OUTPUT_KIND_BY_HEADER_LABEL: Partial<Record<string, ToolOutputKind>> = {
+  Edit: "diff",
+  Create: "diff",
+  Run: "command",
+};
+
 function outputKindFromVerb(label: string): ToolOutputKind {
-  switch (label) {
-    case "Edit":
-    case "Create":
-      return "diff";
-    case "Run":
-      return "command";
-    default:
-      return "plain";
-  }
+  return OUTPUT_KIND_BY_HEADER_LABEL[label] ?? "plain";
 }
 
 export function parseToolProgressBlock(content: string): ToolProgressBlock {

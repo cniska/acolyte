@@ -6,6 +6,16 @@ import { parseToolOutputRow } from "./tool-output-parser";
 
 const EMPTY_TOOL_PROGRESS_SUPPRESS = new Set(["find-files", "search-files", "read-file", "scan-code"]);
 const SUMMARY_TOOL_NAMES = new Set<ToolName>(["find-files", "search-files", "read-file", "scan-code", "web-search"]);
+const MERGEABLE_TOOL_NAMES = new Set<ToolName>([
+  "find-files",
+  "search-files",
+  "read-file",
+  "scan-code",
+  "web-search",
+  "create-file",
+  "edit-file",
+  "edit-code",
+]);
 
 function compactBracketList(value: string, maxItems = 3): string {
   const items = value
@@ -35,9 +45,9 @@ export function formatToolFileSummaryHeader(toolName: string, fileCount: number)
 }
 
 export function mergeToolOutputHeader(_header: string, toolName: string, line: string): string | null {
-  const isSummaryTool = SUMMARY_TOOL_NAMES.has(toolName as ToolName);
+  const isMergeableTool = MERGEABLE_TOOL_NAMES.has(toolName as ToolName);
   const label = formatToolLabel(toolName);
-  if (!isSummaryTool && toolName !== "create-file" && toolName !== "edit-file" && toolName !== "edit-code") return null;
+  if (!isMergeableTool) return null;
   const trimmed = line.trim();
   const parsed = parseToolOutputRow(toolName, trimmed);
   switch (parsed.kind) {

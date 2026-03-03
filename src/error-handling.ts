@@ -41,10 +41,18 @@ function isGuardBlockedSignal(text: string): boolean {
   return /cannot delete|do not use shell commands|repeated .* detected|already read .* this turn/i.test(text);
 }
 
+type ErrorCategoryRule = { category: ErrorCategory; matches: (message: string) => boolean };
+
+const ERROR_CATEGORY_RULES: readonly ErrorCategoryRule[] = [
+  { category: "timeout", matches: (message) => /timed out|timeout/i.test(message) },
+  { category: "file-not-found", matches: isFileNotFoundSignal },
+  { category: "guard-blocked", matches: isGuardBlockedSignal },
+];
+
 export function classifyErrorCategory(message: string): ErrorCategory {
-  if (/timed out|timeout/i.test(message)) return "timeout";
-  if (isFileNotFoundSignal(message)) return "file-not-found";
-  if (isGuardBlockedSignal(message)) return "guard-blocked";
+  for (const rule of ERROR_CATEGORY_RULES) {
+    if (rule.matches(message)) return rule.category;
+  }
   return "other";
 }
 

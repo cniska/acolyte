@@ -127,12 +127,25 @@ export class TextToolOutputParser implements ToolOutputParser {
 
   parseMarker(line: string): ToolOutputMarker {
     const trimmed = line.trim();
-    if (trimmed === TOOL_OUTPUT_MARKERS.noOutput) return { kind: "no-output" };
-    if (trimmed === TOOL_OUTPUT_MARKERS.truncated) return { kind: "truncated", count: 0 };
-    const match = trimmed.match(/^\[truncated\]\s+\+(\d+)(?:\s+(.+))?$/);
-    if (match?.[1]) {
-      const count = Number.parseInt(match[1], 10);
-      return { kind: "truncated", count, unit: match[2]?.trim() || undefined };
+    const markerRules: Array<{ parse: (value: string) => ToolOutputMarker | null }> = [
+      {
+        parse: (value) => (value === TOOL_OUTPUT_MARKERS.noOutput ? { kind: "no-output" } : null),
+      },
+      {
+        parse: (value) => (value === TOOL_OUTPUT_MARKERS.truncated ? { kind: "truncated", count: 0 } : null),
+      },
+      {
+        parse: (value) => {
+          const match = value.match(/^\[truncated\]\s+\+(\d+)(?:\s+(.+))?$/);
+          if (!match?.[1]) return null;
+          const count = Number.parseInt(match[1], 10);
+          return { kind: "truncated", count, unit: match[2]?.trim() || undefined };
+        },
+      },
+    ];
+    for (const rule of markerRules) {
+      const parsed = rule.parse(trimmed);
+      if (parsed) return parsed;
     }
     return { kind: "none" };
   }
