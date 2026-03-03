@@ -2,7 +2,16 @@ import { describe, expect, test } from "bun:test";
 import { rm } from "node:fs/promises";
 import { formatHeaderContextLine, justifyLineSpaceBetween, shownBranch } from "./chat-layout";
 import { createTempDir } from "./test-utils";
-import { runShellCommand } from "./tools";
+
+async function runGit(cwd: string, ...args: string[]): Promise<void> {
+  const proc = Bun.spawn({ cmd: ["git", ...args], cwd, stdout: "pipe", stderr: "pipe" });
+  const [stdout, stderr, exitCode] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+    proc.exited,
+  ]);
+  if (exitCode !== 0) throw new Error(`git ${args.join(" ")} failed (${exitCode}): ${stderr || stdout}`);
+}
 
 function withColumns(width: number, task: () => void): void {
   const descriptor = Object.getOwnPropertyDescriptor(process.stdout, "columns");
@@ -33,12 +42,12 @@ describe("chat-layout", () => {
   test("shownBranch returns a branch name inside a git repository", async () => {
     const workspace = await createTempDir("acolyte-chat-layout-");
     try {
-      await runShellCommand(workspace, "git init");
-      await runShellCommand(workspace, "git config user.email test@example.com");
-      await runShellCommand(workspace, "git config user.name Test");
-      await runShellCommand(workspace, "printf 'seed\\n' > README.md");
-      await runShellCommand(workspace, "git add README.md");
-      await runShellCommand(workspace, "git commit -m init");
+      await runGit(workspace, "init");
+      await runGit(workspace, "config", "user.email", "test@example.com");
+      await runGit(workspace, "config", "user.name", "Test");
+      await Bun.write(`${workspace}/README.md`, "seed\n");
+      await runGit(workspace, "add", "README.md");
+      await runGit(workspace, "commit", "-m", "init");
       const branch = await shownBranch(workspace);
       expect(branch).not.toBeNull();
       expect(branch?.trim().length ?? 0).toBeGreaterThan(0);
