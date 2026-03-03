@@ -2,7 +2,6 @@
 import { stdout as output } from "node:process";
 import { appConfig } from "./app-config";
 import { runInkChat } from "./chat-ui";
-import { isTopLevelHelpCommand, isTopLevelVersionCommand } from "./cli-command-routing";
 import { commands, usage } from "./cli-commands";
 import { newMessage } from "./cli-prompt";
 import { formatLocalServerReadyMessage, resolveChatApiUrl, shouldAutoStartLocalServerForChat } from "./cli-server";
@@ -18,6 +17,14 @@ import { clearScreen, printDim, printError, printOutput } from "./ui";
 const CLI_VERSION = resolveCliVersion();
 
 export const FALLBACK_MODEL = "gpt-5-mini";
+
+function isTopLevelHelpCommand(command: string | undefined): boolean {
+  return command === "help" || command === "--help" || command === "-h";
+}
+
+function isTopLevelVersionCommand(command: string | undefined): boolean {
+  return command === "version" || command === "--version" || command === "-V";
+}
 
 function nowIso(): string {
   return new Date().toISOString();

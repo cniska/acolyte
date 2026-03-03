@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { hasHelpFlag } from "./cli-command-routing";
 import { subcommandHelp } from "./cli-commands";
 import {
   countLabel,
@@ -28,6 +27,10 @@ const editArgsSchema = z.object({
   edits: z.array(z.object({ find: z.string().min(1), replace: z.string() })).min(1),
   dryRun: z.boolean(),
 });
+
+function hasHelpFlag(args: string[]): boolean {
+  return args.includes("--help") || args.includes("-h") || args.includes("help");
+}
 
 export function parseEditArgs(args: string[]): {
   path: string;

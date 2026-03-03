@@ -1,7 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { appConfig } from "./app-config";
 import { attachFileToSession, chatModeWithOptions, FALLBACK_MODEL } from "./cli";
-import { hasHelpFlag } from "./cli-command-routing";
 import { configMode } from "./cli-config";
 import type { CliCommandHandler } from "./cli-contract";
 import { formatForTool, parseRunExitCode, showToolResult } from "./cli-format";
@@ -10,7 +9,6 @@ import { historyMode } from "./cli-history";
 import { initMode } from "./cli-init";
 import { memoryMode } from "./cli-memory";
 import { handlePrompt, newMessage } from "./cli-prompt";
-import { resumeMode } from "./cli-resume";
 import { runMode, runResourceId } from "./cli-run";
 import { serveMode } from "./cli-serve";
 import {
@@ -38,6 +36,23 @@ function subcommandError(name: string, message?: string): void {
   subcommandErrorFromHelp(name, printError, message);
 }
 
+function hasHelpFlag(args: string[]): boolean {
+  return args.includes("--help") || args.includes("-h") || args.includes("help");
+}
+
+async function resumeMode(args: string[]): Promise<void> {
+  if (hasHelpFlag(args)) {
+    subcommandHelp("resume");
+    return;
+  }
+  if (args.length > 1) {
+    subcommandError("resume");
+    return;
+  }
+  const resumePrefix = args[0]?.trim() || undefined;
+  await chatModeWithOptions({ resumeLatest: true, resumePrefix });
+}
+
 export const commands: Record<string, CliCommandHandler> = {
   init: (args) =>
     initMode(args, {
@@ -51,13 +66,7 @@ export const commands: Record<string, CliCommandHandler> = {
       subcommandHelp,
       writeFile,
     }),
-  resume: (args) =>
-    resumeMode(args, {
-      chatModeWithOptions,
-      hasHelpFlag,
-      subcommandError,
-      subcommandHelp,
-    }),
+  resume: resumeMode,
   run: (args) =>
     runMode(args, {
       appModel: appConfig.model ?? FALLBACK_MODEL,

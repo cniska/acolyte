@@ -1,6 +1,6 @@
 import type { ToolName } from "./tool-names";
 
-export const WRITE_TOOLS: readonly ToolName[] = ["edit-code", "edit-file", "create-file"];
+export const WRITE_TOOLS: readonly ToolName[] = ["edit-code", "edit-file", "create-file", "delete-file"];
 export const READ_TOOLS: readonly ToolName[] = ["read-file"];
 export const SEARCH_TOOLS: readonly ToolName[] = [
   "find-files",
