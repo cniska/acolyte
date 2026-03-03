@@ -156,7 +156,7 @@ async function waitForRpcCondition(
   });
 }
 
-describe("rpc server websocket queue", () => {
+describe("server rpc websocket queue", () => {
   test("rejects unauthorized rpc endpoint access", async () => {
     const port = randomTestPort();
     const apiKey = "rpc_test_key";
