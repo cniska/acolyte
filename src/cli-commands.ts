@@ -3,18 +3,21 @@ import { join } from "node:path";
 import { z } from "zod";
 import { appConfig } from "./app-config";
 import { formatColumns, formatRelativeTime } from "./chat-format";
+import { resolveCommandAlias } from "./cli-command-suggest";
 import {
   attachFileToSession,
   chatModeWithOptions,
   FALLBACK_MODEL,
-  formatLocalServerReadyMessage,
   handlePrompt,
   newMessage,
+} from "./cli";
+import { formatForTool, parseRunExitCode, showToolResult, truncateText } from "./cli-format";
+import {
+  formatLocalServerReadyMessage,
   resolveChatApiUrl,
   resolveLocalDaemonApiUrl,
   shouldAutoStartLocalServerForChat,
-} from "./cli";
-import { formatForTool, parseRunExitCode, showToolResult, truncateText } from "./cli-format";
+} from "./cli-server";
 import { toolMode } from "./cli-tool-mode";
 import { createClient } from "./client";
 import { readConfig, readConfigForScope, readResolvedConfigSync, setConfigValue, unsetConfigValue } from "./config";

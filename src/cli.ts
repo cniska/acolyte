@@ -1,5 +1,4 @@
 #!/usr/bin/env bun
-import { readFileSync } from "node:fs";
 import { stdout as output } from "node:process";
 import { formatToolHeader } from "./agent-output";
 import { createWorkspaceSpecifier } from "./api";
@@ -8,9 +7,13 @@ import type { Message } from "./chat-message";
 import { createProgressTracker } from "./chat-progress";
 import { runInkChat } from "./chat-ui";
 import { commands, isTopLevelHelpCommand, isTopLevelVersionCommand, usage } from "./cli-commands";
-import { formatAssistantReplyOutput, formatProgressOutput, formatPromptError } from "./cli-format";
+import { formatAssistantReplyOutput, formatProgressOutput } from "./cli-format";
+import { formatLocalServerReadyMessage, resolveChatApiUrl, shouldAutoStartLocalServerForChat } from "./cli-server";
+import { mergeAssistantStreamOutput, missingAssistantStreamTail } from "./cli-stream-output";
+import { resolveCliVersion } from "./cli-version";
 import { createClient } from "./client";
 import { createDebugLogger } from "./debug-flags";
+import { formatPromptError, USER_ERROR_MESSAGES } from "./error-messages";
 import { buildFileContext } from "./file-context";
 import { ensureLocalServer } from "./server-daemon";
 import { acquireSessionLock, releaseSessionLock } from "./session-lock";
@@ -27,72 +30,12 @@ const debug = createDebugLogger({
   sink: (line) => printDim(line),
 });
 
-export function extractVersionFromPackageJsonText(text: string): string | null {
-  try {
-    const parsed = JSON.parse(text) as { version?: unknown };
-    return typeof parsed.version === "string" && parsed.version.trim().length > 0 ? parsed.version.trim() : null;
-  } catch {
-    return null;
-  }
-}
-
-function resolveCliVersion(): string {
-  if (process.env.npm_package_version && process.env.npm_package_version.trim().length > 0)
-    return process.env.npm_package_version.trim();
-  const candidates = [`${process.cwd()}/package.json`, `${import.meta.dir}/../package.json`];
-  for (const path of candidates) {
-    try {
-      const version = extractVersionFromPackageJsonText(readFileSync(path, "utf8"));
-      if (version) return version;
-    } catch {
-      // Try next candidate.
-    }
-  }
-  return "dev";
-}
-
 const CLI_VERSION = resolveCliVersion();
 
 export const FALLBACK_MODEL = "gpt-5-mini";
-const DEFAULT_LOCAL_API_HOST = "127.0.0.1";
-const DEFAULT_LOCAL_API_PORT = 6767;
 
 function nowIso(): string {
   return new Date().toISOString();
-}
-
-export function resolveChatApiUrl(configuredApiUrl: string | undefined, port = DEFAULT_LOCAL_API_PORT): string {
-  const trimmed = configuredApiUrl?.trim();
-  if (trimmed) return trimmed;
-  return `http://${DEFAULT_LOCAL_API_HOST}:${port}`;
-}
-
-function isLocalLoopbackApiUrl(apiUrl: string): boolean {
-  try {
-    const parsed = new URL(apiUrl);
-    if (parsed.protocol !== "http:") return false;
-    const host = parsed.hostname.toLowerCase().replace(/^\[(.*)\]$/, "$1");
-    return host === "localhost" || host === "127.0.0.1" || host === "::1";
-  } catch {
-    return false;
-  }
-}
-
-export function shouldAutoStartLocalServerForChat(configuredApiUrl: string | undefined): boolean {
-  const trimmed = configuredApiUrl?.trim();
-  if (!trimmed) return true;
-  return isLocalLoopbackApiUrl(trimmed);
-}
-
-export function resolveLocalDaemonApiUrl(configuredApiUrl: string | undefined, port = DEFAULT_LOCAL_API_PORT): string {
-  if (shouldAutoStartLocalServerForChat(configuredApiUrl)) return resolveChatApiUrl(configuredApiUrl, port);
-  return resolveChatApiUrl(undefined, port);
-}
-
-export function formatLocalServerReadyMessage(result: { apiUrl: string; started: boolean; managed: boolean }): string {
-  if (result.started) return `Started local server at ${result.apiUrl}`;
-  if (result.managed) return `Using local server at ${result.apiUrl}`;
-  return `Using external local server at ${result.apiUrl} (started outside this client).`;
 }
 
 export function newMessage(role: Message["role"], content: string): Message {
@@ -104,62 +47,6 @@ export function newMessage(role: Message["role"], content: string): Message {
   };
 }
 
-const CHAT_COMMANDS = ["?", "/exit"];
-
-const COMMAND_ALIASES: Record<string, string> = {};
-
-export function resolveCommandAlias(command: string): string {
-  return COMMAND_ALIASES[command] ?? command;
-}
-
-function allKnownCommands(): string[] {
-  return [...CHAT_COMMANDS, ...Object.keys(COMMAND_ALIASES)];
-}
-
-function editDistance(a: string, b: string): number {
-  const dp: number[][] = Array.from({ length: a.length + 1 }, () => Array(b.length + 1).fill(0));
-  for (let i = 0; i <= a.length; i += 1) {
-    dp[i][0] = i;
-  }
-  for (let j = 0; j <= b.length; j += 1) {
-    dp[0][j] = j;
-  }
-  for (let i = 1; i <= a.length; i += 1) {
-    for (let j = 1; j <= b.length; j += 1) {
-      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-      dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost);
-    }
-  }
-  return dp[a.length][b.length];
-}
-
-export function suggestCommand(input: string): string | null {
-  return suggestCommands(input, 1)[0] ?? null;
-}
-
-export function suggestCommands(input: string, max = 3): string[] {
-  const normalized = input.trim();
-  if (!normalized.startsWith("/") && !normalized.startsWith("?")) return [];
-  const commands = allKnownCommands();
-  const prefixMatches: string[] = [];
-  for (const command of commands) {
-    if (command.startsWith(normalized)) prefixMatches.push(command);
-  }
-  if (prefixMatches.length > 0) return prefixMatches.slice(0, max);
-
-  const scored: Array<{ command: string; score: number }> = [];
-  let bestScore = Number.POSITIVE_INFINITY;
-  for (const command of commands) {
-    const score = editDistance(normalized, command);
-    bestScore = Math.min(bestScore, score);
-    scored.push({ command, score });
-  }
-  if (!Number.isFinite(bestScore) || bestScore > 3) return [];
-  return scored
-    .filter((row) => row.score === bestScore)
-    .slice(0, max)
-    .map((row) => row.command);
-}
 
 function setSessionTitle(session: Session, inputText: string): void {
   if (session.title !== "New Session") return;
@@ -172,25 +59,6 @@ export function formatResumeCommand(sessionId: string): string {
   return `acolyte resume ${sessionId}`;
 }
 
-export function missingAssistantStreamTail(streamed: string, finalOutput: string): string {
-  if (streamed.length === 0) return finalOutput;
-  if (finalOutput === streamed) return "";
-  if (finalOutput.startsWith(streamed)) return finalOutput.slice(streamed.length);
-  return "";
-}
-
-export function mergeAssistantStreamOutput(streamed: string, finalOutput: string): string {
-  if (streamed.length === 0) return finalOutput;
-  if (finalOutput.length === 0) return streamed;
-  if (finalOutput === streamed) return finalOutput;
-  if (finalOutput.startsWith(streamed)) return finalOutput;
-  if (streamed.startsWith(finalOutput)) return streamed;
-  const maxOverlap = Math.min(streamed.length, finalOutput.length);
-  for (let overlap = maxOverlap; overlap > 0; overlap -= 1) {
-    if (streamed.endsWith(finalOutput.slice(0, overlap))) return streamed + finalOutput.slice(overlap);
-  }
-  return streamed;
-}
 
 export async function handlePrompt(
   prompt: string,
@@ -361,7 +229,8 @@ export async function handlePrompt(
     session.updatedAt = nowIso();
     return true;
   } catch (error) {
-    printError(formatPromptError(error));
+    if (!(error instanceof Error)) printError(USER_ERROR_MESSAGES.requestFailed);
+    else printError(formatPromptError(error.message));
     session.updatedAt = nowIso();
     return false;
   }
