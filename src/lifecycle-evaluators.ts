@@ -2,8 +2,8 @@ import { createModeInstructions, isPlanLikeOutput } from "./agent";
 import type { AgentMode } from "./agent-modes";
 import type { VerifyScope } from "./api";
 import { type ErrorCategory, isFileNotFoundSignal } from "./error-handling";
-import { TIMEOUT_RECOVERY_MAX_STEPS, TIMEOUT_RECOVERY_TIMEOUT_MS, VERIFY_MAX_STEPS } from "./lifecycle-constants";
 import type { LifecycleEventName } from "./lifecycle-events";
+import type { LifecyclePolicy } from "./lifecycle-policy";
 import { DISCOVERY_TOOL_SET, WRITE_TOOL_SET, WRITE_TOOLS } from "./tool-groups";
 import type { SessionContext } from "./tool-guards";
 
@@ -23,6 +23,7 @@ export type EvaluatorContext = {
   observedTools: Set<string>;
   debug: (event: LifecycleEventName, fields?: Record<string, unknown>) => void;
   agentInput: string;
+  policy: LifecyclePolicy;
   classifiedMode: AgentMode;
   mode: AgentMode;
   taskId: string | undefined;
@@ -150,8 +151,8 @@ export const timeoutRecovery: Evaluator = {
     return {
       type: "regenerate",
       prompt: ctx.agentInput,
-      maxSteps: TIMEOUT_RECOVERY_MAX_STEPS,
-      timeoutMs: TIMEOUT_RECOVERY_TIMEOUT_MS,
+      maxSteps: ctx.policy.timeoutRecoveryMaxSteps,
+      timeoutMs: ctx.policy.timeoutRecoveryTimeoutMs,
     };
   },
 };
@@ -167,7 +168,7 @@ export const autoVerifier: Evaluator = {
         type: "regenerate",
         prompt: scopedVerifyPrompt(ctx),
         mode: "verify",
-        maxSteps: VERIFY_MAX_STEPS,
+        maxSteps: ctx.policy.verifyMaxSteps,
         keepResult: true,
       };
     }

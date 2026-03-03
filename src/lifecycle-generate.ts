@@ -12,7 +12,6 @@ import {
   parseErrorInfo,
   type ErrorSource,
 } from "./error-handling";
-import { MAX_UNKNOWN_ERRORS_PER_REQUEST } from "./lifecycle-constants";
 import {
   type GenerateOptions,
   type GenerateResult,
@@ -74,7 +73,7 @@ function currentErrorDetail(ctx: RunContext): StreamErrorDetail | undefined {
       tool: ctx.lastErrorTool,
       unknownErrorCount: ctx.errorStats.other,
     },
-    MAX_UNKNOWN_ERRORS_PER_REQUEST,
+    ctx.policy.maxUnknownErrorsPerRequest,
   ).errorDetail;
 }
 

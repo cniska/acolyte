@@ -146,13 +146,11 @@ export function createSubagentContext(req: ChatRequest): string {
 // --- Instructions ---
 
 const BASE_INSTRUCTIONS = [
-  "- Act, don't narrate. Use tools directly — do not describe what you will do.",
-  "- Prefer dedicated tools over shell equivalents.",
-  "- Do not use shell fallbacks for file read/search/edit when dedicated tools exist.",
-  "- Stop once evidence is decisive; do not keep searching for completeness.",
-  "- Keep responses short by default: answer in about 2-5 sentences unless the user asks for deeper detail.",
-  "- Avoid long essays; include only what the user needs for the current step.",
-  "- Keep working until done. Make reasonable assumptions instead of asking — only ask if truly stuck with no viable path.",
+  "- Execute the task directly; avoid meta narration about your process.",
+  "- Prefer dedicated project tools; use shell only when no dedicated tool exists.",
+  "- Keep responses concise and outcome-first; expand only when asked.",
+  "- Make reasonable assumptions to keep momentum; ask only when blocked by ambiguity or risk.",
+  "- Stop once the user's request is completed and verified.",
 ].join("\n");
 
 export function createModeInstructions(mode: AgentMode, workspace?: string): string {

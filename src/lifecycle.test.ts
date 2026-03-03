@@ -10,6 +10,7 @@ import {
   timeoutRecovery,
   verifyFailure,
 } from "./lifecycle";
+import { defaultLifecyclePolicy } from "./lifecycle-policy";
 import { LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./tool-error-codes";
 import { createSessionContext } from "./tool-guards";
 
@@ -29,6 +30,7 @@ function createMockContext(overrides: Partial<RunContext> = {}): RunContext {
     session: createSessionContext(),
     agent: {} as RunContext["agent"],
     agentInput: "test prompt",
+    policy: defaultLifecyclePolicy,
     promptUsage: {
       promptTokens: 0,
       promptBudgetTokens: 8000,
@@ -405,6 +407,26 @@ describe("verifyFailure", () => {
       result: { text: "No issues found. 0 errors.", toolCalls: [] },
     });
     expect(verifyFailure.evaluate(ctx).type).toBe("done");
+  });
+});
+
+describe("timeoutRecovery", () => {
+  test("uses policy-configured timeout recovery limits", () => {
+    const ctx = createMockContext({
+      lastError: "Step timed out after 120000ms of inactivity",
+      lastErrorCategory: "timeout",
+      policy: {
+        ...defaultLifecyclePolicy,
+        timeoutRecoveryMaxSteps: 3,
+        timeoutRecoveryTimeoutMs: 9_000,
+      },
+    });
+    const action = timeoutRecovery.evaluate(ctx);
+    expect(action.type).toBe("regenerate");
+    if (action.type === "regenerate") {
+      expect(action.maxSteps).toBe(3);
+      expect(action.timeoutMs).toBe(9_000);
+    }
   });
 });
 

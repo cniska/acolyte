@@ -8,6 +8,7 @@ import { type AcolyteToolset } from "./mastra-tools";
 import type { StreamErrorDetail } from "./stream-error";
 import type { ErrorCode } from "./tool-error-codes";
 import type { SessionContext } from "./tool-guards";
+import type { LifecyclePolicy } from "./lifecycle-policy";
 
 export type GenerateResult = {
   text: string;
@@ -63,6 +64,7 @@ export type LifecycleInput = {
   soulPrompt: string;
   workspace?: string;
   taskId?: string;
+  lifecyclePolicy?: Partial<LifecyclePolicy>;
   onEvent?: (event: StreamEvent) => void;
   onDebug?: (event: LifecycleDebugEvent) => void;
   shouldYield?: () => boolean;
@@ -79,6 +81,7 @@ export type RunContext = {
   readonly tools: Partial<AcolyteToolset>;
   readonly session: SessionContext;
   readonly agentInput: string;
+  readonly policy: LifecyclePolicy;
   readonly memoryOptions?: MemoryOptions;
   readonly promptUsage: PromptUsage;
   model: string;

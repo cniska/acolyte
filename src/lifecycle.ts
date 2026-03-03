@@ -1,8 +1,4 @@
 import {
-  INITIAL_MAX_STEPS,
-  STEP_TIMEOUT_MS,
-} from "./lifecycle-constants";
-import {
   autoVerifier,
   type EvalAction,
   type Evaluator,
@@ -20,6 +16,7 @@ import { phaseFinalize } from "./lifecycle-finalize";
 import { phasePrepare } from "./lifecycle-prepare";
 import { phaseClassify } from "./lifecycle-classify";
 import { phaseEvaluate, recoveryActionForError as resolveRecoveryAction } from "./lifecycle-evaluate";
+import { resolveLifecyclePolicy } from "./lifecycle-policy";
 import type { ToolOutputEvent } from "./lifecycle-contract";
 import { type LifecycleInput, type RunContext } from "./lifecycle-contract";
 
@@ -34,6 +31,7 @@ function createRunContext(input: LifecycleInput, params: {
   model: string;
   prepared: ReturnType<typeof phasePrepare>;
   emit: RunContext["emit"];
+  policy: RunContext["policy"];
 }): RunContext {
   return {
     request: input.request,
@@ -56,6 +54,7 @@ function createRunContext(input: LifecycleInput, params: {
       tools: params.prepared.tools,
     }),
     agentInput: params.prepared.agentInput,
+    policy: params.policy,
     memoryOptions: params.prepared.memoryOptions,
     promptUsage: params.prepared.promptUsage,
     observedTools: new Set(),
@@ -96,6 +95,7 @@ function attachToolOutputHandler(ctx: RunContext) {
 
 export async function runLifecycle(input: LifecycleInput) {
   const emit = input.onEvent ?? (() => {});
+  const policy = resolveLifecyclePolicy(input.lifecyclePolicy);
   let debugSequence = 0;
   let ctxRef: RunContext | undefined;
   const debugSink = input.onDebug ?? (() => {});
@@ -124,14 +124,14 @@ export async function runLifecycle(input: LifecycleInput) {
     },
   });
 
-  const ctx = createRunContext(input, { debug, classifiedMode, model, prepared, emit });
+  const ctx = createRunContext(input, { debug, classifiedMode, model, prepared, emit, policy });
   ctxRef = ctx;
   attachToolOutputHandler(ctx);
 
   ctx.debug("lifecycle.start", { task_id: input.taskId ?? null, mode: classifiedMode, model });
   await phaseGenerate(ctx, ctx.agentInput, {
-    maxSteps: INITIAL_MAX_STEPS,
-    timeoutMs: STEP_TIMEOUT_MS,
+    maxSteps: policy.initialMaxSteps,
+    timeoutMs: policy.stepTimeoutMs,
   });
 
   if (!ctx.result) return phaseFinalize(ctx);
