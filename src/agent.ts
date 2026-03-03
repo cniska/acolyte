@@ -372,7 +372,7 @@ export function finalizeAssistantOutput(
 
 // --- Entrypoint ---
 
-export async function runAgent(input: {
+export type RunAgentInput = {
   request: ChatRequest;
   soulPrompt: string;
   workspace?: string;
@@ -380,6 +380,8 @@ export async function runAgent(input: {
   onEvent?: (event: StreamEvent) => void;
   onDebug?: (event: LifecycleDebugEvent) => void;
   shouldYield?: () => boolean;
-}): Promise<ChatResponse> {
+};
+
+export async function runAgent(input: RunAgentInput): Promise<ChatResponse> {
   return runLifecycle(input);
 }
