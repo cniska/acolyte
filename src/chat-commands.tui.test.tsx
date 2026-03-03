@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { ChatTranscript } from "./chat-transcript";
-import { createClient, createSession, createStore, createSubmitHandlerHarness, dedent } from "./test-utils";
+import { createClient, createSession, createStore, createMessageHandlerHarness, dedent } from "./test-utils";
 import { renderInkPlain } from "./tui-test-utils";
 
 function renderTranscript(rows: Parameters<typeof ChatTranscript>[0]["rows"], columns = 96): string {
@@ -9,7 +9,7 @@ function renderTranscript(rows: Parameters<typeof ChatTranscript>[0]["rows"], co
 
 describe("chat slash command visual regression", () => {
   test("renders /status transcript output", async () => {
-    const { submit, rows } = createSubmitHandlerHarness({
+    const { submit, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({
           provider: "openai",
@@ -49,7 +49,7 @@ describe("chat slash command visual regression", () => {
       ],
     });
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
-    const { submit, rows } = createSubmitHandlerHarness({
+    const { submit, rows } = createMessageHandlerHarness({
       session,
       store,
       tokenUsage: session.tokenUsage,
@@ -79,7 +79,7 @@ describe("chat slash command visual regression", () => {
       ],
     });
     try {
-      const { submit, rows } = createSubmitHandlerHarness({ store });
+      const { submit, rows } = createMessageHandlerHarness({ store });
 
       await submit("/sessions");
 

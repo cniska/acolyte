@@ -4,20 +4,20 @@ import { join } from "node:path";
 import type { ChatRow } from "./chat-commands";
 import {
   buildInternalWriteResumeTurn,
-  createSubmitHandler,
+  createMessageHandler,
   resolveNaturalRememberDirective,
-} from "./chat-submit-handler";
+} from "./chat-message-handler";
 import type { StreamEvent } from "./client";
 import {
   createClient,
   createMessage,
   createSession,
   createStore,
-  createSubmitHandlerHarness,
+  createMessageHandlerHarness,
   dedent,
 } from "./test-utils";
 
-describe("chat submit handler guards", () => {
+describe("chat message handler guards", () => {
   test("resolveNaturalRememberDirective parses user and project forms", () => {
     expect(resolveNaturalRememberDirective("remember this: keep output concise")).toEqual({
       scope: "user",
@@ -55,7 +55,7 @@ describe("chat submit handler guards", () => {
   });
 
   test("ignores empty input", async () => {
-    const { submit, calls } = createSubmitHandlerHarness();
+    const { submit, calls } = createMessageHandlerHarness();
     await submit("   ");
     expect(calls.setInputHistory).toBe(0);
     expect(calls.setValue).toEqual([]);
@@ -63,28 +63,28 @@ describe("chat submit handler guards", () => {
   });
 
   test("ignores input while thinking", async () => {
-    const { submit, calls } = createSubmitHandlerHarness({ isWorking: true });
+    const { submit, calls } = createMessageHandlerHarness({ isWorking: true });
     await submit("hello");
     expect(calls.setInputHistory).toBe(0);
     expect(calls.setValue).toEqual([]);
   });
 
   test("handles slash command while thinking", async () => {
-    const { submit, calls } = createSubmitHandlerHarness({ isWorking: true });
+    const { submit, calls } = createMessageHandlerHarness({ isWorking: true });
     await submit("/sessions");
     expect(calls.setInputHistory).toBe(1);
     expect(calls.setValue).toEqual([""]);
   });
 
   test("ignores unknown single-token slash commands", async () => {
-    const { submit, calls } = createSubmitHandlerHarness();
+    const { submit, calls } = createMessageHandlerHarness();
     await submit("/not-a-command");
     expect(calls.setInputHistory).toBe(0);
     expect(calls.setValue).toEqual([]);
   });
 
   test("routes /status through submit handler and renders status output row", async () => {
-    const { submit, rows, calls } = createSubmitHandlerHarness({
+    const { submit, rows, calls } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({
           provider: "openai",
@@ -116,7 +116,7 @@ describe("chat submit handler guards", () => {
   });
 
   test("routes /sessions through submit handler and renders sessions list row", async () => {
-    const { submit, rows, calls } = createSubmitHandlerHarness();
+    const { submit, rows, calls } = createMessageHandlerHarness();
 
     await submit("/sessions");
 
@@ -140,7 +140,7 @@ describe("chat submit handler guards", () => {
   });
 
   test("routes /tokens through submit handler and renders token output row", async () => {
-    const { submit, rows, calls } = createSubmitHandlerHarness();
+    const { submit, rows, calls } = createMessageHandlerHarness();
 
     await submit("/tokens");
 
@@ -177,7 +177,7 @@ describe("chat submit handler guards", () => {
       [{ type: "tool-call", toolCallId: "call_3", toolName: "delete-file", args: { path: "sum.rs" } }],
     ];
     let replyCount = 0;
-    const { submit, rows } = createSubmitHandlerHarness({
+    const { submit, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         replyStream: async (_input, options) => {
@@ -208,7 +208,7 @@ describe("chat submit handler guards", () => {
   });
 
   test("merges discovery/read file count into tool header", async () => {
-    const { submit, rows } = createSubmitHandlerHarness({
+    const { submit, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         replyStream: async (_input, options) => {
@@ -256,7 +256,7 @@ describe("chat submit handler guards", () => {
   });
 
   test("merges search summary with pattern context into header", async () => {
-    const { submit, rows } = createSubmitHandlerHarness({
+    const { submit, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         replyStream: async (_input, options) => {
@@ -298,7 +298,7 @@ describe("chat submit handler guards", () => {
   });
 
   test("toggles shortcuts on ? input", async () => {
-    const { submit, calls } = createSubmitHandlerHarness();
+    const { submit, calls } = createMessageHandlerHarness();
     await submit("?");
     expect(calls.setInputHistory).toBe(1);
     expect(calls.setValue).toEqual([""]);
@@ -310,7 +310,7 @@ describe("chat submit handler guards", () => {
     let openWriteConfirmWith = "";
     const session = createSession({ id: "sess_test" });
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
-    const submit = createSubmitHandler({
+    const submit = createMessageHandler({
       client: createClient({
         status: async () => ({ permissions: "read" }),
         reply: async () => ({ model: "gpt-5-mini", output: "ok" }),
@@ -353,7 +353,7 @@ describe("chat submit handler guards", () => {
     let openWriteConfirmWith = "";
     const session = createSession({ id: "sess_test" });
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
-    const submit = createSubmitHandler({
+    const submit = createMessageHandler({
       client: createClient({
         status: async () => ({ permissions: "read" }),
         reply: async () => ({ model: "gpt-5-mini", output: "ok" }),
@@ -398,7 +398,7 @@ describe("chat submit handler guards", () => {
     const rows: ChatRow[] = [];
     const session = createSession({ id: "sess_test" });
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
-    const submit = createSubmitHandler({
+    const submit = createMessageHandler({
       client: createClient({
         status: async () => ({ permissions: "read" }),
         reply: async () => {
@@ -452,7 +452,7 @@ describe("chat submit handler guards", () => {
     const session = createSession({ id: "sess_test" });
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
 
-    const submit = createSubmitHandler({
+    const submit = createMessageHandler({
       client: createClient({
         reply: async (_input, options) =>
           await new Promise((_, reject) => {
@@ -525,7 +525,7 @@ describe("chat submit handler guards", () => {
     const session = createSession({ id: "sess_test" });
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
 
-    const submit = createSubmitHandler({
+    const submit = createMessageHandler({
       client: createClient({
         reply: async (_input, options) => {
           const call = callCount++;
@@ -604,7 +604,7 @@ describe("chat submit handler guards", () => {
     const session = createSession({ id: "sess_test" });
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
 
-    const submit = createSubmitHandler({
+    const submit = createMessageHandler({
       client: createClient({
         reply: async () => {
           replyCalls += 1;
@@ -659,7 +659,7 @@ describe("chat submit handler guards", () => {
       const session = createSession({ id: "sess_test" });
       const store = createStore({ activeSessionId: session.id, sessions: [session] });
 
-      const submit = createSubmitHandler({
+      const submit = createMessageHandler({
         client: createClient({
           reply: async () => {
             replyCalls += 1;
@@ -714,7 +714,7 @@ describe("chat submit handler guards", () => {
     const session = createSession({ id: "sess_test" });
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
 
-    const submit = createSubmitHandler({
+    const submit = createMessageHandler({
       client: createClient({
         replyStream: async (_input, options) => {
           options.onEvent({ type: "status", message: "Thinking…" });
@@ -774,7 +774,7 @@ describe("chat submit handler guards", () => {
     const session = createSession({ id: "sess_test" });
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
 
-    const submit = createSubmitHandler({
+    const submit = createMessageHandler({
       client: createClient({
         reply: async () => ({
           model: "gpt-5-mini",
@@ -820,7 +820,7 @@ describe("chat submit handler guards", () => {
   });
 
   test("suppresses empty discovery/read tool rows when no body output arrives", async () => {
-    const { submit, rows } = createSubmitHandlerHarness({
+    const { submit, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         replyStream: async (_input, options) => {
@@ -853,7 +853,7 @@ describe("chat submit handler guards", () => {
     const rows: ChatRow[] = [];
     const session = createSession({ id: "sess_test" });
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
-    const submit = createSubmitHandler({
+    const submit = createMessageHandler({
       client: createClient({
         status: async () => ({}),
         reply: async () => {
@@ -899,7 +899,7 @@ describe("chat submit handler guards", () => {
     const rows: ChatRow[] = [];
     const session = createSession({ id: "sess_test" });
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
-    const submit = createSubmitHandler({
+    const submit = createMessageHandler({
       client: createClient({
         status: async () => ({}),
         reply: async () => {
@@ -947,7 +947,7 @@ describe("chat submit handler guards", () => {
     const session = createSession({ id: "sess_test" });
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
     let calls = 0;
-    const submit = createSubmitHandler({
+    const submit = createMessageHandler({
       client: createClient({
         status: async () => ({}),
         reply: async () => {
@@ -1004,7 +1004,7 @@ describe("chat submit handler guards", () => {
     const session = createSession({ id: "sess_test" });
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
     let statusChecks = 0;
-    const submit = createSubmitHandler({
+    const submit = createMessageHandler({
       client: createClient({
         status: async () => ({}),
         reply: async () => {
@@ -1077,7 +1077,7 @@ describe("chat submit handler guards", () => {
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
     const setCurrentSessionCalls: string[] = [];
     let calls = 0;
-    const submit = createSubmitHandler({
+    const submit = createMessageHandler({
       client: createClient({
         status: async () => ({}),
         reply: async () => {
@@ -1143,7 +1143,7 @@ describe("chat submit handler guards", () => {
     const store = createStore({ activeSessionId: session.id, sessions: [session, target] });
     const setCurrentSessionCalls: string[] = [];
     let calls = 0;
-    const submit = createSubmitHandler({
+    const submit = createMessageHandler({
       client: createClient({
         status: async () => ({}),
         reply: async () => {
@@ -1197,7 +1197,7 @@ describe("chat submit handler guards", () => {
   });
 
   test("creates a single tool row per streamed tool-call event", async () => {
-    const { submit, rows } = createSubmitHandlerHarness({
+    const { submit, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         events: [{ type: "tool-call", toolCallId: "call_1", toolName: "run-command", args: { command: "echo hi" } }],
@@ -1218,7 +1218,7 @@ describe("chat submit handler guards", () => {
   });
 
   test("renders streamed tool rows before assistant summary row", async () => {
-    const { submit, rows } = createSubmitHandlerHarness({
+    const { submit, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         events: [
@@ -1245,7 +1245,7 @@ describe("chat submit handler guards", () => {
 
   test("keeps full streamed assistant output when final reply is shorter", async () => {
     const streamed = "This is a long streamed answer that should not be truncated at finalize.";
-    const { submit, rows, session } = createSubmitHandlerHarness({
+    const { submit, rows, session } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         events: [{ type: "text-delta", text: streamed }],
@@ -1263,7 +1263,7 @@ describe("chat submit handler guards", () => {
   });
 
   test("creates a single tool row when tool-call is followed by tool-result", async () => {
-    const { submit, rows } = createSubmitHandlerHarness({
+    const { submit, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         events: [
@@ -1287,7 +1287,7 @@ describe("chat submit handler guards", () => {
   });
 
   test("suppresses guard-blocked tool attempts", async () => {
-    const { submit, rows } = createSubmitHandlerHarness({
+    const { submit, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         events: [
@@ -1315,7 +1315,7 @@ describe("chat submit handler guards", () => {
   });
 
   test("never surfaces blocked tool rows when mixed with allowed tool work", async () => {
-    const { submit, rows } = createSubmitHandlerHarness({
+    const { submit, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         events: [
@@ -1346,7 +1346,7 @@ describe("chat submit handler guards", () => {
   });
 
   test("merges tool-output into tool-call row in real time", async () => {
-    const { submit, rows } = createSubmitHandlerHarness({
+    const { submit, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         events: [
@@ -1370,7 +1370,7 @@ describe("chat submit handler guards", () => {
   });
 
   test("ignores duplicate tool-output lines for the same tool row", async () => {
-    const { submit, rows } = createSubmitHandlerHarness({
+    const { submit, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         events: [
@@ -1410,7 +1410,7 @@ describe("chat submit handler guards", () => {
       ],
     ];
     let replyCount = 0;
-    const { submit, rows } = createSubmitHandlerHarness({
+    const { submit, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         replyStream: async (_input, options) => {
@@ -1436,7 +1436,7 @@ describe("chat submit handler guards", () => {
   });
 
   test("keeps same-header tool rows separate when toolCallId differs in one turn", async () => {
-    const { submit, rows } = createSubmitHandlerHarness({
+    const { submit, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         events: [
@@ -1467,7 +1467,7 @@ describe("chat submit handler guards", () => {
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
     const tokenUsageSnapshots: Array<typeof session.tokenUsage> = [];
 
-    const submit = createSubmitHandler({
+    const submit = createMessageHandler({
       client: createClient({
         status: async () => ({}),
         reply: async () => ({

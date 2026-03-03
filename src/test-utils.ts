@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { appConfig, setPermissionMode } from "./app-config";
 import type { ChatRow, CommandContext, TokenUsageEntry } from "./chat-commands";
 import type { Message } from "./chat-message";
-import { createSubmitHandler } from "./chat-submit-handler";
+import { createMessageHandler } from "./chat-message-handler";
 import type { Client, StreamEvent } from "./client";
 import type { Session, SessionStore } from "./session-types";
 
@@ -227,7 +227,7 @@ export function createClient(overrides?: {
   };
 }
 
-export type SubmitHandlerHarness = {
+export type MessageHandlerHarness = {
   submit: (raw: string) => Promise<void>;
   rows: ChatRow[];
   session: Session;
@@ -238,13 +238,13 @@ export type SubmitHandlerHarness = {
   };
 };
 
-export function createSubmitHandlerHarness(overrides?: {
+export function createMessageHandlerHarness(overrides?: {
   isWorking?: boolean;
   client?: Client;
   session?: Session;
   store?: SessionStore;
   tokenUsage?: TokenUsageEntry[];
-}): SubmitHandlerHarness {
+}): MessageHandlerHarness {
   const rows: ChatRow[] = [];
   const calls = {
     setInputHistory: 0,
@@ -254,7 +254,7 @@ export function createSubmitHandlerHarness(overrides?: {
   const session = overrides?.session ?? createSession({ id: "sess_test" });
   const store = overrides?.store ?? createStore({ activeSessionId: session.id, sessions: [session] });
   const tokenUsage = overrides?.tokenUsage ?? session.tokenUsage ?? [];
-  const submit = createSubmitHandler({
+  const submit = createMessageHandler({
     client: overrides?.client ?? createClient({ status: async () => ({}) }),
     store,
     currentSession: session,

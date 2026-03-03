@@ -22,7 +22,7 @@ import type { StatusFields } from "./status-contract";
 import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
 import { mergeToolOutputHeader, shouldSuppressEmptyToolProgressRow } from "./tool-summary-format";
 
-type CreateSubmitHandlerInput = {
+type CreateMessageHandlerInput = {
   client: Client;
   store: SessionStore;
   currentSession: Session;
@@ -152,7 +152,7 @@ function mergeAssistantTranscript(streamed: string, finalOutput: string): string
   return streamed;
 }
 
-export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: string) => Promise<void> {
+export function createMessageHandler(input: CreateMessageHandlerInput): (raw: string) => Promise<void> {
   const startWorking = (): void => {
     if (input.startWorking) {
       input.startWorking();

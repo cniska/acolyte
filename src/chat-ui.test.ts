@@ -65,7 +65,7 @@ describe("chat-ui helpers", () => {
 
   test("rankAtReferenceSuggestions supports partial path segment matching", () => {
     const ranked = rankAtReferenceSuggestions(
-      ["src/chat-ui.tsx", "src/chat-submit-handler.ts", "docs/project-plan.md"],
+      ["src/chat-ui.tsx", "src/chat-message-handler.ts", "docs/project-plan.md"],
       "s/ch-u",
       3,
     );
