@@ -5,7 +5,7 @@ import { TOOL_OUTPUT_MARKERS } from "./tool-output-parser";
 
 export { TOOL_OUTPUT_MARKERS } from "./tool-output-parser";
 
-type ToolOutputListener = (event: { toolName: ToolName; message: string; toolCallId?: string }) => void;
+export type ToolOutputListener = (event: { toolName: ToolName; message: string; toolCallId?: string }) => void;
 export const TOOL_OUTPUT_RUN_MAX_ROWS = 5;
 export const TOOL_OUTPUT_FILES_MAX_ROWS = 5;
 export const TOOL_OUTPUT_INLINE_FILES_MAX = 3;

@@ -19,6 +19,7 @@ import {
   numberedUnifiedDiffLines,
   searchResultSummaryEntries,
   TOOL_OUTPUT_FILES_MAX_ROWS,
+  type ToolOutputListener,
   TOOL_OUTPUT_MARKERS,
   TOOL_OUTPUT_RUN_MAX_ROWS,
 } from "./tool-output-format";
@@ -38,7 +39,6 @@ import {
 
 // --- Tool metadata ---
 
-type ToolOutputListener = (event: { toolName: ToolName; message: string; toolCallId?: string }) => void;
 const WRITE_TOOL_PREVIEW_MAX_LINES = 30;
 const WEB_SEARCH_MAX_RESULTS = 5;
 
@@ -775,18 +775,20 @@ function createWebFetchTool(session: SessionContext) {
 
 export type AcolyteToolset = ReturnType<typeof createToolset>["tools"];
 
-function createToolset(workspace: string, session: SessionContext, onToolOutput?: ToolOutputListener) {
+function createGitToolAdapters(workspace: string, session: SessionContext, onToolOutput?: ToolOutputListener) {
   const git = createGitToolkit(workspace);
-  const gitTools = createMastraGitTools({
+  const runtime = { session, guardedExecute, withToolError, streamCallId };
+  return createMastraGitTools({
     git,
-    session,
+    runtime,
     onToolOutput,
-    guardedExecute,
-    withToolError,
-    streamCallId,
     emitHeadTailLines,
     stripGitShowMetadataForPreview,
   });
+}
+
+function createToolset(workspace: string, session: SessionContext, onToolOutput?: ToolOutputListener) {
+  const gitTools = createGitToolAdapters(workspace, session, onToolOutput);
   return {
     tools: {
       findFiles: createFindFilesTool(workspace, session, onToolOutput),
@@ -814,17 +816,7 @@ function readOnlyTools(
   session: SessionContext,
   onToolOutput?: ToolOutputListener,
 ): { tools: Partial<AcolyteToolset>; session: SessionContext } {
-  const git = createGitToolkit(workspace);
-  const gitTools = createMastraGitTools({
-    git,
-    session,
-    onToolOutput,
-    guardedExecute,
-    withToolError,
-    streamCallId,
-    emitHeadTailLines,
-    stripGitShowMetadataForPreview,
-  });
+  const gitTools = createGitToolAdapters(workspace, session, onToolOutput);
   return {
     tools: {
       findFiles: createFindFilesTool(workspace, session, onToolOutput),

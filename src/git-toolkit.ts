@@ -14,6 +14,20 @@ export type GitToolkit = {
   show: (input?: GitShowInput) => Promise<string>;
 };
 
+export type GitToolkitDeps = {
+  gitStatusShort: typeof gitStatusShort;
+  gitDiff: typeof gitDiff;
+  gitLog: typeof gitLog;
+  gitShow: typeof gitShow;
+};
+
+const defaultDeps: GitToolkitDeps = {
+  gitStatusShort,
+  gitDiff,
+  gitLog,
+  gitShow,
+};
+
 async function runGitToolkitOperation(operation: GitToolkitOperation, execute: () => Promise<string>): Promise<string> {
   try {
     return await execute();
@@ -23,14 +37,16 @@ async function runGitToolkitOperation(operation: GitToolkitOperation, execute: (
   }
 }
 
-export function createGitToolkit(workspace: string): GitToolkit {
+export function createGitToolkit(workspace: string, deps: GitToolkitDeps = defaultDeps): GitToolkit {
   return {
-    statusShort: () => runGitToolkitOperation("statusShort", () => gitStatusShort(workspace)),
-    diff: (input) => runGitToolkitOperation("diff", () => gitDiff(workspace, input?.path, input?.contextLines ?? 3)),
-    log: (input) => runGitToolkitOperation("log", () => gitLog(workspace, { path: input?.path, limit: input?.limit })),
+    statusShort: () => runGitToolkitOperation("statusShort", () => deps.gitStatusShort(workspace)),
+    diff: (input) =>
+      runGitToolkitOperation("diff", () => deps.gitDiff(workspace, input?.path, input?.contextLines ?? 3)),
+    log: (input) =>
+      runGitToolkitOperation("log", () => deps.gitLog(workspace, { path: input?.path, limit: input?.limit })),
     show: (input) =>
       runGitToolkitOperation("show", () =>
-        gitShow(workspace, {
+        deps.gitShow(workspace, {
           ref: input?.ref,
           path: input?.path,
           contextLines: input?.contextLines ?? 3,
