@@ -1,8 +1,8 @@
-import { formatToolHeader } from "./agent-output";
 import { appConfig } from "./app-config";
 import { type ChatRow, createRow, dispatchSlashCommand, type TokenUsageEntry } from "./chat-commands";
 import { invalidateRepoPathCandidates } from "./chat-file-ref";
 import type { Message } from "./chat-message";
+import { createMessageStreamState } from "./chat-message-handler-stream";
 import { createProgressTracker } from "./chat-progress";
 import { isKnownSlashToken, resolveSlashAlias } from "./chat-slash";
 import {
@@ -25,9 +25,6 @@ import {
 import type { Client } from "./client";
 import { addMemory } from "./memory";
 import type { Session, SessionStore } from "./session-types";
-import { createId } from "./short-id";
-import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
-import { mergeToolOutputHeader, shouldSuppressEmptyToolProgressRow } from "./tool-summary-format";
 
 type CreateMessageHandlerInput = {
   client: Client;
@@ -203,162 +200,21 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
     const abortController = new AbortController();
     input.setInterrupt(() => abortController.abort());
     const thinkingStartedAt = Date.now();
-    let streamingAssistantRowId: string | null = null;
-    let streamingAssistantContent = "";
-    let committedStreamingText = "";
-    const toolRowIdByCallId = new Map<string, string>();
-    const toolSeenLinesByCallId = new Map<string, Set<string>>();
-    const pendingToolCallById = new Map<string, { header: string; toolName: string }>();
-    const toolHasBodyOutputByCallId = new Set<string>();
-    const toolHeaders = new Set<string>();
-    let streamFlushTimer: ReturnType<typeof setTimeout> | null = null;
-    const STREAM_FLUSH_MS = 50;
-    const flushStreamingContent = (): void => {
-      if (streamFlushTimer) {
-        clearTimeout(streamFlushTimer);
-        streamFlushTimer = null;
-      }
-      if (streamingAssistantContent.trim().length === 0) return;
-      input.setRows((current) => {
-        if (!streamingAssistantRowId) {
-          streamingAssistantRowId = `row_${createId()}`;
-          return [
-            ...current,
-            {
-              id: streamingAssistantRowId,
-              role: "assistant",
-              content: streamingAssistantContent,
-            },
-          ];
-        }
-        return current.map((row) =>
-          row.id === streamingAssistantRowId ? { ...row, content: streamingAssistantContent } : row,
-        );
-      });
-    };
-    const ensureToolRow = (toolCallId: string): void => {
-      const pending = pendingToolCallById.get(toolCallId);
-      if (!pending) return;
-      if (toolRowIdByCallId.get(toolCallId)) return;
-      const rowId = `row_${createId()}`;
-      toolRowIdByCallId.set(toolCallId, rowId);
-      toolSeenLinesByCallId.set(toolCallId, new Set([pending.header.toLowerCase()]));
-      toolHeaders.add(pending.header.toLowerCase());
-      const toolRow: ChatRow = {
-        id: rowId,
-        role: "assistant",
-        content: pending.header,
-        style: "toolProgress",
-        toolCallId,
-        toolName: pending.toolName,
-      };
-      if (streamingAssistantContent.trim().length > 0) committedStreamingText += streamingAssistantContent;
-      streamingAssistantRowId = null;
-      streamingAssistantContent = "";
-      input.setRows((current) => [...current, toolRow]);
-      pendingToolCallById.delete(toolCallId);
-    };
-    const flushPendingToolRows = (): void => {
-      for (const toolCallId of [...pendingToolCallById.keys()]) ensureToolRow(toolCallId);
-    };
+    const streamState = createMessageStreamState({
+      setRows: input.setRows,
+    });
 
     const progressTracker = createProgressTracker({
       onStatus: (message) => {
         input.setProgressText(message);
       },
       onAssistant: (delta) => {
-        if (delta.length === 0) return;
-        streamingAssistantContent += delta;
-        if (!streamFlushTimer) streamFlushTimer = setTimeout(flushStreamingContent, STREAM_FLUSH_MS);
+        if (streamState.onAssistantDelta(delta)) streamState.scheduleStreamFlush();
       },
-      onToolCall: (entry) => {
-        const header = formatToolHeader(entry.toolName, entry.args);
-        pendingToolCallById.set(entry.toolCallId, { header, toolName: entry.toolName });
-      },
-      onToolOutput: (entry) => {
-        const content = entry.content.trim();
-        if (!content) return;
-        ensureToolRow(entry.toolCallId);
-        input.setRows((current) => {
-          const normalizedLine = content.toLowerCase();
-          const seenLines = toolSeenLinesByCallId.get(entry.toolCallId) ?? new Set<string>();
-          if (seenLines.has(normalizedLine)) return current;
-          seenLines.add(normalizedLine);
-          toolSeenLinesByCallId.set(entry.toolCallId, seenLines);
-          const existingRowId = toolRowIdByCallId.get(entry.toolCallId);
-          const existingIndex = existingRowId ? current.findIndex((row) => row.id === existingRowId) : -1;
-          const existingRow = existingIndex >= 0 ? current[existingIndex] : undefined;
-          if (!existingRow) {
-            const rowId = `row_${createId()}`;
-            toolRowIdByCallId.set(entry.toolCallId, rowId);
-            return [
-              ...current,
-              {
-                id: rowId,
-                role: "assistant",
-                content,
-                style: "toolProgress",
-                toolCallId: entry.toolCallId,
-                toolName: entry.toolName,
-              },
-            ];
-          }
-          const next = [...current];
-          const mergedHeader = !existingRow.content.includes("\n")
-            ? mergeToolOutputHeader(existingRow.content, entry.toolName, content)
-            : null;
-          if (mergedHeader) {
-            toolHasBodyOutputByCallId.add(entry.toolCallId);
-            next[existingIndex] = {
-              ...existingRow,
-              content: mergedHeader,
-            };
-            return next;
-          }
-          toolHasBodyOutputByCallId.add(entry.toolCallId);
-          next[existingIndex] = {
-            ...existingRow,
-            content: `${existingRow.content}\n${content}`,
-          };
-          return next;
-        });
-      },
-      onToolResult: (entry) => {
-        const guardBlocked =
-          entry.isError &&
-          (entry.errorCode === LIFECYCLE_ERROR_CODES.guardBlocked || entry.errorDetail?.category === "guard-blocked");
-        if (guardBlocked) {
-          pendingToolCallById.delete(entry.toolCallId);
-          const rowId = toolRowIdByCallId.get(entry.toolCallId);
-          toolRowIdByCallId.delete(entry.toolCallId);
-          toolSeenLinesByCallId.delete(entry.toolCallId);
-          toolHasBodyOutputByCallId.delete(entry.toolCallId);
-          if (!rowId) return;
-          input.setRows((current) => current.filter((row) => row.id !== rowId));
-          return;
-        }
-        if (!toolHasBodyOutputByCallId.has(entry.toolCallId) && shouldSuppressEmptyToolProgressRow(entry.toolName)) {
-          pendingToolCallById.delete(entry.toolCallId);
-          const rowId = toolRowIdByCallId.get(entry.toolCallId);
-          toolRowIdByCallId.delete(entry.toolCallId);
-          toolSeenLinesByCallId.delete(entry.toolCallId);
-          if (!rowId) return;
-          input.setRows((current) => current.filter((row) => row.id !== rowId));
-          return;
-        }
-        ensureToolRow(entry.toolCallId);
-        const rowId = toolRowIdByCallId.get(entry.toolCallId);
-        if (!rowId) return;
-        const status: ChatRow["toolStatus"] = entry.isError ? "error" : "ok";
-        input.setRows((current) => current.map((row) => (row.id === rowId ? { ...row, toolStatus: status } : row)));
-      },
-      onError: (error) => {
-        input.setRows((current) => {
-          const last = current[current.length - 1];
-          if (last?.style === "error" && last.content === error) return current;
-          return [...current, createRow("system", error, { dim: true, style: "error" })];
-        });
-      },
+      onToolCall: streamState.onToolCall,
+      onToolOutput: streamState.onToolOutput,
+      onToolResult: streamState.onToolResult,
+      onError: streamState.onProgressError,
     });
     await input.persist();
     let keepThinkingForRemoteTask = false;
@@ -379,13 +235,12 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
         createMessage: input.createMessage,
       });
       const assistantMessage = turn.assistantMessage;
-      flushPendingToolRows();
-      const streamedAssistantText = `${committedStreamingText}${streamingAssistantContent}`;
+      streamState.flushPendingToolRows();
+      const streamedAssistantText = streamState.streamedAssistantText();
       // Capture the streaming row id before clearing so we can remove it atomically
       // with the final rows to avoid a visual jump.
-      const pendingStreamRowId = streamingAssistantRowId;
-      streamingAssistantRowId = null;
-      streamingAssistantContent = "";
+      const pendingStreamRowId = streamState.clearStreamingAssistantRow();
+      streamState.clearStreamingAssistantContent();
       const mergedAssistantOutput = mergeAssistantTranscript(streamedAssistantText, assistantMessage.content);
       assistantMessage.content = mergedAssistantOutput;
 
@@ -409,10 +264,11 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
           .replace(/^\S+\s*/, "")
           .replace(/\.+$/, "")
           .toLowerCase();
-      const headerDetails = new Set([...toolHeaders].map(detailAfterVerb).filter((d) => d.length > 0));
+      const headerDetails = new Set([...streamState.toolHeaders()].map(detailAfterVerb).filter((d) => d.length > 0));
       const isRedundantWithHeader = (text: string): boolean => {
         return headerDetails.size > 0 && headerDetails.has(detailAfterVerb(text));
       };
+      const committedStreamingText = streamState.committedStreamingText();
       const finalRows = turn.rows
         .map((r) => {
           if (r.role !== "assistant" || r.dim || r.style) return r;
@@ -483,7 +339,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
         }
       }
       // Persist any partial assistant content so context isn't lost on timeout/error.
-      const partialContent = (committedStreamingText + streamingAssistantContent).trim();
+      const partialContent = streamState.streamedAssistantText().trim();
       if (partialContent.length > 0 && !isAbortError(error)) {
         const partialMessage = input.createMessage("assistant", partialContent);
         input.currentSession.messages.push(partialMessage);
@@ -499,10 +355,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
         }),
       ]);
     } finally {
-      if (streamFlushTimer) {
-        clearTimeout(streamFlushTimer);
-        streamFlushTimer = null;
-      }
+      streamState.clearStreamFlushTimer();
       input.setInterrupt(null);
       if (!keepThinkingForRemoteTask) {
         stopWorking();
