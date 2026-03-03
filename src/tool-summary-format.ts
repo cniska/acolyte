@@ -1,3 +1,4 @@
+import { unreachable } from "./assert";
 import { countLabel } from "./plural";
 import { formatToolLabel } from "./tool-labels";
 import type { ToolName } from "./tool-names";
@@ -39,28 +40,36 @@ export function mergeToolOutputHeader(_header: string, toolName: string, line: s
   if (!isSummaryTool && toolName !== "create-file" && toolName !== "edit-file" && toolName !== "edit-code") return null;
   const trimmed = line.trim();
   const parsed = parseToolOutputRow(toolName, trimmed);
-  if (parsed.kind === "find-summary") {
-    const patterns = compactList(parsed.patterns.join(", "));
-    if (parsed.scope === "workspace") return `${label} ${patterns}`;
-    return `${label} ${parsed.scope} ${patterns}`;
+  switch (parsed.kind) {
+    case "find-summary": {
+      const patterns = compactList(parsed.patterns.join(", "));
+      if (parsed.scope === "workspace") return `${label} ${patterns}`;
+      return `${label} ${parsed.scope} ${patterns}`;
+    }
+    case "search-summary": {
+      const patterns = compactBracketList(parsed.patterns.join(", "));
+      if (parsed.scope === "workspace") return `${label} ${patterns}`;
+      return `${label} ${parsed.scope} ${patterns}`;
+    }
+    case "web-search-summary":
+      return `${label} ${parsed.query}`;
+    case "read-summary": {
+      if (parsed.targets.length === 0) return `${label}`;
+      const list = parsed.targets.join(", ");
+      if (parsed.omitted > 0) return `${label} ${list}, +${parsed.omitted}`;
+      return `${label} ${list}`;
+    }
+    case "create-summary":
+      return `Create path=${parsed.path} files=${parsed.files}`;
+    case "edit-summary":
+      return `Edit path=${parsed.path} files=${parsed.files} added=${parsed.added} removed=${parsed.removed}`;
+    case "files-count":
+      return `${label} ${parsed.files} ${parsed.files === 1 ? "file" : "files"}`;
+    case "unknown":
+      return null;
+    default:
+      return unreachable(parsed);
   }
-  if (parsed.kind === "search-summary") {
-    const patterns = compactBracketList(parsed.patterns.join(", "));
-    if (parsed.scope === "workspace") return `${label} ${patterns}`;
-    return `${label} ${parsed.scope} ${patterns}`;
-  }
-  if (parsed.kind === "web-search-summary") return `${label} ${parsed.query}`;
-  if (parsed.kind === "read-summary") {
-    if (parsed.targets.length === 0) return `${label}`;
-    const list = parsed.targets.join(", ");
-    if (parsed.omitted > 0) return `${label} ${list}, +${parsed.omitted}`;
-    return `${label} ${list}`;
-  }
-  if (parsed.kind === "create-summary") return `Create path=${parsed.path} files=${parsed.files}`;
-  if (parsed.kind === "edit-summary")
-    return `Edit path=${parsed.path} files=${parsed.files} added=${parsed.added} removed=${parsed.removed}`;
-  if (parsed.kind === "files-count") return `${label} ${parsed.files} ${parsed.files === 1 ? "file" : "files"}`;
-  return null;
 }
 
 export function shouldSuppressEmptyToolProgressRow(toolName: string): boolean {

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { setPermissionMode } from "./app-config";
+import { invariant } from "./assert";
 import { toolsForAgent, webSearchStreamRows, withToolError } from "./mastra-tools";
 import { savedPermissionMode } from "./test-utils";
 
@@ -55,7 +56,7 @@ describe("read-file tool schema", () => {
     const { tools } = toolsForAgent();
     const schema = tools.readFile?.inputSchema;
     expect(schema).toBeDefined();
-    if (!schema) throw new Error("readFileTool.inputSchema is undefined");
+    invariant(schema, "readFileTool.inputSchema is undefined");
     expect(() => schema.parse({ paths: [{ path: "src/agent.ts", start: 20, end: 10 }] })).toThrow(
       "start must be less than or equal to end",
     );
@@ -65,7 +66,7 @@ describe("read-file tool schema", () => {
     const { tools } = toolsForAgent();
     const schema = tools.readFile?.inputSchema;
     expect(schema).toBeDefined();
-    if (!schema) throw new Error("readFileTool.inputSchema is undefined");
+    invariant(schema, "readFileTool.inputSchema is undefined");
     expect(schema.parse({ paths: [{ path: "src/agent.ts", start: 10, end: 20 }] })).toEqual({
       paths: [{ path: "src/agent.ts", start: 10, end: 20 }],
     });
@@ -81,7 +82,7 @@ describe("read-file tool schema", () => {
     const { tools } = toolsForAgent();
     const schema = tools.readFile?.inputSchema;
     expect(schema).toBeDefined();
-    if (!schema) throw new Error("readFileTool.inputSchema is undefined");
+    invariant(schema, "readFileTool.inputSchema is undefined");
     expect(
       schema.parse({
         paths: [{ path: "src/agent.ts", start: 1, end: 10 }, { path: "src/cli.ts" }],
@@ -98,7 +99,7 @@ describe("delete-file tool schema", () => {
     const { tools } = toolsForAgent();
     const schema = tools.deleteFile?.inputSchema;
     expect(schema).toBeDefined();
-    if (!schema) throw new Error("deleteFileTool.inputSchema is undefined");
+    invariant(schema, "deleteFileTool.inputSchema is undefined");
     expect(() => schema.parse({ path: "src/agent.ts" })).toThrow();
     expect(schema.parse({ paths: ["src/agent.ts"] })).toEqual({ paths: ["src/agent.ts"] });
   });

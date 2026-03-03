@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { invariant } from "./assert";
 import { canTransitionTaskState, TaskRegistry } from "./task-registry";
 
 describe("task registry", () => {
@@ -7,7 +8,7 @@ describe("task registry", () => {
 
     const createdResult = registry.transitionTask("task_1", { state: "running" });
     expect(createdResult.ok).toBe(true);
-    if (!createdResult.ok) throw new Error("Expected successful upsert");
+    invariant(createdResult.ok, "Expected successful upsert");
     const created = createdResult.task;
     expect(created.id).toBe("task_1");
     expect(created.state).toBe("running");
@@ -17,7 +18,7 @@ describe("task registry", () => {
     await Bun.sleep(1);
     const updatedResult = registry.transitionTask("task_1", { state: "completed", summary: "done" });
     expect(updatedResult.ok).toBe(true);
-    if (!updatedResult.ok) throw new Error("Expected successful upsert");
+    invariant(updatedResult.ok, "Expected successful upsert");
     const updated = updatedResult.task;
     expect(updated.id).toBe("task_1");
     expect(updated.state).toBe("completed");

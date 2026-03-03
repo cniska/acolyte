@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { ChatRequest, ChatResponse } from "./api";
 import { appConfig } from "./app-config";
+import { invariant } from "./assert";
 import type { PermissionMode, TransportMode } from "./config-contract";
 import { rpcServerMessageSchema } from "./rpc-protocol";
 import { createId } from "./short-id";
@@ -276,7 +277,7 @@ class HttpClient implements Client {
       }
       if (payload.type === "done") {
         const reply = parseChatResponse(payload.reply, input.model);
-        if (!reply) throw new Error("Remote server stream returned invalid done payload");
+        invariant(reply, "Remote server stream returned invalid done payload");
         finalReply = reply;
         return;
       }
@@ -325,7 +326,7 @@ class HttpClient implements Client {
     cleanup();
 
     if (timedOut && !finalReply) throw new Error(`Remote server stream timed out after ${timeoutMs}ms of inactivity`);
-    if (!finalReply) throw new Error("Remote server stream ended without final reply");
+    invariant(finalReply, "Remote server stream ended without final reply");
     return finalReply;
   }
 
@@ -639,7 +640,7 @@ class RpcClient implements Client {
         }
         if (msg.type === "chat.done") {
           const reply = parseChatResponse(msg.reply, input.model);
-          if (!reply) return reject(new Error("RPC stream returned invalid done payload"));
+          invariant(reply, "RPC stream returned invalid done payload");
           return resolve(reply);
         }
         if (msg.type === "chat.error") {

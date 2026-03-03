@@ -1,3 +1,4 @@
+import { unreachable } from "./assert";
 import type { StreamEvent } from "./client";
 import type { StreamErrorDetail } from "./stream-error";
 
@@ -55,6 +56,8 @@ export function createProgressTracker(options: {
       case "error":
         options.onError?.(event.error);
         break;
+      default:
+        unreachable(event);
     }
   };
 

@@ -1,5 +1,6 @@
 import { Text } from "ink";
 import type React from "react";
+import { unreachable } from "./assert";
 import { formatColumns, formatRelativeTime } from "./chat-format";
 import type { PermissionMode } from "./config-contract";
 import type { Session } from "./session-types";
@@ -59,6 +60,8 @@ export function pickerTitle(picker: PickerState): string {
       return "Model";
     case "writeConfirm":
       return "Confirm Write Access";
+    default:
+      return unreachable(picker);
   }
 }
 
@@ -74,6 +77,8 @@ export function pickerHint(picker: PickerState): string {
       return "Select other to type · Enter to apply · Esc to close";
     case "writeConfirm":
       return "Enter to apply · Esc to cancel";
+    default:
+      return unreachable(picker);
   }
 }
 
@@ -165,5 +170,7 @@ export function renderPickerItems(
         );
       });
     }
+    default:
+      return unreachable(picker);
   }
 }

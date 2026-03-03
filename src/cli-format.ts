@@ -1,5 +1,6 @@
 import { relative } from "node:path";
 import { z } from "zod";
+import { unreachable } from "./assert";
 import { wrapAssistantContent } from "./chat-content";
 import { countLabel } from "./plural";
 import { TOOL_OUTPUT_MARKERS, TOOL_OUTPUT_RUN_MAX_ROWS } from "./tool-output-format";
@@ -457,7 +458,7 @@ export function formatProgressOutput(
         return formatted ?? parsed.text;
       }
       default:
-        return "";
+        return unreachable(parsed);
     }
   };
   if (lines.length === 0) return options?.bullet === false ? "" : "•";

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { setPermissionMode } from "./app-config";
+import { unreachable } from "./assert";
 import { type ChatRow, createRow, type TokenUsageEntry } from "./chat-commands";
 import type { Message } from "./chat-message";
 import type { PickerState } from "./chat-picker";
@@ -206,6 +207,8 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
         input.setPicker(null);
         return;
       }
+      default:
+        return unreachable(state);
     }
   };
 

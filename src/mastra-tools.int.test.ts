@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { setPermissionMode } from "./app-config";
+import { invariant } from "./assert";
 import { toolsForAgent } from "./mastra-tools";
 import { savedPermissionMode } from "./test-utils";
 import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
@@ -12,7 +13,7 @@ describe("tool error wrapper integration", () => {
   test("preserves guard-blocked code from guarded execution", async () => {
     setPermissionMode("write");
     const { tools } = toolsForAgent({ workspace: process.cwd() });
-    if (!tools.runCommand?.execute) throw new Error("runCommand tool missing");
+    invariant(tools.runCommand?.execute, "runCommand tool missing");
     const runtime = {} as never;
     await tools.runCommand.execute({ command: "echo verify" }, runtime);
     try {
