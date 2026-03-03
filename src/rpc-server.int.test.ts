@@ -74,6 +74,126 @@ async function setServerPermissionMode(port: number, apiKey: string, mode: "read
 type RpcEnvelope = { id: string; type: string; [key: string]: unknown };
 
 describe("rpc server websocket queue", () => {
+  test("rejects unauthorized rpc endpoint access", async () => {
+    const port = randomTestPort();
+    const apiKey = "rpc_test_key";
+    await startServerForRpcTest(port, apiKey);
+
+    const missingKey = await fetch(`http://127.0.0.1:${port}/v1/rpc`);
+    expect(missingKey.status).toBe(401);
+
+    const wrongKey = await fetch(`http://127.0.0.1:${port}/v1/rpc?apiKey=wrong_key`);
+    expect(wrongKey.status).toBe(401);
+  });
+
+  test("task.status and chat.abort stay available in read mode", async () => {
+    const port = randomTestPort();
+    const apiKey = "rpc_test_key";
+    await startServerForRpcTest(port, apiKey);
+    await setServerPermissionMode(port, apiKey, "read");
+
+    const messages: RpcEnvelope[] = [];
+    const ws = new WebSocket(`ws://127.0.0.1:${port}/v1/rpc?apiKey=${apiKey}`);
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("websocket open timed out")), 5000);
+      ws.addEventListener("open", () => {
+        clearTimeout(timeout);
+        resolve();
+      });
+      ws.addEventListener("error", () => {
+        clearTimeout(timeout);
+        reject(new Error("websocket failed to open"));
+      });
+    });
+
+    ws.addEventListener("message", (event) => {
+      try {
+        messages.push(JSON.parse(typeof event.data === "string" ? event.data : String(event.data)) as RpcEnvelope);
+      } catch {
+        // Ignore malformed messages from test perspective.
+      }
+    });
+
+    const chatId = "rpc_read_mode_task_controls";
+    ws.send(
+      JSON.stringify({
+        id: chatId,
+        type: "chat.start",
+        payload: {
+          request: {
+            message: "Do a long-running analysis with many steps before answering.",
+            history: [],
+            model: "gpt-5-mini",
+            sessionId: "sess_rpc_read_mode_task_controls",
+          },
+        },
+      }),
+    );
+
+    await new Promise<void>((resolve, reject) => {
+      const startedAt = Date.now();
+      const interval = setInterval(() => {
+        if (messages.some((m) => m.id === chatId && m.type === "chat.started")) {
+          clearInterval(interval);
+          resolve();
+          return;
+        }
+        if (Date.now() - startedAt > 8000) {
+          clearInterval(interval);
+          reject(new Error(`timed out waiting for chat.started: ${JSON.stringify(messages)}`));
+        }
+      }, 20);
+    });
+
+    ws.send(JSON.stringify({ id: "rpc_read_mode_status", type: "task.status", payload: { taskId: chatId } }));
+
+    await new Promise<void>((resolve, reject) => {
+      const startedAt = Date.now();
+      const interval = setInterval(() => {
+        const statusResult = messages.find((m) => m.id === "rpc_read_mode_status" && m.type === "task.status.result");
+        if (statusResult) {
+          clearInterval(interval);
+          expect(statusResult.task && typeof statusResult.task === "object").toBe(true);
+          const task = statusResult.task as { id: unknown; state: unknown };
+          expect(task.id).toBe(chatId);
+          expect(task.state).toBe("running");
+          resolve();
+          return;
+        }
+        if (Date.now() - startedAt > 8000) {
+          clearInterval(interval);
+          reject(new Error(`timed out waiting for task.status.result: ${JSON.stringify(messages)}`));
+        }
+      }, 20);
+    });
+
+    ws.send(JSON.stringify({ id: "rpc_read_mode_abort", type: "chat.abort", payload: { requestId: chatId } }));
+
+    await new Promise<void>((resolve, reject) => {
+      const startedAt = Date.now();
+      const interval = setInterval(() => {
+        const abortResult = messages.find(
+          (m) =>
+            m.id === "rpc_read_mode_abort" &&
+            m.type === "chat.abort.result" &&
+            m.requestId === chatId &&
+            m.aborted === true,
+        );
+        if (abortResult) {
+          clearInterval(interval);
+          resolve();
+          return;
+        }
+        if (Date.now() - startedAt > 8000) {
+          clearInterval(interval);
+          reject(new Error(`timed out waiting for chat.abort.result: ${JSON.stringify(messages)}`));
+        }
+      }, 20);
+    });
+
+    ws.close();
+  }, 20_000);
+
   test("emits queue/abort envelopes and reindexes queued positions", async () => {
     const port = randomTestPort();
     const apiKey = "rpc_test_key";
