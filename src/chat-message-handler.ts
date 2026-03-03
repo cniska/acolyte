@@ -1,6 +1,7 @@
 import { appConfig } from "./app-config";
 import { type ChatRow, createRow, dispatchSlashCommand, type TokenUsageEntry } from "./chat-commands";
 import { invalidateRepoPathCandidates } from "./chat-file-ref";
+import { buildFinalAssistantRows, finalizeToolProgressRows } from "./chat-message-handler-finalize";
 import type { Message } from "./chat-message";
 import { createMessageStreamState } from "./chat-message-handler-stream";
 import { createProgressTracker } from "./chat-progress";
@@ -245,44 +246,15 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
       const mergedAssistantOutput = mergeAssistantTranscript(streamedAssistantText, assistantMessage.content);
       assistantMessage.content = mergedAssistantOutput;
 
-      const finalizeRows = (rows: ChatRow[]): ChatRow[] =>
-        rows
-          .filter((row) => row.id !== pendingStreamRowId)
-          .map((row) => {
-            if (row.style !== "toolProgress" || row.content.includes("\n")) return row;
-            if (row.toolName === "run-command") return { ...row, content: `${row.content}\n(No output)` };
-            return row;
-          });
-
       input.currentSession.messages.push(assistantMessage);
       input.currentSession.updatedAt = input.nowIso();
-      // When pre-tool text was committed in place, strip the prefix
-      // from the final assistant row to avoid duplication. Use a
-      // proper prefix check instead of blind character slicing.
-      const detailAfterVerb = (s: string): string =>
-        s
-          .trim()
-          .replace(/^\S+\s*/, "")
-          .replace(/\.+$/, "")
-          .toLowerCase();
-      const headerDetails = new Set([...streamState.toolHeaders()].map(detailAfterVerb).filter((d) => d.length > 0));
-      const isRedundantWithHeader = (text: string): boolean => {
-        return headerDetails.size > 0 && headerDetails.has(detailAfterVerb(text));
-      };
-      const committedStreamingText = streamState.committedStreamingText();
-      const finalRows = turn.rows
-        .map((r) => {
-          if (r.role !== "assistant" || r.dim || r.style) return r;
-          const mergedContent = mergeAssistantTranscript(streamedAssistantText, r.content);
-          if (committedStreamingText && mergedContent.startsWith(committedStreamingText)) {
-            const after = mergedContent.slice(committedStreamingText.length).trim();
-            if (!after) return null;
-            return isRedundantWithHeader(after) ? null : { ...r, content: after };
-          }
-          return isRedundantWithHeader(mergedContent.trim()) ? null : { ...r, content: mergedContent };
-        })
-        .filter((r): r is ChatRow => r !== null);
-      input.setRows((current) => [...finalizeRows(current), ...finalRows]);
+      const finalRows = buildFinalAssistantRows({
+        rows: turn.rows,
+        streamedAssistantText,
+        committedStreamingText: streamState.committedStreamingText(),
+        toolHeaders: streamState.toolHeaders(),
+      });
+      input.setRows((current) => [...finalizeToolProgressRows(current, pendingStreamRowId), ...finalRows]);
       // File tree may have changed during tool execution; refresh @path autocomplete candidates.
       invalidateRepoPathCandidates();
       input.currentSession.tokenUsage.push(turn.tokenEntry);
