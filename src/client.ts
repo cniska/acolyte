@@ -3,6 +3,7 @@ import type { ChatRequest, ChatResponse } from "./api";
 import { appConfig } from "./app-config";
 import { invariant } from "./assert";
 import type { PermissionMode, TransportMode } from "./config-contract";
+import { createUserError } from "./error-messages";
 import { rpcServerMessageSchema } from "./rpc-protocol";
 import { createId } from "./short-id";
 import type { StatusFields } from "./status-contract";
@@ -276,7 +277,7 @@ class HttpClient implements Client {
         return;
       }
       if (payload.type === "done") {
-        const reply = parseChatResponse(payload.reply, input.model);
+        const reply = parseChatResponse(payload.reply);
         invariant(reply, "Remote server stream returned invalid done payload");
         finalReply = reply;
         return;
@@ -639,7 +640,7 @@ class RpcClient implements Client {
           // ignore
         }
         if (msg.type === "chat.done") {
-          const reply = parseChatResponse(msg.reply, input.model);
+          const reply = parseChatResponse(msg.reply);
           invariant(reply, "RPC stream returned invalid done payload");
           return resolve(reply);
         }
@@ -675,13 +676,14 @@ export function parseStreamEvent(raw: unknown): StreamEvent | null {
   return result.success ? result.data : null;
 }
 
-function parseChatResponse(payload: unknown, fallbackModel: string): ChatResponse | null {
+function parseChatResponse(payload: unknown): ChatResponse | null {
   if (!payload || typeof payload !== "object") return null;
   const json = payload as Partial<ChatResponse>;
   if (typeof json.output !== "string") return null;
+  if (typeof json.model !== "string" || json.model.trim().length === 0) return null;
   return {
     output: json.output,
-    model: typeof json.model === "string" ? json.model : fallbackModel,
+    model: json.model,
     modelCalls: typeof json.modelCalls === "number" ? json.modelCalls : undefined,
     toolCalls: Array.isArray((json as { toolCalls?: unknown }).toolCalls)
       ? ((json as { toolCalls?: unknown[] }).toolCalls ?? []).filter((item): item is string => typeof item === "string")
@@ -717,11 +719,11 @@ export function createClient(options?: ClientOptions): Client {
   const mode = resolveTransportMode(apiUrl, options?.transportMode ?? appConfig.server.transportMode);
 
   if (mode === "rpc") {
-    if (!apiUrl) throw new Error("No API URL configured. Start the server with: acolyte server");
+    if (!apiUrl) throw createUserError("E_CLIENT_API_URL_NOT_CONFIGURED");
     return new RpcClient(apiUrl, apiKey, replyTimeoutMs);
   }
 
   const transport = options?.transport ?? (apiUrl ? createHttpTransport(apiUrl) : null);
-  if (!transport) throw new Error("No API URL configured. Start the server with: acolyte server");
+  if (!transport) throw createUserError("E_CLIENT_API_URL_NOT_CONFIGURED");
   return new HttpClient(transport, apiKey, replyTimeoutMs);
 }

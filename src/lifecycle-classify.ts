@@ -3,13 +3,21 @@ import type { AgentMode } from "./agent-modes";
 import { classifyMode } from "./agent-modes";
 import type { ChatRequest } from "./api";
 import { appConfig } from "./app-config";
+import { createUserError } from "./error-messages";
 import type { ModeResolution, PhaseClassifyResult, RunContext } from "./lifecycle-contract";
 
-export function resolveModeModelOrThrow(mode: AgentMode, fallbackModel: string): ModeResolution {
-  const requestedModel = appConfig.models[mode] ?? fallbackModel;
+export function resolveModeModelOrThrow(mode: AgentMode, requestModel: string): ModeResolution {
+  const modeModel = appConfig.models[mode]?.trim();
+  const requestedModel = modeModel && modeModel.length > 0 ? modeModel : requestModel.trim();
+  if (!requestedModel) {
+    throw createUserError("E_MODEL_NOT_CONFIGURED");
+  }
   const resolved = resolveRunnableModel(requestedModel);
   if (!resolved.available) {
-    throw new Error("No model configured. Run /model to set one.");
+    throw createUserError("E_MODEL_PROVIDER_UNAVAILABLE", {
+      model: resolved.model,
+      provider: resolved.provider,
+    });
   }
   return { model: resolved.model, provider: resolved.provider };
 }
