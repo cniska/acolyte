@@ -1,6 +1,6 @@
 import { createAgentInput, createSubagentContext } from "./agent-input";
 import { appConfig } from "./app-config";
-import { type PhasePrepareInput, type PhasePrepareResult, guardStatsFromSession } from "./lifecycle-contract";
+import { guardStatsFromSession, type PhasePrepareInput, type PhasePrepareResult } from "./lifecycle-contract";
 import { toolsForAgent } from "./mastra-tools";
 
 export function phasePrepare(input: PhasePrepareInput): PhasePrepareResult {

@@ -12,7 +12,7 @@ import { mastraStorage, mastraStorageMode } from "./mastra-storage";
 import { getObservationalMemoryConfig } from "./memory-config";
 import { formatServerCapabilities, PROTOCOL_VERSION } from "./protocol";
 import { formatModel, isProviderAvailable, providerFromModel, resolveProvider } from "./provider-config";
-import { rpcClientMessageSchema, statusPayloadSchema } from "./rpc-protocol";
+import { rpcClientMessageSchema, type statusPayloadSchema } from "./rpc-protocol";
 import { createSerialPerConnectionQueuePolicy } from "./rpc-queue";
 import { createId } from "./short-id";
 import { createSoulPrompt, getMemoryContextEntries } from "./soul";
@@ -186,12 +186,6 @@ function transitionTaskState(
 
 async function buildStatusPayload(): Promise<StatusPayload> {
   const model = appConfig.model;
-  const providerConfig = {
-    openaiApiKey: OPENAI_API_KEY,
-    openaiBaseUrl: OPENAI_BASE_URL,
-    anthropicApiKey: appConfig.anthropic.apiKey,
-    googleApiKey: appConfig.google.apiKey,
-  };
   const modelProvider = providerFromModel(model);
   const provider = modelProvider === "openai" ? resolveProvider(OPENAI_API_KEY, OPENAI_BASE_URL) : modelProvider;
   const memoryContextCount = (await getMemoryContextEntries()).length;
@@ -427,11 +421,17 @@ type RpcHandlerContext = {
   startChat: (chatId: string, request: ChatRequest, state: ActiveRpcChatState) => void;
 };
 
-async function handleStatusGet(_msg: Extract<RpcClientMessage, { type: "status.get" }>, ctx: RpcHandlerContext): Promise<void> {
+async function handleStatusGet(
+  _msg: Extract<RpcClientMessage, { type: "status.get" }>,
+  ctx: RpcHandlerContext,
+): Promise<void> {
   ctx.send({ type: "status.result", status: await buildStatusPayload() });
 }
 
-function handlePermissionsSet(msg: Extract<RpcClientMessage, { type: "permissions.set" }>, ctx: RpcHandlerContext): void {
+function handlePermissionsSet(
+  msg: Extract<RpcClientMessage, { type: "permissions.set" }>,
+  ctx: RpcHandlerContext,
+): void {
   const mode = msg.payload.mode;
   setPermissionMode(mode);
   ctx.send({ type: "permissions.result", permissionMode: appConfig.agent.permissions.mode });

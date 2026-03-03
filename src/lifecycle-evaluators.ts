@@ -1,6 +1,6 @@
 import { createModeInstructions } from "./agent-instructions";
-import { isPlanLikeOutput } from "./agent-output";
 import type { AgentMode } from "./agent-modes";
+import { isPlanLikeOutput } from "./agent-output";
 import type { VerifyScope } from "./api";
 import { type ErrorCategory, isFileNotFoundSignal } from "./error-handling";
 import type { LifecycleEventName } from "./lifecycle-events";

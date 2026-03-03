@@ -2,6 +2,7 @@ import { resolve } from "node:path";
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 import { appConfig } from "./app-config";
+import { createGitToolkit } from "./git-toolkit";
 import { createMastraGitTools } from "./mastra-git-tools";
 import { countLabel } from "./plural";
 import { createId } from "./short-id";
@@ -9,7 +10,6 @@ import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
 import { createSessionContext, recordCall, runGuards, type SessionContext } from "./tool-guards";
 import type { ToolName } from "./tool-names";
 import { compactToolOutput } from "./tool-output";
-import { createGitToolkit, type GitToolkit } from "./git-toolkit";
 import {
   emitFileListSummary,
   emitFindSummary,
@@ -19,9 +19,9 @@ import {
   numberedUnifiedDiffLines,
   searchResultSummaryEntries,
   TOOL_OUTPUT_FILES_MAX_ROWS,
-  type ToolOutputListener,
   TOOL_OUTPUT_MARKERS,
   TOOL_OUTPUT_RUN_MAX_ROWS,
+  type ToolOutputListener,
 } from "./tool-output-format";
 import {
   deleteTextFile,

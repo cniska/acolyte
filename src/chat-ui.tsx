@@ -19,8 +19,8 @@ import { buildInputHistory } from "./chat-turn";
 import type { Client } from "./client";
 import { palette } from "./palette";
 import { formatModel } from "./provider-config";
-import { loadSkills } from "./skills";
 import type { Session, SessionStore } from "./session-types";
+import { loadSkills } from "./skills";
 
 type HeaderLine = {
   id: string;

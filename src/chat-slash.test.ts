@@ -3,8 +3,8 @@ import {
   applySlashSuggestion,
   isKnownSlashToken,
   resolveSlashAlias,
-  slashCommandHelp,
   shouldAutocompleteSlashSubmit,
+  slashCommandHelp,
   suggestClosestSlashCommand,
   suggestSlashCommands,
 } from "./chat-slash";
@@ -18,13 +18,7 @@ describe("chat-slash helpers", () => {
     expect(suggestSlashCommands("/s")).toEqual(["/status", "/sessions", "/skills"]);
     expect(suggestSlashCommands("/st")).toEqual(["/status"]);
     expect(suggestSlashCommands("/d")).toEqual([]);
-    expect(suggestSlashCommands("/mem")).toEqual([
-      "/mem",
-      "/memory",
-      "/memory list",
-      "/memory add",
-      "/memory all",
-    ]);
+    expect(suggestSlashCommands("/mem")).toEqual(["/mem", "/memory", "/memory list", "/memory add", "/memory all"]);
     expect(suggestSlashCommands("/memory ")).toEqual([
       "/memory list",
       "/memory add",

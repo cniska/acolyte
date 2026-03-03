@@ -1,9 +1,9 @@
 import { estimateTokens } from "./agent-input";
 import { finalizeAssistantOutput, finalizeReviewOutput } from "./agent-output";
+import type { ChatResponse } from "./api";
+import { guardStatsFromSession, type RunContext, taskScopedCallLog } from "./lifecycle-contract";
 import { countLabel } from "./plural";
 import { DISCOVERY_TOOL_SET, READ_TOOL_SET, SEARCH_TOOL_SET, WRITE_TOOL_SET } from "./tool-groups";
-import { type RunContext, guardStatsFromSession, taskScopedCallLog } from "./lifecycle-contract";
-import type { ChatResponse } from "./api";
 
 function isReviewRequest(text: string): boolean {
   return /\breview\b/i.test(text);

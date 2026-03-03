@@ -2,8 +2,8 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { createId } from "./short-id";
 import type { Session, SessionStore } from "./session-types";
+import { createId } from "./short-id";
 
 const DATA_DIR = join(homedir(), ".acolyte");
 const STORE_PATH = join(DATA_DIR, "sessions.json");

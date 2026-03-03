@@ -1,32 +1,32 @@
 import type { Agent } from "@mastra/core/agent";
-import { createInstructions } from "./agent-instructions";
-import { canonicalToolId } from "./agent-output";
 import { createAcolyte } from "./agent-factory";
+import { createInstructions } from "./agent-instructions";
 import { agentModes, modeForTool } from "./agent-modes";
+import { canonicalToolId } from "./agent-output";
 import { appConfig } from "./app-config";
 import {
   buildStreamErrorDetail,
   categoryFromErrorCode,
   classifyErrorCategory,
+  type ErrorSource,
   errorCodeFromCategory,
   isEditFileMultiMatchSignal,
   parseErrorInfo,
-  type ErrorSource,
 } from "./error-handling";
-import {
-  type GenerateOptions,
-  type GenerateResult,
-  type RunContext,
-  type StreamChunk,
-  type TextDeltaPayload,
-  type ToolCallPayload,
-  type ToolErrorPayload,
-  type ToolResultPayload,
+import { resolveModeModelOrThrow } from "./lifecycle-classify";
+import type {
+  GenerateOptions,
+  GenerateResult,
+  RunContext,
+  StreamChunk,
+  TextDeltaPayload,
+  ToolCallPayload,
+  ToolErrorPayload,
+  ToolResultPayload,
 } from "./lifecycle-contract";
 import type { AcolyteToolset } from "./mastra-tools";
 import type { StreamErrorDetail } from "./stream-error";
-import { type ErrorCode, extractToolErrorCode, LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
-import { resolveModeModelOrThrow } from "./lifecycle-classify";
+import { extractToolErrorCode, LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
 
 function formatToolArgs(args: Record<string, unknown>): Record<string, string | number | boolean> {
   const out: Record<string, string | number | boolean> = {};

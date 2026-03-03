@@ -3,9 +3,9 @@ import { z } from "zod";
 import { appConfig } from "./app-config";
 import type { GitToolkit } from "./git-toolkit";
 import { runToolAdapter, type ToolAdapterRuntime } from "./mastra-tool-adapter";
+import type { ToolName } from "./tool-names";
 import { compactToolOutput } from "./tool-output";
 import type { ToolOutputListener } from "./tool-output-format";
-import type { ToolName } from "./tool-names";
 
 type EmitHeadTailLines = (
   toolName: ToolName,

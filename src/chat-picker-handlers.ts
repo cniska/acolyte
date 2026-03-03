@@ -1,5 +1,7 @@
+import { z } from "zod";
 import { setPermissionMode } from "./app-config";
 import { type ChatRow, createRow, type TokenUsageEntry } from "./chat-commands";
+import type { Message } from "./chat-message";
 import type { PickerState } from "./chat-picker";
 import {
   boundedSkillInstructions,
@@ -12,10 +14,8 @@ import {
 } from "./chat-picker-actions";
 import { setConfigValue } from "./config";
 import type { ConfigScope, PermissionMode } from "./config-contract";
-import { findSkillByName, loadSkills, readSkillInstructions } from "./skills";
-import type { Message } from "./chat-message";
 import type { Session, SessionStore } from "./session-types";
-import { z } from "zod";
+import { findSkillByName, loadSkills, readSkillInstructions } from "./skills";
 
 const MAX_SKILL_INSTRUCTION_CHARS = 4000;
 const modelIdSchema = z.string().trim().min(1).regex(/^\S+$/);

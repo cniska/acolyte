@@ -1,5 +1,5 @@
-import type { ToolName } from "./tool-names";
 import type { SessionContext } from "./tool-guards";
+import type { ToolName } from "./tool-names";
 
 type GuardedExecute = <T>(
   toolId: ToolName,
@@ -23,5 +23,7 @@ export async function runToolAdapter<T>(
   args: Record<string, unknown>,
   execute: (toolCallId: string) => Promise<T>,
 ): Promise<T> {
-  return runtime.withToolError(toolId, () => runtime.guardedExecute(toolId, args, runtime.session, () => execute(runtime.streamCallId(toolId))));
+  return runtime.withToolError(toolId, () =>
+    runtime.guardedExecute(toolId, args, runtime.session, () => execute(runtime.streamCallId(toolId))),
+  );
 }

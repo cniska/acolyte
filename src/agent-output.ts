@@ -126,7 +126,7 @@ export function formatToolHeader(toolName: string, args: Record<string, unknown>
   if (TOOL_HEADER_LABEL_ONLY_TOOLS.has(toolName)) return label;
   if (toolName === "web-search") {
     const query = asString(args.query);
-    return query ? `${label} \"${query}\"` : label;
+    return query ? `${label} "${query}"` : label;
   }
   if (toolName === "web-fetch") {
     const url = asString(args.url);

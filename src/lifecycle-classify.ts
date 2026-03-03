@@ -1,9 +1,9 @@
-import { classifyMode } from "./agent-modes";
-import { appConfig } from "./app-config";
-import { type PhaseClassifyResult, type ModeResolution, type RunContext } from "./lifecycle-contract";
 import { resolveRunnableModel } from "./agent-model";
 import type { AgentMode } from "./agent-modes";
+import { classifyMode } from "./agent-modes";
 import type { ChatRequest } from "./api";
+import { appConfig } from "./app-config";
+import type { ModeResolution, PhaseClassifyResult, RunContext } from "./lifecycle-contract";
 
 export function resolveModeModelOrThrow(mode: AgentMode, fallbackModel: string): ModeResolution {
   const requestedModel = appConfig.models[mode] ?? fallbackModel;

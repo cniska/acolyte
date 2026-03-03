@@ -1,3 +1,8 @@
+import { canonicalToolId } from "./agent-output";
+import { createErrorStats } from "./error-handling";
+import { phaseClassify } from "./lifecycle-classify";
+import type { LifecycleInput, RunContext, ToolOutputEvent } from "./lifecycle-contract";
+import { phaseEvaluate, recoveryActionForError as resolveRecoveryAction } from "./lifecycle-evaluate";
 import {
   autoVerifier,
   type EvalAction,
@@ -9,30 +14,27 @@ import {
   verifyFailure,
 } from "./lifecycle-evaluators";
 import type { LifecycleEventName } from "./lifecycle-events";
-import { createErrorStats } from "./error-handling";
-import { canonicalToolId } from "./agent-output";
-import { createLifecycleAgent, phaseGenerate, shouldYieldNow } from "./lifecycle-generate";
 import { phaseFinalize } from "./lifecycle-finalize";
-import { phasePrepare } from "./lifecycle-prepare";
-import { phaseClassify } from "./lifecycle-classify";
-import { phaseEvaluate, recoveryActionForError as resolveRecoveryAction } from "./lifecycle-evaluate";
+import { createLifecycleAgent, phaseGenerate, shouldYieldNow } from "./lifecycle-generate";
 import { resolveLifecyclePolicy } from "./lifecycle-policy";
-import type { ToolOutputEvent } from "./lifecycle-contract";
-import { type LifecycleInput, type RunContext } from "./lifecycle-contract";
+import { phasePrepare } from "./lifecycle-prepare";
 
 export { autoVerifier, efficiencyEvaluator, multiMatchEditEvaluator, planDetector, timeoutRecovery, verifyFailure };
 export type { EvalAction, Evaluator };
 export type { LifecycleInput, RunContext } from "./lifecycle-contract";
 export { resolveRecoveryAction as recoveryActionForError };
 
-function createRunContext(input: LifecycleInput, params: {
-  debug: RunContext["debug"];
-  classifiedMode: RunContext["classifiedMode"];
-  model: string;
-  prepared: ReturnType<typeof phasePrepare>;
-  emit: RunContext["emit"];
-  policy: RunContext["policy"];
-}): RunContext {
+function createRunContext(
+  input: LifecycleInput,
+  params: {
+    debug: RunContext["debug"];
+    classifiedMode: RunContext["classifiedMode"];
+    model: string;
+    prepared: ReturnType<typeof phasePrepare>;
+    emit: RunContext["emit"];
+    policy: RunContext["policy"];
+  },
+): RunContext {
   return {
     request: input.request,
     workspace: input.workspace,

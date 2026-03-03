@@ -5,9 +5,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { appConfig, setPermissionMode } from "./app-config";
 import type { ChatRow, CommandContext, TokenUsageEntry } from "./chat-commands";
+import type { Message } from "./chat-message";
 import { createSubmitHandler } from "./chat-submit-handler";
 import type { Client, StreamEvent } from "./client";
-import type { Message } from "./chat-message";
 import type { Session, SessionStore } from "./session-types";
 
 export function tempDir(): { createDir: (prefix: string) => string; cleanupDirs: () => void } {

@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { appConfig, setPermissionMode } from "./app-config";
 import { COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH, formatColumns, formatRelativeTime } from "./chat-format";
 import { suggestClosestSlashCommand } from "./chat-slash";
@@ -6,14 +7,13 @@ import { setConfigValue } from "./config";
 import type { ConfigScope, PermissionMode } from "./config-contract";
 import { addMemory, listMemories, type MemoryScope, removeMemoryByPrefix } from "./memory";
 import { providerFromModel, suggestedModelsForProvider } from "./provider-config";
+import type { Session, SessionStore, SessionTokenUsageEntry } from "./session-types";
 import { createId } from "./short-id";
 import { findSkillByName } from "./skills";
-import type { StatusFields } from "./status-contract";
 import type { MemoryContextScope } from "./soul";
+import type { StatusFields } from "./status-contract";
 import { formatStatusOutput } from "./status-format";
 import { createSession } from "./storage";
-import type { Session, SessionStore, SessionTokenUsageEntry } from "./session-types";
-import { z } from "zod";
 
 export type ChatRow = {
   id: string;
@@ -318,7 +318,10 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       ctx.setCurrentSession(nextSession);
       ctx.setRows((current) => [...current, createRow("system", `Changed model to ${model}.`)]);
     } catch (error) {
-      ctx.setRows((current) => [...current, createRow("system", error instanceof Error ? error.message : "Failed to set model.")]);
+      ctx.setRows((current) => [
+        ...current,
+        createRow("system", error instanceof Error ? error.message : "Failed to set model."),
+      ]);
     }
     return { stop: true, userText: text };
   }

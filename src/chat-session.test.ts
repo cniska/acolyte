@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { toRows } from "./chat-session";
 import type { Message } from "./chat-message";
+import { toRows } from "./chat-session";
 
 describe("chat session helpers", () => {
   test("toRows keeps only user/assistant and applies limit", () => {

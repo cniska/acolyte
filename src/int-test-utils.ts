@@ -1,8 +1,8 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { stripAnsi, trimRightLines } from "./tui-test-utils";
 import type { SessionStore } from "./session-types";
+import { stripAnsi, trimRightLines } from "./tui-test-utils";
 
 type RunCliPlainOptions = {
   cwd?: string;

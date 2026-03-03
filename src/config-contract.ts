@@ -157,7 +157,10 @@ export function toConfig(input: Record<string, unknown>): Config {
       parseIntegerSchema(100, MAX_ATTACHMENT_MESSAGE_TOKENS),
       input.maxAttachmentMessageTokens,
     ),
-    maxPinnedMessageTokens: parseField(parseIntegerSchema(100, MAX_PINNED_MESSAGE_TOKENS), input.maxPinnedMessageTokens),
+    maxPinnedMessageTokens: parseField(
+      parseIntegerSchema(100, MAX_PINNED_MESSAGE_TOKENS),
+      input.maxPinnedMessageTokens,
+    ),
     replyTimeoutMs: parseField(parseIntegerSchema(1_000, MAX_RUN_REPLY_TIMEOUT_MS), input.replyTimeoutMs),
   };
 }

@@ -2,10 +2,10 @@ import { createWorkspaceSpecifier, type TokenUsage } from "./api";
 import { type ChatRow, createRow, type TokenUsageEntry } from "./chat-commands";
 import { extractAtReferencePaths } from "./chat-file-ref";
 import { formatThoughtDuration } from "./chat-format";
+import type { Message } from "./chat-message";
 import type { Client, StreamEvent } from "./client";
 import { buildFileContext } from "./file-context";
 import { countLabel } from "./plural";
-import type { Message } from "./chat-message";
 import type { Session } from "./session-types";
 
 export function estimateTokenUsageFallback(prompt: string, output: string): TokenUsage {

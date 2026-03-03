@@ -4,8 +4,8 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { agentModes } from "./agent-modes";
 import {
-  type Config,
   CONFIG_SET_SCHEMAS,
+  type Config,
   type ConfigScope,
   type LogFormat,
   type PermissionMode,
@@ -260,9 +260,6 @@ export async function unsetConfigValue(key: string, options?: ConfigOptions): Pr
   await writeConfig(next, { ...options, scope });
 }
 
-export async function readConfigForScope(
-  scope: ConfigScope,
-  options?: Omit<ConfigOptions, "scope">,
-): Promise<Config> {
+export async function readConfigForScope(scope: ConfigScope, options?: Omit<ConfigOptions, "scope">): Promise<Config> {
   return readConfigScope(scope, options);
 }

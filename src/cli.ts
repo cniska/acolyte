@@ -4,6 +4,7 @@ import { stdout as output } from "node:process";
 import { formatToolHeader } from "./agent-output";
 import { createWorkspaceSpecifier } from "./api";
 import { appConfig } from "./app-config";
+import type { Message } from "./chat-message";
 import { createProgressTracker } from "./chat-progress";
 import { runInkChat } from "./chat-ui";
 import { commands, isTopLevelHelpCommand, isTopLevelVersionCommand, usage } from "./cli-commands";
@@ -18,13 +19,12 @@ import { createDebugLogger } from "./debug-flags";
 import { buildFileContext } from "./file-context";
 import { ensureLocalServer } from "./server-daemon";
 import { acquireSessionLock, releaseSessionLock } from "./session-lock";
+import type { Session, SessionStore } from "./session-types";
 import { createId } from "./short-id";
 import { createSession, readStore, writeStore } from "./storage";
 import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
 import { parseToolProgressLine } from "./tool-progress";
 import { mergeToolOutputHeader, shouldSuppressEmptyToolProgressRow } from "./tool-summary-format";
-import type { Message } from "./chat-message";
-import type { Session, SessionStore } from "./session-types";
 import { clearScreen, printDim, printError, printOutput, streamText } from "./ui";
 
 const debug = createDebugLogger({

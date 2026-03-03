@@ -4,11 +4,10 @@ import type { ChatRequest, ChatResponse } from "./api";
 import type { StreamEvent } from "./client";
 import type { ErrorCategory, ErrorSource } from "./error-handling";
 import type { LifecycleDebugEvent, LifecycleEventName } from "./lifecycle-events";
-import { type AcolyteToolset } from "./mastra-tools";
-import type { StreamErrorDetail } from "./stream-error";
+import type { LifecyclePolicy } from "./lifecycle-policy";
+import type { AcolyteToolset } from "./mastra-tools";
 import type { ErrorCode } from "./tool-error-codes";
 import type { SessionContext } from "./tool-guards";
-import type { LifecyclePolicy } from "./lifecycle-policy";
 
 export type GenerateResult = {
   text: string;
@@ -29,7 +28,13 @@ export type StreamChunk = { type?: string; payload?: unknown };
 export type TextDeltaPayload = { text?: string };
 export type ToolCallPayload = { toolCallId?: string; toolName?: string; args?: Record<string, unknown> };
 export type ToolResultPayload = { toolCallId?: string; toolName?: string; result?: unknown };
-export type ToolErrorPayload = { error?: unknown; message?: string; code?: unknown; toolName?: string; toolCallId?: string };
+export type ToolErrorPayload = {
+  error?: unknown;
+  message?: string;
+  code?: unknown;
+  toolName?: string;
+  toolCallId?: string;
+};
 export type ModeResolution = { model: string; provider: string };
 export type PhaseClassifyResult = { classifiedMode: AgentMode; model: string };
 export type PhasePrepareInput = {

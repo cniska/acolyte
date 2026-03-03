@@ -1,16 +1,16 @@
+import { type RecoveryAction, recoveryActionForError as resolveRecoveryAction } from "./error-handling";
+import type { LifecycleInput, RunContext, SavedRegenerationState } from "./lifecycle-contract";
 import {
   autoVerifier,
+  type Evaluator,
   efficiencyEvaluator,
   multiMatchEditEvaluator,
   planDetector,
   timeoutRecovery,
-  type Evaluator,
   verifyFailure,
 } from "./lifecycle-evaluators";
 import { phaseGenerate, shouldYieldNow } from "./lifecycle-generate";
-import type { LifecycleInput, RunContext, SavedRegenerationState } from "./lifecycle-contract";
 import { defaultLifecyclePolicy, type LifecyclePolicy } from "./lifecycle-policy";
-import { type RecoveryAction, recoveryActionForError as resolveRecoveryAction } from "./error-handling";
 
 const EVALUATORS: Evaluator[] = [
   planDetector,

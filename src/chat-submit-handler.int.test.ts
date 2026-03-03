@@ -682,7 +682,7 @@ describe("chat submit handler guards", () => {
         activateSkill: async () => true,
         openResumePanel: () => {},
         openPermissionsPanel: () => {},
-      openModelPanel: () => {},
+        openModelPanel: () => {},
         openWriteConfirmPanel: () => {},
         tokenUsage: [],
         isWorking: false,

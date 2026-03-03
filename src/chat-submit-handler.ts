@@ -2,6 +2,7 @@ import { formatToolHeader } from "./agent-output";
 import { appConfig } from "./app-config";
 import { type ChatRow, createRow, dispatchSlashCommand, type TokenUsageEntry } from "./chat-commands";
 import { invalidateRepoPathCandidates } from "./chat-file-ref";
+import type { Message } from "./chat-message";
 import { createProgressTracker } from "./chat-progress";
 import { isKnownSlashToken, resolveSlashAlias } from "./chat-slash";
 import {
@@ -14,12 +15,11 @@ import {
 import type { Client } from "./client";
 import type { PermissionMode } from "./config-contract";
 import { addMemory, type MemoryScope } from "./memory";
+import type { Session, SessionStore } from "./session-types";
 import { createId } from "./short-id";
 import type { StatusFields } from "./status-contract";
 import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
 import { mergeToolOutputHeader, shouldSuppressEmptyToolProgressRow } from "./tool-summary-format";
-import type { Message } from "./chat-message";
-import type { Session, SessionStore } from "./session-types";
 
 type CreateSubmitHandlerInput = {
   client: Client;
