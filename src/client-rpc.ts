@@ -1,7 +1,6 @@
 import type { ChatRequest, ChatResponse } from "./api";
 import {
   type Client,
-  connectionHelpMessage,
   createRemoteError,
   isConnectionFailure,
   parseRpcServerMessage,
@@ -10,6 +9,7 @@ import {
   validateFinalChatResponse,
 } from "./client-contract";
 import type { PermissionMode } from "./config-contract";
+import { connectionHelpMessage } from "./error-messages";
 import { createId } from "./short-id";
 import type { StatusFields } from "./status-contract";
 import type { TaskRecord } from "./task-state";

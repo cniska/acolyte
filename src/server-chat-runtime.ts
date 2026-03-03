@@ -1,0 +1,195 @@
+import { existsSync, statSync } from "node:fs";
+import { resolve } from "node:path";
+import { runAgent } from "./agent";
+import { type ChatRequest, verifyScopeSchema } from "./api";
+import { appConfig } from "./app-config";
+import { createDebugLogger } from "./debug-flags";
+import { buildStreamErrorDetail } from "./error-handling";
+import { errorToLogFields, log } from "./log";
+import { isProviderAvailable, providerFromModel } from "./provider-config";
+import type { RunChatHandlers, StreamErrorPayload } from "./server-contract";
+import { createId } from "./short-id";
+import { createSoulPrompt } from "./soul";
+import { extractToolErrorCode } from "./tool-error-codes";
+
+const OPENAI_API_KEY = appConfig.openai.apiKey;
+const OPENAI_BASE_URL = appConfig.openai.baseUrl;
+
+const debug = createDebugLogger({
+  scope: "server",
+  sink: (line) => log.debug(line),
+});
+
+type WorkspaceResolution = {
+  workspacePath: string;
+  workspaceMode: "default" | "path";
+};
+
+function nextErrorId(): string {
+  return `err_${createId()}`;
+}
+
+export function streamErrorPayload(error: unknown): StreamErrorPayload {
+  const errorMessage = error instanceof Error ? error.message : "Unknown error";
+  const extractedCode = extractToolErrorCode(errorMessage);
+  const { errorCode, errorDetail } = buildStreamErrorDetail(
+    {
+      message: errorMessage,
+      code: extractedCode,
+      source: "server",
+      unknownErrorCount: 1,
+    },
+    1,
+  );
+  return {
+    error: errorMessage,
+    errorCode,
+    errorDetail,
+  };
+}
+
+export function isChatRequest(value: unknown): value is ChatRequest {
+  if (!value || typeof value !== "object") return false;
+
+  const req = value as Partial<ChatRequest>;
+  return (
+    typeof req.message === "string" &&
+    typeof req.model === "string" &&
+    Array.isArray(req.history) &&
+    (req.sessionId === undefined || typeof req.sessionId === "string") &&
+    (req.resourceId === undefined || typeof req.resourceId === "string") &&
+    (req.useMemory === undefined || typeof req.useMemory === "boolean") &&
+    (req.verifyScope === undefined || verifyScopeSchema.safeParse(req.verifyScope).success) &&
+    (req.workspace === undefined || typeof req.workspace === "string")
+  );
+}
+
+function resolveWorkspacePath(request: Pick<ChatRequest, "workspace">): WorkspaceResolution {
+  if (!request.workspace) return { workspacePath: resolve(process.cwd()), workspaceMode: "default" };
+  const resolved = resolve(request.workspace);
+  if (!existsSync(resolved)) throw new Error(`Workspace path does not exist: ${resolved}`);
+  if (!statSync(resolved).isDirectory()) throw new Error(`Workspace path is not a directory: ${resolved}`);
+  return { workspacePath: resolved, workspaceMode: "path" };
+}
+
+function providerConfigurationHint(provider: "openai" | "openai-compatible" | "anthropic" | "gemini"): string {
+  if (provider === "openai-compatible") return "Configure openaiBaseUrl to your compatible endpoint.";
+  if (provider === "anthropic") return "Set ANTHROPIC_API_KEY.";
+  if (provider === "gemini") return "Set GOOGLE_API_KEY.";
+  return "Set OPENAI_API_KEY (or use openai-compatible/<model> with a local endpoint).";
+}
+
+export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChatHandlers): Promise<void> {
+  const requestId = nextErrorId();
+  const startedAt = Date.now();
+  const modelProvider = providerFromModel(chatRequest.model);
+  const providerReady = isProviderAvailable({
+    provider: modelProvider,
+    openaiApiKey: OPENAI_API_KEY,
+    openaiBaseUrl: OPENAI_BASE_URL,
+    anthropicApiKey: appConfig.anthropic.apiKey,
+    googleApiKey: appConfig.google.apiKey,
+  });
+  if (!providerReady) {
+    const payload = streamErrorPayload(
+      new Error(
+        `No provider is configured for model "${chatRequest.model}". ${providerConfigurationHint(modelProvider)}`,
+      ),
+    );
+    handlers.onError(payload);
+    return;
+  }
+
+  let workspaceResolution: WorkspaceResolution;
+  try {
+    workspaceResolution = resolveWorkspacePath(chatRequest);
+  } catch (error) {
+    const payload = streamErrorPayload(error);
+    handlers.onError(payload);
+    return;
+  }
+
+  log.info("chat request started", {
+    request_id: requestId,
+    task_id: handlers.taskId ?? null,
+    session_id: chatRequest.sessionId ?? null,
+    model: chatRequest.model,
+    history_messages: chatRequest.history.length,
+    message_chars: chatRequest.message.length,
+    has_resource_id: Boolean(chatRequest.resourceId),
+    workspace_mode: workspaceResolution.workspaceMode,
+    transport_path: handlers.path,
+  });
+
+  try {
+    const soulPrompt = await createSoulPrompt();
+    const reply = await runAgent({
+      request: chatRequest,
+      soulPrompt,
+      workspace: workspaceResolution.workspacePath,
+      taskId: handlers.taskId,
+      shouldYield: handlers.shouldYield,
+      onEvent: (event) => {
+        if (handlers.isCancelled?.()) return;
+        if ((event as { type?: string }).type === "tool-output")
+          debug.log("tool-stream-forward", {
+            task_id: handlers.taskId ?? null,
+            type: "tool-output",
+            tool: (event as { toolName?: unknown }).toolName,
+            tool_call_id: (event as { toolCallId?: unknown }).toolCallId,
+          });
+        handlers.onEvent(event as Record<string, unknown>);
+      },
+      onDebug: (entry) => {
+        log.info("agent debug", {
+          request_id: requestId,
+          task_id: handlers.taskId ?? null,
+          session_id: chatRequest.sessionId ?? null,
+          event: entry.event,
+          sequence: entry.sequence,
+          phase_attempt: entry.phaseAttempt,
+          event_ts: entry.ts,
+          ...(entry.fields ?? {}),
+        });
+      },
+    });
+    if (handlers.isCancelled?.()) {
+      log.info("chat request cancelled", {
+        request_id: requestId,
+        task_id: handlers.taskId ?? null,
+        session_id: chatRequest.sessionId ?? null,
+        transport_path: handlers.path,
+      });
+      return;
+    }
+    const durationMs = Date.now() - startedAt;
+    log.info("chat request completed", {
+      request_id: requestId,
+      task_id: handlers.taskId ?? null,
+      session_id: chatRequest.sessionId ?? null,
+      model: reply.model,
+      duration_ms: durationMs,
+      model_calls: reply.modelCalls ?? null,
+      tool_count: reply.toolCalls?.length ?? 0,
+      tools: reply.toolCalls?.join(",") ?? "",
+      prompt_tokens: reply.usage?.promptTokens ?? null,
+      completion_tokens: reply.usage?.completionTokens ?? null,
+      stream: true,
+      transport_path: handlers.path,
+    });
+    handlers.onDone(reply);
+  } catch (error) {
+    if (handlers.isCancelled?.()) return;
+    const payload = streamErrorPayload(error);
+    log.error("chat stream failed", {
+      request_id: requestId,
+      task_id: handlers.taskId ?? null,
+      session_id: chatRequest.sessionId ?? null,
+      path: handlers.path,
+      method: handlers.method,
+      model: chatRequest.model,
+      ...errorToLogFields(error),
+    });
+    handlers.onError(payload);
+  }
+}

@@ -145,13 +145,14 @@ function serializeToml(config: Config): string {
 
 function resolveConfig(config: Config): ResolvedConfig {
   const model = config.model ?? DEFAULT_CONFIG.model;
+  const port = config.port ?? DEFAULT_CONFIG.port;
   return {
-    port: config.port ?? DEFAULT_CONFIG.port,
+    port,
     model,
     models: config.models ?? {},
     temperatures: config.temperatures ?? {},
     omModel: config.omModel ?? model,
-    apiUrl: config.apiUrl,
+    apiUrl: config.apiUrl ?? `http://127.0.0.1:${port}`,
     openaiBaseUrl: config.openaiBaseUrl ?? DEFAULT_CONFIG.openaiBaseUrl,
     anthropicBaseUrl: config.anthropicBaseUrl ?? DEFAULT_CONFIG.anthropicBaseUrl,
     googleBaseUrl: config.googleBaseUrl,

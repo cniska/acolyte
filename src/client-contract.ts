@@ -143,20 +143,6 @@ export function isConnectionFailure(error: unknown): boolean {
   );
 }
 
-export function connectionHelpMessage(apiUrl: string): string {
-  try {
-    const parsed = new URL(apiUrl);
-    const hostname = parsed.hostname.toLowerCase().replace(/^\[(.*)\]$/, "$1");
-    if (parsed.protocol === "https:" && (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1"))
-      return `Cannot reach server at ${apiUrl}. Local daemon uses http:// (not https://); update apiUrl or run an HTTPS server.`;
-    if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1")
-      return `Cannot reach server at ${apiUrl}. Start it with: acolyte server start`;
-  } catch {
-    // Fall through to generic guidance for malformed URLs.
-  }
-  return `Cannot reach server at ${apiUrl}. Check apiUrl and server availability.`;
-}
-
 export function rpcUrlFromApiUrl(apiUrl: string): string {
   const source = new URL(apiUrl);
   const protocol = source.protocol === "https:" ? "wss:" : source.protocol === "http:" ? "ws:" : source.protocol;

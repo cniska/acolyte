@@ -2,6 +2,13 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import {
+  createMarkerScenarioHandler,
+  createMessagePayload,
+  createToolCallsPayload,
+  pickFunctionToolName,
+  withFakeProviderServer,
+} from "../scripts/fake-provider-server";
 import { waitForServer } from "./wait-server";
 
 const repoRoot = process.cwd();
@@ -30,13 +37,17 @@ function randomTestPort(): number {
   return 20000 + Math.floor(Math.random() * 10000);
 }
 
-async function startServerForRpcTest(port: number, apiKey: string): Promise<void> {
+type RpcTestServerOptions = {
+  providerBaseUrl?: string;
+};
+
+async function startServerForRpcTest(port: number, apiKey: string, options?: RpcTestServerOptions): Promise<void> {
   const home = await mkdtemp(join(tmpdir(), "acolyte-rpc-home-"));
   const project = await mkdtemp(join(tmpdir(), "acolyte-rpc-project-"));
   tmpHomes.push(home);
   tmpProjects.push(project);
   await prepareRpcTestProject(project, port);
-  await startRpcTestServerProcess(home, project, apiKey, port);
+  await startRpcTestServerProcess(home, project, apiKey, port, options);
 }
 
 async function prepareRpcTestProject(project: string, port: number): Promise<void> {
@@ -49,6 +60,7 @@ async function startRpcTestServerProcess(
   project: string,
   apiKey: string,
   port: number,
+  options?: RpcTestServerOptions,
 ): Promise<Bun.Subprocess> {
   await mkdir(join(home, ".acolyte"), { recursive: true });
 
@@ -58,7 +70,8 @@ async function startRpcTestServerProcess(
       ...process.env,
       HOME: home,
       ACOLYTE_API_KEY: apiKey,
-      OPENAI_API_KEY: process.env.OPENAI_API_KEY ?? "sk-test-rpc",
+      OPENAI_API_KEY: "sk-test-rpc",
+      OPENAI_BASE_URL: options?.providerBaseUrl ?? process.env.OPENAI_BASE_URL,
       NO_COLOR: "1",
     },
     stdout: "pipe",
@@ -85,6 +98,63 @@ async function setServerPermissionMode(port: number, apiKey: string, mode: "read
 }
 
 type RpcEnvelope = { id: string; type: string; [key: string]: unknown };
+
+type RpcSession = {
+  ws: WebSocket;
+  messages: RpcEnvelope[];
+};
+
+function sendRpc(ws: WebSocket, payload: Record<string, unknown>): void {
+  ws.send(JSON.stringify(payload));
+}
+
+async function openRpcSession(port: number, apiKey: string): Promise<RpcSession> {
+  const messages: RpcEnvelope[] = [];
+  const ws = new WebSocket(`ws://127.0.0.1:${port}/v1/rpc?apiKey=${apiKey}`);
+  await new Promise<void>((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error("websocket open timed out")), 5000);
+    ws.addEventListener("open", () => {
+      clearTimeout(timeout);
+      resolve();
+    });
+    ws.addEventListener("error", () => {
+      clearTimeout(timeout);
+      reject(new Error("websocket failed to open"));
+    });
+  });
+
+  ws.addEventListener("message", (event) => {
+    try {
+      messages.push(JSON.parse(typeof event.data === "string" ? event.data : String(event.data)) as RpcEnvelope);
+    } catch {
+      // Ignore malformed messages from test perspective.
+    }
+  });
+
+  return { ws, messages };
+}
+
+async function waitForRpcCondition(
+  messages: RpcEnvelope[],
+  condition: (messages: RpcEnvelope[]) => boolean,
+  timeoutMs: number,
+  label: string,
+): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    const startedAt = Date.now();
+    const interval = setInterval(() => {
+      if (condition(messages)) {
+        clearInterval(interval);
+        resolve();
+        return;
+      }
+      if (Date.now() - startedAt > timeoutMs) {
+        clearInterval(interval);
+        reject(new Error(`timed out waiting for ${label}: ${JSON.stringify(messages)}`));
+      }
+    }, 20);
+  });
+}
 
 describe("rpc server websocket queue", () => {
   test("rejects unauthorized rpc endpoint access", async () => {
@@ -786,87 +856,49 @@ describe("rpc server websocket queue", () => {
     const apiKey = "rpc_test_key";
     await startServerForRpcTest(port, apiKey);
 
-    const messages: RpcEnvelope[] = [];
-    const ws = new WebSocket(`ws://127.0.0.1:${port}/v1/rpc?apiKey=${apiKey}`);
-    await new Promise<void>((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error("websocket open timed out")), 5000);
-      ws.addEventListener("open", () => {
-        clearTimeout(timeout);
-        resolve();
-      });
-      ws.addEventListener("error", () => {
-        clearTimeout(timeout);
-        reject(new Error("websocket failed to open"));
-      });
-    });
-
-    ws.addEventListener("message", (event) => {
-      try {
-        messages.push(JSON.parse(typeof event.data === "string" ? event.data : String(event.data)) as RpcEnvelope);
-      } catch {
-        // Ignore malformed messages from test perspective.
-      }
-    });
+    const { ws, messages } = await openRpcSession(port, apiKey);
 
     const activeTaskId = "rpc_isolation_active";
     const queuedTaskId = "rpc_isolation_queued";
     const activeSession = "sess_rpc_isolation_active";
     const queuedSession = "sess_rpc_isolation_queued";
 
-    ws.send(
-      JSON.stringify({
-        id: activeTaskId,
-        type: "chat.start",
-        payload: {
-          request: {
-            message: "Do a long-running analysis with many steps before answering.",
-            history: [],
-            model: "gpt-5-mini",
-            sessionId: activeSession,
-          },
+    sendRpc(ws, {
+      id: activeTaskId,
+      type: "chat.start",
+      payload: {
+        request: {
+          message: "Do a long-running analysis with many steps before answering.",
+          history: [],
+          model: "gpt-5-mini",
+          sessionId: activeSession,
         },
-      }),
-    );
-    ws.send(
-      JSON.stringify({
-        id: queuedTaskId,
-        type: "chat.start",
-        payload: {
-          request: {
-            message: "Do a long-running analysis with many steps before answering.",
-            history: [],
-            model: "gpt-5-mini",
-            sessionId: queuedSession,
-          },
+      },
+    });
+    sendRpc(ws, {
+      id: queuedTaskId,
+      type: "chat.start",
+      payload: {
+        request: {
+          message: "Do a long-running analysis with many steps before answering.",
+          history: [],
+          model: "gpt-5-mini",
+          sessionId: queuedSession,
         },
-      }),
-    );
-
-    await new Promise<void>((resolve, reject) => {
-      const startedAt = Date.now();
-      const interval = setInterval(() => {
-        const activeStarted = messages.some((m) => m.id === activeTaskId && m.type === "chat.started");
-        const queuedQueued = messages.some(
-          (m) => m.id === queuedTaskId && m.type === "chat.queued" && m.position === 1,
-        );
-        if (activeStarted && queuedQueued) {
-          clearInterval(interval);
-          resolve();
-          return;
-        }
-        if (Date.now() - startedAt > 8000) {
-          clearInterval(interval);
-          reject(new Error(`timed out waiting for running+queued envelopes: ${JSON.stringify(messages)}`));
-        }
-      }, 20);
+      },
     });
 
-    ws.send(
-      JSON.stringify({ id: "rpc_isolation_status_active_pre", type: "task.status", payload: { taskId: activeTaskId } }),
+    await waitForRpcCondition(
+      messages,
+      (all) =>
+        all.some((m) => m.id === activeTaskId && m.type === "chat.started") &&
+        all.some((m) => m.id === queuedTaskId && m.type === "chat.queued" && m.position === 1),
+      8000,
+      "running+queued envelopes",
     );
-    ws.send(
-      JSON.stringify({ id: "rpc_isolation_status_queued_pre", type: "task.status", payload: { taskId: queuedTaskId } }),
-    );
+
+    sendRpc(ws, { id: "rpc_isolation_status_active_pre", type: "task.status", payload: { taskId: activeTaskId } });
+    sendRpc(ws, { id: "rpc_isolation_status_queued_pre", type: "task.status", payload: { taskId: queuedTaskId } });
 
     await new Promise<void>((resolve, reject) => {
       const startedAt = Date.now();
@@ -895,9 +927,7 @@ describe("rpc server websocket queue", () => {
       }, 20);
     });
 
-    ws.send(
-      JSON.stringify({ id: "rpc_isolation_abort_active", type: "chat.abort", payload: { requestId: activeTaskId } }),
-    );
+    sendRpc(ws, { id: "rpc_isolation_abort_active", type: "chat.abort", payload: { requestId: activeTaskId } });
 
     await new Promise<void>((resolve, reject) => {
       const startedAt = Date.now();
@@ -921,20 +951,8 @@ describe("rpc server websocket queue", () => {
       }, 20);
     });
 
-    ws.send(
-      JSON.stringify({
-        id: "rpc_isolation_status_active_post",
-        type: "task.status",
-        payload: { taskId: activeTaskId },
-      }),
-    );
-    ws.send(
-      JSON.stringify({
-        id: "rpc_isolation_status_queued_post",
-        type: "task.status",
-        payload: { taskId: queuedTaskId },
-      }),
-    );
+    sendRpc(ws, { id: "rpc_isolation_status_active_post", type: "task.status", payload: { taskId: activeTaskId } });
+    sendRpc(ws, { id: "rpc_isolation_status_queued_post", type: "task.status", payload: { taskId: queuedTaskId } });
 
     await new Promise<void>((resolve, reject) => {
       const startedAt = Date.now();
@@ -963,119 +981,143 @@ describe("rpc server websocket queue", () => {
       }, 20);
     });
 
-    ws.send(
-      JSON.stringify({ id: "rpc_isolation_abort_queued", type: "chat.abort", payload: { requestId: queuedTaskId } }),
-    );
+    sendRpc(ws, { id: "rpc_isolation_abort_queued", type: "chat.abort", payload: { requestId: queuedTaskId } });
     ws.close();
   }, 20_000);
 
   test("does not leak tool-call path args across task ids", async () => {
     const port = randomTestPort();
     const apiKey = "rpc_test_key";
-    await startServerForRpcTest(port, apiKey);
-    await setServerPermissionMode(port, apiKey, "write");
-
-    const messages: RpcEnvelope[] = [];
-    const ws = new WebSocket(`ws://127.0.0.1:${port}/v1/rpc?apiKey=${apiKey}`);
-    await new Promise<void>((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error("websocket open timed out")), 5000);
-      ws.addEventListener("open", () => {
-        clearTimeout(timeout);
-        resolve();
-      });
-      ws.addEventListener("error", () => {
-        clearTimeout(timeout);
-        reject(new Error("websocket failed to open"));
-      });
-    });
-
-    ws.addEventListener("message", (event) => {
-      try {
-        messages.push(JSON.parse(typeof event.data === "string" ? event.data : String(event.data)) as RpcEnvelope);
-      } catch {
-        // Ignore malformed messages from test perspective.
-      }
-    });
-
     const taskA = "rpc_task_path_iso_a";
     const taskB = "rpc_task_path_iso_b";
     const fileA = "tmp_path_iso_a.txt";
     const fileB = "tmp_path_iso_b.txt";
 
-    ws.send(
-      JSON.stringify({
-        id: taskA,
-        type: "chat.start",
-        payload: {
-          request: {
-            message: `Create ${fileA} with exactly: alpha path isolation`,
-            history: [],
-            model: "gpt-5-mini",
-            sessionId: "sess_rpc_path_iso_a",
+    const fakeHandler = createMarkerScenarioHandler(
+      [
+        {
+          id: "task_a",
+          marker: fileA,
+          handle: ({ model, responseCounter, outputs, body }) => {
+            if (outputs.length === 0) {
+              const toolName = pickFunctionToolName(body.tools, "create-file", ["create", "file"]);
+              return createToolCallsPayload(model, responseCounter, [
+                {
+                  id: "fc_path_iso_a",
+                  callId: "call_path_iso_a",
+                  name: toolName,
+                  args: JSON.stringify({ path: fileA, content: "alpha path isolation" }),
+                },
+              ]);
+            }
+            return createMessagePayload(model, responseCounter, "done");
           },
         },
-      }),
-    );
-    ws.send(
-      JSON.stringify({
-        id: taskB,
-        type: "chat.start",
-        payload: {
-          request: {
-            message: `Create ${fileB} with exactly: beta path isolation`,
-            history: [],
-            model: "gpt-5-mini",
-            sessionId: "sess_rpc_path_iso_b",
+        {
+          id: "task_b",
+          marker: fileB,
+          handle: ({ model, responseCounter, outputs, body }) => {
+            if (outputs.length === 0) {
+              const toolName = pickFunctionToolName(body.tools, "create-file", ["create", "file"]);
+              return createToolCallsPayload(model, responseCounter, [
+                {
+                  id: "fc_path_iso_b",
+                  callId: "call_path_iso_b",
+                  name: toolName,
+                  args: JSON.stringify({ path: fileB, content: "beta path isolation" }),
+                },
+              ]);
+            }
+            return createMessagePayload(model, responseCounter, "done");
           },
         },
-      }),
+      ] as const,
+      "ok",
     );
 
-    await new Promise<void>((resolve, reject) => {
-      const startedAt = Date.now();
-      const interval = setInterval(() => {
-        const terminalA = messages.some((m) => m.id === taskA && (m.type === "chat.done" || m.type === "chat.error"));
-        const terminalB = messages.some((m) => m.id === taskB && (m.type === "chat.done" || m.type === "chat.error"));
-        if (terminalA && terminalB) {
-          clearInterval(interval);
-          resolve();
-          return;
-        }
-        if (Date.now() - startedAt > 45_000) {
-          clearInterval(interval);
-          reject(new Error(`timed out waiting for both terminal chat envelopes: ${JSON.stringify(messages)}`));
-        }
-      }, 20);
-    });
+    await withFakeProviderServer(
+      async (providerBaseUrl) => {
+        await startServerForRpcTest(port, apiKey, { providerBaseUrl });
+        await setServerPermissionMode(port, apiKey, "write");
 
-    const toolCallsFor = (taskId: string): RpcEnvelope[] =>
-      messages.filter(
-        (m) =>
-          m.id === taskId &&
-          m.type === "chat.event" &&
-          typeof m.event === "object" &&
-          m.event !== null &&
-          (m.event as { type?: unknown }).type === "tool-call",
-      );
+        const { ws, messages } = await openRpcSession(port, apiKey);
+        sendRpc(ws, {
+          id: taskA,
+          type: "chat.start",
+          payload: {
+            request: {
+              message: `Create ${fileA} with exactly: alpha path isolation`,
+              history: [],
+              model: "gpt-5-mini",
+              sessionId: "sess_rpc_path_iso_a",
+            },
+          },
+        });
+        sendRpc(ws, {
+          id: taskB,
+          type: "chat.start",
+          payload: {
+            request: {
+              message: `Create ${fileB} with exactly: beta path isolation`,
+              history: [],
+              model: "gpt-5-mini",
+              sessionId: "sess_rpc_path_iso_b",
+            },
+          },
+        });
 
-    const argsBlob = (events: RpcEnvelope[]): string =>
-      events
-        .map((m) => {
-          const event = m.event as { args?: unknown };
-          return JSON.stringify(event.args ?? {});
-        })
-        .join("\n")
-        .toLowerCase();
+        await new Promise<void>((resolve, reject) => {
+          const startedAt = Date.now();
+          const interval = setInterval(() => {
+            const terminalA = messages.some(
+              (m) => m.id === taskA && (m.type === "chat.done" || m.type === "chat.error"),
+            );
+            const terminalB = messages.some(
+              (m) => m.id === taskB && (m.type === "chat.done" || m.type === "chat.error"),
+            );
+            if (terminalA && terminalB) {
+              clearInterval(interval);
+              resolve();
+              return;
+            }
+            if (Date.now() - startedAt > 12_000) {
+              clearInterval(interval);
+              reject(new Error(`timed out waiting for both terminal chat envelopes: ${JSON.stringify(messages)}`));
+            }
+          }, 20);
+        });
 
-    const taskAEvents = toolCallsFor(taskA);
-    const taskBEvents = toolCallsFor(taskB);
-    const taskAArgs = argsBlob(taskAEvents);
-    const taskBArgs = argsBlob(taskBEvents);
+        const toolCallsFor = (taskId: string): RpcEnvelope[] =>
+          messages.filter(
+            (m) =>
+              m.id === taskId &&
+              m.type === "chat.event" &&
+              typeof m.event === "object" &&
+              m.event !== null &&
+              (m.event as { type?: unknown }).type === "tool-call",
+          );
 
-    // Model behavior is nondeterministic; enforce only the isolation invariant.
-    expect(taskAArgs).not.toContain(fileB);
-    expect(taskBArgs).not.toContain(fileA);
+        const argsBlob = (events: RpcEnvelope[]): string =>
+          events
+            .map((m) => {
+              const event = m.event as { args?: unknown };
+              return JSON.stringify(event.args ?? {});
+            })
+            .join("\n")
+            .toLowerCase();
 
-    ws.close();
-  }, 35_000);
+        const taskAEvents = toolCallsFor(taskA);
+        const taskBEvents = toolCallsFor(taskB);
+        const taskAArgs = argsBlob(taskAEvents);
+        const taskBArgs = argsBlob(taskBEvents);
+
+        // Enforce only the isolation invariant across concurrent task ids.
+        expect(taskAArgs).not.toContain(fileB);
+        expect(taskBArgs).not.toContain(fileA);
+
+        ws.close();
+      },
+      { handleRequest: fakeHandler },
+    );
+  }, 20_000);
 });

@@ -509,8 +509,12 @@ describe("stream event parsing", () => {
 });
 
 describe("createClient", () => {
-  test("throws when no apiUrl is configured", () => {
-    expect(() => createClient({ apiUrl: "" })).toThrow("No API URL configured");
+  test("falls back to configured/default apiUrl when explicit apiUrl is blank", async () => {
+    globalThis.fetch = (async () => {
+      throw new TypeError("Unable to connect. Is the computer able to access the url?");
+    }) as unknown as typeof fetch;
+    const client = createClient({ apiUrl: "" });
+    await expect(client.status()).rejects.toThrow("Cannot reach server at ");
   });
 
   test("uses injected transport when provided", async () => {

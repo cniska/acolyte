@@ -4,13 +4,13 @@ import { invariant } from "./assert";
 import {
   type Client,
   type ClientTransport,
-  connectionHelpMessage,
   createRemoteError,
   isConnectionFailure,
   parseChatResponse,
   parseStreamEvent,
 } from "./client-contract";
 import type { PermissionMode } from "./config-contract";
+import { connectionHelpMessage } from "./error-messages";
 import type { StatusFields } from "./status-contract";
 import { streamErrorDetailSchema } from "./stream-error";
 import type { TaskRecord } from "./task-state";

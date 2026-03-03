@@ -1,7 +1,7 @@
+import type { z } from "zod";
 import type { ChatResponse } from "./api";
 import type { statusPayloadSchema } from "./rpc-protocol";
 import type { StreamErrorDetail } from "./stream-error";
-import type { z } from "zod";
 
 export type StatusPayload = z.infer<typeof statusPayloadSchema>;
 
