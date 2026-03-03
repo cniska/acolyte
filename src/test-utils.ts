@@ -275,6 +275,7 @@ export function createSubmitHandlerHarness(overrides?: {
     activateSkill: async () => true,
     openResumePanel: () => {},
     openPermissionsPanel: () => {},
+    openModelPanel: () => {},
     openWriteConfirmPanel: () => {},
     tokenUsage,
     isWorking: overrides?.isWorking ?? false,
@@ -296,6 +297,7 @@ export function createSubmitHandlerHarness(overrides?: {
 export type CommandContextSpies = {
   rows: ChatRow[];
   openedPermissions: boolean;
+  openedModel: boolean;
   currentSessionIds: string[];
   tokenUsageSets: TokenUsageEntry[][];
 };
@@ -307,6 +309,7 @@ export function createCommandContext(
   const spies: CommandContextSpies = {
     rows: [],
     openedPermissions: false,
+    openedModel: false,
     currentSessionIds: [],
     tokenUsageSets: [],
   };
@@ -334,6 +337,9 @@ export function createCommandContext(
     openResumePanel: () => {},
     openPermissionsPanel: () => {
       spies.openedPermissions = true;
+    },
+    openModelPanel: () => {
+      spies.openedModel = true;
     },
     setServerPermissionMode: async () => {},
     tokenUsage: [],

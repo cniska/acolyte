@@ -24,6 +24,13 @@ type ChatInputPanelProps = {
 
 const noop = (): void => {};
 
+function resolveFooterVisible(input: { showHelp: boolean; hasSuggestions: boolean; hasPicker: boolean }): boolean {
+  if (input.showHelp) return false;
+  if (input.hasSuggestions) return false;
+  if (input.hasPicker) return false;
+  return true;
+}
+
 export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
   const {
     picker = null,
@@ -41,6 +48,8 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
     slashSuggestionIndex = 0,
     showHelp = false,
   } = props;
+  const hasSuggestions = atQuery !== null || slashSuggestions.length > 0;
+  const showFooter = resolveFooterVisible({ showHelp, hasSuggestions, hasPicker: Boolean(picker) });
 
   if (picker && picker.kind !== "writeConfirm") {
     return (
@@ -102,7 +111,7 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
         slashSuggestionIndex,
         showHelp,
       })}
-      {!showHelp ? <Text dimColor>{justifyLineSpaceBetween("? help", footerContext, 2)}</Text> : null}
+      {showFooter ? <Text dimColor>{justifyLineSpaceBetween("? help", footerContext, 2)}</Text> : null}
     </>
   );
 }

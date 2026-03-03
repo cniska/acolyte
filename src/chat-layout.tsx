@@ -1,20 +1,22 @@
 import { homedir } from "node:os";
+import { slashCommandHelp } from "./chat-slash";
 
 const DEFAULT_TERMINAL_WIDTH = 96;
 const SHORTCUT_TWO_COLUMN_MIN_WIDTH = 92;
 
 const SHORTCUT_ITEMS = [
   { key: "@path", description: "attach file" },
-  { key: "/new", description: "new session" },
-  { key: "/resume <id>", description: "resume session" },
-  { key: "/sessions", description: "session history" },
-  { key: "/permissions", description: "permissions" },
-  { key: "/status", description: "server status" },
-  { key: "/remember <text>", description: "save memory" },
-  { key: "/memory [scope]", description: "list memories" },
-  { key: "/tokens", description: "token usage" },
-  { key: "/skills", description: "skills" },
-  { key: "/exit", description: "exit" },
+  { key: "/new", description: slashCommandHelp("/new") },
+  { key: "/resume <id>", description: slashCommandHelp("/resume") },
+  { key: "/sessions", description: slashCommandHelp("/sessions") },
+  { key: "/permissions", description: slashCommandHelp("/permissions") },
+  { key: "/model", description: slashCommandHelp("/model") },
+  { key: "/status", description: slashCommandHelp("/status") },
+  { key: "/remember <text>", description: slashCommandHelp("/remember") },
+  { key: "/memory [scope]", description: slashCommandHelp("/memory") },
+  { key: "/tokens", description: slashCommandHelp("/tokens") },
+  { key: "/skills", description: slashCommandHelp("/skills") },
+  { key: "/exit", description: slashCommandHelp("/exit") },
 ] as const;
 
 export function shownCwd(): string {

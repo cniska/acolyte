@@ -2,12 +2,14 @@ import { appConfig } from "./app-config";
 import { type ChatRow, createRow } from "./chat-commands";
 import type { PickerState } from "./chat-picker";
 import type { PermissionMode } from "./config-contract";
+import { describeModel, providerFromModel, suggestedModelsForProvider } from "./provider-config";
 import type { Session, SessionStore } from "./session-types";
 
 type PickerByKind = {
   skills: Extract<PickerState, { kind: "skills" }>;
   resume: Extract<PickerState, { kind: "resume" }>;
   permissions: Extract<PickerState, { kind: "permissions" }>;
+  model: Extract<PickerState, { kind: "model" }>;
   writeConfirm: Extract<PickerState, { kind: "writeConfirm" }>;
 };
 
@@ -55,6 +57,22 @@ export function createPermissionsPicker(): PickerState {
     items,
     index: index >= 0 ? index : 0,
   });
+}
+
+export function createModelPicker(currentModel: string): PickerState {
+  const provider = providerFromModel(currentModel);
+  const suggestions = suggestedModelsForProvider(provider);
+  const items = [
+    ...suggestions.map((model) => ({ model, description: describeModel(model) })),
+    { model: "other", description: "" },
+  ];
+  const index = items.findIndex((item) => item.model === currentModel);
+  return {
+    kind: "model",
+    items,
+    index: index >= 0 ? index : items.length - 1,
+    customModel: index < 0 ? currentModel : "",
+  };
 }
 
 export function createWriteConfirmPicker(prompt: string): PickerState {

@@ -224,4 +224,96 @@ describe("chat picker handlers", () => {
     expect(queued.at(-1)).toBe("resume:edit src/cli.ts");
     expect(rows.some((row) => row.content.includes("Switched to write mode"))).toBe(true);
   });
+
+  test("handlePickerSelect model applies custom model when provided", async () => {
+    const rows: ChatRow[] = [];
+    const currentSession = createSession({ id: "sess_current", model: "gpt-5-mini" });
+    const store = createStore({ sessions: [currentSession], activeSessionId: currentSession.id });
+    const selectedSessions: ReturnType<typeof createSession>[] = [];
+    const handlers = createPickerHandlers({
+      store,
+      currentSession,
+      setCurrentSession: (next) => {
+        selectedSessions.push(next);
+      },
+      setRows: (updater) => {
+        const next = updater(rows);
+        rows.length = 0;
+        rows.push(...next);
+      },
+      setRowsDirect: () => {},
+      setPicker: () => {},
+      setShowHelp: () => {},
+      setValue: () => {},
+      queueInput: () => {},
+      buildWriteResumePayload: (prompt) => prompt,
+      setServerPermissionMode: async () => {},
+      persistPermissionMode: async () => {},
+      persist: async () => {},
+      toRows: () => [],
+      createMessage,
+      nowIso: () => "2026-02-20T00:00:00.000Z",
+    });
+
+    await handlers.handlePickerSelect({
+      kind: "model",
+      items: [
+        { model: "gpt-5-mini", description: "balanced default" },
+        { model: "other", description: "" },
+      ],
+      index: 1,
+      customModel: "gpt-5",
+    });
+
+    expect(selectedSessions.at(-1)?.model).toBe("gpt-5");
+    expect(rows.some((row) => row.content === "Changed model to gpt-5.")).toBe(true);
+  });
+
+  test("handlePickerSelect model keeps picker open when other is empty", async () => {
+    const rows: ChatRow[] = [];
+    const pickerStates: Array<unknown> = [];
+    const currentSession = createSession({ id: "sess_current", model: "gpt-5-mini" });
+    const store = createStore({ sessions: [currentSession], activeSessionId: currentSession.id });
+    const selectedSessions: ReturnType<typeof createSession>[] = [];
+    const handlers = createPickerHandlers({
+      store,
+      currentSession,
+      setCurrentSession: (next) => {
+        selectedSessions.push(next);
+      },
+      setRows: (updater) => {
+        const next = updater(rows);
+        rows.length = 0;
+        rows.push(...next);
+      },
+      setRowsDirect: () => {},
+      setPicker: (next) => {
+        pickerStates.push(next);
+      },
+      setShowHelp: () => {},
+      setValue: () => {},
+      queueInput: () => {},
+      buildWriteResumePayload: (prompt) => prompt,
+      setServerPermissionMode: async () => {},
+      persistPermissionMode: async () => {},
+      persist: async () => {},
+      toRows: () => [],
+      createMessage,
+      nowIso: () => "2026-02-20T00:00:00.000Z",
+    });
+
+    await handlers.handlePickerSelect({
+      kind: "model",
+      items: [
+        { model: "gpt-5-mini", description: "balanced default" },
+        { model: "other", description: "" },
+      ],
+      index: 1,
+      customModel: "",
+    });
+
+    expect(selectedSessions).toEqual([]);
+    expect(pickerStates).toEqual([]);
+    expect(rows).toEqual([]);
+  });
 });

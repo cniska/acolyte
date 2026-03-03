@@ -35,6 +35,7 @@ type CreateSubmitHandlerInput = {
   activateSkill: (skillName: string, args: string) => Promise<boolean>;
   openResumePanel: () => void;
   openPermissionsPanel: () => void;
+  openModelPanel: () => void;
   openWriteConfirmPanel: (prompt: string) => void;
   tokenUsage: TokenUsageEntry[];
   isWorking: boolean;
@@ -254,6 +255,7 @@ export function createSubmitHandler(input: CreateSubmitHandlerInput): (raw: stri
         activateSkill: input.activateSkill,
         openResumePanel: input.openResumePanel,
         openPermissionsPanel: input.openPermissionsPanel,
+        openModelPanel: input.openModelPanel,
         setServerPermissionMode: input.client.setPermissionMode,
         tokenUsage: input.tokenUsage,
       });

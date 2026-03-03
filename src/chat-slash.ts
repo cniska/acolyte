@@ -3,6 +3,7 @@ import { getLoadedSkills } from "./skills";
 const CHAT_SLASH_COMMANDS = [
   "/new",
   "/permissions",
+  "/model",
   "/status",
   "/sessions",
   "/skills",
@@ -18,6 +19,27 @@ const CHAT_SLASH_COMMANDS = [
 const SUB_COMMANDS: Record<string, string[]> = {
   "/memory": ["/memory list", "/memory add", "/memory all", "/memory user", "/memory project"],
   "/permissions": ["/permissions read", "/permissions write"],
+};
+
+const SLASH_HELP: Record<string, string> = {
+  "/new": "start new session",
+  "/permissions": "change permissions",
+  "/permissions read": "set permissions to read",
+  "/permissions write": "set permissions to write",
+  "/model": "change model",
+  "/status": "show server status",
+  "/sessions": "show sessions",
+  "/skills": "show skills picker",
+  "/resume": "resume session",
+  "/remember": "save memory note",
+  "/memory": "show memory notes",
+  "/memory list": "show memory notes",
+  "/memory add": "add memory note",
+  "/memory all": "show all memory notes",
+  "/memory user": "show user memory notes",
+  "/memory project": "show project memory notes",
+  "/tokens": "show token usage",
+  "/exit": "exit chat",
 };
 
 const SLASH_ALIASES: Record<string, string> = {
@@ -58,7 +80,7 @@ export function isKnownSlashToken(token: string): boolean {
   return false;
 }
 
-export function suggestSlashCommands(inputValue: string, max = 8): string[] {
+export function suggestSlashCommands(inputValue: string, max = 5): string[] {
   const value = inputValue.trim();
   if (!value.startsWith("/")) return [];
   const candidate = inputValue.trimStart();
@@ -128,4 +150,11 @@ export function resolveSlashAlias(value: string): string {
   const resolvedHead = SLASH_ALIASES[head] ?? head;
   if (rest.length === 0) return resolvedHead;
   return `${resolvedHead} ${rest.join(" ")}`;
+}
+
+export function slashCommandHelp(command: string): string {
+  const help = SLASH_HELP[command];
+  if (help) return help;
+  if (command.startsWith("/") && getLoadedSkills().some((s) => `/${s.name}` === command)) return "run skill command";
+  return "";
 }

@@ -1,5 +1,24 @@
 export type ProviderName = "openai" | "openai-compatible" | "anthropic" | "gemini";
 export type ModelProviderName = ProviderName;
+type SupportedProviderName = Exclude<ModelProviderName, "openai-compatible">;
+
+const SUGGESTED_MODELS: Record<SupportedProviderName, string[]> = {
+  openai: ["gpt-5-mini", "gpt-5", "gpt-5-nano"],
+  anthropic: ["claude-sonnet-4-5", "claude-opus-4-1", "claude-haiku-4-5"],
+  gemini: ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"],
+};
+
+const MODEL_DESCRIPTIONS: Record<string, string> = {
+  "gpt-5-mini": "balanced default",
+  "gpt-5": "highest quality",
+  "gpt-5-nano": "fastest and lowest cost",
+  "claude-sonnet-4-5": "balanced default",
+  "claude-opus-4-1": "highest quality",
+  "claude-haiku-4-5": "fastest and lowest cost",
+  "gemini-2.5-flash": "fast and efficient",
+  "gemini-2.5-pro": "highest quality",
+  "gemini-2.0-flash": "low-latency default",
+};
 
 function inferUnqualifiedModelPrefix(model: string): "openai" | "anthropic" | "gemini" {
   const normalized = model.trim().toLowerCase();
@@ -57,4 +76,13 @@ export function isProviderAvailable(input: {
   return resolveProvider(input.openaiApiKey, input.openaiBaseUrl) === "openai-compatible"
     ? true
     : Boolean(input.openaiApiKey);
+}
+
+export function suggestedModelsForProvider(provider: ModelProviderName): string[] {
+  if (provider === "openai-compatible") return SUGGESTED_MODELS.openai;
+  return SUGGESTED_MODELS[provider];
+}
+
+export function describeModel(model: string): string {
+  return MODEL_DESCRIPTIONS[model] ?? "supported model";
 }

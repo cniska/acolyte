@@ -3,6 +3,7 @@ import { type ChatRow, createRow, type TokenUsageEntry } from "./chat-commands";
 import type { PickerState } from "./chat-picker";
 import {
   boundedSkillInstructions,
+  createModelPicker,
   createPermissionsPicker,
   createPicker,
   createResumePicker,
@@ -14,8 +15,10 @@ import type { ConfigScope, PermissionMode } from "./config-contract";
 import { findSkillByName, loadSkills, readSkillInstructions } from "./skills";
 import type { Message } from "./chat-message";
 import type { Session, SessionStore } from "./session-types";
+import { z } from "zod";
 
 const MAX_SKILL_INSTRUCTION_CHARS = 4000;
+const modelIdSchema = z.string().trim().min(1).regex(/^\S+$/);
 
 type CreatePickerHandlersInput = {
   store: SessionStore;
@@ -41,6 +44,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
   openSkillsPanel: () => Promise<void>;
   openResumePanel: () => void;
   openPermissionsPanel: () => void;
+  openModelPanel: () => void;
   openWriteConfirmPanel: (prompt: string) => void;
   handlePickerSelect: (state: PickerState) => Promise<void>;
   activateSkill: (skillName: string, args: string) => Promise<boolean>;
@@ -94,6 +98,11 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
     input.setShowHelp(false);
   };
 
+  const openModelPanel = (): void => {
+    input.setPicker(createModelPicker(input.currentSession.model));
+    input.setShowHelp(false);
+  };
+
   const openWriteConfirmPanel = (prompt: string): void => {
     input.setPicker(createWriteConfirmPicker(prompt));
     input.setShowHelp(false);
@@ -134,6 +143,29 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
             input.setRows((current) => [
               ...current,
               createRow("system", error instanceof Error ? error.message : "Failed to set permission mode."),
+            ]);
+          }
+        }
+        input.setPicker(null);
+        return;
+      }
+      case "model": {
+        const custom = modelIdSchema.safeParse(state.customModel);
+        const selected = state.items[state.index];
+        const nextModel = selected?.model === "other" ? (custom.success ? custom.data : undefined) : selected?.model;
+        if (!nextModel) {
+          return;
+        }
+        if (nextModel) {
+          try {
+            await setConfigValue("model", nextModel, { scope: "project" });
+            const nextSession: Session = { ...input.currentSession, model: nextModel, updatedAt: input.nowIso() };
+            input.setCurrentSession(nextSession);
+            input.setRows((current) => [...current, createRow("system", `Changed model to ${nextModel}.`)]);
+          } catch (error) {
+            input.setRows((current) => [
+              ...current,
+              createRow("system", error instanceof Error ? error.message : "Failed to set model."),
             ]);
           }
         }
@@ -181,6 +213,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
     openSkillsPanel,
     openResumePanel,
     openPermissionsPanel,
+    openModelPanel,
     openWriteConfirmPanel,
     handlePickerSelect,
     activateSkill,

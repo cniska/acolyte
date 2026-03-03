@@ -5,12 +5,14 @@ import type { Client } from "./client";
 import { setConfigValue } from "./config";
 import type { ConfigScope, PermissionMode } from "./config-contract";
 import { addMemory, listMemories, type MemoryScope, removeMemoryByPrefix } from "./memory";
+import { providerFromModel, suggestedModelsForProvider } from "./provider-config";
 import { createId } from "./short-id";
 import { findSkillByName } from "./skills";
 import type { MemoryContextScope } from "./soul";
 import { formatStatusOutput } from "./status-format";
 import { createSession } from "./storage";
 import type { Session, SessionStore, SessionTokenUsageEntry } from "./session-types";
+import { z } from "zod";
 
 export type ChatRow = {
   id: string;
@@ -163,6 +165,7 @@ export type CommandContext = {
   openSkillsPanel: () => Promise<void>;
   openResumePanel: () => void;
   openPermissionsPanel: () => void;
+  openModelPanel: () => void;
   setServerPermissionMode: (mode: PermissionMode) => Promise<void>;
   persistPermissionMode?: (mode: PermissionMode, scope: ConfigScope) => Promise<void>;
   activateSkill?: (skillName: string, args: string) => Promise<boolean>;
@@ -193,6 +196,15 @@ function parsePermissionsScope(parts: string[]): ConfigScope | null {
   const flag = parts.find((part) => part === "--project" || part === "--user");
   if (!flag) return "project";
   return flag === "--user" ? "user" : "project";
+}
+
+const modelIdSchema = z.string().trim().min(1).regex(/^\S+$/);
+
+function parseModelCommandModel(resolvedText: string): string | null {
+  const parts = resolvedText.split(/\s+/).filter((part) => part.length > 0);
+  if (parts.length !== 2 || parts[0] !== "/model") return null;
+  const parsed = modelIdSchema.safeParse(parts[1]);
+  return parsed.success ? parsed.data : null;
 }
 
 export async function dispatchSlashCommand(ctx: CommandContext): Promise<CommandResult> {
@@ -277,6 +289,36 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
   if (resolvedText === "/permissions") {
     pushUserCommandRow();
     ctx.openPermissionsPanel();
+    return { stop: true, userText: text };
+  }
+
+  if (resolvedText === "/model") {
+    pushUserCommandRow();
+    const provider = providerFromModel(ctx.currentSession.model);
+    const suggested = suggestedModelsForProvider(provider);
+    if (suggested.length === 0) {
+      ctx.setRows((current) => [...current, createRow("system", "No suggested models for current provider.")]);
+      return { stop: true, userText: text };
+    }
+    ctx.openModelPanel();
+    return { stop: true, userText: text };
+  }
+
+  if (resolvedText.startsWith("/model ")) {
+    pushUserCommandRow();
+    const model = parseModelCommandModel(resolvedText);
+    if (!model) {
+      ctx.setRows((current) => [...current, createRow("system", "Usage: /model <id>")]);
+      return { stop: true, userText: text };
+    }
+    try {
+      await setConfigValue("model", model, { scope: "project" });
+      const nextSession: Session = { ...ctx.currentSession, model, updatedAt: new Date().toISOString() };
+      ctx.setCurrentSession(nextSession);
+      ctx.setRows((current) => [...current, createRow("system", `Changed model to ${model}.`)]);
+    } catch (error) {
+      ctx.setRows((current) => [...current, createRow("system", error instanceof Error ? error.message : "Failed to set model.")]);
+    }
     return { stop: true, userText: text };
   }
 

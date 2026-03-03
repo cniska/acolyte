@@ -9,6 +9,7 @@ export type PickerState =
   | { kind: "skills"; items: SkillMeta[]; index: number }
   | { kind: "resume"; items: Session[]; index: number }
   | { kind: "permissions"; items: Array<{ mode: PermissionMode; description: string }>; index: number }
+  | { kind: "model"; items: Array<{ model: string; description: string }>; index: number; customModel: string }
   | {
       kind: "writeConfirm";
       prompt: string;
@@ -34,8 +35,13 @@ function renderPickerRows(
     return (
       <Text key={item.key}>
         {selected ? "› " : "  "}
-        <Text color={selected ? brandColor : undefined}>{item.label.padEnd(PICKER_LABEL_WIDTH)}</Text>{" "}
-        <Text dimColor>{item.detail}</Text>
+        <Text color={selected ? brandColor : undefined}>{item.label.padEnd(PICKER_LABEL_WIDTH)}</Text>
+        {item.detail ? (
+          <>
+            <Text> </Text>
+            <Text dimColor>{item.detail}</Text>
+          </>
+        ) : null}
       </Text>
     );
   });
@@ -49,6 +55,8 @@ export function pickerTitle(picker: PickerState): string {
       return "Resume Session";
     case "permissions":
       return "Permissions";
+    case "model":
+      return "Model";
     case "writeConfirm":
       return "Confirm Write Access";
   }
@@ -62,6 +70,8 @@ export function pickerHint(picker: PickerState): string {
       return "Enter to resume · Esc to close";
     case "permissions":
       return "Enter to apply · Esc to close";
+    case "model":
+      return "Select other to type · Enter to apply · Esc to close";
     case "writeConfirm":
       return "Enter to apply · Esc to cancel";
   }
@@ -93,6 +103,35 @@ export function renderPickerItems(
         })),
         picker.index,
         brandColor,
+      );
+    case "model":
+      return (
+        <>
+          {picker.items.map((item, index) => {
+            const selected = index === picker.index;
+            const isOther = item.model === "other";
+            const emptyOther = isOther && picker.customModel.trim().length === 0;
+            const label = isOther
+              ? picker.customModel.trim().length > 0
+                ? picker.customModel
+                : "other"
+              : truncateText(item.model, PICKER_LABEL_WIDTH);
+            return (
+              <Text key={item.model}>
+                {selected ? "› " : "  "}
+                <Text color={selected && !emptyOther ? brandColor : undefined} dimColor={emptyOther && selected}>
+                  {label.padEnd(PICKER_LABEL_WIDTH)}
+                </Text>
+                {item.description ? (
+                  <>
+                    <Text> </Text>
+                    <Text dimColor>{item.description}</Text>
+                  </>
+                ) : null}
+              </Text>
+            );
+          })}
+        </>
       );
     case "writeConfirm":
       return (

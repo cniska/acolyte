@@ -1,6 +1,9 @@
 import { Text } from "ink";
 import type React from "react";
 import { formatShortcutRows } from "./chat-layout";
+import { slashCommandHelp } from "./chat-slash";
+
+const SLASH_COMMAND_COLUMN_WIDTH = 16;
 
 type SuggestionContentInput = {
   brandColor: string;
@@ -26,13 +29,23 @@ export function renderInputPanelContent(input: SuggestionContentInput): React.Re
   } else if (atQuery !== null) {
     suggestions = <Text dimColor> No file or folder matches.</Text>;
   } else if (slashSuggestions.length > 0) {
-    suggestions = slashSuggestions.map((item, index) => (
-      <Text
-        key={`slash-suggestion-${item}`}
-        color={index === slashSuggestionIndex ? brandColor : undefined}
-        dimColor={index !== slashSuggestionIndex}
-      >{`  ${item}`}</Text>
-    ));
+    const selectedIndex = Math.max(0, Math.min(slashSuggestionIndex, slashSuggestions.length - 1));
+    const selected = slashSuggestions[selectedIndex] ?? "";
+    const selectedHelp = slashCommandHelp(selected);
+    suggestions = (
+      <>
+        {slashSuggestions.map((item, index) => (
+          <Text
+            key={`slash-suggestion-${item}`}
+            color={index === selectedIndex ? brandColor : undefined}
+            dimColor={index !== selectedIndex}
+          >
+            {`  ${item.padEnd(SLASH_COMMAND_COLUMN_WIDTH)}`}
+          </Text>
+        ))}
+        {selectedHelp ? <Text dimColor>{`\n  ${selectedHelp}`}</Text> : null}
+      </>
+    );
   } else if (showHelp) {
     suggestions = formatShortcutRows().map((line) => (
       <Text key={`shortcut-row-${line}`} dimColor>

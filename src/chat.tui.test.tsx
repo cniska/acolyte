@@ -62,12 +62,12 @@ describe("chat tui visual regression: footer and help", () => {
       ────────────────────────────────────────────────────────────────────────────────────────────────
       ❯ Ask anything…
       ────────────────────────────────────────────────────────────────────────────────────────────────
-        @path               attach file         /remember <text>    save memory
-        /new                new session         /memory [scope]     list memories
-        /resume <id>        resume session      /tokens             token usage
-        /sessions           session history     /skills             skills
-        /permissions        permissions         /exit               exit
-        /status             server status
+        @path               attach file         /status             show server status
+        /new                start new session   /remember <text>    save memory note
+        /resume <id>        resume session      /memory [scope]     show memory notes
+        /sessions           show sessions       /tokens             show token usage
+        /permissions        change permissions  /skills             show skills picker
+        /model              change model        /exit               exit chat
     `),
     );
   });
@@ -80,16 +80,37 @@ describe("chat tui visual regression: footer and help", () => {
       ❯ Ask anything…
       ────────────────────────────────────────────────────────────────────────────────
         @path               attach file
-        /new                new session
+        /new                start new session
         /resume <id>        resume session
-        /sessions           session history
-        /permissions        permissions
-        /status             server status
-        /remember <text>    save memory
-        /memory [scope]     list memories
-        /tokens             token usage
-        /skills             skills
-        /exit               exit
+        /sessions           show sessions
+        /permissions        change permissions
+        /model              change model
+        /status             show server status
+        /remember <text>    save memory note
+        /memory [scope]     show memory notes
+        /tokens             show token usage
+        /skills             show skills picker
+        /exit               exit chat
+    `),
+    );
+  });
+
+  test("renders slash suggestions with selected help and no footer row", () => {
+    const out = renderInputPanel({
+      value: "/p",
+      slashSuggestions: ["/permissions", "/permissions read", "/permissions write"],
+      slashSuggestionIndex: 1,
+    });
+    expect(out).toBe(
+      dedent(`
+      ────────────────────────────────────────────────────────────────────────────────────────────────
+      ❯ /p
+      ────────────────────────────────────────────────────────────────────────────────────────────────
+        /permissions
+        /permissions read
+        /permissions write
+      
+        set permissions to read
     `),
     );
   });
