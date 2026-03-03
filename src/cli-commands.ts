@@ -479,11 +479,7 @@ async function serveMode(args: string[]): Promise<void> {
     subcommandHelp("server");
     return;
   }
-  const action = args[0];
-  if (!action) {
-    await import("./server");
-    return;
-  }
+  const action = args[0] ?? "start";
   switch (action) {
     case "start": {
       if (args.length > 1) return subcommandError("server");
