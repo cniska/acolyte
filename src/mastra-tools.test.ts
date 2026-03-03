@@ -51,10 +51,8 @@ describe("mastra toolsets", () => {
 });
 
 describe("read-file tool schema", () => {
-  const { tools } = toolsForAgent();
-  if (!tools.readFile) throw new Error("readFile tool missing");
-
   test("rejects invalid range when start is greater than end", () => {
+    const { tools } = toolsForAgent();
     const schema = tools.readFile?.inputSchema;
     expect(schema).toBeDefined();
     if (!schema) throw new Error("readFileTool.inputSchema is undefined");
@@ -64,6 +62,7 @@ describe("read-file tool schema", () => {
   });
 
   test("accepts bounded ranges and single-sided ranges", () => {
+    const { tools } = toolsForAgent();
     const schema = tools.readFile?.inputSchema;
     expect(schema).toBeDefined();
     if (!schema) throw new Error("readFileTool.inputSchema is undefined");
@@ -79,6 +78,7 @@ describe("read-file tool schema", () => {
   });
 
   test("accepts multiple paths", () => {
+    const { tools } = toolsForAgent();
     const schema = tools.readFile?.inputSchema;
     expect(schema).toBeDefined();
     if (!schema) throw new Error("readFileTool.inputSchema is undefined");
@@ -93,10 +93,9 @@ describe("read-file tool schema", () => {
 });
 
 describe("delete-file tool schema", () => {
-  const { tools } = toolsForAgent();
-  if (!tools.deleteFile) throw new Error("deleteFile tool missing");
-
   test("requires paths array and rejects legacy single path input", () => {
+    setPermissionMode("write");
+    const { tools } = toolsForAgent();
     const schema = tools.deleteFile?.inputSchema;
     expect(schema).toBeDefined();
     if (!schema) throw new Error("deleteFileTool.inputSchema is undefined");
