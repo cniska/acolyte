@@ -1,5 +1,5 @@
-import { toolMeta } from "./mastra-tools";
 import { formatToolLabel } from "./tool-labels";
+import { toolMeta } from "./tool-meta";
 
 export function isPlanLikeOutput(text: string): boolean {
   const normalized = text.trim();

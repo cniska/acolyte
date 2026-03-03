@@ -151,9 +151,7 @@ function isShellReadFallback(command: string): boolean {
   if (trimmed.length === 0) return false;
   const normalized = trimmed.replace(/\s+/g, " ").toLowerCase();
   const disallowed = /\b(cat|sed|head|tail|nl|wc|ls|find|grep|rg)\b/;
-  if (!disallowed.test(normalized)) return false;
-  const allowedContext = /\b(verify|test|build|lint|format|check|ci|coverage|compile|start|dev|serve|run)\b/;
-  return !allowedContext.test(normalized);
+  return disallowed.test(normalized);
 }
 
 function normalizeGuardArgValue(value: unknown): unknown {
@@ -214,7 +212,7 @@ const noRewriteGuard: ToolGuard = {
         return (paths as Array<{ path?: string }>).some((p) => {
           if (typeof p.path !== "string") return false;
           const n = normalizePath(p.path);
-          return n === normalized || n.endsWith(`/${normalized}`) || normalized.endsWith(`/${n}`);
+          return n === normalized;
         });
       });
       if (!wasRead) continue;

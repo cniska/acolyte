@@ -5,7 +5,7 @@ import type { StreamEvent } from "./client";
 import type { ErrorCategory, ErrorSource } from "./error-handling";
 import type { LifecycleDebugEvent, LifecycleEventName } from "./lifecycle-events";
 import type { LifecyclePolicy } from "./lifecycle-policy";
-import type { AcolyteToolset } from "./mastra-tools";
+import type { Toolset } from "./mastra-tools";
 import type { ErrorCode } from "./tool-error-codes";
 import type { SessionContext } from "./tool-guards";
 
@@ -49,7 +49,7 @@ export type PhasePrepareInput = {
 };
 export type PhasePrepareResult = {
   session: SessionContext;
-  tools: Partial<AcolyteToolset>;
+  tools: Partial<Toolset>;
   agentInput: string;
   memoryOptions: MemoryOptions | undefined;
   promptUsage: PromptUsage;
@@ -83,7 +83,7 @@ export type RunContext = {
   readonly emit: (event: StreamEvent) => void;
   readonly debug: (event: LifecycleEventName, fields?: Record<string, unknown>) => void;
   readonly classifiedMode: AgentMode;
-  readonly tools: Partial<AcolyteToolset>;
+  readonly tools: Partial<Toolset>;
   readonly session: SessionContext;
   readonly agentInput: string;
   readonly policy: LifecyclePolicy;

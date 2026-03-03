@@ -37,88 +37,8 @@ import {
   writeTextFile,
 } from "./tools";
 
-// --- Tool metadata ---
-
 const WRITE_TOOL_PREVIEW_MAX_LINES = 30;
 const WEB_SEARCH_MAX_RESULTS = 5;
-
-export type ToolMeta = {
-  instruction: string;
-  aliases: string[];
-};
-
-export const toolMeta: Record<ToolName, ToolMeta> = {
-  "find-files": {
-    instruction:
-      "Use `find-files` to locate files by name or path pattern. Always pass `patterns` as an array (e.g. [`api.ts`, `store.ts`]).",
-    aliases: ["findFiles", "find_files"],
-  },
-  "search-files": {
-    instruction:
-      "Use `search-files` to search file contents by text or regex. Always batch related queries via `patterns`; optionally scope with `paths`.",
-    aliases: ["searchFiles", "search_files", "searchRepo", "search_repo"],
-  },
-  "read-file": {
-    instruction:
-      "Use `read-file` to inspect code before editing. Pass `paths` as an array; batch multiple reads into one call.",
-    aliases: ["readFile", "read_file"],
-  },
-  "git-status": {
-    instruction: "Use `git-status` for working tree status.",
-    aliases: ["gitStatus", "git_status"],
-  },
-  "git-diff": {
-    instruction: "Use `git-diff` for change inspection.",
-    aliases: ["gitDiff", "git_diff"],
-  },
-  "git-log": {
-    instruction: "Use `git-log` to inspect recent commits quickly (optionally scoped by path).",
-    aliases: ["gitLog", "git_log"],
-  },
-  "git-show": {
-    instruction: "Use `git-show` to inspect a specific commit/tag/ref with patch details (optionally scoped by path).",
-    aliases: ["gitShow", "git_show"],
-  },
-  "web-search": {
-    instruction: "Use `web-search` for external information lookup.",
-    aliases: ["webSearch", "web_search"],
-  },
-  "web-fetch": {
-    instruction: "Use `web-fetch` to read web pages, docs, or API references.",
-    aliases: ["webFetch", "web_fetch"],
-  },
-  "scan-code": {
-    instruction:
-      "Use `scan-code` for AST pattern matching. Always pass `paths` and `patterns` as arrays. Batch multiple files and patterns in one call (e.g. paths=[`src/a.ts`, `src/b.ts`], patterns=[`export function $NAME`, `import $SPEC from $MOD`]). Metavariable names (`$NAME`, `$ARG`) are wildcards — they match any node, not literal text. Use it to map rename/refactor targets before `edit-code`. For keyword or regex searches prefer `search-files`.",
-    aliases: ["scanCode", "scan_code"],
-  },
-  "edit-code": {
-    instruction:
-      "Use `edit-code` for multi-location code changes, rename/refactor updates, or structural rewrites with AST `edits` array. `path` must be a concrete file path (not `.` or a directory). Prefer `edit-file` for single-location text edits.",
-    aliases: ["editCode", "edit_code"],
-  },
-  "edit-file": {
-    instruction:
-      "Use `edit-file` for text edits. For small changes use {find, replace} pairs where `find` is exact text to locate. For larger block changes use {startLine, endLine, replace} with 1-based line numbers from `read-file`. `replace` is *only* the new text for that region — do not include surrounding lines. Batch multiple edits to the same file into one call. If `find` is likely to match multiple locations, switch to `edit-code`.",
-    aliases: ["editFile", "edit_file"],
-  },
-  "create-file": {
-    instruction: "For new files, call `create-file` with full content directly.",
-    aliases: ["createFile", "create_file", "writeFile", "write_file"],
-  },
-  "delete-file": {
-    instruction:
-      "Use `delete-file` to remove files from the repository. Pass `paths` as an array and batch related deletes in one call.",
-    aliases: ["deleteFile", "delete_file"],
-  },
-  "run-command": {
-    instruction:
-      "Use `run-command` to run verification after edits and to execute build/test commands. Do not use it for file read/search/edit fallbacks (`cat`, `head`, `tail`, `nl`, `ls`, `grep`, `sed`, `find`, `rg`, `wc`) — use `read-file`, `search-files`, `find-files`, `edit-file`, or `edit-code`.",
-    aliases: ["runCommand", "run_command", "execute_command"],
-  },
-};
-
-// --- Output helpers ---
 
 function streamCallId(toolName: ToolName): string {
   return `${toolName}_${createId()}`;
@@ -304,8 +224,6 @@ export function webSearchStreamRows(result: string): string {
   return out.join("\n");
 }
 
-// --- Guarded execution ---
-
 function createRunCommandTool(workspace: string, session: SessionContext, onToolOutput?: ToolOutputListener) {
   return createTool({
     id: "run-command",
@@ -427,8 +345,6 @@ async function guardedExecute<T>(
     recordCall(session, toolId, args);
   }
 }
-
-// --- Tool factories ---
 
 function createFindFilesTool(workspace: string, session: SessionContext, onToolOutput?: ToolOutputListener) {
   return createTool({
@@ -771,42 +687,114 @@ function createWebFetchTool(session: SessionContext) {
   });
 }
 
-// --- Toolset assembly ---
+type ToolkitFactoryInput = {
+  workspace: string;
+  session: SessionContext;
+  onToolOutput?: ToolOutputListener;
+};
 
-export type AcolyteToolset = ReturnType<typeof createToolset>["tools"];
+type ToolkitMode = "read" | "write";
+type GitToolkitTools = ReturnType<typeof createMastraGitTools>;
 
-function createGitToolAdapters(workspace: string, session: SessionContext, onToolOutput?: ToolOutputListener) {
+export type Toolset = {
+  findFiles: ReturnType<typeof createFindFilesTool>;
+  searchFiles: ReturnType<typeof createSearchFilesTool>;
+  scanCode: ReturnType<typeof createScanCodeTool>;
+  readFile: ReturnType<typeof createReadFileTool>;
+  gitStatus: GitToolkitTools["gitStatus"];
+  gitDiff: GitToolkitTools["gitDiff"];
+  gitLog: GitToolkitTools["gitLog"];
+  gitShow: GitToolkitTools["gitShow"];
+  runCommand: ReturnType<typeof createRunCommandTool>;
+  editCode: ReturnType<typeof createAstEditTool>;
+  editFile: ReturnType<typeof createEditFileTool>;
+  createFile: ReturnType<typeof createCreateFileTool>;
+  deleteFile: ReturnType<typeof createDeleteFileTool>;
+  webSearch: ReturnType<typeof createWebSearchTool>;
+  webFetch: ReturnType<typeof createWebFetchTool>;
+};
+
+type ToolkitRegistration = {
+  id: string;
+  appliesTo: "all" | readonly ToolkitMode[];
+  createTools: (input: ToolkitFactoryInput) => Partial<Toolset>;
+};
+
+function createCoreBaseToolkitTools(input: ToolkitFactoryInput): Partial<Toolset> {
+  const { workspace, session, onToolOutput } = input;
+  return {
+    findFiles: createFindFilesTool(workspace, session, onToolOutput),
+    searchFiles: createSearchFilesTool(workspace, session, onToolOutput),
+    scanCode: createScanCodeTool(workspace, session, onToolOutput),
+    readFile: createReadFileTool(workspace, session, onToolOutput),
+    webSearch: createWebSearchTool(session, onToolOutput),
+    webFetch: createWebFetchTool(session),
+  };
+}
+
+function createCoreWriteToolkitTools(input: ToolkitFactoryInput): Partial<Toolset> {
+  const { workspace, session, onToolOutput } = input;
+  return {
+    runCommand: createRunCommandTool(workspace, session, onToolOutput),
+    editCode: createAstEditTool(workspace, session, onToolOutput),
+    editFile: createEditFileTool(workspace, session, onToolOutput),
+    createFile: createCreateFileTool(workspace, session, onToolOutput),
+    deleteFile: createDeleteFileTool(workspace, session),
+  };
+}
+
+function createGitToolkitTools(input: ToolkitFactoryInput): Partial<Toolset> {
+  const { workspace, session, onToolOutput } = input;
   const git = createGitToolkit(workspace);
   const runtime = { session, guardedExecute, withToolError, streamCallId };
-  return createMastraGitTools({
-    git,
-    runtime,
-    onToolOutput,
-    emitHeadTailLines,
-    stripGitShowMetadataForPreview,
-  });
+  return {
+    ...createMastraGitTools({
+      git,
+      runtime,
+      onToolOutput,
+      emitHeadTailLines,
+      stripGitShowMetadataForPreview,
+    }),
+  };
+}
+
+const TOOLKIT_REGISTRY: ToolkitRegistration[] = [
+  {
+    id: "core-base",
+    appliesTo: "all",
+    createTools: createCoreBaseToolkitTools,
+  },
+  {
+    id: "core-write",
+    appliesTo: ["write"],
+    createTools: createCoreWriteToolkitTools,
+  },
+  {
+    id: "git",
+    appliesTo: "all",
+    createTools: createGitToolkitTools,
+  },
+];
+
+function toolkitTools(
+  workspace: string,
+  session: SessionContext,
+  onToolOutput: ToolOutputListener | undefined,
+  mode: ToolkitMode,
+): Partial<Toolset> {
+  const combined: Partial<Toolset> = {};
+  for (const toolkit of TOOLKIT_REGISTRY) {
+    if (toolkit.appliesTo !== "all" && !toolkit.appliesTo.includes(mode)) continue;
+    const tools = toolkit.createTools({ workspace, session, onToolOutput });
+    Object.assign(combined, tools);
+  }
+  return combined;
 }
 
 function createToolset(workspace: string, session: SessionContext, onToolOutput?: ToolOutputListener) {
-  const gitTools = createGitToolAdapters(workspace, session, onToolOutput);
+  const tools = toolkitTools(workspace, session, onToolOutput, "write");
   return {
-    tools: {
-      findFiles: createFindFilesTool(workspace, session, onToolOutput),
-      searchFiles: createSearchFilesTool(workspace, session, onToolOutput),
-      scanCode: createScanCodeTool(workspace, session, onToolOutput),
-      readFile: createReadFileTool(workspace, session, onToolOutput),
-      gitStatus: gitTools.gitStatus,
-      gitDiff: gitTools.gitDiff,
-      gitLog: gitTools.gitLog,
-      gitShow: gitTools.gitShow,
-      runCommand: createRunCommandTool(workspace, session, onToolOutput),
-      editCode: createAstEditTool(workspace, session, onToolOutput),
-      editFile: createEditFileTool(workspace, session, onToolOutput),
-      createFile: createCreateFileTool(workspace, session, onToolOutput),
-      deleteFile: createDeleteFileTool(workspace, session),
-      webSearch: createWebSearchTool(session, onToolOutput),
-      webFetch: createWebFetchTool(session),
-    },
+    tools: tools as Toolset,
     session,
   };
 }
@@ -815,29 +803,15 @@ function readOnlyTools(
   workspace: string,
   session: SessionContext,
   onToolOutput?: ToolOutputListener,
-): { tools: Partial<AcolyteToolset>; session: SessionContext } {
-  const gitTools = createGitToolAdapters(workspace, session, onToolOutput);
+): { tools: Partial<Toolset>; session: SessionContext } {
   return {
-    tools: {
-      findFiles: createFindFilesTool(workspace, session, onToolOutput),
-      searchFiles: createSearchFilesTool(workspace, session, onToolOutput),
-      scanCode: createScanCodeTool(workspace, session, onToolOutput),
-      readFile: createReadFileTool(workspace, session, onToolOutput),
-      gitStatus: gitTools.gitStatus,
-      gitDiff: gitTools.gitDiff,
-      gitLog: gitTools.gitLog,
-      gitShow: gitTools.gitShow,
-      webSearch: createWebSearchTool(session, onToolOutput),
-      webFetch: createWebFetchTool(session),
-    },
+    tools: toolkitTools(workspace, session, onToolOutput, "read"),
     session,
   };
 }
 
-// --- Public API ---
-
 export function toolsForAgent(options?: { workspace?: string; onToolOutput?: ToolOutputListener; taskId?: string }): {
-  tools: Partial<AcolyteToolset>;
+  tools: Partial<Toolset>;
   session: SessionContext;
 } {
   const workspace = options?.workspace ?? resolve(process.cwd());

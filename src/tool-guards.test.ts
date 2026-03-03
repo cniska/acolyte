@@ -35,6 +35,12 @@ describe("no-rewrite guard", () => {
     session.taskId = "task_b";
     expect(() => runGuards({ toolName: "delete-file", args: { paths: ["src/foo.ts"] }, session })).not.toThrow();
   });
+
+  test("does not block delete for a different path with same basename", () => {
+    const session = createSessionContext();
+    recordCall(session, "read-file", { paths: [{ path: "docs/config.ts" }] });
+    expect(() => runGuards({ toolName: "delete-file", args: { paths: ["src/config.ts"] }, session })).not.toThrow();
+  });
 });
 
 describe("verify-ran guard", () => {
@@ -78,6 +84,13 @@ describe("no-shell-read-fallback guard", () => {
     const session = createSessionContext();
     expect(() => runGuards({ toolName: "run-command", args: { command: "bun run verify" }, session })).not.toThrow();
     expect(() => runGuards({ toolName: "run-command", args: { command: "bun run test" }, session })).not.toThrow();
+  });
+
+  test("blocks disallowed shell read fallback even when command contains allowed keywords", () => {
+    const session = createSessionContext();
+    expect(() => runGuards({ toolName: "run-command", args: { command: "cat coverage/lcov.info" }, session })).toThrow(
+      /Do not use shell commands for file reading\/searching/,
+    );
   });
 });
 

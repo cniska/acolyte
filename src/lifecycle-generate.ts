@@ -24,7 +24,7 @@ import type {
   ToolErrorPayload,
   ToolResultPayload,
 } from "./lifecycle-contract";
-import type { AcolyteToolset } from "./mastra-tools";
+import type { Toolset } from "./mastra-tools";
 import type { StreamErrorDetail } from "./stream-error";
 import { extractToolErrorCode, LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
 
@@ -99,7 +99,7 @@ export function createLifecycleAgent(input: {
   mode: RunContext["mode"];
   workspace: string | undefined;
   model: string;
-  tools: Partial<AcolyteToolset>;
+  tools: Partial<Toolset>;
 }): Agent {
   return createAcolyte({
     model: input.model,

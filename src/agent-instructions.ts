@@ -1,5 +1,5 @@
 import { type AgentMode, agentModes } from "./agent-modes";
-import { toolMeta } from "./mastra-tools";
+import { toolMeta } from "./tool-meta";
 import { isToolName } from "./tool-names";
 import { detectLineWidth } from "./tools";
 

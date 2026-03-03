@@ -5,8 +5,6 @@ import { dirname, join, relative, resolve } from "node:path";
 import { appConfig } from "./app-config";
 import { createToolError, encodeToolError, TOOL_ERROR_CODES } from "./tool-error-codes";
 
-// --- Process and workspace helpers ---
-
 const TEMP_ROOTS = Array.from(new Set([resolve(tmpdir()), resolve("/tmp"), resolve("/private/tmp")]));
 
 async function runCommand(cmd: string[], workspace: string): Promise<{ code: number; stdout: string; stderr: string }> {
@@ -70,8 +68,6 @@ export function detectLineWidth(workspace: string): number | null {
   }
   return null;
 }
-
-// --- Workspace scanning ---
 
 const IGNORED_DIRS = new Set(["node_modules", ".git", ".acolyte", "dist", "build", ".next", "coverage"]);
 
@@ -283,8 +279,6 @@ function resolveAgentPath(pathInput: string, workspace: string): string {
   return resolve(workspace, pathInput);
 }
 
-// --- Path and permission guards ---
-
 function isWithinWorkspace(pathInput: string, workspace: string): boolean {
   const absPath = resolveAgentPath(pathInput, workspace);
   return absPath === workspace || absPath.startsWith(`${workspace}/`);
@@ -336,8 +330,6 @@ function contentLines(content: string): string[] {
   if (lines[lines.length - 1] === "") lines.pop();
   return lines;
 }
-
-// --- Diff rendering ---
 
 function createDiff(path: string, previous: string | null, next: string): string {
   if (previous == null) {
@@ -476,8 +468,6 @@ function createUnifiedDeleteDiff(path: string, previous: string): string {
   return [...header, ...removed].join("\n");
 }
 
-// --- Web helpers ---
-
 function decodeHtmlEntities(input: string): string {
   return input
     .replaceAll("&amp;", "&")
@@ -537,8 +527,6 @@ function extractHtmlText(html: string): { title: string; text: string } {
     text: stripHtmlTags(withoutScripts),
   };
 }
-
-// --- Web tools ---
 
 export async function fetchWeb(urlInput: string, maxChars = 5000): Promise<string> {
   const limit = Math.max(500, Math.min(12_000, maxChars));
@@ -632,8 +620,6 @@ function toInt(value: string | undefined, fallback: number): number {
   return parsed;
 }
 
-// --- File read and git tools ---
-
 export async function readSnippet(workspace: string, pathInput: string, start?: string, end?: string): Promise<string> {
   const absPath = ensurePathWithinAllowedRoots(pathInput, "Read", workspace);
   const raw = await readFile(absPath, "utf8");
@@ -702,8 +688,6 @@ export async function gitShow(
   if (code !== 0) throw new Error(stderr.trim() || "git show failed");
   return stdout.trim();
 }
-
-// --- Shell execution ---
 
 const BLOCKED_SHELL_TOKENS = ["rm -rf /", "shutdown", "reboot", "mkfs", "dd if="];
 
@@ -785,8 +769,6 @@ export type FindReplaceEdit = { find: string; replace: string };
 export type LineRangeEdit = { startLine: number; endLine: number; replace: string };
 export type FileEdit = FindReplaceEdit | LineRangeEdit;
 
-// --- Text file editing ---
-
 export async function editFile(input: {
   workspace: string;
   path: string;
@@ -802,7 +784,6 @@ export async function editFile(input: {
   const ranges: Array<{ start: number; end: number; replace: string }> = [];
   for (const edit of input.edits) {
     if ("find" in edit) {
-      // --- find/replace path ---
       if (!edit.find) throw new Error("Find text cannot be empty");
       if (edit.find.length > raw.length * 0.5) {
         throw new Error(
@@ -821,7 +802,6 @@ export async function editFile(input: {
       const start = raw.indexOf(edit.find);
       ranges.push({ start, end: start + edit.find.length, replace: edit.replace });
     } else {
-      // --- line-range path ---
       const { startLine, endLine, replace } = edit;
       if (startLine < 1 || endLine < 1) throw new Error("Line numbers must be >= 1");
       if (startLine > endLine) throw new Error(`startLine (${startLine}) must be <= endLine (${endLine})`);
@@ -932,8 +912,6 @@ export async function writeTextFile(input: {
 }
 
 let dynamicLangsRegistered = false;
-
-// --- AST editing and scanning ---
 
 async function ensureDynamicLanguages(napi: typeof import("@ast-grep/napi")): Promise<void> {
   if (dynamicLangsRegistered) return;
