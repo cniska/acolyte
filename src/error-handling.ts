@@ -1,3 +1,4 @@
+import { unreachable } from "./assert";
 import type { StreamErrorDetail } from "./stream-error";
 import {
   type ErrorCode,
@@ -81,6 +82,8 @@ export function errorCodeFromCategory(category: ErrorCategory): ErrorCode {
       return LIFECYCLE_ERROR_CODES.guardBlocked;
     case "other":
       return LIFECYCLE_ERROR_CODES.unknown;
+    default:
+      return unreachable(category);
   }
 }
 

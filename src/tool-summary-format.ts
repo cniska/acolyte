@@ -5,7 +5,6 @@ import type { ToolName } from "./tool-names";
 import { parseToolOutputRow } from "./tool-output-parser";
 
 const EMPTY_TOOL_PROGRESS_SUPPRESS = new Set(["find-files", "search-files", "read-file", "scan-code"]);
-const SUMMARY_TOOL_NAMES = new Set<ToolName>(["find-files", "search-files", "read-file", "scan-code", "web-search"]);
 const MERGEABLE_TOOL_NAMES = new Set<ToolName>([
   "find-files",
   "search-files",
@@ -15,6 +14,13 @@ const MERGEABLE_TOOL_NAMES = new Set<ToolName>([
   "create-file",
   "edit-file",
   "edit-code",
+]);
+const SUMMARY_HEADER_TOOL_NAMES = new Set<ToolName>([
+  "find-files",
+  "search-files",
+  "read-file",
+  "scan-code",
+  "web-search",
 ]);
 
 function compactBracketList(value: string, maxItems = 3): string {
@@ -38,7 +44,7 @@ function compactList(value: string, maxItems = 3): string {
 }
 
 export function formatToolFileSummaryHeader(toolName: string, fileCount: number): string {
-  if (!SUMMARY_TOOL_NAMES.has(toolName as ToolName)) return countLabel(fileCount, "file", "files");
+  if (!SUMMARY_HEADER_TOOL_NAMES.has(toolName as ToolName)) return countLabel(fileCount, "file", "files");
   const label = formatToolLabel(toolName);
   const count = countLabel(fileCount, "file", "files");
   return `${label} ${count}`;

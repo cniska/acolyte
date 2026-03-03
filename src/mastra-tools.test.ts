@@ -116,7 +116,7 @@ describe("tool error wrapper", () => {
     const source = Object.assign(new Error("multi-match"), { code: "E_EDIT_FILE_MULTI_MATCH" });
     try {
       await withToolError("edit-file", async () => Promise.reject(source));
-      throw new Error("expected withToolError to throw");
+      invariant(false, "expected withToolError to throw");
     } catch (error) {
       expect(error).toBeInstanceOf(Error);
       const wrapped = error as Error & { code?: string };
