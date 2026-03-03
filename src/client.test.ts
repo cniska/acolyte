@@ -688,6 +688,79 @@ describe("rpc websocket lifecycle", () => {
     ).toBe(true);
   });
 
+  test("replyStream fails cleanly when rpc connection closes mid-chat", async () => {
+    class MockWebSocket {
+      private listeners = new Map<string, Set<(event: unknown) => void>>();
+      private closed = false;
+
+      constructor(public readonly url: string) {
+        void this.url;
+        queueMicrotask(() => this.emit("open", {}));
+      }
+
+      addEventListener(type: string, listener: (event: unknown) => void): void {
+        const set = this.listeners.get(type) ?? new Set();
+        set.add(listener);
+        this.listeners.set(type, set);
+      }
+
+      removeEventListener(type: string, listener: (event: unknown) => void): void {
+        this.listeners.get(type)?.delete(listener);
+      }
+
+      send(payload: string): void {
+        const msg = JSON.parse(payload) as { id?: string; type?: string };
+        if (msg.type !== "chat.start" || typeof msg.id !== "string") return;
+        const sendMessage = (body: Record<string, unknown>) => {
+          this.emit("message", { data: JSON.stringify({ id: msg.id, ...body }) });
+        };
+        queueMicrotask(() => sendMessage({ type: "chat.accepted" }));
+        queueMicrotask(() => sendMessage({ type: "chat.started" }));
+        queueMicrotask(() =>
+          sendMessage({
+            type: "chat.event",
+            event: { type: "tool-call", toolCallId: "call_1", toolName: "read-file", args: { path: "a.ts" } },
+          }),
+        );
+        queueMicrotask(() => this.close());
+      }
+
+      close(): void {
+        if (this.closed) return;
+        this.closed = true;
+        this.emit("close", {});
+      }
+
+      private emit(type: string, event: unknown): void {
+        for (const listener of this.listeners.get(type) ?? []) listener(event);
+      }
+    }
+
+    globalThis.WebSocket = MockWebSocket as unknown as typeof WebSocket;
+
+    const client = createClient({ apiUrl: "http://localhost:6767", transportMode: "rpc" });
+    const receivedEventTypes: string[] = [];
+
+    try {
+      await client.replyStream(
+        { message: "hi", history: [], model: "gpt-5-mini", sessionId: "sess_rpc_disconnect" },
+        {
+          onEvent: (event) => {
+            receivedEventTypes.push(event.type);
+          },
+        },
+      );
+      throw new Error("expected replyStream to reject");
+    } catch (error) {
+      const rpcError = error as Error & { taskId?: string };
+      expect(rpcError.message).toBe("RPC stream closed before final reply");
+      expect(typeof rpcError.taskId).toBe("string");
+      expect(rpcError.taskId?.startsWith("rpc_")).toBe(true);
+    }
+
+    expect(receivedEventTypes).toEqual(["status", "status", "tool-call"]);
+  });
+
   test("taskStatus requests and parses rpc task status payloads", async () => {
     class MockWebSocket {
       private listeners = new Map<string, Set<(event: unknown) => void>>();
