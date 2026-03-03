@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { newMessage } from "./cli-prompt";
+import { newMessage } from "./chat-session";
 
 describe("cli-prompt", () => {
   test("newMessage creates a timestamped chat message", () => {

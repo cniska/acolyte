@@ -3,7 +3,7 @@ import { type ChatRow, createRow } from "./chat-commands";
 import type { PickerState } from "./chat-picker";
 import type { PermissionMode } from "./config-contract";
 import { describeModel, providerFromModel, suggestedModelsForProvider } from "./provider-config";
-import type { Session, SessionStore } from "./session-types";
+import type { Session, SessionState } from "./session-contract";
 
 type PickerByKind = {
   skills: Extract<PickerState, { kind: "skills" }>;
@@ -27,7 +27,7 @@ export function createPicker<K extends keyof PickerByKind>(config: CreatePickerC
   } as PickerByKind[K];
 }
 
-export function createResumePicker(store: SessionStore, limit = 20): PickerState | null {
+export function createResumePicker(store: SessionState, limit = 20): PickerState | null {
   const items = store.sessions.slice(0, limit);
   if (items.length === 0) return null;
   const activeIndex = items.findIndex((item) => item.id === store.activeSessionId);
@@ -38,7 +38,10 @@ export function createResumePicker(store: SessionStore, limit = 20): PickerState
   });
 }
 
-export function createResumeRows(session: Session, toRows: (messages: Session["messages"]) => ChatRow[]): ChatRow[] {
+export function createResumeRows(
+  session: Session,
+  toRows: (messages: Session["messages"]) => ChatRow[],
+): ChatRow[] {
   return [
     ...toRows(session.messages),
     createRow("assistant", `Resumed session: ${session.id}`, { style: "sessionStatus" }),

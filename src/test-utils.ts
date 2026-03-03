@@ -8,7 +8,7 @@ import type { ChatRow, CommandContext, TokenUsageEntry } from "./chat-commands";
 import type { Message } from "./chat-message";
 import { createMessageHandler } from "./chat-message-handler";
 import type { Client, StreamEvent } from "./client";
-import type { Session, SessionStore } from "./session-types";
+import type { Session, SessionState } from "./session-contract";
 
 export function tempDir(): { createDir: (prefix: string) => string; cleanupDirs: () => void } {
   const dirs: string[] = [];
@@ -180,7 +180,7 @@ export function createSession(overrides: Partial<Session> = {}): Session {
   };
 }
 
-export function createStore(overrides: Partial<SessionStore> = {}): SessionStore {
+export function createStore(overrides: Partial<SessionState> = {}): SessionState {
   const sessions = overrides.sessions ?? [
     createSession({ id: "sess_test001" }),
     createSession({ id: "sess_test002", title: "Second Session" }),
@@ -242,7 +242,7 @@ export function createMessageHandlerHarness(overrides?: {
   isWorking?: boolean;
   client?: Client;
   session?: Session;
-  store?: SessionStore;
+  store?: SessionState;
   tokenUsage?: TokenUsageEntry[];
 }): MessageHandlerHarness {
   const rows: ChatRow[] = [];

@@ -8,7 +8,7 @@ import { subcommandError as subcommandErrorFromHelp, subcommandHelp as subcomman
 import { historyMode } from "./cli-history";
 import { initMode } from "./cli-init";
 import { memoryMode } from "./cli-memory";
-import { handlePrompt, newMessage } from "./cli-prompt";
+import { handlePrompt } from "./cli-prompt";
 import { runMode, runResourceId } from "./cli-run";
 import { serveMode } from "./cli-serve";
 import {
@@ -26,6 +26,7 @@ import { addMemory, listMemories } from "./memory";
 import { ensureLocalServer, localServerStatus, stopLocalServer } from "./server-daemon";
 import { formatStatusOutput as formatStatusOutputShared } from "./status-format";
 import { createSession, readStore } from "./storage";
+import { newMessage } from "./chat-session";
 import { printDim, printError } from "./ui";
 
 function subcommandHelp(name: string): void {

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { appendInputHistory, applyUserTurn, buildInputHistory, runAssistantTurn } from "./chat-turn";
-import type { Session } from "./session-types";
+import type { Session } from "./session-contract";
 import { formatToolLabel } from "./tool-labels";
 
 describe("chat turn helpers", () => {

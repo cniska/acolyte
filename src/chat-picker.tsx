@@ -3,7 +3,7 @@ import type React from "react";
 import { unreachable } from "./assert";
 import { formatColumns, formatRelativeTime } from "./chat-format";
 import type { PermissionMode } from "./config-contract";
-import type { Session } from "./session-types";
+import type { Session } from "./session-contract";
 import type { SkillMeta } from "./skills";
 
 export type PickerState =

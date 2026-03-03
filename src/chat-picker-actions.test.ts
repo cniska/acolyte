@@ -6,7 +6,7 @@ import {
   createResumeRows,
   createWriteConfirmPicker,
 } from "./chat-picker-actions";
-import type { Session, SessionStore } from "./session-types";
+import type { Session, SessionState } from "./session-contract";
 
 function session(id: string, title = "New Session"): Session {
   return {
@@ -22,7 +22,7 @@ function session(id: string, title = "New Session"): Session {
 
 describe("chat picker actions", () => {
   test("createResumePicker returns null when there are no sessions", () => {
-    const store: SessionStore = {
+    const store: SessionState = {
       activeSessionId: undefined,
       sessions: [],
     };
@@ -32,7 +32,7 @@ describe("chat picker actions", () => {
   test("createResumePicker selects active session index", () => {
     const first = session("sess_a");
     const second = session("sess_b");
-    const store: SessionStore = {
+    const store: SessionState = {
       activeSessionId: "sess_b",
       sessions: [first, second],
     };

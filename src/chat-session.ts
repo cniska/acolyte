@@ -1,12 +1,9 @@
 import type { ChatRow } from "./chat-commands";
 import type { Message } from "./chat-message";
+import { nowIso } from "./datetime";
 import { createId } from "./short-id";
 
 const RESUME_TRANSCRIPT_ROWS = 40;
-
-export function nowIso(): string {
-  return new Date().toISOString();
-}
 
 export function newMessage(role: Message["role"], content: string): Message {
   return {

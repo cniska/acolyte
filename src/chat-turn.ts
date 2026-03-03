@@ -6,11 +6,13 @@ import type { Message } from "./chat-message";
 import type { Client, StreamEvent } from "./client";
 import { buildFileContext } from "./file-context";
 import { countLabel } from "./plural";
-import type { Session } from "./session-types";
+import type { Session } from "./session-contract";
+
+const AVERAGE_CHARS_PER_TOKEN = 4;
 
 export function estimateTokenUsageFallback(prompt: string, output: string): TokenUsage {
-  const promptTokens = Math.ceil(prompt.length / 4);
-  const completionTokens = Math.ceil(output.length / 4);
+  const promptTokens = Math.ceil(prompt.length / AVERAGE_CHARS_PER_TOKEN);
+  const completionTokens = Math.ceil(output.length / AVERAGE_CHARS_PER_TOKEN);
   return {
     promptTokens,
     completionTokens,

@@ -8,8 +8,9 @@ import { mergeAssistantStreamOutput, missingAssistantStreamTail } from "./cli-st
 import { type Client, createClient } from "./client";
 import { createDebugLogger } from "./debug-flags";
 import { formatPromptError, USER_ERROR_MESSAGES } from "./error-messages";
-import type { Session } from "./session-types";
-import { createId } from "./short-id";
+import { newMessage } from "./chat-session";
+import { nowIso } from "./datetime";
+import type { Session } from "./session-contract";
 import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
 import { parseToolProgressLine } from "./tool-progress";
 import { mergeToolOutputHeader, shouldSuppressEmptyToolProgressRow } from "./tool-summary-format";
@@ -19,19 +20,6 @@ const debug = createDebugLogger({
   scope: "cli",
   sink: (line) => printDim(line),
 });
-
-function nowIso(): string {
-  return new Date().toISOString();
-}
-
-export function newMessage(role: Message["role"], content: string): Message {
-  return {
-    id: `msg_${createId()}`,
-    role,
-    content,
-    timestamp: nowIso(),
-  };
-}
 
 function setSessionTitle(session: Session, inputText: string): void {
   if (session.title !== "New Session") return;

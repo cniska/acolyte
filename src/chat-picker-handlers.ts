@@ -15,14 +15,14 @@ import {
 } from "./chat-picker-actions";
 import { setConfigValue } from "./config";
 import type { ConfigScope, PermissionMode } from "./config-contract";
-import type { Session, SessionStore } from "./session-types";
+import type { Session, SessionState } from "./session-contract";
 import { findSkillByName, loadSkills, readSkillInstructions } from "./skills";
 
 const MAX_SKILL_INSTRUCTION_CHARS = 4000;
 const modelIdSchema = z.string().trim().min(1).regex(/^\S+$/);
 
 type CreatePickerHandlersInput = {
-  store: SessionStore;
+  store: SessionState;
   currentSession: Session;
   setCurrentSession: (next: Session) => void;
   setTokenUsage?: (updater: (current: TokenUsageEntry[]) => TokenUsageEntry[]) => void;

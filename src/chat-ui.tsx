@@ -12,15 +12,16 @@ import { createMessageHandler } from "./chat-message-handler";
 import { buildInternalWriteResumeTurn } from "./chat-message-handler-helpers";
 import type { PickerState } from "./chat-picker";
 import { createPickerHandlers, persistPermissionMode } from "./chat-picker-handlers";
-import { newMessage, nowIso, toRows } from "./chat-session";
+import { newMessage, toRows } from "./chat-session";
 import { suggestSlashCommands } from "./chat-slash";
 import { resolveQueueSubmit } from "./chat-submit";
 import { ChatTranscript } from "./chat-transcript";
 import { buildInputHistory } from "./chat-turn";
 import type { Client } from "./client";
+import { nowIso } from "./datetime";
 import { palette } from "./palette";
 import { formatModel } from "./provider-config";
-import type { Session, SessionStore } from "./session-types";
+import type { Session, SessionState } from "./session-contract";
 import { loadSkills } from "./skills";
 
 type HeaderLine = {
@@ -35,7 +36,7 @@ const THINKING_PULSE_FRAMES = 16;
 interface ChatAppProps {
   client: Client;
   session: Session;
-  store: SessionStore;
+  store: SessionState;
   persist: () => Promise<void>;
   version: string;
   useMemory?: boolean;

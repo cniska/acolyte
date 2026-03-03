@@ -6,7 +6,8 @@ import type {
   parseRunExitCode as parseRunExitCodeType,
   showToolResult as showToolResultType,
 } from "./cli-format";
-import type { handlePrompt as handlePromptType, newMessage as newMessageType } from "./cli-prompt";
+import type { handlePrompt as handlePromptType } from "./cli-prompt";
+import type { newMessage as newMessageType } from "./chat-session";
 import type {
   formatLocalServerReadyMessage as formatLocalServerReadyMessageType,
   resolveChatApiUrl as resolveChatApiUrlType,

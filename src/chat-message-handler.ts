@@ -26,11 +26,11 @@ import {
 } from "./chat-turn";
 import type { Client } from "./client";
 import { addMemory } from "./memory";
-import type { Session, SessionStore } from "./session-types";
+import type { Session, SessionState } from "./session-contract";
 
 type CreateMessageHandlerInput = {
   client: Client;
-  store: SessionStore;
+  store: SessionState;
   currentSession: Session;
   setCurrentSession: (next: Session) => void;
   toRows: (messages: Message[]) => ChatRow[];

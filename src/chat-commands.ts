@@ -7,7 +7,7 @@ import { setConfigValue } from "./config";
 import type { ConfigScope, PermissionMode } from "./config-contract";
 import { addMemory, listMemories, type MemoryScope, removeMemoryByPrefix } from "./memory";
 import { providerFromModel, suggestedModelsForProvider } from "./provider-config";
-import type { Session, SessionStore, SessionTokenUsageEntry } from "./session-types";
+import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
 import { createId } from "./short-id";
 import { findSkillByName } from "./skills";
 import type { MemoryContextScope } from "./soul";
@@ -50,7 +50,7 @@ export type ResumeResolution =
   | { kind: "ambiguous"; prefix: string; matches: Session[] }
   | { kind: "ok"; session: Session };
 
-export function resolveResumeSession(store: SessionStore, text: string): ResumeResolution {
+export function resolveResumeSession(store: SessionState, text: string): ResumeResolution {
   const parts = text.split(/\s+/).filter((part) => part.length > 0);
   if (parts.length < 2) return { kind: "usage" };
   const prefix = parts[1];
@@ -60,7 +60,7 @@ export function resolveResumeSession(store: SessionStore, text: string): ResumeR
   return { kind: "ok", session: matches[0] };
 }
 
-export function formatSessionList(store: SessionStore, limit = 10): string[] {
+export function formatSessionList(store: SessionState, limit = 10): string[] {
   const rows = store.sessions.slice(0, limit).map((item) => {
     const active = item.id === store.activeSessionId ? "●" : " ";
     const title = item.title || "New Session";
@@ -122,7 +122,7 @@ export type CommandPresentation = {
   style: ChatRow["style"];
 };
 
-export function presentSessionsOutput(store: SessionStore, limit = 10): CommandPresentation {
+export function presentSessionsOutput(store: SessionState, limit = 10): CommandPresentation {
   const recent = formatSessionList(store, limit);
   return {
     content: [`Sessions ${store.sessions.length}`, "", ...recent].join("\n"),
@@ -153,7 +153,7 @@ export type CommandContext = {
   text: string;
   resolvedText: string;
   client: Client;
-  store: SessionStore;
+  store: SessionState;
   currentSession: Session;
   setCurrentSession: (next: Session) => void;
   setTokenUsage?: (updater: (current: TokenUsageEntry[]) => TokenUsageEntry[]) => void;

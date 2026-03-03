@@ -2,15 +2,16 @@
 import { stdout as output } from "node:process";
 import { appConfig } from "./app-config";
 import { runInkChat } from "./chat-ui";
+import { newMessage } from "./chat-session";
 import { commands, usage } from "./cli-commands";
-import { newMessage } from "./cli-prompt";
 import { formatLocalServerReadyMessage, resolveChatApiUrl, shouldAutoStartLocalServerForChat } from "./cli-server";
 import { resolveCliVersion } from "./cli-version";
 import { createClient } from "./client";
+import { nowIso } from "./datetime";
 import { buildFileContext } from "./file-context";
 import { ensureLocalServer } from "./server-daemon";
+import type { Session, SessionState } from "./session-contract";
 import { acquireSessionLock, releaseSessionLock } from "./session-lock";
-import type { Session, SessionStore } from "./session-types";
 import { createSession, readStore, writeStore } from "./storage";
 import { clearScreen, printDim, printError, printOutput } from "./ui";
 
@@ -24,10 +25,6 @@ function isTopLevelHelpCommand(command: string | undefined): boolean {
 
 function isTopLevelVersionCommand(command: string | undefined): boolean {
   return command === "version" || command === "--version" || command === "-V";
-}
-
-function nowIso(): string {
-  return new Date().toISOString();
 }
 
 export function formatResumeCommand(sessionId: string): string {
@@ -46,7 +43,7 @@ type ResumeTarget =
   | { kind: "ambiguous"; prefix: string; matches: Session[] };
 
 function resolveResumeTarget(
-  store: SessionStore,
+  store: SessionState,
   options: { resumeLatest: boolean; resumePrefix?: string },
 ): ResumeTarget | null {
   if (options.resumePrefix) {

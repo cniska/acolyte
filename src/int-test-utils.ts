@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { SessionStore } from "./session-types";
+import type { SessionState } from "./session-contract";
 import { stripAnsi, trimRightLines } from "./tui-test-utils";
 
 type RunCliPlainOptions = {
@@ -35,7 +35,7 @@ export type CliTestEnv = {
   homeDir: string;
   workspaceDir: string;
   run: (args: readonly string[], options?: { env?: Record<string, string | undefined> }) => Promise<string>;
-  writeSessionsStore: (store: SessionStore) => Promise<void>;
+  writeSessionsStore: (store: SessionState) => Promise<void>;
 };
 
 export async function withCliTestEnv<T>(fn: (env: CliTestEnv) => Promise<T>): Promise<T> {
@@ -49,10 +49,10 @@ export async function withCliTestEnv<T>(fn: (env: CliTestEnv) => Promise<T>): Pr
         ...options?.env,
       },
     });
-  const writeSessionsStore = async (store: SessionStore): Promise<void> => {
+  const writeSessionsStore = async (record: SessionState): Promise<void> => {
     const dataDir = join(homeDir, ".acolyte");
     await mkdir(dataDir, { recursive: true });
-    await writeFile(join(dataDir, "sessions.json"), JSON.stringify(store, null, 2), "utf8");
+    await writeFile(join(dataDir, "sessions.json"), JSON.stringify(record, null, 2), "utf8");
   };
 
   try {
