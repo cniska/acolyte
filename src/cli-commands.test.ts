@@ -8,7 +8,6 @@ import {
   isServerConnectionFailure,
   isTopLevelHelpCommand,
   isTopLevelVersionCommand,
-  parseDogfoodArgs,
   runResourceId,
 } from "./cli-commands";
 
@@ -63,18 +62,6 @@ describe("cli-commands", () => {
     expect(commands.memory).toBeFunction();
     expect(commands.config).toBeFunction();
     expect(commands.tool).toBeFunction();
-  });
-
-  test("parseDogfoodArgs enables verify by default", () => {
-    expect(parseDogfoodArgs(["ping"])).toEqual({ files: [], prompt: "ping", verify: true });
-  });
-
-  test("parseDogfoodArgs supports --no-verify and --file", () => {
-    expect(parseDogfoodArgs(["--file", "src/cli.ts", "--no-verify", "ping"])).toEqual({
-      files: ["src/cli.ts"],
-      prompt: "ping",
-      verify: false,
-    });
   });
 
   test("runResourceId derives stable isolated resource key", () => {

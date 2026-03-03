@@ -8,12 +8,7 @@ import type { Message } from "./chat-message";
 import { createProgressTracker } from "./chat-progress";
 import { runInkChat } from "./chat-ui";
 import { commands, isTopLevelHelpCommand, isTopLevelVersionCommand, usage } from "./cli-commands";
-import {
-  displayPromptForOutput,
-  formatAssistantReplyOutput,
-  formatProgressOutput,
-  formatPromptError,
-} from "./cli-format";
+import { formatAssistantReplyOutput, formatProgressOutput, formatPromptError } from "./cli-format";
 import { createClient } from "./client";
 import { createDebugLogger } from "./debug-flags";
 import { buildFileContext } from "./file-context";
@@ -208,7 +203,7 @@ export async function handlePrompt(
   setSessionTitle(session, prompt);
 
   try {
-    printOutput(`❯ ${displayPromptForOutput(prompt)}`);
+    printOutput(`❯ ${prompt}`);
     let hasPrintedProgress = false;
     let assistantStreamStarted = false;
     let assistantStreamText = "";

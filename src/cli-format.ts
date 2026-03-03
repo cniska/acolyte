@@ -288,15 +288,6 @@ export function formatReadDetail(pathInput: string, start?: string, end?: string
   return `${pathInput}:${from}-${to}`;
 }
 
-export function displayPromptForOutput(prompt: string): string {
-  if (!prompt.startsWith("Dogfood mode:")) return prompt;
-  const lines = prompt
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
-  return lines[lines.length - 1] ?? prompt;
-}
-
 export function formatAssistantReplyOutput(content: string, wrapWidth = 100): string {
   const wrapped = wrapAssistantContent(content, wrapWidth);
   const lines = wrapped.split("\n");

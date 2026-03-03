@@ -177,12 +177,6 @@ const runArgsSchema = z.object({
   verify: z.boolean(),
 });
 
-const dogfoodArgsSchema = z.object({
-  files: z.array(z.string().min(1)),
-  prompt: z.string(),
-  verify: z.boolean(),
-});
-
 type InitProvider = "openai" | "anthropic" | "gemini";
 const PROVIDER_ENV_KEYS = ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GOOGLE_API_KEY"] as const;
 const initProviderSchema = z.enum(["openai", "anthropic", "gemini"]);
@@ -340,34 +334,6 @@ function parseRunArgs(args: string[]): { files: string[]; prompt: string; verify
   return { ...runArgsSchema.parse({ files, prompt: promptTokens.join(" ").trim(), verify }), workspace };
 }
 
-export function parseDogfoodArgs(args: string[]): { files: string[]; prompt: string; verify: boolean } {
-  const files: string[] = [];
-  const promptTokens: string[] = [];
-  let verify = true;
-
-  for (let i = 0; i < args.length; i += 1) {
-    if (args[i] === "--file") {
-      const next = args[i + 1];
-      if (!next) throw new Error("--file requires a path");
-      files.push(next);
-      i += 1;
-      continue;
-    }
-    if (args[i] === "--no-verify") {
-      verify = false;
-      continue;
-    }
-    if (args[i] === "--verify") {
-      verify = true;
-      continue;
-    }
-
-    promptTokens.push(args[i]);
-  }
-
-  return dogfoodArgsSchema.parse({ files, prompt: promptTokens.join(" ").trim(), verify });
-}
-
 async function initMode(args: string[]): Promise<void> {
   if (hasHelpFlag(args)) {
     subcommandHelp("init");
@@ -426,7 +392,7 @@ async function resumeMode(args: string[]): Promise<void> {
   await chatModeWithOptions({ resumeLatest: true, resumePrefix });
 }
 
-async function runMode(args: string[], options?: { skipAutoVerify?: boolean }): Promise<void> {
+async function runMode(args: string[]): Promise<void> {
   if (hasHelpFlag(args)) {
     subcommandHelp("run");
     return;
@@ -482,7 +448,6 @@ async function runMode(args: string[], options?: { skipAutoVerify?: boolean }): 
   const success = await handlePrompt(prompt, session, client, {
     resourceId: runResourceId(session.id),
     workspace: parsed.workspace,
-    skipAutoVerify: options?.skipAutoVerify,
   });
   if (!success) {
     process.exitCode = 1;
@@ -494,41 +459,6 @@ async function runMode(args: string[], options?: { skipAutoVerify?: boolean }): 
     const verifyExitCode = parseRunExitCode(verifyResult);
     if (verifyExitCode !== null && verifyExitCode !== 0) process.exitCode = 1;
   }
-}
-
-async function dogfoodMode(args: string[]): Promise<void> {
-  let parsed: { files: string[]; prompt: string; verify: boolean };
-  try {
-    parsed = parseDogfoodArgs(args);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Invalid dogfood args";
-    printError(message);
-    process.exitCode = 1;
-    return;
-  }
-  if (!parsed.prompt) {
-    printError("Usage: acolyte dogfood [--file <path>] [--no-verify] <prompt>");
-    process.exitCode = 1;
-    return;
-  }
-
-  const preamble = [
-    "Dogfood mode:",
-    "- Work in small, verifiable steps.",
-    "- Keep response concise and action-focused.",
-    "- Return one immediate next action; avoid multi-option menus unless asked.",
-    ...(parsed.verify
-      ? ["- If edits are made, verify with bun run verify."]
-      : ["- Verification is disabled for this turn. Do not run verify/test commands."]),
-    "",
-  ].join("\n");
-
-  const runArgs = [
-    ...parsed.files.flatMap((filePath) => ["--file", filePath]),
-    ...(parsed.verify ? ["--verify"] : []),
-    `${preamble}${parsed.prompt}`,
-  ];
-  await runMode(runArgs, { skipAutoVerify: !parsed.verify });
 }
 
 async function historyMode(args: string[]): Promise<void> {
@@ -798,7 +728,6 @@ export const commands: Record<string, (args: string[]) => Promise<void>> = {
   init: initMode,
   resume: resumeMode,
   run: runMode,
-  dogfood: dogfoodMode,
   history: historyMode,
   server: serveMode,
   status: statusMode,

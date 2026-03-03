@@ -3,7 +3,6 @@ import {
   clampLines,
   countLabel,
   displayPath,
-  displayPromptForOutput,
   formatAssistantReplyOutput,
   formatEditUpdateOutput,
   formatForTool,
@@ -202,12 +201,6 @@ describe("cli-format", () => {
       "Server unavailable. Start the server and retry.",
     );
     expect(formatPromptError(new Error("Remote server error (502): boom"))).toBe("Remote server error (502): boom");
-  });
-
-  test("displayPromptForOutput hides dogfood preamble and keeps task line", () => {
-    const prompt = ["Dogfood mode:", "- Keep response concise", "- Verify edits", "fix src/agent.ts output"].join("\n");
-    expect(displayPromptForOutput(prompt)).toBe("fix src/agent.ts output");
-    expect(displayPromptForOutput("plain prompt")).toBe("plain prompt");
   });
 
   test("formatAssistantReplyOutput indents multiline assistant output", () => {

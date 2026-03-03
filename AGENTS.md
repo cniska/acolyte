@@ -18,7 +18,6 @@ Patterns to follow:
 
 Development:
 - Validate: `bun run verify` (format + lint + typecheck + test)
-- Dogfood: see `skills/dogfood/SKILL.md` for server setup, prompt testing, and iteration workflow
 
 ## Tooling
 
