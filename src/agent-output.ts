@@ -106,6 +106,53 @@ function formatPathList(paths: string[], maxShown = TOOL_HEADER_PATHS_MAX_SHOWN)
   return `${shown} (+${paths.length - maxShown})`;
 }
 
+type HeaderFormatInput = {
+  toolName: string;
+  label: string;
+  args: Record<string, unknown>;
+  asString: (value: unknown) => string | null;
+};
+
+type HeaderFormatRule = {
+  matches: (toolName: string) => boolean;
+  format: (input: HeaderFormatInput) => string;
+};
+
+const TOOL_HEADER_FORMAT_RULES: HeaderFormatRule[] = [
+  {
+    matches: (toolName) => toolName === "run-command",
+    format: ({ label, args, asString }) => {
+      const command = asString(args.command);
+      return command ? `${label} ${command}` : label;
+    },
+  },
+  {
+    matches: (toolName) => TOOL_HEADER_PATH_DETAIL_TOOLS.has(toolName),
+    format: ({ label, args }) => {
+      const formatted = formatPathList(collectPathDetails(args));
+      return formatted ? `${label} ${formatted}` : label;
+    },
+  },
+  {
+    matches: (toolName) => TOOL_HEADER_LABEL_ONLY_TOOLS.has(toolName),
+    format: ({ label }) => label,
+  },
+  {
+    matches: (toolName) => toolName === "web-search",
+    format: ({ label, args, asString }) => {
+      const query = asString(args.query);
+      return query ? `${label} "${query}"` : label;
+    },
+  },
+  {
+    matches: (toolName) => toolName === "web-fetch",
+    format: ({ label, args, asString }) => {
+      const url = asString(args.url);
+      return url ? `${label} ${url}` : label;
+    },
+  },
+];
+
 export function formatToolHeader(toolName: string, args: Record<string, unknown>): string {
   const label = formatToolLabel(toolName);
   const asString = (value: unknown): string | null => {
@@ -113,25 +160,8 @@ export function formatToolHeader(toolName: string, args: Record<string, unknown>
     const trimmed = value.trim();
     return trimmed.length > 0 ? compactProgressDetail(trimmed) : null;
   };
-
-  if (toolName === "run-command") {
-    const command = asString(args.command);
-    return command ? `${label} ${command}` : label;
-  }
-  if (TOOL_HEADER_PATH_DETAIL_TOOLS.has(toolName)) {
-    const paths = collectPathDetails(args);
-    const formatted = formatPathList(paths);
-    return formatted ? `${label} ${formatted}` : label;
-  }
-  if (TOOL_HEADER_LABEL_ONLY_TOOLS.has(toolName)) return label;
-  if (toolName === "web-search") {
-    const query = asString(args.query);
-    return query ? `${label} "${query}"` : label;
-  }
-  if (toolName === "web-fetch") {
-    const url = asString(args.url);
-    return url ? `${label} ${url}` : label;
-  }
+  const rule = TOOL_HEADER_FORMAT_RULES.find((candidate) => candidate.matches(toolName));
+  if (rule) return rule.format({ toolName, label, args, asString });
   return label;
 }
 
