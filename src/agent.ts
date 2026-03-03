@@ -175,14 +175,16 @@ export function createInstructions(baseInstructions: string, mode: AgentMode, wo
 
 // --- Model resolution ---
 
+type ModelCredentials = {
+  openaiApiKey?: string;
+  openaiBaseUrl: string;
+  anthropicApiKey?: string;
+  googleApiKey?: string;
+};
+
 export function resolveModelProviderState(
   model: string,
-  credentials: {
-    openaiApiKey?: string;
-    openaiBaseUrl: string;
-    anthropicApiKey?: string;
-    googleApiKey?: string;
-  } = {
+  credentials: ModelCredentials = {
     openaiApiKey: appConfig.openai.apiKey,
     openaiBaseUrl: appConfig.openai.baseUrl,
     anthropicApiKey: appConfig.anthropic.apiKey,
@@ -202,12 +204,7 @@ export function resolveModelProviderState(
 
 export function resolveRunnableModel(
   requestedModel: string,
-  credentials?: {
-    openaiApiKey?: string;
-    openaiBaseUrl: string;
-    anthropicApiKey?: string;
-    googleApiKey?: string;
-  },
+  credentials?: ModelCredentials,
 ): {
   model: string;
   provider: ModelProviderName;
