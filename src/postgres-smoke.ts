@@ -70,7 +70,7 @@ try {
   const message = error instanceof Error ? error.message : String(error);
   const lower = message.toLowerCase();
   if (lower.includes("connectionrefused") || lower.includes("unable to connect")) {
-    console.error(`Cannot reach server at ${baseUrl()}. Start it with: bun run serve:env`);
+    console.error(`Cannot reach server at ${baseUrl()}. Start it with: bun run serve`);
   } else {
     console.error(message);
   }
