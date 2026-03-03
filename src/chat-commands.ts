@@ -10,7 +10,7 @@ import { findSkillByName } from "./skills";
 import type { MemoryContextScope } from "./soul";
 import { formatStatusOutput } from "./status-format";
 import { createSession } from "./storage";
-import type { Session, SessionStore, SessionTokenUsageEntry } from "./types";
+import type { Session, SessionStore, SessionTokenUsageEntry } from "./session-types";
 
 export type ChatRow = {
   id: string;

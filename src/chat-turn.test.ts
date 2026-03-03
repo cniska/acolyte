@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { appendInputHistory, applyUserTurn, buildInputHistory, runAssistantTurn } from "./chat-turn";
 import { formatToolLabel } from "./tool-labels";
-import type { Session } from "./types";
+import type { Session } from "./session-types";
 
 describe("chat turn helpers", () => {
   test("appendInputHistory avoids duplicate consecutive entries", () => {

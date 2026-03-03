@@ -2,7 +2,7 @@ import { appConfig } from "./app-config";
 import { type ChatRow, createRow } from "./chat-commands";
 import type { PickerState } from "./chat-picker";
 import type { PermissionMode } from "./config-modes";
-import type { Session, SessionStore } from "./types";
+import type { Session, SessionStore } from "./session-types";
 
 type PickerByKind = {
   skills: Extract<PickerState, { kind: "skills" }>;

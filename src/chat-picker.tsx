@@ -3,7 +3,7 @@ import type React from "react";
 import { formatColumns, formatRelativeTime } from "./chat-format";
 import type { PermissionMode } from "./config-modes";
 import type { SkillMeta } from "./skills";
-import type { Session } from "./types";
+import type { Session } from "./session-types";
 
 export type PickerState =
   | { kind: "skills"; items: SkillMeta[]; index: number }

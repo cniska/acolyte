@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { createId } from "./short-id";
-import type { Session, SessionStore } from "./types";
+import type { Session, SessionStore } from "./session-types";
 
 const DATA_DIR = join(homedir(), ".acolyte");
 const STORE_PATH = join(DATA_DIR, "sessions.json");

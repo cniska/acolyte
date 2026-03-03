@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
-  RESERVED_RPC_TASK_CLIENT_METHODS,
-  RESERVED_RPC_TASK_SERVER_METHODS,
+  RESERVED_RPC_CLIENT_TASK_METHODS,
+  RESERVED_RPC_SERVER_TASK_METHODS,
   rpcClientMessageSchema,
   rpcServerMessageSchema,
 } from "./rpc-protocol";
@@ -131,7 +131,7 @@ describe("rpc protocol schema", () => {
   });
 
   test("exposes reserved rpc task method names", () => {
-    expect(RESERVED_RPC_TASK_CLIENT_METHODS).toEqual(["task.start", "task.status", "task.cancel", "task.attach"]);
-    expect(RESERVED_RPC_TASK_SERVER_METHODS).toEqual(["task.accepted", "task.updated", "task.done", "task.error"]);
+    expect(RESERVED_RPC_CLIENT_TASK_METHODS).toEqual(["task.start", "task.status", "task.cancel", "task.attach"]);
+    expect(RESERVED_RPC_SERVER_TASK_METHODS).toEqual(["task.accepted", "task.updated", "task.done", "task.error"]);
   });
 });

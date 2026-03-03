@@ -23,7 +23,8 @@ import { createSession, readStore, writeStore } from "./storage";
 import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
 import { parseToolProgressLine } from "./tool-progress";
 import { mergeToolOutputHeader, shouldSuppressEmptyToolProgressRow } from "./tool-summary-format";
-import type { Message, Session, SessionStore } from "./types";
+import type { Message } from "./chat-message";
+import type { Session, SessionStore } from "./session-types";
 import { clearScreen, printDim, printError, printOutput, streamText } from "./ui";
 
 const debug = createDebugLogger({

@@ -12,7 +12,8 @@ import {
 import { setConfigValue } from "./config";
 import type { ConfigScope, PermissionMode } from "./config-modes";
 import { findSkillByName, loadSkills, readSkillInstructions } from "./skills";
-import type { Message, Session, SessionStore } from "./types";
+import type { Message } from "./chat-message";
+import type { Session, SessionStore } from "./session-types";
 
 const MAX_SKILL_INSTRUCTION_CHARS = 4000;
 

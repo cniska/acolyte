@@ -17,7 +17,8 @@ import { addMemory, type MemoryScope } from "./memory";
 import { createId } from "./short-id";
 import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
 import { mergeToolOutputHeader, shouldSuppressEmptyToolProgressRow } from "./tool-summary-format";
-import type { Message, Session, SessionStore } from "./types";
+import type { Message } from "./chat-message";
+import type { Session, SessionStore } from "./session-types";
 
 type CreateSubmitHandlerInput = {
   client: Client;

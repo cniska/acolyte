@@ -6,7 +6,7 @@ import {
   createResumeRows,
   createWriteConfirmPicker,
 } from "./chat-picker-actions";
-import type { Session, SessionStore } from "./types";
+import type { Session, SessionStore } from "./session-types";
 
 function session(id: string, title = "New Session"): Session {
   return {

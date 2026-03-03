@@ -21,7 +21,7 @@ import { ensureLocalServer, localServerStatus, stopLocalServer } from "./server-
 import { formatStatusOutput as formatStatusOutputShared } from "./status-format";
 import { createSession, readStore } from "./storage";
 import { runShellCommand } from "./tools";
-import type { SessionStore } from "./types";
+import type { SessionStore } from "./session-types";
 import { formatCliTitle, printDim, printError, printOutput } from "./ui";
 
 type SubcommandDoc = {

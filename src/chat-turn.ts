@@ -5,7 +5,8 @@ import { formatThoughtDuration } from "./chat-format";
 import type { Client, StreamEvent } from "./client";
 import { buildFileContext } from "./file-context";
 import { countLabel } from "./plural";
-import type { Message, Session } from "./types";
+import type { Message } from "./chat-message";
+import type { Session } from "./session-types";
 
 export function estimateTokenUsageFallback(prompt: string, output: string): TokenUsage {
   const promptTokens = Math.ceil(prompt.length / 4);

@@ -1,6 +1,6 @@
 import type { ChatRow } from "./chat-commands";
 import { createId } from "./short-id";
-import type { Message } from "./types";
+import type { Message } from "./chat-message";
 
 const RESUME_TRANSCRIPT_ROWS = 40;
 

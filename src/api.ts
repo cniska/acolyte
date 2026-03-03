@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { Message } from "./types";
+import type { Message } from "./chat-message";
 
 export const verifyScopeSchema = z.enum(["task", "global"]);
 export type VerifyScope = z.infer<typeof verifyScopeSchema>;

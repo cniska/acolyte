@@ -20,7 +20,7 @@ import type { Client } from "./client";
 import { palette } from "./palette";
 import { formatModel } from "./provider-config";
 import { loadSkills } from "./skills";
-import type { Session, SessionStore } from "./types";
+import type { Session, SessionStore } from "./session-types";
 
 type HeaderLine = {
   id: string;
