@@ -37,6 +37,7 @@ bun run client help
 ## Documentation
 
 - Overview: [`docs/architecture.md`](docs/architecture.md)
+- Domain language: [`docs/glossary.md`](docs/glossary.md)
 - Testing strategy: [`docs/testing.md`](docs/testing.md)
 - Feature inventory: [`docs/features.md`](docs/features.md)
 - Direction and milestones: [`docs/roadmap.md`](docs/roadmap.md)
