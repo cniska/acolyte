@@ -12,7 +12,7 @@ import { createServerFetchHandler } from "./server-http";
 import { createRpcWebsocketHandlers, getRpcQueuedTaskCount, type RpcConnectionState } from "./server-rpc";
 import { createId } from "./short-id";
 import { getMemoryContextEntries } from "./soul";
-import type { TaskState, TaskTransitionReason } from "./task-contract";
+import type { TaskId, TaskState, TaskTransitionReason } from "./task-contract";
 import { TaskRegistry } from "./task-registry";
 
 const PORT = appConfig.server.port;
@@ -82,7 +82,7 @@ function resolveResourceId(url: URL): string {
 }
 
 function transitionTaskState(
-  taskId: string,
+  taskId: TaskId,
   patch: { state?: TaskState; summary?: string },
   meta?: { reason?: TaskTransitionReason; transport?: string },
 ): void {

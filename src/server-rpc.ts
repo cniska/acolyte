@@ -5,7 +5,7 @@ import { log } from "./log";
 import { rpcClientMessageSchema } from "./rpc-protocol";
 import { createSerialPerConnectionQueuePolicy } from "./rpc-queue";
 import type { RunChatHandlers, StatusPayload, StreamErrorPayload } from "./server-contract";
-import type { TaskState, TaskTransitionReason } from "./task-contract";
+import type { TaskId, TaskState, TaskTransitionReason } from "./task-contract";
 import type { TaskRegistry } from "./task-registry";
 
 const RPC_MAX_QUEUED_TASKS_PER_CONNECTION = 25;
@@ -37,7 +37,7 @@ type RpcHandlerMap = {
 };
 
 type WorkerRunInput = {
-  taskId: string;
+  taskId: TaskId;
   request: ChatRequest;
   state: ActiveRpcChatState;
   shouldYield: () => boolean;
@@ -52,7 +52,7 @@ type RpcDeps = {
   runChatRequest: (chatRequest: ChatRequest, handlers: RunChatHandlers) => Promise<void>;
   taskRegistry: TaskRegistry;
   transitionTaskState: (
-    taskId: string,
+    taskId: TaskId,
     patch: { state?: TaskState; summary?: string },
     meta?: { reason?: TaskTransitionReason; transport?: string },
   ) => void;

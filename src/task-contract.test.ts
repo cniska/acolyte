@@ -24,6 +24,16 @@ describe("task state contract", () => {
     expect(parsed.success).toBe(true);
   });
 
+  test("rejects non-ISO datetime values in task record", () => {
+    const parsed = taskRecordSchema.safeParse({
+      id: "task_123",
+      state: "running",
+      createdAt: "not-a-datetime",
+      updatedAt: "2026-02-28T00:00:01.000Z",
+    });
+    expect(parsed.success).toBe(false);
+  });
+
   test("detects terminal vs non-terminal states", () => {
     expect(isTerminalTaskState("accepted")).toBe(false);
     expect(isTerminalTaskState("queued")).toBe(false);

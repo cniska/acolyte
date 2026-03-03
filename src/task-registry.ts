@@ -1,4 +1,5 @@
-import { isTerminalTaskState, type TaskRecord, type TaskState } from "./task-contract";
+import { isTerminalTaskState, type TaskId, type TaskRecord, type TaskState } from "./task-contract";
+import { createInMemoryTaskStore, type TaskStore } from "./task-store";
 
 type TaskPatch = {
   state?: TaskState;
@@ -20,7 +21,7 @@ export type TaskTransitionResult =
   | {
       ok: false;
       code: "E_TASK_INVALID_TRANSITION";
-      taskId: string;
+      taskId: TaskId;
       fromState: TaskState;
       toState: TaskState;
     };
@@ -31,18 +32,19 @@ export function canTransitionTaskState(fromState: TaskState, toState: TaskState)
 }
 
 export class TaskRegistry {
-  private readonly tasks = new Map<string, TaskRecord>();
+  private readonly store: TaskStore;
   private readonly maxTasks: number;
 
-  constructor(options?: { maxTasks?: number }) {
+  constructor(options?: { maxTasks?: number; store?: TaskStore }) {
+    this.store = options?.store ?? createInMemoryTaskStore();
     this.maxTasks = Math.max(1, options?.maxTasks ?? 1000);
   }
 
   private pruneIfNeeded(): void {
-    while (this.tasks.size > this.maxTasks) {
-      let oldestTerminalId: string | null = null;
+    while (this.store.size() > this.maxTasks) {
+      let oldestTerminalId: TaskId | null = null;
       let oldestTerminalCreatedAt = "";
-      for (const [taskId, task] of this.tasks.entries()) {
+      for (const [taskId, task] of this.store.entries()) {
         if (!isTerminalTaskState(task.state)) continue;
         if (!oldestTerminalId || task.createdAt < oldestTerminalCreatedAt) {
           oldestTerminalId = taskId;
@@ -50,7 +52,7 @@ export class TaskRegistry {
         }
       }
       if (!oldestTerminalId) break;
-      this.tasks.delete(oldestTerminalId);
+      this.store.delete(oldestTerminalId);
     }
   }
 
@@ -67,7 +69,7 @@ export class TaskRegistry {
     let completed = 0;
     let failed = 0;
     let cancelled = 0;
-    for (const task of this.tasks.values()) {
+    for (const task of this.store.values()) {
       if (task.state === "running") running += 1;
       if (task.state === "detached") detached += 1;
       if (task.state === "completed") completed += 1;
@@ -75,7 +77,7 @@ export class TaskRegistry {
       if (task.state === "cancelled") cancelled += 1;
     }
     return {
-      total: this.tasks.size,
+      total: this.store.size(),
       running,
       detached,
       completed,
@@ -84,9 +86,9 @@ export class TaskRegistry {
     };
   }
 
-  transitionTask(taskId: string, patch: TaskPatch): TaskTransitionResult {
+  transitionTask(taskId: TaskId, patch: TaskPatch): TaskTransitionResult {
     const now = new Date().toISOString();
-    const existing = this.tasks.get(taskId);
+    const existing = this.store.get(taskId);
     if (existing && patch.state && !canTransitionTaskState(existing.state, patch.state)) {
       return {
         ok: false,
@@ -103,12 +105,12 @@ export class TaskRegistry {
       updatedAt: now,
       summary: patch.summary ?? existing?.summary,
     };
-    this.tasks.set(taskId, next);
+    this.store.set(taskId, next);
     this.pruneIfNeeded();
     return { ok: true, task: next };
   }
 
-  get(taskId: string): TaskRecord | null {
-    return this.tasks.get(taskId) ?? null;
+  get(taskId: TaskId): TaskRecord | null {
+    return this.store.get(taskId);
   }
 }

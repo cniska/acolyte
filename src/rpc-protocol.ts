@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { verifyScopeSchema } from "./api";
 import { streamErrorDetailSchema } from "./stream-error";
-import { taskRecordSchema } from "./task-contract";
+import { taskIdSchema, taskRecordSchema } from "./task-contract";
 
 // Reserved method names for future background task support.
 export const RESERVED_RPC_CLIENT_TASK_METHODS = ["task.start", "task.status", "task.cancel", "task.attach"] as const;
@@ -54,7 +54,7 @@ export const rpcClientMessageSchema = z.discriminatedUnion("type", [
   z.object({
     id: z.string().min(1),
     type: z.literal("task.status"),
-    payload: z.object({ taskId: z.string().min(1) }),
+    payload: z.object({ taskId: taskIdSchema }),
   }),
 ]);
 
