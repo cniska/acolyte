@@ -1,7 +1,6 @@
 #!/usr/bin/env bun
 import { existsSync, statSync } from "node:fs";
 import { resolve } from "node:path";
-import type { z } from "zod";
 import { runAgent } from "./agent";
 import { type ChatRequest, verifyScopeSchema } from "./api";
 import { appConfig } from "./app-config";
@@ -12,12 +11,11 @@ import { mastraStorage, mastraStorageMode } from "./mastra-storage";
 import { getObservationalMemoryConfig } from "./memory-config";
 import { formatServerCapabilities, PROTOCOL_VERSION } from "./protocol";
 import { formatModel, isProviderAvailable, providerFromModel, resolveProvider } from "./provider-config";
-import type { statusPayloadSchema } from "./rpc-protocol";
+import type { RunChatHandlers, StatusPayload, StreamErrorPayload } from "./server-contract";
 import { createServerFetchHandler } from "./server-http";
 import { createRpcWebsocketHandlers, getRpcQueuedTaskCount, type RpcConnectionState } from "./server-rpc";
 import { createId } from "./short-id";
 import { createSoulPrompt, getMemoryContextEntries } from "./soul";
-import type { StreamErrorDetail } from "./stream-error";
 import { TaskRegistry } from "./task-registry";
 import type { TaskTransitionReason } from "./task-state";
 import { extractToolErrorCode } from "./tool-error-codes";
@@ -53,7 +51,7 @@ function nextErrorId(): string {
   return `err_${createId()}`;
 }
 
-function streamErrorPayload(error: unknown): { error: string; errorCode?: string; errorDetail?: StreamErrorDetail } {
+function streamErrorPayload(error: unknown): StreamErrorPayload {
   const errorMessage = error instanceof Error ? error.message : "Unknown error";
   const extractedCode = extractToolErrorCode(errorMessage);
   const { errorCode, errorDetail } = buildStreamErrorDetail(
@@ -121,8 +119,6 @@ type WorkspaceResolution = {
   workspacePath: string;
   workspaceMode: "default" | "path";
 };
-
-type StatusPayload = z.infer<typeof statusPayloadSchema>;
 
 function resolveWorkspacePath(request: Pick<ChatRequest, "workspace">): WorkspaceResolution {
   if (!request.workspace) return { workspacePath: resolve(process.cwd()), workspaceMode: "default" };
@@ -203,17 +199,6 @@ function providerConfigurationHint(provider: "openai" | "openai-compatible" | "a
   if (provider === "gemini") return "Set GOOGLE_API_KEY.";
   return "Set OPENAI_API_KEY (or use openai-compatible/<model> with a local endpoint).";
 }
-
-type RunChatHandlers = {
-  path: string;
-  method: string;
-  taskId?: string;
-  onEvent: (event: Record<string, unknown>) => void;
-  onDone: (reply: Awaited<ReturnType<typeof runAgent>>) => void;
-  onError: (payload: ReturnType<typeof streamErrorPayload>) => void;
-  isCancelled?: () => boolean;
-  shouldYield?: () => boolean;
-};
 
 async function runChatRequest(chatRequest: ChatRequest, handlers: RunChatHandlers): Promise<void> {
   const requestId = nextErrorId();

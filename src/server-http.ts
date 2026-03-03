@@ -1,21 +1,11 @@
-import type { ChatRequest, ChatResponse } from "./api";
+import type { ChatRequest } from "./api";
 import { appConfig, setPermissionMode } from "./app-config";
 import { log } from "./log";
 import { mastraStorage } from "./mastra-storage";
-
-type RunChatHandlers = {
-  path: string;
-  method: string;
-  taskId?: string;
-  onEvent: (event: Record<string, unknown>) => void;
-  onDone: (reply: ChatResponse) => void;
-  onError: (payload: { error: string; errorCode?: string; errorDetail?: unknown }) => void;
-  isCancelled?: () => boolean;
-  shouldYield?: () => boolean;
-};
+import type { RunChatHandlers, StatusPayload } from "./server-contract";
 
 type ServerHttpDeps = {
-  buildStatusPayload: () => Promise<Record<string, unknown>>;
+  buildStatusPayload: () => Promise<StatusPayload>;
   hasValidAuth: (req: Request, url?: URL) => boolean;
   isChatRequest: (value: unknown) => value is ChatRequest;
   resolveResourceId: (url: URL) => string;

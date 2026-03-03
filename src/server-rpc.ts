@@ -4,7 +4,7 @@ import { appConfig, setPermissionMode } from "./app-config";
 import { log } from "./log";
 import { rpcClientMessageSchema } from "./rpc-protocol";
 import { createSerialPerConnectionQueuePolicy } from "./rpc-queue";
-import type { StreamErrorDetail } from "./stream-error";
+import type { RunChatHandlers, StatusPayload, StreamErrorPayload } from "./server-contract";
 import type { TaskRegistry } from "./task-registry";
 import type { TaskTransitionReason } from "./task-state";
 
@@ -27,19 +27,6 @@ export type RpcConnectionState = {
   queue: QueuedRpcChat[];
 };
 
-type RpcStreamErrorPayload = { error: string; errorCode?: string; errorDetail?: StreamErrorDetail };
-
-type RunChatHandlers = {
-  path: string;
-  method: string;
-  taskId?: string;
-  onEvent: (event: Record<string, unknown>) => void;
-  onDone: (reply: ChatResponse) => void;
-  onError: (payload: RpcStreamErrorPayload) => void;
-  isCancelled?: () => boolean;
-  shouldYield?: () => boolean;
-};
-
 type ParsedRpcEnvelope = {
   id: string | null;
   message: z.infer<typeof rpcClientMessageSchema> | null;
@@ -56,11 +43,11 @@ type WorkerRunInput = {
   shouldYield: () => boolean;
   emitEvent: (event: Record<string, unknown>) => void;
   emitDone: (reply: ChatResponse) => void;
-  emitError: (payload: RpcStreamErrorPayload) => void;
+  emitError: (payload: StreamErrorPayload) => void;
 };
 
 type RpcDeps = {
-  buildStatusPayload: () => Promise<Record<string, unknown>>;
+  buildStatusPayload: () => Promise<StatusPayload>;
   isChatRequest: (value: unknown) => value is ChatRequest;
   runChatRequest: (chatRequest: ChatRequest, handlers: RunChatHandlers) => Promise<void>;
   taskRegistry: TaskRegistry;
