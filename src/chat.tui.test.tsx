@@ -115,3 +115,47 @@ describe("chat tui visual regression: footer and help", () => {
     );
   });
 });
+
+describe("chat tui visual regression: model picker", () => {
+  test("renders model picker placeholder and typed custom value", () => {
+    const basePicker = {
+      kind: "model" as const,
+      items: [
+        { model: "gpt-5-mini", description: "balanced default" },
+        { model: "gpt-5", description: "highest quality" },
+        { model: "other", description: "" },
+      ],
+      index: 2,
+    };
+
+    const empty = renderInputPanel({ picker: { ...basePicker, customModel: "" } });
+    expect(empty).toBe(
+      dedent(`
+      ────────────────────────────────────────────────────────────────────────────────────────────────
+      Model
+      
+        gpt-5-mini       balanced default
+        gpt-5            highest quality
+      › other
+      
+      Select other to type · Enter to apply · Esc to close
+      ────────────────────────────────────────────────────────────────────────────────────────────────
+    `),
+    );
+
+    const typed = renderInputPanel({ picker: { ...basePicker, customModel: "anthropic/claude-sonnet-4-5" } });
+    expect(typed).toBe(
+      dedent(`
+      ────────────────────────────────────────────────────────────────────────────────────────────────
+      Model
+      
+        gpt-5-mini       balanced default
+        gpt-5            highest quality
+      › anthropic/claude-sonnet-4-5
+      
+      Select other to type · Enter to apply · Esc to close
+      ────────────────────────────────────────────────────────────────────────────────────────────────
+    `),
+    );
+  });
+});

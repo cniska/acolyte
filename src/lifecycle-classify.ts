@@ -9,7 +9,7 @@ export function resolveModeModelOrThrow(mode: AgentMode, fallbackModel: string):
   const requestedModel = appConfig.models[mode] ?? fallbackModel;
   const resolved = resolveRunnableModel(requestedModel);
   if (!resolved.available) {
-    throw new Error("No model configured.");
+    throw new Error("No model configured. Run /model to set one.");
   }
   return { model: resolved.model, provider: resolved.provider };
 }
