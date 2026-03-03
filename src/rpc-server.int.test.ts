@@ -425,6 +425,79 @@ describe("rpc server websocket queue", () => {
     wsAfter.close();
   }, 30_000);
 
+  test("rejects chat.start when rpc queue is full", async () => {
+    const port = randomTestPort();
+    const apiKey = "rpc_test_key";
+    await startServerForRpcTest(port, apiKey);
+
+    const ws = new WebSocket(`ws://127.0.0.1:${port}/v1/rpc?apiKey=${apiKey}`);
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("websocket open timed out")), 5000);
+      ws.addEventListener("open", () => {
+        clearTimeout(timeout);
+        resolve();
+      });
+      ws.addEventListener("error", () => {
+        clearTimeout(timeout);
+        reject(new Error("websocket failed to open"));
+      });
+    });
+
+    const messages: RpcEnvelope[] = [];
+    ws.addEventListener("message", (event) => {
+      try {
+        messages.push(JSON.parse(typeof event.data === "string" ? event.data : String(event.data)) as RpcEnvelope);
+      } catch {
+        // Ignore malformed messages from test perspective.
+      }
+    });
+
+    const requestFor = (id: string) =>
+      JSON.stringify({
+        id,
+        type: "chat.start",
+        payload: {
+          request: {
+            message: "Do a long-running analysis with many steps before answering.",
+            history: [],
+            model: "gpt-5-mini",
+            sessionId: `sess_${id}`,
+          },
+        },
+      });
+
+    // 1 running + 25 queued hits the queue limit.
+    ws.send(requestFor("rpc_queue_limit_running"));
+    for (let i = 0; i < 25; i += 1) ws.send(requestFor(`rpc_queue_limit_q_${i}`));
+    ws.send(requestFor("rpc_queue_limit_overflow"));
+
+    await new Promise<void>((resolve, reject) => {
+      const startedAt = Date.now();
+      const interval = setInterval(() => {
+        const overflowError = messages.find(
+          (m) =>
+            m.id === "rpc_queue_limit_overflow" &&
+            m.type === "error" &&
+            typeof m.error === "string" &&
+            m.error.includes("RPC queue is full"),
+        );
+        if (overflowError) {
+          clearInterval(interval);
+          resolve();
+          return;
+        }
+        if (Date.now() - startedAt > 8000) {
+          clearInterval(interval);
+          reject(new Error(`timed out waiting for queue overflow error: ${JSON.stringify(messages)}`));
+        }
+      }, 20);
+    });
+
+    expect(messages.some((m) => m.id === "rpc_queue_limit_overflow" && m.type === "chat.accepted")).toBe(false);
+
+    ws.close();
+  }, 20_000);
+
   test("emits queue/abort envelopes and reindexes queued positions", async () => {
     const port = randomTestPort();
     const apiKey = "rpc_test_key";

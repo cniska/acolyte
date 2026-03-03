@@ -70,6 +70,23 @@ describe("task registry", () => {
       cancelled: 1,
     });
   });
+
+  test("evicts oldest terminal tasks when maxTasks is exceeded", () => {
+    const registry = new TaskRegistry({ maxTasks: 3 });
+    expect(registry.transitionTask("task_running", { state: "running" }).ok).toBe(true);
+    expect(registry.transitionTask("task_done_1", { state: "completed" }).ok).toBe(true);
+    expect(registry.transitionTask("task_done_2", { state: "failed" }).ok).toBe(true);
+    expect(registry.summary().total).toBe(3);
+
+    // Adding another terminal task should evict the oldest terminal one.
+    expect(registry.transitionTask("task_done_3", { state: "cancelled" }).ok).toBe(true);
+
+    expect(registry.get("task_running")?.state).toBe("running");
+    expect(registry.get("task_done_1")).toBeNull();
+    expect(registry.get("task_done_2")?.state).toBe("failed");
+    expect(registry.get("task_done_3")?.state).toBe("cancelled");
+    expect(registry.summary().total).toBe(3);
+  });
 });
 
 describe("task transition rules", () => {

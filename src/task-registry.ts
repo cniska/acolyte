@@ -1,4 +1,4 @@
-import type { TaskRecord, TaskState } from "./task-state";
+import { isTerminalTaskState, type TaskRecord, type TaskState } from "./task-state";
 
 type TaskPatch = {
   state?: TaskState;
@@ -30,6 +30,27 @@ export function canTransitionTaskState(fromState: TaskState, toState: TaskState)
 
 export class TaskRegistry {
   private readonly tasks = new Map<string, TaskRecord>();
+  private readonly maxTasks: number;
+
+  constructor(options?: { maxTasks?: number }) {
+    this.maxTasks = Math.max(1, options?.maxTasks ?? 1000);
+  }
+
+  private pruneIfNeeded(): void {
+    while (this.tasks.size > this.maxTasks) {
+      let oldestTerminalId: string | null = null;
+      let oldestTerminalCreatedAt = "";
+      for (const [taskId, task] of this.tasks.entries()) {
+        if (!isTerminalTaskState(task.state)) continue;
+        if (!oldestTerminalId || task.createdAt < oldestTerminalCreatedAt) {
+          oldestTerminalId = taskId;
+          oldestTerminalCreatedAt = task.createdAt;
+        }
+      }
+      if (!oldestTerminalId) break;
+      this.tasks.delete(oldestTerminalId);
+    }
+  }
 
   summary(): {
     total: number;
@@ -81,6 +102,7 @@ export class TaskRegistry {
       summary: patch.summary ?? existing?.summary,
     };
     this.tasks.set(taskId, next);
+    this.pruneIfNeeded();
     return { ok: true, task: next };
   }
 

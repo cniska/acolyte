@@ -27,6 +27,7 @@ const OPENAI_BASE_URL = appConfig.openai.baseUrl;
 const omConfig = getObservationalMemoryConfig();
 const SUPPRESSED_STDERR_PREFIX = "Upstream LLM API error from";
 const SERVER_IDLE_TIMEOUT_SECONDS = Math.max(30, Math.ceil(appConfig.server.replyTimeoutMs / 1000) + 30);
+const RPC_MAX_QUEUED_TASKS_PER_CONNECTION = 25;
 const taskRegistry = new TaskRegistry();
 let rpcQueuedTaskCount = 0;
 const debug = createDebugLogger({
@@ -742,6 +743,13 @@ const server = Bun.serve<RpcConnectionState>({
         }
         const request = message.payload.request;
         if (!isChatRequest(request)) return send({ type: "error", error: "Invalid request shape" });
+        if (ws.data.runningChatId && ws.data.queue.length >= RPC_MAX_QUEUED_TASKS_PER_CONNECTION) {
+          send({
+            type: "error",
+            error: `RPC queue is full (${RPC_MAX_QUEUED_TASKS_PER_CONNECTION} queued). Retry after tasks finish.`,
+          });
+          return;
+        }
         const state: ActiveRpcChatState = { aborted: false };
         transitionTaskState(message.id, { state: "running" }, { reason: "chat_accepted", transport: "rpc" });
         log.info("rpc task accepted", {
