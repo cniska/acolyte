@@ -1,7 +1,11 @@
 import { z } from "zod";
 import type { TokenUsage } from "./api";
-import { type Message, messageSchema } from "./chat-message";
+import { type Message, type MessageId, messageIdSchema, messageSchema } from "./chat-message";
 import { type IsoDateTimeString, isoDateTimeSchema } from "./datetime";
+import { domainIdSchema } from "./id-contract";
+
+export const sessionIdSchema = domainIdSchema("sess");
+export type SessionId = z.infer<typeof sessionIdSchema>;
 
 const tokenUsageSchema = z.object({
   promptTokens: z.number(),
@@ -12,14 +16,14 @@ const tokenUsageSchema = z.object({
 });
 
 export const sessionTokenUsageEntrySchema = z.object({
-  id: z.string().min(1),
+  id: messageIdSchema,
   usage: tokenUsageSchema,
   warning: z.string().optional(),
   modelCalls: z.number().optional(),
 });
 
 export const sessionSchema = z.object({
-  id: z.string().min(1),
+  id: sessionIdSchema,
   createdAt: isoDateTimeSchema,
   updatedAt: isoDateTimeSchema,
   model: z.string().min(1),
@@ -29,8 +33,8 @@ export const sessionSchema = z.object({
 });
 
 export interface Session {
-  id: string;
-  createdAt: IsoDateTimeString;
+  readonly id: SessionId;
+  readonly createdAt: IsoDateTimeString;
   updatedAt: IsoDateTimeString;
   model: string;
   title: string;
@@ -39,18 +43,18 @@ export interface Session {
 }
 
 export interface SessionTokenUsageEntry {
-  id: string;
-  usage: TokenUsage;
-  warning?: string;
-  modelCalls?: number;
+  readonly id: MessageId;
+  readonly usage: TokenUsage;
+  readonly warning?: string;
+  readonly modelCalls?: number;
 }
 
 export const sessionStateSchema = z.object({
   sessions: z.array(sessionSchema),
-  activeSessionId: z.string().optional(),
+  activeSessionId: sessionIdSchema.optional(),
 });
 
 export interface SessionState {
   sessions: Session[];
-  activeSessionId?: string;
+  activeSessionId?: SessionId;
 }

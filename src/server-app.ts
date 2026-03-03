@@ -1,6 +1,8 @@
+import { z } from "zod";
 import { appConfig } from "./app-config";
 import { buildStreamErrorDetail } from "./error-handling";
 import { mapQuotaErrorMessage } from "./error-messages";
+import { domainIdSchema } from "./id-contract";
 import { errorToLogFields, log } from "./log";
 import { mastraStorage, mastraStorageMode } from "./mastra-storage";
 import { getObservationalMemoryConfig } from "./memory-config";
@@ -23,6 +25,8 @@ const omConfig = getObservationalMemoryConfig();
 const SUPPRESSED_STDERR_PREFIX = "Upstream LLM API error from";
 const SERVER_IDLE_TIMEOUT_SECONDS = Math.max(30, Math.ceil(appConfig.server.replyTimeoutMs / 1000) + 30);
 const taskRegistry = new TaskRegistry();
+const errorIdSchema = domainIdSchema("err");
+type ErrorId = z.infer<typeof errorIdSchema>;
 
 const originalConsoleError = console.error.bind(console);
 console.error = (...args: unknown[]): void => {
@@ -38,8 +42,8 @@ function json<T>(body: T, status = 200): Response {
   });
 }
 
-function nextErrorId(): string {
-  return `err_${createId()}`;
+function nextErrorId(): ErrorId {
+  return errorIdSchema.parse(`err_${createId()}`);
 }
 
 function serverError(

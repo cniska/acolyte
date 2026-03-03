@@ -1,29 +1,30 @@
 import { z } from "zod";
 import type { Message } from "./chat-message";
+import type { SessionId } from "./session-contract";
 
 export const verifyScopeSchema = z.enum(["task", "global"]);
 export type VerifyScope = z.infer<typeof verifyScopeSchema>;
 
 export interface TokenUsage {
-  promptTokens: number;
-  completionTokens: number;
-  totalTokens: number;
-  promptBudgetTokens?: number;
-  promptTruncated?: boolean;
+  readonly promptTokens: number;
+  readonly completionTokens: number;
+  readonly totalTokens: number;
+  readonly promptBudgetTokens?: number;
+  readonly promptTruncated?: boolean;
 }
 
 export interface ChatRequest {
-  message: string;
-  history: Message[];
-  model: string;
-  sessionId?: string;
-  resourceId?: string;
+  readonly message: string;
+  readonly history: Message[];
+  readonly model: string;
+  readonly sessionId?: SessionId;
+  readonly resourceId?: string;
   /** When true, Mastra memory (thread history + observational memory) is enabled. */
-  useMemory?: boolean;
+  readonly useMemory?: boolean;
   /** Verifier read scope: task-bound by default; global only when explicitly requested. */
-  verifyScope?: VerifyScope;
+  readonly verifyScope?: VerifyScope;
   /** Client working directory. Falls back to server CWD when omitted. */
-  workspace?: string;
+  readonly workspace?: string;
 }
 
 export interface ChatResponse {

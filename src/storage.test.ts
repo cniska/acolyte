@@ -34,7 +34,7 @@ describe("storage", () => {
           messages: [],
           tokenUsage: [
             {
-              id: "row_1",
+              id: "msg_1",
               usage: {
                 promptTokens: 10,
                 completionTokens: 5,

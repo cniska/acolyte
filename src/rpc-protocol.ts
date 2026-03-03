@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { verifyScopeSchema } from "./api";
+import { sessionIdSchema } from "./session-contract";
 import { streamErrorDetailSchema } from "./stream-error";
 import { taskIdSchema, taskRecordSchema } from "./task-contract";
 
@@ -11,7 +12,7 @@ const chatRequestSchema = z.object({
   message: z.string(),
   history: z.array(z.unknown()),
   model: z.string(),
-  sessionId: z.string().optional(),
+  sessionId: sessionIdSchema.optional(),
   resourceId: z.string().optional(),
   useMemory: z.boolean().optional(),
   verifyScope: verifyScopeSchema.optional(),

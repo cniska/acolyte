@@ -2,16 +2,28 @@ import { existsSync } from "node:fs";
 import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { z } from "zod";
+import { type IsoDateTimeString, isoDateTimeSchema } from "./datetime";
+import { domainIdSchema } from "./id-contract";
 import { createId } from "./short-id";
 
 export type MemoryScope = "user" | "project";
+export const memoryIdSchema = domainIdSchema("mem");
+export type MemoryId = z.infer<typeof memoryIdSchema>;
 
 export interface MemoryEntry {
-  id: string;
-  content: string;
-  createdAt: string;
-  scope: MemoryScope;
+  readonly id: MemoryId;
+  readonly content: string;
+  readonly createdAt: IsoDateTimeString;
+  readonly scope: MemoryScope;
 }
+
+const memoryEntrySchema = z.object({
+  id: memoryIdSchema,
+  content: z.string().min(1),
+  createdAt: isoDateTimeSchema,
+  scope: z.enum(["user", "project"]),
+});
 
 export interface MemoryOptions {
   scope?: MemoryScope | "all";
@@ -76,12 +88,14 @@ async function readMemoryDir(dir: string, scope: MemoryScope): Promise<MemoryEnt
       const createdAt = parsed.meta.createdAt?.trim();
       const content = parsed.body.trim();
       if (!id || !createdAt || !content) continue;
-      entries.push({
+      const parsedEntry = memoryEntrySchema.safeParse({
         id,
         createdAt,
         content,
         scope,
       });
+      if (!parsedEntry.success) continue;
+      entries.push(parsedEntry.data);
     } catch {
       // Ignore unreadable memory files.
     }
