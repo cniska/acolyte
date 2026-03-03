@@ -1,12 +1,15 @@
 import type { z } from "zod";
 import type { ChatResponse } from "./api";
+import type { ErrorId } from "./error-handling";
 import type { statusPayloadSchema } from "./rpc-protocol";
 import type { StreamErrorDetail } from "./stream-error";
+import type { TaskId } from "./task-contract";
 
 export type StatusPayload = z.infer<typeof statusPayloadSchema>;
 
 export type StreamErrorPayload = {
   error: string;
+  errorId?: ErrorId;
   errorCode?: string;
   errorDetail?: StreamErrorDetail;
 };
@@ -14,7 +17,7 @@ export type StreamErrorPayload = {
 export type RunChatHandlers = {
   path: string;
   method: string;
-  taskId?: string;
+  taskId?: TaskId;
   onEvent: (event: Record<string, unknown>) => void;
   onDone: (reply: ChatResponse) => void;
   onError: (payload: StreamErrorPayload) => void;

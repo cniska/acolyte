@@ -1,4 +1,6 @@
+import { z } from "zod";
 import { unreachable } from "./assert";
+import { domainIdSchema } from "./id-contract";
 import type { StreamErrorDetail } from "./stream-error";
 import {
   type ErrorCode,
@@ -16,6 +18,8 @@ export type ParseErrorResult = { ok: true; value: ParsedError } | { ok: false; e
 export type RecoveryAction = "stop-unknown-budget" | "none";
 export type RecoveryDecision = { action: RecoveryAction; retryable: boolean };
 export const ERROR_CATEGORIES = ["timeout", "file-not-found", "guard-blocked", "other"] as const;
+export const errorIdSchema = domainIdSchema("err");
+export type ErrorId = z.infer<typeof errorIdSchema>;
 
 export function createAppError<TCode extends string, TMeta = unknown>(
   code: TCode,

@@ -4,7 +4,7 @@ import { runAgent } from "./agent";
 import { type ChatRequest, verifyScopeSchema } from "./api";
 import { appConfig } from "./app-config";
 import { createDebugLogger } from "./debug-flags";
-import { buildStreamErrorDetail } from "./error-handling";
+import { buildStreamErrorDetail, errorIdSchema } from "./error-handling";
 import { errorToLogFields, log } from "./log";
 import { isProviderAvailable, providerFromModel } from "./provider-config";
 import type { RunChatHandlers, StreamErrorPayload } from "./server-contract";
@@ -26,10 +26,11 @@ type WorkspaceResolution = {
 };
 
 function nextErrorId(): string {
-  return `err_${createId()}`;
+  return errorIdSchema.parse(`err_${createId()}`);
 }
 
 export function streamErrorPayload(error: unknown): StreamErrorPayload {
+  const errorId = nextErrorId();
   const errorMessage = error instanceof Error ? error.message : "Unknown error";
   const extractedCode = extractToolErrorCode(errorMessage);
   const { errorCode, errorDetail } = buildStreamErrorDetail(
@@ -43,6 +44,7 @@ export function streamErrorPayload(error: unknown): StreamErrorPayload {
   );
   return {
     error: errorMessage,
+    errorId,
     errorCode,
     errorDetail,
   };

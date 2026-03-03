@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { isoDateTimeSchema } from "./datetime";
+import { domainIdSchema } from "./id-contract";
 
 export const taskStateSchema = z.enum([
   "accepted",
@@ -23,7 +24,7 @@ export type TaskState = z.infer<typeof taskStateSchema>;
 export type TaskTransitionReason = z.infer<typeof taskTransitionReasonSchema>;
 
 export const TERMINAL_TASK_STATES = ["completed", "failed", "cancelled"] as const;
-export const taskIdSchema = z.string().min(1);
+export const taskIdSchema = z.union([domainIdSchema("task"), domainIdSchema("rpc")]);
 export type TaskId = z.infer<typeof taskIdSchema>;
 
 export const taskRecordSchema = z.object({
