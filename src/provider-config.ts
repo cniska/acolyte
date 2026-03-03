@@ -1,4 +1,4 @@
-export type ProviderName = "openai" | "openai-compatible" | "anthropic" | "gemini" | "mock";
+export type ProviderName = "openai" | "openai-compatible" | "anthropic" | "gemini";
 export type ModelProviderName = ProviderName;
 
 function inferUnqualifiedModelPrefix(model: string): "openai" | "anthropic" | "gemini" {
@@ -19,10 +19,10 @@ export function formatModel(model: string): string {
   return slash >= 0 ? model.slice(slash + 1) : model;
 }
 
-export function resolveProvider(openaiApiKey: string | undefined, openaiBaseUrl: string): ProviderName {
+export function resolveProvider(_openaiApiKey: string | undefined, openaiBaseUrl: string): ProviderName {
   try {
     const host = new URL(openaiBaseUrl).hostname.toLowerCase();
-    if (host === "api.openai.com") return openaiApiKey ? "openai" : "mock";
+    if (host === "api.openai.com") return "openai";
     return "openai-compatible";
   } catch {
     return "openai-compatible";
@@ -41,7 +41,6 @@ export function providerFromModel(model: string): ModelProviderName {
   if (prefix === "anthropic") return "anthropic";
   if (prefix === "gemini" || prefix === "google") return "gemini";
   if (prefix === "openai-compatible") return "openai-compatible";
-  if (prefix === "mock") return "mock";
   return "openai";
 }
 
@@ -54,7 +53,8 @@ export function isProviderAvailable(input: {
 }): boolean {
   if (input.provider === "anthropic") return Boolean(input.anthropicApiKey);
   if (input.provider === "gemini") return Boolean(input.googleApiKey);
-  if (input.provider === "mock") return false;
   if (input.provider === "openai-compatible") return true;
-  return resolveProvider(input.openaiApiKey, input.openaiBaseUrl) !== "mock";
+  return resolveProvider(input.openaiApiKey, input.openaiBaseUrl) === "openai-compatible"
+    ? true
+    : Boolean(input.openaiApiKey);
 }

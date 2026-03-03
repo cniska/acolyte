@@ -8,9 +8,9 @@ const EnvSchema = z.object({
   GOOGLE_API_KEY: z.string().trim().min(1).optional(),
 });
 
-export type AcolyteEnv = z.infer<typeof EnvSchema>;
+export type Env = z.infer<typeof EnvSchema>;
 
-export function parseEnv(source: Record<string, string | undefined>): AcolyteEnv {
+export function parseEnv(source: Record<string, string | undefined>): Env {
   const result = EnvSchema.safeParse(source);
   if (result.success) return result.data;
   const details = result.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`).join("; ");

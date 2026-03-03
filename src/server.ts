@@ -207,12 +207,7 @@ async function buildStatusPayload(): Promise<StatusPayload> {
     googleApiKey: appConfig.google.apiKey,
   };
   const modelProvider = providerFromModel(model);
-  const providerReady = isProviderAvailable({ provider: modelProvider, ...providerConfig });
-  const provider = providerReady
-    ? modelProvider === "openai"
-      ? resolveProvider(OPENAI_API_KEY, OPENAI_BASE_URL)
-      : modelProvider
-    : "mock";
+  const provider = modelProvider === "openai" ? resolveProvider(OPENAI_API_KEY, OPENAI_BASE_URL) : modelProvider;
   const memoryContextCount = (await getMemoryContextEntries()).length;
   const taskSummary = taskRegistry.summary();
   return {
@@ -232,6 +227,13 @@ async function buildStatusPayload(): Promise<StatusPayload> {
   };
 }
 
+function providerConfigurationHint(provider: "openai" | "openai-compatible" | "anthropic" | "gemini"): string {
+  if (provider === "openai-compatible") return "Configure openaiBaseUrl to your compatible endpoint.";
+  if (provider === "anthropic") return "Set ANTHROPIC_API_KEY.";
+  if (provider === "gemini") return "Set GOOGLE_API_KEY.";
+  return "Set OPENAI_API_KEY (or use openai-compatible/<model> with a local endpoint).";
+}
+
 type RunChatHandlers = {
   path: string;
   method: string;
@@ -246,6 +248,24 @@ type RunChatHandlers = {
 async function runChatRequest(chatRequest: ChatRequest, handlers: RunChatHandlers): Promise<void> {
   const requestId = nextErrorId();
   const startedAt = Date.now();
+  const modelProvider = providerFromModel(chatRequest.model);
+  const providerReady = isProviderAvailable({
+    provider: modelProvider,
+    openaiApiKey: OPENAI_API_KEY,
+    openaiBaseUrl: OPENAI_BASE_URL,
+    anthropicApiKey: appConfig.anthropic.apiKey,
+    googleApiKey: appConfig.google.apiKey,
+  });
+  if (!providerReady) {
+    const payload = streamErrorPayload(
+      new Error(
+        `No provider is configured for model "${chatRequest.model}". ${providerConfigurationHint(modelProvider)}`,
+      ),
+    );
+    handlers.onError(payload);
+    return;
+  }
+
   let workspaceResolution: WorkspaceResolution;
   try {
     workspaceResolution = resolveWorkspacePath(chatRequest);

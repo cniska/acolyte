@@ -23,8 +23,8 @@ describe("provider config", () => {
     expect(formatModel("gpt-5-mini")).toBe("gpt-5-mini");
   });
 
-  test("resolveProvider detects openai vs openai-compatible vs mock", () => {
-    expect(resolveProvider(undefined, "https://api.openai.com/v1")).toBe("mock");
+  test("resolveProvider detects openai vs openai-compatible", () => {
+    expect(resolveProvider(undefined, "https://api.openai.com/v1")).toBe("openai");
     expect(resolveProvider("sk-test", "https://api.openai.com/v1")).toBe("openai");
     expect(resolveProvider(undefined, "http://localhost:11434/v1")).toBe("openai-compatible");
     expect(resolveProvider("sk-test", "http://localhost:11434/v1")).toBe("openai-compatible");
