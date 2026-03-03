@@ -1,0 +1,42 @@
+name: Dogfood Gate
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * *"
+
+concurrency:
+  group: dogfood-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    name: Dogfood Gate (advisory)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run dogfood gate
+        continue-on-error: true
+        run: |
+          bun run dogfood:gate \
+            --no-smoke \
+            --no-verify \
+            --no-recovery \
+            --no-one-shot-diagnostics \
+            --no-session-diagnostics \
+            --no-concurrency-safety \
+            --no-tool-output-ux

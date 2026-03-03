@@ -6,10 +6,15 @@ on:
       - main
   pull_request:
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   verify:
     name: Verify
     runs-on: ubuntu-latest
+    timeout-minutes: 25
 
     steps:
       - name: Checkout
@@ -27,7 +32,16 @@ jobs:
         run: bun run verify
 
       - name: Run perf baseline
-        run: bun run test:perf
+        run: |
+          mkdir -p artifacts
+          set -o pipefail
+          bun run test:perf | tee artifacts/perf-baseline.json
+
+      - name: Upload perf artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-baseline
+          path: artifacts/perf-baseline.json
 
       - name: Generate coverage report
         run: bun run test:coverage
