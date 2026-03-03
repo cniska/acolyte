@@ -24,6 +24,12 @@ bun run dev
 
 `bun run dev` starts server watch mode and opens the CLI client.
 
+See all client commands:
+
+```bash
+bun run client help
+```
+
 ## Validate Changes
 
 - Full check: `bun run verify`
