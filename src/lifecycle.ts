@@ -1,6 +1,7 @@
 import { createErrorStats } from "./error-handling";
 import { phaseClassify } from "./lifecycle-classify";
 import type { LifecycleInput, RunContext, ToolOutputEvent } from "./lifecycle-contract";
+import { commitMemorySources } from "./memory-registry";
 import { phaseEvaluate, recoveryActionForError as resolveRecoveryAction } from "./lifecycle-evaluate";
 import {
   autoVerifier,
@@ -138,6 +139,15 @@ export async function runLifecycle(input: LifecycleInput) {
   if (shouldYieldNow(ctx, input.shouldYield)) return phaseFinalize(ctx);
 
   await phaseEvaluate(ctx, input.shouldYield);
+
+  if (ctx.result) {
+    await commitMemorySources({
+      sessionId: ctx.request.sessionId,
+      workspace: ctx.workspace,
+      messages: ctx.request.history.map((m) => ({ role: m.role, content: m.content })),
+      output: ctx.result.text,
+    });
+  }
 
   return phaseFinalize(ctx);
 }

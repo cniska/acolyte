@@ -132,7 +132,10 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
   });
 
   try {
-    const soulPrompt = await createSoulPrompt();
+    const soulPrompt = await createSoulPrompt({
+      sessionId: chatRequest.sessionId,
+      workspace: workspaceResolution.workspacePath,
+    });
     const reply = await runLifecycle({
       request: chatRequest,
       soulPrompt,

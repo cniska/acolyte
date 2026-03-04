@@ -1,13 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { listMemories } from "./memory";
-
-const MEMORY_CONTEXT_LIMIT = 8;
-type PromptLoadOptions = {
-  cwd?: string;
-  homeDir?: string;
-};
-export type MemoryContextScope = "all" | "user" | "project";
+import { appConfig } from "./app-config";
+import { loadMemoryContext } from "./memory-registry";
 
 export function loadSoulPrompt(cwd = process.cwd()): string {
   const soulPath = join(cwd, "docs", "soul.md");
@@ -40,28 +34,19 @@ export function loadSystemPrompt(cwd = process.cwd()): string {
   return agents ? `${soul}\n\n${agents}` : soul;
 }
 
-type MemoryContextLoadOptions = PromptLoadOptions & {
-  scope?: MemoryContextScope;
+type CreateSoulPromptOptions = {
+  cwd?: string;
+  sessionId?: string;
+  workspace?: string;
 };
 
-export async function getMemoryContextEntries(options: MemoryContextLoadOptions = {}) {
-  const cwd = options.cwd ?? process.cwd();
-  const scope = options.scope ?? "all";
-  const memories = await listMemories({ cwd, homeDir: options.homeDir, scope });
-  return memories.sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, MEMORY_CONTEXT_LIMIT);
-}
-
-export async function loadMemoryContextPrompt(options: PromptLoadOptions = {}): Promise<string> {
-  const top = await getMemoryContextEntries(options);
-  if (top.length === 0) return "";
-  const lines = top.map((entry) => `- ${entry.content}`);
-  return `User memory context:\n${lines.join("\n")}`;
-}
-
-export async function createSoulPrompt(options: PromptLoadOptions = {}): Promise<string> {
+export async function createSoulPrompt(options: CreateSoulPromptOptions = {}): Promise<string> {
   const cwd = options.cwd ?? process.cwd();
   const base = loadSystemPrompt(cwd);
-  const memoryContext = await loadMemoryContextPrompt(options);
-  if (!memoryContext) return base;
-  return `${base}\n\n${memoryContext}`;
+  const { prompt: memoryPrompt } = await loadMemoryContext(
+    { sessionId: options.sessionId, workspace: options.workspace },
+    appConfig.memory.budgetTokens,
+  );
+  if (!memoryPrompt) return base;
+  return `${base}\n\n${memoryPrompt}`;
 }
