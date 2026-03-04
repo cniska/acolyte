@@ -102,7 +102,7 @@ describe("guard regression integration", () => {
   test("duplicate-consecutive-call guard blocks sequential duplicate tool calls", async () => {
     const reply = await runGuardIntegrationScenario(
       "[int:duplicate-consecutive-call] Run the same harmless command eight times in a row.",
-      "guard_regression_duplicate",
+      "sess_guard-regression-duplicate",
       ({ model, responseCounter, sourceText, outputs, body }) => {
         if (sourceText.includes("[int:duplicate-consecutive-call]")) {
           const toolName = pickFunctionToolName(body.tools, "run-command", ["run", "command", "terminal"]);
@@ -144,7 +144,7 @@ describe("guard regression integration", () => {
   test("verify-ran guard blocks second verify command when no writes occurred", async () => {
     const reply = await runGuardIntegrationScenario(
       "[int:verify-ran] Run verify twice without changing any files.",
-      "guard_regression_verify_ran",
+      "sess_guard-regression-verify-ran",
       ({ model, responseCounter, sourceText, outputs, body }) => {
         if (sourceText.includes("[int:verify-ran]")) {
           const toolName = pickFunctionToolName(body.tools, "run-command", ["run", "command", "terminal"]);
@@ -184,7 +184,7 @@ describe("guard regression integration", () => {
   test("no-shell-read-fallback guard blocks shell read fallback commands", async () => {
     const reply = await runGuardIntegrationScenario(
       "[int:no-shell-read-fallback] Try shell read fallback, then use read-file.",
-      "guard_regression_no_shell_read_fallback",
+      "sess_guard-regression-no-shell-read-fallback",
       ({ model, responseCounter, sourceText, outputs, body }) => {
         if (sourceText.includes("[int:no-shell-read-fallback]")) {
           const runToolName = pickFunctionToolName(body.tools, "run-command", ["run", "command", "terminal"]);
@@ -225,7 +225,7 @@ describe("guard regression integration", () => {
   test("no-rewrite guard blocks delete-file after reading the same file", async () => {
     const reply = await runGuardIntegrationScenario(
       "[int:no-rewrite] Read a file and then try to delete it.",
-      "guard_regression_no_rewrite",
+      "sess_guard-regression-no-rewrite",
       ({ model, responseCounter, sourceText, outputs, body }) => {
         if (sourceText.includes("[int:no-rewrite]")) {
           const readToolName = pickFunctionToolName(body.tools, "read-file", ["read", "file"]);
