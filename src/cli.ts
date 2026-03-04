@@ -17,8 +17,6 @@ import { clearScreen, printDim, printError, printOutput } from "./ui";
 
 const CLI_VERSION = resolveCliVersion();
 
-export const FALLBACK_MODEL = "gpt-5-mini";
-
 function isTopLevelHelpCommand(command: string | undefined): boolean {
   return command === "help" || command === "--help" || command === "-h";
 }
@@ -66,7 +64,7 @@ function resolveResumeTarget(
 
 export async function chatModeWithOptions(options: { resumeLatest: boolean; resumePrefix?: string }): Promise<void> {
   const store = await readStore();
-  const defaultModel = appConfig.model ?? FALLBACK_MODEL;
+  const defaultModel = appConfig.model;
   const resolved = resolveResumeTarget(store, options);
   if (resolved?.kind === "not_found") {
     printError(`No session found for prefix: ${resolved.prefix}`);
