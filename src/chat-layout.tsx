@@ -41,8 +41,8 @@ export async function shownBranch(cwd = process.cwd()): Promise<string | null> {
   return branch.length > 0 ? branch : null;
 }
 
-export function formatHeaderContextLine(workspace: string, branch: string | null, model: string): string {
-  return `${workspace} · ${branch ?? "—"} · ${model}`;
+export function formatHeaderContextLine(workspace: string, branch: string | null): string {
+  return `${workspace} · ${branch ?? "—"}`;
 }
 
 export function justifyLineSpaceBetween(left: string, right: string, inset = 0): string {

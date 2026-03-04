@@ -23,9 +23,9 @@ function withColumns(width: number, task: () => void): void {
 }
 
 describe("chat-layout", () => {
-  test("formatHeaderContextLine composes workspace, branch, and model", () => {
-    expect(formatHeaderContextLine("~/code/acolyte", "main", "gpt-5-mini")).toBe("~/code/acolyte · main · gpt-5-mini");
-    expect(formatHeaderContextLine("~/code/acolyte", null, "gpt-5-mini")).toBe("~/code/acolyte · — · gpt-5-mini");
+  test("formatHeaderContextLine composes workspace and branch", () => {
+    expect(formatHeaderContextLine("~/code/acolyte", "main")).toBe("~/code/acolyte · main");
+    expect(formatHeaderContextLine("~/code/acolyte", null)).toBe("~/code/acolyte · —");
   });
 
   test("shownBranch returns null outside git repositories", async () => {
@@ -60,16 +60,16 @@ describe("chat-layout", () => {
 
   test("justifyLineSpaceBetween keeps help left and context right", () => {
     withColumns(40, () => {
-      expect(justifyLineSpaceBetween("? help", "acolyte · main · gpt-5-mini")).toBe(
-        "? help       acolyte · main · gpt-5-mini",
+      expect(justifyLineSpaceBetween("? help", "acolyte · main")).toBe(
+        "? help                    acolyte · main",
       );
     });
   });
 
   test("justifyLineSpaceBetween falls back when line is too narrow", () => {
     withColumns(10, () => {
-      expect(justifyLineSpaceBetween("? help", "acolyte · main · gpt-5-mini")).toBe(
-        "? help · acolyte · main · gpt-5-mini",
+      expect(justifyLineSpaceBetween("? help", "acolyte · main")).toBe(
+        "? help · acolyte · main",
       );
     });
   });

@@ -20,7 +20,6 @@ import { buildInputHistory } from "./chat-turn";
 import type { Client } from "./client";
 import { nowIso } from "./datetime";
 import { palette } from "./palette";
-import { formatModel } from "./provider-config";
 import type { Session, SessionState } from "./session-contract";
 import { loadSkills } from "./skills";
 
@@ -73,7 +72,6 @@ function ChatApp(props: ChatAppProps) {
   const [atSuggestionIndex, setAtSuggestionIndex] = useState(0);
   const interruptRef = useRef<(() => void) | null>(null);
   const workspace = shownCwd();
-  const modelName = formatModel(currentSession.model);
   const headerLines: HeaderLine[] = [
     { id: "title", text: "Acolyte", suffix: "", dim: false, brand: true },
     {
@@ -253,7 +251,7 @@ function ChatApp(props: ChatAppProps) {
         picker={picker}
         activeSessionId={store.activeSessionId}
         brandColor={palette.brand}
-        footerContext={`${workspace} · ${branch ?? "—"} · ${modelName}`}
+        footerContext={`${workspace} · ${branch ?? "—"}`}
         value={value}
         inputRevision={inputRevision}
         onChange={(next) => {
