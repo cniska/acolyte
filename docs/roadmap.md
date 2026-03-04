@@ -149,6 +149,7 @@ What MVP is **not**:
 - Local daemon mode for server/client:
   one reusable local server process per machine (auto-discovered/reused), with chat/run clients attaching without manual server process management.
 - Parallel subagents per mode (plan, work, verify) for concurrent execution.
+- Git shadow snapshots — track file state before/after agent actions in a shadow repo for per-message diffs and safe revert.
 - Session branching — isolated sub-tasks without polluting main context.
 - Session tree UX for branch navigation, labels, and jump-back workflows.
 - Assistant-managed background tasks with stable IDs (`start`, `status`, `cancel`, `attach`).
@@ -157,6 +158,7 @@ What MVP is **not**:
 - Structured tool progress payloads (typed header/body metadata) to replace line-based regex parsing.
 - Stronger tool policy enforcement beyond prompt-only guidance.
 - Agent-authored skills — let the agent create and refine its own tools at runtime.
+- Tool output truncation — auto-truncate large tool outputs and persist full content to a temp file the model can read on demand, preventing context overflow from single results.
 - Tool output collapsing — group consecutive same-tool calls into a single summary row to reduce visual noise.
 - User-facing lifecycle hooks — notifications when agent needs input, custom evaluators.
 - Guard policy controls — opt-in guard enable/disable once policy observability and safety baselines are proven.
