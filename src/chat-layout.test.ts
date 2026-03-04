@@ -60,17 +60,13 @@ describe("chat-layout", () => {
 
   test("justifyLineSpaceBetween keeps help left and context right", () => {
     withColumns(40, () => {
-      expect(justifyLineSpaceBetween("? help", "acolyte · main")).toBe(
-        "? help                    acolyte · main",
-      );
+      expect(justifyLineSpaceBetween("? help", "acolyte · main")).toBe("? help                    acolyte · main");
     });
   });
 
   test("justifyLineSpaceBetween falls back when line is too narrow", () => {
     withColumns(10, () => {
-      expect(justifyLineSpaceBetween("? help", "acolyte · main")).toBe(
-        "? help · acolyte · main",
-      );
+      expect(justifyLineSpaceBetween("? help", "acolyte · main")).toBe("? help · acolyte · main");
     });
   });
 });
