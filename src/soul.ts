@@ -2,8 +2,6 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { listMemories } from "./memory";
 
-const FALLBACK_SOUL =
-  "You are Acolyte, a pragmatic personal coding assistant. Be concise, accurate, and action-oriented.";
 const MEMORY_CONTEXT_LIMIT = 8;
 type PromptLoadOptions = {
   cwd?: string;
@@ -13,13 +11,13 @@ export type MemoryContextScope = "all" | "user" | "project";
 
 export function loadSoulPrompt(cwd = process.cwd()): string {
   const soulPath = join(cwd, "docs", "soul.md");
-  if (!existsSync(soulPath)) return FALLBACK_SOUL;
+  if (!existsSync(soulPath)) return "";
 
   try {
     const content = readFileSync(soulPath, "utf8").trim();
-    return content.length > 0 ? content : FALLBACK_SOUL;
+    return content;
   } catch {
-    return FALLBACK_SOUL;
+    return "";
   }
 }
 

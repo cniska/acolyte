@@ -16,10 +16,10 @@ const { createDir, cleanupDirs } = tempDir();
 afterEach(cleanupDirs);
 
 describe("soul prompt loading", () => {
-  test("loadSoulPrompt uses fallback when docs/soul.md is missing", () => {
+  test("loadSoulPrompt returns empty when docs/soul.md is missing", () => {
     const dir = createDir("acolyte-soul-");
     const prompt = loadSoulPrompt(dir);
-    expect(prompt).toContain("You are Acolyte");
+    expect(prompt).toBe("");
   });
 
   test("loadAgentsPrompt returns empty when AGENTS.md is missing", () => {
