@@ -7,7 +7,7 @@ export type PermissionMode = z.infer<typeof permissionModeSchema>;
 export const logFormatSchema = z.enum(["logfmt", "json"]);
 export type LogFormat = z.infer<typeof logFormatSchema>;
 
-export const transportModeSchema = z.enum(["auto", "http", "rpc"]);
+export const transportModeSchema = z.enum(["rpc"]);
 export type TransportMode = z.infer<typeof transportModeSchema>;
 
 export const scopeSchema = z.enum(["user", "project"]);

@@ -224,7 +224,7 @@ describe("config store", () => {
     expect(resolved.omModel).toBe("anthropic/claude-sonnet-4");
     expect(resolved.permissionMode).toBe("read");
     expect(resolved.logFormat).toBe("logfmt");
-    expect(resolved.transportMode).toBe("auto");
+    expect(resolved.transportMode).toBe("rpc");
     expect(resolved.replyTimeoutMs).toBe(180000);
   });
 

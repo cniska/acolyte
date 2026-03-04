@@ -21,7 +21,7 @@ const DEFAULT_CONFIG = {
   anthropicBaseUrl: "https://api.anthropic.com",
   permissionMode: "read" as PermissionMode,
   logFormat: "logfmt" as LogFormat,
-  transportMode: "auto" as TransportMode,
+  transportMode: "rpc" as TransportMode,
   omObservationTokens: 3_000,
   omReflectionTokens: 8_000,
   contextMaxTokens: 8_000,

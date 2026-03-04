@@ -1,10 +1,10 @@
 import { appConfig } from "./app-config";
+import { invariant } from "./assert";
 import type { Client, ClientOptions } from "./client-contract";
 import { resolveTransportMode } from "./client-contract";
-import { createHttpTransport, HttpClient } from "./client-http";
 import { RpcClient } from "./client-rpc";
 
-export type { Client, ClientOptions, ClientTransport, StreamEvent } from "./client-contract";
+export type { Client, ClientOptions, StreamEvent } from "./client-contract";
 export { parseStreamEvent, rpcUrlFromApiUrl, streamEventSchema } from "./client-contract";
 
 export function createClient(options?: ClientOptions): Client {
@@ -14,7 +14,6 @@ export function createClient(options?: ClientOptions): Client {
   const replyTimeoutMs = options?.replyTimeoutMs;
   const mode = resolveTransportMode(apiUrl, options?.transportMode ?? appConfig.server.transportMode);
 
-  if (mode === "rpc") return new RpcClient(apiUrl, apiKey, replyTimeoutMs);
-  const transport = options?.transport ?? createHttpTransport(apiUrl);
-  return new HttpClient(transport, apiKey, replyTimeoutMs);
+  invariant(mode === "rpc", `Unsupported transport mode: ${mode}`);
+  return new RpcClient(apiUrl, apiKey, replyTimeoutMs);
 }

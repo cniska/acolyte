@@ -11,7 +11,6 @@ export interface ClientOptions {
   apiUrl?: string;
   apiKey?: string;
   replyTimeoutMs?: number;
-  transport?: ClientTransport;
   transportMode?: TransportMode;
 }
 
@@ -61,11 +60,6 @@ export interface Client {
   setPermissionMode(mode: PermissionMode): Promise<void>;
   taskStatus(taskId: TaskId): Promise<TaskRecord | null>;
 }
-
-export type ClientTransport = {
-  apiUrl: string;
-  request: (path: string, init?: RequestInit) => Promise<Response>;
-};
 
 export type RemoteErrorMetadata = {
   status?: number;
@@ -156,9 +150,9 @@ export function rpcUrlFromApiUrl(apiUrl: string): string {
   return source.toString();
 }
 
-export function resolveTransportMode(apiUrl: string | undefined, explicit?: TransportMode): "http" | "rpc" {
-  if (explicit === "http" || explicit === "rpc") return explicit;
-  if (!apiUrl) return "http";
+export function resolveTransportMode(apiUrl: string | undefined, explicit?: TransportMode): "rpc" {
+  if (explicit === "rpc") return "rpc";
+  if (!apiUrl) return "rpc";
   if (apiUrl.startsWith("ws://") || apiUrl.startsWith("wss://")) return "rpc";
-  return "http";
+  return "rpc";
 }
