@@ -81,6 +81,12 @@ describe("chat-commands", () => {
     );
   });
 
+  test("presentStatusOutput shows fallback when payload has no visible fields", () => {
+    const rendered = presentStatusOutput({});
+    expect(rendered.style).toBe("statusOutput");
+    expect(rendered.content).toBe("Status response was empty.");
+  });
+
   test("presentSessionsOutput renders command presentation block", () => {
     const store = createStore({
       activeSessionId: "sess_aaaa1111",

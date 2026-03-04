@@ -51,6 +51,7 @@ const SLASH_ALIASES: Record<string, string> = {
   "/rem": "/remember",
   "/mem": "/memory",
 };
+const SUBCOMMAND_EXPAND_MIN_CHARS = 3;
 
 function allSlashCommands(): string[] {
   const skillCommands = getLoadedSkills().map((s) => `/${s.name}`);
@@ -115,8 +116,9 @@ export function suggestSlashCommands(inputValue: string, max = 5): string[] {
     if (matches.length === 1) {
       const [parent] = matches;
       const subs = SUB_COMMANDS[parent];
-      const isNearCompleteParent = value.length >= parent.length - 1;
-      if (subs && isNearCompleteParent) {
+      const typedCommandChars = value.startsWith("/") ? value.length - 1 : value.length;
+      const shouldExpandSubcommands = typedCommandChars >= SUBCOMMAND_EXPAND_MIN_CHARS;
+      if (subs && shouldExpandSubcommands) {
         return [parent, ...subs].slice(0, max);
       }
     }

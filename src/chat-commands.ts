@@ -7,7 +7,6 @@ import type { Client } from "./client";
 import { setConfigValue } from "./config";
 import type { ConfigScope, PermissionMode } from "./config-contract";
 import { addMemory, listMemories, type MemoryScope, removeMemoryByPrefix } from "./memory";
-import { providerFromModel, suggestedModelsForProvider } from "./provider-config";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
 import { createId } from "./short-id";
 import { findSkillByName } from "./skills";
@@ -132,8 +131,9 @@ export function presentSessionsOutput(store: SessionState, limit = 10): CommandP
 }
 
 export function presentStatusOutput(status: StatusFields): CommandPresentation {
+  const content = formatStatusOutput(status);
   return {
-    content: formatStatusOutput(status),
+    content: content.length > 0 ? content : "Status response was empty.",
     style: "statusOutput",
   };
 }
@@ -312,12 +312,6 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
 
   if (resolvedText === "/model") {
     pushUserCommandRow();
-    const provider = providerFromModel(ctx.currentSession.model);
-    const suggested = suggestedModelsForProvider(provider);
-    if (suggested.length === 0) {
-      ctx.setRows((current) => [...current, createRow("system", "No suggested models for current provider.")]);
-      return { stop: true, userText: text };
-    }
     ctx.openModelPanel();
     return { stop: true, userText: text };
   }

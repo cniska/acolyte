@@ -4,6 +4,7 @@ import { type ChatRow, createRow } from "./chat-commands";
 import type { PickerState } from "./chat-picker";
 import type { PermissionMode } from "./config-contract";
 import { describeModel, providerFromModel, suggestedModelsForProvider } from "./provider-config";
+import type { Provider } from "./provider-contract";
 import type { Session, SessionState } from "./session-contract";
 
 type PickerByKind = {
@@ -61,8 +62,13 @@ export function createPermissionsPicker(): PickerState {
 }
 
 export function createModelPicker(currentModel: string, targetMode?: AgentMode): PickerState {
-  const provider = providerFromModel(currentModel);
-  const suggestions = suggestedModelsForProvider(provider);
+  const providers: Provider[] = [];
+  if (appConfig.openai.apiKey) providers.push("openai");
+  if (appConfig.anthropic.apiKey) providers.push("anthropic");
+  if (appConfig.google.apiKey) providers.push("gemini");
+  const fallbackProvider = providerFromModel(currentModel);
+  if (!providers.includes(fallbackProvider)) providers.push(fallbackProvider);
+  const suggestions = [...new Set(providers.flatMap((provider) => suggestedModelsForProvider(provider)))];
   const items = [
     ...suggestions.map((model) => ({ model, description: describeModel(model) })),
     { model: "other", description: "" },

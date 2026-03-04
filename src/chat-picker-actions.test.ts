@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
+import { appConfig } from "./app-config";
 import {
   boundedSkillInstructions,
+  createModelPicker,
   createPicker,
   createResumePicker,
   createResumeRows,
@@ -75,5 +77,26 @@ describe("chat picker actions", () => {
   test("createWriteConfirmPicker returns switch/cancel options", () => {
     const picker = createWriteConfirmPicker("edit src/cli.ts");
     expect(picker).toMatchObject({ kind: "writeConfirm", index: 0, prompt: "edit src/cli.ts" });
+  });
+
+  test("createModelPicker suggests six models when openai and anthropic are configured", () => {
+    const previousOpenaiKey = appConfig.openai.apiKey;
+    const previousAnthropicKey = appConfig.anthropic.apiKey;
+    const previousGoogleKey = appConfig.google.apiKey;
+    try {
+      (appConfig.openai as { apiKey?: string }).apiKey = "sk-openai";
+      (appConfig.anthropic as { apiKey?: string }).apiKey = "sk-anthropic";
+      (appConfig.google as { apiKey?: string }).apiKey = undefined;
+
+      const picker = createModelPicker("gpt-5-mini");
+      expect(picker.kind).toBe("model");
+      if (picker.kind !== "model") throw new Error("Expected model picker");
+      const suggested = picker.items.filter((item) => item.model !== "other");
+      expect(suggested).toHaveLength(6);
+    } finally {
+      (appConfig.openai as { apiKey?: string }).apiKey = previousOpenaiKey;
+      (appConfig.anthropic as { apiKey?: string }).apiKey = previousAnthropicKey;
+      (appConfig.google as { apiKey?: string }).apiKey = previousGoogleKey;
+    }
   });
 });
