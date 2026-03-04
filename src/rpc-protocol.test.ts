@@ -38,6 +38,22 @@ describe("rpc protocol schema", () => {
     expect(parsed.success).toBe(true);
   });
 
+  test("accepts chat.start with modeModels chat override", () => {
+    const parsed = rpcClientMessageSchema.safeParse({
+      id: "rpc_1c",
+      type: "chat.start",
+      payload: {
+        request: {
+          message: "hi",
+          history: [],
+          model: "gpt-5-mini",
+          modeModels: { chat: "gpt-5-mini" },
+        },
+      },
+    });
+    expect(parsed.success).toBe(true);
+  });
+
   test("accepts chat.done server messages", () => {
     const parsed = rpcServerMessageSchema.safeParse({
       id: "rpc_1",
@@ -80,6 +96,7 @@ describe("rpc protocol schema", () => {
         ok: true,
         providers: ["openai"],
         model: "gpt-5-mini",
+        "model.chat": "gpt-5-mini",
         "model.plan": "claude-3-5-haiku",
         protocol_version: "v1",
         capabilities: "chat,permissions",

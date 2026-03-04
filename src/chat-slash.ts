@@ -18,7 +18,7 @@ const CHAT_SLASH_COMMANDS = [
 
 const SUB_COMMANDS: Record<string, string[]> = {
   "/memory": ["/memory list", "/memory add", "/memory all", "/memory user", "/memory project"],
-  "/model": ["/model plan", "/model work", "/model verify"],
+  "/model": ["/model plan", "/model work", "/model verify", "/model chat"],
   "/permissions": ["/permissions read", "/permissions write"],
 };
 
@@ -31,6 +31,7 @@ const SLASH_HELP: Record<string, string> = {
   "/model plan": "change plan model",
   "/model work": "change work model",
   "/model verify": "change verify model",
+  "/model chat": "change chat model",
   "/status": "show server status",
   "/sessions": "show sessions",
   "/skills": "show skills picker",
@@ -51,7 +52,7 @@ const SLASH_ALIASES: Record<string, string> = {
   "/rem": "/remember",
   "/mem": "/memory",
 };
-const SUBCOMMAND_EXPAND_MIN_CHARS = 3;
+const SUGGEST_MIN_THRESHOLD = 2;
 
 function allSlashCommands(): string[] {
   const skillCommands = getLoadedSkills().map((s) => `/${s.name}`);
@@ -117,7 +118,7 @@ export function suggestSlashCommands(inputValue: string, max = 5): string[] {
       const [parent] = matches;
       const subs = SUB_COMMANDS[parent];
       const typedCommandChars = value.startsWith("/") ? value.length - 1 : value.length;
-      const shouldExpandSubcommands = typedCommandChars >= SUBCOMMAND_EXPAND_MIN_CHARS;
+      const shouldExpandSubcommands = typedCommandChars >= SUGGEST_MIN_THRESHOLD;
       if (subs && shouldExpandSubcommands) {
         return [parent, ...subs].slice(0, max);
       }
@@ -128,7 +129,7 @@ export function suggestSlashCommands(inputValue: string, max = 5): string[] {
   // No prefix matches — fall back to fuzzy matching on top-level commands + skills
   const fuzzy = all
     .map((command) => ({ command, distance: editDistance(value, command) }))
-    .filter((item) => item.distance <= 2)
+    .filter((item) => item.distance <= SUGGEST_MIN_THRESHOLD)
     .sort((a, b) => a.distance - b.distance);
   return fuzzy.map((item) => item.command).slice(0, max);
 }

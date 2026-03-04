@@ -77,9 +77,9 @@ describe("classifyMode", () => {
     expect(classifyMode("read the file then edit it")).toBe("work");
   });
 
-  test("falls back to plan for ambiguous messages", () => {
-    expect(classifyMode("hi")).toBe("plan");
-    expect(classifyMode("thanks")).toBe("plan");
+  test("falls back to chat for ambiguous messages", () => {
+    expect(classifyMode("hi")).toBe("chat");
+    expect(classifyMode("thanks")).toBe("chat");
   });
 
   test("never classifies user messages as verify", () => {

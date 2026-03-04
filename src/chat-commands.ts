@@ -199,7 +199,7 @@ function parsePermissionsScope(parts: string[]): ConfigScope | null {
 }
 
 const modelIdSchema = z.string().trim().min(1).regex(/^\S+$/);
-const agentModeSchema = z.enum(["plan", "work", "verify"]);
+const agentModeSchema = z.enum(["plan", "work", "verify", "chat"]);
 
 type ModelSelection =
   | { kind: "default"; model: string }
@@ -334,7 +334,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     if (!selection) {
       ctx.setRows((current) => [
         ...current,
-        createRow("system", "Usage: /model <id> | /model <plan|work|verify> <id>"),
+        createRow("system", "Usage: /model <id> | /model <plan|work|verify|chat> <id>"),
       ]);
       return { stop: true, userText: text };
     }

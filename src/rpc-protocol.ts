@@ -28,6 +28,7 @@ const chatRequestSchema = z.object({
       plan: z.string().optional(),
       work: z.string().optional(),
       verify: z.string().optional(),
+      chat: z.string().optional(),
     })
     .optional(),
   sessionId: sessionIdSchema.optional(),
@@ -44,6 +45,7 @@ export const statusPayloadSchema = z.object({
   "model.plan": z.string().optional(),
   "model.work": z.string().optional(),
   "model.verify": z.string().optional(),
+  "model.chat": z.string().optional(),
   protocol_version: z.string(),
   capabilities: z.string(),
   permissions: z.string(),

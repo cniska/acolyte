@@ -544,6 +544,29 @@ describe("chat-commands", () => {
     }
   });
 
+  test("dispatchSlashCommand updates chat mode model via /model chat <id>", async () => {
+    const previousModeModel = appConfig.models.chat;
+    const writes: Array<{ key: string; value: string; scope: ConfigScope }> = [];
+    try {
+      const { rows, stop } = await runCommand("/model chat gpt-5-mini", {
+        persistModelConfig: async (key, value, scope) => {
+          writes.push({ key, value, scope });
+        },
+      });
+      expect(stop).toBe(true);
+      expect(rows.some((row) => row.content === "Changed chat mode model to gpt-5-mini.")).toBe(true);
+      expect(writes).toEqual([{ key: "models.chat", value: "gpt-5-mini", scope: "project" }]);
+      expect(appConfig.models.chat).toBe("gpt-5-mini");
+    } finally {
+      const mutableModels = appConfig.models as Record<string, string>;
+      if (previousModeModel) {
+        mutableModels.chat = previousModeModel;
+      } else {
+        delete mutableModels.chat;
+      }
+    }
+  });
+
   test("dispatchSlashCommand opens mode-scoped model picker with /model <mode>", async () => {
     const result = await runCommand("/model verify");
     expect(result.stop).toBe(true);

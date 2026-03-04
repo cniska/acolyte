@@ -39,7 +39,7 @@ export function parseSessionsHeader(content: string): { prefix: string; count: s
 }
 
 export function parseStatusLine(line: string): { indent: string; key: string; value: string } | null {
-  const match = line.match(/^(\s*)([a-zA-Z0-9_]+:\s*)(.*)$/);
+  const match = line.match(/^(\s*)([a-zA-Z0-9_.-]+:\s*)(.*)$/);
   if (!match) return null;
   return {
     indent: match[1] ?? "",

@@ -119,6 +119,7 @@ async function createStatusPayload(): Promise<StatusPayload> {
   if (appConfig.anthropic.apiKey) providers.push("anthropic");
   if (appConfig.google.apiKey) providers.push("gemini");
   const model = appConfig.model;
+  const chatModel = appConfig.models.chat?.trim();
   const planModel = appConfig.models.plan?.trim();
   const workModel = appConfig.models.work?.trim();
   const verifyModel = appConfig.models.verify?.trim();
@@ -131,6 +132,7 @@ async function createStatusPayload(): Promise<StatusPayload> {
     ...(planModel ? { "model.plan": formatModel(planModel) } : {}),
     ...(workModel ? { "model.work": formatModel(workModel) } : {}),
     ...(verifyModel ? { "model.verify": formatModel(verifyModel) } : {}),
+    ...(chatModel ? { "model.chat": formatModel(chatModel) } : {}),
     protocol_version: PROTOCOL_VERSION,
     capabilities: formatServerCapabilities(),
     permissions: appConfig.agent.permissions.mode,

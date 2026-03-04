@@ -1,4 +1,4 @@
-export type AgentMode = "plan" | "work" | "verify";
+export type AgentMode = "plan" | "work" | "verify" | "chat";
 
 export type AgentModeDefinition = {
   tools: string[];
@@ -66,6 +66,14 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
     ],
     statusText: "Verifying…",
   },
+  chat: {
+    tools: [],
+    preamble: [
+      "Answer directly without using tools unless the user asks for file/system actions.",
+      "Keep responses concise and practical.",
+    ],
+    statusText: "Chatting…",
+  },
 };
 
 const CODE_WORDS =
@@ -78,7 +86,7 @@ export function classifyMode(message: string): AgentMode {
   const hasExplore = EXPLORE_WORDS.test(message);
   if (hasCode) return "work";
   if (hasExplore) return "plan";
-  return "plan";
+  return "chat";
 }
 
 export function modeForTool(toolName: string): AgentMode {
