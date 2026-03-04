@@ -212,7 +212,7 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
             } else if (row.role === "assistant") {
               marker = "• ";
             } else if (row.role === "system" && (row.style === "cancelled" || row.style === "error")) {
-              marker = "• ";
+              marker = "· ";
             }
             if (row.style === "toolProgress") marker = "· ";
             if (row.style === "toolProgress" && row.toolStatus)
