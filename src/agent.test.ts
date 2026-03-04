@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createAgentInput, createSubagentContext } from "./agent-input";
+import { createAgentInput } from "./agent-input";
 import { createInstructions, createModeInstructions } from "./agent-instructions";
 import { resolveModelProviderState, resolveRunnableModel } from "./agent-model";
 import {
@@ -253,31 +253,6 @@ describe("resolveRunnableModel", () => {
       provider: "openai",
       available: false,
     });
-  });
-});
-
-describe("createSubagentContext", () => {
-  test("includes goal and context guidance", () => {
-    const req: ChatRequest = {
-      model: "gpt-5-mini",
-      message: "review @src/agent.ts",
-      history: [{ id: "1", role: "user", content: "previous", timestamp: "2026-02-20T10:00:00.000Z" }],
-    };
-    const context = createSubagentContext(req);
-    expect(context).toContain("Agent: Acolyte");
-    expect(context).toContain("Goal: review @src/agent.ts");
-    expect(context).toContain("Context: 1 history message; model=gpt-5-mini");
-  });
-
-  test("does not add prompt-specific what-next guidance", () => {
-    const req: ChatRequest = {
-      model: "gpt-5-mini",
-      message: "what next",
-      history: [],
-    };
-    const context = createSubagentContext(req);
-    expect(context).not.toContain("return exactly 3 concise numbered next steps");
-    expect(context).not.toContain("no lettered options");
   });
 });
 

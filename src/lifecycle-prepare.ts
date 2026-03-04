@@ -1,12 +1,11 @@
-import { createAgentInput, createSubagentContext } from "./agent-input";
+import { createAgentInput } from "./agent-input";
 import { appConfig } from "./app-config";
 import { guardStatsFromSession, type PhasePrepareInput, type PhasePrepareResult } from "./lifecycle-contract";
 import { toolsForAgent } from "./mastra-tools";
 
 export function phasePrepare(input: PhasePrepareInput): PhasePrepareResult {
   const requestInput = createAgentInput(input.request);
-  const subagentContext = createSubagentContext(input.request);
-  const agentInput = `${subagentContext}\n\n${requestInput.input}`;
+  const agentInput = requestInput.input;
 
   const resourceId = input.request.resourceId?.trim() || appConfig.memory.resourceId;
   const memoryOptions =

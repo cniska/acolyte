@@ -1,6 +1,5 @@
 import type { ChatRequest } from "./api";
 import { appConfig } from "./app-config";
-import { countLabel } from "./plural";
 
 const APPROX_CHARS_PER_TOKEN = 4;
 
@@ -101,10 +100,4 @@ export function createAgentInput(req: ChatRequest): {
       totalHistoryMessages: req.history.length,
     },
   };
-}
-
-export function createSubagentContext(req: ChatRequest): string {
-  const scope =
-    req.history.length > 0 ? countLabel(req.history.length, "history message", "history messages") : "no history";
-  return ["Agent: Acolyte", `Goal: ${req.message.trim()}`, `Context: ${scope}; model=${req.model}`].join("\n");
 }
