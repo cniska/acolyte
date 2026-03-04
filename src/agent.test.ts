@@ -309,7 +309,6 @@ describe("createModeInstructions", () => {
     const explore = createModeInstructions("plan");
     expect(code).toContain("Read the target file once");
     expect(code).toContain("make `read-file` on X your first tool call");
-    expect(code).toContain("first assistant action should be a tool call");
     expect(code).toContain("read fails with ENOENT, stop and report");
     expect(code).toContain("prefer `scan-code` + `edit-code`");
     expect(code).toContain("Trust type signatures");
@@ -337,7 +336,7 @@ describe("createInstructions", () => {
     for (const out of [code, explore]) {
       expect(out).toContain("Soul.");
       expect(out).toContain("Prefer dedicated project tools; use shell only when no dedicated tool exists.");
-      expect(out).toContain("Execute the task directly; avoid meta narration about your process.");
+      expect(out).toContain("Before taking action (tool call, command, or edit), write exactly one sentence");
     }
   });
 

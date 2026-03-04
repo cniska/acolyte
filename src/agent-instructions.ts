@@ -4,7 +4,8 @@ import { toolMeta } from "./mastra-tools";
 import { isToolName } from "./tool-names";
 
 const BASE_INSTRUCTIONS = [
-  "- Execute the task directly; avoid meta narration about your process.",
+  "- Before taking action (tool call, command, or edit), write exactly one sentence stating what you will do next.",
+  "- Then execute directly; avoid extra process narration.",
   "- Prefer dedicated project tools; use shell only when no dedicated tool exists.",
   "- Keep responses concise and outcome-first; expand only when asked.",
   "- Make reasonable assumptions to keep momentum; ask only when blocked by ambiguity or risk.",
