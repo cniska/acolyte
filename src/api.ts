@@ -21,7 +21,7 @@ export interface ChatRequest {
   readonly modeModels?: Partial<Record<AgentMode, string>>;
   readonly sessionId?: SessionId;
   readonly resourceId?: string;
-  /** When true, memory (thread history + observational memory) is enabled. */
+  /** When true, stored memories and distill observations are included in context. */
   readonly useMemory?: boolean;
   /** Verifier read scope: task-bound by default; global only when explicitly requested. */
   readonly verifyScope?: VerifyScope;

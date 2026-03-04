@@ -22,8 +22,10 @@ const DEFAULT_CONFIG = {
   permissionMode: "read" as PermissionMode,
   logFormat: "logfmt" as LogFormat,
   transportMode: "rpc" as TransportMode,
-  omObservationTokens: 3_000,
-  omReflectionTokens: 8_000,
+  distillMessageThreshold: 20,
+  distillReflectionThresholdTokens: 8_000,
+  distillMaxOutputTokens: 1_000,
+  memoryBudgetTokens: 1_200,
   contextMaxTokens: 8_000,
   maxHistoryMessages: 40,
   maxMessageTokens: 600,
@@ -122,7 +124,14 @@ function serializeToml(config: Config): string {
       lines.push(`temperatures.${mode} = ${value}`);
     }
   }
-  if (config.omModel) lines.push(`omModel = ${JSON.stringify(config.omModel)}`);
+  if (config.distillModel) lines.push(`distillModel = ${JSON.stringify(config.distillModel)}`);
+  if (typeof config.distillMessageThreshold === "number")
+    lines.push(`distillMessageThreshold = ${config.distillMessageThreshold}`);
+  if (typeof config.distillReflectionThresholdTokens === "number")
+    lines.push(`distillReflectionThresholdTokens = ${config.distillReflectionThresholdTokens}`);
+  if (typeof config.distillMaxOutputTokens === "number")
+    lines.push(`distillMaxOutputTokens = ${config.distillMaxOutputTokens}`);
+  if (typeof config.memoryBudgetTokens === "number") lines.push(`memoryBudgetTokens = ${config.memoryBudgetTokens}`);
   if (config.apiUrl) lines.push(`apiUrl = ${JSON.stringify(config.apiUrl)}`);
   if (config.openaiBaseUrl) lines.push(`openaiBaseUrl = ${JSON.stringify(config.openaiBaseUrl)}`);
   if (config.anthropicBaseUrl) lines.push(`anthropicBaseUrl = ${JSON.stringify(config.anthropicBaseUrl)}`);
@@ -130,8 +139,6 @@ function serializeToml(config: Config): string {
   if (config.permissionMode) lines.push(`permissionMode = ${JSON.stringify(config.permissionMode)}`);
   if (config.logFormat) lines.push(`logFormat = ${JSON.stringify(config.logFormat)}`);
   if (config.transportMode) lines.push(`transportMode = ${JSON.stringify(config.transportMode)}`);
-  if (typeof config.omObservationTokens === "number") lines.push(`omObservationTokens = ${config.omObservationTokens}`);
-  if (typeof config.omReflectionTokens === "number") lines.push(`omReflectionTokens = ${config.omReflectionTokens}`);
   if (typeof config.contextMaxTokens === "number") lines.push(`contextMaxTokens = ${config.contextMaxTokens}`);
   if (typeof config.maxHistoryMessages === "number") lines.push(`maxHistoryMessages = ${config.maxHistoryMessages}`);
   if (typeof config.maxMessageTokens === "number") lines.push(`maxMessageTokens = ${config.maxMessageTokens}`);
@@ -151,7 +158,12 @@ function resolveConfig(config: Config): ResolvedConfig {
     model,
     models: config.models ?? {},
     temperatures: config.temperatures ?? {},
-    omModel: config.omModel ?? model,
+    distillModel: config.distillModel ?? model,
+    distillMessageThreshold: config.distillMessageThreshold ?? DEFAULT_CONFIG.distillMessageThreshold,
+    distillReflectionThresholdTokens:
+      config.distillReflectionThresholdTokens ?? DEFAULT_CONFIG.distillReflectionThresholdTokens,
+    distillMaxOutputTokens: config.distillMaxOutputTokens ?? DEFAULT_CONFIG.distillMaxOutputTokens,
+    memoryBudgetTokens: config.memoryBudgetTokens ?? DEFAULT_CONFIG.memoryBudgetTokens,
     apiUrl: config.apiUrl ?? `http://127.0.0.1:${port}`,
     openaiBaseUrl: config.openaiBaseUrl ?? DEFAULT_CONFIG.openaiBaseUrl,
     anthropicBaseUrl: config.anthropicBaseUrl ?? DEFAULT_CONFIG.anthropicBaseUrl,
@@ -159,8 +171,6 @@ function resolveConfig(config: Config): ResolvedConfig {
     permissionMode: config.permissionMode ?? DEFAULT_CONFIG.permissionMode,
     logFormat: config.logFormat ?? DEFAULT_CONFIG.logFormat,
     transportMode: config.transportMode ?? DEFAULT_CONFIG.transportMode,
-    omObservationTokens: config.omObservationTokens ?? DEFAULT_CONFIG.omObservationTokens,
-    omReflectionTokens: config.omReflectionTokens ?? DEFAULT_CONFIG.omReflectionTokens,
     contextMaxTokens: config.contextMaxTokens ?? DEFAULT_CONFIG.contextMaxTokens,
     maxHistoryMessages: config.maxHistoryMessages ?? DEFAULT_CONFIG.maxHistoryMessages,
     maxMessageTokens: config.maxMessageTokens ?? DEFAULT_CONFIG.maxMessageTokens,

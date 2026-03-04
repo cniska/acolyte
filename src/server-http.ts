@@ -51,18 +51,6 @@ async function handleStatus(ctx: RouteContext): Promise<Response | null> {
   return json(await ctx.deps.createStatusPayload());
 }
 
-async function handleOmStatus(ctx: RouteContext): Promise<Response | null> {
-  if (ctx.url.pathname !== "/v1/admin/om/status" || ctx.req.method !== "GET") return null;
-  if (!ctx.deps.hasValidAuth(ctx.req)) return warnUnauthorized(ctx.url.pathname, ctx.req.method);
-  return json({ error: "Context distillation not yet implemented." }, 501);
-}
-
-async function handleOmWipe(ctx: RouteContext): Promise<Response | null> {
-  if (ctx.url.pathname !== "/v1/admin/om/wipe" || ctx.req.method !== "POST") return null;
-  if (!ctx.deps.hasValidAuth(ctx.req)) return warnUnauthorized(ctx.url.pathname, ctx.req.method);
-  return json({ error: "Context distillation not yet implemented." }, 501);
-}
-
 async function handlePermissions(ctx: RouteContext): Promise<Response | null> {
   if (ctx.url.pathname !== "/v1/permissions" || ctx.req.method !== "POST") return null;
   if (!ctx.deps.hasValidAuth(ctx.req)) return warnUnauthorized(ctx.url.pathname, ctx.req.method);
@@ -189,8 +177,6 @@ async function handleChatStream(ctx: RouteContext): Promise<Response | null> {
 export function createServerFetchHandler(deps: ServerHttpDeps): (req: Request) => Promise<Response | undefined> {
   const routeHandlers: RouteHandler[] = [
     handleStatus,
-    handleOmStatus,
-    handleOmWipe,
     handlePermissions,
     handleShutdown,
     handleRpcUpgrade,

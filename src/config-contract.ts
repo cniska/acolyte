@@ -14,8 +14,9 @@ export const scopeSchema = z.enum(["user", "project"]);
 export type ConfigScope = z.infer<typeof scopeSchema>;
 
 const MAX_CONTEXT_TOKENS = 32_000;
-const MAX_OM_OBSERVATION_TOKENS = 12_000;
-const MAX_OM_REFLECTION_TOKENS = 32_000;
+const MAX_DISTILL_MAX_OUTPUT_TOKENS = 4_000;
+const MAX_DISTILL_REFLECTION_THRESHOLD_TOKENS = 32_000;
+const MAX_MEMORY_BUDGET_TOKENS = 8_000;
 const MAX_MESSAGE_TOKENS = 4_000;
 const MAX_ATTACHMENT_MESSAGE_TOKENS = 12_000;
 const MAX_PINNED_MESSAGE_TOKENS = 4_000;
@@ -47,7 +48,11 @@ export interface Config {
   model?: string;
   models?: Record<string, string>;
   temperatures?: Record<string, number>;
-  omModel?: string;
+  distillModel?: string;
+  distillMessageThreshold?: number;
+  distillReflectionThresholdTokens?: number;
+  distillMaxOutputTokens?: number;
+  memoryBudgetTokens?: number;
   apiUrl?: string;
   openaiBaseUrl?: string;
   anthropicBaseUrl?: string;
@@ -55,8 +60,6 @@ export interface Config {
   permissionMode?: PermissionMode;
   logFormat?: LogFormat;
   transportMode?: TransportMode;
-  omObservationTokens?: number;
-  omReflectionTokens?: number;
   contextMaxTokens?: number;
   maxHistoryMessages?: number;
   maxMessageTokens?: number;
@@ -70,7 +73,11 @@ export interface ResolvedConfig {
   model: string;
   models: Record<string, string>;
   temperatures: Record<string, number>;
-  omModel: string;
+  distillModel: string;
+  distillMessageThreshold: number;
+  distillReflectionThresholdTokens: number;
+  distillMaxOutputTokens: number;
+  memoryBudgetTokens: number;
   apiUrl?: string;
   openaiBaseUrl: string;
   anthropicBaseUrl: string;
@@ -78,8 +85,6 @@ export interface ResolvedConfig {
   permissionMode: PermissionMode;
   logFormat: LogFormat;
   transportMode: TransportMode;
-  omObservationTokens: number;
-  omReflectionTokens: number;
   contextMaxTokens: number;
   maxHistoryMessages: number;
   maxMessageTokens: number;
@@ -93,7 +98,11 @@ export const CONFIG_SET_SCHEMAS: Record<keyof Config, z.ZodTypeAny> = {
   model: nonEmptyStringSchema,
   models: z.record(z.string(), nonEmptyStringSchema),
   temperatures: modeTemperatureMapSchema,
-  omModel: nonEmptyStringSchema,
+  distillModel: nonEmptyStringSchema,
+  distillMessageThreshold: parseIntegerSchema(1, 200),
+  distillReflectionThresholdTokens: parseIntegerSchema(1000, MAX_DISTILL_REFLECTION_THRESHOLD_TOKENS),
+  distillMaxOutputTokens: parseIntegerSchema(100, MAX_DISTILL_MAX_OUTPUT_TOKENS),
+  memoryBudgetTokens: parseIntegerSchema(100, MAX_MEMORY_BUDGET_TOKENS),
   apiUrl: nonEmptyStringSchema,
   openaiBaseUrl: nonEmptyStringSchema,
   anthropicBaseUrl: nonEmptyStringSchema,
@@ -101,8 +110,6 @@ export const CONFIG_SET_SCHEMAS: Record<keyof Config, z.ZodTypeAny> = {
   permissionMode: permissionModeSchema,
   logFormat: logFormatSchema,
   transportMode: transportModeSchema,
-  omObservationTokens: parseIntegerSchema(500, MAX_OM_OBSERVATION_TOKENS),
-  omReflectionTokens: parseIntegerSchema(1000, MAX_OM_REFLECTION_TOKENS),
   contextMaxTokens: parseIntegerSchema(1000, MAX_CONTEXT_TOKENS),
   maxHistoryMessages: parseIntegerSchema(1, 200),
   maxMessageTokens: parseIntegerSchema(50, MAX_MESSAGE_TOKENS),
@@ -140,7 +147,17 @@ export function toConfig(input: Record<string, unknown>): Config {
             }),
           )
         : undefined,
-    omModel: parseField(nonEmptyStringSchema, input.omModel),
+    distillModel: parseField(nonEmptyStringSchema, input.distillModel),
+    distillMessageThreshold: parseField(parseIntegerSchema(1, 200), input.distillMessageThreshold),
+    distillReflectionThresholdTokens: parseField(
+      parseIntegerSchema(1000, MAX_DISTILL_REFLECTION_THRESHOLD_TOKENS),
+      input.distillReflectionThresholdTokens,
+    ),
+    distillMaxOutputTokens: parseField(
+      parseIntegerSchema(100, MAX_DISTILL_MAX_OUTPUT_TOKENS),
+      input.distillMaxOutputTokens,
+    ),
+    memoryBudgetTokens: parseField(parseIntegerSchema(100, MAX_MEMORY_BUDGET_TOKENS), input.memoryBudgetTokens),
     apiUrl: parseField(nonEmptyStringSchema, input.apiUrl),
     openaiBaseUrl: parseField(nonEmptyStringSchema, input.openaiBaseUrl),
     anthropicBaseUrl: parseField(nonEmptyStringSchema, input.anthropicBaseUrl),
@@ -148,8 +165,6 @@ export function toConfig(input: Record<string, unknown>): Config {
     permissionMode: parseField(permissionModeSchema, input.permissionMode),
     logFormat: parseField(logFormatSchema, input.logFormat),
     transportMode: parseField(transportModeSchema, input.transportMode),
-    omObservationTokens: parseField(parseIntegerSchema(500, MAX_OM_OBSERVATION_TOKENS), input.omObservationTokens),
-    omReflectionTokens: parseField(parseIntegerSchema(1000, MAX_OM_REFLECTION_TOKENS), input.omReflectionTokens),
     contextMaxTokens: parseField(parseIntegerSchema(1000, MAX_CONTEXT_TOKENS), input.contextMaxTokens),
     maxHistoryMessages: parseField(parseIntegerSchema(1, 200), input.maxHistoryMessages),
     maxMessageTokens: parseField(parseIntegerSchema(50, MAX_MESSAGE_TOKENS), input.maxMessageTokens),

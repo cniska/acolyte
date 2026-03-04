@@ -28,15 +28,14 @@ export const appConfig = {
   model: fileConfig.model,
   models: fileConfig.models,
   temperatures: fileConfig.temperatures,
-  omModel: fileConfig.omModel,
+  distill: {
+    model: fileConfig.distillModel,
+    messageThreshold: fileConfig.distillMessageThreshold,
+    reflectionThresholdTokens: fileConfig.distillReflectionThresholdTokens,
+    maxOutputTokens: fileConfig.distillMaxOutputTokens,
+  },
   memory: {
-    resourceId: "acolyte-local",
-    lastMessages: 10,
-    observational: {
-      scope: "resource" as const,
-      observationTokens: fileConfig.omObservationTokens,
-      reflectionTokens: fileConfig.omReflectionTokens,
-    },
+    budgetTokens: fileConfig.memoryBudgetTokens,
   },
   agent: {
     permissions: {
