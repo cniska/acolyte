@@ -14,11 +14,11 @@ import { tempDir, writeSkill } from "./test-utils";
 describe("chat-slash helpers", () => {
   test("suggestSlashCommands filters known commands by prefix", () => {
     expect(suggestSlashCommands("/c")).toEqual([]);
-    expect(suggestSlashCommands("/p")).toEqual(["/permissions", "/permissions read", "/permissions write"]);
+    expect(suggestSlashCommands("/p")).toEqual(["/permissions"]);
     expect(suggestSlashCommands("/s")).toEqual(["/status", "/sessions", "/skills"]);
     expect(suggestSlashCommands("/st")).toEqual(["/status"]);
     expect(suggestSlashCommands("/d")).toEqual([]);
-    expect(suggestSlashCommands("/mem")).toEqual(["/mem", "/memory", "/memory list", "/memory add", "/memory all"]);
+    expect(suggestSlashCommands("/mem")).toEqual(["/mem", "/memory"]);
     expect(suggestSlashCommands("/memory ")).toEqual([
       "/memory list",
       "/memory add",
@@ -32,6 +32,7 @@ describe("chat-slash helpers", () => {
     expect(suggestSlashCommands("/permissions ")).toEqual(["/permissions read", "/permissions write"]);
     expect(suggestSlashCommands("/permissions r")).toEqual(["/permissions read"]);
     expect(suggestSlashCommands("/mo")).toEqual(["/model"]);
+    expect(suggestSlashCommands("/mode")).toEqual(["/model", "/model plan", "/model work", "/model verify"]);
     expect(suggestSlashCommands("/rem")).toEqual(["/rem", "/remember"]);
     expect(suggestSlashCommands("/unknown")).toEqual([]);
     expect(suggestSlashCommands("plain")).toEqual([]);
@@ -46,7 +47,9 @@ describe("chat-slash helpers", () => {
 
   test("shouldAutocompleteSlashSubmit only intercepts unresolved slash command token", () => {
     expect(shouldAutocompleteSlashSubmit("/st", "/status")).toBe(true);
+    expect(shouldAutocompleteSlashSubmit("/model p", "/model plan")).toBe(true);
     expect(shouldAutocompleteSlashSubmit("/status", "/status")).toBe(false);
+    expect(shouldAutocompleteSlashSubmit("/model plan", "/model plan")).toBe(false);
     expect(shouldAutocompleteSlashSubmit("/status now", "/status")).toBe(false);
     expect(shouldAutocompleteSlashSubmit("status", "/status")).toBe(false);
   });

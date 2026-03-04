@@ -18,6 +18,7 @@ const CHAT_SLASH_COMMANDS = [
 
 const SUB_COMMANDS: Record<string, string[]> = {
   "/memory": ["/memory list", "/memory add", "/memory all", "/memory user", "/memory project"],
+  "/model": ["/model plan", "/model work", "/model verify"],
   "/permissions": ["/permissions read", "/permissions write"],
 };
 
@@ -27,6 +28,9 @@ const SLASH_HELP: Record<string, string> = {
   "/permissions read": "set permissions to read",
   "/permissions write": "set permissions to write",
   "/model": "change model",
+  "/model plan": "change plan model",
+  "/model work": "change work model",
+  "/model verify": "change verify model",
   "/status": "show server status",
   "/sessions": "show sessions",
   "/skills": "show skills picker",
@@ -104,11 +108,20 @@ export function suggestSlashCommands(inputValue: string, max = 5): string[] {
     return [];
   }
 
-  // No space: match top-level commands + skill commands + all subcommands
+  // No space: match top-level commands + skill commands
   const all = allSlashCommands();
-  const allCommands = [...all, ...Object.values(SUB_COMMANDS).flat()];
-  const matches = allCommands.filter((command) => command.startsWith(value));
-  if (matches.length > 0) return matches.slice(0, max);
+  const matches = all.filter((command) => command.startsWith(value));
+  if (matches.length > 0) {
+    if (matches.length === 1) {
+      const [parent] = matches;
+      const subs = SUB_COMMANDS[parent];
+      const isNearCompleteParent = value.length >= parent.length - 1;
+      if (subs && isNearCompleteParent) {
+        return [parent, ...subs].slice(0, max);
+      }
+    }
+    return matches.slice(0, max);
+  }
 
   // No prefix matches — fall back to fuzzy matching on top-level commands + skills
   const fuzzy = all
@@ -135,8 +148,7 @@ export function shouldAutocompleteSlashSubmit(inputValue: string, selectedSugges
   if (!selectedSuggestion) return false;
   const trimmed = inputValue.trim();
   if (!trimmed.startsWith("/")) return false;
-  if (trimmed.includes(" ")) return false;
-  return trimmed !== selectedSuggestion;
+  return trimmed !== selectedSuggestion && selectedSuggestion.startsWith(trimmed);
 }
 
 export function applySlashSuggestion(selectedSuggestion: string): string {
