@@ -149,6 +149,12 @@ Review in this order.
 
 - [ ] [`src/storage.ts`](../src/storage.ts)
 - [ ] [`src/memory.ts`](../src/memory.ts)
+- [ ] [`src/memory-contract.ts`](../src/memory-contract.ts)
+- [ ] [`src/memory-registry.ts`](../src/memory-registry.ts)
+- [ ] [`src/memory-source-stored.ts`](../src/memory-source-stored.ts)
+- [ ] [`src/memory-source-distill.ts`](../src/memory-source-distill.ts)
+- [ ] [`src/memory-distill-store.ts`](../src/memory-distill-store.ts)
+- [ ] [`src/memory-distill-prompts.ts`](../src/memory-distill-prompts.ts)
 - [ ] [`src/soul.ts`](../src/soul.ts)
 - [ ] [`src/skills.ts`](../src/skills.ts)
 - [ ] [`src/file-context.ts`](../src/file-context.ts)

@@ -187,8 +187,10 @@ describe("config store", () => {
         'transportMode = "rpc"',
         "temperatures.plan = 0.2",
         "temperatures.work = 0.3",
-        "omObservationTokens = 3500",
-        "omReflectionTokens = 9000",
+        "distillMessageThreshold = 25",
+        "distillReflectionThresholdTokens = 9000",
+        "distillMaxOutputTokens = 1500",
+        "memoryBudgetTokens = 1500",
         "contextMaxTokens = 7000",
         "maxHistoryMessages = 50",
         "maxMessageTokens = 700",
@@ -221,7 +223,7 @@ describe("config store", () => {
     expect(resolved.model).toBe("anthropic/claude-sonnet-4");
     expect(resolved.models).toEqual({});
     expect(resolved.temperatures).toEqual({});
-    expect(resolved.omModel).toBe("anthropic/claude-sonnet-4");
+    expect(resolved.distillModel).toBe("anthropic/claude-sonnet-4");
     expect(resolved.permissionMode).toBe("read");
     expect(resolved.logFormat).toBe("logfmt");
     expect(resolved.transportMode).toBe("rpc");
@@ -241,7 +243,7 @@ describe("config store", () => {
     const resolved = readResolvedConfigSync({ homeDir: home, cwd: home });
     expect(resolved.model).toBe("anthropic/claude-sonnet-4");
     expect(resolved.models).toEqual({ plan: "openai/gpt-5-mini" });
-    expect(resolved.omModel).toBe("anthropic/claude-sonnet-4");
+    expect(resolved.distillModel).toBe("anthropic/claude-sonnet-4");
   });
 
   test("readResolvedConfigSync uses per-mode temperatures when set", () => {

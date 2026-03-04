@@ -52,8 +52,7 @@ async function withDualTransportChatServer<T>(fn: (baseUrl: string) => Promise<T
                 capabilities: "stream.sse, error.structured",
                 permissions: "write",
                 service: "http://localhost:6767",
-                memory: "enabled",
-                observational_memory: "enabled (resource)",
+                memory: "file",
                 tasks_total: 0,
                 tasks_running: 0,
                 tasks_detached: 0,
@@ -265,18 +264,17 @@ describe("cli visual regression", () => {
         const out = await run(["status"]);
         expect(out).toBe(
           dedent(`
-          providers:            openai
-          model:                gpt-5-mini
-          protocol_version:     1
-          capabilities:         stream.sse, error.structured
-          permissions:          write
-          service:              http://localhost:6767
-          memory:               enabled
-          observational_memory: enabled (resource)
-          tasks_total:          0
-          tasks_running:        0
-          tasks_detached:       0
-          rpc_queue_length:     0
+          providers:          openai
+          model:              gpt-5-mini
+          protocol_version:   1
+          capabilities:       stream.sse, error.structured
+          permissions:        write
+          service:            http://localhost:6767
+          memory:             file
+          tasks_total:        0
+          tasks_running:      0
+          tasks_detached:     0
+          rpc_queue_length:   0
         `),
         );
       });

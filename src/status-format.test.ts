@@ -22,12 +22,12 @@ describe("status format", () => {
     expect(formatStatusOutput({})).toBe("");
   });
 
-  test("includes observational memory", () => {
+  test("includes memory field", () => {
     const output = formatStatusOutput({
       providers: ["openai", "anthropic"],
-      observational_memory: "enabled (resource)",
+      memory: "file (3 entries)",
     });
     expect(output).toMatch(/^providers:\s+openai, anthropic$/m);
-    expect(output).toMatch(/^observational_memory:\s+enabled \(resource\)$/m);
+    expect(output).toMatch(/^memory:\s+file \(3 entries\)$/m);
   });
 });
