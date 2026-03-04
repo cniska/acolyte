@@ -23,6 +23,13 @@ const chatRequestSchema = z.object({
   message: z.string(),
   history: z.array(z.unknown()),
   model: z.string(),
+  modeModels: z
+    .object({
+      plan: z.string().optional(),
+      work: z.string().optional(),
+      verify: z.string().optional(),
+    })
+    .optional(),
   sessionId: sessionIdSchema.optional(),
   resourceId: z.string().optional(),
   useMemory: z.boolean().optional(),
@@ -34,7 +41,10 @@ export const statusPayloadSchema = z.object({
   ok: z.literal(true),
   providers: z.array(providerSchema),
   model: z.string(),
-  protocolVersion: z.string(),
+  "model.plan": z.string().optional(),
+  "model.work": z.string().optional(),
+  "model.verify": z.string().optional(),
+  protocol_version: z.string(),
   capabilities: z.string(),
   permissions: z.string(),
   service: z.string(),

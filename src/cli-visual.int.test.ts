@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { runCliPlain, withCliTestEnv, withTestHttpServer } from "./int-test-utils";
+import { runCliPlain, withCliTestEnv } from "./int-test-utils";
 import { dedent } from "./test-utils";
 
 async function withDualTransportChatServer<T>(fn: (baseUrl: string) => Promise<T>): Promise<T> {
@@ -48,8 +48,8 @@ async function withDualTransportChatServer<T>(fn: (baseUrl: string) => Promise<T
                 ok: true,
                 providers: ["openai"],
                 model: "gpt-5-mini",
-                protocolVersion: "1",
-                capabilities: "stream.sse,error.structured",
+                protocol_version: "1",
+                capabilities: "stream.sse, error.structured",
                 permissions: "write",
                 service: "http://localhost:6767",
                 memory: "enabled",
@@ -259,46 +259,37 @@ describe("cli visual regression", () => {
   });
 
   test("status shows formatted fields on success", async () => {
-    await withTestHttpServer(
-      async (request) => {
-        if (new URL(request.url).pathname !== "/v1/status") return new Response("not found", { status: 404 });
-        return Response.json({
-          providers: ["openai"],
-          model: "gpt-5-mini",
-          permissions: "read",
-          service: "http://localhost:6767",
-        });
-      },
-      async (baseUrl) => {
-        await withCliTestEnv(async ({ run }) => {
-          await run(["config", "set", "apiUrl", baseUrl]);
-          const out = await run(["status"]);
-          expect(out).toBe(
-            dedent(`
-          providers:          openai
-          model:              gpt-5-mini
-          permissions:        read
-          service:            http://localhost:6767
-        `),
-          );
-        });
-      },
-    );
-  });
-
-  test("run output is transport-parity stable across http and rpc", async () => {
     await withDualTransportChatServer(async (baseUrl) => {
       await withCliTestEnv(async ({ run }) => {
         await run(["config", "set", "apiUrl", baseUrl]);
+        const out = await run(["status"]);
+        expect(out).toBe(
+          dedent(`
+          providers:            openai
+          model:                gpt-5-mini
+          protocol_version:     1
+          capabilities:         stream.sse, error.structured
+          permissions:          write
+          service:              http://localhost:6767
+          memory:               enabled
+          observational_memory: enabled (resource)
+          tasks_total:          0
+          tasks_running:        0
+          tasks_detached:       0
+          rpc_queue_length:     0
+        `),
+        );
+      });
+    });
+  });
 
-        await run(["config", "set", "transportMode", "http"]);
-        const httpOut = normalizeRunOutput(await run(["run", "hello transport parity"]));
-
+  test("run output is stable over rpc transport", async () => {
+    await withDualTransportChatServer(async (baseUrl) => {
+      await withCliTestEnv(async ({ run }) => {
+        await run(["config", "set", "apiUrl", baseUrl]);
         await run(["config", "set", "transportMode", "rpc"]);
-        const rpcOut = normalizeRunOutput(await run(["run", "hello transport parity"]));
-
-        expect(httpOut).toBe(rpcOut);
-        expect(httpOut).toContain("Transport parity ok.");
+        const output = normalizeRunOutput(await run(["run", "hello transport parity"]));
+        expect(output).toContain("Transport parity ok.");
       });
     });
   }, 20_000);

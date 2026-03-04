@@ -80,6 +80,14 @@ export class RpcClient implements Client {
     return parseRpcServerMessage(raw);
   }
 
+  private parseRawSocketData(event: MessageEvent): unknown | null {
+    try {
+      return JSON.parse(typeof event.data === "string" ? event.data : String(event.data));
+    } catch {
+      return null;
+    }
+  }
+
   private async runUnaryRequest<T>(input: {
     request: (id: string) => unknown;
     closeError: string;
@@ -87,22 +95,40 @@ export class RpcClient implements Client {
   }): Promise<T> {
     const ws = await this.openSocket();
     const id = createRpcRequestId();
+    const timeoutMs = this.replyTimeoutMs ?? 10_000;
 
     return await new Promise<T>((resolve, reject) => {
+      let settled = false;
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
       const cleanup = () => {
+        if (timeoutId !== undefined) clearTimeout(timeoutId);
         ws.removeEventListener("message", onMessage);
         ws.removeEventListener("close", onClose);
         this.closeSocket(ws);
       };
 
       const onClose = () => {
+        if (settled) return;
+        settled = true;
         cleanup();
         reject(new Error(input.closeError));
       };
 
       const onMessage = (event: MessageEvent) => {
-        const msg = this.parseSocketMessage(event);
-        if (!msg || msg.id !== id) return;
+        const raw = this.parseRawSocketData(event);
+        if (!raw || typeof raw !== "object") return;
+        const rawId = "id" in raw ? (raw as { id?: unknown }).id : undefined;
+        if (rawId !== id) return;
+        const msg = parseRpcServerMessage(raw);
+        if (!msg) {
+          if (settled) return;
+          settled = true;
+          cleanup();
+          reject(new Error("RPC protocol mismatch for unary request. Restart the server."));
+          return;
+        }
+        if (settled) return;
+        settled = true;
         const result = input.resolve(msg);
         cleanup();
         if (result instanceof Error) reject(result);
@@ -112,6 +138,16 @@ export class RpcClient implements Client {
       ws.addEventListener("message", onMessage);
       ws.addEventListener("close", onClose);
       ws.send(JSON.stringify(input.request(id)));
+      timeoutId = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(
+          new Error(
+            `RPC request timed out after ${timeoutMs}ms. Restart the server: acolyte server stop && acolyte server start`,
+          ),
+        );
+      }, timeoutMs);
     });
   }
 

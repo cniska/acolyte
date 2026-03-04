@@ -119,13 +119,19 @@ async function createStatusPayload(): Promise<StatusPayload> {
   if (appConfig.anthropic.apiKey) providers.push("anthropic");
   if (appConfig.google.apiKey) providers.push("gemini");
   const model = appConfig.model;
+  const planModel = appConfig.models.plan?.trim();
+  const workModel = appConfig.models.work?.trim();
+  const verifyModel = appConfig.models.verify?.trim();
   const memoryContextCount = (await getMemoryContextEntries()).length;
   const taskSummary = taskRegistry.summary();
   return {
     ok: true,
     providers,
     model: formatModel(model),
-    protocolVersion: PROTOCOL_VERSION,
+    ...(planModel ? { "model.plan": formatModel(planModel) } : {}),
+    ...(workModel ? { "model.work": formatModel(workModel) } : {}),
+    ...(verifyModel ? { "model.verify": formatModel(verifyModel) } : {}),
+    protocol_version: PROTOCOL_VERSION,
     capabilities: formatServerCapabilities(),
     permissions: appConfig.agent.permissions.mode,
     service: `http://localhost:${PORT}`,
