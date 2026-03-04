@@ -5,6 +5,10 @@ import { join } from "node:path";
 import { ensureLocalServer, localServerStatus, serverDaemonInternals, stopLocalServer } from "./server-daemon";
 import { startTestServer } from "./test-utils";
 
+function compatibleStatusResponse(): Response {
+  return Response.json({ ok: true, protocol_version: "1" });
+}
+
 describe("server daemon internals", () => {
   test("clearStaleStartupLock removes invalid owner lock", async () => {
     const dir = await mkdtemp(join(tmpdir(), "acolyte-daemon-lock-"));
@@ -48,7 +52,7 @@ describe("server daemon internals", () => {
   test("localServerStatus falls back to unmanaged target when stale lock endpoint is unhealthy", async () => {
     const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
     const lockPath = serverDaemonInternals.serverLockPath(home);
-    const server = startTestServer(() => Response.json({ ok: true }));
+    const server = startTestServer(() => compatibleStatusResponse());
     const targetApiUrl = `http://127.0.0.1:${server.port}`;
     await mkdir(join(home, ".acolyte"), { recursive: true });
     await writeFile(
@@ -77,7 +81,7 @@ describe("server daemon internals", () => {
   test("localServerStatus falls back to unmanaged target when lock pid is dead", async () => {
     const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
     const lockPath = serverDaemonInternals.serverLockPath(home);
-    const server = startTestServer(() => Response.json({ ok: true }));
+    const server = startTestServer(() => compatibleStatusResponse());
     const targetApiUrl = `http://127.0.0.1:${server.port}`;
     await mkdir(join(home, ".acolyte"), { recursive: true });
     await writeFile(
@@ -105,8 +109,8 @@ describe("server daemon internals", () => {
 
   test("localServerStatus prefers requested target when healthy lock points at different url", async () => {
     const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
-    const lockedServer = startTestServer(() => Response.json({ ok: true }));
-    const targetServer = startTestServer(() => Response.json({ ok: true }));
+    const lockedServer = startTestServer(() => compatibleStatusResponse());
+    const targetServer = startTestServer(() => compatibleStatusResponse());
     const lockApiUrl = `http://127.0.0.1:${lockedServer.port}`;
     const targetApiUrl = `http://127.0.0.1:${targetServer.port}`;
     const lockPath = serverDaemonInternals.serverLockPath(home);
@@ -137,7 +141,7 @@ describe("server daemon internals", () => {
 
   test("localServerStatus reports unmanaged running server when lock is missing", async () => {
     const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
-    const server = startTestServer(() => Response.json({ ok: true }));
+    const server = startTestServer(() => compatibleStatusResponse());
     const apiUrl = `http://127.0.0.1:${server.port}`;
     try {
       await expect(localServerStatus({ homeDir: home, apiUrl })).resolves.toEqual({
@@ -153,7 +157,7 @@ describe("server daemon internals", () => {
 
   test("ensureLocalServer returns unmanaged reuse when server is healthy without lock", async () => {
     const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
-    const server = startTestServer(() => Response.json({ ok: true }));
+    const server = startTestServer(() => compatibleStatusResponse());
     const apiUrl = `http://127.0.0.1:${server.port}`;
     try {
       await expect(
@@ -172,7 +176,7 @@ describe("server daemon internals", () => {
 
   test("ensureLocalServer returns managed reuse when lock and healthy server match", async () => {
     const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
-    const server = startTestServer(() => Response.json({ ok: true }));
+    const server = startTestServer(() => compatibleStatusResponse());
     const apiUrl = `http://127.0.0.1:${server.port}`;
     const lockPath = serverDaemonInternals.serverLockPath(home);
     await mkdir(join(home, ".acolyte"), { recursive: true });
@@ -203,8 +207,8 @@ describe("server daemon internals", () => {
 
   test("ensureLocalServer keeps healthy lock when requested target differs", async () => {
     const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
-    const lockedServer = startTestServer(() => Response.json({ ok: true }));
-    const targetServer = startTestServer(() => Response.json({ ok: true }));
+    const lockedServer = startTestServer(() => compatibleStatusResponse());
+    const targetServer = startTestServer(() => compatibleStatusResponse());
     const lockApiUrl = `http://127.0.0.1:${lockedServer.port}`;
     const targetApiUrl = `http://127.0.0.1:${targetServer.port}`;
     const lockPath = serverDaemonInternals.serverLockPath(home);
@@ -238,7 +242,7 @@ describe("server daemon internals", () => {
 
   test("ensureLocalServer clears managed lock and terminates old pid when switching target", async () => {
     const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
-    const lockedServer = startTestServer(() => Response.json({ ok: true }));
+    const lockedServer = startTestServer(() => compatibleStatusResponse());
     const lockApiUrl = `http://127.0.0.1:${lockedServer.port}`;
     const targetApiUrl = "http://127.0.0.1:9";
     const lockPath = serverDaemonInternals.serverLockPath(home);
@@ -297,5 +301,34 @@ describe("server daemon internals", () => {
     );
     await expect(stopLocalServer({ homeDir: home })).resolves.toBe(false);
     await expect(Bun.file(lockPath).exists()).resolves.toBe(false);
+  });
+
+  test("localServerStatus removes lock when status payload is protocol-incompatible", async () => {
+    const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
+    const lockPath = serverDaemonInternals.serverLockPath(home);
+    const staleServer = startTestServer(() => Response.json({ ok: true, protocolVersion: "1" }));
+    const staleApiUrl = `http://127.0.0.1:${staleServer.port}`;
+    await mkdir(join(home, ".acolyte"), { recursive: true });
+    await writeFile(
+      lockPath,
+      JSON.stringify({
+        pid: process.pid,
+        apiUrl: staleApiUrl,
+        port: staleServer.port,
+        startedAt: "2026-02-28T00:00:00.000Z",
+      }),
+      "utf8",
+    );
+    try {
+      await expect(localServerStatus({ homeDir: home })).resolves.toEqual({
+        running: false,
+        pid: null,
+        apiUrl: null,
+        managed: false,
+      });
+      await expect(Bun.file(lockPath).exists()).resolves.toBe(false);
+    } finally {
+      staleServer.stop();
+    }
   });
 });

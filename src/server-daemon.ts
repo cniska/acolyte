@@ -4,6 +4,7 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { z } from "zod";
 import { type IsoDateTimeString, isoDateTimeSchema } from "./datetime";
+import { PROTOCOL_VERSION } from "./protocol";
 
 const SERVER_START_TIMEOUT_MS = 10_000;
 const HEALTHCHECK_TIMEOUT_MS = 1_200;
@@ -103,7 +104,12 @@ async function isServerHealthy(apiUrl: string, apiKey?: string, timeoutMs = HEAL
       headers: apiKey ? { authorization: `Bearer ${apiKey}` } : undefined,
       signal: controller.signal,
     });
-    return response.ok;
+    if (!response.ok) return false;
+    const payload = await response.json().catch(() => null);
+    if (!payload || typeof payload !== "object") return false;
+    const protocolVersion =
+      "protocol_version" in payload ? (payload as { protocol_version?: unknown }).protocol_version : undefined;
+    return protocolVersion === PROTOCOL_VERSION;
   } catch {
     return false;
   } finally {
