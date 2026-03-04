@@ -86,6 +86,26 @@ export async function serveMode(args: string[], deps: ServeModeDeps): Promise<vo
       printDim("Local server is not running.");
       return;
     }
+    case "restart": {
+      if (args.length > 1) return subcommandError("server");
+      const localApiUrl = resolveLocalDaemonApiUrl(serverApiUrl, port);
+      const stopped = await stopLocalServer({ apiKey });
+      if (!stopped) {
+        const status = await localServerStatus({ apiKey, apiUrl: localApiUrl });
+        if (status.running && !status.pid) {
+          printDim(`Local server is running as an external process at ${status.apiUrl}. Stop it manually.`);
+          return;
+        }
+      }
+      const daemon = await ensureLocalServer({
+        apiUrl: localApiUrl,
+        port,
+        apiKey,
+        serverEntry,
+      });
+      printDim(formatLocalServerReadyMessage(daemon));
+      return;
+    }
     default:
       subcommandError("server");
   }

@@ -345,7 +345,7 @@ describe("cli visual regression", () => {
     {
       args: ["server", "help"],
       output: dedent(`
-        Usage: acolyte server [start|status|stop]
+        Usage: acolyte server [start|status|stop|restart]
         
         Description: manage local API server
         
@@ -353,6 +353,7 @@ describe("cli visual regression", () => {
           acolyte server start
           acolyte server status
           acolyte server stop
+          acolyte server restart
       `),
     },
     {

@@ -101,15 +101,20 @@ describe("cli subcommand help", () => {
     }
   });
 
-  test("server supports start/status/stop actions", async () => {
+  test("server supports start/status/stop/restart actions", async () => {
     const { home, project } = await createTestEnv();
     const startResult = runCli(home, project, "server", "start");
     const statusResult = runCli(home, project, "server", "status");
+    const restartResult = runCli(home, project, "server", "restart");
     const stopResult = runCli(home, project, "server", "stop");
     expect(startResult.exitCode).toBe(0);
     expect(`${startResult.stdout}\n${startResult.stderr}`).toMatch(/(Started|Using( external)?) local server at /);
     expect(statusResult.exitCode).toBe(0);
     expect(`${statusResult.stdout}\n${statusResult.stderr}`).toMatch(/Local server running \((pid( \d+)?|external)\)/);
+    expect(restartResult.exitCode).toBe(0);
+    expect(`${restartResult.stdout}\n${restartResult.stderr}`).toMatch(
+      /(Started|Using( external)?) local server at |Local server is running as an external process/,
+    );
     expect(stopResult.exitCode).toBe(0);
     expect(`${stopResult.stdout}\n${stopResult.stderr}`).toMatch(
       /(Stopped local server\.|Local server is not running\.|Local server is running as an external process)/,

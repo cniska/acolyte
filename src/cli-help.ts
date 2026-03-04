@@ -27,9 +27,9 @@ const SUBCOMMANDS: Record<string, CliSubcommandDoc> = {
   },
   server: {
     command: "server",
-    usage: "acolyte server [start|status|stop]",
+    usage: "acolyte server [start|status|stop|restart]",
     description: "manage local API server",
-    examples: ["acolyte server start", "acolyte server status", "acolyte server stop"],
+    examples: ["acolyte server start", "acolyte server status", "acolyte server stop", "acolyte server restart"],
   },
   status: {
     command: "status",
