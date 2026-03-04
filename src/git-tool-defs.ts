@@ -28,6 +28,7 @@ function createGitStatusTool(input: GitToolFactoryInput) {
   return createTool({
     id: "git-status",
     description: "Show working tree status (short format with branch) for the current repository.",
+    instruction: "Use `git-status` for working tree status.",
     inputSchema: z.object({}).optional(),
     execute: async () => {
       return runToolAdapter(runtime, "git-status", {}, async (toolCallId) => {
@@ -45,6 +46,7 @@ function createGitDiffTool(input: GitToolFactoryInput) {
   return createTool({
     id: "git-diff",
     description: "Show unstaged changes (unified diff) for the repository or a specific file path.",
+    instruction: "Use `git-diff` for change inspection.",
     inputSchema: z.object({
       path: z.string().optional(),
       contextLines: z.number().int().min(0).max(20).optional(),
@@ -65,6 +67,7 @@ function createGitLogTool(input: GitToolFactoryInput) {
   return createTool({
     id: "git-log",
     description: "Show recent commits in compact one-line form (optionally scoped to a file/path).",
+    instruction: "Use `git-log` to inspect recent commits quickly (optionally scoped by path).",
     inputSchema: z.object({
       path: z.string().optional(),
       limit: z.number().int().min(1).max(50).optional(),
@@ -85,6 +88,8 @@ function createGitShowTool(input: GitToolFactoryInput) {
   return createTool({
     id: "git-show",
     description: "Show commit details and patch for a ref (default HEAD), optionally scoped to a path.",
+    instruction:
+      "Use `git-show` to inspect a specific commit/tag/ref with patch details (optionally scoped by path).",
     inputSchema: z.object({
       ref: z.string().optional(),
       path: z.string().optional(),

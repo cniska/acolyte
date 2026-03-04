@@ -1,10 +1,13 @@
 import type { z } from "zod";
 
+export type ToolArgs = Record<string, unknown>;
+
 export type ToolDefinition<TInput = unknown> = {
   readonly id: string;
   readonly description: string;
+  readonly instruction: string;
   readonly inputSchema: z.ZodType<TInput>;
-  readonly execute: (input: TInput, ...rest: unknown[]) => Promise<{ result: string }>;
+  readonly execute: (input: TInput) => Promise<{ result: string }>;
 };
 
 export function createTool<TInput>(config: ToolDefinition<TInput>): ToolDefinition<TInput> {

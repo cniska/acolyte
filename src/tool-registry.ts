@@ -14,14 +14,13 @@ import {
 } from "./core-tool-defs";
 import { createMastraGitTools } from "./git-tool-defs";
 import { createSessionContext, type SessionContext } from "./tool-guards";
-import type { ToolMeta } from "./tool-meta-types";
 import type { ToolName } from "./tool-names";
 import type { ToolOutputListener } from "./tool-output-format";
 
 type ToolkitMode = "read" | "write";
 
-type ToolkitTool = { id?: string };
-type ToolWithMeta = { tool: ToolkitTool; meta: ToolMeta };
+type ToolkitTool = { id?: string; instruction?: string };
+type ToolWithMeta = { tool: ToolkitTool; meta: { description: string; instruction: string } };
 type ToolkitEntries = Record<string, ToolWithMeta>;
 
 type CoreBaseToolkitEntries = ReturnType<typeof createCoreBaseToolkit>;
@@ -92,16 +91,18 @@ function asToolset(entries: ToolkitEntries): Partial<Toolset> {
   return tools;
 }
 
-function asToolMeta(entries: ToolkitEntries): Record<ToolName, ToolMeta> {
-  const meta: Record<string, ToolMeta> = {};
+type ToolInstructionMap = Record<ToolName, { instruction: string }>;
+
+function asToolInstructions(entries: ToolkitEntries): ToolInstructionMap {
+  const meta: Record<string, { instruction: string }> = {};
   for (const entry of Object.values(entries)) {
     if (typeof entry.tool.id !== "string") continue;
-    meta[entry.tool.id] = entry.meta;
+    if (typeof entry.tool.instruction === "string") meta[entry.tool.id] = { instruction: entry.tool.instruction };
   }
-  return meta as Record<ToolName, ToolMeta>;
+  return meta as ToolInstructionMap;
 }
 
-export const toolMeta: Record<ToolName, ToolMeta> = asToolMeta(
+export const toolMeta: ToolInstructionMap = asToolInstructions(
   collectToolkitEntries(resolve(process.cwd()), createSessionContext(), "write"),
 );
 

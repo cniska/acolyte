@@ -119,7 +119,7 @@ describe("tool output contract: read-file", () => {
       await writeFile(betaPath, 'export const beta = "needle";\n', "utf8");
 
       invariant(tools.readFile?.execute, "expected readFile tool to be available");
-      await tools.readFile.execute({ paths: [{ path: alphaPath }, { path: betaPath }] }, {} as never);
+      await tools.readFile.execute({ paths: [{ path: alphaPath }, { path: betaPath }] });
 
       assertToolOutput(
         outputByTool,
@@ -142,7 +142,7 @@ describe("tool output contract: read-file", () => {
       for (const file of files) await writeFile(file, "export const v = 1;\n", "utf8");
 
       invariant(tools.readFile?.execute, "expected readFile tool to be available");
-      await tools.readFile.execute({ paths: files.map((path) => ({ path })) }, {} as never);
+      await tools.readFile.execute({ paths: files.map((path) => ({ path })) });
 
       assertToolOutput(
         outputByTool,
@@ -165,7 +165,7 @@ describe("tool output contract: read-file", () => {
       for (const file of files) await writeFile(file, "export const v = 1;\n", "utf8");
 
       invariant(tools.readFile?.execute, "expected readFile tool to be available");
-      await tools.readFile.execute({ paths: files.map((path) => ({ path })) }, {} as never);
+      await tools.readFile.execute({ paths: files.map((path) => ({ path })) });
 
       assertToolOutput(
         outputByTool,
@@ -190,7 +190,6 @@ describe("tool output contract: read-file", () => {
       invariant(tools.readFile?.execute, "expected readFile tool to be available");
       await tools.readFile.execute(
         { paths: [{ path: alphaPath }, { path: alphaPath }, { path: alphaPath, start: 1, end: 1 }] },
-        {} as never,
       );
 
       assertToolOutput(
@@ -218,7 +217,7 @@ describe("tool output contract: find-files", () => {
       await writeFile(betaPath, 'export const beta = "needle";\n', "utf8");
 
       invariant(tools.findFiles?.execute, "expected findFiles tool to be available");
-      await tools.findFiles.execute({ patterns: ["*.ts"], maxResults: 10 }, {} as never);
+      await tools.findFiles.execute({ patterns: ["*.ts"], maxResults: 10 });
 
       assertToolOutput(
         outputByTool,
@@ -245,7 +244,7 @@ describe("tool output contract: find-files", () => {
         await writeFile(join(workspace, `f${i}.ts`), `export const n${i} = ${i};\n`, "utf8");
 
       invariant(tools.findFiles?.execute, "expected findFiles tool to be available");
-      await tools.findFiles.execute({ patterns: ["*.ts"], maxResults: 20 }, {} as never);
+      await tools.findFiles.execute({ patterns: ["*.ts"], maxResults: 20 });
 
       assertToolOutput(
         outputByTool,
@@ -283,7 +282,7 @@ describe("tool output contract: find-files", () => {
       await writeFile(join(workspace, "alpha.ts"), "export const alpha = 1;\n", "utf8");
 
       invariant(tools.findFiles?.execute, "expected findFiles tool to be available");
-      await tools.findFiles.execute({ patterns: ["*.md"], maxResults: 10 }, {} as never);
+      await tools.findFiles.execute({ patterns: ["*.md"], maxResults: 10 });
 
       assertToolOutput(outputByTool, "find-files", { patterns: ["*.md"], maxResults: 10 }, { raw: [] });
     } finally {
@@ -299,7 +298,7 @@ describe("tool output contract: find-files", () => {
       }
 
       invariant(tools.findFiles?.execute, "expected findFiles tool to be available");
-      await tools.findFiles.execute({ patterns: ["*.ts"], maxResults: 20 }, {} as never);
+      await tools.findFiles.execute({ patterns: ["*.ts"], maxResults: 20 });
 
       assertToolOutput(
         outputByTool,
@@ -330,7 +329,7 @@ describe("tool output contract: find-files", () => {
       await writeFile(join(workspace, "gamma.ts"), "export const gamma = 1;\n", "utf8");
 
       invariant(tools.findFiles?.execute, "expected findFiles tool to be available");
-      await tools.findFiles.execute({ patterns: ["*.ts", "*.md"], maxResults: 20 }, {} as never);
+      await tools.findFiles.execute({ patterns: ["*.ts", "*.md"], maxResults: 20 });
 
       assertToolOutput(
         outputByTool,
@@ -364,7 +363,6 @@ describe("tool output contract: search-files", () => {
       invariant(tools.searchFiles?.execute, "expected searchFiles tool to be available");
       await tools.searchFiles.execute(
         { patterns: ["needle"], paths: [alphaPath, betaPath], maxResults: 10 },
-        {} as never,
       );
 
       assertToolOutput(
@@ -392,7 +390,7 @@ describe("tool output contract: search-files", () => {
       await writeFile(alphaPath, 'export const alpha = "needle";\n', "utf8");
 
       invariant(tools.searchFiles?.execute, "expected searchFiles tool to be available");
-      await tools.searchFiles.execute({ patterns: ["needle"], maxResults: 10 }, {} as never);
+      await tools.searchFiles.execute({ patterns: ["needle"], maxResults: 10 });
 
       assertToolOutput(
         outputByTool,
@@ -422,7 +420,7 @@ describe("tool output contract: search-files", () => {
       await writeFile(join(docsDir, "readme.md"), "needle in docs\n", "utf8");
 
       invariant(tools.searchFiles?.execute, "expected searchFiles tool to be available");
-      await tools.searchFiles.execute({ patterns: ["needle"], paths: [srcDir], maxResults: 20 }, {} as never);
+      await tools.searchFiles.execute({ patterns: ["needle"], paths: [srcDir], maxResults: 20 });
 
       assertToolOutput(
         outputByTool,
@@ -452,7 +450,7 @@ describe("tool output contract: search-files", () => {
       await writeFile(join(docsDir, "readme.md"), "needle in docs\n", "utf8");
 
       invariant(tools.searchFiles?.execute, "expected searchFiles tool to be available");
-      await tools.searchFiles.execute({ patterns: ["needle"], paths: [srcDir, docsDir], maxResults: 20 }, {} as never);
+      await tools.searchFiles.execute({ patterns: ["needle"], paths: [srcDir, docsDir], maxResults: 20 });
 
       assertToolOutput(
         outputByTool,
@@ -482,7 +480,7 @@ describe("tool output contract: search-files", () => {
       await writeFile(join(workspace, "alpha.ts"), 'export const alpha = "needle";\n', "utf8");
 
       invariant(tools.searchFiles?.execute, "expected searchFiles tool to be available");
-      await tools.searchFiles.execute({ patterns: ["needle", "needle", "\\bneedle\\b"], maxResults: 20 }, {} as never);
+      await tools.searchFiles.execute({ patterns: ["needle", "needle", "\\bneedle\\b"], maxResults: 20 });
 
       assertToolOutput(
         outputByTool,
@@ -507,7 +505,7 @@ describe("tool output contract: search-files", () => {
       await writeFile(join(workspace, "alpha.ts"), "a b c d e f g h i j\n", "utf8");
 
       invariant(tools.searchFiles?.execute, "expected searchFiles tool to be available");
-      await tools.searchFiles.execute({ patterns: ["a", "b", "c", "d", "e", "f"], maxResults: 20 }, {} as never);
+      await tools.searchFiles.execute({ patterns: ["a", "b", "c", "d", "e", "f"], maxResults: 20 });
 
       assertToolOutput(
         outputByTool,
@@ -533,7 +531,7 @@ describe("tool output contract: search-files", () => {
       await writeFile(alphaPath, 'export const alpha = "needle";\n', "utf8");
 
       invariant(tools.searchFiles?.execute, "expected searchFiles tool to be available");
-      await tools.searchFiles.execute({ patterns: ["nomatch"], maxResults: 10 }, {} as never);
+      await tools.searchFiles.execute({ patterns: ["nomatch"], maxResults: 10 });
 
       assertToolOutput(outputByTool, "search-files", { patterns: ["nomatch"], maxResults: 10 }, { raw: [] });
     } finally {
@@ -550,7 +548,7 @@ describe("tool output contract: search-files", () => {
       }
 
       invariant(tools.searchFiles?.execute, "expected searchFiles tool to be available");
-      await tools.searchFiles.execute({ patterns, maxResults: 20 }, {} as never);
+      await tools.searchFiles.execute({ patterns, maxResults: 20 });
 
       assertToolOutput(
         outputByTool,
@@ -589,7 +587,7 @@ describe("tool output contract: search-files", () => {
       }
 
       invariant(tools.searchFiles?.execute, "expected searchFiles tool to be available");
-      await tools.searchFiles.execute({ patterns, maxResults: 20 }, {} as never);
+      await tools.searchFiles.execute({ patterns, maxResults: 20 });
 
       assertToolOutput(
         outputByTool,
@@ -634,7 +632,6 @@ describe("tool output contract: scan-code", () => {
       invariant(tools.scanCode?.execute, "expected scanCode tool to be available");
       await tools.scanCode.execute(
         { paths: [alphaPath, betaPath], patterns: ["export const $NAME = $VALUE;"], maxResults: 10 },
-        {} as never,
       );
 
       assertToolOutput(
@@ -660,7 +657,6 @@ describe("tool output contract: scan-code", () => {
       invariant(tools.scanCode?.execute, "expected scanCode tool to be available");
       await tools.scanCode.execute(
         { paths: files, patterns: ["export const $NAME = $VALUE;"], maxResults: 10 },
-        {} as never,
       );
 
       assertToolOutput(
@@ -686,7 +682,6 @@ describe("tool output contract: scan-code", () => {
       invariant(tools.scanCode?.execute, "expected scanCode tool to be available");
       await tools.scanCode.execute(
         { paths: files, patterns: ["export const $NAME = $VALUE;"], maxResults: 10 },
-        {} as never,
       );
 
       assertToolOutput(
@@ -712,7 +707,6 @@ describe("tool output contract: scan-code", () => {
       invariant(tools.scanCode?.execute, "expected scanCode tool to be available");
       await tools.scanCode.execute(
         { paths: [alphaPath, alphaPath, alphaPath], patterns: ["export const $NAME = $VALUE;"], maxResults: 10 },
-        {} as never,
       );
 
       assertToolOutput(
@@ -735,7 +729,7 @@ describe("tool output contract: create-file", () => {
     const { workspace, tools, outputByTool } = await createHarness("write");
     try {
       invariant(tools.createFile?.execute, "expected createFile tool to be available");
-      await tools.createFile.execute({ path: "created.txt", content: "first\nsecond\n" }, {} as never);
+      await tools.createFile.execute({ path: "created.txt", content: "first\nsecond\n" });
 
       assertToolOutput(
         outputByTool,
@@ -763,7 +757,7 @@ describe("tool output contract: delete-file", () => {
       const path = "doomed.txt";
       await writeFile(join(workspace, path), "remove me\n", "utf8");
       invariant(tools.deleteFile?.execute, "expected deleteFile tool to be available");
-      await tools.deleteFile.execute({ paths: [path] }, {} as never);
+      await tools.deleteFile.execute({ paths: [path] });
 
       assertToolOutput(
         outputByTool,
@@ -787,7 +781,7 @@ describe("tool output contract: delete-file", () => {
       await writeFile(join(workspace, first), "remove one\n", "utf8");
       await writeFile(join(workspace, second), "remove two\n", "utf8");
       invariant(tools.deleteFile?.execute, "expected deleteFile tool to be available");
-      await tools.deleteFile.execute({ paths: [first, second] }, {} as never);
+      await tools.deleteFile.execute({ paths: [first, second] });
 
       assertToolOutput(
         outputByTool,
@@ -809,7 +803,7 @@ describe("tool output contract: delete-file", () => {
       const paths = ["a.txt", "b.txt", "c.txt", "d.txt"];
       for (const path of paths) await writeFile(join(workspace, path), `remove ${path}\n`, "utf8");
       invariant(tools.deleteFile?.execute, "expected deleteFile tool to be available");
-      await tools.deleteFile.execute({ paths }, {} as never);
+      await tools.deleteFile.execute({ paths });
 
       assertToolOutput(
         outputByTool,
@@ -847,7 +841,7 @@ describe("tool output contract: git-status", () => {
       }
       setPermissionMode("read");
       invariant(tools.gitStatus?.execute, "expected gitStatus tool to be available");
-      await tools.gitStatus.execute({}, {} as never);
+      await tools.gitStatus.execute({});
       assertToolOutput(
         outputByTool,
         "git-status",
@@ -885,7 +879,7 @@ describe("tool output contract: git-status", () => {
       setPermissionMode("read");
 
       invariant(tools.gitStatus?.execute, "expected gitStatus tool to be available");
-      await tools.gitStatus.execute({}, {} as never);
+      await tools.gitStatus.execute({});
 
       assertToolOutput(
         outputByTool,
@@ -918,7 +912,7 @@ describe("tool output contract: git-status", () => {
       setPermissionMode("read");
 
       invariant(tools.gitStatus?.execute, "expected gitStatus tool to be available");
-      await tools.gitStatus.execute({}, {} as never);
+      await tools.gitStatus.execute({});
 
       assertToolOutput(
         outputByTool,
@@ -962,7 +956,7 @@ describe("tool output contract: git-diff", () => {
       setPermissionMode("read");
 
       invariant(tools.gitDiff?.execute, "expected gitDiff tool to be available");
-      await tools.gitDiff.execute({ path: "a.ts", contextLines: 1 }, {} as never);
+      await tools.gitDiff.execute({ path: "a.ts", contextLines: 1 });
       assertToolOutput(
         outputByTool,
         "git-diff",
@@ -1012,7 +1006,7 @@ describe("tool output contract: git-diff", () => {
       setPermissionMode("read");
 
       invariant(tools.gitDiff?.execute, "expected gitDiff tool to be available");
-      await tools.gitDiff.execute({ path: "a.ts", contextLines: 0 }, {} as never);
+      await tools.gitDiff.execute({ path: "a.ts", contextLines: 0 });
 
       assertToolOutput(
         outputByTool,
@@ -1058,7 +1052,7 @@ describe("tool output contract: git-diff", () => {
       setPermissionMode("read");
 
       invariant(tools.gitDiff?.execute, "expected gitDiff tool to be available");
-      await tools.gitDiff.execute({ path: "a.ts", contextLines: 0 }, {} as never);
+      await tools.gitDiff.execute({ path: "a.ts", contextLines: 0 });
 
       assertToolOutput(
         outputByTool,
@@ -1094,7 +1088,7 @@ describe("tool output contract: git-log", () => {
       setPermissionMode("read");
 
       invariant(tools.gitLog?.execute, "expected gitLog tool to be available");
-      await tools.gitLog.execute({ limit: 6 }, {} as never);
+      await tools.gitLog.execute({ limit: 6 });
       assertToolOutput(
         outputByTool,
         "git-log",
@@ -1132,7 +1126,7 @@ describe("tool output contract: git-log", () => {
       setPermissionMode("read");
 
       invariant(tools.gitLog?.execute, "expected gitLog tool to be available");
-      await tools.gitLog.execute({ limit: 2 }, {} as never);
+      await tools.gitLog.execute({ limit: 2 });
       assertToolOutput(
         outputByTool,
         "git-log",
@@ -1169,7 +1163,7 @@ describe("tool output contract: git-show", () => {
       setPermissionMode("read");
 
       invariant(tools.gitShow?.execute, "expected gitShow tool to be available");
-      await tools.gitShow.execute({ ref: "HEAD", path: "a.ts", contextLines: 0 }, {} as never);
+      await tools.gitShow.execute({ ref: "HEAD", path: "a.ts", contextLines: 0 });
       assertToolOutput(
         outputByTool,
         "git-show",
@@ -1221,7 +1215,7 @@ describe("tool output contract: git-show", () => {
       setPermissionMode("read");
 
       invariant(tools.gitShow?.execute, "expected gitShow tool to be available");
-      await tools.gitShow.execute({ ref: "HEAD", path: "a.ts", contextLines: 0 }, {} as never);
+      await tools.gitShow.execute({ ref: "HEAD", path: "a.ts", contextLines: 0 });
       assertToolOutput(
         outputByTool,
         "git-show",
@@ -1279,21 +1273,17 @@ describe("tool output contract: edit tools", () => {
             replace: `const line${line} = ${line}000;`,
           })),
         },
-        {} as never,
       );
       return;
     }
     invariant(tools.editCode?.execute, "expected editCode tool to be available");
-    await tools.editCode.execute(
-      {
-        path,
-        edits: targets.map((line) => ({
-          pattern: `const line${line} = $VALUE;`,
-          replacement: `const line${line} = ${line}000;`,
-        })),
-      },
-      {} as never,
-    );
+    await tools.editCode.execute({
+      path,
+      edits: targets.map((line) => ({
+        pattern: `const line${line} = $VALUE;`,
+        replacement: `const line${line} = ${line}000;`,
+      })),
+    });
   }
 
   test.each(
@@ -1449,7 +1439,7 @@ describe("tool output contract: run-command", () => {
     try {
       invariant(tools.runCommand?.execute, "expected runCommand tool to be available");
       const command = `printf '%s\\n' line1 line2 line3 line4 line5 line6`;
-      await tools.runCommand.execute({ command }, {} as never);
+      await tools.runCommand.execute({ command });
 
       assertToolOutput(
         outputByTool,
@@ -1477,7 +1467,7 @@ describe("tool output contract: run-command", () => {
     try {
       invariant(tools.runCommand?.execute, "expected runCommand tool to be available");
       const command = `printf '%s\\n' line1 line2 line3 line4`;
-      await tools.runCommand.execute({ command }, {} as never);
+      await tools.runCommand.execute({ command });
 
       assertToolOutput(
         outputByTool,
@@ -1504,7 +1494,7 @@ describe("tool output contract: run-command", () => {
     try {
       invariant(tools.runCommand?.execute, "expected runCommand tool to be available");
       const command = `sh -c 'echo out; echo err 1>&2; exit 1'`;
-      await tools.runCommand.execute({ command }, {} as never);
+      await tools.runCommand.execute({ command });
 
       assertToolOutput(
         outputByTool,
@@ -1530,7 +1520,7 @@ describe("tool output contract: run-command", () => {
       invariant(tools.runCommand?.execute, "expected runCommand tool to be available");
       const command = `printf '%s\\n' line1 line2
 printf '%s\\n' line3 line4`;
-      await tools.runCommand.execute({ command }, {} as never);
+      await tools.runCommand.execute({ command });
 
       assertToolOutput(
         outputByTool,
@@ -1557,7 +1547,7 @@ printf '%s\\n' line3 line4`;
     try {
       invariant(tools.runCommand?.execute, "expected runCommand tool to be available");
       const command = `sh -c ':'`;
-      await tools.runCommand.execute({ command }, {} as never);
+      await tools.runCommand.execute({ command });
 
       assertToolOutput(
         outputByTool,
