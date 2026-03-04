@@ -1,7 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { appConfig } from "./app-config";
 import { newMessage } from "./chat-session";
-import { attachFileToSession, chatModeWithOptions } from "./cli";
+import { attachFileToSession, chatModeWithOptions } from "./cli-chat";
 import { configMode } from "./cli-config";
 import type { CliCommandHandler } from "./cli-contract";
 import { formatForTool, parseRunExitCode, showToolResult } from "./cli-format";

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { appConfig as appConfigType } from "./app-config";
 import type { newMessage as newMessageType } from "./chat-session";
-import type { attachFileToSession as attachFileToSessionType } from "./cli";
+import type { attachFileToSession as attachFileToSessionType } from "./cli-chat";
 import type {
   formatForTool as formatForToolType,
   parseRunExitCode as parseRunExitCodeType,

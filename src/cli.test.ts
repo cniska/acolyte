@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { formatResumeCommand } from "./cli";
+import { formatResumeCommand } from "./cli-chat";
 
 describe("cli", () => {
   test("formatResumeCommand returns prod-friendly command", () => {

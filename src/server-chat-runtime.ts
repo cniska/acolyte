@@ -1,10 +1,10 @@
 import { existsSync, statSync } from "node:fs";
 import { resolve } from "node:path";
-import { runAgent } from "./agent";
 import { type ChatRequest, verifyScopeSchema } from "./api";
 import { appConfig } from "./app-config";
 import { createDebugLogger } from "./debug-flags";
 import { buildStreamErrorDetail, errorIdSchema } from "./error-handling";
+import { runLifecycle } from "./lifecycle";
 import { errorToLogFields, log } from "./log";
 import { isProviderAvailable, providerFromModel } from "./provider-config";
 import type { Provider } from "./provider-contract";
@@ -133,7 +133,7 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
 
   try {
     const soulPrompt = await createSoulPrompt();
-    const reply = await runAgent({
+    const reply = await runLifecycle({
       request: chatRequest,
       soulPrompt,
       workspace: workspaceResolution.workspacePath,

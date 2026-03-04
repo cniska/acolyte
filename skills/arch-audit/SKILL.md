@@ -10,10 +10,20 @@ Use this skill when asked to review architecture quality, design consistency, ex
 ## Scope
 
 Focus on:
+- indirection pressure (primary):
+  - runtime import cycles across split modules
+  - pass-through facade modules that only rename or re-export behavior
+  - alias/wrapper layers without independent policy or contract value
+  - dependency-injection bags that exceed practical seam/testing needs
 - lifecycle phase boundaries and evaluator-driven behavior
 - tool architecture (toolkits, registry, guarded execution)
 - contracts/schemas as source of truth (Zod + inferred types)
 - transport and protocol consistency (HTTP/RPC parity)
+- extension blockers (open-source readiness):
+  - hard-coded behavior where policy/config seam is expected
+  - new feature requiring edits across many unrelated modules
+  - private coupling that prevents additive toolkits/transports/providers
+  - boundary leaks that force consumers to depend on internal module order
 - guard/evaluator extensibility without test-only production hacks
 - error contracts and typed error model consistency
 - assert patterns and exhaustiveness (`invariant`, `unreachable`, `switch` with `default`)
@@ -26,7 +36,7 @@ Focus on:
 Read these first:
 - `docs/architecture.md`
 - `AGENTS.md`
-- `docs/roadmap.md` (premvp vs postmvp intent)
+- `docs/roadmap.md` (pre-MVP vs post-MVP intent)
 
 Then inspect relevant code:
 - `src/lifecycle*.ts`
@@ -43,12 +53,18 @@ Then inspect relevant code:
 - correctness/regression risk
 - contract drift / protocol mismatch
 - extension-blocking design smells
+- indirection overhead / abstraction tax
 - maintainability issues
 4. For each finding include:
 - impacted files
 - why it violates intended pattern
 - minimal fix direction
 5. Only propose abstractions that pass YAGNI and Rule of Three.
+6. Prefer de-abstraction when appropriate:
+- collapse pass-through layers with no policy value
+- break cycles by moving shared primitives to contract/helper modules
+- keep entrypoints thin but avoid "facade-for-facade" chains
+- default stance: if a layer does not carry policy, invariants, or boundary isolation, remove it
 
 ## Output Format
 
