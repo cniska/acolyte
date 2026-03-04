@@ -91,7 +91,9 @@ function renderDiffBody(block: ToolProgressBlock): React.ReactNode {
       {parsed.kind === "numberedDiff" ? (
         <>
           <Text dimColor>{parsed.lineNumber.padStart(lineNumberWidth, " ")}</Text>
-          <Text color={parsed.marker === "+" ? palette.green : palette.red}>{`  ${parsed.text}`}</Text>
+          <Text color={parsed.marker === "+" ? palette.green : palette.red}>
+            {parsed.text.length > 0 ? `  ${parsed.text}` : `  ${parsed.marker}`}
+          </Text>
         </>
       ) : parsed.kind === "numberedContext" ? (
         <>
@@ -103,7 +105,7 @@ function renderDiffBody(block: ToolProgressBlock): React.ReactNode {
       ) : parsed.kind === "meta" ? (
         <>
           <Text dimColor>{"…".padStart(lineNumberWidth, " ")}</Text>
-          {parsed.text.length > 1 ? <Text dimColor>{parsed.text.slice(1)}</Text> : null}
+          {parsed.text.length > 0 ? <Text dimColor>{` ${parsed.text}`}</Text> : null}
         </>
       ) : (
         <Text>{parsed.kind === "text" ? parsed.text : ""}</Text>

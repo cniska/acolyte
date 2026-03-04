@@ -35,7 +35,7 @@ import {
   type ToolOutputListener,
 } from "./tool-output-format";
 
-const WRITE_TOOL_PREVIEW_MAX_LINES = 30;
+const WRITE_TOOL_PREVIEW_MAX_LINES = Number.POSITIVE_INFINITY;
 const WEB_SEARCH_MAX_RESULTS = 5;
 
 type CoreToolName =
