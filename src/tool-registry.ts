@@ -4,9 +4,6 @@ import {
   type ToolkitInput,
   createCoreReadToolkit,
   createCoreWriteToolkit,
-  streamCallId,
-  webSearchStreamRows,
-  withToolError,
 } from "./core-toolkit";
 import { createGitToolkit } from "./git-toolkit";
 import type { ToolDefinition } from "./tool-contract";
@@ -17,21 +14,20 @@ import type { ToolOutputListener } from "./tool-output-format";
 type ToolkitMode = "read" | "write";
 
 // biome-ignore lint/suspicious/noExplicitAny: ToolDefinition variance requires any here
-type ToolkitEntries = Record<string, ToolDefinition<any>>;
+type ToolMap = Record<string, ToolDefinition<any>>;
 
-type CoreBaseToolkitEntries = ReturnType<typeof createCoreReadToolkit>;
-type CoreWriteToolkitEntries = ReturnType<typeof createCoreWriteToolkit>;
-type GitToolkitEntries = ReturnType<typeof createGitToolkit>;
-type RegisteredToolkitEntries = CoreBaseToolkitEntries & CoreWriteToolkitEntries & GitToolkitEntries;
+type RegisteredToolkit = ReturnType<typeof createCoreReadToolkit> &
+  ReturnType<typeof createCoreWriteToolkit> &
+  ReturnType<typeof createGitToolkit>;
 
 export type Toolset = {
-  [Key in keyof RegisteredToolkitEntries]: RegisteredToolkitEntries[Key];
+  [Key in keyof RegisteredToolkit]: RegisteredToolkit[Key];
 };
 
 export const TOOLKIT_REGISTRY: {
   id: string;
   appliesTo: "all" | readonly ToolkitMode[];
-  createToolkit: (input: ToolkitInput) => ToolkitEntries;
+  createToolkit: (input: ToolkitInput) => ToolMap;
 }[] = [
   {
     id: "core-read",
@@ -50,13 +46,13 @@ export const TOOLKIT_REGISTRY: {
   },
 ];
 
-function collectToolkitEntries(
+function collectTools(
   workspace: string,
   session: SessionContext,
   mode: ToolkitMode,
   onToolOutput?: ToolOutputListener,
-): ToolkitEntries {
-  const combined: ToolkitEntries = {};
+): ToolMap {
+  const combined: ToolMap = {};
   for (const toolkit of TOOLKIT_REGISTRY) {
     if (toolkit.appliesTo !== "all" && !toolkit.appliesTo.includes(mode)) continue;
     Object.assign(combined, toolkit.createToolkit({ workspace, session, onToolOutput }));
@@ -66,7 +62,7 @@ function collectToolkitEntries(
 
 type ToolInstructionMap = Record<ToolName, { instruction: string }>;
 
-function asToolInstructions(entries: ToolkitEntries): ToolInstructionMap {
+function asToolInstructions(entries: ToolMap): ToolInstructionMap {
   const meta: Record<string, { instruction: string }> = {};
   for (const tool of Object.values(entries)) {
     if (typeof tool.id !== "string") continue;
@@ -76,7 +72,7 @@ function asToolInstructions(entries: ToolkitEntries): ToolInstructionMap {
 }
 
 export const toolMeta: ToolInstructionMap = asToolInstructions(
-  collectToolkitEntries(resolve(process.cwd()), createSessionContext(), "write"),
+  collectTools(resolve(process.cwd()), createSessionContext(), "write"),
 );
 
 export function toolsForAgent(options?: { workspace?: string; onToolOutput?: ToolOutputListener; taskId?: string }): {
@@ -87,9 +83,8 @@ export function toolsForAgent(options?: { workspace?: string; onToolOutput?: Too
   const session = createSessionContext(options?.taskId);
   const mode = appConfig.agent.permissions.mode === "read" ? "read" : "write";
   return {
-    tools: collectToolkitEntries(workspace, session, mode, options?.onToolOutput) as unknown as Toolset,
+    tools: collectTools(workspace, session, mode, options?.onToolOutput) as unknown as Toolset,
     session,
   };
 }
 
-export { withToolError, webSearchStreamRows };

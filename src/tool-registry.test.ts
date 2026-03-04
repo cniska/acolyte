@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { setPermissionMode } from "./app-config";
 import { invariant } from "./assert";
-import { toolsForAgent, webSearchStreamRows, withToolError } from "./tool-registry";
+import { webSearchStreamRows, withToolError } from "./core-toolkit";
+import { toolsForAgent } from "./tool-registry";
 import { savedPermissionMode } from "./test-utils";
 
 const restorePermissions = savedPermissionMode();

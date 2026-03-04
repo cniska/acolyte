@@ -94,23 +94,6 @@ function createFilePreviewLine(line: string): string {
   return `${lineNumber} ${marker} ${text}`;
 }
 
-export function stripGitShowMetadataForPreview(rawText: string): string {
-  let inPatch = false;
-  return rawText
-    .split("\n")
-    .filter((line) => {
-      const trimmed = line.trimStart();
-      return !trimmed.startsWith("Author:") && !trimmed.startsWith("Date:");
-    })
-    .map((line) => {
-      const trimmed = line.trimStart();
-      if (trimmed.startsWith("diff --git ")) inPatch = true;
-      if (!inPatch && line.startsWith("    ")) return line.slice(4);
-      return line;
-    })
-    .join("\n");
-}
-
 function encodeValue(value: string): string {
   return JSON.stringify(value);
 }

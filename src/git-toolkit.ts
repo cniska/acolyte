@@ -1,13 +1,13 @@
 import { z } from "zod";
 import { appConfig } from "./app-config";
 import { gitDiff, gitLog, gitShow, gitStatusShort } from "./core-tools";
-import { type ToolkitInput, runTool, stripGitShowMetadataForPreview } from "./core-toolkit";
+import { type ToolkitInput, runTool } from "./core-toolkit";
 import { emitHeadTailLines } from "./tool-output-format";
 import { createTool } from "./tool-contract";
 import { compactToolOutput } from "./tool-output";
 
-export const GIT_TOOLKIT_OPERATIONS = ["statusShort", "diff", "log", "show"] as const;
-export type GitToolkitOperation = (typeof GIT_TOOLKIT_OPERATIONS)[number];
+const GIT_OPS = ["statusShort", "diff", "log", "show"] as const;
+type GitOp = (typeof GIT_OPS)[number];
 
 export type GitDiffInput = { path?: string; contextLines?: number };
 export type GitLogInput = { path?: string; limit?: number };
@@ -34,7 +34,7 @@ const defaultDeps: GitOpsDeps = {
   gitShow,
 };
 
-async function runGitOp(operation: GitToolkitOperation, execute: () => Promise<string>): Promise<string> {
+async function runGitOp(operation: GitOp, execute: () => Promise<string>): Promise<string> {
   try {
     return await execute();
   } catch (error) {
@@ -58,6 +58,23 @@ export function createGitOps(workspace: string, deps: GitOpsDeps = defaultDeps):
         }),
       ),
   };
+}
+
+function stripGitShowMetadataForPreview(rawText: string): string {
+  let inPatch = false;
+  return rawText
+    .split("\n")
+    .filter((line) => {
+      const trimmed = line.trimStart();
+      return !trimmed.startsWith("Author:") && !trimmed.startsWith("Date:");
+    })
+    .map((line) => {
+      const trimmed = line.trimStart();
+      if (trimmed.startsWith("diff --git ")) inPatch = true;
+      if (!inPatch && line.startsWith("    ")) return line.slice(4);
+      return line;
+    })
+    .join("\n");
 }
 
 function createGitStatusTool(git: GitOps, input: ToolkitInput) {
