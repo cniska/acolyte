@@ -84,7 +84,7 @@ describe("chat message handler guards", () => {
     const { handleMessage, rows, calls } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({
-          provider: "openai",
+          providers: ["openai"],
           model: "gpt-5-mini",
           permissions: "write",
         }),
@@ -105,7 +105,7 @@ describe("chat message handler guards", () => {
       /status
 
       system statusOutput
-      provider: openai
+      providers: openai
       model: gpt-5-mini
       permissions: write
     `),

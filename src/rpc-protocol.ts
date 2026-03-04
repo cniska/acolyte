@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { verifyScopeSchema } from "./api";
 import { domainIdSchema } from "./id-contract";
+import { providerSchema } from "./provider-contract";
 import { sessionIdSchema } from "./session-contract";
 import { createId } from "./short-id";
 import { streamErrorDetailSchema } from "./stream-error";
@@ -31,7 +32,7 @@ const chatRequestSchema = z.object({
 
 export const statusPayloadSchema = z.object({
   ok: z.literal(true),
-  provider: z.string(),
+  providers: z.array(providerSchema),
   model: z.string(),
   protocolVersion: z.string(),
   capabilities: z.string(),

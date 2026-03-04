@@ -1,14 +1,11 @@
-import type { ModelProvider } from "./provider-contract";
-
-export type ProviderName = ModelProvider;
-type SupportedProviderName = Exclude<ProviderName, "openai-compatible">;
+import type { Provider } from "./provider-contract";
 
 type ModelMeta = {
   id: string;
   description: string;
 };
 
-const MODEL_REGISTRY: Record<SupportedProviderName, ModelMeta[]> = {
+const MODEL_REGISTRY: Record<Provider, ModelMeta[]> = {
   openai: [
     { id: "gpt-5.2", description: "highest quality" },
     { id: "gpt-5-mini", description: "balanced default" },
@@ -48,17 +45,16 @@ export function formatModel(model: string): string {
   return slash >= 0 ? model.slice(slash + 1) : model;
 }
 
-export function resolveProvider(_openaiApiKey: string | undefined, openaiBaseUrl: string): ProviderName {
+function isOpenAICompatibleBaseUrl(openaiBaseUrl: string): boolean {
   try {
     const host = new URL(openaiBaseUrl).hostname.toLowerCase();
-    if (host === "api.openai.com") return "openai";
-    return "openai-compatible";
+    return host !== "api.openai.com";
   } catch {
-    return "openai-compatible";
+    return true;
   }
 }
 
-export function providerFromModel(model: string): ProviderName {
+export function providerFromModel(model: string): Provider {
   const trimmedModel = model.trim();
   const normalizedModel = trimmedModel.toLowerCase();
   if (!normalizedModel.includes("/")) {
@@ -69,12 +65,12 @@ export function providerFromModel(model: string): ProviderName {
   const prefix = trimmedModel.split("/", 1)[0]?.toLowerCase();
   if (prefix === "anthropic") return "anthropic";
   if (prefix === "gemini" || prefix === "google") return "gemini";
-  if (prefix === "openai-compatible") return "openai-compatible";
+  if (prefix === "openai-compatible") return "openai";
   return "openai";
 }
 
 export function isProviderAvailable(input: {
-  provider: ProviderName;
+  provider: Provider;
   openaiApiKey?: string;
   openaiBaseUrl: string;
   anthropicApiKey?: string;
@@ -82,14 +78,11 @@ export function isProviderAvailable(input: {
 }): boolean {
   if (input.provider === "anthropic") return Boolean(input.anthropicApiKey);
   if (input.provider === "gemini") return Boolean(input.googleApiKey);
-  if (input.provider === "openai-compatible") return true;
-  return resolveProvider(input.openaiApiKey, input.openaiBaseUrl) === "openai-compatible"
-    ? true
-    : Boolean(input.openaiApiKey);
+  if (isOpenAICompatibleBaseUrl(input.openaiBaseUrl)) return true;
+  return Boolean(input.openaiApiKey);
 }
 
-export function suggestedModelsForProvider(provider: ProviderName): string[] {
-  if (provider === "openai-compatible") return MODEL_REGISTRY.openai.map((model) => model.id);
+export function suggestedModelsForProvider(provider: Provider): string[] {
   return MODEL_REGISTRY[provider].map((model) => model.id);
 }
 

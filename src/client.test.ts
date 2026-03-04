@@ -24,7 +24,7 @@ describe("createClient", () => {
         request: async (path, init) => {
           calls.push({ path, method: init?.method ?? null });
           if (path === "/v1/status") {
-            return new Response(JSON.stringify({ ok: true, provider: "mock" }), { status: 200 });
+            return new Response(JSON.stringify({ ok: true, providers: ["mock"] }), { status: 200 });
           }
           throw new Error("unexpected path");
         },
@@ -32,7 +32,7 @@ describe("createClient", () => {
     });
 
     const status = await client.status();
-    expect(status).toEqual({ provider: "mock" });
+    expect(status).toEqual({ providers: ["mock"] });
     expect(calls).toEqual([{ path: "/v1/status", method: null }]);
   });
 

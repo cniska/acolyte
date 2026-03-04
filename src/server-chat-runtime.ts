@@ -7,6 +7,7 @@ import { createDebugLogger } from "./debug-flags";
 import { buildStreamErrorDetail, errorIdSchema } from "./error-handling";
 import { errorToLogFields, log } from "./log";
 import { isProviderAvailable, providerFromModel } from "./provider-config";
+import type { Provider } from "./provider-contract";
 import type { RunChatHandlers, StreamErrorPayload } from "./server-contract";
 import { createId } from "./short-id";
 import { createSoulPrompt } from "./soul";
@@ -82,8 +83,7 @@ function resolveWorkspacePath(request: Pick<ChatRequest, "workspace">): Workspac
   return { workspacePath: resolved, workspaceMode: "path" };
 }
 
-function providerConfigurationHint(provider: "openai" | "openai-compatible" | "anthropic" | "gemini"): string {
-  if (provider === "openai-compatible") return "Configure openaiBaseUrl to your compatible endpoint.";
+function providerConfigurationHint(provider: Provider): string {
   if (provider === "anthropic") return "Set ANTHROPIC_API_KEY.";
   if (provider === "gemini") return "Set GOOGLE_API_KEY.";
   return "Set OPENAI_API_KEY (or use openai-compatible/<model> with a local endpoint).";

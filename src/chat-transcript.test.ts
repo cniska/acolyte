@@ -17,9 +17,9 @@ describe("chat transcript helpers", () => {
   });
 
   test("parseStatusLine parses key-value lines with optional indentation", () => {
-    expect(parseStatusLine("provider: openai")).toEqual({
+    expect(parseStatusLine("providers: openai")).toEqual({
       indent: "",
-      key: "provider: ",
+      key: "providers: ",
       value: "openai",
     });
     expect(parseStatusLine("  api_url: https://api.openai.com/v1")).toEqual({

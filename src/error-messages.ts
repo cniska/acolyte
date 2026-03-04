@@ -1,7 +1,7 @@
 import { unreachable } from "./assert";
 import { type AppError, createAppError } from "./error-handling";
 import { isLoopbackHost } from "./network-host";
-import type { ProviderName } from "./provider-config";
+import type { Provider } from "./provider-contract";
 
 export const USER_ERROR_MESSAGES = {
   noModelConfigured: "No model configured. Choose a model with /model.",
@@ -23,7 +23,7 @@ export type UserErrorCode = "E_MODEL_NOT_CONFIGURED" | "E_MODEL_PROVIDER_UNAVAIL
 
 type UserErrorMetaByCode = {
   E_MODEL_NOT_CONFIGURED: undefined;
-  E_MODEL_PROVIDER_UNAVAILABLE: { model: string; provider: ProviderName };
+  E_MODEL_PROVIDER_UNAVAILABLE: { model: string; provider: Provider };
 };
 
 export type UserError<C extends UserErrorCode = UserErrorCode> = AppError<C, UserErrorMetaByCode[C]>;

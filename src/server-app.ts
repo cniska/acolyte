@@ -7,7 +7,8 @@ import { errorToLogFields, log } from "./log";
 import { mastraStorage, mastraStorageMode } from "./mastra-storage";
 import { getObservationalMemoryConfig } from "./memory-config";
 import { formatServerCapabilities, PROTOCOL_VERSION } from "./protocol";
-import { formatModel, providerFromModel, resolveProvider } from "./provider-config";
+import { formatModel } from "./provider-config";
+import type { Provider } from "./provider-contract";
 import { isChatRequest, runChatRequest } from "./server-chat-runtime";
 import type { StatusPayload } from "./server-contract";
 import { createServerFetchHandler } from "./server-http";
@@ -20,7 +21,6 @@ import { TaskRegistry } from "./task-registry";
 const PORT = appConfig.server.port;
 const API_KEY = appConfig.server.apiKey;
 const OPENAI_API_KEY = appConfig.openai.apiKey;
-const OPENAI_BASE_URL = appConfig.openai.baseUrl;
 const omConfig = getObservationalMemoryConfig();
 const SUPPRESSED_STDERR_PREFIX = "Upstream LLM API error from";
 const SERVER_IDLE_TIMEOUT_SECONDS = Math.max(30, Math.ceil(appConfig.server.replyTimeoutMs / 1000) + 30);
@@ -113,15 +113,17 @@ function transitionTaskState(
   });
 }
 
-async function buildStatusPayload(): Promise<StatusPayload> {
+async function createStatusPayload(): Promise<StatusPayload> {
+  const providers: Provider[] = [];
+  if (OPENAI_API_KEY) providers.push("openai");
+  if (appConfig.anthropic.apiKey) providers.push("anthropic");
+  if (appConfig.google.apiKey) providers.push("gemini");
   const model = appConfig.model;
-  const modelProvider = providerFromModel(model);
-  const provider = modelProvider === "openai" ? resolveProvider(OPENAI_API_KEY, OPENAI_BASE_URL) : modelProvider;
   const memoryContextCount = (await getMemoryContextEntries()).length;
   const taskSummary = taskRegistry.summary();
   return {
     ok: true,
-    provider,
+    providers,
     model: formatModel(model),
     protocolVersion: PROTOCOL_VERSION,
     capabilities: formatServerCapabilities(),
@@ -147,7 +149,7 @@ export async function startServer(): Promise<void> {
   }
 
   const rpcWebsocketHandlers = createRpcWebsocketHandlers({
-    buildStatusPayload,
+    createStatusPayload,
     isChatRequest,
     runChatRequest,
     taskRegistry,
@@ -156,7 +158,7 @@ export async function startServer(): Promise<void> {
 
   let server: Bun.Server<RpcConnectionState>;
   const fetchHandler = createServerFetchHandler({
-    buildStatusPayload,
+    createStatusPayload,
     hasValidAuth,
     isChatRequest,
     resolveResourceId,

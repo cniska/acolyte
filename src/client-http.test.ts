@@ -334,7 +334,7 @@ describe("remote server status parsing", () => {
       new Response(
         JSON.stringify({
           ok: true,
-          provider: "openai",
+          providers: ["openai"],
           model: "gpt-5-mini",
           protocolVersion: "1",
           capabilities: "stream.sse, error.structured",
@@ -353,7 +353,7 @@ describe("remote server status parsing", () => {
     const status = await client.status();
 
     expect(status).toEqual({
-      provider: "openai",
+      providers: ["openai"],
       model: "gpt-5-mini",
       protocolVersion: "1",
       capabilities: "stream.sse, error.structured",
@@ -369,7 +369,7 @@ describe("remote server status parsing", () => {
       new Response(
         JSON.stringify({
           ok: true,
-          provider: "mock",
+          providers: ["mock"],
           model: "gpt-5-mini",
           extra_number: 42,
         }),
@@ -383,7 +383,7 @@ describe("remote server status parsing", () => {
     const status = await client.status();
 
     expect(status).toEqual({
-      provider: "mock",
+      providers: ["mock"],
       model: "gpt-5-mini",
     });
   });

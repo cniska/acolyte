@@ -67,14 +67,14 @@ describe("chat-commands", () => {
 
   test("presentStatusOutput renders command presentation block", () => {
     const rendered = presentStatusOutput({
-      provider: "openai",
+      providers: ["openai"],
       model: "gpt-5-mini",
       permissions: "write",
     });
     expect(rendered.style).toBe("statusOutput");
     expect(rendered.content).toBe(
       dedent(`
-      provider:           openai
+      providers:          openai
       model:              gpt-5-mini
       permissions:        write
     `),

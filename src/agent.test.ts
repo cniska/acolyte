@@ -193,14 +193,14 @@ describe("resolveModelProviderState", () => {
     });
   });
 
-  test("marks openai-compatible models as available without OpenAI key", () => {
+  test("maps openai-compatible models to openai provider and stays available without key", () => {
     expect(
       resolveModelProviderState("openai-compatible/qwen2.5-coder", {
         openaiApiKey: undefined,
         openaiBaseUrl: "http://localhost:11434/v1",
       }),
     ).toEqual({
-      provider: "openai-compatible",
+      provider: "openai",
       available: true,
     });
   });

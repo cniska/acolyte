@@ -46,7 +46,7 @@ async function withDualTransportChatServer<T>(fn: (baseUrl: string) => Promise<T
               type: "status.result",
               status: {
                 ok: true,
-                provider: "openai",
+                providers: ["openai"],
                 model: "gpt-5-mini",
                 protocolVersion: "1",
                 capabilities: "stream.sse,error.structured",
@@ -263,7 +263,7 @@ describe("cli visual regression", () => {
       async (request) => {
         if (new URL(request.url).pathname !== "/v1/status") return new Response("not found", { status: 404 });
         return Response.json({
-          provider: "openai",
+          providers: ["openai"],
           model: "gpt-5-mini",
           permissions: "read",
           service: "http://localhost:6767",
@@ -275,7 +275,7 @@ describe("cli visual regression", () => {
           const out = await run(["status"]);
           expect(out).toBe(
             dedent(`
-          provider:           openai
+          providers:          openai
           model:              gpt-5-mini
           permissions:        read
           service:            http://localhost:6767

@@ -78,7 +78,7 @@ describe("rpc protocol schema", () => {
       type: "status.result",
       status: {
         ok: true,
-        provider: "openai",
+        providers: ["openai"],
         model: "gpt-5-mini",
         protocolVersion: "v1",
         capabilities: "chat,permissions",

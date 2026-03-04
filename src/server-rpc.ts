@@ -49,7 +49,7 @@ type WorkerRunInput = {
 };
 
 type RpcDeps = {
-  buildStatusPayload: () => Promise<StatusPayload>;
+  createStatusPayload: () => Promise<StatusPayload>;
   isChatRequest: (value: unknown) => value is ChatRequest;
   runChatRequest: (chatRequest: ChatRequest, handlers: RunChatHandlers) => Promise<void>;
   taskRegistry: TaskRegistry;
@@ -143,7 +143,7 @@ export function createRpcWebsocketHandlers(deps: RpcDeps): Bun.WebSocketHandler<
     _msg: Extract<RpcClientMessage, { type: "status.get" }>,
     ctx: RpcHandlerContext,
   ): Promise<void> => {
-    ctx.send({ type: "status.result", status: await deps.buildStatusPayload() });
+    ctx.send({ type: "status.result", status: await deps.createStatusPayload() });
   };
 
   const handlePermissionsSet = (

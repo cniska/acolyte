@@ -247,6 +247,10 @@ export class HttpClient implements Client {
         fields[key] = value;
         continue;
       }
+      if (Array.isArray(value) && value.every((entry) => typeof entry === "string")) {
+        fields[key] = value;
+        continue;
+      }
       if (typeof value === "number" && NUMERIC_STATUS_KEYS.has(key)) fields[key] = value;
     }
     return fields;

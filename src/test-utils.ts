@@ -222,7 +222,7 @@ export function createClient(overrides?: {
     });
   return {
     replyStream,
-    status: overrides?.status ?? (async () => ({ provider: "local", model: "gpt-5-mini", permissions: "write" })),
+    status: overrides?.status ?? (async () => ({ providers: ["openai"], model: "gpt-5-mini", permissions: "write" })),
     setPermissionMode: overrides?.setPermissionMode ?? (async () => {}),
     taskStatus: overrides?.taskStatus ?? (async () => null),
   };

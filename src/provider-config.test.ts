@@ -1,11 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-  formatModel,
-  isProviderAvailable,
-  normalizeModel,
-  providerFromModel,
-  resolveProvider,
-} from "./provider-config";
+import { formatModel, isProviderAvailable, normalizeModel, providerFromModel } from "./provider-config";
 
 describe("provider config", () => {
   test("normalizeModel prefixes unqualified model ids", () => {
@@ -23,14 +17,6 @@ describe("provider config", () => {
     expect(formatModel("gpt-5-mini")).toBe("gpt-5-mini");
   });
 
-  test("resolveProvider detects openai vs openai-compatible", () => {
-    expect(resolveProvider(undefined, "https://api.openai.com/v1")).toBe("openai");
-    expect(resolveProvider("sk-test", "https://api.openai.com/v1")).toBe("openai");
-    expect(resolveProvider(undefined, "http://localhost:11434/v1")).toBe("openai-compatible");
-    expect(resolveProvider("sk-test", "http://localhost:11434/v1")).toBe("openai-compatible");
-    expect(resolveProvider("sk-test", "not-a-url")).toBe("openai-compatible");
-  });
-
   test("providerFromModel infers provider from model prefix", () => {
     expect(providerFromModel("gpt-5-mini")).toBe("openai");
     expect(providerFromModel("openai/gpt-5-mini")).toBe("openai");
@@ -38,7 +24,7 @@ describe("provider config", () => {
     expect(providerFromModel("gemini-2.5-pro")).toBe("gemini");
     expect(providerFromModel("anthropic/claude-sonnet-4")).toBe("anthropic");
     expect(providerFromModel("gemini/gemini-2.5-pro")).toBe("gemini");
-    expect(providerFromModel("openai-compatible/qwen2.5-coder")).toBe("openai-compatible");
+    expect(providerFromModel("openai-compatible/qwen2.5-coder")).toBe("openai");
     expect(providerFromModel(" anthropic/claude-sonnet-4 ")).toBe("anthropic");
   });
 
@@ -59,7 +45,7 @@ describe("provider config", () => {
     ).toBe(true);
     expect(
       isProviderAvailable({
-        provider: "openai-compatible",
+        provider: "openai",
         openaiApiKey: undefined,
         openaiBaseUrl: "http://localhost:11434/v1",
       }),

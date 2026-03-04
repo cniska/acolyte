@@ -12,7 +12,7 @@ describe("chat slash command visual regression", () => {
     const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({
-          provider: "openai",
+          providers: ["openai"],
           model: "gpt-5-mini",
           permissions: "write",
         }),
@@ -25,7 +25,7 @@ describe("chat slash command visual regression", () => {
       dedent(`
       ❯ /status
       
-        provider:           openai
+        providers:          openai
         model:              gpt-5-mini
         permissions:        write
     `),

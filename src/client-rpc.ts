@@ -123,7 +123,14 @@ export class RpcClient implements Client {
         if (msg.type === "status.result") {
           const fields: StatusFields = {};
           for (const [key, value] of Object.entries(msg.status)) {
-            if (key !== "ok" && (typeof value === "string" || typeof value === "number")) fields[key] = value;
+            if (key === "ok") continue;
+            if (typeof value === "string" || typeof value === "number") {
+              fields[key] = value;
+              continue;
+            }
+            if (Array.isArray(value) && value.every((entry) => typeof entry === "string")) {
+              fields[key] = value;
+            }
           }
           return fields;
         }

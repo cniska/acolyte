@@ -5,7 +5,7 @@ import { mastraStorage } from "./mastra-storage";
 import type { RunChatHandlers, StatusPayload } from "./server-contract";
 
 type ServerHttpDeps = {
-  buildStatusPayload: () => Promise<StatusPayload>;
+  createStatusPayload: () => Promise<StatusPayload>;
   hasValidAuth: (req: Request, url?: URL) => boolean;
   isChatRequest: (value: unknown) => value is ChatRequest;
   resolveResourceId: (url: URL) => string;
@@ -48,7 +48,7 @@ function warnUnauthorized(path: string, method: string): Response {
 
 async function handleStatus(ctx: RouteContext): Promise<Response | null> {
   if (ctx.url.pathname !== "/v1/status" || ctx.req.method !== "GET") return null;
-  return json(await ctx.deps.buildStatusPayload());
+  return json(await ctx.deps.createStatusPayload());
 }
 
 async function handleOmStatus(ctx: RouteContext): Promise<Response | null> {
