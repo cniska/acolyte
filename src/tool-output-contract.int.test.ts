@@ -6,7 +6,7 @@ import { setPermissionMode } from "./app-config";
 import { invariant } from "./assert";
 import { formatProgressOutput } from "./cli-format";
 import { runShellCommand } from "./core-tools";
-import { toolsForAgent } from "./mastra-tools";
+import { toolsForAgent } from "./tool-registry";
 import { createTempDir, dedent, savedPermissionMode } from "./test-utils";
 import { mergeToolOutputHeader } from "./tool-summary-format";
 

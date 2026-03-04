@@ -1,5 +1,5 @@
-import type { Agent } from "@mastra/core/agent";
-import { createAcolyte } from "./agent-factory";
+import type { Agent } from "./agent-contract";
+import { createAgent } from "./agent-factory";
 import { createInstructions } from "./agent-instructions";
 import { agentModes, modeForTool } from "./agent-modes";
 import { canonicalToolId } from "./agent-output";
@@ -24,7 +24,8 @@ import type {
   ToolErrorPayload,
   ToolResultPayload,
 } from "./lifecycle-contract";
-import type { Toolset } from "./mastra-tools";
+import type { ToolDefinition } from "./tool-contract";
+import type { Toolset } from "./tool-registry";
 import type { StreamErrorDetail } from "./stream-error";
 import { extractToolErrorCode, LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
 
@@ -94,17 +95,17 @@ export function shouldYieldNow(ctx: RunContext, shouldYield?: () => boolean): bo
   return true;
 }
 
-export function createLifecycleAgent(input: {
+export function createModeAgent(input: {
   soulPrompt: string;
   mode: RunContext["mode"];
   workspace: string | undefined;
   model: string;
   tools: Partial<Toolset>;
 }): Agent {
-  return createAcolyte({
+  return createAgent({
     model: input.model,
     instructions: createInstructions(input.soulPrompt, input.mode, input.workspace),
-    tools: input.tools,
+    tools: input.tools as Record<string, ToolDefinition>,
   });
 }
 
@@ -117,7 +118,7 @@ function ensureAgentForMode(ctx: RunContext): void {
   const previousModel = ctx.model;
   ctx.model = nextModel;
   ctx.agentMode = ctx.mode;
-  ctx.agent = createLifecycleAgent({
+  ctx.agent = createModeAgent({
     soulPrompt: ctx.soulPrompt,
     mode: ctx.mode,
     workspace: ctx.workspace,
@@ -191,14 +192,12 @@ async function streamWithTimeout(
     };
     resetTimeout();
     const temperature = appConfig.temperatures[ctx.mode];
-    const modelSettings = typeof temperature === "number" ? { temperature } : undefined;
 
     ctx.agent
       .stream(prompt, {
         maxSteps,
         toolChoice: "auto",
-        memory: ctx.memoryOptions,
-        modelSettings,
+        ...(typeof temperature === "number" ? { temperature } : {}),
       })
       .then(async (streamOutput) => {
         const reader = streamOutput.fullStream.getReader();

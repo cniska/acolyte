@@ -1,8 +1,8 @@
-import { createTool } from "@mastra/core/tools";
+import { createTool } from "./tool-contract";
 import { z } from "zod";
 import { appConfig } from "./app-config";
 import type { GitToolkit } from "./git-tools";
-import { runToolAdapter, type ToolAdapterRuntime } from "./mastra-tool-adapter";
+import { runToolAdapter, type ToolAdapterRuntime } from "./tool-adapter";
 import type { ToolName } from "./tool-names";
 import { compactToolOutput } from "./tool-output";
 import type { ToolOutputListener } from "./tool-output-format";

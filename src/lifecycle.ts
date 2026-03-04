@@ -15,7 +15,7 @@ import {
 } from "./lifecycle-evaluators";
 import type { LifecycleEventName } from "./lifecycle-events";
 import { phaseFinalize } from "./lifecycle-finalize";
-import { createLifecycleAgent, phaseGenerate, shouldYieldNow } from "./lifecycle-generate";
+import { createModeAgent, phaseGenerate, shouldYieldNow } from "./lifecycle-generate";
 import { resolveLifecyclePolicy } from "./lifecycle-policy";
 import { phasePrepare } from "./lifecycle-prepare";
 
@@ -48,7 +48,7 @@ function createRunContext(
     agentMode: params.classifiedMode,
     model: params.model,
     session: params.prepared.session,
-    agent: createLifecycleAgent({
+    agent: createModeAgent({
       soulPrompt: input.soulPrompt,
       mode: params.classifiedMode,
       workspace: input.workspace,
@@ -57,7 +57,6 @@ function createRunContext(
     }),
     agentInput: params.prepared.agentInput,
     policy: params.policy,
-    memoryOptions: params.prepared.memoryOptions,
     promptUsage: params.prepared.promptUsage,
     observedTools: new Set(),
     modelCallCount: 0,

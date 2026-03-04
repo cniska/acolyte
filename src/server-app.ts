@@ -4,8 +4,6 @@ import { buildStreamErrorDetail } from "./error-handling";
 import { mapQuotaErrorMessage } from "./error-messages";
 import { domainIdSchema } from "./id-contract";
 import { errorToLogFields, log } from "./log";
-import { mastraStorage, mastraStorageMode } from "./mastra-storage";
-import { getObservationalMemoryConfig } from "./memory-config";
 import { formatServerCapabilities, PROTOCOL_VERSION } from "./protocol";
 import { formatModel } from "./provider-config";
 import type { Provider } from "./provider-contract";
@@ -21,7 +19,6 @@ import { TaskRegistry } from "./task-registry";
 const PORT = appConfig.server.port;
 const API_KEY = appConfig.server.apiKey;
 const OPENAI_API_KEY = appConfig.openai.apiKey;
-const omConfig = getObservationalMemoryConfig();
 const SUPPRESSED_STDERR_PREFIX = "Upstream LLM API error from";
 const SERVER_IDLE_TIMEOUT_SECONDS = Math.max(30, Math.ceil(appConfig.server.replyTimeoutMs / 1000) + 30);
 const taskRegistry = new TaskRegistry();
@@ -137,8 +134,8 @@ async function createStatusPayload(): Promise<StatusPayload> {
     capabilities: formatServerCapabilities(),
     permissions: appConfig.agent.permissions.mode,
     service: `http://localhost:${PORT}`,
-    memory: memoryContextCount > 0 ? `${mastraStorageMode} (${memoryContextCount} entries)` : mastraStorageMode,
-    observational_memory: `enabled (${omConfig.scope})`,
+    memory: memoryContextCount > 0 ? `context (${memoryContextCount} entries)` : "none",
+    observational_memory: "disabled",
     tasks_total: taskSummary.total,
     tasks_running: taskSummary.running,
     tasks_detached: taskSummary.detached,
@@ -147,15 +144,6 @@ async function createStatusPayload(): Promise<StatusPayload> {
 }
 
 export async function startServer(): Promise<void> {
-  try {
-    await mastraStorage.init();
-  } catch (error) {
-    log.error("failed to initialize Mastra storage", {
-      ...errorToLogFields(error),
-    });
-    process.exit(1);
-  }
-
   const rpcWebsocketHandlers = createRpcWebsocketHandlers({
     createStatusPayload,
     isChatRequest,
@@ -199,5 +187,5 @@ export async function startServer(): Promise<void> {
     log.error("unhandled rejection", errorToLogFields(reason instanceof Error ? reason : new Error(String(reason))));
   });
 
-  log.info("Acolyte server listening", { url: `http://localhost:${server.port}` });
+  log.info("server listening", { url: `http://localhost:${server.port}` });
 }

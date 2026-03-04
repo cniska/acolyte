@@ -1,11 +1,11 @@
-import type { Agent } from "@mastra/core/agent";
+import type { Agent } from "./agent-contract";
 import type { AgentMode } from "./agent-modes";
 import type { ChatRequest, ChatResponse } from "./api";
 import type { StreamEvent } from "./client";
 import type { ErrorCategory, ErrorSource } from "./error-handling";
 import type { LifecycleDebugEvent, LifecycleEventName } from "./lifecycle-events";
 import type { LifecyclePolicy } from "./lifecycle-policy";
-import type { Toolset } from "./mastra-tools";
+import type { Toolset } from "./tool-registry";
 import type { ErrorCode } from "./tool-error-codes";
 import type { SessionContext } from "./tool-guards";
 
@@ -16,7 +16,6 @@ export type GenerateResult = {
 
 export type ToolOutputEvent = { toolName: string; message: string; toolCallId?: string };
 export type ToolCallStart = { toolName: string; startedAtMs: number };
-export type MemoryOptions = { thread: string; resource: string };
 export type PromptUsage = {
   promptTokens: number;
   promptBudgetTokens: number;
@@ -51,7 +50,6 @@ export type PhasePrepareResult = {
   session: SessionContext;
   tools: Partial<Toolset>;
   agentInput: string;
-  memoryOptions: MemoryOptions | undefined;
   promptUsage: PromptUsage;
 };
 export type GenerateOptions = { maxSteps: number; timeoutMs: number };
@@ -87,7 +85,6 @@ export type RunContext = {
   readonly session: SessionContext;
   readonly agentInput: string;
   readonly policy: LifecyclePolicy;
-  readonly memoryOptions?: MemoryOptions;
   readonly promptUsage: PromptUsage;
   model: string;
   agent: Agent;

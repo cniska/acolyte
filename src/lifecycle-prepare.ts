@@ -1,17 +1,10 @@
 import { createAgentInput } from "./agent-input";
-import { appConfig } from "./app-config";
 import { guardStatsFromSession, type PhasePrepareInput, type PhasePrepareResult } from "./lifecycle-contract";
-import { toolsForAgent } from "./mastra-tools";
+import { toolsForAgent } from "./tool-registry";
 
 export function phasePrepare(input: PhasePrepareInput): PhasePrepareResult {
   const requestInput = createAgentInput(input.request);
   const agentInput = requestInput.input;
-
-  const resourceId = input.request.resourceId?.trim() || appConfig.memory.resourceId;
-  const memoryOptions =
-    input.request.useMemory && input.request.sessionId
-      ? { thread: input.request.sessionId, resource: resourceId }
-      : undefined;
 
   const { tools, session } = toolsForAgent({
     workspace: input.workspace,
@@ -39,8 +32,7 @@ export function phasePrepare(input: PhasePrepareInput): PhasePrepareResult {
     model: input.model,
     mode: input.classifiedMode,
     history_messages: input.request.history.length,
-    has_memory: Boolean(memoryOptions),
   });
 
-  return { session, tools, agentInput, memoryOptions, promptUsage: requestInput.usage };
+  return { session, tools, agentInput, promptUsage: requestInput.usage };
 }

@@ -17,8 +17,6 @@
     "serve": "bun --env-file=.env run src/server.ts",
     "serve:watch": "bun --watch --env-file=.env run src/server.ts",
     "wait:server": "bun run src/wait-server.ts",
-    "mastra:dev": "bun --env-file=.env x mastra dev --dir src/mastra",
-    "studio": "./scripts/with-mastra-dev.sh",
     "format": "bunx biome format --write .",
     "lint": "bunx biome check .",
     "typecheck": "bunx tsc --noEmit",
@@ -43,18 +41,18 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.54",
+    "@ai-sdk/google": "^3.0.37",
     "@ai-sdk/openai": "^3.0.39",
+    "@ai-sdk/provider": "^3.0.8",
     "@ast-grep/lang-go": "^0.0.5",
     "@ast-grep/lang-python": "^0.0.5",
     "@ast-grep/lang-rust": "^0.0.6",
     "@ast-grep/napi": "^0.41.0",
-    "@mastra/core": "1.8.0",
-    "@mastra/memory": "1.5.2",
-    "@mastra/pg": "1.7.0",
-    "hono": "4.12.4",
     "ink": "^6.8.0",
     "ink-text-input": "^6.0.0",
     "react": "^19.2.4",
-    "zod": "^4.3.6"
+    "zod": "^4.3.6",
+    "zod-to-json-schema": "^3.25.1"
   }
 }

@@ -1,4 +1,4 @@
-import { createTool } from "@mastra/core/tools";
+import { createTool } from "./tool-contract";
 import { z } from "zod";
 import { appConfig } from "./app-config";
 import {

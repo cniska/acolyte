@@ -1,7 +1,6 @@
 import type { ChatRequest } from "./api";
 import { appConfig, setPermissionMode } from "./app-config";
 import { log } from "./log";
-import { mastraStorage } from "./mastra-storage";
 import type { RunChatHandlers, StatusPayload } from "./server-contract";
 
 type ServerHttpDeps = {
@@ -55,50 +54,13 @@ async function handleStatus(ctx: RouteContext): Promise<Response | null> {
 async function handleOmStatus(ctx: RouteContext): Promise<Response | null> {
   if (ctx.url.pathname !== "/v1/admin/om/status" || ctx.req.method !== "GET") return null;
   if (!ctx.deps.hasValidAuth(ctx.req)) return warnUnauthorized(ctx.url.pathname, ctx.req.method);
-
-  try {
-    const memoryStore = await mastraStorage.getStore("memory");
-    if (!memoryStore) return json({ error: "Memory storage is not available." }, 501);
-    const resourceId = ctx.deps.resolveResourceId(ctx.url);
-    log.info("om status requested", { path: ctx.url.pathname, method: ctx.req.method, resource_id: resourceId });
-    const current = await memoryStore.getObservationalMemory(null, resourceId);
-    const history = await memoryStore.getObservationalMemoryHistory(null, resourceId, 10);
-    const latestReflection = history.find((row) => row.originType === "reflection");
-    const observations =
-      current?.activeObservations
-        .split("\n")
-        .map((line) => line.trim())
-        .filter((line) => line.length > 0) ?? [];
-    return json({
-      ok: true,
-      resourceId,
-      exists: Boolean(current),
-      generationCount: current?.generationCount ?? 0,
-      lastObservedAt: current?.lastObservedAt ?? null,
-      lastReflectionAt: latestReflection?.createdAt ?? null,
-      observations: observations.slice(0, 5),
-      historyCount: history.length,
-    });
-  } catch (error) {
-    return ctx.deps.serverError("om status failed", error, { path: ctx.url.pathname, method: ctx.req.method }, 500);
-  }
+  return json({ error: "Context distillation not yet implemented." }, 501);
 }
 
 async function handleOmWipe(ctx: RouteContext): Promise<Response | null> {
   if (ctx.url.pathname !== "/v1/admin/om/wipe" || ctx.req.method !== "POST") return null;
   if (!ctx.deps.hasValidAuth(ctx.req)) return warnUnauthorized(ctx.url.pathname, ctx.req.method);
-
-  try {
-    const memoryStore = await mastraStorage.getStore("memory");
-    if (!memoryStore) return json({ error: "Memory storage is not available." }, 501);
-    const resourceId = ctx.deps.resolveResourceId(ctx.url);
-    log.warn("om wipe requested", { path: ctx.url.pathname, method: ctx.req.method, resource_id: resourceId });
-    await memoryStore.clearObservationalMemory(null, resourceId);
-    log.info("om wipe completed", { path: ctx.url.pathname, method: ctx.req.method, resource_id: resourceId });
-    return json({ ok: true, resourceId, wiped: true });
-  } catch (error) {
-    return ctx.deps.serverError("om wipe failed", error, { path: ctx.url.pathname, method: ctx.req.method }, 500);
-  }
+  return json({ error: "Context distillation not yet implemented." }, 501);
 }
 
 async function handlePermissions(ctx: RouteContext): Promise<Response | null> {

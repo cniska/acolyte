@@ -11,8 +11,8 @@ import {
   stripGitShowMetadataForPreview,
   webSearchStreamRows,
   withToolError,
-} from "./mastra-core-tools";
-import { createMastraGitTools } from "./mastra-git-tools";
+} from "./core-tool-defs";
+import { createMastraGitTools } from "./git-tool-defs";
 import { createSessionContext, type SessionContext } from "./tool-guards";
 import type { ToolMeta } from "./tool-meta-types";
 import type { ToolName } from "./tool-names";

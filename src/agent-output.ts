@@ -1,4 +1,4 @@
-import { toolMeta } from "./mastra-tools";
+import { toolMeta } from "./tool-registry";
 import { formatToolLabel } from "./tool-labels";
 
 export function isPlanLikeOutput(text: string): boolean {

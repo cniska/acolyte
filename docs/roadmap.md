@@ -84,11 +84,12 @@ Prove consistent autonomous performance across repeated real tasks.
 Reduce repeated mistakes with transparent, correctable memory behavior.
 
 - [ ] Saved memory commands work and are useful (`/remember`, `/memory`, `/memory rm`)
-- [ ] Observational memory is tuned — assistant learns from past sessions
+- [x] Mastra dependency removed — own the stack with native agentic loop and AI SDK providers
+- [ ] Context distillation replaces observational memory (MemorySource seam, distill engine, soul prompt integration)
 - [ ] Evals show measurable reduction in repeated instruction failures
 - [ ] Memory doesn't hallucinate or carry stale context
 
-**Current status:** Basic memory commands work. Observational memory is wired up but not tuned. No evals yet.
+**Current status:** Mastra removed. Context distillation not yet implemented.
 
 ### Milestone 9: Hosted Readiness
 
