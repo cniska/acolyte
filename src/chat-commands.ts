@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { appConfig, setPermissionMode } from "./app-config";
+import type { AgentMode } from "./agent-modes";
+import { appConfig, setDefaultModel, setModeModel, setPermissionMode } from "./app-config";
 import { COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH, formatColumns, formatRelativeTime } from "./chat-format";
 import { suggestClosestSlashCommand } from "./chat-slash";
 import type { Client } from "./client";
@@ -138,10 +139,7 @@ export function presentStatusOutput(status: StatusFields): CommandPresentation {
 }
 
 export function presentTokensOutput(last: TokenUsageEntry | null, all: TokenUsageEntry[]): CommandPresentation {
-  return {
-    content: formatTokenUsageOutput(last, all),
-    style: "tokenOutput",
-  };
+  return { content: formatTokenUsageOutput(last, all), style: "tokenOutput" };
 }
 
 type CommandResult = {
@@ -166,9 +164,10 @@ export type CommandContext = {
   openSkillsPanel: () => Promise<void>;
   openResumePanel: () => void;
   openPermissionsPanel: () => void;
-  openModelPanel: () => void;
+  openModelPanel: (mode?: AgentMode) => void;
   setServerPermissionMode: (mode: PermissionMode) => Promise<void>;
   persistPermissionMode?: (mode: PermissionMode, scope: ConfigScope) => Promise<void>;
+  persistModelConfig?: (key: string, value: string, scope: ConfigScope) => Promise<void>;
   activateSkill?: (skillName: string, args: string) => Promise<boolean>;
   tokenUsage: TokenUsageEntry[];
   memoryApi?: {
@@ -200,12 +199,30 @@ function parsePermissionsScope(parts: string[]): ConfigScope | null {
 }
 
 const modelIdSchema = z.string().trim().min(1).regex(/^\S+$/);
+const agentModeSchema = z.enum(["plan", "work", "verify"]);
 
-function parseModelCommandModel(resolvedText: string): string | null {
+type ModelSelection =
+  | { kind: "default"; model: string }
+  | { kind: "mode"; mode: z.infer<typeof agentModeSchema>; model: string };
+
+function parseModelSelectionCommand(resolvedText: string): ModelSelection | null {
   const parts = resolvedText.split(/\s+/).filter((part) => part.length > 0);
-  if (parts.length !== 2 || parts[0] !== "/model") return null;
-  const parsed = modelIdSchema.safeParse(parts[1]);
-  return parsed.success ? parsed.data : null;
+  if (parts[0] !== "/model") return null;
+  if (parts.length === 2) {
+    const mode = agentModeSchema.safeParse(parts[1]);
+    if (mode.success) return null;
+    const parsed = modelIdSchema.safeParse(parts[1]);
+    if (!parsed.success) return null;
+    return { kind: "default", model: parsed.data };
+  }
+  if (parts.length === 3) {
+    const mode = agentModeSchema.safeParse(parts[1]);
+    if (!mode.success) return null;
+    const parsed = modelIdSchema.safeParse(parts[2]);
+    if (!parsed.success) return null;
+    return { kind: "mode", mode: mode.data, model: parsed.data };
+  }
+  return null;
 }
 
 export async function dispatchSlashCommand(ctx: CommandContext): Promise<CommandResult> {
@@ -306,17 +323,55 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
   }
 
   if (resolvedText.startsWith("/model ")) {
+    const parts = resolvedText.split(/\s+/).filter((part) => part.length > 0);
+    if (parts.length === 2) {
+      const mode = agentModeSchema.safeParse(parts[1]);
+      if (mode.success) {
+        pushUserCommandRow();
+        ctx.openModelPanel(mode.data);
+        return { stop: true, userText: text };
+      }
+    }
+  }
+
+  if (resolvedText.startsWith("/model ")) {
     pushUserCommandRow();
-    const model = parseModelCommandModel(resolvedText);
-    if (!model) {
-      ctx.setRows((current) => [...current, createRow("system", "Usage: /model <id>")]);
+    const selection = parseModelSelectionCommand(resolvedText);
+    if (!selection) {
+      ctx.setRows((current) => [
+        ...current,
+        createRow("system", "Usage: /model <id> | /model <plan|work|verify> <id>"),
+      ]);
       return { stop: true, userText: text };
     }
     try {
-      await setConfigValue("model", model, { scope: "project" });
-      const nextSession: Session = { ...ctx.currentSession, model, updatedAt: new Date().toISOString() };
+      if (selection.kind === "mode") {
+        const key = `models.${selection.mode}`;
+        if (ctx.persistModelConfig) {
+          await ctx.persistModelConfig(key, selection.model, "project");
+        } else {
+          await setConfigValue(key, selection.model, { scope: "project" });
+        }
+        setModeModel(selection.mode, selection.model);
+        ctx.setRows((current) => [
+          ...current,
+          createRow("system", `Changed ${selection.mode} mode model to ${selection.model}.`),
+        ]);
+        return { stop: true, userText: text };
+      }
+      if (ctx.persistModelConfig) {
+        await ctx.persistModelConfig("model", selection.model, "project");
+      } else {
+        await setConfigValue("model", selection.model, { scope: "project" });
+      }
+      setDefaultModel(selection.model);
+      const nextSession: Session = {
+        ...ctx.currentSession,
+        model: selection.model,
+        updatedAt: new Date().toISOString(),
+      };
       ctx.setCurrentSession(nextSession);
-      ctx.setRows((current) => [...current, createRow("system", `Changed model to ${model}.`)]);
+      ctx.setRows((current) => [...current, createRow("system", `Changed default model to ${selection.model}.`)]);
     } catch (error) {
       ctx.setRows((current) => [
         ...current,

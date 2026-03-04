@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { AgentMode } from "./agent-modes";
 import type { Message } from "./chat-message";
 import type { SessionId } from "./session-contract";
 
@@ -17,6 +18,7 @@ export interface ChatRequest {
   readonly message: string;
   readonly history: Message[];
   readonly model: string;
+  readonly modeModels?: Partial<Record<AgentMode, string>>;
   readonly sessionId?: SessionId;
   readonly resourceId?: string;
   /** When true, Mastra memory (thread history + observational memory) is enabled. */

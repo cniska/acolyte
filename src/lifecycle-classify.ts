@@ -7,7 +7,17 @@ import { createUserError } from "./error-messages";
 import type { ModeResolution, PhaseClassifyResult, RunContext } from "./lifecycle-contract";
 
 export function resolveModeModelOrThrow(mode: AgentMode, requestModel: string): ModeResolution {
-  const modeModel = appConfig.models[mode]?.trim();
+  return resolveModeModelOrThrowWithOverrides(mode, requestModel, undefined);
+}
+
+export function resolveModeModelOrThrowWithOverrides(
+  mode: AgentMode,
+  requestModel: string,
+  modeModels: ChatRequest["modeModels"],
+): ModeResolution {
+  const requestModeModel = modeModels?.[mode]?.trim();
+  const configuredModeModel = appConfig.models[mode]?.trim();
+  const modeModel = requestModeModel && requestModeModel.length > 0 ? requestModeModel : configuredModeModel;
   const requestedModel = modeModel && modeModel.length > 0 ? modeModel : requestModel.trim();
   if (!requestedModel) {
     throw createUserError("E_MODEL_NOT_CONFIGURED");
@@ -24,7 +34,7 @@ export function resolveModeModelOrThrow(mode: AgentMode, requestModel: string): 
 
 export function phaseClassify(request: ChatRequest, debug: RunContext["debug"]): PhaseClassifyResult {
   const classifiedMode = classifyMode(request.message);
-  const resolved = resolveModeModelOrThrow(classifiedMode, request.model);
+  const resolved = resolveModeModelOrThrowWithOverrides(classifiedMode, request.model, request.modeModels);
   debug("lifecycle.classify", { mode: classifiedMode, model: resolved.model, provider: resolved.provider });
   return { classifiedMode, model: resolved.model };
 }

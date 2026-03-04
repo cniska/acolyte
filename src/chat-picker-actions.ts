@@ -1,3 +1,4 @@
+import type { AgentMode } from "./agent-modes";
 import { appConfig } from "./app-config";
 import { type ChatRow, createRow } from "./chat-commands";
 import type { PickerState } from "./chat-picker";
@@ -59,7 +60,7 @@ export function createPermissionsPicker(): PickerState {
   });
 }
 
-export function createModelPicker(currentModel: string): PickerState {
+export function createModelPicker(currentModel: string, targetMode?: AgentMode): PickerState {
   const provider = providerFromModel(currentModel);
   const suggestions = suggestedModelsForProvider(provider);
   const items = [
@@ -72,6 +73,7 @@ export function createModelPicker(currentModel: string): PickerState {
     items,
     index: index >= 0 ? index : items.length - 1,
     customModel: index < 0 ? currentModel : "",
+    targetMode,
   };
 }
 

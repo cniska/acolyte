@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { AgentMode } from "./agent-modes";
 import { appConfig, setPermissionMode } from "./app-config";
 import type { ChatRow, CommandContext, TokenUsageEntry } from "./chat-commands";
 import type { Message } from "./chat-message";
@@ -298,6 +299,7 @@ export type CommandContextSpies = {
   rows: ChatRow[];
   openedPermissions: boolean;
   openedModel: boolean;
+  openedModelMode?: AgentMode;
   currentSessionIds: string[];
   tokenUsageSets: TokenUsageEntry[][];
 };
@@ -338,8 +340,9 @@ export function createCommandContext(
     openPermissionsPanel: () => {
       spies.openedPermissions = true;
     },
-    openModelPanel: () => {
+    openModelPanel: (mode?: AgentMode) => {
       spies.openedModel = true;
+      spies.openedModelMode = mode;
     },
     setServerPermissionMode: async () => {},
     tokenUsage: [],

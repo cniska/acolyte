@@ -10,7 +10,7 @@ import {
 describe("provider config", () => {
   test("normalizeModel prefixes unqualified model ids", () => {
     expect(normalizeModel("gpt-5-mini")).toBe("openai/gpt-5-mini");
-    expect(normalizeModel("claude-sonnet-4-5")).toBe("anthropic/claude-sonnet-4-5");
+    expect(normalizeModel("claude-sonnet-4-6")).toBe("anthropic/claude-sonnet-4-6");
     expect(normalizeModel("gemini-2.5-pro")).toBe("gemini/gemini-2.5-pro");
     expect(normalizeModel("openai/gpt-5-mini")).toBe("openai/gpt-5-mini");
   });
@@ -34,7 +34,7 @@ describe("provider config", () => {
   test("providerFromModel infers provider from model prefix", () => {
     expect(providerFromModel("gpt-5-mini")).toBe("openai");
     expect(providerFromModel("openai/gpt-5-mini")).toBe("openai");
-    expect(providerFromModel("claude-sonnet-4-5")).toBe("anthropic");
+    expect(providerFromModel("claude-sonnet-4-6")).toBe("anthropic");
     expect(providerFromModel("gemini-2.5-pro")).toBe("gemini");
     expect(providerFromModel("anthropic/claude-sonnet-4")).toBe("anthropic");
     expect(providerFromModel("gemini/gemini-2.5-pro")).toBe("gemini");

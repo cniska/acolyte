@@ -1,3 +1,4 @@
+import type { AgentMode } from "./agent-modes";
 import { appConfig } from "./app-config";
 import { type ChatRow, createRow, dispatchSlashCommand, type TokenUsageEntry } from "./chat-commands";
 import { invalidateRepoPathCandidates } from "./chat-file-ref";
@@ -43,7 +44,7 @@ type CreateMessageHandlerInput = {
   activateSkill: (skillName: string, args: string) => Promise<boolean>;
   openResumePanel: () => void;
   openPermissionsPanel: () => void;
-  openModelPanel: () => void;
+  openModelPanel: (mode?: AgentMode) => void;
   openWriteConfirmPanel: (prompt: string) => void;
   tokenUsage: TokenUsageEntry[];
   isWorking: boolean;
@@ -226,7 +227,8 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
         client: input.client,
         userText,
         history: [...fileContextMessages, ...input.currentSession.messages],
-        model: appConfig.model,
+        model: input.currentSession.model,
+        modeModels: appConfig.models,
         sessionId: input.currentSession.id,
         useMemory: input.useMemory,
         signal: abortController.signal,

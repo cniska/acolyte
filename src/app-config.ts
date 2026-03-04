@@ -1,3 +1,4 @@
+import type { AgentMode } from "./agent-modes";
 import { readResolvedConfigSync } from "./config";
 import type { PermissionMode } from "./config-contract";
 import { env } from "./env";
@@ -67,4 +68,12 @@ export const appConfig = {
 
 export function setPermissionMode(mode: PermissionMode): void {
   (appConfig.agent.permissions as { mode: PermissionMode }).mode = mode;
+}
+
+export function setDefaultModel(model: string): void {
+  (appConfig as { model: string }).model = model;
+}
+
+export function setModeModel(mode: AgentMode, model: string): void {
+  (appConfig.models as Record<string, string>)[mode] = model;
 }

@@ -1,5 +1,5 @@
 import { appConfig } from "./app-config";
-import { isProviderAvailable, type ModelProviderName, providerFromModel } from "./provider-config";
+import { isProviderAvailable, type ProviderName, providerFromModel } from "./provider-config";
 
 export type ModelCredentials = {
   openaiApiKey?: string;
@@ -16,7 +16,7 @@ export function resolveModelProviderState(
     anthropicApiKey: appConfig.anthropic.apiKey,
     googleApiKey: appConfig.google.apiKey,
   },
-): { provider: ModelProviderName; available: boolean } {
+): { provider: ProviderName; available: boolean } {
   const provider = providerFromModel(model);
   const available = isProviderAvailable({
     provider,
@@ -33,7 +33,7 @@ export function resolveRunnableModel(
   credentials?: ModelCredentials,
 ): {
   model: string;
-  provider: ModelProviderName;
+  provider: ProviderName;
   available: boolean;
 } {
   const state = resolveModelProviderState(requestedModel, credentials);

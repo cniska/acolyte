@@ -16,6 +16,7 @@ Focus on:
 - assert patterns (`invariant` for impossible states vs user-facing errors)
 - table-driven/rule-driven structure where the codebase already uses it
 - dispatch shape: prefer data-driven lookups/tables over long control-flow chains where behavior is mapping-like
+- control flow shape: prefer guard clauses and early returns over nested `if/else` chains
 - avoiding local anti-patterns (unused params, dead branches, ad-hoc fallbacks)
 - module layout consistency (flat `src/`, `*-contract`, `*-http`, `*-rpc`, no unnecessary re-export layers)
 

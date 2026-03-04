@@ -266,7 +266,7 @@ describe("chat picker handlers", () => {
     });
 
     expect(selectedSessions.at(-1)?.model).toBe("gpt-5");
-    expect(rows.some((row) => row.content === "Changed model to gpt-5.")).toBe(true);
+    expect(rows.some((row) => row.content === "Changed default model to gpt-5.")).toBe(true);
   });
 
   test("handlePickerSelect model keeps picker open when other is empty", async () => {

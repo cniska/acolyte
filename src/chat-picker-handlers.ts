@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { setPermissionMode } from "./app-config";
+import type { AgentMode } from "./agent-modes";
+import { appConfig, setDefaultModel, setModeModel, setPermissionMode } from "./app-config";
 import { unreachable } from "./assert";
 import { type ChatRow, createRow, type TokenUsageEntry } from "./chat-commands";
 import type { Message } from "./chat-message";
@@ -45,7 +46,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
   openSkillsPanel: () => Promise<void>;
   openResumePanel: () => void;
   openPermissionsPanel: () => void;
-  openModelPanel: () => void;
+  openModelPanel: (mode?: AgentMode) => void;
   openWriteConfirmPanel: (prompt: string) => void;
   handlePickerSelect: (state: PickerState) => Promise<void>;
   activateSkill: (skillName: string, args: string) => Promise<boolean>;
@@ -99,8 +100,9 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
     input.setShowHelp(false);
   };
 
-  const openModelPanel = (): void => {
-    input.setPicker(createModelPicker(input.currentSession.model));
+  const openModelPanel = (mode?: AgentMode): void => {
+    const currentModel = mode ? (appConfig.models[mode] ?? input.currentSession.model) : input.currentSession.model;
+    input.setPicker(createModelPicker(currentModel, mode));
     input.setShowHelp(false);
   };
 
@@ -154,21 +156,27 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
         const custom = modelIdSchema.safeParse(state.customModel);
         const selected = state.items[state.index];
         const nextModel = selected?.model === "other" ? (custom.success ? custom.data : undefined) : selected?.model;
-        if (!nextModel) {
-          return;
-        }
-        if (nextModel) {
-          try {
-            await setConfigValue("model", nextModel, { scope: "project" });
-            const nextSession: Session = { ...input.currentSession, model: nextModel, updatedAt: input.nowIso() };
-            input.setCurrentSession(nextSession);
-            input.setRows((current) => [...current, createRow("system", `Changed model to ${nextModel}.`)]);
-          } catch (error) {
+        if (!nextModel) return;
+        try {
+          if (state.targetMode) {
+            await setConfigValue(`models.${state.targetMode}`, nextModel, { scope: "project" });
+            setModeModel(state.targetMode, nextModel);
             input.setRows((current) => [
               ...current,
-              createRow("system", error instanceof Error ? error.message : "Failed to set model."),
+              createRow("system", `Changed ${state.targetMode} mode model to ${nextModel}.`),
             ]);
+          } else {
+            await setConfigValue("model", nextModel, { scope: "project" });
+            setDefaultModel(nextModel);
+            const nextSession: Session = { ...input.currentSession, model: nextModel, updatedAt: input.nowIso() };
+            input.setCurrentSession(nextSession);
+            input.setRows((current) => [...current, createRow("system", `Changed default model to ${nextModel}.`)]);
           }
+        } catch (error) {
+          input.setRows((current) => [
+            ...current,
+            createRow("system", error instanceof Error ? error.message : "Failed to set model."),
+          ]);
         }
         input.setPicker(null);
         return;

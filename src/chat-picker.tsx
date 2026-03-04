@@ -1,5 +1,6 @@
 import { Text } from "ink";
 import type React from "react";
+import type { AgentMode } from "./agent-modes";
 import { unreachable } from "./assert";
 import { formatColumns, formatRelativeTime } from "./chat-format";
 import type { PermissionMode } from "./config-contract";
@@ -10,7 +11,13 @@ export type PickerState =
   | { kind: "skills"; items: SkillMeta[]; index: number }
   | { kind: "resume"; items: Session[]; index: number }
   | { kind: "permissions"; items: Array<{ mode: PermissionMode; description: string }>; index: number }
-  | { kind: "model"; items: Array<{ model: string; description: string }>; index: number; customModel: string }
+  | {
+      kind: "model";
+      items: Array<{ model: string; description: string }>;
+      index: number;
+      customModel: string;
+      targetMode?: AgentMode;
+    }
   | {
       kind: "writeConfirm";
       prompt: string;
@@ -57,7 +64,7 @@ export function pickerTitle(picker: PickerState): string {
     case "permissions":
       return "Permissions";
     case "model":
-      return "Model";
+      return picker.targetMode ? `Model (${picker.targetMode})` : "Model";
     case "writeConfirm":
       return "Confirm Write Access";
     default:

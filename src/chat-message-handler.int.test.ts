@@ -155,6 +155,24 @@ describe("chat message handler guards", () => {
     );
   });
 
+  test("uses current session model for assistant turn requests", async () => {
+    const session = createSession({ id: "sess_test", model: "claude-opus-4-6" });
+    let requestedModel = "";
+    const { handleMessage } = createMessageHandlerHarness({
+      session,
+      client: createClient({
+        reply: async (input) => {
+          requestedModel = input.model;
+          return { model: input.model, output: "ok" };
+        },
+      }),
+    });
+
+    await handleMessage("hello");
+
+    expect(requestedModel).toBe("claude-opus-4-6");
+  });
+
   test("keeps create-edit-delete tool output visible across submits", async () => {
     const replies = [
       { model: "gpt-5-mini", output: "Created sum.rs." },

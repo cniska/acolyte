@@ -54,10 +54,18 @@ export function isChatRequest(value: unknown): value is ChatRequest {
   if (!value || typeof value !== "object") return false;
 
   const req = value as Partial<ChatRequest>;
+  const modeModelsValid =
+    req.modeModels === undefined ||
+    (typeof req.modeModels === "object" &&
+      req.modeModels !== null &&
+      Object.entries(req.modeModels as Record<string, unknown>).every(
+        ([mode, model]) => (mode === "plan" || mode === "work" || mode === "verify") && typeof model === "string",
+      ));
   return (
     typeof req.message === "string" &&
     typeof req.model === "string" &&
     Array.isArray(req.history) &&
+    modeModelsValid &&
     (req.sessionId === undefined || typeof req.sessionId === "string") &&
     (req.resourceId === undefined || typeof req.resourceId === "string") &&
     (req.useMemory === undefined || typeof req.useMemory === "boolean") &&
