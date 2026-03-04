@@ -113,11 +113,11 @@ describe("cli subcommand help", () => {
     expect(`${statusResult.stdout}\n${statusResult.stderr}`).toMatch(/Local server running \((pid( \d+)?|external)\)/);
     expect(restartResult.exitCode).toBe(0);
     expect(`${restartResult.stdout}\n${restartResult.stderr}`).toMatch(
-      /(Started|Using( external)?) local server at |Local server is running as an external process/,
+      /(Started|Using( external)?) local server at |Unable to stop local server at/,
     );
     expect(stopResult.exitCode).toBe(0);
     expect(`${stopResult.stdout}\n${stopResult.stderr}`).toMatch(
-      /(Stopped local server\.|Local server is not running\.|Local server is running as an external process)/,
+      /(Stopped local server\.|Local server is not running\.|Unable to stop local server at)/,
     );
   });
 });

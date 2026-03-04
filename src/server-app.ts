@@ -172,6 +172,15 @@ export async function startServer(): Promise<void> {
     resolveResourceId,
     runChatRequest,
     serverError,
+    shutdownServer: () => {
+      setTimeout(() => {
+        try {
+          server.stop(true);
+        } catch {
+          // Best effort shutdown.
+        }
+      }, 0);
+    },
     upgradeToRpc: (req) =>
       server.upgrade(req, { data: { authed: true, activeChats: new Map(), runningChatId: null, queue: [] } }),
   });

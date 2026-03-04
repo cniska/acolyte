@@ -16,6 +16,7 @@ type ServerHttpDeps = {
     details: Record<string, string | number | boolean | null | undefined>,
     status?: number,
   ) => Response;
+  shutdownServer: () => void;
   upgradeToRpc: (req: Request) => boolean;
 };
 
@@ -122,6 +123,14 @@ async function handlePermissions(ctx: RouteContext): Promise<Response | null> {
   return json({ ok: true, permissionMode: appConfig.agent.permissions.mode });
 }
 
+async function handleShutdown(ctx: RouteContext): Promise<Response | null> {
+  if (ctx.url.pathname !== "/v1/admin/shutdown" || ctx.req.method !== "POST") return null;
+  if (!ctx.deps.hasValidAuth(ctx.req)) return warnUnauthorized(ctx.url.pathname, ctx.req.method);
+  log.warn("server shutdown requested", { path: ctx.url.pathname, method: ctx.req.method });
+  ctx.deps.shutdownServer();
+  return json({ ok: true, shutdown: true });
+}
+
 async function handleRpcUpgrade(ctx: RouteContext): Promise<Response | undefined | null> {
   if (ctx.url.pathname !== "/v1/rpc") return null;
   if (!ctx.deps.hasValidAuth(ctx.req, ctx.url)) return warnUnauthorized(ctx.url.pathname, ctx.req.method);
@@ -221,6 +230,7 @@ export function createServerFetchHandler(deps: ServerHttpDeps): (req: Request) =
     handleOmStatus,
     handleOmWipe,
     handlePermissions,
+    handleShutdown,
     handleRpcUpgrade,
     handleChatStream,
   ];

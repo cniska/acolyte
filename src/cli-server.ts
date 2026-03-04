@@ -2,6 +2,8 @@ import { isLoopbackHost } from "./network-host";
 
 const DEFAULT_LOCAL_API_HOST = "127.0.0.1";
 const DEFAULT_LOCAL_API_PORT = 6767;
+const LOCAL_SERVER_SHUTDOWN_TIMEOUT_MS = 4_000;
+const LOCAL_SERVER_REQUEST_TIMEOUT_MS = 1_200;
 
 function isLocalLoopbackApiUrl(apiUrl: string): boolean {
   try {
@@ -34,4 +36,51 @@ export function formatLocalServerReadyMessage(result: { apiUrl: string; started:
   if (result.started) return `Started local server at ${result.apiUrl}`;
   if (result.managed) return `Using local server at ${result.apiUrl}`;
   return `Using external local server at ${result.apiUrl} (started outside this client).`;
+}
+
+async function canReachStatus(apiUrl: string, apiKey?: string): Promise<boolean> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), LOCAL_SERVER_REQUEST_TIMEOUT_MS);
+  try {
+    const response = await fetch(`${apiUrl.replace(/\/$/, "")}/v1/status`, {
+      headers: apiKey ? { authorization: `Bearer ${apiKey}` } : undefined,
+      signal: controller.signal,
+    });
+    return response.ok;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+export async function requestLocalServerShutdown(input: {
+  apiUrl: string;
+  apiKey?: string;
+  timeoutMs?: number;
+}): Promise<boolean> {
+  const { apiUrl, apiKey, timeoutMs = LOCAL_SERVER_SHUTDOWN_TIMEOUT_MS } = input;
+  if (!isLocalLoopbackApiUrl(apiUrl)) return false;
+  const baseUrl = apiUrl.replace(/\/$/, "");
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), LOCAL_SERVER_REQUEST_TIMEOUT_MS);
+  try {
+    const response = await fetch(`${baseUrl}/v1/admin/shutdown`, {
+      method: "POST",
+      headers: apiKey ? { authorization: `Bearer ${apiKey}` } : undefined,
+      signal: controller.signal,
+    });
+    if (!response.ok) return false;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (!(await canReachStatus(baseUrl, apiKey))) return true;
+    await Bun.sleep(120);
+  }
+  return false;
 }

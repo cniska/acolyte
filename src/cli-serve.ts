@@ -1,5 +1,6 @@
 import type {
   formatLocalServerReadyMessage as formatLocalServerReadyMessageType,
+  requestLocalServerShutdown as requestLocalServerShutdownType,
   resolveLocalDaemonApiUrl as resolveLocalDaemonApiUrlType,
 } from "./cli-server";
 import type {
@@ -13,6 +14,7 @@ type ServeModeDeps = {
   hasHelpFlag: (args: string[]) => boolean;
   port: number;
   printDim: (message: string) => void;
+  requestLocalServerShutdown: typeof requestLocalServerShutdownType;
   resolveLocalDaemonApiUrl: typeof resolveLocalDaemonApiUrlType;
   serverApiUrl?: string;
   serverEntry: string;
@@ -33,6 +35,7 @@ export async function serveMode(args: string[], deps: ServeModeDeps): Promise<vo
     localServerStatus,
     port,
     printDim,
+    requestLocalServerShutdown,
     resolveLocalDaemonApiUrl,
     serverApiUrl,
     serverEntry,
@@ -80,7 +83,12 @@ export async function serveMode(args: string[], deps: ServeModeDeps): Promise<vo
       const localApiUrl = resolveLocalDaemonApiUrl(serverApiUrl, port);
       const status = await localServerStatus({ apiKey, apiUrl: localApiUrl });
       if (status.running && !status.pid) {
-        printDim(`Local server is running as an external process at ${status.apiUrl}. Stop it manually.`);
+        const shutdown = await requestLocalServerShutdown({ apiUrl: localApiUrl, apiKey });
+        if (shutdown) {
+          printDim("Stopped local server.");
+          return;
+        }
+        printDim(`Unable to stop local server at ${status.apiUrl}. Stop it manually.`);
         return;
       }
       printDim("Local server is not running.");
@@ -93,8 +101,11 @@ export async function serveMode(args: string[], deps: ServeModeDeps): Promise<vo
       if (!stopped) {
         const status = await localServerStatus({ apiKey, apiUrl: localApiUrl });
         if (status.running && !status.pid) {
-          printDim(`Local server is running as an external process at ${status.apiUrl}. Stop it manually.`);
-          return;
+          const shutdown = await requestLocalServerShutdown({ apiUrl: localApiUrl, apiKey });
+          if (!shutdown) {
+            printDim(`Unable to stop local server at ${status.apiUrl}. Stop it manually.`);
+            return;
+          }
         }
       }
       const daemon = await ensureLocalServer({

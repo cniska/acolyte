@@ -14,6 +14,7 @@ import { runMode, runResourceId } from "./cli-run";
 import { serveMode } from "./cli-serve";
 import {
   formatLocalServerReadyMessage,
+  requestLocalServerShutdown,
   resolveChatApiUrl,
   resolveLocalDaemonApiUrl,
   shouldAutoStartLocalServerForChat,
@@ -111,6 +112,7 @@ export const commands: Record<string, CliCommandHandler> = {
       hasHelpFlag,
       port: appConfig.server.port,
       printDim,
+      requestLocalServerShutdown,
       resolveLocalDaemonApiUrl,
       serverApiUrl: appConfig.server.apiUrl,
       serverEntry: `${import.meta.dir}/server.ts`,
