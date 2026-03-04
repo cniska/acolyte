@@ -1,4 +1,3 @@
-import { canonicalToolId } from "./agent-output";
 import { createErrorStats } from "./error-handling";
 import { phaseClassify } from "./lifecycle-classify";
 import type { LifecycleInput, RunContext, ToolOutputEvent } from "./lifecycle-contract";
@@ -76,7 +75,7 @@ function createRunContext(
 function attachToolOutputHandler(ctx: RunContext) {
   ctx.toolOutputHandler = (event) => {
     if (!event.message.trim()) return;
-    const toolName = canonicalToolId(event.toolName);
+    const toolName = event.toolName;
     const queue = ctx.nativeIdQueue.get(toolName);
     const nativeId = queue?.[queue.length - 1] ?? event.toolCallId ?? toolName;
     ctx.debug("lifecycle.tool.output", {

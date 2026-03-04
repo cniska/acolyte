@@ -115,7 +115,6 @@ export function createMastraGitTools(input: GitToolFactoryInput) {
       meta: {
         description: "Show working tree status (short format with branch) for the current repository.",
         instruction: "Use `git-status` for working tree status.",
-        aliases: ["gitStatus", "git_status"],
       },
     },
     gitDiff: {
@@ -123,7 +122,6 @@ export function createMastraGitTools(input: GitToolFactoryInput) {
       meta: {
         description: "Show unstaged changes (unified diff) for the repository or a specific file path.",
         instruction: "Use `git-diff` for change inspection.",
-        aliases: ["gitDiff", "git_diff"],
       },
     },
     gitLog: {
@@ -131,7 +129,6 @@ export function createMastraGitTools(input: GitToolFactoryInput) {
       meta: {
         description: "Show recent commits in compact one-line form (optionally scoped to a file/path).",
         instruction: "Use `git-log` to inspect recent commits quickly (optionally scoped by path).",
-        aliases: ["gitLog", "git_log"],
       },
     },
     gitShow: {
@@ -140,7 +137,6 @@ export function createMastraGitTools(input: GitToolFactoryInput) {
         description: "Show commit details and patch for a ref (default HEAD), optionally scoped to a path.",
         instruction:
           "Use `git-show` to inspect a specific commit/tag/ref with patch details (optionally scoped by path).",
-        aliases: ["gitShow", "git_show"],
       },
     },
   };

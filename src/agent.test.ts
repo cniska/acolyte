@@ -3,7 +3,6 @@ import { createAgentInput } from "./agent-input";
 import { createInstructions, createModeInstructions } from "./agent-instructions";
 import { resolveModelProviderState, resolveRunnableModel } from "./agent-model";
 import {
-  canonicalToolId,
   finalizeAssistantOutput,
   finalizeReviewOutput,
   formatToolHeader,
@@ -94,17 +93,6 @@ describe("execution intent detection", () => {
     expect(isPlanLikeOutput("Updated src/cli.ts and tests pass.")).toBe(false);
   });
 
-  test("canonicalToolId maps snake_case and camelCase tool aliases", () => {
-    expect(canonicalToolId("edit_file")).toBe("edit-file");
-    expect(canonicalToolId("write_file")).toBe("create-file");
-    expect(canonicalToolId("runCommand")).toBe("run-command");
-    expect(canonicalToolId("execute_command")).toBe("run-command");
-    expect(canonicalToolId("web_search")).toBe("web-search");
-    expect(canonicalToolId("editCode")).toBe("edit-code");
-    expect(canonicalToolId("edit_code")).toBe("edit-code");
-    expect(canonicalToolId("scanCode")).toBe("scan-code");
-    expect(canonicalToolId("scan_code")).toBe("scan-code");
-  });
 });
 
 describe("finalizeReviewOutput", () => {

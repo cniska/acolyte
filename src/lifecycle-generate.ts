@@ -2,7 +2,6 @@ import type { Agent } from "./agent-contract";
 import { createAgent } from "./agent-factory";
 import { createInstructions } from "./agent-instructions";
 import { agentModes, modeForTool } from "./agent-modes";
-import { canonicalToolId } from "./agent-output";
 import { appConfig } from "./app-config";
 import {
   buildStreamErrorDetail,
@@ -242,7 +241,7 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
     case "tool-call": {
       const p = chunk.payload as ToolCallPayload | undefined;
       if (p?.toolCallId && p?.toolName) {
-        const toolName = canonicalToolId(p.toolName);
+        const toolName = p.toolName;
         ctx.observedTools.add(toolName);
         ctx.toolCallStartedAt.set(p.toolCallId, { toolName, startedAtMs: Date.now() });
         if (ctx.mode !== "verify") {
@@ -271,7 +270,7 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
     case "tool-result": {
       const p = chunk.payload as ToolResultPayload | undefined;
       if (p?.toolCallId && p?.toolName) {
-        const toolName = canonicalToolId(p.toolName);
+        const toolName = p.toolName;
         const started = ctx.toolCallStartedAt.get(p.toolCallId);
         if (started) {
           const durationMs = Date.now() - started.startedAtMs;
@@ -326,14 +325,14 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
       const errorInfo = parsed.ok ? parsed.value : { message: "Tool error" };
       const payloadCode = typeof p?.code === "string" ? p.code : undefined;
       const errorMsg = errorInfo.message;
-      const toolName = canonicalToolId(p?.toolName ?? "");
+      const toolName = (p?.toolName ?? "");
       captureError(ctx, errorMsg, { source: "tool-error", tool: toolName, code: payloadCode ?? errorInfo.code });
       ctx.debug("lifecycle.tool.error", { tool: toolName, error: errorMsg });
       if (p?.toolCallId && p?.toolName) {
         const started = ctx.toolCallStartedAt.get(p.toolCallId);
         const durationMs = started ? Date.now() - started.startedAtMs : null;
         ctx.debug("lifecycle.tool.result", {
-          tool: canonicalToolId(p.toolName),
+          tool: p.toolName,
           tool_call_id: p.toolCallId,
           duration_ms: durationMs,
           is_error: true,
@@ -342,7 +341,7 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
         ctx.emit({
           type: "tool-result",
           toolCallId: p.toolCallId,
-          toolName: canonicalToolId(p.toolName),
+          toolName: p.toolName,
           isError: true,
           ...(ctx.lastErrorCode ? { errorCode: ctx.lastErrorCode } : {}),
           ...(currentErrorDetail(ctx) ? { errorDetail: currentErrorDetail(ctx) } : {}),

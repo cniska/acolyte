@@ -1,4 +1,3 @@
-import { toolMeta } from "./tool-registry";
 import { formatToolLabel } from "./tool-labels";
 
 export function isPlanLikeOutput(text: string): boolean {
@@ -35,18 +34,6 @@ function suggestNarrowerReviewScope(path: string): string {
   if (clean.endsWith(".ts") || clean.endsWith(".tsx") || clean.endsWith(".js") || clean.endsWith(".md"))
     return `@${clean}`;
   return `@${clean}/agent.ts`;
-}
-
-const aliasMap = new Map<string, string>();
-for (const [id, meta] of Object.entries(toolMeta)) {
-  for (const alias of meta.aliases) {
-    aliasMap.set(alias, id);
-  }
-}
-
-export function canonicalToolId(value: string): string {
-  const normalized = value.trim();
-  return aliasMap.get(normalized) ?? normalized;
 }
 
 const TOOL_HEADER_PATHS_MAX_SHOWN = 3;
