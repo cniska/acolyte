@@ -32,8 +32,8 @@ describe("chat picker visual regression", () => {
       ────────────────────────────────────────────────────────────────────────────────────────────────
       Skills
       
-      › dogfood          Run a quick dogfood loop
-        refactor         Refactor code safely
+      › dogfood              Run a quick dogfood loop
+        refactor             Refactor code safely
       
       Enter to select · Esc to close
       ────────────────────────────────────────────────────────────────────────────────────────────────
@@ -85,8 +85,8 @@ describe("chat picker visual regression", () => {
       ────────────────────────────────────────────────────────────────────────────────────────────────
       Permissions
       
-        read             read-only
-      › write            allow edits and commands
+        read                 read-only
+      › write                allow edits and commands
       
       Enter to apply · Esc to close
       ────────────────────────────────────────────────────────────────────────────────────────────────
@@ -110,8 +110,8 @@ describe("chat picker visual regression", () => {
       ────────────────────────────────────────────────────────────────────────────────────────────────
       Confirm Write Access
       
-      › switch           enable write mode and continue this task
-        cancel           keep read mode
+      › switch               enable write mode and continue this task
+        cancel               keep read mode
       
       Enter to apply · Esc to cancel
       ────────────────────────────────────────────────────────────────────────────────────────────────

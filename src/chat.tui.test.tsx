@@ -134,8 +134,8 @@ describe("chat tui visual regression: model picker", () => {
       ────────────────────────────────────────────────────────────────────────────────────────────────
       Model
       
-        gpt-5-mini       balanced default
-        gpt-5            highest quality
+        gpt-5-mini           balanced default
+        gpt-5                highest quality
       › other
       
       Select other to type · Enter to apply · Esc to close
@@ -149,8 +149,8 @@ describe("chat tui visual regression: model picker", () => {
       ────────────────────────────────────────────────────────────────────────────────────────────────
       Model
       
-        gpt-5-mini       balanced default
-        gpt-5            highest quality
+        gpt-5-mini           balanced default
+        gpt-5                highest quality
       › anthropic/claude-sonnet-4-5
       
       Select other to type · Enter to apply · Esc to close

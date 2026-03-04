@@ -31,7 +31,7 @@ function truncateText(input: string, max = 72): string {
   return `${input.slice(0, Math.max(0, max - 1))}…`;
 }
 
-export const PICKER_LABEL_WIDTH = 16;
+export const PICKER_LABEL_WIDTH = 20;
 
 function renderPickerRows(
   items: Array<{ key: string; label: string; detail: string }>,
