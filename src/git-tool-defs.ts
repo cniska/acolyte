@@ -1,8 +1,9 @@
 import { createTool } from "./tool-contract";
 import { z } from "zod";
 import { appConfig } from "./app-config";
+import { runTool, streamCallId } from "./core-tool-defs";
 import type { GitToolkit } from "./git-tools";
-import { runToolAdapter, type ToolAdapterRuntime } from "./tool-adapter";
+import type { SessionContext } from "./tool-guards";
 import type { ToolName } from "./tool-names";
 import { compactToolOutput } from "./tool-output";
 import type { ToolOutputListener } from "./tool-output-format";
@@ -17,21 +18,21 @@ type EmitHeadTailLines = (
 
 type GitToolFactoryInput = {
   git: GitToolkit;
-  runtime: ToolAdapterRuntime;
+  session: SessionContext;
   onToolOutput?: ToolOutputListener;
   emitHeadTailLines: EmitHeadTailLines;
   stripGitShowMetadataForPreview: (rawText: string) => string;
 };
 
 function createGitStatusTool(input: GitToolFactoryInput) {
-  const { git, runtime, onToolOutput, emitHeadTailLines } = input;
+  const { git, session, onToolOutput, emitHeadTailLines } = input;
   return createTool({
     id: "git-status",
     description: "Show working tree status (short format with branch) for the current repository.",
     instruction: "Use `git-status` for working tree status.",
     inputSchema: z.object({}).optional(),
     execute: async () => {
-      return runToolAdapter(runtime, "git-status", {}, async (toolCallId) => {
+      return runTool(session, "git-status", {}, async (toolCallId) => {
         const rawStatus = await git.statusShort();
         emitHeadTailLines("git-status", rawStatus, onToolOutput, toolCallId, { trimStart: true });
         const result = compactToolOutput(rawStatus, appConfig.agent.toolOutputBudget.gitStatus);
@@ -42,7 +43,7 @@ function createGitStatusTool(input: GitToolFactoryInput) {
 }
 
 function createGitDiffTool(input: GitToolFactoryInput) {
-  const { git, runtime, onToolOutput, emitHeadTailLines } = input;
+  const { git, session, onToolOutput, emitHeadTailLines } = input;
   return createTool({
     id: "git-diff",
     description: "Show unstaged changes (unified diff) for the repository or a specific file path.",
@@ -52,7 +53,7 @@ function createGitDiffTool(input: GitToolFactoryInput) {
       contextLines: z.number().int().min(0).max(20).optional(),
     }),
     execute: async (toolInput) => {
-      return runToolAdapter(runtime, "git-diff", toolInput as Record<string, unknown>, async (toolCallId) => {
+      return runTool(session, "git-diff", toolInput as Record<string, unknown>, async (toolCallId) => {
         const rawDiff = await git.diff({ path: toolInput.path, contextLines: toolInput.contextLines ?? 3 });
         emitHeadTailLines("git-diff", rawDiff, onToolOutput, toolCallId, { headRows: 4, tailRows: 4 });
         const result = compactToolOutput(rawDiff, appConfig.agent.toolOutputBudget.gitDiff);
@@ -63,7 +64,7 @@ function createGitDiffTool(input: GitToolFactoryInput) {
 }
 
 function createGitLogTool(input: GitToolFactoryInput) {
-  const { git, runtime, onToolOutput, emitHeadTailLines } = input;
+  const { git, session, onToolOutput, emitHeadTailLines } = input;
   return createTool({
     id: "git-log",
     description: "Show recent commits in compact one-line form (optionally scoped to a file/path).",
@@ -73,7 +74,7 @@ function createGitLogTool(input: GitToolFactoryInput) {
       limit: z.number().int().min(1).max(50).optional(),
     }),
     execute: async (toolInput) => {
-      return runToolAdapter(runtime, "git-log", toolInput as Record<string, unknown>, async (toolCallId) => {
+      return runTool(session, "git-log", toolInput as Record<string, unknown>, async (toolCallId) => {
         const rawLog = await git.log({ path: toolInput.path, limit: toolInput.limit });
         emitHeadTailLines("git-log", rawLog, onToolOutput, toolCallId, { trimStart: true });
         const result = compactToolOutput(rawLog, appConfig.agent.toolOutputBudget.gitStatus);
@@ -84,7 +85,7 @@ function createGitLogTool(input: GitToolFactoryInput) {
 }
 
 function createGitShowTool(input: GitToolFactoryInput) {
-  const { git, runtime, onToolOutput, emitHeadTailLines, stripGitShowMetadataForPreview } = input;
+  const { git, session, onToolOutput, emitHeadTailLines, stripGitShowMetadataForPreview } = input;
   return createTool({
     id: "git-show",
     description: "Show commit details and patch for a ref (default HEAD), optionally scoped to a path.",
@@ -96,7 +97,7 @@ function createGitShowTool(input: GitToolFactoryInput) {
       contextLines: z.number().int().min(0).max(20).optional(),
     }),
     execute: async (toolInput) => {
-      return runToolAdapter(runtime, "git-show", toolInput as Record<string, unknown>, async (toolCallId) => {
+      return runTool(session, "git-show", toolInput as Record<string, unknown>, async (toolCallId) => {
         const rawShow = await git.show({
           ref: toolInput.ref,
           path: toolInput.path,
@@ -115,34 +116,9 @@ function createGitShowTool(input: GitToolFactoryInput) {
 
 export function createMastraGitTools(input: GitToolFactoryInput) {
   return {
-    gitStatus: {
-      tool: createGitStatusTool(input),
-      meta: {
-        description: "Show working tree status (short format with branch) for the current repository.",
-        instruction: "Use `git-status` for working tree status.",
-      },
-    },
-    gitDiff: {
-      tool: createGitDiffTool(input),
-      meta: {
-        description: "Show unstaged changes (unified diff) for the repository or a specific file path.",
-        instruction: "Use `git-diff` for change inspection.",
-      },
-    },
-    gitLog: {
-      tool: createGitLogTool(input),
-      meta: {
-        description: "Show recent commits in compact one-line form (optionally scoped to a file/path).",
-        instruction: "Use `git-log` to inspect recent commits quickly (optionally scoped by path).",
-      },
-    },
-    gitShow: {
-      tool: createGitShowTool(input),
-      meta: {
-        description: "Show commit details and patch for a ref (default HEAD), optionally scoped to a path.",
-        instruction:
-          "Use `git-show` to inspect a specific commit/tag/ref with patch details (optionally scoped by path).",
-      },
-    },
+    gitStatus: createGitStatusTool(input),
+    gitDiff: createGitDiffTool(input),
+    gitLog: createGitLogTool(input),
+    gitShow: createGitShowTool(input),
   };
 }
