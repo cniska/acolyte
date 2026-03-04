@@ -22,8 +22,8 @@ describe("chat picker visual regression", () => {
     const out = renderInputPanelWithPicker({
       kind: "skills",
       items: [
-        { name: "dogfood", description: "Run a quick dogfood loop", path: "/skills/dogfood/SKILL.md" },
-        { name: "refactor", description: "Refactor code safely", path: "/skills/refactor/SKILL.md" },
+        { name: "dogfood", description: "Run a quick dogfood loop", path: "/.agents/skills/dogfood/SKILL.md" },
+        { name: "refactor", description: "Refactor code safely", path: "/.agents/skills/refactor/SKILL.md" },
       ],
       index: 0,
     });

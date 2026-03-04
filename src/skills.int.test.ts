@@ -33,15 +33,17 @@ describe("skills loader", () => {
     expect(skills[0]?.name).toBe("helper");
   });
 
-  test("deduplicates by name (first wins)", async () => {
+  test("does not scan legacy ./skills directory", async () => {
     const dir = createDir("acolyte-skills-dedup-");
-    writeSkill(dir, "demo", "---\nname: demo\ndescription: From skills/\n---");
+    const legacyDir = join(dir, "skills", "demo");
+    mkdirSync(legacyDir, { recursive: true });
+    writeFileSync(join(legacyDir, "SKILL.md"), "---\nname: demo\ndescription: From skills/\n---", "utf8");
     const agentDir = join(dir, ".agents", "skills", "demo");
     mkdirSync(agentDir, { recursive: true });
     writeFileSync(join(agentDir, "SKILL.md"), "---\nname: demo\ndescription: From .agents/skills/\n---", "utf8");
     const skills = await listSkills(dir);
     expect(skills).toHaveLength(1);
-    expect(skills[0]?.description).toBe("From skills/");
+    expect(skills[0]?.description).toBe("From .agents/skills/");
   });
 
   test("skips skills with invalid names", async () => {

@@ -113,53 +113,51 @@ function stripFrontmatter(input: string): string {
     .trim();
 }
 
-const SKILL_DIRS = ["skills", ".agents/skills"];
+const SKILL_DIR = ".agents/skills";
 
 export async function listSkills(cwd = process.cwd()): Promise<SkillMeta[]> {
   const seen = new Set<string>();
   const found: SkillMeta[] = [];
 
-  for (const base of SKILL_DIRS) {
-    const root = join(cwd, base);
-    if (!existsSync(root)) continue;
+  const root = join(cwd, SKILL_DIR);
+  if (!existsSync(root)) return [];
 
-    let dirs: Dirent[];
+  let dirs: Dirent[];
+  try {
+    dirs = await readdir(root, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+
+  for (const entry of dirs) {
+    if (!entry.isDirectory()) continue;
+    const dirName = entry.name as string;
+    const skillPath = join(root, dirName, "SKILL.md");
+    if (!existsSync(skillPath)) continue;
     try {
-      dirs = await readdir(root, { withFileTypes: true });
+      const content = await readFile(skillPath, "utf8");
+      const fm = parseFrontmatter(content);
+      if (!fm) continue;
+      const name = fm.name ?? dirName;
+      const nameError = validateSkillName(name, dirName);
+      if (nameError) continue;
+      if (seen.has(name)) continue;
+      seen.add(name);
+
+      const description = fm.description;
+      if (!description || description.length > 1024) continue;
+
+      found.push({
+        name,
+        description,
+        path: skillPath,
+        ...(fm.license ? { license: fm.license } : {}),
+        ...(fm.compatibility ? { compatibility: fm.compatibility } : {}),
+        ...(fm.metadata && Object.keys(fm.metadata).length > 0 ? { metadata: fm.metadata } : {}),
+        ...(fm.allowedTools && fm.allowedTools.length > 0 ? { allowedTools: fm.allowedTools } : {}),
+      });
     } catch {
-      continue;
-    }
-
-    for (const entry of dirs) {
-      if (!entry.isDirectory()) continue;
-      const dirName = entry.name as string;
-      const skillPath = join(root, dirName, "SKILL.md");
-      if (!existsSync(skillPath)) continue;
-      try {
-        const content = await readFile(skillPath, "utf8");
-        const fm = parseFrontmatter(content);
-        if (!fm) continue;
-        const name = fm.name ?? dirName;
-        const nameError = validateSkillName(name, dirName);
-        if (nameError) continue;
-        if (seen.has(name)) continue;
-        seen.add(name);
-
-        const description = fm.description;
-        if (!description || description.length > 1024) continue;
-
-        found.push({
-          name,
-          description,
-          path: skillPath,
-          ...(fm.license ? { license: fm.license } : {}),
-          ...(fm.compatibility ? { compatibility: fm.compatibility } : {}),
-          ...(fm.metadata && Object.keys(fm.metadata).length > 0 ? { metadata: fm.metadata } : {}),
-          ...(fm.allowedTools && fm.allowedTools.length > 0 ? { allowedTools: fm.allowedTools } : {}),
-        });
-      } catch {
-        // Skip unreadable skills.
-      }
+      // Skip unreadable skills.
     }
   }
 

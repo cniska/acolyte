@@ -144,7 +144,7 @@ export function startTestServer(fetch: (req: Request) => Response | Promise<Resp
 }
 
 export function writeSkill(base: string, dirName: string, frontmatter: string, body = ""): void {
-  const skillDir = join(base, "skills", dirName);
+  const skillDir = join(base, ".agents", "skills", dirName);
   mkdirSync(skillDir, { recursive: true });
   writeFileSync(join(skillDir, "SKILL.md"), `${frontmatter}\n${body}`, "utf8");
 }

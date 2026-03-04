@@ -72,7 +72,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
   const openSkillsPanel = async (): Promise<void> => {
     const skills = await loadSkills();
     if (skills.length === 0) {
-      input.setRows((current) => [...current, createRow("system", "No skills found in ./skills or ./.agents/skills.")]);
+      input.setRows((current) => [...current, createRow("system", "No skills found in ./.agents/skills.")]);
       return;
     }
     input.setPicker(

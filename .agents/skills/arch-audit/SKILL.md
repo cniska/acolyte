@@ -15,6 +15,7 @@ Focus on:
   - pass-through facade modules that only rename or re-export behavior
   - alias/wrapper layers without independent policy or contract value
   - dependency-injection bags that exceed practical seam/testing needs
+  - thin wrappers that only forward calls without adding policy (for example `runX -> runY`)
 - lifecycle phase boundaries and evaluator-driven behavior
 - tool architecture (toolkits, registry, guarded execution)
 - contracts/schemas as source of truth (Zod + inferred types)
@@ -49,6 +50,8 @@ Then inspect relevant code:
 
 1. Build the expected architecture map from docs/contracts.
 2. Compare implementation against that map.
+   - Explicitly run a cycle pass on core entrypoints/splits (`cli*`, `server*`, `client*`, `lifecycle*`).
+   - Explicitly flag wrapper modules/functions that only proxy one call and add no invariants/policy.
 3. Report findings ordered by severity:
 - correctness/regression risk
 - contract drift / protocol mismatch
