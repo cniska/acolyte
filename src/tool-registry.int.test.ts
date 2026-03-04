@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { setPermissionMode } from "./app-config";
-import { invariant } from "./assert";
 import { toolsForAgent } from "./tool-registry";
 import { savedPermissionMode } from "./test-utils";
 import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
@@ -13,7 +12,6 @@ describe("tool error wrapper integration", () => {
   test("preserves guard-blocked code from guarded execution", async () => {
     setPermissionMode("write");
     const { tools } = toolsForAgent({ workspace: process.cwd() });
-    invariant(tools.runCommand?.execute, "runCommand tool missing");
     await tools.runCommand.execute({ command: "echo verify" });
     try {
       await tools.runCommand.execute({ command: "echo verify" });

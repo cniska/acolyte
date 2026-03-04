@@ -1,12 +1,74 @@
-import { createTool } from "./tool-contract";
 import { z } from "zod";
 import { appConfig } from "./app-config";
-import { runTool, streamCallId } from "./core-tool-defs";
-import type { GitToolkit } from "./git-tools";
+import { gitDiff, gitLog, gitShow, gitStatusShort } from "./core-tools";
+import { runTool, streamCallId } from "./core-toolkit";
+import { createTool } from "./tool-contract";
 import type { SessionContext } from "./tool-guards";
 import type { ToolName } from "./tool-names";
 import { compactToolOutput } from "./tool-output";
 import type { ToolOutputListener } from "./tool-output-format";
+
+// ---------------------------------------------------------------------------
+// Git operations layer
+// ---------------------------------------------------------------------------
+
+export const GIT_TOOLKIT_OPERATIONS = ["statusShort", "diff", "log", "show"] as const;
+export type GitToolkitOperation = (typeof GIT_TOOLKIT_OPERATIONS)[number];
+
+export type GitDiffInput = { path?: string; contextLines?: number };
+export type GitLogInput = { path?: string; limit?: number };
+export type GitShowInput = { ref?: string; path?: string; contextLines?: number };
+
+export type GitOps = {
+  statusShort: () => Promise<string>;
+  diff: (input?: GitDiffInput) => Promise<string>;
+  log: (input?: GitLogInput) => Promise<string>;
+  show: (input?: GitShowInput) => Promise<string>;
+};
+
+export type GitOpsDeps = {
+  gitStatusShort: typeof gitStatusShort;
+  gitDiff: typeof gitDiff;
+  gitLog: typeof gitLog;
+  gitShow: typeof gitShow;
+};
+
+const defaultDeps: GitOpsDeps = {
+  gitStatusShort,
+  gitDiff,
+  gitLog,
+  gitShow,
+};
+
+async function runGitOp(operation: GitToolkitOperation, execute: () => Promise<string>): Promise<string> {
+  try {
+    return await execute();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`[git-ops:${operation}] ${message}`);
+  }
+}
+
+export function createGitOps(workspace: string, deps: GitOpsDeps = defaultDeps): GitOps {
+  return {
+    statusShort: () => runGitOp("statusShort", () => deps.gitStatusShort(workspace)),
+    diff: (input) => runGitOp("diff", () => deps.gitDiff(workspace, input?.path, input?.contextLines ?? 3)),
+    log: (input) =>
+      runGitOp("log", () => deps.gitLog(workspace, { path: input?.path, limit: input?.limit })),
+    show: (input) =>
+      runGitOp("show", () =>
+        deps.gitShow(workspace, {
+          ref: input?.ref,
+          path: input?.path,
+          contextLines: input?.contextLines ?? 3,
+        }),
+      ),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Git tool definitions
+// ---------------------------------------------------------------------------
 
 type EmitHeadTailLines = (
   toolName: ToolName,
@@ -16,15 +78,15 @@ type EmitHeadTailLines = (
   options?: { headRows?: number; tailRows?: number; trimStart?: boolean },
 ) => void;
 
-type GitToolFactoryInput = {
-  git: GitToolkit;
+type GitToolkitInput = {
+  git: GitOps;
   session: SessionContext;
   onToolOutput?: ToolOutputListener;
   emitHeadTailLines: EmitHeadTailLines;
   stripGitShowMetadataForPreview: (rawText: string) => string;
 };
 
-function createGitStatusTool(input: GitToolFactoryInput) {
+function createGitStatusTool(input: GitToolkitInput) {
   const { git, session, onToolOutput, emitHeadTailLines } = input;
   return createTool({
     id: "git-status",
@@ -42,7 +104,7 @@ function createGitStatusTool(input: GitToolFactoryInput) {
   });
 }
 
-function createGitDiffTool(input: GitToolFactoryInput) {
+function createGitDiffTool(input: GitToolkitInput) {
   const { git, session, onToolOutput, emitHeadTailLines } = input;
   return createTool({
     id: "git-diff",
@@ -63,7 +125,7 @@ function createGitDiffTool(input: GitToolFactoryInput) {
   });
 }
 
-function createGitLogTool(input: GitToolFactoryInput) {
+function createGitLogTool(input: GitToolkitInput) {
   const { git, session, onToolOutput, emitHeadTailLines } = input;
   return createTool({
     id: "git-log",
@@ -84,7 +146,7 @@ function createGitLogTool(input: GitToolFactoryInput) {
   });
 }
 
-function createGitShowTool(input: GitToolFactoryInput) {
+function createGitShowTool(input: GitToolkitInput) {
   const { git, session, onToolOutput, emitHeadTailLines, stripGitShowMetadataForPreview } = input;
   return createTool({
     id: "git-show",
@@ -114,7 +176,7 @@ function createGitShowTool(input: GitToolFactoryInput) {
   });
 }
 
-export function createMastraGitTools(input: GitToolFactoryInput) {
+export function createGitToolkit(input: GitToolkitInput) {
   return {
     gitStatus: createGitStatusTool(input),
     gitDiff: createGitDiffTool(input),

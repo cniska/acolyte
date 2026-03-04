@@ -99,7 +99,7 @@ export function createModeAgent(input: {
   mode: RunContext["mode"];
   workspace: string | undefined;
   model: string;
-  tools: Partial<Toolset>;
+  tools: Toolset;
 }): Agent {
   return createAgent({
     model: input.model,

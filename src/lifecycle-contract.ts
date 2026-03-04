@@ -48,7 +48,7 @@ export type PhasePrepareInput = {
 };
 export type PhasePrepareResult = {
   session: SessionContext;
-  tools: Partial<Toolset>;
+  tools: Toolset;
   agentInput: string;
   promptUsage: PromptUsage;
 };
@@ -81,7 +81,7 @@ export type RunContext = {
   readonly emit: (event: StreamEvent) => void;
   readonly debug: (event: LifecycleEventName, fields?: Record<string, unknown>) => void;
   readonly classifiedMode: AgentMode;
-  readonly tools: Partial<Toolset>;
+  readonly tools: Toolset;
   readonly session: SessionContext;
   readonly agentInput: string;
   readonly policy: LifecyclePolicy;

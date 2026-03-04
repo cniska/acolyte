@@ -8,7 +8,7 @@ export type CreateAgentInput = {
   instructions: AgentInstructions;
   id?: string;
   name?: string;
-  tools?: Partial<Toolset>;
+  tools?: Toolset;
 };
 
 export { createAgent };

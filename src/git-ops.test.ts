@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { createGitToolkit, type GitToolkitDeps } from "./git-tools";
+import { createGitOps, type GitOpsDeps } from "./git-toolkit";
 
-function createDeps(overrides?: Partial<GitToolkitDeps>): GitToolkitDeps {
+function createDeps(overrides?: Partial<GitOpsDeps>): GitOpsDeps {
   return {
     gitStatusShort: async () => "status",
     gitDiff: async () => "diff",
@@ -28,7 +28,7 @@ describe("git toolkit", () => {
         return "show";
       },
     });
-    const toolkit = createGitToolkit("/repo", deps);
+    const toolkit = createGitOps("/repo", deps);
 
     await toolkit.diff();
     await toolkit.log();
@@ -61,7 +61,7 @@ describe("git toolkit", () => {
         return "show";
       },
     });
-    const toolkit = createGitToolkit("/repo", deps);
+    const toolkit = createGitOps("/repo", deps);
 
     await toolkit.statusShort();
     await toolkit.diff({ path: "src/a.ts", contextLines: 7 });
@@ -77,7 +77,7 @@ describe("git toolkit", () => {
   });
 
   test("prefixes errors with operation context", async () => {
-    const toolkit = createGitToolkit(
+    const toolkit = createGitOps(
       "/repo",
       createDeps({
         gitDiff: async () => {
@@ -86,6 +86,6 @@ describe("git toolkit", () => {
       }),
     );
 
-    await expect(toolkit.diff()).rejects.toThrow("[git-tools:diff] boom");
+    await expect(toolkit.diff()).rejects.toThrow("[git-ops:diff] boom");
   });
 });

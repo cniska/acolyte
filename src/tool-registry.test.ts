@@ -54,9 +54,7 @@ describe("mastra toolsets", () => {
 describe("read-file tool schema", () => {
   test("rejects invalid range when start is greater than end", () => {
     const { tools } = toolsForAgent();
-    const schema = tools.readFile?.inputSchema;
-    expect(schema).toBeDefined();
-    invariant(schema, "readFileTool.inputSchema is undefined");
+    const schema = tools.readFile.inputSchema;
     expect(() => schema.parse({ paths: [{ path: "src/agent.ts", start: 20, end: 10 }] })).toThrow(
       "start must be less than or equal to end",
     );
@@ -64,9 +62,7 @@ describe("read-file tool schema", () => {
 
   test("accepts bounded ranges and single-sided ranges", () => {
     const { tools } = toolsForAgent();
-    const schema = tools.readFile?.inputSchema;
-    expect(schema).toBeDefined();
-    invariant(schema, "readFileTool.inputSchema is undefined");
+    const schema = tools.readFile.inputSchema;
     expect(schema.parse({ paths: [{ path: "src/agent.ts", start: 10, end: 20 }] })).toEqual({
       paths: [{ path: "src/agent.ts", start: 10, end: 20 }],
     });
@@ -80,9 +76,7 @@ describe("read-file tool schema", () => {
 
   test("accepts multiple paths", () => {
     const { tools } = toolsForAgent();
-    const schema = tools.readFile?.inputSchema;
-    expect(schema).toBeDefined();
-    invariant(schema, "readFileTool.inputSchema is undefined");
+    const schema = tools.readFile.inputSchema;
     expect(
       schema.parse({
         paths: [{ path: "src/agent.ts", start: 1, end: 10 }, { path: "src/cli.ts" }],
@@ -97,9 +91,7 @@ describe("delete-file tool schema", () => {
   test("requires paths array and rejects legacy single path input", () => {
     setPermissionMode("write");
     const { tools } = toolsForAgent();
-    const schema = tools.deleteFile?.inputSchema;
-    expect(schema).toBeDefined();
-    invariant(schema, "deleteFileTool.inputSchema is undefined");
+    const schema = tools.deleteFile.inputSchema;
     expect(() => schema.parse({ path: "src/agent.ts" })).toThrow();
     expect(schema.parse({ paths: ["src/agent.ts"] })).toEqual({ paths: ["src/agent.ts"] });
   });

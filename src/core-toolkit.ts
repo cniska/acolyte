@@ -716,13 +716,13 @@ function createWebFetchTool(session: SessionContext) {
   });
 }
 
-export type CoreToolkitFactoryInput = {
+export type ToolkitInput = {
   workspace: string;
   session: SessionContext;
   onToolOutput?: ToolOutputListener;
 };
 
-export function createCoreBaseToolkit(input: CoreToolkitFactoryInput) {
+export function createCoreBaseToolkit(input: ToolkitInput) {
   const { workspace, session, onToolOutput } = input;
   return {
     findFiles: createFindFilesTool(workspace, session, onToolOutput),
@@ -734,7 +734,7 @@ export function createCoreBaseToolkit(input: CoreToolkitFactoryInput) {
   };
 }
 
-export function createCoreWriteToolkit(input: CoreToolkitFactoryInput) {
+export function createCoreWriteToolkit(input: ToolkitInput) {
   const { workspace, session, onToolOutput } = input;
   return {
     runCommand: createRunCommandTool(workspace, session, onToolOutput),
