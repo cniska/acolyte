@@ -742,9 +742,9 @@ describe("tool output contract: create-file", () => {
         "create-file",
         { path: "created.txt", content: "first\nsecond\n" },
         {
-          raw: ["path=created.txt files=1", "1  first", "2  second"],
+          raw: ["path=created.txt", "1 + first", "2 + second"],
           formatted: dedent(`
-          • Create path=created.txt files=1
+          • Create created.txt
               1  first
               2  second
         `),

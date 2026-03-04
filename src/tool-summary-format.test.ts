@@ -25,9 +25,7 @@ describe("tool summary format", () => {
     );
     expect(mergeToolOutputHeader("Read", "read-file", "paths=2 targets=[a.ts, b.ts]")).toBe("Read a.ts, b.ts");
     expect(mergeToolOutputHeader("Review", "scan-code", "paths=1 targets=[src/a.ts]")).toBe("Review src/a.ts");
-    expect(mergeToolOutputHeader("Create", "create-file", "path=src/a.ts files=1")).toBe(
-      "Create path=src/a.ts files=1",
-    );
+    expect(mergeToolOutputHeader("Create", "create-file", "path=src/a.ts")).toBe("Create src/a.ts");
     expect(mergeToolOutputHeader("Edit", "edit-file", "path=src/a.ts files=1 added=2 removed=1")).toBe(
       "Edit path=src/a.ts files=1 added=2 removed=1",
     );

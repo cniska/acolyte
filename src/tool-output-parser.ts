@@ -18,7 +18,7 @@ export type ParsedToolOutputRow =
   | { kind: "search-summary"; scope: string; patterns: string[]; matches: number }
   | { kind: "read-summary"; paths: number; targets: string[]; omitted: number }
   | { kind: "web-search-summary"; query: string; results: number }
-  | { kind: "create-summary"; path: string; files: number }
+  | { kind: "create-summary"; path: string }
   | { kind: "edit-summary"; path: string; files: number; added: number; removed: number };
 
 export interface ToolOutputParser {
@@ -88,12 +88,11 @@ export class TextToolOutputParser implements ToolOutputParser {
         return { kind: "unknown" };
       }
       case "create-file": {
-        const match = trimmed.match(/^path=(.+)\s+files=(\d+)$/i);
-        if (match?.[1] && match[2]) {
+        const match = trimmed.match(/^path=(.+)$/i);
+        if (match?.[1]) {
           return {
             kind: "create-summary",
             path: match[1].trim(),
-            files: Number.parseInt(match[2], 10),
           };
         }
         return { kind: "unknown" };

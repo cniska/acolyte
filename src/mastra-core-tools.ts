@@ -162,7 +162,7 @@ function emitDiffSummaryHeader(
   if (toolName === "create-file") {
     onToolOutput?.({
       toolName,
-      message: `path=${path} files=${touchedFiles}`,
+      message: `path=${path}`,
       toolCallId,
     });
     return;
@@ -175,11 +175,12 @@ function emitDiffSummaryHeader(
 }
 
 function createFilePreviewLine(line: string): string {
-  const numberedDiff = line.match(/^(\d+)\s+[+-]\s(.*)$/);
+  const numberedDiff = line.match(/^(\d+)\s+([+-])\s(.*)$/);
   if (!numberedDiff) return line;
   const lineNumber = numberedDiff[1] ?? "";
-  const text = numberedDiff[2] ?? "";
-  return `${lineNumber}  ${text}`;
+  const marker = numberedDiff[2] ?? "+";
+  const text = numberedDiff[3] ?? "";
+  return `${lineNumber} ${marker} ${text}`;
 }
 
 export function emitHeadTailLines(

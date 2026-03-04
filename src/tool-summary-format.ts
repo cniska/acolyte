@@ -76,7 +76,7 @@ export function mergeToolOutputHeader(_header: string, toolName: string, line: s
       return `${label} ${list}`;
     }
     case "create-summary":
-      return `Create path=${parsed.path} files=${parsed.files}`;
+      return `Create ${parsed.path}`;
     case "edit-summary":
       return `Edit path=${parsed.path} files=${parsed.files} added=${parsed.added} removed=${parsed.removed}`;
     case "files-count":

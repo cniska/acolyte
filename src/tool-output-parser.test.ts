@@ -44,10 +44,9 @@ describe("tool output parser", () => {
       query: '"bun test"',
       results: 2,
     });
-    expect(parseToolOutputRow("create-file", "path=src/a.ts files=1")).toEqual({
+    expect(parseToolOutputRow("create-file", "path=src/a.ts")).toEqual({
       kind: "create-summary",
       path: "src/a.ts",
-      files: 1,
     });
     expect(parseToolOutputRow("edit-file", "path=src/a.ts files=1 added=2 removed=1")).toEqual({
       kind: "edit-summary",
