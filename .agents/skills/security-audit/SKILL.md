@@ -9,7 +9,7 @@ Use this skill when asked to review security posture, harden defaults, or assess
 
 ## Scope
 
-Prioritize:
+Focus on:
 - auth and trust boundaries (server key checks, RPC access)
 - security over the wire (HTTP/WS vs HTTPS/WSS, endpoint exposure, transport expectations)
 - encryption controls (in transit and at rest where applicable)
@@ -28,7 +28,7 @@ Read first:
 - `docs/roadmap.md` (pre-OSS security baseline)
 
 Then inspect code:
-- `src/server.ts`, `src/client.ts`, `src/rpc-*.ts`, `src/protocol*.ts`
+- `src/server*.ts`, `src/client*.ts`, `src/rpc-*.ts`, `src/protocol*.ts`
 - `src/core-tools.ts`, `src/*tools*.ts`, `src/tool-guards.ts`
 - `src/config*.ts`, `src/env.ts`, `src/error-handling.ts`
 - relevant tests under `src/*.test.ts` and `src/*.int.test.ts`

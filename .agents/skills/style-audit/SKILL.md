@@ -43,9 +43,14 @@ Then inspect relevant files for the feature under review.
 
 ## Output Format
 
-- Findings first
-- Keep suggestions concrete and small
-- Separate must-fix vs optional polish
+- Findings first, ordered by severity
+- For each finding include:
+- file reference
+- violated local convention
+- minimal fix direction
+- Then list:
+- must-fix items
+- optional polish
 
 ## Guardrails
 

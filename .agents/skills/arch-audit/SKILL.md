@@ -10,21 +10,19 @@ Use this skill when asked to review architecture quality, design consistency, ex
 ## Scope
 
 Focus on:
-- indirection pressure (primary):
-  - runtime import cycles across split modules
-  - pass-through facade modules that only rename or re-export behavior
-  - alias/wrapper layers without independent policy or contract value
-  - dependency-injection bags that exceed practical seam/testing needs
-  - thin wrappers that only forward calls without adding policy (for example `runX -> runY`)
+- indirection pressure (primary): runtime import cycles across split modules
+- indirection pressure (primary): pass-through facade modules that only rename or re-export behavior
+- indirection pressure (primary): alias/wrapper layers without independent policy or contract value
+- indirection pressure (primary): dependency-injection bags that exceed practical seam/testing needs
+- indirection pressure (primary): thin wrappers that only forward calls without adding policy (for example `runX -> runY`)
 - lifecycle phase boundaries and evaluator-driven behavior
 - tool architecture (toolkits, registry, guarded execution)
 - contracts/schemas as source of truth (Zod + inferred types)
 - transport and protocol consistency (HTTP/RPC parity)
-- extension blockers (open-source readiness):
-  - hard-coded behavior where policy/config seam is expected
-  - new feature requiring edits across many unrelated modules
-  - private coupling that prevents additive toolkits/transports/providers
-  - boundary leaks that force consumers to depend on internal module order
+- extension blockers (open-source readiness): hard-coded behavior where policy/config seam is expected
+- extension blockers (open-source readiness): new feature requiring edits across many unrelated modules
+- extension blockers (open-source readiness): private coupling that prevents additive toolkits/transports/providers
+- extension blockers (open-source readiness): boundary leaks that force consumers to depend on internal module order
 - guard/evaluator extensibility without test-only production hacks
 - error contracts and typed error model consistency
 - assert patterns and exhaustiveness (`invariant`, `unreachable`, `switch` with `default`)
@@ -34,7 +32,7 @@ Focus on:
 
 ## Canonical References
 
-Read these first:
+Read first:
 - `docs/architecture.md`
 - `AGENTS.md`
 - `docs/roadmap.md` (pre-MVP vs post-MVP intent)
@@ -43,15 +41,15 @@ Then inspect relevant code:
 - `src/lifecycle*.ts`
 - `src/tool-guards.ts`
 - `src/*tools*.ts`
-- `src/*protocol*.ts`, `src/server.ts`, `src/client.ts`
+- `src/*protocol*.ts`, `src/server*.ts`, `src/client*.ts`
 - `src/config*.ts`
 
 ## Audit Workflow
 
 1. Build the expected architecture map from docs/contracts.
-2. Compare implementation against that map.
-   - Explicitly run a cycle pass on core entrypoints/splits (`cli*`, `server*`, `client*`, `lifecycle*`).
-   - Explicitly flag wrapper modules/functions that only proxy one call and add no invariants/policy.
+2. Compare implementation against that map:
+- run a cycle pass on core entrypoints/splits (`cli*`, `server*`, `client*`, `lifecycle*`)
+- flag wrapper modules/functions that only proxy one call and add no invariants/policy
 3. Report findings ordered by severity:
 - correctness/regression risk
 - contract drift / protocol mismatch
@@ -71,12 +69,15 @@ Then inspect relevant code:
 
 ## Output Format
 
-- Findings first (no long preamble)
-- Include concrete file references
+- Findings first, ordered by severity (no long preamble)
+- For each finding include:
+- impacted files
+- why it violates intended pattern
+- minimal fix direction
 - Separate:
-  - confirmed issues
-  - open questions/assumptions
-  - optional follow-up refactors
+- confirmed issues
+- open questions/assumptions
+- optional follow-up refactors
 
 ## Guardrails
 
