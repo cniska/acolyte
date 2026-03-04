@@ -1,6 +1,6 @@
 ---
 name: security-audit
-description: Audit Acolyte for practical security risks (auth, workspace boundaries, command/tool safety, secret handling, and protocol abuse) and recommend minimal high-impact fixes.
+description: Audit practical security risks including auth, workspace boundaries, command safety, secret handling, and protocol abuse. Use when reviewing security posture, hardening defaults, or assessing risk before release.
 ---
 
 # Security Audit
@@ -20,7 +20,7 @@ Focus on:
 - protocol abuse risks (queue flooding, task spam, malformed payloads)
 - dependency and config defaults that create insecure behavior
 
-## Canonical References
+## References
 
 Read first:
 - `docs/architecture.md`
@@ -38,35 +38,35 @@ Then inspect code:
 1. Map entry points and trust boundaries.
 2. Check each boundary for validation, authorization, and safe defaults.
 3. Audit transport security:
-- local-only paths may use `http/ws`; remote-accessible paths must use `https/wss`
-- confirm no sensitive payloads or credentials traverse insecure remote channels
+   - local-only paths may use `http/ws`; remote-accessible paths must use `https/wss`
+   - confirm no sensitive payloads or credentials traverse insecure remote channels
 4. Audit encryption posture:
-- in-transit protections for all remote traffic
-- at-rest protections for persisted sensitive data when present
-- key/secret handling: env-based, redacted logs, no plaintext persistence
+   - in-transit protections for all remote traffic
+   - at-rest protections for persisted sensitive data when present
+   - key/secret handling: env-based, redacted logs, no plaintext persistence
 5. Identify exploitable paths (read/write/exec/network), then rate impact/likelihood.
 6. Report findings by severity:
-- critical: direct unauthorized access/data loss/code execution
-- high: realistic abuse with significant impact
-- medium: defense gaps likely to become issues
-- low: hygiene and observability improvements
+   - critical: direct unauthorized access/data loss/code execution
+   - high: realistic abuse with significant impact
+   - medium: defense gaps likely to become issues
+   - low: hygiene and observability improvements
 7. Provide minimal remediations and regression test ideas for each finding.
 
 ## Output Format
 
-- Findings first, ordered by severity
+- Findings first, ordered by severity.
 - For each finding include:
-- affected files
-- attack/failure path
-- why current behavior is risky
-- smallest effective fix
-- recommended test coverage
+  - affected files
+  - attack/failure path
+  - why current behavior is risky
+  - smallest effective fix
+  - recommended test coverage
 - Then list:
-- open questions/assumptions
-- optional hardening follow-ups
+  - open questions/assumptions
+  - optional hardening follow-ups
 
-## Guardrails
+## Anti-Patterns
 
-- Avoid fear-driven or speculative recommendations.
-- Prefer concrete, testable fixes over policy-heavy rewrites.
-- Keep recommendations aligned with current architecture and YAGNI.
+- Fear-driven or speculative recommendations without concrete attack paths.
+- Policy-heavy rewrites over concrete, testable fixes.
+- Recommendations that conflict with current architecture or violate YAGNI.

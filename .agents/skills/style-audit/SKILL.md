@@ -1,6 +1,6 @@
 ---
 name: style-audit
-description: Audit code style and consistency rules in Acolyte (naming, patterns, assertions, switch defaults, file/module structure) and suggest minimal fixes.
+description: Audit code style and consistency including naming, patterns, assertions, switch defaults, and module structure. Use when reviewing code quality, coding patterns, or style drift.
 ---
 
 # Style Audit
@@ -20,7 +20,7 @@ Focus on:
 - avoiding local anti-patterns (unused params, dead branches, ad-hoc fallbacks)
 - module layout consistency (flat `src/`, `*-contract`, `*-http`, `*-rpc`, no unnecessary re-export layers)
 
-## Canonical References
+## References
 
 Read first:
 - `AGENTS.md`
@@ -33,27 +33,27 @@ Then inspect relevant files for the feature under review.
 1. Identify the active local style/pattern conventions from nearby code.
 2. Find concrete deviations.
 3. Report findings ordered by severity:
-- correctness-affecting style issues
-- maintainability/consistency drift
-- readability polish
+   - correctness-affecting style issues
+   - maintainability/consistency drift
+   - readability polish
 4. For each finding include:
-- file reference
-- violated local convention
-- minimal fix direction
+   - file reference
+   - violated local convention
+   - minimal fix direction
 
 ## Output Format
 
-- Findings first, ordered by severity
+- Findings first, ordered by severity.
 - For each finding include:
-- file reference
-- violated local convention
-- minimal fix direction
+  - file reference
+  - violated local convention
+  - minimal fix direction
 - Then list:
-- must-fix items
-- optional polish
+  - must-fix items
+  - optional polish
 
-## Guardrails
+## Anti-Patterns
 
-- Do not enforce generic style-guide dogma over local conventions.
-- Prefer minimal diffs over broad rewrites.
-- No speculative abstractions.
+- Enforcing generic style-guide dogma over local conventions.
+- Broad rewrites over minimal diffs.
+- Speculative abstractions.
