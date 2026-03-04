@@ -10,6 +10,40 @@ export const TOOL_OUTPUT_RUN_MAX_ROWS = 5;
 export const TOOL_OUTPUT_FILES_MAX_ROWS = 5;
 export const TOOL_OUTPUT_INLINE_FILES_MAX = 3;
 
+export function emitHeadTailLines(
+  toolName: ToolName,
+  rawText: string,
+  onToolOutput: ToolOutputListener | undefined,
+  toolCallId: string,
+  options?: { headRows?: number; tailRows?: number; trimStart?: boolean },
+): void {
+  if (!onToolOutput) return;
+  const headRows = options?.headRows ?? 2;
+  const tailRows = options?.tailRows ?? 2;
+  const lines = rawText
+    .split("\n")
+    .map((line) => {
+      const base = line.trimEnd();
+      return options?.trimStart ? base.trimStart() : base;
+    })
+    .filter((line) => line.length > 0);
+  if (lines.length === 0) {
+    onToolOutput({ toolName, message: TOOL_OUTPUT_MARKERS.noOutput, toolCallId });
+    return;
+  }
+  if (lines.length > headRows + tailRows) {
+    const omitted = lines.length - (headRows + tailRows);
+    const preview = [
+      ...lines.slice(0, headRows),
+      `${TOOL_OUTPUT_MARKERS.truncated} +${countLabel(omitted, "line", "lines")}`,
+      ...lines.slice(lines.length - tailRows),
+    ];
+    for (const line of preview) onToolOutput({ toolName, message: line, toolCallId });
+    return;
+  }
+  for (const line of lines) onToolOutput({ toolName, message: line, toolCallId });
+}
+
 export function emitResultChunks(
   toolName: ToolName,
   result: string,

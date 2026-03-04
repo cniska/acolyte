@@ -2,15 +2,13 @@ import { resolve } from "node:path";
 import { appConfig } from "./app-config";
 import {
   type ToolkitInput,
-  createCoreBaseToolkit,
+  createCoreReadToolkit,
   createCoreWriteToolkit,
-  emitHeadTailLines,
   streamCallId,
-  stripGitShowMetadataForPreview,
   webSearchStreamRows,
   withToolError,
 } from "./core-toolkit";
-import { createGitOps, createGitToolkit } from "./git-toolkit";
+import { createGitToolkit } from "./git-toolkit";
 import type { ToolDefinition } from "./tool-contract";
 import { createSessionContext, type SessionContext } from "./tool-guards";
 import type { ToolName } from "./tool-names";
@@ -21,7 +19,7 @@ type ToolkitMode = "read" | "write";
 // biome-ignore lint/suspicious/noExplicitAny: ToolDefinition variance requires any here
 type ToolkitEntries = Record<string, ToolDefinition<any>>;
 
-type CoreBaseToolkitEntries = ReturnType<typeof createCoreBaseToolkit>;
+type CoreBaseToolkitEntries = ReturnType<typeof createCoreReadToolkit>;
 type CoreWriteToolkitEntries = ReturnType<typeof createCoreWriteToolkit>;
 type GitToolkitEntries = ReturnType<typeof createGitToolkit>;
 type RegisteredToolkitEntries = CoreBaseToolkitEntries & CoreWriteToolkitEntries & GitToolkitEntries;
@@ -36,9 +34,9 @@ export const TOOLKIT_REGISTRY: {
   createToolkit: (input: ToolkitInput) => ToolkitEntries;
 }[] = [
   {
-    id: "core-base",
+    id: "core-read",
     appliesTo: "all",
-    createToolkit: (input) => createCoreBaseToolkit(input),
+    createToolkit: (input) => createCoreReadToolkit(input),
   },
   {
     id: "core-write",
@@ -48,16 +46,7 @@ export const TOOLKIT_REGISTRY: {
   {
     id: "git",
     appliesTo: "all",
-    createToolkit: (input) => {
-      const git = createGitOps(input.workspace);
-      return createGitToolkit({
-        git,
-        session: input.session,
-        onToolOutput: input.onToolOutput,
-        emitHeadTailLines,
-        stripGitShowMetadataForPreview,
-      });
-    },
+    createToolkit: (input) => createGitToolkit(input),
   },
 ];
 

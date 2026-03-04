@@ -1,16 +1,10 @@
 import { z } from "zod";
 import { appConfig } from "./app-config";
 import { gitDiff, gitLog, gitShow, gitStatusShort } from "./core-tools";
-import { runTool, streamCallId } from "./core-toolkit";
+import { type ToolkitInput, runTool, stripGitShowMetadataForPreview } from "./core-toolkit";
+import { emitHeadTailLines } from "./tool-output-format";
 import { createTool } from "./tool-contract";
-import type { SessionContext } from "./tool-guards";
-import type { ToolName } from "./tool-names";
 import { compactToolOutput } from "./tool-output";
-import type { ToolOutputListener } from "./tool-output-format";
-
-// ---------------------------------------------------------------------------
-// Git operations layer
-// ---------------------------------------------------------------------------
 
 export const GIT_TOOLKIT_OPERATIONS = ["statusShort", "diff", "log", "show"] as const;
 export type GitToolkitOperation = (typeof GIT_TOOLKIT_OPERATIONS)[number];
@@ -66,28 +60,8 @@ export function createGitOps(workspace: string, deps: GitOpsDeps = defaultDeps):
   };
 }
 
-// ---------------------------------------------------------------------------
-// Git tool definitions
-// ---------------------------------------------------------------------------
-
-type EmitHeadTailLines = (
-  toolName: ToolName,
-  rawText: string,
-  onToolOutput: ToolOutputListener | undefined,
-  toolCallId: string,
-  options?: { headRows?: number; tailRows?: number; trimStart?: boolean },
-) => void;
-
-type GitToolkitInput = {
-  git: GitOps;
-  session: SessionContext;
-  onToolOutput?: ToolOutputListener;
-  emitHeadTailLines: EmitHeadTailLines;
-  stripGitShowMetadataForPreview: (rawText: string) => string;
-};
-
-function createGitStatusTool(input: GitToolkitInput) {
-  const { git, session, onToolOutput, emitHeadTailLines } = input;
+function createGitStatusTool(git: GitOps, input: ToolkitInput) {
+  const { session, onToolOutput } = input;
   return createTool({
     id: "git-status",
     description: "Show working tree status (short format with branch) for the current repository.",
@@ -104,8 +78,8 @@ function createGitStatusTool(input: GitToolkitInput) {
   });
 }
 
-function createGitDiffTool(input: GitToolkitInput) {
-  const { git, session, onToolOutput, emitHeadTailLines } = input;
+function createGitDiffTool(git: GitOps, input: ToolkitInput) {
+  const { session, onToolOutput } = input;
   return createTool({
     id: "git-diff",
     description: "Show unstaged changes (unified diff) for the repository or a specific file path.",
@@ -125,8 +99,8 @@ function createGitDiffTool(input: GitToolkitInput) {
   });
 }
 
-function createGitLogTool(input: GitToolkitInput) {
-  const { git, session, onToolOutput, emitHeadTailLines } = input;
+function createGitLogTool(git: GitOps, input: ToolkitInput) {
+  const { session, onToolOutput } = input;
   return createTool({
     id: "git-log",
     description: "Show recent commits in compact one-line form (optionally scoped to a file/path).",
@@ -146,8 +120,8 @@ function createGitLogTool(input: GitToolkitInput) {
   });
 }
 
-function createGitShowTool(input: GitToolkitInput) {
-  const { git, session, onToolOutput, emitHeadTailLines, stripGitShowMetadataForPreview } = input;
+function createGitShowTool(git: GitOps, input: ToolkitInput) {
+  const { session, onToolOutput } = input;
   return createTool({
     id: "git-show",
     description: "Show commit details and patch for a ref (default HEAD), optionally scoped to a path.",
@@ -176,11 +150,12 @@ function createGitShowTool(input: GitToolkitInput) {
   });
 }
 
-export function createGitToolkit(input: GitToolkitInput) {
+export function createGitToolkit(input: ToolkitInput) {
+  const git = createGitOps(input.workspace);
   return {
-    gitStatus: createGitStatusTool(input),
-    gitDiff: createGitDiffTool(input),
-    gitLog: createGitLogTool(input),
-    gitShow: createGitShowTool(input),
+    gitStatus: createGitStatusTool(git, input),
+    gitDiff: createGitDiffTool(git, input),
+    gitLog: createGitLogTool(git, input),
+    gitShow: createGitShowTool(git, input),
   };
 }

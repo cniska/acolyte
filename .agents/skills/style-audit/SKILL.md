@@ -17,6 +17,7 @@ Focus on:
 - table-driven/rule-driven structure where the codebase already uses it
 - dispatch shape: prefer data-driven lookups/tables over long control-flow chains where behavior is mapping-like
 - control flow shape: prefer guard clauses and early returns over nested `if/else` chains
+- no banner or separator comments; let code structure speak for itself
 - avoiding local anti-patterns (unused params, dead branches, ad-hoc fallbacks)
 - module layout consistency (flat `src/`, `*-contract`, `*-http`, `*-rpc`, no unnecessary re-export layers)
 
