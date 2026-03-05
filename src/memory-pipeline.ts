@@ -104,5 +104,10 @@ export async function runMemoryCommitPipeline(
 
 export function buildMemoryContextPrompt(entries: readonly MemoryPipelineEntry[]): string {
   if (entries.length === 0) return "";
-  return `Memory context:\n${entries.map((entry) => `- ${entry.content}`).join("\n")}`;
+  return `Memory context:\n${entries.map((entry) => `- ${formatMemoryEntry(entry.content)}`).join("\n")}`;
+}
+
+function formatMemoryEntry(content: string): string {
+  const trimmed = content.trim();
+  return trimmed.replace(/\n/g, "\n  ");
 }

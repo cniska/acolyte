@@ -64,6 +64,13 @@ describe("memory pipeline", () => {
     expect(prompt).toContain("- Current task: fix tests");
   });
 
+  test("buildMemoryContextPrompt indents multiline entries", () => {
+    const prompt = buildMemoryContextPrompt([
+      { sourceId: "distill", content: "line one\nline two", tokenEstimate: 5 },
+    ]);
+    expect(prompt).toContain("- line one\n  line two");
+  });
+
   test("buildMemoryContextPrompt returns empty for empty entries", () => {
     expect(buildMemoryContextPrompt([])).toBe("");
   });
