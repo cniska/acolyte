@@ -13,7 +13,7 @@ export const messageSchema = z.object({
   id: messageIdSchema,
   role: roleSchema,
   content: z.string(),
-  kind: messageKindSchema.optional(),
+  kind: messageKindSchema.default("text"),
   timestamp: isoDateTimeSchema,
 });
 

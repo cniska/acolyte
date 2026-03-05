@@ -52,4 +52,30 @@ describe("storage", () => {
     expect(normalized.sessions[0]?.tokenUsage[0]?.usage.totalTokens).toBe(15);
     expect(normalized.sessions[0]?.tokenUsage[0]?.modelCalls).toBe(2);
   });
+
+  test("normalizeStore defaults missing message kind to text", () => {
+    const normalized = normalizeStore({
+      activeSessionId: "sess_1",
+      sessions: [
+        {
+          id: "sess_1",
+          createdAt: "2026-02-24T00:00:00.000Z",
+          updatedAt: "2026-02-24T00:00:00.000Z",
+          model: "gpt-5-mini",
+          title: "New Session",
+          messages: [
+            {
+              id: "msg_1",
+              role: "assistant",
+              content: "hello",
+              timestamp: "2026-02-24T00:00:01.000Z",
+            },
+          ],
+          tokenUsage: [],
+        },
+      ] as never,
+    });
+
+    expect(normalized.sessions[0]?.messages[0]?.kind).toBe("text");
+  });
 });
