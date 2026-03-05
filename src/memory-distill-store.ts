@@ -5,24 +5,24 @@ import { join } from "node:path";
 import { type DistillRecord, distillRecordSchema } from "./memory-contract";
 
 export interface DistillStore {
-  list(sessionId: string): Promise<readonly DistillRecord[]>;
+  list(scopeKey: string): Promise<readonly DistillRecord[]>;
   write(record: DistillRecord): Promise<void>;
 }
 
-function safeSessionDirName(sessionId: string): string | null {
-  return /^sess_[a-z0-9]+$/.test(sessionId) ? sessionId : null;
+function safeDistillScopeKey(scopeKey: string): string | null {
+  return /^(sess|user|proj)_[a-z0-9_-]+$/.test(scopeKey) ? scopeKey : null;
 }
 
-function distillDir(homeDir: string, sessionId: string): string | null {
-  const safeName = safeSessionDirName(sessionId);
+function distillDir(homeDir: string, scopeKey: string): string | null {
+  const safeName = safeDistillScopeKey(scopeKey);
   if (!safeName) return null;
   return join(homeDir, ".acolyte", "distill", safeName);
 }
 
 export function createFileDistillStore(homeDir = homedir()): DistillStore {
   return {
-    async list(sessionId) {
-      const dir = distillDir(homeDir, sessionId);
+    async list(scopeKey) {
+      const dir = distillDir(homeDir, scopeKey);
       if (!dir) return [];
       if (!existsSync(dir)) return [];
       const names = await readdir(dir);

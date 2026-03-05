@@ -177,6 +177,7 @@ export async function runLifecycle(input: LifecycleInput) {
     scheduleMemoryCommit(
       {
         sessionId: ctx.request.sessionId,
+        resourceId: ctx.request.resourceId,
         workspace: ctx.workspace,
         messages: [
           ...ctx.request.history.map((m) => ({ role: m.role, content: m.content })),

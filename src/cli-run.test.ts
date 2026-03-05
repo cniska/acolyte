@@ -43,7 +43,7 @@ function createRunDeps(): {
     printError: (message) => calls.errors.push(message),
     readResolvedConfigSync: () => ({ replyTimeoutMs: 1234 }) as never,
     resolveChatApiUrl: () => "http://127.0.0.1:6767",
-    runResourceId: () => "run-123",
+    runResourceId: () => "user_123",
     runShellCommand: async (_cwd, command) => {
       calls.runCommands.push(command);
       return "ok";
@@ -62,8 +62,8 @@ function createRunDeps(): {
 
 describe("cli-run", () => {
   test("runResourceId derives stable isolated key", () => {
-    expect(runResourceId("sess_abcdef1234567890")).toBe("run-abcdef1234567890");
-    expect(runResourceId("sess_short")).toBe("run-short");
+    expect(runResourceId("sess_abcdef1234567890")).toBe("user_run-abcdef1234567890");
+    expect(runResourceId("sess_short")).toBe("user_run-short");
   });
 
   test("shows subcommand help when help flag is present", async () => {

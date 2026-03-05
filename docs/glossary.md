@@ -24,6 +24,7 @@ Ubiquitous language and naming rules used across Acolyte code and docs.
 - **Entry**: runtime/pipeline item used during processing; not necessarily persisted.
 - **Record**: persisted entity object stored by a persistence backend.
 - **Session**: one chat session in memory (messages, model, token usage, timestamps).
+- **Resource ID**: typed cross-session identity key used by memory (`proj_*` for project identity, `user_*` for user identity).
 - **Message Kind**: semantic message classification for history behavior (`text`, `tool_payload`).
 - **SessionRecord**: one stored session record.
 - **SessionState**: sessions aggregate (`sessions[]`, `activeSessionId`).
@@ -39,9 +40,9 @@ Ubiquitous language and naming rules used across Acolyte code and docs.
 - **Lifecycle Policy**: bounded execution controls for lifecycle behavior (for example, timeouts and regeneration caps).
 - **Memory Engine**: top-level memory capability that maintains continuity across turns.
 - **Memory Pipeline**: internal staged flow inside the Memory Engine (ingest -> normalize -> select -> inject -> commit).
-- **Memory Source**: pluggable provider that contributes memory entries and optional commit behavior (`stored`, `distill`).
+- **Memory Source**: pluggable provider that contributes memory entries and optional commit behavior (`stored`, `distill_project`, `distill_user`, `distill_session`).
 - **Memory Source Strategy**: configured source ID set and order used by the Memory Engine (`memorySources`).
-- **Distill**: automatic memory source that extracts and consolidates session knowledge into records.
+- **Distill**: automatic memory source family that extracts and consolidates knowledge into records (project/user/session scope variants).
 - **Observation**: distill record tier capturing round-level facts.
 - **Reflection**: distill record tier consolidating cross-round facts.
 - **Continuation State**: persisted “Current task” and “Next step” cues carried into later turns.

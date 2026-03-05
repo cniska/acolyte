@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { AgentMode } from "./agent-modes";
 import type { Message } from "./chat-message";
+import type { ResourceId } from "./resource-id";
 import type { SessionId } from "./session-contract";
 
 export const verifyScopeSchema = z.enum(["task", "global"]);
@@ -20,7 +21,7 @@ export interface ChatRequest {
   readonly model: string;
   readonly modeModels?: Partial<Record<AgentMode, string>>;
   readonly sessionId?: SessionId;
-  readonly resourceId?: string;
+  readonly resourceId?: ResourceId;
   /** When true, stored memories and distill observations are included in context. */
   readonly useMemory?: boolean;
   /** Verifier read scope: task-bound by default; global only when explicitly requested. */

@@ -8,6 +8,7 @@ import { runLifecycle } from "./lifecycle";
 import { errorToLogFields, log } from "./log";
 import { isProviderAvailable, providerFromModel } from "./provider-config";
 import type { Provider } from "./provider-contract";
+import { parseResourceId, projectResourceIdFromWorkspace } from "./resource-id";
 import type { RunChatHandlers, StreamErrorPayload } from "./server-contract";
 import { createId } from "./short-id";
 import { createSoulPrompt } from "./soul";
@@ -120,6 +121,15 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
     return;
   }
 
+  const providedResourceId = parseResourceId(chatRequest.resourceId);
+  if (chatRequest.resourceId && !providedResourceId) {
+    const payload = streamErrorPayload(new Error(`Invalid resourceId "${chatRequest.resourceId}". Expected user_* or proj_*.`));
+    handlers.onError(payload);
+    return;
+  }
+  const canonicalResourceId = providedResourceId ?? projectResourceIdFromWorkspace(workspaceResolution.workspacePath);
+  const lifecycleRequest: ChatRequest = { ...chatRequest, resourceId: canonicalResourceId };
+
   log.info("chat request started", {
     request_id: requestId,
     task_id: handlers.taskId ?? null,
@@ -135,6 +145,7 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
   try {
     const soulPrompt = await createSoulPrompt({
       sessionId: chatRequest.sessionId,
+      resourceId: canonicalResourceId,
       workspace: workspaceResolution.workspacePath,
       useMemory: chatRequest.useMemory !== false,
       onDebug: (event, fields) => {
@@ -151,7 +162,7 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
       },
     });
     const reply = await runLifecycle({
-      request: chatRequest,
+      request: lifecycleRequest,
       soulPrompt,
       workspace: workspaceResolution.workspacePath,
       taskId: handlers.taskId,

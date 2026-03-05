@@ -108,7 +108,7 @@ const DISTILL_SCOPE_KEY_RESOLVERS: Record<
   },
   user: (ctx) => {
     const parsed = parseResourceId(ctx.resourceId);
-    if (parsed?.startsWith("usr_")) return parsed;
+    if (parsed?.startsWith("user_")) return parsed;
     return defaultUserResourceId();
   },
 };

@@ -16,6 +16,7 @@ import type {
 import type { createClient as createClientType } from "./client";
 import type { readResolvedConfigSync as readResolvedConfigSyncType } from "./config";
 import type { runShellCommand as runShellCommandType } from "./core-tools";
+import type { ResourceId } from "./resource-id";
 import type { ensureLocalServer as ensureLocalServerType } from "./server-daemon";
 import type { createSession as createSessionType } from "./storage";
 
@@ -47,7 +48,7 @@ type RunModeDeps = {
   printError: (message: string) => void;
   readResolvedConfigSync: typeof readResolvedConfigSyncType;
   resolveChatApiUrl: typeof resolveChatApiUrlType;
-  runResourceId: (sessionId: string) => string;
+  runResourceId: (sessionId: string) => ResourceId;
   runShellCommand: typeof runShellCommandType;
   serverApiKey: typeof appConfigType.server.apiKey;
   serverApiUrl: typeof appConfigType.server.apiUrl;
@@ -59,8 +60,8 @@ type RunModeDeps = {
   subcommandHelp: (name: string) => void;
 };
 
-export function runResourceId(sessionId: string): string {
-  return `run-${sessionId.replace(/^sess_/, "").slice(0, 24)}`;
+export function runResourceId(sessionId: string): ResourceId {
+  return `user_run-${sessionId.replace(/^sess_/, "").slice(0, 24)}` as ResourceId;
 }
 
 function parseRunArgs(args: string[]): ParsedRunArgs {

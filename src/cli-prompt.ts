@@ -9,6 +9,7 @@ import { type Client, createClient } from "./client";
 import { nowIso } from "./datetime";
 import { createDebugLogger } from "./debug-flags";
 import { formatPromptError, USER_ERROR_MESSAGES } from "./error-messages";
+import type { ResourceId } from "./resource-id";
 import type { Session } from "./session-contract";
 import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
 import { parseToolProgressLine } from "./tool-progress";
@@ -199,7 +200,7 @@ export async function handlePrompt(
   prompt: string,
   session: Session,
   client: Client = createClient(),
-  options?: { resourceId?: string; workspace?: string },
+  options?: { resourceId?: ResourceId; workspace?: string },
 ): Promise<boolean> {
   const userMsg = newMessage("user", prompt);
   session.messages.push(userMsg);

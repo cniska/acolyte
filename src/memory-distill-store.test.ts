@@ -147,4 +147,29 @@ describe("createFileDistillStore", () => {
     const names = readdirSync(dir);
     expect(names.some((name) => name.includes(".tmp-"))).toBe(false);
   });
+
+  test("supports resource-scoped distill keys", async () => {
+    const home = createDir("acolyte-distill-");
+    const store = createFileDistillStore(home);
+    const userRecord: DistillRecord = {
+      id: "dst_user001",
+      sessionId: "user_abc123",
+      tier: "observation",
+      content: "user fact",
+      createdAt: "2026-03-04T12:00:00.000Z",
+      tokenEstimate: 2,
+    };
+    const projectRecord: DistillRecord = {
+      id: "dst_proj001",
+      sessionId: "proj_abc123",
+      tier: "observation",
+      content: "project fact",
+      createdAt: "2026-03-04T12:00:01.000Z",
+      tokenEstimate: 2,
+    };
+    await store.write(userRecord);
+    await store.write(projectRecord);
+    expect((await store.list("user_abc123")).map((record) => record.content)).toEqual(["user fact"]);
+    expect((await store.list("proj_abc123")).map((record) => record.content)).toEqual(["project fact"]);
+  });
 });

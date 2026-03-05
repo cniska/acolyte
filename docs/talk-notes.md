@@ -55,6 +55,12 @@ Presentation-oriented summary points for explaining Acolyte.
 - Prompt/tool-contract quality often beats extra host-side heuristics for everyday coding tasks.
 - Dogfooding reveals architecture gaps that unit tests miss, especially around recovery behavior.
 - Benchmarking adjacent projects is high leverage: borrow proven patterns, validate tradeoffs, and keep product differentiation intentional.
+- Memory identity is explicit: `session` for runtime continuity, `resource` for cross-session continuity.
+- `resourceId` is typed and validated (`user_*`, `proj_*`), reducing scope ambiguity and bad writes.
+- `workspace` is runtime path, not memory identity; project memory resolves via `proj_*`.
+- Long-run prompt assembly prioritizes conversational turns before old tool payload turns under tight budget.
+- Memory source vocabulary is unified and pluggable (`stored`, `distill_session`, `distill_project`, `distill_user`).
+- Current memory gap is scope value separation: identical distill fan-out should be replaced by explicit promotion.
 - Start single-agent and prove reliability before adding multi-agent complexity.
 - Keep instructions language-agnostic; avoid overfitting behavior to one stack or toolchain.
 - Keep docs conceptual and short. Implementation-detail docs drift quickly and become misleading.

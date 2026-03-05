@@ -2,6 +2,7 @@ import { z } from "zod";
 import { verifyScopeSchema } from "./api";
 import { domainIdSchema } from "./id-contract";
 import { providerSchema } from "./provider-contract";
+import { resourceIdSchema } from "./resource-id";
 import { sessionIdSchema } from "./session-contract";
 import { createId } from "./short-id";
 import { streamErrorDetailSchema } from "./stream-error";
@@ -32,7 +33,7 @@ const chatRequestSchema = z.object({
     })
     .optional(),
   sessionId: sessionIdSchema.optional(),
-  resourceId: z.string().optional(),
+  resourceId: resourceIdSchema.optional(),
   useMemory: z.boolean().optional(),
   verifyScope: verifyScopeSchema.optional(),
   workspace: z.string().optional(),

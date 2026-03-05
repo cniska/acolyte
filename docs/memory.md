@@ -11,13 +11,16 @@ Distill preserves durable knowledge; history pruning handles bulky transcript/to
 - **Memory Pipeline**: staged flow (`ingest -> normalize -> select -> inject -> commit`).
 - **Memory Source**: pluggable source that provides entries and optional commit behavior.
 - **Memory Source Strategy**: configured source IDs and order (`memorySources`).
+- **Resource ID**: canonical cross-session identity key (`proj_*` or `user_*`) used for resource-scoped memory.
 
 ## Sources
 
 - `stored`: explicit Markdown memory notes (`user`/`project` scope).
-- `distill`: automatic observations + reflections from conversation flow.
+- `distill_user`: cross-session user distill context.
+- `distill_project`: cross-session project distill context (workspace-keyed).
+- `distill`: session distill context (active session continuity).
 
-Default source order is `stored, distill`.
+Default source order is `stored, distill_project, distill_user, distill`.
 
 ## Controls
 
@@ -33,6 +36,10 @@ Default source order is `stored, distill`.
 - Distill writes two record tiers:
   - `observation`: round-level extracted facts
   - `reflection`: consolidated cross-round state
+- Commit scopes:
+  - `session` (active session continuity)
+  - `project` (workspace continuity across sessions)
+  - `user` (global user continuity across sessions)
 - Load strategy:
   - latest reflection first
   - then post-reflection observations (fresh delta, newest first)
@@ -56,7 +63,7 @@ Default source order is `stored, distill`.
 ## Storage
 
 - Stored notes: `.acolyte/memory/{user|project}/*.md`
-- Distill records: `~/.acolyte/distill/<sessionId>/*.json`
+- Distill records: `~/.acolyte/distill/<scopeKey>/*.json` where `<scopeKey>` is `sess_*`, `proj_*`, or `user_*`.
 
 ## Extension seams
 

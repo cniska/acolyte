@@ -1,12 +1,13 @@
 import { z } from "zod";
 import { isoDateTimeSchema } from "./datetime";
 import { domainIdSchema } from "./id-contract";
+import type { ResourceId } from "./resource-id";
 
 // -- Source interface --
 
 export type MemoryLoadContext = {
   readonly sessionId?: string;
-  readonly resourceId?: string;
+  readonly resourceId?: ResourceId;
   readonly workspace?: string;
 };
 

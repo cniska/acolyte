@@ -511,7 +511,7 @@ describe("distillMemorySource", () => {
         const keys = store.written.map((entry) => entry.sessionId);
         expect(keys.some((key) => key.startsWith("proj_"))).toBe(true);
         expect(keys.some((key) => key === "sess_test0001")).toBe(false);
-        expect(keys.some((key) => key.startsWith("usr_"))).toBe(false);
+        expect(keys.some((key) => key.startsWith("user_"))).toBe(false);
       } finally {
         (appConfig as { distill: typeof appConfig.distill }).distill = originalDistillConfig;
       }

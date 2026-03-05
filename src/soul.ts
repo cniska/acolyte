@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { appConfig } from "./app-config";
 import { loadMemoryContext } from "./memory-registry";
+import type { ResourceId } from "./resource-id";
 
 export function loadSoulPrompt(cwd = process.cwd()): string {
   const soulPath = join(cwd, "docs", "soul.md");
@@ -37,6 +38,7 @@ export function loadSystemPrompt(cwd = process.cwd()): string {
 type CreateSoulPromptOptions = {
   cwd?: string;
   sessionId?: string;
+  resourceId?: ResourceId;
   workspace?: string;
   useMemory?: boolean;
   onDebug?: (event: string, fields?: Record<string, unknown>) => void;
@@ -74,7 +76,7 @@ export async function createSoulPrompt(options: CreateSoulPromptOptions = {}): P
     return base;
   }
   const memoryContext = await loadMemoryContext(
-    { sessionId: options.sessionId, workspace: options.workspace },
+    { sessionId: options.sessionId, resourceId: options.resourceId, workspace: options.workspace },
     appConfig.memory.budgetTokens,
   );
   const memoryPrompt = memoryContext.prompt;
