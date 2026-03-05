@@ -81,7 +81,9 @@ export async function configMode(args: string[], deps: ConfigModeDeps): Promise<
       for (const name of VALID_CONFIG_KEYS) {
         const value = config[name];
         if (value === undefined || value === "") continue;
-        if (typeof value === "object" && value !== null) {
+        if (Array.isArray(value)) {
+          printDim(`${`${name}:`.padEnd(CONFIG_LIST_KEY_COLUMN_WIDTH)} ${value.join(", ")}`);
+        } else if (typeof value === "object" && value !== null) {
           for (const [k, v] of Object.entries(value)) {
             printDim(`${`${name}.${k}:`.padEnd(CONFIG_LIST_KEY_COLUMN_WIDTH)} ${String(v)}`);
           }
