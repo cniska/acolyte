@@ -11,6 +11,12 @@
 - **`*Schema`** (`sessionSchema`, `taskSchema`): Zod runtime validator and source of truth for unions.
 - **`*Input` / `*Output`**: operation-specific payload types.
 
+## Documentation language rules
+
+- Describe guarantees by **boundary/semantics** (for example, `per-process`, `per-session`, `per-request`).
+- Avoid deployment-shape wording (`single daemon`, `multi daemon`, `replica`) unless deployment topology itself is the subject.
+- Keep wording implementation-agnostic where possible so docs stay correct across runtime environments.
+
 ## Core terms
 
 - **Entry**: runtime/pipeline item used during processing; not necessarily persisted.
