@@ -1,7 +1,7 @@
 import { estimateTokens } from "./agent-input";
 import { appConfig } from "./app-config";
 import { nowIso } from "./datetime";
-import type { DistillRecord, MemorySource, MemorySourceEntry } from "./memory-contract";
+import type { DistillRecord, MemoryCommitMetrics, MemorySource, MemorySourceEntry } from "./memory-contract";
 import { createFileDistillStore, type DistillStore } from "./memory-distill-store";
 import { OBSERVER_PROMPT, REFLECTOR_PROMPT } from "./memory-distill-prompts";
 import { createModel } from "./model-factory";
@@ -93,7 +93,15 @@ function stripScopeTag(line: string): { scope: DistillScope | null; content: str
   return { scope: "session", content };
 }
 
-function splitScopedObservation(observed: string): { session: string; project: string; user: string } {
+function splitScopedObservation(observed: string): {
+  session: string;
+  project: string;
+  user: string;
+  sessionCount: number;
+  projectCount: number;
+  userCount: number;
+  droppedUntaggedCount: number;
+} {
   const lines = observed
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -101,6 +109,7 @@ function splitScopedObservation(observed: string): { session: string; project: s
   const sessionLines: string[] = [];
   const projectLines: string[] = [];
   const userLines: string[] = [];
+  let droppedUntaggedCount = 0;
 
   for (const line of lines) {
     if (isContinuationLine(line)) {
@@ -115,7 +124,10 @@ function splitScopedObservation(observed: string): { session: string; project: s
       continue;
     }
     // Enforce explicit scope tags for fact lines.
-    if (!tagged.scope) continue;
+    if (!tagged.scope) {
+      droppedUntaggedCount += 1;
+      continue;
+    }
     if (tagged.scope === "project") {
       projectLines.push(tagged.content);
       continue;
@@ -131,6 +143,10 @@ function splitScopedObservation(observed: string): { session: string; project: s
     session: sessionLines.join("\n").trim(),
     project: projectLines.join("\n").trim(),
     user: userLines.join("\n").trim(),
+    sessionCount: sessionLines.length,
+    projectCount: projectLines.length,
+    userCount: userLines.length,
+    droppedUntaggedCount,
   };
 }
 
@@ -283,7 +299,7 @@ export function createDistillMemorySource(
       return loadEntriesForKey(ds, key);
     },
 
-    async commit(ctx) {
+    async commit(ctx): Promise<MemoryCommitMetrics | void> {
       if (commitScope === "none") return;
       const key = resolveDistillScopeKey(commitScope, ctx);
       if (!key) return;
@@ -298,7 +314,13 @@ export function createDistillMemorySource(
       if (!observed.trim()) return;
       if (commitScope !== "session") {
         await commitDistillForKey(ds, key, observed, runner);
-        return;
+        const observedFactCount = observed.split(/\r?\n/).filter((line) => line.trim()).length;
+        return {
+          projectPromotedFacts: commitScope === "project" ? observedFactCount : 0,
+          userPromotedFacts: commitScope === "user" ? observedFactCount : 0,
+          sessionScopedFacts: 0,
+          droppedUntaggedFacts: 0,
+        };
       }
 
       const scoped = splitScopedObservation(observed);
@@ -314,6 +336,12 @@ export function createDistillMemorySource(
         const userKey = resolveDistillScopeKey("user", ctx);
         if (userKey) await commitDistillForKey(ds, userKey, scoped.user, runner);
       }
+      return {
+        projectPromotedFacts: scoped.projectCount,
+        userPromotedFacts: scoped.userCount,
+        sessionScopedFacts: scoped.sessionCount,
+        droppedUntaggedFacts: scoped.droppedUntaggedCount,
+      };
     },
   };
 }

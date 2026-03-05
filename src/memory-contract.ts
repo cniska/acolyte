@@ -21,10 +21,17 @@ export type MemoryCommitContext = MemoryLoadContext & {
   readonly output: string;
 };
 
+export type MemoryCommitMetrics = {
+  projectPromotedFacts?: number;
+  userPromotedFacts?: number;
+  sessionScopedFacts?: number;
+  droppedUntaggedFacts?: number;
+};
+
 export type MemorySource = {
   readonly id: string;
   loadEntries(ctx: MemoryLoadContext): Promise<readonly MemorySourceEntry[]>;
-  commit?(ctx: MemoryCommitContext): Promise<void>;
+  commit?(ctx: MemoryCommitContext): Promise<MemoryCommitMetrics | void>;
 };
 
 // -- Distill storage types --

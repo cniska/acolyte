@@ -1,5 +1,5 @@
 import { estimateTokens } from "./agent-input";
-import type { MemoryCommitContext, MemoryLoadContext, MemorySource } from "./memory-contract";
+import type { MemoryCommitContext, MemoryCommitMetrics, MemoryLoadContext, MemorySource } from "./memory-contract";
 
 export type MemoryPipelineEntry = {
   sourceId: string;
@@ -95,11 +95,23 @@ function normalizeContentKey(content: string): string {
 export async function runMemoryCommitPipeline(
   sources: readonly MemorySource[],
   ctx: MemoryCommitContext,
-): Promise<void> {
+): Promise<MemoryCommitMetrics> {
+  const totals: MemoryCommitMetrics = {
+    projectPromotedFacts: 0,
+    userPromotedFacts: 0,
+    sessionScopedFacts: 0,
+    droppedUntaggedFacts: 0,
+  };
   for (const source of sources) {
     if (!source.commit) continue;
-    await source.commit(ctx);
+    const metrics = await source.commit(ctx);
+    if (!metrics) continue;
+    totals.projectPromotedFacts = (totals.projectPromotedFacts ?? 0) + (metrics.projectPromotedFacts ?? 0);
+    totals.userPromotedFacts = (totals.userPromotedFacts ?? 0) + (metrics.userPromotedFacts ?? 0);
+    totals.sessionScopedFacts = (totals.sessionScopedFacts ?? 0) + (metrics.sessionScopedFacts ?? 0);
+    totals.droppedUntaggedFacts = (totals.droppedUntaggedFacts ?? 0) + (metrics.droppedUntaggedFacts ?? 0);
   }
+  return totals;
 }
 
 export function buildMemoryContextPrompt(entries: readonly MemoryPipelineEntry[]): string {

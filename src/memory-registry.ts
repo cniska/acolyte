@@ -1,6 +1,6 @@
 import { appConfig } from "./app-config";
 import type { MemorySourceId } from "./config-contract";
-import type { MemoryCommitContext, MemoryLoadContext, MemorySource } from "./memory-contract";
+import type { MemoryCommitContext, MemoryCommitMetrics, MemoryLoadContext, MemorySource } from "./memory-contract";
 import {
   buildMemoryContextPrompt,
   normalizeMemoryEntries,
@@ -10,7 +10,7 @@ import {
   type MemoryNormalizeStrategy,
   type MemorySelectionStrategy,
 } from "./memory-pipeline";
-import { distillMemorySource } from "./memory-source-distill";
+import { distillMemorySource, distillProjectMemorySource, distillUserMemorySource } from "./memory-source-distill";
 import { storedMemorySource } from "./memory-source-stored";
 
 export type MemoryRegistry = {
@@ -23,15 +23,22 @@ export type MemoryRegistry = {
     entryCount: number;
     continuationSelected: boolean;
   }>;
-  commit(ctx: MemoryCommitContext): Promise<void>;
+  commit(ctx: MemoryCommitContext): Promise<MemoryCommitMetrics>;
 };
 
 export const AVAILABLE_MEMORY_SOURCES: Record<MemorySourceId, MemorySource> = {
   stored: storedMemorySource,
-  distill: distillMemorySource,
+  distill_user: distillUserMemorySource,
+  distill_project: distillProjectMemorySource,
+  distill_session: distillMemorySource,
 };
 
-export const DEFAULT_MEMORY_SOURCE_IDS: readonly MemorySourceId[] = ["stored", "distill"];
+export const DEFAULT_MEMORY_SOURCE_IDS: readonly MemorySourceId[] = [
+  "stored",
+  "distill_project",
+  "distill_user",
+  "distill_session",
+];
 
 export function resolveMemorySources(ids: readonly MemorySourceId[]): readonly MemorySource[] {
   const resolved = ids
@@ -58,7 +65,7 @@ export function createMemoryRegistry(
       };
     },
     async commit(ctx) {
-      await runMemoryCommitPipeline(sources, ctx);
+      return await runMemoryCommitPipeline(sources, ctx);
     },
   };
 }

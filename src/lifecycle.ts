@@ -35,7 +35,7 @@ export function shouldCommitMemory(input: LifecycleInput): boolean {
 export function scheduleMemoryCommit(
   commitCtx: MemoryCommitContext,
   debug: RunContext["debug"],
-  commitFn: (ctx: MemoryCommitContext) => Promise<void> = commitMemorySources,
+  commitFn: (ctx: MemoryCommitContext) => Promise<Record<string, number | undefined> | void> = commitMemorySources,
   enqueueFn: (key: string, job: () => Promise<void>) => Promise<void> = (key, job) => memoryCommitQueue.enqueue(key, job),
 ): void {
   const key = commitCtx.sessionId ?? "session:unknown";
@@ -47,8 +47,14 @@ export function scheduleMemoryCommit(
   };
   debug("lifecycle.memory.commit_scheduled", debugFields);
   void enqueueFn(key, async () => {
-    await commitFn(commitCtx);
-    debug("lifecycle.memory.commit_done", debugFields);
+    const metrics = await commitFn(commitCtx);
+    debug("lifecycle.memory.commit_done", {
+      ...debugFields,
+      project_promoted_facts: metrics?.projectPromotedFacts ?? 0,
+      user_promoted_facts: metrics?.userPromotedFacts ?? 0,
+      session_scoped_facts: metrics?.sessionScopedFacts ?? 0,
+      dropped_untagged_facts: metrics?.droppedUntaggedFacts ?? 0,
+    });
   }).catch((error) => {
     debug("lifecycle.memory.commit_failed", {
       ...debugFields,
