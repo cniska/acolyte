@@ -37,10 +37,7 @@ export async function normalizeMemoryEntries(
 ): Promise<MemoryPipelineEntry[]> {
   const entries: MemoryPipelineEntry[] = [];
   for (const source of sources) {
-    const loadedEntries =
-      source.loadEntries
-        ? await source.loadEntries(ctx)
-        : (await source.load(ctx)).map((content) => ({ content, isContinuation: false }));
+    const loadedEntries = await source.loadEntries(ctx);
     for (const entry of loadedEntries) {
       const content = entry.content;
       if (content.trim().length === 0) continue;
@@ -68,13 +65,13 @@ export function selectMemoryEntries(
   let selectedContinuation = false;
   for (const entry of prioritizedEntries) {
     if (used >= budgetTokens) break;
-    if (isContinuationEntry(entry) && selectedContinuation) continue;
+    if (entry.isContinuation === true && selectedContinuation) continue;
     const contentKey = normalizeContentKey(entry.content);
     if (seenContentKeys.has(contentKey)) continue;
     if (entry.tokenEstimate > budgetTokens - used) continue;
     selected.push(entry);
     seenContentKeys.add(contentKey);
-    if (isContinuationEntry(entry)) selectedContinuation = true;
+    if (entry.isContinuation === true) selectedContinuation = true;
     used += entry.tokenEstimate;
   }
   return { entries: selected, tokenEstimate: used };
@@ -85,19 +82,10 @@ function prioritizeContinuationEntries(entries: readonly MemoryPipelineEntry[]):
   const other: MemoryPipelineEntry[] = [];
   for (let index = entries.length - 1; index >= 0; index -= 1) {
     const entry = entries[index];
-    if (isContinuationEntry(entry)) continuation.push(entry);
+    if (entry.isContinuation === true) continuation.push(entry);
     else other.push(entry);
   }
   return [...continuation, ...other.reverse()];
-}
-
-function isContinuationEntry(entry: MemoryPipelineEntry): boolean {
-  if (entry.isContinuation === true) return true;
-  return hasContinuationState(entry.content);
-}
-
-function hasContinuationState(content: string): boolean {
-  return /(^|\n)\s*(?:[-*]\s*)?Current task:/i.test(content) || /(^|\n)\s*(?:[-*]\s*)?Next step:/i.test(content);
 }
 
 function normalizeContentKey(content: string): string {

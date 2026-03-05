@@ -9,6 +9,7 @@ import type { ChatRow, CommandContext, TokenUsageEntry } from "./chat-commands";
 import type { Message } from "./chat-message";
 import { createMessageHandler } from "./chat-message-handler";
 import type { Client, StreamEvent } from "./client";
+import type { MemorySource } from "./memory-contract";
 import type { Session, SessionState } from "./session-contract";
 
 export function tempDir(): { createDir: (prefix: string) => string; cleanupDirs: () => void } {
@@ -189,6 +190,24 @@ export function createStore(overrides: Partial<SessionState> = {}): SessionState
   return {
     activeSessionId: overrides.activeSessionId ?? sessions[0]?.id ?? "sess_test001",
     sessions,
+  };
+}
+
+export function createMemorySource(
+  id: string,
+  entries: string[],
+  onCommit?: () => void,
+): MemorySource {
+  return {
+    id,
+    async loadEntries() {
+      return entries.map((content) => ({ content }));
+    },
+    commit: onCommit
+      ? async () => {
+          onCommit();
+        }
+      : undefined,
   };
 }
 

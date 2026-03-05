@@ -5,11 +5,11 @@ const STORED_MEMORY_LIMIT = 8;
 
 export const storedMemorySource: MemorySource = {
   id: "stored",
-  async load() {
+  async loadEntries() {
     const entries = await listMemories({ scope: "all" });
     return entries
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       .slice(0, STORED_MEMORY_LIMIT)
-      .map((e) => e.content);
+      .map((e) => ({ content: e.content }));
   },
 };

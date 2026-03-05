@@ -21,10 +21,15 @@ function createMockStore(records: DistillRecord[] = []): DistillStore & { writte
 
 describe("distillMemorySource", () => {
   describe("load", () => {
+    async function loadContents(source: ReturnType<typeof createDistillMemorySource>, ctx: { sessionId?: string }) {
+      const entries = await source.loadEntries(ctx);
+      return entries.map((entry) => entry.content);
+    }
+
     test("returns empty when no sessionId", async () => {
       const store = createMockStore();
       const source = createDistillMemorySource(store);
-      const entries = await source.load({});
+      const entries = await loadContents(source, {});
       expect(entries).toEqual([]);
     });
 
@@ -48,7 +53,7 @@ describe("distillMemorySource", () => {
         },
       ]);
       const source = createDistillMemorySource(store);
-      const entries = await source.load({ sessionId: "sess_test0001" });
+      const entries = await loadContents(source, { sessionId: "sess_test0001" });
       expect(entries).toEqual(["auth module in src/auth/", "user prefers Bun"]);
     });
 
@@ -88,7 +93,7 @@ describe("distillMemorySource", () => {
         },
       ]);
       const source = createDistillMemorySource(store);
-      const entries = await source.load({ sessionId: "sess_test0001" });
+      const entries = await loadContents(source, { sessionId: "sess_test0001" });
       expect(entries).toEqual(["latest reflection", "new observation"]);
     });
 
@@ -106,7 +111,7 @@ describe("distillMemorySource", () => {
         },
       ]);
       const source = createDistillMemorySource(store);
-      const entries = await source.load({ sessionId: "sess_test0001" });
+      const entries = await loadContents(source, { sessionId: "sess_test0001" });
       expect(entries).toEqual([
         "recent observation",
         "Current task: Fix memory retrieval",
@@ -141,7 +146,7 @@ describe("distillMemorySource", () => {
     test("returns empty for session with no records", async () => {
       const store = createMockStore();
       const source = createDistillMemorySource(store);
-      const entries = await source.load({ sessionId: "sess_empty001" });
+      const entries = await loadContents(source, { sessionId: "sess_empty001" });
       expect(entries).toEqual([]);
     });
   });

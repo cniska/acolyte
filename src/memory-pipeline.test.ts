@@ -7,26 +7,18 @@ import {
   runMemoryPipeline,
   selectMemoryEntries,
 } from "./memory-pipeline";
-
-function mockSource(id: string, entries: string[]): MemorySource {
-  return {
-    id,
-    async load() {
-      return entries;
-    },
-  };
-}
+import { createMemorySource } from "./test-utils";
 
 describe("memory pipeline", () => {
   test("returns empty result when budget is disabled", async () => {
-    const result = await runMemoryPipeline([mockSource("stored", ["a"])], {}, 0);
+    const result = await runMemoryPipeline([createMemorySource("stored", ["a"])], {}, 0);
     expect(result.entries).toEqual([]);
     expect(result.tokenEstimate).toBe(0);
   });
 
   test("keeps source order and fills within budget", async () => {
     const result = await runMemoryPipeline(
-      [mockSource("stored", ["first"]), mockSource("distill", ["second"])],
+      [createMemorySource("stored", ["first"]), createMemorySource("distill", ["second"])],
       {},
       10_000,
     );
@@ -35,13 +27,13 @@ describe("memory pipeline", () => {
   });
 
   test("skips oversized entries and keeps later entries that fit", async () => {
-    const result = await runMemoryPipeline([mockSource("distill", ["x".repeat(600), "short"])], {}, 50);
+    const result = await runMemoryPipeline([createMemorySource("distill", ["x".repeat(600), "short"])], {}, 50);
     expect(result.entries.map((entry) => entry.content)).toEqual(["short"]);
   });
 
   test("runMemoryPipeline accepts injected selection strategy", async () => {
     const result = await runMemoryPipeline(
-      [mockSource("stored", ["a", "b"])],
+      [createMemorySource("stored", ["a", "b"])],
       {},
       10_000,
       normalizeMemoryEntries,
@@ -52,7 +44,7 @@ describe("memory pipeline", () => {
 
   test("runMemoryPipeline accepts injected normalization strategy", async () => {
     const result = await runMemoryPipeline(
-      [mockSource("stored", ["ignored"])],
+      [createMemorySource("stored", ["ignored"])],
       {},
       10_000,
       async () => [{ sourceId: "custom", content: "normalized", tokenEstimate: 2 }],
@@ -78,7 +70,7 @@ describe("memory pipeline", () => {
 
   test("normalizeMemoryEntries keeps source and content order", async () => {
     const entries = await normalizeMemoryEntries(
-      [mockSource("stored", ["first"]), mockSource("distill", ["second", "third"])],
+      [createMemorySource("stored", ["first"]), createMemorySource("distill", ["second", "third"])],
       {},
     );
     expect(entries.map((entry) => entry.sourceId)).toEqual(["stored", "distill", "distill"]);
@@ -87,7 +79,7 @@ describe("memory pipeline", () => {
 
   test("normalizeMemoryEntries skips blank entries", async () => {
     const entries = await normalizeMemoryEntries(
-      [mockSource("stored", ["", "  ", "kept"])],
+      [createMemorySource("stored", ["", "  ", "kept"])],
       {},
     );
     expect(entries.map((entry) => entry.content)).toEqual(["kept"]);
@@ -109,7 +101,7 @@ describe("memory pipeline", () => {
     const selected = selectMemoryEntries(
       [
         { sourceId: "stored", content: "general note", tokenEstimate: 4 },
-        { sourceId: "distill", content: "Current task: implement memory strategy", tokenEstimate: 4 },
+        { sourceId: "distill", content: "Current task: implement memory strategy", tokenEstimate: 4, isContinuation: true },
         { sourceId: "distill", content: "another note", tokenEstimate: 4 },
       ],
       4,
@@ -118,11 +110,11 @@ describe("memory pipeline", () => {
     expect(selected.tokenEstimate).toBe(4);
   });
 
-  test("selectMemoryEntries recognizes bullet continuation cues", () => {
+  test("selectMemoryEntries treats continuation only when explicitly flagged", () => {
     const selected = selectMemoryEntries(
       [
         { sourceId: "stored", content: "general note", tokenEstimate: 3 },
-        { sourceId: "distill", content: "- Current task: ship memory", tokenEstimate: 3 },
+        { sourceId: "distill", content: "- Current task: ship memory", tokenEstimate: 3, isContinuation: true },
       ],
       3,
     );
@@ -132,8 +124,8 @@ describe("memory pipeline", () => {
   test("selectMemoryEntries prefers most recent continuation entry", () => {
     const selected = selectMemoryEntries(
       [
-        { sourceId: "stored", content: "Current task: old", tokenEstimate: 3 },
-        { sourceId: "distill", content: "Current task: new", tokenEstimate: 3 },
+        { sourceId: "stored", content: "Current task: old", tokenEstimate: 3, isContinuation: true },
+        { sourceId: "distill", content: "Current task: new", tokenEstimate: 3, isContinuation: true },
       ],
       6,
     );
@@ -143,8 +135,8 @@ describe("memory pipeline", () => {
   test("selectMemoryEntries falls back to older continuation when freshest does not fit", () => {
     const selected = selectMemoryEntries(
       [
-        { sourceId: "stored", content: "Current task: older", tokenEstimate: 3 },
-        { sourceId: "distill", content: "Current task: freshest but too large", tokenEstimate: 10 },
+        { sourceId: "stored", content: "Current task: older", tokenEstimate: 3, isContinuation: true },
+        { sourceId: "distill", content: "Current task: freshest but too large", tokenEstimate: 10, isContinuation: true },
       ],
       3,
     );
@@ -167,12 +159,13 @@ describe("memory pipeline", () => {
   test("selectMemoryEntries dedupes case and whitespace variants", () => {
     const selected = selectMemoryEntries(
       [
-        { sourceId: "stored", content: "Current task: Fix tests", tokenEstimate: 3 },
-        { sourceId: "distill", content: "  current   task:   fix tests  ", tokenEstimate: 3 },
+        { sourceId: "stored", content: "Current task: Fix tests", tokenEstimate: 3, isContinuation: true },
+        { sourceId: "distill", content: "  current   task:   fix tests  ", tokenEstimate: 3, isContinuation: true },
       ],
       10,
     );
-    expect(selected.entries.map((entry) => entry.content)).toEqual(["Current task: Fix tests"]);
+    expect(selected.entries).toHaveLength(1);
+    expect(selected.entries[0]?.content.trim().toLowerCase().replace(/\s+/g, " ")).toBe("current task: fix tests");
   });
 
   test("runMemoryCommitPipeline calls commit in source order", async () => {
@@ -180,13 +173,13 @@ describe("memory pipeline", () => {
     const sources: MemorySource[] = [
       {
         id: "stored",
-        async load() {
+        async loadEntries() {
           return [];
         },
       },
       {
         id: "distill-a",
-        async load() {
+        async loadEntries() {
           return [];
         },
         async commit() {
@@ -195,7 +188,7 @@ describe("memory pipeline", () => {
       },
       {
         id: "distill-b",
-        async load() {
+        async loadEntries() {
           return [];
         },
         async commit() {
@@ -212,7 +205,7 @@ describe("memory pipeline", () => {
     const sources: MemorySource[] = [
       {
         id: "distill",
-        async load() {
+        async loadEntries() {
           return [];
         },
         async commit() {

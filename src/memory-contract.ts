@@ -22,8 +22,7 @@ export type MemoryCommitContext = MemoryLoadContext & {
 
 export type MemorySource = {
   readonly id: string;
-  loadEntries?(ctx: MemoryLoadContext): Promise<readonly MemorySourceEntry[]>;
-  load(ctx: MemoryLoadContext): Promise<readonly string[]>;
+  loadEntries(ctx: MemoryLoadContext): Promise<readonly MemorySourceEntry[]>;
   commit?(ctx: MemoryCommitContext): Promise<void>;
 };
 

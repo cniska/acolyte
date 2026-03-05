@@ -43,7 +43,7 @@ Default source order is `stored, distill`.
 
 - Commit scheduling is best-effort background work at lifecycle finalize.
 - Commits are serialized per session per process through a keyed task queue seam.
-- Selection keeps one continuation state (`Current task`, `Next step`): choose freshest that fits budget, then prioritize it before other entries.
+- Selection keeps one continuation state (`Current task`, `Next step`) based on source-provided continuation metadata, choosing the freshest that fits budget.
 - Selection dedupes identical entry content to avoid wasting budget on repeats.
 - Normalization drops blank entries before selection.
 - Distill record writes are atomic (`temp file -> rename`) to avoid partial files.
@@ -60,4 +60,5 @@ Default source order is `stored, distill`.
 - Pipeline stage seams:
   - `MemoryNormalizeStrategy`
   - `MemorySelectionStrategy`
+- Memory sources provide structured entries via `loadEntries`; pipeline does not fallback to `load()`.
 - Keep lifecycle contract stable while swapping strategies/storage behind sources.

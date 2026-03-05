@@ -14,18 +14,18 @@ describe("storedMemorySource", () => {
   test("load returns empty array when no memories exist", async () => {
     const home = createDir("acolyte-home-");
     const cwd = createDir("acolyte-cwd-");
-    const entries = await storedMemorySource.load({});
+    const entries = await storedMemorySource.loadEntries({});
     expect(Array.isArray(entries)).toBe(true);
   });
 
-  test("load returns memory content strings", async () => {
+  test("loadEntries returns memory content strings", async () => {
     const home = createDir("acolyte-home-");
     const cwd = createDir("acolyte-cwd-");
     await addMemory("use bun not node", { homeDir: home, cwd, scope: "user" });
     await addMemory("prefer tabs", { homeDir: home, cwd, scope: "user" });
 
     const { storedMemorySource: freshSource } = await import("./memory-source-stored");
-    const entries = await freshSource.load({});
+    const entries = await freshSource.loadEntries({});
     expect(entries.length).toBeGreaterThanOrEqual(0);
   });
 

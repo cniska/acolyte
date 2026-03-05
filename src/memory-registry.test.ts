@@ -1,20 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { MemorySource } from "./memory-contract";
 import { createMemoryRegistry, resolveMemorySources } from "./memory-registry";
-
-function mockSource(id: string, entries: string[], onCommit?: () => void): MemorySource {
-  return {
-    id,
-    async load() {
-      return entries;
-    },
-    commit: onCommit
-      ? async () => {
-          onCommit();
-        }
-      : undefined,
-  };
-}
+import { createMemorySource } from "./test-utils";
 
 describe("memory registry", () => {
   test("resolveMemorySources preserves configured order", () => {
@@ -28,7 +15,7 @@ describe("memory registry", () => {
   });
 
   test("returns empty prompt when no sources produce entries", async () => {
-    const registry = createMemoryRegistry([mockSource("empty", [])]);
+    const registry = createMemoryRegistry([createMemorySource("empty", [])]);
     const result = await registry.load({}, 1000);
     expect(result.prompt).toBe("");
     expect(result.tokenEstimate).toBe(0);
@@ -36,8 +23,8 @@ describe("memory registry", () => {
 
   test("fills budget in source order", async () => {
     const registry = createMemoryRegistry([
-      mockSource("first", ["alpha", "beta"]),
-      mockSource("second", ["gamma"]),
+      createMemorySource("first", ["alpha", "beta"]),
+      createMemorySource("second", ["gamma"]),
     ]);
     const result = await registry.load({}, 10_000);
     expect(result.prompt).toContain("- alpha");
@@ -48,7 +35,7 @@ describe("memory registry", () => {
 
   test("respects token budget and truncates", async () => {
     const longEntry = "x".repeat(400);
-    const registry = createMemoryRegistry([mockSource("big", [longEntry, "short"])]);
+    const registry = createMemoryRegistry([createMemorySource("big", [longEntry, "short"])]);
     const result = await registry.load({}, 50);
     expect(result.prompt).not.toContain(longEntry);
     expect(result.prompt).toContain("short");
@@ -56,8 +43,8 @@ describe("memory registry", () => {
 
   test("first source gets priority over second", async () => {
     const registry = createMemoryRegistry([
-      mockSource("high", ["important fact"]),
-      mockSource("low", ["less important"]),
+      createMemorySource("high", ["important fact"]),
+      createMemorySource("low", ["less important"]),
     ]);
     const result = await registry.load({}, 4);
     expect(result.prompt).toContain("important fact");
@@ -67,11 +54,11 @@ describe("memory registry", () => {
   test("commit runs committed sources in order", async () => {
     const calls: string[] = [];
     const registry = createMemoryRegistry([
-      mockSource("stored", []),
-      mockSource("distill-a", [], () => {
+      createMemorySource("stored", []),
+      createMemorySource("distill-a", [], () => {
         calls.push("distill-a");
       }),
-      mockSource("distill-b", [], () => {
+      createMemorySource("distill-b", [], () => {
         calls.push("distill-b");
       }),
     ]);
@@ -81,11 +68,11 @@ describe("memory registry", () => {
 
   test("load uses injected selection strategy", async () => {
     const registry = createMemoryRegistry(
-      [mockSource("stored", ["first", "second"])],
+      [createMemorySource("stored", ["first", "second"])],
       async (sources, ctx) => {
-        const entries = await Promise.all(sources.map((source) => source.load(ctx)));
+        const entries = await Promise.all(sources.map((source) => source.loadEntries(ctx)));
         return entries.flatMap((contents, index) =>
-          contents.map((content) => ({ sourceId: sources[index].id, content, tokenEstimate: 1 })),
+          contents.map((entry) => ({ sourceId: sources[index].id, content: entry.content, tokenEstimate: 1 })),
         );
       },
       (entries) => ({ entries: [entries[1]], tokenEstimate: entries[1].tokenEstimate }),
@@ -97,7 +84,7 @@ describe("memory registry", () => {
 
   test("load uses injected normalization strategy", async () => {
     const registry = createMemoryRegistry(
-      [mockSource("stored", ["ignored"])],
+      [createMemorySource("stored", ["ignored"])],
       async () => [{ sourceId: "custom", content: "normalized", tokenEstimate: 2 }],
     );
     const result = await registry.load({}, 10_000);
@@ -107,10 +94,10 @@ describe("memory registry", () => {
 
   test("load prioritizes continuation state under tight budget", async () => {
     const registry = createMemoryRegistry(
-      [mockSource("stored", ["general note"]), mockSource("distill", ["Current task: finish memory"])],
+      [createMemorySource("stored", ["general note"]), createMemorySource("distill", ["Current task: finish memory"])],
       async () => [
         { sourceId: "stored", content: "general note", tokenEstimate: 4 },
-        { sourceId: "distill", content: "Current task: finish memory", tokenEstimate: 4 },
+        { sourceId: "distill", content: "Current task: finish memory", tokenEstimate: 4, isContinuation: true },
       ],
     );
     const result = await registry.load({}, 4);
@@ -120,10 +107,10 @@ describe("memory registry", () => {
 
   test("load prefers most recent continuation over older continuation", async () => {
     const registry = createMemoryRegistry(
-      [mockSource("stored", ["Current task: old"]), mockSource("distill", ["Current task: new"])],
+      [createMemorySource("stored", ["Current task: old"]), createMemorySource("distill", ["Current task: new"])],
       async () => [
-        { sourceId: "stored", content: "Current task: old", tokenEstimate: 4 },
-        { sourceId: "distill", content: "Current task: new", tokenEstimate: 4 },
+        { sourceId: "stored", content: "Current task: old", tokenEstimate: 4, isContinuation: true },
+        { sourceId: "distill", content: "Current task: new", tokenEstimate: 4, isContinuation: true },
       ],
     );
     const result = await registry.load({}, 8);
@@ -133,10 +120,10 @@ describe("memory registry", () => {
 
   test("load falls back to older continuation when freshest does not fit", async () => {
     const registry = createMemoryRegistry(
-      [mockSource("stored", ["Current task: older"]), mockSource("distill", ["Current task: freshest"])],
+      [createMemorySource("stored", ["Current task: older"]), createMemorySource("distill", ["Current task: freshest"])],
       async () => [
-        { sourceId: "stored", content: "Current task: older", tokenEstimate: 4 },
-        { sourceId: "distill", content: "Current task: freshest", tokenEstimate: 8 },
+        { sourceId: "stored", content: "Current task: older", tokenEstimate: 4, isContinuation: true },
+        { sourceId: "distill", content: "Current task: freshest", tokenEstimate: 8, isContinuation: true },
       ],
     );
     const result = await registry.load({}, 4);
@@ -146,7 +133,7 @@ describe("memory registry", () => {
 
   test("load dedupes duplicate entries across sources", async () => {
     const registry = createMemoryRegistry(
-      [mockSource("stored", ["same"]), mockSource("distill", ["same", "different"])],
+      [createMemorySource("stored", ["same"]), createMemorySource("distill", ["same", "different"])],
       async () => [
         { sourceId: "stored", content: "same", tokenEstimate: 2 },
         { sourceId: "distill", content: "same", tokenEstimate: 2 },
@@ -161,7 +148,7 @@ describe("memory registry", () => {
 
   test("load ignores blank entries from sources", async () => {
     const registry = createMemoryRegistry(
-      [mockSource("stored", ["", " ", "kept"])],
+      [createMemorySource("stored", ["", " ", "kept"])],
     );
     const result = await registry.load({}, 20);
     expect(result.prompt).toContain("- kept");

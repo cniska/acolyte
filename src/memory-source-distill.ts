@@ -105,11 +105,6 @@ export function createDistillMemorySource(injectedStore?: DistillStore, runner: 
       return loadEntries(ctx);
     },
 
-    async load(ctx) {
-      const loaded = await loadEntries(ctx);
-      return loaded.map((entry) => entry.content);
-    },
-
     async commit(ctx) {
       if (!ctx.sessionId) return;
       if (ctx.messages.length < appConfig.distill.messageThreshold) return;
