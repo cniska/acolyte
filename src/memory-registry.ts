@@ -27,7 +27,5 @@ export function createMemoryRegistry(sources: readonly MemorySource[] = DEFAULT_
 
 const defaultMemoryRegistry = createMemoryRegistry();
 
-const loadMemoryContext = defaultMemoryRegistry.load;
-const commitMemorySources = defaultMemoryRegistry.commit;
-
-export { commitMemorySources, loadMemoryContext };
+export const loadMemoryContext = defaultMemoryRegistry.load;
+export const commitMemorySources = defaultMemoryRegistry.commit;
