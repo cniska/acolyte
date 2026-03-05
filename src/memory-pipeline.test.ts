@@ -39,6 +39,16 @@ describe("memory pipeline", () => {
     expect(result.entries.map((entry) => entry.content)).toEqual(["short"]);
   });
 
+  test("runMemoryPipeline accepts injected selection strategy", async () => {
+    const result = await runMemoryPipeline(
+      [mockSource("stored", ["a", "b"])],
+      {},
+      10_000,
+      (entries) => ({ entries: [entries[entries.length - 1]], tokenEstimate: entries[entries.length - 1].tokenEstimate }),
+    );
+    expect(result.entries.map((entry) => entry.content)).toEqual(["b"]);
+  });
+
   test("buildMemoryContextPrompt renders bullet list", () => {
     const prompt = buildMemoryContextPrompt([
       { sourceId: "stored", content: "prefer bun", tokenEstimate: 3 },

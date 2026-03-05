@@ -78,4 +78,14 @@ describe("memory registry", () => {
     await registry.commit({ messages: [], output: "done" });
     expect(calls).toEqual(["distill-a", "distill-b"]);
   });
+
+  test("load uses injected selection strategy", async () => {
+    const registry = createMemoryRegistry(
+      [mockSource("stored", ["first", "second"])],
+      (entries) => ({ entries: [entries[1]], tokenEstimate: entries[1].tokenEstimate }),
+    );
+    const result = await registry.load({}, 10_000);
+    expect(result.prompt).toContain("second");
+    expect(result.prompt).not.toContain("first");
+  });
 });

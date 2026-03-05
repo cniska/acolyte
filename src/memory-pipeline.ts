@@ -7,15 +7,21 @@ export type MemoryPipelineEntry = {
   tokenEstimate: number;
 };
 
+export type MemorySelectionStrategy = (
+  entries: readonly MemoryPipelineEntry[],
+  budgetTokens: number,
+) => { entries: MemoryPipelineEntry[]; tokenEstimate: number };
+
 export async function runMemoryPipeline(
   sources: readonly MemorySource[],
   ctx: MemoryLoadContext,
   budgetTokens: number,
+  selectEntries: MemorySelectionStrategy = selectMemoryEntries,
 ): Promise<{ entries: MemoryPipelineEntry[]; tokenEstimate: number }> {
   if (budgetTokens <= 0) return { entries: [], tokenEstimate: 0 };
 
   const entries = await normalizeMemoryEntries(sources, ctx);
-  return selectMemoryEntries(entries, budgetTokens);
+  return selectEntries(entries, budgetTokens);
 }
 
 export async function normalizeMemoryEntries(

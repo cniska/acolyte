@@ -1,7 +1,13 @@
 import { appConfig } from "./app-config";
 import type { MemorySourceId } from "./config-contract";
 import type { MemoryCommitContext, MemoryLoadContext, MemorySource } from "./memory-contract";
-import { buildMemoryContextPrompt, runMemoryCommitPipeline, runMemoryPipeline } from "./memory-pipeline";
+import {
+  buildMemoryContextPrompt,
+  runMemoryCommitPipeline,
+  runMemoryPipeline,
+  selectMemoryEntries,
+  type MemorySelectionStrategy,
+} from "./memory-pipeline";
 import { distillMemorySource } from "./memory-source-distill";
 import { storedMemorySource } from "./memory-source-stored";
 
@@ -26,10 +32,13 @@ export function resolveMemorySources(ids: readonly MemorySourceId[]): readonly M
 
 export const DEFAULT_MEMORY_SOURCES: readonly MemorySource[] = resolveMemorySources(appConfig.memory.sources);
 
-export function createMemoryRegistry(sources: readonly MemorySource[] = DEFAULT_MEMORY_SOURCES): MemoryRegistry {
+export function createMemoryRegistry(
+  sources: readonly MemorySource[] = DEFAULT_MEMORY_SOURCES,
+  selectEntries: MemorySelectionStrategy = selectMemoryEntries,
+): MemoryRegistry {
   return {
     async load(ctx, budgetTokens) {
-      const result = await runMemoryPipeline(sources, ctx, budgetTokens);
+      const result = await runMemoryPipeline(sources, ctx, budgetTokens, selectEntries);
       return {
         prompt: buildMemoryContextPrompt(result.entries),
         tokenEstimate: result.tokenEstimate,
