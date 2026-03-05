@@ -32,3 +32,5 @@
 - **Toolkit**: grouped domain tools exposed through adapters/composition.
 - **Memory Engine**: top-level memory capability that maintains continuity across turns.
 - **Memory Pipeline**: internal staged flow inside the Memory Engine (ingest -> normalize -> select -> inject -> commit).
+- **Memory Source**: pluggable provider that contributes memory entries and optional commit behavior (`stored`, `distill`).
+- **Memory Source Strategy**: configured source ID set and order used by the Memory Engine (`memorySources`).
