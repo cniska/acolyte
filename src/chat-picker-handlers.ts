@@ -6,7 +6,6 @@ import { type ChatRow, createRow, type TokenUsageEntry } from "./chat-commands";
 import type { Message } from "./chat-message";
 import type { PickerState } from "./chat-picker";
 import {
-  boundedSkillInstructions,
   createModelPicker,
   createPermissionsPicker,
   createPicker,
@@ -14,12 +13,12 @@ import {
   createResumeRows,
   createWriteConfirmPicker,
 } from "./chat-picker-actions";
+import { compactText } from "./compact-text";
 import { setConfigValue } from "./config";
 import type { ConfigScope, PermissionMode } from "./config-contract";
 import type { Session, SessionState } from "./session-contract";
 import { findSkillByName, loadSkills, readSkillInstructions } from "./skills";
 
-const MAX_SKILL_INSTRUCTION_CHARS = 4000;
 const modelIdSchema = z.string().trim().min(1).regex(/^\S+$/);
 
 type CreatePickerHandlersInput = {
@@ -56,7 +55,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
     if (!skill) return false;
     try {
       const instructions = await readSkillInstructions(skill.path, args || undefined);
-      const bounded = boundedSkillInstructions(instructions, MAX_SKILL_INSTRUCTION_CHARS);
+      const bounded = compactText(instructions, appConfig.agent.toolOutputBudget.skill);
       const msg = input.createMessage("system", `Active skill (${skill.name}):\n${bounded}`);
       input.currentSession.messages.push(msg);
       input.currentSession.updatedAt = input.nowIso();
@@ -118,7 +117,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
         if (selected) {
           try {
             const instructions = await readSkillInstructions(selected.path, "");
-            const boundedInstructions = boundedSkillInstructions(instructions, MAX_SKILL_INSTRUCTION_CHARS);
+            const boundedInstructions = compactText(instructions, appConfig.agent.toolOutputBudget.skill);
             const msg = input.createMessage("system", `Active skill (${selected.name}):\n${boundedInstructions}`);
             input.currentSession.messages.push(msg);
             input.currentSession.updatedAt = input.nowIso();

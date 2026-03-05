@@ -99,7 +99,3 @@ export function createWriteConfirmPicker(prompt: string): PickerState {
   };
 }
 
-export function boundedSkillInstructions(instructions: string, maxChars: number): string {
-  if (instructions.length <= maxChars) return instructions;
-  return `${instructions.slice(0, maxChars - 1)}…`;
-}

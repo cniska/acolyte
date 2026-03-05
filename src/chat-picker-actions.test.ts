@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { appConfig } from "./app-config";
 import {
-  boundedSkillInstructions,
   createModelPicker,
   createPicker,
   createResumePicker,
@@ -54,11 +53,6 @@ describe("chat picker actions", () => {
       content: "Resumed session: sess_abc123456789",
       style: "sessionStatus",
     });
-  });
-
-  test("boundedSkillInstructions truncates with ellipsis", () => {
-    expect(boundedSkillInstructions("abcdef", 6)).toBe("abcdef");
-    expect(boundedSkillInstructions("abcdefg", 6)).toBe("abcde…");
   });
 
   test("createPicker builds typed picker from config", () => {
