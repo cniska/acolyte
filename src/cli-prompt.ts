@@ -234,7 +234,10 @@ export async function handlePrompt(
 
     await assistantRenderer.renderReply(reply.output, toolRenderer.hasPrintedProgress());
     const mergedOutput = mergeAssistantStreamOutput(assistantRenderer.streamedText(), reply.output);
-    session.messages.push(newMessage("assistant", mergedOutput));
+    const assistantMessage = newMessage("assistant", mergedOutput);
+    session.messages.push(
+      (reply.toolCalls?.length ?? 0) > 0 ? { ...assistantMessage, kind: "tool_payload" } : assistantMessage,
+    );
     session.model = reply.model;
     session.updatedAt = nowIso();
     return true;
