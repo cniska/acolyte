@@ -29,6 +29,8 @@ function needsReflectionRetry(reflected: string, sourceTokenEstimate: number): b
   return reflectedTokens >= sourceTokenEstimate || reflectedTokens > appConfig.distill.reflectionThresholdTokens;
 }
 
+export type DistillRunner = (systemPrompt: string, userContent: string) => Promise<string>;
+
 async function runDistillLLM(systemPrompt: string, userContent: string): Promise<string> {
   const model = createModel(normalizeModel(appConfig.distill.model));
   const result = await model.doGenerate({
@@ -44,7 +46,7 @@ async function runDistillLLM(systemPrompt: string, userContent: string): Promise
   return text.trim();
 }
 
-export function createDistillMemorySource(injectedStore?: DistillStore): MemorySource {
+export function createDistillMemorySource(injectedStore?: DistillStore, runner: DistillRunner = runDistillLLM): MemorySource {
   const ds = injectedStore ?? store;
   return {
     id: "distill",
@@ -76,7 +78,7 @@ export function createDistillMemorySource(injectedStore?: DistillStore): MemoryS
       const distillInput = [...recentMessages, { role: "assistant", content: ctx.output }]
         .map((m) => `${m.role}: ${m.content}`)
         .join("\n\n");
-      const observedRaw = await runDistillLLM(OBSERVER_PROMPT, distillInput);
+      const observedRaw = await runner(OBSERVER_PROMPT, distillInput);
       const observed = clampToTokenEstimate(observedRaw, appConfig.distill.maxOutputTokens);
       if (!observed.trim()) return;
 
@@ -107,7 +109,7 @@ export function createDistillMemorySource(injectedStore?: DistillStore): MemoryS
           attempt === 0
             ? ""
             : "\n\nCompression retry: keep all critical facts while reducing length and merging redundant details.";
-        const reflectedRaw = await runDistillLLM(REFLECTOR_PROMPT, `${allObservations}${promptSuffix}`);
+        const reflectedRaw = await runner(REFLECTOR_PROMPT, `${allObservations}${promptSuffix}`);
         reflected = clampToTokenEstimate(reflectedRaw, appConfig.distill.maxOutputTokens);
         if (!reflected.trim()) return;
         if (!needsReflectionRetry(reflected, totalTokens)) break;

@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { appConfig } from "./app-config";
 import type { DistillRecord } from "./memory-contract";
 import type { DistillStore } from "./memory-distill-store";
 import { createDistillMemorySource } from "./memory-source-distill";
+import { OBSERVER_PROMPT, REFLECTOR_PROMPT } from "./memory-distill-prompts";
 
 function createMockStore(records: DistillRecord[] = []): DistillStore & { written: DistillRecord[] } {
   const written: DistillRecord[] = [];
@@ -102,7 +104,8 @@ describe("distillMemorySource", () => {
     test("skips when no sessionId", async () => {
       const store = createMockStore();
       const source = createDistillMemorySource(store);
-      await source.commit!({
+      if (!source.commit) throw new Error("expected commit handler");
+      await source.commit({
         messages: Array.from({ length: 25 }, (_, i) => ({ role: "user", content: `msg ${i}` })),
         output: "response",
       });
@@ -112,12 +115,99 @@ describe("distillMemorySource", () => {
     test("skips when messages below threshold", async () => {
       const store = createMockStore();
       const source = createDistillMemorySource(store);
-      await source.commit!({
+      if (!source.commit) throw new Error("expected commit handler");
+      await source.commit({
         sessionId: "sess_test0001",
         messages: [{ role: "user", content: "hello" }],
         output: "hi",
       });
       expect(store.written).toHaveLength(0);
+    });
+
+    test("reflects only observations created since latest reflection", async () => {
+      const originalDistillConfig = { ...appConfig.distill };
+      (appConfig as { distill: typeof appConfig.distill }).distill = {
+        ...appConfig.distill,
+        messageThreshold: 1,
+        reflectionThresholdTokens: 1,
+        maxOutputTokens: 10_000,
+      };
+      try {
+        const store = createMockStore([
+          {
+            id: "dst_obs_old",
+            sessionId: "sess_test0001",
+            tier: "observation",
+            content: "old observation",
+            createdAt: "2026-03-04T10:00:00.000Z",
+            tokenEstimate: 3,
+          },
+          {
+            id: "dst_ref_old",
+            sessionId: "sess_test0001",
+            tier: "reflection",
+            content: "old reflection",
+            createdAt: "2026-03-04T10:30:00.000Z",
+            tokenEstimate: 3,
+          },
+        ]);
+        const reflectorInputs: string[] = [];
+        const source = createDistillMemorySource(store, async (systemPrompt, input) => {
+          if (systemPrompt === OBSERVER_PROMPT) return "new observation";
+          if (systemPrompt === REFLECTOR_PROMPT) {
+            reflectorInputs.push(input);
+            return "new reflection";
+          }
+          return "";
+        });
+        if (!source.commit) throw new Error("expected commit handler");
+        await source.commit({
+          sessionId: "sess_test0001",
+          messages: [{ role: "user", content: "hello" }],
+          output: "done",
+        });
+
+        expect(reflectorInputs.length).toBeGreaterThan(0);
+        const latestReflectorInput = reflectorInputs[reflectorInputs.length - 1];
+        expect(latestReflectorInput).toContain("new observation");
+        expect(latestReflectorInput).not.toContain("old observation");
+      } finally {
+        (appConfig as { distill: typeof appConfig.distill }).distill = originalDistillConfig;
+      }
+    });
+
+    test("skips writing reflection when retry compression cannot reduce size", async () => {
+      const originalDistillConfig = { ...appConfig.distill };
+      (appConfig as { distill: typeof appConfig.distill }).distill = {
+        ...appConfig.distill,
+        messageThreshold: 1,
+        reflectionThresholdTokens: 1,
+        maxOutputTokens: 100_000,
+      };
+      try {
+        const store = createMockStore();
+        let reflectionCalls = 0;
+        const source = createDistillMemorySource(store, async (systemPrompt) => {
+          if (systemPrompt === OBSERVER_PROMPT) return "tiny observation";
+          if (systemPrompt === REFLECTOR_PROMPT) {
+            reflectionCalls += 1;
+            return "x".repeat(2_000);
+          }
+          return "";
+        });
+        if (!source.commit) throw new Error("expected commit handler");
+        await source.commit({
+          sessionId: "sess_test0001",
+          messages: [{ role: "user", content: "hello" }],
+          output: "done",
+        });
+
+        expect(reflectionCalls).toBe(3);
+        expect(store.written.filter((entry) => entry.tier === "observation")).toHaveLength(1);
+        expect(store.written.filter((entry) => entry.tier === "reflection")).toHaveLength(0);
+      } finally {
+        (appConfig as { distill: typeof appConfig.distill }).distill = originalDistillConfig;
+      }
     });
   });
 });
