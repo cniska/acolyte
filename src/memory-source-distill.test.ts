@@ -300,7 +300,7 @@ describe("distillMemorySource", () => {
         ]);
         const reflectorInputs: string[] = [];
         const source = createDistillMemorySource(store, async (systemPrompt, input) => {
-          if (systemPrompt === OBSERVER_PROMPT) return "new observation";
+          if (systemPrompt === OBSERVER_PROMPT) return "[session] new observation";
           if (systemPrompt === REFLECTOR_PROMPT) {
             reflectorInputs.push(input);
             return "new reflection";
@@ -335,7 +335,7 @@ describe("distillMemorySource", () => {
         const store = createMockStore();
         let reflectionCalls = 0;
         const source = createDistillMemorySource(store, async (systemPrompt) => {
-          if (systemPrompt === OBSERVER_PROMPT) return "tiny observation";
+          if (systemPrompt === OBSERVER_PROMPT) return "[session] tiny observation";
           if (systemPrompt === REFLECTOR_PROMPT) {
             reflectionCalls += 1;
             return "x".repeat(2_000);
@@ -369,7 +369,7 @@ describe("distillMemorySource", () => {
         const store = createMockStore();
         const source = createDistillMemorySource(store, async (systemPrompt) => {
           if (systemPrompt === OBSERVER_PROMPT)
-            return "fact line\nCurrent task: Implement rolling context\nNext step: Add continuation fields";
+            return "[session] fact line\nCurrent task: Implement rolling context\nNext step: Add continuation fields";
           return "";
         });
         if (!source.commit) throw new Error("expected commit handler");
@@ -398,7 +398,7 @@ describe("distillMemorySource", () => {
         const store = createMockStore();
         const source = createDistillMemorySource(store, async (systemPrompt) => {
           if (systemPrompt === OBSERVER_PROMPT)
-            return "fact line\n- Current task: Bullet task\n* Next step: Bullet next";
+            return "[session] fact line\n- Current task: Bullet task\n* Next step: Bullet next";
           return "";
         });
         if (!source.commit) throw new Error("expected commit handler");
@@ -463,13 +463,13 @@ describe("distillMemorySource", () => {
             id: "dst_obs_prev",
             sessionId: "sess_test0001",
             tier: "observation",
-            content: "user prefers short answers",
+            content: "prefers short answers",
             createdAt: "2026-03-04T10:00:00.000Z",
             tokenEstimate: 6,
           },
         ]);
         const source = createDistillMemorySource(store, async (systemPrompt) => {
-          if (systemPrompt === OBSERVER_PROMPT) return " user prefers   short answers ";
+          if (systemPrompt === OBSERVER_PROMPT) return " [session] prefers   short answers ";
           return "";
         });
         if (!source.commit) throw new Error("expected commit handler");
@@ -479,6 +479,34 @@ describe("distillMemorySource", () => {
           output: "done",
         });
         expect(store.written).toHaveLength(0);
+      } finally {
+        (appConfig as { distill: typeof appConfig.distill }).distill = originalDistillConfig;
+      }
+    });
+
+    test("drops untagged fact lines during session commit", async () => {
+      const originalDistillConfig = { ...appConfig.distill };
+      (appConfig as { distill: typeof appConfig.distill }).distill = {
+        ...appConfig.distill,
+        messageThreshold: 1,
+        reflectionThresholdTokens: 999_999,
+        maxOutputTokens: 10_000,
+      };
+      try {
+        const store = createMockStore();
+        const source = createDistillMemorySource(store, async (systemPrompt) => {
+          if (systemPrompt !== OBSERVER_PROMPT) return "";
+          return ["untagged fact should be dropped", "Current task: keep tagged facts only"].join("\n");
+        });
+        if (!source.commit) throw new Error("expected commit handler");
+        await source.commit({
+          sessionId: "sess_test0001",
+          messages: [{ role: "user", content: "hello" }],
+          output: "done",
+        });
+        const sessionEntry = store.written.find((entry) => entry.sessionId === "sess_test0001");
+        expect(sessionEntry?.content).toContain("Current task: keep tagged facts only");
+        expect(sessionEntry?.content).not.toContain("untagged fact should be dropped");
       } finally {
         (appConfig as { distill: typeof appConfig.distill }).distill = originalDistillConfig;
       }

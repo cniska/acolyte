@@ -109,6 +109,8 @@ function splitScopedObservation(observed: string): { session: string; project: s
     }
     const tagged = stripScopeTag(line);
     if (!tagged.content) continue;
+    // Enforce explicit scope tags for fact lines.
+    if (!tagged.scope) continue;
     if (tagged.scope === "project") {
       projectLines.push(tagged.content);
       continue;
@@ -295,8 +297,9 @@ export function createDistillMemorySource(
       }
 
       const scoped = splitScopedObservation(observed);
-      const sessionObserved = scoped.session || observed;
-      await commitDistillForKey(ds, key, sessionObserved, runner);
+      if (scoped.session) {
+        await commitDistillForKey(ds, key, scoped.session, runner);
+      }
 
       if (scoped.project) {
         const projectKey = resolveDistillScopeKey("project", ctx);

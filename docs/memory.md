@@ -45,6 +45,7 @@ Default source order is `stored, distill_project, distill_user, distill`.
   - Observation lines tagged `[project]` promote to project scope.
   - Observation lines tagged `[user]` promote to user scope.
   - Session/continuation lines stay in session scope.
+  - Untagged fact lines are dropped (strict tagged promotion, no fallback).
 - Load strategy:
   - latest reflection first
   - then post-reflection observations (fresh delta, newest first)
