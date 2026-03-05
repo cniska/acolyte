@@ -60,7 +60,8 @@ export function isChatRequest(value: unknown): value is ChatRequest {
     (typeof req.modeModels === "object" &&
       req.modeModels !== null &&
       Object.entries(req.modeModels as Record<string, unknown>).every(
-        ([mode, model]) => (mode === "plan" || mode === "work" || mode === "verify") && typeof model === "string",
+        ([mode, model]) =>
+          (mode === "plan" || mode === "work" || mode === "verify" || mode === "chat") && typeof model === "string",
       ));
   return (
     typeof req.message === "string" &&
