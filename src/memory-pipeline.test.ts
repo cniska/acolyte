@@ -132,6 +132,19 @@ describe("memory pipeline", () => {
     expect(selected.entries.map((entry) => entry.content)).toEqual(["Current task: older"]);
   });
 
+  test("selectMemoryEntries skips duplicate content entries", () => {
+    const selected = selectMemoryEntries(
+      [
+        { sourceId: "stored", content: "same", tokenEstimate: 2 },
+        { sourceId: "distill", content: "same", tokenEstimate: 2 },
+        { sourceId: "distill", content: "different", tokenEstimate: 2 },
+      ],
+      10,
+    );
+    expect(selected.entries.map((entry) => entry.content)).toEqual(["same", "different"]);
+    expect(selected.tokenEstimate).toBe(4);
+  });
+
   test("runMemoryCommitPipeline calls commit in source order", async () => {
     const calls: string[] = [];
     const sources: MemorySource[] = [

@@ -143,4 +143,19 @@ describe("memory registry", () => {
     expect(result.prompt).toContain("Current task: older");
     expect(result.prompt).not.toContain("Current task: freshest");
   });
+
+  test("load dedupes duplicate entries across sources", async () => {
+    const registry = createMemoryRegistry(
+      [mockSource("stored", ["same"]), mockSource("distill", ["same", "different"])],
+      async () => [
+        { sourceId: "stored", content: "same", tokenEstimate: 2 },
+        { sourceId: "distill", content: "same", tokenEstimate: 2 },
+        { sourceId: "distill", content: "different", tokenEstimate: 2 },
+      ],
+    );
+    const result = await registry.load({}, 20);
+    expect(result.prompt).toContain("- same");
+    expect(result.prompt).toContain("- different");
+    expect((result.prompt.match(/- same/g) ?? []).length).toBe(1);
+  });
 });

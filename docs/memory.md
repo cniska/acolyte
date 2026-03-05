@@ -43,6 +43,7 @@ Default source order is `stored, distill`.
 - Commit scheduling is best-effort background work at lifecycle finalize.
 - Commits are serialized per session per process through a keyed task queue seam.
 - Selection keeps one continuation state (`Current task`, `Next step`): choose freshest that fits budget, then prioritize it before other entries.
+- Selection dedupes identical entry content to avoid wasting budget on repeats.
 - Distill record writes are atomic (`temp file -> rename`) to avoid partial files.
 
 ## Storage

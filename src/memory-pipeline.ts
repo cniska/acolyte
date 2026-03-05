@@ -52,13 +52,17 @@ export function selectMemoryEntries(
 
   const prioritizedEntries = prioritizeContinuationEntries(entries);
   const selected: MemoryPipelineEntry[] = [];
+  const seenContentKeys = new Set<string>();
   let used = 0;
   let selectedContinuation = false;
   for (const entry of prioritizedEntries) {
     if (used >= budgetTokens) break;
     if (hasContinuationState(entry.content) && selectedContinuation) continue;
+    const contentKey = normalizeContentKey(entry.content);
+    if (seenContentKeys.has(contentKey)) continue;
     if (entry.tokenEstimate > budgetTokens - used) continue;
     selected.push(entry);
+    seenContentKeys.add(contentKey);
     if (hasContinuationState(entry.content)) selectedContinuation = true;
     used += entry.tokenEstimate;
   }
@@ -78,6 +82,10 @@ function prioritizeContinuationEntries(entries: readonly MemoryPipelineEntry[]):
 
 function hasContinuationState(content: string): boolean {
   return /(^|\n)\s*Current task:/i.test(content) || /(^|\n)\s*Next step:/i.test(content);
+}
+
+function normalizeContentKey(content: string): string {
+  return content.trim();
 }
 
 export async function runMemoryCommitPipeline(
