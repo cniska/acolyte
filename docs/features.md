@@ -45,6 +45,7 @@ Update rule:
 - User-scoped saved memory.
 - Project-scoped saved memory.
 - Memory inspect/list/remove commands.
+- Context distillation with automatic observation and reflection.
 
 ## Safety and Control
 

@@ -56,6 +56,21 @@ classify -> prepare -> generate -> evaluate -> finalize
 - **scheduling:** yield checks happen between lifecycle decisions, never mid-step.
 - **task metrics:** evaluator and summary metrics are scoped by `task_id`.
 
+## Memory
+
+```text
+soul prompt <- memory registry <- [stored, distill]
+lifecycle finalize -> memory registry -> [distill commit]
+```
+
+- **registry:** iterates `MemorySource` implementations in order, token-budgeted.
+- **stored:** user-managed explicit memories (read-only at load time).
+- **distill:** auto-extracted session knowledge with two tiers:
+  - **observation:** facts extracted from a single conversation round.
+  - **reflection:** consolidated facts across multiple rounds (supersedes observations).
+- **storage:** file-based at `~/.acolyte/distill/<sessionId>/`, Zod-validated on read.
+- **integration:** loaded into system prompt during `prepare`; committed during `finalize`.
+
 ## Contracts
 
 - **error handling:** tools emit failures/error codes; lifecycle owns retry/regeneration policy.
