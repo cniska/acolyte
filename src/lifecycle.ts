@@ -39,9 +39,14 @@ export function scheduleMemoryCommit(
   enqueueFn: (key: string, job: () => Promise<void>) => Promise<void> = (key, job) => memoryCommitQueue.enqueue(key, job),
 ): void {
   const key = commitCtx.sessionId ?? "session:unknown";
-  void enqueueFn(key, () => commitFn(commitCtx)).catch((error) => {
+  debug("lifecycle.memory.commit_scheduled", { queue_key: key });
+  void enqueueFn(key, async () => {
+    await commitFn(commitCtx);
+    debug("lifecycle.memory.commit_done", { queue_key: key });
+  }).catch((error) => {
     debug("lifecycle.memory.commit_failed", {
       message: error instanceof Error ? error.message : String(error),
+      queue_key: key,
     });
   });
 }

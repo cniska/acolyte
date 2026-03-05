@@ -137,6 +137,18 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
       sessionId: chatRequest.sessionId,
       workspace: workspaceResolution.workspacePath,
       useMemory: chatRequest.useMemory !== false,
+      onDebug: (event, fields) => {
+        log.info("agent debug", {
+          request_id: requestId,
+          task_id: handlers.taskId ?? null,
+          session_id: chatRequest.sessionId ?? null,
+          event,
+          sequence: 0,
+          phase_attempt: 0,
+          event_ts: new Date().toISOString(),
+          ...(fields ?? {}),
+        });
+      },
     });
     const reply = await runLifecycle({
       request: chatRequest,

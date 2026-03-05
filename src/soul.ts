@@ -39,6 +39,7 @@ type CreateSoulPromptOptions = {
   sessionId?: string;
   workspace?: string;
   useMemory?: boolean;
+  onDebug?: (event: string, fields?: Record<string, unknown>) => void;
 };
 
 function extractLastLineValue(text: string, pattern: RegExp): string | undefined {
@@ -60,12 +61,31 @@ export function buildMemoryResumeBlock(memoryPrompt: string): string {
 export async function createSoulPrompt(options: CreateSoulPromptOptions = {}): Promise<string> {
   const cwd = options.cwd ?? process.cwd();
   const base = loadSystemPrompt(cwd);
-  if (options.useMemory === false || appConfig.memory.budgetTokens <= 0) return base;
+  if (options.useMemory === false) {
+    options.onDebug?.("lifecycle.memory.load_skipped", { reason: "request_disabled" });
+    return base;
+  }
+  if (appConfig.memory.budgetTokens <= 0) {
+    options.onDebug?.("lifecycle.memory.load_skipped", { reason: "budget_disabled" });
+    return base;
+  }
   const { prompt: memoryPrompt } = await loadMemoryContext(
     { sessionId: options.sessionId, workspace: options.workspace },
     appConfig.memory.budgetTokens,
   );
-  if (!memoryPrompt) return base;
+  if (!memoryPrompt) {
+    options.onDebug?.("lifecycle.memory.load_empty", {});
+    return base;
+  }
   const resumeBlock = buildMemoryResumeBlock(memoryPrompt);
+  options.onDebug?.("lifecycle.memory.load_applied", {
+    tokenEstimate: estimateMemoryPromptTokens(memoryPrompt),
+    hasContinuation: resumeBlock.length > 0,
+  });
   return resumeBlock ? `${base}\n\n${memoryPrompt}\n\n${resumeBlock}` : `${base}\n\n${memoryPrompt}`;
+}
+
+function estimateMemoryPromptTokens(memoryPrompt: string): number {
+  if (memoryPrompt.length === 0) return 0;
+  return Math.ceil(memoryPrompt.length / 4);
 }

@@ -38,6 +38,28 @@ describe("soul prompt loading", () => {
     expect(prompt).toContain("Soul prompt body");
   });
 
+  test("createSoulPrompt emits load_skipped debug event when request disables memory", async () => {
+    const events: string[] = [];
+    await createSoulPrompt({
+      useMemory: false,
+      onDebug: (event) => {
+        events.push(event);
+      },
+    });
+    expect(events).toEqual(["lifecycle.memory.load_skipped"]);
+  });
+
+  test("createSoulPrompt emits load_empty debug event when no memory is available", async () => {
+    const events: string[] = [];
+    await createSoulPrompt({
+      sessionId: "sess_test0001",
+      onDebug: (event) => {
+        events.push(event);
+      },
+    });
+    expect(events).toContain("lifecycle.memory.load_empty");
+  });
+
   test("buildMemoryResumeBlock returns empty when continuation is missing", () => {
     expect(buildMemoryResumeBlock("Memory context:\n- user prefers bun")).toBe("");
   });

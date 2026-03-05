@@ -501,6 +501,29 @@ describe("scheduleMemoryCommit", () => {
     );
     await Promise.resolve();
     await Promise.resolve();
+    await Promise.resolve();
     expect(events).toContain("lifecycle.memory.commit_failed");
+  });
+
+  test("logs debug events when commit succeeds", async () => {
+    const events: string[] = [];
+    scheduleMemoryCommit(
+      {
+        sessionId: "sess_test0001",
+        messages: [],
+        output: "done",
+      },
+      (event) => {
+        events.push(event);
+      },
+      async () => {},
+      async (_key, job) => {
+        await job();
+      },
+    );
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(events).toContain("lifecycle.memory.commit_scheduled");
+    expect(events).toContain("lifecycle.memory.commit_done");
   });
 });
