@@ -7,7 +7,6 @@ type ServerHttpDeps = {
   createStatusPayload: () => Promise<StatusPayload>;
   hasValidAuth: (req: Request, url?: URL) => boolean;
   isChatRequest: (value: unknown) => value is ChatRequest;
-  resolveResourceId: (url: URL) => string;
   runChatRequest: (chatRequest: ChatRequest, handlers: RunChatHandlers) => Promise<void>;
   serverError: (
     message: string,

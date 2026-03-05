@@ -12,7 +12,6 @@ import type { StatusPayload } from "./server-contract";
 import { createServerFetchHandler } from "./server-http";
 import { createRpcWebsocketHandlers, getRpcQueuedTaskCount, type RpcConnectionState } from "./server-rpc";
 import { createId } from "./short-id";
-import { getMemoryContextEntries } from "./soul";
 import type { TaskId, TaskState, TaskTransitionReason } from "./task-contract";
 import { TaskRegistry } from "./task-registry";
 
@@ -76,12 +75,6 @@ function hasValidAuth(req: Request, url?: URL): boolean {
   return url?.searchParams.get("apiKey") === API_KEY;
 }
 
-function resolveResourceId(url: URL): string {
-  const candidate = url.searchParams.get("resourceId")?.trim();
-  if (candidate) return candidate;
-  return appConfig.memory.resourceId;
-}
-
 function transitionTaskState(
   taskId: TaskId,
   patch: { state?: TaskState; summary?: string },
@@ -120,7 +113,6 @@ async function createStatusPayload(): Promise<StatusPayload> {
   const planModel = appConfig.models.plan?.trim();
   const workModel = appConfig.models.work?.trim();
   const verifyModel = appConfig.models.verify?.trim();
-  const memoryContextCount = (await getMemoryContextEntries()).length;
   const taskSummary = taskRegistry.summary();
   return {
     ok: true,
@@ -134,8 +126,7 @@ async function createStatusPayload(): Promise<StatusPayload> {
     capabilities: formatServerCapabilities(),
     permissions: appConfig.agent.permissions.mode,
     service: `http://localhost:${PORT}`,
-    memory: memoryContextCount > 0 ? `context (${memoryContextCount} entries)` : "none",
-    observational_memory: "disabled",
+    memory: appConfig.memory.budgetTokens > 0 ? "enabled" : "none",
     tasks_total: taskSummary.total,
     tasks_running: taskSummary.running,
     tasks_detached: taskSummary.detached,
@@ -157,7 +148,6 @@ export async function startServer(): Promise<void> {
     createStatusPayload,
     hasValidAuth,
     isChatRequest,
-    resolveResourceId,
     runChatRequest,
     serverError,
     shutdownServer: () => {
