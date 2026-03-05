@@ -24,6 +24,7 @@ Ubiquitous language and naming rules used across Acolyte code and docs.
 - **Entry**: runtime/pipeline item used during processing; not necessarily persisted.
 - **Record**: persisted entity object stored by a persistence backend.
 - **Session**: one chat session in memory (messages, model, token usage, timestamps).
+- **Message Kind**: semantic message classification for history behavior (`text`, `tool_payload`).
 - **SessionRecord**: one stored session record.
 - **SessionState**: sessions aggregate (`sessions[]`, `activeSessionId`).
 - **SessionStore**: read/write/create interface for session persistence.

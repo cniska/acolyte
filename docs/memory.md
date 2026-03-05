@@ -47,6 +47,7 @@ Default source order is `stored, distill`.
 - Selection keeps one continuation state (`Current task`, `Next step`) based on source-provided continuation metadata, choosing the freshest that fits budget.
 - Soul prompt injection adds an explicit resume block from continuation state when available.
 - Agent input assembly applies deterministic rolling history fitting (newest-first, truncate-to-fit under remaining budget).
+- Aggressive old-turn compaction is driven by typed message metadata (`kind: tool_payload`), not regex heuristics.
 - Selection dedupes identical entry content to avoid wasting budget on repeats.
 - Normalization drops blank entries before selection.
 - Distill record writes are atomic (`temp file -> rename`) to avoid partial files.
