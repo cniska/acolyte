@@ -483,5 +483,38 @@ describe("distillMemorySource", () => {
         (appConfig as { distill: typeof appConfig.distill }).distill = originalDistillConfig;
       }
     });
+
+    test("commitScope writes only the targeted scope", async () => {
+      const originalDistillConfig = { ...appConfig.distill };
+      (appConfig as { distill: typeof appConfig.distill }).distill = {
+        ...appConfig.distill,
+        messageThreshold: 1,
+        reflectionThresholdTokens: 999_999,
+        maxOutputTokens: 10_000,
+      };
+      try {
+        const store = createMockStore();
+        const source = createDistillMemorySource(
+          store,
+          async (systemPrompt) => (systemPrompt === OBSERVER_PROMPT ? "scope fact" : ""),
+          { commitScope: "project" },
+        );
+        if (!source.commit) throw new Error("expected commit handler");
+        await source.commit({
+          sessionId: "sess_test0001",
+          workspace: "/tmp/acolyte-project",
+          messages: [{ role: "user", content: "hello" }],
+          output: "done",
+        });
+
+        expect(store.written.filter((entry) => entry.tier === "observation")).toHaveLength(1);
+        const keys = store.written.map((entry) => entry.sessionId);
+        expect(keys.some((key) => key.startsWith("proj_"))).toBe(true);
+        expect(keys.some((key) => key === "sess_test0001")).toBe(false);
+        expect(keys.some((key) => key.startsWith("usr_"))).toBe(false);
+      } finally {
+        (appConfig as { distill: typeof appConfig.distill }).distill = originalDistillConfig;
+      }
+    });
   });
 });
