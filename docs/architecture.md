@@ -64,12 +64,16 @@ lifecycle finalize -> memory registry -> [distill commit]
 ```
 
 - **registry:** iterates `MemorySource` implementations in order, token-budgeted.
+- **request gate:** memory injection is request-controlled (`useMemory !== false`).
 - **stored:** user-managed explicit memories (read-only at load time).
 - **distill:** auto-extracted session knowledge with two tiers:
   - **observation:** facts extracted from a single conversation round.
-  - **reflection:** consolidated facts across multiple rounds (supersedes observations).
-- **storage:** file-based at `~/.acolyte/distill/<sessionId>/`, Zod-validated on read.
-- **integration:** loaded into system prompt during `prepare`; committed during `finalize`.
+  - **reflection:** consolidated facts across multiple rounds.
+- **distill load strategy:** prefer latest reflection, then append only post-reflection observations (fresh delta).
+- **distill commit strategy:** extract from recent transcript plus latest assistant output; reflection runs on post-reflection observation delta once thresholds are crossed.
+- **distill output controls:** observation/reflection outputs are clamped to configured token limits; reflection retries with stronger compression guidance before discard.
+- **storage:** file-based at `~/.acolyte/distill/<sessionId>/`, Zod-validated on read with safe session-id path checks.
+- **integration:** loaded into system prompt during request setup; committed during lifecycle finalize.
 
 ## Contracts
 
