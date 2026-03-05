@@ -7,20 +7,24 @@ import type {
   LanguageModelV3ToolCallPart,
   LanguageModelV3ToolResultPart,
 } from "@ai-sdk/provider";
-import type { ZodSchema } from "zod/v3";
-import { zodToJsonSchema } from "zod-to-json-schema";
+import { z } from "zod";
 import type { Agent, StreamOptions, StreamOutput } from "./agent-contract";
 import type { GenerateResult, StreamChunk } from "./lifecycle-contract";
 import { createModel } from "./model-factory";
 import { normalizeModel } from "./provider-config";
 import type { ToolDefinition } from "./tool-contract";
 
+function toolInputJsonSchema(schema: z.ZodType): LanguageModelV3FunctionTool["inputSchema"] {
+  const { $schema: _, ...rest } = z.toJSONSchema(schema);
+  return rest as LanguageModelV3FunctionTool["inputSchema"];
+}
+
 function toolsToFunctionTools(tools: Record<string, ToolDefinition>): LanguageModelV3FunctionTool[] {
   return Object.values(tools).map((tool) => ({
     type: "function" as const,
     name: tool.id,
     description: tool.description,
-    inputSchema: zodToJsonSchema(tool.inputSchema as unknown as ZodSchema) as LanguageModelV3FunctionTool["inputSchema"],
+    inputSchema: toolInputJsonSchema(tool.inputSchema),
   }));
 }
 
