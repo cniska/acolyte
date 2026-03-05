@@ -45,7 +45,7 @@ Harden failure handling, safeguards, and runtime visibility.
 - [x] Empty-output and error paths return clear guidance
 - [x] Human oversight is still expected for ambiguous/open-ended work
 
-### Milestone 5: Autonomous Reliability (MVP Closure)
+### Milestone 5: Autonomous Reliability (completed)
 
 The agent can do bounded coding tasks for us end-to-end.
 
@@ -58,30 +58,7 @@ The agent can do bounded coding tasks for us end-to-end.
 - [x] Tool progress and error behavior are reliable for daily use
 - [x] Per-mode model controls and skill runtime behavior are stable
 
-### Milestone 6: Pre-MVP Product Polish
-
-Consolidate core UX quality and extension-ready seams before MVP freeze.
-
-- [x] Single primary UX path (chat-first), with transports as implementation detail
-- [x] Typed RPC protocol with request correlation and lifecycle envelopes
-- [x] Task-centric execution model with explicit task states and tracing
-- [x] Visual regression coverage for TUI/CLI output contracts
-- [x] Integration suite split (`*.int.test`) with dedicated `test:int` workflow
-- [ ] Full codebase audit and cleanup pass (architecture, reliability, UX consistency, tests)
-- [ ] Extension-ready seams in core (interface-first boundaries for lifecycle/tools/guards/tasks/transports), without shipping plugin runtime
-- [ ] Queue delivery policy controls (`one-at-a-time` vs `all`) for steering/follow-up (Pi-inspired)
-- [ ] Resource-loading diagnostics surface (skills/prompts/config/reload collisions and failures) (Pi-inspired)
-
-### Milestone 7: Autonomy Proof
-
-Prove consistent autonomous performance across repeated real tasks.
-
-- [ ] Repeated soak runs complete bounded tasks with low manual intervention
-- [ ] Success rate threshold is met across dogfood task suites
-- [ ] Failure modes are explainable through traces/logs and have clear follow-up actions
-- [ ] Protocol baseline is stable (`protocolVersion`, capability handshake, stream compatibility tests)
-
-### Milestone 8: Memory Reliability
+### Milestone 6: Memory Reliability
 
 Reduce repeated mistakes with transparent, correctable memory behavior.
 
@@ -96,41 +73,31 @@ Reduce repeated mistakes with transparent, correctable memory behavior.
 
 **Current status:** Mastra removed. Context distillation implemented (MemorySource contract, observer/reflector pipeline, lifecycle integration). Needs eval validation.
 
-### Milestone 9: Memory Scalability
+### Milestone 7: Memory Scalability
 
 Extend memory behavior for long autonomous runs and broader deployment targets.
 
 - [ ] Progressive model-driven compaction for ultra-long sessions
 - [ ] Compaction/resume protocol events for explicit agent continuity
-- [ ] Storage backends beyond filesystem (hosted/shared memory persistence)
+- [ ] Storage backends beyond filesystem (shared memory/session sync persistence, no remote daemon execution)
 
-### Milestone 10: Hosted Readiness
+### Milestone 8: Product Polish
 
-Enable optional hosted mode for centralized memory and multi-device continuity.
+Consolidate core UX quality and extension-ready seams before MVP release.
 
-- [ ] Backend can run as a hosted service (not just local)
-- [ ] Explicit execution mode exists (`local` vs isolated sandbox) and is resolved per request
-- [ ] Protocol contract is versioned and transport-agnostic (RPC over HTTP/SSE/WebSocket)
-- [ ] Capability handshake exists so clients can adapt safely (`supportsSteer`, `supportsSkills`, etc.)
-- [ ] Queue semantics are explicit and stable (`steer` vs `follow-up`)
-- [ ] Memory syncs across devices
-- [ ] Auth and multi-tenancy work
-- [ ] Local-first mode still works without hosted backend
+- [x] Single primary UX path (chat-first), with transports as implementation detail
+- [x] Typed RPC protocol with request correlation and lifecycle envelopes
+- [x] Task-centric execution model with explicit task states and tracing
+- [x] Visual regression coverage for TUI/CLI output contracts
+- [x] Integration suite split (`*.int.test`) with dedicated `test:int` workflow
+- [ ] Full codebase audit and cleanup pass (architecture, reliability, UX consistency, tests)
+- [ ] Extension-ready seams in core (interface-first boundaries for lifecycle/tools/guards/tasks/transports), without shipping plugin runtime
+- [ ] Queue delivery policy controls (`one-at-a-time` vs `all`) for steering/follow-up (Pi-inspired)
+- [ ] Resource-loading diagnostics surface (skills/prompts/config/reload collisions and failures) (Pi-inspired)
 
-### Milestone 11: Post-MVP Friends and Family
+### Milestone 9: Public OSS Release (MVP)
 
-Share with trusted coders for real-world feedback.
-
-- [ ] Setup is simple and documented: clone, install, add API key, run
-- [ ] A new user gets value on day one with their own project
-- [ ] Feedback collected and acted on from 3+ users
-- [ ] Major usability issues resolved
-
-**Blocked on:** Milestones 7-10.
-
-### Milestone 12: Public OSS Release
-
-Open-source core local mode with optional self-host path.
+Open-source core local mode with optional self-hosted memory/session sync service.
 
 - [ ] README and docs are clear for external contributors
 - [ ] License chosen and applied
@@ -139,7 +106,7 @@ Open-source core local mode with optional self-host path.
 - [ ] Pre-OSS security baseline complete (secure defaults, auth coverage, workspace boundary checks, redaction tests)
 - [ ] Localization baseline: translatable CLI/TUI copy, with raw protocol/tool output kept language-neutral
 
-**Blocked on:** Milestone 11.
+**Blocked on:** Milestones 6-8.
 
 ## MVP Definition
 
@@ -158,30 +125,26 @@ What MVP is **not**:
 - Hosted mode or multi-device support.
 - Polished distribution (global install, onboarding wizard, etc.).
 
-## Post-MVP Ideas
+## Post-MVP Priorities (Ordered)
 
-- Local daemon mode for server/client:
-  one reusable local server process per machine (auto-discovered/reused), with chat/run clients attaching without manual server process management.
-- Parallel subagents per mode (plan, work, verify) for concurrent execution.
-- Git shadow snapshots — track file state before/after agent actions in a shadow repo for per-message diffs and safe revert.
-- Session branching — isolated sub-tasks without polluting main context.
-- Session tree UX for branch navigation, labels, and jump-back workflows.
-- Assistant-managed background tasks with stable IDs (`start`, `status`, `cancel`, `attach`).
-- Automatic foreground-to-background detachment for long-running work while chat remains responsive.
-- Stream protocol compatibility tests (event schema/version contract across client/server).
-- Structured tool progress payloads (typed header/body metadata) to replace line-based regex parsing.
-- Stronger tool policy enforcement beyond prompt-only guidance.
-- Agent-authored skills — let the agent create and refine its own tools at runtime.
-- Tool output truncation — auto-truncate large tool outputs and persist full content to a temp file the model can read on demand, preventing context overflow from single results.
-- Tool output collapsing — group consecutive same-tool calls into a single summary row to reduce visual noise.
-- User-facing lifecycle hooks — notifications when agent needs input, custom evaluators.
-- Guard policy controls — opt-in guard enable/disable once policy observability and safety baselines are proven.
-- Evaluator policy controls — opt-in evaluator enable/disable after evaluator observability and safety caps are proven.
-- Memory evaluator — persist useful learnings between generations within a session.
-- Extension runtime hooks (events + tool interceptors + custom slash commands) with explicit safety boundaries.
-- Resource loader diagnostics and collision reporting across user/project/package layers (skills, prompts, themes, extensions).
-- Queue policy controls for steering/follow-up delivery (`one-at-a-time` vs `all`) with predictable semantics.
-- SDK-first embedding API (local in-process integration) alongside CLI/RPC.
+1. Cloud memory and session sync (no hosted daemon execution):
+shared memory/session service only, protocol versioning and capability handshake for sync, auth/multi-tenancy, and local-first fallback when cloud sync is unavailable.
+2. Friends-and-family adoption:
+simple setup, day-one value on real projects, 3+ user feedback loops, and major usability fixes.
+3. Optional autonomy track:
+bounded-task soak success, clear failure explainability, and stable protocol baseline under autonomous runs.
+4. Long-run task UX:
+background task IDs, detach/attach flow, and clearer task lifecycle visibility.
+5. Session workflows:
+branching and session-tree navigation for isolated sub-task execution.
+6. Safety and policy controls:
+stronger tool policy, and opt-in guard/evaluator policy controls after observability baselines.
+7. Tooling fidelity:
+structured tool progress payloads, tool-output truncation with on-demand full output, and output-collapsing to reduce noise.
+8. Extension surface:
+runtime hooks (events, tool interceptors, slash commands), agent-authored skills, and resource loader collision diagnostics.
+9. Embedding surface:
+SDK-first local in-process API alongside CLI/RPC.
 
 ## Known Issues
 
