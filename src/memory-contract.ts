@@ -34,6 +34,8 @@ export const distillRecordSchema = z.object({
   sessionId: z.string().min(1),
   tier: distillTierSchema,
   content: z.string().min(1),
+  currentTask: z.string().min(1).optional(),
+  nextStep: z.string().min(1).optional(),
   createdAt: isoDateTimeSchema,
   tokenEstimate: z.number().int().min(0),
 });

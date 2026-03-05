@@ -29,6 +29,25 @@ function needsReflectionRetry(reflected: string, sourceTokenEstimate: number): b
   return reflectedTokens >= sourceTokenEstimate || reflectedTokens > appConfig.distill.reflectionThresholdTokens;
 }
 
+function parseContinuationState(text: string): { currentTask?: string; nextStep?: string } {
+  const currentTaskMatch = text.match(/^Current task:\s*(.+)$/im);
+  const nextStepMatch = text.match(/^Next step:\s*(.+)$/im);
+  const currentTask = currentTaskMatch?.[1]?.trim();
+  const nextStep = nextStepMatch?.[1]?.trim();
+  return {
+    ...(currentTask ? { currentTask } : {}),
+    ...(nextStep ? { nextStep } : {}),
+  };
+}
+
+function continuationEntries(record: { currentTask?: string; nextStep?: string } | undefined): string[] {
+  if (!record) return [];
+  const lines: string[] = [];
+  if (record.currentTask) lines.push(`Current task: ${record.currentTask}`);
+  if (record.nextStep) lines.push(`Next step: ${record.nextStep}`);
+  return lines;
+}
+
 export type DistillRunner = (systemPrompt: string, userContent: string) => Promise<string>;
 
 async function runDistillLLM(systemPrompt: string, userContent: string): Promise<string> {
@@ -60,14 +79,20 @@ export function createDistillMemorySource(injectedStore?: DistillStore, runner: 
         if (!latestReflection) return [];
         const observationsSinceReflection = entries
           .filter((e) => e.tier === "observation" && e.createdAt > latestReflection.createdAt)
-          .map((e) => e.content);
-        return [latestReflection.content, ...observationsSinceReflection];
+          .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+        const mostRecent = observationsSinceReflection[observationsSinceReflection.length - 1] ?? latestReflection;
+        return [
+          latestReflection.content,
+          ...observationsSinceReflection.map((e) => e.content),
+          ...continuationEntries(mostRecent),
+        ];
       }
-      return entries
+      const observationEntries = entries
         .filter((e) => e.tier === "observation")
         .slice()
-        .reverse()
-        .map((e) => e.content);
+        .reverse();
+      const mostRecent = observationEntries[0];
+      return [...observationEntries.map((e) => e.content), ...continuationEntries(mostRecent)];
     },
 
     async commit(ctx) {
@@ -87,6 +112,7 @@ export function createDistillMemorySource(injectedStore?: DistillStore, runner: 
         sessionId: ctx.sessionId,
         tier: "observation",
         content: observed,
+        ...parseContinuationState(observed),
         createdAt: nowIso(),
         tokenEstimate: estimateTokens(observed),
       };
@@ -121,6 +147,7 @@ export function createDistillMemorySource(injectedStore?: DistillStore, runner: 
         sessionId: ctx.sessionId,
         tier: "reflection",
         content: reflected,
+        ...parseContinuationState(reflected),
         createdAt: nowIso(),
         tokenEstimate: estimateTokens(reflected),
       };

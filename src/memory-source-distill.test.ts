@@ -92,6 +92,28 @@ describe("distillMemorySource", () => {
       expect(entries).toEqual(["latest reflection", "new observation"]);
     });
 
+    test("appends continuation lines when available", async () => {
+      const store = createMockStore([
+        {
+          id: "dst_obs00001",
+          sessionId: "sess_test0001",
+          tier: "observation",
+          content: "recent observation",
+          currentTask: "Fix memory retrieval",
+          nextStep: "Add regression tests",
+          createdAt: "2026-03-04T12:30:00.000Z",
+          tokenEstimate: 5,
+        },
+      ]);
+      const source = createDistillMemorySource(store);
+      const entries = await source.load({ sessionId: "sess_test0001" });
+      expect(entries).toEqual([
+        "recent observation",
+        "Current task: Fix memory retrieval",
+        "Next step: Add regression tests",
+      ]);
+    });
+
     test("returns empty for session with no records", async () => {
       const store = createMockStore();
       const source = createDistillMemorySource(store);
@@ -205,6 +227,35 @@ describe("distillMemorySource", () => {
         expect(reflectionCalls).toBe(3);
         expect(store.written.filter((entry) => entry.tier === "observation")).toHaveLength(1);
         expect(store.written.filter((entry) => entry.tier === "reflection")).toHaveLength(0);
+      } finally {
+        (appConfig as { distill: typeof appConfig.distill }).distill = originalDistillConfig;
+      }
+    });
+
+    test("stores parsed continuation fields from observation output", async () => {
+      const originalDistillConfig = { ...appConfig.distill };
+      (appConfig as { distill: typeof appConfig.distill }).distill = {
+        ...appConfig.distill,
+        messageThreshold: 1,
+        reflectionThresholdTokens: 999_999,
+        maxOutputTokens: 10_000,
+      };
+      try {
+        const store = createMockStore();
+        const source = createDistillMemorySource(store, async (systemPrompt) => {
+          if (systemPrompt === OBSERVER_PROMPT)
+            return "fact line\nCurrent task: Implement rolling context\nNext step: Add continuation fields";
+          return "";
+        });
+        if (!source.commit) throw new Error("expected commit handler");
+        await source.commit({
+          sessionId: "sess_test0001",
+          messages: [{ role: "user", content: "hello" }],
+          output: "done",
+        });
+        const writtenObservation = store.written.find((entry) => entry.tier === "observation");
+        expect(writtenObservation?.currentTask).toBe("Implement rolling context");
+        expect(writtenObservation?.nextStep).toBe("Add continuation fields");
       } finally {
         (appConfig as { distill: typeof appConfig.distill }).distill = originalDistillConfig;
       }

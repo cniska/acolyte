@@ -71,6 +71,7 @@ lifecycle finalize -> memory registry -> [distill commit]
   - **reflection:** consolidated facts across multiple rounds.
 - **distill load strategy:** prefer latest reflection, then append only post-reflection observations (fresh delta).
 - **distill commit strategy:** extract from recent transcript plus latest assistant output; reflection runs on post-reflection observation delta once thresholds are crossed.
+- **continuation state:** distill records capture `Current task` / `Next step` when present and inject them explicitly into memory context.
 - **distill output controls:** observation/reflection outputs are clamped to configured token limits; reflection retries with stronger compression guidance before discard.
 - **storage:** file-based at `~/.acolyte/distill/<sessionId>/`, Zod-validated on read with safe session-id path checks.
 - **integration:** loaded into system prompt during request setup; committed during lifecycle finalize.
