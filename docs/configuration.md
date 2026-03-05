@@ -18,7 +18,7 @@ acolyte config unset apiUrl
 ## Memory-related keys
 
 - `memoryBudgetTokens`: memory injection budget.
-- `memorySources`: Memory Source Strategy (`stored`, `distill`) and order.
+- `memorySources`: Memory Source Strategy IDs and order (see [memory.md](./memory.md)).
 - `distillModel`: model used by distill source.
 - `distillMessageThreshold`: observation trigger threshold.
 - `distillReflectionThresholdTokens`: reflection trigger threshold.
@@ -29,4 +29,4 @@ acolyte config unset apiUrl
 - `memoryBudgetTokens=0` disables memory injection globally.
 - `useMemory=false` disables memory injection and commit for one request.
 
-Canonical behavior details: see [memory.md](./memory.md).
+Behavior details: see [memory.md](./memory.md).

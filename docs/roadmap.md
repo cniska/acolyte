@@ -68,6 +68,7 @@ Reduce repeated mistakes with transparent, correctable memory behavior.
 - [x] History-time tool-output pruning for old assistant turns (not only emit-time truncation)
 - [x] Rolling history budget policy in agent input assembly (deterministic pruning, no user-visible compaction flow)
 - [x] Explicit resume block injection from continuation state (`Current task` / `Next step`)
+- [ ] Footer token output is visible per turn (prompt/completion/total/budget)
 - [ ] Evals show measurable reduction in repeated instruction failures
 - [ ] Memory doesn't hallucinate or carry stale context
 
@@ -92,6 +93,7 @@ Consolidate core UX quality and extension-ready seams before MVP release.
 - [x] Integration suite split (`*.int.test`) with dedicated `test:int` workflow
 - [ ] Full codebase audit and cleanup pass (architecture, reliability, UX consistency, tests)
 - [ ] Extension-ready seams in core (interface-first boundaries for lifecycle/tools/guards/tasks/transports), without shipping plugin runtime
+- [ ] Skill execution parity with tools (stream/output contracts, typed compaction, context budgeting, debug events)
 - [ ] Queue delivery policy controls (`one-at-a-time` vs `all`) for steering/follow-up (Pi-inspired)
 - [ ] Resource-loading diagnostics surface (skills/prompts/config/reload collisions and failures) (Pi-inspired)
 
@@ -121,7 +123,7 @@ The MVP is reached when a coder friend can **set it up locally, use it on their 
 What MVP is **not**:
 
 - Full autonomy for open-ended tasks with ambiguous requirements.
-- Multi-agent or multi-model orchestration.
+- Multi-agent orchestration.
 - Hosted mode or multi-device support.
 - Polished distribution (global install, onboarding wizard, etc.).
 

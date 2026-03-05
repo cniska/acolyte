@@ -38,6 +38,7 @@ accept -> queue -> run -> complete|fail|cancel
 - **queue:** hold until runnable under queue policy.
 - **run:** execute lifecycle for active task.
 - **complete|fail|cancel:** emit terminal state and persist task outcome.
+- **details:** see [sessions-tasks.md](./sessions-tasks.md).
 
 ## Tool layering
 
@@ -48,6 +49,7 @@ lifecycle -> guard -> toolkit -> registry
 - **guard:** pre-execution safety/redundancy checks and post-execution call recording.
 - **toolkit:** domain tool definitions with guarded execution (`core-toolkit`, `git-toolkit`).
 - **registry:** toolkit registration, permission filtering, and agent-facing tool surface.
+- **details:** see [tooling.md](./tooling.md).
 
 ## Lifecycle flow
 
@@ -64,6 +66,12 @@ classify -> prepare -> generate -> evaluate -> finalize
 - **regeneration:** evaluators may request regeneration, bounded by caps.
 - **scheduling:** yield checks happen between lifecycle decisions, never mid-step.
 - **task metrics:** evaluator and summary metrics are scoped by `task_id`.
+- **details:** see [lifecycle.md](./lifecycle.md).
+
+## Modes
+
+- **overview:** explicit operating behaviors are modeled as `plan`, `work`, and `verify`.
+- **details:** see [modes.md](./modes.md).
 
 ## Memory Engine
 
@@ -78,7 +86,7 @@ Memory Engine
 - **pipeline seams:** normalization and selection are strategy-injectable behind registry contracts.
 - **selection default:** one continuation cue is kept; selection prefers the freshest continuation that fits budget.
 - **integration:** memory context is injected during request setup; commit is best-effort background work at finalize.
-- **canonical details:** see [memory.md](./memory.md).
+- **details:** see [memory.md](./memory.md).
 
 ## Contracts
 
