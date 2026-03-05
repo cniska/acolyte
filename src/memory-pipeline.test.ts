@@ -118,6 +118,17 @@ describe("memory pipeline", () => {
     expect(selected.tokenEstimate).toBe(4);
   });
 
+  test("selectMemoryEntries recognizes bullet continuation cues", () => {
+    const selected = selectMemoryEntries(
+      [
+        { sourceId: "stored", content: "general note", tokenEstimate: 3 },
+        { sourceId: "distill", content: "- Current task: ship memory", tokenEstimate: 3 },
+      ],
+      3,
+    );
+    expect(selected.entries.map((entry) => entry.content)).toEqual(["- Current task: ship memory"]);
+  });
+
   test("selectMemoryEntries prefers most recent continuation entry", () => {
     const selected = selectMemoryEntries(
       [

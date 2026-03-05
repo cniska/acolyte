@@ -82,7 +82,7 @@ function prioritizeContinuationEntries(entries: readonly MemoryPipelineEntry[]):
 }
 
 function hasContinuationState(content: string): boolean {
-  return /(^|\n)\s*Current task:/i.test(content) || /(^|\n)\s*Next step:/i.test(content);
+  return /(^|\n)\s*(?:[-*]\s*)?Current task:/i.test(content) || /(^|\n)\s*(?:[-*]\s*)?Next step:/i.test(content);
 }
 
 function normalizeContentKey(content: string): string {
