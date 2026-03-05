@@ -1,5 +1,12 @@
 # Architecture
 
+Concept pages:
+- [lifecycle.md](./lifecycle.md)
+- [memory.md](./memory.md)
+- [tooling.md](./tooling.md)
+- [modes.md](./modes.md)
+- [sessions-tasks.md](./sessions-tasks.md)
+
 ## System flow
 
 ```text
