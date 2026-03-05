@@ -482,15 +482,15 @@ describe("scheduleMemoryCommit", () => {
   });
 
   test("logs debug event when commit fails", async () => {
-    const events: string[] = [];
+    const events: Array<{ event: string; fields?: Record<string, unknown> }> = [];
     scheduleMemoryCommit(
       {
         sessionId: "sess_test0001",
-        messages: [],
+        messages: [{ role: "user", content: "hello" }],
         output: "done",
       },
-      (event) => {
-        events.push(event);
+      (event, fields) => {
+        events.push({ event, fields });
       },
       async () => {
         throw new Error("commit failed");
@@ -502,19 +502,25 @@ describe("scheduleMemoryCommit", () => {
     await Promise.resolve();
     await Promise.resolve();
     await Promise.resolve();
-    expect(events).toContain("lifecycle.memory.commit_failed");
+    const failed = events.find((entry) => entry.event === "lifecycle.memory.commit_failed");
+    expect(failed).toBeDefined();
+    expect(failed?.fields?.session_id).toBe("sess_test0001");
+    expect(failed?.fields?.message_count).toBe(1);
+    expect(failed?.fields?.output_chars).toBe(4);
+    expect(failed?.fields?.queue_key).toBe("sess_test0001");
+    expect(failed?.fields?.message).toBe("commit failed");
   });
 
   test("logs debug events when commit succeeds", async () => {
-    const events: string[] = [];
+    const events: Array<{ event: string; fields?: Record<string, unknown> }> = [];
     scheduleMemoryCommit(
       {
         sessionId: "sess_test0001",
-        messages: [],
+        messages: [{ role: "user", content: "hello" }],
         output: "done",
       },
-      (event) => {
-        events.push(event);
+      (event, fields) => {
+        events.push({ event, fields });
       },
       async () => {},
       async (_key, job) => {
@@ -523,7 +529,13 @@ describe("scheduleMemoryCommit", () => {
     );
     await Promise.resolve();
     await Promise.resolve();
-    expect(events).toContain("lifecycle.memory.commit_scheduled");
-    expect(events).toContain("lifecycle.memory.commit_done");
+    const scheduled = events.find((entry) => entry.event === "lifecycle.memory.commit_scheduled");
+    const done = events.find((entry) => entry.event === "lifecycle.memory.commit_done");
+    expect(scheduled).toBeDefined();
+    expect(done).toBeDefined();
+    expect(scheduled?.fields?.session_id).toBe("sess_test0001");
+    expect(scheduled?.fields?.message_count).toBe(1);
+    expect(scheduled?.fields?.output_chars).toBe(4);
+    expect(done?.fields?.queue_key).toBe("sess_test0001");
   });
 });
