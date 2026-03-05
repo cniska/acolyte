@@ -9,7 +9,7 @@ const restorePermissions = savedPermissionMode();
 
 afterEach(restorePermissions);
 
-describe("mastra toolsets", () => {
+describe("toolsets", () => {
   test("returns full toolset in write mode", () => {
     setPermissionMode("write");
     const { tools, session } = toolsForAgent();

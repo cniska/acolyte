@@ -5,7 +5,7 @@ import * as ts from "typescript";
 type Edit = { start: number; end: number; text: string };
 
 const ROOTS = ["src", "scripts"];
-const EXCLUDED_DIRS = new Set(["node_modules", ".git", ".mastra", "dist", "build", "coverage"]);
+const EXCLUDED_DIRS = new Set(["node_modules", ".git", "dist", "build", "coverage"]);
 const SUPPORTED_EXT = new Set([".ts", ".tsx"]);
 const ALLOWED_STATEMENTS = new Set<ts.SyntaxKind>([
   ts.SyntaxKind.ExpressionStatement,

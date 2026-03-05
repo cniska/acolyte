@@ -109,8 +109,8 @@ describe("finalizeReviewOutput", () => {
   });
 
   test("keeps non-empty output as-is (trimmed)", () => {
-    const raw = "\n  • 1 findings in @src/mastra-tools.ts\n 1) naming issue \n";
-    expect(finalizeReviewOutput(raw)).toBe("• 1 findings in @src/mastra-tools.ts\n 1) naming issue");
+    const raw = "\n  • 1 findings in @src/core-toolkit.ts\n 1) naming issue \n";
+    expect(finalizeReviewOutput(raw)).toBe("• 1 findings in @src/core-toolkit.ts\n 1) naming issue");
   });
 });
 
