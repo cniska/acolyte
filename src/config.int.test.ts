@@ -191,7 +191,7 @@ describe("config store", () => {
         "distillReflectionThresholdTokens = 9000",
         "distillMaxOutputTokens = 1500",
         "memoryBudgetTokens = 1500",
-        'memorySources = ["distill", "stored"]',
+        'memorySources = ["distill_session", "stored"]',
         "contextMaxTokens = 7000",
         "maxHistoryMessages = 50",
         "maxMessageTokens = 700",
@@ -209,7 +209,7 @@ describe("config store", () => {
     expect(loaded.logFormat).toBe("json");
     expect(loaded.transportMode).toBe("rpc");
     expect(loaded.temperatures).toEqual({ plan: 0.2, work: 0.3 });
-    expect(loaded.memorySources).toEqual(["distill", "stored"]);
+    expect(loaded.memorySources).toEqual(["distill_session", "stored"]);
     expect(loaded.maxMessageTokens).toBe(700);
     expect(loaded.replyTimeoutMs).toBe(220000);
   });
@@ -225,7 +225,7 @@ describe("config store", () => {
     expect(resolved.model).toBe("anthropic/claude-sonnet-4");
     expect(resolved.models).toEqual({});
     expect(resolved.temperatures).toEqual({});
-    expect(resolved.memorySources).toEqual(["stored", "distill"]);
+    expect(resolved.memorySources).toEqual(["stored", "distill_project", "distill_user", "distill_session"]);
     expect(resolved.distillModel).toBe("anthropic/claude-sonnet-4");
     expect(resolved.permissionMode).toBe("read");
     expect(resolved.logFormat).toBe("logfmt");
@@ -270,9 +270,9 @@ describe("config store", () => {
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(join(dataDir, "config.toml"), "", "utf8");
 
-    await setConfigValue("memorySources", "distill, stored", { homeDir: home, cwd: home });
+    await setConfigValue("memorySources", "distill_session, stored", { homeDir: home, cwd: home });
     const loaded = readConfigSync({ homeDir: home, cwd: home });
-    expect(loaded.memorySources).toEqual(["distill", "stored"]);
+    expect(loaded.memorySources).toEqual(["distill_session", "stored"]);
   });
 
   test("setConfigValue allows memoryBudgetTokens to disable memory", async () => {

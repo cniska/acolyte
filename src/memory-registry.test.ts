@@ -5,13 +5,13 @@ import { createMemorySource } from "./test-utils";
 
 describe("memory registry", () => {
   test("resolveMemorySources preserves configured order", () => {
-    const sources = resolveMemorySources(["distill", "stored"]);
-    expect(sources.map((source) => source.id)).toEqual(["distill", "stored"]);
+    const sources = resolveMemorySources(["distill_session", "stored"]);
+    expect(sources.map((source) => source.id)).toEqual(["distill_session", "stored"]);
   });
 
   test("resolveMemorySources deduplicates repeated source ids", () => {
-    const sources = resolveMemorySources(["stored", "stored", "distill"]);
-    expect(sources.map((source) => source.id)).toEqual(["stored", "distill"]);
+    const sources = resolveMemorySources(["stored", "stored", "distill_session"]);
+    expect(sources.map((source) => source.id)).toEqual(["stored", "distill_session"]);
   });
 
   test("returns empty prompt when no sources produce entries", async () => {

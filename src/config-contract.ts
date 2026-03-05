@@ -12,7 +12,7 @@ export type TransportMode = z.infer<typeof transportModeSchema>;
 
 export const scopeSchema = z.enum(["user", "project"]);
 export type ConfigScope = z.infer<typeof scopeSchema>;
-export const memorySourceIdSchema = z.enum(["stored", "distill"]);
+export const memorySourceIdSchema = z.enum(["stored", "distill_user", "distill_project", "distill_session"]);
 export type MemorySourceId = z.infer<typeof memorySourceIdSchema>;
 
 const MAX_CONTEXT_TOKENS = 32_000;

@@ -24,10 +24,10 @@ function createDeps(overrides?: Partial<ConfigModeDeps>): { deps: ConfigModeDeps
 describe("cli config", () => {
   test("list renders memorySources array on one row", async () => {
     const { deps, dimLines } = createDeps({
-      readConfig: async () => ({ memorySources: ["distill", "stored"] }),
+      readConfig: async () => ({ memorySources: ["distill_session", "stored"] }),
     });
     await configMode(["list"], deps);
-    expect(dimLines).toContain("memorySources:   distill, stored");
+    expect(dimLines).toContain("memorySources:   distill_session, stored");
   });
 
   test("list still renders object maps as dotted rows", async () => {

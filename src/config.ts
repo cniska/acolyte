@@ -26,7 +26,7 @@ const DEFAULT_CONFIG = {
   distillReflectionThresholdTokens: 8_000,
   distillMaxOutputTokens: 1_000,
   memoryBudgetTokens: 1_200,
-  memorySources: ["stored", "distill"] as const,
+  memorySources: ["stored", "distill_project", "distill_user", "distill_session"] as const,
   contextMaxTokens: 8_000,
   maxHistoryMessages: 40,
   maxMessageTokens: 600,
