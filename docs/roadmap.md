@@ -85,11 +85,11 @@ Reduce repeated mistakes with transparent, correctable memory behavior.
 
 - [ ] Saved memory commands work and are useful (`/remember`, `/memory`, `/memory rm`)
 - [x] Mastra dependency removed — own the stack with native agentic loop and AI SDK providers
-- [ ] Context distillation replaces observational memory (MemorySource seam, distill engine, soul prompt integration)
+- [x] Context distillation replaces observational memory (MemorySource seam, distill engine, soul prompt integration)
 - [ ] Evals show measurable reduction in repeated instruction failures
 - [ ] Memory doesn't hallucinate or carry stale context
 
-**Current status:** Mastra removed. Context distillation not yet implemented.
+**Current status:** Mastra removed. Context distillation implemented (MemorySource contract, observer/reflector pipeline, lifecycle integration). Needs eval validation.
 
 ### Milestone 9: Hosted Readiness
 
