@@ -28,6 +28,7 @@ const VALID_CONFIG_KEYS = [
   "distillReflectionThresholdTokens",
   "distillMaxOutputTokens",
   "memoryBudgetTokens",
+  "memorySources",
   "apiUrl",
   "openaiBaseUrl",
   "anthropicBaseUrl",

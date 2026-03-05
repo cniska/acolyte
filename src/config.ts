@@ -26,6 +26,7 @@ const DEFAULT_CONFIG = {
   distillReflectionThresholdTokens: 8_000,
   distillMaxOutputTokens: 1_000,
   memoryBudgetTokens: 1_200,
+  memorySources: ["stored", "distill"] as const,
   contextMaxTokens: 8_000,
   maxHistoryMessages: 40,
   maxMessageTokens: 600,
@@ -132,6 +133,7 @@ function serializeToml(config: Config): string {
   if (typeof config.distillMaxOutputTokens === "number")
     lines.push(`distillMaxOutputTokens = ${config.distillMaxOutputTokens}`);
   if (typeof config.memoryBudgetTokens === "number") lines.push(`memoryBudgetTokens = ${config.memoryBudgetTokens}`);
+  if (config.memorySources) lines.push(`memorySources = [${config.memorySources.map((value) => JSON.stringify(value)).join(", ")}]`);
   if (config.apiUrl) lines.push(`apiUrl = ${JSON.stringify(config.apiUrl)}`);
   if (config.openaiBaseUrl) lines.push(`openaiBaseUrl = ${JSON.stringify(config.openaiBaseUrl)}`);
   if (config.anthropicBaseUrl) lines.push(`anthropicBaseUrl = ${JSON.stringify(config.anthropicBaseUrl)}`);
@@ -164,6 +166,7 @@ function resolveConfig(config: Config): ResolvedConfig {
       config.distillReflectionThresholdTokens ?? DEFAULT_CONFIG.distillReflectionThresholdTokens,
     distillMaxOutputTokens: config.distillMaxOutputTokens ?? DEFAULT_CONFIG.distillMaxOutputTokens,
     memoryBudgetTokens: config.memoryBudgetTokens ?? DEFAULT_CONFIG.memoryBudgetTokens,
+    memorySources: config.memorySources ?? [...DEFAULT_CONFIG.memorySources],
     apiUrl: config.apiUrl ?? `http://127.0.0.1:${port}`,
     openaiBaseUrl: config.openaiBaseUrl ?? DEFAULT_CONFIG.openaiBaseUrl,
     anthropicBaseUrl: config.anthropicBaseUrl ?? DEFAULT_CONFIG.anthropicBaseUrl,

@@ -12,6 +12,8 @@ export type TransportMode = z.infer<typeof transportModeSchema>;
 
 export const scopeSchema = z.enum(["user", "project"]);
 export type ConfigScope = z.infer<typeof scopeSchema>;
+export const memorySourceIdSchema = z.enum(["stored", "distill"]);
+export type MemorySourceId = z.infer<typeof memorySourceIdSchema>;
 
 const MAX_CONTEXT_TOKENS = 32_000;
 const MAX_DISTILL_MAX_OUTPUT_TOKENS = 4_000;
@@ -33,6 +35,16 @@ const parseTemperatureSchema = z.preprocess(
   (value) => (typeof value === "string" && value.trim().length > 0 ? Number(value) : value),
   z.number().min(0).max(MAX_TEMPERATURE),
 );
+const parseMemorySourcesSchema = z.preprocess(
+  (value) => {
+    if (typeof value !== "string") return value;
+    return value
+      .split(",")
+      .map((part) => part.trim())
+      .filter((part) => part.length > 0);
+  },
+  z.array(memorySourceIdSchema).min(1),
+);
 const modeTemperatureMapSchema = z
   .record(
     z.string(),
@@ -53,6 +65,7 @@ export interface Config {
   distillReflectionThresholdTokens?: number;
   distillMaxOutputTokens?: number;
   memoryBudgetTokens?: number;
+  memorySources?: MemorySourceId[];
   apiUrl?: string;
   openaiBaseUrl?: string;
   anthropicBaseUrl?: string;
@@ -78,6 +91,7 @@ export interface ResolvedConfig {
   distillReflectionThresholdTokens: number;
   distillMaxOutputTokens: number;
   memoryBudgetTokens: number;
+  memorySources: MemorySourceId[];
   apiUrl?: string;
   openaiBaseUrl: string;
   anthropicBaseUrl: string;
@@ -103,6 +117,7 @@ export const CONFIG_SET_SCHEMAS: Record<keyof Config, z.ZodTypeAny> = {
   distillReflectionThresholdTokens: parseIntegerSchema(1000, MAX_DISTILL_REFLECTION_THRESHOLD_TOKENS),
   distillMaxOutputTokens: parseIntegerSchema(100, MAX_DISTILL_MAX_OUTPUT_TOKENS),
   memoryBudgetTokens: parseIntegerSchema(100, MAX_MEMORY_BUDGET_TOKENS),
+  memorySources: parseMemorySourcesSchema,
   apiUrl: nonEmptyStringSchema,
   openaiBaseUrl: nonEmptyStringSchema,
   anthropicBaseUrl: nonEmptyStringSchema,
@@ -158,6 +173,7 @@ export function toConfig(input: Record<string, unknown>): Config {
       input.distillMaxOutputTokens,
     ),
     memoryBudgetTokens: parseField(parseIntegerSchema(100, MAX_MEMORY_BUDGET_TOKENS), input.memoryBudgetTokens),
+    memorySources: parseField(parseMemorySourcesSchema, input.memorySources),
     apiUrl: parseField(nonEmptyStringSchema, input.apiUrl),
     openaiBaseUrl: parseField(nonEmptyStringSchema, input.openaiBaseUrl),
     anthropicBaseUrl: parseField(nonEmptyStringSchema, input.anthropicBaseUrl),

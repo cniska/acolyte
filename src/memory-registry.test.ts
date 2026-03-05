@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { MemorySource } from "./memory-contract";
-import { createMemoryRegistry } from "./memory-registry";
+import { createMemoryRegistry, resolveMemorySources } from "./memory-registry";
 
 function mockSource(id: string, entries: string[], onCommit?: () => void): MemorySource {
   return {
@@ -17,6 +17,16 @@ function mockSource(id: string, entries: string[], onCommit?: () => void): Memor
 }
 
 describe("memory registry", () => {
+  test("resolveMemorySources preserves configured order", () => {
+    const sources = resolveMemorySources(["distill", "stored"]);
+    expect(sources.map((source) => source.id)).toEqual(["distill", "stored"]);
+  });
+
+  test("resolveMemorySources deduplicates repeated source ids", () => {
+    const sources = resolveMemorySources(["stored", "stored", "distill"]);
+    expect(sources.map((source) => source.id)).toEqual(["stored", "distill"]);
+  });
+
   test("returns empty prompt when no sources produce entries", async () => {
     const registry = createMemoryRegistry([mockSource("empty", [])]);
     const result = await registry.load({}, 1000);

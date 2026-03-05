@@ -36,6 +36,7 @@ export const appConfig = {
   },
   memory: {
     budgetTokens: fileConfig.memoryBudgetTokens,
+    sources: fileConfig.memorySources,
   },
   agent: {
     permissions: {
