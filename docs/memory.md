@@ -60,5 +60,4 @@ Default source order is `stored, distill`.
 - Pipeline stage seams:
   - `MemoryNormalizeStrategy`
   - `MemorySelectionStrategy`
-- Memory sources provide structured entries via `loadEntries`; pipeline does not fallback to `load()`.
 - Keep lifecycle contract stable while swapping strategies/storage behind sources.
