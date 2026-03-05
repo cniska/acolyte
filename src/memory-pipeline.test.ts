@@ -97,6 +97,19 @@ describe("memory pipeline", () => {
     expect(selected.tokenEstimate).toBe(2);
   });
 
+  test("selectMemoryEntries prioritizes continuation entries under tight budget", () => {
+    const selected = selectMemoryEntries(
+      [
+        { sourceId: "stored", content: "general note", tokenEstimate: 4 },
+        { sourceId: "distill", content: "Current task: implement memory strategy", tokenEstimate: 4 },
+        { sourceId: "distill", content: "another note", tokenEstimate: 4 },
+      ],
+      4,
+    );
+    expect(selected.entries.map((entry) => entry.content)).toEqual(["Current task: implement memory strategy"]);
+    expect(selected.tokenEstimate).toBe(4);
+  });
+
   test("runMemoryCommitPipeline calls commit in source order", async () => {
     const calls: string[] = [];
     const sources: MemorySource[] = [

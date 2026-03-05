@@ -77,6 +77,7 @@ Memory Engine
 - **registry:** orchestrates MemorySource load and commit through memory pipeline stages.
 - **extension seam:** `createMemoryRegistry(sources)` composes source strategies without changing lifecycle contracts.
 - **pipeline seams:** Memory Pipeline normalization and selection are strategy-injectable (`MemoryNormalizeStrategy`, `MemorySelectionStrategy`) with default behavior.
+- **selection default:** continuation cues (`Current task`, `Next step`) are prioritized first, then remaining entries follow source strategy order.
 - **source strategy config:** `memorySources` controls enabled memory source IDs and order (default: `stored`, `distill`).
 - **request gate:** memory is request-controlled. `useMemory=false` disables both memory injection and distill commit (stateless turn).
 - **config gate:** `memoryBudgetTokens=0` disables memory injection globally while leaving source configuration intact.

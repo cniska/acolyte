@@ -104,4 +104,17 @@ describe("memory registry", () => {
     expect(result.prompt).toContain("normalized");
     expect(result.prompt).not.toContain("ignored");
   });
+
+  test("load prioritizes continuation state under tight budget", async () => {
+    const registry = createMemoryRegistry(
+      [mockSource("stored", ["general note"]), mockSource("distill", ["Current task: finish memory"])],
+      async () => [
+        { sourceId: "stored", content: "general note", tokenEstimate: 4 },
+        { sourceId: "distill", content: "Current task: finish memory", tokenEstimate: 4 },
+      ],
+    );
+    const result = await registry.load({}, 4);
+    expect(result.prompt).toContain("Current task: finish memory");
+    expect(result.prompt).not.toContain("general note");
+  });
 });

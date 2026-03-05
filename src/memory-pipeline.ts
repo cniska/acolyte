@@ -50,15 +50,30 @@ export function selectMemoryEntries(
 ): { entries: MemoryPipelineEntry[]; tokenEstimate: number } {
   if (budgetTokens <= 0) return { entries: [], tokenEstimate: 0 };
 
+  const prioritizedEntries = prioritizeContinuationEntries(entries);
   const selected: MemoryPipelineEntry[] = [];
   let used = 0;
-  for (const entry of entries) {
+  for (const entry of prioritizedEntries) {
     if (used >= budgetTokens) break;
     if (entry.tokenEstimate > budgetTokens - used) continue;
     selected.push(entry);
     used += entry.tokenEstimate;
   }
   return { entries: selected, tokenEstimate: used };
+}
+
+function prioritizeContinuationEntries(entries: readonly MemoryPipelineEntry[]): MemoryPipelineEntry[] {
+  const continuation: MemoryPipelineEntry[] = [];
+  const other: MemoryPipelineEntry[] = [];
+  for (const entry of entries) {
+    if (hasContinuationState(entry.content)) continuation.push(entry);
+    else other.push(entry);
+  }
+  return [...continuation, ...other];
+}
+
+function hasContinuationState(content: string): boolean {
+  return /(^|\n)\s*Current task:/i.test(content) || /(^|\n)\s*Next step:/i.test(content);
 }
 
 export async function runMemoryCommitPipeline(
