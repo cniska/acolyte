@@ -44,9 +44,22 @@ describe("memory pipeline", () => {
       [mockSource("stored", ["a", "b"])],
       {},
       10_000,
+      normalizeMemoryEntries,
       (entries) => ({ entries: [entries[entries.length - 1]], tokenEstimate: entries[entries.length - 1].tokenEstimate }),
     );
     expect(result.entries.map((entry) => entry.content)).toEqual(["b"]);
+  });
+
+  test("runMemoryPipeline accepts injected normalization strategy", async () => {
+    const result = await runMemoryPipeline(
+      [mockSource("stored", ["ignored"])],
+      {},
+      10_000,
+      async () => [{ sourceId: "custom", content: "normalized", tokenEstimate: 2 }],
+      selectMemoryEntries,
+    );
+    expect(result.entries.map((entry) => entry.content)).toEqual(["normalized"]);
+    expect(result.entries.map((entry) => entry.sourceId)).toEqual(["custom"]);
   });
 
   test("buildMemoryContextPrompt renders bullet list", () => {

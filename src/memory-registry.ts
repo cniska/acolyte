@@ -3,9 +3,11 @@ import type { MemorySourceId } from "./config-contract";
 import type { MemoryCommitContext, MemoryLoadContext, MemorySource } from "./memory-contract";
 import {
   buildMemoryContextPrompt,
+  normalizeMemoryEntries,
   runMemoryCommitPipeline,
   runMemoryPipeline,
   selectMemoryEntries,
+  type MemoryNormalizeStrategy,
   type MemorySelectionStrategy,
 } from "./memory-pipeline";
 import { distillMemorySource } from "./memory-source-distill";
@@ -34,11 +36,12 @@ export const DEFAULT_MEMORY_SOURCES: readonly MemorySource[] = resolveMemorySour
 
 export function createMemoryRegistry(
   sources: readonly MemorySource[] = DEFAULT_MEMORY_SOURCES,
+  normalizeEntries: MemoryNormalizeStrategy = normalizeMemoryEntries,
   selectEntries: MemorySelectionStrategy = selectMemoryEntries,
 ): MemoryRegistry {
   return {
     async load(ctx, budgetTokens) {
-      const result = await runMemoryPipeline(sources, ctx, budgetTokens, selectEntries);
+      const result = await runMemoryPipeline(sources, ctx, budgetTokens, normalizeEntries, selectEntries);
       return {
         prompt: buildMemoryContextPrompt(result.entries),
         tokenEstimate: result.tokenEstimate,

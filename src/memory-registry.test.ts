@@ -82,10 +82,26 @@ describe("memory registry", () => {
   test("load uses injected selection strategy", async () => {
     const registry = createMemoryRegistry(
       [mockSource("stored", ["first", "second"])],
+      async (sources, ctx) => {
+        const entries = await Promise.all(sources.map((source) => source.load(ctx)));
+        return entries.flatMap((contents, index) =>
+          contents.map((content) => ({ sourceId: sources[index].id, content, tokenEstimate: 1 })),
+        );
+      },
       (entries) => ({ entries: [entries[1]], tokenEstimate: entries[1].tokenEstimate }),
     );
     const result = await registry.load({}, 10_000);
     expect(result.prompt).toContain("second");
     expect(result.prompt).not.toContain("first");
+  });
+
+  test("load uses injected normalization strategy", async () => {
+    const registry = createMemoryRegistry(
+      [mockSource("stored", ["ignored"])],
+      async () => [{ sourceId: "custom", content: "normalized", tokenEstimate: 2 }],
+    );
+    const result = await registry.load({}, 10_000);
+    expect(result.prompt).toContain("normalized");
+    expect(result.prompt).not.toContain("ignored");
   });
 });
