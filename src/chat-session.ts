@@ -10,6 +10,7 @@ export function newMessage(role: Message["role"], content: string): Message {
     id: `msg_${createId()}`,
     role,
     content,
+    kind: "text",
     timestamp: nowIso(),
   };
 }

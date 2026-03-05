@@ -24,7 +24,7 @@ function isPinnedSystemContext(content: string): boolean {
 }
 
 function isToolPayloadMessage(message: ChatRequest["history"][number]): boolean {
-  return message.toolPayload === true;
+  return message.kind === "tool_payload";
 }
 
 function lineForMessage(message: ChatRequest["history"][number], maxTokens: number): { line: string; tokens: number } {

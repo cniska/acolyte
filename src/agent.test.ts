@@ -89,7 +89,7 @@ describe("createAgentInput", () => {
           id: "msg_old_tool",
           role: "assistant",
           content: toolHeavy,
-          toolPayload: true,
+          kind: "tool_payload",
           timestamp: "2026-02-20T10:00:00.000Z",
         },
         {
@@ -159,7 +159,7 @@ describe("createAgentInput", () => {
           id: "msg_old_structured",
           role: "assistant",
           content: structuredPayload,
-          toolPayload: true,
+          kind: "tool_payload",
           timestamp: "2026-02-20T10:00:00.000Z",
         },
         {
