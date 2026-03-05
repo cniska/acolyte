@@ -41,6 +41,22 @@ type CreateSoulPromptOptions = {
   useMemory?: boolean;
 };
 
+function extractLastLineValue(text: string, pattern: RegExp): string | undefined {
+  const matches = Array.from(text.matchAll(pattern));
+  const value = matches[matches.length - 1]?.[1]?.trim();
+  return value && value.length > 0 ? value : undefined;
+}
+
+export function buildMemoryResumeBlock(memoryPrompt: string): string {
+  const currentTask = extractLastLineValue(memoryPrompt, /^-\s*Current task:\s*(.+)$/gim);
+  const nextStep = extractLastLineValue(memoryPrompt, /^-\s*Next step:\s*(.+)$/gim);
+  if (!currentTask && !nextStep) return "";
+  const lines = ["Resume context:"];
+  if (currentTask) lines.push(`- Continue current task: ${currentTask}`);
+  if (nextStep) lines.push(`- Start with next step: ${nextStep}`);
+  return lines.join("\n");
+}
+
 export async function createSoulPrompt(options: CreateSoulPromptOptions = {}): Promise<string> {
   const cwd = options.cwd ?? process.cwd();
   const base = loadSystemPrompt(cwd);
@@ -50,5 +66,6 @@ export async function createSoulPrompt(options: CreateSoulPromptOptions = {}): P
     appConfig.memory.budgetTokens,
   );
   if (!memoryPrompt) return base;
-  return `${base}\n\n${memoryPrompt}`;
+  const resumeBlock = buildMemoryResumeBlock(memoryPrompt);
+  return resumeBlock ? `${base}\n\n${memoryPrompt}\n\n${resumeBlock}` : `${base}\n\n${memoryPrompt}`;
 }

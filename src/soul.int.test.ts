@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { createSoulPrompt, loadAgentsPrompt, loadSoulPrompt, loadSystemPrompt } from "./soul";
+import { buildMemoryResumeBlock, createSoulPrompt, loadAgentsPrompt, loadSoulPrompt, loadSystemPrompt } from "./soul";
 import { tempDir } from "./test-utils";
 
 const { createDir, cleanupDirs } = tempDir();
@@ -36,5 +36,22 @@ describe("soul prompt loading", () => {
     writeFileSync(join(dir, "docs", "soul.md"), "Soul prompt body", "utf8");
     const prompt = await createSoulPrompt({ cwd: dir });
     expect(prompt).toContain("Soul prompt body");
+  });
+
+  test("buildMemoryResumeBlock returns empty when continuation is missing", () => {
+    expect(buildMemoryResumeBlock("Memory context:\n- user prefers bun")).toBe("");
+  });
+
+  test("buildMemoryResumeBlock extracts continuation lines", () => {
+    const resume = buildMemoryResumeBlock(
+      ["Memory context:", "- old line", "- Current task: Implement memory engine", "- Next step: Add resume block"].join(
+        "\n",
+      ),
+    );
+    expect(resume).toBe(
+      ["Resume context:", "- Continue current task: Implement memory engine", "- Start with next step: Add resume block"].join(
+        "\n",
+      ),
+    );
   });
 });
