@@ -22,6 +22,8 @@ export type PromptUsage = {
   promptTruncated: boolean;
   includedHistoryMessages: number;
   totalHistoryMessages: number;
+  activeSkillName?: string;
+  skillInstructionChars?: number;
 };
 export type StreamChunk = { type?: string; payload?: unknown };
 export type TextDeltaPayload = { text?: string };

@@ -105,6 +105,8 @@ export function createAgentInput(req: ChatRequest): {
     promptTruncated: boolean;
     includedHistoryMessages: number;
     totalHistoryMessages: number;
+    activeSkillName?: string;
+    skillInstructionChars?: number;
   };
 } {
   const maxContextTokens = appConfig.agent.contextMaxTokens;
@@ -137,6 +139,18 @@ export function createAgentInput(req: ChatRequest): {
   lines.push(userLine);
   const input = lines.join("\n");
   const promptTokens = estimateTokens(input);
+
+  let activeSkillName: string | undefined;
+  let skillInstructionChars: number | undefined;
+  for (const msg of pinnedSystem) {
+    const match = msg.content.match(/^Active skill \(([^)]+)\):/);
+    if (match) {
+      activeSkillName = match[1];
+      skillInstructionChars = msg.content.length;
+      break;
+    }
+  }
+
   return {
     input,
     usage: {
@@ -145,6 +159,8 @@ export function createAgentInput(req: ChatRequest): {
       promptTruncated: usedIds.size < req.history.length,
       includedHistoryMessages: usedIds.size,
       totalHistoryMessages: req.history.length,
+      activeSkillName,
+      skillInstructionChars,
     },
   };
 }

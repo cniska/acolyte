@@ -37,6 +37,25 @@ describe("createAgentInput", () => {
     expect(input).toContain("…");
   });
 
+  test("returns activeSkillName in usage when skill context present", () => {
+    const req: ChatRequest = {
+      model: "gpt-5-mini",
+      message: "use repo conventions",
+      history: [
+        {
+          id: "msg_skill",
+          role: "system",
+          content: "Active skill (dogfood): keep slices small.",
+          timestamp: "2026-02-20T10:00:00.000Z",
+        },
+      ],
+    };
+
+    const { usage } = createAgentInput(req);
+    expect(usage.activeSkillName).toBe("dogfood");
+    expect(usage.skillInstructionChars).toBe("Active skill (dogfood): keep slices small.".length);
+  });
+
   test("keeps pinned context before recent chat when budget is tight", () => {
     const req: ChatRequest = {
       model: "gpt-5-mini",

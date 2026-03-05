@@ -34,5 +34,12 @@ export function phasePrepare(input: PhasePrepareInput): PhasePrepareResult {
     history_messages: input.request.history.length,
   });
 
+  if (requestInput.usage.activeSkillName) {
+    input.debug("lifecycle.skill.context", {
+      skill_name: requestInput.usage.activeSkillName,
+      instruction_chars: requestInput.usage.skillInstructionChars ?? 0,
+    });
+  }
+
   return { session, tools, agentInput, promptUsage: requestInput.usage };
 }

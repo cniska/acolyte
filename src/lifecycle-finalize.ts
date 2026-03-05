@@ -61,6 +61,8 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
     regeneration_limit_hit: ctx.regenerationLimitHit,
     guard_blocked_count: guardStats.blocked,
     guard_flag_set_count: guardStats.flagSet,
+    active_skill: ctx.promptUsage.activeSkillName ?? null,
+    skill_instruction_chars: ctx.promptUsage.skillInstructionChars ?? null,
     last_error_code: ctx.lastErrorCode ?? null,
     last_error_category: ctx.lastErrorCategory ?? null,
     timeout_error_count: ctx.errorStats.timeout,

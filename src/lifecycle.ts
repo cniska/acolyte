@@ -169,6 +169,9 @@ export async function runLifecycle(input: LifecycleInput) {
   attachToolOutputHandler(ctx);
 
   ctx.debug("lifecycle.start", { task_id: input.taskId ?? null, mode: classifiedMode, model });
+  if (ctx.promptUsage.activeSkillName) {
+    emit({ type: "status", message: `skill:${ctx.promptUsage.activeSkillName}` });
+  }
   await phaseGenerate(ctx, ctx.agentInput, {
     maxSteps: policy.initialMaxSteps,
     timeoutMs: policy.stepTimeoutMs,
