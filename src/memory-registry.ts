@@ -1,5 +1,5 @@
 import type { MemoryCommitContext, MemoryLoadContext, MemorySource } from "./memory-contract";
-import { buildMemoryContextPrompt, runMemoryPipeline } from "./memory-pipeline";
+import { buildMemoryContextPrompt, runMemoryCommitPipeline, runMemoryPipeline } from "./memory-pipeline";
 import { distillMemorySource } from "./memory-source-distill";
 import { storedMemorySource } from "./memory-source-stored";
 
@@ -17,7 +17,5 @@ export async function loadMemoryContext(
 }
 
 export async function commitMemorySources(ctx: MemoryCommitContext): Promise<void> {
-  for (const source of MEMORY_SOURCES) {
-    if (source.commit) await source.commit(ctx);
-  }
+  await runMemoryCommitPipeline(MEMORY_SOURCES, ctx);
 }

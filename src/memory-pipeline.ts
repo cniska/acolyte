@@ -1,5 +1,5 @@
 import { estimateTokens } from "./agent-input";
-import type { MemoryLoadContext, MemorySource } from "./memory-contract";
+import type { MemoryCommitContext, MemoryLoadContext, MemorySource } from "./memory-contract";
 
 export type MemoryPipelineEntry = {
   sourceId: string;
@@ -27,6 +27,16 @@ export async function runMemoryPipeline(
     }
   }
   return { entries, tokenEstimate: used };
+}
+
+export async function runMemoryCommitPipeline(
+  sources: readonly MemorySource[],
+  ctx: MemoryCommitContext,
+): Promise<void> {
+  for (const source of sources) {
+    if (!source.commit) continue;
+    await source.commit(ctx);
+  }
 }
 
 export function buildMemoryContextPrompt(entries: readonly MemoryPipelineEntry[]): string {
