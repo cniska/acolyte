@@ -28,3 +28,5 @@ acolyte config unset apiUrl
 
 - `memoryBudgetTokens=0` disables memory injection globally.
 - `useMemory=false` disables memory injection and commit for one request.
+
+Canonical behavior details: see [memory.md](./memory.md).

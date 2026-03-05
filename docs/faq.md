@@ -4,7 +4,7 @@ Quick operational answers for common developer questions.
 
 ## Is memory always on?
 
-By default, yes.
+By default, yes. For exact control behavior, see [memory.md](./memory.md).
 
 - Per request: `useMemory=false` disables memory injection and commit.
 - Global config: `memoryBudgetTokens=0` disables memory injection.
@@ -23,6 +23,8 @@ memorySources = ["stored", "distill"]
 ```
 
 Order is the Memory Source Strategy order used by the Memory Engine.
+
+Canonical memory behavior details: [memory.md](./memory.md).
 
 ## Why is commit concurrency defined per process?
 
