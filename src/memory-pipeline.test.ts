@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import type { MemorySource } from "./memory-contract";
-import { buildMemoryContextPrompt, runMemoryCommitPipeline, runMemoryPipeline } from "./memory-pipeline";
+import {
+  buildMemoryContextPrompt,
+  normalizeMemoryEntries,
+  runMemoryCommitPipeline,
+  runMemoryPipeline,
+  selectMemoryEntries,
+} from "./memory-pipeline";
 
 function mockSource(id: string, entries: string[]): MemorySource {
   return {
@@ -45,6 +51,27 @@ describe("memory pipeline", () => {
 
   test("buildMemoryContextPrompt returns empty for empty entries", () => {
     expect(buildMemoryContextPrompt([])).toBe("");
+  });
+
+  test("normalizeMemoryEntries keeps source and content order", async () => {
+    const entries = await normalizeMemoryEntries(
+      [mockSource("stored", ["first"]), mockSource("distill", ["second", "third"])],
+      {},
+    );
+    expect(entries.map((entry) => entry.sourceId)).toEqual(["stored", "distill", "distill"]);
+    expect(entries.map((entry) => entry.content)).toEqual(["first", "second", "third"]);
+  });
+
+  test("selectMemoryEntries applies budget with skip-on-oversize behavior", () => {
+    const selected = selectMemoryEntries(
+      [
+        { sourceId: "stored", content: "x".repeat(600), tokenEstimate: 200 },
+        { sourceId: "distill", content: "short", tokenEstimate: 2 },
+      ],
+      50,
+    );
+    expect(selected.entries.map((entry) => entry.content)).toEqual(["short"]);
+    expect(selected.tokenEstimate).toBe(2);
   });
 
   test("runMemoryCommitPipeline calls commit in source order", async () => {

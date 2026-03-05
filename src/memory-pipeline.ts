@@ -14,19 +14,39 @@ export async function runMemoryPipeline(
 ): Promise<{ entries: MemoryPipelineEntry[]; tokenEstimate: number }> {
   if (budgetTokens <= 0) return { entries: [], tokenEstimate: 0 };
 
+  const entries = await normalizeMemoryEntries(sources, ctx);
+  return selectMemoryEntries(entries, budgetTokens);
+}
+
+export async function normalizeMemoryEntries(
+  sources: readonly MemorySource[],
+  ctx: MemoryLoadContext,
+): Promise<MemoryPipelineEntry[]> {
   const entries: MemoryPipelineEntry[] = [];
-  let used = 0;
   for (const source of sources) {
-    if (used >= budgetTokens) break;
     const loaded = await source.load(ctx);
     for (const content of loaded) {
-      const tokenEstimate = estimateTokens(content);
-      if (tokenEstimate > budgetTokens - used) continue;
-      entries.push({ sourceId: source.id, content, tokenEstimate });
-      used += tokenEstimate;
+      entries.push({ sourceId: source.id, content, tokenEstimate: estimateTokens(content) });
     }
   }
-  return { entries, tokenEstimate: used };
+  return entries;
+}
+
+export function selectMemoryEntries(
+  entries: readonly MemoryPipelineEntry[],
+  budgetTokens: number,
+): { entries: MemoryPipelineEntry[]; tokenEstimate: number } {
+  if (budgetTokens <= 0) return { entries: [], tokenEstimate: 0 };
+
+  const selected: MemoryPipelineEntry[] = [];
+  let used = 0;
+  for (const entry of entries) {
+    if (used >= budgetTokens) break;
+    if (entry.tokenEstimate > budgetTokens - used) continue;
+    selected.push(entry);
+    used += entry.tokenEstimate;
+  }
+  return { entries: selected, tokenEstimate: used };
 }
 
 export async function runMemoryCommitPipeline(
