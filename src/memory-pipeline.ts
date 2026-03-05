@@ -65,9 +65,15 @@ export function selectMemoryEntries(
 function prioritizeContinuationEntries(entries: readonly MemoryPipelineEntry[]): MemoryPipelineEntry[] {
   const continuation: MemoryPipelineEntry[] = [];
   const other: MemoryPipelineEntry[] = [];
+  let continuationCaptured = false;
   for (let index = entries.length - 1; index >= 0; index -= 1) {
     const entry = entries[index];
-    if (hasContinuationState(entry.content)) continuation.push(entry);
+    if (hasContinuationState(entry.content)) {
+      if (!continuationCaptured) {
+        continuation.push(entry);
+        continuationCaptured = true;
+      }
+    }
     else other.push(entry);
   }
   return [...continuation, ...other.reverse()];

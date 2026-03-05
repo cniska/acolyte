@@ -116,7 +116,7 @@ describe("memory pipeline", () => {
         { sourceId: "stored", content: "Current task: old", tokenEstimate: 3 },
         { sourceId: "distill", content: "Current task: new", tokenEstimate: 3 },
       ],
-      3,
+      6,
     );
     expect(selected.entries.map((entry) => entry.content)).toEqual(["Current task: new"]);
   });

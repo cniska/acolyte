@@ -126,7 +126,7 @@ describe("memory registry", () => {
         { sourceId: "distill", content: "Current task: new", tokenEstimate: 4 },
       ],
     );
-    const result = await registry.load({}, 4);
+    const result = await registry.load({}, 8);
     expect(result.prompt).toContain("Current task: new");
     expect(result.prompt).not.toContain("Current task: old");
   });
