@@ -42,12 +42,9 @@ function parseContinuationState(text: string): { currentTask?: string; nextStep?
 
 function continuationEntries(record: { currentTask?: string; nextStep?: string } | undefined): string[] {
   if (!record) return [];
-  const fallback = parseContinuationState("content" in record && typeof record.content === "string" ? record.content : "");
-  const currentTask = record.currentTask ?? fallback.currentTask;
-  const nextStep = record.nextStep ?? fallback.nextStep;
   const lines: string[] = [];
-  if (currentTask) lines.push(`Current task: ${currentTask}`);
-  if (nextStep) lines.push(`Next step: ${nextStep}`);
+  if (record.currentTask) lines.push(`Current task: ${record.currentTask}`);
+  if (record.nextStep) lines.push(`Next step: ${record.nextStep}`);
   return lines;
 }
 

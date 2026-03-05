@@ -138,27 +138,6 @@ describe("distillMemorySource", () => {
       expect(continuationFlags).toEqual([false, true, true]);
     });
 
-    test("falls back to parsing continuation from legacy content", async () => {
-      const store = createMockStore([
-        {
-          id: "dst_obs00001",
-          sessionId: "sess_test0001",
-          tier: "observation",
-          content: "fact\nCurrent task: Legacy task\nNext step: Legacy next",
-          createdAt: "2026-03-04T12:30:00.000Z",
-          tokenEstimate: 8,
-        },
-      ]);
-      const source = createDistillMemorySource(store);
-      const entries = await source.loadEntries?.({ sessionId: "sess_test0001" });
-      expect(entries?.map((entry) => entry.content)).toEqual([
-        "fact\nCurrent task: Legacy task\nNext step: Legacy next",
-        "Current task: Legacy task",
-        "Next step: Legacy next",
-      ]);
-      expect(entries?.slice(1).every((entry) => entry.isContinuation)).toBe(true);
-    });
-
     test("returns empty for session with no records", async () => {
       const store = createMockStore();
       const source = createDistillMemorySource(store);
