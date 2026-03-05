@@ -113,6 +113,8 @@ async function createStatusPayload(): Promise<StatusPayload> {
   const planModel = appConfig.models.plan?.trim();
   const workModel = appConfig.models.work?.trim();
   const verifyModel = appConfig.models.verify?.trim();
+  const memoryStatus =
+    appConfig.memory.budgetTokens > 0 ? `enabled (${appConfig.memory.sources.join(", ")})` : "none";
   const taskSummary = taskRegistry.summary();
   return {
     ok: true,
@@ -126,7 +128,7 @@ async function createStatusPayload(): Promise<StatusPayload> {
     capabilities: formatServerCapabilities(),
     permissions: appConfig.agent.permissions.mode,
     service: `http://localhost:${PORT}`,
-    memory: appConfig.memory.budgetTokens > 0 ? "enabled" : "none",
+    memory: memoryStatus,
     tasks_total: taskSummary.total,
     tasks_running: taskSummary.running,
     tasks_detached: taskSummary.detached,
