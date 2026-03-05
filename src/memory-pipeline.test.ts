@@ -145,6 +145,17 @@ describe("memory pipeline", () => {
     expect(selected.tokenEstimate).toBe(4);
   });
 
+  test("selectMemoryEntries dedupes case and whitespace variants", () => {
+    const selected = selectMemoryEntries(
+      [
+        { sourceId: "stored", content: "Current task: Fix tests", tokenEstimate: 3 },
+        { sourceId: "distill", content: "  current   task:   fix tests  ", tokenEstimate: 3 },
+      ],
+      10,
+    );
+    expect(selected.entries.map((entry) => entry.content)).toEqual(["Current task: Fix tests"]);
+  });
+
   test("runMemoryCommitPipeline calls commit in source order", async () => {
     const calls: string[] = [];
     const sources: MemorySource[] = [

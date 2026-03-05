@@ -85,7 +85,7 @@ function hasContinuationState(content: string): boolean {
 }
 
 function normalizeContentKey(content: string): string {
-  return content.trim();
+  return content.trim().replace(/\s+/g, " ").toLowerCase();
 }
 
 export async function runMemoryCommitPipeline(
