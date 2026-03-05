@@ -275,6 +275,20 @@ describe("config store", () => {
     expect(loaded.memorySources).toEqual(["distill", "stored"]);
   });
 
+  test("setConfigValue allows memoryBudgetTokens to disable memory", async () => {
+    const home = createDir("acolyte-config-home-");
+    const dataDir = join(home, ".acolyte");
+    mkdirSync(dataDir, { recursive: true });
+    writeFileSync(join(dataDir, "config.toml"), "", "utf8");
+
+    await setConfigValue("memoryBudgetTokens", "0", { homeDir: home, cwd: home });
+    const loaded = readConfigSync({ homeDir: home, cwd: home });
+    expect(loaded.memoryBudgetTokens).toBe(0);
+
+    const resolved = readResolvedConfigSync({ homeDir: home, cwd: home });
+    expect(resolved.memoryBudgetTokens).toBe(0);
+  });
+
   test("project config overrides user config", async () => {
     const home = createDir("acolyte-config-home-");
     const project = createDir("acolyte-config-project-");

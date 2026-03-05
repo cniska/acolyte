@@ -69,6 +69,7 @@ Memory Engine
 - **extension seam:** `createMemoryRegistry(sources)` composes source strategies without changing lifecycle contracts.
 - **source strategy config:** `memorySources` controls enabled memory source IDs and order (default: `stored`, `distill`).
 - **request gate:** memory is request-controlled. `useMemory=false` disables both memory injection and distill commit (stateless turn).
+- **config gate:** `memoryBudgetTokens=0` disables memory injection globally while leaving source configuration intact.
 - **stored:** user-managed explicit memories (read-only at load time).
 - **distill:** auto-extracted session knowledge with two tiers:
   - **observation:** facts extracted from a single conversation round.
