@@ -20,6 +20,7 @@ Focus on:
 - no banner or separator comments; let code structure speak for itself
 - avoiding local anti-patterns (unused params, dead branches, ad-hoc fallbacks)
 - module layout consistency (flat `src/`, `*-contract`, `*-http`, `*-rpc`, no unnecessary re-export layers)
+- export shape consistency: prefer direct `export const` declarations over local alias + `export { ... }` wrappers
 
 ## References
 
