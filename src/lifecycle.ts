@@ -19,6 +19,9 @@ import { phaseFinalize } from "./lifecycle-finalize";
 import { createModeAgent, phaseGenerate, shouldYieldNow } from "./lifecycle-generate";
 import { resolveLifecyclePolicy } from "./lifecycle-policy";
 import { phasePrepare } from "./lifecycle-prepare";
+import { createInMemoryTaskQueue } from "./task-queue";
+
+const memoryCommitQueue = createInMemoryTaskQueue();
 
 export { autoVerifier, efficiencyEvaluator, multiMatchEditEvaluator, planDetector, timeoutRecovery, verifyFailure };
 export type { EvalAction, Evaluator };
@@ -33,8 +36,10 @@ export function scheduleMemoryCommit(
   commitCtx: MemoryCommitContext,
   debug: RunContext["debug"],
   commitFn: (ctx: MemoryCommitContext) => Promise<void> = commitMemorySources,
+  enqueueFn: (key: string, job: () => Promise<void>) => Promise<void> = (key, job) => memoryCommitQueue.enqueue(key, job),
 ): void {
-  void commitFn(commitCtx).catch((error) => {
+  const key = commitCtx.sessionId ?? "session:unknown";
+  void enqueueFn(key, () => commitFn(commitCtx)).catch((error) => {
     debug("lifecycle.memory.commit_failed", {
       message: error instanceof Error ? error.message : String(error),
     });
@@ -160,13 +165,13 @@ export async function runLifecycle(input: LifecycleInput) {
   if (ctx.result && shouldCommitMemory(input)) {
     scheduleMemoryCommit(
       {
-      sessionId: ctx.request.sessionId,
-      workspace: ctx.workspace,
-      messages: [
-        ...ctx.request.history.map((m) => ({ role: m.role, content: m.content })),
-        { role: "user", content: ctx.request.message },
-      ],
-      output: ctx.result.text,
+        sessionId: ctx.request.sessionId,
+        workspace: ctx.workspace,
+        messages: [
+          ...ctx.request.history.map((m) => ({ role: m.role, content: m.content })),
+          { role: "user", content: ctx.request.message },
+        ],
+        output: ctx.result.text,
       },
       ctx.debug,
     );

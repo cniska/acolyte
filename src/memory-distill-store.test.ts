@@ -128,4 +128,23 @@ describe("createFileDistillStore", () => {
     const stillEmpty = await store.list("../escape");
     expect(stillEmpty).toEqual([]);
   });
+
+  test("write does not leave temp files behind", async () => {
+    const home = createDir("acolyte-distill-");
+    const store = createFileDistillStore(home);
+    const record: DistillRecord = {
+      id: "dst_temp001",
+      sessionId: "sess_abc123",
+      tier: "observation",
+      content: "temp test",
+      createdAt: "2026-03-04T12:00:00.000Z",
+      tokenEstimate: 2,
+    };
+    await store.write(record);
+    const { readdirSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const dir = join(home, ".acolyte", "distill", "sess_abc123");
+    const names = readdirSync(dir);
+    expect(names.some((name) => name.includes(".tmp-"))).toBe(false);
+  });
 });

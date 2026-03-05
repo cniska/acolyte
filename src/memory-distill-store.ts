@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { type DistillRecord, distillRecordSchema } from "./memory-contract";
@@ -44,7 +44,14 @@ export function createFileDistillStore(homeDir = homedir()): DistillStore {
       const dir = distillDir(homeDir, record.sessionId);
       if (!dir) return;
       await mkdir(dir, { recursive: true });
-      await writeFile(join(dir, `${record.id}.json`), JSON.stringify(record, null, 2), "utf8");
+      const targetPath = join(dir, `${record.id}.json`);
+      const tempPath = join(dir, `${record.id}.json.tmp-${process.pid}-${Date.now()}`);
+      try {
+        await writeFile(tempPath, JSON.stringify(record, null, 2), "utf8");
+        await rename(tempPath, targetPath);
+      } finally {
+        await rm(tempPath, { force: true }).catch(() => {});
+      }
     },
   };
 }

@@ -473,6 +473,9 @@ describe("scheduleMemoryCommit", () => {
       async (ctx) => {
         calls.push({ sessionId: ctx.sessionId });
       },
+      async (_key, job) => {
+        await job();
+      },
     );
     await Promise.resolve();
     expect(calls).toEqual([{ sessionId: "sess_test0001" }]);
@@ -491,6 +494,9 @@ describe("scheduleMemoryCommit", () => {
       },
       async () => {
         throw new Error("commit failed");
+      },
+      async (_key, job) => {
+        await job();
       },
     );
     await Promise.resolve();

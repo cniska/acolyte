@@ -76,7 +76,9 @@ Memory Engine
 - **dedupe:** consecutive equivalent observations are skipped to reduce repetitive memory noise.
 - **continuation state:** distill records capture `Current task` / `Next step` when present and inject them explicitly into memory context.
 - **distill output controls:** observation/reflection outputs are clamped to configured token limits; reflection retries with stronger compression guidance before discard.
+- **commit concurrency:** memory commits are serialized per session per process through a keyed task queue seam (default: in-memory implementation).
 - **storage:** file-based at `~/.acolyte/distill/<sessionId>/`, Zod-validated on read with safe session-id path checks.
+- **storage writes:** distill records use temp-file + rename atomic writes to avoid partial files.
 - **integration:** selected memory is injected into the system prompt during request setup; distill commit is scheduled as best-effort background work at lifecycle finalize.
 
 ## Contracts
