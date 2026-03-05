@@ -5,6 +5,7 @@ export type MemoryPipelineEntry = {
   sourceId: string;
   content: string;
   tokenEstimate: number;
+  isContinuation?: boolean;
 };
 
 export type MemorySelectionStrategy = (
@@ -36,10 +37,19 @@ export async function normalizeMemoryEntries(
 ): Promise<MemoryPipelineEntry[]> {
   const entries: MemoryPipelineEntry[] = [];
   for (const source of sources) {
-    const loaded = await source.load(ctx);
-    for (const content of loaded) {
+    const loadedEntries =
+      source.loadEntries
+        ? await source.loadEntries(ctx)
+        : (await source.load(ctx)).map((content) => ({ content, isContinuation: false }));
+    for (const entry of loadedEntries) {
+      const content = entry.content;
       if (content.trim().length === 0) continue;
-      entries.push({ sourceId: source.id, content, tokenEstimate: estimateTokens(content) });
+      entries.push({
+        sourceId: source.id,
+        content,
+        tokenEstimate: estimateTokens(content),
+        isContinuation: entry.isContinuation,
+      });
     }
   }
   return entries;
@@ -58,13 +68,13 @@ export function selectMemoryEntries(
   let selectedContinuation = false;
   for (const entry of prioritizedEntries) {
     if (used >= budgetTokens) break;
-    if (hasContinuationState(entry.content) && selectedContinuation) continue;
+    if (isContinuationEntry(entry) && selectedContinuation) continue;
     const contentKey = normalizeContentKey(entry.content);
     if (seenContentKeys.has(contentKey)) continue;
     if (entry.tokenEstimate > budgetTokens - used) continue;
     selected.push(entry);
     seenContentKeys.add(contentKey);
-    if (hasContinuationState(entry.content)) selectedContinuation = true;
+    if (isContinuationEntry(entry)) selectedContinuation = true;
     used += entry.tokenEstimate;
   }
   return { entries: selected, tokenEstimate: used };
@@ -75,10 +85,15 @@ function prioritizeContinuationEntries(entries: readonly MemoryPipelineEntry[]):
   const other: MemoryPipelineEntry[] = [];
   for (let index = entries.length - 1; index >= 0; index -= 1) {
     const entry = entries[index];
-    if (hasContinuationState(entry.content)) continuation.push(entry);
+    if (isContinuationEntry(entry)) continuation.push(entry);
     else other.push(entry);
   }
   return [...continuation, ...other.reverse()];
+}
+
+function isContinuationEntry(entry: MemoryPipelineEntry): boolean {
+  if (entry.isContinuation === true) return true;
+  return hasContinuationState(entry.content);
 }
 
 function hasContinuationState(content: string): boolean {

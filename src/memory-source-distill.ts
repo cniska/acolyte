@@ -1,7 +1,7 @@
 import { estimateTokens } from "./agent-input";
 import { appConfig } from "./app-config";
 import { nowIso } from "./datetime";
-import type { DistillRecord, MemorySource } from "./memory-contract";
+import type { DistillRecord, MemorySource, MemorySourceEntry } from "./memory-contract";
 import { createFileDistillStore, type DistillStore } from "./memory-distill-store";
 import { OBSERVER_PROMPT, REFLECTOR_PROMPT } from "./memory-distill-prompts";
 import { createModel } from "./model-factory";
@@ -42,9 +42,12 @@ function parseContinuationState(text: string): { currentTask?: string; nextStep?
 
 function continuationEntries(record: { currentTask?: string; nextStep?: string } | undefined): string[] {
   if (!record) return [];
+  const fallback = parseContinuationState("content" in record && typeof record.content === "string" ? record.content : "");
+  const currentTask = record.currentTask ?? fallback.currentTask;
+  const nextStep = record.nextStep ?? fallback.nextStep;
   const lines: string[] = [];
-  if (record.currentTask) lines.push(`Current task: ${record.currentTask}`);
-  if (record.nextStep) lines.push(`Next step: ${record.nextStep}`);
+  if (currentTask) lines.push(`Current task: ${currentTask}`);
+  if (nextStep) lines.push(`Next step: ${nextStep}`);
   return lines;
 }
 
@@ -71,32 +74,43 @@ async function runDistillLLM(systemPrompt: string, userContent: string): Promise
 
 export function createDistillMemorySource(injectedStore?: DistillStore, runner: DistillRunner = runDistillLLM): MemorySource {
   const ds = injectedStore ?? store;
+  async function loadEntries(ctx: { sessionId?: string }): Promise<readonly MemorySourceEntry[]> {
+    if (!ctx.sessionId) return [];
+    const entries = await ds.list(ctx.sessionId);
+    const reflections = entries.filter((e) => e.tier === "reflection");
+    if (reflections.length > 0) {
+      const latestReflection = reflections[reflections.length - 1];
+      if (!latestReflection) return [];
+      const observationsSinceReflection = entries
+        .filter((e) => e.tier === "observation" && e.createdAt > latestReflection.createdAt)
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+      const mostRecent = observationsSinceReflection[observationsSinceReflection.length - 1] ?? latestReflection;
+      return [
+        { content: latestReflection.content },
+        ...observationsSinceReflection.map((e) => ({ content: e.content })),
+        ...continuationEntries(mostRecent).map((content) => ({ content, isContinuation: true })),
+      ];
+    }
+    const observationEntries = entries
+      .filter((e) => e.tier === "observation")
+      .slice()
+      .reverse();
+    const mostRecent = observationEntries[0];
+    return [
+      ...observationEntries.map((e) => ({ content: e.content })),
+      ...continuationEntries(mostRecent).map((content) => ({ content, isContinuation: true })),
+    ];
+  }
   return {
     id: "distill",
 
+    async loadEntries(ctx) {
+      return loadEntries(ctx);
+    },
+
     async load(ctx) {
-      if (!ctx.sessionId) return [];
-      const entries = await ds.list(ctx.sessionId);
-      const reflections = entries.filter((e) => e.tier === "reflection");
-      if (reflections.length > 0) {
-        const latestReflection = reflections[reflections.length - 1];
-        if (!latestReflection) return [];
-        const observationsSinceReflection = entries
-          .filter((e) => e.tier === "observation" && e.createdAt > latestReflection.createdAt)
-          .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-        const mostRecent = observationsSinceReflection[observationsSinceReflection.length - 1] ?? latestReflection;
-        return [
-          latestReflection.content,
-          ...observationsSinceReflection.map((e) => e.content),
-          ...continuationEntries(mostRecent),
-        ];
-      }
-      const observationEntries = entries
-        .filter((e) => e.tier === "observation")
-        .slice()
-        .reverse();
-      const mostRecent = observationEntries[0];
-      return [...observationEntries.map((e) => e.content), ...continuationEntries(mostRecent)];
+      const loaded = await loadEntries(ctx);
+      return loaded.map((entry) => entry.content);
     },
 
     async commit(ctx) {

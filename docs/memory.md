@@ -37,6 +37,7 @@ Default source order is `stored, distill`.
   - then post-reflection observations (fresh delta)
 - Continuation state:
   - preserve `Current task` and `Next step` when available
+  - typed fields (`currentTask`/`nextStep`) are preferred; text cue parsing is fallback for legacy records
 
 ## Runtime guarantees
 

@@ -10,6 +10,11 @@ export type MemoryLoadContext = {
   readonly workspace?: string;
 };
 
+export type MemorySourceEntry = {
+  readonly content: string;
+  readonly isContinuation?: boolean;
+};
+
 export type MemoryCommitContext = MemoryLoadContext & {
   readonly messages: readonly { role: string; content: string }[];
   readonly output: string;
@@ -17,6 +22,7 @@ export type MemoryCommitContext = MemoryLoadContext & {
 
 export type MemorySource = {
   readonly id: string;
+  loadEntries?(ctx: MemoryLoadContext): Promise<readonly MemorySourceEntry[]>;
   load(ctx: MemoryLoadContext): Promise<readonly string[]>;
   commit?(ctx: MemoryCommitContext): Promise<void>;
 };
