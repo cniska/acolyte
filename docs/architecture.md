@@ -1,5 +1,7 @@
 # Architecture
 
+System map of Acolyte runtime flow, boundaries, and extension seams.
+
 Concept pages:
 - [lifecycle.md](./lifecycle.md)
 - [memory.md](./memory.md)

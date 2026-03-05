@@ -1,5 +1,7 @@
 # Resources
 
+External references and research links relevant to Acolyte design decisions.
+
 ## Papers and Research
 ### How to Write Better AGENTS.md? (arXiv, February 2026)
 https://arxiv.org/abs/2602.11988

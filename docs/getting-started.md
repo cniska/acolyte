@@ -1,5 +1,7 @@
 # Getting Started
 
+Minimal developer setup and first-run workflow for local iteration.
+
 ## Install
 
 ```bash

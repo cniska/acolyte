@@ -1,5 +1,7 @@
 # Glossary
 
+Ubiquitous language and naming rules used across Acolyte code and docs.
+
 ## Naming rules
 
 - **Domain noun** (`Session`, `Task`): in-memory domain entity used by core logic.

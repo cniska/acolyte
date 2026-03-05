@@ -1,5 +1,7 @@
 # FAQ
 
+Quick operational answers for common developer questions.
+
 ## Is memory always on?
 
 By default, yes.

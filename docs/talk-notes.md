@@ -1,5 +1,7 @@
 # Talk Notes
 
+Presentation-oriented summary points for explaining Acolyte.
+
 ## Project Summary
 
 - Personal AI coding delegate for bounded software tasks.

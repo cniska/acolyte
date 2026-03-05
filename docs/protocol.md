@@ -1,5 +1,7 @@
 # Protocol
 
+Transport-facing contract and invariants between Acolyte client and server.
+
 ## Goal
 
 Define the stable request/response contract between client and server so transport can evolve (HTTP today, RPC later) without changing lifecycle behavior.

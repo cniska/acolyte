@@ -1,5 +1,7 @@
 # Roadmap
 
+Direction and milestone framing for near-term and long-term product evolution.
+
 ## Vision
 
 One AI coding assistant for day-to-day development across projects and machines.
