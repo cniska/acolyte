@@ -48,6 +48,7 @@ Default source order is `stored, distill`.
 - Soul prompt injection adds an explicit resume block from continuation state when available.
 - Agent input assembly applies deterministic rolling history fitting (newest-first, truncate-to-fit under remaining budget).
 - Aggressive old-turn compaction is driven by typed message metadata (`kind: tool_payload`), not regex heuristics.
+- Debug observability uses lifecycle-scoped events (`lifecycle.memory.load_*`, `lifecycle.memory.commit_*`) through standard debug channels.
 - Selection dedupes identical entry content to avoid wasting budget on repeats.
 - Normalization drops blank entries before selection.
 - Distill record writes are atomic (`temp file -> rename`) to avoid partial files.
