@@ -3,19 +3,31 @@ import { buildMemoryContextPrompt, runMemoryCommitPipeline, runMemoryPipeline } 
 import { distillMemorySource } from "./memory-source-distill";
 import { storedMemorySource } from "./memory-source-stored";
 
-const MEMORY_SOURCES: readonly MemorySource[] = [storedMemorySource, distillMemorySource];
+export type MemoryRegistry = {
+  load(ctx: MemoryLoadContext, budgetTokens: number): Promise<{ prompt: string; tokenEstimate: number }>;
+  commit(ctx: MemoryCommitContext): Promise<void>;
+};
 
-export async function loadMemoryContext(
-  ctx: MemoryLoadContext,
-  budgetTokens: number,
-): Promise<{ prompt: string; tokenEstimate: number }> {
-  const result = await runMemoryPipeline(MEMORY_SOURCES, ctx, budgetTokens);
+export const DEFAULT_MEMORY_SOURCES: readonly MemorySource[] = [storedMemorySource, distillMemorySource];
+
+export function createMemoryRegistry(sources: readonly MemorySource[] = DEFAULT_MEMORY_SOURCES): MemoryRegistry {
   return {
-    prompt: buildMemoryContextPrompt(result.entries),
-    tokenEstimate: result.tokenEstimate,
+    async load(ctx, budgetTokens) {
+      const result = await runMemoryPipeline(sources, ctx, budgetTokens);
+      return {
+        prompt: buildMemoryContextPrompt(result.entries),
+        tokenEstimate: result.tokenEstimate,
+      };
+    },
+    async commit(ctx) {
+      await runMemoryCommitPipeline(sources, ctx);
+    },
   };
 }
 
-export async function commitMemorySources(ctx: MemoryCommitContext): Promise<void> {
-  await runMemoryCommitPipeline(MEMORY_SOURCES, ctx);
-}
+const defaultMemoryRegistry = createMemoryRegistry();
+
+const loadMemoryContext = defaultMemoryRegistry.load;
+const commitMemorySources = defaultMemoryRegistry.commit;
+
+export { commitMemorySources, loadMemoryContext };

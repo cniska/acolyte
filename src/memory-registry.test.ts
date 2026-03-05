@@ -1,53 +1,35 @@
 import { describe, expect, test } from "bun:test";
-import type { MemoryCommitContext, MemoryLoadContext, MemorySource } from "./memory-contract";
+import type { MemorySource } from "./memory-contract";
+import { createMemoryRegistry } from "./memory-registry";
 
-function createMockSource(id: string, entries: string[], commitFn?: (ctx: MemoryCommitContext) => void): MemorySource {
+function mockSource(id: string, entries: string[], onCommit?: () => void): MemorySource {
   return {
     id,
     async load() {
       return entries;
     },
-    commit: commitFn ? async (ctx) => commitFn(ctx) : undefined,
-  };
-}
-
-async function loadWithSources(
-  sources: MemorySource[],
-  ctx: MemoryLoadContext,
-  budgetTokens: number,
-): Promise<{ prompt: string; tokenEstimate: number }> {
-  if (budgetTokens <= 0) return { prompt: "", tokenEstimate: 0 };
-  const { estimateTokens } = await import("./agent-input");
-  const parts: string[] = [];
-  let used = 0;
-  for (const source of sources) {
-    if (used >= budgetTokens) break;
-    const entries = await source.load(ctx);
-    for (const entry of entries) {
-      const cost = estimateTokens(entry);
-      if (cost > budgetTokens - used) continue;
-      parts.push(entry);
-      used += cost;
-    }
-  }
-  if (parts.length === 0) return { prompt: "", tokenEstimate: 0 };
-  return {
-    prompt: `Memory context:\n${parts.map((p) => `- ${p}`).join("\n")}`,
-    tokenEstimate: used,
+    commit: onCommit
+      ? async () => {
+          onCommit();
+        }
+      : undefined,
   };
 }
 
 describe("memory registry", () => {
   test("returns empty prompt when no sources produce entries", async () => {
-    const sources = [createMockSource("empty", [])];
-    const result = await loadWithSources(sources, {}, 1000);
+    const registry = createMemoryRegistry([mockSource("empty", [])]);
+    const result = await registry.load({}, 1000);
     expect(result.prompt).toBe("");
     expect(result.tokenEstimate).toBe(0);
   });
 
   test("fills budget in source order", async () => {
-    const sources = [createMockSource("first", ["alpha", "beta"]), createMockSource("second", ["gamma"])];
-    const result = await loadWithSources(sources, {}, 10_000);
+    const registry = createMemoryRegistry([
+      mockSource("first", ["alpha", "beta"]),
+      mockSource("second", ["gamma"]),
+    ]);
+    const result = await registry.load({}, 10_000);
     expect(result.prompt).toContain("- alpha");
     expect(result.prompt).toContain("- beta");
     expect(result.prompt).toContain("- gamma");
@@ -56,16 +38,34 @@ describe("memory registry", () => {
 
   test("respects token budget and truncates", async () => {
     const longEntry = "x".repeat(400);
-    const sources = [createMockSource("big", [longEntry, "short"])];
-    const result = await loadWithSources(sources, {}, 50);
+    const registry = createMemoryRegistry([mockSource("big", [longEntry, "short"])]);
+    const result = await registry.load({}, 50);
     expect(result.prompt).not.toContain(longEntry);
     expect(result.prompt).toContain("short");
   });
 
   test("first source gets priority over second", async () => {
-    const sources = [createMockSource("high", ["important fact"]), createMockSource("low", ["less important"])];
-    const result = await loadWithSources(sources, {}, 4);
+    const registry = createMemoryRegistry([
+      mockSource("high", ["important fact"]),
+      mockSource("low", ["less important"]),
+    ]);
+    const result = await registry.load({}, 4);
     expect(result.prompt).toContain("important fact");
     expect(result.prompt).not.toContain("less important");
+  });
+
+  test("commit runs committed sources in order", async () => {
+    const calls: string[] = [];
+    const registry = createMemoryRegistry([
+      mockSource("stored", []),
+      mockSource("distill-a", [], () => {
+        calls.push("distill-a");
+      }),
+      mockSource("distill-b", [], () => {
+        calls.push("distill-b");
+      }),
+    ]);
+    await registry.commit({ messages: [], output: "done" });
+    expect(calls).toEqual(["distill-a", "distill-b"]);
   });
 });

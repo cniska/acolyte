@@ -66,6 +66,7 @@ Memory Engine
 
 - **memory pipeline:** unified stage flow for all memory sources.
 - **registry:** orchestrates MemorySource load and commit through memory pipeline stages.
+- **extension seam:** `createMemoryRegistry(sources)` composes source strategies without changing lifecycle contracts.
 - **request gate:** memory is request-controlled. `useMemory=false` disables both memory injection and distill commit (stateless turn).
 - **stored:** user-managed explicit memories (read-only at load time).
 - **distill:** auto-extracted session knowledge with two tiers:
