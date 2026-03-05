@@ -38,6 +38,7 @@ export async function normalizeMemoryEntries(
   for (const source of sources) {
     const loaded = await source.load(ctx);
     for (const content of loaded) {
+      if (content.trim().length === 0) continue;
       entries.push({ sourceId: source.id, content, tokenEstimate: estimateTokens(content) });
     }
   }

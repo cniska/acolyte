@@ -85,6 +85,14 @@ describe("memory pipeline", () => {
     expect(entries.map((entry) => entry.content)).toEqual(["first", "second", "third"]);
   });
 
+  test("normalizeMemoryEntries skips blank entries", async () => {
+    const entries = await normalizeMemoryEntries(
+      [mockSource("stored", ["", "  ", "kept"])],
+      {},
+    );
+    expect(entries.map((entry) => entry.content)).toEqual(["kept"]);
+  });
+
   test("selectMemoryEntries applies budget with skip-on-oversize behavior", () => {
     const selected = selectMemoryEntries(
       [

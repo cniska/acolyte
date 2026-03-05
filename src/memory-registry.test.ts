@@ -158,4 +158,13 @@ describe("memory registry", () => {
     expect(result.prompt).toContain("- different");
     expect((result.prompt.match(/- same/g) ?? []).length).toBe(1);
   });
+
+  test("load ignores blank entries from sources", async () => {
+    const registry = createMemoryRegistry(
+      [mockSource("stored", ["", " ", "kept"])],
+    );
+    const result = await registry.load({}, 20);
+    expect(result.prompt).toContain("- kept");
+    expect(result.prompt).not.toContain("-  ");
+  });
 });

@@ -44,6 +44,7 @@ Default source order is `stored, distill`.
 - Commits are serialized per session per process through a keyed task queue seam.
 - Selection keeps one continuation state (`Current task`, `Next step`): choose freshest that fits budget, then prioritize it before other entries.
 - Selection dedupes identical entry content to avoid wasting budget on repeats.
+- Normalization drops blank entries before selection.
 - Distill record writes are atomic (`temp file -> rename`) to avoid partial files.
 
 ## Storage
