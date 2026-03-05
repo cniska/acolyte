@@ -65,11 +65,12 @@ export function selectMemoryEntries(
 function prioritizeContinuationEntries(entries: readonly MemoryPipelineEntry[]): MemoryPipelineEntry[] {
   const continuation: MemoryPipelineEntry[] = [];
   const other: MemoryPipelineEntry[] = [];
-  for (const entry of entries) {
+  for (let index = entries.length - 1; index >= 0; index -= 1) {
+    const entry = entries[index];
     if (hasContinuationState(entry.content)) continuation.push(entry);
     else other.push(entry);
   }
-  return [...continuation, ...other];
+  return [...continuation, ...other.reverse()];
 }
 
 function hasContinuationState(content: string): boolean {

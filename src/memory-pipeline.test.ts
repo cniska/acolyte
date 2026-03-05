@@ -110,6 +110,17 @@ describe("memory pipeline", () => {
     expect(selected.tokenEstimate).toBe(4);
   });
 
+  test("selectMemoryEntries prefers most recent continuation entry", () => {
+    const selected = selectMemoryEntries(
+      [
+        { sourceId: "stored", content: "Current task: old", tokenEstimate: 3 },
+        { sourceId: "distill", content: "Current task: new", tokenEstimate: 3 },
+      ],
+      3,
+    );
+    expect(selected.entries.map((entry) => entry.content)).toEqual(["Current task: new"]);
+  });
+
   test("runMemoryCommitPipeline calls commit in source order", async () => {
     const calls: string[] = [];
     const sources: MemorySource[] = [

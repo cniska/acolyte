@@ -117,4 +117,17 @@ describe("memory registry", () => {
     expect(result.prompt).toContain("Current task: finish memory");
     expect(result.prompt).not.toContain("general note");
   });
+
+  test("load prefers most recent continuation over older continuation", async () => {
+    const registry = createMemoryRegistry(
+      [mockSource("stored", ["Current task: old"]), mockSource("distill", ["Current task: new"])],
+      async () => [
+        { sourceId: "stored", content: "Current task: old", tokenEstimate: 4 },
+        { sourceId: "distill", content: "Current task: new", tokenEstimate: 4 },
+      ],
+    );
+    const result = await registry.load({}, 4);
+    expect(result.prompt).toContain("Current task: new");
+    expect(result.prompt).not.toContain("Current task: old");
+  });
 });
