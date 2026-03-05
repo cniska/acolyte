@@ -52,5 +52,8 @@ Default source order is `stored, distill`.
 ## Extension seams
 
 - Configure source order/enablement with `memorySources`.
-- Compose sources via `createMemoryRegistry(sources)`.
+- Compose sources and strategies via `createMemoryRegistry(sources, normalizeEntries, selectEntries)`.
+- Pipeline stage seams:
+  - `MemoryNormalizeStrategy`
+  - `MemorySelectionStrategy`
 - Keep lifecycle contract stable while swapping strategies/storage behind sources.
