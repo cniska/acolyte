@@ -24,6 +24,10 @@ export type { EvalAction, Evaluator };
 export type { LifecycleInput, RunContext } from "./lifecycle-contract";
 export { resolveRecoveryAction as recoveryActionForError };
 
+export function shouldCommitMemory(input: LifecycleInput): boolean {
+  return input.request.useMemory !== false;
+}
+
 function createRunContext(
   input: LifecycleInput,
   params: {
@@ -140,7 +144,7 @@ export async function runLifecycle(input: LifecycleInput) {
 
   await phaseEvaluate(ctx, input.shouldYield);
 
-  if (ctx.result) {
+  if (ctx.result && shouldCommitMemory(input)) {
     await commitMemorySources({
       sessionId: ctx.request.sessionId,
       workspace: ctx.workspace,

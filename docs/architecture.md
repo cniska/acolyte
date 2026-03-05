@@ -64,7 +64,7 @@ lifecycle finalize -> memory registry -> [distill commit]
 ```
 
 - **registry:** iterates `MemorySource` implementations in order, token-budgeted.
-- **request gate:** memory injection is request-controlled (`useMemory !== false`).
+- **request gate:** memory is request-controlled. `useMemory=false` disables both memory injection and distill commit (stateless turn).
 - **stored:** user-managed explicit memories (read-only at load time).
 - **distill:** auto-extracted session knowledge with two tiers:
   - **observation:** facts extracted from a single conversation round.

@@ -7,6 +7,7 @@ import {
   planDetector,
   type RunContext,
   recoveryActionForError,
+  shouldCommitMemory,
   timeoutRecovery,
   verifyFailure,
 } from "./lifecycle";
@@ -435,5 +436,25 @@ describe("recoveryActionForError", () => {
     expect(recoveryActionForError({ errorCode: TOOL_ERROR_CODES.editFileMultiMatch, unknownErrorCount: 0 })).toBe(
       "none",
     );
+  });
+});
+
+describe("shouldCommitMemory", () => {
+  test("returns false when request disables memory", () => {
+    expect(
+      shouldCommitMemory({
+        request: { model: "gpt-5-mini", message: "test", history: [], useMemory: false },
+        soulPrompt: "",
+      }),
+    ).toBe(false);
+  });
+
+  test("returns true when request does not disable memory", () => {
+    expect(
+      shouldCommitMemory({
+        request: { model: "gpt-5-mini", message: "test", history: [] },
+        soulPrompt: "",
+      }),
+    ).toBe(true);
   });
 });
