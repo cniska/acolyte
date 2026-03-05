@@ -92,6 +92,14 @@ describe("memory pipeline", () => {
     expect(entries.map((entry) => entry.content)).toEqual(["kept"]);
   });
 
+  test("normalizeMemoryEntries trims entry content", async () => {
+    const entries = await normalizeMemoryEntries(
+      [createMemorySource("stored", ["  padded value  "])],
+      {},
+    );
+    expect(entries.map((entry) => entry.content)).toEqual(["padded value"]);
+  });
+
   test("selectMemoryEntries applies budget with skip-on-oversize behavior", () => {
     const selected = selectMemoryEntries(
       [

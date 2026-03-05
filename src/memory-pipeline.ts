@@ -39,8 +39,8 @@ export async function normalizeMemoryEntries(
   for (const source of sources) {
     const loadedEntries = await source.loadEntries(ctx);
     for (const entry of loadedEntries) {
-      const content = entry.content;
-      if (content.trim().length === 0) continue;
+      const content = entry.content.trim();
+      if (content.length === 0) continue;
       entries.push({
         sourceId: source.id,
         content,
