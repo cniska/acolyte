@@ -1,26 +1,28 @@
-import { Agent } from "@mastra/core/agent";
+import { estimateTokens } from "./agent-input";
 import { appConfig } from "./app-config";
 import { nowIso } from "./datetime";
 import type { DistillRecord, MemorySource } from "./memory-contract";
 import { createFileDistillStore, type DistillStore } from "./memory-distill-store";
 import { OBSERVER_PROMPT, REFLECTOR_PROMPT } from "./memory-distill-prompts";
+import { createModel } from "./model-factory";
 import { normalizeModel } from "./provider-config";
 import { createId } from "./short-id";
-import { estimateTokens } from "./agent-input";
 
 const store: DistillStore = createFileDistillStore();
 
 async function runDistillLLM(systemPrompt: string, userContent: string): Promise<string> {
-  const model = appConfig.distill.model;
-  const agent = new Agent({
-    id: "distill",
-    name: "Distill",
-    instructions: systemPrompt,
-    model: normalizeModel(model),
-    maxRetries: 1,
+  const model = createModel(normalizeModel(appConfig.distill.model));
+  const result = await model.doGenerate({
+    prompt: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: [{ type: "text", text: userContent }] },
+    ],
   });
-  const result = await agent.generate(userContent, { maxSteps: 1 });
-  return result.text.trim();
+  const text = result.content
+    .filter((part): part is { type: "text"; text: string } => part.type === "text")
+    .map((part) => part.text)
+    .join("");
+  return text.trim();
 }
 
 export function createDistillMemorySource(injectedStore?: DistillStore): MemorySource {
