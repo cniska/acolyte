@@ -73,27 +73,11 @@ Memory Engine
   -> Memory context in system prompt
 ```
 
-- **memory pipeline:** unified stage flow for all memory sources.
-- **registry:** orchestrates MemorySource load and commit through memory pipeline stages.
-- **extension seam:** `createMemoryRegistry(sources)` composes source strategies without changing lifecycle contracts.
-- **pipeline seams:** Memory Pipeline normalization and selection are strategy-injectable (`MemoryNormalizeStrategy`, `MemorySelectionStrategy`) with default behavior.
-- **selection default:** continuation cues (`Current task`, `Next step`) are prioritized first, then remaining entries follow source strategy order.
-- **source strategy config:** `memorySources` controls enabled memory source IDs and order (default: `stored`, `distill`).
-- **request gate:** memory is request-controlled. `useMemory=false` disables both memory injection and distill commit (stateless turn).
-- **config gate:** `memoryBudgetTokens=0` disables memory injection globally while leaving source configuration intact.
-- **stored:** user-managed explicit memories (read-only at load time).
-- **distill:** auto-extracted session knowledge with two tiers:
-  - **observation:** facts extracted from a single conversation round.
-  - **reflection:** consolidated facts across multiple rounds.
-- **distill load strategy:** prefer latest reflection, then append only post-reflection observations (fresh delta).
-- **distill commit strategy:** extract from recent transcript plus latest assistant output; reflection runs on post-reflection observation delta once thresholds are crossed.
-- **dedupe:** consecutive equivalent observations are skipped to reduce repetitive memory noise.
-- **continuation state:** distill records capture `Current task` / `Next step` when present and inject them explicitly into memory context.
-- **distill output controls:** observation/reflection outputs are clamped to configured token limits; reflection retries with stronger compression guidance before discard.
-- **commit concurrency:** memory commits are serialized per session per process through a keyed task queue seam (default: in-memory implementation).
-- **storage:** file-based at `~/.acolyte/distill/<sessionId>/`, Zod-validated on read with safe session-id path checks.
-- **storage writes:** distill records use temp-file + rename atomic writes to avoid partial files.
-- **integration:** selected memory is injected into the system prompt during request setup; distill commit is scheduled as best-effort background work at lifecycle finalize.
+- **overview:** Memory Engine composes source strategy, pipeline stages, and distill behavior to provide continuity across turns.
+- **source strategy:** configured source IDs and order (`memorySources`) determine source composition.
+- **pipeline seams:** normalization and selection are strategy-injectable behind registry contracts.
+- **integration:** memory context is injected during request setup; commit is best-effort background work at finalize.
+- **canonical details:** see [memory.md](./memory.md).
 
 ## Contracts
 
