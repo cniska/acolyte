@@ -4,6 +4,7 @@ import { createInstructions, createModeInstructions } from "./agent-instructions
 import { resolveModelProviderState, resolveRunnableModel } from "./agent-model";
 import { finalizeAssistantOutput, finalizeReviewOutput, formatToolHeader, isPlanLikeOutput } from "./agent-output";
 import type { ChatRequest } from "./api";
+import { appConfig } from "./app-config";
 
 function createRequest(content: string): ChatRequest {
   return {
@@ -110,6 +111,38 @@ describe("createAgentInput", () => {
     expect(oldToolLine).toBeDefined();
     expect(oldToolLine!.length).toBeLessThanOrEqual(900);
     expect(input).toContain("ASSISTANT: Ready for the next step.");
+  });
+
+  test("keeps newest oversized history turn by truncating to remaining budget", () => {
+    const originalContextMaxTokens = appConfig.agent.contextMaxTokens;
+    (appConfig.agent as { contextMaxTokens: number }).contextMaxTokens = 120;
+    try {
+      const req: ChatRequest = {
+        model: "gpt-5-mini",
+        message: "U".repeat(380),
+        history: [
+          {
+            id: "msg_old",
+            role: "assistant",
+            content: "older context that should lose to newest turn",
+            timestamp: "2026-02-20T10:00:00.000Z",
+          },
+          {
+            id: "msg_new",
+            role: "assistant",
+            content: `LATEST ${"x".repeat(4000)}`,
+            timestamp: "2026-02-20T10:00:01.000Z",
+          },
+        ],
+      };
+
+      const { input } = createAgentInput(req);
+      expect(input).toContain("ASSISTANT: LATEST");
+      expect(input).toContain("…");
+      expect(input).not.toContain("older context that should lose to newest turn");
+    } finally {
+      (appConfig.agent as { contextMaxTokens: number }).contextMaxTokens = originalContextMaxTokens;
+    }
   });
 });
 

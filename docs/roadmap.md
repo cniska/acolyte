@@ -88,9 +88,9 @@ Reduce repeated mistakes with transparent, correctable memory behavior.
 - [ ] Saved memory commands work and are useful (`/remember`, `/memory`, `/memory rm`)
 - [x] Mastra dependency removed — own the stack with native agentic loop and AI SDK providers
 - [x] Context distillation replaces observational memory (MemorySource seam, distill engine, soul prompt integration)
-- [ ] History-time tool-output pruning for old assistant turns (not only emit-time truncation)
-- [ ] Rolling history budget policy in agent input assembly (deterministic pruning, no user-visible compaction flow)
-- [ ] Explicit resume block injection from continuation state (`Current task` / `Next step`)
+- [x] History-time tool-output pruning for old assistant turns (not only emit-time truncation)
+- [x] Rolling history budget policy in agent input assembly (deterministic pruning, no user-visible compaction flow)
+- [x] Explicit resume block injection from continuation state (`Current task` / `Next step`)
 - [ ] Evals show measurable reduction in repeated instruction failures
 - [ ] Memory doesn't hallucinate or carry stale context
 

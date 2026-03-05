@@ -41,6 +41,21 @@ function lineForMessage(message: ChatRequest["history"][number], maxTokens: numb
   return { line, tokens: estimateTokens(line) };
 }
 
+function lineForMessageWithinBudget(
+  message: ChatRequest["history"][number],
+  maxTokens: number,
+  remainingTokens: number,
+): { line: string; tokens: number } | null {
+  if (remainingTokens <= 0) return null;
+  let tokenLimit = Math.min(maxTokens, remainingTokens);
+  while (tokenLimit > 0) {
+    const candidate = lineForMessage(message, tokenLimit);
+    if (candidate.tokens <= remainingTokens) return candidate;
+    tokenLimit -= 1;
+  }
+  return null;
+}
+
 function collectLinesWithinBudget(
   messages: ChatRequest["history"],
   usedIds: Set<string>,
@@ -58,8 +73,8 @@ function collectLinesWithinBudget(
       message.role === "assistant" && ageFromLatest > 1 && isLikelyToolPayload(message.content)
         ? Math.min(maxPerMessageTokens, 200)
         : maxPerMessageTokens;
-    const candidate = lineForMessage(message, maxTokens);
-    if (candidate.tokens === 0 || consumed + candidate.tokens > remainingTokens) continue;
+    const candidate = lineForMessageWithinBudget(message, maxTokens, remainingTokens - consumed);
+    if (!candidate || candidate.tokens === 0) continue;
     usedIds.add(message.id);
     lines.unshift(candidate.line);
     consumed += candidate.tokens;
