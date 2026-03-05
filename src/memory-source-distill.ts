@@ -84,7 +84,7 @@ export function createDistillMemorySource(injectedStore?: DistillStore, runner: 
       if (!latestReflection) return [];
       const observationsSinceReflection = entries
         .filter((e) => e.tier === "observation" && e.createdAt > latestReflection.createdAt)
-        .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
       const mostRecent = observationsSinceReflection[observationsSinceReflection.length - 1] ?? latestReflection;
       return [
         { content: latestReflection.content },

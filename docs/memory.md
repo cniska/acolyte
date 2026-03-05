@@ -34,7 +34,7 @@ Default source order is `stored, distill`.
   - `reflection`: consolidated cross-round state
 - Load strategy:
   - latest reflection first
-  - then post-reflection observations (fresh delta)
+  - then post-reflection observations (fresh delta, newest first)
 - Continuation state:
   - preserve `Current task` and `Next step` when available
   - continuation is sourced from typed fields (`currentTask`/`nextStep`)

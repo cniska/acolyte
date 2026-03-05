@@ -97,6 +97,38 @@ describe("distillMemorySource", () => {
       expect(entries).toEqual(["latest reflection", "new observation"]);
     });
 
+    test("orders post-reflection observations by recency", async () => {
+      const store = createMockStore([
+        {
+          id: "dst_ref00001",
+          sessionId: "sess_test0001",
+          tier: "reflection",
+          content: "latest reflection",
+          createdAt: "2026-03-04T12:00:00.000Z",
+          tokenEstimate: 3,
+        },
+        {
+          id: "dst_obs00001",
+          sessionId: "sess_test0001",
+          tier: "observation",
+          content: "older observation",
+          createdAt: "2026-03-04T12:10:00.000Z",
+          tokenEstimate: 3,
+        },
+        {
+          id: "dst_obs00002",
+          sessionId: "sess_test0001",
+          tier: "observation",
+          content: "newer observation",
+          createdAt: "2026-03-04T12:20:00.000Z",
+          tokenEstimate: 3,
+        },
+      ]);
+      const source = createDistillMemorySource(store);
+      const entries = await loadContents(source, { sessionId: "sess_test0001" });
+      expect(entries).toEqual(["latest reflection", "newer observation", "older observation"]);
+    });
+
     test("appends continuation lines when available", async () => {
       const store = createMockStore([
         {
