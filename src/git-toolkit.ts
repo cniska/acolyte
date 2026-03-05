@@ -47,8 +47,7 @@ export function createGitOps(workspace: string, deps: GitOpsDeps = defaultDeps):
   return {
     statusShort: () => runGitOp("statusShort", () => deps.gitStatusShort(workspace)),
     diff: (input) => runGitOp("diff", () => deps.gitDiff(workspace, input?.path, input?.contextLines ?? 3)),
-    log: (input) =>
-      runGitOp("log", () => deps.gitLog(workspace, { path: input?.path, limit: input?.limit })),
+    log: (input) => runGitOp("log", () => deps.gitLog(workspace, { path: input?.path, limit: input?.limit })),
     show: (input) =>
       runGitOp("show", () =>
         deps.gitShow(workspace, {
@@ -142,8 +141,7 @@ function createGitShowTool(git: GitOps, input: ToolkitInput) {
   return createTool({
     id: "git-show",
     description: "Show commit details and patch for a ref (default HEAD), optionally scoped to a path.",
-    instruction:
-      "Use `git-show` to inspect a specific commit/tag/ref with patch details (optionally scoped by path).",
+    instruction: "Use `git-show` to inspect a specific commit/tag/ref with patch details (optionally scoped by path).",
     inputSchema: z.object({
       ref: z.string().optional(),
       path: z.string().optional(),

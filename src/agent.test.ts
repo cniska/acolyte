@@ -2,12 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { createAgentInput } from "./agent-input";
 import { createInstructions, createModeInstructions } from "./agent-instructions";
 import { resolveModelProviderState, resolveRunnableModel } from "./agent-model";
-import {
-  finalizeAssistantOutput,
-  finalizeReviewOutput,
-  formatToolHeader,
-  isPlanLikeOutput,
-} from "./agent-output";
+import { finalizeAssistantOutput, finalizeReviewOutput, formatToolHeader, isPlanLikeOutput } from "./agent-output";
 import type { ChatRequest } from "./api";
 
 function createRequest(content: string): ChatRequest {
@@ -92,7 +87,6 @@ describe("execution intent detection", () => {
     expect(isPlanLikeOutput("• 1. Edit src/cli.ts\n• 2. Run verify")).toBe(true);
     expect(isPlanLikeOutput("Updated src/cli.ts and tests pass.")).toBe(false);
   });
-
 });
 
 describe("finalizeReviewOutput", () => {

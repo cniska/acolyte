@@ -37,7 +37,6 @@ import { TOOL_OUTPUT_MARKERS } from "./tool-output-parser";
 const WRITE_TOOL_PREVIEW_MAX_LINES = Number.POSITIVE_INFINITY;
 const WEB_SEARCH_MAX_RESULTS = 5;
 
-
 export function streamCallId(toolName: ToolName): string {
   return `${toolName}_${createId()}`;
 }
@@ -266,9 +265,7 @@ export function runTool(
   args: Record<string, unknown>,
   execute: (toolCallId: string) => Promise<{ result: string }>,
 ): Promise<{ result: string }> {
-  return withToolError(toolId, () =>
-    guardedExecute(toolId, args, session, () => execute(streamCallId(toolId))),
-  );
+  return withToolError(toolId, () => guardedExecute(toolId, args, session, () => execute(streamCallId(toolId))));
 }
 
 export async function withToolError<T>(toolId: ToolName, task: () => Promise<T>): Promise<T> {

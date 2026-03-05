@@ -183,9 +183,9 @@ describe("tool output contract: read-file", () => {
       const alphaPath = join(workspace, "alpha.ts");
       await writeFile(alphaPath, 'export const alpha = "needle";\n', "utf8");
 
-      await tools.readFile.execute(
-        { paths: [{ path: alphaPath }, { path: alphaPath }, { path: alphaPath, start: 1, end: 1 }] },
-      );
+      await tools.readFile.execute({
+        paths: [{ path: alphaPath }, { path: alphaPath }, { path: alphaPath, start: 1, end: 1 }],
+      });
 
       assertToolOutput(
         outputByTool,
@@ -350,9 +350,7 @@ describe("tool output contract: search-files", () => {
       await writeFile(alphaPath, 'export const alpha = "needle";\n', "utf8");
       await writeFile(betaPath, 'export const beta = "needle";\n', "utf8");
 
-      await tools.searchFiles.execute(
-        { patterns: ["needle"], paths: [alphaPath, betaPath], maxResults: 10 },
-      );
+      await tools.searchFiles.execute({ patterns: ["needle"], paths: [alphaPath, betaPath], maxResults: 10 });
 
       assertToolOutput(
         outputByTool,
@@ -610,9 +608,11 @@ describe("tool output contract: scan-code", () => {
       await writeFile(alphaPath, 'export const alpha = "needle";\n', "utf8");
       await writeFile(betaPath, 'export const beta = "needle";\n', "utf8");
 
-      await tools.scanCode.execute(
-        { paths: [alphaPath, betaPath], patterns: ["export const $NAME = $VALUE;"], maxResults: 10 },
-      );
+      await tools.scanCode.execute({
+        paths: [alphaPath, betaPath],
+        patterns: ["export const $NAME = $VALUE;"],
+        maxResults: 10,
+      });
 
       assertToolOutput(
         outputByTool,
@@ -634,9 +634,7 @@ describe("tool output contract: scan-code", () => {
       const files = ["a.ts", "b.ts", "c.ts", "d.ts"].map((name) => join(workspace, name));
       for (const file of files) await writeFile(file, "export const value = 1;\n", "utf8");
 
-      await tools.scanCode.execute(
-        { paths: files, patterns: ["export const $NAME = $VALUE;"], maxResults: 10 },
-      );
+      await tools.scanCode.execute({ paths: files, patterns: ["export const $NAME = $VALUE;"], maxResults: 10 });
 
       assertToolOutput(
         outputByTool,
@@ -658,9 +656,7 @@ describe("tool output contract: scan-code", () => {
       const files = ["a.ts", "b.ts", "c.ts"].map((name) => join(workspace, name));
       for (const file of files) await writeFile(file, "export const value = 1;\n", "utf8");
 
-      await tools.scanCode.execute(
-        { paths: files, patterns: ["export const $NAME = $VALUE;"], maxResults: 10 },
-      );
+      await tools.scanCode.execute({ paths: files, patterns: ["export const $NAME = $VALUE;"], maxResults: 10 });
 
       assertToolOutput(
         outputByTool,
@@ -682,9 +678,11 @@ describe("tool output contract: scan-code", () => {
       const alphaPath = join(workspace, "alpha.ts");
       await writeFile(alphaPath, 'export const alpha = "needle";\n', "utf8");
 
-      await tools.scanCode.execute(
-        { paths: [alphaPath, alphaPath, alphaPath], patterns: ["export const $NAME = $VALUE;"], maxResults: 10 },
-      );
+      await tools.scanCode.execute({
+        paths: [alphaPath, alphaPath, alphaPath],
+        patterns: ["export const $NAME = $VALUE;"],
+        maxResults: 10,
+      });
 
       assertToolOutput(
         outputByTool,
@@ -1227,15 +1225,13 @@ describe("tool output contract: edit tools", () => {
     targets: number[],
   ): Promise<void> {
     if (toolName === "edit-file") {
-      await tools.editFile.execute(
-        {
-          path,
-          edits: targets.map((line) => ({
-            find: `const line${line} = ${line};`,
-            replace: `const line${line} = ${line}000;`,
-          })),
-        },
-      );
+      await tools.editFile.execute({
+        path,
+        edits: targets.map((line) => ({
+          find: `const line${line} = ${line};`,
+          replace: `const line${line} = ${line}000;`,
+        })),
+      });
       return;
     }
     await tools.editCode.execute({

@@ -325,7 +325,7 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
       const errorInfo = parsed.ok ? parsed.value : { message: "Tool error" };
       const payloadCode = typeof p?.code === "string" ? p.code : undefined;
       const errorMsg = errorInfo.message;
-      const toolName = (p?.toolName ?? "");
+      const toolName = p?.toolName ?? "";
       captureError(ctx, errorMsg, { source: "tool-error", tool: toolName, code: payloadCode ?? errorInfo.code });
       ctx.debug("lifecycle.tool.error", { tool: toolName, error: errorMsg });
       if (p?.toolCallId && p?.toolName) {
