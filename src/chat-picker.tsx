@@ -13,7 +13,7 @@ export type PickerState =
   | { kind: "permissions"; items: Array<{ mode: PermissionMode; description: string }>; index: number }
   | {
       kind: "model";
-      items: Array<{ model: string; description: string }>;
+      items: Array<{ model: string; name: string; description: string }>;
       index: number;
       customModel: string;
       targetMode?: AgentMode;
@@ -127,7 +127,7 @@ export function renderPickerItems(
               ? picker.customModel.trim().length > 0
                 ? picker.customModel
                 : "other"
-              : truncateText(item.model, PICKER_LABEL_WIDTH);
+              : truncateText(item.name, PICKER_LABEL_WIDTH);
             return (
               <Text key={item.model}>
                 {selected ? "› " : "  "}

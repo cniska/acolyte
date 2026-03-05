@@ -258,8 +258,8 @@ describe("chat picker handlers", () => {
     await handlers.handlePickerSelect({
       kind: "model",
       items: [
-        { model: "gpt-5-mini", description: "balanced default" },
-        { model: "other", description: "" },
+        { model: "gpt-5-mini", name: "gpt-5-mini", description: "balanced default" },
+        { model: "other", name: "other", description: "" },
       ],
       index: 1,
       customModel: "gpt-5",
@@ -305,8 +305,8 @@ describe("chat picker handlers", () => {
     await handlers.handlePickerSelect({
       kind: "model",
       items: [
-        { model: "gpt-5-mini", description: "balanced default" },
-        { model: "other", description: "" },
+        { model: "gpt-5-mini", name: "gpt-5-mini", description: "balanced default" },
+        { model: "other", name: "other", description: "" },
       ],
       index: 1,
       customModel: "",

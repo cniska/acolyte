@@ -1,31 +1,28 @@
 import type { Provider } from "./provider-contract";
 
-type ModelMeta = {
+export type Model = {
   id: string;
+  name: string;
   description: string;
 };
 
-const MODEL_REGISTRY: Record<Provider, ModelMeta[]> = {
+const MODEL_REGISTRY: Record<Provider, Model[]> = {
   openai: [
-    { id: "gpt-5.2", description: "highest quality" },
-    { id: "gpt-5-mini", description: "balanced default" },
-    { id: "gpt-5-nano", description: "fastest and lowest cost" },
+    { id: "gpt-5.2", name: "gpt-5.2", description: "highest quality" },
+    { id: "gpt-5-mini", name: "gpt-5-mini", description: "balanced default" },
+    { id: "gpt-5-nano", name: "gpt-5-nano", description: "fastest and lowest cost" },
   ],
   anthropic: [
-    { id: "claude-opus-4-6", description: "highest quality" },
-    { id: "claude-sonnet-4-6", description: "balanced default" },
-    { id: "claude-haiku-4-5", description: "fastest and lowest cost" },
+    { id: "claude-opus-4-6-20250904", name: "claude-opus-4.6", description: "highest quality" },
+    { id: "claude-sonnet-4-6-20250904", name: "claude-sonnet-4.6", description: "balanced default" },
+    { id: "claude-haiku-4-5-20251001", name: "claude-haiku-4.5", description: "fastest and lowest cost" },
   ],
   gemini: [
-    { id: "gemini-2.5-flash-preview-05-20", description: "fast and efficient" },
-    { id: "gemini-2.5-pro-preview-05-06", description: "highest quality" },
-    { id: "gemini-2.0-flash", description: "low-latency default" },
+    { id: "gemini-2.5-flash-preview-05-20", name: "gemini-2.5-flash", description: "fast and efficient" },
+    { id: "gemini-2.5-pro-preview-05-06", name: "gemini-2.5-pro", description: "highest quality" },
+    { id: "gemini-2.0-flash", name: "gemini-2.0-flash", description: "low-latency default" },
   ],
 };
-
-const MODEL_DESCRIPTION_BY_ID: Record<string, string> = Object.fromEntries(
-  Object.values(MODEL_REGISTRY).flatMap((models) => models.map((model) => [model.id, model.description])),
-);
 
 function inferUnqualifiedModelPrefix(model: string): "openai" | "anthropic" | "gemini" {
   const normalized = model.trim().toLowerCase();
@@ -82,10 +79,7 @@ export function isProviderAvailable(input: {
   return Boolean(input.openaiApiKey);
 }
 
-export function suggestedModelsForProvider(provider: Provider): string[] {
-  return MODEL_REGISTRY[provider].map((model) => model.id);
+export function suggestedModelsForProvider(provider: Provider): Model[] {
+  return MODEL_REGISTRY[provider];
 }
 
-export function describeModel(model: string): string {
-  return MODEL_DESCRIPTION_BY_ID[model] ?? "supported model";
-}

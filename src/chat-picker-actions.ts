@@ -3,7 +3,7 @@ import { appConfig } from "./app-config";
 import { type ChatRow, createRow } from "./chat-commands";
 import type { PickerState } from "./chat-picker";
 import type { PermissionMode } from "./config-contract";
-import { describeModel, providerFromModel, suggestedModelsForProvider } from "./provider-config";
+import { providerFromModel, suggestedModelsForProvider } from "./provider-config";
 import type { Provider } from "./provider-contract";
 import type { Session, SessionState } from "./session-contract";
 
@@ -68,10 +68,13 @@ export function createModelPicker(currentModel: string, targetMode?: AgentMode):
   if (appConfig.google.apiKey) providers.push("gemini");
   const fallbackProvider = providerFromModel(currentModel);
   if (!providers.includes(fallbackProvider)) providers.push(fallbackProvider);
-  const suggestions = [...new Set(providers.flatMap((provider) => suggestedModelsForProvider(provider)))];
+  const seen = new Set<string>();
+  const suggestions = providers.flatMap((provider) =>
+    suggestedModelsForProvider(provider).filter((m) => !seen.has(m.id) && seen.add(m.id)),
+  );
   const items = [
-    ...suggestions.map((model) => ({ model, description: describeModel(model) })),
-    { model: "other", description: "" },
+    ...suggestions.map((m) => ({ model: m.id, name: m.name, description: m.description })),
+    { model: "other", name: "other", description: "" },
   ];
   const index = items.findIndex((item) => item.model === currentModel);
   return {

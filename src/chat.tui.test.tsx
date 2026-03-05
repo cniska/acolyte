@@ -121,9 +121,9 @@ describe("chat tui visual regression: model picker", () => {
     const basePicker = {
       kind: "model" as const,
       items: [
-        { model: "gpt-5-mini", description: "balanced default" },
-        { model: "gpt-5", description: "highest quality" },
-        { model: "other", description: "" },
+        { model: "gpt-5-mini", name: "gpt-5-mini", description: "balanced default" },
+        { model: "gpt-5", name: "gpt-5", description: "highest quality" },
+        { model: "other", name: "other", description: "" },
       ],
       index: 2,
     };
