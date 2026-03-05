@@ -11,6 +11,7 @@ export const messageSchema = z.object({
   id: messageIdSchema,
   role: roleSchema,
   content: z.string(),
+  toolPayload: z.boolean().optional(),
   timestamp: isoDateTimeSchema,
 });
 
@@ -18,5 +19,6 @@ export interface Message {
   readonly id: MessageId;
   readonly role: Role;
   content: string;
+  readonly toolPayload?: boolean;
   readonly timestamp: IsoDateTimeString;
 }

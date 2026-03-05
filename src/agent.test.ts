@@ -89,6 +89,7 @@ describe("createAgentInput", () => {
           id: "msg_old_tool",
           role: "assistant",
           content: toolHeavy,
+          toolPayload: true,
           timestamp: "2026-02-20T10:00:00.000Z",
         },
         {
@@ -111,6 +112,107 @@ describe("createAgentInput", () => {
     expect(oldToolLine).toBeDefined();
     expect(oldToolLine!.length).toBeLessThanOrEqual(900);
     expect(input).toContain("ASSISTANT: Ready for the next step.");
+  });
+
+  test("does not compact prose that casually mentions stdout", () => {
+    const prose = `Summary: We discussed stdout: formatting for status rows.\n${"N".repeat(1100)}TAIL_SENTINEL`;
+    const req: ChatRequest = {
+      model: "gpt-5-mini",
+      message: "continue",
+      history: [
+        {
+          id: "msg_old_prose",
+          role: "assistant",
+          content: prose,
+          timestamp: "2026-02-20T10:00:00.000Z",
+        },
+        {
+          id: "msg_old_user",
+          role: "user",
+          content: "thanks",
+          timestamp: "2026-02-20T10:00:01.000Z",
+        },
+        {
+          id: "msg_recent_assistant",
+          role: "assistant",
+          content: "Ready for the next step.",
+          timestamp: "2026-02-20T10:00:02.000Z",
+        },
+      ],
+    };
+
+    const { input } = createAgentInput(req);
+    expect(input).toContain("TAIL_SENTINEL");
+  });
+
+  test("compacts structured search/find tool payload turns", () => {
+    const structuredPayload = [
+      "scope=workspace patterns=[*.ts] matches=42",
+      ...Array.from({ length: 120 }, (_, i) => `src/file-${i}.ts`),
+      "TAIL_STRUCTURED",
+    ].join("\n");
+    const req: ChatRequest = {
+      model: "gpt-5-mini",
+      message: "continue",
+      history: [
+        {
+          id: "msg_old_structured",
+          role: "assistant",
+          content: structuredPayload,
+          toolPayload: true,
+          timestamp: "2026-02-20T10:00:00.000Z",
+        },
+        {
+          id: "msg_old_user",
+          role: "user",
+          content: "thanks",
+          timestamp: "2026-02-20T10:00:01.000Z",
+        },
+        {
+          id: "msg_recent_assistant",
+          role: "assistant",
+          content: "Ready for the next step.",
+          timestamp: "2026-02-20T10:00:02.000Z",
+        },
+      ],
+    };
+
+    const { input } = createAgentInput(req);
+    const oldStructuredLine = input.split("\n").find((line) => line.startsWith("ASSISTANT: scope=workspace"));
+    expect(oldStructuredLine).toBeDefined();
+    expect(oldStructuredLine!.length).toBeLessThanOrEqual(900);
+    expect(input).not.toContain("TAIL_STRUCTURED");
+  });
+
+  test("does not aggressively compact unflagged tool-like assistant content", () => {
+    const toolHeavy = `stdout:\n${"A".repeat(5000)}\nstderr:\n${"B".repeat(2000)}\nTAIL_UNFLAGGED`;
+    const req: ChatRequest = {
+      model: "gpt-5-mini",
+      message: "continue",
+      history: [
+        {
+          id: "msg_old_unflagged",
+          role: "assistant",
+          content: toolHeavy,
+          timestamp: "2026-02-20T10:00:00.000Z",
+        },
+        {
+          id: "msg_old_user",
+          role: "user",
+          content: "thanks",
+          timestamp: "2026-02-20T10:00:01.000Z",
+        },
+        {
+          id: "msg_recent_assistant",
+          role: "assistant",
+          content: "Ready for the next step.",
+          timestamp: "2026-02-20T10:00:02.000Z",
+        },
+      ],
+    };
+
+    const { input } = createAgentInput(req);
+    expect(input).toContain("A".repeat(1500));
   });
 
   test("keeps newest oversized history turn by truncating to remaining budget", () => {
