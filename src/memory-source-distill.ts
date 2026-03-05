@@ -30,8 +30,8 @@ function needsReflectionRetry(reflected: string, sourceTokenEstimate: number): b
 }
 
 function parseContinuationState(text: string): { currentTask?: string; nextStep?: string } {
-  const currentTaskMatch = text.match(/^Current task:\s*(.+)$/im);
-  const nextStepMatch = text.match(/^Next step:\s*(.+)$/im);
+  const currentTaskMatch = text.match(/^(?:[-*]\s*)?Current task:\s*(.+)$/im);
+  const nextStepMatch = text.match(/^(?:[-*]\s*)?Next step:\s*(.+)$/im);
   const currentTask = currentTaskMatch?.[1]?.trim();
   const nextStep = nextStepMatch?.[1]?.trim();
   return {

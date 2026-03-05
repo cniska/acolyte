@@ -285,6 +285,35 @@ describe("distillMemorySource", () => {
       }
     });
 
+    test("stores parsed continuation fields from bullet observation output", async () => {
+      const originalDistillConfig = { ...appConfig.distill };
+      (appConfig as { distill: typeof appConfig.distill }).distill = {
+        ...appConfig.distill,
+        messageThreshold: 1,
+        reflectionThresholdTokens: 999_999,
+        maxOutputTokens: 10_000,
+      };
+      try {
+        const store = createMockStore();
+        const source = createDistillMemorySource(store, async (systemPrompt) => {
+          if (systemPrompt === OBSERVER_PROMPT)
+            return "fact line\n- Current task: Bullet task\n* Next step: Bullet next";
+          return "";
+        });
+        if (!source.commit) throw new Error("expected commit handler");
+        await source.commit({
+          sessionId: "sess_test0001",
+          messages: [{ role: "user", content: "hello" }],
+          output: "done",
+        });
+        const writtenObservation = store.written.find((entry) => entry.tier === "observation");
+        expect(writtenObservation?.currentTask).toBe("Bullet task");
+        expect(writtenObservation?.nextStep).toBe("Bullet next");
+      } finally {
+        (appConfig as { distill: typeof appConfig.distill }).distill = originalDistillConfig;
+      }
+    });
+
     test("skips consecutive duplicate observations", async () => {
       const originalDistillConfig = { ...appConfig.distill };
       (appConfig as { distill: typeof appConfig.distill }).distill = {
