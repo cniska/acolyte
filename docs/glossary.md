@@ -4,6 +4,7 @@
 
 - **Domain noun** (`Session`, `Task`): in-memory domain entity used by core logic.
 - **`*Record`** (`SessionRecord`, `TaskRecord`): one persisted entity record.
+- **`*Entry`** (`MemoryContextEntry`, queue entry): one runtime/pipeline item (non-persisted by default).
 - **`*State`** (`SessionState`): aggregate runtime/persisted state container.
 - **`*Contract`** (`TaskContract`, `StatusContract`): boundary shape for protocol/config/transport.
 - **`*Store`** (`SessionStore`, `TaskStore`): behavior interface for persistence operations.
@@ -12,6 +13,8 @@
 
 ## Core terms
 
+- **Entry**: runtime/pipeline item used during processing; not necessarily persisted.
+- **Record**: persisted entity object stored by a persistence backend.
 - **Session**: one chat session in memory (messages, model, token usage, timestamps).
 - **SessionRecord**: one stored session record.
 - **SessionState**: sessions aggregate (`sessions[]`, `activeSessionId`).
@@ -21,3 +24,5 @@
 - **Guard**: pre-tool execution rule that may block calls.
 - **Evaluator**: post-generation rule that accepts or requests regeneration.
 - **Toolkit**: grouped domain tools exposed through adapters/composition.
+- **Memory Engine**: top-level memory capability that maintains continuity across turns.
+- **Memory Pipeline**: internal staged flow inside the Memory Engine (ingest -> normalize -> select -> inject -> commit).
