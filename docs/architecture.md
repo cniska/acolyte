@@ -76,7 +76,7 @@ Memory Engine
 - **overview:** Memory Engine composes source strategy, pipeline stages, and distill behavior to provide continuity across turns.
 - **source strategy:** configured source IDs and order (`memorySources`) determine source composition.
 - **pipeline seams:** normalization and selection are strategy-injectable behind registry contracts.
-- **selection default:** only the freshest continuation cue is kept and prioritized before other entries.
+- **selection default:** one continuation cue is kept; selection prefers the freshest continuation that fits budget.
 - **integration:** memory context is injected during request setup; commit is best-effort background work at finalize.
 - **canonical details:** see [memory.md](./memory.md).
 

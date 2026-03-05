@@ -121,6 +121,17 @@ describe("memory pipeline", () => {
     expect(selected.entries.map((entry) => entry.content)).toEqual(["Current task: new"]);
   });
 
+  test("selectMemoryEntries falls back to older continuation when freshest does not fit", () => {
+    const selected = selectMemoryEntries(
+      [
+        { sourceId: "stored", content: "Current task: older", tokenEstimate: 3 },
+        { sourceId: "distill", content: "Current task: freshest but too large", tokenEstimate: 10 },
+      ],
+      3,
+    );
+    expect(selected.entries.map((entry) => entry.content)).toEqual(["Current task: older"]);
+  });
+
   test("runMemoryCommitPipeline calls commit in source order", async () => {
     const calls: string[] = [];
     const sources: MemorySource[] = [

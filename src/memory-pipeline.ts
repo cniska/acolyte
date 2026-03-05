@@ -53,10 +53,13 @@ export function selectMemoryEntries(
   const prioritizedEntries = prioritizeContinuationEntries(entries);
   const selected: MemoryPipelineEntry[] = [];
   let used = 0;
+  let selectedContinuation = false;
   for (const entry of prioritizedEntries) {
     if (used >= budgetTokens) break;
+    if (hasContinuationState(entry.content) && selectedContinuation) continue;
     if (entry.tokenEstimate > budgetTokens - used) continue;
     selected.push(entry);
+    if (hasContinuationState(entry.content)) selectedContinuation = true;
     used += entry.tokenEstimate;
   }
   return { entries: selected, tokenEstimate: used };
@@ -65,15 +68,9 @@ export function selectMemoryEntries(
 function prioritizeContinuationEntries(entries: readonly MemoryPipelineEntry[]): MemoryPipelineEntry[] {
   const continuation: MemoryPipelineEntry[] = [];
   const other: MemoryPipelineEntry[] = [];
-  let continuationCaptured = false;
   for (let index = entries.length - 1; index >= 0; index -= 1) {
     const entry = entries[index];
-    if (hasContinuationState(entry.content)) {
-      if (!continuationCaptured) {
-        continuation.push(entry);
-        continuationCaptured = true;
-      }
-    }
+    if (hasContinuationState(entry.content)) continuation.push(entry);
     else other.push(entry);
   }
   return [...continuation, ...other.reverse()];

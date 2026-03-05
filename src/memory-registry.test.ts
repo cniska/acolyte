@@ -130,4 +130,17 @@ describe("memory registry", () => {
     expect(result.prompt).toContain("Current task: new");
     expect(result.prompt).not.toContain("Current task: old");
   });
+
+  test("load falls back to older continuation when freshest does not fit", async () => {
+    const registry = createMemoryRegistry(
+      [mockSource("stored", ["Current task: older"]), mockSource("distill", ["Current task: freshest"])],
+      async () => [
+        { sourceId: "stored", content: "Current task: older", tokenEstimate: 4 },
+        { sourceId: "distill", content: "Current task: freshest", tokenEstimate: 8 },
+      ],
+    );
+    const result = await registry.load({}, 4);
+    expect(result.prompt).toContain("Current task: older");
+    expect(result.prompt).not.toContain("Current task: freshest");
+  });
 });
