@@ -30,14 +30,18 @@ function needsReflectionRetry(reflected: string, sourceTokenEstimate: number): b
 }
 
 function parseContinuationState(text: string): { currentTask?: string; nextStep?: string } {
-  const currentTaskMatch = text.match(/^(?:[-*]\s*)?Current task:\s*(.+)$/im);
-  const nextStepMatch = text.match(/^(?:[-*]\s*)?Next step:\s*(.+)$/im);
-  const currentTask = currentTaskMatch?.[1]?.trim();
-  const nextStep = nextStepMatch?.[1]?.trim();
+  const currentTask = extractLastLineValue(text, /^(?:[-*]\s*)?Current task:\s*(.+)$/gim);
+  const nextStep = extractLastLineValue(text, /^(?:[-*]\s*)?Next step:\s*(.+)$/gim);
   return {
     ...(currentTask ? { currentTask } : {}),
     ...(nextStep ? { nextStep } : {}),
   };
+}
+
+function extractLastLineValue(text: string, pattern: RegExp): string | undefined {
+  const matches = Array.from(text.matchAll(pattern));
+  const value = matches[matches.length - 1]?.[1]?.trim();
+  return value && value.length > 0 ? value : undefined;
 }
 
 function continuationEntries(record: { currentTask?: string; nextStep?: string } | undefined): string[] {

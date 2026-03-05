@@ -319,6 +319,40 @@ describe("distillMemorySource", () => {
       }
     });
 
+    test("stores last continuation fields when multiple lines are present", async () => {
+      const originalDistillConfig = { ...appConfig.distill };
+      (appConfig as { distill: typeof appConfig.distill }).distill = {
+        ...appConfig.distill,
+        messageThreshold: 1,
+        reflectionThresholdTokens: 999_999,
+        maxOutputTokens: 10_000,
+      };
+      try {
+        const store = createMockStore();
+        const source = createDistillMemorySource(store, async (systemPrompt) => {
+          if (systemPrompt === OBSERVER_PROMPT)
+            return [
+              "Current task: Old task",
+              "Next step: Old step",
+              "Current task: New task",
+              "Next step: New step",
+            ].join("\n");
+          return "";
+        });
+        if (!source.commit) throw new Error("expected commit handler");
+        await source.commit({
+          sessionId: "sess_test0001",
+          messages: [{ role: "user", content: "hello" }],
+          output: "done",
+        });
+        const writtenObservation = store.written.find((entry) => entry.tier === "observation");
+        expect(writtenObservation?.currentTask).toBe("New task");
+        expect(writtenObservation?.nextStep).toBe("New step");
+      } finally {
+        (appConfig as { distill: typeof appConfig.distill }).distill = originalDistillConfig;
+      }
+    });
+
     test("skips consecutive duplicate observations", async () => {
       const originalDistillConfig = { ...appConfig.distill };
       (appConfig as { distill: typeof appConfig.distill }).distill = {
