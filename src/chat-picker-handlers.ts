@@ -55,8 +55,8 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
     if (!skill) return false;
     try {
       const instructions = await readSkillInstructions(skill.path, args || undefined);
-      const compacted = compactText(instructions, appConfig.agent.skillBudget);
-      const msg = input.createMessage("system", `Active skill (${skill.name}):\n${compacted}`);
+      const compactedInstructions = compactText(instructions, appConfig.agent.skillBudget);
+      const msg = input.createMessage("system", `Active skill (${skill.name}):\n${compactedInstructions}`);
       input.currentSession.messages.push(msg);
       input.currentSession.updatedAt = input.nowIso();
       const label = args ? `Activated skill: ${skill.name} (with arguments)` : `Activated skill: ${skill.name}`;
