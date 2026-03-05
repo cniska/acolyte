@@ -39,14 +39,17 @@ describe("soul prompt loading", () => {
   });
 
   test("createSoulPrompt emits load_skipped debug event when request disables memory", async () => {
-    const events: string[] = [];
+    const events: Array<{ event: string; fields?: Record<string, unknown> }> = [];
     await createSoulPrompt({
       useMemory: false,
-      onDebug: (event) => {
-        events.push(event);
+      onDebug: (event, fields) => {
+        events.push({ event, fields });
       },
     });
-    expect(events).toEqual(["lifecycle.memory.load_skipped"]);
+    expect(events[0]?.event).toBe("lifecycle.memory.load_skipped");
+    expect(events[0]?.fields?.reason).toBe("request_disabled");
+    expect(typeof events[0]?.fields?.budgetTokens).toBe("number");
+    expect(typeof events[0]?.fields?.sourceStrategy).toBe("string");
   });
 
   test("createSoulPrompt emits load_empty debug event when no memory is available", async () => {

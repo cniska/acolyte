@@ -61,12 +61,16 @@ export function buildMemoryResumeBlock(memoryPrompt: string): string {
 export async function createSoulPrompt(options: CreateSoulPromptOptions = {}): Promise<string> {
   const cwd = options.cwd ?? process.cwd();
   const base = loadSystemPrompt(cwd);
+  const debugBaseFields = {
+    budgetTokens: appConfig.memory.budgetTokens,
+    sourceStrategy: appConfig.memory.sources.join(","),
+  };
   if (options.useMemory === false) {
-    options.onDebug?.("lifecycle.memory.load_skipped", { reason: "request_disabled" });
+    options.onDebug?.("lifecycle.memory.load_skipped", { ...debugBaseFields, reason: "request_disabled" });
     return base;
   }
   if (appConfig.memory.budgetTokens <= 0) {
-    options.onDebug?.("lifecycle.memory.load_skipped", { reason: "budget_disabled" });
+    options.onDebug?.("lifecycle.memory.load_skipped", { ...debugBaseFields, reason: "budget_disabled" });
     return base;
   }
   const { prompt: memoryPrompt } = await loadMemoryContext(
@@ -74,11 +78,12 @@ export async function createSoulPrompt(options: CreateSoulPromptOptions = {}): P
     appConfig.memory.budgetTokens,
   );
   if (!memoryPrompt) {
-    options.onDebug?.("lifecycle.memory.load_empty", {});
+    options.onDebug?.("lifecycle.memory.load_empty", debugBaseFields);
     return base;
   }
   const resumeBlock = buildMemoryResumeBlock(memoryPrompt);
   options.onDebug?.("lifecycle.memory.load_applied", {
+    ...debugBaseFields,
     tokenEstimate: estimateMemoryPromptTokens(memoryPrompt),
     hasContinuation: resumeBlock.length > 0,
   });
