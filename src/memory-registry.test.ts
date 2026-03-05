@@ -19,6 +19,8 @@ describe("memory registry", () => {
     const result = await registry.load({}, 1000);
     expect(result.prompt).toBe("");
     expect(result.tokenEstimate).toBe(0);
+    expect(result.entryCount).toBe(0);
+    expect(result.continuationSelected).toBe(false);
   });
 
   test("fills budget in source order", async () => {
@@ -103,6 +105,7 @@ describe("memory registry", () => {
     const result = await registry.load({}, 4);
     expect(result.prompt).toContain("Current task: finish memory");
     expect(result.prompt).not.toContain("general note");
+    expect(result.continuationSelected).toBe(true);
   });
 
   test("load prefers most recent continuation over older continuation", async () => {

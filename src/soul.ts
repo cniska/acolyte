@@ -73,10 +73,11 @@ export async function createSoulPrompt(options: CreateSoulPromptOptions = {}): P
     options.onDebug?.("lifecycle.memory.load_skipped", { ...debugBaseFields, reason: "budget_disabled" });
     return base;
   }
-  const { prompt: memoryPrompt } = await loadMemoryContext(
+  const memoryContext = await loadMemoryContext(
     { sessionId: options.sessionId, workspace: options.workspace },
     appConfig.memory.budgetTokens,
   );
+  const memoryPrompt = memoryContext.prompt;
   if (!memoryPrompt) {
     options.onDebug?.("lifecycle.memory.load_empty", debugBaseFields);
     return base;
@@ -84,13 +85,9 @@ export async function createSoulPrompt(options: CreateSoulPromptOptions = {}): P
   const resumeBlock = buildMemoryResumeBlock(memoryPrompt);
   options.onDebug?.("lifecycle.memory.load_applied", {
     ...debugBaseFields,
-    tokenEstimate: estimateMemoryPromptTokens(memoryPrompt),
-    hasContinuation: resumeBlock.length > 0,
+    tokenEstimate: memoryContext.tokenEstimate,
+    entryCount: memoryContext.entryCount,
+    hasContinuation: memoryContext.continuationSelected,
   });
   return resumeBlock ? `${base}\n\n${memoryPrompt}\n\n${resumeBlock}` : `${base}\n\n${memoryPrompt}`;
-}
-
-function estimateMemoryPromptTokens(memoryPrompt: string): number {
-  if (memoryPrompt.length === 0) return 0;
-  return Math.ceil(memoryPrompt.length / 4);
 }

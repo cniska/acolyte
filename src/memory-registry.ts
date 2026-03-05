@@ -14,7 +14,15 @@ import { distillMemorySource } from "./memory-source-distill";
 import { storedMemorySource } from "./memory-source-stored";
 
 export type MemoryRegistry = {
-  load(ctx: MemoryLoadContext, budgetTokens: number): Promise<{ prompt: string; tokenEstimate: number }>;
+  load(
+    ctx: MemoryLoadContext,
+    budgetTokens: number,
+  ): Promise<{
+    prompt: string;
+    tokenEstimate: number;
+    entryCount: number;
+    continuationSelected: boolean;
+  }>;
   commit(ctx: MemoryCommitContext): Promise<void>;
 };
 
@@ -45,6 +53,8 @@ export function createMemoryRegistry(
       return {
         prompt: buildMemoryContextPrompt(result.entries),
         tokenEstimate: result.tokenEstimate,
+        entryCount: result.entries.length,
+        continuationSelected: result.entries.some((entry) => entry.isContinuation === true),
       };
     },
     async commit(ctx) {
