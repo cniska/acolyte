@@ -47,6 +47,7 @@ Development:
 
 - Keep docs short, conceptual, and resistant to drift.
 - Avoid repeating the same content across `README.md` and `docs/*`; prefer linking to a single canonical doc.
+- When behavior/config/contracts change, update the relevant canonical doc in the same work slice.
 - `docs/features.md` is an append-only shipped-feature inventory:
   - add entries only when a feature is actually shipped
   - keep entries one line and user-visible
