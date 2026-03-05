@@ -77,7 +77,7 @@ Memory Engine
 - **continuation state:** distill records capture `Current task` / `Next step` when present and inject them explicitly into memory context.
 - **distill output controls:** observation/reflection outputs are clamped to configured token limits; reflection retries with stronger compression guidance before discard.
 - **storage:** file-based at `~/.acolyte/distill/<sessionId>/`, Zod-validated on read with safe session-id path checks.
-- **integration:** selected memory is injected into the system prompt during request setup; commit runs during lifecycle finalize.
+- **integration:** selected memory is injected into the system prompt during request setup; distill commit is scheduled as best-effort background work at lifecycle finalize.
 
 ## Contracts
 

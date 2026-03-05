@@ -1,6 +1,7 @@
 import { createErrorStats } from "./error-handling";
 import { phaseClassify } from "./lifecycle-classify";
 import type { LifecycleInput, RunContext, ToolOutputEvent } from "./lifecycle-contract";
+import type { MemoryCommitContext } from "./memory-contract";
 import { commitMemorySources } from "./memory-registry";
 import { phaseEvaluate, recoveryActionForError as resolveRecoveryAction } from "./lifecycle-evaluate";
 import {
@@ -26,6 +27,18 @@ export { resolveRecoveryAction as recoveryActionForError };
 
 export function shouldCommitMemory(input: LifecycleInput): boolean {
   return input.request.useMemory !== false;
+}
+
+export function scheduleMemoryCommit(
+  commitCtx: MemoryCommitContext,
+  debug: RunContext["debug"],
+  commitFn: (ctx: MemoryCommitContext) => Promise<void> = commitMemorySources,
+): void {
+  void commitFn(commitCtx).catch((error) => {
+    debug("lifecycle.memory.commit_failed", {
+      message: error instanceof Error ? error.message : String(error),
+    });
+  });
 }
 
 function createRunContext(
@@ -145,7 +158,8 @@ export async function runLifecycle(input: LifecycleInput) {
   await phaseEvaluate(ctx, input.shouldYield);
 
   if (ctx.result && shouldCommitMemory(input)) {
-    await commitMemorySources({
+    scheduleMemoryCommit(
+      {
       sessionId: ctx.request.sessionId,
       workspace: ctx.workspace,
       messages: [
@@ -153,7 +167,9 @@ export async function runLifecycle(input: LifecycleInput) {
         { role: "user", content: ctx.request.message },
       ],
       output: ctx.result.text,
-    });
+      },
+      ctx.debug,
+    );
   }
 
   return phaseFinalize(ctx);

@@ -7,6 +7,7 @@ import {
   planDetector,
   type RunContext,
   recoveryActionForError,
+  scheduleMemoryCommit,
   shouldCommitMemory,
   timeoutRecovery,
   verifyFailure,
@@ -456,5 +457,44 @@ describe("shouldCommitMemory", () => {
         soulPrompt: "",
       }),
     ).toBe(true);
+  });
+});
+
+describe("scheduleMemoryCommit", () => {
+  test("invokes commit function asynchronously", async () => {
+    const calls: Array<{ sessionId?: string }> = [];
+    scheduleMemoryCommit(
+      {
+        sessionId: "sess_test0001",
+        messages: [],
+        output: "done",
+      },
+      () => {},
+      async (ctx) => {
+        calls.push({ sessionId: ctx.sessionId });
+      },
+    );
+    await Promise.resolve();
+    expect(calls).toEqual([{ sessionId: "sess_test0001" }]);
+  });
+
+  test("logs debug event when commit fails", async () => {
+    const events: string[] = [];
+    scheduleMemoryCommit(
+      {
+        sessionId: "sess_test0001",
+        messages: [],
+        output: "done",
+      },
+      (event) => {
+        events.push(event);
+      },
+      async () => {
+        throw new Error("commit failed");
+      },
+    );
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(events).toContain("lifecycle.memory.commit_failed");
   });
 });
