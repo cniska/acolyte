@@ -6,6 +6,10 @@ Rules:
 - Capture ARCHITECTURAL DECISIONS with reasoning: "chose JWT over sessions because stateless scaling needed".
 - Note PROJECT CONVENTIONS: commit format, test patterns, validation approach, directory structure.
 - Record USER PREFERENCES: coding style, tool preferences, workflow choices.
+- Prefix each fact line with a scope tag:
+  [project] for project-specific durable facts
+  [user] for user preferences across projects
+  [session] for current-task or ephemeral session facts
 - End with CONTINUATION STATE using exactly these labels:
   Current task: [what is being worked on right now]
   Next step: [what the immediate next action should be]

@@ -516,5 +516,49 @@ describe("distillMemorySource", () => {
         (appConfig as { distill: typeof appConfig.distill }).distill = originalDistillConfig;
       }
     });
+
+    test("session commit promotes [project] and [user] lines to scoped stores", async () => {
+      const originalDistillConfig = { ...appConfig.distill };
+      (appConfig as { distill: typeof appConfig.distill }).distill = {
+        ...appConfig.distill,
+        messageThreshold: 1,
+        reflectionThresholdTokens: 999_999,
+        maxOutputTokens: 10_000,
+      };
+      try {
+        const store = createMockStore();
+        const source = createDistillMemorySource(store, async (systemPrompt) => {
+          if (systemPrompt !== OBSERVER_PROMPT) return "";
+          return [
+            "[project] repo uses Bun",
+            "[user] prefers short answers",
+            "[session] fix failing tests",
+            "Current task: stabilize memory",
+            "Next step: add promotion tests",
+          ].join("\n");
+        });
+        if (!source.commit) throw new Error("expected commit handler");
+        await source.commit({
+          sessionId: "sess_test0001",
+          resourceId: "proj_abc123",
+          messages: [{ role: "user", content: "hello" }],
+          output: "done",
+        });
+
+        const byScope = new Map(store.written.map((entry) => [entry.sessionId, entry.content]));
+        expect(byScope.get("sess_test0001")).toContain("fix failing tests");
+        expect(byScope.get("sess_test0001")).toContain("Current task: stabilize memory");
+        expect(byScope.get("sess_test0001")).toContain("Next step: add promotion tests");
+        expect(byScope.get("sess_test0001")).not.toContain("[project]");
+        expect(byScope.get("sess_test0001")).not.toContain("repo uses Bun");
+        expect(byScope.get("sess_test0001")).not.toContain("prefers short answers");
+        expect(byScope.get("proj_abc123")).toBe("repo uses Bun");
+        const userScopeKey = [...byScope.keys()].find((key) => key.startsWith("user_"));
+        expect(userScopeKey).toBeDefined();
+        expect(userScopeKey ? byScope.get(userScopeKey) : "").toBe("prefers short answers");
+      } finally {
+        (appConfig as { distill: typeof appConfig.distill }).distill = originalDistillConfig;
+      }
+    });
   });
 });

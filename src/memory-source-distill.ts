@@ -78,6 +78,55 @@ function normalizeMemoryText(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
 
+function isContinuationLine(line: string): boolean {
+  return /^(?:[-*]\s*)?(?:Current task|Next step):\s*/i.test(line.trim());
+}
+
+function stripScopeTag(line: string): { scope: DistillScope | null; content: string } {
+  const trimmed = line.trim();
+  const match = trimmed.match(/^\[(project|user|session)\]\s*(.+)$/i);
+  if (!match) return { scope: null, content: trimmed };
+  const scopeToken = match[1]?.toLowerCase();
+  const content = (match[2] ?? "").trim();
+  if (scopeToken === "project") return { scope: "project", content };
+  if (scopeToken === "user") return { scope: "user", content };
+  return { scope: "session", content };
+}
+
+function splitScopedObservation(observed: string): { session: string; project: string; user: string } {
+  const lines = observed
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+  const sessionLines: string[] = [];
+  const projectLines: string[] = [];
+  const userLines: string[] = [];
+
+  for (const line of lines) {
+    if (isContinuationLine(line)) {
+      sessionLines.push(line);
+      continue;
+    }
+    const tagged = stripScopeTag(line);
+    if (!tagged.content) continue;
+    if (tagged.scope === "project") {
+      projectLines.push(tagged.content);
+      continue;
+    }
+    if (tagged.scope === "user") {
+      userLines.push(tagged.content);
+      continue;
+    }
+    sessionLines.push(tagged.content);
+  }
+
+  return {
+    session: sessionLines.join("\n").trim(),
+    project: projectLines.join("\n").trim(),
+    user: userLines.join("\n").trim(),
+  };
+}
+
 export type DistillRunner = (systemPrompt: string, userContent: string) => Promise<string>;
 
 async function runDistillLLM(systemPrompt: string, userContent: string): Promise<string> {
@@ -240,7 +289,23 @@ export function createDistillMemorySource(
       const observedRaw = await runner(OBSERVER_PROMPT, distillInput);
       const observed = clampToTokenEstimate(observedRaw, appConfig.distill.maxOutputTokens);
       if (!observed.trim()) return;
-      await commitDistillForKey(ds, key, observed, runner);
+      if (commitScope !== "session") {
+        await commitDistillForKey(ds, key, observed, runner);
+        return;
+      }
+
+      const scoped = splitScopedObservation(observed);
+      const sessionObserved = scoped.session || observed;
+      await commitDistillForKey(ds, key, sessionObserved, runner);
+
+      if (scoped.project) {
+        const projectKey = resolveDistillScopeKey("project", ctx);
+        if (projectKey) await commitDistillForKey(ds, projectKey, scoped.project, runner);
+      }
+      if (scoped.user) {
+        const userKey = resolveDistillScopeKey("user", ctx);
+        if (userKey) await commitDistillForKey(ds, userKey, scoped.user, runner);
+      }
     },
   };
 }

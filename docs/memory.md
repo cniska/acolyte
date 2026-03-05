@@ -40,6 +40,11 @@ Default source order is `stored, distill_project, distill_user, distill`.
   - `session` (active session continuity)
   - `project` (workspace continuity across sessions)
   - `user` (global user continuity across sessions)
+- Promotion model:
+  - `distill_session` commit is automatic.
+  - Observation lines tagged `[project]` promote to project scope.
+  - Observation lines tagged `[user]` promote to user scope.
+  - Session/continuation lines stay in session scope.
 - Load strategy:
   - latest reflection first
   - then post-reflection observations (fresh delta, newest first)
