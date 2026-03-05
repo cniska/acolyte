@@ -512,6 +512,81 @@ describe("distillMemorySource", () => {
       }
     });
 
+    test("keeps continuation lines in session scope even if tagged as project/user", async () => {
+      const originalDistillConfig = { ...appConfig.distill };
+      (appConfig as { distill: typeof appConfig.distill }).distill = {
+        ...appConfig.distill,
+        messageThreshold: 1,
+        reflectionThresholdTokens: 999_999,
+        maxOutputTokens: 10_000,
+      };
+      try {
+        const store = createMockStore();
+        const source = createDistillMemorySource(store, async (systemPrompt) => {
+          if (systemPrompt !== OBSERVER_PROMPT) return "";
+          return [
+            "[project] Current task: should stay session scoped",
+            "[user] Next step: should stay session scoped",
+            "[project] repo uses Bun",
+            "[user] prefers concise replies",
+          ].join("\n");
+        });
+        if (!source.commit) throw new Error("expected commit handler");
+        await source.commit({
+          sessionId: "sess_test0001",
+          resourceId: "proj_abc123",
+          messages: [{ role: "user", content: "hello" }],
+          output: "done",
+        });
+        const byScope = new Map(store.written.map((entry) => [entry.sessionId, entry.content]));
+        expect(byScope.get("sess_test0001")).toContain("Current task: should stay session scoped");
+        expect(byScope.get("sess_test0001")).toContain("Next step: should stay session scoped");
+        expect(byScope.get("proj_abc123")).toBe("repo uses Bun");
+        const userScopeKey = [...byScope.keys()].find((key) => key.startsWith("user_"));
+        expect(userScopeKey).toBeDefined();
+        expect(userScopeKey ? byScope.get(userScopeKey) : "").toBe("prefers concise replies");
+      } finally {
+        (appConfig as { distill: typeof appConfig.distill }).distill = originalDistillConfig;
+      }
+    });
+
+    test("drops malformed tags and keeps valid scoped facts", async () => {
+      const originalDistillConfig = { ...appConfig.distill };
+      (appConfig as { distill: typeof appConfig.distill }).distill = {
+        ...appConfig.distill,
+        messageThreshold: 1,
+        reflectionThresholdTokens: 999_999,
+        maxOutputTokens: 10_000,
+      };
+      try {
+        const store = createMockStore();
+        const source = createDistillMemorySource(store, async (systemPrompt) => {
+          if (systemPrompt !== OBSERVER_PROMPT) return "";
+          return [
+            "[project] valid project fact",
+            "[user] valid user fact",
+            "[proj] malformed tag dropped",
+            "[usr] malformed tag dropped",
+            "[session] valid session fact",
+          ].join("\n");
+        });
+        if (!source.commit) throw new Error("expected commit handler");
+        await source.commit({
+          sessionId: "sess_test0001",
+          resourceId: "proj_abc123",
+          messages: [{ role: "user", content: "hello" }],
+          output: "done",
+        });
+        const combined = store.written.map((entry) => entry.content).join("\n");
+        expect(combined).toContain("valid project fact");
+        expect(combined).toContain("valid user fact");
+        expect(combined).toContain("valid session fact");
+        expect(combined).not.toContain("malformed tag dropped");
+      } finally {
+        (appConfig as { distill: typeof appConfig.distill }).distill = originalDistillConfig;
+      }
+    });
+
     test("commitScope writes only the targeted scope", async () => {
       const originalDistillConfig = { ...appConfig.distill };
       (appConfig as { distill: typeof appConfig.distill }).distill = {

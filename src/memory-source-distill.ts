@@ -109,6 +109,11 @@ function splitScopedObservation(observed: string): { session: string; project: s
     }
     const tagged = stripScopeTag(line);
     if (!tagged.content) continue;
+    // Continuation state is always session-scoped, regardless of any tag prefix.
+    if (isContinuationLine(tagged.content)) {
+      sessionLines.push(tagged.content);
+      continue;
+    }
     // Enforce explicit scope tags for fact lines.
     if (!tagged.scope) continue;
     if (tagged.scope === "project") {
