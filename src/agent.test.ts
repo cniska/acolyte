@@ -77,6 +77,40 @@ describe("createAgentInput", () => {
     expect(input.length).toBeLessThanOrEqual(35_000);
     expect(input).toContain("USER: review");
   });
+
+  test("aggressively compacts older tool-heavy assistant turns", () => {
+    const toolHeavy = `stdout:\n${"A".repeat(5000)}\nstderr:\n${"B".repeat(2000)}`;
+    const req: ChatRequest = {
+      model: "gpt-5-mini",
+      message: "continue",
+      history: [
+        {
+          id: "msg_old_tool",
+          role: "assistant",
+          content: toolHeavy,
+          timestamp: "2026-02-20T10:00:00.000Z",
+        },
+        {
+          id: "msg_old_user",
+          role: "user",
+          content: "thanks",
+          timestamp: "2026-02-20T10:00:01.000Z",
+        },
+        {
+          id: "msg_recent_assistant",
+          role: "assistant",
+          content: "Ready for the next step.",
+          timestamp: "2026-02-20T10:00:02.000Z",
+        },
+      ],
+    };
+
+    const { input } = createAgentInput(req);
+    const oldToolLine = input.split("\n").find((line) => line.startsWith("ASSISTANT: stdout:"));
+    expect(oldToolLine).toBeDefined();
+    expect(oldToolLine!.length).toBeLessThanOrEqual(900);
+    expect(input).toContain("ASSISTANT: Ready for the next step.");
+  });
 });
 
 describe("execution intent detection", () => {

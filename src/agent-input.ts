@@ -23,6 +23,18 @@ function isPinnedSystemContext(content: string): boolean {
   return content.startsWith("Active skill (") || content.startsWith("Pinned memory:");
 }
 
+function isLikelyToolPayload(content: string): boolean {
+  return (
+    content.includes("exit_code=") ||
+    content.includes("stdout:") ||
+    content.includes("stderr:") ||
+    content.includes("diff --git ") ||
+    content.includes("\n@@ ") ||
+    content.includes("\npath=") ||
+    content.includes("\nmatches=")
+  );
+}
+
 function lineForMessage(message: ChatRequest["history"][number], maxTokens: number): { line: string; tokens: number } {
   const compact = truncateByTokens(message.content, maxTokens);
   const line = `${message.role.toUpperCase()}: ${compact}`;
@@ -41,7 +53,12 @@ function collectLinesWithinBudget(
   for (let i = recent.length - 1; i >= 0; i -= 1) {
     const message = recent[i];
     if (usedIds.has(message.id)) continue;
-    const candidate = lineForMessage(message, maxPerMessageTokens);
+    const ageFromLatest = recent.length - 1 - i;
+    const maxTokens =
+      message.role === "assistant" && ageFromLatest > 1 && isLikelyToolPayload(message.content)
+        ? Math.min(maxPerMessageTokens, 200)
+        : maxPerMessageTokens;
+    const candidate = lineForMessage(message, maxTokens);
     if (candidate.tokens === 0 || consumed + candidate.tokens > remainingTokens) continue;
     usedIds.add(message.id);
     lines.unshift(candidate.line);

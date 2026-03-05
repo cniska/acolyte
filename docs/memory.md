@@ -3,6 +3,7 @@
 ## Goal
 
 Memory should be invisible and reliable: carry forward important context without user-facing compaction workflows.
+Distill preserves durable knowledge; history pruning handles bulky transcript/tool-output payloads.
 
 ## Model
 
