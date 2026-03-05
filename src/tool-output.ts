@@ -1,13 +1,9 @@
+import { compactText } from "./compact-text";
+
+export { compactText } from "./compact-text";
+
 const DEFAULT_MAX_CHARS = 4000;
 const DEFAULT_MAX_LINES = 120;
-
-function truncateMiddle(text: string, maxChars: number): string {
-  if (text.length <= maxChars) return text;
-  if (maxChars <= 1) return "…";
-  const headChars = Math.ceil((maxChars - 1) / 2);
-  const tailChars = Math.floor((maxChars - 1) / 2);
-  return `${text.slice(0, headChars)}…${text.slice(text.length - tailChars)}`;
-}
 
 export function compactToolOutput(raw: string, options: { maxChars?: number; maxLines?: number } = {}): string {
   const maxChars = options.maxChars ?? DEFAULT_MAX_CHARS;
@@ -15,8 +11,9 @@ export function compactToolOutput(raw: string, options: { maxChars?: number; max
   const source = raw.trim();
   if (!source) return raw;
 
-  let truncated = false;
+  // Preserve unified-diff structure so downstream preview parsers remain stable.
   let lines = source.split("\n");
+  let lineTruncated = false;
   if (lines.length > maxLines) {
     const omitted = lines.length - maxLines;
     const headCount = Math.max(1, Math.ceil(maxLines * 0.7));
@@ -24,20 +21,14 @@ export function compactToolOutput(raw: string, options: { maxChars?: number; max
     const head = lines.slice(0, headCount);
     const tail = lines.slice(lines.length - tailCount);
     lines = [...head, `… ${omitted} lines omitted …`, ...tail];
-    truncated = true;
+    lineTruncated = true;
   }
 
-  let text = lines.join("\n");
-  if (text.length > maxChars) {
-    // Preserve unified-diff structure so downstream preview parsers remain stable.
-    if (text.includes("diff --git ")) {
-      if (!truncated) return `${text}\n… output truncated`;
-      return text;
-    }
-    text = truncateMiddle(text, maxChars);
-    truncated = true;
+  const text = lines.join("\n");
+  if (text.length > maxChars && text.includes("diff --git ")) {
+    if (!lineTruncated) return `${text}\n… output truncated`;
+    return text;
   }
 
-  if (!truncated) return text;
-  return `${text}\n… output truncated`;
+  return compactText(raw, { maxChars, maxLines });
 }
