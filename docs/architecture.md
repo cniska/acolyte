@@ -56,14 +56,16 @@ classify -> prepare -> generate -> evaluate -> finalize
 - **scheduling:** yield checks happen between lifecycle decisions, never mid-step.
 - **task metrics:** evaluator and summary metrics are scoped by `task_id`.
 
-## Memory
+## Memory Engine
 
 ```text
-soul prompt <- memory registry <- [stored, distill]
-lifecycle finalize -> memory registry -> [distill commit]
+Memory Engine
+  -> Memory Pipeline (ingest -> normalize -> select -> inject -> commit)
+  -> Memory context in system prompt
 ```
 
-- **registry:** iterates `MemorySource` implementations in order, token-budgeted.
+- **memory pipeline:** unified stage flow for all memory sources.
+- **registry:** orchestrates MemorySource loading/commit through the memory pipeline.
 - **request gate:** memory is request-controlled. `useMemory=false` disables both memory injection and distill commit (stateless turn).
 - **stored:** user-managed explicit memories (read-only at load time).
 - **distill:** auto-extracted session knowledge with two tiers:
@@ -71,10 +73,11 @@ lifecycle finalize -> memory registry -> [distill commit]
   - **reflection:** consolidated facts across multiple rounds.
 - **distill load strategy:** prefer latest reflection, then append only post-reflection observations (fresh delta).
 - **distill commit strategy:** extract from recent transcript plus latest assistant output; reflection runs on post-reflection observation delta once thresholds are crossed.
+- **dedupe:** consecutive equivalent observations are skipped to reduce repetitive memory noise.
 - **continuation state:** distill records capture `Current task` / `Next step` when present and inject them explicitly into memory context.
 - **distill output controls:** observation/reflection outputs are clamped to configured token limits; reflection retries with stronger compression guidance before discard.
 - **storage:** file-based at `~/.acolyte/distill/<sessionId>/`, Zod-validated on read with safe session-id path checks.
-- **integration:** loaded into system prompt during request setup; committed during lifecycle finalize.
+- **integration:** selected memory is injected into the system prompt during request setup; commit runs during lifecycle finalize.
 
 ## Contracts
 

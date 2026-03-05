@@ -48,6 +48,10 @@ function continuationEntries(record: { currentTask?: string; nextStep?: string }
   return lines;
 }
 
+function normalizeMemoryText(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
+}
+
 export type DistillRunner = (systemPrompt: string, userContent: string) => Promise<string>;
 
 async function runDistillLLM(systemPrompt: string, userContent: string): Promise<string> {
@@ -107,6 +111,10 @@ export function createDistillMemorySource(injectedStore?: DistillStore, runner: 
       const observed = clampToTokenEstimate(observedRaw, appConfig.distill.maxOutputTokens);
       if (!observed.trim()) return;
 
+      const existingEntries = await ds.list(ctx.sessionId);
+      const latestObservation = existingEntries.filter((e) => e.tier === "observation").slice(-1)[0];
+      if (latestObservation && normalizeMemoryText(latestObservation.content) === normalizeMemoryText(observed)) return;
+
       const observation: DistillRecord = {
         id: `dst_${createId()}`,
         sessionId: ctx.sessionId,
@@ -118,7 +126,7 @@ export function createDistillMemorySource(injectedStore?: DistillStore, runner: 
       };
       await ds.write(observation);
 
-      const entries = await ds.list(ctx.sessionId);
+      const entries = [...existingEntries, observation];
       const observations = entries.filter((e) => e.tier === "observation");
       const reflections = entries.filter((e) => e.tier === "reflection");
       const latestReflection = reflections[reflections.length - 1];

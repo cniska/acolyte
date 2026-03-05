@@ -260,5 +260,40 @@ describe("distillMemorySource", () => {
         (appConfig as { distill: typeof appConfig.distill }).distill = originalDistillConfig;
       }
     });
+
+    test("skips consecutive duplicate observations", async () => {
+      const originalDistillConfig = { ...appConfig.distill };
+      (appConfig as { distill: typeof appConfig.distill }).distill = {
+        ...appConfig.distill,
+        messageThreshold: 1,
+        reflectionThresholdTokens: 999_999,
+        maxOutputTokens: 10_000,
+      };
+      try {
+        const store = createMockStore([
+          {
+            id: "dst_obs_prev",
+            sessionId: "sess_test0001",
+            tier: "observation",
+            content: "user prefers short answers",
+            createdAt: "2026-03-04T10:00:00.000Z",
+            tokenEstimate: 6,
+          },
+        ]);
+        const source = createDistillMemorySource(store, async (systemPrompt) => {
+          if (systemPrompt === OBSERVER_PROMPT) return " user prefers   short answers ";
+          return "";
+        });
+        if (!source.commit) throw new Error("expected commit handler");
+        await source.commit({
+          sessionId: "sess_test0001",
+          messages: [{ role: "user", content: "hello" }],
+          output: "done",
+        });
+        expect(store.written).toHaveLength(0);
+      } finally {
+        (appConfig as { distill: typeof appConfig.distill }).distill = originalDistillConfig;
+      }
+    });
   });
 });

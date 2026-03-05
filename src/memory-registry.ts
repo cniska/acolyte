@@ -1,5 +1,5 @@
-import { estimateTokens } from "./agent-input";
 import type { MemoryCommitContext, MemoryLoadContext, MemorySource } from "./memory-contract";
+import { buildMemoryContextPrompt, runMemoryPipeline } from "./memory-pipeline";
 import { distillMemorySource } from "./memory-source-distill";
 import { storedMemorySource } from "./memory-source-stored";
 
@@ -9,23 +9,10 @@ export async function loadMemoryContext(
   ctx: MemoryLoadContext,
   budgetTokens: number,
 ): Promise<{ prompt: string; tokenEstimate: number }> {
-  if (budgetTokens <= 0) return { prompt: "", tokenEstimate: 0 };
-  const parts: string[] = [];
-  let used = 0;
-  for (const source of MEMORY_SOURCES) {
-    if (used >= budgetTokens) break;
-    const entries = await source.load(ctx);
-    for (const entry of entries) {
-      const cost = estimateTokens(entry);
-      if (cost > budgetTokens - used) continue;
-      parts.push(entry);
-      used += cost;
-    }
-  }
-  if (parts.length === 0) return { prompt: "", tokenEstimate: 0 };
+  const result = await runMemoryPipeline(MEMORY_SOURCES, ctx, budgetTokens);
   return {
-    prompt: `Memory context:\n${parts.map((p) => `- ${p}`).join("\n")}`,
-    tokenEstimate: used,
+    prompt: buildMemoryContextPrompt(result.entries),
+    tokenEstimate: result.tokenEstimate,
   };
 }
 
