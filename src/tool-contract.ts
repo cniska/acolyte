@@ -1,7 +1,5 @@
 import type { z } from "zod";
 
-export type ToolArgs = Record<string, unknown>;
-
 export type ToolDefinition<TInput = unknown> = {
   readonly id: string;
   readonly description: string;

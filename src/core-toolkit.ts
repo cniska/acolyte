@@ -29,10 +29,10 @@ import {
   numberedUnifiedDiffLines,
   searchResultSummaryEntries,
   TOOL_OUTPUT_FILES_MAX_ROWS,
-  TOOL_OUTPUT_MARKERS,
   TOOL_OUTPUT_RUN_MAX_ROWS,
   type ToolOutputListener,
 } from "./tool-output-format";
+import { TOOL_OUTPUT_MARKERS } from "./tool-output-parser";
 
 const WRITE_TOOL_PREVIEW_MAX_LINES = Number.POSITIVE_INFINITY;
 const WEB_SEARCH_MAX_RESULTS = 5;
@@ -630,7 +630,7 @@ function createWebSearchTool(session: SessionContext, onToolOutput?: ToolOutputL
         guardedExecute("web-search", input as Record<string, unknown>, session, async () => {
           const toolCallId = streamCallId("web-search");
           const result = compactToolOutput(
-            await searchWeb(input.query, input.maxResults ?? 5),
+            await searchWeb(input.query, input.maxResults ?? WEB_SEARCH_MAX_RESULTS),
             appConfig.agent.toolOutputBudget.webSearch,
           );
           emitResultChunks("web-search", webSearchStreamRows(result), onToolOutput, 80, toolCallId);

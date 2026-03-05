@@ -3,8 +3,6 @@ import { countLabel } from "./plural";
 import type { ToolName } from "./tool-names";
 import { TOOL_OUTPUT_MARKERS } from "./tool-output-parser";
 
-export { TOOL_OUTPUT_MARKERS } from "./tool-output-parser";
-
 export type ToolOutputListener = (event: { toolName: ToolName; message: string; toolCallId?: string }) => void;
 export const TOOL_OUTPUT_RUN_MAX_ROWS = 5;
 export const TOOL_OUTPUT_FILES_MAX_ROWS = 5;
@@ -128,17 +126,6 @@ export function findResultPaths(result: string): string[] {
     .split("\n")
     .map((line) => line.trim())
     .filter((line) => line.startsWith("./"));
-}
-
-export function searchResultPaths(result: string): string[] {
-  const files = new Set<string>();
-  for (const line of result.split("\n")) {
-    const firstColon = line.indexOf(":");
-    if (firstColon <= 0) continue;
-    const path = line.slice(0, firstColon).trim();
-    if (path.startsWith("./")) files.add(path);
-  }
-  return Array.from(files);
 }
 
 function asSearchRegex(pattern: string): RegExp {

@@ -130,7 +130,7 @@ function createGitLogTool(git: GitOps, input: ToolkitInput) {
       return runTool(session, "git-log", toolInput as Record<string, unknown>, async (toolCallId) => {
         const rawLog = await git.log({ path: toolInput.path, limit: toolInput.limit });
         emitHeadTailLines("git-log", rawLog, onToolOutput, toolCallId, { trimStart: true });
-        const result = compactToolOutput(rawLog, appConfig.agent.toolOutputBudget.gitStatus);
+        const result = compactToolOutput(rawLog, appConfig.agent.toolOutputBudget.gitDiff);
         return { result };
       });
     },

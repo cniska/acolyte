@@ -33,13 +33,12 @@ accept -> queue -> run -> complete|fail|cancel
 ## Tool layering
 
 ```text
-lifecycle -> guard -> toolkit -> adapter -> composition
+lifecycle -> guard -> toolkit -> registry
 ```
 
 - **guard:** pre-execution safety/redundancy checks and post-execution call recording.
-- **toolkit:** domain operations with minimal framework coupling.
-- **adapter:** framework tool wrappers and tool metadata.
-- **composition:** toolkit registration, permission filtering, and agent-facing tool/meta surface.
+- **toolkit:** domain tool definitions with guarded execution (`core-toolkit`, `git-toolkit`).
+- **registry:** toolkit registration, permission filtering, and agent-facing tool surface.
 
 ## Lifecycle flow
 
