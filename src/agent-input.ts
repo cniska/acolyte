@@ -27,6 +27,10 @@ function isToolPayloadMessage(message: ChatRequest["history"][number]): boolean 
   return message.kind === "tool_payload";
 }
 
+function isAssistantToolPayloadMessage(message: ChatRequest["history"][number]): boolean {
+  return message.role === "assistant" && isToolPayloadMessage(message);
+}
+
 function lineForMessage(message: ChatRequest["history"][number], maxTokens: number): { line: string; tokens: number } {
   const compact = truncateByTokens(message.content, maxTokens);
   const line = `${message.role.toUpperCase()}: ${compact}`;
@@ -57,21 +61,40 @@ function collectLinesWithinBudget(
   const lines: string[] = [];
   let consumed = 0;
   const recent = messages.slice(-appConfig.agent.inputBudget.maxHistoryMessages);
-  for (let i = recent.length - 1; i >= 0; i -= 1) {
+  const includeMessage = (i: number): void => {
     const message = recent[i];
-    if (usedIds.has(message.id)) continue;
+    if (usedIds.has(message.id)) return;
     const ageFromLatest = recent.length - 1 - i;
-    const maxTokens =
-      message.role === "assistant" && ageFromLatest > 1 && isToolPayloadMessage(message)
-        ? Math.min(maxPerMessageTokens, 200)
-        : maxPerMessageTokens;
+    const maxTokens = resolveMessageTokenCap(message, ageFromLatest, maxPerMessageTokens);
     const candidate = lineForMessageWithinBudget(message, maxTokens, remainingTokens - consumed);
-    if (!candidate || candidate.tokens === 0) continue;
+    if (!candidate || candidate.tokens === 0) return;
     usedIds.add(message.id);
     lines.unshift(candidate.line);
     consumed += candidate.tokens;
+  };
+
+  // Prefer conversational turns first and only then spend remaining budget on tool payloads.
+  for (let i = recent.length - 1; i >= 0; i -= 1) {
+    if (isAssistantToolPayloadMessage(recent[i])) continue;
+    includeMessage(i);
+  }
+  for (let i = recent.length - 1; i >= 0; i -= 1) {
+    if (!isAssistantToolPayloadMessage(recent[i])) continue;
+    includeMessage(i);
   }
   return { lines, consumedTokens: consumed };
+}
+
+function resolveMessageTokenCap(
+  message: ChatRequest["history"][number],
+  ageFromLatest: number,
+  maxPerMessageTokens: number,
+): number {
+  if (!isAssistantToolPayloadMessage(message)) return maxPerMessageTokens;
+  if (ageFromLatest <= 1) return maxPerMessageTokens;
+  if (ageFromLatest <= 4) return Math.min(maxPerMessageTokens, 200);
+  if (ageFromLatest <= 10) return Math.min(maxPerMessageTokens, 120);
+  return Math.min(maxPerMessageTokens, 60);
 }
 
 export function createAgentInput(req: ChatRequest): {

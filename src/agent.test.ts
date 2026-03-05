@@ -246,6 +246,76 @@ describe("createAgentInput", () => {
       (appConfig.agent as { contextMaxTokens: number }).contextMaxTokens = originalContextMaxTokens;
     }
   });
+
+  test("prioritizes conversational turns before old tool payloads under tight budget", () => {
+    const originalContextMaxTokens = appConfig.agent.contextMaxTokens;
+    (appConfig.agent as { contextMaxTokens: number }).contextMaxTokens = 120;
+    try {
+      const req: ChatRequest = {
+        model: "gpt-5-mini",
+        message: "U".repeat(380),
+        history: [
+          {
+            id: "msg_old_tool",
+            role: "assistant",
+            kind: "tool_payload",
+            content: `TOOL_SENTINEL ${"A".repeat(5000)}`,
+            timestamp: "2026-02-20T10:00:00.000Z",
+          },
+          {
+            id: "msg_keep_1",
+            role: "assistant",
+            content: `KEEP_ONE ${"x".repeat(500)}`,
+            timestamp: "2026-02-20T10:00:01.000Z",
+          },
+          {
+            id: "msg_keep_2",
+            role: "user",
+            content: `KEEP_TWO ${"y".repeat(500)}`,
+            timestamp: "2026-02-20T10:00:02.000Z",
+          },
+        ],
+      };
+
+      const { input } = createAgentInput(req);
+      expect(input).toContain("KEEP_TWO");
+      expect(input).not.toContain("TOOL_SENTINEL");
+    } finally {
+      (appConfig.agent as { contextMaxTokens: number }).contextMaxTokens = originalContextMaxTokens;
+    }
+  });
+
+  test("applies stronger caps for very old tool payload turns", () => {
+    const history: ChatRequest["history"] = [
+      {
+        id: "msg_old_tool",
+        role: "assistant",
+        kind: "tool_payload",
+        content: `stdout:\n${"A".repeat(6000)}\nTAIL_OLD_TOOL`,
+        timestamp: "2026-02-20T10:00:00.000Z",
+      },
+    ];
+    for (let i = 1; i <= 12; i += 1) {
+      history.push({
+        id: `msg_${i}`,
+        role: i % 2 === 0 ? "assistant" : "user",
+        content: `recent-${i}`,
+        timestamp: `2026-02-20T10:00:${String(i).padStart(2, "0")}.000Z`,
+      });
+    }
+
+    const req: ChatRequest = {
+      model: "gpt-5-mini",
+      message: "continue",
+      history,
+    };
+
+    const { input } = createAgentInput(req);
+    const oldToolLine = input.split("\n").find((line) => line.startsWith("ASSISTANT: stdout:"));
+    expect(oldToolLine).toBeDefined();
+    expect(oldToolLine!.length).toBeLessThanOrEqual(300);
+    expect(input).not.toContain("TAIL_OLD_TOOL");
+  });
 });
 
 describe("execution intent detection", () => {
