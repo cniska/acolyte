@@ -9,14 +9,21 @@ export interface DistillStore {
   write(record: DistillRecord): Promise<void>;
 }
 
-function distillDir(homeDir: string, sessionId: string): string {
-  return join(homeDir, ".acolyte", "distill", sessionId);
+function safeSessionDirName(sessionId: string): string | null {
+  return /^sess_[a-z0-9]+$/.test(sessionId) ? sessionId : null;
+}
+
+function distillDir(homeDir: string, sessionId: string): string | null {
+  const safeName = safeSessionDirName(sessionId);
+  if (!safeName) return null;
+  return join(homeDir, ".acolyte", "distill", safeName);
 }
 
 export function createFileDistillStore(homeDir = homedir()): DistillStore {
   return {
     async list(sessionId) {
       const dir = distillDir(homeDir, sessionId);
+      if (!dir) return [];
       if (!existsSync(dir)) return [];
       const names = await readdir(dir);
       const records: DistillRecord[] = [];
@@ -35,6 +42,7 @@ export function createFileDistillStore(homeDir = homedir()): DistillStore {
     },
     async write(record) {
       const dir = distillDir(homeDir, record.sessionId);
+      if (!dir) return;
       await mkdir(dir, { recursive: true });
       await writeFile(join(dir, `${record.id}.json`), JSON.stringify(record, null, 2), "utf8");
     },

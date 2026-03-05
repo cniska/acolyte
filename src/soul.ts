@@ -38,11 +38,13 @@ type CreateSoulPromptOptions = {
   cwd?: string;
   sessionId?: string;
   workspace?: string;
+  useMemory?: boolean;
 };
 
 export async function createSoulPrompt(options: CreateSoulPromptOptions = {}): Promise<string> {
   const cwd = options.cwd ?? process.cwd();
   const base = loadSystemPrompt(cwd);
+  if (options.useMemory === false || appConfig.memory.budgetTokens <= 0) return base;
   const { prompt: memoryPrompt } = await loadMemoryContext(
     { sessionId: options.sessionId, workspace: options.workspace },
     appConfig.memory.budgetTokens,

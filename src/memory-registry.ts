@@ -3,22 +3,21 @@ import type { MemoryCommitContext, MemoryLoadContext, MemorySource } from "./mem
 import { distillMemorySource } from "./memory-source-distill";
 import { storedMemorySource } from "./memory-source-stored";
 
-const MEMORY_SOURCES: readonly MemorySource[] = [
-  storedMemorySource,
-  distillMemorySource,
-];
+const MEMORY_SOURCES: readonly MemorySource[] = [storedMemorySource, distillMemorySource];
 
 export async function loadMemoryContext(
   ctx: MemoryLoadContext,
   budgetTokens: number,
 ): Promise<{ prompt: string; tokenEstimate: number }> {
+  if (budgetTokens <= 0) return { prompt: "", tokenEstimate: 0 };
   const parts: string[] = [];
   let used = 0;
   for (const source of MEMORY_SOURCES) {
+    if (used >= budgetTokens) break;
     const entries = await source.load(ctx);
     for (const entry of entries) {
       const cost = estimateTokens(entry);
-      if (used + cost > budgetTokens) break;
+      if (cost > budgetTokens - used) continue;
       parts.push(entry);
       used += cost;
     }

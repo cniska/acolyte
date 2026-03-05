@@ -136,6 +136,7 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
     const soulPrompt = await createSoulPrompt({
       sessionId: chatRequest.sessionId,
       workspace: workspaceResolution.workspacePath,
+      useMemory: chatRequest.useMemory !== false,
     });
     const reply = await runLifecycle({
       request: chatRequest,
