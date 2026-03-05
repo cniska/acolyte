@@ -144,7 +144,10 @@ export async function runLifecycle(input: LifecycleInput) {
     await commitMemorySources({
       sessionId: ctx.request.sessionId,
       workspace: ctx.workspace,
-      messages: ctx.request.history.map((m) => ({ role: m.role, content: m.content })),
+      messages: [
+        ...ctx.request.history.map((m) => ({ role: m.role, content: m.content })),
+        { role: "user", content: ctx.request.message },
+      ],
       output: ctx.result.text,
     });
   }

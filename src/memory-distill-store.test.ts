@@ -109,4 +109,23 @@ describe("createFileDistillStore", () => {
     expect(records).toHaveLength(1);
     expect(records[0]?.content).toBe("valid record");
   });
+
+  test("ignores unsafe session ids", async () => {
+    const home = createDir("acolyte-distill-");
+    const store = createFileDistillStore(home);
+    const records = await store.list("../escape");
+    expect(records).toEqual([]);
+
+    const invalidSessionRecord: DistillRecord = {
+      id: "dst_invalid01",
+      sessionId: "../escape",
+      tier: "observation",
+      content: "should not be written",
+      createdAt: "2026-03-04T12:00:00.000Z",
+      tokenEstimate: 3,
+    };
+    await store.write(invalidSessionRecord);
+    const stillEmpty = await store.list("../escape");
+    expect(stillEmpty).toEqual([]);
+  });
 });

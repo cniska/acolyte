@@ -47,16 +47,16 @@ describe("distillMemorySource", () => {
       ]);
       const source = createDistillMemorySource(store);
       const entries = await source.load({ sessionId: "sess_test0001" });
-      expect(entries).toEqual(["user prefers Bun", "auth module in src/auth/"]);
+      expect(entries).toEqual(["auth module in src/auth/", "user prefers Bun"]);
     });
 
-    test("returns reflections when they exist, ignoring observations", async () => {
+    test("returns latest reflection and preserves observations created after it", async () => {
       const store = createMockStore([
         {
           id: "dst_obs00001",
           sessionId: "sess_test0001",
           tier: "observation",
-          content: "raw observation",
+          content: "old observation",
           createdAt: "2026-03-04T10:00:00.000Z",
           tokenEstimate: 3,
         },
@@ -64,14 +64,30 @@ describe("distillMemorySource", () => {
           id: "dst_ref00001",
           sessionId: "sess_test0001",
           tier: "reflection",
-          content: "consolidated knowledge",
+          content: "older reflection",
           createdAt: "2026-03-04T11:00:00.000Z",
+          tokenEstimate: 3,
+        },
+        {
+          id: "dst_ref00002",
+          sessionId: "sess_test0001",
+          tier: "reflection",
+          content: "latest reflection",
+          createdAt: "2026-03-04T12:00:00.000Z",
+          tokenEstimate: 3,
+        },
+        {
+          id: "dst_obs00002",
+          sessionId: "sess_test0001",
+          tier: "observation",
+          content: "new observation",
+          createdAt: "2026-03-04T12:30:00.000Z",
           tokenEstimate: 3,
         },
       ]);
       const source = createDistillMemorySource(store);
       const entries = await source.load({ sessionId: "sess_test0001" });
-      expect(entries).toEqual(["consolidated knowledge"]);
+      expect(entries).toEqual(["latest reflection", "new observation"]);
     });
 
     test("returns empty for session with no records", async () => {

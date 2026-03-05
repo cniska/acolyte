@@ -16,14 +16,16 @@ async function loadWithSources(
   ctx: MemoryLoadContext,
   budgetTokens: number,
 ): Promise<{ prompt: string; tokenEstimate: number }> {
+  if (budgetTokens <= 0) return { prompt: "", tokenEstimate: 0 };
   const { estimateTokens } = await import("./agent-input");
   const parts: string[] = [];
   let used = 0;
   for (const source of sources) {
+    if (used >= budgetTokens) break;
     const entries = await source.load(ctx);
     for (const entry of entries) {
       const cost = estimateTokens(entry);
-      if (used + cost > budgetTokens) break;
+      if (cost > budgetTokens - used) continue;
       parts.push(entry);
       used += cost;
     }
@@ -57,13 +59,11 @@ describe("memory registry", () => {
     const sources = [createMockSource("big", [longEntry, "short"])];
     const result = await loadWithSources(sources, {}, 50);
     expect(result.prompt).not.toContain(longEntry);
+    expect(result.prompt).toContain("short");
   });
 
   test("first source gets priority over second", async () => {
-    const sources = [
-      createMockSource("high", ["important fact"]),
-      createMockSource("low", ["less important"]),
-    ];
+    const sources = [createMockSource("high", ["important fact"]), createMockSource("low", ["less important"])];
     const result = await loadWithSources(sources, {}, 4);
     expect(result.prompt).toContain("important fact");
     expect(result.prompt).not.toContain("less important");

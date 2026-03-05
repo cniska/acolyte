@@ -9,6 +9,25 @@ import { normalizeModel } from "./provider-config";
 import { createId } from "./short-id";
 
 const store: DistillStore = createFileDistillStore();
+const REFLECTION_RETRY_LIMIT = 2;
+
+function clampToTokenEstimate(content: string, maxTokens: number): string {
+  const text = content.trim();
+  if (!text) return "";
+  if (maxTokens <= 0) return "";
+  if (estimateTokens(text) <= maxTokens) return text;
+
+  let clamped = text.slice(0, Math.max(1, maxTokens * 4)).trim();
+  while (clamped.length > 0 && estimateTokens(clamped) > maxTokens) {
+    clamped = clamped.slice(0, Math.floor(clamped.length * 0.9)).trim();
+  }
+  return clamped;
+}
+
+function needsReflectionRetry(reflected: string, sourceTokenEstimate: number): boolean {
+  const reflectedTokens = estimateTokens(reflected);
+  return reflectedTokens >= sourceTokenEstimate || reflectedTokens > appConfig.distill.reflectionThresholdTokens;
+}
 
 async function runDistillLLM(systemPrompt: string, userContent: string): Promise<string> {
   const model = createModel(normalizeModel(appConfig.distill.model));
@@ -34,8 +53,19 @@ export function createDistillMemorySource(injectedStore?: DistillStore): MemoryS
       if (!ctx.sessionId) return [];
       const entries = await ds.list(ctx.sessionId);
       const reflections = entries.filter((e) => e.tier === "reflection");
-      if (reflections.length > 0) return reflections.map((e) => e.content);
-      return entries.map((e) => e.content);
+      if (reflections.length > 0) {
+        const latestReflection = reflections[reflections.length - 1];
+        if (!latestReflection) return [];
+        const observationsSinceReflection = entries
+          .filter((e) => e.tier === "observation" && e.createdAt > latestReflection.createdAt)
+          .map((e) => e.content);
+        return [latestReflection.content, ...observationsSinceReflection];
+      }
+      return entries
+        .filter((e) => e.tier === "observation")
+        .slice()
+        .reverse()
+        .map((e) => e.content);
     },
 
     async commit(ctx) {
@@ -43,9 +73,12 @@ export function createDistillMemorySource(injectedStore?: DistillStore): MemoryS
       if (ctx.messages.length < appConfig.distill.messageThreshold) return;
 
       const recentMessages = ctx.messages.slice(-20);
-      const conversationText = recentMessages.map((m) => `${m.role}: ${m.content}`).join("\n\n");
-      const observed = await runDistillLLM(OBSERVER_PROMPT, conversationText);
-      if (!observed) return;
+      const distillInput = [...recentMessages, { role: "assistant", content: ctx.output }]
+        .map((m) => `${m.role}: ${m.content}`)
+        .join("\n\n");
+      const observedRaw = await runDistillLLM(OBSERVER_PROMPT, distillInput);
+      const observed = clampToTokenEstimate(observedRaw, appConfig.distill.maxOutputTokens);
+      if (!observed.trim()) return;
 
       const observation: DistillRecord = {
         id: `dst_${createId()}`,
@@ -59,12 +92,27 @@ export function createDistillMemorySource(injectedStore?: DistillStore): MemoryS
 
       const entries = await ds.list(ctx.sessionId);
       const observations = entries.filter((e) => e.tier === "observation");
-      const totalTokens = observations.reduce((sum, e) => sum + e.tokenEstimate, 0);
+      const reflections = entries.filter((e) => e.tier === "reflection");
+      const latestReflection = reflections[reflections.length - 1];
+      const pendingObservations = latestReflection
+        ? observations.filter((e) => e.createdAt > latestReflection.createdAt)
+        : observations;
+      const totalTokens = pendingObservations.reduce((sum, e) => sum + e.tokenEstimate, 0);
       if (totalTokens < appConfig.distill.reflectionThresholdTokens) return;
 
-      const allObservations = observations.map((o) => o.content).join("\n\n---\n\n");
-      const reflected = await runDistillLLM(REFLECTOR_PROMPT, allObservations);
-      if (!reflected) return;
+      const allObservations = pendingObservations.map((o) => o.content).join("\n\n---\n\n");
+      let reflected = "";
+      for (let attempt = 0; attempt <= REFLECTION_RETRY_LIMIT; attempt += 1) {
+        const promptSuffix =
+          attempt === 0
+            ? ""
+            : "\n\nCompression retry: keep all critical facts while reducing length and merging redundant details.";
+        const reflectedRaw = await runDistillLLM(REFLECTOR_PROMPT, `${allObservations}${promptSuffix}`);
+        reflected = clampToTokenEstimate(reflectedRaw, appConfig.distill.maxOutputTokens);
+        if (!reflected.trim()) return;
+        if (!needsReflectionRetry(reflected, totalTokens)) break;
+      }
+      if (needsReflectionRetry(reflected, totalTokens)) return;
 
       const reflection: DistillRecord = {
         id: `dst_${createId()}`,
