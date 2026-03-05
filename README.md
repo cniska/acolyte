@@ -36,19 +36,5 @@ bun run client help
 
 ## Documentation
 
-- Getting started: [`docs/getting-started.md`](docs/getting-started.md)
-- Configuration: [`docs/configuration.md`](docs/configuration.md)
-- CLI: [`docs/cli.md`](docs/cli.md)
-- Lifecycle: [`docs/lifecycle.md`](docs/lifecycle.md)
-- Modes: [`docs/modes.md`](docs/modes.md)
-- Memory: [`docs/memory.md`](docs/memory.md)
-- Tooling: [`docs/tooling.md`](docs/tooling.md)
-- Sessions and tasks: [`docs/sessions-tasks.md`](docs/sessions-tasks.md)
-- Architecture: [`docs/architecture.md`](docs/architecture.md)
-- Protocol: [`docs/protocol.md`](docs/protocol.md)
-- Domain language: [`docs/glossary.md`](docs/glossary.md)
-- FAQ: [`docs/faq.md`](docs/faq.md)
-- Testing strategy: [`docs/testing.md`](docs/testing.md)
-- Feature inventory: [`docs/features.md`](docs/features.md)
-- Direction and milestones: [`docs/roadmap.md`](docs/roadmap.md)
+- Docs home: [`docs/index.md`](docs/index.md)
 - Agent policy: [`AGENTS.md`](AGENTS.md)
