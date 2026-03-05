@@ -81,25 +81,30 @@ Prove consistent autonomous performance across repeated real tasks.
 - [ ] Failure modes are explainable through traces/logs and have clear follow-up actions
 - [ ] Protocol baseline is stable (`protocolVersion`, capability handshake, stream compatibility tests)
 
-### Milestone 8: Memory Quality
+### Milestone 8: Memory Reliability
 
 Reduce repeated mistakes with transparent, correctable memory behavior.
 
 - [ ] Saved memory commands work and are useful (`/remember`, `/memory`, `/memory rm`)
 - [x] Mastra dependency removed — own the stack with native agentic loop and AI SDK providers
 - [x] Context distillation replaces observational memory (MemorySource seam, distill engine, soul prompt integration)
-- [ ] Pre-MVP: history-time tool-output pruning for old assistant turns (not only emit-time truncation)
-- [ ] Pre-MVP: rolling history budget policy in agent input assembly (deterministic pruning, no user-visible compaction flow)
-- [ ] Pre-MVP: explicit resume block injection from continuation state (`Current task` / `Next step`)
+- [ ] History-time tool-output pruning for old assistant turns (not only emit-time truncation)
+- [ ] Rolling history budget policy in agent input assembly (deterministic pruning, no user-visible compaction flow)
+- [ ] Explicit resume block injection from continuation state (`Current task` / `Next step`)
 - [ ] Evals show measurable reduction in repeated instruction failures
 - [ ] Memory doesn't hallucinate or carry stale context
-- [ ] Post-MVP: progressive model-driven compaction for ultra-long sessions
-- [ ] Post-MVP: compaction/resume protocol events for explicit agent continuity
-- [ ] Post-MVP: storage backends beyond filesystem (hosted/shared memory persistence)
 
 **Current status:** Mastra removed. Context distillation implemented (MemorySource contract, observer/reflector pipeline, lifecycle integration). Needs eval validation.
 
-### Milestone 9: Hosted Readiness
+### Milestone 9: Memory Scalability
+
+Extend memory behavior for long autonomous runs and broader deployment targets.
+
+- [ ] Progressive model-driven compaction for ultra-long sessions
+- [ ] Compaction/resume protocol events for explicit agent continuity
+- [ ] Storage backends beyond filesystem (hosted/shared memory persistence)
+
+### Milestone 10: Hosted Readiness
 
 Enable optional hosted mode for centralized memory and multi-device continuity.
 
@@ -112,7 +117,7 @@ Enable optional hosted mode for centralized memory and multi-device continuity.
 - [ ] Auth and multi-tenancy work
 - [ ] Local-first mode still works without hosted backend
 
-### Milestone 10: Post-MVP Friends and Family
+### Milestone 11: Post-MVP Friends and Family
 
 Share with trusted coders for real-world feedback.
 
@@ -121,9 +126,9 @@ Share with trusted coders for real-world feedback.
 - [ ] Feedback collected and acted on from 3+ users
 - [ ] Major usability issues resolved
 
-**Blocked on:** Milestones 7-9.
+**Blocked on:** Milestones 7-10.
 
-### Milestone 11: Public OSS Release
+### Milestone 12: Public OSS Release
 
 Open-source core local mode with optional self-host path.
 
@@ -134,7 +139,7 @@ Open-source core local mode with optional self-host path.
 - [ ] Pre-OSS security baseline complete (secure defaults, auth coverage, workspace boundary checks, redaction tests)
 - [ ] Localization baseline: translatable CLI/TUI copy, with raw protocol/tool output kept language-neutral
 
-**Blocked on:** Milestone 10.
+**Blocked on:** Milestone 11.
 
 ## MVP Definition
 
