@@ -92,4 +92,32 @@ describe("chat turn helpers", () => {
     expect(toolRows).toHaveLength(0);
     expect(turn.rows.some((row) => row.role === "assistant" && row.content === "done")).toBe(true);
   });
+
+  test("runAssistantTurn marks assistant message as tool_payload when tools were used", async () => {
+    const turn = await runAssistantTurn({
+      client: {
+        replyStream: async () => ({
+          model: "gpt-5-mini",
+          output: "done",
+          toolCalls: ["read-file"],
+        }),
+        status: async () => ({}),
+        setPermissionMode: async () => {},
+        taskStatus: async () => null,
+      },
+      userText: "read src/agent.ts",
+      history: [],
+      model: "gpt-5-mini",
+      sessionId: "sess_test",
+      thinkingStartedAt: Date.now(),
+      createMessage: (role, content) => ({
+        id: "msg_assistant",
+        role,
+        content,
+        timestamp: "2026-02-20T00:00:00.000Z",
+      }),
+    });
+
+    expect(turn.assistantMessage.kind).toBe("tool_payload");
+  });
 });

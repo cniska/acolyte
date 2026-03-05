@@ -110,7 +110,9 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
     { signal: params.signal, onEvent: params.onEvent ?? (() => {}) },
   );
 
-  const assistantMessage = params.createMessage("assistant", reply.output);
+  const baseAssistantMessage = params.createMessage("assistant", reply.output);
+  const assistantMessage: Message =
+    (reply.toolCalls?.length ?? 0) > 0 ? { ...baseAssistantMessage, kind: "tool_payload" } : baseAssistantMessage;
   const rows: ChatRow[] = [];
   if (reply.output.trim().length > 0) rows.push(createRow("assistant", reply.output));
   const tokenEntry: TokenUsageEntry = {
