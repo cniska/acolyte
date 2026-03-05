@@ -36,8 +36,14 @@ bun run client help
 
 ## Documentation
 
-- Overview: [`docs/architecture.md`](docs/architecture.md)
+- Getting started: [`docs/getting-started.md`](docs/getting-started.md)
+- Configuration: [`docs/configuration.md`](docs/configuration.md)
+- CLI: [`docs/cli.md`](docs/cli.md)
+- Memory: [`docs/memory.md`](docs/memory.md)
+- Architecture: [`docs/architecture.md`](docs/architecture.md)
+- Protocol: [`docs/protocol.md`](docs/protocol.md)
 - Domain language: [`docs/glossary.md`](docs/glossary.md)
+- FAQ: [`docs/faq.md`](docs/faq.md)
 - Testing strategy: [`docs/testing.md`](docs/testing.md)
 - Feature inventory: [`docs/features.md`](docs/features.md)
 - Direction and milestones: [`docs/roadmap.md`](docs/roadmap.md)
