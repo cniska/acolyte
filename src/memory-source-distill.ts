@@ -52,6 +52,14 @@ function continuationEntries(record: { currentTask?: string; nextStep?: string }
   return lines;
 }
 
+function stripContinuationLines(content: string): string {
+  const lines = content
+    .split(/\r?\n/)
+    .map((line) => line.trimEnd())
+    .filter((line) => !/^(?:[-*]\s*)?(?:Current task|Next step):\s*/i.test(line));
+  return lines.join("\n").trim();
+}
+
 function normalizeMemoryText(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
@@ -86,9 +94,13 @@ export function createDistillMemorySource(injectedStore?: DistillStore, runner: 
         .filter((e) => e.tier === "observation" && e.createdAt > latestReflection.createdAt)
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
       const mostRecent = observationsSinceReflection[0] ?? latestReflection;
+      const reflectionContent = stripContinuationLines(latestReflection.content);
       return [
-        { content: latestReflection.content },
-        ...observationsSinceReflection.map((e) => ({ content: e.content })),
+        ...(reflectionContent ? [{ content: reflectionContent }] : []),
+        ...observationsSinceReflection
+          .map((e) => stripContinuationLines(e.content))
+          .filter((content) => content.length > 0)
+          .map((content) => ({ content })),
         ...continuationEntries(mostRecent).map((content) => ({ content, isContinuation: true })),
       ];
     }
@@ -98,7 +110,10 @@ export function createDistillMemorySource(injectedStore?: DistillStore, runner: 
       .reverse();
     const mostRecent = observationEntries[0];
     return [
-      ...observationEntries.map((e) => ({ content: e.content })),
+      ...observationEntries
+        .map((e) => stripContinuationLines(e.content))
+        .filter((content) => content.length > 0)
+        .map((content) => ({ content })),
       ...continuationEntries(mostRecent).map((content) => ({ content, isContinuation: true })),
     ];
   }

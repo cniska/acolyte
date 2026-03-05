@@ -193,6 +193,28 @@ describe("distillMemorySource", () => {
       ]);
     });
 
+    test("strips continuation lines from observation content and emits typed continuation once", async () => {
+      const store = createMockStore([
+        {
+          id: "dst_obs00001",
+          sessionId: "sess_test0001",
+          tier: "observation",
+          content: "recent observation\nCurrent task: Fix memory retrieval\nNext step: Add regression tests",
+          currentTask: "Fix memory retrieval",
+          nextStep: "Add regression tests",
+          createdAt: "2026-03-04T12:30:00.000Z",
+          tokenEstimate: 5,
+        },
+      ]);
+      const source = createDistillMemorySource(store);
+      const entries = await loadContents(source, { sessionId: "sess_test0001" });
+      expect(entries).toEqual([
+        "recent observation",
+        "Current task: Fix memory retrieval",
+        "Next step: Add regression tests",
+      ]);
+    });
+
     test("loadEntries marks continuation lines as continuation entries", async () => {
       const store = createMockStore([
         {
