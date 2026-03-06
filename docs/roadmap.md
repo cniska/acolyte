@@ -72,8 +72,6 @@ Reduce repeated mistakes with transparent, correctable memory behavior.
 - [ ] Evals show measurable reduction in repeated instruction failures
 - [ ] Memory doesn't hallucinate or carry stale context
 
-**Current status:** Mastra removed. Context distillation and memory commands are implemented. Remaining work is evals and quality confidence.
-
 ### Milestone 7: Product Polish
 
 Consolidate core UX quality and extension-ready seams before MVP release.
@@ -118,10 +116,6 @@ Open-source local mode with optional self-hosted memory/session sync service.
 - [x] Localization baseline: translatable CLI/TUI copy, with raw protocol/tool output kept language-neutral
 - [x] Configurable locale (`acolyte config set locale <tag>`) with per-locale catalogs (`src/i18n/locales/*.json`)
 - [ ] Remove internal launch/talk docs before OSS (`docs/launch-talk.md`, `docs/talk-notes.md`)
-
-**Current status:** External contributor docs baseline, license, release pipeline, security baseline, localization baseline, and configurable locale support are done. Remaining work is pre-OSS talk-doc cleanup.
-
-**Blocked on:** Milestones 6-9.
 
 ## MVP Definition
 
