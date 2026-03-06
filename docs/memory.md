@@ -46,6 +46,7 @@ Default source order is `stored, distill_project, distill_user, distill`.
   - Observation lines tagged `[user]` promote to user scope.
   - Session/continuation lines stay in session scope.
   - Untagged fact lines are dropped (strict tagged promotion, no fallback).
+  - Malformed bracket tags (for example `[proj]`) reject the entire session observation batch.
 - Load strategy:
   - latest reflection first
   - then post-reflection observations (fresh delta, newest first)
@@ -62,7 +63,7 @@ Default source order is `stored, distill_project, distill_user, distill`.
 - Agent input assembly applies deterministic rolling history fitting (newest-first, truncate-to-fit under remaining budget).
 - Aggressive old-turn compaction is driven by typed message metadata (`kind: tool_payload`), not regex heuristics.
 - Debug observability uses lifecycle-scoped events (`lifecycle.memory.load_*`, `lifecycle.memory.commit_*`) through standard debug channels.
-- Commit debug includes promotion counters (`project_promoted_facts`, `user_promoted_facts`, `session_scoped_facts`, `dropped_untagged_facts`).
+- Commit debug includes promotion counters (`project_promoted_facts`, `user_promoted_facts`, `session_scoped_facts`, `dropped_untagged_facts`, `malformed_tagged_facts`).
 - Selection dedupes identical entry content to avoid wasting budget on repeats.
 - Normalization drops blank entries before selection.
 - Distill record writes are atomic (`temp file -> rename`) to avoid partial files.

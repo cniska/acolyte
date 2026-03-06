@@ -93,6 +93,10 @@ function stripScopeTag(line: string): { scope: DistillScope | null; content: str
   return { scope: "session", content };
 }
 
+function hasBracketPrefix(line: string): boolean {
+  return /^\[[^\]]+\]/.test(line.trim());
+}
+
 function splitScopedObservation(observed: string): {
   session: string;
   project: string;
@@ -101,6 +105,7 @@ function splitScopedObservation(observed: string): {
   projectCount: number;
   userCount: number;
   droppedUntaggedCount: number;
+  malformedTaggedCount: number;
 } {
   const lines = observed
     .split(/\r?\n/)
@@ -110,6 +115,7 @@ function splitScopedObservation(observed: string): {
   const projectLines: string[] = [];
   const userLines: string[] = [];
   let droppedUntaggedCount = 0;
+  let malformedTaggedCount = 0;
 
   for (const line of lines) {
     if (isContinuationLine(line)) {
@@ -117,6 +123,10 @@ function splitScopedObservation(observed: string): {
       continue;
     }
     const tagged = stripScopeTag(line);
+    if (!tagged.scope && hasBracketPrefix(line)) {
+      malformedTaggedCount += 1;
+      continue;
+    }
     if (!tagged.content) continue;
     // Continuation state is always session-scoped, regardless of any tag prefix.
     if (isContinuationLine(tagged.content)) {
@@ -147,6 +157,7 @@ function splitScopedObservation(observed: string): {
     projectCount: projectLines.length,
     userCount: userLines.length,
     droppedUntaggedCount,
+    malformedTaggedCount,
   };
 }
 
@@ -320,10 +331,20 @@ export function createDistillMemorySource(
           userPromotedFacts: commitScope === "user" ? observedFactCount : 0,
           sessionScopedFacts: 0,
           droppedUntaggedFacts: 0,
+          malformedTaggedFacts: 0,
         };
       }
 
       const scoped = splitScopedObservation(observed);
+      if (scoped.malformedTaggedCount > 0) {
+        return {
+          projectPromotedFacts: 0,
+          userPromotedFacts: 0,
+          sessionScopedFacts: 0,
+          droppedUntaggedFacts: scoped.droppedUntaggedCount,
+          malformedTaggedFacts: scoped.malformedTaggedCount,
+        };
+      }
       if (scoped.session) {
         await commitDistillForKey(ds, key, scoped.session, runner);
       }
@@ -341,6 +362,7 @@ export function createDistillMemorySource(
         userPromotedFacts: scoped.userCount,
         sessionScopedFacts: scoped.sessionCount,
         droppedUntaggedFacts: scoped.droppedUntaggedCount,
+        malformedTaggedFacts: 0,
       };
     },
   };

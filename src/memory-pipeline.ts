@@ -101,6 +101,7 @@ export async function runMemoryCommitPipeline(
     userPromotedFacts: 0,
     sessionScopedFacts: 0,
     droppedUntaggedFacts: 0,
+    malformedTaggedFacts: 0,
   };
   for (const source of sources) {
     if (!source.commit) continue;
@@ -110,6 +111,7 @@ export async function runMemoryCommitPipeline(
     totals.userPromotedFacts = (totals.userPromotedFacts ?? 0) + (metrics.userPromotedFacts ?? 0);
     totals.sessionScopedFacts = (totals.sessionScopedFacts ?? 0) + (metrics.sessionScopedFacts ?? 0);
     totals.droppedUntaggedFacts = (totals.droppedUntaggedFacts ?? 0) + (metrics.droppedUntaggedFacts ?? 0);
+    totals.malformedTaggedFacts = (totals.malformedTaggedFacts ?? 0) + (metrics.malformedTaggedFacts ?? 0);
   }
   return totals;
 }

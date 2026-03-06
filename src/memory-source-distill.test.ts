@@ -550,7 +550,7 @@ describe("distillMemorySource", () => {
       }
     });
 
-    test("drops malformed tags and keeps valid scoped facts", async () => {
+    test("rejects session commit when malformed tags are present", async () => {
       const originalDistillConfig = { ...appConfig.distill };
       (appConfig as { distill: typeof appConfig.distill }).distill = {
         ...appConfig.distill,
@@ -571,17 +571,20 @@ describe("distillMemorySource", () => {
           ].join("\n");
         });
         if (!source.commit) throw new Error("expected commit handler");
-        await source.commit({
+        const metrics = await source.commit({
           sessionId: "sess_test0001",
           resourceId: "proj_abc123",
           messages: [{ role: "user", content: "hello" }],
           output: "done",
         });
-        const combined = store.written.map((entry) => entry.content).join("\n");
-        expect(combined).toContain("valid project fact");
-        expect(combined).toContain("valid user fact");
-        expect(combined).toContain("valid session fact");
-        expect(combined).not.toContain("malformed tag dropped");
+        expect(store.written).toHaveLength(0);
+        expect(metrics).toEqual({
+          projectPromotedFacts: 0,
+          userPromotedFacts: 0,
+          sessionScopedFacts: 0,
+          droppedUntaggedFacts: 0,
+          malformedTaggedFacts: 2,
+        });
       } finally {
         (appConfig as { distill: typeof appConfig.distill }).distill = originalDistillConfig;
       }
@@ -695,11 +698,13 @@ describe("distillMemorySource", () => {
           output: "done",
         });
         expect(metrics).toEqual({
-          projectPromotedFacts: 2,
-          userPromotedFacts: 1,
-          sessionScopedFacts: 3,
-          droppedUntaggedFacts: 2,
+          projectPromotedFacts: 0,
+          userPromotedFacts: 0,
+          sessionScopedFacts: 0,
+          droppedUntaggedFacts: 1,
+          malformedTaggedFacts: 1,
         });
+        expect(store.written).toHaveLength(0);
       } finally {
         (appConfig as { distill: typeof appConfig.distill }).distill = originalDistillConfig;
       }

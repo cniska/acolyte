@@ -54,6 +54,7 @@ export function scheduleMemoryCommit(
       user_promoted_facts: metrics?.userPromotedFacts ?? 0,
       session_scoped_facts: metrics?.sessionScopedFacts ?? 0,
       dropped_untagged_facts: metrics?.droppedUntaggedFacts ?? 0,
+      malformed_tagged_facts: metrics?.malformedTaggedFacts ?? 0,
     });
   }).catch((error) => {
     debug("lifecycle.memory.commit_failed", {

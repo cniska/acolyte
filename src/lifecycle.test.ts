@@ -541,6 +541,7 @@ describe("scheduleMemoryCommit", () => {
     expect(done?.fields?.user_promoted_facts).toBe(0);
     expect(done?.fields?.session_scoped_facts).toBe(0);
     expect(done?.fields?.dropped_untagged_facts).toBe(0);
+    expect(done?.fields?.malformed_tagged_facts).toBe(0);
   });
 
   test("logs commit metrics when commit returns promotion stats", async () => {
@@ -559,6 +560,7 @@ describe("scheduleMemoryCommit", () => {
         userPromotedFacts: 1,
         sessionScopedFacts: 3,
         droppedUntaggedFacts: 4,
+        malformedTaggedFacts: 5,
       }),
       async (_key, job) => {
         await job();
@@ -572,5 +574,6 @@ describe("scheduleMemoryCommit", () => {
     expect(done?.fields?.user_promoted_facts).toBe(1);
     expect(done?.fields?.session_scoped_facts).toBe(3);
     expect(done?.fields?.dropped_untagged_facts).toBe(4);
+    expect(done?.fields?.malformed_tagged_facts).toBe(5);
   });
 });

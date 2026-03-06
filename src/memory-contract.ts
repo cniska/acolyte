@@ -26,6 +26,7 @@ export type MemoryCommitMetrics = {
   userPromotedFacts?: number;
   sessionScopedFacts?: number;
   droppedUntaggedFacts?: number;
+  malformedTaggedFacts?: number;
 };
 
 export type MemorySource = {
