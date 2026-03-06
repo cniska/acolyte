@@ -1,4 +1,5 @@
 import { isLoopbackHost } from "./network-host";
+import { t } from "./i18n";
 
 const DEFAULT_LOCAL_API_HOST = "127.0.0.1";
 const DEFAULT_LOCAL_API_PORT = 6767;
@@ -33,9 +34,9 @@ export function resolveLocalDaemonApiUrl(configuredApiUrl: string | undefined, p
 }
 
 export function formatLocalServerReadyMessage(result: { apiUrl: string; started: boolean; managed: boolean }): string {
-  if (result.started) return `Started local server at ${result.apiUrl}`;
-  if (result.managed) return `Using local server at ${result.apiUrl}`;
-  return `Using external local server at ${result.apiUrl} (started outside this client).`;
+  if (result.started) return t("cli.server.started", { apiUrl: result.apiUrl });
+  if (result.managed) return t("cli.server.using_local", { apiUrl: result.apiUrl });
+  return t("cli.server.using_external", { apiUrl: result.apiUrl });
 }
 
 async function canReachStatus(apiUrl: string, apiKey?: string): Promise<boolean> {

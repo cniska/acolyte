@@ -61,9 +61,9 @@ describe("chat slash command visual regression", () => {
       dedent(`
       ❯ /tokens
       
-        last_turn:           prompt=40 completion=10 total=50
+        last turn:           prompt=40 completion=10 total=50
         session:             prompt=160 completion=40 total=200 (2 turns)
-        model_calls:         last=1 session=3
+        model calls:         last=1 session=3
     `),
     );
   });

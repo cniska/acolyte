@@ -1,5 +1,6 @@
 import { formatColumns, formatRelativeTime } from "./chat-format";
 import { truncateText } from "./cli-format";
+import { t } from "./i18n";
 import type { readStore as readStoreType } from "./storage";
 
 type HistoryModeDeps = {
@@ -12,7 +13,7 @@ type HistoryModeDeps = {
 
 function listSessions(store: Awaited<ReturnType<typeof readStoreType>>, printDim: (message: string) => void): void {
   if (store.sessions.length === 0) {
-    printDim("No saved sessions.");
+    printDim(t("chat.picker.sessions.none"));
     return;
   }
 

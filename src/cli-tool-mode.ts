@@ -20,6 +20,7 @@ import {
   searchFiles,
   searchWeb,
 } from "./core-tools";
+import { t } from "./i18n";
 import { printError, printWarning } from "./ui";
 
 const editArgsSchema = z.object({
@@ -39,7 +40,7 @@ export function parseEditArgs(args: string[]): {
 } {
   const dryRun = args.includes("--dry-run");
   const clean = args.filter((a) => a !== "--dry-run");
-  if (clean.length < 3) throw new Error("Usage: /edit <path> <find> <replace> [--dry-run]");
+  if (clean.length < 3) throw new Error(t("cli.tool.edit.usage"));
   const [path, find, ...replaceParts] = clean;
   return editArgsSchema.parse({
     path,
@@ -66,28 +67,28 @@ export async function toolMode(args: string[]): Promise<void> {
     const [subcommand, ...rest] = args;
     switch (subcommand) {
       case "find": {
-        const pattern = requireArg(rest, "Usage: acolyte tool find <pattern>");
+        const pattern = requireArg(rest, t("cli.tool.find.usage"));
         if (!pattern) return;
         const result = await findFiles(process.cwd(), [pattern]);
         showToolResult("Find", formatForTool("find", result), "tool", pattern);
         return;
       }
       case "search": {
-        const pattern = requireArg(rest, "Usage: acolyte tool search <pattern>");
+        const pattern = requireArg(rest, t("cli.tool.search.usage"));
         if (!pattern) return;
         const result = await searchFiles(process.cwd(), [pattern]);
         showToolResult("Search", formatForTool("search", result), "tool", pattern);
         return;
       }
       case "web": {
-        const query = requireArg(rest, "Usage: acolyte tool web <query>");
+        const query = requireArg(rest, t("cli.tool.web.usage"));
         if (!query) return;
         const result = await searchWeb(query, 5);
         showToolResult("Web", result, "plain", query);
         return;
       }
       case "fetch": {
-        const url = requireArg(rest, "Usage: acolyte tool fetch <url>");
+        const url = requireArg(rest, t("cli.tool.fetch.usage"));
         if (!url) return;
         const result = await fetchWeb(url, 5000);
         showToolResult("Fetch", result, "plain", url);
@@ -96,7 +97,7 @@ export async function toolMode(args: string[]): Promise<void> {
       case "read": {
         const [pathInput, start, end] = rest;
         if (!pathInput) {
-          printError("Usage: acolyte tool read <path> [start] [end]");
+          printError(t("cli.tool.read.usage"));
           process.exitCode = 1;
           return;
         }
@@ -118,7 +119,7 @@ export async function toolMode(args: string[]): Promise<void> {
         return;
       }
       case "run": {
-        const command = requireArg(rest, "Usage: acolyte tool run <command>");
+        const command = requireArg(rest, t("cli.tool.run.usage"));
         if (!command) return;
         const result = await runShellCommand(process.cwd(), command);
         showToolResult("Run", formatForTool("run", result), "plain", command);
@@ -129,7 +130,7 @@ export async function toolMode(args: string[]): Promise<void> {
         try {
           parsed = parseEditArgs(rest);
         } catch (error) {
-          const message = error instanceof Error ? error.message : "Invalid edit args";
+          const message = error instanceof Error ? error.message : t("cli.tool.edit.invalid_args");
           printError(message.replace("/edit", "acolyte tool edit"));
           process.exitCode = 1;
           return;
@@ -153,7 +154,7 @@ export async function toolMode(args: string[]): Promise<void> {
               showToolResult("Edit", formatEditUpdateOutput(summary.edits, diff), "diff", shownPath);
               rendered = true;
             } catch (error) {
-              const message = error instanceof Error ? error.message : "Unable to render diff preview";
+              const message = error instanceof Error ? error.message : t("cli.tool.diff.unavailable");
               if (message.includes("outside repository")) {
                 showToolResult(
                   "Edit",
@@ -162,7 +163,7 @@ export async function toolMode(args: string[]): Promise<void> {
                   shownPath,
                 );
                 rendered = true;
-                printWarning("Diff preview unavailable (file is outside current repository).");
+                printWarning(t("cli.tool.diff.unavailable.outside_repo"));
               } else {
                 printWarning(message);
               }
@@ -173,11 +174,11 @@ export async function toolMode(args: string[]): Promise<void> {
         return;
       }
       default:
-        printError("Usage: acolyte tool <search|web|fetch|read|git-status|git-diff|run|edit> ...");
+        printError(t("cli.tool.usage"));
         process.exitCode = 1;
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Tool command failed";
+    const message = error instanceof Error ? error.message : t("cli.tool.failed");
     printError(message);
     process.exitCode = 1;
   }

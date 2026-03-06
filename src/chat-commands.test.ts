@@ -41,10 +41,10 @@ describe("chat-commands", () => {
       modelCalls: 3,
     };
     const output = formatTokenUsageOutput(usage, [usage]);
-    expect(output).toContain("last_turn:");
+    expect(output).toContain("last turn:");
     expect(output).toContain("session:");
     expect(output).toContain("budget:");
-    expect(output).toContain("model_calls:");
+    expect(output).toContain("model calls:");
     expect(output).toContain("last=3 session=3");
   });
 
@@ -151,10 +151,10 @@ describe("chat-commands", () => {
     const { rows, stop } = await runCommand("/tokens", { tokenUsage });
 
     expect(stop).toBe(true);
-    expect(rows.some((row) => row.content.includes("last_turn:"))).toBe(true);
-    expect(rows.some((row) => row.role === "system" && row.content.includes("last_turn:"))).toBe(true);
+    expect(rows.some((row) => row.content.includes("last turn:"))).toBe(true);
+    expect(rows.some((row) => row.role === "system" && row.content.includes("last turn:"))).toBe(true);
     expect(rows.some((row) => row.role === "system" && row.style === "tokenOutput")).toBe(true);
-    expect(rows.some((row) => row.content.includes("model_calls:") && row.content.includes("last=5 session=7"))).toBe(
+    expect(rows.some((row) => row.content.includes("model calls:") && row.content.includes("last=5 session=7"))).toBe(
       true,
     );
   });

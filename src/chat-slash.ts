@@ -24,28 +24,28 @@ const SUB_COMMANDS: Record<string, string[]> = {
 };
 
 const SLASH_HELP: Record<string, string> = {
-  "/new": t("slash.help.new"),
-  "/permissions": t("slash.help.permissions"),
-  "/permissions read": t("slash.help.permissions.read"),
-  "/permissions write": t("slash.help.permissions.write"),
-  "/model": t("slash.help.model"),
-  "/model plan": t("slash.help.model.plan"),
-  "/model work": t("slash.help.model.work"),
-  "/model verify": t("slash.help.model.verify"),
-  "/model chat": t("slash.help.model.chat"),
-  "/status": t("slash.help.status"),
-  "/sessions": t("slash.help.sessions"),
-  "/skills": t("slash.help.skills"),
-  "/resume": t("slash.help.resume"),
-  "/remember": t("slash.help.remember"),
-  "/memory": t("slash.help.memory"),
-  "/memory list": t("slash.help.memory.list"),
-  "/memory add": t("slash.help.memory.add"),
-  "/memory all": t("slash.help.memory.all"),
-  "/memory user": t("slash.help.memory.user"),
-  "/memory project": t("slash.help.memory.project"),
-  "/tokens": t("slash.help.tokens"),
-  "/exit": t("slash.help.exit"),
+  "/new": t("chat.slash.help.new"),
+  "/permissions": t("chat.slash.help.permissions"),
+  "/permissions read": t("chat.slash.help.permissions.read"),
+  "/permissions write": t("chat.slash.help.permissions.write"),
+  "/model": t("chat.slash.help.model"),
+  "/model plan": t("chat.slash.help.model.plan"),
+  "/model work": t("chat.slash.help.model.work"),
+  "/model verify": t("chat.slash.help.model.verify"),
+  "/model chat": t("chat.slash.help.model.chat"),
+  "/status": t("chat.slash.help.status"),
+  "/sessions": t("chat.slash.help.sessions"),
+  "/skills": t("chat.slash.help.skills"),
+  "/resume": t("chat.slash.help.resume"),
+  "/remember": t("chat.slash.help.remember"),
+  "/memory": t("chat.slash.help.memory"),
+  "/memory list": t("chat.slash.help.memory.list"),
+  "/memory add": t("chat.slash.help.memory.add"),
+  "/memory all": t("chat.slash.help.memory.all"),
+  "/memory user": t("chat.slash.help.memory.user"),
+  "/memory project": t("chat.slash.help.memory.project"),
+  "/tokens": t("chat.slash.help.tokens"),
+  "/exit": t("chat.slash.help.exit"),
 };
 
 const SLASH_ALIASES: Record<string, string> = {
@@ -171,6 +171,6 @@ export function resolveSlashAlias(value: string): string {
 export function slashCommandHelp(command: string): string {
   const help = SLASH_HELP[command];
   if (help) return help;
-  if (command.startsWith("/") && getLoadedSkills().some((s) => `/${s.name}` === command)) return t("slash.help.skill");
+  if (command.startsWith("/") && getLoadedSkills().some((s) => `/${s.name}` === command)) return t("chat.slash.help.skill");
   return "";
 }

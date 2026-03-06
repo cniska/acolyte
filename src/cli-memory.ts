@@ -1,5 +1,6 @@
 import { formatColumns, formatRelativeTime } from "./chat-format";
 import { truncateText } from "./cli-format";
+import { t } from "./i18n";
 import type { addMemory as addMemoryType, listMemories as listMemoriesType } from "./memory";
 
 type MemoryModeDeps = {
@@ -16,7 +17,7 @@ function printMemoryRows(
   printDim: (message: string) => void,
 ): void {
   if (rows.length === 0) {
-    printDim("No memories saved.");
+    printDim(t("cli.memory.none"));
     return;
   }
 
@@ -40,12 +41,12 @@ export async function memoryMode(args: string[], deps: MemoryModeDeps): Promise<
   if (subcommand === "list" || !subcommand) {
     const scopeRaw = subcommand === "list" ? rest[0] : undefined;
     if (subcommand === "list" && rest.length > 1) {
-      subcommandError("memory", "Usage: acolyte memory list [all|user|project]");
+      subcommandError("memory", t("cli.memory.usage.list"));
       return;
     }
     const scope = scopeRaw && validScopes.has(scopeRaw) ? scopeRaw : "all";
     if (scopeRaw && !validScopes.has(scopeRaw)) {
-      subcommandError("memory", "Usage: acolyte memory list [all|user|project]");
+      subcommandError("memory", t("cli.memory.usage.list"));
       return;
     }
     const rows = await listMemories({ scope: scope as "all" | "user" | "project" });
@@ -69,11 +70,11 @@ export async function memoryMode(args: string[], deps: MemoryModeDeps): Promise<
     }
     const content = contentParts.join(" ").trim();
     if (!content) {
-      subcommandError("memory", "Usage: acolyte memory add [--user|--project] <memory text>");
+      subcommandError("memory", t("cli.memory.usage.add"));
       return;
     }
     const entry = await addMemory(content, { scope });
-    printDim(`Saved ${scope} memory ${entry.id}.`);
+    printDim(t("cli.memory.saved", { scope, id: entry.id }));
     return;
   }
 

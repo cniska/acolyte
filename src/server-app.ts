@@ -9,6 +9,7 @@ import { formatModel } from "./provider-config";
 import type { Provider } from "./provider-contract";
 import { collectResourceDiagnostics } from "./resource-diagnostics";
 import { isChatRequest, runChatRequest } from "./server-chat-runtime";
+import { t } from "./i18n";
 import type { StatusPayload } from "./server-contract";
 import { createServerFetchHandler } from "./server-http";
 import { createRpcWebsocketHandlers, getRpcQueuedTaskCount, type RpcConnectionState } from "./server-rpc";
@@ -50,7 +51,7 @@ function serverError(
   status = 500,
 ): Response {
   const errorId = nextErrorId();
-  const errorMessage = error instanceof Error ? error.message : "Unknown error";
+  const errorMessage = error instanceof Error ? error.message : t("unknown_error");
   const publicMessage = mapQuotaErrorMessage(errorMessage);
   const { errorCode, errorDetail } = buildStreamErrorDetail(
     {

@@ -21,7 +21,7 @@ export async function startRemoteTaskFollowup(input: StartRemoteTaskFollowupInpu
     return false;
   }
 
-  input.setProgressText(t("task.followup.still_running"));
+  input.setProgressText(t("chat.task.followup.still_running"));
   void (async () => {
     try {
       for (let pollCount = 0; pollCount < 300; pollCount += 1) {
@@ -29,20 +29,20 @@ export async function startRemoteTaskFollowup(input: StartRemoteTaskFollowupInpu
         const next = await input.client.taskStatus(input.remoteTaskId);
         if (!next || next.state === "running" || next.state === "detached") continue;
         if (next.state === "failed") {
-          const detail = next.summary?.trim() || t("task.followup.failed");
+          const detail = next.summary?.trim() || t("chat.task.followup.failed");
           input.setRows((current) => [...current, createRow("system", detail, { dim: true, style: "error" })]);
         } else if (next.state === "cancelled") {
-          const detail = next.summary?.trim() || t("task.followup.cancelled");
+          const detail = next.summary?.trim() || t("chat.task.followup.cancelled");
           input.setRows((current) => [...current, createRow("system", detail, { dim: true, style: "cancelled" })]);
         }
         await input.persist();
         return;
       }
-      input.setRows((current) => [...current, createRow("system", t("task.followup.running_hint"), { dim: true })]);
+      input.setRows((current) => [...current, createRow("system", t("chat.task.followup.running_hint"), { dim: true })]);
     } catch {
       input.setRows((current) => [
         ...current,
-        createRow("system", t("task.followup.lost_tracking"), { dim: true, style: "error" }),
+        createRow("system", t("chat.task.followup.lost_tracking"), { dim: true, style: "error" }),
       ]);
     } finally {
       input.stopWorking();

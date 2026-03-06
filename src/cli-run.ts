@@ -19,6 +19,7 @@ import type { runShellCommand as runShellCommandType } from "./core-tools";
 import type { ResourceId } from "./resource-id";
 import type { ensureLocalServer as ensureLocalServerType } from "./server-daemon";
 import type { createSession as createSessionType } from "./storage";
+import { t } from "./i18n";
 
 const RUN_MODE_SYSTEM_PROMPT =
   "Run mode: act decisively — make reasonable defaults instead of asking clarifying questions. Answer concisely (prefer <=5 lines). No option menus.";
@@ -133,7 +134,7 @@ export async function runMode(args: string[], deps: RunModeDeps): Promise<void> 
   try {
     parsed = parseRunArgs(args);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Invalid run args";
+    const message = error instanceof Error ? error.message : t("run.args.invalid");
     printError(message);
     process.exitCode = 1;
     return;
@@ -166,9 +167,9 @@ export async function runMode(args: string[], deps: RunModeDeps): Promise<void> 
   for (const filePath of parsed.files) {
     try {
       await attachFileToSession(session, filePath);
-      printDim(`Attached file context from ${filePath}`);
+      printDim(t("run.file_context.attached", { filePath }));
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
+      const message = error instanceof Error ? error.message : t("unknown_error");
       printError(message);
       process.exitCode = 1;
       return;

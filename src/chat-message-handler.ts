@@ -116,12 +116,12 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
       });
       input.setRows((current) => [...current, userRow]);
       startWorking();
-      input.setProgressText(t("progress.thinking"));
+      input.setProgressText(t("chat.progress.thinking"));
       try {
         const distilled = distillMemoryCandidate(naturalRememberDirective.content);
         await addMemory(distilled, { scope: naturalRememberDirective.scope });
         const label = naturalRememberDirective.scope === "project" ? "project" : "user";
-        const confirmation = t("remember.saved", { scope: label, content: distilled });
+        const confirmation = t("chat.remember.saved", { scope: label, content: distilled });
         const assistant = input.createMessage("assistant", confirmation);
         input.currentSession.messages.push(assistant);
         input.currentSession.updatedAt = input.nowIso();
@@ -130,7 +130,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
       } catch (error) {
         input.setRows((current) => [
           ...current,
-          createRow("system", error instanceof Error ? error.message : t("remember.failed"), { dim: true }),
+          createRow("system", error instanceof Error ? error.message : t("chat.remember.failed"), { dim: true }),
         ]);
       } finally {
         stopWorking();
@@ -167,7 +167,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
         try {
           const status = await input.client.status();
           if (statusPermissionMode(status) === "read") {
-            input.setRows((current) => [...current, createRow("system", t("write.confirm.required"))]);
+            input.setRows((current) => [...current, createRow("system", t("chat.write.confirm.required"))]);
             input.openWriteConfirmPanel(text);
             return;
           }
@@ -197,7 +197,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
     }
 
     startWorking();
-    input.setProgressText(t("progress.thinking"));
+    input.setProgressText(t("chat.progress.thinking"));
     const abortController = new AbortController();
     input.setInterrupt(() => abortController.abort());
     const thinkingStartedAt = Date.now();
@@ -284,7 +284,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
         input.currentSession.updatedAt = input.nowIso();
         await input.persist().catch(() => {});
       }
-      const errorContent = isAbortError(error) ? t("submit.interrupted") : formatSubmitError(error);
+      const errorContent = isAbortError(error) ? t("chat.submit.interrupted") : formatSubmitError(error);
       input.setRows((current) => [
         ...current,
         createRow("system", errorContent, {

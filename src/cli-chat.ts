@@ -7,6 +7,7 @@ import { resolveCliVersion } from "./cli-version";
 import { createClient } from "./client";
 import { nowIso } from "./datetime";
 import { buildFileContext } from "./file-context";
+import { t } from "./i18n";
 import { ensureLocalServer } from "./server-daemon";
 import type { Session, SessionState } from "./session-contract";
 import { acquireSessionLock, releaseSessionLock } from "./session-lock";
@@ -57,14 +58,14 @@ export async function chatModeWithOptions(options: { resumeLatest: boolean; resu
   const defaultModel = appConfig.model;
   const resolved = resolveResumeTarget(store, options);
   if (resolved?.kind === "not_found") {
-    printError(`No session found for prefix: ${resolved.prefix}`);
+    printError(t("chat.resume.not_found", { prefix: resolved.prefix }));
     process.exitCode = 1;
     return;
   }
   if (resolved?.kind === "ambiguous") {
     const sample = resolved.matches.slice(0, 6).map((item) => item.id);
-    printError(`Ambiguous prefix: ${resolved.prefix}`);
-    printDim(`Matches: ${sample.join(", ")}`);
+    printError(t("chat.resume.ambiguous", { prefix: resolved.prefix, matches: sample.join(", ") }));
+    printDim(t("chat.resume.matches", { matches: sample.join(", ") }));
     process.exitCode = 1;
     return;
   }
@@ -77,8 +78,8 @@ export async function chatModeWithOptions(options: { resumeLatest: boolean; resu
   store.activeSessionId = session.id;
   const lock = acquireSessionLock(session.id);
   if (!lock.ok) {
-    printError(`Session is already open in another process (pid ${lock.ownerPid}).`);
-    printDim(`Use: ${formatResumeCommand(session.id)}`);
+    printError(t("chat.session.locked", { pid: lock.ownerPid ?? "unknown" }));
+    printDim(t("chat.resume.use_command", { command: formatResumeCommand(session.id) }));
     process.exitCode = 1;
     return;
   }
@@ -110,7 +111,7 @@ export async function chatModeWithOptions(options: { resumeLatest: boolean; resu
     });
     if (output.isTTY) clearScreen();
     const resumeId = store.activeSessionId ?? session.id;
-    printDim(`Resume with: ${formatResumeCommand(resumeId)}`);
+    printDim(t("chat.resume.with_command", { command: formatResumeCommand(resumeId) }));
   } finally {
     releaseSessionLock(session.id);
   }

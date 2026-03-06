@@ -1,4 +1,5 @@
 import type { appConfig as appConfigType } from "./app-config";
+import { t } from "./i18n";
 import type {
   resolveChatApiUrl as resolveChatApiUrlType,
   resolveLocalDaemonApiUrl as resolveLocalDaemonApiUrlType,
@@ -69,11 +70,11 @@ export async function statusMode(args: string[], deps: StatusModeDeps): Promise<
       const localApiUrl = resolveLocalDaemonApiUrl(serverApiUrl, serverPort);
       const localStatus = await localServerStatus({ apiKey: serverApiKey, apiUrl: localApiUrl });
       if (!localStatus.running) {
-        printDim("Local server is not running. Start it with: acolyte server start");
+        printDim(t("cli.status.local_start_hint"));
         return;
       }
     }
-    const message = error instanceof Error ? error.message : "Unknown error";
+    const message = error instanceof Error ? error.message : t("unknown_error");
     printError(message);
     process.exitCode = 1;
   }

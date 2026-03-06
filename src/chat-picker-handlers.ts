@@ -61,8 +61,8 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
       input.currentSession.messages.push(msg);
       input.currentSession.updatedAt = input.nowIso();
       const label = args
-        ? t("skill.activated.with_args", { skill: skill.name })
-        : t("skill.activated", { skill: skill.name });
+        ? t("chat.skill.activated.with_args", { skill: skill.name })
+        : t("chat.skill.activated", { skill: skill.name });
       input.setRows((current) => [...current, createRow("system", label)]);
       await input.persist();
       return true;
@@ -74,7 +74,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
   const openSkillsPanel = async (): Promise<void> => {
     const skills = await loadSkills();
     if (skills.length === 0) {
-      input.setRows((current) => [...current, createRow("system", t("picker.skills.none"))]);
+      input.setRows((current) => [...current, createRow("system", t("chat.picker.skills.none"))]);
       return;
     }
     input.setPicker(
@@ -90,7 +90,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
   const openResumePanel = (): void => {
     const nextPicker = createResumePicker(input.store);
     if (!nextPicker) {
-      input.setRows((current) => [...current, createRow("system", t("picker.sessions.none"))]);
+      input.setRows((current) => [...current, createRow("system", t("chat.picker.sessions.none"))]);
       return;
     }
     input.setPicker(nextPicker);
@@ -126,11 +126,11 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
             input.currentSession.updatedAt = input.nowIso();
             input.setRows((current) => [
               ...current,
-              createRow("system", t("skill.activated", { skill: selected.name })),
+              createRow("system", t("chat.skill.activated", { skill: selected.name })),
             ]);
             await input.persist();
           } catch {
-            input.setRows((current) => [...current, createRow("system", t("skill.failed", { skill: selected.name }))]);
+            input.setRows((current) => [...current, createRow("system", t("chat.skill.failed", { skill: selected.name }))]);
           }
         }
         input.setPicker(null);
@@ -145,12 +145,12 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
             setPermissionMode(selected.mode);
             input.setRows((current) => [
               ...current,
-              createRow("system", t("permissions.changed", { mode: selected.mode, scope: "project" })),
+              createRow("system", t("chat.permissions.changed", { mode: selected.mode, scope: "project" })),
             ]);
           } catch (error) {
             input.setRows((current) => [
               ...current,
-              createRow("system", error instanceof Error ? error.message : t("permissions.failed")),
+              createRow("system", error instanceof Error ? error.message : t("chat.permissions.failed")),
             ]);
           }
         }
@@ -169,7 +169,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
             setModeModel(targetMode, nextModel);
             input.setRows((current) => [
               ...current,
-              createRow("system", t("model.changed.mode", { mode: targetMode, model: nextModel })),
+              createRow("system", t("chat.model.changed.mode", { mode: targetMode, model: nextModel })),
             ]);
           } else {
             await setConfigValue("model", nextModel, { scope: "project" });
@@ -178,13 +178,13 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
             input.setCurrentSession(nextSession);
             input.setRows((current) => [
               ...current,
-              createRow("system", t("model.changed.default", { model: nextModel })),
+              createRow("system", t("chat.model.changed.default", { model: nextModel })),
             ]);
           }
         } catch (error) {
           input.setRows((current) => [
             ...current,
-            createRow("system", error instanceof Error ? error.message : t("model.failed")),
+            createRow("system", error instanceof Error ? error.message : t("chat.model.failed")),
           ]);
         }
         input.setPicker(null);
@@ -209,17 +209,17 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
             await input.setServerPermissionMode("write");
             await input.persistPermissionMode("write", "project");
             setPermissionMode("write");
-            input.setRows((current) => [...current, createRow("system", t("permissions.switched.write"))]);
+            input.setRows((current) => [...current, createRow("system", t("chat.permissions.switched.write"))]);
             input.setValue("");
             input.queueInput(input.buildWriteResumePayload(state.prompt));
           } catch (error) {
             input.setRows((current) => [
               ...current,
-              createRow("system", error instanceof Error ? error.message : t("permissions.switch.failed")),
+              createRow("system", error instanceof Error ? error.message : t("chat.permissions.switch.failed")),
             ]);
           }
         } else {
-          input.setRows((current) => [...current, createRow("system", t("permissions.stay.read"))]);
+          input.setRows((current) => [...current, createRow("system", t("chat.permissions.stay.read"))]);
         }
         input.setPicker(null);
         return;

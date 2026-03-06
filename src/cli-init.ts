@@ -1,5 +1,6 @@
 import type { readFile as readFileType, writeFile as writeFileType } from "node:fs/promises";
 import { join } from "node:path";
+import { t } from "./i18n";
 import {
   type Provider,
   type ProviderApiEnvKey,
@@ -125,17 +126,17 @@ export async function initMode(args: string[], deps: InitModeDeps): Promise<void
   }
 
   let provider = parseInitProvider(args[0]);
-  if (!provider) provider = parseInitProvider(promptFn("Provider [openai|anthropic|gemini]: ")?.trim() ?? undefined);
+  if (!provider) provider = parseInitProvider(promptFn(t("cli.init.prompt.provider"))?.trim() ?? undefined);
   if (!provider) {
-    printError("Invalid provider. Use openai, anthropic, or gemini.");
+    printError(t("cli.init.provider.invalid"));
     process.exitCode = 1;
     return;
   }
 
   const envKey = envKeyForProvider(provider);
-  const apiKey = await promptHidden("API key: ");
+  const apiKey = await promptHidden(t("cli.init.prompt.api_key"));
   if (!apiKey) {
-    printError(`${envKey} cannot be empty.`);
+    printError(t("cli.init.api_key.empty", { envKey }));
     process.exitCode = 1;
     return;
   }
@@ -148,13 +149,13 @@ export async function initMode(args: string[], deps: InitModeDeps): Promise<void
     existing = "";
   }
   if (hasAnyProviderApiKey(existing)) {
-    printError("A provider API key already exists in .env. Remove it first to re-run init.");
+    printError(t("cli.init.api_key.exists"));
     process.exitCode = 1;
     return;
   }
   const next = upsertDotEnvValue(existing, envKey, apiKey);
   await writeFile(envPath, next, "utf8");
 
-  printDim(`Saved ${envKey} in ${envPath}`);
-  printDim("Next: bun run dev");
+  printDim(t("cli.init.saved", { envKey, path: envPath }));
+  printDim(t("cli.init.next"));
 }

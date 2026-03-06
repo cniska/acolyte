@@ -3,6 +3,7 @@ import type {
   requestLocalServerShutdown as requestLocalServerShutdownType,
   resolveLocalDaemonApiUrl as resolveLocalDaemonApiUrlType,
 } from "./cli-server";
+import { t } from "./i18n";
 import type {
   ensureLocalServer as ensureLocalServerType,
   localServerStatus as localServerStatusType,
@@ -66,18 +67,18 @@ export async function serveMode(args: string[], deps: ServeModeDeps): Promise<vo
       const localApiUrl = resolveLocalDaemonApiUrl(serverApiUrl, port);
       const status = await localServerStatus({ apiKey, apiUrl: localApiUrl });
       if (!status.running) {
-        printDim("Local server is not running.");
+        printDim(t("cli.serve.local_not_running"));
         return;
       }
-      if (status.pid) printDim(`Local server running (pid ${status.pid}) at ${status.apiUrl}`);
-      else printDim(`Local server running (external) at ${status.apiUrl}`);
+      if (status.pid) printDim(t("cli.serve.running_pid", { pid: status.pid, apiUrl: status.apiUrl ?? localApiUrl }));
+      else printDim(t("cli.serve.running_external", { apiUrl: status.apiUrl ?? localApiUrl }));
       return;
     }
     case "stop": {
       if (args.length > 1) return subcommandError("server");
       const stopped = await stopLocalServer({ apiKey });
       if (stopped) {
-        printDim("Stopped local server.");
+        printDim(t("cli.serve.stopped"));
         return;
       }
       const localApiUrl = resolveLocalDaemonApiUrl(serverApiUrl, port);
@@ -85,13 +86,13 @@ export async function serveMode(args: string[], deps: ServeModeDeps): Promise<vo
       if (status.running && !status.pid) {
         const shutdown = await requestLocalServerShutdown({ apiUrl: localApiUrl, apiKey });
         if (shutdown) {
-          printDim("Stopped local server.");
+          printDim(t("cli.serve.stopped"));
           return;
         }
-        printDim(`Unable to stop local server at ${status.apiUrl}. Stop it manually.`);
+        printDim(t("cli.serve.stop_manual", { apiUrl: status.apiUrl ?? localApiUrl }));
         return;
       }
-      printDim("Local server is not running.");
+      printDim(t("cli.serve.local_not_running"));
       return;
     }
     case "restart": {
@@ -103,7 +104,7 @@ export async function serveMode(args: string[], deps: ServeModeDeps): Promise<vo
         if (status.running && !status.pid) {
           const shutdown = await requestLocalServerShutdown({ apiUrl: localApiUrl, apiKey });
           if (!shutdown) {
-            printDim(`Unable to stop local server at ${status.apiUrl}. Stop it manually.`);
+            printDim(t("cli.serve.stop_manual", { apiUrl: status.apiUrl ?? localApiUrl }));
             return;
           }
         }

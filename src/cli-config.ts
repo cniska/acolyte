@@ -4,6 +4,7 @@ import type {
   setConfigValue as setConfigValueType,
   unsetConfigValue as unsetConfigValueType,
 } from "./config";
+import { t } from "./i18n";
 
 const CONFIG_LIST_KEY_COLUMN_WIDTH = 16;
 
@@ -78,7 +79,7 @@ export async function configMode(args: string[], deps: ConfigModeDeps): Promise<
     case "list": {
       const scope = parseScopeFlag(listArgs[0]);
       const config = scope ? await readConfigForScope(scope) : await readConfig();
-      if (scope) printDim(`${"scope:".padEnd(CONFIG_LIST_KEY_COLUMN_WIDTH)} ${scope}`);
+      if (scope) printDim(`${`${t("cli.config.scope")}`.padEnd(CONFIG_LIST_KEY_COLUMN_WIDTH)} ${scope}`);
       for (const name of VALID_CONFIG_KEYS) {
         const value = config[name];
         if (value === undefined || value === "") continue;
@@ -99,19 +100,19 @@ export async function configMode(args: string[], deps: ConfigModeDeps): Promise<
       const key = scope ? restArgs[1] : restArgs[0];
       const valueParts = scope ? restArgs.slice(2) : restArgs.slice(1);
       if (key === "apiKey") {
-        printError("Config apiKey is not supported. Use ACOLYTE_API_KEY in .env instead.");
+        printError(t("cli.config.api_key_unsupported"));
         process.exitCode = 1;
         return;
       }
       const isDottedKey = key?.includes(".") && VALID_CONFIG_KEY_SET.has(key.split(".")[0] ?? "");
       if (!key || (!VALID_CONFIG_KEY_SET.has(key) && !isDottedKey)) {
-        subcommandError("config", "Usage: acolyte config set <key> <value>");
+        subcommandError("config", t("cli.config.usage.set"));
         return;
       }
 
       const value = valueParts.join(" ").trim();
       if (!value) {
-        printError("Config value cannot be empty");
+        printError(t("cli.config.value_empty"));
         process.exitCode = 1;
         return;
       }
@@ -124,29 +125,29 @@ export async function configMode(args: string[], deps: ConfigModeDeps): Promise<
         process.exitCode = 1;
         return;
       }
-      printDim(`Saved config ${key} (${scope ?? "user"}).`);
+      printDim(t("cli.config.saved", { key, scope: scope ?? "user" }));
       return;
     }
     case "unset": {
       const scope = parseScopeFlag(restArgs[0]);
       const key = scope ? restArgs[1] : restArgs[0];
       if (key === "apiKey") {
-        printError("Config apiKey is not supported. Use ACOLYTE_API_KEY in .env instead.");
+        printError(t("cli.config.api_key_unsupported"));
         process.exitCode = 1;
         return;
       }
       const isDottedUnsetKey = key?.includes(".") && VALID_CONFIG_KEY_SET.has(key.split(".")[0] ?? "");
       if (!key || (!VALID_CONFIG_KEY_SET.has(key) && !isDottedUnsetKey)) {
-        subcommandError("config", "Usage: acolyte config unset <key>");
+        subcommandError("config", t("cli.config.usage.unset"));
         return;
       }
 
       await unsetConfigValue(key, { scope: scope ?? "user" });
-      printDim(`Removed config ${key} (${scope ?? "user"}).`);
+      printDim(t("cli.config.removed", { key, scope: scope ?? "user" }));
       return;
     }
     default:
       subcommandError("config");
-      printDim(`Keys: ${VALID_CONFIG_KEYS.join(", ")}`);
+      printDim(t("cli.config.keys", { keys: VALID_CONFIG_KEYS.join(", ") }));
   }
 }

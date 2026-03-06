@@ -6,6 +6,7 @@ import { formatThoughtDuration } from "./chat-format";
 import type { Message } from "./chat-message";
 import type { Client, StreamEvent } from "./client";
 import { buildFileContext } from "./file-context";
+import { t } from "./i18n";
 import { countLabel } from "./plural";
 import type { Session } from "./session-contract";
 
@@ -40,7 +41,7 @@ export async function resolveReferencedFileContext(userText: string): Promise<{
 }
 
 export function unresolvedPathRows(unresolvedPaths: string[]): ChatRow[] {
-  return unresolvedPaths.map((pathInput) => createRow("system", `No file or folder found: @${pathInput}`));
+  return unresolvedPaths.map((pathInput) => createRow("system", t("chat.unresolved_path", { path: pathInput })));
 }
 
 export function appendInputHistory(history: string[], value: string, maxEntries = 200): string[] {
@@ -132,7 +133,7 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
     const details: string[] = [];
     if (toolCount > 0) details.push(countLabel(toolCount, "tool", "tools"));
     const suffix = details.length > 0 ? ` (${details.join(" · ")})` : "";
-    rows.push(createRow("assistant", `Worked ${duration}${suffix}`, { dim: true, style: "worked" }));
+    rows.push(createRow("assistant", t("chat.worked", { duration, suffix }), { dim: true, style: "worked" }));
   }
 
   return {
