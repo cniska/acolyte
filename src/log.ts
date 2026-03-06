@@ -29,10 +29,7 @@ function redactString(value: string): string {
       /((?:api[_-]?key|access[_-]?token|refresh[_-]?token|session[_-]?token|password|secret)\s*[=:]\s*)[^\s,;&]+/gi,
       "$1[REDACTED]",
     )
-    .replace(
-      /([?&](?:api[_-]?key|access_token|refresh_token|session_token|password|secret)=)[^&\s]+/gi,
-      "$1[REDACTED]",
-    )
+    .replace(/([?&](?:api[_-]?key|access_token|refresh_token|session_token|password|secret)=)[^&\s]+/gi, "$1[REDACTED]")
     .replace(/\bsk-[A-Za-z0-9]{8,}\b/g, REDACTED);
 }
 

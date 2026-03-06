@@ -1,13 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import type { ChatRequest } from "./api";
 import { appConfig, setPermissionMode } from "./app-config";
-import { createServerFetchHandler } from "./server-http";
 import type { RunChatHandlers, StatusPayload } from "./server-contract";
+import { createServerFetchHandler } from "./server-http";
 import { savedPermissionMode } from "./test-utils";
 
 function createTestDeps(overrides: Partial<Parameters<typeof createServerFetchHandler>[0]> = {}) {
   return {
-    createStatusPayload: async () => ({ ok: true } as unknown as StatusPayload),
+    createStatusPayload: async () => ({ ok: true }) as unknown as StatusPayload,
     hasValidAuth: () => true,
     isChatRequest: (value: unknown): value is ChatRequest => {
       if (!value || typeof value !== "object") return false;
@@ -153,9 +153,6 @@ describe("server-http auth coverage", () => {
     expect(unauthorized?.status).toBe(401);
     expect(authorized?.status).toBe(400);
     expect(upgradeCalls).toBe(1);
-    expect(seenUrls).toEqual([
-      "http://localhost/v1/rpc?apiKey=wrong",
-      "http://localhost/v1/rpc?apiKey=test-key",
-    ]);
+    expect(seenUrls).toEqual(["http://localhost/v1/rpc?apiKey=wrong", "http://localhost/v1/rpc?apiKey=test-key"]);
   });
 });
