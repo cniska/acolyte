@@ -16,6 +16,7 @@ import {
 import { compactText } from "./compact-text";
 import { setConfigValue } from "./config";
 import type { ConfigScope, PermissionMode } from "./config-contract";
+import { t } from "./i18n";
 import type { Session, SessionState } from "./session-contract";
 import { findSkillByName, loadSkills, readSkillInstructions } from "./skills";
 
@@ -59,7 +60,9 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
       const msg = input.createMessage("system", `Active skill (${skill.name}):\n${compactedInstructions}`);
       input.currentSession.messages.push(msg);
       input.currentSession.updatedAt = input.nowIso();
-      const label = args ? `Activated skill: ${skill.name} (with arguments)` : `Activated skill: ${skill.name}`;
+      const label = args
+        ? t("skill.activated.with_args", { skill: skill.name })
+        : t("skill.activated", { skill: skill.name });
       input.setRows((current) => [...current, createRow("system", label)]);
       await input.persist();
       return true;
@@ -71,7 +74,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
   const openSkillsPanel = async (): Promise<void> => {
     const skills = await loadSkills();
     if (skills.length === 0) {
-      input.setRows((current) => [...current, createRow("system", "No skills found in ./.agents/skills.")]);
+      input.setRows((current) => [...current, createRow("system", t("picker.skills.none"))]);
       return;
     }
     input.setPicker(
@@ -87,7 +90,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
   const openResumePanel = (): void => {
     const nextPicker = createResumePicker(input.store);
     if (!nextPicker) {
-      input.setRows((current) => [...current, createRow("system", "No saved sessions.")]);
+      input.setRows((current) => [...current, createRow("system", t("picker.sessions.none"))]);
       return;
     }
     input.setPicker(nextPicker);
@@ -121,10 +124,13 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
             const msg = input.createMessage("system", `Active skill (${selected.name}):\n${compactedInstructions}`);
             input.currentSession.messages.push(msg);
             input.currentSession.updatedAt = input.nowIso();
-            input.setRows((current) => [...current, createRow("system", `Activated skill: ${selected.name}`)]);
+            input.setRows((current) => [
+              ...current,
+              createRow("system", t("skill.activated", { skill: selected.name })),
+            ]);
             await input.persist();
           } catch {
-            input.setRows((current) => [...current, createRow("system", `Failed to activate skill: ${selected.name}`)]);
+            input.setRows((current) => [...current, createRow("system", t("skill.failed", { skill: selected.name }))]);
           }
         }
         input.setPicker(null);
@@ -139,12 +145,12 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
             setPermissionMode(selected.mode);
             input.setRows((current) => [
               ...current,
-              createRow("system", `Changed permissions to ${selected.mode} (project).`),
+              createRow("system", t("permissions.changed", { mode: selected.mode, scope: "project" })),
             ]);
           } catch (error) {
             input.setRows((current) => [
               ...current,
-              createRow("system", error instanceof Error ? error.message : "Failed to set permission mode."),
+              createRow("system", error instanceof Error ? error.message : t("permissions.failed")),
             ]);
           }
         }
@@ -157,24 +163,28 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
         const nextModel = selected?.model === "other" ? (custom.success ? custom.data : undefined) : selected?.model;
         if (!nextModel) return;
         try {
-          if (state.targetMode) {
-            await setConfigValue(`models.${state.targetMode}`, nextModel, { scope: "project" });
-            setModeModel(state.targetMode, nextModel);
+          const targetMode = state.targetMode;
+          if (targetMode) {
+            await setConfigValue(`models.${targetMode}`, nextModel, { scope: "project" });
+            setModeModel(targetMode, nextModel);
             input.setRows((current) => [
               ...current,
-              createRow("system", `Changed ${state.targetMode} mode model to ${nextModel}.`),
+              createRow("system", t("model.changed.mode", { mode: targetMode, model: nextModel })),
             ]);
           } else {
             await setConfigValue("model", nextModel, { scope: "project" });
             setDefaultModel(nextModel);
             const nextSession: Session = { ...input.currentSession, model: nextModel, updatedAt: input.nowIso() };
             input.setCurrentSession(nextSession);
-            input.setRows((current) => [...current, createRow("system", `Changed default model to ${nextModel}.`)]);
+            input.setRows((current) => [
+              ...current,
+              createRow("system", t("model.changed.default", { model: nextModel })),
+            ]);
           }
         } catch (error) {
           input.setRows((current) => [
             ...current,
-            createRow("system", error instanceof Error ? error.message : "Failed to set model."),
+            createRow("system", error instanceof Error ? error.message : t("model.failed")),
           ]);
         }
         input.setPicker(null);
@@ -199,17 +209,17 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
             await input.setServerPermissionMode("write");
             await input.persistPermissionMode("write", "project");
             setPermissionMode("write");
-            input.setRows((current) => [...current, createRow("system", "Switched to write mode.")]);
+            input.setRows((current) => [...current, createRow("system", t("permissions.switched.write"))]);
             input.setValue("");
             input.queueInput(input.buildWriteResumePayload(state.prompt));
           } catch (error) {
             input.setRows((current) => [
               ...current,
-              createRow("system", error instanceof Error ? error.message : "Failed to switch permission mode."),
+              createRow("system", error instanceof Error ? error.message : t("permissions.switch.failed")),
             ]);
           }
         } else {
-          input.setRows((current) => [...current, createRow("system", "Staying in read mode.")]);
+          input.setRows((current) => [...current, createRow("system", t("permissions.stay.read"))]);
         }
         input.setPicker(null);
         return;

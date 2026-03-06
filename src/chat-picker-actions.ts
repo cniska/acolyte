@@ -3,6 +3,7 @@ import { appConfig } from "./app-config";
 import { type ChatRow, createRow } from "./chat-commands";
 import type { PickerState } from "./chat-picker";
 import type { PermissionMode } from "./config-contract";
+import { t } from "./i18n";
 import { providerFromModel, suggestedModelsForProvider } from "./provider-config";
 import type { Provider } from "./provider-contract";
 import type { Session, SessionState } from "./session-contract";
@@ -43,7 +44,7 @@ export function createResumePicker(store: SessionState, limit = 20): PickerState
 export function createResumeRows(session: Session, toRows: (messages: Session["messages"]) => ChatRow[]): ChatRow[] {
   return [
     ...toRows(session.messages),
-    createRow("assistant", `Resumed session: ${session.id}`, { style: "sessionStatus" }),
+    createRow("assistant", t("resume.resumed", { sessionId: session.id }), { style: "sessionStatus" }),
   ];
 }
 
