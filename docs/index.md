@@ -22,6 +22,7 @@ Developer documentation for Acolyte.
 ## Reference
 
 - [protocol.md](./protocol.md)
+- [localization.md](./localization.md)
 - [testing.md](./testing.md)
 - [features.md](./features.md)
 - [faq.md](./faq.md)
