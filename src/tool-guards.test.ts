@@ -72,44 +72,6 @@ describe("verify-ran guard", () => {
   });
 });
 
-describe("no-shell-read-fallback guard", () => {
-  test("blocks shell file-reading fallback commands", () => {
-    const session = createSessionContext();
-    expect(() =>
-      runGuards({ toolName: "run-command", args: { command: "sed -n '1,50p' src/cli.ts" }, session }),
-    ).toThrow(/Do not use shell commands for file reading\/searching/);
-  });
-
-  test("allows verify/test style run-command invocations", () => {
-    const session = createSessionContext();
-    expect(() => runGuards({ toolName: "run-command", args: { command: "bun run verify" }, session })).not.toThrow();
-    expect(() => runGuards({ toolName: "run-command", args: { command: "bun run test" }, session })).not.toThrow();
-  });
-
-  test("blocks disallowed shell read fallback even when command contains allowed keywords", () => {
-    const session = createSessionContext();
-    expect(() => runGuards({ toolName: "run-command", args: { command: "cat coverage/lcov.info" }, session })).toThrow(
-      /Do not use shell commands for file reading\/searching/,
-    );
-  });
-});
-
-describe("no-broad-git-add guard", () => {
-  test("blocks git add -A", () => {
-    const session = createSessionContext();
-    expect(() => runGuards({ toolName: "run-command", args: { command: "git add -A" }, session })).toThrow(
-      /Do not use broad git add/,
-    );
-  });
-
-  test("allows explicit git add paths", () => {
-    const session = createSessionContext();
-    expect(() =>
-      runGuards({ toolName: "run-command", args: { command: "git add src/app.ts docs/notes.md" }, session }),
-    ).not.toThrow();
-  });
-});
-
 describe("excessive-file-loop guard", () => {
   test("blocks immediate duplicate read-file call on same path and range", () => {
     const session = createSessionContext();

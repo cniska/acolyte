@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { type ChatRequest, verifyScopeSchema } from "./api";
 import { appConfig } from "./app-config";
 import { createDebugLogger } from "./debug-flags";
-import { buildStreamErrorDetail, errorIdSchema } from "./error-handling";
+import { buildStreamErrorDetail, errorIdSchema, parseErrorInfo } from "./error-handling";
 import { runLifecycle } from "./lifecycle";
 import { errorToLogFields, log } from "./log";
 import { isProviderAvailable, providerFromModel } from "./provider-config";
@@ -12,7 +12,6 @@ import { parseResourceId, projectResourceIdFromWorkspace } from "./resource-id";
 import type { RunChatHandlers, StreamErrorPayload } from "./server-contract";
 import { createId } from "./short-id";
 import { createSoulPrompt } from "./soul";
-import { extractToolErrorCode } from "./tool-error-codes";
 
 const OPENAI_API_KEY = appConfig.openai.apiKey;
 const OPENAI_BASE_URL = appConfig.openai.baseUrl;
@@ -106,12 +105,13 @@ function nextErrorId(): string {
 
 export function streamErrorPayload(error: unknown): StreamErrorPayload {
   const errorId = nextErrorId();
-  const errorMessage = error instanceof Error ? error.message : "Unknown error";
-  const extractedCode = extractToolErrorCode(errorMessage);
+  const parsed = parseErrorInfo(error);
+  const errorMessage = parsed.ok ? parsed.value.message : error instanceof Error ? error.message : "Unknown error";
   const { errorCode, errorDetail } = buildStreamErrorDetail(
     {
       message: errorMessage,
-      code: extractedCode,
+      code: parsed.ok ? parsed.value.code : undefined,
+      kind: parsed.ok ? parsed.value.kind : undefined,
       source: "server",
       unknownErrorCount: 1,
     },

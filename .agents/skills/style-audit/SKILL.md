@@ -19,6 +19,7 @@ Focus on:
 - control flow shape: prefer guard clauses and early returns over nested `if/else` chains
 - no banner or separator comments; let code structure speak for itself
 - avoiding local anti-patterns (unused params, dead branches, ad-hoc fallbacks)
+- error classification consistency: prefer structured `kind` contracts over message regex heuristics
 - module layout consistency (flat `src/`, `*-contract`, `*-http`, `*-rpc`, no unnecessary re-export layers)
 - export shape consistency: prefer direct `export const` declarations over local alias + `export { ... }` wrappers
 
@@ -59,3 +60,4 @@ Then inspect relevant files for the feature under review.
 - Enforcing generic style-guide dogma over local conventions.
 - Broad rewrites over minimal diffs.
 - Speculative abstractions.
+- Message-text parsing as primary control flow when a typed contract can be enforced.

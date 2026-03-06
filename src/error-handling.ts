@@ -3,7 +3,9 @@ import { unreachable } from "./assert";
 import { domainIdSchema } from "./id-contract";
 import type { StreamErrorDetail } from "./stream-error";
 import {
+  ERROR_KINDS,
   type ErrorCode,
+  type ErrorKind,
   extractToolErrorCode,
   hasToolErrorCode,
   LIFECYCLE_ERROR_CODES,
@@ -13,7 +15,7 @@ import {
 export type ErrorCategory = "timeout" | "file-not-found" | "guard-blocked" | "other";
 export type ErrorSource = "generate" | "tool-result" | "tool-error" | "server";
 export type AppError<TCode extends string = string, TMeta = unknown> = Error & { code: TCode; meta?: TMeta };
-export type ParsedError = { message: string; code?: string };
+export type ParsedError = { message: string; code?: string; kind?: string };
 export type ParseErrorResult = { ok: true; value: ParsedError } | { ok: false; error: "invalid_error_payload" };
 export type RecoveryAction = "stop-unknown-budget" | "none";
 export type RecoveryDecision = { action: RecoveryAction; retryable: boolean };
@@ -54,16 +56,11 @@ export function isFileNotFoundSignal(text: string): boolean {
   return /\b(?:does not exist|doesn't exist|no such file|not found|ENOENT)\b/i.test(text);
 }
 
-function isGuardBlockedSignal(text: string): boolean {
-  return /cannot delete|do not use shell commands|repeated .* detected|already read .* this turn/i.test(text);
-}
-
 type ErrorCategoryRule = { category: ErrorCategory; matches: (message: string) => boolean };
 
 const ERROR_CATEGORY_RULES: readonly ErrorCategoryRule[] = [
   { category: "timeout", matches: (message) => /timed out|timeout/i.test(message) },
   { category: "file-not-found", matches: isFileNotFoundSignal },
-  { category: "guard-blocked", matches: isGuardBlockedSignal },
 ];
 
 export function classifyErrorCategory(message: string): ErrorCategory {
@@ -88,6 +85,36 @@ export function categoryFromErrorCode(code?: string): ErrorCategory | undefined 
   }
 }
 
+export function categoryFromErrorKind(kind?: string): ErrorCategory | undefined {
+  switch (kind) {
+    case ERROR_KINDS.timeout:
+      return "timeout";
+    case ERROR_KINDS.fileNotFound:
+      return "file-not-found";
+    case ERROR_KINDS.guardBlocked:
+      return "guard-blocked";
+    case ERROR_KINDS.unknown:
+      return "other";
+    default:
+      return undefined;
+  }
+}
+
+export function errorKindFromCategory(category: ErrorCategory): ErrorKind {
+  switch (category) {
+    case "timeout":
+      return ERROR_KINDS.timeout;
+    case "file-not-found":
+      return ERROR_KINDS.fileNotFound;
+    case "guard-blocked":
+      return ERROR_KINDS.guardBlocked;
+    case "other":
+      return ERROR_KINDS.unknown;
+    default:
+      return unreachable(category);
+  }
+}
+
 export function errorCodeFromCategory(category: ErrorCategory): ErrorCode {
   switch (category) {
     case "timeout":
@@ -107,19 +134,33 @@ export function parseErrorInfo(value: unknown): ParseErrorResult {
   if (typeof value === "string") return { ok: true, value: { message: value, code: extractToolErrorCode(value) } };
   if (value instanceof Error) {
     const code = "code" in value && typeof value.code === "string" ? value.code : extractToolErrorCode(value.message);
-    return { ok: true, value: { message: value.message, code } };
+    const kind = "kind" in value && typeof value.kind === "string" ? value.kind : undefined;
+    return { ok: true, value: { message: value.message, code, kind } };
   }
   if (typeof value === "object" && value !== null) {
-    const rec = value as { message?: unknown; error?: unknown; code?: unknown };
+    const rec = value as { message?: unknown; error?: unknown; code?: unknown; kind?: unknown };
     if (typeof rec.message === "string") {
       const code = typeof rec.code === "string" ? rec.code : extractToolErrorCode(rec.message);
-      return { ok: true, value: { message: rec.message, code } };
+      const kind = typeof rec.kind === "string" ? rec.kind : undefined;
+      return { ok: true, value: { message: rec.message, code, kind } };
     }
     if (typeof rec.error === "string") {
       const code = typeof rec.code === "string" ? rec.code : extractToolErrorCode(rec.error);
-      return { ok: true, value: { message: rec.error, code } };
+      const kind = typeof rec.kind === "string" ? rec.kind : undefined;
+      return { ok: true, value: { message: rec.error, code, kind } };
     }
-    if (rec.error !== undefined) return parseErrorInfo(rec.error);
+    if (rec.error !== undefined) {
+      const nested = parseErrorInfo(rec.error);
+      if (!nested.ok) return nested;
+      return {
+        ok: true,
+        value: {
+          ...nested.value,
+          code: typeof rec.code === "string" ? rec.code : nested.value.code,
+          kind: typeof rec.kind === "string" ? rec.kind : nested.value.kind,
+        },
+      };
+    }
   }
   return { ok: false, error: "invalid_error_payload" };
 }
@@ -145,6 +186,7 @@ export function buildStreamErrorDetail(
   input: {
     message: string;
     code?: string;
+    kind?: string;
     source?: ErrorSource;
     tool?: string;
     unknownErrorCount: number;
@@ -152,8 +194,14 @@ export function buildStreamErrorDetail(
   unknownErrorBudget: number,
 ): { errorCode: string; category: ErrorCategory; errorDetail: StreamErrorDetail } {
   const derivedCategory = classifyErrorCategory(input.message);
-  const errorCode = input.code ?? extractToolErrorCode(input.message) ?? errorCodeFromCategory(derivedCategory);
-  const category = categoryFromErrorCode(errorCode) ?? derivedCategory;
+  const kindCategory = categoryFromErrorKind(input.kind);
+  const errorCode =
+    input.code ??
+    extractToolErrorCode(input.message) ??
+    (kindCategory ? errorCodeFromCategory(kindCategory) : undefined) ??
+    errorCodeFromCategory(derivedCategory);
+  const category = categoryFromErrorCode(errorCode) ?? kindCategory ?? derivedCategory;
+  const errorKind = input.kind ?? errorKindFromCategory(category);
   const decision = recoveryDecisionForError(
     { errorCode, unknownErrorCount: input.unknownErrorCount },
     unknownErrorBudget,
@@ -164,6 +212,7 @@ export function buildStreamErrorDetail(
     errorDetail: {
       code: errorCode,
       category,
+      kind: errorKind,
       source: input.source,
       tool: input.tool,
       retryable: decision.retryable,

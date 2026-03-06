@@ -187,47 +187,6 @@ describe("guard regression integration", () => {
     expect(reply.toolCalls).toEqual(["run-command"]);
   }, 20_000);
 
-  test("no-shell-read-fallback guard blocks shell read fallback commands", async () => {
-    const reply = await runGuardIntegrationScenario(
-      "[int:no-shell-read-fallback] Try shell read fallback, then use read-file.",
-      "sess_guard-regression-no-shell-read-fallback",
-      ({ model, responseCounter, sourceText, outputs, body }) => {
-        if (sourceText.includes("[int:no-shell-read-fallback]")) {
-          const runToolName = pickFunctionToolName(body.tools, "run-command", ["run", "command", "terminal"]);
-          const readToolName = pickFunctionToolName(body.tools, "read-file", ["read", "file"]);
-          if (outputs.length === 0) {
-            return createToolCallsPayload(model, responseCounter, [
-              {
-                id: "fc_shell_read_1",
-                callId: "call_shell_read_1",
-                name: runToolName,
-                args: JSON.stringify({ command: "cat src/lifecycle.ts" }),
-              },
-            ]);
-          }
-
-          const lastCallId = outputs[outputs.length - 1]?.callId;
-          if (lastCallId === "call_shell_read_1") {
-            return createToolCallsPayload(model, responseCounter, [
-              {
-                id: "fc_read_file_1",
-                callId: "call_read_file_1",
-                name: readToolName,
-                args: JSON.stringify({ paths: [{ path: "src/lifecycle.ts" }] }),
-              },
-            ]);
-          }
-
-          return createMessagePayload(model, responseCounter, "Done.");
-        }
-        return createMessagePayload(model, responseCounter, "ok");
-      },
-    );
-
-    expect(reply.output).toContain("Done");
-    expect(reply.toolCalls).toEqual(["read-file"]);
-  }, 20_000);
-
   test("no-rewrite guard blocks delete-file after reading the same file", async () => {
     const reply = await runGuardIntegrationScenario(
       "[int:no-rewrite] Read a file and then try to delete it.",

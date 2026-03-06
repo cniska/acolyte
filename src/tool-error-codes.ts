@@ -11,19 +11,28 @@ export const LIFECYCLE_ERROR_CODES = {
 } as const;
 export type LifecycleErrorCode = (typeof LIFECYCLE_ERROR_CODES)[keyof typeof LIFECYCLE_ERROR_CODES];
 export type ErrorCode = ToolErrorCode | LifecycleErrorCode;
+export const ERROR_KINDS = {
+  timeout: "timeout",
+  fileNotFound: "file_not_found",
+  guardBlocked: "guard_blocked",
+  unknown: "unknown",
+} as const;
+export type ErrorKind = (typeof ERROR_KINDS)[keyof typeof ERROR_KINDS];
 
 export class ToolError extends Error {
   code: string;
+  kind?: ErrorKind;
 
-  constructor(code: string, message: string) {
+  constructor(code: string, message: string, kind?: ErrorKind) {
     super(message);
     this.name = "ToolError";
     this.code = code;
+    this.kind = kind;
   }
 }
 
-export function createToolError(code: string, message: string): ToolError {
-  return new ToolError(code, message);
+export function createToolError(code: string, message: string, kind?: ErrorKind): ToolError {
+  return new ToolError(code, message, kind);
 }
 
 export function encodeToolError(code: string, message: string): string {

@@ -146,19 +146,6 @@ function redundantQueryKind(input: {
   return null;
 }
 
-function isShellReadFallback(command: string): boolean {
-  const trimmed = command.trim();
-  if (trimmed.length === 0) return false;
-  const normalized = trimmed.replace(/\s+/g, " ").toLowerCase();
-  const disallowed = /\b(cat|sed|head|tail|nl|wc|ls|find|grep|rg)\b/;
-  return disallowed.test(normalized);
-}
-
-function isBroadGitAdd(command: string): boolean {
-  const normalized = command.trim().replace(/\s+/g, " ").toLowerCase();
-  return /\bgit add (?:-a|--all|\.)\b/.test(normalized);
-}
-
 function normalizeGuardArgValue(value: unknown): unknown {
   if (typeof value === "string") return value.trim();
   if (Array.isArray(value)) {
@@ -445,34 +432,6 @@ const verifyRanGuard: ToolGuard = {
   },
 };
 
-const noShellReadFallbackGuard: ToolGuard = {
-  id: "no-shell-read-fallback",
-  description: "Block run-command shell fallbacks for file discovery/reading tools.",
-  appliesTo: ["run-command"],
-  check({ toolName, args, session }) {
-    const command = typeof args.command === "string" ? args.command : "";
-    if (!isShellReadFallback(command)) return;
-    session.onGuard?.({ guardId: "no-shell-read-fallback", toolName, action: "blocked", detail: command });
-    throw new Error(
-      "Do not use shell commands for file reading/searching. Use read-file, find-files, or search-files instead.",
-    );
-  },
-};
-
-const noBroadGitAddGuard: ToolGuard = {
-  id: "no-broad-git-add",
-  description: "Block broad git add patterns that commonly stage generated artifacts.",
-  appliesTo: ["run-command"],
-  check({ toolName, args, session }) {
-    const command = typeof args.command === "string" ? args.command : "";
-    if (!isBroadGitAdd(command)) return;
-    session.onGuard?.({ guardId: "no-broad-git-add", toolName, action: "blocked", detail: command });
-    throw new Error(
-      "Do not use broad git add (-A/--all/.). Stage only intentional paths so generated artifacts are not committed.",
-    );
-  },
-};
-
 const GUARDS: ToolGuard[] = [
   duplicateConsecutiveCallGuard,
   noRewriteGuard,
@@ -480,8 +439,6 @@ const GUARDS: ToolGuard[] = [
   excessiveFindLoopGuard,
   excessiveSearchLoopGuard,
   verifyRanGuard,
-  noShellReadFallbackGuard,
-  noBroadGitAddGuard,
 ];
 
 export function runGuards(input: GuardInput): void {

@@ -33,6 +33,7 @@ export type ToolErrorPayload = {
   error?: unknown;
   message?: string;
   code?: unknown;
+  kind?: unknown;
   toolName?: string;
   toolCallId?: string;
 };

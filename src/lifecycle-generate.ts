@@ -6,9 +6,11 @@ import { appConfig } from "./app-config";
 import {
   buildStreamErrorDetail,
   categoryFromErrorCode,
+  categoryFromErrorKind,
   classifyErrorCategory,
   type ErrorSource,
   errorCodeFromCategory,
+  errorKindFromCategory,
   isEditFileMultiMatchSignal,
   parseErrorInfo,
 } from "./error-handling";
@@ -43,13 +45,19 @@ function formatToolArgs(args: Record<string, unknown>): Record<string, string | 
 function captureError(
   ctx: RunContext,
   message: string,
-  meta?: { source?: ErrorSource; tool?: string; code?: string },
+  meta?: { source?: ErrorSource; tool?: string; code?: string; kind?: string },
 ): void {
   ctx.lastError = message;
   const derivedCategory = classifyErrorCategory(message);
-  const code = meta?.code ?? extractToolErrorCode(message) ?? errorCodeFromCategory(derivedCategory);
+  const kindCategory = categoryFromErrorKind(meta?.kind);
+  const code =
+    meta?.code ??
+    extractToolErrorCode(message) ??
+    (kindCategory ? errorCodeFromCategory(kindCategory) : undefined) ??
+    errorCodeFromCategory(derivedCategory);
   ctx.lastErrorCode = code;
-  const category = categoryFromErrorCode(code) ?? derivedCategory;
+  const category = categoryFromErrorCode(code) ?? kindCategory ?? derivedCategory;
+  const kind = meta?.kind ?? errorKindFromCategory(category);
   ctx.lastErrorCategory = category;
   ctx.lastErrorSource = meta?.source;
   ctx.lastErrorTool = meta?.tool;
@@ -59,6 +67,7 @@ function captureError(
     source: meta?.source ?? "generate",
     tool: meta?.tool ?? null,
     code: code ?? null,
+    kind,
     category,
     message: message.length > 240 ? `${message.slice(0, 239)}…` : message,
   });
@@ -70,6 +79,7 @@ function currentErrorDetail(ctx: RunContext): StreamErrorDetail | undefined {
     {
       message: ctx.lastError,
       code: ctx.lastErrorCode,
+      kind: ctx.lastErrorCategory ? errorKindFromCategory(ctx.lastErrorCategory) : undefined,
       source: ctx.lastErrorSource,
       tool: ctx.lastErrorTool,
       unknownErrorCount: ctx.errorStats.other,
@@ -304,6 +314,7 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
             source: "tool-result",
             tool: toolName,
             code: resultCode ?? errorInfo.code,
+            kind: errorInfo.kind,
           });
           ctx.debug("lifecycle.tool.error", { tool: toolName, error: ctx.lastError });
           ctx.debug("lifecycle.tool.result", {
@@ -333,9 +344,15 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
       const parsed = parseErrorInfo(raw);
       const errorInfo = parsed.ok ? parsed.value : { message: "Tool error" };
       const payloadCode = typeof p?.code === "string" ? p.code : undefined;
+      const payloadKind = typeof p?.kind === "string" ? p.kind : undefined;
       const errorMsg = errorInfo.message;
       const toolName = p?.toolName ?? "";
-      captureError(ctx, errorMsg, { source: "tool-error", tool: toolName, code: payloadCode ?? errorInfo.code });
+      captureError(ctx, errorMsg, {
+        source: "tool-error",
+        tool: toolName,
+        code: payloadCode ?? errorInfo.code,
+        kind: payloadKind ?? errorInfo.kind,
+      });
       ctx.debug("lifecycle.tool.error", { tool: toolName, error: errorMsg });
       if (p?.toolCallId && p?.toolName) {
         const started = ctx.toolCallStartedAt.get(p.toolCallId);

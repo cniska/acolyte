@@ -2,9 +2,11 @@ import { describe, expect, test } from "bun:test";
 import {
   buildStreamErrorDetail,
   categoryFromErrorCode,
+  categoryFromErrorKind,
   classifyErrorCategory,
   createErrorStats,
   errorCodeFromCategory,
+  errorKindFromCategory,
   isEditFileMultiMatchSignal,
   parseErrorInfo,
   recoveryActionForError,
@@ -21,11 +23,14 @@ describe("error handling helpers", () => {
   });
 
   test("parseErrorInfo handles nested object payload", () => {
-    const parsed = parseErrorInfo({ error: { message: "timeout", code: LIFECYCLE_ERROR_CODES.timeout } });
+    const parsed = parseErrorInfo({
+      error: { message: "timeout", code: LIFECYCLE_ERROR_CODES.timeout, kind: "timeout" },
+    });
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     expect(parsed.value.message).toBe("timeout");
     expect(parsed.value.code).toBe(LIFECYCLE_ERROR_CODES.timeout);
+    expect(parsed.value.kind).toBe("timeout");
   });
 
   test("parseErrorInfo returns invalid payload for unsupported shapes", () => {
@@ -36,8 +41,7 @@ describe("error handling helpers", () => {
   test("classifyErrorCategory maps known message signals", () => {
     expect(classifyErrorCategory("step timed out after 120000ms")).toBe("timeout");
     expect(classifyErrorCategory("src/utils.ts does not exist")).toBe("file-not-found");
-    expect(classifyErrorCategory("do not use shell commands as fallback")).toBe("guard-blocked");
-    expect(classifyErrorCategory('Already read "src/foo.ts" this turn.')).toBe("guard-blocked");
+    expect(classifyErrorCategory('Already read "src/foo.ts" this turn.')).toBe("other");
     expect(classifyErrorCategory("something unexpected happened")).toBe("other");
   });
 
@@ -51,6 +55,18 @@ describe("error handling helpers", () => {
     expect(errorCodeFromCategory("file-not-found")).toBe(LIFECYCLE_ERROR_CODES.fileNotFound);
     expect(errorCodeFromCategory("guard-blocked")).toBe(LIFECYCLE_ERROR_CODES.guardBlocked);
     expect(errorCodeFromCategory("other")).toBe(LIFECYCLE_ERROR_CODES.unknown);
+  });
+
+  test("category/kind mapping is stable", () => {
+    expect(categoryFromErrorKind("timeout")).toBe("timeout");
+    expect(categoryFromErrorKind("file_not_found")).toBe("file-not-found");
+    expect(categoryFromErrorKind("guard_blocked")).toBe("guard-blocked");
+    expect(categoryFromErrorKind("unknown")).toBe("other");
+
+    expect(errorKindFromCategory("timeout")).toBe("timeout");
+    expect(errorKindFromCategory("file-not-found")).toBe("file_not_found");
+    expect(errorKindFromCategory("guard-blocked")).toBe("guard_blocked");
+    expect(errorKindFromCategory("other")).toBe("unknown");
   });
 
   test("isEditFileMultiMatchSignal accepts code or legacy text signal", () => {
@@ -92,6 +108,7 @@ describe("error handling helpers", () => {
     expect(detail.errorDetail).toMatchObject({
       code: LIFECYCLE_ERROR_CODES.timeout,
       category: "timeout",
+      kind: "timeout",
       source: "server",
       retryable: false,
       recoveryAction: "none",

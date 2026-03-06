@@ -3,6 +3,7 @@ import { z } from "zod";
 export const streamErrorDetailSchema = z.object({
   code: z.string().optional(),
   category: z.string().optional(),
+  kind: z.string().optional(),
   source: z.string().optional(),
   tool: z.string().optional(),
   retryable: z.boolean().optional(),

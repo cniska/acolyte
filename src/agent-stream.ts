@@ -144,12 +144,17 @@ export function createAgentStream(
               typeof error === "object" && error !== null && "code" in error
                 ? (error as { code?: unknown }).code
                 : undefined;
+            const kind =
+              typeof error === "object" && error !== null && "kind" in error
+                ? (error as { kind?: unknown }).kind
+                : undefined;
             streamController.enqueue({
               type: "tool-error",
               payload: {
-                error: { message, ...(code ? { code } : {}) },
+                error: { message, ...(code ? { code } : {}), ...(kind ? { kind } : {}) },
                 message,
                 code,
+                kind,
                 toolName: tc.toolName,
                 toolCallId: tc.toolCallId,
               },
