@@ -552,6 +552,7 @@ describe("createInstructions", () => {
       expect(out).toContain("Soul.");
       expect(out).toContain("Prefer dedicated project tools; use shell only when no dedicated tool exists.");
       expect(out).toContain("Before taking action (tool call, command, or edit), write exactly one sentence");
+      expect(out).toContain("Keep tool calls and file changes within the current workspace and the requested scope.");
     }
   });
 

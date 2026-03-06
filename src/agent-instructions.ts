@@ -6,6 +6,7 @@ import { isToolName } from "./tool-names";
 const BASE_INSTRUCTIONS = [
   "- Before taking action (tool call, command, or edit), write exactly one sentence stating what you will do next.",
   "- Then execute directly; avoid extra process narration.",
+  "- Keep tool calls and file changes within the current workspace and the requested scope.",
   "- Prefer dedicated project tools; use shell only when no dedicated tool exists.",
   "- Keep responses concise and outcome-first; expand only when asked.",
   "- Make reasonable assumptions to keep momentum; ask only when blocked by ambiguity or risk.",
