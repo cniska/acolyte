@@ -1,3 +1,4 @@
+import { appConfig } from "./app-config";
 import type { EN_MESSAGES } from "./i18n/en";
 import { TRANSLATIONS, type TranslationLocale } from "./i18n/locales";
 
@@ -26,7 +27,7 @@ function interpolate(template: string, vars?: Record<string, TranslationValue>):
 
 export function t<K extends TranslationKey>(key: K, ...args: TranslationArgs<K>): string {
   const vars = (args[0] ?? undefined) as Record<string, TranslationValue> | undefined;
-  const locale: TranslationLocale = "en";
+  const locale: TranslationLocale = appConfig.locale;
   const templates = TRANSLATIONS[locale] ?? TRANSLATIONS.en;
   return interpolate(templates[key], vars);
 }

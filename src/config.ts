@@ -16,6 +16,7 @@ import {
 
 const DEFAULT_CONFIG = {
   port: 6767,
+  locale: "en" as const,
   model: "gpt-5-mini",
   openaiBaseUrl: "https://api.openai.com/v1",
   anthropicBaseUrl: "https://api.anthropic.com",
@@ -114,6 +115,7 @@ async function readConfigScope(scope: ConfigScope, options?: ConfigOptions): Pro
 function serializeToml(config: Config): string {
   const lines: string[] = [];
   if (typeof config.port === "number") lines.push(`port = ${config.port}`);
+  if (config.locale) lines.push(`locale = ${JSON.stringify(config.locale)}`);
   if (config.model) lines.push(`model = ${JSON.stringify(config.model)}`);
   if (config.models) {
     for (const [mode, m] of Object.entries(config.models)) {
@@ -158,6 +160,7 @@ function resolveConfig(config: Config): ResolvedConfig {
   const port = config.port ?? DEFAULT_CONFIG.port;
   return {
     port,
+    locale: config.locale ?? DEFAULT_CONFIG.locale,
     model,
     models: config.models ?? {},
     temperatures: config.temperatures ?? {},

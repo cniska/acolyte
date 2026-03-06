@@ -21,6 +21,7 @@ type ConfigModeDeps = {
 
 const VALID_CONFIG_KEYS = [
   "port",
+  "locale",
   "model",
   "models",
   "distillModel",

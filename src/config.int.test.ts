@@ -177,6 +177,7 @@ describe("config store", () => {
       join(dataDir, "config.toml"),
       [
         "port = 7777",
+        'locale = "en"',
         'model = "openai/gpt-5-mini"',
         'apiUrl = "http://localhost:6767"',
         'openaiBaseUrl = "https://openai.example.com/v1"',
@@ -204,6 +205,7 @@ describe("config store", () => {
 
     const loaded = readConfigSync({ homeDir: home, cwd: home });
     expect(loaded.port).toBe(7777);
+    expect(loaded.locale).toBe("en");
     expect(loaded.model).toBe("openai/gpt-5-mini");
     expect(loaded.permissionMode).toBe("write");
     expect(loaded.logFormat).toBe("json");
@@ -222,6 +224,7 @@ describe("config store", () => {
 
     const resolved = readResolvedConfigSync({ homeDir: home, cwd: home });
     expect(resolved.port).toBe(6767);
+    expect(resolved.locale).toBe("en");
     expect(resolved.model).toBe("anthropic/claude-sonnet-4");
     expect(resolved.models).toEqual({});
     expect(resolved.temperatures).toEqual({});
@@ -273,6 +276,17 @@ describe("config store", () => {
     await setConfigValue("memorySources", "distill_session, stored", { homeDir: home, cwd: home });
     const loaded = readConfigSync({ homeDir: home, cwd: home });
     expect(loaded.memorySources).toEqual(["distill_session", "stored"]);
+  });
+
+  test("setConfigValue supports locale", async () => {
+    const home = createDir("acolyte-config-home-");
+    const dataDir = join(home, ".acolyte");
+    mkdirSync(dataDir, { recursive: true });
+    writeFileSync(join(dataDir, "config.toml"), "", "utf8");
+
+    await setConfigValue("locale", "en", { homeDir: home, cwd: home });
+    const loaded = readConfigSync({ homeDir: home, cwd: home });
+    expect(loaded.locale).toBe("en");
   });
 
   test("setConfigValue allows memoryBudgetTokens to disable memory", async () => {
@@ -361,6 +375,9 @@ describe("config store", () => {
     );
     await expect(setConfigValue("temperatures.plan", "3", { homeDir: home, cwd: project })).rejects.toThrow(
       "Invalid value for temperatures.plan",
+    );
+    await expect(setConfigValue("locale", "xx", { homeDir: home, cwd: project })).rejects.toThrow(
+      "Invalid value for locale",
     );
   });
 

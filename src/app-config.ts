@@ -6,6 +6,7 @@ import { env } from "./env";
 const fileConfig = readResolvedConfigSync();
 
 export const appConfig = {
+  locale: fileConfig.locale,
   server: {
     port: fileConfig.port,
     apiKey: env.ACOLYTE_API_KEY,

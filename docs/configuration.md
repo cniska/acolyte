@@ -11,9 +11,15 @@ Paths:
 ```bash
 acolyte config list
 acolyte config set model gpt-5-mini
+acolyte config set locale en
 acolyte config set --project transportMode rpc
 acolyte config unset apiUrl
 ```
+
+## Localization
+
+- `locale`: active UI language (defaults to `en`).
+- Locale catalogs are loaded from `src/i18n/locales/*.json` at startup, with `en` fallback.
 
 ## Memory-related keys
 

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { agentModes } from "./agent-modes";
+import { type TranslationLocale, translationLocaleSchema } from "./i18n/locales";
 
 export const permissionModeSchema = z.enum(["read", "write"]);
 export type PermissionMode = z.infer<typeof permissionModeSchema>;
@@ -54,6 +55,7 @@ const modeTemperatureMapSchema = z
 
 export interface Config {
   port?: number;
+  locale?: TranslationLocale;
   model?: string;
   models?: Record<string, string>;
   temperatures?: Record<string, number>;
@@ -80,6 +82,7 @@ export interface Config {
 
 export interface ResolvedConfig {
   port: number;
+  locale: TranslationLocale;
   model: string;
   models: Record<string, string>;
   temperatures: Record<string, number>;
@@ -106,6 +109,7 @@ export interface ResolvedConfig {
 
 export const CONFIG_SET_SCHEMAS: Record<keyof Config, z.ZodTypeAny> = {
   port: parseIntegerSchema(1, 65535),
+  locale: translationLocaleSchema,
   model: nonEmptyStringSchema,
   models: z.record(z.string(), nonEmptyStringSchema),
   temperatures: modeTemperatureMapSchema,
@@ -138,6 +142,7 @@ export function toConfig(input: Record<string, unknown>): Config {
 
   return {
     port: parseField(parseIntegerSchema(1, 65535), input.port),
+    locale: parseField(translationLocaleSchema, input.locale),
     model: parseField(nonEmptyStringSchema, input.model),
     models:
       typeof input.models === "object" && input.models !== null
