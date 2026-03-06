@@ -230,6 +230,7 @@ describe("config store", () => {
     expect(resolved.temperatures).toEqual({});
     expect(resolved.memorySources).toEqual(["stored", "distill_project", "distill_user", "distill_session"]);
     expect(resolved.distillModel).toBe("anthropic/claude-sonnet-4");
+    expect(resolved.anthropicBaseUrl).toBe("https://api.anthropic.com/v1");
     expect(resolved.permissionMode).toBe("read");
     expect(resolved.logFormat).toBe("logfmt");
     expect(resolved.transportMode).toBe("rpc");

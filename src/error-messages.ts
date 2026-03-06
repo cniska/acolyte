@@ -38,7 +38,7 @@ function messageForUserError(code: UserErrorCode, meta?: UserErrorMetaByCode[Use
         return `Model "${typedMeta.model}" is unavailable. Set OPENAI_API_KEY (or configure an OpenAI-compatible base URL) and try again.`;
       }
       if (typedMeta.provider === "anthropic") {
-        return `Model "${typedMeta.model}" is unavailable. Set ANTHROPIC_API_KEY and try again.`;
+        return `Model "${typedMeta.model}" is unavailable. Set ANTHROPIC_API_KEY and ensure anthropicBaseUrl ends with /v1.`;
       }
       if (typedMeta.provider === "gemini") {
         return `Model "${typedMeta.model}" is unavailable. Set GOOGLE_API_KEY and try again.`;

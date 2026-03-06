@@ -20,7 +20,7 @@ const DEFAULT_CONFIG = {
   locale: "en" as const,
   model: "gpt-5-mini",
   openaiBaseUrl: "https://api.openai.com/v1",
-  anthropicBaseUrl: "https://api.anthropic.com",
+  anthropicBaseUrl: "https://api.anthropic.com/v1",
   permissionMode: "read" as PermissionMode,
   logFormat: "logfmt" as LogFormat,
   transportMode: "rpc" as TransportMode,

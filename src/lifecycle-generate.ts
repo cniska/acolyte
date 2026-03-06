@@ -207,6 +207,15 @@ async function streamWithTimeout(
           const typed = chunk as { type?: string; payload?: unknown };
           resetTimeout();
           processStreamChunk(ctx, typed);
+          if (typed.type === "tool-error") {
+            const p = typed.payload as ToolErrorPayload | undefined;
+            const hasToolContext = Boolean(p?.toolName || p?.toolCallId);
+            if (!hasToolContext) {
+              const parsed = parseErrorInfo(p?.error ?? p?.message);
+              const modelError = parsed.ok ? parsed.value.message : "Model stream error";
+              throw new Error(modelError);
+            }
+          }
         }
         return await streamOutput.getFullOutput();
       })

@@ -94,6 +94,22 @@ describe("no-shell-read-fallback guard", () => {
   });
 });
 
+describe("no-broad-git-add guard", () => {
+  test("blocks git add -A", () => {
+    const session = createSessionContext();
+    expect(() => runGuards({ toolName: "run-command", args: { command: "git add -A" }, session })).toThrow(
+      /Do not use broad git add/,
+    );
+  });
+
+  test("allows explicit git add paths", () => {
+    const session = createSessionContext();
+    expect(() =>
+      runGuards({ toolName: "run-command", args: { command: "git add src/app.ts docs/notes.md" }, session }),
+    ).not.toThrow();
+  });
+});
+
 describe("excessive-file-loop guard", () => {
   test("blocks immediate duplicate read-file call on same path and range", () => {
     const session = createSessionContext();

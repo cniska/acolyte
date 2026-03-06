@@ -54,6 +54,21 @@ function parseScopeFlag(token: string | undefined): "user" | "project" | null {
   return null;
 }
 
+function parseScopeArgs(args: string[]): { scope: "user" | "project" | null; rest: string[]; invalid: boolean } {
+  let scope: "user" | "project" | null = null;
+  const rest: string[] = [];
+  for (const token of args) {
+    const parsed = parseScopeFlag(token);
+    if (!parsed) {
+      rest.push(token);
+      continue;
+    }
+    if (scope && scope !== parsed) return { scope: null, rest: [], invalid: true };
+    scope = parsed;
+  }
+  return { scope, rest, invalid: false };
+}
+
 export async function configMode(args: string[], deps: ConfigModeDeps): Promise<void> {
   const {
     hasHelpFlag,
@@ -77,7 +92,12 @@ export async function configMode(args: string[], deps: ConfigModeDeps): Promise<
 
   switch (subcommand) {
     case "list": {
-      const scope = parseScopeFlag(listArgs[0]);
+      const parsed = parseScopeArgs(listArgs);
+      if (parsed.invalid) {
+        subcommandError("config");
+        return;
+      }
+      const scope = parsed.scope;
       const config = scope ? await readConfigForScope(scope) : await readConfig();
       if (scope) printDim(`${`${t("cli.config.scope")}`.padEnd(CONFIG_LIST_KEY_COLUMN_WIDTH)} ${scope}`);
       for (const name of VALID_CONFIG_KEYS) {
@@ -96,9 +116,14 @@ export async function configMode(args: string[], deps: ConfigModeDeps): Promise<
       return;
     }
     case "set": {
-      const scope = parseScopeFlag(restArgs[0]);
-      const key = scope ? restArgs[1] : restArgs[0];
-      const valueParts = scope ? restArgs.slice(2) : restArgs.slice(1);
+      const parsed = parseScopeArgs(restArgs);
+      if (parsed.invalid) {
+        subcommandError("config", t("cli.config.usage.set"));
+        return;
+      }
+      const scope = parsed.scope;
+      const key = parsed.rest[0];
+      const valueParts = parsed.rest.slice(1);
       if (key === "apiKey") {
         printError(t("cli.config.api_key_unsupported"));
         process.exitCode = 1;
@@ -129,8 +154,13 @@ export async function configMode(args: string[], deps: ConfigModeDeps): Promise<
       return;
     }
     case "unset": {
-      const scope = parseScopeFlag(restArgs[0]);
-      const key = scope ? restArgs[1] : restArgs[0];
+      const parsed = parseScopeArgs(restArgs);
+      if (parsed.invalid) {
+        subcommandError("config", t("cli.config.usage.unset"));
+        return;
+      }
+      const scope = parsed.scope;
+      const key = parsed.rest[0];
       if (key === "apiKey") {
         printError(t("cli.config.api_key_unsupported"));
         process.exitCode = 1;

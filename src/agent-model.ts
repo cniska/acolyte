@@ -6,6 +6,7 @@ export type ModelCredentials = {
   openaiApiKey?: string;
   openaiBaseUrl: string;
   anthropicApiKey?: string;
+  anthropicBaseUrl?: string;
   googleApiKey?: string;
 };
 
@@ -15,6 +16,7 @@ export function resolveModelProviderState(
     openaiApiKey: appConfig.openai.apiKey,
     openaiBaseUrl: appConfig.openai.baseUrl,
     anthropicApiKey: appConfig.anthropic.apiKey,
+    anthropicBaseUrl: appConfig.anthropic.baseUrl,
     googleApiKey: appConfig.google.apiKey,
   },
 ): { provider: Provider; available: boolean } {
@@ -24,6 +26,7 @@ export function resolveModelProviderState(
     openaiApiKey: credentials.openaiApiKey,
     openaiBaseUrl: credentials.openaiBaseUrl,
     anthropicApiKey: credentials.anthropicApiKey,
+    anthropicBaseUrl: credentials.anthropicBaseUrl,
     googleApiKey: credentials.googleApiKey,
   });
   return { provider, available };

@@ -60,4 +60,26 @@ describe("cli config", () => {
     await configMode(["unset", "models.chat"], deps);
     expect(calls).toEqual([{ key: "models.chat", scope: "user" }]);
   });
+
+  test("unset accepts trailing scope flag", async () => {
+    const calls: Array<{ key: string; scope: "user" | "project" }> = [];
+    const { deps } = createDeps({
+      unsetConfigValue: async (key, options) => {
+        calls.push({ key, scope: options?.scope ?? "user" });
+      },
+    });
+    await configMode(["unset", "models.chat", "--project"], deps);
+    expect(calls).toEqual([{ key: "models.chat", scope: "project" }]);
+  });
+
+  test("set accepts trailing scope flag", async () => {
+    const calls: Array<{ key: string; value: string; scope: "user" | "project" }> = [];
+    const { deps } = createDeps({
+      setConfigValue: async (key, value, options) => {
+        calls.push({ key, value, scope: options?.scope ?? "user" });
+      },
+    });
+    await configMode(["set", "models.chat", "gpt-5-mini", "--project"], deps);
+    expect(calls).toEqual([{ key: "models.chat", value: "gpt-5-mini", scope: "project" }]);
+  });
 });

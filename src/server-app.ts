@@ -5,7 +5,7 @@ import { mapQuotaErrorMessage } from "./error-messages";
 import { domainIdSchema } from "./id-contract";
 import { errorToLogFields, log } from "./log";
 import { formatServerCapabilities, PROTOCOL_VERSION } from "./protocol";
-import { formatModel } from "./provider-config";
+import { modelDisplayName } from "./provider-config";
 import type { Provider } from "./provider-contract";
 import { collectResourceDiagnostics } from "./resource-diagnostics";
 import { isChatRequest, runChatRequest } from "./server-chat-runtime";
@@ -121,11 +121,11 @@ async function createStatusPayload(): Promise<StatusPayload> {
   return {
     ok: true,
     providers,
-    model: formatModel(model),
-    ...(planModel ? { "model.plan": formatModel(planModel) } : {}),
-    ...(workModel ? { "model.work": formatModel(workModel) } : {}),
-    ...(verifyModel ? { "model.verify": formatModel(verifyModel) } : {}),
-    ...(chatModel ? { "model.chat": formatModel(chatModel) } : {}),
+    model: modelDisplayName(model),
+    ...(planModel ? { "model.plan": modelDisplayName(planModel) } : {}),
+    ...(workModel ? { "model.work": modelDisplayName(workModel) } : {}),
+    ...(verifyModel ? { "model.verify": modelDisplayName(verifyModel) } : {}),
+    ...(chatModel ? { "model.chat": modelDisplayName(chatModel) } : {}),
     protocol_version: PROTOCOL_VERSION,
     capabilities: formatServerCapabilities(),
     permissions: appConfig.agent.permissions.mode,

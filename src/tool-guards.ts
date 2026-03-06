@@ -154,6 +154,11 @@ function isShellReadFallback(command: string): boolean {
   return disallowed.test(normalized);
 }
 
+function isBroadGitAdd(command: string): boolean {
+  const normalized = command.trim().replace(/\s+/g, " ").toLowerCase();
+  return /\bgit add (?:-a|--all|\.)\b/.test(normalized);
+}
+
 function normalizeGuardArgValue(value: unknown): unknown {
   if (typeof value === "string") return value.trim();
   if (Array.isArray(value)) {
@@ -454,6 +459,20 @@ const noShellReadFallbackGuard: ToolGuard = {
   },
 };
 
+const noBroadGitAddGuard: ToolGuard = {
+  id: "no-broad-git-add",
+  description: "Block broad git add patterns that commonly stage generated artifacts.",
+  appliesTo: ["run-command"],
+  check({ toolName, args, session }) {
+    const command = typeof args.command === "string" ? args.command : "";
+    if (!isBroadGitAdd(command)) return;
+    session.onGuard?.({ guardId: "no-broad-git-add", toolName, action: "blocked", detail: command });
+    throw new Error(
+      "Do not use broad git add (-A/--all/.). Stage only intentional paths so generated artifacts are not committed.",
+    );
+  },
+};
+
 const GUARDS: ToolGuard[] = [
   duplicateConsecutiveCallGuard,
   noRewriteGuard,
@@ -462,6 +481,7 @@ const GUARDS: ToolGuard[] = [
   excessiveSearchLoopGuard,
   verifyRanGuard,
   noShellReadFallbackGuard,
+  noBroadGitAddGuard,
 ];
 
 export function runGuards(input: GuardInput): void {

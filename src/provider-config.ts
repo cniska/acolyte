@@ -24,6 +24,17 @@ const MODEL_REGISTRY: Record<Provider, Model[]> = {
   ],
 };
 
+const MODEL_DISPLAY_NAME_BY_ID = new Map<string, string>(
+  Object.values(MODEL_REGISTRY).flat().flatMap((model) => {
+    const keys = new Set<string>();
+    const lowerId = model.id.toLowerCase();
+    keys.add(lowerId);
+    const undated = lowerId.replace(/-\d{8}$/, "");
+    keys.add(undated);
+    return Array.from(keys).map((key) => [key, model.name] as const);
+  }),
+);
+
 function inferUnqualifiedModelPrefix(model: string): "openai" | "anthropic" | "gemini" {
   const normalized = model.trim().toLowerCase();
   if (normalized.startsWith("claude")) return "anthropic";
@@ -42,12 +53,29 @@ export function formatModel(model: string): string {
   return slash >= 0 ? model.slice(slash + 1) : model;
 }
 
+export function modelDisplayName(model: string): string {
+  const id = formatModel(model).trim();
+  if (id.length === 0) return id;
+  return MODEL_DISPLAY_NAME_BY_ID.get(id.toLowerCase()) ?? id;
+}
+
 function isOpenAICompatibleBaseUrl(openaiBaseUrl: string): boolean {
   try {
     const host = new URL(openaiBaseUrl).hostname.toLowerCase();
     return host !== "api.openai.com";
   } catch {
     return true;
+  }
+}
+
+function isAnthropicBaseUrlValid(anthropicBaseUrl?: string): boolean {
+  if (!anthropicBaseUrl) return true;
+  try {
+    const parsed = new URL(anthropicBaseUrl);
+    const normalizedPath = parsed.pathname.replace(/\/+$/, "");
+    return normalizedPath.endsWith("/v1");
+  } catch {
+    return false;
   }
 }
 
@@ -71,9 +99,11 @@ export function isProviderAvailable(input: {
   openaiApiKey?: string;
   openaiBaseUrl: string;
   anthropicApiKey?: string;
+  anthropicBaseUrl?: string;
   googleApiKey?: string;
 }): boolean {
-  if (input.provider === "anthropic") return Boolean(input.anthropicApiKey);
+  if (input.provider === "anthropic")
+    return Boolean(input.anthropicApiKey) && isAnthropicBaseUrlValid(input.anthropicBaseUrl);
   if (input.provider === "gemini") return Boolean(input.googleApiKey);
   if (isOpenAICompatibleBaseUrl(input.openaiBaseUrl)) return true;
   return Boolean(input.openaiApiKey);
