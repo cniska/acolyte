@@ -709,5 +709,84 @@ describe("distillMemorySource", () => {
         (appConfig as { distill: typeof appConfig.distill }).distill = originalDistillConfig;
       }
     });
+
+    test("quality fixtures classify observer output into promote, drop, or reject paths", async () => {
+      const originalDistillConfig = { ...appConfig.distill };
+      (appConfig as { distill: typeof appConfig.distill }).distill = {
+        ...appConfig.distill,
+        messageThreshold: 1,
+        reflectionThresholdTokens: 999_999,
+        maxOutputTokens: 10_000,
+      };
+      try {
+        const fixtures = [
+          {
+            name: "good_scoped_output",
+            observed: [
+              "[project] uses bun test",
+              "[user] prefers concise responses",
+              "[session] fixing failing memory tests",
+              "Current task: stabilize memory quality",
+              "Next step: add regression coverage",
+            ].join("\n"),
+            expectedMetrics: {
+              projectPromotedFacts: 1,
+              userPromotedFacts: 1,
+              sessionScopedFacts: 3,
+              droppedUntaggedFacts: 0,
+              malformedTaggedFacts: 0,
+            },
+            expectedWriteCount: 3,
+          },
+          {
+            name: "mixed_output_with_untagged_fact",
+            observed: ["[project] uses bun test", "untagged fact", "Current task: stabilize memory quality"].join("\n"),
+            expectedMetrics: {
+              projectPromotedFacts: 1,
+              userPromotedFacts: 0,
+              sessionScopedFacts: 1,
+              droppedUntaggedFacts: 1,
+              malformedTaggedFacts: 0,
+            },
+            expectedWriteCount: 2,
+          },
+          {
+            name: "bad_output_with_malformed_tag",
+            observed: [
+              "[project] uses bun test",
+              "[proj] malformed tag should reject batch",
+              "Current task: stabilize memory quality",
+            ].join("\n"),
+            expectedMetrics: {
+              projectPromotedFacts: 0,
+              userPromotedFacts: 0,
+              sessionScopedFacts: 0,
+              droppedUntaggedFacts: 0,
+              malformedTaggedFacts: 1,
+            },
+            expectedWriteCount: 0,
+          },
+        ] as const;
+
+        for (const fixture of fixtures) {
+          const store = createMockStore();
+          const source = createDistillMemorySource(store, async (systemPrompt) => {
+            if (systemPrompt !== OBSERVER_PROMPT) return "";
+            return fixture.observed;
+          });
+          if (!source.commit) throw new Error("expected commit handler");
+          const metrics = await source.commit({
+            sessionId: "sess_test0001",
+            resourceId: "proj_abc123",
+            messages: [{ role: "user", content: "hello" }],
+            output: "done",
+          });
+          expect(metrics, fixture.name).toEqual(fixture.expectedMetrics);
+          expect(store.written.length, fixture.name).toBe(fixture.expectedWriteCount);
+        }
+      } finally {
+        (appConfig as { distill: typeof appConfig.distill }).distill = originalDistillConfig;
+      }
+    });
   });
 });
