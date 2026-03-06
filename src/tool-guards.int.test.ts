@@ -62,7 +62,13 @@ async function runGuardIntegrationScenario(
       await mkdir(join(project, ".acolyte"), { recursive: true });
       await writeFile(
         join(project, ".acolyte", "config.toml"),
-        [`port = ${port}`, `model = "${TEST_MODEL}"`, 'permissionMode = "write"', ""].join("\n"),
+        [
+          `port = ${port}`,
+          `model = "${TEST_MODEL}"`,
+          `openaiBaseUrl = ${JSON.stringify(providerBaseUrl)}`,
+          'permissionMode = "write"',
+          "",
+        ].join("\n"),
         "utf8",
       );
 

@@ -46,13 +46,15 @@ async function startServerForRpcTest(port: number, apiKey: string, options?: Rpc
   const project = await mkdtemp(join(tmpdir(), "acolyte-rpc-project-"));
   tmpHomes.push(home);
   tmpProjects.push(project);
-  await prepareRpcTestProject(project, port);
+  await prepareRpcTestProject(project, port, options?.providerBaseUrl);
   await startRpcTestServerProcess(home, project, apiKey, port, options);
 }
 
-async function prepareRpcTestProject(project: string, port: number): Promise<void> {
+async function prepareRpcTestProject(project: string, port: number, providerBaseUrl?: string): Promise<void> {
   await mkdir(join(project, ".acolyte"), { recursive: true });
-  await writeFile(join(project, ".acolyte/config.toml"), `port = ${port}\nmodel = "gpt-5-mini"\n`, "utf8");
+  const lines = [`port = ${port}`, 'model = "gpt-5-mini"'];
+  if (providerBaseUrl) lines.push(`openaiBaseUrl = ${JSON.stringify(providerBaseUrl)}`);
+  await writeFile(join(project, ".acolyte/config.toml"), `${lines.join("\n")}\n`, "utf8");
 }
 
 async function startRpcTestServerProcess(
