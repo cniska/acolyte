@@ -10,6 +10,10 @@ Rules:
   [project] for project-specific durable facts
   [user] for user preferences across projects
   [session] for current-task or ephemeral session facts
+- Scope tag format is strict:
+  valid: "[project] uses Bun", "[user] prefers concise output", "[session] fixing test failures"
+  invalid: "[proj] ...", "[usr] ...", "project: ...", "[project]: ..."
+- If unsure about scope, default to [session]. Never emit unknown bracket tags.
 - End with CONTINUATION STATE using exactly these labels:
   Current task: [what is being worked on right now]
   Next step: [what the immediate next action should be]
