@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { appConfig } from "./app-config";
 import type { DistillRecord } from "./memory-contract";
+import { OBSERVER_PROMPT, REFLECTOR_PROMPT } from "./memory-distill-prompts";
 import type { DistillStore } from "./memory-distill-store";
 import { createDistillMemorySource } from "./memory-source-distill";
-import { OBSERVER_PROMPT, REFLECTOR_PROMPT } from "./memory-distill-prompts";
 
 function createMockStore(records: DistillRecord[] = []): DistillStore & { written: DistillRecord[] } {
   const written: DistillRecord[] = [];

@@ -5,8 +5,8 @@ import { formatToolHeader } from "./agent-output";
 import { setPermissionMode } from "./app-config";
 import { formatProgressOutput } from "./cli-format";
 import { runShellCommand } from "./core-tools";
-import { toolsForAgent } from "./tool-registry";
 import { createTempDir, dedent, savedPermissionMode } from "./test-utils";
+import { toolsForAgent } from "./tool-registry";
 import { mergeToolOutputHeader } from "./tool-summary-format";
 
 const restorePermissions = savedPermissionMode();

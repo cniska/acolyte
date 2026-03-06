@@ -3,7 +3,11 @@ import { configMode } from "./cli-config";
 
 type ConfigModeDeps = Parameters<typeof configMode>[1];
 
-function createDeps(overrides?: Partial<ConfigModeDeps>): { deps: ConfigModeDeps; dimLines: string[]; errorLines: string[] } {
+function createDeps(overrides?: Partial<ConfigModeDeps>): {
+  deps: ConfigModeDeps;
+  dimLines: string[];
+  errorLines: string[];
+} {
   const dimLines: string[] = [];
   const errorLines: string[] = [];
   const deps: ConfigModeDeps = {

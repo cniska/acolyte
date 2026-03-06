@@ -98,4 +98,3 @@ export function createWriteConfirmPicker(prompt: string): PickerState {
     note: "",
   };
 }
-

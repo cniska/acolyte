@@ -27,18 +27,11 @@ type WorkspaceResolution = {
   workspaceMode: "default" | "path";
 };
 
-function toLogFieldMap(
-  fields?: Record<string, unknown>,
-): Record<string, string | number | boolean | null | undefined> {
+function toLogFieldMap(fields?: Record<string, unknown>): Record<string, string | number | boolean | null | undefined> {
   if (!fields) return {};
   const out: Record<string, string | number | boolean | null | undefined> = {};
   for (const [key, value] of Object.entries(fields)) {
-    if (
-      value == null ||
-      typeof value === "string" ||
-      typeof value === "number" ||
-      typeof value === "boolean"
-    ) {
+    if (value == null || typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
       out[key] = value;
       continue;
     }
@@ -82,10 +75,7 @@ export function logLifecycleDebugEntry(params: {
   phaseAttempt: number;
   eventTs: string;
   fields?: Record<string, unknown>;
-  logInfo?: (
-    message: string,
-    fields?: Record<string, string | number | boolean | null | undefined>,
-  ) => void;
+  logInfo?: (message: string, fields?: Record<string, string | number | boolean | null | undefined>) => void;
 }): void {
   const logInfo = params.logInfo ?? log.info;
   const logFields = toLogFieldMap(params.fields);
@@ -206,7 +196,9 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
 
   const providedResourceId = parseResourceId(chatRequest.resourceId);
   if (chatRequest.resourceId && !providedResourceId) {
-    const payload = streamErrorPayload(new Error(`Invalid resourceId "${chatRequest.resourceId}". Expected user_* or proj_*.`));
+    const payload = streamErrorPayload(
+      new Error(`Invalid resourceId "${chatRequest.resourceId}". Expected user_* or proj_*.`),
+    );
     handlers.onError(payload);
     return;
   }

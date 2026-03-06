@@ -10,7 +10,9 @@ import { addMemory, listMemories, type MemoryScope, removeMemoryByPrefix } from 
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
 import { createId } from "./short-id";
 import { findSkillByName } from "./skills";
+
 type MemoryContextScope = "all" | "user" | "project";
+
 import type { StatusFields } from "./status-contract";
 import { formatStatusOutput } from "./status-format";
 import { createSession } from "./storage";

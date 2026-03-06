@@ -37,7 +37,10 @@ describe("memory pipeline", () => {
       {},
       10_000,
       normalizeMemoryEntries,
-      (entries) => ({ entries: [entries[entries.length - 1]], tokenEstimate: entries[entries.length - 1].tokenEstimate }),
+      (entries) => ({
+        entries: [entries[entries.length - 1]],
+        tokenEstimate: entries[entries.length - 1].tokenEstimate,
+      }),
     );
     expect(result.entries.map((entry) => entry.content)).toEqual(["b"]);
   });
@@ -65,9 +68,7 @@ describe("memory pipeline", () => {
   });
 
   test("buildMemoryContextPrompt indents multiline entries", () => {
-    const prompt = buildMemoryContextPrompt([
-      { sourceId: "distill", content: "line one\nline two", tokenEstimate: 5 },
-    ]);
+    const prompt = buildMemoryContextPrompt([{ sourceId: "distill", content: "line one\nline two", tokenEstimate: 5 }]);
     expect(prompt).toContain("- line one\n  line two");
   });
 
@@ -85,18 +86,12 @@ describe("memory pipeline", () => {
   });
 
   test("normalizeMemoryEntries skips blank entries", async () => {
-    const entries = await normalizeMemoryEntries(
-      [createMemorySource("stored", ["", "  ", "kept"])],
-      {},
-    );
+    const entries = await normalizeMemoryEntries([createMemorySource("stored", ["", "  ", "kept"])], {});
     expect(entries.map((entry) => entry.content)).toEqual(["kept"]);
   });
 
   test("normalizeMemoryEntries trims entry content", async () => {
-    const entries = await normalizeMemoryEntries(
-      [createMemorySource("stored", ["  padded value  "])],
-      {},
-    );
+    const entries = await normalizeMemoryEntries([createMemorySource("stored", ["  padded value  "])], {});
     expect(entries.map((entry) => entry.content)).toEqual(["padded value"]);
   });
 
@@ -116,7 +111,12 @@ describe("memory pipeline", () => {
     const selected = selectMemoryEntries(
       [
         { sourceId: "stored", content: "general note", tokenEstimate: 4 },
-        { sourceId: "distill", content: "Current task: implement memory strategy", tokenEstimate: 4, isContinuation: true },
+        {
+          sourceId: "distill",
+          content: "Current task: implement memory strategy",
+          tokenEstimate: 4,
+          isContinuation: true,
+        },
         { sourceId: "distill", content: "another note", tokenEstimate: 4 },
       ],
       4,
@@ -151,7 +151,12 @@ describe("memory pipeline", () => {
     const selected = selectMemoryEntries(
       [
         { sourceId: "stored", content: "Current task: older", tokenEstimate: 3, isContinuation: true },
-        { sourceId: "distill", content: "Current task: freshest but too large", tokenEstimate: 10, isContinuation: true },
+        {
+          sourceId: "distill",
+          content: "Current task: freshest but too large",
+          tokenEstimate: 10,
+          isContinuation: true,
+        },
       ],
       3,
     );

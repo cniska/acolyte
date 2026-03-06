@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
 import { appConfig } from "./app-config";
-import { type ToolkitInput, createCoreReadToolkit, createCoreWriteToolkit } from "./core-toolkit";
+import { createCoreReadToolkit, createCoreWriteToolkit, type ToolkitInput } from "./core-toolkit";
 import { createGitToolkit } from "./git-toolkit";
 import type { ToolDefinition } from "./tool-contract";
 import { createSessionContext, type SessionContext } from "./tool-guards";

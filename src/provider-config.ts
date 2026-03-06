@@ -82,4 +82,3 @@ export function isProviderAvailable(input: {
 export function suggestedModelsForProvider(provider: Provider): Model[] {
   return MODEL_REGISTRY[provider];
 }
-

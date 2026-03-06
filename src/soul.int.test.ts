@@ -73,9 +73,11 @@ describe("soul prompt loading", () => {
       nextStep: "Add resume block",
     });
     expect(resume).toBe(
-      ["Resume context:", "- Continue current task: Implement memory engine", "- Start with next step: Add resume block"].join(
-        "\n",
-      ),
+      [
+        "Resume context:",
+        "- Continue current task: Implement memory engine",
+        "- Start with next step: Add resume block",
+      ].join("\n"),
     );
   });
 });

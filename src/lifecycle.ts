@@ -1,8 +1,6 @@
 import { createErrorStats } from "./error-handling";
 import { phaseClassify } from "./lifecycle-classify";
 import type { LifecycleInput, RunContext, ToolOutputEvent } from "./lifecycle-contract";
-import type { MemoryCommitContext, MemoryCommitMetrics } from "./memory-contract";
-import { commitMemorySources } from "./memory-registry";
 import { phaseEvaluate, recoveryActionForError as resolveRecoveryAction } from "./lifecycle-evaluate";
 import {
   autoVerifier,
@@ -19,6 +17,8 @@ import { phaseFinalize } from "./lifecycle-finalize";
 import { createModeAgent, phaseGenerate, shouldYieldNow } from "./lifecycle-generate";
 import { resolveLifecyclePolicy } from "./lifecycle-policy";
 import { phasePrepare } from "./lifecycle-prepare";
+import type { MemoryCommitContext, MemoryCommitMetrics } from "./memory-contract";
+import { commitMemorySources } from "./memory-registry";
 import { createInMemoryTaskQueue } from "./task-queue";
 
 const memoryCommitQueue = createInMemoryTaskQueue();
@@ -37,7 +37,8 @@ export function scheduleMemoryCommit(
   commitCtx: MemoryCommitContext,
   debug: RunContext["debug"],
   commitFn: (ctx: MemoryCommitContext) => Promise<MemoryCommitMetrics | void> = commitMemorySources,
-  enqueueFn: (key: string, job: () => Promise<void>) => Promise<void> = (key, job) => memoryCommitQueue.enqueue(key, job),
+  enqueueFn: (key: string, job: () => Promise<void>) => Promise<void> = (key, job) =>
+    memoryCommitQueue.enqueue(key, job),
 ): void {
   const key = commitCtx.sessionId ?? "session:unknown";
   const debugFields = {

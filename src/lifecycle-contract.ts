@@ -5,9 +5,9 @@ import type { StreamEvent } from "./client";
 import type { ErrorCategory, ErrorSource } from "./error-handling";
 import type { LifecycleDebugEvent, LifecycleEventName } from "./lifecycle-events";
 import type { LifecyclePolicy } from "./lifecycle-policy";
-import type { Toolset } from "./tool-registry";
 import type { ErrorCode } from "./tool-error-codes";
 import type { SessionContext } from "./tool-guards";
+import type { Toolset } from "./tool-registry";
 
 export type GenerateResult = {
   text: string;

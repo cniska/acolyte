@@ -133,7 +133,8 @@ function serializeToml(config: Config): string {
   if (typeof config.distillMaxOutputTokens === "number")
     lines.push(`distillMaxOutputTokens = ${config.distillMaxOutputTokens}`);
   if (typeof config.memoryBudgetTokens === "number") lines.push(`memoryBudgetTokens = ${config.memoryBudgetTokens}`);
-  if (config.memorySources) lines.push(`memorySources = [${config.memorySources.map((value) => JSON.stringify(value)).join(", ")}]`);
+  if (config.memorySources)
+    lines.push(`memorySources = [${config.memorySources.map((value) => JSON.stringify(value)).join(", ")}]`);
   if (config.apiUrl) lines.push(`apiUrl = ${JSON.stringify(config.apiUrl)}`);
   if (config.openaiBaseUrl) lines.push(`openaiBaseUrl = ${JSON.stringify(config.openaiBaseUrl)}`);
   if (config.anthropicBaseUrl) lines.push(`anthropicBaseUrl = ${JSON.stringify(config.anthropicBaseUrl)}`);

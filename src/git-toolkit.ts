@@ -1,10 +1,10 @@
 import { z } from "zod";
 import { appConfig } from "./app-config";
+import { runTool, type ToolkitInput } from "./core-toolkit";
 import { gitDiff, gitLog, gitShow, gitStatusShort } from "./core-tools";
-import { type ToolkitInput, runTool } from "./core-toolkit";
-import { emitHeadTailLines } from "./tool-output-format";
 import { createTool } from "./tool-contract";
 import { compactToolOutput } from "./tool-output";
+import { emitHeadTailLines } from "./tool-output-format";
 
 const GIT_OPS = ["statusShort", "diff", "log", "show"] as const;
 type GitOp = (typeof GIT_OPS)[number];

@@ -3,12 +3,12 @@ import type { MemorySourceId } from "./config-contract";
 import type { MemoryCommitContext, MemoryCommitMetrics, MemoryLoadContext, MemorySource } from "./memory-contract";
 import {
   buildMemoryContextPrompt,
+  type MemoryNormalizeStrategy,
+  type MemorySelectionStrategy,
   normalizeMemoryEntries,
   runMemoryCommitPipeline,
   runMemoryPipeline,
   selectMemoryEntries,
-  type MemoryNormalizeStrategy,
-  type MemorySelectionStrategy,
 } from "./memory-pipeline";
 import { distillMemorySource, distillProjectMemorySource, distillUserMemorySource } from "./memory-source-distill";
 import { storedMemorySource } from "./memory-source-stored";

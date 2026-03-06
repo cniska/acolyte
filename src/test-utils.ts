@@ -193,11 +193,7 @@ export function createStore(overrides: Partial<SessionState> = {}): SessionState
   };
 }
 
-export function createMemorySource(
-  id: string,
-  entries: string[],
-  onCommit?: () => void,
-): MemorySource {
+export function createMemorySource(id: string, entries: string[], onCommit?: () => void): MemorySource {
   return {
     id,
     async loadEntries() {

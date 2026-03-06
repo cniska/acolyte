@@ -1,4 +1,3 @@
-import { createTool } from "./tool-contract";
 import { z } from "zod";
 import { appConfig } from "./app-config";
 import {
@@ -16,6 +15,7 @@ import {
 } from "./core-tools";
 import { countLabel } from "./plural";
 import { createId } from "./short-id";
+import { createTool } from "./tool-contract";
 import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
 import { recordCall, runGuards, type SessionContext } from "./tool-guards";
 import type { ToolName } from "./tool-names";

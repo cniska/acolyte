@@ -86,10 +86,9 @@ describe("memory registry", () => {
   });
 
   test("load uses injected normalization strategy", async () => {
-    const registry = createMemoryRegistry(
-      [createMemorySource("stored", ["ignored"])],
-      async () => [{ sourceId: "custom", content: "normalized", tokenEstimate: 2 }],
-    );
+    const registry = createMemoryRegistry([createMemorySource("stored", ["ignored"])], async () => [
+      { sourceId: "custom", content: "normalized", tokenEstimate: 2 },
+    ]);
     const result = await registry.load({}, 10_000);
     expect(result.prompt).toContain("normalized");
     expect(result.prompt).not.toContain("ignored");
@@ -126,7 +125,10 @@ describe("memory registry", () => {
 
   test("load falls back to older continuation when freshest does not fit", async () => {
     const registry = createMemoryRegistry(
-      [createMemorySource("stored", ["Current task: older"]), createMemorySource("distill", ["Current task: freshest"])],
+      [
+        createMemorySource("stored", ["Current task: older"]),
+        createMemorySource("distill", ["Current task: freshest"]),
+      ],
       async () => [
         { sourceId: "stored", content: "Current task: older", tokenEstimate: 4, isContinuation: true },
         { sourceId: "distill", content: "Current task: freshest", tokenEstimate: 8, isContinuation: true },
@@ -139,10 +141,9 @@ describe("memory registry", () => {
   });
 
   test("load extracts next-step continuation from selected continuation entries", async () => {
-    const registry = createMemoryRegistry(
-      [createMemorySource("distill", ["Next step: add tests"])],
-      async () => [{ sourceId: "distill", content: "Next step: add tests", tokenEstimate: 4, isContinuation: true }],
-    );
+    const registry = createMemoryRegistry([createMemorySource("distill", ["Next step: add tests"])], async () => [
+      { sourceId: "distill", content: "Next step: add tests", tokenEstimate: 4, isContinuation: true },
+    ]);
     const result = await registry.load({}, 8);
     expect(result.continuation.nextStep).toBe("add tests");
   });
@@ -163,9 +164,7 @@ describe("memory registry", () => {
   });
 
   test("load ignores blank entries from sources", async () => {
-    const registry = createMemoryRegistry(
-      [createMemorySource("stored", ["", " ", "kept"])],
-    );
+    const registry = createMemoryRegistry([createMemorySource("stored", ["", " ", "kept"])]);
     const result = await registry.load({}, 20);
     expect(result.prompt).toContain("- kept");
     expect(result.prompt).not.toContain("-  ");

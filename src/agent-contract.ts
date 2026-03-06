@@ -1,5 +1,5 @@
 import type { LanguageModelV3 } from "@ai-sdk/provider";
-import type { StreamChunk, GenerateResult } from "./lifecycle-contract";
+import type { GenerateResult, StreamChunk } from "./lifecycle-contract";
 import type { ToolDefinition } from "./tool-contract";
 
 export type Agent = {

@@ -4,7 +4,7 @@ import { unreachable } from "./assert";
 import { wrapAssistantContent } from "./chat-content";
 import { countLabel } from "./plural";
 import { TOOL_OUTPUT_RUN_MAX_ROWS } from "./tool-output-format";
-import { TOOL_OUTPUT_MARKERS, parseToolOutputMarker } from "./tool-output-parser";
+import { parseToolOutputMarker, TOOL_OUTPUT_MARKERS } from "./tool-output-parser";
 import { parseToolProgressLine } from "./tool-progress";
 import { printDim, printOutput, printToolHeader } from "./ui";
 

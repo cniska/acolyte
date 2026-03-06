@@ -2,16 +2,11 @@ import { estimateTokens } from "./agent-input";
 import { appConfig } from "./app-config";
 import { nowIso } from "./datetime";
 import type { DistillRecord, MemoryCommitMetrics, MemorySource, MemorySourceEntry } from "./memory-contract";
-import { createFileDistillStore, type DistillStore } from "./memory-distill-store";
 import { OBSERVER_PROMPT, REFLECTOR_PROMPT } from "./memory-distill-prompts";
+import { createFileDistillStore, type DistillStore } from "./memory-distill-store";
 import { createModel } from "./model-factory";
 import { normalizeModel } from "./provider-config";
-import {
-  defaultUserResourceId,
-  parseResourceId,
-  projectResourceIdFromWorkspace,
-  type ResourceId,
-} from "./resource-id";
+import { defaultUserResourceId, parseResourceId, projectResourceIdFromWorkspace, type ResourceId } from "./resource-id";
 import { createId } from "./short-id";
 
 const store: DistillStore = createFileDistillStore();
@@ -272,7 +267,9 @@ async function commitDistillForKey(
   let reflected = "";
   for (let attempt = 0; attempt <= REFLECTION_RETRY_LIMIT; attempt += 1) {
     const promptSuffix =
-      attempt === 0 ? "" : "\n\nCompression retry: keep all critical facts while reducing length and merging redundant details.";
+      attempt === 0
+        ? ""
+        : "\n\nCompression retry: keep all critical facts while reducing length and merging redundant details.";
     const reflectedRaw = await runner(REFLECTOR_PROMPT, `${allObservations}${promptSuffix}`);
     reflected = clampToTokenEstimate(reflectedRaw, appConfig.distill.maxOutputTokens);
     if (!reflected.trim()) return;

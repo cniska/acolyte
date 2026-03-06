@@ -23,10 +23,10 @@ import type {
   ToolErrorPayload,
   ToolResultPayload,
 } from "./lifecycle-contract";
-import type { ToolDefinition } from "./tool-contract";
-import type { Toolset } from "./tool-registry";
 import type { StreamErrorDetail } from "./stream-error";
+import type { ToolDefinition } from "./tool-contract";
 import { extractToolErrorCode, LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
+import type { Toolset } from "./tool-registry";
 
 function formatToolArgs(args: Record<string, unknown>): Record<string, string | number | boolean> {
   const out: Record<string, string | number | boolean> = {};

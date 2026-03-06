@@ -119,7 +119,8 @@ describe("server chat runtime", () => {
       );
       if (!source.commit) throw new Error("expected commit handler");
 
-      const logs: Array<{ message: string; fields?: Record<string, string | number | boolean | null | undefined> }> = [];
+      const logs: Array<{ message: string; fields?: Record<string, string | number | boolean | null | undefined> }> =
+        [];
       const debug = (event: string, fields?: Record<string, unknown>) => {
         logLifecycleDebugEntry({
           requestId: "err_e2e_memwarn",

@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { setPermissionMode } from "./app-config";
-import { toolsForAgent } from "./tool-registry";
 import { savedPermissionMode } from "./test-utils";
 import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
+import { toolsForAgent } from "./tool-registry";
 
 const restorePermissions = savedPermissionMode();
 
