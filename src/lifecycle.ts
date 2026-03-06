@@ -7,6 +7,7 @@ import {
   type EvalAction,
   type Evaluator,
   efficiencyEvaluator,
+  missingPrerequisiteRecovery,
   multiMatchEditEvaluator,
   planDetector,
   timeoutRecovery,
@@ -24,7 +25,15 @@ import { createInMemoryTaskQueue } from "./task-queue";
 const memoryCommitQueue = createInMemoryTaskQueue();
 const malformedMemoryRejectStreakBySession = new Map<string, number>();
 
-export { autoVerifier, efficiencyEvaluator, multiMatchEditEvaluator, planDetector, timeoutRecovery, verifyFailure };
+export {
+  autoVerifier,
+  efficiencyEvaluator,
+  missingPrerequisiteRecovery,
+  multiMatchEditEvaluator,
+  planDetector,
+  timeoutRecovery,
+  verifyFailure,
+};
 export type { EvalAction, Evaluator };
 export type { LifecycleInput, RunContext } from "./lifecycle-contract";
 export { resolveRecoveryAction as recoveryActionForError };

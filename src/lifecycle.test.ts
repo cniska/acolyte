@@ -3,6 +3,7 @@ import { createErrorStats } from "./error-handling";
 import {
   autoVerifier,
   efficiencyEvaluator,
+  missingPrerequisiteRecovery,
   multiMatchEditEvaluator,
   planDetector,
   type RunContext,
@@ -330,11 +331,48 @@ describe("multiMatchEditEvaluator", () => {
   });
 });
 
+describe("missingPrerequisiteRecovery", () => {
+  test("returns regenerate when blocked by missing prerequisites and no writes", () => {
+    const session = createSessionContext();
+    session.callLog = [{ toolName: "read-file", args: { paths: [{ path: "docs/project-plan.md" }] } }];
+    const ctx = createMockContext({
+      request: { model: "gpt-5-mini", message: "Implement slice", history: [] },
+      classifiedMode: "work",
+      session,
+      result: {
+        text: "I can't proceed because package.json and workspace files are missing.",
+        toolCalls: [],
+      },
+    });
+    const action = missingPrerequisiteRecovery.evaluate(ctx);
+    expect(action.type).toBe("regenerate");
+    if (action.type === "regenerate") expect(action.prompt).toContain("Do not stop because prerequisites are missing");
+  });
+
+  test("returns done when writes already happened", () => {
+    const session = createSessionContext();
+    session.callLog = [
+      { toolName: "read-file", args: { paths: [{ path: "docs/project-plan.md" }] } },
+      { toolName: "edit-file", args: { path: "package.json" } },
+    ];
+    const ctx = createMockContext({
+      classifiedMode: "work",
+      session,
+      result: {
+        text: "I can't proceed because package.json and workspace files are missing.",
+        toolCalls: [],
+      },
+    });
+    expect(missingPrerequisiteRecovery.evaluate(ctx).type).toBe("done");
+  });
+});
+
 describe("evaluator ordering", () => {
   test("evaluators run in correct order", () => {
     const evaluators = [
       planDetector,
       multiMatchEditEvaluator,
+      missingPrerequisiteRecovery,
       efficiencyEvaluator,
       timeoutRecovery,
       autoVerifier,
@@ -342,10 +380,11 @@ describe("evaluator ordering", () => {
     ];
     expect(evaluators[0].id).toBe("plan-detector");
     expect(evaluators[1].id).toBe("multi-match-edit-evaluator");
-    expect(evaluators[2].id).toBe("efficiency-evaluator");
-    expect(evaluators[3].id).toBe("timeout-recovery");
-    expect(evaluators[4].id).toBe("auto-verifier");
-    expect(evaluators[5].id).toBe("verify-failure");
+    expect(evaluators[2].id).toBe("missing-prerequisite-recovery");
+    expect(evaluators[3].id).toBe("efficiency-evaluator");
+    expect(evaluators[4].id).toBe("timeout-recovery");
+    expect(evaluators[5].id).toBe("auto-verifier");
+    expect(evaluators[6].id).toBe("verify-failure");
   });
 });
 

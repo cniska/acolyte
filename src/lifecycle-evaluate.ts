@@ -4,6 +4,7 @@ import {
   autoVerifier,
   type Evaluator,
   efficiencyEvaluator,
+  missingPrerequisiteRecovery,
   multiMatchEditEvaluator,
   planDetector,
   timeoutRecovery,
@@ -15,6 +16,7 @@ import { defaultLifecyclePolicy, type LifecyclePolicy } from "./lifecycle-policy
 const EVALUATORS: Evaluator[] = [
   planDetector,
   multiMatchEditEvaluator,
+  missingPrerequisiteRecovery,
   efficiencyEvaluator,
   timeoutRecovery,
   autoVerifier,

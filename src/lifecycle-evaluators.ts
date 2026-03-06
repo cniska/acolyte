@@ -46,6 +46,24 @@ export type Evaluator = {
   evaluate: (ctx: EvaluatorContext) => EvalAction;
 };
 
+function hasWriteForCurrentTask(ctx: EvaluatorContext): boolean {
+  return taskScopedCallLog(ctx).some((entry) => WRITE_TOOL_SET.has(entry.toolName));
+}
+
+function isBlockedByMissingPrerequisites(text: string, lastError?: string): boolean {
+  if (text.trim().length === 0) return false;
+  const combined = `${text}\n${lastError ?? ""}`;
+  const blocked = /\b(can(?:not|'t)|unable to|won't|cannot)\b.{0,40}\b(proceed|continue|execute|run|complete)\b/i.test(
+    text,
+  );
+  const missing = /\b(no such file|does not exist|not found|missing|absent|required)\b/i.test(combined);
+  const prerequisite =
+    /\b(file|files|directory|folder|config|configuration|workspace|scaffold|dependency|dependencies|prerequisite|setup)\b/i.test(
+      combined,
+    ) || /\b(package\.json|pnpm-workspace\.yaml|ENOENT)\b/.test(combined);
+  return blocked && missing && prerequisite;
+}
+
 function hasStrongWriteIntent(text: string): boolean {
   return /\b(edit|fix|implement|add|create|update|refactor|rename|change|delete|remove|migrate|convert)\b/i.test(text);
 }
@@ -241,6 +259,25 @@ export const efficiencyEvaluator: Evaluator = {
         `${ctx.agentInput}\n\n` +
         "You already have enough context. Do not run find/search/read again unless absolutely required. " +
         "Proceed directly with file edits, then run verify.",
+    };
+  },
+};
+
+export const missingPrerequisiteRecovery: Evaluator = {
+  id: "missing-prerequisite-recovery",
+  evaluate(ctx) {
+    if (!ctx.result) return { type: "done" };
+    if (ctx.classifiedMode !== "work") return { type: "done" };
+    if (hasWriteForCurrentTask(ctx)) return { type: "done" };
+    if (!isBlockedByMissingPrerequisites(ctx.result.text, ctx.lastError)) return { type: "done" };
+    ctx.debug("lifecycle.eval.missing_prerequisite_recovery", { text_chars: ctx.result.text.length });
+    return {
+      type: "regenerate",
+      prompt:
+        `${ctx.agentInput}\n\n` +
+        "Do not stop because prerequisites are missing. " +
+        "Create the minimal required files/config/setup needed to execute this task, " +
+        "then continue with implementation and run verify.",
     };
   },
 };
