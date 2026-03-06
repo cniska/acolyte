@@ -17,7 +17,9 @@ Use the smallest test type that gives strong confidence.
 
 ## Commands
 
+- Fast local loop (no integration tests): `bun run verify:quick`
 - Full baseline: `bun run verify`
+- Fast tests only (no integration tests): `bun run test:fast`
 - Integration only: `bun run test:int`
 - Visual only: `bun run test:tui`
 - Perf baseline: `bun run test:perf`
