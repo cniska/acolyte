@@ -96,9 +96,7 @@ Run a reproducible experiment that proves MVP readiness.
 - [ ] `acolyte-experiment` completes at least one non-trivial vertical slice end-to-end
 - [ ] Experiment evidence is complete (prompt ledger, verify logs, outcomes)
 - [ ] Includes at least one failure-and-repair cycle with clear proof
-- [x] Demo flow supports 15-minute launch slot (live slice + evidence backup)
-
-**Current status:** 15-minute launch runbook is documented; remaining work is experiment execution and evidence capture.
+- [ ] Demo flow supports 15-minute launch slot (live slice + evidence backup)
 
 ### Milestone 9: Chat Correctness Pass
 
@@ -118,6 +116,7 @@ Open-source local mode with optional self-hosted memory/session sync service.
 - [ ] CI/CD pipeline for releases
 - [ ] Pre-OSS security baseline complete (secure defaults, auth coverage, workspace boundary checks, redaction tests)
 - [ ] Localization baseline: translatable CLI/TUI copy, with raw protocol/tool output kept language-neutral
+- [ ] Remove internal launch/talk docs before OSS (`docs/launch-talk.md`, `docs/talk-notes.md`)
 
 **Blocked on:** Milestones 6-9.
 
