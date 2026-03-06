@@ -111,7 +111,7 @@ Finalize chat behavior confidence after experiment proof is complete.
 Open-source local mode with optional self-hosted memory/session sync service.
 
 - [ ] README and docs are clear for external contributors
-- [ ] License chosen and applied
+- [x] License chosen and applied
 - [ ] No hardcoded secrets or internal paths
 - [ ] CI/CD pipeline for releases
 - [ ] Pre-OSS security baseline complete (secure defaults, auth coverage, workspace boundary checks, redaction tests)
