@@ -5,6 +5,7 @@ Developer documentation for Acolyte.
 ## Start here
 
 - [getting-started.md](./getting-started.md)
+- [contributing.md](./contributing.md)
 - [configuration.md](./configuration.md)
 - [cli.md](./cli.md)
 

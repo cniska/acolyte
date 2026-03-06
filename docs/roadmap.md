@@ -110,13 +110,15 @@ Finalize chat behavior confidence after experiment proof is complete.
 
 Open-source local mode with optional self-hosted memory/session sync service.
 
-- [ ] README and docs are clear for external contributors
+- [x] README and docs are clear for external contributors
 - [x] License chosen and applied
 - [x] No hardcoded secrets or internal paths
 - [x] CI/CD pipeline for releases
 - [ ] Pre-OSS security baseline complete (secure defaults, auth coverage, workspace boundary checks, redaction tests)
 - [ ] Localization baseline: translatable CLI/TUI copy, with raw protocol/tool output kept language-neutral
 - [ ] Remove internal launch/talk docs before OSS (`docs/launch-talk.md`, `docs/talk-notes.md`)
+
+**Current status:** External contributor docs baseline, license, and release pipeline are done. Remaining work is security baseline, localization baseline, and pre-OSS talk-doc cleanup.
 
 **Blocked on:** Milestones 6-9.
 

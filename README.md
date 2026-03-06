@@ -39,4 +39,5 @@ bun run client help
 ## Documentation
 
 - Docs home: [`docs/index.md`](docs/index.md)
+- Contributing: [`docs/contributing.md`](docs/contributing.md)
 - Agent policy: [`AGENTS.md`](AGENTS.md)
