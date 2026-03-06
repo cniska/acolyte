@@ -1,7 +1,7 @@
 import { createErrorStats } from "./error-handling";
 import { phaseClassify } from "./lifecycle-classify";
 import type { LifecycleInput, RunContext, ToolOutputEvent } from "./lifecycle-contract";
-import type { MemoryCommitContext } from "./memory-contract";
+import type { MemoryCommitContext, MemoryCommitMetrics } from "./memory-contract";
 import { commitMemorySources } from "./memory-registry";
 import { phaseEvaluate, recoveryActionForError as resolveRecoveryAction } from "./lifecycle-evaluate";
 import {
@@ -35,7 +35,7 @@ export function shouldCommitMemory(input: LifecycleInput): boolean {
 export function scheduleMemoryCommit(
   commitCtx: MemoryCommitContext,
   debug: RunContext["debug"],
-  commitFn: (ctx: MemoryCommitContext) => Promise<Record<string, number | undefined> | void> = commitMemorySources,
+  commitFn: (ctx: MemoryCommitContext) => Promise<MemoryCommitMetrics | void> = commitMemorySources,
   enqueueFn: (key: string, job: () => Promise<void>) => Promise<void> = (key, job) => memoryCommitQueue.enqueue(key, job),
 ): void {
   const key = commitCtx.sessionId ?? "session:unknown";

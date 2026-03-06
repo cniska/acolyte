@@ -537,5 +537,40 @@ describe("scheduleMemoryCommit", () => {
     expect(scheduled?.fields?.message_count).toBe(1);
     expect(scheduled?.fields?.output_chars).toBe(4);
     expect(done?.fields?.queue_key).toBe("sess_test0001");
+    expect(done?.fields?.project_promoted_facts).toBe(0);
+    expect(done?.fields?.user_promoted_facts).toBe(0);
+    expect(done?.fields?.session_scoped_facts).toBe(0);
+    expect(done?.fields?.dropped_untagged_facts).toBe(0);
+  });
+
+  test("logs commit metrics when commit returns promotion stats", async () => {
+    const events: Array<{ event: string; fields?: Record<string, unknown> }> = [];
+    scheduleMemoryCommit(
+      {
+        sessionId: "sess_test0001",
+        messages: [{ role: "user", content: "hello" }],
+        output: "done",
+      },
+      (event, fields) => {
+        events.push({ event, fields });
+      },
+      async () => ({
+        projectPromotedFacts: 2,
+        userPromotedFacts: 1,
+        sessionScopedFacts: 3,
+        droppedUntaggedFacts: 4,
+      }),
+      async (_key, job) => {
+        await job();
+      },
+    );
+    await Promise.resolve();
+    await Promise.resolve();
+    const done = events.find((entry) => entry.event === "lifecycle.memory.commit_done");
+    expect(done).toBeDefined();
+    expect(done?.fields?.project_promoted_facts).toBe(2);
+    expect(done?.fields?.user_promoted_facts).toBe(1);
+    expect(done?.fields?.session_scoped_facts).toBe(3);
+    expect(done?.fields?.dropped_untagged_facts).toBe(4);
   });
 });
