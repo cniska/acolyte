@@ -1,6 +1,6 @@
 # Roadmap
 
-Direction and milestone framing for near-term and long-term product evolution.
+Milestone framing for near-term MVP readiness and post-MVP evolution.
 
 ## Vision
 
@@ -62,7 +62,7 @@ The agent can do bounded coding tasks for us end-to-end.
 
 Reduce repeated mistakes with transparent, correctable memory behavior.
 
-- [ ] Saved memory commands work and are useful (`/remember`, `/memory`, `/memory rm`)
+- [x] Saved memory commands work and are useful (`/remember`, `/memory`, `/memory rm`)
 - [x] Mastra dependency removed — own the stack with native agentic loop and AI SDK providers
 - [x] Context distillation replaces observational memory (MemorySource seam, distill engine, soul prompt integration)
 - [x] History-time tool-output pruning for old assistant turns (not only emit-time truncation)
@@ -72,17 +72,9 @@ Reduce repeated mistakes with transparent, correctable memory behavior.
 - [ ] Evals show measurable reduction in repeated instruction failures
 - [ ] Memory doesn't hallucinate or carry stale context
 
-**Current status:** Mastra removed. Context distillation implemented (MemorySource contract, observer/reflector pipeline, lifecycle integration). Needs eval validation.
+**Current status:** Mastra removed. Context distillation and memory commands are implemented. Remaining work is footer token display, evals, and quality confidence.
 
-### Milestone 7: Memory Scalability
-
-Extend memory behavior for long autonomous runs and broader deployment targets.
-
-- [ ] Progressive model-driven compaction for ultra-long sessions
-- [ ] Compaction/resume protocol events for explicit agent continuity
-- [ ] Storage backends beyond filesystem (shared memory/session sync persistence, no remote daemon execution)
-
-### Milestone 8: Product Polish
+### Milestone 7: Product Polish
 
 Consolidate core UX quality and extension-ready seams before MVP release.
 
@@ -93,13 +85,30 @@ Consolidate core UX quality and extension-ready seams before MVP release.
 - [x] Integration suite split (`*.int.test`) with dedicated `test:int` workflow
 - [ ] Full codebase audit and cleanup pass (architecture, reliability, UX consistency, tests)
 - [ ] Extension-ready seams in core (interface-first boundaries for lifecycle/tools/guards/tasks/transports), without shipping plugin runtime
-- [ ] Skill execution parity with tools (stream/output contracts, typed compaction, context budgeting, debug events)
+- [x] Skill execution parity with tools (stream/output contracts, typed compaction, context budgeting, debug events)
 - [ ] Queue delivery policy controls (`one-at-a-time` vs `all`) for steering/follow-up (Pi-inspired)
 - [ ] Resource-loading diagnostics surface (skills/prompts/config/reload collisions and failures) (Pi-inspired)
 
-### Milestone 9: Public OSS Release (MVP)
+### Milestone 8: MVP Proof Experiment
 
-Open-source core local mode with optional self-hosted memory/session sync service.
+Run a reproducible experiment that proves MVP readiness.
+
+- [ ] `acolyte-experiment` completes at least one non-trivial vertical slice end-to-end
+- [ ] Experiment evidence is complete (prompt ledger, verify logs, outcomes)
+- [ ] Includes at least one failure-and-repair cycle with clear proof
+- [ ] Demo flow supports 15-minute launch slot (live slice + evidence backup)
+
+### Milestone 9: Chat Correctness Pass
+
+Finalize chat behavior confidence after experiment proof is complete.
+
+- [ ] End-to-end chat flow passes targeted regression checks
+- [ ] Memory continuity has at least one clear cross-session success case
+- [ ] Known chat/runtime edge cases are covered by tests or documented constraints
+
+### Milestone 10: Public OSS Release
+
+Open-source local mode with optional self-hosted memory/session sync service.
 
 - [ ] README and docs are clear for external contributors
 - [ ] License chosen and applied
@@ -108,7 +117,7 @@ Open-source core local mode with optional self-hosted memory/session sync servic
 - [ ] Pre-OSS security baseline complete (secure defaults, auth coverage, workspace boundary checks, redaction tests)
 - [ ] Localization baseline: translatable CLI/TUI copy, with raw protocol/tool output kept language-neutral
 
-**Blocked on:** Milestones 6-8.
+**Blocked on:** Milestones 6-9.
 
 ## MVP Definition
 
@@ -129,26 +138,18 @@ What MVP is **not**:
 
 ## Post-MVP Priorities (Ordered)
 
-1. Cloud memory and session sync (no hosted daemon execution):
-shared memory/session service only, protocol versioning and capability handshake for sync, auth/multi-tenancy, and local-first fallback when cloud sync is unavailable.
-2. Friends-and-family adoption:
-simple setup, day-one value on real projects, 3+ user feedback loops, and major usability fixes.
-3. Optional autonomy track:
-bounded-task soak success, clear failure explainability, and stable protocol baseline under autonomous runs.
-4. Long-run task UX:
-background task IDs, detach/attach flow, and clearer task lifecycle visibility.
-5. Session workflows:
-branching and session-tree navigation for isolated sub-task execution.
-6. Safety and policy controls:
-stronger tool policy, and opt-in guard/evaluator policy controls after observability baselines.
-7. Tooling fidelity:
-structured tool progress payloads, tool-output truncation with on-demand full output, and output-collapsing to reduce noise.
-8. Extension surface:
-runtime hooks (events, tool interceptors, slash commands), agent-authored skills, and resource loader collision diagnostics.
-9. Embedding surface:
-SDK-first local in-process API alongside CLI/RPC.
+1. Cloud memory and session sync (no hosted daemon execution): shared memory/session service only, protocol versioning and capability handshake for sync, auth/multi-tenancy, and local-first fallback when cloud sync is unavailable.
+2. Friends-and-family adoption: simple setup, day-one value on real projects, 3+ user feedback loops, and major usability fixes.
+3. Memory scalability: progressive model-driven compaction for ultra-long sessions, explicit compaction/resume continuity events, and storage backends beyond filesystem.
+4. Optional autonomy track: bounded-task soak success, clear failure explainability, and stable protocol baseline under autonomous runs.
+5. Long-run task UX: background task IDs, detach/attach flow, and clearer task lifecycle visibility.
+6. Session workflows: branching and session-tree navigation for isolated sub-task execution.
+7. Safety and policy controls: stronger tool policy, and opt-in guard/evaluator policy controls after observability baselines.
+8. Tooling fidelity: structured tool progress payloads, tool-output truncation with on-demand full output, and output-collapsing to reduce noise.
+9. Extension surface: runtime hooks (events, tool interceptors, slash commands), agent-authored skills, and resource loader collision diagnostics.
+10. Embedding surface: SDK-first local in-process API alongside CLI/RPC.
 
 ## Known Issues
 
 - Token budgeting uses approximate char-to-token ratios, not actual counts.
-- Provider integration is only tested with mocks; real multi-provider coverage is untested.
+- Provider integration has manual validation for OpenAI and Anthropic; Google coverage has minimal test coverage.
