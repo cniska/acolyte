@@ -27,6 +27,52 @@ type WorkspaceResolution = {
   workspaceMode: "default" | "path";
 };
 
+function toLogFieldMap(
+  fields?: Record<string, unknown>,
+): Record<string, string | number | boolean | null | undefined> {
+  if (!fields) return {};
+  const out: Record<string, string | number | boolean | null | undefined> = {};
+  for (const [key, value] of Object.entries(fields)) {
+    if (
+      value == null ||
+      typeof value === "string" ||
+      typeof value === "number" ||
+      typeof value === "boolean"
+    ) {
+      out[key] = value;
+      continue;
+    }
+    try {
+      out[key] = JSON.stringify(value);
+    } catch {
+      out[key] = "[unserializable]";
+    }
+  }
+  return out;
+}
+
+export function buildMemoryQualityWarningLogFields(params: {
+  requestId: string;
+  taskId?: string;
+  sessionId?: string;
+  event: string;
+  eventTs: string;
+  fields?: Record<string, string | number | boolean | null | undefined>;
+}): Record<string, string | number | boolean | null | undefined> | null {
+  if (params.event !== "lifecycle.memory.quality_warning") return null;
+  return {
+    request_id: params.requestId,
+    task_id: params.taskId ?? null,
+    session_id: params.sessionId ?? null,
+    event: params.event,
+    event_ts: params.eventTs,
+    warning: params.fields?.warning ?? null,
+    malformed_reject_streak: params.fields?.malformed_reject_streak ?? 0,
+    malformed_tagged_facts: params.fields?.malformed_tagged_facts ?? 0,
+    queue_key: params.fields?.queue_key ?? null,
+  };
+}
+
 function nextErrorId(): string {
   return errorIdSchema.parse(`err_${createId()}`);
 }
@@ -189,6 +235,15 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
           event_ts: entry.ts,
           ...(entry.fields ?? {}),
         });
+        const memoryQualityWarning = buildMemoryQualityWarningLogFields({
+          requestId,
+          taskId: handlers.taskId,
+          sessionId: chatRequest.sessionId,
+          event: entry.event,
+          eventTs: entry.ts,
+          fields: toLogFieldMap(entry.fields),
+        });
+        if (memoryQualityWarning) log.info("memory quality warning", memoryQualityWarning);
       },
     });
     if (handlers.isCancelled?.()) {

@@ -18,9 +18,9 @@ Distill preserves durable knowledge; history pruning handles bulky transcript/to
 - `stored`: explicit Markdown memory notes (`user`/`project` scope).
 - `distill_user`: cross-session user distill context.
 - `distill_project`: cross-session project distill context (workspace-keyed).
-- `distill`: session distill context (active session continuity).
+- `distill_session`: session distill context (active session continuity).
 
-Default source order is `stored, distill_project, distill_user, distill`.
+Default source order is `stored, distill_project, distill_user, distill_session`.
 
 ## Controls
 
@@ -65,6 +65,7 @@ Default source order is `stored, distill_project, distill_user, distill`.
 - Debug observability uses lifecycle-scoped events (`lifecycle.memory.load_*`, `lifecycle.memory.commit_*`) through standard debug channels.
 - Commit debug includes promotion counters (`project_promoted_facts`, `user_promoted_facts`, `session_scoped_facts`, `dropped_untagged_facts`, `malformed_tagged_facts`).
 - Repeated malformed-tag rejects emit `lifecycle.memory.quality_warning` with `malformed_reject_streak`.
+- Server runtime emits a dedicated `memory quality warning` log line for `lifecycle.memory.quality_warning` events.
 - Selection dedupes identical entry content to avoid wasting budget on repeats.
 - Normalization drops blank entries before selection.
 - Distill record writes are atomic (`temp file -> rename`) to avoid partial files.
