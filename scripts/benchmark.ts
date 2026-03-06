@@ -73,6 +73,9 @@ async function main(): Promise<void> {
   const pkg = await Bun.file("package.json").json();
   const deps = Object.keys(pkg.dependencies ?? {}).length + Object.keys(pkg.devDependencies ?? {}).length;
 
+  const initialCommitRaw = Bun.spawnSync(["git", "log", "--reverse", "--format=%cs", "--diff-filter=A"]);
+  const initialCommit = new TextDecoder().decode(initialCommitRaw.stdout).trim().split("\n")[0];
+
   console.log("## Acolyte Benchmark Metrics\n");
 
   console.log("### Overview");
@@ -103,6 +106,7 @@ async function main(): Promise<void> {
   console.log(`  Files > 500:      ${filesOver500} (${Math.round((filesOver500 / sourceFiles.length) * 100)}%)`);
   console.log(`  Largest file:     ${largestFile.lines.toLocaleString()} (${largestFile.file})`);
   console.log(`  Barrel files:     ${barrelFiles}`);
+  console.log(`  Initial commit:   ${initialCommit}`);
   console.log();
 
   console.log("### Error Handling (per 1k source lines)");

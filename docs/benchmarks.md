@@ -97,7 +97,7 @@ Acolyte validates at boundaries with Zod `.safeParse()` at 16x+ the rate of othe
 | Stars | — | 41.5k | 117k | 20.5k | 32.5k | 68.6k | 31.7k | 58.7k | 268k |
 | Forks | — | 3,974 | 11,906 | 2,134 | 2,976 | 8,571 | 4,227 | 5,902 | 51,229 |
 | Open issues | — | 1,410 | 6,414 | 21 | 391 | 359 | 1,140 | 778 | 12,607 |
-| Created | 2025 | 2023 | 2025 | 2025 | 2024 | 2024 | 2023 | 2024 | 2025 |
+| Initial commit | 2026-02-20 | 2023-05-09 | 2025-04-30 | 2025-08-09 | 2024-08-23 | 2024-03-13 | 2023-05-24 | 2024-07-06 | 2025-11-24 |
 
 Acolyte's first commit is from 20 February 2026 (pre-launch, no public repo yet). Stars reflect community adoption, not code quality. OpenClaw and OpenCode dominate on stars — OpenClaw at 268k is the #11 most starred repository on all of GitHub. Pi has the fewest open issues by a wide margin. Aider and Continue are the oldest projects.
 

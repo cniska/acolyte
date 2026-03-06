@@ -263,6 +263,12 @@ for entry in "${PROJECTS[@]}"; do
   echo "  Files > 500:      $files_over_500 ($files_over_500_pct%)"
   echo "  Largest file:     $largest_file_lines"
   echo "  Barrel files:     $barrel_files"
+  
+  # Initial commit date via GitHub API
+  repo_path=$(echo "$url" | sed 's|https://github.com/||;s|\.git$||')
+  initial_commit=$(gh api "repos/$repo_path" --jq '.created_at' 2>/dev/null | cut -d'T' -f1)
+
+  echo "  Initial commit:   $initial_commit"
   echo "  Dependencies:     $deps_runtime runtime + $deps_dev dev = $deps_total total"
   echo "  Test files:       $test_files_count"
   echo "  Test lines:       $test_lines_count"
