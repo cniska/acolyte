@@ -1,3 +1,4 @@
+import { t } from "./i18n";
 import { getLoadedSkills } from "./skills";
 
 const CHAT_SLASH_COMMANDS = [
@@ -23,28 +24,28 @@ const SUB_COMMANDS: Record<string, string[]> = {
 };
 
 const SLASH_HELP: Record<string, string> = {
-  "/new": "start new session",
-  "/permissions": "change permissions",
-  "/permissions read": "set permissions to read",
-  "/permissions write": "set permissions to write",
-  "/model": "change model",
-  "/model plan": "change plan model",
-  "/model work": "change work model",
-  "/model verify": "change verify model",
-  "/model chat": "change chat model",
-  "/status": "show server status",
-  "/sessions": "show sessions",
-  "/skills": "show skills picker",
-  "/resume": "resume session",
-  "/remember": "save memory note",
-  "/memory": "show memory notes",
-  "/memory list": "show memory notes",
-  "/memory add": "add memory note",
-  "/memory all": "show all memory notes",
-  "/memory user": "show user memory notes",
-  "/memory project": "show project memory notes",
-  "/tokens": "show token usage",
-  "/exit": "exit chat",
+  "/new": t("slash.help.new"),
+  "/permissions": t("slash.help.permissions"),
+  "/permissions read": t("slash.help.permissions.read"),
+  "/permissions write": t("slash.help.permissions.write"),
+  "/model": t("slash.help.model"),
+  "/model plan": t("slash.help.model.plan"),
+  "/model work": t("slash.help.model.work"),
+  "/model verify": t("slash.help.model.verify"),
+  "/model chat": t("slash.help.model.chat"),
+  "/status": t("slash.help.status"),
+  "/sessions": t("slash.help.sessions"),
+  "/skills": t("slash.help.skills"),
+  "/resume": t("slash.help.resume"),
+  "/remember": t("slash.help.remember"),
+  "/memory": t("slash.help.memory"),
+  "/memory list": t("slash.help.memory.list"),
+  "/memory add": t("slash.help.memory.add"),
+  "/memory all": t("slash.help.memory.all"),
+  "/memory user": t("slash.help.memory.user"),
+  "/memory project": t("slash.help.memory.project"),
+  "/tokens": t("slash.help.tokens"),
+  "/exit": t("slash.help.exit"),
 };
 
 const SLASH_ALIASES: Record<string, string> = {
@@ -170,6 +171,6 @@ export function resolveSlashAlias(value: string): string {
 export function slashCommandHelp(command: string): string {
   const help = SLASH_HELP[command];
   if (help) return help;
-  if (command.startsWith("/") && getLoadedSkills().some((s) => `/${s.name}` === command)) return "run skill command";
+  if (command.startsWith("/") && getLoadedSkills().some((s) => `/${s.name}` === command)) return t("slash.help.skill");
   return "";
 }
