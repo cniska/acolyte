@@ -53,9 +53,10 @@ function hasWriteForCurrentTask(ctx: EvaluatorContext): boolean {
 function isBlockedByMissingPrerequisites(text: string, lastError?: string): boolean {
   if (text.trim().length === 0) return false;
   const combined = `${text}\n${lastError ?? ""}`;
-  const blocked = /\b(can(?:not|'t)|unable to|won't|cannot)\b.{0,40}\b(proceed|continue|execute|run|complete)\b/i.test(
-    text,
-  );
+  const blocked =
+    /\b(can(?:not|'t)|unable to|won't|cannot)\b.{0,60}\b(proceed|continue|execute|executed|run|complete)\b/i.test(
+      text,
+    ) || /\b(can(?:not|'t)|unable to|won't|cannot)\s+be\s+\w+/i.test(text);
   const missing = /\b(no such file|does not exist|not found|missing|absent|required)\b/i.test(combined);
   const prerequisite =
     /\b(file|files|directory|folder|config|configuration|workspace|scaffold|dependency|dependencies|prerequisite|setup)\b/i.test(
