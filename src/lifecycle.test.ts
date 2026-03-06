@@ -617,4 +617,92 @@ describe("scheduleMemoryCommit", () => {
     expect(warning?.fields?.malformed_tagged_facts).toBe(2);
     expect(warning?.fields?.malformed_reject_streak).toBe(2);
   });
+
+  test("resets malformed reject streak after a clean commit", async () => {
+    const events: Array<{ event: string; fields?: Record<string, unknown> }> = [];
+    const commitCtx = {
+      sessionId: "sess_quality_reset001",
+      messages: [{ role: "user", content: "hello" }],
+      output: "done",
+    };
+    const enqueue = async (_key: string, job: () => Promise<void>) => {
+      await job();
+    };
+
+    scheduleMemoryCommit(
+      commitCtx,
+      (event, fields) => {
+        events.push({ event, fields });
+      },
+      async () => ({ malformedTaggedFacts: 1 }),
+      enqueue,
+    );
+    await Promise.resolve();
+    await Promise.resolve();
+
+    scheduleMemoryCommit(
+      commitCtx,
+      (event, fields) => {
+        events.push({ event, fields });
+      },
+      async () => ({ malformedTaggedFacts: 0 }),
+      enqueue,
+    );
+    await Promise.resolve();
+    await Promise.resolve();
+
+    scheduleMemoryCommit(
+      commitCtx,
+      (event, fields) => {
+        events.push({ event, fields });
+      },
+      async () => ({ malformedTaggedFacts: 1 }),
+      enqueue,
+    );
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const warnings = events.filter((entry) => entry.event === "lifecycle.memory.quality_warning");
+    expect(warnings).toHaveLength(0);
+    const doneEvents = events.filter((entry) => entry.event === "lifecycle.memory.commit_done");
+    const streaks = doneEvents.map((entry) => entry.fields?.malformed_reject_streak);
+    expect(streaks).toEqual([1, 0, 1]);
+  });
+
+  test("tracks malformed reject streak separately per session", async () => {
+    const events: Array<{ event: string; fields?: Record<string, unknown> }> = [];
+    const enqueue = async (_key: string, job: () => Promise<void>) => {
+      await job();
+    };
+    const debug = (event: string, fields?: Record<string, unknown>) => {
+      events.push({ event, fields });
+    };
+
+    scheduleMemoryCommit(
+      { sessionId: "sess_quality_iso_a", messages: [{ role: "user", content: "a1" }], output: "done" },
+      debug,
+      async () => ({ malformedTaggedFacts: 1 }),
+      enqueue,
+    );
+    scheduleMemoryCommit(
+      { sessionId: "sess_quality_iso_b", messages: [{ role: "user", content: "b1" }], output: "done" },
+      debug,
+      async () => ({ malformedTaggedFacts: 1 }),
+      enqueue,
+    );
+    scheduleMemoryCommit(
+      { sessionId: "sess_quality_iso_a", messages: [{ role: "user", content: "a2" }], output: "done" },
+      debug,
+      async () => ({ malformedTaggedFacts: 1 }),
+      enqueue,
+    );
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const warnings = events.filter((entry) => entry.event === "lifecycle.memory.quality_warning");
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]?.fields?.session_id).toBe("sess_quality_iso_a");
+    expect(warnings[0]?.fields?.malformed_reject_streak).toBe(2);
+  });
 });
