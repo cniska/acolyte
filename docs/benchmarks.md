@@ -3,6 +3,8 @@
 Measured comparisons of Acolyte against prominent open-source AI coding agents.
 All metrics are from source code analysis — no opinions, just counts.
 
+Acolyte metrics extracted with [`scripts/benchmark.ts`](../scripts/benchmark.ts), others with [`scripts/benchmark-others.sh`](../scripts/benchmark-others.sh).
+
 ## Projects Compared
 
 | Project | Language | Description | Source Lines | Files | Dependencies |
@@ -17,7 +19,7 @@ All metrics are from source code analysis — no opinions, just counts.
 | **Cline** | TypeScript | Autonomous AI coding agent for VS Code | 533,915 | 1,219 | 155 + 69 |
 | **OpenClaw** | TypeScript | Personal AI assistant with coding agent skill | 628,159 | 3,551 | 112 + 46 |
 
-Source lines exclude test files and generated code. Dependencies shown as runtime + dev. Acolyte metrics extracted with `bun run benchmark`, others with `./scripts/benchmark-others.sh`.
+Source lines exclude test files and generated code. Dependencies shown as runtime + dev.
 
 ## Type Safety (TypeScript projects, per 1k source lines)
 
