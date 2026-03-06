@@ -10,6 +10,11 @@ Rules:
   [project] for project-specific durable facts
   [user] for user preferences across projects
   [session] for current-task or ephemeral session facts
+- Routing guidance:
+  use [project] for repository facts (paths, architecture, tooling, coding conventions, decisions).
+  use [user] only for stable personal preferences that should carry across different projects.
+  if a user preference is clearly project-scoped, tag it [project], not [user].
+  use [session] for in-progress state, temporary constraints, and immediate tactical steps.
 - Scope tag format is strict:
   valid: "[project] uses Bun", "[user] prefers concise output", "[session] fixing test failures"
   invalid: "[proj] ...", "[usr] ...", "project: ...", "[project]: ..."
