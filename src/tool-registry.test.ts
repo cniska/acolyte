@@ -4,6 +4,8 @@ import { invariant } from "./assert";
 import { webSearchStreamRows, withToolError } from "./core-toolkit";
 import { savedPermissionMode } from "./test-utils";
 import { toolsForAgent } from "./tool-registry";
+import { TOOL_NAMES } from "./tool-names";
+import { TOOL_OUTPUT_MARKERS } from "./tool-output-parser";
 
 const restorePermissions = savedPermissionMode();
 
@@ -168,5 +170,20 @@ describe("web-search stream rows", () => {
         "[truncated] +2 results",
       ].join("\n"),
     );
+  });
+});
+
+describe("localization baseline", () => {
+  test("tool ids stay language-neutral", () => {
+    const toolNamePattern = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
+    for (const name of TOOL_NAMES) {
+      expect(name).toMatch(toolNamePattern);
+    }
+  });
+
+  test("tool output markers stay machine-token style", () => {
+    const markerPattern = /^\[[a-z][a-z-]*\]$/;
+    expect(TOOL_OUTPUT_MARKERS.truncated).toMatch(markerPattern);
+    expect(TOOL_OUTPUT_MARKERS.noOutput).toMatch(markerPattern);
   });
 });

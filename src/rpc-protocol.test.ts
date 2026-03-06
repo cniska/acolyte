@@ -156,4 +156,33 @@ describe("rpc protocol schema", () => {
     expect(RESERVED_RPC_CLIENT_TASK_METHODS).toEqual(["task.start", "task.status", "task.cancel", "task.attach"]);
     expect(RESERVED_RPC_SERVER_TASK_METHODS).toEqual(["task.accepted", "task.updated", "task.done", "task.error"]);
   });
+
+  test("uses language-neutral rpc identifiers", () => {
+    const identifierPattern = /^[a-z][a-z0-9]*(?:[.-][a-z][a-z0-9]*)+$/;
+    const clientTypes = ["status.get", "permissions.set", "chat.start", "chat.abort", "task.status"] as const;
+    const serverTypes = [
+      "status.result",
+      "permissions.result",
+      "chat.event",
+      "chat.accepted",
+      "chat.queued",
+      "chat.started",
+      "chat.done",
+      "chat.error",
+      "chat.abort.result",
+      "task.status.result",
+      "error",
+    ] as const;
+
+    for (const method of RESERVED_RPC_CLIENT_TASK_METHODS) expect(method).toMatch(identifierPattern);
+    for (const method of RESERVED_RPC_SERVER_TASK_METHODS) expect(method).toMatch(identifierPattern);
+    for (const type of clientTypes) expect(type).toMatch(identifierPattern);
+    for (const type of serverTypes) {
+      if (type === "error") {
+        expect(type).toMatch(/^[a-z][a-z0-9]*$/);
+      } else {
+        expect(type).toMatch(identifierPattern);
+      }
+    }
+  });
 });
