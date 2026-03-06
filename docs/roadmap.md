@@ -98,6 +98,8 @@ Run a reproducible experiment that proves MVP readiness.
 - [ ] Includes at least one failure-and-repair cycle with clear proof
 - [x] Demo flow supports 15-minute launch slot (live slice + evidence backup)
 
+**Current status:** 15-minute launch runbook is documented; remaining work is experiment execution and evidence capture.
+
 ### Milestone 9: Chat Correctness Pass
 
 Finalize chat behavior confidence after experiment proof is complete.
