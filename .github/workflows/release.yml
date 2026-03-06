@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Verify
+        run: bun run verify
+
+      - name: Prepare release artifacts
+        run: |
+          mkdir -p artifacts
+          git archive --format=tar.gz --output=artifacts/acolyte-${GITHUB_REF_NAME}.tar.gz HEAD
+          git archive --format=zip --output=artifacts/acolyte-${GITHUB_REF_NAME}.zip HEAD
+          sha256sum artifacts/* > artifacts/SHA256SUMS.txt
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/acolyte-*.tar.gz
+            artifacts/acolyte-*.zip
+            artifacts/SHA256SUMS.txt
+          generate_release_notes: true
