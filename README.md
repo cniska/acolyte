@@ -29,8 +29,9 @@ bun run client help
 
 ## Validate Changes
 
-- Fast local loop: `bun run verify:quick`
+- All tests: `bun test`
 - Full check: `bun run verify`
+- Unit tests: `bun run test:unit`
 - Unit coverage report: `bun run test:coverage`
 - Integration tests: `bun run test:int`
 - Perf baseline: `bun run test:perf`
