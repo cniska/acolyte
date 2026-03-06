@@ -14,7 +14,7 @@ import type { PickerState } from "./chat-picker";
 import { createPickerHandlers, persistPermissionMode } from "./chat-picker-handlers";
 import { newMessage, toRows } from "./chat-session";
 import { suggestSlashCommands } from "./chat-slash";
-import { resolveQueueSubmit } from "./chat-submit";
+import { enqueueQueuedMessage, resolveQueueSubmit } from "./chat-submit";
 import { ChatTranscript } from "./chat-transcript";
 import { buildInputHistory } from "./chat-turn";
 import type { Client } from "./client";
@@ -31,6 +31,7 @@ type HeaderLine = {
   brand: boolean;
 };
 const THINKING_PULSE_FRAMES = 16;
+const QUEUE_DELIVERY_POLICY = "one-at-a-time" as const;
 
 interface ChatAppProps {
   client: Client;
@@ -145,7 +146,8 @@ function ChatApp(props: ChatAppProps) {
     setPicker: (next) => setPicker(next),
     setShowHelp,
     setValue,
-    queueInput: (value: string) => setQueuedMessages((current) => [...current, value]),
+    queueInput: (value: string) =>
+      setQueuedMessages((current) => enqueueQueuedMessage(current, value, QUEUE_DELIVERY_POLICY)),
     buildWriteResumePayload: buildInternalWriteResumeTurn,
     setServerPermissionMode: async (mode) => {
       await client.setPermissionMode(mode);
@@ -281,7 +283,7 @@ function ChatApp(props: ChatAppProps) {
           const queueDecision = resolveQueueSubmit({ value: resolved.value, isWorking });
           if (queueDecision.kind === "ignore") return;
           if (isWorking) {
-            setQueuedMessages((current) => [...current, queueDecision.value]);
+            setQueuedMessages((current) => enqueueQueuedMessage(current, queueDecision.value, QUEUE_DELIVERY_POLICY));
             setValue("");
             return;
           }

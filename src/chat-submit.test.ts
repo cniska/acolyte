@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { resolveQueueSubmit, resolveSubmitInput } from "./chat-submit";
+import { enqueueQueuedMessage, resolveQueueSubmit, resolveSubmitInput } from "./chat-submit";
 
 describe("chat submit helpers", () => {
   test("autocompletes unresolved @path on submit", () => {
@@ -58,5 +58,13 @@ describe("chat submit helpers", () => {
       kind: "submit",
       value: "hello",
     });
+  });
+
+  test("enqueueQueuedMessage keeps only latest prompt in one-at-a-time mode", () => {
+    expect(enqueueQueuedMessage(["first", "second"], "latest", "one-at-a-time")).toEqual(["latest"]);
+  });
+
+  test("enqueueQueuedMessage appends in all mode", () => {
+    expect(enqueueQueuedMessage(["first", "second"], "latest", "all")).toEqual(["first", "second", "latest"]);
   });
 });

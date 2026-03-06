@@ -20,6 +20,8 @@ export type QueueSubmitResolution =
       value: string;
     };
 
+export type QueueDeliveryPolicy = "one-at-a-time" | "all";
+
 type ResolveSubmitInput = {
   value: string;
   atSuggestions: string[];
@@ -52,4 +54,9 @@ export function resolveQueueSubmit(input: { value: string; isWorking: boolean })
   if (!trimmed) return { kind: "ignore" };
   if (input.isWorking) return { kind: "submit", value: trimmed };
   return { kind: "submit", value: input.value };
+}
+
+export function enqueueQueuedMessage(current: string[], next: string, policy: QueueDeliveryPolicy): string[] {
+  if (policy === "all") return [...current, next];
+  return [next];
 }
