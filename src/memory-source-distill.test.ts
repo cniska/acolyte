@@ -663,5 +663,46 @@ describe("distillMemorySource", () => {
         (appConfig as { distill: typeof appConfig.distill }).distill = originalDistillConfig;
       }
     });
+
+    test("returns scoped promotion and drop metrics for mixed observations", async () => {
+      const originalDistillConfig = { ...appConfig.distill };
+      (appConfig as { distill: typeof appConfig.distill }).distill = {
+        ...appConfig.distill,
+        messageThreshold: 1,
+        reflectionThresholdTokens: 999_999,
+        maxOutputTokens: 10_000,
+      };
+      try {
+        const store = createMockStore();
+        const source = createDistillMemorySource(store, async (systemPrompt) => {
+          if (systemPrompt !== OBSERVER_PROMPT) return "";
+          return [
+            "[project] project fact one",
+            "[project] project fact two",
+            "[user] user fact one",
+            "[session] session fact one",
+            "Current task: keep continuation",
+            "[project] Next step: continuation forced to session",
+            "untagged dropped fact",
+            "[proj] malformed tag dropped",
+          ].join("\n");
+        });
+        if (!source.commit) throw new Error("expected commit handler");
+        const metrics = await source.commit({
+          sessionId: "sess_test0001",
+          resourceId: "proj_abc123",
+          messages: [{ role: "user", content: "hello" }],
+          output: "done",
+        });
+        expect(metrics).toEqual({
+          projectPromotedFacts: 2,
+          userPromotedFacts: 1,
+          sessionScopedFacts: 3,
+          droppedUntaggedFacts: 2,
+        });
+      } finally {
+        (appConfig as { distill: typeof appConfig.distill }).distill = originalDistillConfig;
+      }
+    });
   });
 });
