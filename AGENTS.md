@@ -84,6 +84,8 @@ Development:
 
 - Add tests for meaningful regression risk or critical behavior.
 - Avoid redundant or trivial tests.
+- Runtime behavior is the source of truth; when tests and runtime disagree, correct the tests unless a real runtime bug is proven.
+- Never add test-only branches, flags, mocks, or behavior changes to runtime/production code.
 
 ## Safety
 
