@@ -75,8 +75,10 @@ Development:
 ## Validation
 
 - Run relevant validation after changes.
+- Keep the branch green after each fix slice: run the narrowest relevant checks while iterating, then run the required gate before committing.
 - For this repo baseline, run `bun run verify` for feature work (`format` + `lint` + `typecheck` + `test`).
 - At minimum, run `bun run typecheck` when TypeScript code changes.
+- Do not commit on red. If baseline is already red, first land a dedicated fix slice that restores green, then continue feature work.
 - Prefer automated smoke checks for readiness; ask for manual user testing only at milestone checkpoints.
 - Document validation that could not run and why.
 
