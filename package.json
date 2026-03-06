@@ -31,7 +31,9 @@
     "db:smoke": "bun run src/postgres-smoke.ts",
     "om:status": "bun run scripts/om-admin.ts status",
     "om:wipe": "bun run scripts/om-admin.ts wipe",
-    "om:soak": "bun run scripts/om-soak.ts"
+    "om:soak": "bun run scripts/om-soak.ts",
+    "benchmark": "bun run scripts/benchmark.ts",
+    "benchmark:others": "./scripts/benchmark-others.sh"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.5",
