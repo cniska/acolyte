@@ -26,6 +26,7 @@ const EN_MESSAGES = {
   "remember.failed": "Failed to save memory.",
   "remember.saved": "Saved {scope} memory: {content}",
   "remember.usage": "Usage: /remember [--user|--project] <memory text>",
+  "progress.thinking": "Thinking…",
   "scope.all": "All",
   "scope.project": "Project",
   "scope.user": "User",
@@ -36,6 +37,12 @@ const EN_MESSAGES = {
   "skill.failed": "Failed to activate skill: {skill}",
   "status.check_failed": "Status check failed.",
   "status.empty": "Status response was empty.",
+  "submit.interrupted": "Interrupted",
+  "task.followup.cancelled": "Task cancelled.",
+  "task.followup.failed": "Task failed on server.",
+  "task.followup.lost_tracking": "Lost task tracking after stream disconnect.",
+  "task.followup.running_hint": "Task is still running. Use /status to check server health.",
+  "task.followup.still_running": "Still running on server…",
   "tokens.label.budget": "budget:",
   "tokens.label.last_turn": "last_turn:",
   "tokens.label.model_calls": "model_calls:",
@@ -71,6 +78,7 @@ const EN_MESSAGES = {
   "slash.help.skills": "show skills picker",
   "slash.help.status": "show server status",
   "slash.help.tokens": "show token usage",
+  "write.confirm.required": "Write request needs confirmation in read mode.",
 } as const;
 
 type TranslationCatalog = {
