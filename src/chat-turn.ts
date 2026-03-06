@@ -121,6 +121,9 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
     warning: reply.budgetWarning,
     modelCalls: reply.modelCalls,
   };
+  if (reply.budgetWarning?.trim().length) {
+    rows.push(createRow("system", reply.budgetWarning.trim(), { dim: true }));
+  }
 
   const durationMs = Date.now() - params.thinkingStartedAt;
   if (durationMs >= 300) {

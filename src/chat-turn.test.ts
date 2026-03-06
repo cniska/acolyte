@@ -120,4 +120,32 @@ describe("chat turn helpers", () => {
 
     expect(turn.assistantMessage.kind).toBe("tool_payload");
   });
+
+  test("runAssistantTurn adds inline budget warning row when present", async () => {
+    const turn = await runAssistantTurn({
+      client: {
+        replyStream: async () => ({
+          model: "gpt-5-mini",
+          output: "done",
+          budgetWarning: "context near budget (7900/8000 tokens)",
+        }),
+        status: async () => ({}),
+        setPermissionMode: async () => {},
+        taskStatus: async () => null,
+      },
+      userText: "summarize recent work",
+      history: [],
+      model: "gpt-5-mini",
+      sessionId: "sess_test",
+      thinkingStartedAt: Date.now(),
+      createMessage: (role, content) => ({
+        id: "msg_assistant",
+        role,
+        content,
+        timestamp: "2026-02-20T00:00:00.000Z",
+      }),
+    });
+
+    expect(turn.rows.some((row) => row.role === "system" && row.content.includes("context near budget"))).toBe(true);
+  });
 });

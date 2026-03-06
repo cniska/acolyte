@@ -68,11 +68,11 @@ Reduce repeated mistakes with transparent, correctable memory behavior.
 - [x] History-time tool-output pruning for old assistant turns (not only emit-time truncation)
 - [x] Rolling history budget policy in agent input assembly (deterministic pruning, no user-visible compaction flow)
 - [x] Explicit resume block injection from continuation state (`Current task` / `Next step`)
-- [ ] Token UX stays low-noise by default: no always-on per-turn footer; `/tokens` remains on-demand and only budget-risk warnings surface inline
+- [x] Token UX stays low-noise by default: no always-on per-turn footer; `/tokens` remains on-demand and only budget-risk warnings surface inline
 - [ ] Evals show measurable reduction in repeated instruction failures
 - [ ] Memory doesn't hallucinate or carry stale context
 
-**Current status:** Mastra removed. Context distillation and memory commands are implemented. Remaining work is low-noise token UX completion, evals, and quality confidence.
+**Current status:** Mastra removed. Context distillation and memory commands are implemented. Remaining work is evals and quality confidence.
 
 ### Milestone 7: Product Polish
 
