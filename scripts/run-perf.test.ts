@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { parseArgs, summarizeScenarioRuns } from "./run-perf";
+import { sessionIdSchema } from "../src/session-contract";
+import { buildPerfSessionId, parseArgs, summarizeScenarioRuns } from "./run-perf";
 
 describe("run-perf args", () => {
   test("parseArgs applies defaults", () => {
@@ -46,5 +47,12 @@ describe("run-perf summarize", () => {
     expect(summary.p95Ms).toBe(2000);
     expect(summary.maxMs).toBe(2000);
     expect(summary.avgModelCalls).toBeCloseTo(2, 5);
+  });
+});
+
+describe("run-perf ids", () => {
+  test("buildPerfSessionId emits rpc-valid session ids", () => {
+    const sessionId = buildPerfSessionId("quick-answer", 1);
+    expect(sessionIdSchema.safeParse(sessionId).success).toBe(true);
   });
 });

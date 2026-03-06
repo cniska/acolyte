@@ -51,6 +51,10 @@ const WAIT_SERVER_ENTRY = join(REPO_DIR, "src", "wait-server.ts");
 const PERF_MODEL = "gpt-5-mini";
 const SCENARIOS: Scenario[] = PERF_SCENARIO_LIST;
 
+export function buildPerfSessionId(scenarioId: ScenarioId, run: number): string {
+  return `sess_perf_${scenarioId}_${run}`;
+}
+
 function parseInteger(token: string | undefined, flag: string): number {
   if (!token) throw new Error(`Missing value for ${flag}`);
   const value = Number(token);
@@ -210,7 +214,7 @@ async function runScenario(
         message: scenario.prompt,
         history: [],
         model: PERF_MODEL,
-        sessionId: `perf_${scenario.id}_${run}`,
+        sessionId: buildPerfSessionId(scenario.id, run),
         workspace: workspaceDir,
       },
       { onEvent: (_event: StreamEvent) => {} },
