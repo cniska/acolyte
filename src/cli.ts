@@ -1,10 +1,11 @@
 #!/usr/bin/env bun
 import { chatModeWithOptions } from "./cli-chat";
 import { commands, usage } from "./cli-commands";
-import { resolveCliVersion } from "./cli-version";
+import { formatVersionWithCommit, resolveCliCommitShort, resolveCliVersion } from "./cli-version";
 import { printOutput } from "./ui";
 
 const CLI_VERSION = resolveCliVersion();
+const CLI_VERSION_OUTPUT = formatVersionWithCommit(CLI_VERSION, resolveCliCommitShort());
 
 function isTopLevelHelpCommand(command: string | undefined): boolean {
   return command === "help" || command === "--help" || command === "-h";
@@ -22,7 +23,7 @@ async function main(): Promise<void> {
     return;
   }
   if (isTopLevelVersionCommand(command)) {
-    printOutput(CLI_VERSION);
+    printOutput(CLI_VERSION_OUTPUT);
     return;
   }
 

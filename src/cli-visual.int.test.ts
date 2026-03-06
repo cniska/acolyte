@@ -85,7 +85,7 @@ describe("cli visual regression", () => {
   test("version command prints current package version", async () => {
     const packageJson = JSON.parse(readFileSync("package.json", "utf8")) as { version: string };
     const out = await runCliPlain(["--version"]);
-    expect(out).toBe(packageJson.version);
+    expect(out).toMatch(new RegExp(`^${packageJson.version}( \\([0-9a-f]{7}\\))?$`));
   });
 
   test("top-level help output stays stable", async () => {
