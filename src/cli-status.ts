@@ -1,11 +1,11 @@
 import type { appConfig as appConfigType } from "./app-config";
-import { t } from "./i18n";
 import type {
   resolveChatApiUrl as resolveChatApiUrlType,
   resolveLocalDaemonApiUrl as resolveLocalDaemonApiUrlType,
   shouldAutoStartLocalServerForChat as shouldAutoStartLocalServerForChatType,
 } from "./cli-server";
 import type { createClient as createClientType } from "./client";
+import { t } from "./i18n";
 import type { localServerStatus as localServerStatusType } from "./server-daemon";
 import type { formatStatusOutput as formatStatusOutputType } from "./status-format";
 

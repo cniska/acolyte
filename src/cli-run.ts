@@ -16,10 +16,10 @@ import type {
 import type { createClient as createClientType } from "./client";
 import type { readResolvedConfigSync as readResolvedConfigSyncType } from "./config";
 import type { runShellCommand as runShellCommandType } from "./core-tools";
+import { t } from "./i18n";
 import type { ResourceId } from "./resource-id";
 import type { ensureLocalServer as ensureLocalServerType } from "./server-daemon";
 import type { createSession as createSessionType } from "./storage";
-import { t } from "./i18n";
 
 const RUN_MODE_SYSTEM_PROMPT =
   "Run mode: act decisively — make reasonable defaults instead of asking clarifying questions. Answer concisely (prefer <=5 lines). No option menus.";

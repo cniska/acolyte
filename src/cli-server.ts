@@ -1,5 +1,5 @@
-import { isLoopbackHost } from "./network-host";
 import { t } from "./i18n";
+import { isLoopbackHost } from "./network-host";
 
 const DEFAULT_LOCAL_API_HOST = "127.0.0.1";
 const DEFAULT_LOCAL_API_PORT = 6767;
