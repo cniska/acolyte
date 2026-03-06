@@ -22,6 +22,7 @@ import { phasePrepare } from "./lifecycle-prepare";
 import { createInMemoryTaskQueue } from "./task-queue";
 
 const memoryCommitQueue = createInMemoryTaskQueue();
+const malformedMemoryRejectStreakBySession = new Map<string, number>();
 
 export { autoVerifier, efficiencyEvaluator, multiMatchEditEvaluator, planDetector, timeoutRecovery, verifyFailure };
 export type { EvalAction, Evaluator };
@@ -48,14 +49,28 @@ export function scheduleMemoryCommit(
   debug("lifecycle.memory.commit_scheduled", debugFields);
   void enqueueFn(key, async () => {
     const metrics = await commitFn(commitCtx);
+    const malformedTaggedFacts = metrics?.malformedTaggedFacts ?? 0;
+    const malformedRejectStreak =
+      malformedTaggedFacts > 0 ? (malformedMemoryRejectStreakBySession.get(key) ?? 0) + 1 : 0;
+    if (malformedRejectStreak > 0) malformedMemoryRejectStreakBySession.set(key, malformedRejectStreak);
+    else malformedMemoryRejectStreakBySession.delete(key);
     debug("lifecycle.memory.commit_done", {
       ...debugFields,
       project_promoted_facts: metrics?.projectPromotedFacts ?? 0,
       user_promoted_facts: metrics?.userPromotedFacts ?? 0,
       session_scoped_facts: metrics?.sessionScopedFacts ?? 0,
       dropped_untagged_facts: metrics?.droppedUntaggedFacts ?? 0,
-      malformed_tagged_facts: metrics?.malformedTaggedFacts ?? 0,
+      malformed_tagged_facts: malformedTaggedFacts,
+      malformed_reject_streak: malformedRejectStreak,
     });
+    if (malformedRejectStreak >= 2) {
+      debug("lifecycle.memory.quality_warning", {
+        ...debugFields,
+        warning: "repeated_malformed_scope_tags",
+        malformed_tagged_facts: malformedTaggedFacts,
+        malformed_reject_streak: malformedRejectStreak,
+      });
+    }
   }).catch((error) => {
     debug("lifecycle.memory.commit_failed", {
       ...debugFields,

@@ -542,6 +542,7 @@ describe("scheduleMemoryCommit", () => {
     expect(done?.fields?.session_scoped_facts).toBe(0);
     expect(done?.fields?.dropped_untagged_facts).toBe(0);
     expect(done?.fields?.malformed_tagged_facts).toBe(0);
+    expect(done?.fields?.malformed_reject_streak).toBe(0);
   });
 
   test("logs commit metrics when commit returns promotion stats", async () => {
@@ -575,5 +576,45 @@ describe("scheduleMemoryCommit", () => {
     expect(done?.fields?.session_scoped_facts).toBe(3);
     expect(done?.fields?.dropped_untagged_facts).toBe(4);
     expect(done?.fields?.malformed_tagged_facts).toBe(5);
+    expect(done?.fields?.malformed_reject_streak).toBe(1);
+  });
+
+  test("emits quality warning on repeated malformed memory commits", async () => {
+    const events: Array<{ event: string; fields?: Record<string, unknown> }> = [];
+    const commitCtx = {
+      sessionId: "sess_quality_warn001",
+      messages: [{ role: "user", content: "hello" }],
+      output: "done",
+    };
+    const enqueue = async (_key: string, job: () => Promise<void>) => {
+      await job();
+    };
+    await Promise.resolve(
+      scheduleMemoryCommit(
+        commitCtx,
+        (event, fields) => {
+          events.push({ event, fields });
+        },
+        async () => ({ malformedTaggedFacts: 1 }),
+        enqueue,
+      ),
+    );
+    await Promise.resolve();
+    await Promise.resolve(
+      scheduleMemoryCommit(
+        commitCtx,
+        (event, fields) => {
+          events.push({ event, fields });
+        },
+        async () => ({ malformedTaggedFacts: 2 }),
+        enqueue,
+      ),
+    );
+    await Promise.resolve();
+    const warning = events.find((entry) => entry.event === "lifecycle.memory.quality_warning");
+    expect(warning).toBeDefined();
+    expect(warning?.fields?.warning).toBe("repeated_malformed_scope_tags");
+    expect(warning?.fields?.malformed_tagged_facts).toBe(2);
+    expect(warning?.fields?.malformed_reject_streak).toBe(2);
   });
 });
