@@ -3,8 +3,52 @@ import { readResolvedConfigSync } from "./config";
 export type LogLevel = "debug" | "info" | "warn" | "error";
 type LogFormat = "logfmt" | "json";
 const config = readResolvedConfigSync();
+const REDACTED = "[REDACTED]";
 
 type LogFields = Record<string, string | number | boolean | null | undefined>;
+
+function isSensitiveFieldKey(key: string): boolean {
+  const normalized = key.toLowerCase();
+  return (
+    normalized === "authorization" ||
+    normalized.includes("api_key") ||
+    normalized.includes("apikey") ||
+    normalized.includes("secret") ||
+    normalized.includes("password") ||
+    normalized.includes("cookie") ||
+    normalized === "token" ||
+    normalized.endsWith("_token") ||
+    normalized.endsWith("-token")
+  );
+}
+
+function redactString(value: string): string {
+  return value
+    .replace(/\b(Bearer)\s+[A-Za-z0-9._~+/=-]+/gi, "$1 [REDACTED]")
+    .replace(
+      /((?:api[_-]?key|access[_-]?token|refresh[_-]?token|session[_-]?token|password|secret)\s*[=:]\s*)[^\s,;&]+/gi,
+      "$1[REDACTED]",
+    )
+    .replace(
+      /([?&](?:api[_-]?key|access_token|refresh_token|session_token|password|secret)=)[^&\s]+/gi,
+      "$1[REDACTED]",
+    )
+    .replace(/\bsk-[A-Za-z0-9]{8,}\b/g, REDACTED);
+}
+
+function sanitizeLogFields(fields?: LogFields): LogFields | undefined {
+  if (!fields) return undefined;
+  const sanitized: LogFields = {};
+  for (const [key, value] of Object.entries(fields)) {
+    if (value === undefined) continue;
+    if (isSensitiveFieldKey(key)) {
+      sanitized[key] = REDACTED;
+      continue;
+    }
+    sanitized[key] = typeof value === "string" ? redactString(value) : value;
+  }
+  return sanitized;
+}
 
 function encodeLogfmtValue(value: string | number | boolean | null | undefined): string {
   if (value === null || value === undefined) return "null";
@@ -19,22 +63,26 @@ function resolveLogFormat(): LogFormat {
 }
 
 function renderLogfmtLine(level: LogLevel, message: string, fields?: LogFields): string {
+  const sanitizedMessage = redactString(message);
+  const sanitizedFields = sanitizeLogFields(fields);
   const timestamp = new Date().toISOString();
-  const pairs = fields
-    ? Object.entries(fields)
+  const pairs = sanitizedFields
+    ? Object.entries(sanitizedFields)
         .filter(([, value]) => value !== undefined)
         .map(([key, value]) => `${key}=${encodeLogfmtValue(value ?? null)}`)
     : [];
   const tail = pairs.length > 0 ? ` ${pairs.join(" ")}` : "";
-  return `${timestamp} level=${level} msg="${message.replace(/"/g, '\\"')}"${tail}\n`;
+  return `${timestamp} level=${level} msg="${sanitizedMessage.replace(/"/g, '\\"')}"${tail}\n`;
 }
 
 function renderJsonLine(level: LogLevel, message: string, fields?: LogFields): string {
+  const sanitizedMessage = redactString(message);
+  const sanitizedFields = sanitizeLogFields(fields);
   const body = {
     ts: new Date().toISOString(),
     level,
-    msg: message,
-    ...fields,
+    msg: sanitizedMessage,
+    ...sanitizedFields,
   };
   return `${JSON.stringify(body)}\n`;
 }
