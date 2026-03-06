@@ -112,7 +112,7 @@ Open-source local mode with optional self-hosted memory/session sync service.
 
 - [ ] README and docs are clear for external contributors
 - [x] License chosen and applied
-- [ ] No hardcoded secrets or internal paths
+- [x] No hardcoded secrets or internal paths
 - [ ] CI/CD pipeline for releases
 - [ ] Pre-OSS security baseline complete (secure defaults, auth coverage, workspace boundary checks, redaction tests)
 - [ ] Localization baseline: translatable CLI/TUI copy, with raw protocol/tool output kept language-neutral
