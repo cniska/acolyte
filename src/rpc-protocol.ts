@@ -39,24 +39,26 @@ const chatRequestSchema = z.object({
   workspace: z.string().optional(),
 });
 
-export const statusPayloadSchema = z.object({
-  ok: z.literal(true),
-  providers: z.array(providerSchema),
-  model: z.string(),
-  "model.plan": z.string().optional(),
-  "model.work": z.string().optional(),
-  "model.verify": z.string().optional(),
-  "model.chat": z.string().optional(),
-  protocol_version: z.string(),
-  capabilities: z.string(),
-  permissions: z.string(),
-  service: z.string(),
-  memory: z.string(),
-  tasks_total: z.number().int().min(0),
-  tasks_running: z.number().int().min(0),
-  tasks_detached: z.number().int().min(0),
-  rpc_queue_length: z.number().int().min(0),
-});
+export const statusPayloadSchema = z
+  .object({
+    ok: z.literal(true),
+    providers: z.array(providerSchema),
+    model: z.string(),
+    "model.plan": z.string().optional(),
+    "model.work": z.string().optional(),
+    "model.verify": z.string().optional(),
+    "model.chat": z.string().optional(),
+    protocol_version: z.string(),
+    capabilities: z.string(),
+    permissions: z.string(),
+    service: z.string(),
+    memory: z.string(),
+    tasks_total: z.number().int().min(0),
+    tasks_running: z.number().int().min(0),
+    tasks_detached: z.number().int().min(0),
+    rpc_queue_length: z.number().int().min(0),
+  })
+  .catchall(z.union([z.boolean(), z.string(), z.number(), z.array(z.string())]));
 
 export const rpcClientMessageSchema = z.discriminatedUnion("type", [
   z.object({ id: rpcRequestIdSchema, type: z.literal("status.get") }),

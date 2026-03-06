@@ -7,6 +7,7 @@ import { errorToLogFields, log } from "./log";
 import { formatServerCapabilities, PROTOCOL_VERSION } from "./protocol";
 import { formatModel } from "./provider-config";
 import type { Provider } from "./provider-contract";
+import { collectResourceDiagnostics } from "./resource-diagnostics";
 import { isChatRequest, runChatRequest } from "./server-chat-runtime";
 import type { StatusPayload } from "./server-contract";
 import { createServerFetchHandler } from "./server-http";
@@ -113,9 +114,9 @@ async function createStatusPayload(): Promise<StatusPayload> {
   const planModel = appConfig.models.plan?.trim();
   const workModel = appConfig.models.work?.trim();
   const verifyModel = appConfig.models.verify?.trim();
-  const memoryStatus =
-    appConfig.memory.budgetTokens > 0 ? `enabled (${appConfig.memory.sources.join(", ")})` : "none";
+  const memoryStatus = appConfig.memory.budgetTokens > 0 ? `enabled (${appConfig.memory.sources.join(", ")})` : "none";
   const taskSummary = taskRegistry.summary();
+  const resourceDiagnostics = collectResourceDiagnostics();
   return {
     ok: true,
     providers,
@@ -133,6 +134,7 @@ async function createStatusPayload(): Promise<StatusPayload> {
     tasks_running: taskSummary.running,
     tasks_detached: taskSummary.detached,
     rpc_queue_length: getRpcQueuedTaskCount(),
+    ...resourceDiagnostics,
   };
 }
 

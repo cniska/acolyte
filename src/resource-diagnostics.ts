@@ -1,0 +1,34 @@
+import { existsSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
+import { getLoadedSkills, getSkillLoadDiagnostics } from "./skills";
+import { loadAgentsPrompt, loadSoulPrompt } from "./soul";
+import type { StatusFields } from "./status-contract";
+
+function hasConfigFileCollision(scopeDir: string): boolean {
+  return existsSync(join(scopeDir, "config.toml")) && existsSync(join(scopeDir, "config.json"));
+}
+
+export function collectResourceDiagnostics(options?: { cwd?: string; homeDir?: string }): StatusFields {
+  const cwd = options?.cwd ?? process.cwd();
+  const homeDir = options?.homeDir ?? homedir();
+  const diagnostics: StatusFields = {};
+
+  const collisionScopes: string[] = [];
+  if (hasConfigFileCollision(join(cwd, ".acolyte"))) collisionScopes.push("project");
+  if (hasConfigFileCollision(join(homeDir, ".acolyte"))) collisionScopes.push("user");
+  if (collisionScopes.length > 0) diagnostics["resources.config.collisions"] = collisionScopes.join(",");
+
+  if (loadSoulPrompt(cwd).trim().length === 0) diagnostics["resources.prompt.soul"] = "missing_or_unreadable";
+  if (loadAgentsPrompt(cwd).trim().length === 0) diagnostics["resources.prompt.agents"] = "missing_or_unreadable";
+
+  const skills = getLoadedSkills();
+  const skillDiagnostics = getSkillLoadDiagnostics();
+  if (skillDiagnostics.invalid > 0) diagnostics["resources.skills.invalid"] = skillDiagnostics.invalid;
+  if (skillDiagnostics.duplicates > 0) diagnostics["resources.skills.duplicates"] = skillDiagnostics.duplicates;
+  if (skillDiagnostics.readErrors > 0) diagnostics["resources.skills.read_errors"] = skillDiagnostics.readErrors;
+  if (skillDiagnostics.scannedDirs > 0 && skillDiagnostics.loaded === 0 && skills.length === 0)
+    diagnostics["resources.skills.status"] = "no_valid_skills_loaded";
+
+  return diagnostics;
+}

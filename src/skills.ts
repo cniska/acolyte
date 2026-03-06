@@ -12,6 +12,16 @@ export interface SkillMeta {
   allowedTools?: string[];
 }
 
+export interface SkillLoadDiagnostics {
+  scannedDirs: number;
+  loaded: number;
+  invalid: number;
+  duplicates: number;
+  readErrors: number;
+  missingSkillFiles: number;
+  scannedAt: string | null;
+}
+
 interface ParsedFrontmatter {
   name?: string;
   description?: string;
@@ -22,6 +32,18 @@ interface ParsedFrontmatter {
 }
 
 const SKILL_NAME_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
+
+function createEmptySkillLoadDiagnostics(): SkillLoadDiagnostics {
+  return {
+    scannedDirs: 0,
+    loaded: 0,
+    invalid: 0,
+    duplicates: 0,
+    readErrors: 0,
+    missingSkillFiles: 0,
+    scannedAt: null,
+  };
+}
 
 export function validateSkillName(name: string, dirName: string): string | null {
   if (name.length === 0 || name.length > 64) return `name must be 1-64 characters (got ${name.length})`;
@@ -115,37 +137,56 @@ function stripFrontmatter(input: string): string {
 
 const SKILL_DIR = ".agents/skills";
 
-export async function listSkills(cwd = process.cwd()): Promise<SkillMeta[]> {
+async function scanSkills(cwd = process.cwd()): Promise<{ skills: SkillMeta[]; diagnostics: SkillLoadDiagnostics }> {
+  const diagnostics = createEmptySkillLoadDiagnostics();
   const seen = new Set<string>();
   const found: SkillMeta[] = [];
 
   const root = join(cwd, SKILL_DIR);
-  if (!existsSync(root)) return [];
+  diagnostics.scannedAt = new Date().toISOString();
+  if (!existsSync(root)) return { skills: [], diagnostics };
 
   let dirs: Dirent[];
   try {
     dirs = await readdir(root, { withFileTypes: true });
   } catch {
-    return [];
+    diagnostics.readErrors += 1;
+    return { skills: [], diagnostics };
   }
 
   for (const entry of dirs) {
     if (!entry.isDirectory()) continue;
+    diagnostics.scannedDirs += 1;
     const dirName = entry.name as string;
     const skillPath = join(root, dirName, "SKILL.md");
-    if (!existsSync(skillPath)) continue;
+    if (!existsSync(skillPath)) {
+      diagnostics.missingSkillFiles += 1;
+      continue;
+    }
     try {
       const content = await readFile(skillPath, "utf8");
       const fm = parseFrontmatter(content);
-      if (!fm) continue;
+      if (!fm) {
+        diagnostics.invalid += 1;
+        continue;
+      }
       const name = fm.name ?? dirName;
       const nameError = validateSkillName(name, dirName);
-      if (nameError) continue;
-      if (seen.has(name)) continue;
+      if (nameError) {
+        diagnostics.invalid += 1;
+        continue;
+      }
+      if (seen.has(name)) {
+        diagnostics.duplicates += 1;
+        continue;
+      }
       seen.add(name);
 
       const description = fm.description;
-      if (!description || description.length > 1024) continue;
+      if (!description || description.length > 1024) {
+        diagnostics.invalid += 1;
+        continue;
+      }
 
       found.push({
         name,
@@ -157,22 +198,36 @@ export async function listSkills(cwd = process.cwd()): Promise<SkillMeta[]> {
         ...(fm.allowedTools && fm.allowedTools.length > 0 ? { allowedTools: fm.allowedTools } : {}),
       });
     } catch {
+      diagnostics.readErrors += 1;
       // Skip unreadable skills.
     }
   }
 
-  return found.sort((a, b) => a.name.localeCompare(b.name));
+  found.sort((a, b) => a.name.localeCompare(b.name));
+  diagnostics.loaded = found.length;
+  return { skills: found, diagnostics };
+}
+
+export async function listSkills(cwd = process.cwd()): Promise<SkillMeta[]> {
+  return (await scanSkills(cwd)).skills;
 }
 
 let cachedSkills: SkillMeta[] | null = null;
+let cachedSkillDiagnostics: SkillLoadDiagnostics = createEmptySkillLoadDiagnostics();
 
 export async function loadSkills(cwd?: string): Promise<SkillMeta[]> {
-  cachedSkills = await listSkills(cwd);
+  const result = await scanSkills(cwd);
+  cachedSkills = result.skills;
+  cachedSkillDiagnostics = result.diagnostics;
   return cachedSkills;
 }
 
 export function getLoadedSkills(): SkillMeta[] {
   return cachedSkills ?? [];
+}
+
+export function getSkillLoadDiagnostics(): SkillLoadDiagnostics {
+  return cachedSkillDiagnostics;
 }
 
 export function findSkillByName(name: string): SkillMeta | undefined {
@@ -181,6 +236,7 @@ export function findSkillByName(name: string): SkillMeta | undefined {
 
 export function resetSkillCache(): void {
   cachedSkills = null;
+  cachedSkillDiagnostics = createEmptySkillLoadDiagnostics();
 }
 
 export function substituteArguments(body: string, args: string): string {

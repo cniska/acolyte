@@ -87,7 +87,7 @@ Consolidate core UX quality and extension-ready seams before MVP release.
 - [ ] Extension-ready seams in core (interface-first boundaries for lifecycle/tools/guards/tasks/transports), without shipping plugin runtime
 - [x] Skill execution parity with tools (stream/output contracts, typed compaction, context budgeting, debug events)
 - [x] Queue delivery policy controls (`one-at-a-time` vs `all`) for steering/follow-up (Pi-inspired)
-- [ ] Resource-loading diagnostics surface (skills/prompts/config/reload collisions and failures) (Pi-inspired)
+- [x] Resource-loading diagnostics surface in status output (skills/prompt/config collisions and failures)
 
 ### Milestone 8: MVP Proof Experiment
 

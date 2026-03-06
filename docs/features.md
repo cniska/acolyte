@@ -61,3 +61,4 @@ Update rule:
 - Lifecycle trace logging (defaults to daemon log path, overrideable via `--log`).
 - Managed local daemon log file at `~/.acolyte/server.log`.
 - Scoped debug logging via `ACOLYTE_DEBUG` tags (supports wildcard matching).
+- Status output resource diagnostics for prompt/skill/config load problems.
