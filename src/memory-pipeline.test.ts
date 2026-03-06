@@ -204,6 +204,7 @@ describe("memory pipeline", () => {
         },
         async commit() {
           calls.push("distill-a");
+          return undefined;
         },
       },
       {
@@ -213,6 +214,7 @@ describe("memory pipeline", () => {
         },
         async commit() {
           calls.push("distill-b");
+          return undefined;
         },
       },
     ];

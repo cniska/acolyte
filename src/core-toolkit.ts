@@ -172,6 +172,29 @@ export function webSearchStreamRows(result: string): string {
 }
 
 function createRunCommandTool(workspace: string, session: SessionContext, onToolOutput?: ToolOutputListener) {
+  const parseExitCode = (result: string): number | undefined => {
+    const match = result.match(/^exit_code=(\d+)$/m);
+    if (!match?.[1]) return undefined;
+    const value = Number.parseInt(match[1], 10);
+    return Number.isNaN(value) ? undefined : value;
+  };
+
+  const recordSuccessfulRunCommand = (command: string, result: string): void => {
+    if (parseExitCode(result) !== 0) return;
+    const key = session.taskId ?? "__global__";
+    const existing = session.flags.successfulRunCommandsByTask;
+    const map =
+      existing && typeof existing === "object"
+        ? (existing as Record<string, unknown>)
+        : ({} as Record<string, unknown>);
+    const current =
+      Array.isArray(map[key]) && (map[key] as unknown[]).every((item) => typeof item === "string")
+        ? (map[key] as string[])
+        : [];
+    if (!current.includes(command)) map[key] = [...current, command];
+    session.flags.successfulRunCommandsByTask = map;
+  };
+
   return createTool({
     id: "run-command",
     description:
@@ -252,6 +275,7 @@ function createRunCommandTool(workspace: string, session: SessionContext, onTool
             }
           }
           const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.run);
+          recordSuccessfulRunCommand(input.command, rawResult);
           return { result };
         }),
       );

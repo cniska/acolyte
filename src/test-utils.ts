@@ -202,6 +202,7 @@ export function createMemorySource(id: string, entries: string[], onCommit?: () 
     commit: onCommit
       ? async () => {
           onCommit();
+          return undefined;
         }
       : undefined,
   };

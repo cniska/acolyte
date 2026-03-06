@@ -73,12 +73,13 @@ function hasCommitIntent(text: string): boolean {
   return /\bcommit\b/i.test(text);
 }
 
-function hasGitCommitForCurrentTask(ctx: EvaluatorContext): boolean {
-  return taskScopedCallLog(ctx).some((entry) => {
-    if (entry.toolName !== "run-command") return false;
-    const command = entry.args?.command;
-    return typeof command === "string" && /\bgit\s+commit\b/i.test(command);
-  });
+function hasSuccessfulGitCommitForCurrentTask(ctx: EvaluatorContext): boolean {
+  const value = ctx.session.flags.successfulRunCommandsByTask;
+  if (!value || typeof value !== "object") return false;
+  const key = ctx.taskId ?? "__global__";
+  const commands = (value as Record<string, unknown>)[key];
+  if (!Array.isArray(commands)) return false;
+  return commands.some((command) => typeof command === "string" && /\bgit\s+commit\b/i.test(command));
 }
 
 function readPathKeys(args: Record<string, unknown>): string[] {
@@ -215,7 +216,7 @@ export const commitCompletionEvaluator: Evaluator = {
     if (!hasCommitIntent(ctx.request.message)) return { type: "done" };
     if (!hasWriteForCurrentTask(ctx)) return { type: "done" };
     if (!ctx.session.flags.verifyRan) return { type: "done" };
-    if (hasGitCommitForCurrentTask(ctx)) return { type: "done" };
+    if (hasSuccessfulGitCommitForCurrentTask(ctx)) return { type: "done" };
     ctx.debug("lifecycle.eval.commit_completion_regenerate", {});
     return {
       type: "regenerate",
