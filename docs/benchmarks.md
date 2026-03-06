@@ -9,7 +9,7 @@ Acolyte metrics extracted with [`scripts/benchmark.ts`](../scripts/benchmark.ts)
 
 | Project | Language | Description | Source Lines | Files | Dependencies |
 |---|---|---|---|---|---|
-| **Acolyte** | TypeScript | CLI-first AI coding agent with lifecycle, guards, and evaluators | 17,296 | 137 | 12 + 5 |
+| **Acolyte** | TypeScript | CLI-first AI coding agent with lifecycle, guards, and evaluators | 18,005 | 141 | 12 + 5 |
 | **Aider** | Python | AI pair programming in your terminal | 25,880 | 106 | 480 + 313 |
 | **OpenCode** | TypeScript | Open-source AI coding agent (TUI/web/desktop) | 207,748 | 1,042 | 171 + 76 |
 | **Pi** | TypeScript | Terminal coding agent harness with extensions | 112,692 | 399 | 50 + 19 |
@@ -30,7 +30,7 @@ Source lines exclude test files and generated code. Dependencies shown as runtim
 | Non-null `!.` assertions | 0.0 | — | — | — | — | — |
 | `@ts-ignore` / `@ts-expect-error` | 0.0 | 0.2 | 0.0 | 0.1 | 0.4 | 0.0 |
 | Lint ignores (`biome-ignore` / `eslint-disable`) | 0.1 | 0.0 | 0.0 | 0.0 | 0.2 | 0.2 |
-| `: unknown` usage | 4.5 | 1.4 | 0.8 | 0.1 | 0.3 | 5.3 |
+| `: unknown` usage | 4.6 | 1.4 | 0.8 | 0.1 | 0.3 | 5.3 |
 
 Acolyte has **1 total `any`** (an FFI boundary for ast-grep). It uses `unknown` with explicit narrowing at 3–45x the rate of most other projects. OpenClaw also favors `unknown` heavily. Continue has the highest `any` density.
 
@@ -55,7 +55,7 @@ Aider is nearly zero on type escape hatches. Goose has a high `.unwrap()` densit
 | Metric | Acolyte | Aider | OpenCode | Pi | Goose | OpenHands | Continue | Cline | OpenClaw |
 |---|---|---|---|---|---|---|---|---|---|
 | TODO / FIXME / HACK | 0.0 | 0.3 | 0.4 | 0.0 | 0.2 | 0.5 | 0.8 | 0.2 | 0.0 |
-| Comment lines | 4.0 | 55.2 | 10.0 | 47.5 | 40.6 | 60.8 | 42.9 | 20.5 | 14.5 |
+| Comment lines | 3.9 | 55.2 | 10.0 | 47.5 | 40.6 | 60.6 | 42.9 | 20.5 | 14.5 |
 
 Zero tech debt markers. Low comment density reflects self-documenting code with external docs.
 
@@ -63,9 +63,9 @@ Zero tech debt markers. Low comment density reflects self-documenting code with 
 
 | Metric | Acolyte | Aider | OpenCode | Pi | Goose | OpenHands | Continue | Cline | OpenClaw |
 |---|---|---|---|---|---|---|---|---|---|
-| Test files | 94 | 41 | 185 | 106 | 18 | 344 | 332 | 165 | 2,070 |
-| Test lines | 15,604 | 12,321 | 36,941 | 32,129 | 4,840 | 136,903 | 82,421 | 44,234 | 429,841 |
-| Test / source ratio | **0.90** | 0.48 | 0.18 | 0.29 | 0.04 | **1.13** | 0.36 | 0.08 | 0.68 |
+| Test files | 97 | 41 | 186 | 108 | 17 | 348 | 332 | 165 | 2,076 |
+| Test lines | 16,129 | 12,321 | 37,040 | 32,572 | 4,726 | 137,765 | 82,421 | 44,423 | 431,818 |
+| Test / source ratio | **0.90** | 0.48 | 0.18 | 0.29 | 0.04 | **1.14** | 0.36 | 0.08 | 0.69 |
 
 Acolyte maintains a structured test taxonomy with four dedicated types: unit (`*.test.ts`), integration (`*.int.test.ts`), TUI visual regression (`*.tui.test.ts`), and performance (`*.perf.test.ts`). OpenHands leads on raw ratio. Goose and Cline have notably low test density.
 
@@ -73,19 +73,19 @@ Acolyte maintains a structured test taxonomy with four dedicated types: unit (`*
 
 | Metric | Acolyte | Aider | OpenCode | Pi | Goose | OpenHands | Continue | Cline | OpenClaw |
 |---|---|---|---|---|---|---|---|---|---|
-| Avg lines / file | 126 | 244 | 199 | 282 | 368 | 172 | 157 | 437 | 176 |
-| Files > 500 lines | 3 (2%) | — | — | — | — | — | — | — | — |
-| Largest file | 1,182 | — | — | — | — | — | — | — | — |
-| Barrel / index files | 0 | — | — | — | — | — | — | — | — |
+| Avg lines / file | 128 | 244 | 199 | 283 | 368 | 172 | 157 | 438 | 176 |
+| Files > 500 lines | 3 (2%) | 14 (13%) | 103 (9%) | 50 (12%) | 75 (23%) | 54 (7%) | 87 (5%) | 69 (5%) | 291 (8%) |
+| Largest file | 1,182 | 2,485 | 4,989 | 13,353 | 2,289 | 1,704 | 3,228 | 4,573 | 2,242 |
+| Barrel / index files | 0 | 5 | 52 | 26 | 43 | 85 | 73 | 47 | 76 |
 
-Acolyte has the smallest average file size. Flat `src/` layout with small, focused modules.
+Acolyte has the smallest average file size, fewest large files, and zero barrel files. Flat `src/` layout with small, focused modules.
 
 ## Error Handling (TypeScript projects, per 1k source lines)
 
 | Metric | Acolyte | OpenCode | Pi | Cline | Continue | OpenClaw |
 |---|---|---|---|---|---|---|
-| `.safeParse()` calls | 1.6 | 0.1 | 0.0 | 0.0 | 0.1 | 0.0 |
-| `try { ... }` blocks | 6.6 | 1.3 | 3.6 | 2.3 | 3.8 | 4.9 |
+| `.safeParse()` calls | 1.5 | 0.1 | 0.0 | 0.0 | 0.1 | 0.0 |
+| `try { ... }` blocks | 6.6 | 1.3 | 3.7 | 2.3 | 3.8 | 4.9 |
 | `.catch()` calls | 0.5 | 2.2 | 0.3 | 0.4 | 0.3 | 1.0 |
 
 Acolyte validates at boundaries with Zod `.safeParse()` at 16x+ the rate of other projects rather than relying on exception-driven error handling.

@@ -226,9 +226,43 @@ for entry in "${PROJECTS[@]}"; do
     avg_lines=$(awk "BEGIN{printf \"%d\", $src_lines / $src_files}")
   fi
 
+  # Module cohesion metrics
+  files_over_500=0
+  largest_file_lines=0
+  largest_file_name=""
+  barrel_files=0
+
+  case "$lang" in
+    typescript)
+      find_source_ts "$dir" | while IFS= read -r f; do wc -l < "$f"; done | sort -rn > "$WORKDIR/.linecounts" 2>/dev/null || true
+      barrel_files=$(find_source_ts "$dir" | { grep -c '/index\.ts$' || echo 0; } | tr -d ' ')
+      ;;
+    python)
+      find_source_py "$dir" | while IFS= read -r f; do wc -l < "$f"; done | sort -rn > "$WORKDIR/.linecounts" 2>/dev/null || true
+      barrel_files=$(find_source_py "$dir" | { grep -c '/__init__\.py$' || echo 0; } | tr -d ' ')
+      ;;
+    rust)
+      find_source_rs "$dir" | while IFS= read -r f; do wc -l < "$f"; done | sort -rn > "$WORKDIR/.linecounts" 2>/dev/null || true
+      barrel_files=$(find_source_rs "$dir" | { grep -c '/mod\.rs$' || echo 0; } | tr -d ' ')
+      ;;
+  esac
+
+  if [ -s "$WORKDIR/.linecounts" ]; then
+    largest_file_lines=$(head -1 "$WORKDIR/.linecounts" | tr -d ' ')
+    files_over_500=$(awk '$1 > 500' "$WORKDIR/.linecounts" | wc -l | tr -d ' ')
+  fi
+
+  files_over_500_pct=0
+  if [ "$src_files" -gt 0 ]; then
+    files_over_500_pct=$(awk "BEGIN{printf \"%d\", ($files_over_500 / $src_files) * 100}")
+  fi
+
   echo "  Source lines:     $src_lines"
   echo "  Source files:     $src_files"
   echo "  Avg lines/file:   $avg_lines"
+  echo "  Files > 500:      $files_over_500 ($files_over_500_pct%)"
+  echo "  Largest file:     $largest_file_lines"
+  echo "  Barrel files:     $barrel_files"
   echo "  Dependencies:     $deps_runtime runtime + $deps_dev dev = $deps_total total"
   echo "  Test files:       $test_files_count"
   echo "  Test lines:       $test_lines_count"
