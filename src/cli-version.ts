@@ -1,5 +1,5 @@
 import { existsSync, lstatSync, readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 
 export function extractVersionFromPackageJsonText(text: string): string | null {
   try {
@@ -58,7 +58,10 @@ function resolveCommitFromGitDir(gitDir: string): string | null {
         const packed = readFileSync(join(gitDir, "packed-refs"), "utf8");
         const line = packed
           .split("\n")
-          .find((value) => value.length > 0 && !value.startsWith("#") && !value.startsWith("^") && value.endsWith(` ${ref}`));
+          .find(
+            (value) =>
+              value.length > 0 && !value.startsWith("#") && !value.startsWith("^") && value.endsWith(` ${ref}`),
+          );
         if (!line) return null;
         const hash = line.split(" ")[0];
         return shortCommit(hash ?? "");
@@ -71,7 +74,7 @@ function resolveCommitFromGitDir(gitDir: string): string | null {
 }
 
 export function resolveCliCommitShort(): string | null {
-  const roots = [process.cwd(), join(import.meta.dir, ".."), dirname(process.cwd())];
+  const roots = [join(import.meta.dir, "..")];
   for (const root of roots) {
     const gitDir = gitDirFor(root);
     if (!gitDir) continue;
