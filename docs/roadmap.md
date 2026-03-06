@@ -115,10 +115,10 @@ Open-source local mode with optional self-hosted memory/session sync service.
 - [x] No hardcoded secrets or internal paths
 - [x] CI/CD pipeline for releases
 - [x] Pre-OSS security baseline complete (secure defaults, auth coverage, workspace boundary checks, redaction tests)
-- [ ] Localization baseline: translatable CLI/TUI copy, with raw protocol/tool output kept language-neutral
+- [x] Localization baseline: translatable CLI/TUI copy, with raw protocol/tool output kept language-neutral
 - [ ] Remove internal launch/talk docs before OSS (`docs/launch-talk.md`, `docs/talk-notes.md`)
 
-**Current status:** External contributor docs baseline, license, release pipeline, and security baseline are done. Remaining work is localization baseline and pre-OSS talk-doc cleanup.
+**Current status:** External contributor docs baseline, license, release pipeline, security baseline, and localization baseline are done. Remaining work is pre-OSS talk-doc cleanup.
 
 **Blocked on:** Milestones 6-9.
 
