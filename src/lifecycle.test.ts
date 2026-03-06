@@ -384,6 +384,18 @@ describe("commitCompletionEvaluator", () => {
     if (action.type === "regenerate") expect(action.prompt).toContain("have not created a commit yet");
   });
 
+  test("returns regenerate when commit requested and writes happened even if verify did not run", () => {
+    const session = createSessionContext();
+    session.callLog = [{ toolName: "edit-file", args: { path: "src/a.ts" } }];
+    const ctx = createMockContext({
+      request: { model: "gpt-5-mini", message: "Implement fix and commit", history: [] },
+      classifiedMode: "work",
+      session,
+      result: { text: "Done.", toolCalls: [] },
+    });
+    expect(commitCompletionEvaluator.evaluate(ctx).type).toBe("regenerate");
+  });
+
   test("returns done when successful git commit is recorded for current task", () => {
     const session = createSessionContext();
     session.flags.verifyRan = true;

@@ -215,7 +215,6 @@ export const commitCompletionEvaluator: Evaluator = {
     if (ctx.classifiedMode !== "work") return { type: "done" };
     if (!hasCommitIntent(ctx.request.message)) return { type: "done" };
     if (!hasWriteForCurrentTask(ctx)) return { type: "done" };
-    if (!ctx.session.flags.verifyRan) return { type: "done" };
     if (hasSuccessfulGitCommitForCurrentTask(ctx)) return { type: "done" };
     ctx.debug("lifecycle.eval.commit_completion_regenerate", {});
     return {
