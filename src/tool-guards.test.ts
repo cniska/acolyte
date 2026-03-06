@@ -103,17 +103,17 @@ describe("excessive-file-loop guard", () => {
     );
   });
 
-  test("blocks duplicate single-file read after batched read", () => {
+  test("allows duplicate single-file read after batched read", () => {
     const session = createSessionContext();
     recordCall(session, "read-file", {
       paths: [{ path: "src/chat-commands.ts" }, { path: "src/chat-commands.test.ts" }],
     });
     expect(() =>
       runGuards({ toolName: "read-file", args: { paths: [{ path: "src/chat-commands.ts" }] }, session }),
-    ).toThrow(/Already read "src\/chat-commands\.ts" this turn/);
+    ).not.toThrow();
   });
 
-  test("blocks batched read when one requested path was already read pre-edit", () => {
+  test("allows batched read when one requested path was already read pre-edit", () => {
     const session = createSessionContext();
     recordCall(session, "read-file", {
       paths: [{ path: "src/chat-commands.ts" }, { path: "src/chat-commands.test.ts" }],
@@ -124,7 +124,7 @@ describe("excessive-file-loop guard", () => {
         args: { paths: [{ path: "src/chat-commands.ts" }, { path: "src/memory.ts" }] },
         session,
       }),
-    ).toThrow(/Already read "src\/chat-commands\.ts" this turn/);
+    ).not.toThrow();
   });
 
   test("allows batched read after target path was edited", () => {
@@ -149,12 +149,12 @@ describe("excessive-file-loop guard", () => {
     ).not.toThrow();
   });
 
-  test("blocks a second read even with a different range before any edit", () => {
+  test("allows a second read with a different range before any edit", () => {
     const session = createSessionContext();
     recordCall(session, "read-file", { paths: [{ path: "src/foo.ts", start: 1, end: 40 }] });
     expect(() =>
       runGuards({ toolName: "read-file", args: { paths: [{ path: "src/foo.ts", start: 41, end: 80 }] }, session }),
-    ).toThrow(/Already read "src\/foo.ts" this turn/);
+    ).not.toThrow();
   });
 
   test("blocks repeated read/edit churn on same path before verify", () => {

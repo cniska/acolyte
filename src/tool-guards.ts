@@ -226,7 +226,7 @@ const noRewriteGuard: ToolGuard = {
 
 const excessiveFileLoopGuard: ToolGuard = {
   id: "excessive-file-loop",
-  description: "Block repeated read/edit churn on the same file to force a strategy change.",
+  description: "Block excessive read/edit churn on the same file to force a strategy change.",
   appliesTo: ["read-file", "edit-file"],
   check({ toolName, args, session }) {
     const targetPaths =
@@ -253,19 +253,6 @@ const excessiveFileLoopGuard: ToolGuard = {
         const path = entry.args.path;
         if (typeof path !== "string") continue;
         countsForPath(normalizePath(path)).editCount += 1;
-      }
-    }
-
-    if (toolName === "read-file") {
-      const duplicatePreEdit = targetPaths.find((path) => {
-        const counts = countsForPath(path);
-        return counts.readCount >= 1 && counts.editCount === 0;
-      });
-      if (duplicatePreEdit) {
-        session.onGuard?.({ guardId: "excessive-file-loop", toolName, action: "blocked", detail: duplicatePreEdit });
-        throw new Error(
-          `Already read "${duplicatePreEdit}" this turn. Reuse prior context and only read unread paths in the next batched read-file call.`,
-        );
       }
     }
 

@@ -8,6 +8,7 @@ import {
   type Config,
   type ConfigScope,
   type LogFormat,
+  isModeModelKey,
   type PermissionMode,
   type ResolvedConfig,
   type TransportMode,
@@ -222,7 +223,7 @@ export async function writeConfig(config: Config, options?: ConfigOptions): Prom
 }
 
 const RECORD_VALID_KEYS: Partial<Record<keyof Config, Set<string>>> = {
-  models: new Set(Object.keys(agentModes)),
+  models: new Set(["chat", ...Object.keys(agentModes)]),
   temperatures: new Set(Object.keys(agentModes)),
 };
 
@@ -232,6 +233,7 @@ function parseDottedKey(key: string): { section: keyof Config; subKey: string } 
   const section = key.slice(0, dot) as keyof Config;
   const subKey = key.slice(dot + 1);
   if (!(section in CONFIG_SET_SCHEMAS) || subKey.length === 0) return null;
+  if (section === "models" && !isModeModelKey(subKey)) return null;
   const allowed = RECORD_VALID_KEYS[section];
   if (allowed && !allowed.has(subKey)) return null;
   return { section, subKey };

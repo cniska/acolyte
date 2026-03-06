@@ -43,6 +43,7 @@ const parseMemorySourcesSchema = z.preprocess((value) => {
     .map((part) => part.trim())
     .filter((part) => part.length > 0);
 }, z.array(memorySourceIdSchema).min(1));
+const MODE_MODEL_KEYS = new Set<string>([...Object.keys(agentModes), "chat"]);
 const modeTemperatureMapSchema = z
   .record(
     z.string(),
@@ -52,6 +53,10 @@ const modeTemperatureMapSchema = z
     ),
   )
   .transform((input) => Object.fromEntries(Object.entries(input).filter(([mode]) => mode in agentModes)));
+
+export function isModeModelKey(key: string): boolean {
+  return MODE_MODEL_KEYS.has(key);
+}
 
 export interface Config {
   port?: number;
@@ -148,7 +153,7 @@ export function toConfig(input: Record<string, unknown>): Config {
       typeof input.models === "object" && input.models !== null
         ? Object.fromEntries(
             Object.entries(input.models as Record<string, unknown>).flatMap(([k, v]) => {
-              if (!(k in agentModes)) return [];
+              if (!isModeModelKey(k)) return [];
               const result = nonEmptyStringSchema.safeParse(v);
               return result.success ? [[k, result.data]] : [];
             }),

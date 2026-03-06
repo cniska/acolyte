@@ -49,4 +49,15 @@ describe("cli config", () => {
     await configMode(["list"], deps);
     expect(dimLines).toContain("models.plan:     gpt-5-mini");
   });
+
+  test("unset forwards dotted keys", async () => {
+    const calls: Array<{ key: string; scope: "user" | "project" }> = [];
+    const { deps } = createDeps({
+      unsetConfigValue: async (key, options) => {
+        calls.push({ key, scope: options?.scope ?? "user" });
+      },
+    });
+    await configMode(["unset", "models.chat"], deps);
+    expect(calls).toEqual([{ key: "models.chat", scope: "user" }]);
+  });
 });
