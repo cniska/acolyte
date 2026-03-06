@@ -129,7 +129,7 @@ describe("createAgentInput", () => {
     const { input } = createAgentInput(req);
     const oldToolLine = input.split("\n").find((line) => line.startsWith("ASSISTANT: stdout:"));
     expect(oldToolLine).toBeDefined();
-    expect(oldToolLine!.length).toBeLessThanOrEqual(900);
+    expect(oldToolLine?.length).toBeLessThanOrEqual(900);
     expect(input).toContain("ASSISTANT: Ready for the next step.");
   });
 
@@ -199,7 +199,7 @@ describe("createAgentInput", () => {
     const { input } = createAgentInput(req);
     const oldStructuredLine = input.split("\n").find((line) => line.startsWith("ASSISTANT: scope=workspace"));
     expect(oldStructuredLine).toBeDefined();
-    expect(oldStructuredLine!.length).toBeLessThanOrEqual(900);
+    expect(oldStructuredLine?.length).toBeLessThanOrEqual(900);
     expect(input).not.toContain("TAIL_STRUCTURED");
   });
 
@@ -332,7 +332,7 @@ describe("createAgentInput", () => {
     const { input } = createAgentInput(req);
     const oldToolLine = input.split("\n").find((line) => line.startsWith("ASSISTANT: stdout:"));
     expect(oldToolLine).toBeDefined();
-    expect(oldToolLine!.length).toBeLessThanOrEqual(300);
+    expect(oldToolLine?.length).toBeLessThanOrEqual(300);
     expect(input).not.toContain("TAIL_OLD_TOOL");
   });
 });

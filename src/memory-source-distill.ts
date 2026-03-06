@@ -307,7 +307,7 @@ export function createDistillMemorySource(
       return loadEntriesForKey(ds, key);
     },
 
-    async commit(ctx): Promise<MemoryCommitMetrics | void> {
+    async commit(ctx): Promise<MemoryCommitMetrics | undefined> {
       if (commitScope === "none") return;
       const key = resolveDistillScopeKey(commitScope, ctx);
       if (!key) return;

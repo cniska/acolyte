@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { appConfig } from "./app-config";
 import type { DistillRecord } from "./memory-contract";
 import { OBSERVER_PROMPT, REFLECTOR_PROMPT } from "./memory-distill-prompts";

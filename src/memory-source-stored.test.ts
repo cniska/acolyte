@@ -12,8 +12,8 @@ describe("storedMemorySource", () => {
   });
 
   test("load returns empty array when no memories exist", async () => {
-    const home = createDir("acolyte-home-");
-    const cwd = createDir("acolyte-cwd-");
+    const _home = createDir("acolyte-home-");
+    const _cwd = createDir("acolyte-cwd-");
     const entries = await storedMemorySource.loadEntries({});
     expect(Array.isArray(entries)).toBe(true);
   });

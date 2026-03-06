@@ -47,7 +47,7 @@ export function shouldCommitMemory(input: LifecycleInput): boolean {
 export function scheduleMemoryCommit(
   commitCtx: MemoryCommitContext,
   debug: RunContext["debug"],
-  commitFn: (ctx: MemoryCommitContext) => Promise<MemoryCommitMetrics | void> = commitMemorySources,
+  commitFn: (ctx: MemoryCommitContext) => Promise<MemoryCommitMetrics | undefined> = commitMemorySources,
   enqueueFn: (key: string, job: () => Promise<void>) => Promise<void> = (key, job) =>
     memoryCommitQueue.enqueue(key, job),
 ): void {

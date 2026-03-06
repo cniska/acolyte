@@ -1,5 +1,4 @@
 import { describe, expect, test } from "bun:test";
-import type { MemorySource } from "./memory-contract";
 import { createMemoryRegistry, resolveMemorySources } from "./memory-registry";
 import { createMemorySource } from "./test-utils";
 
