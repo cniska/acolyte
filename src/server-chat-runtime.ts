@@ -73,6 +73,43 @@ export function buildMemoryQualityWarningLogFields(params: {
   };
 }
 
+export function logLifecycleDebugEntry(params: {
+  requestId: string;
+  taskId?: string;
+  sessionId?: string;
+  event: string;
+  sequence: number;
+  phaseAttempt: number;
+  eventTs: string;
+  fields?: Record<string, unknown>;
+  logInfo?: (
+    message: string,
+    fields?: Record<string, string | number | boolean | null | undefined>,
+  ) => void;
+}): void {
+  const logInfo = params.logInfo ?? log.info;
+  const logFields = toLogFieldMap(params.fields);
+  logInfo("agent debug", {
+    request_id: params.requestId,
+    task_id: params.taskId ?? null,
+    session_id: params.sessionId ?? null,
+    event: params.event,
+    sequence: params.sequence,
+    phase_attempt: params.phaseAttempt,
+    event_ts: params.eventTs,
+    ...logFields,
+  });
+  const memoryQualityWarning = buildMemoryQualityWarningLogFields({
+    requestId: params.requestId,
+    taskId: params.taskId,
+    sessionId: params.sessionId,
+    event: params.event,
+    eventTs: params.eventTs,
+    fields: logFields,
+  });
+  if (memoryQualityWarning) logInfo("memory quality warning", memoryQualityWarning);
+}
+
 function nextErrorId(): string {
   return errorIdSchema.parse(`err_${createId()}`);
 }
@@ -225,25 +262,16 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
         handlers.onEvent(event as Record<string, unknown>);
       },
       onDebug: (entry) => {
-        log.info("agent debug", {
-          request_id: requestId,
-          task_id: handlers.taskId ?? null,
-          session_id: chatRequest.sessionId ?? null,
-          event: entry.event,
-          sequence: entry.sequence,
-          phase_attempt: entry.phaseAttempt,
-          event_ts: entry.ts,
-          ...(entry.fields ?? {}),
-        });
-        const memoryQualityWarning = buildMemoryQualityWarningLogFields({
+        logLifecycleDebugEntry({
           requestId,
           taskId: handlers.taskId,
           sessionId: chatRequest.sessionId,
           event: entry.event,
+          sequence: entry.sequence,
+          phaseAttempt: entry.phaseAttempt,
           eventTs: entry.ts,
-          fields: toLogFieldMap(entry.fields),
+          fields: entry.fields,
         });
-        if (memoryQualityWarning) log.info("memory quality warning", memoryQualityWarning);
       },
     });
     if (handlers.isCancelled?.()) {
