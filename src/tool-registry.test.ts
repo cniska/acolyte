@@ -3,9 +3,9 @@ import { setPermissionMode } from "./app-config";
 import { invariant } from "./assert";
 import { webSearchStreamRows, withToolError } from "./core-toolkit";
 import { savedPermissionMode } from "./test-utils";
-import { toolsForAgent } from "./tool-registry";
 import { TOOL_NAMES } from "./tool-names";
 import { TOOL_OUTPUT_MARKERS } from "./tool-output-parser";
+import { toolsForAgent } from "./tool-registry";
 
 const restorePermissions = savedPermissionMode();
 
