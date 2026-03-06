@@ -4,6 +4,7 @@ import type { LifecycleInput, RunContext, ToolOutputEvent } from "./lifecycle-co
 import { phaseEvaluate, recoveryActionForError as resolveRecoveryAction } from "./lifecycle-evaluate";
 import {
   autoVerifier,
+  commitCompletionEvaluator,
   type EvalAction,
   type Evaluator,
   efficiencyEvaluator,
@@ -27,6 +28,7 @@ const malformedMemoryRejectStreakBySession = new Map<string, number>();
 
 export {
   autoVerifier,
+  commitCompletionEvaluator,
   efficiencyEvaluator,
   missingPrerequisiteRecovery,
   multiMatchEditEvaluator,

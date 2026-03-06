@@ -69,6 +69,18 @@ function hasStrongWriteIntent(text: string): boolean {
   return /\b(edit|fix|implement|add|create|update|refactor|rename|change|delete|remove|migrate|convert)\b/i.test(text);
 }
 
+function hasCommitIntent(text: string): boolean {
+  return /\bcommit\b/i.test(text);
+}
+
+function hasGitCommitForCurrentTask(ctx: EvaluatorContext): boolean {
+  return taskScopedCallLog(ctx).some((entry) => {
+    if (entry.toolName !== "run-command") return false;
+    const command = entry.args?.command;
+    return typeof command === "string" && /\bgit\s+commit\b/i.test(command);
+  });
+}
+
 function readPathKeys(args: Record<string, unknown>): string[] {
   const paths = args.paths;
   if (!Array.isArray(paths)) return [];
@@ -192,6 +204,27 @@ export const autoVerifier: Evaluator = {
       };
     }
     return { type: "done" };
+  },
+};
+
+export const commitCompletionEvaluator: Evaluator = {
+  id: "commit-completion-evaluator",
+  evaluate(ctx) {
+    if (!ctx.result) return { type: "done" };
+    if (ctx.classifiedMode !== "work") return { type: "done" };
+    if (!hasCommitIntent(ctx.request.message)) return { type: "done" };
+    if (!hasWriteForCurrentTask(ctx)) return { type: "done" };
+    if (!ctx.session.flags.verifyRan) return { type: "done" };
+    if (hasGitCommitForCurrentTask(ctx)) return { type: "done" };
+    ctx.debug("lifecycle.eval.commit_completion_regenerate", {});
+    return {
+      type: "regenerate",
+      prompt:
+        `${ctx.agentInput}\n\n` +
+        "You have completed file changes for this task but have not created a commit yet. " +
+        "Create a single Conventional Commit now. Do not create or switch branches.",
+      mode: "work",
+    };
   },
 };
 

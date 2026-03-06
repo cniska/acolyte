@@ -2,6 +2,7 @@ import { type RecoveryAction, recoveryActionForError as resolveRecoveryAction } 
 import type { LifecycleInput, RunContext, SavedRegenerationState } from "./lifecycle-contract";
 import {
   autoVerifier,
+  commitCompletionEvaluator,
   type Evaluator,
   efficiencyEvaluator,
   missingPrerequisiteRecovery,
@@ -20,6 +21,7 @@ const EVALUATORS: Evaluator[] = [
   efficiencyEvaluator,
   timeoutRecovery,
   autoVerifier,
+  commitCompletionEvaluator,
   verifyFailure,
 ];
 

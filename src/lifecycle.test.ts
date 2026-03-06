@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { createErrorStats } from "./error-handling";
 import {
   autoVerifier,
+  commitCompletionEvaluator,
   efficiencyEvaluator,
   missingPrerequisiteRecovery,
   multiMatchEditEvaluator,
@@ -367,6 +368,39 @@ describe("missingPrerequisiteRecovery", () => {
   });
 });
 
+describe("commitCompletionEvaluator", () => {
+  test("returns regenerate when commit requested, writes happened, verify ran, and no git commit yet", () => {
+    const session = createSessionContext();
+    session.flags.verifyRan = true;
+    session.callLog = [{ toolName: "edit-file", args: { path: "src/a.ts" } }];
+    const ctx = createMockContext({
+      request: { model: "gpt-5-mini", message: "Implement fix and commit", history: [] },
+      classifiedMode: "work",
+      session,
+      result: { text: "Done.", toolCalls: [] },
+    });
+    const action = commitCompletionEvaluator.evaluate(ctx);
+    expect(action.type).toBe("regenerate");
+    if (action.type === "regenerate") expect(action.prompt).toContain("have not created a commit yet");
+  });
+
+  test("returns done when git commit already ran", () => {
+    const session = createSessionContext();
+    session.flags.verifyRan = true;
+    session.callLog = [
+      { toolName: "edit-file", args: { path: "src/a.ts" } },
+      { toolName: "run-command", args: { command: "git commit -m \"feat: test\"" } },
+    ];
+    const ctx = createMockContext({
+      request: { model: "gpt-5-mini", message: "Implement fix and commit", history: [] },
+      classifiedMode: "work",
+      session,
+      result: { text: "Done.", toolCalls: [] },
+    });
+    expect(commitCompletionEvaluator.evaluate(ctx).type).toBe("done");
+  });
+});
+
 describe("evaluator ordering", () => {
   test("evaluators run in correct order", () => {
     const evaluators = [
@@ -376,6 +410,7 @@ describe("evaluator ordering", () => {
       efficiencyEvaluator,
       timeoutRecovery,
       autoVerifier,
+      commitCompletionEvaluator,
       verifyFailure,
     ];
     expect(evaluators[0].id).toBe("plan-detector");
@@ -384,7 +419,8 @@ describe("evaluator ordering", () => {
     expect(evaluators[3].id).toBe("efficiency-evaluator");
     expect(evaluators[4].id).toBe("timeout-recovery");
     expect(evaluators[5].id).toBe("auto-verifier");
-    expect(evaluators[6].id).toBe("verify-failure");
+    expect(evaluators[6].id).toBe("commit-completion-evaluator");
+    expect(evaluators[7].id).toBe("verify-failure");
   });
 });
 
