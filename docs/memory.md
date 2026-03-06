@@ -58,7 +58,7 @@ Default source order is `stored, distill_project, distill_user, distill`.
 - Commit scheduling is best-effort background work at lifecycle finalize.
 - Commits are serialized per session per process through a keyed task queue seam.
 - Selection keeps one continuation state (`Current task`, `Next step`) based on source-provided continuation metadata, choosing the freshest that fits budget.
-- Soul prompt injection adds an explicit resume block from continuation state when available.
+- Soul prompt injection adds an explicit resume block from structured continuation state when available.
 - Agent input assembly applies deterministic rolling history fitting (newest-first, truncate-to-fit under remaining budget).
 - Aggressive old-turn compaction is driven by typed message metadata (`kind: tool_payload`), not regex heuristics.
 - Debug observability uses lifecycle-scoped events (`lifecycle.memory.load_*`, `lifecycle.memory.commit_*`) through standard debug channels.

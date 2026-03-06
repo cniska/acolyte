@@ -44,15 +44,9 @@ type CreateSoulPromptOptions = {
   onDebug?: (event: string, fields?: Record<string, unknown>) => void;
 };
 
-function extractLastLineValue(text: string, pattern: RegExp): string | undefined {
-  const matches = Array.from(text.matchAll(pattern));
-  const value = matches[matches.length - 1]?.[1]?.trim();
-  return value && value.length > 0 ? value : undefined;
-}
-
-export function buildMemoryResumeBlock(memoryPrompt: string): string {
-  const currentTask = extractLastLineValue(memoryPrompt, /^-\s*Current task:\s*(.+)$/gim);
-  const nextStep = extractLastLineValue(memoryPrompt, /^-\s*Next step:\s*(.+)$/gim);
+export function buildMemoryResumeBlock(continuation: { currentTask?: string; nextStep?: string }): string {
+  const currentTask = continuation.currentTask?.trim();
+  const nextStep = continuation.nextStep?.trim();
   if (!currentTask && !nextStep) return "";
   const lines = ["Resume context:"];
   if (currentTask) lines.push(`- Continue current task: ${currentTask}`);
@@ -84,7 +78,7 @@ export async function createSoulPrompt(options: CreateSoulPromptOptions = {}): P
     options.onDebug?.("lifecycle.memory.load_empty", debugBaseFields);
     return base;
   }
-  const resumeBlock = buildMemoryResumeBlock(memoryPrompt);
+  const resumeBlock = buildMemoryResumeBlock(memoryContext.continuation);
   options.onDebug?.("lifecycle.memory.load_applied", {
     ...debugBaseFields,
     tokenEstimate: memoryContext.tokenEstimate,

@@ -22,6 +22,10 @@ export type MemoryRegistry = {
     tokenEstimate: number;
     entryCount: number;
     continuationSelected: boolean;
+    continuation: {
+      currentTask?: string;
+      nextStep?: string;
+    };
   }>;
   commit(ctx: MemoryCommitContext): Promise<MemoryCommitMetrics>;
 };
@@ -54,14 +58,38 @@ export function createMemoryRegistry(
   normalizeEntries: MemoryNormalizeStrategy = normalizeMemoryEntries,
   selectEntries: MemorySelectionStrategy = selectMemoryEntries,
 ): MemoryRegistry {
+  const extractLastLineValue = (text: string, pattern: RegExp): string | undefined => {
+    const matches = Array.from(text.matchAll(pattern));
+    const value = matches[matches.length - 1]?.[1]?.trim();
+    return value && value.length > 0 ? value : undefined;
+  };
+
+  const extractContinuation = (
+    entries: readonly {
+      content: string;
+      isContinuation?: boolean;
+    }[],
+  ): { currentTask?: string; nextStep?: string } => {
+    const continuationText = entries
+      .filter((entry) => entry.isContinuation === true)
+      .map((entry) => entry.content)
+      .join("\n");
+    return {
+      currentTask: extractLastLineValue(continuationText, /^(?:[-*]\s*)?Current task:\s*(.+)$/gim),
+      nextStep: extractLastLineValue(continuationText, /^(?:[-*]\s*)?Next step:\s*(.+)$/gim),
+    };
+  };
+
   return {
     async load(ctx, budgetTokens) {
       const result = await runMemoryPipeline(sources, ctx, budgetTokens, normalizeEntries, selectEntries);
+      const continuation = extractContinuation(result.entries);
       return {
         prompt: buildMemoryContextPrompt(result.entries),
         tokenEstimate: result.tokenEstimate,
         entryCount: result.entries.length,
         continuationSelected: result.entries.some((entry) => entry.isContinuation === true),
+        continuation,
       };
     },
     async commit(ctx) {

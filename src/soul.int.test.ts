@@ -64,15 +64,14 @@ describe("soul prompt loading", () => {
   });
 
   test("buildMemoryResumeBlock returns empty when continuation is missing", () => {
-    expect(buildMemoryResumeBlock("Memory context:\n- user prefers bun")).toBe("");
+    expect(buildMemoryResumeBlock({})).toBe("");
   });
 
-  test("buildMemoryResumeBlock extracts continuation lines", () => {
-    const resume = buildMemoryResumeBlock(
-      ["Memory context:", "- old line", "- Current task: Implement memory engine", "- Next step: Add resume block"].join(
-        "\n",
-      ),
-    );
+  test("buildMemoryResumeBlock formats continuation state", () => {
+    const resume = buildMemoryResumeBlock({
+      currentTask: "Implement memory engine",
+      nextStep: "Add resume block",
+    });
     expect(resume).toBe(
       ["Resume context:", "- Continue current task: Implement memory engine", "- Start with next step: Add resume block"].join(
         "\n",

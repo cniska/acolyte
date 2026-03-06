@@ -21,6 +21,7 @@ describe("memory registry", () => {
     expect(result.tokenEstimate).toBe(0);
     expect(result.entryCount).toBe(0);
     expect(result.continuationSelected).toBe(false);
+    expect(result.continuation).toEqual({});
   });
 
   test("fills budget in source order", async () => {
@@ -106,6 +107,7 @@ describe("memory registry", () => {
     expect(result.prompt).toContain("Current task: finish memory");
     expect(result.prompt).not.toContain("general note");
     expect(result.continuationSelected).toBe(true);
+    expect(result.continuation.currentTask).toBe("finish memory");
   });
 
   test("load prefers most recent continuation over older continuation", async () => {
@@ -119,6 +121,7 @@ describe("memory registry", () => {
     const result = await registry.load({}, 8);
     expect(result.prompt).toContain("Current task: new");
     expect(result.prompt).not.toContain("Current task: old");
+    expect(result.continuation.currentTask).toBe("new");
   });
 
   test("load falls back to older continuation when freshest does not fit", async () => {
@@ -132,6 +135,16 @@ describe("memory registry", () => {
     const result = await registry.load({}, 4);
     expect(result.prompt).toContain("Current task: older");
     expect(result.prompt).not.toContain("Current task: freshest");
+    expect(result.continuation.currentTask).toBe("older");
+  });
+
+  test("load extracts next-step continuation from selected continuation entries", async () => {
+    const registry = createMemoryRegistry(
+      [createMemorySource("distill", ["Next step: add tests"])],
+      async () => [{ sourceId: "distill", content: "Next step: add tests", tokenEstimate: 4, isContinuation: true }],
+    );
+    const result = await registry.load({}, 8);
+    expect(result.continuation.nextStep).toBe("add tests");
   });
 
   test("load dedupes duplicate entries across sources", async () => {
