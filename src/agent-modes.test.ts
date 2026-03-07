@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { agentModes, classifyMode, modeForTool } from "./agent-modes";
+import { agentModes, modeForTool } from "./agent-modes";
 
 describe("modeForTool", () => {
   test("maps read-only tools to plan", () => {
@@ -45,45 +45,5 @@ describe("agentModes", () => {
     for (const def of Object.values(agentModes)) {
       expect(def.preamble.length).toBeGreaterThan(0);
     }
-  });
-});
-
-describe("classifyMode", () => {
-  test("classifies edit/rename/refactor as code", () => {
-    expect(classifyMode("rename the variable def to definition")).toBe("work");
-    expect(classifyMode("edit the file src/agent.ts")).toBe("work");
-    expect(classifyMode("refactor the function")).toBe("work");
-    expect(classifyMode("fix the failing test")).toBe("work");
-    expect(classifyMode("create a new util function")).toBe("work");
-    expect(classifyMode("delete the unused import")).toBe("work");
-    expect(classifyMode("run verify")).toBe("work");
-    expect(classifyMode("improve the error handling")).toBe("work");
-    expect(classifyMode("convert the config to YAML")).toBe("work");
-    expect(classifyMode("migrate to the new API")).toBe("work");
-  });
-
-  test("classifies find/search/read as plan", () => {
-    expect(classifyMode("find all test files in src")).toBe("plan");
-    expect(classifyMode("search for usages of createClient")).toBe("plan");
-    expect(classifyMode("what does modeForTool do?")).toBe("plan");
-    expect(classifyMode("show me the agent.ts file")).toBe("plan");
-    expect(classifyMode("how does the streaming work?")).toBe("plan");
-    expect(classifyMode("list all exports from client.ts")).toBe("plan");
-    expect(classifyMode("scan for unused imports")).toBe("plan");
-  });
-
-  test("prefers code when both signals present", () => {
-    expect(classifyMode("find and rename all usages of Backend")).toBe("work");
-    expect(classifyMode("read the file then edit it")).toBe("work");
-  });
-
-  test("falls back to chat for ambiguous messages", () => {
-    expect(classifyMode("hi")).toBe("chat");
-    expect(classifyMode("thanks")).toBe("chat");
-  });
-
-  test("never classifies user messages as verify", () => {
-    expect(classifyMode("verify the code")).toBe("work");
-    expect(classifyMode("run verify")).toBe("work");
   });
 });

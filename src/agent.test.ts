@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { createAgentInput } from "./agent-input";
 import { createInstructions, createModeInstructions } from "./agent-instructions";
 import { resolveModelProviderState, resolveRunnableModel } from "./agent-model";
-import { formatAssistantOutput, isPlanLikeOutput } from "./agent-output";
+import { formatAssistantOutput } from "./agent-output";
 import type { ChatRequest } from "./api";
 import { appConfig } from "./app-config";
 
@@ -334,16 +334,6 @@ describe("createAgentInput", () => {
     expect(oldToolLine).toBeDefined();
     expect(oldToolLine?.length).toBeLessThanOrEqual(300);
     expect(input).not.toContain("TAIL_OLD_TOOL");
-  });
-});
-
-describe("execution intent detection", () => {
-  test("isPlanLikeOutput detects planning scaffolding", () => {
-    expect(isPlanLikeOutput("Plan: update file then run verify")).toBe(true);
-    expect(isPlanLikeOutput("I can apply this in two steps.")).toBe(true);
-    expect(isPlanLikeOutput("1. Edit src/cli.ts\n2. Run verify")).toBe(true);
-    expect(isPlanLikeOutput("• 1. Edit src/cli.ts\n• 2. Run verify")).toBe(true);
-    expect(isPlanLikeOutput("Updated src/cli.ts and tests pass.")).toBe(false);
   });
 });
 

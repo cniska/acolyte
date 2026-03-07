@@ -2,28 +2,15 @@ import { type RecoveryAction, recoveryActionForError as resolveRecoveryAction } 
 import type { LifecycleInput, RunContext, SavedRegenerationState } from "./lifecycle-contract";
 import {
   autoVerifier,
-  commitCompletionEvaluator,
   type Evaluator,
-  efficiencyEvaluator,
-  missingPrerequisiteRecovery,
   multiMatchEditEvaluator,
-  planDetector,
   timeoutRecovery,
   verifyFailure,
 } from "./lifecycle-evaluators";
 import { phaseGenerate, shouldYieldNow } from "./lifecycle-generate";
 import { defaultLifecyclePolicy, type LifecyclePolicy } from "./lifecycle-policy";
 
-const EVALUATORS: Evaluator[] = [
-  planDetector,
-  multiMatchEditEvaluator,
-  missingPrerequisiteRecovery,
-  efficiencyEvaluator,
-  timeoutRecovery,
-  autoVerifier,
-  commitCompletionEvaluator,
-  verifyFailure,
-];
+const EVALUATORS: Evaluator[] = [multiMatchEditEvaluator, timeoutRecovery, autoVerifier, verifyFailure];
 
 export function recoveryActionForError(
   input: { errorCode?: string; unknownErrorCount: number },

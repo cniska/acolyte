@@ -395,15 +395,15 @@ describe("config store", () => {
     expect(loaded.temperatures).toEqual({ plan: 0.2, work: 0.4 });
   });
 
-  test("unsetConfigValue removes models.chat dotted key", async () => {
+  test("unsetConfigValue removes models.plan dotted key", async () => {
     const home = createDir("acolyte-config-home-");
     const project = createDir("acolyte-config-project-");
     const projectDataDir = join(project, ".acolyte");
     mkdirSync(projectDataDir, { recursive: true });
 
-    await setConfigValue("models.chat", "gpt-5-mini", { homeDir: home, cwd: project, scope: "project" });
+    await setConfigValue("models.plan", "gpt-5-mini", { homeDir: home, cwd: project, scope: "project" });
     await setConfigValue("models.work", "gpt-5", { homeDir: home, cwd: project, scope: "project" });
-    await unsetConfigValue("models.chat", { homeDir: home, cwd: project, scope: "project" });
+    await unsetConfigValue("models.plan", { homeDir: home, cwd: project, scope: "project" });
 
     const loaded = await readConfigForScope("project", { homeDir: home, cwd: project });
     expect(loaded.models).toEqual({ work: "gpt-5" });

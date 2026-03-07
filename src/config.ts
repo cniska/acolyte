@@ -223,7 +223,7 @@ export async function writeConfig(config: Config, options?: ConfigOptions): Prom
 }
 
 const RECORD_VALID_KEYS: Partial<Record<keyof Config, Set<string>>> = {
-  models: new Set(["chat", ...agentModeSchema.options]),
+  models: new Set([...agentModeSchema.options]),
   temperatures: new Set([...agentModeSchema.options]),
 };
 

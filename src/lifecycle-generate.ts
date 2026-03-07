@@ -14,7 +14,7 @@ import {
   isEditFileMultiMatchSignal,
   parseErrorInfo,
 } from "./error-handling";
-import { resolveModeModelOrThrow } from "./lifecycle-classify";
+import { resolveModeModel } from "./lifecycle-classify";
 import type {
   GenerateOptions,
   GenerateResult,
@@ -119,7 +119,7 @@ export function createModeAgent(input: {
 }
 
 function ensureAgentForMode(ctx: RunContext): void {
-  const resolved = resolveModeModelOrThrow(ctx.mode, ctx.request.model);
+  const resolved = resolveModeModel(ctx.mode, ctx.request.model);
   const nextModel = resolved.model;
   if (ctx.agentMode === ctx.mode && ctx.model === nextModel) return;
 

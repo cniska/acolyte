@@ -113,6 +113,11 @@ describe("coding-tools workspace guards", () => {
     expect(output).toContain("ok");
   });
 
+  test("runShellCommand includes timeout indicator when command exceeds timeout", async () => {
+    const output = await runShellCommand(WORKSPACE, "sleep 5", 500);
+    expect(output).toContain("TIMED OUT after 500ms");
+  });
+
   test("runShellCommand blocks home paths", async () => {
     await expect(runShellCommand(WORKSPACE, "cat ~/Documents")).rejects.toThrow(
       "Command references home path outside allowed roots",

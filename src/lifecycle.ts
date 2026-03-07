@@ -4,13 +4,9 @@ import type { LifecycleInput, RunContext, ToolOutputEvent } from "./lifecycle-co
 import { phaseEvaluate, recoveryActionForError as resolveRecoveryAction } from "./lifecycle-evaluate";
 import {
   autoVerifier,
-  commitCompletionEvaluator,
   type EvalAction,
   type Evaluator,
-  efficiencyEvaluator,
-  missingPrerequisiteRecovery,
   multiMatchEditEvaluator,
-  planDetector,
   timeoutRecovery,
   verifyFailure,
 } from "./lifecycle-evaluators";
@@ -27,16 +23,7 @@ import { renderToolOutput } from "./tool-output-content";
 const memoryCommitQueue = createInMemoryTaskQueue();
 const malformedMemoryRejectStreakBySession = new Map<string, number>();
 
-export {
-  autoVerifier,
-  commitCompletionEvaluator,
-  efficiencyEvaluator,
-  missingPrerequisiteRecovery,
-  multiMatchEditEvaluator,
-  planDetector,
-  timeoutRecovery,
-  verifyFailure,
-};
+export { autoVerifier, multiMatchEditEvaluator, timeoutRecovery, verifyFailure };
 export type { EvalAction, Evaluator };
 export type { LifecycleInput, RunContext } from "./lifecycle-contract";
 export { resolveRecoveryAction as recoveryActionForError };

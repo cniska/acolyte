@@ -783,7 +783,12 @@ export async function runShellCommand(
   const durationMs = Date.now() - startedAt;
   clearTimeout(timer);
 
-  const headers = [`exit_code=${exitCode}`, `duration_ms=${durationMs}`];
+  const timedOut = durationMs >= timeoutMs;
+  const headers = [
+    timedOut ? `TIMED OUT after ${timeoutMs}ms` : "",
+    `exit_code=${exitCode}`,
+    `duration_ms=${durationMs}`,
+  ].filter(Boolean);
   const out = stdoutText.trim();
   const err = stderrText.trim();
   if (!out && !err) return headers.join("\n");

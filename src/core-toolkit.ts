@@ -177,22 +177,6 @@ function createRunCommandTool(workspace: string, session: SessionContext, onOutp
     return Number.isNaN(value) ? undefined : value;
   };
 
-  const recordSuccessfulRunCommand = (command: string, result: string): void => {
-    if (parseExitCode(result) !== 0) return;
-    const key = session.taskId ?? "__global__";
-    const existing = session.flags.successfulRunCommandsByTask;
-    const map =
-      existing && typeof existing === "object"
-        ? (existing as Record<string, unknown>)
-        : ({} as Record<string, unknown>);
-    const current =
-      Array.isArray(map[key]) && (map[key] as unknown[]).every((item) => typeof item === "string")
-        ? (map[key] as string[])
-        : [];
-    if (!current.includes(command)) map[key] = [...current, command];
-    session.flags.successfulRunCommandsByTask = map;
-  };
-
   return createTool({
     id: "run-command",
     label: t("tool.label.run"),
@@ -289,7 +273,6 @@ function createRunCommandTool(workspace: string, session: SessionContext, onOutp
             }
           }
           const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.run);
-          recordSuccessfulRunCommand(input.command, rawResult);
           return { kind: "run-command", command: input.command, exitCode: parseExitCode(rawResult), output: result };
         }),
       );

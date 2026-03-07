@@ -47,28 +47,7 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
     ],
     statusText: "Verifying…",
   },
-  chat: {
-    tools: [],
-    preamble: [
-      "Answer directly without using tools unless the user asks for file/system actions.",
-      "Keep responses concise and practical.",
-    ],
-    statusText: "Chatting…",
-  },
 };
-
-const WORK_WORDS =
-  /\b(edit|rename|refactor|fix|create|implement|add|delete|remove|update|write|run|verify|change|move|replace|extract|inline|wrap|improve|convert|migrate|upgrade)\b/i;
-const PLAN_WORDS =
-  /\b(find|search|scan|read|look|show|list|what|where|how|explain|understand|check|inspect|describe)\b/i;
-
-export function classifyMode(message: string): AgentMode {
-  const shouldWork = WORK_WORDS.test(message);
-  const shouldPlan = PLAN_WORDS.test(message);
-  if (shouldWork) return "work";
-  if (shouldPlan) return "plan";
-  return "chat";
-}
 
 export function modeForTool(toolName: string): AgentMode {
   for (const [mode, def] of Object.entries(agentModes)) {

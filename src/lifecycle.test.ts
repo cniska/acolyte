@@ -2,11 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { createErrorStats } from "./error-handling";
 import {
   autoVerifier,
-  commitCompletionEvaluator,
-  efficiencyEvaluator,
-  missingPrerequisiteRecovery,
   multiMatchEditEvaluator,
-  planDetector,
   type RunContext,
   recoveryActionForError,
   scheduleMemoryCommit,
@@ -55,39 +51,6 @@ function createMockContext(overrides: Partial<RunContext> = {}): RunContext {
     ...overrides,
   };
 }
-
-describe("planDetector", () => {
-  test("returns regenerate when output is plan-like with no tools", () => {
-    const ctx = createMockContext({
-      result: { text: "Plan:\n1. Edit the file\n2. Run verify", toolCalls: [] },
-      observedTools: new Set(),
-    });
-    const action = planDetector.evaluate(ctx);
-    expect(action.type).toBe("regenerate");
-    if (action.type === "regenerate") expect(action.prompt).toContain("Execute the task directly");
-  });
-
-  test("returns done when tools were used", () => {
-    const ctx = createMockContext({
-      result: { text: "Plan:\n1. Edit the file", toolCalls: [] },
-      observedTools: new Set(["edit-file"]),
-    });
-    expect(planDetector.evaluate(ctx).type).toBe("done");
-  });
-
-  test("returns done when output is not plan-like", () => {
-    const ctx = createMockContext({
-      result: { text: "Updated src/agent.ts.", toolCalls: [] },
-      observedTools: new Set(),
-    });
-    expect(planDetector.evaluate(ctx).type).toBe("done");
-  });
-
-  test("returns done when no result", () => {
-    const ctx = createMockContext({ result: undefined });
-    expect(planDetector.evaluate(ctx).type).toBe("done");
-  });
-});
 
 describe("autoVerifier", () => {
   test("returns regenerate when write tools used without verify", () => {
@@ -184,105 +147,6 @@ describe("autoVerifier", () => {
   });
 });
 
-describe("efficiencyEvaluator", () => {
-  test("returns regenerate when work mode over-explores without any write", () => {
-    const session = createSessionContext();
-    session.callLog = [
-      { toolName: "find-files", args: {} },
-      { toolName: "read-file", args: { paths: [{ path: "src/a.ts" }] } },
-      { toolName: "search-files", args: {} },
-    ];
-    const ctx = createMockContext({
-      request: { model: "gpt-5-mini", message: "Implement the fix directly", history: [] },
-      classifiedMode: "work",
-      session,
-      result: { text: "I found the files.", toolCalls: [] },
-    });
-    const action = efficiencyEvaluator.evaluate(ctx);
-    expect(action.type).toBe("regenerate");
-  });
-
-  test("returns regenerate on repeated read-file calls even with lower discovery volume", () => {
-    const session = createSessionContext();
-    session.callLog = [
-      { toolName: "read-file", args: { paths: [{ path: "src/a.ts" }] } },
-      { toolName: "read-file", args: { paths: [{ path: "src/a.ts" }] } },
-      { toolName: "read-file", args: { paths: [{ path: "src/a.ts" }] } },
-    ];
-    const ctx = createMockContext({
-      request: { model: "gpt-5-mini", message: "Implement the fix directly", history: [] },
-      classifiedMode: "work",
-      session,
-      result: { text: "I found the files.", toolCalls: [] },
-    });
-    expect(efficiencyEvaluator.evaluate(ctx).type).toBe("regenerate");
-  });
-
-  test("returns done when a write tool was used", () => {
-    const session = createSessionContext();
-    session.callLog = [
-      { toolName: "read-file", args: {} },
-      { toolName: "edit-file", args: { path: "src/a.ts" } },
-    ];
-    const ctx = createMockContext({
-      classifiedMode: "work",
-      session,
-      result: { text: "Done.", toolCalls: [] },
-    });
-    expect(efficiencyEvaluator.evaluate(ctx).type).toBe("done");
-  });
-
-  test("returns done outside work mode", () => {
-    const session = createSessionContext();
-    session.callLog = [
-      { toolName: "find-files", args: {} },
-      { toolName: "read-file", args: {} },
-      { toolName: "search-files", args: {} },
-    ];
-    const ctx = createMockContext({
-      classifiedMode: "plan",
-      session,
-      result: { text: "Found it.", toolCalls: [] },
-    });
-    expect(efficiencyEvaluator.evaluate(ctx).type).toBe("done");
-  });
-
-  test("returns done for work-classified prompts without strong write intent", () => {
-    const session = createSessionContext();
-    session.callLog = [
-      { toolName: "find-files", args: {} },
-      { toolName: "read-file", args: {} },
-      { toolName: "search-files", args: {} },
-      { toolName: "read-file", args: {} },
-    ];
-    const ctx = createMockContext({
-      request: { model: "gpt-5-mini", message: "Improve robustness and report findings only", history: [] },
-      classifiedMode: "work",
-      session,
-      result: { text: "Findings...", toolCalls: [] },
-    });
-    expect(efficiencyEvaluator.evaluate(ctx).type).toBe("done");
-  });
-
-  test("returns done when outcome indicates file-not-found with no writes", () => {
-    const session = createSessionContext();
-    session.callLog = [
-      { toolName: "search-files", args: { pattern: "src/utils.ts" } },
-      { toolName: "read-file", args: { paths: [{ path: "src" }] } },
-      { toolName: "search-files", args: { pattern: "utils.ts" } },
-      { toolName: "read-file", args: { paths: [{ path: "src/index.ts" }] } },
-    ];
-    const ctx = createMockContext({
-      request: { model: "gpt-5-mini", message: "Rename function in src/utils.ts", history: [] },
-      classifiedMode: "work",
-      session,
-      lastError: "read-file failed: ENOENT: no such file or directory, open 'src/utils.ts'",
-      result: { text: "src/utils.ts does not exist in this workspace.", toolCalls: [] },
-    });
-    expect(efficiencyEvaluator.evaluate(ctx).type).toBe("done");
-  });
-});
-
 describe("multiMatchEditEvaluator", () => {
   test("returns regenerate when edit-file fails with multi-match error", () => {
     const session = createSessionContext();
@@ -332,124 +196,13 @@ describe("multiMatchEditEvaluator", () => {
   });
 });
 
-describe("missingPrerequisiteRecovery", () => {
-  test("returns regenerate when blocked by missing prerequisites and no writes", () => {
-    const session = createSessionContext();
-    session.callLog = [{ toolName: "read-file", args: { paths: [{ path: "docs/project-plan.md" }] } }];
-    const ctx = createMockContext({
-      request: { model: "gpt-5-mini", message: "Implement slice", history: [] },
-      classifiedMode: "work",
-      session,
-      result: {
-        text: "I can't proceed because package.json and workspace files are missing.",
-        toolCalls: [],
-      },
-    });
-    const action = missingPrerequisiteRecovery.evaluate(ctx);
-    expect(action.type).toBe("regenerate");
-    if (action.type === "regenerate") expect(action.prompt).toContain("Do not stop because prerequisites are missing");
-  });
-
-  test("returns done when writes already happened", () => {
-    const session = createSessionContext();
-    session.callLog = [
-      { toolName: "read-file", args: { paths: [{ path: "docs/project-plan.md" }] } },
-      { toolName: "edit-file", args: { path: "package.json" } },
-    ];
-    const ctx = createMockContext({
-      classifiedMode: "work",
-      session,
-      result: {
-        text: "I can't proceed because package.json and workspace files are missing.",
-        toolCalls: [],
-      },
-    });
-    expect(missingPrerequisiteRecovery.evaluate(ctx).type).toBe("done");
-  });
-});
-
-describe("commitCompletionEvaluator", () => {
-  test("returns regenerate when commit requested, writes happened, verify ran, and no git commit yet", () => {
-    const session = createSessionContext();
-    session.flags.verifyRan = true;
-    session.callLog = [{ toolName: "edit-file", args: { path: "src/a.ts" } }];
-    const ctx = createMockContext({
-      request: { model: "gpt-5-mini", message: "Implement fix and commit", history: [] },
-      classifiedMode: "work",
-      session,
-      result: { text: "Done.", toolCalls: [] },
-    });
-    const action = commitCompletionEvaluator.evaluate(ctx);
-    expect(action.type).toBe("regenerate");
-    if (action.type === "regenerate") expect(action.prompt).toContain("have not created a commit yet");
-  });
-
-  test("returns regenerate when commit requested and writes happened even if verify did not run", () => {
-    const session = createSessionContext();
-    session.callLog = [{ toolName: "edit-file", args: { path: "src/a.ts" } }];
-    const ctx = createMockContext({
-      request: { model: "gpt-5-mini", message: "Implement fix and commit", history: [] },
-      classifiedMode: "work",
-      session,
-      result: { text: "Done.", toolCalls: [] },
-    });
-    expect(commitCompletionEvaluator.evaluate(ctx).type).toBe("regenerate");
-  });
-
-  test("returns done when successful git commit is recorded for current task", () => {
-    const session = createSessionContext();
-    session.flags.verifyRan = true;
-    session.flags.successfulRunCommandsByTask = { __global__: ['git commit -m "feat: test"'] };
-    session.callLog = [
-      { toolName: "edit-file", args: { path: "src/a.ts" } },
-      { toolName: "run-command", args: { command: 'git commit -m "feat: test"' } },
-    ];
-    const ctx = createMockContext({
-      request: { model: "gpt-5-mini", message: "Implement fix and commit", history: [] },
-      classifiedMode: "work",
-      session,
-      result: { text: "Done.", toolCalls: [] },
-    });
-    expect(commitCompletionEvaluator.evaluate(ctx).type).toBe("done");
-  });
-
-  test("returns regenerate when git commit command was attempted but not recorded as successful", () => {
-    const session = createSessionContext();
-    session.flags.verifyRan = true;
-    session.callLog = [
-      { toolName: "edit-file", args: { path: "src/a.ts" } },
-      { toolName: "run-command", args: { command: 'git commit -m "feat: test"' } },
-    ];
-    const ctx = createMockContext({
-      request: { model: "gpt-5-mini", message: "Implement fix and commit", history: [] },
-      classifiedMode: "work",
-      session,
-      result: { text: "Done.", toolCalls: [] },
-    });
-    expect(commitCompletionEvaluator.evaluate(ctx).type).toBe("regenerate");
-  });
-});
-
 describe("evaluator ordering", () => {
   test("evaluators run in correct order", () => {
-    const evaluators = [
-      planDetector,
-      multiMatchEditEvaluator,
-      missingPrerequisiteRecovery,
-      efficiencyEvaluator,
-      timeoutRecovery,
-      autoVerifier,
-      commitCompletionEvaluator,
-      verifyFailure,
-    ];
-    expect(evaluators[0].id).toBe("plan-detector");
-    expect(evaluators[1].id).toBe("multi-match-edit-evaluator");
-    expect(evaluators[2].id).toBe("missing-prerequisite-recovery");
-    expect(evaluators[3].id).toBe("efficiency-evaluator");
-    expect(evaluators[4].id).toBe("timeout-recovery");
-    expect(evaluators[5].id).toBe("auto-verifier");
-    expect(evaluators[6].id).toBe("commit-completion-evaluator");
-    expect(evaluators[7].id).toBe("verify-failure");
+    const evaluators = [multiMatchEditEvaluator, timeoutRecovery, autoVerifier, verifyFailure];
+    expect(evaluators[0].id).toBe("multi-match-edit-evaluator");
+    expect(evaluators[1].id).toBe("timeout-recovery");
+    expect(evaluators[2].id).toBe("auto-verifier");
+    expect(evaluators[3].id).toBe("verify-failure");
   });
 });
 
@@ -461,6 +214,7 @@ describe("verifyFailure", () => {
       mode: "verify",
       classifiedMode: "work",
       session,
+      lastError: "verify failed: missing export updatePost in post-store.ts",
       result: { text: "Error: missing export updatePost in post-store.ts", toolCalls: [] },
       observedTools: new Set(["scan-code"]),
     });

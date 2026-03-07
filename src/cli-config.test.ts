@@ -57,8 +57,8 @@ describe("cli config", () => {
         calls.push({ key, scope: options?.scope ?? "user" });
       },
     });
-    await configMode(["unset", "models.chat"], deps);
-    expect(calls).toEqual([{ key: "models.chat", scope: "user" }]);
+    await configMode(["unset", "models.plan"], deps);
+    expect(calls).toEqual([{ key: "models.plan", scope: "user" }]);
   });
 
   test("unset accepts trailing scope flag", async () => {
@@ -68,8 +68,8 @@ describe("cli config", () => {
         calls.push({ key, scope: options?.scope ?? "user" });
       },
     });
-    await configMode(["unset", "models.chat", "--project"], deps);
-    expect(calls).toEqual([{ key: "models.chat", scope: "project" }]);
+    await configMode(["unset", "models.plan", "--project"], deps);
+    expect(calls).toEqual([{ key: "models.plan", scope: "project" }]);
   });
 
   test("set accepts trailing scope flag", async () => {
@@ -79,7 +79,7 @@ describe("cli config", () => {
         calls.push({ key, value, scope: options?.scope ?? "user" });
       },
     });
-    await configMode(["set", "models.chat", "gpt-5-mini", "--project"], deps);
-    expect(calls).toEqual([{ key: "models.chat", value: "gpt-5-mini", scope: "project" }]);
+    await configMode(["set", "models.plan", "gpt-5-mini", "--project"], deps);
+    expect(calls).toEqual([{ key: "models.plan", value: "gpt-5-mini", scope: "project" }]);
   });
 });

@@ -43,7 +43,7 @@ const parseMemorySourcesSchema = z.preprocess((value) => {
     .map((part) => part.trim())
     .filter((part) => part.length > 0);
 }, z.array(memorySourceIdSchema).min(1));
-const MODE_MODEL_KEYS = new Set<string>([...agentModeSchema.options, "chat"]);
+const MODE_MODEL_KEYS = new Set<string>([...agentModeSchema.options]);
 const modeTemperatureMapSchema = z
   .record(
     z.string(),

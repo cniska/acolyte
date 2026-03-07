@@ -1,24 +1,3 @@
-export function isPlanLikeOutput(text: string): boolean {
-  const normalized = text.trim();
-  if (normalized.length === 0) return false;
-  const lines = normalized
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
-  if (lines.length === 0) return false;
-  const planSignals = [
-    /^plan\b/i,
-    /^steps?\b/i,
-    /^next steps?\b/i,
-    /^i (can|will)\b/i,
-    /^pick one\b/i,
-    /^reply [a-z0-9]/i,
-    /^want me to\b/i,
-    /^(?:[-*•]\s*)?\d+[.)]\s+/,
-  ];
-  return lines.some((line) => planSignals.some((signal) => signal.test(line)));
-}
-
 export function formatAssistantOutput(output: string, message = "", toolCallCount = 0): string {
   const trimmed = output.trim();
   if (trimmed.length > 0) {

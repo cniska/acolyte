@@ -203,7 +203,7 @@ function parsePermissionsScope(parts: string[]): ConfigScope | null {
 }
 
 const modelIdSchema = z.string().trim().min(1).regex(/^\S+$/);
-const agentModeSchema = z.enum(["plan", "work", "verify", "chat"]);
+const agentModeSchema = z.enum(["plan", "work", "verify"]);
 
 type ModelSelection =
   | { kind: "default"; model: string }
