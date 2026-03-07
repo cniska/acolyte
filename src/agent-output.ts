@@ -43,12 +43,7 @@ export function finalizeReviewOutput(output: string, message = ""): string {
   return "No review output produced. Try narrowing to a file (for example @src/agent.ts) or rephrasing your prompt.";
 }
 
-export function finalizeAssistantOutput(
-  output: string,
-  message = "",
-  toolCallCount = 0,
-  lastToolFailureReason?: string,
-): string {
+export function finalizeAssistantOutput(output: string, message = "", toolCallCount = 0): string {
   const trimmed = output.trim();
   if (trimmed.length > 0) {
     const wantsDetail = /\b(explain|details?|deep dive|walk me through|elaborate)\b/i.test(message);
@@ -65,6 +60,5 @@ export function finalizeAssistantOutput(
     return trimmed;
   }
   if (toolCallCount > 0) return "No final response after tool execution. Retry, or check server logs if this repeats.";
-  if (lastToolFailureReason) return `No output from model. Last tool error: ${lastToolFailureReason}`;
   return "No output from model. Check /status and server logs, then retry or switch model/provider.";
 }

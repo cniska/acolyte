@@ -413,9 +413,9 @@ describe("finalizeAssistantOutput", () => {
     );
   });
 
-  test("returns tool failure reason for non-edit prompts when no output is produced", () => {
-    expect(finalizeAssistantOutput("   ", "check status", 0, "openai quota exceeded")).toBe(
-      "No output from model. Last tool error: openai quota exceeded",
+  test("returns generic fallback when tool error caused empty output", () => {
+    expect(finalizeAssistantOutput("   ", "check status", 0)).toBe(
+      "No output from model. Check /status and server logs, then retry or switch model/provider.",
     );
   });
 });

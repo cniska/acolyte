@@ -13,7 +13,7 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
   const rawOutput = ctx.result?.text.trim() ?? "";
   const output = isReviewRequest(ctx.request.message)
     ? finalizeReviewOutput(rawOutput, ctx.request.message)
-    : finalizeAssistantOutput(rawOutput, ctx.request.message, ctx.observedTools.size, ctx.lastError);
+    : finalizeAssistantOutput(rawOutput, ctx.request.message, ctx.observedTools.size);
 
   const completionTokens = estimateTokens(output);
   let budgetWarning: string | undefined;
