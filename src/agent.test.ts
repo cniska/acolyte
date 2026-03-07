@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { createAgentInput } from "./agent-input";
 import { createInstructions, createModeInstructions } from "./agent-instructions";
 import { resolveModelProviderState, resolveRunnableModel } from "./agent-model";
-import { finalizeAssistantOutput, finalizeReviewOutput, isPlanLikeOutput } from "./agent-output";
+import { formatAssistantOutput, isPlanLikeOutput } from "./agent-output";
 import type { ChatRequest } from "./api";
 import { appConfig } from "./app-config";
 
@@ -347,39 +347,20 @@ describe("execution intent detection", () => {
   });
 });
 
-describe("finalizeReviewOutput", () => {
+describe("formatAssistantOutput", () => {
   test("returns fallback when output is empty", () => {
-    const raw = "   ";
-    expect(finalizeReviewOutput(raw)).toBe(
-      "No review output produced. Try narrowing to a file (for example @src/agent.ts) or rephrasing your prompt.",
-    );
-  });
-
-  test("keeps non-empty output even when request includes @path", () => {
-    const raw = "Tools used: search-files\nEvidence: src/cli.ts:1";
-    expect(finalizeReviewOutput(raw, "review @src/")).toBe(raw);
-  });
-
-  test("keeps non-empty output as-is (trimmed)", () => {
-    const raw = "\n  • 1 findings in @src/core-toolkit.ts\n 1) naming issue \n";
-    expect(finalizeReviewOutput(raw)).toBe("• 1 findings in @src/core-toolkit.ts\n 1) naming issue");
-  });
-});
-
-describe("finalizeAssistantOutput", () => {
-  test("returns fallback when output is empty", () => {
-    expect(finalizeAssistantOutput("   ")).toBe(
+    expect(formatAssistantOutput("   ")).toBe(
       "No output from model. Check /status and server logs, then retry or switch model/provider.",
     );
   });
 
   test("keeps non-empty output as-is (trimmed)", () => {
-    expect(finalizeAssistantOutput("\n Done \n")).toBe("Done");
+    expect(formatAssistantOutput("\n Done \n")).toBe("Done");
   });
 
   test("keeps long output as-is (no truncation)", () => {
     const raw = `Summary\n${"x".repeat(3000)}`;
-    const out = finalizeAssistantOutput(raw);
+    const out = formatAssistantOutput(raw);
     expect(out).toBe(raw);
   });
 
@@ -391,7 +372,7 @@ describe("finalizeAssistantOutput", () => {
       "- File: scripts/reverse_word.py",
       "- Added flags and examples.",
     ].join("\n");
-    const out = finalizeAssistantOutput(raw, "update script", 2);
+    const out = formatAssistantOutput(raw, "update script", 2);
     expect(out).toBe("I applied both edits.");
   });
 
@@ -403,18 +384,18 @@ describe("finalizeAssistantOutput", () => {
       "- File: scripts/reverse_word.py",
       "- Added flags and examples.",
     ].join("\n");
-    const out = finalizeAssistantOutput(raw, "explain what changed in detail", 2);
+    const out = formatAssistantOutput(raw, "explain what changed in detail", 2);
     expect(out).toBe(raw);
   });
 
   test("returns tool-executed fallback when output is empty after tool calls", () => {
-    expect(finalizeAssistantOutput("   ", "check status", 2)).toBe(
+    expect(formatAssistantOutput("   ", "check status", 2)).toBe(
       "No final response after tool execution. Retry, or check server logs if this repeats.",
     );
   });
 
   test("returns generic fallback when tool error caused empty output", () => {
-    expect(finalizeAssistantOutput("   ", "check status", 0)).toBe(
+    expect(formatAssistantOutput("   ", "check status", 0)).toBe(
       "No output from model. Check /status and server logs, then retry or switch model/provider.",
     );
   });

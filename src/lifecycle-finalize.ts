@@ -1,19 +1,13 @@
 import { estimateTokens } from "./agent-input";
-import { finalizeAssistantOutput, finalizeReviewOutput } from "./agent-output";
+import { formatAssistantOutput } from "./agent-output";
 import type { ChatResponse } from "./api";
 import { t } from "./i18n";
 import { guardStatsFromSession, type RunContext, taskScopedCallLog } from "./lifecycle-contract";
 import { DISCOVERY_TOOL_SET, READ_TOOL_SET, SEARCH_TOOL_SET, WRITE_TOOL_SET } from "./tool-groups";
 
-function isReviewRequest(text: string): boolean {
-  return /\breview\b/i.test(text);
-}
-
 export function phaseFinalize(ctx: RunContext): ChatResponse {
   const rawOutput = ctx.result?.text.trim() ?? "";
-  const output = isReviewRequest(ctx.request.message)
-    ? finalizeReviewOutput(rawOutput, ctx.request.message)
-    : finalizeAssistantOutput(rawOutput, ctx.request.message, ctx.observedTools.size);
+  const output = formatAssistantOutput(rawOutput, ctx.request.message, ctx.observedTools.size);
 
   const completionTokens = estimateTokens(output);
   let budgetWarning: string | undefined;

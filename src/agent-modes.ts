@@ -57,16 +57,16 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
   },
 };
 
-const CODE_WORDS =
+const WORK_WORDS =
   /\b(edit|rename|refactor|fix|create|implement|add|delete|remove|update|write|run|verify|change|move|replace|extract|inline|wrap|improve|convert|migrate|upgrade)\b/i;
-const EXPLORE_WORDS =
+const PLAN_WORDS =
   /\b(find|search|scan|read|look|show|list|what|where|how|explain|understand|check|inspect|describe)\b/i;
 
 export function classifyMode(message: string): AgentMode {
-  const hasCode = CODE_WORDS.test(message);
-  const hasExplore = EXPLORE_WORDS.test(message);
-  if (hasCode) return "work";
-  if (hasExplore) return "plan";
+  const shouldWork = WORK_WORDS.test(message);
+  const shouldPlan = PLAN_WORDS.test(message);
+  if (shouldWork) return "work";
+  if (shouldPlan) return "plan";
   return "chat";
 }
 

@@ -19,31 +19,7 @@ export function isPlanLikeOutput(text: string): boolean {
   return lines.some((line) => planSignals.some((signal) => signal.test(line)));
 }
 
-function extractMentionedPath(message: string): string | null {
-  const match = message.match(/@([^\s]+)/);
-  if (!match) return null;
-  const cleaned = (match[1] ?? "").replace(/[.,;:!?]+$/g, "").trim();
-  return cleaned.length > 0 ? cleaned : null;
-}
-
-function suggestNarrowerReviewScope(path: string): string {
-  const clean = path.replace(/\/+$/, "");
-  if (clean.length === 0) return "@src/agent.ts";
-  if (clean.endsWith(".ts") || clean.endsWith(".tsx") || clean.endsWith(".js") || clean.endsWith(".md"))
-    return `@${clean}`;
-  return `@${clean}/agent.ts`;
-}
-
-export function finalizeReviewOutput(output: string, message = ""): string {
-  const trimmed = output.trim();
-  if (trimmed.length > 0) return trimmed;
-  const mentionedPath = extractMentionedPath(message);
-  if (mentionedPath)
-    return `No review output produced for @${mentionedPath}. Try narrowing the scope (for example ${suggestNarrowerReviewScope(mentionedPath)}) or rephrasing your prompt.`;
-  return "No review output produced. Try narrowing to a file (for example @src/agent.ts) or rephrasing your prompt.";
-}
-
-export function finalizeAssistantOutput(output: string, message = "", toolCallCount = 0): string {
+export function formatAssistantOutput(output: string, message = "", toolCallCount = 0): string {
   const trimmed = output.trim();
   if (trimmed.length > 0) {
     const wantsDetail = /\b(explain|details?|deep dive|walk me through|elaborate)\b/i.test(message);
