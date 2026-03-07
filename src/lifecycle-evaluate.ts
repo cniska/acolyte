@@ -99,7 +99,10 @@ export async function phaseEvaluate(ctx: RunContext, shouldYield: LifecycleInput
             lastErrorTool: ctx.lastErrorTool,
           }
         : undefined;
-      if (action.mode) ctx.mode = action.mode;
+      if (action.mode) {
+        ctx.mode = action.mode;
+        ctx.session.mode = action.mode;
+      }
 
       ctx.regenerationCount += 1;
       evaluatorChainRegenerations += 1;

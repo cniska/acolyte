@@ -147,46 +147,6 @@ describe("guard regression integration", () => {
     expect(reply.toolCalls?.[0]).toBe("run-command");
   }, 20_000);
 
-  test("verify-ran guard blocks second verify command when no writes occurred", async () => {
-    const reply = await runGuardIntegrationScenario(
-      "[int:verify-ran] Run verify twice without changing any files.",
-      "sess_guard-regression-verify-ran",
-      ({ model, responseCounter, sourceText, outputs, body }) => {
-        if (sourceText.includes("[int:verify-ran]")) {
-          const toolName = pickFunctionToolName(body.tools, "run-command", ["run", "command", "terminal"]);
-          if (outputs.length === 0) {
-            return createToolCallsPayload(model, responseCounter, [
-              {
-                id: "fc_verify_1",
-                callId: "call_verify_1",
-                name: toolName,
-                args: JSON.stringify({ command: "echo verify pass-one" }),
-              },
-            ]);
-          }
-
-          const lastCallId = outputs[outputs.length - 1]?.callId;
-          if (lastCallId === "call_verify_1") {
-            return createToolCallsPayload(model, responseCounter, [
-              {
-                id: "fc_verify_2",
-                callId: "call_verify_2",
-                name: toolName,
-                args: JSON.stringify({ command: "echo verify pass-two" }),
-              },
-            ]);
-          }
-
-          return createMessagePayload(model, responseCounter, "Done.");
-        }
-        return createMessagePayload(model, responseCounter, "ok");
-      },
-    );
-
-    expect(reply.output).toContain("Done");
-    expect(reply.toolCalls).toEqual(["run-command"]);
-  }, 20_000);
-
   test("no-rewrite guard blocks delete-file after reading the same file", async () => {
     const reply = await runGuardIntegrationScenario(
       "[int:no-rewrite] Read a file and then try to delete it.",

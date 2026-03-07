@@ -22,12 +22,6 @@ export function formatSubmitError(error: unknown): string {
   return formatPromptError(error.message);
 }
 
-export function isLikelyWritePrompt(text: string): boolean {
-  return /\b(add|edit|modify|update|change|fix|insert|refactor|rewrite|rename|create|delete|implement|apply patch|write)\b/i.test(
-    text,
-  );
-}
-
 export function statusPermissionMode(status: StatusFields): PermissionMode | null {
   const mode = status.permissions;
   if (mode === "read" || mode === "write") return mode;

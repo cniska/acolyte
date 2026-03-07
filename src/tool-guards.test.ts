@@ -44,14 +44,16 @@ describe("no-rewrite guard", () => {
 });
 
 describe("verify-ran guard", () => {
-  test("sets flag when command contains verify", () => {
+  test("sets flag when run-command executes in verify mode", () => {
     const session = createSessionContext();
+    session.mode = "verify";
     runGuards({ toolName: "run-command", args: { command: "bun run verify" }, session });
     expect(session.flags.verifyRan).toBe(true);
   });
 
   test("blocks duplicate verify when no writes happened since last verify", () => {
     const session = createSessionContext();
+    session.mode = "verify";
     recordCall(session, "run-command", { command: "bun run verify" });
     expect(() => runGuards({ toolName: "run-command", args: { command: "bun run verify" }, session })).toThrow(
       /Duplicate run-command call detected|verify already ran this turn/,
@@ -60,14 +62,16 @@ describe("verify-ran guard", () => {
 
   test("allows verify rerun after a write", () => {
     const session = createSessionContext();
+    session.mode = "verify";
     recordCall(session, "run-command", { command: "bun run verify" });
     recordCall(session, "edit-file", { path: "src/foo.ts" });
     expect(() => runGuards({ toolName: "run-command", args: { command: "bun run verify" }, session })).not.toThrow();
   });
 
-  test("does not set flag for unrelated commands", () => {
+  test("does not set flag outside verify mode", () => {
     const session = createSessionContext();
-    runGuards({ toolName: "run-command", args: { command: "bun run build" }, session });
+    session.mode = "work";
+    runGuards({ toolName: "run-command", args: { command: "bun run verify" }, session });
     expect(session.flags.verifyRan).toBeUndefined();
   });
 });

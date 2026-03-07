@@ -8,11 +8,9 @@ import {
   distillMemoryCandidate,
   formatSubmitError,
   isAbortError,
-  isLikelyWritePrompt,
   mergeAssistantTranscript,
   parseInternalWriteResumeTurn,
   resolveNaturalRememberDirective,
-  statusPermissionMode,
 } from "./chat-message-handler-helpers";
 import { createMessageStreamState } from "./chat-message-handler-stream";
 import { startRemoteTaskFollowup } from "./chat-message-handler-task-followup";
@@ -163,18 +161,6 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
         tokenUsage: input.tokenUsage,
       });
       if (commandResult.stop) return;
-      if (!internalWriteResume && isLikelyWritePrompt(text)) {
-        try {
-          const status = await input.client.status();
-          if (statusPermissionMode(status) === "read") {
-            input.setRows((current) => [...current, createRow("system", t("chat.write.confirm.required"))]);
-            input.openWriteConfirmPanel(text);
-            return;
-          }
-        } catch {
-          // Best-effort check; continue normally if status lookup fails.
-        }
-      }
       userText = commandResult.userText;
     } else {
       userText = text;

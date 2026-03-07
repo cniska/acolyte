@@ -41,33 +41,11 @@ export function createErrorStats(initialValue = 0): Record<ErrorCategory, number
   >;
 }
 
-export function isEditFileMultiMatchError(errorMessage: string): boolean {
-  return (
-    hasToolErrorCode(errorMessage, TOOL_ERROR_CODES.editFileMultiMatch) ||
-    /Find text matched \d+ locations?/i.test(errorMessage)
-  );
-}
-
 export function isEditFileMultiMatchSignal(input: { code?: string; message: string }): boolean {
-  return input.code === TOOL_ERROR_CODES.editFileMultiMatch || isEditFileMultiMatchError(input.message);
-}
-
-export function isFileNotFoundSignal(text: string): boolean {
-  return /\b(?:does not exist|doesn't exist|no such file|not found|ENOENT)\b/i.test(text);
-}
-
-type ErrorCategoryRule = { category: ErrorCategory; matches: (message: string) => boolean };
-
-const ERROR_CATEGORY_RULES: readonly ErrorCategoryRule[] = [
-  { category: "timeout", matches: (message) => /timed out|timeout/i.test(message) },
-  { category: "file-not-found", matches: isFileNotFoundSignal },
-];
-
-export function classifyErrorCategory(message: string): ErrorCategory {
-  for (const rule of ERROR_CATEGORY_RULES) {
-    if (rule.matches(message)) return rule.category;
-  }
-  return "other";
+  return (
+    input.code === TOOL_ERROR_CODES.editFileMultiMatch ||
+    hasToolErrorCode(input.message, TOOL_ERROR_CODES.editFileMultiMatch)
+  );
 }
 
 export function categoryFromErrorCode(code?: string): ErrorCategory | undefined {
@@ -193,14 +171,13 @@ export function buildStreamErrorDetail(
   },
   unknownErrorBudget: number,
 ): { errorCode: string; category: ErrorCategory; errorDetail: StreamErrorDetail } {
-  const derivedCategory = classifyErrorCategory(input.message);
   const kindCategory = categoryFromErrorKind(input.kind);
   const errorCode =
     input.code ??
     extractToolErrorCode(input.message) ??
     (kindCategory ? errorCodeFromCategory(kindCategory) : undefined) ??
-    errorCodeFromCategory(derivedCategory);
-  const category = categoryFromErrorCode(errorCode) ?? kindCategory ?? derivedCategory;
+    LIFECYCLE_ERROR_CODES.unknown;
+  const category = categoryFromErrorCode(errorCode) ?? kindCategory ?? "other";
   const errorKind = input.kind ?? errorKindFromCategory(category);
   const decision = recoveryDecisionForError(
     { errorCode, unknownErrorCount: input.unknownErrorCount },

@@ -1,13 +1,9 @@
-export function formatAssistantOutput(output: string, message = "", toolCallCount = 0): string {
+export function formatAssistantOutput(output: string, _message = "", toolCallCount = 0): string {
   const trimmed = output.trim();
   if (trimmed.length > 0) {
-    const wantsDetail = /\b(explain|details?|deep dive|walk me through|elaborate)\b/i.test(message);
     const isVerbose = trimmed.length > 240 || trimmed.split("\n").filter((line) => line.trim().length > 0).length >= 4;
-    if (toolCallCount > 0 && isVerbose && !wantsDetail) {
-      const compact = trimmed
-        .replace(/\s+/g, " ")
-        .trim()
-        .replace(/^done\s*[—-]\s*/i, "");
+    if (toolCallCount > 0 && isVerbose) {
+      const compact = trimmed.replace(/\s+/g, " ").trim();
       const firstSentence = compact.split(/(?<=[.!?])\s+/)[0] ?? compact;
       const sentence = firstSentence.length > 180 ? `${firstSentence.slice(0, 179).trimEnd()}…` : firstSentence;
       return sentence.length > 0 ? sentence : "Done.";

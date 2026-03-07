@@ -1,10 +1,11 @@
 export type GuardEvent = { guardId: string; toolName: string; action: "blocked" | "flag_set"; detail?: string };
 
-export type ToolCallRecord = { toolName: string; args: Record<string, unknown>; taskId?: string };
+export type ToolCallRecord = { toolName: string; args: Record<string, unknown>; taskId?: string; mode?: string };
 
 export type SessionContext = {
   callLog: ToolCallRecord[];
   taskId?: string;
+  mode?: string;
   flags: Record<string, unknown>;
   onGuard?: (event: GuardEvent) => void;
 };
@@ -393,26 +394,22 @@ const excessiveFindLoopGuard: ToolGuard = {
 
 const verifyRanGuard: ToolGuard = {
   id: "verify-ran",
-  description: "Set session flag when run-command executes a verify command.",
+  description: "Set session flag when run-command executes in verify mode.",
   appliesTo: ["run-command"],
-  check({ toolName, args, session }) {
-    if (typeof args.command !== "string") return;
-    if (!/\bverify\b/i.test(args.command)) return;
+  check({ toolName, session }) {
+    if (session.mode !== "verify") return;
 
     const calls = scopedCallLog(session);
-    const lastVerifyIndex = (() => {
+    const lastVerifyRunIndex = (() => {
       for (let i = calls.length - 1; i >= 0; i -= 1) {
-        const entry = calls[i];
-        if (entry.toolName !== "run-command") continue;
-        const cmd = typeof entry.args.command === "string" ? entry.args.command : "";
-        if (/\bverify\b/i.test(cmd)) return i;
+        if (calls[i]?.toolName === "run-command" && calls[i]?.mode === "verify") return i;
       }
       return -1;
     })();
 
-    if (lastVerifyIndex >= 0) {
+    if (lastVerifyRunIndex >= 0) {
       let wroteAfterLastVerify = false;
-      for (let i = lastVerifyIndex + 1; i < calls.length; i += 1) {
+      for (let i = lastVerifyRunIndex + 1; i < calls.length; i += 1) {
         const tool = calls[i]?.toolName;
         if (tool === "edit-file" || tool === "edit-code" || tool === "create-file" || tool === "delete-file") {
           wroteAfterLastVerify = true;
@@ -447,5 +444,5 @@ export function runGuards(input: GuardInput): void {
 }
 
 export function recordCall(session: SessionContext, toolName: string, args: Record<string, unknown>): void {
-  session.callLog.push({ toolName, args, taskId: session.taskId });
+  session.callLog.push({ toolName, args, taskId: session.taskId, mode: session.mode });
 }

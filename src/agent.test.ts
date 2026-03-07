@@ -363,19 +363,7 @@ describe("formatAssistantOutput", () => {
       "- Added flags and examples.",
     ].join("\n");
     const out = formatAssistantOutput(raw, "update script", 2);
-    expect(out).toBe("I applied both edits.");
-  });
-
-  test("keeps verbose tool-backed output when user asks for details", () => {
-    const raw = [
-      "Done — I applied both edits.",
-      "",
-      "What I changed",
-      "- File: scripts/reverse_word.py",
-      "- Added flags and examples.",
-    ].join("\n");
-    const out = formatAssistantOutput(raw, "explain what changed in detail", 2);
-    expect(out).toBe(raw);
+    expect(out).toBe("Done — I applied both edits.");
   });
 
   test("returns tool-executed fallback when output is empty after tool calls", () => {

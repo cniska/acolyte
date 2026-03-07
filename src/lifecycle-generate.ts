@@ -7,7 +7,6 @@ import {
   buildStreamErrorDetail,
   categoryFromErrorCode,
   categoryFromErrorKind,
-  classifyErrorCategory,
   type ErrorSource,
   errorCodeFromCategory,
   errorKindFromCategory,
@@ -48,15 +47,14 @@ function captureError(
   meta?: { source?: ErrorSource; tool?: string; code?: string; kind?: string },
 ): void {
   ctx.lastError = message;
-  const derivedCategory = classifyErrorCategory(message);
   const kindCategory = categoryFromErrorKind(meta?.kind);
   const code =
     meta?.code ??
     extractToolErrorCode(message) ??
     (kindCategory ? errorCodeFromCategory(kindCategory) : undefined) ??
-    errorCodeFromCategory(derivedCategory);
+    LIFECYCLE_ERROR_CODES.unknown;
   ctx.lastErrorCode = code;
-  const category = categoryFromErrorCode(code) ?? kindCategory ?? derivedCategory;
+  const category = categoryFromErrorCode(code) ?? kindCategory ?? "other";
   const kind = meta?.kind ?? errorKindFromCategory(category);
   ctx.lastErrorCategory = category;
   ctx.lastErrorSource = meta?.source;
@@ -169,8 +167,9 @@ export async function phaseGenerate(ctx: RunContext, prompt: string, opts: Gener
     });
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
-    const timeoutCode = /timed out/i.test(errorMsg) ? LIFECYCLE_ERROR_CODES.timeout : undefined;
-    captureError(ctx, errorMsg, { source: "generate", code: timeoutCode });
+    const errorCode =
+      error instanceof Error && "code" in error && typeof error.code === "string" ? error.code : undefined;
+    captureError(ctx, errorMsg, { source: "generate", code: errorCode });
     ctx.emit({
       type: "error",
       error: `Tool failed: ${ctx.lastError}`,
@@ -196,7 +195,9 @@ async function streamWithTimeout(
       timeoutId = setTimeout(() => {
         if (settled) return;
         settled = true;
-        reject(new Error(`Step timed out after ${timeoutMs}ms of inactivity`));
+        const err = new Error(`Step timed out after ${timeoutMs}ms of inactivity`);
+        (err as Error & { code: string }).code = LIFECYCLE_ERROR_CODES.timeout;
+        reject(err);
       }, timeoutMs);
     };
     resetTimeout();
@@ -268,6 +269,7 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
           if (inferredMode === "work" && ctx.mode === "plan") {
             const fromMode = ctx.mode;
             ctx.mode = "work";
+            ctx.session.mode = "work";
             ctx.debug("lifecycle.mode.changed", { from: fromMode, to: "work", trigger: toolName });
             ctx.emit({ type: "status", message: `${agentModes[ctx.mode].statusText} (${ctx.model})` });
           }

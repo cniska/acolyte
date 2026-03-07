@@ -3,7 +3,6 @@ import {
   buildStreamErrorDetail,
   categoryFromErrorCode,
   categoryFromErrorKind,
-  classifyErrorCategory,
   createErrorStats,
   errorCodeFromCategory,
   errorKindFromCategory,
@@ -38,13 +37,6 @@ describe("error handling helpers", () => {
     expect(parsed.ok).toBe(false);
   });
 
-  test("classifyErrorCategory maps known message signals", () => {
-    expect(classifyErrorCategory("step timed out after 120000ms")).toBe("timeout");
-    expect(classifyErrorCategory("src/utils.ts does not exist")).toBe("file-not-found");
-    expect(classifyErrorCategory('Already read "src/foo.ts" this turn.')).toBe("other");
-    expect(classifyErrorCategory("something unexpected happened")).toBe("other");
-  });
-
   test("category/code mapping is stable for lifecycle codes", () => {
     expect(categoryFromErrorCode(LIFECYCLE_ERROR_CODES.timeout)).toBe("timeout");
     expect(categoryFromErrorCode(LIFECYCLE_ERROR_CODES.fileNotFound)).toBe("file-not-found");
@@ -69,9 +61,14 @@ describe("error handling helpers", () => {
     expect(errorKindFromCategory("other")).toBe("unknown");
   });
 
-  test("isEditFileMultiMatchSignal accepts code or legacy text signal", () => {
+  test("isEditFileMultiMatchSignal accepts code or embedded error code", () => {
     expect(isEditFileMultiMatchSignal({ code: TOOL_ERROR_CODES.editFileMultiMatch, message: "any" })).toBe(true);
-    expect(isEditFileMultiMatchSignal({ message: "Find text matched 4 locations", code: undefined })).toBe(true);
+    expect(
+      isEditFileMultiMatchSignal({
+        message: `[${TOOL_ERROR_CODES.editFileMultiMatch}] Find text matched 4 locations`,
+        code: undefined,
+      }),
+    ).toBe(true);
     expect(isEditFileMultiMatchSignal({ message: "random error", code: undefined })).toBe(false);
   });
 
@@ -98,6 +95,7 @@ describe("error handling helpers", () => {
     const detail = buildStreamErrorDetail(
       {
         message: "request timed out after 30s",
+        code: LIFECYCLE_ERROR_CODES.timeout,
         source: "server",
         unknownErrorCount: 0,
       },

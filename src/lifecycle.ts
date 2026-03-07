@@ -102,7 +102,7 @@ function createRunContext(
     mode: params.classifiedMode,
     agentMode: params.classifiedMode,
     model: params.model,
-    session: params.prepared.session,
+    session: Object.assign(params.prepared.session, { mode: params.classifiedMode }),
     agent: createModeAgent({
       soulPrompt: input.soulPrompt,
       mode: params.classifiedMode,
