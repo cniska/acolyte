@@ -1,7 +1,7 @@
 import { useInput } from "ink";
 import { applyAtSuggestion, shouldAutocompleteAtSubmit } from "./chat-file-ref";
 import type { PickerState } from "./chat-picker";
-import { applySlashSuggestion, shouldAutocompleteSlashSubmit } from "./chat-slash";
+import { shouldAutocompleteSlashSubmit } from "./chat-slash";
 
 type HistoryTransition = {
   nextIndex: number;
@@ -70,7 +70,7 @@ export function resolveTabAutocomplete(input: ResolveTabAutocompleteInput): stri
   if (input.atQuery === null && input.slashSuggestions.length > 0) {
     const selected =
       input.slashSuggestions[Math.max(0, Math.min(input.slashSuggestionIndex, input.slashSuggestions.length - 1))];
-    if (shouldAutocompleteSlashSubmit(input.value, selected)) return applySlashSuggestion(selected ?? "");
+    if (shouldAutocompleteSlashSubmit(input.value, selected)) return selected ?? "";
   }
   return null;
 }

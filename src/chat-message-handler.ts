@@ -17,7 +17,7 @@ import {
 import { createMessageStreamState } from "./chat-message-handler-stream";
 import { startRemoteTaskFollowup } from "./chat-message-handler-task-followup";
 import { createProgressTracker } from "./chat-progress";
-import { isKnownSlashToken, resolveSlashAlias } from "./chat-slash";
+import { isKnownSlashToken } from "./chat-slash";
 import {
   appendInputHistory,
   applyUserTurn,
@@ -92,7 +92,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
     const text = internalWriteResume ? internalWriteResume.prompt : raw.trim();
     if (!text || (input.isWorking && !text.startsWith("/"))) return;
     if (!isInternalReplay && text.startsWith("/") && !text.includes(" ") && !isKnownSlashToken(text)) return;
-    const resolvedText = resolveSlashAlias(text);
+    const resolvedText = text;
     const naturalRememberDirective = isInternalReplay ? null : resolveNaturalRememberDirective(text);
     const dispatchResolvedText = resolvedText;
     if (!isInternalReplay) {

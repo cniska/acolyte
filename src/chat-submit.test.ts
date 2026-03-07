@@ -21,7 +21,7 @@ describe("chat submit helpers", () => {
       slashSuggestions: ["/status"],
       slashSuggestionIndex: 0,
     });
-    expect(result).toEqual({ kind: "autocomplete", value: "/status " });
+    expect(result).toEqual({ kind: "autocomplete", value: "/status" });
   });
 
   test("submits when no autocomplete rule applies", () => {

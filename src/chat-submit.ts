@@ -1,5 +1,5 @@
 import { applyAtSuggestion, extractAtReferenceQuery, shouldAutocompleteAtSubmit } from "./chat-file-ref";
-import { applySlashSuggestion, shouldAutocompleteSlashSubmit } from "./chat-slash";
+import { shouldAutocompleteSlashSubmit } from "./chat-slash";
 
 export type SubmitResolution =
   | {
@@ -42,8 +42,7 @@ export function resolveSubmitInput(input: ResolveSubmitInput): SubmitResolution 
   if (query === null && input.slashSuggestions.length > 0) {
     const selected =
       input.slashSuggestions[Math.max(0, Math.min(input.slashSuggestionIndex, input.slashSuggestions.length - 1))];
-    if (shouldAutocompleteSlashSubmit(input.value, selected))
-      return { kind: "autocomplete", value: applySlashSuggestion(selected ?? "") };
+    if (shouldAutocompleteSlashSubmit(input.value, selected)) return { kind: "autocomplete", value: selected ?? "" };
   }
 
   return { kind: "submit", value: input.value };

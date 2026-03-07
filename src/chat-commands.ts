@@ -2,7 +2,6 @@ import { z } from "zod";
 import type { AgentMode } from "./agent-modes";
 import { appConfig, setDefaultModel, setModeModel, setPermissionMode } from "./app-config";
 import { COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH, formatColumns, formatRelativeTime } from "./chat-format";
-import { suggestClosestSlashCommand } from "./chat-slash";
 import type { Client } from "./client";
 import { setConfigValue } from "./config";
 import type { ConfigScope, PermissionMode } from "./config-contract";
@@ -574,11 +573,6 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       return { stop: true, userText: text };
     }
 
-    const corrected = suggestClosestSlashCommand(head ?? resolvedText);
-    if (corrected) {
-      const correctedText = rest.length > 0 ? `${corrected} ${rest.join(" ")}` : corrected;
-      return dispatchSlashCommand({ ...ctx, text: correctedText, resolvedText: correctedText });
-    }
     pushUserCommandRow();
     ctx.setRows((current) => [...current, createRow("system", t("chat.command.unknown", { command: text }))]);
     return { stop: true, userText: text };

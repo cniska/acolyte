@@ -43,7 +43,7 @@ describe("chat input handlers", () => {
       }),
     ).toEqual({
       kind: "autocomplete",
-      value: "/status ",
+      value: "/status",
     });
   });
 });

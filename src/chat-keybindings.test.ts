@@ -48,7 +48,7 @@ describe("chat keybindings helpers", () => {
       slashSuggestionIndex: 0,
       isTab: true,
     });
-    expect(result).toBe("/status ");
+    expect(result).toBe("/status");
   });
 
   test("resolveEscapeAction prefers interrupt while thinking", () => {

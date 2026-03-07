@@ -1,35 +1,26 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import {
-  applySlashSuggestion,
-  isKnownSlashToken,
-  resolveSlashAlias,
-  shouldAutocompleteSlashSubmit,
-  slashCommandHelp,
-  suggestClosestSlashCommand,
-  suggestSlashCommands,
-} from "./chat-slash";
+import { isKnownSlashToken, shouldAutocompleteSlashSubmit, slashCommandHelp, suggestSlashCommands } from "./chat-slash";
 import { loadSkills, resetSkillCache } from "./skills";
 import { tempDir, writeSkill } from "./test-utils";
 
 describe("chat-slash helpers", () => {
   test("suggestSlashCommands filters known commands by prefix", () => {
     expect(suggestSlashCommands("/c")).toEqual([]);
-    expect(suggestSlashCommands("/p")).toEqual(["/permissions"]);
+    expect(suggestSlashCommands("/p")).toEqual(["/permissions", "/permissions read", "/permissions write"]);
     expect(suggestSlashCommands("/s")).toEqual(["/status", "/sessions", "/skills"]);
     expect(suggestSlashCommands("/st")).toEqual(["/status"]);
     expect(suggestSlashCommands("/d")).toEqual([]);
-    expect(suggestSlashCommands("/mem")).toEqual(["/mem", "/memory"]);
-    expect(suggestSlashCommands("/memory ")).toEqual([
+    expect(suggestSlashCommands("/memo")).toEqual([
+      "/memory",
       "/memory list",
       "/memory add",
       "/memory all",
       "/memory user",
-      "/memory project",
     ]);
+    expect(suggestSlashCommands("/memory l")).toEqual(["/memory list"]);
     expect(suggestSlashCommands("/memory p")).toEqual(["/memory project"]);
     expect(suggestSlashCommands("/memory a")).toEqual(["/memory add", "/memory all"]);
-    expect(suggestSlashCommands("/mem u")).toEqual(["/memory user"]);
-    expect(suggestSlashCommands("/permissions ")).toEqual(["/permissions read", "/permissions write"]);
+    expect(suggestSlashCommands("/memory u")).toEqual(["/memory user"]);
     expect(suggestSlashCommands("/permissions r")).toEqual(["/permissions read"]);
     expect(suggestSlashCommands("/mo")).toEqual([
       "/model",
@@ -45,14 +36,8 @@ describe("chat-slash helpers", () => {
       "/model verify",
       "/model chat",
     ]);
-    expect(suggestSlashCommands("/mode")).toEqual([
-      "/model",
-      "/model plan",
-      "/model work",
-      "/model verify",
-      "/model chat",
-    ]);
-    expect(suggestSlashCommands("/rem")).toEqual(["/rem", "/remember"]);
+    expect(suggestSlashCommands("/model c")).toEqual(["/model chat"]);
+    expect(suggestSlashCommands("/reme")).toEqual(["/remember"]);
     expect(suggestSlashCommands("/unknown")).toEqual([]);
     expect(suggestSlashCommands("plain")).toEqual([]);
   });
@@ -73,28 +58,11 @@ describe("chat-slash helpers", () => {
     expect(shouldAutocompleteSlashSubmit("status", "/status")).toBe(false);
   });
 
-  test("applySlashSuggestion appends trailing space", () => {
-    expect(applySlashSuggestion("/status")).toBe("/status ");
-  });
-
-  test("resolveSlashAlias maps bare and argument forms", () => {
-    expect(resolveSlashAlias("/session")).toBe("/sessions");
-    expect(resolveSlashAlias("/mem")).toBe("/memory");
-    expect(resolveSlashAlias("/mem user")).toBe("/memory user");
-    expect(resolveSlashAlias("/mem project")).toBe("/memory project");
-    expect(resolveSlashAlias("/rem fix naming")).toBe("/remember fix naming");
-    expect(resolveSlashAlias("plain")).toBe("plain");
-  });
-
-  test("resolveSlashAlias keeps unknown aliases unchanged", () => {
-    expect(resolveSlashAlias("/xyz")).toBe("/xyz");
-    expect(resolveSlashAlias("/not-a-command arg")).toBe("/not-a-command arg");
-  });
-
-  test("isKnownSlashToken recognizes canonical and alias tokens", () => {
+  test("isKnownSlashToken recognizes canonical tokens and subcommands", () => {
     expect(isKnownSlashToken("/status")).toBe(true);
     expect(isKnownSlashToken("/model")).toBe(true);
-    expect(isKnownSlashToken("/session")).toBe(true);
+    expect(isKnownSlashToken("/model plan")).toBe(true);
+    expect(isKnownSlashToken("/memory list")).toBe(true);
     expect(isKnownSlashToken("/unknown")).toBe(false);
   });
 
@@ -102,12 +70,6 @@ describe("chat-slash helpers", () => {
     expect(slashCommandHelp("/model")).toBe("change model");
     expect(slashCommandHelp("/permissions write")).toBe("set permissions to write");
     expect(slashCommandHelp("/unknown")).toBe("");
-  });
-
-  test("suggestClosestSlashCommand finds nearest known command for typos", () => {
-    expect(suggestClosestSlashCommand("/stauts")).toBe("/status");
-    expect(suggestClosestSlashCommand("/status")).toBeNull();
-    expect(suggestClosestSlashCommand("plain")).toBeNull();
   });
 
   describe("with loaded skills", () => {

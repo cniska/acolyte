@@ -166,16 +166,6 @@ describe("chat-commands", () => {
     expect(rows.some((row) => row.content === "No token data yet. Send a prompt first.")).toBe(true);
   });
 
-  test("dispatchSlashCommand auto-corrects typos to nearest command", async () => {
-    const skill = await runCommand("/skill");
-    expect(skill.stop).toBe(true);
-    expect(skill.rows.every((row) => !row.content.includes("Unknown command"))).toBe(true);
-
-    const status = await runCommand("/stauts");
-    expect(status.stop).toBe(true);
-    expect(status.rows.some((row) => row.style === "statusOutput")).toBe(true);
-  });
-
   test("dispatchSlashCommand handles /status", async () => {
     const { rows, stop } = await runCommand("/status");
     expect(stop).toBe(true);
