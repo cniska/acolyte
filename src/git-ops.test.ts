@@ -3,11 +3,12 @@ import { createGitOps, type GitOpsDeps } from "./git-toolkit";
 
 function createDeps(overrides?: Partial<GitOpsDeps>): GitOpsDeps {
   return {
-    gitStatusShort: async () => "status",
-    gitDiff: async () => "diff",
-    gitLog: async () => "log",
-    gitShow: async () => "show",
-    ...overrides,
+    gitStatusShort: overrides?.gitStatusShort ?? (async () => "status"),
+    gitDiff: overrides?.gitDiff ?? (async () => "diff"),
+    gitLog: overrides?.gitLog ?? (async () => "log"),
+    gitShow: overrides?.gitShow ?? (async () => "show"),
+    gitAdd: overrides?.gitAdd ?? (async () => "staged"),
+    gitCommit: overrides?.gitCommit ?? (async () => "committed"),
   };
 }
 
