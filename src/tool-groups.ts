@@ -1,8 +1,6 @@
-import type { ToolName } from "./tool-names";
-
-export const WRITE_TOOLS: readonly ToolName[] = ["edit-code", "edit-file", "create-file", "delete-file"];
-export const READ_TOOLS: readonly ToolName[] = ["read-file"];
-export const SEARCH_TOOLS: readonly ToolName[] = [
+export const WRITE_TOOLS: readonly string[] = ["edit-code", "edit-file", "create-file", "delete-file"];
+export const READ_TOOLS: readonly string[] = ["read-file"];
+export const SEARCH_TOOLS: readonly string[] = [
   "find-files",
   "search-files",
   "scan-code",
@@ -11,7 +9,7 @@ export const SEARCH_TOOLS: readonly ToolName[] = [
   "git-log",
   "git-show",
 ];
-export const DISCOVERY_TOOLS: readonly ToolName[] = [
+export const DISCOVERY_TOOLS: readonly string[] = [
   "find-files",
   "search-files",
   "read-file",
@@ -22,7 +20,7 @@ export const DISCOVERY_TOOLS: readonly ToolName[] = [
   "git-show",
 ];
 
-export const WRITE_TOOL_SET = new Set<ToolName>(WRITE_TOOLS);
-export const READ_TOOL_SET = new Set<ToolName>(READ_TOOLS);
-export const SEARCH_TOOL_SET = new Set<ToolName>(SEARCH_TOOLS);
-export const DISCOVERY_TOOL_SET = new Set<ToolName>(DISCOVERY_TOOLS);
+export const WRITE_TOOL_SET = new Set<string>(WRITE_TOOLS);
+export const READ_TOOL_SET = new Set<string>(READ_TOOLS);
+export const SEARCH_TOOL_SET = new Set<string>(SEARCH_TOOLS);
+export const DISCOVERY_TOOL_SET = new Set<string>(DISCOVERY_TOOLS);

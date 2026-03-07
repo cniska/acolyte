@@ -1,13 +1,13 @@
 import { unreachable } from "./assert";
 import type { StreamEvent } from "./client";
 import type { StreamErrorDetail } from "./stream-error";
+import type { ToolOutput } from "./tool-output-content";
 
 export function createProgressTracker(options: {
   onStatus?: (message: string) => void;
   onAssistant?: (delta: string) => void;
   onReasoning?: (delta: string) => void;
-  onToolCall?: (entry: { toolCallId: string; toolName: string; args: Record<string, unknown> }) => void;
-  onToolOutput?: (entry: { toolCallId: string; toolName: string; content: string }) => void;
+  onOutput?: (entry: { toolCallId: string; toolName: string; content: ToolOutput }) => void;
   onToolResult?: (entry: {
     toolCallId: string;
     toolName: string;
@@ -28,14 +28,9 @@ export function createProgressTracker(options: {
         options.onReasoning?.(event.text);
         break;
       case "tool-call":
-        options.onToolCall?.({
-          toolCallId: event.toolCallId,
-          toolName: event.toolName,
-          args: event.args,
-        });
         break;
       case "tool-output":
-        options.onToolOutput?.({
+        options.onOutput?.({
           toolCallId: event.toolCallId,
           toolName: event.toolName,
           content: event.content,

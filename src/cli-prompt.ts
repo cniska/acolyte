@@ -1,25 +1,17 @@
 import { stdout as output } from "node:process";
-import { formatToolHeader } from "./agent-output";
 import { createWorkspaceSpecifier } from "./api";
 import { createProgressTracker } from "./chat-progress";
 import { newMessage } from "./chat-session";
-import { formatAssistantReplyOutput, formatProgressOutput } from "./cli-format";
+import { formatAssistantReplyOutput, formatToolOutput } from "./cli-format";
 import { mergeAssistantStreamOutput, missingAssistantStreamTail } from "./cli-stream-output";
 import { type Client, createClient } from "./client";
 import { nowIso } from "./datetime";
-import { createDebugLogger } from "./debug-flags";
 import { formatPromptError, USER_ERROR_MESSAGES } from "./error-messages";
 import type { ResourceId } from "./resource-id";
 import type { Session } from "./session-contract";
 import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
-import { parseToolProgressLine } from "./tool-progress";
-import { mergeToolOutputHeader, shouldSuppressEmptyToolProgressRow } from "./tool-summary-format";
-import { printDim, printError, printOutput, streamText } from "./ui";
-
-const debug = createDebugLogger({
-  scope: "cli",
-  sink: (line) => printDim(line),
-});
+import type { ToolOutput } from "./tool-output-content";
+import { printError, printOutput, streamText } from "./ui";
 
 function setSessionTitle(session: Session, inputText: string): void {
   if (session.title !== "New Session") return;
@@ -90,8 +82,7 @@ function createAssistantStreamRenderer(): {
 
 function createToolProgressRenderer(): {
   hasPrintedProgress: () => boolean;
-  onToolCall: (entry: { toolCallId: string; toolName: string; args: unknown }) => void;
-  onToolOutput: (entry: { toolCallId: string; toolName: string; content: string }) => void;
+  onOutput: (entry: { toolCallId: string; toolName: string; content: ToolOutput }) => void;
   onToolResult: (entry: {
     toolCallId: string;
     toolName: string;
@@ -101,97 +92,39 @@ function createToolProgressRenderer(): {
   }) => void;
 } {
   let printedProgress = false;
-  const toolSnapshotByCallId = new Map<string, string>();
-  const toolLineWidthByCallId = new Map<string, number>();
-  const toolBulletPrintedByCallId = new Map<string, boolean>();
-  const pendingToolHeaderByCallId = new Map<string, string>();
-  const toolHasBodyOutputByCallId = new Set<string>();
-
-  const ensureToolHeaderPrinted = (toolCallId: string): void => {
-    if (toolBulletPrintedByCallId.get(toolCallId)) return;
-    const header = pendingToolHeaderByCallId.get(toolCallId);
-    if (!header) return;
-    toolSnapshotByCallId.set(toolCallId, header);
-    printOutput(formatProgressOutput(header, { bullet: true }));
-    toolBulletPrintedByCallId.set(toolCallId, true);
-    pendingToolHeaderByCallId.delete(toolCallId);
-    printedProgress = true;
-  };
-
-  const lineNumberWidthForMessage = (message: string): number => {
-    return message.split("\n").reduce((max, line) => {
-      const parsed = parseToolProgressLine(line);
-      if (parsed.kind === "numberedDiff" || parsed.kind === "numberedContext") {
-        return Math.max(max, parsed.lineNumber.length);
-      }
-      return max;
-    }, 0);
-  };
-
-  const deltaForToolUpdate = (entry: { message: string; toolCallId?: string }): string => {
-    const toolCallId = entry.toolCallId?.trim();
-    if (!toolCallId) return entry.message;
-    const snapshotWidth = lineNumberWidthForMessage(entry.message);
-    if (snapshotWidth > 0)
-      toolLineWidthByCallId.set(toolCallId, Math.max(toolLineWidthByCallId.get(toolCallId) ?? 0, snapshotWidth));
-    const previous = toolSnapshotByCallId.get(toolCallId);
-    toolSnapshotByCallId.set(toolCallId, entry.message);
-    if (!previous) return entry.message;
-    const current = entry.message.trimEnd();
-    const before = previous.trimEnd();
-    if (current.length === 0 || current === before) return "";
-    if (current.startsWith(`${before}\n`)) return current.slice(before.length + 1);
-    return current;
-  };
+  const contentByCallId = new Map<string, ToolOutput[]>();
+  const snapshotByCallId = new Map<string, string>();
 
   return {
     hasPrintedProgress: () => printedProgress,
-    onToolCall: (entry) => {
-      const args = typeof entry.args === "object" && entry.args !== null ? (entry.args as Record<string, unknown>) : {};
-      const header = formatToolHeader(entry.toolName, args);
-      pendingToolHeaderByCallId.set(entry.toolCallId, header);
-    },
-    onToolOutput: (entry) => {
-      debug.log("tool-stream", {
-        id: entry.toolCallId,
-        tool: entry.toolName,
-        content: entry.content,
-      });
-      const summaryHeader = mergeToolOutputHeader(
-        pendingToolHeaderByCallId.get(entry.toolCallId) ?? "",
-        entry.toolName,
-        entry.content,
-      );
-      if (summaryHeader && !toolBulletPrintedByCallId.get(entry.toolCallId)) {
-        pendingToolHeaderByCallId.set(entry.toolCallId, summaryHeader);
-        ensureToolHeaderPrinted(entry.toolCallId);
-        toolHasBodyOutputByCallId.add(entry.toolCallId);
-        return;
+    onOutput: (entry) => {
+      const items = contentByCallId.get(entry.toolCallId) ?? [];
+      items.push(entry.content);
+      contentByCallId.set(entry.toolCallId, items);
+      const rendered = formatToolOutput(items);
+      const previous = snapshotByCallId.get(entry.toolCallId);
+      snapshotByCallId.set(entry.toolCallId, rendered);
+      if (previous) {
+        const current = rendered.trimEnd();
+        const before = previous.trimEnd();
+        if (current === before) return;
+        if (current.startsWith(`${before}\n`)) {
+          const delta = current.slice(before.length + 1);
+          const lines = delta.split("\n");
+          printOutput(lines.map((line) => (line.length > 0 ? `    ${line}` : "")).join("\n"));
+          printedProgress = true;
+          return;
+        }
       }
-      toolHasBodyOutputByCallId.add(entry.toolCallId);
-      ensureToolHeaderPrinted(entry.toolCallId);
-      const delta = deltaForToolUpdate({ message: entry.content, toolCallId: entry.toolCallId });
-      debug.log("tool-stream-delta", { content: delta });
-      if (!delta) return;
-      const lineNumberWidth = toolLineWidthByCallId.get(entry.toolCallId);
-      const includeBullet = !toolBulletPrintedByCallId.get(entry.toolCallId);
-      printOutput(formatProgressOutput(delta, { lineNumberWidth, bullet: includeBullet }));
-      toolBulletPrintedByCallId.set(entry.toolCallId, true);
+      const lines = rendered.split("\n");
+      printOutput(lines.map((line, i) => (i === 0 ? `• ${line}` : line.length > 0 ? `  ${line}` : "")).join("\n"));
       printedProgress = true;
     },
     onToolResult: (entry) => {
       const guardBlocked =
         entry.isError === true &&
         (entry.errorCode === LIFECYCLE_ERROR_CODES.guardBlocked || entry.errorDetail?.category === "guard-blocked");
-      if (guardBlocked) {
-        pendingToolHeaderByCallId.delete(entry.toolCallId);
-        return;
-      }
-      if (!toolHasBodyOutputByCallId.has(entry.toolCallId) && shouldSuppressEmptyToolProgressRow(entry.toolName)) {
-        pendingToolHeaderByCallId.delete(entry.toolCallId);
-        return;
-      }
-      ensureToolHeaderPrinted(entry.toolCallId);
+      if (!guardBlocked) return;
     },
   };
 }
@@ -213,8 +146,7 @@ export async function handlePrompt(
     const progressTracker = createProgressTracker({
       onStatus: () => {},
       onAssistant: assistantRenderer.onAssistantDelta,
-      onToolCall: toolRenderer.onToolCall,
-      onToolOutput: toolRenderer.onToolOutput,
+      onOutput: toolRenderer.onOutput,
       onToolResult: toolRenderer.onToolResult,
     });
     const reply = await client.replyStream(

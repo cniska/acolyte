@@ -22,6 +22,7 @@ import { phasePrepare } from "./lifecycle-prepare";
 import type { MemoryCommitContext, MemoryCommitMetrics } from "./memory-contract";
 import { commitMemorySources } from "./memory-registry";
 import { createInMemoryTaskQueue } from "./task-queue";
+import { renderToolOutput } from "./tool-output-content";
 
 const memoryCommitQueue = createInMemoryTaskQueue();
 const malformedMemoryRejectStreakBySession = new Map<string, number>();
@@ -142,7 +143,8 @@ function createRunContext(
 
 function attachToolOutputHandler(ctx: RunContext) {
   ctx.toolOutputHandler = (event) => {
-    if (!event.message.trim()) return;
+    const rendered = renderToolOutput(event.content);
+    if (!rendered.trim()) return;
     const toolName = event.toolName;
     const queue = ctx.nativeIdQueue.get(toolName);
     const nativeId = queue?.[queue.length - 1] ?? event.toolCallId ?? toolName;
@@ -150,13 +152,13 @@ function attachToolOutputHandler(ctx: RunContext) {
       tool: toolName,
       stream_tool_call_id: event.toolCallId ?? null,
       emitted_tool_call_id: nativeId,
-      preview: event.message.length > 120 ? `${event.message.slice(0, 119)}…` : event.message,
+      preview: rendered.length > 120 ? `${rendered.slice(0, 119)}…` : rendered,
     });
     ctx.emit({
       type: "tool-output",
       toolCallId: nativeId,
       toolName,
-      content: event.message,
+      content: event.content,
     });
   };
 }
@@ -187,7 +189,7 @@ export async function runLifecycle(input: LifecycleInput) {
     classifiedMode,
     model,
     debug,
-    onToolOutput: (event: ToolOutputEvent) => {
+    onOutput: (event: ToolOutputEvent) => {
       ctxRef?.toolOutputHandler?.(event);
     },
   });

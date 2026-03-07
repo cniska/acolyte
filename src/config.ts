@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { agentModes } from "./agent-modes";
+import { agentModeSchema } from "./agent-contract";
 import {
   CONFIG_SET_SCHEMAS,
   type Config,
@@ -223,8 +223,8 @@ export async function writeConfig(config: Config, options?: ConfigOptions): Prom
 }
 
 const RECORD_VALID_KEYS: Partial<Record<keyof Config, Set<string>>> = {
-  models: new Set(["chat", ...Object.keys(agentModes)]),
-  temperatures: new Set(Object.keys(agentModes)),
+  models: new Set(["chat", ...agentModeSchema.options]),
+  temperatures: new Set([...agentModeSchema.options]),
 };
 
 function parseDottedKey(key: string): { section: keyof Config; subKey: string } | null {

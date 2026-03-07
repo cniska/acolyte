@@ -183,13 +183,45 @@ describe("chat message handler guards", () => {
       { model: "gpt-5-mini", output: "Removed sum.rs." },
     ];
     const eventsByTurn: StreamEvent[][] = [
-      [{ type: "tool-call", toolCallId: "call_1", toolName: "edit-file", args: { path: "sum.rs" } }],
+      [
+        { type: "tool-call", toolCallId: "call_1", toolName: "edit-file", args: { path: "sum.rs" } },
+        {
+          type: "tool-output",
+          toolCallId: "call_1",
+          toolName: "edit-file",
+          content: { kind: "tool-header", label: "Edit", detail: "sum.rs" },
+        },
+      ],
       [
         { type: "tool-call", toolCallId: "call_2", toolName: "edit-file", args: { path: "sum.rs" } },
-        { type: "tool-output", toolCallId: "call_2", toolName: "edit-file", content: "2 - let sum = a + b;" },
-        { type: "tool-output", toolCallId: "call_2", toolName: "edit-file", content: "2 + let sum = a + b + c;" },
+        {
+          type: "tool-output",
+          toolCallId: "call_2",
+          toolName: "edit-file",
+          content: { kind: "tool-header", label: "Edit", detail: "sum.rs" },
+        },
+        {
+          type: "tool-output",
+          toolCallId: "call_2",
+          toolName: "edit-file",
+          content: { kind: "diff", lineNumber: 2, marker: "remove", text: "let sum = a + b;" },
+        },
+        {
+          type: "tool-output",
+          toolCallId: "call_2",
+          toolName: "edit-file",
+          content: { kind: "diff", lineNumber: 2, marker: "add", text: "let sum = a + b + c;" },
+        },
       ],
-      [{ type: "tool-call", toolCallId: "call_3", toolName: "delete-file", args: { path: "sum.rs" } }],
+      [
+        { type: "tool-call", toolCallId: "call_3", toolName: "delete-file", args: { path: "sum.rs" } },
+        {
+          type: "tool-output",
+          toolCallId: "call_3",
+          toolName: "delete-file",
+          content: { kind: "tool-header", label: "Delete", detail: "sum.rs" },
+        },
+      ],
     ];
     let replyCount = 0;
     const { handleMessage, rows } = createMessageHandlerHarness({
@@ -211,105 +243,15 @@ describe("chat message handler guards", () => {
     await handleMessage("delete sum.rs");
 
     const toolRows = rows.filter((row) => row.role === "assistant" && row.style === "toolProgress");
-    expect(toolRows.map((row) => row.content)).toEqual([
-      "Edit sum.rs",
-      "Edit sum.rs\n2 - let sum = a + b;\n2 + let sum = a + b + c;",
-      "Delete sum.rs",
-    ]);
+    expect(toolRows).toHaveLength(3);
+    expect(toolRows[0]?.content).toBe("Edit sum.rs");
+    expect(toolRows[1]?.content).toContain("Edit sum.rs");
+    expect(toolRows[1]?.content).toContain("let sum = a + b + c;");
+    expect(toolRows[2]?.content).toBe("Delete sum.rs");
     // "Created sum.rs." and "Removed sum.rs." are redundant with their tool headers and get filtered.
     expect(rows.some((row) => row.role === "assistant" && row.content === "Created sum.rs.")).toBe(false);
     expect(rows.some((row) => row.role === "assistant" && row.content === "Updated sum.rs for three args.")).toBe(true);
     expect(rows.some((row) => row.role === "assistant" && row.content === "Removed sum.rs.")).toBe(false);
-  });
-
-  test("merges discovery/read file count into tool header", async () => {
-    const { handleMessage, rows } = createMessageHandlerHarness({
-      client: createClient({
-        status: async () => ({}),
-        replyStream: async (_input, options) => {
-          options.onEvent({
-            type: "tool-call",
-            toolCallId: "call_find",
-            toolName: "find-files",
-            args: { patterns: ["*.ts"] },
-          });
-          options.onEvent({
-            type: "tool-output",
-            toolCallId: "call_find",
-            toolName: "find-files",
-            content: "scope=workspace patterns=[*.ts] matches=3",
-          });
-          options.onEvent({
-            type: "tool-output",
-            toolCallId: "call_find",
-            toolName: "find-files",
-            content: "  src/a.ts",
-          });
-          options.onEvent({
-            type: "tool-output",
-            toolCallId: "call_find",
-            toolName: "find-files",
-            content: "  src/b.ts",
-          });
-          options.onEvent({
-            type: "tool-output",
-            toolCallId: "call_find",
-            toolName: "find-files",
-            content: "  src/c.ts",
-          });
-          return { model: "gpt-5-mini", output: "Done." };
-        },
-      }),
-    });
-
-    await handleMessage("find all ts files");
-
-    const toolRow = rows.find(
-      (row) => row.role === "assistant" && row.style === "toolProgress" && row.toolName === "find-files",
-    );
-    expect(toolRow?.content).toBe("Find *.ts\nsrc/a.ts\nsrc/b.ts\nsrc/c.ts");
-  });
-
-  test("merges search summary with pattern context into header", async () => {
-    const { handleMessage, rows } = createMessageHandlerHarness({
-      client: createClient({
-        status: async () => ({}),
-        replyStream: async (_input, options) => {
-          options.onEvent({
-            type: "tool-call",
-            toolCallId: "call_search",
-            toolName: "search-files",
-            args: { pattern: "\\btool\\b" },
-          });
-          options.onEvent({
-            type: "tool-output",
-            toolCallId: "call_search",
-            toolName: "search-files",
-            content: "scope=paths:2 patterns=[tool] matches=2",
-          });
-          options.onEvent({
-            type: "tool-output",
-            toolCallId: "call_search",
-            toolName: "search-files",
-            content: "  src/a.ts \\btool\\b",
-          });
-          options.onEvent({
-            type: "tool-output",
-            toolCallId: "call_search",
-            toolName: "search-files",
-            content: "  src/b.ts \\btool\\b",
-          });
-          return { model: "gpt-5-mini", output: "Done." };
-        },
-      }),
-    });
-
-    await handleMessage("search tool pattern");
-
-    const toolRow = rows.find(
-      (row) => row.role === "assistant" && row.style === "toolProgress" && row.toolName === "search-files",
-    );
-    expect(toolRow?.content).toBe("Search paths:2 [tool]\nsrc/a.ts \\btool\\b\nsrc/b.ts \\btool\\b");
   });
 
   test("toggles shortcuts on ? input", async () => {

@@ -34,6 +34,7 @@ export type ChatRow = {
     | "cancelled";
   toolCallId?: string;
   toolName?: string;
+  toolLabel?: string;
   toolStatus?: "ok" | "error";
 };
 
@@ -259,7 +260,10 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       return { stop: true, userText: text };
     }
     if (resolved.kind === "not_found") {
-      ctx.setRows((current) => [...current, createRow("system", t("chat.resume.not_found", { prefix: resolved.prefix }))]);
+      ctx.setRows((current) => [
+        ...current,
+        createRow("system", t("chat.resume.not_found", { prefix: resolved.prefix })),
+      ]);
       return { stop: true, userText: text };
     }
     if (resolved.kind === "ambiguous") {
@@ -510,7 +514,10 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     }
     try {
       const entry = await memoryApi.addMemory(content, { scope });
-      ctx.setRows((current) => [...current, createRow("system", t("chat.remember.saved", { scope: entry.scope, content }))]);
+      ctx.setRows((current) => [
+        ...current,
+        createRow("system", t("chat.remember.saved", { scope: entry.scope, content })),
+      ]);
     } catch (error) {
       ctx.setRows((current) => [
         ...current,

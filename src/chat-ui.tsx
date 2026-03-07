@@ -16,7 +16,7 @@ import { newMessage, toRows } from "./chat-session";
 import { suggestSlashCommands } from "./chat-slash";
 import { enqueueQueuedMessage, resolveQueueSubmit } from "./chat-submit";
 import { ChatTranscript } from "./chat-transcript";
-import { buildInputHistory } from "./chat-turn";
+import { createInputHistory } from "./chat-turn";
 import type { Client } from "./client";
 import { nowIso } from "./datetime";
 import { palette } from "./palette";
@@ -101,7 +101,7 @@ function ChatApp(props: ChatAppProps) {
   }, [isWorking]);
 
   useEffect(() => {
-    setInputHistory(buildInputHistory(currentSession.messages));
+    setInputHistory(createInputHistory(currentSession.messages));
     setInputHistoryIndex(-1);
     setInputHistoryDraft("");
   }, [currentSession.messages]);

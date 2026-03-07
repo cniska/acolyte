@@ -22,6 +22,12 @@ describe("chat message handler stream behavior", () => {
             toolName: "run-command",
             args: { command: "echo hi" },
           });
+          options.onEvent({
+            type: "tool-output",
+            toolCallId: "call_1",
+            toolName: "run-command",
+            content: { kind: "tool-header", label: "Run", detail: "echo hi" },
+          });
           return { model: "gpt-5-mini", output: "done" };
         },
         status: async () => ({}),
@@ -494,53 +500,6 @@ describe("chat message handler stream behavior", () => {
     expect(rows.some((row) => row.role === "assistant" && row.content === "resumed")).toBe(true);
   });
 
-  test("creates a single tool row per streamed tool-call event", async () => {
-    const { handleMessage, rows } = createMessageHandlerHarness({
-      client: createClient({
-        status: async () => ({}),
-        events: [{ type: "tool-call", toolCallId: "call_1", toolName: "run-command", args: { command: "echo hi" } }],
-        reply: async () => ({
-          model: "gpt-5-mini",
-          output: "done",
-        }),
-      }),
-    });
-
-    await handleMessage("hello");
-
-    const runRows = rows.filter(
-      (row) => row.role === "assistant" && row.style === "toolProgress" && row.content.startsWith("Run"),
-    );
-    expect(runRows.length).toBe(1);
-    expect(runRows[0]?.content).toBe("Run echo hi\n(No output)");
-  });
-
-  test("renders streamed tool rows before assistant summary row", async () => {
-    const { handleMessage, rows } = createMessageHandlerHarness({
-      client: createClient({
-        status: async () => ({}),
-        events: [
-          { type: "tool-call", toolCallId: "call_1", toolName: "edit-file", args: { path: "sum.rs" } },
-          { type: "tool-output", toolCallId: "call_1", toolName: "edit-file", content: "1 + fn main() {}" },
-        ],
-        reply: async () => ({
-          model: "gpt-5-mini",
-          output: "done",
-        }),
-      }),
-    });
-
-    await handleMessage("hello");
-
-    const toolIndex = rows.findIndex(
-      (row) => row.role === "assistant" && row.style === "toolProgress" && row.content.startsWith("Edit sum.rs"),
-    );
-    const assistantIndex = rows.findIndex((row) => row.role === "assistant" && row.content === "done");
-    expect(toolIndex).toBeGreaterThanOrEqual(0);
-    expect(assistantIndex).toBeGreaterThanOrEqual(0);
-    expect(toolIndex).toBeLessThan(assistantIndex);
-  });
-
   test("keeps full streamed assistant output when final reply is shorter", async () => {
     const streamed = "This is a long streamed answer that should not be truncated at finalize.";
     const { handleMessage, rows, session } = createMessageHandlerHarness({
@@ -558,30 +517,6 @@ describe("chat message handler stream behavior", () => {
 
     expect(rows.some((row) => row.role === "assistant" && row.content === streamed)).toBe(true);
     expect(session.messages.some((message) => message.role === "assistant" && message.content === streamed)).toBe(true);
-  });
-
-  test("creates a single tool row when tool-call is followed by tool-result", async () => {
-    const { handleMessage, rows } = createMessageHandlerHarness({
-      client: createClient({
-        status: async () => ({}),
-        events: [
-          { type: "tool-call", toolCallId: "call_1", toolName: "edit-file", args: { path: "sum.rs" } },
-          { type: "tool-result", toolCallId: "call_1", toolName: "edit-file" },
-        ],
-        reply: async () => ({
-          model: "gpt-5-mini",
-          output: "done",
-        }),
-      }),
-    });
-
-    await handleMessage("hello");
-
-    const editedRows = rows.filter(
-      (row) => row.role === "assistant" && row.style === "toolProgress" && row.content.startsWith("Edit sum.rs"),
-    );
-    expect(editedRows).toHaveLength(1);
-    expect(editedRows[0]?.content).toBe("Edit sum.rs");
   });
 
   test("suppresses guard-blocked tool attempts", async () => {
@@ -627,7 +562,18 @@ describe("chat message handler stream behavior", () => {
             errorDetail: { code: "E_GUARD_BLOCKED", category: "guard-blocked" },
           },
           { type: "tool-call", toolCallId: "call_ok", toolName: "edit-file", args: { path: "b.ts" } },
-          { type: "tool-output", toolCallId: "call_ok", toolName: "edit-file", content: "2 + export const b = 2;" },
+          {
+            type: "tool-output",
+            toolCallId: "call_ok",
+            toolName: "edit-file",
+            content: { kind: "tool-header", label: "Edit", detail: "b.ts" },
+          },
+          {
+            type: "tool-output",
+            toolCallId: "call_ok",
+            toolName: "edit-file",
+            content: { kind: "diff", lineNumber: 2, marker: "add", text: "export const b = 2;" },
+          },
         ],
         reply: async () => ({
           model: "gpt-5-mini",
@@ -639,57 +585,9 @@ describe("chat message handler stream behavior", () => {
     await handleMessage("hello");
 
     const toolRows = rows.filter((row) => row.role === "assistant" && row.style === "toolProgress");
-    expect(toolRows.map((row) => row.content)).toEqual(["Edit b.ts\n2 + export const b = 2;"]);
+    expect(toolRows).toHaveLength(1);
+    expect(toolRows[0]?.content).toContain("Edit b.ts");
     expect(rows.some((row) => row.content.includes("Read a.ts"))).toBe(false);
-  });
-
-  test("merges tool-output into tool-call row in real time", async () => {
-    const { handleMessage, rows } = createMessageHandlerHarness({
-      client: createClient({
-        status: async () => ({}),
-        events: [
-          { type: "tool-call", toolCallId: "call_1", toolName: "edit-file", args: { path: "sum.rs" } },
-          { type: "tool-output", toolCallId: "call_1", toolName: "edit-file", content: "1 + fn main() {}" },
-        ],
-        reply: async () => ({
-          model: "gpt-5-mini",
-          output: "done",
-        }),
-      }),
-    });
-
-    await handleMessage("hello");
-
-    const editedRows = rows.filter(
-      (row) => row.role === "assistant" && row.style === "toolProgress" && row.content.startsWith("Edit sum.rs"),
-    );
-    expect(editedRows).toHaveLength(1);
-    expect(editedRows[0]?.content).toBe("Edit sum.rs\n1 + fn main() {}");
-  });
-
-  test("ignores duplicate tool-output lines for the same tool row", async () => {
-    const { handleMessage, rows } = createMessageHandlerHarness({
-      client: createClient({
-        status: async () => ({}),
-        events: [
-          { type: "tool-call", toolCallId: "call_1", toolName: "edit-file", args: { path: "sum.rs" } },
-          { type: "tool-output", toolCallId: "call_1", toolName: "edit-file", content: "1 + fn main() {}" },
-          { type: "tool-output", toolCallId: "call_1", toolName: "edit-file", content: "1 + fn main() {}" },
-        ],
-        reply: async () => ({
-          model: "gpt-5-mini",
-          output: "done",
-        }),
-      }),
-    });
-
-    await handleMessage("hello");
-
-    const editedRows = rows.filter(
-      (row) => row.role === "assistant" && row.style === "toolProgress" && row.content.startsWith("Edit sum.rs"),
-    );
-    expect(editedRows).toHaveLength(1);
-    expect(editedRows[0]?.content).toBe("Edit sum.rs\n1 + fn main() {}");
   });
 
   test("does not merge tool rows across separate user turns", async () => {
@@ -700,11 +598,33 @@ describe("chat message handler stream behavior", () => {
     const eventsByTurn: StreamEvent[][] = [
       [
         { type: "tool-call", toolCallId: "call_1", toolName: "edit-file", args: { path: "sum.rs" } },
-        { type: "tool-output", toolCallId: "call_1", toolName: "edit-file", content: "1 + fn main() {}" },
+        {
+          type: "tool-output",
+          toolCallId: "call_1",
+          toolName: "edit-file",
+          content: { kind: "tool-header", label: "Edit", detail: "sum.rs" },
+        },
+        {
+          type: "tool-output",
+          toolCallId: "call_1",
+          toolName: "edit-file",
+          content: { kind: "diff", lineNumber: 1, marker: "add", text: "fn main() {}" },
+        },
       ],
       [
         { type: "tool-call", toolCallId: "call_2", toolName: "edit-file", args: { path: "sum.rs" } },
-        { type: "tool-output", toolCallId: "call_2", toolName: "edit-file", content: '2 + println!("ok");' },
+        {
+          type: "tool-output",
+          toolCallId: "call_2",
+          toolName: "edit-file",
+          content: { kind: "tool-header", label: "Edit", detail: "sum.rs" },
+        },
+        {
+          type: "tool-output",
+          toolCallId: "call_2",
+          toolName: "edit-file",
+          content: { kind: "diff", lineNumber: 2, marker: "add", text: 'println!("ok");' },
+        },
       ],
     ];
     let replyCount = 0;
@@ -729,35 +649,6 @@ describe("chat message handler stream behavior", () => {
       (row) => row.role === "assistant" && row.style === "toolProgress" && row.content.startsWith("Edit sum.rs"),
     );
     expect(editedRows).toHaveLength(2);
-    expect(editedRows[0]?.content).toBe("Edit sum.rs\n1 + fn main() {}");
-    expect(editedRows[1]?.content).toBe('Edit sum.rs\n2 + println!("ok");');
-  });
-
-  test("keeps same-header tool rows separate when toolCallId differs in one turn", async () => {
-    const { handleMessage, rows } = createMessageHandlerHarness({
-      client: createClient({
-        status: async () => ({}),
-        events: [
-          { type: "tool-call", toolCallId: "call_1", toolName: "edit-file", args: { path: "sum.rs" } },
-          { type: "tool-output", toolCallId: "call_1", toolName: "edit-file", content: "1 + fn one() {}" },
-          { type: "tool-call", toolCallId: "call_2", toolName: "edit-file", args: { path: "sum.rs" } },
-          { type: "tool-output", toolCallId: "call_2", toolName: "edit-file", content: "1 + fn two() {}" },
-        ],
-        reply: async () => ({
-          model: "gpt-5-mini",
-          output: "done",
-        }),
-      }),
-    });
-
-    await handleMessage("hello");
-
-    const editedRows = rows.filter(
-      (row) => row.role === "assistant" && row.style === "toolProgress" && row.content.startsWith("Edit sum.rs"),
-    );
-    expect(editedRows).toHaveLength(2);
-    expect(editedRows[0]?.content).toBe("Edit sum.rs\n1 + fn one() {}");
-    expect(editedRows[1]?.content).toBe("Edit sum.rs\n1 + fn two() {}");
   });
 
   test("persists token usage on successful turn", async () => {

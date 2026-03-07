@@ -6,7 +6,6 @@ import {
   formatAssistantReplyOutput,
   formatEditUpdateOutput,
   formatForTool,
-  formatProgressOutput,
   formatRunOutput,
   parseEditResult,
   parseRunExitCode,
@@ -14,30 +13,6 @@ import {
   truncateText,
 } from "./cli-format";
 import { formatPromptError } from "./error-messages";
-
-const stripAnsi = (value: string): string => {
-  let out = "";
-  for (let i = 0; i < value.length; i += 1) {
-    const ch = value[i];
-    if (ch === "\u001b" && value[i + 1] === "[") {
-      i += 2;
-      while (i < value.length && value[i] !== "m") i += 1;
-      continue;
-    }
-    if (ch != null) out += ch;
-  }
-  return out;
-};
-function withColumns(width: number, task: () => void): void {
-  const descriptor = Object.getOwnPropertyDescriptor(process.stdout, "columns");
-  Object.defineProperty(process.stdout, "columns", { configurable: true, value: width });
-  try {
-    task();
-  } finally {
-    if (descriptor) Object.defineProperty(process.stdout, "columns", descriptor);
-    else delete (process.stdout as { columns?: number }).columns;
-  }
-}
 
 describe("cli-format", () => {
   test("formatRunOutput compresses long stdout", () => {
@@ -218,63 +193,5 @@ describe("cli-format", () => {
     const lines = out.split("\n");
     expect(lines[0]).toBe("• 1. first second third");
     expect(lines[1]).toMatch(/^\s+fourth fifth$/);
-  });
-
-  test("formatProgressOutput styles Edit header like file tools", () => {
-    const out = formatProgressOutput("Edit src/main.rs");
-    expect(out).toContain("• ");
-    expect(out).toContain("\x1b[1mEdit \x1b[22m");
-    expect(out).toContain("\x1b[2msrc/main.rs\x1b[22m");
-  });
-
-  test("formatProgressOutput styles Run header with dim command", () => {
-    const out = formatProgressOutput("Run rustc ./sum.rs -o ./sum && ./sum 1 2 3 4");
-    expect(out).toContain("• ");
-    expect(out).toContain("\x1b[1mRun \x1b[22m");
-    expect(out).toContain("\x1b[2mrustc ./sum.rs -o ./sum && ./sum 1 2 3 4\x1b[22m");
-  });
-
-  test("formatProgressOutput wraps long Run header and aligns continuation with detail", () => {
-    withColumns(56, () => {
-      const longCommand = "bun run verify --filter=very-long-module-name --module another-super-long-module-name";
-      const plain = stripAnsi(formatProgressOutput(`Run ${longCommand}`));
-      const lines = plain.split("\n");
-      expect(lines.length).toBeGreaterThan(1);
-      expect(lines[0]?.startsWith("• Run ")).toBe(true);
-      expect(lines[1]?.startsWith("      ")).toBe(true);
-      expect(lines[1]?.startsWith("• ")).toBe(false);
-    });
-  });
-
-  test("formatProgressOutput ignores leading blank lines", () => {
-    const out = formatProgressOutput("\nReview 1 file\nscripts/reverse-word.ts");
-    const lines = out.split("\n");
-    expect(lines[0]).toContain("• ");
-    expect(lines[0]).toContain("Review");
-    expect(lines[1]).toContain("scripts/reverse-word.ts");
-    expect(lines.filter((line) => line === "•").length).toBe(0);
-  });
-
-  test("formatProgressOutput renders structured read header and body rows", () => {
-    const out = formatProgressOutput("Read paths=2 targets=[a.ts, b.ts]\na.ts\nb.ts");
-    expect(stripAnsi(out)).toBe("• Read paths=2 targets=[a.ts, b.ts]\n    a.ts\n    b.ts");
-  });
-
-  test("formatProgressOutput renders structured edit header and hides +/- markers", () => {
-    const out = formatProgressOutput(
-      [
-        "Edit path=src/a.ts files=1 added=1 removed=1",
-        "9  const x = 1;",
-        "10 - const y = 2;",
-        "10 + const y = 3;",
-      ].join("\n"),
-    );
-    const plain = stripAnsi(out);
-    expect(plain).toContain("• Edit path=src/a.ts files=1 added=1 removed=1");
-    expect(plain).toContain("    9  const x = 1;");
-    expect(plain).toContain("   10  const y = 2;");
-    expect(plain).toContain("   10  const y = 3;");
-    expect(plain).not.toContain("10 - const y = 2;");
-    expect(plain).not.toContain("10 + const y = 3;");
   });
 });

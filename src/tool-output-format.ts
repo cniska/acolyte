@@ -1,21 +1,18 @@
 import { isAbsolute, relative } from "node:path";
-import { countLabel } from "./plural";
-import type { ToolName } from "./tool-names";
-import { TOOL_OUTPUT_MARKERS } from "./tool-output-parser";
+import type { ToolOutput } from "./tool-output-content";
 
-export type ToolOutputListener = (event: { toolName: ToolName; message: string; toolCallId?: string }) => void;
+export type ToolOutputListener = (event: { toolName: string; content: ToolOutput; toolCallId?: string }) => void;
 export const TOOL_OUTPUT_RUN_MAX_ROWS = 5;
 export const TOOL_OUTPUT_FILES_MAX_ROWS = 5;
 export const TOOL_OUTPUT_INLINE_FILES_MAX = 3;
 
 export function emitHeadTailLines(
-  toolName: ToolName,
+  toolName: string,
   rawText: string,
-  onToolOutput: ToolOutputListener | undefined,
+  onOutput: ToolOutputListener,
   toolCallId: string,
   options?: { headRows?: number; tailRows?: number; trimStart?: boolean },
 ): void {
-  if (!onToolOutput) return;
   const headRows = options?.headRows ?? 2;
   const tailRows = options?.tailRows ?? 2;
   const lines = rawText
@@ -26,71 +23,56 @@ export function emitHeadTailLines(
     })
     .filter((line) => line.length > 0);
   if (lines.length === 0) {
-    onToolOutput({ toolName, message: TOOL_OUTPUT_MARKERS.noOutput, toolCallId });
+    onOutput({ toolName, content: { kind: "no-output" }, toolCallId });
     return;
   }
   if (lines.length > headRows + tailRows) {
     const omitted = lines.length - (headRows + tailRows);
-    const preview = [
-      ...lines.slice(0, headRows),
-      `${TOOL_OUTPUT_MARKERS.truncated} +${countLabel(omitted, "line", "lines")}`,
-      ...lines.slice(lines.length - tailRows),
-    ];
-    for (const line of preview) onToolOutput({ toolName, message: line, toolCallId });
+    for (const line of lines.slice(0, headRows))
+      onOutput({ toolName, content: { kind: "text", text: line }, toolCallId });
+    onOutput({ toolName, content: { kind: "truncated", count: omitted, unit: "lines" }, toolCallId });
+    for (const line of lines.slice(lines.length - tailRows))
+      onOutput({ toolName, content: { kind: "text", text: line }, toolCallId });
     return;
   }
-  for (const line of lines) onToolOutput({ toolName, message: line, toolCallId });
+  for (const line of lines) onOutput({ toolName, content: { kind: "text", text: line }, toolCallId });
 }
 
 export function emitResultChunks(
-  toolName: ToolName,
+  toolName: string,
   result: string,
-  onToolOutput?: ToolOutputListener,
+  onOutput: ToolOutputListener,
   maxLines = 80,
   toolCallId?: string,
 ): void {
-  if (!onToolOutput) return;
   const allLines = result
     .split("\n")
     .map((line) => line.trimEnd())
     .filter((line) => line.length > 0);
   const lines = allLines.slice(0, maxLines);
   for (const line of lines) {
-    onToolOutput({ toolName, message: line, toolCallId });
+    onOutput({ toolName, content: { kind: "text", text: line }, toolCallId });
   }
   if (allLines.length > maxLines)
-    onToolOutput({
+    onOutput({
       toolName,
-      message: `${TOOL_OUTPUT_MARKERS.truncated} +${countLabel(allLines.length - maxLines, "line", "lines")}`,
+      content: { kind: "truncated", count: allLines.length - maxLines, unit: "lines" },
       toolCallId,
     });
 }
 
 export function emitFileListSummary(
-  toolName: ToolName,
+  toolName: string,
   filePaths: string[],
-  onToolOutput?: ToolOutputListener,
+  onOutput: ToolOutputListener,
   toolCallId?: string,
   maxFiles = TOOL_OUTPUT_FILES_MAX_ROWS,
   workspace?: string,
 ): void {
-  if (!onToolOutput) return;
-  if (toolName === "read-file" || toolName === "scan-code") {
-    const unique = uniquePaths(filePaths).map((path) => toDisplayPath(path, workspace));
-    if (unique.length === 0) return;
-    const shown = unique.slice(0, TOOL_OUTPUT_INLINE_FILES_MAX);
-    const remaining = unique.length - shown.length;
-    onToolOutput({
-      toolName,
-      message: `paths=${unique.length} targets=[${shown.join(", ")}]${remaining > 0 ? ` omitted=${remaining}` : ""}`,
-      toolCallId,
-    });
-    return;
-  }
   emitSummaryFileRows({
     toolName,
     filePaths,
-    onToolOutput,
+    onOutput,
     toolCallId,
     maxFiles,
     header: (count) => `files=${count}`,
@@ -101,24 +83,32 @@ export function emitFileListSummary(
 export function emitFindSummary(
   filePaths: string[],
   patterns: string[],
-  onToolOutput?: ToolOutputListener,
+  onOutput: ToolOutputListener,
   toolCallId?: string,
   maxFiles = TOOL_OUTPUT_FILES_MAX_ROWS,
   workspace?: string,
 ): void {
+  const unique = uniquePaths(filePaths);
+  if (unique.length === 0) return;
   const labels = compactPatternLabels(patterns);
-  emitSummaryFileRows({
+  onOutput({
     toolName: "find-files",
-    filePaths,
-    onToolOutput,
+    content: { kind: "scope-header", scope: "workspace", patterns: labels, matches: unique.length },
     toolCallId,
-    maxFiles,
-    header: (count) => {
-      const patternToken = labels.length > 0 ? `[${labels.join(", ")}]` : "[]";
-      return `scope=workspace patterns=${patternToken} matches=${count}`;
-    },
-    lineForPath: (path) => toDisplayPath(path, workspace),
   });
+  for (const path of unique.slice(0, maxFiles)) {
+    onOutput({
+      toolName: "find-files",
+      content: { kind: "text", text: toDisplayPath(path, workspace) },
+      toolCallId,
+    });
+  }
+  if (unique.length > maxFiles)
+    onOutput({
+      toolName: "find-files",
+      content: { kind: "truncated", count: unique.length - maxFiles, unit: "matches" },
+      toolCallId,
+    });
 }
 
 export function findResultPaths(result: string): string[] {
@@ -241,34 +231,34 @@ function uniquePaths(filePaths: string[]): string[] {
 }
 
 function emitSummaryFileRows(input: {
-  toolName: ToolName;
+  toolName: string;
   filePaths: string[];
-  onToolOutput?: ToolOutputListener;
+  onOutput: ToolOutputListener;
   toolCallId?: string;
   maxFiles: number;
   header: (count: number) => string;
   lineForPath: (path: string) => string;
 }): void {
-  const { toolName, filePaths, onToolOutput, toolCallId, maxFiles, header, lineForPath } = input;
-  if (!onToolOutput) return;
+  const { toolName, filePaths, onOutput, toolCallId, maxFiles, header, lineForPath } = input;
+
   const unique = uniquePaths(filePaths);
   if (unique.length === 0) return;
-  onToolOutput({
+  onOutput({
     toolName,
-    message: header(unique.length),
+    content: { kind: "text", text: header(unique.length) },
     toolCallId,
   });
   for (const path of unique.slice(0, maxFiles)) {
-    onToolOutput({
+    onOutput({
       toolName,
-      message: lineForPath(path),
+      content: { kind: "text", text: lineForPath(path) },
       toolCallId,
     });
   }
   if (unique.length > maxFiles)
-    onToolOutput({
+    onOutput({
       toolName,
-      message: `${TOOL_OUTPUT_MARKERS.truncated} +${unique.length - maxFiles}`,
+      content: { kind: "truncated", count: unique.length - maxFiles, unit: "matches" },
       toolCallId,
     });
 }
@@ -312,45 +302,47 @@ export function emitSearchSummary(
   entries: SearchSummaryEntry[],
   patterns: string[],
   paths: string[] | undefined,
-  onToolOutput?: ToolOutputListener,
+  onOutput: ToolOutputListener,
   toolCallId?: string,
   maxFiles = TOOL_OUTPUT_FILES_MAX_ROWS,
   workspace?: string,
 ): void {
   const filePaths = entries.map((entry) => entry.path);
+  const unique = uniquePaths(filePaths);
+  if (unique.length === 0) return;
   const hitsByPath = new Map(entries.map((entry) => [entry.path, entry.hits] as const));
   const labels = compactPatternLabels(patterns);
   const normalizedPaths = (paths ?? []).map((path) => path.trim()).filter((path) => path.length > 0);
   const scopeLabels = Array.from(
     new Set(normalizedPaths.map((path) => normalizeScopeLabel(toDisplayPath(path, workspace)))),
   );
-  emitSummaryFileRows({
+  let scope: string;
+  if (normalizedPaths.length === 1) {
+    scope = scopeLabels[0] ?? toDisplayPath(normalizedPaths[0] ?? "", workspace);
+  } else if (normalizedPaths.length > 1) {
+    const shown = scopeLabels.slice(0, 3).join(", ");
+    const remaining = scopeLabels.length - Math.min(scopeLabels.length, 3);
+    scope = remaining > 0 ? `${shown}, +${remaining}` : shown;
+  } else {
+    scope = "workspace";
+  }
+  onOutput({
     toolName: "search-files",
-    filePaths,
-    onToolOutput,
+    content: { kind: "scope-header", scope, patterns: labels, matches: unique.length },
     toolCallId,
-    maxFiles,
-    header: (count) => {
-      const patternToken = labels.length > 0 ? `[${labels.join(", ")}]` : "[]";
-      if (normalizedPaths.length === 1) {
-        const scope = scopeLabels[0] ?? toDisplayPath(normalizedPaths[0] ?? "", workspace);
-        return `scope=${scope} patterns=${patternToken} matches=${count}`;
-      }
-      if (normalizedPaths.length > 1) {
-        const shown = scopeLabels.slice(0, 3).join(", ");
-        const remaining = scopeLabels.length - Math.min(scopeLabels.length, 3);
-        const scope = remaining > 0 ? `${shown}, +${remaining}` : shown;
-        return `scope=${scope} patterns=${patternToken} matches=${count}`;
-      }
-      return `scope=workspace patterns=${patternToken} matches=${count}`;
-    },
-    lineForPath: (path) => {
-      const display = toDisplayPath(path, workspace);
-      const hits = hitsByPath.get(path) ?? [];
-      if (hits.length === 0) return display;
-      return `${display} [${hits.join(", ")}]`;
-    },
   });
+  for (const path of unique.slice(0, maxFiles)) {
+    const display = toDisplayPath(path, workspace);
+    const hits = hitsByPath.get(path) ?? [];
+    const text = hits.length === 0 ? display : `${display} [${hits.join(", ")}]`;
+    onOutput({ toolName: "search-files", content: { kind: "text", text }, toolCallId });
+  }
+  if (unique.length > maxFiles)
+    onOutput({
+      toolName: "search-files",
+      content: { kind: "truncated", count: unique.length - maxFiles, unit: "matches" },
+      toolCallId,
+    });
 }
 
 function unifiedDiffLines(rawResult: string, maxLines = 120): string[] {
@@ -366,10 +358,10 @@ function unifiedDiffLines(rawResult: string, maxLines = 120): string[] {
   return lines;
 }
 
-export function numberedUnifiedDiffLines(rawResult: string, maxLines = 160): string[] {
+export function numberedUnifiedDiffLines(rawResult: string, maxLines = 160): ToolOutput[] {
   const lines = unifiedDiffLines(rawResult, Math.max(maxLines * 2, 240));
   if (lines.length === 0) return [];
-  const rendered: string[] = [];
+  const rendered: ToolOutput[] = [];
   let oldLine = 0;
   let newLine = 0;
   let inHunk = false;
@@ -385,22 +377,20 @@ export function numberedUnifiedDiffLines(rawResult: string, maxLines = 160): str
     }
     if (!inHunk || line.startsWith("diff --git ") || line.startsWith("--- ") || line.startsWith("+++ ")) continue;
     if (line.startsWith("+")) {
-      rendered.push(`${newLine} + ${line.slice(1)}`);
+      rendered.push({ kind: "diff", lineNumber: newLine, marker: "add", text: line.slice(1) });
       newLine += 1;
       continue;
     }
     if (line.startsWith("-")) {
-      rendered.push(`${oldLine} - ${line.slice(1)}`);
+      rendered.push({ kind: "diff", lineNumber: oldLine, marker: "remove", text: line.slice(1) });
       oldLine += 1;
       continue;
     }
     if (line.startsWith(" ")) {
-      rendered.push(`${newLine}  ${line.slice(1)}`);
+      rendered.push({ kind: "diff", lineNumber: newLine, marker: "context", text: line.slice(1) });
       oldLine += 1;
       newLine += 1;
-      continue;
     }
-    rendered.push(line);
   }
   if (rendered.length === 0) {
     oldLine = 1;
@@ -409,17 +399,17 @@ export function numberedUnifiedDiffLines(rawResult: string, maxLines = 160): str
       if (line.startsWith("diff --git ") || line.startsWith("--- ") || line.startsWith("+++ ") || line.startsWith("@@"))
         continue;
       if (line.startsWith("+")) {
-        rendered.push(`${newLine} + ${line.slice(1)}`);
+        rendered.push({ kind: "diff", lineNumber: newLine, marker: "add", text: line.slice(1) });
         newLine += 1;
         continue;
       }
       if (line.startsWith("-")) {
-        rendered.push(`${oldLine} - ${line.slice(1)}`);
+        rendered.push({ kind: "diff", lineNumber: oldLine, marker: "remove", text: line.slice(1) });
         oldLine += 1;
         continue;
       }
       if (line.startsWith(" ")) {
-        rendered.push(`${newLine}  ${line.slice(1)}`);
+        rendered.push({ kind: "diff", lineNumber: newLine, marker: "context", text: line.slice(1) });
         oldLine += 1;
         newLine += 1;
       }
@@ -427,7 +417,7 @@ export function numberedUnifiedDiffLines(rawResult: string, maxLines = 160): str
   }
   if (rendered.length === 0) return [];
   const contextRadius = 3;
-  const isChange = rendered.map((line) => /^\d+\s+[+-]\s/.test(line));
+  const isChange = rendered.map((line) => line.kind === "diff" && line.marker !== "context");
   const keep = new Uint8Array(rendered.length);
   for (let i = 0; i < rendered.length; i++) {
     if (!isChange[i]) continue;
@@ -435,21 +425,21 @@ export function numberedUnifiedDiffLines(rawResult: string, maxLines = 160): str
       keep[j] = 1;
     }
   }
-  const filtered: string[] = [];
+  const filteredOutput: ToolOutput[] = [];
   let skippedCount = 0;
   for (let i = 0; i < rendered.length; i++) {
     if (keep[i]) {
-      if (skippedCount > 0) filtered.push(TOOL_OUTPUT_MARKERS.truncated);
+      if (skippedCount > 0) filteredOutput.push({ kind: "truncated", count: skippedCount, unit: "lines" });
       skippedCount = 0;
-      filtered.push(rendered[i] ?? "");
+      filteredOutput.push(rendered[i] as ToolOutput);
     } else {
       skippedCount += 1;
     }
   }
-  if (skippedCount > 0) filtered.push(TOOL_OUTPUT_MARKERS.truncated);
-  if (filtered.length > maxLines) {
-    const omitted = filtered.length - maxLines;
-    return [...filtered.slice(0, maxLines), `${TOOL_OUTPUT_MARKERS.truncated} +${omitted} lines`];
+  if (skippedCount > 0) filteredOutput.push({ kind: "truncated", count: skippedCount, unit: "lines" });
+  if (filteredOutput.length > maxLines) {
+    const omitted = filteredOutput.length - maxLines;
+    return [...filteredOutput.slice(0, maxLines), { kind: "truncated", count: omitted, unit: "lines" }];
   }
-  return filtered;
+  return filteredOutput;
 }

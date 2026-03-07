@@ -30,20 +30,46 @@ describe("chat-message-handler-stream", () => {
     expect(rows[0]?.content).toBe("hello world");
   });
 
-  test("materializes tool header and appends output lines", () => {
+  test("accumulates tool output and merges headers", () => {
     const { rows, setRows } = createRowsHarness();
     const state = createMessageStreamState({ setRows });
 
-    state.onToolCall({ toolCallId: "call_1", toolName: "read-file", args: { path: "a.ts" } });
-    state.flushPendingToolRows();
+    state.onOutput({
+      toolCallId: "call_1",
+      toolName: "search-files",
+      content: { kind: "tool-header", label: "Search" },
+    });
     expect(rows).toHaveLength(1);
     expect(rows[0]?.style).toBe("toolProgress");
-    expect((rows[0]?.content ?? "").length > 0).toBe(true);
+    expect(rows[0]?.content).toBe("Search");
 
-    state.onToolOutput({ toolCallId: "call_1", toolName: "read-file", content: "line A" });
-    state.onToolOutput({ toolCallId: "call_1", toolName: "read-file", content: "line A" });
+    state.onOutput({
+      toolCallId: "call_1",
+      toolName: "search-files",
+      content: { kind: "scope-header", scope: "workspace", patterns: ["needle"], matches: 2 },
+    });
+    expect(rows[0]?.content).toBe("Search needle");
+
+    state.onOutput({
+      toolCallId: "call_1",
+      toolName: "search-files",
+      content: { kind: "text", text: "a.ts [needle@1]" },
+    });
+    expect(rows[0]?.content).toBe("Search needle\na.ts [needle@1]");
+  });
+
+  test("deduplicates identical output items", () => {
+    const { rows, setRows } = createRowsHarness();
+    const state = createMessageStreamState({ setRows });
+
+    state.onOutput({
+      toolCallId: "call_1",
+      toolName: "edit-file",
+      content: { kind: "tool-header", label: "Edit", detail: "a.ts" },
+    });
+    state.onOutput({ toolCallId: "call_1", toolName: "edit-file", content: { kind: "text", text: "line A" } });
+    state.onOutput({ toolCallId: "call_1", toolName: "edit-file", content: { kind: "text", text: "line A" } });
     expect(rows).toHaveLength(1);
-    expect(rows[0]?.content.includes("line A")).toBe(true);
     expect(rows[0]?.content.split("line A").length - 1).toBe(1);
   });
 
@@ -51,8 +77,11 @@ describe("chat-message-handler-stream", () => {
     const { rows, setRows } = createRowsHarness();
     const state = createMessageStreamState({ setRows });
 
-    state.onToolCall({ toolCallId: "call_blocked", toolName: "run-command", args: { command: "echo hi" } });
-    state.flushPendingToolRows();
+    state.onOutput({
+      toolCallId: "call_blocked",
+      toolName: "run-command",
+      content: { kind: "tool-header", label: "Run", detail: "echo hi" },
+    });
     expect(rows).toHaveLength(1);
 
     state.onToolResult({

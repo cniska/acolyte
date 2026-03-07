@@ -51,7 +51,7 @@ export function appendInputHistory(history: string[], value: string, maxEntries 
   return next;
 }
 
-export function buildInputHistory(messages: Message[], maxEntries = 200): string[] {
+export function createInputHistory(messages: Message[], maxEntries = 200): string[] {
   let history: string[] = [];
   for (const message of messages) {
     if (message.role !== "user") continue;

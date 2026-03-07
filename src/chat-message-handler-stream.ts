@@ -1,19 +1,12 @@
-import { formatToolHeader } from "./agent-output";
 import { type ChatRow, createRow } from "./chat-commands";
 import { createId } from "./short-id";
 import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
-import { mergeToolOutputHeader, shouldSuppressEmptyToolProgressRow } from "./tool-summary-format";
-
-type ToolCallEntry = {
-  toolCallId: string;
-  toolName: string;
-  args: Record<string, unknown>;
-};
+import { renderToolOutput, renderToolOutputContent, type ToolOutput } from "./tool-output-content";
 
 type ToolOutputEntry = {
   toolCallId: string;
   toolName: string;
-  content: string;
+  content: ToolOutput;
 };
 
 type ToolResultEntry = {
@@ -31,9 +24,7 @@ export type MessageStreamState = {
   scheduleStreamFlush: () => void;
   clearStreamingAssistantRow: () => string | null;
   clearStreamingAssistantContent: () => void;
-  flushPendingToolRows: () => void;
-  onToolCall: (entry: ToolCallEntry) => void;
-  onToolOutput: (entry: ToolOutputEntry) => void;
+  onOutput: (entry: ToolOutputEntry) => void;
   onToolResult: (entry: ToolResultEntry) => void;
   onProgressError: (error: string) => void;
   streamedAssistantText: () => string;
@@ -46,12 +37,11 @@ export function createMessageStreamState(input: {
 }): MessageStreamState {
   let streamingAssistantRowId: string | null = null;
   let streamingAssistantContent = "";
-  let committedStreamingText = "";
+  const committedStreamingText = "";
   const toolRowIdByCallId = new Map<string, string>();
-  const toolSeenLinesByCallId = new Map<string, Set<string>>();
-  const pendingToolCallById = new Map<string, { header: string; toolName: string }>();
-  const toolHasBodyOutputByCallId = new Set<string>();
+  const toolContentByCallId = new Map<string, ToolOutput[]>();
   const toolHeaders = new Set<string>();
+
   let streamFlushTimer: ReturnType<typeof setTimeout> | null = null;
   const STREAM_FLUSH_MS = 50;
 
@@ -79,29 +69,6 @@ export function createMessageStreamState(input: {
     });
   };
 
-  const ensureToolRow = (toolCallId: string): void => {
-    const pending = pendingToolCallById.get(toolCallId);
-    if (!pending) return;
-    if (toolRowIdByCallId.get(toolCallId)) return;
-    const rowId = `row_${createId()}`;
-    toolRowIdByCallId.set(toolCallId, rowId);
-    toolSeenLinesByCallId.set(toolCallId, new Set([pending.header.toLowerCase()]));
-    toolHeaders.add(pending.header.toLowerCase());
-    const toolRow: ChatRow = {
-      id: rowId,
-      role: "assistant",
-      content: pending.header,
-      style: "toolProgress",
-      toolCallId,
-      toolName: pending.toolName,
-    };
-    if (streamingAssistantContent.trim().length > 0) committedStreamingText += streamingAssistantContent;
-    streamingAssistantRowId = null;
-    streamingAssistantContent = "";
-    input.setRows((current) => [...current, toolRow]);
-    pendingToolCallById.delete(toolCallId);
-  };
-
   return {
     onAssistantDelta: (delta) => {
       if (delta.length === 0) return false;
@@ -125,58 +92,45 @@ export function createMessageStreamState(input: {
     clearStreamingAssistantContent: () => {
       streamingAssistantContent = "";
     },
-    flushPendingToolRows: () => {
-      for (const toolCallId of [...pendingToolCallById.keys()]) ensureToolRow(toolCallId);
-    },
-    onToolCall: (entry) => {
-      const header = formatToolHeader(entry.toolName, entry.args);
-      pendingToolCallById.set(entry.toolCallId, { header, toolName: entry.toolName });
-    },
-    onToolOutput: (entry) => {
-      const content = entry.content.trim();
-      if (!content) return;
-      ensureToolRow(entry.toolCallId);
+    onOutput: (entry) => {
+      const items = toolContentByCallId.get(entry.toolCallId) ?? [];
+      const incoming = renderToolOutput(entry.content);
+      const lastItem = items[items.length - 1];
+      if (lastItem && renderToolOutput(lastItem) === incoming) return;
+      items.push(entry.content);
+      toolContentByCallId.set(entry.toolCallId, items);
+      const rendered = renderToolOutputContent(items);
+      if (!rendered) return;
+
+      const existingRowId = toolRowIdByCallId.get(entry.toolCallId);
+      if (!existingRowId) {
+        if (streamingAssistantContent.trim().length > 0) streamingAssistantContent = "";
+        streamingAssistantRowId = null;
+        const rowId = `row_${createId()}`;
+        toolRowIdByCallId.set(entry.toolCallId, rowId);
+        toolHeaders.add(rendered.toLowerCase());
+        const firstItem = items[0];
+        const label = firstItem?.kind === "tool-header" ? firstItem.label : undefined;
+        input.setRows((current) => [
+          ...current,
+          {
+            id: rowId,
+            role: "assistant",
+            content: rendered,
+            style: "toolProgress",
+            toolCallId: entry.toolCallId,
+            toolName: entry.toolName,
+            toolLabel: label,
+          },
+        ]);
+        return;
+      }
       input.setRows((current) => {
-        const normalizedLine = content.toLowerCase();
-        const seenLines = toolSeenLinesByCallId.get(entry.toolCallId) ?? new Set<string>();
-        if (seenLines.has(normalizedLine)) return current;
-        seenLines.add(normalizedLine);
-        toolSeenLinesByCallId.set(entry.toolCallId, seenLines);
-        const existingRowId = toolRowIdByCallId.get(entry.toolCallId);
-        const existingIndex = existingRowId ? current.findIndex((row) => row.id === existingRowId) : -1;
+        const existingIndex = current.findIndex((row) => row.id === existingRowId);
         const existingRow = existingIndex >= 0 ? current[existingIndex] : undefined;
-        if (!existingRow) {
-          const rowId = `row_${createId()}`;
-          toolRowIdByCallId.set(entry.toolCallId, rowId);
-          return [
-            ...current,
-            {
-              id: rowId,
-              role: "assistant",
-              content,
-              style: "toolProgress",
-              toolCallId: entry.toolCallId,
-              toolName: entry.toolName,
-            },
-          ];
-        }
+        if (!existingRow || existingRow.content === rendered) return current;
         const next = [...current];
-        const mergedHeader = !existingRow.content.includes("\n")
-          ? mergeToolOutputHeader(existingRow.content, entry.toolName, content)
-          : null;
-        if (mergedHeader) {
-          toolHasBodyOutputByCallId.add(entry.toolCallId);
-          next[existingIndex] = {
-            ...existingRow,
-            content: mergedHeader,
-          };
-          return next;
-        }
-        toolHasBodyOutputByCallId.add(entry.toolCallId);
-        next[existingIndex] = {
-          ...existingRow,
-          content: `${existingRow.content}\n${content}`,
-        };
+        next[existingIndex] = { ...existingRow, content: rendered };
         return next;
       });
     },
@@ -185,25 +139,13 @@ export function createMessageStreamState(input: {
         entry.isError &&
         (entry.errorCode === LIFECYCLE_ERROR_CODES.guardBlocked || entry.errorDetail?.category === "guard-blocked");
       if (guardBlocked) {
-        pendingToolCallById.delete(entry.toolCallId);
         const rowId = toolRowIdByCallId.get(entry.toolCallId);
         toolRowIdByCallId.delete(entry.toolCallId);
-        toolSeenLinesByCallId.delete(entry.toolCallId);
-        toolHasBodyOutputByCallId.delete(entry.toolCallId);
+        toolContentByCallId.delete(entry.toolCallId);
         if (!rowId) return;
         input.setRows((current) => current.filter((row) => row.id !== rowId));
         return;
       }
-      if (!toolHasBodyOutputByCallId.has(entry.toolCallId) && shouldSuppressEmptyToolProgressRow(entry.toolName)) {
-        pendingToolCallById.delete(entry.toolCallId);
-        const rowId = toolRowIdByCallId.get(entry.toolCallId);
-        toolRowIdByCallId.delete(entry.toolCallId);
-        toolSeenLinesByCallId.delete(entry.toolCallId);
-        if (!rowId) return;
-        input.setRows((current) => current.filter((row) => row.id !== rowId));
-        return;
-      }
-      ensureToolRow(entry.toolCallId);
       const rowId = toolRowIdByCallId.get(entry.toolCallId);
       if (!rowId) return;
       const status: ChatRow["toolStatus"] = entry.isError ? "error" : "ok";

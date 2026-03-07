@@ -1,6 +1,10 @@
 import type { LanguageModelV3 } from "@ai-sdk/provider";
+import { z } from "zod";
 import type { GenerateResult, StreamChunk } from "./lifecycle-contract";
 import type { ToolDefinition } from "./tool-contract";
+
+export const agentModeSchema = z.enum(["plan", "work", "verify", "chat"]);
+export type AgentMode = z.infer<typeof agentModeSchema>;
 
 export type Agent = {
   readonly id: string;

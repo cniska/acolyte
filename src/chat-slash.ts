@@ -171,6 +171,7 @@ export function resolveSlashAlias(value: string): string {
 export function slashCommandHelp(command: string): string {
   const help = SLASH_HELP[command];
   if (help) return help;
-  if (command.startsWith("/") && getLoadedSkills().some((s) => `/${s.name}` === command)) return t("chat.slash.help.skill");
+  if (command.startsWith("/") && getLoadedSkills().some((s) => `/${s.name}` === command))
+    return t("chat.slash.help.skill");
   return "";
 }

@@ -1,4 +1,7 @@
-export type AgentMode = "plan" | "work" | "verify" | "chat";
+import type { AgentMode } from "./agent-contract";
+import { toolIdsForMode } from "./tool-registry";
+
+export { type AgentMode, agentModeSchema } from "./agent-contract";
 
 export type AgentModeDefinition = {
   tools: string[];
@@ -8,18 +11,7 @@ export type AgentModeDefinition = {
 
 export const agentModes: Record<AgentMode, AgentModeDefinition> = {
   plan: {
-    tools: [
-      "find-files",
-      "search-files",
-      "read-file",
-      "scan-code",
-      "git-status",
-      "git-diff",
-      "git-log",
-      "git-show",
-      "web-search",
-      "web-fetch",
-    ],
+    tools: toolIdsForMode("plan"),
     preamble: [
       "Search first, then read relevant files. Batch multiple paths into one `read-file` call.",
       "Stop as soon as you have enough information — do not keep searching for completeness.",
@@ -29,17 +21,7 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
     statusText: "Thinking…",
   },
   work: {
-    tools: [
-      "find-files",
-      "search-files",
-      "read-file",
-      "scan-code",
-      "edit-file",
-      "edit-code",
-      "create-file",
-      "delete-file",
-      "run-command",
-    ],
+    tools: toolIdsForMode("work"),
     preamble: [
       "If the target path is explicit, skip `find-files`/`search-files` and read that file directly.",
       "For 'add/update in file X' tasks, make `read-file` on X your first tool call.",
@@ -56,7 +38,7 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
     statusText: "Working…",
   },
   verify: {
-    tools: ["scan-code", "read-file", "git-status", "git-diff", "git-log", "git-show", "run-command"],
+    tools: toolIdsForMode("verify"),
     preamble: [
       "Review the changes: one `scan-code` call with all edited files as `paths` and patterns like [`export function $NAME`, `import $SPEC from $MOD`]. No extra reads or searches.",
       "Then run the project's verify/test/build command if one exists. If it fails with 'script not found', stop — your scan-code review is sufficient.",

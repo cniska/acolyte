@@ -7,6 +7,7 @@ import type { LifecycleDebugEvent, LifecycleEventName } from "./lifecycle-events
 import type { LifecyclePolicy } from "./lifecycle-policy";
 import type { ErrorCode } from "./tool-error-codes";
 import type { SessionContext } from "./tool-guards";
+import type { ToolOutput } from "./tool-output-content";
 import type { Toolset } from "./tool-registry";
 
 export type GenerateResult = {
@@ -14,7 +15,7 @@ export type GenerateResult = {
   toolCalls: unknown[];
 };
 
-export type ToolOutputEvent = { toolName: string; message: string; toolCallId?: string };
+export type ToolOutputEvent = { toolName: string; content: ToolOutput; toolCallId?: string };
 export type ToolCallStart = { toolName: string; startedAtMs: number };
 export type PromptUsage = {
   promptTokens: number;
@@ -47,7 +48,7 @@ export type PhasePrepareInput = {
   classifiedMode: AgentMode;
   model: string;
   debug: RunContext["debug"];
-  onToolOutput: (event: ToolOutputEvent) => void;
+  onOutput: (event: ToolOutputEvent) => void;
 };
 export type PhasePrepareResult = {
   session: SessionContext;

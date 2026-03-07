@@ -21,17 +21,7 @@ function isRedundantWithHeader(text: string, toolHeaders: Set<string>): boolean 
   return headerDetails.size > 0 && headerDetails.has(detailAfterVerb(text));
 }
 
-export function finalizeToolProgressRows(rows: ChatRow[], pendingStreamRowId: string | null): ChatRow[] {
-  return rows
-    .filter((row) => row.id !== pendingStreamRowId)
-    .map((row) => {
-      if (row.style !== "toolProgress" || row.content.includes("\n")) return row;
-      if (row.toolName === "run-command") return { ...row, content: `${row.content}\n(No output)` };
-      return row;
-    });
-}
-
-export function buildFinalAssistantRows(input: BuildFinalAssistantRowsInput): ChatRow[] {
+export function createFinalAssistantRows(input: BuildFinalAssistantRowsInput): ChatRow[] {
   return input.rows
     .map((row) => {
       if (row.role !== "assistant" || row.dim || row.style) return row;

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { agentModes } from "./agent-modes";
+import { type AgentMode, agentModeSchema } from "./agent-contract";
 import { type TranslationLocale, translationLocaleSchema } from "./i18n/locales";
 
 export const permissionModeSchema = z.enum(["read", "write"]);
@@ -43,7 +43,7 @@ const parseMemorySourcesSchema = z.preprocess((value) => {
     .map((part) => part.trim())
     .filter((part) => part.length > 0);
 }, z.array(memorySourceIdSchema).min(1));
-const MODE_MODEL_KEYS = new Set<string>([...Object.keys(agentModes), "chat"]);
+const MODE_MODEL_KEYS = new Set<string>([...agentModeSchema.options, "chat"]);
 const modeTemperatureMapSchema = z
   .record(
     z.string(),
@@ -52,7 +52,9 @@ const modeTemperatureMapSchema = z
       z.number().min(0).max(MAX_TEMPERATURE),
     ),
   )
-  .transform((input) => Object.fromEntries(Object.entries(input).filter(([mode]) => mode in agentModes)));
+  .transform((input) =>
+    Object.fromEntries(Object.entries(input).filter(([mode]) => agentModeSchema.options.includes(mode as AgentMode))),
+  );
 
 export function isModeModelKey(key: string): boolean {
   return MODE_MODEL_KEYS.has(key);
@@ -163,7 +165,7 @@ export function toConfig(input: Record<string, unknown>): Config {
       typeof input.temperatures === "object" && input.temperatures !== null
         ? Object.fromEntries(
             Object.entries(input.temperatures as Record<string, unknown>).flatMap(([k, v]) => {
-              if (!(k in agentModes)) return [];
+              if (!agentModeSchema.options.includes(k as AgentMode)) return [];
               const result = parseTemperatureSchema.safeParse(v);
               return result.success ? [[k, result.data]] : [];
             }),

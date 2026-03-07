@@ -57,14 +57,10 @@ Review in this order.
 - [x] [`src/git-tools.ts`](../src/git-tools.ts)
 - [x] [`src/tool-guards.ts`](../src/tool-guards.ts)
 - [x] [`src/tool-groups.ts`](../src/tool-groups.ts)
-- [x] [`src/tool-labels.ts`](../src/tool-labels.ts)
 - [x] [`src/tool-meta-types.ts`](../src/tool-meta-types.ts)
-- [x] [`src/tool-names.ts`](../src/tool-names.ts)
 - [x] [`src/tool-output.ts`](../src/tool-output.ts)
+- [x] [`src/tool-output-content.ts`](../src/tool-output-content.ts)
 - [x] [`src/tool-output-format.ts`](../src/tool-output-format.ts)
-- [x] [`src/tool-output-parser.ts`](../src/tool-output-parser.ts)
-- [x] [`src/tool-progress.ts`](../src/tool-progress.ts)
-- [x] [`src/tool-summary-format.ts`](../src/tool-summary-format.ts)
 
 ## 5. RPC, task runtime, and server
 

@@ -49,7 +49,7 @@ export async function buildFileContext(pathInput: string): Promise<string> {
   const fileInfo = await stat(absPath);
   if (fileInfo.isDirectory()) {
     const listed = await listDirectoryTree(absPath);
-    const truncatedNotice = listed.truncated ? "\n[truncated]" : "";
+    const truncatedNotice = listed.truncated ? "\n… truncated" : "";
     return [
       `Attached directory: ${basename(absPath)}`,
       "```text",
@@ -63,6 +63,6 @@ export async function buildFileContext(pathInput: string): Promise<string> {
 
   if (looksBinary(text)) throw new Error(`File appears binary and cannot be inlined: ${absPath}`);
 
-  const truncatedNotice = buf.byteLength > MAX_BYTES ? "\n[truncated]" : "";
+  const truncatedNotice = buf.byteLength > MAX_BYTES ? "\n… truncated" : "";
   return [`Attached file: ${basename(absPath)}`, "```text", `${text}${truncatedNotice}`, "```"].join("\n");
 }

@@ -1,8 +1,6 @@
-import type { ToolName } from "./tool-names";
+export type GuardEvent = { guardId: string; toolName: string; action: "blocked" | "flag_set"; detail?: string };
 
-export type GuardEvent = { guardId: string; toolName: ToolName; action: "blocked" | "flag_set"; detail?: string };
-
-export type ToolCallRecord = { toolName: ToolName; args: Record<string, unknown>; taskId?: string };
+export type ToolCallRecord = { toolName: string; args: Record<string, unknown>; taskId?: string };
 
 export type SessionContext = {
   callLog: ToolCallRecord[];
@@ -12,7 +10,7 @@ export type SessionContext = {
 };
 
 export type GuardInput = {
-  toolName: ToolName;
+  toolName: string;
   args: Record<string, unknown>;
   session: SessionContext;
 };
@@ -20,7 +18,7 @@ export type GuardInput = {
 export type ToolGuard = {
   id: string;
   description: string;
-  appliesTo: "all" | readonly ToolName[];
+  appliesTo: "all" | readonly string[];
   check: (input: GuardInput) => void;
 };
 
@@ -124,7 +122,7 @@ function isWorkspaceScope(scope: readonly string[]): boolean {
 type RedundantQueryKind = "narrower" | "scope-narrowing";
 
 function redundantQueryKind(input: {
-  toolName: ToolName;
+  toolName: string;
   session: SessionContext;
   currentPatterns: readonly string[];
   currentScope: readonly string[];
@@ -448,6 +446,6 @@ export function runGuards(input: GuardInput): void {
   }
 }
 
-export function recordCall(session: SessionContext, toolName: ToolName, args: Record<string, unknown>): void {
+export function recordCall(session: SessionContext, toolName: string, args: Record<string, unknown>): void {
   session.callLog.push({ toolName, args, taskId: session.taskId });
 }

@@ -26,33 +26,31 @@ describe("chat progress tracker", () => {
     expect(deltas).toEqual(["Let me think..."]);
   });
 
-  test("routes tool-call to onToolCall", () => {
-    const calls: Array<{ toolCallId: string; toolName: string }> = [];
-    const tracker = createProgressTracker({
-      onToolCall: (entry) => calls.push({ toolCallId: entry.toolCallId, toolName: entry.toolName }),
-    });
-
+  test("tool-call event is accepted without error", () => {
+    const tracker = createProgressTracker({});
     tracker.apply({
       type: "tool-call",
       toolCallId: "call_1",
       toolName: "read-file",
       args: { path: "src/foo.ts" },
     });
-
-    expect(calls).toEqual([{ toolCallId: "call_1", toolName: "read-file" }]);
   });
 
-  test("routes tool-output to onToolOutput", () => {
+  test("routes tool-output to onOutput", () => {
     const outputs: Array<{ toolCallId: string; content: string }> = [];
     const tracker = createProgressTracker({
-      onToolOutput: (entry) => outputs.push({ toolCallId: entry.toolCallId, content: entry.content }),
+      onOutput: (entry) =>
+        outputs.push({
+          toolCallId: entry.toolCallId,
+          content: entry.content.kind === "text" ? entry.content.text : entry.content.kind,
+        }),
     });
 
     tracker.apply({
       type: "tool-output",
       toolCallId: "call_1",
       toolName: "read-file",
-      content: "1  import { foo }",
+      content: { kind: "text", text: "1  import { foo }" },
     });
 
     expect(outputs).toEqual([{ toolCallId: "call_1", content: "1  import { foo }" }]);
@@ -105,14 +103,24 @@ describe("chat progress tracker", () => {
   test("handles full tool lifecycle in order", () => {
     const log: string[] = [];
     const tracker = createProgressTracker({
-      onToolCall: (e) => log.push(`call:${e.toolName}`),
-      onToolOutput: (e) => log.push(`output:${e.content}`),
+      onOutput: (e) => log.push(`output:${e.content.kind === "text" ? e.content.text : e.content.kind}`),
       onToolResult: (e) => log.push(`result:${e.toolName}`),
     });
 
     const events: StreamEvent[] = [
       { type: "tool-call", toolCallId: "call_1", toolName: "edit-file", args: { path: "sum.rs" } },
-      { type: "tool-output", toolCallId: "call_1", toolName: "edit-file", content: "1 + fn main() {}" },
+      {
+        type: "tool-output",
+        toolCallId: "call_1",
+        toolName: "edit-file",
+        content: { kind: "tool-header", label: "Edit" },
+      },
+      {
+        type: "tool-output",
+        toolCallId: "call_1",
+        toolName: "edit-file",
+        content: { kind: "diff", lineNumber: 1, marker: "add", text: "fn main() {}" },
+      },
       { type: "tool-result", toolCallId: "call_1", toolName: "edit-file" },
     ];
 
@@ -120,7 +128,7 @@ describe("chat progress tracker", () => {
       tracker.apply(event);
     }
 
-    expect(log).toEqual(["call:edit-file", "output:1 + fn main() {}", "result:edit-file"]);
+    expect(log).toEqual(["output:tool-header", "output:diff", "result:edit-file"]);
   });
 
   test("silently ignores events when no handler is registered", () => {

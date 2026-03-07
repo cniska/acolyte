@@ -25,14 +25,16 @@ const MODEL_REGISTRY: Record<Provider, Model[]> = {
 };
 
 const MODEL_DISPLAY_NAME_BY_ID = new Map<string, string>(
-  Object.values(MODEL_REGISTRY).flat().flatMap((model) => {
-    const keys = new Set<string>();
-    const lowerId = model.id.toLowerCase();
-    keys.add(lowerId);
-    const undated = lowerId.replace(/-\d{8}$/, "");
-    keys.add(undated);
-    return Array.from(keys).map((key) => [key, model.name] as const);
-  }),
+  Object.values(MODEL_REGISTRY)
+    .flat()
+    .flatMap((model) => {
+      const keys = new Set<string>();
+      const lowerId = model.id.toLowerCase();
+      keys.add(lowerId);
+      const undated = lowerId.replace(/-\d{8}$/, "");
+      keys.add(undated);
+      return Array.from(keys).map((key) => [key, model.name] as const);
+    }),
 );
 
 function inferUnqualifiedModelPrefix(model: string): "openai" | "anthropic" | "gemini" {

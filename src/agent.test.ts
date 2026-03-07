@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { createAgentInput } from "./agent-input";
 import { createInstructions, createModeInstructions } from "./agent-instructions";
 import { resolveModelProviderState, resolveRunnableModel } from "./agent-model";
-import { finalizeAssistantOutput, finalizeReviewOutput, formatToolHeader, isPlanLikeOutput } from "./agent-output";
+import { finalizeAssistantOutput, finalizeReviewOutput, isPlanLikeOutput } from "./agent-output";
 import type { ChatRequest } from "./api";
 import { appConfig } from "./app-config";
 
@@ -497,7 +497,7 @@ describe("resolveRunnableModel", () => {
 });
 
 describe("createModeInstructions", () => {
-  test("work mode includes tool instructions from toolMeta", () => {
+  test("work mode includes tool instructions from tool definitions", () => {
     const out = createModeInstructions("work");
     expect(out).toContain("scan-code");
     expect(out).toContain("edit-code");
@@ -506,7 +506,7 @@ describe("createModeInstructions", () => {
     expect(out).toContain("run-command");
   });
 
-  test("plan mode includes tool instructions from toolMeta", () => {
+  test("plan mode includes tool instructions from tool definitions", () => {
     const out = createModeInstructions("plan");
     expect(out).toContain("find-files");
     expect(out).toContain("search-files");
@@ -579,55 +579,5 @@ describe("createInstructions", () => {
     const out = createInstructions("Soul.", "plan");
     expect(out).not.toContain("edit-code` for multi-location");
     expect(out).not.toContain("Read the target file once");
-  });
-});
-
-describe("formatToolHeader", () => {
-  test("formats multi-file file-tool args as comma-separated paths", () => {
-    expect(
-      formatToolHeader("edit-file", {
-        paths: ["src/a.ts", "src/b.ts", "src/c.ts", "src/d.ts"],
-      }),
-    ).toBe("Edit src/a.ts, src/b.ts, src/c.ts (+1)");
-  });
-
-  test("formats run command with command text", () => {
-    expect(formatToolHeader("run-command", { command: "bun run verify" })).toBe("Run bun run verify");
-  });
-
-  test("compacts multiline run commands into a single header row", () => {
-    expect(
-      formatToolHeader("run-command", {
-        command: "sh -c 'echo one'\n\n  &&   sh -c 'echo two'",
-      }),
-    ).toBe("Run sh -c 'echo one' && sh -c 'echo two'");
-  });
-
-  test("keeps discovery and read headers concise", () => {
-    expect(formatToolHeader("find-files", { patterns: ["src/lifecycle.ts", "src/agent.ts"] })).toBe("Find");
-    expect(formatToolHeader("search-files", { pattern: "createAcolyte" })).toBe("Search");
-    expect(formatToolHeader("read-file", { paths: [{ path: "src/lifecycle.ts" }] })).toBe("Read");
-  });
-
-  test("formats edit-code with file path", () => {
-    expect(formatToolHeader("edit-code", { path: "src/agent.ts" })).toBe("Edit src/agent.ts");
-  });
-
-  test("formats scan-code with paths only (no pattern)", () => {
-    expect(
-      formatToolHeader("scan-code", { paths: ["src/api.ts", "src/store.ts"], patterns: ["export function $NAME"] }),
-    ).toBe("Review src/api.ts, src/store.ts");
-  });
-
-  test("compacts delete-file header paths beyond max shown", () => {
-    expect(formatToolHeader("delete-file", { paths: ["a.ts", "b.ts", "c.ts", "d.ts"] })).toBe(
-      "Delete a.ts, b.ts, c.ts (+1)",
-    );
-  });
-
-  test("compacts scan-code header paths beyond max shown", () => {
-    expect(
-      formatToolHeader("scan-code", { paths: ["a.ts", "b.ts", "c.ts", "d.ts"], patterns: ["const $X = $Y"] }),
-    ).toBe("Review a.ts, b.ts, c.ts (+1)");
   });
 });

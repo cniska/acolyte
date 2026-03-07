@@ -3,9 +3,8 @@ import { setPermissionMode } from "./app-config";
 import { invariant } from "./assert";
 import { webSearchStreamRows, withToolError } from "./core-toolkit";
 import { savedPermissionMode } from "./test-utils";
-import { TOOL_NAMES } from "./tool-names";
-import { TOOL_OUTPUT_MARKERS } from "./tool-output-parser";
-import { toolsForAgent } from "./tool-registry";
+import { renderToolOutput } from "./tool-output-content";
+import { toolDefinitionsById, toolsForAgent } from "./tool-registry";
 
 const restorePermissions = savedPermissionMode();
 
@@ -21,6 +20,8 @@ describe("toolsets", () => {
       "editCode",
       "editFile",
       "findFiles",
+      "gitAdd",
+      "gitCommit",
       "gitDiff",
       "gitLog",
       "gitShow",
@@ -136,7 +137,7 @@ describe("web-search stream rows", () => {
 
   test("converts no-results output into summary + no-output marker", () => {
     expect(webSearchStreamRows("No web results found for: missing query")).toBe(
-      ['query="missing query" results=0', "[no-output]"].join("\n"),
+      ['query="missing query" results=0', "(No output)"].join("\n"),
     );
   });
 
@@ -167,7 +168,7 @@ describe("web-search stream rows", () => {
         'result rank=3 url="https://three.test"',
         'result rank=4 url="https://four.test"',
         'result rank=5 url="https://five.test"',
-        "[truncated] +2 results",
+        "… +2 results",
       ].join("\n"),
     );
   });
@@ -176,14 +177,16 @@ describe("web-search stream rows", () => {
 describe("localization baseline", () => {
   test("tool ids stay language-neutral", () => {
     const toolNamePattern = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
-    for (const name of TOOL_NAMES) {
+    for (const name of Object.keys(toolDefinitionsById)) {
       expect(name).toMatch(toolNamePattern);
     }
   });
 
-  test("tool output markers stay machine-token style", () => {
-    const markerPattern = /^\[[a-z][a-z-]*\]$/;
-    expect(TOOL_OUTPUT_MARKERS.truncated).toMatch(markerPattern);
-    expect(TOOL_OUTPUT_MARKERS.noOutput).toMatch(markerPattern);
+  test("tool output content renders marker tokens", () => {
+    expect(renderToolOutput({ kind: "truncated", count: 3, unit: "lines" })).toBe("… +3 lines");
+    expect(renderToolOutput({ kind: "truncated", count: 1, unit: "lines" })).toBe("… +1 line");
+    expect(renderToolOutput({ kind: "truncated", count: 5, unit: "matches" })).toBe("… +5 matches");
+    expect(renderToolOutput({ kind: "truncated", count: 1, unit: "matches" })).toBe("… +1 match");
+    expect(renderToolOutput({ kind: "no-output" })).toBe("(No output)");
   });
 });

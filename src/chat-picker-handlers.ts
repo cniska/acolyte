@@ -130,7 +130,10 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
             ]);
             await input.persist();
           } catch {
-            input.setRows((current) => [...current, createRow("system", t("chat.skill.failed", { skill: selected.name }))]);
+            input.setRows((current) => [
+              ...current,
+              createRow("system", t("chat.skill.failed", { skill: selected.name })),
+            ]);
           }
         }
         input.setPicker(null);

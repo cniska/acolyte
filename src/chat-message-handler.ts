@@ -3,7 +3,7 @@ import { appConfig } from "./app-config";
 import { type ChatRow, createRow, dispatchSlashCommand, type TokenUsageEntry } from "./chat-commands";
 import { invalidateRepoPathCandidates } from "./chat-file-ref";
 import type { Message } from "./chat-message";
-import { buildFinalAssistantRows, finalizeToolProgressRows } from "./chat-message-handler-finalize";
+import { createFinalAssistantRows } from "./chat-message-handler-finalize";
 import {
   distillMemoryCandidate,
   formatSubmitError,
@@ -212,8 +212,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
       onAssistant: (delta) => {
         if (streamState.onAssistantDelta(delta)) streamState.scheduleStreamFlush();
       },
-      onToolCall: streamState.onToolCall,
-      onToolOutput: streamState.onToolOutput,
+      onOutput: streamState.onOutput,
       onToolResult: streamState.onToolResult,
       onError: streamState.onProgressError,
     });
@@ -237,7 +236,6 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
         createMessage: input.createMessage,
       });
       const assistantMessage = turn.assistantMessage;
-      streamState.flushPendingToolRows();
       const streamedAssistantText = streamState.streamedAssistantText();
       // Capture the streaming row id before clearing so we can remove it atomically
       // with the final rows to avoid a visual jump.
@@ -248,13 +246,13 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
 
       input.currentSession.messages.push(assistantMessage);
       input.currentSession.updatedAt = input.nowIso();
-      const finalRows = buildFinalAssistantRows({
+      const finalRows = createFinalAssistantRows({
         rows: turn.rows,
         streamedAssistantText,
         committedStreamingText: streamState.committedStreamingText(),
         toolHeaders: streamState.toolHeaders(),
       });
-      input.setRows((current) => [...finalizeToolProgressRows(current, pendingStreamRowId), ...finalRows]);
+      input.setRows((current) => [...current.filter((row) => row.id !== pendingStreamRowId), ...finalRows]);
       // File tree may have changed during tool execution; refresh @path autocomplete candidates.
       invalidateRepoPathCandidates();
       input.currentSession.tokenUsage.push(turn.tokenEntry);

@@ -8,7 +8,7 @@ export function phasePrepare(input: PhasePrepareInput): PhasePrepareResult {
 
   const { tools, session } = toolsForAgent({
     workspace: input.workspace,
-    onToolOutput: input.onToolOutput,
+    onOutput: input.onOutput,
     taskId: input.taskId,
   });
 

@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { appendInputHistory, applyUserTurn, buildInputHistory, runAssistantTurn } from "./chat-turn";
+import { appendInputHistory, applyUserTurn, createInputHistory, runAssistantTurn } from "./chat-turn";
 import type { Session } from "./session-contract";
-import { formatToolLabel } from "./tool-labels";
 
 describe("chat turn helpers", () => {
   test("appendInputHistory avoids duplicate consecutive entries", () => {
@@ -9,8 +8,8 @@ describe("chat turn helpers", () => {
     expect(appendInputHistory(["hello"], "world")).toEqual(["hello", "world"]);
   });
 
-  test("buildInputHistory reconstructs user prompt history from messages", () => {
-    const history = buildInputHistory([
+  test("createInputHistory reconstructs user prompt history from messages", () => {
+    const history = createInputHistory([
       { id: "m1", role: "system", content: "Pinned memory", timestamp: "2026-02-21T10:00:00.000Z" },
       { id: "m2", role: "user", content: "  hello  ", timestamp: "2026-02-21T10:00:01.000Z" },
       { id: "m3", role: "assistant", content: "Hi", timestamp: "2026-02-21T10:00:02.000Z" },
@@ -52,16 +51,6 @@ describe("chat turn helpers", () => {
       role: "user",
       content: "hello there",
     });
-  });
-
-  test("formatToolLabel maps known tool ids to user-facing labels", () => {
-    expect(formatToolLabel("run-command")).toBe("Run");
-    expect(formatToolLabel("read-file")).toBe("Read");
-    expect(formatToolLabel("web-search")).toBe("Web Search");
-  });
-
-  test("formatToolLabel title-cases unknown tool ids", () => {
-    expect(formatToolLabel("custom-check")).toBe("Custom Check");
   });
 
   test("runAssistantTurn ignores reply progress payload rows", async () => {

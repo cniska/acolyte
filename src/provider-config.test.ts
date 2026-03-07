@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { formatModel, isProviderAvailable, modelDisplayName, normalizeModel, providerFromModel } from "./provider-config";
+import {
+  formatModel,
+  isProviderAvailable,
+  modelDisplayName,
+  normalizeModel,
+  providerFromModel,
+} from "./provider-config";
 
 describe("provider config", () => {
   test("normalizeModel prefixes unqualified model ids", () => {

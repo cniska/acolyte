@@ -1,4 +1,4 @@
-import type { AgentMode } from "./agent-modes";
+import type { AgentMode } from "./agent-contract";
 import { readResolvedConfigSync } from "./config";
 import type { PermissionMode } from "./config-contract";
 import { env } from "./env";

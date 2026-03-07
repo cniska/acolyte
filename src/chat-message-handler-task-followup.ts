@@ -38,7 +38,10 @@ export async function startRemoteTaskFollowup(input: StartRemoteTaskFollowupInpu
         await input.persist();
         return;
       }
-      input.setRows((current) => [...current, createRow("system", t("chat.task.followup.running_hint"), { dim: true })]);
+      input.setRows((current) => [
+        ...current,
+        createRow("system", t("chat.task.followup.running_hint"), { dim: true }),
+      ]);
     } catch {
       input.setRows((current) => [
         ...current,

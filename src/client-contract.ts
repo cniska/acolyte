@@ -6,6 +6,7 @@ import { rpcServerMessageSchema } from "./rpc-protocol";
 import type { StatusFields } from "./status-contract";
 import { streamErrorDetailSchema } from "./stream-error";
 import type { TaskId, TaskRecord } from "./task-contract";
+import { toolOutputSchema } from "./tool-output-content";
 
 export interface ClientOptions {
   apiUrl?: string;
@@ -27,7 +28,7 @@ export const streamEventSchema = z.discriminatedUnion("type", [
     type: z.literal("tool-output"),
     toolCallId: z.string(),
     toolName: z.string(),
-    content: z.string(),
+    content: toolOutputSchema,
   }),
   z.object({
     type: z.literal("tool-result"),

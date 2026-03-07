@@ -1,7 +1,6 @@
 import { type AgentMode, agentModes } from "./agent-modes";
 import { detectLineWidth } from "./core-tools";
-import { isToolName } from "./tool-names";
-import { toolMeta } from "./tool-registry";
+import { toolDefinitionsById } from "./tool-registry";
 
 const BASE_INSTRUCTIONS = [
   "- Before taking action (tool call, command, or edit), write exactly one sentence stating what you will do next.",
@@ -17,9 +16,8 @@ export function createModeInstructions(mode: AgentMode, workspace?: string): str
   const { tools, preamble } = agentModes[mode];
   const lines: string[] = preamble.map((p) => `- ${p}`);
   for (const toolId of tools) {
-    if (!isToolName(toolId)) continue;
-    const meta = toolMeta[toolId];
-    if (meta?.instruction) lines.push(`- ${meta.instruction}`);
+    const tool = toolDefinitionsById[toolId];
+    if (tool?.instruction) lines.push(`- ${tool.instruction}`);
   }
   if (workspace && mode === "work") {
     const lineWidth = detectLineWidth(workspace);
