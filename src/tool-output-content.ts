@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { t } from "./i18n";
-import { countLabel } from "./plural";
 
 export const toolOutputDiffMarkerSchema = z.enum(["add", "remove", "context"]);
 
@@ -78,14 +77,10 @@ export function renderToolOutput(content: ToolOutput): string {
     }
     case "no-output":
       return t("tool.content.no_output");
-    case "truncated":
-      return t("tool.content.truncated", {
-        summary: countLabel(
-          content.count,
-          content.unit === "lines" ? "line" : content.unit === "matches" ? "match" : "more",
-          content.unit ?? "more",
-        ),
-      });
+    case "truncated": {
+      const unitKey = content.unit === "lines" ? "unit.line" : content.unit === "matches" ? "unit.match" : "unit.more";
+      return `… +${t(unitKey, { count: content.count })}`;
+    }
   }
 }
 

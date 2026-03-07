@@ -1,12 +1,10 @@
 import { relative } from "node:path";
 import { z } from "zod";
 import { wrapAssistantContent } from "./chat-content";
-import { countLabel } from "./plural";
+import { t } from "./i18n";
 import { renderToolOutputForTerminal, resolveToolOutputHeader, type ToolOutput } from "./tool-output-content";
 import { TOOL_OUTPUT_RUN_MAX_ROWS } from "./tool-output-format";
 import { printDim, printOutput, printToolHeader } from "./ui";
-
-export { countLabel } from "./plural";
 
 const editResultSchema = z.object({
   path: z.string().min(1),
@@ -70,7 +68,7 @@ export function showToolResult(
 
 export function clampLines(lines: string[], maxLines: number, overflowTolerance = 4): string[] {
   if (lines.length <= maxLines + overflowTolerance) return lines;
-  return [...lines.slice(0, maxLines - 1), `… +${countLabel(lines.length - (maxLines - 1), "line", "lines")}`];
+  return [...lines.slice(0, maxLines - 1), `… +${t("unit.line", { count: lines.length - (maxLines - 1) })}`];
 }
 
 export function formatSearchOutput(raw: string): string {
@@ -82,7 +80,7 @@ export function formatSearchOutput(raw: string): string {
     const firstColon = line.indexOf(":");
     if (firstColon > 0) files.add(line.slice(0, firstColon));
   }
-  const summary = `${countLabel(lines.length, "match", "matches")} in ${countLabel(files.size, "file", "files")}`;
+  const summary = `${t("unit.match", { count: lines.length })} in ${t("unit.file", { count: files.size })}`;
   return [summary, ...clampLines(lines, 12)].join("\n");
 }
 
@@ -94,7 +92,7 @@ export function formatReadOutput(raw: string): string {
     normalized[0] = `File: ${displayPath(rawPath)}`;
   }
   const contentLines = Math.max(0, normalized.length - (normalized[0]?.startsWith("File: ") ? 1 : 0));
-  const summary = countLabel(contentLines, "line", "lines");
+  const summary = t("unit.line", { count: contentLines });
   return [summary, ...clampLines(normalized, 48)].join("\n");
 }
 
@@ -115,7 +113,7 @@ export function formatDiffOutput(raw: string): string {
     }
     if (line.startsWith("-")) removed += 1;
   }
-  const summary = `${countLabel(filesChanged, "file", "files")} changed, +${added} -${removed}`;
+  const summary = `${t("unit.file", { count: filesChanged })} changed, +${added} -${removed}`;
   return [summary, ...clampLines(lines, 64)].join("\n");
 }
 
@@ -125,7 +123,7 @@ export function formatGitStatusOutput(raw: string): string {
 
   const branchLine = lines[0].startsWith("## ") ? lines[0] : undefined;
   const changed = lines.filter((line) => !line.startsWith("## ")).length;
-  const summary = changed === 0 ? "working tree clean" : `${countLabel(changed, "changed file", "changed files")}`;
+  const summary = changed === 0 ? "working tree clean" : t("unit.changed_file", { count: changed });
   const out: string[] = [summary];
   if (branchLine) out.push(branchLine);
   out.push(...lines.filter((line) => !line.startsWith("## ")));
@@ -266,9 +264,9 @@ export function summarizeDiff(raw: string): {
 export function formatEditUpdateOutput(matches: number, diff: string): string {
   const summary = summarizeDiff(diff);
   const lines = [
-    `${countLabel(matches, "replacement", "replacements")} applied.`,
-    `${countLabel(summary.locations, "location", "locations")} updated.`,
-    `Added ${countLabel(summary.added, "line", "lines")}, removed ${countLabel(summary.removed, "line", "lines")}.`,
+    `${t("unit.replacement", { count: matches })} applied.`,
+    `${t("unit.location", { count: summary.locations })} updated.`,
+    `Added ${t("unit.line", { count: summary.added })}, removed ${t("unit.line", { count: summary.removed })}.`,
   ];
   if (summary.preview.length > 0) {
     lines.push("Preview:");

@@ -1,4 +1,4 @@
-import { countLabel } from "./plural";
+import { t } from "./i18n";
 
 export const COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH = 20;
 
@@ -61,9 +61,7 @@ export function formatChangesSummary(statusRaw: string, diffRaw: string): string
   const changedFiles = Math.max(changedFilesFromStatus, changedFilesFromDiff);
 
   const summary: string[] = [];
-  summary.push(
-    changedFiles === 0 ? "Working tree clean." : `${countLabel(changedFiles, "changed file", "changed files")}.`,
-  );
+  summary.push(changedFiles === 0 ? "Working tree clean." : `${t("unit.changed_file", { count: changedFiles })}.`);
   if (branchLine) summary.push(branchLine);
   if (changedFiles > 0) summary.push(`Diff summary: +${added} -${removed}.`);
   return summary.join("\n");

@@ -16,4 +16,15 @@ describe("i18n", () => {
   test("renders boolean/number placeholders", () => {
     expect(t("chat.sessions.header", { count: 3 })).toBe("Sessions 3");
   });
+
+  test("pluralizes with .one variant when count is 1", () => {
+    expect(t("unit.file", { count: 1 })).toBe("1 file");
+    expect(t("unit.file", { count: 0 })).toBe("0 files");
+    expect(t("unit.file", { count: 3 })).toBe("3 files");
+  });
+
+  test("pluralizes irregular forms", () => {
+    expect(t("unit.match", { count: 1 })).toBe("1 match");
+    expect(t("unit.match", { count: 5 })).toBe("5 matches");
+  });
 });

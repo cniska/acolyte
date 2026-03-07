@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { subcommandHelp } from "./cli-commands";
 import {
-  countLabel,
   displayPath,
   formatEditUpdateOutput,
   formatForTool,
@@ -143,7 +142,7 @@ export async function toolMode(args: string[]): Promise<void> {
           if (summary.dryRun) {
             showToolResult(
               "Dry Run",
-              `${countLabel(summary.edits, "match", "matches")} would be changed.`,
+              `${t("unit.match", { count: summary.edits })} would be changed.`,
               "plain",
               shownPath,
             );
@@ -158,7 +157,7 @@ export async function toolMode(args: string[]): Promise<void> {
               if (message.includes("outside repository")) {
                 showToolResult(
                   "Edit",
-                  `${countLabel(summary.edits, "replacement", "replacements")} applied.`,
+                  `${t("unit.replacement", { count: summary.edits })} applied.`,
                   "plain",
                   shownPath,
                 );

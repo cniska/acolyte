@@ -1,8 +1,8 @@
 import { estimateTokens } from "./agent-input";
 import { finalizeAssistantOutput, finalizeReviewOutput } from "./agent-output";
 import type { ChatResponse } from "./api";
+import { t } from "./i18n";
 import { guardStatsFromSession, type RunContext, taskScopedCallLog } from "./lifecycle-contract";
-import { countLabel } from "./plural";
 import { DISCOVERY_TOOL_SET, READ_TOOL_SET, SEARCH_TOOL_SET, WRITE_TOOL_SET } from "./tool-groups";
 
 function isReviewRequest(text: string): boolean {
@@ -18,13 +18,9 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
   const completionTokens = estimateTokens(output);
   let budgetWarning: string | undefined;
   if (ctx.promptUsage.promptTruncated) {
-    const historyUnit = countLabel(ctx.promptUsage.totalHistoryMessages, "history message", "history messages").replace(
-      /^\d+\s+/,
-      "",
-    );
     budgetWarning =
-      `context trimmed (${ctx.promptUsage.includedHistoryMessages}/${ctx.promptUsage.totalHistoryMessages} ` +
-      `${historyUnit})`;
+      `context trimmed (${t("unit.history_message", { count: ctx.promptUsage.includedHistoryMessages })}` +
+      ` of ${ctx.promptUsage.totalHistoryMessages})`;
   } else if (ctx.promptUsage.promptTokens >= Math.floor(ctx.promptUsage.promptBudgetTokens * 0.9)) {
     budgetWarning = `context near budget (${ctx.promptUsage.promptTokens}/${ctx.promptUsage.promptBudgetTokens} tokens)`;
   }

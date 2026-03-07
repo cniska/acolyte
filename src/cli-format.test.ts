@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
   clampLines,
-  countLabel,
   displayPath,
   formatAssistantReplyOutput,
   formatEditUpdateOutput,
@@ -132,12 +131,6 @@ describe("cli-format", () => {
   test("truncateText stays stable", () => {
     expect(truncateText("abcdef", 4)).toBe("abc…");
     expect(truncateText("ab", 4)).toBe("ab");
-  });
-
-  test("countLabel uses singular and plural correctly", () => {
-    expect(countLabel(0, "file", "files")).toBe("0 files");
-    expect(countLabel(1, "file", "files")).toBe("1 file");
-    expect(countLabel(3, "file", "files")).toBe("3 files");
   });
 
   test("clampLines truncates with overflow message", () => {

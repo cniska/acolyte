@@ -15,7 +15,6 @@ import {
   writeTextFile,
 } from "./core-tools";
 import { t } from "./i18n";
-import { countLabel } from "./plural";
 import { createTool } from "./tool-contract";
 import { guardedExecute, streamCallId, withToolError } from "./tool-execution";
 import type { SessionContext } from "./tool-guards";
@@ -165,7 +164,7 @@ export function webSearchStreamRows(result: string): string {
   for (const entry of visible)
     out.push(`result rank=${entry.rank}${entry.url ? ` url=${encodeValue(entry.url)}` : ""}`);
   if (entries.length > WEB_SEARCH_MAX_RESULTS)
-    out.push(`… +${countLabel(entries.length - WEB_SEARCH_MAX_RESULTS, "result", "results")}`);
+    out.push(`… +${t("unit.result", { count: entries.length - WEB_SEARCH_MAX_RESULTS })}`);
   if (entries.length === 0) out.push("(No output)");
   return out.join("\n");
 }

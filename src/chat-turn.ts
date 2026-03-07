@@ -7,7 +7,6 @@ import type { Message } from "./chat-message";
 import type { Client, StreamEvent } from "./client";
 import { buildFileContext } from "./file-context";
 import { t } from "./i18n";
-import { countLabel } from "./plural";
 import type { Session } from "./session-contract";
 
 const AVERAGE_CHARS_PER_TOKEN = 4;
@@ -131,7 +130,7 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
     const duration = formatThoughtDuration(durationMs);
     const toolCount = reply.toolCalls?.length ?? 0;
     const details: string[] = [];
-    if (toolCount > 0) details.push(countLabel(toolCount, "tool", "tools"));
+    if (toolCount > 0) details.push(t("unit.tool", { count: toolCount }));
     const suffix = details.length > 0 ? ` (${details.join(" · ")})` : "";
     rows.push(createRow("assistant", t("chat.worked", { duration, suffix }), { dim: true, style: "worked" }));
   }

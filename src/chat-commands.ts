@@ -92,7 +92,7 @@ export function formatTokenUsageOutput(last: TokenUsageEntry | null, all: TokenU
     },
     {
       key: t("chat.tokens.label.session"),
-      value: `prompt=${totals.prompt} completion=${totals.completion} total=${totals.total} (${all.length} ${all.length === 1 ? t("chat.tokens.turn.one") : t("chat.tokens.turn.other")})`,
+      value: `prompt=${totals.prompt} completion=${totals.completion} total=${totals.total} (${t("chat.tokens.turn", { count: all.length })})`,
     },
   ];
   if (last.modelCalls !== undefined || totals.modelCalls > 0) {
