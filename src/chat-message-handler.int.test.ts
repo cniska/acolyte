@@ -248,10 +248,10 @@ describe("chat message handler guards", () => {
     expect(toolRows[1]?.content).toContain("Edit sum.rs");
     expect(toolRows[1]?.content).toContain("let sum = a + b + c;");
     expect(toolRows[2]?.content).toBe("Delete sum.rs");
-    // "Created sum.rs." and "Removed sum.rs." are redundant with their tool headers and get filtered.
-    expect(rows.some((row) => row.role === "assistant" && row.content === "Created sum.rs.")).toBe(false);
+    // Assistant text rows are kept as-is (no redundancy filtering).
+    expect(rows.some((row) => row.role === "assistant" && row.content === "Created sum.rs.")).toBe(true);
     expect(rows.some((row) => row.role === "assistant" && row.content === "Updated sum.rs for three args.")).toBe(true);
-    expect(rows.some((row) => row.role === "assistant" && row.content === "Removed sum.rs.")).toBe(false);
+    expect(rows.some((row) => row.role === "assistant" && row.content === "Removed sum.rs.")).toBe(true);
   });
 
   test("toggles shortcuts on ? input", async () => {

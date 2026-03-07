@@ -500,23 +500,22 @@ describe("chat message handler stream behavior", () => {
     expect(rows.some((row) => row.role === "assistant" && row.content === "resumed")).toBe(true);
   });
 
-  test("keeps full streamed assistant output when final reply is shorter", async () => {
-    const streamed = "This is a long streamed answer that should not be truncated at finalize.";
+  test("uses final reply output as authoritative content", async () => {
+    const finalOutput = "This is a long streamed answer";
     const { handleMessage, rows, session } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
-        events: [{ type: "text-delta", text: streamed }],
+        events: [{ type: "text-delta", text: "This is a long streamed answer that should not be truncated at finalize." }],
         reply: async () => ({
           model: "gpt-5-mini",
-          output: "This is a long streamed answer",
+          output: finalOutput,
         }),
       }),
     });
 
     await handleMessage("hello");
 
-    expect(rows.some((row) => row.role === "assistant" && row.content === streamed)).toBe(true);
-    expect(session.messages.some((message) => message.role === "assistant" && message.content === streamed)).toBe(true);
+    expect(session.messages.some((message) => message.role === "assistant" && message.content === finalOutput)).toBe(true);
   });
 
   test("suppresses guard-blocked tool attempts", async () => {

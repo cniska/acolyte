@@ -1,9 +1,8 @@
 import { stdout as output } from "node:process";
 import { createWorkspaceSpecifier } from "./api";
-import { createProgressTracker } from "./chat-progress";
 import { newMessage } from "./chat-session";
 import { formatAssistantReplyOutput, formatToolOutput } from "./cli-format";
-import { mergeAssistantStreamOutput, missingAssistantStreamTail } from "./cli-stream-output";
+import { missingAssistantStreamTail } from "./cli-stream-output";
 import { type Client, createClient } from "./client";
 import { nowIso } from "./datetime";
 import { formatPromptError, USER_ERROR_MESSAGES } from "./error-messages";
@@ -143,12 +142,6 @@ export async function handlePrompt(
     printOutput(`❯ ${prompt}`);
     const assistantRenderer = createAssistantStreamRenderer();
     const toolRenderer = createToolProgressRenderer();
-    const progressTracker = createProgressTracker({
-      onStatus: () => {},
-      onAssistant: assistantRenderer.onAssistantDelta,
-      onOutput: toolRenderer.onOutput,
-      onToolResult: toolRenderer.onToolResult,
-    });
     const reply = await client.replyStream(
       {
         message: prompt,
@@ -160,14 +153,23 @@ export async function handlePrompt(
       },
       {
         onEvent: (event) => {
-          progressTracker.apply(event);
+          switch (event.type) {
+            case "text-delta":
+              assistantRenderer.onAssistantDelta(event.text);
+              break;
+            case "tool-output":
+              toolRenderer.onOutput(event);
+              break;
+            case "tool-result":
+              toolRenderer.onToolResult(event);
+              break;
+          }
         },
       },
     );
 
     await assistantRenderer.renderReply(reply.output, toolRenderer.hasPrintedProgress());
-    const mergedOutput = mergeAssistantStreamOutput(assistantRenderer.streamedText(), reply.output);
-    const assistantMessage = newMessage("assistant", mergedOutput);
+    const assistantMessage = newMessage("assistant", reply.output);
     session.messages.push(
       (reply.toolCalls?.length ?? 0) > 0 ? { ...assistantMessage, kind: "tool_payload" } : assistantMessage,
     );

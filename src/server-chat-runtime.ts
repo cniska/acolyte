@@ -43,28 +43,6 @@ function toLogFieldMap(fields?: Record<string, unknown>): Record<string, string 
   return out;
 }
 
-export function buildMemoryQualityWarningLogFields(params: {
-  requestId: string;
-  taskId?: string;
-  sessionId?: string;
-  event: string;
-  eventTs: string;
-  fields?: Record<string, string | number | boolean | null | undefined>;
-}): Record<string, string | number | boolean | null | undefined> | null {
-  if (params.event !== "lifecycle.memory.quality_warning") return null;
-  return {
-    request_id: params.requestId,
-    task_id: params.taskId ?? null,
-    session_id: params.sessionId ?? null,
-    event: params.event,
-    event_ts: params.eventTs,
-    warning: params.fields?.warning ?? null,
-    malformed_reject_streak: params.fields?.malformed_reject_streak ?? 0,
-    malformed_tagged_facts: params.fields?.malformed_tagged_facts ?? 0,
-    queue_key: params.fields?.queue_key ?? null,
-  };
-}
-
 export function logLifecycleDebugEntry(params: {
   requestId: string;
   taskId?: string;
@@ -77,7 +55,6 @@ export function logLifecycleDebugEntry(params: {
   logInfo?: (message: string, fields?: Record<string, string | number | boolean | null | undefined>) => void;
 }): void {
   const logInfo = params.logInfo ?? log.info;
-  const logFields = toLogFieldMap(params.fields);
   logInfo("agent debug", {
     request_id: params.requestId,
     task_id: params.taskId ?? null,
@@ -86,17 +63,8 @@ export function logLifecycleDebugEntry(params: {
     sequence: params.sequence,
     phase_attempt: params.phaseAttempt,
     event_ts: params.eventTs,
-    ...logFields,
+    ...toLogFieldMap(params.fields),
   });
-  const memoryQualityWarning = buildMemoryQualityWarningLogFields({
-    requestId: params.requestId,
-    taskId: params.taskId,
-    sessionId: params.sessionId,
-    event: params.event,
-    eventTs: params.eventTs,
-    fields: logFields,
-  });
-  if (memoryQualityWarning) logInfo("memory quality warning", memoryQualityWarning);
 }
 
 function nextErrorId(): string {

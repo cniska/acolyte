@@ -7,13 +7,11 @@ import {
   distillMemoryCandidate,
   formatSubmitError,
   isAbortError,
-  mergeAssistantTranscript,
   parseInternalWriteResumeTurn,
   resolveNaturalRememberDirective,
 } from "./chat-message-handler-helpers";
 import { createMessageStreamState } from "./chat-message-handler-stream";
 import { startRemoteTaskFollowup } from "./chat-message-handler-task-followup";
-import { createProgressTracker } from "./chat-progress";
 import { isKnownSlashToken } from "./chat-slash";
 import {
   appendInputHistory,
@@ -188,17 +186,6 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
       setRows: input.setRows,
     });
 
-    const progressTracker = createProgressTracker({
-      onStatus: (message) => {
-        input.setProgressText(message);
-      },
-      onAssistant: (delta) => {
-        if (streamState.onAssistantDelta(delta)) streamState.scheduleStreamFlush();
-      },
-      onOutput: streamState.onOutput,
-      onToolResult: streamState.onToolResult,
-      onError: streamState.onProgressError,
-    });
     await input.persist();
     let keepThinkingForRemoteTask = false;
 
@@ -213,19 +200,29 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
         useMemory: input.useMemory,
         signal: abortController.signal,
         onEvent: (event) => {
-          progressTracker.apply(event);
+          switch (event.type) {
+            case "status":
+              input.setProgressText(event.message);
+              break;
+            case "text-delta":
+              streamState.onAssistantDelta(event.text);
+              break;
+            case "tool-output":
+              streamState.onOutput(event);
+              break;
+            case "tool-result":
+              streamState.onToolResult(event);
+              break;
+            case "error":
+              streamState.onProgressError(event.error);
+              break;
+          }
         },
         thinkingStartedAt,
         createMessage: input.createMessage,
       });
       const assistantMessage = turn.assistantMessage;
-      const streamedAssistantText = streamState.streamedAssistantText();
-      // Capture the streaming row id before clearing so we can remove it atomically
-      // with the final rows to avoid a visual jump.
-      const pendingStreamRowId = streamState.clearStreamingAssistantRow();
-      streamState.clearStreamingAssistantContent();
-      const mergedAssistantOutput = mergeAssistantTranscript(streamedAssistantText, assistantMessage.content);
-      assistantMessage.content = mergedAssistantOutput;
+      const pendingStreamRowId = streamState.finalize();
 
       input.currentSession.messages.push(assistantMessage);
       input.currentSession.updatedAt = input.nowIso();
@@ -268,7 +265,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
         }),
       ]);
     } finally {
-      streamState.clearStreamFlushTimer();
+      streamState.dispose();
       input.setInterrupt(null);
       if (!keepThinkingForRemoteTask) {
         stopWorking();

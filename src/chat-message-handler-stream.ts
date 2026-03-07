@@ -3,89 +3,53 @@ import { createId } from "./short-id";
 import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
 import { renderToolOutput, renderToolOutputContent, type ToolOutput } from "./tool-output-content";
 
-type ToolOutputEntry = {
-  toolCallId: string;
-  toolName: string;
-  content: ToolOutput;
-};
-
-type ToolResultEntry = {
-  toolCallId: string;
-  toolName: string;
-  isError?: boolean;
-  errorCode?: string;
-  errorDetail?: { category?: string; [key: string]: unknown };
-};
-
 export type MessageStreamState = {
-  onAssistantDelta: (delta: string) => boolean;
-  flushStreamingContent: () => void;
-  clearStreamFlushTimer: () => void;
-  scheduleStreamFlush: () => void;
-  clearStreamingAssistantRow: () => string | null;
-  clearStreamingAssistantContent: () => void;
-  onOutput: (entry: ToolOutputEntry) => void;
-  onToolResult: (entry: ToolResultEntry) => void;
+  onAssistantDelta: (delta: string) => void;
+  onOutput: (entry: { toolCallId: string; toolName: string; content: ToolOutput }) => void;
+  onToolResult: (entry: {
+    toolCallId: string;
+    toolName: string;
+    isError?: boolean;
+    errorCode?: string;
+    errorDetail?: { category?: string; [key: string]: unknown };
+  }) => void;
   onProgressError: (error: string) => void;
   streamedAssistantText: () => string;
+  finalize: () => string | null;
+  dispose: () => void;
 };
+
+const STREAM_FLUSH_MS = 50;
 
 export function createMessageStreamState(input: {
   setRows: (updater: (current: ChatRow[]) => ChatRow[]) => void;
 }): MessageStreamState {
-  let streamingAssistantRowId: string | null = null;
-  let streamingAssistantContent = "";
+  let streamingRowId: string | null = null;
+  let streamingContent = "";
+  let flushTimer: ReturnType<typeof setTimeout> | null = null;
   const toolRowIdByCallId = new Map<string, string>();
   const toolContentByCallId = new Map<string, ToolOutput[]>();
-  let streamFlushTimer: ReturnType<typeof setTimeout> | null = null;
-  const STREAM_FLUSH_MS = 50;
 
-  const flushStreamingContent = (): void => {
-    if (streamFlushTimer) {
-      clearTimeout(streamFlushTimer);
-      streamFlushTimer = null;
+  const flush = (): void => {
+    if (flushTimer) {
+      clearTimeout(flushTimer);
+      flushTimer = null;
     }
-    if (streamingAssistantContent.trim().length === 0) return;
+    if (streamingContent.trim().length === 0) return;
     input.setRows((current) => {
-      if (!streamingAssistantRowId) {
-        streamingAssistantRowId = `row_${createId()}`;
-        return [
-          ...current,
-          {
-            id: streamingAssistantRowId,
-            role: "assistant",
-            content: streamingAssistantContent,
-          },
-        ];
+      if (!streamingRowId) {
+        streamingRowId = `row_${createId()}`;
+        return [...current, { id: streamingRowId, role: "assistant", content: streamingContent }];
       }
-      return current.map((row) =>
-        row.id === streamingAssistantRowId ? { ...row, content: streamingAssistantContent } : row,
-      );
+      return current.map((row) => (row.id === streamingRowId ? { ...row, content: streamingContent } : row));
     });
   };
 
   return {
     onAssistantDelta: (delta) => {
-      if (delta.length === 0) return false;
-      streamingAssistantContent += delta;
-      return true;
-    },
-    flushStreamingContent,
-    clearStreamFlushTimer: () => {
-      if (!streamFlushTimer) return;
-      clearTimeout(streamFlushTimer);
-      streamFlushTimer = null;
-    },
-    scheduleStreamFlush: () => {
-      if (!streamFlushTimer) streamFlushTimer = setTimeout(flushStreamingContent, STREAM_FLUSH_MS);
-    },
-    clearStreamingAssistantRow: () => {
-      const pendingStreamRowId = streamingAssistantRowId;
-      streamingAssistantRowId = null;
-      return pendingStreamRowId;
-    },
-    clearStreamingAssistantContent: () => {
-      streamingAssistantContent = "";
+      if (delta.length === 0) return;
+      streamingContent += delta;
+      if (!flushTimer) flushTimer = setTimeout(flush, STREAM_FLUSH_MS);
     },
     onOutput: (entry) => {
       const items = toolContentByCallId.get(entry.toolCallId) ?? [];
@@ -99,8 +63,8 @@ export function createMessageStreamState(input: {
 
       const existingRowId = toolRowIdByCallId.get(entry.toolCallId);
       if (!existingRowId) {
-        if (streamingAssistantContent.trim().length > 0) streamingAssistantContent = "";
-        streamingAssistantRowId = null;
+        if (streamingContent.trim().length > 0) streamingContent = "";
+        streamingRowId = null;
         const rowId = `row_${createId()}`;
         toolRowIdByCallId.set(entry.toolCallId, rowId);
         const firstItem = items[0];
@@ -152,6 +116,18 @@ export function createMessageStreamState(input: {
         return [...current, createRow("system", error, { dim: true, style: "error" })];
       });
     },
-    streamedAssistantText: () => streamingAssistantContent,
+    streamedAssistantText: () => streamingContent,
+    finalize: () => {
+      const pendingRowId = streamingRowId;
+      streamingRowId = null;
+      streamingContent = "";
+      return pendingRowId;
+    },
+    dispose: () => {
+      if (flushTimer) {
+        clearTimeout(flushTimer);
+        flushTimer = null;
+      }
+    },
   };
 }

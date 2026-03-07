@@ -3,7 +3,6 @@ import {
   buildInternalWriteResumeTurn,
   formatSubmitError,
   isAbortError,
-  mergeAssistantTranscript,
   parseInternalWriteResumeTurn,
 } from "./chat-message-handler-helpers";
 
@@ -23,12 +22,5 @@ describe("chat-message-handler-helpers", () => {
   test("formatSubmitError maps known user-facing failures", () => {
     expect(formatSubmitError(new Error("insufficient_quota: exceeded"))).toContain("Provider quota exceeded");
     expect(formatSubmitError(new Error("timeout after 10s"))).toContain("timed out");
-  });
-
-  test("mergeAssistantTranscript merges overlap correctly", () => {
-    expect(mergeAssistantTranscript("", "final")).toBe("final");
-    expect(mergeAssistantTranscript("hel", "hello")).toBe("hello");
-    expect(mergeAssistantTranscript("hello", "hello")).toBe("hello");
-    expect(mergeAssistantTranscript("hello world", "world peace")).toBe("hello world peace");
   });
 });

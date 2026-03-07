@@ -14,20 +14,28 @@ function createRowsHarness(): {
 }
 
 describe("chat-message-handler-stream", () => {
-  test("flushes streaming assistant content into a single mutable row", () => {
+  test("accumulates assistant deltas and exposes via streamedAssistantText", () => {
+    const { setRows } = createRowsHarness();
+    const state = createMessageStreamState({ setRows });
+
+    state.onAssistantDelta("hello");
+    state.onAssistantDelta(" world");
+    expect(state.streamedAssistantText()).toBe("hello world");
+    state.dispose();
+  });
+
+  test("finalize returns pending row id and clears state", async () => {
     const { rows, setRows } = createRowsHarness();
     const state = createMessageStreamState({ setRows });
 
     state.onAssistantDelta("hello");
-    state.flushStreamingContent();
+    // Force flush via timer
+    await new Promise((resolve) => setTimeout(resolve, 60));
     expect(rows).toHaveLength(1);
-    expect(rows[0]?.role).toBe("assistant");
-    expect(rows[0]?.content).toBe("hello");
-
-    state.onAssistantDelta(" world");
-    state.flushStreamingContent();
-    expect(rows).toHaveLength(1);
-    expect(rows[0]?.content).toBe("hello world");
+    const rowId = state.finalize();
+    expect(rowId).toBeTruthy();
+    expect(state.streamedAssistantText()).toBe("");
+    state.dispose();
   });
 
   test("accumulates tool output and merges headers", () => {
@@ -56,6 +64,7 @@ describe("chat-message-handler-stream", () => {
       content: { kind: "text", text: "a.ts [needle@1]" },
     });
     expect(rows[0]?.content).toBe("Search needle\na.ts [needle@1]");
+    state.dispose();
   });
 
   test("deduplicates identical output items", () => {
@@ -71,6 +80,7 @@ describe("chat-message-handler-stream", () => {
     state.onOutput({ toolCallId: "call_1", toolName: "edit-file", content: { kind: "text", text: "line A" } });
     expect(rows).toHaveLength(1);
     expect(rows[0]?.content.split("line A").length - 1).toBe(1);
+    state.dispose();
   });
 
   test("removes guard-blocked tool rows", () => {
@@ -92,5 +102,6 @@ describe("chat-message-handler-stream", () => {
       errorDetail: { category: "guard-blocked" },
     });
     expect(rows).toHaveLength(0);
+    state.dispose();
   });
 });

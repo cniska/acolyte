@@ -550,7 +550,7 @@ describe("distillMemorySource", () => {
       }
     });
 
-    test("rejects session commit when malformed tags are present", async () => {
+    test("silently drops malformed scope tags and commits valid facts", async () => {
       const originalDistillConfig = { ...appConfig.distill };
       (appConfig as { distill: typeof appConfig.distill }).distill = {
         ...appConfig.distill,
@@ -577,13 +577,13 @@ describe("distillMemorySource", () => {
           messages: [{ role: "user", content: "hello" }],
           output: "done",
         });
-        expect(store.written).toHaveLength(0);
+        // Malformed tags are silently dropped; valid facts are committed.
+        expect(store.written.length).toBeGreaterThan(0);
         expect(metrics).toEqual({
-          projectPromotedFacts: 0,
-          userPromotedFacts: 0,
-          sessionScopedFacts: 0,
+          projectPromotedFacts: 1,
+          userPromotedFacts: 1,
+          sessionScopedFacts: 1,
           droppedUntaggedFacts: 0,
-          malformedTaggedFacts: 2,
         });
       } finally {
         (appConfig as { distill: typeof appConfig.distill }).distill = originalDistillConfig;
@@ -697,14 +697,14 @@ describe("distillMemorySource", () => {
           messages: [{ role: "user", content: "hello" }],
           output: "done",
         });
+        // Malformed tag is silently dropped; valid facts are committed.
         expect(metrics).toEqual({
-          projectPromotedFacts: 0,
-          userPromotedFacts: 0,
-          sessionScopedFacts: 0,
+          projectPromotedFacts: 2,
+          userPromotedFacts: 1,
+          sessionScopedFacts: 3,
           droppedUntaggedFacts: 1,
-          malformedTaggedFacts: 1,
         });
-        expect(store.written).toHaveLength(0);
+        expect(store.written.length).toBeGreaterThan(0);
       } finally {
         (appConfig as { distill: typeof appConfig.distill }).distill = originalDistillConfig;
       }
@@ -734,7 +734,6 @@ describe("distillMemorySource", () => {
               userPromotedFacts: 1,
               sessionScopedFacts: 3,
               droppedUntaggedFacts: 0,
-              malformedTaggedFacts: 0,
             },
             expectedWriteCount: 3,
           },
@@ -746,25 +745,23 @@ describe("distillMemorySource", () => {
               userPromotedFacts: 0,
               sessionScopedFacts: 1,
               droppedUntaggedFacts: 1,
-              malformedTaggedFacts: 0,
             },
             expectedWriteCount: 2,
           },
           {
-            name: "bad_output_with_malformed_tag",
+            name: "malformed_tag_silently_dropped",
             observed: [
               "[project] uses bun test",
-              "[proj] malformed tag should reject batch",
+              "[proj] malformed tag silently dropped",
               "Current task: stabilize memory quality",
             ].join("\n"),
             expectedMetrics: {
-              projectPromotedFacts: 0,
+              projectPromotedFacts: 1,
               userPromotedFacts: 0,
-              sessionScopedFacts: 0,
+              sessionScopedFacts: 1,
               droppedUntaggedFacts: 0,
-              malformedTaggedFacts: 1,
             },
-            expectedWriteCount: 0,
+            expectedWriteCount: 2,
           },
         ] as const;
 
