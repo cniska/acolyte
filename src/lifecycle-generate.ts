@@ -4,7 +4,7 @@ import { createInstructions } from "./agent-instructions";
 import { agentModes, modeForTool } from "./agent-modes";
 import { appConfig } from "./app-config";
 import {
-  buildStreamErrorDetail,
+  createStreamError,
   categoryFromErrorCode,
   categoryFromErrorKind,
   type ErrorSource,
@@ -73,7 +73,7 @@ function captureError(
 
 function currentErrorDetail(ctx: RunContext): StreamErrorDetail | undefined {
   if (!ctx.lastError) return undefined;
-  return buildStreamErrorDetail(
+  return createStreamError(
     {
       message: ctx.lastError,
       code: ctx.lastErrorCode,
@@ -217,16 +217,14 @@ async function streamWithTimeout(
           if (!chunk || typeof chunk !== "object") continue;
           const typed = chunk as { type?: string; payload?: unknown };
           resetTimeout();
-          processStreamChunk(ctx, typed);
           if (typed.type === "tool-error") {
             const p = typed.payload as ToolErrorPayload | undefined;
-            const hasToolContext = Boolean(p?.toolName || p?.toolCallId);
-            if (!hasToolContext) {
+            if (!p?.toolName && !p?.toolCallId) {
               const parsed = parseErrorInfo(p?.error ?? p?.message);
-              const modelError = parsed.ok ? parsed.value.message : "Model stream error";
-              throw new Error(modelError);
+              throw new Error(parsed.ok ? parsed.value.message : "Model stream error");
             }
           }
+          processStreamChunk(ctx, typed);
         }
         return await streamOutput.getFullOutput();
       })
@@ -242,6 +240,29 @@ async function streamWithTimeout(
         if (timeoutId !== null) clearTimeout(timeoutId);
         reject(error);
       });
+  });
+}
+
+function completeToolCall(ctx: RunContext, toolCallId: string, toolName: string): void {
+  const started = ctx.toolCallStartedAt.get(toolCallId);
+  if (!started) return;
+  const durationMs = Date.now() - started.startedAtMs;
+  ctx.debug("lifecycle.tool.result", { tool: toolName, tool_call_id: toolCallId, duration_ms: durationMs, is_error: false });
+  ctx.toolCallStartedAt.delete(toolCallId);
+}
+
+function emitToolResult(ctx: RunContext, toolCallId: string, toolName: string, isError: boolean): void {
+  ctx.emit({
+    type: "tool-result",
+    toolCallId,
+    toolName,
+    ...(isError
+      ? {
+          isError: true,
+          ...(ctx.lastErrorCode ? { errorCode: ctx.lastErrorCode } : {}),
+          ...(currentErrorDetail(ctx) ? { errorDetail: currentErrorDetail(ctx) } : {}),
+        }
+      : {}),
   });
 }
 
@@ -292,17 +313,7 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
       const p = chunk.payload as ToolResultPayload | undefined;
       if (p?.toolCallId && p?.toolName) {
         const toolName = p.toolName;
-        const started = ctx.toolCallStartedAt.get(p.toolCallId);
-        if (started) {
-          const durationMs = Date.now() - started.startedAtMs;
-          ctx.debug("lifecycle.tool.result", {
-            tool: toolName,
-            tool_call_id: p.toolCallId,
-            duration_ms: durationMs,
-            is_error: false,
-          });
-          ctx.toolCallStartedAt.delete(p.toolCallId);
-        }
+        completeToolCall(ctx, p.toolCallId, toolName);
         const queue = ctx.nativeIdQueue.get(toolName);
         if (queue?.[queue.length - 1] === p.toolCallId) queue.pop();
         const resultRecord =
@@ -319,24 +330,8 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
             kind: errorInfo.kind,
           });
           ctx.debug("lifecycle.tool.error", { tool: toolName, error: ctx.lastError });
-          ctx.debug("lifecycle.tool.result", {
-            tool: toolName,
-            tool_call_id: p.toolCallId,
-            is_error: true,
-          });
         }
-        ctx.emit({
-          type: "tool-result",
-          toolCallId: p.toolCallId,
-          toolName,
-          ...(isError
-            ? {
-                isError: true,
-                ...(ctx.lastErrorCode ? { errorCode: ctx.lastErrorCode } : {}),
-                ...(currentErrorDetail(ctx) ? { errorDetail: currentErrorDetail(ctx) } : {}),
-              }
-            : {}),
-        });
+        emitToolResult(ctx, p.toolCallId, toolName, isError);
       }
       break;
     }
@@ -347,33 +342,17 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
       const errorInfo = parsed.ok ? parsed.value : { message: "Tool error" };
       const payloadCode = typeof p?.code === "string" ? p.code : undefined;
       const payloadKind = typeof p?.kind === "string" ? p.kind : undefined;
-      const errorMsg = errorInfo.message;
       const toolName = p?.toolName ?? "";
-      captureError(ctx, errorMsg, {
+      captureError(ctx, errorInfo.message, {
         source: "tool-error",
         tool: toolName,
         code: payloadCode ?? errorInfo.code,
         kind: payloadKind ?? errorInfo.kind,
       });
-      ctx.debug("lifecycle.tool.error", { tool: toolName, error: errorMsg });
+      ctx.debug("lifecycle.tool.error", { tool: toolName, error: errorInfo.message });
       if (p?.toolCallId && p?.toolName) {
-        const started = ctx.toolCallStartedAt.get(p.toolCallId);
-        const durationMs = started ? Date.now() - started.startedAtMs : null;
-        ctx.debug("lifecycle.tool.result", {
-          tool: p.toolName,
-          tool_call_id: p.toolCallId,
-          duration_ms: durationMs,
-          is_error: true,
-        });
-        ctx.toolCallStartedAt.delete(p.toolCallId);
-        ctx.emit({
-          type: "tool-result",
-          toolCallId: p.toolCallId,
-          toolName: p.toolName,
-          isError: true,
-          ...(ctx.lastErrorCode ? { errorCode: ctx.lastErrorCode } : {}),
-          ...(currentErrorDetail(ctx) ? { errorDetail: currentErrorDetail(ctx) } : {}),
-        });
+        completeToolCall(ctx, p.toolCallId, p.toolName);
+        emitToolResult(ctx, p.toolCallId, p.toolName, true);
       }
       break;
     }

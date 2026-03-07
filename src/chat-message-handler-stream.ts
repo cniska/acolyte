@@ -28,8 +28,6 @@ export type MessageStreamState = {
   onToolResult: (entry: ToolResultEntry) => void;
   onProgressError: (error: string) => void;
   streamedAssistantText: () => string;
-  committedStreamingText: () => string;
-  toolHeaders: () => Set<string>;
 };
 
 export function createMessageStreamState(input: {
@@ -37,11 +35,8 @@ export function createMessageStreamState(input: {
 }): MessageStreamState {
   let streamingAssistantRowId: string | null = null;
   let streamingAssistantContent = "";
-  const committedStreamingText = "";
   const toolRowIdByCallId = new Map<string, string>();
   const toolContentByCallId = new Map<string, ToolOutput[]>();
-  const toolHeaders = new Set<string>();
-
   let streamFlushTimer: ReturnType<typeof setTimeout> | null = null;
   const STREAM_FLUSH_MS = 50;
 
@@ -108,7 +103,6 @@ export function createMessageStreamState(input: {
         streamingAssistantRowId = null;
         const rowId = `row_${createId()}`;
         toolRowIdByCallId.set(entry.toolCallId, rowId);
-        toolHeaders.add(rendered.toLowerCase());
         const firstItem = items[0];
         const label = firstItem?.kind === "tool-header" ? firstItem.label : undefined;
         input.setRows((current) => [
@@ -158,8 +152,6 @@ export function createMessageStreamState(input: {
         return [...current, createRow("system", error, { dim: true, style: "error" })];
       });
     },
-    streamedAssistantText: () => `${committedStreamingText}${streamingAssistantContent}`,
-    committedStreamingText: () => committedStreamingText,
-    toolHeaders: () => toolHeaders,
+    streamedAssistantText: () => streamingAssistantContent,
   };
 }

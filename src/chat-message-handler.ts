@@ -3,7 +3,6 @@ import { appConfig } from "./app-config";
 import { type ChatRow, createRow, dispatchSlashCommand, type TokenUsageEntry } from "./chat-commands";
 import { invalidateRepoPathCandidates } from "./chat-file-ref";
 import type { Message } from "./chat-message";
-import { createFinalAssistantRows } from "./chat-message-handler-finalize";
 import {
   distillMemoryCandidate,
   formatSubmitError,
@@ -90,9 +89,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
     const text = internalWriteResume ? internalWriteResume.prompt : raw.trim();
     if (!text || (input.isWorking && !text.startsWith("/"))) return;
     if (!isInternalReplay && text.startsWith("/") && !text.includes(" ") && !isKnownSlashToken(text)) return;
-    const resolvedText = text;
     const naturalRememberDirective = isInternalReplay ? null : resolveNaturalRememberDirective(text);
-    const dispatchResolvedText = resolvedText;
     if (!isInternalReplay) {
       input.setInputHistory((current) => appendInputHistory(current, text));
       input.setInputHistoryIndex(-1);
@@ -100,7 +97,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
     }
     input.setValue("");
 
-    if (resolvedText === "?") {
+    if (text === "?") {
       input.setShowHelp((current) => !current);
       return;
     }
@@ -140,7 +137,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
     if (!isInternalReplay) {
       const commandResult = await dispatchSlashCommand({
         text,
-        resolvedText: dispatchResolvedText,
+        resolvedText: text,
         client: input.client,
         store: input.store,
         currentSession: input.currentSession,
@@ -232,13 +229,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
 
       input.currentSession.messages.push(assistantMessage);
       input.currentSession.updatedAt = input.nowIso();
-      const finalRows = createFinalAssistantRows({
-        rows: turn.rows,
-        streamedAssistantText,
-        committedStreamingText: streamState.committedStreamingText(),
-        toolHeaders: streamState.toolHeaders(),
-      });
-      input.setRows((current) => [...current.filter((row) => row.id !== pendingStreamRowId), ...finalRows]);
+      input.setRows((current) => [...current.filter((row) => row.id !== pendingStreamRowId), ...turn.rows]);
       // File tree may have changed during tool execution; refresh @path autocomplete candidates.
       invalidateRepoPathCandidates();
       input.currentSession.tokenUsage.push(turn.tokenEntry);

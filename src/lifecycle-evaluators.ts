@@ -4,6 +4,7 @@ import type { VerifyScope } from "./api";
 import type { ErrorCategory } from "./error-handling";
 import type { LifecycleEventName } from "./lifecycle-events";
 import type { LifecyclePolicy } from "./lifecycle-policy";
+import { taskScopedCallLog } from "./lifecycle-contract";
 import { WRITE_TOOL_SET, WRITE_TOOLS } from "./tool-groups";
 import type { SessionContext } from "./tool-guards";
 
@@ -35,11 +36,6 @@ export type EvaluatorContext = {
   lastErrorCategory?: ErrorCategory;
 };
 
-function taskScopedCallLog(ctx: EvaluatorContext) {
-  if (!ctx.taskId) return ctx.session.callLog;
-  return ctx.session.callLog.filter((entry) => entry.taskId === ctx.taskId);
-}
-
 export type Evaluator = {
   id: string;
   evaluate: (ctx: EvaluatorContext) => EvalAction;
@@ -58,7 +54,7 @@ function readPathKeys(args: Record<string, unknown>): string[] {
 }
 
 function findLastEditFilePath(ctx: EvaluatorContext): string | undefined {
-  const callLog = taskScopedCallLog(ctx);
+  const callLog = taskScopedCallLog(ctx.session, ctx.taskId);
   for (let i = callLog.length - 1; i >= 0; i -= 1) {
     const entry = callLog[i];
     if (entry?.toolName !== "edit-file") continue;
@@ -70,7 +66,7 @@ function findLastEditFilePath(ctx: EvaluatorContext): string | undefined {
 
 function writePathsForCurrentTask(ctx: EvaluatorContext): string[] {
   const out = new Set<string>();
-  for (const entry of taskScopedCallLog(ctx)) {
+  for (const entry of taskScopedCallLog(ctx.session, ctx.taskId)) {
     if (!WRITE_TOOL_SET.has(entry.toolName)) continue;
     const path = entry.args?.path;
     if (typeof path !== "string") continue;
@@ -83,7 +79,7 @@ function writePathsForCurrentTask(ctx: EvaluatorContext): string[] {
 
 function readPathsForCurrentTask(ctx: EvaluatorContext): string[] {
   const out = new Set<string>();
-  for (const entry of taskScopedCallLog(ctx)) {
+  for (const entry of taskScopedCallLog(ctx.session, ctx.taskId)) {
     if (entry.toolName === "read-file") {
       for (const key of readPathKeys(entry.args)) out.add(key);
       continue;

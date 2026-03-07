@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
-  buildStreamErrorDetail,
+  createStreamError,
   categoryFromErrorCode,
   categoryFromErrorKind,
   createErrorStats,
@@ -91,8 +91,8 @@ describe("error handling helpers", () => {
     ).toMatchObject({ action: "stop-unknown-budget", retryable: false });
   });
 
-  test("buildStreamErrorDetail returns normalized structured payload", () => {
-    const detail = buildStreamErrorDetail(
+  test("createStreamError returns normalized structured payload", () => {
+    const detail = createStreamError(
       {
         message: "request timed out after 30s",
         code: LIFECYCLE_ERROR_CODES.timeout,

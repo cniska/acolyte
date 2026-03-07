@@ -12,6 +12,26 @@ import { defaultLifecyclePolicy, type LifecyclePolicy } from "./lifecycle-policy
 
 const EVALUATORS: Evaluator[] = [multiMatchEditEvaluator, timeoutRecovery, autoVerifier, verifyFailure];
 
+function snapshotState(ctx: RunContext): SavedRegenerationState {
+  return {
+    result: ctx.result,
+    lastError: ctx.lastError,
+    lastErrorCode: ctx.lastErrorCode,
+    lastErrorCategory: ctx.lastErrorCategory,
+    lastErrorSource: ctx.lastErrorSource,
+    lastErrorTool: ctx.lastErrorTool,
+  };
+}
+
+function restoreState(ctx: RunContext, saved: SavedRegenerationState): void {
+  ctx.result = saved.result;
+  ctx.lastError = saved.lastError;
+  ctx.lastErrorCode = saved.lastErrorCode;
+  ctx.lastErrorCategory = saved.lastErrorCategory;
+  ctx.lastErrorSource = saved.lastErrorSource;
+  ctx.lastErrorTool = saved.lastErrorTool;
+}
+
 export function recoveryActionForError(
   input: { errorCode?: string; unknownErrorCount: number },
   policy: LifecyclePolicy = defaultLifecyclePolicy,
@@ -89,16 +109,7 @@ export async function phaseEvaluate(ctx: RunContext, shouldYield: LifecycleInput
         continue;
       }
 
-      const saved: SavedRegenerationState | undefined = action.keepResult
-        ? {
-            result: ctx.result,
-            lastError: ctx.lastError,
-            lastErrorCode: ctx.lastErrorCode,
-            lastErrorCategory: ctx.lastErrorCategory,
-            lastErrorSource: ctx.lastErrorSource,
-            lastErrorTool: ctx.lastErrorTool,
-          }
-        : undefined;
+      const saved = action.keepResult ? snapshotState(ctx) : undefined;
       if (action.mode) {
         ctx.mode = action.mode;
         ctx.session.mode = action.mode;
@@ -124,14 +135,7 @@ export async function phaseEvaluate(ctx: RunContext, shouldYield: LifecycleInput
       });
       if (shouldYieldNow(ctx, shouldYield)) break;
 
-      if (saved) {
-        ctx.result = saved.result;
-        ctx.lastError = saved.lastError;
-        ctx.lastErrorCode = saved.lastErrorCode;
-        ctx.lastErrorCategory = saved.lastErrorCategory;
-        ctx.lastErrorSource = saved.lastErrorSource;
-        ctx.lastErrorTool = saved.lastErrorTool;
-      }
+      if (saved) restoreState(ctx, saved);
       regenerated = true;
       break;
     }

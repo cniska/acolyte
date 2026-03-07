@@ -112,13 +112,11 @@ export type RunContext = {
   toolOutputHandler: ((event: ToolOutputEvent) => void) | null;
 };
 
-export function guardStatsFromSession(session: SessionContext): { blocked: number; flagSet: number } {
-  const value = session.flags.guardStats;
-  if (!value || typeof value !== "object") return { blocked: 0, flagSet: 0 };
-  const stats = value as { blocked?: unknown; flagSet?: unknown };
-  const blocked = typeof stats.blocked === "number" ? stats.blocked : 0;
-  const flagSet = typeof stats.flagSet === "number" ? stats.flagSet : 0;
-  return { blocked, flagSet };
+type GuardStats = { blocked: number; flagSet: number };
+
+export function guardStatsFromSession(session: SessionContext): GuardStats {
+  const value = session.flags.guardStats as GuardStats | undefined;
+  return { blocked: value?.blocked ?? 0, flagSet: value?.flagSet ?? 0 };
 }
 
 export function taskScopedCallLog(session: SessionContext, taskId: string | undefined) {

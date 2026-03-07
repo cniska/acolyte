@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { type ChatRequest, verifyScopeSchema } from "./api";
 import { appConfig } from "./app-config";
 import { createDebugLogger } from "./debug-flags";
-import { buildStreamErrorDetail, errorIdSchema, parseErrorInfo } from "./error-handling";
+import { createStreamError, errorIdSchema, parseErrorInfo } from "./error-handling";
 import { runLifecycle } from "./lifecycle";
 import { errorToLogFields, log } from "./log";
 import { isProviderAvailable, providerFromModel } from "./provider-config";
@@ -107,7 +107,7 @@ export function streamErrorPayload(error: unknown): StreamErrorPayload {
   const errorId = nextErrorId();
   const parsed = parseErrorInfo(error);
   const errorMessage = parsed.ok ? parsed.value.message : error instanceof Error ? error.message : "Unknown error";
-  const { errorCode, errorDetail } = buildStreamErrorDetail(
+  const { errorCode, errorDetail } = createStreamError(
     {
       message: errorMessage,
       code: parsed.ok ? parsed.value.code : undefined,

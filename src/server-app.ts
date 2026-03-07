@@ -1,6 +1,6 @@
 import type { z } from "zod";
 import { appConfig } from "./app-config";
-import { buildStreamErrorDetail } from "./error-handling";
+import { createStreamError } from "./error-handling";
 import { mapQuotaErrorMessage } from "./error-messages";
 import { t } from "./i18n";
 import { domainIdSchema } from "./id-contract";
@@ -52,7 +52,7 @@ function serverError(
   const errorId = nextErrorId();
   const errorMessage = error instanceof Error ? error.message : t("unknown_error");
   const publicMessage = mapQuotaErrorMessage(errorMessage);
-  const { errorCode, errorDetail } = buildStreamErrorDetail(
+  const { errorCode, errorDetail } = createStreamError(
     {
       message: publicMessage,
       source: "server",

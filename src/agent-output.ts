@@ -1,4 +1,4 @@
-export function formatAssistantOutput(output: string, _message = "", toolCallCount = 0): string {
+export function formatAssistantOutput(output: string, toolCallCount = 0): string {
   const trimmed = output.trim();
   if (trimmed.length > 0) {
     const isVerbose = trimmed.length > 240 || trimmed.split("\n").filter((line) => line.trim().length > 0).length >= 4;

@@ -362,18 +362,18 @@ describe("formatAssistantOutput", () => {
       "- File: scripts/reverse_word.py",
       "- Added flags and examples.",
     ].join("\n");
-    const out = formatAssistantOutput(raw, "update script", 2);
+    const out = formatAssistantOutput(raw, 2);
     expect(out).toBe("Done — I applied both edits.");
   });
 
   test("returns tool-executed fallback when output is empty after tool calls", () => {
-    expect(formatAssistantOutput("   ", "check status", 2)).toBe(
+    expect(formatAssistantOutput("   ", 2)).toBe(
       "No final response after tool execution. Retry, or check server logs if this repeats.",
     );
   });
 
   test("returns generic fallback when tool error caused empty output", () => {
-    expect(formatAssistantOutput("   ", "check status", 0)).toBe(
+    expect(formatAssistantOutput("   ", 0)).toBe(
       "No output from model. Check /status and server logs, then retry or switch model/provider.",
     );
   });

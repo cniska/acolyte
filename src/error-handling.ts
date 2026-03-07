@@ -160,7 +160,7 @@ export function recoveryDecisionForError(
   return { action, retryable: false };
 }
 
-export function buildStreamErrorDetail(
+export function createStreamError(
   input: {
     message: string;
     code?: string;
