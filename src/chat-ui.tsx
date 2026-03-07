@@ -20,6 +20,7 @@ import { createInputHistory } from "./chat-turn";
 import type { Client } from "./client";
 import { nowIso } from "./datetime";
 import { palette } from "./palette";
+import { formatModel } from "./provider-config";
 import type { Session, SessionState } from "./session-contract";
 import { loadSkills } from "./skills";
 
@@ -253,7 +254,7 @@ function ChatApp(props: ChatAppProps) {
         picker={picker}
         activeSessionId={store.activeSessionId}
         brandColor={palette.brand}
-        footerContext={`${workspace} · ${branch ?? "—"}`}
+        footerContext={`${workspace} · ${branch ?? "—"} · ${formatModel(currentSession.model)}`}
         value={value}
         inputRevision={inputRevision}
         onChange={(next) => {

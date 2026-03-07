@@ -7,6 +7,7 @@ import { setConfigValue } from "./config";
 import type { ConfigScope, PermissionMode } from "./config-contract";
 import { t } from "./i18n";
 import { addMemory, listMemories, type MemoryScope, removeMemoryByPrefix } from "./memory";
+import { formatModel } from "./provider-config";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
 import { createId } from "./short-id";
 import { findSkillByName } from "./skills";
@@ -350,7 +351,10 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
         setModeModel(selection.mode, selection.model);
         ctx.setRows((current) => [
           ...current,
-          createRow("system", t("chat.model.changed.mode", { mode: selection.mode, model: selection.model })),
+          createRow(
+            "system",
+            t("chat.model.changed.mode", { mode: selection.mode, model: formatModel(selection.model) }),
+          ),
         ]);
         return { stop: true, userText: text };
       }
@@ -368,7 +372,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       ctx.setCurrentSession(nextSession);
       ctx.setRows((current) => [
         ...current,
-        createRow("system", t("chat.model.changed.default", { model: selection.model })),
+        createRow("system", t("chat.model.changed.default", { model: formatModel(selection.model) })),
       ]);
     } catch (error) {
       ctx.setRows((current) => [

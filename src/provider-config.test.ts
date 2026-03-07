@@ -1,11 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-  formatModel,
-  isProviderAvailable,
-  modelDisplayName,
-  normalizeModel,
-  providerFromModel,
-} from "./provider-config";
+import { formatModel, isProviderAvailable, normalizeModel, providerFromModel } from "./provider-config";
 
 describe("provider config", () => {
   test("normalizeModel prefixes unqualified model ids", () => {
@@ -15,19 +9,12 @@ describe("provider config", () => {
     expect(normalizeModel("openai/gpt-5-mini")).toBe("openai/gpt-5-mini");
   });
 
-  test("formatModel strips vendor prefix for display", () => {
+  test("formatModel maps known IDs to friendly names and strips prefix", () => {
+    expect(formatModel("anthropic/claude-haiku-4-5-20251001")).toBe("claude-haiku-4.5");
+    expect(formatModel("claude-sonnet-4-6")).toBe("claude-sonnet-4.6");
     expect(formatModel("openai/gpt-5-mini")).toBe("gpt-5-mini");
-    expect(formatModel("anthropic/claude-sonnet-4")).toBe("claude-sonnet-4");
-    expect(formatModel("gemini/gemini-2.5-pro")).toBe("gemini-2.5-pro");
     expect(formatModel("openai-compatible/qwen2.5-coder")).toBe("qwen2.5-coder");
-    expect(formatModel("gpt-5-mini")).toBe("gpt-5-mini");
-  });
-
-  test("modelDisplayName maps known IDs to friendly names", () => {
-    expect(modelDisplayName("anthropic/claude-haiku-4-5-20251001")).toBe("claude-haiku-4.5");
-    expect(modelDisplayName("claude-sonnet-4-6")).toBe("claude-sonnet-4.6");
-    expect(modelDisplayName("openai/gpt-5-mini")).toBe("gpt-5-mini");
-    expect(modelDisplayName("custom-model-id")).toBe("custom-model-id");
+    expect(formatModel("custom-model-id")).toBe("custom-model-id");
   });
 
   test("providerFromModel infers provider from model prefix", () => {

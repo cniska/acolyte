@@ -50,13 +50,13 @@ export function normalizeModel(model: string): string {
   return `${prefix}/${model}`;
 }
 
-export function formatModel(model: string): string {
+function stripModelPrefix(model: string): string {
   const slash = model.indexOf("/");
   return slash >= 0 ? model.slice(slash + 1) : model;
 }
 
-export function modelDisplayName(model: string): string {
-  const id = formatModel(model).trim();
+export function formatModel(model: string): string {
+  const id = stripModelPrefix(model).trim();
   if (id.length === 0) return id;
   return MODEL_DISPLAY_NAME_BY_ID.get(id.toLowerCase()) ?? id;
 }

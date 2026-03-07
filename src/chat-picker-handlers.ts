@@ -17,6 +17,7 @@ import { compactText } from "./compact-text";
 import { setConfigValue } from "./config";
 import type { ConfigScope, PermissionMode } from "./config-contract";
 import { t } from "./i18n";
+import { formatModel } from "./provider-config";
 import type { Session, SessionState } from "./session-contract";
 import { findSkillByName, loadSkills, readSkillInstructions } from "./skills";
 
@@ -172,7 +173,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
             setModeModel(targetMode, nextModel);
             input.setRows((current) => [
               ...current,
-              createRow("system", t("chat.model.changed.mode", { mode: targetMode, model: nextModel })),
+              createRow("system", t("chat.model.changed.mode", { mode: targetMode, model: formatModel(nextModel) })),
             ]);
           } else {
             await setConfigValue("model", nextModel, { scope: "project" });
@@ -181,7 +182,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
             input.setCurrentSession(nextSession);
             input.setRows((current) => [
               ...current,
-              createRow("system", t("chat.model.changed.default", { model: nextModel })),
+              createRow("system", t("chat.model.changed.default", { model: formatModel(nextModel) })),
             ]);
           }
         } catch (error) {
