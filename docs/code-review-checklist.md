@@ -50,14 +50,13 @@ Review in this order.
 ## 4. Tools and guardrails
 
 - [x] [`src/tool-registry.ts`](../src/tool-registry.ts)
-- [x] [`src/core-tool-defs.ts`](../src/core-tool-defs.ts)
-- [x] [`src/git-tool-defs.ts`](../src/git-tool-defs.ts)
-- [x] [`src/tool-adapter.ts`](../src/tool-adapter.ts)
+- [x] [`src/core-toolkit.ts`](../src/core-toolkit.ts)
+- [x] [`src/git-toolkit.ts`](../src/git-toolkit.ts)
 - [x] [`src/core-tools.ts`](../src/core-tools.ts)
-- [x] [`src/git-tools.ts`](../src/git-tools.ts)
 - [x] [`src/tool-guards.ts`](../src/tool-guards.ts)
 - [x] [`src/tool-groups.ts`](../src/tool-groups.ts)
-- [x] [`src/tool-meta-types.ts`](../src/tool-meta-types.ts)
+- [x] [`src/tool-arg-paths.ts`](../src/tool-arg-paths.ts)
+- [x] [`src/tool-execution.ts`](../src/tool-execution.ts)
 - [x] [`src/tool-output.ts`](../src/tool-output.ts)
 - [x] [`src/tool-output-content.ts`](../src/tool-output-content.ts)
 - [x] [`src/tool-output-format.ts`](../src/tool-output-format.ts)
@@ -78,6 +77,7 @@ Review in this order.
 - [x] [`src/task-registry.ts`](../src/task-registry.ts)
 - [x] [`src/task-contract.ts`](../src/task-contract.ts)
 - [x] [`src/task-store.ts`](../src/task-store.ts)
+- [ ] [`src/task-queue.ts`](../src/task-queue.ts)
 - [x] [`src/network-host.ts`](../src/network-host.ts)
 - [x] [`src/wait-server.ts`](../src/wait-server.ts)
 
@@ -110,7 +110,6 @@ Review in this order.
 
 - [ ] [`src/chat-ui.tsx`](../src/chat-ui.tsx)
 - [ ] [`src/chat-message-handler.ts`](../src/chat-message-handler.ts)
-- [ ] [`src/chat-message-handler-finalize.ts`](../src/chat-message-handler-finalize.ts)
 - [ ] [`src/chat-message-handler-helpers.ts`](../src/chat-message-handler-helpers.ts)
 - [ ] [`src/chat-message-handler-stream.ts`](../src/chat-message-handler-stream.ts)
 - [ ] [`src/chat-message-handler-task-followup.ts`](../src/chat-message-handler-task-followup.ts)
@@ -130,7 +129,6 @@ Review in this order.
 - [ ] [`src/chat-picker.tsx`](../src/chat-picker.tsx)
 - [ ] [`src/chat-picker-actions.ts`](../src/chat-picker-actions.ts)
 - [ ] [`src/chat-picker-handlers.ts`](../src/chat-picker-handlers.ts)
-- [ ] [`src/chat-progress.ts`](../src/chat-progress.ts)
 - [ ] [`src/chat-session.ts`](../src/chat-session.ts)
 - [ ] [`src/chat-slash.ts`](../src/chat-slash.ts)
 - [ ] [`src/chat-submit.ts`](../src/chat-submit.ts)
@@ -151,24 +149,33 @@ Review in this order.
 - [ ] [`src/memory-source-distill.ts`](../src/memory-source-distill.ts)
 - [ ] [`src/memory-distill-store.ts`](../src/memory-distill-store.ts)
 - [ ] [`src/memory-distill-prompts.ts`](../src/memory-distill-prompts.ts)
+- [ ] [`src/memory-pipeline.ts`](../src/memory-pipeline.ts)
 - [ ] [`src/soul.ts`](../src/soul.ts)
 - [ ] [`src/skills.ts`](../src/skills.ts)
 - [ ] [`src/file-context.ts`](../src/file-context.ts)
 - [ ] [`src/session-contract.ts`](../src/session-contract.ts)
 - [ ] [`src/session-lock.ts`](../src/session-lock.ts)
 - [ ] [`src/session-store.ts`](../src/session-store.ts)
+- [ ] [`src/resource-diagnostics.ts`](../src/resource-diagnostics.ts)
+- [ ] [`src/resource-id.ts`](../src/resource-id.ts)
 
 ## 9. Shared utilities
 
 - [ ] [`src/assert.ts`](../src/assert.ts)
+- [ ] [`src/compact-text.ts`](../src/compact-text.ts)
 - [ ] [`src/datetime.ts`](../src/datetime.ts)
+- [ ] [`src/i18n.ts`](../src/i18n.ts)
 - [ ] [`src/log.ts`](../src/log.ts)
-- [ ] [`src/plural.ts`](../src/plural.ts)
 - [ ] [`src/short-id.ts`](../src/short-id.ts)
 
-## 10. Tests and CI/perf plumbing
+## 10. Tests, CI, and scripts
+
+### Unit tests
 
 - [ ] [`src/client.test.ts`](../src/client.test.ts)
+
+### Integration tests
+
 - [ ] [`src/server-rpc.int.test.ts`](../src/server-rpc.int.test.ts)
 - [ ] [`src/server-daemon.int.test.ts`](../src/server-daemon.int.test.ts)
 - [ ] [`src/tool-guards.int.test.ts`](../src/tool-guards.int.test.ts)
@@ -178,14 +185,31 @@ Review in this order.
 - [ ] [`src/cli-init.int.test.ts`](../src/cli-init.int.test.ts)
 - [ ] [`src/cli-subcommand-help.int.test.ts`](../src/cli-subcommand-help.int.test.ts)
 - [ ] [`src/cli-visual.int.test.ts`](../src/cli-visual.int.test.ts)
+
+### Test utilities
+
+- [ ] [`src/int-test-utils.ts`](../src/int-test-utils.ts)
+- [ ] [`src/tui-test-utils.ts`](../src/tui-test-utils.ts)
+
+### Performance and benchmarks
+
+- [ ] [`scripts/benchmark.ts`](../scripts/benchmark.ts)
 - [ ] [`scripts/run-perf.ts`](../scripts/run-perf.ts)
 - [ ] [`scripts/perf-scenarios.ts`](../scripts/perf-scenarios.ts)
 - [ ] [`scripts/perf-utils.ts`](../scripts/perf-utils.ts)
 - [ ] [`scripts/perf-test-utils.ts`](../scripts/perf-test-utils.ts)
+
+### Scripts and tools
+
+- [ ] [`scripts/run-unit-tests.ts`](../scripts/run-unit-tests.ts)
+- [ ] [`scripts/run-unit-coverage.ts`](../scripts/run-unit-coverage.ts)
 - [ ] [`scripts/fake-provider-server.ts`](../scripts/fake-provider-server.ts)
 - [ ] [`scripts/lifecycle-trace.ts`](../scripts/lifecycle-trace.ts)
 - [ ] [`scripts/om-admin.ts`](../scripts/om-admin.ts)
 - [ ] [`scripts/om-soak.ts`](../scripts/om-soak.ts)
-- [ ] [`scripts/run-unit-coverage.ts`](../scripts/run-unit-coverage.ts)
 - [ ] [`scripts/codemod-single-line-if.ts`](../scripts/codemod-single-line-if.ts)
+
+### CI workflows
+
 - [ ] [`.github/workflows/ci.yml`](../.github/workflows/ci.yml)
+- [ ] [`.github/workflows/release.yml`](../.github/workflows/release.yml)

@@ -77,18 +77,60 @@ export function isKnownSlashToken(token: string): boolean {
   return false;
 }
 
+/** Edit distance between `a` and `b` truncated to `a`'s length (tolerates partial input). */
+function truncatedEditDistance(a: string, b: string): number {
+  if (a.length >= b.length) return editDistance(a, b);
+  return editDistance(a, b.slice(0, a.length));
+}
+
+function rootCommands(): string[] {
+  const skillCommands = getLoadedSkills().map((s) => `/${s.name}`);
+  return [...CHAT_SLASH_COMMANDS, ...skillCommands];
+}
+
+function commandWithSubs(root: string): string[] {
+  const subs = SUB_COMMANDS[root];
+  return subs ? [root, ...subs] : [root];
+}
+
 export function suggestSlashCommands(inputValue: string, max = 5): string[] {
   const value = inputValue.trim();
   if (!value.startsWith("/")) return [];
   const candidate = inputValue.trimStart();
   const all = allSlashCommands();
+
+  // Prefix matching (fast path)
   const prefixMatches = all.filter((command) => command.startsWith(candidate));
   if (prefixMatches.length > 0) return prefixMatches.slice(0, max);
-  const fuzzy = all
-    .map((command) => ({ command, distance: editDistance(candidate, command) }))
-    .filter((item) => item.distance <= SUGGEST_MAX_DISTANCE)
-    .sort((a, b) => a.distance - b.distance);
-  return fuzzy.map((item) => item.command).slice(0, max);
+
+  // Require at least 2 chars after "/" for fuzzy matching
+  const parts = candidate.split(" ");
+  if (parts[0].length < 3) return [];
+
+  if (parts.length === 1) {
+    // Single token: fuzzy-match against root commands, expand to include subcommands
+    const roots = rootCommands();
+    const fuzzy = roots
+      .map((root) => ({ root, distance: truncatedEditDistance(candidate, root) }))
+      .filter((item) => item.distance <= SUGGEST_MAX_DISTANCE)
+      .sort((a, b) => a.distance - b.distance);
+    return fuzzy.flatMap((item) => commandWithSubs(item.root)).slice(0, max);
+  }
+
+  // Multi-token: match first token against roots, second against subcommand words
+  const [firstToken, ...rest] = parts;
+  const subQuery = rest.join(" ");
+  const roots = rootCommands();
+  const matchedRoots = roots
+    .filter((root) => editDistance(firstToken, root) <= SUGGEST_MAX_DISTANCE)
+    .flatMap((root) => commandWithSubs(root));
+  const subMatches = matchedRoots.filter((cmd) => {
+    const cmdParts = cmd.split(" ");
+    if (cmdParts.length < 2) return false;
+    const sub = cmdParts.slice(1).join(" ");
+    return sub.startsWith(subQuery) || editDistance(subQuery, sub) <= SUGGEST_MAX_DISTANCE;
+  });
+  return subMatches.slice(0, max);
 }
 
 export function shouldAutocompleteSlashSubmit(inputValue: string, selectedSuggestion: string | undefined): boolean {

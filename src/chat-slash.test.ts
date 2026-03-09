@@ -36,6 +36,23 @@ describe("chat-slash helpers", () => {
     expect(suggestSlashCommands("/xyzxyz")).toEqual([]);
   });
 
+  test("suggestSlashCommands fuzzy-matches root and expands subcommands", () => {
+    expect(suggestSlashCommands("/mov")).toEqual(["/model", "/model plan", "/model work", "/model verify", "/memory"]);
+    expect(suggestSlashCommands("/modle")).toEqual(["/model", "/model plan", "/model work", "/model verify"]);
+    expect(suggestSlashCommands("/memry")).toEqual([
+      "/memory",
+      "/memory list",
+      "/memory add",
+      "/memory all",
+      "/memory user",
+    ]);
+  });
+
+  test("suggestSlashCommands fuzzy-matches multi-token input", () => {
+    expect(suggestSlashCommands("/model vreify")).toEqual(["/model verify"]);
+    expect(suggestSlashCommands("/model wrk")).toEqual(["/model work"]);
+  });
+
   test("shouldAutocompleteSlashSubmit only intercepts unresolved slash command token", () => {
     expect(shouldAutocompleteSlashSubmit("/st", "/status")).toBe(true);
     expect(shouldAutocompleteSlashSubmit("/model p", "/model plan")).toBe(true);
