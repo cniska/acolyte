@@ -9,7 +9,7 @@ describe("ChatResponse error field", () => {
       error: "Your credit balance is too low",
     });
     expect(response).not.toBeNull();
-    expect(response!.error).toBe("Your credit balance is too low");
+    expect(response?.error).toBe("Your credit balance is too low");
   });
 
   test("parseChatResponse omits error when not present", () => {
@@ -18,7 +18,7 @@ describe("ChatResponse error field", () => {
       model: "gpt-5-mini",
     });
     expect(response).not.toBeNull();
-    expect(response!.error).toBeUndefined();
+    expect(response?.error).toBeUndefined();
   });
 
   test("parseChatResponse ignores non-string error", () => {
@@ -28,6 +28,6 @@ describe("ChatResponse error field", () => {
       error: 42,
     });
     expect(response).not.toBeNull();
-    expect(response!.error).toBeUndefined();
+    expect(response?.error).toBeUndefined();
   });
 });
