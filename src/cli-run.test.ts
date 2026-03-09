@@ -11,8 +11,6 @@ function createRunDeps(): {
     errors: string[];
     dims: string[];
     subcommandErrors: string[];
-    toolResults: string[];
-    runCommands: string[];
   };
 } {
   const calls = {
@@ -21,8 +19,6 @@ function createRunDeps(): {
     errors: [] as string[],
     dims: [] as string[],
     subcommandErrors: [] as string[],
-    toolResults: [] as string[],
-    runCommands: [] as string[],
   };
   const deps: RunDeps = {
     appModel: "openai/gpt-5-mini",
@@ -32,29 +28,21 @@ function createRunDeps(): {
     createClient: () => ({}) as never,
     createSession: () =>
       ({ id: "sess_123", title: "run", createdAt: "", updatedAt: "", messages: [], tokenUsage: [] }) as never,
-    cwd: () => "/tmp/work",
     ensureLocalServer: async () => ({ apiUrl: "http://127.0.0.1:6767", managed: false, started: false }),
-    formatForTool: () => "formatted",
     formatLocalServerReadyMessage: () => "ready",
     hasHelpFlag: (args) => args.includes("--help"),
     handlePrompt: async () => true,
     newMessage: (role, content) => ({ role, content }) as never,
-    parseRunExitCode: () => 0,
     printDim: (message) => calls.dims.push(message),
     printError: (message) => calls.errors.push(message),
     readResolvedConfigSync: () => ({ replyTimeoutMs: 1234 }) as never,
     resolveChatApiUrl: () => "http://127.0.0.1:6767",
     runResourceId: () => "user_123",
-    runShellCommand: async (_cwd, command) => {
-      calls.runCommands.push(command);
-      return "ok";
-    },
     serverApiKey: "key",
     serverApiUrl: "http://127.0.0.1:6767",
     serverEntry: "src/server.ts",
     serverPort: 6767,
     shouldAutoStartLocalServerForChat: () => false,
-    showToolResult: (title) => calls.toolResults.push(title),
     subcommandError: (name) => calls.subcommandErrors.push(name),
     subcommandHelp: (name) => calls.help.push(name),
   };
@@ -72,13 +60,6 @@ describe("cli-run", () => {
     await runMode(["--help"], deps);
     expect(calls.help).toEqual(["run"]);
     expect(calls.subcommandErrors).toEqual([]);
-  });
-
-  test("runs verify command when --verify is enabled", async () => {
-    const { deps, calls } = createRunDeps();
-    await runMode(["--verify", "hello"], deps);
-    expect(calls.runCommands).toEqual(["bun run verify"]);
-    expect(calls.toolResults).toEqual(["Run"]);
   });
 
   test("prints token usage summary after run", async () => {

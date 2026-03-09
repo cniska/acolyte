@@ -10,9 +10,9 @@ const SUBCOMMANDS: Record<string, CliSubcommandDoc> = {
   },
   run: {
     command: "run <prompt>",
-    usage: "acolyte run [--file <path>] [--workspace <path>] [--verify] <prompt>",
+    usage: "acolyte run [--file <path>] [--workspace <path>] <prompt>",
     description: t("cli.help.desc.run"),
-    examples: ['acolyte run "summarize README.md"', 'acolyte run --file src/cli.ts --verify "refactor help text"'],
+    examples: ['acolyte run "summarize README.md"', 'acolyte run --file src/cli.ts "refactor help text"'],
   },
   init: {
     command: "init [provider]",

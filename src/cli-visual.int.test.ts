@@ -320,13 +320,13 @@ describe("cli visual regression", () => {
     {
       args: ["run", "help"],
       output: dedent(`
-        Usage: acolyte run [--file <path>] [--workspace <path>] [--verify] <prompt>
-        
+        Usage: acolyte run [--file <path>] [--workspace <path>] <prompt>
+
         Description: run a single prompt
-        
+
         Examples:
           acolyte run "summarize README.md"
-          acolyte run --file src/cli.ts --verify "refactor help text"
+          acolyte run --file src/cli.ts "refactor help text"
       `),
     },
     {

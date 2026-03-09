@@ -4,7 +4,7 @@ import { newMessage } from "./chat-session";
 import { attachFileToSession, chatModeWithOptions } from "./cli-chat";
 import { configMode } from "./cli-config";
 import type { CliCommandHandler } from "./cli-contract";
-import { formatForTool, parseRunExitCode, showToolResult } from "./cli-format";
+
 import { subcommandError as subcommandErrorFromHelp, subcommandHelp as subcommandHelpFromHelp } from "./cli-help";
 import { historyMode } from "./cli-history";
 import { initMode } from "./cli-init";
@@ -23,7 +23,7 @@ import { isServerConnectionFailure, statusMode } from "./cli-status";
 import { toolMode } from "./cli-tool-mode";
 import { createClient } from "./client";
 import { readConfig, readConfigForScope, readResolvedConfigSync, setConfigValue, unsetConfigValue } from "./config";
-import { runShellCommand } from "./core-tools";
+
 import { addMemory, listMemories } from "./memory";
 import { ensureLocalServer, localServerStatus, stopLocalServer } from "./server-daemon";
 import { formatStatusOutput as formatStatusOutputShared } from "./status-format";
@@ -75,26 +75,21 @@ export const commands: Record<string, CliCommandHandler> = {
       attachFileToSession,
       createClient,
       createSession,
-      cwd: process.cwd,
       ensureLocalServer,
-      formatForTool,
       formatLocalServerReadyMessage,
       hasHelpFlag,
       handlePrompt,
       newMessage,
-      parseRunExitCode,
       printDim,
       printError,
       readResolvedConfigSync,
       resolveChatApiUrl,
       runResourceId,
-      runShellCommand,
       serverApiKey: appConfig.server.apiKey,
       serverApiUrl: appConfig.server.apiUrl,
       serverEntry: `${import.meta.dir}/server.ts`,
       serverPort: appConfig.server.port,
       shouldAutoStartLocalServerForChat,
-      showToolResult,
       subcommandError,
       subcommandHelp,
     }),

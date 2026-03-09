@@ -2,11 +2,6 @@ import { z } from "zod";
 import type { appConfig as appConfigType } from "./app-config";
 import type { newMessage as newMessageType } from "./chat-session";
 import type { attachFileToSession as attachFileToSessionType } from "./cli-chat";
-import type {
-  formatForTool as formatForToolType,
-  parseRunExitCode as parseRunExitCodeType,
-  showToolResult as showToolResultType,
-} from "./cli-format";
 import type { handlePrompt as handlePromptType } from "./cli-prompt";
 import type {
   formatLocalServerReadyMessage as formatLocalServerReadyMessageType,
@@ -15,7 +10,7 @@ import type {
 } from "./cli-server";
 import type { createClient as createClientType } from "./client";
 import type { readResolvedConfigSync as readResolvedConfigSyncType } from "./config";
-import type { runShellCommand as runShellCommandType } from "./core-tools";
+
 import { t } from "./i18n";
 import type { ResourceId } from "./resource-id";
 import type { ensureLocalServer as ensureLocalServerType } from "./server-daemon";
@@ -27,36 +22,30 @@ const RUN_MODE_SYSTEM_PROMPT =
 const runArgsSchema = z.object({
   files: z.array(z.string().min(1)),
   prompt: z.string(),
-  verify: z.boolean(),
 });
 
-type ParsedRunArgs = { files: string[]; prompt: string; verify: boolean; workspace?: string };
+type ParsedRunArgs = { files: string[]; prompt: string; workspace?: string };
 
 type RunModeDeps = {
   appModel: typeof appConfigType.model;
   attachFileToSession: typeof attachFileToSessionType;
   createClient: typeof createClientType;
   createSession: typeof createSessionType;
-  cwd: () => string;
   ensureLocalServer: typeof ensureLocalServerType;
-  formatForTool: typeof formatForToolType;
   formatLocalServerReadyMessage: typeof formatLocalServerReadyMessageType;
   hasHelpFlag: (args: string[]) => boolean;
   handlePrompt: typeof handlePromptType;
   newMessage: typeof newMessageType;
-  parseRunExitCode: typeof parseRunExitCodeType;
   printDim: (message: string) => void;
   printError: (message: string) => void;
   readResolvedConfigSync: typeof readResolvedConfigSyncType;
   resolveChatApiUrl: typeof resolveChatApiUrlType;
   runResourceId: (sessionId: string) => ResourceId;
-  runShellCommand: typeof runShellCommandType;
   serverApiKey: typeof appConfigType.server.apiKey;
   serverApiUrl: typeof appConfigType.server.apiUrl;
   serverEntry: string;
   serverPort: typeof appConfigType.server.port;
   shouldAutoStartLocalServerForChat: typeof shouldAutoStartLocalServerForChatType;
-  showToolResult: typeof showToolResultType;
   subcommandError: (name: string, message?: string) => void;
   subcommandHelp: (name: string) => void;
 };
@@ -68,7 +57,6 @@ export function runResourceId(sessionId: string): ResourceId {
 function parseRunArgs(args: string[]): ParsedRunArgs {
   const files: string[] = [];
   const promptTokens: string[] = [];
-  let verify = false;
   let workspace: string | undefined;
 
   for (let i = 0; i < args.length; i += 1) {
@@ -86,15 +74,11 @@ function parseRunArgs(args: string[]): ParsedRunArgs {
       i += 1;
       continue;
     }
-    if (args[i] === "--verify") {
-      verify = true;
-      continue;
-    }
 
     promptTokens.push(args[i]);
   }
 
-  return { ...runArgsSchema.parse({ files, prompt: promptTokens.join(" ").trim(), verify }), workspace };
+  return { ...runArgsSchema.parse({ files, prompt: promptTokens.join(" ").trim() }), workspace };
 }
 
 export async function runMode(args: string[], deps: RunModeDeps): Promise<void> {
@@ -103,26 +87,21 @@ export async function runMode(args: string[], deps: RunModeDeps): Promise<void> 
     attachFileToSession,
     createClient,
     createSession,
-    cwd,
     ensureLocalServer,
-    formatForTool,
     formatLocalServerReadyMessage,
     hasHelpFlag,
     handlePrompt,
     newMessage,
-    parseRunExitCode,
     printDim,
     printError,
     readResolvedConfigSync,
     resolveChatApiUrl,
     runResourceId,
-    runShellCommand,
     serverApiKey,
     serverApiUrl,
     serverEntry,
     serverPort,
     shouldAutoStartLocalServerForChat,
-    showToolResult,
     subcommandError,
     subcommandHelp,
   } = deps;
@@ -201,12 +180,5 @@ export async function runMode(args: string[], deps: RunModeDeps): Promise<void> 
 
   if (!success) {
     process.exitCode = 1;
-    return;
-  }
-  if (parsed.verify) {
-    const verifyResult = await runShellCommand(cwd(), "bun run verify");
-    showToolResult("Run", formatForTool("run", verifyResult), "tool", "bun run verify");
-    const verifyExitCode = parseRunExitCode(verifyResult);
-    if (verifyExitCode !== null && verifyExitCode !== 0) process.exitCode = 1;
   }
 }
