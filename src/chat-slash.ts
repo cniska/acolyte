@@ -40,7 +40,7 @@ const SLASH_HELP: Record<string, string> = {
   "/exit": t("chat.slash.help.exit"),
 };
 
-const SUGGEST_MAX_DISTANCE = 2;
+const SUGGEST_MAX_DISTANCE = 3;
 
 function allSlashCommands(): string[] {
   const skillCommands = getLoadedSkills().map((s) => `/${s.name}`);
@@ -137,7 +137,9 @@ export function shouldAutocompleteSlashSubmit(inputValue: string, selectedSugges
   if (!selectedSuggestion) return false;
   const trimmed = inputValue.trim();
   if (!trimmed.startsWith("/")) return false;
-  return trimmed !== selectedSuggestion && selectedSuggestion.startsWith(trimmed);
+  if (trimmed === selectedSuggestion) return false;
+  if (trimmed.length > selectedSuggestion.length) return false;
+  return true;
 }
 
 export function slashCommandHelp(command: string): string {

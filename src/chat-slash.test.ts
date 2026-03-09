@@ -31,7 +31,8 @@ describe("chat-slash helpers", () => {
 
   test("suggestSlashCommands falls back to fuzzy matching for typos", () => {
     expect(suggestSlashCommands("/stauts")).toEqual(["/status"]);
-    expect(suggestSlashCommands("/neew")).toEqual(["/new"]);
+    expect(suggestSlashCommands("/neew")).toContain("/new");
+    expect(suggestSlashCommands("/neew")[0]).toBe("/new");
     expect(suggestSlashCommands("/sesions")).toEqual(["/sessions"]);
     expect(suggestSlashCommands("/xyzxyz")).toEqual([]);
   });
@@ -56,6 +57,8 @@ describe("chat-slash helpers", () => {
   test("shouldAutocompleteSlashSubmit only intercepts unresolved slash command token", () => {
     expect(shouldAutocompleteSlashSubmit("/st", "/status")).toBe(true);
     expect(shouldAutocompleteSlashSubmit("/model p", "/model plan")).toBe(true);
+    expect(shouldAutocompleteSlashSubmit("/stauts", "/status")).toBe(true);
+    expect(shouldAutocompleteSlashSubmit("/mov", "/model verify")).toBe(true);
     expect(shouldAutocompleteSlashSubmit("/status", "/status")).toBe(false);
     expect(shouldAutocompleteSlashSubmit("/model plan", "/model plan")).toBe(false);
     expect(shouldAutocompleteSlashSubmit("/status now", "/status")).toBe(false);

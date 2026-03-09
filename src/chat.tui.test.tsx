@@ -166,6 +166,30 @@ describe("chat tui visual regression: model picker", () => {
     );
   });
 
+  test("renders model picker empty state when no matches", () => {
+    const picker = {
+      kind: "model" as const,
+      items: ["gpt-5-mini", "gpt-5.2"],
+      filtered: [],
+      query: "zzz",
+      index: 0,
+      scrollOffset: 0,
+    };
+
+    const output = renderInputPanel({ picker });
+    expect(output).toBe(
+      dedent(`
+      ────────────────────────────────────────────────────────────────────────────────────────────────
+      Model: zzz\u2588
+
+       No matches.
+
+      Type to filter · Enter to apply · Esc to close
+      ────────────────────────────────────────────────────────────────────────────────────────────────
+    `),
+    );
+  });
+
   test("renders model picker with scroll window", () => {
     const models = Array.from({ length: 12 }, (_, i) => `model-${String(i + 1).padStart(2, "0")}`);
     const picker = {

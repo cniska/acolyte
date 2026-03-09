@@ -104,6 +104,9 @@ export function renderPickerItems(
       );
     }
     case "model": {
+      if (picker.filtered.length === 0) {
+        return <Text dimColor> No matches.</Text>;
+      }
       const visible = picker.filtered.slice(picker.scrollOffset, picker.scrollOffset + PICKER_PAGE_SIZE);
       return renderPickerRows(
         visible.map((id) => ({

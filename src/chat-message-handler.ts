@@ -11,7 +11,7 @@ import {
 } from "./chat-message-handler-helpers";
 import { createMessageStreamState } from "./chat-message-handler-stream";
 import { startRemoteTaskFollowup } from "./chat-message-handler-task-followup";
-import { isKnownSlashToken } from "./chat-slash";
+import { isKnownSlashToken, suggestSlashCommands } from "./chat-slash";
 import {
   appendInputHistory,
   applyUserTurn,
@@ -78,10 +78,15 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
     input.setIsWorking?.(false);
   };
 
-  return async (raw: string): Promise<void> => {
+  const handler = async (raw: string): Promise<void> => {
     const text = raw.trim();
     if (!text || (input.isWorking && !text.startsWith("/"))) return;
-    if (text.startsWith("/") && !text.includes(" ") && !isKnownSlashToken(text)) return;
+    if (text.startsWith("/") && !text.includes(" ") && !isKnownSlashToken(text)) {
+      const corrections = suggestSlashCommands(text);
+      if (corrections.length === 1) return handler(corrections[0]);
+      input.setRows((current) => [...current, createRow("system", t("chat.command.unknown", { command: text }))]);
+      return;
+    }
     const naturalRememberDirective = resolveNaturalRememberDirective(text);
     input.setInputHistory((current) => appendInputHistory(current, text));
     input.setInputHistoryIndex(-1);
@@ -260,4 +265,5 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
       }
     }
   };
+  return handler;
 }
