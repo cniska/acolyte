@@ -21,7 +21,7 @@ const serverLockSchema = z.object({
   startedAt: isoDateTimeSchema,
 });
 
-type EnsureLocalServerInput = {
+export type EnsureLocalServerInput = {
   port: number;
   apiKey?: string;
   serverEntry: string;
@@ -29,19 +29,19 @@ type EnsureLocalServerInput = {
   timeoutMs?: number;
 };
 
-type EnsureLocalServerResult = {
+export type EnsureLocalServerResult = {
   port: number;
   pid: number;
   started: boolean;
 };
 
-type LocalServerStatus = {
+export type LocalServerStatus = {
   running: boolean;
   pid: number | null;
   port: number;
 };
 
-type StopResult = {
+export type StopResult = {
   stopped: boolean;
   pid: number | null;
 };
@@ -304,6 +304,34 @@ export async function stopAllLocalServers(input?: {
     }
   }
   return stopped;
+}
+
+export async function listRunningDaemons(input?: {
+  homeDir?: string;
+}): Promise<Array<{ port: number; pid: number; startedAt: string }>> {
+  const dir = daemonsDir(input?.homeDir);
+  let entries: string[];
+  try {
+    entries = await readdir(dir);
+  } catch {
+    return [];
+  }
+
+  const daemons: Array<{ port: number; pid: number; startedAt: string }> = [];
+  for (const entry of entries) {
+    if (!entry.endsWith(".lock") || entry.endsWith(".start.lock")) continue;
+    const port = Number(entry.replace(".lock", ""));
+    if (!Number.isInteger(port) || port <= 0) continue;
+    const lockPath = serverLockPath(port, input?.homeDir);
+    const lock = await readServerLock(lockPath);
+    if (!lock) continue;
+    if (!isProcessAlive(lock.pid)) {
+      await rm(lockPath, { force: true });
+      continue;
+    }
+    daemons.push({ port: lock.port, pid: lock.pid, startedAt: lock.startedAt });
+  }
+  return daemons.sort((a, b) => a.port - b.port);
 }
 
 export const serverDaemonInternals = {

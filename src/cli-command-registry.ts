@@ -4,14 +4,13 @@ import { newMessage } from "./chat-session";
 import { attachFileToSession, chatModeWithOptions } from "./cli-chat";
 import { configMode } from "./cli-config";
 import type { CliCommandHandler } from "./cli-contract";
-
+import { psMode, restartMode, startMode, stopMode } from "./cli-daemon";
 import { subcommandError as subcommandErrorFromHelp, subcommandHelp as subcommandHelpFromHelp } from "./cli-help";
 import { historyMode } from "./cli-history";
 import { initMode } from "./cli-init";
 import { memoryMode } from "./cli-memory";
 import { handlePrompt } from "./cli-prompt";
 import { runMode, runResourceId } from "./cli-run";
-import { serveMode } from "./cli-serve";
 import { requestLocalServerShutdown } from "./cli-server";
 import { isServerConnectionFailure, statusMode } from "./cli-status";
 import { toolMode } from "./cli-tool-mode";
@@ -22,6 +21,7 @@ import { addMemory, listMemories } from "./memory";
 import {
   apiUrlForPort,
   ensureLocalServer,
+  listRunningDaemons,
   localServerStatus,
   stopAllLocalServers,
   stopLocalServer,
@@ -54,6 +54,22 @@ async function resumeMode(args: string[]): Promise<void> {
   const resumePrefix = args[0]?.trim() || undefined;
   await chatModeWithOptions({ resumeLatest: true, resumePrefix });
 }
+
+const daemonDeps = {
+  apiKey: appConfig.server.apiKey,
+  hasHelpFlag,
+  port: appConfig.server.port,
+  printDim,
+  requestLocalServerShutdown,
+  serverEntry: `${import.meta.dir}/server.ts`,
+  subcommandError,
+  subcommandHelp,
+  ensureLocalServer,
+  listRunningDaemons,
+  localServerStatus,
+  stopLocalServer,
+  stopAllLocalServers,
+};
 
 export const commands: Record<string, CliCommandHandler> = {
   init: (args) =>
@@ -98,21 +114,10 @@ export const commands: Record<string, CliCommandHandler> = {
       subcommandError,
       subcommandHelp,
     }),
-  server: (args) =>
-    serveMode(args, {
-      apiKey: appConfig.server.apiKey,
-      hasHelpFlag,
-      port: appConfig.server.port,
-      printDim,
-      requestLocalServerShutdown,
-      serverEntry: `${import.meta.dir}/server.ts`,
-      subcommandError,
-      subcommandHelp,
-      ensureLocalServer,
-      localServerStatus,
-      stopLocalServer,
-      stopAllLocalServers,
-    }),
+  start: (args) => startMode(args, daemonDeps),
+  stop: (args) => stopMode(args, daemonDeps),
+  restart: (args) => restartMode(args, daemonDeps),
+  ps: (args) => psMode(args, daemonDeps),
   status: (args) =>
     statusMode(args, {
       apiUrlForPort,

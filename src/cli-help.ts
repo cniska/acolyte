@@ -26,11 +26,29 @@ const SUBCOMMANDS: Record<string, CliSubcommandDoc> = {
     description: t("cli.help.desc.history"),
     examples: ["acolyte history"],
   },
-  server: {
-    command: "server",
-    usage: "acolyte server [start|status|stop|restart]",
-    description: t("cli.help.desc.server"),
-    examples: ["acolyte server start", "acolyte server status", "acolyte server stop", "acolyte server restart"],
+  start: {
+    command: "start",
+    usage: "acolyte start",
+    description: t("cli.help.desc.start"),
+    examples: ["acolyte start"],
+  },
+  stop: {
+    command: "stop",
+    usage: "acolyte stop",
+    description: t("cli.help.desc.stop"),
+    examples: ["acolyte stop"],
+  },
+  restart: {
+    command: "restart",
+    usage: "acolyte restart",
+    description: t("cli.help.desc.restart"),
+    examples: ["acolyte restart"],
+  },
+  ps: {
+    command: "ps",
+    usage: "acolyte ps",
+    description: t("cli.help.desc.ps"),
+    examples: ["acolyte ps"],
   },
   status: {
     command: "status",

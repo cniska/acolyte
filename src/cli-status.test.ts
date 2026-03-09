@@ -59,6 +59,6 @@ describe("cli-status", () => {
     deps.isServerConnectionFailure = (error) => error instanceof Error && error.message.includes("Cannot reach server");
 
     await statusMode([], deps);
-    expect(lines.dim).toContain("Local server is not running. Start it with: acolyte server start");
+    expect(lines.dim).toContain("Server is not running. Start it with: acolyte start");
   });
 });

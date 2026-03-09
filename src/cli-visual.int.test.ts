@@ -96,21 +96,24 @@ describe("cli visual regression", () => {
     expect(out).toBe(
       dedent(`
       Acolyte v0.1.0
-      
+
       Usage
         acolyte
         acolyte <COMMAND> [ARGS]
-      
+
       Commands
         resume [id-prefix]  resume previous session
         run <prompt>        run a single prompt
         init [provider]     initialize provider API key
         history             show recent sessions
-        server              manage local API server
+        start               start server
+        stop                stop all servers
+        restart             restart server
+        ps                  list running servers
         status              show server status
-        memory              manage memory notes
-        config              manage local CLI config
-      
+        memory              manage memory
+        config              manage config
+
       Options
         -h, --help          print help
         -V, --version       print version
@@ -221,7 +224,7 @@ describe("cli visual regression", () => {
       const out = await run(["status"]);
       expect(out).toBe(
         dedent(`
-        Local server is not running. Start it with: acolyte server start
+        Server is not running. Start it with: acolyte start
       `),
       );
     });
@@ -346,17 +349,47 @@ describe("cli visual regression", () => {
       `),
     },
     {
-      args: ["server", "help"],
+      args: ["start", "help"],
       output: dedent(`
-        Usage: acolyte server [start|status|stop|restart]
-        
-        Description: manage local API server
-        
+        Usage: acolyte start
+
+        Description: start server
+
         Examples:
-          acolyte server start
-          acolyte server status
-          acolyte server stop
-          acolyte server restart
+          acolyte start
+      `),
+    },
+    {
+      args: ["stop", "help"],
+      output: dedent(`
+        Usage: acolyte stop
+
+        Description: stop all servers
+
+        Examples:
+          acolyte stop
+      `),
+    },
+    {
+      args: ["restart", "help"],
+      output: dedent(`
+        Usage: acolyte restart
+
+        Description: restart server
+
+        Examples:
+          acolyte restart
+      `),
+    },
+    {
+      args: ["ps", "help"],
+      output: dedent(`
+        Usage: acolyte ps
+
+        Description: list running servers
+
+        Examples:
+          acolyte ps
       `),
     },
     {
@@ -375,7 +408,7 @@ describe("cli visual regression", () => {
       output: dedent(`
         Usage: acolyte memory <list|add> [options]
         
-        Description: manage memory notes
+        Description: manage memory
         
         Examples:
           acolyte memory list
@@ -387,7 +420,7 @@ describe("cli visual regression", () => {
       output: dedent(`
         Usage: acolyte config <list|set|unset> [options]
         
-        Description: manage local CLI config
+        Description: manage config
         
         Examples:
           acolyte config list

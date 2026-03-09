@@ -55,7 +55,20 @@ async function createTestEnv(): Promise<{ home: string; project: string }> {
 describe("cli subcommand help", () => {
   test("all subcommands accept --help", async () => {
     const { home, project } = await createTestEnv();
-    const subcommands = ["init", "resume", "run", "history", "server", "status", "memory", "config", "tool"] as const;
+    const subcommands = [
+      "init",
+      "resume",
+      "run",
+      "history",
+      "start",
+      "stop",
+      "restart",
+      "ps",
+      "status",
+      "memory",
+      "config",
+      "tool",
+    ] as const;
 
     for (const subcommand of subcommands) {
       const result = runCli(home, project, subcommand, "--help");
@@ -65,13 +78,13 @@ describe("cli subcommand help", () => {
     }
   }, 10_000);
 
-  test("server help does not start server", async () => {
+  test("start help does not start server", async () => {
     const { home, project } = await createTestEnv();
-    const result = runCli(home, project, "server", "help");
+    const result = runCli(home, project, "start", "help");
     const output = `${result.stdout}\n${result.stderr}`;
 
     expect(result.exitCode).toBe(0);
-    expect(output).toContain("Usage: acolyte server");
+    expect(output).toContain("Usage: acolyte start");
     expect(output).not.toContain("Acolyte server listening");
   });
 
@@ -101,21 +114,32 @@ describe("cli subcommand help", () => {
     }
   });
 
-  test("server supports start/status/stop/restart actions", async () => {
+  test("start/stop/restart produce expected output", async () => {
     const { home, project } = await createTestEnv();
-    const startResult = runCli(home, project, "server", "start");
-    const statusResult = runCli(home, project, "server", "status");
-    const restartResult = runCli(home, project, "server", "restart");
-    const stopResult = runCli(home, project, "server", "stop");
+    const out = (r: { stdout: string; stderr: string }) => `${r.stdout}\n${r.stderr}`;
+
+    const startResult = runCli(home, project, "start");
     expect(startResult.exitCode).toBe(0);
-    expect(`${startResult.stdout}\n${startResult.stderr}`).toMatch(/(Started|already running) server on port \d+/);
-    expect(statusResult.exitCode).toBe(0);
-    expect(`${statusResult.stdout}\n${statusResult.stderr}`).toMatch(
-      /Server running on port \d+|No server running on port \d+/,
-    );
+    expect(out(startResult)).toContain("server on port 6767");
+
+    const restartResult = runCli(home, project, "restart");
     expect(restartResult.exitCode).toBe(0);
-    expect(`${restartResult.stdout}\n${restartResult.stderr}`).toMatch(/(Started|Stopped) server on port \d+/);
+    expect(out(restartResult)).toContain("server on port 6767");
+
+    const stopResult = runCli(home, project, "stop");
     expect(stopResult.exitCode).toBe(0);
-    expect(`${stopResult.stdout}\n${stopResult.stderr}`).toMatch(/(Stopped server on port \d+|No servers running)/);
+    expect(out(stopResult)).toContain("server on port 6767");
+  });
+
+  test("ps lists running daemons", async () => {
+    const { home, project } = await createTestEnv();
+    const out = (r: { stdout: string; stderr: string }) => `${r.stdout}\n${r.stderr}`;
+
+    runCli(home, project, "start");
+    const psResult = runCli(home, project, "ps");
+    expect(psResult.exitCode).toBe(0);
+    expect(out(psResult)).toContain("PORT");
+    expect(out(psResult)).toContain("6767");
+    runCli(home, project, "stop");
   });
 });

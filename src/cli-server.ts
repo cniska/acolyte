@@ -1,4 +1,3 @@
-import { t } from "./i18n";
 import { apiUrlForPort } from "./server-daemon";
 
 const LOCAL_SERVER_SHUTDOWN_TIMEOUT_MS = 4_000;
