@@ -153,8 +153,8 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
           });
           return;
         }
-        if (key.return && pickerItemCount(input.picker) > 0) {
-          void input.handlePickerSelect(input.picker);
+        if (key.return) {
+          if (pickerItemCount(input.picker) > 0) void input.handlePickerSelect(input.picker);
           return;
         }
         if (input.picker.kind === "model") {
