@@ -7,7 +7,7 @@ import {
   timeoutRecovery,
   verifyFailure,
 } from "./lifecycle-evaluators";
-import { phaseGenerate, shouldYieldNow } from "./lifecycle-generate";
+import { phaseGenerate, setMode, shouldYieldNow } from "./lifecycle-generate";
 import { defaultLifecyclePolicy, type LifecyclePolicy } from "./lifecycle-policy";
 
 const EVALUATORS: Evaluator[] = [multiMatchEditEvaluator, timeoutRecovery, autoVerifier, verifyFailure];
@@ -37,6 +37,49 @@ export function recoveryActionForError(
   policy: LifecyclePolicy = defaultLifecyclePolicy,
 ): RecoveryAction {
   return resolveRecoveryAction(input, policy.maxUnknownErrorsPerRequest);
+}
+
+type RegenGateResult =
+  | { allowed: true }
+  | { allowed: false; reason: "chain_cap" | "request_cap" | "evaluator_cap" };
+
+function regenGate(
+  ctx: RunContext,
+  evaluatorId: string,
+  evaluatorRegens: number,
+  chainRegens: number,
+): RegenGateResult {
+  if (chainRegens >= ctx.policy.maxEvaluatorChainRegenerations) {
+    ctx.regenerationLimitHit = true;
+    ctx.debug("lifecycle.eval.skipped", {
+      evaluator: evaluatorId,
+      reason: "chain_cap",
+      chain_regenerations: chainRegens,
+      chain_cap: ctx.policy.maxEvaluatorChainRegenerations,
+    });
+    return { allowed: false, reason: "chain_cap" };
+  }
+  if (ctx.regenerationCount >= ctx.policy.maxRegenerationsPerRequest) {
+    ctx.regenerationLimitHit = true;
+    ctx.debug("lifecycle.eval.skipped", {
+      evaluator: evaluatorId,
+      reason: "request_cap",
+      regeneration_count: ctx.regenerationCount,
+      regeneration_cap: ctx.policy.maxRegenerationsPerRequest,
+    });
+    return { allowed: false, reason: "request_cap" };
+  }
+  if (evaluatorRegens >= ctx.policy.maxRegenerationsPerEvaluator) {
+    ctx.regenerationLimitHit = true;
+    ctx.debug("lifecycle.eval.skipped", {
+      evaluator: evaluatorId,
+      reason: "evaluator_cap",
+      evaluator_regenerations: evaluatorRegens,
+      evaluator_cap: ctx.policy.maxRegenerationsPerEvaluator,
+    });
+    return { allowed: false, reason: "evaluator_cap" };
+  }
+  return { allowed: true };
 }
 
 export async function phaseEvaluate(ctx: RunContext, shouldYield: LifecycleInput["shouldYield"]) {
@@ -78,42 +121,11 @@ export async function phaseEvaluate(ctx: RunContext, shouldYield: LifecycleInput
       }
 
       const evaluatorRegens = regenByEvaluator.get(evaluator.id) ?? 0;
-      if (evaluatorChainRegenerations >= ctx.policy.maxEvaluatorChainRegenerations) {
-        ctx.regenerationLimitHit = true;
-        ctx.debug("lifecycle.eval.skipped", {
-          evaluator: evaluator.id,
-          reason: "chain_cap",
-          chain_regenerations: evaluatorChainRegenerations,
-          chain_cap: ctx.policy.maxEvaluatorChainRegenerations,
-        });
-        continue;
-      }
-      if (ctx.regenerationCount >= ctx.policy.maxRegenerationsPerRequest) {
-        ctx.regenerationLimitHit = true;
-        ctx.debug("lifecycle.eval.skipped", {
-          evaluator: evaluator.id,
-          reason: "request_cap",
-          regeneration_count: ctx.regenerationCount,
-          regeneration_cap: ctx.policy.maxRegenerationsPerRequest,
-        });
-        continue;
-      }
-      if (evaluatorRegens >= ctx.policy.maxRegenerationsPerEvaluator) {
-        ctx.regenerationLimitHit = true;
-        ctx.debug("lifecycle.eval.skipped", {
-          evaluator: evaluator.id,
-          reason: "evaluator_cap",
-          evaluator_regenerations: evaluatorRegens,
-          evaluator_cap: ctx.policy.maxRegenerationsPerEvaluator,
-        });
-        continue;
-      }
+      const gate = regenGate(ctx, evaluator.id, evaluatorRegens, evaluatorChainRegenerations);
+      if (!gate.allowed) continue;
 
       const saved = action.keepResult ? snapshotState(ctx) : undefined;
-      if (action.mode) {
-        ctx.mode = action.mode;
-        ctx.session.mode = action.mode;
-      }
+      if (action.mode) setMode(ctx, action.mode, evaluator.id);
 
       ctx.regenerationCount += 1;
       evaluatorChainRegenerations += 1;

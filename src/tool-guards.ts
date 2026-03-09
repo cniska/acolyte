@@ -1,4 +1,13 @@
+import { modeForTool } from "./agent-modes";
 import { INITIAL_MAX_STEPS, TOTAL_MAX_STEPS } from "./lifecycle-constants";
+import {
+  extractFindPatterns,
+  extractReadPaths,
+  extractSearchPatterns,
+  extractSearchScope,
+  includesUniversalFindPattern,
+  normalizePath,
+} from "./tool-arg-paths";
 
 export type GuardEvent = { guardId: string; toolName: string; action: "blocked" | "flag_set"; detail?: string };
 
@@ -33,75 +42,6 @@ function scopedCallLog(session: SessionContext): ToolCallRecord[] {
   const taskId = session.taskId;
   if (!taskId) return session.callLog;
   return session.callLog.filter((entry) => entry.taskId === taskId);
-}
-
-function normalizePath(p: string): string {
-  return p.replace(/\/+$/, "").replace(/^\.\//, "");
-}
-
-function extractReadPaths(args: Record<string, unknown>): string[] {
-  const paths = args.paths;
-  if (!Array.isArray(paths)) return [];
-  const out: string[] = [];
-  for (const entry of paths) {
-    if (!entry || typeof entry !== "object") continue;
-    const path = (entry as { path?: unknown }).path;
-    if (typeof path === "string" && path.trim().length > 0) out.push(normalizePath(path.trim()));
-  }
-  return out;
-}
-
-function extractSearchPatterns(args: Record<string, unknown>): string[] {
-  const normalize = (value: string): string => {
-    const trimmed = value.trim().toLowerCase();
-    const boundaryMatch = trimmed.match(/^\\b(.+)\\b$/);
-    const core = boundaryMatch?.[1]?.trim() ?? trimmed;
-    return core.replace(/^["'`](.+)["'`]$/, "$1");
-  };
-  const patterns = new Set<string>();
-  const single = args.pattern;
-  if (typeof single === "string" && single.trim().length > 0) patterns.add(normalize(single));
-  const multi = args.patterns;
-  if (Array.isArray(multi)) {
-    for (const entry of multi) {
-      if (typeof entry !== "string") continue;
-      const trimmed = normalize(entry);
-      if (trimmed.length > 0) patterns.add(trimmed);
-    }
-  }
-  return Array.from(patterns).sort();
-}
-
-function extractSearchScope(args: Record<string, unknown>): string[] {
-  const raw = args.paths;
-  if (!Array.isArray(raw) || raw.length === 0) return ["__workspace__"];
-  const scope = new Set<string>();
-  for (const entry of raw) {
-    if (typeof entry !== "string") continue;
-    const trimmed = normalizePath(entry.trim().toLowerCase());
-    if (trimmed.length > 0) scope.add(trimmed);
-  }
-  if (scope.size === 0) return ["__workspace__"];
-  return Array.from(scope).sort();
-}
-
-function extractFindPatterns(args: Record<string, unknown>): string[] {
-  const patterns = args.patterns;
-  if (!Array.isArray(patterns)) return [];
-  const normalized = new Set<string>();
-  for (const entry of patterns) {
-    if (typeof entry !== "string") continue;
-    const trimmed = entry.trim().toLowerCase();
-    if (trimmed.length > 0) normalized.add(trimmed);
-  }
-  return Array.from(normalized).sort();
-}
-
-function includesUniversalFindPattern(patterns: readonly string[]): boolean {
-  return patterns.some((pattern) => {
-    const trimmed = pattern.trim();
-    return trimmed === "*" || trimmed === "**/*";
-  });
 }
 
 function sameArray(a: readonly string[], b: readonly string[]): boolean {
@@ -227,7 +167,7 @@ const excessiveFileLoopGuard: ToolGuard = {
         ? typeof args.path === "string" && args.path.trim().length > 0
           ? [normalizePath(args.path.trim())]
           : []
-        : extractReadPaths(args);
+        : extractReadPaths(args, { normalize: true });
     if (targetPaths.length === 0) return;
     const pathCounts = new Map<string, { readCount: number; editCount: number }>();
     const countsForPath = (path: string): { readCount: number; editCount: number } => {
@@ -239,7 +179,7 @@ const excessiveFileLoopGuard: ToolGuard = {
     };
     for (const entry of scopedCallLog(session)) {
       if (entry.toolName === "read-file") {
-        for (const path of extractReadPaths(entry.args)) {
+        for (const path of extractReadPaths(entry.args, { normalize: true })) {
           countsForPath(path).readCount += 1;
         }
       } else if (entry.toolName === "edit-file" || entry.toolName === "edit-code") {
@@ -456,8 +396,21 @@ export function resetCycleStepCount(session: SessionContext, limit?: number): vo
   if (limit !== undefined) session.flags.cycleStepLimit = limit;
 }
 
+const modePromotionGuard: ToolGuard = {
+  id: "mode-promotion",
+  description: "Auto-promote plan → work when a write tool is called.",
+  appliesTo: "all",
+  check({ toolName, session }) {
+    if (session.mode !== "plan") return;
+    if (modeForTool(toolName) !== "work") return;
+    session.mode = "work";
+    session.onGuard?.({ guardId: "mode-promotion", toolName, action: "flag_set", detail: "plan-to-work" });
+  },
+};
+
 const GUARDS: ToolGuard[] = [
   stepBudgetGuard,
+  modePromotionGuard,
   duplicateConsecutiveCallGuard,
   noRewriteGuard,
   excessiveFileLoopGuard,

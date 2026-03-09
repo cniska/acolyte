@@ -2,9 +2,10 @@ import { createModeInstructions } from "./agent-instructions";
 import type { AgentMode } from "./agent-modes";
 import type { VerifyScope } from "./api";
 import type { ErrorCategory } from "./error-handling";
+import { taskScopedCallLog } from "./lifecycle-contract";
 import type { LifecycleEventName } from "./lifecycle-events";
 import type { LifecyclePolicy } from "./lifecycle-policy";
-import { taskScopedCallLog } from "./lifecycle-contract";
+import { extractReadPaths } from "./tool-arg-paths";
 import { WRITE_TOOL_SET, WRITE_TOOLS } from "./tool-groups";
 import type { SessionContext } from "./tool-guards";
 
@@ -41,17 +42,6 @@ export type Evaluator = {
   evaluate: (ctx: EvaluatorContext) => EvalAction;
 };
 
-function readPathKeys(args: Record<string, unknown>): string[] {
-  const paths = args.paths;
-  if (!Array.isArray(paths)) return [];
-  const out: string[] = [];
-  for (const entry of paths) {
-    if (!entry || typeof entry !== "object") continue;
-    const path = (entry as { path?: unknown }).path;
-    if (typeof path === "string" && path.trim().length > 0) out.push(path.trim());
-  }
-  return out;
-}
 
 function findLastEditFilePath(ctx: EvaluatorContext): string | undefined {
   const callLog = taskScopedCallLog(ctx.session, ctx.taskId);
@@ -81,7 +71,7 @@ function readPathsForCurrentTask(ctx: EvaluatorContext): string[] {
   const out = new Set<string>();
   for (const entry of taskScopedCallLog(ctx.session, ctx.taskId)) {
     if (entry.toolName === "read-file") {
-      for (const key of readPathKeys(entry.args)) out.add(key);
+      for (const key of extractReadPaths(entry.args)) out.add(key);
       continue;
     }
     if (entry.toolName === "scan-code") {

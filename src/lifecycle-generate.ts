@@ -1,7 +1,7 @@
 import type { Agent } from "./agent-contract";
 import { createAgent } from "./agent-factory";
 import { createInstructions } from "./agent-instructions";
-import { agentModes, modeForTool } from "./agent-modes";
+import { agentModes } from "./agent-modes";
 import { appConfig } from "./app-config";
 import {
   createStreamError,
@@ -115,6 +115,15 @@ export function createModeAgent(input: {
     instructions: createInstructions(input.soulPrompt, input.mode, input.workspace),
     tools: input.tools as Record<string, ToolDefinition>,
   });
+}
+
+export function setMode(ctx: RunContext, mode: RunContext["mode"], trigger?: string): void {
+  if (ctx.mode === mode) return;
+  const from = ctx.mode;
+  ctx.mode = mode;
+  ctx.session.mode = mode;
+  ctx.debug("lifecycle.mode.changed", { from, to: mode, trigger: trigger ?? null });
+  ctx.emit({ type: "status", message: `${agentModes[mode].statusText} (${ctx.model})` });
 }
 
 function ensureAgentForMode(ctx: RunContext): void {
@@ -286,15 +295,8 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
         const toolName = p.toolName;
         ctx.observedTools.add(toolName);
         ctx.toolCallStartedAt.set(p.toolCallId, { toolName, startedAtMs: Date.now() });
-        if (ctx.mode !== "verify") {
-          const inferredMode = modeForTool(toolName);
-          if (inferredMode === "work" && ctx.mode === "plan") {
-            const fromMode = ctx.mode;
-            ctx.mode = "work";
-            ctx.session.mode = "work";
-            ctx.debug("lifecycle.mode.changed", { from: fromMode, to: "work", trigger: toolName });
-            ctx.emit({ type: "status", message: `${agentModes[ctx.mode].statusText} (${ctx.model})` });
-          }
+        if (ctx.mode !== ctx.session.mode) {
+          setMode(ctx, ctx.session.mode as RunContext["mode"], toolName);
         }
         const args = (p.args ?? {}) as Record<string, unknown>;
         ctx.debug("lifecycle.tool.call", { tool: toolName, ...formatToolArgs(args) });
