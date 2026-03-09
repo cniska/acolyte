@@ -30,7 +30,7 @@ function createRunDeps(): {
       calls.attach.push(path);
     },
     createClient: () => ({}) as never,
-    createSession: () => ({ id: "sess_123", title: "run", createdAt: "", updatedAt: "", messages: [] }) as never,
+    createSession: () => ({ id: "sess_123", title: "run", createdAt: "", updatedAt: "", messages: [], tokenUsage: [] }) as never,
     cwd: () => "/tmp/work",
     ensureLocalServer: async () => ({ apiUrl: "http://127.0.0.1:6767", managed: false, started: false }),
     formatForTool: () => "formatted",
@@ -78,5 +78,29 @@ describe("cli-run", () => {
     await runMode(["--verify", "hello"], deps);
     expect(calls.runCommands).toEqual(["bun run verify"]);
     expect(calls.toolResults).toEqual(["Run"]);
+  });
+
+  test("prints token usage summary after run", async () => {
+    const { deps, calls } = createRunDeps();
+    const session = {
+      id: "sess_123",
+      title: "run",
+      createdAt: "",
+      updatedAt: "",
+      messages: [],
+      tokenUsage: [
+        { id: "msg_1", usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 }, modelCalls: 2 },
+        { id: "msg_2", usage: { promptTokens: 200, completionTokens: 80, totalTokens: 280 }, modelCalls: 1 },
+      ],
+    };
+    deps.createSession = () => session as never;
+    await runMode(["do something"], deps);
+    const tokenLine = calls.dims.find((d) => d.startsWith("run:"));
+    expect(tokenLine).toBeDefined();
+    expect(tokenLine).toContain("430 tokens");
+    expect(tokenLine).toContain("prompt 300");
+    expect(tokenLine).toContain("completion 130");
+    expect(tokenLine).toContain("3 model calls");
+    expect(tokenLine).toContain("2 turns");
   });
 });

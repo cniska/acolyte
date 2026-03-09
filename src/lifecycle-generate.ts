@@ -247,7 +247,12 @@ function completeToolCall(ctx: RunContext, toolCallId: string, toolName: string)
   const started = ctx.toolCallStartedAt.get(toolCallId);
   if (!started) return;
   const durationMs = Date.now() - started.startedAtMs;
-  ctx.debug("lifecycle.tool.result", { tool: toolName, tool_call_id: toolCallId, duration_ms: durationMs, is_error: false });
+  ctx.debug("lifecycle.tool.result", {
+    tool: toolName,
+    tool_call_id: toolCallId,
+    duration_ms: durationMs,
+    is_error: false,
+  });
   ctx.toolCallStartedAt.delete(toolCallId);
 }
 

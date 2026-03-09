@@ -505,7 +505,9 @@ describe("chat message handler stream behavior", () => {
     const { handleMessage, rows, session } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
-        events: [{ type: "text-delta", text: "This is a long streamed answer that should not be truncated at finalize." }],
+        events: [
+          { type: "text-delta", text: "This is a long streamed answer that should not be truncated at finalize." },
+        ],
         reply: async () => ({
           model: "gpt-5-mini",
           output: finalOutput,
@@ -515,7 +517,9 @@ describe("chat message handler stream behavior", () => {
 
     await handleMessage("hello");
 
-    expect(session.messages.some((message) => message.role === "assistant" && message.content === finalOutput)).toBe(true);
+    expect(session.messages.some((message) => message.role === "assistant" && message.content === finalOutput)).toBe(
+      true,
+    );
   });
 
   test("suppresses guard-blocked tool attempts", async () => {

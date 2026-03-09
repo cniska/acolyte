@@ -176,10 +176,29 @@ export async function runMode(args: string[], deps: RunModeDeps): Promise<void> 
     }
   }
 
+  const startMs = Date.now();
   const success = await handlePrompt(parsed.prompt, session, client, {
     resourceId: runResourceId(session.id),
     workspace: parsed.workspace,
   });
+  const durationMs = Date.now() - startMs;
+
+  const totals = session.tokenUsage.reduce(
+    (acc, e) => ({
+      prompt: acc.prompt + e.usage.promptTokens,
+      completion: acc.completion + e.usage.completionTokens,
+      total: acc.total + e.usage.totalTokens,
+      modelCalls: acc.modelCalls + (e.modelCalls ?? 1),
+    }),
+    { prompt: 0, completion: 0, total: 0, modelCalls: 0 },
+  );
+  const durationSec = (durationMs / 1000).toFixed(1);
+  if (totals.total > 0) {
+    printDim(
+      `run: ${durationSec}s, ${totals.total} tokens (prompt ${totals.prompt}, completion ${totals.completion}), ${totals.modelCalls} model calls, ${session.tokenUsage.length} turns`,
+    );
+  }
+
   if (!success) {
     process.exitCode = 1;
     return;
