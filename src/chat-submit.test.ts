@@ -10,7 +10,7 @@ describe("chat submit helpers", () => {
       slashSuggestions: [],
       slashSuggestionIndex: 0,
     });
-    expect(result).toEqual({ kind: "autocomplete", value: "review @src/chat-ui.tsx" });
+    expect(result).toEqual({ kind: "autocomplete", value: "review @src/chat-ui.tsx " });
   });
 
   test("autocompletes unresolved slash command on submit", () => {

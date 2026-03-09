@@ -86,7 +86,7 @@ describe("chat-ui helpers", () => {
   });
 
   test("applyAtSuggestion replaces only active @token", () => {
-    expect(applyAtSuggestion("@src/cl", "src/cli.ts")).toBe("@src/cli.ts");
+    expect(applyAtSuggestion("@src/cl", "src/cli.ts")).toBe("@src/cli.ts ");
     expect(applyAtSuggestion("review @src/cl now", "src/cli.ts")).toBe("review @src/cli.ts now");
   });
 

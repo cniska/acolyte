@@ -34,7 +34,7 @@ describe("chat keybindings helpers", () => {
       slashSuggestionIndex: 0,
       isTab: true,
     });
-    expect(result).toBe("review @src/chat-ui.tsx");
+    expect(result).toBe("review @src/chat-ui.tsx ");
   });
 
   test("resolveTabAutocomplete applies slash suggestion when eligible", () => {

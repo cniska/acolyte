@@ -97,7 +97,7 @@ export function applyAtSuggestion(inputValue: string, suggestion: string): strin
   if (!token) return inputValue;
   const before = inputValue.slice(0, token.start);
   const after = inputValue.slice(token.end);
-  const spacedAfter = after.startsWith(" ") || after.length === 0 ? after : ` ${after}`;
+  const spacedAfter = after.startsWith(" ") ? after : after.length === 0 ? " " : ` ${after}`;
   return `${before}@${suggestion}${spacedAfter}`;
 }
 
