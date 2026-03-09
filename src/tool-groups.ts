@@ -1,4 +1,6 @@
-export const WRITE_TOOLS: readonly string[] = ["edit-code", "edit-file", "create-file", "delete-file"];
+import { writeToolIds } from "./tool-registry";
+
+export const WRITE_TOOLS: readonly string[] = writeToolIds();
 export const READ_TOOLS: readonly string[] = ["read-file"];
 export const SEARCH_TOOLS: readonly string[] = [
   "find-files",

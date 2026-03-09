@@ -3,6 +3,7 @@ import type { LifecycleInput, RunContext, SavedRegenerationState } from "./lifec
 import {
   autoVerifier,
   type Evaluator,
+  modeTransition,
   multiMatchEditEvaluator,
   timeoutRecovery,
   verifyFailure,
@@ -10,7 +11,7 @@ import {
 import { phaseGenerate, setMode, shouldYieldNow } from "./lifecycle-generate";
 import { defaultLifecyclePolicy, type LifecyclePolicy } from "./lifecycle-policy";
 
-const EVALUATORS: Evaluator[] = [multiMatchEditEvaluator, timeoutRecovery, autoVerifier, verifyFailure];
+const EVALUATORS: Evaluator[] = [multiMatchEditEvaluator, modeTransition, timeoutRecovery, autoVerifier, verifyFailure];
 
 function snapshotState(ctx: RunContext): SavedRegenerationState {
   return {
@@ -39,9 +40,7 @@ export function recoveryActionForError(
   return resolveRecoveryAction(input, policy.maxUnknownErrorsPerRequest);
 }
 
-type RegenGateResult =
-  | { allowed: true }
-  | { allowed: false; reason: "chain_cap" | "request_cap" | "evaluator_cap" };
+type RegenGateResult = { allowed: true } | { allowed: false; reason: "chain_cap" | "request_cap" | "evaluator_cap" };
 
 function regenGate(
   ctx: RunContext,

@@ -92,6 +92,13 @@ export function toolIdsForMode(mode: AgentMode): string[] {
     .sort();
 }
 
+export function writeToolIds(): string[] {
+  return Object.values(toolDefinitionsById)
+    .filter((tool) => tool.modes.includes("work") && !tool.modes.includes("plan"))
+    .map((tool) => tool.id)
+    .sort();
+}
+
 export function toolsForAgent(options?: { workspace?: string; onOutput?: ToolOutputListener; taskId?: string }): {
   tools: Toolset;
   session: SessionContext;

@@ -42,7 +42,6 @@ export type Evaluator = {
   evaluate: (ctx: EvaluatorContext) => EvalAction;
 };
 
-
 function findLastEditFilePath(ctx: EvaluatorContext): string | undefined {
   const callLog = taskScopedCallLog(ctx.session, ctx.taskId);
   for (let i = callLog.length - 1; i >= 0; i -= 1) {
@@ -155,6 +154,41 @@ export const verifyFailure: Evaluator = {
       prompt: `${ctx.agentInput}\n\nVerification found issues:\n${ctx.result.text}\n\nFix the issues above, then stop.`,
       mode: "work",
     };
+  },
+};
+
+export const modeTransition: Evaluator = {
+  id: "mode-transition",
+  evaluate(ctx) {
+    if (!ctx.policy.planPhase) return { type: "done" };
+    if (!ctx.result) return { type: "done" };
+
+    if (ctx.mode === "plan") {
+      // Plan → Work: plan produced text and used tools, ready to implement
+      if (!ctx.result.text.trim()) return { type: "done" };
+      if (ctx.observedTools.size === 0) return { type: "done" };
+      return {
+        type: "regenerate",
+        prompt: `${ctx.agentInput}\n\nYour analysis above is complete. Now implement the changes.`,
+        mode: "work",
+        keepResult: true,
+      };
+    }
+
+    if (ctx.mode === "work") {
+      // Work → Plan: work failed without writing anything, re-analyze
+      if (!ctx.lastError) return { type: "done" };
+      const usedWriteTools = WRITE_TOOLS.some((t) => ctx.observedTools.has(t));
+      if (usedWriteTools) return { type: "done" };
+      return {
+        type: "regenerate",
+        prompt: `${ctx.agentInput}\n\nWork failed without writing changes (last error: ${ctx.lastError}). Re-analyze the problem.`,
+        mode: "plan",
+        cycleLimit: ctx.policy.planMaxSteps,
+      };
+    }
+
+    return { type: "done" };
   },
 };
 

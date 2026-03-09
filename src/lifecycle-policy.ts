@@ -1,9 +1,11 @@
 import {
   INITIAL_MAX_STEPS,
   MAX_EVALUATOR_CHAIN_REGENERATIONS,
+  MAX_PLAN_STEPS,
   MAX_REGENERATIONS_PER_EVALUATOR,
   MAX_REGENERATIONS_PER_REQUEST,
   MAX_UNKNOWN_ERRORS_PER_REQUEST,
+  PLAN_PHASE_ENABLED,
   STEP_TIMEOUT_MS,
   TIMEOUT_RECOVERY_MAX_STEPS,
   TIMEOUT_RECOVERY_TIMEOUT_MS,
@@ -18,6 +20,8 @@ export type LifecyclePolicy = {
   timeoutRecoveryMaxSteps: number;
   timeoutRecoveryTimeoutMs: number;
   verifyMaxSteps: number;
+  planPhase: boolean;
+  planMaxSteps: number;
   maxUnknownErrorsPerRequest: number;
   maxRegenerationsPerRequest: number;
   maxRegenerationsPerEvaluator: number;
@@ -31,6 +35,8 @@ export const defaultLifecyclePolicy: LifecyclePolicy = {
   timeoutRecoveryMaxSteps: TIMEOUT_RECOVERY_MAX_STEPS,
   timeoutRecoveryTimeoutMs: TIMEOUT_RECOVERY_TIMEOUT_MS,
   verifyMaxSteps: VERIFY_MAX_STEPS,
+  planPhase: PLAN_PHASE_ENABLED,
+  planMaxSteps: MAX_PLAN_STEPS,
   maxUnknownErrorsPerRequest: MAX_UNKNOWN_ERRORS_PER_REQUEST,
   maxRegenerationsPerRequest: MAX_REGENERATIONS_PER_REQUEST,
   maxRegenerationsPerEvaluator: MAX_REGENERATIONS_PER_EVALUATOR,
