@@ -24,7 +24,7 @@ Establish baseline project quality and repeatable validation.
 Make local setup and core interaction flows dependable.
 
 - [x] Setup and diagnostics work (`/status`, `/tokens`, `/sessions`)
-- [x] Permission flow (read/write modes) is stable
+- [x] ~~Permission flow (read/write modes)~~ replaced by per-tool permissions and mode grants
 - [x] Recovery paths handle errors gracefully
 - [x] Assistant can complete simple feature slices with verify green
 
@@ -82,6 +82,7 @@ Consolidate core UX quality and extension-ready seams before MVP release.
 - [x] Visual regression coverage for TUI/CLI output contracts
 - [x] Integration suite split (`*.int.test`) with dedicated `test:int` workflow
 - [ ] Full codebase audit and cleanup pass (architecture, reliability, UX consistency, tests)
+- [ ] Config-driven permissions (user-level grant/deny for tool permission categories)
 - [ ] Extension-ready seams in core (interface-first boundaries for lifecycle/tools/guards/tasks/transports), without shipping plugin runtime
 - [x] Skill execution parity with tools (stream/output contracts, typed compaction, context budgeting, debug events)
 - [x] Queue delivery policy controls (`one-at-a-time` vs `all`) for steering/follow-up (Pi-inspired)
