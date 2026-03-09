@@ -14,7 +14,7 @@ export type EvalAction =
       type: "regenerate";
       prompt: string;
       mode?: AgentMode;
-      maxSteps?: number;
+      cycleLimit?: number;
       timeoutMs?: number;
       keepResult?: boolean;
     };
@@ -128,7 +128,7 @@ export const timeoutRecovery: Evaluator = {
     return {
       type: "regenerate",
       prompt: ctx.agentInput,
-      maxSteps: ctx.policy.timeoutRecoveryMaxSteps,
+      cycleLimit: ctx.policy.timeoutRecoveryMaxSteps,
       timeoutMs: ctx.policy.timeoutRecoveryTimeoutMs,
     };
   },
@@ -144,7 +144,7 @@ export const autoVerifier: Evaluator = {
         type: "regenerate",
         prompt: scopedVerifyPrompt(ctx),
         mode: "verify",
-        maxSteps: ctx.policy.verifyMaxSteps,
+        cycleLimit: ctx.policy.verifyMaxSteps,
         keepResult: true,
       };
     }

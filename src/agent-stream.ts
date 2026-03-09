@@ -53,7 +53,6 @@ export function createAgentStream(
 
     let fullText = "";
     const allToolCalls: unknown[] = [];
-    let step = 0;
 
     let streamController!: ReadableStreamDefaultController<StreamChunk>;
     const fullStream = new ReadableStream<StreamChunk>({
@@ -63,8 +62,7 @@ export function createAgentStream(
     });
 
     const resultPromise = (async (): Promise<GenerateResult> => {
-      while (step < options.maxSteps) {
-        step += 1;
+      while (true) {
         const streamResult = await model.doStream({
           prompt: messages,
           temperature: options.temperature,

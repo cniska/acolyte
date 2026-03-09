@@ -27,6 +27,7 @@ import type {
 import type { StreamErrorDetail } from "./stream-error";
 import type { ToolDefinition } from "./tool-contract";
 import { extractToolErrorCode, LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
+import { resetCycleStepCount } from "./tool-guards";
 import type { Toolset } from "./tool-registry";
 
 function formatToolArgs(args: Record<string, unknown>): Record<string, string | number | boolean> {
@@ -149,17 +150,18 @@ export async function phaseGenerate(ctx: RunContext, prompt: string, opts: Gener
   ctx.lastErrorTool = undefined;
   ctx.sawEditFileMultiMatchError = false;
   ensureAgentForMode(ctx);
+  resetCycleStepCount(ctx.session, opts.cycleLimit);
   ctx.generationAttempt += 1;
   ctx.emit({ type: "status", message: `${agentModes[ctx.mode].statusText} (${ctx.model})` });
   ctx.debug("lifecycle.generate.start", {
     model: ctx.model,
     mode: ctx.mode,
-    max_steps: opts.maxSteps,
+    cycle_limit: opts.cycleLimit ?? null,
   });
 
   try {
     ctx.modelCallCount += 1;
-    ctx.result = await streamWithTimeout(ctx, prompt, opts.maxSteps, opts.timeoutMs);
+    ctx.result = await streamWithTimeout(ctx, prompt, opts.timeoutMs);
     ctx.debug("lifecycle.generate.done", {
       model: ctx.model,
       tool_calls: ctx.result.toolCalls.length,
@@ -180,12 +182,7 @@ export async function phaseGenerate(ctx: RunContext, prompt: string, opts: Gener
   }
 }
 
-async function streamWithTimeout(
-  ctx: RunContext,
-  prompt: string,
-  maxSteps: number,
-  timeoutMs: number,
-): Promise<GenerateResult> {
+async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: number): Promise<GenerateResult> {
   return await new Promise<GenerateResult>((resolve, reject) => {
     let settled = false;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -205,7 +202,6 @@ async function streamWithTimeout(
 
     ctx.agent
       .stream(prompt, {
-        maxSteps,
         toolChoice: "auto",
         ...(typeof temperature === "number" ? { temperature } : {}),
       })

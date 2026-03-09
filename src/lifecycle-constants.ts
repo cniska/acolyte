@@ -1,3 +1,4 @@
+export const TOTAL_MAX_STEPS = 200;
 export const INITIAL_MAX_STEPS = 80;
 export const TIMEOUT_RECOVERY_MAX_STEPS = 8;
 export const TIMEOUT_RECOVERY_TIMEOUT_MS = 45_000;

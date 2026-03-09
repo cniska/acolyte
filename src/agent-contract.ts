@@ -16,7 +16,6 @@ export type Agent = {
 };
 
 export type StreamOptions = {
-  maxSteps: number;
   toolChoice?: "auto" | "none" | "required";
   temperature?: number;
 };

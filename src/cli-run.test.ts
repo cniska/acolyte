@@ -30,7 +30,8 @@ function createRunDeps(): {
       calls.attach.push(path);
     },
     createClient: () => ({}) as never,
-    createSession: () => ({ id: "sess_123", title: "run", createdAt: "", updatedAt: "", messages: [], tokenUsage: [] }) as never,
+    createSession: () =>
+      ({ id: "sess_123", title: "run", createdAt: "", updatedAt: "", messages: [], tokenUsage: [] }) as never,
     cwd: () => "/tmp/work",
     ensureLocalServer: async () => ({ apiUrl: "http://127.0.0.1:6767", managed: false, started: false }),
     formatForTool: () => "formatted",

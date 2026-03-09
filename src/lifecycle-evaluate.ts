@@ -122,7 +122,7 @@ export async function phaseEvaluate(ctx: RunContext, shouldYield: LifecycleInput
         evaluator: evaluator.id,
         action: "regenerate",
         mode: ctx.mode,
-        max_steps: action.maxSteps ?? ctx.policy.initialMaxSteps,
+        cycle_limit: action.cycleLimit ?? ctx.policy.initialMaxSteps,
         timeout_ms: action.timeoutMs ?? ctx.policy.stepTimeoutMs,
         keep_result: Boolean(action.keepResult),
         regeneration_count: ctx.regenerationCount,
@@ -130,7 +130,7 @@ export async function phaseEvaluate(ctx: RunContext, shouldYield: LifecycleInput
       });
 
       await phaseGenerate(ctx, action.prompt, {
-        maxSteps: action.maxSteps ?? ctx.policy.initialMaxSteps,
+        cycleLimit: action.cycleLimit ?? ctx.policy.initialMaxSteps,
         timeoutMs: action.timeoutMs ?? ctx.policy.stepTimeoutMs,
       });
       if (shouldYieldNow(ctx, shouldYield)) break;

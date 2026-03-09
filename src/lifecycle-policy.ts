@@ -7,10 +7,12 @@ import {
   STEP_TIMEOUT_MS,
   TIMEOUT_RECOVERY_MAX_STEPS,
   TIMEOUT_RECOVERY_TIMEOUT_MS,
+  TOTAL_MAX_STEPS,
   VERIFY_MAX_STEPS,
 } from "./lifecycle-constants";
 
 export type LifecyclePolicy = {
+  totalMaxSteps: number;
   initialMaxSteps: number;
   stepTimeoutMs: number;
   timeoutRecoveryMaxSteps: number;
@@ -23,6 +25,7 @@ export type LifecyclePolicy = {
 };
 
 export const defaultLifecyclePolicy: LifecyclePolicy = {
+  totalMaxSteps: TOTAL_MAX_STEPS,
   initialMaxSteps: INITIAL_MAX_STEPS,
   stepTimeoutMs: STEP_TIMEOUT_MS,
   timeoutRecoveryMaxSteps: TIMEOUT_RECOVERY_MAX_STEPS,

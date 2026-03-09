@@ -157,13 +157,14 @@ export async function runLifecycle(input: LifecycleInput) {
   const ctx = createRunContext(input, { debug, classifiedMode, model, prepared, emit, policy });
   ctxRef = ctx;
   attachToolOutputHandler(ctx);
+  ctx.session.flags.totalStepLimit = policy.totalMaxSteps;
 
   ctx.debug("lifecycle.start", { task_id: input.taskId ?? null, mode: classifiedMode, model });
   if (ctx.promptUsage.activeSkillName) {
     emit({ type: "status", message: `skill:${ctx.promptUsage.activeSkillName}` });
   }
   await phaseGenerate(ctx, ctx.agentInput, {
-    maxSteps: policy.initialMaxSteps,
+    cycleLimit: policy.initialMaxSteps,
     timeoutMs: policy.stepTimeoutMs,
   });
 

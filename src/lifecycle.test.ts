@@ -267,7 +267,7 @@ describe("timeoutRecovery", () => {
     const action = timeoutRecovery.evaluate(ctx);
     expect(action.type).toBe("regenerate");
     if (action.type === "regenerate") {
-      expect(action.maxSteps).toBe(3);
+      expect(action.cycleLimit).toBe(3);
       expect(action.timeoutMs).toBe(9_000);
     }
   });

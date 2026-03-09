@@ -1,5 +1,49 @@
 import { describe, expect, test } from "bun:test";
-import { createSessionContext, recordCall, runGuards } from "./tool-guards";
+import { createSessionContext, recordCall, resetCycleStepCount, runGuards } from "./tool-guards";
+
+describe("step-budget guard", () => {
+  test("blocks when cycle step count reaches cycle limit", () => {
+    const session = createSessionContext();
+    session.flags.cycleStepLimit = 2;
+    session.flags.cycleStepCount = 2;
+    expect(() => runGuards({ toolName: "read-file", args: {}, session })).toThrow(/Cycle step budget exhausted/);
+  });
+
+  test("blocks when total call log reaches total limit", () => {
+    const session = createSessionContext();
+    session.flags.totalStepLimit = 3;
+    for (let i = 0; i < 3; i += 1) {
+      recordCall(session, "read-file", {});
+    }
+    expect(() => runGuards({ toolName: "read-file", args: {}, session })).toThrow(/Total step budget exhausted/);
+  });
+
+  test("increments cycle step count on each allowed call", () => {
+    const session = createSessionContext();
+    session.flags.cycleStepLimit = 10;
+    session.flags.cycleStepCount = 0;
+    runGuards({ toolName: "read-file", args: { paths: [{ path: "a.ts" }] }, session });
+    expect(session.flags.cycleStepCount).toBe(1);
+  });
+
+  test("resetCycleStepCount resets counter and optionally sets limit", () => {
+    const session = createSessionContext();
+    session.flags.cycleStepCount = 42;
+    session.flags.cycleStepLimit = 80;
+    resetCycleStepCount(session, 30);
+    expect(session.flags.cycleStepCount).toBe(0);
+    expect(session.flags.cycleStepLimit).toBe(30);
+  });
+
+  test("resetCycleStepCount without limit only resets counter", () => {
+    const session = createSessionContext();
+    session.flags.cycleStepCount = 10;
+    session.flags.cycleStepLimit = 80;
+    resetCycleStepCount(session);
+    expect(session.flags.cycleStepCount).toBe(0);
+    expect(session.flags.cycleStepLimit).toBe(80);
+  });
+});
 
 describe("no-rewrite guard", () => {
   test("allows delete when path was NOT read", () => {

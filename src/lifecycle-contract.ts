@@ -56,7 +56,7 @@ export type PhasePrepareResult = {
   agentInput: string;
   promptUsage: PromptUsage;
 };
-export type GenerateOptions = { maxSteps: number; timeoutMs: number };
+export type GenerateOptions = { cycleLimit?: number; timeoutMs: number };
 export type SavedRegenerationState = {
   result: GenerateResult | undefined;
   lastError: string | undefined;

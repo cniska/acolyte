@@ -1,3 +1,5 @@
+import { INITIAL_MAX_STEPS, TOTAL_MAX_STEPS } from "./lifecycle-constants";
+
 export type GuardEvent = { guardId: string; toolName: string; action: "blocked" | "flag_set"; detail?: string };
 
 export type ToolCallRecord = { toolName: string; args: Record<string, unknown>; taskId?: string; mode?: string };
@@ -427,7 +429,35 @@ const verifyRanGuard: ToolGuard = {
   },
 };
 
+const stepBudgetGuard: ToolGuard = {
+  id: "step-budget",
+  description: "Enforce per-cycle and total step limits.",
+  appliesTo: "all",
+  check({ toolName, session }) {
+    const cycleLimit = (session.flags.cycleStepLimit as number | undefined) ?? INITIAL_MAX_STEPS;
+    const cycleCount = (session.flags.cycleStepCount as number | undefined) ?? 0;
+    const totalLimit = (session.flags.totalStepLimit as number | undefined) ?? TOTAL_MAX_STEPS;
+    const totalCount = session.callLog.length;
+
+    if (totalCount >= totalLimit) {
+      session.onGuard?.({ guardId: "step-budget", toolName, action: "blocked", detail: "total-limit" });
+      throw new Error(`Total step budget exhausted (${totalLimit} tool calls). Commit what you have.`);
+    }
+    if (cycleCount >= cycleLimit) {
+      session.onGuard?.({ guardId: "step-budget", toolName, action: "blocked", detail: "cycle-limit" });
+      throw new Error(`Cycle step budget exhausted (${cycleLimit} tool calls). Wrap up current phase.`);
+    }
+    session.flags.cycleStepCount = cycleCount + 1;
+  },
+};
+
+export function resetCycleStepCount(session: SessionContext, limit?: number): void {
+  session.flags.cycleStepCount = 0;
+  if (limit !== undefined) session.flags.cycleStepLimit = limit;
+}
+
 const GUARDS: ToolGuard[] = [
+  stepBudgetGuard,
   duplicateConsecutiveCallGuard,
   noRewriteGuard,
   excessiveFileLoopGuard,
