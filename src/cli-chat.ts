@@ -2,13 +2,12 @@ import { stdout as output } from "node:process";
 import { appConfig } from "./app-config";
 import { newMessage } from "./chat-session";
 import { runInkChat } from "./chat-ui";
-import { formatLocalServerReadyMessage, resolveChatApiUrl, shouldAutoStartLocalServerForChat } from "./cli-server";
 import { resolveCliVersion } from "./cli-version";
 import { createClient } from "./client";
 import { nowIso } from "./datetime";
 import { buildFileContext } from "./file-context";
 import { t } from "./i18n";
-import { ensureLocalServer } from "./server-daemon";
+import { apiUrlForPort, ensureLocalServer } from "./server-daemon";
 import type { Session, SessionState } from "./session-contract";
 import { acquireSessionLock, releaseSessionLock } from "./session-lock";
 import { createSession, readStore, writeStore } from "./storage";
@@ -83,17 +82,14 @@ export async function chatModeWithOptions(options: { resumeLatest: boolean; resu
     process.exitCode = 1;
     return;
   }
-  let apiUrl = resolveChatApiUrl(appConfig.server.apiUrl, appConfig.server.port);
-  if (shouldAutoStartLocalServerForChat(appConfig.server.apiUrl)) {
-    const daemon = await ensureLocalServer({
-      apiUrl,
-      port: appConfig.server.port,
-      apiKey: appConfig.server.apiKey,
-      serverEntry: `${import.meta.dir}/server.ts`,
-    });
-    apiUrl = daemon.apiUrl;
-    printDim(formatLocalServerReadyMessage(daemon));
-  }
+  const daemon = await ensureLocalServer({
+    port: appConfig.server.port,
+    apiKey: appConfig.server.apiKey,
+    serverEntry: `${import.meta.dir}/server.ts`,
+  });
+  const apiUrl = apiUrlForPort(appConfig.server.port);
+  if (daemon.started) printDim(t("cli.server.started", { port: daemon.port, pid: daemon.pid }));
+  else printDim(t("cli.server.already_running", { port: daemon.port, pid: daemon.pid }));
   const client = createClient({ apiUrl });
   const persist = async (): Promise<void> => {
     await writeStore(store);

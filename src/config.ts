@@ -136,7 +136,6 @@ function serializeToml(config: Config): string {
   if (typeof config.memoryBudgetTokens === "number") lines.push(`memoryBudgetTokens = ${config.memoryBudgetTokens}`);
   if (config.memorySources)
     lines.push(`memorySources = [${config.memorySources.map((value) => JSON.stringify(value)).join(", ")}]`);
-  if (config.apiUrl) lines.push(`apiUrl = ${JSON.stringify(config.apiUrl)}`);
   if (config.openaiBaseUrl) lines.push(`openaiBaseUrl = ${JSON.stringify(config.openaiBaseUrl)}`);
   if (config.anthropicBaseUrl) lines.push(`anthropicBaseUrl = ${JSON.stringify(config.anthropicBaseUrl)}`);
   if (config.googleBaseUrl) lines.push(`googleBaseUrl = ${JSON.stringify(config.googleBaseUrl)}`);
@@ -169,7 +168,6 @@ function resolveConfig(config: Config): ResolvedConfig {
     distillMaxOutputTokens: config.distillMaxOutputTokens ?? DEFAULT_CONFIG.distillMaxOutputTokens,
     memoryBudgetTokens: config.memoryBudgetTokens ?? DEFAULT_CONFIG.memoryBudgetTokens,
     memorySources: config.memorySources ?? [...DEFAULT_CONFIG.memorySources],
-    apiUrl: config.apiUrl ?? `http://127.0.0.1:${port}`,
     openaiBaseUrl: config.openaiBaseUrl ?? DEFAULT_CONFIG.openaiBaseUrl,
     anthropicBaseUrl: config.anthropicBaseUrl ?? DEFAULT_CONFIG.anthropicBaseUrl,
     googleBaseUrl: config.googleBaseUrl,

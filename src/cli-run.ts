@@ -3,17 +3,12 @@ import type { appConfig as appConfigType } from "./app-config";
 import type { newMessage as newMessageType } from "./chat-session";
 import type { attachFileToSession as attachFileToSessionType } from "./cli-chat";
 import type { handlePrompt as handlePromptType } from "./cli-prompt";
-import type {
-  formatLocalServerReadyMessage as formatLocalServerReadyMessageType,
-  resolveChatApiUrl as resolveChatApiUrlType,
-  shouldAutoStartLocalServerForChat as shouldAutoStartLocalServerForChatType,
-} from "./cli-server";
 import type { createClient as createClientType } from "./client";
 import type { readResolvedConfigSync as readResolvedConfigSyncType } from "./config";
 
 import { t } from "./i18n";
 import type { ResourceId } from "./resource-id";
-import type { ensureLocalServer as ensureLocalServerType } from "./server-daemon";
+import type { apiUrlForPort as apiUrlForPortType, ensureLocalServer as ensureLocalServerType } from "./server-daemon";
 import type { createSession as createSessionType } from "./storage";
 
 const RUN_MODE_SYSTEM_PROMPT =
@@ -27,25 +22,22 @@ const runArgsSchema = z.object({
 type ParsedRunArgs = { files: string[]; prompt: string; workspace?: string };
 
 type RunModeDeps = {
+  apiUrlForPort: typeof apiUrlForPortType;
   appModel: typeof appConfigType.model;
   attachFileToSession: typeof attachFileToSessionType;
   createClient: typeof createClientType;
   createSession: typeof createSessionType;
   ensureLocalServer: typeof ensureLocalServerType;
-  formatLocalServerReadyMessage: typeof formatLocalServerReadyMessageType;
   hasHelpFlag: (args: string[]) => boolean;
   handlePrompt: typeof handlePromptType;
   newMessage: typeof newMessageType;
   printDim: (message: string) => void;
   printError: (message: string) => void;
   readResolvedConfigSync: typeof readResolvedConfigSyncType;
-  resolveChatApiUrl: typeof resolveChatApiUrlType;
   runResourceId: (sessionId: string) => ResourceId;
   serverApiKey: typeof appConfigType.server.apiKey;
-  serverApiUrl: typeof appConfigType.server.apiUrl;
   serverEntry: string;
   serverPort: typeof appConfigType.server.port;
-  shouldAutoStartLocalServerForChat: typeof shouldAutoStartLocalServerForChatType;
   subcommandError: (name: string, message?: string) => void;
   subcommandHelp: (name: string) => void;
 };
@@ -83,25 +75,22 @@ function parseRunArgs(args: string[]): ParsedRunArgs {
 
 export async function runMode(args: string[], deps: RunModeDeps): Promise<void> {
   const {
+    apiUrlForPort,
     appModel,
     attachFileToSession,
     createClient,
     createSession,
     ensureLocalServer,
-    formatLocalServerReadyMessage,
     hasHelpFlag,
     handlePrompt,
     newMessage,
     printDim,
     printError,
     readResolvedConfigSync,
-    resolveChatApiUrl,
     runResourceId,
     serverApiKey,
-    serverApiUrl,
     serverEntry,
     serverPort,
-    shouldAutoStartLocalServerForChat,
     subcommandError,
     subcommandHelp,
   } = deps;
@@ -127,17 +116,14 @@ export async function runMode(args: string[], deps: RunModeDeps): Promise<void> 
   const resolvedConfig = readResolvedConfigSync();
   const session = createSession(appModel);
   session.messages.push(newMessage("system", RUN_MODE_SYSTEM_PROMPT));
-  let apiUrl = resolveChatApiUrl(serverApiUrl, serverPort);
-  if (shouldAutoStartLocalServerForChat(serverApiUrl)) {
-    const daemon = await ensureLocalServer({
-      apiUrl,
-      port: serverPort,
-      apiKey: serverApiKey,
-      serverEntry,
-    });
-    apiUrl = daemon.apiUrl;
-    printDim(formatLocalServerReadyMessage(daemon));
-  }
+  const daemon = await ensureLocalServer({
+    port: serverPort,
+    apiKey: serverApiKey,
+    serverEntry,
+  });
+  const apiUrl = apiUrlForPort(serverPort);
+  if (daemon.started) printDim(t("cli.server.started", { port: daemon.port, pid: daemon.pid }));
+  else printDim(t("cli.server.already_running", { port: daemon.port, pid: daemon.pid }));
   const client = createClient({
     apiUrl,
     replyTimeoutMs: resolvedConfig.replyTimeoutMs,

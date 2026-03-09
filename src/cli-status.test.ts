@@ -9,6 +9,7 @@ function createStatusDeps(): {
 } {
   const lines = { dim: [] as string[], err: [] as string[], help: [] as string[], subError: [] as string[] };
   const deps: StatusDeps = {
+    apiUrlForPort: (port) => `http://127.0.0.1:${port}`,
     createClient: () =>
       ({
         status: async () => ({
@@ -22,15 +23,11 @@ function createStatusDeps(): {
     formatStatusOutput: () => "status-ok",
     hasHelpFlag: (args) => args.includes("--help"),
     isServerConnectionFailure: () => false,
-    localServerStatus: async () => ({ running: false, apiUrl: null, managed: false, pid: null }),
+    localServerStatus: async () => ({ running: false, pid: null, port: 6767 }),
     printDim: (line) => lines.dim.push(line),
     printError: (line) => lines.err.push(line),
-    resolveChatApiUrl: () => "http://127.0.0.1:6767",
-    resolveLocalDaemonApiUrl: () => "http://127.0.0.1:6767",
     serverApiKey: "key",
-    serverApiUrl: "http://127.0.0.1:6767",
     serverPort: 6767,
-    shouldAutoStartLocalServerForChat: () => true,
     subcommandError: (name) => lines.subError.push(name),
     subcommandHelp: (name) => lines.help.push(name),
   };

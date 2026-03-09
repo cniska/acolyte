@@ -31,7 +31,6 @@ const VALID_CONFIG_KEYS = [
   "distillMaxOutputTokens",
   "memoryBudgetTokens",
   "memorySources",
-  "apiUrl",
   "openaiBaseUrl",
   "anthropicBaseUrl",
   "googleBaseUrl",

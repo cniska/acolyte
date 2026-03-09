@@ -108,16 +108,14 @@ describe("cli subcommand help", () => {
     const restartResult = runCli(home, project, "server", "restart");
     const stopResult = runCli(home, project, "server", "stop");
     expect(startResult.exitCode).toBe(0);
-    expect(`${startResult.stdout}\n${startResult.stderr}`).toMatch(/(Started|Using( external)?) local server at /);
+    expect(`${startResult.stdout}\n${startResult.stderr}`).toMatch(/(Started|already running) server on port \d+/);
     expect(statusResult.exitCode).toBe(0);
-    expect(`${statusResult.stdout}\n${statusResult.stderr}`).toMatch(/Local server running \((pid( \d+)?|external)\)/);
+    expect(`${statusResult.stdout}\n${statusResult.stderr}`).toMatch(
+      /Server running on port \d+|No server running on port \d+/,
+    );
     expect(restartResult.exitCode).toBe(0);
-    expect(`${restartResult.stdout}\n${restartResult.stderr}`).toMatch(
-      /(Started|Using( external)?) local server at |Unable to stop local server at/,
-    );
+    expect(`${restartResult.stdout}\n${restartResult.stderr}`).toMatch(/(Started|Stopped) server on port \d+/);
     expect(stopResult.exitCode).toBe(0);
-    expect(`${stopResult.stdout}\n${stopResult.stderr}`).toMatch(
-      /(Stopped local server\.|Local server is not running\.|Unable to stop local server at)/,
-    );
+    expect(`${stopResult.stdout}\n${stopResult.stderr}`).toMatch(/(Stopped server on port \d+|No servers running)/);
   });
 });

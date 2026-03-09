@@ -8,14 +8,8 @@ afterEach(() => {
 });
 
 describe("createClient", () => {
-  test("falls back to configured/default apiUrl when explicit apiUrl is blank", async () => {
-    globalThis.WebSocket = class FailingWebSocket {
-      constructor() {
-        throw new TypeError("Unable to connect. Is the computer able to access the url?");
-      }
-    } as unknown as typeof WebSocket;
-    const client = createClient({ apiUrl: "" });
-    await expect(client.status()).rejects.toThrow("Cannot reach server at ");
+  test("requires apiUrl", () => {
+    expect(() => createClient({ apiUrl: "" })).toThrow();
   });
 
   test("rpc transport mode creates rpc client", () => {

@@ -69,7 +69,6 @@ export interface Config {
   distillMaxOutputTokens?: number;
   memoryBudgetTokens?: number;
   memorySources?: MemorySourceId[];
-  apiUrl?: string;
   openaiBaseUrl?: string;
   anthropicBaseUrl?: string;
   googleBaseUrl?: string;
@@ -95,7 +94,6 @@ export interface ResolvedConfig {
   distillMaxOutputTokens: number;
   memoryBudgetTokens: number;
   memorySources: MemorySourceId[];
-  apiUrl?: string;
   openaiBaseUrl: string;
   anthropicBaseUrl: string;
   googleBaseUrl?: string;
@@ -121,7 +119,6 @@ export const CONFIG_SET_SCHEMAS: Record<keyof Config, z.ZodTypeAny> = {
   distillMaxOutputTokens: parseIntegerSchema(100, MAX_DISTILL_MAX_OUTPUT_TOKENS),
   memoryBudgetTokens: parseIntegerSchema(0, MAX_MEMORY_BUDGET_TOKENS),
   memorySources: parseMemorySourcesSchema,
-  apiUrl: nonEmptyStringSchema,
   openaiBaseUrl: nonEmptyStringSchema,
   anthropicBaseUrl: nonEmptyStringSchema,
   googleBaseUrl: nonEmptyStringSchema,
@@ -177,7 +174,6 @@ export function toConfig(input: Record<string, unknown>): Config {
     ),
     memoryBudgetTokens: parseField(parseIntegerSchema(0, MAX_MEMORY_BUDGET_TOKENS), input.memoryBudgetTokens),
     memorySources: parseField(parseMemorySourcesSchema, input.memorySources),
-    apiUrl: parseField(nonEmptyStringSchema, input.apiUrl),
     openaiBaseUrl: parseField(nonEmptyStringSchema, input.openaiBaseUrl),
     anthropicBaseUrl: parseField(nonEmptyStringSchema, input.anthropicBaseUrl),
     googleBaseUrl: parseField(nonEmptyStringSchema, input.googleBaseUrl),

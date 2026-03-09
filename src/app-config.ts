@@ -9,7 +9,6 @@ export const appConfig = {
   server: {
     port: fileConfig.port,
     apiKey: env.ACOLYTE_API_KEY,
-    apiUrl: fileConfig.apiUrl,
     transportMode: fileConfig.transportMode,
     replyTimeoutMs: fileConfig.replyTimeoutMs,
   },

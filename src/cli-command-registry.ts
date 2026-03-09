@@ -12,20 +12,20 @@ import { memoryMode } from "./cli-memory";
 import { handlePrompt } from "./cli-prompt";
 import { runMode, runResourceId } from "./cli-run";
 import { serveMode } from "./cli-serve";
-import {
-  formatLocalServerReadyMessage,
-  requestLocalServerShutdown,
-  resolveChatApiUrl,
-  resolveLocalDaemonApiUrl,
-  shouldAutoStartLocalServerForChat,
-} from "./cli-server";
+import { requestLocalServerShutdown } from "./cli-server";
 import { isServerConnectionFailure, statusMode } from "./cli-status";
 import { toolMode } from "./cli-tool-mode";
 import { createClient } from "./client";
 import { readConfig, readConfigForScope, readResolvedConfigSync, setConfigValue, unsetConfigValue } from "./config";
 
 import { addMemory, listMemories } from "./memory";
-import { ensureLocalServer, localServerStatus, stopLocalServer } from "./server-daemon";
+import {
+  apiUrlForPort,
+  ensureLocalServer,
+  localServerStatus,
+  stopAllLocalServers,
+  stopLocalServer,
+} from "./server-daemon";
 import { formatStatusOutput as formatStatusOutputShared } from "./status-format";
 import { createSession, readStore } from "./storage";
 import { printDim, printError } from "./ui";
@@ -71,25 +71,22 @@ export const commands: Record<string, CliCommandHandler> = {
   resume: resumeMode,
   run: (args) =>
     runMode(args, {
+      apiUrlForPort,
       appModel: appConfig.model,
       attachFileToSession,
       createClient,
       createSession,
       ensureLocalServer,
-      formatLocalServerReadyMessage,
       hasHelpFlag,
       handlePrompt,
       newMessage,
       printDim,
       printError,
       readResolvedConfigSync,
-      resolveChatApiUrl,
       runResourceId,
       serverApiKey: appConfig.server.apiKey,
-      serverApiUrl: appConfig.server.apiUrl,
       serverEntry: `${import.meta.dir}/server.ts`,
       serverPort: appConfig.server.port,
-      shouldAutoStartLocalServerForChat,
       subcommandError,
       subcommandHelp,
     }),
@@ -108,18 +105,17 @@ export const commands: Record<string, CliCommandHandler> = {
       port: appConfig.server.port,
       printDim,
       requestLocalServerShutdown,
-      resolveLocalDaemonApiUrl,
-      serverApiUrl: appConfig.server.apiUrl,
       serverEntry: `${import.meta.dir}/server.ts`,
       subcommandError,
       subcommandHelp,
       ensureLocalServer,
-      formatLocalServerReadyMessage,
       localServerStatus,
       stopLocalServer,
+      stopAllLocalServers,
     }),
   status: (args) =>
     statusMode(args, {
+      apiUrlForPort,
       createClient,
       formatStatusOutput: formatStatusOutputShared,
       hasHelpFlag,
@@ -127,12 +123,8 @@ export const commands: Record<string, CliCommandHandler> = {
       localServerStatus,
       printDim,
       printError,
-      resolveChatApiUrl,
-      resolveLocalDaemonApiUrl,
       serverApiKey: appConfig.server.apiKey,
-      serverApiUrl: appConfig.server.apiUrl,
       serverPort: appConfig.server.port,
-      shouldAutoStartLocalServerForChat,
       subcommandError,
       subcommandHelp,
     }),

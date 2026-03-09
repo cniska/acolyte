@@ -20,8 +20,6 @@ function usage(): void {
 }
 
 function baseUrl(): string {
-  const configured = appConfig.server.apiUrl?.trim();
-  if (configured) return configured.replace(/\/$/, "");
   return `http://localhost:${appConfig.server.port}`;
 }
 

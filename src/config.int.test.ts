@@ -22,14 +22,14 @@ describe("config store", () => {
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(
       join(dataDir, "config.toml"),
-      ['model = "anthropic/claude-sonnet-4"', 'apiUrl = "http://localhost:6767"'].join("\n"),
+      ['model = "anthropic/claude-sonnet-4"', "port = 7777"].join("\n"),
       "utf8",
     );
 
     const loaded = await readConfig({ homeDir: home, cwd: home });
     expect(loaded).toEqual({
       model: "anthropic/claude-sonnet-4",
-      apiUrl: "http://localhost:6767",
+      port: 7777,
     });
   });
 
@@ -39,16 +39,14 @@ describe("config store", () => {
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(
       join(dataDir, "config.toml"),
-      ['model = "openai/gpt-5-mini"', 'apiUrl = "http://localhost:6767"', 'apiKey = "secret-should-be-ignored"'].join(
-        "\n",
-      ),
+      ['model = "openai/gpt-5-mini"', "port = 7777", 'apiKey = "secret-should-be-ignored"'].join("\n"),
       "utf8",
     );
 
     const loaded = await readConfig({ homeDir: home, cwd: home });
     expect(loaded).toEqual({
       model: "openai/gpt-5-mini",
-      apiUrl: "http://localhost:6767",
+      port: 7777,
     });
   });
 
@@ -69,14 +67,14 @@ describe("config store", () => {
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(
       join(dataDir, "config.json"),
-      JSON.stringify({ model: "openai/gpt-5-mini", apiUrl: "http://localhost:6767" }, null, 2),
+      JSON.stringify({ model: "openai/gpt-5-mini", port: 7777 }, null, 2),
       "utf8",
     );
 
     const loaded = await readConfig({ homeDir: home, cwd: home });
     expect(loaded).toEqual({
       model: "openai/gpt-5-mini",
-      apiUrl: "http://localhost:6767",
+      port: 7777,
     });
   });
 
@@ -107,26 +105,22 @@ describe("config store", () => {
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(join(dataDir, "config.toml"), 'model = "openai/gpt-5-mini"\n', "utf8");
 
-    await setConfigValue("apiUrl", "http://localhost:6767", { homeDir: home, cwd: home });
+    await setConfigValue("port", "7777", { homeDir: home, cwd: home });
     const rawToml = readFileSync(join(dataDir, "config.toml"), "utf8");
     expect(rawToml).toContain('model = "openai/gpt-5-mini"');
-    expect(rawToml).toContain('apiUrl = "http://localhost:6767"');
+    expect(rawToml).toContain("port = 7777");
   });
 
   test("unsetConfigValue removes field from TOML when config.toml exists", async () => {
     const home = createDir("acolyte-config-home-");
     const dataDir = join(home, ".acolyte");
     mkdirSync(dataDir, { recursive: true });
-    writeFileSync(
-      join(dataDir, "config.toml"),
-      'model = "openai/gpt-5-mini"\napiUrl = "http://localhost:6767"\n',
-      "utf8",
-    );
+    writeFileSync(join(dataDir, "config.toml"), 'model = "openai/gpt-5-mini"\nport = 7777\n', "utf8");
 
-    await unsetConfigValue("apiUrl", { homeDir: home, cwd: home });
+    await unsetConfigValue("port", { homeDir: home, cwd: home });
     const rawToml = readFileSync(join(dataDir, "config.toml"), "utf8");
     expect(rawToml).toContain('model = "openai/gpt-5-mini"');
-    expect(rawToml).not.toContain("apiUrl =");
+    expect(rawToml).not.toContain("port =");
   });
 
   test("writeConfig sanitizes unexpected secret fields before persisting", async () => {
@@ -138,14 +132,14 @@ describe("config store", () => {
     await writeConfig(
       {
         model: "openai/gpt-5-mini",
-        apiUrl: "http://localhost:6767",
+        port: 7777,
         ...({ apiKey: "secret-should-not-persist" } as unknown as Record<string, string>),
-      } as unknown as { model: string; apiUrl: string; apiKey: string },
+      } as unknown as { model: string; port: number; apiKey: string },
       { homeDir: home, cwd: home },
     );
     const rawToml = readFileSync(join(dataDir, "config.toml"), "utf8");
     expect(rawToml).toContain('model = "openai/gpt-5-mini"');
-    expect(rawToml).toContain('apiUrl = "http://localhost:6767"');
+    expect(rawToml).toContain("port = 7777");
     expect(rawToml).not.toContain("apiKey");
   });
 
@@ -158,7 +152,7 @@ describe("config store", () => {
     await writeConfig(
       {
         model: "openai/gpt-5-mini",
-        apiUrl: "http://localhost:6767",
+        port: 7777,
       },
       { homeDir: home, cwd: home },
     );
@@ -166,7 +160,7 @@ describe("config store", () => {
     expect(existsSync(join(dataDir, "config.toml"))).toBe(true);
     const rawToml = readFileSync(join(dataDir, "config.toml"), "utf8");
     expect(rawToml).toContain('model = "openai/gpt-5-mini"');
-    expect(rawToml).toContain('apiUrl = "http://localhost:6767"');
+    expect(rawToml).toContain("port = 7777");
   });
 
   test("reads non-secret runtime knobs from config.toml", () => {
@@ -179,7 +173,6 @@ describe("config store", () => {
         "port = 7777",
         'locale = "en"',
         'model = "openai/gpt-5-mini"',
-        'apiUrl = "http://localhost:6767"',
         'openaiBaseUrl = "https://openai.example.com/v1"',
         'anthropicBaseUrl = "https://anthropic.example.com"',
         'googleBaseUrl = "https://google.example.com"',
@@ -336,16 +329,12 @@ describe("config store", () => {
     mkdirSync(userDataDir, { recursive: true });
     mkdirSync(projectDataDir, { recursive: true });
 
-    writeFileSync(
-      join(userDataDir, "config.toml"),
-      ['apiUrl = "http://localhost:6767"', 'model = "openai/gpt-5-mini"'].join("\n"),
-      "utf8",
-    );
+    writeFileSync(join(userDataDir, "config.toml"), ["port = 7777", 'model = "openai/gpt-5-mini"'].join("\n"), "utf8");
     writeFileSync(join(projectDataDir, "config.toml"), 'model = "anthropic/claude-sonnet-4"\n', "utf8");
 
     const loaded = await readConfig({ homeDir: home, cwd: project });
     expect(loaded.model).toBe("anthropic/claude-sonnet-4");
-    expect(loaded.apiUrl).toBe("http://localhost:6767");
+    expect(loaded.port).toBe(7777);
   });
 
   test("setConfigValue writes to project scope without mutating user scope", async () => {
@@ -415,14 +404,14 @@ describe("config store", () => {
     mkdirSync(userDataDir, { recursive: true });
     mkdirSync(projectDataDir, { recursive: true });
 
-    writeFileSync(join(userDataDir, "config.toml"), 'apiUrl = "http://user.local"\n', "utf8");
-    writeFileSync(join(projectDataDir, "config.toml"), 'apiUrl = "http://project.local"\n', "utf8");
+    writeFileSync(join(userDataDir, "config.toml"), "port = 6767\n", "utf8");
+    writeFileSync(join(projectDataDir, "config.toml"), "port = 7777\n", "utf8");
 
-    await unsetConfigValue("apiUrl", { homeDir: home, cwd: project, scope: "project" });
+    await unsetConfigValue("port", { homeDir: home, cwd: project, scope: "project" });
 
     const userToml = readFileSync(join(userDataDir, "config.toml"), "utf8");
     const projectToml = readFileSync(join(projectDataDir, "config.toml"), "utf8");
-    expect(userToml).toContain('apiUrl = "http://user.local"');
-    expect(projectToml).not.toContain("apiUrl =");
+    expect(userToml).toContain("port = 6767");
+    expect(projectToml).not.toContain("port =");
   });
 });

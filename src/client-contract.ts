@@ -9,7 +9,7 @@ import type { TaskId, TaskRecord } from "./task-contract";
 import { toolOutputSchema } from "./tool-output-content";
 
 export interface ClientOptions {
-  apiUrl?: string;
+  apiUrl: string;
   apiKey?: string;
   replyTimeoutMs?: number;
   transportMode?: TransportMode;

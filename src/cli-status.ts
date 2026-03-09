@@ -1,15 +1,11 @@
 import type { appConfig as appConfigType } from "./app-config";
-import type {
-  resolveChatApiUrl as resolveChatApiUrlType,
-  resolveLocalDaemonApiUrl as resolveLocalDaemonApiUrlType,
-  shouldAutoStartLocalServerForChat as shouldAutoStartLocalServerForChatType,
-} from "./cli-server";
 import type { createClient as createClientType } from "./client";
 import { t } from "./i18n";
-import type { localServerStatus as localServerStatusType } from "./server-daemon";
+import type { apiUrlForPort as apiUrlForPortType, localServerStatus as localServerStatusType } from "./server-daemon";
 import type { formatStatusOutput as formatStatusOutputType } from "./status-format";
 
 type StatusModeDeps = {
+  apiUrlForPort: typeof apiUrlForPortType;
   createClient: typeof createClientType;
   formatStatusOutput: typeof formatStatusOutputType;
   hasHelpFlag: (args: string[]) => boolean;
@@ -17,12 +13,8 @@ type StatusModeDeps = {
   localServerStatus: typeof localServerStatusType;
   printDim: (message: string) => void;
   printError: (message: string) => void;
-  resolveChatApiUrl: typeof resolveChatApiUrlType;
-  resolveLocalDaemonApiUrl: typeof resolveLocalDaemonApiUrlType;
   serverApiKey: typeof appConfigType.server.apiKey;
-  serverApiUrl: typeof appConfigType.server.apiUrl;
   serverPort: typeof appConfigType.server.port;
-  shouldAutoStartLocalServerForChat: typeof shouldAutoStartLocalServerForChatType;
   subcommandError: (name: string, message?: string) => void;
   subcommandHelp: (name: string) => void;
 };
@@ -34,6 +26,7 @@ export function isServerConnectionFailure(error: unknown): boolean {
 
 export async function statusMode(args: string[], deps: StatusModeDeps): Promise<void> {
   const {
+    apiUrlForPort,
     createClient,
     formatStatusOutput,
     hasHelpFlag,
@@ -41,12 +34,8 @@ export async function statusMode(args: string[], deps: StatusModeDeps): Promise<
     localServerStatus,
     printDim,
     printError,
-    resolveChatApiUrl,
-    resolveLocalDaemonApiUrl,
     serverApiKey,
-    serverApiUrl,
     serverPort,
-    shouldAutoStartLocalServerForChat,
     subcommandError,
     subcommandHelp,
   } = deps;
@@ -58,17 +47,14 @@ export async function statusMode(args: string[], deps: StatusModeDeps): Promise<
     subcommandError("status");
     return;
   }
-  const apiUrl = resolveChatApiUrl(serverApiUrl, serverPort);
-  const client = createClient({
-    apiUrl,
-  });
+  const apiUrl = apiUrlForPort(serverPort);
+  const client = createClient({ apiUrl });
   try {
     const status = await client.status();
     printDim(formatStatusOutput(status));
   } catch (error) {
-    if (shouldAutoStartLocalServerForChat(serverApiUrl) && isServerConnectionFailure(error)) {
-      const localApiUrl = resolveLocalDaemonApiUrl(serverApiUrl, serverPort);
-      const localStatus = await localServerStatus({ apiKey: serverApiKey, apiUrl: localApiUrl });
+    if (isServerConnectionFailure(error)) {
+      const localStatus = await localServerStatus({ port: serverPort, apiKey: serverApiKey });
       if (!localStatus.running) {
         printDim(t("cli.status.local_start_hint"));
         return;

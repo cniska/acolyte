@@ -48,7 +48,7 @@ const SUBCOMMANDS: Record<string, CliSubcommandDoc> = {
     command: "config",
     usage: "acolyte config <list|set|unset> [options]",
     description: t("cli.help.desc.config"),
-    examples: ["acolyte config list", "acolyte config set model gpt-5-mini", "acolyte config unset apiUrl"],
+    examples: ["acolyte config list", "acolyte config set model gpt-5-mini", "acolyte config unset port"],
   },
   tool: {
     command: "tool",

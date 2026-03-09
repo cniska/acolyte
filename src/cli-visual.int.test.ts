@@ -14,6 +14,9 @@ async function withDualTransportChatServer<T>(fn: (baseUrl: string) => Promise<T
     port: 0,
     fetch(request, srv) {
       const url = new URL(request.url);
+      if (url.pathname === "/v1/status") {
+        return Response.json({ ok: true, protocol_version: "1" });
+      }
       if (url.pathname === "/v1/chat/stream") {
         const body = `data: ${JSON.stringify({ type: "done", reply })}\n\n`;
         return new Response(body, {
@@ -214,7 +217,7 @@ describe("cli visual regression", () => {
 
   test("status shows local-server hint when loopback endpoint is unavailable", async () => {
     await withCliTestEnv(async ({ run }) => {
-      await run(["config", "set", "apiUrl", "http://127.0.0.1:9"]);
+      await run(["config", "set", "port", "9"]);
       const out = await run(["status"]);
       expect(out).toBe(
         dedent(`
@@ -260,7 +263,8 @@ describe("cli visual regression", () => {
   test("status shows formatted fields on success", async () => {
     await withDualTransportChatServer(async (baseUrl) => {
       await withCliTestEnv(async ({ run }) => {
-        await run(["config", "set", "apiUrl", baseUrl]);
+        const port = new URL(baseUrl).port;
+        await run(["config", "set", "port", port]);
         const out = await run(["status"]);
         expect(out).toBe(
           dedent(`
@@ -284,7 +288,8 @@ describe("cli visual regression", () => {
   test("run output is stable over rpc transport", async () => {
     await withDualTransportChatServer(async (baseUrl) => {
       await withCliTestEnv(async ({ run }) => {
-        await run(["config", "set", "apiUrl", baseUrl]);
+        const port = new URL(baseUrl).port;
+        await run(["config", "set", "port", port]);
         await run(["config", "set", "transportMode", "rpc"]);
         const output = normalizeRunOutput(await run(["run", "hello transport parity"]));
         expect(output).toContain("Transport parity ok.");
@@ -387,7 +392,7 @@ describe("cli visual regression", () => {
         Examples:
           acolyte config list
           acolyte config set model gpt-5-mini
-          acolyte config unset apiUrl
+          acolyte config unset port
       `),
     },
     {

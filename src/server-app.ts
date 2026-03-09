@@ -16,7 +16,7 @@ import { createId } from "./short-id";
 import type { TaskId, TaskState, TaskTransitionReason } from "./task-contract";
 import { TaskRegistry } from "./task-registry";
 
-const PORT = appConfig.server.port;
+const PORT = process.env.PORT ? Number(process.env.PORT) : appConfig.server.port;
 const API_KEY = appConfig.server.apiKey;
 const OPENAI_API_KEY = appConfig.openai.apiKey;
 const SUPPRESSED_STDERR_PREFIX = "Upstream LLM API error from";

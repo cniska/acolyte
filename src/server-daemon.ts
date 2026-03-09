@@ -1,7 +1,7 @@
 import { closeSync, openSync } from "node:fs";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { z } from "zod";
 import { type IsoDateTimeString, isoDateTimeSchema } from "./datetime";
 import { PROTOCOL_VERSION } from "./protocol";
@@ -11,20 +11,17 @@ const HEALTHCHECK_TIMEOUT_MS = 1_200;
 
 type ServerLock = {
   pid: number;
-  apiUrl: string;
   port: number;
   startedAt: IsoDateTimeString;
 };
 
 const serverLockSchema = z.object({
   pid: z.number().int().positive(),
-  apiUrl: z.string().trim().min(1),
   port: z.number().int().positive(),
   startedAt: isoDateTimeSchema,
 });
 
 type EnsureLocalServerInput = {
-  apiUrl: string;
   port: number;
   apiKey?: string;
   serverEntry: string;
@@ -33,32 +30,40 @@ type EnsureLocalServerInput = {
 };
 
 type EnsureLocalServerResult = {
-  apiUrl: string;
+  port: number;
+  pid: number;
   started: boolean;
-  managed: boolean;
 };
 
 type LocalServerStatus = {
   running: boolean;
   pid: number | null;
-  apiUrl: string | null;
-  managed: boolean;
+  port: number;
 };
 
-function daemonDir(homeDir = homedir()): string {
-  return join(homeDir, ".acolyte");
+type StopResult = {
+  stopped: boolean;
+  pid: number | null;
+};
+
+export function apiUrlForPort(port: number): string {
+  return `http://127.0.0.1:${port}`;
 }
 
-function serverLockPath(homeDir = homedir()): string {
-  return join(daemonDir(homeDir), "server.lock");
+function daemonsDir(homeDir = homedir()): string {
+  return join(homeDir, ".acolyte", "daemons");
 }
 
-function startupLockPath(homeDir = homedir()): string {
-  return join(daemonDir(homeDir), "server.start.lock");
+function serverLockPath(port: number, homeDir = homedir()): string {
+  return join(daemonsDir(homeDir), `${port}.lock`);
 }
 
-function serverLogPath(homeDir = homedir()): string {
-  return join(daemonDir(homeDir), "server.log");
+function startupLockPath(port: number, homeDir = homedir()): string {
+  return join(daemonsDir(homeDir), `${port}.start.lock`);
+}
+
+function serverLogPath(port: number, homeDir = homedir()): string {
+  return join(daemonsDir(homeDir), `${port}.log`);
 }
 
 function parseServerLock(raw: string): ServerLock | null {
@@ -82,7 +87,7 @@ async function readServerLock(path: string): Promise<ServerLock | null> {
 }
 
 async function writeServerLock(path: string, lock: ServerLock): Promise<void> {
-  await mkdir(dirname(path), { recursive: true });
+  await mkdir(join(path, ".."), { recursive: true });
   await writeFile(path, JSON.stringify(lock), "utf8");
 }
 
@@ -127,7 +132,7 @@ async function waitForHealthyServer(apiUrl: string, apiKey: string | undefined, 
 }
 
 async function tryAcquireStartupLock(path: string): Promise<boolean> {
-  await mkdir(dirname(path), { recursive: true });
+  await mkdir(join(path, ".."), { recursive: true });
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
       await writeFile(path, String(process.pid), { flag: "wx" });
@@ -160,52 +165,48 @@ async function clearStaleStartupLock(path: string): Promise<boolean> {
   return true;
 }
 
+/** Remove legacy global server.lock from pre-per-port versions. */
+async function cleanupLegacyLock(homeDir = homedir()): Promise<void> {
+  await rm(join(homeDir, ".acolyte", "server.lock"), { force: true });
+  await rm(join(homeDir, ".acolyte", "server.start.lock"), { force: true });
+}
+
 export async function ensureLocalServer(input: EnsureLocalServerInput): Promise<EnsureLocalServerResult> {
-  const apiUrl = input.apiUrl;
-  const timeoutMs = input.timeoutMs ?? SERVER_START_TIMEOUT_MS;
-  const lockPath = serverLockPath(input.homeDir);
-  const startLockPath = startupLockPath(input.homeDir);
+  const { port, apiKey, serverEntry, homeDir, timeoutMs: inputTimeoutMs } = input;
+  const apiUrl = apiUrlForPort(port);
+  const timeoutMs = inputTimeoutMs ?? SERVER_START_TIMEOUT_MS;
+  const lockPath = serverLockPath(port, homeDir);
+  const startLockPath = startupLockPath(port, homeDir);
+
+  await cleanupLegacyLock(homeDir);
 
   const lock = await readServerLock(lockPath);
   if (lock) {
-    if (!isProcessAlive(lock.pid)) await rm(lockPath, { force: true });
-    else {
-      const lockHealthy = await isServerHealthy(lock.apiUrl, input.apiKey);
-      if (!lockHealthy) await rm(lockPath, { force: true });
-      else if (lock.apiUrl === apiUrl) return { apiUrl, started: false, managed: true };
-      else if (!(await isServerHealthy(apiUrl, input.apiKey))) {
-        // Replace the old managed daemon only when switching to a different, currently-unhealthy target.
-        if (lock.pid !== process.pid) {
-          try {
-            process.kill(lock.pid, "SIGTERM");
-          } catch {
-            // Best effort; stale lock cleanup still proceeds.
-          }
-        }
-        await rm(lockPath, { force: true });
-      }
+    if (!isProcessAlive(lock.pid)) {
+      await rm(lockPath, { force: true });
+    } else if (await isServerHealthy(apiUrl, apiKey)) {
+      return { port, pid: lock.pid, started: false };
+    } else {
+      await rm(lockPath, { force: true });
     }
   }
 
-  if (await isServerHealthy(apiUrl, input.apiKey)) return { apiUrl, started: false, managed: false };
+  if (await isServerHealthy(apiUrl, apiKey)) {
+    return { port, pid: 0, started: false };
+  }
 
   const startupClaimed = await tryAcquireStartupLock(startLockPath);
   if (!startupClaimed) {
-    await waitForHealthyServer(apiUrl, input.apiKey, timeoutMs);
+    await waitForHealthyServer(apiUrl, apiKey, timeoutMs);
     const waitedLock = await readServerLock(lockPath);
-    const managed =
-      !!waitedLock &&
-      waitedLock.apiUrl === apiUrl &&
-      isProcessAlive(waitedLock.pid) &&
-      (await isServerHealthy(apiUrl, input.apiKey));
-    return { apiUrl, started: false, managed };
+    return { port, pid: waitedLock?.pid ?? 0, started: false };
   }
 
-  const logPath = serverLogPath(input.homeDir);
-  await mkdir(dirname(logPath), { recursive: true });
+  const logPath = serverLogPath(port, homeDir);
+  await mkdir(join(logPath, ".."), { recursive: true });
   const logFd = openSync(logPath, "a");
-  const proc = Bun.spawn([process.execPath, "run", input.serverEntry], {
-    env: { ...process.env },
+  const proc = Bun.spawn([process.execPath, "run", serverEntry], {
+    env: { ...process.env, PORT: String(port) },
     stdout: logFd,
     stderr: logFd,
     detached: true,
@@ -214,14 +215,13 @@ export async function ensureLocalServer(input: EnsureLocalServerInput): Promise<
   proc.unref();
 
   try {
-    await waitForHealthyServer(apiUrl, input.apiKey, timeoutMs);
+    await waitForHealthyServer(apiUrl, apiKey, timeoutMs);
     await writeServerLock(lockPath, {
       pid: proc.pid,
-      apiUrl,
-      port: input.port,
+      port,
       startedAt: new Date().toISOString(),
     });
-    return { apiUrl, started: true, managed: true };
+    return { port, pid: proc.pid, started: true };
   } catch (error) {
     proc.kill();
     await proc.exited.catch(() => {});
@@ -231,52 +231,83 @@ export async function ensureLocalServer(input: EnsureLocalServerInput): Promise<
   }
 }
 
-export async function localServerStatus(input?: {
-  homeDir?: string;
+export async function localServerStatus(input: {
+  port: number;
   apiKey?: string;
-  apiUrl?: string;
+  homeDir?: string;
 }): Promise<LocalServerStatus> {
-  const fallbackToTargetStatus = async (): Promise<LocalServerStatus> => {
-    if (input?.apiUrl && (await isServerHealthy(input.apiUrl, input.apiKey)))
-      return { running: true, pid: null, apiUrl: input.apiUrl, managed: false };
-    return { running: false, pid: null, apiUrl: null, managed: false };
-  };
-
-  const lockPath = serverLockPath(input?.homeDir);
+  const { port, apiKey, homeDir } = input;
+  const apiUrl = apiUrlForPort(port);
+  const lockPath = serverLockPath(port, homeDir);
   const lock = await readServerLock(lockPath);
-  if (!lock) return fallbackToTargetStatus();
-  if (!isProcessAlive(lock.pid)) {
-    await rm(lockPath, { force: true });
-    return fallbackToTargetStatus();
+
+  if (lock) {
+    if (!isProcessAlive(lock.pid)) {
+      await rm(lockPath, { force: true });
+    } else if (await isServerHealthy(apiUrl, apiKey)) {
+      return { running: true, pid: lock.pid, port };
+    } else {
+      await rm(lockPath, { force: true });
+    }
   }
-  if (!(await isServerHealthy(lock.apiUrl, input?.apiKey))) {
-    await rm(lockPath, { force: true });
-    return fallbackToTargetStatus();
+
+  if (await isServerHealthy(apiUrl, apiKey)) {
+    return { running: true, pid: null, port };
   }
-  if (input?.apiUrl && lock.apiUrl !== input.apiUrl) return fallbackToTargetStatus();
-  return { running: true, pid: lock.pid, apiUrl: lock.apiUrl, managed: true };
+
+  return { running: false, pid: null, port };
 }
 
-export async function stopLocalServer(input?: { homeDir?: string; apiKey?: string }): Promise<boolean> {
-  const lockPath = serverLockPath(input?.homeDir);
+export async function stopLocalServer(input: { port: number; apiKey?: string; homeDir?: string }): Promise<StopResult> {
+  const { port, apiKey, homeDir } = input;
+  const apiUrl = apiUrlForPort(port);
+  const lockPath = serverLockPath(port, homeDir);
   const lock = await readServerLock(lockPath);
-  if (!lock) return false;
-  const healthy = await isServerHealthy(lock.apiUrl, input?.apiKey);
+
+  if (!lock) return { stopped: false, pid: null };
+
+  const healthy = await isServerHealthy(apiUrl, apiKey);
   if (!healthy) {
     await rm(lockPath, { force: true });
-    return false;
+    return { stopped: false, pid: null };
   }
+
   try {
     if (isProcessAlive(lock.pid)) process.kill(lock.pid, "SIGTERM");
   } catch {
     // Ignore; lock cleanup still proceeds.
   }
   await rm(lockPath, { force: true });
-  return true;
+  return { stopped: true, pid: lock.pid };
+}
+
+export async function stopAllLocalServers(input?: {
+  apiKey?: string;
+  homeDir?: string;
+}): Promise<Array<{ port: number; pid: number }>> {
+  const dir = daemonsDir(input?.homeDir);
+  let entries: string[];
+  try {
+    entries = await readdir(dir);
+  } catch {
+    return [];
+  }
+
+  const stopped: Array<{ port: number; pid: number }> = [];
+  for (const entry of entries) {
+    if (!entry.endsWith(".lock") || entry.endsWith(".start.lock")) continue;
+    const port = Number(entry.replace(".lock", ""));
+    if (!Number.isInteger(port) || port <= 0) continue;
+    const result = await stopLocalServer({ port, apiKey: input?.apiKey, homeDir: input?.homeDir });
+    if (result.stopped && result.pid !== null) {
+      stopped.push({ port, pid: result.pid });
+    }
+  }
+  return stopped;
 }
 
 export const serverDaemonInternals = {
-  daemonDir,
+  daemonsDir,
   serverLockPath,
   startupLockPath,
   serverLogPath,

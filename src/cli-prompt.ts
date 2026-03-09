@@ -3,7 +3,7 @@ import { createWorkspaceSpecifier } from "./api";
 import { newMessage } from "./chat-session";
 import { formatAssistantReplyOutput, formatToolOutput } from "./cli-format";
 import { missingAssistantStreamTail } from "./cli-stream-output";
-import { type Client, createClient } from "./client";
+import type { Client } from "./client";
 import { nowIso } from "./datetime";
 import { formatPromptError, USER_ERROR_MESSAGES } from "./error-messages";
 import type { ResourceId } from "./resource-id";
@@ -131,7 +131,7 @@ function createToolProgressRenderer(): {
 export async function handlePrompt(
   prompt: string,
   session: Session,
-  client: Client = createClient(),
+  client: Client,
   options?: { resourceId?: ResourceId; workspace?: string },
 ): Promise<boolean> {
   const userMsg = newMessage("user", prompt);

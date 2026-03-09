@@ -21,6 +21,7 @@ function createRunDeps(): {
     subcommandErrors: [] as string[],
   };
   const deps: RunDeps = {
+    apiUrlForPort: (port) => `http://127.0.0.1:${port}`,
     appModel: "openai/gpt-5-mini",
     attachFileToSession: async (_session, path) => {
       calls.attach.push(path);
@@ -28,21 +29,17 @@ function createRunDeps(): {
     createClient: () => ({}) as never,
     createSession: () =>
       ({ id: "sess_123", title: "run", createdAt: "", updatedAt: "", messages: [], tokenUsage: [] }) as never,
-    ensureLocalServer: async () => ({ apiUrl: "http://127.0.0.1:6767", managed: false, started: false }),
-    formatLocalServerReadyMessage: () => "ready",
+    ensureLocalServer: async () => ({ port: 6767, pid: 1234, started: false }),
     hasHelpFlag: (args) => args.includes("--help"),
     handlePrompt: async () => true,
     newMessage: (role, content) => ({ role, content }) as never,
     printDim: (message) => calls.dims.push(message),
     printError: (message) => calls.errors.push(message),
     readResolvedConfigSync: () => ({ replyTimeoutMs: 1234 }) as never,
-    resolveChatApiUrl: () => "http://127.0.0.1:6767",
     runResourceId: () => "user_123",
     serverApiKey: "key",
-    serverApiUrl: "http://127.0.0.1:6767",
     serverEntry: "src/server.ts",
     serverPort: 6767,
-    shouldAutoStartLocalServerForChat: () => false,
     subcommandError: (name) => calls.subcommandErrors.push(name),
     subcommandHelp: (name) => calls.help.push(name),
   };
