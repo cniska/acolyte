@@ -2,13 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { createErrorStats } from "./error-handling";
 import { type RunContext, scheduleMemoryCommit, shouldCommitMemory } from "./lifecycle";
 import { recoveryActionForError } from "./lifecycle-evaluate";
-import {
-  autoVerifier,
-  modeTransition,
-  multiMatchEditEvaluator,
-  timeoutRecovery,
-  verifyFailure,
-} from "./lifecycle-evaluators";
+import { modeTransition, multiMatchEditEvaluator, timeoutRecovery, verifyCycle } from "./lifecycle-evaluators";
 import { defaultLifecyclePolicy } from "./lifecycle-policy";
 import { LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./tool-error-codes";
 import { createSessionContext } from "./tool-guards";
@@ -51,7 +45,7 @@ function createMockContext(overrides: Partial<RunContext> = {}): RunContext {
   };
 }
 
-describe("autoVerifier", () => {
+describe("verifyCycle", () => {
   test("returns regenerate when write tools used without verify", () => {
     const session = createSessionContext("task_new");
     session.callLog = [
@@ -69,7 +63,7 @@ describe("autoVerifier", () => {
       result: { text: "Done.", toolCalls: [] },
       observedTools: new Set(["read-file", "edit-file"]),
     });
-    const action = autoVerifier.evaluate(ctx);
+    const action = verifyCycle.evaluate(ctx);
     expect(action.type).toBe("regenerate");
     if (action.type === "regenerate") {
       expect(action.mode).toBe("verify");
@@ -90,7 +84,7 @@ describe("autoVerifier", () => {
       result: { text: "Done.", toolCalls: [] },
       observedTools: new Set(["edit-file"]),
     });
-    const action = autoVerifier.evaluate(ctx);
+    const action = verifyCycle.evaluate(ctx);
     expect(action.type).toBe("regenerate");
     if (action.type === "regenerate") expect(action.prompt).not.toContain("Task boundary:");
   });
@@ -105,7 +99,7 @@ describe("autoVerifier", () => {
       result: { text: "Done.", toolCalls: [] },
       observedTools: new Set(["edit-file"]),
     });
-    const action = autoVerifier.evaluate(ctx);
+    const action = verifyCycle.evaluate(ctx);
     expect(action.type).toBe("regenerate");
     if (action.type === "regenerate") expect(action.prompt).not.toContain("Task boundary:");
   });
@@ -119,7 +113,7 @@ describe("autoVerifier", () => {
       result: { text: "Done.", toolCalls: [] },
       observedTools: new Set(["edit-file"]),
     });
-    expect(autoVerifier.evaluate(ctx).type).toBe("done");
+    expect(verifyCycle.evaluate(ctx).type).toBe("done");
   });
 
   test("returns done in plan mode", () => {
@@ -128,7 +122,7 @@ describe("autoVerifier", () => {
       result: { text: "Found it.", toolCalls: [] },
       observedTools: new Set(["read-file"]),
     });
-    expect(autoVerifier.evaluate(ctx).type).toBe("done");
+    expect(verifyCycle.evaluate(ctx).type).toBe("done");
   });
 
   test("returns done when no write tools used", () => {
@@ -137,12 +131,55 @@ describe("autoVerifier", () => {
       result: { text: "Done.", toolCalls: [] },
       observedTools: new Set(["read-file", "search-files"]),
     });
-    expect(autoVerifier.evaluate(ctx).type).toBe("done");
+    expect(verifyCycle.evaluate(ctx).type).toBe("done");
   });
 
   test("returns done when no result", () => {
     const ctx = createMockContext({ result: undefined });
-    expect(autoVerifier.evaluate(ctx).type).toBe("done");
+    expect(verifyCycle.evaluate(ctx).type).toBe("done");
+  });
+
+  test("returns regenerate to work mode when verify reports issues", () => {
+    const session = createSessionContext();
+    session.flags.verifyRan = true;
+    const ctx = createMockContext({
+      mode: "verify",
+      classifiedMode: "work",
+      session,
+      lastError: "verify failed: missing export updatePost in post-store.ts",
+      result: { text: "Error: missing export updatePost in post-store.ts", toolCalls: [] },
+      observedTools: new Set(["scan-code"]),
+    });
+    const action = verifyCycle.evaluate(ctx);
+    expect(action.type).toBe("regenerate");
+    if (action.type === "regenerate") {
+      expect(action.mode).toBe("work");
+      expect(action.prompt).toContain("missing export updatePost");
+    }
+  });
+
+  test("returns done when in verify mode without errors", () => {
+    const session = createSessionContext();
+    session.flags.verifyRan = true;
+    const ctx = createMockContext({
+      mode: "verify",
+      classifiedMode: "work",
+      session,
+      result: { text: "", toolCalls: [] },
+    });
+    expect(verifyCycle.evaluate(ctx).type).toBe("done");
+  });
+
+  test("returns done for explicit no-issue verification summaries", () => {
+    const session = createSessionContext();
+    session.flags.verifyRan = true;
+    const ctx = createMockContext({
+      mode: "verify",
+      classifiedMode: "work",
+      session,
+      result: { text: "No issues found. 0 errors.", toolCalls: [] },
+    });
+    expect(verifyCycle.evaluate(ctx).type).toBe("done");
   });
 });
 
@@ -289,66 +326,11 @@ describe("modeTransition", () => {
 
 describe("evaluator ordering", () => {
   test("evaluators run in correct order", () => {
-    const evaluators = [multiMatchEditEvaluator, modeTransition, timeoutRecovery, autoVerifier, verifyFailure];
+    const evaluators = [multiMatchEditEvaluator, modeTransition, timeoutRecovery, verifyCycle];
     expect(evaluators[0].id).toBe("multi-match-edit-evaluator");
     expect(evaluators[1].id).toBe("mode-transition");
     expect(evaluators[2].id).toBe("timeout-recovery");
-    expect(evaluators[3].id).toBe("auto-verifier");
-    expect(evaluators[4].id).toBe("verify-failure");
-  });
-});
-
-describe("verifyFailure", () => {
-  test("returns regenerate to work mode when verify reports issues", () => {
-    const session = createSessionContext();
-    session.flags.verifyRan = true;
-    const ctx = createMockContext({
-      mode: "verify",
-      classifiedMode: "work",
-      session,
-      lastError: "verify failed: missing export updatePost in post-store.ts",
-      result: { text: "Error: missing export updatePost in post-store.ts", toolCalls: [] },
-      observedTools: new Set(["scan-code"]),
-    });
-    const action = verifyFailure.evaluate(ctx);
-    expect(action.type).toBe("regenerate");
-    if (action.type === "regenerate") {
-      expect(action.mode).toBe("work");
-      expect(action.prompt).toContain("missing export updatePost");
-    }
-  });
-
-  test("returns done when not in verify mode", () => {
-    const ctx = createMockContext({
-      mode: "work",
-      classifiedMode: "work",
-      result: { text: "Error in code", toolCalls: [] },
-    });
-    expect(verifyFailure.evaluate(ctx).type).toBe("done");
-  });
-
-  test("returns done when verify passes cleanly", () => {
-    const session = createSessionContext();
-    session.flags.verifyRan = true;
-    const ctx = createMockContext({
-      mode: "verify",
-      classifiedMode: "work",
-      session,
-      result: { text: "", toolCalls: [] },
-    });
-    expect(verifyFailure.evaluate(ctx).type).toBe("done");
-  });
-
-  test("returns done for explicit no-issue verification summaries", () => {
-    const session = createSessionContext();
-    session.flags.verifyRan = true;
-    const ctx = createMockContext({
-      mode: "verify",
-      classifiedMode: "work",
-      session,
-      result: { text: "No issues found. 0 errors.", toolCalls: [] },
-    });
-    expect(verifyFailure.evaluate(ctx).type).toBe("done");
+    expect(evaluators[3].id).toBe("verify-cycle");
   });
 });
 

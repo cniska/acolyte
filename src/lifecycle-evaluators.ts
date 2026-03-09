@@ -123,29 +123,27 @@ export const timeoutRecovery: Evaluator = {
   },
 };
 
-export const autoVerifier: Evaluator = {
-  id: "auto-verifier",
+export const verifyCycle: Evaluator = {
+  id: "verify-cycle",
   evaluate(ctx) {
     if (!ctx.result) return { type: "done" };
-    const usedWriteTools = WRITE_TOOLS.some((tool) => ctx.observedTools.has(tool));
-    if (ctx.classifiedMode === "work" && usedWriteTools && !ctx.session.flags.verifyRan) {
-      return {
-        type: "regenerate",
-        prompt: scopedVerifyPrompt(ctx),
-        mode: "verify",
-        cycleLimit: ctx.policy.verifyMaxSteps,
-        keepResult: true,
-      };
-    }
-    return { type: "done" };
-  },
-};
 
-export const verifyFailure: Evaluator = {
-  id: "verify-failure",
-  evaluate(ctx) {
-    if (ctx.mode !== "verify") return { type: "done" };
-    if (!ctx.result) return { type: "done" };
+    // Work → Verify: trigger verify when write tools were used
+    if (ctx.mode !== "verify") {
+      const usedWriteTools = WRITE_TOOLS.some((tool) => ctx.observedTools.has(tool));
+      if (ctx.classifiedMode === "work" && usedWriteTools && !ctx.session.flags.verifyRan) {
+        return {
+          type: "regenerate",
+          prompt: scopedVerifyPrompt(ctx),
+          mode: "verify",
+          cycleLimit: ctx.policy.verifyMaxSteps,
+          keepResult: true,
+        };
+      }
+      return { type: "done" };
+    }
+
+    // Verify → Work: return to work when verify found issues
     if (!ctx.lastError && !ctx.session.flags.verifyRan) return { type: "done" };
     if (!ctx.lastError) return { type: "done" };
     ctx.debug("lifecycle.eval.verify_failure", { text_chars: ctx.result.text.length });

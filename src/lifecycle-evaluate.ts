@@ -1,17 +1,16 @@
 import { type RecoveryAction, recoveryActionForError as resolveRecoveryAction } from "./error-handling";
 import type { LifecycleInput, RunContext, SavedRegenerationState } from "./lifecycle-contract";
 import {
-  autoVerifier,
   type Evaluator,
   modeTransition,
   multiMatchEditEvaluator,
   timeoutRecovery,
-  verifyFailure,
+  verifyCycle,
 } from "./lifecycle-evaluators";
 import { phaseGenerate, setMode, shouldYieldNow } from "./lifecycle-generate";
 import { defaultLifecyclePolicy, type LifecyclePolicy } from "./lifecycle-policy";
 
-const EVALUATORS: Evaluator[] = [multiMatchEditEvaluator, modeTransition, timeoutRecovery, autoVerifier, verifyFailure];
+const EVALUATORS: Evaluator[] = [multiMatchEditEvaluator, modeTransition, timeoutRecovery, verifyCycle];
 
 function snapshotState(ctx: RunContext): SavedRegenerationState {
   return {
