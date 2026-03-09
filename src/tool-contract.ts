@@ -1,4 +1,6 @@
 import type { z } from "zod";
+import type { SessionContext } from "./tool-guards";
+import type { ToolOutputListener } from "./tool-output-format";
 
 export type ToolPermission = "read" | "write" | "execute" | "network";
 
@@ -11,6 +13,12 @@ export type ToolDefinition<TInput = unknown, TOutput = unknown> = {
   readonly inputSchema: z.ZodType<TInput>;
   readonly outputSchema: z.ZodType<TOutput>;
   readonly execute: (input: TInput) => Promise<TOutput>;
+};
+
+export type ToolkitInput = {
+  workspace: string;
+  session: SessionContext;
+  onOutput: ToolOutputListener;
 };
 
 export function createTool<TInput, TOutput>(config: ToolDefinition<TInput, TOutput>): ToolDefinition<TInput, TOutput> {

@@ -8,7 +8,7 @@ export function streamCallId(toolName: string): string {
 export function runTool(
   session: SessionContext,
   toolId: string,
-  args: Record<string, unknown>,
+  args: object,
   execute: (toolCallId: string) => Promise<unknown>,
 ): Promise<unknown> {
   return withToolError(toolId, () => guardedExecute(toolId, args, session, () => execute(streamCallId(toolId))));
@@ -38,12 +38,12 @@ export async function withToolError<T>(toolId: string, task: () => Promise<T>): 
 
 export async function guardedExecute<T>(
   toolId: string,
-  args: Record<string, unknown>,
+  args: object,
   session: SessionContext,
   task: () => Promise<T>,
 ): Promise<T> {
   try {
-    runGuards({ toolName: toolId, args, session });
+    runGuards({ toolName: toolId, args: args as Record<string, unknown>, session });
   } catch (error) {
     const wrapped = error instanceof Error ? error : new Error(typeof error === "string" ? error : "Guard blocked");
     const coded = wrapped as Error & { code?: string; kind?: string };
@@ -55,6 +55,6 @@ export async function guardedExecute<T>(
     const result = await task();
     return result;
   } finally {
-    recordCall(session, toolId, args);
+    recordCall(session, toolId, args as Record<string, unknown>);
   }
 }

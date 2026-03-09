@@ -1,15 +1,20 @@
 import { resolve } from "node:path";
 import { invariant } from "./assert";
-import { createCoreToolkit, type ToolkitInput } from "./core-toolkit";
+import { createFileToolkit } from "./file-toolkit";
 import { createGitToolkit } from "./git-toolkit";
-import type { ToolDefinition, ToolPermission } from "./tool-contract";
+import { createShellToolkit } from "./shell-toolkit";
+import type { ToolDefinition, ToolkitInput, ToolPermission } from "./tool-contract";
 import { createSessionContext, type SessionContext } from "./tool-guards";
 import type { ToolOutputListener } from "./tool-output-format";
+import { createWebToolkit } from "./web-toolkit";
 
 // biome-ignore lint/suspicious/noExplicitAny: ToolDefinition variance requires any here
 type ToolMap = Record<string, ToolDefinition<any>>;
 
-type RegisteredToolkit = ReturnType<typeof createCoreToolkit> & ReturnType<typeof createGitToolkit>;
+type RegisteredToolkit = ReturnType<typeof createFileToolkit> &
+  ReturnType<typeof createWebToolkit> &
+  ReturnType<typeof createShellToolkit> &
+  ReturnType<typeof createGitToolkit>;
 
 export type Toolset = {
   [Key in keyof RegisteredToolkit]: RegisteredToolkit[Key];
@@ -22,8 +27,16 @@ export const TOOLKIT_REGISTRY: {
   createToolkit: (input: ToolkitInput) => ToolMap;
 }[] = [
   {
-    id: "core",
-    createToolkit: (input) => createCoreToolkit(input),
+    id: "file",
+    createToolkit: (input) => createFileToolkit(input),
+  },
+  {
+    id: "web",
+    createToolkit: (input) => createWebToolkit(input),
+  },
+  {
+    id: "shell",
+    createToolkit: (input) => createShellToolkit(input),
   },
   {
     id: "git",

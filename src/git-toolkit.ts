@@ -1,12 +1,12 @@
 import { z } from "zod";
 import { appConfig } from "./app-config";
-import type { ToolkitInput } from "./core-toolkit";
-import { gitAdd, gitCommit, gitDiff, gitLog, gitShow, gitStatusShort } from "./core-tools";
 import { t } from "./i18n";
+import type { ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { compactToolOutput } from "./tool-output";
 import { emitHeadTailLines } from "./tool-output-format";
+import { gitAdd, gitCommit, gitDiff, gitLog, gitShow, gitStatusShort } from "./tool-utils";
 
 const GIT_OPS = ["statusShort", "diff", "log", "show", "add", "commit"] as const;
 type GitOp = (typeof GIT_OPS)[number];
@@ -136,7 +136,7 @@ function createGitDiffTool(git: GitOps, input: ToolkitInput) {
       contextLines: z.number().int().min(0).max(20).optional(),
     }),
     execute: async (toolInput) => {
-      return runTool(session, "git-diff", toolInput as Record<string, unknown>, async (toolCallId) => {
+      return runTool(session, "git-diff", toolInput, async (toolCallId) => {
         onOutput({
           toolName: "git-diff",
           content: { kind: "tool-header", label: t("tool.label.git_diff"), detail: toolInput.path },
@@ -170,7 +170,7 @@ function createGitLogTool(git: GitOps, input: ToolkitInput) {
       limit: z.number().int().min(1).max(50).optional(),
     }),
     execute: async (toolInput) => {
-      return runTool(session, "git-log", toolInput as Record<string, unknown>, async (toolCallId) => {
+      return runTool(session, "git-log", toolInput, async (toolCallId) => {
         onOutput({
           toolName: "git-log",
           content: { kind: "tool-header", label: t("tool.label.git_log"), detail: toolInput.path },
@@ -206,7 +206,7 @@ function createGitShowTool(git: GitOps, input: ToolkitInput) {
       contextLines: z.number().int().min(0).max(20).optional(),
     }),
     execute: async (toolInput) => {
-      return runTool(session, "git-show", toolInput as Record<string, unknown>, async (toolCallId) => {
+      return runTool(session, "git-show", toolInput, async (toolCallId) => {
         onOutput({
           toolName: "git-show",
           content: { kind: "tool-header", label: t("tool.label.git_show"), detail: toolInput.ref ?? toolInput.path },
@@ -254,7 +254,7 @@ function createGitAddTool(git: GitOps, input: ToolkitInput) {
       all: z.boolean().optional(),
     }),
     execute: async (toolInput) => {
-      return runTool(session, "git-add", toolInput as Record<string, unknown>, async (toolCallId) => {
+      return runTool(session, "git-add", toolInput, async (toolCallId) => {
         const addDetail =
           toolInput.all === true ? "all" : `${(toolInput.paths ?? []).filter((p) => p.trim().length > 0).length} files`;
         onOutput({
@@ -295,7 +295,7 @@ function createGitCommitTool(git: GitOps, input: ToolkitInput) {
       body: z.array(z.string().min(1)).max(10).optional(),
     }),
     execute: async (toolInput) => {
-      return runTool(session, "git-commit", toolInput as Record<string, unknown>, async (toolCallId) => {
+      return runTool(session, "git-commit", toolInput, async (toolCallId) => {
         onOutput({
           toolName: "git-commit",
           content: { kind: "tool-header", label: t("tool.label.git_commit"), detail: toolInput.message },

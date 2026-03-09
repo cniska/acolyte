@@ -1,8 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { invariant } from "./assert";
-import { webSearchStreamRows, withToolError } from "./core-toolkit";
+import { withToolError } from "./tool-execution";
 import { renderToolOutput } from "./tool-output-content";
 import { hasPermissions, toolDefinitionsById, toolIdsForGrants, toolsForAgent, writeToolIds } from "./tool-registry";
+import { webSearchStreamRows } from "./web-toolkit";
 
 describe("toolsets", () => {
   test("returns all tools", () => {

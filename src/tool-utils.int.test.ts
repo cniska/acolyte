@@ -13,7 +13,7 @@ import {
   scanCode,
   searchFiles,
   writeTextFile,
-} from "./core-tools";
+} from "./tool-utils";
 
 const WORKSPACE = resolve(process.cwd());
 const tempFiles: string[] = [];

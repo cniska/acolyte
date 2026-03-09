@@ -1,6 +1,6 @@
 import { type AgentMode, agentModes } from "./agent-modes";
-import { detectLineWidth } from "./core-tools";
 import { toolDefinitionsById } from "./tool-registry";
+import { detectLineWidth } from "./tool-utils";
 
 const BASE_INSTRUCTIONS = [
   "- Before taking action (tool call, command, or edit), write exactly one sentence stating what you will do next.",

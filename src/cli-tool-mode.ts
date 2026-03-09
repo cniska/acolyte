@@ -8,6 +8,7 @@ import {
   parseEditResult,
   showToolResult,
 } from "./cli-format";
+import { t } from "./i18n";
 import {
   editFile,
   fetchWeb,
@@ -18,8 +19,7 @@ import {
   runShellCommand,
   searchFiles,
   searchWeb,
-} from "./core-tools";
-import { t } from "./i18n";
+} from "./tool-utils";
 import { printError, printWarning } from "./ui";
 
 const editArgsSchema = z.object({
