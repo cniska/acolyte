@@ -7,10 +7,7 @@ import { DISCOVERY_TOOL_SET, READ_TOOL_SET, SEARCH_TOOL_SET, WRITE_TOOL_SET } fr
 
 export function phaseFinalize(ctx: RunContext): ChatResponse {
   const rawOutput = ctx.result?.text.trim() ?? "";
-  const output =
-    rawOutput.length === 0 && ctx.lastError
-      ? `Error from provider: ${ctx.lastError}`
-      : formatAssistantOutput(rawOutput, ctx.observedTools.size);
+  const output = formatAssistantOutput(rawOutput, ctx.observedTools.size);
 
   const completionTokens = estimateTokens(output);
   let budgetWarning: string | undefined;
@@ -67,6 +64,7 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
   return {
     model: ctx.model,
     output,
+    ...(ctx.lastError ? { error: ctx.lastError } : {}),
     toolCalls: callLog.map((entry) => entry.toolName),
     modelCalls: ctx.modelCallCount,
     usage: {

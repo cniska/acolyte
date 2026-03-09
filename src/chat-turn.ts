@@ -114,7 +114,11 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
   const assistantMessage: Message =
     (reply.toolCalls?.length ?? 0) > 0 ? { ...baseAssistantMessage, kind: "tool_payload" } : baseAssistantMessage;
   const rows: ChatRow[] = [];
-  if (reply.output.trim().length > 0) rows.push(createRow("assistant", reply.output));
+  if (reply.error) {
+    rows.push(createRow("system", `Error: ${reply.error}`, { dim: false, style: "error" }));
+  } else if (reply.output.trim().length > 0) {
+    rows.push(createRow("assistant", reply.output));
+  }
   const tokenEntry: TokenUsageEntry = {
     id: assistantMessage.id,
     usage: reply.usage ?? estimateTokenUsageFallback(params.userText, reply.output),

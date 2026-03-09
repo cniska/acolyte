@@ -116,6 +116,7 @@ export function parseChatResponse(payload: unknown): ChatResponse | null {
           }
         : undefined,
     budgetWarning: typeof json.budgetWarning === "string" ? json.budgetWarning : undefined,
+    error: typeof json.error === "string" ? json.error : undefined,
   };
 }
 

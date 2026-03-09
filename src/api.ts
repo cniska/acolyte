@@ -37,6 +37,7 @@ export interface ChatResponse {
   budgetWarning?: string;
   toolCalls?: string[];
   modelCalls?: number;
+  error?: string;
 }
 
 export type WorkspaceSpecifier = Pick<ChatRequest, "workspace">;

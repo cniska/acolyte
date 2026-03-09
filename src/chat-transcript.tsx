@@ -13,7 +13,7 @@ type ChatTranscriptProps = {
   thinkingStartedAt?: number | null;
 };
 
-const MAX_TRANSCRIPT_WIDTH = 100;
+const MAX_TRANSCRIPT_WIDTH = 120;
 const SESSION_STATUS_PREFIXES = ["Started new session: ", "Resumed session: "] as const;
 
 function parseSessionStatus(content: string): { prefix: string; sessionId: string } | null {

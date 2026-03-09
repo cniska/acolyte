@@ -168,7 +168,11 @@ export async function handlePrompt(
       },
     );
 
-    await assistantRenderer.renderReply(reply.output, toolRenderer.hasPrintedProgress());
+    if (reply.error) {
+      printError(`Error: ${reply.error}`);
+    } else {
+      await assistantRenderer.renderReply(reply.output, toolRenderer.hasPrintedProgress());
+    }
     const assistantMessage = newMessage("assistant", reply.output);
     session.messages.push(
       (reply.toolCalls?.length ?? 0) > 0 ? { ...assistantMessage, kind: "tool_payload" } : assistantMessage,
