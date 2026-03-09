@@ -1,0 +1,51 @@
+import { describe, expect, test } from "bun:test";
+import { initMode } from "./cli-init";
+import { dedent } from "./test-utils";
+
+type InitDeps = Parameters<typeof initMode>[1];
+
+function createDeps(overrides?: Partial<InitDeps>): { deps: InitDeps; output: () => string; calls: string[] } {
+  const lines: string[] = [];
+  const calls: string[] = [];
+  const deps: InitDeps = {
+    cwd: () => "/tmp/test",
+    hasHelpFlag: () => false,
+    prompt: () => null,
+    printDim: (message) => lines.push(message),
+    printError: (message) => lines.push(message),
+    readFile: (async () => "") as never,
+    writeFile: async () => undefined,
+    subcommandError: (name) => {
+      calls.push(`subcommandError:${name}`);
+    },
+    subcommandHelp: (name) => {
+      calls.push(`subcommandHelp:${name}`);
+    },
+    ...overrides,
+  };
+  return { deps, output: () => lines.join("\n"), calls };
+}
+
+describe("cli-init", () => {
+  test("help flag calls subcommandHelp", async () => {
+    const { deps, calls } = createDeps({ hasHelpFlag: () => true });
+    await initMode(["--help"], deps);
+    expect(calls).toEqual(["subcommandHelp:init"]);
+  });
+
+  test("too many args calls subcommandError", async () => {
+    const { deps, calls } = createDeps();
+    await initMode(["openai", "extra"], deps);
+    expect(calls).toEqual(["subcommandError:init"]);
+  });
+
+  test("invalid provider prints error", async () => {
+    const { deps, output } = createDeps();
+    await initMode(["invalid"], deps);
+    expect(output()).toBe(
+      dedent(`
+        Invalid provider. Use openai, anthropic, or google.
+      `),
+    );
+  });
+});
