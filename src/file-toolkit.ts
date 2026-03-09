@@ -1,6 +1,16 @@
 import { isAbsolute, relative } from "node:path";
 import { z } from "zod";
 import { appConfig } from "./app-config";
+import {
+  deleteTextFile,
+  editCode,
+  editFile,
+  findFiles,
+  readSnippets,
+  scanCode,
+  searchFiles,
+  writeTextFile,
+} from "./file-ops";
 import { t } from "./i18n";
 import { createTool, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
@@ -14,16 +24,6 @@ import {
   TOOL_OUTPUT_FILES_MAX_ROWS,
   TOOL_OUTPUT_INLINE_FILES_MAX,
 } from "./tool-output-format";
-import {
-  deleteTextFile,
-  editCode,
-  editFile,
-  findFiles,
-  readSnippets,
-  scanCode,
-  searchFiles,
-  writeTextFile,
-} from "./tool-utils";
 
 const WRITE_TOOL_PREVIEW_MAX_LINES = Number.POSITIVE_INFINITY;
 

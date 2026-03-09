@@ -1,12 +1,12 @@
 import { z } from "zod";
 import { appConfig } from "./app-config";
+import { gitAdd, gitCommit, gitDiff, gitLog, gitShow, gitStatusShort } from "./git-ops";
 import { t } from "./i18n";
 import type { ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { compactToolOutput } from "./tool-output";
 import { emitHeadTailLines } from "./tool-output-format";
-import { gitAdd, gitCommit, gitDiff, gitLog, gitShow, gitStatusShort } from "./tool-utils";
 
 const GIT_OPS = ["statusShort", "diff", "log", "show", "add", "commit"] as const;
 type GitOp = (typeof GIT_OPS)[number];

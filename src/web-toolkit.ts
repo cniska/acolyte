@@ -5,7 +5,7 @@ import { createTool, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { compactToolOutput } from "./tool-output";
 import { emitResultChunks } from "./tool-output-format";
-import { fetchWeb, searchWeb } from "./tool-utils";
+import { fetchWeb, searchWeb } from "./web-ops";
 
 const WEB_SEARCH_MAX_RESULTS = 5;
 

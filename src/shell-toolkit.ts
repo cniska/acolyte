@@ -1,11 +1,11 @@
 import { z } from "zod";
 import { appConfig } from "./app-config";
 import { t } from "./i18n";
+import { runShellCommand } from "./shell-ops";
 import { createTool, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { compactToolOutput } from "./tool-output";
 import { TOOL_OUTPUT_RUN_MAX_ROWS } from "./tool-output-format";
-import { runShellCommand } from "./tool-utils";
 
 function compactDetail(value: string, maxChars = 80): string {
   const single = value.replace(/\s+/g, " ").trim();
