@@ -120,10 +120,9 @@ describe("chat tui visual regression: model picker", () => {
   test("renders model picker with selected model", () => {
     const picker = {
       kind: "model" as const,
-      items: [
-        { model: "gpt-5-mini", name: "gpt-5-mini", description: "balanced default" },
-        { model: "gpt-5.2", name: "gpt-5.2", description: "highest quality" },
-      ],
+      items: ["gpt-5-mini", "gpt-5.2"],
+      filtered: ["gpt-5-mini", "gpt-5.2"],
+      query: "",
       index: 1,
     };
 
@@ -133,10 +132,33 @@ describe("chat tui visual regression: model picker", () => {
       ────────────────────────────────────────────────────────────────────────────────────────────────
       Model
 
-        gpt-5-mini           balanced default
-      › gpt-5.2              highest quality
+        gpt-5-mini
+      › gpt-5.2
 
-      Enter to apply · Esc to close
+      Type to filter · Enter to apply · Esc to close
+      ────────────────────────────────────────────────────────────────────────────────────────────────
+    `),
+    );
+  });
+
+  test("renders model picker with query filter", () => {
+    const picker = {
+      kind: "model" as const,
+      items: ["gpt-5-mini", "gpt-5.2"],
+      filtered: ["gpt-5.2"],
+      query: "5.2",
+      index: 0,
+    };
+
+    const output = renderInputPanel({ picker });
+    expect(output).toBe(
+      dedent(`
+      ────────────────────────────────────────────────────────────────────────────────────────────────
+      Model: 5.2
+
+      › gpt-5.2
+
+      Type to filter · Enter to apply · Esc to close
       ────────────────────────────────────────────────────────────────────────────────────────────────
     `),
     );

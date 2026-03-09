@@ -115,8 +115,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
         return;
       }
       case "model": {
-        const selected = state.items[state.index];
-        const nextModel = selected?.model;
+        const nextModel = state.filtered[state.index];
         if (!nextModel) return;
         try {
           const targetMode = state.targetMode;

@@ -11,7 +11,9 @@ export type PickerState =
   | { kind: "resume"; items: Session[]; index: number }
   | {
       kind: "model";
-      items: Array<{ model: string; name: string; description: string }>;
+      items: string[];
+      filtered: string[];
+      query: string;
       index: number;
       targetMode?: AgentMode;
     };
@@ -51,8 +53,10 @@ export function pickerTitle(picker: PickerState): string {
       return "Skills";
     case "resume":
       return "Resume Session";
-    case "model":
-      return picker.targetMode ? `Model (${picker.targetMode})` : "Model";
+    case "model": {
+      const prefix = picker.targetMode ? `Model (${picker.targetMode})` : "Model";
+      return picker.query ? `${prefix}: ${picker.query}` : prefix;
+    }
     default:
       return unreachable(picker);
   }
@@ -65,9 +69,18 @@ export function pickerHint(picker: PickerState): string {
     case "resume":
       return "Enter to resume · Esc to close";
     case "model":
-      return "Enter to apply · Esc to close";
+      return "Type to filter · Enter to apply · Esc to close";
     default:
       return unreachable(picker);
+  }
+}
+
+export function pickerItemCount(picker: PickerState): number {
+  switch (picker.kind) {
+    case "model":
+      return picker.filtered.length;
+    default:
+      return picker.items.length;
   }
 }
 
@@ -90,10 +103,10 @@ export function renderPickerItems(
     }
     case "model":
       return renderPickerRows(
-        picker.items.map((item) => ({
-          key: item.model,
-          label: truncateText(item.name, PICKER_LABEL_WIDTH),
-          detail: item.description,
+        picker.filtered.map((id) => ({
+          key: id,
+          label: truncateText(id, PICKER_LABEL_WIDTH),
+          detail: "",
         })),
         picker.index,
         brandColor,

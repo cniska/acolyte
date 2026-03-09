@@ -128,10 +128,9 @@ describe("chat picker handlers", () => {
 
     await handlers.handlePickerSelect({
       kind: "model",
-      items: [
-        { model: "gpt-5-mini", name: "gpt-5-mini", description: "balanced default" },
-        { model: "gpt-5.2", name: "gpt-5.2", description: "highest quality" },
-      ],
+      items: ["gpt-5-mini", "gpt-5.2"],
+      filtered: ["gpt-5-mini", "gpt-5.2"],
+      query: "",
       index: 1,
     });
 

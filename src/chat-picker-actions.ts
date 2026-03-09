@@ -1,5 +1,6 @@
 import type { AgentMode } from "./agent-modes";
 import { type ChatRow, createRow } from "./chat-commands";
+import { suggestModels } from "./chat-model-autocomplete";
 import type { PickerState } from "./chat-picker";
 import { t } from "./i18n";
 import { getAvailableModels } from "./provider-models";
@@ -44,13 +45,14 @@ export function createResumeRows(session: Session, toRows: (messages: Session["m
 }
 
 export async function createModelPicker(currentModel: string, targetMode?: AgentMode): Promise<PickerState> {
-  const models = await getAvailableModels(currentModel);
-  const items = models.map((id) => ({ model: id, name: id, description: "" }));
-  const index = items.findIndex((item) => item.model === currentModel);
+  const items = await getAvailableModels(currentModel);
+  const index = Math.max(0, items.indexOf(currentModel));
   return {
     kind: "model",
     items,
-    index: Math.max(0, index),
+    filtered: suggestModels("", items),
+    query: "",
+    index,
     targetMode,
   };
 }

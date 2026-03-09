@@ -1,6 +1,7 @@
 import { useInput } from "ink";
 import { applyAtSuggestion, shouldAutocompleteAtSubmit } from "./chat-file-ref";
-import type { PickerState } from "./chat-picker";
+import { suggestModels } from "./chat-model-autocomplete";
+import { type PickerState, pickerItemCount } from "./chat-picker";
 import { shouldAutocompleteSlashSubmit } from "./chat-slash";
 
 type HistoryTransition = {
@@ -127,19 +128,39 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
           input.setPicker(null);
           return;
         }
-        if (key.upArrow || keyInput === "k") {
+        if (key.upArrow) {
           input.setPicker((current) => (current ? { ...current, index: Math.max(0, current.index - 1) } : current));
           return;
         }
-        if (key.downArrow || keyInput === "j") {
+        if (key.downArrow) {
           input.setPicker((current) =>
-            current ? { ...current, index: Math.min(current.items.length - 1, current.index + 1) } : current,
+            current ? { ...current, index: Math.min(pickerItemCount(current) - 1, current.index + 1) } : current,
           );
           return;
         }
-        if (key.return && input.picker.items.length > 0) {
+        if (key.return && pickerItemCount(input.picker) > 0) {
           void input.handlePickerSelect(input.picker);
           return;
+        }
+        if (input.picker.kind === "model") {
+          if (key.backspace || key.delete) {
+            input.setPicker((current) => {
+              if (!current || current.kind !== "model") return current;
+              const query = current.query.slice(0, -1);
+              const filtered = suggestModels(query, current.items);
+              return { ...current, query, filtered, index: 0 };
+            });
+            return;
+          }
+          if (keyInput && !key.ctrl && !key.meta) {
+            input.setPicker((current) => {
+              if (!current || current.kind !== "model") return current;
+              const query = current.query + keyInput;
+              const filtered = suggestModels(query, current.items);
+              return { ...current, query, filtered, index: 0 };
+            });
+            return;
+          }
         }
         return;
       }
