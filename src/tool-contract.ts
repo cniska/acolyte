@@ -1,10 +1,11 @@
 import type { z } from "zod";
-import type { AgentMode } from "./agent-modes";
+
+export type ToolPermission = "read" | "write" | "execute" | "network";
 
 export type ToolDefinition<TInput = unknown, TOutput = unknown> = {
   readonly id: string;
   readonly label: string;
-  readonly modes: readonly AgentMode[];
+  readonly permissions: readonly ToolPermission[];
   readonly description: string;
   readonly instruction: string;
   readonly inputSchema: z.ZodType<TInput>;

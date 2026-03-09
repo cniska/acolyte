@@ -180,7 +180,7 @@ function createRunCommandTool(workspace: string, session: SessionContext, onOutp
   return createTool({
     id: "run-command",
     label: t("tool.label.run"),
-    modes: ["work", "verify"],
+    permissions: ["execute"],
     description:
       "Run a shell command in the repository and capture stdout/stderr. Never use shell commands as fallbacks for file discovery/reading/editing when dedicated tools are available.",
     instruction:
@@ -284,7 +284,7 @@ function createFindFilesTool(workspace: string, session: SessionContext, onOutpu
   return createTool({
     id: "find-files",
     label: t("tool.label.find"),
-    modes: ["plan", "work"],
+    permissions: ["read"],
     description:
       "Find files in the repository by name or path pattern. Pass `patterns` as an array to batch multiple lookups in one call. To search file contents use `search-files` instead.",
     instruction:
@@ -338,7 +338,7 @@ function createSearchFilesTool(workspace: string, session: SessionContext, onOut
   return createTool({
     id: "search-files",
     label: t("tool.label.search"),
-    modes: ["plan", "work"],
+    permissions: ["read"],
     description:
       "Search file contents in the repository for text or regex patterns. Optionally scope with `paths` (files or directories). To locate files by name use `find-files` instead.",
     instruction:
@@ -406,7 +406,7 @@ function createScanCodeTool(workspace: string, session: SessionContext, onOutput
   return createTool({
     id: "scan-code",
     label: t("tool.label.review"),
-    modes: ["plan", "work", "verify"],
+    permissions: ["read"],
     description:
       "Scan files for structural code patterns using AST matching. Pass `paths` as an array of file or directory paths and `patterns` as an array of ast-grep patterns with `$VAR` metavariables (e.g. [`export function $NAME($$$PARAMS)`, `import $SPEC from $MOD`]).",
     instruction:
@@ -475,7 +475,7 @@ function createReadFileTool(workspace: string, session: SessionContext, onOutput
   return createTool({
     id: "read-file",
     label: t("tool.label.read"),
-    modes: ["plan", "work", "verify"],
+    permissions: ["read"],
     description:
       "Read one or more text file snippets by line range. Always pass `paths` as an array of {path, start?, end?} objects, even for a single file. Use to inspect code before editing.",
     instruction:
@@ -553,7 +553,7 @@ function createEditFileTool(workspace: string, session: SessionContext, onOutput
   return createTool({
     id: "edit-file",
     label: t("tool.label.edit"),
-    modes: ["work"],
+    permissions: ["read", "write"],
     description:
       "Edit an existing file. Pass `edits` as an array of either {find, replace} pairs (for small surgical edits using exact text match) or {startLine, endLine, replace} objects (for larger block replacements). Line numbers MUST come from `read-file` output — do not guess. endLine must not exceed the file length. All edits are applied atomically. You MUST read the file first. For new files, use `create-file`. For code renames or structural edits use `edit-code`.",
     instruction:
@@ -607,7 +607,7 @@ function createCreateFileTool(workspace: string, session: SessionContext, onOutp
   return createTool({
     id: "create-file",
     label: t("tool.label.create"),
-    modes: ["work"],
+    permissions: ["write"],
     description:
       "Create a new file with full content. For editing existing files, use `edit-file` or `edit-code` instead.",
     instruction: "For new files, call `create-file` with full content directly.",
@@ -669,7 +669,7 @@ function createAstEditTool(workspace: string, session: SessionContext, onOutput:
   return createTool({
     id: "edit-code",
     label: t("tool.label.edit"),
-    modes: ["work"],
+    permissions: ["read", "write"],
     description:
       "Edit code with AST pattern matching. Pass `edits` as [{pattern, replacement}] using `$VAR` metavariables (e.g. pattern=`console.log($ARG)` replacement=`logger.debug($ARG)`). `path` must be a specific file, not '.' or a directory. For non-code files use `edit-file`.",
     instruction:
@@ -723,7 +723,7 @@ function createDeleteFileTool(workspace: string, session: SessionContext, onOutp
   return createTool({
     id: "delete-file",
     label: t("tool.label.delete"),
-    modes: ["work"],
+    permissions: ["write"],
     description: "Delete a file from the repository.",
     instruction:
       "Use `delete-file` to remove files from the repository. Pass `paths` as an array and batch related deletes in one call.",
@@ -765,7 +765,7 @@ function createWebSearchTool(session: SessionContext, onOutput: ToolOutputListen
   return createTool({
     id: "web-search",
     label: t("tool.label.web_search"),
-    modes: ["plan"],
+    permissions: ["network"],
     description:
       "Search the public web for recent information and return top results. Use for questions not answerable from the repo.",
     instruction: "Use `web-search` for external information lookup.",
@@ -807,7 +807,7 @@ function createWebFetchTool(session: SessionContext, onOutput: ToolOutputListene
   return createTool({
     id: "web-fetch",
     label: t("tool.label.web_fetch"),
-    modes: ["plan"],
+    permissions: ["network"],
     description:
       "Fetch a public URL and return extracted text content. Use to read docs, API references, or linked resources by URL.",
     instruction: "Use `web-fetch` to read web pages, docs, or API references.",
@@ -846,7 +846,7 @@ export type ToolkitInput = {
   onOutput: ToolOutputListener;
 };
 
-export function createCoreReadToolkit(input: ToolkitInput) {
+export function createCoreToolkit(input: ToolkitInput) {
   const { workspace, session, onOutput } = input;
   return {
     findFiles: createFindFilesTool(workspace, session, onOutput),
@@ -855,12 +855,6 @@ export function createCoreReadToolkit(input: ToolkitInput) {
     readFile: createReadFileTool(workspace, session, onOutput),
     webSearch: createWebSearchTool(session, onOutput),
     webFetch: createWebFetchTool(session, onOutput),
-  };
-}
-
-export function createCoreWriteToolkit(input: ToolkitInput) {
-  const { workspace, session, onOutput } = input;
-  return {
     runCommand: createRunCommandTool(workspace, session, onOutput),
     editCode: createAstEditTool(workspace, session, onOutput),
     editFile: createEditFileTool(workspace, session, onOutput),

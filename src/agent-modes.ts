@@ -1,9 +1,11 @@
 import type { AgentMode } from "./agent-contract";
-import { toolIdsForMode } from "./tool-registry";
+import type { ToolPermission } from "./tool-contract";
+import { toolIdsForGrants } from "./tool-registry";
 
 export { type AgentMode, agentModeSchema } from "./agent-contract";
 
 export type AgentModeDefinition = {
+  grants: readonly ToolPermission[];
   tools: string[];
   preamble: string[];
   statusText: string;
@@ -11,7 +13,8 @@ export type AgentModeDefinition = {
 
 export const agentModes: Record<AgentMode, AgentModeDefinition> = {
   plan: {
-    tools: toolIdsForMode("plan"),
+    grants: ["read", "network"],
+    tools: toolIdsForGrants(["read", "network"]),
     preamble: [
       "Search first, then read relevant files. Batch multiple paths into one `read-file` call.",
       "Stop as soon as you have enough information — do not keep searching for completeness.",
@@ -21,7 +24,8 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
     statusText: "Thinking…",
   },
   work: {
-    tools: toolIdsForMode("work"),
+    grants: ["read", "write", "execute", "network"],
+    tools: toolIdsForGrants(["read", "write", "execute", "network"]),
     preamble: [
       "If the target path is explicit, skip `find-files`/`search-files` and read that file directly.",
       "For 'add/update in file X' tasks, make `read-file` on X your first tool call.",
@@ -38,7 +42,8 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
     statusText: "Working…",
   },
   verify: {
-    tools: toolIdsForMode("verify"),
+    grants: ["read", "execute"],
+    tools: toolIdsForGrants(["read", "execute"]),
     preamble: [
       "Review the changes: one `scan-code` call with all edited files as `paths` and patterns like [`export function $NAME`, `import $SPEC from $MOD`]. No extra reads or searches.",
       "Then run the project's verify/test/build command if one exists. If it fails with 'script not found', stop — your scan-code review is sufficient.",

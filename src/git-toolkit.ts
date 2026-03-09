@@ -93,7 +93,7 @@ function createGitStatusTool(git: GitOps, input: ToolkitInput) {
   return createTool({
     id: "git-status",
     label: t("tool.label.git_status"),
-    modes: ["plan", "verify"],
+    permissions: ["read"],
     description: "Show working tree status (short format with branch) for the current repository.",
     instruction: "Use `git-status` for working tree status.",
     outputSchema: z.object({
@@ -122,7 +122,7 @@ function createGitDiffTool(git: GitOps, input: ToolkitInput) {
   return createTool({
     id: "git-diff",
     label: t("tool.label.git_diff"),
-    modes: ["plan", "verify"],
+    permissions: ["read"],
     description: "Show unstaged changes (unified diff) for the repository or a specific file path.",
     instruction: "Use `git-diff` for change inspection.",
     outputSchema: z.object({
@@ -156,7 +156,7 @@ function createGitLogTool(git: GitOps, input: ToolkitInput) {
   return createTool({
     id: "git-log",
     label: t("tool.label.git_log"),
-    modes: ["plan", "verify"],
+    permissions: ["read"],
     description: "Show recent commits in compact one-line form (optionally scoped to a file/path).",
     instruction: "Use `git-log` to inspect recent commits quickly (optionally scoped by path).",
     outputSchema: z.object({
@@ -190,7 +190,7 @@ function createGitShowTool(git: GitOps, input: ToolkitInput) {
   return createTool({
     id: "git-show",
     label: t("tool.label.git_show"),
-    modes: ["plan", "verify"],
+    permissions: ["read"],
     description: "Show commit details and patch for a ref (default HEAD), optionally scoped to a path.",
     instruction: "Use `git-show` to inspect a specific commit/tag/ref with patch details (optionally scoped by path).",
     outputSchema: z.object({
@@ -239,7 +239,7 @@ function createGitAddTool(git: GitOps, input: ToolkitInput) {
   return createTool({
     id: "git-add",
     label: t("tool.label.git_add"),
-    modes: ["work"],
+    permissions: ["write"],
     description:
       "Stage tracked/untracked files. Prefer explicit `paths` scoped to files edited in the current task. Use `all=true` only when explicitly needed.",
     instruction: "Use `git-add` to stage edited files before commit. Prefer explicit paths over `all=true`.",
@@ -280,7 +280,7 @@ function createGitCommitTool(git: GitOps, input: ToolkitInput) {
   return createTool({
     id: "git-commit",
     label: t("tool.label.git_commit"),
-    modes: ["work"],
+    permissions: ["write"],
     description: "Create a git commit with a required subject line and optional body lines.",
     instruction:
       "Use `git-commit` to create the final Conventional Commit after verify passes. Set `message` to the subject line.",
@@ -317,24 +317,6 @@ export function createGitToolkit(input: ToolkitInput) {
     gitDiff: createGitDiffTool(git, input),
     gitLog: createGitLogTool(git, input),
     gitShow: createGitShowTool(git, input),
-    gitAdd: createGitAddTool(git, input),
-    gitCommit: createGitCommitTool(git, input),
-  };
-}
-
-export function createGitReadToolkit(input: ToolkitInput) {
-  const git = createGitOps(input.workspace);
-  return {
-    gitStatus: createGitStatusTool(git, input),
-    gitDiff: createGitDiffTool(git, input),
-    gitLog: createGitLogTool(git, input),
-    gitShow: createGitShowTool(git, input),
-  };
-}
-
-export function createGitWriteToolkit(input: ToolkitInput) {
-  const git = createGitOps(input.workspace);
-  return {
     gitAdd: createGitAddTool(git, input),
     gitCommit: createGitCommitTool(git, input),
   };
