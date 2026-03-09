@@ -49,26 +49,21 @@ describe("tool output TUI", () => {
     expect(formatToolOutput([{ kind: "tool-header", label: "Git Status" }])).toBe("Git Status");
   });
 
-  test("read-file with file-header merges into header", () => {
-    const content: ToolOutput[] = [
-      { kind: "tool-header", label: "Read" },
-      { kind: "file-header", count: 2, targets: ["a.ts", "b.ts"] },
-    ];
+  test("file-header renders label and targets", () => {
+    const content: ToolOutput[] = [{ kind: "file-header", label: "Read", count: 2, targets: ["a.ts", "b.ts"] }];
     expect(formatToolOutput(content)).toBe("Read a.ts, b.ts");
   });
 
-  test("read-file with omitted targets", () => {
+  test("file-header with omitted targets", () => {
     const content: ToolOutput[] = [
-      { kind: "tool-header", label: "Read" },
-      { kind: "file-header", count: 4, targets: ["a.ts", "b.ts", "c.ts"], omitted: 1 },
+      { kind: "file-header", label: "Read", count: 4, targets: ["a.ts", "b.ts", "c.ts"], omitted: 1 },
     ];
     expect(formatToolOutput(content)).toBe("Read a.ts, b.ts, c.ts, +1");
   });
 
-  test("search-files with scope-header and hit rows", () => {
+  test("scope-header with hit rows", () => {
     const content: ToolOutput[] = [
-      { kind: "tool-header", label: "Search" },
-      { kind: "scope-header", scope: "workspace", patterns: ["needle"], matches: 3 },
+      { kind: "scope-header", label: "Search", scope: "workspace", patterns: ["needle"], matches: 3 },
       { kind: "text", text: "a.ts [needle@1]" },
       { kind: "text", text: "b.ts [needle@2, needle@5]" },
     ];
@@ -81,10 +76,9 @@ describe("tool output TUI", () => {
     );
   });
 
-  test("search-files with non-workspace scope", () => {
+  test("scope-header with non-workspace scope", () => {
     const content: ToolOutput[] = [
-      { kind: "tool-header", label: "Search" },
-      { kind: "scope-header", scope: "src/", patterns: ["needle"], matches: 1 },
+      { kind: "scope-header", label: "Search", scope: "src/", patterns: ["needle"], matches: 1 },
       { kind: "text", text: "a.ts [needle@1]" },
     ];
     expect(formatToolOutput(content)).toBe(
@@ -95,10 +89,9 @@ describe("tool output TUI", () => {
     );
   });
 
-  test("find-files with scope-header", () => {
+  test("scope-header for find-files", () => {
     const content: ToolOutput[] = [
-      { kind: "tool-header", label: "Find" },
-      { kind: "scope-header", scope: "workspace", patterns: ["*.ts"], matches: 2 },
+      { kind: "scope-header", label: "Find", scope: "workspace", patterns: ["*.ts"], matches: 2 },
       { kind: "text", text: "a.ts" },
       { kind: "text", text: "b.ts" },
     ];
@@ -111,17 +104,16 @@ describe("tool output TUI", () => {
     );
   });
 
-  test("edit with edit-header and diff lines", () => {
+  test("edit-header with diff lines", () => {
     const content: ToolOutput[] = [
-      { kind: "tool-header", label: "Edit" },
-      { kind: "edit-header", path: "notes.ts", files: 1, added: 1, removed: 1 },
+      { kind: "edit-header", label: "Edit", path: "notes.ts", files: 1, added: 1, removed: 1 },
       { kind: "diff", lineNumber: 9, marker: "context", text: "const x = 1;" },
       { kind: "diff", lineNumber: 10, marker: "remove", text: "const y = 2;" },
       { kind: "diff", lineNumber: 10, marker: "add", text: "const y = 3;" },
     ];
     expect(stripAnsi(formatToolOutput(content))).toBe(
       dedent(`
-        Edit path=notes.ts files=1 added=1 removed=1
+        Edit notes.ts (+1 -1)
            9  const x = 1;
           10  const y = 2;
           10  const y = 3;

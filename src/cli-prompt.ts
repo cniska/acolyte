@@ -1,7 +1,7 @@
 import { stdout as output } from "node:process";
 import { createWorkspaceSpecifier } from "./api";
 import { newMessage } from "./chat-session";
-import { formatAssistantReplyOutput, formatToolOutput } from "./cli-format";
+import { formatAssistantReplyOutput } from "./cli-format";
 import { missingAssistantStreamTail } from "./cli-stream-output";
 import type { Client } from "./client";
 import { nowIso } from "./datetime";
@@ -9,7 +9,7 @@ import { formatPromptError, USER_ERROR_MESSAGES } from "./error-messages";
 import type { ResourceId } from "./resource-id";
 import type { Session } from "./session-contract";
 import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
-import type { ToolOutput } from "./tool-output-content";
+import { createToolOutputState } from "./tool-output-content";
 import { printError, printOutput, streamText } from "./ui";
 
 function setSessionTitle(session: Session, inputText: string): void {
@@ -79,55 +79,6 @@ function createAssistantStreamRenderer(): {
   };
 }
 
-function createToolProgressRenderer(): {
-  hasPrintedProgress: () => boolean;
-  onOutput: (entry: { toolCallId: string; toolName: string; content: ToolOutput }) => void;
-  onToolResult: (entry: {
-    toolCallId: string;
-    toolName: string;
-    isError?: boolean;
-    errorCode?: string;
-    errorDetail?: { category?: string; [key: string]: unknown };
-  }) => void;
-} {
-  let printedProgress = false;
-  const contentByCallId = new Map<string, ToolOutput[]>();
-  const snapshotByCallId = new Map<string, string>();
-
-  return {
-    hasPrintedProgress: () => printedProgress,
-    onOutput: (entry) => {
-      const items = contentByCallId.get(entry.toolCallId) ?? [];
-      items.push(entry.content);
-      contentByCallId.set(entry.toolCallId, items);
-      const rendered = formatToolOutput(items);
-      const previous = snapshotByCallId.get(entry.toolCallId);
-      snapshotByCallId.set(entry.toolCallId, rendered);
-      if (previous) {
-        const current = rendered.trimEnd();
-        const before = previous.trimEnd();
-        if (current === before) return;
-        if (current.startsWith(`${before}\n`)) {
-          const delta = current.slice(before.length + 1);
-          const lines = delta.split("\n");
-          printOutput(lines.map((line) => (line.length > 0 ? `    ${line}` : "")).join("\n"));
-          printedProgress = true;
-          return;
-        }
-      }
-      const lines = rendered.split("\n");
-      printOutput(lines.map((line, i) => (i === 0 ? `• ${line}` : line.length > 0 ? `  ${line}` : "")).join("\n"));
-      printedProgress = true;
-    },
-    onToolResult: (entry) => {
-      const guardBlocked =
-        entry.isError === true &&
-        (entry.errorCode === LIFECYCLE_ERROR_CODES.guardBlocked || entry.errorDetail?.category === "guard-blocked");
-      if (!guardBlocked) return;
-    },
-  };
-}
-
 export async function handlePrompt(
   prompt: string,
   session: Session,
@@ -141,7 +92,10 @@ export async function handlePrompt(
   try {
     printOutput(`❯ ${prompt}`);
     const assistantRenderer = createAssistantStreamRenderer();
-    const toolRenderer = createToolProgressRenderer();
+    const toolOutput = createToolOutputState();
+    const snapshotByCallId = new Map<string, string>();
+    let hasPrintedToolProgress = false;
+
     const reply = await client.replyStream(
       {
         message: prompt,
@@ -157,12 +111,40 @@ export async function handlePrompt(
             case "text-delta":
               assistantRenderer.onAssistantDelta(event.text);
               break;
-            case "tool-output":
-              toolRenderer.onOutput(event);
+            case "tool-output": {
+              const update = toolOutput.push(event);
+              if (!update) break;
+              if (update.items.length === 1 && update.items[0]?.kind === "tool-header" && !update.items[0].detail)
+                break;
+              const previous = snapshotByCallId.get(event.toolCallId);
+              snapshotByCallId.set(event.toolCallId, update.rendered);
+              if (previous) {
+                const current = update.rendered.trimEnd();
+                const before = previous.trimEnd();
+                if (current === before) break;
+                if (current.startsWith(`${before}\n`)) {
+                  const delta = current.slice(before.length + 1);
+                  const lines = delta.split("\n");
+                  printOutput(lines.map((line) => (line.length > 0 ? `  ${line}` : "")).join("\n"));
+                  hasPrintedToolProgress = true;
+                  break;
+                }
+              }
+              const lines = update.rendered.split("\n");
+              printOutput(
+                lines.map((line, i) => (i === 0 ? `• ${line}` : line.length > 0 ? `  ${line}` : "")).join("\n"),
+              );
+              hasPrintedToolProgress = true;
               break;
-            case "tool-result":
-              toolRenderer.onToolResult(event);
+            }
+            case "tool-result": {
+              const guardBlocked =
+                event.isError === true &&
+                (event.errorCode === LIFECYCLE_ERROR_CODES.guardBlocked ||
+                  event.errorDetail?.category === "guard-blocked");
+              if (guardBlocked) toolOutput.delete(event.toolCallId);
               break;
+            }
           }
         },
       },
@@ -171,7 +153,7 @@ export async function handlePrompt(
     if (reply.error) {
       printError(`Error: ${reply.error}`);
     } else {
-      await assistantRenderer.renderReply(reply.output, toolRenderer.hasPrintedProgress());
+      await assistantRenderer.renderReply(reply.output, hasPrintedToolProgress);
     }
     const assistantMessage = newMessage("assistant", reply.output);
     session.messages.push(

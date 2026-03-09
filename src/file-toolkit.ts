@@ -48,6 +48,7 @@ function diffTotals(rawResult: string): { files: number; added: number; removed:
 
 function emitDiffSummaryHeader(
   toolName: "edit-file" | "edit-code" | "create-file",
+  label: string,
   path: string,
   rawResult: string,
   onOutput: ToolkitInput["onOutput"],
@@ -57,7 +58,7 @@ function emitDiffSummaryHeader(
   const touchedFiles = files > 0 ? files : 1;
   onOutput({
     toolName,
-    content: { kind: "edit-header", path, files: touchedFiles, added, removed },
+    content: { kind: "edit-header", label, path, files: touchedFiles, added, removed },
     toolCallId,
   });
 }
@@ -124,11 +125,6 @@ function createFindFilesTool(input: ToolkitInput) {
     }),
     execute: async (toolInput) => {
       return runTool(session, "find-files", toolInput, async (toolCallId) => {
-        onOutput({
-          toolName: "find-files",
-          content: { kind: "tool-header", label: t("tool.label.find") },
-          toolCallId,
-        });
         const maxResults = toolInput.maxResults ?? 40;
         const count = toolInput.patterns.length;
         const baseBudget = appConfig.agent.toolOutputBudget.findFiles;
@@ -138,7 +134,15 @@ function createFindFilesTool(input: ToolkitInput) {
         };
         const result = compactToolOutput(await findFiles(workspace, toolInput.patterns, maxResults), budget);
         const paths = findResultPaths(result);
-        emitFindSummary(paths, toolInput.patterns, onOutput, toolCallId, TOOL_OUTPUT_FILES_MAX_ROWS, workspace);
+        emitFindSummary(
+          paths,
+          toolInput.patterns,
+          t("tool.label.find"),
+          onOutput,
+          toolCallId,
+          TOOL_OUTPUT_FILES_MAX_ROWS,
+          workspace,
+        );
         return {
           kind: "find-files",
           scope: "workspace",
@@ -183,11 +187,6 @@ function createSearchFilesTool(input: ToolkitInput) {
     }),
     execute: async (toolInput) => {
       return runTool(session, "search-files", toolInput, async (toolCallId) => {
-        onOutput({
-          toolName: "search-files",
-          content: { kind: "tool-header", label: t("tool.label.search") },
-          toolCallId,
-        });
         const maxResults = toolInput.maxResults ?? 20;
         const patterns =
           toolInput.patterns && toolInput.patterns.length > 0
@@ -204,6 +203,7 @@ function createSearchFilesTool(input: ToolkitInput) {
           summaryEntries,
           patterns,
           toolInput.paths,
+          t("tool.label.search"),
           onOutput,
           toolCallId,
           TOOL_OUTPUT_FILES_MAX_ROWS,
@@ -246,11 +246,6 @@ function createScanCodeTool(input: ToolkitInput) {
     }),
     execute: async (toolInput) => {
       return runTool(session, "scan-code", toolInput, async (toolCallId) => {
-        onOutput({
-          toolName: "scan-code",
-          content: { kind: "tool-header", label: t("tool.label.review") },
-          toolCallId,
-        });
         const paths = normalizeUniquePaths(toolInput.paths);
         const unique = Array.from(new Set(paths.map((path) => toDisplayPath(path, workspace))));
         if (unique.length > 0) {
@@ -260,6 +255,7 @@ function createScanCodeTool(input: ToolkitInput) {
             toolName: "scan-code",
             content: {
               kind: "file-header",
+              label: t("tool.label.review"),
               count: unique.length,
               targets: shown,
               omitted: remaining > 0 ? remaining : undefined,
@@ -322,11 +318,6 @@ function createReadFileTool(input: ToolkitInput) {
     }),
     execute: async (toolInput) => {
       return runTool(session, "read-file", toolInput, async (toolCallId) => {
-        onOutput({
-          toolName: "read-file",
-          content: { kind: "tool-header", label: t("tool.label.read") },
-          toolCallId,
-        });
         const entries = normalizeReadEntries(toolInput.paths);
         if (entries.length === 0) throw new Error("Read requires at least one non-empty path");
         const unique = Array.from(new Set(entries.map((entry) => toDisplayPath(entry.path, workspace))));
@@ -337,6 +328,7 @@ function createReadFileTool(input: ToolkitInput) {
             toolName: "read-file",
             content: {
               kind: "file-header",
+              label: t("tool.label.read"),
               count: unique.length,
               targets: shown,
               omitted: remaining > 0 ? remaining : undefined,
@@ -389,17 +381,12 @@ function createEditFileTool(input: ToolkitInput) {
     outputSchema,
     execute: async (toolInput) => {
       return runTool(session, "edit-file", toolInput, async (toolCallId) => {
-        onOutput({
-          toolName: "edit-file",
-          content: { kind: "tool-header", label: t("tool.label.edit") },
-          toolCallId,
-        });
         const rawResult = await editFile({
           workspace,
           path: toolInput.path,
           edits: toolInput.edits,
         });
-        emitDiffSummaryHeader("edit-file", toolInput.path, rawResult, onOutput, toolCallId);
+        emitDiffSummaryHeader("edit-file", t("tool.label.edit"), toolInput.path, rawResult, onOutput, toolCallId);
         for (const content of numberedUnifiedDiffLines(rawResult, WRITE_TOOL_PREVIEW_MAX_LINES))
           onOutput({ toolName: "edit-file", content, toolCallId });
         const totals = diffTotals(rawResult);
@@ -449,17 +436,12 @@ function createEditCodeTool(input: ToolkitInput) {
     outputSchema,
     execute: async (toolInput) => {
       return runTool(session, "edit-code", toolInput, async (toolCallId) => {
-        onOutput({
-          toolName: "edit-code",
-          content: { kind: "tool-header", label: t("tool.label.edit") },
-          toolCallId,
-        });
         const rawResult = await editCode({
           workspace,
           path: toolInput.path,
           edits: toolInput.edits,
         });
-        emitDiffSummaryHeader("edit-code", toolInput.path, rawResult, onOutput, toolCallId);
+        emitDiffSummaryHeader("edit-code", t("tool.label.edit"), toolInput.path, rawResult, onOutput, toolCallId);
         for (const content of numberedUnifiedDiffLines(rawResult, WRITE_TOOL_PREVIEW_MAX_LINES))
           onOutput({ toolName: "edit-code", content, toolCallId });
         const totals = diffTotals(rawResult);
@@ -500,18 +482,13 @@ function createCreateFileTool(input: ToolkitInput) {
     }),
     execute: async (toolInput) => {
       return runTool(session, "create-file", toolInput, async (toolCallId) => {
-        onOutput({
-          toolName: "create-file",
-          content: { kind: "tool-header", label: t("tool.label.create") },
-          toolCallId,
-        });
         const rawResult = await writeTextFile({
           workspace,
           path: toolInput.path,
           content: toolInput.content,
           overwrite: true,
         });
-        emitDiffSummaryHeader("create-file", toolInput.path, rawResult, onOutput, toolCallId);
+        emitDiffSummaryHeader("create-file", t("tool.label.create"), toolInput.path, rawResult, onOutput, toolCallId);
         for (const content of numberedUnifiedDiffLines(rawResult, WRITE_TOOL_PREVIEW_MAX_LINES))
           onOutput({ toolName: "create-file", content, toolCallId });
         const totals = diffTotals(rawResult);

@@ -83,6 +83,7 @@ export function emitFileListSummary(
 export function emitFindSummary(
   filePaths: string[],
   patterns: string[],
+  label: string,
   onOutput: ToolOutputListener,
   toolCallId?: string,
   maxFiles = TOOL_OUTPUT_FILES_MAX_ROWS,
@@ -93,7 +94,7 @@ export function emitFindSummary(
   const labels = compactPatternLabels(patterns);
   onOutput({
     toolName: "find-files",
-    content: { kind: "scope-header", scope: "workspace", patterns: labels, matches: unique.length },
+    content: { kind: "scope-header", label, scope: "workspace", patterns: labels, matches: unique.length },
     toolCallId,
   });
   for (const path of unique.slice(0, maxFiles)) {
@@ -302,6 +303,7 @@ export function emitSearchSummary(
   entries: SearchSummaryEntry[],
   patterns: string[],
   paths: string[] | undefined,
+  label: string,
   onOutput: ToolOutputListener,
   toolCallId?: string,
   maxFiles = TOOL_OUTPUT_FILES_MAX_ROWS,
@@ -328,7 +330,7 @@ export function emitSearchSummary(
   }
   onOutput({
     toolName: "search-files",
-    content: { kind: "scope-header", scope, patterns: labels, matches: unique.length },
+    content: { kind: "scope-header", label, scope, patterns: labels, matches: unique.length },
     toolCallId,
   });
   for (const path of unique.slice(0, maxFiles)) {

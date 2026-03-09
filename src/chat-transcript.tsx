@@ -75,7 +75,7 @@ function renderStatusContent(content: string): React.ReactNode {
 function renderToolOutput(content: string, label?: string): React.ReactNode {
   return content.split("\n").map((line, index) => (
     <React.Fragment key={`tool-${index}`}>
-      {index > 0 ? "\n  " : null}
+      {index > 0 ? "\n" : null}
       {index === 0 && label && line.startsWith(label) ? (
         <>
           <Text bold>{label}</Text>

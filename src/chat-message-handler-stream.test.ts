@@ -38,24 +38,17 @@ describe("chat-message-handler-stream", () => {
     state.dispose();
   });
 
-  test("accumulates tool output and merges headers", () => {
+  test("accumulates tool output with single header", () => {
     const { rows, setRows } = createRowsHarness();
     const state = createMessageStreamState({ setRows });
 
     state.onOutput({
       toolCallId: "call_1",
       toolName: "search-files",
-      content: { kind: "tool-header", label: "Search" },
+      content: { kind: "scope-header", label: "Search", scope: "workspace", patterns: ["needle"], matches: 2 },
     });
     expect(rows).toHaveLength(1);
     expect(rows[0]?.style).toBe("toolProgress");
-    expect(rows[0]?.content).toBe("Search");
-
-    state.onOutput({
-      toolCallId: "call_1",
-      toolName: "search-files",
-      content: { kind: "scope-header", scope: "workspace", patterns: ["needle"], matches: 2 },
-    });
     expect(rows[0]?.content).toBe("Search needle");
 
     state.onOutput({
@@ -63,7 +56,7 @@ describe("chat-message-handler-stream", () => {
       toolName: "search-files",
       content: { kind: "text", text: "a.ts [needle@1]" },
     });
-    expect(rows[0]?.content).toBe("Search needle\na.ts [needle@1]");
+    expect(rows[0]?.content).toBe("Search needle\n  a.ts [needle@1]");
     state.dispose();
   });
 
@@ -74,7 +67,7 @@ describe("chat-message-handler-stream", () => {
     state.onOutput({
       toolCallId: "call_1",
       toolName: "edit-file",
-      content: { kind: "tool-header", label: "Edit", detail: "a.ts" },
+      content: { kind: "edit-header", label: "Edit", path: "a.ts", files: 1, added: 1, removed: 0 },
     });
     state.onOutput({ toolCallId: "call_1", toolName: "edit-file", content: { kind: "text", text: "line A" } });
     state.onOutput({ toolCallId: "call_1", toolName: "edit-file", content: { kind: "text", text: "line A" } });

@@ -1,7 +1,7 @@
 import { type ChatRow, createRow } from "./chat-commands";
 import { createId } from "./short-id";
 import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
-import { renderToolOutput, renderToolOutputContent, type ToolOutput } from "./tool-output-content";
+import { createToolOutputState, type ToolOutput } from "./tool-output-content";
 
 export type MessageStreamState = {
   onAssistantDelta: (delta: string) => void;
@@ -28,7 +28,7 @@ export function createMessageStreamState(input: {
   let streamingContent = "";
   let flushTimer: ReturnType<typeof setTimeout> | null = null;
   const toolRowIdByCallId = new Map<string, string>();
-  const toolContentByCallId = new Map<string, ToolOutput[]>();
+  const toolOutput = createToolOutputState();
 
   const flush = (): void => {
     if (flushTimer) {
@@ -52,14 +52,8 @@ export function createMessageStreamState(input: {
       if (!flushTimer) flushTimer = setTimeout(flush, STREAM_FLUSH_MS);
     },
     onOutput: (entry) => {
-      const items = toolContentByCallId.get(entry.toolCallId) ?? [];
-      const incoming = renderToolOutput(entry.content);
-      const lastItem = items[items.length - 1];
-      if (lastItem && renderToolOutput(lastItem) === incoming) return;
-      items.push(entry.content);
-      toolContentByCallId.set(entry.toolCallId, items);
-      const rendered = renderToolOutputContent(items);
-      if (!rendered) return;
+      const update = toolOutput.push(entry);
+      if (!update) return;
 
       const existingRowId = toolRowIdByCallId.get(entry.toolCallId);
       if (!existingRowId) {
@@ -67,18 +61,16 @@ export function createMessageStreamState(input: {
         streamingRowId = null;
         const rowId = `row_${createId()}`;
         toolRowIdByCallId.set(entry.toolCallId, rowId);
-        const firstItem = items[0];
-        const label = firstItem?.kind === "tool-header" ? firstItem.label : undefined;
         input.setRows((current) => [
           ...current,
           {
             id: rowId,
             role: "assistant",
-            content: rendered,
+            content: update.rendered,
             style: "toolProgress",
             toolCallId: entry.toolCallId,
             toolName: entry.toolName,
-            toolLabel: label,
+            toolLabel: update.label,
           },
         ]);
         return;
@@ -86,9 +78,9 @@ export function createMessageStreamState(input: {
       input.setRows((current) => {
         const existingIndex = current.findIndex((row) => row.id === existingRowId);
         const existingRow = existingIndex >= 0 ? current[existingIndex] : undefined;
-        if (!existingRow || existingRow.content === rendered) return current;
+        if (!existingRow || existingRow.content === update.rendered) return current;
         const next = [...current];
-        next[existingIndex] = { ...existingRow, content: rendered };
+        next[existingIndex] = { ...existingRow, content: update.rendered };
         return next;
       });
     },
@@ -99,7 +91,7 @@ export function createMessageStreamState(input: {
       if (guardBlocked) {
         const rowId = toolRowIdByCallId.get(entry.toolCallId);
         toolRowIdByCallId.delete(entry.toolCallId);
-        toolContentByCallId.delete(entry.toolCallId);
+        toolOutput.delete(entry.toolCallId);
         if (!rowId) return;
         input.setRows((current) => current.filter((row) => row.id !== rowId));
         return;
