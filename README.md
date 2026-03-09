@@ -1,7 +1,5 @@
 # Acolyte
 
-![Acolyte logo](src/assets/acolyte.png)
-
 Acolyte is a chat-first coding agent with an explicit lifecycle, tool guards, evaluators, and context distillation memory.
 
 ## Dev Setup
