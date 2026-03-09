@@ -62,18 +62,24 @@ export function rankAtReferenceSuggestions(paths: string[], query: string, max =
     }
     return qi === q.length;
   };
+  const basenameStartsWith = (path: string): boolean => {
+    const slash = path.lastIndexOf("/");
+    const basename = (slash >= 0 ? path.slice(slash + 1) : path).toLowerCase();
+    return basename.startsWith(q);
+  };
   const score = (path: string): number => {
     const lower = path.toLowerCase();
     if (lower.startsWith(q)) return 0;
-    if (matchesSegmentPrefixes(path)) return 1;
-    if (lower.includes(q)) return 2;
-    if (isSubsequence(path)) return 3;
-    return 4;
+    if (basenameStartsWith(path)) return 1;
+    if (matchesSegmentPrefixes(path)) return 2;
+    if (lower.includes(q)) return 3;
+    if (isSubsequence(path)) return 4;
+    return 5;
   };
 
   return paths
     .map((path) => ({ path, score: score(path) }))
-    .filter((item) => item.score < 4)
+    .filter((item) => item.score < 5)
     .sort((a, b) => {
       if (a.score !== b.score) return a.score - b.score;
       if (a.path.length !== b.path.length) return a.path.length - b.path.length;
