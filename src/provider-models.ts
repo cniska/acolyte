@@ -1,6 +1,7 @@
 import { appConfig } from "./app-config";
 import { isProviderAvailable, providerFromModel } from "./provider-config";
 import type { Provider } from "./provider-contract";
+import { normalizeBaseUrl } from "./url-utils";
 
 type ProviderFetchConfig = {
   apiKey?: string;
@@ -19,8 +20,8 @@ export function invalidateModelsCache(): void {
 }
 
 async function fetchOpenAIModels(config: ProviderFetchConfig): Promise<string[]> {
-  const baseUrl = (config.baseUrl ?? "https://api.openai.com").replace(/\/+$/, "");
-  const res = await fetch(`${baseUrl}/v1/models`, {
+  const baseUrl = normalizeBaseUrl(config.baseUrl ?? "https://api.openai.com/v1");
+  const res = await fetch(`${baseUrl}/models`, {
     headers: { Authorization: `Bearer ${config.apiKey}` },
   });
   if (!res.ok) return [];
@@ -29,7 +30,7 @@ async function fetchOpenAIModels(config: ProviderFetchConfig): Promise<string[]>
 }
 
 async function fetchAnthropicModels(config: ProviderFetchConfig): Promise<string[]> {
-  const baseUrl = (config.baseUrl ?? "https://api.anthropic.com/v1").replace(/\/+$/, "");
+  const baseUrl = normalizeBaseUrl(config.baseUrl ?? "https://api.anthropic.com/v1");
   const res = await fetch(`${baseUrl}/models`, {
     headers: {
       "x-api-key": config.apiKey ?? "",
@@ -42,7 +43,7 @@ async function fetchAnthropicModels(config: ProviderFetchConfig): Promise<string
 }
 
 async function fetchGoogleModels(config: ProviderFetchConfig): Promise<string[]> {
-  const baseUrl = (config.baseUrl ?? "https://generativelanguage.googleapis.com").replace(/\/+$/, "");
+  const baseUrl = normalizeBaseUrl(config.baseUrl ?? "https://generativelanguage.googleapis.com");
   const res = await fetch(`${baseUrl}/v1beta/models?key=${config.apiKey}`);
   if (!res.ok) return [];
   const json = (await res.json()) as { models?: Array<{ name: string }> };
