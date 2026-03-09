@@ -1,7 +1,7 @@
 import { useInput } from "ink";
 import { applyAtSuggestion, shouldAutocompleteAtSubmit } from "./chat-file-ref";
 import { suggestModels } from "./chat-model-autocomplete";
-import { type PickerState, pickerItemCount } from "./chat-picker";
+import { PICKER_PAGE_SIZE, type PickerState, pickerItemCount } from "./chat-picker";
 import { shouldAutocompleteSlashSubmit } from "./chat-slash";
 
 type HistoryTransition = {
@@ -129,13 +129,28 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
           return;
         }
         if (key.upArrow) {
-          input.setPicker((current) => (current ? { ...current, index: Math.max(0, current.index - 1) } : current));
+          input.setPicker((current) => {
+            if (!current) return current;
+            const index = Math.max(0, current.index - 1);
+            if (current.kind === "model") {
+              const scrollOffset = index < current.scrollOffset ? index : current.scrollOffset;
+              return { ...current, index, scrollOffset };
+            }
+            return { ...current, index };
+          });
           return;
         }
         if (key.downArrow) {
-          input.setPicker((current) =>
-            current ? { ...current, index: Math.min(pickerItemCount(current) - 1, current.index + 1) } : current,
-          );
+          input.setPicker((current) => {
+            if (!current) return current;
+            const index = Math.min(pickerItemCount(current) - 1, current.index + 1);
+            if (current.kind === "model") {
+              const scrollOffset =
+                index >= current.scrollOffset + PICKER_PAGE_SIZE ? index - PICKER_PAGE_SIZE + 1 : current.scrollOffset;
+              return { ...current, index, scrollOffset };
+            }
+            return { ...current, index };
+          });
           return;
         }
         if (key.return && pickerItemCount(input.picker) > 0) {
@@ -148,7 +163,7 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
               if (!current || current.kind !== "model") return current;
               const query = current.query.slice(0, -1);
               const filtered = suggestModels(query, current.items);
-              return { ...current, query, filtered, index: 0 };
+              return { ...current, query, filtered, index: 0, scrollOffset: 0 };
             });
             return;
           }
@@ -157,7 +172,7 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
               if (!current || current.kind !== "model") return current;
               const query = current.query + keyInput;
               const filtered = suggestModels(query, current.items);
-              return { ...current, query, filtered, index: 0 };
+              return { ...current, query, filtered, index: 0, scrollOffset: 0 };
             });
             return;
           }

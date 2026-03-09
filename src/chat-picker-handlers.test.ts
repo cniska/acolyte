@@ -132,6 +132,7 @@ describe("chat picker handlers", () => {
       filtered: ["gpt-5-mini", "gpt-5.2"],
       query: "",
       index: 1,
+      scrollOffset: 0,
     });
 
     expect(selectedSessions.at(-1)?.model).toBe("gpt-5.2");

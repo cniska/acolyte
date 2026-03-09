@@ -12,7 +12,7 @@ const MODELS = [
 ];
 
 describe("suggestModels", () => {
-  test("returns all models up to max when query is empty", () => {
+  test("returns all models when query is empty", () => {
     expect(suggestModels("", MODELS)).toEqual(MODELS);
   });
 
@@ -35,9 +35,5 @@ describe("suggestModels", () => {
 
   test("no match returns empty", () => {
     expect(suggestModels("zzz", MODELS)).toEqual([]);
-  });
-
-  test("respects max limit", () => {
-    expect(suggestModels("", MODELS, 3)).toHaveLength(3);
   });
 });

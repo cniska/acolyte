@@ -1,6 +1,5 @@
 import type { AgentMode } from "./agent-modes";
 import { type ChatRow, createRow } from "./chat-commands";
-import { suggestModels } from "./chat-model-autocomplete";
 import type { PickerState } from "./chat-picker";
 import { t } from "./i18n";
 import { getAvailableModels } from "./provider-models";
@@ -50,9 +49,10 @@ export async function createModelPicker(currentModel: string, targetMode?: Agent
   return {
     kind: "model",
     items,
-    filtered: suggestModels("", items),
+    filtered: items,
     query: "",
     index,
+    scrollOffset: 0,
     targetMode,
   };
 }

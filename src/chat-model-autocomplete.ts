@@ -1,8 +1,6 @@
-const MAX_MODEL_SUGGESTIONS = 8;
-
-export function suggestModels(query: string, models: string[], max = MAX_MODEL_SUGGESTIONS): string[] {
+export function suggestModels(query: string, models: string[]): string[] {
   const q = query.trim().toLowerCase();
-  if (!q) return models.slice(0, max);
+  if (!q) return models;
 
   const isSubsequence = (text: string): boolean => {
     let qi = 0;
@@ -29,6 +27,5 @@ export function suggestModels(query: string, models: string[], max = MAX_MODEL_S
       if (a.id.length !== b.id.length) return a.id.length - b.id.length;
       return a.id.localeCompare(b.id);
     })
-    .map((item) => item.id)
-    .slice(0, max);
+    .map((item) => item.id);
 }

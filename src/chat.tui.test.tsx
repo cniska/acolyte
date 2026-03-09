@@ -124,13 +124,14 @@ describe("chat tui visual regression: model picker", () => {
       filtered: ["gpt-5-mini", "gpt-5.2"],
       query: "",
       index: 1,
+      scrollOffset: 0,
     };
 
     const output = renderInputPanel({ picker });
     expect(output).toBe(
       dedent(`
       ────────────────────────────────────────────────────────────────────────────────────────────────
-      Model
+      Model: \u2588
 
         gpt-5-mini
       › gpt-5.2
@@ -148,15 +149,48 @@ describe("chat tui visual regression: model picker", () => {
       filtered: ["gpt-5.2"],
       query: "5.2",
       index: 0,
+      scrollOffset: 0,
     };
 
     const output = renderInputPanel({ picker });
     expect(output).toBe(
       dedent(`
       ────────────────────────────────────────────────────────────────────────────────────────────────
-      Model: 5.2
+      Model: 5.2\u2588
 
       › gpt-5.2
+
+      Type to filter · Enter to apply · Esc to close
+      ────────────────────────────────────────────────────────────────────────────────────────────────
+    `),
+    );
+  });
+
+  test("renders model picker with scroll window", () => {
+    const models = Array.from({ length: 12 }, (_, i) => `model-${String(i + 1).padStart(2, "0")}`);
+    const picker = {
+      kind: "model" as const,
+      items: models,
+      filtered: models,
+      query: "",
+      index: 9,
+      scrollOffset: 4,
+    };
+
+    const output = renderInputPanel({ picker });
+    expect(output).toBe(
+      dedent(`
+      ────────────────────────────────────────────────────────────────────────────────────────────────
+      Model: \u2588
+
+        model-05
+        model-06
+        model-07
+        model-08
+        model-09
+      › model-10
+        model-11
+        model-12
 
       Type to filter · Enter to apply · Esc to close
       ────────────────────────────────────────────────────────────────────────────────────────────────

@@ -66,8 +66,8 @@ describe("chat picker actions", () => {
       if (picker.kind !== "model") throw new Error("Expected model picker");
       expect(picker.items.length).toBeGreaterThan(0);
       expect(picker.filtered.length).toBeGreaterThan(0);
-      expect(picker.filtered.length).toBeLessThanOrEqual(8);
       expect(picker.query).toBe("");
+      expect(picker.scrollOffset).toBe(0);
     } finally {
       globalThis.fetch = originalFetch;
     }

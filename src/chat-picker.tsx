@@ -15,6 +15,7 @@ export type PickerState =
       filtered: string[];
       query: string;
       index: number;
+      scrollOffset: number;
       targetMode?: AgentMode;
     };
 
@@ -23,6 +24,7 @@ function truncateText(input: string, max = 72): string {
   return `${input.slice(0, Math.max(0, max - 1))}…`;
 }
 
+export const PICKER_PAGE_SIZE = 8;
 export const PICKER_LABEL_WIDTH = 20;
 
 function renderPickerRows(
@@ -54,8 +56,8 @@ export function pickerTitle(picker: PickerState): string {
     case "resume":
       return "Resume Session";
     case "model": {
-      const prefix = picker.targetMode ? `Model (${picker.targetMode})` : "Model";
-      return picker.query ? `${prefix}: ${picker.query}` : prefix;
+      const label = picker.targetMode ? `Model (${picker.targetMode})` : "Model";
+      return `${label}: ${picker.query}\u2588`;
     }
     default:
       return unreachable(picker);
@@ -101,16 +103,18 @@ export function renderPickerItems(
         brandColor,
       );
     }
-    case "model":
+    case "model": {
+      const visible = picker.filtered.slice(picker.scrollOffset, picker.scrollOffset + PICKER_PAGE_SIZE);
       return renderPickerRows(
-        picker.filtered.map((id) => ({
+        visible.map((id) => ({
           key: id,
           label: truncateText(id, PICKER_LABEL_WIDTH),
           detail: "",
         })),
-        picker.index,
+        picker.index - picker.scrollOffset,
         brandColor,
       );
+    }
     case "resume": {
       const rows = picker.items.map((item) => [
         `${item.id === activeSessionId ? "●" : " "} ${item.id}`,
