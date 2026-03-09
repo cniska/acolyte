@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, mock, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+import { appConfig } from "./app-config";
 import { createModelPicker, createResumePicker, createResumeRows } from "./chat-picker-actions";
 import { invalidateModelsCache } from "./provider-models";
 import type { Session, SessionState } from "./session-contract";
@@ -15,7 +16,15 @@ function session(id: string, title = "New Session"): Session {
   };
 }
 
+let savedApiKey: string | undefined;
+
+beforeEach(() => {
+  savedApiKey = appConfig.openai.apiKey;
+  (appConfig.openai as { apiKey: string | undefined }).apiKey = "test-key";
+});
+
 afterEach(() => {
+  (appConfig.openai as { apiKey: string | undefined }).apiKey = savedApiKey;
   invalidateModelsCache();
   mock.restore();
 });

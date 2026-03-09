@@ -1,7 +1,16 @@
-import { afterEach, describe, expect, mock, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+import { appConfig } from "./app-config";
 import { getAvailableModels, invalidateModelsCache } from "./provider-models";
 
+let savedApiKey: string | undefined;
+
+beforeEach(() => {
+  savedApiKey = appConfig.openai.apiKey;
+  (appConfig.openai as { apiKey: string | undefined }).apiKey = "test-key";
+});
+
 afterEach(() => {
+  (appConfig.openai as { apiKey: string | undefined }).apiKey = savedApiKey;
   invalidateModelsCache();
   mock.restore();
 });
