@@ -1,46 +1,19 @@
-import type { Provider } from "./provider-contract";
+import { type Provider, providerSchema } from "./provider-contract";
 
-export type Model = {
-  id: string;
-  name: string;
-  description: string;
+const MODEL_NAME_PREFIX_TO_PROVIDER: Record<string, Provider> = {
+  claude: "anthropic",
+  gemini: "google",
 };
 
-const MODEL_REGISTRY: Record<Provider, Model[]> = {
-  openai: [
-    { id: "gpt-5.2", name: "gpt-5.2", description: "highest quality" },
-    { id: "gpt-5-mini", name: "gpt-5-mini", description: "balanced default" },
-    { id: "gpt-5-nano", name: "gpt-5-nano", description: "fastest and lowest cost" },
-  ],
-  anthropic: [
-    { id: "claude-opus-4-6-20250904", name: "claude-opus-4.6", description: "highest quality" },
-    { id: "claude-sonnet-4-6-20250904", name: "claude-sonnet-4.6", description: "balanced default" },
-    { id: "claude-haiku-4-5-20251001", name: "claude-haiku-4.5", description: "fastest and lowest cost" },
-  ],
-  google: [
-    { id: "gemini-2.5-flash-preview-05-20", name: "gemini-2.5-flash", description: "fast and efficient" },
-    { id: "gemini-2.5-pro-preview-05-06", name: "gemini-2.5-pro", description: "highest quality" },
-    { id: "gemini-2.0-flash", name: "gemini-2.0-flash", description: "low-latency default" },
-  ],
+const PROVIDER_PREFIX_ALIASES: Record<string, Provider> = {
+  "openai-compatible": "openai",
 };
 
-const MODEL_DISPLAY_NAME_BY_ID = new Map<string, string>(
-  Object.values(MODEL_REGISTRY)
-    .flat()
-    .flatMap((model) => {
-      const keys = new Set<string>();
-      const lowerId = model.id.toLowerCase();
-      keys.add(lowerId);
-      const undated = lowerId.replace(/-\d{8}$/, "");
-      keys.add(undated);
-      return Array.from(keys).map((key) => [key, model.name] as const);
-    }),
-);
-
-function inferUnqualifiedModelPrefix(model: string): "openai" | "anthropic" | "google" {
+function inferUnqualifiedModelPrefix(model: string): Provider {
   const normalized = model.trim().toLowerCase();
-  if (normalized.startsWith("claude")) return "anthropic";
-  if (normalized.startsWith("gemini")) return "google";
+  for (const [namePrefix, provider] of Object.entries(MODEL_NAME_PREFIX_TO_PROVIDER)) {
+    if (normalized.startsWith(namePrefix)) return provider;
+  }
   return "openai";
 }
 
@@ -50,15 +23,9 @@ export function normalizeModel(model: string): string {
   return `${prefix}/${model}`;
 }
 
-function stripModelPrefix(model: string): string {
-  const slash = model.indexOf("/");
-  return slash >= 0 ? model.slice(slash + 1) : model;
-}
-
 export function formatModel(model: string): string {
-  const id = stripModelPrefix(model).trim();
-  if (id.length === 0) return id;
-  return MODEL_DISPLAY_NAME_BY_ID.get(id.toLowerCase()) ?? id;
+  const slash = model.indexOf("/");
+  return (slash >= 0 ? model.slice(slash + 1) : model).trim();
 }
 
 function isOpenAICompatibleBaseUrl(openaiBaseUrl: string): boolean {
@@ -85,14 +52,16 @@ export function providerFromModel(model: string): Provider {
   const trimmedModel = model.trim();
   const normalizedModel = trimmedModel.toLowerCase();
   if (!normalizedModel.includes("/")) {
-    if (normalizedModel.startsWith("claude")) return "anthropic";
-    if (normalizedModel.startsWith("gemini")) return "google";
+    for (const [namePrefix, provider] of Object.entries(MODEL_NAME_PREFIX_TO_PROVIDER)) {
+      if (normalizedModel.startsWith(namePrefix)) return provider;
+    }
   }
 
-  const prefix = trimmedModel.split("/", 1)[0]?.toLowerCase();
-  if (prefix === "anthropic") return "anthropic";
-  if (prefix === "google") return "google";
-  if (prefix === "openai-compatible") return "openai";
+  const prefix = trimmedModel.split("/", 1)[0]?.toLowerCase() ?? "";
+  const parsed = providerSchema.safeParse(prefix);
+  if (parsed.success) return parsed.data;
+  const aliased = PROVIDER_PREFIX_ALIASES[prefix];
+  if (aliased) return aliased;
   return "openai";
 }
 
@@ -109,8 +78,4 @@ export function isProviderAvailable(input: {
   if (input.provider === "google") return Boolean(input.googleApiKey);
   if (isOpenAICompatibleBaseUrl(input.openaiBaseUrl)) return true;
   return Boolean(input.openaiApiKey);
-}
-
-export function suggestedModelsForProvider(provider: Provider): Model[] {
-  return MODEL_REGISTRY[provider];
 }

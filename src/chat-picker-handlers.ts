@@ -31,7 +31,7 @@ type CreatePickerHandlersInput = {
 export function createPickerHandlers(input: CreatePickerHandlersInput): {
   openSkillsPanel: () => Promise<void>;
   openResumePanel: () => void;
-  openModelPanel: (mode?: AgentMode) => void;
+  openModelPanel: (mode?: AgentMode) => Promise<void>;
   handlePickerSelect: (state: PickerState) => Promise<void>;
   activateSkill: (skillName: string, args: string) => Promise<boolean>;
 } {
@@ -81,9 +81,10 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
     input.setShowHelp(false);
   };
 
-  const openModelPanel = (mode?: AgentMode): void => {
+  const openModelPanel = async (mode?: AgentMode): Promise<void> => {
     const currentModel = mode ? (appConfig.models[mode] ?? input.currentSession.model) : input.currentSession.model;
-    input.setPicker(createModelPicker(currentModel, mode));
+    const picker = await createModelPicker(currentModel, mode);
+    input.setPicker(picker);
     input.setShowHelp(false);
   };
 

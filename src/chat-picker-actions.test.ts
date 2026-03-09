@@ -1,6 +1,6 @@
-import { describe, expect, test } from "bun:test";
-import { appConfig } from "./app-config";
+import { afterEach, describe, expect, mock, test } from "bun:test";
 import { createModelPicker, createResumePicker, createResumeRows } from "./chat-picker-actions";
+import { invalidateModelsCache } from "./provider-models";
 import type { Session, SessionState } from "./session-contract";
 
 function session(id: string, title = "New Session"): Session {
@@ -14,6 +14,11 @@ function session(id: string, title = "New Session"): Session {
     tokenUsage: [],
   };
 }
+
+afterEach(() => {
+  invalidateModelsCache();
+  mock.restore();
+});
 
 describe("chat picker actions", () => {
   test("createResumePicker returns null when there are no sessions", () => {
@@ -49,23 +54,19 @@ describe("chat picker actions", () => {
     });
   });
 
-  test("createModelPicker suggests six models when openai and anthropic are configured", () => {
-    const previousOpenaiKey = appConfig.openai.apiKey;
-    const previousAnthropicKey = appConfig.anthropic.apiKey;
-    const previousGoogleKey = appConfig.google.apiKey;
-    try {
-      (appConfig.openai as { apiKey?: string }).apiKey = "sk-openai";
-      (appConfig.anthropic as { apiKey?: string }).apiKey = "sk-anthropic";
-      (appConfig.google as { apiKey?: string }).apiKey = undefined;
+  test("createModelPicker fetches models and returns picker state", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = mock(async () => {
+      return new Response(JSON.stringify({ data: [{ id: "gpt-5-mini" }, { id: "gpt-5.2" }] }), { status: 200 });
+    }) as unknown as typeof fetch;
 
-      const picker = createModelPicker("gpt-5-mini");
+    try {
+      const picker = await createModelPicker("gpt-5-mini");
       expect(picker.kind).toBe("model");
       if (picker.kind !== "model") throw new Error("Expected model picker");
-      expect(picker.items).toHaveLength(6);
+      expect(picker.items.length).toBeGreaterThan(0);
     } finally {
-      (appConfig.openai as { apiKey?: string }).apiKey = previousOpenaiKey;
-      (appConfig.anthropic as { apiKey?: string }).apiKey = previousAnthropicKey;
-      (appConfig.google as { apiKey?: string }).apiKey = previousGoogleKey;
+      globalThis.fetch = originalFetch;
     }
   });
 });

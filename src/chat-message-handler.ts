@@ -38,7 +38,7 @@ type CreateMessageHandlerInput = {
   openSkillsPanel: () => Promise<void>;
   activateSkill: (skillName: string, args: string) => Promise<boolean>;
   openResumePanel: () => void;
-  openModelPanel: (mode?: AgentMode) => void;
+  openModelPanel: (mode?: AgentMode) => void | Promise<void>;
   tokenUsage: TokenUsageEntry[];
   isWorking: boolean;
   setInputHistory: (updater: (current: string[]) => string[]) => void;

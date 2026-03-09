@@ -167,7 +167,7 @@ export type CommandContext = {
   exit: () => void;
   openSkillsPanel: () => Promise<void>;
   openResumePanel: () => void;
-  openModelPanel: (mode?: AgentMode) => void;
+  openModelPanel: (mode?: AgentMode) => void | Promise<void>;
   persistModelConfig?: (key: string, value: string, scope: ConfigScope) => Promise<void>;
   activateSkill?: (skillName: string, args: string) => Promise<boolean>;
   tokenUsage: TokenUsageEntry[];

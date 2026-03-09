@@ -1,10 +1,8 @@
 import type { AgentMode } from "./agent-modes";
-import { appConfig } from "./app-config";
 import { type ChatRow, createRow } from "./chat-commands";
 import type { PickerState } from "./chat-picker";
 import { t } from "./i18n";
-import { providerFromModel, suggestedModelsForProvider } from "./provider-config";
-import type { Provider } from "./provider-contract";
+import { getAvailableModels } from "./provider-models";
 import type { Session, SessionState } from "./session-contract";
 
 type PickerByKind = {
@@ -45,18 +43,9 @@ export function createResumeRows(session: Session, toRows: (messages: Session["m
   ];
 }
 
-export function createModelPicker(currentModel: string, targetMode?: AgentMode): PickerState {
-  const providers: Provider[] = [];
-  if (appConfig.openai.apiKey) providers.push("openai");
-  if (appConfig.anthropic.apiKey) providers.push("anthropic");
-  if (appConfig.google.apiKey) providers.push("google");
-  const fallbackProvider = providerFromModel(currentModel);
-  if (!providers.includes(fallbackProvider)) providers.push(fallbackProvider);
-  const seen = new Set<string>();
-  const suggestions = providers.flatMap((provider) =>
-    suggestedModelsForProvider(provider).filter((m) => !seen.has(m.id) && seen.add(m.id)),
-  );
-  const items = suggestions.map((m) => ({ model: m.id, name: m.name, description: m.description }));
+export async function createModelPicker(currentModel: string, targetMode?: AgentMode): Promise<PickerState> {
+  const models = await getAvailableModels(currentModel);
+  const items = models.map((id) => ({ model: id, name: id, description: "" }));
   const index = items.findIndex((item) => item.model === currentModel);
   return {
     kind: "model",
