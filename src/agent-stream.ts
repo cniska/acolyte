@@ -174,7 +174,14 @@ export function createAgentStream(
 
       streamController.close();
       return { text: fullText, toolCalls: allToolCalls };
-    })();
+    })().catch((error) => {
+      try {
+        streamController.error(error);
+      } catch {
+        /* stream already closed */
+      }
+      throw error;
+    });
 
     return { fullStream, getFullOutput: () => resultPromise };
   };

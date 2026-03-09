@@ -7,7 +7,10 @@ import { DISCOVERY_TOOL_SET, READ_TOOL_SET, SEARCH_TOOL_SET, WRITE_TOOL_SET } fr
 
 export function phaseFinalize(ctx: RunContext): ChatResponse {
   const rawOutput = ctx.result?.text.trim() ?? "";
-  const output = formatAssistantOutput(rawOutput, ctx.observedTools.size);
+  const output =
+    rawOutput.length === 0 && ctx.lastError
+      ? `Error from provider: ${ctx.lastError}`
+      : formatAssistantOutput(rawOutput, ctx.observedTools.size);
 
   const completionTokens = estimateTokens(output);
   let budgetWarning: string | undefined;
