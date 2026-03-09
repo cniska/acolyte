@@ -100,7 +100,7 @@ describe("chat picker handlers", () => {
     expect(pickerValues.at(-1)).toBeNull();
   });
 
-  test("handlePickerSelect model applies custom model when provided", async () => {
+  test("handlePickerSelect model applies selected model", async () => {
     const rows: ChatRow[] = [];
     const currentSession = createSession({ id: "sess_current", model: "gpt-5-mini" });
     const store = createStore({ sessions: [currentSession], activeSessionId: currentSession.id });
@@ -130,57 +130,12 @@ describe("chat picker handlers", () => {
       kind: "model",
       items: [
         { model: "gpt-5-mini", name: "gpt-5-mini", description: "balanced default" },
-        { model: "other", name: "other", description: "" },
+        { model: "gpt-5.2", name: "gpt-5.2", description: "highest quality" },
       ],
       index: 1,
-      customModel: "gpt-5",
     });
 
-    expect(selectedSessions.at(-1)?.model).toBe("gpt-5");
-    expect(rows.some((row) => row.content === "Changed default model to gpt-5.")).toBe(true);
-  });
-
-  test("handlePickerSelect model keeps picker open when other is empty", async () => {
-    const rows: ChatRow[] = [];
-    const pickerStates: Array<unknown> = [];
-    const currentSession = createSession({ id: "sess_current", model: "gpt-5-mini" });
-    const store = createStore({ sessions: [currentSession], activeSessionId: currentSession.id });
-    const selectedSessions: ReturnType<typeof createSession>[] = [];
-    const handlers = createPickerHandlers({
-      store,
-      currentSession,
-      setCurrentSession: (next) => {
-        selectedSessions.push(next);
-      },
-      setRows: (updater) => {
-        const next = updater(rows);
-        rows.length = 0;
-        rows.push(...next);
-      },
-      setRowsDirect: () => {},
-      setPicker: (next) => {
-        pickerStates.push(next);
-      },
-      setShowHelp: () => {},
-      setValue: () => {},
-      persist: async () => {},
-      toRows: () => [],
-      createMessage,
-      nowIso: () => "2026-02-20T00:00:00.000Z",
-    });
-
-    await handlers.handlePickerSelect({
-      kind: "model",
-      items: [
-        { model: "gpt-5-mini", name: "gpt-5-mini", description: "balanced default" },
-        { model: "other", name: "other", description: "" },
-      ],
-      index: 1,
-      customModel: "",
-    });
-
-    expect(selectedSessions).toEqual([]);
-    expect(pickerStates).toEqual([]);
-    expect(rows).toEqual([]);
+    expect(selectedSessions.at(-1)?.model).toBe("gpt-5.2");
+    expect(rows.some((row) => row.content === "Changed default model to gpt-5.2.")).toBe(true);
   });
 });

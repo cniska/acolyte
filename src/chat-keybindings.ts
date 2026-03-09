@@ -123,24 +123,6 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
         return;
       }
       if (input.picker) {
-        if (input.picker.kind === "model") {
-          const selected = input.picker.items[input.picker.index];
-          const onOther = selected?.model === "other";
-          if (key.backspace || key.delete) {
-            if (!onOther) return;
-            input.setPicker((current) =>
-              current?.kind === "model" ? { ...current, customModel: current.customModel.slice(0, -1) } : current,
-            );
-            return;
-          }
-          if (!key.ctrl && !key.meta && keyInput.length === 1 && !/\s/.test(keyInput)) {
-            if (!onOther) return;
-            input.setPicker((current) =>
-              current?.kind === "model" ? { ...current, customModel: `${current.customModel}${keyInput}` } : current,
-            );
-            return;
-          }
-        }
         if (key.escape) {
           input.setPicker(null);
           return;

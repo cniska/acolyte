@@ -117,43 +117,26 @@ describe("chat tui visual regression: footer and help", () => {
 });
 
 describe("chat tui visual regression: model picker", () => {
-  test("renders model picker placeholder and typed custom value", () => {
-    const basePicker = {
+  test("renders model picker with selected model", () => {
+    const picker = {
       kind: "model" as const,
       items: [
         { model: "gpt-5-mini", name: "gpt-5-mini", description: "balanced default" },
-        { model: "gpt-5", name: "gpt-5", description: "highest quality" },
-        { model: "other", name: "other", description: "" },
+        { model: "gpt-5.2", name: "gpt-5.2", description: "highest quality" },
       ],
-      index: 2,
+      index: 1,
     };
 
-    const empty = renderInputPanel({ picker: { ...basePicker, customModel: "" } });
-    expect(empty).toBe(
+    const output = renderInputPanel({ picker });
+    expect(output).toBe(
       dedent(`
       ────────────────────────────────────────────────────────────────────────────────────────────────
       Model
-      
-        gpt-5-mini           balanced default
-        gpt-5                highest quality
-      › other
-      
-      Select other to type · Enter to apply · Esc to close
-      ────────────────────────────────────────────────────────────────────────────────────────────────
-    `),
-    );
 
-    const typed = renderInputPanel({ picker: { ...basePicker, customModel: "anthropic/claude-sonnet-4-5" } });
-    expect(typed).toBe(
-      dedent(`
-      ────────────────────────────────────────────────────────────────────────────────────────────────
-      Model
-      
         gpt-5-mini           balanced default
-        gpt-5                highest quality
-      › anthropic/claude-sonnet-4-5
-      
-      Select other to type · Enter to apply · Esc to close
+      › gpt-5.2              highest quality
+
+      Enter to apply · Esc to close
       ────────────────────────────────────────────────────────────────────────────────────────────────
     `),
     );

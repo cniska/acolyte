@@ -56,16 +56,12 @@ export function createModelPicker(currentModel: string, targetMode?: AgentMode):
   const suggestions = providers.flatMap((provider) =>
     suggestedModelsForProvider(provider).filter((m) => !seen.has(m.id) && seen.add(m.id)),
   );
-  const items = [
-    ...suggestions.map((m) => ({ model: m.id, name: m.name, description: m.description })),
-    { model: "other", name: "other", description: "" },
-  ];
+  const items = suggestions.map((m) => ({ model: m.id, name: m.name, description: m.description }));
   const index = items.findIndex((item) => item.model === currentModel);
   return {
     kind: "model",
     items,
-    index: index >= 0 ? index : items.length - 1,
-    customModel: index < 0 ? currentModel : "",
+    index: Math.max(0, index),
     targetMode,
   };
 }

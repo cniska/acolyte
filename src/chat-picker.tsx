@@ -13,7 +13,6 @@ export type PickerState =
       kind: "model";
       items: Array<{ model: string; name: string; description: string }>;
       index: number;
-      customModel: string;
       targetMode?: AgentMode;
     };
 
@@ -66,7 +65,7 @@ export function pickerHint(picker: PickerState): string {
     case "resume":
       return "Enter to resume · Esc to close";
     case "model":
-      return "Select other to type · Enter to apply · Esc to close";
+      return "Enter to apply · Esc to close";
     default:
       return unreachable(picker);
   }
@@ -90,33 +89,14 @@ export function renderPickerItems(
       );
     }
     case "model":
-      return (
-        <>
-          {picker.items.map((item, index) => {
-            const selected = index === picker.index;
-            const isOther = item.model === "other";
-            const emptyOther = isOther && picker.customModel.trim().length === 0;
-            const label = isOther
-              ? picker.customModel.trim().length > 0
-                ? picker.customModel
-                : "other"
-              : truncateText(item.name, PICKER_LABEL_WIDTH);
-            return (
-              <Text key={item.model}>
-                {selected ? "› " : "  "}
-                <Text color={selected && !emptyOther ? brandColor : undefined} dimColor={emptyOther && selected}>
-                  {label.padEnd(PICKER_LABEL_WIDTH)}
-                </Text>
-                {item.description ? (
-                  <>
-                    <Text> </Text>
-                    <Text dimColor>{item.description}</Text>
-                  </>
-                ) : null}
-              </Text>
-            );
-          })}
-        </>
+      return renderPickerRows(
+        picker.items.map((item) => ({
+          key: item.model,
+          label: truncateText(item.name, PICKER_LABEL_WIDTH),
+          detail: item.description,
+        })),
+        picker.index,
+        brandColor,
       );
     case "resume": {
       const rows = picker.items.map((item) => [

@@ -1,4 +1,3 @@
-import { z } from "zod";
 import type { AgentMode } from "./agent-modes";
 import { appConfig, setDefaultModel, setModeModel } from "./app-config";
 import { unreachable } from "./assert";
@@ -12,8 +11,6 @@ import { t } from "./i18n";
 import { formatModel } from "./provider-config";
 import type { Session, SessionState } from "./session-contract";
 import { findSkillByName, loadSkills, readSkillInstructions } from "./skills";
-
-const modelIdSchema = z.string().trim().min(1).regex(/^\S+$/);
 
 type CreatePickerHandlersInput = {
   store: SessionState;
@@ -117,9 +114,8 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
         return;
       }
       case "model": {
-        const custom = modelIdSchema.safeParse(state.customModel);
         const selected = state.items[state.index];
-        const nextModel = selected?.model === "other" ? (custom.success ? custom.data : undefined) : selected?.model;
+        const nextModel = selected?.model;
         if (!nextModel) return;
         try {
           const targetMode = state.targetMode;

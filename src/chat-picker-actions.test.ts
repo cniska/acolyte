@@ -61,8 +61,7 @@ describe("chat picker actions", () => {
       const picker = createModelPicker("gpt-5-mini");
       expect(picker.kind).toBe("model");
       if (picker.kind !== "model") throw new Error("Expected model picker");
-      const suggested = picker.items.filter((item) => item.model !== "other");
-      expect(suggested).toHaveLength(6);
+      expect(picker.items).toHaveLength(6);
     } finally {
       (appConfig.openai as { apiKey?: string }).apiKey = previousOpenaiKey;
       (appConfig.anthropic as { apiKey?: string }).apiKey = previousAnthropicKey;
