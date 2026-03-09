@@ -1,5 +1,5 @@
 import { appConfig } from "./app-config";
-import { isProviderAvailable, providerFromModel } from "./provider-config";
+import { isProviderAvailable } from "./provider-config";
 import type { Provider } from "./provider-contract";
 import { normalizeBaseUrl } from "./url-utils";
 
@@ -76,7 +76,7 @@ function providerConfig(provider: Provider): ProviderFetchConfig {
   }
 }
 
-function availableProviders(currentModel: string): Provider[] {
+function availableProviders(): Provider[] {
   const providers: Provider[] = [];
   if (
     isProviderAvailable({
@@ -103,16 +103,14 @@ function availableProviders(currentModel: string): Provider[] {
     })
   )
     providers.push("google");
-  const fallback = providerFromModel(currentModel);
-  if (!providers.includes(fallback)) providers.push(fallback);
   return providers;
 }
 
-export async function getAvailableModels(currentModel: string): Promise<string[]> {
+export async function getAvailableModels(): Promise<string[]> {
   const now = Date.now();
   if (modelsCache && now - modelsCache.fetchedAt < CACHE_TTL_MS) return modelsCache.models;
 
-  const providers = availableProviders(currentModel);
+  const providers = availableProviders();
   const results = await Promise.all(providers.map((p) => fetchProviderModels(p, providerConfig(p))));
   const seen = new Set<string>();
   const models: string[] = [];

@@ -61,7 +61,7 @@ describe("chat picker actions", () => {
     }) as unknown as typeof fetch;
 
     try {
-      const picker = await createModelPicker("gpt-5-mini");
+      const picker = await createModelPicker();
       expect(picker.kind).toBe("model");
       if (picker.kind !== "model") throw new Error("Expected model picker");
       expect(picker.items.length).toBeGreaterThan(0);

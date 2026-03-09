@@ -82,8 +82,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
   };
 
   const openModelPanel = async (mode?: AgentMode): Promise<void> => {
-    const currentModel = mode ? (appConfig.models[mode] ?? input.currentSession.model) : input.currentSession.model;
-    const picker = await createModelPicker(currentModel, mode);
+    const picker = await createModelPicker(mode);
     input.setPicker(picker);
     input.setShowHelp(false);
   };

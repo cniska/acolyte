@@ -43,15 +43,14 @@ export function createResumeRows(session: Session, toRows: (messages: Session["m
   ];
 }
 
-export async function createModelPicker(currentModel: string, targetMode?: AgentMode): Promise<PickerState> {
-  const items = await getAvailableModels(currentModel);
-  const index = Math.max(0, items.indexOf(currentModel));
+export async function createModelPicker(targetMode?: AgentMode): Promise<PickerState> {
+  const items = await getAvailableModels();
   return {
     kind: "model",
     items,
     filtered: items,
     query: "",
-    index,
+    index: 0,
     scrollOffset: 0,
     targetMode,
   };

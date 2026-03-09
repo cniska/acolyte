@@ -18,7 +18,7 @@ describe("getAvailableModels", () => {
     }) as unknown as typeof fetch;
 
     try {
-      const models = await getAvailableModels("gpt-5-mini");
+      const models = await getAvailableModels();
       expect(models).toContain("gpt-5-mini");
       expect(models).toContain("gpt-5.2");
       expect(models).toEqual([...models].sort());
@@ -36,9 +36,9 @@ describe("getAvailableModels", () => {
     }) as unknown as typeof fetch;
 
     try {
-      await getAvailableModels("model-a");
+      await getAvailableModels();
       const first = fetchCount;
-      await getAvailableModels("model-a");
+      await getAvailableModels();
       expect(fetchCount).toBe(first);
     } finally {
       globalThis.fetch = originalFetch;
@@ -52,7 +52,7 @@ describe("getAvailableModels", () => {
     }) as unknown as typeof fetch;
 
     try {
-      const models = await getAvailableModels("gpt-5-mini");
+      const models = await getAvailableModels();
       expect(models).toEqual([]);
     } finally {
       globalThis.fetch = originalFetch;
