@@ -91,9 +91,9 @@ Consolidate core UX quality and extension-ready seams before MVP release.
 
 Run a reproducible experiment that proves MVP readiness.
 
-- [ ] `acolyte-experiment` completes at least one non-trivial vertical slice end-to-end
-- [ ] Experiment evidence is complete (prompt ledger, verify logs, outcomes)
-- [ ] Includes at least one failure-and-repair cycle with clear proof
+- [x] `acolyte-experiment` completes at least one non-trivial vertical slice end-to-end
+- [x] Experiment evidence is complete (prompt ledger, verify logs, outcomes)
+- [x] Includes at least one failure-and-repair cycle with clear proof
 - [ ] Demo flow supports 15-minute launch slot (live slice + evidence backup)
 
 ### Milestone 9: Chat Correctness Pass
