@@ -181,12 +181,6 @@ export async function phaseGenerate(ctx: RunContext, prompt: string, opts: Gener
     const errorCode =
       error instanceof Error && "code" in error && typeof error.code === "string" ? error.code : undefined;
     captureError(ctx, errorMsg, { source: "generate", code: errorCode });
-    ctx.emit({
-      type: "error",
-      error: `Tool failed: ${ctx.lastError}`,
-      ...(ctx.lastErrorCode ? { errorCode: ctx.lastErrorCode } : {}),
-      ...(currentErrorDetail(ctx) ? { errorDetail: currentErrorDetail(ctx) } : {}),
-    });
     ctx.debug("lifecycle.generate.error", { model: ctx.model, error: ctx.lastError });
   }
 }
