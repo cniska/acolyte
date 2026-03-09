@@ -1,12 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { appConfig } from "./app-config";
-import {
-  createModelPicker,
-  createPicker,
-  createResumePicker,
-  createResumeRows,
-  createWriteConfirmPicker,
-} from "./chat-picker-actions";
+import { createModelPicker, createResumePicker, createResumeRows } from "./chat-picker-actions";
 import type { Session, SessionState } from "./session-contract";
 
 function session(id: string, title = "New Session"): Session {
@@ -53,24 +47,6 @@ describe("chat picker actions", () => {
       content: "Resumed session: sess_abc123456789",
       style: "sessionStatus",
     });
-  });
-
-  test("createPicker builds typed picker from config", () => {
-    const picker = createPicker({
-      kind: "permissions",
-      items: [
-        { mode: "read", description: "inspect/search only" },
-        { mode: "write", description: "allow edits and shell commands" },
-      ],
-      index: 1,
-    });
-    expect(picker.kind).toBe("permissions");
-    expect(picker.items[1]?.mode).toBe("write");
-  });
-
-  test("createWriteConfirmPicker returns switch/cancel options", () => {
-    const picker = createWriteConfirmPicker("edit src/cli.ts");
-    expect(picker).toMatchObject({ kind: "writeConfirm", index: 0, prompt: "edit src/cli.ts" });
   });
 
   test("createModelPicker suggests six models when openai and anthropic are configured", () => {

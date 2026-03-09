@@ -183,7 +183,7 @@ describe("config store", () => {
         'openaiBaseUrl = "https://openai.example.com/v1"',
         'anthropicBaseUrl = "https://anthropic.example.com"',
         'googleBaseUrl = "https://google.example.com"',
-        'permissionMode = "write"',
+
         'logFormat = "json"',
         'transportMode = "rpc"',
         "temperatures.plan = 0.2",
@@ -207,7 +207,7 @@ describe("config store", () => {
     expect(loaded.port).toBe(7777);
     expect(loaded.locale).toBe("en");
     expect(loaded.model).toBe("openai/gpt-5-mini");
-    expect(loaded.permissionMode).toBe("write");
+
     expect(loaded.logFormat).toBe("json");
     expect(loaded.transportMode).toBe("rpc");
     expect(loaded.temperatures).toEqual({ plan: 0.2, work: 0.3 });
@@ -231,7 +231,7 @@ describe("config store", () => {
     expect(resolved.memorySources).toEqual(["stored", "distill_project", "distill_user", "distill_session"]);
     expect(resolved.distillModel).toBe("anthropic/claude-sonnet-4");
     expect(resolved.anthropicBaseUrl).toBe("https://api.anthropic.com/v1");
-    expect(resolved.permissionMode).toBe("read");
+
     expect(resolved.logFormat).toBe("logfmt");
     expect(resolved.transportMode).toBe("rpc");
     expect(resolved.replyTimeoutMs).toBe(180000);
@@ -371,9 +371,7 @@ describe("config store", () => {
     await expect(setConfigValue("maxMessageTokens", "not-a-number", { homeDir: home, cwd: project })).rejects.toThrow(
       "Invalid value for maxMessageTokens",
     );
-    await expect(setConfigValue("permissionMode", "admin", { homeDir: home, cwd: project })).rejects.toThrow(
-      "Invalid value for permissionMode",
-    );
+
     await expect(setConfigValue("temperatures.plan", "3", { homeDir: home, cwd: project })).rejects.toThrow(
       "Invalid value for temperatures.plan",
     );

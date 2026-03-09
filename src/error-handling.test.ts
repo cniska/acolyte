@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import {
-  createStreamError,
   categoryFromErrorCode,
   categoryFromErrorKind,
   createErrorStats,
+  createStreamError,
   errorCodeFromCategory,
   errorKindFromCategory,
   isEditFileMultiMatchSignal,

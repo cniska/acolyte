@@ -11,7 +11,6 @@ describe("chat-message-handler-task-followup", () => {
           throw new Error("not used");
         },
         status: async () => ({}),
-        setPermissionMode: async () => {},
         taskStatus: async () => null,
       },
       remoteTaskId: "task_1",

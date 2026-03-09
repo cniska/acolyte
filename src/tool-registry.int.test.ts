@@ -1,16 +1,9 @@
-import { afterEach, describe, expect, test } from "bun:test";
-import { setPermissionMode } from "./app-config";
-import { savedPermissionMode } from "./test-utils";
+import { describe, expect, test } from "bun:test";
 import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
 import { toolsForAgent } from "./tool-registry";
 
-const restorePermissions = savedPermissionMode();
-
-afterEach(restorePermissions);
-
 describe("tool error wrapper integration", () => {
   test("preserves guard-blocked code from guarded execution", async () => {
-    setPermissionMode("write");
     const { tools } = toolsForAgent({ workspace: process.cwd() });
     await tools.runCommand.execute({ command: "echo verify" });
     try {

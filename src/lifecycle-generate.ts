@@ -4,9 +4,9 @@ import { createInstructions } from "./agent-instructions";
 import { agentModes } from "./agent-modes";
 import { appConfig } from "./app-config";
 import {
-  createStreamError,
   categoryFromErrorCode,
   categoryFromErrorKind,
+  createStreamError,
   type ErrorSource,
   errorCodeFromCategory,
   errorKindFromCategory,

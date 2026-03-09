@@ -3,7 +3,6 @@ import { getLoadedSkills } from "./skills";
 
 const CHAT_SLASH_COMMANDS = [
   "/new",
-  "/permissions",
   "/model",
   "/status",
   "/sessions",
@@ -18,14 +17,10 @@ const CHAT_SLASH_COMMANDS = [
 const SUB_COMMANDS: Record<string, string[]> = {
   "/memory": ["/memory list", "/memory add", "/memory all", "/memory user", "/memory project"],
   "/model": ["/model plan", "/model work", "/model verify"],
-  "/permissions": ["/permissions read", "/permissions write"],
 };
 
 const SLASH_HELP: Record<string, string> = {
   "/new": t("chat.slash.help.new"),
-  "/permissions": t("chat.slash.help.permissions"),
-  "/permissions read": t("chat.slash.help.permissions.read"),
-  "/permissions write": t("chat.slash.help.permissions.write"),
   "/model": t("chat.slash.help.model"),
   "/model plan": t("chat.slash.help.model.plan"),
   "/model work": t("chat.slash.help.model.work"),

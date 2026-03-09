@@ -9,9 +9,8 @@ import { ChatInputPanel } from "./chat-input-panel";
 import { useChatKeybindings } from "./chat-keybindings";
 import { shownBranch, shownCwd } from "./chat-layout";
 import { createMessageHandler } from "./chat-message-handler";
-import { buildInternalWriteResumeTurn } from "./chat-message-handler-helpers";
 import type { PickerState } from "./chat-picker";
-import { createPickerHandlers, persistPermissionMode } from "./chat-picker-handlers";
+import { createPickerHandlers } from "./chat-picker-handlers";
 import { newMessage, toRows } from "./chat-session";
 import { suggestSlashCommands } from "./chat-slash";
 import { enqueueQueuedMessage, resolveQueueSubmit } from "./chat-submit";
@@ -129,15 +128,7 @@ function ChatApp(props: ChatAppProps) {
     };
   }, []);
 
-  const {
-    openSkillsPanel,
-    openResumePanel,
-    openPermissionsPanel,
-    openModelPanel,
-    openWriteConfirmPanel,
-    handlePickerSelect,
-    activateSkill,
-  } = createPickerHandlers({
+  const { openSkillsPanel, openResumePanel, openModelPanel, handlePickerSelect, activateSkill } = createPickerHandlers({
     store,
     currentSession,
     setCurrentSession,
@@ -147,13 +138,6 @@ function ChatApp(props: ChatAppProps) {
     setPicker: (next) => setPicker(next),
     setShowHelp,
     setValue,
-    queueInput: (value: string) =>
-      setQueuedMessages((current) => enqueueQueuedMessage(current, value, QUEUE_DELIVERY_POLICY)),
-    buildWriteResumePayload: buildInternalWriteResumeTurn,
-    setServerPermissionMode: async (mode) => {
-      await client.setPermissionMode(mode);
-    },
-    persistPermissionMode,
     persist,
     toRows,
     createMessage: newMessage,
@@ -174,9 +158,7 @@ function ChatApp(props: ChatAppProps) {
     openSkillsPanel,
     activateSkill,
     openResumePanel,
-    openPermissionsPanel,
     openModelPanel,
-    openWriteConfirmPanel,
     tokenUsage,
     isWorking,
     setInputHistory,

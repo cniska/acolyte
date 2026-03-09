@@ -35,7 +35,6 @@ const VALID_CONFIG_KEYS = [
   "openaiBaseUrl",
   "anthropicBaseUrl",
   "googleBaseUrl",
-  "permissionMode",
   "logFormat",
   "transportMode",
   "contextMaxTokens",

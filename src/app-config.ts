@@ -1,6 +1,5 @@
 import type { AgentMode } from "./agent-contract";
 import { readResolvedConfigSync } from "./config";
-import type { PermissionMode } from "./config-contract";
 import { env } from "./env";
 
 const fileConfig = readResolvedConfigSync();
@@ -40,9 +39,6 @@ export const appConfig = {
     sources: fileConfig.memorySources,
   },
   agent: {
-    permissions: {
-      mode: fileConfig.permissionMode,
-    },
     contextMaxTokens: fileConfig.contextMaxTokens,
     inputBudget: {
       maxHistoryMessages: fileConfig.maxHistoryMessages,
@@ -67,10 +63,6 @@ export const appConfig = {
     skillBudget: { maxChars: 4000, maxLines: 120 },
   },
 } as const;
-
-export function setPermissionMode(mode: PermissionMode): void {
-  (appConfig.agent.permissions as { mode: PermissionMode }).mode = mode;
-}
 
 export function setDefaultModel(model: string): void {
   (appConfig as { model: string }).model = model;

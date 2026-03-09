@@ -4,7 +4,6 @@ import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AgentMode } from "./agent-modes";
-import { appConfig, setPermissionMode } from "./app-config";
 import type { ChatRow, CommandContext, TokenUsageEntry } from "./chat-commands";
 import type { Message } from "./chat-message";
 import { createMessageHandler } from "./chat-message-handler";
@@ -150,11 +149,6 @@ export function writeSkill(base: string, dirName: string, frontmatter: string, b
   writeFileSync(join(skillDir, "SKILL.md"), `${frontmatter}\n${body}`, "utf8");
 }
 
-export function savedPermissionMode(): () => void {
-  const prev = appConfig.agent.permissions.mode;
-  return () => setPermissionMode(prev);
-}
-
 const DEFAULT_TIME = "2026-02-20T00:00:00.000Z";
 
 export function createMessage(
@@ -216,7 +210,6 @@ export function createClient(overrides?: {
   replyStream?: Client["replyStream"];
   status?: Client["status"];
   events?: StreamEvent[];
-  setPermissionMode?: Client["setPermissionMode"];
   taskStatus?: Client["taskStatus"];
 }): Client {
   const reply =
@@ -239,7 +232,6 @@ export function createClient(overrides?: {
   return {
     replyStream,
     status: overrides?.status ?? (async () => ({ providers: ["openai"], model: "gpt-5-mini", permissions: "write" })),
-    setPermissionMode: overrides?.setPermissionMode ?? (async () => {}),
     taskStatus: overrides?.taskStatus ?? (async () => null),
   };
 }
@@ -291,9 +283,7 @@ export function createMessageHandlerHarness(overrides?: {
     openSkillsPanel: async () => {},
     activateSkill: async () => true,
     openResumePanel: () => {},
-    openPermissionsPanel: () => {},
     openModelPanel: () => {},
-    openWriteConfirmPanel: () => {},
     tokenUsage,
     isWorking: overrides?.isWorking ?? false,
     setInputHistory: () => {
@@ -313,7 +303,6 @@ export function createMessageHandlerHarness(overrides?: {
 
 export type CommandContextSpies = {
   rows: ChatRow[];
-  openedPermissions: boolean;
   openedModel: boolean;
   openedModelMode?: AgentMode;
   currentSessionIds: string[];
@@ -326,7 +315,6 @@ export function createCommandContext(
 ): { ctx: CommandContext; spies: CommandContextSpies } {
   const spies: CommandContextSpies = {
     rows: [],
-    openedPermissions: false,
     openedModel: false,
     currentSessionIds: [],
     tokenUsageSets: [],
@@ -353,14 +341,10 @@ export function createCommandContext(
     exit: () => {},
     openSkillsPanel: async () => {},
     openResumePanel: () => {},
-    openPermissionsPanel: () => {
-      spies.openedPermissions = true;
-    },
     openModelPanel: (mode?: AgentMode) => {
       spies.openedModel = true;
       spies.openedModelMode = mode;
     },
-    setServerPermissionMode: async () => {},
     tokenUsage: [],
     ...overrides,
   };

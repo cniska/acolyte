@@ -8,7 +8,6 @@ import {
   rpcUrlFromApiUrl,
   validateFinalChatResponse,
 } from "./client-contract";
-import type { PermissionMode } from "./config-contract";
 import { connectionHelpMessage } from "./error-messages";
 import { createRpcRequestId } from "./rpc-protocol";
 import type { StatusFields } from "./status-contract";
@@ -170,18 +169,6 @@ export class RpcClient implements Client {
           }
           return fields;
         }
-        if (msg.type === "error") return new Error(msg.error);
-        return new Error(`Unexpected RPC response: ${msg.type}`);
-      },
-    });
-  }
-
-  async setPermissionMode(mode: PermissionMode): Promise<void> {
-    await this.runUnaryRequest<void>({
-      request: (id) => ({ id, type: "permissions.set", payload: { mode } }),
-      closeError: "RPC connection closed before permission response",
-      resolve: (msg) => {
-        if (msg.type === "permissions.result") return;
         if (msg.type === "error") return new Error(msg.error);
         return new Error(`Unexpected RPC response: ${msg.type}`);
       },

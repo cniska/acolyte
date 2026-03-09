@@ -7,7 +7,6 @@ import {
   distillMemoryCandidate,
   formatSubmitError,
   isAbortError,
-  parseInternalWriteResumeTurn,
   resolveNaturalRememberDirective,
 } from "./chat-message-handler-helpers";
 import { createMessageStreamState } from "./chat-message-handler-stream";
@@ -39,9 +38,7 @@ type CreateMessageHandlerInput = {
   openSkillsPanel: () => Promise<void>;
   activateSkill: (skillName: string, args: string) => Promise<boolean>;
   openResumePanel: () => void;
-  openPermissionsPanel: () => void;
   openModelPanel: (mode?: AgentMode) => void;
-  openWriteConfirmPanel: (prompt: string) => void;
   tokenUsage: TokenUsageEntry[];
   isWorking: boolean;
   setInputHistory: (updater: (current: string[]) => string[]) => void;
@@ -82,17 +79,13 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
   };
 
   return async (raw: string): Promise<void> => {
-    const internalWriteResume = parseInternalWriteResumeTurn(raw);
-    const isInternalReplay = Boolean(internalWriteResume);
-    const text = internalWriteResume ? internalWriteResume.prompt : raw.trim();
+    const text = raw.trim();
     if (!text || (input.isWorking && !text.startsWith("/"))) return;
-    if (!isInternalReplay && text.startsWith("/") && !text.includes(" ") && !isKnownSlashToken(text)) return;
-    const naturalRememberDirective = isInternalReplay ? null : resolveNaturalRememberDirective(text);
-    if (!isInternalReplay) {
-      input.setInputHistory((current) => appendInputHistory(current, text));
-      input.setInputHistoryIndex(-1);
-      input.setInputHistoryDraft("");
-    }
+    if (text.startsWith("/") && !text.includes(" ") && !isKnownSlashToken(text)) return;
+    const naturalRememberDirective = resolveNaturalRememberDirective(text);
+    input.setInputHistory((current) => appendInputHistory(current, text));
+    input.setInputHistoryIndex(-1);
+    input.setInputHistoryDraft("");
     input.setValue("");
 
     if (text === "?") {
@@ -132,34 +125,28 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
       return;
     }
     let userText = text;
-    if (!isInternalReplay) {
-      const commandResult = await dispatchSlashCommand({
-        text,
-        resolvedText: text,
-        client: input.client,
-        store: input.store,
-        currentSession: input.currentSession,
-        setCurrentSession: input.setCurrentSession,
-        setTokenUsage: input.setTokenUsage,
-        toRows: (messages) => input.toRows(messages),
-        setRows: input.setRows,
-        setShowHelp: input.setShowHelp,
-        setValue: input.setValue,
-        persist: input.persist,
-        exit: input.exit,
-        openSkillsPanel: input.openSkillsPanel,
-        activateSkill: input.activateSkill,
-        openResumePanel: input.openResumePanel,
-        openPermissionsPanel: input.openPermissionsPanel,
-        openModelPanel: input.openModelPanel,
-        setServerPermissionMode: input.client.setPermissionMode,
-        tokenUsage: input.tokenUsage,
-      });
-      if (commandResult.stop) return;
-      userText = commandResult.userText;
-    } else {
-      userText = text;
-    }
+    const commandResult = await dispatchSlashCommand({
+      text,
+      resolvedText: text,
+      client: input.client,
+      store: input.store,
+      currentSession: input.currentSession,
+      setCurrentSession: input.setCurrentSession,
+      setTokenUsage: input.setTokenUsage,
+      toRows: (messages) => input.toRows(messages),
+      setRows: input.setRows,
+      setShowHelp: input.setShowHelp,
+      setValue: input.setValue,
+      persist: input.persist,
+      exit: input.exit,
+      openSkillsPanel: input.openSkillsPanel,
+      activateSkill: input.activateSkill,
+      openResumePanel: input.openResumePanel,
+      openModelPanel: input.openModelPanel,
+      tokenUsage: input.tokenUsage,
+    });
+    if (commandResult.stop) return;
+    userText = commandResult.userText;
     const { row: userRow } = applyUserTurn({
       session: input.currentSession,
       displayText: text,

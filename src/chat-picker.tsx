@@ -3,27 +3,18 @@ import type React from "react";
 import type { AgentMode } from "./agent-modes";
 import { unreachable } from "./assert";
 import { formatColumns, formatRelativeTime } from "./chat-format";
-import type { PermissionMode } from "./config-contract";
 import type { Session } from "./session-contract";
 import type { SkillMeta } from "./skills";
 
 export type PickerState =
   | { kind: "skills"; items: SkillMeta[]; index: number }
   | { kind: "resume"; items: Session[]; index: number }
-  | { kind: "permissions"; items: Array<{ mode: PermissionMode; description: string }>; index: number }
   | {
       kind: "model";
       items: Array<{ model: string; name: string; description: string }>;
       index: number;
       customModel: string;
       targetMode?: AgentMode;
-    }
-  | {
-      kind: "writeConfirm";
-      prompt: string;
-      items: Array<{ value: "switch" | "cancel"; description: string }>;
-      index: number;
-      note: string;
     };
 
 function truncateText(input: string, max = 72): string {
@@ -61,12 +52,8 @@ export function pickerTitle(picker: PickerState): string {
       return "Skills";
     case "resume":
       return "Resume Session";
-    case "permissions":
-      return "Permissions";
     case "model":
       return picker.targetMode ? `Model (${picker.targetMode})` : "Model";
-    case "writeConfirm":
-      return "Confirm Write Access";
     default:
       return unreachable(picker);
   }
@@ -78,12 +65,8 @@ export function pickerHint(picker: PickerState): string {
       return "Enter to select · Esc to close";
     case "resume":
       return "Enter to resume · Esc to close";
-    case "permissions":
-      return "Enter to apply · Esc to close";
     case "model":
       return "Select other to type · Enter to apply · Esc to close";
-    case "writeConfirm":
-      return "Enter to apply · Esc to cancel";
     default:
       return unreachable(picker);
   }
@@ -106,16 +89,6 @@ export function renderPickerItems(
         brandColor,
       );
     }
-    case "permissions":
-      return renderPickerRows(
-        picker.items.map((item) => ({
-          key: item.mode,
-          label: item.mode,
-          detail: item.description,
-        })),
-        picker.index,
-        brandColor,
-      );
     case "model":
       return (
         <>
@@ -143,21 +116,6 @@ export function renderPickerItems(
               </Text>
             );
           })}
-        </>
-      );
-    case "writeConfirm":
-      return (
-        <>
-          <Text dimColor>{`  prompt: ${truncateText(picker.prompt, 72)}`}</Text>
-          {renderPickerRows(
-            picker.items.map((item) => ({
-              key: item.value,
-              label: item.value,
-              detail: item.description,
-            })),
-            picker.index,
-            brandColor,
-          )}
         </>
       );
     case "resume": {

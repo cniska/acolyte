@@ -141,17 +141,6 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
             return;
           }
         }
-        if (key.tab && input.picker.kind === "writeConfirm") {
-          input.setPicker((current) =>
-            current
-              ? {
-                  ...current,
-                  index: current.index === 0 ? Math.min(1, current.items.length - 1) : 0,
-                }
-              : current,
-          );
-          return;
-        }
         if (key.escape) {
           input.setPicker(null);
           return;

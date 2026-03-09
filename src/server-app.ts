@@ -125,7 +125,7 @@ async function createStatusPayload(): Promise<StatusPayload> {
     ...(verifyModel ? { "model.verify": verifyModel } : {}),
     protocol_version: PROTOCOL_VERSION,
     capabilities: formatServerCapabilities(),
-    permissions: appConfig.agent.permissions.mode,
+    permissions: "write",
     service: `http://localhost:${PORT}`,
     memory: memoryStatus,
     tasks_total: taskSummary.total,

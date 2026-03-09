@@ -6,7 +6,7 @@ import { tempDir, writeSkill } from "./test-utils";
 describe("chat-slash helpers", () => {
   test("suggestSlashCommands filters known commands by prefix", () => {
     expect(suggestSlashCommands("/c")).toEqual([]);
-    expect(suggestSlashCommands("/p")).toEqual(["/permissions", "/permissions read", "/permissions write"]);
+    expect(suggestSlashCommands("/p")).toEqual([]);
     expect(suggestSlashCommands("/s")).toEqual(["/status", "/sessions", "/skills"]);
     expect(suggestSlashCommands("/st")).toEqual(["/status"]);
     expect(suggestSlashCommands("/d")).toEqual([]);
@@ -21,7 +21,7 @@ describe("chat-slash helpers", () => {
     expect(suggestSlashCommands("/memory p")).toEqual(["/memory project"]);
     expect(suggestSlashCommands("/memory a")).toEqual(["/memory add", "/memory all"]);
     expect(suggestSlashCommands("/memory u")).toEqual(["/memory user"]);
-    expect(suggestSlashCommands("/permissions r")).toEqual(["/permissions read"]);
+    expect(suggestSlashCommands("/token")).toEqual(["/tokens"]);
     expect(suggestSlashCommands("/mo")).toEqual(["/model", "/model plan", "/model work", "/model verify"]);
     expect(suggestSlashCommands("/mod")).toEqual(["/model", "/model plan", "/model work", "/model verify"]);
     expect(suggestSlashCommands("/reme")).toEqual(["/remember"]);
@@ -55,7 +55,7 @@ describe("chat-slash helpers", () => {
 
   test("slashCommandHelp returns short descriptions", () => {
     expect(slashCommandHelp("/model")).toBe("change model");
-    expect(slashCommandHelp("/permissions write")).toBe("set permissions to write");
+    expect(slashCommandHelp("/model plan")).toBe("change plan model");
     expect(slashCommandHelp("/unknown")).toBe("");
   });
 

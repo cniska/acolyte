@@ -2,7 +2,6 @@ import type { AgentMode } from "./agent-modes";
 import { appConfig } from "./app-config";
 import { type ChatRow, createRow } from "./chat-commands";
 import type { PickerState } from "./chat-picker";
-import type { PermissionMode } from "./config-contract";
 import { t } from "./i18n";
 import { providerFromModel, suggestedModelsForProvider } from "./provider-config";
 import type { Provider } from "./provider-contract";
@@ -11,9 +10,7 @@ import type { Session, SessionState } from "./session-contract";
 type PickerByKind = {
   skills: Extract<PickerState, { kind: "skills" }>;
   resume: Extract<PickerState, { kind: "resume" }>;
-  permissions: Extract<PickerState, { kind: "permissions" }>;
   model: Extract<PickerState, { kind: "model" }>;
-  writeConfirm: Extract<PickerState, { kind: "writeConfirm" }>;
 };
 
 type CreatePickerConfig<K extends keyof PickerByKind> = {
@@ -48,20 +45,6 @@ export function createResumeRows(session: Session, toRows: (messages: Session["m
   ];
 }
 
-export function createPermissionsPicker(): PickerState {
-  const items: Array<{ mode: PermissionMode; description: string }> = [
-    { mode: "read", description: "inspect/search only" },
-    { mode: "write", description: "allow edits and shell commands" },
-  ];
-  const currentMode = appConfig.agent.permissions.mode;
-  const index = items.findIndex((item) => item.mode === currentMode);
-  return createPicker({
-    kind: "permissions",
-    items,
-    index: index >= 0 ? index : 0,
-  });
-}
-
 export function createModelPicker(currentModel: string, targetMode?: AgentMode): PickerState {
   const providers: Provider[] = [];
   if (appConfig.openai.apiKey) providers.push("openai");
@@ -84,18 +67,5 @@ export function createModelPicker(currentModel: string, targetMode?: AgentMode):
     index: index >= 0 ? index : items.length - 1,
     customModel: index < 0 ? currentModel : "",
     targetMode,
-  };
-}
-
-export function createWriteConfirmPicker(prompt: string): PickerState {
-  return {
-    kind: "writeConfirm",
-    prompt,
-    items: [
-      { value: "switch", description: "enable write mode and continue this task" },
-      { value: "cancel", description: "keep read mode" },
-    ],
-    index: 0,
-    note: "",
   };
 }

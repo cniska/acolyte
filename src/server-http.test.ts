@@ -1,9 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { ChatRequest } from "./api";
-import { appConfig, setPermissionMode } from "./app-config";
 import type { RunChatHandlers, StatusPayload } from "./server-contract";
 import { createServerFetchHandler } from "./server-http";
-import { savedPermissionMode } from "./test-utils";
 
 function createTestDeps(overrides: Partial<Parameters<typeof createServerFetchHandler>[0]> = {}) {
   return {
@@ -26,52 +24,6 @@ function createTestDeps(overrides: Partial<Parameters<typeof createServerFetchHa
 }
 
 describe("server-http auth coverage", () => {
-  test("/v1/permissions rejects unauthorized requests", async () => {
-    const restore = savedPermissionMode();
-    setPermissionMode("read");
-    try {
-      const handler = createServerFetchHandler(
-        createTestDeps({
-          hasValidAuth: () => false,
-        }),
-      );
-
-      const response = await handler(
-        new Request("http://localhost/v1/permissions", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ mode: "write" }),
-        }),
-      );
-
-      expect(response?.status).toBe(401);
-      expect(appConfig.agent.permissions.mode).toBe("read");
-    } finally {
-      restore();
-    }
-  });
-
-  test("/v1/permissions accepts authorized requests", async () => {
-    const restore = savedPermissionMode();
-    setPermissionMode("read");
-    try {
-      const handler = createServerFetchHandler(createTestDeps({ hasValidAuth: () => true }));
-
-      const response = await handler(
-        new Request("http://localhost/v1/permissions", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ mode: "write" }),
-        }),
-      );
-
-      expect(response?.status).toBe(200);
-      expect(appConfig.agent.permissions.mode).toBe("write");
-    } finally {
-      restore();
-    }
-  });
-
   test("/v1/admin/shutdown rejects unauthorized requests", async () => {
     let shutdownCalls = 0;
     const handler = createServerFetchHandler(

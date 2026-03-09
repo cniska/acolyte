@@ -1,10 +1,10 @@
 import { z } from "zod";
 import type { AgentMode } from "./agent-modes";
-import { appConfig, setDefaultModel, setModeModel, setPermissionMode } from "./app-config";
+import { appConfig, setDefaultModel, setModeModel } from "./app-config";
 import { COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH, formatColumns, formatRelativeTime } from "./chat-format";
 import type { Client } from "./client";
 import { setConfigValue } from "./config";
-import type { ConfigScope, PermissionMode } from "./config-contract";
+import type { ConfigScope } from "./config-contract";
 import { t } from "./i18n";
 import { addMemory, listMemories, type MemoryScope, removeMemoryByPrefix } from "./memory";
 import { formatModel } from "./provider-config";
@@ -167,10 +167,7 @@ export type CommandContext = {
   exit: () => void;
   openSkillsPanel: () => Promise<void>;
   openResumePanel: () => void;
-  openPermissionsPanel: () => void;
   openModelPanel: (mode?: AgentMode) => void;
-  setServerPermissionMode: (mode: PermissionMode) => Promise<void>;
-  persistPermissionMode?: (mode: PermissionMode, scope: ConfigScope) => Promise<void>;
   persistModelConfig?: (key: string, value: string, scope: ConfigScope) => Promise<void>;
   activateSkill?: (skillName: string, args: string) => Promise<boolean>;
   tokenUsage: TokenUsageEntry[];
@@ -193,13 +190,6 @@ function scopeLabel(scope: MemoryContextScope): string {
   if (scope === "user") return t("chat.scope.user");
   if (scope === "project") return t("chat.scope.project");
   return t("chat.scope.all");
-}
-
-function parsePermissionsScope(parts: string[]): ConfigScope | null {
-  if (parts.length < 2) return null;
-  const flag = parts.find((part) => part === "--project" || part === "--user");
-  if (!flag) return "project";
-  return flag === "--user" ? "user" : "project";
 }
 
 const modelIdSchema = z.string().trim().min(1).regex(/^\S+$/);
@@ -309,12 +299,6 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     return { stop: true, userText: text };
   }
 
-  if (resolvedText === "/permissions") {
-    pushUserCommandRow();
-    ctx.openPermissionsPanel();
-    return { stop: true, userText: text };
-  }
-
   if (resolvedText === "/model") {
     pushUserCommandRow();
     ctx.openModelPanel();
@@ -378,43 +362,6 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       ctx.setRows((current) => [
         ...current,
         createRow("system", error instanceof Error ? error.message : t("chat.model.failed")),
-      ]);
-    }
-    return { stop: true, userText: text };
-  }
-
-  if (resolvedText.startsWith("/permissions ")) {
-    pushUserCommandRow();
-    const mode = resolvedText.split(/\s+/)[1];
-    const parts = resolvedText.split(/\s+/).filter((part) => part.length > 0);
-    const validParts =
-      parts.length >= 2 &&
-      parts.length <= 3 &&
-      parts[0] === "/permissions" &&
-      (parts[1] === "read" || parts[1] === "write") &&
-      (parts.length === 2 || parts[2] === "--project" || parts[2] === "--user");
-    if (!validParts || (mode !== "read" && mode !== "write")) {
-      ctx.setRows((current) => [...current, createRow("system", t("chat.permissions.usage"))]);
-      return { stop: true, userText: text };
-    }
-    const scope = parsePermissionsScope(parts);
-    if (!scope) {
-      ctx.setRows((current) => [...current, createRow("system", t("chat.permissions.usage"))]);
-      return { stop: true, userText: text };
-    }
-    try {
-      await ctx.setServerPermissionMode(mode);
-      if (ctx.persistPermissionMode) {
-        await ctx.persistPermissionMode(mode, scope);
-      } else {
-        await setConfigValue("permissionMode", mode, { scope });
-      }
-      setPermissionMode(mode);
-      ctx.setRows((current) => [...current, createRow("system", t("chat.permissions.changed", { mode, scope }))]);
-    } catch (error) {
-      ctx.setRows((current) => [
-        ...current,
-        createRow("system", error instanceof Error ? error.message : t("chat.permissions.failed")),
       ]);
     }
     return { stop: true, userText: text };

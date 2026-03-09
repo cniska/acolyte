@@ -1,14 +1,10 @@
-import type { PermissionMode } from "./config-contract";
 import { formatPromptError, USER_ERROR_MESSAGES } from "./error-messages";
 import type { MemoryScope } from "./memory";
-import type { StatusFields } from "./status-contract";
 
 export type NaturalRememberDirective = {
   scope: MemoryScope;
   content: string;
 };
-
-const INTERNAL_WRITE_RESUME_PREFIX = "\u0000acolyte_write_resume:";
 
 export function isAbortError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
@@ -20,12 +16,6 @@ export function isAbortError(error: unknown): boolean {
 export function formatSubmitError(error: unknown): string {
   if (!(error instanceof Error)) return USER_ERROR_MESSAGES.requestFailed;
   return formatPromptError(error.message);
-}
-
-export function statusPermissionMode(status: StatusFields): PermissionMode | null {
-  const mode = status.permissions;
-  if (mode === "read" || mode === "write") return mode;
-  return null;
 }
 
 function cleanMemoryCandidate(value: string): string {
@@ -63,19 +53,4 @@ export function resolveNaturalRememberDirective(text: string): NaturalRememberDi
 
 export function distillMemoryCandidate(content: string): string {
   return cleanMemoryCandidate(content);
-}
-
-export function buildInternalWriteResumeTurn(prompt: string): string {
-  return `${INTERNAL_WRITE_RESUME_PREFIX}${prompt}`;
-}
-
-type InternalWriteResumeTurn = {
-  prompt: string;
-};
-
-export function parseInternalWriteResumeTurn(raw: string): InternalWriteResumeTurn | null {
-  if (!raw.startsWith(INTERNAL_WRITE_RESUME_PREFIX)) return null;
-  const prompt = raw.slice(INTERNAL_WRITE_RESUME_PREFIX.length).trim();
-  if (!prompt) return null;
-  return { prompt };
 }

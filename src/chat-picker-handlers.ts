@@ -1,21 +1,13 @@
 import { z } from "zod";
 import type { AgentMode } from "./agent-modes";
-import { appConfig, setDefaultModel, setModeModel, setPermissionMode } from "./app-config";
+import { appConfig, setDefaultModel, setModeModel } from "./app-config";
 import { unreachable } from "./assert";
 import { type ChatRow, createRow, type TokenUsageEntry } from "./chat-commands";
 import type { Message } from "./chat-message";
 import type { PickerState } from "./chat-picker";
-import {
-  createModelPicker,
-  createPermissionsPicker,
-  createPicker,
-  createResumePicker,
-  createResumeRows,
-  createWriteConfirmPicker,
-} from "./chat-picker-actions";
+import { createModelPicker, createPicker, createResumePicker, createResumeRows } from "./chat-picker-actions";
 import { compactText } from "./compact-text";
 import { setConfigValue } from "./config";
-import type { ConfigScope, PermissionMode } from "./config-contract";
 import { t } from "./i18n";
 import { formatModel } from "./provider-config";
 import type { Session, SessionState } from "./session-contract";
@@ -33,10 +25,6 @@ type CreatePickerHandlersInput = {
   setPicker: (next: PickerState | null) => void;
   setShowHelp: (next: boolean | ((current: boolean) => boolean)) => void;
   setValue: (next: string) => void;
-  queueInput: (next: string) => void;
-  buildWriteResumePayload: (prompt: string) => string;
-  setServerPermissionMode: (mode: PermissionMode) => Promise<void>;
-  persistPermissionMode: (mode: PermissionMode, scope: ConfigScope) => Promise<void>;
   persist: () => Promise<void>;
   toRows: (messages: Message[]) => ChatRow[];
   createMessage: (role: Message["role"], content: string) => Message;
@@ -46,9 +34,7 @@ type CreatePickerHandlersInput = {
 export function createPickerHandlers(input: CreatePickerHandlersInput): {
   openSkillsPanel: () => Promise<void>;
   openResumePanel: () => void;
-  openPermissionsPanel: () => void;
   openModelPanel: (mode?: AgentMode) => void;
-  openWriteConfirmPanel: (prompt: string) => void;
   handlePickerSelect: (state: PickerState) => Promise<void>;
   activateSkill: (skillName: string, args: string) => Promise<boolean>;
 } {
@@ -98,19 +84,9 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
     input.setShowHelp(false);
   };
 
-  const openPermissionsPanel = (): void => {
-    input.setPicker(createPermissionsPicker());
-    input.setShowHelp(false);
-  };
-
   const openModelPanel = (mode?: AgentMode): void => {
     const currentModel = mode ? (appConfig.models[mode] ?? input.currentSession.model) : input.currentSession.model;
     input.setPicker(createModelPicker(currentModel, mode));
-    input.setShowHelp(false);
-  };
-
-  const openWriteConfirmPanel = (prompt: string): void => {
-    input.setPicker(createWriteConfirmPicker(prompt));
     input.setShowHelp(false);
   };
 
@@ -134,27 +110,6 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
             input.setRows((current) => [
               ...current,
               createRow("system", t("chat.skill.failed", { skill: selected.name })),
-            ]);
-          }
-        }
-        input.setPicker(null);
-        return;
-      }
-      case "permissions": {
-        const selected = state.items[state.index];
-        if (selected) {
-          try {
-            await input.setServerPermissionMode(selected.mode);
-            await input.persistPermissionMode(selected.mode, "project");
-            setPermissionMode(selected.mode);
-            input.setRows((current) => [
-              ...current,
-              createRow("system", t("chat.permissions.changed", { mode: selected.mode, scope: "project" })),
-            ]);
-          } catch (error) {
-            input.setRows((current) => [
-              ...current,
-              createRow("system", error instanceof Error ? error.message : t("chat.permissions.failed")),
             ]);
           }
         }
@@ -206,28 +161,6 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
         input.setPicker(null);
         return;
       }
-      case "writeConfirm": {
-        const selected = state.items[state.index];
-        if (selected.value === "switch") {
-          try {
-            await input.setServerPermissionMode("write");
-            await input.persistPermissionMode("write", "project");
-            setPermissionMode("write");
-            input.setRows((current) => [...current, createRow("system", t("chat.permissions.switched.write"))]);
-            input.setValue("");
-            input.queueInput(input.buildWriteResumePayload(state.prompt));
-          } catch (error) {
-            input.setRows((current) => [
-              ...current,
-              createRow("system", error instanceof Error ? error.message : t("chat.permissions.switch.failed")),
-            ]);
-          }
-        } else {
-          input.setRows((current) => [...current, createRow("system", t("chat.permissions.stay.read"))]);
-        }
-        input.setPicker(null);
-        return;
-      }
       default:
         return unreachable(state);
     }
@@ -236,14 +169,8 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
   return {
     openSkillsPanel,
     openResumePanel,
-    openPermissionsPanel,
     openModelPanel,
-    openWriteConfirmPanel,
     handlePickerSelect,
     activateSkill,
   };
-}
-
-export async function persistPermissionMode(mode: PermissionMode, scope: ConfigScope): Promise<void> {
-  await setConfigValue("permissionMode", mode, { scope });
 }

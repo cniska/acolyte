@@ -9,7 +9,6 @@ import {
   type ConfigScope,
   isModeModelKey,
   type LogFormat,
-  type PermissionMode,
   type ResolvedConfig,
   type TransportMode,
   toConfig,
@@ -21,7 +20,6 @@ const DEFAULT_CONFIG = {
   model: "gpt-5-mini",
   openaiBaseUrl: "https://api.openai.com/v1",
   anthropicBaseUrl: "https://api.anthropic.com/v1",
-  permissionMode: "read" as PermissionMode,
   logFormat: "logfmt" as LogFormat,
   transportMode: "rpc" as TransportMode,
   distillMessageThreshold: 20,
@@ -142,7 +140,6 @@ function serializeToml(config: Config): string {
   if (config.openaiBaseUrl) lines.push(`openaiBaseUrl = ${JSON.stringify(config.openaiBaseUrl)}`);
   if (config.anthropicBaseUrl) lines.push(`anthropicBaseUrl = ${JSON.stringify(config.anthropicBaseUrl)}`);
   if (config.googleBaseUrl) lines.push(`googleBaseUrl = ${JSON.stringify(config.googleBaseUrl)}`);
-  if (config.permissionMode) lines.push(`permissionMode = ${JSON.stringify(config.permissionMode)}`);
   if (config.logFormat) lines.push(`logFormat = ${JSON.stringify(config.logFormat)}`);
   if (config.transportMode) lines.push(`transportMode = ${JSON.stringify(config.transportMode)}`);
   if (typeof config.contextMaxTokens === "number") lines.push(`contextMaxTokens = ${config.contextMaxTokens}`);
@@ -176,7 +173,6 @@ function resolveConfig(config: Config): ResolvedConfig {
     openaiBaseUrl: config.openaiBaseUrl ?? DEFAULT_CONFIG.openaiBaseUrl,
     anthropicBaseUrl: config.anthropicBaseUrl ?? DEFAULT_CONFIG.anthropicBaseUrl,
     googleBaseUrl: config.googleBaseUrl,
-    permissionMode: config.permissionMode ?? DEFAULT_CONFIG.permissionMode,
     logFormat: config.logFormat ?? DEFAULT_CONFIG.logFormat,
     transportMode: config.transportMode ?? DEFAULT_CONFIG.transportMode,
     contextMaxTokens: config.contextMaxTokens ?? DEFAULT_CONFIG.contextMaxTokens,

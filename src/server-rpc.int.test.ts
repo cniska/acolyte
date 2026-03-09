@@ -84,21 +84,6 @@ async function startRpcTestServerProcess(
   return proc;
 }
 
-async function setServerPermissionMode(port: number, apiKey: string, mode: "read" | "write"): Promise<void> {
-  const response = await fetch(`http://127.0.0.1:${port}/v1/permissions`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({ mode }),
-  });
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`failed to set permission mode to ${mode}: ${body}`);
-  }
-}
-
 type RpcEnvelope = { id: string; type: string; [key: string]: unknown };
 
 type RpcSession = {
@@ -178,11 +163,10 @@ describe("server rpc websocket queue", () => {
     expect(wrongKey.status).toBe(401);
   });
 
-  test("task.status and chat.abort stay available in read mode", async () => {
+  test("task.status and chat.abort are available", async () => {
     const port = randomTestPort();
     const apiKey = "rpc_test_key";
     await startServerForRpcTest(port, apiKey);
-    await setServerPermissionMode(port, apiKey, "read");
 
     const messages: RpcEnvelope[] = [];
     const ws = new WebSocket(`ws://127.0.0.1:${port}/v1/rpc?apiKey=${apiKey}`);
@@ -1064,7 +1048,6 @@ describe("server rpc websocket queue", () => {
     await withFakeProviderServer(
       async (providerBaseUrl) => {
         await startServerForRpcTest(port, apiKey, { providerBaseUrl });
-        await setServerPermissionMode(port, apiKey, "write");
 
         const { ws, messages } = await openRpcSession(port, apiKey);
         sendRpc(ws, {

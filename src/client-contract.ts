@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { ChatRequest, ChatResponse } from "./api";
 import { invariant } from "./assert";
-import type { PermissionMode, TransportMode } from "./config-contract";
+import type { TransportMode } from "./config-contract";
 import { rpcServerMessageSchema } from "./rpc-protocol";
 import type { StatusFields } from "./status-contract";
 import { streamErrorDetailSchema } from "./stream-error";
@@ -58,7 +58,6 @@ export interface Client {
     },
   ): Promise<ChatResponse>;
   status(): Promise<StatusFields>;
-  setPermissionMode(mode: PermissionMode): Promise<void>;
   taskStatus(taskId: TaskId): Promise<TaskRecord | null>;
 }
 

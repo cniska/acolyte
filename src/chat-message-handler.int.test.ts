@@ -3,7 +3,7 @@ import { rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { ChatRow } from "./chat-commands";
 import { createMessageHandler } from "./chat-message-handler";
-import { buildInternalWriteResumeTurn, resolveNaturalRememberDirective } from "./chat-message-handler-helpers";
+import { resolveNaturalRememberDirective } from "./chat-message-handler-helpers";
 import type { StreamEvent } from "./client";
 import {
   createClient,
@@ -263,58 +263,6 @@ describe("chat message handler guards", () => {
     expect(typeof calls.setShowHelp[0]).toBe("function");
   });
 
-  test("internal write-resume payload bypasses read-mode write confirm gate", async () => {
-    let openWriteConfirmWith = "";
-    let replyCalls = 0;
-    const rows: ChatRow[] = [];
-    const session = createSession({ id: "sess_test" });
-    const store = createStore({ activeSessionId: session.id, sessions: [session] });
-    const handleMessage = createMessageHandler({
-      client: createClient({
-        status: async () => ({ permissions: "read" }),
-        reply: async () => {
-          replyCalls += 1;
-          return { model: "gpt-5-mini", output: "done" };
-        },
-      }),
-      store,
-      currentSession: session,
-      setCurrentSession: () => {},
-      toRows: () => [],
-      setRows: (updater) => {
-        rows.splice(0, rows.length, ...updater(rows));
-      },
-      setShowHelp: () => {},
-      setValue: () => {},
-      persist: async () => {},
-      exit: () => {},
-      openSkillsPanel: async () => {},
-      activateSkill: async () => true,
-      openResumePanel: () => {},
-      openPermissionsPanel: () => {},
-      openModelPanel: () => {},
-      openWriteConfirmPanel: (prompt) => {
-        openWriteConfirmWith = prompt;
-      },
-      tokenUsage: [],
-      isWorking: false,
-      setInputHistory: () => {},
-      setInputHistoryIndex: () => {},
-      setInputHistoryDraft: () => {},
-      setIsWorking: () => {},
-      setProgressText: () => {},
-      setTokenUsage: () => {},
-      createMessage,
-      nowIso: () => "2026-02-20T00:00:00.000Z",
-      setInterrupt: () => {},
-    });
-
-    await handleMessage(buildInternalWriteResumeTurn("edit src/cli.ts to rename x to y"));
-    expect(openWriteConfirmWith).toBe("");
-    expect(replyCalls).toBe(1);
-    expect(rows.some((row) => row.role === "assistant" && row.content === "done")).toBe(true);
-  });
-
   test("records interrupted row when active turn is aborted", async () => {
     const rows: ChatRow[] = [];
     let interruptHandler: () => void = () => {};
@@ -354,9 +302,7 @@ describe("chat message handler guards", () => {
       openSkillsPanel: async () => {},
       activateSkill: async () => true,
       openResumePanel: () => {},
-      openPermissionsPanel: () => {},
       openModelPanel: () => {},
-      openWriteConfirmPanel: () => {},
       tokenUsage: [],
       isWorking: false,
       setInputHistory: () => {},
@@ -432,9 +378,7 @@ describe("chat message handler guards", () => {
       openSkillsPanel: async () => {},
       activateSkill: async () => true,
       openResumePanel: () => {},
-      openPermissionsPanel: () => {},
       openModelPanel: () => {},
-      openWriteConfirmPanel: () => {},
       tokenUsage: [],
       isWorking: false,
       setInputHistory: () => {},
@@ -497,9 +441,7 @@ describe("chat message handler guards", () => {
       openSkillsPanel: async () => {},
       activateSkill: async () => true,
       openResumePanel: () => {},
-      openPermissionsPanel: () => {},
       openModelPanel: () => {},
-      openWriteConfirmPanel: () => {},
       tokenUsage: [],
       isWorking: false,
       setInputHistory: () => {},
@@ -552,9 +494,7 @@ describe("chat message handler guards", () => {
         openSkillsPanel: async () => {},
         activateSkill: async () => true,
         openResumePanel: () => {},
-        openPermissionsPanel: () => {},
         openModelPanel: () => {},
-        openWriteConfirmPanel: () => {},
         tokenUsage: [],
         isWorking: false,
         setInputHistory: () => {},

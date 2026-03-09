@@ -1,8 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { appConfig } from "./app-config";
 import type { ChatRow } from "./chat-commands";
 import { createPickerHandlers } from "./chat-picker-handlers";
-import { createMessage, createSession, createStore, savedPermissionMode } from "./test-utils";
+import { createMessage, createSession, createStore } from "./test-utils";
 
 describe("chat picker handlers", () => {
   test("openResumePanel shows fallback when no sessions exist", () => {
@@ -25,10 +24,6 @@ describe("chat picker handlers", () => {
       },
       setShowHelp: () => {},
       setValue: () => {},
-      queueInput: () => {},
-      buildWriteResumePayload: (prompt) => prompt,
-      setServerPermissionMode: async () => {},
-      persistPermissionMode: async () => {},
       persist: async () => {},
       toRows: () => [],
       createMessage,
@@ -56,10 +51,6 @@ describe("chat picker handlers", () => {
       },
       setShowHelp: () => {},
       setValue: () => {},
-      queueInput: () => {},
-      buildWriteResumePayload: (prompt) => prompt,
-      setServerPermissionMode: async () => {},
-      persistPermissionMode: async () => {},
       persist: async () => {},
       toRows: () => [],
       createMessage,
@@ -96,10 +87,6 @@ describe("chat picker handlers", () => {
       },
       setShowHelp: () => {},
       setValue: () => {},
-      queueInput: () => {},
-      buildWriteResumePayload: (prompt) => prompt,
-      setServerPermissionMode: async () => {},
-      persistPermissionMode: async () => {},
       persist: async () => {},
       toRows: () => [],
       createMessage,
@@ -111,118 +98,6 @@ describe("chat picker handlers", () => {
     expect(setCurrentSessionCalls).toEqual([second]);
     expect(setRowsDirectCalls.at(-1)?.at(-1)?.content).toBe("Resumed session: sess_second");
     expect(pickerValues.at(-1)).toBeNull();
-  });
-
-  test("openPermissionsPanel opens permissions picker and handlePickerSelect applies it", async () => {
-    const restore = savedPermissionMode();
-    const pickerValues: unknown[] = [];
-    const rows: ChatRow[] = [];
-    const persisted: Array<{ mode: "read" | "write"; scope: "project" | "user" }> = [];
-    const currentSession = createSession({ id: "sess_current" });
-    const store = createStore({ sessions: [currentSession], activeSessionId: currentSession.id });
-    const handlers = createPickerHandlers({
-      store,
-      currentSession,
-      setCurrentSession: () => {},
-      setRows: (updater) => {
-        const next = updater(rows);
-        rows.length = 0;
-        rows.push(...next);
-      },
-      setRowsDirect: () => {},
-      setPicker: (next) => {
-        pickerValues.push(next);
-      },
-      setShowHelp: () => {},
-      setValue: () => {},
-      queueInput: () => {},
-      buildWriteResumePayload: (prompt) => prompt,
-      setServerPermissionMode: async () => {},
-      persistPermissionMode: async (mode, scope) => {
-        persisted.push({ mode, scope });
-      },
-      persist: async () => {},
-      toRows: () => [],
-      createMessage,
-      nowIso: () => "2026-02-20T00:00:00.000Z",
-    });
-
-    try {
-      handlers.openPermissionsPanel();
-      const picker = pickerValues.at(-1) as { kind: string; items: Array<{ mode: string }>; index: number };
-      expect(picker.kind).toBe("permissions");
-      expect(picker.items.length).toBe(2);
-
-      await handlers.handlePickerSelect({
-        kind: "permissions",
-        items: [
-          { mode: "read", description: "inspect/search only" },
-          { mode: "write", description: "allow edits and shell commands" },
-        ],
-        index: 0,
-      });
-      expect(appConfig.agent.permissions.mode).toBe("read");
-      expect(rows.some((row) => row.content === "Changed permissions to read (project).")).toBe(true);
-      expect(
-        rows.some((row) => row.role === "system" && row.content === "Changed permissions to read (project)."),
-      ).toBe(true);
-      expect(persisted).toEqual([{ mode: "read", scope: "project" }]);
-    } finally {
-      restore();
-    }
-  });
-
-  test("handlePickerSelect writeConfirm switch updates mode and auto-queues prompt", async () => {
-    const rows: ChatRow[] = [];
-    const values: string[] = [];
-    const queued: string[] = [];
-    const currentSession = createSession({ id: "sess_current" });
-    const store = createStore({ sessions: [currentSession], activeSessionId: currentSession.id });
-    const handlers = createPickerHandlers({
-      store,
-      currentSession,
-      setCurrentSession: () => {},
-      setRows: (updater) => {
-        const next = updater(rows);
-        rows.length = 0;
-        rows.push(...next);
-      },
-      setRowsDirect: () => {},
-      setPicker: () => {},
-      setShowHelp: () => {},
-      setValue: (next) => {
-        values.push(next);
-      },
-      queueInput: (next) => {
-        queued.push(next);
-      },
-      buildWriteResumePayload: (prompt) => `resume:${prompt}`,
-      setServerPermissionMode: async (next) => {
-        expect(next).toBe("write");
-      },
-      persistPermissionMode: async (mode, scope) => {
-        expect(mode).toBe("write");
-        expect(scope).toBe("project");
-      },
-      persist: async () => {},
-      toRows: () => [],
-      createMessage,
-      nowIso: () => "2026-02-20T00:00:00.000Z",
-    });
-
-    await handlers.handlePickerSelect({
-      kind: "writeConfirm",
-      prompt: "edit src/cli.ts",
-      items: [
-        { value: "switch", description: "enable write mode and continue this task" },
-        { value: "cancel", description: "keep read mode" },
-      ],
-      index: 0,
-      note: "",
-    });
-    expect(values.at(-1)).toBe("");
-    expect(queued.at(-1)).toBe("resume:edit src/cli.ts");
-    expect(rows.some((row) => row.content.includes("Switched to write mode"))).toBe(true);
   });
 
   test("handlePickerSelect model applies custom model when provided", async () => {
@@ -245,10 +120,6 @@ describe("chat picker handlers", () => {
       setPicker: () => {},
       setShowHelp: () => {},
       setValue: () => {},
-      queueInput: () => {},
-      buildWriteResumePayload: (prompt) => prompt,
-      setServerPermissionMode: async () => {},
-      persistPermissionMode: async () => {},
       persist: async () => {},
       toRows: () => [],
       createMessage,
@@ -292,10 +163,6 @@ describe("chat picker handlers", () => {
       },
       setShowHelp: () => {},
       setValue: () => {},
-      queueInput: () => {},
-      buildWriteResumePayload: (prompt) => prompt,
-      setServerPermissionMode: async () => {},
-      persistPermissionMode: async () => {},
       persist: async () => {},
       toRows: () => [],
       createMessage,

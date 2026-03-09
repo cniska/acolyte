@@ -2,9 +2,6 @@ import { z } from "zod";
 import { type AgentMode, agentModeSchema } from "./agent-contract";
 import { type TranslationLocale, translationLocaleSchema } from "./i18n/locales";
 
-export const permissionModeSchema = z.enum(["read", "write"]);
-export type PermissionMode = z.infer<typeof permissionModeSchema>;
-
 export const logFormatSchema = z.enum(["logfmt", "json"]);
 export type LogFormat = z.infer<typeof logFormatSchema>;
 
@@ -76,7 +73,6 @@ export interface Config {
   openaiBaseUrl?: string;
   anthropicBaseUrl?: string;
   googleBaseUrl?: string;
-  permissionMode?: PermissionMode;
   logFormat?: LogFormat;
   transportMode?: TransportMode;
   contextMaxTokens?: number;
@@ -103,7 +99,6 @@ export interface ResolvedConfig {
   openaiBaseUrl: string;
   anthropicBaseUrl: string;
   googleBaseUrl?: string;
-  permissionMode: PermissionMode;
   logFormat: LogFormat;
   transportMode: TransportMode;
   contextMaxTokens: number;
@@ -130,7 +125,6 @@ export const CONFIG_SET_SCHEMAS: Record<keyof Config, z.ZodTypeAny> = {
   openaiBaseUrl: nonEmptyStringSchema,
   anthropicBaseUrl: nonEmptyStringSchema,
   googleBaseUrl: nonEmptyStringSchema,
-  permissionMode: permissionModeSchema,
   logFormat: logFormatSchema,
   transportMode: transportModeSchema,
   contextMaxTokens: parseIntegerSchema(1000, MAX_CONTEXT_TOKENS),
@@ -187,7 +181,6 @@ export function toConfig(input: Record<string, unknown>): Config {
     openaiBaseUrl: parseField(nonEmptyStringSchema, input.openaiBaseUrl),
     anthropicBaseUrl: parseField(nonEmptyStringSchema, input.anthropicBaseUrl),
     googleBaseUrl: parseField(nonEmptyStringSchema, input.googleBaseUrl),
-    permissionMode: parseField(permissionModeSchema, input.permissionMode),
     logFormat: parseField(logFormatSchema, input.logFormat),
     transportMode: parseField(transportModeSchema, input.transportMode),
     contextMaxTokens: parseField(parseIntegerSchema(1000, MAX_CONTEXT_TOKENS), input.contextMaxTokens),

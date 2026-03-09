@@ -62,11 +62,6 @@ export const rpcClientMessageSchema = z.discriminatedUnion("type", [
   z.object({ id: rpcRequestIdSchema, type: z.literal("status.get") }),
   z.object({
     id: rpcRequestIdSchema,
-    type: z.literal("permissions.set"),
-    payload: z.object({ mode: z.enum(["read", "write"]) }),
-  }),
-  z.object({
-    id: rpcRequestIdSchema,
     type: z.literal("chat.start"),
     payload: z.object({ request: chatRequestSchema }),
   }),
@@ -87,11 +82,6 @@ export const rpcServerMessageSchema = z.discriminatedUnion("type", [
     id: rpcRequestIdSchema,
     type: z.literal("status.result"),
     status: statusPayloadSchema,
-  }),
-  z.object({
-    id: rpcRequestIdSchema,
-    type: z.literal("permissions.result"),
-    permissionMode: z.enum(["read", "write"]),
   }),
   z.object({
     id: rpcRequestIdSchema,

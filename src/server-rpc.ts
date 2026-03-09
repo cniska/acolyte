@@ -1,6 +1,5 @@
 import type { z } from "zod";
 import type { ChatRequest, ChatResponse } from "./api";
-import { appConfig, setPermissionMode } from "./app-config";
 import { log } from "./log";
 import { type RpcRequestId, rpcClientMessageSchema, rpcRequestIdSchema } from "./rpc-protocol";
 import { createSerialPerConnectionQueuePolicy } from "./rpc-queue";
@@ -144,15 +143,6 @@ export function createRpcWebsocketHandlers(deps: RpcDeps): Bun.WebSocketHandler<
     ctx: RpcHandlerContext,
   ): Promise<void> => {
     ctx.send({ type: "status.result", status: await deps.createStatusPayload() });
-  };
-
-  const handlePermissionsSet = (
-    msg: Extract<RpcClientMessage, { type: "permissions.set" }>,
-    ctx: RpcHandlerContext,
-  ): void => {
-    const mode = msg.payload.mode;
-    setPermissionMode(mode);
-    ctx.send({ type: "permissions.result", permissionMode: appConfig.agent.permissions.mode });
   };
 
   const handleChatStart = (msg: Extract<RpcClientMessage, { type: "chat.start" }>, ctx: RpcHandlerContext): void => {
@@ -343,7 +333,6 @@ export function createRpcWebsocketHandlers(deps: RpcDeps): Bun.WebSocketHandler<
       const context: RpcHandlerContext = { wsData: ws.data, send, sendForId, startChat };
       const handlers: RpcHandlerMap = {
         "status.get": (msg) => handleStatusGet(msg, context),
-        "permissions.set": (msg) => handlePermissionsSet(msg, context),
         "chat.start": (msg) => handleChatStart(msg, context),
         "chat.abort": (msg) => handleChatAbort(msg, context),
         "task.status": (msg) => handleTaskStatus(msg, context),

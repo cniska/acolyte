@@ -1,7 +1,6 @@
-import { afterAll, afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { afterAll, describe, expect, test } from "bun:test";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { appConfig, setPermissionMode } from "./app-config";
 import {
   deleteTextFile,
   editCode,
@@ -15,28 +14,17 @@ import {
   searchFiles,
   writeTextFile,
 } from "./core-tools";
-import { savedPermissionMode } from "./test-utils";
 
 const WORKSPACE = resolve(process.cwd());
 const tempFiles: string[] = [];
 const tempDirs: string[] = [];
-const initialPermissionMode = appConfig.agent.permissions.mode;
 
 afterAll(async () => {
   await Promise.all(tempFiles.map(async (filePath) => await rm(filePath, { force: true })));
   await Promise.all(tempDirs.map(async (dirPath) => await rm(dirPath, { recursive: true, force: true })));
-  setPermissionMode(initialPermissionMode);
 });
 
 describe("coding-tools workspace guards", () => {
-  beforeEach(() => {
-    setPermissionMode("write");
-  });
-
-  afterEach(() => {
-    setPermissionMode(initialPermissionMode);
-  });
-
   test("readSnippet blocks paths outside workspace", async () => {
     await expect(readSnippet(WORKSPACE, "/etc/hosts")).rejects.toThrow("Read is restricted to the workspace or /tmp");
   });
@@ -130,26 +118,6 @@ describe("coding-tools workspace guards", () => {
 
   test("fetchWeb blocks localhost/private hosts", async () => {
     await expect(fetchWeb("http://localhost:6767/healthz")).rejects.toThrow("Web fetch blocks localhost/private hosts");
-  });
-
-  test("read mode blocks write tools", async () => {
-    const restore = savedPermissionMode();
-    setPermissionMode("read");
-    try {
-      await expect(runShellCommand(WORKSPACE, "printf 'ok'")).rejects.toThrow(
-        "Shell command execution is disabled in read mode",
-      );
-      await expect(
-        editFile({
-          workspace: WORKSPACE,
-          path: join(process.cwd(), "README.md"),
-          edits: [{ find: "Acolyte", replace: "Acolyte" }],
-          dryRun: true,
-        }),
-      ).rejects.toThrow("File editing is disabled in read mode");
-    } finally {
-      restore();
-    }
   });
 
   test("editFile allows in-workspace edits", async () => {
@@ -275,22 +243,6 @@ describe("coding-tools workspace guards", () => {
     ).rejects.toThrow("Write is restricted to the workspace or /tmp");
   });
 
-  test("read mode blocks writeTextFile", async () => {
-    const restore = savedPermissionMode();
-    setPermissionMode("read");
-    try {
-      await expect(
-        writeTextFile({
-          workspace: WORKSPACE,
-          path: join(process.cwd(), `tmp-read-block-${crypto.randomUUID()}.txt`),
-          content: "x",
-        }),
-      ).rejects.toThrow("File writing is disabled in read mode");
-    } finally {
-      restore();
-    }
-  });
-
   test("deleteTextFile deletes /tmp files", async () => {
     const filePath = `/tmp/acolyte-tmp-delete-${crypto.randomUUID()}.txt`;
     tempFiles.push(filePath);
@@ -305,29 +257,9 @@ describe("coding-tools workspace guards", () => {
       "Delete is restricted to the workspace or /tmp",
     );
   });
-
-  test("read mode blocks deleteTextFile", async () => {
-    const restore = savedPermissionMode();
-    setPermissionMode("read");
-    try {
-      await expect(deleteTextFile({ workspace: WORKSPACE, path: join(process.cwd(), "README.md") })).rejects.toThrow(
-        "File deletion is disabled in read mode",
-      );
-    } finally {
-      restore();
-    }
-  });
 });
 
 describe("editCode", () => {
-  beforeEach(() => {
-    setPermissionMode("write");
-  });
-
-  afterEach(() => {
-    setPermissionMode(initialPermissionMode);
-  });
-
   test("replaces pattern matches with metavariable capture", async () => {
     const filePath = `/tmp/acolyte-ast-edit-${crypto.randomUUID()}.ts`;
     tempFiles.push(filePath);
@@ -395,17 +327,6 @@ describe("editCode", () => {
         edits: [{ pattern: "console.log($ARG)", replacement: "logger.debug($ARG)" }],
       }),
     ).rejects.toThrow("edit-code requires a file path");
-  });
-
-  test("read mode blocks editCode", async () => {
-    setPermissionMode("read");
-    await expect(
-      editCode({
-        workspace: WORKSPACE,
-        path: join(process.cwd(), "src/agent.ts"),
-        edits: [{ pattern: "console.log($ARG)", replacement: "logger.debug($ARG)" }],
-      }),
-    ).rejects.toThrow("AST editing is disabled in read mode");
   });
 
   test("replaces pattern matches in Python files", async () => {
@@ -510,9 +431,7 @@ describe("scanCode", () => {
     const filePath = `/tmp/acolyte-scan-read-${crypto.randomUUID()}.ts`;
     tempFiles.push(filePath);
     await writeFile(filePath, "const x = 1;\n", "utf8");
-    setPermissionMode("read");
     const result = await scanCode({ workspace: WORKSPACE, paths: [filePath], pattern: "const $X = $V" });
-    setPermissionMode(initialPermissionMode);
     expect(result).toContain("matches=1");
   });
 
@@ -598,7 +517,6 @@ describe("searchFiles", () => {
 
 describe("gitLog", () => {
   test("returns compact decorated commit history", async () => {
-    setPermissionMode("write");
     const dirPath = `/tmp/acolyte-gitlog-${crypto.randomUUID()}`;
     tempDirs.push(dirPath);
     await mkdir(dirPath, { recursive: true });
@@ -621,7 +539,6 @@ describe("gitLog", () => {
 
 describe("gitShow", () => {
   test("returns commit patch for provided ref", async () => {
-    setPermissionMode("write");
     const dirPath = `/tmp/acolyte-gitshow-${crypto.randomUUID()}`;
     tempDirs.push(dirPath);
     await mkdir(dirPath, { recursive: true });

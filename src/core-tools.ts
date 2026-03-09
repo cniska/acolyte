@@ -2,7 +2,6 @@ import { existsSync, readFileSync } from "node:fs";
 import { mkdir, readdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
-import { appConfig } from "./app-config";
 import { createToolError, encodeToolError, TOOL_ERROR_CODES } from "./tool-error-codes";
 
 const TEMP_ROOTS = Array.from(new Set([resolve(tmpdir()), resolve("/tmp"), resolve("/private/tmp")]));
@@ -312,10 +311,6 @@ function ensureCommandScopedToWorkspace(command: string, workspace: string): voi
     if (!isAllowedPath(absPath, workspace)) throw new Error("Command references path outside workspace and /tmp");
   }
   if (/(?:^|[\s"'`])~\//.test(command)) throw new Error("Command references home path outside allowed roots");
-}
-
-function ensureWritePermission(operation: string): void {
-  if (appConfig.agent.permissions.mode === "read") throw new Error(`${operation} is disabled in read mode`);
 }
 
 function displayPathForDiff(absPath: string, workspace: string): string {
@@ -763,7 +758,6 @@ export async function runShellCommand(
   timeoutMs = 60_000,
   onChunk?: (chunk: ShellChunk) => void,
 ): Promise<string> {
-  ensureWritePermission("Shell command execution");
   const trimmed = command.trim();
   if (!trimmed) throw new Error("Command cannot be empty");
   const lower = trimmed.toLowerCase();
@@ -819,7 +813,6 @@ export async function editFile(input: {
   edits: FileEdit[];
   dryRun?: boolean;
 }): Promise<string> {
-  ensureWritePermission("File editing");
   const absPath = ensurePathWithinAllowedRoots(input.path, "Edit", input.workspace);
   const raw = await readFile(absPath, "utf8");
   const lines = raw.split("\n");
@@ -926,7 +919,6 @@ export async function writeTextFile(input: {
   content: string;
   overwrite?: boolean;
 }): Promise<string> {
-  ensureWritePermission("File writing");
   const absPath = ensurePathWithinAllowedRoots(input.path, "Write", input.workspace);
   const overwrite = input.overwrite ?? true;
   let previousContent: string | null = null;
@@ -1021,7 +1013,6 @@ export async function editCode(input: {
   edits: Array<{ pattern: string; replacement: string }>;
   dryRun?: boolean;
 }): Promise<string> {
-  ensureWritePermission("AST editing");
   const absPath = ensurePathWithinAllowedRoots(input.path, "AST edit", input.workspace);
   const pathStats = await stat(absPath);
   if (!pathStats.isFile()) throw new Error(`edit-code requires a file path, got: ${input.path}`);
@@ -1084,7 +1075,6 @@ export async function editCode(input: {
 }
 
 export async function deleteTextFile(input: { workspace: string; path: string; dryRun?: boolean }): Promise<string> {
-  ensureWritePermission("File deletion");
   const absPath = ensurePathWithinAllowedRoots(input.path, "Delete", input.workspace);
   const previousContent = await readFile(absPath, "utf8");
   const dryRun = input.dryRun ?? false;

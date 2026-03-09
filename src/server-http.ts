@@ -1,5 +1,4 @@
 import type { ChatRequest } from "./api";
-import { appConfig, setPermissionMode } from "./app-config";
 import { log } from "./log";
 import type { RunChatHandlers, StatusPayload } from "./server-contract";
 
@@ -48,28 +47,6 @@ function warnUnauthorized(path: string, method: string): Response {
 async function handleStatus(ctx: RouteContext): Promise<Response | null> {
   if (ctx.url.pathname !== "/v1/status" || ctx.req.method !== "GET") return null;
   return json(await ctx.deps.createStatusPayload());
-}
-
-async function handlePermissions(ctx: RouteContext): Promise<Response | null> {
-  if (ctx.url.pathname !== "/v1/permissions" || ctx.req.method !== "POST") return null;
-  if (!ctx.deps.hasValidAuth(ctx.req)) return warnUnauthorized(ctx.url.pathname, ctx.req.method);
-
-  let payload: unknown;
-  try {
-    payload = await ctx.req.json();
-  } catch {
-    return badRequest("Invalid JSON body");
-  }
-
-  const mode = (payload as { mode?: unknown })?.mode;
-  if (mode !== "read" && mode !== "write") return badRequest("Invalid permission mode. Expected read or write.");
-  setPermissionMode(mode);
-  log.info("permission mode updated", {
-    path: ctx.url.pathname,
-    method: ctx.req.method,
-    permission_mode: appConfig.agent.permissions.mode,
-  });
-  return json({ ok: true, permissionMode: appConfig.agent.permissions.mode });
 }
 
 async function handleShutdown(ctx: RouteContext): Promise<Response | null> {
@@ -174,13 +151,7 @@ async function handleChatStream(ctx: RouteContext): Promise<Response | null> {
 }
 
 export function createServerFetchHandler(deps: ServerHttpDeps): (req: Request) => Promise<Response | undefined> {
-  const routeHandlers: RouteHandler[] = [
-    handleStatus,
-    handlePermissions,
-    handleShutdown,
-    handleRpcUpgrade,
-    handleChatStream,
-  ];
+  const routeHandlers: RouteHandler[] = [handleStatus, handleShutdown, handleRpcUpgrade, handleChatStream];
 
   return async function fetch(req: Request): Promise<Response | undefined> {
     const ctx: RouteContext = { req, url: new URL(req.url), deps };

@@ -8,7 +8,7 @@ import {
   presentTokensOutput,
   type TokenUsageEntry,
 } from "./chat-commands";
-import type { ConfigScope, PermissionMode } from "./config-contract";
+import type { ConfigScope } from "./config-contract";
 import { loadSkills, resetSkillCache } from "./skills";
 import {
   createCommandContext,
@@ -16,7 +16,6 @@ import {
   createSession,
   createStore,
   dedent,
-  savedPermissionMode,
   tempDir,
   writeSkill,
 } from "./test-utils";
@@ -431,66 +430,6 @@ describe("chat-commands", () => {
     expect(rows.some((row) => row.role === "system" && row.content === "Saved project memory: use bun verify")).toBe(
       true,
     );
-  });
-
-  test("dispatchSlashCommand shows permission mode", async () => {
-    const restore = savedPermissionMode();
-    try {
-      const { rows, stop, openedPermissions } = await runCommand("/permissions");
-      expect(stop).toBe(true);
-      expect(openedPermissions).toBe(true);
-      expect(rows.some((row) => row.role === "user" && row.content === "/permissions")).toBe(true);
-    } finally {
-      restore();
-    }
-  });
-
-  test("dispatchSlashCommand applies /permissions read|write", async () => {
-    const restore = savedPermissionMode();
-    try {
-      const writes: Array<{ mode: PermissionMode; scope: ConfigScope }> = [];
-      const persistPermissionMode = async (mode: PermissionMode, scope: ConfigScope) => {
-        writes.push({ mode, scope });
-      };
-
-      const readResult = await runCommand("/permissions read", { persistPermissionMode });
-      expect(readResult.stop).toBe(true);
-      expect(appConfig.agent.permissions.mode).toBe("read");
-      expect(
-        readResult.rows.some(
-          (row) => row.role === "system" && row.content === "Changed permissions to read (project).",
-        ),
-      ).toBe(true);
-      expect(writes).toContainEqual({ mode: "read", scope: "project" });
-
-      const writeResult = await runCommand("/permissions write --user", { persistPermissionMode });
-      expect(writeResult.stop).toBe(true);
-      expect(appConfig.agent.permissions.mode).toBe("write");
-      expect(
-        writeResult.rows.some((row) => row.role === "system" && row.content === "Changed permissions to write (user)."),
-      ).toBe(true);
-      expect(writes).toContainEqual({ mode: "write", scope: "user" });
-    } finally {
-      restore();
-    }
-  });
-
-  test("dispatchSlashCommand validates /permissions usage", async () => {
-    const restore = savedPermissionMode();
-    try {
-      const before = appConfig.agent.permissions.mode;
-      const { rows, stop } = await runCommand("/permissions maybe");
-      expect(stop).toBe(true);
-      expect(rows.some((row) => row.content === "Usage: /permissions [read|write] [--project|--user]")).toBe(true);
-      const invalidScope = await runCommand("/permissions read --wat");
-      expect(invalidScope.stop).toBe(true);
-      expect(
-        invalidScope.rows.some((row) => row.content === "Usage: /permissions [read|write] [--project|--user]"),
-      ).toBe(true);
-      expect(appConfig.agent.permissions.mode).toBe(before);
-    } finally {
-      restore();
-    }
   });
 
   test("dispatchSlashCommand updates default model via /model <id>", async () => {
