@@ -1,5 +1,6 @@
 import { Text } from "ink";
 import type React from "react";
+import { useCaretBlink } from "./chat-effects";
 import { renderInputPanelContent } from "./chat-input-panel-content";
 import { borderLine, justifyLineSpaceBetween } from "./chat-layout";
 import { type PickerState, pickerHint, pickerTitle, renderPickerItems } from "./chat-picker";
@@ -48,6 +49,7 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
     slashSuggestionIndex = 0,
     showHelp = false,
   } = props;
+  const caretVisible = useCaretBlink(true);
   const hasSuggestions = atQuery !== null || slashSuggestions.length > 0;
   const showFooter = resolveFooterVisible({ showHelp, hasSuggestions, hasPicker: Boolean(picker) });
 
@@ -55,7 +57,7 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
     return (
       <>
         <Text dimColor>{borderLine()}</Text>
-        <Text>{pickerTitle(picker)}</Text>
+        <Text>{pickerTitle(picker, caretVisible)}</Text>
         <Text> </Text>
         {renderPickerItems(picker, activeSessionId, brandColor)}
         <Text> </Text>
@@ -71,6 +73,7 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
       <PromptInput
         value={value}
         placeholder="Ask anything…"
+        caretVisible={caretVisible}
         linePrefixFirst="❯ "
         linePrefixRest="  "
         onChange={onChange}

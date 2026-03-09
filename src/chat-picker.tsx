@@ -49,7 +49,7 @@ function renderPickerRows(
   });
 }
 
-export function pickerTitle(picker: PickerState): string {
+export function pickerTitle(picker: PickerState, caretVisible = true): string {
   switch (picker.kind) {
     case "skills":
       return "Skills";
@@ -57,7 +57,7 @@ export function pickerTitle(picker: PickerState): string {
       return "Resume Session";
     case "model": {
       const label = picker.targetMode ? `Model (${picker.targetMode})` : "Model";
-      return `${label}: ${picker.query}\u2588`;
+      return `${label}: ${picker.query}${caretVisible ? "\u2588" : ""}`;
     }
     default:
       return unreachable(picker);

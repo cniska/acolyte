@@ -10,6 +10,7 @@ interface PromptInputProps {
   value: string;
   placeholder?: string;
   focus?: boolean;
+  caretVisible?: boolean;
   linePrefixFirst?: string;
   linePrefixRest?: string;
   onChange: (next: string) => void;
@@ -68,6 +69,7 @@ export function PromptInput({
   value,
   placeholder = "",
   focus = true,
+  caretVisible = true,
   linePrefixFirst = "",
   linePrefixRest = "",
   onChange,
@@ -168,7 +170,9 @@ export function PromptInput({
         {linePrefixFirst}
         {focus ? (
           <>
-            <Text inverse>{placeholder[0] ?? " "}</Text>
+            <Text inverse={caretVisible} dimColor={!caretVisible}>
+              {placeholder[0] ?? " "}
+            </Text>
             <Text dimColor>{placeholder.slice(1)}</Text>
           </>
         ) : (
@@ -212,7 +216,7 @@ export function PromptInput({
         <Text key={entry.key}>
           {index === 0 ? linePrefixFirst : linePrefixRest}
           {entry.line.before}
-          {entry.line.cursor !== null ? <Text inverse>{entry.line.cursor}</Text> : null}
+          {entry.line.cursor !== null ? <Text inverse={caretVisible}>{entry.line.cursor}</Text> : null}
           {entry.line.after}
         </Text>
       ))}
