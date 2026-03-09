@@ -725,23 +725,34 @@ async function readStreamText(
   stream: ReadableStream<Uint8Array> | null | undefined,
   streamName: "stdout" | "stderr",
   onChunk?: (chunk: ShellChunk) => void,
+  signal?: AbortSignal,
 ): Promise<string> {
   if (!stream) return "";
   const reader = stream.getReader();
   const decoder = new TextDecoder();
   let combined = "";
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    const text = decoder.decode(value, { stream: true });
-    if (!text) continue;
-    combined += text;
-    onChunk?.({ stream: streamName, text });
-  }
-  const tail = decoder.decode();
-  if (tail) {
-    combined += tail;
-    onChunk?.({ stream: streamName, text: tail });
+  const onAbort = (): void => {
+    reader.cancel().catch(() => {});
+  };
+  signal?.addEventListener("abort", onAbort, { once: true });
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const text = decoder.decode(value, { stream: true });
+      if (!text) continue;
+      combined += text;
+      onChunk?.({ stream: streamName, text });
+    }
+    const tail = decoder.decode();
+    if (tail) {
+      combined += tail;
+      onChunk?.({ stream: streamName, text: tail });
+    }
+  } catch {
+    // Stream cancelled by abort signal — return what we have.
+  } finally {
+    signal?.removeEventListener("abort", onAbort);
   }
   return combined;
 }
@@ -760,6 +771,7 @@ export async function runShellCommand(
   ensureCommandScopedToWorkspace(trimmed, workspace);
 
   const startedAt = Date.now();
+  const abortController = new AbortController();
   const proc = Bun.spawn({
     cmd: ["bash", "-lc", trimmed],
     cwd: workspace,
@@ -769,21 +781,23 @@ export async function runShellCommand(
 
   const timer = setTimeout(() => {
     try {
-      proc.kill();
+      proc.kill(9);
     } catch {
       // no-op
     }
+    // Abort stream readers in case child processes keep pipes open after kill.
+    abortController.abort();
   }, timeoutMs);
 
   const [stdoutText, stderrText] = await Promise.all([
-    readStreamText(proc.stdout as ReadableStream<Uint8Array> | null, "stdout", onChunk),
-    readStreamText(proc.stderr as ReadableStream<Uint8Array> | null, "stderr", onChunk),
+    readStreamText(proc.stdout as ReadableStream<Uint8Array> | null, "stdout", onChunk, abortController.signal),
+    readStreamText(proc.stderr as ReadableStream<Uint8Array> | null, "stderr", onChunk, abortController.signal),
   ]);
   const exitCode = await proc.exited;
   const durationMs = Date.now() - startedAt;
   clearTimeout(timer);
 
-  const timedOut = durationMs >= timeoutMs;
+  const timedOut = durationMs >= timeoutMs || abortController.signal.aborted;
   const headers = [
     timedOut ? `TIMED OUT after ${timeoutMs}ms` : "",
     `exit_code=${exitCode}`,

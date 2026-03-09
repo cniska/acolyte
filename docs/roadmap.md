@@ -146,8 +146,3 @@ What MVP is **not**:
 8. Tooling fidelity: structured tool progress payloads, tool-output truncation with on-demand full output, and output-collapsing to reduce noise.
 9. Extension surface: runtime hooks (events, tool interceptors, slash commands), agent-authored skills, and resource loader collision diagnostics.
 10. Embedding surface: SDK-first local in-process API alongside CLI/RPC.
-
-## Known Issues
-
-- Token budgeting uses approximate char-to-token ratios, not actual counts.
-- Provider integration has manual validation for OpenAI and Anthropic; Google coverage has minimal test coverage.
