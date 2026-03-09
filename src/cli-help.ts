@@ -16,7 +16,7 @@ const SUBCOMMANDS: Record<string, CliSubcommandDoc> = {
   },
   init: {
     command: "init [provider]",
-    usage: "acolyte init [openai|anthropic|gemini]",
+    usage: "acolyte init [openai|anthropic|google]",
     description: t("cli.help.desc.init"),
     examples: ["acolyte init", "acolyte init openai"],
   },

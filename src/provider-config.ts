@@ -17,7 +17,7 @@ const MODEL_REGISTRY: Record<Provider, Model[]> = {
     { id: "claude-sonnet-4-6-20250904", name: "claude-sonnet-4.6", description: "balanced default" },
     { id: "claude-haiku-4-5-20251001", name: "claude-haiku-4.5", description: "fastest and lowest cost" },
   ],
-  gemini: [
+  google: [
     { id: "gemini-2.5-flash-preview-05-20", name: "gemini-2.5-flash", description: "fast and efficient" },
     { id: "gemini-2.5-pro-preview-05-06", name: "gemini-2.5-pro", description: "highest quality" },
     { id: "gemini-2.0-flash", name: "gemini-2.0-flash", description: "low-latency default" },
@@ -37,10 +37,10 @@ const MODEL_DISPLAY_NAME_BY_ID = new Map<string, string>(
     }),
 );
 
-function inferUnqualifiedModelPrefix(model: string): "openai" | "anthropic" | "gemini" {
+function inferUnqualifiedModelPrefix(model: string): "openai" | "anthropic" | "google" {
   const normalized = model.trim().toLowerCase();
   if (normalized.startsWith("claude")) return "anthropic";
-  if (normalized.startsWith("gemini")) return "gemini";
+  if (normalized.startsWith("gemini")) return "google";
   return "openai";
 }
 
@@ -86,12 +86,12 @@ export function providerFromModel(model: string): Provider {
   const normalizedModel = trimmedModel.toLowerCase();
   if (!normalizedModel.includes("/")) {
     if (normalizedModel.startsWith("claude")) return "anthropic";
-    if (normalizedModel.startsWith("gemini")) return "gemini";
+    if (normalizedModel.startsWith("gemini")) return "google";
   }
 
   const prefix = trimmedModel.split("/", 1)[0]?.toLowerCase();
   if (prefix === "anthropic") return "anthropic";
-  if (prefix === "gemini" || prefix === "google") return "gemini";
+  if (prefix === "google") return "google";
   if (prefix === "openai-compatible") return "openai";
   return "openai";
 }
@@ -106,7 +106,7 @@ export function isProviderAvailable(input: {
 }): boolean {
   if (input.provider === "anthropic")
     return Boolean(input.anthropicApiKey) && isAnthropicBaseUrlValid(input.anthropicBaseUrl);
-  if (input.provider === "gemini") return Boolean(input.googleApiKey);
+  if (input.provider === "google") return Boolean(input.googleApiKey);
   if (isOpenAICompatibleBaseUrl(input.openaiBaseUrl)) return true;
   return Boolean(input.openaiApiKey);
 }

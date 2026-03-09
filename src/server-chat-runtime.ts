@@ -128,7 +128,7 @@ function resolveWorkspacePath(request: Pick<ChatRequest, "workspace">): Workspac
 
 function providerConfigurationHint(provider: Provider): string {
   if (provider === "anthropic") return "Set ANTHROPIC_API_KEY.";
-  if (provider === "gemini") return "Set GOOGLE_API_KEY.";
+  if (provider === "google") return "Set GOOGLE_API_KEY.";
   return "Set OPENAI_API_KEY (or use openai-compatible/<model> with a local endpoint).";
 }
 

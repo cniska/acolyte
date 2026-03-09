@@ -108,7 +108,7 @@ async function createStatusPayload(): Promise<StatusPayload> {
   const providers: Provider[] = [];
   if (OPENAI_API_KEY) providers.push("openai");
   if (appConfig.anthropic.apiKey) providers.push("anthropic");
-  if (appConfig.google.apiKey) providers.push("gemini");
+  if (appConfig.google.apiKey) providers.push("google");
   const model = appConfig.model;
   const planModel = appConfig.models.plan?.trim();
   const workModel = appConfig.models.work?.trim();

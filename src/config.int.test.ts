@@ -56,11 +56,11 @@ describe("config store", () => {
     const home = createDir("acolyte-config-home-");
     const dataDir = join(home, ".acolyte");
     mkdirSync(dataDir, { recursive: true });
-    writeFileSync(join(dataDir, "config.toml"), 'model = "gemini/gemini-2.5-pro"', "utf8");
+    writeFileSync(join(dataDir, "config.toml"), 'model = "google/gemini-2.5-pro"', "utf8");
     writeFileSync(join(dataDir, "config.json"), JSON.stringify({ model: "openai/gpt-5-mini" }, null, 2), "utf8");
 
     const loaded = await readConfig({ homeDir: home, cwd: home });
-    expect(loaded.model).toBe("gemini/gemini-2.5-pro");
+    expect(loaded.model).toBe("google/gemini-2.5-pro");
   });
 
   test("falls back to JSON when TOML is absent", async () => {
@@ -84,11 +84,11 @@ describe("config store", () => {
     const home = createDir("acolyte-config-home-");
     const dataDir = join(home, ".acolyte");
     mkdirSync(dataDir, { recursive: true });
-    writeFileSync(join(dataDir, "config.toml"), 'model = "gemini/gemini-2.5-pro"', "utf8");
+    writeFileSync(join(dataDir, "config.toml"), 'model = "google/gemini-2.5-pro"', "utf8");
     writeFileSync(join(dataDir, "config.json"), JSON.stringify({ model: "openai/gpt-5-mini" }, null, 2), "utf8");
 
     const loaded = readConfigSync({ homeDir: home, cwd: home });
-    expect(loaded.model).toBe("gemini/gemini-2.5-pro");
+    expect(loaded.model).toBe("google/gemini-2.5-pro");
   });
 
   test("readConfigSync falls back to empty config on parse errors", () => {

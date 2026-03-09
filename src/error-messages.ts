@@ -40,7 +40,7 @@ function messageForUserError(code: UserErrorCode, meta?: UserErrorMetaByCode[Use
       if (typedMeta.provider === "anthropic") {
         return `Model "${typedMeta.model}" is unavailable. Set ANTHROPIC_API_KEY and ensure anthropicBaseUrl ends with /v1.`;
       }
-      if (typedMeta.provider === "gemini") {
+      if (typedMeta.provider === "google") {
         return `Model "${typedMeta.model}" is unavailable. Set GOOGLE_API_KEY and try again.`;
       }
       return `Model "${typedMeta.model}" is unavailable. Check provider credentials and try again.`;

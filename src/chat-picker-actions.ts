@@ -49,7 +49,7 @@ export function createModelPicker(currentModel: string, targetMode?: AgentMode):
   const providers: Provider[] = [];
   if (appConfig.openai.apiKey) providers.push("openai");
   if (appConfig.anthropic.apiKey) providers.push("anthropic");
-  if (appConfig.google.apiKey) providers.push("gemini");
+  if (appConfig.google.apiKey) providers.push("google");
   const fallbackProvider = providerFromModel(currentModel);
   if (!providers.includes(fallbackProvider)) providers.push(fallbackProvider);
   const seen = new Set<string>();

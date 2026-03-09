@@ -18,7 +18,7 @@ export function createModel(qualifiedModel: string): LanguageModelV3 {
       });
       return anthropic(modelId);
     }
-    case "gemini": {
+    case "google": {
       const google = createGoogleGenerativeAI({
         apiKey: appConfig.google.apiKey,
         ...(appConfig.google.baseUrl ? { baseURL: appConfig.google.baseUrl } : {}),

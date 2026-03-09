@@ -404,7 +404,7 @@ describe("resolveModelProviderState", () => {
     });
   });
 
-  test("marks anthropic and gemini availability by provider-specific credentials", () => {
+  test("marks anthropic and google availability by provider-specific credentials", () => {
     expect(
       resolveModelProviderState("anthropic/claude-sonnet-4", {
         openaiBaseUrl: "https://api.openai.com/v1",
@@ -416,12 +416,12 @@ describe("resolveModelProviderState", () => {
     });
 
     expect(
-      resolveModelProviderState("gemini/gemini-2.5-pro", {
+      resolveModelProviderState("google/gemini-2.5-pro", {
         openaiBaseUrl: "https://api.openai.com/v1",
         googleApiKey: "sk-goog",
       }),
     ).toEqual({
-      provider: "gemini",
+      provider: "google",
       available: true,
     });
   });
