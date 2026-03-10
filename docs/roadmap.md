@@ -141,7 +141,7 @@ What MVP is **not**:
 2. Friends-and-family adoption: simple setup, day-one value on real projects, 3+ user feedback loops, and major usability fixes.
 3. Memory scalability: progressive model-driven compaction for ultra-long sessions, explicit compaction/resume continuity events, and storage backends beyond filesystem.
 4. Optional autonomy track: bounded-task soak success, clear failure explainability, and stable protocol baseline under autonomous runs.
-5. Long-run task UX: background task IDs, detach/attach flow, and clearer task lifecycle visibility.
+5. Long-run task UX: background task IDs, detach/attach flow, clearer task lifecycle visibility, and reserved RPC methods for task control (`task.start`, `task.cancel`, `task.attach`, `task.accepted`, `task.updated`, `task.done`, `task.error`).
 6. Session workflows: branching and session-tree navigation for isolated sub-task execution.
 7. Safety and policy controls: stronger tool policy, and opt-in guard/evaluator policy controls after observability baselines.
 8. Tooling fidelity: structured tool progress payloads, tool-output truncation with on-demand full output, and output-collapsing to reduce noise.
