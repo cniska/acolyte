@@ -24,5 +24,5 @@ Acolyte uses explicit operating modes to shape behavior:
 ## Key files
 
 - `src/agent-modes.ts`
-- `src/lifecycle-classify.ts`
+- `src/lifecycle-resolve.ts`
 - `src/lifecycle-evaluators.ts`

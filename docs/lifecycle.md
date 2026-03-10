@@ -3,12 +3,12 @@
 Lifecycle executes one request through a bounded phase loop:
 
 ```text
-classify -> prepare -> generate -> evaluate -> finalize
+resolve -> prepare -> generate -> evaluate -> finalize
 ```
 
 ## Phase contracts
 
-- **classify**: resolve mode/policy from request intent.
+- **resolve**: pick mode and policy from request intent.
 - **prepare**: build agent input, tools, session context, and policy state.
 - **generate**: run model + tool loop for one attempt.
 - **evaluate**: apply evaluators; choose `done` or bounded regeneration.

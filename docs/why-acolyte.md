@@ -44,10 +44,10 @@ This means multiple clients can share the same session, and integrations don't r
 Every request flows through five explicit phases, each in its own module with its own tests:
 
 ```
-classify → prepare → generate → evaluate → finalize
+resolve → prepare → generate → evaluate → finalize
 ```
 
-- **classify**: pick mode (work/verify) and model
+- **resolve**: pick mode (work/verify) and model
 - **prepare**: wire tools, session context, and guards
 - **generate**: run the model with tool calls
 - **evaluate**: inspect output, decide accept/retry/re-generate
@@ -169,4 +169,4 @@ The pipeline is explicit: ingest → normalize → select → inject → commit.
 | OpenCode, Pi, Cline | No persistent memory |
 | OpenHands | Microagent recall (no distillation) |
 
-Acolyte's distillation pipeline is newer than OpenClaw's retrieval system, but architecturally it solves a different problem: learning from conversations rather than searching stored documents.
+Acolyte's distillation pipeline is newer than OpenClaw's retrieval system, but architecturally it solves a different problem: learning from conversations rather than searching stored documents. The current implementation is recency-based — there is no vector/semantic search. For a coding agent this is a reasonable tradeoff: the most relevant context is almost always the most recent. Semantic recall is on the roadmap for cases where older facts matter.

@@ -71,6 +71,7 @@ Reduce repeated mistakes with transparent, correctable memory behavior.
 - [x] Token UX stays low-noise by default: no always-on per-turn footer; `/tokens` remains on-demand and only budget-risk warnings surface inline
 - [ ] Evals show measurable reduction in repeated instruction failures
 - [ ] Memory doesn't hallucinate or carry stale context
+- [ ] Semantic recall via vector search for older distilled facts (recency-only is sufficient for most coding tasks, but long-running projects benefit from relevance-based retrieval)
 
 ### Milestone 7: Product Polish
 
