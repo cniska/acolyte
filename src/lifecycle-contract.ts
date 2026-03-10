@@ -2,12 +2,21 @@ import type { Agent, AgentMode } from "./agent-contract";
 import type { ChatRequest, ChatResponse } from "./api";
 import type { StreamEvent } from "./client-contract";
 import type { ErrorCategory, ErrorSource } from "./error-handling";
-import type { LifecycleDebugEvent, LifecycleEventName } from "./lifecycle-events";
 import type { LifecyclePolicy } from "./lifecycle-policy";
 import type { ErrorCode } from "./tool-error-codes";
 import type { SessionContext } from "./tool-guards";
 import type { ToolOutput } from "./tool-output-content";
 import type { Toolset } from "./tool-registry";
+
+export type LifecycleEventName = `lifecycle.${string}`;
+
+export type LifecycleDebugEvent = {
+  event: LifecycleEventName;
+  sequence: number;
+  phaseAttempt: number;
+  ts: string;
+  fields?: Record<string, unknown>;
+};
 
 export type GenerateResult = {
   text: string;

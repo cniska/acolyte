@@ -24,7 +24,7 @@ Review in this order.
 - [x] [`src/env.ts`](../src/env.ts)
 - [x] [`src/debug-flags.ts`](../src/debug-flags.ts)
 - [x] [`src/provider-config.ts`](../src/provider-config.ts)
-- [ ] [`src/provider-models.ts`](../src/provider-models.ts)
+- [x] [`src/provider-models.ts`](../src/provider-models.ts)
 - [x] [`src/model-factory.ts`](../src/model-factory.ts)
 
 ## 3. Lifecycle and agent policy
@@ -35,7 +35,6 @@ Review in this order.
 - [x] [`src/lifecycle-constants.ts`](../src/lifecycle-constants.ts)
 - [x] [`src/lifecycle-evaluate.ts`](../src/lifecycle-evaluate.ts)
 - [x] [`src/lifecycle-evaluators.ts`](../src/lifecycle-evaluators.ts)
-- [x] [`src/lifecycle-events.ts`](../src/lifecycle-events.ts)
 - [x] [`src/lifecycle-finalize.ts`](../src/lifecycle-finalize.ts)
 - [x] [`src/lifecycle-generate.ts`](../src/lifecycle-generate.ts)
 - [x] [`src/lifecycle-policy.ts`](../src/lifecycle-policy.ts)

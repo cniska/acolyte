@@ -1,8 +1,7 @@
 import { createErrorStats } from "./error-handling";
 import { phaseClassify } from "./lifecycle-classify";
-import type { LifecycleInput, RunContext, ToolOutputEvent } from "./lifecycle-contract";
+import type { LifecycleEventName, LifecycleInput, RunContext, ToolOutputEvent } from "./lifecycle-contract";
 import { phaseEvaluate } from "./lifecycle-evaluate";
-import type { LifecycleEventName } from "./lifecycle-events";
 import { phaseFinalize } from "./lifecycle-finalize";
 import { createModeAgent, phaseGenerate, shouldYieldNow } from "./lifecycle-generate";
 import { resolveLifecyclePolicy } from "./lifecycle-policy";
