@@ -80,7 +80,10 @@ export async function fetchWeb(urlInput: string, maxChars = 5000): Promise<strin
         },
         signal: AbortSignal.timeout(15_000),
       });
-    } catch {
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        throw new Error(`Request to ${current.toString()} timed out.`);
+      }
       throw new Error(`Failed to fetch ${current.toString()} — site may be unreachable or URL is invalid.`);
     }
     if (response.status >= 300 && response.status < 400) {
