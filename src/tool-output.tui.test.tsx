@@ -158,6 +158,21 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
     );
   });
 
+  test("git-status with changes", () => {
+    const items: ToolOutput[] = [
+      { kind: "tool-header", label: "Git Status" },
+      { kind: "text", text: "M src/cli.ts" },
+      { kind: "text", text: "?? src/new.ts" },
+    ];
+    expect(formatToolOutput(items)).toBe(
+      dedent(`
+        Git Status
+          M src/cli.ts
+          ?? src/new.ts
+      `),
+    );
+  });
+
   test("git-diff with text body", () => {
     const items: ToolOutput[] = [
       { kind: "tool-header", label: "Git Diff", detail: "src/agent.ts" },
@@ -169,6 +184,150 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
         Git Diff src/agent.ts
           diff --git a/src/agent.ts b/src/agent.ts
           +const x = 1;
+      `),
+    );
+  });
+
+  test("git-diff with truncated output", () => {
+    const items: ToolOutput[] = [
+      { kind: "tool-header", label: "Git Diff" },
+      { kind: "text", text: "+line1" },
+      { kind: "text", text: "-line2" },
+      { kind: "truncated", count: 10, unit: "lines" },
+      { kind: "text", text: "+line13" },
+    ];
+    expect(formatToolOutput(items)).toBe(
+      dedent(`
+        Git Diff
+          +line1
+          -line2
+          … +10 lines
+          +line13
+      `),
+    );
+  });
+
+  test("git-log with commit lines", () => {
+    const items: ToolOutput[] = [
+      { kind: "tool-header", label: "Git Log", detail: "src/cli.ts" },
+      { kind: "text", text: "abc1234 feat: add feature" },
+      { kind: "text", text: "def5678 fix: resolve bug" },
+    ];
+    expect(formatToolOutput(items)).toBe(
+      dedent(`
+        Git Log src/cli.ts
+          abc1234 feat: add feature
+          def5678 fix: resolve bug
+      `),
+    );
+  });
+
+  test("git-log with truncated output", () => {
+    const items: ToolOutput[] = [
+      { kind: "tool-header", label: "Git Log" },
+      { kind: "text", text: "abc1234 first" },
+      { kind: "text", text: "def5678 second" },
+      { kind: "truncated", count: 8, unit: "lines" },
+      { kind: "text", text: "ghi9012 last" },
+    ];
+    expect(formatToolOutput(items)).toBe(
+      dedent(`
+        Git Log
+          abc1234 first
+          def5678 second
+          … +8 lines
+          ghi9012 last
+      `),
+    );
+  });
+
+  test("git-show with ref detail", () => {
+    const items: ToolOutput[] = [
+      { kind: "tool-header", label: "Git Show", detail: "abc1234" },
+      { kind: "text", text: "feat: add feature" },
+      { kind: "text", text: "+const x = 1;" },
+    ];
+    expect(formatToolOutput(items)).toBe(
+      dedent(`
+        Git Show abc1234
+          feat: add feature
+          +const x = 1;
+      `),
+    );
+  });
+
+  test("git-add with file paths", () => {
+    const items: ToolOutput[] = [
+      { kind: "tool-header", label: "Git Add", detail: "3 files" },
+      { kind: "text", text: "src/a.ts" },
+      { kind: "text", text: "src/b.ts" },
+      { kind: "text", text: "src/c.ts" },
+    ];
+    expect(formatToolOutput(items)).toBe(
+      dedent(`
+        Git Add 3 files
+          src/a.ts
+          src/b.ts
+          src/c.ts
+      `),
+    );
+  });
+
+  test("git-add with truncated file list", () => {
+    const items: ToolOutput[] = [
+      { kind: "tool-header", label: "Git Add", detail: "8 files" },
+      { kind: "text", text: "src/a.ts" },
+      { kind: "text", text: "src/b.ts" },
+      { kind: "truncated", count: 6, unit: "files" },
+    ];
+    expect(formatToolOutput(items)).toBe(
+      dedent(`
+        Git Add 8 files
+          src/a.ts
+          src/b.ts
+          … +6 files
+      `),
+    );
+  });
+
+  test("git-add all", () => {
+    const items: ToolOutput[] = [{ kind: "tool-header", label: "Git Add", detail: "all" }];
+    expect(formatToolOutput(items)).toBe("Git Add all");
+  });
+
+  test("git-commit with hash", () => {
+    const items: ToolOutput[] = [{ kind: "tool-header", label: "Git Commit", detail: "feat: add feature (abc1234)" }];
+    expect(formatToolOutput(items)).toBe("Git Commit feat: add feature (abc1234)");
+  });
+
+  test("git-commit with body lines", () => {
+    const items: ToolOutput[] = [
+      { kind: "tool-header", label: "Git Commit", detail: "feat: add feature (abc1234)" },
+      { kind: "text", text: "Added new auth module" },
+      { kind: "text", text: "Updated config schema" },
+    ];
+    expect(formatToolOutput(items)).toBe(
+      dedent(`
+        Git Commit feat: add feature (abc1234)
+          Added new auth module
+          Updated config schema
+      `),
+    );
+  });
+
+  test("git-commit with truncated body", () => {
+    const items: ToolOutput[] = [
+      { kind: "tool-header", label: "Git Commit", detail: "refactor: cleanup (def5678)" },
+      { kind: "text", text: "Line 1" },
+      { kind: "text", text: "Line 2" },
+      { kind: "truncated", count: 5, unit: "lines" },
+    ];
+    expect(formatToolOutput(items)).toBe(
+      dedent(`
+        Git Commit refactor: cleanup (def5678)
+          Line 1
+          Line 2
+          … +5 lines
       `),
     );
   });
@@ -293,6 +452,140 @@ describe("tool output TUI — chat (Ink rendering)", () => {
       dedent(`
         · Run cmd
             (No output)
+      `),
+    );
+  });
+
+  test("git-status with changes", () => {
+    const items: ToolOutput[] = [
+      { kind: "tool-header", label: "Git Status" },
+      { kind: "text", text: "M src/cli.ts" },
+      { kind: "text", text: "?? src/new.ts" },
+    ];
+    expect(renderChat(items)).toBe(
+      dedent(`
+        · Git Status
+            M src/cli.ts
+            ?? src/new.ts
+      `),
+    );
+  });
+
+  test("git-diff with text body", () => {
+    const items: ToolOutput[] = [
+      { kind: "tool-header", label: "Git Diff", detail: "src/agent.ts" },
+      { kind: "text", text: "+const x = 1;" },
+      { kind: "truncated", count: 5, unit: "lines" },
+      { kind: "text", text: "-const y = 2;" },
+    ];
+    expect(renderChat(items)).toBe(
+      dedent(`
+        · Git Diff src/agent.ts
+            +const x = 1;
+            … +5 lines
+            -const y = 2;
+      `),
+    );
+  });
+
+  test("git-log with commit lines", () => {
+    const items: ToolOutput[] = [
+      { kind: "tool-header", label: "Git Log" },
+      { kind: "text", text: "abc1234 feat: add feature" },
+      { kind: "text", text: "def5678 fix: resolve bug" },
+    ];
+    expect(renderChat(items)).toBe(
+      dedent(`
+        · Git Log
+            abc1234 feat: add feature
+            def5678 fix: resolve bug
+      `),
+    );
+  });
+
+  test("git-show with ref detail", () => {
+    const items: ToolOutput[] = [
+      { kind: "tool-header", label: "Git Show", detail: "abc1234" },
+      { kind: "text", text: "feat: add feature" },
+      { kind: "text", text: "+const x = 1;" },
+    ];
+    expect(renderChat(items)).toBe(
+      dedent(`
+        · Git Show abc1234
+            feat: add feature
+            +const x = 1;
+      `),
+    );
+  });
+
+  test("git-add with file paths", () => {
+    const items: ToolOutput[] = [
+      { kind: "tool-header", label: "Git Add", detail: "3 files" },
+      { kind: "text", text: "src/a.ts" },
+      { kind: "text", text: "src/b.ts" },
+      { kind: "text", text: "src/c.ts" },
+    ];
+    expect(renderChat(items)).toBe(
+      dedent(`
+        · Git Add 3 files
+            src/a.ts
+            src/b.ts
+            src/c.ts
+      `),
+    );
+  });
+
+  test("git-add with truncated file list", () => {
+    const items: ToolOutput[] = [
+      { kind: "tool-header", label: "Git Add", detail: "8 files" },
+      { kind: "text", text: "src/a.ts" },
+      { kind: "text", text: "src/b.ts" },
+      { kind: "truncated", count: 6, unit: "files" },
+    ];
+    expect(renderChat(items)).toBe(
+      dedent(`
+        · Git Add 8 files
+            src/a.ts
+            src/b.ts
+            … +6 files
+      `),
+    );
+  });
+
+  test("git-commit with hash", () => {
+    expect(renderChat([{ kind: "tool-header", label: "Git Commit", detail: "feat: add feature (abc1234)" }])).toBe(
+      "· Git Commit feat: add feature (abc1234)",
+    );
+  });
+
+  test("git-commit with body lines", () => {
+    const items: ToolOutput[] = [
+      { kind: "tool-header", label: "Git Commit", detail: "feat: add feature (abc1234)" },
+      { kind: "text", text: "Added new auth module" },
+      { kind: "text", text: "Updated config schema" },
+    ];
+    expect(renderChat(items)).toBe(
+      dedent(`
+        · Git Commit feat: add feature (abc1234)
+            Added new auth module
+            Updated config schema
+      `),
+    );
+  });
+
+  test("git-commit with truncated body", () => {
+    const items: ToolOutput[] = [
+      { kind: "tool-header", label: "Git Commit", detail: "refactor: cleanup (def5678)" },
+      { kind: "text", text: "Line 1" },
+      { kind: "text", text: "Line 2" },
+      { kind: "truncated", count: 5, unit: "lines" },
+    ];
+    expect(renderChat(items)).toBe(
+      dedent(`
+        · Git Commit refactor: cleanup (def5678)
+            Line 1
+            Line 2
+            … +5 lines
       `),
     );
   });

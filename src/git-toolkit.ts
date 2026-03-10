@@ -6,7 +6,7 @@ import type { ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { compactToolOutput } from "./tool-output";
-import { emitHeadTailLines } from "./tool-output-format";
+import { emitHeadTailLines, TOOL_OUTPUT_LIMITS } from "./tool-output-format";
 
 const GIT_OPS = ["statusShort", "diff", "log", "show", "add", "commit"] as const;
 type GitOp = (typeof GIT_OPS)[number];
@@ -221,10 +221,7 @@ function createGitShowTool(git: GitOps, input: ToolkitInput) {
           path: toolInput.path,
           contextLines: toolInput.contextLines ?? 3,
         });
-        emitHeadTailLines("git-show", stripGitShowMetadataForPreview(rawShow), onOutput, toolCallId, {
-          headRows: 4,
-          tailRows: 4,
-        });
+        emitHeadTailLines("git-show", stripGitShowMetadataForPreview(rawShow), onOutput, toolCallId);
         const result = compactToolOutput(rawShow, appConfig.agent.toolOutputBudget.gitDiff);
         return {
           kind: "git-show",
@@ -260,19 +257,26 @@ function createGitAddTool(git: GitOps, input: ToolkitInput) {
     }),
     execute: async (toolInput) => {
       return runTool(session, "git-add", toolInput, async (toolCallId) => {
-        const pathCount = (toolInput.paths ?? []).filter((p) => p.trim().length > 0).length;
-        const addDetail = toolInput.all === true ? "all" : t("unit.file", { count: pathCount });
+        const paths = (toolInput.paths ?? []).filter((p) => p.trim().length > 0);
+        const addDetail = toolInput.all === true ? "all" : t("unit.file", { count: paths.length });
         onOutput({
           toolName: "git-add",
           content: { kind: "tool-header", label: t("tool.label.git_add"), detail: addDetail },
           toolCallId,
         });
         const rawAdd = await git.add({ paths: toolInput.paths, all: toolInput.all });
-        const targetLabel =
-          toolInput.all === true
-            ? "mode=all"
-            : `paths=${(toolInput.paths ?? []).filter((p) => p.trim().length > 0).length}`;
-        emitHeadTailLines("git-add", `${targetLabel}\n${rawAdd}`, onOutput, toolCallId, { trimStart: true });
+        if (paths.length > 0) {
+          for (const p of paths.slice(0, TOOL_OUTPUT_LIMITS.files)) {
+            onOutput({ toolName: "git-add", content: { kind: "text", text: p }, toolCallId });
+          }
+          if (paths.length > TOOL_OUTPUT_LIMITS.files) {
+            onOutput({
+              toolName: "git-add",
+              content: { kind: "truncated", count: paths.length - TOOL_OUTPUT_LIMITS.files, unit: "files" },
+              toolCallId,
+            });
+          }
+        }
         const result = compactToolOutput(rawAdd, appConfig.agent.toolOutputBudget.gitStatus);
         return { kind: "git-add", all: toolInput.all, paths: toolInput.paths, output: result };
       });
@@ -302,13 +306,28 @@ function createGitCommitTool(git: GitOps, input: ToolkitInput) {
     }),
     execute: async (toolInput) => {
       return runTool(session, "git-commit", toolInput, async (toolCallId) => {
+        const rawCommit = await git.commit({ message: toolInput.message, body: toolInput.body });
+        const hashMatch = rawCommit.match(/^\[[\w/.-]+\s+([a-f0-9]+)\]/);
+        const shortHash = hashMatch?.[1];
+        const detail = shortHash ? `${toolInput.message} (${shortHash})` : toolInput.message;
         onOutput({
           toolName: "git-commit",
-          content: { kind: "tool-header", label: t("tool.label.git_commit"), detail: toolInput.message },
+          content: { kind: "tool-header", label: t("tool.label.git_commit"), detail },
           toolCallId,
         });
-        const rawCommit = await git.commit({ message: toolInput.message, body: toolInput.body });
-        emitHeadTailLines("git-commit", rawCommit, onOutput, toolCallId, { headRows: 2, tailRows: 2 });
+        if (toolInput.body && toolInput.body.length > 0) {
+          const maxBodyLines = TOOL_OUTPUT_LIMITS.files;
+          for (const line of toolInput.body.slice(0, maxBodyLines)) {
+            onOutput({ toolName: "git-commit", content: { kind: "text", text: line }, toolCallId });
+          }
+          if (toolInput.body.length > maxBodyLines) {
+            onOutput({
+              toolName: "git-commit",
+              content: { kind: "truncated", count: toolInput.body.length - maxBodyLines, unit: "lines" },
+              toolCallId,
+            });
+          }
+        }
         const result = compactToolOutput(rawCommit, appConfig.agent.toolOutputBudget.gitDiff);
         return { kind: "git-commit", message: toolInput.message, body: toolInput.body, output: result };
       });

@@ -83,7 +83,14 @@ export function renderToolOutput(content: ToolOutput): string {
     case "no-output":
       return t("tool.content.no_output");
     case "truncated": {
-      const unitKey = content.unit === "lines" ? "unit.line" : content.unit === "matches" ? "unit.match" : "unit.more";
+      const unitKey =
+        content.unit === "lines"
+          ? "unit.line"
+          : content.unit === "matches"
+            ? "unit.match"
+            : content.unit === "files"
+              ? "unit.file"
+              : "unit.more";
       return `… +${t(unitKey, { count: content.count })}`;
     }
   }
