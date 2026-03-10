@@ -2,8 +2,8 @@ export const palette = {
   // Brand
   brand: "#A56EFF",
 
-  logo: "#2A1D4A",
-  logoAccent: "#FFD84D",
+  mascot: "#2A1D4A",
+  mascotEyes: "#FFD84D",
 
   // Text
   textCode: "#B7C0CC",

@@ -212,8 +212,8 @@ function ChatApp(props: ChatAppProps) {
       <ChatHeader
         lines={headerLines}
         brandColor={palette.brand}
-        logoColor={palette.logo}
-        logoEyeColor={palette.logoAccent}
+        mascot={palette.mascot}
+        mascotEyes={palette.mascotEyes}
       />
       <ChatTranscript
         rows={rows}

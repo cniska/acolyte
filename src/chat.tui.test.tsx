@@ -25,8 +25,8 @@ describe("chat tui visual regression: header", () => {
           { id: "context", text: "session sess_demo1234", dim: true, brand: false },
         ]}
         brandColor={palette.brand}
-        logoColor={palette.logo}
-        logoEyeColor={palette.logoAccent}
+        mascot={palette.mascot}
+        mascotEyes={palette.mascotEyes}
       />,
     );
     expect(out).toBe(

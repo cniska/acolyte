@@ -12,12 +12,12 @@ export type HeaderLine = {
 type ChatHeaderProps = {
   lines: HeaderLine[];
   brandColor: string;
-  logoColor: string;
-  logoEyeColor: string;
+  mascot: string;
+  mascotEyes: string;
 };
 
 export function ChatHeader(props: ChatHeaderProps): React.ReactNode {
-  const { lines, brandColor, logoColor, logoEyeColor } = props;
+  const { lines, brandColor, mascot, mascotEyes } = props;
   const title = lines.find((line) => line.id === "title");
   const session = lines.find((line) => line.id === "session");
   const context = lines.find((line) => line.id === "context");
@@ -37,7 +37,7 @@ export function ChatHeader(props: ChatHeaderProps): React.ReactNode {
   const rows: { key: string; logo: React.ReactNode; text: React.ReactNode }[] = [
     {
       key: "title",
-      logo: <Text color={logoColor}>{"  ▗█████▖  "}</Text>,
+      logo: <Text color={mascot}>{"  ▗█████▖  "}</Text>,
       text: (
         <>
           <Text color={brandColor}>{title?.text ?? ""}</Text>
@@ -51,16 +51,16 @@ export function ChatHeader(props: ChatHeaderProps): React.ReactNode {
       key: "session",
       logo: (
         <>
-          <Text color={logoColor}>{" ▟█ "}</Text>
-          <Text color={logoEyeColor}>{"● ●"}</Text>
-          <Text color={logoColor}>{" █▙ "}</Text>
+          <Text color={mascot}>{" ▟█ "}</Text>
+          <Text color={mascotEyes}>{"● ●"}</Text>
+          <Text color={mascot}>{" █▙ "}</Text>
         </>
       ),
       text: renderMetaLine(session?.text),
     },
     {
       key: "context",
-      logo: <Text color={logoColor}>{" ▜█▄▄▄▄▄█▛ "}</Text>,
+      logo: <Text color={mascot}>{" ▜█▄▄▄▄▄█▛ "}</Text>,
       text: renderMetaLine(context?.text),
     },
   ];
