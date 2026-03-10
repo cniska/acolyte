@@ -1,7 +1,7 @@
 import type { z } from "zod";
 import { unreachable } from "./assert";
 import { domainIdSchema } from "./id-contract";
-import type { StreamErrorDetail } from "./stream-error";
+import type { StreamError } from "./stream-error";
 import {
   ERROR_KINDS,
   type ErrorCode,
@@ -170,7 +170,7 @@ export function createStreamError(
     unknownErrorCount: number;
   },
   unknownErrorBudget: number,
-): { errorCode: string; category: ErrorCategory; errorDetail: StreamErrorDetail } {
+): { errorCode: string; category: ErrorCategory; error: StreamError } {
   const kindCategory = categoryFromErrorKind(input.kind);
   const errorCode =
     input.code ??
@@ -186,7 +186,7 @@ export function createStreamError(
   return {
     errorCode,
     category,
-    errorDetail: {
+    error: {
       code: errorCode,
       category,
       kind: errorKind,

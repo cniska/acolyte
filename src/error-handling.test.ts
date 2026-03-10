@@ -103,7 +103,7 @@ describe("error handling helpers", () => {
     );
     expect(detail.errorCode).toBe(LIFECYCLE_ERROR_CODES.timeout);
     expect(detail.category).toBe("timeout");
-    expect(detail.errorDetail).toMatchObject({
+    expect(detail.error).toMatchObject({
       code: LIFECYCLE_ERROR_CODES.timeout,
       category: "timeout",
       kind: "timeout",

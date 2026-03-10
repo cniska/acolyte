@@ -11,7 +11,7 @@ export type MessageStreamState = {
     toolName: string;
     isError?: boolean;
     errorCode?: string;
-    errorDetail?: { category?: string; [key: string]: unknown };
+    error?: { category?: string; [key: string]: unknown };
   }) => void;
   onProgressError: (error: string) => void;
   streamedAssistantText: () => string;
@@ -84,7 +84,7 @@ export function createMessageStreamState(input: {
     onToolResult: (entry) => {
       const guardBlocked =
         entry.isError &&
-        (entry.errorCode === LIFECYCLE_ERROR_CODES.guardBlocked || entry.errorDetail?.category === "guard-blocked");
+        (entry.errorCode === LIFECYCLE_ERROR_CODES.guardBlocked || entry.error?.category === "guard-blocked");
       if (guardBlocked) {
         const rowId = toolRowIdByCallId.get(entry.toolCallId);
         toolRowIdByCallId.delete(entry.toolCallId);

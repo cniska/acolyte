@@ -52,7 +52,7 @@ function serverError(
   const errorId = nextErrorId();
   const errorMessage = error instanceof Error ? error.message : t("unknown_error");
   const publicMessage = mapQuotaErrorMessage(errorMessage);
-  const { errorCode, errorDetail } = createStreamError(
+  const { errorCode, error: streamError } = createStreamError(
     {
       message: publicMessage,
       source: "server",
@@ -65,7 +65,7 @@ function serverError(
     ...details,
     ...errorToLogFields(error),
   });
-  return json({ error: publicMessage, errorId, errorCode, errorDetail }, status);
+  return json({ errorMessage: publicMessage, errorId, errorCode, error: streamError }, status);
 }
 
 function hasValidAuth(req: Request, url?: URL): boolean {

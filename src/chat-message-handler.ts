@@ -206,7 +206,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
               streamState.onToolResult(event);
               break;
             case "error":
-              streamState.onProgressError(event.error);
+              streamState.onProgressError(event.errorMessage);
               break;
           }
         },

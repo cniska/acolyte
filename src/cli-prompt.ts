@@ -143,7 +143,7 @@ export async function handlePrompt(
               const guardBlocked =
                 event.isError === true &&
                 (event.errorCode === LIFECYCLE_ERROR_CODES.guardBlocked ||
-                  event.errorDetail?.category === "guard-blocked");
+                  event.error?.category === "guard-blocked");
               if (guardBlocked) toolOutput.delete(event.toolCallId);
               break;
             }

@@ -5,7 +5,7 @@ import { providerSchema } from "./provider-contract";
 import { resourceIdSchema } from "./resource-id";
 import { sessionIdSchema } from "./session-contract";
 import { createId } from "./short-id";
-import { streamErrorDetailSchema } from "./stream-error";
+import { streamErrorSchema } from "./stream-error";
 import { taskIdSchema, taskRecordSchema } from "./task-contract";
 
 const errorIdSchema = domainIdSchema("err");
@@ -110,10 +110,10 @@ export const rpcServerMessageSchema = z.discriminatedUnion("type", [
   z.object({
     id: rpcRequestIdSchema,
     type: z.literal("chat.error"),
-    error: z.string(),
+    errorMessage: z.string(),
     errorId: errorIdSchema.optional(),
     errorCode: z.string().optional(),
-    errorDetail: streamErrorDetailSchema.optional(),
+    error: streamErrorSchema.optional(),
   }),
   z.object({
     id: rpcRequestIdSchema,

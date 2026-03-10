@@ -4,7 +4,7 @@ import { invariant } from "./assert";
 import type { TransportMode } from "./config-contract";
 import { rpcServerMessageSchema } from "./rpc-protocol";
 import type { StatusFields } from "./status-contract";
-import { streamErrorDetailSchema } from "./stream-error";
+import { streamErrorSchema } from "./stream-error";
 import type { TaskId, TaskRecord } from "./task-contract";
 import { toolOutputSchema } from "./tool-output-content";
 
@@ -36,15 +36,15 @@ export const streamEventSchema = z.discriminatedUnion("type", [
     toolName: z.string(),
     isError: z.boolean().optional(),
     errorCode: z.string().optional(),
-    errorDetail: streamErrorDetailSchema.optional(),
+    error: streamErrorSchema.optional(),
   }),
   z.object({ type: z.literal("status"), message: z.string() }),
   z.object({
     type: z.literal("error"),
-    error: z.string(),
+    errorMessage: z.string(),
     errorId: z.string().optional(),
     errorCode: z.string().optional(),
-    errorDetail: streamErrorDetailSchema.optional(),
+    error: streamErrorSchema.optional(),
   }),
 ]);
 
@@ -65,7 +65,7 @@ export type RemoteErrorMetadata = {
   status?: number;
   errorId?: string;
   errorCode?: string;
-  errorDetail?: z.infer<typeof streamErrorDetailSchema>;
+  error?: z.infer<typeof streamErrorSchema>;
   taskId?: TaskId;
 };
 

@@ -75,7 +75,7 @@ export function streamErrorPayload(error: unknown): StreamErrorPayload {
   const errorId = nextErrorId();
   const parsed = parseErrorInfo(error);
   const errorMessage = parsed.ok ? parsed.value.message : error instanceof Error ? error.message : "Unknown error";
-  const { errorCode, errorDetail } = createStreamError(
+  const { errorCode, error: streamError } = createStreamError(
     {
       message: errorMessage,
       code: parsed.ok ? parsed.value.code : undefined,
@@ -86,10 +86,10 @@ export function streamErrorPayload(error: unknown): StreamErrorPayload {
     1,
   );
   return {
-    error: errorMessage,
+    errorMessage,
     errorId,
     errorCode,
-    errorDetail,
+    error: streamError,
   };
 }
 

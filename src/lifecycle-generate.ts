@@ -1,5 +1,5 @@
 import type { Agent } from "./agent-contract";
-import { createAgent } from "./agent-factory";
+import { createAgent } from "./agent-stream";
 import { createInstructions } from "./agent-instructions";
 import { agentModes } from "./agent-modes";
 import { appConfig } from "./app-config";
@@ -24,7 +24,7 @@ import type {
   ToolErrorPayload,
   ToolResultPayload,
 } from "./lifecycle-contract";
-import type { StreamErrorDetail } from "./stream-error";
+import type { StreamError } from "./stream-error";
 import type { ToolDefinition } from "./tool-contract";
 import { extractToolErrorCode, LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
 import { resetCycleStepCount } from "./tool-guards";
@@ -72,7 +72,7 @@ function captureError(
   });
 }
 
-function currentErrorDetail(ctx: RunContext): StreamErrorDetail | undefined {
+function currentStreamError(ctx: RunContext): StreamError | undefined {
   if (!ctx.lastError) return undefined;
   return createStreamError(
     {
@@ -84,7 +84,7 @@ function currentErrorDetail(ctx: RunContext): StreamErrorDetail | undefined {
       unknownErrorCount: ctx.errorStats.other,
     },
     ctx.policy.maxUnknownErrorsPerRequest,
-  ).errorDetail;
+  ).error;
 }
 
 export function shouldYieldNow(ctx: RunContext, shouldYield?: () => boolean): boolean {
@@ -264,7 +264,7 @@ function emitToolResult(ctx: RunContext, toolCallId: string, toolName: string, i
       ? {
           isError: true,
           ...(ctx.lastErrorCode ? { errorCode: ctx.lastErrorCode } : {}),
-          ...(currentErrorDetail(ctx) ? { errorDetail: currentErrorDetail(ctx) } : {}),
+          ...(currentStreamError(ctx) ? { error: currentStreamError(ctx) } : {}),
         }
       : {}),
   });

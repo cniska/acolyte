@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const streamErrorDetailSchema = z.object({
+export const streamErrorSchema = z.object({
   code: z.string().optional(),
   category: z.string().optional(),
   kind: z.string().optional(),
@@ -10,4 +10,4 @@ export const streamErrorDetailSchema = z.object({
   recoveryAction: z.string().optional(),
 });
 
-export type StreamErrorDetail = z.infer<typeof streamErrorDetailSchema>;
+export type StreamError = z.infer<typeof streamErrorSchema>;

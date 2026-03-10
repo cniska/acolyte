@@ -122,7 +122,7 @@ function runWorkerTask(input: WorkerRunInput, deps: RpcDeps): Promise<void> {
     onError: (payload) => {
       deps.transitionTaskState(
         input.taskId,
-        { state: "failed", summary: payload.error },
+        { state: "failed", summary: payload.errorMessage },
         { reason: "chat_failed", transport: "rpc" },
       );
       input.emitError(payload);

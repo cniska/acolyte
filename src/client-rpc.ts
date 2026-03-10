@@ -272,16 +272,16 @@ export class RpcClient implements Client {
         if (msg.type === "chat.error") {
           options.onEvent({
             type: "error",
-            error: msg.error,
+            errorMessage: msg.errorMessage,
             errorId: msg.errorId,
             errorCode: msg.errorCode,
-            errorDetail: msg.errorDetail,
+            error: msg.error,
           });
           return reject(
-            createRemoteError(msg.error, {
+            createRemoteError(msg.errorMessage, {
               errorId: msg.errorId,
               errorCode: msg.errorCode,
-              errorDetail: msg.errorDetail,
+              error: msg.error,
             }),
           );
         }

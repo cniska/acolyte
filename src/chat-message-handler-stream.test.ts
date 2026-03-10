@@ -93,7 +93,7 @@ describe("chat-message-handler-stream", () => {
       toolName: "run-command",
       isError: true,
       errorCode: "E_GUARD_BLOCKED",
-      errorDetail: { category: "guard-blocked" },
+      error: { category: "guard-blocked" },
     });
     expect(rows).toHaveLength(0);
     state.dispose();

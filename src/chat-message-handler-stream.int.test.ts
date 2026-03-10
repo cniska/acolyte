@@ -518,7 +518,7 @@ describe("chat message handler stream behavior", () => {
             toolName: "read-file",
             isError: true,
             errorCode: "E_GUARD_BLOCKED",
-            errorDetail: { code: "E_GUARD_BLOCKED", category: "guard-blocked" },
+            error: { code: "E_GUARD_BLOCKED", category: "guard-blocked" },
           },
         ],
         reply: async () => ({
@@ -546,7 +546,7 @@ describe("chat message handler stream behavior", () => {
             toolName: "read-file",
             isError: true,
             errorCode: "E_GUARD_BLOCKED",
-            errorDetail: { code: "E_GUARD_BLOCKED", category: "guard-blocked" },
+            error: { code: "E_GUARD_BLOCKED", category: "guard-blocked" },
           },
           { type: "tool-call", toolCallId: "call_ok", toolName: "edit-file", args: { path: "b.ts" } },
           {

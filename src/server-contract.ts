@@ -2,16 +2,16 @@ import type { z } from "zod";
 import type { ChatResponse } from "./api";
 import type { ErrorId } from "./error-handling";
 import type { statusPayloadSchema } from "./rpc-protocol";
-import type { StreamErrorDetail } from "./stream-error";
+import type { StreamError } from "./stream-error";
 import type { TaskId } from "./task-contract";
 
 export type StatusPayload = z.infer<typeof statusPayloadSchema>;
 
 export type StreamErrorPayload = {
-  error: string;
+  errorMessage: string;
   errorId?: ErrorId;
   errorCode?: string;
-  errorDetail?: StreamErrorDetail;
+  error?: StreamError;
 };
 
 export type RunChatHandlers = {

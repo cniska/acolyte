@@ -42,7 +42,6 @@ Review in this order.
 - [x] [`src/lifecycle-prepare.ts`](../src/lifecycle-prepare.ts)
 - [x] [`src/agent-modes.ts`](../src/agent-modes.ts)
 - [x] [`src/agent-stream.ts`](../src/agent-stream.ts)
-- [x] [`src/agent-factory.ts`](../src/agent-factory.ts)
 - [x] [`src/agent-instructions.ts`](../src/agent-instructions.ts)
 - [x] [`src/agent-input.ts`](../src/agent-input.ts)
 - [x] [`src/agent-model.ts`](../src/agent-model.ts)
