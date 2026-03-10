@@ -53,7 +53,7 @@ const PERF_MODEL = "gpt-5-mini";
 const SCENARIOS: Scenario[] = PERF_SCENARIO_LIST;
 
 export function buildPerfSessionId(scenarioId: ScenarioId, run: number): string {
-  return `sess_perf_${scenarioId}_${run}`;
+  return `sess_perf${scenarioId.replace(/-/g, "")}${run}`;
 }
 
 function parseInteger(token: string | undefined, flag: string): number {
