@@ -28,7 +28,7 @@ export function createModeInstructions(mode: AgentMode, workspace?: string): str
 }
 
 export function createInstructions(soulPrompt: string, mode: AgentMode, workspace?: string): string {
-  const base = BASE_INSTRUCTIONS.map((p) => `- ${p}`).join("\n");
+  const baseInstructions = BASE_INSTRUCTIONS.map((p) => `- ${p}`).join("\n");
   const modeInstructions = createModeInstructions(mode, workspace);
-  return `${soulPrompt}\n\n${base}\n\n${modeInstructions}`;
+  return `${soulPrompt}\n\n${baseInstructions}\n\n${modeInstructions}`;
 }
