@@ -199,7 +199,8 @@ async function loadEntriesForKey(ds: DistillStore, key: string): Promise<readonl
   const entries = await ds.list(key);
   const reflections = entries.filter((e) => e.tier === "reflection");
   if (reflections.length > 0) {
-    const latestReflection = reflections[reflections.length - 1]!;
+    // Safe: guarded by `reflections.length > 0` above.
+    const latestReflection = reflections[reflections.length - 1] as DistillRecord;
     const observationsSinceReflection = entries
       .filter((e) => e.tier === "observation" && e.createdAt > latestReflection.createdAt)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));

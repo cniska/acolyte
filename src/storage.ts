@@ -17,7 +17,7 @@ export function normalizeStore(parsed: SessionState): SessionState {
     sessions: Array.isArray(parsed.sessions)
       ? parsed.sessions.map((session) => {
           const tokenUsage = Array.isArray((session as Partial<Session>).tokenUsage)
-            ? ((session as Partial<Session>).tokenUsage ?? [])
+            ? ((session as Partial<Session>).tokenUsage as Session["tokenUsage"])
             : [];
           return { ...session, tokenUsage } as Session;
         })

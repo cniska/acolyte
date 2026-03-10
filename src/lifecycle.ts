@@ -104,16 +104,16 @@ function attachToolOutputHandler(ctx: RunContext) {
     if (!rendered.trim()) return;
     const toolName = event.toolName;
     const queue = ctx.nativeIdQueue.get(toolName);
-    const nativeId = queue?.[queue.length - 1] ?? event.toolCallId ?? toolName;
+    const resolvedToolCallId = queue?.[queue.length - 1] ?? event.toolCallId ?? toolName;
     ctx.debug("lifecycle.tool.output", {
       tool: toolName,
       stream_tool_call_id: event.toolCallId ?? null,
-      emitted_tool_call_id: nativeId,
+      emitted_tool_call_id: resolvedToolCallId,
       preview: rendered.length > 120 ? `${rendered.slice(0, 119)}…` : rendered,
     });
     ctx.emit({
       type: "tool-output",
-      toolCallId: nativeId,
+      toolCallId: resolvedToolCallId,
       toolName,
       content: event.content,
     });
