@@ -181,7 +181,9 @@ Review in this order.
 ### Unit tests
 
 - [ ] [`src/agent-modes.test.ts`](../src/agent-modes.test.ts)
-- [ ] [`src/agent.test.ts`](../src/agent.test.ts)
+- [ ] [`src/agent-input.test.ts`](../src/agent-input.test.ts)
+- [ ] [`src/agent-instructions.test.ts`](../src/agent-instructions.test.ts)
+- [ ] [`src/agent-model.test.ts`](../src/agent-model.test.ts)
 - [ ] [`src/assert.test.ts`](../src/assert.test.ts)
 - [ ] [`src/chat-commands.test.ts`](../src/chat-commands.test.ts)
 - [ ] [`src/chat-content.test.ts`](../src/chat-content.test.ts)
