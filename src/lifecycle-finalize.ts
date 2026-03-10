@@ -12,11 +12,15 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
   const completionTokens = estimateTokens(output);
   let budgetWarning: string | undefined;
   if (ctx.promptUsage.promptTruncated) {
-    budgetWarning =
-      `context trimmed (${t("unit.history_message", { count: ctx.promptUsage.includedHistoryMessages })}` +
-      ` of ${ctx.promptUsage.totalHistoryMessages})`;
+    budgetWarning = t("lifecycle.budget.trimmed", {
+      included: t("unit.history_message", { count: ctx.promptUsage.includedHistoryMessages }),
+      total: ctx.promptUsage.totalHistoryMessages,
+    });
   } else if (ctx.promptUsage.promptTokens >= Math.floor(ctx.promptUsage.promptBudgetTokens * 0.9)) {
-    budgetWarning = `context near budget (${ctx.promptUsage.promptTokens}/${ctx.promptUsage.promptBudgetTokens} tokens)`;
+    budgetWarning = t("lifecycle.budget.near", {
+      used: ctx.promptUsage.promptTokens,
+      budget: ctx.promptUsage.promptBudgetTokens,
+    });
   }
 
   const callLog = taskScopedCallLog(ctx.session, ctx.taskId);
@@ -42,7 +46,6 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
     has_error: Boolean(ctx.lastError),
     output_chars: output.length,
     budget_warning: budgetWarning ?? null,
-    total_tool_calls: totalToolCalls,
     read_calls: readCalls,
     search_calls: searchCalls,
     write_calls: writeCalls,

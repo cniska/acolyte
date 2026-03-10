@@ -1,3 +1,5 @@
+import { t } from "./i18n";
+
 export function formatAssistantOutput(output: string, toolCallCount = 0): string {
   const trimmed = output.trim();
   if (trimmed.length > 0) {
@@ -6,10 +8,10 @@ export function formatAssistantOutput(output: string, toolCallCount = 0): string
       const compact = trimmed.replace(/\s+/g, " ").trim();
       const firstSentence = compact.split(/(?<=[.!?])\s+/)[0] ?? compact;
       const sentence = firstSentence.length > 180 ? `${firstSentence.slice(0, 179).trimEnd()}…` : firstSentence;
-      return sentence.length > 0 ? sentence : "Done.";
+      return sentence.length > 0 ? sentence : t("agent.output.done");
     }
     return trimmed;
   }
-  if (toolCallCount > 0) return "No final response after tool execution. Retry, or check server logs if this repeats.";
-  return "No output from model. Check /status and server logs, then retry or switch model/provider.";
+  if (toolCallCount > 0) return t("agent.output.no_response_after_tools");
+  return t("agent.output.no_output");
 }

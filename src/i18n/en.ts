@@ -1,4 +1,8 @@
 export const EN_MESSAGES = {
+  "agent.output.done": "Done.",
+  "agent.output.no_output": "No output from model. Check /status and server logs, then retry or switch model/provider.",
+  "agent.output.no_response_after_tools":
+    "No final response after tool execution. Retry, or check server logs if this repeats.",
   "chat.command.unknown": "Unknown command: {command}",
   "chat.memory.header.all": "Memory {count}",
   "chat.memory.header.scope": "{scope} memory {count}",
@@ -159,6 +163,10 @@ export const EN_MESSAGES = {
   "error.prompt.server_timed_out": "Server request timed out. Retry or reduce request scope.",
   "error.prompt.server_unavailable": "Server unavailable. Start the server and retry.",
   "error.prompt.write_blocked": "Write action blocked in read mode. Run /permissions write and retry.",
+  "lifecycle.budget.near": "context near budget ({used}/{budget} tokens)",
+  "lifecycle.budget.trimmed": "context trimmed ({included} of {total})",
+  "lifecycle.stopped_unknown_errors":
+    "Stopped after repeated unknown errors. Narrow the task scope or inspect lifecycle traces and retry.",
   "run.args.invalid": "Invalid run args",
   "run.file_context.attached": "Attached file context from {filePath}",
   "tool.content.no_output": "(No output)",

@@ -83,6 +83,7 @@ export type RunContext = {
   readonly soulPrompt: string;
   readonly emit: (event: StreamEvent) => void;
   readonly debug: (event: LifecycleEventName, fields?: Record<string, unknown>) => void;
+  /** Original mode determined by the classify phase (immutable). */
   readonly classifiedMode: AgentMode;
   readonly tools: Toolset;
   readonly session: SessionContext;
@@ -91,7 +92,9 @@ export type RunContext = {
   readonly promptUsage: PromptUsage;
   model: string;
   agent: Agent;
+  /** Mode the current agent instance was created for (used to detect when to recreate). */
   agentMode: AgentMode;
+  /** Current working mode — changes during evaluation (e.g. plan → work → verify). */
   mode: AgentMode;
   observedTools: Set<string>;
   modelCallCount: number;

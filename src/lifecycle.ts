@@ -61,6 +61,14 @@ function createRunContext(
     policy: RunContext["policy"];
   },
 ): RunContext {
+  const agent = createModeAgent({
+    soulPrompt: input.soulPrompt,
+    mode: params.classifiedMode,
+    workspace: input.workspace,
+    model: params.model,
+    tools: params.prepared.tools,
+  });
+
   return {
     request: input.request,
     workspace: input.workspace,
@@ -74,13 +82,7 @@ function createRunContext(
     agentMode: params.classifiedMode,
     model: params.model,
     session: Object.assign(params.prepared.session, { mode: params.classifiedMode }),
-    agent: createModeAgent({
-      soulPrompt: input.soulPrompt,
-      mode: params.classifiedMode,
-      workspace: input.workspace,
-      model: params.model,
-      tools: params.prepared.tools,
-    }),
+    agent,
     agentInput: params.prepared.agentInput,
     policy: params.policy,
     promptUsage: params.prepared.promptUsage,
