@@ -3,8 +3,6 @@ import type { Message } from "./chat-message-contract";
 import { nowIso } from "./datetime";
 import { createId } from "./short-id";
 
-const RESUME_TRANSCRIPT_ROWS = 40;
-
 export function newMessage(role: Message["role"], content: string): Message {
   return {
     id: `msg_${createId()}`,
@@ -15,7 +13,7 @@ export function newMessage(role: Message["role"], content: string): Message {
   };
 }
 
-export function toRows(messages: Message[], limit = RESUME_TRANSCRIPT_ROWS): ChatRow[] {
+export function toRows(messages: Message[]): ChatRow[] {
   const rows: ChatRow[] = [];
   for (const message of messages) {
     if (message.role === "user" || message.role === "assistant") {
@@ -26,5 +24,5 @@ export function toRows(messages: Message[], limit = RESUME_TRANSCRIPT_ROWS): Cha
       });
     }
   }
-  return rows.slice(-limit);
+  return rows;
 }
