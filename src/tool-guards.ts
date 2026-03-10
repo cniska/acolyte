@@ -334,8 +334,8 @@ const excessiveFindLoopGuard: ToolGuard = {
   },
 };
 
-const duplicateVerifyGuard: ToolGuard = {
-  id: "duplicate-verify",
+const redundantVerifyGuard: ToolGuard = {
+  id: "redundant-verify",
   description: "Block redundant verify runs when no writes happened since the last one.",
   appliesTo: ["run-command"],
   check({ toolName, session }) {
@@ -360,7 +360,7 @@ const duplicateVerifyGuard: ToolGuard = {
       }
     }
     if (!wroteAfterLastVerify) {
-      session.onGuard?.({ guardId: "duplicate-verify", toolName, action: "blocked", detail: "duplicate-verify" });
+      session.onGuard?.({ guardId: "redundant-verify", toolName, action: "blocked", detail: "duplicate-verify" });
       throw new Error("verify already ran this turn and no writes happened since; avoid redundant verify reruns.");
     }
   },
@@ -413,7 +413,7 @@ const GUARDS: ToolGuard[] = [
   excessiveFileLoopGuard,
   excessiveFindLoopGuard,
   excessiveSearchLoopGuard,
-  duplicateVerifyGuard,
+  redundantVerifyGuard,
 ];
 
 export function runGuards(input: GuardInput): void {

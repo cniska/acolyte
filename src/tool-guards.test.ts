@@ -117,7 +117,7 @@ describe("no-rewrite guard", () => {
   });
 });
 
-describe("duplicate-verify guard", () => {
+describe("redundant-verify guard", () => {
   test("allows first verify run", () => {
     const session = createSessionContext();
     session.mode = "verify";
