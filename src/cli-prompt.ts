@@ -2,7 +2,6 @@ import { stdout as output } from "node:process";
 import { createWorkspaceSpecifier } from "./api";
 import { newMessage } from "./chat-session";
 import { formatAssistantReplyOutput } from "./cli-format";
-import { missingAssistantStreamTail } from "./cli-stream-output";
 import type { Client } from "./client-contract";
 import { nowIso } from "./datetime";
 import { formatPromptError } from "./error-messages";
@@ -17,6 +16,13 @@ function setSessionTitle(session: Session, inputText: string): void {
   if (session.title !== "New Session") return;
   const title = inputText.trim().replace(/\s+/g, " ").slice(0, 60);
   if (title.length > 0) session.title = title;
+}
+
+function missingAssistantStreamTail(streamed: string, finalOutput: string): string {
+  if (streamed.length === 0) return finalOutput;
+  if (finalOutput === streamed) return "";
+  if (finalOutput.startsWith(streamed)) return finalOutput.slice(streamed.length);
+  return "";
 }
 
 function createAssistantStreamRenderer(): {
