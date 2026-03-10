@@ -118,6 +118,7 @@ Open-source local mode with optional self-hosted memory/session sync service.
 - [x] Localization baseline: translatable CLI/TUI copy, with raw protocol/tool output kept language-neutral
 - [x] Configurable locale (`acolyte config set locale <tag>`) with per-locale catalogs (`src/i18n/locales/*.json`)
 - [x] Remove internal launch/talk docs before OSS
+- [ ] Migrate `docs/known-issues.md` to GitHub Issues and replace file with link to tracker
 
 ## MVP Definition
 
