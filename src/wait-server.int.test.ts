@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { waitForServer } from "../scripts/wait-server";
 import { startTestServer } from "./test-utils";
-import { waitForServer } from "./wait-server";
 
 describe("wait-server", () => {
   test("waitForServer resolves when endpoint is healthy", async () => {

@@ -205,10 +205,4 @@ export const EN_MESSAGES = {
   "unit.tool": "{count} tools",
   "unit.tool.one": "{count} tool",
   unknown_error: "Unknown error",
-  "wait.arg_invalid_timeout": "Invalid value for --timeout-ms",
-  "wait.arg_missing_timeout": "Missing value for --timeout-ms",
-  "wait.arg_missing_url": "Missing value for --url",
-  "wait.arg_unknown": "Unknown argument: {token}",
-  "wait.failed": "Failed to wait for server",
-  "wait.timed_out": "Timed out waiting for server at {url}",
 } as const;

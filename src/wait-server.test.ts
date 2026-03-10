@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseArgs } from "./wait-server";
+import { parseArgs } from "../scripts/wait-server";
 
 describe("wait-server args", () => {
   test("parseArgs applies defaults", () => {
@@ -17,11 +17,11 @@ describe("wait-server args", () => {
   });
 
   test("parseArgs rejects invalid timeout value", () => {
-    expect(() => parseArgs(["--timeout-ms", "0"])).toThrow("Invalid value for --timeout-ms");
+    expect(() => parseArgs(["--timeout-ms", "0"])).toThrow("--timeout-ms must be a positive integer");
   });
 
   test("parseArgs rejects missing timeout value", () => {
-    expect(() => parseArgs(["--timeout-ms"])).toThrow("Missing value for --timeout-ms");
+    expect(() => parseArgs(["--timeout-ms"])).toThrow("--timeout-ms requires a value");
   });
 
   test("parseArgs rejects unknown flags", () => {

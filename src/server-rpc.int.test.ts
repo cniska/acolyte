@@ -9,7 +9,7 @@ import {
   pickFunctionToolName,
   withFakeProviderServer,
 } from "../scripts/fake-provider-server";
-import { waitForServer } from "./wait-server";
+import { waitForServer } from "../scripts/wait-server";
 
 const repoRoot = process.cwd();
 const tmpHomes: string[] = [];

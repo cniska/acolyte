@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { t } from "./i18n";
 
 const DEFAULT_URL = "http://localhost:6767/v1/status";
 const DEFAULT_TIMEOUT_MS = 10_000;
@@ -24,22 +23,22 @@ function parseArgs(argv: string[]): Args {
     const token = argv[i];
     if (token === "--url") {
       const value = argv[i + 1];
-      if (!value) throw new Error(t("wait.arg_missing_url"));
+      if (!value) throw new Error("--url requires a value");
       raw.url = value;
       i += 1;
       continue;
     }
     if (token === "--timeout-ms") {
       const value = argv[i + 1];
-      if (!value) throw new Error(t("wait.arg_missing_timeout"));
+      if (!value) throw new Error("--timeout-ms requires a value");
       raw.timeoutMs = value;
       i += 1;
       continue;
     }
-    throw new Error(t("wait.arg_unknown", { token }));
+    throw new Error(`Unknown argument: ${token}`);
   }
   const parsed = argsSchema.safeParse(raw);
-  if (!parsed.success) throw new Error(t("wait.arg_invalid_timeout"));
+  if (!parsed.success) throw new Error("--timeout-ms must be a positive integer");
   return parsed.data;
 }
 
@@ -54,7 +53,7 @@ async function waitForServer(url: string, timeoutMs: number): Promise<void> {
     }
     await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
   }
-  throw new Error(t("wait.timed_out", { url }));
+  throw new Error(`Timed out waiting for server at ${url}`);
 }
 
 async function main(): Promise<void> {
@@ -64,7 +63,7 @@ async function main(): Promise<void> {
 
 if (import.meta.main) {
   main().catch((error) => {
-    console.error(error instanceof Error ? error.message : t("wait.failed"));
+    console.error(error instanceof Error ? error.message : "wait-server failed");
     process.exit(1);
   });
 }
