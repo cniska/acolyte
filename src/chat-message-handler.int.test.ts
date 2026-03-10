@@ -244,10 +244,10 @@ describe("chat message handler guards", () => {
 
     const toolRows = rows.filter((row) => row.role === "assistant" && row.style === "toolProgress");
     expect(toolRows).toHaveLength(3);
-    expect(toolRows[0]?.content).toBe("Edit sum.rs");
-    expect(toolRows[1]?.content).toContain("Edit sum.rs");
-    expect(toolRows[1]?.content).toContain("let sum = a + b + c;");
-    expect(toolRows[2]?.content).toBe("Delete sum.rs");
+    expect(toolRows[0]?.toolOutput?.some((i) => i.kind === "tool-header" && i.label === "Edit")).toBe(true);
+    expect(toolRows[1]?.toolOutput?.some((i) => i.kind === "tool-header" && i.label === "Edit")).toBe(true);
+    expect(toolRows[1]?.toolOutput?.some((i) => i.kind === "diff" && i.text === "let sum = a + b + c;")).toBe(true);
+    expect(toolRows[2]?.toolOutput?.some((i) => i.kind === "tool-header" && i.label === "Delete")).toBe(true);
     // Assistant text rows are kept as-is (no redundancy filtering).
     expect(rows.some((row) => row.role === "assistant" && row.content === "Created sum.rs.")).toBe(true);
     expect(rows.some((row) => row.role === "assistant" && row.content === "Updated sum.rs for three args.")).toBe(true);

@@ -80,26 +80,20 @@ function renderToolLine(item: ToolOutput, index: number, lineNumWidth: number): 
       return (
         <Text key={`tool-${index}`}>
           {"\n  "}
-          <Text dimColor>{num}</Text>
-          {" "}
-          <Text color="green">{item.text}</Text>
+          <Text dimColor>{num}</Text> <Text color="green">{item.text}</Text>
         </Text>
       );
     if (item.marker === "remove")
       return (
         <Text key={`tool-${index}`}>
           {"\n  "}
-          <Text dimColor>{num}</Text>
-          {" "}
-          <Text color="red">{item.text}</Text>
+          <Text dimColor>{num}</Text> <Text color="red">{item.text}</Text>
         </Text>
       );
     return (
       <Text key={`tool-${index}`}>
         {"\n  "}
-        <Text dimColor>{num}</Text>
-        {" "}
-        {item.text}
+        <Text dimColor>{num}</Text> {item.text}
       </Text>
     );
   }
@@ -118,9 +112,7 @@ function renderToolLine(item: ToolOutput, index: number, lineNumWidth: number): 
     return (
       <Text key={`tool-${index}`}>
         {"\n  "}
-        <Text dimColor>{"…".padStart(lineNumWidth)}</Text>
-        {" "}
-        <Text dimColor>{text.slice(2)}</Text>
+        <Text dimColor>{"…".padStart(lineNumWidth)}</Text> <Text dimColor>{text.slice(2)}</Text>
       </Text>
     );
   }
