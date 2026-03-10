@@ -66,7 +66,7 @@ export function resolveResumeSession(store: SessionState, text: string): ResumeR
 export function formatSessionList(store: SessionState, limit = 10): string[] {
   const rows = store.sessions.slice(0, limit).map((item) => {
     const active = item.id === store.activeSessionId ? "●" : " ";
-    const title = item.title || "New Session";
+    const title = item.title || t("chat.session.default_title");
     return [`${active} ${item.id}`, title, formatRelativeTime(item.updatedAt)];
   });
   return formatColumns(rows);

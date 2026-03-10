@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { t } from "./i18n";
 import { type Session, type SessionState, sessionStateSchema } from "./session-contract";
 import type { SessionStore as SessionStorePort } from "./session-store";
 import { createId } from "./short-id";
@@ -51,7 +52,7 @@ export function createSession(model: string): Session {
     id,
     createdAt: now,
     updatedAt: now,
-    title: "New Session",
+    title: t("chat.session.default_title"),
     model,
     messages: [],
     tokenUsage: [],

@@ -16,7 +16,7 @@ export function formatRelativeTime(iso: string, now?: number): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
   const seconds = Math.floor(((now ?? Date.now()) - date.getTime()) / 1000);
-  if (seconds < 60) return "just now";
+  if (seconds < 60) return t("chat.relative_time.just_now");
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return `${minutes}m ago`;
   const hours = Math.floor(minutes / 60);

@@ -4,6 +4,7 @@ import type { AgentMode } from "./agent-contract";
 import { unreachable } from "./assert";
 import { formatColumns, formatRelativeTime } from "./chat-format";
 import { truncateText } from "./compact-text";
+import { t } from "./i18n";
 import type { Session } from "./session-contract";
 import type { SkillMeta } from "./skills";
 
@@ -101,7 +102,7 @@ export function renderPickerItems(
     }
     case "model": {
       if (picker.filtered.length === 0) {
-        return <Text dimColor> No matches.</Text>;
+        return <Text dimColor> {t("chat.picker.no_matches")}</Text>;
       }
       const visible = picker.filtered.slice(picker.scrollOffset, picker.scrollOffset + PICKER_PAGE_SIZE);
       return renderPickerRows(
@@ -117,7 +118,7 @@ export function renderPickerItems(
     case "resume": {
       const rows = picker.items.map((item) => [
         `${item.id === activeSessionId ? "●" : " "} ${item.id}`,
-        truncateText(item.title || "New Session", 40),
+        truncateText(item.title || t("chat.session.default_title"), 40),
         formatRelativeTime(item.updatedAt),
       ]);
       const formattedRows = formatColumns(rows);

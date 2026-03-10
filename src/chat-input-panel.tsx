@@ -3,6 +3,7 @@ import type React from "react";
 import { useCaretBlink } from "./chat-effects";
 import { renderInputPanelContent } from "./chat-input-panel-content";
 import { borderLine, justifyLineSpaceBetween } from "./chat-layout";
+import { t } from "./i18n";
 import { type PickerState, pickerHint, pickerTitle, renderPickerItems } from "./chat-picker";
 import { PromptInput } from "./prompt-input";
 
@@ -72,7 +73,7 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
       <Text dimColor>{borderLine()}</Text>
       <PromptInput
         value={value}
-        placeholder="Ask anything…"
+        placeholder={t("chat.input.placeholder")}
         caretVisible={caretVisible}
         linePrefixFirst="❯ "
         linePrefixRest="  "
@@ -90,7 +91,7 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
         slashSuggestionIndex,
         showHelp,
       })}
-      {showFooter ? <Text dimColor>{justifyLineSpaceBetween("? help", footerContext, 2)}</Text> : null}
+      {showFooter ? <Text dimColor>{justifyLineSpaceBetween(t("chat.input.help_hint"), footerContext, 2)}</Text> : null}
     </>
   );
 }

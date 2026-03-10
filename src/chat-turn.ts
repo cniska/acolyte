@@ -72,8 +72,8 @@ type ApplyUserTurnParams = {
 export function applyUserTurn(params: ApplyUserTurnParams): { userMessage: Message; row: ChatRow } {
   const userMessage = params.createMessage("user", params.userText);
   params.session.messages.push(userMessage);
-  if (params.session.title === "New Session")
-    params.session.title = params.displayText.trim().replace(/\s+/g, " ").slice(0, 60) || "New Session";
+  if (params.session.title === t("chat.session.default_title"))
+    params.session.title = params.displayText.trim().replace(/\s+/g, " ").slice(0, 60) || t("chat.session.default_title");
   params.session.updatedAt = params.nowIso();
   return { userMessage, row: { id: userMessage.id, role: "user", content: params.displayText } };
 }

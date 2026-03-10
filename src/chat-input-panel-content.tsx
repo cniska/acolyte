@@ -2,6 +2,7 @@ import { Text } from "ink";
 import type React from "react";
 import { formatShortcutRows } from "./chat-layout";
 import { slashCommandHelp } from "./chat-slash";
+import { t } from "./i18n";
 
 const SLASH_COMMAND_COLUMN_WIDTH = 16;
 
@@ -27,7 +28,7 @@ export function renderInputPanelContent(input: SuggestionContentInput): React.Re
       </Text>
     ));
   } else if (atQuery !== null) {
-    suggestions = <Text dimColor> No file or folder matches.</Text>;
+    suggestions = <Text dimColor> {t("chat.at_ref.no_matches")}</Text>;
   } else if (slashSuggestions.length > 0) {
     const selectedIndex = Math.max(0, Math.min(slashSuggestionIndex, slashSuggestions.length - 1));
     const selected = slashSuggestions[selectedIndex] ?? "";

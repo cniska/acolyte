@@ -13,7 +13,7 @@ import { createToolOutputState, formatToolOutput } from "./tool-output-content";
 import { printDim, printError, printOutput, streamText } from "./ui";
 
 function setSessionTitle(session: Session, inputText: string): void {
-  if (session.title !== "New Session") return;
+  if (session.title !== t("chat.session.default_title")) return;
   const title = inputText.trim().replace(/\s+/g, " ").slice(0, 60);
   if (title.length > 0) session.title = title;
 }
