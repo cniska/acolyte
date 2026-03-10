@@ -1,4 +1,4 @@
-export type CliSubcommandDoc = {
+export type CliCommandDoc = {
   command: string;
   usage: string;
   description: string;

@@ -1,7 +1,7 @@
-import type { CliSubcommandDoc } from "./cli-contract";
+import type { CliCommandDoc } from "./cli-contract";
 import { t } from "./i18n";
 
-const SUBCOMMANDS: Record<string, CliSubcommandDoc> = {
+const SUBCOMMANDS: Record<string, CliCommandDoc> = {
   resume: {
     command: "resume [id-prefix]",
     usage: "acolyte resume [id-prefix]",
