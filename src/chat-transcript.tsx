@@ -55,7 +55,7 @@ function renderStatusContent(content: string): React.ReactNode {
       {lines.map((line, index) => {
         const parsed = parseStatusLine(line);
         return (
-          <React.Fragment key={`status-line-${index}-${line}`}>
+          <React.Fragment key={`status-line-${index}`}>
             {index > 0 ? "\n" : null}
             {parsed ? (
               <>

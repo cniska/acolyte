@@ -75,8 +75,8 @@ function renderInputPanelContent(input: {
       </>
     );
   } else if (showHelp) {
-    suggestions = formatShortcutRows().map((line) => (
-      <Text key={`shortcut-row-${line}`} dimColor>
+    suggestions = formatShortcutRows().map((line, index) => (
+      <Text key={`shortcut-row-${index}`} dimColor>
         {line}
       </Text>
     ));
