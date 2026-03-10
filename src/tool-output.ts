@@ -1,7 +1,5 @@
 import { compactText } from "./compact-text";
 
-export { compactText } from "./compact-text";
-
 const DEFAULT_MAX_CHARS = 4000;
 const DEFAULT_MAX_LINES = 120;
 
