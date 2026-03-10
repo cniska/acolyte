@@ -49,7 +49,6 @@ describe("chat-message-handler-stream", () => {
     });
     expect(rows).toHaveLength(1);
     expect(rows[0]?.style).toBe("toolProgress");
-    expect(rows[0]?.content).toBe("Search needle");
     expect(rows[0]?.toolOutput).toHaveLength(1);
 
     state.onOutput({
@@ -57,7 +56,8 @@ describe("chat-message-handler-stream", () => {
       toolName: "search-files",
       content: { kind: "text", text: "a.ts [needle@1]" },
     });
-    expect(rows[0]?.content).toBe("Search needle\n  a.ts [needle@1]");
+    expect(rows[0]?.toolOutput).toHaveLength(2);
+    expect(rows[0]?.toolOutput?.[1]).toEqual({ kind: "text", text: "a.ts [needle@1]" });
     state.dispose();
   });
 
@@ -73,7 +73,7 @@ describe("chat-message-handler-stream", () => {
     state.onOutput({ toolCallId: "call_1", toolName: "edit-file", content: { kind: "text", text: "line A" } });
     state.onOutput({ toolCallId: "call_1", toolName: "edit-file", content: { kind: "text", text: "line A" } });
     expect(rows).toHaveLength(1);
-    expect(rows[0]?.content.split("line A").length - 1).toBe(1);
+    expect(rows[0]?.toolOutput).toHaveLength(2);
     state.dispose();
   });
 

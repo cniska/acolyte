@@ -144,7 +144,7 @@ describe("chat message handler stream behavior", () => {
     await handleMessage("search for needle");
 
     expect(
-      rows.some((row) => row.role === "assistant" && row.style === "toolProgress" && row.toolName === "search-files"),
+      rows.some((row) => row.role === "assistant" && row.style === "toolProgress"),
     ).toBe(false);
     expect(rows.some((row) => row.role === "assistant" && row.content === "No matches found.")).toBe(true);
   });
@@ -573,8 +573,8 @@ describe("chat message handler stream behavior", () => {
 
     const toolRows = rows.filter((row) => row.role === "assistant" && row.style === "toolProgress");
     expect(toolRows).toHaveLength(1);
-    expect(toolRows[0]?.content).toContain("Edit b.ts");
-    expect(rows.some((row) => row.content.includes("Read a.ts"))).toBe(false);
+    expect(toolRows[0]?.toolOutput?.some((item) => item.kind === "tool-header" && item.label === "Edit")).toBe(true);
+    expect(rows.some((row) => row.toolOutput?.some((item) => item.kind === "file-header"))).toBe(false);
   });
 
   test("does not merge tool rows across separate user turns", async () => {
@@ -633,7 +633,10 @@ describe("chat message handler stream behavior", () => {
     await handleMessage("edit file");
 
     const editedRows = rows.filter(
-      (row) => row.role === "assistant" && row.style === "toolProgress" && row.content.startsWith("Edit sum.rs"),
+      (row) =>
+        row.role === "assistant" &&
+        row.style === "toolProgress" &&
+        row.toolOutput?.some((item) => item.kind === "tool-header" && item.label === "Edit"),
     );
     expect(editedRows).toHaveLength(2);
   });

@@ -3,6 +3,7 @@ import React from "react";
 import type { ChatRow } from "./chat-commands";
 import { renderAssistantContent } from "./chat-content-render";
 import { palette } from "./palette";
+import { renderToolOutput as renderToolOutputText, type ToolOutput } from "./tool-output-content";
 
 type ChatTranscriptProps = {
   rows: ChatRow[];
@@ -72,20 +73,62 @@ function renderStatusContent(content: string): React.ReactNode {
   );
 }
 
-function renderToolOutput(content: string, label?: string): React.ReactNode {
-  return content.split("\n").map((line, index) => (
-    <React.Fragment key={`tool-${index}`}>
-      {index > 0 ? "\n" : null}
-      {index === 0 && label && line.startsWith(label) ? (
+function renderToolLine(item: ToolOutput, index: number): React.ReactNode {
+  if (item.kind === "diff") {
+    const num = String(item.lineNumber);
+    if (item.marker === "add")
+      return (
+        <Text key={`tool-${index}`}>
+          {"\n  "}
+          <Text dimColor>{num}</Text>
+          {" "}
+          <Text color="green">{item.text}</Text>
+        </Text>
+      );
+    if (item.marker === "remove")
+      return (
+        <Text key={`tool-${index}`}>
+          {"\n  "}
+          <Text dimColor>{num}</Text>
+          {" "}
+          <Text color="red">{item.text}</Text>
+        </Text>
+      );
+    return (
+      <Text key={`tool-${index}`}>
+        {"\n  "}
+        <Text dimColor>{num}</Text>
+        {" "}
+        {item.text}
+      </Text>
+    );
+  }
+  return (
+    <Text key={`tool-${index}`}>
+      {"\n  "}
+      {renderToolOutputText(item)}
+    </Text>
+  );
+}
+
+function renderToolBlock(items: ToolOutput[]): React.ReactNode {
+  if (items.length === 0) return null;
+  const first = items[0]!;
+  const text = renderToolOutputText(first);
+  const label = "label" in first && typeof first.label === "string" ? first.label : undefined;
+  return (
+    <>
+      {label && text.startsWith(label) ? (
         <>
           <Text bold>{label}</Text>
-          <Text>{line.slice(label.length)}</Text>
+          <Text>{text.slice(label.length)}</Text>
         </>
       ) : (
-        <Text>{line}</Text>
+        <Text>{text}</Text>
       )}
-    </React.Fragment>
-  ));
+      {items.slice(1).map((item, i) => renderToolLine(item, i))}
+    </>
+  );
 }
 
 export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
@@ -185,8 +228,8 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
                     </Text>
                   ) : row.role === "system" && (row.style === "statusOutput" || row.style === "tokenOutput") ? (
                     <Text>{renderStatusContent(row.content)}</Text>
-                  ) : row.role === "assistant" && row.style === "toolProgress" ? (
-                    <Text>{renderToolOutput(row.content, row.toolLabel)}</Text>
+                  ) : row.role === "assistant" && row.style === "toolProgress" && row.toolOutput ? (
+                    <Text>{renderToolBlock(row.toolOutput)}</Text>
                   ) : row.style === "error" ? (
                     <Text dimColor color={palette.error}>
                       {row.content}

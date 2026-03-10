@@ -1,7 +1,7 @@
 import { type ChatRow, createRow } from "./chat-commands";
 import { createId } from "./short-id";
 import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
-import { createToolOutputState, formatToolOutput, type ToolOutput } from "./tool-output-content";
+import { createToolOutputState, type ToolOutput } from "./tool-output-content";
 
 export type MessageStreamState = {
   onAssistantDelta: (delta: string) => void;
@@ -55,7 +55,6 @@ export function createMessageStreamState(input: {
       const update = toolOutput.push(entry);
       if (!update) return;
 
-      const rendered = formatToolOutput(update.items);
       const existingRowId = toolRowIdByCallId.get(entry.toolCallId);
       if (!existingRowId) {
         if (streamingContent.trim().length > 0) streamingContent = "";
@@ -67,11 +66,8 @@ export function createMessageStreamState(input: {
           {
             id: rowId,
             role: "assistant",
-            content: rendered,
+            content: "",
             style: "toolProgress",
-            toolCallId: entry.toolCallId,
-            toolName: entry.toolName,
-            toolLabel: update.label,
             toolOutput: update.items,
           },
         ]);
@@ -79,10 +75,9 @@ export function createMessageStreamState(input: {
       }
       input.setRows((current) => {
         const existingIndex = current.findIndex((row) => row.id === existingRowId);
-        const existingRow = existingIndex >= 0 ? current[existingIndex] : undefined;
-        if (!existingRow || existingRow.content === rendered) return current;
+        if (existingIndex < 0) return current;
         const next = [...current];
-        next[existingIndex] = { ...existingRow, content: rendered, toolOutput: update.items };
+        next[existingIndex] = { ...current[existingIndex]!, toolOutput: update.items };
         return next;
       });
     },

@@ -33,9 +33,6 @@ export type ChatRow = {
     | "error"
     | "worked"
     | "cancelled";
-  toolCallId?: string;
-  toolName?: string;
-  toolLabel?: string;
   toolOutput?: ToolOutput[];
   toolStatus?: "ok" | "error";
 };
