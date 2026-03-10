@@ -58,7 +58,6 @@ Review in this order.
 - [x] [`src/web-ops.ts`](../src/web-ops.ts)
 - [ ] [`src/tool-utils.ts`](../src/tool-utils.ts)
 - [x] [`src/tool-guards.ts`](../src/tool-guards.ts)
-- [x] [`src/tool-groups.ts`](../src/tool-groups.ts)
 - [x] [`src/tool-arg-paths.ts`](../src/tool-arg-paths.ts)
 - [x] [`src/tool-execution.ts`](../src/tool-execution.ts)
 - [x] [`src/tool-output.ts`](../src/tool-output.ts)

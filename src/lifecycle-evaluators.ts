@@ -9,8 +9,8 @@ import {
 } from "./lifecycle-contract";
 import type { LifecyclePolicy } from "./lifecycle-policy";
 import { extractReadPaths } from "./tool-arg-paths";
-import { WRITE_TOOL_SET, WRITE_TOOLS } from "./tool-groups";
 import type { SessionContext } from "./tool-guards";
+import { WRITE_TOOL_SET, WRITE_TOOLS } from "./tool-registry";
 
 export type EvalAction =
   | { type: "done" }
