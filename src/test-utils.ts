@@ -3,11 +3,11 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { AgentMode } from "./agent-modes";
+import type { AgentMode } from "./agent-contract";
 import type { ChatRow, CommandContext, TokenUsageEntry } from "./chat-commands";
 import type { Message } from "./chat-message";
 import { createMessageHandler } from "./chat-message-handler";
-import type { Client, StreamEvent } from "./client";
+import type { Client, StreamEvent } from "./client-contract";
 import type { MemorySource } from "./memory-contract";
 import type { Session, SessionState } from "./session-contract";
 

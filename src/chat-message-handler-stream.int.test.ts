@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { ChatRow } from "./chat-commands";
 import { createMessageHandler } from "./chat-message-handler";
-import type { StreamEvent } from "./client";
+import type { StreamEvent } from "./client-contract";
 import { createClient, createMessage, createMessageHandlerHarness, createSession, createStore } from "./test-utils";
 
 describe("chat message handler stream behavior", () => {

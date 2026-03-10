@@ -9,17 +9,10 @@ import {
   showToolResult,
 } from "./cli-format";
 import { t } from "./i18n";
-import {
-  editFile,
-  fetchWeb,
-  findFiles,
-  gitDiff,
-  gitStatusShort,
-  readSnippet,
-  runShellCommand,
-  searchFiles,
-  searchWeb,
-} from "./tool-utils";
+import { editFile, findFiles, readSnippet, searchFiles } from "./file-ops";
+import { gitDiff, gitStatusShort } from "./git-ops";
+import { runShellCommand } from "./shell-ops";
+import { fetchWeb, searchWeb } from "./web-ops";
 import { printError, printWarning } from "./ui";
 
 const editArgsSchema = z.object({

@@ -1,4 +1,5 @@
-import { type AgentMode, agentModes } from "./agent-modes";
+import type { AgentMode } from "./agent-contract";
+import { agentModes } from "./agent-modes";
 import { toolDefinitionsById } from "./tool-registry";
 import { detectLineWidth } from "./tool-utils";
 

@@ -14,8 +14,6 @@ import { renderToolOutput } from "./tool-output-content";
 
 const memoryCommitQueue = createInMemoryTaskQueue();
 
-export type { LifecycleInput, RunContext } from "./lifecycle-contract";
-
 export function shouldCommitMemory(input: LifecycleInput): boolean {
   return input.request.useMemory !== false;
 }

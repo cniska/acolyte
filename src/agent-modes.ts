@@ -2,8 +2,6 @@ import type { AgentMode } from "./agent-contract";
 import type { ToolPermission } from "./tool-contract";
 import { toolIdsForGrants } from "./tool-registry";
 
-export { type AgentMode, agentModeSchema } from "./agent-contract";
-
 export type AgentModeDefinition = {
   grants: readonly ToolPermission[];
   tools: string[];

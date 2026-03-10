@@ -16,7 +16,7 @@ import { suggestSlashCommands } from "./chat-slash";
 import { enqueueQueuedMessage, resolveQueueSubmit } from "./chat-submit";
 import { ChatTranscript } from "./chat-transcript";
 import { createInputHistory } from "./chat-turn";
-import type { Client } from "./client";
+import type { Client } from "./client-contract";
 import { nowIso } from "./datetime";
 import { palette } from "./palette";
 import { formatModel } from "./provider-config";

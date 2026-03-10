@@ -1,4 +1,4 @@
-import type { AgentMode } from "./agent-modes";
+import type { AgentMode } from "./agent-contract";
 import { appConfig, setDefaultModel, setModeModel } from "./app-config";
 import { unreachable } from "./assert";
 import { type ChatRow, createRow, type TokenUsageEntry } from "./chat-commands";

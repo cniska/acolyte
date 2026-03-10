@@ -1,8 +1,8 @@
 import { z } from "zod";
-import type { AgentMode } from "./agent-modes";
+import type { AgentMode } from "./agent-contract";
 import { appConfig, setDefaultModel, setModeModel } from "./app-config";
 import { COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH, formatColumns, formatRelativeTime } from "./chat-format";
-import type { Client } from "./client";
+import type { Client } from "./client-contract";
 import { setConfigValue } from "./config";
 import type { ConfigScope } from "./config-contract";
 import { t } from "./i18n";

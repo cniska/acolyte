@@ -1,7 +1,7 @@
 import type { Agent } from "./agent-contract";
-import type { AgentMode } from "./agent-modes";
+import type { AgentMode } from "./agent-contract";
 import type { ChatRequest, ChatResponse } from "./api";
-import type { StreamEvent } from "./client";
+import type { StreamEvent } from "./client-contract";
 import type { ErrorCategory, ErrorSource } from "./error-handling";
 import type { LifecycleDebugEvent, LifecycleEventName } from "./lifecycle-events";
 import type { LifecyclePolicy } from "./lifecycle-policy";

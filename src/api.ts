@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { AgentMode } from "./agent-modes";
+import type { AgentMode } from "./agent-contract";
 import type { Message } from "./chat-message";
 import type { ResourceId } from "./resource-id";
 import type { SessionId } from "./session-contract";

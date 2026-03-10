@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { createErrorStats } from "./error-handling";
-import { type RunContext, scheduleMemoryCommit, shouldCommitMemory } from "./lifecycle";
+import { scheduleMemoryCommit, shouldCommitMemory } from "./lifecycle";
+import type { RunContext } from "./lifecycle-contract";
 import { recoveryActionForError } from "./lifecycle-evaluate";
 import { modeTransition, multiMatchEditEvaluator, timeoutRecovery, verifyCycle } from "./lifecycle-evaluators";
 import { defaultLifecyclePolicy } from "./lifecycle-policy";

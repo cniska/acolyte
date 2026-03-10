@@ -4,7 +4,7 @@ import { join } from "node:path";
 import type { ChatRow } from "./chat-commands";
 import { createMessageHandler } from "./chat-message-handler";
 import { resolveNaturalRememberDirective } from "./chat-message-handler-helpers";
-import type { StreamEvent } from "./client";
+import type { StreamEvent } from "./client-contract";
 import {
   createClient,
   createMessage,

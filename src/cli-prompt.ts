@@ -3,7 +3,7 @@ import { createWorkspaceSpecifier } from "./api";
 import { newMessage } from "./chat-session";
 import { formatAssistantReplyOutput } from "./cli-format";
 import { missingAssistantStreamTail } from "./cli-stream-output";
-import type { Client } from "./client";
+import type { Client } from "./client-contract";
 import { nowIso } from "./datetime";
 import { formatPromptError, USER_ERROR_MESSAGES } from "./error-messages";
 import type { ResourceId } from "./resource-id";

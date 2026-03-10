@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { newMessage } from "./chat-session";
 import { handlePrompt } from "./cli-prompt";
-import type { Client } from "./client";
+import type { Client } from "./client-contract";
 import type { Session } from "./session-contract";
 
 describe("cli-prompt", () => {

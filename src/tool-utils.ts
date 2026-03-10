@@ -3,23 +3,6 @@ import { readdir, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, relative, resolve } from "node:path";
 
-export type { FileEdit, FindReplaceEdit, LineRangeEdit } from "./file-ops";
-// Re-export domain ops for consumers that import from tool-utils.
-export {
-  deleteTextFile,
-  editCode,
-  editFile,
-  findFiles,
-  readSnippet,
-  readSnippets,
-  scanCode,
-  searchFiles,
-  writeTextFile,
-} from "./file-ops";
-export { gitAdd, gitCommit, gitDiff, gitLog, gitShow, gitStatusShort } from "./git-ops";
-export { runShellCommand } from "./shell-ops";
-export { fetchWeb, searchWeb } from "./web-ops";
-
 // ---------------------------------------------------------------------------
 // Path security helpers (shared across all ops)
 // ---------------------------------------------------------------------------

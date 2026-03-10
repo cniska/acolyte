@@ -1,4 +1,4 @@
-import type { AgentMode } from "./agent-modes";
+import type { AgentMode } from "./agent-contract";
 import { appConfig } from "./app-config";
 import { type ChatRow, createRow, dispatchSlashCommand, type TokenUsageEntry } from "./chat-commands";
 import { invalidateRepoPathCandidates } from "./chat-file-ref";
@@ -19,7 +19,7 @@ import {
   runAssistantTurn,
   unresolvedPathRows,
 } from "./chat-turn";
-import type { Client } from "./client";
+import type { Client } from "./client-contract";
 import { t } from "./i18n";
 import { addMemory } from "./memory";
 import type { Session, SessionState } from "./session-contract";

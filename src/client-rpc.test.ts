@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { createClient, rpcUrlFromApiUrl } from "./client";
+import { createClient } from "./client";
+import { rpcUrlFromApiUrl } from "./client-contract";
 
 const originalWebSocket = globalThis.WebSocket;
 

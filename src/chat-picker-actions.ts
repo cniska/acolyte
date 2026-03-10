@@ -1,4 +1,4 @@
-import type { AgentMode } from "./agent-modes";
+import type { AgentMode } from "./agent-contract";
 import { type ChatRow, createRow } from "./chat-commands";
 import type { PickerState } from "./chat-picker";
 import { t } from "./i18n";

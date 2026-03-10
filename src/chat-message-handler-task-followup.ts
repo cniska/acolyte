@@ -1,5 +1,5 @@
 import { type ChatRow, createRow } from "./chat-commands";
-import type { Client } from "./client";
+import type { Client } from "./client-contract";
 import { t } from "./i18n";
 
 type SetRows = (updater: (current: ChatRow[]) => ChatRow[]) => void;

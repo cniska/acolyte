@@ -1,10 +1,10 @@
-import type { AgentMode } from "./agent-modes";
+import type { AgentMode } from "./agent-contract";
 import { createWorkspaceSpecifier, type TokenUsage } from "./api";
 import { type ChatRow, createRow, type TokenUsageEntry } from "./chat-commands";
 import { extractAtReferencePaths } from "./chat-file-ref";
 import { formatThoughtDuration } from "./chat-format";
 import type { Message } from "./chat-message";
-import type { Client, StreamEvent } from "./client";
+import type { Client, StreamEvent } from "./client-contract";
 import { buildFileContext } from "./file-context";
 import { t } from "./i18n";
 import type { Session } from "./session-contract";

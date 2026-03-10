@@ -1,6 +1,6 @@
 import { Text } from "ink";
 import type React from "react";
-import type { AgentMode } from "./agent-modes";
+import type { AgentMode } from "./agent-contract";
 import { unreachable } from "./assert";
 import { formatColumns, formatRelativeTime } from "./chat-format";
 import type { Session } from "./session-contract";

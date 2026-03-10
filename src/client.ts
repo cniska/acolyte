@@ -4,9 +4,6 @@ import type { Client, ClientOptions } from "./client-contract";
 import { resolveTransportMode } from "./client-contract";
 import { RpcClient } from "./client-rpc";
 
-export type { Client, ClientOptions, StreamEvent } from "./client-contract";
-export { parseStreamEvent, rpcUrlFromApiUrl, streamEventSchema } from "./client-contract";
-
 export function createClient(options: ClientOptions): Client {
   const apiUrl = options.apiUrl;
   invariant(apiUrl, "apiUrl is required");
