@@ -3,7 +3,7 @@ import type { appConfig as appConfigType } from "./app-config";
 import type { newMessage as newMessageType } from "./chat-session";
 import type { attachFileToSession as attachFileToSessionType } from "./cli-chat";
 import type { handlePrompt as handlePromptType } from "./cli-prompt";
-import type { createClient as createClientType } from "./client";
+import type { createClient as createClientType } from "./client-factory";
 import type { readResolvedConfigSync as readResolvedConfigSyncType } from "./config";
 
 import { t } from "./i18n";

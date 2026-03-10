@@ -10,7 +10,7 @@ import {
   withFakeProviderServer,
 } from "../scripts/fake-provider-server";
 import { waitForServer } from "../scripts/wait-server";
-import { createClient } from "./client";
+import { createClient } from "./client-factory";
 
 const repoRoot = process.cwd();
 const tmpHomes: string[] = [];

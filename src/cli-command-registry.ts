@@ -14,7 +14,7 @@ import { runMode, runResourceId } from "./cli-run";
 import { requestLocalServerShutdown } from "./cli-server";
 import { isServerConnectionFailure, statusMode } from "./cli-status";
 import { toolMode } from "./cli-tool-mode";
-import { createClient } from "./client";
+import { createClient } from "./client-factory";
 import { readConfig, readConfigForScope, readResolvedConfigSync, setConfigValue, unsetConfigValue } from "./config";
 
 import { addMemory, listMemories } from "./memory";

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { createClient } from "./client";
+import { createClient } from "./client-factory";
 
 const originalWebSocket = globalThis.WebSocket;
 
@@ -12,8 +12,8 @@ describe("createClient", () => {
     expect(() => createClient({ apiUrl: "" })).toThrow();
   });
 
-  test("rpc transport mode creates rpc client", () => {
-    const client = createClient({ transportMode: "rpc", apiUrl: "http://localhost:6767" });
+  test("creates rpc client", () => {
+    const client = createClient({ apiUrl: "http://localhost:6767" });
     expect(client.constructor.name).toBe("RpcClient");
   });
 });

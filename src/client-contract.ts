@@ -11,7 +11,6 @@ export interface ClientOptions {
   apiUrl: string;
   apiKey?: string;
   replyTimeoutMs?: number;
-  transportMode?: "rpc";
 }
 
 export const streamEventSchema = z.discriminatedUnion("type", [

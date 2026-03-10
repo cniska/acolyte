@@ -1,7 +1,8 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createClient, type StreamEvent } from "../src/client";
+import { createClient } from "../src/client-factory";
+import type { StreamEvent } from "../src/client-contract";
 import { withFakeProviderServer } from "./fake-provider-server";
 import { PERF_SCENARIO_LIST, type Scenario, type ScenarioId } from "./perf-scenarios";
 import { average, median, percentile, runTimedCommand, toPrettyJson } from "./perf-test-utils";

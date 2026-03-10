@@ -1,5 +1,5 @@
 import type { appConfig as appConfigType } from "./app-config";
-import type { createClient as createClientType } from "./client";
+import type { createClient as createClientType } from "./client-factory";
 import { t } from "./i18n";
 import type { apiUrlForPort as apiUrlForPortType, localServerStatus as localServerStatusType } from "./server-daemon";
 import type { formatStatusOutput as formatStatusOutputType } from "./status-format";

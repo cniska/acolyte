@@ -3,7 +3,7 @@ import { appConfig } from "./app-config";
 import { newMessage } from "./chat-session";
 import { runInkChat } from "./chat-ui";
 import { resolveCliVersion } from "./cli-version";
-import { createClient } from "./client";
+import { createClient } from "./client-factory";
 import { nowIso } from "./datetime";
 import { buildFileContext } from "./file-context";
 import { t } from "./i18n";

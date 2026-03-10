@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { createClient } from "./client";
+import { createClient } from "./client-factory";
 import { rpcUrlFromApiUrl } from "./client-contract";
 
 const originalWebSocket = globalThis.WebSocket;
@@ -72,7 +72,7 @@ describe("rpc websocket lifecycle", () => {
 
     globalThis.WebSocket = MockWebSocket as unknown as typeof WebSocket;
 
-    const client = createClient({ apiUrl: "http://localhost:6767", transportMode: "rpc" });
+    const client = createClient({ apiUrl: "http://localhost:6767" });
     const receivedEventTypes: string[] = [];
     const reply = await client.replyStream(
       { message: "hi", history: [], model: "gpt-5-mini", sessionId: "sess_rpc" },
@@ -125,7 +125,7 @@ describe("rpc websocket lifecycle", () => {
     }
 
     globalThis.WebSocket = MockWebSocket as unknown as typeof WebSocket;
-    const client = createClient({ apiUrl: "http://localhost:6767", transportMode: "rpc" });
+    const client = createClient({ apiUrl: "http://localhost:6767" });
     const abortController = new AbortController();
 
     const run = client.replyStream(
@@ -200,7 +200,7 @@ describe("rpc websocket lifecycle", () => {
 
     globalThis.WebSocket = MockWebSocket as unknown as typeof WebSocket;
 
-    const client = createClient({ apiUrl: "http://localhost:6767", transportMode: "rpc" });
+    const client = createClient({ apiUrl: "http://localhost:6767" });
     const receivedEventTypes: string[] = [];
 
     try {
@@ -274,7 +274,7 @@ describe("rpc websocket lifecycle", () => {
     }
 
     globalThis.WebSocket = MockWebSocket as unknown as typeof WebSocket;
-    const client = createClient({ apiUrl: "http://localhost:6767", transportMode: "rpc" });
+    const client = createClient({ apiUrl: "http://localhost:6767" });
     const task = await client.taskStatus("task_123");
     expect(task?.id).toBe("task_123");
     expect(task?.state).toBe("running");
