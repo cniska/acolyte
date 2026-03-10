@@ -78,7 +78,7 @@ function createRunContext(
     initialMode: params.initialMode,
     tools: params.prepared.tools,
     mode: params.initialMode,
-    agentMode: params.initialMode,
+    agentForMode: params.initialMode,
     model: params.model,
     session: Object.assign(params.prepared.session, { mode: params.initialMode }),
     agent,

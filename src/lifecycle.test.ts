@@ -19,7 +19,7 @@ function createMockContext(overrides: Partial<RunContext> = {}): RunContext {
     initialMode: "work",
     tools: {} as RunContext["tools"],
     mode: "work",
-    agentMode: "work",
+    agentForMode: "work",
     model: "gpt-5-mini",
     session: createSessionContext(),
     agent: {} as RunContext["agent"],

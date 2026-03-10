@@ -122,12 +122,12 @@ export function setMode(ctx: RunContext, mode: RunContext["mode"], trigger?: str
 function ensureAgentForMode(ctx: RunContext): void {
   const resolved = resolveModeModel(ctx.mode, ctx.request.model);
   const nextModel = resolved.model;
-  if (ctx.agentMode === ctx.mode && ctx.model === nextModel) return;
+  if (ctx.agentForMode === ctx.mode && ctx.model === nextModel) return;
 
-  const previousMode = ctx.agentMode;
+  const previousMode = ctx.agentForMode;
   const previousModel = ctx.model;
   ctx.model = nextModel;
-  ctx.agentMode = ctx.mode;
+  ctx.agentForMode = ctx.mode;
   ctx.agent = createModeAgent({
     soulPrompt: ctx.soulPrompt,
     mode: ctx.mode,

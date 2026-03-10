@@ -103,9 +103,7 @@ export type RunContext = {
   readonly promptUsage: PromptUsage;
   model: string;
   agent: Agent;
-  /** Mode the current agent instance was created for (used to detect when to recreate). */
-  agentMode: AgentMode;
-  /** Current working mode — changes during evaluation (e.g. work → verify). */
+  agentForMode: AgentMode;
   mode: AgentMode;
   observedTools: Set<string>;
   modelCallCount: number;
