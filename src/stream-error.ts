@@ -6,8 +6,6 @@ export const streamErrorSchema = z.object({
   kind: z.string().optional(),
   source: z.string().optional(),
   tool: z.string().optional(),
-  retryable: z.boolean().optional(),
-  recoveryAction: z.string().optional(),
 });
 
 export type StreamError = z.infer<typeof streamErrorSchema>;

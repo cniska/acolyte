@@ -18,7 +18,6 @@ export type AppError<TCode extends string = string, TMeta = unknown> = Error & {
 export type ParsedError = { message: string; code?: string; kind?: string };
 export type ParseErrorResult = { ok: true; value: ParsedError } | { ok: false; error: "invalid_error_payload" };
 export type RecoveryAction = "stop-unknown-budget" | "none";
-export type RecoveryDecision = { action: RecoveryAction; retryable: boolean };
 export const ERROR_CATEGORIES = ["timeout", "file-not-found", "guard-blocked", "other"] as const;
 export const errorIdSchema = domainIdSchema("err");
 export type ErrorId = z.infer<typeof errorIdSchema>;
@@ -152,14 +151,6 @@ export function recoveryActionForError(
   return "none";
 }
 
-export function recoveryDecisionForError(
-  input: { errorCode?: string; unknownErrorCount: number },
-  unknownErrorBudget: number,
-): RecoveryDecision {
-  const action = recoveryActionForError(input, unknownErrorBudget);
-  return { action, retryable: false };
-}
-
 export function createStreamError(
   input: {
     message: string;
@@ -179,10 +170,6 @@ export function createStreamError(
     LIFECYCLE_ERROR_CODES.unknown;
   const category = categoryFromErrorCode(errorCode) ?? kindCategory ?? "other";
   const errorKind = input.kind ?? errorKindFromCategory(category);
-  const decision = recoveryDecisionForError(
-    { errorCode, unknownErrorCount: input.unknownErrorCount },
-    unknownErrorBudget,
-  );
   return {
     errorCode,
     category,
@@ -192,8 +179,6 @@ export function createStreamError(
       kind: errorKind,
       source: input.source,
       tool: input.tool,
-      retryable: decision.retryable,
-      recoveryAction: decision.action,
     },
   };
 }

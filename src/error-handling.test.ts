@@ -9,7 +9,6 @@ import {
   isEditFileMultiMatchSignal,
   parseErrorInfo,
   recoveryActionForError,
-  recoveryDecisionForError,
 } from "./error-handling";
 import { LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./tool-error-codes";
 
@@ -82,13 +81,11 @@ describe("error handling helpers", () => {
     );
   });
 
-  test("recoveryDecisionForError marks retryability", () => {
-    expect(
-      recoveryDecisionForError({ errorCode: LIFECYCLE_ERROR_CODES.timeout, unknownErrorCount: 0 }, 2),
-    ).toMatchObject({ action: "none", retryable: false });
-    expect(
-      recoveryDecisionForError({ errorCode: LIFECYCLE_ERROR_CODES.unknown, unknownErrorCount: 2 }, 2),
-    ).toMatchObject({ action: "stop-unknown-budget", retryable: false });
+  test("recoveryActionForError returns action based on error budget", () => {
+    expect(recoveryActionForError({ errorCode: LIFECYCLE_ERROR_CODES.timeout, unknownErrorCount: 0 }, 2)).toBe("none");
+    expect(recoveryActionForError({ errorCode: LIFECYCLE_ERROR_CODES.unknown, unknownErrorCount: 2 }, 2)).toBe(
+      "stop-unknown-budget",
+    );
   });
 
   test("createStreamError returns normalized structured payload", () => {
@@ -108,8 +105,6 @@ describe("error handling helpers", () => {
       category: "timeout",
       kind: "timeout",
       source: "server",
-      retryable: false,
-      recoveryAction: "none",
     });
   });
 
