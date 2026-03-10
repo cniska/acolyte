@@ -37,7 +37,7 @@ export function printDim(content: string): void {
 }
 
 export function printToolHeader(title: string, detail?: string): void {
-  const base = color.bold(color.white(`• ${title}`));
+  const base = color.bold(color.white(title));
   const suffix = detail ? ` ${color.dim(detail)}` : "";
   stdout.write(`${base}${suffix}\n`);
 }
