@@ -1,3 +1,4 @@
+import { CONFIG_SET_SCHEMAS } from "./config-contract";
 import type {
   readConfigForScope as readConfigForScopeType,
   readConfig as readConfigType,
@@ -20,30 +21,7 @@ type ConfigModeDeps = {
   unsetConfigValue: typeof unsetConfigValueType;
 };
 
-const VALID_CONFIG_KEYS = [
-  "port",
-  "locale",
-  "model",
-  "models",
-  "distillModel",
-  "distillMessageThreshold",
-  "distillReflectionThresholdTokens",
-  "distillMaxOutputTokens",
-  "memoryBudgetTokens",
-  "memorySources",
-  "openaiBaseUrl",
-  "anthropicBaseUrl",
-  "googleBaseUrl",
-  "logFormat",
-  "transportMode",
-  "contextMaxTokens",
-  "maxHistoryMessages",
-  "maxMessageTokens",
-  "maxAttachmentMessageTokens",
-  "maxPinnedMessageTokens",
-  "replyTimeoutMs",
-] as const;
-
+const VALID_CONFIG_KEYS = Object.keys(CONFIG_SET_SCHEMAS);
 const VALID_CONFIG_KEY_SET = new Set<string>(VALID_CONFIG_KEYS);
 
 function parseScopeFlag(token: string | undefined): "user" | "project" | null {
@@ -99,7 +77,7 @@ export async function configMode(args: string[], deps: ConfigModeDeps): Promise<
       const config = scope ? await readConfigForScope(scope) : await readConfig();
       if (scope) printDim(`${`${t("cli.config.scope")}`.padEnd(CONFIG_LIST_KEY_COLUMN_WIDTH)} ${scope}`);
       for (const name of VALID_CONFIG_KEYS) {
-        const value = config[name];
+        const value = (config as Record<string, unknown>)[name];
         if (value === undefined || value === "") continue;
         if (Array.isArray(value)) {
           printDim(`${`${name}:`.padEnd(CONFIG_LIST_KEY_COLUMN_WIDTH)} ${value.join(", ")}`);
