@@ -19,16 +19,6 @@ export function formatSubmitError(error: unknown): string {
   return formatPromptError(error.message);
 }
 
-function cleanMemoryCandidate(value: string): string {
-  return value
-    .trim()
-    .replace(/^[-*]\s+/, "")
-    .replace(/^["'`]|["'`]$/g, "")
-    .replace(/^memory\s*[:-]\s*/i, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
 export function resolveNaturalRememberDirective(text: string): NaturalRememberDirective | null {
   const trimmed = text.trim();
   if (trimmed.length === 0) return null;
@@ -52,6 +42,12 @@ export function resolveNaturalRememberDirective(text: string): NaturalRememberDi
   return null;
 }
 
-export function distillMemoryCandidate(content: string): string {
-  return cleanMemoryCandidate(content);
+export function distillMemoryCandidate(value: string): string {
+  return value
+    .trim()
+    .replace(/^[-*]\s+/, "")
+    .replace(/^["'`]|["'`]$/g, "")
+    .replace(/^memory\s*[:-]\s*/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
