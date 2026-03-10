@@ -283,6 +283,10 @@ async function commitDistillForKey(
     tokenEstimate: estimateTokens(reflected),
   };
   await ds.write(reflection);
+
+  // GC: remove all prior observations and reflections now consolidated into the new reflection.
+  const stale = [...observations, ...reflections];
+  await Promise.all(stale.map((r) => ds.remove(r.id, key)));
 }
 
 export function createDistillMemorySource(

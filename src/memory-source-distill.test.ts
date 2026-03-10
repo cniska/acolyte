@@ -5,16 +5,23 @@ import { OBSERVER_PROMPT, REFLECTOR_PROMPT } from "./memory-distill-prompts";
 import type { DistillStore } from "./memory-distill-store";
 import { createDistillMemorySource } from "./memory-source-distill";
 
-function createMockStore(records: DistillRecord[] = []): DistillStore & { written: DistillRecord[] } {
+function createMockStore(records: DistillRecord[] = []): DistillStore & { written: DistillRecord[]; removed: string[] } {
   const written: DistillRecord[] = [];
+  const removed: string[] = [];
   return {
     written,
+    removed,
     async list(sessionId) {
       return records.filter((r) => r.sessionId === sessionId);
     },
     async write(record) {
       records.push(record);
       written.push(record);
+    },
+    async remove(id) {
+      removed.push(id);
+      const idx = records.findIndex((r) => r.id === id);
+      if (idx >= 0) records.splice(idx, 1);
     },
   };
 }
@@ -318,6 +325,62 @@ describe("distillMemorySource", () => {
         const latestReflectorInput = reflectorInputs[reflectorInputs.length - 1];
         expect(latestReflectorInput).toContain("new observation");
         expect(latestReflectorInput).not.toContain("old observation");
+      } finally {
+        (appConfig as { distill: typeof appConfig.distill }).distill = originalDistillConfig;
+      }
+    });
+
+    test("removes consolidated observations and old reflections after writing new reflection", async () => {
+      const originalDistillConfig = { ...appConfig.distill };
+      (appConfig as { distill: typeof appConfig.distill }).distill = {
+        ...appConfig.distill,
+        messageThreshold: 1,
+        reflectionThresholdTokens: 5,
+        maxOutputTokens: 10_000,
+      };
+      try {
+        const store = createMockStore([
+          {
+            id: "dst_obs_old",
+            sessionId: "sess_test0001",
+            tier: "observation",
+            content: "old observation that was before the reflection",
+            createdAt: "2026-03-04T10:00:00.000Z",
+            tokenEstimate: 10,
+          },
+          {
+            id: "dst_ref_old",
+            sessionId: "sess_test0001",
+            tier: "reflection",
+            content: "old reflection",
+            createdAt: "2026-03-04T10:30:00.000Z",
+            tokenEstimate: 4,
+          },
+        ]);
+        const source = createDistillMemorySource(store, async (systemPrompt) => {
+          if (systemPrompt === OBSERVER_PROMPT)
+            return "[session] a new observation with enough tokens to exceed the reflection threshold for this test";
+          if (systemPrompt === REFLECTOR_PROMPT) return "compact";
+          return "";
+        });
+        if (!source.commit) throw new Error("expected commit handler");
+        await source.commit({
+          sessionId: "sess_test0001",
+          messages: [{ role: "user", content: "hello" }],
+          output: "done",
+        });
+
+        // New observation and reflection were written
+        expect(store.written.filter((e) => e.tier === "observation")).toHaveLength(1);
+        expect(store.written.filter((e) => e.tier === "reflection")).toHaveLength(1);
+        // Old observation (pre-reflection) and old reflection were GC'd
+        // The new observation (post-old-reflection, consolidated into new reflection) was also GC'd
+        expect(store.removed).toContain("dst_ref_old");
+        expect(store.removed.some((id) => id !== "dst_ref_old")).toBe(true);
+        // Only the new reflection remains in the store
+        const remaining = await store.list("sess_test0001");
+        expect(remaining).toHaveLength(1);
+        expect(remaining[0]?.tier).toBe("reflection");
       } finally {
         (appConfig as { distill: typeof appConfig.distill }).distill = originalDistillConfig;
       }

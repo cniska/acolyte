@@ -7,6 +7,7 @@ import { type DistillRecord, distillRecordSchema } from "./memory-contract";
 export interface DistillStore {
   list(scopeKey: string): Promise<readonly DistillRecord[]>;
   write(record: DistillRecord): Promise<void>;
+  remove(id: string, scopeKey: string): Promise<void>;
 }
 
 function safeDistillScopeKey(scopeKey: string): string | null {
@@ -39,6 +40,11 @@ export function createFileDistillStore(homeDir = homedir()): DistillStore {
       }
       records.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
       return records;
+    },
+    async remove(id, scopeKey) {
+      const dir = distillDir(homeDir, scopeKey);
+      if (!dir) return;
+      await rm(join(dir, `${id}.json`), { force: true }).catch(() => {});
     },
     async write(record) {
       const dir = distillDir(homeDir, record.sessionId);

@@ -86,6 +86,30 @@ describe("createFileDistillStore", () => {
     expect(s2[0]?.content).toBe("session 2 fact");
   });
 
+  test("remove deletes a record by id and scope key", async () => {
+    const home = createDir("acolyte-distill-");
+    const store = createFileDistillStore(home);
+    const record: DistillRecord = {
+      id: "dst_rmtest01",
+      sessionId: "sess_abc123",
+      tier: "observation",
+      content: "to be removed",
+      createdAt: "2026-03-04T12:00:00.000Z",
+      tokenEstimate: 3,
+    };
+    await store.write(record);
+    expect(await store.list("sess_abc123")).toHaveLength(1);
+    await store.remove("dst_rmtest01", "sess_abc123");
+    expect(await store.list("sess_abc123")).toHaveLength(0);
+  });
+
+  test("remove is a no-op for nonexistent record", async () => {
+    const home = createDir("acolyte-distill-");
+    const store = createFileDistillStore(home);
+    await store.remove("dst_missing01", "sess_abc123");
+    expect(await store.list("sess_abc123")).toHaveLength(0);
+  });
+
   test("ignores invalid JSON files", async () => {
     const home = createDir("acolyte-distill-");
     const store = createFileDistillStore(home);
