@@ -2,7 +2,7 @@ import type { AgentMode } from "./agent-contract";
 import { appConfig } from "./app-config";
 import { type ChatRow, createRow, dispatchSlashCommand } from "./chat-commands";
 import { invalidateRepoPathCandidates } from "./chat-file-ref";
-import type { Message } from "./chat-message";
+import type { Message } from "./chat-message-contract";
 import {
   formatSubmitError,
   isAbortError,

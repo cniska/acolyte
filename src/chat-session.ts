@@ -1,5 +1,5 @@
 import type { ChatRow } from "./chat-commands";
-import type { Message } from "./chat-message";
+import type { Message } from "./chat-message-contract";
 import { nowIso } from "./datetime";
 import { createId } from "./short-id";
 

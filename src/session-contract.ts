@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { TokenUsage } from "./api";
-import { type Message, type MessageId, messageIdSchema, messageSchema } from "./chat-message";
+import { type Message, type MessageId, messageIdSchema, messageSchema } from "./chat-message-contract";
 import { type IsoDateTimeString, isoDateTimeSchema } from "./datetime";
 import { domainIdSchema } from "./id-contract";
 

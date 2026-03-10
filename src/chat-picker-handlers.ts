@@ -2,7 +2,7 @@ import type { AgentMode } from "./agent-contract";
 import { appConfig, setDefaultModel, setModeModel } from "./app-config";
 import { unreachable } from "./assert";
 import { type ChatRow, createRow } from "./chat-commands";
-import type { Message } from "./chat-message";
+import type { Message } from "./chat-message-contract";
 import type { PickerState } from "./chat-picker";
 import { createModelPicker, createPicker, createResumePicker, createResumeRows } from "./chat-picker-actions";
 import { compactText } from "./compact-text";

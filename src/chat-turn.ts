@@ -3,7 +3,7 @@ import { createWorkspaceSpecifier, type TokenUsage } from "./api";
 import { type ChatRow, createRow } from "./chat-commands";
 import { extractAtReferencePaths } from "./chat-file-ref";
 import { formatThoughtDuration } from "./chat-format";
-import type { Message } from "./chat-message";
+import type { Message } from "./chat-message-contract";
 import type { Client, StreamEvent } from "./client-contract";
 import { buildFileContext } from "./file-context";
 import { t } from "./i18n";

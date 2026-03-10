@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { Message } from "./chat-message";
+import type { Message } from "./chat-message-contract";
 import { toRows } from "./chat-session";
 
 describe("chat session helpers", () => {

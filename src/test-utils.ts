@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AgentMode } from "./agent-contract";
 import type { ChatRow, CommandContext } from "./chat-commands";
-import type { Message } from "./chat-message";
+import type { Message } from "./chat-message-contract";
 import { createMessageHandler } from "./chat-message-handler";
 import type { Client, StreamEvent } from "./client-contract";
 import type { MemorySource } from "./memory-contract";
