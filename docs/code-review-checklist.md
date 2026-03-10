@@ -44,7 +44,6 @@ Review in this order.
 - [x] [`src/agent-instructions.ts`](../src/agent-instructions.ts)
 - [x] [`src/agent-input.ts`](../src/agent-input.ts)
 - [x] [`src/agent-model.ts`](../src/agent-model.ts)
-- [x] [`src/agent-output.ts`](../src/agent-output.ts)
 
 ## 4. Tools and guardrails
 
@@ -287,7 +286,8 @@ Review in this order.
 - [ ] [`src/chat-message-handler-stream.int.test.ts`](../src/chat-message-handler-stream.int.test.ts)
 - [ ] [`src/chat-ui.int.test.ts`](../src/chat-ui.int.test.ts)
 - [ ] [`src/cli-init.int.test.ts`](../src/cli-init.int.test.ts)
-- [ ] [`src/cli-subcommand-help.int.test.ts`](../src/cli-subcommand-help.int.test.ts)
+- [ ] [`src/cli-command-help.int.test.ts`](../src/cli-command-help.int.test.ts)
+- [ ] [`src/cli-daemon.int.test.ts`](../src/cli-daemon.int.test.ts)
 - [ ] [`src/cli-visual.int.test.ts`](../src/cli-visual.int.test.ts)
 - [ ] [`src/wait-server.int.test.ts`](../src/wait-server.int.test.ts)
 
