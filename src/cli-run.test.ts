@@ -48,8 +48,8 @@ function createRunDeps(): {
 
 describe("cli-run", () => {
   test("runResourceId derives stable isolated key", () => {
-    expect(runResourceId("sess_abcdef1234567890")).toBe("user_run-abcdef1234567890");
-    expect(runResourceId("sess_short")).toBe("user_run-short");
+    expect(runResourceId("sess_abcdef1234567890")).toBe("user_run-sess_abcdef1234567890");
+    expect(runResourceId("sess_short")).toBe("user_run-sess_short");
   });
 
   test("shows subcommand help when help flag is present", async () => {

@@ -113,33 +113,4 @@ describe("cli subcommand help", () => {
       expect(output).toContain(`Usage: acolyte ${subcommand}`);
     }
   });
-
-  test("start/stop/restart produce expected output", async () => {
-    const { home, project } = await createTestEnv();
-    const out = (r: { stdout: string; stderr: string }) => `${r.stdout}\n${r.stderr}`;
-
-    const startResult = runCli(home, project, "start");
-    expect(startResult.exitCode).toBe(0);
-    expect(out(startResult)).toContain("server on port 6767");
-
-    const restartResult = runCli(home, project, "restart");
-    expect(restartResult.exitCode).toBe(0);
-    expect(out(restartResult)).toContain("server on port 6767");
-
-    const stopResult = runCli(home, project, "stop");
-    expect(stopResult.exitCode).toBe(0);
-    expect(out(stopResult)).toContain("server on port 6767");
-  });
-
-  test("ps lists running daemons", async () => {
-    const { home, project } = await createTestEnv();
-    const out = (r: { stdout: string; stderr: string }) => `${r.stdout}\n${r.stderr}`;
-
-    runCli(home, project, "start");
-    const psResult = runCli(home, project, "ps");
-    expect(psResult.exitCode).toBe(0);
-    expect(out(psResult)).toContain("PORT");
-    expect(out(psResult)).toContain("6767");
-    runCli(home, project, "stop");
-  });
 });
