@@ -192,8 +192,6 @@ export const EN_MESSAGES = {
   "tool.label.search": "Search",
   "tool.label.web_fetch": "Web Fetch",
   "tool.label.web_search": "Web Search",
-  "unit.changed_file": "{count} changed files",
-  "unit.changed_file.one": "{count} changed file",
   "unit.file": "{count} files",
   "unit.file.one": "{count} file",
   "unit.history_message": "{count} history messages",

@@ -4,7 +4,6 @@ import { type ChatRow, createRow, dispatchSlashCommand, type TokenUsageEntry } f
 import { invalidateRepoPathCandidates } from "./chat-file-ref";
 import type { Message } from "./chat-message";
 import {
-  distillMemoryCandidate,
   formatSubmitError,
   isAbortError,
   resolveNaturalRememberDirective,
@@ -109,7 +108,13 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
       startWorking();
       input.setProgressText(t("chat.progress.thinking"));
       try {
-        const distilled = distillMemoryCandidate(naturalRememberDirective.content);
+        const distilled = naturalRememberDirective.content
+          .trim()
+          .replace(/^[-*]\s+/, "")
+          .replace(/^["'`]|["'`]$/g, "")
+          .replace(/^memory\s*[:-]\s*/i, "")
+          .replace(/\s+/g, " ")
+          .trim();
         await addMemory(distilled, { scope: naturalRememberDirective.scope });
         const label = naturalRememberDirective.scope === "project" ? "project" : "user";
         const confirmation = t("chat.remember.saved", { scope: label, content: distilled });

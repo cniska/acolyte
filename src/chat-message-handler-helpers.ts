@@ -41,13 +41,3 @@ export function resolveNaturalRememberDirective(text: string): NaturalRememberDi
   if (trailingRememberMatch?.[1]) return { scope: "user", content: trailingRememberMatch[1].trim() };
   return null;
 }
-
-export function distillMemoryCandidate(value: string): string {
-  return value
-    .trim()
-    .replace(/^[-*]\s+/, "")
-    .replace(/^["'`]|["'`]$/g, "")
-    .replace(/^memory\s*[:-]\s*/i, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
