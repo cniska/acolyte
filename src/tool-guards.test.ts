@@ -117,12 +117,11 @@ describe("no-rewrite guard", () => {
   });
 });
 
-describe("verify-ran guard", () => {
-  test("sets flag when run-command executes in verify mode", () => {
+describe("duplicate-verify guard", () => {
+  test("allows first verify run", () => {
     const session = createSessionContext();
     session.mode = "verify";
-    runGuards({ toolName: "run-command", args: { command: "bun run verify" }, session });
-    expect(session.flags.verifyRan).toBe(true);
+    expect(() => runGuards({ toolName: "run-command", args: { command: "bun run verify" }, session })).not.toThrow();
   });
 
   test("blocks duplicate verify when no writes happened since last verify", () => {
@@ -142,11 +141,10 @@ describe("verify-ran guard", () => {
     expect(() => runGuards({ toolName: "run-command", args: { command: "bun run verify" }, session })).not.toThrow();
   });
 
-  test("does not set flag outside verify mode", () => {
+  test("does not block outside verify mode", () => {
     const session = createSessionContext();
     session.mode = "work";
-    runGuards({ toolName: "run-command", args: { command: "bun run verify" }, session });
-    expect(session.flags.verifyRan).toBeUndefined();
+    expect(() => runGuards({ toolName: "run-command", args: { command: "bun run verify" }, session })).not.toThrow();
   });
 });
 
@@ -226,7 +224,9 @@ describe("excessive-file-loop guard", () => {
 
   test("still blocks heavy churn even when verify already ran", () => {
     const session = createSessionContext();
-    session.flags.verifyRan = true;
+    session.mode = "verify";
+    recordCall(session, "run-command", { command: "bun run verify" });
+    session.mode = "work";
     for (let i = 0; i < 8; i += 1) {
       recordCall(session, "read-file", { paths: [{ path: "src/foo.ts" }] });
       recordCall(session, "edit-file", { path: "src/foo.ts" });
@@ -238,7 +238,9 @@ describe("excessive-file-loop guard", () => {
 
   test("still blocks immediate duplicate edit calls after verify", () => {
     const session = createSessionContext();
-    session.flags.verifyRan = true;
+    session.mode = "verify";
+    recordCall(session, "run-command", { command: "bun run verify" });
+    session.mode = "work";
     recordCall(session, "read-file", { paths: [{ path: "src/foo.ts" }] });
     recordCall(session, "edit-file", { path: "src/foo.ts" });
     recordCall(session, "read-file", { paths: [{ path: "src/foo.ts" }] });

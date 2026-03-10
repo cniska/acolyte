@@ -135,4 +135,10 @@ export function taskScopedCallLog(session: SessionContext, taskId: string | unde
   return session.callLog.filter((entry) => entry.taskId === taskId);
 }
 
+export function hasVerifyRun(session: SessionContext, taskId: string | undefined): boolean {
+  return taskScopedCallLog(session, taskId).some(
+    (entry) => entry.toolName === "run-command" && entry.mode === "verify",
+  );
+}
+
 export type LifecycleResult = ChatResponse;

@@ -2,7 +2,7 @@ import type { AgentMode } from "./agent-contract";
 import { createModeInstructions } from "./agent-instructions";
 import type { VerifyScope } from "./api";
 import type { ErrorCategory } from "./error-handling";
-import { type LifecycleEventName, taskScopedCallLog } from "./lifecycle-contract";
+import { hasVerifyRun, type LifecycleEventName, taskScopedCallLog } from "./lifecycle-contract";
 import type { LifecyclePolicy } from "./lifecycle-policy";
 import { extractReadPaths } from "./tool-arg-paths";
 import { WRITE_TOOL_SET, WRITE_TOOLS } from "./tool-groups";
@@ -130,7 +130,7 @@ export const verifyCycle: Evaluator = {
     // Work → Verify: trigger verify when write tools were used
     if (ctx.mode !== "verify") {
       const usedWriteTools = WRITE_TOOLS.some((tool) => ctx.observedTools.has(tool));
-      if (ctx.classifiedMode === "work" && usedWriteTools && !ctx.session.flags.verifyRan) {
+      if (ctx.classifiedMode === "work" && usedWriteTools && !hasVerifyRun(ctx.session, ctx.taskId)) {
         return {
           type: "regenerate",
           prompt: scopedVerifyPrompt(ctx),
@@ -143,7 +143,7 @@ export const verifyCycle: Evaluator = {
     }
 
     // Verify → Work: return to work when verify found issues
-    if (!ctx.lastError && !ctx.session.flags.verifyRan) return { type: "done" };
+    if (!ctx.lastError && !hasVerifyRun(ctx.session, ctx.taskId)) return { type: "done" };
     if (!ctx.lastError) return { type: "done" };
     ctx.debug("lifecycle.eval.verify_failure", { text_chars: ctx.result.text.length });
     return {

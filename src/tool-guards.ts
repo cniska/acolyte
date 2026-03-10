@@ -334,9 +334,9 @@ const excessiveFindLoopGuard: ToolGuard = {
   },
 };
 
-const verifyRanGuard: ToolGuard = {
-  id: "verify-ran",
-  description: "Set session flag when run-command executes in verify mode.",
+const duplicateVerifyGuard: ToolGuard = {
+  id: "duplicate-verify",
+  description: "Block redundant verify runs when no writes happened since the last one.",
   appliesTo: ["run-command"],
   check({ toolName, session }) {
     if (session.mode !== "verify") return;
@@ -349,23 +349,20 @@ const verifyRanGuard: ToolGuard = {
       return -1;
     })();
 
-    if (lastVerifyRunIndex >= 0) {
-      let wroteAfterLastVerify = false;
-      for (let i = lastVerifyRunIndex + 1; i < calls.length; i += 1) {
-        const tool = calls[i]?.toolName;
-        if (tool === "edit-file" || tool === "edit-code" || tool === "create-file" || tool === "delete-file") {
-          wroteAfterLastVerify = true;
-          break;
-        }
-      }
-      if (!wroteAfterLastVerify) {
-        session.onGuard?.({ guardId: "verify-ran", toolName, action: "blocked", detail: "duplicate-verify" });
-        throw new Error("verify already ran this turn and no writes happened since; avoid redundant verify reruns.");
+    if (lastVerifyRunIndex < 0) return;
+
+    let wroteAfterLastVerify = false;
+    for (let i = lastVerifyRunIndex + 1; i < calls.length; i += 1) {
+      const tool = calls[i]?.toolName;
+      if (tool === "edit-file" || tool === "edit-code" || tool === "create-file" || tool === "delete-file") {
+        wroteAfterLastVerify = true;
+        break;
       }
     }
-
-    session.flags.verifyRan = true;
-    session.onGuard?.({ guardId: "verify-ran", toolName, action: "flag_set", detail: "verifyRan" });
+    if (!wroteAfterLastVerify) {
+      session.onGuard?.({ guardId: "duplicate-verify", toolName, action: "blocked", detail: "duplicate-verify" });
+      throw new Error("verify already ran this turn and no writes happened since; avoid redundant verify reruns.");
+    }
   },
 };
 
@@ -416,7 +413,7 @@ const GUARDS: ToolGuard[] = [
   excessiveFileLoopGuard,
   excessiveFindLoopGuard,
   excessiveSearchLoopGuard,
-  verifyRanGuard,
+  duplicateVerifyGuard,
 ];
 
 export function runGuards(input: GuardInput): void {

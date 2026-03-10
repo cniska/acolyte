@@ -6,7 +6,7 @@ import { recoveryActionForError } from "./lifecycle-evaluate";
 import { modeTransition, multiMatchEditEvaluator, timeoutRecovery, verifyCycle } from "./lifecycle-evaluators";
 import { defaultLifecyclePolicy } from "./lifecycle-policy";
 import { LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./tool-error-codes";
-import { createSessionContext } from "./tool-guards";
+import { createSessionContext, recordCall } from "./tool-guards";
 
 function createMockContext(overrides: Partial<RunContext> = {}): RunContext {
   return {
@@ -105,9 +105,10 @@ describe("verifyCycle", () => {
     if (action.type === "regenerate") expect(action.prompt).not.toContain("Task boundary:");
   });
 
-  test("returns done when verifyRan flag is set", () => {
+  test("returns done when verify already ran", () => {
     const session = createSessionContext();
-    session.flags.verifyRan = true;
+    session.mode = "verify";
+    recordCall(session, "run-command", { command: "bun run verify" });
     const ctx = createMockContext({
       classifiedMode: "work",
       session,
@@ -142,7 +143,8 @@ describe("verifyCycle", () => {
 
   test("returns regenerate to work mode when verify reports issues", () => {
     const session = createSessionContext();
-    session.flags.verifyRan = true;
+    session.mode = "verify";
+    recordCall(session, "run-command", { command: "bun run verify" });
     const ctx = createMockContext({
       mode: "verify",
       classifiedMode: "work",
@@ -161,7 +163,8 @@ describe("verifyCycle", () => {
 
   test("returns done when in verify mode without errors", () => {
     const session = createSessionContext();
-    session.flags.verifyRan = true;
+    session.mode = "verify";
+    recordCall(session, "run-command", { command: "bun run verify" });
     const ctx = createMockContext({
       mode: "verify",
       classifiedMode: "work",
@@ -173,7 +176,8 @@ describe("verifyCycle", () => {
 
   test("returns done for explicit no-issue verification summaries", () => {
     const session = createSessionContext();
-    session.flags.verifyRan = true;
+    session.mode = "verify";
+    recordCall(session, "run-command", { command: "bun run verify" });
     const ctx = createMockContext({
       mode: "verify",
       classifiedMode: "work",
