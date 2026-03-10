@@ -5,7 +5,8 @@ import { formatAssistantReplyOutput } from "./cli-format";
 import { missingAssistantStreamTail } from "./cli-stream-output";
 import type { Client } from "./client-contract";
 import { nowIso } from "./datetime";
-import { formatPromptError, USER_ERROR_MESSAGES } from "./error-messages";
+import { formatPromptError } from "./error-messages";
+import { t } from "./i18n";
 import type { ResourceId } from "./resource-id";
 import type { Session } from "./session-contract";
 import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
@@ -165,7 +166,7 @@ export async function handlePrompt(
     session.updatedAt = nowIso();
     return true;
   } catch (error) {
-    if (!(error instanceof Error)) printError(USER_ERROR_MESSAGES.requestFailed);
+    if (!(error instanceof Error)) printError(t("error.prompt.request_failed"));
     else printError(formatPromptError(error.message));
     session.updatedAt = nowIso();
     return false;

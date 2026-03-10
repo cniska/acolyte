@@ -1,23 +1,8 @@
 import { unreachable } from "./assert";
 import { type AppError, createAppError } from "./error-handling";
+import { t } from "./i18n";
 import { isLoopbackHost } from "./network-host";
 import type { Provider } from "./provider-contract";
-
-export const USER_ERROR_MESSAGES = {
-  noModelConfigured: "No model configured. Choose a model with /model.",
-  providerQuotaExceeded: "Provider quota exceeded. Add billing/credits or switch model/provider.",
-  requestFailed: "Request failed. Retry and check server logs if it keeps failing.",
-  serverTimedOut: "Server request timed out. Retry or reduce request scope.",
-  writeBlockedInReadMode: "Write action blocked in read mode. Run /permissions write and retry.",
-  serverUnavailable: "Server unavailable. Start the server and retry.",
-} as const;
-
-const CONNECTION_HELP_MESSAGES = {
-  loopbackHttps: (apiUrl: string) =>
-    `Cannot reach server at ${apiUrl}. Local daemon uses http:// (not https://); update apiUrl or run an HTTPS server.`,
-  loopbackDefault: (apiUrl: string) => `Cannot reach server at ${apiUrl}. Start it with: acolyte server start`,
-  generic: (apiUrl: string) => `Cannot reach server at ${apiUrl}. Check apiUrl and server availability.`,
-} as const;
 
 export type UserErrorCode = "E_MODEL_NOT_CONFIGURED" | "E_MODEL_PROVIDER_UNAVAILABLE";
 
@@ -31,19 +16,17 @@ export type UserError<C extends UserErrorCode = UserErrorCode> = AppError<C, Use
 function messageForUserError(code: UserErrorCode, meta?: UserErrorMetaByCode[UserErrorCode]): string {
   switch (code) {
     case "E_MODEL_NOT_CONFIGURED":
-      return USER_ERROR_MESSAGES.noModelConfigured;
+      return t("error.model.not_configured");
     case "E_MODEL_PROVIDER_UNAVAILABLE": {
       const typedMeta = meta as UserErrorMetaByCode["E_MODEL_PROVIDER_UNAVAILABLE"];
-      if (typedMeta.provider === "openai") {
-        return `Model "${typedMeta.model}" is unavailable. Set OPENAI_API_KEY (or configure an OpenAI-compatible base URL) and try again.`;
-      }
-      if (typedMeta.provider === "anthropic") {
-        return `Model "${typedMeta.model}" is unavailable. Set ANTHROPIC_API_KEY and ensure anthropicBaseUrl ends with /v1.`;
-      }
-      if (typedMeta.provider === "google") {
-        return `Model "${typedMeta.model}" is unavailable. Set GOOGLE_API_KEY and try again.`;
-      }
-      return `Model "${typedMeta.model}" is unavailable. Check provider credentials and try again.`;
+      const providerKey = {
+        openai: "error.model.provider_unavailable.openai",
+        anthropic: "error.model.provider_unavailable.anthropic",
+        google: "error.model.provider_unavailable.google",
+      } as const;
+      const key = providerKey[typedMeta.provider] ?? undefined;
+      if (key) return t(key, { model: typedMeta.model });
+      return t("error.model.provider_unavailable", { model: typedMeta.model });
     }
     default:
       return unreachable(code);
@@ -70,22 +53,22 @@ function isQuotaErrorMessage(lower: string): boolean {
 const PROMPT_ERROR_RULES: readonly PromptErrorRule[] = [
   {
     matches: isQuotaErrorMessage,
-    message: () => USER_ERROR_MESSAGES.providerQuotaExceeded,
+    message: () => t("error.prompt.quota_exceeded"),
   },
   {
     matches: (lower) => lower.includes("timed out") || lower.includes("timeout"),
-    message: () => USER_ERROR_MESSAGES.serverTimedOut,
+    message: () => t("error.prompt.server_timed_out"),
   },
   {
     matches: (lower) => lower.includes("shell command execution is disabled in read mode"),
-    message: () => USER_ERROR_MESSAGES.writeBlockedInReadMode,
+    message: () => t("error.prompt.write_blocked"),
   },
   {
     matches: (lower) =>
       lower.includes("server unavailable") ||
       lower.includes("connection refused") ||
       lower.includes("socket connection was closed unexpectedly"),
-    message: () => USER_ERROR_MESSAGES.serverUnavailable,
+    message: () => t("error.prompt.server_unavailable"),
   },
   {
     matches: (lower) => lower.includes("remote server error"),
@@ -96,13 +79,13 @@ const PROMPT_ERROR_RULES: readonly PromptErrorRule[] = [
 export function mapQuotaErrorMessage(message: string): string {
   const trimmed = message.trim();
   const lower = trimmed.toLowerCase();
-  if (isQuotaErrorMessage(lower)) return USER_ERROR_MESSAGES.providerQuotaExceeded;
+  if (isQuotaErrorMessage(lower)) return t("error.prompt.quota_exceeded");
   return message;
 }
 
 export function formatPromptError(message: string): string {
   const trimmed = message.trim();
-  if (trimmed.length === 0) return USER_ERROR_MESSAGES.requestFailed;
+  if (trimmed.length === 0) return t("error.prompt.request_failed");
   const lower = trimmed.toLowerCase();
   for (const rule of PROMPT_ERROR_RULES) {
     if (rule.matches(lower)) return rule.message(trimmed);
@@ -114,14 +97,10 @@ export function connectionHelpMessage(apiUrl: string): string {
   try {
     const parsed = new URL(apiUrl);
     const loopback = isLoopbackHost(parsed.hostname);
-    if (loopback && parsed.protocol === "https:") {
-      return CONNECTION_HELP_MESSAGES.loopbackHttps(apiUrl);
-    }
-    if (loopback) {
-      return CONNECTION_HELP_MESSAGES.loopbackDefault(apiUrl);
-    }
+    if (loopback && parsed.protocol === "https:") return t("error.connection.loopback_https", { url: apiUrl });
+    if (loopback) return t("error.connection.loopback_default", { url: apiUrl });
   } catch {
     // Fall through to generic guidance for malformed URLs.
   }
-  return CONNECTION_HELP_MESSAGES.generic(apiUrl);
+  return t("error.connection.generic", { url: apiUrl });
 }

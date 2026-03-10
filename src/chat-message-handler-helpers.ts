@@ -1,4 +1,5 @@
-import { formatPromptError, USER_ERROR_MESSAGES } from "./error-messages";
+import { formatPromptError } from "./error-messages";
+import { t } from "./i18n";
 import type { MemoryScope } from "./memory";
 
 export type NaturalRememberDirective = {
@@ -14,7 +15,7 @@ export function isAbortError(error: unknown): boolean {
 }
 
 export function formatSubmitError(error: unknown): string {
-  if (!(error instanceof Error)) return USER_ERROR_MESSAGES.requestFailed;
+  if (!(error instanceof Error)) return t("error.prompt.request_failed");
   return formatPromptError(error.message);
 }
 
