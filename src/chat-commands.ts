@@ -314,9 +314,6 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
         return { stop: true, userText: text };
       }
     }
-  }
-
-  if (resolvedText.startsWith("/model ")) {
     pushUserCommandRow();
     const selection = parseModelSelectionCommand(resolvedText);
     if (!selection) {
@@ -419,8 +416,8 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     }
     const memories = await memoryApi.listMemories({ scope });
     if (memories.length === 0) {
-      const scopeLabel = scope === "all" ? "" : `${scope} `;
-      ctx.setRows((current) => [...current, createRow("system", t("chat.memory.none", { scope: scopeLabel }))]);
+      const emptyLabel = scope === "all" ? "" : `${scope} `;
+      ctx.setRows((current) => [...current, createRow("system", t("chat.memory.none", { scope: emptyLabel }))]);
       return { stop: true, userText: text };
     }
     const lines = memories.slice(0, 10).map((entry) => `${entry.scope}:${entry.id} ${entry.content}`);
