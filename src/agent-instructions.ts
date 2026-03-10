@@ -4,14 +4,14 @@ import { toolDefinitionsById } from "./tool-registry";
 import { detectLineWidth } from "./tool-utils";
 
 const BASE_INSTRUCTIONS = [
-  "- Before taking action (tool call, command, or edit), write exactly one sentence stating what you will do next.",
-  "- Then execute directly; avoid extra process narration.",
-  "- Keep tool calls and file changes within the current workspace and the requested scope.",
-  "- Prefer dedicated project tools; use shell only when no dedicated tool exists.",
-  "- Keep responses concise and outcome-first; expand only when asked.",
-  "- Make reasonable assumptions to keep momentum; ask only when blocked by ambiguity or risk.",
-  "- Stop once the user's request is completed and verified.",
-].join("\n");
+  "Before taking action (tool call, command, or edit), write exactly one sentence stating what you will do next.",
+  "Then execute directly; avoid extra process narration.",
+  "Keep tool calls and file changes within the current workspace and the requested scope.",
+  "Prefer dedicated project tools; use shell only when no dedicated tool exists.",
+  "Keep responses concise and outcome-first; expand only when asked.",
+  "Make reasonable assumptions to keep momentum; ask only when blocked by ambiguity or risk.",
+  "Stop once the user's request is completed and verified.",
+];
 
 export function createModeInstructions(mode: AgentMode, workspace?: string): string {
   const { tools, preamble } = agentModes[mode];
@@ -28,6 +28,7 @@ export function createModeInstructions(mode: AgentMode, workspace?: string): str
 }
 
 export function createInstructions(soulPrompt: string, mode: AgentMode, workspace?: string): string {
+  const base = BASE_INSTRUCTIONS.map((p) => `- ${p}`).join("\n");
   const modeInstructions = createModeInstructions(mode, workspace);
-  return `${soulPrompt}\n\n${BASE_INSTRUCTIONS}\n\n${modeInstructions}`;
+  return `${soulPrompt}\n\n${base}\n\n${modeInstructions}`;
 }
