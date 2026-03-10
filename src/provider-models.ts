@@ -18,6 +18,8 @@ let modelsCache: {
   fetchedAt: number;
 } | null = null;
 
+let inflight: Promise<string[]> | null = null;
+
 export function invalidateModelsCache(): void {
   modelsCache = null;
 }
@@ -93,7 +95,6 @@ function availableProviders(): Provider[] {
     isProviderAvailable({
       provider: "anthropic",
       anthropicApiKey: appConfig.anthropic.apiKey,
-      openaiBaseUrl: appConfig.openai.baseUrl,
       anthropicBaseUrl: appConfig.anthropic.baseUrl,
     })
   )
@@ -102,7 +103,6 @@ function availableProviders(): Provider[] {
     isProviderAvailable({
       provider: "google",
       googleApiKey: appConfig.google.apiKey,
-      openaiBaseUrl: appConfig.openai.baseUrl,
     })
   )
     providers.push("google");
@@ -113,19 +113,29 @@ export async function getAvailableModels(): Promise<string[]> {
   const now = Date.now();
   if (modelsCache && now - modelsCache.fetchedAt < CACHE_TTL_MS) return modelsCache.models;
 
-  const providers = availableProviders();
-  const results = await Promise.all(providers.map((p) => fetchProviderModels(p, providerConfig(p))));
-  const seen = new Set<string>();
-  const models: string[] = [];
-  for (const list of results) {
-    for (const id of list) {
-      if (!seen.has(id)) {
-        seen.add(id);
-        models.push(id);
+  if (inflight) return inflight;
+
+  inflight = (async () => {
+    const providers = availableProviders();
+    const results = await Promise.all(providers.map((p) => fetchProviderModels(p, providerConfig(p))));
+    const seen = new Set<string>();
+    const models: string[] = [];
+    for (const list of results) {
+      for (const id of list) {
+        if (!seen.has(id)) {
+          seen.add(id);
+          models.push(id);
+        }
       }
     }
+    models.sort((a, b) => a.localeCompare(b));
+    modelsCache = { models, fetchedAt: now };
+    return models;
+  })();
+
+  try {
+    return await inflight;
+  } finally {
+    inflight = null;
   }
-  models.sort((a, b) => a.localeCompare(b));
-  modelsCache = { models, fetchedAt: now };
-  return models;
 }
