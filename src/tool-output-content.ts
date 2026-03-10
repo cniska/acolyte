@@ -106,12 +106,12 @@ export function formatToolOutput(items: ToolOutput[]): string {
   );
   const lines = body.map((item) => {
     if (item.kind === "diff") return renderDiffLine(item, numWidth);
-    if (item.kind === "truncated" && numWidth > 0) return `${"…".padStart(numWidth)} ${renderToolOutput(item).slice(2)}`;
+    if (item.kind === "truncated" && numWidth > 0)
+      return `${"…".padStart(numWidth)} ${renderToolOutput(item).slice(2)}`;
     return renderToolOutput(item);
   });
   return `${header}\n${lines.map((line) => `  ${line}`).join("\n")}`;
 }
-
 
 export type ToolOutputUpdate = {
   label?: string;
@@ -144,4 +144,3 @@ export function createToolOutputState(): {
     },
   };
 }
-

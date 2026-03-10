@@ -294,7 +294,6 @@ export function formatAssistantReplyOutput(content: string, wrapWidth = 100): st
     .join("\n");
 }
 
-
 export function parseEditResult(raw: string): { path: string; edits: number; dryRun: boolean } | null {
   const path = raw.match(/^path=(.*)$/m)?.[1]?.trim();
   const editsText = raw.match(/^edits=(.*)$/m)?.[1]?.trim();

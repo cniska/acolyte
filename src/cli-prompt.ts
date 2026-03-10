@@ -134,17 +134,14 @@ export async function handlePrompt(
                 }
               }
               const lines = rendered.split("\n");
-              printDim(
-                lines.map((line, i) => (i === 0 ? `• ${line}` : line.length > 0 ? `  ${line}` : "")).join("\n"),
-              );
+              printDim(lines.map((line, i) => (i === 0 ? `• ${line}` : line.length > 0 ? `  ${line}` : "")).join("\n"));
               hasPrintedToolProgress = true;
               break;
             }
             case "tool-result": {
               const guardBlocked =
                 event.isError === true &&
-                (event.errorCode === LIFECYCLE_ERROR_CODES.guardBlocked ||
-                  event.error?.category === "guard-blocked");
+                (event.errorCode === LIFECYCLE_ERROR_CODES.guardBlocked || event.error?.category === "guard-blocked");
               if (guardBlocked) toolOutput.delete(event.toolCallId);
               break;
             }

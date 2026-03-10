@@ -143,9 +143,7 @@ describe("chat message handler stream behavior", () => {
 
     await handleMessage("search for needle");
 
-    expect(
-      rows.some((row) => row.role === "assistant" && row.style === "toolProgress"),
-    ).toBe(false);
+    expect(rows.some((row) => row.role === "assistant" && row.style === "toolProgress")).toBe(false);
     expect(rows.some((row) => row.role === "assistant" && row.content === "No matches found.")).toBe(true);
   });
 
