@@ -175,60 +175,51 @@ export async function phaseGenerate(ctx: RunContext, prompt: string, opts: Gener
 }
 
 async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: number): Promise<GenerateResult> {
-  return await new Promise<GenerateResult>((resolve, reject) => {
-    let settled = false;
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  const abort = new AbortController();
 
-    const resetTimeout = () => {
-      if (timeoutId !== null) clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        if (settled) return;
-        settled = true;
-        const err = new Error(`Step timed out after ${timeoutMs}ms of inactivity`);
-        (err as Error & { code: string }).code = LIFECYCLE_ERROR_CODES.timeout;
-        reject(err);
-      }, timeoutMs);
-    };
+  const resetTimeout = () => {
+    if (timeoutId !== null) clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => {
+      const err = new Error(`Step timed out after ${timeoutMs}ms of inactivity`);
+      (err as Error & { code: string }).code = LIFECYCLE_ERROR_CODES.timeout;
+      abort.abort(err);
+    }, timeoutMs);
+  };
+
+  try {
     resetTimeout();
     const temperature = appConfig.temperatures[ctx.mode];
-
-    ctx.agent
-      .stream(prompt, {
-        toolChoice: "auto",
-        ...(typeof temperature === "number" ? { temperature } : {}),
-      })
-      .then(async (streamOutput) => {
-        const reader = streamOutput.fullStream.getReader();
-        while (true) {
-          const { done, value: chunk } = await reader.read();
-          if (done) break;
-          if (!chunk || typeof chunk !== "object") continue;
-          const typed = chunk as { type?: string; payload?: unknown };
-          resetTimeout();
-          if (typed.type === "tool-error") {
-            const p = typed.payload as ToolErrorPayload | undefined;
-            if (!p?.toolName && !p?.toolCallId) {
-              const parsed = parseErrorInfo(p?.error ?? p?.message);
-              throw new Error(parsed.ok ? parsed.value.message : "Model stream error");
-            }
-          }
-          processStreamChunk(ctx, typed);
+    const streamOutput = await ctx.agent.stream(prompt, {
+      toolChoice: "auto",
+      ...(typeof temperature === "number" ? { temperature } : {}),
+    });
+    const reader = streamOutput.fullStream.getReader();
+    while (true) {
+      const result = await Promise.race([
+        reader.read(),
+        new Promise<never>((_, reject) => {
+          abort.signal.addEventListener("abort", () => reject(abort.signal.reason), { once: true });
+          if (abort.signal.aborted) reject(abort.signal.reason);
+        }),
+      ]);
+      if (result.done) break;
+      if (!result.value || typeof result.value !== "object") continue;
+      const typed = result.value as { type?: string; payload?: unknown };
+      resetTimeout();
+      if (typed.type === "tool-error") {
+        const p = typed.payload as ToolErrorPayload | undefined;
+        if (!p?.toolName && !p?.toolCallId) {
+          const parsed = parseErrorInfo(p?.error ?? p?.message);
+          throw new Error(parsed.ok ? parsed.value.message : "Model stream error");
         }
-        return await streamOutput.getFullOutput();
-      })
-      .then((value) => {
-        if (settled) return;
-        settled = true;
-        if (timeoutId !== null) clearTimeout(timeoutId);
-        resolve(value as GenerateResult);
-      })
-      .catch((error) => {
-        if (settled) return;
-        settled = true;
-        if (timeoutId !== null) clearTimeout(timeoutId);
-        reject(error);
-      });
-  });
+      }
+      processStreamChunk(ctx, typed);
+    }
+    return (await streamOutput.getFullOutput()) as GenerateResult;
+  } finally {
+    if (timeoutId !== null) clearTimeout(timeoutId);
+  }
 }
 
 function completeToolCall(ctx: RunContext, toolCallId: string, toolName: string): void {
