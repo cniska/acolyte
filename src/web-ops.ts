@@ -95,11 +95,10 @@ export async function fetchWeb(urlInput: string, maxChars = 5000): Promise<strin
     const raw = await response.text();
     const rendered = contentType.includes("text/html") ? extractHtmlText(raw) : { title: "", text: raw.trim() };
     const body = rendered.text.replace(/\s+/g, " ").trim();
-    if (!body) return `Fetched: ${current.toString()}\nNo textual content found.`;
+    if (!body) return "No textual content found.";
     const clipped = body.slice(0, limit);
-    const lines = [`Fetched: ${current.toString()}`];
-    if (rendered.title) lines.push(`Title: ${rendered.title}`);
-    lines.push("Content:");
+    const lines: string[] = [];
+    if (rendered.title) lines.push(rendered.title);
     lines.push(clipped);
     if (body.length > clipped.length) lines.push(`… clipped ${body.length - clipped.length} chars`);
     return lines.join("\n");
@@ -140,7 +139,7 @@ export async function searchWeb(query: string, maxResults = 5): Promise<string> 
 
   if (rows.length === 0) return `No web results found for: ${trimmed}`;
 
-  const output = [`Web results for: ${trimmed}`];
+  const output: string[] = [];
   for (const [index, row] of rows.entries()) {
     output.push(`${index + 1}. ${row.title}`);
     output.push(`   ${row.link}`);

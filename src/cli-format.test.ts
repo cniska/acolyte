@@ -86,7 +86,7 @@ describe("cli-format", () => {
     const raw = ["## main...origin/main", " M src/cli.ts", "?? src/new.ts"].join("\n");
     const out = formatForTool("status", raw);
     expect(out).toContain("## main...origin/main");
-    expect(out).toContain(" M src/cli.ts");
+    expect(out).toContain("M src/cli.ts");
   });
 
   test("summarizeDiff counts added and removed lines", () => {

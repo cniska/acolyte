@@ -10,7 +10,7 @@ import { fetchWeb, searchWeb } from "./web-ops";
 
 const WEB_SEARCH_MAX_RESULTS = 5;
 
-export function webSearchStreamRows(result: string): string {
+export function webSearchStreamRows(result: string, query?: string): string {
   const normalizeQuery = (value: string, maxChars = 120): string => {
     const single = value.replace(/\s+/g, " ").trim();
     if (single.length <= maxChars) return single.replace(/\]/g, "\\]");
@@ -27,13 +27,11 @@ export function webSearchStreamRows(result: string): string {
     return [`query=${JSON.stringify(normalizeQuery(noResultsMatch[1]))} results=0`, "(No output)"].join("\n");
   }
 
-  const headerMatch = lines[0]?.match(/^Web results for:\s*(.+)$/i);
-  if (!headerMatch?.[1]) return result;
-  const query = headerMatch[1].trim();
+  const effectiveQuery = query ?? "search";
   const out: string[] = [];
   const entries: Array<{ rank: number; url?: string }> = [];
 
-  for (let i = 1; i < lines.length; i += 1) {
+  for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i] ?? "";
     const titleMatch = line.match(/^(\d+)\.\s+(.+)$/);
     if (!titleMatch?.[1] || !titleMatch?.[2]) continue;
@@ -49,7 +47,7 @@ export function webSearchStreamRows(result: string): string {
     entries.push({ rank: Number.isFinite(rank) ? rank : entries.length + 1, url });
   }
 
-  out.push(`query=${JSON.stringify(normalizeQuery(query))} results=${entries.length}`);
+  out.push(`query=${JSON.stringify(normalizeQuery(effectiveQuery))} results=${entries.length}`);
   const visible = entries.slice(0, WEB_SEARCH_MAX_RESULTS);
   for (const entry of visible)
     out.push(`result rank=${entry.rank}${entry.url ? ` url=${JSON.stringify(entry.url)}` : ""}`);
@@ -93,7 +91,7 @@ function createWebSearchTool(input: ToolkitInput) {
           await searchWeb(toolInput.query, toolInput.maxResults ?? WEB_SEARCH_MAX_RESULTS),
           appConfig.agent.toolOutputBudget.webSearch,
         );
-        emitResultChunks("web-search", webSearchStreamRows(result), onOutput, 80, toolCallId);
+        emitResultChunks("web-search", webSearchStreamRows(result, toolInput.query), onOutput, 80, toolCallId);
         return { kind: "web-search", query: toolInput.query, output: result };
       });
     },

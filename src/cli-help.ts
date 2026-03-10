@@ -1,4 +1,5 @@
 import type { CliCommandDoc } from "./cli-contract";
+import { CLI_TOOL_IDS } from "./cli-tool";
 import { t } from "./i18n";
 
 const SUBCOMMANDS: Record<string, CliCommandDoc> = {
@@ -70,9 +71,9 @@ const SUBCOMMANDS: Record<string, CliCommandDoc> = {
   },
   tool: {
     command: "tool",
-    usage: "acolyte tool <find|search|web|fetch|read|git-status|git-diff|run|edit> ...",
+    usage: `acolyte tool <${CLI_TOOL_IDS.join("|")}> ...`,
     description: t("cli.help.desc.tool"),
-    examples: ['acolyte tool find "src/**/*.ts"', 'acolyte tool run "bun run verify"'],
+    examples: ['acolyte tool find-files "src/**/*.ts"', 'acolyte tool run-command "bun run verify"'],
   },
 };
 

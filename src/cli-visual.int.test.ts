@@ -431,13 +431,13 @@ describe("cli visual regression", () => {
     {
       args: ["tool", "help"],
       output: dedent(`
-        Usage: acolyte tool <find|search|web|fetch|read|git-status|git-diff|run|edit> ...
-        
+        Usage: acolyte tool <find-files|search-files|web-search|web-fetch|read-file|git-status|git-diff|run-command|edit-file> ...
+
         Description: run a tool directly
-        
+
         Examples:
-          acolyte tool find "src/**/*.ts"
-          acolyte tool run "bun run verify"
+          acolyte tool find-files "src/**/*.ts"
+          acolyte tool run-command "bun run verify"
       `),
     },
   ])("renders subcommand help output %#", async ({ args, output }) => {

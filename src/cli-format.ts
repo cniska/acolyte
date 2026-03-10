@@ -3,6 +3,7 @@ import { z } from "zod";
 import { wrapAssistantContent } from "./chat-content";
 import { truncateText } from "./compact-text";
 import { t } from "./i18n";
+import { formatToolOutput, type ToolOutput } from "./tool-output-content";
 import { TOOL_OUTPUT_LIMITS } from "./tool-output-format";
 import { printDim, printToolHeader } from "./ui";
 
@@ -28,13 +29,23 @@ export function printIndentedDim(content: string): void {
   }
 }
 
-export function showToolResult(title: string, content: string, detail?: string): void {
-  printToolHeader(title, detail);
+export function printToolOutput(label: string, content: string, detail?: string): void {
+  const items: ToolOutput[] = [{ kind: "tool-header", label, detail }];
   if (content.length === 0) {
-    printDim("  (no output)");
-    return;
+    items.push({ kind: "no-output" });
+  } else {
+    for (const line of content.split("\n")) {
+      const trimmed = line.trimEnd();
+      if (trimmed.length > 0) items.push({ kind: "text", text: trimmed });
+    }
   }
-  printIndentedDim(content);
+  const rendered = formatToolOutput(items);
+  const lines = rendered.split("\n");
+  // First line is the header (bold title + dim detail), rest are dim body
+  if (lines[0]) printToolHeader(label, detail);
+  for (const line of lines.slice(1)) {
+    printDim(line);
+  }
 }
 
 export function clampLines(lines: string[], maxLines: number, overflowTolerance = 4): string[] {
@@ -71,7 +82,10 @@ export function formatDiffOutput(raw: string): string {
 }
 
 export function formatGitStatusOutput(raw: string): string {
-  const lines = raw.split("\n").filter((line) => line.trim().length > 0);
+  const lines = raw
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
   if (lines.length === 0) return t("tool.content.working_tree_clean");
   return clampLines(lines, TOOL_OUTPUT_LIMITS.status).join("\n");
 }

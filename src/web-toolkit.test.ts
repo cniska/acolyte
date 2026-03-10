@@ -4,12 +4,11 @@ import { webSearchStreamRows } from "./web-toolkit";
 describe("webSearchStreamRows", () => {
   test("converts web search prose output into machine rows", () => {
     const raw = [
-      "Web results for: bun test",
       "1. Bun runtime docs",
       "   https://bun.sh/docs",
       "   Fast all-in-one JavaScript runtime and toolkit.",
     ].join("\n");
-    expect(webSearchStreamRows(raw)).toBe(
+    expect(webSearchStreamRows(raw, "bun test")).toBe(
       ['query="bun test" results=1', 'result rank=1 url="https://bun.sh/docs"'].join("\n"),
     );
   });
@@ -22,7 +21,6 @@ describe("webSearchStreamRows", () => {
 
   test("limits rows to top five results and emits truncated marker", () => {
     const raw = [
-      "Web results for: acolyte",
       "1. One",
       "   https://one.test",
       "2. Two",
@@ -39,7 +37,7 @@ describe("webSearchStreamRows", () => {
       "   https://seven.test",
     ].join("\n");
 
-    expect(webSearchStreamRows(raw)).toBe(
+    expect(webSearchStreamRows(raw, "acolyte")).toBe(
       [
         'query="acolyte" results=7',
         'result rank=1 url="https://one.test"',
