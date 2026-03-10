@@ -1,7 +1,7 @@
 import { Box, Text } from "ink";
 import type React from "react";
 
-type HeaderLine = {
+export type HeaderLine = {
   id: string;
   text: string;
   suffix?: string;

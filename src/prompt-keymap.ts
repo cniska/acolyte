@@ -29,7 +29,7 @@ export type PromptAction =
   | { type: "clear_line" }
   | { type: "insert"; text: string };
 
-const ESCAPE_CHAR = "\u001b";
+export const ESCAPE_CHAR = "\u001b";
 
 const CTRL = {
   c: "c",

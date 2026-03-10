@@ -1,10 +1,9 @@
 import { Box, Text, useInput } from "ink";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
-import { resolvePromptAction } from "./prompt-keymap";
+import { ESCAPE_CHAR, resolvePromptAction } from "./prompt-keymap";
 
 const META_PREFIX_WINDOW_MS = 150;
-const ESCAPE_CHAR = "\u001b";
 
 interface PromptInputProps {
   value: string;

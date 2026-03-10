@@ -92,18 +92,8 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
       case "skills": {
         const selected = state.items[state.index];
         if (selected) {
-          try {
-            const instructions = await readSkillInstructions(selected.path, "");
-            const compactedInstructions = compactText(instructions, appConfig.agent.skillBudget);
-            const msg = input.createMessage("system", `Active skill (${selected.name}):\n${compactedInstructions}`);
-            input.currentSession.messages.push(msg);
-            input.currentSession.updatedAt = input.nowIso();
-            input.setRows((current) => [
-              ...current,
-              createRow("system", t("chat.skill.activated", { skill: selected.name })),
-            ]);
-            await input.persist();
-          } catch {
+          const ok = await activateSkill(selected.name, "");
+          if (!ok) {
             input.setRows((current) => [
               ...current,
               createRow("system", t("chat.skill.failed", { skill: selected.name })),

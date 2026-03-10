@@ -19,17 +19,10 @@ import { createInputHistory } from "./chat-turn";
 import type { Client } from "./client-contract";
 import { nowIso } from "./datetime";
 import { palette } from "./palette";
+import type { HeaderLine } from "./chat-header";
 import { formatModel } from "./provider-config";
 import type { Session, SessionState } from "./session-contract";
 import { loadSkills } from "./skills";
-
-type HeaderLine = {
-  id: string;
-  text: string;
-  suffix?: string;
-  dim: boolean;
-  brand: boolean;
-};
 const THINKING_PULSE_FRAMES = 16;
 const QUEUE_DELIVERY_POLICY = "one-at-a-time" as const;
 
