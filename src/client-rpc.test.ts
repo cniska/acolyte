@@ -45,7 +45,7 @@ describe("rpc websocket lifecycle", () => {
         const sendMessage = (body: Record<string, unknown>) => {
           this.emit("message", { data: JSON.stringify({ id: msg.id, ...body }) });
         };
-        queueMicrotask(() => sendMessage({ type: "chat.accepted", taskId: "task_rpc_1" }));
+        queueMicrotask(() => sendMessage({ type: "chat.accepted", taskId: "task_rpc1" }));
         queueMicrotask(() => sendMessage({ type: "chat.queued", position: 2 }));
         queueMicrotask(() => sendMessage({ type: "chat.queued", position: 1 }));
         queueMicrotask(() => sendMessage({ type: "chat.started" }));
@@ -129,7 +129,7 @@ describe("rpc websocket lifecycle", () => {
     const abortController = new AbortController();
 
     const run = client.replyStream(
-      { message: "hi", history: [], model: "gpt-5-mini", sessionId: "sess_rpc_abort" },
+      { message: "hi", history: [], model: "gpt-5-mini", sessionId: "sess_rpcabort" },
       { onEvent: () => {}, signal: abortController.signal },
     );
 
@@ -176,7 +176,7 @@ describe("rpc websocket lifecycle", () => {
         const sendMessage = (body: Record<string, unknown>) => {
           this.emit("message", { data: JSON.stringify({ id: msg.id, ...body }) });
         };
-        queueMicrotask(() => sendMessage({ type: "chat.accepted", taskId: "task_rpc_2" }));
+        queueMicrotask(() => sendMessage({ type: "chat.accepted", taskId: "task_rpc2" }));
         queueMicrotask(() => sendMessage({ type: "chat.started" }));
         queueMicrotask(() =>
           sendMessage({
@@ -205,7 +205,7 @@ describe("rpc websocket lifecycle", () => {
 
     try {
       await client.replyStream(
-        { message: "hi", history: [], model: "gpt-5-mini", sessionId: "sess_rpc_disconnect" },
+        { message: "hi", history: [], model: "gpt-5-mini", sessionId: "sess_rpcdisconnect" },
         {
           onEvent: (event) => {
             receivedEventTypes.push(event.type);
@@ -252,7 +252,7 @@ describe("rpc websocket lifecycle", () => {
               id: msg.id,
               type: "task.status.result",
               task: {
-                id: msg.payload?.taskId ?? "task_unknown",
+                id: msg.payload?.taskId ?? "task_unknown0",
                 state: "running",
                 createdAt: "2026-02-28T00:00:00.000Z",
                 updatedAt: "2026-02-28T00:00:01.000Z",

@@ -108,7 +108,7 @@ describe("guard regression integration", () => {
   test("duplicate-consecutive-call guard blocks sequential duplicate tool calls", async () => {
     const reply = await runGuardIntegrationScenario(
       "[int:duplicate-consecutive-call] Run the same harmless command eight times in a row.",
-      "sess_guard-regression-duplicate",
+      "sess_guardregressionduplicate",
       ({ model, responseCounter, sourceText, outputs, body }) => {
         if (sourceText.includes("[int:duplicate-consecutive-call]")) {
           const toolName = pickFunctionToolName(body.tools, "run-command", ["run", "command", "terminal"]);
@@ -150,7 +150,7 @@ describe("guard regression integration", () => {
   test("no-rewrite guard blocks delete-file after reading the same file", async () => {
     const reply = await runGuardIntegrationScenario(
       "[int:no-rewrite] Read a file and then try to delete it.",
-      "sess_guard-regression-no-rewrite",
+      "sess_guardregressionnorewrite",
       ({ model, responseCounter, sourceText, outputs, body }) => {
         if (sourceText.includes("[int:no-rewrite]")) {
           const readToolName = pickFunctionToolName(body.tools, "read-file", ["read", "file"]);
