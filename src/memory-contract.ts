@@ -1,9 +1,24 @@
 import { z } from "zod";
+import type { IsoDateTimeString } from "./datetime";
 import { isoDateTimeSchema } from "./datetime";
 import { domainIdSchema } from "./id-contract";
 import type { ResourceId } from "./resource-id";
 
-// -- Source interface --
+export type MemoryScope = "user" | "project";
+export const memoryIdSchema = domainIdSchema("mem");
+export type MemoryId = z.infer<typeof memoryIdSchema>;
+
+export interface MemoryEntry {
+  readonly id: MemoryId;
+  readonly content: string;
+  readonly createdAt: IsoDateTimeString;
+  readonly scope: MemoryScope;
+}
+
+export type RemoveMemoryResult =
+  | { kind: "removed"; entry: MemoryEntry }
+  | { kind: "not_found"; prefix: string }
+  | { kind: "ambiguous"; prefix: string; matches: MemoryEntry[] };
 
 export type MemoryLoadContext = {
   readonly sessionId?: string;
@@ -33,8 +48,6 @@ export type MemorySource = {
   loadEntries(ctx: MemoryLoadContext): Promise<readonly MemorySourceEntry[]>;
   commit?(ctx: MemoryCommitContext): Promise<MemoryCommitMetrics | undefined>;
 };
-
-// -- Distill storage types --
 
 export const distillIdSchema = domainIdSchema("dst");
 export type DistillId = z.infer<typeof distillIdSchema>;

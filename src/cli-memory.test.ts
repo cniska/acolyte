@@ -1,20 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { memoryMode } from "./cli-memory";
+import type { MemoryStore } from "./memory-store";
 import { dedent } from "./test-utils";
 
 type MemoryDeps = Parameters<typeof memoryMode>[1];
 
-function createDeps(overrides?: Partial<MemoryDeps>): { deps: MemoryDeps; output: () => string } {
-  const lines: string[] = [];
-  const deps: MemoryDeps = {
-    addMemory: async (content, opts) => ({
-      id: "mem_test123",
-      content,
-      scope: opts?.scope ?? "user",
-      createdAt: "9999-01-01T00:00:00.000Z",
-    }),
-    hasHelpFlag: () => false,
-    listMemories: async () => [
+function createStore(overrides?: Partial<MemoryStore>): MemoryStore {
+  return {
+    list: async () => [
       {
         id: "mem_abc",
         content: "remember this",
@@ -22,6 +15,22 @@ function createDeps(overrides?: Partial<MemoryDeps>): { deps: MemoryDeps; output
         createdAt: "9999-01-01T00:00:00.000Z",
       },
     ],
+    add: async (content, scope) => ({
+      id: "mem_test123",
+      content,
+      scope: scope ?? "user",
+      createdAt: "9999-01-01T00:00:00.000Z",
+    }),
+    remove: async () => ({ kind: "not_found" as const, prefix: "" }),
+    ...overrides,
+  };
+}
+
+function createDeps(overrides?: Partial<MemoryDeps>): { deps: MemoryDeps; output: () => string } {
+  const lines: string[] = [];
+  const deps: MemoryDeps = {
+    store: createStore(),
+    hasHelpFlag: () => false,
     printDim: (message) => lines.push(message),
     commandError: () => {},
     commandHelp: () => {},
@@ -44,25 +53,29 @@ describe("cli-memory", () => {
     expect(called).toBe(true);
   });
 
-  test("list with no scope calls listMemories with scope all", async () => {
+  test("list with no scope calls store.list with scope all", async () => {
     let receivedScope: string | undefined;
     const { deps } = createDeps({
-      listMemories: async (opts) => {
-        receivedScope = opts?.scope;
-        return [];
-      },
+      store: createStore({
+        list: async (scope) => {
+          receivedScope = scope;
+          return [];
+        },
+      }),
     });
     await memoryMode(["list"], deps);
     expect(receivedScope).toBe("all");
   });
 
-  test("list user calls listMemories with scope user", async () => {
+  test("list user calls store.list with scope user", async () => {
     let receivedScope: string | undefined;
     const { deps } = createDeps({
-      listMemories: async (opts) => {
-        receivedScope = opts?.scope;
-        return [];
-      },
+      store: createStore({
+        list: async (scope) => {
+          receivedScope = scope;
+          return [];
+        },
+      }),
     });
     await memoryMode(["list", "user"], deps);
     expect(receivedScope).toBe("user");
@@ -84,16 +97,18 @@ describe("cli-memory", () => {
     let savedContent: string | undefined;
     let savedScope: string | undefined;
     const { deps, output } = createDeps({
-      addMemory: async (content, opts) => {
-        savedContent = content;
-        savedScope = opts?.scope;
-        return {
-          id: "mem_test123",
-          content,
-          scope: opts?.scope ?? "user",
-          createdAt: "9999-01-01T00:00:00.000Z",
-        };
-      },
+      store: createStore({
+        add: async (content, scope) => {
+          savedContent = content;
+          savedScope = scope;
+          return {
+            id: "mem_test123",
+            content,
+            scope: scope ?? "user",
+            createdAt: "9999-01-01T00:00:00.000Z",
+          };
+        },
+      }),
     });
     await memoryMode(["add", "--project", "some", "text"], deps);
     expect(savedContent).toBe("some text");

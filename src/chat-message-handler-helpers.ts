@@ -1,6 +1,6 @@
 import { formatPromptError } from "./error-messages";
 import { t } from "./i18n";
-import type { MemoryScope } from "./memory";
+import type { MemoryScope } from "./memory-contract";
 
 export type NaturalRememberDirective = {
   scope: MemoryScope;

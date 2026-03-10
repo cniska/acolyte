@@ -3,21 +3,13 @@ import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
-import { type IsoDateTimeString, isoDateTimeSchema } from "./datetime";
-import { domainIdSchema } from "./id-contract";
+import { isoDateTimeSchema } from "./datetime";
 import { t } from "./i18n";
+import { type MemoryEntry, type MemoryScope, memoryIdSchema, type RemoveMemoryResult } from "./memory-contract";
+import type { MemoryStore } from "./memory-store";
 import { createId } from "./short-id";
 
-export type MemoryScope = "user" | "project";
-export const memoryIdSchema = domainIdSchema("mem");
-export type MemoryId = z.infer<typeof memoryIdSchema>;
-
-export interface MemoryEntry {
-  readonly id: MemoryId;
-  readonly content: string;
-  readonly createdAt: IsoDateTimeString;
-  readonly scope: MemoryScope;
-}
+export type { MemoryEntry, MemoryScope, RemoveMemoryResult } from "./memory-contract";
 
 const memoryEntrySchema = z.object({
   id: memoryIdSchema,
@@ -31,11 +23,6 @@ export interface MemoryOptions {
   cwd?: string;
   homeDir?: string;
 }
-
-export type RemoveMemoryResult =
-  | { kind: "removed"; entry: MemoryEntry }
-  | { kind: "not_found"; prefix: string }
-  | { kind: "ambiguous"; prefix: string; matches: MemoryEntry[] };
 
 function getUserMemoryDir(homeDir = homedir()): string {
   return join(homeDir, ".acolyte", "memory", "user");
@@ -155,3 +142,9 @@ export async function removeMemoryByPrefix(
   await rm(join(dir, `${entry.id}.md`), { force: true });
   return { kind: "removed", entry };
 }
+
+export const fileMemoryStore: MemoryStore = {
+  list: (scope) => listMemories({ scope: scope ?? "all" }),
+  add: (content, scope) => addMemory(content, { scope }),
+  remove: (prefix, scope) => removeMemoryByPrefix(prefix, { scope }),
+};

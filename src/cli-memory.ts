@@ -1,19 +1,19 @@
 import { formatColumns, formatRelativeTime } from "./chat-format";
 import { truncateText } from "./cli-format";
 import { t } from "./i18n";
-import type { addMemory as addMemoryType, listMemories as listMemoriesType } from "./memory";
+import type { MemoryEntry } from "./memory-contract";
+import type { MemoryStore } from "./memory-store";
 
 type MemoryModeDeps = {
-  addMemory: typeof addMemoryType;
+  store: MemoryStore;
   hasHelpFlag: (args: string[]) => boolean;
-  listMemories: typeof listMemoriesType;
   printDim: (message: string) => void;
   commandError: (name: string, message?: string) => void;
   commandHelp: (name: string) => void;
 };
 
 function printMemoryRows(
-  rows: Awaited<ReturnType<typeof listMemoriesType>>,
+  rows: readonly MemoryEntry[],
   printDim: (message: string) => void,
 ): void {
   if (rows.length === 0) {
@@ -30,7 +30,7 @@ function printMemoryRows(
 }
 
 export async function memoryMode(args: string[], deps: MemoryModeDeps): Promise<void> {
-  const { addMemory, hasHelpFlag, listMemories, printDim, commandError, commandHelp } = deps;
+  const { store, hasHelpFlag, printDim, commandError, commandHelp } = deps;
   if (hasHelpFlag(args)) {
     commandHelp("memory");
     return;
@@ -49,7 +49,7 @@ export async function memoryMode(args: string[], deps: MemoryModeDeps): Promise<
       commandError("memory", t("cli.memory.usage.list"));
       return;
     }
-    const rows = await listMemories({ scope: scope as "all" | "user" | "project" });
+    const rows = await store.list(scope as "all" | "user" | "project");
     printMemoryRows(rows, printDim);
     return;
   }
@@ -73,7 +73,7 @@ export async function memoryMode(args: string[], deps: MemoryModeDeps): Promise<
       commandError("memory", t("cli.memory.usage.add"));
       return;
     }
-    const entry = await addMemory(content, { scope });
+    const entry = await store.add(content, scope);
     printDim(t("cli.memory.saved", { scope, id: entry.id }));
     return;
   }

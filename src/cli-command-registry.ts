@@ -18,7 +18,7 @@ import { createClient } from "./client-factory";
 import { readConfig, readConfigForScope, readResolvedConfigSync, setConfigValue, unsetConfigValue } from "./config";
 
 import { t } from "./i18n";
-import { addMemory, listMemories } from "./memory";
+import { fileMemoryStore } from "./memory";
 import {
   apiUrlForPort,
   ensureLocalServer,
@@ -224,9 +224,8 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
     },
     handler: (args) =>
       memoryMode(args, {
-        addMemory,
+        store: fileMemoryStore,
         hasHelpFlag,
-        listMemories,
         printDim,
         commandError,
         commandHelp,
