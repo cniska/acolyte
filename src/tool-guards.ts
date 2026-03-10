@@ -21,10 +21,13 @@ export type SessionContext = {
   onGuard?: (event: GuardEvent) => void;
 };
 
+export type GuardReport = (action: "blocked" | "flag_set", detail?: string) => void;
+
 export type GuardInput = {
   toolName: string;
   args: Record<string, unknown>;
   session: SessionContext;
+  report: GuardReport;
 };
 
 export type ToolGuard = {
@@ -109,27 +112,27 @@ function guardArgsEqual(a: Record<string, unknown>, b: Record<string, unknown>):
   return JSON.stringify(normalizeGuardArgValue(a)) === JSON.stringify(normalizeGuardArgValue(b));
 }
 
-const duplicateConsecutiveCallGuard: ToolGuard = {
-  id: "duplicate-consecutive-call",
+const duplicateCallGuard: ToolGuard = {
+  id: "duplicate-call",
   description: "Block immediate duplicate tool calls with effectively identical arguments.",
   appliesTo: "all",
-  check({ toolName, args, session }) {
+  check({ toolName, args, session, report }) {
     const calls = scopedCallLog(session);
     const last = calls[calls.length - 1];
     if (!last || last.toolName !== toolName) return;
     if (!guardArgsEqual(last.args, args)) return;
-    session.onGuard?.({ guardId: "duplicate-consecutive-call", toolName, action: "blocked", detail: "duplicate-call" });
+    report("blocked", "duplicate-call");
     throw new Error(
       `Duplicate ${toolName} call detected with unchanged arguments. Reuse previous result or change inputs.`,
     );
   },
 };
 
-const noRewriteGuard: ToolGuard = {
-  id: "no-rewrite",
+const preventDeleteRewriteGuard: ToolGuard = {
+  id: "no-delete-rewrite",
   description: "Block delete-file on a path that was previously read — use edit-file instead.",
   appliesTo: ["delete-file"],
-  check({ toolName, args, session }) {
+  check({ args, session, report }) {
     const rawPaths = Array.isArray(args.paths) ? args.paths : typeof args.path === "string" ? [args.path] : [];
     const deletePaths = rawPaths
       .filter((entry): entry is string => typeof entry === "string")
@@ -149,7 +152,7 @@ const noRewriteGuard: ToolGuard = {
         });
       });
       if (!wasRead) continue;
-      session.onGuard?.({ guardId: "no-rewrite", toolName, action: "blocked", detail: deletePath });
+      report("blocked", deletePath);
       throw new Error(
         `Cannot delete "${deletePath}" — it was read this session. Use edit-file to modify it instead of deleting and recreating.`,
       );
@@ -157,11 +160,11 @@ const noRewriteGuard: ToolGuard = {
   },
 };
 
-const excessiveFileLoopGuard: ToolGuard = {
-  id: "excessive-file-loop",
+const fileChurnGuard: ToolGuard = {
+  id: "file-churn",
   description: "Block excessive read/edit churn on the same file to force a strategy change.",
   appliesTo: ["read-file", "edit-file"],
-  check({ toolName, args, session }) {
+  check({ toolName, args, session, report }) {
     const targetPaths =
       toolName === "edit-file"
         ? typeof args.path === "string" && args.path.trim().length > 0
@@ -196,7 +199,7 @@ const excessiveFileLoopGuard: ToolGuard = {
     const combined = readCount + editCount;
     if (combined < 12 || readCount < 5 || editCount < 5) return;
 
-    session.onGuard?.({ guardId: "excessive-file-loop", toolName, action: "blocked", detail: target });
+    report("blocked", target);
     throw new Error(
       `Repeated read/edit loop detected for "${target}". Stop incremental tweaks. ` +
         "Use one consolidated edit (line-range block or edit-code), then run verify.",
@@ -204,11 +207,11 @@ const excessiveFileLoopGuard: ToolGuard = {
   },
 };
 
-const excessiveSearchLoopGuard: ToolGuard = {
-  id: "excessive-search-loop",
+const redundantSearchGuard: ToolGuard = {
+  id: "redundant-search",
   description: "Block repeated search-only churn to force an evidence-based conclusion.",
   appliesTo: ["search-files"],
-  check({ toolName, args, session }) {
+  check({ toolName, args, session, report }) {
     const currentPatterns = extractSearchPatterns(args);
     const currentScope = extractSearchScope(args);
     const redundant = redundantQueryKind({
@@ -220,23 +223,13 @@ const excessiveSearchLoopGuard: ToolGuard = {
       extractScope: extractSearchScope,
     });
     if (redundant === "scope-narrowing") {
-      session.onGuard?.({
-        guardId: "excessive-search-loop",
-        toolName,
-        action: "blocked",
-        detail: "redundant-scope-narrowing",
-      });
+      report("blocked", "redundant-scope-narrowing");
       throw new Error(
         "Redundant scoped search-files call detected. Prior workspace search already covers these patterns.",
       );
     }
     if (redundant === "narrower") {
-      session.onGuard?.({
-        guardId: "excessive-search-loop",
-        toolName,
-        action: "blocked",
-        detail: "narrower-than-prior",
-      });
+      report("blocked", "narrower-than-prior");
       throw new Error(
         "Redundant narrower search-files call detected. Current patterns are already covered by a prior search in the same scope.",
       );
@@ -257,18 +250,18 @@ const excessiveSearchLoopGuard: ToolGuard = {
 
     if (searchCount < 4 || readCount > 0 || writeCount > 0) return;
 
-    session.onGuard?.({ guardId: "excessive-search-loop", toolName, action: "blocked", detail: String(searchCount) });
+    report("blocked", String(searchCount));
     throw new Error(
       "Repeated search-files loop detected without reads/writes. Stop synonym searching and conclude from current evidence.",
     );
   },
 };
 
-const excessiveFindLoopGuard: ToolGuard = {
-  id: "excessive-find-loop",
+const redundantFindGuard: ToolGuard = {
+  id: "redundant-find",
   description: "Block repeated find-only churn to force direct reads or a conclusion.",
   appliesTo: ["find-files"],
-  check({ toolName, args, session }) {
+  check({ toolName, args, session, report }) {
     const currentPatterns = extractFindPatterns(args);
     const currentScope = extractSearchScope(args);
     for (const entry of scopedCallLog(session)) {
@@ -279,12 +272,7 @@ const excessiveFindLoopGuard: ToolGuard = {
       const narrowingScope = isWorkspaceScope(priorScope) && !isWorkspaceScope(currentScope);
       if (!sameScope && !narrowingScope) continue;
       if (includesUniversalFindPattern(priorPatterns)) {
-        session.onGuard?.({
-          guardId: "excessive-find-loop",
-          toolName,
-          action: "blocked",
-          detail: "covered-by-universal-find",
-        });
+        report("blocked", "covered-by-universal-find");
         throw new Error("Redundant find-files call detected. Prior universal find already covers this scope.");
       }
     }
@@ -297,16 +285,11 @@ const excessiveFindLoopGuard: ToolGuard = {
       extractScope: extractSearchScope,
     });
     if (redundant === "scope-narrowing") {
-      session.onGuard?.({
-        guardId: "excessive-find-loop",
-        toolName,
-        action: "blocked",
-        detail: "redundant-scope-narrowing",
-      });
+      report("blocked", "redundant-scope-narrowing");
       throw new Error("Redundant scoped find-files call detected. Prior workspace find already covers these patterns.");
     }
     if (redundant === "narrower") {
-      session.onGuard?.({ guardId: "excessive-find-loop", toolName, action: "blocked", detail: "narrower-than-prior" });
+      report("blocked", "narrower-than-prior");
       throw new Error(
         "Redundant narrower find-files call detected. Current patterns are already covered by a prior find in the same scope.",
       );
@@ -327,7 +310,7 @@ const excessiveFindLoopGuard: ToolGuard = {
 
     if (findCount < 4 || readCount > 0 || writeCount > 0) return;
 
-    session.onGuard?.({ guardId: "excessive-find-loop", toolName, action: "blocked", detail: String(findCount) });
+    report("blocked", String(findCount));
     throw new Error(
       "Repeated find-files loop detected without reads/writes. Stop broad discovery and read the best candidate file(s) directly.",
     );
@@ -338,7 +321,7 @@ const redundantVerifyGuard: ToolGuard = {
   id: "redundant-verify",
   description: "Block redundant verify runs when no writes happened since the last one.",
   appliesTo: ["run-command"],
-  check({ toolName, session }) {
+  check({ session, report }) {
     if (session.mode !== "verify") return;
 
     const calls = scopedCallLog(session);
@@ -360,7 +343,7 @@ const redundantVerifyGuard: ToolGuard = {
       }
     }
     if (!wroteAfterLastVerify) {
-      session.onGuard?.({ guardId: "redundant-verify", toolName, action: "blocked", detail: "duplicate-verify" });
+      report("blocked", "no-writes-since-last-verify");
       throw new Error("verify already ran this turn and no writes happened since; avoid redundant verify reruns.");
     }
   },
@@ -370,18 +353,18 @@ const stepBudgetGuard: ToolGuard = {
   id: "step-budget",
   description: "Enforce per-cycle and total step limits.",
   appliesTo: "all",
-  check({ toolName, session }) {
+  check({ session, report }) {
     const cycleLimit = (session.flags.cycleStepLimit as number | undefined) ?? INITIAL_MAX_STEPS;
     const cycleCount = (session.flags.cycleStepCount as number | undefined) ?? 0;
     const totalLimit = (session.flags.totalStepLimit as number | undefined) ?? TOTAL_MAX_STEPS;
     const totalCount = session.callLog.length;
 
     if (totalCount >= totalLimit) {
-      session.onGuard?.({ guardId: "step-budget", toolName, action: "blocked", detail: "total-limit" });
+      report("blocked", "total-limit");
       throw new Error(`Total step budget exhausted (${totalLimit} tool calls). Commit what you have.`);
     }
     if (cycleCount >= cycleLimit) {
-      session.onGuard?.({ guardId: "step-budget", toolName, action: "blocked", detail: "cycle-limit" });
+      report("blocked", "cycle-limit");
       throw new Error(`Cycle step budget exhausted (${cycleLimit} tool calls). Wrap up current phase.`);
     }
     session.flags.cycleStepCount = cycleCount + 1;
@@ -397,29 +380,32 @@ const modePromotionGuard: ToolGuard = {
   id: "mode-promotion",
   description: "Auto-promote plan → work when a write tool is called.",
   appliesTo: "all",
-  check({ toolName, session }) {
+  check({ toolName, session, report }) {
     if (session.mode !== "plan") return;
     if (modeForTool(toolName) !== "work") return;
     session.mode = "work";
-    session.onGuard?.({ guardId: "mode-promotion", toolName, action: "flag_set", detail: "plan-to-work" });
+    report("flag_set", "plan-to-work");
   },
 };
 
 const GUARDS: ToolGuard[] = [
   stepBudgetGuard,
   modePromotionGuard,
-  duplicateConsecutiveCallGuard,
-  noRewriteGuard,
-  excessiveFileLoopGuard,
-  excessiveFindLoopGuard,
-  excessiveSearchLoopGuard,
+  duplicateCallGuard,
+  preventDeleteRewriteGuard,
+  fileChurnGuard,
+  redundantFindGuard,
+  redundantSearchGuard,
   redundantVerifyGuard,
 ];
 
-export function runGuards(input: GuardInput): void {
+export function runGuards(input: Omit<GuardInput, "report">): void {
   for (const guard of GUARDS) {
     if (guard.appliesTo !== "all" && !guard.appliesTo.includes(input.toolName)) continue;
-    guard.check(input);
+    const report: GuardReport = (action, detail) => {
+      input.session.onGuard?.({ guardId: guard.id, toolName: input.toolName, action, detail });
+    };
+    guard.check({ ...input, report });
   }
 }
 

@@ -75,7 +75,7 @@ describe("mode-promotion guard", () => {
   });
 });
 
-describe("no-rewrite guard", () => {
+describe("no-delete-rewrite guard", () => {
   test("allows delete when path was NOT read", () => {
     const session = createSessionContext();
     expect(() => runGuards({ toolName: "delete-file", args: { path: "src/foo.ts" }, session })).not.toThrow();
@@ -148,7 +148,7 @@ describe("redundant-verify guard", () => {
   });
 });
 
-describe("excessive-file-loop guard", () => {
+describe("file-churn guard", () => {
   test("blocks immediate duplicate read-file call on same path and range", () => {
     const session = createSessionContext();
     recordCall(session, "read-file", { paths: [{ path: "src/foo.ts" }] });
@@ -262,7 +262,7 @@ describe("excessive-file-loop guard", () => {
   });
 });
 
-describe("excessive-search-loop guard", () => {
+describe("redundant-search guard", () => {
   test("blocks duplicate search in same scope", () => {
     const session = createSessionContext();
     recordCall(session, "search-files", { patterns: ["agent", "tool"] });
@@ -330,7 +330,7 @@ describe("excessive-search-loop guard", () => {
   });
 });
 
-describe("excessive-find-loop guard", () => {
+describe("redundant-find guard", () => {
   test("blocks duplicate find in same scope", () => {
     const session = createSessionContext();
     recordCall(session, "find-files", { patterns: ["agent", "tool"] });
@@ -398,7 +398,7 @@ describe("recordCall", () => {
   });
 });
 
-describe("duplicate-consecutive-call guard", () => {
+describe("duplicate-call guard", () => {
   test("blocks immediate duplicate tool calls with same args", () => {
     const session = createSessionContext();
     recordCall(session, "git-status", {});
