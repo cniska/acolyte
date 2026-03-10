@@ -32,7 +32,7 @@ function createRunDeps(): {
     ensureLocalServer: async () => ({ port: 6767, pid: 1234, started: false }),
     hasHelpFlag: (args) => args.includes("--help"),
     handlePrompt: async () => true,
-    newMessage: (role, content) => ({ role, content }) as never,
+    createMessage: (role, content) => ({ role, content }) as never,
     printDim: (message) => calls.dims.push(message),
     printError: (message) => calls.errors.push(message),
     readResolvedConfigSync: () => ({ replyTimeoutMs: 1234 }) as never,

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { appConfig as appConfigType } from "./app-config";
-import type { newMessage as newMessageType } from "./chat-session";
+import type { createMessage as createMessageType } from "./chat-session";
 import type { attachFileToSession as attachFileToSessionType } from "./cli-chat";
 import type { handlePrompt as handlePromptType } from "./cli-prompt";
 import type { createClient as createClientType } from "./client-factory";
@@ -30,7 +30,7 @@ type RunModeDeps = {
   ensureLocalServer: typeof ensureLocalServerType;
   hasHelpFlag: (args: string[]) => boolean;
   handlePrompt: typeof handlePromptType;
-  newMessage: typeof newMessageType;
+  createMessage: typeof createMessageType;
   printDim: (message: string) => void;
   printError: (message: string) => void;
   readResolvedConfigSync: typeof readResolvedConfigSyncType;
@@ -83,7 +83,7 @@ export async function runMode(args: string[], deps: RunModeDeps): Promise<void> 
     ensureLocalServer,
     hasHelpFlag,
     handlePrompt,
-    newMessage,
+    createMessage,
     printDim,
     printError,
     readResolvedConfigSync,
@@ -115,7 +115,7 @@ export async function runMode(args: string[], deps: RunModeDeps): Promise<void> 
 
   const resolvedConfig = readResolvedConfigSync();
   const session = createSession(appModel);
-  session.messages.push(newMessage("system", RUN_MODE_SYSTEM_PROMPT));
+  session.messages.push(createMessage("system", RUN_MODE_SYSTEM_PROMPT));
   const daemon = await ensureLocalServer({
     port: serverPort,
     apiKey: serverApiKey,

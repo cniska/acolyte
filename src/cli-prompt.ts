@@ -1,6 +1,6 @@
 import { stdout as output } from "node:process";
 import { createWorkspaceSpecifier } from "./api";
-import { newMessage } from "./chat-session";
+import { createMessage } from "./chat-session";
 import { formatAssistantReplyOutput, printIndentedDim } from "./cli-format";
 import type { Client } from "./client-contract";
 import { nowIso } from "./datetime";
@@ -92,7 +92,7 @@ export async function handlePrompt(
   client: Client,
   options?: { resourceId?: ResourceId; workspace?: string },
 ): Promise<boolean> {
-  const userMsg = newMessage("user", prompt);
+  const userMsg = createMessage("user", prompt);
   session.messages.push(userMsg);
   setSessionTitle(session, prompt);
 
@@ -159,7 +159,7 @@ export async function handlePrompt(
     } else {
       await assistantRenderer.renderReply(reply.output, hasPrintedToolProgress);
     }
-    const assistantMessage = newMessage("assistant", reply.output);
+    const assistantMessage = createMessage("assistant", reply.output);
     session.messages.push(
       (reply.toolCalls?.length ?? 0) > 0 ? { ...assistantMessage, kind: "tool_payload" } : assistantMessage,
     );

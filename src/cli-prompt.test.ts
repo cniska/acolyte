@@ -1,12 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { newMessage } from "./chat-session";
+import { createMessage } from "./chat-session";
 import { handlePrompt } from "./cli-prompt";
 import type { Client } from "./client-contract";
 import type { Session } from "./session-contract";
 
 describe("cli-prompt", () => {
-  test("newMessage creates a timestamped chat message", () => {
-    const message = newMessage("user", "hello");
+  test("createMessage creates a timestamped chat message", () => {
+    const message = createMessage("user", "hello");
     expect(message.id.startsWith("msg_")).toBe(true);
     expect(message.role).toBe("user");
     expect(message.content).toBe("hello");

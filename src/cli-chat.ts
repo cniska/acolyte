@@ -1,6 +1,6 @@
 import { stdout as output } from "node:process";
 import { appConfig } from "./app-config";
-import { newMessage } from "./chat-session";
+import { createMessage } from "./chat-session";
 import { runInkChat } from "./chat-ui";
 import { resolveCliVersion } from "./cli-version";
 import { createClient } from "./client-factory";
@@ -48,7 +48,7 @@ export function formatResumeCommand(sessionId: string): string {
 
 export async function attachFileToSession(session: Session, filePath: string): Promise<void> {
   const context = await buildFileContext(filePath);
-  session.messages.push(newMessage("system", context));
+  session.messages.push(createMessage("system", context));
   session.updatedAt = nowIso();
 }
 

@@ -1,6 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { appConfig } from "./app-config";
-import { newMessage } from "./chat-session";
+import { createMessage } from "./chat-session";
 import { attachFileToSession, chatModeWithOptions } from "./cli-chat";
 import { configMode } from "./cli-config";
 import type { CliCommand, CliCommandHelp, CliCommandHandler } from "./cli-contract";
@@ -128,7 +128,7 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
         ensureLocalServer,
         hasHelpFlag,
         handlePrompt,
-        newMessage,
+        createMessage,
         printDim,
         printError,
         readResolvedConfigSync,

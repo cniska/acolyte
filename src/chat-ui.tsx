@@ -11,7 +11,7 @@ import { shownBranch, shownCwd } from "./chat-layout";
 import { createMessageHandler } from "./chat-message-handler";
 import type { PickerState } from "./chat-picker";
 import { createPickerHandlers } from "./chat-picker-handlers";
-import { newMessage, toRows } from "./chat-session";
+import { createMessage, toRows } from "./chat-session";
 import { suggestSlashCommands } from "./chat-slash";
 import { enqueueQueuedMessage, resolveQueueSubmit } from "./chat-submit";
 import { ChatTranscript } from "./chat-transcript";
@@ -133,7 +133,7 @@ function ChatApp(props: ChatAppProps) {
     setValue,
     persist,
     toRows,
-    createMessage: newMessage,
+    createMessage: createMessage,
     nowIso,
   });
 
@@ -161,7 +161,7 @@ function ChatApp(props: ChatAppProps) {
     stopWorking: () => setIsWorking(false),
     setProgressText,
     setTokenUsage,
-    createMessage: newMessage,
+    createMessage: createMessage,
     nowIso,
     setInterrupt: (handler) => {
       interruptRef.current = handler;

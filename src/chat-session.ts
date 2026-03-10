@@ -3,7 +3,7 @@ import type { Message } from "./chat-message-contract";
 import { nowIso } from "./datetime";
 import { createId } from "./short-id";
 
-export function newMessage(role: Message["role"], content: string): Message {
+export function createMessage(role: Message["role"], content: string): Message {
   return {
     id: `msg_${createId()}`,
     role,
