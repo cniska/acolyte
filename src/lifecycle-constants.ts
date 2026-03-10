@@ -1,12 +1,6 @@
 export const TOTAL_MAX_STEPS = 200;
 export const INITIAL_MAX_STEPS = 80;
-export const TIMEOUT_RECOVERY_MAX_STEPS = 8;
-export const TIMEOUT_RECOVERY_TIMEOUT_MS = 45_000;
 export const STEP_TIMEOUT_MS = 120_000;
 export const VERIFY_MAX_STEPS = 30;
 export const MAX_UNKNOWN_ERRORS_PER_REQUEST = 2;
 export const MAX_REGENERATIONS_PER_REQUEST = 3;
-export const MAX_REGENERATIONS_PER_EVALUATOR = 2;
-export const MAX_EVALUATOR_CHAIN_REGENERATIONS = 2;
-export const PLAN_PHASE_ENABLED = true;
-export const MAX_PLAN_STEPS = 40;

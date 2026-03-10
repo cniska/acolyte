@@ -1,17 +1,11 @@
 import { type RecoveryAction, recoveryActionForError as resolveRecoveryAction } from "./error-handling";
 import { t } from "./i18n";
 import type { LifecycleInput, RunContext, SavedRegenerationState } from "./lifecycle-contract";
-import {
-  type Evaluator,
-  modeTransition,
-  multiMatchEditEvaluator,
-  timeoutRecovery,
-  verifyCycle,
-} from "./lifecycle-evaluators";
+import { type Evaluator, multiMatchEditEvaluator, verifyCycle } from "./lifecycle-evaluators";
 import { phaseGenerate, setMode, shouldYieldNow } from "./lifecycle-generate";
 import { defaultLifecyclePolicy, type LifecyclePolicy } from "./lifecycle-policy";
 
-const EVALUATORS: Evaluator[] = [multiMatchEditEvaluator, modeTransition, timeoutRecovery, verifyCycle];
+const EVALUATORS: Evaluator[] = [multiMatchEditEvaluator, verifyCycle];
 
 function snapshotState(ctx: RunContext): SavedRegenerationState {
   return {
@@ -32,51 +26,7 @@ export function recoveryActionForError(
   return resolveRecoveryAction(input, policy.maxUnknownErrorsPerRequest);
 }
 
-type RegenGateResult = { allowed: true } | { allowed: false; reason: "chain_cap" | "request_cap" | "evaluator_cap" };
-
-function regenGate(
-  ctx: RunContext,
-  evaluatorId: string,
-  evaluatorRegens: number,
-  chainRegens: number,
-): RegenGateResult {
-  if (chainRegens >= ctx.policy.maxEvaluatorChainRegenerations) {
-    ctx.regenerationLimitHit = true;
-    ctx.debug("lifecycle.eval.skipped", {
-      evaluator: evaluatorId,
-      reason: "chain_cap",
-      chain_regenerations: chainRegens,
-      chain_cap: ctx.policy.maxEvaluatorChainRegenerations,
-    });
-    return { allowed: false, reason: "chain_cap" };
-  }
-  if (ctx.regenerationCount >= ctx.policy.maxRegenerationsPerRequest) {
-    ctx.regenerationLimitHit = true;
-    ctx.debug("lifecycle.eval.skipped", {
-      evaluator: evaluatorId,
-      reason: "request_cap",
-      regeneration_count: ctx.regenerationCount,
-      regeneration_cap: ctx.policy.maxRegenerationsPerRequest,
-    });
-    return { allowed: false, reason: "request_cap" };
-  }
-  if (evaluatorRegens >= ctx.policy.maxRegenerationsPerEvaluator) {
-    ctx.regenerationLimitHit = true;
-    ctx.debug("lifecycle.eval.skipped", {
-      evaluator: evaluatorId,
-      reason: "evaluator_cap",
-      evaluator_regenerations: evaluatorRegens,
-      evaluator_cap: ctx.policy.maxRegenerationsPerEvaluator,
-    });
-    return { allowed: false, reason: "evaluator_cap" };
-  }
-  return { allowed: true };
-}
-
 export async function phaseEvaluate(ctx: RunContext, shouldYield: LifecycleInput["shouldYield"]) {
-  const regenByEvaluator = new Map<string, number>();
-  let evaluatorChainRegenerations = 0;
-
   while (ctx.result) {
     if (shouldYieldNow(ctx, shouldYield)) break;
 
@@ -111,30 +61,33 @@ export async function phaseEvaluate(ctx: RunContext, shouldYield: LifecycleInput
         continue;
       }
 
-      const evaluatorRegens = regenByEvaluator.get(evaluator.id) ?? 0;
-      const gate = regenGate(ctx, evaluator.id, evaluatorRegens, evaluatorChainRegenerations);
-      if (!gate.allowed) continue;
+      if (ctx.regenerationCount >= ctx.policy.maxRegenerationsPerRequest) {
+        ctx.regenerationLimitHit = true;
+        ctx.debug("lifecycle.eval.skipped", {
+          evaluator: evaluator.id,
+          reason: "regeneration_cap",
+          regeneration_count: ctx.regenerationCount,
+          regeneration_cap: ctx.policy.maxRegenerationsPerRequest,
+        });
+        continue;
+      }
 
       const saved = action.keepResult ? snapshotState(ctx) : undefined;
       if (action.mode) setMode(ctx, action.mode, evaluator.id);
 
       ctx.regenerationCount += 1;
-      evaluatorChainRegenerations += 1;
-      regenByEvaluator.set(evaluator.id, evaluatorRegens + 1);
       ctx.debug("lifecycle.eval.decision", {
         evaluator: evaluator.id,
         action: "regenerate",
         mode: ctx.mode,
         cycle_limit: action.cycleLimit ?? ctx.policy.initialMaxSteps,
-        timeout_ms: action.timeoutMs ?? ctx.policy.stepTimeoutMs,
         keep_result: Boolean(action.keepResult),
         regeneration_count: ctx.regenerationCount,
-        evaluator_regenerations: evaluatorRegens + 1,
       });
 
       await phaseGenerate(ctx, action.prompt, {
         cycleLimit: action.cycleLimit ?? ctx.policy.initialMaxSteps,
-        timeoutMs: action.timeoutMs ?? ctx.policy.stepTimeoutMs,
+        timeoutMs: ctx.policy.stepTimeoutMs,
       });
       if (shouldYieldNow(ctx, shouldYield)) break;
 

@@ -3,7 +3,7 @@ import { createErrorStats } from "./error-handling";
 import { scheduleMemoryCommit, shouldCommitMemory } from "./lifecycle";
 import type { RunContext } from "./lifecycle-contract";
 import { recoveryActionForError } from "./lifecycle-evaluate";
-import { modeTransition, multiMatchEditEvaluator, timeoutRecovery, verifyCycle } from "./lifecycle-evaluators";
+import { multiMatchEditEvaluator, verifyCycle } from "./lifecycle-evaluators";
 import { defaultLifecyclePolicy } from "./lifecycle-policy";
 import { LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./tool-error-codes";
 import { createSessionContext, recordCall } from "./tool-guards";
@@ -234,127 +234,6 @@ describe("multiMatchEditEvaluator", () => {
       result: { text: "Attempted edit.", toolCalls: [] },
     });
     expect(multiMatchEditEvaluator.evaluate(ctx).type).toBe("done");
-  });
-});
-
-describe("modeTransition", () => {
-  test("plan→work: transitions when plan produced text and used tools", () => {
-    const ctx = createMockContext({
-      mode: "plan",
-      result: { text: "Analysis: the bug is in foo.ts line 42.", toolCalls: [] },
-      observedTools: new Set(["read-file", "search-files"]),
-      agentInput: "fix the bug",
-    });
-    const action = modeTransition.evaluate(ctx);
-    expect(action.type).toBe("regenerate");
-    if (action.type === "regenerate") {
-      expect(action.mode).toBe("work");
-      expect(action.keepResult).toBe(true);
-      expect(action.prompt).toContain("fix the bug");
-      expect(action.prompt).toContain("Now implement the changes");
-    }
-  });
-
-  test("plan→work: returns done when plan produced no text", () => {
-    const ctx = createMockContext({
-      mode: "plan",
-      result: { text: "", toolCalls: [] },
-      observedTools: new Set(["read-file"]),
-    });
-    expect(modeTransition.evaluate(ctx).type).toBe("done");
-  });
-
-  test("plan→work: returns done when plan used no tools", () => {
-    const ctx = createMockContext({
-      mode: "plan",
-      result: { text: "Simple answer.", toolCalls: [] },
-      observedTools: new Set(),
-    });
-    expect(modeTransition.evaluate(ctx).type).toBe("done");
-  });
-
-  test("work→plan: transitions when work failed without writes", () => {
-    const ctx = createMockContext({
-      mode: "work",
-      result: { text: "Could not find the file.", toolCalls: [] },
-      observedTools: new Set(["read-file", "search-files"]),
-      currentError: { message: "File not found: src/missing.ts" },
-      agentInput: "fix the bug",
-    });
-    const action = modeTransition.evaluate(ctx);
-    expect(action.type).toBe("regenerate");
-    if (action.type === "regenerate") {
-      expect(action.mode).toBe("plan");
-      expect(action.prompt).toContain("fix the bug");
-      expect(action.prompt).toContain("Re-analyze the problem");
-      expect(action.cycleLimit).toBe(defaultLifecyclePolicy.planMaxSteps);
-    }
-  });
-
-  test("work→plan: returns done when work succeeded", () => {
-    const ctx = createMockContext({
-      mode: "work",
-      result: { text: "Done.", toolCalls: [] },
-      observedTools: new Set(["edit-file"]),
-    });
-    expect(modeTransition.evaluate(ctx).type).toBe("done");
-  });
-
-  test("work→plan: returns done when work used write tools", () => {
-    const ctx = createMockContext({
-      mode: "work",
-      result: { text: "Partial progress.", toolCalls: [] },
-      observedTools: new Set(["edit-file"]),
-      currentError: { message: "Some error" },
-    });
-    expect(modeTransition.evaluate(ctx).type).toBe("done");
-  });
-
-  test("returns done when planPhase is disabled", () => {
-    const ctx = createMockContext({
-      mode: "plan",
-      result: { text: "Analysis done.", toolCalls: [] },
-      observedTools: new Set(["read-file"]),
-      policy: { ...defaultLifecyclePolicy, planPhase: false },
-    });
-    expect(modeTransition.evaluate(ctx).type).toBe("done");
-  });
-
-  test("returns done in verify mode", () => {
-    const ctx = createMockContext({
-      mode: "verify",
-      result: { text: "All good.", toolCalls: [] },
-    });
-    expect(modeTransition.evaluate(ctx).type).toBe("done");
-  });
-});
-
-describe("evaluator ordering", () => {
-  test("evaluators run in correct order", () => {
-    const evaluators = [multiMatchEditEvaluator, modeTransition, timeoutRecovery, verifyCycle];
-    expect(evaluators[0].id).toBe("multi-match-edit-evaluator");
-    expect(evaluators[1].id).toBe("mode-transition");
-    expect(evaluators[2].id).toBe("timeout-recovery");
-    expect(evaluators[3].id).toBe("verify-cycle");
-  });
-});
-
-describe("timeoutRecovery", () => {
-  test("uses policy-configured timeout recovery limits", () => {
-    const ctx = createMockContext({
-      currentError: { message: "Step timed out after 120000ms of inactivity", category: "timeout" },
-      policy: {
-        ...defaultLifecyclePolicy,
-        timeoutRecoveryMaxSteps: 3,
-        timeoutRecoveryTimeoutMs: 9_000,
-      },
-    });
-    const action = timeoutRecovery.evaluate(ctx);
-    expect(action.type).toBe("regenerate");
-    if (action.type === "regenerate") {
-      expect(action.cycleLimit).toBe(3);
-      expect(action.timeoutMs).toBe(9_000);
-    }
   });
 });
 

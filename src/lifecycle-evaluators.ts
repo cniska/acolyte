@@ -19,7 +19,6 @@ export type EvalAction =
       prompt: string;
       mode?: AgentMode;
       cycleLimit?: number;
-      timeoutMs?: number;
       keepResult?: boolean;
     };
 
@@ -111,20 +110,6 @@ function scopedVerifyPrompt(ctx: EvaluatorContext): string {
   ].join("\n");
 }
 
-export const timeoutRecovery: Evaluator = {
-  id: "timeout-recovery",
-  evaluate(ctx) {
-    if (!ctx.currentError) return { type: "done" };
-    if (ctx.currentError.category !== "timeout") return { type: "done" };
-    return {
-      type: "regenerate",
-      prompt: ctx.agentInput,
-      cycleLimit: ctx.policy.timeoutRecoveryMaxSteps,
-      timeoutMs: ctx.policy.timeoutRecoveryTimeoutMs,
-    };
-  },
-};
-
 export const verifyCycle: Evaluator = {
   id: "verify-cycle",
   evaluate(ctx) {
@@ -154,41 +139,6 @@ export const verifyCycle: Evaluator = {
       prompt: `${ctx.agentInput}\n\nVerification found issues:\n${ctx.result.text}\n\nFix the issues above, then stop.`,
       mode: "work",
     };
-  },
-};
-
-export const modeTransition: Evaluator = {
-  id: "mode-transition",
-  evaluate(ctx) {
-    if (!ctx.policy.planPhase) return { type: "done" };
-    if (!ctx.result) return { type: "done" };
-
-    if (ctx.mode === "plan") {
-      // Plan → Work: plan produced text and used tools, ready to implement
-      if (!ctx.result.text.trim()) return { type: "done" };
-      if (ctx.observedTools.size === 0) return { type: "done" };
-      return {
-        type: "regenerate",
-        prompt: `${ctx.agentInput}\n\nYour analysis above is complete. Now implement the changes.`,
-        mode: "work",
-        keepResult: true,
-      };
-    }
-
-    if (ctx.mode === "work") {
-      // Work → Plan: work failed without writing anything, re-analyze
-      if (!ctx.currentError) return { type: "done" };
-      const usedWriteTools = WRITE_TOOLS.some((t) => ctx.observedTools.has(t));
-      if (usedWriteTools) return { type: "done" };
-      return {
-        type: "regenerate",
-        prompt: `${ctx.agentInput}\n\nWork failed without writing changes (last error: ${ctx.currentError.message}). Re-analyze the problem.`,
-        mode: "plan",
-        cycleLimit: ctx.policy.planMaxSteps,
-      };
-    }
-
-    return { type: "done" };
   },
 };
 
