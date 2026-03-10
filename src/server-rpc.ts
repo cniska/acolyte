@@ -10,12 +10,12 @@ import type { TaskRegistry } from "./task-registry";
 
 const RPC_MAX_QUEUED_TASKS_PER_CONNECTION = 25;
 
-export type ActiveRpcChatState = {
+type ActiveRpcChatState = {
   aborted: boolean;
   taskId: TaskId;
 };
 
-export type QueuedRpcChat = {
+type QueuedRpcChat = {
   id: RpcRequestId;
   request: ChatRequest;
   state: ActiveRpcChatState;

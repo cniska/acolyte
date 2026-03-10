@@ -21,7 +21,7 @@ const serverLockSchema = z.object({
   startedAt: isoDateTimeSchema,
 });
 
-export type EnsureLocalServerInput = {
+type EnsureLocalServerInput = {
   port: number;
   apiKey?: string;
   serverEntry: string;
@@ -29,19 +29,19 @@ export type EnsureLocalServerInput = {
   timeoutMs?: number;
 };
 
-export type EnsureLocalServerResult = {
+type EnsureLocalServerResult = {
   port: number;
   pid: number;
   started: boolean;
 };
 
-export type LocalServerStatus = {
+type LocalServerStatus = {
   running: boolean;
   pid: number | null;
   port: number;
 };
 
-export type StopResult = {
+type StopResult = {
   stopped: boolean;
   pid: number | null;
 };
