@@ -59,7 +59,7 @@ describe("chat picker actions", () => {
     expect(rows[1]).toMatchObject({
       role: "assistant",
       content: "Resumed session: sess_abc123456789",
-      style: "sessionStatus",
+      style: "sessionStatusOutput",
     });
   });
 

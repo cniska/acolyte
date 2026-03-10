@@ -25,7 +25,7 @@ export type ChatRow = {
   content: string;
   dim?: boolean;
   style?:
-    | "sessionStatus"
+    | "sessionStatusOutput"
     | "sessionsOutput"
     | "toolOutput"
     | "statusOutput"
@@ -267,7 +267,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     ctx.setTokenUsage?.(() => target.tokenUsage);
     ctx.setRows(() => [
       ...ctx.toRows(target.messages),
-      createRow("system", t("chat.resume.resumed", { sessionId: target.id }), { dim: true, style: "sessionStatus" }),
+      createRow("system", t("chat.resume.resumed", { sessionId: target.id }), { dim: true, style: "sessionStatusOutput" }),
     ]);
     ctx.setShowHelp(() => false);
     await ctx.persist();
@@ -485,7 +485,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     ctx.setTokenUsage?.(() => []);
     ctx.setRows(() => [
       createRow("user", text),
-      createRow("system", t("chat.session.started", { sessionId: next.id }), { dim: true, style: "sessionStatus" }),
+      createRow("system", t("chat.session.started", { sessionId: next.id }), { dim: true, style: "sessionStatusOutput" }),
     ]);
     ctx.setValue("");
     ctx.setShowHelp(() => false);

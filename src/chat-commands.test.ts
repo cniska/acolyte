@@ -492,7 +492,7 @@ describe("chat-commands", () => {
     expect(spies.rows[0]).toMatchObject({ role: "user", content: "/new" });
     expect(spies.rows[1]?.role).toBe("system");
     expect(spies.rows[1]?.content.startsWith("Started new session: sess_")).toBe(true);
-    expect(spies.rows[1]?.style).toBe("sessionStatus");
+    expect(spies.rows[1]?.style).toBe("sessionStatusOutput");
     expect(spies.currentSessionIds).toHaveLength(1);
     expect(spies.tokenUsageSets).toEqual([[]]);
     expect(store.sessions).toHaveLength(2);
@@ -525,7 +525,7 @@ describe("chat-commands", () => {
     expect(store.activeSessionId).toBe(target.id);
     expect(spies.currentSessionIds).toEqual([target.id]);
     expect(spies.tokenUsageSets).toEqual([target.tokenUsage]);
-    expect(spies.rows.some((row) => row.style === "sessionStatus" && row.content.startsWith("Resumed session:"))).toBe(
+    expect(spies.rows.some((row) => row.style === "sessionStatusOutput" && row.content.startsWith("Resumed session:"))).toBe(
       true,
     );
   });

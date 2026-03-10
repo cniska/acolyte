@@ -187,7 +187,7 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
           {index > 0 ? <Text> </Text> : null}
           {(() => {
             const sessionStatus =
-              row.role === "assistant" && (row.style === "sessionStatus" || row.style === undefined)
+              row.role === "assistant" && (row.style === "sessionStatusOutput" || row.style === undefined)
                 ? parseSessionStatus(row.content)
                 : null;
             const sessionsOutputHeader = row.style === "sessionsOutput" ? parseSessionsHeader(row.content) : null;
