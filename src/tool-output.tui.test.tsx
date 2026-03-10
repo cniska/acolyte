@@ -117,8 +117,8 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
   test("run-command with text body", () => {
     const items: ToolOutput[] = [
       { kind: "tool-header", label: "Run", detail: "echo hello" },
-      { kind: "text", text: "out | hello" },
-      { kind: "text", text: "out | world" },
+      { kind: "command-output", stream: "stdout", text: "hello" },
+      { kind: "command-output", stream: "stdout", text: "world" },
     ];
     expect(formatToolOutput(items)).toBe(
       dedent(`
@@ -132,10 +132,10 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
   test("run-command with truncated output", () => {
     const items: ToolOutput[] = [
       { kind: "tool-header", label: "Run", detail: "cmd" },
-      { kind: "text", text: "out | line1" },
-      { kind: "text", text: "out | line2" },
+      { kind: "command-output", stream: "stdout", text: "line1" },
+      { kind: "command-output", stream: "stdout", text: "line2" },
       { kind: "truncated", count: 3, unit: "lines" },
-      { kind: "text", text: "out | line6" },
+      { kind: "command-output", stream: "stdout", text: "line6" },
     ];
     expect(formatToolOutput(items)).toBe(
       dedent(`
@@ -236,11 +236,11 @@ describe("tool output TUI — chat (Ink rendering)", () => {
     );
   });
 
-  test("run-command with text body", () => {
+  test("run-command with stdout", () => {
     const items: ToolOutput[] = [
       { kind: "tool-header", label: "Run", detail: "echo hello" },
-      { kind: "text", text: "out | hello" },
-      { kind: "text", text: "out | world" },
+      { kind: "command-output", stream: "stdout", text: "hello" },
+      { kind: "command-output", stream: "stdout", text: "world" },
     ];
     expect(renderChat(items)).toBe(
       dedent(`
@@ -251,13 +251,30 @@ describe("tool output TUI — chat (Ink rendering)", () => {
     );
   });
 
+  test("run-command with mixed stdout and stderr", () => {
+    const items: ToolOutput[] = [
+      { kind: "tool-header", label: "Run", detail: "make" },
+      { kind: "command-output", stream: "stdout", text: "compiling..." },
+      { kind: "command-output", stream: "stderr", text: "warning: unused var" },
+      { kind: "command-output", stream: "stdout", text: "done" },
+    ];
+    expect(renderChat(items)).toBe(
+      dedent(`
+        · Run make
+            out | compiling...
+            err | warning: unused var
+            out | done
+      `),
+    );
+  });
+
   test("run-command with truncated output", () => {
     const items: ToolOutput[] = [
       { kind: "tool-header", label: "Run", detail: "cmd" },
-      { kind: "text", text: "out | line1" },
-      { kind: "text", text: "out | line2" },
+      { kind: "command-output", stream: "stdout", text: "line1" },
+      { kind: "command-output", stream: "stdout", text: "line2" },
       { kind: "truncated", count: 3, unit: "lines" },
-      { kind: "text", text: "out | line6" },
+      { kind: "command-output", stream: "stdout", text: "line6" },
     ];
     expect(renderChat(items)).toBe(
       dedent(`

@@ -50,14 +50,13 @@ function createRunCommandTool(input: ToolkitInput) {
         });
         const headRows = 2;
         const tailRows = 2;
-        const streamed: string[] = [];
+        const streamed: Array<{ stream: "stdout" | "stderr"; text: string }> = [];
         let stdoutBuffer = "";
         let stderrBuffer = "";
-        const recordLine = (message: string): void => {
-          streamed.push(message);
+        const recordLine = (stream: "stdout" | "stderr", text: string): void => {
+          streamed.push({ stream, text });
         };
         const flushBufferLines = (stream: "stdout" | "stderr"): void => {
-          const label = stream === "stdout" ? "out" : "err";
           const source = stream === "stdout" ? stdoutBuffer : stderrBuffer;
           let remaining = source;
           while (true) {
@@ -65,7 +64,7 @@ function createRunCommandTool(input: ToolkitInput) {
             if (newlineIndex === -1) break;
             const line = remaining.slice(0, newlineIndex).trimEnd();
             remaining = remaining.slice(newlineIndex + 1);
-            if (line.length > 0) recordLine(`${label} | ${line}`);
+            if (line.length > 0) recordLine(stream, line);
           }
           if (stream === "stdout") {
             stdoutBuffer = remaining;
@@ -87,9 +86,8 @@ function createRunCommandTool(input: ToolkitInput) {
           },
         );
         const flushRemainder = (stream: "stdout" | "stderr"): void => {
-          const label = stream === "stdout" ? "out" : "err";
           const remainder = (stream === "stdout" ? stdoutBuffer : stderrBuffer).trimEnd();
-          if (remainder.length > 0) recordLine(`${label} | ${remainder}`);
+          if (remainder.length > 0) recordLine(stream, remainder);
           if (stream === "stdout") {
             stdoutBuffer = "";
           } else {
@@ -98,23 +96,26 @@ function createRunCommandTool(input: ToolkitInput) {
         };
         flushRemainder("stdout");
         flushRemainder("stderr");
+        const emitLine = (entry: { stream: "stdout" | "stderr"; text: string }): void => {
+          onOutput({
+            toolName: "run-command",
+            content: { kind: "command-output", stream: entry.stream, text: entry.text },
+            toolCallId,
+          });
+        };
         if (streamed.length > headRows + tailRows) {
           const omitted = streamed.length - (headRows + tailRows);
-          for (const line of streamed.slice(0, headRows))
-            onOutput({ toolName: "run-command", content: { kind: "text", text: line }, toolCallId });
+          for (const line of streamed.slice(0, headRows)) emitLine(line);
           onOutput({
             toolName: "run-command",
             content: { kind: "truncated", count: omitted, unit: "lines" },
             toolCallId,
           });
-          for (const line of streamed.slice(streamed.length - tailRows))
-            onOutput({ toolName: "run-command", content: { kind: "text", text: line }, toolCallId });
+          for (const line of streamed.slice(streamed.length - tailRows)) emitLine(line);
         } else if (streamed.length === 0) {
           onOutput({ toolName: "run-command", content: { kind: "no-output" }, toolCallId });
         } else {
-          for (const line of streamed.slice(0, TOOL_OUTPUT_RUN_MAX_ROWS)) {
-            onOutput({ toolName: "run-command", content: { kind: "text", text: line }, toolCallId });
-          }
+          for (const line of streamed.slice(0, TOOL_OUTPUT_RUN_MAX_ROWS)) emitLine(line);
         }
         const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.run);
         return { kind: "run-command", command: toolInput.command, exitCode: parseExitCode(rawResult), output: result };

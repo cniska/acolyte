@@ -38,6 +38,11 @@ export const toolOutputSchema = z.discriminatedUnion("kind", [
     lineNumber: z.number().int().positive(),
     text: z.string(),
   }),
+  z.object({
+    kind: z.literal("command-output"),
+    stream: z.enum(["stdout", "stderr"]),
+    text: z.string(),
+  }),
   z.object({ kind: z.literal("no-output") }),
   z.object({
     kind: z.literal("truncated"),
@@ -70,6 +75,10 @@ export function renderToolOutput(content: ToolOutput): string {
     case "diff": {
       const prefix = content.marker === "add" ? "+" : content.marker === "remove" ? "-" : " ";
       return `${content.lineNumber} ${prefix}${content.text}`;
+    }
+    case "command-output": {
+      const label = content.stream === "stdout" ? "out" : "err";
+      return `${label} | ${content.text}`;
     }
     case "no-output":
       return t("tool.content.no_output");

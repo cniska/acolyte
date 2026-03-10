@@ -103,6 +103,17 @@ function renderToolLine(item: ToolOutput, index: number, lineNumWidth: number): 
       </Text>
     );
   }
+  if (item.kind === "command-output") {
+    const text = renderToolOutputText(item);
+    return (
+      <Text key={`tool-${index}`}>
+        {"\n  "}
+        <Text dimColor color={item.stream === "stderr" ? "red" : undefined}>
+          {text}
+        </Text>
+      </Text>
+    );
+  }
   const text = renderToolOutputText(item);
   if (item.kind === "truncated" && lineNumWidth > 0) {
     return (
