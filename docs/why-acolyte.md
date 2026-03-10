@@ -10,7 +10,7 @@ Projects compared: [Aider](https://github.com/Aider-AI/aider), [OpenCode](https:
 |---|---|---|---|
 | Architecture | Headless daemon + typed RPC | Pi (SDK with RPC mode) | Monolithic CLI, IDE extension, or web platform |
 | Lifecycle | 5-phase pipeline in separate modules | Goose (phases in one function) | Flat loops or state machines |
-| Tool guards | 8 behavioral guards | OpenClaw (3 detectors) | 5 of 8 have none |
+| Tool guards | 7 behavioral guards | OpenClaw (3 detectors) | 5 of 8 have none |
 | Auto-verification | Evaluator-driven re-generation | Goose (RetryManager) | Prompt-based or none |
 | Task model | First-class tasks with state machine + scoping | OpenHands (controller state) | Inline request handling |
 | CLI | Ink TUI, fuzzy search, autocomplete, structured output | OpenCode (Bubbletea TUI) | Readline loops or IDE-only |
@@ -47,7 +47,7 @@ Every request flows through five explicit phases, each in its own module with it
 classify → prepare → generate → evaluate → finalize
 ```
 
-- **classify**: pick mode (plan/work/verify) and model
+- **classify**: pick mode (work/verify) and model
 - **prepare**: wire tools, session context, and guards
 - **generate**: run the model with tool calls
 - **evaluate**: inspect output, decide accept/retry/re-generate
@@ -57,7 +57,7 @@ No other project separates lifecycle phases into independently testable modules.
 
 ## Tool guards
 
-Eight behavioral guards run before every tool call and block degenerate patterns at runtime:
+Seven behavioral guards run before every tool call and block degenerate patterns at runtime:
 
 | Guard | What it blocks |
 |---|---|
@@ -68,7 +68,6 @@ Eight behavioral guards run before every tool call and block degenerate patterns
 | `redundant-find` | Repeated find-only loops without reads/writes |
 | `redundant-verify` | Re-running verify when nothing changed |
 | `no-delete-rewrite` | Deleting a file that was already read (use edit instead) |
-| `mode-promotion` | Auto-promote plan → work when a write tool is called |
 
 Only OpenClaw (3 detectors: genericRepeat, pingPong, knownPollNoProgress) and OpenHands (StuckDetector + 500-step limit) have comparable systems. Five of eight projects have no guard system at all.
 

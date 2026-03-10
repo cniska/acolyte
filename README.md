@@ -8,7 +8,7 @@ CLI-first AI coding agent with a headless daemon, typed RPC protocol, and an exp
 
 - **Daemon architecture.** The server runs headless. CLI, editor plugins, and custom clients connect over the same typed RPC protocol. The TUI is just another client.
 - **Lifecycle pipeline.** Every request flows through five explicit phases: classify → prepare → generate → evaluate → finalize. Each phase is a separate module with its own tests.
-- **Tool guards.** Eight behavioral guards detect and block degenerate model patterns at runtime — duplicate calls, file churn loops, redundant searches, and more.
+- **Tool guards.** Seven behavioral guards detect and block degenerate model patterns at runtime — duplicate calls, file churn loops, redundant searches, and more.
 - **Auto-verification.** Evaluators inspect generation output and can trigger re-generation, mode transitions, or verify cycles without manual intervention.
 - **Extension seams.** Every core system — lifecycle, tools, guards, memory, transport — exposes clean contracts for customization without a plugin runtime.
 - **Small surface.** 18k source lines, 12 runtime dependencies, 0.90 test/source ratio, 128 avg lines per file, zero barrel files.

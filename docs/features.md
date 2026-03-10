@@ -26,7 +26,7 @@ Update rule:
 
 ## Agent Execution
 
-- Lifecycle-driven execution with plan/work/verify behavior.
+- Lifecycle-driven execution with work/verify behavior.
 - Automatic verify pass after write operations.
 - Task-scoped verify boundaries by default, with opt-in global verify scope.
 - Tool-guarded execution for safer autonomous runs.

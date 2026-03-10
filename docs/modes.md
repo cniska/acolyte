@@ -2,13 +2,11 @@
 
 Acolyte uses explicit operating modes to shape behavior:
 
-- `plan`
 - `work`
 - `verify`
 
 ## Purpose
 
-- **plan**: produce a concrete execution plan.
 - **work**: execute task changes directly.
 - **verify**: validate behavior and report findings.
 
@@ -21,7 +19,6 @@ Acolyte uses explicit operating modes to shape behavior:
 ## Why modes exist
 
 - Keep intent and behavior aligned.
-- Avoid planning in execution flows.
 - Preserve verification as a first-class, explicit phase.
 
 ## Key files

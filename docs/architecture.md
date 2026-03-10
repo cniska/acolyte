@@ -70,7 +70,7 @@ classify -> prepare -> generate -> evaluate -> finalize
 
 ## Modes
 
-- **overview:** explicit operating behaviors are modeled as `plan`, `work`, and `verify`.
+- **overview:** explicit operating behaviors are modeled as `work` and `verify`.
 - **details:** see [modes.md](./modes.md).
 
 ## Memory Engine

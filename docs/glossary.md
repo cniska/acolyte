@@ -31,7 +31,7 @@ Ubiquitous language and naming rules used across Acolyte code and docs.
 - **SessionStore**: read/write/create interface for session persistence.
 - **Task**: lifecycle work request flowing through accept/queue/run/terminal states.
 - **Task Queue**: runtime queue policy/mechanism that orders accepted tasks and enforces capacity/cancellation boundaries.
-- **Mode**: explicit operating behavior profile for a request (`plan`, `work`, `verify`).
+- **Mode**: explicit operating behavior profile for a request (`work`, `verify`).
 - **Provider**: model backend selected by the active model for a request (`openai`, `anthropic`, `gemini`, or `openai-compatible`), not “all configured providers”.
 - **Guard**: pre-tool execution rule that may block calls.
 - **Evaluator**: post-generation rule that accepts or requests regeneration.
