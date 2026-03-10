@@ -13,11 +13,13 @@ Update rule:
 - One-shot run mode.
 - Session resume and session listing.
 - Configurable locale via `config set locale <tag>`.
-- Automatic local server startup/reuse for chat and run mode (local-default config).
+- Fuzzy search and autocomplete with suggestion and correction for file paths, sessions, commands, and skills.
+- Model picker that queries provider APIs for available models.
+- Automatic server startup/reuse for chat and run mode.
 - Server control commands (`start`, `stop`, `restart`, `ps`, `status`).
-- Local-first status guidance when daemon server is not running.
-- Managed vs unmanaged local server state visibility in CLI status/stop flows.
-- Managed local server replacement when local daemon target changes.
+- Status guidance when daemon server is not running.
+- Managed vs unmanaged server state visibility in CLI status/stop flows.
+- Managed server replacement when daemon target changes.
 - `@path` file/directory attachments.
 - Slash command support.
 - Skill invocation via slash commands.
@@ -31,6 +33,7 @@ Update rule:
 - Task-scoped verify boundaries by default, with opt-in global verify scope.
 - Tool-guarded execution for safer autonomous runs.
 - Streaming progress output for tool activity.
+- Proactive token budgeting via tiktoken with system prompt reservation and priority-based allocation.
 
 ## Tools
 
@@ -60,6 +63,6 @@ Update rule:
 - Status command.
 - Token usage reporting.
 - Lifecycle trace logging (defaults to daemon log path, overrideable via `--log`).
-- Managed local daemon log file at `~/.acolyte/server.log`.
+- Managed daemon log file at `~/.acolyte/server.log`.
 - Scoped debug logging via `ACOLYTE_DEBUG` tags (supports wildcard matching).
 - Status output resource diagnostics for prompt/skill/config load problems.

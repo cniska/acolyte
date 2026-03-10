@@ -5,6 +5,7 @@ Developer documentation for Acolyte — a CLI-first AI coding agent with a headl
 ## Overview
 
 - [why-acolyte.md](./why-acolyte.md) — what makes Acolyte different
+- [comparison.md](./comparison.md) — detailed comparison with other agents
 - [benchmarks.md](./benchmarks.md) — measured code quality comparisons
 - [soul.md](./soul.md) — product persona and operating principles
 
@@ -32,4 +33,6 @@ Developer documentation for Acolyte — a CLI-first AI coding agent with a headl
 - [testing.md](./testing.md)
 - [features.md](./features.md)
 - [faq.md](./faq.md)
+- [known-issues.md](./known-issues.md)
+- [resources.md](./resources.md)
 - [roadmap.md](./roadmap.md)

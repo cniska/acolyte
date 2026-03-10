@@ -2,8 +2,6 @@
 
 > **TL;DR** — Acolyte is an open-source AI coding agent that runs as a headless daemon, supports any LLM provider, and gives you full control over agent behavior. It has a 5-phase lifecycle pipeline, behavioral guards, auto-verification, persistent memory with context distillation, and real token budgeting — things most open-source agents don't have, and closed-source agents don't let you customize.
 
-What makes Acolyte different from other AI coding agents, based on direct analysis of their source code.
-
 ## Why open source?
 
 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and [Codex](https://openai.com/index/introducing-codex/) are excellent products. If you're happy with a single provider's CLI and don't need to customize agent behavior, they're the easiest path.
@@ -16,205 +14,43 @@ Open-source agents like Acolyte exist for the cases where that's not enough:
 - **Transparent execution**: every tool call, guard decision, and evaluator action is observable in structured logs — no black box
 - **No vendor lock-in**: your sessions, memory, and configuration are local files you own
 
-Acolyte is designed for developers who want the power of an AI coding agent with full control over how it works.
+Acolyte is designed for developers who want the power of an AI coding agent with full control over how it works. Ready to try it? See [getting-started.md](./getting-started.md).
 
-## Open-source comparison
+## What makes Acolyte different
 
-Projects compared: [Aider](https://github.com/Aider-AI/aider), [OpenCode](https://github.com/anomalyco/opencode), [Pi](https://github.com/badlogic/pi-mono), [Goose](https://github.com/block/goose), [OpenHands](https://github.com/All-Hands-AI/OpenHands), [Continue](https://github.com/continuedev/continue), [Cline](https://github.com/cline/cline), [OpenClaw](https://github.com/openclaw/openclaw).
-
-### At a glance
-
-| Feature | Acolyte | Best competitor | Others |
-|---|---|---|---|
-| Architecture | Headless daemon + typed RPC | Pi (SDK with RPC mode), OpenCode (HTTP/WS server) | IDE extension, web platform, or single-process CLI |
-| Lifecycle | 5-phase pipeline in separate modules | Goose (phases in one function) | Flat loops or state machines |
-| Tool guards | Behavioral guards per tool call | OpenClaw (3 detectors) | Most rely on user confirmation or have none |
-| Auto-verification | Evaluator-driven re-generation | Goose (RetryManager) | Prompt-based or none |
-| Task model | First-class tasks with state machine + scoping | OpenHands (controller state) | Inline request handling |
-| CLI | Ink TUI, fuzzy search, autocomplete, structured output | OpenCode (OpenTUI) | Prompt-toolkit loops or IDE-based |
-| Observability | Structured lifecycle trace tooling | — | None ship agent-readable trace tools |
-| Extension seams | Interface-first boundaries, no plugin runtime | Goose (MCP extensions) | Framework-coupled or none |
-| Dependencies | Fewest runtime deps | Pi (next fewest) | 112–480 |
-| Code quality | Highest type safety, high test ratio | OpenHands (highest test ratio) | See [benchmarks](./benchmarks.md) |
-
-Details for each feature below.
-
-## Daemon architecture
-
-Acolyte runs as a headless daemon. The CLI, future editor plugins, and third-party clients all connect over the same typed RPC protocol. The TUI is just another client — it has no special access to the server.
-
-This means multiple clients can share the same session, and integrations don't require forking the project — they speak the protocol.
-
-| Project | Architecture |
+| Feature | What Acolyte does |
 |---|---|
-| **Acolyte** | Headless daemon + typed RPC clients |
-| Aider | Pure CLI process |
-| OpenCode | HTTP/WebSocket server + TUI/desktop clients |
-| Pi | SDK with RPC as one mode |
-| Goose | Single-process with MCP extensions |
-| Continue | VS Code / JetBrains extension + CLI |
-| Cline | VS Code extension + CLI |
-| OpenHands | Web platform with Docker sandboxing |
-| OpenClaw | Node.js gateway + WebSocket control plane |
+| Architecture | Headless daemon with typed RPC — CLI, editors, and custom clients share the same protocol |
+| Lifecycle | 5-phase pipeline (resolve → prepare → generate → evaluate → finalize) in separate, testable modules |
+| Tool guards | Behavioral guards that detect and block degenerate patterns at runtime |
+| Memory | Context distillation extracts facts from conversations into 3-tier persistent storage |
+| Context budgeting | Proactive token budgeting via tiktoken with system prompt reservation and priority-based allocation |
+| Developer experience | Ink TUI with fuzzy search, autocomplete, model picker, structured output, and AST-based editing |
 
-## Lifecycle pipeline
+### Daemon architecture
 
-Every request flows through five explicit phases, each in its own module with its own tests:
+The server runs headless. CLI, editor plugins, and third-party clients all connect over the same typed RPC protocol. The TUI is just another client — it has no special access. Multiple clients can share a session, and integrations speak the protocol instead of forking the project.
 
-```
-resolve → prepare → generate → evaluate → finalize
-```
+### Lifecycle pipeline
 
-- **resolve**: pick mode (work/verify) and model
-- **prepare**: wire tools, session context, and guards
-- **generate**: run the model with tool calls
-- **evaluate**: inspect output, decide accept/retry/re-generate
-- **finalize**: persist results and emit the response
+Every request flows through five explicit phases, each in its own module with its own tests. Evaluators inspect output after generation and can trigger re-generation, mode transitions, or verify cycles — no manual intervention needed.
 
-No other project separates lifecycle phases into independently testable modules. Goose comes closest with prepare→generate→categorize→execute, but the phases are orchestrated from a single streaming loop. The rest use flat loops or state machines.
+### Tool guards
 
-## Tool guards
+Behavioral guards run before every tool call: step budgets, duplicate detection, file churn limits, redundant search/find/verify blocking, and delete-rewrite prevention. Guards are pluggable — add custom guards without touching the pipeline.
 
-Behavioral guards run before every tool call and block degenerate patterns at runtime:
+### Memory
 
-| Guard | What it blocks |
-|---|---|
-| `step-budget` | Per-cycle and total step limits |
-| `duplicate-call` | Identical consecutive tool calls |
-| `file-churn` | Excessive read/edit loops on the same file |
-| `redundant-search` | Repeated search-only loops without reads/writes |
-| `redundant-find` | Repeated find-only loops without reads/writes |
-| `redundant-verify` | Re-running verify when nothing changed |
-| `no-delete-rewrite` | Deleting a file that was already read (use edit instead) |
+Instead of compressing context under pressure, Acolyte proactively extracts structured facts — observations, reflections, and corrections — and commits them to persistent storage across three tiers: session, project, and user. The pipeline is explicit and each stage is strategy-injectable.
 
-Only OpenClaw (3 detectors: genericRepeat, pingPong, knownPollNoProgress) and OpenHands (StuckDetector + 500-step limit) have comparable automated systems. Others rely on user confirmation (Aider, Cline) or have no behavioral guards.
+### Context budgeting
 
-## Auto-verification
+The system prompt is measured and reserved before history allocation begins. Remaining budget is filled by priority: pinned context → file attachments → history → tool payloads. Older tool outputs are progressively capped. When output is truncated, the model sees an explicit notice — no silent data loss.
 
-After generation, evaluators inspect the result and can trigger:
-- Re-generation with a different tool strategy (e.g. multi-match edit → retry with edit-code)
-- Mode transitions (work → verify after writes)
-- Verify cycles that auto-run project checks and re-generate on failure
+### Developer experience
 
-Goose has a RetryManager with shell-command success checks. OpenHands has a Critic that scores outcomes but doesn't auto-retry. The rest either rely on prompt instructions ("please run the tests") or have no verification at all.
+The CLI ships a full TUI built with [Ink](https://github.com/vadimdemedes/ink): fuzzy search and autocomplete with suggestion and correction for file paths, sessions, commands, and skills. A model picker queries provider APIs for available models. Tool output is structured with typed rendering. AST-based editing and scanning via [ast-grep](https://ast-grep.github.io/).
 
-## Developer experience
+---
 
-The CLI is built with [Ink](https://github.com/vadimdemedes/ink) and ships a full TUI with:
-- Structured tool output with typed rendering (bold labels, colored diffs, dim line numbers)
-- Fuzzy search and autocomplete with suggestion and correction for file paths, sessions, commands, and skills
-- Model picker that queries provider APIs for available models
-- Session management with history navigation
-- Daemon lifecycle commands with Docker-style output (start/stop/status)
-- AST-based code editing and scanning via [ast-grep](https://ast-grep.github.io/)
-- Slash commands and skill invocation
-
-Most competing CLIs use prompt-toolkit (Aider) or custom TUI frameworks (OpenCode's OpenTUI). Several IDE-based agents (Cline, Continue) have added standalone CLIs, but their primary interface remains the extension.
-
-## Observability
-
-The lifecycle emits structured debug events for every tool call, guard decision, evaluator action, and task state transition. A dedicated trace tool (`scripts/lifecycle-trace.ts`) parses daemon logs into compact timelines:
-
-```
-task_id=task_abc123
-2026-03-10T10:00:01 lifecycle.tool.call tool=edit-file path=src/foo.ts
-2026-03-10T10:00:02 lifecycle.tool.result tool=edit-file duration_ms=45 is_error=false
-2026-03-10T10:00:02 lifecycle.guard guard=file-churn tool=read-file action=blocked
-2026-03-10T10:00:03 lifecycle.eval.decision evaluator=verifyCycle action=regenerate
-2026-03-10T10:00:05 lifecycle.summary model_calls=2 total_tool_calls=8 guard_blocked=1
-```
-
-No other project in this comparison ships agent-readable observability tooling for debugging agent behavior.
-
-## Code quality
-
-Acolyte leads on type safety, test density, module size, and dependency count across all eight projects compared. The numbers reflect architectural choices: few deps because the daemon owns the stack with no framework or bundler. Small files because lifecycle phases, guards, and tools are each their own module. High test ratio because each module is independently testable. Runs on [Bun](https://bun.sh) with no bundler or transpiler step.
-
-See [benchmarks.md](./benchmarks.md) for the full measured comparison tables.
-
-## Task architecture
-
-Every chat request becomes a task with an explicit state machine:
-
-```
-accepted → queued → running → completed | failed | cancelled
-```
-
-Tasks are scoped — guards, evaluators, and tool call logs are isolated per task. The RPC protocol exposes task state transitions so clients can show real-time progress. Queue policy controls whether follow-up messages are held until the current task completes or delivered immediately.
-
-Other projects either run requests inline (Aider, Cline) or have implicit task state (OpenHands controller). Only Acolyte models tasks as first-class entities with stable IDs, explicit state transitions, and per-task scoping of all lifecycle behavior.
-
-## Skills and extensibility
-
-Acolyte supports the [SKILL.md standard](https://agentskills.io) for declarative prompt extensions with frontmatter metadata, tool restrictions, and compatibility checks. Skills live in `.agents/skills/` and are invoked via slash commands.
-
-OpenCode, Pi, and Cline also implement the SKILL.md standard. Goose takes a different approach with MCP-based extensions. The rest have limited or no plugin systems.
-
-## Extension seams
-
-Every core system exposes just enough surface for customization without shipping a plugin runtime:
-
-- **Lifecycle**: policy controls for step budgets, timeouts, and regeneration caps
-- **Tools**: toolkit registration with permission categories and guard hooks
-- **Guards**: pluggable guard array — add custom guards without touching the pipeline
-- **Memory**: source registry with injectable normalization and selection strategies
-- **Skills**: declarative SKILL.md files with tool restrictions and compatibility metadata
-- **Transport**: protocol-first design — swap HTTP for WebSocket without changing lifecycle behavior
-- **Config**: layered user/project configuration with structured validation
-
-The principle is "interface-first boundaries" — clean contracts at every seam, but no plugin runtime, no dependency injection container, no extension API to maintain. When you need to extend, you implement a contract. When you don't, the defaults work.
-
-## Memory
-
-Most agents handle growing context through **compaction** — summarizing or truncating the conversation when it hits the token limit. Compaction is lossy by design: it fires under pressure, and important details get silently dropped. The agent forgets what it learned mid-session.
-
-Acolyte takes a different approach with **context distillation**. Instead of compressing the conversation after the fact, the memory pipeline proactively extracts structured facts — observations, reflections, and corrections — from each conversation and commits them to persistent storage. These facts are recalled in future sessions, not just the current one.
-
-Three-tier memory with async commit:
-- **Session**: conversation context within a session
-- **Project**: project-scoped persistent facts (e.g. architecture decisions, naming conventions)
-- **User**: cross-project preferences (e.g. commit style, tool choices)
-
-The pipeline is explicit:
-
-```
-ingest → normalize → select → inject → commit
-```
-
-Each stage is strategy-injectable behind registry contracts — no monolithic summarizer, no opaque compression step.
-
-| Project | Approach |
-|---|---|
-| **Acolyte** | Context distillation to 3-tier persistent memory |
-| OpenHands | Microagent recall + condenser pipeline (9+ strategies) |
-| OpenClaw | Vector search via LanceDB extension |
-| Goose | Session search/recall via MCP tool |
-| Continue | Codebase embeddings (deprecated in favor of agent mode) |
-| Aider | Repository map + optional chat history restore |
-| Cline | Task history persistence + checkpoints |
-| OpenCode, Pi | No cross-session memory |
-
-The current implementation is recency-based — there is no vector/semantic search. For a coding agent this is a reasonable tradeoff: the most relevant context is almost always the most recent. Semantic recall is on the roadmap for cases where older facts matter.
-
-## Context budgeting
-
-Most agents manage context reactively — compacting or truncating when the window fills up. Acolyte budgets proactively before assembly.
-
-Acolyte uses structured token budgeting via [tiktoken](https://github.com/openai/tiktoken):
-
-- **System prompt reservation**: the system prompt (soul, instructions, memory context) is measured first and its cost is reserved before history allocation begins
-- **Priority-based filling**: pinned context (skills, memory) → file attachments → conversational history → tool payloads, each with configurable per-message caps
-- **Age-based tool compaction**: recent tool outputs get full budget; older outputs are progressively capped (600 → 200 → 120 → 60 tokens based on age)
-- **Visible truncation**: when output is compacted, the model sees an explicit truncation notice — no silent data loss
-
-| Project | Token budgeting |
-|---|---|
-| **Acolyte** | Proactive budgeting with tiktoken, system prompt reservation, priority-based allocation |
-| OpenHands | Condenser pipeline (LLM summarization, attention, forgetting strategies) |
-| Goose | LLM-based summarization with tiktoken + progressive fallback |
-| OpenCode | LLM-based compaction + tool output pruning |
-| Aider | Repository map with token-aware PageRank ranking |
-| OpenClaw | Token counting with provider-catalog context limits |
-| Cline | ContextManager with window-aware truncation |
-| Pi | Compaction with branch summarization |
-| Continue | Configurable retrieval parameters |
+For a detailed comparison with other open-source agents, see [comparison.md](./comparison.md). For measured code quality metrics, see [benchmarks.md](./benchmarks.md).
