@@ -1,7 +1,10 @@
 import { appConfig } from "./app-config";
 import { isProviderAvailable } from "./provider-config";
 import type { Provider } from "./provider-contract";
-import { normalizeBaseUrl } from "./url-utils";
+
+function normalizeBaseUrl(url: string): string {
+  return url.replace(/\/+$/, "");
+}
 
 type ProviderFetchConfig = {
   apiKey?: string;
