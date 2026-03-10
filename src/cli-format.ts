@@ -22,45 +22,19 @@ export function displayPath(pathInput: string): string {
   return rel;
 }
 
-const ANSI = {
-  green: "\x1b[32m",
-  red: "\x1b[31m",
-  dim: "\x1b[2m",
-  reset: "\x1b[39m",
-  resetDim: "\x1b[22m",
-} as const;
-
-function colorizeDiffLine(line: string): string {
-  if (line.startsWith("@@ ")) return `${ANSI.dim}${line}${ANSI.resetDim}`;
-  if (line.startsWith("+") && !line.startsWith("+++")) return `${ANSI.green}${line}${ANSI.reset}`;
-  if (line.startsWith("-") && !line.startsWith("---")) return `${ANSI.red}${line}${ANSI.reset}`;
-  if (line.startsWith("… +")) return `${ANSI.dim}${line}${ANSI.resetDim}`;
-  return line;
+export function printIndentedDim(content: string): void {
+  for (const line of content.split("\n")) {
+    printDim(line.length > 0 ? `  ${line}` : "");
+  }
 }
 
-export function showToolResult(
-  title: string,
-  content: string,
-  style: "plain" | "tool" | "diff" = "plain",
-  detail?: string,
-): void {
+export function showToolResult(title: string, content: string, detail?: string): void {
   printToolHeader(title, detail);
-  const lines = content.split("\n");
-  if (lines.length === 0) {
-    printDim("  └ (no output)");
+  if (content.length === 0) {
+    printDim("  (no output)");
     return;
   }
-
-  for (let i = 0; i < lines.length; i += 1) {
-    const prefix = i === 0 ? "  └ " : "    ";
-    if (style === "tool") {
-      printOutput(`${prefix}${lines[i]}`);
-    } else if (style === "diff") {
-      printOutput(`${prefix}${colorizeDiffLine(lines[i] ?? "")}`);
-    } else {
-      printOutput(`${prefix}${lines[i]}`);
-    }
-  }
+  printIndentedDim(content);
 }
 
 export function clampLines(lines: string[], maxLines: number, overflowTolerance = 4): string[] {

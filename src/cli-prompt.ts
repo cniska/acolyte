@@ -1,7 +1,7 @@
 import { stdout as output } from "node:process";
 import { createWorkspaceSpecifier } from "./api";
 import { newMessage } from "./chat-session";
-import { formatAssistantReplyOutput } from "./cli-format";
+import { formatAssistantReplyOutput, printIndentedDim } from "./cli-format";
 import type { Client } from "./client-contract";
 import { nowIso } from "./datetime";
 import { formatPromptError } from "./error-messages";
@@ -132,15 +132,13 @@ export async function handlePrompt(
                 const before = previous.trimEnd();
                 if (current === before) break;
                 if (current.startsWith(`${before}\n`)) {
-                  const delta = current.slice(before.length + 1);
-                  const lines = delta.split("\n");
-                  printDim(lines.map((line) => (line.length > 0 ? `  ${line}` : "")).join("\n"));
+                  printIndentedDim(current.slice(before.length + 1));
                   hasPrintedToolProgress = true;
                   break;
                 }
               }
-              const lines = rendered.split("\n");
-              printDim(lines.map((line, i) => (i === 0 ? `• ${line}` : line.length > 0 ? `  ${line}` : "")).join("\n"));
+              printDim(`• ${rendered.split("\n")[0] ?? ""}`);
+              if (rendered.includes("\n")) printIndentedDim(rendered.slice(rendered.indexOf("\n") + 1));
               hasPrintedToolProgress = true;
               break;
             }
