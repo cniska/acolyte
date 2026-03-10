@@ -1,81 +1,5 @@
-import type { CliCommandDoc } from "./cli-contract";
-import { CLI_TOOL_IDS } from "./cli-tool";
+import type { CliCommandHelp } from "./cli-contract";
 import { t } from "./i18n";
-
-const SUBCOMMANDS: Record<string, CliCommandDoc> = {
-  resume: {
-    command: "resume [id-prefix]",
-    usage: "acolyte resume [id-prefix]",
-    description: t("cli.help.desc.resume"),
-    examples: ["acolyte resume", "acolyte resume sess_abc123"],
-  },
-  run: {
-    command: "run <prompt>",
-    usage: "acolyte run [--file <path>] [--workspace <path>] <prompt>",
-    description: t("cli.help.desc.run"),
-    examples: ['acolyte run "summarize README.md"', 'acolyte run --file src/cli.ts "refactor help text"'],
-  },
-  init: {
-    command: "init [provider]",
-    usage: "acolyte init [openai|anthropic|google]",
-    description: t("cli.help.desc.init"),
-    examples: ["acolyte init", "acolyte init openai"],
-  },
-  history: {
-    command: "history",
-    usage: "acolyte history",
-    description: t("cli.help.desc.history"),
-    examples: ["acolyte history"],
-  },
-  start: {
-    command: "start",
-    usage: "acolyte start",
-    description: t("cli.help.desc.start"),
-    examples: ["acolyte start"],
-  },
-  stop: {
-    command: "stop",
-    usage: "acolyte stop",
-    description: t("cli.help.desc.stop"),
-    examples: ["acolyte stop"],
-  },
-  restart: {
-    command: "restart",
-    usage: "acolyte restart",
-    description: t("cli.help.desc.restart"),
-    examples: ["acolyte restart"],
-  },
-  ps: {
-    command: "ps",
-    usage: "acolyte ps",
-    description: t("cli.help.desc.ps"),
-    examples: ["acolyte ps"],
-  },
-  status: {
-    command: "status",
-    usage: "acolyte status",
-    description: t("cli.help.desc.status"),
-    examples: ["acolyte status"],
-  },
-  memory: {
-    command: "memory",
-    usage: "acolyte memory <list|add> [options]",
-    description: t("cli.help.desc.memory"),
-    examples: ["acolyte memory list", 'acolyte memory add --project "prefer bun run verify"'],
-  },
-  config: {
-    command: "config",
-    usage: "acolyte config <list|set|unset> [options]",
-    description: t("cli.help.desc.config"),
-    examples: ["acolyte config list", "acolyte config set model gpt-5-mini", "acolyte config unset port"],
-  },
-  tool: {
-    command: "tool",
-    usage: `acolyte tool <${CLI_TOOL_IDS.join("|")}> ...`,
-    description: t("cli.help.desc.tool"),
-    examples: ['acolyte tool find-files "src/**/*.ts"', 'acolyte tool run-command "bun run verify"'],
-  },
-};
 
 type Print = (text: string) => void;
 
@@ -83,40 +7,43 @@ export function printLineBreak(print: Print): void {
   print("");
 }
 
-export function subcommandHelp(name: string, printDim: Print): void {
-  const entry = SUBCOMMANDS[name];
-  if (!entry) return;
-  printDim(t("cli.help.label.usage", { usage: entry.usage }));
+export function commandHelp(doc: CliCommandHelp | undefined, printDim: Print): void {
+  if (!doc) return;
+  printDim(t("cli.help.label.usage", { usage: doc.usage }));
   printLineBreak(printDim);
-  printDim(t("cli.help.label.description", { description: entry.description }));
-  if (entry.examples.length === 0) return;
+  printDim(t("cli.help.label.description", { description: doc.description }));
+  if (doc.examples.length === 0) return;
   printLineBreak(printDim);
   printDim(t("cli.help.examples"));
-  for (const example of entry.examples) printDim(`  ${example}`);
+  for (const example of doc.examples) printDim(`  ${example}`);
 }
 
-export function subcommandError(name: string, printError: Print, message?: string): void {
-  const entry = SUBCOMMANDS[name];
-  printError(message ?? `Usage: ${entry?.usage ?? `acolyte ${name}`}`);
+export function commandError(doc: CliCommandHelp | undefined, name: string, printError: Print, message?: string): void {
+  printError(message ?? `Usage: ${doc?.usage ?? `acolyte ${name}`}`);
   process.exitCode = 1;
 }
 
-export function buildUsageCommandRows(): Array<{ command: string; description: string }> {
-  return Object.values(SUBCOMMANDS)
+export function createUsageCommandRows(docs: CliCommandHelp[]): Array<{ command: string; description: string }> {
+  return docs
     .filter((entry) => entry.command !== "tool")
     .map((entry) => ({ command: entry.command, description: entry.description }));
 }
 
-export function buildUsageOptionRows(): Array<{ option: string; description: string }> {
+export function createUsageOptionRows(): Array<{ option: string; description: string }> {
   return [
     { option: "-h, --help", description: t("cli.help.option.help") },
     { option: "-V, --version", description: t("cli.help.option.version") },
   ];
 }
 
-export function printUsage(version: string, printOutput: Print, formatCliTitle: (version: string) => string): void {
-  const commands = buildUsageCommandRows();
-  const options = buildUsageOptionRows();
+export function printUsage(
+  version: string,
+  docs: CliCommandHelp[],
+  printOutput: Print,
+  formatCliTitle: (version: string) => string,
+): void {
+  const commands = createUsageCommandRows(docs);
+  const options = createUsageOptionRows();
   const sharedPad =
     Math.max(
       commands.reduce((max, row) => Math.max(max, row.command.length), 0),

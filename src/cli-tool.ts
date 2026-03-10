@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { subcommandHelp } from "./cli-command-registry";
+import { commandHelp } from "./cli-command-registry";
 import {
   displayPath,
   formatEditUpdateOutput,
@@ -46,11 +46,12 @@ function label(toolId: string): string {
   return toolDefinitionsById[toolId]?.label ?? toolId;
 }
 
-function requireArg(rest: string[], usage: string): string {
+function requireArg(rest: string[], usage: string): string | null {
   const value = rest.join(" ").trim();
-  if (!value) {
+  if (value.length === 0) {
     printError(usage);
     process.exitCode = 1;
+    return null;
   }
   return value;
 }
@@ -156,11 +157,11 @@ const TOOL_HANDLERS: Record<string, ToolHandler> = {
   },
 };
 
-export const CLI_TOOL_IDS = Object.keys(TOOL_HANDLERS);
+const CLI_TOOL_IDS = Object.keys(TOOL_HANDLERS);
 
 export async function toolMode(args: string[]): Promise<void> {
   if (hasHelpFlag(args)) {
-    subcommandHelp("tool");
+    commandHelp("tool");
     return;
   }
   try {

@@ -8,8 +8,8 @@ type MemoryModeDeps = {
   hasHelpFlag: (args: string[]) => boolean;
   listMemories: typeof listMemoriesType;
   printDim: (message: string) => void;
-  subcommandError: (name: string, message?: string) => void;
-  subcommandHelp: (name: string) => void;
+  commandError: (name: string, message?: string) => void;
+  commandHelp: (name: string) => void;
 };
 
 function printMemoryRows(
@@ -30,9 +30,9 @@ function printMemoryRows(
 }
 
 export async function memoryMode(args: string[], deps: MemoryModeDeps): Promise<void> {
-  const { addMemory, hasHelpFlag, listMemories, printDim, subcommandError, subcommandHelp } = deps;
+  const { addMemory, hasHelpFlag, listMemories, printDim, commandError, commandHelp } = deps;
   if (hasHelpFlag(args)) {
-    subcommandHelp("memory");
+    commandHelp("memory");
     return;
   }
   const [subcommand, ...rest] = args;
@@ -41,12 +41,12 @@ export async function memoryMode(args: string[], deps: MemoryModeDeps): Promise<
   if (subcommand === "list" || !subcommand) {
     const scopeRaw = subcommand === "list" ? rest[0] : undefined;
     if (subcommand === "list" && rest.length > 1) {
-      subcommandError("memory", t("cli.memory.usage.list"));
+      commandError("memory", t("cli.memory.usage.list"));
       return;
     }
     const scope = scopeRaw && validScopes.has(scopeRaw) ? scopeRaw : "all";
     if (scopeRaw && !validScopes.has(scopeRaw)) {
-      subcommandError("memory", t("cli.memory.usage.list"));
+      commandError("memory", t("cli.memory.usage.list"));
       return;
     }
     const rows = await listMemories({ scope: scope as "all" | "user" | "project" });
@@ -70,7 +70,7 @@ export async function memoryMode(args: string[], deps: MemoryModeDeps): Promise<
     }
     const content = contentParts.join(" ").trim();
     if (!content) {
-      subcommandError("memory", t("cli.memory.usage.add"));
+      commandError("memory", t("cli.memory.usage.add"));
       return;
     }
     const entry = await addMemory(content, { scope });
@@ -78,5 +78,5 @@ export async function memoryMode(args: string[], deps: MemoryModeDeps): Promise<
     return;
   }
 
-  subcommandError("memory");
+  commandError("memory");
 }

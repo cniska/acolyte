@@ -10,19 +10,19 @@ function createDeps(overrides?: Partial<HistoryDeps>): { deps: HistoryDeps; outp
     hasHelpFlag: () => false,
     printDim: (message) => lines.push(message),
     readStore: async () => ({ activeSessionId: undefined, sessions: [] }),
-    subcommandError: () => {},
-    subcommandHelp: () => {},
+    commandError: () => {},
+    commandHelp: () => {},
     ...overrides,
   };
   return { deps, output: () => lines.join("\n") };
 }
 
 describe("cli-history", () => {
-  test("help flag calls subcommandHelp", async () => {
+  test("help flag calls commandHelp", async () => {
     let called = false;
     const { deps } = createDeps({
       hasHelpFlag: () => true,
-      subcommandHelp: (name) => {
+      commandHelp: (name) => {
         expect(name).toBe("history");
         called = true;
       },
@@ -31,10 +31,10 @@ describe("cli-history", () => {
     expect(called).toBe(true);
   });
 
-  test("extra args calls subcommandError", async () => {
+  test("extra args calls commandError", async () => {
     let called = false;
     const { deps } = createDeps({
-      subcommandError: (name) => {
+      commandError: (name) => {
         expect(name).toBe("history");
         called = true;
       },

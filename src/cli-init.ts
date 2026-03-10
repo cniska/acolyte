@@ -19,8 +19,8 @@ type InitModeDeps = {
   printDim: (message: string) => void;
   printError: (message: string) => void;
   readFile: typeof readFileType;
-  subcommandError: (name: string, message?: string) => void;
-  subcommandHelp: (name: string) => void;
+  commandError: (name: string, message?: string) => void;
+  commandHelp: (name: string) => void;
   writeFile: typeof writeFileType;
 };
 
@@ -112,16 +112,16 @@ export async function initMode(args: string[], deps: InitModeDeps): Promise<void
     printError,
     prompt: promptFn,
     readFile,
-    subcommandError,
-    subcommandHelp,
+    commandError,
+    commandHelp,
     writeFile,
   } = deps;
   if (hasHelpFlag(args)) {
-    subcommandHelp("init");
+    commandHelp("init");
     return;
   }
   if (args.length > 1) {
-    subcommandError("init");
+    commandError("init");
     return;
   }
 

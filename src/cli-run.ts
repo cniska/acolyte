@@ -38,8 +38,8 @@ type RunModeDeps = {
   serverApiKey: typeof appConfigType.server.apiKey;
   serverEntry: string;
   serverPort: typeof appConfigType.server.port;
-  subcommandError: (name: string, message?: string) => void;
-  subcommandHelp: (name: string) => void;
+  commandError: (name: string, message?: string) => void;
+  commandHelp: (name: string) => void;
 };
 
 export function runResourceId(sessionId: string): ResourceId {
@@ -91,11 +91,11 @@ export async function runMode(args: string[], deps: RunModeDeps): Promise<void> 
     serverApiKey,
     serverEntry,
     serverPort,
-    subcommandError,
-    subcommandHelp,
+    commandError,
+    commandHelp,
   } = deps;
   if (hasHelpFlag(args)) {
-    subcommandHelp("run");
+    commandHelp("run");
     return;
   }
   let parsed: ParsedRunArgs;
@@ -109,7 +109,7 @@ export async function runMode(args: string[], deps: RunModeDeps): Promise<void> 
   }
 
   if (!parsed.prompt) {
-    subcommandError("run");
+    commandError("run");
     return;
   }
 

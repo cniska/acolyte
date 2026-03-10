@@ -14,8 +14,8 @@ type DaemonModeDeps = {
   port: number;
   printDim: (message: string) => void;
   serverEntry: string;
-  subcommandError: (name: string, message?: string) => void;
-  subcommandHelp: (name: string) => void;
+  commandError: (name: string, message?: string) => void;
+  commandHelp: (name: string) => void;
   ensureLocalServer: typeof ensureLocalServer;
   listRunningDaemons: typeof listRunningDaemons;
   localServerStatus: typeof localServerStatus;
@@ -26,10 +26,10 @@ type DaemonModeDeps = {
 
 export async function startMode(args: string[], deps: DaemonModeDeps): Promise<void> {
   if (deps.hasHelpFlag(args)) {
-    deps.subcommandHelp("start");
+    deps.commandHelp("start");
     return;
   }
-  if (args.length > 0) return deps.subcommandError("start");
+  if (args.length > 0) return deps.commandError("start");
   const result = await deps.ensureLocalServer({ port: deps.port, apiKey: deps.apiKey, serverEntry: deps.serverEntry });
   if (result.started) deps.printDim(t("cli.server.started", { port: deps.port, pid: result.pid }));
   else deps.printDim(t("cli.server.already_running", { port: deps.port, pid: result.pid }));
@@ -37,10 +37,10 @@ export async function startMode(args: string[], deps: DaemonModeDeps): Promise<v
 
 export async function stopMode(args: string[], deps: DaemonModeDeps): Promise<void> {
   if (deps.hasHelpFlag(args)) {
-    deps.subcommandHelp("stop");
+    deps.commandHelp("stop");
     return;
   }
-  if (args.length > 0) return deps.subcommandError("stop");
+  if (args.length > 0) return deps.commandError("stop");
   const stopped = await deps.stopAllLocalServers({ apiKey: deps.apiKey });
   if (stopped.length === 0) {
     const shutdown = await deps.requestLocalServerShutdown({ port: deps.port, apiKey: deps.apiKey });
@@ -58,10 +58,10 @@ export async function stopMode(args: string[], deps: DaemonModeDeps): Promise<vo
 
 export async function restartMode(args: string[], deps: DaemonModeDeps): Promise<void> {
   if (deps.hasHelpFlag(args)) {
-    deps.subcommandHelp("restart");
+    deps.commandHelp("restart");
     return;
   }
-  if (args.length > 0) return deps.subcommandError("restart");
+  if (args.length > 0) return deps.commandError("restart");
   const stopResult = await deps.stopLocalServer({ port: deps.port, apiKey: deps.apiKey });
   if (!stopResult.stopped) {
     const shutdown = await deps.requestLocalServerShutdown({ port: deps.port, apiKey: deps.apiKey });
@@ -91,10 +91,10 @@ function formatUptime(startedAt: string): string {
 
 export async function psMode(args: string[], deps: DaemonModeDeps): Promise<void> {
   if (deps.hasHelpFlag(args)) {
-    deps.subcommandHelp("ps");
+    deps.commandHelp("ps");
     return;
   }
-  if (args.length > 0) return deps.subcommandError("ps");
+  if (args.length > 0) return deps.commandError("ps");
   const daemons = await deps.listRunningDaemons();
   if (daemons.length === 0) {
     deps.printDim(t("cli.server.no_servers_running"));

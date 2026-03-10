@@ -17,8 +17,8 @@ function createDeps(overrides?: Partial<ConfigModeDeps>): {
     readConfig: async () => ({}),
     readConfigForScope: async () => ({}),
     setConfigValue: async () => {},
-    subcommandError: () => {},
-    subcommandHelp: () => {},
+    commandError: () => {},
+    commandHelp: () => {},
     unsetConfigValue: async () => {},
     ...overrides,
   };

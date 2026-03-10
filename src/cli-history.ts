@@ -7,8 +7,8 @@ type HistoryModeDeps = {
   hasHelpFlag: (args: string[]) => boolean;
   printDim: (message: string) => void;
   readStore: typeof readStoreType;
-  subcommandError: (name: string, message?: string) => void;
-  subcommandHelp: (name: string) => void;
+  commandError: (name: string, message?: string) => void;
+  commandHelp: (name: string) => void;
 };
 
 function listSessions(store: Awaited<ReturnType<typeof readStoreType>>, printDim: (message: string) => void): void {
@@ -26,13 +26,13 @@ function listSessions(store: Awaited<ReturnType<typeof readStoreType>>, printDim
 }
 
 export async function historyMode(args: string[], deps: HistoryModeDeps): Promise<void> {
-  const { hasHelpFlag, printDim, readStore, subcommandError, subcommandHelp } = deps;
+  const { hasHelpFlag, printDim, readStore, commandError, commandHelp } = deps;
   if (hasHelpFlag(args)) {
-    subcommandHelp("history");
+    commandHelp("history");
     return;
   }
   if (args.length > 0) {
-    subcommandError("history");
+    commandError("history");
     return;
   }
   const store = await readStore();

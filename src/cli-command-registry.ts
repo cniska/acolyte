@@ -3,13 +3,9 @@ import { appConfig } from "./app-config";
 import { newMessage } from "./chat-session";
 import { attachFileToSession, chatModeWithOptions } from "./cli-chat";
 import { configMode } from "./cli-config";
-import type { CliCommandHandler } from "./cli-contract";
+import type { CliCommand, CliCommandHelp, CliCommandHandler } from "./cli-contract";
 import { psMode, restartMode, startMode, stopMode } from "./cli-daemon";
-import {
-  printUsage,
-  subcommandError as subcommandErrorFromHelp,
-  subcommandHelp as subcommandHelpFromHelp,
-} from "./cli-help";
+import { commandError as commandErrorFromHelp, commandHelp as commandHelpFromHelp, printUsage } from "./cli-help";
 import { historyMode } from "./cli-history";
 import { initMode } from "./cli-init";
 import { memoryMode } from "./cli-memory";
@@ -21,6 +17,7 @@ import { toolMode } from "./cli-tool";
 import { createClient } from "./client-factory";
 import { readConfig, readConfigForScope, readResolvedConfigSync, setConfigValue, unsetConfigValue } from "./config";
 
+import { t } from "./i18n";
 import { addMemory, listMemories } from "./memory";
 import {
   apiUrlForPort,
@@ -34,16 +31,21 @@ import { formatStatusOutput as formatStatusOutputShared } from "./status-format"
 import { createSession, readStore } from "./storage";
 import { formatCliTitle, printDim, printError, printOutput } from "./ui";
 
-export function subcommandHelp(name: string): void {
-  subcommandHelpFromHelp(name, printDim);
+function docFor(name: string): CliCommandHelp | undefined {
+  return COMMAND_REGISTRY[name]?.doc;
 }
 
-export function subcommandError(name: string, message?: string): void {
-  subcommandErrorFromHelp(name, printError, message);
+export function commandHelp(name: string): void {
+  commandHelpFromHelp(docFor(name), printDim);
+}
+
+export function commandError(name: string, message?: string): void {
+  commandErrorFromHelp(docFor(name), name, printError, message);
 }
 
 export function usage(version: string): void {
-  printUsage(version, printOutput, formatCliTitle);
+  const docs = Object.values(COMMAND_REGISTRY).map((entry) => entry.help);
+  printUsage(version, docs, printOutput, formatCliTitle);
 }
 
 function hasHelpFlag(args: string[]): boolean {
@@ -52,11 +54,11 @@ function hasHelpFlag(args: string[]): boolean {
 
 async function resumeMode(args: string[]): Promise<void> {
   if (hasHelpFlag(args)) {
-    subcommandHelp("resume");
+    commandHelp("resume");
     return;
   }
   if (args.length > 1) {
-    subcommandError("resume");
+    commandError("resume");
     return;
   }
   const resumePrefix = args[0]?.trim() || undefined;
@@ -70,8 +72,8 @@ const daemonDeps = {
   printDim,
   requestLocalServerShutdown,
   serverEntry: `${import.meta.dir}/server.ts`,
-  subcommandError,
-  subcommandHelp,
+  commandError,
+  commandHelp,
   ensureLocalServer,
   listRunningDaemons,
   localServerStatus,
@@ -79,88 +81,188 @@ const daemonDeps = {
   stopAllLocalServers,
 };
 
-export const commands: Record<string, CliCommandHandler> = {
-  init: (args) =>
-    initMode(args, {
-      cwd: process.cwd,
-      hasHelpFlag,
-      prompt: (message) => prompt(message),
-      printDim,
-      printError,
-      readFile,
-      subcommandError,
-      subcommandHelp,
-      writeFile,
-    }),
-  resume: resumeMode,
-  run: (args) =>
-    runMode(args, {
-      apiUrlForPort,
-      appModel: appConfig.model,
-      attachFileToSession,
-      createClient,
-      createSession,
-      ensureLocalServer,
-      hasHelpFlag,
-      handlePrompt,
-      newMessage,
-      printDim,
-      printError,
-      readResolvedConfigSync,
-      runResourceId,
-      serverApiKey: appConfig.server.apiKey,
-      serverEntry: `${import.meta.dir}/server.ts`,
-      serverPort: appConfig.server.port,
-      subcommandError,
-      subcommandHelp,
-    }),
-  history: (args) =>
-    historyMode(args, {
-      hasHelpFlag,
-      printDim,
-      readStore,
-      subcommandError,
-      subcommandHelp,
-    }),
-  start: (args) => startMode(args, daemonDeps),
-  stop: (args) => stopMode(args, daemonDeps),
-  restart: (args) => restartMode(args, daemonDeps),
-  ps: (args) => psMode(args, daemonDeps),
-  status: (args) =>
-    statusMode(args, {
-      apiUrlForPort,
-      createClient,
-      formatStatusOutput: formatStatusOutputShared,
-      hasHelpFlag,
-      isServerConnectionFailure,
-      localServerStatus,
-      printDim,
-      printError,
-      serverApiKey: appConfig.server.apiKey,
-      serverPort: appConfig.server.port,
-      subcommandError,
-      subcommandHelp,
-    }),
-  memory: (args) =>
-    memoryMode(args, {
-      addMemory,
-      hasHelpFlag,
-      listMemories,
-      printDim,
-      subcommandError,
-      subcommandHelp,
-    }),
-  config: (args) =>
-    configMode(args, {
-      hasHelpFlag,
-      printDim,
-      printError,
-      readConfig,
-      readConfigForScope,
-      setConfigValue,
-      subcommandError,
-      subcommandHelp,
-      unsetConfigValue,
-    }),
-  tool: toolMode,
+const COMMAND_REGISTRY: Record<string, CliCommand> = {
+  init: {
+    help: {
+      command: "init [provider]",
+      usage: "acolyte init [openai|anthropic|google]",
+      description: t("cli.help.desc.init"),
+      examples: ["acolyte init", "acolyte init openai"],
+    },
+    handler: (args) =>
+      initMode(args, {
+        cwd: process.cwd,
+        hasHelpFlag,
+        prompt: (message) => prompt(message),
+        printDim,
+        printError,
+        readFile,
+        commandError,
+        commandHelp,
+        writeFile,
+      }),
+  },
+  resume: {
+    help: {
+      command: "resume [id-prefix]",
+      usage: "acolyte resume [id-prefix]",
+      description: t("cli.help.desc.resume"),
+      examples: ["acolyte resume", "acolyte resume sess_abc123"],
+    },
+    handler: resumeMode,
+  },
+  run: {
+    help: {
+      command: "run <prompt>",
+      usage: "acolyte run [--file <path>] [--workspace <path>] <prompt>",
+      description: t("cli.help.desc.run"),
+      examples: ['acolyte run "summarize README.md"', 'acolyte run --file src/cli.ts "refactor help text"'],
+    },
+    handler: (args) =>
+      runMode(args, {
+        apiUrlForPort,
+        appModel: appConfig.model,
+        attachFileToSession,
+        createClient,
+        createSession,
+        ensureLocalServer,
+        hasHelpFlag,
+        handlePrompt,
+        newMessage,
+        printDim,
+        printError,
+        readResolvedConfigSync,
+        runResourceId,
+        serverApiKey: appConfig.server.apiKey,
+        serverEntry: `${import.meta.dir}/server.ts`,
+        serverPort: appConfig.server.port,
+        commandError,
+        commandHelp,
+      }),
+  },
+  history: {
+    help: {
+      command: "history",
+      usage: "acolyte history",
+      description: t("cli.help.desc.history"),
+      examples: ["acolyte history"],
+    },
+    handler: (args) =>
+      historyMode(args, {
+        hasHelpFlag,
+        printDim,
+        readStore,
+        commandError,
+        commandHelp,
+      }),
+  },
+  start: {
+    help: {
+      command: "start",
+      usage: "acolyte start",
+      description: t("cli.help.desc.start"),
+      examples: ["acolyte start"],
+    },
+    handler: (args) => startMode(args, daemonDeps),
+  },
+  stop: {
+    help: {
+      command: "stop",
+      usage: "acolyte stop",
+      description: t("cli.help.desc.stop"),
+      examples: ["acolyte stop"],
+    },
+    handler: (args) => stopMode(args, daemonDeps),
+  },
+  restart: {
+    help: {
+      command: "restart",
+      usage: "acolyte restart",
+      description: t("cli.help.desc.restart"),
+      examples: ["acolyte restart"],
+    },
+    handler: (args) => restartMode(args, daemonDeps),
+  },
+  ps: {
+    help: {
+      command: "ps",
+      usage: "acolyte ps",
+      description: t("cli.help.desc.ps"),
+      examples: ["acolyte ps"],
+    },
+    handler: (args) => psMode(args, daemonDeps),
+  },
+  status: {
+    help: {
+      command: "status",
+      usage: "acolyte status",
+      description: t("cli.help.desc.status"),
+      examples: ["acolyte status"],
+    },
+    handler: (args) =>
+      statusMode(args, {
+        apiUrlForPort,
+        createClient,
+        formatStatusOutput: formatStatusOutputShared,
+        hasHelpFlag,
+        isServerConnectionFailure,
+        localServerStatus,
+        printDim,
+        printError,
+        serverApiKey: appConfig.server.apiKey,
+        serverPort: appConfig.server.port,
+        commandError,
+        commandHelp,
+      }),
+  },
+  memory: {
+    help: {
+      command: "memory",
+      usage: "acolyte memory <list|add> [options]",
+      description: t("cli.help.desc.memory"),
+      examples: ["acolyte memory list", 'acolyte memory add --project "prefer bun run verify"'],
+    },
+    handler: (args) =>
+      memoryMode(args, {
+        addMemory,
+        hasHelpFlag,
+        listMemories,
+        printDim,
+        commandError,
+        commandHelp,
+      }),
+  },
+  config: {
+    help: {
+      command: "config",
+      usage: "acolyte config <list|set|unset> [options]",
+      description: t("cli.help.desc.config"),
+      examples: ["acolyte config list", "acolyte config set model gpt-5-mini", "acolyte config unset port"],
+    },
+    handler: (args) =>
+      configMode(args, {
+        hasHelpFlag,
+        printDim,
+        printError,
+        readConfig,
+        readConfigForScope,
+        setConfigValue,
+        commandError,
+        commandHelp,
+        unsetConfigValue,
+      }),
+  },
+  tool: {
+    help: {
+      command: "tool",
+      usage: "acolyte tool <tool-id> [args...]",
+      description: t("cli.help.desc.tool"),
+      examples: ['acolyte tool find-files "src/**/*.ts"', 'acolyte tool run-command "bun run verify"'],
+    },
+    handler: toolMode,
+  },
 };
+
+export const commands: Record<string, CliCommandHandler> = Object.fromEntries(
+  Object.entries(COMMAND_REGISTRY).map(([name, entry]) => [name, entry.handler]),
+);

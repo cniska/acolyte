@@ -28,8 +28,8 @@ function createStatusDeps(): {
     printError: (line) => lines.err.push(line),
     serverApiKey: "key",
     serverPort: 6767,
-    subcommandError: (name) => lines.subError.push(name),
-    subcommandHelp: (name) => lines.help.push(name),
+    commandError: (name) => lines.subError.push(name),
+    commandHelp: (name) => lines.help.push(name),
   };
   return { deps, lines };
 }

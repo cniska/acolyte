@@ -15,8 +15,8 @@ type StatusModeDeps = {
   printError: (message: string) => void;
   serverApiKey: typeof appConfigType.server.apiKey;
   serverPort: typeof appConfigType.server.port;
-  subcommandError: (name: string, message?: string) => void;
-  subcommandHelp: (name: string) => void;
+  commandError: (name: string, message?: string) => void;
+  commandHelp: (name: string) => void;
 };
 
 export function isServerConnectionFailure(error: unknown): boolean {
@@ -36,15 +36,15 @@ export async function statusMode(args: string[], deps: StatusModeDeps): Promise<
     printError,
     serverApiKey,
     serverPort,
-    subcommandError,
-    subcommandHelp,
+    commandError,
+    commandHelp,
   } = deps;
   if (hasHelpFlag(args)) {
-    subcommandHelp("status");
+    commandHelp("status");
     return;
   }
   if (args.length > 0) {
-    subcommandError("status");
+    commandError("status");
     return;
   }
   const apiUrl = apiUrlForPort(serverPort);

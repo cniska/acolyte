@@ -16,8 +16,8 @@ type ConfigModeDeps = {
   readConfig: typeof readConfigType;
   readConfigForScope: typeof readConfigForScopeType;
   setConfigValue: typeof setConfigValueType;
-  subcommandError: (name: string, message?: string) => void;
-  subcommandHelp: (name: string) => void;
+  commandError: (name: string, message?: string) => void;
+  commandHelp: (name: string) => void;
   unsetConfigValue: typeof unsetConfigValueType;
 };
 
@@ -53,12 +53,12 @@ export async function configMode(args: string[], deps: ConfigModeDeps): Promise<
     readConfig,
     readConfigForScope,
     setConfigValue,
-    subcommandError,
-    subcommandHelp,
+    commandError,
+    commandHelp,
     unsetConfigValue,
   } = deps;
   if (hasHelpFlag(args)) {
-    subcommandHelp("config");
+    commandHelp("config");
     return;
   }
   const [subcommandRaw, ...restArgs] = args;
@@ -70,7 +70,7 @@ export async function configMode(args: string[], deps: ConfigModeDeps): Promise<
     case "list": {
       const parsed = parseScopeArgs(listArgs);
       if (parsed.invalid) {
-        subcommandError("config");
+        commandError("config");
         return;
       }
       const scope = parsed.scope;
@@ -94,7 +94,7 @@ export async function configMode(args: string[], deps: ConfigModeDeps): Promise<
     case "set": {
       const parsed = parseScopeArgs(restArgs);
       if (parsed.invalid) {
-        subcommandError("config", t("cli.config.usage.set"));
+        commandError("config", t("cli.config.usage.set"));
         return;
       }
       const scope = parsed.scope;
@@ -107,7 +107,7 @@ export async function configMode(args: string[], deps: ConfigModeDeps): Promise<
       }
       const isDottedKey = key?.includes(".") && VALID_CONFIG_KEY_SET.has(key.split(".")[0] ?? "");
       if (!key || (!VALID_CONFIG_KEY_SET.has(key) && !isDottedKey)) {
-        subcommandError("config", t("cli.config.usage.set"));
+        commandError("config", t("cli.config.usage.set"));
         return;
       }
 
@@ -132,7 +132,7 @@ export async function configMode(args: string[], deps: ConfigModeDeps): Promise<
     case "unset": {
       const parsed = parseScopeArgs(restArgs);
       if (parsed.invalid) {
-        subcommandError("config", t("cli.config.usage.unset"));
+        commandError("config", t("cli.config.usage.unset"));
         return;
       }
       const scope = parsed.scope;
@@ -144,7 +144,7 @@ export async function configMode(args: string[], deps: ConfigModeDeps): Promise<
       }
       const isDottedUnsetKey = key?.includes(".") && VALID_CONFIG_KEY_SET.has(key.split(".")[0] ?? "");
       if (!key || (!VALID_CONFIG_KEY_SET.has(key) && !isDottedUnsetKey)) {
-        subcommandError("config", t("cli.config.usage.unset"));
+        commandError("config", t("cli.config.usage.unset"));
         return;
       }
 
@@ -153,7 +153,7 @@ export async function configMode(args: string[], deps: ConfigModeDeps): Promise<
       return;
     }
     default:
-      subcommandError("config");
+      commandError("config");
       printDim(t("cli.config.keys", { keys: VALID_CONFIG_KEYS.join(", ") }));
   }
 }

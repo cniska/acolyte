@@ -23,19 +23,19 @@ function createDeps(overrides?: Partial<MemoryDeps>): { deps: MemoryDeps; output
       },
     ],
     printDim: (message) => lines.push(message),
-    subcommandError: () => {},
-    subcommandHelp: () => {},
+    commandError: () => {},
+    commandHelp: () => {},
     ...overrides,
   };
   return { deps, output: () => lines.join("\n") };
 }
 
 describe("cli-memory", () => {
-  test("help flag calls subcommandHelp", async () => {
+  test("help flag calls commandHelp", async () => {
     let called = false;
     const { deps } = createDeps({
       hasHelpFlag: () => true,
-      subcommandHelp: (name) => {
+      commandHelp: (name) => {
         expect(name).toBe("memory");
         called = true;
       },
@@ -68,10 +68,10 @@ describe("cli-memory", () => {
     expect(receivedScope).toBe("user");
   });
 
-  test("list with invalid scope calls subcommandError", async () => {
+  test("list with invalid scope calls commandError", async () => {
     let called = false;
     const { deps } = createDeps({
-      subcommandError: (name) => {
+      commandError: (name) => {
         expect(name).toBe("memory");
         called = true;
       },
@@ -105,10 +105,10 @@ describe("cli-memory", () => {
     );
   });
 
-  test("add with no content calls subcommandError", async () => {
+  test("add with no content calls commandError", async () => {
     let called = false;
     const { deps } = createDeps({
-      subcommandError: (name) => {
+      commandError: (name) => {
         expect(name).toBe("memory");
         called = true;
       },
@@ -117,10 +117,10 @@ describe("cli-memory", () => {
     expect(called).toBe(true);
   });
 
-  test("unknown subcommand calls subcommandError", async () => {
+  test("unknown subcommand calls commandError", async () => {
     let called = false;
     const { deps } = createDeps({
-      subcommandError: (name) => {
+      commandError: (name) => {
         expect(name).toBe("memory");
         called = true;
       },

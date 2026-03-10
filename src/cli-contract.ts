@@ -1,4 +1,4 @@
-export type CliCommandDoc = {
+export type CliCommandHelp = {
   command: string;
   usage: string;
   description: string;
@@ -6,3 +6,8 @@ export type CliCommandDoc = {
 };
 
 export type CliCommandHandler = (args: string[]) => Promise<void>;
+
+export type CliCommand = {
+  help: CliCommandHelp;
+  handler: CliCommandHandler;
+};

@@ -10,7 +10,7 @@ function createRunDeps(): {
     help: string[];
     errors: string[];
     dims: string[];
-    subcommandErrors: string[];
+    commandErrors: string[];
   };
 } {
   const calls = {
@@ -18,7 +18,7 @@ function createRunDeps(): {
     help: [] as string[],
     errors: [] as string[],
     dims: [] as string[],
-    subcommandErrors: [] as string[],
+    commandErrors: [] as string[],
   };
   const deps: RunDeps = {
     apiUrlForPort: (port) => `http://127.0.0.1:${port}`,
@@ -40,8 +40,8 @@ function createRunDeps(): {
     serverApiKey: "key",
     serverEntry: "src/server.ts",
     serverPort: 6767,
-    subcommandError: (name) => calls.subcommandErrors.push(name),
-    subcommandHelp: (name) => calls.help.push(name),
+    commandError: (name) => calls.commandErrors.push(name),
+    commandHelp: (name) => calls.help.push(name),
   };
   return { deps, calls };
 }
@@ -56,7 +56,7 @@ describe("cli-run", () => {
     const { deps, calls } = createRunDeps();
     await runMode(["--help"], deps);
     expect(calls.help).toEqual(["run"]);
-    expect(calls.subcommandErrors).toEqual([]);
+    expect(calls.commandErrors).toEqual([]);
   });
 
   test("prints token usage summary after run", async () => {

@@ -15,11 +15,11 @@ function createDeps(overrides?: Partial<InitDeps>): { deps: InitDeps; output: ()
     printError: (message) => lines.push(message),
     readFile: (async () => "") as never,
     writeFile: async () => undefined,
-    subcommandError: (name) => {
-      calls.push(`subcommandError:${name}`);
+    commandError: (name) => {
+      calls.push(`commandError:${name}`);
     },
-    subcommandHelp: (name) => {
-      calls.push(`subcommandHelp:${name}`);
+    commandHelp: (name) => {
+      calls.push(`commandHelp:${name}`);
     },
     ...overrides,
   };
@@ -27,16 +27,16 @@ function createDeps(overrides?: Partial<InitDeps>): { deps: InitDeps; output: ()
 }
 
 describe("cli-init", () => {
-  test("help flag calls subcommandHelp", async () => {
+  test("help flag calls commandHelp", async () => {
     const { deps, calls } = createDeps({ hasHelpFlag: () => true });
     await initMode(["--help"], deps);
-    expect(calls).toEqual(["subcommandHelp:init"]);
+    expect(calls).toEqual(["commandHelp:init"]);
   });
 
-  test("too many args calls subcommandError", async () => {
+  test("too many args calls commandError", async () => {
     const { deps, calls } = createDeps();
     await initMode(["openai", "extra"], deps);
-    expect(calls).toEqual(["subcommandError:init"]);
+    expect(calls).toEqual(["commandError:init"]);
   });
 
   test("invalid provider prints error", async () => {
