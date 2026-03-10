@@ -13,6 +13,9 @@ type StartRemoteTaskFollowupInput = {
   stopWorking: () => void;
 };
 
+const MAX_POLL_ITERATIONS = 300;
+const POLL_INTERVAL_MS = 700;
+
 export async function startRemoteTaskFollowup(input: StartRemoteTaskFollowupInput): Promise<boolean> {
   try {
     const task = await input.client.taskStatus(input.remoteTaskId);
@@ -24,8 +27,8 @@ export async function startRemoteTaskFollowup(input: StartRemoteTaskFollowupInpu
   input.setProgressText(t("chat.task.followup.still_running"));
   void (async () => {
     try {
-      for (let pollCount = 0; pollCount < 300; pollCount += 1) {
-        await Bun.sleep(700);
+      for (let pollCount = 0; pollCount < MAX_POLL_ITERATIONS; pollCount += 1) {
+        await Bun.sleep(POLL_INTERVAL_MS);
         const next = await input.client.taskStatus(input.remoteTaskId);
         if (!next || next.state === "running" || next.state === "detached") continue;
         if (next.state === "failed") {
