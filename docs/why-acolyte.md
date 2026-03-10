@@ -170,3 +170,22 @@ The pipeline is explicit: ingest → normalize → select → inject → commit.
 | OpenHands | Microagent recall (no distillation) |
 
 Acolyte's distillation pipeline is newer than OpenClaw's retrieval system, but architecturally it solves a different problem: learning from conversations rather than searching stored documents. The current implementation is recency-based — there is no vector/semantic search. For a coding agent this is a reasonable tradeoff: the most relevant context is almost always the most recent. Semantic recall is on the roadmap for cases where older facts matter.
+
+## Context budgeting
+
+Most agents assemble prompts by concatenating system instructions, history, and user input — then hope it fits the model's context window. When it doesn't, messages are silently dropped or the API rejects the request.
+
+Acolyte uses structured token budgeting with a real tokenizer ([tiktoken](https://github.com/openai/tiktoken)):
+
+- **System prompt reservation**: the system prompt (soul, instructions, memory context) is measured first and its cost is reserved before history allocation begins
+- **Priority-based filling**: pinned context (skills, memory) → file attachments → conversational history → tool payloads, each with configurable per-message caps
+- **Age-based tool compaction**: recent tool outputs get full budget; older outputs are progressively capped (600 → 200 → 120 → 60 tokens based on age)
+- **Visible truncation**: when output is compacted, the model sees an explicit truncation notice — no silent data loss
+
+| Project | Token budgeting |
+|---|---|
+| **Acolyte** | Real tokenizer, system prompt reservation, priority-based allocation |
+| OpenClaw | Token counting with model-specific limits |
+| Aider | Repository map with token-aware ranking |
+| Goose, OpenCode | Basic message truncation |
+| Cline, Continue, Pi | Concatenate and hope |

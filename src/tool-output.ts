@@ -20,9 +20,8 @@ export function compactToolOutput(raw: string, options: { maxChars?: number; max
   }
 
   const text = lines.join("\n");
-  if (text.length > maxChars && text.includes("diff --git ")) {
-    if (!lineTruncated) return `${text}\n… output truncated`;
-    return text;
+  if (text.includes("diff --git ") && (lineTruncated || text.length > maxChars)) {
+    return `${text}\n… output truncated`;
   }
 
   return compactText(raw, { maxChars, maxLines });

@@ -1,7 +1,12 @@
-import { describe, expect, test } from "bun:test";
-import { createAgentInput } from "./agent-input";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { createAgentInput, setTokenEncoder } from "./agent-input";
 import type { ChatRequest } from "./api";
 import { appConfig } from "./app-config";
+
+// Use a deterministic chars/4 estimator so budget tests don't depend on the tiktoken encoding.
+const charsPerToken = 4;
+beforeAll(() => setTokenEncoder({ encode: (input: string) => ({ length: Math.ceil(input.length / charsPerToken) }) }));
+afterAll(() => setTokenEncoder(null));
 
 function createRequest(content: string): ChatRequest {
   return {

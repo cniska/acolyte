@@ -1,9 +1,13 @@
-import { createAgentInput } from "./agent-input";
+import { createAgentInput, estimateTokens } from "./agent-input";
 import { guardStatsFromSession, type PhasePrepareInput, type PhasePrepareResult } from "./lifecycle-contract";
 import { toolsForAgent } from "./tool-registry";
 
+/** Approximate overhead for BASE_INSTRUCTIONS + mode-specific instructions. */
+const INSTRUCTION_OVERHEAD_TOKENS = 300;
+
 export function phasePrepare(input: PhasePrepareInput): PhasePrepareResult {
-  const requestInput = createAgentInput(input.request);
+  const systemPromptTokens = estimateTokens(input.soulPrompt) + INSTRUCTION_OVERHEAD_TOKENS;
+  const requestInput = createAgentInput(input.request, { systemPromptTokens });
   const agentInput = requestInput.input;
 
   const { tools, session } = toolsForAgent({

@@ -1,6 +1,11 @@
-import { describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { setTokenEncoder } from "./agent-input";
 import { createMemoryRegistry, resolveMemorySources } from "./memory-registry";
 import { createMemorySource } from "./test-utils";
+
+// Use a deterministic chars/4 estimator so budget tests don't depend on the tiktoken encoding.
+beforeAll(() => setTokenEncoder({ encode: (input: string) => ({ length: Math.ceil(input.length / 4) }) }));
+afterAll(() => setTokenEncoder(null));
 
 describe("memory registry", () => {
   test("resolveMemorySources preserves configured order", () => {

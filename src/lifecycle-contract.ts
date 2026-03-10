@@ -36,6 +36,7 @@ export type ToolCallStart = { toolName: string; startedAtMs: number };
 export type PromptUsage = {
   promptTokens: number;
   promptBudgetTokens: number;
+  systemPromptTokens: number;
   promptTruncated: boolean;
   includedHistoryMessages: number;
   totalHistoryMessages: number;

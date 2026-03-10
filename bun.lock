@@ -5,9 +5,9 @@
     "": {
       "name": "acolyte",
       "dependencies": {
-        "@ai-sdk/anthropic": "^3.0.54",
-        "@ai-sdk/google": "^3.0.37",
-        "@ai-sdk/openai": "^3.0.39",
+        "@ai-sdk/anthropic": "^3.0.58",
+        "@ai-sdk/google": "^3.0.43",
+        "@ai-sdk/openai": "^3.0.41",
         "@ai-sdk/provider": "^3.0.8",
         "@ast-grep/lang-go": "^0.0.5",
         "@ast-grep/lang-python": "^0.0.5",
@@ -16,6 +16,7 @@
         "ink": "^6.8.0",
         "ink-text-input": "^6.0.0",
         "react": "^19.2.4",
+        "tiktoken": "^1.0.22",
         "zod": "^4.3.6",
       },
       "devDependencies": {
@@ -169,6 +170,8 @@
     "tagged-tag": ["tagged-tag@1.0.0", "", {}, "sha512-yEFYrVhod+hdNyx7g5Bnkkb0G6si8HJurOoOEgC8B/O0uXLHlaey/65KRv6cuWBNhBgHKAROVpc7QyYqE5gFng=="],
 
     "terminal-size": ["terminal-size@4.0.1", "", {}, "sha512-avMLDQpUI9I5XFrklECw1ZEUPJhqzcwSWsyyI8blhRLT+8N1jLJWLWWYQpB2q2xthq8xDvjZPISVh53T/+CLYQ=="],
+
+    "tiktoken": ["tiktoken@1.0.22", "", {}, "sha512-PKvy1rVF1RibfF3JlXBSP0Jrcw2uq3yXdgcEXtKTYn3QJ/cBRBHDnrJ5jHky+MENZ6DIPwNUGWpkVx+7joCpNA=="],
 
     "type-fest": ["type-fest@5.4.4", "", { "dependencies": { "tagged-tag": "^1.0.0" } }, "sha512-JnTrzGu+zPV3aXIUhnyWJj4z/wigMsdYajGLIYakqyOW1nPllzXEJee0QQbHj+CTIQtXGlAjuK0UY+2xTyjVAw=="],
 

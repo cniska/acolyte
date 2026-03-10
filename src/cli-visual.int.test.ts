@@ -102,9 +102,9 @@ describe("cli visual regression", () => {
         acolyte <COMMAND> [ARGS]
 
       Commands
+        init [provider]     initialize provider API key
         resume [id-prefix]  resume previous session
         run <prompt>        run a single prompt
-        init [provider]     initialize provider API key
         history             show recent sessions
         start               start server
         stop                stop all servers
@@ -431,7 +431,7 @@ describe("cli visual regression", () => {
     {
       args: ["tool", "help"],
       output: dedent(`
-        Usage: acolyte tool <find-files|search-files|web-search|web-fetch|read-file|git-status|git-diff|run-command|edit-file> ...
+        Usage: acolyte tool <tool-id> [args...]
 
         Description: run a tool directly
 

@@ -8,6 +8,4 @@ Tracked issues for post-OSS GitHub migration.
 
 ## Limitations
 
-- **Token budgeting uses approximate char-to-token ratios, not actual counts.** Token estimates in history pruning and budget calculations are heuristic. Actual token usage may differ significantly, especially for non-English text or code-heavy contexts.
-
 - **Google provider has minimal test coverage.** Provider integration has manual validation for OpenAI and Anthropic; Google/Gemini coverage is limited.

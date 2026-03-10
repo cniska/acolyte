@@ -1,18 +1,34 @@
+import { encoding_for_model } from "tiktoken";
 import type { ChatRequest } from "./api";
 import { appConfig } from "./app-config";
 
-const APPROX_CHARS_PER_TOKEN = 4;
+type TokenEncoder = { encode(input: string): { length: number } };
+
+const defaultEncoder: TokenEncoder = encoding_for_model("gpt-4o");
+let activeEncoder: TokenEncoder = defaultEncoder;
+
+/** Replace the tokenizer (test-only). */
+export function setTokenEncoder(encoder: TokenEncoder | null): void {
+  activeEncoder = encoder ?? defaultEncoder;
+}
 
 export function estimateTokens(input: string): number {
   if (input.length === 0) return 0;
-  return Math.ceil(input.length / APPROX_CHARS_PER_TOKEN);
+  return activeEncoder.encode(input).length;
 }
 
 function truncateByTokens(input: string, maxTokens: number): string {
   if (maxTokens <= 0) return "";
-  const maxChars = maxTokens * APPROX_CHARS_PER_TOKEN;
-  if (input.length <= maxChars) return input;
-  return `${input.slice(0, Math.max(0, maxChars - 1))}…`;
+  if (estimateTokens(input) <= maxTokens) return input;
+  // Binary search for the longest prefix that fits within the token budget.
+  let lo = 0;
+  let hi = input.length;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >>> 1;
+    if (estimateTokens(input.slice(0, mid)) <= maxTokens - 1) lo = mid;
+    else hi = mid - 1;
+  }
+  return `${input.slice(0, lo)}…`;
 }
 
 function isRelevantFileContext(content: string): boolean {
@@ -97,11 +113,15 @@ function resolveMessageTokenCap(
   return Math.min(maxPerMessageTokens, 60);
 }
 
-export function createAgentInput(req: ChatRequest): {
+export function createAgentInput(
+  req: ChatRequest,
+  options?: { systemPromptTokens?: number },
+): {
   input: string;
   usage: {
     promptTokens: number;
     promptBudgetTokens: number;
+    systemPromptTokens: number;
     promptTruncated: boolean;
     includedHistoryMessages: number;
     totalHistoryMessages: number;
@@ -110,13 +130,14 @@ export function createAgentInput(req: ChatRequest): {
   };
 } {
   const maxContextTokens = appConfig.agent.contextMaxTokens;
+  const systemPromptTokens = options?.systemPromptTokens ?? 0;
   const lines: string[] = [];
   const usedIds = new Set<string>();
   const budget = appConfig.agent.inputBudget;
 
   const userLine = `USER: ${truncateByTokens(req.message.trim(), budget.maxMessageTokens)}`;
   const userTokens = estimateTokens(userLine);
-  let remaining = Math.max(0, maxContextTokens - userTokens);
+  let remaining = Math.max(0, maxContextTokens - userTokens - systemPromptTokens);
 
   const pinnedSystem = req.history.filter(
     (message) => message.role === "system" && isPinnedSystemContext(message.content),
@@ -156,6 +177,7 @@ export function createAgentInput(req: ChatRequest): {
     usage: {
       promptTokens,
       promptBudgetTokens: maxContextTokens,
+      systemPromptTokens,
       promptTruncated: usedIds.size < req.history.length,
       includedHistoryMessages: usedIds.size,
       totalHistoryMessages: req.history.length,
