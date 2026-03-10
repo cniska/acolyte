@@ -27,6 +27,7 @@ function createMockContext(overrides: Partial<RunContext> = {}): RunContext {
     policy: defaultLifecyclePolicy,
     promptUsage: {
       promptTokens: 0,
+      systemPromptTokens: 0,
       promptBudgetTokens: 8000,
       promptTruncated: false,
       includedHistoryMessages: 0,

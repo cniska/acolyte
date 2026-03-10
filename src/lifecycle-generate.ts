@@ -316,7 +316,7 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
       const errorInfo = parsed.ok ? parsed.value : { message: "Tool error" };
       const payloadCode = typeof p?.code === "string" ? p.code : undefined;
       const payloadKind = typeof p?.kind === "string" ? p.kind : undefined;
-      const toolName = p?.toolName ?? "";
+      const toolName = p?.toolName ?? "unknown";
       captureError(ctx, errorInfo.message, {
         source: "tool-error",
         tool: toolName,

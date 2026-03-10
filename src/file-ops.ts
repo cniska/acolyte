@@ -1,7 +1,7 @@
 import { mkdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import * as napi from "@ast-grep/napi";
-import { createToolError, encodeToolError, TOOL_ERROR_CODES } from "./tool-error-codes";
+import { createToolError, TOOL_ERROR_CODES } from "./tool-error-codes";
 import {
   collectWorkspaceFiles,
   createDiff,
@@ -142,10 +142,7 @@ export async function editFile(input: {
       if (count === 0) throw new Error(`Find text not found in file: ${edit.find.slice(0, 60)}`);
       if (count > 1) {
         const message = `Find text matched ${count} locations (${edit.find.slice(0, 40)}…). Provide a longer, more unique snippet to match exactly one location, or use edit-code for multi-location code changes.`;
-        throw createToolError(
-          TOOL_ERROR_CODES.editFileMultiMatch,
-          encodeToolError(TOOL_ERROR_CODES.editFileMultiMatch, message),
-        );
+        throw createToolError(TOOL_ERROR_CODES.editFileMultiMatch, message);
       }
       const start = raw.indexOf(edit.find);
       ranges.push({ start, end: start + edit.find.length, replace: edit.replace });

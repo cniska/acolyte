@@ -260,7 +260,7 @@ export async function unsetConfigValue(key: string, options?: ConfigOptions): Pr
   const dotted = parseDottedKey(key);
   if (dotted) {
     const current = await readConfigScope(scope, options);
-    const existing = (current[dotted.section] ?? {}) as Record<string, string>;
+    const existing = (current[dotted.section] ?? {}) as Record<string, unknown>;
     const { [dotted.subKey]: _, ...rest } = existing;
     const next: Config = { ...current, [dotted.section]: Object.keys(rest).length > 0 ? rest : undefined };
     await writeConfig(next, { ...options, scope });

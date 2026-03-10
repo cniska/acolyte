@@ -118,6 +118,7 @@ export async function searchWeb(query: string, maxResults = 5): Promise<string> 
       "user-agent":
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36",
     },
+    signal: AbortSignal.timeout(15_000),
   });
   if (!response.ok) throw new Error(`Web search failed with status ${response.status}`);
   const html = await response.text();

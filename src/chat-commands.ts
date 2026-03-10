@@ -5,6 +5,7 @@ import { COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH, formatColumns, formatRelativeTime 
 import type { Client } from "./client-contract";
 import { setConfigValue } from "./config";
 import type { ConfigScope } from "./config-contract";
+import { nowIso } from "./datetime";
 import { t } from "./i18n";
 import { addMemory, listMemories, removeMemoryByPrefix } from "./memory";
 import type { MemoryScope } from "./memory-contract";
@@ -346,7 +347,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       const nextSession: Session = {
         ...ctx.currentSession,
         model: selection.model,
-        updatedAt: new Date().toISOString(),
+        updatedAt: nowIso(),
       };
       ctx.setCurrentSession(nextSession);
       ctx.setRows((current) => [
