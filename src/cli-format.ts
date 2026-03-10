@@ -3,8 +3,8 @@ import { z } from "zod";
 import { wrapAssistantContent } from "./chat-content";
 import { truncateText } from "./compact-text";
 import { t } from "./i18n";
-import { TOOL_OUTPUT_RUN_MAX_ROWS } from "./tool-output-format";
-import { printDim, printOutput, printToolHeader } from "./ui";
+import { TOOL_OUTPUT_LIMITS } from "./tool-output-format";
+import { printDim, printToolHeader } from "./ui";
 
 export { truncateText };
 
@@ -42,17 +42,17 @@ export function clampLines(lines: string[], maxLines: number, overflowTolerance 
   return [...lines.slice(0, maxLines - 1), `… +${t("unit.line", { count: lines.length - (maxLines - 1) })}`];
 }
 
+export function formatFindOutput(raw: string): string {
+  const lines = raw.split("\n").filter((line) => line.trim().length > 0);
+  if (lines.length === 0) return t("tool.content.no_matches");
+  return clampLines(lines, TOOL_OUTPUT_LIMITS.files).join("\n");
+}
+
 export function formatSearchOutput(raw: string): string {
   const lines = raw.split("\n").filter((line) => line.trim().length > 0);
   if (lines.length === 0 || (lines.length === 1 && lines[0].toLowerCase().startsWith("no matches")))
-    return "No matches.";
-  const files = new Set<string>();
-  for (const line of lines) {
-    const firstColon = line.indexOf(":");
-    if (firstColon > 0) files.add(line.slice(0, firstColon));
-  }
-  const summary = `${t("unit.match", { count: lines.length })} in ${t("unit.file", { count: files.size })}`;
-  return [summary, ...clampLines(lines, 12)].join("\n");
+    return t("tool.content.no_matches");
+  return clampLines(lines, TOOL_OUTPUT_LIMITS.files).join("\n");
 }
 
 export function formatReadOutput(raw: string): string {
@@ -62,70 +62,42 @@ export function formatReadOutput(raw: string): string {
     const rawPath = normalized[0].slice("File: ".length).trim();
     normalized[0] = `File: ${displayPath(rawPath)}`;
   }
-  const contentLines = Math.max(0, normalized.length - (normalized[0]?.startsWith("File: ") ? 1 : 0));
-  const summary = t("unit.line", { count: contentLines });
-  return [summary, ...clampLines(normalized, 48)].join("\n");
+  return clampLines(normalized, TOOL_OUTPUT_LIMITS.read).join("\n");
 }
 
 export function formatDiffOutput(raw: string): string {
   const lines = raw.split("\n").filter((line) => line.length > 0);
-  let filesChanged = 0;
-  let added = 0;
-  let removed = 0;
-  for (const line of lines) {
-    if (line.startsWith("diff --git ")) {
-      filesChanged += 1;
-      continue;
-    }
-    if (line.startsWith("+++ ") || line.startsWith("--- ")) continue;
-    if (line.startsWith("+")) {
-      added += 1;
-      continue;
-    }
-    if (line.startsWith("-")) removed += 1;
-  }
-  const summary = `${t("unit.file", { count: filesChanged })} changed, +${added} -${removed}`;
-  return [summary, ...clampLines(lines, 64)].join("\n");
+  return clampLines(lines, TOOL_OUTPUT_LIMITS.diff).join("\n");
 }
 
 export function formatGitStatusOutput(raw: string): string {
   const lines = raw.split("\n").filter((line) => line.trim().length > 0);
-  if (lines.length === 0) return "working tree clean";
-
-  const branchLine = lines[0].startsWith("## ") ? lines[0] : undefined;
-  const changed = lines.filter((line) => !line.startsWith("## ")).length;
-  const summary = changed === 0 ? "working tree clean" : t("unit.changed_file", { count: changed });
-  const out: string[] = [summary];
-  if (branchLine) out.push(branchLine);
-  out.push(...lines.filter((line) => !line.startsWith("## ")));
-  return clampLines(out, 6).join("\n");
+  if (lines.length === 0) return t("tool.content.working_tree_clean");
+  return clampLines(lines, TOOL_OUTPUT_LIMITS.status).join("\n");
 }
 
 export function formatRunOutput(raw: string): string {
   const lines = raw.split("\n");
-  if (lines.length === 0) return "(no output)";
+  if (lines.length === 0) return t("tool.content.no_output");
 
-  const exitLine = lines[0];
-  const exitCode = Number.parseInt(exitLine.replace("exit_code=", "").trim(), 10);
-  const durationLine = lines[1]?.startsWith("duration_ms=") ? lines[1] : null;
+  const exitCode = Number.parseInt((lines[0] ?? "").replace("exit_code=", "").trim(), 10);
   const stdoutIdx = lines.findIndex((line) => line.trim() === "stdout:");
   const stderrIdx = lines.findIndex((line) => line.trim() === "stderr:");
-  const out: string[] = [exitLine];
-  if (durationLine) out.push(durationLine);
+  const out: string[] = [];
 
   const section = (name: "stdout:" | "stderr:", start: number, end: number): void => {
     if (start < 0) return;
     let payload = lines.slice(start + 1, end).filter((line) => line.trim().length > 0);
     if (name === "stderr:" && exitCode === 0 && stdoutIdx >= 0) payload = [];
     if (payload.length === 0) return;
-    out.push(name);
-    out.push(...clampLines(payload, TOOL_OUTPUT_RUN_MAX_ROWS));
+    out.push(...clampLines(payload, TOOL_OUTPUT_LIMITS.run));
   };
 
   const nextAfterStdout = stderrIdx >= 0 ? stderrIdx : lines.length;
   section("stdout:", stdoutIdx, nextAfterStdout);
   section("stderr:", stderrIdx, lines.length);
 
+  if (out.length === 0) return t("tool.content.no_output");
   return out.join("\n");
 }
 
@@ -137,7 +109,8 @@ export function parseRunExitCode(raw: string): number | null {
 }
 
 export function formatForTool(kind: "find" | "search" | "read" | "diff" | "run" | "status", raw: string): string {
-  if (kind === "find" || kind === "search") return formatSearchOutput(raw);
+  if (kind === "find") return formatFindOutput(raw);
+  if (kind === "search") return formatSearchOutput(raw);
   if (kind === "read") return formatReadOutput(raw);
   if (kind === "diff") return formatDiffOutput(raw);
   if (kind === "run") return formatRunOutput(raw);

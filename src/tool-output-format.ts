@@ -2,9 +2,15 @@ import { isAbsolute, relative } from "node:path";
 import type { ToolOutput } from "./tool-output-content";
 
 export type ToolOutputListener = (event: { toolName: string; content: ToolOutput; toolCallId?: string }) => void;
-export const TOOL_OUTPUT_RUN_MAX_ROWS = 5;
-export const TOOL_OUTPUT_FILES_MAX_ROWS = 5;
-export const TOOL_OUTPUT_INLINE_FILES_MAX = 3;
+
+export const TOOL_OUTPUT_LIMITS = {
+  files: 5,
+  inlineFiles: 3,
+  run: 5,
+  read: 48,
+  diff: 64,
+  status: 6,
+} as const;
 
 export function emitHeadTailLines(
   toolName: string,
@@ -66,7 +72,7 @@ export function emitFileListSummary(
   filePaths: string[],
   onOutput: ToolOutputListener,
   toolCallId?: string,
-  maxFiles = TOOL_OUTPUT_FILES_MAX_ROWS,
+  maxFiles = TOOL_OUTPUT_LIMITS.files,
   workspace?: string,
 ): void {
   emitSummaryFileRows({
@@ -86,7 +92,7 @@ export function emitFindSummary(
   label: string,
   onOutput: ToolOutputListener,
   toolCallId?: string,
-  maxFiles = TOOL_OUTPUT_FILES_MAX_ROWS,
+  maxFiles = TOOL_OUTPUT_LIMITS.files,
   workspace?: string,
 ): void {
   const unique = uniquePaths(filePaths);
@@ -220,7 +226,7 @@ function toDisplayPath(path: string, workspace?: string): string {
 
 function normalizeScopeLabel(path: string): string {
   const trimmed = path.trim().replace(/^\.\/+/, "");
-  if (trimmed.length === 0) return trimmed;
+  if (trimmed.length === 0 || trimmed === ".") return "";
   if (trimmed.endsWith("/") || trimmed.includes("*")) return trimmed;
   const leaf = trimmed.split("/").at(-1) ?? trimmed;
   if (leaf.includes(".")) return trimmed;
@@ -306,7 +312,7 @@ export function emitSearchSummary(
   label: string,
   onOutput: ToolOutputListener,
   toolCallId?: string,
-  maxFiles = TOOL_OUTPUT_FILES_MAX_ROWS,
+  maxFiles = TOOL_OUTPUT_LIMITS.files,
   workspace?: string,
 ): void {
   const filePaths = entries.map((entry) => entry.path);
@@ -318,12 +324,13 @@ export function emitSearchSummary(
   const scopeLabels = Array.from(
     new Set(normalizedPaths.map((path) => normalizeScopeLabel(toDisplayPath(path, workspace)))),
   );
+  const effectiveLabels = scopeLabels.filter((label) => label.length > 0);
   let scope: string;
-  if (normalizedPaths.length === 1) {
-    scope = scopeLabels[0] ?? toDisplayPath(normalizedPaths[0] ?? "", workspace);
-  } else if (normalizedPaths.length > 1) {
-    const shown = scopeLabels.slice(0, 3).join(", ");
-    const remaining = scopeLabels.length - Math.min(scopeLabels.length, 3);
+  if (effectiveLabels.length === 1) {
+    scope = effectiveLabels[0] ?? "workspace";
+  } else if (effectiveLabels.length > 1) {
+    const shown = effectiveLabels.slice(0, 3).join(", ");
+    const remaining = effectiveLabels.length - Math.min(effectiveLabels.length, 3);
     scope = remaining > 0 ? `${shown}, +${remaining}` : shown;
   } else {
     scope = "workspace";

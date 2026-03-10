@@ -133,11 +133,7 @@ export async function toolMode(args: string[]): Promise<void> {
         if (summary) {
           const shownPath = displayPath(summary.path);
           if (summary.dryRun) {
-            showToolResult(
-              "Dry Run",
-              `${t("unit.match", { count: summary.edits })} would be changed.`,
-              shownPath,
-            );
+            showToolResult("Dry Run", `${t("unit.match", { count: summary.edits })} would be changed.`, shownPath);
             rendered = true;
           } else {
             try {
@@ -147,11 +143,7 @@ export async function toolMode(args: string[]): Promise<void> {
             } catch (error) {
               const message = error instanceof Error ? error.message : t("cli.tool.diff.unavailable");
               if (message.includes("outside repository")) {
-                showToolResult(
-                  "Edit",
-                  `${t("unit.replacement", { count: summary.edits })} applied.`,
-                  shownPath,
-                );
+                showToolResult("Edit", `${t("unit.replacement", { count: summary.edits })} applied.`, shownPath);
                 rendered = true;
                 printWarning(t("cli.tool.diff.unavailable.outside_repo"));
               } else {

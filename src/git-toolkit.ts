@@ -145,7 +145,7 @@ function createGitDiffTool(git: GitOps, input: ToolkitInput) {
           toolCallId,
         });
         const rawDiff = await git.diff({ path: toolInput.path, contextLines: toolInput.contextLines ?? 3 });
-        emitHeadTailLines("git-diff", rawDiff, onOutput, toolCallId, { headRows: 4, tailRows: 4 });
+        emitHeadTailLines("git-diff", rawDiff, onOutput, toolCallId, { headRows: 2, tailRows: 2 });
         const result = compactToolOutput(rawDiff, appConfig.agent.toolOutputBudget.gitDiff);
         return { kind: "git-diff", path: toolInput.path, contextLines: toolInput.contextLines ?? 3, output: result };
       });
@@ -260,8 +260,8 @@ function createGitAddTool(git: GitOps, input: ToolkitInput) {
     }),
     execute: async (toolInput) => {
       return runTool(session, "git-add", toolInput, async (toolCallId) => {
-        const addDetail =
-          toolInput.all === true ? "all" : `${(toolInput.paths ?? []).filter((p) => p.trim().length > 0).length} files`;
+        const pathCount = (toolInput.paths ?? []).filter((p) => p.trim().length > 0).length;
+        const addDetail = toolInput.all === true ? "all" : t("unit.file", { count: pathCount });
         onOutput({
           toolName: "git-add",
           content: { kind: "tool-header", label: t("tool.label.git_add"), detail: addDetail },
@@ -308,7 +308,7 @@ function createGitCommitTool(git: GitOps, input: ToolkitInput) {
           toolCallId,
         });
         const rawCommit = await git.commit({ message: toolInput.message, body: toolInput.body });
-        emitHeadTailLines("git-commit", rawCommit, onOutput, toolCallId, { headRows: 4, tailRows: 4 });
+        emitHeadTailLines("git-commit", rawCommit, onOutput, toolCallId, { headRows: 2, tailRows: 2 });
         const result = compactToolOutput(rawCommit, appConfig.agent.toolOutputBudget.gitDiff);
         return { kind: "git-commit", message: toolInput.message, body: toolInput.body, output: result };
       });

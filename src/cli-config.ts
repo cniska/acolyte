@@ -1,10 +1,10 @@
-import { CONFIG_SET_SCHEMAS } from "./config-contract";
 import type {
   readConfigForScope as readConfigForScopeType,
   readConfig as readConfigType,
   setConfigValue as setConfigValueType,
   unsetConfigValue as unsetConfigValueType,
 } from "./config";
+import { CONFIG_SET_SCHEMAS } from "./config-contract";
 import { t } from "./i18n";
 
 const CONFIG_LIST_KEY_COLUMN_WIDTH = 16;

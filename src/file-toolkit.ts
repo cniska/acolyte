@@ -21,8 +21,7 @@ import {
   findResultPaths,
   numberedUnifiedDiffLines,
   searchResultSummaryEntries,
-  TOOL_OUTPUT_FILES_MAX_ROWS,
-  TOOL_OUTPUT_INLINE_FILES_MAX,
+  TOOL_OUTPUT_LIMITS,
 } from "./tool-output-format";
 
 const WRITE_TOOL_PREVIEW_MAX_LINES = Number.POSITIVE_INFINITY;
@@ -141,7 +140,7 @@ function createFindFilesTool(input: ToolkitInput) {
           t("tool.label.find"),
           onOutput,
           toolCallId,
-          TOOL_OUTPUT_FILES_MAX_ROWS,
+          TOOL_OUTPUT_LIMITS.files,
           workspace,
         );
         return {
@@ -208,7 +207,7 @@ function createSearchFilesTool(input: ToolkitInput) {
           t("tool.label.search"),
           onOutput,
           toolCallId,
-          TOOL_OUTPUT_FILES_MAX_ROWS,
+          TOOL_OUTPUT_LIMITS.files,
           workspace,
         );
         return {
@@ -252,7 +251,7 @@ function createScanCodeTool(input: ToolkitInput) {
         const paths = normalizeUniquePaths(toolInput.paths);
         const unique = Array.from(new Set(paths.map((path) => toDisplayPath(path, workspace))));
         if (unique.length > 0) {
-          const shown = unique.slice(0, TOOL_OUTPUT_INLINE_FILES_MAX);
+          const shown = unique.slice(0, TOOL_OUTPUT_LIMITS.inlineFiles);
           const remaining = unique.length - shown.length;
           onOutput({
             toolName: "scan-code",
@@ -326,7 +325,7 @@ function createReadFileTool(input: ToolkitInput) {
         if (entries.length === 0) throw new Error("Read requires at least one non-empty path");
         const unique = Array.from(new Set(entries.map((entry) => toDisplayPath(entry.path, workspace))));
         if (unique.length > 0) {
-          const shown = unique.slice(0, TOOL_OUTPUT_INLINE_FILES_MAX);
+          const shown = unique.slice(0, TOOL_OUTPUT_LIMITS.inlineFiles);
           const remaining = unique.length - shown.length;
           onOutput({
             toolName: "read-file",

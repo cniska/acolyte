@@ -6,7 +6,7 @@ import { runShellCommand } from "./shell-ops";
 import { createTool, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { compactToolOutput } from "./tool-output";
-import { TOOL_OUTPUT_RUN_MAX_ROWS } from "./tool-output-format";
+import { TOOL_OUTPUT_LIMITS } from "./tool-output-format";
 
 function createRunCommandTool(input: ToolkitInput) {
   const { workspace, session, onOutput } = input;
@@ -111,7 +111,7 @@ function createRunCommandTool(input: ToolkitInput) {
         } else if (streamed.length === 0) {
           onOutput({ toolName: "run-command", content: { kind: "no-output" }, toolCallId });
         } else {
-          for (const line of streamed.slice(0, TOOL_OUTPUT_RUN_MAX_ROWS)) emitLine(line);
+          for (const line of streamed.slice(0, TOOL_OUTPUT_LIMITS.run)) emitLine(line);
         }
         const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.run);
         return { kind: "run-command", command: toolInput.command, exitCode: parseExitCode(rawResult), output: result };

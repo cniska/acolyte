@@ -12,26 +12,23 @@ import {
   truncateText,
 } from "./cli-format";
 import { formatPromptError } from "./error-messages";
+import { t } from "./i18n";
 
 describe("cli-format", () => {
-  test("formatRunOutput compresses long stdout", () => {
+  test("formatRunOutput shows stdout content only", () => {
     const payload = Array.from({ length: 15 }, (_, i) => `line-${i + 1}`);
     const raw = ["exit_code=0", "duration_ms=42", "stdout:", ...payload].join("\n");
     const out = formatRunOutput(raw);
-    expect(out).toContain("exit_code=0");
-    expect(out).toContain("duration_ms=42");
-    expect(out).toContain("stdout:");
+    expect(out).not.toContain("exit_code=0");
+    expect(out).not.toContain("duration_ms=42");
     expect(out).toContain("line-1");
     expect(out).toContain("… +11 lines");
-    expect(out).not.toContain("line-15");
   });
 
-  test("formatRunOutput hides shell echo noise in successful stderr", () => {
+  test("formatRunOutput hides stderr on success with stdout", () => {
     const raw = ["exit_code=0", "duration_ms=12", "stdout:", "ok", "stderr:", "$ bun run typecheck"].join("\n");
     const out = formatRunOutput(raw);
-    expect(out).toContain("stdout:");
-    expect(out).toContain("ok");
-    expect(out).not.toContain("stderr:");
+    expect(out).toBe("ok");
   });
 
   test("parseRunExitCode reads exit code from run output", () => {
@@ -54,41 +51,42 @@ describe("cli-format", () => {
     expect(parseEditResult("path=/tmp/a.ts\nedits=2\ndry_run=maybe")).toBeNull();
   });
 
-  test("formatSearchOutput includes match and file counts", () => {
+  test("formatSearchOutput lists result lines", () => {
     const raw = ["./a.ts:1:foo", "./a.ts:2:bar", "./b.ts:9:baz"].join("\n");
     const out = formatForTool("search", raw);
-    expect(out).toContain("3 matches in 2 files");
+    expect(out).toBe("./a.ts:1:foo\n./a.ts:2:bar\n./b.ts:9:baz");
   });
 
   test("formatSearchOutput handles no-match responses", () => {
-    expect(formatForTool("search", "No matches.")).toBe("No matches.");
-    expect(formatForTool("search", "")).toBe("No matches.");
+    expect(formatForTool("search", "No matches.")).toBe(t("tool.content.no_matches"));
+    expect(formatForTool("search", "")).toBe(t("tool.content.no_matches"));
   });
 
-  test("formatReadOutput includes line count", () => {
+  test("formatReadOutput shows content lines", () => {
     const raw = ["one", "two", "three"].join("\n");
     const out = formatForTool("read", raw);
-    expect(out).toContain("3 lines");
+    expect(out).toBe("one\ntwo\nthree");
   });
 
   test("formatReadOutput normalizes repo-local File path", () => {
     const raw = [`File: ${process.cwd()}/src/cli.ts`, "1: a", "2: b"].join("\n");
     const out = formatForTool("read", raw);
-    expect(out).toContain("2 lines");
     expect(out).toContain("File: src/cli.ts");
+    expect(out).toContain("1: a");
   });
 
-  test("formatDiffOutput includes file and line summary", () => {
+  test("formatDiffOutput shows diff lines", () => {
     const raw = ["diff --git a/a.ts b/a.ts", "--- a/a.ts", "+++ b/a.ts", "@@ -1 +1 @@", "-old", "+new"].join("\n");
     const out = formatForTool("diff", raw);
-    expect(out).toContain("1 file changed, +1 -1");
+    expect(out).toContain("-old");
+    expect(out).toContain("+new");
   });
 
-  test("formatGitStatusOutput includes changed-file summary", () => {
+  test("formatGitStatusOutput shows status lines", () => {
     const raw = ["## main...origin/main", " M src/cli.ts", "?? src/new.ts"].join("\n");
     const out = formatForTool("status", raw);
-    expect(out).toContain("2 changed files");
     expect(out).toContain("## main...origin/main");
+    expect(out).toContain(" M src/cli.ts");
   });
 
   test("summarizeDiff counts added and removed lines", () => {
