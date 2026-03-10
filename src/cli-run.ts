@@ -43,7 +43,7 @@ type RunModeDeps = {
 };
 
 export function runResourceId(sessionId: string): ResourceId {
-  return `user_run-${sessionId.replace(/^sess_/, "").slice(0, 24)}` as ResourceId;
+  return `user_run-${sessionId}` as ResourceId;
 }
 
 function parseRunArgs(args: string[]): ParsedRunArgs {

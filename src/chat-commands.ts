@@ -54,7 +54,7 @@ export type ResumeResolution =
   | { kind: "ok"; session: Session };
 
 export function resolveResumeSession(store: SessionState, text: string): ResumeResolution {
-  const parts = text.split(/\s+/).filter((part) => part.length > 0);
+  const parts = text.trim().split(/\s+/);
   if (parts.length < 2) return { kind: "usage" };
   const prefix = parts[1];
   const matches = store.sessions.filter((item) => item.id.startsWith(prefix));
@@ -199,7 +199,7 @@ type ModelSelection =
   | { kind: "mode"; mode: z.infer<typeof agentModeSchema>; model: string };
 
 function parseModelSelectionCommand(resolvedText: string): ModelSelection | null {
-  const parts = resolvedText.split(/\s+/).filter((part) => part.length > 0);
+  const parts = resolvedText.trim().split(/\s+/);
   if (parts[0] !== "/model") return null;
   if (parts.length === 2) {
     const mode = agentModeSchema.safeParse(parts[1]);
@@ -305,7 +305,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
   }
 
   if (resolvedText.startsWith("/model ")) {
-    const parts = resolvedText.split(/\s+/).filter((part) => part.length > 0);
+    const parts = resolvedText.trim().split(/\s+/);
     if (parts.length === 2) {
       const mode = agentModeSchema.safeParse(parts[1]);
       if (mode.success) {
@@ -368,7 +368,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
 
   if (resolvedText.startsWith("/memory rm")) {
     pushUserCommandRow();
-    const parts = resolvedText.split(/\s+/).filter((part) => part.length > 0);
+    const parts = resolvedText.trim().split(/\s+/);
     if (parts.length !== 3) {
       ctx.setRows((current) => [...current, createRow("system", t("chat.memory.rm.usage"))]);
       return { stop: true, userText: text };

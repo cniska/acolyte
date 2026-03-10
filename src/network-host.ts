@@ -1,5 +1,6 @@
 export function normalizeHostname(hostname: string): string {
-  return hostname.toLowerCase().replace(/^\[(.*)\]$/, "$1");
+  const lower = hostname.toLowerCase();
+  return lower.startsWith("[") && lower.endsWith("]") ? lower.slice(1, -1) : lower;
 }
 
 export function isLoopbackHost(hostname: string): boolean {

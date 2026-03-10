@@ -1,5 +1,6 @@
 export function normalizePath(p: string): string {
-  return p.replace(/\/+$/, "").replace(/^\.\//, "");
+  const trimmed = p.endsWith("/") ? p.replace(/\/+$/, "") : p;
+  return trimmed.startsWith("./") ? trimmed.slice(2) : trimmed;
 }
 
 export function extractReadPaths(args: Record<string, unknown>, opts?: { normalize?: boolean }): string[] {

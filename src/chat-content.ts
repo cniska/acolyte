@@ -18,7 +18,7 @@ export function sanitizeAssistantContent(content: string): string {
 }
 
 function wrapWithIndent(prefix: string, continuationPrefix: string, body: string, width: number): string[] {
-  const words = body.split(/\s+/).filter((word) => word.length > 0);
+  const words = body.trim().split(/\s+/);
   if (words.length === 0) return [prefix.trimEnd()];
 
   const lines: string[] = [];

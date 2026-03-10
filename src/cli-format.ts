@@ -159,9 +159,8 @@ export function formatRunOutput(raw: string): string {
 
 export function parseRunExitCode(raw: string): number | null {
   const first = raw.split("\n")[0]?.trim() ?? "";
-  const match = first.match(/^exit_code=([^\\s]+)$/);
-  if (!match) return null;
-  const parsed = runExitCodeSchema.safeParse(match[1]);
+  if (!first.startsWith("exit_code=")) return null;
+  const parsed = runExitCodeSchema.safeParse(first.slice("exit_code=".length));
   return parsed.success ? parsed.data : null;
 }
 
