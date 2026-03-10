@@ -172,6 +172,9 @@ export function createAgentInput(
     }
   }
 
+  // promptTokens covers only the composed input (history + user message); it
+  // excludes system prompt tokens, which are accounted for separately via
+  // options.systemPromptTokens and returned as usage.systemPromptTokens.
   return {
     input,
     usage: {

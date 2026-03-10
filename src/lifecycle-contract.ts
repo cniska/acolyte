@@ -26,9 +26,15 @@ export type LifecycleDebugEvent = {
   fields?: Record<string, unknown>;
 };
 
+export type ToolCallEntry = {
+  toolCallId: string;
+  toolName: string;
+  args: unknown;
+};
+
 export type GenerateResult = {
   text: string;
-  toolCalls: unknown[];
+  toolCalls: ToolCallEntry[];
 };
 
 export type ToolOutputEvent = { toolName: string; content: ToolOutput; toolCallId?: string };

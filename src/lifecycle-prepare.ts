@@ -6,6 +6,9 @@ import { toolsForAgent } from "./tool-registry";
 const INSTRUCTION_OVERHEAD_TOKENS = 300;
 
 export function phasePrepare(input: PhasePrepareInput): PhasePrepareResult {
+  // System prompt tokens are calculated here and passed into createAgentInput
+  // so it can reserve context-window space. This is the only place they are
+  // counted — createAgentInput's returned promptTokens intentionally excludes them.
   const systemPromptTokens = estimateTokens(input.soulPrompt) + INSTRUCTION_OVERHEAD_TOKENS;
   const requestInput = createAgentInput(input.request, { systemPromptTokens });
   const agentInput = requestInput.input;

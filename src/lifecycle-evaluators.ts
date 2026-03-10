@@ -130,8 +130,8 @@ export const verifyCycle: Evaluator = {
       return { type: "done" };
     }
 
-    // Verify → Work: return to work when verify found issues
-    if (!ctx.currentError && !haveChangesBeenVerified(ctx.session, ctx.taskId)) return { type: "done" };
+    // Verify → Work: return to work only when verify found issues (currentError set).
+    // If verification passed or was never marked, we are done.
     if (!ctx.currentError) return { type: "done" };
     ctx.debug("lifecycle.eval.verify_failure", { text_chars: ctx.result.text.length });
     return {

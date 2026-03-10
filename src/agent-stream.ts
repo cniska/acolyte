@@ -9,7 +9,7 @@ import type {
 } from "@ai-sdk/provider";
 import { z } from "zod";
 import type { Agent, StreamOptions, StreamOutput } from "./agent-contract";
-import type { GenerateResult, StreamChunk } from "./lifecycle-contract";
+import type { GenerateResult, StreamChunk, ToolCallEntry } from "./lifecycle-contract";
 import { createModel } from "./model-factory";
 import { normalizeModel } from "./provider-config";
 import type { ToolDefinition } from "./tool-contract";
@@ -52,7 +52,7 @@ export function createAgentStream(
     ];
 
     let fullText = "";
-    const allToolCalls: unknown[] = [];
+    const allToolCalls: ToolCallEntry[] = [];
 
     let streamController!: ReadableStreamDefaultController<StreamChunk>;
     const fullStream = new ReadableStream<StreamChunk>({
