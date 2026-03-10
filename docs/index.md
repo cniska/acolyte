@@ -1,6 +1,6 @@
 # Docs
 
-Developer documentation for Acolyte — a CLI-first AI coding agent with a headless daemon, typed RPC protocol, and an explicit lifecycle pipeline. Built for developers who want a transparent, extensible agent they can reason about.
+Developer documentation for Acolyte — a terminal-first AI coding assistant: local-first, observable, and built for extension.
 
 ## Overview
 

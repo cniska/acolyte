@@ -14,16 +14,6 @@ bun run dev           # starts server + CLI client
 
 See all commands: `bun run client help`
 
-## Architecture
-
-```
-CLI → client → server → lifecycle → model + tools
-```
-
-The server accepts requests over RPC, queues them, and runs each through the lifecycle pipeline. Tools execute inside guards. Evaluators decide whether to accept, retry, or re-generate. The client renders structured output.
-
-See [docs/architecture.md](docs/architecture.md) for the full system map.
-
 ## Validate
 
 ```bash
@@ -35,9 +25,9 @@ bun run test:tui      # visual regression tests
 bun run test:perf     # performance baselines
 ```
 
-## Docs
+## Documentation
 
-- [Documentation home](docs/index.md)
+- [Index](docs/index.md)
 - [Why Acolyte](docs/why-acolyte.md)
 - [Getting started](docs/getting-started.md)
 - [Contributing](docs/contributing.md)
