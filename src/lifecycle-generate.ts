@@ -47,19 +47,15 @@ function captureError(
   message: string,
   meta?: { source?: ErrorSource; tool?: string; code?: string; kind?: string },
 ): void {
-  ctx.lastError = message;
   const kindCategory = categoryFromErrorKind(meta?.kind);
   const code =
     meta?.code ??
     extractToolErrorCode(message) ??
     (kindCategory ? errorCodeFromCategory(kindCategory) : undefined) ??
     LIFECYCLE_ERROR_CODES.unknown;
-  ctx.lastErrorCode = code;
   const category = categoryFromErrorCode(code) ?? kindCategory ?? "other";
   const kind = meta?.kind ?? errorKindFromCategory(category);
-  ctx.lastErrorCategory = category;
-  ctx.lastErrorSource = meta?.source;
-  ctx.lastErrorTool = meta?.tool;
+  ctx.currentError = { message, code, category, source: meta?.source, tool: meta?.tool };
   ctx.errorStats[category] += 1;
   if (isEditFileMultiMatchSignal({ code, message })) ctx.sawEditFileMultiMatchError = true;
   ctx.debug("lifecycle.error", {
@@ -73,13 +69,14 @@ function captureError(
 }
 
 function currentStreamError(ctx: RunContext): StreamError | undefined {
-  if (!ctx.lastError) return undefined;
+  if (!ctx.currentError) return undefined;
+  const err = ctx.currentError;
   return createStreamError({
-    message: ctx.lastError,
-    code: ctx.lastErrorCode,
-    kind: ctx.lastErrorCategory ? errorKindFromCategory(ctx.lastErrorCategory) : undefined,
-    source: ctx.lastErrorSource,
-    tool: ctx.lastErrorTool,
+    message: err.message,
+    code: err.code,
+    kind: err.category ? errorKindFromCategory(err.category) : undefined,
+    source: err.source,
+    tool: err.tool,
   }).error;
 }
 
@@ -148,11 +145,7 @@ function ensureAgentForMode(ctx: RunContext): void {
 }
 
 export async function phaseGenerate(ctx: RunContext, prompt: string, opts: GenerateOptions): Promise<void> {
-  ctx.lastError = undefined;
-  ctx.lastErrorCode = undefined;
-  ctx.lastErrorCategory = undefined;
-  ctx.lastErrorSource = undefined;
-  ctx.lastErrorTool = undefined;
+  ctx.currentError = undefined;
   ctx.sawEditFileMultiMatchError = false;
   ensureAgentForMode(ctx);
   resetCycleStepCount(ctx.session, opts.cycleLimit);
@@ -177,7 +170,7 @@ export async function phaseGenerate(ctx: RunContext, prompt: string, opts: Gener
     const errorCode =
       error instanceof Error && "code" in error && typeof error.code === "string" ? error.code : undefined;
     captureError(ctx, errorMsg, { source: "generate", code: errorCode });
-    ctx.debug("lifecycle.generate.error", { model: ctx.model, error: ctx.lastError });
+    ctx.debug("lifecycle.generate.error", { model: ctx.model, error: errorMsg });
   }
 }
 
@@ -259,7 +252,7 @@ function emitToolResult(ctx: RunContext, toolCallId: string, toolName: string, i
     ...(isError
       ? {
           isError: true,
-          ...(ctx.lastErrorCode ? { errorCode: ctx.lastErrorCode } : {}),
+          ...(ctx.currentError?.code ? { errorCode: ctx.currentError.code } : {}),
           ...(currentStreamError(ctx) ? { error: currentStreamError(ctx) } : {}),
         }
       : {}),
@@ -322,7 +315,7 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
             code: resultCode ?? errorInfo.code,
             kind: errorInfo.kind,
           });
-          ctx.debug("lifecycle.tool.error", { tool: toolName, error: ctx.lastError });
+          ctx.debug("lifecycle.tool.error", { tool: toolName, error: errorInfo.message });
         }
         emitToolResult(ctx, p.toolCallId, toolName, isError);
       }

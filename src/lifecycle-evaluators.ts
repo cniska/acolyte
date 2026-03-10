@@ -1,8 +1,12 @@
 import type { AgentMode } from "./agent-contract";
 import { createModeInstructions } from "./agent-instructions";
 import type { VerifyScope } from "./api";
-import type { ErrorCategory } from "./error-handling";
-import { haveChangesBeenVerified, type LifecycleEventName, taskScopedCallLog } from "./lifecycle-contract";
+import {
+  haveChangesBeenVerified,
+  type LifecycleError,
+  type LifecycleEventName,
+  taskScopedCallLog,
+} from "./lifecycle-contract";
 import type { LifecyclePolicy } from "./lifecycle-policy";
 import { extractReadPaths } from "./tool-arg-paths";
 import { WRITE_TOOL_SET, WRITE_TOOLS } from "./tool-groups";
@@ -32,8 +36,7 @@ export type EvaluatorContext = {
   workspace: string | undefined;
   request: { message: string; verifyScope?: VerifyScope };
   sawEditFileMultiMatchError: boolean;
-  lastError?: string;
-  lastErrorCategory?: ErrorCategory;
+  currentError?: LifecycleError;
 };
 
 export type Evaluator = {
@@ -111,8 +114,8 @@ function scopedVerifyPrompt(ctx: EvaluatorContext): string {
 export const timeoutRecovery: Evaluator = {
   id: "timeout-recovery",
   evaluate(ctx) {
-    if (!ctx.lastError) return { type: "done" };
-    if (ctx.lastErrorCategory !== "timeout") return { type: "done" };
+    if (!ctx.currentError) return { type: "done" };
+    if (ctx.currentError.category !== "timeout") return { type: "done" };
     return {
       type: "regenerate",
       prompt: ctx.agentInput,
@@ -143,8 +146,8 @@ export const verifyCycle: Evaluator = {
     }
 
     // Verify → Work: return to work when verify found issues
-    if (!ctx.lastError && !haveChangesBeenVerified(ctx.session, ctx.taskId)) return { type: "done" };
-    if (!ctx.lastError) return { type: "done" };
+    if (!ctx.currentError && !haveChangesBeenVerified(ctx.session, ctx.taskId)) return { type: "done" };
+    if (!ctx.currentError) return { type: "done" };
     ctx.debug("lifecycle.eval.verify_failure", { text_chars: ctx.result.text.length });
     return {
       type: "regenerate",
@@ -174,12 +177,12 @@ export const modeTransition: Evaluator = {
 
     if (ctx.mode === "work") {
       // Work → Plan: work failed without writing anything, re-analyze
-      if (!ctx.lastError) return { type: "done" };
+      if (!ctx.currentError) return { type: "done" };
       const usedWriteTools = WRITE_TOOLS.some((t) => ctx.observedTools.has(t));
       if (usedWriteTools) return { type: "done" };
       return {
         type: "regenerate",
-        prompt: `${ctx.agentInput}\n\nWork failed without writing changes (last error: ${ctx.lastError}). Re-analyze the problem.`,
+        prompt: `${ctx.agentInput}\n\nWork failed without writing changes (last error: ${ctx.currentError.message}). Re-analyze the problem.`,
         mode: "plan",
         cycleLimit: ctx.policy.planMaxSteps,
       };
@@ -200,7 +203,7 @@ export const multiMatchEditEvaluator: Evaluator = {
 
     const targetPath = findLastEditFilePath(ctx);
     ctx.debug("lifecycle.eval.multi_match_edit_regenerate", {
-      error: ctx.lastError ?? "multi_match_seen",
+      error: ctx.currentError?.message ?? "multi_match_seen",
       target_path: targetPath ?? null,
     });
     return {

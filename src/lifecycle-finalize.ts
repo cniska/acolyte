@@ -47,7 +47,7 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
     tool_calls: totalToolCalls,
     unique_tool_count: ctx.observedTools.size,
     tools: Array.from(ctx.observedTools).join(","),
-    has_error: Boolean(ctx.lastError),
+    has_error: Boolean(ctx.currentError),
     output_chars: output.length,
     budget_warning: budgetWarning ?? null,
     read_calls: readCalls,
@@ -60,8 +60,8 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
     guard_flag_set_count: guardStats.flagSet,
     active_skill: ctx.promptUsage.activeSkillName ?? null,
     skill_instruction_chars: ctx.promptUsage.skillInstructionChars ?? null,
-    last_error_code: ctx.lastErrorCode ?? null,
-    last_error_category: ctx.lastErrorCategory ?? null,
+    last_error_code: ctx.currentError?.code ?? null,
+    last_error_category: ctx.currentError?.category ?? null,
     timeout_error_count: ctx.errorStats.timeout,
     file_not_found_error_count: ctx.errorStats["file-not-found"],
     guard_blocked_error_count: ctx.errorStats["guard-blocked"],
@@ -71,7 +71,7 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
   return {
     model: ctx.model,
     output,
-    ...(ctx.lastError ? { error: ctx.lastError } : {}),
+    ...(ctx.currentError ? { error: ctx.currentError.message } : {}),
     toolCalls: callLog.map((entry) => entry.toolName),
     modelCalls: ctx.modelCallCount,
     usage: {

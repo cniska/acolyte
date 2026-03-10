@@ -27,6 +27,7 @@ export function resolveModeModel(
   return { model: resolved.model, provider: resolved.provider };
 }
 
+// Always starts in plan mode — guards auto-promote to work when write tools are called.
 export function phaseClassify(request: ChatRequest, debug: RunContext["debug"]): PhaseClassifyResult {
   const classifiedMode: AgentMode = "plan";
   const resolved = resolveModeModel(classifiedMode, request.model, request.modeModels);

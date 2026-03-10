@@ -149,7 +149,7 @@ describe("verifyCycle", () => {
       mode: "verify",
       classifiedMode: "work",
       session,
-      lastError: "verify failed: missing export updatePost in post-store.ts",
+      currentError: { message: "verify failed: missing export updatePost in post-store.ts" },
       result: { text: "Error: missing export updatePost in post-store.ts", toolCalls: [] },
       observedTools: new Set(["scan-code"]),
     });
@@ -198,7 +198,7 @@ describe("multiMatchEditEvaluator", () => {
       session,
       observedTools: new Set(["read-file", "edit-file"]),
       sawEditFileMultiMatchError: true,
-      lastError: "edit-file failed: [E_EDIT_FILE_MULTI_MATCH] Find text matched 3 locations (foo…).",
+      currentError: { message: "edit-file failed: [E_EDIT_FILE_MULTI_MATCH] Find text matched 3 locations (foo…)." },
       result: { text: "Attempted edit.", toolCalls: [] },
     });
     const action = multiMatchEditEvaluator.evaluate(ctx);
@@ -216,7 +216,7 @@ describe("multiMatchEditEvaluator", () => {
       classifiedMode: "work",
       observedTools: new Set(["edit-file"]),
       sawEditFileMultiMatchError: true,
-      lastError: "edit-file failed: [E_EDIT_FILE_MULTI_MATCH] Find text matched 2 locations.",
+      currentError: { message: "edit-file failed: [E_EDIT_FILE_MULTI_MATCH] Find text matched 2 locations." },
       result: { text: "Attempted edit.", toolCalls: [] },
     });
     const action = multiMatchEditEvaluator.evaluate(ctx);
@@ -230,7 +230,7 @@ describe("multiMatchEditEvaluator", () => {
       classifiedMode: "work",
       observedTools: new Set(["edit-file", "edit-code"]),
       sawEditFileMultiMatchError: true,
-      lastError: "edit-file failed: [E_EDIT_FILE_MULTI_MATCH] Find text matched 2 locations.",
+      currentError: { message: "edit-file failed: [E_EDIT_FILE_MULTI_MATCH] Find text matched 2 locations." },
       result: { text: "Attempted edit.", toolCalls: [] },
     });
     expect(multiMatchEditEvaluator.evaluate(ctx).type).toBe("done");
@@ -278,7 +278,7 @@ describe("modeTransition", () => {
       mode: "work",
       result: { text: "Could not find the file.", toolCalls: [] },
       observedTools: new Set(["read-file", "search-files"]),
-      lastError: "File not found: src/missing.ts",
+      currentError: { message: "File not found: src/missing.ts" },
       agentInput: "fix the bug",
     });
     const action = modeTransition.evaluate(ctx);
@@ -305,7 +305,7 @@ describe("modeTransition", () => {
       mode: "work",
       result: { text: "Partial progress.", toolCalls: [] },
       observedTools: new Set(["edit-file"]),
-      lastError: "Some error",
+      currentError: { message: "Some error" },
     });
     expect(modeTransition.evaluate(ctx).type).toBe("done");
   });
@@ -342,8 +342,7 @@ describe("evaluator ordering", () => {
 describe("timeoutRecovery", () => {
   test("uses policy-configured timeout recovery limits", () => {
     const ctx = createMockContext({
-      lastError: "Step timed out after 120000ms of inactivity",
-      lastErrorCategory: "timeout",
+      currentError: { message: "Step timed out after 120000ms of inactivity", category: "timeout" },
       policy: {
         ...defaultLifecyclePolicy,
         timeoutRecoveryMaxSteps: 3,

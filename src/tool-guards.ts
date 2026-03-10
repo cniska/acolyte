@@ -13,13 +13,25 @@ export type GuardEvent = { guardId: string; toolName: string; action: "blocked" 
 
 export type ToolCallRecord = { toolName: string; args: Record<string, unknown>; taskId?: string; mode?: string };
 
+export type SessionFlags = {
+  cycleStepCount?: number;
+  cycleStepLimit?: number;
+  totalStepLimit?: number;
+  guardStats?: { blocked: number; flagSet: number };
+};
+
 export type SessionContext = {
   callLog: ToolCallRecord[];
   taskId?: string;
   mode?: string;
-  flags: Record<string, unknown>;
+  flags: SessionFlags;
   onGuard?: (event: GuardEvent) => void;
 };
+
+const FILE_CHURN_MIN_COMBINED = 12;
+const FILE_CHURN_MIN_READS = 5;
+const FILE_CHURN_MIN_EDITS = 5;
+const DISCOVERY_LOOP_MIN_CALLS = 4;
 
 export type GuardReport = (action: "blocked" | "flag_set", detail?: string) => void;
 
@@ -197,7 +209,8 @@ const fileChurnGuard: ToolGuard = {
     const { readCount, editCount } = countsForPath(target);
 
     const combined = readCount + editCount;
-    if (combined < 12 || readCount < 5 || editCount < 5) return;
+    if (combined < FILE_CHURN_MIN_COMBINED || readCount < FILE_CHURN_MIN_READS || editCount < FILE_CHURN_MIN_EDITS)
+      return;
 
     report("blocked", target);
     throw new Error(
@@ -248,7 +261,7 @@ const redundantSearchGuard: ToolGuard = {
       }
     }
 
-    if (searchCount < 4 || readCount > 0 || writeCount > 0) return;
+    if (searchCount < DISCOVERY_LOOP_MIN_CALLS || readCount > 0 || writeCount > 0) return;
 
     report("blocked", String(searchCount));
     throw new Error(
@@ -308,7 +321,7 @@ const redundantFindGuard: ToolGuard = {
       }
     }
 
-    if (findCount < 4 || readCount > 0 || writeCount > 0) return;
+    if (findCount < DISCOVERY_LOOP_MIN_CALLS || readCount > 0 || writeCount > 0) return;
 
     report("blocked", String(findCount));
     throw new Error(
@@ -354,9 +367,9 @@ const stepBudgetGuard: ToolGuard = {
   description: "Enforce per-cycle and total step limits.",
   appliesTo: "all",
   check({ session, report }) {
-    const cycleLimit = (session.flags.cycleStepLimit as number | undefined) ?? INITIAL_MAX_STEPS;
-    const cycleCount = (session.flags.cycleStepCount as number | undefined) ?? 0;
-    const totalLimit = (session.flags.totalStepLimit as number | undefined) ?? TOTAL_MAX_STEPS;
+    const cycleLimit = session.flags.cycleStepLimit ?? INITIAL_MAX_STEPS;
+    const cycleCount = session.flags.cycleStepCount ?? 0;
+    const totalLimit = session.flags.totalStepLimit ?? TOTAL_MAX_STEPS;
     const totalCount = session.callLog.length;
 
     if (totalCount >= totalLimit) {

@@ -8,6 +8,14 @@ import type { SessionContext } from "./tool-guards";
 import type { ToolOutput } from "./tool-output-content";
 import type { Toolset } from "./tool-registry";
 
+export type LifecycleError = {
+  message: string;
+  code?: ErrorCode | string;
+  category?: ErrorCategory;
+  source?: ErrorSource;
+  tool?: string;
+};
+
 export type LifecycleEventName = `lifecycle.${string}`;
 
 export type LifecycleDebugEvent = {
@@ -67,11 +75,7 @@ export type PhasePrepareResult = {
 export type GenerateOptions = { cycleLimit?: number; timeoutMs: number };
 export type SavedRegenerationState = {
   result: GenerateResult | undefined;
-  lastError: string | undefined;
-  lastErrorCode: string | undefined;
-  lastErrorCategory: ErrorCategory | undefined;
-  lastErrorSource: ErrorSource | undefined;
-  lastErrorTool: string | undefined;
+  currentError: LifecycleError | undefined;
 };
 
 export type LifecycleInput = {
@@ -111,11 +115,7 @@ export type RunContext = {
   regenerationCount: number;
   regenerationLimitHit: boolean;
   sawEditFileMultiMatchError: boolean;
-  lastError?: string;
-  lastErrorCode?: ErrorCode | string;
-  lastErrorCategory?: ErrorCategory;
-  lastErrorSource?: ErrorSource;
-  lastErrorTool?: string;
+  currentError?: LifecycleError;
   errorStats: Record<ErrorCategory, number>;
   result?: GenerateResult;
   nativeIdQueue: Map<string, string[]>;
@@ -126,8 +126,7 @@ export type RunContext = {
 type GuardStats = { blocked: number; flagSet: number };
 
 export function guardStatsFromSession(session: SessionContext): GuardStats {
-  const value = session.flags.guardStats as GuardStats | undefined;
-  return { blocked: value?.blocked ?? 0, flagSet: value?.flagSet ?? 0 };
+  return { blocked: session.flags.guardStats?.blocked ?? 0, flagSet: session.flags.guardStats?.flagSet ?? 0 };
 }
 
 export function taskScopedCallLog(session: SessionContext, taskId: string | undefined) {

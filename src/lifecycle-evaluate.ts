@@ -16,21 +16,13 @@ const EVALUATORS: Evaluator[] = [multiMatchEditEvaluator, modeTransition, timeou
 function snapshotState(ctx: RunContext): SavedRegenerationState {
   return {
     result: ctx.result,
-    lastError: ctx.lastError,
-    lastErrorCode: ctx.lastErrorCode,
-    lastErrorCategory: ctx.lastErrorCategory,
-    lastErrorSource: ctx.lastErrorSource,
-    lastErrorTool: ctx.lastErrorTool,
+    currentError: ctx.currentError,
   };
 }
 
 function restoreState(ctx: RunContext, saved: SavedRegenerationState): void {
   ctx.result = saved.result;
-  ctx.lastError = saved.lastError;
-  ctx.lastErrorCode = saved.lastErrorCode;
-  ctx.lastErrorCategory = saved.lastErrorCategory;
-  ctx.lastErrorSource = saved.lastErrorSource;
-  ctx.lastErrorTool = saved.lastErrorTool;
+  ctx.currentError = saved.currentError;
 }
 
 export function recoveryActionForError(
@@ -90,7 +82,7 @@ export async function phaseEvaluate(ctx: RunContext, shouldYield: LifecycleInput
 
     if (
       recoveryActionForError({
-        errorCode: ctx.lastErrorCode,
+        errorCode: ctx.currentError?.code,
         unknownErrorCount: ctx.errorStats.other,
       }) === "stop-unknown-budget"
     ) {
@@ -99,7 +91,7 @@ export async function phaseEvaluate(ctx: RunContext, shouldYield: LifecycleInput
         reason: "unknown_error_budget",
         unknown_error_count: ctx.errorStats.other,
         unknown_error_cap: ctx.policy.maxUnknownErrorsPerRequest,
-        last_error_code: ctx.lastErrorCode ?? null,
+        last_error_code: ctx.currentError?.code ?? null,
       });
       if (!ctx.result.text.trim()) {
         ctx.result = {

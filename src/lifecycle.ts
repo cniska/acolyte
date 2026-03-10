@@ -92,8 +92,6 @@ function createRunContext(
     regenerationLimitHit: false,
     sawEditFileMultiMatchError: false,
     errorStats: createErrorStats(),
-    lastErrorSource: undefined,
-    lastErrorTool: undefined,
     nativeIdQueue: new Map(),
     toolCallStartedAt: new Map(),
     toolOutputHandler: null,
@@ -172,6 +170,7 @@ export async function runLifecycle(input: LifecycleInput) {
 
   await phaseEvaluate(ctx, input.shouldYield);
 
+  // Fire-and-forget: memory commit errors are logged but do not affect the response.
   if (ctx.result && shouldCommitMemory(input)) {
     scheduleMemoryCommit(
       {
