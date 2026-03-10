@@ -3,10 +3,6 @@ import { readdir, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, relative, resolve } from "node:path";
 
-// ---------------------------------------------------------------------------
-// Path security helpers (shared across all ops)
-// ---------------------------------------------------------------------------
-
 const TEMP_ROOTS = Array.from(new Set([resolve(tmpdir()), resolve("/tmp"), resolve("/private/tmp")]));
 
 function resolveAgentPath(pathInput: string, workspace: string): string {
@@ -33,10 +29,6 @@ export function ensurePathWithinAllowedRoots(pathInput: string, operation: strin
   return absPath;
 }
 
-// ---------------------------------------------------------------------------
-// Process spawner (used by git-ops)
-// ---------------------------------------------------------------------------
-
 export async function runCommand(
   cmd: string[],
   workspace: string,
@@ -58,10 +50,6 @@ export async function runCommand(
     stderr: stderrText,
   };
 }
-
-// ---------------------------------------------------------------------------
-// Workspace config detection (used by agent-instructions)
-// ---------------------------------------------------------------------------
 
 export function detectLineWidth(workspace: string): number | null {
   const root = workspace;
@@ -105,10 +93,6 @@ export function detectLineWidth(workspace: string): number | null {
   }
   return null;
 }
-
-// ---------------------------------------------------------------------------
-// File system constants and helpers (used by file-ops)
-// ---------------------------------------------------------------------------
 
 export const IGNORED_DIRS = new Set(["node_modules", ".git", ".acolyte", "dist", "build", ".next", "coverage"]);
 
@@ -244,10 +228,6 @@ export async function resolveSearchScopeFiles(workspace: string, paths: string[]
   }
   return Array.from(include);
 }
-
-// ---------------------------------------------------------------------------
-// Diff helpers (used by file-ops)
-// ---------------------------------------------------------------------------
 
 export function displayPathForDiff(absPath: string, workspace: string): string {
   if (absPath === workspace) return ".";
@@ -398,10 +378,6 @@ export function createUnifiedDeleteDiff(path: string, previous: string): string 
   const removed = oldLines.map((line) => `-${line}`);
   return [...header, ...removed].join("\n");
 }
-
-// ---------------------------------------------------------------------------
-// Misc helpers (used by file-ops)
-// ---------------------------------------------------------------------------
 
 export function toInt(value: string | undefined, fallback: number): number {
   if (!value) return fallback;

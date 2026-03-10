@@ -1,5 +1,6 @@
 import { mkdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import * as napi from "@ast-grep/napi";
 import { createToolError, encodeToolError, TOOL_ERROR_CODES } from "./tool-error-codes";
 import {
   collectWorkspaceFiles,
@@ -259,7 +260,7 @@ export async function writeTextFile(input: {
 
 let dynamicLangsRegistered = false;
 
-async function ensureDynamicLanguages(napi: typeof import("@ast-grep/napi")): Promise<void> {
+async function ensureDynamicLanguages(): Promise<void> {
   if (dynamicLangsRegistered) return;
   const langs: Record<string, unknown> = {};
   try {
@@ -327,15 +328,7 @@ export async function editCode(input: {
   const pathStats = await stat(absPath);
   if (!pathStats.isFile()) throw new Error(`edit-code requires a file path, got: ${input.path}`);
   const original = await readFile(absPath, "utf8");
-
-  let napi: typeof import("@ast-grep/napi");
-  try {
-    napi = await import("@ast-grep/napi");
-  } catch {
-    throw new Error("@ast-grep/napi is not installed — run `bun add @ast-grep/napi`");
-  }
-
-  await ensureDynamicLanguages(napi);
+  await ensureDynamicLanguages();
 
   const langName = languageFromPath(absPath);
   const langEnum = napi.Lang[langName as keyof typeof napi.Lang];
@@ -410,13 +403,7 @@ export async function scanCode(input: {
   const maxResults = input.maxResults ?? 50;
   const patterns = Array.isArray(input.pattern) ? input.pattern : [input.pattern];
 
-  let napi: typeof import("@ast-grep/napi");
-  try {
-    napi = await import("@ast-grep/napi");
-  } catch {
-    throw new Error("@ast-grep/napi is not installed — run `bun add @ast-grep/napi`");
-  }
-  await ensureDynamicLanguages(napi);
+  await ensureDynamicLanguages();
 
   type Match = { relPath: string; line: number; text: string; captures: Record<string, string> };
   type PatternResult = { pattern: string; matches: Match[] };
