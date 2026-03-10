@@ -74,10 +74,9 @@ Only OpenClaw (3 detectors: genericRepeat, pingPong, knownPollNoProgress) and Op
 ## Auto-verification
 
 After generation, evaluators inspect the result and can trigger:
-- Re-generation with adjusted parameters
-- Mode transitions (e.g. work → verify)
-- Verify cycles that run project checks automatically
-- Timeout recovery
+- Re-generation with a different tool strategy (e.g. multi-match edit → retry with edit-code)
+- Mode transitions (work → verify after writes)
+- Verify cycles that auto-run project checks and re-generate on failure
 
 Goose has a RetryManager with shell-command success checks. OpenHands has a Critic that scores outcomes but doesn't auto-retry. The rest either rely on prompt instructions ("please run the tests") or have no verification at all.
 
@@ -89,6 +88,7 @@ The CLI is built with [Ink](https://github.com/vadimdemedes/ink) and ships a ful
 - Autocomplete with suggestion and correction
 - Session management with history navigation
 - Daemon lifecycle commands with Docker-style output (start/stop/status)
+- AST-based code editing and scanning via [ast-grep](https://ast-grep.github.io/)
 - Slash commands and skill invocation
 
 Most competing CLIs are basic readline loops (Aider) or full TUI frameworks that are hard to extend (OpenCode's Bubbletea). IDE-based agents (Cline, Continue) have no standalone CLI at all.
@@ -110,7 +110,7 @@ The developer tooling — lifecycle trace, benchmarks, performance scenarios, fa
 
 ## Code quality
 
-Acolyte leads on type safety, test density, module size, and dependency count across all eight projects compared. The numbers reflect architectural choices: few deps because the daemon owns the stack with no framework or bundler. Small files because lifecycle phases, guards, and tools are each their own module. High test ratio because each module is independently testable.
+Acolyte leads on type safety, test density, module size, and dependency count across all eight projects compared. The numbers reflect architectural choices: few deps because the daemon owns the stack with no framework or bundler. Small files because lifecycle phases, guards, and tools are each their own module. High test ratio because each module is independently testable. Runs on [Bun](https://bun.sh) with no bundler or transpiler step.
 
 See [benchmarks.md](./benchmarks.md) for the full measured comparison tables.
 
@@ -148,11 +148,25 @@ The principle is "interface-first boundaries" — clean contracts at every seam,
 
 ## Memory
 
+Most agents handle growing context through **compaction** — summarizing or truncating the conversation when it hits the token limit. Compaction is lossy by design: it fires under pressure, and important details get silently dropped. The agent forgets what it learned mid-session.
+
+Acolyte takes a different approach with **context distillation**. Instead of compressing the conversation after the fact, the memory pipeline proactively extracts structured facts — observations, reflections, and corrections — from each conversation and commits them to persistent storage. These facts are recalled in future sessions, not just the current one.
+
 Three-tier memory with async commit:
 - **Session**: conversation context within a session
-- **Project**: project-scoped persistent facts
-- **User**: cross-project preferences
+- **Project**: project-scoped persistent facts (e.g. architecture decisions, naming conventions)
+- **User**: cross-project preferences (e.g. commit style, tool choices)
 
-Context distillation automatically extracts observations and reflections from conversations.
+The pipeline is explicit: ingest → normalize → select → inject → commit. Each stage is strategy-injectable behind registry contracts — no monolithic summarizer, no opaque compression step.
 
-OpenClaw has the most mature memory (vector search + LanceDB). Goose has MCP-based categorized memory. Acolyte's distillation pipeline is architecturally clean but newer.
+| Project | Approach |
+|---|---|
+| **Acolyte** | Context distillation to 3-tier persistent memory |
+| OpenClaw | Vector search + LanceDB (most mature retrieval) |
+| Goose | MCP-based categorized memory |
+| Continue | Retrieval from codebase embeddings |
+| Aider | Repository map (no cross-session memory) |
+| OpenCode, Pi, Cline | No persistent memory |
+| OpenHands | Microagent recall (no distillation) |
+
+Acolyte's distillation pipeline is newer than OpenClaw's retrieval system, but architecturally it solves a different problem: learning from conversations rather than searching stored documents.

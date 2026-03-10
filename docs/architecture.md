@@ -9,6 +9,21 @@ Concept pages:
 - [modes.md](./modes.md)
 - [sessions-tasks.md](./sessions-tasks.md)
 
+## First-class concepts
+
+Every concept below is modeled as an explicit entity with typed contracts, its own module, and clear boundaries — not buried as implementation details.
+
+- **Sessions** — persistent conversation context with history and state
+- **Tasks** — state-machined units of work with stable IDs and per-task scoping
+- **Lifecycle phases** — resolve, prepare, generate, evaluate, finalize as separate modules
+- **Modes** — explicit operating behaviors (work, verify) with per-mode model routing
+- **Tools** — typed definitions with categories, permissions, schemas, and output contracts
+- **Guards** — behavioral checks that run before every tool call
+- **Evaluators** — post-generation inspectors that decide accept or re-generate
+- **Skills** — declarative prompt extensions with metadata and tool restrictions
+- **Memory sources** — pluggable memory tiers (session, project, user) with pipeline stages
+- **Protocol** — typed RPC messages with request correlation and lifecycle envelopes
+
 ## System flow
 
 ```text
@@ -54,10 +69,10 @@ lifecycle -> guard -> toolkit -> registry
 ## Lifecycle flow
 
 ```text
-classify -> prepare -> generate -> evaluate -> finalize
+resolve -> prepare -> generate -> evaluate -> finalize
 ```
 
-- **classify:** choose mode and policy.
+- **resolve:** pick mode and model (sync, not a full phase).
 - **prepare:** build inputs, context, and tools.
 - **generate:** run model + tool calls.
 - **evaluate:** decide accept/retry/regenerate (bounded).
