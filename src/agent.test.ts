@@ -354,7 +354,7 @@ describe("formatAssistantOutput", () => {
     expect(out).toBe(raw);
   });
 
-  test("compresses verbose tool-backed output into a short outcome", () => {
+  test("returns full output after tool calls without compaction", () => {
     const raw = [
       "Done — I applied both edits.",
       "",
@@ -363,7 +363,7 @@ describe("formatAssistantOutput", () => {
       "- Added flags and examples.",
     ].join("\n");
     const out = formatAssistantOutput(raw, 2);
-    expect(out).toBe("Done — I applied both edits.");
+    expect(out).toBe(raw);
   });
 
   test("returns tool-executed fallback when output is empty after tool calls", () => {
