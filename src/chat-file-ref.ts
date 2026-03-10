@@ -1,5 +1,6 @@
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
+import { IGNORED_DIRS } from "./tool-utils";
 
 type AtToken = {
   query: string;
@@ -10,7 +11,6 @@ type AtToken = {
 const MAX_AT_SUGGESTIONS = 8;
 const MAX_SCAN_ENTRIES = 5000;
 const PATH_CACHE_TTL_MS = 3000;
-const IGNORED_DIRS = new Set(["node_modules", ".acolyte", "dist", "build", ".next", "coverage"]);
 
 let repoPathCache: {
   cwd: string;

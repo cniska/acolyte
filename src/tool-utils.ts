@@ -94,7 +94,7 @@ export function detectLineWidth(workspace: string): number | null {
   return null;
 }
 
-export const IGNORED_DIRS = new Set(["node_modules", ".git", ".acolyte", "dist", "build", "coverage"]);
+export const IGNORED_DIRS = new Set(["node_modules", ".git", ".acolyte", "dist", "build", ".next", "coverage"]);
 
 const BINARY_EXTENSIONS = new Set([
   ".png",

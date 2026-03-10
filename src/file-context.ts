@@ -1,9 +1,9 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
+import { IGNORED_DIRS } from "./tool-utils";
 
 const MAX_BYTES = 200_000;
 const MAX_DIR_ENTRIES = 120;
-const IGNORED_DIRS = new Set([".git", "node_modules", ".acolyte", "dist", "build", ".next", "coverage"]);
 
 function looksBinary(content: string): boolean {
   return content.includes("\u0000");
