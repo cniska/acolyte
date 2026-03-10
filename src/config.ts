@@ -35,7 +35,7 @@ const DEFAULT_CONFIG = {
   replyTimeoutMs: 180_000,
 };
 
-type ConfigOptions = {
+export type ConfigOptions = {
   homeDir?: string;
   cwd?: string;
   scope?: ConfigScope;

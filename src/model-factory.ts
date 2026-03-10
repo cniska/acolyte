@@ -3,6 +3,7 @@ import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenAI } from "@ai-sdk/openai";
 import type { LanguageModelV3 } from "@ai-sdk/provider";
 import { appConfig } from "./app-config";
+import { unreachable } from "./assert";
 import { providerFromModel } from "./provider-config";
 
 export function createModel(qualifiedModel: string): LanguageModelV3 {
@@ -32,5 +33,7 @@ export function createModel(qualifiedModel: string): LanguageModelV3 {
       });
       return openai(modelId);
     }
+    default:
+      return unreachable(provider);
   }
 }
