@@ -14,7 +14,7 @@ Update rule:
 - Session resume and session listing.
 - Configurable locale via `config set locale <tag>`.
 - Automatic local server startup/reuse for chat and run mode (local-default config).
-- Local server control commands (`server start`, `server status`, `server stop`).
+- Server control commands (`start`, `stop`, `restart`, `ps`, `status`).
 - Local-first status guidance when daemon server is not running.
 - Managed vs unmanaged local server state visibility in CLI status/stop flows.
 - Managed local server replacement when local daemon target changes.

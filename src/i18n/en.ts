@@ -159,7 +159,7 @@ export const EN_MESSAGES = {
   "cli.tool.web-fetch.usage": "Usage: acolyte tool web-fetch <url>",
   "cli.tool.web-search.usage": "Usage: acolyte tool web-search <query>",
   "error.connection.generic": "Cannot reach server at {url}. Check apiUrl and server availability.",
-  "error.connection.loopback_default": "Cannot reach server at {url}. Start it with: acolyte server start",
+  "error.connection.loopback_default": "Cannot reach server at {url}. Start it with: acolyte start",
   "error.connection.loopback_https":
     "Cannot reach server at {url}. Local daemon uses http:// (not https://); update apiUrl or run an HTTPS server.",
   "error.model.not_configured": "No model configured. Choose a model with /model.",

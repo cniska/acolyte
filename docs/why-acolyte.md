@@ -85,7 +85,7 @@ Goose has a RetryManager with shell-command success checks. OpenHands has a Crit
 The CLI is built with [Ink](https://github.com/vadimdemedes/ink) and ships a full TUI with:
 - Structured tool output with typed rendering (bold labels, colored diffs, dim line numbers)
 - Fuzzy search for sessions, commands, and skills
-- Autocomplete with suggestion and correction
+- Model picker that queries provider APIs for available models with autocomplete
 - Session management with history navigation
 - Daemon lifecycle commands with Docker-style output (start/stop/status)
 - AST-based code editing and scanning via [ast-grep](https://ast-grep.github.io/)

@@ -396,9 +396,9 @@ describe("cli visual regression", () => {
       args: ["status", "help"],
       output: dedent(`
         Usage: acolyte status
-        
+
         Description: show server status
-        
+
         Examples:
           acolyte status
       `),

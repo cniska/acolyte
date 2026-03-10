@@ -8,7 +8,7 @@ The CLI is the primary developer interface for local workflows.
 - `acolyte resume [id-prefix]`: continue a previous session.
 - `acolyte history`: list sessions.
 - `acolyte status`: show server/runtime status.
-- `acolyte server <start|stop|status>`: manage local server lifecycle.
+- `acolyte start|stop|restart|ps`: manage server lifecycle.
 
 ## Memory commands
 
