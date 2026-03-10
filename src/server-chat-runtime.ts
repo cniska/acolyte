@@ -75,16 +75,12 @@ export function streamErrorPayload(error: unknown): StreamErrorPayload {
   const errorId = nextErrorId();
   const parsed = parseErrorInfo(error);
   const errorMessage = parsed.ok ? parsed.value.message : error instanceof Error ? error.message : "Unknown error";
-  const { errorCode, error: streamError } = createStreamError(
-    {
-      message: errorMessage,
-      code: parsed.ok ? parsed.value.code : undefined,
-      kind: parsed.ok ? parsed.value.kind : undefined,
-      source: "server",
-      unknownErrorCount: 1,
-    },
-    1,
-  );
+  const { errorCode, error: streamError } = createStreamError({
+    message: errorMessage,
+    code: parsed.ok ? parsed.value.code : undefined,
+    kind: parsed.ok ? parsed.value.kind : undefined,
+    source: "server",
+  });
   return {
     errorMessage,
     errorId,

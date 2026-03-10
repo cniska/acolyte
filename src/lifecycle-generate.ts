@@ -74,17 +74,13 @@ function captureError(
 
 function currentStreamError(ctx: RunContext): StreamError | undefined {
   if (!ctx.lastError) return undefined;
-  return createStreamError(
-    {
-      message: ctx.lastError,
-      code: ctx.lastErrorCode,
-      kind: ctx.lastErrorCategory ? errorKindFromCategory(ctx.lastErrorCategory) : undefined,
-      source: ctx.lastErrorSource,
-      tool: ctx.lastErrorTool,
-      unknownErrorCount: ctx.errorStats.other,
-    },
-    ctx.policy.maxUnknownErrorsPerRequest,
-  ).error;
+  return createStreamError({
+    message: ctx.lastError,
+    code: ctx.lastErrorCode,
+    kind: ctx.lastErrorCategory ? errorKindFromCategory(ctx.lastErrorCategory) : undefined,
+    source: ctx.lastErrorSource,
+    tool: ctx.lastErrorTool,
+  }).error;
 }
 
 export function shouldYieldNow(ctx: RunContext, shouldYield?: () => boolean): boolean {

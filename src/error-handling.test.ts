@@ -89,15 +89,11 @@ describe("error handling helpers", () => {
   });
 
   test("createStreamError returns normalized structured payload", () => {
-    const detail = createStreamError(
-      {
-        message: "request timed out after 30s",
-        code: LIFECYCLE_ERROR_CODES.timeout,
-        source: "server",
-        unknownErrorCount: 0,
-      },
-      2,
-    );
+    const detail = createStreamError({
+      message: "request timed out after 30s",
+      code: LIFECYCLE_ERROR_CODES.timeout,
+      source: "server",
+    });
     expect(detail.errorCode).toBe(LIFECYCLE_ERROR_CODES.timeout);
     expect(detail.category).toBe("timeout");
     expect(detail.error).toMatchObject({

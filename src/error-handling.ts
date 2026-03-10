@@ -151,17 +151,13 @@ export function recoveryActionForError(
   return "none";
 }
 
-export function createStreamError(
-  input: {
-    message: string;
-    code?: string;
-    kind?: string;
-    source?: ErrorSource;
-    tool?: string;
-    unknownErrorCount: number;
-  },
-  unknownErrorBudget: number,
-): { errorCode: string; category: ErrorCategory; error: StreamError } {
+export function createStreamError(input: {
+  message: string;
+  code?: string;
+  kind?: string;
+  source?: ErrorSource;
+  tool?: string;
+}): { errorCode: string; category: ErrorCategory; error: StreamError } {
   const kindCategory = categoryFromErrorKind(input.kind);
   const errorCode =
     input.code ??

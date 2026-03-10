@@ -48,14 +48,10 @@ function serverError(
   const errorId = nextErrorId();
   const errorMessage = error instanceof Error ? error.message : t("unknown_error");
   const publicMessage = mapQuotaErrorMessage(errorMessage);
-  const { errorCode, error: streamError } = createStreamError(
-    {
-      message: publicMessage,
-      source: "server",
-      unknownErrorCount: 1,
-    },
-    1,
-  );
+  const { errorCode, error: streamError } = createStreamError({
+    message: publicMessage,
+    source: "server",
+  });
   log.error(message, {
     error_id: errorId,
     ...details,
