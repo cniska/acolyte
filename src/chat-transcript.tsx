@@ -126,7 +126,8 @@ function renderToolLine(item: ToolOutput, index: number, lineNumWidth: number): 
 
 function renderToolBlock(items: ToolOutput[]): React.ReactNode {
   if (items.length === 0) return null;
-  const first = items[0]!;
+  const first = items[0];
+  if (!first) return null;
   const text = renderToolOutputText(first);
   const label = "label" in first && typeof first.label === "string" ? first.label : undefined;
   const lineNumWidth = items.reduce(

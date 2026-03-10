@@ -77,7 +77,9 @@ export function createMessageStreamState(input: {
         const existingIndex = current.findIndex((row) => row.id === existingRowId);
         if (existingIndex < 0) return current;
         const next = [...current];
-        next[existingIndex] = { ...current[existingIndex]!, toolOutput: update.items };
+        const existing = current[existingIndex];
+        if (!existing) return current;
+        next[existingIndex] = { ...existing, toolOutput: update.items };
         return next;
       });
     },

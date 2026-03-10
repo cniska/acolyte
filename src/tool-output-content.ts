@@ -97,7 +97,9 @@ function renderDiffLine(item: Extract<ToolOutput, { kind: "diff" }>, numWidth: n
 
 export function formatToolOutput(items: ToolOutput[]): string {
   if (items.length === 0) return "";
-  const header = renderToolOutput(items[0]!);
+  const first = items[0];
+  if (!first) return "";
+  const header = renderToolOutput(first);
   const body = items.slice(1);
   if (body.length === 0) return header;
   const numWidth = body.reduce(
