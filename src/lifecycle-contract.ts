@@ -95,7 +95,7 @@ export type RunContext = {
   readonly soulPrompt: string;
   readonly emit: (event: StreamEvent) => void;
   readonly debug: (event: LifecycleEventName, fields?: Record<string, unknown>) => void;
-  /** Original mode determined by the classify phase (immutable). */
+  /** Initial mode resolved at request start (immutable). */
   readonly classifiedMode: AgentMode;
   readonly tools: Toolset;
   readonly session: SessionContext;
