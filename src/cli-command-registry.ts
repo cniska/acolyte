@@ -31,16 +31,16 @@ import { formatStatusOutput as formatStatusOutputShared } from "./status-format"
 import { createSession, readStore } from "./storage";
 import { formatCliTitle, printDim, printError, printOutput } from "./ui";
 
-function docFor(name: string): CliCommandHelp | undefined {
-  return COMMAND_REGISTRY[name]?.doc;
+function helpFor(name: string): CliCommandHelp | undefined {
+  return COMMAND_REGISTRY[name]?.help;
 }
 
 export function commandHelp(name: string): void {
-  commandHelpFromHelp(docFor(name), printDim);
+  commandHelpFromHelp(helpFor(name), printDim);
 }
 
 export function commandError(name: string, message?: string): void {
-  commandErrorFromHelp(docFor(name), name, printError, message);
+  commandErrorFromHelp(helpFor(name), name, printError, message);
 }
 
 export function usage(version: string): void {
