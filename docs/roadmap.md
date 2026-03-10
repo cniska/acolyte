@@ -82,6 +82,7 @@ Consolidate core UX quality and extension-ready seams before MVP release.
 - [x] Visual regression coverage for TUI/CLI output contracts
 - [x] Integration suite split (`*.int.test`) with dedicated `test:int` workflow
 - [ ] Full codebase audit and cleanup pass (architecture, reliability, UX consistency, tests)
+- [ ] Use `.gitignore` for file discovery instead of hardcoded IGNORED_DIRS
 - [ ] Config-driven permissions (user-level grant/deny for tool permission categories)
 - [ ] Extension-ready seams in core (interface-first boundaries for lifecycle/tools/guards/tasks/transports), without shipping plugin runtime
 - [x] Skill execution parity with tools (stream/output contracts, typed compaction, context budgeting, debug events)
