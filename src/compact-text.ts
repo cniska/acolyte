@@ -1,5 +1,11 @@
-const DEFAULT_MAX_CHARS = 4000;
-const DEFAULT_MAX_LINES = 120;
+export const DEFAULT_MAX_CHARS = 4000;
+export const DEFAULT_MAX_LINES = 120;
+
+export function compactDetail(value: string, maxChars = 80): string {
+  const single = value.replace(/\s+/g, " ").trim();
+  if (single.length <= maxChars) return single;
+  return `${single.slice(0, maxChars - 1).trimEnd()}…`;
+}
 
 export function truncateMiddle(text: string, maxChars: number): string {
   if (text.length <= maxChars) return text;

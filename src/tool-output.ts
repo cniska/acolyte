@@ -1,7 +1,4 @@
-import { compactText } from "./compact-text";
-
-const DEFAULT_MAX_CHARS = 4000;
-const DEFAULT_MAX_LINES = 120;
+import { compactText, DEFAULT_MAX_CHARS, DEFAULT_MAX_LINES } from "./compact-text";
 
 export function compactToolOutput(raw: string, options: { maxChars?: number; maxLines?: number } = {}): string {
   const maxChars = options.maxChars ?? DEFAULT_MAX_CHARS;

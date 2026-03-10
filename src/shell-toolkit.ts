@@ -1,17 +1,12 @@
 import { z } from "zod";
 import { appConfig } from "./app-config";
+import { compactDetail } from "./compact-text";
 import { t } from "./i18n";
 import { runShellCommand } from "./shell-ops";
 import { createTool, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { compactToolOutput } from "./tool-output";
 import { TOOL_OUTPUT_RUN_MAX_ROWS } from "./tool-output-format";
-
-function compactDetail(value: string, maxChars = 80): string {
-  const single = value.replace(/\s+/g, " ").trim();
-  if (single.length <= maxChars) return single;
-  return `${single.slice(0, maxChars - 1).trimEnd()}…`;
-}
 
 function createRunCommandTool(input: ToolkitInput) {
   const { workspace, session, onOutput } = input;

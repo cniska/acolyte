@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { appConfig } from "./app-config";
+import { compactDetail } from "./compact-text";
 import { t } from "./i18n";
 import { createTool, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
@@ -8,16 +9,6 @@ import { emitResultChunks } from "./tool-output-format";
 import { fetchWeb, searchWeb } from "./web-ops";
 
 const WEB_SEARCH_MAX_RESULTS = 5;
-
-function compactDetail(value: string, maxChars = 80): string {
-  const single = value.replace(/\s+/g, " ").trim();
-  if (single.length <= maxChars) return single;
-  return `${single.slice(0, maxChars - 1).trimEnd()}…`;
-}
-
-function encodeValue(value: string): string {
-  return JSON.stringify(value);
-}
 
 export function webSearchStreamRows(result: string): string {
   const normalizeQuery = (value: string, maxChars = 120): string => {
@@ -33,7 +24,7 @@ export function webSearchStreamRows(result: string): string {
 
   const noResultsMatch = lines[0]?.match(/^No web results found for:\s*(.+)$/i);
   if (noResultsMatch?.[1]) {
-    return [`query=${encodeValue(normalizeQuery(noResultsMatch[1]))} results=0`, "(No output)"].join("\n");
+    return [`query=${JSON.stringify(normalizeQuery(noResultsMatch[1]))} results=0`, "(No output)"].join("\n");
   }
 
   const headerMatch = lines[0]?.match(/^Web results for:\s*(.+)$/i);
@@ -58,10 +49,10 @@ export function webSearchStreamRows(result: string): string {
     entries.push({ rank: Number.isFinite(rank) ? rank : entries.length + 1, url });
   }
 
-  out.push(`query=${encodeValue(normalizeQuery(query))} results=${entries.length}`);
+  out.push(`query=${JSON.stringify(normalizeQuery(query))} results=${entries.length}`);
   const visible = entries.slice(0, WEB_SEARCH_MAX_RESULTS);
   for (const entry of visible)
-    out.push(`result rank=${entry.rank}${entry.url ? ` url=${encodeValue(entry.url)}` : ""}`);
+    out.push(`result rank=${entry.rank}${entry.url ? ` url=${JSON.stringify(entry.url)}` : ""}`);
   if (entries.length > WEB_SEARCH_MAX_RESULTS)
     out.push(`… +${t("unit.result", { count: entries.length - WEB_SEARCH_MAX_RESULTS })}`);
   if (entries.length === 0) out.push("(No output)");
