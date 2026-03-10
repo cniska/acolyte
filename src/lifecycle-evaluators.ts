@@ -1,5 +1,5 @@
-import { createModeInstructions } from "./agent-instructions";
 import type { AgentMode } from "./agent-contract";
+import { createModeInstructions } from "./agent-instructions";
 import type { VerifyScope } from "./api";
 import type { ErrorCategory } from "./error-handling";
 import { taskScopedCallLog } from "./lifecycle-contract";

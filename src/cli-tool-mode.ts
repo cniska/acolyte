@@ -8,12 +8,12 @@ import {
   parseEditResult,
   showToolResult,
 } from "./cli-format";
-import { t } from "./i18n";
 import { editFile, findFiles, readSnippet, searchFiles } from "./file-ops";
 import { gitDiff, gitStatusShort } from "./git-ops";
+import { t } from "./i18n";
 import { runShellCommand } from "./shell-ops";
-import { fetchWeb, searchWeb } from "./web-ops";
 import { printError, printWarning } from "./ui";
+import { fetchWeb, searchWeb } from "./web-ops";
 
 const editArgsSchema = z.object({
   path: z.string().min(1),

@@ -10,8 +10,8 @@ import { addMemory, listMemories, type MemoryScope, removeMemoryByPrefix } from 
 import { formatModel } from "./provider-config";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
 import { createId } from "./short-id";
-import type { ToolOutput } from "./tool-output-content";
 import { findSkillByName } from "./skills";
+import type { ToolOutput } from "./tool-output-content";
 
 type MemoryContextScope = "all" | "user" | "project";
 

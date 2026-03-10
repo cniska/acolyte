@@ -1,5 +1,4 @@
-import type { Agent } from "./agent-contract";
-import type { AgentMode } from "./agent-contract";
+import type { Agent, AgentMode } from "./agent-contract";
 import type { ChatRequest, ChatResponse } from "./api";
 import type { StreamEvent } from "./client-contract";
 import type { ErrorCategory, ErrorSource } from "./error-handling";

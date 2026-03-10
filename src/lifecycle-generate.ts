@@ -1,7 +1,7 @@
 import type { Agent } from "./agent-contract";
-import { createAgent } from "./agent-stream";
 import { createInstructions } from "./agent-instructions";
 import { agentModes } from "./agent-modes";
+import { createAgent } from "./agent-stream";
 import { appConfig } from "./app-config";
 import {
   categoryFromErrorCode,

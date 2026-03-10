@@ -1,5 +1,5 @@
-import { resolveRunnableModel } from "./agent-model";
 import type { AgentMode } from "./agent-contract";
+import { resolveRunnableModel } from "./agent-model";
 import type { ChatRequest } from "./api";
 import { appConfig } from "./app-config";
 import { createUserError } from "./error-messages";
