@@ -3,7 +3,7 @@ import { resolveRunnableModel } from "./agent-model";
 import type { ChatRequest } from "./api";
 import { appConfig } from "./app-config";
 import { createUserError } from "./error-messages";
-import type { ModeResolution, PhaseClassifyResult, RunContext } from "./lifecycle-contract";
+import type { ModeResolution, RunContext } from "./lifecycle-contract";
 
 export function resolveModeModel(
   mode: AgentMode,
@@ -27,10 +27,12 @@ export function resolveModeModel(
   return { model: resolved.model, provider: resolved.provider };
 }
 
-// Always starts in plan mode — guards auto-promote to work when write tools are called.
-export function phaseClassify(request: ChatRequest, debug: RunContext["debug"]): PhaseClassifyResult {
-  const classifiedMode: AgentMode = "plan";
-  const resolved = resolveModeModel(classifiedMode, request.model, request.modeModels);
-  debug("lifecycle.classify", { mode: classifiedMode, model: resolved.model, provider: resolved.provider });
-  return { classifiedMode, model: resolved.model };
+export function resolveInitialMode(
+  request: ChatRequest,
+  debug: RunContext["debug"],
+): { mode: AgentMode; model: string } {
+  const mode: AgentMode = "work";
+  const resolved = resolveModeModel(mode, request.model, request.modeModels);
+  debug("lifecycle.classify", { mode, model: resolved.model, provider: resolved.provider });
+  return { mode, model: resolved.model };
 }

@@ -13,7 +13,6 @@ import {
   isEditFileMultiMatchSignal,
   parseErrorInfo,
 } from "./error-handling";
-import { resolveModeModel } from "./lifecycle-classify";
 import type {
   GenerateOptions,
   GenerateResult,
@@ -24,6 +23,7 @@ import type {
   ToolErrorPayload,
   ToolResultPayload,
 } from "./lifecycle-contract";
+import { resolveModeModel } from "./lifecycle-resolve";
 import type { StreamError } from "./stream-error";
 import type { ToolDefinition } from "./tool-contract";
 import { extractToolErrorCode, LIFECYCLE_ERROR_CODES } from "./tool-error-codes";

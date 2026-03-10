@@ -1,11 +1,11 @@
 import { createErrorStats } from "./error-handling";
-import { phaseClassify } from "./lifecycle-classify";
 import type { LifecycleEventName, LifecycleInput, RunContext, ToolOutputEvent } from "./lifecycle-contract";
 import { phaseEvaluate } from "./lifecycle-evaluate";
 import { phaseFinalize } from "./lifecycle-finalize";
 import { createModeAgent, phaseGenerate, shouldYieldNow } from "./lifecycle-generate";
 import { resolveLifecyclePolicy } from "./lifecycle-policy";
 import { phasePrepare } from "./lifecycle-prepare";
+import { resolveInitialMode } from "./lifecycle-resolve";
 import type { MemoryCommitContext, MemoryCommitMetrics } from "./memory-contract";
 import { commitMemorySources } from "./memory-registry";
 import { createInMemoryTaskQueue } from "./task-queue";
@@ -136,7 +136,7 @@ export async function runLifecycle(input: LifecycleInput) {
     });
   };
 
-  const { classifiedMode, model } = phaseClassify(input.request, debug);
+  const { mode: classifiedMode, model } = resolveInitialMode(input.request, debug);
 
   const prepared = phasePrepare({
     request: input.request,
