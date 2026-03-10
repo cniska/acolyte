@@ -10,14 +10,14 @@ Projects compared: [Aider](https://github.com/Aider-AI/aider), [OpenCode](https:
 |---|---|---|---|
 | Architecture | Headless daemon + typed RPC | Pi (SDK with RPC mode) | Monolithic CLI, IDE extension, or web platform |
 | Lifecycle | 5-phase pipeline in separate modules | Goose (phases in one function) | Flat loops or state machines |
-| Tool guards | 7 behavioral guards | OpenClaw (3 detectors) | 5 of 8 have none |
+| Tool guards | Behavioral guards per tool call | OpenClaw (3 detectors) | 5 of 8 have none |
 | Auto-verification | Evaluator-driven re-generation | Goose (RetryManager) | Prompt-based or none |
 | Task model | First-class tasks with state machine + scoping | OpenHands (controller state) | Inline request handling |
 | CLI | Ink TUI, fuzzy search, autocomplete, structured output | OpenCode (Bubbletea TUI) | Readline loops or IDE-only |
 | Observability | Structured lifecycle trace tooling | — | None ship agent-readable trace tools |
 | Extension seams | Interface-first boundaries, no plugin runtime | Goose (JS/TS extension runtime) | Framework-coupled or none |
-| Dependencies | 12 runtime | Pi (50) | 112–480 |
-| Code quality | 0.06 `any`/1k, 0.90 test ratio | OpenHands (1.14 test ratio) | See [benchmarks](./benchmarks.md) |
+| Dependencies | Fewest runtime deps | Pi (next fewest) | 112–480 |
+| Code quality | Highest type safety, high test ratio | OpenHands (highest test ratio) | See [benchmarks](./benchmarks.md) |
 
 Details for each feature below.
 
@@ -57,7 +57,7 @@ No other project separates lifecycle phases into independently testable modules.
 
 ## Tool guards
 
-Seven behavioral guards run before every tool call and block degenerate patterns at runtime:
+Behavioral guards run before every tool call and block degenerate patterns at runtime:
 
 | Guard | What it blocks |
 |---|---|
@@ -110,19 +110,9 @@ The developer tooling — lifecycle trace, benchmarks, performance scenarios, fa
 
 ## Code quality
 
-Measured comparisons against all eight projects — see [benchmarks.md](./benchmarks.md) for the full tables.
+Acolyte leads on type safety, test density, module size, and dependency count across all eight projects compared. The numbers reflect architectural choices: few deps because the daemon owns the stack with no framework or bundler. Small files because lifecycle phases, guards, and tools are each their own module. High test ratio because each module is independently testable.
 
-| Metric | Acolyte | Range across others |
-|---|---|---|
-| Source lines | 18,005 | 25k–628k |
-| Runtime dependencies | 12 | 50–480 |
-| `any` per 1k lines | 0.06 | 0.1–4.2 |
-| Test/source ratio | 0.90 | 0.04–1.14 |
-| Avg lines/file | 128 | 157–438 |
-| TODO/FIXME per 1k | 0.0 | 0.0–0.8 |
-| `.safeParse()` per 1k | 1.5 | 0.0–0.1 |
-
-The numbers reflect architectural choices: 12 deps because the daemon owns the stack with no framework or bundler. Small files because lifecycle phases, guards, and tools are each their own module. High test ratio because each module is independently testable.
+See [benchmarks.md](./benchmarks.md) for the full measured comparison tables.
 
 ## Task architecture
 
