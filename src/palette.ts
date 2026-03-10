@@ -1,7 +1,6 @@
 export const palette = {
   // Brand
   brand: "#A56EFF",
-
   mascot: "#2A1D4A",
   mascotEyes: "#FFD84D",
 
