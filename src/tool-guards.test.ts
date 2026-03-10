@@ -45,36 +45,6 @@ describe("step-budget guard", () => {
   });
 });
 
-describe("mode-promotion guard", () => {
-  test("promotes plan → work when a write tool is called", () => {
-    const session = createSessionContext();
-    session.mode = "plan";
-    runGuards({ toolName: "edit-file", args: { path: "src/a.ts" }, session });
-    expect(session.mode).toBe("work");
-  });
-
-  test("does not promote when already in work mode", () => {
-    const session = createSessionContext();
-    session.mode = "work";
-    runGuards({ toolName: "edit-file", args: { path: "src/a.ts" }, session });
-    expect(session.mode).toBe("work");
-  });
-
-  test("does not promote for read-only tools", () => {
-    const session = createSessionContext();
-    session.mode = "plan";
-    runGuards({ toolName: "read-file", args: { paths: [{ path: "src/a.ts" }] }, session });
-    expect(session.mode).toBe("plan");
-  });
-
-  test("does not promote in verify mode", () => {
-    const session = createSessionContext();
-    session.mode = "verify";
-    runGuards({ toolName: "edit-file", args: { path: "src/a.ts" }, session });
-    expect(session.mode).toBe("verify");
-  });
-});
-
 describe("no-delete-rewrite guard", () => {
   test("allows delete when path was NOT read", () => {
     const session = createSessionContext();

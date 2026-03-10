@@ -44,10 +44,10 @@ describe("cli config", () => {
 
   test("list still renders object maps as dotted rows", async () => {
     const { deps, dimLines } = createDeps({
-      readConfig: async () => ({ models: { plan: "gpt-5-mini" } }),
+      readConfig: async () => ({ models: { work: "gpt-5-mini" } }),
     });
     await configMode(["list"], deps);
-    expect(dimLines).toContain("models.plan:     gpt-5-mini");
+    expect(dimLines).toContain("models.work:     gpt-5-mini");
   });
 
   test("unset forwards dotted keys", async () => {
@@ -57,8 +57,8 @@ describe("cli config", () => {
         calls.push({ key, scope: options?.scope ?? "user" });
       },
     });
-    await configMode(["unset", "models.plan"], deps);
-    expect(calls).toEqual([{ key: "models.plan", scope: "user" }]);
+    await configMode(["unset", "models.work"], deps);
+    expect(calls).toEqual([{ key: "models.work", scope: "user" }]);
   });
 
   test("unset accepts trailing scope flag", async () => {
@@ -68,8 +68,8 @@ describe("cli config", () => {
         calls.push({ key, scope: options?.scope ?? "user" });
       },
     });
-    await configMode(["unset", "models.plan", "--project"], deps);
-    expect(calls).toEqual([{ key: "models.plan", scope: "project" }]);
+    await configMode(["unset", "models.work", "--project"], deps);
+    expect(calls).toEqual([{ key: "models.work", scope: "project" }]);
   });
 
   test("set accepts trailing scope flag", async () => {
@@ -79,7 +79,7 @@ describe("cli config", () => {
         calls.push({ key, value, scope: options?.scope ?? "user" });
       },
     });
-    await configMode(["set", "models.plan", "gpt-5-mini", "--project"], deps);
-    expect(calls).toEqual([{ key: "models.plan", value: "gpt-5-mini", scope: "project" }]);
+    await configMode(["set", "models.work", "gpt-5-mini", "--project"], deps);
+    expect(calls).toEqual([{ key: "models.work", value: "gpt-5-mini", scope: "project" }]);
   });
 });

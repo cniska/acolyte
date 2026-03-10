@@ -8,8 +8,8 @@ describe("i18n", () => {
 
   test("interpolates placeholder values", () => {
     expect(t("chat.resume.not_found", { prefix: "sess_abc" })).toBe("No session found for prefix: sess_abc");
-    expect(t("chat.model.changed.mode", { mode: "plan", model: "gpt-5-mini" })).toBe(
-      "Changed plan mode model to gpt-5-mini.",
+    expect(t("chat.model.changed.mode", { mode: "work", model: "gpt-5-mini" })).toBe(
+      "Changed work mode model to gpt-5-mini.",
     );
   });
 

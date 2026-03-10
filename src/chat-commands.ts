@@ -192,7 +192,7 @@ function scopeLabel(scope: MemoryContextScope): string {
 }
 
 const modelIdSchema = z.string().trim().min(1).regex(/^\S+$/);
-const agentModeSchema = z.enum(["plan", "work", "verify"]);
+const agentModeSchema = z.enum(["work", "verify"]);
 
 type ModelSelection =
   | { kind: "default"; model: string }

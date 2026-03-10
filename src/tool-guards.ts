@@ -1,4 +1,3 @@
-import { modeForTool } from "./agent-modes";
 import { INITIAL_MAX_STEPS, TOTAL_MAX_STEPS } from "./lifecycle-constants";
 import {
   extractFindPatterns,
@@ -389,21 +388,8 @@ export function resetCycleStepCount(session: SessionContext, limit?: number): vo
   if (limit !== undefined) session.flags.cycleStepLimit = limit;
 }
 
-const modePromotionGuard: ToolGuard = {
-  id: "mode-promotion",
-  description: "Auto-promote plan → work when a write tool is called.",
-  appliesTo: "all",
-  check({ toolName, session, report }) {
-    if (session.mode !== "plan") return;
-    if (modeForTool(toolName) !== "work") return;
-    session.mode = "work";
-    report("flag_set", "plan-to-work");
-  },
-};
-
 const GUARDS: ToolGuard[] = [
   stepBudgetGuard,
-  modePromotionGuard,
   duplicateCallGuard,
   preventDeleteRewriteGuard,
   fileChurnGuard,

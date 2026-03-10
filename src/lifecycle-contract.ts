@@ -55,7 +55,6 @@ export type ToolErrorPayload = {
   toolCallId?: string;
 };
 export type ModeResolution = { model: string; provider: string };
-export type PhaseClassifyResult = { classifiedMode: AgentMode; model: string };
 export type PhasePrepareInput = {
   request: ChatRequest;
   workspace: string | undefined;
@@ -107,7 +106,7 @@ export type RunContext = {
   agent: Agent;
   /** Mode the current agent instance was created for (used to detect when to recreate). */
   agentMode: AgentMode;
-  /** Current working mode — changes during evaluation (e.g. plan → work → verify). */
+  /** Current working mode — changes during evaluation (e.g. work → verify). */
   mode: AgentMode;
   observedTools: Set<string>;
   modelCallCount: number;

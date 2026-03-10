@@ -38,7 +38,6 @@ export const statusPayloadSchema = z
     ok: z.literal(true),
     providers: z.array(providerSchema),
     model: z.string(),
-    "model.plan": z.string().optional(),
     "model.work": z.string().optional(),
     "model.verify": z.string().optional(),
     protocol_version: z.string(),

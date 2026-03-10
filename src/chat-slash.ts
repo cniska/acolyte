@@ -16,13 +16,12 @@ const CHAT_SLASH_COMMANDS = [
 
 const SUB_COMMANDS: Record<string, string[]> = {
   "/memory": ["/memory list", "/memory add", "/memory all", "/memory user", "/memory project"],
-  "/model": ["/model plan", "/model work", "/model verify"],
+  "/model": ["/model work", "/model verify"],
 };
 
 const SLASH_HELP: Record<string, string> = {
   "/new": t("chat.slash.help.new"),
   "/model": t("chat.slash.help.model"),
-  "/model plan": t("chat.slash.help.model.plan"),
   "/model work": t("chat.slash.help.model.work"),
   "/model verify": t("chat.slash.help.model.verify"),
   "/status": t("chat.slash.help.status"),

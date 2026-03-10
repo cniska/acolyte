@@ -118,15 +118,6 @@ describe("verifyCycle", () => {
     expect(verifyCycle.evaluate(ctx).type).toBe("done");
   });
 
-  test("returns done in plan mode", () => {
-    const ctx = createMockContext({
-      classifiedMode: "plan",
-      result: { text: "Found it.", toolCalls: [] },
-      observedTools: new Set(["read-file"]),
-    });
-    expect(verifyCycle.evaluate(ctx).type).toBe("done");
-  });
-
   test("returns done when no write tools used", () => {
     const ctx = createMockContext({
       classifiedMode: "work",

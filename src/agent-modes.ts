@@ -10,17 +10,6 @@ export type AgentModeDefinition = {
 };
 
 export const agentModes: Record<AgentMode, AgentModeDefinition> = {
-  plan: {
-    grants: ["read", "network"],
-    tools: toolIdsForGrants(["read", "network"]),
-    preamble: [
-      "Search first, then read relevant files. Batch multiple paths into one `read-file` call.",
-      "Stop as soon as you have enough information — do not keep searching for completeness.",
-      "For negative-answer tasks, stop after decisive evidence; do not run synonym searches once the answer is clear.",
-      "Reply with a concise summary. No preamble, no narration of your process.",
-    ],
-    statusText: "Thinking…",
-  },
   work: {
     grants: ["read", "write", "execute", "network"],
     tools: toolIdsForGrants(["read", "write", "execute", "network"]),
@@ -51,10 +40,3 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
     statusText: "Verifying…",
   },
 };
-
-export function modeForTool(toolName: string): AgentMode {
-  for (const [mode, def] of Object.entries(agentModes)) {
-    if (def.tools.includes(toolName)) return mode as AgentMode;
-  }
-  return "work";
-}

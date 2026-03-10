@@ -179,7 +179,6 @@ describe("config store", () => {
 
         'logFormat = "json"',
         'transportMode = "rpc"',
-        "temperatures.plan = 0.2",
         "temperatures.work = 0.3",
         "distillMessageThreshold = 25",
         "distillReflectionThresholdTokens = 9000",
@@ -203,7 +202,7 @@ describe("config store", () => {
 
     expect(loaded.logFormat).toBe("json");
     expect(loaded.transportMode).toBe("rpc");
-    expect(loaded.temperatures).toEqual({ plan: 0.2, work: 0.3 });
+    expect(loaded.temperatures).toEqual({ work: 0.3 });
     expect(loaded.memorySources).toEqual(["distill_session", "stored"]);
     expect(loaded.maxMessageTokens).toBe(700);
     expect(loaded.replyTimeoutMs).toBe(220000);
@@ -236,13 +235,13 @@ describe("config store", () => {
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(
       join(dataDir, "config.toml"),
-      'model = "anthropic/claude-sonnet-4"\n\n[models]\nplan = "openai/gpt-5-mini"\n',
+      'model = "anthropic/claude-sonnet-4"\n\n[models]\nwork = "openai/gpt-5-mini"\n',
       "utf8",
     );
 
     const resolved = readResolvedConfigSync({ homeDir: home, cwd: home });
     expect(resolved.model).toBe("anthropic/claude-sonnet-4");
-    expect(resolved.models).toEqual({ plan: "openai/gpt-5-mini" });
+    expect(resolved.models).toEqual({ work: "openai/gpt-5-mini" });
     expect(resolved.distillModel).toBe("anthropic/claude-sonnet-4");
   });
 
@@ -252,13 +251,13 @@ describe("config store", () => {
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(
       join(dataDir, "config.toml"),
-      'model = "anthropic/claude-sonnet-4"\n\ntemperatures.plan = 0.2\ntemperatures.verify = 0.1\n',
+      'model = "anthropic/claude-sonnet-4"\n\ntemperatures.work = 0.2\ntemperatures.verify = 0.1\n',
       "utf8",
     );
 
     const resolved = readResolvedConfigSync({ homeDir: home, cwd: home });
     expect(resolved.model).toBe("anthropic/claude-sonnet-4");
-    expect(resolved.temperatures).toEqual({ plan: 0.2, verify: 0.1 });
+    expect(resolved.temperatures).toEqual({ work: 0.2, verify: 0.1 });
   });
 
   test("setConfigValue supports comma-separated memorySources", async () => {
@@ -361,8 +360,8 @@ describe("config store", () => {
       "Invalid value for maxMessageTokens",
     );
 
-    await expect(setConfigValue("temperatures.plan", "3", { homeDir: home, cwd: project })).rejects.toThrow(
-      "Invalid value for temperatures.plan",
+    await expect(setConfigValue("temperatures.work", "3", { homeDir: home, cwd: project })).rejects.toThrow(
+      "Invalid value for temperatures.work",
     );
     await expect(setConfigValue("locale", "xx", { homeDir: home, cwd: project })).rejects.toThrow(
       "Invalid value for locale",
@@ -375,25 +374,25 @@ describe("config store", () => {
     const projectDataDir = join(project, ".acolyte");
     mkdirSync(projectDataDir, { recursive: true });
 
-    await setConfigValue("temperatures.plan", "0.2", { homeDir: home, cwd: project, scope: "project" });
-    await setConfigValue("temperatures.work", "0.4", { homeDir: home, cwd: project, scope: "project" });
+    await setConfigValue("temperatures.work", "0.2", { homeDir: home, cwd: project, scope: "project" });
+    await setConfigValue("temperatures.verify", "0.4", { homeDir: home, cwd: project, scope: "project" });
 
     const loaded = await readConfigForScope("project", { homeDir: home, cwd: project });
-    expect(loaded.temperatures).toEqual({ plan: 0.2, work: 0.4 });
+    expect(loaded.temperatures).toEqual({ work: 0.2, verify: 0.4 });
   });
 
-  test("unsetConfigValue removes models.plan dotted key", async () => {
+  test("unsetConfigValue removes models.work dotted key", async () => {
     const home = createDir("acolyte-config-home-");
     const project = createDir("acolyte-config-project-");
     const projectDataDir = join(project, ".acolyte");
     mkdirSync(projectDataDir, { recursive: true });
 
-    await setConfigValue("models.plan", "gpt-5-mini", { homeDir: home, cwd: project, scope: "project" });
-    await setConfigValue("models.work", "gpt-5", { homeDir: home, cwd: project, scope: "project" });
-    await unsetConfigValue("models.plan", { homeDir: home, cwd: project, scope: "project" });
+    await setConfigValue("models.work", "gpt-5-mini", { homeDir: home, cwd: project, scope: "project" });
+    await setConfigValue("models.verify", "gpt-5", { homeDir: home, cwd: project, scope: "project" });
+    await unsetConfigValue("models.work", { homeDir: home, cwd: project, scope: "project" });
 
     const loaded = await readConfigForScope("project", { homeDir: home, cwd: project });
-    expect(loaded.models).toEqual({ work: "gpt-5" });
+    expect(loaded.models).toEqual({ verify: "gpt-5" });
   });
 
   test("unsetConfigValue removes key only from targeted project scope", async () => {

@@ -97,7 +97,7 @@ describe("chat tui visual regression: footer and help", () => {
   test("renders slash suggestions with selected help and no footer row", () => {
     const out = renderInputPanel({
       value: "/mo",
-      slashSuggestions: ["/model", "/model plan", "/model work", "/model verify"],
+      slashSuggestions: ["/model", "/model work", "/model verify"],
       slashSuggestionIndex: 1,
     });
     expect(out).toBe(
@@ -106,11 +106,10 @@ describe("chat tui visual regression: footer and help", () => {
       ❯ /mo
       ────────────────────────────────────────────────────────────────────────────────────────────────
         /model
-        /model plan
         /model work
         /model verify
 
-        change plan model
+        change work model
     `),
     );
   });

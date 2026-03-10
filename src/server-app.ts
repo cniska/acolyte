@@ -102,7 +102,6 @@ async function createStatusPayload(): Promise<StatusPayload> {
   if (appConfig.anthropic.apiKey) providers.push("anthropic");
   if (appConfig.google.apiKey) providers.push("google");
   const model = appConfig.model;
-  const planModel = appConfig.models.plan?.trim();
   const workModel = appConfig.models.work?.trim();
   const verifyModel = appConfig.models.verify?.trim();
   const memoryStatus = appConfig.memory.budgetTokens > 0 ? `enabled (${appConfig.memory.sources.join(", ")})` : "none";
@@ -112,7 +111,6 @@ async function createStatusPayload(): Promise<StatusPayload> {
     ok: true,
     providers,
     model,
-    ...(planModel ? { "model.plan": planModel } : {}),
     ...(workModel ? { "model.work": workModel } : {}),
     ...(verifyModel ? { "model.verify": verifyModel } : {}),
     protocol_version: PROTOCOL_VERSION,

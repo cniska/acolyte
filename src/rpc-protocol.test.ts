@@ -42,7 +42,7 @@ describe("rpc protocol schema", () => {
           message: "hi",
           history: [],
           model: "gpt-5-mini",
-          modeModels: { plan: "gpt-5-mini" },
+          modeModels: { work: "gpt-5-mini" },
         },
       },
     });
@@ -91,7 +91,7 @@ describe("rpc protocol schema", () => {
         ok: true,
         providers: ["openai"],
         model: "gpt-5-mini",
-        "model.plan": "claude-3-5-haiku",
+        "model.work": "claude-3-5-haiku",
         protocol_version: "v1",
         capabilities: "chat,permissions",
         permissions: "write",
