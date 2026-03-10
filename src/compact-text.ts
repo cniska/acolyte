@@ -7,6 +7,11 @@ export function compactDetail(value: string, maxChars = 80): string {
   return `${single.slice(0, maxChars - 1).trimEnd()}…`;
 }
 
+export function truncateText(input: string, maxChars: number): string {
+  if (input.length <= maxChars) return input;
+  return `${input.slice(0, Math.max(0, maxChars - 1))}…`;
+}
+
 export function truncateMiddle(text: string, maxChars: number): string {
   if (text.length <= maxChars) return text;
   if (maxChars <= 1) return "…";

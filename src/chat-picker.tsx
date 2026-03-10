@@ -3,6 +3,7 @@ import type React from "react";
 import type { AgentMode } from "./agent-contract";
 import { unreachable } from "./assert";
 import { formatColumns, formatRelativeTime } from "./chat-format";
+import { truncateText } from "./compact-text";
 import type { Session } from "./session-contract";
 import type { SkillMeta } from "./skills";
 
@@ -18,11 +19,6 @@ export type PickerState =
       scrollOffset: number;
       targetMode?: AgentMode;
     };
-
-function truncateText(input: string, max = 72): string {
-  if (input.length <= max) return input;
-  return `${input.slice(0, Math.max(0, max - 1))}…`;
-}
 
 export const PICKER_PAGE_SIZE = 8;
 export const PICKER_LABEL_WIDTH = 20;
@@ -97,7 +93,7 @@ export function renderPickerItems(
         picker.items.map((skill) => ({
           key: skill.path,
           label: truncateText(skill.name, PICKER_LABEL_WIDTH),
-          detail: truncateText(skill.description),
+          detail: truncateText(skill.description, 72),
         })),
         picker.index,
         brandColor,

@@ -1,9 +1,12 @@
 import { relative } from "node:path";
 import { z } from "zod";
 import { wrapAssistantContent } from "./chat-content";
+import { truncateText } from "./compact-text";
 import { t } from "./i18n";
 import { TOOL_OUTPUT_RUN_MAX_ROWS } from "./tool-output-format";
 import { printDim, printOutput, printToolHeader } from "./ui";
+
+export { truncateText };
 
 const editResultSchema = z.object({
   path: z.string().min(1),
@@ -17,11 +20,6 @@ export function displayPath(pathInput: string): string {
   const rel = relative(process.cwd(), pathInput);
   if (!rel || rel.startsWith("..")) return pathInput;
   return rel;
-}
-
-export function truncateText(input: string, maxChars: number): string {
-  if (input.length <= maxChars) return input;
-  return `${input.slice(0, Math.max(0, maxChars - 1))}…`;
 }
 
 const ANSI = {
