@@ -2,7 +2,6 @@ import { describe, expect, test } from "bun:test";
 import { createAgentInput } from "./agent-input";
 import { createInstructions, createModeInstructions } from "./agent-instructions";
 import { resolveModelProviderState, resolveRunnableModel } from "./agent-model";
-import { formatAssistantOutput } from "./agent-output";
 import type { ChatRequest } from "./api";
 import { appConfig } from "./app-config";
 
@@ -334,48 +333,6 @@ describe("createAgentInput", () => {
     expect(oldToolLine).toBeDefined();
     expect(oldToolLine?.length).toBeLessThanOrEqual(300);
     expect(input).not.toContain("TAIL_OLD_TOOL");
-  });
-});
-
-describe("formatAssistantOutput", () => {
-  test("returns fallback when output is empty", () => {
-    expect(formatAssistantOutput("   ")).toBe(
-      "No output from model. Check /status and server logs, then retry or switch model/provider.",
-    );
-  });
-
-  test("keeps non-empty output as-is (trimmed)", () => {
-    expect(formatAssistantOutput("\n Done \n")).toBe("Done");
-  });
-
-  test("keeps long output as-is (no truncation)", () => {
-    const raw = `Summary\n${"x".repeat(3000)}`;
-    const out = formatAssistantOutput(raw);
-    expect(out).toBe(raw);
-  });
-
-  test("returns full output after tool calls without compaction", () => {
-    const raw = [
-      "Done — I applied both edits.",
-      "",
-      "What I changed",
-      "- File: scripts/reverse_word.py",
-      "- Added flags and examples.",
-    ].join("\n");
-    const out = formatAssistantOutput(raw, 2);
-    expect(out).toBe(raw);
-  });
-
-  test("returns tool-executed fallback when output is empty after tool calls", () => {
-    expect(formatAssistantOutput("   ", 2)).toBe(
-      "No final response after tool execution. Retry, or check server logs if this repeats.",
-    );
-  });
-
-  test("returns generic fallback when tool error caused empty output", () => {
-    expect(formatAssistantOutput("   ", 0)).toBe(
-      "No output from model. Check /status and server logs, then retry or switch model/provider.",
-    );
   });
 });
 

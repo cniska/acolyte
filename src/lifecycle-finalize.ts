@@ -1,5 +1,4 @@
 import { estimateTokens } from "./agent-input";
-import { formatAssistantOutput } from "./agent-output";
 import type { ChatResponse } from "./api";
 import { t } from "./i18n";
 import { guardStatsFromSession, type RunContext, taskScopedCallLog } from "./lifecycle-contract";
@@ -7,7 +6,12 @@ import { DISCOVERY_TOOL_SET, READ_TOOL_SET, SEARCH_TOOL_SET, WRITE_TOOL_SET } fr
 
 export function phaseFinalize(ctx: RunContext): ChatResponse {
   const rawOutput = ctx.result?.text.trim() ?? "";
-  const output = formatAssistantOutput(rawOutput, ctx.observedTools.size);
+  const output =
+    rawOutput.length > 0
+      ? rawOutput
+      : ctx.observedTools.size > 0
+        ? t("agent.output.no_response_after_tools")
+        : t("agent.output.no_output");
 
   const completionTokens = estimateTokens(output);
   let budgetWarning: string | undefined;
