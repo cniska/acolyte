@@ -1,10 +1,10 @@
 import { Text } from "ink";
 import type React from "react";
 import { useCaretBlink } from "./chat-effects";
-import { renderInputPanelContent } from "./chat-input-panel-content";
-import { borderLine, justifyLineSpaceBetween } from "./chat-layout";
-import { t } from "./i18n";
+import { borderLine, formatShortcutRows, justifyLineSpaceBetween } from "./chat-layout";
 import { type PickerState, pickerHint, pickerTitle, renderPickerItems } from "./chat-picker";
+import { slashCommandHelp } from "./chat-slash";
+import { t } from "./i18n";
 import { PromptInput } from "./prompt-input";
 
 type ChatInputPanelProps = {
@@ -26,11 +26,63 @@ type ChatInputPanelProps = {
 
 const noop = (): void => {};
 
+const SLASH_COMMAND_COLUMN_WIDTH = 16;
+
 function resolveFooterVisible(input: { showHelp: boolean; hasSuggestions: boolean; hasPicker: boolean }): boolean {
   if (input.showHelp) return false;
   if (input.hasSuggestions) return false;
   if (input.hasPicker) return false;
   return true;
+}
+
+function renderInputPanelContent(input: {
+  brandColor: string;
+  atQuery: string | null;
+  atSuggestions: string[];
+  atSuggestionIndex: number;
+  slashSuggestions: string[];
+  slashSuggestionIndex: number;
+  showHelp: boolean;
+}): React.ReactNode {
+  const { brandColor, atQuery, atSuggestions, atSuggestionIndex, slashSuggestions, slashSuggestionIndex, showHelp } =
+    input;
+
+  let suggestions: React.ReactNode = null;
+  if (atQuery !== null && atSuggestions.length > 0) {
+    suggestions = atSuggestions.map((item) => (
+      <Text key={`at-suggestion-${item}`} color={item === atSuggestions[atSuggestionIndex] ? brandColor : undefined}>
+        {`  ${item}`}
+      </Text>
+    ));
+  } else if (atQuery !== null) {
+    suggestions = <Text dimColor> {t("chat.at_ref.no_matches")}</Text>;
+  } else if (slashSuggestions.length > 0) {
+    const selectedIndex = Math.max(0, Math.min(slashSuggestionIndex, slashSuggestions.length - 1));
+    const selected = slashSuggestions[selectedIndex] ?? "";
+    const selectedHelp = slashCommandHelp(selected);
+    suggestions = (
+      <>
+        {slashSuggestions.map((item, index) => (
+          <Text
+            key={`slash-suggestion-${item}`}
+            color={index === selectedIndex ? brandColor : undefined}
+            dimColor={index !== selectedIndex}
+          >
+            {`  ${item.padEnd(SLASH_COMMAND_COLUMN_WIDTH)}`}
+          </Text>
+        ))}
+        {selectedHelp ? <Text dimColor>{`\n  ${selectedHelp}`}</Text> : null}
+      </>
+    );
+  } else if (showHelp) {
+    suggestions = formatShortcutRows().map((line) => (
+      <Text key={`shortcut-row-${line}`} dimColor>
+        {line}
+      </Text>
+    ));
+  }
+
+  return suggestions;
 }
 
 export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
