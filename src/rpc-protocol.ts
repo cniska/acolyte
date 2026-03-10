@@ -21,7 +21,6 @@ const chatRequestSchema = z.object({
   model: z.string(),
   modeModels: z
     .object({
-      plan: z.string().optional(),
       work: z.string().optional(),
       verify: z.string().optional(),
     })
