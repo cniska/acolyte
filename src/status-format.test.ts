@@ -8,14 +8,14 @@ describe("status format", () => {
       model: "gpt-5-mini",
       permissions: "write",
       service: "http://localhost:6767",
-      memory: "postgres (8 entries)",
+      memory: "file (8 entries)",
     });
 
     expect(output).toMatch(/^providers:\s+openai$/m);
     expect(output).toMatch(/^model:\s+gpt-5-mini$/m);
     expect(output).toMatch(/^permissions:\s+write$/m);
     expect(output).toMatch(/^service:\s+http:\/\/localhost:6767$/m);
-    expect(output).toMatch(/^memory:\s+postgres \(8 entries\)$/m);
+    expect(output).toMatch(/^memory:\s+file \(8 entries\)$/m);
   });
 
   test("returns empty string for empty fields", () => {

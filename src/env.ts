@@ -2,7 +2,6 @@ import { z } from "zod";
 
 const EnvSchema = z.object({
   ACOLYTE_API_KEY: z.string().trim().min(1).optional(),
-  DATABASE_URL: z.string().trim().min(1).optional(),
   OPENAI_API_KEY: z.string().trim().min(1).optional(),
   ANTHROPIC_API_KEY: z.string().trim().min(1).optional(),
   GOOGLE_API_KEY: z.string().trim().min(1).optional(),

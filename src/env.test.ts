@@ -5,7 +5,6 @@ describe("env parsing", () => {
   test("parseEnv applies defaults", () => {
     const parsed = parseEnv({});
     expect(parsed.ACOLYTE_API_KEY).toBeUndefined();
-    expect(parsed.DATABASE_URL).toBeUndefined();
     expect(parsed.OPENAI_API_KEY).toBeUndefined();
     expect(parsed.ANTHROPIC_API_KEY).toBeUndefined();
     expect(parsed.GOOGLE_API_KEY).toBeUndefined();
@@ -14,13 +13,11 @@ describe("env parsing", () => {
   test("parseEnv accepts explicit values", () => {
     const parsed = parseEnv({
       ACOLYTE_API_KEY: "acolyte-token",
-      DATABASE_URL: "postgres://u:p@localhost:5432/acolyte",
       OPENAI_API_KEY: "sk-openai",
       ANTHROPIC_API_KEY: "sk-ant",
       GOOGLE_API_KEY: "sk-goog",
     });
     expect(parsed.ACOLYTE_API_KEY).toBe("acolyte-token");
-    expect(parsed.DATABASE_URL).toBe("postgres://u:p@localhost:5432/acolyte");
     expect(parsed.OPENAI_API_KEY).toBe("sk-openai");
     expect(parsed.ANTHROPIC_API_KEY).toBe("sk-ant");
     expect(parsed.GOOGLE_API_KEY).toBe("sk-goog");
