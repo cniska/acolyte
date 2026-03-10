@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { chatModeWithOptions } from "./cli-chat";
-import { commands, usage } from "./cli-commands";
+import { commands, usage } from "./cli-command-registry";
 import { formatVersionWithCommit, resolveCliCommitShort, resolveCliVersion } from "./cli-version";
 import { printOutput } from "./ui";
 

@@ -5,7 +5,11 @@ import { attachFileToSession, chatModeWithOptions } from "./cli-chat";
 import { configMode } from "./cli-config";
 import type { CliCommandHandler } from "./cli-contract";
 import { psMode, restartMode, startMode, stopMode } from "./cli-daemon";
-import { subcommandError as subcommandErrorFromHelp, subcommandHelp as subcommandHelpFromHelp } from "./cli-help";
+import {
+  printUsage,
+  subcommandError as subcommandErrorFromHelp,
+  subcommandHelp as subcommandHelpFromHelp,
+} from "./cli-help";
 import { historyMode } from "./cli-history";
 import { initMode } from "./cli-init";
 import { memoryMode } from "./cli-memory";
@@ -28,14 +32,18 @@ import {
 } from "./server-daemon";
 import { formatStatusOutput as formatStatusOutputShared } from "./status-format";
 import { createSession, readStore } from "./storage";
-import { printDim, printError } from "./ui";
+import { formatCliTitle, printDim, printError, printOutput } from "./ui";
 
-function subcommandHelp(name: string): void {
+export function subcommandHelp(name: string): void {
   subcommandHelpFromHelp(name, printDim);
 }
 
-function subcommandError(name: string, message?: string): void {
+export function subcommandError(name: string, message?: string): void {
   subcommandErrorFromHelp(name, printError, message);
+}
+
+export function usage(version: string): void {
+  printUsage(version, printOutput, formatCliTitle);
 }
 
 function hasHelpFlag(args: string[]): boolean {

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { subcommandHelp } from "./cli-commands";
+import { subcommandHelp } from "./cli-command-registry";
 import {
   displayPath,
   formatEditUpdateOutput,
