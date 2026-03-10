@@ -338,12 +338,14 @@ export function createRpcWebsocketHandlers(deps: RpcDeps): Bun.WebSocketHandler<
         "task.status": (msg) => handleTaskStatus(msg, context),
       };
 
-      const handler = handlers[message.type];
-      if (!handler) {
+      if (!(message.type in handlers)) {
         send({ type: "error", error: "Unsupported RPC method" });
         return;
       }
-      await handler(message as never);
+      // Handler map keys are exhaustive over RpcClientMessage["type"];
+      // TypeScript cannot narrow the union through indexed access, so we cast the dispatch.
+      const dispatch = handlers[message.type] as (msg: RpcClientMessage) => Promise<void> | void;
+      await dispatch(message);
     },
   };
 }

@@ -10,7 +10,6 @@ import {
   isModeModelKey,
   type LogFormat,
   type ResolvedConfig,
-  type TransportMode,
   toConfig,
 } from "./config-contract";
 
@@ -21,7 +20,7 @@ const DEFAULT_CONFIG = {
   openaiBaseUrl: "https://api.openai.com/v1",
   anthropicBaseUrl: "https://api.anthropic.com/v1",
   logFormat: "logfmt" as LogFormat,
-  transportMode: "rpc" as TransportMode,
+  transportMode: "rpc" as const,
   distillMessageThreshold: 20,
   distillReflectionThresholdTokens: 8_000,
   distillMaxOutputTokens: 1_000,

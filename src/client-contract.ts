@@ -1,7 +1,6 @@
 import { z } from "zod";
 import type { ChatRequest, ChatResponse } from "./api";
 import { invariant } from "./assert";
-import type { TransportMode } from "./config-contract";
 import { rpcServerMessageSchema } from "./rpc-protocol";
 import type { StatusFields } from "./status-contract";
 import { streamErrorSchema } from "./stream-error";
@@ -12,7 +11,7 @@ export interface ClientOptions {
   apiUrl: string;
   apiKey?: string;
   replyTimeoutMs?: number;
-  transportMode?: TransportMode;
+  transportMode?: "rpc";
 }
 
 export const streamEventSchema = z.discriminatedUnion("type", [
@@ -149,11 +148,4 @@ export function rpcUrlFromApiUrl(apiUrl: string): string {
   source.search = "";
   source.hash = "";
   return source.toString();
-}
-
-export function resolveTransportMode(apiUrl: string | undefined, explicit?: TransportMode): "rpc" {
-  if (explicit === "rpc") return "rpc";
-  if (!apiUrl) return "rpc";
-  if (apiUrl.startsWith("ws://") || apiUrl.startsWith("wss://")) return "rpc";
-  return "rpc";
 }

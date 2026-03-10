@@ -5,8 +5,7 @@ import { type TranslationLocale, translationLocaleSchema } from "./i18n/locales"
 export const logFormatSchema = z.enum(["logfmt", "json"]);
 export type LogFormat = z.infer<typeof logFormatSchema>;
 
-export const transportModeSchema = z.enum(["rpc"]);
-export type TransportMode = z.infer<typeof transportModeSchema>;
+export const transportModeSchema = z.literal("rpc");
 
 export const scopeSchema = z.enum(["user", "project"]);
 export type ConfigScope = z.infer<typeof scopeSchema>;
@@ -73,7 +72,7 @@ export interface Config {
   anthropicBaseUrl?: string;
   googleBaseUrl?: string;
   logFormat?: LogFormat;
-  transportMode?: TransportMode;
+  transportMode?: "rpc";
   contextMaxTokens?: number;
   maxHistoryMessages?: number;
   maxMessageTokens?: number;
@@ -98,7 +97,7 @@ export interface ResolvedConfig {
   anthropicBaseUrl: string;
   googleBaseUrl?: string;
   logFormat: LogFormat;
-  transportMode: TransportMode;
+  transportMode: "rpc";
   contextMaxTokens: number;
   maxHistoryMessages: number;
   maxMessageTokens: number;
