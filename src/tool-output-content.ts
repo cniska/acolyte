@@ -48,14 +48,6 @@ export const toolOutputSchema = z.discriminatedUnion("kind", [
 
 export type ToolOutput = z.infer<typeof toolOutputSchema>;
 
-const ANSI = {
-  green: "\x1b[32m",
-  red: "\x1b[31m",
-  dim: "\x1b[2m",
-  reset: "\x1b[39m",
-  resetDim: "\x1b[22m",
-} as const;
-
 export function renderToolOutput(content: ToolOutput): string {
   switch (content.kind) {
     case "tool-header":
@@ -76,9 +68,8 @@ export function renderToolOutput(content: ToolOutput): string {
     case "edit-header":
       return `${content.label} ${content.path} (+${content.added} -${content.removed})`;
     case "diff": {
-      if (content.marker === "add") return `${content.lineNumber} + ${content.text}`;
-      if (content.marker === "remove") return `${content.lineNumber} - ${content.text}`;
-      return `${content.lineNumber}  ${content.text}`;
+      const prefix = content.marker === "add" ? "+" : content.marker === "remove" ? "-" : " ";
+      return `${content.lineNumber} ${prefix} ${content.text}`;
     }
     case "no-output":
       return t("tool.content.no_output");
@@ -89,50 +80,16 @@ export function renderToolOutput(content: ToolOutput): string {
   }
 }
 
-export function resolveToolOutputHeader(items: ToolOutput[]): { header: string; bodyStart: number } {
-  const first = items[0];
-  if (!first) return { header: "", bodyStart: 0 };
-
-  switch (first.kind) {
-    case "tool-header":
-      return { header: first.detail ? `${first.label} ${first.detail}` : first.label, bodyStart: 1 };
-    case "file-header": {
-      const shown = first.targets.join(", ");
-      const omitted = first.omitted && first.omitted > 0 ? `, +${first.omitted}` : "";
-      return { header: `${first.label} ${shown}${omitted}`, bodyStart: 1 };
-    }
-    case "scope-header": {
-      const needsBrackets = first.scope !== "workspace";
-      const patternsDisplay = needsBrackets ? `[${first.patterns.join(", ")}]` : first.patterns.join(", ");
-      const scopePrefix = first.scope === "workspace" ? "" : `${first.scope} `;
-      return { header: `${first.label} ${scopePrefix}${patternsDisplay}`, bodyStart: 1 };
-    }
-    case "edit-header":
-      return { header: `${first.label} ${first.path} (+${first.added} -${first.removed})`, bodyStart: 1 };
-    default:
-      return { header: "", bodyStart: 0 };
-  }
-}
-
-export function renderToolOutputContent(items: ToolOutput[]): string {
+export function formatToolOutput(items: ToolOutput[]): string {
   if (items.length === 0) return "";
-  const { header, bodyStart } = resolveToolOutputHeader(items);
-  if (!header) return items.map(renderToolOutput).join("\n");
-  const body = items.slice(bodyStart).map(renderToolOutput).filter(Boolean);
+  const header = renderToolOutput(items[0]!);
+  const body = items.slice(1).map(renderToolOutput).filter(Boolean);
   if (body.length === 0) return header;
   return `${header}\n${body.map((line) => `  ${line}`).join("\n")}`;
 }
 
-export function renderToolOutputForTerminal(content: ToolOutput, padWidth = 0): string {
-  if (content.kind !== "diff") return renderToolOutput(content);
-  const num = `${ANSI.dim}${String(content.lineNumber).padStart(padWidth)}${ANSI.resetDim}`;
-  if (content.marker === "add") return `${num}  ${ANSI.green}${content.text}${ANSI.reset}`;
-  if (content.marker === "remove") return `${num}  ${ANSI.red}${content.text}${ANSI.reset}`;
-  return `${num}  ${content.text}`;
-}
 
 export type ToolOutputUpdate = {
-  rendered: string;
   label?: string;
   items: ToolOutput[];
 };
@@ -142,24 +99,24 @@ export function createToolOutputState(): {
   delete: (toolCallId: string) => void;
 } {
   const contentByCallId = new Map<string, ToolOutput[]>();
+  const lastRenderedByCallId = new Map<string, string>();
 
   return {
     push(entry) {
       const items = contentByCallId.get(entry.toolCallId) ?? [];
       const incoming = renderToolOutput(entry.content);
-      const lastItem = items[items.length - 1];
-      if (lastItem && renderToolOutput(lastItem) === incoming) return null;
+      if (lastRenderedByCallId.get(entry.toolCallId) === incoming) return null;
+      lastRenderedByCallId.set(entry.toolCallId, incoming);
       items.push(entry.content);
       contentByCallId.set(entry.toolCallId, items);
-      const rendered = renderToolOutputContent(items);
-      if (!rendered) return null;
       const firstItem = items[0];
       const label =
         firstItem && "label" in firstItem && typeof firstItem.label === "string" ? firstItem.label : undefined;
-      return { rendered, label, items };
+      return { label, items };
     },
     delete(toolCallId) {
       contentByCallId.delete(toolCallId);
+      lastRenderedByCallId.delete(toolCallId);
     },
   };
 }

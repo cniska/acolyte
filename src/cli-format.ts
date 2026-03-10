@@ -2,7 +2,6 @@ import { relative } from "node:path";
 import { z } from "zod";
 import { wrapAssistantContent } from "./chat-content";
 import { t } from "./i18n";
-import { renderToolOutputForTerminal, resolveToolOutputHeader, type ToolOutput } from "./tool-output-content";
 import { TOOL_OUTPUT_RUN_MAX_ROWS } from "./tool-output-format";
 import { printDim, printOutput, printToolHeader } from "./ui";
 
@@ -296,23 +295,6 @@ export function formatAssistantReplyOutput(content: string, wrapWidth = 100): st
     .join("\n");
 }
 
-export function formatToolOutput(content: ToolOutput[]): string {
-  if (content.length === 0) return "";
-  const { header, bodyStart } = resolveToolOutputHeader(content);
-  if (!header) return content.map((item) => renderToolOutputForTerminal(item)).join("\n");
-
-  const body = content.slice(bodyStart);
-  let padWidth = 0;
-  for (const item of body) {
-    if (item.kind === "diff") {
-      const w = String(item.lineNumber).length;
-      if (w > padWidth) padWidth = w;
-    }
-  }
-  const bodyLines = body.map((item) => `  ${renderToolOutputForTerminal(item, padWidth)}`);
-  if (bodyLines.length === 0) return header;
-  return `${header}\n${bodyLines.join("\n")}`;
-}
 
 export function parseEditResult(raw: string): { path: string; edits: number; dryRun: boolean } | null {
   const path = raw.match(/^path=(.*)$/m)?.[1]?.trim();

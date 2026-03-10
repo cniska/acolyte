@@ -50,6 +50,7 @@ describe("chat-message-handler-stream", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]?.style).toBe("toolProgress");
     expect(rows[0]?.content).toBe("Search needle");
+    expect(rows[0]?.toolOutput).toHaveLength(1);
 
     state.onOutput({
       toolCallId: "call_1",

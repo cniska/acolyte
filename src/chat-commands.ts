@@ -10,6 +10,7 @@ import { addMemory, listMemories, type MemoryScope, removeMemoryByPrefix } from 
 import { formatModel } from "./provider-config";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
 import { createId } from "./short-id";
+import type { ToolOutput } from "./tool-output-content";
 import { findSkillByName } from "./skills";
 
 type MemoryContextScope = "all" | "user" | "project";
@@ -35,6 +36,7 @@ export type ChatRow = {
   toolCallId?: string;
   toolName?: string;
   toolLabel?: string;
+  toolOutput?: ToolOutput[];
   toolStatus?: "ok" | "error";
 };
 

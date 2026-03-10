@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { formatToolOutput } from "./cli-format";
+import { formatToolOutput } from "./tool-output-content";
 import type { ToolOutput } from "./tool-output-content";
 
 function dedent(value: string): string {
@@ -22,19 +22,6 @@ function dedent(value: string): string {
     .join("\n");
 }
 
-const stripAnsi = (value: string): string => {
-  let out = "";
-  for (let i = 0; i < value.length; i += 1) {
-    const ch = value[i];
-    if (ch === "\u001b" && value[i + 1] === "[") {
-      i += 2;
-      while (i < value.length && value[i] !== "m") i += 1;
-      continue;
-    }
-    if (ch != null) out += ch;
-  }
-  return out;
-};
 
 describe("tool output TUI", () => {
   test("empty content returns empty string", () => {
@@ -111,12 +98,12 @@ describe("tool output TUI", () => {
       { kind: "diff", lineNumber: 10, marker: "remove", text: "const y = 2;" },
       { kind: "diff", lineNumber: 10, marker: "add", text: "const y = 3;" },
     ];
-    expect(stripAnsi(formatToolOutput(content))).toBe(
+    expect(formatToolOutput(content)).toBe(
       dedent(`
         Edit notes.ts (+1 -1)
-           9  const x = 1;
-          10  const y = 2;
-          10  const y = 3;
+          9   const x = 1;
+          10 - const y = 2;
+          10 + const y = 3;
       `),
     );
   });

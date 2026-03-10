@@ -9,8 +9,8 @@ import { formatPromptError, USER_ERROR_MESSAGES } from "./error-messages";
 import type { ResourceId } from "./resource-id";
 import type { Session } from "./session-contract";
 import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
-import { createToolOutputState } from "./tool-output-content";
-import { printError, printOutput, streamText } from "./ui";
+import { createToolOutputState, formatToolOutput } from "./tool-output-content";
+import { printDim, printError, printOutput, streamText } from "./ui";
 
 function setSessionTitle(session: Session, inputText: string): void {
   if (session.title !== "New Session") return;
@@ -116,22 +116,24 @@ export async function handlePrompt(
               if (!update) break;
               if (update.items.length === 1 && update.items[0]?.kind === "tool-header" && !update.items[0].detail)
                 break;
+              const rendered = formatToolOutput(update.items);
+              if (!rendered) break;
               const previous = snapshotByCallId.get(event.toolCallId);
-              snapshotByCallId.set(event.toolCallId, update.rendered);
+              snapshotByCallId.set(event.toolCallId, rendered);
               if (previous) {
-                const current = update.rendered.trimEnd();
+                const current = rendered.trimEnd();
                 const before = previous.trimEnd();
                 if (current === before) break;
                 if (current.startsWith(`${before}\n`)) {
                   const delta = current.slice(before.length + 1);
                   const lines = delta.split("\n");
-                  printOutput(lines.map((line) => (line.length > 0 ? `  ${line}` : "")).join("\n"));
+                  printDim(lines.map((line) => (line.length > 0 ? `  ${line}` : "")).join("\n"));
                   hasPrintedToolProgress = true;
                   break;
                 }
               }
-              const lines = update.rendered.split("\n");
-              printOutput(
+              const lines = rendered.split("\n");
+              printDim(
                 lines.map((line, i) => (i === 0 ? `• ${line}` : line.length > 0 ? `  ${line}` : "")).join("\n"),
               );
               hasPrintedToolProgress = true;
