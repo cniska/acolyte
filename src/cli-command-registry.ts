@@ -17,7 +17,7 @@ import { handlePrompt } from "./cli-prompt";
 import { runMode, runResourceId } from "./cli-run";
 import { requestLocalServerShutdown } from "./cli-server";
 import { isServerConnectionFailure, statusMode } from "./cli-status";
-import { toolMode } from "./cli-tool-mode";
+import { toolMode } from "./cli-tool";
 import { createClient } from "./client-factory";
 import { readConfig, readConfigForScope, readResolvedConfigSync, setConfigValue, unsetConfigValue } from "./config";
 

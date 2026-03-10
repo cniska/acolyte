@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { parseEditArgs } from "./cli-tool-mode";
+import { parseEditArgs } from "./cli-tool";
 
-describe("cli-tool-mode", () => {
+describe("cli-tool", () => {
   test("parseEditArgs parses path, find, and replace", () => {
     const result = parseEditArgs(["src/cli.ts", "old text", "new text"]);
     expect(result.path).toBe("src/cli.ts");
