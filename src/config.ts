@@ -241,7 +241,7 @@ export async function setConfigValue(key: string, value: string, options?: Confi
     const existing = (current[dotted.section] ?? {}) as Record<string, unknown>;
     const merged = { ...existing, [dotted.subKey]: value };
     const parsed = schema.safeParse(merged);
-    if (!parsed.success) throw new Error(`Invalid value for ${key}`);
+    if (!parsed.success) throw new Error(`Invalid value for ${key}: ${parsed.error.issues[0]?.message ?? parsed.error.message}`);
     const next: Config = { ...current, [dotted.section]: parsed.data };
     await writeConfig(next, { ...options, scope });
     return;
@@ -249,7 +249,7 @@ export async function setConfigValue(key: string, value: string, options?: Confi
   const topKey = key as keyof Config;
   if (!(topKey in CONFIG_SET_SCHEMAS)) throw new Error(`Unknown config key: ${key}`);
   const parsed = CONFIG_SET_SCHEMAS[topKey].safeParse(value);
-  if (!parsed.success) throw new Error(`Invalid value for ${key}`);
+  if (!parsed.success) throw new Error(`Invalid value for ${key}: ${parsed.error.issues[0]?.message ?? parsed.error.message}`);
   const current = await readConfigScope(scope, options);
   const next: Config = { ...current, [topKey]: parsed.data };
   await writeConfig(next, { ...options, scope });
