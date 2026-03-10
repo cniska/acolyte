@@ -28,7 +28,7 @@ export type EvaluatorContext = {
   debug: (event: LifecycleEventName, fields?: Record<string, unknown>) => void;
   agentInput: string;
   policy: LifecyclePolicy;
-  classifiedMode: AgentMode;
+  initialMode: AgentMode;
   mode: AgentMode;
   taskId: string | undefined;
   session: SessionContext;
@@ -118,7 +118,7 @@ export const verifyCycle: Evaluator = {
     // Work → Verify: trigger verify when write tools were used
     if (ctx.mode !== "verify") {
       const usedWriteTools = WRITE_TOOLS.some((tool) => ctx.observedTools.has(tool));
-      if (ctx.classifiedMode === "work" && usedWriteTools && !haveChangesBeenVerified(ctx.session, ctx.taskId)) {
+      if (ctx.initialMode === "work" && usedWriteTools && !haveChangesBeenVerified(ctx.session, ctx.taskId)) {
         return {
           type: "regenerate",
           prompt: scopedVerifyPrompt(ctx),
@@ -146,7 +146,7 @@ export const multiMatchEditEvaluator: Evaluator = {
   id: "multi-match-edit-evaluator",
   evaluate(ctx) {
     if (!ctx.result) return { type: "done" };
-    if (ctx.classifiedMode !== "work") return { type: "done" };
+    if (ctx.initialMode !== "work") return { type: "done" };
     if (!ctx.sawEditFileMultiMatchError) return { type: "done" };
     if (!ctx.observedTools.has("edit-file")) return { type: "done" };
     if (ctx.observedTools.has("edit-code")) return { type: "done" };

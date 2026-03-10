@@ -16,7 +16,7 @@ function createMockContext(overrides: Partial<RunContext> = {}): RunContext {
     soulPrompt: "",
     emit: () => {},
     debug: () => {},
-    classifiedMode: "work",
+    initialMode: "work",
     tools: {} as RunContext["tools"],
     mode: "work",
     agentMode: "work",
@@ -58,7 +58,7 @@ describe("verifyCycle", () => {
       { toolName: "edit-code", args: { path: "src/b.ts" }, taskId: "task_new" },
     ];
     const ctx = createMockContext({
-      classifiedMode: "work",
+      initialMode: "work",
       taskId: "task_new",
       session,
       result: { text: "Done.", toolCalls: [] },
@@ -81,7 +81,7 @@ describe("verifyCycle", () => {
 
   test("uses base verify prompt when no write paths are available", () => {
     const ctx = createMockContext({
-      classifiedMode: "work",
+      initialMode: "work",
       result: { text: "Done.", toolCalls: [] },
       observedTools: new Set(["edit-file"]),
     });
@@ -95,7 +95,7 @@ describe("verifyCycle", () => {
     session.callLog = [{ toolName: "edit-file", args: { path: "src/a.ts" } }];
     const ctx = createMockContext({
       request: { model: "gpt-5-mini", message: "Implement fix", history: [], verifyScope: "global" },
-      classifiedMode: "work",
+      initialMode: "work",
       session,
       result: { text: "Done.", toolCalls: [] },
       observedTools: new Set(["edit-file"]),
@@ -110,7 +110,7 @@ describe("verifyCycle", () => {
     session.mode = "verify";
     recordCall(session, "run-command", { command: "bun run verify" });
     const ctx = createMockContext({
-      classifiedMode: "work",
+      initialMode: "work",
       session,
       result: { text: "Done.", toolCalls: [] },
       observedTools: new Set(["edit-file"]),
@@ -120,7 +120,7 @@ describe("verifyCycle", () => {
 
   test("returns done when no write tools used", () => {
     const ctx = createMockContext({
-      classifiedMode: "work",
+      initialMode: "work",
       result: { text: "Done.", toolCalls: [] },
       observedTools: new Set(["read-file", "search-files"]),
     });
@@ -138,7 +138,7 @@ describe("verifyCycle", () => {
     recordCall(session, "run-command", { command: "bun run verify" });
     const ctx = createMockContext({
       mode: "verify",
-      classifiedMode: "work",
+      initialMode: "work",
       session,
       currentError: { message: "verify failed: missing export updatePost in post-store.ts" },
       result: { text: "Error: missing export updatePost in post-store.ts", toolCalls: [] },
@@ -158,7 +158,7 @@ describe("verifyCycle", () => {
     recordCall(session, "run-command", { command: "bun run verify" });
     const ctx = createMockContext({
       mode: "verify",
-      classifiedMode: "work",
+      initialMode: "work",
       session,
       result: { text: "", toolCalls: [] },
     });
@@ -171,7 +171,7 @@ describe("verifyCycle", () => {
     recordCall(session, "run-command", { command: "bun run verify" });
     const ctx = createMockContext({
       mode: "verify",
-      classifiedMode: "work",
+      initialMode: "work",
       session,
       result: { text: "No issues found. 0 errors.", toolCalls: [] },
     });
@@ -185,7 +185,7 @@ describe("multiMatchEditEvaluator", () => {
     session.callLog = [{ toolName: "edit-file", args: { path: "src/priority.ts" } }];
     const ctx = createMockContext({
       request: { model: "gpt-5-mini", message: "Rename symbol everywhere", history: [] },
-      classifiedMode: "work",
+      initialMode: "work",
       session,
       observedTools: new Set(["read-file", "edit-file"]),
       sawEditFileMultiMatchError: true,
@@ -204,7 +204,7 @@ describe("multiMatchEditEvaluator", () => {
   test("uses concrete-path guidance when no target path is available", () => {
     const ctx = createMockContext({
       request: { model: "gpt-5-mini", message: "Rename symbol everywhere", history: [] },
-      classifiedMode: "work",
+      initialMode: "work",
       observedTools: new Set(["edit-file"]),
       sawEditFileMultiMatchError: true,
       currentError: { message: "edit-file failed: [E_EDIT_FILE_MULTI_MATCH] Find text matched 2 locations." },
@@ -218,7 +218,7 @@ describe("multiMatchEditEvaluator", () => {
   test("returns done when edit-code was already used", () => {
     const ctx = createMockContext({
       request: { model: "gpt-5-mini", message: "Rename symbol everywhere", history: [] },
-      classifiedMode: "work",
+      initialMode: "work",
       observedTools: new Set(["edit-file", "edit-code"]),
       sawEditFileMultiMatchError: true,
       currentError: { message: "edit-file failed: [E_EDIT_FILE_MULTI_MATCH] Find text matched 2 locations." },

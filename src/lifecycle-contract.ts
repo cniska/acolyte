@@ -60,7 +60,7 @@ export type PhasePrepareInput = {
   workspace: string | undefined;
   taskId: string | undefined;
   soulPrompt: string;
-  classifiedMode: AgentMode;
+  initialMode: AgentMode;
   model: string;
   debug: RunContext["debug"];
   onOutput: (event: ToolOutputEvent) => void;
@@ -95,8 +95,7 @@ export type RunContext = {
   readonly soulPrompt: string;
   readonly emit: (event: StreamEvent) => void;
   readonly debug: (event: LifecycleEventName, fields?: Record<string, unknown>) => void;
-  /** Initial mode resolved at request start (immutable). */
-  readonly classifiedMode: AgentMode;
+  readonly initialMode: AgentMode;
   readonly tools: Toolset;
   readonly session: SessionContext;
   readonly agentInput: string;

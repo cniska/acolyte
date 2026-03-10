@@ -41,7 +41,7 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
 
   ctx.debug("lifecycle.summary", {
     task_id: ctx.taskId ?? null,
-    mode: ctx.classifiedMode,
+    mode: ctx.initialMode,
     model: ctx.model,
     model_calls: ctx.modelCallCount,
     tool_calls: totalToolCalls,

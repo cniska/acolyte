@@ -30,7 +30,7 @@ export function phasePrepare(input: PhasePrepareInput): PhasePrepareResult {
   input.debug("lifecycle.prepare", {
     task_id: input.taskId ?? null,
     model: input.model,
-    mode: input.classifiedMode,
+    mode: input.initialMode,
     history_messages: input.request.history.length,
   });
 

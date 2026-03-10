@@ -53,7 +53,7 @@ function createRunContext(
   input: LifecycleInput,
   params: {
     debug: RunContext["debug"];
-    classifiedMode: RunContext["classifiedMode"];
+    initialMode: RunContext["initialMode"];
     model: string;
     prepared: ReturnType<typeof phasePrepare>;
     emit: RunContext["emit"];
@@ -62,7 +62,7 @@ function createRunContext(
 ): RunContext {
   const agent = createModeAgent({
     soulPrompt: input.soulPrompt,
-    mode: params.classifiedMode,
+    mode: params.initialMode,
     workspace: input.workspace,
     model: params.model,
     tools: params.prepared.tools,
@@ -75,12 +75,12 @@ function createRunContext(
     soulPrompt: input.soulPrompt,
     emit: params.emit,
     debug: params.debug,
-    classifiedMode: params.classifiedMode,
+    initialMode: params.initialMode,
     tools: params.prepared.tools,
-    mode: params.classifiedMode,
-    agentMode: params.classifiedMode,
+    mode: params.initialMode,
+    agentMode: params.initialMode,
     model: params.model,
-    session: Object.assign(params.prepared.session, { mode: params.classifiedMode }),
+    session: Object.assign(params.prepared.session, { mode: params.initialMode }),
     agent,
     agentInput: params.prepared.agentInput,
     policy: params.policy,
@@ -136,14 +136,14 @@ export async function runLifecycle(input: LifecycleInput) {
     });
   };
 
-  const { mode: classifiedMode, model } = resolveInitialMode(input.request, debug);
+  const { mode: initialMode, model } = resolveInitialMode(input.request, debug);
 
   const prepared = phasePrepare({
     request: input.request,
     workspace: input.workspace,
     taskId: input.taskId,
     soulPrompt: input.soulPrompt,
-    classifiedMode,
+    initialMode,
     model,
     debug,
     onOutput: (event: ToolOutputEvent) => {
@@ -151,12 +151,12 @@ export async function runLifecycle(input: LifecycleInput) {
     },
   });
 
-  const ctx = createRunContext(input, { debug, classifiedMode, model, prepared, emit, policy });
+  const ctx = createRunContext(input, { debug, initialMode, model, prepared, emit, policy });
   ctxRef = ctx;
   attachToolOutputHandler(ctx);
   ctx.session.flags.totalStepLimit = policy.totalMaxSteps;
 
-  ctx.debug("lifecycle.start", { task_id: input.taskId ?? null, mode: classifiedMode, model });
+  ctx.debug("lifecycle.start", { task_id: input.taskId ?? null, mode: initialMode, model });
   if (ctx.promptUsage.activeSkillName) {
     emit({ type: "status", message: `skill:${ctx.promptUsage.activeSkillName}` });
   }
