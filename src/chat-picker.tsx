@@ -49,11 +49,13 @@ function renderPickerRows(
 export function pickerTitle(picker: PickerState, caretVisible = true): string {
   switch (picker.kind) {
     case "skills":
-      return "Skills";
+      return t("chat.picker.title.skills");
     case "resume":
-      return "Resume Session";
+      return t("chat.picker.title.resume");
     case "model": {
-      const label = picker.targetMode ? `Model (${picker.targetMode})` : "Model";
+      const label = picker.targetMode
+        ? t("chat.picker.title.model.mode", { mode: picker.targetMode })
+        : t("chat.picker.title.model");
       return `${label}: ${picker.query}${caretVisible ? "\u2588" : ""}`;
     }
     default:
@@ -64,11 +66,11 @@ export function pickerTitle(picker: PickerState, caretVisible = true): string {
 export function pickerHint(picker: PickerState): string {
   switch (picker.kind) {
     case "skills":
-      return "Enter to select · Esc to close";
+      return t("chat.picker.hint.skills");
     case "resume":
-      return "Enter to resume · Esc to close";
+      return t("chat.picker.hint.resume");
     case "model":
-      return "Type to filter · Enter to apply · Esc to close";
+      return t("chat.picker.hint.model");
     default:
       return unreachable(picker);
   }
