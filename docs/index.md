@@ -1,6 +1,12 @@
 # Docs
 
-Developer documentation for Acolyte.
+Developer documentation for Acolyte — a CLI-first AI coding agent with a headless daemon, typed RPC protocol, and an explicit lifecycle pipeline. Built for developers who want a transparent, extensible agent they can reason about.
+
+## Overview
+
+- [why-acolyte.md](./why-acolyte.md) — what makes Acolyte different
+- [benchmarks.md](./benchmarks.md) — measured code quality comparisons
+- [soul.md](./soul.md) — product persona and operating principles
 
 ## Start here
 

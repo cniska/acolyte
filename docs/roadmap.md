@@ -117,7 +117,7 @@ Open-source local mode with optional self-hosted memory/session sync service.
 - [x] Pre-OSS security baseline complete (secure defaults, auth coverage, workspace boundary checks, redaction tests)
 - [x] Localization baseline: translatable CLI/TUI copy, with raw protocol/tool output kept language-neutral
 - [x] Configurable locale (`acolyte config set locale <tag>`) with per-locale catalogs (`src/i18n/locales/*.json`)
-- [ ] Remove internal launch/talk docs before OSS (`docs/launch-talk.md`, `docs/talk-notes.md`)
+- [x] Remove internal launch/talk docs before OSS
 
 ## MVP Definition
 

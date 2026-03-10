@@ -1,6 +1,6 @@
 # Getting Started
 
-Minimal developer setup and first-run workflow for local iteration.
+Minimal developer setup and first-run workflow for local iteration. New here? See [Why Acolyte](./why-acolyte.md) for what you're setting up.
 
 ## Install
 

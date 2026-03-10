@@ -1,41 +1,60 @@
 # Acolyte
 
-Acolyte is a chat-first coding agent with an explicit lifecycle, tool guards, evaluators, and context distillation memory.
+CLI-first AI coding agent with a headless daemon, typed RPC protocol, and an explicit lifecycle pipeline.
 
-## Dev Setup
+![Acolyte CLI](docs/assets/cli.png)
+
+## Why Acolyte
+
+- **Daemon architecture.** The server runs headless. CLI, editor plugins, and custom clients connect over the same typed RPC protocol. The TUI is just another client.
+- **Lifecycle pipeline.** Every request flows through five explicit phases: classify → prepare → generate → evaluate → finalize. Each phase is a separate module with its own tests.
+- **Tool guards.** Eight behavioral guards detect and block degenerate model patterns at runtime — duplicate calls, file churn loops, redundant searches, and more.
+- **Auto-verification.** Evaluators inspect generation output and can trigger re-generation, mode transitions, or verify cycles without manual intervention.
+- **Extension seams.** Every core system — lifecycle, tools, guards, memory, transport — exposes clean contracts for customization without a plugin runtime.
+- **Small surface.** 18k source lines, 12 runtime dependencies, 0.90 test/source ratio, 128 avg lines per file, zero barrel files.
+
+## Quick Start
 
 ```bash
 bun install
-bun run client init
+bun run client init   # prompts for provider API key, writes .env
+bun run dev           # starts server + CLI client
 ```
 
-This command prompts for one provider API key and writes it to local `.env`.
+See all commands: `bun run client help`
 
-Start the development chat workflow:
+## Architecture
+
+```
+CLI → client → server → lifecycle → model + tools
+```
+
+The server accepts requests over RPC, queues them, and runs each through the lifecycle pipeline. Tools execute inside guards. Evaluators decide whether to accept, retry, or re-generate. The client renders structured output.
+
+The developer tooling — lifecycle trace, benchmarks, performance scenarios — was built by agents using Acolyte itself.
+
+See [docs/architecture.md](docs/architecture.md) for the full system map.
+
+## Validate
 
 ```bash
-bun run dev
+bun run verify        # format + lint + typecheck + all tests
+bun test              # all tests
+bun run test:unit     # unit tests only
+bun run test:int      # integration tests
+bun run test:tui      # visual regression tests
+bun run test:perf     # performance baselines
 ```
 
-`bun run dev` starts server watch mode and opens the CLI client.
+## Docs
 
-See all client commands:
+- [Documentation home](docs/index.md)
+- [Why Acolyte](docs/why-acolyte.md)
+- [Getting started](docs/getting-started.md)
+- [Contributing](docs/contributing.md)
+- [Benchmarks](docs/benchmarks.md)
+- [Agent policy](AGENTS.md)
 
-```bash
-bun run client help
-```
+## License
 
-## Validate Changes
-
-- All tests: `bun test`
-- Full check: `bun run verify`
-- Unit tests: `bun run test:unit`
-- Unit coverage report: `bun run test:coverage`
-- Integration tests: `bun run test:int`
-- Perf baseline: `bun run test:perf`
-
-## Documentation
-
-- Docs home: [`docs/index.md`](docs/index.md)
-- Contributing: [`docs/contributing.md`](docs/contributing.md)
-- Agent policy: [`AGENTS.md`](AGENTS.md)
+[MIT](LICENSE)
