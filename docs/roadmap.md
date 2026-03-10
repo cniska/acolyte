@@ -148,4 +148,4 @@ What MVP is **not**:
 8. Tooling fidelity: structured tool progress payloads, tool-output truncation with on-demand full output, and output-collapsing to reduce noise.
 9. Extension surface: runtime hooks (events, tool interceptors, slash commands), agent-authored skills, and resource loader collision diagnostics.
 10. Embedding surface: SDK-first local in-process API alongside CLI/RPC.
-11. Plan mode: dedicated planning phase with read-only tool set, structured plan output, and explicit plan→work transition gate.
+11. Plan mode: automatic planning phase classified from request intent — read-only tool set, structured plan output, and lifecycle-driven plan→work transition (no user toggle).
