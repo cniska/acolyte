@@ -64,6 +64,7 @@ function createWebSearchTool(input: ToolkitInput) {
   return createTool({
     id: "web-search",
     label: t("tool.label.web_search"),
+    category: "network",
     permissions: ["network"],
     description:
       "Search the public web for recent information and return top results. Use for questions not answerable from the repo.",
@@ -104,6 +105,7 @@ function createWebFetchTool(input: ToolkitInput) {
   return createTool({
     id: "web-fetch",
     label: t("tool.label.web_fetch"),
+    category: "network",
     permissions: ["network"],
     description:
       "Fetch a public URL and return extracted text content. Use to read docs, API references, or linked resources by URL.",

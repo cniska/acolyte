@@ -3,7 +3,7 @@ import { invariant } from "./assert";
 import { createFileToolkit } from "./file-toolkit";
 import { createGitToolkit } from "./git-toolkit";
 import { createShellToolkit } from "./shell-toolkit";
-import type { ToolDefinition, ToolkitInput, ToolPermission } from "./tool-contract";
+import type { ToolCategory, ToolDefinition, ToolkitInput, ToolPermission } from "./tool-contract";
 import { createSessionContext, type SessionContext } from "./tool-guards";
 import type { ToolOutputListener } from "./tool-output-format";
 import { createWebToolkit } from "./web-toolkit";
@@ -59,6 +59,7 @@ function asToolDefinitionsById(entries: ToolMap): Record<string, AnyToolDefiniti
   for (const tool of Object.values(entries)) {
     invariant(typeof tool.id === "string" && tool.id.trim().length > 0, "tool id is required");
     invariant(typeof tool.label === "string" && tool.label.trim().length > 0, `tool ${tool.id} missing label`);
+    invariant(typeof tool.category === "string" && tool.category.trim().length > 0, `tool ${tool.id} missing category`);
     invariant(
       typeof tool.instruction === "string" && tool.instruction.trim().length > 0,
       `tool ${tool.id} missing instruction`,
@@ -83,8 +84,12 @@ export function toolIdsForGrants(grants: readonly ToolPermission[]): string[] {
 }
 
 export function writeToolIds(): string[] {
+  return toolIdsByCategory("write");
+}
+
+export function toolIdsByCategory(category: ToolCategory): string[] {
   return Object.values(toolDefinitionsById)
-    .filter((tool) => tool.permissions.includes("write"))
+    .filter((tool) => tool.category === category)
     .map((tool) => tool.id)
     .sort();
 }

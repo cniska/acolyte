@@ -21,6 +21,7 @@ function createRunCommandTool(input: ToolkitInput) {
   return createTool({
     id: "run-command",
     label: t("tool.label.run"),
+    category: "execute",
     permissions: ["execute"],
     description:
       "Run a shell command in the repository and capture stdout/stderr. Never use shell commands as fallbacks for file discovery/reading/editing when dedicated tools are available.",

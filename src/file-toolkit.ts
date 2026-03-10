@@ -106,6 +106,7 @@ function createFindFilesTool(input: ToolkitInput) {
   return createTool({
     id: "find-files",
     label: t("tool.label.find"),
+    category: "search",
     permissions: ["read"],
     description:
       "Find files in the repository by name or path pattern. Pass `patterns` as an array to batch multiple lookups in one call. To search file contents use `search-files` instead.",
@@ -161,6 +162,7 @@ function createSearchFilesTool(input: ToolkitInput) {
   return createTool({
     id: "search-files",
     label: t("tool.label.search"),
+    category: "search",
     permissions: ["read"],
     description:
       "Search file contents in the repository for text or regex patterns. Optionally scope with `paths` (files or directories). To locate files by name use `find-files` instead.",
@@ -227,6 +229,7 @@ function createScanCodeTool(input: ToolkitInput) {
   return createTool({
     id: "scan-code",
     label: t("tool.label.review"),
+    category: "search",
     permissions: ["read"],
     description:
       "Scan files for structural code patterns using AST matching. Pass `paths` as an array of file or directory paths and `patterns` as an array of ast-grep patterns with `$VAR` metavariables (e.g. [`export function $NAME($$$PARAMS)`, `import $SPEC from $MOD`]).",
@@ -290,6 +293,7 @@ function createReadFileTool(input: ToolkitInput) {
   return createTool({
     id: "read-file",
     label: t("tool.label.read"),
+    category: "read",
     permissions: ["read"],
     description:
       "Read one or more text file snippets by line range. Always pass `paths` as an array of {path, start?, end?} objects, even for a single file. Use to inspect code before editing.",
@@ -362,6 +366,7 @@ function createEditFileTool(input: ToolkitInput) {
   return createTool({
     id: "edit-file",
     label: t("tool.label.edit"),
+    category: "write",
     permissions: ["read", "write"],
     description:
       "Edit an existing file. Pass `edits` as an array of either {find, replace} pairs (for small surgical edits using exact text match) or {startLine, endLine, replace} objects (for larger block replacements). Line numbers MUST come from `read-file` output — do not guess. endLine must not exceed the file length. All edits are applied atomically. You MUST read the file first. For new files, use `create-file`. For code renames or structural edits use `edit-code`.",
@@ -417,6 +422,7 @@ function createEditCodeTool(input: ToolkitInput) {
   return createTool({
     id: "edit-code",
     label: t("tool.label.edit"),
+    category: "write",
     permissions: ["read", "write"],
     description:
       "Edit code with AST pattern matching. Pass `edits` as [{pattern, replacement}] using `$VAR` metavariables (e.g. pattern=`console.log($ARG)` replacement=`logger.debug($ARG)`). `path` must be a specific file, not '.' or a directory. For non-code files use `edit-file`.",
@@ -464,6 +470,7 @@ function createCreateFileTool(input: ToolkitInput) {
   return createTool({
     id: "create-file",
     label: t("tool.label.create"),
+    category: "write",
     permissions: ["write"],
     description:
       "Create a new file with full content. For editing existing files, use `edit-file` or `edit-code` instead.",
@@ -511,6 +518,7 @@ function createDeleteFileTool(input: ToolkitInput) {
   return createTool({
     id: "delete-file",
     label: t("tool.label.delete"),
+    category: "write",
     permissions: ["write"],
     description: "Delete a file from the repository.",
     instruction:
