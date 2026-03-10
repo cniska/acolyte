@@ -17,12 +17,12 @@ describe("chat-content helpers", () => {
     expect(sanitizeAssistantContent(raw)).toBe("");
   });
 
-  test("tokenizeForHighlighting tags code, paths, and command keywords", () => {
+  test("tokenizeForHighlighting tags code and paths", () => {
     const tokens = tokenizeForHighlighting("bun run verify in `src/chat-ui.tsx:42` and src/chat-ui.tsx:42");
     const kinds = tokens.map((token) => token.kind);
-    expect(kinds).toContain("command");
     expect(kinds).toContain("code");
     expect(kinds).toContain("path");
+    expect(kinds).not.toContain("command");
   });
 
   test("wrapAssistantContent uses hanging indent for numbered items", () => {

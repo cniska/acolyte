@@ -25,13 +25,6 @@ export function renderAssistantContent(content: string, wrapWidth: number): Reac
               </Text>
             );
           }
-          if (token.kind === "command") {
-            return (
-              <Text key={tokenKey} bold>
-                {token.text}
-              </Text>
-            );
-          }
           if (token.kind === "path") {
             return (
               <Text key={tokenKey} underline color={palette.textPath}>

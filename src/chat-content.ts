@@ -1,11 +1,9 @@
-type HighlightKind = "plain" | "code" | "path" | "command";
+type HighlightKind = "plain" | "code" | "path";
 
 export type HighlightToken = {
   text: string;
   kind: HighlightKind;
 };
-
-const COMMAND_WORDS = new Set(["bun", "bunx", "git", "npm", "pnpm", "yarn", "node", "npx"]);
 
 export function sanitizeAssistantContent(content: string): string {
   const cleaned = content
@@ -89,10 +87,6 @@ export function tokenizeForHighlighting(line: string): HighlightToken[] {
       }
 
       const core = chunk.replace(/^[("'`]+|[)",.;!?]+$/g, "");
-      if (COMMAND_WORDS.has(core.toLowerCase())) {
-        tokens.push({ text: chunk, kind: "command" });
-        continue;
-      }
       if (looksLikePathRef(core)) {
         tokens.push({ text: chunk, kind: "path" });
         continue;
