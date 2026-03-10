@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { formatHeaderContextLine, justifyLineSpaceBetween, shownBranch } from "./chat-layout";
+import { justifyLineSpaceBetween, shownBranch } from "./chat-layout";
 
 function streamFromText(text: string): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
@@ -23,11 +23,6 @@ function withColumns(width: number, task: () => void): void {
 }
 
 describe("chat-layout", () => {
-  test("formatHeaderContextLine composes workspace and branch", () => {
-    expect(formatHeaderContextLine("~/code/acolyte", "main")).toBe("~/code/acolyte · main");
-    expect(formatHeaderContextLine("~/code/acolyte", null)).toBe("~/code/acolyte · —");
-  });
-
   test("shownBranch returns null outside git repositories", async () => {
     const originalSpawn = Bun.spawn;
     (Bun as { spawn: typeof Bun.spawn }).spawn = (() =>

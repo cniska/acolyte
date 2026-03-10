@@ -19,8 +19,7 @@ export function useAtSuggestionsEffect(
 ): void {
   useEffect(() => {
     let cancelled = false;
-    const query = atQuery;
-    if (query === null) {
+    if (atQuery === null) {
       setAtSuggestions([]);
       setAtSuggestionIndex(0);
       return () => {
@@ -30,7 +29,7 @@ export function useAtSuggestionsEffect(
     void (async () => {
       const candidates = await getCachedRepoPathCandidates();
       if (cancelled) return;
-      const next = rankAtReferenceSuggestions(candidates, query);
+      const next = rankAtReferenceSuggestions(candidates, atQuery);
       setAtSuggestions(next);
       setAtSuggestionIndex((current) => clampSuggestionIndex(current, next.length));
     })();

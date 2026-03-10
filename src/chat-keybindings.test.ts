@@ -57,10 +57,8 @@ describe("chat keybindings helpers", () => {
     expect(resolveEscapeAction({ isWorking: false, showHelp: false })).toBeNull();
   });
 
-  test("shouldCycleInputHistory allows browsing from empty prompt", () => {
-    expect(shouldCycleInputHistory("", -1)).toBeTrue();
-    expect(shouldCycleInputHistory("   ", -1)).toBeTrue();
-    expect(shouldCycleInputHistory("hello", -1)).toBeTrue();
-    expect(shouldCycleInputHistory("", 0)).toBeTrue();
+  test("shouldCycleInputHistory allows browsing from any index", () => {
+    expect(shouldCycleInputHistory(-1)).toBeTrue();
+    expect(shouldCycleInputHistory(0)).toBeTrue();
   });
 });

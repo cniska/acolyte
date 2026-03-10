@@ -41,10 +41,6 @@ export async function shownBranch(cwd = process.cwd()): Promise<string | null> {
   return branch.length > 0 ? branch : null;
 }
 
-export function formatHeaderContextLine(workspace: string, branch: string | null): string {
-  return `${workspace} · ${branch ?? "—"}`;
-}
-
 export function justifyLineSpaceBetween(left: string, right: string, inset = 0): string {
   const width = process.stdout.columns ?? DEFAULT_TERMINAL_WIDTH;
   const safeInset = Math.max(0, inset);

@@ -82,8 +82,7 @@ export function resolveEscapeAction(input: { isWorking: boolean; showHelp: boole
   return null;
 }
 
-export function shouldCycleInputHistory(value: string, inputHistoryIndex: number): boolean {
-  void value;
+export function shouldCycleInputHistory(inputHistoryIndex: number): boolean {
   return inputHistoryIndex >= -1;
 }
 
@@ -186,7 +185,7 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
       const historyTriggerUp = key.upArrow || (key.ctrl && keyInput === "p");
       const historyTriggerDown = key.downArrow || (key.ctrl && keyInput === "n");
       if (!input.isWorking && !suggestionNavActive && historyTriggerUp) {
-        if (!shouldCycleInputHistory(input.value, input.inputHistoryIndex)) return;
+        if (!shouldCycleInputHistory(input.inputHistoryIndex)) return;
         const transition = resolveHistoryUp(input.inputHistory, input.inputHistoryIndex, input.value);
         if (!transition) return;
         if (transition.nextDraft !== undefined) input.setInputHistoryDraft(transition.nextDraft);
