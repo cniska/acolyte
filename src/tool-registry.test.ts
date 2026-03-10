@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { renderToolOutput } from "./tool-output-content";
-import { hasPermissions, toolDefinitionsById, toolIdsForGrants, toolsForAgent, writeToolIds } from "./tool-registry";
+import {
+  hasPermissions,
+  toolDefinitionsById,
+  toolIdsByCategory,
+  toolIdsForGrants,
+  toolsForAgent,
+} from "./tool-registry";
 
 describe("toolsets", () => {
   test("returns all tools", () => {
@@ -72,9 +78,9 @@ describe("toolIdsForGrants", () => {
   });
 });
 
-describe("writeToolIds", () => {
-  test("returns tools that require write permission", () => {
-    const ids = writeToolIds();
+describe("toolIdsByCategory", () => {
+  test("write category returns write tools only", () => {
+    const ids = toolIdsByCategory("write");
     expect(ids).toContain("edit-file");
     expect(ids).toContain("edit-code");
     expect(ids).toContain("create-file");

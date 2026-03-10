@@ -8,7 +8,7 @@ import type { Provider } from "./provider-contract";
 import { collectResourceDiagnostics } from "./resource-diagnostics";
 import { isChatRequest, runChatRequest } from "./server-chat-runtime";
 import type { StatusPayload } from "./server-contract";
-import { createServerFetchHandler } from "./server-http";
+import { createServerFetchHandler, json } from "./server-http";
 import { createRpcWebsocketHandlers, getRpcQueuedTaskCount, type RpcConnectionState } from "./server-rpc";
 import { createId } from "./short-id";
 import type { TaskId, TaskState, TaskTransitionReason } from "./task-contract";
@@ -27,13 +27,6 @@ console.error = (...args: unknown[]): void => {
   if (typeof first === "string" && first.includes(SUPPRESSED_STDERR_PREFIX)) return;
   originalConsoleError(...args);
 };
-
-function json<T>(body: T, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": "application/json" },
-  });
-}
 
 function nextErrorId(): ErrorId {
   return errorIdSchema.parse(`err_${createId()}`);

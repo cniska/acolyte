@@ -32,7 +32,7 @@ function badRequest(message: string): Response {
   return new Response(message, { status: 400 });
 }
 
-function json<T>(body: T, status = 200): Response {
+export function json<T>(body: T, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: { "content-type": "application/json" },

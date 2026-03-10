@@ -83,10 +83,6 @@ export function toolIdsForGrants(grants: readonly ToolPermission[]): string[] {
     .sort();
 }
 
-export function writeToolIds(): string[] {
-  return toolIdsByCategory("write");
-}
-
 export function toolIdsByCategory(category: ToolCategory): string[] {
   return Object.values(toolDefinitionsById)
     .filter((tool) => tool.category === category)
