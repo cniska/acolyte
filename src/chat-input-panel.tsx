@@ -1,6 +1,6 @@
 import { Text } from "ink";
 import type React from "react";
-import { useCaretBlink } from "./chat-effects";
+import { clampSuggestionIndex, useCaretBlink } from "./chat-effects";
 import { borderLine, formatShortcutRows, justifyLineSpaceBetween } from "./chat-layout";
 import { type PickerState, pickerHint, pickerTitle, renderPickerItems } from "./chat-picker";
 import { slashCommandHelp } from "./chat-slash";
@@ -57,7 +57,7 @@ function renderInputPanelContent(input: {
   } else if (atQuery !== null) {
     suggestions = <Text dimColor> {t("chat.at_ref.no_matches")}</Text>;
   } else if (slashSuggestions.length > 0) {
-    const selectedIndex = Math.max(0, Math.min(slashSuggestionIndex, slashSuggestions.length - 1));
+    const selectedIndex = clampSuggestionIndex(slashSuggestionIndex, slashSuggestions.length);
     const selected = slashSuggestions[selectedIndex] ?? "";
     const selectedHelp = slashCommandHelp(selected);
     suggestions = (

@@ -1,3 +1,4 @@
+import { clampSuggestionIndex } from "./chat-effects";
 import { applyAtSuggestion, extractAtReferenceQuery, shouldAutocompleteAtSubmit } from "./chat-file-ref";
 import { shouldAutocompleteSlashSubmit } from "./chat-slash";
 
@@ -34,14 +35,14 @@ export function resolveSubmitInput(input: ResolveSubmitInput): SubmitResolution 
   const query = extractAtReferenceQuery(input.value);
   if (query !== null && input.atSuggestions.length > 0) {
     const selected =
-      input.atSuggestions[Math.max(0, Math.min(input.atSuggestionIndex, input.atSuggestions.length - 1))];
+      input.atSuggestions[clampSuggestionIndex(input.atSuggestionIndex, input.atSuggestions.length)];
     if (shouldAutocompleteAtSubmit(input.value, selected))
       return { kind: "autocomplete", value: applyAtSuggestion(input.value, selected ?? "") };
   }
 
   if (query === null && input.slashSuggestions.length > 0) {
     const selected =
-      input.slashSuggestions[Math.max(0, Math.min(input.slashSuggestionIndex, input.slashSuggestions.length - 1))];
+      input.slashSuggestions[clampSuggestionIndex(input.slashSuggestionIndex, input.slashSuggestions.length)];
     if (shouldAutocompleteSlashSubmit(input.value, selected)) return { kind: "autocomplete", value: selected ?? "" };
   }
 
