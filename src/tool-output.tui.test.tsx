@@ -25,7 +25,7 @@ function dedent(value: string): string {
 }
 
 function renderChat(toolOutput: ToolOutput[]): string {
-  const row: ChatRow = { id: "r1", role: "assistant", content: "", style: "toolProgress", toolOutput };
+  const row: ChatRow = { id: "r1", role: "assistant", content: "", style: "toolOutput", toolOutput };
   return renderInkPlain(<ChatTranscript rows={[row]} isWorking={false} thinkingFrame={0} />, 96);
 }
 

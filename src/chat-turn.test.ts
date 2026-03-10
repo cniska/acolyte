@@ -76,7 +76,7 @@ describe("chat turn helpers", () => {
       }),
     });
 
-    const toolRows = turn.rows.filter((row) => row.style === "toolProgress");
+    const toolRows = turn.rows.filter((row) => row.style === "toolOutput");
     expect(toolRows).toHaveLength(0);
     expect(turn.rows.some((row) => row.role === "assistant" && row.content === "done")).toBe(true);
   });

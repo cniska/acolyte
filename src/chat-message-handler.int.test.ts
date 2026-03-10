@@ -128,7 +128,7 @@ describe("chat message handler guards", () => {
       user none
       /sessions
 
-      system sessionsList
+      system sessionsOutput
       Sessions 1
 
       ● sess_test  New Session  <relative>
@@ -242,7 +242,7 @@ describe("chat message handler guards", () => {
     await handleMessage("update sum.rs to take three instead of two");
     await handleMessage("delete sum.rs");
 
-    const toolRows = rows.filter((row) => row.role === "assistant" && row.style === "toolProgress");
+    const toolRows = rows.filter((row) => row.role === "assistant" && row.style === "toolOutput");
     expect(toolRows).toHaveLength(3);
     expect(toolRows[0]?.toolOutput?.some((i) => i.kind === "tool-header" && i.label === "Edit")).toBe(true);
     expect(toolRows[1]?.toolOutput?.some((i) => i.kind === "tool-header" && i.label === "Edit")).toBe(true);

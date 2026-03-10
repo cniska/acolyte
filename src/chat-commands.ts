@@ -26,8 +26,8 @@ export type ChatRow = {
   dim?: boolean;
   style?:
     | "sessionStatus"
-    | "sessionsList"
-    | "toolProgress"
+    | "sessionsOutput"
+    | "toolOutput"
     | "statusOutput"
     | "tokenOutput"
     | "error"
@@ -127,7 +127,7 @@ export function presentSessionsOutput(store: SessionState, limit = 10): CommandP
   const recent = formatSessionList(store, limit);
   return {
     content: [t("chat.sessions.header", { count: store.sessions.length }), "", ...recent].join("\n"),
-    style: "sessionsList",
+    style: "sessionsOutput",
   };
 }
 

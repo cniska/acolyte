@@ -67,7 +67,7 @@ export function createMessageStreamState(input: {
             id: rowId,
             role: "assistant",
             content: "",
-            style: "toolProgress",
+            style: "toolOutput",
             toolOutput: update.items,
           },
         ]);

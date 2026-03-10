@@ -92,7 +92,7 @@ describe("chat-commands", () => {
       sessions: [createSession({ id: "sess_aaaa1111", title: "First" })],
     });
     const rendered = presentSessionsOutput(store, 10);
-    expect(rendered.style).toBe("sessionsList");
+    expect(rendered.style).toBe("sessionsOutput");
     expect(rendered.content).toContain("Sessions 1");
     expect(rendered.content).toContain("● sess_aaaa1111  First");
   });
@@ -183,7 +183,7 @@ describe("chat-commands", () => {
     expect(stop).toBe(true);
     const system = rows.find((row) => row.role === "system" && row.content.includes("Sessions 2"));
     expect(system).toBeDefined();
-    expect(system?.style).toBe("sessionsList");
+    expect(system?.style).toBe("sessionsOutput");
     expect(system?.content).toContain("● sess_aaaa1111  First");
     expect(system?.content).toContain("  sess_bbbb2222  Second");
   });

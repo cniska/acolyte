@@ -190,7 +190,7 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
               row.role === "assistant" && (row.style === "sessionStatus" || row.style === undefined)
                 ? parseSessionStatus(row.content)
                 : null;
-            const sessionsListHeader = row.style === "sessionsList" ? parseSessionsHeader(row.content) : null;
+            const sessionsOutputHeader = row.style === "sessionsOutput" ? parseSessionsHeader(row.content) : null;
             const dimMarker = Boolean(row.dim) || Boolean(sessionStatus);
             let marker = "  ";
             let markerColor: string | undefined;
@@ -201,8 +201,8 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
             } else if (row.role === "system" && (row.style === "cancelled" || row.style === "error")) {
               marker = "· ";
             }
-            if (row.style === "toolProgress") marker = "· ";
-            if (row.style === "toolProgress" && row.toolStatus)
+            if (row.style === "toolOutput") marker = "· ";
+            if (row.style === "toolOutput" && row.toolStatus)
               markerColor = row.toolStatus === "ok" ? palette.success : palette.error;
             if (row.style === "worked") markerColor = palette.success;
             if (row.style === "error") markerColor = palette.error;
@@ -214,18 +214,18 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
                     {marker}
                   </Text>
                 </Box>
-                <Box width={row.style === "toolProgress" ? toolContentWidth : contentWidth}>
+                <Box width={row.style === "toolOutput" ? toolContentWidth : contentWidth}>
                   {sessionStatus ? (
                     <Text>
                       <Text dimColor>{sessionStatus.prefix}</Text>
                       <Text>{sessionStatus.sessionId}</Text>
                     </Text>
-                  ) : sessionsListHeader ? (
+                  ) : sessionsOutputHeader ? (
                     <Text>
-                      <Text>{sessionsListHeader.prefix}</Text>
-                      <Text dimColor>{sessionsListHeader.count}</Text>
-                      {sessionsListHeader.rest.length > 0
-                        ? sessionsListHeader.rest.split("\n").map((line, i) => {
+                      <Text>{sessionsOutputHeader.prefix}</Text>
+                      <Text dimColor>{sessionsOutputHeader.count}</Text>
+                      {sessionsOutputHeader.rest.length > 0
+                        ? sessionsOutputHeader.rest.split("\n").map((line, i) => {
                             const match = line.match(/^(. )(sess_\S+)(\s.*)$/);
                             if (!match) {
                               return (
@@ -246,7 +246,7 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
                     </Text>
                   ) : row.role === "system" && (row.style === "statusOutput" || row.style === "tokenOutput") ? (
                     <Text>{renderStatusContent(row.content)}</Text>
-                  ) : row.role === "assistant" && row.style === "toolProgress" && row.toolOutput ? (
+                  ) : row.role === "assistant" && row.style === "toolOutput" && row.toolOutput ? (
                     <Text>{renderToolBlock(row.toolOutput)}</Text>
                   ) : row.style === "error" ? (
                     <Text dimColor color={palette.error}>
