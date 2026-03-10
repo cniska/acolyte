@@ -1,15 +1,5 @@
 const CHAT_COMMANDS = ["?", "/exit"];
 
-const COMMAND_ALIASES: Record<string, string> = {};
-
-export function resolveCommandAlias(command: string): string {
-  return COMMAND_ALIASES[command] ?? command;
-}
-
-function allKnownCommands(): string[] {
-  return [...CHAT_COMMANDS, ...Object.keys(COMMAND_ALIASES)];
-}
-
 function editDistance(a: string, b: string): number {
   const dp: number[][] = Array.from({ length: a.length + 1 }, () => Array(b.length + 1).fill(0));
   for (let i = 0; i <= a.length; i += 1) {
@@ -34,7 +24,7 @@ export function suggestCommand(input: string): string | null {
 export function suggestCommands(input: string, max = 3): string[] {
   const normalized = input.trim();
   if (!normalized.startsWith("/") && !normalized.startsWith("?")) return [];
-  const commands = allKnownCommands();
+  const commands = CHAT_COMMANDS;
   const prefixMatches: string[] = [];
   for (const command of commands) {
     if (command.startsWith(normalized)) prefixMatches.push(command);

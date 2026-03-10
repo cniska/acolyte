@@ -1,13 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { resolveCommandAlias, suggestCommand, suggestCommands } from "./cli-command-suggest";
+import { suggestCommand, suggestCommands } from "./cli-command-suggest";
 
 describe("cli-command-suggest", () => {
-  test("resolveCommandAlias preserves known commands without remapping", () => {
-    expect(resolveCommandAlias("?")).toBe("?");
-    expect(resolveCommandAlias("/exit")).toBe("/exit");
-    expect(resolveCommandAlias("/run")).toBe("/run");
-  });
-
   test("suggestCommand resolves expected command from close typo", () => {
     expect(suggestCommand("/e")).toBe("/exit");
     expect(suggestCommand("/exi")).toBe("/exit");
