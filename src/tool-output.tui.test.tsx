@@ -107,9 +107,9 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
     expect(formatToolOutput(items)).toBe(
       dedent(`
         Edit notes.ts (+1 -1)
-          9   const x = 1;
-          10 - const y = 2;
-          10 + const y = 3;
+           9  const x = 1;
+          10 -const y = 2;
+          10 +const y = 3;
       `),
     );
   });
@@ -229,7 +229,7 @@ describe("tool output TUI — chat (Ink rendering)", () => {
     expect(renderChat(items)).toBe(
       dedent(`
         · Edit notes.ts (+1 -1)
-            9 const x = 1;
+             9 const x = 1;
             10 const y = 2;
             10 const y = 3;
       `),

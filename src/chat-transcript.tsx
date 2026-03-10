@@ -73,9 +73,9 @@ function renderStatusContent(content: string): React.ReactNode {
   );
 }
 
-function renderToolLine(item: ToolOutput, index: number): React.ReactNode {
+function renderToolLine(item: ToolOutput, index: number, lineNumWidth: number): React.ReactNode {
   if (item.kind === "diff") {
-    const num = String(item.lineNumber);
+    const num = String(item.lineNumber).padStart(lineNumWidth);
     if (item.marker === "add")
       return (
         <Text key={`tool-${index}`}>
@@ -103,10 +103,21 @@ function renderToolLine(item: ToolOutput, index: number): React.ReactNode {
       </Text>
     );
   }
+  const text = renderToolOutputText(item);
+  if (item.kind === "truncated" && lineNumWidth > 0) {
+    return (
+      <Text key={`tool-${index}`}>
+        {"\n  "}
+        <Text dimColor>{"…".padStart(lineNumWidth)}</Text>
+        {" "}
+        <Text dimColor>{text.slice(2)}</Text>
+      </Text>
+    );
+  }
   return (
     <Text key={`tool-${index}`}>
       {"\n  "}
-      {renderToolOutputText(item)}
+      {text}
     </Text>
   );
 }
@@ -116,6 +127,10 @@ function renderToolBlock(items: ToolOutput[]): React.ReactNode {
   const first = items[0]!;
   const text = renderToolOutputText(first);
   const label = "label" in first && typeof first.label === "string" ? first.label : undefined;
+  const lineNumWidth = items.reduce(
+    (max, item) => (item.kind === "diff" ? Math.max(max, String(item.lineNumber).length) : max),
+    0,
+  );
   return (
     <>
       {label && text.startsWith(label) ? (
@@ -126,7 +141,7 @@ function renderToolBlock(items: ToolOutput[]): React.ReactNode {
       ) : (
         <Text>{text}</Text>
       )}
-      {items.slice(1).map((item, i) => renderToolLine(item, i))}
+      {items.slice(1).map((item, i) => renderToolLine(item, i, lineNumWidth))}
     </>
   );
 }

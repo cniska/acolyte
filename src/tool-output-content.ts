@@ -69,7 +69,7 @@ export function renderToolOutput(content: ToolOutput): string {
       return `${content.label} ${content.path} (+${content.added} -${content.removed})`;
     case "diff": {
       const prefix = content.marker === "add" ? "+" : content.marker === "remove" ? "-" : " ";
-      return `${content.lineNumber} ${prefix} ${content.text}`;
+      return `${content.lineNumber} ${prefix}${content.text}`;
     }
     case "no-output":
       return t("tool.content.no_output");
@@ -80,12 +80,27 @@ export function renderToolOutput(content: ToolOutput): string {
   }
 }
 
+function renderDiffLine(item: Extract<ToolOutput, { kind: "diff" }>, numWidth: number): string {
+  const num = String(item.lineNumber).padStart(numWidth);
+  const prefix = item.marker === "add" ? "+" : item.marker === "remove" ? "-" : " ";
+  return `${num} ${prefix}${item.text}`;
+}
+
 export function formatToolOutput(items: ToolOutput[]): string {
   if (items.length === 0) return "";
   const header = renderToolOutput(items[0]!);
-  const body = items.slice(1).map(renderToolOutput).filter(Boolean);
+  const body = items.slice(1);
   if (body.length === 0) return header;
-  return `${header}\n${body.map((line) => `  ${line}`).join("\n")}`;
+  const numWidth = body.reduce(
+    (max, item) => (item.kind === "diff" ? Math.max(max, String(item.lineNumber).length) : max),
+    0,
+  );
+  const lines = body.map((item) => {
+    if (item.kind === "diff") return renderDiffLine(item, numWidth);
+    if (item.kind === "truncated" && numWidth > 0) return `${"…".padStart(numWidth)} ${renderToolOutput(item).slice(2)}`;
+    return renderToolOutput(item);
+  });
+  return `${header}\n${lines.map((line) => `  ${line}`).join("\n")}`;
 }
 
 
