@@ -269,9 +269,6 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
         const toolName = p.toolName;
         ctx.observedTools.add(toolName);
         ctx.toolCallStartedAt.set(p.toolCallId, { toolName, startedAtMs: Date.now() });
-        if (ctx.mode !== ctx.session.mode) {
-          setMode(ctx, ctx.session.mode as RunContext["mode"], toolName);
-        }
         const args = (p.args ?? {}) as Record<string, unknown>;
         ctx.debug("lifecycle.tool.call", { tool: toolName, ...formatToolArgs(args) });
 
