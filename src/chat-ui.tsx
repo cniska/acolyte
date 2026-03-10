@@ -1,6 +1,6 @@
 import { Box, render, Text, useApp } from "ink";
 import { useEffect, useRef, useState } from "react";
-import type { ChatRow, TokenUsageEntry } from "./chat-commands";
+import type { ChatRow } from "./chat-commands";
 import { useAtSuggestionsEffect, useSlashSuggestionsEffect, useThinkingAnimationEffect } from "./chat-effects";
 import { extractAtReferenceQuery } from "./chat-file-ref";
 import { ChatHeader } from "./chat-header";
@@ -21,7 +21,7 @@ import { nowIso } from "./datetime";
 import { palette } from "./palette";
 import type { HeaderLine } from "./chat-header";
 import { formatModel } from "./provider-config";
-import type { Session, SessionState } from "./session-contract";
+import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
 import { loadSkills } from "./skills";
 const THINKING_PULSE_FRAMES = 16;
 const QUEUE_DELIVERY_POLICY = "one-at-a-time" as const;
@@ -54,7 +54,7 @@ function ChatApp(props: ChatAppProps) {
   const [queuedMessages, setQueuedMessages] = useState<string[]>([]);
   const [branch, setBranch] = useState<string | null>(null);
   const [picker, setPicker] = useState<PickerState | null>(null);
-  const [tokenUsage, setTokenUsage] = useState<TokenUsageEntry[]>(() => session.tokenUsage ?? []);
+  const [tokenUsage, setTokenUsage] = useState<SessionTokenUsageEntry[]>(() => session.tokenUsage ?? []);
   const [inputHistory, setInputHistory] = useState<string[]>([]);
   const [inputHistoryIndex, setInputHistoryIndex] = useState(-1);
   const [inputHistoryDraft, setInputHistoryDraft] = useState("");

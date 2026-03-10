@@ -1,6 +1,6 @@
 import type { AgentMode } from "./agent-contract";
 import { appConfig } from "./app-config";
-import { type ChatRow, createRow, dispatchSlashCommand, type TokenUsageEntry } from "./chat-commands";
+import { type ChatRow, createRow, dispatchSlashCommand } from "./chat-commands";
 import { invalidateRepoPathCandidates } from "./chat-file-ref";
 import type { Message } from "./chat-message";
 import {
@@ -21,7 +21,7 @@ import {
 import type { Client } from "./client-contract";
 import { t } from "./i18n";
 import { addMemory } from "./memory";
-import type { Session, SessionState } from "./session-contract";
+import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
 
 type CreateMessageHandlerInput = {
   client: Client;
@@ -38,7 +38,7 @@ type CreateMessageHandlerInput = {
   activateSkill: (skillName: string, args: string) => Promise<boolean>;
   openResumePanel: () => void;
   openModelPanel: (mode?: AgentMode) => void | Promise<void>;
-  tokenUsage: TokenUsageEntry[];
+  tokenUsage: SessionTokenUsageEntry[];
   isWorking: boolean;
   setInputHistory: (updater: (current: string[]) => string[]) => void;
   setInputHistoryIndex: (next: number) => void;
@@ -47,7 +47,7 @@ type CreateMessageHandlerInput = {
   stopWorking?: () => void;
   setIsWorking?: (next: boolean) => void;
   setProgressText: (next: string | null) => void;
-  setTokenUsage: (updater: (current: TokenUsageEntry[]) => TokenUsageEntry[]) => void;
+  setTokenUsage: (updater: (current: SessionTokenUsageEntry[]) => SessionTokenUsageEntry[]) => void;
   createMessage: (role: Message["role"], content: string) => Message;
   nowIso: () => string;
   setInterrupt: (handler: (() => void) | null) => void;

@@ -4,12 +4,12 @@ import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AgentMode } from "./agent-contract";
-import type { ChatRow, CommandContext, TokenUsageEntry } from "./chat-commands";
+import type { ChatRow, CommandContext } from "./chat-commands";
 import type { Message } from "./chat-message";
 import { createMessageHandler } from "./chat-message-handler";
 import type { Client, StreamEvent } from "./client-contract";
 import type { MemorySource } from "./memory-contract";
-import type { Session, SessionState } from "./session-contract";
+import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
 
 export function tempDir(): { createDir: (prefix: string) => string; cleanupDirs: () => void } {
   const dirs: string[] = [];
@@ -252,7 +252,7 @@ export function createMessageHandlerHarness(overrides?: {
   client?: Client;
   session?: Session;
   store?: SessionState;
-  tokenUsage?: TokenUsageEntry[];
+  tokenUsage?: SessionTokenUsageEntry[];
 }): MessageHandlerHarness {
   const rows: ChatRow[] = [];
   const calls = {
@@ -306,7 +306,7 @@ export type CommandContextSpies = {
   openedModel: boolean;
   openedModelMode?: AgentMode;
   currentSessionIds: string[];
-  tokenUsageSets: TokenUsageEntry[][];
+  tokenUsageSets: SessionTokenUsageEntry[][];
 };
 
 export function createCommandContext(

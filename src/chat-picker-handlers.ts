@@ -1,7 +1,7 @@
 import type { AgentMode } from "./agent-contract";
 import { appConfig, setDefaultModel, setModeModel } from "./app-config";
 import { unreachable } from "./assert";
-import { type ChatRow, createRow, type TokenUsageEntry } from "./chat-commands";
+import { type ChatRow, createRow } from "./chat-commands";
 import type { Message } from "./chat-message";
 import type { PickerState } from "./chat-picker";
 import { createModelPicker, createPicker, createResumePicker, createResumeRows } from "./chat-picker-actions";
@@ -9,14 +9,14 @@ import { compactText } from "./compact-text";
 import { setConfigValue } from "./config";
 import { t } from "./i18n";
 import { formatModel } from "./provider-config";
-import type { Session, SessionState } from "./session-contract";
+import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
 import { findSkillByName, loadSkills, readSkillInstructions } from "./skills";
 
 type CreatePickerHandlersInput = {
   store: SessionState;
   currentSession: Session;
   setCurrentSession: (next: Session) => void;
-  setTokenUsage?: (updater: (current: TokenUsageEntry[]) => TokenUsageEntry[]) => void;
+  setTokenUsage?: (updater: (current: SessionTokenUsageEntry[]) => SessionTokenUsageEntry[]) => void;
   setRows: (updater: (current: ChatRow[]) => ChatRow[]) => void;
   setRowsDirect: (next: ChatRow[]) => void;
   setPicker: (next: PickerState | null) => void;

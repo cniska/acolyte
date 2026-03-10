@@ -1,13 +1,13 @@
 import type { AgentMode } from "./agent-contract";
 import { createWorkspaceSpecifier, type TokenUsage } from "./api";
-import { type ChatRow, createRow, type TokenUsageEntry } from "./chat-commands";
+import { type ChatRow, createRow } from "./chat-commands";
 import { extractAtReferencePaths } from "./chat-file-ref";
 import { formatThoughtDuration } from "./chat-format";
 import type { Message } from "./chat-message";
 import type { Client, StreamEvent } from "./client-contract";
 import { buildFileContext } from "./file-context";
 import { t } from "./i18n";
-import type { Session } from "./session-contract";
+import type { Session, SessionTokenUsageEntry } from "./session-contract";
 
 const AVERAGE_CHARS_PER_TOKEN = 4;
 
@@ -94,7 +94,7 @@ type RunAssistantTurnParams = {
 
 export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<{
   assistantMessage: Message;
-  tokenEntry: TokenUsageEntry;
+  tokenEntry: SessionTokenUsageEntry;
   rows: ChatRow[];
 }> {
   const reply = await params.client.replyStream(
@@ -119,7 +119,7 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
   } else if (reply.output.trim().length > 0) {
     rows.push(createRow("assistant", reply.output));
   }
-  const tokenEntry: TokenUsageEntry = {
+  const tokenEntry: SessionTokenUsageEntry = {
     id: assistantMessage.id,
     usage: reply.usage ?? estimateTokenUsageFallback(params.userText, reply.output),
     warning: reply.budgetWarning,

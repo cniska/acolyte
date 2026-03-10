@@ -45,8 +45,6 @@ export function createRow(
   return { id: `row_${createId()}`, role, content, ...options };
 }
 
-export type TokenUsageEntry = SessionTokenUsageEntry;
-
 export type ResumeResolution =
   | { kind: "usage" }
   | { kind: "not_found"; prefix: string }
@@ -72,7 +70,7 @@ export function formatSessionList(store: SessionState, limit = 10): string[] {
   return formatColumns(rows);
 }
 
-export function formatTokenUsageOutput(last: TokenUsageEntry | null, all: TokenUsageEntry[]): string {
+export function formatTokenUsageOutput(last: SessionTokenUsageEntry | null, all: SessionTokenUsageEntry[]): string {
   if (!last) return t("chat.tokens.none");
   const totals = all.reduce(
     (acc, entry) => {
@@ -141,7 +139,7 @@ export function presentStatusOutput(status: StatusFields): CommandPresentation {
   };
 }
 
-export function presentTokensOutput(last: TokenUsageEntry | null, all: TokenUsageEntry[]): CommandPresentation {
+export function presentTokensOutput(last: SessionTokenUsageEntry | null, all: SessionTokenUsageEntry[]): CommandPresentation {
   return { content: formatTokenUsageOutput(last, all), style: "tokenOutput" };
 }
 
@@ -157,7 +155,7 @@ export type CommandContext = {
   store: SessionState;
   currentSession: Session;
   setCurrentSession: (next: Session) => void;
-  setTokenUsage?: (updater: (current: TokenUsageEntry[]) => TokenUsageEntry[]) => void;
+  setTokenUsage?: (updater: (current: SessionTokenUsageEntry[]) => SessionTokenUsageEntry[]) => void;
   toRows: (messages: Session["messages"]) => ChatRow[];
   setRows: (updater: (current: ChatRow[]) => ChatRow[]) => void;
   setShowHelp: (updater: (current: boolean) => boolean) => void;
@@ -169,7 +167,7 @@ export type CommandContext = {
   openModelPanel: (mode?: AgentMode) => void | Promise<void>;
   persistModelConfig?: (key: string, value: string, scope: ConfigScope) => Promise<void>;
   activateSkill?: (skillName: string, args: string) => Promise<boolean>;
-  tokenUsage: TokenUsageEntry[];
+  tokenUsage: SessionTokenUsageEntry[];
   memoryApi?: {
     listMemories: typeof listMemories;
     addMemory: typeof addMemory;

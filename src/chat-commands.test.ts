@@ -6,9 +6,9 @@ import {
   presentSessionsOutput,
   presentStatusOutput,
   presentTokensOutput,
-  type TokenUsageEntry,
 } from "./chat-commands";
 import type { ConfigScope } from "./config-contract";
+import type { SessionTokenUsageEntry } from "./session-contract";
 import { loadSkills, resetSkillCache } from "./skills";
 import {
   createCommandContext,
@@ -28,7 +28,7 @@ async function runCommand(text: string, overrides: Parameters<typeof createComma
 
 describe("chat-commands", () => {
   test("formatTokenUsageOutput renders aligned rows", () => {
-    const usage: TokenUsageEntry = {
+    const usage: SessionTokenUsageEntry = {
       id: "row_1",
       usage: {
         promptTokens: 100,
@@ -48,7 +48,7 @@ describe("chat-commands", () => {
   });
 
   test("formatTokenUsageOutput includes latest warning when present", () => {
-    const usage: TokenUsageEntry = {
+    const usage: SessionTokenUsageEntry = {
       id: "row_warn",
       usage: {
         promptTokens: 900,
@@ -104,7 +104,7 @@ describe("chat-commands", () => {
   });
 
   test("formatTokenUsageOutput shows latest session warning even when last turn has none", () => {
-    const warned: TokenUsageEntry = {
+    const warned: SessionTokenUsageEntry = {
       id: "row_warned",
       usage: {
         promptTokens: 950,
@@ -113,7 +113,7 @@ describe("chat-commands", () => {
       },
       warning: "context near budget (950/1000 tokens)",
     };
-    const clean: TokenUsageEntry = {
+    const clean: SessionTokenUsageEntry = {
       id: "row_clean",
       usage: {
         promptTokens: 200,
@@ -127,7 +127,7 @@ describe("chat-commands", () => {
   });
 
   test("dispatchSlashCommand handles /tokens", async () => {
-    const tokenUsage: TokenUsageEntry[] = [
+    const tokenUsage: SessionTokenUsageEntry[] = [
       {
         id: "row_2",
         usage: {
