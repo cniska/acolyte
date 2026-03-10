@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { verifyScopeSchema } from "./api";
+import { errorIdSchema } from "./error-handling";
 import { domainIdSchema } from "./id-contract";
 import { providerSchema } from "./provider-contract";
 import { resourceIdSchema } from "./resource-id";
@@ -7,12 +8,6 @@ import { sessionIdSchema } from "./session-contract";
 import { createId } from "./short-id";
 import { streamErrorSchema } from "./stream-error";
 import { taskIdSchema, taskRecordSchema } from "./task-contract";
-
-const errorIdSchema = domainIdSchema("err");
-
-// Reserved method names for future background task support.
-export const RESERVED_RPC_CLIENT_TASK_METHODS = ["task.start", "task.status", "task.cancel", "task.attach"] as const;
-export const RESERVED_RPC_SERVER_TASK_METHODS = ["task.accepted", "task.updated", "task.done", "task.error"] as const;
 export const rpcRequestIdSchema = domainIdSchema("rpc");
 export type RpcRequestId = z.infer<typeof rpcRequestIdSchema>;
 

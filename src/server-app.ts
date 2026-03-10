@@ -1,9 +1,7 @@
-import type { z } from "zod";
 import { appConfig } from "./app-config";
-import { createStreamError } from "./error-handling";
+import { createStreamError, type ErrorId, errorIdSchema } from "./error-handling";
 import { mapQuotaErrorMessage } from "./error-messages";
 import { t } from "./i18n";
-import { domainIdSchema } from "./id-contract";
 import { errorToLogFields, log } from "./log";
 import { formatServerCapabilities, PROTOCOL_VERSION } from "./protocol";
 import type { Provider } from "./provider-contract";
@@ -22,8 +20,6 @@ const OPENAI_API_KEY = appConfig.openai.apiKey;
 const SUPPRESSED_STDERR_PREFIX = "Upstream LLM API error from";
 const SERVER_IDLE_TIMEOUT_SECONDS = Math.max(30, Math.ceil(appConfig.server.replyTimeoutMs / 1000) + 30);
 const taskRegistry = new TaskRegistry();
-const errorIdSchema = domainIdSchema("err");
-type ErrorId = z.infer<typeof errorIdSchema>;
 
 const originalConsoleError = console.error.bind(console);
 console.error = (...args: unknown[]): void => {
