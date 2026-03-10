@@ -245,8 +245,8 @@ describe("tool output TUI — chat (Ink rendering)", () => {
     expect(renderChat(items)).toBe(
       dedent(`
         · Run echo hello
-            out | hello
-            out | world
+            hello
+            world
       `),
     );
   });
@@ -261,9 +261,9 @@ describe("tool output TUI — chat (Ink rendering)", () => {
     expect(renderChat(items)).toBe(
       dedent(`
         · Run make
-            out | compiling...
-            err | warning: unused var
-            out | done
+            compiling...
+            warning: unused var
+            done
       `),
     );
   });
@@ -279,10 +279,10 @@ describe("tool output TUI — chat (Ink rendering)", () => {
     expect(renderChat(items)).toBe(
       dedent(`
         · Run cmd
-            out | line1
-            out | line2
+            line1
+            line2
             … +3 lines
-            out | line6
+            line6
       `),
     );
   });
