@@ -174,6 +174,8 @@ export const EN_MESSAGES = {
   "error.prompt.server_timed_out": "Server request timed out. Retry or reduce request scope.",
   "error.prompt.server_unavailable": "Server unavailable. Start the server and retry.",
   "error.prompt.write_blocked": "Write action blocked in read mode. Run /permissions write and retry.",
+  "memory.content_empty": "Memory content cannot be empty",
+  "memory.prefix_empty": "Memory id prefix cannot be empty",
   "lifecycle.budget.near": "context near budget ({used}/{budget} tokens)",
   "lifecycle.budget.trimmed": "context trimmed ({included} of {total})",
   "lifecycle.stopped_unknown_errors":

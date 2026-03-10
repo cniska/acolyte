@@ -10,7 +10,12 @@ import {
   runMemoryPipeline,
   selectMemoryEntries,
 } from "./memory-pipeline";
-import { distillMemorySource, distillProjectMemorySource, distillUserMemorySource } from "./memory-source-distill";
+import {
+  distillMemorySource,
+  distillProjectMemorySource,
+  distillUserMemorySource,
+  extractLastLineValue,
+} from "./memory-source-distill";
 import { storedMemorySource } from "./memory-source-stored";
 
 export type MemoryRegistry = {
@@ -58,12 +63,6 @@ export function createMemoryRegistry(
   normalizeEntries: MemoryNormalizeStrategy = normalizeMemoryEntries,
   selectEntries: MemorySelectionStrategy = selectMemoryEntries,
 ): MemoryRegistry {
-  const extractLastLineValue = (text: string, pattern: RegExp): string | undefined => {
-    const matches = Array.from(text.matchAll(pattern));
-    const value = matches[matches.length - 1]?.[1]?.trim();
-    return value && value.length > 0 ? value : undefined;
-  };
-
   const extractContinuation = (
     entries: readonly {
       content: string;

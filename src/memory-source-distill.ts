@@ -20,15 +20,19 @@ type DistillSourceOptions = {
   commitScope?: DistillScope | "none";
 };
 
+const CHARS_PER_TOKEN_ESTIMATE = 4;
+const TEXT_SHRINK_RATIO = 0.9;
+const DISTILL_CONTEXT_MESSAGE_WINDOW = 20;
+
 function clampToTokenEstimate(content: string, maxTokens: number): string {
   const text = content.trim();
   if (!text) return "";
   if (maxTokens <= 0) return "";
   if (estimateTokens(text) <= maxTokens) return text;
 
-  let clamped = text.slice(0, Math.max(1, maxTokens * 4)).trim();
+  let clamped = text.slice(0, Math.max(1, maxTokens * CHARS_PER_TOKEN_ESTIMATE)).trim();
   while (clamped.length > 0 && estimateTokens(clamped) > maxTokens) {
-    clamped = clamped.slice(0, Math.floor(clamped.length * 0.9)).trim();
+    clamped = clamped.slice(0, Math.floor(clamped.length * TEXT_SHRINK_RATIO)).trim();
   }
   return clamped;
 }
@@ -47,7 +51,7 @@ function parseContinuationState(text: string): { currentTask?: string; nextStep?
   };
 }
 
-function extractLastLineValue(text: string, pattern: RegExp): string | undefined {
+export function extractLastLineValue(text: string, pattern: RegExp): string | undefined {
   const matches = Array.from(text.matchAll(pattern));
   const value = matches[matches.length - 1]?.[1]?.trim();
   return value && value.length > 0 ? value : undefined;
@@ -195,8 +199,7 @@ async function loadEntriesForKey(ds: DistillStore, key: string): Promise<readonl
   const entries = await ds.list(key);
   const reflections = entries.filter((e) => e.tier === "reflection");
   if (reflections.length > 0) {
-    const latestReflection = reflections[reflections.length - 1];
-    if (!latestReflection) return [];
+    const latestReflection = reflections[reflections.length - 1]!;
     const observationsSinceReflection = entries
       .filter((e) => e.tier === "observation" && e.createdAt > latestReflection.createdAt)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -306,7 +309,7 @@ export function createDistillMemorySource(
       if (!key) return;
       if (ctx.messages.length < appConfig.distill.messageThreshold) return;
 
-      const recentMessages = ctx.messages.slice(-20);
+      const recentMessages = ctx.messages.slice(-DISTILL_CONTEXT_MESSAGE_WINDOW);
       const distillInput = [...recentMessages, { role: "assistant", content: ctx.output }]
         .map((m) => `${m.role}: ${m.content}`)
         .join("\n\n");

@@ -8,7 +8,6 @@ export const storedMemorySource: MemorySource = {
   async loadEntries() {
     const entries = await listMemories({ scope: "all" });
     return entries
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       .slice(0, STORED_MEMORY_LIMIT)
       .map((e) => ({ content: e.content }));
   },
