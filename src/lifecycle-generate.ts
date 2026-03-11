@@ -258,9 +258,10 @@ function emitToolResult(ctx: RunContext, toolCallId: string, toolName: string, i
         }
       : {}),
   });
+  ctx.emit({ type: "usage", promptTokens: ctx.promptUsage.promptTokens, completionTokens: ctx.completionTokensAccum });
 }
 
-const USAGE_EMIT_CHAR_INTERVAL = 500;
+const USAGE_EMIT_CHAR_INTERVAL = 100;
 const AVERAGE_CHARS_PER_TOKEN = 4;
 
 function emitStreamingUsage(ctx: RunContext, chars: number): void {

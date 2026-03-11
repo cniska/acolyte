@@ -118,37 +118,31 @@ function renderSystemContent(content: string): React.ReactNode {
   );
 }
 
-function renderToolLine(
-  item: ToolOutput,
-  index: number,
-  lineNumWidth: number,
-  diffTextWidth?: number,
-): React.ReactNode {
+function renderToolLine(item: ToolOutput, index: number, lineNumWidth: number): React.ReactNode {
   if (item.kind === "diff") {
     const num = String(item.lineNumber).padStart(lineNumWidth);
-    const padded = diffTextWidth ? item.text.padEnd(diffTextWidth) : item.text;
     if (item.marker === "add")
       return (
         <Text key={`tool-${index}`}>
           {"\n  "}
-          <Text color={palette.green}>{num} </Text>
-          <Text backgroundColor={palette.diffAdd}>{padded}</Text>
+          <Text backgroundColor={palette.diffAdd} color={palette.diffAddText}>
+            {`${num}  ${item.text}`}
+          </Text>
         </Text>
       );
     if (item.marker === "remove")
       return (
         <Text key={`tool-${index}`}>
           {"\n  "}
-          <Text color={palette.red}>{num} </Text>
-          <Text backgroundColor={palette.diffRemove}>{padded}</Text>
+          <Text backgroundColor={palette.diffRemove} color={palette.diffRemoveText}>
+            {`${num}  ${item.text}`}
+          </Text>
         </Text>
       );
     return (
       <Text key={`tool-${index}`}>
         {"\n  "}
-        <Text dimColor>
-          {num} {item.text}
-        </Text>
+        <Text dimColor>{`${num}  ${item.text}`}</Text>
       </Text>
     );
   }
@@ -163,6 +157,14 @@ function renderToolLine(
     );
   }
   const text = renderToolOutputText(item);
+  if (item.kind === "truncated" && lineNumWidth > 0) {
+    return (
+      <Text key={`tool-${index}`}>
+        {"\n  "}
+        <Text dimColor>{`${"…".padStart(lineNumWidth)}  ${text.slice(2)}`}</Text>
+      </Text>
+    );
+  }
   return (
     <Text key={`tool-${index}`}>
       {"\n  "}
@@ -171,7 +173,7 @@ function renderToolLine(
   );
 }
 
-function renderToolBlock(items: ToolOutput[], contentWidth: number): React.ReactNode {
+function renderToolBlock(items: ToolOutput[]): React.ReactNode {
   if (items.length === 0) return null;
   const first = items[0];
   if (!first) return null;
@@ -181,7 +183,6 @@ function renderToolBlock(items: ToolOutput[], contentWidth: number): React.React
     (max, item) => (item.kind === "diff" ? Math.max(max, String(item.lineNumber).length) : max),
     0,
   );
-  const diffTextWidth = lineNumWidth > 0 ? Math.max(0, contentWidth - 2 - lineNumWidth - 1) : undefined;
   return (
     <>
       {label && text.startsWith(label) ? (
@@ -192,7 +193,7 @@ function renderToolBlock(items: ToolOutput[], contentWidth: number): React.React
       ) : (
         <Text>{text}</Text>
       )}
-      {items.slice(1).map((item, i) => renderToolLine(item, i, lineNumWidth, diffTextWidth))}
+      {items.slice(1).map((item, i) => renderToolLine(item, i, lineNumWidth))}
     </>
   );
 }
@@ -248,7 +249,7 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
                 </Box>
                 <Box width={row.role === "tool" ? toolContentWidth : contentWidth}>
                   {row.role === "tool" && row.toolOutput ? (
-                    <Text>{renderToolBlock(row.toolOutput, toolContentWidth)}</Text>
+                    <Text>{renderToolBlock(row.toolOutput)}</Text>
                   ) : row.role === "assistant" ? (
                     <Text dimColor={dim} color={textColor}>
                       {renderAssistantContent(row.content, contentWidth)}
