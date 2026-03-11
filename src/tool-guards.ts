@@ -70,9 +70,7 @@ export function scopedCallLog(session: SessionContext, taskId?: string): ToolCal
 }
 
 export function haveChangesBeenVerified(session: SessionContext, taskId: string | undefined): boolean {
-  return scopedCallLog(session, taskId).some(
-    (entry) => entry.toolName === "run-command" && entry.mode === "verify",
-  );
+  return scopedCallLog(session, taskId).some((entry) => entry.toolName === "run-command" && entry.mode === "verify");
 }
 
 function sameArray(a: readonly string[], b: readonly string[]): boolean {

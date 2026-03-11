@@ -113,7 +113,11 @@ describe("chat message handler stream behavior", () => {
 
   test("recovers cleanly after timeout and allows next message", async () => {
     let calls = 0;
-    const { handleMessage, rows, calls: spies } = createMessageHandlerHarness({
+    const {
+      handleMessage,
+      rows,
+      calls: spies,
+    } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         reply: async () => {

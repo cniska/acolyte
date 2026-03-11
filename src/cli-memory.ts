@@ -1,6 +1,6 @@
 import { formatColumns, formatRelativeTime } from "./chat-format";
-import { truncateText } from "./compact-text";
 import { formatUsage } from "./cli-help";
+import { truncateText } from "./compact-text";
 import { t } from "./i18n";
 import type { MemoryEntry } from "./memory-contract";
 import type { MemoryStore } from "./memory-store";

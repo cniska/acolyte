@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { formatMemoryResumeBlock, createSoulPrompt, loadAgentsPrompt, loadSoulPrompt, loadSystemPrompt } from "./soul";
+import { createSoulPrompt, formatMemoryResumeBlock, loadAgentsPrompt, loadSoulPrompt, loadSystemPrompt } from "./soul";
 import { tempDir } from "./test-utils";
 
 const { createDir, cleanupDirs } = tempDir();

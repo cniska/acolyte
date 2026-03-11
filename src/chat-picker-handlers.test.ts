@@ -96,7 +96,7 @@ describe("chat picker handlers", () => {
       clearTranscript: () => {},
     });
 
-    await handlers.handlePickerSelect({ kind: "resume", items: [first, second], index: 1 });
+    await handlers.handlePickerSelect({ kind: "resume", items: [first, second], index: 1, scrollOffset: 0 });
     expect(store.activeSessionId).toBe(second.id);
     expect(setCurrentSessionCalls).toEqual([second]);
     expect(setRowsDirectCalls.at(-1)).toEqual([]);

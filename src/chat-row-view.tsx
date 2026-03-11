@@ -14,7 +14,6 @@ const MARKERS: Record<ChatRow["role"], string> = {
   system: "  ",
 };
 
-
 function renderSessionsListContent(content: string): React.ReactNode {
   const [header, ...restLines] = content.split("\n");
   const match = header?.match(/^(Sessions\s+)(\d+)$/);
@@ -84,9 +83,7 @@ function renderKeyValueContent(content: string): React.ReactNode {
 }
 
 function renderSystemContent(content: string): React.ReactNode {
-  return (
-    renderSessionsListContent(content) ?? renderKeyValueContent(content) ?? content
-  );
+  return renderSessionsListContent(content) ?? renderKeyValueContent(content) ?? content;
 }
 
 function renderToolLine(item: ToolOutput, index: number, lineNumWidth: number): React.ReactNode {

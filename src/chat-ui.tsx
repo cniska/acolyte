@@ -3,8 +3,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { ChatRow } from "./chat-commands";
 import { useAtSuggestionsEffect, useSlashSuggestionsEffect, useThinkingAnimationEffect } from "./chat-effects";
 import { extractAtReferenceQuery } from "./chat-file-ref";
-import { ChatHeader } from "./chat-header";
 import type { HeaderLine } from "./chat-header";
+import { ChatHeader } from "./chat-header";
 import { processInputChange, processInputSubmit } from "./chat-input-handlers";
 import { ChatInputPanel } from "./chat-input-panel";
 import { useChatKeybindings } from "./chat-keybindings";
@@ -21,10 +21,10 @@ import { createInputHistory } from "./chat-turn";
 import type { Client } from "./client-contract";
 import { nowIso } from "./datetime";
 import { palette } from "./palette";
-import { clearScreen } from "./ui";
 import { formatModel } from "./provider-config";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
 import { loadSkills } from "./skills";
+import { clearScreen } from "./ui";
 
 const THINKING_PULSE_FRAMES = 16;
 const QUEUE_DELIVERY_POLICY = "one-at-a-time" as const;
@@ -258,7 +258,12 @@ function ChatApp(props: ChatAppProps) {
             return (
               <Box key={item.id} flexDirection="column">
                 <Text> </Text>
-                <ChatHeader lines={item.lines} brandColor={palette.brand} mascot={palette.mascot} mascotEyes={palette.mascotEyes} />
+                <ChatHeader
+                  lines={item.lines}
+                  brandColor={palette.brand}
+                  mascot={palette.mascot}
+                  mascotEyes={palette.mascotEyes}
+                />
               </Box>
             );
           }

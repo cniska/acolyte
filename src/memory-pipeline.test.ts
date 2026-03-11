@@ -68,7 +68,9 @@ describe("memory pipeline", () => {
   });
 
   test("formatMemoryContextPrompt indents multiline entries", () => {
-    const prompt = formatMemoryContextPrompt([{ sourceId: "distill", content: "line one\nline two", tokenEstimate: 5 }]);
+    const prompt = formatMemoryContextPrompt([
+      { sourceId: "distill", content: "line one\nline two", tokenEstimate: 5 },
+    ]);
     expect(prompt).toContain("- line one\n  line two");
   });
 

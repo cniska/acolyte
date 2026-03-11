@@ -1,5 +1,4 @@
 import { renderToString } from "ink";
-import React from "react";
 import type { HeaderLine } from "./chat-header";
 import { ChatHeader } from "./chat-header";
 
