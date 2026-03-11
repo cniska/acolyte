@@ -1,5 +1,5 @@
 import { appConfig } from "./app-config";
-import { type ProviderCredentials, isProviderAvailable, providerFromModel } from "./provider-config";
+import { isProviderAvailable, type ProviderCredentials, providerFromModel } from "./provider-config";
 import type { Provider } from "./provider-contract";
 
 export type ProviderCredentialsMap = Partial<Record<Provider, ProviderCredentials>>;
