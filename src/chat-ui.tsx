@@ -137,6 +137,7 @@ function ChatApp(props: ChatAppProps) {
     toRows,
     createMessage: createMessage,
     nowIso,
+    onSubmit: (text) => setQueuedMessages((current) => [...current, text]),
   });
 
   const handleSubmit = createMessageHandler({

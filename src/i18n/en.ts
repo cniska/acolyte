@@ -57,6 +57,7 @@ export const EN_MESSAGES = {
   "chat.skill.activated.with_args": "Activated skill: {skill} (with arguments)",
   "chat.skill.failed": "Failed to activate skill: {skill}",
   "chat.skill.not_found": "Skill not found: {skill}",
+  "chat.skill.run_prompt": "Run the {skill} skill.",
   "chat.slash.help.clear": "clear transcript",
   "chat.slash.help.exit": "exit chat",
   "chat.slash.help.memory": "show memory notes",

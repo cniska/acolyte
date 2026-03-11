@@ -509,7 +509,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       }
       if (args) return { stop: false, userText: args };
       pushUserCommandRow();
-      ctx.setRows((current) => [...current, createRow("system", t("chat.skill.activated", { skill: skill.name }))]);
+      ctx.setRows((current) => [...current, createRow("system", t("chat.skill.activated", { skill: skill.name }), { dim: true })]);
       return { stop: true, userText: text };
     }
 

@@ -27,6 +27,7 @@ type CreatePickerHandlersInput = {
   createMessage: (role: Message["role"], content: string) => Message;
   nowIso: () => string;
   persistConfig?: (key: string, value: string, scope: "project") => Promise<void>;
+  onSubmit?: (text: string) => void;
 };
 
 export function createPickerHandlers(input: CreatePickerHandlersInput): {
@@ -48,7 +49,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
       const label = args
         ? t("chat.skill.activated.with_args", { skill: skill.name })
         : t("chat.skill.activated", { skill: skill.name });
-      input.setRows((current) => [...current, createRow("system", label)]);
+      input.setRows((current) => [...current, createRow("system", label, { dim: true })]);
       await input.persist();
       return true;
     } catch {
@@ -111,6 +112,10 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
               ...current,
               createRow("system", t("chat.skill.failed", { skill: selected.name })),
             ]);
+          } else {
+            input.setPicker(null);
+            input.onSubmit?.(t("chat.skill.run_prompt", { skill: selected.name }));
+            return;
           }
         }
         input.setPicker(null);
