@@ -1,6 +1,10 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
 import { initMode } from "./cli-init";
 import { dedent } from "./test-utils";
+
+afterEach(() => {
+  process.exitCode = 0;
+});
 
 type InitDeps = Parameters<typeof initMode>[1];
 

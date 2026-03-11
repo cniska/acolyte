@@ -190,7 +190,7 @@ describe("server rpc websocket queue", () => {
       }
     });
 
-    const chatId = "rpc_read_mode_task_controls";
+    const chatId = "rpc_readmodetaskctrl";
     ws.send(
       JSON.stringify({
         id: chatId,
@@ -200,7 +200,7 @@ describe("server rpc websocket queue", () => {
             message: "Do a long-running analysis with many steps before answering.",
             history: [],
             model: "gpt-5-mini",
-            sessionId: "sess_rpc_read_mode_task_controls",
+            sessionId: "sess_rpcreadmodetaskctrl",
           },
         },
       }),
@@ -223,12 +223,12 @@ describe("server rpc websocket queue", () => {
 
     const runningTaskId = acceptedTaskIdFor(messages, chatId);
     expect(runningTaskId).not.toBeNull();
-    ws.send(JSON.stringify({ id: "rpc_read_mode_status", type: "task.status", payload: { taskId: runningTaskId } }));
+    ws.send(JSON.stringify({ id: "rpc_readmodestatus", type: "task.status", payload: { taskId: runningTaskId } }));
 
     await new Promise<void>((resolve, reject) => {
       const startedAt = Date.now();
       const interval = setInterval(() => {
-        const statusResult = messages.find((m) => m.id === "rpc_read_mode_status" && m.type === "task.status.result");
+        const statusResult = messages.find((m) => m.id === "rpc_readmodestatus" && m.type === "task.status.result");
         if (statusResult) {
           clearInterval(interval);
           expect(statusResult.task && typeof statusResult.task === "object").toBe(true);
@@ -245,14 +245,14 @@ describe("server rpc websocket queue", () => {
       }, 20);
     });
 
-    ws.send(JSON.stringify({ id: "rpc_read_mode_abort", type: "chat.abort", payload: { requestId: chatId } }));
+    ws.send(JSON.stringify({ id: "rpc_readmodeabort", type: "chat.abort", payload: { requestId: chatId } }));
 
     await new Promise<void>((resolve, reject) => {
       const startedAt = Date.now();
       const interval = setInterval(() => {
         const abortResult = messages.find(
           (m) =>
-            m.id === "rpc_read_mode_abort" &&
+            m.id === "rpc_readmodeabort" &&
             m.type === "chat.abort.result" &&
             m.requestId === chatId &&
             m.aborted === true,
@@ -301,28 +301,28 @@ describe("server rpc websocket queue", () => {
 
     ws.send(
       JSON.stringify({
-        id: "rpc_status_queue_a",
+        id: "rpc_statusqueuea",
         type: "chat.start",
         payload: {
           request: {
             message: "Do a long-running analysis with many steps before answering.",
             history: [],
             model: "gpt-5-mini",
-            sessionId: "sess_rpc_status_queue_a",
+            sessionId: "sess_rpcstatusqueuea",
           },
         },
       }),
     );
     ws.send(
       JSON.stringify({
-        id: "rpc_status_queue_b",
+        id: "rpc_statusqueueb",
         type: "chat.start",
         payload: {
           request: {
             message: "Do a long-running analysis with many steps before answering.",
             history: [],
             model: "gpt-5-mini",
-            sessionId: "sess_rpc_status_queue_b",
+            sessionId: "sess_rpcstatusqueueb",
           },
         },
       }),
@@ -332,7 +332,7 @@ describe("server rpc websocket queue", () => {
       const startedAt = Date.now();
       const interval = setInterval(() => {
         const queued = messages.some(
-          (m) => m.id === "rpc_status_queue_b" && m.type === "chat.queued" && m.position === 1,
+          (m) => m.id === "rpc_statusqueueb" && m.type === "chat.queued" && m.position === 1,
         );
         if (queued) {
           clearInterval(interval);
@@ -356,16 +356,16 @@ describe("server rpc websocket queue", () => {
 
     ws.send(
       JSON.stringify({
-        id: "rpc_status_abort_a",
+        id: "rpc_statusaborta",
         type: "chat.abort",
-        payload: { requestId: "rpc_status_queue_a" },
+        payload: { requestId: "rpc_statusqueuea" },
       }),
     );
     ws.send(
       JSON.stringify({
-        id: "rpc_status_abort_b",
+        id: "rpc_statusabortb",
         type: "chat.abort",
-        payload: { requestId: "rpc_status_queue_b" },
+        payload: { requestId: "rpc_statusqueueb" },
       }),
     );
     ws.close();
@@ -403,7 +403,7 @@ describe("server rpc websocket queue", () => {
       }
     });
 
-    const requestId = "rpc_restart_task_status";
+    const requestId = "rpc_restarttaskstatus";
     ws.send(
       JSON.stringify({
         id: requestId,
@@ -413,7 +413,7 @@ describe("server rpc websocket queue", () => {
             message: "Do a long-running analysis with many steps before answering.",
             history: [],
             model: "gpt-5-mini",
-            sessionId: "sess_rpc_restart_task_status",
+            sessionId: "sess_rpcrestarttaskstatus",
           },
         },
       }),
@@ -426,13 +426,13 @@ describe("server rpc websocket queue", () => {
     );
     const taskId = acceptedTaskIdFor(messages, requestId);
     expect(taskId).not.toBeNull();
-    ws.send(JSON.stringify({ id: "rpc_restart_status_before", type: "task.status", payload: { taskId } }));
+    ws.send(JSON.stringify({ id: "rpc_restartstatusbefore", type: "task.status", payload: { taskId } }));
 
     await new Promise<void>((resolve, reject) => {
       const startedAt = Date.now();
       const interval = setInterval(() => {
         const statusResult = messages.find(
-          (m) => m.id === "rpc_restart_status_before" && m.type === "task.status.result",
+          (m) => m.id === "rpc_restartstatusbefore" && m.type === "task.status.result",
         );
         if (statusResult) {
           clearInterval(interval);
@@ -474,13 +474,13 @@ describe("server rpc websocket queue", () => {
       }
     });
 
-    wsAfter.send(JSON.stringify({ id: "rpc_restart_status_after", type: "task.status", payload: { taskId } }));
+    wsAfter.send(JSON.stringify({ id: "rpc_restartstatusafter", type: "task.status", payload: { taskId } }));
 
     await new Promise<void>((resolve, reject) => {
       const startedAt = Date.now();
       const interval = setInterval(() => {
         const statusResult = messagesAfter.find(
-          (m) => m.id === "rpc_restart_status_after" && m.type === "task.status.result",
+          (m) => m.id === "rpc_restartstatusafter" && m.type === "task.status.result",
         );
         if (statusResult) {
           clearInterval(interval);
@@ -534,22 +534,22 @@ describe("server rpc websocket queue", () => {
             message: "Do a long-running analysis with many steps before answering.",
             history: [],
             model: "gpt-5-mini",
-            sessionId: `sess_${id}`,
+            sessionId: `sess_${id.replace("rpc_", "")}`,
           },
         },
       });
 
     // 1 running + 25 queued hits the queue limit.
-    ws.send(requestFor("rpc_queue_limit_running"));
-    for (let i = 0; i < 25; i += 1) ws.send(requestFor(`rpc_queue_limit_q_${i}`));
-    ws.send(requestFor("rpc_queue_limit_overflow"));
+    ws.send(requestFor("rpc_queuelimitrunning"));
+    for (let i = 0; i < 25; i += 1) ws.send(requestFor(`rpc_queuelimitq${i}`));
+    ws.send(requestFor("rpc_queuelimitoverflow"));
 
     await new Promise<void>((resolve, reject) => {
       const startedAt = Date.now();
       const interval = setInterval(() => {
         const overflowError = messages.find(
           (m) =>
-            m.id === "rpc_queue_limit_overflow" &&
+            m.id === "rpc_queuelimitoverflow" &&
             m.type === "error" &&
             typeof m.error === "string" &&
             m.error.includes("RPC queue is full") &&
@@ -567,7 +567,7 @@ describe("server rpc websocket queue", () => {
       }, 20);
     });
 
-    expect(messages.some((m) => m.id === "rpc_queue_limit_overflow" && m.type === "chat.accepted")).toBe(false);
+    expect(messages.some((m) => m.id === "rpc_queuelimitoverflow" && m.type === "chat.accepted")).toBe(false);
 
     ws.close();
   }, 20_000);
@@ -602,17 +602,19 @@ describe("server rpc websocket queue", () => {
     const mkRequest = (requestId: string, message: string) => ({
       id: requestId,
       type: "chat.start",
-      payload: { request: { message, history: [], model: "gpt-5-mini", sessionId: `sess_${requestId}` } },
+      payload: {
+        request: { message, history: [], model: "gpt-5-mini", sessionId: `sess_${requestId.replace("rpc_", "")}` },
+      },
     });
 
-    const chat1 = "rpc_test_chat_1";
-    const chat2 = "rpc_test_chat_2";
-    const chat3 = "rpc_test_chat_3";
+    const chat1 = "rpc_testchat1";
+    const chat2 = "rpc_testchat2";
+    const chat3 = "rpc_testchat3";
 
     ws.send(JSON.stringify(mkRequest(chat1, "first")));
     ws.send(JSON.stringify(mkRequest(chat2, "second")));
     ws.send(JSON.stringify(mkRequest(chat3, "third")));
-    ws.send(JSON.stringify({ id: "rpc_test_abort_2", type: "chat.abort", payload: { requestId: chat2 } }));
+    ws.send(JSON.stringify({ id: "rpc_testabort2", type: "chat.abort", payload: { requestId: chat2 } }));
 
     await new Promise<void>((resolve, reject) => {
       const startedAt = Date.now();
@@ -625,10 +627,7 @@ describe("server rpc websocket queue", () => {
         );
         const abortResult = messages.some(
           (m) =>
-            m.id === "rpc_test_abort_2" &&
-            m.type === "chat.abort.result" &&
-            m.requestId === chat2 &&
-            m.aborted === true,
+            m.id === "rpc_testabort2" && m.type === "chat.abort.result" && m.requestId === chat2 && m.aborted === true,
         );
 
         if (
@@ -682,7 +681,7 @@ describe("server rpc websocket queue", () => {
       }
     });
 
-    const chatId = "rpc_abort_active_chat";
+    const chatId = "rpc_abortactivechat";
     ws.send(
       JSON.stringify({
         id: chatId,
@@ -692,7 +691,7 @@ describe("server rpc websocket queue", () => {
             message: "Do a long-running analysis with many steps before answering.",
             history: [],
             model: "gpt-5-mini",
-            sessionId: "sess_rpc_abort_active",
+            sessionId: "sess_rpcabortactive",
           },
         },
       }),
@@ -713,14 +712,14 @@ describe("server rpc websocket queue", () => {
       }, 20);
     });
 
-    ws.send(JSON.stringify({ id: "rpc_abort_active_req", type: "chat.abort", payload: { requestId: chatId } }));
+    ws.send(JSON.stringify({ id: "rpc_abortactivereq", type: "chat.abort", payload: { requestId: chatId } }));
 
     const abortIndex = await new Promise<number>((resolve, reject) => {
       const startedAt = Date.now();
       const interval = setInterval(() => {
         const index = messages.findIndex(
           (m) =>
-            m.id === "rpc_abort_active_req" &&
+            m.id === "rpc_abortactivereq" &&
             m.type === "chat.abort.result" &&
             m.requestId === chatId &&
             m.aborted === true,
@@ -774,16 +773,12 @@ describe("server rpc websocket queue", () => {
       }
     });
 
-    ws.send(
-      JSON.stringify({ id: "rpc_task_status_missing", type: "task.status", payload: { taskId: "task_missing" } }),
-    );
+    ws.send(JSON.stringify({ id: "rpc_taskstatusmissing", type: "task.status", payload: { taskId: "task_missing0" } }));
 
     await new Promise<void>((resolve, reject) => {
       const startedAt = Date.now();
       const interval = setInterval(() => {
-        const missingResult = messages.find(
-          (m) => m.id === "rpc_task_status_missing" && m.type === "task.status.result",
-        );
+        const missingResult = messages.find((m) => m.id === "rpc_taskstatusmissing" && m.type === "task.status.result");
         if (missingResult) {
           clearInterval(interval);
           expect(missingResult.task).toBeNull();
@@ -797,7 +792,7 @@ describe("server rpc websocket queue", () => {
       }, 20);
     });
 
-    const chatId = "rpc_task_status_chat";
+    const chatId = "rpc_taskstatuschat";
     ws.send(
       JSON.stringify({
         id: chatId,
@@ -807,7 +802,7 @@ describe("server rpc websocket queue", () => {
             message: "Do a long-running analysis with many steps before answering.",
             history: [],
             model: "gpt-5-mini",
-            sessionId: "sess_rpc_task_status",
+            sessionId: "sess_rpctaskstatus",
           },
         },
       }),
@@ -830,12 +825,12 @@ describe("server rpc websocket queue", () => {
 
     const activeTaskId = acceptedTaskIdFor(messages, chatId);
     expect(activeTaskId).not.toBeNull();
-    ws.send(JSON.stringify({ id: "rpc_task_status_active", type: "task.status", payload: { taskId: activeTaskId } }));
+    ws.send(JSON.stringify({ id: "rpc_taskstatusactive", type: "task.status", payload: { taskId: activeTaskId } }));
 
     await new Promise<void>((resolve, reject) => {
       const startedAt = Date.now();
       const interval = setInterval(() => {
-        const activeResult = messages.find((m) => m.id === "rpc_task_status_active" && m.type === "task.status.result");
+        const activeResult = messages.find((m) => m.id === "rpc_taskstatusactive" && m.type === "task.status.result");
         if (activeResult) {
           clearInterval(interval);
           expect(activeResult.task && typeof activeResult.task === "object").toBe(true);
@@ -852,7 +847,7 @@ describe("server rpc websocket queue", () => {
       }, 20);
     });
 
-    ws.send(JSON.stringify({ id: "rpc_task_status_abort", type: "chat.abort", payload: { requestId: chatId } }));
+    ws.send(JSON.stringify({ id: "rpc_taskstatusabort", type: "chat.abort", payload: { requestId: chatId } }));
     ws.close();
   }, 20_000);
 
@@ -863,10 +858,10 @@ describe("server rpc websocket queue", () => {
 
     const { ws, messages } = await openRpcSession(port, apiKey);
 
-    const activeRequestId = "rpc_isolation_active";
-    const queuedRequestId = "rpc_isolation_queued";
-    const activeSession = "sess_rpc_isolation_active";
-    const queuedSession = "sess_rpc_isolation_queued";
+    const activeRequestId = "rpc_isolationactive";
+    const queuedRequestId = "rpc_isolationqueued";
+    const activeSession = "sess_rpcisolationactive";
+    const queuedSession = "sess_rpcisolationqueued";
 
     sendRpc(ws, {
       id: activeRequestId,
@@ -907,18 +902,14 @@ describe("server rpc websocket queue", () => {
     expect(activeTaskId).not.toBeNull();
     expect(queuedTaskId).not.toBeNull();
 
-    sendRpc(ws, { id: "rpc_isolation_status_active_pre", type: "task.status", payload: { taskId: activeTaskId } });
-    sendRpc(ws, { id: "rpc_isolation_status_queued_pre", type: "task.status", payload: { taskId: queuedTaskId } });
+    sendRpc(ws, { id: "rpc_isolationstatusactivepre", type: "task.status", payload: { taskId: activeTaskId } });
+    sendRpc(ws, { id: "rpc_isolationstatusqueuedpre", type: "task.status", payload: { taskId: queuedTaskId } });
 
     await new Promise<void>((resolve, reject) => {
       const startedAt = Date.now();
       const interval = setInterval(() => {
-        const active = messages.find(
-          (m) => m.id === "rpc_isolation_status_active_pre" && m.type === "task.status.result",
-        );
-        const queued = messages.find(
-          (m) => m.id === "rpc_isolation_status_queued_pre" && m.type === "task.status.result",
-        );
+        const active = messages.find((m) => m.id === "rpc_isolationstatusactivepre" && m.type === "task.status.result");
+        const queued = messages.find((m) => m.id === "rpc_isolationstatusqueuedpre" && m.type === "task.status.result");
         if (active && queued) {
           clearInterval(interval);
           const activeTask = active.task as { id: unknown; state: unknown };
@@ -937,14 +928,14 @@ describe("server rpc websocket queue", () => {
       }, 20);
     });
 
-    sendRpc(ws, { id: "rpc_isolation_abort_active", type: "chat.abort", payload: { requestId: activeRequestId } });
+    sendRpc(ws, { id: "rpc_isolationabortactive", type: "chat.abort", payload: { requestId: activeRequestId } });
 
     await new Promise<void>((resolve, reject) => {
       const startedAt = Date.now();
       const interval = setInterval(() => {
         const abortResult = messages.find(
           (m) =>
-            m.id === "rpc_isolation_abort_active" &&
+            m.id === "rpc_isolationabortactive" &&
             m.type === "chat.abort.result" &&
             m.requestId === activeRequestId &&
             m.aborted === true,
@@ -961,17 +952,17 @@ describe("server rpc websocket queue", () => {
       }, 20);
     });
 
-    sendRpc(ws, { id: "rpc_isolation_status_active_post", type: "task.status", payload: { taskId: activeTaskId } });
-    sendRpc(ws, { id: "rpc_isolation_status_queued_post", type: "task.status", payload: { taskId: queuedTaskId } });
+    sendRpc(ws, { id: "rpc_isolationstatusactivepost", type: "task.status", payload: { taskId: activeTaskId } });
+    sendRpc(ws, { id: "rpc_isolationstatusqueuedpost", type: "task.status", payload: { taskId: queuedTaskId } });
 
     await new Promise<void>((resolve, reject) => {
       const startedAt = Date.now();
       const interval = setInterval(() => {
         const active = messages.find(
-          (m) => m.id === "rpc_isolation_status_active_post" && m.type === "task.status.result",
+          (m) => m.id === "rpc_isolationstatusactivepost" && m.type === "task.status.result",
         );
         const queued = messages.find(
-          (m) => m.id === "rpc_isolation_status_queued_post" && m.type === "task.status.result",
+          (m) => m.id === "rpc_isolationstatusqueuedpost" && m.type === "task.status.result",
         );
         if (active && queued) {
           clearInterval(interval);
@@ -991,15 +982,15 @@ describe("server rpc websocket queue", () => {
       }, 20);
     });
 
-    sendRpc(ws, { id: "rpc_isolation_abort_queued", type: "chat.abort", payload: { requestId: queuedRequestId } });
+    sendRpc(ws, { id: "rpc_isolationabortqueued", type: "chat.abort", payload: { requestId: queuedRequestId } });
     ws.close();
   }, 20_000);
 
   test("does not leak tool-call path args across task ids", async () => {
     const port = randomTestPort();
     const apiKey = "rpc_test_key";
-    const taskA = "rpc_task_path_iso_a";
-    const taskB = "rpc_task_path_iso_b";
+    const taskA = "rpc_taskpathisoa";
+    const taskB = "rpc_taskpathisob";
     const fileA = "tmp_path_iso_a.txt";
     const fileB = "tmp_path_iso_b.txt";
 
@@ -1058,7 +1049,7 @@ describe("server rpc websocket queue", () => {
               message: `Create ${fileA} with exactly: alpha path isolation`,
               history: [],
               model: "gpt-5-mini",
-              sessionId: "sess_rpc_path_iso_a",
+              sessionId: "sess_rpcpathisoa",
             },
           },
         });
@@ -1070,7 +1061,7 @@ describe("server rpc websocket queue", () => {
               message: `Create ${fileB} with exactly: beta path isolation`,
               history: [],
               model: "gpt-5-mini",
-              sessionId: "sess_rpc_path_iso_b",
+              sessionId: "sess_rpcpathisob",
             },
           },
         });

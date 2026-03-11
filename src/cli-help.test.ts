@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { CliCommandHelp } from "./cli-contract";
-import { createUsageCommandRows, createUsageOptionRows, printLineBreak, printUsage, commandHelp } from "./cli-help";
+import { commandHelp, createUsageCommandRows, createUsageOptionRows, printLineBreak, printUsage } from "./cli-help";
 import { stripAnsi } from "./tui-test-utils";
 
 const runHelp: CliCommandHelp = {

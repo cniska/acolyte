@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ChatRow } from "./chat-commands";
 import { useAtSuggestionsEffect, useSlashSuggestionsEffect, useThinkingAnimationEffect } from "./chat-effects";
 import { extractAtReferenceQuery } from "./chat-file-ref";
+import type { HeaderLine } from "./chat-header";
 import { ChatHeader } from "./chat-header";
 import { processInputChange, processInputSubmit } from "./chat-input-handlers";
 import { ChatInputPanel } from "./chat-input-panel";
@@ -19,10 +20,10 @@ import { createInputHistory } from "./chat-turn";
 import type { Client } from "./client-contract";
 import { nowIso } from "./datetime";
 import { palette } from "./palette";
-import type { HeaderLine } from "./chat-header";
 import { formatModel } from "./provider-config";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
 import { loadSkills } from "./skills";
+
 const THINKING_PULSE_FRAMES = 16;
 const QUEUE_DELIVERY_POLICY = "one-at-a-time" as const;
 

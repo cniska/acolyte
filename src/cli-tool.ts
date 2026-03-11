@@ -157,8 +157,6 @@ const TOOL_HANDLERS: Record<string, ToolHandler> = {
   },
 };
 
-const CLI_TOOL_IDS = Object.keys(TOOL_HANDLERS);
-
 export async function toolMode(args: string[]): Promise<void> {
   if (hasHelpFlag(args)) {
     commandHelp("tool");

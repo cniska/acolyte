@@ -3,7 +3,7 @@ import { appConfig } from "./app-config";
 import { createMessage } from "./chat-session";
 import { attachFileToSession, chatModeWithOptions } from "./cli-chat";
 import { configMode } from "./cli-config";
-import type { CliCommand, CliCommandHelp, CliCommandHandler } from "./cli-contract";
+import type { CliCommand, CliCommandHandler, CliCommandHelp } from "./cli-contract";
 import { psMode, restartMode, startMode, stopMode } from "./cli-daemon";
 import { commandError as commandErrorFromHelp, commandHelp as commandHelpFromHelp, printUsage } from "./cli-help";
 import { historyMode } from "./cli-history";
