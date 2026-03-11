@@ -5,11 +5,12 @@ Shipped, user-visible capabilities.
 ## CLI
 
 - Interactive chat mode.
-- One-shot run mode.
+- One-shot run mode with `--model` and `--file` flags.
+- One-shot skill execution via `acolyte skill <name> <prompt>` with `--model` flag.
 - Session resume and session listing.
 - Configurable locale via `config set locale <tag>`.
 - Fuzzy search and autocomplete with suggestion and correction for file paths, sessions, commands, and skills.
-- Model picker that queries provider APIs for available models.
+- Model picker that queries provider APIs for available models, with per-mode selection (`/model work|verify <id>`).
 - Automatic server startup/reuse for chat and run mode.
 - Server control commands (`start`, `stop`, `restart`, `ps`, `status`).
 - Status guidance when daemon server is not running.
@@ -29,6 +30,7 @@ Shipped, user-visible capabilities.
 - Tool-guarded execution for safer autonomous runs.
 - Streaming progress output for tool activity.
 - Proactive token budgeting via tiktoken with system prompt reservation and priority-based allocation.
+- Per-task LRU result cache for read-only and search tools.
 
 ## Tools
 
@@ -45,6 +47,7 @@ Shipped, user-visible capabilities.
 - Project-scoped saved memory.
 - Memory inspect/list/remove commands.
 - Context distillation with automatic observation and reflection.
+- Session-scoped distill memory.
 
 ## Safety and Control
 
@@ -55,7 +58,7 @@ Shipped, user-visible capabilities.
 
 ## Diagnostics
 
-- Status command.
+- Status command with `--json` output.
 - Token usage reporting.
 - Lifecycle trace logging (defaults to daemon log path, overrideable via `--log`).
 - Managed daemon log file at `~/.acolyte/server.log`.
