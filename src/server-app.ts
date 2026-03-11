@@ -66,6 +66,13 @@ function hasValidAuth(req: Request, url?: URL): boolean {
 
   const auth = req.headers.get("authorization");
   if (auth && safeEqual(auth, `Bearer ${API_KEY}`)) return true;
+
+  const protocol = req.headers.get("sec-websocket-protocol") ?? "";
+  for (const proto of protocol.split(",")) {
+    const trimmed = proto.trim();
+    if (trimmed.startsWith("bearer.") && safeEqual(trimmed.slice(7), API_KEY)) return true;
+  }
+
   const param = url?.searchParams.get("apiKey");
   return param !== null && param !== undefined && safeEqual(param, API_KEY);
 }

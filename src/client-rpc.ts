@@ -24,18 +24,17 @@ export class RpcClient implements Client {
   ) {}
 
   private rpcUrl(): string {
-    const url = new URL(rpcUrlFromApiUrl(this.apiUrl));
-    if (this.apiKey) url.searchParams.set("apiKey", this.apiKey);
-    return url.toString();
+    return new URL(rpcUrlFromApiUrl(this.apiUrl)).toString();
   }
 
   private async openSocket(): Promise<WebSocket> {
     const url = this.rpcUrl();
+    const protocols = this.apiKey ? [`bearer.${this.apiKey}`] : undefined;
     return await new Promise<WebSocket>((resolve, reject) => {
       let settled = false;
       let socket: WebSocket;
       try {
-        socket = new WebSocket(url);
+        socket = new WebSocket(url, protocols);
       } catch (error) {
         if (isConnectionFailure(error)) reject(new Error(connectionHelpMessage(this.apiUrl)));
         else reject(error);
