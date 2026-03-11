@@ -131,7 +131,7 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
           input.setPicker((current) => {
             if (!current) return current;
             const index = Math.max(0, current.index - 1);
-            if (current.kind === "model") {
+            if (current.kind === "model" || current.kind === "resume") {
               const scrollOffset = index < current.scrollOffset ? index : current.scrollOffset;
               return { ...current, index, scrollOffset };
             }
@@ -143,7 +143,7 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
           input.setPicker((current) => {
             if (!current) return current;
             const index = Math.min(pickerItemCount(current) - 1, current.index + 1);
-            if (current.kind === "model") {
+            if (current.kind === "model" || current.kind === "resume") {
               const scrollOffset =
                 index >= current.scrollOffset + PICKER_PAGE_SIZE ? index - PICKER_PAGE_SIZE + 1 : current.scrollOffset;
               return { ...current, index, scrollOffset };

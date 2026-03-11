@@ -52,16 +52,17 @@ describe("chat picker visual regression", () => {
           createSession({ id: "sess_prev", title: "Previous Session", updatedAt: "2026-03-02T00:00:00.000Z" }),
         ],
         index: 1,
+        scrollOffset: 0,
       });
 
       expect(out).toBe(
         dedent(`
         ────────────────────────────────────────────────────────────────────────────────────────────────
         Resume Session
-        
+
           ● sess_active  Current Session   just now
         ›   sess_prev    Previous Session  just now
-        
+
         Enter to resume · Esc to close
         ────────────────────────────────────────────────────────────────────────────────────────────────
       `),

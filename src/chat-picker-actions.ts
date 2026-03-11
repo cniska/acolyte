@@ -1,5 +1,5 @@
 import type { AgentMode } from "./agent-contract";
-import type { PickerState } from "./chat-picker";
+import { PICKER_PAGE_SIZE, type PickerState } from "./chat-picker";
 import { getAvailableModels } from "./provider-models";
 import type { SessionState } from "./session-contract";
 
@@ -23,15 +23,13 @@ export function createPicker<K extends keyof PickerByKind>(config: CreatePickerC
   } as PickerByKind[K];
 }
 
-export function createResumePicker(store: SessionState, limit = 20): PickerState | null {
-  const items = store.sessions.slice(0, limit);
+export function createResumePicker(store: SessionState): PickerState | null {
+  const items = store.sessions;
   if (items.length === 0) return null;
   const activeIndex = items.findIndex((item) => item.id === store.activeSessionId);
-  return createPicker({
-    kind: "resume",
-    items,
-    index: activeIndex >= 0 ? activeIndex : 0,
-  });
+  const index = activeIndex >= 0 ? activeIndex : 0;
+  const scrollOffset = Math.max(0, index - PICKER_PAGE_SIZE + 1);
+  return { kind: "resume", items, index, scrollOffset };
 }
 
 export async function createModelPicker(targetMode?: AgentMode): Promise<PickerState> {

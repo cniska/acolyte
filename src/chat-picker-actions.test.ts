@@ -49,6 +49,7 @@ describe("chat picker actions", () => {
       kind: "resume",
       items: [first, second],
       index: 1,
+      scrollOffset: 0,
     });
   });
 

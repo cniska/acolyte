@@ -10,7 +10,7 @@ import type { SkillMeta } from "./skills";
 
 export type PickerState =
   | { kind: "skills"; items: SkillMeta[]; index: number }
-  | { kind: "resume"; items: Session[]; index: number }
+  | { kind: "resume"; items: Session[]; index: number; scrollOffset: number }
   | {
       kind: "model";
       items: string[];
@@ -128,10 +128,12 @@ export function renderPickerItems(
         formatRelativeTime(item.updatedAt),
       ]);
       const formattedRows = formatColumns(rows);
-      return formattedRows.map((line, index) => {
-        const selected = index === picker.index;
+      const visible = formattedRows.slice(picker.scrollOffset, picker.scrollOffset + PICKER_PAGE_SIZE);
+      const visibleItems = picker.items.slice(picker.scrollOffset, picker.scrollOffset + PICKER_PAGE_SIZE);
+      return visible.map((line, index) => {
+        const selected = index === picker.index - picker.scrollOffset;
         return (
-          <Text key={picker.items[index]?.id ?? `${index}`}>
+          <Text key={visibleItems[index]?.id ?? `${index}`}>
             {selected ? "› " : "  "}
             <Text color={selected ? brandColor : undefined}>{line}</Text>
           </Text>
