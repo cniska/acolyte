@@ -5,18 +5,23 @@
 Acolyte is an AI coding assistant: CLI + HTTP server + native agentic loop. See `docs/architecture.md` for full architecture.
 
 Key files:
-- `src/lifecycle.ts` — request lifecycle (classify → prepare → generate → evaluate → finalize)
-- `src/agent-modes.ts` — mode definitions (plan/work/verify), mode classification
-- `src/core-toolkit.ts` — core tool definitions (read/write/search/web)
-- `src/git-toolkit.ts` — git tool definitions and git operations
+- `src/lifecycle.ts` — request lifecycle orchestrator (resolve → prepare → generate → evaluate → finalize)
+- `src/lifecycle-resolve.ts`, `src/lifecycle-prepare.ts`, `src/lifecycle-generate.ts`, `src/lifecycle-evaluate.ts`, `src/lifecycle-finalize.ts` — individual lifecycle phases
+- `src/lifecycle-evaluators.ts` — `Evaluator` type and evaluator implementations
+- `src/agent-modes.ts` — mode definitions (work/verify), mode classification
+- `src/file-toolkit.ts`, `src/shell-toolkit.ts`, `src/web-toolkit.ts`, `src/git-toolkit.ts` — tool definitions by domain
 - `src/tool-registry.ts` — toolkit registration, permission filtering, `toolsForAgent()`
+- `src/tool-execution.ts` — `runTool` (pre-execution guards + post-execution recording)
 - `src/tool-guards.ts` — session-level guards (no-rewrite, verify-ran)
+- `src/memory-registry.ts` — memory source resolution and registry
+- `src/memory-pipeline.ts` — memory normalization, selection, and budget pipeline
+- `src/server-http.ts` — HTTP route handlers (`/healthz`, `/v1/status`, `/v1/chat/stream`)
+- `src/server-app.ts` — server bootstrap, auth, WebSocket upgrade
 
 Patterns to follow:
-- New post-generation behavior → implement `Evaluator` in `lifecycle.ts`, add to evaluator array
+- New post-generation behavior → implement `Evaluator` in `lifecycle-evaluators.ts`, add to `EVALUATORS` array
 - New tool guard → implement `ToolGuard` in `tool-guards.ts`, add to `GUARDS` array
-- New tool → add to toolkit in `core-toolkit.ts` or `git-toolkit.ts` with `runTool` for guarded execution
-- All tools go through `runTool` (pre-execution guards + post-execution recording)
+- New tool → add to the appropriate `*-toolkit.ts` file; all tools go through `runTool` in `tool-execution.ts`
 
 Development:
 - Validate: `bun run verify` (format + lint + typecheck + test)
@@ -26,6 +31,7 @@ Development:
 - Prefer repository scripts and task runners over ad-hoc commands.
 - Use documented commands when available.
 - Do not depend on external CLI tools (e.g. `rg`, `fd`, `fzf`). Use Bun-native APIs and Node built-ins so the project runs with zero host dependencies beyond Bun itself.
+- `scripts/` contains test infrastructure (`fake-provider-server.ts`, `wait-server.ts`) and debugging tools (`lifecycle-trace.ts` for filtering daemon logs by task/request ID).
 
 ## Workflow
 
@@ -77,8 +83,8 @@ Development:
 
 - Run relevant validation after changes.
 - Keep the branch green after each fix slice: run the narrowest relevant checks while iterating, then run the required gate before committing.
-- For this repo baseline, run `bun run verify` for feature work (`format` + `lint` + `typecheck` + `test`).
-- At minimum, run `bun run typecheck` when TypeScript code changes.
+- For this repo baseline, run `bun run verify` as the final gate before committing (`format` + `lint` + `typecheck` + `test`).
+- While iterating, run the narrowest check: `bun run typecheck` for type changes, `bun run lint` for style, `bun test <file>` for specific tests.
 - Do not commit on red. If baseline is already red, first land a dedicated fix slice that restores green, then continue feature work.
 - Prefer automated smoke checks for readiness; ask for manual user testing only at milestone checkpoints.
 - Document validation that could not run and why.
