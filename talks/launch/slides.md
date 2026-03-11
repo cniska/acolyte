@@ -59,6 +59,8 @@ Claude Code and Codex are great — if one provider is enough.
 
 <!--
 Why not just use Claude Code or Codex? They're excellent. But they lock you into one provider, one way of doing things. You can't customize the agent behavior, you can't see what it's doing under the hood, and your data lives on their infrastructure. Acolyte gives you all of that.
+
+Beyond the open-source angle, existing tools have reliability gaps — they lose context across sessions, drift in behavior, and make you repeat yourself. Trust comes from predictable behavior under pressure, not from nice demos. That's why Acolyte has memory tiers, guards, and automatic verify cycles — reliability by design, not by accident.
 -->
 
 ---
@@ -342,7 +344,7 @@ bun run dev           # starts daemon + CLI
 
 <br>
 
-[acolyte.sh](https://acolyte.sh) · [github.com/cniska/acolyte](https://github.com/cniska/acolyte)
+[acolyte.sh](https://acolyte.sh) · [github.com/cniska/acolyte](https://github.com/cniska/acolyte) · [crisu.me/blog](https://crisu.me/blog)
 
 <!--
 "This repo just went public — you can clone it right now." Flip it to public before showing this slide. Four commands to get running. Thank you!
