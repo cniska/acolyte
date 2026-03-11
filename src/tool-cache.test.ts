@@ -155,13 +155,15 @@ describe("tool-cache", () => {
     expect(hitB?.result).toBe("File: /workspace/src/b.ts\n1: const b = 2;");
   });
 
-  test("populateSubEntries skips entries with start/end ranges", () => {
+  test("populateSubEntries creates sub-entries preserving start/end ranges", () => {
     const cache = createToolCache(CACHEABLE);
     const multiArgs = { paths: [{ path: "src/a.ts", start: 1, end: 5 }, { path: "src/b.ts" }] };
     const result = "File: /workspace/src/a.ts\n1: const a = 1;\n\nFile: /workspace/src/b.ts\n1: const b = 2;";
     cache.set("read-file", multiArgs, { result });
     cache.populateSubEntries("read-file", multiArgs, result);
-    // a.ts had range — no sub-entry
+    // a.ts sub-entry keyed with its range
+    expect(cache.get("read-file", { paths: [{ path: "src/a.ts", start: 1, end: 5 }] })).toBeDefined();
+    // a.ts without range — no match
     expect(cache.get("read-file", { paths: [{ path: "src/a.ts" }] })).toBeUndefined();
     // b.ts had no range — sub-entry populated
     expect(cache.get("read-file", { paths: [{ path: "src/b.ts" }] })).toBeDefined();

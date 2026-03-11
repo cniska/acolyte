@@ -102,10 +102,10 @@ export function createToolCache(cacheableTools: ReadonlySet<string>, maxEntries 
         const pathEntry = entry as Record<string, unknown>;
         const p = pathEntry.path;
         if (typeof p !== "string") continue;
-        // Skip partial reads with start/end — sub-entry wouldn't match a full read
-        if (pathEntry.start !== undefined || pathEntry.end !== undefined) continue;
-        const subArgs = { paths: [{ path: p }] };
-        this.set(toolName, subArgs, { result: normalized[i] });
+        const subArg: Record<string, unknown> = { path: p };
+        if (pathEntry.start !== undefined) subArg.start = pathEntry.start;
+        if (pathEntry.end !== undefined) subArg.end = pathEntry.end;
+        this.set(toolName, { paths: [subArg] }, { result: normalized[i] });
       }
     },
 

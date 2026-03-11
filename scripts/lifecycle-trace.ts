@@ -42,7 +42,7 @@ function escapeRegex(value: string): string {
 
 function parseField(line: string, key: string): string | undefined {
   const escapedKey = escapeRegex(key);
-  const quoted = line.match(new RegExp(`(?:^|\\s)${escapedKey}="([^"]*)"`));
+  const quoted = line.match(new RegExp(`(?:^|\\s)${escapedKey}="((?:[^"\\\\]|\\\\.)*)"`));
   if (quoted?.[1] !== undefined) return quoted[1];
   const plain = line.match(new RegExp(`(?:^|\\s)${escapedKey}=([^\\s]+)`));
   return plain?.[1];
