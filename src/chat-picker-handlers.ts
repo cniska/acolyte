@@ -26,6 +26,7 @@ type CreatePickerHandlersInput = {
   toRows: (messages: Message[]) => ChatRow[];
   createMessage: (role: Message["role"], content: string) => Message;
   nowIso: () => string;
+  persistConfig?: (key: string, value: string, scope: "project") => Promise<void>;
 };
 
 export function createPickerHandlers(input: CreatePickerHandlersInput): {
@@ -97,6 +98,8 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
     input.setPicker(picker);
   };
 
+  const writeConfig = input.persistConfig ?? ((key, value, scope) => setConfigValue(key, value, { scope }));
+
   const handlePickerSelect = async (state: PickerState): Promise<void> => {
     switch (state.kind) {
       case "skills": {
@@ -119,14 +122,14 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
         try {
           const targetMode = state.targetMode;
           if (targetMode) {
-            await setConfigValue(`models.${targetMode}`, nextModel, { scope: "project" });
+            await writeConfig(`models.${targetMode}`, nextModel, "project");
             setModeModel(targetMode, nextModel);
             input.setRows((current) => [
               ...current,
               createRow("system", t("chat.model.changed.mode", { mode: targetMode, model: formatModel(nextModel) })),
             ]);
           } else {
-            await setConfigValue("model", nextModel, { scope: "project" });
+            await writeConfig("model", nextModel, "project");
             setDefaultModel(nextModel);
             const nextSession: Session = { ...input.currentSession, model: nextModel, updatedAt: input.nowIso() };
             input.setCurrentSession(nextSession);

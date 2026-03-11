@@ -124,6 +124,7 @@ describe("chat picker handlers", () => {
       toRows: () => [],
       createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
+      persistConfig: async () => {},
     });
 
     await handlers.handlePickerSelect({
