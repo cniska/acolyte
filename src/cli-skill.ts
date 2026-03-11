@@ -10,7 +10,7 @@ import type { apiUrlForPort as apiUrlForPortType, ensureLocalServer as ensureLoc
 import type { findSkillByName as findSkillByNameType, loadSkills as loadSkillsType } from "./skills";
 import type { createSession as createSessionType } from "./storage";
 
-type ParsedSkillArgs = { skillName: string; files: string[]; prompt: string; workspace?: string };
+type ParsedSkillArgs = { skillName: string; files: string[]; prompt: string; workspace?: string; model?: string };
 
 type SkillModeDeps = {
   apiUrlForPort: typeof apiUrlForPortType;
@@ -45,6 +45,7 @@ function parseSkillArgs(args: string[]): ParsedSkillArgs {
   const files: string[] = [];
   const tokens: string[] = [];
   let workspace: string | undefined;
+  let model: string | undefined;
   let skillName: string | undefined;
 
   for (let i = 0; i < args.length; i += 1) {
@@ -62,6 +63,13 @@ function parseSkillArgs(args: string[]): ParsedSkillArgs {
       i += 1;
       continue;
     }
+    if (args[i] === "--model") {
+      const next = args[i + 1];
+      if (!next) throw new Error("--model requires a model id");
+      model = next;
+      i += 1;
+      continue;
+    }
     if (!skillName) {
       skillName = args[i];
       continue;
@@ -70,7 +78,7 @@ function parseSkillArgs(args: string[]): ParsedSkillArgs {
   }
 
   if (!skillName) throw new Error("skill name is required");
-  return { skillName, files, prompt: tokens.join(" ").trim(), workspace };
+  return { skillName, files, prompt: tokens.join(" ").trim(), workspace, model };
 }
 
 export async function skillMode(args: string[], deps: SkillModeDeps): Promise<void> {
@@ -131,7 +139,7 @@ export async function skillMode(args: string[], deps: SkillModeDeps): Promise<vo
   const compacted = compactText(instructions, skillBudget);
 
   const resolvedConfig = readResolvedConfigSync();
-  const session = createSession(appModel);
+  const session = createSession(parsed.model ?? appModel);
   session.messages.push(createMessage("system", `Active skill (${skill.name}):\n${compacted}`));
 
   const daemon = await ensureLocalServer({ port: serverPort, apiKey: serverApiKey, serverEntry });

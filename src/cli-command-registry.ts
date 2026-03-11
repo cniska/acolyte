@@ -258,7 +258,7 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
   skill: {
     help: {
       command: "skill <name> [prompt]",
-      usage: "acolyte skill <name> [--file <path>] [--workspace <path>] <prompt>",
+      usage: "acolyte skill <name> [--file <path>] [--workspace <path>] [--model <id>] <prompt>",
       description: t("cli.help.desc.skill"),
       examples: ['acolyte skill arch-audit "review the lifecycle module"'],
     },
