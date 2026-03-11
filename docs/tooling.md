@@ -27,7 +27,7 @@ Read-only and search tools (`read-file`, `find-files`, `search-files`, `scan-cod
 - **Key**: deterministic `toolName:stableJSON(args)` — object keys sorted for stability
 - **Invalidation**: write tools (`edit-file`, `create-file`, `delete-file`) evict entries with overlapping paths; `run-command` clears the entire cache
 - **Scope**: one cache per task, discarded when the task ends
-- **Eviction**: LRU with a default cap of 256 entries
+- **Eviction**: LRU (least recently used) with a default cap of 256 entries
 
 This reduces redundant I/O and avoids re-sending identical tool results to the model.
 

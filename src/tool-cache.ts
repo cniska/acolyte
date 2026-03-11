@@ -1,22 +1,5 @@
 import { extractReadPaths, normalizePath } from "./tool-arg-paths";
-
-export type CacheEntry = {
-  result: unknown;
-};
-
-export type ToolCache = {
-  get(toolName: string, args: Record<string, unknown>): CacheEntry | undefined;
-  set(toolName: string, args: Record<string, unknown>, entry: CacheEntry): void;
-  invalidateForWrite(toolName: string, args: Record<string, unknown>): void;
-  clear(): void;
-  stats(): { hits: number; misses: number; invalidations: number; evictions: number; size: number };
-};
-
-const CACHEABLE_TOOLS = new Set(["read-file", "find-files", "search-files", "scan-code"]);
-
-export function isCacheableTool(toolName: string): boolean {
-  return CACHEABLE_TOOLS.has(toolName);
-}
+import type { ToolCache, ToolCacheEntry } from "./tool-contract";
 
 function stableKey(toolName: string, args: Record<string, unknown>): string {
   return `${toolName}:${stableJSON(args)}`;
@@ -54,8 +37,8 @@ function extractCachedPaths(toolName: string, args: Record<string, unknown>): st
 
 const DEFAULT_MAX_ENTRIES = 256;
 
-export function createToolCache(maxEntries = DEFAULT_MAX_ENTRIES): ToolCache {
-  const cache = new Map<string, CacheEntry>();
+export function createToolCache(cacheableTools: ReadonlySet<string>, maxEntries = DEFAULT_MAX_ENTRIES): ToolCache {
+  const cache = new Map<string, ToolCacheEntry>();
   const keyPaths = new Map<string, string[]>();
   let hits = 0;
   let misses = 0;
@@ -72,8 +55,10 @@ export function createToolCache(maxEntries = DEFAULT_MAX_ENTRIES): ToolCache {
   }
 
   return {
+    isCacheable: (toolName: string) => cacheableTools.has(toolName),
+
     get(toolName, args) {
-      if (!isCacheableTool(toolName)) return undefined;
+      if (!cacheableTools.has(toolName)) return undefined;
       const key = stableKey(toolName, args);
       const entry = cache.get(key);
       if (entry) {
@@ -88,10 +73,14 @@ export function createToolCache(maxEntries = DEFAULT_MAX_ENTRIES): ToolCache {
     },
 
     set(toolName, args, entry) {
-      if (!isCacheableTool(toolName)) return;
+      if (!cacheableTools.has(toolName)) return;
       const key = stableKey(toolName, args);
-      if (cache.has(key)) cache.delete(key);
-      else if (cache.size >= maxEntries) evictOldest();
+      if (cache.has(key)) {
+        cache.delete(key);
+        keyPaths.delete(key);
+      } else if (cache.size >= maxEntries) {
+        evictOldest();
+      }
       cache.set(key, entry);
       const paths = extractCachedPaths(toolName, args);
       if (paths.length > 0) keyPaths.set(key, paths);
@@ -106,25 +95,23 @@ export function createToolCache(maxEntries = DEFAULT_MAX_ENTRIES): ToolCache {
         return;
       }
       const writtenPaths = extractWrittenPaths(toolName, args);
-      if (writtenPaths.length === 0) return;
-      const writtenSet = new Set(writtenPaths);
-      for (const [key, paths] of keyPaths.entries()) {
-        if (paths.some((p) => writtenSet.has(p))) {
-          cache.delete(key);
-          keyPaths.delete(key);
-          invalidations += 1;
+      if (writtenPaths.length > 0) {
+        const writtenSet = new Set(writtenPaths);
+        for (const [key, paths] of keyPaths.entries()) {
+          if (paths.some((p) => writtenSet.has(p))) {
+            cache.delete(key);
+            keyPaths.delete(key);
+            invalidations += 1;
+          }
         }
       }
-      // Also invalidate search/find entries since they may reference written files
+      // Evict entries without tracked paths (search/find) since they may reference written files
       const toEvict: string[] = [];
       for (const key of cache.keys()) {
-        if (key.startsWith("find-files:") || key.startsWith("search-files:")) {
-          toEvict.push(key);
-        }
+        if (!keyPaths.has(key)) toEvict.push(key);
       }
       for (const key of toEvict) {
         cache.delete(key);
-        keyPaths.delete(key);
         invalidations += 1;
       }
     },

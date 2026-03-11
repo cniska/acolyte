@@ -1,5 +1,4 @@
 import { createId } from "./short-id";
-import { isCacheableTool } from "./tool-cache";
 import { ERROR_KINDS, LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
 import { recordCall, runGuards, type SessionContext } from "./tool-guards";
 export function streamCallId(toolName: string): string {
@@ -55,7 +54,9 @@ export async function guardedExecute<T>(
   const argsRecord = args as Record<string, unknown>;
   const cache = session.cache;
 
-  if (cache && isCacheableTool(toolId)) {
+  // Cache hit returns early with its own recordCall — the finally block only
+  // runs on cache miss, so recordCall is never invoked twice for the same call.
+  if (cache?.isCacheable(toolId)) {
     const cached = cache.get(toolId, argsRecord);
     if (cached) {
       recordCall(session, toolId, argsRecord);
@@ -65,13 +66,13 @@ export async function guardedExecute<T>(
 
   try {
     const result = await task();
-    if (cache && isCacheableTool(toolId)) {
+    if (cache?.isCacheable(toolId)) {
       cache.set(toolId, argsRecord, { result });
     }
     return result;
   } finally {
     recordCall(session, toolId, argsRecord);
-    if (cache && !isCacheableTool(toolId)) {
+    if (cache && !cache.isCacheable(toolId)) {
       cache.invalidateForWrite(toolId, argsRecord);
     }
   }

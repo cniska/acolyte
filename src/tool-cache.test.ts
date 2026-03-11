@@ -1,29 +1,33 @@
 import { describe, expect, test } from "bun:test";
-import { createToolCache, isCacheableTool } from "./tool-cache";
+import { createToolCache } from "./tool-cache";
+
+const CACHEABLE = new Set(["read-file", "find-files", "search-files", "scan-code"]);
 
 describe("tool-cache", () => {
-  test("isCacheableTool returns true for read/search tools", () => {
-    expect(isCacheableTool("read-file")).toBe(true);
-    expect(isCacheableTool("find-files")).toBe(true);
-    expect(isCacheableTool("search-files")).toBe(true);
-    expect(isCacheableTool("scan-code")).toBe(true);
+  test("isCacheable returns true for read/search tools", () => {
+    const cache = createToolCache(CACHEABLE);
+    expect(cache.isCacheable("read-file")).toBe(true);
+    expect(cache.isCacheable("find-files")).toBe(true);
+    expect(cache.isCacheable("search-files")).toBe(true);
+    expect(cache.isCacheable("scan-code")).toBe(true);
   });
 
-  test("isCacheableTool returns false for write/execute tools", () => {
-    expect(isCacheableTool("edit-file")).toBe(false);
-    expect(isCacheableTool("create-file")).toBe(false);
-    expect(isCacheableTool("delete-file")).toBe(false);
-    expect(isCacheableTool("run-command")).toBe(false);
+  test("isCacheable returns false for write/execute tools", () => {
+    const cache = createToolCache(CACHEABLE);
+    expect(cache.isCacheable("edit-file")).toBe(false);
+    expect(cache.isCacheable("create-file")).toBe(false);
+    expect(cache.isCacheable("delete-file")).toBe(false);
+    expect(cache.isCacheable("run-command")).toBe(false);
   });
 
   test("cache miss returns undefined", () => {
-    const cache = createToolCache();
+    const cache = createToolCache(CACHEABLE);
     expect(cache.get("read-file", { paths: [{ path: "src/foo.ts" }] })).toBeUndefined();
     expect(cache.stats().misses).toBe(1);
   });
 
   test("cache hit returns stored entry", () => {
-    const cache = createToolCache();
+    const cache = createToolCache(CACHEABLE);
     const args = { paths: [{ path: "src/foo.ts" }] };
     const entry = { result: { kind: "read-file", output: "file content" } };
     cache.set("read-file", args, entry);
@@ -33,14 +37,14 @@ describe("tool-cache", () => {
   });
 
   test("different args produce cache miss", () => {
-    const cache = createToolCache();
+    const cache = createToolCache(CACHEABLE);
     cache.set("read-file", { paths: [{ path: "src/foo.ts" }] }, { result: "a" });
     expect(cache.get("read-file", { paths: [{ path: "src/bar.ts" }] })).toBeUndefined();
     expect(cache.stats().misses).toBe(1);
   });
 
   test("stable key ignores object key order", () => {
-    const cache = createToolCache();
+    const cache = createToolCache(CACHEABLE);
     cache.set("read-file", { paths: [{ path: "a.ts" }], extra: 1 }, { result: "ok" });
     const hit = cache.get("read-file", { extra: 1, paths: [{ path: "a.ts" }] });
     expect(hit).toBeDefined();
@@ -48,14 +52,14 @@ describe("tool-cache", () => {
   });
 
   test("ignores non-cacheable tools", () => {
-    const cache = createToolCache();
+    const cache = createToolCache(CACHEABLE);
     cache.set("edit-file", { path: "a.ts" }, { result: "x" });
     expect(cache.get("edit-file", { path: "a.ts" })).toBeUndefined();
     expect(cache.stats().size).toBe(0);
   });
 
   test("invalidateForWrite evicts entries with overlapping paths", () => {
-    const cache = createToolCache();
+    const cache = createToolCache(CACHEABLE);
     cache.set("read-file", { paths: [{ path: "src/foo.ts" }] }, { result: "a" });
     cache.set("read-file", { paths: [{ path: "src/bar.ts" }] }, { result: "b" });
     cache.invalidateForWrite("edit-file", { path: "src/foo.ts" });
@@ -65,7 +69,7 @@ describe("tool-cache", () => {
   });
 
   test("invalidateForWrite clears search/find entries on any write", () => {
-    const cache = createToolCache();
+    const cache = createToolCache(CACHEABLE);
     cache.set("search-files", { pattern: "foo" }, { result: "results" });
     cache.set("find-files", { patterns: ["*.ts"] }, { result: "files" });
     cache.set("read-file", { paths: [{ path: "src/bar.ts" }] }, { result: "b" });
@@ -77,8 +81,18 @@ describe("tool-cache", () => {
     expect(cache.get("read-file", { paths: [{ path: "src/bar.ts" }] })).toBeDefined();
   });
 
+  test("invalidateForWrite evicts pathless entries even with unextractable write args", () => {
+    const cache = createToolCache(CACHEABLE);
+    cache.set("search-files", { pattern: "foo" }, { result: "results" });
+    cache.set("read-file", { paths: [{ path: "src/bar.ts" }] }, { result: "b" });
+    // Unknown write tool with no extractable paths — pathless entries should still be evicted
+    cache.invalidateForWrite("edit-file", {});
+    expect(cache.get("search-files", { pattern: "foo" })).toBeUndefined();
+    expect(cache.get("read-file", { paths: [{ path: "src/bar.ts" }] })).toBeDefined();
+  });
+
   test("run-command clears entire cache", () => {
-    const cache = createToolCache();
+    const cache = createToolCache(CACHEABLE);
     cache.set("read-file", { paths: [{ path: "a.ts" }] }, { result: "a" });
     cache.set("search-files", { pattern: "x" }, { result: "b" });
     cache.invalidateForWrite("run-command", { command: "rm -rf node_modules" });
@@ -86,7 +100,7 @@ describe("tool-cache", () => {
   });
 
   test("clear resets all entries without counting as invalidations", () => {
-    const cache = createToolCache();
+    const cache = createToolCache(CACHEABLE);
     cache.set("read-file", { paths: [{ path: "a.ts" }] }, { result: "a" });
     cache.clear();
     expect(cache.stats().size).toBe(0);
@@ -94,7 +108,7 @@ describe("tool-cache", () => {
   });
 
   test("write to path in multi-path read invalidates whole entry", () => {
-    const cache = createToolCache();
+    const cache = createToolCache(CACHEABLE);
     const args = { paths: [{ path: "a.ts" }, { path: "b.ts" }] };
     cache.set("read-file", args, { result: "combined" });
     cache.invalidateForWrite("edit-file", { path: "b.ts" });
@@ -102,7 +116,7 @@ describe("tool-cache", () => {
   });
 
   test("evicts oldest entry when max entries exceeded", () => {
-    const cache = createToolCache(2);
+    const cache = createToolCache(new Set(["read-file"]), 2);
     cache.set("read-file", { paths: [{ path: "a.ts" }] }, { result: "a" });
     cache.set("read-file", { paths: [{ path: "b.ts" }] }, { result: "b" });
     cache.set("read-file", { paths: [{ path: "c.ts" }] }, { result: "c" });
@@ -115,7 +129,7 @@ describe("tool-cache", () => {
   });
 
   test("LRU access promotes entry and evicts least recently used", () => {
-    const cache = createToolCache(2);
+    const cache = createToolCache(new Set(["read-file"]), 2);
     cache.set("read-file", { paths: [{ path: "a.ts" }] }, { result: "a" });
     cache.set("read-file", { paths: [{ path: "b.ts" }] }, { result: "b" });
     // access a.ts to promote it
@@ -128,7 +142,7 @@ describe("tool-cache", () => {
   });
 
   test("stats track hits, misses, and invalidations", () => {
-    const cache = createToolCache();
+    const cache = createToolCache(CACHEABLE);
     const args = { paths: [{ path: "a.ts" }] };
     cache.get("read-file", args); // miss
     cache.set("read-file", args, { result: "ok" });
