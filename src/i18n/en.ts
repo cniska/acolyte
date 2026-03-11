@@ -6,7 +6,6 @@ export const EN_MESSAGES = {
   "agent.status.working": "Working…",
   "chat.at_ref.attach_file": "attach file",
   "chat.at_ref.no_matches": "No file or folder matches.",
-  "chat.clear.confirm": "Cleared visible transcript.",
   "chat.command.unknown": "Unknown command: {command}",
   "chat.input.help_hint": "? help",
   "chat.input.placeholder": "Ask anything…",

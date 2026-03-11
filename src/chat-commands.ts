@@ -491,9 +491,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
   }
 
   if (resolvedText === "/clear") {
-    pushUserCommandRow();
-    // Clear the visible transcript but keep session messages intact.
-    ctx.setRows(() => [createRow("system", t("chat.clear.confirm"))]);
+    ctx.setRows(() => []);
     return { stop: true, userText: text };
   }
 
