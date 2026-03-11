@@ -1,14 +1,11 @@
 import { relative } from "node:path";
 import { z } from "zod";
 import { wrapAssistantContent } from "./chat-content";
-import { truncateText } from "./compact-text";
 import { t } from "./i18n";
 import { formatToolOutput, type ToolOutput } from "./tool-output-content";
 import { TOOL_OUTPUT_LIMITS } from "./tool-output-format";
 import { toolDefinitionsById } from "./tool-registry";
 import { printDim, printToolHeader } from "./ui";
-
-export { truncateText };
 
 const runExitCodeSchema = z.coerce.number().int();
 

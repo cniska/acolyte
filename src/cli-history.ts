@@ -1,5 +1,5 @@
 import { formatColumns, formatRelativeTime } from "./chat-format";
-import { truncateText } from "./cli-format";
+import { truncateText } from "./compact-text";
 import { t } from "./i18n";
 import type { readStore as readStoreType } from "./storage";
 

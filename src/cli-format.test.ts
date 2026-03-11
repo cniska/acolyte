@@ -6,8 +6,8 @@ import {
   formatForTool,
   formatRunOutput,
   parseRunExitCode,
-  truncateText,
 } from "./cli-format";
+import { truncateText } from "./compact-text";
 import { formatPromptError } from "./error-messages";
 import { t } from "./i18n";
 
