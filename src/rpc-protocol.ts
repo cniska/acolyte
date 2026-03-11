@@ -16,20 +16,20 @@ export function createRpcRequestId(): RpcRequestId {
 }
 
 const chatRequestSchema = z.object({
-  message: z.string(),
-  history: z.array(z.unknown()),
-  model: z.string(),
+  message: z.string().max(100_000),
+  history: z.array(z.unknown()).max(500),
+  model: z.string().max(200),
   modeModels: z
     .object({
-      work: z.string().optional(),
-      verify: z.string().optional(),
+      work: z.string().max(200).optional(),
+      verify: z.string().max(200).optional(),
     })
     .optional(),
   sessionId: sessionIdSchema.optional(),
   resourceId: resourceIdSchema.optional(),
   useMemory: z.boolean().optional(),
   verifyScope: verifyScopeSchema.optional(),
-  workspace: z.string().optional(),
+  workspace: z.string().max(4096).optional(),
 });
 
 export const statusPayloadSchema = z
