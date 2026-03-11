@@ -22,10 +22,6 @@ export const ERROR_KINDS = {
 } as const;
 export type ErrorKind = (typeof ERROR_KINDS)[keyof typeof ERROR_KINDS];
 
-// ---------------------------------------------------------------------------
-// Tool error class and bracket-encoding helpers
-// ---------------------------------------------------------------------------
-
 export class ToolError extends Error {
   code: string;
   kind?: ErrorKind;

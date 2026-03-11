@@ -21,10 +21,6 @@ afterAll(async () => {
   await Promise.all(tempDirs.map(async (d) => rm(d, { recursive: true, force: true })));
 });
 
-// ---------------------------------------------------------------------------
-// Path guards
-// ---------------------------------------------------------------------------
-
 describe("path guards", () => {
   test("readSnippet blocks paths outside workspace", async () => {
     await expect(readSnippet(WORKSPACE, "/etc/hosts")).rejects.toThrow("restricted to the workspace or /tmp");
@@ -84,10 +80,6 @@ describe("path guards", () => {
     expect(output).toContain("edits=1");
   });
 });
-
-// ---------------------------------------------------------------------------
-// editFile
-// ---------------------------------------------------------------------------
 
 describe("editFile", () => {
   test("find/replace in workspace file", async () => {
@@ -213,10 +205,6 @@ describe("editFile", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// writeTextFile / deleteTextFile
-// ---------------------------------------------------------------------------
-
 describe("writeTextFile", () => {
   test("creates /tmp files", async () => {
     const filePath = `/tmp/acolyte-test-write-${crypto.randomUUID()}.txt`;
@@ -236,10 +224,6 @@ describe("deleteTextFile", () => {
     await expect(readSnippet(WORKSPACE, filePath)).rejects.toThrow();
   });
 });
-
-// ---------------------------------------------------------------------------
-// editCode
-// ---------------------------------------------------------------------------
 
 describe("editCode", () => {
   test("replaces pattern matches with metavariable capture", async () => {
@@ -344,10 +328,6 @@ describe("editCode", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// scanCode
-// ---------------------------------------------------------------------------
-
 describe("scanCode", () => {
   test("finds matches with metavariable captures", async () => {
     const filePath = `/tmp/acolyte-test-scan-${crypto.randomUUID()}.ts`;
@@ -408,10 +388,6 @@ describe("scanCode", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// searchFiles
-// ---------------------------------------------------------------------------
-
 describe("searchFiles", () => {
   test("scopes matches to a single file path", async () => {
     const dir = join(WORKSPACE, `acolyte-test-search-${crypto.randomUUID()}`);
@@ -439,10 +415,6 @@ describe("searchFiles", () => {
     expect(result).not.toContain(outside.split("/").at(-1) ?? "");
   });
 });
-
-// ---------------------------------------------------------------------------
-// findFiles
-// ---------------------------------------------------------------------------
 
 describe("findFiles", () => {
   test("finds files by pattern in workspace", async () => {
