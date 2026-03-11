@@ -65,48 +65,6 @@ describe("step-budget guard", () => {
   });
 });
 
-describe("no-delete-rewrite guard", () => {
-  test("allows delete when path was NOT read", () => {
-    const session = createSessionContext();
-    expect(() => runGuards({ toolName: "delete-file", args: { path: "src/foo.ts" }, session })).not.toThrow();
-  });
-
-  test("blocks delete when path WAS read", () => {
-    const session = createSessionContext();
-    recordCall(session, "read-file", { paths: [{ path: "src/foo.ts" }] });
-    expect(() => runGuards({ toolName: "delete-file", args: { path: "src/foo.ts" }, session })).toThrow(
-      /Cannot delete.*src\/foo\.ts/,
-    );
-  });
-
-  test("normalizes ./ prefixed paths", () => {
-    const session = createSessionContext();
-    recordCall(session, "read-file", { paths: [{ path: "./src/foo.ts" }] });
-    expect(() => runGuards({ toolName: "delete-file", args: { path: "src/foo.ts" }, session })).toThrow(
-      /Cannot delete/,
-    );
-  });
-
-  test("is no-op for other tools", () => {
-    const session = createSessionContext();
-    recordCall(session, "read-file", { paths: [{ path: "src/foo.ts" }] });
-    expect(() => runGuards({ toolName: "edit-file", args: { path: "src/foo.ts" }, session })).not.toThrow();
-  });
-
-  test("is task-scoped: read in prior task does not block delete in new task", () => {
-    const session = createSessionContext("task_a");
-    recordCall(session, "read-file", { paths: [{ path: "src/foo.ts" }] });
-    session.taskId = "task_b";
-    expect(() => runGuards({ toolName: "delete-file", args: { paths: ["src/foo.ts"] }, session })).not.toThrow();
-  });
-
-  test("does not block delete for a different path with same basename", () => {
-    const session = createSessionContext();
-    recordCall(session, "read-file", { paths: [{ path: "docs/config.ts" }] });
-    expect(() => runGuards({ toolName: "delete-file", args: { paths: ["src/config.ts"] }, session })).not.toThrow();
-  });
-});
-
 describe("redundant-verify guard", () => {
   test("allows first verify run", () => {
     const session = createSessionContext();

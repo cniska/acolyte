@@ -153,38 +153,6 @@ const duplicateCallGuard: ToolGuard = {
   },
 };
 
-const preventDeleteRewriteGuard: ToolGuard = {
-  id: "no-delete-rewrite",
-  description: "Block delete-file on a path that was previously read — use edit-file instead.",
-  tools: ["delete-file"],
-  check({ args, session, report }) {
-    const rawPaths = Array.isArray(args.paths) ? args.paths : typeof args.path === "string" ? [args.path] : [];
-    const deletePaths = rawPaths
-      .filter((entry): entry is string => typeof entry === "string")
-      .map((entry) => entry.trim())
-      .filter((entry) => entry.length > 0);
-    if (deletePaths.length === 0) return;
-    for (const deletePath of deletePaths) {
-      const normalized = normalizePath(deletePath);
-      const wasRead = scopedCallLog(session).some((entry) => {
-        if (entry.toolName !== "read-file") return false;
-        const paths = entry.args.paths;
-        if (!Array.isArray(paths)) return false;
-        return (paths as Array<{ path?: string }>).some((p) => {
-          if (typeof p.path !== "string") return false;
-          const n = normalizePath(p.path);
-          return n === normalized;
-        });
-      });
-      if (!wasRead) continue;
-      report("blocked", deletePath);
-      throw new Error(
-        `Cannot delete "${deletePath}" — it was read this session. Use edit-file to modify it instead of deleting and recreating.`,
-      );
-    }
-  },
-};
-
 const fileChurnGuard: ToolGuard = {
   id: "file-churn",
   description: "Block excessive read/edit churn on the same file to force a strategy change.",
@@ -401,7 +369,6 @@ export function resetCycleStepCount(session: SessionContext, limit?: number): vo
 const GUARDS: ToolGuard[] = [
   stepBudgetGuard,
   duplicateCallGuard,
-  preventDeleteRewriteGuard,
   fileChurnGuard,
   redundantFindGuard,
   redundantSearchGuard,

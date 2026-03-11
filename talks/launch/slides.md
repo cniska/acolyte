@@ -128,9 +128,9 @@ Two layers prevent the agent from wasting time and tokens.
 **Guards** — behavioral checks before every tool call:
 
 - **step-budget** — per-cycle and total step limits
+- **duplicate-call** — identical consecutive tool calls (non-cached tools)
 - **file-churn** — excessive read/edit loops on same file
 - **redundant-search / find / verify** — repeated loops without progress
-- **no-delete-rewrite** — deleting a file that was already read
 
 **Cache** — LRU result cache for read-only and search tools:
 

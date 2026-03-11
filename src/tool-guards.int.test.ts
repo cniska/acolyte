@@ -146,45 +146,4 @@ describe("guard regression integration", () => {
     expect(reply.toolCalls?.length).toBe(1);
     expect(reply.toolCalls?.[0]).toBe("run-command");
   }, 20_000);
-
-  test("no-rewrite guard blocks delete-file after reading the same file", async () => {
-    const reply = await runGuardIntegrationScenario(
-      "[int:no-rewrite] Read a file and then try to delete it.",
-      "sess_guardregressionnorewrite",
-      ({ model, responseCounter, sourceText, outputs, body }) => {
-        if (sourceText.includes("[int:no-rewrite]")) {
-          const readToolName = pickFunctionToolName(body.tools, "read-file", ["read", "file"]);
-          const deleteToolName = pickFunctionToolName(body.tools, "delete-file", ["delete", "file"]);
-          if (outputs.length === 0) {
-            return createToolCallsPayload(model, responseCounter, [
-              {
-                id: "fc_read_before_delete_1",
-                callId: "call_read_before_delete_1",
-                name: readToolName,
-                args: JSON.stringify({ paths: [{ path: "src/lifecycle.ts" }] }),
-              },
-            ]);
-          }
-
-          const lastCallId = outputs[outputs.length - 1]?.callId;
-          if (lastCallId === "call_read_before_delete_1") {
-            return createToolCallsPayload(model, responseCounter, [
-              {
-                id: "fc_delete_after_read_1",
-                callId: "call_delete_after_read_1",
-                name: deleteToolName,
-                args: JSON.stringify({ paths: ["src/lifecycle.ts"] }),
-              },
-            ]);
-          }
-
-          return createMessagePayload(model, responseCounter, "Done.");
-        }
-        return createMessagePayload(model, responseCounter, "ok");
-      },
-    );
-
-    expect(reply.output).toContain("Done");
-    expect(reply.toolCalls).toEqual(["read-file", "read-file"]);
-  }, 20_000);
 });
