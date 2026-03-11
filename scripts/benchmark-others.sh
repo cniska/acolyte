@@ -5,8 +5,6 @@
 #
 # Usage: ./scripts/benchmark-all.sh
 #
-# Canonical gist: https://gist.github.com/crisu83/fb4a55d88fc0e9c9e9b5f6615d1c8673
-#
 set -euo pipefail
 
 WORKDIR="/tmp/acolyte-benchmarks"
