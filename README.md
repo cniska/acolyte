@@ -27,7 +27,7 @@ bun run test:perf     # performance baselines
 
 ## Documentation
 
-- [Index](docs/index.md)
+- [Index](docs/README.md)
 - [Why Acolyte](docs/why-acolyte.md)
 - [Getting started](docs/getting-started.md)
 - [Contributing](docs/contributing.md)
