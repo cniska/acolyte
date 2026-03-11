@@ -1,6 +1,6 @@
 ---
 theme: default
-title: "Acolyte: a terminal-first AI coding agent"
+title: "Acolyte: a terminal-first AI coding assistant"
 info: Launch talk — March 2026
 class: text-center
 drawings:
@@ -31,7 +31,7 @@ Welcome everyone. Acolyte is an open-source AI coding agent that runs in your te
 
 Christoffer Niska
 
-- Software architect — 15+ years across various industries
+- Software architect — 15+ years across gaming, finance, publishing, and more
 - AI-assisted development since early Cursor, now Claude Code and Codex daily
 - Built Acolyte to get the best of both worlds: open source + AI coding agent
 
@@ -211,7 +211,7 @@ Most agents just fill it up and then panic when it overflows — compress, summa
 
 First, the system prompt — your soul prompt, instructions, active skills — gets measured with tiktoken and its cost is reserved. That's the non-negotiable baseline.
 
-Then remaining space fills by priority. Pinned context and memory facts go in first — these are the high-value items. Then file attachments you've explicitly attached. Then conversation history, newest first. Finally tool payloads from previous calls.
+Then remaining space fills by priority. Memory goes in first — skills, facts, session context. Then file attachments you've explicitly attached. Then conversation history, newest first. Finally tool payloads from previous calls.
 
 The age-based compaction is important: a tool output from the last turn gets full budget, but one from 10 turns ago gets capped to 60 tokens. You still see it happened, but the full output is gone.
 
@@ -324,6 +324,8 @@ Compared against 8 open-source agents. Full benchmarks in `docs/benchmarks.md`.
 
 <!--
 Quick numbers. We benchmarked against 8 other open-source agents. Acolyte is the smallest codebase with the fewest dependencies, highest type safety, and zero tech debt markers. Not because it's trivial — because every module is independently testable by design.
+
+This wasn't written over months — three weeks, 180k lines of cumulative output with AI-assisted development. The 63% rewrite ratio shows continuous refinement, not first-draft code. The tool built the tool.
 -->
 
 ---
