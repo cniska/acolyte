@@ -2,7 +2,7 @@ import { appConfig } from "./app-config";
 import type { MemorySourceId } from "./config-contract";
 import type { MemoryCommitContext, MemoryCommitMetrics, MemoryLoadContext, MemorySource } from "./memory-contract";
 import {
-  buildMemoryContextPrompt,
+  formatMemoryContextPrompt,
   type MemoryNormalizeStrategy,
   type MemorySelectionStrategy,
   normalizeMemoryEntries,
@@ -84,7 +84,7 @@ export function createMemoryRegistry(
       const result = await runMemoryPipeline(sources, ctx, budgetTokens, normalizeEntries, selectEntries);
       const continuation = extractContinuation(result.entries);
       return {
-        prompt: buildMemoryContextPrompt(result.entries),
+        prompt: formatMemoryContextPrompt(result.entries),
         tokenEstimate: result.tokenEstimate,
         entryCount: result.entries.length,
         continuationSelected: result.entries.some((entry) => entry.isContinuation === true),

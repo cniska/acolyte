@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { MemorySource } from "./memory-contract";
 import {
-  buildMemoryContextPrompt,
+  formatMemoryContextPrompt,
   normalizeMemoryEntries,
   runMemoryCommitPipeline,
   runMemoryPipeline,
@@ -57,8 +57,8 @@ describe("memory pipeline", () => {
     expect(result.entries.map((entry) => entry.sourceId)).toEqual(["custom"]);
   });
 
-  test("buildMemoryContextPrompt renders bullet list", () => {
-    const prompt = buildMemoryContextPrompt([
+  test("formatMemoryContextPrompt renders bullet list", () => {
+    const prompt = formatMemoryContextPrompt([
       { sourceId: "stored", content: "prefer bun", tokenEstimate: 3 },
       { sourceId: "distill", content: "Current task: fix tests", tokenEstimate: 5 },
     ]);
@@ -67,13 +67,13 @@ describe("memory pipeline", () => {
     expect(prompt).toContain("- Current task: fix tests");
   });
 
-  test("buildMemoryContextPrompt indents multiline entries", () => {
-    const prompt = buildMemoryContextPrompt([{ sourceId: "distill", content: "line one\nline two", tokenEstimate: 5 }]);
+  test("formatMemoryContextPrompt indents multiline entries", () => {
+    const prompt = formatMemoryContextPrompt([{ sourceId: "distill", content: "line one\nline two", tokenEstimate: 5 }]);
     expect(prompt).toContain("- line one\n  line two");
   });
 
-  test("buildMemoryContextPrompt returns empty for empty entries", () => {
-    expect(buildMemoryContextPrompt([])).toBe("");
+  test("formatMemoryContextPrompt returns empty for empty entries", () => {
+    expect(formatMemoryContextPrompt([])).toBe("");
   });
 
   test("normalizeMemoryEntries keeps source and content order", async () => {

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { buildMemoryResumeBlock, createSoulPrompt, loadAgentsPrompt, loadSoulPrompt, loadSystemPrompt } from "./soul";
+import { formatMemoryResumeBlock, createSoulPrompt, loadAgentsPrompt, loadSoulPrompt, loadSystemPrompt } from "./soul";
 import { tempDir } from "./test-utils";
 
 const { createDir, cleanupDirs } = tempDir();
@@ -63,12 +63,12 @@ describe("soul prompt loading", () => {
     expect(events).toContain("lifecycle.memory.load_empty");
   });
 
-  test("buildMemoryResumeBlock returns empty when continuation is missing", () => {
-    expect(buildMemoryResumeBlock({})).toBe("");
+  test("formatMemoryResumeBlock returns empty when continuation is missing", () => {
+    expect(formatMemoryResumeBlock({})).toBe("");
   });
 
-  test("buildMemoryResumeBlock formats continuation state", () => {
-    const resume = buildMemoryResumeBlock({
+  test("formatMemoryResumeBlock formats continuation state", () => {
+    const resume = formatMemoryResumeBlock({
       currentTask: "Implement memory engine",
       nextStep: "Add resume block",
     });

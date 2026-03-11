@@ -5,7 +5,7 @@ import { runInkChat } from "./chat-ui";
 import { resolveCliVersion } from "./cli-version";
 import { createClient } from "./client-factory";
 import { nowIso } from "./datetime";
-import { buildFileContext } from "./file-context";
+import { formatFileContext } from "./file-context";
 import { t } from "./i18n";
 import { apiUrlForPort, ensureLocalServer } from "./server-daemon";
 import type { Session, SessionState } from "./session-contract";
@@ -47,7 +47,7 @@ export function formatResumeCommand(sessionId: string): string {
 }
 
 export async function attachFileToSession(session: Session, filePath: string): Promise<void> {
-  const context = await buildFileContext(filePath);
+  const context = await formatFileContext(filePath);
   session.messages.push(createMessage("system", context));
   session.updatedAt = nowIso();
 }

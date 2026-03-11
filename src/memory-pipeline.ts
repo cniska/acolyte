@@ -114,7 +114,7 @@ export async function runMemoryCommitPipeline(
   return totals;
 }
 
-export function buildMemoryContextPrompt(entries: readonly MemoryPipelineEntry[]): string {
+export function formatMemoryContextPrompt(entries: readonly MemoryPipelineEntry[]): string {
   if (entries.length === 0) return "";
   return `Memory context:\n${entries.map((entry) => `- ${formatMemoryEntry(entry.content)}`).join("\n")}`;
 }

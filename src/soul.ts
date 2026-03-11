@@ -44,7 +44,7 @@ type CreateSoulPromptOptions = {
   onDebug?: (event: string, fields?: Record<string, unknown>) => void;
 };
 
-export function buildMemoryResumeBlock(continuation: { currentTask?: string; nextStep?: string }): string {
+export function formatMemoryResumeBlock(continuation: { currentTask?: string; nextStep?: string }): string {
   const currentTask = continuation.currentTask?.trim();
   const nextStep = continuation.nextStep?.trim();
   if (!currentTask && !nextStep) return "";
@@ -78,7 +78,7 @@ export async function createSoulPrompt(options: CreateSoulPromptOptions = {}): P
     options.onDebug?.("lifecycle.memory.load_empty", debugBaseFields);
     return base;
   }
-  const resumeBlock = buildMemoryResumeBlock(memoryContext.continuation);
+  const resumeBlock = formatMemoryResumeBlock(memoryContext.continuation);
   options.onDebug?.("lifecycle.memory.load_applied", {
     ...debugBaseFields,
     tokenEstimate: memoryContext.tokenEstimate,

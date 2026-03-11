@@ -5,7 +5,7 @@ import { extractAtReferencePaths } from "./chat-file-ref";
 import { formatThoughtDuration, formatTokenCount } from "./chat-format";
 import type { Message } from "./chat-message-contract";
 import type { Client, StreamEvent } from "./client-contract";
-import { buildFileContext } from "./file-context";
+import { formatFileContext } from "./file-context";
 import { t } from "./i18n";
 import { palette } from "./palette";
 import type { Session, SessionTokenUsageEntry } from "./session-contract";
@@ -31,7 +31,7 @@ export async function resolveReferencedFileContext(userText: string): Promise<{
   const unresolvedPaths: string[] = [];
   for (const pathInput of referencedPaths) {
     try {
-      const context = await buildFileContext(pathInput);
+      const context = await formatFileContext(pathInput);
       contexts.push(context);
     } catch {
       unresolvedPaths.push(pathInput);
