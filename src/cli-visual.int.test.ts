@@ -289,6 +289,17 @@ describe("cli visual regression", () => {
     });
   });
 
+  test("status outputs raw JSON with --json", async () => {
+    await withDualTransportChatServer(async (baseUrl) => {
+      await withCliTestEnv(async ({ run }) => {
+        const port = new URL(baseUrl).port;
+        await run(["config", "set", "port", port]);
+        const out = await run(["status", "--json"]);
+        const parsed = JSON.parse(out) as { protocol_version: string };
+        expect(parsed.protocol_version).toBe("1");
+      });
+    });
+  });
   test("run output is stable over rpc transport", async () => {
     await withDualTransportChatServer(async (baseUrl) => {
       await withCliTestEnv(async ({ run }) => {

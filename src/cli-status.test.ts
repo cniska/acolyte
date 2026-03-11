@@ -22,6 +22,7 @@ function createStatusDeps(): {
       }) as never,
     formatStatusOutput: () => "status-ok",
     hasHelpFlag: (args) => args.includes("--help"),
+    hasJsonFlag: (args) => args.includes("--json"),
     isServerConnectionFailure: () => false,
     localServerStatus: async () => ({ running: false, pid: null, port: 6767 }),
     printDim: (line) => lines.dim.push(line),

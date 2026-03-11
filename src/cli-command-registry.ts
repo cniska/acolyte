@@ -208,6 +208,7 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
         createClient,
         formatStatusOutput: formatStatusOutputShared,
         hasHelpFlag,
+        hasJsonFlag: (argv) => argv.includes("--json"),
         isServerConnectionFailure,
         localServerStatus,
         printDim,

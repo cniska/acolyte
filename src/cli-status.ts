@@ -9,6 +9,7 @@ type StatusModeDeps = {
   createClient: typeof createClientType;
   formatStatusOutput: typeof formatStatusOutputType;
   hasHelpFlag: (args: string[]) => boolean;
+  hasJsonFlag: (args: string[]) => boolean;
   isServerConnectionFailure: (error: unknown) => boolean;
   localServerStatus: typeof localServerStatusType;
   printDim: (message: string) => void;
@@ -18,7 +19,6 @@ type StatusModeDeps = {
   commandError: (name: string, message?: string) => void;
   commandHelp: (name: string) => void;
 };
-
 export function isServerConnectionFailure(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
   return error.message.includes("Cannot reach server at ");
@@ -30,6 +30,7 @@ export async function statusMode(args: string[], deps: StatusModeDeps): Promise<
     createClient,
     formatStatusOutput,
     hasHelpFlag,
+    hasJsonFlag,
     isServerConnectionFailure,
     localServerStatus,
     printDim,
@@ -43,7 +44,9 @@ export async function statusMode(args: string[], deps: StatusModeDeps): Promise<
     commandHelp("status");
     return;
   }
-  if (args.length > 0) {
+  const json = hasJsonFlag(args);
+  const nonFlagArgs = args.filter((a) => a !== "--json");
+  if (nonFlagArgs.length > 0) {
     commandError("status");
     return;
   }
@@ -51,7 +54,11 @@ export async function statusMode(args: string[], deps: StatusModeDeps): Promise<
   const client = createClient({ apiUrl });
   try {
     const status = await client.status();
-    printDim(formatStatusOutput(status));
+    if (json) {
+      printDim(`${JSON.stringify(status)}\n`);
+    } else {
+      printDim(formatStatusOutput(status));
+    }
   } catch (error) {
     if (isServerConnectionFailure(error)) {
       const localStatus = await localServerStatus({ port: serverPort, apiKey: serverApiKey });
