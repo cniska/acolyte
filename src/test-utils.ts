@@ -239,11 +239,22 @@ export function createClient(overrides?: {
 export type MessageHandlerHarness = {
   handleMessage: (raw: string) => Promise<void>;
   rows: ChatRow[];
+  /** Every row that was ever present, even after clearTranscript. */
+  allRows: ChatRow[];
   session: Session;
+  store: SessionState;
   calls: {
     setInputHistory: number;
     setValue: string[];
     setShowHelp: Array<boolean | ((current: boolean) => boolean)>;
+    progressTexts: Array<string | null>;
+    thinkingTransitions: boolean[];
+    setCurrentSessionIds: string[];
+    tokenUsageSnapshots: SessionTokenUsageEntry[][];
+  };
+  interrupt: {
+    registered: boolean;
+    fire: () => void;
   };
 };
 
@@ -253,12 +264,19 @@ export function createMessageHandlerHarness(overrides?: {
   session?: Session;
   store?: SessionState;
   tokenUsage?: SessionTokenUsageEntry[];
+  toRows?: (messages: Message[]) => ChatRow[];
 }): MessageHandlerHarness {
   const rows: ChatRow[] = [];
+  const allRows: ChatRow[] = [];
+  const interrupt = { registered: false, fire: () => {} };
   const calls = {
     setInputHistory: 0,
     setValue: [] as string[],
     setShowHelp: [] as Array<boolean | ((current: boolean) => boolean)>,
+    progressTexts: [] as Array<string | null>,
+    thinkingTransitions: [] as boolean[],
+    setCurrentSessionIds: [] as string[],
+    tokenUsageSnapshots: [] as SessionTokenUsageEntry[][],
   };
   const session = overrides?.session ?? createSession({ id: "sess_test" });
   const store = overrides?.store ?? createStore({ activeSessionId: session.id, sessions: [session] });
@@ -267,10 +285,16 @@ export function createMessageHandlerHarness(overrides?: {
     client: overrides?.client ?? createClient({ status: async () => ({}) }),
     store,
     currentSession: session,
-    setCurrentSession: () => {},
-    toRows: () => [],
+    setCurrentSession: (next) => {
+      calls.setCurrentSessionIds.push(next.id);
+    },
+    toRows: overrides?.toRows ?? (() => []),
     setRows: (updater) => {
-      rows.splice(0, rows.length, ...updater(rows));
+      const next = updater(rows);
+      rows.splice(0, rows.length, ...next);
+      for (const row of next) {
+        if (!allRows.includes(row)) allRows.push(row);
+      }
     },
     setShowHelp: (next) => {
       calls.setShowHelp.push(next);
@@ -291,18 +315,27 @@ export function createMessageHandlerHarness(overrides?: {
     },
     setInputHistoryIndex: () => {},
     setInputHistoryDraft: () => {},
-    setIsWorking: () => {},
-    setProgressText: () => {},
+    setIsWorking: (next) => {
+      calls.thinkingTransitions.push(next);
+    },
+    setProgressText: (next) => {
+      calls.progressTexts.push(next);
+    },
     setRunningUsage: () => {},
-    setTokenUsage: () => {},
+    setTokenUsage: (updater) => {
+      calls.tokenUsageSnapshots.push(updater([]));
+    },
     createMessage,
     nowIso: () => DEFAULT_TIME,
-    setInterrupt: () => {},
+    setInterrupt: (handler) => {
+      interrupt.registered = handler !== null;
+      if (handler) interrupt.fire = handler;
+    },
     clearTranscript: () => {
       rows.splice(0, rows.length);
     },
   });
-  return { handleMessage, rows, session, calls };
+  return { handleMessage, rows, allRows, session, store, calls, interrupt };
 }
 
 export type CommandContextSpies = {

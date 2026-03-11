@@ -1,18 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import type { ChatRow } from "./chat-commands";
-import { createMessageHandler } from "./chat-message-handler";
 import type { StreamEvent } from "./client-contract";
 import { createClient, createMessage, createMessageHandlerHarness, createSession, createStore } from "./test-utils";
 
 describe("chat message handler stream behavior", () => {
   test("streams tool-call events into tool progress rows", async () => {
-    const rows: ChatRow[] = [];
-    const progressTexts: Array<string | null> = [];
-
-    const session = createSession({ id: "sess_test" });
-    const store = createStore({ activeSessionId: session.id, sessions: [session] });
-
-    const handleMessage = createMessageHandler({
+    const { handleMessage, rows, calls } = createMessageHandlerHarness({
       client: createClient({
         replyStream: async (_input, options) => {
           options.onEvent({ type: "status", message: "Thinking…" });
@@ -32,53 +24,19 @@ describe("chat message handler stream behavior", () => {
         },
         status: async () => ({}),
       }),
-      store,
-      currentSession: session,
-      setCurrentSession: () => {},
-      toRows: () => [],
-      setRows: (updater) => {
-        rows.splice(0, rows.length, ...updater(rows));
-      },
-      setShowHelp: () => {},
-      setValue: () => {},
-      persist: async () => {},
-      exit: () => {},
-      openSkillsPanel: async () => {},
-      activateSkill: async () => true,
-      openResumePanel: () => {},
-      openModelPanel: () => {},
-      tokenUsage: [],
-      isWorking: false,
-      setInputHistory: () => {},
-      setInputHistoryIndex: () => {},
-      setInputHistoryDraft: () => {},
-      setIsWorking: () => {},
-      setProgressText: (next) => {
-        progressTexts.push(next);
-      },
-      setRunningUsage: () => {},
-      setTokenUsage: () => {},
-      createMessage,
-      nowIso: () => "2026-02-20T00:00:00.000Z",
-      setInterrupt: () => {},
-      clearTranscript: () => {},
     });
 
     await handleMessage("hello");
 
-    expect(progressTexts[0]).toBe("Thinking…");
-    expect(progressTexts.at(-1)).toBeNull();
+    expect(calls.progressTexts[0]).toBe("Thinking…");
+    expect(calls.progressTexts.at(-1)).toBeNull();
     expect(rows.some((row) => row.role === "tool")).toBe(true);
     expect(rows.some((row) => row.role === "system" && row.content.includes("Thinking…"))).toBe(false);
     expect(rows.some((row) => row.role === "assistant" && row.content === "done")).toBe(true);
   });
 
   test("does not add generic tool rows when progress stream is empty", async () => {
-    const rows: ChatRow[] = [];
-    const session = createSession({ id: "sess_test" });
-    const store = createStore({ activeSessionId: session.id, sessions: [session] });
-
-    const handleMessage = createMessageHandler({
+    const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         reply: async () => ({
           model: "gpt-5-mini",
@@ -87,34 +45,6 @@ describe("chat message handler stream behavior", () => {
         }),
         status: async () => ({}),
       }),
-      store,
-      currentSession: session,
-      setCurrentSession: () => {},
-      toRows: () => [],
-      setRows: (updater) => {
-        rows.splice(0, rows.length, ...updater(rows));
-      },
-      setShowHelp: () => {},
-      setValue: () => {},
-      persist: async () => {},
-      exit: () => {},
-      openSkillsPanel: async () => {},
-      activateSkill: async () => true,
-      openResumePanel: () => {},
-      openModelPanel: () => {},
-      tokenUsage: [],
-      isWorking: false,
-      setInputHistory: () => {},
-      setInputHistoryIndex: () => {},
-      setInputHistoryDraft: () => {},
-      setIsWorking: () => {},
-      setProgressText: () => {},
-      setRunningUsage: () => {},
-      setTokenUsage: () => {},
-      createMessage,
-      nowIso: () => "2026-02-20T00:00:00.000Z",
-      setInterrupt: () => {},
-      clearTranscript: () => {},
     });
 
     await handleMessage("hello");
@@ -152,44 +82,13 @@ describe("chat message handler stream behavior", () => {
   });
 
   test("maps quota errors to user-facing message handler error", async () => {
-    const rows: ChatRow[] = [];
-    const session = createSession({ id: "sess_test" });
-    const store = createStore({ activeSessionId: session.id, sessions: [session] });
-    const handleMessage = createMessageHandler({
+    const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         reply: async () => {
           throw new Error("insufficient_quota: You exceeded your current quota");
         },
       }),
-      store,
-      currentSession: session,
-      setCurrentSession: () => {},
-      toRows: () => [],
-      setRows: (updater) => {
-        rows.splice(0, rows.length, ...updater(rows));
-      },
-      setShowHelp: () => {},
-      setValue: () => {},
-      persist: async () => {},
-      exit: () => {},
-      openSkillsPanel: async () => {},
-      activateSkill: async () => true,
-      openResumePanel: () => {},
-      openModelPanel: () => {},
-      tokenUsage: [],
-      isWorking: false,
-      setInputHistory: () => {},
-      setInputHistoryIndex: () => {},
-      setInputHistoryDraft: () => {},
-      setIsWorking: () => {},
-      setProgressText: () => {},
-      setRunningUsage: () => {},
-      setTokenUsage: () => {},
-      createMessage,
-      nowIso: () => "2026-02-20T00:00:00.000Z",
-      setInterrupt: () => {},
-      clearTranscript: () => {},
     });
 
     await handleMessage("hello");
@@ -198,44 +97,13 @@ describe("chat message handler stream behavior", () => {
   });
 
   test("maps timeout errors to user-facing message handler error", async () => {
-    const rows: ChatRow[] = [];
-    const session = createSession({ id: "sess_test" });
-    const store = createStore({ activeSessionId: session.id, sessions: [session] });
-    const handleMessage = createMessageHandler({
+    const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         reply: async () => {
           throw new Error("Remote server stream timed out after 120000ms");
         },
       }),
-      store,
-      currentSession: session,
-      setCurrentSession: () => {},
-      toRows: () => [],
-      setRows: (updater) => {
-        rows.splice(0, rows.length, ...updater(rows));
-      },
-      setShowHelp: () => {},
-      setValue: () => {},
-      persist: async () => {},
-      exit: () => {},
-      openSkillsPanel: async () => {},
-      activateSkill: async () => true,
-      openResumePanel: () => {},
-      openModelPanel: () => {},
-      tokenUsage: [],
-      isWorking: false,
-      setInputHistory: () => {},
-      setInputHistoryIndex: () => {},
-      setInputHistoryDraft: () => {},
-      setIsWorking: () => {},
-      setProgressText: () => {},
-      setRunningUsage: () => {},
-      setTokenUsage: () => {},
-      createMessage,
-      nowIso: () => "2026-02-20T00:00:00.000Z",
-      setInterrupt: () => {},
-      clearTranscript: () => {},
     });
 
     await handleMessage("hello");
@@ -244,12 +112,8 @@ describe("chat message handler stream behavior", () => {
   });
 
   test("recovers cleanly after timeout and allows next message", async () => {
-    const rows: ChatRow[] = [];
-    const thinkingTransitions: boolean[] = [];
-    const session = createSession({ id: "sess_test" });
-    const store = createStore({ activeSessionId: session.id, sessions: [session] });
     let calls = 0;
-    const handleMessage = createMessageHandler({
+    const { handleMessage, rows, calls: spies } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         reply: async () => {
@@ -258,55 +122,20 @@ describe("chat message handler stream behavior", () => {
           return { model: "gpt-5-mini", output: "ok" };
         },
       }),
-      store,
-      currentSession: session,
-      setCurrentSession: () => {},
-      toRows: () => [],
-      setRows: (updater) => {
-        rows.splice(0, rows.length, ...updater(rows));
-      },
-      setShowHelp: () => {},
-      setValue: () => {},
-      persist: async () => {},
-      exit: () => {},
-      openSkillsPanel: async () => {},
-      activateSkill: async () => true,
-      openResumePanel: () => {},
-      openModelPanel: () => {},
-      tokenUsage: [],
-      isWorking: false,
-      setInputHistory: () => {},
-      setInputHistoryIndex: () => {},
-      setInputHistoryDraft: () => {},
-      setIsWorking: (next) => {
-        thinkingTransitions.push(next);
-      },
-      setProgressText: () => {},
-      setRunningUsage: () => {},
-      setTokenUsage: () => {},
-      createMessage,
-      nowIso: () => "2026-02-20T00:00:00.000Z",
-      setInterrupt: () => {},
-      clearTranscript: () => {},
     });
 
     await handleMessage("first");
     await handleMessage("second");
 
     expect(calls).toBe(2);
-    expect(thinkingTransitions).toEqual([true, false, true, false]);
+    expect(spies.thinkingTransitions).toEqual([true, false, true, false]);
     expect(rows.some((row) => row.role === "system" && row.content.includes("Server request timed out"))).toBe(true);
     expect(rows.some((row) => row.role === "assistant" && row.content === "ok")).toBe(true);
   });
 
   test("keeps thinking indicator active while remote task is still running", async () => {
-    const rows: ChatRow[] = [];
-    const thinkingTransitions: boolean[] = [];
-    const progressTransitions: Array<string | null> = [];
-    const session = createSession({ id: "sess_test" });
-    const store = createStore({ activeSessionId: session.id, sessions: [session] });
     let statusChecks = 0;
-    const handleMessage = createMessageHandler({
+    const { handleMessage, calls } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         reply: async () => {
@@ -331,166 +160,63 @@ describe("chat message handler stream behavior", () => {
           };
         },
       }),
-      store,
-      currentSession: session,
-      setCurrentSession: () => {},
-      toRows: () => [],
-      setRows: (updater) => {
-        rows.splice(0, rows.length, ...updater(rows));
-      },
-      setShowHelp: () => {},
-      setValue: () => {},
-      persist: async () => {},
-      exit: () => {},
-      openSkillsPanel: async () => {},
-      activateSkill: async () => true,
-      openResumePanel: () => {},
-      openModelPanel: () => {},
-      tokenUsage: [],
-      isWorking: false,
-      setInputHistory: () => {},
-      setInputHistoryIndex: () => {},
-      setInputHistoryDraft: () => {},
-      setIsWorking: (next) => {
-        thinkingTransitions.push(next);
-      },
-      setProgressText: (next) => {
-        progressTransitions.push(next);
-      },
-      setRunningUsage: () => {},
-      setTokenUsage: () => {},
-      createMessage,
-      nowIso: () => "2026-02-20T00:00:00.000Z",
-      setInterrupt: () => {},
-      clearTranscript: () => {},
     });
 
     await handleMessage("first");
-    expect(thinkingTransitions).toEqual([true]);
-    expect(progressTransitions).toContain("Still running on server…");
+    expect(calls.thinkingTransitions).toEqual([true]);
+    expect(calls.progressTexts).toContain("Still running on server…");
     await Bun.sleep(800);
-    expect(thinkingTransitions).toEqual([true, false]);
+    expect(calls.thinkingTransitions).toEqual([true, false]);
   });
 
   test("allows /new recovery after a timed-out turn", async () => {
-    const rows: ChatRow[] = [];
-    let sawTimeoutRow = false;
-    const session = createSession({ id: "sess_test" });
-    const store = createStore({ activeSessionId: session.id, sessions: [session] });
-    const setCurrentSessionCalls: string[] = [];
-    let calls = 0;
-    const handleMessage = createMessageHandler({
+    let replyCalls = 0;
+    const { handleMessage, allRows, store, calls } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         reply: async () => {
-          calls += 1;
+          replyCalls += 1;
           throw new Error("Remote server stream timed out after 120000ms");
         },
       }),
-      store,
-      currentSession: session,
-      setCurrentSession: (next) => {
-        setCurrentSessionCalls.push(next.id);
-      },
-      toRows: () => [],
-      setRows: (updater) => {
-        const next = updater(rows);
-        if (next.some((row) => row.role === "system" && row.content.includes("Server request timed out")))
-          sawTimeoutRow = true;
-        rows.splice(0, rows.length, ...next);
-      },
-      setShowHelp: () => {},
-      setValue: () => {},
-      persist: async () => {},
-      exit: () => {},
-      openSkillsPanel: async () => {},
-      activateSkill: async () => true,
-      openResumePanel: () => {},
-      openModelPanel: () => {},
-      tokenUsage: [],
-      isWorking: false,
-      setInputHistory: () => {},
-      setInputHistoryIndex: () => {},
-      setInputHistoryDraft: () => {},
-      setIsWorking: () => {},
-      setProgressText: () => {},
-      setRunningUsage: () => {},
-      setTokenUsage: () => {},
-      createMessage,
-      nowIso: () => "2026-02-20T00:00:00.000Z",
-      setInterrupt: () => {},
-      clearTranscript: () => {},
     });
 
     await handleMessage("first");
     await handleMessage("/new");
 
-    expect(calls).toBe(1);
-    expect(sawTimeoutRow).toBe(true);
-    expect(setCurrentSessionCalls.length).toBe(1);
-    expect(store.activeSessionId).toBe(setCurrentSessionCalls[0]);
+    expect(replyCalls).toBe(1);
+    expect(allRows.some((row) => row.role === "system" && row.content.includes("Server request timed out"))).toBe(true);
+    expect(calls.setCurrentSessionIds.length).toBe(1);
+    expect(store.activeSessionId).toBe(calls.setCurrentSessionIds[0]);
   });
 
   test("allows /resume recovery after a timed-out turn", async () => {
-    const rows: ChatRow[] = [];
-    let sawTimeoutRow = false;
     const target = createSession({
       id: "sess_resume_target",
       messages: [createMessage("assistant", "resumed")],
     });
     const session = createSession({ id: "sess_current" });
     const store = createStore({ activeSessionId: session.id, sessions: [session, target] });
-    const setCurrentSessionCalls: string[] = [];
-    let calls = 0;
-    const handleMessage = createMessageHandler({
+    let replyCalls = 0;
+    const { handleMessage, rows, allRows, calls } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         reply: async () => {
-          calls += 1;
+          replyCalls += 1;
           throw new Error("Remote server stream timed out after 120000ms");
         },
       }),
+      session,
       store,
-      currentSession: session,
-      setCurrentSession: (next) => {
-        setCurrentSessionCalls.push(next.id);
-      },
       toRows: (messages) => messages.map((msg) => ({ id: msg.id, role: msg.role, content: msg.content })),
-      setRows: (updater) => {
-        const next = updater(rows);
-        if (next.some((row) => row.role === "system" && row.content.includes("Server request timed out")))
-          sawTimeoutRow = true;
-        rows.splice(0, rows.length, ...next);
-      },
-      setShowHelp: () => {},
-      setValue: () => {},
-      persist: async () => {},
-      exit: () => {},
-      openSkillsPanel: async () => {},
-      activateSkill: async () => true,
-      openResumePanel: () => {},
-      openModelPanel: () => {},
-      tokenUsage: [],
-      isWorking: false,
-      setInputHistory: () => {},
-      setInputHistoryIndex: () => {},
-      setInputHistoryDraft: () => {},
-      setIsWorking: () => {},
-      setProgressText: () => {},
-      setRunningUsage: () => {},
-      setTokenUsage: () => {},
-      createMessage,
-      nowIso: () => "2026-02-20T00:00:00.000Z",
-      setInterrupt: () => {},
-      clearTranscript: () => {},
     });
 
     await handleMessage("first");
     await handleMessage(`/resume ${target.id.slice(0, 12)}`);
 
-    expect(calls).toBe(1);
-    expect(sawTimeoutRow).toBe(true);
-    expect(setCurrentSessionCalls).toEqual([target.id]);
+    expect(replyCalls).toBe(1);
+    expect(allRows.some((row) => row.role === "system" && row.content.includes("Server request timed out"))).toBe(true);
+    expect(calls.setCurrentSessionIds).toEqual([target.id]);
     expect(store.activeSessionId).toBe(target.id);
     expect(rows.some((row) => row.role === "assistant" && row.content === "resumed")).toBe(true);
   });
@@ -651,11 +377,7 @@ describe("chat message handler stream behavior", () => {
   });
 
   test("persists token usage on successful turn", async () => {
-    const session = createSession({ id: "sess_test" });
-    const store = createStore({ activeSessionId: session.id, sessions: [session] });
-    const tokenUsageSnapshots: Array<typeof session.tokenUsage> = [];
-
-    const handleMessage = createMessageHandler({
+    const { handleMessage, session, calls } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         reply: async () => ({
@@ -669,34 +391,6 @@ describe("chat message handler stream behavior", () => {
           modelCalls: 3,
         }),
       }),
-      store,
-      currentSession: session,
-      setCurrentSession: () => {},
-      toRows: () => [],
-      setRows: () => {},
-      setShowHelp: () => {},
-      setValue: () => {},
-      persist: async () => {},
-      exit: () => {},
-      openSkillsPanel: async () => {},
-      activateSkill: async () => true,
-      openResumePanel: () => {},
-      openModelPanel: () => {},
-      tokenUsage: [],
-      isWorking: false,
-      setInputHistory: () => {},
-      setInputHistoryIndex: () => {},
-      setInputHistoryDraft: () => {},
-      setIsWorking: () => {},
-      setProgressText: () => {},
-      setRunningUsage: () => {},
-      setTokenUsage: (updater) => {
-        tokenUsageSnapshots.push(updater([]));
-      },
-      createMessage,
-      nowIso: () => "2026-02-20T00:00:00.000Z",
-      setInterrupt: () => {},
-      clearTranscript: () => {},
     });
 
     await handleMessage("hello");
@@ -704,7 +398,7 @@ describe("chat message handler stream behavior", () => {
     expect(session.tokenUsage.length).toBe(1);
     expect(session.tokenUsage[0]?.usage.totalTokens).toBe(20);
     expect(session.tokenUsage[0]?.modelCalls).toBe(3);
-    expect(tokenUsageSnapshots.length).toBe(1);
-    expect(tokenUsageSnapshots[0]).toEqual(session.tokenUsage);
+    expect(calls.tokenUsageSnapshots.length).toBe(1);
+    expect(calls.tokenUsageSnapshots[0]).toEqual(session.tokenUsage);
   });
 });
