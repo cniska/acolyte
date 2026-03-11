@@ -1,0 +1,21 @@
+name: Bug report
+description: Something isn't working
+labels: [bug]
+body:
+  - type: textarea
+    attributes:
+      label: What happened?
+      description: Include steps to reproduce if possible.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Expected behavior
+    validations:
+      required: false
+  - type: input
+    attributes:
+      label: Acolyte version
+      placeholder: e.g. 0.1.0 or commit hash
+    validations:
+      required: false

@@ -4,7 +4,7 @@ Minimal workflow for external contributors.
 
 ## Setup
 
-See [getting-started.md](./getting-started.md) for prerequisites and initial setup.
+See [getting-started.md](./docs/getting-started.md) for prerequisites and initial setup.
 
 ## Development loop
 

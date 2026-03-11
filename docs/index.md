@@ -12,7 +12,6 @@ Developer documentation for Acolyte — a terminal-first AI coding assistant: lo
 ## Start here
 
 - [getting-started.md](./getting-started.md)
-- [contributing.md](./contributing.md)
 - [configuration.md](./configuration.md)
 - [cli.md](./cli.md)
 

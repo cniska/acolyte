@@ -25,9 +25,7 @@ describe("resolveModelProviderState", () => {
   });
 
   test("marks anthropic and google availability by provider-specific credentials", () => {
-    expect(
-      resolveModelProviderState("anthropic/claude-sonnet-4", {}),
-    ).toEqual({
+    expect(resolveModelProviderState("anthropic/claude-sonnet-4", {})).toEqual({
       provider: "anthropic",
       available: false,
     });

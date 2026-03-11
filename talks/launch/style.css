@@ -1,5 +1,5 @@
 :root {
-  --slidev-theme-primary: #A56EFF;
+  --slidev-theme-primary: #a56eff;
 }
 
 .slidev-layout {
@@ -8,20 +8,22 @@
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 }
 
-h1, h2, h3 {
-  color: #A56EFF !important;
+h1,
+h2,
+h3 {
+  color: #a56eff !important;
 }
 
 a {
-  color: #A56EFF !important;
+  color: #a56eff !important;
 }
 
 code {
-  color: #A56EFF !important;
+  color: #a56eff !important;
 }
 
 th {
-  color: #A56EFF !important;
+  color: #a56eff !important;
 }
 
 pre {
