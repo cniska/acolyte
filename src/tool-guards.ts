@@ -1,4 +1,3 @@
-import { INITIAL_MAX_STEPS, TOTAL_MAX_STEPS } from "./lifecycle-constants";
 import {
   extractFindPatterns,
   extractReadPaths,
@@ -8,6 +7,9 @@ import {
   normalizePath,
 } from "./tool-arg-paths";
 import type { ToolCache } from "./tool-contract";
+
+const DEFAULT_CYCLE_STEP_LIMIT = 80;
+const DEFAULT_TOTAL_STEP_LIMIT = 200;
 
 export type GuardEvent = { guardId: string; toolName: string; action: "blocked" | "flag_set"; detail?: string };
 
@@ -61,10 +63,16 @@ export function createSessionContext(taskId?: string, writeTools: ReadonlySet<st
   return { callLog: [], taskId, flags: {}, writeTools };
 }
 
-function scopedCallLog(session: SessionContext): ToolCallRecord[] {
-  const taskId = session.taskId;
-  if (!taskId) return session.callLog;
-  return session.callLog.filter((entry) => entry.taskId === taskId);
+export function scopedCallLog(session: SessionContext, taskId?: string): ToolCallRecord[] {
+  const id = taskId ?? session.taskId;
+  if (!id) return session.callLog;
+  return session.callLog.filter((entry) => entry.taskId === id);
+}
+
+export function haveChangesBeenVerified(session: SessionContext, taskId: string | undefined): boolean {
+  return scopedCallLog(session, taskId).some(
+    (entry) => entry.toolName === "run-command" && entry.mode === "verify",
+  );
 }
 
 function sameArray(a: readonly string[], b: readonly string[]): boolean {
@@ -345,9 +353,9 @@ const stepBudgetGuard: ToolGuard = {
   id: "step-budget",
   description: "Enforce per-cycle and total step limits.",
   check({ session, report }) {
-    const cycleLimit = session.flags.cycleStepLimit ?? INITIAL_MAX_STEPS;
+    const cycleLimit = session.flags.cycleStepLimit ?? DEFAULT_CYCLE_STEP_LIMIT;
     const cycleCount = session.flags.cycleStepCount ?? 0;
-    const totalLimit = session.flags.totalStepLimit ?? TOTAL_MAX_STEPS;
+    const totalLimit = session.flags.totalStepLimit ?? DEFAULT_TOTAL_STEP_LIMIT;
     const totalCount = session.callLog.length;
 
     if (totalCount >= totalLimit) {

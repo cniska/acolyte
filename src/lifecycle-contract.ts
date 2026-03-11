@@ -135,15 +135,6 @@ export function guardStatsFromSession(session: SessionContext): GuardStats {
   return { blocked: session.flags.guardStats?.blocked ?? 0, flagSet: session.flags.guardStats?.flagSet ?? 0 };
 }
 
-export function taskScopedCallLog(session: SessionContext, taskId: string | undefined) {
-  if (!taskId) return session.callLog;
-  return session.callLog.filter((entry) => entry.taskId === taskId);
-}
-
-export function haveChangesBeenVerified(session: SessionContext, taskId: string | undefined): boolean {
-  return taskScopedCallLog(session, taskId).some(
-    (entry) => entry.toolName === "run-command" && entry.mode === "verify",
-  );
-}
+export { haveChangesBeenVerified, scopedCallLog as taskScopedCallLog } from "./tool-guards";
 
 export type LifecycleResult = ChatResponse;
