@@ -28,7 +28,7 @@ Priorities for the near term, roughly ordered.
 2. **Chat correctness** — end-to-end regression checks, cross-session memory continuity, edge case coverage
 3. **Codebase polish** — audit/cleanup pass, `.gitignore`-based file discovery, config-driven permissions
 4. **Early adopter feedback** — day-one value on real projects, usability fixes from first users
-5. **Cloud sync** — shared memory/session service (no hosted daemon), auth, local-first fallback
+5. **Cloud sync** — shared storage services (memory, sessions), auth, local-first fallback
 
 ## Further out
 
