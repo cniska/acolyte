@@ -8,7 +8,7 @@ function normalizeBaseUrl(url: string): string {
 
 type ProviderFetchConfig = {
   apiKey?: string;
-  baseUrl?: string;
+  baseUrl: string;
 };
 
 const CACHE_TTL_MS = 60_000;
@@ -25,7 +25,7 @@ export function invalidateModelsCache(): void {
 }
 
 async function fetchOpenAIModels(config: ProviderFetchConfig): Promise<string[]> {
-  const baseUrl = normalizeBaseUrl(config.baseUrl ?? "");
+  const baseUrl = normalizeBaseUrl(config.baseUrl);
   const res = await fetch(`${baseUrl}/models`, {
     headers: { Authorization: `Bearer ${config.apiKey}` },
   });
@@ -35,7 +35,7 @@ async function fetchOpenAIModels(config: ProviderFetchConfig): Promise<string[]>
 }
 
 async function fetchAnthropicModels(config: ProviderFetchConfig): Promise<string[]> {
-  const baseUrl = normalizeBaseUrl(config.baseUrl ?? "");
+  const baseUrl = normalizeBaseUrl(config.baseUrl);
   const res = await fetch(`${baseUrl}/models`, {
     headers: {
       "x-api-key": config.apiKey ?? "",
@@ -48,7 +48,7 @@ async function fetchAnthropicModels(config: ProviderFetchConfig): Promise<string
 }
 
 async function fetchGoogleModels(config: ProviderFetchConfig): Promise<string[]> {
-  const baseUrl = normalizeBaseUrl(config.baseUrl ?? "");
+  const baseUrl = normalizeBaseUrl(config.baseUrl);
   const res = await fetch(`${baseUrl}/v1beta/models?key=${config.apiKey}`);
   if (!res.ok) return [];
   const json = (await res.json()) as { models?: Array<{ name: string }> };

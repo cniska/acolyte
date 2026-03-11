@@ -95,7 +95,7 @@ export interface ResolvedConfig {
   memorySources: MemorySourceId[];
   openaiBaseUrl: string;
   anthropicBaseUrl: string;
-  googleBaseUrl?: string;
+  googleBaseUrl: string;
   logFormat: LogFormat;
   transportMode: "rpc";
   contextMaxTokens: number;
