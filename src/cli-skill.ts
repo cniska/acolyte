@@ -41,7 +41,7 @@ export function skillResourceId(sessionId: string) {
   return userResourceIdFor("skill", sessionId);
 }
 
-function parseSkillArgs(args: string[]): ParsedSkillArgs {
+export function parseSkillArgs(args: string[]): ParsedSkillArgs {
   const files: string[] = [];
   const tokens: string[] = [];
   let workspace: string | undefined;
