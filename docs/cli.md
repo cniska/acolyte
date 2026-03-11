@@ -62,4 +62,4 @@ acolyte config set --project <key> <value>
 acolyte config unset <key>
 ```
 
-See [configuration.md](./configuration.md) for available keys.
+See [Configuration](./configuration.md) for available keys.

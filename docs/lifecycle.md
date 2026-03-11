@@ -3,7 +3,7 @@
 Lifecycle executes one request through a bounded phase loop:
 
 ```text
-resolve -> prepare -> generate -> evaluate -> finalize
+resolve →prepare →generate →evaluate →finalize
 ```
 
 ## Phase contracts

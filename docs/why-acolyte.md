@@ -14,7 +14,7 @@ Open-source agents like Acolyte exist for the cases where that's not enough:
 - **Transparent execution**: every tool call, guard decision, and evaluator action is observable in structured logs — no black box
 - **No vendor lock-in**: your sessions, memory, and configuration are local files you own
 
-Acolyte is designed for developers who want the power of an AI coding agent with full control over how it works. Ready to try it? See [getting-started.md](./getting-started.md).
+Acolyte is designed for developers who want the power of an AI coding agent with full control over how it works. Ready to try it? See the [Quick Start](../README.md#quick-start).
 
 ## What makes Acolyte different
 
@@ -53,4 +53,4 @@ The CLI ships a full TUI built with [Ink](https://github.com/vadimdemedes/ink): 
 
 ---
 
-For a detailed comparison with other open-source agents, see [comparison.md](./comparison.md). For measured code quality metrics, see [benchmarks.md](./benchmarks.md).
+For a detailed comparison with other open-source agents, see [Comparison](./comparison.md). For measured code quality metrics, see [Benchmarks](./benchmarks.md).

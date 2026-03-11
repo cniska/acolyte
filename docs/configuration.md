@@ -32,7 +32,7 @@ Each provider has a configurable base URL with a sensible default:
 ## Memory-related keys
 
 - `memoryBudgetTokens`: memory injection budget.
-- `memorySources`: Memory Source Strategy IDs and order (see [memory.md](./memory.md)).
+- `memorySources`: Memory Source Strategy IDs and order (see [Memory](./memory.md)).
 - `distillModel`: model used by distill source.
 - `distillMessageThreshold`: observation trigger threshold.
 - `distillReflectionThresholdTokens`: reflection trigger threshold.
@@ -43,4 +43,4 @@ Each provider has a configurable base URL with a sensible default:
 - `memoryBudgetTokens=0` disables memory injection globally.
 - `useMemory=false` disables memory injection and commit for one request.
 
-Behavior details: see [memory.md](./memory.md).
+Behavior details: see [Memory](./memory.md).

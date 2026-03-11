@@ -3,7 +3,7 @@
 Tool execution is layered and contract-driven:
 
 ```text
-lifecycle -> guard -> cache -> toolkit -> registry
+lifecycle →guard →cache →toolkit →registry
 ```
 
 ## Layers

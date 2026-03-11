@@ -1,6 +1,6 @@
 # Comparison
 
-Detailed feature comparison between Acolyte and other open-source AI coding agents. See [why-acolyte.md](./why-acolyte.md) for a summary.
+Detailed feature comparison between Acolyte and other open-source AI coding agents. See [Why Acolyte](./why-acolyte.md) for a summary.
 
 Projects compared: [Aider](https://github.com/Aider-AI/aider), [OpenCode](https://github.com/anomalyco/opencode), [Pi](https://github.com/badlogic/pi-mono), [Goose](https://github.com/block/goose), [OpenHands](https://github.com/All-Hands-AI/OpenHands), [Continue](https://github.com/continuedev/continue), [Cline](https://github.com/cline/cline), [OpenClaw](https://github.com/openclaw/openclaw).
 
@@ -90,7 +90,7 @@ No other project in this comparison ships agent-readable observability tooling f
 
 Acolyte leads on type safety, test density, module size, and dependency count across all eight projects compared. The numbers reflect architectural choices: few deps because the daemon owns the stack with no framework or bundler. Small files because lifecycle phases, guards, and tools are each their own module. High test ratio because each module is independently testable. Runs on [Bun](https://bun.sh) with no bundler or transpiler step.
 
-See [benchmarks.md](./benchmarks.md) for the full measured comparison tables.
+See [Benchmarks](./benchmarks.md) for the full measured comparison tables.
 
 ## Task architecture
 

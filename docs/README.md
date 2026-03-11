@@ -11,7 +11,6 @@ Developer documentation for Acolyte — a terminal-first AI coding assistant: lo
 
 ## Start here
 
-- [Getting started](./getting-started.md) — minimal developer setup and first-run workflow
 - [Configuration](./configuration.md) — user and project scope configuration settings
 - [CLI](./cli.md) — primary interface for working with Acolyte
 

@@ -8,7 +8,7 @@ Distill preserves durable knowledge; history pruning handles bulky transcript/to
 ## Model
 
 - **Memory Engine**: top-level continuity capability.
-- **Memory Pipeline**: staged flow (`ingest -> normalize -> select -> inject -> commit`).
+- **Memory Pipeline**: staged flow (`ingest →normalize →select →inject →commit`).
 - **Memory Source**: pluggable source that provides entries and optional commit behavior.
 - **Memory Source Strategy**: configured source IDs and order (`memorySources`).
 - **Resource ID**: canonical cross-session identity key (`proj_*` or `user_*`) used for resource-scoped memory.
@@ -72,7 +72,7 @@ The observation/reflection model is inspired by [Mastra's Observational Memory](
 - Server runtime emits a dedicated `memory quality warning` log line for `lifecycle.memory.quality_warning` events.
 - Selection dedupes identical entry content to avoid wasting budget on repeats.
 - Normalization drops blank entries before selection.
-- Distill record writes are atomic (`temp file -> rename`) to avoid partial files.
+- Distill record writes are atomic (`temp file →rename`) to avoid partial files.
 
 ## Storage
 
