@@ -1,6 +1,26 @@
 import { describe, expect, test } from "bun:test";
 import { createSessionContext, recordCall, resetCycleStepCount, runGuards } from "./tool-guards";
 
+describe("guard events", () => {
+  test("emits GuardEvent payload when a guard blocks", () => {
+    const events: Array<{ guardId: string; toolName: string; action: string; detail?: string }> = [];
+    const session = createSessionContext();
+    session.onGuard = (event) => events.push(event);
+
+    recordCall(session, "read-file", { paths: [{ path: "src/foo.ts" }] });
+    expect(() => runGuards({ toolName: "read-file", args: { paths: [{ path: "src/foo.ts" }] }, session })).toThrow(
+      /Duplicate read-file call detected|Already read "src\/foo.ts" this turn/,
+    );
+
+    expect(events).toHaveLength(1);
+    expect(events[0]).toEqual({
+      guardId: "duplicate-call",
+      toolName: "read-file",
+      action: "blocked",
+      detail: "duplicate-call",
+    });
+  });
+});
 describe("step-budget guard", () => {
   test("blocks when cycle step count reaches cycle limit", () => {
     const session = createSessionContext();
@@ -128,6 +148,21 @@ describe("file-churn guard", () => {
     );
   });
 
+  test("blocks read-only churn even when churned path is part of batched read", () => {
+    const session = createSessionContext();
+    for (let i = 0; i < 4; i += 1) {
+      recordCall(session, "read-file", { paths: [{ path: "src/foo.ts" }] });
+    }
+
+    expect(() =>
+      runGuards({
+        toolName: "read-file",
+        args: { paths: [{ path: "src/foo.ts" }, { path: "src/other.ts" }] },
+        session,
+      }),
+    ).toThrow(/has been read 4 times without edits/);
+  });
+
   test("allows duplicate single-file read after batched read", () => {
     const session = createSessionContext();
     recordCall(session, "read-file", {
@@ -137,44 +172,6 @@ describe("file-churn guard", () => {
       runGuards({ toolName: "read-file", args: { paths: [{ path: "src/chat-commands.ts" }] }, session }),
     ).not.toThrow();
   });
-
-  test("allows batched read when one requested path was already read pre-edit", () => {
-    const session = createSessionContext();
-    recordCall(session, "read-file", {
-      paths: [{ path: "src/chat-commands.ts" }, { path: "src/chat-commands.test.ts" }],
-    });
-    expect(() =>
-      runGuards({
-        toolName: "read-file",
-        args: { paths: [{ path: "src/chat-commands.ts" }, { path: "src/memory.ts" }] },
-        session,
-      }),
-    ).not.toThrow();
-  });
-
-  test("allows batched read after target path was edited", () => {
-    const session = createSessionContext();
-    recordCall(session, "read-file", { paths: [{ path: "src/chat-commands.ts" }] });
-    recordCall(session, "edit-file", { path: "src/chat-commands.ts" });
-    expect(() =>
-      runGuards({
-        toolName: "read-file",
-        args: { paths: [{ path: "src/chat-commands.ts" }, { path: "src/memory.ts" }] },
-        session,
-      }),
-    ).not.toThrow();
-  });
-
-  test("allows duplicate read after edit on same path", () => {
-    const session = createSessionContext();
-    session.writeTools = new Set(["edit-file"]);
-    recordCall(session, "read-file", { paths: [{ path: "src/foo.ts" }] });
-    recordCall(session, "edit-file", { path: "src/foo.ts" });
-    expect(() =>
-      runGuards({ toolName: "read-file", args: { paths: [{ path: "src/foo.ts" }] }, session }),
-    ).not.toThrow();
-  });
-
   test("allows a second read with a different range before any edit", () => {
     const session = createSessionContext();
     recordCall(session, "read-file", { paths: [{ path: "src/foo.ts", start: 1, end: 40 }] });

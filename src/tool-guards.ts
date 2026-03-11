@@ -136,7 +136,6 @@ const duplicateCallGuard: ToolGuard = {
   description: "Block near-duplicate tool calls with no state-changing tool in between.",
   check({ toolName, args, session, report }) {
     const calls = scopedCallLog(session);
-    const writeTools = session.writeTools;
     const lookback = calls.slice(-DUPLICATE_CALL_LOOKBACK);
     for (let i = lookback.length - 1; i >= 0; i -= 1) {
       const prior = lookback[i];
@@ -146,7 +145,7 @@ const duplicateCallGuard: ToolGuard = {
           `Duplicate ${toolName} call detected with unchanged arguments. Reuse previous result or change inputs.`,
         );
       }
-      if (writeTools.has(prior.toolName)) return;
+      if (isWriteTool(session, prior.toolName)) return;
     }
   },
 };
@@ -203,7 +202,14 @@ const fileChurnGuard: ToolGuard = {
       pathCounts.set(path, created);
       return created;
     };
-    for (const entry of scopedCallLog(session)) {
+    const calls = scopedCallLog(session);
+    const sinceLastVerify = (() => {
+      for (let i = calls.length - 1; i >= 0; i -= 1) {
+        if (calls[i]?.toolName === "run-command" && calls[i]?.mode === "verify") return calls.slice(i + 1);
+      }
+      return calls;
+    })();
+    for (const entry of sinceLastVerify) {
       if (entry.toolName === "read-file") {
         for (const path of extractReadPaths(entry.args, { normalize: true })) {
           countsForPath(path).readCount += 1;
@@ -213,26 +219,26 @@ const fileChurnGuard: ToolGuard = {
       }
     }
 
-    if (targetPaths.length !== 1) return;
-    const target = targetPaths[0];
-    const { readCount, editCount } = countsForPath(target);
+    for (const target of targetPaths) {
+      const { readCount, editCount } = countsForPath(target);
 
-    if (toolName === "read-file" && editCount === 0 && readCount >= FILE_READ_ONLY_CHURN_MIN) {
+      if (toolName === "read-file" && editCount === 0 && readCount >= FILE_READ_ONLY_CHURN_MIN) {
+        report("blocked", target);
+        throw new Error(
+          `File "${target}" has been read ${readCount} times without edits. Use the content you already have or move on.`,
+        );
+      }
+
+      const combined = readCount + editCount;
+      if (combined < FILE_CHURN_MIN_COMBINED || readCount < FILE_CHURN_MIN_READS || editCount < FILE_CHURN_MIN_EDITS)
+        continue;
+
       report("blocked", target);
       throw new Error(
-        `File "${target}" has been read ${readCount} times without edits. Use the content you already have or move on.`,
+        `Repeated read/edit loop detected for "${target}". Stop incremental tweaks. ` +
+          "Use one consolidated edit (line-range block or edit-code), then run verify.",
       );
     }
-
-    const combined = readCount + editCount;
-    if (combined < FILE_CHURN_MIN_COMBINED || readCount < FILE_CHURN_MIN_READS || editCount < FILE_CHURN_MIN_EDITS)
-      return;
-
-    report("blocked", target);
-    throw new Error(
-      `Repeated read/edit loop detected for "${target}". Stop incremental tweaks. ` +
-        "Use one consolidated edit (line-range block or edit-code), then run verify.",
-    );
   },
 };
 

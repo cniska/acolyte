@@ -7,7 +7,7 @@ import type { createClient as createClientType } from "./client-factory";
 import type { readResolvedConfigSync as readResolvedConfigSyncType } from "./config";
 
 import { t } from "./i18n";
-import type { ResourceId } from "./resource-id";
+import { type ResourceId, userResourceIdFor } from "./resource-id";
 import type { apiUrlForPort as apiUrlForPortType, ensureLocalServer as ensureLocalServerType } from "./server-daemon";
 import type { createSession as createSessionType } from "./storage";
 
@@ -43,7 +43,7 @@ type RunModeDeps = {
 };
 
 export function runResourceId(sessionId: string): ResourceId {
-  return `user_run-${sessionId}` as ResourceId;
+  return userResourceIdFor("run", sessionId);
 }
 
 function parseRunArgs(args: string[]): ParsedRunArgs {

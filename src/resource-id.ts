@@ -31,3 +31,7 @@ export function projectResourceIdFromWorkspace(workspace: string): ProjectResour
 export function defaultUserResourceId(homeDir = homedir()): UserResourceId {
   return userResourceIdSchema.parse(`user_${hashValue(resolvePath(homeDir))}`);
 }
+
+export function userResourceIdFor(context: string, sessionId: string): UserResourceId {
+  return userResourceIdSchema.parse(`user_${hashValue(`${context}:${sessionId}`)}`);
+}

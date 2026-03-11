@@ -5,7 +5,7 @@ import type { handlePrompt as handlePromptType } from "./cli-prompt";
 import type { createClient as createClientType } from "./client-factory";
 import type { readResolvedConfigSync as readResolvedConfigSyncType } from "./config";
 import { t } from "./i18n";
-import type { ResourceId } from "./resource-id";
+import { userResourceIdFor } from "./resource-id";
 import type { apiUrlForPort as apiUrlForPortType, ensureLocalServer as ensureLocalServerType } from "./server-daemon";
 import type { findSkillByName as findSkillByNameType, loadSkills as loadSkillsType } from "./skills";
 import type { createSession as createSessionType } from "./storage";
@@ -37,8 +37,8 @@ type SkillModeDeps = {
   commandHelp: (name: string) => void;
 };
 
-export function skillResourceId(sessionId: string): ResourceId {
-  return `user_skill-${sessionId}` as ResourceId;
+export function skillResourceId(sessionId: string) {
+  return userResourceIdFor("skill", sessionId);
 }
 
 function parseSkillArgs(args: string[]): ParsedSkillArgs {
