@@ -202,6 +202,7 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
               marker = "❯ ";
             } else if (row.role === "assistant") {
               marker = "• ";
+              markerColor = palette.brand;
             } else if (row.role === "system" && (row.style === "cancelled" || row.style === "error")) {
               marker = "· ";
             }
