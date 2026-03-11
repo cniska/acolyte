@@ -3,6 +3,7 @@ import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
+import { PRIVATE_FILE_MODE } from "./file-ops";
 import { type IsoDateTimeString, isoDateTimeSchema } from "./datetime";
 import { t } from "./i18n";
 import { PROTOCOL_VERSION } from "./protocol";
@@ -89,7 +90,7 @@ async function readServerLock(path: string): Promise<ServerLock | null> {
 
 async function writeServerLock(path: string, lock: ServerLock): Promise<void> {
   await mkdir(join(path, ".."), { recursive: true });
-  await writeFile(path, JSON.stringify(lock), { encoding: "utf8", mode: 0o600 });
+  await writeFile(path, JSON.stringify(lock), { encoding: "utf8", mode: PRIVATE_FILE_MODE });
 }
 
 function isProcessAlive(pid: number): boolean {
@@ -136,7 +137,7 @@ async function tryAcquireStartupLock(path: string): Promise<boolean> {
   await mkdir(join(path, ".."), { recursive: true });
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
-      await writeFile(path, String(process.pid), { flag: "wx", mode: 0o600 });
+      await writeFile(path, String(process.pid), { flag: "wx", mode: PRIVATE_FILE_MODE });
       return true;
     } catch (error) {
       const code = (error as { code?: string }).code;
@@ -205,7 +206,7 @@ export async function ensureLocalServer(input: EnsureLocalServerInput): Promise<
 
   const logPath = serverLogPath(port, homeDir);
   await mkdir(join(logPath, ".."), { recursive: true });
-  const logFd = openSync(logPath, "a", 0o600);
+  const logFd = openSync(logPath, "a", PRIVATE_FILE_MODE);
   const proc = Bun.spawn([process.execPath, "run", serverEntry], {
     env: { ...process.env, PORT: String(port) },
     stdout: logFd,

@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { PRIVATE_FILE_MODE } from "./file-ops";
 
 type LockOptions = {
   homeDir?: string;
@@ -48,7 +49,7 @@ export function acquireSessionLock(
     }
   }
 
-  writeFileSync(lockPath, String(myPid), { encoding: "utf8", mode: 0o600 });
+  writeFileSync(lockPath, String(myPid), { encoding: "utf8", mode: PRIVATE_FILE_MODE });
   return { ok: true };
 }
 

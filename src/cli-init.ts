@@ -1,5 +1,6 @@
 import type { readFile as readFileType, writeFile as writeFileType } from "node:fs/promises";
 import { join } from "node:path";
+import { PRIVATE_FILE_MODE } from "./file-ops";
 import { t } from "./i18n";
 import {
   type Provider,
@@ -154,7 +155,7 @@ export async function initMode(args: string[], deps: InitModeDeps): Promise<void
     return;
   }
   const next = upsertDotEnvValue(existing, envKey, apiKey);
-  await writeFile(envPath, next, { encoding: "utf8", mode: 0o600 });
+  await writeFile(envPath, next, { encoding: "utf8", mode: PRIVATE_FILE_MODE });
 
   printDim(t("cli.init.saved", { envKey, path: envPath }));
   printDim(t("cli.init.next"));
