@@ -46,6 +46,7 @@ function warnUnauthorized(path: string, method: string): Response {
 
 async function handleStatus(ctx: RouteContext): Promise<Response | null> {
   if (ctx.url.pathname !== "/v1/status" || ctx.req.method !== "GET") return null;
+  if (!ctx.deps.hasValidAuth(ctx.req, ctx.url)) return warnUnauthorized(ctx.url.pathname, ctx.req.method);
   return json(await ctx.deps.createStatusPayload());
 }
 
