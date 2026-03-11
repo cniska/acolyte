@@ -3,6 +3,7 @@ import { getLoadedSkills } from "./skills";
 
 const CHAT_SLASH_COMMANDS = [
   "/new",
+  "/clear",
   "/model",
   "/status",
   "/sessions",
@@ -21,6 +22,7 @@ const SUB_COMMANDS: Record<string, string[]> = {
 
 const SLASH_HELP: Record<string, string> = {
   "/new": t("chat.slash.help.new"),
+  "/clear": t("chat.slash.help.clear"),
   "/model": t("chat.slash.help.model"),
   "/model work": t("chat.slash.help.model.work"),
   "/model verify": t("chat.slash.help.model.verify"),

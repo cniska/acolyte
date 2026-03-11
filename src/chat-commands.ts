@@ -490,6 +490,13 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     return { stop: true, userText: text };
   }
 
+  if (resolvedText === "/clear") {
+    pushUserCommandRow();
+    // Clear the visible transcript but keep session messages intact.
+    ctx.setRows(() => [createRow("system", t("chat.clear.confirm"))]);
+    return { stop: true, userText: text };
+  }
+
   if (resolvedText.startsWith("/")) {
     const [head, ...rest] = resolvedText.split(/\s+/);
     const skillName = (head ?? "").slice(1);
