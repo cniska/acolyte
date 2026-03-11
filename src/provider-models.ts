@@ -1,4 +1,5 @@
 import { appConfig } from "./app-config";
+import { unreachable } from "./assert";
 import { isProviderAvailable } from "./provider-config";
 import type { Provider } from "./provider-contract";
 
@@ -64,6 +65,8 @@ async function fetchProviderModels(provider: Provider, config: ProviderFetchConf
         return await fetchAnthropicModels(config);
       case "google":
         return await fetchGoogleModels(config);
+      default:
+        return unreachable(provider);
     }
   } catch {
     return [];
@@ -78,6 +81,8 @@ function providerConfig(provider: Provider): ProviderFetchConfig {
       return { apiKey: appConfig.anthropic.apiKey, baseUrl: appConfig.anthropic.baseUrl };
     case "google":
       return { apiKey: appConfig.google.apiKey, baseUrl: appConfig.google.baseUrl };
+    default:
+      return unreachable(provider);
   }
 }
 

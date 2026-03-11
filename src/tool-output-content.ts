@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { unreachable } from "./assert";
 import { t } from "./i18n";
 
 export const toolOutputDiffMarkerSchema = z.enum(["add", "remove", "context"]);
@@ -93,6 +94,8 @@ export function renderToolOutput(content: ToolOutput): string {
               : "unit.more";
       return `… +${t(unitKey, { count: content.count })}`;
     }
+    default:
+      return unreachable(content);
   }
 }
 
