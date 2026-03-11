@@ -10,14 +10,15 @@ function createRunDeps(): { deps: RunDeps; calls: { errors: string[]; dims: stri
     appModel: "openai/gpt-5-mini",
     attachFileToSession: async () => undefined as never,
     createClient: () => ({}) as never,
-    createSession: (model?: string) => ({ id: "sess_123", title: "run", createdAt: "", updatedAt: "", messages: [], tokenUsage: [], model }) as never,
+    createSession: (model?: string) =>
+      ({ id: "sess_123", title: "run", createdAt: "", updatedAt: "", messages: [], tokenUsage: [], model }) as never,
     ensureLocalServer: async () => ({ port: 6767, pid: 1234, started: false }),
     hasHelpFlag: (args) => args.includes("--help"),
     handlePrompt: async () => true,
     createMessage: (_role: string, _content: string) => ({}) as never,
     printDim: (line: string) => calls.dims.push(line),
     printError: (msg: string) => calls.errors.push(msg),
-    readResolvedConfigSync: () => ({ replyTimeoutMs: 0 } as never),
+    readResolvedConfigSync: () => ({ replyTimeoutMs: 0 }) as never,
     runResourceId: (_id: string) => "run:1" as never,
     serverApiKey: "",
     serverEntry: "",
@@ -34,7 +35,7 @@ describe("cli-run --model flag", () => {
     let seenModel: string | undefined;
     deps.createSession = (model?: string) => {
       seenModel = model;
-      return ({ id: "sess_123", title: "run", createdAt: "", updatedAt: "", messages: [], tokenUsage: [] }) as never;
+      return { id: "sess_123", title: "run", createdAt: "", updatedAt: "", messages: [], tokenUsage: [] } as never;
     };
 
     // ensure no leftover exit code
