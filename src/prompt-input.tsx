@@ -1,6 +1,6 @@
 import { Box, Text, useInput } from "ink";
 import type React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { ESCAPE_CHAR, resolvePromptAction } from "./prompt-keymap";
 
 const META_PREFIX_WINDOW_MS = 150;
@@ -77,106 +77,113 @@ export function PromptInput({
   const [cursorOffset, setCursorOffset] = useState(value.length);
   const metaPrefixAt = useRef<number | null>(null);
   const valueRef = useRef(value);
+  // cursorRef is the source of truth for keystroke handling — only updated
+  // by moveCursor (synchronous) during input, never from React state which
+  // can lag behind between re-renders. For external value changes (e.g.
+  // history navigation), we clamp synchronously during render.
   const cursorRef = useRef(cursorOffset);
+  const onChangeRef = useRef(onChange);
+  const onSubmitRef = useRef(onSubmit);
+  if (valueRef.current !== value) {
+    const clamped = Math.max(0, Math.min(cursorRef.current, value.length));
+    cursorRef.current = clamped;
+    if (cursorOffset !== clamped) setCursorOffset(clamped);
+  }
   valueRef.current = value;
-  cursorRef.current = cursorOffset;
+  onChangeRef.current = onChange;
+  onSubmitRef.current = onSubmit;
 
-  const emitChange = (next: string) => {
-    valueRef.current = next;
-    onChange(next);
-  };
-  const moveCursor = (next: number) => {
-    cursorRef.current = next;
-    setCursorOffset(next);
-  };
+  const handleInput = useCallback((input: string, key: Parameters<Parameters<typeof useInput>[0]>[1]) => {
+    const emitChange = (next: string) => {
+      valueRef.current = next;
+      onChangeRef.current(next);
+    };
+    const moveCursor = (next: number) => {
+      cursorRef.current = next;
+      setCursorOffset(next);
+    };
 
-  useEffect(() => {
-    setCursorOffset((current) => Math.max(0, Math.min(current, value.length)));
-  }, [value]);
+    const v = valueRef.current;
+    const c = cursorRef.current;
+    const now = Date.now();
+    const hasMetaPrefix = metaPrefixAt.current !== null && now - metaPrefixAt.current <= META_PREFIX_WINDOW_MS;
+    if (input === ESCAPE_CHAR && !key.backspace && !key.delete) {
+      metaPrefixAt.current = now;
+      return;
+    }
+    if (key.escape && !input) {
+      metaPrefixAt.current = now;
+      return;
+    }
 
-  useInput(
-    (input, key) => {
-      const v = valueRef.current;
-      const c = cursorRef.current;
-      const now = Date.now();
-      const hasMetaPrefix = metaPrefixAt.current !== null && now - metaPrefixAt.current <= META_PREFIX_WINDOW_MS;
-      if (input === ESCAPE_CHAR && !key.backspace && !key.delete) {
-        metaPrefixAt.current = now;
-        return;
-      }
-      if (key.escape && !input) {
-        metaPrefixAt.current = now;
-        return;
-      }
-
-      const action = resolvePromptAction(input, key, { hasMetaPrefix });
-      if (action.type === "noop") {
-        metaPrefixAt.current = null;
-        return;
-      }
-      if (action.type === "submit") {
-        onSubmit(v);
-        return;
-      }
-      if (action.type === "move_home") {
-        moveCursor(0);
-        return;
-      }
-      if (action.type === "move_end") {
-        moveCursor(v.length);
-        return;
-      }
-      if (action.type === "move_word_left") {
-        moveCursor(moveWordLeft(v, c));
-        return;
-      }
-      if (action.type === "move_word_right") {
-        moveCursor(moveWordRight(v, c));
-        return;
-      }
-      if (action.type === "delete_word_back") {
-        metaPrefixAt.current = null;
-        if (c === 0) return;
-        const next = moveWordLeft(v, c);
-        emitChange(`${v.slice(0, next)}${v.slice(c)}`);
-        moveCursor(next);
-        return;
-      }
-      if (action.type === "clear_line") {
-        metaPrefixAt.current = null;
-        if (v.length === 0) return;
-        emitChange("");
-        moveCursor(0);
-        return;
-      }
-      if (action.type === "move_left") {
-        moveCursor(Math.max(0, c - 1));
-        return;
-      }
-      if (action.type === "move_right") {
-        moveCursor(Math.min(v.length, c + 1));
-        return;
-      }
-      if (action.type === "delete_back") {
-        metaPrefixAt.current = null;
-        if (c === 0) return;
-        emitChange(`${v.slice(0, c - 1)}${v.slice(c)}`);
-        moveCursor(c - 1);
-        return;
-      }
-      if (action.type === "delete_forward") {
-        metaPrefixAt.current = null;
-        if (c >= v.length) return;
-        emitChange(`${v.slice(0, c)}${v.slice(c + 1)}`);
-        return;
-      }
-
+    const action = resolvePromptAction(input, key, { hasMetaPrefix });
+    if (action.type === "noop") {
       metaPrefixAt.current = null;
-      emitChange(`${v.slice(0, c)}${action.text}${v.slice(c)}`);
-      moveCursor(c + action.text.length);
-    },
-    { isActive: focus },
-  );
+      return;
+    }
+    if (action.type === "submit") {
+      onSubmitRef.current(v);
+      return;
+    }
+    if (action.type === "move_home") {
+      moveCursor(0);
+      return;
+    }
+    if (action.type === "move_end") {
+      moveCursor(v.length);
+      return;
+    }
+    if (action.type === "move_word_left") {
+      moveCursor(moveWordLeft(v, c));
+      return;
+    }
+    if (action.type === "move_word_right") {
+      moveCursor(moveWordRight(v, c));
+      return;
+    }
+    if (action.type === "delete_word_back") {
+      metaPrefixAt.current = null;
+      if (c === 0) return;
+      const next = moveWordLeft(v, c);
+      emitChange(`${v.slice(0, next)}${v.slice(c)}`);
+      moveCursor(next);
+      return;
+    }
+    if (action.type === "clear_line") {
+      metaPrefixAt.current = null;
+      if (v.length === 0) return;
+      emitChange("");
+      moveCursor(0);
+      return;
+    }
+    if (action.type === "move_left") {
+      moveCursor(Math.max(0, c - 1));
+      return;
+    }
+    if (action.type === "move_right") {
+      moveCursor(Math.min(v.length, c + 1));
+      return;
+    }
+    if (action.type === "delete_back") {
+      metaPrefixAt.current = null;
+      if (c === 0) return;
+      emitChange(`${v.slice(0, c - 1)}${v.slice(c)}`);
+      moveCursor(c - 1);
+      return;
+    }
+    if (action.type === "delete_forward") {
+      metaPrefixAt.current = null;
+      if (c >= v.length) return;
+      emitChange(`${v.slice(0, c)}${v.slice(c + 1)}`);
+      return;
+    }
+
+    metaPrefixAt.current = null;
+    emitChange(`${v.slice(0, c)}${action.text}${v.slice(c)}`);
+    moveCursor(c + action.text.length);
+  }, []);
+
+  useInput(handleInput, { isActive: focus });
 
   if (value.length === 0 && placeholder.length > 0) {
     return (
