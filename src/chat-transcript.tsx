@@ -16,6 +16,7 @@ type ChatTranscriptProps = {
   runningUsage?: { promptTokens: number; completionTokens: number } | null;
 };
 
+const BULLET_STYLES = new Set(["toolOutput", "worked"]);
 const MAX_TRANSCRIPT_WIDTH = 120;
 const SESSION_STATUS_PREFIXES = ["Started new session: ", "Resumed session: "] as const;
 
@@ -196,22 +197,22 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
                 : null;
             const sessionsOutputHeader = row.style === "sessionsOutput" ? parseSessionsHeader(row.content) : null;
             const dimMarker = Boolean(row.dim) || Boolean(sessionStatus);
-            let marker = "  ";
-            let markerColor: string | undefined;
-            if (row.role === "user") {
-              marker = "❯ ";
-            } else if (row.role === "assistant") {
-              marker = "• ";
-              markerColor = palette.brand;
-            } else if (row.role === "system" && (row.style === "cancelled" || row.style === "error")) {
-              marker = "· ";
-            }
-            if (row.style === "toolOutput") marker = "· ";
-            if (row.style === "toolOutput" && row.toolStatus)
-              markerColor = row.toolStatus === "ok" ? palette.success : palette.error;
-            if (row.style === "worked") markerColor = palette.success;
-            if (row.style === "error") markerColor = palette.error;
-            if (row.style === "cancelled") markerColor = palette.cancelled;
+            const marker =
+              row.role === "user" ? "❯ " : row.role === "assistant" || BULLET_STYLES.has(row.style ?? "") ? "• " : "  ";
+            const markerColor =
+              row.style === "error"
+                ? palette.error
+                : row.style === "cancelled"
+                  ? palette.cancelled
+                  : row.style === "worked"
+                    ? palette.success
+                    : row.style === "toolOutput" && row.toolStatus
+                      ? row.toolStatus === "ok"
+                        ? palette.success
+                        : palette.error
+                      : row.role === "assistant"
+                        ? palette.brand
+                        : undefined;
             return (
               <Box>
                 <Box width={2}>

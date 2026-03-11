@@ -350,16 +350,16 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
 
 describe("tool output TUI — chat (Ink rendering)", () => {
   test("tool-header only", () => {
-    expect(renderChat([{ kind: "tool-header", label: "Read", detail: "a.ts" }])).toBe("· Read a.ts");
+    expect(renderChat([{ kind: "tool-header", label: "Read", detail: "a.ts" }])).toBe("• Read a.ts");
   });
 
   test("tool-header without detail", () => {
-    expect(renderChat([{ kind: "tool-header", label: "Git Status" }])).toBe("· Git Status");
+    expect(renderChat([{ kind: "tool-header", label: "Git Status" }])).toBe("• Git Status");
   });
 
   test("file-header renders label and targets", () => {
     expect(renderChat([{ kind: "file-header", label: "Read", count: 2, targets: ["a.ts", "b.ts"] }])).toBe(
-      "· Read a.ts, b.ts",
+      "• Read a.ts, b.ts",
     );
   });
 
@@ -371,7 +371,7 @@ describe("tool output TUI — chat (Ink rendering)", () => {
     ];
     expect(renderChat(items)).toBe(
       dedent(`
-        · Search needle
+        • Search needle
             a.ts [needle@1]
             b.ts [needle@2, needle@5]
       `),
@@ -387,7 +387,7 @@ describe("tool output TUI — chat (Ink rendering)", () => {
     ];
     expect(renderChat(items)).toBe(
       dedent(`
-        · Edit notes.ts (+1 -1)
+        • Edit notes.ts (+1 -1)
              9 const x = 1;
             10 const y = 2;
             10 const y = 3;
@@ -403,7 +403,7 @@ describe("tool output TUI — chat (Ink rendering)", () => {
     ];
     expect(renderChat(items)).toBe(
       dedent(`
-        · Run echo hello
+        • Run echo hello
             hello
             world
       `),
@@ -419,7 +419,7 @@ describe("tool output TUI — chat (Ink rendering)", () => {
     ];
     expect(renderChat(items)).toBe(
       dedent(`
-        · Run make
+        • Run make
             compiling...
             warning: unused var
             done
@@ -437,7 +437,7 @@ describe("tool output TUI — chat (Ink rendering)", () => {
     ];
     expect(renderChat(items)).toBe(
       dedent(`
-        · Run cmd
+        • Run cmd
             line1
             line2
             … +3 lines
@@ -450,7 +450,7 @@ describe("tool output TUI — chat (Ink rendering)", () => {
     const items: ToolOutput[] = [{ kind: "tool-header", label: "Run", detail: "cmd" }, { kind: "no-output" }];
     expect(renderChat(items)).toBe(
       dedent(`
-        · Run cmd
+        • Run cmd
             (No output)
       `),
     );
@@ -464,7 +464,7 @@ describe("tool output TUI — chat (Ink rendering)", () => {
     ];
     expect(renderChat(items)).toBe(
       dedent(`
-        · Git Status
+        • Git Status
             M src/cli.ts
             ?? src/new.ts
       `),
@@ -480,7 +480,7 @@ describe("tool output TUI — chat (Ink rendering)", () => {
     ];
     expect(renderChat(items)).toBe(
       dedent(`
-        · Git Diff src/agent.ts
+        • Git Diff src/agent.ts
             +const x = 1;
             … +5 lines
             -const y = 2;
@@ -496,7 +496,7 @@ describe("tool output TUI — chat (Ink rendering)", () => {
     ];
     expect(renderChat(items)).toBe(
       dedent(`
-        · Git Log
+        • Git Log
             abc1234 feat: add feature
             def5678 fix: resolve bug
       `),
@@ -511,7 +511,7 @@ describe("tool output TUI — chat (Ink rendering)", () => {
     ];
     expect(renderChat(items)).toBe(
       dedent(`
-        · Git Show abc1234
+        • Git Show abc1234
             feat: add feature
             +const x = 1;
       `),
@@ -527,7 +527,7 @@ describe("tool output TUI — chat (Ink rendering)", () => {
     ];
     expect(renderChat(items)).toBe(
       dedent(`
-        · Git Add 3 files
+        • Git Add 3 files
             src/a.ts
             src/b.ts
             src/c.ts
@@ -544,7 +544,7 @@ describe("tool output TUI — chat (Ink rendering)", () => {
     ];
     expect(renderChat(items)).toBe(
       dedent(`
-        · Git Add 8 files
+        • Git Add 8 files
             src/a.ts
             src/b.ts
             … +6 files
@@ -554,7 +554,7 @@ describe("tool output TUI — chat (Ink rendering)", () => {
 
   test("git-commit with hash", () => {
     expect(renderChat([{ kind: "tool-header", label: "Git Commit", detail: "feat: add feature (abc1234)" }])).toBe(
-      "· Git Commit feat: add feature (abc1234)",
+      "• Git Commit feat: add feature (abc1234)",
     );
   });
 
@@ -566,7 +566,7 @@ describe("tool output TUI — chat (Ink rendering)", () => {
     ];
     expect(renderChat(items)).toBe(
       dedent(`
-        · Git Commit feat: add feature (abc1234)
+        • Git Commit feat: add feature (abc1234)
             Added new auth module
             Updated config schema
       `),
@@ -582,7 +582,7 @@ describe("tool output TUI — chat (Ink rendering)", () => {
     ];
     expect(renderChat(items)).toBe(
       dedent(`
-        · Git Commit refactor: cleanup (def5678)
+        • Git Commit refactor: cleanup (def5678)
             Line 1
             Line 2
             … +5 lines

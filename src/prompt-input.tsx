@@ -76,6 +76,19 @@ export function PromptInput({
 }: PromptInputProps): React.JSX.Element {
   const [cursorOffset, setCursorOffset] = useState(value.length);
   const metaPrefixAt = useRef<number | null>(null);
+  const valueRef = useRef(value);
+  const cursorRef = useRef(cursorOffset);
+  valueRef.current = value;
+  cursorRef.current = cursorOffset;
+
+  const emitChange = (next: string) => {
+    valueRef.current = next;
+    onChange(next);
+  };
+  const moveCursor = (next: number) => {
+    cursorRef.current = next;
+    setCursorOffset(next);
+  };
 
   useEffect(() => {
     setCursorOffset((current) => Math.max(0, Math.min(current, value.length)));
@@ -83,6 +96,8 @@ export function PromptInput({
 
   useInput(
     (input, key) => {
+      const v = valueRef.current;
+      const c = cursorRef.current;
       const now = Date.now();
       const hasMetaPrefix = metaPrefixAt.current !== null && now - metaPrefixAt.current <= META_PREFIX_WINDOW_MS;
       if (input === ESCAPE_CHAR && !key.backspace && !key.delete) {
@@ -100,65 +115,65 @@ export function PromptInput({
         return;
       }
       if (action.type === "submit") {
-        onSubmit(value);
+        onSubmit(v);
         return;
       }
       if (action.type === "move_home") {
-        setCursorOffset(0);
+        moveCursor(0);
         return;
       }
       if (action.type === "move_end") {
-        setCursorOffset(value.length);
+        moveCursor(v.length);
         return;
       }
       if (action.type === "move_word_left") {
-        setCursorOffset((current) => moveWordLeft(value, current));
+        moveCursor(moveWordLeft(v, c));
         return;
       }
       if (action.type === "move_word_right") {
-        setCursorOffset((current) => moveWordRight(value, current));
+        moveCursor(moveWordRight(v, c));
         return;
       }
       if (action.type === "delete_word_back") {
         metaPrefixAt.current = null;
-        if (cursorOffset === 0) return;
-        const next = moveWordLeft(value, cursorOffset);
-        onChange(`${value.slice(0, next)}${value.slice(cursorOffset)}`);
-        setCursorOffset(next);
+        if (c === 0) return;
+        const next = moveWordLeft(v, c);
+        emitChange(`${v.slice(0, next)}${v.slice(c)}`);
+        moveCursor(next);
         return;
       }
       if (action.type === "clear_line") {
         metaPrefixAt.current = null;
-        if (value.length === 0) return;
-        onChange("");
-        setCursorOffset(0);
+        if (v.length === 0) return;
+        emitChange("");
+        moveCursor(0);
         return;
       }
       if (action.type === "move_left") {
-        setCursorOffset((current) => Math.max(0, current - 1));
+        moveCursor(Math.max(0, c - 1));
         return;
       }
       if (action.type === "move_right") {
-        setCursorOffset((current) => Math.min(value.length, current + 1));
+        moveCursor(Math.min(v.length, c + 1));
         return;
       }
       if (action.type === "delete_back") {
         metaPrefixAt.current = null;
-        if (cursorOffset === 0) return;
-        onChange(`${value.slice(0, cursorOffset - 1)}${value.slice(cursorOffset)}`);
-        setCursorOffset((current) => Math.max(0, current - 1));
+        if (c === 0) return;
+        emitChange(`${v.slice(0, c - 1)}${v.slice(c)}`);
+        moveCursor(c - 1);
         return;
       }
       if (action.type === "delete_forward") {
         metaPrefixAt.current = null;
-        if (cursorOffset >= value.length) return;
-        onChange(`${value.slice(0, cursorOffset)}${value.slice(cursorOffset + 1)}`);
+        if (c >= v.length) return;
+        emitChange(`${v.slice(0, c)}${v.slice(c + 1)}`);
         return;
       }
 
       metaPrefixAt.current = null;
-      onChange(`${value.slice(0, cursorOffset)}${action.text}${value.slice(cursorOffset)}`);
-      setCursorOffset((current) => current + action.text.length);
+      emitChange(`${v.slice(0, c)}${action.text}${v.slice(c)}`);
+      moveCursor(c + action.text.length);
     },
     { isActive: focus },
   );
