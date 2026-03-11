@@ -1,11 +1,12 @@
 import { homedir } from "node:os";
 import { slashCommandHelp } from "./chat-slash";
+import { t } from "./i18n";
 
 const DEFAULT_TERMINAL_WIDTH = 96;
 const SHORTCUT_TWO_COLUMN_MIN_WIDTH = 92;
 
 const SHORTCUT_ITEMS = [
-  { key: "@path", description: "attach file" },
+  { key: "@path", description: t("chat.at_ref.attach_file") },
   { key: "/new", description: slashCommandHelp("/new") },
   { key: "/resume <id>", description: slashCommandHelp("/resume") },
   { key: "/sessions", description: slashCommandHelp("/sessions") },

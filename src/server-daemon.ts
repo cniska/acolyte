@@ -4,6 +4,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
 import { type IsoDateTimeString, isoDateTimeSchema } from "./datetime";
+import { t } from "./i18n";
 import { PROTOCOL_VERSION } from "./protocol";
 
 const SERVER_START_TIMEOUT_MS = 10_000;
@@ -128,7 +129,7 @@ async function waitForHealthyServer(apiUrl: string, apiKey: string | undefined, 
     if (await isServerHealthy(apiUrl, apiKey)) return;
     await Bun.sleep(120);
   }
-  throw new Error(`Timed out waiting for server at ${apiUrl}`);
+  throw new Error(t("cli.server.start_timeout", { url: apiUrl }));
 }
 
 async function tryAcquireStartupLock(path: string): Promise<boolean> {

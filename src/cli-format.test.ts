@@ -3,12 +3,9 @@ import {
   clampLines,
   displayPath,
   formatAssistantReplyOutput,
-  formatEditUpdateOutput,
   formatForTool,
   formatRunOutput,
-  parseEditResult,
   parseRunExitCode,
-  summarizeDiff,
   truncateText,
 } from "./cli-format";
 import { formatPromptError } from "./error-messages";
@@ -37,93 +34,48 @@ describe("cli-format", () => {
     expect(parseRunExitCode("stdout:\nmissing")).toBeNull();
   });
 
-  test("parseEditResult parses strict edit metadata", () => {
-    expect(parseEditResult("path=/tmp/a.ts\nedits=2\ndry_run=true")).toEqual({
-      path: "/tmp/a.ts",
-      edits: 2,
-      dryRun: true,
-    });
-    expect(parseEditResult("path=/tmp/a.ts\nedits=2\ndry_run=false")).toEqual({
-      path: "/tmp/a.ts",
-      edits: 2,
-      dryRun: false,
-    });
-    expect(parseEditResult("path=/tmp/a.ts\nedits=2\ndry_run=maybe")).toBeNull();
-  });
-
-  test("formatSearchOutput lists result lines", () => {
+  test("formatForTool formats search-files output", () => {
     const raw = ["./a.ts:1:foo", "./a.ts:2:bar", "./b.ts:9:baz"].join("\n");
-    const out = formatForTool("search", raw);
+    const out = formatForTool("search-files", raw);
     expect(out).toBe("./a.ts:1:foo\n./a.ts:2:bar\n./b.ts:9:baz");
   });
 
-  test("formatSearchOutput handles no-match responses", () => {
-    expect(formatForTool("search", "No matches.")).toBe(t("tool.content.no_matches"));
-    expect(formatForTool("search", "")).toBe(t("tool.content.no_matches"));
+  test("formatForTool handles no-match search responses", () => {
+    expect(formatForTool("search-files", "No matches.")).toBe(t("tool.content.no_matches"));
+    expect(formatForTool("search-files", "")).toBe(t("tool.content.no_matches"));
   });
 
-  test("formatReadOutput shows content lines", () => {
+  test("formatForTool formats read-file output", () => {
     const raw = ["one", "two", "three"].join("\n");
-    const out = formatForTool("read", raw);
+    const out = formatForTool("read-file", raw);
     expect(out).toBe("one\ntwo\nthree");
   });
 
-  test("formatReadOutput normalizes repo-local File path", () => {
+  test("formatForTool normalizes repo-local File path in read output", () => {
     const raw = [`File: ${process.cwd()}/src/cli.ts`, "1: a", "2: b"].join("\n");
-    const out = formatForTool("read", raw);
+    const out = formatForTool("read-file", raw);
     expect(out).toContain("File: src/cli.ts");
     expect(out).toContain("1: a");
   });
 
-  test("formatDiffOutput shows diff lines", () => {
+  test("formatForTool formats git-diff output", () => {
     const raw = ["diff --git a/a.ts b/a.ts", "--- a/a.ts", "+++ b/a.ts", "@@ -1 +1 @@", "-old", "+new"].join("\n");
-    const out = formatForTool("diff", raw);
+    const out = formatForTool("git-diff", raw);
     expect(out).toContain("-old");
     expect(out).toContain("+new");
   });
 
-  test("formatGitStatusOutput shows status lines", () => {
+  test("formatForTool formats git-status output", () => {
     const raw = ["## main...origin/main", " M src/cli.ts", "?? src/new.ts"].join("\n");
-    const out = formatForTool("status", raw);
+    const out = formatForTool("git-status", raw);
     expect(out).toContain("## main...origin/main");
     expect(out).toContain("M src/cli.ts");
   });
 
-  test("summarizeDiff counts added and removed lines", () => {
-    const diff = [
-      "diff --git a/a.ts b/a.ts",
-      "index 123..456 100644",
-      "--- a/a.ts",
-      "+++ b/a.ts",
-      "@@ -1,2 +1,3 @@",
-      "-old",
-      "+new",
-      "+extra",
-      " context",
-    ].join("\n");
-    const result = summarizeDiff(diff);
-    expect(result.added).toBe(2);
-    expect(result.removed).toBe(1);
-    expect(result.locations).toBe(1);
-    expect(result.preview[0]).toContain("@@ -1,2 +1,3 @@");
-    expect(result.preview.some((line) => line.includes("-old"))).toBe(true);
-    expect(result.preview.some((line) => line.includes("+new"))).toBe(true);
-  });
-
-  test("formatEditUpdateOutput includes replacement and line summary", () => {
-    const diff = ["@@ -1 +1 @@", "-old", "+new"].join("\n");
-    const out = formatEditUpdateOutput(1, diff);
-    expect(out).toContain("1 replacement applied.");
-    expect(out).toContain("1 location updated.");
-    expect(out).toContain("Added 1 line, removed 1 line.");
-    expect(out).toContain("Preview:");
-    expect(out).toContain("@@ -1 +1 @@");
-  });
-
-  test("formatEditUpdateOutput explains when diff preview is unavailable", () => {
-    const out = formatEditUpdateOutput(1, "");
-    expect(out).toContain("1 replacement applied.");
-    expect(out).toContain("No diff preview available");
+  test("formatForTool falls back to read formatting for unknown tools", () => {
+    const raw = ["line1", "line2"].join("\n");
+    const out = formatForTool("unknown-tool", raw);
+    expect(out).toBe("line1\nline2");
   });
 
   test("truncateText stays stable", () => {

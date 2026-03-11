@@ -9,6 +9,7 @@ import {
   validateFinalChatResponse,
 } from "./client-contract";
 import { connectionHelpMessage } from "./error-messages";
+import { t } from "./i18n";
 import { createRpcRequestId } from "./rpc-protocol";
 import type { StatusFields } from "./status-contract";
 import type { TaskId, TaskRecord } from "./task-contract";
@@ -244,15 +245,15 @@ export class RpcClient implements Client {
         if (!msg || msg.id !== id) return;
         if (msg.type === "chat.accepted") {
           acceptedTaskId = msg.taskId;
-          options.onEvent({ type: "status", message: "Accepted by server…" });
+          options.onEvent({ type: "status", message: t("rpc.status.accepted") });
           return;
         }
         if (msg.type === "chat.queued") {
-          options.onEvent({ type: "status", message: `Queued (position ${msg.position})…` });
+          options.onEvent({ type: "status", message: t("rpc.status.queued", { position: msg.position }) });
           return;
         }
         if (msg.type === "chat.started") {
-          options.onEvent({ type: "status", message: "Running…" });
+          options.onEvent({ type: "status", message: t("rpc.status.running") });
           return;
         }
         if (msg.type === "chat.abort.result") return;

@@ -12,6 +12,7 @@ import {
   type ResolvedConfig,
   toConfig,
 } from "./config-contract";
+import { t } from "./i18n";
 
 const DEFAULT_CONFIG = {
   port: 6767,
@@ -243,16 +244,16 @@ export async function setConfigValue(key: string, value: string, options?: Confi
     const merged = { ...existing, [dotted.subKey]: value };
     const parsed = schema.safeParse(merged);
     if (!parsed.success)
-      throw new Error(`Invalid value for ${key}: ${parsed.error.issues[0]?.message ?? parsed.error.message}`);
+      throw new Error(t("cli.config.invalid_value", { key, reason: parsed.error.issues[0]?.message ?? parsed.error.message }));
     const next: Config = { ...current, [dotted.section]: parsed.data };
     await writeConfig(next, { ...options, scope });
     return;
   }
   const topKey = key as keyof Config;
-  if (!(topKey in CONFIG_SET_SCHEMAS)) throw new Error(`Unknown config key: ${key}`);
+  if (!(topKey in CONFIG_SET_SCHEMAS)) throw new Error(t("cli.config.unknown_key", { key }));
   const parsed = CONFIG_SET_SCHEMAS[topKey].safeParse(value);
   if (!parsed.success)
-    throw new Error(`Invalid value for ${key}: ${parsed.error.issues[0]?.message ?? parsed.error.message}`);
+    throw new Error(t("cli.config.invalid_value", { key, reason: parsed.error.issues[0]?.message ?? parsed.error.message }));
   const current = await readConfigScope(scope, options);
   const next: Config = { ...current, [topKey]: parsed.data };
   await writeConfig(next, { ...options, scope });

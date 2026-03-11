@@ -5,15 +5,10 @@ import { truncateText } from "./compact-text";
 import { t } from "./i18n";
 import { formatToolOutput, type ToolOutput } from "./tool-output-content";
 import { TOOL_OUTPUT_LIMITS } from "./tool-output-format";
+import { toolDefinitionsById } from "./tool-registry";
 import { printDim, printToolHeader } from "./ui";
 
 export { truncateText };
-
-const editResultSchema = z.object({
-  path: z.string().min(1),
-  edits: z.coerce.number().int().nonnegative(),
-  dryRun: z.boolean(),
-});
 
 const runExitCodeSchema = z.coerce.number().int();
 
@@ -29,8 +24,10 @@ export function printIndentedDim(content: string): void {
   }
 }
 
-export function printToolOutput(label: string, content: string, detail?: string): void {
-  const items: ToolOutput[] = [{ kind: "tool-header", label, detail }];
+export function printToolResult(toolId: string, raw: string, detail?: string): void {
+  const toolLabel = toolDefinitionsById[toolId]?.label ?? toolId;
+  const content = formatForTool(toolId, raw);
+  const items: ToolOutput[] = [{ kind: "tool-header", label: toolLabel, detail }];
   if (content.length === 0) {
     items.push({ kind: "no-output" });
   } else {
@@ -41,8 +38,7 @@ export function printToolOutput(label: string, content: string, detail?: string)
   }
   const rendered = formatToolOutput(items);
   const lines = rendered.split("\n");
-  // First line is the header (bold title + dim detail), rest are dim body
-  if (lines[0]) printToolHeader(label, detail);
+  if (lines[0]) printToolHeader(toolLabel, detail);
   for (const line of lines.slice(1)) {
     printDim(line);
   }
@@ -122,117 +118,23 @@ export function parseRunExitCode(raw: string): number | null {
   return parsed.success ? parsed.data : null;
 }
 
-export function formatForTool(kind: "find" | "search" | "read" | "diff" | "run" | "status", raw: string): string {
-  if (kind === "find") return formatFindOutput(raw);
-  if (kind === "search") return formatSearchOutput(raw);
-  if (kind === "read") return formatReadOutput(raw);
-  if (kind === "diff") return formatDiffOutput(raw);
-  if (kind === "run") return formatRunOutput(raw);
-  return formatGitStatusOutput(raw);
+const TOOL_FORMATTERS: Record<string, (raw: string) => string> = {
+  "find-files": formatFindOutput,
+  "search-files": formatSearchOutput,
+  "read-file": formatReadOutput,
+  "scan-code": formatReadOutput,
+  "git-diff": formatDiffOutput,
+  "edit-file": formatDiffOutput,
+  "edit-code": formatDiffOutput,
+  "create-file": formatDiffOutput,
+  "run-command": formatRunOutput,
+  "git-status": formatGitStatusOutput,
+};
+
+export function formatForTool(toolId: string, raw: string): string {
+  return (TOOL_FORMATTERS[toolId] ?? formatReadOutput)(raw);
 }
 
-export function summarizeDiff(raw: string): {
-  added: number;
-  removed: number;
-  locations: number;
-  preview: string[];
-} {
-  const preview: string[] = [];
-  let added = 0;
-  let removed = 0;
-  let locations = 0;
-  const lines = raw.split("\n");
-  for (const line of lines) {
-    if (
-      line.startsWith("diff --git ") ||
-      line.startsWith("index ") ||
-      line.startsWith("--- ") ||
-      line.startsWith("+++ ")
-    ) {
-      continue;
-    }
-    if (line.startsWith("@@ ")) {
-      locations += 1;
-      preview.push(line);
-      continue;
-    }
-    if (line.startsWith("+")) {
-      added += 1;
-      continue;
-    }
-    if (line.startsWith("-")) removed += 1;
-  }
-
-  // Build a compact hunk-centered preview with one context line around edits.
-  let currentHunkHeader = "";
-  let currentHunkBody: string[] = [];
-  const excerpt: string[] = [];
-  const flushHunk = (): void => {
-    if (!currentHunkHeader) return;
-    const changedIdxs = currentHunkBody
-      .map((line, index) => ({ line, index }))
-      .filter((entry) => entry.line.startsWith("+") || entry.line.startsWith("-"))
-      .map((entry) => entry.index);
-    if (changedIdxs.length === 0) {
-      currentHunkHeader = "";
-      currentHunkBody = [];
-      return;
-    }
-    const include = new Set<number>();
-    for (const idx of changedIdxs) {
-      include.add(idx - 1);
-      include.add(idx);
-      include.add(idx + 1);
-    }
-    excerpt.push(currentHunkHeader);
-    for (let i = 0; i < currentHunkBody.length; i += 1) {
-      if (!include.has(i)) continue;
-      const line = currentHunkBody[i];
-      if (line === undefined) continue;
-      excerpt.push(line);
-    }
-    currentHunkHeader = "";
-    currentHunkBody = [];
-  };
-
-  for (const line of lines) {
-    if (line.startsWith("@@ ")) {
-      flushHunk();
-      currentHunkHeader = line;
-      currentHunkBody = [];
-      continue;
-    }
-    if (
-      line.startsWith("diff --git ") ||
-      line.startsWith("index ") ||
-      line.startsWith("--- ") ||
-      line.startsWith("+++ ")
-    ) {
-      continue;
-    }
-    if (!currentHunkHeader) continue;
-    currentHunkBody.push(line);
-  }
-  flushHunk();
-
-  return { added, removed, locations, preview: clampLines(excerpt, 18) };
-}
-
-export function formatEditUpdateOutput(matches: number, diff: string): string {
-  const summary = summarizeDiff(diff);
-  const lines = [
-    `${t("unit.replacement", { count: matches })} applied.`,
-    `${t("unit.location", { count: summary.locations })} updated.`,
-    `Added ${t("unit.line", { count: summary.added })}, removed ${t("unit.line", { count: summary.removed })}.`,
-  ];
-  if (summary.preview.length > 0) {
-    lines.push("Preview:");
-    lines.push(...summary.preview);
-  } else {
-    lines.push("No diff preview available (file may be untracked or unchanged in git).");
-  }
-  return lines.join("\n");
-}
 
 export function formatReadDetail(pathInput: string, start?: string, end?: string): string {
   if (!start && !end) return pathInput;
@@ -253,16 +155,3 @@ export function formatAssistantReplyOutput(content: string, wrapWidth = 100): st
     .join("\n");
 }
 
-export function parseEditResult(raw: string): { path: string; edits: number; dryRun: boolean } | null {
-  const path = raw.match(/^path=(.*)$/m)?.[1]?.trim();
-  const editsText = raw.match(/^edits=(.*)$/m)?.[1]?.trim();
-  const dryRunText = raw.match(/^dry_run=(.*)$/m)?.[1]?.trim();
-  if (!path || !editsText || !dryRunText) return null;
-  if (dryRunText !== "true" && dryRunText !== "false") return null;
-  const parsed = editResultSchema.safeParse({
-    path,
-    edits: editsText,
-    dryRun: dryRunText === "true",
-  });
-  return parsed.success ? parsed.data : null;
-}
