@@ -154,7 +154,7 @@ export async function initMode(args: string[], deps: InitModeDeps): Promise<void
     return;
   }
   const next = upsertDotEnvValue(existing, envKey, apiKey);
-  await writeFile(envPath, next, "utf8");
+  await writeFile(envPath, next, { encoding: "utf8", mode: 0o600 });
 
   printDim(t("cli.init.saved", { envKey, path: envPath }));
   printDim(t("cli.init.next"));
