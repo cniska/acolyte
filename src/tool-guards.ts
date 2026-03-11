@@ -24,12 +24,14 @@ export type SessionContext = {
   taskId?: string;
   mode?: string;
   flags: SessionFlags;
+  writeTools: ReadonlySet<string>;
   onGuard?: (event: GuardEvent) => void;
 };
 
 const FILE_CHURN_MIN_COMBINED = 12;
 const FILE_CHURN_MIN_READS = 5;
 const FILE_CHURN_MIN_EDITS = 5;
+const FILE_READ_ONLY_CHURN_MIN = 4;
 const DISCOVERY_LOOP_MIN_CALLS = 4;
 
 export type GuardReport = (action: "blocked" | "flag_set", detail?: string) => void;
@@ -48,8 +50,12 @@ export type ToolGuard = {
   check: (input: GuardInput) => void;
 };
 
-export function createSessionContext(taskId?: string): SessionContext {
-  return { callLog: [], taskId, flags: {} };
+function isWriteTool(session: SessionContext, toolName: string): boolean {
+  return session.writeTools.has(toolName);
+}
+
+export function createSessionContext(taskId?: string, writeTools: ReadonlySet<string> = new Set()): SessionContext {
+  return { callLog: [], taskId, flags: {}, writeTools };
 }
 
 function scopedCallLog(session: SessionContext): ToolCallRecord[] {
@@ -123,19 +129,26 @@ function guardArgsEqual(a: Record<string, unknown>, b: Record<string, unknown>):
   return JSON.stringify(normalizeGuardArgValue(a)) === JSON.stringify(normalizeGuardArgValue(b));
 }
 
+const DUPLICATE_CALL_LOOKBACK = 3;
+
 const duplicateCallGuard: ToolGuard = {
   id: "duplicate-call",
-  description: "Block immediate duplicate tool calls with effectively identical arguments.",
+  description: "Block near-duplicate tool calls with no state-changing tool in between.",
   appliesTo: "all",
   check({ toolName, args, session, report }) {
     const calls = scopedCallLog(session);
-    const last = calls[calls.length - 1];
-    if (!last || last.toolName !== toolName) return;
-    if (!guardArgsEqual(last.args, args)) return;
-    report("blocked", "duplicate-call");
-    throw new Error(
-      `Duplicate ${toolName} call detected with unchanged arguments. Reuse previous result or change inputs.`,
-    );
+    const writeTools = session.writeTools;
+    const lookback = calls.slice(-DUPLICATE_CALL_LOOKBACK);
+    for (let i = lookback.length - 1; i >= 0; i -= 1) {
+      const prior = lookback[i];
+      if (prior.toolName === toolName && guardArgsEqual(prior.args, args)) {
+        report("blocked", "duplicate-call");
+        throw new Error(
+          `Duplicate ${toolName} call detected with unchanged arguments. Reuse previous result or change inputs.`,
+        );
+      }
+      if (writeTools.has(prior.toolName)) return;
+    }
   },
 };
 
@@ -196,16 +209,21 @@ const fileChurnGuard: ToolGuard = {
         for (const path of extractReadPaths(entry.args, { normalize: true })) {
           countsForPath(path).readCount += 1;
         }
-      } else if (entry.toolName === "edit-file" || entry.toolName === "edit-code") {
-        const path = entry.args.path;
-        if (typeof path !== "string") continue;
-        countsForPath(normalizePath(path)).editCount += 1;
+      } else if (isWriteTool(session, entry.toolName) && typeof entry.args.path === "string") {
+        countsForPath(normalizePath(entry.args.path)).editCount += 1;
       }
     }
 
     if (targetPaths.length !== 1) return;
     const target = targetPaths[0];
     const { readCount, editCount } = countsForPath(target);
+
+    if (toolName === "read-file" && editCount === 0 && readCount >= FILE_READ_ONLY_CHURN_MIN) {
+      report("blocked", target);
+      throw new Error(
+        `File "${target}" has been read ${readCount} times without edits. Use the content you already have or move on.`,
+      );
+    }
 
     const combined = readCount + editCount;
     if (combined < FILE_CHURN_MIN_COMBINED || readCount < FILE_CHURN_MIN_READS || editCount < FILE_CHURN_MIN_EDITS)
@@ -255,7 +273,7 @@ const redundantSearchGuard: ToolGuard = {
         searchCount += 1;
       } else if (entry.toolName === "read-file") {
         readCount += 1;
-      } else if (entry.toolName === "edit-file" || entry.toolName === "edit-code" || entry.toolName === "create-file") {
+      } else if (isWriteTool(session, entry.toolName)) {
         writeCount += 1;
       }
     }
@@ -315,7 +333,7 @@ const redundantFindGuard: ToolGuard = {
         findCount += 1;
       } else if (entry.toolName === "read-file") {
         readCount += 1;
-      } else if (entry.toolName === "edit-file" || entry.toolName === "edit-code" || entry.toolName === "create-file") {
+      } else if (isWriteTool(session, entry.toolName)) {
         writeCount += 1;
       }
     }
@@ -349,7 +367,7 @@ const redundantVerifyGuard: ToolGuard = {
     let wroteAfterLastVerify = false;
     for (let i = lastVerifyRunIndex + 1; i < calls.length; i += 1) {
       const tool = calls[i]?.toolName;
-      if (tool === "edit-file" || tool === "edit-code" || tool === "create-file" || tool === "delete-file") {
+      if (tool && isWriteTool(session, tool)) {
         wroteAfterLastVerify = true;
         break;
       }

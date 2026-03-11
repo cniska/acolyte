@@ -105,7 +105,7 @@ export function toolsForAgent(options?: { workspace?: string; onOutput?: ToolOut
   session: SessionContext;
 } {
   const workspace = options?.workspace ?? resolve(process.cwd());
-  const session = createSessionContext(options?.taskId);
+  const session = createSessionContext(options?.taskId, WRITE_TOOL_SET);
   return {
     tools: collectTools(workspace, session, options?.onOutput) as unknown as Toolset,
     session,

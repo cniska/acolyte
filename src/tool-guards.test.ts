@@ -106,6 +106,7 @@ describe("redundant-verify guard", () => {
   test("allows verify rerun after a write", () => {
     const session = createSessionContext();
     session.mode = "verify";
+    session.writeTools = new Set(["edit-file", "run-command"]);
     recordCall(session, "run-command", { command: "bun run verify" });
     recordCall(session, "edit-file", { path: "src/foo.ts" });
     expect(() => runGuards({ toolName: "run-command", args: { command: "bun run verify" }, session })).not.toThrow();
@@ -166,6 +167,7 @@ describe("file-churn guard", () => {
 
   test("allows duplicate read after edit on same path", () => {
     const session = createSessionContext();
+    session.writeTools = new Set(["edit-file"]);
     recordCall(session, "read-file", { paths: [{ path: "src/foo.ts" }] });
     recordCall(session, "edit-file", { path: "src/foo.ts" });
     expect(() =>
@@ -183,6 +185,7 @@ describe("file-churn guard", () => {
 
   test("blocks repeated read/edit churn on same path before verify", () => {
     const session = createSessionContext();
+    session.writeTools = new Set(["edit-file"]);
     for (let i = 0; i < 6; i += 1) {
       recordCall(session, "read-file", { paths: [{ path: "src/foo.ts" }] });
       recordCall(session, "edit-file", { path: "src/foo.ts" });
@@ -292,6 +295,7 @@ describe("redundant-search guard", () => {
 
   test("does not block when a write tool has already been used", () => {
     const session = createSessionContext();
+    session.writeTools = new Set(["edit-file"]);
     for (let i = 0; i < 4; i += 1) {
       recordCall(session, "search-files", { pattern: `query-${i}` });
     }
@@ -346,6 +350,7 @@ describe("redundant-find guard", () => {
 
   test("does not block when a write tool has already been used", () => {
     const session = createSessionContext();
+    session.writeTools = new Set(["edit-file"]);
     for (let i = 0; i < 4; i += 1) {
       recordCall(session, "find-files", { patterns: [`query-${i}`] });
     }
@@ -377,10 +382,21 @@ describe("duplicate-call guard", () => {
     );
   });
 
-  test("allows same tool call after a different tool call", () => {
+  test("blocks duplicate with only read-only tools in between", () => {
     const session = createSessionContext();
+    session.writeTools = new Set(["edit-file", "run-command"]);
     recordCall(session, "git-status", {});
     recordCall(session, "read-file", { paths: [{ path: "src/a.ts" }] });
+    expect(() => runGuards({ toolName: "git-status", args: {}, session })).toThrow(
+      /Duplicate git-status call detected/,
+    );
+  });
+
+  test("allows duplicate after a write tool in between", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file", "run-command"]);
+    recordCall(session, "git-status", {});
+    recordCall(session, "edit-file", { path: "src/a.ts" });
     expect(() => runGuards({ toolName: "git-status", args: {}, session })).not.toThrow();
   });
 
