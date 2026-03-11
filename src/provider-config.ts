@@ -65,17 +65,11 @@ export function providerFromModel(model: string): Provider {
   return "openai";
 }
 
-export function isProviderAvailable(input: {
-  provider: Provider;
-  openaiApiKey?: string;
-  openaiBaseUrl?: string;
-  anthropicApiKey?: string;
-  anthropicBaseUrl?: string;
-  googleApiKey?: string;
-}): boolean {
-  if (input.provider === "anthropic")
-    return Boolean(input.anthropicApiKey) && isAnthropicBaseUrlValid(input.anthropicBaseUrl);
-  if (input.provider === "google") return Boolean(input.googleApiKey);
-  if (input.openaiBaseUrl && isOpenAICompatibleBaseUrl(input.openaiBaseUrl)) return true;
-  return Boolean(input.openaiApiKey);
+export type ProviderCredentials = { apiKey?: string; baseUrl?: string };
+
+export function isProviderAvailable(provider: Provider, credentials: ProviderCredentials): boolean {
+  if (provider === "anthropic") return Boolean(credentials.apiKey) && isAnthropicBaseUrlValid(credentials.baseUrl);
+  if (provider === "google") return Boolean(credentials.apiKey);
+  if (credentials.baseUrl && isOpenAICompatibleBaseUrl(credentials.baseUrl)) return true;
+  return Boolean(credentials.apiKey);
 }

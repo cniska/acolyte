@@ -28,50 +28,13 @@ describe("provider config", () => {
   });
 
   test("isProviderAvailable validates credential requirements", () => {
-    expect(
-      isProviderAvailable({
-        provider: "openai",
-        openaiApiKey: undefined,
-        openaiBaseUrl: "https://api.openai.com/v1",
-      }),
-    ).toBe(false);
-    expect(
-      isProviderAvailable({
-        provider: "openai",
-        openaiApiKey: "sk-openai",
-        openaiBaseUrl: "https://api.openai.com/v1",
-      }),
-    ).toBe(true);
-    expect(
-      isProviderAvailable({
-        provider: "openai",
-        openaiApiKey: undefined,
-        openaiBaseUrl: "http://localhost:11434/v1",
-      }),
-    ).toBe(true);
-    expect(
-      isProviderAvailable({
-        provider: "anthropic",
-        anthropicApiKey: undefined,
-        openaiBaseUrl: "https://api.openai.com/v1",
-        anthropicBaseUrl: "https://api.anthropic.com/v1",
-      }),
-    ).toBe(false);
-    expect(
-      isProviderAvailable({
-        provider: "anthropic",
-        anthropicApiKey: "sk-ant",
-        openaiBaseUrl: "https://api.openai.com/v1",
-        anthropicBaseUrl: "https://api.anthropic.com/v1",
-      }),
-    ).toBe(true);
-    expect(
-      isProviderAvailable({
-        provider: "anthropic",
-        anthropicApiKey: "sk-ant",
-        openaiBaseUrl: "https://api.openai.com/v1",
-        anthropicBaseUrl: "https://api.anthropic.com",
-      }),
-    ).toBe(false);
+    expect(isProviderAvailable("openai", { baseUrl: "https://api.openai.com/v1" })).toBe(false);
+    expect(isProviderAvailable("openai", { apiKey: "sk-openai", baseUrl: "https://api.openai.com/v1" })).toBe(true);
+    expect(isProviderAvailable("openai", { baseUrl: "http://localhost:11434/v1" })).toBe(true);
+    expect(isProviderAvailable("anthropic", { baseUrl: "https://api.anthropic.com/v1" })).toBe(false);
+    expect(isProviderAvailable("anthropic", { apiKey: "sk-ant", baseUrl: "https://api.anthropic.com/v1" })).toBe(true);
+    expect(isProviderAvailable("anthropic", { apiKey: "sk-ant", baseUrl: "https://api.anthropic.com" })).toBe(false);
+    expect(isProviderAvailable("google", { apiKey: "sk-goog" })).toBe(true);
+    expect(isProviderAvailable("google", {})).toBe(false);
   });
 });

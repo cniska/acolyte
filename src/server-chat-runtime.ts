@@ -131,14 +131,12 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
   const requestId = nextErrorId();
   const startedAt = Date.now();
   const modelProvider = providerFromModel(chatRequest.model);
-  const providerReady = isProviderAvailable({
-    provider: modelProvider,
-    openaiApiKey: OPENAI_API_KEY,
-    openaiBaseUrl: OPENAI_BASE_URL,
-    anthropicApiKey: appConfig.anthropic.apiKey,
-    anthropicBaseUrl: appConfig.anthropic.baseUrl,
-    googleApiKey: appConfig.google.apiKey,
-  });
+  const providerCredentials: Record<string, { apiKey?: string; baseUrl?: string }> = {
+    openai: { apiKey: OPENAI_API_KEY, baseUrl: OPENAI_BASE_URL },
+    anthropic: appConfig.anthropic,
+    google: appConfig.google,
+  };
+  const providerReady = isProviderAvailable(modelProvider, providerCredentials[modelProvider] ?? {});
   if (!providerReady) {
     const payload = streamErrorPayload(
       new Error(

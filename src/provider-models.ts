@@ -83,29 +83,9 @@ function providerConfig(provider: Provider): ProviderFetchConfig {
 
 function availableProviders(): Provider[] {
   const providers: Provider[] = [];
-  if (
-    isProviderAvailable({
-      provider: "openai",
-      openaiApiKey: appConfig.openai.apiKey,
-      openaiBaseUrl: appConfig.openai.baseUrl,
-    })
-  )
-    providers.push("openai");
-  if (
-    isProviderAvailable({
-      provider: "anthropic",
-      anthropicApiKey: appConfig.anthropic.apiKey,
-      anthropicBaseUrl: appConfig.anthropic.baseUrl,
-    })
-  )
-    providers.push("anthropic");
-  if (
-    isProviderAvailable({
-      provider: "google",
-      googleApiKey: appConfig.google.apiKey,
-    })
-  )
-    providers.push("google");
+  if (isProviderAvailable("openai", appConfig.openai)) providers.push("openai");
+  if (isProviderAvailable("anthropic", appConfig.anthropic)) providers.push("anthropic");
+  if (isProviderAvailable("google", appConfig.google)) providers.push("google");
   return providers;
 }
 

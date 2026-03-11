@@ -1,40 +1,27 @@
 import { appConfig } from "./app-config";
-import { isProviderAvailable, providerFromModel } from "./provider-config";
+import { type ProviderCredentials, isProviderAvailable, providerFromModel } from "./provider-config";
 import type { Provider } from "./provider-contract";
 
-export type ModelCredentials = {
-  openaiApiKey?: string;
-  openaiBaseUrl: string;
-  anthropicApiKey?: string;
-  anthropicBaseUrl?: string;
-  googleApiKey?: string;
-};
+export type ProviderCredentialsMap = Partial<Record<Provider, ProviderCredentials>>;
+
+const defaultCredentials = (): ProviderCredentialsMap => ({
+  openai: appConfig.openai,
+  anthropic: appConfig.anthropic,
+  google: appConfig.google,
+});
 
 export function resolveModelProviderState(
   model: string,
-  credentials: ModelCredentials = {
-    openaiApiKey: appConfig.openai.apiKey,
-    openaiBaseUrl: appConfig.openai.baseUrl,
-    anthropicApiKey: appConfig.anthropic.apiKey,
-    anthropicBaseUrl: appConfig.anthropic.baseUrl,
-    googleApiKey: appConfig.google.apiKey,
-  },
+  credentials: ProviderCredentialsMap = defaultCredentials(),
 ): { provider: Provider; available: boolean } {
   const provider = providerFromModel(model);
-  const available = isProviderAvailable({
-    provider,
-    openaiApiKey: credentials.openaiApiKey,
-    openaiBaseUrl: credentials.openaiBaseUrl,
-    anthropicApiKey: credentials.anthropicApiKey,
-    anthropicBaseUrl: credentials.anthropicBaseUrl,
-    googleApiKey: credentials.googleApiKey,
-  });
+  const available = isProviderAvailable(provider, credentials[provider] ?? {});
   return { provider, available };
 }
 
 export function resolveRunnableModel(
   requestedModel: string,
-  credentials?: ModelCredentials,
+  credentials?: ProviderCredentialsMap,
 ): {
   model: string;
   provider: Provider;

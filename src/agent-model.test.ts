@@ -5,8 +5,7 @@ describe("resolveModelProviderState", () => {
   test("marks openai as unavailable without OpenAI credentials on api.openai.com", () => {
     expect(
       resolveModelProviderState("openai/gpt-5-mini", {
-        openaiApiKey: undefined,
-        openaiBaseUrl: "https://api.openai.com/v1",
+        openai: { baseUrl: "https://api.openai.com/v1" },
       }),
     ).toEqual({
       provider: "openai",
@@ -17,8 +16,7 @@ describe("resolveModelProviderState", () => {
   test("maps openai-compatible models to openai provider and stays available without key", () => {
     expect(
       resolveModelProviderState("openai-compatible/qwen2.5-coder", {
-        openaiApiKey: undefined,
-        openaiBaseUrl: "http://localhost:11434/v1",
+        openai: { baseUrl: "http://localhost:11434/v1" },
       }),
     ).toEqual({
       provider: "openai",
@@ -28,10 +26,7 @@ describe("resolveModelProviderState", () => {
 
   test("marks anthropic and google availability by provider-specific credentials", () => {
     expect(
-      resolveModelProviderState("anthropic/claude-sonnet-4", {
-        openaiBaseUrl: "https://api.openai.com/v1",
-        anthropicApiKey: undefined,
-      }),
+      resolveModelProviderState("anthropic/claude-sonnet-4", {}),
     ).toEqual({
       provider: "anthropic",
       available: false,
@@ -39,8 +34,7 @@ describe("resolveModelProviderState", () => {
 
     expect(
       resolveModelProviderState("google/gemini-2.5-pro", {
-        openaiBaseUrl: "https://api.openai.com/v1",
-        googleApiKey: "sk-goog",
+        google: { apiKey: "sk-goog" },
       }),
     ).toEqual({
       provider: "google",
@@ -53,8 +47,7 @@ describe("resolveRunnableModel", () => {
   test("returns available when provider has credentials", () => {
     expect(
       resolveRunnableModel("openai/gpt-5-mini", {
-        openaiApiKey: "sk-openai",
-        openaiBaseUrl: "https://api.openai.com/v1",
+        openai: { apiKey: "sk-openai", baseUrl: "https://api.openai.com/v1" },
       }),
     ).toEqual({
       model: "openai/gpt-5-mini",
@@ -66,8 +59,7 @@ describe("resolveRunnableModel", () => {
   test("returns unavailable when provider lacks credentials", () => {
     expect(
       resolveRunnableModel("openai/gpt-5-mini", {
-        openaiApiKey: undefined,
-        openaiBaseUrl: "https://api.openai.com/v1",
+        openai: { baseUrl: "https://api.openai.com/v1" },
       }),
     ).toEqual({
       model: "openai/gpt-5-mini",
