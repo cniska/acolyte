@@ -96,16 +96,16 @@ The architecture is daemon-based. A headless server handles all the AI work. The
 Every request flows through five explicit phases, each in its own module.
 
 ```
-┌─────────┐   ┌─────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐
-│ resolve │ → │ prepare │ → │ generate │ → │ evaluate │ → │ finalize │
-└─────────┘   └─────────┘   └──────────┘   └──────────┘   └──────────┘
+┌───────────┐   ┌───────────┐   ┌────────────┐   ┌────────────┐   ┌────────────┐
+│  resolve  │ → │  prepare  │ → │  generate  │ → │  evaluate  │ → │  finalize  │
+└───────────┘   └───────────┘   └────────────┘   └────────────┘   └────────────┘
 ```
 
-- **resolve** — pick mode (work/verify) and model
-- **prepare** — wire tools, session context, and guards
-- **generate** — run the model with tool calls
-- **evaluate** — inspect output, decide accept / retry / re-generate
-- **finalize** — persist results and emit the response
+- **Resolve** — pick mode (work/verify) and model
+- **Prepare** — wire tools, session context, and guards
+- **Generate** — run the model with tool calls
+- **Evaluate** — inspect output, decide accept or re-generate
+- **Finalize** — persist results and emit the response
 
 <!--
 This is the core of Acolyte. Every request goes through five explicit phases.
@@ -125,29 +125,25 @@ No other open-source agent separates these into independently testable modules.
 
 Two layers prevent the agent from wasting time and tokens.
 
-**Guards** — behavioral checks before every tool call:
+```
+┌──────────┐   ┌─────────┐   ┌───────────┐   ┌──────────┐
+│  guards  │ → │  cache  │ → │  execute  │ → │  record  │
+└──────────┘   └─────────┘   └───────────┘   └──────────┘
+```
 
-- **step-budget** — per-cycle and total step limits
-- **duplicate-call** — identical consecutive tool calls (non-cached tools)
-- **file-churn** — excessive read/edit loops on same file
-- **redundant-search / find / verify** — repeated loops without progress
+- **Guards** — block degenerate patterns: step budgets, churn loops, redundant discovery
+- **Cache** — return identical read-only results instantly (LRU, 256 entries per task)
+- **Execute** — run the tool against the workspace
+- **Record** — track calls and invalidate cache entries on writes
 
-**Cache** — LRU result cache for read-only and search tools:
-
-- Identical calls return instantly without re-executing
-- Write operations invalidate affected entries
-- Capped at 256 entries per task
-
-Guards correct behavior. Cache eliminates waste. Both are pluggable.
+Both guards and cache are pluggable — add your own without touching the pipeline.
 
 <!--
 Two layers work together to keep the agent efficient.
 
-First, guards. Anyone who's used AI coding agents knows they can get stuck in loops — reading the same file over and over, searching for the same thing, running tests when nothing changed. Guards are functions that run before every tool call. They look at the call history and decide: allow or block.
+Guards are functions that run before every tool call. They look at the call history and decide: allow or block. File-churn tracks how many times the agent has read and edited the same file — cross the threshold, it blocks the call and tells the model to move on. Step-budget is a hard limit: N tool calls per cycle, then stop cleanly.
 
-File-churn tracks how many times the agent has read and edited the same file. Cross the threshold, the guard blocks the call and tells the model to move on. Step-budget is a hard limit — N tool calls per cycle, then stop cleanly.
-
-Second, the result cache. Read-only and search tools are cached per-task with LRU eviction. If the agent reads the same file twice with identical arguments, the second call returns instantly from cache — no disk I/O, no wasted tokens. When the agent writes — edits a file, runs a command — the cache invalidates affected entries. Shell commands clear the whole cache since they could change anything.
+The result cache sits after guards. Read-only and search tools are cached per-task with LRU eviction. If the agent reads the same file twice with identical arguments, the second call returns instantly — no disk I/O, no wasted tokens. When the agent writes, the cache invalidates affected entries. Shell commands clear the whole cache since they could change anything.
 
 Guards correct degenerate behavior by blocking it. The cache silently eliminates redundant work. Both are pluggable — add your own guard or swap the cache strategy without touching the pipeline.
 -->
@@ -163,10 +159,15 @@ Context distillation instead of context compaction.
 - Three tiers: **session** → **project** → **user**
 
 ```
-┌────────┐   ┌───────────┐   ┌────────┐   ┌────────┐   ┌────────┐
-│ ingest │ → │ normalize │ → │ select │ → │ inject │ → │ commit │
-└────────┘   └───────────┘   └────────┘   └────────┘   └────────┘
+┌──────────┐   ┌─────────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐
+│  ingest  │ → │  normalize  │ → │  select  │ → │  inject  │ → │  commit  │
+└──────────┘   └─────────────┘   └──────────┘   └──────────┘   └──────────┘
 ```
+
+- **Ingest / Normalize** — extract structured facts, deduplicate, and clean
+- **Select** — pick what fits within the token budget
+- **Inject** — add selected facts to the next request
+- **Commit** — persist to storage for future sessions
 
 Each stage is strategy-injectable. Inspired by [Mastra's Observational Memory](https://mastra.ai/docs/memory/observational-memory).
 
@@ -192,14 +193,16 @@ Each stage is a strategy you can swap. The model is inspired by Mastra's Observa
 Proactive token budgeting via tiktoken — not reactive compaction.
 
 ```
-┌─────────────────┐   ┌───────────────────┐   ┌─────────────────┐   ┌───────────┐   ┌─────────────────┐
-│  system prompt  │ → │  pinned / memory  │ → │   attachments   │ → │  history  │ → │  tool payloads  │
-└─────────────────┘   └───────────────────┘   └─────────────────┘   └───────────┘   └─────────────────┘
+┌─────────────────┐   ┌──────────┐   ┌───────────────┐   ┌───────────┐   ┌─────────────────┐
+│  system prompt  │ → │  memory  │ → │  attachments  │ → │  history  │ → │  tool payloads  │
+└─────────────────┘   └──────────┘   └───────────────┘   └───────────┘   └─────────────────┘
 ```
 
-- Budget allocated by priority before assembly, not compressed after the fact
-- Older tool outputs progressively capped by age
-- Truncation is explicit — the model sees a notice, no silent data loss
+- **System prompt** — measured and reserved first, non-negotiable baseline
+- **Memory** — skills, memory facts, and session context
+- **Attachments** — explicitly attached files
+- **History** — conversation turns, newest first, fills remaining space
+- **Tool payloads** — age-capped: recent turns get full budget, older ones shrink to 60 tokens
 
 <!--
 This is closely related to memory. You have a finite context window — say 128k or 200k tokens. How do you decide what goes in?
@@ -265,7 +268,6 @@ Clean contracts at every seam — no plugin runtime, no DI container.
 - **Memory** — strategy-injectable normalization and selection
 - **Tools** — toolkit registration with permission categories and guard hooks
 - **Skills** — declarative SKILL.md with tool restrictions and compatibility metadata
-- **Transport** — swap HTTP for WebSocket without changing lifecycle behavior
 
 When you need to extend, you implement a contract. When you don't, the defaults work.
 
@@ -277,6 +279,8 @@ There's no DI container, no extension API to maintain, no plugin lifecycle to ma
 Want a custom guard? Implement the guard interface, add it to the array. Want a different memory selection strategy? Implement the strategy interface, pass it to the registry. Want to change how tools are registered? The toolkit contract is right there.
 
 Skills are the most accessible example — they're just Markdown files with frontmatter. Drop a SKILL.md in your project, define what tools it can use, and it's available via slash commands.
+
+And beyond extension, the existing systems are configurable out of the box — token budgets, step limits, tool output caps, model selection — all through the config file. You don't need to write code to tune behavior, only to add new behavior.
 
 The principle is "interface-first boundaries." Clean contracts at every seam, but no framework overhead.
 -->
