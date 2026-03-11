@@ -12,9 +12,11 @@ import { memoryMode } from "./cli-memory";
 import { handlePrompt } from "./cli-prompt";
 import { runMode, runResourceId } from "./cli-run";
 import { requestLocalServerShutdown } from "./cli-server";
+import { skillMode } from "./cli-skill";
 import { isServerConnectionFailure, statusMode } from "./cli-status";
 import { toolMode } from "./cli-tool";
 import { createClient } from "./client-factory";
+import { compactText } from "./compact-text";
 import { readConfig, readConfigForScope, readResolvedConfigSync, setConfigValue, unsetConfigValue } from "./config";
 
 import { t } from "./i18n";
@@ -27,6 +29,7 @@ import {
   stopAllLocalServers,
   stopLocalServer,
 } from "./server-daemon";
+import { findSkillByName, loadSkills, readSkillInstructions } from "./skills";
 import { formatStatusOutput as formatStatusOutputShared } from "./status-format";
 import { createSession, readStore } from "./storage";
 import { formatCliTitle, printDim, printError, printOutput } from "./ui";
@@ -249,6 +252,39 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
         commandError,
         commandHelp,
         unsetConfigValue,
+      }),
+  },
+  skill: {
+    help: {
+      command: "skill <name> [prompt]",
+      usage: "acolyte skill <name> [--file <path>] [--workspace <path>] <prompt>",
+      description: t("cli.help.desc.skill"),
+      examples: ['acolyte skill arch-audit "review the lifecycle module"'],
+    },
+    handler: (args) =>
+      skillMode(args, {
+        apiUrlForPort,
+        appModel: appConfig.model,
+        attachFileToSession,
+        compactText,
+        createClient,
+        createMessage,
+        createSession,
+        ensureLocalServer,
+        findSkillByName,
+        handlePrompt,
+        hasHelpFlag,
+        loadSkills,
+        printDim,
+        printError,
+        readResolvedConfigSync,
+        readSkillInstructions,
+        serverApiKey: appConfig.server.apiKey,
+        serverEntry: `${import.meta.dir}/server.ts`,
+        serverPort: appConfig.server.port,
+        skillBudget: appConfig.agent.skillBudget,
+        commandError,
+        commandHelp,
       }),
   },
   tool: {

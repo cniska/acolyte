@@ -102,21 +102,22 @@ describe("cli visual regression", () => {
         acolyte <COMMAND> [ARGS]
 
       Commands
-        init [provider]     initialize provider API key
-        resume [id-prefix]  resume previous session
-        run <prompt>        run a single prompt
-        history             show recent sessions
-        start               start server
-        stop                stop all servers
-        restart             restart server
-        ps                  list running servers
-        status              show server status
-        memory              manage memory
-        config              manage config
+        init [provider]        initialize provider API key
+        resume [id-prefix]     resume previous session
+        run <prompt>           run a single prompt
+        history                show recent sessions
+        start                  start server
+        stop                   stop all servers
+        restart                restart server
+        ps                     list running servers
+        status                 show server status
+        memory                 manage memory
+        config                 manage config
+        skill <name> [prompt]  run a prompt with an active skill
 
       Options
-        -h, --help          print help
-        -V, --version       print version
+        -h, --help             print help
+        -V, --version          print version
     `),
     );
   });
