@@ -100,19 +100,19 @@ export function emitFindSummary(
     content: { kind: "scope-header", label, scope: "workspace", patterns: labels, matches: unique.length },
     toolCallId,
   });
-  for (const path of unique.slice(0, maxFiles)) {
-    onOutput({
-      toolName: "find-files",
-      content: { kind: "text", text: toDisplayPath(path, workspace) },
-      toolCallId,
-    });
+  const displayed = unique.slice(0, maxFiles).map((path) => toDisplayPath(path, workspace));
+  const allInHeader = displayed.every((d) => labels.some((l) => d.endsWith(l) || l.endsWith(d)));
+  if (!allInHeader) {
+    for (const path of displayed) {
+      onOutput({ toolName: "find-files", content: { kind: "text", text: path }, toolCallId });
+    }
+    if (unique.length > maxFiles)
+      onOutput({
+        toolName: "find-files",
+        content: { kind: "truncated", count: unique.length - maxFiles, unit: "matches" },
+        toolCallId,
+      });
   }
-  if (unique.length > maxFiles)
-    onOutput({
-      toolName: "find-files",
-      content: { kind: "truncated", count: unique.length - maxFiles, unit: "matches" },
-      toolCallId,
-    });
 }
 
 export function findResultPaths(result: string): string[] {
