@@ -26,9 +26,6 @@
     "test:int": "bash scripts/run-test-suite.sh int",
     "test:perf": "bash scripts/run-test-suite.sh perf",
     "verify": "bun run format && bun run lint && bun run typecheck && bun test",
-    "om:status": "bun run scripts/om-admin.ts status",
-    "om:wipe": "bun run scripts/om-admin.ts wipe",
-    "om:soak": "bun run scripts/om-soak.ts",
     "benchmark": "bun run scripts/benchmark.ts",
     "benchmark:others": "./scripts/benchmark-others.sh"
   },
