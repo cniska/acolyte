@@ -94,7 +94,7 @@ async function readSourceRecord(tomlPath: string, jsonPath: string): Promise<Rec
   return {};
 }
 
-function readConfigScopeSync(scope: ConfigScope, options?: ConfigOptions): Config {
+function readConfigForScopeSync(scope: ConfigScope, options?: ConfigOptions): Config {
   const paths = resolvePaths(options);
   const raw =
     scope === "project"
@@ -103,7 +103,7 @@ function readConfigScopeSync(scope: ConfigScope, options?: ConfigOptions): Confi
   return toConfig(raw);
 }
 
-async function readConfigScope(scope: ConfigScope, options?: ConfigOptions): Promise<Config> {
+export async function readConfigForScope(scope: ConfigScope, options?: ConfigOptions): Promise<Config> {
   const paths = resolvePaths(options);
   const raw =
     scope === "project"
@@ -189,8 +189,8 @@ export function readResolvedConfigSync(options?: ConfigOptions): ResolvedConfig 
 
 export async function readConfig(options?: ConfigOptions): Promise<Config> {
   try {
-    const userConfig = await readConfigScope("user", options);
-    const projectConfig = await readConfigScope("project", options);
+    const userConfig = await readConfigForScope("user", options);
+    const projectConfig = await readConfigForScope("project", options);
     return mergeConfigScopes(userConfig, projectConfig);
   } catch {
     return {};
@@ -199,8 +199,8 @@ export async function readConfig(options?: ConfigOptions): Promise<Config> {
 
 export function readConfigSync(options?: ConfigOptions): Config {
   try {
-    const userConfig = readConfigScopeSync("user", options);
-    const projectConfig = readConfigScopeSync("project", options);
+    const userConfig = readConfigForScopeSync("user", options);
+    const projectConfig = readConfigForScopeSync("project", options);
     return mergeConfigScopes(userConfig, projectConfig);
   } catch {
     return {};
@@ -239,7 +239,7 @@ export async function setConfigValue(key: string, value: string, options?: Confi
   const dotted = parseDottedKey(key);
   if (dotted) {
     const schema = CONFIG_SET_SCHEMAS[dotted.section];
-    const current = await readConfigScope(scope, options);
+    const current = await readConfigForScope(scope, options);
     const existing = (current[dotted.section] ?? {}) as Record<string, unknown>;
     const merged = { ...existing, [dotted.subKey]: value };
     const parsed = schema.safeParse(merged);
@@ -258,7 +258,7 @@ export async function setConfigValue(key: string, value: string, options?: Confi
     throw new Error(
       t("cli.config.invalid_value", { key, reason: parsed.error.issues[0]?.message ?? parsed.error.message }),
     );
-  const current = await readConfigScope(scope, options);
+  const current = await readConfigForScope(scope, options);
   const next: Config = { ...current, [topKey]: parsed.data };
   await writeConfig(next, { ...options, scope });
 }
@@ -267,7 +267,7 @@ export async function unsetConfigValue(key: string, options?: ConfigOptions): Pr
   const scope = options?.scope ?? "user";
   const dotted = parseDottedKey(key);
   if (dotted) {
-    const current = await readConfigScope(scope, options);
+    const current = await readConfigForScope(scope, options);
     const existing = (current[dotted.section] ?? {}) as Record<string, unknown>;
     const { [dotted.subKey]: _, ...rest } = existing;
     const next: Config = { ...current, [dotted.section]: Object.keys(rest).length > 0 ? rest : undefined };
@@ -275,12 +275,8 @@ export async function unsetConfigValue(key: string, options?: ConfigOptions): Pr
     return;
   }
   const topKey = key as keyof Config;
-  const current = await readConfigScope(scope, options);
+  const current = await readConfigForScope(scope, options);
   const next: Config = { ...current };
   delete next[topKey];
   await writeConfig(next, { ...options, scope });
-}
-
-export async function readConfigForScope(scope: ConfigScope, options?: Omit<ConfigOptions, "scope">): Promise<Config> {
-  return readConfigScope(scope, options);
 }
