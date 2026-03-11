@@ -33,11 +33,15 @@ export async function startRemoteTaskFollowup(input: StartRemoteTaskFollowupInpu
         const next = await input.client.taskStatus(input.remoteTaskId);
         if (!next || next.state === "running" || next.state === "detached") continue;
         if (next.state === "failed") {
-          const detail = next.summary?.trim() || t("chat.task.followup.failed");
-          input.setRows((current) => [...current, createRow("task", detail, { dim: true, marker: palette.error })]);
+          input.setRows((current) => [
+            ...current,
+            createRow("task", t("chat.task.followup.failed"), { dim: true, marker: palette.error }),
+          ]);
         } else if (next.state === "cancelled") {
-          const detail = next.summary?.trim() || t("chat.task.followup.cancelled");
-          input.setRows((current) => [...current, createRow("task", detail, { dim: true, marker: palette.cancelled })]);
+          input.setRows((current) => [
+            ...current,
+            createRow("task", t("chat.task.followup.cancelled"), { dim: true, marker: palette.cancelled }),
+          ]);
         }
         await input.persist();
         return;

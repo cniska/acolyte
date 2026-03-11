@@ -16,13 +16,12 @@ describe("task registry", () => {
     expect(typeof created.updatedAt).toBe("string");
 
     await Bun.sleep(1);
-    const updatedResult = registry.transitionTask("task_1", { state: "completed", summary: "done" });
+    const updatedResult = registry.transitionTask("task_1", { state: "completed" });
     expect(updatedResult.ok).toBe(true);
     invariant(updatedResult.ok, "Expected successful upsert");
     const updated = updatedResult.task;
     expect(updated.id).toBe("task_1");
     expect(updated.state).toBe("completed");
-    expect(updated.summary).toBe("done");
     expect(updated.createdAt).toBe(created.createdAt);
     expect(updated.updatedAt >= created.updatedAt).toBe(true);
 

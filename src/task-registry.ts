@@ -3,7 +3,6 @@ import { createInMemoryTaskStore, type TaskStore } from "./task-store";
 
 type TaskPatch = {
   state?: TaskState;
-  summary?: string;
 };
 
 const ALLOWED_TRANSITIONS: Record<TaskState, readonly TaskState[]> = {
@@ -103,7 +102,6 @@ export class TaskRegistry {
       state: patch.state ?? existing?.state ?? "accepted",
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
-      summary: patch.summary ?? existing?.summary,
     };
     this.store.set(taskId, next);
     this.pruneIfNeeded();

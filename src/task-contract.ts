@@ -32,7 +32,6 @@ export const taskRecordSchema = z.object({
   state: taskStateSchema,
   createdAt: isoDateTimeSchema,
   updatedAt: isoDateTimeSchema,
-  summary: z.string().optional(),
 });
 
 export type TaskRecord = Readonly<z.infer<typeof taskRecordSchema>>;
