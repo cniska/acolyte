@@ -48,7 +48,7 @@ export function acquireSessionLock(
     }
   }
 
-  writeFileSync(lockPath, String(myPid), { encoding: "utf8", mode: 0o644 });
+  writeFileSync(lockPath, String(myPid), { encoding: "utf8", mode: 0o600 });
   return { ok: true };
 }
 

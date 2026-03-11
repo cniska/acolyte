@@ -89,7 +89,7 @@ async function readServerLock(path: string): Promise<ServerLock | null> {
 
 async function writeServerLock(path: string, lock: ServerLock): Promise<void> {
   await mkdir(join(path, ".."), { recursive: true });
-  await writeFile(path, JSON.stringify(lock), "utf8");
+  await writeFile(path, JSON.stringify(lock), { encoding: "utf8", mode: 0o600 });
 }
 
 function isProcessAlive(pid: number): boolean {
@@ -136,7 +136,7 @@ async function tryAcquireStartupLock(path: string): Promise<boolean> {
   await mkdir(join(path, ".."), { recursive: true });
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
-      await writeFile(path, String(process.pid), { flag: "wx" });
+      await writeFile(path, String(process.pid), { flag: "wx", mode: 0o600 });
       return true;
     } catch (error) {
       const code = (error as { code?: string }).code;
@@ -205,7 +205,7 @@ export async function ensureLocalServer(input: EnsureLocalServerInput): Promise<
 
   const logPath = serverLogPath(port, homeDir);
   await mkdir(join(logPath, ".."), { recursive: true });
-  const logFd = openSync(logPath, "a");
+  const logFd = openSync(logPath, "a", 0o600);
   const proc = Bun.spawn([process.execPath, "run", serverEntry], {
     env: { ...process.env, PORT: String(port) },
     stdout: logFd,
