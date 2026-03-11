@@ -121,28 +121,35 @@ No other open-source agent separates these into independently testable modules.
 
 ---
 
-# Tool guards
+# Guards and caching
 
-Behavioral guards run before every tool call and block degenerate patterns at runtime.
+Two layers prevent the agent from wasting time and tokens.
+
+**Guards** — behavioral checks before every tool call:
 
 - **step-budget** — per-cycle and total step limits
-- **duplicate-call** — identical consecutive tool calls
 - **file-churn** — excessive read/edit loops on same file
 - **redundant-search / find / verify** — repeated loops without progress
 - **no-delete-rewrite** — deleting a file that was already read
 
-Guards are pluggable — add your own without touching the pipeline.
+**Cache** — LRU result cache for read-only and search tools:
+
+- Identical calls return instantly without re-executing
+- Write operations invalidate affected entries
+- Capped at 256 entries per task
+
+Guards correct behavior. Cache eliminates waste. Both are pluggable.
 
 <!--
-Anyone who's used AI coding agents knows they can get stuck in loops — reading the same file over and over, searching for the same thing, running tests when nothing changed.
+Two layers work together to keep the agent efficient.
 
-Guards are functions that run before every tool call. They look at the history of what the agent has done and decide: allow or block.
+First, guards. Anyone who's used AI coding agents knows they can get stuck in loops — reading the same file over and over, searching for the same thing, running tests when nothing changed. Guards are functions that run before every tool call. They look at the call history and decide: allow or block.
 
-Example: file-churn tracks how many times the agent has read and edited the same file. If it crosses the threshold, the guard blocks the call and tells the model to move on. This alone saves a lot of wasted tokens.
+File-churn tracks how many times the agent has read and edited the same file. Cross the threshold, the guard blocks the call and tells the model to move on. Step-budget is a hard limit — N tool calls per cycle, then stop cleanly.
 
-Step-budget is a hard limit — the agent can only make N tool calls per cycle. If it hits the limit, the task stops cleanly instead of spinning forever.
+Second, the result cache. Read-only and search tools are cached per-task with LRU eviction. If the agent reads the same file twice with identical arguments, the second call returns instantly from cache — no disk I/O, no wasted tokens. When the agent writes — edits a file, runs a command — the cache invalidates affected entries. Shell commands clear the whole cache since they could change anything.
 
-The guard array is just a list. You can add your own guard — implement the interface, push it onto the array. No framework to learn.
+Guards correct degenerate behavior by blocking it. The cache silently eliminates redundant work. Both are pluggable — add your own guard or swap the cache strategy without touching the pipeline.
 -->
 
 ---

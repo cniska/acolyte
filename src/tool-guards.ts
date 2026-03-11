@@ -7,6 +7,7 @@ import {
   includesUniversalFindPattern,
   normalizePath,
 } from "./tool-arg-paths";
+import { isCacheableTool, type ToolCache } from "./tool-cache";
 
 export type GuardEvent = { guardId: string; toolName: string; action: "blocked" | "flag_set"; detail?: string };
 
@@ -26,6 +27,7 @@ export type SessionContext = {
   flags: SessionFlags;
   writeTools: ReadonlySet<string>;
   onGuard?: (event: GuardEvent) => void;
+  cache?: ToolCache;
 };
 
 const FILE_CHURN_MIN_COMBINED = 12;
@@ -135,6 +137,7 @@ const duplicateCallGuard: ToolGuard = {
   id: "duplicate-call",
   description: "Block near-duplicate tool calls with no state-changing tool in between.",
   check({ toolName, args, session, report }) {
+    if (session.cache && isCacheableTool(toolName)) return;
     const calls = scopedCallLog(session);
     const lookback = calls.slice(-DUPLICATE_CALL_LOOKBACK);
     for (let i = lookback.length - 1; i >= 0; i -= 1) {

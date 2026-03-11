@@ -185,6 +185,6 @@ describe("guard regression integration", () => {
     );
 
     expect(reply.output).toContain("Done");
-    expect(reply.toolCalls).toEqual(["read-file"]);
+    expect(reply.toolCalls).toEqual(["read-file", "read-file"]);
   }, 20_000);
 });

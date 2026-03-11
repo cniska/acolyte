@@ -1,4 +1,5 @@
 import { createId } from "./short-id";
+import { isCacheableTool } from "./tool-cache";
 import { ERROR_KINDS, LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
 import { recordCall, runGuards, type SessionContext } from "./tool-guards";
 export function streamCallId(toolName: string): string {
@@ -51,10 +52,27 @@ export async function guardedExecute<T>(
     if (typeof coded.kind !== "string" || coded.kind.length === 0) coded.kind = ERROR_KINDS.guardBlocked;
     throw coded;
   }
+  const argsRecord = args as Record<string, unknown>;
+  const cache = session.cache;
+
+  if (cache && isCacheableTool(toolId)) {
+    const cached = cache.get(toolId, argsRecord);
+    if (cached) {
+      recordCall(session, toolId, argsRecord);
+      return cached.result as T;
+    }
+  }
+
   try {
     const result = await task();
+    if (cache && isCacheableTool(toolId)) {
+      cache.set(toolId, argsRecord, { result });
+    }
     return result;
   } finally {
-    recordCall(session, toolId, args as Record<string, unknown>);
+    recordCall(session, toolId, argsRecord);
+    if (cache && !isCacheableTool(toolId)) {
+      cache.invalidateForWrite(toolId, argsRecord);
+    }
   }
 }

@@ -3,6 +3,7 @@ import { invariant } from "./assert";
 import { createFileToolkit } from "./file-toolkit";
 import { createGitToolkit } from "./git-toolkit";
 import { createShellToolkit } from "./shell-toolkit";
+import { createToolCache } from "./tool-cache";
 import type { ToolCategory, ToolDefinition, ToolkitInput, ToolPermission } from "./tool-contract";
 import { createSessionContext, type SessionContext } from "./tool-guards";
 import type { ToolOutputListener } from "./tool-output-format";
@@ -106,6 +107,7 @@ export function toolsForAgent(options?: { workspace?: string; onOutput?: ToolOut
 } {
   const workspace = options?.workspace ?? resolve(process.cwd());
   const session = createSessionContext(options?.taskId, WRITE_TOOL_SET);
+  session.cache = createToolCache();
   return {
     tools: collectTools(workspace, session, options?.onOutput) as unknown as Toolset,
     session,
