@@ -3,6 +3,7 @@ import React from "react";
 import type { ChatRow } from "./chat-commands";
 import { renderAssistantContent } from "./chat-content-render";
 import { formatTokenCount } from "./chat-format";
+import { ShimmerText } from "./chat-shimmer";
 import { palette } from "./palette";
 import { renderToolOutput as renderToolOutputText, type ToolOutput } from "./tool-output-content";
 
@@ -268,7 +269,11 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
               <Text color={indicatorColor}>{`${pulseGlyph} `}</Text>
             </Box>
             <Box width={contentWidth}>
-              <Text dimColor>{thinkingText}</Text>
+              {isRunning ? (
+                <ShimmerText text={thinkingText} frame={thinkingFrame} totalFrames={16} />
+              ) : (
+                <Text dimColor>{thinkingText}</Text>
+              )}
             </Box>
           </Box>
           {props.queuedMessages?.map((msg) => (
