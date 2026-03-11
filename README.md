@@ -8,11 +8,11 @@ A terminal-first AI coding assistant: local-first, observable, and built for ext
 
 ```bash
 bun install
-bun run client init   # prompts for provider API key, writes .env
+bun run start init   # prompts for provider API key, writes .env
 bun run dev           # starts server + CLI client
 ```
 
-See all commands: `bun run client help`
+See all commands: `bun run start help`
 
 ## Validate
 

@@ -8,9 +8,8 @@
     "acolyte": "./src/cli.ts"
   },
   "scripts": {
-    "client": "bun run src/cli.ts",
-    "dev": "ACOLYTE_SERVER_RESTART=1 ACOLYTE_SET_API_URL=1 ./scripts/with-server.sh serve:watch bun run src/cli.ts",
-    "start": "bun run client",
+    "start": "bun run src/cli.ts",
+    "dev": "ACOLYTE_SERVER_RESTART=1 ./scripts/with-server.sh serve:watch bun run src/cli.ts",
     "run": "bun run src/cli.ts run",
     "perf:run": "bun run scripts/run-perf.ts",
     "trace:lifecycle": "bun run scripts/lifecycle-trace.ts",

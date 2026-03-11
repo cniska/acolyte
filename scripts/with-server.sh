@@ -12,7 +12,6 @@ shift
 log_path="${ACOLYTE_SERVER_LOG:-$HOME/.acolyte/server.log}"
 wait_url="${ACOLYTE_SERVER_WAIT_URL:-http://localhost:6767/v1/status}"
 wait_timeout_ms="${ACOLYTE_SERVER_WAIT_TIMEOUT_MS:-10000}"
-api_url="${ACOLYTE_API_URL:-http://localhost:6767}"
 restart_server="${ACOLYTE_SERVER_RESTART:-0}"
 
 server_pid=""
@@ -49,9 +48,5 @@ cleanup() {
   fi
 }
 trap cleanup EXIT INT TERM
-
-if [[ "${ACOLYTE_SET_API_URL:-0}" == "1" ]]; then
-  bun run src/cli.ts config set apiUrl "$api_url" >/dev/null
-fi
 
 "$@"

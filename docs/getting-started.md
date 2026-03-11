@@ -11,7 +11,7 @@ bun install
 ## Initialize
 
 ```bash
-bun run client init
+bun run start init
 ```
 
 This stores one provider API key in local `.env`.
@@ -26,7 +26,7 @@ This starts server watch mode and opens the CLI client for local development.
 
 ## Dev checks
 
-- `bun run client help`
+- `bun run start help`
 - `bun run verify`
 
 ## Core docs
