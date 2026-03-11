@@ -126,7 +126,7 @@ function renderToolLine(item: ToolOutput, index: number, lineNumWidth: number): 
         <Text key={`tool-${index}`}>
           {"\n  "}
           <Text backgroundColor={palette.diffAdd} color={palette.diffAddText}>
-            {`${num}  ${item.text}`}
+            {` ${num} +${item.text}`}
           </Text>
         </Text>
       );
@@ -135,14 +135,14 @@ function renderToolLine(item: ToolOutput, index: number, lineNumWidth: number): 
         <Text key={`tool-${index}`}>
           {"\n  "}
           <Text backgroundColor={palette.diffRemove} color={palette.diffRemoveText}>
-            {`${num}  ${item.text}`}
+            {` ${num} -${item.text}`}
           </Text>
         </Text>
       );
     return (
       <Text key={`tool-${index}`}>
         {"\n  "}
-        <Text dimColor>{`${num}  ${item.text}`}</Text>
+        <Text dimColor>{` ${num}  ${item.text}`}</Text>
       </Text>
     );
   }
@@ -161,7 +161,7 @@ function renderToolLine(item: ToolOutput, index: number, lineNumWidth: number): 
     return (
       <Text key={`tool-${index}`}>
         {"\n  "}
-        <Text dimColor>{`${"…".padStart(lineNumWidth)}  ${text.slice(2)}`}</Text>
+        <Text dimColor>{` ${"…".padStart(lineNumWidth)}  ${text.slice(2)}`}</Text>
       </Text>
     );
   }
