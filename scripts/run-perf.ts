@@ -48,7 +48,7 @@ const PERF_SERVER_STOP_TIMEOUT_MS = 5_000;
 const PERF_SERVER_STDOUT_LINES = 120;
 const REPO_DIR = join(import.meta.dir, "..");
 const SERVER_ENTRY = join(REPO_DIR, "src", "server.ts");
-const WAIT_SERVER_ENTRY = join(REPO_DIR, "src", "wait-server.ts");
+const WAIT_SERVER_ENTRY = join(REPO_DIR, "scripts", "wait-server.ts");
 const PERF_MODEL = "gpt-5-mini";
 const SCENARIOS: Scenario[] = PERF_SCENARIO_LIST;
 
@@ -129,11 +129,8 @@ async function writePerfConfig(homeDir: string, port: number, providerBaseUrl: s
   await mkdir(configDir, { recursive: true });
   const config = {
     port,
-    apiUrl: `http://localhost:${port}`,
     model: PERF_MODEL,
     openaiBaseUrl: providerBaseUrl,
-    transportMode: "http",
-    permissionMode: "write",
   };
   await writeFile(join(configDir, "config.toml"), `${toTomlRecord(config)}\n`, "utf8");
 }
@@ -207,7 +204,7 @@ async function runScenario(
   run: number,
 ): Promise<ScenarioRun> {
   const startedAt = performance.now();
-  const client = createClient({ apiUrl, transportMode: "http" });
+  const client = createClient({ apiUrl });
 
   try {
     const reply = await client.replyStream(
