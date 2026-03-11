@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { appConfig } from "./app-config";
 import { createStreamError, type ErrorId, errorIdSchema } from "./error-handling";
 import { mapQuotaErrorMessage } from "./error-messages";
@@ -53,12 +54,20 @@ function serverError(
   return json({ errorMessage: publicMessage, errorId, errorCode, error: streamError }, status);
 }
 
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+
 function hasValidAuth(req: Request, url?: URL): boolean {
   if (!API_KEY) return true;
 
   const auth = req.headers.get("authorization");
-  if (auth === `Bearer ${API_KEY}`) return true;
-  return url?.searchParams.get("apiKey") === API_KEY;
+  if (auth && safeEqual(auth, `Bearer ${API_KEY}`)) return true;
+  const param = url?.searchParams.get("apiKey");
+  return param !== null && param !== undefined && safeEqual(param, API_KEY);
 }
 
 function transitionTaskState(
