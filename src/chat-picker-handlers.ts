@@ -4,7 +4,7 @@ import { unreachable } from "./assert";
 import { type ChatRow, createRow } from "./chat-commands";
 import type { Message } from "./chat-message-contract";
 import type { PickerState } from "./chat-picker";
-import { createModelPicker, createPicker, createResumePicker, createResumeRows } from "./chat-picker-actions";
+import { createModelPicker, createPicker, createResumePicker } from "./chat-picker-actions";
 import { compactText } from "./compact-text";
 import { setConfigValue } from "./config";
 import { t } from "./i18n";
@@ -160,7 +160,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
           input.setCurrentSession(selected);
           input.setTokenUsage?.(() => selected.tokenUsage);
           input.clearTranscript(selected.id);
-          input.setRowsDirect(createResumeRows(selected, input.toRows));
+          input.setRowsDirect(input.toRows(selected.messages));
           await input.persist();
         }
         input.setPicker(null);

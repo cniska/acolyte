@@ -99,7 +99,7 @@ describe("chat picker handlers", () => {
     await handlers.handlePickerSelect({ kind: "resume", items: [first, second], index: 1 });
     expect(store.activeSessionId).toBe(second.id);
     expect(setCurrentSessionCalls).toEqual([second]);
-    expect(setRowsDirectCalls.at(-1)?.at(-1)?.content).toBe("Resumed session: sess_second");
+    expect(setRowsDirectCalls.at(-1)).toEqual([]);
     expect(pickerValues.at(-1)).toBeNull();
   });
 

@@ -251,10 +251,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     ctx.setCurrentSession(target);
     ctx.setTokenUsage?.(() => target.tokenUsage);
     ctx.clearTranscript(target.id);
-    ctx.setRows(() => [
-      ...ctx.toRows(target.messages),
-      createRow("system", t("chat.resume.resumed", { sessionId: target.id }), { dim: true }),
-    ]);
+    ctx.setRows(() => ctx.toRows(target.messages));
     ctx.setShowHelp(() => false);
     await ctx.persist();
     return { stop: true, userText: text };

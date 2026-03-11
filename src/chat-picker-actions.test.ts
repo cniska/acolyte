@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { appConfig } from "./app-config";
-import { createModelPicker, createResumePicker, createResumeRows } from "./chat-picker-actions";
+import { createModelPicker, createResumePicker } from "./chat-picker-actions";
 import { invalidateModelsCache } from "./provider-models";
 import type { Session, SessionState } from "./session-contract";
 
@@ -49,17 +49,6 @@ describe("chat picker actions", () => {
       kind: "resume",
       items: [first, second],
       index: 1,
-    });
-  });
-
-  test("createResumeRows appends resumed session row", () => {
-    const selected = session("sess_abc123456789");
-    const rows = createResumeRows(selected, () => [{ id: "x", role: "assistant", content: "existing" }]);
-    expect(rows).toHaveLength(2);
-    expect(rows[1]).toMatchObject({
-      role: "system",
-      content: "Resumed session: sess_abc123456789",
-      style: { dim: true },
     });
   });
 

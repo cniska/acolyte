@@ -1,9 +1,7 @@
 import type { AgentMode } from "./agent-contract";
-import { type ChatRow, createRow } from "./chat-commands";
 import type { PickerState } from "./chat-picker";
-import { t } from "./i18n";
 import { getAvailableModels } from "./provider-models";
-import type { Session, SessionState } from "./session-contract";
+import type { SessionState } from "./session-contract";
 
 type PickerByKind = {
   skills: Extract<PickerState, { kind: "skills" }>;
@@ -34,13 +32,6 @@ export function createResumePicker(store: SessionState, limit = 20): PickerState
     items,
     index: activeIndex >= 0 ? activeIndex : 0,
   });
-}
-
-export function createResumeRows(session: Session, toRows: (messages: Session["messages"]) => ChatRow[]): ChatRow[] {
-  return [
-    ...toRows(session.messages),
-    createRow("system", t("chat.resume.resumed", { sessionId: session.id }), { dim: true }),
-  ];
 }
 
 export async function createModelPicker(targetMode?: AgentMode): Promise<PickerState> {
