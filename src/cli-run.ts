@@ -19,7 +19,7 @@ const runArgsSchema = z.object({
   prompt: z.string(),
 });
 
-type ParsedRunArgs = { files: string[]; prompt: string; workspace?: string };
+type ParsedRunArgs = { files: string[]; prompt: string; workspace?: string; model?: string };
 
 type RunModeDeps = {
   apiUrlForPort: typeof apiUrlForPortType;
@@ -50,6 +50,7 @@ function parseRunArgs(args: string[]): ParsedRunArgs {
   const files: string[] = [];
   const promptTokens: string[] = [];
   let workspace: string | undefined;
+  let model: string | undefined;
 
   for (let i = 0; i < args.length; i += 1) {
     if (args[i] === "--file") {
@@ -66,11 +67,18 @@ function parseRunArgs(args: string[]): ParsedRunArgs {
       i += 1;
       continue;
     }
+    if (args[i] === "--model") {
+      const next = args[i + 1];
+      if (!next) throw new Error("--model requires a model id");
+      model = next;
+      i += 1;
+      continue;
+    }
 
     promptTokens.push(args[i]);
   }
 
-  return { ...runArgsSchema.parse({ files, prompt: promptTokens.join(" ").trim() }), workspace };
+  return { ...runArgsSchema.parse({ files, prompt: promptTokens.join(" ").trim() }), workspace, model };
 }
 
 export async function runMode(args: string[], deps: RunModeDeps): Promise<void> {
@@ -114,7 +122,7 @@ export async function runMode(args: string[], deps: RunModeDeps): Promise<void> 
   }
 
   const resolvedConfig = readResolvedConfigSync();
-  const session = createSession(appModel);
+  const session = createSession(parsed.model ?? appModel);
   session.messages.push(createMessage("system", RUN_MODE_SYSTEM_PROMPT));
   const daemon = await ensureLocalServer({
     port: serverPort,

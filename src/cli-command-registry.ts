@@ -117,7 +117,7 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
   run: {
     help: {
       command: "run <prompt>",
-      usage: "acolyte run [--file <path>] [--workspace <path>] <prompt>",
+      usage: "acolyte run [--file <path>] [--workspace <path>] [--model <id>] <prompt>",
       description: t("cli.help.desc.run"),
       examples: ['acolyte run "summarize README.md"', 'acolyte run --file src/cli.ts "refactor help text"'],
     },

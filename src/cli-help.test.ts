@@ -5,7 +5,7 @@ import { stripAnsi } from "./tui-test-utils";
 
 const runHelp: CliCommandHelp = {
   command: "run <prompt>",
-  usage: "acolyte run [--file <path>] [--workspace <path>] <prompt>",
+  usage: "acolyte run [--file <path>] [--workspace <path>] [--model <id>] <prompt>",
   description: "run a single prompt non-interactively",
   examples: ['acolyte run "summarize README.md"'],
 };

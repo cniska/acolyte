@@ -340,7 +340,7 @@ describe("cli visual regression", () => {
     {
       args: ["run", "help"],
       output: dedent(`
-        Usage: acolyte run [--file <path>] [--workspace <path>] <prompt>
+        Usage: acolyte run [--file <path>] [--workspace <path>] [--model <id>] <prompt>
 
         Description: run a single prompt
 
