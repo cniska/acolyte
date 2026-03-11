@@ -15,7 +15,7 @@ describe("estimateTokens (real tokenizer)", () => {
 
   test("tokenizes code more densely than prose", () => {
     const prose = "This is a simple English sentence repeated several times for comparison.";
-    const code = 'export function estimateTokens(input: string): number { return input.length; }';
+    const code = "export function estimateTokens(input: string): number { return input.length; }";
     // Code should use more tokens per character than prose.
     const proseRatio = estimateTokens(prose) / prose.length;
     const codeRatio = estimateTokens(code) / code.length;

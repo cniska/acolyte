@@ -5,7 +5,9 @@ import { OBSERVER_PROMPT, REFLECTOR_PROMPT } from "./memory-distill-prompts";
 import type { DistillStore } from "./memory-distill-store";
 import { createDistillMemorySource } from "./memory-source-distill";
 
-function createMockStore(records: DistillRecord[] = []): DistillStore & { written: DistillRecord[]; removed: string[] } {
+function createMockStore(
+  records: DistillRecord[] = [],
+): DistillStore & { written: DistillRecord[]; removed: string[] } {
   const written: DistillRecord[] = [];
   const removed: string[] = [];
   return {

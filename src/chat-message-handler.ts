@@ -3,11 +3,7 @@ import { appConfig } from "./app-config";
 import { type ChatRow, createRow, dispatchSlashCommand } from "./chat-commands";
 import { invalidateRepoPathCandidates } from "./chat-file-ref";
 import type { Message } from "./chat-message-contract";
-import {
-  formatSubmitError,
-  isAbortError,
-  resolveNaturalRememberDirective,
-} from "./chat-message-handler-helpers";
+import { formatSubmitError, isAbortError, resolveNaturalRememberDirective } from "./chat-message-handler-helpers";
 import { createMessageStreamState } from "./chat-message-handler-stream";
 import { startRemoteTaskFollowup } from "./chat-message-handler-task-followup";
 import { isKnownSlashToken, suggestSlashCommands } from "./chat-slash";

@@ -34,8 +34,7 @@ type ResolveSubmitInput = {
 export function resolveSubmitInput(input: ResolveSubmitInput): SubmitResolution {
   const query = extractAtReferenceQuery(input.value);
   if (query !== null && input.atSuggestions.length > 0) {
-    const selected =
-      input.atSuggestions[clampSuggestionIndex(input.atSuggestionIndex, input.atSuggestions.length)];
+    const selected = input.atSuggestions[clampSuggestionIndex(input.atSuggestionIndex, input.atSuggestions.length)];
     if (shouldAutocompleteAtSubmit(input.value, selected))
       return { kind: "autocomplete", value: applyAtSuggestion(input.value, selected ?? "") };
   }

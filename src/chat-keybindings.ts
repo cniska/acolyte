@@ -65,8 +65,7 @@ export function resolveHistoryDown(
 export function resolveTabAutocomplete(input: ResolveTabAutocompleteInput): string | null {
   if (!input.isTab || input.browsingInputHistory) return null;
   if (input.atQuery !== null && input.atSuggestions.length > 0) {
-    const selected =
-      input.atSuggestions[clampSuggestionIndex(input.atSuggestionIndex, input.atSuggestions.length)];
+    const selected = input.atSuggestions[clampSuggestionIndex(input.atSuggestionIndex, input.atSuggestions.length)];
     if (shouldAutocompleteAtSubmit(input.value, selected)) return applyAtSuggestion(input.value, selected ?? "");
   }
   if (input.atQuery === null && input.slashSuggestions.length > 0) {

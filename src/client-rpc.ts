@@ -141,11 +141,7 @@ export class RpcClient implements Client {
         if (settled) return;
         settled = true;
         cleanup();
-        reject(
-          new Error(
-            `RPC request timed out after ${timeoutMs}ms. Restart the server: acolyte restart`,
-          ),
-        );
+        reject(new Error(`RPC request timed out after ${timeoutMs}ms. Restart the server: acolyte restart`));
       }, timeoutMs);
     });
   }

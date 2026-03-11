@@ -12,10 +12,7 @@ type MemoryModeDeps = {
   commandHelp: (name: string) => void;
 };
 
-function printMemoryRows(
-  rows: readonly MemoryEntry[],
-  printDim: (message: string) => void,
-): void {
+function printMemoryRows(rows: readonly MemoryEntry[], printDim: (message: string) => void): void {
   if (rows.length === 0) {
     printDim(t("cli.memory.none"));
     return;

@@ -525,9 +525,9 @@ describe("chat-commands", () => {
     expect(store.activeSessionId).toBe(target.id);
     expect(spies.currentSessionIds).toEqual([target.id]);
     expect(spies.tokenUsageSets).toEqual([target.tokenUsage]);
-    expect(spies.rows.some((row) => row.style === "sessionStatusOutput" && row.content.startsWith("Resumed session:"))).toBe(
-      true,
-    );
+    expect(
+      spies.rows.some((row) => row.style === "sessionStatusOutput" && row.content.startsWith("Resumed session:")),
+    ).toBe(true);
   });
 
   test("dispatchSlashCommand /resume opens picker flow", async () => {

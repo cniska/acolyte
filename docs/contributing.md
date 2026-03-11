@@ -5,7 +5,7 @@ Minimal workflow for external contributors.
 ## Prerequisites
 
 - Bun 1.3+
-- One provider API key for local chat testing (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `GOOGLE_GENERATIVE_AI_API_KEY`)
+- One provider API key for chat testing (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `GOOGLE_API_KEY`)
 
 ## Setup
 
@@ -19,10 +19,14 @@ bun run client init
 1. Create a branch from `main`.
 2. Make focused changes.
 3. Run targeted checks while iterating:
-   - `bun run test:unit`
-   - `bun run test:int`
-   - `bun run test:tui`
-   - `bun run test:perf`
+
+```bash
+bun run test:unit     # unit tests
+bun run test:int      # integration tests
+bun run test:tui      # visual regression tests
+bun run test:perf     # performance baselines
+```
+
 4. Before opening a PR, run full validation:
 
 ```bash
