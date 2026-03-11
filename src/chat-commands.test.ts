@@ -481,10 +481,7 @@ describe("chat-commands", () => {
     const result = await dispatchSlashCommand(ctx);
 
     expect(result.stop).toBe(true);
-    expect(spies.rows).toHaveLength(2);
-    expect(spies.rows[0]).toMatchObject({ role: "user", content: "/new" });
-    expect(spies.rows[1]?.role).toBe("system");
-    expect(spies.rows[1]?.content.startsWith("Started new session: sess_")).toBe(true);
+    expect(spies.rows).toHaveLength(0);
     expect(spies.currentSessionIds).toHaveLength(1);
     expect(spies.tokenUsageSets).toEqual([[]]);
     expect(store.sessions).toHaveLength(2);

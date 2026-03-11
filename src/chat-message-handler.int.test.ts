@@ -319,6 +319,7 @@ describe("chat message handler guards", () => {
         interruptRegistered = handler !== null;
         if (handler) interruptHandler = handler;
       },
+      clearTranscript: () => {},
     });
 
     const pending = handleMessage("hello");
@@ -397,6 +398,7 @@ describe("chat message handler guards", () => {
         interruptRegistered = handler !== null;
         if (handler) interruptHandler = handler;
       },
+      clearTranscript: () => {},
     });
 
     const firstPending = handleMessage("First question");
@@ -458,6 +460,7 @@ describe("chat message handler guards", () => {
       createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
       setInterrupt: () => {},
+      clearTranscript: () => {},
     });
 
     await handleMessage("review @definitely-not-a-real-file-xyz");
@@ -512,6 +515,7 @@ describe("chat message handler guards", () => {
         createMessage,
         nowIso: () => "2026-02-20T00:00:00.000Z",
         setInterrupt: () => {},
+        clearTranscript: () => {},
       });
 
       await handleMessage(`review @${fixture} and @definitely-not-a-real-file-xyz`);

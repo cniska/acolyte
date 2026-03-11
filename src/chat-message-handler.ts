@@ -50,6 +50,8 @@ type CreateMessageHandlerInput = {
   nowIso: () => string;
   setInterrupt: (handler: (() => void) | null) => void;
   useMemory?: boolean;
+  graduate?: () => void;
+  clearTranscript: (sessionId?: string) => void;
 };
 
 function remoteTaskIdFromError(error: unknown): string | null {
@@ -152,8 +154,12 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
       openResumePanel: input.openResumePanel,
       openModelPanel: input.openModelPanel,
       tokenUsage: input.tokenUsage,
+      clearTranscript: input.clearTranscript,
     });
-    if (commandResult.stop) return;
+    if (commandResult.stop) {
+      input.graduate?.();
+      return;
+    }
     userText = commandResult.userText;
     const { row: userRow } = applyUserTurn({
       session: input.currentSession,

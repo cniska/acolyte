@@ -298,6 +298,9 @@ export function createMessageHandlerHarness(overrides?: {
     createMessage,
     nowIso: () => DEFAULT_TIME,
     setInterrupt: () => {},
+    clearTranscript: () => {
+      rows.splice(0, rows.length);
+    },
   });
   return { handleMessage, rows, session, calls };
 }
@@ -345,6 +348,9 @@ export function createCommandContext(
     openModelPanel: (mode?: AgentMode) => {
       spies.openedModel = true;
       spies.openedModelMode = mode;
+    },
+    clearTranscript: () => {
+      spies.rows = [];
     },
     tokenUsage: [],
     ...overrides,

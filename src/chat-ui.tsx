@@ -1,10 +1,10 @@
-import { Box, render, Text, useApp } from "ink";
-import { useEffect, useRef, useState } from "react";
+import { Box, render, Static, Text, useApp } from "ink";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ChatRow } from "./chat-commands";
 import { useAtSuggestionsEffect, useSlashSuggestionsEffect, useThinkingAnimationEffect } from "./chat-effects";
 import { extractAtReferenceQuery } from "./chat-file-ref";
-import type { HeaderLine } from "./chat-header";
 import { ChatHeader } from "./chat-header";
+import type { HeaderLine } from "./chat-header";
 import { processInputChange, processInputSubmit } from "./chat-input-handlers";
 import { ChatInputPanel } from "./chat-input-panel";
 import { useChatKeybindings } from "./chat-keybindings";
@@ -12,6 +12,7 @@ import { shownBranch, shownCwd } from "./chat-layout";
 import { createMessageHandler } from "./chat-message-handler";
 import type { PickerState } from "./chat-picker";
 import { createPickerHandlers } from "./chat-picker-handlers";
+import { ChatRowView } from "./chat-row-view";
 import { createMessage, toRows } from "./chat-session";
 import { suggestSlashCommands } from "./chat-slash";
 import { enqueueQueuedMessage, resolveQueueSubmit } from "./chat-submit";
@@ -20,6 +21,7 @@ import { createInputHistory } from "./chat-turn";
 import type { Client } from "./client-contract";
 import { nowIso } from "./datetime";
 import { palette } from "./palette";
+import { clearScreen } from "./ui";
 import { formatModel } from "./provider-config";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
 import { loadSkills } from "./skills";
@@ -40,11 +42,30 @@ export function initialTranscriptRows(session: Session): ChatRow[] {
   return toRows(session.messages);
 }
 
+type HeaderItem = { id: string; kind: "header"; lines: HeaderLine[] };
+type GraduatedItem = ChatRow | HeaderItem;
+
+function isHeaderItem(item: GraduatedItem): item is HeaderItem {
+  return "kind" in item && item.kind === "header";
+}
+
+function createHeaderItem(version: string, sessionId: string): HeaderItem {
+  return {
+    id: `header_${sessionId}`,
+    kind: "header",
+    lines: [
+      { id: "title", text: "Acolyte", suffix: "", dim: false, brand: true },
+      { id: "session", text: `version ${version}`, dim: false, brand: false },
+      { id: "context", text: `session ${sessionId}`, dim: true, brand: false },
+    ],
+  };
+}
+
 function ChatApp(props: ChatAppProps) {
-  const { client, session, store, persist, version, useMemory } = props;
+  const { client, session, store, persist, useMemory } = props;
   const { exit } = useApp();
   const [currentSession, setCurrentSession] = useState<Session>(session);
-  const [rows, setRows] = useState<ChatRow[]>(() => initialTranscriptRows(session));
+  const [rows, setRows] = useState<ChatRow[]>([]);
   const [value, setValue] = useState("");
   const [inputRevision, setInputRevision] = useState(0);
   const [isWorking, setIsWorking] = useState(false);
@@ -68,22 +89,6 @@ function ChatApp(props: ChatAppProps) {
   const [atSuggestionIndex, setAtSuggestionIndex] = useState(0);
   const interruptRef = useRef<(() => void) | null>(null);
   const workspace = shownCwd();
-  const headerLines: HeaderLine[] = [
-    { id: "title", text: "Acolyte", suffix: "", dim: false, brand: true },
-    {
-      id: "session",
-      text: `version ${version}`,
-      dim: false,
-      brand: false,
-    },
-    {
-      id: "context",
-      text: `session ${currentSession.id}`,
-      dim: true,
-      brand: false,
-    },
-  ];
-
   useAtSuggestionsEffect(atQuery, setAtSuggestions, setAtSuggestionIndex);
   useSlashSuggestionsEffect(slashSuggestions, setSlashSuggestionIndex);
   useThinkingAnimationEffect(isWorking, THINKING_PULSE_FRAMES, setThinkingFrame);
@@ -108,6 +113,35 @@ function ChatApp(props: ChatAppProps) {
   useEffect(() => {
     loadSkills().catch(() => {});
   }, []);
+
+  const [graduatedRows, setGraduatedRows] = useState<GraduatedItem[]>(() => [
+    createHeaderItem(props.version, session.id),
+    ...initialTranscriptRows(session),
+  ]);
+
+  const graduate = useCallback(() => {
+    setRows((current) => {
+      if (current.length === 0) return current;
+      setGraduatedRows((prev) => [...prev, ...current]);
+      return [];
+    });
+  }, []);
+
+  const clearTranscript = useCallback(
+    (sessionId?: string) => {
+      clearScreen();
+      setGraduatedRows((prev) => [...prev, createHeaderItem(props.version, sessionId ?? currentSession.id)]);
+      setRows([]);
+    },
+    [props.version, currentSession.id],
+  );
+
+  // Graduate completed rows when working state ends.
+  const prevWorkingRef = useRef(false);
+  useEffect(() => {
+    if (prevWorkingRef.current && !isWorking) graduate();
+    prevWorkingRef.current = isWorking;
+  }, [isWorking, graduate]);
 
   useEffect(() => {
     let cancelled = false;
@@ -138,6 +172,7 @@ function ChatApp(props: ChatAppProps) {
     createMessage: createMessage,
     nowIso,
     onSubmit: (text) => setQueuedMessages((current) => [...current, text]),
+    clearTranscript,
   });
 
   const handleSubmit = createMessageHandler({
@@ -174,6 +209,8 @@ function ChatApp(props: ChatAppProps) {
       interruptRef.current = handler;
     },
     useMemory,
+    graduate,
+    clearTranscript,
   });
   useEffect(() => {
     if (isWorking || queuedMessages.length === 0) return;
@@ -215,13 +252,27 @@ function ChatApp(props: ChatAppProps) {
 
   return (
     <Box flexDirection="column">
-      <Text> </Text>
-      <ChatHeader
-        lines={headerLines}
-        brandColor={palette.brand}
-        mascot={palette.mascot}
-        mascotEyes={palette.mascotEyes}
-      />
+      <Static items={graduatedRows}>
+        {(item) => {
+          if (isHeaderItem(item)) {
+            return (
+              <Box key={item.id} flexDirection="column">
+                <Text> </Text>
+                <ChatHeader lines={item.lines} brandColor={palette.brand} mascot={palette.mascot} mascotEyes={palette.mascotEyes} />
+              </Box>
+            );
+          }
+          const columns = process.stdout.columns ?? 120;
+          const contentWidth = Math.max(24, Math.min(120, columns - 2));
+          const toolContentWidth = Math.max(24, columns - 2);
+          return (
+            <Box key={item.id} flexDirection="column">
+              <Text> </Text>
+              <ChatRowView row={item} contentWidth={contentWidth} toolContentWidth={toolContentWidth} />
+            </Box>
+          );
+        }}
+      </Static>
       <ChatTranscript
         rows={rows}
         isWorking={isWorking}

@@ -61,6 +61,7 @@ describe("chat message handler stream behavior", () => {
       createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
       setInterrupt: () => {},
+      clearTranscript: () => {},
     });
 
     await handleMessage("hello");
@@ -113,6 +114,7 @@ describe("chat message handler stream behavior", () => {
       createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
       setInterrupt: () => {},
+      clearTranscript: () => {},
     });
 
     await handleMessage("hello");
@@ -187,6 +189,7 @@ describe("chat message handler stream behavior", () => {
       createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
       setInterrupt: () => {},
+      clearTranscript: () => {},
     });
 
     await handleMessage("hello");
@@ -232,6 +235,7 @@ describe("chat message handler stream behavior", () => {
       createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
       setInterrupt: () => {},
+      clearTranscript: () => {},
     });
 
     await handleMessage("hello");
@@ -283,6 +287,7 @@ describe("chat message handler stream behavior", () => {
       createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
       setInterrupt: () => {},
+      clearTranscript: () => {},
     });
 
     await handleMessage("first");
@@ -357,6 +362,7 @@ describe("chat message handler stream behavior", () => {
       createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
       setInterrupt: () => {},
+      clearTranscript: () => {},
     });
 
     await handleMessage("first");
@@ -413,6 +419,7 @@ describe("chat message handler stream behavior", () => {
       createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
       setInterrupt: () => {},
+      clearTranscript: () => {},
     });
 
     await handleMessage("first");
@@ -420,9 +427,6 @@ describe("chat message handler stream behavior", () => {
 
     expect(calls).toBe(1);
     expect(sawTimeoutRow).toBe(true);
-    expect(rows.some((row) => row.role === "system" && row.content.startsWith("Started new session: sess_"))).toBe(
-      true,
-    );
     expect(setCurrentSessionCalls.length).toBe(1);
     expect(store.activeSessionId).toBe(setCurrentSessionCalls[0]);
   });
@@ -478,6 +482,7 @@ describe("chat message handler stream behavior", () => {
       createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
       setInterrupt: () => {},
+      clearTranscript: () => {},
     });
 
     await handleMessage("first");
@@ -691,6 +696,7 @@ describe("chat message handler stream behavior", () => {
       createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
       setInterrupt: () => {},
+      clearTranscript: () => {},
     });
 
     await handleMessage("hello");

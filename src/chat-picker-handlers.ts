@@ -28,6 +28,7 @@ type CreatePickerHandlersInput = {
   nowIso: () => string;
   persistConfig?: (key: string, value: string, scope: "project") => Promise<void>;
   onSubmit?: (text: string) => void;
+  clearTranscript: (sessionId?: string) => void;
 };
 
 export function createPickerHandlers(input: CreatePickerHandlersInput): {
@@ -158,6 +159,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
           input.store.activeSessionId = selected.id;
           input.setCurrentSession(selected);
           input.setTokenUsage?.(() => selected.tokenUsage);
+          input.clearTranscript(selected.id);
           input.setRowsDirect(createResumeRows(selected, input.toRows));
           await input.persist();
         }

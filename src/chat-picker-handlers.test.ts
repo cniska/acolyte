@@ -28,6 +28,7 @@ describe("chat picker handlers", () => {
       toRows: () => [],
       createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
+      clearTranscript: () => {},
     });
 
     handlers.openResumePanel();
@@ -55,6 +56,7 @@ describe("chat picker handlers", () => {
       toRows: () => [],
       createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
+      clearTranscript: () => {},
     });
 
     handlers.openResumePanel();
@@ -91,6 +93,7 @@ describe("chat picker handlers", () => {
       toRows: () => [],
       createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
+      clearTranscript: () => {},
     });
 
     await handlers.handlePickerSelect({ kind: "resume", items: [first, second], index: 1 });
@@ -125,6 +128,7 @@ describe("chat picker handlers", () => {
       createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
       persistConfig: async () => {},
+      clearTranscript: () => {},
     });
 
     await handlers.handlePickerSelect({

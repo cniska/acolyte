@@ -151,6 +151,7 @@ export type CommandContext = {
   openModelPanel: (mode?: AgentMode) => void | Promise<void>;
   persistModelConfig?: (key: string, value: string, scope: ConfigScope) => Promise<void>;
   activateSkill?: (skillName: string, args: string) => Promise<boolean>;
+  clearTranscript: (sessionId?: string) => void;
   tokenUsage: SessionTokenUsageEntry[];
   memoryApi?: {
     listMemories: typeof listMemories;
@@ -249,6 +250,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     ctx.store.activeSessionId = target.id;
     ctx.setCurrentSession(target);
     ctx.setTokenUsage?.(() => target.tokenUsage);
+    ctx.clearTranscript(target.id);
     ctx.setRows(() => [
       ...ctx.toRows(target.messages),
       createRow("system", t("chat.resume.resumed", { sessionId: target.id }), { dim: true }),
@@ -473,10 +475,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     ctx.store.activeSessionId = next.id;
     ctx.setCurrentSession(next);
     ctx.setTokenUsage?.(() => []);
-    ctx.setRows(() => [
-      createRow("user", text),
-      createRow("system", t("chat.session.started", { sessionId: next.id }), { dim: true }),
-    ]);
+    ctx.clearTranscript(next.id);
     ctx.setValue("");
     ctx.setShowHelp(() => false);
     await ctx.persist();
@@ -491,7 +490,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
   }
 
   if (resolvedText === "/clear") {
-    ctx.setRows(() => []);
+    ctx.clearTranscript();
     return { stop: true, userText: text };
   }
 
@@ -509,7 +508,10 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       }
       if (args) return { stop: false, userText: args };
       pushUserCommandRow();
-      ctx.setRows((current) => [...current, createRow("system", t("chat.skill.activated", { skill: skill.name }), { dim: true })]);
+      ctx.setRows((current) => [
+        ...current,
+        createRow("system", t("chat.skill.activated", { skill: skill.name }), { dim: true }),
+      ]);
       return { stop: true, userText: text };
     }
 
