@@ -2,10 +2,10 @@ import { z } from "zod";
 import { verifyScopeSchema } from "./api";
 import { errorIdSchema } from "./error-handling";
 import { domainIdSchema } from "./id-contract";
-import { providerSchema } from "./provider-contract";
 import { resourceIdSchema } from "./resource-id";
 import { sessionIdSchema } from "./session-contract";
 import { createId } from "./short-id";
+import { statusPayloadSchema } from "./status-contract";
 import { streamErrorSchema } from "./stream-error";
 import { taskIdSchema, taskRecordSchema } from "./task-contract";
 export const rpcRequestIdSchema = domainIdSchema("rpc");
@@ -31,25 +31,6 @@ const chatRequestSchema = z.object({
   verifyScope: verifyScopeSchema.optional(),
   workspace: z.string().max(4096).optional(),
 });
-
-export const statusPayloadSchema = z
-  .object({
-    ok: z.literal(true),
-    providers: z.array(providerSchema),
-    model: z.string(),
-    "model.work": z.string().optional(),
-    "model.verify": z.string().optional(),
-    protocol_version: z.string(),
-    capabilities: z.string(),
-    permissions: z.string(),
-    service: z.string(),
-    memory: z.string(),
-    tasks_total: z.number().int().min(0),
-    tasks_running: z.number().int().min(0),
-    tasks_detached: z.number().int().min(0),
-    rpc_queue_length: z.number().int().min(0),
-  })
-  .catchall(z.union([z.boolean(), z.string(), z.number(), z.array(z.string())]));
 
 export const rpcClientMessageSchema = z.discriminatedUnion("type", [
   z.object({ id: rpcRequestIdSchema, type: z.literal("status.get") }),
