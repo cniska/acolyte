@@ -28,6 +28,7 @@ export const EN_MESSAGES = {
   "chat.picker.hint.model": "Type to filter · Enter to apply · Esc to close",
   "chat.picker.hint.resume": "Enter to resume · Esc to close",
   "chat.picker.hint.skills": "Enter to select · Esc to close",
+  "chat.picker.loading": "Loading\u2026",
   "chat.picker.no_matches": "No matches.",
   "chat.picker.sessions.none": "No saved sessions.",
   "chat.picker.skills.none": "No skills found in ./.agents/skills.",

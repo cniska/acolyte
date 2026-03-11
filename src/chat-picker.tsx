@@ -19,6 +19,7 @@ export type PickerState =
       index: number;
       scrollOffset: number;
       targetMode?: AgentMode;
+      loading?: boolean;
     };
 
 export const PICKER_PAGE_SIZE = 8;
@@ -103,6 +104,9 @@ export function renderPickerItems(
       );
     }
     case "model": {
+      if (picker.loading) {
+        return <Text dimColor>{`  ${t("chat.picker.loading")}`}</Text>;
+      }
       if (picker.filtered.length === 0) {
         return <Text dimColor> {t("chat.picker.no_matches")}</Text>;
       }

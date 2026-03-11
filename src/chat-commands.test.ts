@@ -146,8 +146,6 @@ describe("chat-commands", () => {
     const { rows, stop } = await runCommand("/tokens", { tokenUsage });
 
     expect(stop).toBe(true);
-    expect(rows.some((row) => row.content.includes("last turn:"))).toBe(true);
-    expect(rows.some((row) => row.role === "system" && row.content.includes("last turn:"))).toBe(true);
     expect(rows.some((row) => row.role === "system" && row.content.includes("last turn:"))).toBe(true);
     expect(rows.some((row) => row.content.includes("model calls:") && row.content.includes("last=5 session=7"))).toBe(
       true,

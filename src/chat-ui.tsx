@@ -248,6 +248,7 @@ function ChatApp(props: ChatAppProps) {
           if (decision.ignore) return;
           if (decision.clearApplyingHistory) applyingHistoryRef.current = false;
           if (decision.resetHistoryIndex) setInputHistoryIndex(-1);
+          if (showHelp) setShowHelp(false);
           setValue(decision.nextValue);
         }}
         onSubmit={(next) => {

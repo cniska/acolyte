@@ -82,9 +82,19 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
   };
 
   const openModelPanel = async (mode?: AgentMode): Promise<void> => {
+    input.setPicker({
+      kind: "model",
+      items: [],
+      filtered: [],
+      query: "",
+      index: 0,
+      scrollOffset: 0,
+      targetMode: mode,
+      loading: true,
+    });
+    input.setShowHelp(false);
     const picker = await createModelPicker(mode);
     input.setPicker(picker);
-    input.setShowHelp(false);
   };
 
   const handlePickerSelect = async (state: PickerState): Promise<void> => {
