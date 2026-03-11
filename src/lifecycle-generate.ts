@@ -38,6 +38,9 @@ function formatToolArgs(args: Record<string, unknown>): Record<string, string | 
       out[key] = value.length > 80 ? `${value.slice(0, 79)}…` : value;
     } else if (typeof value === "number" || typeof value === "boolean") {
       out[key] = value;
+    } else if (Array.isArray(value)) {
+      const summary = JSON.stringify(value);
+      out[key] = summary.length > 120 ? `${summary.slice(0, 119)}…` : summary;
     }
   }
   return out;

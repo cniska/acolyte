@@ -108,9 +108,19 @@ function compactLine(line: string): string {
   if (event === "lifecycle.tool.call") {
     const tool = parseField(line, "tool") ?? "?";
     const path = parseField(line, "path");
+    const paths = parseField(line, "paths");
     const pattern = parseField(line, "pattern");
     const command = parseField(line, "command");
-    return `${ts}${taskPrefix} ${event} tool=${tool}${path ? ` path=${path}` : ""}${pattern ? ` pattern=${pattern}` : ""}${command ? ` command="${command}"` : ""}`;
+    return `${ts}${taskPrefix} ${event} tool=${tool}${path ? ` path=${path}` : ""}${paths ? ` paths=${paths}` : ""}${pattern ? ` pattern=${pattern}` : ""}${command ? ` command="${command}"` : ""}`;
+  }
+
+  if (event === "lifecycle.tool.cache") {
+    const tool = parseField(line, "tool") ?? "?";
+    const hit = parseField(line, "hit") ?? "?";
+    const hits = parseField(line, "hits") ?? "?";
+    const misses = parseField(line, "misses") ?? "?";
+    const size = parseField(line, "size") ?? "?";
+    return `${ts}${taskPrefix} ${event} tool=${tool} hit=${hit} hits=${hits} misses=${misses} size=${size}`;
   }
 
   if (event === "lifecycle.tool.result") {

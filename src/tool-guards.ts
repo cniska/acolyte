@@ -28,6 +28,7 @@ export type SessionContext = {
   writeTools: ReadonlySet<string>;
   onGuard?: (event: GuardEvent) => void;
   cache?: ToolCache;
+  onDebug?: (event: `lifecycle.${string}`, data: Record<string, unknown>) => void;
 };
 
 const FILE_CHURN_MIN_COMBINED = 12;

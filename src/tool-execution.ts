@@ -59,11 +59,14 @@ export async function guardedExecute<T>(
   if (cache?.isCacheable(toolId)) {
     const cached = cache.get(toolId, argsRecord);
     if (cached) {
+      session.onDebug?.("lifecycle.tool.cache", { tool: toolId, hit: true, ...cache.stats() });
       recordCall(session, toolId, argsRecord);
       return cached.result as T;
     }
+    session.onDebug?.("lifecycle.tool.cache", { tool: toolId, hit: false, ...cache.stats() });
   }
 
+  let taskFailed = false;
   try {
     const result = await task();
     if (cache?.isCacheable(toolId)) {
@@ -71,9 +74,12 @@ export async function guardedExecute<T>(
       cache.populateSubEntries(toolId, argsRecord, result);
     }
     return result;
+  } catch (error) {
+    taskFailed = true;
+    throw error;
   } finally {
     recordCall(session, toolId, argsRecord);
-    if (cache && !cache.isCacheable(toolId)) {
+    if (cache && !cache.isCacheable(toolId) && !taskFailed) {
       cache.invalidateForWrite(toolId, argsRecord);
     }
   }

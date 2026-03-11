@@ -80,7 +80,10 @@ function createRunContext(
     mode: params.initialMode,
     agentForMode: params.initialMode,
     model: params.model,
-    session: Object.assign(params.prepared.session, { mode: params.initialMode }),
+    session: Object.assign(params.prepared.session, {
+      mode: params.initialMode,
+      onDebug: (event: `lifecycle.${string}`, data: Record<string, unknown>) => params.debug(event, data),
+    }),
     agent,
     agentInput: params.prepared.agentInput,
     policy: params.policy,
