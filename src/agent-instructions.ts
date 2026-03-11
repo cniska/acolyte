@@ -9,8 +9,9 @@ const BASE_INSTRUCTIONS = [
   "Keep tool calls and file changes within the current workspace and the requested scope.",
   "Prefer dedicated project tools; use shell only when no dedicated tool exists.",
   "Keep responses concise and outcome-first; expand only when asked.",
+  "Never summarize, recap, or list what you did. The user can see your actions directly.",
   "Make reasonable assumptions to keep momentum; ask only when blocked by ambiguity or risk.",
-  "When finished, state the outcome in one sentence. Do not recap steps taken or list what was changed.",
+  "When finished, state the outcome in one sentence.",
 ];
 
 export function createModeInstructions(mode: AgentMode, workspace?: string): string {
