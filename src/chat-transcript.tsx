@@ -173,6 +173,24 @@ function renderToolLine(item: ToolOutput, index: number, lineNumWidth: number): 
   );
 }
 
+function renderHeaderDetail(item: ToolOutput, detail: string): React.ReactNode {
+  if (item.kind === "edit-header") {
+    const match = detail.match(/^(.*)\((\+\d+) (-\d+)\)$/);
+    if (match) {
+      return (
+        <>
+          <Text dimColor>{match[1]}(</Text>
+          <Text color={palette.diffAddText}>{match[2]}</Text>
+          <Text dimColor> </Text>
+          <Text color={palette.diffRemoveText}>{match[3]}</Text>
+          <Text dimColor>)</Text>
+        </>
+      );
+    }
+  }
+  return <Text dimColor>{detail}</Text>;
+}
+
 function renderToolBlock(items: ToolOutput[]): React.ReactNode {
   if (items.length === 0) return null;
   const first = items[0];
@@ -188,7 +206,7 @@ function renderToolBlock(items: ToolOutput[]): React.ReactNode {
       {label && text.startsWith(label) ? (
         <>
           <Text bold>{label}</Text>
-          <Text dimColor>{text.slice(label.length)}</Text>
+          {renderHeaderDetail(first, text.slice(label.length))}
         </>
       ) : (
         <Text>{text}</Text>

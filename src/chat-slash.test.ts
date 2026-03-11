@@ -5,7 +5,7 @@ import { tempDir, writeSkill } from "./test-utils";
 
 describe("chat-slash helpers", () => {
   test("suggestSlashCommands filters known commands by prefix", () => {
-    expect(suggestSlashCommands("/c")).toEqual([]);
+    expect(suggestSlashCommands("/c")).toEqual(["/clear"]);
     expect(suggestSlashCommands("/p")).toEqual([]);
     expect(suggestSlashCommands("/s")).toEqual(["/status", "/sessions", "/skills"]);
     expect(suggestSlashCommands("/st")).toEqual(["/status"]);
