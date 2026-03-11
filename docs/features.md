@@ -28,7 +28,7 @@ Shipped, user-visible capabilities.
 - Automatic verify pass after write operations.
 - Task-scoped verify boundaries by default, with opt-in global verify scope.
 - Tool-guarded execution for safer autonomous runs.
-- Streaming progress output for tool activity.
+- Streaming progress output for tool activity with real-time token usage.
 - Proactive token budgeting via tiktoken with system prompt reservation and priority-based allocation.
 - Per-task LRU result cache for read-only and search tools.
 
@@ -59,7 +59,7 @@ Shipped, user-visible capabilities.
 ## Diagnostics
 
 - Status command with `--json` output.
-- Token usage reporting.
+- Token usage reporting per turn and in worked summary.
 - Lifecycle trace tool that parses daemon logs into compact timelines (`bun run trace:lifecycle`).
 - Managed daemon log file at `~/.acolyte/server.log`.
 - Scoped debug logging via `ACOLYTE_DEBUG` tags (supports wildcard matching).

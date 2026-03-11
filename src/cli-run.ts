@@ -1,11 +1,11 @@
 import { z } from "zod";
 import type { appConfig as appConfigType } from "./app-config";
+import { formatCompactNumber } from "./chat-format";
 import type { createMessage as createMessageType } from "./chat-session";
 import type { attachFileToSession as attachFileToSessionType } from "./cli-chat";
 import type { handlePrompt as handlePromptType } from "./cli-prompt";
 import type { createClient as createClientType } from "./client-factory";
 import type { readResolvedConfigSync as readResolvedConfigSyncType } from "./config";
-
 import { t } from "./i18n";
 import { type ResourceId, userResourceIdFor } from "./resource-id";
 import type { apiUrlForPort as apiUrlForPortType, ensureLocalServer as ensureLocalServerType } from "./server-daemon";
@@ -168,7 +168,7 @@ export async function runMode(args: string[], deps: RunModeDeps): Promise<void> 
   const durationSec = (durationMs / 1000).toFixed(1);
   if (totals.total > 0) {
     printDim(
-      `run: ${durationSec}s, ${totals.total} tokens (prompt ${totals.prompt}, completion ${totals.completion}), ${totals.modelCalls} model calls, ${session.tokenUsage.length} turns`,
+      `run: ${durationSec}s, ${formatCompactNumber(totals.total)} tokens (prompt ${formatCompactNumber(totals.prompt)}, completion ${formatCompactNumber(totals.completion)}), ${totals.modelCalls} model calls, ${session.tokenUsage.length} turns`,
     );
   }
 

@@ -1,4 +1,5 @@
 import type { Agent } from "./agent-contract";
+import { estimateTokens } from "./agent-input";
 import { createInstructions } from "./agent-instructions";
 import { agentModes } from "./agent-modes";
 import { createAgent } from "./agent-stream";
@@ -151,6 +152,7 @@ export async function phaseGenerate(ctx: RunContext, prompt: string, opts: Gener
   resetCycleStepCount(ctx.session, opts.cycleLimit);
   ctx.generationAttempt += 1;
   ctx.emit({ type: "status", message: `${agentModes[ctx.mode].statusText} (${ctx.model})` });
+  ctx.emit({ type: "usage", promptTokens: ctx.promptUsage.promptTokens, completionTokens: ctx.completionTokensAccum });
   ctx.debug("lifecycle.generate.start", {
     model: ctx.model,
     mode: ctx.mode,
@@ -160,6 +162,14 @@ export async function phaseGenerate(ctx: RunContext, prompt: string, opts: Gener
   try {
     ctx.modelCallCount += 1;
     ctx.result = await streamWithTimeout(ctx, prompt, opts.timeoutMs);
+    ctx.completionTokensAccum += estimateTokens(ctx.result.text);
+    ctx.streamingChars = 0;
+    ctx.lastUsageEmitChars = 0;
+    ctx.emit({
+      type: "usage",
+      promptTokens: ctx.promptUsage.promptTokens,
+      completionTokens: ctx.completionTokensAccum,
+    });
     ctx.debug("lifecycle.generate.done", {
       model: ctx.model,
       tool_calls: ctx.result.toolCalls.length,
@@ -250,17 +260,38 @@ function emitToolResult(ctx: RunContext, toolCallId: string, toolName: string, i
   });
 }
 
+const USAGE_EMIT_CHAR_INTERVAL = 500;
+const AVERAGE_CHARS_PER_TOKEN = 4;
+
+function emitStreamingUsage(ctx: RunContext, chars: number): void {
+  ctx.streamingChars += chars;
+  if (ctx.streamingChars - ctx.lastUsageEmitChars >= USAGE_EMIT_CHAR_INTERVAL) {
+    ctx.lastUsageEmitChars = ctx.streamingChars;
+    const streamingTokens = Math.ceil(ctx.streamingChars / AVERAGE_CHARS_PER_TOKEN);
+    ctx.emit({
+      type: "usage",
+      promptTokens: ctx.promptUsage.promptTokens,
+      completionTokens: ctx.completionTokensAccum + streamingTokens,
+    });
+  }
+}
+
 function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
   switch (chunk.type) {
     case "text-delta": {
       const p = chunk.payload as TextDeltaPayload | undefined;
-      if (typeof p?.text === "string" && p.text.length > 0 && ctx.mode !== "verify")
-        ctx.emit({ type: "text-delta", text: p.text });
+      if (typeof p?.text === "string" && p.text.length > 0) {
+        if (ctx.mode !== "verify") ctx.emit({ type: "text-delta", text: p.text });
+        emitStreamingUsage(ctx, p.text.length);
+      }
       break;
     }
     case "reasoning-delta": {
       const p = chunk.payload as TextDeltaPayload | undefined;
-      if (typeof p?.text === "string" && p.text.length > 0) ctx.emit({ type: "reasoning", text: p.text });
+      if (typeof p?.text === "string" && p.text.length > 0) {
+        ctx.emit({ type: "reasoning", text: p.text });
+        emitStreamingUsage(ctx, p.text.length);
+      }
       break;
     }
     case "tool-call": {

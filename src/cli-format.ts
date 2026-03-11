@@ -135,7 +135,6 @@ export function formatForTool(toolId: string, raw: string): string {
   return (TOOL_FORMATTERS[toolId] ?? formatReadOutput)(raw);
 }
 
-
 export function formatReadDetail(pathInput: string, start?: string, end?: string): string {
   if (!start && !end) return pathInput;
   const from = start ?? "1";
@@ -154,4 +153,3 @@ export function formatAssistantReplyOutput(content: string, wrapWidth = 100): st
     })
     .join("\n");
 }
-

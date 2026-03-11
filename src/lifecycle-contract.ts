@@ -114,6 +114,9 @@ export type RunContext = {
   mode: AgentMode;
   observedTools: Set<string>;
   modelCallCount: number;
+  completionTokensAccum: number;
+  streamingChars: number;
+  lastUsageEmitChars: number;
   generationAttempt: number;
   regenerationCount: number;
   regenerationLimitHit: boolean;

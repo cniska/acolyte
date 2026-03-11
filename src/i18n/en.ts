@@ -209,6 +209,8 @@ export const EN_MESSAGES = {
   "unit.replacement.one": "{count} replacement",
   "unit.result": "{count} results",
   "unit.result.one": "{count} result",
+  "unit.token": "{count} tokens",
+  "unit.token.one": "{count} token",
   "unit.tool": "{count} tools",
   "unit.tool.one": "{count} tool",
   unknown_error: "Unknown error",

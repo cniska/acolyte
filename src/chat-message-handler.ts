@@ -43,6 +43,7 @@ type CreateMessageHandlerInput = {
   stopWorking?: () => void;
   setIsWorking?: (next: boolean) => void;
   setProgressText: (next: string | null) => void;
+  setRunningUsage: (next: { promptTokens: number; completionTokens: number } | null) => void;
   setTokenUsage: (updater: (current: SessionTokenUsageEntry[]) => SessionTokenUsageEntry[]) => void;
   createMessage: (role: Message["role"], content: string) => Message;
   nowIso: () => string;
@@ -196,6 +197,9 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
           switch (event.type) {
             case "status":
               input.setProgressText(event.message);
+              break;
+            case "usage":
+              input.setRunningUsage({ promptTokens: event.promptTokens, completionTokens: event.completionTokens });
               break;
             case "text-delta":
               streamState.onAssistantDelta(event.text);

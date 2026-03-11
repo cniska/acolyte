@@ -56,6 +56,7 @@ function ChatApp(props: ChatAppProps) {
   const [branch, setBranch] = useState<string | null>(null);
   const [picker, setPicker] = useState<PickerState | null>(null);
   const [tokenUsage, setTokenUsage] = useState<SessionTokenUsageEntry[]>(() => session.tokenUsage ?? []);
+  const [runningUsage, setRunningUsage] = useState<{ promptTokens: number; completionTokens: number } | null>(null);
   const [inputHistory, setInputHistory] = useState<string[]>([]);
   const [inputHistoryIndex, setInputHistoryIndex] = useState(-1);
   const [inputHistoryDraft, setInputHistoryDraft] = useState("");
@@ -159,8 +160,12 @@ function ChatApp(props: ChatAppProps) {
     setInputHistoryIndex,
     setInputHistoryDraft,
     startWorking: () => setIsWorking(true),
-    stopWorking: () => setIsWorking(false),
+    stopWorking: () => {
+      setIsWorking(false);
+      setRunningUsage(null);
+    },
     setProgressText,
+    setRunningUsage,
     setTokenUsage,
     createMessage: createMessage,
     nowIso,
@@ -223,6 +228,7 @@ function ChatApp(props: ChatAppProps) {
         thinkingFrame={thinkingFrame}
         thinkingStartedAt={thinkingStartedAt}
         queuedMessages={queuedMessages}
+        runningUsage={runningUsage}
       />
 
       <Text> </Text>

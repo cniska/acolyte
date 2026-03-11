@@ -293,6 +293,7 @@ export function createMessageHandlerHarness(overrides?: {
     setInputHistoryDraft: () => {},
     setIsWorking: () => {},
     setProgressText: () => {},
+    setRunningUsage: () => {},
     setTokenUsage: () => {},
     createMessage,
     nowIso: () => DEFAULT_TIME,

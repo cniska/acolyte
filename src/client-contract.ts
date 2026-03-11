@@ -36,6 +36,7 @@ export const streamEventSchema = z.discriminatedUnion("type", [
     errorCode: z.string().optional(),
     error: streamErrorSchema.optional(),
   }),
+  z.object({ type: z.literal("usage"), promptTokens: z.number(), completionTokens: z.number() }),
   z.object({ type: z.literal("status"), message: z.string() }),
   z.object({
     type: z.literal("error"),

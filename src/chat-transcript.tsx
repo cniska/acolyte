@@ -2,6 +2,7 @@ import { Box, Text } from "ink";
 import React from "react";
 import type { ChatRow } from "./chat-commands";
 import { renderAssistantContent } from "./chat-content-render";
+import { formatTokenCount } from "./chat-format";
 import { palette } from "./palette";
 import { renderToolOutput as renderToolOutputText, type ToolOutput } from "./tool-output-content";
 
@@ -12,6 +13,7 @@ type ChatTranscriptProps = {
   thinkingFrame: number;
   queuedMessages?: string[];
   thinkingStartedAt?: number | null;
+  runningUsage?: { promptTokens: number; completionTokens: number } | null;
 };
 
 const MAX_TRANSCRIPT_WIDTH = 120;
@@ -150,7 +152,7 @@ function renderToolBlock(items: ToolOutput[]): React.ReactNode {
 }
 
 export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
-  const { rows, isWorking, progressText, thinkingFrame, thinkingStartedAt } = props;
+  const { rows, isWorking, progressText, thinkingFrame, thinkingStartedAt, runningUsage } = props;
   const pulsePeriod = 16;
   const hasContent = rows.length > 0 || isWorking;
   const elapsedSec =
@@ -166,15 +168,17 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
   const runningBlinkOn = Math.abs(thinkingFrame) % pulsePeriod < pulsePeriod / 2;
   const pulseGlyph = isRunning ? (runningBlinkOn ? "•" : " ") : "•";
   const indicatorColor: string = isQueued ? palette.queued : isAccepted ? palette.accepted : palette.running;
+  const tokenText = runningUsage ? formatTokenCount(runningUsage.promptTokens + runningUsage.completionTokens) : "";
   const thinkingText = (() => {
     const timeText = `${elapsedSec}s`;
     if (stageMatch) {
       const stage = stageMatch[1]?.trim() ?? "";
       const model = stageMatch[2]?.trim() || "";
-      const details = [timeText, model].filter((part) => part.length > 0).join(" • ");
+      const details = [timeText, model, tokenText].filter((part) => part.length > 0).join(" • ");
       return details.length > 0 ? `${stage} (${details})` : stage;
     }
-    return `${trimmedProgressText} (${timeText})`;
+    const parts = [trimmedProgressText, timeText, tokenText].filter((part) => part.length > 0);
+    return parts.length > 1 ? `${parts[0]} (${parts.slice(1).join(" • ")})` : (parts[0] ?? "");
   })();
   const columns = process.stdout.columns ?? 120;
   const contentWidth = Math.max(24, Math.min(MAX_TRANSCRIPT_WIDTH, columns - 2));

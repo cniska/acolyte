@@ -56,6 +56,7 @@ describe("chat message handler stream behavior", () => {
       setProgressText: (next) => {
         progressTexts.push(next);
       },
+      setRunningUsage: () => {},
       setTokenUsage: () => {},
       createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
@@ -107,6 +108,7 @@ describe("chat message handler stream behavior", () => {
       setInputHistoryDraft: () => {},
       setIsWorking: () => {},
       setProgressText: () => {},
+      setRunningUsage: () => {},
       setTokenUsage: () => {},
       createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
@@ -180,6 +182,7 @@ describe("chat message handler stream behavior", () => {
       setInputHistoryDraft: () => {},
       setIsWorking: () => {},
       setProgressText: () => {},
+      setRunningUsage: () => {},
       setTokenUsage: () => {},
       createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
@@ -224,6 +227,7 @@ describe("chat message handler stream behavior", () => {
       setInputHistoryDraft: () => {},
       setIsWorking: () => {},
       setProgressText: () => {},
+      setRunningUsage: () => {},
       setTokenUsage: () => {},
       createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
@@ -274,6 +278,7 @@ describe("chat message handler stream behavior", () => {
         thinkingTransitions.push(next);
       },
       setProgressText: () => {},
+      setRunningUsage: () => {},
       setTokenUsage: () => {},
       createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
@@ -347,6 +352,7 @@ describe("chat message handler stream behavior", () => {
       setProgressText: (next) => {
         progressTransitions.push(next);
       },
+      setRunningUsage: () => {},
       setTokenUsage: () => {},
       createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
@@ -402,6 +408,7 @@ describe("chat message handler stream behavior", () => {
       setInputHistoryDraft: () => {},
       setIsWorking: () => {},
       setProgressText: () => {},
+      setRunningUsage: () => {},
       setTokenUsage: () => {},
       createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
@@ -466,6 +473,7 @@ describe("chat message handler stream behavior", () => {
       setInputHistoryDraft: () => {},
       setIsWorking: () => {},
       setProgressText: () => {},
+      setRunningUsage: () => {},
       setTokenUsage: () => {},
       createMessage,
       nowIso: () => "2026-02-20T00:00:00.000Z",
@@ -678,6 +686,7 @@ describe("chat message handler stream behavior", () => {
       setInputHistoryDraft: () => {},
       setIsWorking: () => {},
       setProgressText: () => {},
+      setRunningUsage: () => {},
       setTokenUsage: (updater) => {
         tokenUsageSnapshots.push(updater([]));
       },

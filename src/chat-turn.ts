@@ -2,7 +2,7 @@ import type { AgentMode } from "./agent-contract";
 import { createWorkspaceSpecifier, type TokenUsage } from "./api";
 import { type ChatRow, createRow } from "./chat-commands";
 import { extractAtReferencePaths } from "./chat-file-ref";
-import { formatThoughtDuration } from "./chat-format";
+import { formatThoughtDuration, formatTokenCount } from "./chat-format";
 import type { Message } from "./chat-message-contract";
 import type { Client, StreamEvent } from "./client-contract";
 import { buildFileContext } from "./file-context";
@@ -134,8 +134,10 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
   if (durationMs >= 300) {
     const duration = formatThoughtDuration(durationMs);
     const toolCount = reply.toolCalls?.length ?? 0;
+    const totalTokens = tokenEntry.usage.totalTokens;
     const details: string[] = [];
     if (toolCount > 0) details.push(t("unit.tool", { count: toolCount }));
+    if (totalTokens > 0) details.push(formatTokenCount(totalTokens));
     const suffix = details.length > 0 ? ` (${details.join(" · ")})` : "";
     rows.push(createRow("assistant", t("chat.worked", { duration, suffix }), { dim: true, style: "worked" }));
   }
