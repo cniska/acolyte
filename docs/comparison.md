@@ -40,18 +40,16 @@ No other project separates lifecycle phases into independently testable modules.
 
 Behavioral guards run before every tool call and block degenerate patterns at runtime:
 
-| Guard | What it blocks |
+| Guard id | Purpose |
 |---|---|
-| `step-budget` | Per-cycle and total step limits |
-| `duplicate-call` | Identical consecutive tool calls |
-| `file-churn` | Excessive read/edit loops on the same file |
-| `redundant-search` | Repeated search-only loops without reads/writes |
-| `redundant-find` | Repeated find-only loops without reads/writes |
-| `redundant-verify` | Re-running verify when nothing changed |
-| `no-delete-rewrite` | Deleting a file that was already read (use edit instead) |
+| `duplicate-call` | Prevent duplicate or repeated identical tool calls within the same turn |
+| `file-churn` | Detect read/edit loops against the same file and block excessive incremental edits/read churn |
+| `redundant-find` | Block narrower find/file discovery calls that add no new scope after a broader one |
+| `redundant-search` | Block redundant or scope-narrowing search-files calls |
+| `redundant-verify` | Prevent running verify when no write tools ran since the last verify |
+| `step-budget` | Enforce per-cycle and total step budgets for tool calls |
 
 Only OpenClaw (3 detectors: genericRepeat, pingPong, knownPollNoProgress) and OpenHands (StuckDetector + 500-step limit) have comparable automated systems. Others rely on user confirmation (Aider, Cline) or have no behavioral guards.
-
 ## Auto-verification
 
 After generation, evaluators inspect the result and can trigger:
