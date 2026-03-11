@@ -10,7 +10,7 @@ const BASE_INSTRUCTIONS = [
   "Prefer dedicated project tools; use shell only when no dedicated tool exists.",
   "Keep responses concise and outcome-first; expand only when asked.",
   "Make reasonable assumptions to keep momentum; ask only when blocked by ambiguity or risk.",
-  "Stop once the user's request is completed and verified.",
+  "When finished, state the outcome in one sentence. Do not recap steps taken or list what was changed.",
 ];
 
 export function createModeInstructions(mode: AgentMode, workspace?: string): string {
