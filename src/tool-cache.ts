@@ -86,6 +86,29 @@ export function createToolCache(cacheableTools: ReadonlySet<string>, maxEntries 
       if (paths.length > 0) keyPaths.set(key, paths);
     },
 
+    populateSubEntries(toolName, args, result) {
+      if (toolName !== "read-file") return;
+      const paths = args.paths;
+      if (!Array.isArray(paths) || paths.length < 2) return;
+      if (typeof result !== "string") return;
+      // readSnippets joins sections with "\n\n", each starting with "File: /abs/path"
+      const sections = result.split("\n\nFile: ");
+      if (sections.length < 2) return;
+      // First section already starts with "File: ", rest had it stripped by split
+      const normalized = [sections[0], ...sections.slice(1).map((s) => `File: ${s}`)];
+      for (let i = 0; i < normalized.length && i < paths.length; i++) {
+        const entry = paths[i];
+        if (!entry || typeof entry !== "object") continue;
+        const pathEntry = entry as Record<string, unknown>;
+        const p = pathEntry.path;
+        if (typeof p !== "string") continue;
+        // Skip partial reads with start/end — sub-entry wouldn't match a full read
+        if (pathEntry.start !== undefined || pathEntry.end !== undefined) continue;
+        const subArgs = { paths: [{ path: p }] };
+        this.set(toolName, subArgs, { result: normalized[i] });
+      }
+    },
+
     invalidateForWrite(toolName, args) {
       if (toolName === "run-command") {
         const removed = cache.size;

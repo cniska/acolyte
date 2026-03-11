@@ -68,6 +68,7 @@ export async function guardedExecute<T>(
     const result = await task();
     if (cache?.isCacheable(toolId)) {
       cache.set(toolId, argsRecord, { result });
+      cache.populateSubEntries(toolId, argsRecord, result);
     }
     return result;
   } finally {

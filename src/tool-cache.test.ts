@@ -141,6 +141,56 @@ describe("tool-cache", () => {
     expect(cache.get("read-file", { paths: [{ path: "c.ts" }] })).toBeDefined();
   });
 
+  test("populateSubEntries splits multi-file read into per-file cache entries", () => {
+    const cache = createToolCache(CACHEABLE);
+    const multiArgs = { paths: [{ path: "src/a.ts" }, { path: "src/b.ts" }] };
+    const result = "File: /workspace/src/a.ts\n1: const a = 1;\n\nFile: /workspace/src/b.ts\n1: const b = 2;";
+    cache.set("read-file", multiArgs, { result });
+    cache.populateSubEntries("read-file", multiArgs, result);
+    const hitA = cache.get("read-file", { paths: [{ path: "src/a.ts" }] });
+    expect(hitA).toBeDefined();
+    expect(hitA?.result).toBe("File: /workspace/src/a.ts\n1: const a = 1;");
+    const hitB = cache.get("read-file", { paths: [{ path: "src/b.ts" }] });
+    expect(hitB).toBeDefined();
+    expect(hitB?.result).toBe("File: /workspace/src/b.ts\n1: const b = 2;");
+  });
+
+  test("populateSubEntries skips entries with start/end ranges", () => {
+    const cache = createToolCache(CACHEABLE);
+    const multiArgs = { paths: [{ path: "src/a.ts", start: 1, end: 5 }, { path: "src/b.ts" }] };
+    const result = "File: /workspace/src/a.ts\n1: const a = 1;\n\nFile: /workspace/src/b.ts\n1: const b = 2;";
+    cache.set("read-file", multiArgs, { result });
+    cache.populateSubEntries("read-file", multiArgs, result);
+    // a.ts had range — no sub-entry
+    expect(cache.get("read-file", { paths: [{ path: "src/a.ts" }] })).toBeUndefined();
+    // b.ts had no range — sub-entry populated
+    expect(cache.get("read-file", { paths: [{ path: "src/b.ts" }] })).toBeDefined();
+  });
+
+  test("populateSubEntries does nothing for single-file reads", () => {
+    const cache = createToolCache(CACHEABLE);
+    const args = { paths: [{ path: "src/a.ts" }] };
+    const result = "File: /workspace/src/a.ts\n1: const a = 1;";
+    cache.set("read-file", args, { result });
+    cache.populateSubEntries("read-file", args, result);
+    // Only the original entry exists, no extra sub-entries
+    expect(cache.stats().size).toBe(1);
+  });
+
+  test("write invalidation evicts sub-entry for written file", () => {
+    const cache = createToolCache(CACHEABLE);
+    const multiArgs = { paths: [{ path: "src/a.ts" }, { path: "src/b.ts" }] };
+    const result = "File: /workspace/src/a.ts\n1: const a = 1;\n\nFile: /workspace/src/b.ts\n1: const b = 2;";
+    cache.set("read-file", multiArgs, { result });
+    cache.populateSubEntries("read-file", multiArgs, result);
+    cache.invalidateForWrite("edit-file", { path: "src/a.ts" });
+    // a.ts sub-entry and multi-read entry both evicted
+    expect(cache.get("read-file", { paths: [{ path: "src/a.ts" }] })).toBeUndefined();
+    expect(cache.get("read-file", multiArgs)).toBeUndefined();
+    // b.ts sub-entry survives
+    expect(cache.get("read-file", { paths: [{ path: "src/b.ts" }] })).toBeDefined();
+  });
+
   test("stats track hits, misses, and invalidations", () => {
     const cache = createToolCache(CACHEABLE);
     const args = { paths: [{ path: "a.ts" }] };
