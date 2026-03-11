@@ -136,6 +136,7 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
     openaiApiKey: OPENAI_API_KEY,
     openaiBaseUrl: OPENAI_BASE_URL,
     anthropicApiKey: appConfig.anthropic.apiKey,
+    anthropicBaseUrl: appConfig.anthropic.baseUrl,
     googleApiKey: appConfig.google.apiKey,
   });
   if (!providerReady) {
