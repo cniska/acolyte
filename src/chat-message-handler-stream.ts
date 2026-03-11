@@ -97,9 +97,9 @@ export function createMessageStreamState(input: {
       }
       const rowId = toolRowIdByCallId.get(entry.toolCallId);
       if (!rowId) return;
-      const dotColor = entry.isError ? palette.error : palette.success;
+      const markerColor = entry.isError ? palette.error : palette.success;
       input.setRows((current) =>
-        current.map((row) => (row.id === rowId ? { ...row, style: { ...row.style, dot: dotColor } } : row)),
+        current.map((row) => (row.id === rowId ? { ...row, style: { ...row.style, marker: markerColor } } : row)),
       );
     },
     onProgressError: (error) => {

@@ -5,6 +5,7 @@ import type { ChatRow } from "./chat-commands";
 import { createMessageHandler } from "./chat-message-handler";
 import { resolveNaturalRememberDirective } from "./chat-message-handler-helpers";
 import type { StreamEvent } from "./client-contract";
+import { palette } from "./palette";
 import {
   createClient,
   createMessage,
@@ -329,9 +330,10 @@ describe("chat message handler guards", () => {
     await pending;
 
     const last = rows[rows.length - 1];
-    expect(last?.role).toBe("system");
+    expect(last?.role).toBe("task");
     expect(last?.content).toBe("Interrupted");
     expect(last?.style?.dim).toBe(true);
+    expect(last?.style?.marker).toBe(palette.cancelled);
   });
 
   test("interrupt followed by next prompt yields clean transcript flow", async () => {
@@ -408,7 +410,7 @@ describe("chat message handler guards", () => {
 
     expect(rows.map((row) => `${row.role}:${row.content}`)).toEqual([
       "user:First question",
-      "system:Interrupted",
+      "task:Interrupted",
       "user:Second question",
       "assistant:Second answer.",
     ]);

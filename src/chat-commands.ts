@@ -23,14 +23,14 @@ import { formatStatusOutput } from "./status-format";
 import { createSession } from "./storage";
 
 export type ChatRowStyle = {
-  dot?: string;
+  marker?: string;
   text?: string;
   dim?: boolean;
 };
 
 export type ChatRow = {
   id: string;
-  role: "user" | "assistant" | "tool" | "status" | "system";
+  role: "user" | "assistant" | "tool" | "status" | "task" | "system";
   content: string;
   style?: ChatRowStyle;
   toolOutput?: ToolOutput[];

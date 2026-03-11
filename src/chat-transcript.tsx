@@ -11,6 +11,7 @@ const MARKERS: Record<ChatRow["role"], string> = {
   assistant: "• ",
   tool: "• ",
   status: "• ",
+  task: "• ",
   system: "  ",
 };
 
@@ -232,16 +233,14 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
           {index > 0 ? <Text> </Text> : null}
           {(() => {
             const marker = MARKERS[row.role];
-            const markerColor = row.style?.dot ?? (row.role === "assistant" ? palette.brand : undefined);
+            const markerColor = row.style?.marker ?? (row.role === "assistant" ? palette.brand : undefined);
             const textColor =
               row.style?.text ?? (row.role === "assistant" && !row.style?.dim ? palette.brand : undefined);
             const dim = row.style?.dim ?? false;
             return (
               <Box>
                 <Box width={2}>
-                  <Text dimColor={!markerColor && dim} color={markerColor}>
-                    {marker}
-                  </Text>
+                  <Text color={markerColor}>{marker}</Text>
                 </Box>
                 <Box width={row.role === "tool" ? toolContentWidth : contentWidth}>
                   {row.role === "tool" && row.toolOutput ? (

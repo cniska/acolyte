@@ -254,14 +254,20 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
         input.currentSession.updatedAt = input.nowIso();
         await input.persist().catch(() => {});
       }
-      const errorContent = isAbortError(error) ? t("chat.submit.interrupted") : formatSubmitError(error);
-      input.setRows((current) => [
-        ...current,
-        createRow("system", errorContent, {
-          dim: isAbortError(error),
-          text: isAbortError(error) ? palette.cancelled : palette.error,
-        }),
-      ]);
+      if (isAbortError(error)) {
+        input.setRows((current) => [
+          ...current,
+          createRow("task", t("chat.submit.interrupted"), {
+            dim: true,
+            marker: palette.cancelled,
+          }),
+        ]);
+      } else {
+        input.setRows((current) => [
+          ...current,
+          createRow("system", formatSubmitError(error), { text: palette.error }),
+        ]);
+      }
     } finally {
       streamState.dispose();
       input.setInterrupt(null);
