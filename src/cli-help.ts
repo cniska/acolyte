@@ -7,6 +7,10 @@ export function printLineBreak(print: Print): void {
   print("");
 }
 
+export function formatUsage(command: string): string {
+  return t("cli.help.label.usage", { usage: command });
+}
+
 export function commandHelp(doc: CliCommandHelp | undefined, printDim: Print): void {
   if (!doc) return;
   printDim(t("cli.help.label.usage", { usage: doc.usage }));
@@ -19,7 +23,7 @@ export function commandHelp(doc: CliCommandHelp | undefined, printDim: Print): v
 }
 
 export function commandError(doc: CliCommandHelp | undefined, name: string, printError: Print, message?: string): void {
-  printError(message ?? `Usage: ${doc?.usage ?? `acolyte ${name}`}`);
+  printError(message ?? formatUsage(doc?.usage ?? `acolyte ${name}`));
   process.exitCode = 1;
 }
 

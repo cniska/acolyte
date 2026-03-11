@@ -1,3 +1,4 @@
+import { formatUsage } from "./cli-help";
 import type {
   readConfigForScope as readConfigForScopeType,
   readConfig as readConfigType,
@@ -94,7 +95,7 @@ export async function configMode(args: string[], deps: ConfigModeDeps): Promise<
     case "set": {
       const parsed = parseScopeArgs(restArgs);
       if (parsed.invalid) {
-        commandError("config", t("cli.config.usage.set"));
+        commandError("config", formatUsage("acolyte config set <key> <value>"));
         return;
       }
       const scope = parsed.scope;
@@ -107,7 +108,7 @@ export async function configMode(args: string[], deps: ConfigModeDeps): Promise<
       }
       const isDottedKey = key?.includes(".") && VALID_CONFIG_KEY_SET.has(key.split(".")[0] ?? "");
       if (!key || (!VALID_CONFIG_KEY_SET.has(key) && !isDottedKey)) {
-        commandError("config", t("cli.config.usage.set"));
+        commandError("config", formatUsage("acolyte config set <key> <value>"));
         return;
       }
 
@@ -132,7 +133,7 @@ export async function configMode(args: string[], deps: ConfigModeDeps): Promise<
     case "unset": {
       const parsed = parseScopeArgs(restArgs);
       if (parsed.invalid) {
-        commandError("config", t("cli.config.usage.unset"));
+        commandError("config", formatUsage("acolyte config unset <key>"));
         return;
       }
       const scope = parsed.scope;
@@ -144,7 +145,7 @@ export async function configMode(args: string[], deps: ConfigModeDeps): Promise<
       }
       const isDottedUnsetKey = key?.includes(".") && VALID_CONFIG_KEY_SET.has(key.split(".")[0] ?? "");
       if (!key || (!VALID_CONFIG_KEY_SET.has(key) && !isDottedUnsetKey)) {
-        commandError("config", t("cli.config.usage.unset"));
+        commandError("config", formatUsage("acolyte config unset <key>"));
         return;
       }
 

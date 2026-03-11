@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { commandHelp } from "./cli-command-registry";
 import { formatReadDetail, printToolResult } from "./cli-format";
+import { formatUsage } from "./cli-help";
 import { editFile, findFiles, readSnippet, searchFiles } from "./file-ops";
 import { gitDiff, gitStatusShort } from "./git-ops";
 import { t } from "./i18n";
@@ -25,7 +26,7 @@ export function parseEditArgs(args: string[]): {
 } {
   const dryRun = args.includes("--dry-run");
   const clean = args.filter((a) => a !== "--dry-run");
-  if (clean.length < 3) throw new Error(t("cli.tool.edit-file.usage"));
+  if (clean.length < 3) throw new Error(formatUsage("/edit <path> <find> <replace> [--dry-run]"));
   const [path, find, ...replaceParts] = clean;
   return editArgsSchema.parse({
     path,
@@ -48,25 +49,25 @@ type ToolHandler = (rest: string[]) => Promise<void>;
 
 const TOOL_HANDLERS: Record<string, ToolHandler> = {
   "find-files": async (rest) => {
-    const pattern = requireArg(rest, t("cli.tool.find-files.usage"));
+    const pattern = requireArg(rest, formatUsage("acolyte tool find-files <pattern>"));
     if (!pattern) return;
     const result = await findFiles(process.cwd(), [pattern]);
     printToolResult("find-files", result, pattern);
   },
   "search-files": async (rest) => {
-    const pattern = requireArg(rest, t("cli.tool.search-files.usage"));
+    const pattern = requireArg(rest, formatUsage("acolyte tool search-files <pattern>"));
     if (!pattern) return;
     const result = await searchFiles(process.cwd(), [pattern]);
     printToolResult("search-files", result, pattern);
   },
   "web-search": async (rest) => {
-    const query = requireArg(rest, t("cli.tool.web-search.usage"));
+    const query = requireArg(rest, formatUsage("acolyte tool web-search <query>"));
     if (!query) return;
     const result = await searchWeb(query, 5);
     printToolResult("web-search", result, query);
   },
   "web-fetch": async (rest) => {
-    const url = requireArg(rest, t("cli.tool.web-fetch.usage"));
+    const url = requireArg(rest, formatUsage("acolyte tool web-fetch <url>"));
     if (!url) return;
     const result = await fetchWeb(url, 5000);
     printToolResult("web-fetch", result, url);
@@ -74,7 +75,7 @@ const TOOL_HANDLERS: Record<string, ToolHandler> = {
   "read-file": async (rest) => {
     const [pathInput, start, end] = rest;
     if (!pathInput) {
-      printError(t("cli.tool.read-file.usage"));
+      printError(formatUsage("acolyte tool read-file <path> [start] [end]"));
       process.exitCode = 1;
       return;
     }
@@ -93,7 +94,7 @@ const TOOL_HANDLERS: Record<string, ToolHandler> = {
     printToolResult("git-diff", result, pathInput ?? ".");
   },
   "run-command": async (rest) => {
-    const command = requireArg(rest, t("cli.tool.run-command.usage"));
+    const command = requireArg(rest, formatUsage("acolyte tool run-command <command>"));
     if (!command) return;
     const result = await runShellCommand(process.cwd(), command);
     printToolResult("run-command", result, command);

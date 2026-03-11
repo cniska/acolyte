@@ -1,5 +1,6 @@
 import { formatColumns, formatRelativeTime } from "./chat-format";
 import { truncateText } from "./cli-format";
+import { formatUsage } from "./cli-help";
 import { t } from "./i18n";
 import type { MemoryEntry } from "./memory-contract";
 import type { MemoryStore } from "./memory-store";
@@ -38,12 +39,12 @@ export async function memoryMode(args: string[], deps: MemoryModeDeps): Promise<
   if (subcommand === "list" || !subcommand) {
     const scopeRaw = subcommand === "list" ? rest[0] : undefined;
     if (subcommand === "list" && rest.length > 1) {
-      commandError("memory", t("cli.memory.usage.list"));
+      commandError("memory", formatUsage("acolyte memory list [all|user|project]"));
       return;
     }
     const scope = scopeRaw && validScopes.has(scopeRaw) ? scopeRaw : "all";
     if (scopeRaw && !validScopes.has(scopeRaw)) {
-      commandError("memory", t("cli.memory.usage.list"));
+      commandError("memory", formatUsage("acolyte memory list [all|user|project]"));
       return;
     }
     const rows = await store.list(scope as "all" | "user" | "project");
@@ -67,7 +68,7 @@ export async function memoryMode(args: string[], deps: MemoryModeDeps): Promise<
     }
     const content = contentParts.join(" ").trim();
     if (!content) {
-      commandError("memory", t("cli.memory.usage.add"));
+      commandError("memory", formatUsage("acolyte memory add [--user|--project] <memory text>"));
       return;
     }
     const entry = await store.add(content, scope);

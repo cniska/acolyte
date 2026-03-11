@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { AgentMode } from "./agent-contract";
 import { appConfig, setDefaultModel, setModeModel } from "./app-config";
 import { COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH, formatColumns, formatRelativeTime } from "./chat-format";
+import { formatUsage } from "./cli-help";
 import type { Client } from "./client-contract";
 import { setConfigValue } from "./config";
 import type { ConfigScope } from "./config-contract";
@@ -246,7 +247,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       const recent = formatSessionList(ctx.store, 6);
       ctx.setRows((current) => [
         ...current,
-        createRow("system", t("chat.resume.usage")),
+        createRow("system", formatUsage("/resume <session-id-prefix>")),
         ...recent.map((line) => createRow("system", line)),
       ]);
       return { stop: true, userText: text };
@@ -323,7 +324,10 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     pushUserCommandRow();
     const selection = parseModelSelectionCommand(resolvedText);
     if (!selection) {
-      ctx.setRows((current) => [...current, createRow("system", t("chat.model.usage"))]);
+      ctx.setRows((current) => [
+        ...current,
+        createRow("system", formatUsage("/model <id> | /model <work|verify> <id>")),
+      ]);
       return { stop: true, userText: text };
     }
     try {
@@ -373,7 +377,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     pushUserCommandRow();
     const parts = resolvedText.trim().split(/\s+/);
     if (parts.length !== 3) {
-      ctx.setRows((current) => [...current, createRow("system", t("chat.memory.rm.usage"))]);
+      ctx.setRows((current) => [...current, createRow("system", formatUsage("/memory rm <id-prefix>"))]);
       return { stop: true, userText: text };
     }
     const prefix = parts[2];
@@ -417,7 +421,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     const parts = resolvedText.split(/\s+/);
     const scope = parseMemoryListScope(parts);
     if (!scope) {
-      ctx.setRows((current) => [...current, createRow("system", t("chat.memory.usage"))]);
+      ctx.setRows((current) => [...current, createRow("system", formatUsage("/memory [all|user|project]"))]);
       return { stop: true, userText: text };
     }
     const memories = await memoryApi.listMemories({ scope });
@@ -461,7 +465,10 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     }
     const content = contentParts.join(" ").trim();
     if (!content) {
-      ctx.setRows((current) => [...current, createRow("system", t("chat.remember.usage"))]);
+      ctx.setRows((current) => [
+        ...current,
+        createRow("system", formatUsage("/remember [--user|--project] <memory text>")),
+      ]);
       return { stop: true, userText: text };
     }
     try {
