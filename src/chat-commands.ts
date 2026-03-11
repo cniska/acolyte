@@ -22,30 +22,22 @@ import type { StatusFields } from "./status-contract";
 import { formatStatusOutput } from "./status-format";
 import { createSession } from "./storage";
 
-export type ChatRow = {
-  id: string;
-  role: "user" | "assistant" | "system";
-  content: string;
+export type ChatRowStyle = {
+  dot?: string;
+  text?: string;
   dim?: boolean;
-  style?:
-    | "sessionStatusOutput"
-    | "sessionsOutput"
-    | "toolOutput"
-    | "statusOutput"
-    | "tokenOutput"
-    | "error"
-    | "worked"
-    | "cancelled";
-  toolOutput?: ToolOutput[];
-  toolStatus?: "ok" | "error";
 };
 
-export function createRow(
-  role: ChatRow["role"],
-  content: string,
-  options?: { dim?: boolean; style?: ChatRow["style"]; toolCallId?: string; toolName?: string },
-): ChatRow {
-  return { id: `row_${createId()}`, role, content, ...options };
+export type ChatRow = {
+  id: string;
+  role: "user" | "assistant" | "tool" | "status" | "system";
+  content: string;
+  style?: ChatRowStyle;
+  toolOutput?: ToolOutput[];
+};
+
+export function createRow(role: ChatRow["role"], content: string, style?: ChatRowStyle): ChatRow {
+  return { id: `row_${createId()}`, role, content, style: style ?? undefined };
 }
 
 export type ResumeResolution =
@@ -121,32 +113,18 @@ export function formatTokenUsageOutput(last: SessionTokenUsageEntry | null, all:
   return rows.map((row) => `${row.key.padEnd(maxKey, " ")} ${row.value}`).join("\n");
 }
 
-export type CommandPresentation = {
-  content: string;
-  style: ChatRow["style"];
-};
-
-export function presentSessionsOutput(store: SessionState, limit = 10): CommandPresentation {
+export function presentSessionsOutput(store: SessionState, limit = 10): string {
   const recent = formatSessionList(store, limit);
-  return {
-    content: [t("chat.sessions.header", { count: store.sessions.length }), "", ...recent].join("\n"),
-    style: "sessionsOutput",
-  };
+  return [t("chat.sessions.header", { count: store.sessions.length }), "", ...recent].join("\n");
 }
 
-export function presentStatusOutput(status: StatusFields): CommandPresentation {
+export function presentStatusOutput(status: StatusFields): string {
   const content = formatStatusOutput(status);
-  return {
-    content: content.length > 0 ? content : t("chat.status.empty"),
-    style: "statusOutput",
-  };
+  return content.length > 0 ? content : t("chat.status.empty");
 }
 
-export function presentTokensOutput(
-  last: SessionTokenUsageEntry | null,
-  all: SessionTokenUsageEntry[],
-): CommandPresentation {
-  return { content: formatTokenUsageOutput(last, all), style: "tokenOutput" };
+export function presentTokensOutput(last: SessionTokenUsageEntry | null, all: SessionTokenUsageEntry[]): string {
+  return formatTokenUsageOutput(last, all);
 }
 
 type CommandResult = {
@@ -273,10 +251,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     ctx.setTokenUsage?.(() => target.tokenUsage);
     ctx.setRows(() => [
       ...ctx.toRows(target.messages),
-      createRow("system", t("chat.resume.resumed", { sessionId: target.id }), {
-        dim: true,
-        style: "sessionStatusOutput",
-      }),
+      createRow("system", t("chat.resume.resumed", { sessionId: target.id }), { dim: true }),
     ]);
     ctx.setShowHelp(() => false);
     await ctx.persist();
@@ -286,7 +261,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
   if (resolvedText === "/sessions") {
     pushUserCommandRow();
     const rendered = presentSessionsOutput(ctx.store, 10);
-    ctx.setRows((current) => [...current, createRow("system", rendered.content, { style: rendered.style })]);
+    ctx.setRows((current) => [...current, createRow("system", rendered)]);
     return { stop: true, userText: text };
   }
 
@@ -295,7 +270,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     try {
       const status = await ctx.client.status();
       const rendered = presentStatusOutput(status);
-      ctx.setRows((current) => [...current, createRow("system", rendered.content, { style: rendered.style })]);
+      ctx.setRows((current) => [...current, createRow("system", rendered)]);
     } catch (error) {
       ctx.setRows((current) => [
         ...current,
@@ -443,7 +418,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     pushUserCommandRow();
     const last = ctx.tokenUsage.length > 0 ? ctx.tokenUsage[ctx.tokenUsage.length - 1] : null;
     const rendered = presentTokensOutput(last, ctx.tokenUsage);
-    ctx.setRows((current) => [...current, createRow("system", rendered.content, { style: rendered.style })]);
+    ctx.setRows((current) => [...current, createRow("system", rendered)]);
     return { stop: true, userText: text };
   }
 
@@ -500,10 +475,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     ctx.setTokenUsage?.(() => []);
     ctx.setRows(() => [
       createRow("user", text),
-      createRow("system", t("chat.session.started", { sessionId: next.id }), {
-        dim: true,
-        style: "sessionStatusOutput",
-      }),
+      createRow("system", t("chat.session.started", { sessionId: next.id }), { dim: true }),
     ]);
     ctx.setValue("");
     ctx.setShowHelp(() => false);

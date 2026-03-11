@@ -70,8 +70,7 @@ describe("chat-commands", () => {
       model: "gpt-5-mini",
       permissions: "write",
     });
-    expect(rendered.style).toBe("statusOutput");
-    expect(rendered.content).toBe(
+    expect(rendered).toBe(
       dedent(`
       providers:          openai
       model:              gpt-5-mini
@@ -82,8 +81,7 @@ describe("chat-commands", () => {
 
   test("presentStatusOutput shows fallback when payload has no visible fields", () => {
     const rendered = presentStatusOutput({});
-    expect(rendered.style).toBe("statusOutput");
-    expect(rendered.content).toBe("Status response was empty.");
+    expect(rendered).toBe("Status response was empty.");
   });
 
   test("presentSessionsOutput renders command presentation block", () => {
@@ -92,15 +90,13 @@ describe("chat-commands", () => {
       sessions: [createSession({ id: "sess_aaaa1111", title: "First" })],
     });
     const rendered = presentSessionsOutput(store, 10);
-    expect(rendered.style).toBe("sessionsOutput");
-    expect(rendered.content).toContain("Sessions 1");
-    expect(rendered.content).toContain("● sess_aaaa1111  First");
+    expect(rendered).toContain("Sessions 1");
+    expect(rendered).toContain("● sess_aaaa1111  First");
   });
 
   test("presentTokensOutput renders empty-state command presentation block", () => {
     const rendered = presentTokensOutput(null, []);
-    expect(rendered.style).toBe("tokenOutput");
-    expect(rendered.content).toBe("No token data yet. Send a prompt first.");
+    expect(rendered).toBe("No token data yet. Send a prompt first.");
   });
 
   test("formatTokenUsageOutput shows latest session warning even when last turn has none", () => {
@@ -152,7 +148,7 @@ describe("chat-commands", () => {
     expect(stop).toBe(true);
     expect(rows.some((row) => row.content.includes("last turn:"))).toBe(true);
     expect(rows.some((row) => row.role === "system" && row.content.includes("last turn:"))).toBe(true);
-    expect(rows.some((row) => row.role === "system" && row.style === "tokenOutput")).toBe(true);
+    expect(rows.some((row) => row.role === "system" && row.content.includes("last turn:"))).toBe(true);
     expect(rows.some((row) => row.content.includes("model calls:") && row.content.includes("last=5 session=7"))).toBe(
       true,
     );
@@ -168,7 +164,7 @@ describe("chat-commands", () => {
   test("dispatchSlashCommand handles /status", async () => {
     const { rows, stop } = await runCommand("/status");
     expect(stop).toBe(true);
-    expect(rows.some((row) => row.role === "system" && row.style === "statusOutput")).toBe(true);
+    expect(rows.some((row) => row.role === "system" && row.content.includes("providers:"))).toBe(true);
   });
 
   test("dispatchSlashCommand handles /sessions with compact system output", async () => {
@@ -183,7 +179,6 @@ describe("chat-commands", () => {
     expect(stop).toBe(true);
     const system = rows.find((row) => row.role === "system" && row.content.includes("Sessions 2"));
     expect(system).toBeDefined();
-    expect(system?.style).toBe("sessionsOutput");
     expect(system?.content).toContain("● sess_aaaa1111  First");
     expect(system?.content).toContain("  sess_bbbb2222  Second");
   });
@@ -492,7 +487,6 @@ describe("chat-commands", () => {
     expect(spies.rows[0]).toMatchObject({ role: "user", content: "/new" });
     expect(spies.rows[1]?.role).toBe("system");
     expect(spies.rows[1]?.content.startsWith("Started new session: sess_")).toBe(true);
-    expect(spies.rows[1]?.style).toBe("sessionStatusOutput");
     expect(spies.currentSessionIds).toHaveLength(1);
     expect(spies.tokenUsageSets).toEqual([[]]);
     expect(store.sessions).toHaveLength(2);
@@ -525,9 +519,7 @@ describe("chat-commands", () => {
     expect(store.activeSessionId).toBe(target.id);
     expect(spies.currentSessionIds).toEqual([target.id]);
     expect(spies.tokenUsageSets).toEqual([target.tokenUsage]);
-    expect(
-      spies.rows.some((row) => row.style === "sessionStatusOutput" && row.content.startsWith("Resumed session:")),
-    ).toBe(true);
+    expect(spies.rows.some((row) => row.role === "system" && row.content.startsWith("Resumed session:"))).toBe(true);
   });
 
   test("dispatchSlashCommand /resume opens picker flow", async () => {

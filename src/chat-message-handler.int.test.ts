@@ -96,15 +96,15 @@ describe("chat message handler guards", () => {
     expect(calls.setInputHistory).toBe(1);
     expect(calls.setValue).toEqual([""]);
     const rendered = rows
-      .map((row) => `${row.role} ${row.style ?? "none"}\n${row.content}`)
+      .map((row) => `${row.role}\n${row.content}`)
       .join("\n\n")
       .replace(/:\s+/g, ": ");
     expect(rendered).toBe(
       dedent(`
-      user none
+      user
       /status
 
-      system statusOutput
+      system
       providers: openai
       model: gpt-5-mini
       permissions: write
@@ -120,15 +120,15 @@ describe("chat message handler guards", () => {
     expect(calls.setInputHistory).toBe(1);
     expect(calls.setValue).toEqual([""]);
     const rendered = rows
-      .map((row) => `${row.role} ${row.style ?? "none"}\n${row.content}`)
+      .map((row) => `${row.role}\n${row.content}`)
       .join("\n\n")
       .replace(/(\s{2})(?:in moments|\d+[smhdw] ago)$/gm, "$1<relative>");
     expect(rendered).toBe(
       dedent(`
-      user none
+      user
       /sessions
 
-      system sessionsOutput
+      system
       Sessions 1
 
       ● sess_test  New Session  <relative>
@@ -143,13 +143,13 @@ describe("chat message handler guards", () => {
 
     expect(calls.setInputHistory).toBe(1);
     expect(calls.setValue).toEqual([""]);
-    const rendered = rows.map((row) => `${row.role} ${row.style ?? "none"}\n${row.content}`).join("\n\n");
+    const rendered = rows.map((row) => `${row.role}\n${row.content}`).join("\n\n");
     expect(rendered).toBe(
       dedent(`
-      user none
+      user
       /tokens
 
-      system tokenOutput
+      system
       No token data yet. Send a prompt first.
     `),
     );
@@ -242,7 +242,7 @@ describe("chat message handler guards", () => {
     await handleMessage("update sum.rs to take three instead of two");
     await handleMessage("delete sum.rs");
 
-    const toolRows = rows.filter((row) => row.role === "assistant" && row.style === "toolOutput");
+    const toolRows = rows.filter((row) => row.role === "tool");
     expect(toolRows).toHaveLength(3);
     expect(toolRows[0]?.toolOutput?.some((i) => i.kind === "tool-header" && i.label === "Edit")).toBe(true);
     expect(toolRows[1]?.toolOutput?.some((i) => i.kind === "tool-header" && i.label === "Edit")).toBe(true);
@@ -331,7 +331,7 @@ describe("chat message handler guards", () => {
     const last = rows[rows.length - 1];
     expect(last?.role).toBe("system");
     expect(last?.content).toBe("Interrupted");
-    expect(last?.dim).toBe(true);
+    expect(last?.style?.dim).toBe(true);
   });
 
   test("interrupt followed by next prompt yields clean transcript flow", async () => {

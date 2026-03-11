@@ -1,4 +1,5 @@
 import { type ChatRow, createRow } from "./chat-commands";
+import { palette } from "./palette";
 import { createId } from "./short-id";
 import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
 import { createToolOutputState, type ToolOutput } from "./tool-output-content";
@@ -65,9 +66,8 @@ export function createMessageStreamState(input: {
           ...current,
           {
             id: rowId,
-            role: "assistant",
+            role: "tool" as const,
             content: "",
-            style: "toolOutput",
             toolOutput: update.items,
           },
         ]);
@@ -97,14 +97,16 @@ export function createMessageStreamState(input: {
       }
       const rowId = toolRowIdByCallId.get(entry.toolCallId);
       if (!rowId) return;
-      const status: ChatRow["toolStatus"] = entry.isError ? "error" : "ok";
-      input.setRows((current) => current.map((row) => (row.id === rowId ? { ...row, toolStatus: status } : row)));
+      const dotColor = entry.isError ? palette.error : palette.success;
+      input.setRows((current) =>
+        current.map((row) => (row.id === rowId ? { ...row, style: { ...row.style, dot: dotColor } } : row)),
+      );
     },
     onProgressError: (error) => {
       input.setRows((current) => {
         const last = current[current.length - 1];
-        if (last?.style === "error" && last.content === error) return current;
-        return [...current, createRow("system", error, { dim: true, style: "error" })];
+        if (last?.style?.text === palette.error && last.content === error) return current;
+        return [...current, createRow("system", error, { dim: true, text: palette.error })];
       });
     },
     streamedAssistantText: () => streamingContent,

@@ -17,6 +17,7 @@ import {
 import type { Client } from "./client-contract";
 import { t } from "./i18n";
 import { addMemory } from "./memory";
+import { palette } from "./palette";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
 
 type CreateMessageHandlerInput = {
@@ -258,7 +259,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
         ...current,
         createRow("system", errorContent, {
           dim: isAbortError(error),
-          style: isAbortError(error) ? "cancelled" : "error",
+          text: isAbortError(error) ? palette.cancelled : palette.error,
         }),
       ]);
     } finally {

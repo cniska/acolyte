@@ -57,9 +57,9 @@ describe("chat picker actions", () => {
     const rows = createResumeRows(selected, () => [{ id: "x", role: "assistant", content: "existing" }]);
     expect(rows).toHaveLength(2);
     expect(rows[1]).toMatchObject({
-      role: "assistant",
+      role: "system",
       content: "Resumed session: sess_abc123456789",
-      style: "sessionStatusOutput",
+      style: { dim: true },
     });
   });
 

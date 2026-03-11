@@ -67,7 +67,7 @@ describe("chat message handler stream behavior", () => {
 
     expect(progressTexts[0]).toBe("Thinking…");
     expect(progressTexts.at(-1)).toBeNull();
-    expect(rows.some((row) => row.role === "assistant" && row.style === "toolOutput")).toBe(true);
+    expect(rows.some((row) => row.role === "tool")).toBe(true);
     expect(rows.some((row) => row.role === "system" && row.content.includes("Thinking…"))).toBe(false);
     expect(rows.some((row) => row.role === "assistant" && row.content === "done")).toBe(true);
   });
@@ -117,7 +117,7 @@ describe("chat message handler stream behavior", () => {
 
     await handleMessage("hello");
 
-    expect(rows.some((row) => row.role === "assistant" && row.style === "toolOutput")).toBe(false);
+    expect(rows.some((row) => row.role === "tool")).toBe(false);
     expect(rows.some((row) => row.role === "assistant" && row.content === "done")).toBe(true);
   });
 
@@ -145,7 +145,7 @@ describe("chat message handler stream behavior", () => {
 
     await handleMessage("search for needle");
 
-    expect(rows.some((row) => row.role === "assistant" && row.style === "toolOutput")).toBe(false);
+    expect(rows.some((row) => row.role === "tool")).toBe(false);
     expect(rows.some((row) => row.role === "assistant" && row.content === "No matches found.")).toBe(true);
   });
 
@@ -536,7 +536,7 @@ describe("chat message handler stream behavior", () => {
 
     await handleMessage("hello");
 
-    const toolRows = rows.filter((row) => row.role === "assistant" && row.style === "toolOutput");
+    const toolRows = rows.filter((row) => row.role === "tool");
     expect(toolRows).toHaveLength(0);
   });
 
@@ -577,7 +577,7 @@ describe("chat message handler stream behavior", () => {
 
     await handleMessage("hello");
 
-    const toolRows = rows.filter((row) => row.role === "assistant" && row.style === "toolOutput");
+    const toolRows = rows.filter((row) => row.role === "tool");
     expect(toolRows).toHaveLength(1);
     expect(toolRows[0]?.toolOutput?.some((item) => item.kind === "tool-header" && item.label === "Edit")).toBe(true);
     expect(rows.some((row) => row.toolOutput?.some((item) => item.kind === "file-header"))).toBe(false);
@@ -640,9 +640,7 @@ describe("chat message handler stream behavior", () => {
 
     const editedRows = rows.filter(
       (row) =>
-        row.role === "assistant" &&
-        row.style === "toolOutput" &&
-        row.toolOutput?.some((item) => item.kind === "tool-header" && item.label === "Edit"),
+        row.role === "tool" && row.toolOutput?.some((item) => item.kind === "tool-header" && item.label === "Edit"),
     );
     expect(editedRows).toHaveLength(2);
   });

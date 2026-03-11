@@ -7,6 +7,7 @@ import type { Message } from "./chat-message-contract";
 import type { Client, StreamEvent } from "./client-contract";
 import { buildFileContext } from "./file-context";
 import { t } from "./i18n";
+import { palette } from "./palette";
 import type { Session, SessionTokenUsageEntry } from "./session-contract";
 
 const AVERAGE_CHARS_PER_TOKEN = 4;
@@ -116,7 +117,7 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
     (reply.toolCalls?.length ?? 0) > 0 ? { ...baseAssistantMessage, kind: "tool_payload" } : baseAssistantMessage;
   const rows: ChatRow[] = [];
   if (reply.error) {
-    rows.push(createRow("system", `Error: ${reply.error}`, { dim: false, style: "error" }));
+    rows.push(createRow("system", `Error: ${reply.error}`, { text: palette.error }));
   } else if (reply.output.trim().length > 0) {
     rows.push(createRow("assistant", reply.output));
   }
@@ -139,7 +140,7 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
     if (toolCount > 0) details.push(t("unit.tool", { count: toolCount }));
     if (totalTokens > 0) details.push(formatTokenCount(totalTokens));
     const suffix = details.length > 0 ? ` (${details.join(" • ")})` : "";
-    rows.push(createRow("assistant", t("chat.worked", { duration, suffix }), { dim: true, style: "worked" }));
+    rows.push(createRow("status", t("chat.worked", { duration, suffix }), { dot: palette.success, dim: true }));
   }
 
   return {

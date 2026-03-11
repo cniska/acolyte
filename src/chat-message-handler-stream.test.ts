@@ -48,7 +48,7 @@ describe("chat-message-handler-stream", () => {
       content: { kind: "scope-header", label: "Search", scope: "workspace", patterns: ["needle"], matches: 2 },
     });
     expect(rows).toHaveLength(1);
-    expect(rows[0]?.style).toBe("toolOutput");
+    expect(rows[0]?.role).toBe("tool");
     expect(rows[0]?.toolOutput).toHaveLength(1);
 
     state.onOutput({

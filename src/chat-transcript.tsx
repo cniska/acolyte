@@ -6,6 +6,14 @@ import { formatTokenCount } from "./chat-format";
 import { palette } from "./palette";
 import { renderToolOutput as renderToolOutputText, type ToolOutput } from "./tool-output-content";
 
+const MARKERS: Record<ChatRow["role"], string> = {
+  user: "❯ ",
+  assistant: "• ",
+  tool: "• ",
+  status: "• ",
+  system: "  ",
+};
+
 type ChatTranscriptProps = {
   rows: ChatRow[];
   isWorking: boolean;
@@ -16,30 +24,8 @@ type ChatTranscriptProps = {
   runningUsage?: { promptTokens: number; completionTokens: number } | null;
 };
 
-const BULLET_STYLES = new Set(["toolOutput", "worked"]);
 const MAX_TRANSCRIPT_WIDTH = 120;
 const SESSION_STATUS_PREFIXES = ["Started new session: ", "Resumed session: "] as const;
-
-function parseSessionStatus(content: string): { prefix: string; sessionId: string } | null {
-  for (const prefix of SESSION_STATUS_PREFIXES) {
-    if (!content.startsWith(prefix)) continue;
-    const sessionId = content.slice(prefix.length).trim();
-    if (sessionId.length === 0) return null;
-    return { prefix, sessionId };
-  }
-  return null;
-}
-
-export function parseSessionsHeader(content: string): { prefix: string; count: string; rest: string } | null {
-  const [header, ...restLines] = content.split("\n");
-  const match = header?.match(/^(Sessions\s+)(\d+)$/);
-  if (!match) return null;
-  return {
-    prefix: match[1] ?? "Sessions ",
-    count: match[2] ?? "0",
-    rest: restLines.join("\n"),
-  };
-}
 
 export function parseStatusLine(line: string): { indent: string; key: string; value: string } | null {
   const match = line.match(/^(\s*)([a-zA-Z0-9_.-]+:\s*)(.*)$/);
@@ -51,8 +37,56 @@ export function parseStatusLine(line: string): { indent: string; key: string; va
   };
 }
 
-function renderStatusContent(content: string): React.ReactNode {
+function renderSessionStatusLine(content: string): React.ReactNode {
+  for (const prefix of SESSION_STATUS_PREFIXES) {
+    if (!content.startsWith(prefix)) continue;
+    const sessionId = content.slice(prefix.length).trim();
+    if (sessionId.length === 0) return null;
+    return (
+      <Text>
+        <Text dimColor>{prefix}</Text>
+        <Text>{sessionId}</Text>
+      </Text>
+    );
+  }
+  return null;
+}
+
+function renderSessionsListContent(content: string): React.ReactNode {
+  const [header, ...restLines] = content.split("\n");
+  const match = header?.match(/^(Sessions\s+)(\d+)$/);
+  if (!match) return null;
+  return (
+    <Text>
+      <Text>{match[1] ?? "Sessions "}</Text>
+      <Text dimColor>{match[2] ?? "0"}</Text>
+      {restLines.length > 0
+        ? restLines.map((line) => {
+            const sessionMatch = line.match(/^(. )(sess_\S+)(\s.*)$/);
+            if (!sessionMatch) {
+              return (
+                <Text key={line} dimColor>
+                  {`\n${line}`}
+                </Text>
+              );
+            }
+            return (
+              <React.Fragment key={line}>
+                <Text dimColor>{`\n${sessionMatch[1]}`}</Text>
+                <Text>{sessionMatch[2]}</Text>
+                <Text dimColor>{sessionMatch[3]}</Text>
+              </React.Fragment>
+            );
+          })
+        : null}
+    </Text>
+  );
+}
+
+function renderKeyValueContent(content: string): React.ReactNode {
   const lines = content.split("\n");
+  const hasKeyValue = lines.some((line) => parseStatusLine(line) !== null);
+  if (!hasKeyValue) return null;
   return (
     <>
       {lines.map((line, index) => {
@@ -73,6 +107,12 @@ function renderStatusContent(content: string): React.ReactNode {
         );
       })}
     </>
+  );
+}
+
+function renderSystemContent(content: string): React.ReactNode {
+  return (
+    renderSessionStatusLine(content) ?? renderSessionsListContent(content) ?? renderKeyValueContent(content) ?? content
   );
 }
 
@@ -191,79 +231,28 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
         <React.Fragment key={row.id}>
           {index > 0 ? <Text> </Text> : null}
           {(() => {
-            const sessionStatus =
-              row.role === "assistant" && (row.style === "sessionStatusOutput" || row.style === undefined)
-                ? parseSessionStatus(row.content)
-                : null;
-            const sessionsOutputHeader = row.style === "sessionsOutput" ? parseSessionsHeader(row.content) : null;
-            const dimMarker = Boolean(row.dim) || Boolean(sessionStatus);
-            const marker =
-              row.role === "user" ? "❯ " : row.role === "assistant" || BULLET_STYLES.has(row.style ?? "") ? "• " : "  ";
-            const markerColor =
-              row.style === "error"
-                ? palette.error
-                : row.style === "cancelled"
-                  ? palette.cancelled
-                  : row.style === "worked"
-                    ? palette.success
-                    : row.style === "toolOutput" && row.toolStatus
-                      ? row.toolStatus === "ok"
-                        ? palette.success
-                        : palette.error
-                      : row.role === "assistant"
-                        ? palette.brand
-                        : undefined;
+            const marker = MARKERS[row.role];
+            const markerColor = row.style?.dot ?? (row.role === "assistant" ? palette.brand : undefined);
+            const textColor =
+              row.style?.text ?? (row.role === "assistant" && !row.style?.dim ? palette.brand : undefined);
+            const dim = row.style?.dim ?? false;
             return (
               <Box>
                 <Box width={2}>
-                  <Text dimColor={!markerColor && dimMarker} color={markerColor}>
+                  <Text dimColor={!markerColor && dim} color={markerColor}>
                     {marker}
                   </Text>
                 </Box>
-                <Box width={row.style === "toolOutput" ? toolContentWidth : contentWidth}>
-                  {sessionStatus ? (
-                    <Text>
-                      <Text dimColor>{sessionStatus.prefix}</Text>
-                      <Text>{sessionStatus.sessionId}</Text>
-                    </Text>
-                  ) : sessionsOutputHeader ? (
-                    <Text>
-                      <Text>{sessionsOutputHeader.prefix}</Text>
-                      <Text dimColor>{sessionsOutputHeader.count}</Text>
-                      {sessionsOutputHeader.rest.length > 0
-                        ? sessionsOutputHeader.rest.split("\n").map((line) => {
-                            const match = line.match(/^(. )(sess_\S+)(\s.*)$/);
-                            if (!match) {
-                              return (
-                                <Text key={line} dimColor>
-                                  {`\n${line}`}
-                                </Text>
-                              );
-                            }
-                            return (
-                              <React.Fragment key={line}>
-                                <Text dimColor>{`\n${match[1]}`}</Text>
-                                <Text>{match[2]}</Text>
-                                <Text dimColor>{match[3]}</Text>
-                              </React.Fragment>
-                            );
-                          })
-                        : null}
-                    </Text>
-                  ) : row.role === "system" && (row.style === "statusOutput" || row.style === "tokenOutput") ? (
-                    <Text>{renderStatusContent(row.content)}</Text>
-                  ) : row.role === "assistant" && row.style === "toolOutput" && row.toolOutput ? (
+                <Box width={row.role === "tool" ? toolContentWidth : contentWidth}>
+                  {row.role === "tool" && row.toolOutput ? (
                     <Text>{renderToolBlock(row.toolOutput)}</Text>
-                  ) : row.style === "error" ? (
-                    <Text dimColor color={palette.error}>
-                      {row.content}
+                  ) : row.role === "assistant" ? (
+                    <Text dimColor={dim} color={textColor}>
+                      {renderAssistantContent(row.content, contentWidth)}
                     </Text>
                   ) : (
-                    <Text
-                      dimColor={Boolean(row.dim)}
-                      color={row.role === "assistant" && !row.dim ? palette.brand : undefined}
-                    >
-                      {row.role === "assistant" ? renderAssistantContent(row.content, contentWidth) : row.content}
+                    <Text dimColor={dim} color={textColor}>
+                      {renderSystemContent(row.content)}
                     </Text>
                   )}
                 </Box>

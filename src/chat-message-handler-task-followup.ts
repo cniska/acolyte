@@ -1,6 +1,7 @@
 import { type ChatRow, createRow } from "./chat-commands";
 import type { Client } from "./client-contract";
 import { t } from "./i18n";
+import { palette } from "./palette";
 
 type SetRows = (updater: (current: ChatRow[]) => ChatRow[]) => void;
 
@@ -33,10 +34,10 @@ export async function startRemoteTaskFollowup(input: StartRemoteTaskFollowupInpu
         if (!next || next.state === "running" || next.state === "detached") continue;
         if (next.state === "failed") {
           const detail = next.summary?.trim() || t("chat.task.followup.failed");
-          input.setRows((current) => [...current, createRow("system", detail, { dim: true, style: "error" })]);
+          input.setRows((current) => [...current, createRow("system", detail, { dim: true, text: palette.error })]);
         } else if (next.state === "cancelled") {
           const detail = next.summary?.trim() || t("chat.task.followup.cancelled");
-          input.setRows((current) => [...current, createRow("system", detail, { dim: true, style: "cancelled" })]);
+          input.setRows((current) => [...current, createRow("system", detail, { dim: true, text: palette.cancelled })]);
         }
         await input.persist();
         return;
@@ -48,7 +49,7 @@ export async function startRemoteTaskFollowup(input: StartRemoteTaskFollowupInpu
     } catch {
       input.setRows((current) => [
         ...current,
-        createRow("system", t("chat.task.followup.lost_tracking"), { dim: true, style: "error" }),
+        createRow("system", t("chat.task.followup.lost_tracking"), { dim: true, text: palette.error }),
       ]);
     } finally {
       input.stopWorking();
