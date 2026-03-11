@@ -315,10 +315,10 @@ DEMO FLOW:
 
 |  | Acolyte | Typical range |
 |---|---|---|
-| Source lines | 16.6k | 25k – 628k |
+| Source lines | 17.0k | 25k – 628k |
 | Runtime dependencies | 13 | 50 – 480 |
-| Test/source ratio | 0.80 | 0.04 – 0.69 |
-| Avg lines/file | 121 | 157 – 438 |
+| Test/source ratio | 0.79 | 0.04 – 0.69 |
+| Avg lines/file | 122 | 157 – 438 |
 | `any` type escapes | 1 | dozens – hundreds |
 | TODO/FIXME markers | 0 | varies |
 

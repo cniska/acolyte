@@ -9,7 +9,7 @@ Acolyte metrics extracted with [`scripts/benchmark.ts`](../scripts/benchmark.ts)
 
 | Project | Language | Description | Source Lines | Files | Dependencies |
 |---|---|---|---|---|---|
-| **Acolyte** | TypeScript | CLI-first AI coding agent with lifecycle, guards, and evaluators | 16,592 | 137 | 13 + 5 |
+| **Acolyte** | TypeScript | CLI-first AI coding agent with lifecycle, guards, and evaluators | 16,967 | 139 | 13 + 5 |
 | **Aider** | Python | AI pair programming in your terminal | 25,880 | 106 | 480 + 313 |
 | **OpenCode** | TypeScript | Open-source AI coding agent (TUI/web/desktop) | 207,748 | 1,042 | 171 + 76 |
 | **Pi** | TypeScript | Terminal coding agent harness with extensions | 112,692 | 399 | 50 + 19 |
@@ -57,7 +57,7 @@ Aider is nearly zero on type escape hatches. Goose has a high `.unwrap()` densit
 | Metric | Acolyte | Aider | OpenCode | Pi | Goose | OpenHands | Continue | Cline | OpenClaw |
 |---|---|---|---|---|---|---|---|---|---|
 | TODO / FIXME / HACK | 0.0 | 0.3 | 0.4 | 0.0 | 0.2 | 0.5 | 0.8 | 0.2 | 0.0 |
-| Comment lines | 4.5 | 55.2 | 10.0 | 47.5 | 40.6 | 60.6 | 42.9 | 20.5 | 14.5 |
+| Comment lines | 5.1 | 55.2 | 10.0 | 47.5 | 40.6 | 60.6 | 42.9 | 20.5 | 14.5 |
 
 Zero tech debt markers. The guard and evaluator system catches issues during generation — problems that would become TODOs in other projects get fixed before they're committed. Low comment density reflects self-documenting code backed by 25 external docs.
 
@@ -65,17 +65,17 @@ Zero tech debt markers. The guard and evaluator system catches issues during gen
 
 | Metric | Acolyte | Aider | OpenCode | Pi | Goose | OpenHands | Continue | Cline | OpenClaw |
 |---|---|---|---|---|---|---|---|---|---|
-| Test files | 109 | 41 | 186 | 108 | 17 | 348 | 332 | 165 | 2,076 |
-| Test lines | 13,200 | 12,321 | 37,040 | 32,572 | 4,726 | 137,765 | 82,421 | 44,423 | 431,818 |
-| Test / source ratio | **0.80** | 0.48 | 0.18 | 0.29 | 0.04 | **1.14** | 0.36 | 0.08 | 0.69 |
+| Test files | 116 | 41 | 186 | 108 | 17 | 348 | 332 | 165 | 2,076 |
+| Test lines | 13,349 | 12,321 | 37,040 | 32,572 | 4,726 | 137,765 | 82,421 | 44,423 | 431,818 |
+| Test / source ratio | **0.79** | 0.48 | 0.18 | 0.29 | 0.04 | **1.14** | 0.36 | 0.08 | 0.69 |
 
-Acolyte maintains a 0.80 test/source ratio because the lifecycle phases, guards, and tools are each independent modules with clean interfaces — testable by design, not by retrofit. Four dedicated test types: unit (`*.test.ts`), integration (`*.int.test.ts`), TUI visual regression (`*.tui.test.ts`), and performance (`*.perf.test.ts`). OpenHands leads on raw ratio. Goose and Cline have notably low test density.
+Acolyte maintains a 0.79 test/source ratio because the lifecycle phases, guards, and tools are each independent modules with clean interfaces — testable by design, not by retrofit. Four dedicated test types: unit (`*.test.ts`), integration (`*.int.test.ts`), TUI visual regression (`*.tui.test.ts`), and performance (`*.perf.test.ts`). OpenHands leads on raw ratio. Goose and Cline have notably low test density.
 
 ## Module Cohesion
 
 | Metric | Acolyte | Aider | OpenCode | Pi | Goose | OpenHands | Continue | Cline | OpenClaw |
 |---|---|---|---|---|---|---|---|---|---|
-| Avg lines / file | 121 | 244 | 199 | 283 | 368 | 172 | 157 | 438 | 176 |
+| Avg lines / file | 122 | 244 | 199 | 283 | 368 | 172 | 157 | 438 | 176 |
 | Files > 500 lines | 3 (2%) | 14 (13%) | 103 (9%) | 50 (12%) | 75 (23%) | 54 (7%) | 87 (5%) | 69 (5%) | 291 (8%) |
 | Largest file | 568 | 2,485 | 4,989 | 13,353 | 2,289 | 1,704 | 3,228 | 4,573 | 2,242 |
 | Barrel / index files | 0 | 5 | 52 | 26 | 43 | 85 | 73 | 47 | 76 |
@@ -86,8 +86,8 @@ Acolyte has the smallest average file size, fewest large files, and zero barrel 
 
 | Metric | Acolyte | OpenCode | Pi | Cline | Continue | OpenClaw |
 |---|---|---|---|---|---|---|
-| `.safeParse()` calls | 1.6 | 0.1 | 0.0 | 0.0 | 0.1 | 0.0 |
-| `try { ... }` blocks | 6.8 | 1.3 | 3.7 | 2.3 | 3.8 | 4.9 |
+| `.safeParse()` calls | 1.5 | 0.1 | 0.0 | 0.0 | 0.1 | 0.0 |
+| `try { ... }` blocks | 6.7 | 1.3 | 3.7 | 2.3 | 3.8 | 4.9 |
 | `.catch()` calls | 0.6 | 2.2 | 0.3 | 0.4 | 0.3 | 1.0 |
 
 Acolyte validates at boundaries with Zod `.safeParse()` at 16x+ the rate of other projects. Every RPC payload, model response, and config file is validated before entering the system — errors surface as structured results, not uncaught exceptions.
@@ -98,8 +98,8 @@ Acolyte validates at boundaries with Zod `.safeParse()` at 16x+ the rate of othe
 |---|---|---|---|---|---|---|---|---|---|
 | Type safety | Best | Clean | Weak | Mid | Unwrap-heavy | Type-ignore-heavy | Weakest | Mid | Good |
 | Tech debt | Zero | Low | Low | Zero | Low | Mid | Highest | Low | Zero |
-| Test density | High (0.80) | Mid (0.48) | Low (0.18) | Low (0.29) | Lowest (0.04) | Highest (1.13) | Mid (0.36) | Low (0.08) | High (0.68) |
-| Module size | Smallest (121) | Mid (244) | Mid (199) | Large (282) | Largest (368) | Mid (172) | Mid (157) | Large (437) | Mid (176) |
+| Test density | High (0.79) | Mid (0.48) | Low (0.18) | Low (0.29) | Lowest (0.04) | Highest (1.13) | Mid (0.36) | Low (0.08) | High (0.68) |
+| Module size | Smallest (122) | Mid (244) | Mid (199) | Large (282) | Largest (368) | Mid (172) | Mid (157) | Large (437) | Mid (176) |
 | Dependencies | Lightest (18) | Heaviest (793) | Heavy (247) | Light (69) | Heavy (160) | Heavy (163) | Heavy (350) | Heavy (224) | Heavy (158) |
 | Maturity | New | Shipped | Shipped | Shipped | Shipped | Shipped | Shipped | Shipped | Shipped |
 
