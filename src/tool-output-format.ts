@@ -17,16 +17,13 @@ export function emitHeadTailLines(
   rawText: string,
   onOutput: ToolOutputListener,
   toolCallId: string,
-  options?: { headRows?: number; tailRows?: number; trimStart?: boolean },
+  options?: { headRows?: number; tailRows?: number },
 ): void {
   const headRows = options?.headRows ?? 2;
   const tailRows = options?.tailRows ?? 2;
   const lines = rawText
     .split("\n")
-    .map((line) => {
-      const base = line.trimEnd();
-      return options?.trimStart ? base.trimStart() : base;
-    })
+    .map((line) => line.trim())
     .filter((line) => line.length > 0);
   if (lines.length === 0) {
     onOutput({ toolName, content: { kind: "no-output" }, toolCallId });
@@ -53,7 +50,7 @@ export function emitResultChunks(
 ): void {
   const allLines = result
     .split("\n")
-    .map((line) => line.trimEnd())
+    .map((line) => line.trim())
     .filter((line) => line.length > 0);
   const lines = allLines.slice(0, maxLines);
   for (const line of lines) {

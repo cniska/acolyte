@@ -6,7 +6,7 @@ import type { ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { compactToolOutput } from "./tool-output";
-import { emitHeadTailLines, TOOL_OUTPUT_LIMITS } from "./tool-output-format";
+import { emitHeadTailLines, emitResultChunks, TOOL_OUTPUT_LIMITS } from "./tool-output-format";
 
 const GIT_OPS = ["statusShort", "diff", "log", "show", "add", "commit"] as const;
 type GitOp = (typeof GIT_OPS)[number];
@@ -110,7 +110,7 @@ function createGitStatusTool(git: GitOps, input: ToolkitInput) {
           toolCallId,
         });
         const rawStatus = await git.statusShort();
-        emitHeadTailLines("git-status", rawStatus, onOutput, toolCallId, { trimStart: true });
+        emitHeadTailLines("git-status", rawStatus, onOutput, toolCallId);
         const result = compactToolOutput(rawStatus, appConfig.agent.toolOutputBudget.gitStatus);
         return { kind: "git-status", output: result };
       });
@@ -180,7 +180,7 @@ function createGitLogTool(git: GitOps, input: ToolkitInput) {
           toolCallId,
         });
         const rawLog = await git.log({ path: toolInput.path, limit: toolInput.limit });
-        emitHeadTailLines("git-log", rawLog, onOutput, toolCallId, { trimStart: true });
+        emitResultChunks("git-log", rawLog, onOutput, 4, toolCallId);
         const result = compactToolOutput(rawLog, appConfig.agent.toolOutputBudget.gitDiff);
         return { kind: "git-log", path: toolInput.path, limit: toolInput.limit, output: result };
       });
