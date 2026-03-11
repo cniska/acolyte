@@ -46,7 +46,7 @@ export type GuardInput = {
 export type ToolGuard = {
   id: string;
   description: string;
-  appliesTo: "all" | readonly string[];
+  tools?: readonly string[];
   check: (input: GuardInput) => void;
 };
 
@@ -134,7 +134,6 @@ const DUPLICATE_CALL_LOOKBACK = 3;
 const duplicateCallGuard: ToolGuard = {
   id: "duplicate-call",
   description: "Block near-duplicate tool calls with no state-changing tool in between.",
-  appliesTo: "all",
   check({ toolName, args, session, report }) {
     const calls = scopedCallLog(session);
     const writeTools = session.writeTools;
@@ -155,7 +154,7 @@ const duplicateCallGuard: ToolGuard = {
 const preventDeleteRewriteGuard: ToolGuard = {
   id: "no-delete-rewrite",
   description: "Block delete-file on a path that was previously read — use edit-file instead.",
-  appliesTo: ["delete-file"],
+  tools: ["delete-file"],
   check({ args, session, report }) {
     const rawPaths = Array.isArray(args.paths) ? args.paths : typeof args.path === "string" ? [args.path] : [];
     const deletePaths = rawPaths
@@ -187,7 +186,7 @@ const preventDeleteRewriteGuard: ToolGuard = {
 const fileChurnGuard: ToolGuard = {
   id: "file-churn",
   description: "Block excessive read/edit churn on the same file to force a strategy change.",
-  appliesTo: ["read-file", "edit-file"],
+  tools: ["read-file", "edit-file"],
   check({ toolName, args, session, report }) {
     const targetPaths =
       toolName === "edit-file"
@@ -237,62 +236,85 @@ const fileChurnGuard: ToolGuard = {
   },
 };
 
-const redundantSearchGuard: ToolGuard = {
-  id: "redundant-search",
-  description: "Block repeated search-only churn to force an evidence-based conclusion.",
-  appliesTo: ["search-files"],
-  check({ toolName, args, session, report }) {
-    const currentPatterns = extractSearchPatterns(args);
-    const currentScope = extractSearchScope(args);
-    const redundant = redundantQueryKind({
-      toolName,
-      session,
-      currentPatterns,
-      currentScope,
-      extractPatterns: extractSearchPatterns,
-      extractScope: extractSearchScope,
-    });
-    if (redundant === "scope-narrowing") {
-      report("blocked", "redundant-scope-narrowing");
-      throw new Error(
-        "Redundant scoped search-files call detected. Prior workspace search already covers these patterns.",
-      );
-    }
-    if (redundant === "narrower") {
-      report("blocked", "narrower-than-prior");
-      throw new Error(
-        "Redundant narrower search-files call detected. Current patterns are already covered by a prior search in the same scope.",
-      );
-    }
-
-    let searchCount = 0;
-    let readCount = 0;
-    let writeCount = 0;
-    for (const entry of scopedCallLog(session)) {
-      if (entry.toolName === "search-files") {
-        searchCount += 1;
-      } else if (entry.toolName === "read-file") {
-        readCount += 1;
-      } else if (isWriteTool(session, entry.toolName)) {
-        writeCount += 1;
-      }
-    }
-
-    if (searchCount < DISCOVERY_LOOP_MIN_CALLS || readCount > 0 || writeCount > 0) return;
-
-    report("blocked", String(searchCount));
-    throw new Error(
-      "Repeated search-files loop detected without reads/writes. Stop synonym searching and conclude from current evidence.",
-    );
-  },
+type RedundantDiscoveryConfig = {
+  id: string;
+  description: string;
+  tool: string;
+  extractPatterns: (args: Record<string, unknown>) => string[];
+  loopMessage: string;
+  preCheck?: (input: GuardInput) => void;
 };
 
-const redundantFindGuard: ToolGuard = {
+function createRedundantDiscoveryGuard(config: RedundantDiscoveryConfig): ToolGuard {
+  return {
+    id: config.id,
+    description: config.description,
+    tools: [config.tool],
+    check(input) {
+      const { toolName, args, session, report } = input;
+      config.preCheck?.(input);
+
+      const currentPatterns = config.extractPatterns(args);
+      const currentScope = extractSearchScope(args);
+      const redundant = redundantQueryKind({
+        toolName,
+        session,
+        currentPatterns,
+        currentScope,
+        extractPatterns: config.extractPatterns,
+        extractScope: extractSearchScope,
+      });
+      if (redundant === "scope-narrowing") {
+        report("blocked", "redundant-scope-narrowing");
+        throw new Error(
+          `Redundant scoped ${config.tool} call detected. Prior workspace call already covers these patterns.`,
+        );
+      }
+      if (redundant === "narrower") {
+        report("blocked", "narrower-than-prior");
+        throw new Error(
+          `Redundant narrower ${config.tool} call detected. Current patterns are already covered by a prior call in the same scope.`,
+        );
+      }
+
+      let discoveryCount = 0;
+      let readCount = 0;
+      let writeCount = 0;
+      for (const entry of scopedCallLog(session)) {
+        if (entry.toolName === config.tool) {
+          discoveryCount += 1;
+        } else if (entry.toolName === "read-file") {
+          readCount += 1;
+        } else if (isWriteTool(session, entry.toolName)) {
+          writeCount += 1;
+        }
+      }
+
+      if (discoveryCount < DISCOVERY_LOOP_MIN_CALLS || readCount > 0 || writeCount > 0) return;
+
+      report("blocked", String(discoveryCount));
+      throw new Error(config.loopMessage);
+    },
+  };
+}
+
+const redundantSearchGuard = createRedundantDiscoveryGuard({
+  id: "redundant-search",
+  description: "Block repeated search-only churn to force an evidence-based conclusion.",
+  tool: "search-files",
+  extractPatterns: extractSearchPatterns,
+  loopMessage:
+    "Repeated search-files loop detected without reads/writes. Stop synonym searching and conclude from current evidence.",
+});
+
+const redundantFindGuard = createRedundantDiscoveryGuard({
   id: "redundant-find",
   description: "Block repeated find-only churn to force direct reads or a conclusion.",
-  appliesTo: ["find-files"],
-  check({ toolName, args, session, report }) {
-    const currentPatterns = extractFindPatterns(args);
+  tool: "find-files",
+  extractPatterns: extractFindPatterns,
+  loopMessage:
+    "Repeated find-files loop detected without reads/writes. Stop broad discovery and read the best candidate file(s) directly.",
+  preCheck({ args, session, report }) {
     const currentScope = extractSearchScope(args);
     for (const entry of scopedCallLog(session)) {
       if (entry.toolName !== "find-files") continue;
@@ -306,51 +328,13 @@ const redundantFindGuard: ToolGuard = {
         throw new Error("Redundant find-files call detected. Prior universal find already covers this scope.");
       }
     }
-    const redundant = redundantQueryKind({
-      toolName,
-      session,
-      currentPatterns,
-      currentScope,
-      extractPatterns: extractFindPatterns,
-      extractScope: extractSearchScope,
-    });
-    if (redundant === "scope-narrowing") {
-      report("blocked", "redundant-scope-narrowing");
-      throw new Error("Redundant scoped find-files call detected. Prior workspace find already covers these patterns.");
-    }
-    if (redundant === "narrower") {
-      report("blocked", "narrower-than-prior");
-      throw new Error(
-        "Redundant narrower find-files call detected. Current patterns are already covered by a prior find in the same scope.",
-      );
-    }
-
-    let findCount = 0;
-    let readCount = 0;
-    let writeCount = 0;
-    for (const entry of scopedCallLog(session)) {
-      if (entry.toolName === "find-files") {
-        findCount += 1;
-      } else if (entry.toolName === "read-file") {
-        readCount += 1;
-      } else if (isWriteTool(session, entry.toolName)) {
-        writeCount += 1;
-      }
-    }
-
-    if (findCount < DISCOVERY_LOOP_MIN_CALLS || readCount > 0 || writeCount > 0) return;
-
-    report("blocked", String(findCount));
-    throw new Error(
-      "Repeated find-files loop detected without reads/writes. Stop broad discovery and read the best candidate file(s) directly.",
-    );
   },
-};
+});
 
 const redundantVerifyGuard: ToolGuard = {
   id: "redundant-verify",
   description: "Block redundant verify runs when no writes happened since the last one.",
-  appliesTo: ["run-command"],
+  tools: ["run-command"],
   check({ session, report }) {
     if (session.mode !== "verify") return;
 
@@ -382,7 +366,6 @@ const redundantVerifyGuard: ToolGuard = {
 const stepBudgetGuard: ToolGuard = {
   id: "step-budget",
   description: "Enforce per-cycle and total step limits.",
-  appliesTo: "all",
   check({ session, report }) {
     const cycleLimit = session.flags.cycleStepLimit ?? INITIAL_MAX_STEPS;
     const cycleCount = session.flags.cycleStepCount ?? 0;
@@ -418,7 +401,7 @@ const GUARDS: ToolGuard[] = [
 
 export function runGuards(input: Omit<GuardInput, "report">): void {
   for (const guard of GUARDS) {
-    if (guard.appliesTo !== "all" && !guard.appliesTo.includes(input.toolName)) continue;
+    if (guard.tools && !guard.tools.includes(input.toolName)) continue;
     const report: GuardReport = (action, detail) => {
       input.session.onGuard?.({ guardId: guard.id, toolName: input.toolName, action, detail });
     };
