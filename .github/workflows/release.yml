@@ -14,10 +14,22 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  publish:
-    name: Publish Release
-    runs-on: ubuntu-latest
+  build:
+    name: Build (${{ matrix.target }})
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
+
+    strategy:
+      matrix:
+        include:
+          - target: darwin-arm64
+            runner: macos-latest
+          - target: darwin-x64
+            runner: macos-13
+          - target: linux-x64
+            runner: ubuntu-latest
+          - target: linux-arm64
+            runner: ubuntu-24.04-arm
 
     steps:
       - name: Checkout
@@ -32,20 +44,50 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Verify
+        if: matrix.target == 'linux-x64'
         run: bun run verify
 
-      - name: Prepare release artifacts
+      - name: Build binary
+        run: bun build --compile src/cli.ts --outfile acolyte
+
+      - name: Package artifact
         run: |
           mkdir -p artifacts
-          git archive --format=tar.gz --output=artifacts/acolyte-${GITHUB_REF_NAME}.tar.gz HEAD
-          git archive --format=zip --output=artifacts/acolyte-${GITHUB_REF_NAME}.zip HEAD
-          sha256sum artifacts/* > artifacts/SHA256SUMS.txt
+          tar -czf artifacts/acolyte-${{ matrix.target }}.tar.gz acolyte
+          cd artifacts && sha256sum acolyte-${{ matrix.target }}.tar.gz > acolyte-${{ matrix.target }}.sha256
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: acolyte-${{ matrix.target }}
+          path: artifacts/
+
+  publish:
+    name: Publish Release
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Prepare source archives
+        run: |
+          git archive --format=tar.gz --output=artifacts/acolyte-source-${GITHUB_REF_NAME}.tar.gz HEAD
+          git archive --format=zip --output=artifacts/acolyte-source-${GITHUB_REF_NAME}.zip HEAD
+
+      - name: Generate checksums
+        run: cd artifacts && sha256sum *.tar.gz *.zip > SHA256SUMS.txt
 
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            artifacts/acolyte-*.tar.gz
-            artifacts/acolyte-*.zip
-            artifacts/SHA256SUMS.txt
+          files: artifacts/*
           generate_release_notes: true
