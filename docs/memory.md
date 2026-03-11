@@ -31,6 +31,10 @@ Default source order is `stored, distill_project, distill_user, distill_session`
   - disables memory injection globally
   - source strategy config is still retained
 
+## Inspiration
+
+The observation/reflection model is inspired by [Mastra's Observational Memory](https://mastra.ai/docs/memory/observational-memory), which uses background Observer and Reflector agents to compress conversation history into a dense observation log. Acolyte adapts this idea into a 3-tier distill pipeline with explicit scope promotion instead of threshold-based compression.
+
 ## Distill behavior
 
 - Distill writes two record tiers:

@@ -16,6 +16,14 @@ acolyte config set --project transportMode rpc
 acolyte config unset openaiBaseUrl
 ```
 
+## Provider base URLs
+
+Each provider has a configurable base URL with a sensible default:
+
+- `openaiBaseUrl`: OpenAI API base (default: `https://api.openai.com/v1`). Set to a local endpoint for OpenAI-compatible providers (Ollama, vLLM, etc.).
+- `anthropicBaseUrl`: Anthropic API base (default: `https://api.anthropic.com/v1`). Must end with `/v1`.
+- `googleBaseUrl`: Google AI API base (default: `https://generativelanguage.googleapis.com`).
+
 ## Localization
 
 - `locale`: active UI language (defaults to `en`).
