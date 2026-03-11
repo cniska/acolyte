@@ -18,8 +18,7 @@ Projects compared: [Aider](https://github.com/Aider-AI/aider), [OpenCode](https:
 | OpenHands | Web platform with Docker sandboxing |
 | OpenClaw | Node.js gateway + WebSocket control plane |
 
-Acolyte runs as a headless daemon. The CLI, future editor plugins, and third-party clients all connect over the same typed RPC protocol. The TUI is just another client — it has no special access to the server. Multiple clients can share the same session, and integrations don't require forking the project — they speak the protocol.
-
+Acolyte runs as a headless daemon. The CLI, future editor plugins, and third-party clients all connect over the same typed RPC protocol. The optional TUI is built with Ink and provides an interactive CLI experience.
 ## Lifecycle pipeline
 
 Every request flows through five explicit phases, each in its own module with its own tests:
@@ -31,9 +30,10 @@ resolve → prepare → generate → evaluate → finalize
 - **resolve**: pick mode (work/verify) and model
 - **prepare**: wire tools, session context, and guards
 - **generate**: run the model with tool calls
-- **evaluate**: inspect output, decide accept/retry/re-generate
+- **evaluate**: inspect output, decide accept or re-generate
 - **finalize**: persist results and emit the response
 
+Evaluators (for example, multiMatchEditEvaluator and verifyCycle) run after generation and may return a `regenerate` action; evaluators can also change the agent mode (work ↔ verify) when appropriate, causing the lifecycle to re-run the generate phase under the new mode.
 No other project separates lifecycle phases into independently testable modules. Goose comes closest with prepare→generate→categorize→execute, but the phases are orchestrated from a single streaming loop. The rest use flat loops or state machines.
 
 ## Tool guards
@@ -47,8 +47,7 @@ Behavioral guards run before every tool call and block degenerate patterns at ru
 | `redundant-find` | Block narrower find/file discovery calls that add no new scope after a broader one |
 | `redundant-search` | Block redundant or scope-narrowing search-files calls |
 | `redundant-verify` | Prevent running verify when no write tools ran since the last verify |
-| `step-budget` | Enforce per-cycle and total step budgets for tool calls |
-
+| `step-budget` | Enforce per-cycle and total step budgets (limits on tool-call cycles and total steps) |
 Only OpenClaw (3 detectors: genericRepeat, pingPong, knownPollNoProgress) and OpenHands (StuckDetector + 500-step limit) have comparable automated systems. Others rely on user confirmation (Aider, Cline) or have no behavioral guards.
 ## Auto-verification
 
@@ -120,7 +119,6 @@ Every core system exposes just enough surface for customization without shipping
 - **Guards**: pluggable guard array — add custom guards without touching the pipeline
 - **Memory**: source registry with injectable normalization and selection strategies
 - **Skills**: declarative SKILL.md files with tool restrictions and compatibility metadata
-- **Transport**: protocol-first design — swap HTTP for WebSocket without changing lifecycle behavior
 - **Config**: layered user/project configuration with structured validation
 
 The principle is "interface-first boundaries" — clean contracts at every seam, but no plugin runtime, no dependency injection container, no extension API to maintain. When you need to extend, you implement a contract. When you don't, the defaults work.
@@ -174,7 +172,7 @@ The current implementation is recency-based — there is no vector/semantic sear
 Most agents manage context reactively — compacting or truncating when the window fills up. Acolyte budgets proactively before assembly via [tiktoken](https://github.com/openai/tiktoken):
 
 - **System prompt reservation**: the system prompt (soul, instructions, memory context) is measured first and its cost is reserved before history allocation begins
-- **Priority-based filling**: pinned context (skills, memory) → file attachments → conversational history → tool payloads, each with configurable per-message caps
+- **Priority-based filling**: memory (skills, facts, session context) → file attachments → conversational history → tool payloads, each with configurable per-message caps
 - **Age-based tool compaction**: recent tool outputs get full budget; older outputs are progressively capped (600 → 200 → 120 → 60 tokens based on age)
 - **Visible truncation**: when output is compacted, the model sees an explicit truncation notice — no silent data loss
 

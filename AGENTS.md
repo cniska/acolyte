@@ -58,6 +58,7 @@ Development:
 - Commit only when explicitly requested.
 - Use Conventional Commit format: `type(scope): description`.
 - Allowed types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`.
+- Single-line subject only — no message body.
 - Keep commit subject lines under 72 characters.
 
 ## Code

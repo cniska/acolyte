@@ -22,7 +22,7 @@ h1 {
 </style>
 
 <!--
-Welcome everyone. Acolyte is an open-source AI coding agent that runs in your terminal. I'll walk through what makes it different, then show a live demo.
+Welcome everyone. Acolyte is an open-source AI coding assistant that runs in your terminal. I'll walk through what makes it different, then show a live demo.
 -->
 
 ---
@@ -33,7 +33,7 @@ Christoffer Niska
 
 - Software architect — 15+ years across gaming, finance, publishing, and more
 - AI-assisted development since early Cursor, now Claude Code and Codex daily
-- Built Acolyte to get the best of both worlds: open source + AI coding agent
+- Built Acolyte to get the best of both worlds: open source + AI coding assistant
 
 [github.com/cniska](https://github.com/cniska) · [crisu.me](https://crisu.me)
 
@@ -338,7 +338,7 @@ This wasn't written over months — three weeks, 180k lines of cumulative output
 git clone https://github.com/cniska/acolyte.git
 cd acolyte
 bun install
-bun run client init   # prompts for API key
+bun run start init   # prompts for API key
 bun run dev           # starts daemon + CLI
 ```
 
