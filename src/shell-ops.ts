@@ -19,7 +19,8 @@ function ensureCommandScopedToWorkspace(command: string, workspace: string): voi
   for (const absPath of absPaths) {
     if (!isAllowedPath(absPath, workspace)) throw new Error("Command references path outside workspace and /tmp");
   }
-  if (/(?:^|[\s"'`])~\//.test(command)) throw new Error("Command references home path outside allowed roots");
+  if (/(?:^|[\s"'`])~[a-zA-Z0-9_]*\//.test(command))
+    throw new Error("Command references home path outside allowed roots");
 }
 
 async function readStreamText(
