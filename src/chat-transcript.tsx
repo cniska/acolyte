@@ -55,7 +55,7 @@ function renderStatusContent(content: string): React.ReactNode {
       {lines.map((line, index) => {
         const parsed = parseStatusLine(line);
         return (
-          <React.Fragment key={`status-line-${index}`}>
+          <React.Fragment key={line}>
             {index > 0 ? "\n" : null}
             {parsed ? (
               <>
@@ -225,17 +225,17 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
                       <Text>{sessionsOutputHeader.prefix}</Text>
                       <Text dimColor>{sessionsOutputHeader.count}</Text>
                       {sessionsOutputHeader.rest.length > 0
-                        ? sessionsOutputHeader.rest.split("\n").map((line, i) => {
+                        ? sessionsOutputHeader.rest.split("\n").map((line) => {
                             const match = line.match(/^(. )(sess_\S+)(\s.*)$/);
                             if (!match) {
                               return (
-                                <Text key={`sl-${i}`} dimColor>
+                                <Text key={line} dimColor>
                                   {`\n${line}`}
                                 </Text>
                               );
                             }
                             return (
-                              <React.Fragment key={`sl-${i}`}>
+                              <React.Fragment key={line}>
                                 <Text dimColor>{`\n${match[1]}`}</Text>
                                 <Text>{match[2]}</Text>
                                 <Text dimColor>{match[3]}</Text>
@@ -277,8 +277,8 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
               <Text dimColor>{thinkingText}</Text>
             </Box>
           </Box>
-          {props.queuedMessages?.map((msg, i) => (
-            <React.Fragment key={`queued-${i}`}>
+          {props.queuedMessages?.map((msg) => (
+            <React.Fragment key={msg}>
               <Text> </Text>
               <Box>
                 <Box width={2}>
