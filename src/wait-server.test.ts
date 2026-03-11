@@ -4,7 +4,7 @@ import { parseArgs } from "../scripts/wait-server";
 describe("wait-server args", () => {
   test("parseArgs applies defaults", () => {
     expect(parseArgs([])).toEqual({
-      url: "http://localhost:6767/v1/status",
+      url: "http://localhost:6767/healthz",
       timeoutMs: 10_000,
     });
   });

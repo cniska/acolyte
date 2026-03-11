@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const DEFAULT_URL = "http://localhost:6767/v1/status";
+const DEFAULT_URL = "http://localhost:6767/healthz";
 const DEFAULT_TIMEOUT_MS = 10_000;
 const POLL_INTERVAL_MS = 200;
 

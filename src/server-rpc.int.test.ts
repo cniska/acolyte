@@ -80,7 +80,7 @@ async function startRpcTestServerProcess(
     stderr: "pipe",
   });
   serverProcs.push(proc);
-  await waitForServer(`http://127.0.0.1:${port}/v1/status`, 10_000);
+  await waitForServer(`http://127.0.0.1:${port}/healthz`, 10_000);
   return proc;
 }
 
@@ -346,7 +346,9 @@ describe("server rpc websocket queue", () => {
       }, 20);
     });
 
-    const response = await fetch(`http://127.0.0.1:${port}/v1/status`);
+    const response = await fetch(`http://127.0.0.1:${port}/v1/status`, {
+      headers: { authorization: `Bearer ${apiKey}` },
+    });
     expect(response.status).toBe(200);
     const status = (await response.json()) as Record<string, unknown>;
     expect(status.rpc_queue_length).toBe(1);

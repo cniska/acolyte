@@ -44,6 +44,11 @@ function warnUnauthorized(path: string, method: string): Response {
   return unauthorized();
 }
 
+async function handleHealthz(ctx: RouteContext): Promise<Response | null> {
+  if (ctx.url.pathname !== "/healthz" || ctx.req.method !== "GET") return null;
+  return json({ ok: true });
+}
+
 async function handleStatus(ctx: RouteContext): Promise<Response | null> {
   if (ctx.url.pathname !== "/v1/status" || ctx.req.method !== "GET") return null;
   if (!ctx.deps.hasValidAuth(ctx.req, ctx.url)) return warnUnauthorized(ctx.url.pathname, ctx.req.method);
@@ -152,7 +157,7 @@ async function handleChatStream(ctx: RouteContext): Promise<Response | null> {
 }
 
 export function createServerFetchHandler(deps: ServerHttpDeps): (req: Request) => Promise<Response | undefined> {
-  const routeHandlers: RouteHandler[] = [handleStatus, handleShutdown, handleRpcUpgrade, handleChatStream];
+  const routeHandlers: RouteHandler[] = [handleHealthz, handleStatus, handleShutdown, handleRpcUpgrade, handleChatStream];
 
   return async function fetch(req: Request): Promise<Response | undefined> {
     const ctx: RouteContext = { req, url: new URL(req.url), deps };
