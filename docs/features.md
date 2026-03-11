@@ -1,11 +1,6 @@
 # Features
 
-Short inventory of shipped, user-visible capabilities.
-
-Update rule:
-- Add only when a feature is actually shipped.
-- Keep each item one line.
-- Prefer stable capability names over implementation details.
+Shipped, user-visible capabilities.
 
 ## CLI
 
@@ -24,7 +19,7 @@ Update rule:
 - Slash command support.
 - Skill invocation via slash commands.
 - HTTP and RPC transport support.
-- Polished TUI with visual regression tests.
+- Polished terminal interface with structured output.
 
 ## Agent Execution
 

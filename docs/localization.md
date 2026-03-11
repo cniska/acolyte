@@ -1,6 +1,6 @@
 # Localization
 
-Localization baseline for OSS readiness.
+How Acolyte separates translatable user-facing copy from language-neutral protocol contracts.
 
 ## Goal
 

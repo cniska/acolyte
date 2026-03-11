@@ -92,17 +92,6 @@ Acolyte has the smallest average file size, fewest large files, and zero barrel 
 
 Acolyte validates at boundaries with Zod `.safeParse()` at 16x+ the rate of other projects. Every RPC payload, model response, and config file is validated before entering the system — errors surface as structured results, not uncaught exceptions.
 
-## GitHub Popularity
-
-| Metric | Acolyte | Aider | OpenCode | Pi | Goose | OpenHands | Continue | Cline | OpenClaw |
-|---|---|---|---|---|---|---|---|---|---|
-| Stars | — | 41.5k | 117k | 20.5k | 32.5k | 68.6k | 31.7k | 58.7k | 268k |
-| Forks | — | 3,974 | 11,906 | 2,134 | 2,976 | 8,571 | 4,227 | 5,902 | 51,229 |
-| Open issues | — | 1,410 | 6,414 | 21 | 391 | 359 | 1,140 | 778 | 12,607 |
-| Initial commit | 2026-02-20 | 2023-05-09 | 2025-04-30 | 2025-08-09 | 2024-08-23 | 2024-03-13 | 2023-05-24 | 2024-07-06 | 2025-11-24 |
-
-Acolyte's first commit is from 20 February 2026 (pre-launch, no public repo yet). Stars reflect community adoption, not code quality. OpenClaw and OpenCode dominate on stars — OpenClaw at 268k is the #11 most starred repository on all of GitHub. Pi has the fewest open issues by a wide margin. Aider and Continue are the oldest projects.
-
 ## Summary
 
 | Dimension | Acolyte | Aider | OpenCode | Pi | Goose | OpenHands | Continue | Cline | OpenClaw |
@@ -112,10 +101,10 @@ Acolyte's first commit is from 20 February 2026 (pre-launch, no public repo yet)
 | Test density | High (0.80) | Mid (0.48) | Low (0.18) | Low (0.29) | Lowest (0.04) | Highest (1.13) | Mid (0.36) | Low (0.08) | High (0.68) |
 | Module size | Smallest (121) | Mid (244) | Mid (199) | Large (282) | Largest (368) | Mid (172) | Mid (157) | Large (437) | Mid (176) |
 | Dependencies | Lightest (18) | Heaviest (793) | Heavy (247) | Light (69) | Heavy (160) | Heavy (163) | Heavy (350) | Heavy (224) | Heavy (158) |
-| Maturity | Pre-launch | Shipped | Shipped | Shipped | Shipped | Shipped | Shipped | Shipped | Shipped |
+| Maturity | New | Shipped | Shipped | Shipped | Shipped | Shipped | Shipped | Shipped | Shipped |
 
-Acolyte leads on type safety, tech debt, module size, and dependency count while being the smallest codebase. The quality compounds from commit one because the tool enforces verification on every change.
+Acolyte leads on type safety, tech debt, module size, and dependency count while being the smallest codebase.
 
 ---
 
-Canonical copy: https://gist.github.com/crisu83/fb4a55d88fc0e9c9e9b5f6615d1c8673
+Last updated: March 2026. Metrics from source code analysis at time of measurement.

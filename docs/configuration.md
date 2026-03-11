@@ -13,7 +13,7 @@ acolyte config list
 acolyte config set model gpt-5-mini
 acolyte config set locale en
 acolyte config set --project transportMode rpc
-acolyte config unset apiUrl
+acolyte config unset openaiBaseUrl
 ```
 
 ## Localization

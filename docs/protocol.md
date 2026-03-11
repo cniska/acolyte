@@ -4,7 +4,7 @@ Transport-facing contract and invariants between Acolyte client and server.
 
 ## Goal
 
-Define the stable request/response contract between client and server so transport can evolve (HTTP today, RPC later) without changing lifecycle behavior.
+Define the stable request/response contract between client and server so transport can evolve without changing lifecycle behavior.
 
 ## Contract shape
 
@@ -40,8 +40,8 @@ Events are append-only and ordered per request.
 ## Transport stance
 
 - Transport is an implementation detail.
-- HTTP+SSE is the baseline.
-- Future RPC transports must preserve this contract and ordering guarantees.
+- HTTP+SSE and WebSocket RPC are both supported.
+- New transports must preserve this contract and ordering guarantees.
 
 ## RPC baseline (WebSocket)
 

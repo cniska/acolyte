@@ -32,7 +32,5 @@ Developer documentation for Acolyte — a terminal-first AI coding assistant: lo
 - [localization.md](./localization.md)
 - [testing.md](./testing.md)
 - [features.md](./features.md)
-- [faq.md](./faq.md)
 - [known-issues.md](./known-issues.md)
-- [resources.md](./resources.md)
 - [roadmap.md](./roadmap.md)

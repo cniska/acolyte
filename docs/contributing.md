@@ -2,17 +2,9 @@
 
 Minimal workflow for external contributors.
 
-## Prerequisites
-
-- Bun 1.3+
-- One provider API key for chat testing (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `GOOGLE_API_KEY`)
-
 ## Setup
 
-```bash
-bun install
-bun run client init
-```
+See [getting-started.md](./getting-started.md) for prerequisites and initial setup.
 
 ## Development loop
 

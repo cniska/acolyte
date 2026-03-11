@@ -1,8 +1,8 @@
 # Glossary
 
-Ubiquitous language and naming rules used across Acolyte code and docs.
+Naming conventions and core terms used across Acolyte code and docs.
 
-## Naming rules
+## Naming conventions
 
 - **Domain noun** (`Session`, `Task`): in-memory domain entity used by core logic.
 - **`*Record`** (`SessionRecord`, `TaskRecord`): one persisted entity record.
@@ -12,12 +12,6 @@ Ubiquitous language and naming rules used across Acolyte code and docs.
 - **`*Store`** (`SessionStore`, `TaskStore`): behavior interface for persistence operations.
 - **`*Schema`** (`sessionSchema`, `taskSchema`): Zod runtime validator and source of truth for unions.
 - **`*Input` / `*Output`**: operation-specific payload types.
-
-## Documentation language rules
-
-- Describe guarantees by **boundary/semantics** (for example, `per-process`, `per-session`, `per-request`).
-- Avoid deployment-shape wording (`single daemon`, `multi daemon`, `replica`) unless deployment topology itself is the subject.
-- Keep wording implementation-agnostic where possible so docs stay correct across runtime environments.
 
 ## Core terms
 

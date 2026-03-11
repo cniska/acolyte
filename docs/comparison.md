@@ -179,3 +179,8 @@ Most agents manage context reactively — compacting or truncating when the wind
 - **Priority-based filling**: pinned context (skills, memory) → file attachments → conversational history → tool payloads, each with configurable per-message caps
 - **Age-based tool compaction**: recent tool outputs get full budget; older outputs are progressively capped (600 → 200 → 120 → 60 tokens based on age)
 - **Visible truncation**: when output is compacted, the model sees an explicit truncation notice — no silent data loss
+
+## Further reading
+
+- [How to Write Better AGENTS.md?](https://arxiv.org/abs/2602.11988) (arXiv, February 2026) — evaluates coding agents with developer-committed context files; practical takeaway is to keep instructions minimal and prefer runtime guardrails over prompt-heavy policy
+- [Benchmarks](./benchmarks.md) — measured code quality comparisons across all projects
