@@ -293,7 +293,7 @@ function createGitCommitTool(git: GitOps, input: ToolkitInput) {
     permissions: ["write"],
     description: "Create a git commit with a required subject line and optional body lines.",
     instruction:
-      "Use `git-commit` to create the final Conventional Commit after verify passes. Set `message` to the subject line.",
+      "Use `git-commit` to create the final Conventional Commit after verify passes. Set `message` to the subject line. Never commit unless the user explicitly asks you to.",
     outputSchema: z.object({
       kind: z.literal("git-commit"),
       message: z.string().min(1),
