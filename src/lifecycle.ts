@@ -90,6 +90,7 @@ function createRunContext(
     promptUsage: params.prepared.promptUsage,
     observedTools: new Set(),
     modelCallCount: 0,
+    promptTokensAccum: 0,
     completionTokensAccum: 0,
     streamingChars: 0,
     lastUsageEmitChars: 0,

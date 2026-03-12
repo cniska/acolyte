@@ -12,6 +12,7 @@ import type { Agent, StreamOptions, StreamOutput } from "./agent-contract";
 import type { GenerateResult, StreamChunk, ToolCallEntry } from "./lifecycle-contract";
 import { createModel } from "./model-factory";
 import { normalizeModel } from "./provider-config";
+import { log } from "./log";
 import type { ToolDefinition } from "./tool-contract";
 
 function toolInputJsonSchema(schema: z.ZodType): LanguageModelV3FunctionTool["inputSchema"] {
@@ -89,6 +90,13 @@ export function createAgentStream(
           emitStreamPart(part, streamController, stepTextParts, pendingToolCalls);
           if (part.type === "finish") {
             finishReason = part.finishReason;
+            streamController.enqueue({
+              type: "model-usage",
+              payload: {
+                inputTokens: part.usage?.inputTokens?.total,
+                outputTokens: part.usage?.outputTokens?.total,
+              },
+            });
           }
         }
 

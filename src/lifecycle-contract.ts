@@ -61,6 +61,10 @@ export type ToolErrorPayload = {
   toolName?: string;
   toolCallId?: string;
 };
+export type ModelUsagePayload = {
+  inputTokens?: number;
+  outputTokens?: number;
+};
 export type ModeResolution = { model: string; provider: string };
 export type PhasePrepareInput = {
   request: ChatRequest;
@@ -114,6 +118,7 @@ export type RunContext = {
   mode: AgentMode;
   observedTools: Set<string>;
   modelCallCount: number;
+  promptTokensAccum: number;
   completionTokensAccum: number;
   streamingChars: number;
   lastUsageEmitChars: number;

@@ -35,6 +35,7 @@ function createMockContext(overrides: Partial<RunContext> = {}): RunContext {
     },
     observedTools: new Set(),
     modelCallCount: 1,
+    promptTokensAccum: 0,
     completionTokensAccum: 0,
     streamingChars: 0,
     lastUsageEmitChars: 0,

@@ -13,7 +13,8 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
         ? t("agent.output.no_response_after_tools")
         : t("agent.output.no_output");
 
-  const completionTokens = estimateTokens(output);
+  const promptTokens = ctx.promptTokensAccum || ctx.promptUsage.promptTokens;
+  const completionTokens = ctx.completionTokensAccum || estimateTokens(output);
   let budgetWarning: string | undefined;
   if (ctx.promptUsage.promptTruncated) {
     budgetWarning = t("lifecycle.budget.trimmed", {
@@ -75,9 +76,9 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
     toolCalls: callLog.map((entry) => entry.toolName),
     modelCalls: ctx.modelCallCount,
     usage: {
-      promptTokens: ctx.promptUsage.promptTokens,
+      promptTokens,
       completionTokens,
-      totalTokens: ctx.promptUsage.promptTokens + completionTokens,
+      totalTokens: promptTokens + completionTokens,
       promptBudgetTokens: ctx.promptUsage.promptBudgetTokens,
       promptTruncated: ctx.promptUsage.promptTruncated,
     },
