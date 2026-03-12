@@ -112,6 +112,12 @@ export function createMessageStreamState(input: {
     },
     streamedAssistantText: () => streamingContent,
     finalize: () => {
+      // Flush any pending streaming content so the row exists before we hand off.
+      if (flushTimer) {
+        clearTimeout(flushTimer);
+        flushTimer = null;
+        flush();
+      }
       const pendingRowId = streamingRowId;
       streamingRowId = null;
       streamingContent = "";
