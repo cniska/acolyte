@@ -156,7 +156,11 @@ export async function phaseGenerate(ctx: RunContext, prompt: string, opts: Gener
   resetCycleStepCount(ctx.session, opts.cycleLimit);
   ctx.generationAttempt += 1;
   ctx.emit({ type: "status", message: `${agentModes[ctx.mode].statusText} (${ctx.model})` });
-  ctx.emit({ type: "usage", promptTokens: ctx.promptTokensAccum || ctx.promptUsage.promptTokens, completionTokens: ctx.completionTokensAccum });
+  ctx.emit({
+    type: "usage",
+    promptTokens: ctx.promptTokensAccum || ctx.promptUsage.promptTokens,
+    completionTokens: ctx.completionTokensAccum,
+  });
   ctx.debug("lifecycle.generate.start", {
     model: ctx.model,
     mode: ctx.mode,
@@ -269,7 +273,11 @@ function emitToolResult(ctx: RunContext, toolCallId: string, toolName: string, i
         }
       : {}),
   });
-  ctx.emit({ type: "usage", promptTokens: ctx.promptTokensAccum || ctx.promptUsage.promptTokens, completionTokens: ctx.completionTokensAccum });
+  ctx.emit({
+    type: "usage",
+    promptTokens: ctx.promptTokensAccum || ctx.promptUsage.promptTokens,
+    completionTokens: ctx.completionTokensAccum,
+  });
 }
 
 const USAGE_EMIT_CHAR_INTERVAL = 20;
