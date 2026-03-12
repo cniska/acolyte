@@ -327,7 +327,7 @@ Compared against 8 open-source agents. Full benchmarks in `docs/benchmarks.md`.
 <!--
 Quick numbers. We benchmarked against 8 other open-source agents. Acolyte is the smallest codebase with the fewest dependencies, highest type safety, and zero tech debt markers. Not because it's trivial — because every module is independently testable by design.
 
-This wasn't written over months — three weeks, 180k lines of cumulative output with AI-assisted development. The 63% rewrite ratio shows continuous refinement, not first-draft code. The tool built the tool.
+This wasn't written over months — three weeks, 180k lines of cumulative output with AI-assisted development. The 63% rewrite ratio shows continuous refinement, not first-draft code. The tool helped build the tool.
 -->
 
 ---
