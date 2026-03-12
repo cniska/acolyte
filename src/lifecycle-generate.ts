@@ -217,6 +217,7 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
     const streamOutput = await ctx.agent.stream(prompt, {
       toolChoice: "auto",
       ...(typeof temperature === "number" ? { temperature } : {}),
+      maxNudges: ctx.policy.maxNudgesPerGeneration,
     });
     const reader = streamOutput.fullStream.getReader();
     while (true) {

@@ -18,6 +18,8 @@ export type Agent = {
 export type StreamOptions = {
   toolChoice?: "auto" | "none" | "required";
   temperature?: number;
+  /** Max nudge re-prompts when the model stops prematurely. 0 disables. */
+  maxNudges?: number;
 };
 
 export type StreamOutput = {

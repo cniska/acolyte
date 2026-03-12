@@ -169,7 +169,7 @@ describe("createAgentInput", () => {
   test("compacts structured search/find tool payload turns", () => {
     const structuredPayload = [
       "scope=workspace patterns=[*.ts] matches=42",
-      ...Array.from({ length: 120 }, (_, i) => `src/file-${i}.ts`),
+      ...Array.from({ length: 400 }, (_, i) => `src/components/feature-${i}/index.ts`),
       "TAIL_STRUCTURED",
     ].join("\n");
     const req: ChatRequest = {

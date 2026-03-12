@@ -204,7 +204,7 @@ Proactive token budgeting via tiktoken — not reactive compaction.
 - **Memory** — skills, memory facts, and session context
 - **Attachments** — explicitly attached files
 - **History** — conversation turns, newest first, fills remaining space
-- **Tool payloads** — age-capped: recent turns get full budget, older ones shrink to 60 tokens
+- **Tool payloads** — age-capped: recent turns get full budget, older ones are progressively compacted
 
 <!--
 This is closely related to memory. You have a finite context window — say 128k or 200k tokens. How do you decide what goes in?

@@ -1,5 +1,6 @@
 import {
   INITIAL_MAX_STEPS,
+  MAX_NUDGES_PER_GENERATION,
   MAX_REGENERATIONS_PER_REQUEST,
   MAX_UNKNOWN_ERRORS_PER_REQUEST,
   STEP_TIMEOUT_MS,
@@ -14,6 +15,7 @@ export type LifecyclePolicy = {
   verifyMaxSteps: number;
   maxUnknownErrorsPerRequest: number;
   maxRegenerationsPerRequest: number;
+  maxNudgesPerGeneration: number;
 };
 
 export const defaultLifecyclePolicy: LifecyclePolicy = {
@@ -23,6 +25,7 @@ export const defaultLifecyclePolicy: LifecyclePolicy = {
   verifyMaxSteps: VERIFY_MAX_STEPS,
   maxUnknownErrorsPerRequest: MAX_UNKNOWN_ERRORS_PER_REQUEST,
   maxRegenerationsPerRequest: MAX_REGENERATIONS_PER_REQUEST,
+  maxNudgesPerGeneration: MAX_NUDGES_PER_GENERATION,
 };
 
 export function resolveLifecyclePolicy(override?: Partial<LifecyclePolicy>): LifecyclePolicy {

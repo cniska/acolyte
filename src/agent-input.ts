@@ -108,9 +108,9 @@ function resolveMessageTokenCap(
 ): number {
   if (!isAssistantToolPayloadMessage(message)) return maxPerMessageTokens;
   if (ageFromLatest <= 1) return maxPerMessageTokens;
-  if (ageFromLatest <= 4) return Math.min(maxPerMessageTokens, 200);
-  if (ageFromLatest <= 10) return Math.min(maxPerMessageTokens, 120);
-  return Math.min(maxPerMessageTokens, 60);
+  if (ageFromLatest <= 4) return Math.min(maxPerMessageTokens, 500);
+  if (ageFromLatest <= 10) return Math.min(maxPerMessageTokens, 300);
+  return Math.min(maxPerMessageTokens, 200);
 }
 
 export function createAgentInput(

@@ -1,4 +1,3 @@
-// nudge test
 import type {
   LanguageModelV3,
   LanguageModelV3FinishReason,
@@ -56,7 +55,8 @@ export function createAgentStream(
     let fullText = "";
     const allToolCalls: ToolCallEntry[] = [];
     let loopIteration = 0;
-    let nudged = false;
+    let nudgeCount = 0;
+    const maxNudges = options.maxNudges ?? 0;
 
     let streamController!: ReadableStreamDefaultController<StreamChunk>;
     const fullStream = new ReadableStream<StreamChunk>({
@@ -109,19 +109,18 @@ export function createAgentStream(
         if (stepText.length > 0) fullText += stepText;
 
         if (pendingToolCalls.length === 0) {
-          // Nudge: if the model was using tools and suddenly stopped, re-prompt once.
-          if (!nudged && allToolCalls.length > 0 && stepText.trim().length > 0) {
-            nudged = true;
+          if (nudgeCount < maxNudges && allToolCalls.length > 0 && stepText.trim().length > 0) {
+            nudgeCount++;
             log.debug("agent-stream.nudge", {
+              reason: "no_tool_calls",
+              nudge_count: nudgeCount,
+              max_nudges: maxNudges,
               iteration: loopIteration,
               finish_reason: finishReason?.unified ?? "undefined",
               text_length: stepText.length,
               total_tool_calls: allToolCalls.length,
             });
-            messages.push({
-              role: "assistant",
-              content: [{ type: "text", text: stepText }],
-            });
+            messages.push({ role: "assistant", content: [{ type: "text", text: stepText }] });
             messages.push({
               role: "user",
               content: [
@@ -152,10 +151,12 @@ export function createAgentStream(
         }));
 
         const toolResultParts: LanguageModelV3ToolResultPart[] = [];
+        let batchHadError = false;
         for (const tc of pendingToolCalls) {
           allToolCalls.push({ toolCallId: tc.toolCallId, toolName: tc.toolName, args: tc.input });
           const tool = toolsByName.get(tc.toolName);
           if (!tool) {
+            batchHadError = true;
             const error = `Unknown tool: ${tc.toolName}`;
             streamController.enqueue({
               type: "tool-error",
@@ -184,6 +185,7 @@ export function createAgentStream(
               output: { type: "text", value: JSON.stringify(result) },
             });
           } catch (error) {
+            batchHadError = true;
             const message = error instanceof Error ? error.message : String(error);
             const code =
               typeof error === "object" && error !== null && "code" in error
@@ -217,6 +219,27 @@ export function createAgentStream(
         messages.push({ role: "tool", content: toolResultParts });
 
         if (finishReason?.unified !== "tool-calls" && finishReason !== undefined) {
+          if (nudgeCount < maxNudges && batchHadError) {
+            nudgeCount++;
+            log.debug("agent-stream.nudge", {
+              reason: "tool_error_early_stop",
+              nudge_count: nudgeCount,
+              max_nudges: maxNudges,
+              iteration: loopIteration,
+              finish_reason: finishReason.unified,
+              total_tool_calls: allToolCalls.length,
+            });
+            messages.push({
+              role: "user",
+              content: [
+                {
+                  type: "text",
+                  text: "[system] One or more tool calls failed. Review the errors above and retry or take a different approach. Do not give up.",
+                },
+              ],
+            });
+            continue;
+          }
           log.debug("agent-stream.loop.exit", {
             reason: "finish_reason_not_tool_calls",
             iteration: loopIteration,
