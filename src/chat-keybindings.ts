@@ -4,6 +4,8 @@ import { applyAtSuggestion, shouldAutocompleteAtSubmit } from "./chat-file-ref";
 import { suggestModels } from "./chat-model-autocomplete";
 import { PICKER_PAGE_SIZE, type PickerState, pickerItemCount } from "./chat-picker";
 import { shouldAutocompleteSlashSubmit } from "./chat-slash";
+import { moveWordLeft } from "./prompt-input";
+import { resolvePromptAction } from "./prompt-keymap";
 
 type HistoryTransition = {
   nextIndex: number;
@@ -157,7 +159,18 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
           return;
         }
         if (input.picker.kind === "model") {
-          if (key.backspace || key.delete) {
+          const action = resolvePromptAction(keyInput, key, { hasMetaPrefix: false });
+          if (action.type === "delete_word_back") {
+            input.setPicker((current) => {
+              if (!current || current.kind !== "model") return current;
+              const boundary = moveWordLeft(current.query, current.query.length);
+              const query = current.query.slice(0, boundary);
+              const filtered = suggestModels(query, current.items);
+              return { ...current, query, filtered, index: 0, scrollOffset: 0 };
+            });
+            return;
+          }
+          if (action.type === "delete_back") {
             input.setPicker((current) => {
               if (!current || current.kind !== "model") return current;
               const query = current.query.slice(0, -1);
@@ -166,10 +179,18 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
             });
             return;
           }
-          if (keyInput && !key.ctrl && !key.meta) {
+          if (action.type === "clear_line") {
             input.setPicker((current) => {
               if (!current || current.kind !== "model") return current;
-              const query = current.query + keyInput;
+              const filtered = suggestModels("", current.items);
+              return { ...current, query: "", filtered, index: 0, scrollOffset: 0 };
+            });
+            return;
+          }
+          if (action.type === "insert") {
+            input.setPicker((current) => {
+              if (!current || current.kind !== "model") return current;
+              const query = current.query + action.text;
               const filtered = suggestModels(query, current.items);
               return { ...current, query, filtered, index: 0, scrollOffset: 0 };
             });

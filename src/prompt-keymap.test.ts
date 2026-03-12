@@ -31,11 +31,14 @@ describe("prompt keymap", () => {
     expect(resolvePromptAction("\u001b[1;9F", {}, { hasMetaPrefix: false })).toEqual({ type: "move_end" });
     expect(resolvePromptAction("\u001b[1;10H", {}, { hasMetaPrefix: false })).toEqual({ type: "move_home" });
     expect(resolvePromptAction("\u001b[1;10F", {}, { hasMetaPrefix: false })).toEqual({ type: "move_end" });
+  });
+
+  test("maps meta+arrow to word navigation (ink meta = Option/Alt)", () => {
     expect(resolvePromptAction("", { meta: true, leftArrow: true }, { hasMetaPrefix: false })).toEqual({
-      type: "move_home",
+      type: "move_word_left",
     });
     expect(resolvePromptAction("", { meta: true, rightArrow: true }, { hasMetaPrefix: false })).toEqual({
-      type: "move_end",
+      type: "move_word_right",
     });
   });
 
@@ -47,8 +50,15 @@ describe("prompt keymap", () => {
   test("maps clear-line control sequence", () => {
     expect(resolvePromptAction("\u0015", {}, { hasMetaPrefix: false })).toEqual({ type: "clear_line" });
     expect(resolvePromptAction("u", { ctrl: true }, { hasMetaPrefix: false })).toEqual({ type: "clear_line" });
+  });
+
+  test("maps meta+backspace/delete to delete-word-back (ink meta = Option/Alt)", () => {
     expect(resolvePromptAction("\u007f", { meta: true, backspace: true }, { hasMetaPrefix: false })).toEqual({
-      type: "clear_line",
+      type: "delete_word_back",
+    });
+    // ink maps \x7f (physical Backspace) to key.delete, not key.backspace
+    expect(resolvePromptAction("", { meta: true, delete: true }, { hasMetaPrefix: false })).toEqual({
+      type: "delete_word_back",
     });
   });
 });

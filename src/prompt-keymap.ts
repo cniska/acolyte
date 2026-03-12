@@ -117,7 +117,6 @@ export function resolvePromptAction(input: string, key: PromptKey, options: { ha
 
   if (
     key.home ||
-    (key.meta && key.leftArrow) ||
     ESC.home.has(input) ||
     (key.ctrl && input === CTRL.a) ||
     ESC.lineLeft.has(input) ||
@@ -128,7 +127,6 @@ export function resolvePromptAction(input: string, key: PromptKey, options: { ha
   }
   if (
     key.end ||
-    (key.meta && key.rightArrow) ||
     ESC.end.has(input) ||
     (key.ctrl && input === CTRL.e) ||
     ESC.lineRight.has(input) ||
@@ -139,7 +137,7 @@ export function resolvePromptAction(input: string, key: PromptKey, options: { ha
   }
 
   if (
-    (key.meta && input === "b") ||
+    (key.meta && (key.leftArrow || input === "b")) ||
     input === ESC.altB ||
     ESC.wordLeft.has(input) ||
     (csiArrowMove?.kind === "word" && csiArrowMove.direction === "left")
@@ -147,7 +145,7 @@ export function resolvePromptAction(input: string, key: PromptKey, options: { ha
     return { type: "move_word_left" };
   }
   if (
-    (key.meta && input === "f") ||
+    (key.meta && (key.rightArrow || input === "f")) ||
     input === ESC.altF ||
     ESC.wordRight.has(input) ||
     (csiArrowMove?.kind === "word" && csiArrowMove.direction === "right")
@@ -159,12 +157,12 @@ export function resolvePromptAction(input: string, key: PromptKey, options: { ha
     (key.ctrl && input === CTRL.w) ||
     input === CTRL.wordDelete ||
     input === ESC.altBackspace ||
-    input === ESC.altCtrlH
+    input === ESC.altCtrlH ||
+    (key.meta && (key.backspace || key.delete))
   ) {
     return { type: "delete_word_back" };
   }
-  if ((key.ctrl && input === CTRL.u) || input === CTRL.clearLine || (key.meta && key.backspace))
-    return { type: "clear_line" };
+  if ((key.ctrl && input === CTRL.u) || input === CTRL.clearLine) return { type: "clear_line" };
 
   if (key.leftArrow) return { type: "move_left" };
   if (key.rightArrow) return { type: "move_right" };
