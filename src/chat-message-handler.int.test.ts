@@ -102,9 +102,6 @@ describe("chat message handler guards", () => {
       .replace(/:\s+/g, ": ");
     expect(rendered).toBe(
       dedent(`
-      user
-      /status
-
       system
       providers: openai
       model: gpt-5-mini
@@ -126,9 +123,6 @@ describe("chat message handler guards", () => {
       .replace(/(\s{2})(?:in moments|\d+[smhdw] ago)$/gm, "$1<relative>");
     expect(rendered).toBe(
       dedent(`
-      user
-      /sessions
-
       system
       Sessions 1
 
@@ -147,9 +141,6 @@ describe("chat message handler guards", () => {
     const rendered = rows.map((row) => `${row.role}\n${row.content}`).join("\n\n");
     expect(rendered).toBe(
       dedent(`
-      user
-      /tokens
-
       system
       No token data yet. Send a prompt first.
     `),

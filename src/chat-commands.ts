@@ -209,18 +209,14 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     removeMemoryByPrefix,
     ...ctx.memoryApi,
   };
-  const pushUserCommandRow = (): void => {
-    ctx.setRows((current) => [...current, createRow("user", text)]);
-  };
 
   if (resolvedText === "/resume") {
-    pushUserCommandRow();
+
     ctx.openResumePanel();
     return { stop: true, userText: text };
   }
 
   if (resolvedText.startsWith("/resume")) {
-    pushUserCommandRow();
     const resolved = resolveResumeSession(ctx.store, resolvedText);
     if (resolved.kind === "usage") {
       const recent = formatSessionList(ctx.store, 6);
@@ -258,14 +254,12 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
   }
 
   if (resolvedText === "/sessions") {
-    pushUserCommandRow();
     const rendered = presentSessionsOutput(ctx.store, 10);
     ctx.setRows((current) => [...current, createRow("system", rendered)]);
     return { stop: true, userText: text };
   }
 
   if (resolvedText === "/status") {
-    pushUserCommandRow();
     try {
       const status = await ctx.client.status();
       const rendered = presentStatusOutput(status);
@@ -280,7 +274,6 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
   }
 
   if (resolvedText === "/model") {
-    pushUserCommandRow();
     ctx.openModelPanel();
     return { stop: true, userText: text };
   }
@@ -290,12 +283,11 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     if (parts.length === 2) {
       const mode = agentModeSchema.safeParse(parts[1]);
       if (mode.success) {
-        pushUserCommandRow();
         ctx.openModelPanel(mode.data);
         return { stop: true, userText: text };
       }
     }
-    pushUserCommandRow();
+
     const selection = parseModelSelectionCommand(resolvedText);
     if (!selection) {
       ctx.setRows((current) => [
@@ -348,7 +340,6 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
   }
 
   if (resolvedText.startsWith("/memory rm")) {
-    pushUserCommandRow();
     const parts = resolvedText.trim().split(/\s+/);
     if (parts.length !== 3) {
       ctx.setRows((current) => [...current, createRow("system", formatUsage("/memory rm <id-prefix>"))]);
@@ -391,7 +382,6 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
   }
 
   if (resolvedText === "/memory" || resolvedText.startsWith("/memory ")) {
-    pushUserCommandRow();
     const parts = resolvedText.split(/\s+/);
     const scope = parseMemoryListScope(parts);
     if (!scope) {
@@ -414,7 +404,6 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
   }
 
   if (resolvedText === "/tokens") {
-    pushUserCommandRow();
     const last = ctx.tokenUsage.length > 0 ? ctx.tokenUsage[ctx.tokenUsage.length - 1] : null;
     const rendered = presentTokensOutput(last, ctx.tokenUsage);
     ctx.setRows((current) => [...current, createRow("system", rendered)]);
@@ -422,7 +411,6 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
   }
 
   if (resolvedText.startsWith("/remember")) {
-    pushUserCommandRow();
     const parts = resolvedText.split(/\s+/).slice(1);
     let scope: MemoryScope = "user";
     const contentParts: string[] = [];
@@ -461,7 +449,6 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
   }
 
   if (resolvedText === "/skills") {
-    pushUserCommandRow();
     await ctx.openSkillsPanel();
     return { stop: true, userText: text };
   }
@@ -480,7 +467,6 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
   }
 
   if (resolvedText === "/exit") {
-    pushUserCommandRow();
     await ctx.persist();
     ctx.exit();
     return { stop: true, userText: text };
@@ -499,12 +485,11 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       const args = rest.join(" ").trim();
       const ok = await ctx.activateSkill(skill.name, args);
       if (!ok) {
-        pushUserCommandRow();
         ctx.setRows((current) => [...current, createRow("system", t("chat.skill.failed", { skill: skill.name }))]);
         return { stop: true, userText: text };
       }
       if (args) return { stop: false, userText: args };
-      pushUserCommandRow();
+
       ctx.setRows((current) => [
         ...current,
         createRow("system", t("chat.skill.activated", { skill: skill.name }), { dim: true }),
@@ -512,7 +497,6 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       return { stop: true, userText: text };
     }
 
-    pushUserCommandRow();
     ctx.setRows((current) => [...current, createRow("system", t("chat.command.unknown", { command: text }))]);
     return { stop: true, userText: text };
   }

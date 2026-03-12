@@ -519,7 +519,7 @@ describe("chat-commands", () => {
   test("dispatchSlashCommand /resume opens picker flow", async () => {
     const { rows, stop } = await runCommand("/resume");
     expect(stop).toBe(true);
-    expect(rows.some((row) => row.role === "user" && row.content === "/resume")).toBe(true);
+    expect(rows.every((row) => row.role !== "user")).toBe(true);
   });
 
   test("dispatchSlashCommand /resume with missing prefix reports not found", async () => {

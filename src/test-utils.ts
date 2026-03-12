@@ -70,7 +70,7 @@ export function dedent(
   const pad = " ".repeat(gutter);
   return dedented
     .split("\n")
-    .map((line) => `${pad}${line}`)
+    .map((line) => (line.length === 0 ? line : `${pad}${line}`))
     .join("\n");
 }
 

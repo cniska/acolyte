@@ -58,12 +58,13 @@ export function createMessageStreamState(input: {
 
       const existingRowId = toolRowIdByCallId.get(entry.toolCallId);
       if (!existingRowId) {
+        const orphanedRowId = streamingRowId;
         if (streamingContent.trim().length > 0) streamingContent = "";
         streamingRowId = null;
         const rowId = `row_${createId()}`;
         toolRowIdByCallId.set(entry.toolCallId, rowId);
         input.setRows((current) => [
-          ...current,
+          ...(orphanedRowId ? current.filter((row) => row.id !== orphanedRowId) : current),
           {
             id: rowId,
             role: "tool" as const,
@@ -120,6 +121,12 @@ export function createMessageStreamState(input: {
       if (flushTimer) {
         clearTimeout(flushTimer);
         flushTimer = null;
+      }
+      if (streamingRowId) {
+        const orphanedRowId = streamingRowId;
+        streamingRowId = null;
+        streamingContent = "";
+        input.setRows((current) => current.filter((row) => row.id !== orphanedRowId));
       }
     },
   };

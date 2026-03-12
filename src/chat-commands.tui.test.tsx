@@ -4,7 +4,7 @@ import { createClient, createMessageHandlerHarness, createSession, createStore, 
 import { renderInkPlain } from "./tui-test-utils";
 
 function renderTranscript(rows: Parameters<typeof ChatTranscript>[0]["rows"], columns = 96): string {
-  return renderInkPlain(<ChatTranscript rows={rows} isWorking={false} thinkingFrame={0} />, columns);
+  return dedent(renderInkPlain(<ChatTranscript rows={rows} isWorking={false} thinkingFrame={0} />, columns));
 }
 
 describe("chat slash command visual regression", () => {
@@ -23,8 +23,6 @@ describe("chat slash command visual regression", () => {
 
     expect(renderTranscript(rows)).toBe(
       dedent(`
-      ❯ /status
-      
         providers:          openai
         model:              gpt-5-mini
         permissions:        write
@@ -59,8 +57,6 @@ describe("chat slash command visual regression", () => {
 
     expect(renderTranscript(rows)).toBe(
       dedent(`
-      ❯ /tokens
-      
         last turn:           prompt=40 completion=10 total=50
         session:             prompt=160 completion=40 total=200 (2 turns)
         model calls:         last=1 session=3
@@ -85,10 +81,8 @@ describe("chat slash command visual regression", () => {
 
       expect(renderTranscript(rows)).toBe(
         dedent(`
-        ❯ /sessions
-        
           Sessions 2
-        
+
           ● sess_active  Current Session   just now
             sess_prev    Previous Session  just now
       `),
