@@ -164,828 +164,900 @@ describe("server rpc websocket queue", () => {
   });
 
   test("task.status and chat.abort are available", async () => {
-    const port = randomTestPort();
-    const apiKey = "rpc_test_key";
-    await startServerForRpcTest(port, apiKey);
+    await withFakeProviderServer(
+      async (providerBaseUrl) => {
+        const port = randomTestPort();
+        const apiKey = "rpc_test_key";
+        await startServerForRpcTest(port, apiKey, { providerBaseUrl });
 
-    const messages: RpcEnvelope[] = [];
-    const ws = new WebSocket(`ws://127.0.0.1:${port}/v1/rpc?apiKey=${apiKey}`);
-    await new Promise<void>((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error("websocket open timed out")), 5000);
-      ws.addEventListener("open", () => {
-        clearTimeout(timeout);
-        resolve();
-      });
-      ws.addEventListener("error", () => {
-        clearTimeout(timeout);
-        reject(new Error("websocket failed to open"));
-      });
-    });
+        const messages: RpcEnvelope[] = [];
+        const ws = new WebSocket(`ws://127.0.0.1:${port}/v1/rpc?apiKey=${apiKey}`);
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => reject(new Error("websocket open timed out")), 5000);
+          ws.addEventListener("open", () => {
+            clearTimeout(timeout);
+            resolve();
+          });
+          ws.addEventListener("error", () => {
+            clearTimeout(timeout);
+            reject(new Error("websocket failed to open"));
+          });
+        });
 
-    ws.addEventListener("message", (event) => {
-      try {
-        messages.push(JSON.parse(typeof event.data === "string" ? event.data : String(event.data)) as RpcEnvelope);
-      } catch {
-        // Ignore malformed messages from test perspective.
-      }
-    });
+        ws.addEventListener("message", (event) => {
+          try {
+            messages.push(JSON.parse(typeof event.data === "string" ? event.data : String(event.data)) as RpcEnvelope);
+          } catch {
+            // Ignore malformed messages from test perspective.
+          }
+        });
 
-    const chatId = "rpc_readmodetaskctrl";
-    ws.send(
-      JSON.stringify({
-        id: chatId,
-        type: "chat.start",
-        payload: {
-          request: {
-            message: "Do a long-running analysis with many steps before answering.",
-            history: [],
-            model: "gpt-5-mini",
-            sessionId: "sess_rpcreadmodetaskctrl",
-          },
-        },
-      }),
-    );
-
-    await new Promise<void>((resolve, reject) => {
-      const startedAt = Date.now();
-      const interval = setInterval(() => {
-        if (messages.some((m) => m.id === chatId && m.type === "chat.started")) {
-          clearInterval(interval);
-          resolve();
-          return;
-        }
-        if (Date.now() - startedAt > 8000) {
-          clearInterval(interval);
-          reject(new Error(`timed out waiting for chat.started: ${JSON.stringify(messages)}`));
-        }
-      }, 20);
-    });
-
-    const runningTaskId = acceptedTaskIdFor(messages, chatId);
-    expect(runningTaskId).not.toBeNull();
-    ws.send(JSON.stringify({ id: "rpc_readmodestatus", type: "task.status", payload: { taskId: runningTaskId } }));
-
-    await new Promise<void>((resolve, reject) => {
-      const startedAt = Date.now();
-      const interval = setInterval(() => {
-        const statusResult = messages.find((m) => m.id === "rpc_readmodestatus" && m.type === "task.status.result");
-        if (statusResult) {
-          clearInterval(interval);
-          expect(statusResult.task && typeof statusResult.task === "object").toBe(true);
-          const task = statusResult.task as { id: unknown; state: unknown };
-          expect(task.id).toBe(runningTaskId);
-          expect(task.state).toBe("running");
-          resolve();
-          return;
-        }
-        if (Date.now() - startedAt > 8000) {
-          clearInterval(interval);
-          reject(new Error(`timed out waiting for task.status.result: ${JSON.stringify(messages)}`));
-        }
-      }, 20);
-    });
-
-    ws.send(JSON.stringify({ id: "rpc_readmodeabort", type: "chat.abort", payload: { requestId: chatId } }));
-
-    await new Promise<void>((resolve, reject) => {
-      const startedAt = Date.now();
-      const interval = setInterval(() => {
-        const abortResult = messages.find(
-          (m) =>
-            m.id === "rpc_readmodeabort" &&
-            m.type === "chat.abort.result" &&
-            m.requestId === chatId &&
-            m.aborted === true,
+        const chatId = "rpc_readmodetaskctrl";
+        ws.send(
+          JSON.stringify({
+            id: chatId,
+            type: "chat.start",
+            payload: {
+              request: {
+                message: "Do a long-running analysis with many steps before answering.",
+                history: [],
+                model: "gpt-5-mini",
+                sessionId: "sess_rpcreadmodetaskctrl",
+              },
+            },
+          }),
         );
-        if (abortResult) {
-          clearInterval(interval);
-          resolve();
-          return;
-        }
-        if (Date.now() - startedAt > 8000) {
-          clearInterval(interval);
-          reject(new Error(`timed out waiting for chat.abort.result: ${JSON.stringify(messages)}`));
-        }
-      }, 20);
-    });
 
-    ws.close();
+        await new Promise<void>((resolve, reject) => {
+          const startedAt = Date.now();
+          const interval = setInterval(() => {
+            if (messages.some((m) => m.id === chatId && m.type === "chat.started")) {
+              clearInterval(interval);
+              resolve();
+              return;
+            }
+            if (Date.now() - startedAt > 8000) {
+              clearInterval(interval);
+              reject(new Error(`timed out waiting for chat.started: ${JSON.stringify(messages)}`));
+            }
+          }, 20);
+        });
+
+        const runningTaskId = acceptedTaskIdFor(messages, chatId);
+        expect(runningTaskId).not.toBeNull();
+        ws.send(JSON.stringify({ id: "rpc_readmodestatus", type: "task.status", payload: { taskId: runningTaskId } }));
+
+        await new Promise<void>((resolve, reject) => {
+          const startedAt = Date.now();
+          const interval = setInterval(() => {
+            const statusResult = messages.find((m) => m.id === "rpc_readmodestatus" && m.type === "task.status.result");
+            if (statusResult) {
+              clearInterval(interval);
+              expect(statusResult.task && typeof statusResult.task === "object").toBe(true);
+              const task = statusResult.task as { id: unknown; state: unknown };
+              expect(task.id).toBe(runningTaskId);
+              expect(task.state).toBe("running");
+              resolve();
+              return;
+            }
+            if (Date.now() - startedAt > 8000) {
+              clearInterval(interval);
+              reject(new Error(`timed out waiting for task.status.result: ${JSON.stringify(messages)}`));
+            }
+          }, 20);
+        });
+
+        ws.send(JSON.stringify({ id: "rpc_readmodeabort", type: "chat.abort", payload: { requestId: chatId } }));
+
+        await new Promise<void>((resolve, reject) => {
+          const startedAt = Date.now();
+          const interval = setInterval(() => {
+            const abortResult = messages.find(
+              (m) =>
+                m.id === "rpc_readmodeabort" &&
+                m.type === "chat.abort.result" &&
+                m.requestId === chatId &&
+                m.aborted === true,
+            );
+            if (abortResult) {
+              clearInterval(interval);
+              resolve();
+              return;
+            }
+            if (Date.now() - startedAt > 8000) {
+              clearInterval(interval);
+              reject(new Error(`timed out waiting for chat.abort.result: ${JSON.stringify(messages)}`));
+            }
+          }, 20);
+        });
+
+        ws.close();
+      },
+      { responseDelayMs: 5000 },
+    );
   }, 20_000);
 
   test("status reports rpc queue depth and task counters", async () => {
-    const port = randomTestPort();
-    const apiKey = "rpc_test_key";
-    await startServerForRpcTest(port, apiKey);
+    await withFakeProviderServer(
+      async (providerBaseUrl) => {
+        const port = randomTestPort();
+        const apiKey = "rpc_test_key";
+        await startServerForRpcTest(port, apiKey, { providerBaseUrl });
 
-    const ws = new WebSocket(`ws://127.0.0.1:${port}/v1/rpc?apiKey=${apiKey}`);
-    await new Promise<void>((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error("websocket open timed out")), 5000);
-      ws.addEventListener("open", () => {
-        clearTimeout(timeout);
-        resolve();
-      });
-      ws.addEventListener("error", () => {
-        clearTimeout(timeout);
-        reject(new Error("websocket failed to open"));
-      });
-    });
+        const ws = new WebSocket(`ws://127.0.0.1:${port}/v1/rpc?apiKey=${apiKey}`);
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => reject(new Error("websocket open timed out")), 5000);
+          ws.addEventListener("open", () => {
+            clearTimeout(timeout);
+            resolve();
+          });
+          ws.addEventListener("error", () => {
+            clearTimeout(timeout);
+            reject(new Error("websocket failed to open"));
+          });
+        });
 
-    const messages: RpcEnvelope[] = [];
-    ws.addEventListener("message", (event) => {
-      try {
-        messages.push(JSON.parse(typeof event.data === "string" ? event.data : String(event.data)) as RpcEnvelope);
-      } catch {
-        // Ignore malformed messages from test perspective.
-      }
-    });
+        const messages: RpcEnvelope[] = [];
+        ws.addEventListener("message", (event) => {
+          try {
+            messages.push(JSON.parse(typeof event.data === "string" ? event.data : String(event.data)) as RpcEnvelope);
+          } catch {
+            // Ignore malformed messages from test perspective.
+          }
+        });
 
-    ws.send(
-      JSON.stringify({
-        id: "rpc_statusqueuea",
-        type: "chat.start",
-        payload: {
-          request: {
-            message: "Do a long-running analysis with many steps before answering.",
-            history: [],
-            model: "gpt-5-mini",
-            sessionId: "sess_rpcstatusqueuea",
-          },
-        },
-      }),
-    );
-    ws.send(
-      JSON.stringify({
-        id: "rpc_statusqueueb",
-        type: "chat.start",
-        payload: {
-          request: {
-            message: "Do a long-running analysis with many steps before answering.",
-            history: [],
-            model: "gpt-5-mini",
-            sessionId: "sess_rpcstatusqueueb",
-          },
-        },
-      }),
-    );
-
-    await new Promise<void>((resolve, reject) => {
-      const startedAt = Date.now();
-      const interval = setInterval(() => {
-        const queued = messages.some(
-          (m) => m.id === "rpc_statusqueueb" && m.type === "chat.queued" && m.position === 1,
+        ws.send(
+          JSON.stringify({
+            id: "rpc_statusqueuea",
+            type: "chat.start",
+            payload: {
+              request: {
+                message: "Do a long-running analysis with many steps before answering.",
+                history: [],
+                model: "gpt-5-mini",
+                sessionId: "sess_rpcstatusqueuea",
+              },
+            },
+          }),
         );
-        if (queued) {
-          clearInterval(interval);
-          resolve();
-          return;
-        }
-        if (Date.now() - startedAt > 8000) {
-          clearInterval(interval);
-          reject(new Error(`timed out waiting for queued envelope: ${JSON.stringify(messages)}`));
-        }
-      }, 20);
-    });
+        ws.send(
+          JSON.stringify({
+            id: "rpc_statusqueueb",
+            type: "chat.start",
+            payload: {
+              request: {
+                message: "Do a long-running analysis with many steps before answering.",
+                history: [],
+                model: "gpt-5-mini",
+                sessionId: "sess_rpcstatusqueueb",
+              },
+            },
+          }),
+        );
 
-    const response = await fetch(`http://127.0.0.1:${port}/v1/status`, {
-      headers: { authorization: `Bearer ${apiKey}` },
-    });
-    expect(response.status).toBe(200);
-    const status = (await response.json()) as Record<string, unknown>;
-    expect(status.rpc_queue_length).toBe(1);
-    expect(status.tasks_total).toBe(2);
-    expect(status.tasks_running).toBe(1);
-    expect(typeof status.tasks_detached).toBe("number");
+        await new Promise<void>((resolve, reject) => {
+          const startedAt = Date.now();
+          const interval = setInterval(() => {
+            const queued = messages.some(
+              (m) => m.id === "rpc_statusqueueb" && m.type === "chat.queued" && m.position === 1,
+            );
+            if (queued) {
+              clearInterval(interval);
+              resolve();
+              return;
+            }
+            if (Date.now() - startedAt > 8000) {
+              clearInterval(interval);
+              reject(new Error(`timed out waiting for queued envelope: ${JSON.stringify(messages)}`));
+            }
+          }, 20);
+        });
 
-    ws.send(
-      JSON.stringify({
-        id: "rpc_statusaborta",
-        type: "chat.abort",
-        payload: { requestId: "rpc_statusqueuea" },
-      }),
+        const response = await fetch(`http://127.0.0.1:${port}/v1/status`, {
+          headers: { authorization: `Bearer ${apiKey}` },
+        });
+        expect(response.status).toBe(200);
+        const status = (await response.json()) as Record<string, unknown>;
+        expect(status.rpc_queue_length).toBe(1);
+        expect(status.tasks_total).toBe(2);
+        expect(status.tasks_running).toBe(1);
+        expect(typeof status.tasks_detached).toBe("number");
+
+        ws.send(
+          JSON.stringify({
+            id: "rpc_statusaborta",
+            type: "chat.abort",
+            payload: { requestId: "rpc_statusqueuea" },
+          }),
+        );
+        ws.send(
+          JSON.stringify({
+            id: "rpc_statusabortb",
+            type: "chat.abort",
+            payload: { requestId: "rpc_statusqueueb" },
+          }),
+        );
+        ws.close();
+      },
+      { responseDelayMs: 5000 },
     );
-    ws.send(
-      JSON.stringify({
-        id: "rpc_statusabortb",
-        type: "chat.abort",
-        payload: { requestId: "rpc_statusqueueb" },
-      }),
-    );
-    ws.close();
   }, 20_000);
 
   test("task.status returns null after server restart", async () => {
-    const port = randomTestPort();
-    const apiKey = "rpc_test_key";
-    const home = await mkdtemp(join(tmpdir(), "acolyte-rpc-home-"));
-    const project = await mkdtemp(join(tmpdir(), "acolyte-rpc-project-"));
-    tmpHomes.push(home);
-    tmpProjects.push(project);
-    await prepareRpcTestProject(project, port);
+    await withFakeProviderServer(
+      async (providerBaseUrl) => {
+        const port = randomTestPort();
+        const apiKey = "rpc_test_key";
+        const home = await mkdtemp(join(tmpdir(), "acolyte-rpc-home-"));
+        const project = await mkdtemp(join(tmpdir(), "acolyte-rpc-project-"));
+        tmpHomes.push(home);
+        tmpProjects.push(project);
+        await prepareRpcTestProject(project, port, providerBaseUrl);
 
-    const proc = await startRpcTestServerProcess(home, project, apiKey, port);
-    const ws = new WebSocket(`ws://127.0.0.1:${port}/v1/rpc?apiKey=${apiKey}`);
-    await new Promise<void>((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error("websocket open timed out")), 5000);
-      ws.addEventListener("open", () => {
-        clearTimeout(timeout);
-        resolve();
-      });
-      ws.addEventListener("error", () => {
-        clearTimeout(timeout);
-        reject(new Error("websocket failed to open"));
-      });
-    });
+        const proc = await startRpcTestServerProcess(home, project, apiKey, port, { providerBaseUrl });
+        const ws = new WebSocket(`ws://127.0.0.1:${port}/v1/rpc?apiKey=${apiKey}`);
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => reject(new Error("websocket open timed out")), 5000);
+          ws.addEventListener("open", () => {
+            clearTimeout(timeout);
+            resolve();
+          });
+          ws.addEventListener("error", () => {
+            clearTimeout(timeout);
+            reject(new Error("websocket failed to open"));
+          });
+        });
 
-    const messages: RpcEnvelope[] = [];
-    ws.addEventListener("message", (event) => {
-      try {
-        messages.push(JSON.parse(typeof event.data === "string" ? event.data : String(event.data)) as RpcEnvelope);
-      } catch {
-        // Ignore malformed messages from test perspective.
-      }
-    });
+        const messages: RpcEnvelope[] = [];
+        ws.addEventListener("message", (event) => {
+          try {
+            messages.push(JSON.parse(typeof event.data === "string" ? event.data : String(event.data)) as RpcEnvelope);
+          } catch {
+            // Ignore malformed messages from test perspective.
+          }
+        });
 
-    const requestId = "rpc_restarttaskstatus";
-    ws.send(
-      JSON.stringify({
-        id: requestId,
-        type: "chat.start",
-        payload: {
-          request: {
-            message: "Do a long-running analysis with many steps before answering.",
-            history: [],
-            model: "gpt-5-mini",
-            sessionId: "sess_rpcrestarttaskstatus",
-          },
-        },
-      }),
-    );
-    await waitForRpcCondition(
-      messages,
-      (all) => Boolean(acceptedTaskIdFor(all, requestId)),
-      8000,
-      "pre-restart accepted task id",
-    );
-    const taskId = acceptedTaskIdFor(messages, requestId);
-    expect(taskId).not.toBeNull();
-    ws.send(JSON.stringify({ id: "rpc_restartstatusbefore", type: "task.status", payload: { taskId } }));
-
-    await new Promise<void>((resolve, reject) => {
-      const startedAt = Date.now();
-      const interval = setInterval(() => {
-        const statusResult = messages.find(
-          (m) => m.id === "rpc_restartstatusbefore" && m.type === "task.status.result",
+        const requestId = "rpc_restarttaskstatus";
+        ws.send(
+          JSON.stringify({
+            id: requestId,
+            type: "chat.start",
+            payload: {
+              request: {
+                message: "Do a long-running analysis with many steps before answering.",
+                history: [],
+                model: "gpt-5-mini",
+                sessionId: "sess_rpcrestarttaskstatus",
+              },
+            },
+          }),
         );
-        if (statusResult) {
-          clearInterval(interval);
-          expect(statusResult.task).not.toBeNull();
-          resolve();
-          return;
-        }
-        if (Date.now() - startedAt > 8000) {
-          clearInterval(interval);
-          reject(new Error(`timed out waiting for pre-restart task status: ${JSON.stringify(messages)}`));
-        }
-      }, 20);
-    });
-
-    ws.close();
-    proc.kill();
-    await proc.exited.catch(() => {});
-
-    await startRpcTestServerProcess(home, project, apiKey, port);
-    const wsAfter = new WebSocket(`ws://127.0.0.1:${port}/v1/rpc?apiKey=${apiKey}`);
-    await new Promise<void>((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error("websocket open timed out")), 5000);
-      wsAfter.addEventListener("open", () => {
-        clearTimeout(timeout);
-        resolve();
-      });
-      wsAfter.addEventListener("error", () => {
-        clearTimeout(timeout);
-        reject(new Error("websocket failed to open"));
-      });
-    });
-
-    const messagesAfter: RpcEnvelope[] = [];
-    wsAfter.addEventListener("message", (event) => {
-      try {
-        messagesAfter.push(JSON.parse(typeof event.data === "string" ? event.data : String(event.data)) as RpcEnvelope);
-      } catch {
-        // Ignore malformed messages from test perspective.
-      }
-    });
-
-    wsAfter.send(JSON.stringify({ id: "rpc_restartstatusafter", type: "task.status", payload: { taskId } }));
-
-    await new Promise<void>((resolve, reject) => {
-      const startedAt = Date.now();
-      const interval = setInterval(() => {
-        const statusResult = messagesAfter.find(
-          (m) => m.id === "rpc_restartstatusafter" && m.type === "task.status.result",
+        await waitForRpcCondition(
+          messages,
+          (all) => Boolean(acceptedTaskIdFor(all, requestId)),
+          8000,
+          "pre-restart accepted task id",
         );
-        if (statusResult) {
-          clearInterval(interval);
-          expect(statusResult.task).toBeNull();
-          resolve();
-          return;
-        }
-        if (Date.now() - startedAt > 8000) {
-          clearInterval(interval);
-          reject(new Error(`timed out waiting for post-restart task status: ${JSON.stringify(messagesAfter)}`));
-        }
-      }, 20);
-    });
+        const taskId = acceptedTaskIdFor(messages, requestId);
+        expect(taskId).not.toBeNull();
+        ws.send(JSON.stringify({ id: "rpc_restartstatusbefore", type: "task.status", payload: { taskId } }));
 
-    wsAfter.close();
+        await new Promise<void>((resolve, reject) => {
+          const startedAt = Date.now();
+          const interval = setInterval(() => {
+            const statusResult = messages.find(
+              (m) => m.id === "rpc_restartstatusbefore" && m.type === "task.status.result",
+            );
+            if (statusResult) {
+              clearInterval(interval);
+              expect(statusResult.task).not.toBeNull();
+              resolve();
+              return;
+            }
+            if (Date.now() - startedAt > 8000) {
+              clearInterval(interval);
+              reject(new Error(`timed out waiting for pre-restart task status: ${JSON.stringify(messages)}`));
+            }
+          }, 20);
+        });
+
+        ws.close();
+        proc.kill();
+        await proc.exited.catch(() => {});
+
+        await startRpcTestServerProcess(home, project, apiKey, port, { providerBaseUrl });
+        const wsAfter = new WebSocket(`ws://127.0.0.1:${port}/v1/rpc?apiKey=${apiKey}`);
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => reject(new Error("websocket open timed out")), 5000);
+          wsAfter.addEventListener("open", () => {
+            clearTimeout(timeout);
+            resolve();
+          });
+          wsAfter.addEventListener("error", () => {
+            clearTimeout(timeout);
+            reject(new Error("websocket failed to open"));
+          });
+        });
+
+        const messagesAfter: RpcEnvelope[] = [];
+        wsAfter.addEventListener("message", (event) => {
+          try {
+            messagesAfter.push(
+              JSON.parse(typeof event.data === "string" ? event.data : String(event.data)) as RpcEnvelope,
+            );
+          } catch {
+            // Ignore malformed messages from test perspective.
+          }
+        });
+
+        wsAfter.send(JSON.stringify({ id: "rpc_restartstatusafter", type: "task.status", payload: { taskId } }));
+
+        await new Promise<void>((resolve, reject) => {
+          const startedAt = Date.now();
+          const interval = setInterval(() => {
+            const statusResult = messagesAfter.find(
+              (m) => m.id === "rpc_restartstatusafter" && m.type === "task.status.result",
+            );
+            if (statusResult) {
+              clearInterval(interval);
+              expect(statusResult.task).toBeNull();
+              resolve();
+              return;
+            }
+            if (Date.now() - startedAt > 8000) {
+              clearInterval(interval);
+              reject(new Error(`timed out waiting for post-restart task status: ${JSON.stringify(messagesAfter)}`));
+            }
+          }, 20);
+        });
+
+        wsAfter.close();
+      },
+      { responseDelayMs: 5000 },
+    );
   }, 30_000);
 
   test("rejects chat.start when rpc queue is full", async () => {
-    const port = randomTestPort();
-    const apiKey = "rpc_test_key";
-    await startServerForRpcTest(port, apiKey);
+    await withFakeProviderServer(
+      async (providerBaseUrl) => {
+        const port = randomTestPort();
+        const apiKey = "rpc_test_key";
+        await startServerForRpcTest(port, apiKey, { providerBaseUrl });
 
-    const ws = new WebSocket(`ws://127.0.0.1:${port}/v1/rpc?apiKey=${apiKey}`);
-    await new Promise<void>((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error("websocket open timed out")), 5000);
-      ws.addEventListener("open", () => {
-        clearTimeout(timeout);
-        resolve();
-      });
-      ws.addEventListener("error", () => {
-        clearTimeout(timeout);
-        reject(new Error("websocket failed to open"));
-      });
-    });
+        const ws = new WebSocket(`ws://127.0.0.1:${port}/v1/rpc?apiKey=${apiKey}`);
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => reject(new Error("websocket open timed out")), 5000);
+          ws.addEventListener("open", () => {
+            clearTimeout(timeout);
+            resolve();
+          });
+          ws.addEventListener("error", () => {
+            clearTimeout(timeout);
+            reject(new Error("websocket failed to open"));
+          });
+        });
 
-    const messages: RpcEnvelope[] = [];
-    ws.addEventListener("message", (event) => {
-      try {
-        messages.push(JSON.parse(typeof event.data === "string" ? event.data : String(event.data)) as RpcEnvelope);
-      } catch {
-        // Ignore malformed messages from test perspective.
-      }
-    });
+        const messages: RpcEnvelope[] = [];
+        ws.addEventListener("message", (event) => {
+          try {
+            messages.push(JSON.parse(typeof event.data === "string" ? event.data : String(event.data)) as RpcEnvelope);
+          } catch {
+            // Ignore malformed messages from test perspective.
+          }
+        });
 
-    const requestFor = (id: string) =>
-      JSON.stringify({
-        id,
-        type: "chat.start",
-        payload: {
-          request: {
-            message: "Do a long-running analysis with many steps before answering.",
-            history: [],
-            model: "gpt-5-mini",
-            sessionId: `sess_${id.replace("rpc_", "")}`,
-          },
-        },
-      });
+        const requestFor = (id: string) =>
+          JSON.stringify({
+            id,
+            type: "chat.start",
+            payload: {
+              request: {
+                message: "Do a long-running analysis with many steps before answering.",
+                history: [],
+                model: "gpt-5-mini",
+                sessionId: `sess_${id.replace("rpc_", "")}`,
+              },
+            },
+          });
 
-    // 1 running + 25 queued hits the queue limit.
-    ws.send(requestFor("rpc_queuelimitrunning"));
-    for (let i = 0; i < 25; i += 1) ws.send(requestFor(`rpc_queuelimitq${i}`));
-    ws.send(requestFor("rpc_queuelimitoverflow"));
+        // 1 running + 25 queued hits the queue limit.
+        ws.send(requestFor("rpc_queuelimitrunning"));
+        for (let i = 0; i < 25; i += 1) ws.send(requestFor(`rpc_queuelimitq${i}`));
+        ws.send(requestFor("rpc_queuelimitoverflow"));
 
-    await new Promise<void>((resolve, reject) => {
-      const startedAt = Date.now();
-      const interval = setInterval(() => {
-        const overflowError = messages.find(
-          (m) =>
-            m.id === "rpc_queuelimitoverflow" &&
-            m.type === "error" &&
-            typeof m.error === "string" &&
-            m.error.includes("RPC queue is full") &&
-            m.error.includes("Try again shortly."),
-        );
-        if (overflowError) {
-          clearInterval(interval);
-          resolve();
-          return;
-        }
-        if (Date.now() - startedAt > 8000) {
-          clearInterval(interval);
-          reject(new Error(`timed out waiting for queue overflow error: ${JSON.stringify(messages)}`));
-        }
-      }, 20);
-    });
+        await new Promise<void>((resolve, reject) => {
+          const startedAt = Date.now();
+          const interval = setInterval(() => {
+            const overflowError = messages.find(
+              (m) =>
+                m.id === "rpc_queuelimitoverflow" &&
+                m.type === "error" &&
+                typeof m.error === "string" &&
+                m.error.includes("RPC queue is full") &&
+                m.error.includes("Try again shortly."),
+            );
+            if (overflowError) {
+              clearInterval(interval);
+              resolve();
+              return;
+            }
+            if (Date.now() - startedAt > 8000) {
+              clearInterval(interval);
+              reject(new Error(`timed out waiting for queue overflow error: ${JSON.stringify(messages)}`));
+            }
+          }, 20);
+        });
 
-    expect(messages.some((m) => m.id === "rpc_queuelimitoverflow" && m.type === "chat.accepted")).toBe(false);
+        expect(messages.some((m) => m.id === "rpc_queuelimitoverflow" && m.type === "chat.accepted")).toBe(false);
 
-    ws.close();
+        ws.close();
+      },
+      { responseDelayMs: 5000 },
+    );
   }, 20_000);
 
   test("emits queue/abort envelopes and reindexes queued positions", async () => {
-    const port = randomTestPort();
-    const apiKey = "rpc_test_key";
-    await startServerForRpcTest(port, apiKey);
+    await withFakeProviderServer(
+      async (providerBaseUrl) => {
+        const port = randomTestPort();
+        const apiKey = "rpc_test_key";
+        await startServerForRpcTest(port, apiKey, { providerBaseUrl });
 
-    const messages: RpcEnvelope[] = [];
-    const ws = new WebSocket(`ws://127.0.0.1:${port}/v1/rpc?apiKey=${apiKey}`);
-    await new Promise<void>((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error("websocket open timed out")), 5000);
-      ws.addEventListener("open", () => {
-        clearTimeout(timeout);
-        resolve();
-      });
-      ws.addEventListener("error", () => {
-        clearTimeout(timeout);
-        reject(new Error("websocket failed to open"));
-      });
-    });
+        const messages: RpcEnvelope[] = [];
+        const ws = new WebSocket(`ws://127.0.0.1:${port}/v1/rpc?apiKey=${apiKey}`);
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => reject(new Error("websocket open timed out")), 5000);
+          ws.addEventListener("open", () => {
+            clearTimeout(timeout);
+            resolve();
+          });
+          ws.addEventListener("error", () => {
+            clearTimeout(timeout);
+            reject(new Error("websocket failed to open"));
+          });
+        });
 
-    ws.addEventListener("message", (event) => {
-      try {
-        messages.push(JSON.parse(typeof event.data === "string" ? event.data : String(event.data)) as RpcEnvelope);
-      } catch {
-        // Ignore malformed messages from test perspective.
-      }
-    });
+        ws.addEventListener("message", (event) => {
+          try {
+            messages.push(JSON.parse(typeof event.data === "string" ? event.data : String(event.data)) as RpcEnvelope);
+          } catch {
+            // Ignore malformed messages from test perspective.
+          }
+        });
 
-    const mkRequest = (requestId: string, message: string) => ({
-      id: requestId,
-      type: "chat.start",
-      payload: {
-        request: { message, history: [], model: "gpt-5-mini", sessionId: `sess_${requestId.replace("rpc_", "")}` },
+        const mkRequest = (requestId: string, message: string) => ({
+          id: requestId,
+          type: "chat.start",
+          payload: {
+            request: {
+              message,
+              history: [],
+              model: "gpt-5-mini",
+              sessionId: `sess_${requestId.replace("rpc_", "")}`,
+            },
+          },
+        });
+
+        const chat1 = "rpc_testchat1";
+        const chat2 = "rpc_testchat2";
+        const chat3 = "rpc_testchat3";
+
+        ws.send(JSON.stringify(mkRequest(chat1, "first")));
+        ws.send(JSON.stringify(mkRequest(chat2, "second")));
+        ws.send(JSON.stringify(mkRequest(chat3, "third")));
+        ws.send(JSON.stringify({ id: "rpc_testabort2", type: "chat.abort", payload: { requestId: chat2 } }));
+
+        await new Promise<void>((resolve, reject) => {
+          const startedAt = Date.now();
+          const interval = setInterval(() => {
+            const accepted = new Set(messages.filter((m) => m.type === "chat.accepted").map((m) => m.id));
+            const chat2QueuedPos1 = messages.some(
+              (m) => m.id === chat2 && m.type === "chat.queued" && m.position === 1,
+            );
+            const chat3QueuedPos2 = messages.some(
+              (m) => m.id === chat3 && m.type === "chat.queued" && m.position === 2,
+            );
+            const chat3ReindexedToPos1 = messages.some(
+              (m) => m.id === chat3 && m.type === "chat.queued" && m.position === 1,
+            );
+            const abortResult = messages.some(
+              (m) =>
+                m.id === "rpc_testabort2" &&
+                m.type === "chat.abort.result" &&
+                m.requestId === chat2 &&
+                m.aborted === true,
+            );
+
+            if (
+              accepted.has(chat1) &&
+              accepted.has(chat2) &&
+              accepted.has(chat3) &&
+              chat2QueuedPos1 &&
+              chat3QueuedPos2 &&
+              chat3ReindexedToPos1 &&
+              abortResult
+            ) {
+              clearInterval(interval);
+              resolve();
+              return;
+            }
+
+            if (Date.now() - startedAt > 8000) {
+              clearInterval(interval);
+              reject(new Error(`timed out waiting for expected rpc envelopes: ${JSON.stringify(messages)}`));
+            }
+          }, 20);
+        });
+
+        ws.close();
       },
-    });
-
-    const chat1 = "rpc_testchat1";
-    const chat2 = "rpc_testchat2";
-    const chat3 = "rpc_testchat3";
-
-    ws.send(JSON.stringify(mkRequest(chat1, "first")));
-    ws.send(JSON.stringify(mkRequest(chat2, "second")));
-    ws.send(JSON.stringify(mkRequest(chat3, "third")));
-    ws.send(JSON.stringify({ id: "rpc_testabort2", type: "chat.abort", payload: { requestId: chat2 } }));
-
-    await new Promise<void>((resolve, reject) => {
-      const startedAt = Date.now();
-      const interval = setInterval(() => {
-        const accepted = new Set(messages.filter((m) => m.type === "chat.accepted").map((m) => m.id));
-        const chat2QueuedPos1 = messages.some((m) => m.id === chat2 && m.type === "chat.queued" && m.position === 1);
-        const chat3QueuedPos2 = messages.some((m) => m.id === chat3 && m.type === "chat.queued" && m.position === 2);
-        const chat3ReindexedToPos1 = messages.some(
-          (m) => m.id === chat3 && m.type === "chat.queued" && m.position === 1,
-        );
-        const abortResult = messages.some(
-          (m) =>
-            m.id === "rpc_testabort2" && m.type === "chat.abort.result" && m.requestId === chat2 && m.aborted === true,
-        );
-
-        if (
-          accepted.has(chat1) &&
-          accepted.has(chat2) &&
-          accepted.has(chat3) &&
-          chat2QueuedPos1 &&
-          chat3QueuedPos2 &&
-          chat3ReindexedToPos1 &&
-          abortResult
-        ) {
-          clearInterval(interval);
-          resolve();
-          return;
-        }
-
-        if (Date.now() - startedAt > 8000) {
-          clearInterval(interval);
-          reject(new Error(`timed out waiting for expected rpc envelopes: ${JSON.stringify(messages)}`));
-        }
-      }, 20);
-    });
-
-    ws.close();
+      { responseDelayMs: 5000 },
+    );
   }, 20_000);
 
   test("abort interrupts active chat and suppresses further stream envelopes", async () => {
-    const port = randomTestPort();
-    const apiKey = "rpc_test_key";
-    await startServerForRpcTest(port, apiKey);
+    await withFakeProviderServer(
+      async (providerBaseUrl) => {
+        const port = randomTestPort();
+        const apiKey = "rpc_test_key";
+        await startServerForRpcTest(port, apiKey, { providerBaseUrl });
 
-    const messages: RpcEnvelope[] = [];
-    const ws = new WebSocket(`ws://127.0.0.1:${port}/v1/rpc?apiKey=${apiKey}`);
-    await new Promise<void>((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error("websocket open timed out")), 5000);
-      ws.addEventListener("open", () => {
-        clearTimeout(timeout);
-        resolve();
-      });
-      ws.addEventListener("error", () => {
-        clearTimeout(timeout);
-        reject(new Error("websocket failed to open"));
-      });
-    });
+        const messages: RpcEnvelope[] = [];
+        const ws = new WebSocket(`ws://127.0.0.1:${port}/v1/rpc?apiKey=${apiKey}`);
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => reject(new Error("websocket open timed out")), 5000);
+          ws.addEventListener("open", () => {
+            clearTimeout(timeout);
+            resolve();
+          });
+          ws.addEventListener("error", () => {
+            clearTimeout(timeout);
+            reject(new Error("websocket failed to open"));
+          });
+        });
 
-    ws.addEventListener("message", (event) => {
-      try {
-        messages.push(JSON.parse(typeof event.data === "string" ? event.data : String(event.data)) as RpcEnvelope);
-      } catch {
-        // Ignore malformed messages from test perspective.
-      }
-    });
+        ws.addEventListener("message", (event) => {
+          try {
+            messages.push(JSON.parse(typeof event.data === "string" ? event.data : String(event.data)) as RpcEnvelope);
+          } catch {
+            // Ignore malformed messages from test perspective.
+          }
+        });
 
-    const chatId = "rpc_abortactivechat";
-    ws.send(
-      JSON.stringify({
-        id: chatId,
-        type: "chat.start",
-        payload: {
-          request: {
-            message: "Do a long-running analysis with many steps before answering.",
-            history: [],
-            model: "gpt-5-mini",
-            sessionId: "sess_rpcabortactive",
-          },
-        },
-      }),
-    );
-
-    await new Promise<void>((resolve, reject) => {
-      const startedAt = Date.now();
-      const interval = setInterval(() => {
-        if (messages.some((m) => m.id === chatId && m.type === "chat.started")) {
-          clearInterval(interval);
-          resolve();
-          return;
-        }
-        if (Date.now() - startedAt > 8000) {
-          clearInterval(interval);
-          reject(new Error(`timed out waiting for chat.started: ${JSON.stringify(messages)}`));
-        }
-      }, 20);
-    });
-
-    ws.send(JSON.stringify({ id: "rpc_abortactivereq", type: "chat.abort", payload: { requestId: chatId } }));
-
-    const abortIndex = await new Promise<number>((resolve, reject) => {
-      const startedAt = Date.now();
-      const interval = setInterval(() => {
-        const index = messages.findIndex(
-          (m) =>
-            m.id === "rpc_abortactivereq" &&
-            m.type === "chat.abort.result" &&
-            m.requestId === chatId &&
-            m.aborted === true,
+        const chatId = "rpc_abortactivechat";
+        ws.send(
+          JSON.stringify({
+            id: chatId,
+            type: "chat.start",
+            payload: {
+              request: {
+                message: "Do a long-running analysis with many steps before answering.",
+                history: [],
+                model: "gpt-5-mini",
+                sessionId: "sess_rpcabortactive",
+              },
+            },
+          }),
         );
-        if (index !== -1) {
-          clearInterval(interval);
-          resolve(index);
-          return;
-        }
-        if (Date.now() - startedAt > 8000) {
-          clearInterval(interval);
-          reject(new Error(`timed out waiting for chat.abort.result: ${JSON.stringify(messages)}`));
-        }
-      }, 20);
-    });
 
-    await Bun.sleep(250);
-    const afterAbort = messages.slice(abortIndex + 1).filter((m) => m.id === chatId);
-    const illegal = afterAbort.filter(
-      (m) => m.type === "chat.event" || m.type === "chat.done" || m.type === "chat.error",
+        await new Promise<void>((resolve, reject) => {
+          const startedAt = Date.now();
+          const interval = setInterval(() => {
+            if (messages.some((m) => m.id === chatId && m.type === "chat.started")) {
+              clearInterval(interval);
+              resolve();
+              return;
+            }
+            if (Date.now() - startedAt > 8000) {
+              clearInterval(interval);
+              reject(new Error(`timed out waiting for chat.started: ${JSON.stringify(messages)}`));
+            }
+          }, 20);
+        });
+
+        ws.send(JSON.stringify({ id: "rpc_abortactivereq", type: "chat.abort", payload: { requestId: chatId } }));
+
+        const abortIndex = await new Promise<number>((resolve, reject) => {
+          const startedAt = Date.now();
+          const interval = setInterval(() => {
+            const index = messages.findIndex(
+              (m) =>
+                m.id === "rpc_abortactivereq" &&
+                m.type === "chat.abort.result" &&
+                m.requestId === chatId &&
+                m.aborted === true,
+            );
+            if (index !== -1) {
+              clearInterval(interval);
+              resolve(index);
+              return;
+            }
+            if (Date.now() - startedAt > 8000) {
+              clearInterval(interval);
+              reject(new Error(`timed out waiting for chat.abort.result: ${JSON.stringify(messages)}`));
+            }
+          }, 20);
+        });
+
+        await Bun.sleep(250);
+        const afterAbort = messages.slice(abortIndex + 1).filter((m) => m.id === chatId);
+        const illegal = afterAbort.filter(
+          (m) => m.type === "chat.event" || m.type === "chat.done" || m.type === "chat.error",
+        );
+        expect(illegal).toEqual([]);
+
+        ws.close();
+      },
+      { responseDelayMs: 5000 },
     );
-    expect(illegal).toEqual([]);
-
-    ws.close();
   }, 20_000);
 
   test("returns task status for missing and active rpc chat tasks", async () => {
-    const port = randomTestPort();
-    const apiKey = "rpc_test_key";
-    await startServerForRpcTest(port, apiKey);
+    await withFakeProviderServer(
+      async (providerBaseUrl) => {
+        const port = randomTestPort();
+        const apiKey = "rpc_test_key";
+        await startServerForRpcTest(port, apiKey, { providerBaseUrl });
 
-    const messages: RpcEnvelope[] = [];
-    const ws = new WebSocket(`ws://127.0.0.1:${port}/v1/rpc?apiKey=${apiKey}`);
-    await new Promise<void>((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error("websocket open timed out")), 5000);
-      ws.addEventListener("open", () => {
-        clearTimeout(timeout);
-        resolve();
-      });
-      ws.addEventListener("error", () => {
-        clearTimeout(timeout);
-        reject(new Error("websocket failed to open"));
-      });
-    });
+        const messages: RpcEnvelope[] = [];
+        const ws = new WebSocket(`ws://127.0.0.1:${port}/v1/rpc?apiKey=${apiKey}`);
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => reject(new Error("websocket open timed out")), 5000);
+          ws.addEventListener("open", () => {
+            clearTimeout(timeout);
+            resolve();
+          });
+          ws.addEventListener("error", () => {
+            clearTimeout(timeout);
+            reject(new Error("websocket failed to open"));
+          });
+        });
 
-    ws.addEventListener("message", (event) => {
-      try {
-        messages.push(JSON.parse(typeof event.data === "string" ? event.data : String(event.data)) as RpcEnvelope);
-      } catch {
-        // Ignore malformed messages from test perspective.
-      }
-    });
+        ws.addEventListener("message", (event) => {
+          try {
+            messages.push(JSON.parse(typeof event.data === "string" ? event.data : String(event.data)) as RpcEnvelope);
+          } catch {
+            // Ignore malformed messages from test perspective.
+          }
+        });
 
-    ws.send(JSON.stringify({ id: "rpc_taskstatusmissing", type: "task.status", payload: { taskId: "task_missing0" } }));
+        ws.send(
+          JSON.stringify({ id: "rpc_taskstatusmissing", type: "task.status", payload: { taskId: "task_missing0" } }),
+        );
 
-    await new Promise<void>((resolve, reject) => {
-      const startedAt = Date.now();
-      const interval = setInterval(() => {
-        const missingResult = messages.find((m) => m.id === "rpc_taskstatusmissing" && m.type === "task.status.result");
-        if (missingResult) {
-          clearInterval(interval);
-          expect(missingResult.task).toBeNull();
-          resolve();
-          return;
-        }
-        if (Date.now() - startedAt > 8000) {
-          clearInterval(interval);
-          reject(new Error(`timed out waiting for missing task status: ${JSON.stringify(messages)}`));
-        }
-      }, 20);
-    });
+        await new Promise<void>((resolve, reject) => {
+          const startedAt = Date.now();
+          const interval = setInterval(() => {
+            const missingResult = messages.find(
+              (m) => m.id === "rpc_taskstatusmissing" && m.type === "task.status.result",
+            );
+            if (missingResult) {
+              clearInterval(interval);
+              expect(missingResult.task).toBeNull();
+              resolve();
+              return;
+            }
+            if (Date.now() - startedAt > 8000) {
+              clearInterval(interval);
+              reject(new Error(`timed out waiting for missing task status: ${JSON.stringify(messages)}`));
+            }
+          }, 20);
+        });
 
-    const chatId = "rpc_taskstatuschat";
-    ws.send(
-      JSON.stringify({
-        id: chatId,
-        type: "chat.start",
-        payload: {
-          request: {
-            message: "Do a long-running analysis with many steps before answering.",
-            history: [],
-            model: "gpt-5-mini",
-            sessionId: "sess_rpctaskstatus",
-          },
-        },
-      }),
+        const chatId = "rpc_taskstatuschat";
+        ws.send(
+          JSON.stringify({
+            id: chatId,
+            type: "chat.start",
+            payload: {
+              request: {
+                message: "Do a long-running analysis with many steps before answering.",
+                history: [],
+                model: "gpt-5-mini",
+                sessionId: "sess_rpctaskstatus",
+              },
+            },
+          }),
+        );
+
+        await new Promise<void>((resolve, reject) => {
+          const startedAt = Date.now();
+          const interval = setInterval(() => {
+            if (messages.some((m) => m.id === chatId && m.type === "chat.accepted")) {
+              clearInterval(interval);
+              resolve();
+              return;
+            }
+            if (Date.now() - startedAt > 8000) {
+              clearInterval(interval);
+              reject(new Error(`timed out waiting for chat.accepted: ${JSON.stringify(messages)}`));
+            }
+          }, 20);
+        });
+
+        const activeTaskId = acceptedTaskIdFor(messages, chatId);
+        expect(activeTaskId).not.toBeNull();
+        ws.send(JSON.stringify({ id: "rpc_taskstatusactive", type: "task.status", payload: { taskId: activeTaskId } }));
+
+        await new Promise<void>((resolve, reject) => {
+          const startedAt = Date.now();
+          const interval = setInterval(() => {
+            const activeResult = messages.find(
+              (m) => m.id === "rpc_taskstatusactive" && m.type === "task.status.result",
+            );
+            if (activeResult) {
+              clearInterval(interval);
+              expect(activeResult.task && typeof activeResult.task === "object").toBe(true);
+              const task = activeResult.task as { id: unknown; state: unknown };
+              expect(task.id).toBe(activeTaskId);
+              expect(task.state).toBe("running");
+              resolve();
+              return;
+            }
+            if (Date.now() - startedAt > 8000) {
+              clearInterval(interval);
+              reject(new Error(`timed out waiting for active task status: ${JSON.stringify(messages)}`));
+            }
+          }, 20);
+        });
+
+        ws.send(JSON.stringify({ id: "rpc_taskstatusabort", type: "chat.abort", payload: { requestId: chatId } }));
+        ws.close();
+      },
+      { responseDelayMs: 5000 },
     );
-
-    await new Promise<void>((resolve, reject) => {
-      const startedAt = Date.now();
-      const interval = setInterval(() => {
-        if (messages.some((m) => m.id === chatId && m.type === "chat.accepted")) {
-          clearInterval(interval);
-          resolve();
-          return;
-        }
-        if (Date.now() - startedAt > 8000) {
-          clearInterval(interval);
-          reject(new Error(`timed out waiting for chat.accepted: ${JSON.stringify(messages)}`));
-        }
-      }, 20);
-    });
-
-    const activeTaskId = acceptedTaskIdFor(messages, chatId);
-    expect(activeTaskId).not.toBeNull();
-    ws.send(JSON.stringify({ id: "rpc_taskstatusactive", type: "task.status", payload: { taskId: activeTaskId } }));
-
-    await new Promise<void>((resolve, reject) => {
-      const startedAt = Date.now();
-      const interval = setInterval(() => {
-        const activeResult = messages.find((m) => m.id === "rpc_taskstatusactive" && m.type === "task.status.result");
-        if (activeResult) {
-          clearInterval(interval);
-          expect(activeResult.task && typeof activeResult.task === "object").toBe(true);
-          const task = activeResult.task as { id: unknown; state: unknown };
-          expect(task.id).toBe(activeTaskId);
-          expect(task.state).toBe("running");
-          resolve();
-          return;
-        }
-        if (Date.now() - startedAt > 8000) {
-          clearInterval(interval);
-          reject(new Error(`timed out waiting for active task status: ${JSON.stringify(messages)}`));
-        }
-      }, 20);
-    });
-
-    ws.send(JSON.stringify({ id: "rpc_taskstatusabort", type: "chat.abort", payload: { requestId: chatId } }));
-    ws.close();
   }, 20_000);
 
   test("keeps queued task states isolated when aborting the active task", async () => {
-    const port = randomTestPort();
-    const apiKey = "rpc_test_key";
-    await startServerForRpcTest(port, apiKey);
+    await withFakeProviderServer(
+      async (providerBaseUrl) => {
+        const port = randomTestPort();
+        const apiKey = "rpc_test_key";
+        await startServerForRpcTest(port, apiKey, { providerBaseUrl });
 
-    const { ws, messages } = await openRpcSession(port, apiKey);
+        const { ws, messages } = await openRpcSession(port, apiKey);
 
-    const activeRequestId = "rpc_isolationactive";
-    const queuedRequestId = "rpc_isolationqueued";
-    const activeSession = "sess_rpcisolationactive";
-    const queuedSession = "sess_rpcisolationqueued";
+        const activeRequestId = "rpc_isolationactive";
+        const queuedRequestId = "rpc_isolationqueued";
+        const activeSession = "sess_rpcisolationactive";
+        const queuedSession = "sess_rpcisolationqueued";
 
-    sendRpc(ws, {
-      id: activeRequestId,
-      type: "chat.start",
-      payload: {
-        request: {
-          message: "Do a long-running analysis with many steps before answering.",
-          history: [],
-          model: "gpt-5-mini",
-          sessionId: activeSession,
-        },
+        sendRpc(ws, {
+          id: activeRequestId,
+          type: "chat.start",
+          payload: {
+            request: {
+              message: "Do a long-running analysis with many steps before answering.",
+              history: [],
+              model: "gpt-5-mini",
+              sessionId: activeSession,
+            },
+          },
+        });
+        sendRpc(ws, {
+          id: queuedRequestId,
+          type: "chat.start",
+          payload: {
+            request: {
+              message: "Do a long-running analysis with many steps before answering.",
+              history: [],
+              model: "gpt-5-mini",
+              sessionId: queuedSession,
+            },
+          },
+        });
+
+        await waitForRpcCondition(
+          messages,
+          (all) =>
+            all.some((m) => m.id === activeRequestId && m.type === "chat.started") &&
+            all.some((m) => m.id === queuedRequestId && m.type === "chat.queued" && m.position === 1),
+          8000,
+          "running+queued envelopes",
+        );
+
+        const activeTaskId = acceptedTaskIdFor(messages, activeRequestId);
+        const queuedTaskId = acceptedTaskIdFor(messages, queuedRequestId);
+        expect(activeTaskId).not.toBeNull();
+        expect(queuedTaskId).not.toBeNull();
+
+        sendRpc(ws, { id: "rpc_isolationstatusactivepre", type: "task.status", payload: { taskId: activeTaskId } });
+        sendRpc(ws, { id: "rpc_isolationstatusqueuedpre", type: "task.status", payload: { taskId: queuedTaskId } });
+
+        await new Promise<void>((resolve, reject) => {
+          const startedAt = Date.now();
+          const interval = setInterval(() => {
+            const active = messages.find(
+              (m) => m.id === "rpc_isolationstatusactivepre" && m.type === "task.status.result",
+            );
+            const queued = messages.find(
+              (m) => m.id === "rpc_isolationstatusqueuedpre" && m.type === "task.status.result",
+            );
+            if (active && queued) {
+              clearInterval(interval);
+              const activeTask = active.task as { id: unknown; state: unknown };
+              const queuedTask = queued.task as { id: unknown; state: unknown };
+              expect(activeTask.id).toBe(activeTaskId);
+              expect(activeTask.state).toBe("running");
+              expect(queuedTask.id).toBe(queuedTaskId);
+              expect(queuedTask.state).toBe("queued");
+              resolve();
+              return;
+            }
+            if (Date.now() - startedAt > 8000) {
+              clearInterval(interval);
+              reject(new Error(`timed out waiting for pre-abort task statuses: ${JSON.stringify(messages)}`));
+            }
+          }, 20);
+        });
+
+        sendRpc(ws, { id: "rpc_isolationabortactive", type: "chat.abort", payload: { requestId: activeRequestId } });
+
+        await new Promise<void>((resolve, reject) => {
+          const startedAt = Date.now();
+          const interval = setInterval(() => {
+            const abortResult = messages.find(
+              (m) =>
+                m.id === "rpc_isolationabortactive" &&
+                m.type === "chat.abort.result" &&
+                m.requestId === activeRequestId &&
+                m.aborted === true,
+            );
+            if (abortResult) {
+              clearInterval(interval);
+              resolve();
+              return;
+            }
+            if (Date.now() - startedAt > 8000) {
+              clearInterval(interval);
+              reject(new Error(`timed out waiting for active abort result: ${JSON.stringify(messages)}`));
+            }
+          }, 20);
+        });
+
+        sendRpc(ws, {
+          id: "rpc_isolationstatusactivepost",
+          type: "task.status",
+          payload: { taskId: activeTaskId },
+        });
+        sendRpc(ws, {
+          id: "rpc_isolationstatusqueuedpost",
+          type: "task.status",
+          payload: { taskId: queuedTaskId },
+        });
+
+        await new Promise<void>((resolve, reject) => {
+          const startedAt = Date.now();
+          const interval = setInterval(() => {
+            const active = messages.find(
+              (m) => m.id === "rpc_isolationstatusactivepost" && m.type === "task.status.result",
+            );
+            const queued = messages.find(
+              (m) => m.id === "rpc_isolationstatusqueuedpost" && m.type === "task.status.result",
+            );
+            if (active && queued) {
+              clearInterval(interval);
+              const activeTask = active.task as { id: unknown; state: unknown };
+              const queuedTask = queued.task as { id: unknown; state: unknown };
+              expect(activeTask.id).toBe(activeTaskId);
+              expect(activeTask.state).toBe("cancelled");
+              expect(queuedTask.id).toBe(queuedTaskId);
+              expect(queuedTask.state).toBe("queued");
+              resolve();
+              return;
+            }
+            if (Date.now() - startedAt > 8000) {
+              clearInterval(interval);
+              reject(new Error(`timed out waiting for post-abort task statuses: ${JSON.stringify(messages)}`));
+            }
+          }, 20);
+        });
+
+        sendRpc(ws, { id: "rpc_isolationabortqueued", type: "chat.abort", payload: { requestId: queuedRequestId } });
+        ws.close();
       },
-    });
-    sendRpc(ws, {
-      id: queuedRequestId,
-      type: "chat.start",
-      payload: {
-        request: {
-          message: "Do a long-running analysis with many steps before answering.",
-          history: [],
-          model: "gpt-5-mini",
-          sessionId: queuedSession,
-        },
-      },
-    });
-
-    await waitForRpcCondition(
-      messages,
-      (all) =>
-        all.some((m) => m.id === activeRequestId && m.type === "chat.started") &&
-        all.some((m) => m.id === queuedRequestId && m.type === "chat.queued" && m.position === 1),
-      8000,
-      "running+queued envelopes",
+      { responseDelayMs: 5000 },
     );
-
-    const activeTaskId = acceptedTaskIdFor(messages, activeRequestId);
-    const queuedTaskId = acceptedTaskIdFor(messages, queuedRequestId);
-    expect(activeTaskId).not.toBeNull();
-    expect(queuedTaskId).not.toBeNull();
-
-    sendRpc(ws, { id: "rpc_isolationstatusactivepre", type: "task.status", payload: { taskId: activeTaskId } });
-    sendRpc(ws, { id: "rpc_isolationstatusqueuedpre", type: "task.status", payload: { taskId: queuedTaskId } });
-
-    await new Promise<void>((resolve, reject) => {
-      const startedAt = Date.now();
-      const interval = setInterval(() => {
-        const active = messages.find((m) => m.id === "rpc_isolationstatusactivepre" && m.type === "task.status.result");
-        const queued = messages.find((m) => m.id === "rpc_isolationstatusqueuedpre" && m.type === "task.status.result");
-        if (active && queued) {
-          clearInterval(interval);
-          const activeTask = active.task as { id: unknown; state: unknown };
-          const queuedTask = queued.task as { id: unknown; state: unknown };
-          expect(activeTask.id).toBe(activeTaskId);
-          expect(activeTask.state).toBe("running");
-          expect(queuedTask.id).toBe(queuedTaskId);
-          expect(queuedTask.state).toBe("queued");
-          resolve();
-          return;
-        }
-        if (Date.now() - startedAt > 8000) {
-          clearInterval(interval);
-          reject(new Error(`timed out waiting for pre-abort task statuses: ${JSON.stringify(messages)}`));
-        }
-      }, 20);
-    });
-
-    sendRpc(ws, { id: "rpc_isolationabortactive", type: "chat.abort", payload: { requestId: activeRequestId } });
-
-    await new Promise<void>((resolve, reject) => {
-      const startedAt = Date.now();
-      const interval = setInterval(() => {
-        const abortResult = messages.find(
-          (m) =>
-            m.id === "rpc_isolationabortactive" &&
-            m.type === "chat.abort.result" &&
-            m.requestId === activeRequestId &&
-            m.aborted === true,
-        );
-        if (abortResult) {
-          clearInterval(interval);
-          resolve();
-          return;
-        }
-        if (Date.now() - startedAt > 8000) {
-          clearInterval(interval);
-          reject(new Error(`timed out waiting for active abort result: ${JSON.stringify(messages)}`));
-        }
-      }, 20);
-    });
-
-    sendRpc(ws, { id: "rpc_isolationstatusactivepost", type: "task.status", payload: { taskId: activeTaskId } });
-    sendRpc(ws, { id: "rpc_isolationstatusqueuedpost", type: "task.status", payload: { taskId: queuedTaskId } });
-
-    await new Promise<void>((resolve, reject) => {
-      const startedAt = Date.now();
-      const interval = setInterval(() => {
-        const active = messages.find(
-          (m) => m.id === "rpc_isolationstatusactivepost" && m.type === "task.status.result",
-        );
-        const queued = messages.find(
-          (m) => m.id === "rpc_isolationstatusqueuedpost" && m.type === "task.status.result",
-        );
-        if (active && queued) {
-          clearInterval(interval);
-          const activeTask = active.task as { id: unknown; state: unknown };
-          const queuedTask = queued.task as { id: unknown; state: unknown };
-          expect(activeTask.id).toBe(activeTaskId);
-          expect(activeTask.state).toBe("cancelled");
-          expect(queuedTask.id).toBe(queuedTaskId);
-          expect(queuedTask.state).toBe("queued");
-          resolve();
-          return;
-        }
-        if (Date.now() - startedAt > 8000) {
-          clearInterval(interval);
-          reject(new Error(`timed out waiting for post-abort task statuses: ${JSON.stringify(messages)}`));
-        }
-      }, 20);
-    });
-
-    sendRpc(ws, { id: "rpc_isolationabortqueued", type: "chat.abort", payload: { requestId: queuedRequestId } });
-    ws.close();
   }, 20_000);
 
   test("does not leak tool-call path args across task ids", async () => {

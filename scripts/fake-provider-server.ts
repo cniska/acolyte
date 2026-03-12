@@ -35,6 +35,8 @@ export type FakeProviderHandler = (ctx: FakeProviderRequestContext) => Record<st
 
 export type FakeProviderServerOptions = {
   handleRequest?: FakeProviderHandler;
+  /** Delay in ms before each response. Useful for tests that need to observe in-flight state. */
+  responseDelayMs?: number;
 };
 
 export type MarkerScenario<Id extends string> = {
@@ -266,6 +268,7 @@ function defaultHandler(ctx: FakeProviderRequestContext): Record<string, unknown
 
 export function startFakeProviderServer(options: FakeProviderServerOptions = {}): FakeProviderServer {
   const handleRequest = options.handleRequest ?? defaultHandler;
+  const responseDelayMs = options.responseDelayMs ?? 0;
   let responseCounter = 0;
 
   const server = Bun.serve({
@@ -296,6 +299,10 @@ export function startFakeProviderServer(options: FakeProviderServerOptions = {})
         previousResponseId,
       };
       const payload = handleRequest(ctx);
+
+      if (responseDelayMs > 0) {
+        await new Promise((resolve) => setTimeout(resolve, responseDelayMs));
+      }
 
       if (debugEnabled) {
         const sourcePreview = sourceText.slice(0, 180).replace(/\s+/g, " ");
