@@ -226,11 +226,12 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
         createMessage: input.createMessage,
       });
       const assistantMessage = turn.assistantMessage;
-      const pendingStreamRowId = streamState.finalize();
+      const streamingRowIds = streamState.finalize();
 
       input.currentSession.messages.push(assistantMessage);
       input.currentSession.updatedAt = input.nowIso();
-      input.setRows((current) => [...current.filter((row) => row.id !== pendingStreamRowId), ...turn.rows]);
+      const removeSet = new Set(streamingRowIds);
+      input.setRows((current) => [...current.filter((row) => !removeSet.has(row.id)), ...turn.rows]);
       // File tree may have changed during tool execution; refresh @path autocomplete candidates.
       invalidateRepoPathCandidates();
       input.currentSession.tokenUsage.push(turn.tokenEntry);

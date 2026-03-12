@@ -16,7 +16,8 @@ export type MessageStreamState = {
   }) => void;
   onProgressError: (error: string) => void;
   streamedAssistantText: () => string;
-  finalize: () => string | null;
+  /** Flush remaining content and return IDs of all streaming assistant rows (for replacement by final turn rows). */
+  finalize: () => string[];
   dispose: () => void;
 };
 
@@ -25,65 +26,80 @@ const STREAM_FLUSH_MS = 50;
 export function createMessageStreamState(input: {
   setRows: (updater: (current: ChatRow[]) => ChatRow[]) => void;
 }): MessageStreamState {
-  let streamingRowId: string | null = null;
-  let streamingContent = "";
+  // --- assistant streaming state ---
+  let activeRowId: string | null = null;
+  let activeContent = "";
   let flushTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Every assistant row ID we've created. Collected at finalize for caller to remove. */
+  const assistantRowIds: string[] = [];
+
+  // --- tool output state ---
   const toolRowIdByCallId = new Map<string, string>();
   const toolOutput = createToolOutputState();
 
-  const flush = (): void => {
+  function cancelFlushTimer(): void {
     if (flushTimer) {
       clearTimeout(flushTimer);
       flushTimer = null;
     }
-    if (streamingContent.trim().length === 0) return;
+  }
+
+  function flush(): void {
+    cancelFlushTimer();
+    if (activeContent.trim().length === 0) return;
     input.setRows((current) => {
-      if (!streamingRowId) {
-        streamingRowId = `row_${createId()}`;
-        return [...current, { id: streamingRowId, role: "assistant", content: streamingContent }];
+      if (!activeRowId) {
+        activeRowId = `row_${createId()}`;
+        assistantRowIds.push(activeRowId);
+        return [...current, { id: activeRowId, role: "assistant", content: activeContent }];
       }
-      return current.map((row) => (row.id === streamingRowId ? { ...row, content: streamingContent } : row));
+      return current.map((row) => (row.id === activeRowId ? { ...row, content: activeContent } : row));
     });
-  };
+  }
+
+  /** Flush pending content and detach from the current assistant row. */
+  function sealAssistantRow(): void {
+    cancelFlushTimer();
+    flush();
+    activeRowId = null;
+    activeContent = "";
+  }
 
   return {
     onAssistantDelta: (delta) => {
       if (delta.length === 0) return;
-      streamingContent += delta;
+      activeContent += delta;
       if (!flushTimer) flushTimer = setTimeout(flush, STREAM_FLUSH_MS);
     },
+
     onOutput: (entry) => {
       const update = toolOutput.push(entry);
       if (!update) return;
 
       const existingRowId = toolRowIdByCallId.get(entry.toolCallId);
       if (!existingRowId) {
-        const orphanedRowId = streamingRowId;
-        if (streamingContent.trim().length > 0) streamingContent = "";
-        streamingRowId = null;
+        // New tool call: seal any in-progress assistant row (keeps it visible), then append tool row.
+        sealAssistantRow();
         const rowId = `row_${createId()}`;
         toolRowIdByCallId.set(entry.toolCallId, rowId);
         input.setRows((current) => [
-          ...(orphanedRowId ? current.filter((row) => row.id !== orphanedRowId) : current),
-          {
-            id: rowId,
-            role: "tool" as const,
-            content: "",
-            toolOutput: update.items,
-          },
+          ...current,
+          { id: rowId, role: "tool" as const, content: "", toolOutput: update.items },
         ]);
         return;
       }
+      // Existing tool call: update in place.
       input.setRows((current) => {
-        const existingIndex = current.findIndex((row) => row.id === existingRowId);
-        if (existingIndex < 0) return current;
-        const next = [...current];
-        const existing = current[existingIndex];
+        const idx = current.findIndex((row) => row.id === existingRowId);
+        if (idx < 0) return current;
+        const existing = current[idx];
         if (!existing) return current;
-        next[existingIndex] = { ...existing, toolOutput: update.items };
+        const next = [...current];
+        next[idx] = { ...existing, toolOutput: update.items };
         return next;
       });
     },
+
     onToolResult: (entry) => {
       const guardBlocked =
         entry.isError &&
@@ -103,6 +119,7 @@ export function createMessageStreamState(input: {
         current.map((row) => (row.id === rowId ? { ...row, style: { ...row.style, marker: markerColor } } : row)),
       );
     },
+
     onProgressError: (error) => {
       input.setRows((current) => {
         const last = current[current.length - 1];
@@ -110,29 +127,26 @@ export function createMessageStreamState(input: {
         return [...current, createRow("system", error, { dim: true, text: palette.error })];
       });
     },
-    streamedAssistantText: () => streamingContent,
+
+    streamedAssistantText: () => activeContent,
+
     finalize: () => {
-      // Flush any pending streaming content so the row exists before we hand off.
-      if (flushTimer) {
-        clearTimeout(flushTimer);
-        flushTimer = null;
-        flush();
-      }
-      const pendingRowId = streamingRowId;
-      streamingRowId = null;
-      streamingContent = "";
-      return pendingRowId;
+      sealAssistantRow();
+      const ids = [...assistantRowIds];
+      assistantRowIds.length = 0;
+      return ids;
     },
+
     dispose: () => {
-      if (flushTimer) {
-        clearTimeout(flushTimer);
-        flushTimer = null;
-      }
-      if (streamingRowId) {
-        const orphanedRowId = streamingRowId;
-        streamingRowId = null;
-        streamingContent = "";
-        input.setRows((current) => current.filter((row) => row.id !== orphanedRowId));
+      cancelFlushTimer();
+      const idsToRemove = [...assistantRowIds];
+      if (activeRowId && !idsToRemove.includes(activeRowId)) idsToRemove.push(activeRowId);
+      activeRowId = null;
+      activeContent = "";
+      assistantRowIds.length = 0;
+      if (idsToRemove.length > 0) {
+        const removeSet = new Set(idsToRemove);
+        input.setRows((current) => current.filter((row) => !removeSet.has(row.id)));
       }
     },
   };
