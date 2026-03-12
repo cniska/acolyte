@@ -26,8 +26,7 @@
     "test:int": "bash scripts/run-test-suite.sh int",
     "test:perf": "bash scripts/run-test-suite.sh perf",
     "verify": "bun run format && bun run lint && bun run typecheck && bun test",
-    "benchmark": "bun run scripts/benchmark.ts",
-    "benchmark:others": "./scripts/benchmark-others.sh"
+    "benchmark": "bun run scripts/benchmark.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.5",
