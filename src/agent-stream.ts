@@ -11,9 +11,9 @@ import type {
 import { z } from "zod";
 import type { Agent, StreamOptions, StreamOutput } from "./agent-contract";
 import type { GenerateResult, StreamChunk, ToolCallEntry } from "./lifecycle-contract";
+import { log } from "./log";
 import { createModel } from "./model-factory";
 import { normalizeModel } from "./provider-config";
-import { log } from "./log";
 import type { ToolDefinition } from "./tool-contract";
 
 function toolInputJsonSchema(schema: z.ZodType): LanguageModelV3FunctionTool["inputSchema"] {

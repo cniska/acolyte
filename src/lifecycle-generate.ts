@@ -169,7 +169,6 @@ export async function phaseGenerate(ctx: RunContext, prompt: string, opts: Gener
 
   try {
     const preCallCount = ctx.modelCallCount;
-    const preCompletionTokens = ctx.completionTokensAccum;
     ctx.result = await streamWithTimeout(ctx, prompt, opts.timeoutMs);
     if (ctx.modelCallCount === preCallCount) {
       ctx.modelCallCount += 1;

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { getCachedRepoPathCandidates, rankAtReferenceSuggestions } from "./chat-file-ref";
 
 const THINKING_ANIMATION_INTERVAL_MS = 85;
