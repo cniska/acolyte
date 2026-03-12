@@ -211,7 +211,6 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
   };
 
   if (resolvedText === "/resume") {
-
     ctx.openResumePanel();
     return { stop: true, userText: text };
   }

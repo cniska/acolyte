@@ -86,15 +86,29 @@ function renderSystemContent(content: string): React.ReactNode {
   return renderSessionsListContent(content) ?? renderKeyValueContent(content) ?? content;
 }
 
-function renderToolLine(item: ToolOutput, index: number, lineNumWidth: number): React.ReactNode {
+function renderToolLine(
+  item: ToolOutput,
+  index: number,
+  lineNumWidth: number,
+  toolContentWidth: number,
+): React.ReactNode {
   if (item.kind === "diff") {
     const num = String(item.lineNumber).padStart(lineNumWidth);
+    const prefix = ` ${num} `;
+    const marker = item.marker === "add" ? "+" : item.marker === "remove" ? "-" : " ";
+    const content = `${item.text}`;
+    const padWidth = Math.max(0, toolContentWidth - 2 - prefix.length - 1 - content.length);
+    const padded = content + " ".repeat(padWidth);
     if (item.marker === "add")
       return (
         <Text key={`tool-${index}`}>
           {"\n  "}
-          <Text backgroundColor={palette.diffAdd} color={palette.diffAddText}>
-            {` ${num} +${item.text}`}
+          <Text backgroundColor={palette.diffAdd}>
+            <Text color={palette.diffAddText}>
+              {prefix}
+              {marker}
+            </Text>
+            <Text color="white">{padded}</Text>
           </Text>
         </Text>
       );
@@ -102,15 +116,20 @@ function renderToolLine(item: ToolOutput, index: number, lineNumWidth: number): 
       return (
         <Text key={`tool-${index}`}>
           {"\n  "}
-          <Text backgroundColor={palette.diffRemove} color={palette.diffRemoveText}>
-            {` ${num} -${item.text}`}
+          <Text backgroundColor={palette.diffRemove}>
+            <Text color={palette.diffRemoveText}>
+              {prefix}
+              {marker}
+            </Text>
+            <Text color="white">{padded}</Text>
           </Text>
         </Text>
       );
     return (
       <Text key={`tool-${index}`}>
         {"\n  "}
-        <Text dimColor>{` ${num}  ${item.text}`}</Text>
+        <Text dimColor>{prefix} </Text>
+        <Text color="white">{content}</Text>
       </Text>
     );
   }
@@ -159,7 +178,7 @@ function renderHeaderDetail(item: ToolOutput, detail: string): React.ReactNode {
   return <Text dimColor>{detail}</Text>;
 }
 
-function renderToolBlock(items: ToolOutput[]): React.ReactNode {
+function renderToolBlock(items: ToolOutput[], toolContentWidth: number): React.ReactNode {
   if (items.length === 0) return null;
   const first = items[0];
   if (!first) return null;
@@ -179,7 +198,7 @@ function renderToolBlock(items: ToolOutput[]): React.ReactNode {
       ) : (
         <Text>{text}</Text>
       )}
-      {items.slice(1).map((item, i) => renderToolLine(item, i, lineNumWidth))}
+      {items.slice(1).map((item, i) => renderToolLine(item, i, lineNumWidth, toolContentWidth))}
     </>
   );
 }
@@ -202,7 +221,7 @@ export function ChatRowView({ row, contentWidth, toolContentWidth }: ChatRowView
       </Box>
       <Box width={row.role === "tool" ? toolContentWidth : contentWidth}>
         {row.role === "tool" && row.toolOutput ? (
-          <Text>{renderToolBlock(row.toolOutput)}</Text>
+          <Text>{renderToolBlock(row.toolOutput, toolContentWidth)}</Text>
         ) : row.role === "assistant" ? (
           <Text dimColor={dim} color={textColor}>
             {renderAssistantContent(row.content, contentWidth)}

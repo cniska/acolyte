@@ -33,5 +33,5 @@ export function t<K extends TranslationKey>(key: K, ...args: TranslationArgs<K>)
     const oneKey = `${key}.one` as TranslationKey;
     if (oneKey in templates) return interpolate(templates[oneKey], vars);
   }
-  return interpolate(templates[key], vars);
+  return interpolate(templates[key] ?? key, vars);
 }
