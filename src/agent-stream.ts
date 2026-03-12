@@ -54,6 +54,7 @@ export function createAgentStream(
 
     let fullText = "";
     const allToolCalls: ToolCallEntry[] = [];
+    let loopIteration = 0;
 
     let streamController!: ReadableStreamDefaultController<StreamChunk>;
     const fullStream = new ReadableStream<StreamChunk>({
@@ -64,6 +65,8 @@ export function createAgentStream(
 
     const resultPromise = (async (): Promise<GenerateResult> => {
       while (true) {
+        loopIteration++;
+        log.debug("agent-stream.loop.start", { iteration: loopIteration, pending_messages: messages.length });
         const streamResult = await model.doStream({
           prompt: messages,
           temperature: options.temperature,
@@ -103,7 +106,17 @@ export function createAgentStream(
         const stepText = stepTextParts.join("");
         if (stepText.length > 0) fullText += stepText;
 
-        if (pendingToolCalls.length === 0) break;
+        if (pendingToolCalls.length === 0) {
+          log.debug("agent-stream.loop.exit", {
+            reason: "no_tool_calls",
+            iteration: loopIteration,
+            finish_reason: finishReason?.unified ?? "undefined",
+            finish_reason_raw: JSON.stringify(finishReason ?? null),
+            text_length: stepText.length,
+            total_tool_calls: allToolCalls.length,
+          });
+          break;
+        }
 
         const assistantContent: LanguageModelV3ToolCallPart[] = pendingToolCalls.map((tc) => ({
           type: "tool-call" as const,
@@ -177,9 +190,24 @@ export function createAgentStream(
         messages.push({ role: "assistant", content: assistantContent });
         messages.push({ role: "tool", content: toolResultParts });
 
-        if (finishReason?.unified !== "tool-calls" && finishReason !== undefined) break;
+        if (finishReason?.unified !== "tool-calls" && finishReason !== undefined) {
+          log.debug("agent-stream.loop.exit", {
+            reason: "finish_reason_not_tool_calls",
+            iteration: loopIteration,
+            finish_reason: finishReason.unified,
+            finish_reason_raw: JSON.stringify(finishReason),
+            pending_tool_calls: pendingToolCalls.length,
+            total_tool_calls: allToolCalls.length,
+          });
+          break;
+        }
       }
 
+      log.debug("agent-stream.complete", {
+        iterations: loopIteration,
+        total_tool_calls: allToolCalls.length,
+        text_length: fullText.length,
+      });
       streamController.close();
       return { text: fullText, toolCalls: allToolCalls };
     })().catch((error) => {

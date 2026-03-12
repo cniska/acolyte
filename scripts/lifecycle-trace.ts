@@ -221,7 +221,7 @@ async function main(): Promise<void> {
       console.log(compactLine(line));
     }
     return;
-  }  }
+  }
 
   const selected = lines.filter((line) => line.includes(`request_id=${requestId}`));
   if (selected.length === 0) throw new Error(`No lines found for request_id=${requestId} in ${logPath}`);
