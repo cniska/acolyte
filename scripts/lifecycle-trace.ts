@@ -4,10 +4,14 @@ import { join } from "node:path";
 
 const DAEMON_LOG_PATH = join(homedir(), ".acolyte", "server.log");
 
-function parseArg(flag: string): string | undefined {
-  const index = Bun.argv.indexOf(flag);
-  if (index < 0) return undefined;
-  return Bun.argv[index + 1];
+function parseArg(flagOrFlags: string | string[]): string | undefined {
+  const flags = Array.isArray(flagOrFlags) ? flagOrFlags : [flagOrFlags];
+  for (const flag of flags) {
+    const index = Bun.argv.indexOf(flag);
+    if (index < 0) continue;
+    return Bun.argv[index + 1];
+  }
+  return undefined;
 }
 
 function parseTaskIdsArg(value: string | undefined): string[] {
@@ -209,13 +213,15 @@ async function main(): Promise<void> {
       .find((value) => value?.startsWith("err_"));
 
   if (!requestId) {
-    const tail = lines.slice(-40);
+    const requestedLines = parseInt(parseArg(["--lines", "-n"]) ?? "", 10);
+    const tailCount = Number.isFinite(requestedLines) && requestedLines > 0 ? requestedLines : 40;
+    const tail = lines.slice(-tailCount);
     console.log(`no request_id/task_id found in ${logPath}; showing latest ${tail.length} lines`);
     for (const line of tail) {
       console.log(compactLine(line));
     }
     return;
-  }
+  }  }
 
   const selected = lines.filter((line) => line.includes(`request_id=${requestId}`));
   if (selected.length === 0) throw new Error(`No lines found for request_id=${requestId} in ${logPath}`);
