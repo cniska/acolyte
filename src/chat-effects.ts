@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { getCachedRepoPathCandidates, rankAtReferenceSuggestions } from "./chat-file-ref";
 
 const THINKING_ANIMATION_INTERVAL_MS = 85;
-const CARET_BLINK_INTERVAL_MS = 530;
 
 export function clampSuggestionIndex(current: number, length: number): number {
   return Math.max(0, Math.min(current, Math.max(0, length - 1)));
@@ -65,17 +64,4 @@ export function useThinkingAnimationEffect(
       clearInterval(id);
     };
   }, [frameCount, isWorking, setThinkingFrame]);
-}
-
-export function useCaretBlink(active: boolean): boolean {
-  const [visible, setVisible] = useState(true);
-  useEffect(() => {
-    if (!active) {
-      setVisible(true);
-      return;
-    }
-    const id = setInterval(() => setVisible((v) => !v), CARET_BLINK_INTERVAL_MS);
-    return () => clearInterval(id);
-  }, [active]);
-  return visible;
 }

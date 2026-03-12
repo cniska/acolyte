@@ -1,6 +1,6 @@
 import { Text } from "ink";
 import type React from "react";
-import { clampSuggestionIndex, useCaretBlink } from "./chat-effects";
+import { clampSuggestionIndex } from "./chat-effects";
 import { borderLine, formatShortcutRows, justifyLineSpaceBetween } from "./chat-layout";
 import { type PickerState, pickerHint, pickerTitle, renderPickerItems } from "./chat-picker";
 import { slashCommandHelp } from "./chat-slash";
@@ -102,7 +102,7 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
     slashSuggestionIndex = 0,
     showHelp = false,
   } = props;
-  const caretVisible = useCaretBlink(true);
+  const caretVisible = true;
   const hasSuggestions = atQuery !== null || slashSuggestions.length > 0;
   const showFooter = resolveFooterVisible({ showHelp, hasSuggestions, hasPicker: Boolean(picker) });
 
