@@ -130,7 +130,7 @@ describe("chat tui visual regression: model picker", () => {
     expect(output).toBe(
       dedent(`
       ────────────────────────────────────────────────────────────────────────────────────────────────
-      Model: \u2588
+      Model:
 
         gpt-5-mini
       › gpt-5.2
@@ -155,7 +155,7 @@ describe("chat tui visual regression: model picker", () => {
     expect(output).toBe(
       dedent(`
       ────────────────────────────────────────────────────────────────────────────────────────────────
-      Model: 5.2\u2588
+      Model: 5.2
 
       › gpt-5.2
 
@@ -179,7 +179,7 @@ describe("chat tui visual regression: model picker", () => {
     expect(output).toBe(
       dedent(`
       ────────────────────────────────────────────────────────────────────────────────────────────────
-      Model: zzz\u2588
+      Model: zzz
 
        No matches.
 
@@ -204,7 +204,7 @@ describe("chat tui visual regression: model picker", () => {
     expect(output).toBe(
       dedent(`
       ────────────────────────────────────────────────────────────────────────────────────────────────
-      Model: \u2588
+      Model:
 
         model-05
         model-06

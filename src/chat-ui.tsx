@@ -10,8 +10,9 @@ import { ChatInputPanel } from "./chat-input-panel";
 import { useChatKeybindings } from "./chat-keybindings";
 import { shownBranch, shownCwd } from "./chat-layout";
 import { createMessageHandler } from "./chat-message-handler";
-import type { PickerState } from "./chat-picker";
+import { type PickerState, pickerItemCount } from "./chat-picker";
 import { createPickerHandlers } from "./chat-picker-handlers";
+import { suggestModels } from "./chat-model-autocomplete";
 import { ChatRowView } from "./chat-row-view";
 import { createMessage, toRows } from "./chat-session";
 import { suggestSlashCommands } from "./chat-slash";
@@ -291,6 +292,16 @@ function ChatApp(props: ChatAppProps) {
       <Text> </Text>
       <ChatInputPanel
         picker={picker}
+        onPickerQueryChange={(query) => {
+          setPicker((current) => {
+            if (!current || current.kind !== "model") return current;
+            const filtered = suggestModels(query, current.items);
+            return { ...current, query, filtered, index: 0, scrollOffset: 0 };
+          });
+        }}
+        onPickerSubmit={() => {
+          if (picker && pickerItemCount(picker) > 0) void handlePickerSelect(picker);
+        }}
         activeSessionId={store.activeSessionId}
         brandColor={palette.brand}
         footerContext={`${workspace} · ${branch ?? "—"} · ${formatModel(currentSession.model)}`}
@@ -342,6 +353,8 @@ function ChatApp(props: ChatAppProps) {
 }
 
 export async function runInkChat(props: ChatAppProps): Promise<void> {
-  const app = render(<ChatApp {...props} />);
+  const app = render(<ChatApp {...props} />, {
+    kittyKeyboard: { mode: "enabled", flags: ["disambiguateEscapeCodes"] },
+  });
   await app.waitUntilExit();
 }

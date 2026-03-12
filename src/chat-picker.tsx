@@ -47,18 +47,16 @@ function renderPickerRows(
   });
 }
 
-export function pickerTitle(picker: PickerState, caretVisible = true): string {
+export function pickerLabel(picker: PickerState): string {
   switch (picker.kind) {
     case "skills":
       return t("chat.picker.title.skills");
     case "resume":
       return t("chat.picker.title.resume");
-    case "model": {
-      const label = picker.targetMode
-        ? t("chat.picker.title.model.mode", { mode: picker.targetMode })
-        : t("chat.picker.title.model");
-      return `${label}: ${picker.query}${caretVisible ? "\u2588" : ""}`;
-    }
+    case "model":
+      return picker.targetMode
+        ? `${t("chat.picker.title.model.mode", { mode: picker.targetMode })}: `
+        : `${t("chat.picker.title.model")}: `;
     default:
       return unreachable(picker);
   }

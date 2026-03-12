@@ -2,13 +2,15 @@ import { Text } from "ink";
 import type React from "react";
 import { clampSuggestionIndex } from "./chat-effects";
 import { borderLine, formatShortcutRows, justifyLineSpaceBetween } from "./chat-layout";
-import { type PickerState, pickerHint, pickerTitle, renderPickerItems } from "./chat-picker";
+import { type PickerState, pickerHint, pickerLabel, renderPickerItems } from "./chat-picker";
 import { slashCommandHelp } from "./chat-slash";
 import { t } from "./i18n";
 import { PromptInput } from "./prompt-input";
 
 type ChatInputPanelProps = {
   picker?: PickerState | null;
+  onPickerQueryChange?: (query: string) => void;
+  onPickerSubmit?: () => void;
   activeSessionId?: string | undefined;
   brandColor?: string;
   footerContext?: string;
@@ -88,6 +90,8 @@ function renderInputPanelContent(input: {
 export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
   const {
     picker = null,
+    onPickerQueryChange = noop,
+    onPickerSubmit = noop,
     activeSessionId,
     brandColor = "white",
     footerContext = "",
@@ -110,7 +114,16 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
     return (
       <>
         <Text dimColor>{borderLine()}</Text>
-        <Text>{pickerTitle(picker, caretVisible)}</Text>
+        {picker.kind === "model" ? (
+          <PromptInput
+            value={picker.query}
+            linePrefixFirst={pickerLabel(picker)}
+            onChange={onPickerQueryChange}
+            onSubmit={onPickerSubmit}
+          />
+        ) : (
+          <Text>{pickerLabel(picker)}</Text>
+        )}
         <Text> </Text>
         {renderPickerItems(picker, activeSessionId, brandColor)}
         <Text> </Text>
