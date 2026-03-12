@@ -1,3 +1,4 @@
+// nudge test
 import type {
   LanguageModelV3,
   LanguageModelV3FinishReason,
@@ -55,6 +56,7 @@ export function createAgentStream(
     let fullText = "";
     const allToolCalls: ToolCallEntry[] = [];
     let loopIteration = 0;
+    let nudged = false;
 
     let streamController!: ReadableStreamDefaultController<StreamChunk>;
     const fullStream = new ReadableStream<StreamChunk>({
@@ -107,6 +109,30 @@ export function createAgentStream(
         if (stepText.length > 0) fullText += stepText;
 
         if (pendingToolCalls.length === 0) {
+          // Nudge: if the model was using tools and suddenly stopped, re-prompt once.
+          if (!nudged && allToolCalls.length > 0 && stepText.trim().length > 0) {
+            nudged = true;
+            log.debug("agent-stream.nudge", {
+              iteration: loopIteration,
+              finish_reason: finishReason?.unified ?? "undefined",
+              text_length: stepText.length,
+              total_tool_calls: allToolCalls.length,
+            });
+            messages.push({
+              role: "assistant",
+              content: [{ type: "text", text: stepText }],
+            });
+            messages.push({
+              role: "user",
+              content: [
+                {
+                  type: "text",
+                  text: "[system] You stopped before completing the task. If you are done, confirm explicitly. Otherwise, continue working with the available tools.",
+                },
+              ],
+            });
+            continue;
+          }
           log.debug("agent-stream.loop.exit", {
             reason: "no_tool_calls",
             iteration: loopIteration,
