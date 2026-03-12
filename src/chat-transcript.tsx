@@ -43,11 +43,11 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
     if (stageMatch) {
       const stage = stageMatch[1]?.trim() ?? "";
       const model = stageMatch[2]?.trim() || "";
-      const details = [timeText, model, tokenText].filter((part) => part.length > 0).join(" • ");
+      const details = [timeText, model, tokenText].filter((part) => part.length > 0).join(" · ");
       return details.length > 0 ? `${stage} (${details})` : stage;
     }
     const parts = [trimmedProgressText, timeText, tokenText].filter((part) => part.length > 0);
-    return parts.length > 1 ? `${parts[0]} (${parts.slice(1).join(" • ")})` : (parts[0] ?? "");
+    return parts.length > 1 ? `${parts[0]} (${parts.slice(1).join(" · ")})` : (parts[0] ?? "");
   })();
   const columns = process.stdout.columns ?? 120;
   const contentWidth = Math.max(24, Math.min(MAX_TRANSCRIPT_WIDTH, columns - 2));
