@@ -143,7 +143,7 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
         slashSuggestionIndex,
         showHelp,
       })}
-      {showFooter ? <Text dimColor>{justifyLineSpaceBetween(t("chat.input.help_hint"), footerContext, 2)}</Text> : null}
+      {showFooter ? <Text dimColor>{justifyLineSpaceBetween(value.length > 0 ? "" : t("chat.input.help_hint"), footerContext, 2)}</Text> : null}
     </>
   );
 }
