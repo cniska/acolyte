@@ -74,6 +74,7 @@ function ChatApp(props: ChatAppProps) {
   const [thinkingFrame, setThinkingFrame] = useState(0);
   const [thinkingStartedAt, setThinkingStartedAt] = useState<number | null>(null);
   const [showHelp, setShowHelp] = useState(false);
+  const [ctrlCPending, setCtrlCPending] = useState(false);
   const [queuedMessages, setQueuedMessages] = useState<string[]>([]);
   const [branch, setBranch] = useState<string | null>(null);
   const [picker, setPicker] = useState<PickerState | null>(null);
@@ -249,6 +250,8 @@ function ChatApp(props: ChatAppProps) {
     interruptCurrentTurn: () => {
       interruptRef.current?.();
     },
+    ctrlCPending,
+    setCtrlCPending,
   });
 
   return (
@@ -317,6 +320,7 @@ function ChatApp(props: ChatAppProps) {
           if (decision.clearApplyingHistory) applyingHistoryRef.current = false;
           if (decision.resetHistoryIndex) setInputHistoryIndex(-1);
           if (showHelp) setShowHelp(false);
+          if (ctrlCPending) setCtrlCPending(false);
           setValue(decision.nextValue);
         }}
         onSubmit={(next) => {
@@ -347,6 +351,7 @@ function ChatApp(props: ChatAppProps) {
         slashSuggestions={slashSuggestions}
         slashSuggestionIndex={slashSuggestionIndex}
         showHelp={showHelp}
+        ctrlCPending={ctrlCPending}
       />
     </Box>
   );
@@ -354,6 +359,7 @@ function ChatApp(props: ChatAppProps) {
 
 export async function runInkChat(props: ChatAppProps): Promise<void> {
   const app = render(<ChatApp {...props} />, {
+    exitOnCtrlC: false,
     kittyKeyboard: { mode: "enabled", flags: ["disambiguateEscapeCodes"] },
   });
   await app.waitUntilExit();

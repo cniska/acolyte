@@ -112,13 +112,19 @@ type UseChatKeybindingsInput = {
   showHelp: boolean;
   setShowHelp: (next: boolean | ((current: boolean) => boolean)) => void;
   interruptCurrentTurn: () => void;
+  ctrlCPending: boolean;
+  setCtrlCPending: (next: boolean) => void;
 };
 
 export function useChatKeybindings(input: UseChatKeybindingsInput): void {
   useInput(
     (keyInput, key) => {
       if (key.ctrl && keyInput === "c") {
-        void input.persist().finally(input.exit);
+        if (input.ctrlCPending) {
+          void input.persist().finally(input.exit);
+          return;
+        }
+        input.setCtrlCPending(true);
         return;
       }
       if (input.picker) {
@@ -248,6 +254,7 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
           return;
         }
         if (action === "hide") input.setShowHelp(false);
+        if (input.ctrlCPending) input.setCtrlCPending(false);
       }
     },
     { isActive: Boolean(process.stdin.isTTY) },

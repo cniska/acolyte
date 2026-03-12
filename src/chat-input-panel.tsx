@@ -24,6 +24,7 @@ type ChatInputPanelProps = {
   slashSuggestions?: string[];
   slashSuggestionIndex?: number;
   showHelp?: boolean;
+  ctrlCPending?: boolean;
 };
 
 const noop = (): void => {};
@@ -105,6 +106,7 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
     slashSuggestions = [],
     slashSuggestionIndex = 0,
     showHelp = false,
+    ctrlCPending = false,
   } = props;
   const caretVisible = true;
   const hasSuggestions = atQuery !== null || slashSuggestions.length > 0;
@@ -156,7 +158,7 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
         slashSuggestionIndex,
         showHelp,
       })}
-      {showFooter ? <Text dimColor>{justifyLineSpaceBetween(value.length > 0 ? "" : t("chat.input.help_hint"), footerContext, 2)}</Text> : null}
+      {showFooter ? <Text dimColor>{justifyLineSpaceBetween(ctrlCPending ? t("chat.input.ctrl_c_hint") : value.length > 0 ? "" : `? ${t("chat.input.help_hint")}`, footerContext, 2)}</Text> : null}
     </>
   );
 }
