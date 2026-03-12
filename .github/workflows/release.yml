@@ -25,7 +25,7 @@ jobs:
           - target: darwin-arm64
             runner: macos-latest
           - target: darwin-x64
-            runner: macos-13
+            runner: macos-13-large
           - target: linux-x64
             runner: ubuntu-latest
           - target: linux-arm64
@@ -48,7 +48,7 @@ jobs:
         run: bun run verify
 
       - name: Build binary
-        run: bun build --compile src/cli.ts --outfile acolyte
+        run: bun build --compile src/cli.ts --outfile acolyte --external react-devtools-core
 
       - name: Package artifact
         run: |
