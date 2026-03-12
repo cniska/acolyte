@@ -163,8 +163,8 @@ describe("tool-cache", () => {
     cache.populateSubEntries("read-file", multiArgs, result);
     // a.ts sub-entry keyed with its range
     expect(cache.get("read-file", { paths: [{ path: "src/a.ts", start: 1, end: 5 }] })).toBeDefined();
-    // a.ts without range — no match
-    expect(cache.get("read-file", { paths: [{ path: "src/a.ts" }] })).toBeUndefined();
+    // a.ts without range — also populated as rangeless fallback
+    expect(cache.get("read-file", { paths: [{ path: "src/a.ts" }] })).toBeDefined();
     // b.ts had no range — sub-entry populated
     expect(cache.get("read-file", { paths: [{ path: "src/b.ts" }] })).toBeDefined();
   });

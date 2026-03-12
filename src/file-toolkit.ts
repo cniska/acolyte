@@ -297,7 +297,7 @@ function createReadFileTool(input: ToolkitInput) {
     description:
       "Read one or more text files. Always pass `paths` as an array of {path, start?, end?} objects, even for a single file. Omit start/end to read the entire file (preferred). Only use line ranges for files over 500 lines. Never re-read a file you already have. Batch multiple files into one call.",
     instruction:
-      "Use `read-file` to inspect code before editing. Read whole files by default — only use start/end for very large files. Batch multiple reads into one call. Never re-read a file already in context.",
+      "Use `read-file` to inspect code before editing. Read whole files by default — only use start/end for very large files. Batch multiple reads into one call.",
     inputSchema: z.object({
       paths: z
         .array(

@@ -106,6 +106,13 @@ export function createToolCache(cacheableTools: ReadonlySet<string>, maxEntries 
         if (pathEntry.start !== undefined) subArg.start = pathEntry.start;
         if (pathEntry.end !== undefined) subArg.end = pathEntry.end;
         this.set(toolName, { paths: [subArg] }, { result: normalized[i] });
+        // Also store under rangeless key so future reads of the same file hit cache.
+        if (pathEntry.start !== undefined || pathEntry.end !== undefined) {
+          const rangelessKey = stableKey(toolName, { paths: [{ path: p }] });
+          if (!cache.has(rangelessKey)) {
+            this.set(toolName, { paths: [{ path: p }] }, { result: normalized[i] });
+          }
+        }
       }
     },
 
