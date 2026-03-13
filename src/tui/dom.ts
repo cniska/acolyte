@@ -48,8 +48,10 @@ export function appendChild(parent: TuiElement, child: TuiNode): void {
 
 export function removeChild(parent: TuiElement, child: TuiNode): void {
   const index = parent.children.indexOf(child);
-  if (index !== -1) parent.children.splice(index, 1);
-  child.parent = null;
+  if (index !== -1) {
+    parent.children.splice(index, 1);
+    child.parent = null;
+  }
 }
 
 export function insertBefore(parent: TuiElement, child: TuiNode, before: TuiNode): void {

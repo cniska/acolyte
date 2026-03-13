@@ -3,14 +3,24 @@ import { renderToString } from "./tui";
 
 export const stripAnsi = (value: string): string => {
   let out = "";
-  for (let i = 0; i < value.length; i += 1) {
-    const ch = value[i];
-    if (ch === "\u001b" && value[i + 1] === "[") {
-      i += 2;
-      while (i < value.length && value[i] !== "m") i += 1;
+  let i = 0;
+  while (i < value.length) {
+    if (value[i] === "\u001b") {
+      i++;
+      if (i < value.length && value[i] === "[") {
+        i++;
+        while (i < value.length) {
+          const code = value.charCodeAt(i);
+          i++;
+          if (code >= 0x40 && code <= 0x7e) break;
+        }
+      } else if (i < value.length) {
+        i++;
+      }
       continue;
     }
-    if (ch != null) out += ch;
+    out += value[i];
+    i++;
   }
   return out;
 };
@@ -32,6 +42,6 @@ export function withTerminalWidth(width: number, run: () => string): string {
 }
 
 export function renderInkPlain(node: ReactNode, columns = 96): string {
-  const rendered = withTerminalWidth(columns, () => renderToString(node, { columns }));
+  const rendered = withTerminalWidth(columns, () => renderToString(node));
   return trimRightLines(stripAnsi(rendered)).replace(/^\n+/, "").replace(/\n+$/, "");
 }

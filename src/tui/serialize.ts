@@ -38,17 +38,24 @@ function mergeStyle(parent: StyleStack, props: TuiProps): StyleStack {
 
 function stripAnsiLength(value: string): number {
   let length = 0;
-  let inEscape = false;
-  for (let i = 0; i < value.length; i++) {
+  let i = 0;
+  while (i < value.length) {
     if (value[i] === "\x1b") {
-      inEscape = true;
-      continue;
-    }
-    if (inEscape) {
-      if (value[i] === "m") inEscape = false;
+      i++;
+      if (i < value.length && value[i] === "[") {
+        i++;
+        while (i < value.length) {
+          const code = value.charCodeAt(i);
+          i++;
+          if (code >= 0x40 && code <= 0x7e) break;
+        }
+      } else if (i < value.length) {
+        i++;
+      }
       continue;
     }
     length++;
+    i++;
   }
   return length;
 }
@@ -121,8 +128,9 @@ function joinRow(childOutputs: string[], boxWidth?: number): string {
     return result;
   }
 
-  // Multiline: for each output line index, build the row by padding
-  // earlier children to their visible width so later children align.
+  // Compute the max visible width for each child across all its lines.
+  const childWidths = childLines.map((lines) => Math.max(0, ...lines.map((line) => stripAnsiLength(line))));
+
   const resultLines: string[] = [];
   for (let lineIdx = 0; lineIdx < maxLines; lineIdx++) {
     let row = "";
@@ -130,15 +138,10 @@ function joinRow(childOutputs: string[], boxWidth?: number): string {
       const lines = childLines[childIdx] ?? [];
       const line = lines[lineIdx] ?? "";
 
-      if (lineIdx === 0 || childIdx === childLines.length - 1) {
-        // First line or last child: just append
+      if (childIdx === childLines.length - 1) {
         row += line;
       } else {
-        // Non-first line, non-last child: pad earlier children to
-        // their first-line visible width for alignment
-        const firstLine = lines[0] ?? "";
-        const firstLineWidth = stripAnsiLength(firstLine);
-        row += padLine(line, firstLineWidth);
+        row += padLine(line, childWidths[childIdx] ?? 0);
       }
     }
     resultLines.push(row);
@@ -154,7 +157,7 @@ function joinRow(childOutputs: string[], boxWidth?: number): string {
   return result;
 }
 
-export function serialize(root: TuiElement, _columns?: number): string {
+export function serialize(root: TuiElement): string {
   const emptyStyle: StyleStack = {};
   return serializeNode(root, emptyStyle);
 }

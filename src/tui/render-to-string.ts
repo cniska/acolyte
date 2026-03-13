@@ -3,7 +3,7 @@ import { createElement } from "./dom";
 import { reconciler } from "./reconciler";
 import { serialize } from "./serialize";
 
-export function renderToString(node: ReactNode, options?: { columns?: number }): string {
+export function renderToString(node: ReactNode): string {
   const root = createElement("tui-root", {});
   const container = reconciler.createContainer(
     root,
@@ -21,5 +21,5 @@ export function renderToString(node: ReactNode, options?: { columns?: number }):
   );
   reconciler.updateContainerSync(node, container, null, () => {});
   reconciler.flushSyncWork();
-  return serialize(root, options?.columns);
+  return serialize(root);
 }

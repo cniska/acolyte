@@ -21,23 +21,79 @@ function emptyKey(): KeyEvent {
   };
 }
 
-/** Parse raw stdin data into (input, key) pairs compatible with Ink's useInput. */
+function applyModifiers(key: KeyEvent, mod: number): void {
+  if (mod >= 2) {
+    key.shift = ((mod - 1) & 1) !== 0;
+    key.meta = ((mod - 1) & 2) !== 0;
+    key.ctrl = ((mod - 1) & 4) !== 0;
+  }
+}
+
+/** Kitty keyboard protocol: CSI <codepoint> ; <modifiers> u */
+function parseKittySequence(seq: string, key: KeyEvent): { input: string; key: KeyEvent } | null {
+  const match = seq.match(/^(\d+)(?:;(\d+))?u$/);
+  if (!match) return null;
+
+  const codepoint = Number.parseInt(match[1] ?? "0", 10);
+  const mod = Number.parseInt(match[2] ?? "1", 10);
+  applyModifiers(key, mod);
+
+  switch (codepoint) {
+    case 27:
+      key.escape = true;
+      return { input: "", key };
+    case 13:
+      key.return = true;
+      return { input: "", key };
+    case 9:
+      key.tab = true;
+      return { input: "", key };
+    case 127:
+      key.backspace = true;
+      return { input: "", key };
+    default: {
+      if (codepoint >= 32) {
+        const ch = String.fromCodePoint(codepoint);
+        if (key.ctrl && codepoint >= 97 && codepoint <= 122) {
+          return { input: ch, key };
+        }
+        return { input: ch, key };
+      }
+      return { input: "", key };
+    }
+  }
+}
+
 export function parseKeyInput(data: Buffer | string): Array<{ input: string; key: KeyEvent }> {
   const raw = typeof data === "string" ? data : data.toString("utf8");
   const results: Array<{ input: string; key: KeyEvent }> = [];
 
-  // CSI sequences: ESC [ ... final_byte
   if (raw.startsWith(`${ESCAPE}[`)) {
     const key = emptyKey();
     const seq = raw.slice(2);
 
-    // Arrow keys with modifiers: ESC [ 1 ; <mod> <A-D>
+    // Kitty keyboard protocol: CSI <number> ; <modifier> u
+    const kittyResult = parseKittySequence(seq, key);
+    if (kittyResult) {
+      results.push(kittyResult);
+      return results;
+    }
+
+    // Delete key with modifiers: CSI 3 ; <mod> ~
+    const deleteModMatch = seq.match(/^3;(\d+)~$/);
+    if (deleteModMatch) {
+      const mod = Number.parseInt(deleteModMatch[1] ?? "1", 10);
+      applyModifiers(key, mod);
+      key.delete = true;
+      results.push({ input: raw, key });
+      return results;
+    }
+
+    // Arrow keys with modifiers: CSI 1 ; <mod> <A-D>
     const arrowModMatch = seq.match(/^1;(\d+)([A-D])$/);
     if (arrowModMatch) {
       const mod = Number.parseInt(arrowModMatch[1] ?? "1", 10);
-      if (mod >= 2) key.shift = ((mod - 1) & 1) !== 0;
-      if (mod >= 2) key.meta = ((mod - 1) & 2) !== 0;
-      if (mod >= 2) key.ctrl = ((mod - 1) & 4) !== 0;
+      applyModifiers(key, mod);
       const arrow = arrowModMatch[2];
       if (arrow === "A") key.upArrow = true;
       else if (arrow === "B") key.downArrow = true;
@@ -47,13 +103,11 @@ export function parseKeyInput(data: Buffer | string): Array<{ input: string; key
       return results;
     }
 
-    // Home/End with modifiers: ESC [ 1 ; <mod> <H|F>
+    // Home/End with modifiers: CSI 1 ; <mod> <H|F>
     const homeEndModMatch = seq.match(/^1;(\d+)([HF])$/);
     if (homeEndModMatch) {
       const mod = Number.parseInt(homeEndModMatch[1] ?? "1", 10);
-      if (mod >= 2) key.shift = ((mod - 1) & 1) !== 0;
-      if (mod >= 2) key.meta = ((mod - 1) & 2) !== 0;
-      if (mod >= 2) key.ctrl = ((mod - 1) & 4) !== 0;
+      applyModifiers(key, mod);
       if (homeEndModMatch[2] === "H") key.home = true;
       else key.end = true;
       results.push({ input: raw, key });
@@ -94,14 +148,14 @@ export function parseKeyInput(data: Buffer | string): Array<{ input: string; key
       return results;
     }
 
-    // Delete key: ESC [ 3 ~
+    // Delete key: CSI 3 ~
     if (seq === "3~") {
       key.delete = true;
       results.push({ input: raw, key });
       return results;
     }
 
-    // Shift+Tab: ESC [ Z
+    // Shift+Tab: CSI Z
     if (seq === "Z") {
       key.tab = true;
       key.shift = true;
@@ -109,7 +163,7 @@ export function parseKeyInput(data: Buffer | string): Array<{ input: string; key
       return results;
     }
 
-    // Pass through other CSI sequences as-is
+    // Pass through other CSI sequences
     results.push({ input: raw, key });
     return results;
   }
@@ -133,12 +187,8 @@ export function parseKeyInput(data: Buffer | string): Array<{ input: string; key
     const key = emptyKey();
     key.meta = true;
     const ch = raw.slice(1);
-    if (ch === "\x7f") {
+    if (ch === "\x7f" || ch === "\x08") {
       key.backspace = true;
-      key.meta = true;
-    } else if (ch === "\x08") {
-      key.backspace = true;
-      key.meta = true;
     }
     results.push({ input: raw, key });
     return results;
@@ -148,7 +198,7 @@ export function parseKeyInput(data: Buffer | string): Array<{ input: string; key
   if (raw === ESCAPE) {
     const key = emptyKey();
     key.escape = true;
-    results.push({ input: raw, key });
+    results.push({ input: "", key });
     return results;
   }
 
@@ -174,8 +224,7 @@ export function parseKeyInput(data: Buffer | string): Array<{ input: string; key
     }
     if (code >= 1 && code <= 26) {
       key.ctrl = true;
-      const ch = String.fromCharCode(code + 96);
-      results.push({ input: ch, key });
+      results.push({ input: String.fromCharCode(code + 96), key });
       return results;
     }
   }

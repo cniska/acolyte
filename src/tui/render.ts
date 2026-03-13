@@ -72,21 +72,24 @@ export function render(node: ReactNode, options?: RenderOptions): RenderInstance
   }
 
   const kittyFlags = options?.kittyKeyboard?.mode === "enabled" ? 1 : 0;
-  if (kittyFlags > 0) {
-    stdout.write(kitty.enable(kittyFlags));
+  if (stdout.isTTY) {
+    if (kittyFlags > 0) {
+      stdout.write(kitty.enable(kittyFlags));
+    }
+    stdout.write(ansi.cursorHide);
   }
-
-  stdout.write(ansi.cursorHide);
 
   function commitRender() {
     if (exited) return;
     const output = serialize(root);
     if (output === lastOutput) return;
 
-    if (lastLineCount > 0) {
-      stdout.write(ansi.cursorUp(lastLineCount));
+    if (stdout.isTTY) {
+      if (lastLineCount > 0) {
+        stdout.write(ansi.cursorUp(lastLineCount));
+      }
+      stdout.write(`\r${ansi.eraseDown}`);
     }
-    stdout.write(`\r${ansi.eraseDown}`);
     stdout.write(output);
 
     lastOutput = output;
@@ -125,11 +128,13 @@ export function render(node: ReactNode, options?: RenderOptions): RenderInstance
       stdin.setRawMode(false);
       stdin.pause();
     }
-    if (kittyFlags > 0) {
-      stdout.write(kitty.disable);
+    if (stdout.isTTY) {
+      if (kittyFlags > 0) {
+        stdout.write(kitty.disable);
+      }
+      stdout.write(ansi.cursorShow);
+      stdout.write("\n");
     }
-    stdout.write(ansi.cursorShow);
-    stdout.write("\n");
     reconciler.updateContainer(null, container, null, () => {});
   }
 

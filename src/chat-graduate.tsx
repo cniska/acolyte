@@ -7,11 +7,9 @@ export function graduateHeader(
   brandColor: string,
   mascot: string,
   mascotEyes: string,
-  columns: number,
 ): void {
   const ansi = renderToString(
     <ChatHeader lines={headerLines} brandColor={brandColor} mascot={mascot} mascotEyes={mascotEyes} />,
-    { columns },
   );
   process.stdout.write(`\n${ansi}\n`);
 }

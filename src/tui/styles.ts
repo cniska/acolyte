@@ -83,7 +83,7 @@ function parseHex(hex: string): [number, number, number] | null {
 }
 
 export function colorToFg(color: string): string {
-  const named = NAMED_COLORS[color];
+  const named = NAMED_COLORS[color] ?? NAMED_COLORS[color.toLowerCase()];
   if (named !== undefined) {
     return named < 8 ? `${ESC}${30 + named}m` : `${ESC}${90 + named - 8}m`;
   }
@@ -93,7 +93,7 @@ export function colorToFg(color: string): string {
 }
 
 export function colorToBg(color: string): string {
-  const named = NAMED_COLORS[color];
+  const named = NAMED_COLORS[color] ?? NAMED_COLORS[color.toLowerCase()];
   if (named !== undefined) {
     return named < 8 ? `${ESC}${40 + named}m` : `${ESC}${100 + named - 8}m`;
   }

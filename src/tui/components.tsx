@@ -47,6 +47,10 @@ export function Text(props: TextProps): React.ReactElement {
 }
 
 export function Static<T extends { id?: string }>(props: StaticProps<T>): React.ReactElement {
-  const children = props.items.map((item, index) => props.children(item, index));
+  const children = props.items.map((item, index) => {
+    const key = item.id ?? index;
+    const child = props.children(item, index);
+    return <tui-virtual key={key}>{child}</tui-virtual>;
+  });
   return <tui-static internal_static>{children}</tui-static>;
 }

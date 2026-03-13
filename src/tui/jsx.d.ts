@@ -1,7 +1,7 @@
-import type { ReactNode } from "react";
+import type { Key, ReactNode } from "react";
 import type { TuiProps } from "./dom";
 
-type TuiElementProps = TuiProps & { children?: ReactNode };
+type TuiElementProps = TuiProps & { children?: ReactNode; key?: Key };
 
 declare module "react" {
   namespace JSX {

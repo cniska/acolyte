@@ -3,7 +3,7 @@ import ReactReconciler from "react-reconciler";
 import type { TuiElement } from "./dom";
 import { hostConfig } from "./host-config";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- react-reconciler types don't match runtime
+// biome-ignore lint/suspicious/noExplicitAny: react-reconciler types don't match runtime
 const baseReconciler = ReactReconciler(hostConfig as any);
 
 type OpaqueRoot = ReturnType<typeof baseReconciler.createContainer>;
