@@ -13,7 +13,7 @@ export function updateRepeatedFailureState(ctx: RunContext): void {
 
   const previous = ctx.lifecycleState.repeatedFailure;
   if (!previous || previous.signature !== signature) {
-    ctx.lifecycleState.repeatedFailure = { signature, count: 1, surfacedCount: 0 };
+    ctx.lifecycleState.repeatedFailure = { signature, count: 1, status: "pending" };
     return;
   }
 

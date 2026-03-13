@@ -14,6 +14,7 @@ Focus on:
 - factory naming consistency (`create*` for factory functions; avoid `build*`/`make*` for factories)
 - switch exhaustiveness (`default` + `unreachable` when applicable)
 - assert patterns (`invariant` for impossible states vs user-facing errors)
+- state modeling clarity: prefer explicit status/state fields over ambiguous boolean flags when values represent lifecycle or workflow phases
 - table-driven/rule-driven structure where the codebase already uses it
 - dispatch shape: prefer data-driven lookups/tables over long control-flow chains where behavior is mapping-like
 - control flow shape: prefer guard clauses and early returns over nested `if/else` chains
@@ -60,4 +61,5 @@ Then inspect relevant files for the feature under review.
 - Enforcing generic style-guide dogma over local conventions.
 - Broad rewrites over minimal diffs.
 - Speculative abstractions.
+- Boolean flags that hide richer state transitions better modeled as explicit status enums/unions.
 - Message-text parsing as primary control flow when a typed contract can be enforced.

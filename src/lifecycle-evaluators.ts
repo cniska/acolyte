@@ -40,7 +40,7 @@ export type EvaluatorContext = {
   lifecycleState: {
     feedback: LifecycleFeedback[];
     verifyOutcome?: VerifyOutcome;
-    repeatedFailure?: { signature: string; count: number; surfacedCount: number };
+    repeatedFailure?: { signature: string; count: number; status: "pending" | "surfaced" };
   };
   currentError?: LifecycleError;
 };
@@ -161,9 +161,9 @@ export const repeatedFailureEvaluator: Evaluator = {
     if (!ctx.result || !ctx.currentError || !repeatedFailure) return { type: "done" };
     if (ctx.currentError.category === "guard-blocked") return { type: "done" };
     if (repeatedFailure.count < 2) return { type: "done" };
-    if (repeatedFailure.surfacedCount >= repeatedFailure.count) return { type: "done" };
+    if (repeatedFailure.status === "surfaced") return { type: "done" };
 
-    repeatedFailure.surfacedCount = repeatedFailure.count;
+    repeatedFailure.status = "surfaced";
     ctx.debug("lifecycle.eval.repeated_failure", {
       signature: repeatedFailure.signature,
       count: repeatedFailure.count,

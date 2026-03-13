@@ -116,7 +116,7 @@ export type LifecycleState = {
   repeatedFailure?: {
     signature: string;
     count: number;
-    surfacedCount: number;
+    status: "pending" | "surfaced";
   };
 };
 

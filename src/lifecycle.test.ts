@@ -256,7 +256,7 @@ describe("repeatedFailureEvaluator", () => {
         repeatedFailure: {
           signature: "other:tool-error:run-command:E_COMMAND_FAILED",
           count: 2,
-          surfacedCount: 0,
+          status: "pending",
         },
       },
     });
@@ -268,7 +268,7 @@ describe("repeatedFailureEvaluator", () => {
       expect(action.feedback?.details).toContain("command exited with code 1");
       expect(action.feedback?.instruction).toContain("Change approach");
     }
-    expect(ctx.lifecycleState.repeatedFailure?.surfacedCount).toBe(2);
+    expect(ctx.lifecycleState.repeatedFailure?.status).toBe("surfaced");
   });
 
   test("returns done for repeated guard-blocked failures", () => {
@@ -281,7 +281,31 @@ describe("repeatedFailureEvaluator", () => {
         repeatedFailure: {
           signature: "guard-blocked:tool-error:none:E_GUARD_BLOCKED",
           count: 2,
-          surfacedCount: 0,
+          status: "pending",
+        },
+      },
+    });
+
+    expect(repeatedFailureEvaluator.evaluate(ctx)).toEqual({ type: "done" });
+  });
+
+  test("returns done after the repeated failure streak was already surfaced", () => {
+    const ctx = createMockContext({
+      currentError: {
+        message: "run-command failed: command exited with code 1",
+        category: "other",
+        code: "E_COMMAND_FAILED",
+        tool: "run-command",
+        source: "tool-error",
+      },
+      result: { text: "Attempted fix.", toolCalls: [] },
+      lifecycleState: {
+        feedback: [],
+        verifyOutcome: undefined,
+        repeatedFailure: {
+          signature: "other:tool-error:run-command:E_COMMAND_FAILED",
+          count: 3,
+          status: "surfaced",
         },
       },
     });
