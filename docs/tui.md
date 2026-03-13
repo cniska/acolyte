@@ -28,7 +28,7 @@ React tree → reconciler → TUI DOM → serialize → terminal output
 - **reconciler:** React's `react-reconciler` drives updates against a TUI DOM tree.
 - **TUI DOM:** lightweight node tree (`tui-root`, `tui-box`, `tui-text`, `tui-static`, `tui-virtual`, text nodes).
 - **serialize:** walks the DOM, resolves flex layout, applies ANSI styles, produces a string. `serializeSplit` separates static (scrollback) from active (re-rendered) regions.
-- **render loop:** on each React commit: serialize, diff against last output, erase and rewrite the active region. Static items flush once to scrollback. Overflow is handled by skipping off-screen lines (prevents duplication on scroll).
+- **render loop:** on each React commit: serialize, diff against last output, erase and rewrite the active region. Static items flush once to scrollback. When the active region overflows the viewport, top lines are flushed to scrollback and only the bottom portion is re-rendered.
 - **resize:** terminal dimensions are read from `stdout.columns`/`stdout.rows` on each commit — no SIGWINCH handler needed.
 
 ## Input handling
