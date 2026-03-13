@@ -84,176 +84,183 @@ function parseKittySequence(seq: string, key: KeyEvent): { input: string; key: K
   }
 }
 
-export function parseKeyInput(data: Buffer | string): Array<{ input: string; key: KeyEvent }> {
-  const raw = typeof data === "string" ? data : data.toString("utf8");
-  const results: Array<{ input: string; key: KeyEvent }> = [];
+/**
+ * Find the end of a CSI sequence starting at `offset` (pointing at ESC).
+ * CSI = ESC [ <params> <final byte>. Final byte is 0x40–0x7E.
+ * Returns the index past the final byte, or -1 if not a valid CSI.
+ */
+function csiEnd(raw: string, offset: number): number {
+  if (offset + 1 >= raw.length || raw[offset + 1] !== "[") return -1;
+  let i = offset + 2;
+  while (i < raw.length) {
+    const code = raw.charCodeAt(i);
+    if (code >= 0x40 && code <= 0x7e) return i + 1;
+    i++;
+  }
+  return -1;
+}
 
-  if (raw.startsWith(`${ESCAPE}[`)) {
-    const key = emptyKey();
-    const seq = raw.slice(2);
+/**
+ * Parse a single key event starting at `offset` in `raw`.
+ * Returns the parsed event and the number of bytes consumed.
+ */
+function parseSingle(raw: string, offset: number): { event: { input: string; key: KeyEvent }; consumed: number } {
+  const ch0 = raw[offset]!;
+  const code0 = raw.charCodeAt(offset);
 
-    // Kitty keyboard protocol: CSI <number> ; <modifier> u
-    const kittyResult = parseKittySequence(seq, key);
-    if (kittyResult) {
-      results.push(kittyResult);
-      return results;
-    }
+  // CSI sequences: ESC [
+  if (ch0 === ESCAPE && offset + 1 < raw.length && raw[offset + 1] === "[") {
+    const end = csiEnd(raw, offset);
+    if (end > 0) {
+      const seq = raw.slice(offset + 2, end);
+      const key = emptyKey();
 
-    // Delete key with modifiers: CSI 3 ; <mod> ~
-    const deleteModMatch = seq.match(/^3;(\d+)~$/);
-    if (deleteModMatch) {
-      const mod = Number.parseInt(deleteModMatch[1] ?? "1", 10);
-      applyModifiers(key, mod);
-      key.delete = true;
-      results.push({ input: "", key });
-      return results;
-    }
+      const kittyResult = parseKittySequence(seq, key);
+      if (kittyResult) return { event: kittyResult, consumed: end - offset };
 
-    // Arrow keys with modifiers: CSI 1 ; <mod> <A-D>
-    const arrowModMatch = seq.match(/^1;(\d+)([A-D])$/);
-    if (arrowModMatch) {
-      const mod = Number.parseInt(arrowModMatch[1] ?? "1", 10);
-      applyModifiers(key, mod);
-      const arrow = arrowModMatch[2];
-      if (arrow === "A") key.upArrow = true;
-      else if (arrow === "B") key.downArrow = true;
-      else if (arrow === "C") key.rightArrow = true;
-      else if (arrow === "D") key.leftArrow = true;
-      results.push({ input: "", key });
-      return results;
-    }
+      // Delete key with modifiers: CSI 3 ; <mod> ~
+      const deleteModMatch = seq.match(/^3;(\d+)~$/);
+      if (deleteModMatch) {
+        const mod = Number.parseInt(deleteModMatch[1] ?? "1", 10);
+        applyModifiers(key, mod);
+        key.delete = true;
+        return { event: { input: "", key }, consumed: end - offset };
+      }
 
-    // Home/End with modifiers: CSI 1 ; <mod> <H|F>
-    const homeEndModMatch = seq.match(/^1;(\d+)([HF])$/);
-    if (homeEndModMatch) {
-      const mod = Number.parseInt(homeEndModMatch[1] ?? "1", 10);
-      applyModifiers(key, mod);
-      if (homeEndModMatch[2] === "H") key.home = true;
-      else key.end = true;
-      results.push({ input: "", key });
-      return results;
-    }
+      // Arrow keys with modifiers: CSI 1 ; <mod> <A-D>
+      const arrowModMatch = seq.match(/^1;(\d+)([A-D])$/);
+      if (arrowModMatch) {
+        const mod = Number.parseInt(arrowModMatch[1] ?? "1", 10);
+        applyModifiers(key, mod);
+        const arrow = arrowModMatch[2];
+        if (arrow === "A") key.upArrow = true;
+        else if (arrow === "B") key.downArrow = true;
+        else if (arrow === "C") key.rightArrow = true;
+        else if (arrow === "D") key.leftArrow = true;
+        return { event: { input: "", key }, consumed: end - offset };
+      }
 
-    // Simple arrows
-    if (seq === "A") {
-      key.upArrow = true;
-      results.push({ input: "", key });
-      return results;
-    }
-    if (seq === "B") {
-      key.downArrow = true;
-      results.push({ input: "", key });
-      return results;
-    }
-    if (seq === "C") {
-      key.rightArrow = true;
-      results.push({ input: "", key });
-      return results;
-    }
-    if (seq === "D") {
-      key.leftArrow = true;
-      results.push({ input: "", key });
-      return results;
-    }
+      // Home/End with modifiers: CSI 1 ; <mod> <H|F>
+      const homeEndModMatch = seq.match(/^1;(\d+)([HF])$/);
+      if (homeEndModMatch) {
+        const mod = Number.parseInt(homeEndModMatch[1] ?? "1", 10);
+        applyModifiers(key, mod);
+        if (homeEndModMatch[2] === "H") key.home = true;
+        else key.end = true;
+        return { event: { input: "", key }, consumed: end - offset };
+      }
 
-    // Home/End
-    if (seq === "H" || seq === "1~" || seq === "7~") {
-      key.home = true;
-      results.push({ input: "", key });
-      return results;
-    }
-    if (seq === "F" || seq === "4~" || seq === "8~") {
-      key.end = true;
-      results.push({ input: "", key });
-      return results;
-    }
+      // Simple arrows
+      if (seq === "A") {
+        key.upArrow = true;
+        return { event: { input: "", key }, consumed: end - offset };
+      }
+      if (seq === "B") {
+        key.downArrow = true;
+        return { event: { input: "", key }, consumed: end - offset };
+      }
+      if (seq === "C") {
+        key.rightArrow = true;
+        return { event: { input: "", key }, consumed: end - offset };
+      }
+      if (seq === "D") {
+        key.leftArrow = true;
+        return { event: { input: "", key }, consumed: end - offset };
+      }
 
-    // Delete key: CSI 3 ~
-    if (seq === "3~") {
-      key.delete = true;
-      results.push({ input: "", key });
-      return results;
-    }
+      // Home/End
+      if (seq === "H" || seq === "1~" || seq === "7~") {
+        key.home = true;
+        return { event: { input: "", key }, consumed: end - offset };
+      }
+      if (seq === "F" || seq === "4~" || seq === "8~") {
+        key.end = true;
+        return { event: { input: "", key }, consumed: end - offset };
+      }
 
-    // Shift+Tab: CSI Z
-    if (seq === "Z") {
-      key.tab = true;
-      key.shift = true;
-      results.push({ input: "", key });
-      return results;
-    }
+      // Delete key: CSI 3 ~
+      if (seq === "3~") {
+        key.delete = true;
+        return { event: { input: "", key }, consumed: end - offset };
+      }
 
-    // Pass through other CSI sequences
-    results.push({ input: "", key });
-    return results;
+      // Shift+Tab: CSI Z
+      if (seq === "Z") {
+        key.tab = true;
+        key.shift = true;
+        return { event: { input: "", key }, consumed: end - offset };
+      }
+
+      // Unknown CSI — consume but noop
+      return { event: { input: "", key }, consumed: end - offset };
+    }
   }
 
   // SS3 sequences: ESC O <letter>
-  if (raw.startsWith(`${ESCAPE}O`)) {
+  if (ch0 === ESCAPE && offset + 2 < raw.length && raw[offset + 1] === "O") {
     const key = emptyKey();
-    const letter = raw[2];
+    const letter = raw[offset + 2];
     if (letter === "H") key.home = true;
     else if (letter === "F") key.end = true;
     else if (letter === "A") key.upArrow = true;
     else if (letter === "B") key.downArrow = true;
     else if (letter === "C") key.rightArrow = true;
     else if (letter === "D") key.leftArrow = true;
-    results.push({ input: "", key });
-    return results;
+    return { event: { input: "", key }, consumed: 3 };
   }
 
   // Meta prefix: ESC + char (Alt+key)
-  if (raw.length >= 2 && raw[0] === ESCAPE && raw[1] !== "[" && raw[1] !== "O") {
+  if (ch0 === ESCAPE && offset + 1 < raw.length && raw[offset + 1] !== "[" && raw[offset + 1] !== "O") {
     const key = emptyKey();
     key.meta = true;
-    const ch = raw.slice(1);
+    const ch = raw[offset + 1]!;
     if (ch === Char.DEL || ch === Char.BS) {
       key.backspace = true;
-      results.push({ input: "", key });
-    } else {
-      results.push({ input: ch, key });
+      return { event: { input: "", key }, consumed: 2 };
     }
-    return results;
+    return { event: { input: ch, key }, consumed: 2 };
   }
 
   // Standalone escape
-  if (raw === ESCAPE) {
+  if (ch0 === ESCAPE) {
     const key = emptyKey();
     key.escape = true;
-    results.push({ input: "", key });
-    return results;
+    return { event: { input: "", key }, consumed: 1 };
   }
 
   // Control characters
-  if (raw.length === 1) {
-    const code = raw.charCodeAt(0);
-    const key = emptyKey();
+  const key = emptyKey();
 
-    if (code === Codepoint.CR || code === Codepoint.LF) {
-      key.return = true;
-      results.push({ input: "", key });
-      return results;
-    }
-    if (code === Codepoint.TAB) {
-      key.tab = true;
-      results.push({ input: "", key });
-      return results;
-    }
-    if (code === Codepoint.DEL || code === Codepoint.BS) {
-      key.backspace = true;
-      results.push({ input: "", key });
-      return results;
-    }
-    if (code >= Codepoint.CTRL_A && code <= Codepoint.CTRL_Z) {
-      key.ctrl = true;
-      results.push({ input: String.fromCharCode(code + Codepoint.CTRL_OFFSET), key });
-      return results;
-    }
+  if (code0 === Codepoint.CR || code0 === Codepoint.LF) {
+    key.return = true;
+    return { event: { input: "", key }, consumed: 1 };
+  }
+  if (code0 === Codepoint.TAB) {
+    key.tab = true;
+    return { event: { input: "", key }, consumed: 1 };
+  }
+  if (code0 === Codepoint.DEL || code0 === Codepoint.BS) {
+    key.backspace = true;
+    return { event: { input: "", key }, consumed: 1 };
+  }
+  if (code0 >= Codepoint.CTRL_A && code0 <= Codepoint.CTRL_Z) {
+    key.ctrl = true;
+    return { event: { input: String.fromCharCode(code0 + Codepoint.CTRL_OFFSET), key }, consumed: 1 };
   }
 
-  // Regular text input
-  const key = emptyKey();
-  results.push({ input: raw, key });
+  // Regular character
+  return { event: { input: ch0, key }, consumed: 1 };
+}
+
+export function parseKeyInput(data: Buffer | string): Array<{ input: string; key: KeyEvent }> {
+  const raw = typeof data === "string" ? data : data.toString("utf8");
+  const results: Array<{ input: string; key: KeyEvent }> = [];
+  let offset = 0;
+  while (offset < raw.length) {
+    const { event, consumed } = parseSingle(raw, offset);
+    results.push(event);
+    offset += consumed;
+  }
   return results;
 }
 
