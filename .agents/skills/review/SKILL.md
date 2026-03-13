@@ -1,11 +1,11 @@
 ---
 name: review
-description: Run all audit skills (style, arch, security) against the current branch diff. Use when reviewing a feature branch before merge.
+description: Run all audit skills (style, arch, docs, security) against the current branch diff. Use when reviewing a feature branch before merge.
 ---
 
 # Review
 
-Run all three audit skills against the current branch to produce a unified review.
+Run all four audit skills against the current branch to produce a unified review.
 
 ## Workflow
 
@@ -22,6 +22,7 @@ Run all three audit skills against the current branch to produce a unified revie
 4. Run each audit against the changed files, following the workflow and scope defined in each skill:
    - **Style audit** — `.agents/skills/style-audit/SKILL.md`
    - **Arch audit** — `.agents/skills/arch-audit/SKILL.md`
+   - **Docs audit** — `.agents/skills/docs-audit/SKILL.md`
    - **Security audit** — `.agents/skills/security-audit/SKILL.md`
 
 5. Produce a single unified report.
@@ -33,6 +34,9 @@ Run all three audit skills against the current branch to produce a unified revie
 
 ### Architecture
 - Findings ordered by severity per arch-audit skill.
+
+### Docs
+- Findings ordered by severity per docs-audit skill.
 
 ### Security
 - Findings ordered by severity per security-audit skill.

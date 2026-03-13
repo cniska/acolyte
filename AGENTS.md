@@ -22,7 +22,7 @@ Patterns to follow:
 - New post-generation behavior → implement `Evaluator` in `lifecycle-evaluators.ts`, add to `EVALUATORS` array
 - New tool guard → implement `ToolGuard` in `tool-guards.ts`, add to `GUARDS` array
 - New tool → add to the appropriate `*-toolkit.ts` file; all tools go through `runTool` in `tool-execution.ts`
-- Feature branch review → run `/review` skill (runs style, arch, and security audits against branch diff)
+- Feature branch review → run `/review` skill (runs style, arch, docs, and security audits against branch diff)
 
 Development:
 - Validate: `bun run verify` (lint + typecheck + test)
@@ -69,6 +69,7 @@ Development:
 - Keep commit subject lines under 72 characters.
 - Merge to main via pull request — do not merge branches directly.
 - Pull request titles follow the same Conventional Commit format as commit subjects.
+- Cut releases only for user-facing features or meaningful bug fixes, not for internal refactors, audit-skill changes, or architecture/tooling cleanup alone.
 - Keep PR summaries concise — short bullet points, no prose.
 
 ## Code
@@ -83,7 +84,7 @@ Development:
 - Keep behavior behind stable contracts so new transports/integrations are additive, not rewrites.
 - Prefer Zod schema definitions as the single source of truth for string unions and infer TS types from schemas.
 - No banner or separator comments; let code structure speak for itself.
-- Never re-export types or functions — import from the canonical source module directly.
+- Avoid re-export layers; import from the canonical source module directly unless the re-export is itself the intended boundary.
 
 ## Validation
 
@@ -108,7 +109,7 @@ Development:
 - Use `--force-with-lease` instead of `--force` when force-pushing.
 - Do not discard unrelated changes without approval.
 - If unexpected changes appear, pause and confirm before continuing.
-- Never revert commits — drop them (`git reset`) if not pushed; only revert as a last resort.
+- Avoid revert churn for local unpublished mistakes; prefer the smallest safe cleanup approach and use `revert` only as a last resort.
 
 ## Communication
 
