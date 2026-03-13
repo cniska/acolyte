@@ -6,6 +6,14 @@ Minimal workflow for external contributors.
 
 See the [Quick Start](./README.md#quick-start) for prerequisites and initial setup.
 
+After cloning, run `bun install` to install dependencies and activate the pre-push hook:
+
+```bash
+bun install
+```
+
+The hook runs `bun run verify` before every push. To format code manually: `bun run format`.
+
 ## Development loop
 
 1. Create a branch from `main`.
