@@ -9,6 +9,7 @@ function emptyKey(): KeyEvent {
     shift: false,
     ctrl: false,
     meta: false,
+    super: false,
     escape: false,
     upArrow: false,
     downArrow: false,
@@ -23,9 +24,11 @@ function emptyKey(): KeyEvent {
 
 function applyModifiers(key: KeyEvent, mod: number): void {
   if (mod >= 2) {
-    key.shift = ((mod - 1) & 1) !== 0;
-    key.meta = ((mod - 1) & 2) !== 0;
-    key.ctrl = ((mod - 1) & 4) !== 0;
+    const bits = mod - 1;
+    key.shift = (bits & 1) !== 0;
+    key.meta = (bits & 2) !== 0;
+    key.ctrl = (bits & 4) !== 0;
+    key.super = (bits & 8) !== 0;
   }
 }
 
@@ -54,9 +57,6 @@ function parseKittySequence(seq: string, key: KeyEvent): { input: string; key: K
     default: {
       if (codepoint >= 32) {
         const ch = String.fromCodePoint(codepoint);
-        if (key.ctrl && codepoint >= 97 && codepoint <= 122) {
-          return { input: ch, key };
-        }
         return { input: ch, key };
       }
       return { input: "", key };
@@ -85,7 +85,7 @@ export function parseKeyInput(data: Buffer | string): Array<{ input: string; key
       const mod = Number.parseInt(deleteModMatch[1] ?? "1", 10);
       applyModifiers(key, mod);
       key.delete = true;
-      results.push({ input: raw, key });
+      results.push({ input: "", key });
       return results;
     }
 
@@ -99,7 +99,7 @@ export function parseKeyInput(data: Buffer | string): Array<{ input: string; key
       else if (arrow === "B") key.downArrow = true;
       else if (arrow === "C") key.rightArrow = true;
       else if (arrow === "D") key.leftArrow = true;
-      results.push({ input: raw, key });
+      results.push({ input: "", key });
       return results;
     }
 
@@ -110,48 +110,48 @@ export function parseKeyInput(data: Buffer | string): Array<{ input: string; key
       applyModifiers(key, mod);
       if (homeEndModMatch[2] === "H") key.home = true;
       else key.end = true;
-      results.push({ input: raw, key });
+      results.push({ input: "", key });
       return results;
     }
 
     // Simple arrows
     if (seq === "A") {
       key.upArrow = true;
-      results.push({ input: raw, key });
+      results.push({ input: "", key });
       return results;
     }
     if (seq === "B") {
       key.downArrow = true;
-      results.push({ input: raw, key });
+      results.push({ input: "", key });
       return results;
     }
     if (seq === "C") {
       key.rightArrow = true;
-      results.push({ input: raw, key });
+      results.push({ input: "", key });
       return results;
     }
     if (seq === "D") {
       key.leftArrow = true;
-      results.push({ input: raw, key });
+      results.push({ input: "", key });
       return results;
     }
 
     // Home/End
     if (seq === "H" || seq === "1~" || seq === "7~") {
       key.home = true;
-      results.push({ input: raw, key });
+      results.push({ input: "", key });
       return results;
     }
     if (seq === "F" || seq === "4~" || seq === "8~") {
       key.end = true;
-      results.push({ input: raw, key });
+      results.push({ input: "", key });
       return results;
     }
 
     // Delete key: CSI 3 ~
     if (seq === "3~") {
       key.delete = true;
-      results.push({ input: raw, key });
+      results.push({ input: "", key });
       return results;
     }
 
@@ -159,12 +159,12 @@ export function parseKeyInput(data: Buffer | string): Array<{ input: string; key
     if (seq === "Z") {
       key.tab = true;
       key.shift = true;
-      results.push({ input: raw, key });
+      results.push({ input: "", key });
       return results;
     }
 
     // Pass through other CSI sequences
-    results.push({ input: raw, key });
+    results.push({ input: "", key });
     return results;
   }
 
@@ -178,7 +178,7 @@ export function parseKeyInput(data: Buffer | string): Array<{ input: string; key
     else if (letter === "B") key.downArrow = true;
     else if (letter === "C") key.rightArrow = true;
     else if (letter === "D") key.leftArrow = true;
-    results.push({ input: raw, key });
+    results.push({ input: "", key });
     return results;
   }
 
@@ -189,8 +189,10 @@ export function parseKeyInput(data: Buffer | string): Array<{ input: string; key
     const ch = raw.slice(1);
     if (ch === "\x7f" || ch === "\x08") {
       key.backspace = true;
+      results.push({ input: "", key });
+    } else {
+      results.push({ input: ch, key });
     }
-    results.push({ input: raw, key });
     return results;
   }
 
@@ -209,17 +211,17 @@ export function parseKeyInput(data: Buffer | string): Array<{ input: string; key
 
     if (code === 0x0d || code === 0x0a) {
       key.return = true;
-      results.push({ input: raw, key });
+      results.push({ input: "", key });
       return results;
     }
     if (code === 0x09) {
       key.tab = true;
-      results.push({ input: raw, key });
+      results.push({ input: "", key });
       return results;
     }
     if (code === 0x7f || code === 0x08) {
       key.backspace = true;
-      results.push({ input: raw, key });
+      results.push({ input: "", key });
       return results;
     }
     if (code >= 1 && code <= 26) {

@@ -14,6 +14,7 @@ export type KeyEvent = {
   shift: boolean;
   ctrl: boolean;
   meta: boolean;
+  super: boolean;
   escape: boolean;
   upArrow: boolean;
   downArrow: boolean;

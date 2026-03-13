@@ -1,64 +1,161 @@
 import { describe, expect, test } from "bun:test";
 import { resolvePromptAction } from "./prompt-keymap";
+import type { KeyEvent } from "./tui/context";
+
+function emptyKey(): KeyEvent {
+  return {
+    return: false,
+    tab: false,
+    shift: false,
+    ctrl: false,
+    meta: false,
+    super: false,
+    escape: false,
+    upArrow: false,
+    downArrow: false,
+    leftArrow: false,
+    rightArrow: false,
+    home: false,
+    end: false,
+    backspace: false,
+    delete: false,
+  };
+}
+
+function key(overrides: Partial<KeyEvent>): KeyEvent {
+  return { ...emptyKey(), ...overrides };
+}
+
+const noMeta = { hasMetaPrefix: false };
 
 describe("prompt keymap", () => {
-  test("maps submit and plain insert", () => {
-    expect(resolvePromptAction("", { return: true }, { hasMetaPrefix: false })).toEqual({ type: "submit" });
-    expect(resolvePromptAction("x", {}, { hasMetaPrefix: false })).toEqual({ type: "insert", text: "x" });
+  test("submit on enter", () => {
+    expect(resolvePromptAction("", key({ return: true }), noMeta)).toEqual({ type: "submit" });
   });
 
-  test("shift+enter inserts newline instead of submitting", () => {
-    expect(resolvePromptAction("", { return: true, shift: true }, { hasMetaPrefix: false })).toEqual({
+  test("insert plain text", () => {
+    expect(resolvePromptAction("x", emptyKey(), noMeta)).toEqual({ type: "insert", text: "x" });
+  });
+
+  test("shift+enter inserts newline", () => {
+    expect(resolvePromptAction("", key({ return: true, shift: true }), noMeta)).toEqual({
       type: "insert",
       text: "\n",
     });
   });
 
-  test("maps common word navigation and deletion sequences", () => {
-    expect(resolvePromptAction("\u001bb", {}, { hasMetaPrefix: false })).toEqual({ type: "move_word_left" });
-    expect(resolvePromptAction("\u001bf", {}, { hasMetaPrefix: false })).toEqual({ type: "move_word_right" });
-    expect(resolvePromptAction("\u001b\u007f", {}, { hasMetaPrefix: false })).toEqual({ type: "delete_word_back" });
+  test("noop for arrows, tab, ctrl+c", () => {
+    expect(resolvePromptAction("", key({ upArrow: true }), noMeta)).toEqual({ type: "noop" });
+    expect(resolvePromptAction("", key({ downArrow: true }), noMeta)).toEqual({ type: "noop" });
+    expect(resolvePromptAction("", key({ tab: true }), noMeta)).toEqual({ type: "noop" });
+    expect(resolvePromptAction("c", key({ ctrl: true }), noMeta)).toEqual({ type: "noop" });
   });
 
-  test("maps line home/end style sequences often used by cmd+arrows", () => {
-    expect(resolvePromptAction("\u001b[1;9D", {}, { hasMetaPrefix: false })).toEqual({ type: "move_home" });
-    expect(resolvePromptAction("\u001b[1;9C", {}, { hasMetaPrefix: false })).toEqual({ type: "move_end" });
-    expect(resolvePromptAction("\u001b[1;10D", {}, { hasMetaPrefix: false })).toEqual({ type: "move_home" });
-    expect(resolvePromptAction("\u001b[1;10C", {}, { hasMetaPrefix: false })).toEqual({ type: "move_end" });
-    expect(resolvePromptAction("\u001b[1;13D", {}, { hasMetaPrefix: false })).toEqual({ type: "move_home" });
-    expect(resolvePromptAction("\u001b[1;13C", {}, { hasMetaPrefix: false })).toEqual({ type: "move_end" });
-    expect(resolvePromptAction("\u001b[1;9H", {}, { hasMetaPrefix: false })).toEqual({ type: "move_home" });
-    expect(resolvePromptAction("\u001b[1;9F", {}, { hasMetaPrefix: false })).toEqual({ type: "move_end" });
-    expect(resolvePromptAction("\u001b[1;10H", {}, { hasMetaPrefix: false })).toEqual({ type: "move_home" });
-    expect(resolvePromptAction("\u001b[1;10F", {}, { hasMetaPrefix: false })).toEqual({ type: "move_end" });
-  });
-
-  test("maps meta+arrow to word navigation (ink meta = Option/Alt)", () => {
-    expect(resolvePromptAction("", { meta: true, leftArrow: true }, { hasMetaPrefix: false })).toEqual({
-      type: "move_word_left",
+  describe("home/end", () => {
+    test("home key", () => {
+      expect(resolvePromptAction("", key({ home: true }), noMeta)).toEqual({ type: "move_home" });
     });
-    expect(resolvePromptAction("", { meta: true, rightArrow: true }, { hasMetaPrefix: false })).toEqual({
-      type: "move_word_right",
+
+    test("end key", () => {
+      expect(resolvePromptAction("", key({ end: true }), noMeta)).toEqual({ type: "move_end" });
+    });
+
+    test("cmd+left → home", () => {
+      expect(resolvePromptAction("", key({ super: true, leftArrow: true }), noMeta)).toEqual({ type: "move_home" });
+    });
+
+    test("cmd+right → end", () => {
+      expect(resolvePromptAction("", key({ super: true, rightArrow: true }), noMeta)).toEqual({ type: "move_end" });
+    });
+
+    test("ctrl+a → home", () => {
+      expect(resolvePromptAction("a", key({ ctrl: true }), noMeta)).toEqual({ type: "move_home" });
+    });
+
+    test("ctrl+e → end", () => {
+      expect(resolvePromptAction("e", key({ ctrl: true }), noMeta)).toEqual({ type: "move_end" });
     });
   });
 
-  test("maps modifier CSI arrows for word navigation across terminal variants", () => {
-    expect(resolvePromptAction("\u001b[1;6D", {}, { hasMetaPrefix: false })).toEqual({ type: "move_word_left" });
-    expect(resolvePromptAction("\u001b[1;6C", {}, { hasMetaPrefix: false })).toEqual({ type: "move_word_right" });
-  });
-
-  test("maps clear-line control sequence", () => {
-    expect(resolvePromptAction("\u0015", {}, { hasMetaPrefix: false })).toEqual({ type: "clear_line" });
-    expect(resolvePromptAction("u", { ctrl: true }, { hasMetaPrefix: false })).toEqual({ type: "clear_line" });
-  });
-
-  test("maps meta+backspace/delete to delete-word-back (ink meta = Option/Alt)", () => {
-    expect(resolvePromptAction("\u007f", { meta: true, backspace: true }, { hasMetaPrefix: false })).toEqual({
-      type: "delete_word_back",
+  describe("word navigation", () => {
+    test("alt+left → word left", () => {
+      expect(resolvePromptAction("", key({ meta: true, leftArrow: true }), noMeta)).toEqual({
+        type: "move_word_left",
+      });
     });
-    // ink maps \x7f (physical Backspace) to key.delete, not key.backspace
-    expect(resolvePromptAction("", { meta: true, delete: true }, { hasMetaPrefix: false })).toEqual({
-      type: "delete_word_back",
+
+    test("alt+right → word right", () => {
+      expect(resolvePromptAction("", key({ meta: true, rightArrow: true }), noMeta)).toEqual({
+        type: "move_word_right",
+      });
+    });
+
+    test("ctrl+left → word left", () => {
+      expect(resolvePromptAction("", key({ ctrl: true, leftArrow: true }), noMeta)).toEqual({
+        type: "move_word_left",
+      });
+    });
+
+    test("ctrl+right → word right", () => {
+      expect(resolvePromptAction("", key({ ctrl: true, rightArrow: true }), noMeta)).toEqual({
+        type: "move_word_right",
+      });
+    });
+
+    test("alt+b → word left", () => {
+      expect(resolvePromptAction("b", key({ meta: true }), noMeta)).toEqual({ type: "move_word_left" });
+    });
+
+    test("alt+f → word right", () => {
+      expect(resolvePromptAction("f", key({ meta: true }), noMeta)).toEqual({ type: "move_word_right" });
+    });
+  });
+
+  describe("deletion", () => {
+    test("backspace", () => {
+      expect(resolvePromptAction("", key({ backspace: true }), noMeta)).toEqual({ type: "delete_back" });
+    });
+
+    test("delete key", () => {
+      expect(resolvePromptAction("", key({ delete: true }), noMeta)).toEqual({ type: "delete_forward" });
+    });
+
+    test("alt+backspace → delete word back", () => {
+      expect(resolvePromptAction("", key({ meta: true, backspace: true }), noMeta)).toEqual({
+        type: "delete_word_back",
+      });
+    });
+
+    test("alt+delete → delete word back", () => {
+      expect(resolvePromptAction("", key({ meta: true, delete: true }), noMeta)).toEqual({
+        type: "delete_word_back",
+      });
+    });
+
+    test("ctrl+w → delete word back", () => {
+      expect(resolvePromptAction("w", key({ ctrl: true }), noMeta)).toEqual({ type: "delete_word_back" });
+    });
+
+    test("meta prefix + backspace → delete word back", () => {
+      expect(resolvePromptAction("", key({ backspace: true }), { hasMetaPrefix: true })).toEqual({
+        type: "delete_word_back",
+      });
+    });
+  });
+
+  describe("clear line", () => {
+    test("ctrl+u", () => {
+      expect(resolvePromptAction("u", key({ ctrl: true }), noMeta)).toEqual({ type: "clear_line" });
+    });
+  });
+
+  describe("simple movement", () => {
+    test("left arrow", () => {
+      expect(resolvePromptAction("", key({ leftArrow: true }), noMeta)).toEqual({ type: "move_left" });
+    });
+
+    test("right arrow", () => {
+      expect(resolvePromptAction("", key({ rightArrow: true }), noMeta)).toEqual({ type: "move_right" });
     });
   });
 });

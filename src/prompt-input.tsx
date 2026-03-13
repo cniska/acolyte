@@ -1,6 +1,6 @@
 import type React from "react";
 import { useCallback, useRef, useState } from "react";
-import { ESCAPE_CHAR, resolvePromptAction } from "./prompt-keymap";
+import { resolvePromptAction } from "./prompt-keymap";
 import { Box, Text, useInput } from "./tui";
 
 const META_PREFIX_WINDOW_MS = 150;
@@ -107,10 +107,6 @@ export function PromptInput({
     const c = cursorRef.current;
     const now = Date.now();
     const hasMetaPrefix = metaPrefixAt.current !== null && now - metaPrefixAt.current <= META_PREFIX_WINDOW_MS;
-    if (input === ESCAPE_CHAR && !key.backspace && !key.delete) {
-      metaPrefixAt.current = now;
-      return;
-    }
     if (key.escape && !input) {
       metaPrefixAt.current = now;
       return;
