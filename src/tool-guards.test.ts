@@ -73,13 +73,20 @@ describe("redundant-verify guard", () => {
     expect(() => runGuards({ toolName: "run-command", args: { command: "bun run verify" }, session })).not.toThrow();
   });
 
-  test("blocks duplicate verify when no writes happened since last verify", () => {
+  test("blocks duplicate verify-mode command when no writes happened since previous run", () => {
     const session = createSessionContext();
     session.mode = "verify";
-    recordCall(session, "run-command", { command: "bun run verify" });
-    expect(() => runGuards({ toolName: "run-command", args: { command: "bun run verify" }, session })).toThrow(
+    recordCall(session, "run-command", { command: "npm test" });
+    expect(() => runGuards({ toolName: "run-command", args: { command: "npm test" }, session })).toThrow(
       /Duplicate run-command call detected|verify already ran this turn/,
     );
+  });
+
+  test("allows a different command in verify mode", () => {
+    const session = createSessionContext();
+    session.mode = "verify";
+    recordCall(session, "run-command", { command: "npm test" });
+    expect(() => runGuards({ toolName: "run-command", args: { command: "bun run verify" }, session })).not.toThrow();
   });
 
   test("allows verify rerun after a write", () => {

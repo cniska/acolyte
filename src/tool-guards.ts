@@ -336,21 +336,27 @@ const redundantVerifyGuard: ToolGuard = {
   id: "redundant-verify",
   description: "Block redundant verify runs when no writes happened since the last one.",
   tools: ["run-command"],
-  check({ session, report }) {
+  check({ args, session, report }) {
     if (session.mode !== "verify") return;
+    const command = typeof args.command === "string" ? args.command.trim().toLowerCase().replace(/\s+/g, " ") : "";
+    if (!command) return;
 
     const calls = scopedCallLog(session);
-    const lastVerifyRunIndex = (() => {
+    const lastMatchingVerifyRunIndex = (() => {
       for (let i = calls.length - 1; i >= 0; i -= 1) {
-        if (calls[i]?.toolName === "run-command" && calls[i]?.mode === "verify") return i;
+        const entry = calls[i];
+        if (entry?.toolName !== "run-command" || entry.mode !== "verify") continue;
+        const priorCommand =
+          typeof entry.args.command === "string" ? entry.args.command.trim().toLowerCase().replace(/\s+/g, " ") : "";
+        if (priorCommand === command) return i;
       }
       return -1;
     })();
 
-    if (lastVerifyRunIndex < 0) return;
+    if (lastMatchingVerifyRunIndex < 0) return;
 
     let wroteAfterLastVerify = false;
-    for (let i = lastVerifyRunIndex + 1; i < calls.length; i += 1) {
+    for (let i = lastMatchingVerifyRunIndex + 1; i < calls.length; i += 1) {
       const tool = calls[i]?.toolName;
       if (tool && isWriteTool(session, tool)) {
         wroteAfterLastVerify = true;

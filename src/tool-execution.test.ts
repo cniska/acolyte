@@ -46,4 +46,17 @@ describe("per-tool timeout", () => {
     const result = await guardedExecute("fast-tool", {}, session, async () => "done");
     expect(result).toBe("done");
   });
+
+  test("uses explicit timeout override when provided", async () => {
+    const session = createSessionContext();
+    session.toolTimeoutMs = 50;
+    const result = await guardedExecute(
+      "run-command",
+      { command: "npm test", timeoutMs: 300 },
+      session,
+      () => new Promise((resolve) => setTimeout(() => resolve("done"), 100)),
+      { timeoutMs: 300 },
+    );
+    expect(result).toBe("done");
+  });
 });

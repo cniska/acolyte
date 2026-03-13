@@ -42,8 +42,11 @@ export function runTool(
   toolId: string,
   args: object,
   execute: (toolCallId: string) => Promise<unknown>,
+  options?: { timeoutMs?: number },
 ): Promise<unknown> {
-  return withToolError(toolId, () => guardedExecute(toolId, args, session, () => execute(streamCallId(toolId))));
+  return withToolError(toolId, () =>
+    guardedExecute(toolId, args, session, () => execute(streamCallId(toolId)), options),
+  );
 }
 
 export async function withToolError<T>(toolId: string, task: () => Promise<T>): Promise<T> {
@@ -73,6 +76,7 @@ export async function guardedExecute<T>(
   args: object,
   session: SessionContext,
   task: () => Promise<T>,
+  options?: { timeoutMs?: number },
 ): Promise<T> {
   try {
     runGuards({ toolName: toolId, args: args as Record<string, unknown>, session });
@@ -86,11 +90,11 @@ export async function guardedExecute<T>(
   }
   const argsRecord = args as Record<string, unknown>;
   const cache = session.cache;
+  const timeoutMs = options?.timeoutMs ?? session.toolTimeoutMs;
   invariant(
-    typeof session.toolTimeoutMs === "number" && Number.isFinite(session.toolTimeoutMs) && session.toolTimeoutMs > 0,
-    "session.toolTimeoutMs must be a positive number",
+    typeof timeoutMs === "number" && Number.isFinite(timeoutMs) && timeoutMs > 0,
+    "timeoutMs must be a positive number",
   );
-  const timeoutMs = session.toolTimeoutMs;
 
   // Cache hit returns early with its own recordCall — the finally block only
   // runs on cache miss, so recordCall is never invoked twice for the same call.
