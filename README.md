@@ -17,7 +17,7 @@ See all commands: `bun run start help`
 ## Validate
 
 ```bash
-bun run verify        # format + lint + typecheck + all tests
+bun run verify        # lint + typecheck + all tests
 bun test              # all tests
 bun run test:unit     # unit tests only
 bun run test:int      # integration tests

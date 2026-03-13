@@ -10,7 +10,7 @@ Built for safe autonomous execution of bounded tasks with the developer in contr
 
 Acolyte v0 ships with these capabilities:
 
-- **Foundations** — `bun run verify` runs format, lint, typecheck, and tests; CI passes on every commit
+- **Foundations** — `bun run verify` runs lint, typecheck, and tests; CI passes on every commit
 - **Core UX** — setup, diagnostics, per-tool permissions, error recovery
 - **Execution engine** — 5-phase lifecycle (resolve → prepare → generate → evaluate → finalize) with streaming tool calls
 - **Reliability** — anti-loop guards, step budgets, actionable diagnostics, automatic verify cycles
