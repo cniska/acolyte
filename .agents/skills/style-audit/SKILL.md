@@ -24,6 +24,9 @@ Focus on:
 - module layout consistency (flat `src/`, `*-contract`, `*-http`, `*-rpc`, no unnecessary re-export layers)
 - export shape consistency: prefer direct `export const` declarations over local alias + `export { ... }` wrappers
 - import clarity: avoid aliasing imports unless it resolves a real collision or boundary distinction
+- helper signatures that should become a clearer contract object
+- repeated argument/field groups that want one named type or helper
+- raw strings/flags/codes that should become small typed values or schema-backed unions
 
 ## References
 
