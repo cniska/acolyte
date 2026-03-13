@@ -3,9 +3,16 @@ import { createErrorStats } from "./error-handling";
 import { scheduleMemoryCommit, shouldCommitMemory } from "./lifecycle";
 import type { RunContext } from "./lifecycle-contract";
 import { recoveryActionForError } from "./lifecycle-evaluate";
-import { multiMatchEditEvaluator, verifyCycle } from "./lifecycle-evaluators";
+import {
+  guardRecoveryEvaluator,
+  multiMatchEditEvaluator,
+  repeatedFailureEvaluator,
+  verifyCycle,
+} from "./lifecycle-evaluators";
+import { consumeLifecycleFeedback, createGenerationInput, createLifecycleFeedbackText } from "./lifecycle-generate";
 import { defaultLifecyclePolicy } from "./lifecycle-policy";
 import { phasePrepare } from "./lifecycle-prepare";
+import { updateRepeatedFailureState } from "./lifecycle-state";
 import { LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./tool-error-codes";
 import { createSessionContext, recordCall } from "./tool-guards";
 
@@ -24,7 +31,7 @@ function createMockContext(overrides: Partial<RunContext> = {}): RunContext {
     model: "gpt-5-mini",
     session: createSessionContext(),
     agent: {} as RunContext["agent"],
-    agentInput: "test prompt",
+    baseAgentInput: "test prompt",
     policy: defaultLifecyclePolicy,
     promptUsage: {
       promptTokens: 0,
@@ -34,6 +41,7 @@ function createMockContext(overrides: Partial<RunContext> = {}): RunContext {
       includedHistoryMessages: 0,
       totalHistoryMessages: 0,
     },
+    lifecycleState: { feedback: [], verifyOutcome: undefined, repeatedFailure: undefined },
     observedTools: new Set(),
     modelCallCount: 1,
     promptTokensAccum: 0,
@@ -75,13 +83,13 @@ describe("verifyCycle", () => {
     if (action.type === "regenerate") {
       expect(action.mode).toBe("verify");
       expect(action.keepResult).toBe(true);
-      expect(action.prompt).toContain("Task boundary:");
-      expect(action.prompt).toContain("- src/a.ts");
-      expect(action.prompt).toContain("- src/b.ts");
-      expect(action.prompt).toContain("Allowed supporting reads");
-      expect(action.prompt).toContain("- src/c.ts");
-      expect(action.prompt).toContain("- src/d.ts");
-      expect(action.prompt).not.toContain("- src/old.ts");
+      expect(action.feedback?.details).toContain("Task boundary:");
+      expect(action.feedback?.details).toContain("- src/a.ts");
+      expect(action.feedback?.details).toContain("- src/b.ts");
+      expect(action.feedback?.details).toContain("Allowed supporting reads");
+      expect(action.feedback?.details).toContain("- src/c.ts");
+      expect(action.feedback?.details).toContain("- src/d.ts");
+      expect(action.feedback?.details).not.toContain("- src/old.ts");
     }
   });
 
@@ -93,7 +101,7 @@ describe("verifyCycle", () => {
     });
     const action = verifyCycle.evaluate(ctx);
     expect(action.type).toBe("regenerate");
-    if (action.type === "regenerate") expect(action.prompt).not.toContain("Task boundary:");
+    if (action.type === "regenerate") expect(action.feedback?.details).not.toContain("Task boundary:");
   });
 
   test("uses global verify prompt when request explicitly opts into global scope", () => {
@@ -108,7 +116,7 @@ describe("verifyCycle", () => {
     });
     const action = verifyCycle.evaluate(ctx);
     expect(action.type).toBe("regenerate");
-    if (action.type === "regenerate") expect(action.prompt).not.toContain("Task boundary:");
+    if (action.type === "regenerate") expect(action.feedback?.details).not.toContain("Task boundary:");
   });
 
   test("returns done when verify already ran", () => {
@@ -146,15 +154,21 @@ describe("verifyCycle", () => {
       mode: "verify",
       initialMode: "work",
       session,
-      currentError: { message: "verify failed: missing export updatePost in post-store.ts" },
-      result: { text: "Error: missing export updatePost in post-store.ts", toolCalls: [] },
+      result: { text: "Done.", toolCalls: [] },
+      lifecycleState: {
+        feedback: [],
+        verifyOutcome: {
+          text: "Error: missing export updatePost in post-store.ts",
+          error: { message: "verify failed: missing export updatePost in post-store.ts" },
+        },
+      },
       observedTools: new Set(["scan-code"]),
     });
     const action = verifyCycle.evaluate(ctx);
     expect(action.type).toBe("regenerate");
     if (action.type === "regenerate") {
       expect(action.mode).toBe("work");
-      expect(action.prompt).toContain("missing export updatePost");
+      expect(action.feedback?.details).toContain("missing export updatePost");
     }
   });
 
@@ -171,6 +185,21 @@ describe("verifyCycle", () => {
     expect(verifyCycle.evaluate(ctx).type).toBe("done");
   });
 
+  test("ignores restored work result when verify outcome is missing", () => {
+    const session = createSessionContext();
+    session.mode = "verify";
+    recordCall(session, "run-command", { command: "bun run verify" });
+    const ctx = createMockContext({
+      mode: "verify",
+      initialMode: "work",
+      session,
+      currentError: undefined,
+      result: { text: "Done.", toolCalls: [] },
+      lifecycleState: { feedback: [], verifyOutcome: undefined },
+    });
+    expect(verifyCycle.evaluate(ctx).type).toBe("done");
+  });
+
   test("returns done for explicit no-issue verification summaries", () => {
     const session = createSessionContext();
     session.mode = "verify";
@@ -182,6 +211,137 @@ describe("verifyCycle", () => {
       result: { text: "No issues found. 0 errors.", toolCalls: [] },
     });
     expect(verifyCycle.evaluate(ctx).type).toBe("done");
+  });
+});
+
+describe("guardRecoveryEvaluator", () => {
+  test("returns regenerate when guard-blocked error has pending guard feedback", () => {
+    const ctx = createMockContext({
+      currentError: { message: "Duplicate read-file call detected", category: "guard-blocked" },
+      result: { text: "Attempted read.", toolCalls: [] },
+      lifecycleState: {
+        feedback: [
+          {
+            source: "guard",
+            mode: "work",
+            summary: "The previous read-file call already used these arguments.",
+            instruction: "Reuse the earlier result or change approach instead of repeating the same call.",
+          },
+        ],
+        verifyOutcome: undefined,
+      },
+    });
+
+    expect(guardRecoveryEvaluator.evaluate(ctx)).toEqual({ type: "regenerate" });
+  });
+
+  test("returns done when no pending guard feedback exists", () => {
+    const ctx = createMockContext({
+      currentError: { message: "Duplicate read-file call detected", category: "guard-blocked" },
+      result: { text: "Attempted read.", toolCalls: [] },
+    });
+
+    expect(guardRecoveryEvaluator.evaluate(ctx)).toEqual({ type: "done" });
+  });
+});
+
+describe("repeatedFailureEvaluator", () => {
+  test("returns regenerate when the same non-guard failure repeats", () => {
+    const ctx = createMockContext({
+      currentError: {
+        message: "run-command failed: command exited with code 1",
+        category: "other",
+        code: "E_COMMAND_FAILED",
+        tool: "run-command",
+        source: "tool-error",
+      },
+      result: { text: "Attempted fix.", toolCalls: [] },
+      lifecycleState: {
+        feedback: [],
+        verifyOutcome: undefined,
+        repeatedFailure: {
+          signature: "other:tool-error:run-command:E_COMMAND_FAILED",
+          count: 2,
+          status: "pending",
+        },
+      },
+    });
+
+    const action = repeatedFailureEvaluator.evaluate(ctx);
+    expect(action.type).toBe("regenerate");
+    if (action.type === "regenerate") {
+      expect(action.feedback?.summary).toBe("The same runtime failure has repeated.");
+      expect(action.feedback?.details).toContain("command exited with code 1");
+      expect(action.feedback?.instruction).toContain("Change approach");
+    }
+    expect(ctx.lifecycleState.repeatedFailure?.status).toBe("surfaced");
+  });
+
+  test("returns done for repeated guard-blocked failures", () => {
+    const ctx = createMockContext({
+      currentError: { message: "Duplicate read-file call detected", category: "guard-blocked" },
+      result: { text: "Attempted read.", toolCalls: [] },
+      lifecycleState: {
+        feedback: [],
+        verifyOutcome: undefined,
+        repeatedFailure: {
+          signature: "guard-blocked:tool-error:none:E_GUARD_BLOCKED",
+          count: 2,
+          status: "pending",
+        },
+      },
+    });
+
+    expect(repeatedFailureEvaluator.evaluate(ctx)).toEqual({ type: "done" });
+  });
+
+  test("returns done after the repeated failure streak was already surfaced", () => {
+    const ctx = createMockContext({
+      currentError: {
+        message: "run-command failed: command exited with code 1",
+        category: "other",
+        code: "E_COMMAND_FAILED",
+        tool: "run-command",
+        source: "tool-error",
+      },
+      result: { text: "Attempted fix.", toolCalls: [] },
+      lifecycleState: {
+        feedback: [],
+        verifyOutcome: undefined,
+        repeatedFailure: {
+          signature: "other:tool-error:run-command:E_COMMAND_FAILED",
+          count: 3,
+          status: "surfaced",
+        },
+      },
+    });
+
+    expect(repeatedFailureEvaluator.evaluate(ctx)).toEqual({ type: "done" });
+  });
+
+  test("tracks different run-command failures as different repeated-failure streaks", () => {
+    const session = createSessionContext("task_repeat");
+    recordCall(session, "run-command", { command: "bun test src/a.test.ts" });
+
+    const ctx = createMockContext({
+      taskId: "task_repeat",
+      session,
+      currentError: {
+        message: "run-command failed: command exited with code 1",
+        category: "other",
+        code: "E_COMMAND_FAILED",
+        tool: "run-command",
+        source: "tool-error",
+      },
+    });
+
+    updateRepeatedFailureState(ctx);
+    expect(ctx.lifecycleState.repeatedFailure?.count).toBe(1);
+
+    recordCall(session, "run-command", { command: "bun test src/b.test.ts" });
+    updateRepeatedFailureState(ctx);
+    expect(ctx.lifecycleState.repeatedFailure?.count).toBe(1);
+    expect(ctx.lifecycleState.repeatedFailure?.signature).toContain("src/b.test.ts");
   });
 });
 
@@ -201,9 +361,9 @@ describe("multiMatchEditEvaluator", () => {
     const action = multiMatchEditEvaluator.evaluate(ctx);
     expect(action.type).toBe("regenerate");
     if (action.type === "regenerate") {
-      expect(action.prompt).toContain("next tool call must be edit-code");
-      expect(action.prompt).toContain("Use path 'src/priority.ts' for edit-code");
-      expect(action.prompt).toContain("do not use '.' or directory paths");
+      expect(action.feedback?.instruction).toContain("next tool call must be edit-code");
+      expect(action.feedback?.instruction).toContain("Use path 'src/priority.ts' for edit-code");
+      expect(action.feedback?.instruction).toContain("do not use '.' or directory paths");
     }
   });
 
@@ -218,7 +378,9 @@ describe("multiMatchEditEvaluator", () => {
     });
     const action = multiMatchEditEvaluator.evaluate(ctx);
     expect(action.type).toBe("regenerate");
-    if (action.type === "regenerate") expect(action.prompt).toContain("Use a concrete file path for edit-code");
+    if (action.type === "regenerate") {
+      expect(action.feedback?.instruction).toContain("Use a concrete file path for edit-code");
+    }
   });
 
   test("returns done when edit-code was already used", () => {
@@ -408,5 +570,104 @@ describe("phasePrepare", () => {
     });
     expect(prepared.session.toolTimeoutMs).toBe(1_234);
     expect(prepared.session.flags.consecutiveGuardBlockLimit).toBe(7);
+  });
+});
+
+describe("createGenerationInput", () => {
+  test("returns base input when there is no feedback", () => {
+    const input = createGenerationInput({
+      baseAgentInput: "USER: fix it",
+      mode: "work",
+      lifecycleState: { feedback: [] },
+    });
+    expect(input).toBe("USER: fix it");
+  });
+
+  test("appends only active-mode feedback in order", () => {
+    const input = createGenerationInput({
+      baseAgentInput: "USER: fix it",
+      mode: "work",
+      lifecycleState: {
+        feedback: [
+          { source: "verify", mode: "verify", summary: "Run verification.", details: "Task boundary:\n- src/a.ts" },
+          { source: "lint", mode: "work", summary: "Lint errors detected" },
+          { source: "multi-match", mode: "work", summary: "Use edit-code next" },
+        ],
+      },
+    });
+    expect(input).toContain("USER: fix it");
+    expect(input).toContain("Lifecycle feedback (lint)");
+    expect(input).toContain("Lint errors detected");
+    expect(input).toContain("Lifecycle feedback (multi-match)");
+    expect(input).toContain("Use edit-code next");
+    expect(input).not.toContain("Task boundary:\n- src/a.ts");
+  });
+});
+
+describe("createLifecycleFeedbackText", () => {
+  test("renders summary, details, and instruction in a single lifecycle-owned format", () => {
+    const text = createLifecycleFeedbackText({
+      source: "lint",
+      mode: "work",
+      summary: "Lint errors detected in files you edited.",
+      details: "src/a.ts:1:1 error unexpected any",
+      instruction: "Fix the issues above, then stop.",
+    });
+
+    expect(text).toContain("SYSTEM: Lifecycle feedback (lint):");
+    expect(text).toContain("Lint errors detected in files you edited.");
+    expect(text).toContain("src/a.ts:1:1 error unexpected any");
+    expect(text).toContain("Fix the issues above, then stop.");
+  });
+});
+
+describe("consumeLifecycleFeedback", () => {
+  test("returns and clears pending feedback for the active mode only", () => {
+    const state = {
+      feedback: [
+        {
+          source: "verify" as const,
+          mode: "verify" as const,
+          summary: "Run verification.",
+          details: "Task boundary:\n- src/a.ts",
+        },
+        { source: "lint" as const, mode: "work" as const, summary: "Lint errors detected" },
+        { source: "multi-match" as const, mode: "work" as const, summary: "Use edit-code next" },
+      ],
+    };
+
+    const consumed = consumeLifecycleFeedback(state, "work");
+
+    expect(consumed).toEqual([
+      { source: "lint", mode: "work", summary: "Lint errors detected" },
+      { source: "multi-match", mode: "work", summary: "Use edit-code next" },
+    ]);
+    expect(state.feedback).toEqual([
+      { source: "verify", mode: "verify", summary: "Run verification.", details: "Task boundary:\n- src/a.ts" },
+    ]);
+  });
+
+  test("does not leak consumed feedback into later prompt creation", () => {
+    const state = {
+      feedback: [{ source: "lint" as const, mode: "work" as const, summary: "Lint errors detected" }],
+    };
+
+    expect(
+      createGenerationInput({
+        baseAgentInput: "USER: fix it",
+        mode: "work",
+        lifecycleState: state,
+      }),
+    ).toContain("Lint errors detected");
+
+    consumeLifecycleFeedback(state, "work");
+
+    expect(
+      createGenerationInput({
+        baseAgentInput: "USER: fix it",
+        mode: "work",
+        lifecycleState: state,
+      }),
+    ).toBe("USER: fix it");
   });
 });

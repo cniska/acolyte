@@ -13,7 +13,12 @@ import type { ToolCache } from "./tool-contract";
 const DEFAULT_CYCLE_STEP_LIMIT = 80;
 const DEFAULT_TOTAL_STEP_LIMIT = 200;
 
-export type GuardEvent = { guardId: string; toolName: string; action: "blocked" | "flag_set"; detail?: string };
+export type GuardEvent = {
+  guardId: string;
+  toolName: string;
+  action: "blocked" | "flag_set";
+  detail?: string;
+};
 
 export type ToolCallRecord = {
   toolName: string;

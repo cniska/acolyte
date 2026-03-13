@@ -86,13 +86,38 @@ export type PhasePrepareInput = {
 export type PhasePrepareResult = {
   session: SessionContext;
   tools: Toolset;
-  agentInput: string;
+  baseAgentInput: string;
   promptUsage: PromptUsage;
 };
 export type GenerateOptions = { cycleLimit?: number; timeoutMs: number };
 export type SavedRegenerationState = {
   result: GenerateResult | undefined;
   currentError: LifecycleError | undefined;
+};
+
+export type VerifyOutcome = {
+  text: string;
+  error?: LifecycleError;
+};
+
+export type FeedbackSource = "guard" | "lint" | "verify" | "multi-match" | "repeated-failure";
+
+export type LifecycleFeedback = {
+  source: FeedbackSource;
+  mode: AgentMode;
+  summary: string;
+  details?: string;
+  instruction?: string;
+};
+
+export type LifecycleState = {
+  feedback: LifecycleFeedback[];
+  verifyOutcome?: VerifyOutcome;
+  repeatedFailure?: {
+    signature: string;
+    count: number;
+    status: "pending" | "surfaced";
+  };
 };
 
 export type LifecycleInput = {
@@ -116,9 +141,10 @@ export type RunContext = {
   readonly initialMode: AgentMode;
   readonly tools: Toolset;
   readonly session: SessionContext;
-  readonly agentInput: string;
+  readonly baseAgentInput: string;
   readonly policy: LifecyclePolicy;
   readonly promptUsage: PromptUsage;
+  lifecycleState: LifecycleState;
   model: string;
   agent: Agent;
   agentForMode: AgentMode;
@@ -146,7 +172,5 @@ type GuardStats = { blocked: number; flagSet: number };
 export function guardStatsFromSession(session: SessionContext): GuardStats {
   return { blocked: session.flags.guardStats?.blocked ?? 0, flagSet: session.flags.guardStats?.flagSet ?? 0 };
 }
-
-export { haveChangesBeenVerified, scopedCallLog as taskScopedCallLog } from "./tool-guards";
 
 export type LifecycleResult = ChatResponse;

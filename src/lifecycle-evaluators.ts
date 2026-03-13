@@ -1,23 +1,18 @@
 import type { AgentMode } from "./agent-contract";
 import { createModeInstructions } from "./agent-instructions";
 import type { VerifyScope } from "./api";
-import {
-  haveChangesBeenVerified,
-  type LifecycleError,
-  type LifecycleEventName,
-  taskScopedCallLog,
-} from "./lifecycle-contract";
+import type { LifecycleError, LifecycleEventName, LifecycleFeedback, VerifyOutcome } from "./lifecycle-contract";
 import type { LifecyclePolicy } from "./lifecycle-policy";
 import { lintFiles } from "./lint-reflection";
 import { extractReadPaths } from "./tool-arg-paths";
-import type { SessionContext } from "./tool-guards";
+import { haveChangesBeenVerified, type SessionContext, scopedCallLog } from "./tool-guards";
 import { WRITE_TOOL_SET, WRITE_TOOLS } from "./tool-registry";
 
 export type EvalAction =
   | { type: "done" }
   | {
       type: "regenerate";
-      prompt: string;
+      feedback?: LifecycleFeedback;
       mode?: AgentMode;
       cycleLimit?: number;
       keepResult?: boolean;
@@ -27,7 +22,6 @@ export type EvaluatorContext = {
   result?: { text: string };
   observedTools: Set<string>;
   debug: (event: LifecycleEventName, fields?: Record<string, unknown>) => void;
-  agentInput: string;
   policy: LifecyclePolicy;
   initialMode: AgentMode;
   mode: AgentMode;
@@ -36,6 +30,11 @@ export type EvaluatorContext = {
   workspace: string | undefined;
   request: { message: string; verifyScope?: VerifyScope };
   sawEditFileMultiMatchError: boolean;
+  lifecycleState: {
+    feedback: LifecycleFeedback[];
+    verifyOutcome?: VerifyOutcome;
+    repeatedFailure?: { signature: string; count: number; status: "pending" | "surfaced" };
+  };
   currentError?: LifecycleError;
 };
 
@@ -45,7 +44,7 @@ export type Evaluator = {
 };
 
 function findLastEditFilePath(ctx: EvaluatorContext): string | undefined {
-  const callLog = taskScopedCallLog(ctx.session, ctx.taskId);
+  const callLog = scopedCallLog(ctx.session, ctx.taskId);
   for (let i = callLog.length - 1; i >= 0; i -= 1) {
     const entry = callLog[i];
     if (entry?.toolName !== "edit-file") continue;
@@ -57,7 +56,7 @@ function findLastEditFilePath(ctx: EvaluatorContext): string | undefined {
 
 function writePathsForCurrentTask(ctx: EvaluatorContext): string[] {
   const out = new Set<string>();
-  for (const entry of taskScopedCallLog(ctx.session, ctx.taskId)) {
+  for (const entry of scopedCallLog(ctx.session, ctx.taskId)) {
     if (!WRITE_TOOL_SET.has(entry.toolName)) continue;
     const path = entry.args?.path;
     if (typeof path !== "string") continue;
@@ -70,7 +69,7 @@ function writePathsForCurrentTask(ctx: EvaluatorContext): string[] {
 
 function readPathsForCurrentTask(ctx: EvaluatorContext): string[] {
   const out = new Set<string>();
-  for (const entry of taskScopedCallLog(ctx.session, ctx.taskId)) {
+  for (const entry of scopedCallLog(ctx.session, ctx.taskId)) {
     if (entry.toolName === "read-file") {
       for (const key of extractReadPaths(entry.args)) out.add(key);
       continue;
@@ -123,14 +122,58 @@ export const lintEvaluator: Evaluator = {
     ctx.debug("lifecycle.eval.lint", { files: paths.length });
     return {
       type: "regenerate",
-      prompt: [
-        ctx.agentInput,
-        "",
-        "Lint errors detected in files you edited:",
-        result.output,
-        "",
-        "If the project has an auto-fix command, run it first. Otherwise fix the errors manually, then stop.",
-      ].join("\n"),
+      feedback: {
+        source: "lint",
+        mode: "work",
+        summary: "Lint errors detected in files you edited.",
+        details: result.output,
+        instruction: "Fix the issues above, then stop.",
+      },
+    };
+  },
+};
+
+export const guardRecoveryEvaluator: Evaluator = {
+  id: "guard-recovery",
+  evaluate(ctx) {
+    if (!ctx.result) return { type: "done" };
+    if (ctx.currentError?.category !== "guard-blocked") return { type: "done" };
+    const hasPendingFeedback = ctx.lifecycleState.feedback.some(
+      (feedback) => feedback.source === "guard" && feedback.mode === ctx.mode,
+    );
+    if (!hasPendingFeedback) return { type: "done" };
+    ctx.debug("lifecycle.eval.guard_recovery", { mode: ctx.mode, error: ctx.currentError.message });
+    return { type: "regenerate" };
+  },
+};
+
+export const repeatedFailureEvaluator: Evaluator = {
+  id: "repeated-failure",
+  evaluate(ctx) {
+    const repeatedFailure = ctx.lifecycleState.repeatedFailure;
+    if (!ctx.result || !ctx.currentError || !repeatedFailure) return { type: "done" };
+    if (ctx.currentError.category === "guard-blocked") return { type: "done" };
+    if (repeatedFailure.count < 2) return { type: "done" };
+    if (repeatedFailure.status === "surfaced") return { type: "done" };
+
+    repeatedFailure.status = "surfaced";
+    ctx.debug("lifecycle.eval.repeated_failure", {
+      signature: repeatedFailure.signature,
+      count: repeatedFailure.count,
+      code: ctx.currentError.code ?? null,
+      category: ctx.currentError.category ?? null,
+      tool: ctx.currentError.tool ?? null,
+    });
+
+    return {
+      type: "regenerate",
+      feedback: {
+        source: "repeated-failure",
+        mode: ctx.mode,
+        summary: "The same runtime failure has repeated.",
+        details: ctx.currentError.message,
+        instruction: "Do not retry the same failing move. Change approach before continuing.",
+      },
     };
   },
 };
@@ -146,7 +189,12 @@ export const verifyCycle: Evaluator = {
       if (ctx.initialMode === "work" && usedWriteTools && !haveChangesBeenVerified(ctx.session, ctx.taskId)) {
         return {
           type: "regenerate",
-          prompt: scopedVerifyPrompt(ctx),
+          feedback: {
+            source: "verify",
+            mode: "verify",
+            summary: "Run verification for the current task scope.",
+            details: scopedVerifyPrompt(ctx),
+          },
           mode: "verify",
           cycleLimit: ctx.policy.verifyMaxSteps,
           keepResult: true,
@@ -155,13 +203,19 @@ export const verifyCycle: Evaluator = {
       return { type: "done" };
     }
 
-    // Verify → Work: return to work only when verify found issues (currentError set).
-    // If verification passed or was never marked, we are done.
-    if (!ctx.currentError) return { type: "done" };
-    ctx.debug("lifecycle.eval.verify_failure", { text_chars: ctx.result.text.length });
+    // Verify → Work: use the verifier's structured outcome, not the restored work-mode result.
+    const verifyOutcome = ctx.lifecycleState.verifyOutcome;
+    if (!verifyOutcome?.error) return { type: "done" };
+    ctx.debug("lifecycle.eval.verify_failure", { text_chars: verifyOutcome.text.length });
     return {
       type: "regenerate",
-      prompt: `${ctx.agentInput}\n\nVerification found issues:\n${ctx.result.text}\n\nFix the issues above, then stop.`,
+      feedback: {
+        source: "verify",
+        mode: "work",
+        summary: "Verification found issues.",
+        details: verifyOutcome.text,
+        instruction: "Fix the issues above, then stop.",
+      },
       mode: "work",
     };
   },
@@ -183,15 +237,18 @@ export const multiMatchEditEvaluator: Evaluator = {
     });
     return {
       type: "regenerate",
-      prompt:
-        `${ctx.agentInput}\n\n` +
-        "Your previous edit-file call matched multiple locations. " +
-        "For this task, your next tool call must be edit-code (not edit-file). " +
-        (targetPath
-          ? `Use path '${targetPath}' for edit-code and do not use '.' or directory paths. `
-          : "Use a concrete file path for edit-code and do not use '.' or directory paths. ") +
-        "Do not run additional find/search/read calls unless edit-code fails. " +
-        "After applying edit-code changes, run verify.",
+      feedback: {
+        source: "multi-match",
+        mode: "work",
+        summary: "Your previous edit-file call matched multiple locations.",
+        instruction:
+          "For this task, your next tool call must be edit-code (not edit-file). " +
+          (targetPath
+            ? `Use path '${targetPath}' for edit-code and do not use '.' or directory paths. `
+            : "Use a concrete file path for edit-code and do not use '.' or directory paths. ") +
+          "Do not run additional find/search/read calls unless edit-code fails. " +
+          "After applying edit-code changes, run verify.",
+      },
     };
   },
 };

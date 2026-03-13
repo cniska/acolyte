@@ -1,11 +1,25 @@
 import { type RecoveryAction, recoveryActionForError as resolveRecoveryAction } from "./error-handling";
 import { t } from "./i18n";
 import type { LifecycleInput, RunContext, SavedRegenerationState } from "./lifecycle-contract";
-import { type Evaluator, lintEvaluator, multiMatchEditEvaluator, verifyCycle } from "./lifecycle-evaluators";
+import {
+  type Evaluator,
+  guardRecoveryEvaluator,
+  lintEvaluator,
+  multiMatchEditEvaluator,
+  repeatedFailureEvaluator,
+  verifyCycle,
+} from "./lifecycle-evaluators";
 import { phaseGenerate, setMode, shouldYieldNow } from "./lifecycle-generate";
 import { defaultLifecyclePolicy, type LifecyclePolicy } from "./lifecycle-policy";
+import { clearVerifyOutcomeForFeedback, updateRepeatedFailureState } from "./lifecycle-state";
 
-const EVALUATORS: Evaluator[] = [multiMatchEditEvaluator, lintEvaluator, verifyCycle];
+const EVALUATORS: Evaluator[] = [
+  guardRecoveryEvaluator,
+  multiMatchEditEvaluator,
+  lintEvaluator,
+  verifyCycle,
+  repeatedFailureEvaluator,
+];
 
 function snapshotState(ctx: RunContext): SavedRegenerationState {
   return {
@@ -29,6 +43,7 @@ export function recoveryActionForError(
 export async function phaseEvaluate(ctx: RunContext, shouldYield: LifecycleInput["shouldYield"]) {
   while (ctx.result) {
     if (shouldYieldNow(ctx, shouldYield)) break;
+    updateRepeatedFailureState(ctx);
 
     if (
       recoveryActionForError({
@@ -82,14 +97,25 @@ export async function phaseEvaluate(ctx: RunContext, shouldYield: LifecycleInput
         mode: ctx.mode,
         cycle_limit: action.cycleLimit ?? ctx.policy.initialMaxSteps,
         keep_result: Boolean(action.keepResult),
+        feedback_source: action.feedback?.source ?? null,
         regeneration_count: ctx.regenerationCount,
       });
 
-      await phaseGenerate(ctx, action.prompt, {
+      clearVerifyOutcomeForFeedback(ctx, action.feedback?.source);
+      if (action.feedback) ctx.lifecycleState.feedback.push(action.feedback);
+
+      await phaseGenerate(ctx, {
         cycleLimit: action.cycleLimit ?? ctx.policy.initialMaxSteps,
         timeoutMs: ctx.policy.stepTimeoutMs,
       });
       if (shouldYieldNow(ctx, shouldYield)) break;
+
+      if (saved && ctx.mode === "verify") {
+        ctx.lifecycleState.verifyOutcome = {
+          text: ctx.result?.text ?? "",
+          error: ctx.currentError,
+        };
+      }
 
       if (saved) restoreState(ctx, saved);
       regenerated = true;

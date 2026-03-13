@@ -14,6 +14,7 @@ Focus on:
 - factory naming consistency (`create*` for factory functions; avoid `build*`/`make*` for factories)
 - switch exhaustiveness (`default` + `unreachable` when applicable)
 - assert patterns (`invariant` for impossible states vs user-facing errors)
+- state modeling clarity: prefer explicit status/state fields over ambiguous boolean flags when values represent lifecycle or workflow phases
 - table-driven/rule-driven structure where the codebase already uses it
 - dispatch shape: prefer data-driven lookups/tables over long control-flow chains where behavior is mapping-like
 - control flow shape: prefer guard clauses and early returns over nested `if/else` chains
@@ -22,6 +23,10 @@ Focus on:
 - error classification consistency: prefer structured `kind` contracts over message regex heuristics
 - module layout consistency (flat `src/`, `*-contract`, `*-http`, `*-rpc`, no unnecessary re-export layers)
 - export shape consistency: prefer direct `export const` declarations over local alias + `export { ... }` wrappers
+- import clarity: avoid aliasing imports unless it resolves a real collision or boundary distinction
+- helper signatures that should become a clearer contract object
+- repeated argument/field groups that want one named type or helper
+- raw strings/flags/codes that should become small typed values or schema-backed unions
 
 ## References
 
@@ -60,4 +65,5 @@ Then inspect relevant files for the feature under review.
 - Enforcing generic style-guide dogma over local conventions.
 - Broad rewrites over minimal diffs.
 - Speculative abstractions.
+- Boolean flags that hide richer state transitions better modeled as explicit status enums/unions.
 - Message-text parsing as primary control flow when a typed contract can be enforced.

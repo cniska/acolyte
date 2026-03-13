@@ -9,6 +9,7 @@ Every concept below is modeled as an explicit entity with typed contracts, its o
 - **Sessions** — persistent conversation context with history and state
 - **Tasks** — state-machined units of work with stable IDs and per-task scoping
 - **Lifecycle phases** — resolve, prepare, generate, evaluate, finalize as separate modules
+- **Lifecycle state** — task-scoped internal retry/support state owned by the lifecycle
 - **Modes** — explicit operating behaviors (work, verify) with per-mode model routing
 - **Tools** — typed definitions with categories, permissions, schemas, and output contracts
 - **Guards** — behavioral checks that run before every tool call
@@ -77,10 +78,12 @@ resolve →prepare →generate →evaluate →finalize
 - **resolve:** pick mode and model (sync, not a full phase).
 - **prepare:** build inputs, context, and tools.
 - **generate:** run model + tool calls.
-- **evaluate:** decide accept/retry/regenerate (bounded).
+- **evaluate:** decide accept/retry/regenerate (bounded) and update task-scoped lifecycle state.
 - **finalize:** persist outputs and emit final response.
 
 - **regeneration:** evaluators may request regeneration, bounded by caps.
+- **lifecycle state:** regeneration uses internal task-scoped pending feedback/verify state; this state is not persisted to session or memory.
+- **host/model boundary:** lifecycle state supports retries with concrete runtime outcomes, while the model remains responsible for deciding how to complete the task.
 - **scheduling:** yield checks happen between lifecycle decisions, never mid-step.
 - **task metrics:** evaluator and summary metrics are scoped by `task_id`.
 - **details:** see [Lifecycle](./lifecycle.md).

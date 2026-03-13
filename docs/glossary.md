@@ -22,6 +22,8 @@ Naming conventions and core terms used across Acolyte code and docs.
 - **Evaluator**: post-generation rule that accepts or requests regeneration.
 - **Guard**: pre-tool execution rule that may block calls (step budget, file churn, duplicate call, redundant search/find/verify).
 - **Lifecycle Policy**: bounded execution controls for lifecycle behavior (for example, timeouts and regeneration caps).
+- **Lifecycle Feedback**: task-scoped runtime feedback emitted by evaluators or selected guard outcomes and consumed by the next matching lifecycle attempt.
+- **Lifecycle State**: internal task-scoped lifecycle runtime state used to carry feedback, verify outcomes, and repeated-failure streaks between attempts.
 - **Memory Engine**: top-level memory capability that maintains continuity across turns.
 - **Memory Pipeline**: internal staged flow inside the Memory Engine (ingest → normalize → select → inject → commit).
 - **Memory Source**: pluggable provider that contributes memory entries and optional commit behavior (`stored`, `distill_project`, `distill_user`, `distill_session`).
@@ -30,6 +32,7 @@ Naming conventions and core terms used across Acolyte code and docs.
 - **Mode**: explicit operating behavior profile for a request (`work`, `verify`).
 - **Observation**: distill record tier capturing round-level facts.
 - **Provider**: model backend selected by the active model for a request (`openai`, `anthropic`, `gemini`, or `openai-compatible`), not “all configured providers”.
+- **Base Agent Input**: immutable prompt input created during `prepare` and used as the base for each generation attempt.
 - **Record**: persisted entity object stored by a persistence backend.
 - **Reflection**: distill record tier consolidating cross-round facts.
 - **Registry**: composition layer that wires implementations into an agent-facing surface under contracts (for example, tool registry, memory registry).

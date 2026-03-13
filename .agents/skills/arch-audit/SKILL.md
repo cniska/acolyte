@@ -34,6 +34,9 @@ Other areas:
 - error-model consistency (`AppError`/coded errors, stable searchable codes, clear UX messages)
 - file cohesion and split hygiene (flag oversized/multi-responsibility files; prefer small focused modules)
 - SRP violations: functions/modules that mix concerns (e.g. persistence + display, mutation + rendering)
+- pass-through layers that add no policy, invariants, or boundary value
+- extension seams or abstractions with no current product use
+- changes that require touching too many unrelated modules for one feature
 
 ## References
 

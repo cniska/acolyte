@@ -3,6 +3,7 @@ import type { LifecycleEventName, LifecycleInput, RunContext, ToolOutputEvent } 
 import { phaseEvaluate } from "./lifecycle-evaluate";
 import { phaseFinalize } from "./lifecycle-finalize";
 import { createModeAgent, phaseGenerate, shouldYieldNow } from "./lifecycle-generate";
+import { createLifecycleFeedbackForGuard } from "./lifecycle-guard-feedback";
 import { resolveLifecyclePolicy } from "./lifecycle-policy";
 import { phasePrepare } from "./lifecycle-prepare";
 import { resolveInitialMode } from "./lifecycle-resolve";
@@ -60,6 +61,8 @@ function createRunContext(
     policy: RunContext["policy"];
   },
 ): RunContext {
+  const session = params.prepared.session;
+  const previousOnGuard = session.onGuard;
   const agent = createModeAgent({
     soulPrompt: input.soulPrompt,
     mode: params.initialMode,
@@ -68,7 +71,7 @@ function createRunContext(
     tools: params.prepared.tools,
   });
 
-  return {
+  const ctx: RunContext = {
     request: input.request,
     workspace: input.workspace,
     taskId: input.taskId,
@@ -80,14 +83,19 @@ function createRunContext(
     mode: params.initialMode,
     agentForMode: params.initialMode,
     model: params.model,
-    session: Object.assign(params.prepared.session, {
+    session: Object.assign(session, {
       mode: params.initialMode,
       onDebug: (event: `lifecycle.${string}`, data: Record<string, unknown>) => params.debug(event, data),
     }),
     agent,
-    agentInput: params.prepared.agentInput,
+    baseAgentInput: params.prepared.baseAgentInput,
     policy: params.policy,
     promptUsage: params.prepared.promptUsage,
+    lifecycleState: {
+      feedback: [],
+      verifyOutcome: undefined,
+      repeatedFailure: undefined,
+    },
     observedTools: new Set(),
     modelCallCount: 0,
     promptTokensAccum: 0,
@@ -103,6 +111,15 @@ function createRunContext(
     toolCallStartedAt: new Map(),
     toolOutputHandler: null,
   };
+
+  session.onGuard = (event) => {
+    previousOnGuard?.(event);
+    const feedback = createLifecycleFeedbackForGuard(event, ctx.mode);
+    if (!feedback) return;
+    ctx.lifecycleState.feedback.push(feedback);
+  };
+
+  return ctx;
 }
 
 function attachToolOutputHandler(ctx: RunContext) {
@@ -168,7 +185,7 @@ export async function runLifecycle(input: LifecycleInput) {
   if (ctx.promptUsage.activeSkillName) {
     emit({ type: "status", message: `skill:${ctx.promptUsage.activeSkillName}` });
   }
-  await phaseGenerate(ctx, ctx.agentInput, {
+  await phaseGenerate(ctx, {
     cycleLimit: policy.initialMaxSteps,
     timeoutMs: policy.stepTimeoutMs,
   });

@@ -14,7 +14,14 @@ import {
   isEditFileMultiMatchSignal,
   parseErrorInfo,
 } from "./error-handling";
-import type { GenerateOptions, GenerateResult, RunContext, StreamChunk } from "./lifecycle-contract";
+import type {
+  GenerateOptions,
+  GenerateResult,
+  LifecycleFeedback,
+  LifecycleState,
+  RunContext,
+  StreamChunk,
+} from "./lifecycle-contract";
 import { resolveModeModel } from "./lifecycle-resolve";
 import type { StreamError } from "./stream-error";
 import type { ToolDefinition } from "./tool-contract";
@@ -139,12 +146,43 @@ function ensureAgentForMode(ctx: RunContext): void {
   });
 }
 
-export async function phaseGenerate(ctx: RunContext, prompt: string, opts: GenerateOptions): Promise<void> {
+export function createLifecycleFeedbackText(feedback: LifecycleFeedback): string {
+  const lines = [`SYSTEM: Lifecycle feedback (${feedback.source}):`, feedback.summary];
+  if (feedback.details) lines.push("", feedback.details);
+  if (feedback.instruction) lines.push("", feedback.instruction);
+  return lines.join("\n");
+}
+
+function createGenerationInputFromFeedback(baseAgentInput: string, activeFeedback: LifecycleFeedback[]): string {
+  if (activeFeedback.length === 0) return baseAgentInput;
+  return [baseAgentInput, ...activeFeedback.map(createLifecycleFeedbackText)].join("\n\n");
+}
+
+export function consumeLifecycleFeedback(
+  state: Pick<LifecycleState, "feedback">,
+  mode: RunContext["mode"],
+): LifecycleFeedback[] {
+  const activeFeedback = state.feedback.filter((feedback) => feedback.mode === mode);
+  if (activeFeedback.length === 0) return [];
+  state.feedback = state.feedback.filter((feedback) => feedback.mode !== mode);
+  return activeFeedback;
+}
+
+export function createGenerationInput(
+  ctx: Pick<RunContext, "baseAgentInput" | "mode"> & { lifecycleState: Pick<LifecycleState, "feedback"> },
+): string {
+  const activeFeedback = ctx.lifecycleState.feedback.filter((feedback) => feedback.mode === ctx.mode);
+  return createGenerationInputFromFeedback(ctx.baseAgentInput, activeFeedback);
+}
+
+export async function phaseGenerate(ctx: RunContext, opts: GenerateOptions): Promise<void> {
   ctx.currentError = undefined;
   ctx.sawEditFileMultiMatchError = false;
   ensureAgentForMode(ctx);
   resetCycleStepCount(ctx.session, opts.cycleLimit);
   ctx.generationAttempt += 1;
+  const activeFeedback = consumeLifecycleFeedback(ctx.lifecycleState, ctx.mode);
+  const prompt = createGenerationInputFromFeedback(ctx.baseAgentInput, activeFeedback);
   ctx.emit({ type: "status", message: `${agentModes[ctx.mode].statusText} (${ctx.model})` });
   ctx.emit({
     type: "usage",

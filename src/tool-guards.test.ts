@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { hashResultValue } from "./tool-execution";
-import { createSessionContext, recordCall, resetCycleStepCount, runGuards } from "./tool-guards";
+import { createSessionContext, type GuardEvent, recordCall, resetCycleStepCount, runGuards } from "./tool-guards";
 
 describe("guard events", () => {
   test("emits GuardEvent payload when a guard blocks", () => {
-    const events: Array<{ guardId: string; toolName: string; action: string; detail?: string }> = [];
+    const events: GuardEvent[] = [];
     const session = createSessionContext();
     session.onGuard = (event) => events.push(event);
 
