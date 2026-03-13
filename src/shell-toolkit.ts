@@ -38,84 +38,95 @@ function createRunCommandTool(input: ToolkitInput) {
       output: z.string(),
     }),
     execute: async (toolInput) => {
-      return runTool(session, "run-command", toolInput, async (toolCallId) => {
-        onOutput({
-          toolName: "run-command",
-          content: { kind: "tool-header", label: t("tool.label.run"), detail: compactDetail(toolInput.command) },
-          toolCallId,
-        });
-        const headRows = 2;
-        const tailRows = 2;
-        const streamed: Array<{ stream: "stdout" | "stderr"; text: string }> = [];
-        let stdoutBuffer = "";
-        let stderrBuffer = "";
-        const recordLine = (stream: "stdout" | "stderr", text: string): void => {
-          streamed.push({ stream, text });
-        };
-        const flushBufferLines = (stream: "stdout" | "stderr"): void => {
-          const source = stream === "stdout" ? stdoutBuffer : stderrBuffer;
-          let remaining = source;
-          while (true) {
-            const newlineIndex = remaining.indexOf("\n");
-            if (newlineIndex === -1) break;
-            const line = remaining.slice(0, newlineIndex).trimEnd();
-            remaining = remaining.slice(newlineIndex + 1);
-            if (line.length > 0) recordLine(stream, line);
-          }
-          if (stream === "stdout") {
-            stdoutBuffer = remaining;
-          } else {
-            stderrBuffer = remaining;
-          }
-        };
-        const rawResult = await runShellCommand(
-          workspace,
-          toolInput.command,
-          toolInput.timeoutMs ?? 60_000,
-          ({ stream, text }) => {
-            if (stream === "stdout") {
-              stdoutBuffer += text;
-            } else {
-              stderrBuffer += text;
+      return runTool(
+        session,
+        "run-command",
+        toolInput,
+        async (toolCallId) => {
+          onOutput({
+            toolName: "run-command",
+            content: { kind: "tool-header", label: t("tool.label.run"), detail: compactDetail(toolInput.command) },
+            toolCallId,
+          });
+          const headRows = 2;
+          const tailRows = 2;
+          const streamed: Array<{ stream: "stdout" | "stderr"; text: string }> = [];
+          let stdoutBuffer = "";
+          let stderrBuffer = "";
+          const recordLine = (stream: "stdout" | "stderr", text: string): void => {
+            streamed.push({ stream, text });
+          };
+          const flushBufferLines = (stream: "stdout" | "stderr"): void => {
+            const source = stream === "stdout" ? stdoutBuffer : stderrBuffer;
+            let remaining = source;
+            while (true) {
+              const newlineIndex = remaining.indexOf("\n");
+              if (newlineIndex === -1) break;
+              const line = remaining.slice(0, newlineIndex).trimEnd();
+              remaining = remaining.slice(newlineIndex + 1);
+              if (line.length > 0) recordLine(stream, line);
             }
-            flushBufferLines(stream);
-          },
-        );
-        const flushRemainder = (stream: "stdout" | "stderr"): void => {
-          const remainder = (stream === "stdout" ? stdoutBuffer : stderrBuffer).trimEnd();
-          if (remainder.length > 0) recordLine(stream, remainder);
-          if (stream === "stdout") {
-            stdoutBuffer = "";
+            if (stream === "stdout") {
+              stdoutBuffer = remaining;
+            } else {
+              stderrBuffer = remaining;
+            }
+          };
+          const rawResult = await runShellCommand(
+            workspace,
+            toolInput.command,
+            toolInput.timeoutMs ?? 60_000,
+            ({ stream, text }) => {
+              if (stream === "stdout") {
+                stdoutBuffer += text;
+              } else {
+                stderrBuffer += text;
+              }
+              flushBufferLines(stream);
+            },
+          );
+          const flushRemainder = (stream: "stdout" | "stderr"): void => {
+            const remainder = (stream === "stdout" ? stdoutBuffer : stderrBuffer).trimEnd();
+            if (remainder.length > 0) recordLine(stream, remainder);
+            if (stream === "stdout") {
+              stdoutBuffer = "";
+            } else {
+              stderrBuffer = "";
+            }
+          };
+          flushRemainder("stdout");
+          flushRemainder("stderr");
+          const emitLine = (entry: { stream: "stdout" | "stderr"; text: string }): void => {
+            onOutput({
+              toolName: "run-command",
+              content: { kind: "command-output", stream: entry.stream, text: entry.text },
+              toolCallId,
+            });
+          };
+          if (streamed.length > headRows + tailRows) {
+            const omitted = streamed.length - (headRows + tailRows);
+            for (const line of streamed.slice(0, headRows)) emitLine(line);
+            onOutput({
+              toolName: "run-command",
+              content: { kind: "truncated", count: omitted, unit: "lines" },
+              toolCallId,
+            });
+            for (const line of streamed.slice(streamed.length - tailRows)) emitLine(line);
+          } else if (streamed.length === 0) {
+            onOutput({ toolName: "run-command", content: { kind: "no-output" }, toolCallId });
           } else {
-            stderrBuffer = "";
+            for (const line of streamed.slice(0, TOOL_OUTPUT_LIMITS.run)) emitLine(line);
           }
-        };
-        flushRemainder("stdout");
-        flushRemainder("stderr");
-        const emitLine = (entry: { stream: "stdout" | "stderr"; text: string }): void => {
-          onOutput({
-            toolName: "run-command",
-            content: { kind: "command-output", stream: entry.stream, text: entry.text },
-            toolCallId,
-          });
-        };
-        if (streamed.length > headRows + tailRows) {
-          const omitted = streamed.length - (headRows + tailRows);
-          for (const line of streamed.slice(0, headRows)) emitLine(line);
-          onOutput({
-            toolName: "run-command",
-            content: { kind: "truncated", count: omitted, unit: "lines" },
-            toolCallId,
-          });
-          for (const line of streamed.slice(streamed.length - tailRows)) emitLine(line);
-        } else if (streamed.length === 0) {
-          onOutput({ toolName: "run-command", content: { kind: "no-output" }, toolCallId });
-        } else {
-          for (const line of streamed.slice(0, TOOL_OUTPUT_LIMITS.run)) emitLine(line);
-        }
-        const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.run);
-        return { kind: "run-command", command: toolInput.command, exitCode: parseExitCode(rawResult), output: result };
-      });
+          const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.run);
+          return {
+            kind: "run-command",
+            command: toolInput.command,
+            exitCode: parseExitCode(rawResult),
+            output: result,
+          };
+        },
+        { timeoutMs: toolInput.timeoutMs },
+      );
     },
   });
 }

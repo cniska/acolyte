@@ -33,6 +33,8 @@ export function phasePrepare(input: PhasePrepareInput): PhasePrepareResult {
       detail: event.detail,
     });
   };
+  session.toolTimeoutMs = input.policy.toolTimeoutMs;
+  session.flags.consecutiveGuardBlockLimit = input.policy.consecutiveGuardBlockLimit;
 
   input.debug("lifecycle.prepare", {
     task_id: input.taskId ?? null,

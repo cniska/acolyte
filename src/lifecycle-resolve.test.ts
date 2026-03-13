@@ -25,7 +25,15 @@ function withOpenaiKey(key: string | undefined): void {
   (appConfig.openai as { apiKey: string | undefined }).apiKey = key;
 }
 
+function clearModeModels(): void {
+  (appConfig as { models: typeof appConfig.models }).models = {};
+}
+
 describe("resolveModeModel", () => {
+  beforeEach(() => {
+    clearModeModels();
+  });
+
   test("returns requestModel when no mode-specific model configured", () => {
     withOpenaiKey("sk-test");
     const result = resolveModeModel("work", "openai/gpt-5-mini");

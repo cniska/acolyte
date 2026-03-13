@@ -1,6 +1,29 @@
+import { invariant } from "./assert";
 import { createId } from "./short-id";
-import { ERROR_KINDS, LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
+import { ERROR_KINDS, LIFECYCLE_ERROR_CODES, ToolError } from "./tool-error-codes";
 import { recordCall, runGuards, type SessionContext } from "./tool-guards";
+
+function withTimeout<T>(task: () => Promise<T>, timeoutMs: number, toolId: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(
+      () =>
+        reject(
+          new ToolError(LIFECYCLE_ERROR_CODES.timeout, `${toolId} timed out after ${timeoutMs}ms`, ERROR_KINDS.timeout),
+        ),
+      timeoutMs,
+    );
+    task().then(
+      (result) => {
+        clearTimeout(timer);
+        resolve(result);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
 
 export function hashResultValue(value: unknown): string | undefined {
   if (value === undefined || value === null) return undefined;
@@ -19,8 +42,11 @@ export function runTool(
   toolId: string,
   args: object,
   execute: (toolCallId: string) => Promise<unknown>,
+  options?: { timeoutMs?: number },
 ): Promise<unknown> {
-  return withToolError(toolId, () => guardedExecute(toolId, args, session, () => execute(streamCallId(toolId))));
+  return withToolError(toolId, () =>
+    guardedExecute(toolId, args, session, () => execute(streamCallId(toolId)), options),
+  );
 }
 
 export async function withToolError<T>(toolId: string, task: () => Promise<T>): Promise<T> {
@@ -50,10 +76,12 @@ export async function guardedExecute<T>(
   args: object,
   session: SessionContext,
   task: () => Promise<T>,
+  options?: { timeoutMs?: number },
 ): Promise<T> {
   try {
     runGuards({ toolName: toolId, args: args as Record<string, unknown>, session });
   } catch (error) {
+    session.flags.consecutiveBlocks = (session.flags.consecutiveBlocks ?? 0) + 1;
     const wrapped = error instanceof Error ? error : new Error(typeof error === "string" ? error : "Guard blocked");
     const coded = wrapped as Error & { code?: string; kind?: string };
     if (typeof coded.code !== "string" || coded.code.length === 0) coded.code = LIFECYCLE_ERROR_CODES.guardBlocked;
@@ -62,6 +90,11 @@ export async function guardedExecute<T>(
   }
   const argsRecord = args as Record<string, unknown>;
   const cache = session.cache;
+  const timeoutMs = options?.timeoutMs ?? session.toolTimeoutMs;
+  invariant(
+    typeof timeoutMs === "number" && Number.isFinite(timeoutMs) && timeoutMs > 0,
+    "timeoutMs must be a positive number",
+  );
 
   // Cache hit returns early with its own recordCall — the finally block only
   // runs on cache miss, so recordCall is never invoked twice for the same call.
@@ -78,7 +111,7 @@ export async function guardedExecute<T>(
   let taskFailed = false;
   let taskResult: unknown;
   try {
-    taskResult = await task();
+    taskResult = await withTimeout(task, timeoutMs, toolId);
     if (cache?.isCacheable(toolId)) {
       cache.set(toolId, argsRecord, { result: taskResult });
       cache.populateSubEntries(toolId, argsRecord, taskResult);

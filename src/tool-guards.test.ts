@@ -73,13 +73,20 @@ describe("redundant-verify guard", () => {
     expect(() => runGuards({ toolName: "run-command", args: { command: "bun run verify" }, session })).not.toThrow();
   });
 
-  test("blocks duplicate verify when no writes happened since last verify", () => {
+  test("blocks duplicate verify-mode command when no writes happened since previous run", () => {
     const session = createSessionContext();
     session.mode = "verify";
-    recordCall(session, "run-command", { command: "bun run verify" });
-    expect(() => runGuards({ toolName: "run-command", args: { command: "bun run verify" }, session })).toThrow(
+    recordCall(session, "run-command", { command: "npm test" });
+    expect(() => runGuards({ toolName: "run-command", args: { command: "npm test" }, session })).toThrow(
       /Duplicate run-command call detected|verify already ran this turn/,
     );
+  });
+
+  test("allows a different command in verify mode", () => {
+    const session = createSessionContext();
+    session.mode = "verify";
+    recordCall(session, "run-command", { command: "npm test" });
+    expect(() => runGuards({ toolName: "run-command", args: { command: "bun run verify" }, session })).not.toThrow();
   });
 
   test("allows verify rerun after a write", () => {
@@ -495,5 +502,37 @@ describe("hashResultValue", () => {
 
   test("returns undefined for very large values", () => {
     expect(hashResultValue("x".repeat(11_000))).toBeUndefined();
+  });
+});
+
+describe("circuit-breaker guard", () => {
+  test("blocks after 5 consecutive guard blocks", () => {
+    const session = createSessionContext();
+    session.flags.consecutiveBlocks = 5;
+    expect(() => runGuards({ toolName: "read-file", args: {}, session })).toThrow(
+      /consecutive tool calls have been blocked/,
+    );
+  });
+
+  test("does not block below threshold", () => {
+    const session = createSessionContext();
+    session.flags.consecutiveBlocks = 4;
+    expect(() => runGuards({ toolName: "read-file", args: {}, session })).not.toThrow();
+  });
+
+  test("resets counter when guards pass", () => {
+    const session = createSessionContext();
+    session.flags.consecutiveBlocks = 3;
+    runGuards({ toolName: "read-file", args: {}, session });
+    expect(session.flags.consecutiveBlocks).toBe(0);
+  });
+
+  test("uses configured guard block limit", () => {
+    const session = createSessionContext();
+    session.flags.consecutiveGuardBlockLimit = 2;
+    session.flags.consecutiveBlocks = 2;
+    expect(() => runGuards({ toolName: "read-file", args: {}, session })).toThrow(
+      /consecutive tool calls have been blocked/,
+    );
   });
 });

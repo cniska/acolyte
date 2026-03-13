@@ -1,3 +1,5 @@
+import { invariant } from "./assert";
+import { CONSECUTIVE_GUARD_BLOCK_LIMIT, TOOL_TIMEOUT_MS } from "./lifecycle-constants";
 import {
   extractFindPatterns,
   extractReadPaths,
@@ -26,6 +28,8 @@ export type SessionFlags = {
   cycleStepLimit?: number;
   totalStepLimit?: number;
   guardStats?: { blocked: number; flagSet: number };
+  consecutiveBlocks?: number;
+  consecutiveGuardBlockLimit?: number;
 };
 
 export type SessionContext = {
@@ -34,6 +38,7 @@ export type SessionContext = {
   mode?: string;
   flags: SessionFlags;
   writeTools: ReadonlySet<string>;
+  toolTimeoutMs?: number;
   onGuard?: (event: GuardEvent) => void;
   cache?: ToolCache;
   onDebug?: (event: `lifecycle.${string}`, data: Record<string, unknown>) => void;
@@ -66,7 +71,13 @@ function isWriteTool(session: SessionContext, toolName: string): boolean {
 }
 
 export function createSessionContext(taskId?: string, writeTools: ReadonlySet<string> = new Set()): SessionContext {
-  return { callLog: [], taskId, flags: {}, writeTools };
+  return {
+    callLog: [],
+    taskId,
+    flags: { consecutiveGuardBlockLimit: CONSECUTIVE_GUARD_BLOCK_LIMIT },
+    writeTools,
+    toolTimeoutMs: TOOL_TIMEOUT_MS,
+  };
 }
 
 export function scopedCallLog(session: SessionContext, taskId?: string): ToolCallRecord[] {
@@ -325,21 +336,27 @@ const redundantVerifyGuard: ToolGuard = {
   id: "redundant-verify",
   description: "Block redundant verify runs when no writes happened since the last one.",
   tools: ["run-command"],
-  check({ session, report }) {
+  check({ args, session, report }) {
     if (session.mode !== "verify") return;
+    const command = typeof args.command === "string" ? args.command.trim().toLowerCase().replace(/\s+/g, " ") : "";
+    if (!command) return;
 
     const calls = scopedCallLog(session);
-    const lastVerifyRunIndex = (() => {
+    const lastMatchingVerifyRunIndex = (() => {
       for (let i = calls.length - 1; i >= 0; i -= 1) {
-        if (calls[i]?.toolName === "run-command" && calls[i]?.mode === "verify") return i;
+        const entry = calls[i];
+        if (entry?.toolName !== "run-command" || entry.mode !== "verify") continue;
+        const priorCommand =
+          typeof entry.args.command === "string" ? entry.args.command.trim().toLowerCase().replace(/\s+/g, " ") : "";
+        if (priorCommand === command) return i;
       }
       return -1;
     })();
 
-    if (lastVerifyRunIndex < 0) return;
+    if (lastMatchingVerifyRunIndex < 0) return;
 
     let wroteAfterLastVerify = false;
-    for (let i = lastVerifyRunIndex + 1; i < calls.length; i += 1) {
+    for (let i = lastMatchingVerifyRunIndex + 1; i < calls.length; i += 1) {
       const tool = calls[i]?.toolName;
       if (tool && isWriteTool(session, tool)) {
         wroteAfterLastVerify = true;
@@ -457,7 +474,28 @@ const staleResultGuard: ToolGuard = {
   },
 };
 
+const circuitBreakerGuard: ToolGuard = {
+  id: "circuit-breaker",
+  description: "Stop the model after too many consecutive guard blocks.",
+  check({ session, report }) {
+    const consecutiveBlocks = session.flags.consecutiveBlocks ?? 0;
+    const blockLimit = session.flags.consecutiveGuardBlockLimit;
+    invariant(
+      typeof blockLimit === "number" && Number.isFinite(blockLimit) && blockLimit >= 1,
+      "session.flags.consecutiveGuardBlockLimit must be a positive number",
+    );
+    if (consecutiveBlocks >= blockLimit) {
+      report("blocked", `${consecutiveBlocks}-consecutive`);
+      throw new Error(
+        `${consecutiveBlocks} consecutive tool calls have been blocked. ` +
+          "Stop and tell the user what you are trying to do.",
+      );
+    }
+  },
+};
+
 const GUARDS: ToolGuard[] = [
+  circuitBreakerGuard,
   stepBudgetGuard,
   duplicateCallGuard,
   pingPongGuard,
@@ -476,6 +514,9 @@ export function runGuards(input: Omit<GuardInput, "report">): void {
     };
     guard.check({ ...input, report });
   }
+  // Any guard that throws increments consecutiveBlocks (in guardedExecute catch).
+  // If we reach here, no guard blocked — reset the counter.
+  input.session.flags.consecutiveBlocks = 0;
 }
 
 export function recordCall(

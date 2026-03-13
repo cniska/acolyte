@@ -79,6 +79,7 @@ export type PhasePrepareInput = {
   soulPrompt: string;
   initialMode: AgentMode;
   model: string;
+  policy: LifecyclePolicy;
   debug: RunContext["debug"];
   onOutput: (event: ToolOutputEvent) => void;
 };

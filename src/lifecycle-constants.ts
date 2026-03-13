@@ -5,3 +5,5 @@ export const VERIFY_MAX_STEPS = 30;
 export const MAX_UNKNOWN_ERRORS_PER_REQUEST = 2;
 export const MAX_REGENERATIONS_PER_REQUEST = 3;
 export const MAX_NUDGES_PER_GENERATION = 2;
+export const TOOL_TIMEOUT_MS = 10_000;
+export const CONSECUTIVE_GUARD_BLOCK_LIMIT = 5;
