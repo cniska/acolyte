@@ -1,18 +1,13 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { appConfig, setModeModel } from "./app-config";
+import { appConfig, resetAppConfigForTesting, setModeModel } from "./app-config";
 import { resolveModeModel } from "./lifecycle-resolve";
 
-const savedModels = { ...appConfig.models };
-const savedOpenai = { ...appConfig.openai };
-
 beforeEach(() => {
-  (appConfig as { models: typeof appConfig.models }).models = {};
-  Object.assign(appConfig.openai, savedOpenai);
+  resetAppConfigForTesting();
 });
 
 afterEach(() => {
-  (appConfig as { models: typeof appConfig.models }).models = { ...savedModels };
-  Object.assign(appConfig.openai, savedOpenai);
+  resetAppConfigForTesting();
 });
 
 function withOpenaiKey(key: string | undefined): void {

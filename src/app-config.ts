@@ -70,3 +70,35 @@ export function setDefaultModel(model: string): void {
 export function setModeModel(mode: AgentMode, model: string): void {
   (appConfig.models as Record<string, string>)[mode] = model;
 }
+
+/**
+ * Resets all file-config-derived fields on appConfig to their default values.
+ * Env-var-derived fields (API keys) are left untouched.
+ * Call in beforeEach/afterEach to prevent local .acolyte config from leaking into tests.
+ */
+export function resetAppConfigForTesting(): void {
+  // Load pure defaults by pointing at a path that has no .acolyte directory.
+  const defaults = readResolvedConfigSync({ homeDir: "/__acolyte_test_reset__", cwd: "/__acolyte_test_reset__" });
+  (appConfig as { model: string }).model = defaults.model;
+  (appConfig as { models: Record<string, string | undefined> }).models = {};
+  (appConfig as { temperatures: Record<string, number | undefined> }).temperatures = {};
+  Object.assign(appConfig.server, {
+    port: defaults.port,
+    transportMode: defaults.transportMode,
+    replyTimeoutMs: defaults.replyTimeoutMs,
+  });
+  Object.assign(appConfig.openai, { baseUrl: defaults.openaiBaseUrl });
+  Object.assign(appConfig.anthropic, { baseUrl: defaults.anthropicBaseUrl });
+  Object.assign(appConfig.google, { baseUrl: defaults.googleBaseUrl });
+  Object.assign(appConfig.distill, {
+    model: defaults.distillModel,
+    messageThreshold: defaults.distillMessageThreshold,
+    reflectionThresholdTokens: defaults.distillReflectionThresholdTokens,
+    maxOutputTokens: defaults.distillMaxOutputTokens,
+  });
+  Object.assign(appConfig.memory, {
+    budgetTokens: defaults.memoryBudgetTokens,
+    sources: [...defaults.memorySources],
+  });
+  (appConfig.agent as { contextMaxTokens: number }).contextMaxTokens = defaults.contextMaxTokens;
+}
