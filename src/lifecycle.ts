@@ -1,7 +1,13 @@
 import { createErrorStats } from "./error-handling";
-import type { LifecycleEventName, LifecycleInput, RunContext, ToolOutputEvent } from "./lifecycle-contract";
+import type {
+  LifecycleEventName,
+  LifecycleInput,
+  RunContext,
+  ToolOutputEvent,
+} from "./lifecycle-contract";
 import { phaseEvaluate } from "./lifecycle-evaluate";
 import { phaseFinalize } from "./lifecycle-finalize";
+import { createLifecycleFeedbackForGuard } from "./lifecycle-guard-feedback";
 import { createModeAgent, phaseGenerate, shouldYieldNow } from "./lifecycle-generate";
 import { resolveLifecyclePolicy } from "./lifecycle-policy";
 import { phasePrepare } from "./lifecycle-prepare";
@@ -112,14 +118,9 @@ function createRunContext(
 
   session.onGuard = (event) => {
     previousOnGuard?.(event);
-    if (event.action !== "blocked" || !event.feedback) return;
-    ctx.lifecycleState.feedback.push({
-      source: "guard",
-      mode: event.feedback.mode ?? ctx.mode,
-      summary: event.feedback.summary,
-      details: event.feedback.details,
-      instruction: event.feedback.instruction,
-    });
+    const feedback = createLifecycleFeedbackForGuard(event, ctx.mode);
+    if (!feedback) return;
+    ctx.lifecycleState.feedback.push(feedback);
   };
 
   return ctx;
