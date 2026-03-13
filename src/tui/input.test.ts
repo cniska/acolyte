@@ -200,25 +200,25 @@ describe("parseKeyInput", () => {
     test("ctrl+u followed by left arrow in one chunk", () => {
       const results = parseKeyInput("\x15\x1b[D");
       expect(results).toHaveLength(2);
-      expect(results[0]!.key.ctrl).toBe(true);
-      expect(results[0]!.input).toBe("u");
-      expect(results[1]!.key.leftArrow).toBe(true);
-      expect(results[1]!.input).toBe("");
+      expect(results[0]?.key.ctrl).toBe(true);
+      expect(results[0]?.input).toBe("u");
+      expect(results[1]?.key.leftArrow).toBe(true);
+      expect(results[1]?.input).toBe("");
     });
 
     test("multiple plain characters in one chunk", () => {
       const results = parseKeyInput("abc");
       expect(results).toHaveLength(3);
-      expect(results[0]!.input).toBe("a");
-      expect(results[1]!.input).toBe("b");
-      expect(results[2]!.input).toBe("c");
+      expect(results[0]?.input).toBe("a");
+      expect(results[1]?.input).toBe("b");
+      expect(results[2]?.input).toBe("c");
     });
 
     test("escape sequence followed by regular char", () => {
       const results = parseKeyInput("\x1b[Ax");
       expect(results).toHaveLength(2);
-      expect(results[0]!.key.upArrow).toBe(true);
-      expect(results[1]!.input).toBe("x");
+      expect(results[0]?.key.upArrow).toBe(true);
+      expect(results[1]?.input).toBe("x");
     });
   });
 });

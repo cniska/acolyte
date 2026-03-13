@@ -180,12 +180,12 @@ function serializeNode(node: TuiNode, inherited: StyleStack, staticAcc?: string[
         const rows: string[][] = [[]];
         let rowWidth = 0;
         for (let i = 0; i < childOutputs.length; i++) {
-          const w = childWidths[i]!;
-          if (rows[rows.length - 1]!.length > 0 && rowWidth + w > boxWidth) {
+          const w = childWidths[i] ?? 0;
+          if ((rows[rows.length - 1]?.length ?? 0) > 0 && rowWidth + w > boxWidth) {
             rows.push([]);
             rowWidth = 0;
           }
-          rows[rows.length - 1]!.push(childOutputs[i]!);
+          rows[rows.length - 1]?.push(childOutputs[i] ?? "");
           rowWidth += w;
         }
         // Apply justifyContent to each row, fall back to joinRow for single-item rows.

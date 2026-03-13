@@ -108,7 +108,7 @@ function csiEnd(raw: string, offset: number): number {
  * Returns the parsed event and the number of bytes consumed.
  */
 function parseSingle(raw: string, offset: number): { event: { input: string; key: KeyEvent }; consumed: number } {
-  const ch0 = raw[offset]!;
+  const ch0 = raw[offset] ?? "";
   const code0 = raw.charCodeAt(offset);
 
   // CSI sequences: ESC [
@@ -216,7 +216,7 @@ function parseSingle(raw: string, offset: number): { event: { input: string; key
   if (ch0 === ESCAPE && offset + 1 < raw.length && raw[offset + 1] !== "[" && raw[offset + 1] !== "O") {
     const key = emptyKey();
     key.meta = true;
-    const ch = raw[offset + 1]!;
+    const ch = raw[offset + 1] ?? "";
     if (ch === Char.DEL || ch === Char.BS) {
       key.backspace = true;
       return { event: { input: "", key }, consumed: 2 };

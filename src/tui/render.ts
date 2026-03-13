@@ -128,7 +128,7 @@ export function render(node: ReactNode): RenderInstance {
     let physRows = 0;
     let splitIdx = 0;
     for (let i = liveLines.length - 1; i >= 0; i--) {
-      const rows = linePhysRows(liveLines[i]!, cols);
+      const rows = linePhysRows(liveLines[i] ?? "", cols);
       if (physRows + rows > maxLiveRows) {
         splitIdx = i + 1;
         break;
@@ -147,7 +147,7 @@ export function render(node: ReactNode): RenderInstance {
       const overflow = liveLines.slice(0, splitIdx);
       const onScreen = liveLines.slice(splitIdx);
       frozenLineCount += splitIdx;
-      stdout.write(eraseSequence() + overflow.join("\n") + "\n" + onScreen.join("\n"));
+      stdout.write(`${eraseSequence()}${overflow.join("\n")}\n${onScreen.join("\n")}`);
       lastActiveLineCount = physRows > 0 ? physRows - 1 : 0;
     }
 
