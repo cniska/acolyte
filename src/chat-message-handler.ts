@@ -81,6 +81,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
   };
 
   const startAssistantTurn = async (userText: string): Promise<void> => {
+    startWorking();
     const userMessage = input.createMessage("user", userText);
     input.currentSession.messages.push(userMessage);
     input.currentSession.updatedAt = input.nowIso();
@@ -88,11 +89,10 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
     const fileContextMessages: Message[] = contexts.map((context) => input.createMessage("system", context));
     if (unresolvedPaths.length > 0) input.setRows((current) => [...current, ...unresolvedPathRows(unresolvedPaths)]);
     if (unresolvedPaths.length > 0 && contexts.length === 0) {
+      stopWorking();
       await input.persist();
       return;
     }
-
-    startWorking();
     input.setProgressText(t("chat.progress.thinking"));
     const abortController = new AbortController();
     input.setInterrupt(() => abortController.abort());
