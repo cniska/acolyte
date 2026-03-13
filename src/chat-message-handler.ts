@@ -60,7 +60,10 @@ function remoteTaskIdFromError(error: unknown): string | null {
   return typeof taskId === "string" && taskId.length > 0 ? taskId : null;
 }
 
-export function createMessageHandler(input: CreateMessageHandlerInput): (raw: string) => Promise<void> {
+export function createMessageHandler(input: CreateMessageHandlerInput): {
+  handleSubmit: (raw: string) => Promise<void>;
+  startAssistantTurn: (userText: string) => Promise<void>;
+} {
   const startWorking = (): void => {
     if (input.startWorking) {
       input.startWorking();
@@ -75,6 +78,120 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
       return;
     }
     input.setIsWorking?.(false);
+  };
+
+  const startAssistantTurn = async (userText: string): Promise<void> => {
+    const { contexts, unresolvedPaths } = await resolveReferencedFileContext(userText);
+    const fileContextMessages: Message[] = contexts.map((context) => input.createMessage("system", context));
+    if (unresolvedPaths.length > 0) input.setRows((current) => [...current, ...unresolvedPathRows(unresolvedPaths)]);
+    if (unresolvedPaths.length > 0 && contexts.length === 0) {
+      await input.persist();
+      return;
+    }
+
+    startWorking();
+    input.setProgressText(t("chat.progress.thinking"));
+    const abortController = new AbortController();
+    input.setInterrupt(() => abortController.abort());
+    const thinkingStartedAt = Date.now();
+    const streamState = createMessageStreamState({
+      setRows: input.setRows,
+    });
+
+    await input.persist();
+    let keepThinkingForRemoteTask = false;
+
+    try {
+      const turn = await runAssistantTurn({
+        client: input.client,
+        userText,
+        history: [...fileContextMessages, ...input.currentSession.messages],
+        model: input.currentSession.model,
+        modeModels: appConfig.models,
+        sessionId: input.currentSession.id,
+        useMemory: input.useMemory,
+        signal: abortController.signal,
+        onEvent: (event) => {
+          switch (event.type) {
+            case "status":
+              input.setProgressText(event.message);
+              break;
+            case "usage":
+              input.setRunningUsage({ promptTokens: event.promptTokens, completionTokens: event.completionTokens });
+              break;
+            case "text-delta":
+              streamState.onAssistantDelta(event.text);
+              break;
+            case "tool-output":
+              streamState.onOutput(event);
+              break;
+            case "tool-result":
+              streamState.onToolResult(event);
+              break;
+            case "error":
+              streamState.onProgressError(event.errorMessage);
+              break;
+          }
+        },
+        thinkingStartedAt,
+        createMessage: input.createMessage,
+      });
+      const assistantMessage = turn.assistantMessage;
+      const streamingRowIds = streamState.finalize();
+
+      input.currentSession.messages.push(assistantMessage);
+      input.currentSession.updatedAt = input.nowIso();
+      const removeSet = new Set(streamingRowIds);
+      input.setRows((current) => [...current.filter((row) => !removeSet.has(row.id)), ...turn.rows]);
+      invalidateRepoPathCandidates();
+      input.currentSession.tokenUsage.push(turn.tokenEntry);
+      input.setTokenUsage(() => [...input.currentSession.tokenUsage]);
+      await input.persist();
+    } catch (error) {
+      const remoteTaskId = remoteTaskIdFromError(error);
+      if (!isAbortError(error) && remoteTaskId) {
+        const startedFollowup = await startRemoteTaskFollowup({
+          client: input.client,
+          remoteTaskId,
+          setRows: input.setRows,
+          setProgressText: input.setProgressText,
+          persist: input.persist,
+          stopWorking,
+        });
+        if (startedFollowup) {
+          keepThinkingForRemoteTask = true;
+          return;
+        }
+      }
+      const partialContent = streamState.streamedAssistantText().trim();
+      if (partialContent.length > 0 && !isAbortError(error)) {
+        const partialMessage = input.createMessage("assistant", partialContent);
+        input.currentSession.messages.push(partialMessage);
+        input.currentSession.updatedAt = input.nowIso();
+        await input.persist().catch(() => {});
+      }
+      if (isAbortError(error)) {
+        input.setRows((current) => [
+          ...current,
+          createRow("task", t("chat.submit.interrupted"), {
+            dim: true,
+            marker: palette.cancelled,
+          }),
+        ]);
+      } else {
+        input.setRows((current) => [
+          ...current,
+          createRow("system", formatSubmitError(error), { text: palette.error }),
+        ]);
+      }
+    } finally {
+      streamState.dispose();
+      input.setInterrupt(null);
+      if (!keepThinkingForRemoteTask) {
+        stopWorking();
+        input.setProgressText(null);
+      }
+    }
   };
 
   const handler = async (raw: string): Promise<void> => {
@@ -169,120 +286,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
       createMessage: input.createMessage,
     });
     input.setRows((current) => [...current, userRow]);
-
-    const { contexts, unresolvedPaths } = await resolveReferencedFileContext(userText);
-    const fileContextMessages: Message[] = contexts.map((context) => input.createMessage("system", context));
-    if (unresolvedPaths.length > 0) input.setRows((current) => [...current, ...unresolvedPathRows(unresolvedPaths)]);
-    if (unresolvedPaths.length > 0 && contexts.length === 0) {
-      await input.persist();
-      return;
-    }
-
-    startWorking();
-    input.setProgressText(t("chat.progress.thinking"));
-    const abortController = new AbortController();
-    input.setInterrupt(() => abortController.abort());
-    const thinkingStartedAt = Date.now();
-    const streamState = createMessageStreamState({
-      setRows: input.setRows,
-    });
-
-    await input.persist();
-    let keepThinkingForRemoteTask = false;
-
-    try {
-      const turn = await runAssistantTurn({
-        client: input.client,
-        userText,
-        history: [...fileContextMessages, ...input.currentSession.messages],
-        model: input.currentSession.model,
-        modeModels: appConfig.models,
-        sessionId: input.currentSession.id,
-        useMemory: input.useMemory,
-        signal: abortController.signal,
-        onEvent: (event) => {
-          switch (event.type) {
-            case "status":
-              input.setProgressText(event.message);
-              break;
-            case "usage":
-              input.setRunningUsage({ promptTokens: event.promptTokens, completionTokens: event.completionTokens });
-              break;
-            case "text-delta":
-              streamState.onAssistantDelta(event.text);
-              break;
-            case "tool-output":
-              streamState.onOutput(event);
-              break;
-            case "tool-result":
-              streamState.onToolResult(event);
-              break;
-            case "error":
-              streamState.onProgressError(event.errorMessage);
-              break;
-          }
-        },
-        thinkingStartedAt,
-        createMessage: input.createMessage,
-      });
-      const assistantMessage = turn.assistantMessage;
-      const streamingRowIds = streamState.finalize();
-
-      input.currentSession.messages.push(assistantMessage);
-      input.currentSession.updatedAt = input.nowIso();
-      const removeSet = new Set(streamingRowIds);
-      input.setRows((current) => [...current.filter((row) => !removeSet.has(row.id)), ...turn.rows]);
-      // File tree may have changed during tool execution; refresh @path autocomplete candidates.
-      invalidateRepoPathCandidates();
-      input.currentSession.tokenUsage.push(turn.tokenEntry);
-      input.setTokenUsage(() => [...input.currentSession.tokenUsage]);
-      await input.persist();
-    } catch (error) {
-      const remoteTaskId = remoteTaskIdFromError(error);
-      if (!isAbortError(error) && remoteTaskId) {
-        const startedFollowup = await startRemoteTaskFollowup({
-          client: input.client,
-          remoteTaskId,
-          setRows: input.setRows,
-          setProgressText: input.setProgressText,
-          persist: input.persist,
-          stopWorking,
-        });
-        if (startedFollowup) {
-          keepThinkingForRemoteTask = true;
-          return;
-        }
-      }
-      // Persist any partial assistant content so context isn't lost on timeout/error.
-      const partialContent = streamState.streamedAssistantText().trim();
-      if (partialContent.length > 0 && !isAbortError(error)) {
-        const partialMessage = input.createMessage("assistant", partialContent);
-        input.currentSession.messages.push(partialMessage);
-        input.currentSession.updatedAt = input.nowIso();
-        await input.persist().catch(() => {});
-      }
-      if (isAbortError(error)) {
-        input.setRows((current) => [
-          ...current,
-          createRow("task", t("chat.submit.interrupted"), {
-            dim: true,
-            marker: palette.cancelled,
-          }),
-        ]);
-      } else {
-        input.setRows((current) => [
-          ...current,
-          createRow("system", formatSubmitError(error), { text: palette.error }),
-        ]);
-      }
-    } finally {
-      streamState.dispose();
-      input.setInterrupt(null);
-      if (!keepThinkingForRemoteTask) {
-        stopWorking();
-        input.setProgressText(null);
-      }
-    }
+    await startAssistantTurn(userText);
   };
-  return handler;
+  return { handleSubmit: handler, startAssistantTurn };
 }

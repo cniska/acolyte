@@ -177,7 +177,7 @@ function ChatApp(props: ChatAppProps) {
     clearTranscript,
   });
 
-  const handleSubmit = createMessageHandler({
+  const { handleSubmit, startAssistantTurn } = createMessageHandler({
     client,
     store,
     currentSession,

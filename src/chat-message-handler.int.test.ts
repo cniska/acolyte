@@ -263,7 +263,7 @@ describe("chat message handler guards", () => {
     const session = createSession({ id: "sess_test" });
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
 
-    const handleMessage = createMessageHandler({
+    const { handleSubmit } = createMessageHandler({
       client: createClient({
         reply: async (_input, options) =>
           await new Promise((_, reject) => {
@@ -313,7 +313,7 @@ describe("chat message handler guards", () => {
       clearTranscript: () => {},
     });
 
-    const pending = handleMessage("hello");
+    const pending = handleSubmit("hello");
     for (let i = 0; i < 20 && !interruptRegistered; i += 1) {
       await Bun.sleep(1);
     }
@@ -337,7 +337,7 @@ describe("chat message handler guards", () => {
     const session = createSession({ id: "sess_test" });
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
 
-    const handleMessage = createMessageHandler({
+    const { handleSubmit } = createMessageHandler({
       client: createClient({
         reply: async (_input, options) => {
           const call = callCount++;
@@ -392,14 +392,14 @@ describe("chat message handler guards", () => {
       clearTranscript: () => {},
     });
 
-    const firstPending = handleMessage("First question");
+    const firstPending = handleSubmit("First question");
     for (let i = 0; i < 20 && !interruptRegistered; i += 1) {
       await Bun.sleep(1);
     }
     expect(interruptRegistered).toBe(true);
     interruptHandler();
     await firstPending;
-    await handleMessage("Second question");
+    await handleSubmit("Second question");
 
     expect(rows.map((row) => `${row.role}:${row.content}`)).toEqual([
       "user:First question",
@@ -416,7 +416,7 @@ describe("chat message handler guards", () => {
     const session = createSession({ id: "sess_test" });
     const store = createStore({ activeSessionId: session.id, sessions: [session] });
 
-    const handleMessage = createMessageHandler({
+    const { handleSubmit } = createMessageHandler({
       client: createClient({
         reply: async () => {
           replyCalls += 1;
@@ -454,7 +454,7 @@ describe("chat message handler guards", () => {
       clearTranscript: () => {},
     });
 
-    await handleMessage("review @definitely-not-a-real-file-xyz");
+    await handleSubmit("review @definitely-not-a-real-file-xyz");
 
     expect(replyCalls).toBe(0);
     expect(rows.some((row) => row.content.includes("No file or folder found"))).toBe(true);
@@ -471,7 +471,7 @@ describe("chat message handler guards", () => {
       const session = createSession({ id: "sess_test" });
       const store = createStore({ activeSessionId: session.id, sessions: [session] });
 
-      const handleMessage = createMessageHandler({
+      const { handleSubmit } = createMessageHandler({
         client: createClient({
           reply: async () => {
             replyCalls += 1;
@@ -509,7 +509,7 @@ describe("chat message handler guards", () => {
         clearTranscript: () => {},
       });
 
-      await handleMessage(`review @${fixture} and @definitely-not-a-real-file-xyz`);
+      await handleSubmit(`review @${fixture} and @definitely-not-a-real-file-xyz`);
 
       expect(replyCalls).toBe(1);
       expect(rows.some((row) => row.content.includes("No file or folder found"))).toBe(true);

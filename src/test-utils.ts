@@ -281,7 +281,7 @@ export function createMessageHandlerHarness(overrides?: {
   const session = overrides?.session ?? createSession({ id: "sess_test" });
   const store = overrides?.store ?? createStore({ activeSessionId: session.id, sessions: [session] });
   const tokenUsage = overrides?.tokenUsage ?? session.tokenUsage ?? [];
-  const handleMessage = createMessageHandler({
+  const { handleSubmit: handleMessage } = createMessageHandler({
     client: overrides?.client ?? createClient({ status: async () => ({}) }),
     store,
     currentSession: session,

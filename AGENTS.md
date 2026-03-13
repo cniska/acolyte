@@ -104,6 +104,7 @@ Development:
 - Never run destructive git/file operations unless explicitly requested.
 - Do not discard unrelated changes without approval.
 - If unexpected changes appear, pause and confirm before continuing.
+- Never revert commits — drop them (`git reset`) if not pushed; only revert as a last resort.
 
 ## Communication
 
