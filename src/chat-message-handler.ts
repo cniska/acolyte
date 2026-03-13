@@ -1,6 +1,7 @@
 import type { AgentMode } from "./agent-contract";
 import { appConfig } from "./app-config";
-import { type ChatRow, createRow, dispatchSlashCommand } from "./chat-commands";
+import { dispatchSlashCommand } from "./chat-commands";
+import { type ChatRow, createRow } from "./chat-contract";
 import { invalidateRepoPathCandidates } from "./chat-file-ref";
 import type { Message } from "./chat-message-contract";
 import { formatSubmitError, isAbortError, resolveNaturalRememberDirective } from "./chat-message-handler-helpers";
@@ -60,7 +61,10 @@ function remoteTaskIdFromError(error: unknown): string | null {
   return typeof taskId === "string" && taskId.length > 0 ? taskId : null;
 }
 
-export function createMessageHandler(input: CreateMessageHandlerInput): (raw: string) => Promise<void> {
+export function createMessageHandler(input: CreateMessageHandlerInput): {
+  handleSubmit: (raw: string) => Promise<void>;
+  startAssistantTurn: (userText: string) => Promise<void>;
+} {
   const startWorking = (): void => {
     if (input.startWorking) {
       input.startWorking();
@@ -77,108 +81,19 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
     input.setIsWorking?.(false);
   };
 
-  const handler = async (raw: string): Promise<void> => {
-    const text = raw.trim();
-    if (!text || (input.isWorking && !text.startsWith("/"))) return;
-    if (text.startsWith("/") && !text.includes(" ") && !isKnownSlashToken(text)) {
-      const corrections = suggestSlashCommands(text);
-      if (corrections.length === 1) return handler(corrections[0]);
-      input.setRows((current) => [...current, createRow("system", t("chat.command.unknown", { command: text }))]);
-      return;
-    }
-    const naturalRememberDirective = resolveNaturalRememberDirective(text);
-    input.setInputHistory((current) => appendInputHistory(current, text));
-    input.setInputHistoryIndex(-1);
-    input.setInputHistoryDraft("");
-    input.setValue("");
-
-    if (text === "?") {
-      input.setShowHelp((current) => !current);
-      return;
-    }
-    if (naturalRememberDirective) {
-      const { row: userRow } = applyUserTurn({
-        session: input.currentSession,
-        displayText: text,
-        userText: text,
-        nowIso: input.nowIso,
-        createMessage: input.createMessage,
-      });
-      input.setRows((current) => [...current, userRow]);
-      startWorking();
-      input.setProgressText(t("chat.progress.thinking"));
-      try {
-        const distilled = naturalRememberDirective.content
-          .trim()
-          .replace(/^[-*]\s+/, "")
-          .replace(/^["'`]|["'`]$/g, "")
-          .replace(/^memory\s*[:-]\s*/i, "")
-          .replace(/\s+/g, " ")
-          .trim();
-        await addMemory(distilled, { scope: naturalRememberDirective.scope });
-        const label = naturalRememberDirective.scope === "project" ? "project" : "user";
-        const confirmation = t("chat.remember.saved", { scope: label, content: distilled });
-        const assistant = input.createMessage("assistant", confirmation);
-        input.currentSession.messages.push(assistant);
-        input.currentSession.updatedAt = input.nowIso();
-        input.setRows((current) => [...current, createRow("system", confirmation, { dim: true })]);
-        await input.persist();
-      } catch (error) {
-        input.setRows((current) => [
-          ...current,
-          createRow("system", error instanceof Error ? error.message : t("chat.remember.failed"), { dim: true }),
-        ]);
-      } finally {
-        stopWorking();
-        input.setProgressText(null);
-      }
-      return;
-    }
-    let userText = text;
-    const commandResult = await dispatchSlashCommand({
-      text,
-      resolvedText: text,
-      client: input.client,
-      store: input.store,
-      currentSession: input.currentSession,
-      setCurrentSession: input.setCurrentSession,
-      setTokenUsage: input.setTokenUsage,
-      toRows: (messages) => input.toRows(messages),
-      setRows: input.setRows,
-      setShowHelp: input.setShowHelp,
-      setValue: input.setValue,
-      persist: input.persist,
-      exit: input.exit,
-      openSkillsPanel: input.openSkillsPanel,
-      activateSkill: input.activateSkill,
-      openResumePanel: input.openResumePanel,
-      openModelPanel: input.openModelPanel,
-      tokenUsage: input.tokenUsage,
-      clearTranscript: input.clearTranscript,
-    });
-    if (commandResult.stop) {
-      input.graduate?.();
-      return;
-    }
-    userText = commandResult.userText;
-    const { row: userRow } = applyUserTurn({
-      session: input.currentSession,
-      displayText: text,
-      userText,
-      nowIso: input.nowIso,
-      createMessage: input.createMessage,
-    });
-    input.setRows((current) => [...current, userRow]);
-
+  const startAssistantTurn = async (userText: string): Promise<void> => {
+    startWorking();
+    const userMessage = input.createMessage("user", userText);
+    input.currentSession.messages.push(userMessage);
+    input.currentSession.updatedAt = input.nowIso();
     const { contexts, unresolvedPaths } = await resolveReferencedFileContext(userText);
     const fileContextMessages: Message[] = contexts.map((context) => input.createMessage("system", context));
     if (unresolvedPaths.length > 0) input.setRows((current) => [...current, ...unresolvedPathRows(unresolvedPaths)]);
     if (unresolvedPaths.length > 0 && contexts.length === 0) {
+      stopWorking();
       await input.persist();
       return;
     }
-
-    startWorking();
     input.setProgressText(t("chat.progress.thinking"));
     const abortController = new AbortController();
     input.setInterrupt(() => abortController.abort());
@@ -232,7 +147,6 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
       input.currentSession.updatedAt = input.nowIso();
       const removeSet = new Set(streamingRowIds);
       input.setRows((current) => [...current.filter((row) => !removeSet.has(row.id)), ...turn.rows]);
-      // File tree may have changed during tool execution; refresh @path autocomplete candidates.
       invalidateRepoPathCandidates();
       input.currentSession.tokenUsage.push(turn.tokenEntry);
       input.setTokenUsage(() => [...input.currentSession.tokenUsage]);
@@ -253,7 +167,6 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
           return;
         }
       }
-      // Persist any partial assistant content so context isn't lost on timeout/error.
       const partialContent = streamState.streamedAssistantText().trim();
       if (partialContent.length > 0 && !isAbortError(error)) {
         const partialMessage = input.createMessage("assistant", partialContent);
@@ -284,5 +197,98 @@ export function createMessageHandler(input: CreateMessageHandlerInput): (raw: st
       }
     }
   };
-  return handler;
+
+  const handler = async (raw: string): Promise<void> => {
+    const text = raw.trim();
+    if (!text || (input.isWorking && !text.startsWith("/"))) return;
+    if (text.startsWith("/") && !text.includes(" ") && !isKnownSlashToken(text)) {
+      const corrections = suggestSlashCommands(text);
+      if (corrections.length === 1) return handler(corrections[0]);
+      input.setRows((current) => [...current, createRow("system", t("chat.command.unknown", { command: text }))]);
+      return;
+    }
+    const naturalRememberDirective = resolveNaturalRememberDirective(text);
+    input.setInputHistory((current) => appendInputHistory(current, text));
+    input.setInputHistoryIndex(-1);
+    input.setInputHistoryDraft("");
+    input.setValue("");
+
+    if (text === "?") {
+      input.setShowHelp((current) => !current);
+      return;
+    }
+    if (naturalRememberDirective) {
+      const userMessage = input.createMessage("user", text);
+      input.currentSession.messages.push(userMessage);
+      input.currentSession.updatedAt = input.nowIso();
+      const { row: userRow } = applyUserTurn({
+        session: input.currentSession,
+        displayText: text,
+      });
+      input.setRows((current) => [...current, userRow]);
+      startWorking();
+      input.setProgressText(t("chat.progress.thinking"));
+      try {
+        const distilled = naturalRememberDirective.content
+          .trim()
+          .replace(/^[-*]\s+/, "")
+          .replace(/^["'`]|["'`]$/g, "")
+          .replace(/^memory\s*[:-]\s*/i, "")
+          .replace(/\s+/g, " ")
+          .trim();
+        await addMemory(distilled, { scope: naturalRememberDirective.scope });
+        const label = naturalRememberDirective.scope === "project" ? "project" : "user";
+        const confirmation = t("chat.remember.saved", { scope: label, content: distilled });
+        const assistant = input.createMessage("assistant", confirmation);
+        input.currentSession.messages.push(assistant);
+        input.currentSession.updatedAt = input.nowIso();
+        input.setRows((current) => [...current, createRow("system", confirmation, { dim: true })]);
+        await input.persist();
+      } catch (error) {
+        input.setRows((current) => [
+          ...current,
+          createRow("system", error instanceof Error ? error.message : t("chat.remember.failed"), { dim: true }),
+        ]);
+      } finally {
+        stopWorking();
+        input.setProgressText(null);
+      }
+      return;
+    }
+    let userText = text;
+    const commandResult = await dispatchSlashCommand({
+      text,
+      resolvedText: text,
+      client: input.client,
+      store: input.store,
+      currentSession: input.currentSession,
+      setCurrentSession: input.setCurrentSession,
+      setTokenUsage: input.setTokenUsage,
+      toRows: (messages) => input.toRows(messages),
+      setRows: input.setRows,
+      setShowHelp: input.setShowHelp,
+      setValue: input.setValue,
+      persist: input.persist,
+      exit: input.exit,
+      openSkillsPanel: input.openSkillsPanel,
+      activateSkill: input.activateSkill,
+      startAssistantTurn,
+      openResumePanel: input.openResumePanel,
+      openModelPanel: input.openModelPanel,
+      tokenUsage: input.tokenUsage,
+      clearTranscript: input.clearTranscript,
+    });
+    if (commandResult.stop) {
+      input.graduate?.();
+      return;
+    }
+    userText = commandResult.userText;
+    const { row: userRow } = applyUserTurn({
+      session: input.currentSession,
+      displayText: text,
+    });
+    input.setRows((current) => [...current, userRow]);
+    await startAssistantTurn(userText);
+  };
+  return { handleSubmit: handler, startAssistantTurn };
 }

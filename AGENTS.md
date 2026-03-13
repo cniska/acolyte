@@ -69,11 +69,13 @@ Development:
 - Keep commit subject lines under 72 characters.
 - Merge to main via pull request — do not merge branches directly.
 - Pull request titles follow the same Conventional Commit format as commit subjects.
+- Keep PR summaries concise — short bullet points, no prose.
 
 ## Code
 
 - Pragmatic solutions, low maintenance overhead. Build first, tune second.
 - YAGNI: no speculative features, commands, or abstractions. Rule of Three before abstracting.
+- SRP: each function/module should have one reason to change. When a function mixes concerns (e.g. persistence + display), split it.
 - Prefer root-cause fixes over workarounds. No tech debt without explicit agreement and `TODO(username):`.
 - Prefer prompt/tool-contract improvements over host-side task-classification logic.
 - Extra scrutiny on chat-feature changes: clear UX intent, regression tests, smoke run.
@@ -81,6 +83,7 @@ Development:
 - Keep behavior behind stable contracts so new transports/integrations are additive, not rewrites.
 - Prefer Zod schema definitions as the single source of truth for string unions and infer TS types from schemas.
 - No banner or separator comments; let code structure speak for itself.
+- Never re-export types or functions — import from the canonical source module directly.
 
 ## Validation
 
@@ -104,6 +107,7 @@ Development:
 - Never run destructive git/file operations unless explicitly requested.
 - Do not discard unrelated changes without approval.
 - If unexpected changes appear, pause and confirm before continuing.
+- Never revert commits — drop them (`git reset`) if not pushed; only revert as a last resort.
 
 ## Communication
 

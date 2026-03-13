@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { ChatRow } from "./chat-commands";
+import type { ChatRow } from "./chat-contract";
 import { ChatTranscript } from "./chat-transcript";
 import { formatToolOutput, type ToolOutput } from "./tool-output-content";
 import { renderInkPlain } from "./tui-test-utils";

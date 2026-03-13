@@ -1,67 +1,25 @@
 import { describe, expect, test } from "bun:test";
-import type { ChatRow } from "./chat-commands";
-import { createPickerHandlers } from "./chat-picker-handlers";
-import { createMessage, createSession, createStore } from "./test-utils";
+import { createPickerHandlerHarness, createSession, createStore } from "./test-utils";
 
 describe("chat picker handlers", () => {
   test("openResumePanel shows fallback when no sessions exist", () => {
-    const rows: ChatRow[] = [];
-    const pickerValues: unknown[] = [];
     const store = createStore({ sessions: [] });
-    const currentSession = createSession({ id: "sess_current" });
-    const handlers = createPickerHandlers({
-      store,
-      currentSession,
-      setCurrentSession: () => {},
-      setRows: (updater) => {
-        const next = updater(rows);
-        rows.length = 0;
-        rows.push(...next);
-      },
-      setRowsDirect: () => {},
-      setPicker: (next) => {
-        pickerValues.push(next);
-      },
-      setShowHelp: () => {},
-      setValue: () => {},
-      persist: async () => {},
-      toRows: () => [],
-      createMessage,
-      nowIso: () => "2026-02-20T00:00:00.000Z",
-      clearTranscript: () => {},
-    });
+    const { handlers, spies } = createPickerHandlerHarness({ store });
 
     handlers.openResumePanel();
-    expect(rows.at(-1)?.content).toBe("No saved sessions.");
-    expect(pickerValues).toEqual([]);
+    expect(spies.rows.at(-1)?.content).toBe("No saved sessions.");
+    expect(spies.pickerValues).toEqual([]);
   });
 
   test("openResumePanel opens picker and selects active session", () => {
-    const pickerValues: unknown[] = [];
     const first = createSession({ id: "sess_first" });
     const second = createSession({ id: "sess_second" });
     const store = createStore({ sessions: [first, second], activeSessionId: second.id });
-    const handlers = createPickerHandlers({
-      store,
-      currentSession: first,
-      setCurrentSession: () => {},
-      setRows: () => [],
-      setRowsDirect: () => {},
-      setPicker: (next) => {
-        pickerValues.push(next);
-      },
-      setShowHelp: () => {},
-      setValue: () => {},
-      persist: async () => {},
-      toRows: () => [],
-      createMessage,
-      nowIso: () => "2026-02-20T00:00:00.000Z",
-      clearTranscript: () => {},
-    });
+    const { handlers, spies } = createPickerHandlerHarness({ store, currentSession: first });
 
     handlers.openResumePanel();
-    expect(pickerValues).toHaveLength(1);
-    expect(pickerValues[0]).toMatchObject({
+    expect(spies.pickerValues).toHaveLength(1);
+    expect(spies.pickerValues[0]).toMatchObject({
       kind: "resume",
       index: 1,
     });
@@ -71,64 +29,22 @@ describe("chat picker handlers", () => {
     const first = createSession({ id: "sess_first" });
     const second = createSession({ id: "sess_second" });
     const store = createStore({ sessions: [first, second], activeSessionId: first.id });
-    const setCurrentSessionCalls = [] as ReturnType<typeof createSession>[];
-    const setRowsDirectCalls: ChatRow[][] = [];
-    const pickerValues: unknown[] = [];
-    const handlers = createPickerHandlers({
-      store,
-      currentSession: first,
-      setCurrentSession: (next) => {
-        setCurrentSessionCalls.push(next);
-      },
-      setRows: () => [],
-      setRowsDirect: (next) => {
-        setRowsDirectCalls.push(next);
-      },
-      setPicker: (next) => {
-        pickerValues.push(next);
-      },
-      setShowHelp: () => {},
-      setValue: () => {},
-      persist: async () => {},
-      toRows: () => [],
-      createMessage,
-      nowIso: () => "2026-02-20T00:00:00.000Z",
-      clearTranscript: () => {},
-    });
+    const { handlers, spies } = createPickerHandlerHarness({ store, currentSession: first });
 
     await handlers.handlePickerSelect({ kind: "resume", items: [first, second], index: 1, scrollOffset: 0 });
     expect(store.activeSessionId).toBe(second.id);
-    expect(setCurrentSessionCalls).toEqual([second]);
-    expect(setRowsDirectCalls.at(-1)).toEqual([]);
-    expect(pickerValues.at(-1)).toBeNull();
+    expect(spies.currentSessions).toEqual([second]);
+    expect(spies.rowsDirectSets.at(-1)).toEqual([]);
+    expect(spies.pickerValues.at(-1)).toBeNull();
   });
 
   test("handlePickerSelect model applies selected model", async () => {
-    const rows: ChatRow[] = [];
     const currentSession = createSession({ id: "sess_current", model: "gpt-5-mini" });
     const store = createStore({ sessions: [currentSession], activeSessionId: currentSession.id });
-    const selectedSessions: ReturnType<typeof createSession>[] = [];
-    const handlers = createPickerHandlers({
+    const { handlers, spies } = createPickerHandlerHarness({
       store,
       currentSession,
-      setCurrentSession: (next) => {
-        selectedSessions.push(next);
-      },
-      setRows: (updater) => {
-        const next = updater(rows);
-        rows.length = 0;
-        rows.push(...next);
-      },
-      setRowsDirect: () => {},
-      setPicker: () => {},
-      setShowHelp: () => {},
-      setValue: () => {},
-      persist: async () => {},
-      toRows: () => [],
-      createMessage,
-      nowIso: () => "2026-02-20T00:00:00.000Z",
       persistConfig: async () => {},
-      clearTranscript: () => {},
     });
 
     await handlers.handlePickerSelect({
@@ -140,7 +56,7 @@ describe("chat picker handlers", () => {
       scrollOffset: 0,
     });
 
-    expect(selectedSessions.at(-1)?.model).toBe("gpt-5.2");
-    expect(rows.some((row) => row.content === "Changed default model to gpt-5.2.")).toBe(true);
+    expect(spies.currentSessions.at(-1)?.model).toBe("gpt-5.2");
+    expect(spies.rows.some((row) => row.content === "Changed default model to gpt-5.2.")).toBe(true);
   });
 });

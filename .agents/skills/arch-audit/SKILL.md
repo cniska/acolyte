@@ -33,6 +33,7 @@ Other areas:
 - design-pattern consistency for extension seams (policy/strategy tables, adapter boundaries)
 - error-model consistency (`AppError`/coded errors, stable searchable codes, clear UX messages)
 - file cohesion and split hygiene (flag oversized/multi-responsibility files; prefer small focused modules)
+- SRP violations: functions/modules that mix concerns (e.g. persistence + display, mutation + rendering)
 
 ## References
 
@@ -65,7 +66,8 @@ Then inspect relevant code:
    - why it violates intended pattern
    - minimal fix direction
 5. Only propose abstractions that pass YAGNI and Rule of Three.
-6. Prefer de-abstraction when appropriate:
+6. Flag SRP violations — functions that bundle unrelated responsibilities should be split.
+7. Prefer de-abstraction when appropriate:
    - collapse pass-through layers with no policy value
    - break cycles by moving shared primitives to contract/helper modules
    - keep entrypoints thin but avoid "facade-for-facade" chains

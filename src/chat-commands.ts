@@ -12,33 +12,14 @@ import { addMemory, listMemories, removeMemoryByPrefix } from "./memory";
 import type { MemoryScope } from "./memory-contract";
 import { formatModel } from "./provider-config";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
-import { createId } from "./short-id";
 import { findSkillByName } from "./skills";
-import type { ToolOutput } from "./tool-output-content";
 
 type MemoryContextScope = "all" | "user" | "project";
 
+import { type ChatRow, createRow } from "./chat-contract";
 import type { StatusFields } from "./status-contract";
 import { formatStatusOutput } from "./status-format";
 import { createSession } from "./storage";
-
-export type ChatRowStyle = {
-  marker?: string;
-  text?: string;
-  dim?: boolean;
-};
-
-export type ChatRow = {
-  id: string;
-  role: "user" | "assistant" | "tool" | "status" | "task" | "system";
-  content: string;
-  style?: ChatRowStyle;
-  toolOutput?: ToolOutput[];
-};
-
-export function createRow(role: ChatRow["role"], content: string, style?: ChatRowStyle): ChatRow {
-  return { id: `row_${createId()}`, role, content, style: style ?? undefined };
-}
 
 export type ResumeResolution =
   | { kind: "usage" }
@@ -151,6 +132,7 @@ export type CommandContext = {
   openModelPanel: (mode?: AgentMode) => void | Promise<void>;
   persistModelConfig?: (key: string, value: string, scope: ConfigScope) => Promise<void>;
   activateSkill?: (skillName: string, args: string) => Promise<boolean>;
+  startAssistantTurn?: (userText: string) => Promise<void>;
   clearTranscript: (sessionId?: string) => void;
   tokenUsage: SessionTokenUsageEntry[];
   memoryApi?: {
@@ -487,13 +469,12 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
         ctx.setRows((current) => [...current, createRow("system", t("chat.skill.failed", { skill: skill.name }))]);
         return { stop: true, userText: text };
       }
-      if (args) return { stop: false, userText: args };
-
-      ctx.setRows((current) => [
-        ...current,
-        createRow("system", t("chat.skill.activated", { skill: skill.name }), { dim: true }),
-      ]);
-      return { stop: true, userText: text };
+      const runPrompt = args || t("chat.skill.run_prompt", { skill: skill.name });
+      if (ctx.startAssistantTurn) {
+        void ctx.startAssistantTurn(runPrompt);
+        return { stop: true, userText: text };
+      }
+      return { stop: false, userText: runPrompt };
     }
 
     ctx.setRows((current) => [...current, createRow("system", t("chat.command.unknown", { command: text }))]);

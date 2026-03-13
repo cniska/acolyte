@@ -1,6 +1,6 @@
 import { Box, render, Static, Text, useApp } from "ink";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ChatRow } from "./chat-commands";
+import type { ChatRow } from "./chat-contract";
 import { useAtSuggestionsEffect, useSlashSuggestionsEffect, useThinkingAnimationEffect } from "./chat-effects";
 import { extractAtReferenceQuery } from "./chat-file-ref";
 import type { HeaderLine } from "./chat-header";
@@ -15,6 +15,7 @@ import { type PickerState, pickerItemCount } from "./chat-picker";
 import { createPickerHandlers } from "./chat-picker-handlers";
 import { ChatRowView } from "./chat-row-view";
 import { createMessage, toRows } from "./chat-session";
+import { createSkillActivator } from "./chat-skill-activator";
 import { suggestSlashCommands } from "./chat-slash";
 import { enqueueQueuedMessage, resolveQueueSubmit } from "./chat-submit";
 import { ChatTranscript } from "./chat-transcript";
@@ -159,7 +160,15 @@ function ChatApp(props: ChatAppProps) {
     };
   }, []);
 
-  const { openSkillsPanel, openResumePanel, openModelPanel, handlePickerSelect, activateSkill } = createPickerHandlers({
+  const activateSkill = createSkillActivator({
+    currentSession,
+    setRows,
+    createMessage,
+    nowIso,
+    persist,
+  });
+
+  const { openSkillsPanel, openResumePanel, openModelPanel, handlePickerSelect } = createPickerHandlers({
     store,
     currentSession,
     setCurrentSession,
@@ -171,13 +180,13 @@ function ChatApp(props: ChatAppProps) {
     setValue,
     persist,
     toRows,
-    createMessage: createMessage,
     nowIso,
-    onSubmit: (text) => setQueuedMessages((current) => [...current, text]),
+    activateSkill,
+    startAssistantTurn: (userText) => startAssistantTurn(userText),
     clearTranscript,
   });
 
-  const handleSubmit = createMessageHandler({
+  const { handleSubmit, startAssistantTurn } = createMessageHandler({
     client,
     store,
     currentSession,
@@ -205,7 +214,7 @@ function ChatApp(props: ChatAppProps) {
     setProgressText,
     setRunningUsage,
     setTokenUsage,
-    createMessage: createMessage,
+    createMessage,
     nowIso,
     setInterrupt: (handler) => {
       interruptRef.current = handler;

@@ -1,6 +1,6 @@
 import type { AgentMode } from "./agent-contract";
 import { createWorkspaceSpecifier, type TokenUsage } from "./api";
-import { type ChatRow, createRow } from "./chat-commands";
+import { type ChatRow, createRow } from "./chat-contract";
 import { extractAtReferencePaths } from "./chat-file-ref";
 import { formatThoughtDuration, formatTokenCount } from "./chat-format";
 import type { Message } from "./chat-message-contract";
@@ -9,6 +9,7 @@ import { formatFileContext } from "./file-context";
 import { t } from "./i18n";
 import { palette } from "./palette";
 import type { Session, SessionTokenUsageEntry } from "./session-contract";
+import { createId } from "./short-id";
 
 const AVERAGE_CHARS_PER_TOKEN = 4;
 
@@ -65,19 +66,13 @@ export function createInputHistory(messages: Message[], maxEntries = 200): strin
 type ApplyUserTurnParams = {
   session: Session;
   displayText: string;
-  userText: string;
-  nowIso: () => string;
-  createMessage: (role: Message["role"], content: string) => Message;
 };
 
-export function applyUserTurn(params: ApplyUserTurnParams): { userMessage: Message; row: ChatRow } {
-  const userMessage = params.createMessage("user", params.userText);
-  params.session.messages.push(userMessage);
+export function applyUserTurn(params: ApplyUserTurnParams): { row: ChatRow } {
   if (params.session.title === t("chat.session.default_title"))
     params.session.title =
       params.displayText.trim().replace(/\s+/g, " ").slice(0, 60) || t("chat.session.default_title");
-  params.session.updatedAt = params.nowIso();
-  return { userMessage, row: { id: userMessage.id, role: "user", content: params.displayText } };
+  return { row: { id: `row_${createId()}`, role: "user", content: params.displayText } };
 }
 
 type RunAssistantTurnParams = {

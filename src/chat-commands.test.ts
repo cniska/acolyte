@@ -23,7 +23,7 @@ import {
 async function runCommand(text: string, overrides: Parameters<typeof createCommandContext>[1] = {}) {
   const { ctx, spies } = createCommandContext(text, overrides);
   const result = await dispatchSlashCommand(ctx);
-  return { ...spies, stop: result.stop };
+  return { ...spies, stop: result.stop, userText: result.userText };
 }
 
 describe("chat-commands", () => {
@@ -577,16 +577,20 @@ describe("chat-commands", () => {
       expect(activated).toEqual(["demo", "run tests"]);
     });
 
-    test("/skillname without args stops and shows activation", async () => {
+    test("/skillname without args starts assistant turn directly", async () => {
       const tmpDir = createDir("acolyte-cmd-skill-");
       writeSkill(tmpDir, "demo", "---\nname: demo\ndescription: Demo\n---", "# Demo");
       await loadSkills(tmpDir);
 
+      const assistantTurnTexts: string[] = [];
       const result = await runCommand("/demo", {
         activateSkill: async () => true,
+        startAssistantTurn: async (text) => {
+          assistantTurnTexts.push(text);
+        },
       });
       expect(result.stop).toBe(true);
-      expect(result.rows.some((r) => r.content.includes("Activated skill: demo"))).toBe(true);
+      expect(assistantTurnTexts).toEqual(["Run the demo skill."]);
     });
 
     test("unknown /xyz still shows unknown command", async () => {

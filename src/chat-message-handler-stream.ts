@@ -1,4 +1,4 @@
-import { type ChatRow, createRow } from "./chat-commands";
+import { type ChatRow, createRow } from "./chat-contract";
 import { palette } from "./palette";
 import { createId } from "./short-id";
 import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";

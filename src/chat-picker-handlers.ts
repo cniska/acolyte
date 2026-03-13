@@ -1,18 +1,17 @@
 import type { AgentMode } from "./agent-contract";
-import { appConfig, setDefaultModel, setModeModel } from "./app-config";
+import { setDefaultModel, setModeModel } from "./app-config";
 import { unreachable } from "./assert";
-import { type ChatRow, createRow } from "./chat-commands";
+import { type ChatRow, createRow } from "./chat-contract";
 import type { Message } from "./chat-message-contract";
 import type { PickerState } from "./chat-picker";
 import { createModelPicker, createPicker, createResumePicker } from "./chat-picker-actions";
-import { compactText } from "./compact-text";
 import { setConfigValue } from "./config";
 import { t } from "./i18n";
 import { formatModel } from "./provider-config";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
-import { findSkillByName, loadSkills, readSkillInstructions } from "./skills";
+import { loadSkills } from "./skills";
 
-type CreatePickerHandlersInput = {
+export type CreatePickerHandlersInput = {
   store: SessionState;
   currentSession: Session;
   setCurrentSession: (next: Session) => void;
@@ -24,10 +23,10 @@ type CreatePickerHandlersInput = {
   setValue: (next: string) => void;
   persist: () => Promise<void>;
   toRows: (messages: Message[]) => ChatRow[];
-  createMessage: (role: Message["role"], content: string) => Message;
   nowIso: () => string;
   persistConfig?: (key: string, value: string, scope: "project") => Promise<void>;
-  onSubmit?: (text: string) => void;
+  activateSkill: (skillName: string, args: string) => Promise<boolean>;
+  startAssistantTurn: (userText: string) => Promise<void>;
   clearTranscript: (sessionId?: string) => void;
 };
 
@@ -36,28 +35,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
   openResumePanel: () => void;
   openModelPanel: (mode?: AgentMode) => Promise<void>;
   handlePickerSelect: (state: PickerState) => Promise<void>;
-  activateSkill: (skillName: string, args: string) => Promise<boolean>;
 } {
-  const activateSkill = async (skillName: string, args: string): Promise<boolean> => {
-    const skill = findSkillByName(skillName);
-    if (!skill) return false;
-    try {
-      const instructions = await readSkillInstructions(skill.path, args || undefined);
-      const compactedInstructions = compactText(instructions, appConfig.agent.skillBudget);
-      const msg = input.createMessage("system", `Active skill (${skill.name}):\n${compactedInstructions}`);
-      input.currentSession.messages.push(msg);
-      input.currentSession.updatedAt = input.nowIso();
-      const label = args
-        ? t("chat.skill.activated.with_args", { skill: skill.name })
-        : t("chat.skill.activated", { skill: skill.name });
-      input.setRows((current) => [...current, createRow("system", label, { dim: true })]);
-      await input.persist();
-      return true;
-    } catch {
-      return false;
-    }
-  };
-
   const openSkillsPanel = async (): Promise<void> => {
     const skills = await loadSkills();
     if (skills.length === 0) {
@@ -107,7 +85,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
       case "skills": {
         const selected = state.items[state.index];
         if (selected) {
-          const ok = await activateSkill(selected.name, "");
+          const ok = await input.activateSkill(selected.name, "");
           if (!ok) {
             input.setRows((current) => [
               ...current,
@@ -115,7 +93,8 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
             ]);
           } else {
             input.setPicker(null);
-            input.onSubmit?.(t("chat.skill.run_prompt", { skill: selected.name }));
+            const runPrompt = t("chat.skill.run_prompt", { skill: selected.name });
+            void input.startAssistantTurn(runPrompt);
             return;
           }
         }
@@ -176,6 +155,5 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
     openResumePanel,
     openModelPanel,
     handlePickerSelect,
-    activateSkill,
   };
 }
