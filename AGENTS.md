@@ -69,6 +69,7 @@ Development:
 - Keep commit subject lines under 72 characters.
 - Merge to main via pull request — do not merge branches directly.
 - Pull request titles follow the same Conventional Commit format as commit subjects.
+- Keep PR summaries concise — short bullet points, no prose.
 
 ## Code
 
