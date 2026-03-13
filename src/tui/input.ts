@@ -1,5 +1,25 @@
 import type { InputHandler, KeyEvent } from "./context";
 
+/** ASCII control codepoints used in terminal input. */
+const Codepoint = {
+  ESC: 0x1b,
+  CR: 0x0d,
+  LF: 0x0a,
+  TAB: 0x09,
+  BS: 0x08,
+  DEL: 0x7f,
+  SPACE: 0x20,
+  CTRL_A: 1,
+  CTRL_Z: 26,
+  CTRL_OFFSET: 96,
+} as const;
+
+/** String forms of control chars used in string comparisons. */
+const Char = {
+  DEL: "\x7f",
+  BS: "\x08",
+} as const;
+
 const ESCAPE = "\x1b";
 
 function emptyKey(): KeyEvent {
@@ -42,20 +62,20 @@ function parseKittySequence(seq: string, key: KeyEvent): { input: string; key: K
   applyModifiers(key, mod);
 
   switch (codepoint) {
-    case 27:
+    case Codepoint.ESC:
       key.escape = true;
       return { input: "", key };
-    case 13:
+    case Codepoint.CR:
       key.return = true;
       return { input: "", key };
-    case 9:
+    case Codepoint.TAB:
       key.tab = true;
       return { input: "", key };
-    case 127:
+    case Codepoint.DEL:
       key.backspace = true;
       return { input: "", key };
     default: {
-      if (codepoint >= 32) {
+      if (codepoint >= Codepoint.SPACE) {
         const ch = String.fromCodePoint(codepoint);
         return { input: ch, key };
       }
@@ -187,7 +207,7 @@ export function parseKeyInput(data: Buffer | string): Array<{ input: string; key
     const key = emptyKey();
     key.meta = true;
     const ch = raw.slice(1);
-    if (ch === "\x7f" || ch === "\x08") {
+    if (ch === Char.DEL || ch === Char.BS) {
       key.backspace = true;
       results.push({ input: "", key });
     } else {
@@ -209,24 +229,24 @@ export function parseKeyInput(data: Buffer | string): Array<{ input: string; key
     const code = raw.charCodeAt(0);
     const key = emptyKey();
 
-    if (code === 0x0d || code === 0x0a) {
+    if (code === Codepoint.CR || code === Codepoint.LF) {
       key.return = true;
       results.push({ input: "", key });
       return results;
     }
-    if (code === 0x09) {
+    if (code === Codepoint.TAB) {
       key.tab = true;
       results.push({ input: "", key });
       return results;
     }
-    if (code === 0x7f || code === 0x08) {
+    if (code === Codepoint.DEL || code === Codepoint.BS) {
       key.backspace = true;
       results.push({ input: "", key });
       return results;
     }
-    if (code >= 1 && code <= 26) {
+    if (code >= Codepoint.CTRL_A && code <= Codepoint.CTRL_Z) {
       key.ctrl = true;
-      results.push({ input: String.fromCharCode(code + 96), key });
+      results.push({ input: String.fromCharCode(code + Codepoint.CTRL_OFFSET), key });
       return results;
     }
   }

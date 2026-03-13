@@ -33,7 +33,7 @@ React tree → reconciler → TUI DOM → serialize → terminal output
 
 ## Input handling
 
-Centralized in `input.ts`. Raw stdin bytes are parsed into `KeyEvent` objects with named flags (`return`, `tab`, `ctrl`, `meta`, `escape`, arrows, etc.). The dispatcher fans out to all registered handlers via `InputContext`.
+Centralized in `input.ts`. Raw stdin bytes are parsed into `KeyEvent` objects with named flags (`return`, `tab`, `ctrl`, `meta`, `escape`, arrows, etc.). Prefers the [Kitty keyboard protocol](https://sw.kovidgoyal.net/kitty/keyboard-protocol/) for unambiguous modifier reporting, with fallback to legacy escape sequences for terminals that don't support it. The dispatcher fans out to all registered handlers via `InputContext`.
 
 Components register handlers through `useInput`. Only handlers with `isActive: true` receive events.
 
