@@ -1,48 +1,15 @@
 import type { AgentMode } from "./agent-contract";
-import { appConfig, setDefaultModel, setModeModel } from "./app-config";
+import { setDefaultModel, setModeModel } from "./app-config";
 import { unreachable } from "./assert";
 import { type ChatRow, createRow } from "./chat-contract";
 import type { Message } from "./chat-message-contract";
 import type { PickerState } from "./chat-picker";
 import { createModelPicker, createPicker, createResumePicker } from "./chat-picker-actions";
-import { compactText } from "./compact-text";
 import { setConfigValue } from "./config";
 import { t } from "./i18n";
 import { formatModel } from "./provider-config";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
-import { findSkillByName, loadSkills, readSkillInstructions } from "./skills";
-
-type CreateSkillActivatorInput = {
-  currentSession: Session;
-  setRows: (updater: (current: ChatRow[]) => ChatRow[]) => void;
-  createMessage: (role: Message["role"], content: string) => Message;
-  nowIso: () => string;
-  persist: () => Promise<void>;
-};
-
-export function createSkillActivator(
-  input: CreateSkillActivatorInput,
-): (skillName: string, args: string) => Promise<boolean> {
-  return async (skillName, args) => {
-    const skill = findSkillByName(skillName);
-    if (!skill) return false;
-    try {
-      const instructions = await readSkillInstructions(skill.path, args || undefined);
-      const compactedInstructions = compactText(instructions, appConfig.agent.skillBudget);
-      const msg = input.createMessage("system", `Active skill (${skill.name}):\n${compactedInstructions}`);
-      input.currentSession.messages.push(msg);
-      input.currentSession.updatedAt = input.nowIso();
-      const label = args
-        ? t("chat.skill.activated.with_args", { skill: skill.name })
-        : t("chat.skill.activated", { skill: skill.name });
-      input.setRows((current) => [...current, createRow("system", label, { dim: true })]);
-      await input.persist();
-      return true;
-    } catch {
-      return false;
-    }
-  };
-}
+import { loadSkills } from "./skills";
 
 export type CreatePickerHandlersInput = {
   store: SessionState;
