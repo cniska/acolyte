@@ -65,19 +65,13 @@ export function createInputHistory(messages: Message[], maxEntries = 200): strin
 type ApplyUserTurnParams = {
   session: Session;
   displayText: string;
-  userText: string;
-  nowIso: () => string;
-  createMessage: (role: Message["role"], content: string) => Message;
 };
 
-export function applyUserTurn(params: ApplyUserTurnParams): { userMessage: Message; row: ChatRow } {
-  const userMessage = params.createMessage("user", params.userText);
-  params.session.messages.push(userMessage);
+export function applyUserTurn(params: ApplyUserTurnParams): { row: ChatRow } {
   if (params.session.title === t("chat.session.default_title"))
     params.session.title =
       params.displayText.trim().replace(/\s+/g, " ").slice(0, 60) || t("chat.session.default_title");
-  params.session.updatedAt = params.nowIso();
-  return { userMessage, row: { id: userMessage.id, role: "user", content: params.displayText } };
+  return { row: { id: `user_${Date.now()}`, role: "user", content: params.displayText } };
 }
 
 type RunAssistantTurnParams = {

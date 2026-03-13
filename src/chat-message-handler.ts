@@ -81,6 +81,9 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
   };
 
   const startAssistantTurn = async (userText: string): Promise<void> => {
+    const userMessage = input.createMessage("user", userText);
+    input.currentSession.messages.push(userMessage);
+    input.currentSession.updatedAt = input.nowIso();
     const { contexts, unresolvedPaths } = await resolveReferencedFileContext(userText);
     const fileContextMessages: Message[] = contexts.map((context) => input.createMessage("system", context));
     if (unresolvedPaths.length > 0) input.setRows((current) => [...current, ...unresolvedPathRows(unresolvedPaths)]);
@@ -217,9 +220,6 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       const { row: userRow } = applyUserTurn({
         session: input.currentSession,
         displayText: text,
-        userText: text,
-        nowIso: input.nowIso,
-        createMessage: input.createMessage,
       });
       input.setRows((current) => [...current, userRow]);
       startWorking();
@@ -269,7 +269,6 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       openSkillsPanel: input.openSkillsPanel,
       activateSkill: input.activateSkill,
       startAssistantTurn,
-      createMessage: input.createMessage,
       openResumePanel: input.openResumePanel,
       openModelPanel: input.openModelPanel,
       tokenUsage: input.tokenUsage,
@@ -283,9 +282,6 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
     const { row: userRow } = applyUserTurn({
       session: input.currentSession,
       displayText: text,
-      userText,
-      nowIso: input.nowIso,
-      createMessage: input.createMessage,
     });
     input.setRows((current) => [...current, userRow]);
     await startAssistantTurn(userText);

@@ -179,7 +179,6 @@ function ChatApp(props: ChatAppProps) {
     setValue,
     persist,
     toRows,
-    createMessage,
     nowIso,
     activateSkill,
     startAssistantTurn: (userText) => startAssistantTurn(userText),

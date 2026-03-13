@@ -20,7 +20,7 @@ describe("chat turn helpers", () => {
     expect(history).toEqual(["hello", "review @src/agent.ts"]);
   });
 
-  test("applyUserTurn appends message and initializes title", () => {
+  test("applyUserTurn creates display row and initializes title", () => {
     const session: Session = {
       id: "sess_1",
       title: "New Session",
@@ -33,24 +33,11 @@ describe("chat turn helpers", () => {
     const result = applyUserTurn({
       session,
       displayText: "hello there",
-      userText: "hello there",
-      nowIso: () => "2026-02-20T00:00:01.000Z",
-      createMessage: (role, content) => ({
-        id: "msg_1",
-        role,
-        content,
-        timestamp: "2026-02-20T00:00:01.000Z",
-      }),
     });
 
-    expect(session.messages).toHaveLength(1);
     expect(session.title).toBe("hello there");
-    expect(session.updatedAt).toBe("2026-02-20T00:00:01.000Z");
-    expect(result.row).toEqual({
-      id: "msg_1",
-      role: "user",
-      content: "hello there",
-    });
+    expect(result.row.role).toBe("user");
+    expect(result.row.content).toBe("hello there");
   });
 
   test("runAssistantTurn ignores reply progress payload rows", async () => {

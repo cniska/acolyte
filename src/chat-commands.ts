@@ -2,7 +2,6 @@ import { z } from "zod";
 import type { AgentMode } from "./agent-contract";
 import { appConfig, setDefaultModel, setModeModel } from "./app-config";
 import { COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH, formatColumns, formatRelativeTime } from "./chat-format";
-import type { Message } from "./chat-message-contract";
 import { formatUsage } from "./cli-help";
 import type { Client } from "./client-contract";
 import { setConfigValue } from "./config";
@@ -153,7 +152,6 @@ export type CommandContext = {
   persistModelConfig?: (key: string, value: string, scope: ConfigScope) => Promise<void>;
   activateSkill?: (skillName: string, args: string) => Promise<boolean>;
   startAssistantTurn?: (userText: string) => Promise<void>;
-  createMessage?: (role: "user" | "assistant" | "system", content: string) => Message;
   clearTranscript: (sessionId?: string) => void;
   tokenUsage: SessionTokenUsageEntry[];
   memoryApi?: {
@@ -491,10 +489,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
         return { stop: true, userText: text };
       }
       const runPrompt = args || t("chat.skill.run_prompt", { skill: skill.name });
-      if (ctx.startAssistantTurn && ctx.createMessage) {
-        const userMessage = ctx.createMessage("user", runPrompt);
-        ctx.currentSession.messages.push(userMessage);
-        ctx.currentSession.updatedAt = nowIso();
+      if (ctx.startAssistantTurn) {
         void ctx.startAssistantTurn(runPrompt);
         return { stop: true, userText: text };
       }

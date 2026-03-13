@@ -56,7 +56,6 @@ export type CreatePickerHandlersInput = {
   setValue: (next: string) => void;
   persist: () => Promise<void>;
   toRows: (messages: Message[]) => ChatRow[];
-  createMessage: (role: Message["role"], content: string) => Message;
   nowIso: () => string;
   persistConfig?: (key: string, value: string, scope: "project") => Promise<void>;
   activateSkill: (skillName: string, args: string) => Promise<boolean>;
@@ -128,9 +127,6 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
           } else {
             input.setPicker(null);
             const runPrompt = t("chat.skill.run_prompt", { skill: selected.name });
-            const userMessage = input.createMessage("user", runPrompt);
-            input.currentSession.messages.push(userMessage);
-            input.currentSession.updatedAt = input.nowIso();
             void input.startAssistantTurn(runPrompt);
             return;
           }

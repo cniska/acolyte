@@ -379,7 +379,6 @@ export function createPickerHandlerHarness(overrides?: Partial<CreatePickerHandl
     setValue: () => {},
     persist: async () => {},
     toRows: () => [],
-    createMessage,
     nowIso: () => "2026-02-20T00:00:00.000Z",
     activateSkill: async () => true,
     startAssistantTurn: async (text) => {
