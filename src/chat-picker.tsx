@@ -6,7 +6,7 @@ import { truncateText } from "./compact-text";
 import { t } from "./i18n";
 import type { Session } from "./session-contract";
 import type { SkillMeta } from "./skills";
-import { Text } from "./tui";
+import { Box, Text } from "./tui";
 
 export type PickerState =
   | { kind: "skills"; items: SkillMeta[]; index: number }
@@ -33,16 +33,18 @@ function renderPickerRows(
   return items.map((item, index) => {
     const selected = index === selectedIndex;
     return (
-      <Text key={item.key}>
-        {selected ? "› " : "  "}
-        <Text color={selected ? brandColor : undefined}>{item.label.padEnd(PICKER_LABEL_WIDTH)}</Text>
+      <Box key={item.key}>
+        <Text>{selected ? "› " : "  "}</Text>
+        <Box width={PICKER_LABEL_WIDTH}>
+          <Text color={selected ? brandColor : undefined}>{item.label}</Text>
+        </Box>
         {item.detail ? (
           <>
             <Text> </Text>
             <Text dimColor>{item.detail}</Text>
           </>
         ) : null}
-      </Text>
+      </Box>
     );
   });
 }

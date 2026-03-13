@@ -96,13 +96,16 @@ function renderInputPanelContent(input: {
     suggestions = (
       <>
         {slashSuggestions.map((item, index) => (
-          <Text
-            key={`slash-suggestion-${item}`}
-            color={index === selectedIndex ? brandColor : undefined}
-            dimColor={index !== selectedIndex}
-          >
-            {`  ${item.padEnd(SLASH_COMMAND_COLUMN_WIDTH)}`}
-          </Text>
+          <Box key={`slash-suggestion-${item}`}>
+            <Text color={index === selectedIndex ? brandColor : undefined} dimColor={index !== selectedIndex}>
+              {"  "}
+            </Text>
+            <Box width={SLASH_COMMAND_COLUMN_WIDTH}>
+              <Text color={index === selectedIndex ? brandColor : undefined} dimColor={index !== selectedIndex}>
+                {item}
+              </Text>
+            </Box>
+          </Box>
         ))}
         {selectedHelp ? <Text dimColor>{`\n  ${selectedHelp}`}</Text> : null}
       </>
