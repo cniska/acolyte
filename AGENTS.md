@@ -102,6 +102,7 @@ Development:
 ## Safety
 
 - Never run destructive git/file operations unless explicitly requested.
+- Use `--force-with-lease` instead of `--force` when force-pushing.
 - Do not discard unrelated changes without approval.
 - If unexpected changes appear, pause and confirm before continuing.
 
