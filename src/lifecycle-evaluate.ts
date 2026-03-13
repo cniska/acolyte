@@ -1,6 +1,6 @@
 import { type RecoveryAction, recoveryActionForError as resolveRecoveryAction } from "./error-handling";
 import { t } from "./i18n";
-import type { FeedbackSource, LifecycleInput, RunContext, SavedRegenerationState } from "./lifecycle-contract";
+import type { LifecycleInput, RunContext, SavedRegenerationState } from "./lifecycle-contract";
 import {
   guardRecoveryEvaluator,
   type Evaluator,
@@ -11,6 +11,7 @@ import {
 } from "./lifecycle-evaluators";
 import { phaseGenerate, setMode, shouldYieldNow } from "./lifecycle-generate";
 import { defaultLifecyclePolicy, type LifecyclePolicy } from "./lifecycle-policy";
+import { clearVerifyOutcomeForFeedback, updateRepeatedFailureState } from "./lifecycle-state";
 
 const EVALUATORS: Evaluator[] = [
   guardRecoveryEvaluator,
@@ -19,31 +20,6 @@ const EVALUATORS: Evaluator[] = [
   verifyCycle,
   repeatedFailureEvaluator,
 ];
-
-function failureSignatureForError(ctx: RunContext): string | undefined {
-  if (!ctx.currentError) return undefined;
-  const code = ctx.currentError.code ?? "unknown";
-  const category = ctx.currentError.category ?? "other";
-  const source = ctx.currentError.source ?? "generate";
-  const tool = ctx.currentError.tool ?? "none";
-  return [category, source, tool, code].join(":");
-}
-
-function updateRepeatedFailureState(ctx: RunContext): void {
-  const signature = failureSignatureForError(ctx);
-  if (!signature) {
-    ctx.lifecycleState.repeatedFailure = undefined;
-    return;
-  }
-
-  const previous = ctx.lifecycleState.repeatedFailure;
-  if (!previous || previous.signature !== signature) {
-    ctx.lifecycleState.repeatedFailure = { signature, count: 1, surfacedCount: 0 };
-    return;
-  }
-
-  ctx.lifecycleState.repeatedFailure = { ...previous, count: previous.count + 1 };
-}
 
 function snapshotState(ctx: RunContext): SavedRegenerationState {
   return {
@@ -55,10 +31,6 @@ function snapshotState(ctx: RunContext): SavedRegenerationState {
 function restoreState(ctx: RunContext, saved: SavedRegenerationState): void {
   ctx.result = saved.result;
   ctx.currentError = saved.currentError;
-}
-
-function prepareLifecycleStateForRegeneration(ctx: RunContext, feedbackSource?: FeedbackSource): void {
-  if (feedbackSource === "verify") ctx.lifecycleState.verifyOutcome = undefined;
 }
 
 export function recoveryActionForError(
@@ -129,7 +101,7 @@ export async function phaseEvaluate(ctx: RunContext, shouldYield: LifecycleInput
         regeneration_count: ctx.regenerationCount,
       });
 
-      prepareLifecycleStateForRegeneration(ctx, action.feedback?.source);
+      clearVerifyOutcomeForFeedback(ctx, action.feedback?.source);
       if (action.feedback) ctx.lifecycleState.feedback.push(action.feedback);
 
       await phaseGenerate(ctx, {
