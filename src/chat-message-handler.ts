@@ -217,6 +217,9 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       return;
     }
     if (naturalRememberDirective) {
+      const userMessage = input.createMessage("user", text);
+      input.currentSession.messages.push(userMessage);
+      input.currentSession.updatedAt = input.nowIso();
       const { row: userRow } = applyUserTurn({
         session: input.currentSession,
         displayText: text,
