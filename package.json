@@ -7,7 +7,7 @@
     "acolyte": "./src/cli.ts"
   },
   "scripts": {
-    "prepare": "git config core.hooksPath .githooks",
+    "prepare": "bash scripts/setup-hooks.sh",
     "start": "bun run src/cli.ts",
     "dev": "ACOLYTE_SERVER_RESTART=1 ./scripts/with-server.sh serve:watch bun run src/cli.ts",
     "run": "bun run src/cli.ts run",
