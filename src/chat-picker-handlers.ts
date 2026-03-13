@@ -44,7 +44,7 @@ export function createSkillActivator(
   };
 }
 
-type CreatePickerHandlersInput = {
+export type CreatePickerHandlersInput = {
   store: SessionState;
   currentSession: Session;
   setCurrentSession: (next: Session) => void;

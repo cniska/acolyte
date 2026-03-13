@@ -7,6 +7,7 @@ import type { AgentMode } from "./agent-contract";
 import type { ChatRow, CommandContext } from "./chat-commands";
 import type { Message } from "./chat-message-contract";
 import { createMessageHandler } from "./chat-message-handler";
+import { type CreatePickerHandlersInput, createPickerHandlers } from "./chat-picker-handlers";
 import type { Client, StreamEvent } from "./client-contract";
 import type { MemorySource } from "./memory-contract";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
@@ -336,6 +337,58 @@ export function createMessageHandlerHarness(overrides?: {
     },
   });
   return { handleMessage, rows, allRows, session, store, calls, interrupt };
+}
+
+export type PickerHandlerSpies = {
+  rows: ChatRow[];
+  pickerValues: unknown[];
+  currentSessions: Session[];
+  rowsDirectSets: ChatRow[][];
+  assistantTurnTexts: string[];
+};
+
+export function createPickerHandlerHarness(overrides?: Partial<CreatePickerHandlersInput>): {
+  handlers: ReturnType<typeof createPickerHandlers>;
+  spies: PickerHandlerSpies;
+} {
+  const spies: PickerHandlerSpies = {
+    rows: [],
+    pickerValues: [],
+    currentSessions: [],
+    rowsDirectSets: [],
+    assistantTurnTexts: [],
+  };
+  const handlers = createPickerHandlers({
+    store: createStore(),
+    currentSession: createSession(),
+    setCurrentSession: (next) => {
+      spies.currentSessions.push(next);
+    },
+    setRows: (updater) => {
+      const next = updater(spies.rows);
+      spies.rows.length = 0;
+      spies.rows.push(...next);
+    },
+    setRowsDirect: (next) => {
+      spies.rowsDirectSets.push(next);
+    },
+    setPicker: (next) => {
+      spies.pickerValues.push(next);
+    },
+    setShowHelp: () => {},
+    setValue: () => {},
+    persist: async () => {},
+    toRows: () => [],
+    createMessage,
+    nowIso: () => "2026-02-20T00:00:00.000Z",
+    activateSkill: async () => true,
+    startAssistantTurn: async (text) => {
+      spies.assistantTurnTexts.push(text);
+    },
+    clearTranscript: () => {},
+    ...overrides,
+  });
+  return { handlers, spies };
 }
 
 export type CommandContextSpies = {
