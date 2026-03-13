@@ -1,14 +1,9 @@
 import { createErrorStats } from "./error-handling";
-import type {
-  LifecycleEventName,
-  LifecycleInput,
-  RunContext,
-  ToolOutputEvent,
-} from "./lifecycle-contract";
+import type { LifecycleEventName, LifecycleInput, RunContext, ToolOutputEvent } from "./lifecycle-contract";
 import { phaseEvaluate } from "./lifecycle-evaluate";
 import { phaseFinalize } from "./lifecycle-finalize";
-import { createLifecycleFeedbackForGuard } from "./lifecycle-guard-feedback";
 import { createModeAgent, phaseGenerate, shouldYieldNow } from "./lifecycle-generate";
+import { createLifecycleFeedbackForGuard } from "./lifecycle-guard-feedback";
 import { resolveLifecyclePolicy } from "./lifecycle-policy";
 import { phasePrepare } from "./lifecycle-prepare";
 import { resolveInitialMode } from "./lifecycle-resolve";

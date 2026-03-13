@@ -14,7 +14,14 @@ import {
   isEditFileMultiMatchSignal,
   parseErrorInfo,
 } from "./error-handling";
-import type { GenerateOptions, GenerateResult, LifecycleFeedback, LifecycleState, RunContext, StreamChunk } from "./lifecycle-contract";
+import type {
+  GenerateOptions,
+  GenerateResult,
+  LifecycleFeedback,
+  LifecycleState,
+  RunContext,
+  StreamChunk,
+} from "./lifecycle-contract";
 import { resolveModeModel } from "./lifecycle-resolve";
 import type { StreamError } from "./stream-error";
 import type { ToolDefinition } from "./tool-contract";

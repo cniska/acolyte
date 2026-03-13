@@ -3,7 +3,12 @@ import { createErrorStats } from "./error-handling";
 import { scheduleMemoryCommit, shouldCommitMemory } from "./lifecycle";
 import type { RunContext } from "./lifecycle-contract";
 import { recoveryActionForError } from "./lifecycle-evaluate";
-import { guardRecoveryEvaluator, multiMatchEditEvaluator, repeatedFailureEvaluator, verifyCycle } from "./lifecycle-evaluators";
+import {
+  guardRecoveryEvaluator,
+  multiMatchEditEvaluator,
+  repeatedFailureEvaluator,
+  verifyCycle,
+} from "./lifecycle-evaluators";
 import { consumeLifecycleFeedback, createGenerationInput, createLifecycleFeedbackText } from "./lifecycle-generate";
 import { defaultLifecyclePolicy } from "./lifecycle-policy";
 import { phasePrepare } from "./lifecycle-prepare";

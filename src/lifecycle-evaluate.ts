@@ -2,8 +2,8 @@ import { type RecoveryAction, recoveryActionForError as resolveRecoveryAction } 
 import { t } from "./i18n";
 import type { LifecycleInput, RunContext, SavedRegenerationState } from "./lifecycle-contract";
 import {
-  guardRecoveryEvaluator,
   type Evaluator,
+  guardRecoveryEvaluator,
   lintEvaluator,
   multiMatchEditEvaluator,
   repeatedFailureEvaluator,

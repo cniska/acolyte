@@ -6,8 +6,8 @@ import {
   type LifecycleError,
   type LifecycleEventName,
   type LifecycleFeedback,
-  type VerifyOutcome,
   taskScopedCallLog,
+  type VerifyOutcome,
 } from "./lifecycle-contract";
 import type { LifecyclePolicy } from "./lifecycle-policy";
 import { lintFiles } from "./lint-reflection";

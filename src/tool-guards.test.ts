@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { hashResultValue } from "./tool-execution";
-import { createSessionContext, recordCall, resetCycleStepCount, runGuards, type GuardEvent } from "./tool-guards";
+import { createSessionContext, type GuardEvent, recordCall, resetCycleStepCount, runGuards } from "./tool-guards";
 
 describe("guard events", () => {
   test("emits GuardEvent payload when a guard blocks", () => {
