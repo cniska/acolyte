@@ -20,6 +20,10 @@ export type StreamOptions = {
   temperature?: number;
   /** Max nudge re-prompts when the model stops prematurely. 0 disables. */
   maxNudges?: number;
+  /** Async lint check called after write-tool batches. Returns lint output or null. */
+  lintCheck?: (filePaths: string[]) => Promise<string | null>;
+  /** Set of tool IDs considered write/mutating tools. */
+  writeTools?: ReadonlySet<string>;
 };
 
 export type StreamOutput = {

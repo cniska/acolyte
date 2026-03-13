@@ -1,6 +1,6 @@
 import { createId } from "./short-id";
 import { ERROR_KINDS, LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
-import { recordCall, runGuards, type SessionContext } from "./tool-guards";
+import { hashResultValue, recordCall, runGuards, type SessionContext } from "./tool-guards";
 export function streamCallId(toolName: string): string {
   return `${toolName}_${createId()}`;
 }
@@ -60,25 +60,26 @@ export async function guardedExecute<T>(
     const cached = cache.get(toolId, argsRecord);
     if (cached) {
       session.onDebug?.("lifecycle.tool.cache", { tool: toolId, hit: true, ...cache.stats() });
-      recordCall(session, toolId, argsRecord);
+      recordCall(session, toolId, argsRecord, hashResultValue(cached.result));
       return cached.result as T;
     }
     session.onDebug?.("lifecycle.tool.cache", { tool: toolId, hit: false, ...cache.stats() });
   }
 
   let taskFailed = false;
+  let taskResult: unknown;
   try {
-    const result = await task();
+    taskResult = await task();
     if (cache?.isCacheable(toolId)) {
-      cache.set(toolId, argsRecord, { result });
-      cache.populateSubEntries(toolId, argsRecord, result);
+      cache.set(toolId, argsRecord, { result: taskResult });
+      cache.populateSubEntries(toolId, argsRecord, taskResult);
     }
-    return result;
+    return taskResult as T;
   } catch (error) {
     taskFailed = true;
     throw error;
   } finally {
-    recordCall(session, toolId, argsRecord);
+    recordCall(session, toolId, argsRecord, taskFailed ? undefined : hashResultValue(taskResult));
     if (cache && !cache.isCacheable(toolId) && !taskFailed) {
       cache.invalidateForWrite(toolId, argsRecord);
     }

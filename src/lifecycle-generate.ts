@@ -26,6 +26,7 @@ import type {
   ToolResultPayload,
 } from "./lifecycle-contract";
 import { resolveModeModel } from "./lifecycle-resolve";
+import { lintFiles } from "./lint-reflection";
 import type { StreamError } from "./stream-error";
 import type { ToolDefinition } from "./tool-contract";
 import { extractToolErrorCode, LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
@@ -218,6 +219,20 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
       toolChoice: "auto",
       ...(typeof temperature === "number" ? { temperature } : {}),
       maxNudges: ctx.policy.maxNudgesPerGeneration,
+      writeTools: ctx.session.writeTools,
+      lintCheck:
+        ctx.workspace && ctx.mode === "work"
+          ? async (paths) => {
+              const workspace = ctx.workspace;
+              if (!workspace) return null;
+              const result = lintFiles(workspace, paths);
+              if (result.hasErrors) {
+                ctx.debug("lifecycle.lint.reflection", { files: paths.length });
+                return result.output;
+              }
+              return null;
+            }
+          : undefined,
     });
     const reader = streamOutput.fullStream.getReader();
     while (true) {

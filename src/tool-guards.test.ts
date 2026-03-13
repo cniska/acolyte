@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createSessionContext, recordCall, resetCycleStepCount, runGuards } from "./tool-guards";
+import { createSessionContext, hashResultValue, recordCall, resetCycleStepCount, runGuards } from "./tool-guards";
 
 describe("guard events", () => {
   test("emits GuardEvent payload when a guard blocks", () => {
@@ -368,5 +368,131 @@ describe("duplicate-call guard", () => {
     recordCall(session, "git-status", {});
     session.taskId = "task_b";
     expect(() => runGuards({ toolName: "git-status", args: {}, session })).not.toThrow();
+  });
+});
+
+describe("ping-pong guard", () => {
+  test("blocks alternating tool calls with same args", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file"]);
+    // A -> edit -> B -> A -> edit -> B -> (attempting A again)
+    // The ping-pong guard sees the A/B alternation pattern
+    recordCall(session, "read-file", { paths: [{ path: "a.ts" }] });
+    recordCall(session, "edit-file", { path: "x.ts" });
+    recordCall(session, "search-files", { patterns: ["foo"] });
+    recordCall(session, "read-file", { paths: [{ path: "a.ts" }] });
+    recordCall(session, "edit-file", { path: "y.ts" });
+    recordCall(session, "search-files", { patterns: ["foo"] });
+    expect(() => runGuards({ toolName: "read-file", args: { paths: [{ path: "a.ts" }] }, session })).toThrow(
+      /Ping-pong loop detected/,
+    );
+  });
+
+  test("does not block when args differ", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file"]);
+    recordCall(session, "read-file", { paths: [{ path: "a.ts" }] });
+    recordCall(session, "edit-file", { path: "x.ts" });
+    recordCall(session, "search-files", { patterns: ["foo"] });
+    recordCall(session, "read-file", { paths: [{ path: "b.ts" }] });
+    recordCall(session, "edit-file", { path: "y.ts" });
+    recordCall(session, "search-files", { patterns: ["foo"] });
+    expect(() => runGuards({ toolName: "read-file", args: { paths: [{ path: "a.ts" }] }, session })).not.toThrow();
+  });
+
+  test("does not block with fewer than 2 alternations", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file"]);
+    // Only 1 alternation: A -> B -> (attempting A) — not enough
+    recordCall(session, "search-files", { patterns: ["foo"] });
+    recordCall(session, "edit-file", { path: "a.ts" });
+    recordCall(session, "find-files", { patterns: ["bar"] });
+    expect(() => runGuards({ toolName: "search-files", args: { patterns: ["foo"] }, session })).not.toThrow();
+  });
+
+  test("does not trigger when last call is same tool (not alternating)", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file"]);
+    // Last call is find-files, proposed is also find-files — same tool, not alternating
+    recordCall(session, "search-files", { patterns: ["foo"] });
+    recordCall(session, "edit-file", { path: "a.ts" });
+    recordCall(session, "find-files", { patterns: ["bar"] });
+    recordCall(session, "edit-file", { path: "b.ts" });
+    recordCall(session, "find-files", { patterns: ["baz"] });
+    expect(() => runGuards({ toolName: "find-files", args: { patterns: ["qux"] }, session })).not.toThrow();
+  });
+});
+
+describe("stale-result guard", () => {
+  test("blocks when same tool+args returns same result 3 times", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file"]);
+    const args = { patterns: ["foo"] };
+    const hash = hashResultValue({ matches: ["a.ts:1"] });
+    // Interleave unique write calls to avoid duplicate-call and ping-pong guards
+    recordCall(session, "search-files", args, hash);
+    recordCall(session, "edit-file", { path: "a.ts" });
+    recordCall(session, "search-files", args, hash);
+    recordCall(session, "edit-file", { path: "b.ts" });
+    recordCall(session, "search-files", args, hash);
+    recordCall(session, "edit-file", { path: "c.ts" });
+    expect(() => runGuards({ toolName: "search-files", args, session })).toThrow(
+      /has returned the same result 3 times/,
+    );
+  });
+
+  test("does not block when results differ", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file"]);
+    const args = { patterns: ["foo"] };
+    recordCall(session, "search-files", args, hashResultValue({ matches: ["a.ts:1"] }));
+    recordCall(session, "edit-file", { path: "a.ts" });
+    recordCall(session, "search-files", args, hashResultValue({ matches: ["b.ts:2"] }));
+    recordCall(session, "edit-file", { path: "b.ts" });
+    recordCall(session, "search-files", args, hashResultValue({ matches: ["a.ts:1"] }));
+    recordCall(session, "edit-file", { path: "c.ts" });
+    expect(() => runGuards({ toolName: "search-files", args, session })).not.toThrow();
+  });
+
+  test("does not block write tools", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file"]);
+    const hash = hashResultValue("ok");
+    // Different args for each call to avoid duplicate-call guard
+    recordCall(session, "edit-file", { path: "a.ts" }, hash);
+    recordCall(session, "edit-file", { path: "b.ts" }, hash);
+    recordCall(session, "edit-file", { path: "c.ts" }, hash);
+    expect(() => runGuards({ toolName: "edit-file", args: { path: "d.ts" }, session })).not.toThrow();
+  });
+
+  test("does not block when fewer than threshold", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file"]);
+    const args = { patterns: ["foo"] };
+    const hash = hashResultValue({ matches: ["a.ts:1"] });
+    recordCall(session, "search-files", args, hash);
+    recordCall(session, "edit-file", { path: "a.ts" });
+    recordCall(session, "search-files", args, hash);
+    recordCall(session, "edit-file", { path: "b.ts" });
+    expect(() => runGuards({ toolName: "search-files", args, session })).not.toThrow();
+  });
+});
+
+describe("hashResultValue", () => {
+  test("returns consistent hash for same input", () => {
+    expect(hashResultValue({ a: 1 })).toBe(hashResultValue({ a: 1 }));
+  });
+
+  test("returns different hash for different input", () => {
+    expect(hashResultValue({ a: 1 })).not.toBe(hashResultValue({ a: 2 }));
+  });
+
+  test("returns undefined for null/undefined", () => {
+    expect(hashResultValue(null)).toBeUndefined();
+    expect(hashResultValue(undefined)).toBeUndefined();
+  });
+
+  test("returns undefined for very large values", () => {
+    expect(hashResultValue("x".repeat(11_000))).toBeUndefined();
   });
 });

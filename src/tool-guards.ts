@@ -13,7 +13,13 @@ const DEFAULT_TOTAL_STEP_LIMIT = 200;
 
 export type GuardEvent = { guardId: string; toolName: string; action: "blocked" | "flag_set"; detail?: string };
 
-export type ToolCallRecord = { toolName: string; args: Record<string, unknown>; taskId?: string; mode?: string };
+export type ToolCallRecord = {
+  toolName: string;
+  args: Record<string, unknown>;
+  taskId?: string;
+  mode?: string;
+  resultHash?: string;
+};
 
 export type SessionFlags = {
   cycleStepCount?: number;
@@ -373,9 +379,88 @@ export function resetCycleStepCount(session: SessionContext, limit?: number): vo
   if (limit !== undefined) session.flags.cycleStepLimit = limit;
 }
 
+const PING_PONG_WINDOW = 8;
+const PING_PONG_MIN_ALTERNATIONS = 2;
+
+const pingPongGuard: ToolGuard = {
+  id: "ping-pong",
+  description: "Block alternating tool call patterns that indicate the model is stuck.",
+  check({ toolName, args, session, report }) {
+    const calls = scopedCallLog(session);
+    // Filter to non-write-tool calls only — write tools are expected between read ops
+    const readCalls = calls.filter((c) => !isWriteTool(session, c.toolName));
+    if (readCalls.length < 3) return;
+
+    const window = readCalls.slice(-(PING_PONG_WINDOW - 1));
+    const lastCall = window[window.length - 1];
+    if (!lastCall || lastCall.toolName === toolName) return;
+
+    const otherTool = lastCall.toolName;
+    const otherArgs = lastCall.args;
+    let alternations = 0;
+
+    for (let i = window.length - 1; i >= 1; i -= 2) {
+      const expectOther = window[i];
+      const expectCurrent = window[i - 1];
+      if (!expectOther || expectOther.toolName !== otherTool || !guardArgsEqual(expectOther.args, otherArgs)) break;
+      if (!expectCurrent || expectCurrent.toolName !== toolName || !guardArgsEqual(expectCurrent.args, args)) break;
+      alternations++;
+    }
+
+    if (alternations >= PING_PONG_MIN_ALTERNATIONS) {
+      report("blocked", `${toolName}<->${otherTool}`);
+      throw new Error(
+        `Ping-pong loop detected: alternating between ${toolName} and ${otherTool} with unchanged arguments. ` +
+          "Break the cycle by trying a different approach or different arguments.",
+      );
+    }
+  },
+};
+
+const STALE_RESULT_THRESHOLD = 3;
+
+const staleResultGuard: ToolGuard = {
+  id: "stale-result",
+  description: "Block tool calls that repeatedly return the same result, indicating no progress.",
+  check({ toolName, args, session, report }) {
+    if (isWriteTool(session, toolName)) return;
+
+    const calls = scopedCallLog(session);
+    let sameResultStreak = 0;
+    let lastHash: string | undefined;
+
+    for (let i = calls.length - 1; i >= 0; i--) {
+      const entry = calls[i];
+      if (!entry) break;
+      if (entry.toolName !== toolName) continue;
+      if (!guardArgsEqual(entry.args, args)) break;
+      if (!entry.resultHash) break;
+
+      if (lastHash === undefined) {
+        lastHash = entry.resultHash;
+        sameResultStreak = 1;
+      } else if (entry.resultHash === lastHash) {
+        sameResultStreak++;
+      } else {
+        break;
+      }
+    }
+
+    if (sameResultStreak >= STALE_RESULT_THRESHOLD) {
+      report("blocked", `${toolName}:${sameResultStreak}-same-results`);
+      throw new Error(
+        `${toolName} has returned the same result ${sameResultStreak} times with these arguments. ` +
+          "The state has not changed. Try a different approach or different arguments.",
+      );
+    }
+  },
+};
+
 const GUARDS: ToolGuard[] = [
   stepBudgetGuard,
   duplicateCallGuard,
+  pingPongGuard,
+  staleResultGuard,
   fileChurnGuard,
   redundantFindGuard,
   redundantSearchGuard,
@@ -392,6 +477,22 @@ export function runGuards(input: Omit<GuardInput, "report">): void {
   }
 }
 
-export function recordCall(session: SessionContext, toolName: string, args: Record<string, unknown>): void {
-  session.callLog.push({ toolName, args, taskId: session.taskId, mode: session.mode });
+export function recordCall(
+  session: SessionContext,
+  toolName: string,
+  args: Record<string, unknown>,
+  resultHash?: string,
+): void {
+  session.callLog.push({ toolName, args, taskId: session.taskId, mode: session.mode, resultHash });
+}
+
+export function hashResultValue(value: unknown): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  const str = typeof value === "string" ? value : JSON.stringify(value);
+  if (str.length > 10_000) return undefined;
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
+  }
+  return String(hash);
 }
