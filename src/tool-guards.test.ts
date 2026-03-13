@@ -4,7 +4,13 @@ import { createSessionContext, recordCall, resetCycleStepCount, runGuards } from
 
 describe("guard events", () => {
   test("emits GuardEvent payload when a guard blocks", () => {
-    const events: Array<{ guardId: string; toolName: string; action: string; detail?: string }> = [];
+    const events: Array<{
+      guardId: string;
+      toolName: string;
+      action: string;
+      detail?: string;
+      feedback?: { summary: string; details?: string; instruction?: string };
+    }> = [];
     const session = createSessionContext();
     session.onGuard = (event) => events.push(event);
 
@@ -19,6 +25,10 @@ describe("guard events", () => {
       toolName: "read-file",
       action: "blocked",
       detail: "duplicate-call",
+      feedback: {
+        summary: "The previous read-file call already used these arguments.",
+        instruction: "Reuse the earlier result or change approach instead of repeating the same call.",
+      },
     });
   });
 });

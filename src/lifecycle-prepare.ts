@@ -31,6 +31,7 @@ export function phasePrepare(input: PhasePrepareInput): PhasePrepareResult {
       tool: event.toolName,
       action: event.action,
       detail: event.detail,
+      feedback_summary: event.feedback?.summary ?? null,
     });
   };
   session.toolTimeoutMs = input.policy.toolTimeoutMs;

@@ -1,4 +1,5 @@
 import { invariant } from "./assert";
+import type { AgentMode } from "./agent-contract";
 import { CONSECUTIVE_GUARD_BLOCK_LIMIT, TOOL_TIMEOUT_MS } from "./lifecycle-constants";
 import {
   extractFindPatterns,
@@ -13,7 +14,20 @@ import type { ToolCache } from "./tool-contract";
 const DEFAULT_CYCLE_STEP_LIMIT = 80;
 const DEFAULT_TOTAL_STEP_LIMIT = 200;
 
-export type GuardEvent = { guardId: string; toolName: string; action: "blocked" | "flag_set"; detail?: string };
+export type GuardFeedback = {
+  mode?: AgentMode;
+  summary: string;
+  details?: string;
+  instruction?: string;
+};
+
+export type GuardEvent = {
+  guardId: string;
+  toolName: string;
+  action: "blocked" | "flag_set";
+  detail?: string;
+  feedback?: GuardFeedback;
+};
 
 export type ToolCallRecord = {
   toolName: string;
@@ -50,7 +64,7 @@ const FILE_CHURN_MIN_EDITS = 5;
 const FILE_READ_ONLY_CHURN_MIN = 4;
 const DISCOVERY_LOOP_MIN_CALLS = 4;
 
-export type GuardReport = (action: "blocked" | "flag_set", detail?: string) => void;
+export type GuardReport = (action: "blocked" | "flag_set", detail?: string, feedback?: GuardFeedback) => void;
 
 export type GuardInput = {
   toolName: string;
@@ -155,6 +169,20 @@ function guardArgsEqual(a: Record<string, unknown>, b: Record<string, unknown>):
   return JSON.stringify(normalizeGuardArgValue(a)) === JSON.stringify(normalizeGuardArgValue(b));
 }
 
+function createGuardFeedback(input: {
+  summary: string;
+  details?: string;
+  instruction: string;
+  mode?: AgentMode;
+}): GuardFeedback {
+  return {
+    mode: input.mode,
+    summary: input.summary,
+    ...(input.details ? { details: input.details } : {}),
+    instruction: input.instruction,
+  };
+}
+
 const DUPLICATE_CALL_LOOKBACK = 3;
 
 const duplicateCallGuard: ToolGuard = {
@@ -167,7 +195,14 @@ const duplicateCallGuard: ToolGuard = {
     for (let i = lookback.length - 1; i >= 0; i -= 1) {
       const prior = lookback[i];
       if (prior.toolName === toolName && guardArgsEqual(prior.args, args)) {
-        report("blocked", "duplicate-call");
+        report(
+          "blocked",
+          "duplicate-call",
+          createGuardFeedback({
+            summary: `The previous ${toolName} call already used these arguments.`,
+            instruction: "Reuse the earlier result or change approach instead of repeating the same call.",
+          }),
+        );
         throw new Error(
           `Duplicate ${toolName} call detected with unchanged arguments. Reuse previous result or change inputs.`,
         );
@@ -218,7 +253,15 @@ const fileChurnGuard: ToolGuard = {
       const { readCount, editCount } = countsForPath(target);
 
       if (toolName === "read-file" && editCount === 0 && readCount >= FILE_READ_ONLY_CHURN_MIN) {
-        report("blocked", target);
+        report(
+          "blocked",
+          target,
+          createGuardFeedback({
+            summary: `You have already read "${target}" multiple times without making progress.`,
+            details: `read-file has already read "${target}" ${readCount} times in this task without edits.`,
+            instruction: "Use the content you already have, edit the file, or move to a different file.",
+          }),
+        );
         throw new Error(
           `File "${target}" has been read ${readCount} times without edits. Use the content you already have or move on.`,
         );
@@ -228,7 +271,15 @@ const fileChurnGuard: ToolGuard = {
       if (combined < FILE_CHURN_MIN_COMBINED || readCount < FILE_CHURN_MIN_READS || editCount < FILE_CHURN_MIN_EDITS)
         continue;
 
-      report("blocked", target);
+      report(
+        "blocked",
+        target,
+        createGuardFeedback({
+          summary: `You are stuck in a read/edit loop on "${target}".`,
+          details: `This task has already repeated reads and edits on "${target}" without converging.`,
+          instruction: "Use one consolidated edit or change approach instead of making another incremental pass.",
+        }),
+      );
       throw new Error(
         `Repeated read/edit loop detected for "${target}". Stop incremental tweaks. ` +
           "Use one consolidated edit (line-range block or edit-code), then run verify.",
@@ -425,7 +476,15 @@ const pingPongGuard: ToolGuard = {
     }
 
     if (alternations >= PING_PONG_MIN_ALTERNATIONS) {
-      report("blocked", `${toolName}<->${otherTool}`);
+      report(
+        "blocked",
+        `${toolName}<->${otherTool}`,
+        createGuardFeedback({
+          summary: `You are alternating between ${toolName} and ${otherTool} without changing strategy.`,
+          details: `Recent calls are bouncing between ${toolName} and ${otherTool} with unchanged arguments.`,
+          instruction: "Stop repeating the same two-step pattern. Change approach or change inputs.",
+        }),
+      );
       throw new Error(
         `Ping-pong loop detected: alternating between ${toolName} and ${otherTool} with unchanged arguments. ` +
           "Break the cycle by trying a different approach or different arguments.",
@@ -465,7 +524,15 @@ const staleResultGuard: ToolGuard = {
     }
 
     if (sameResultStreak >= STALE_RESULT_THRESHOLD) {
-      report("blocked", `${toolName}:${sameResultStreak}-same-results`);
+      report(
+        "blocked",
+        `${toolName}:${sameResultStreak}-same-results`,
+        createGuardFeedback({
+          summary: `${toolName} is returning the same result repeatedly.`,
+          details: `The same ${toolName} call has already produced the same result ${sameResultStreak} times in this task.`,
+          instruction: "Do not repeat the same call again. Change inputs or use a different approach.",
+        }),
+      );
       throw new Error(
         `${toolName} has returned the same result ${sameResultStreak} times with these arguments. ` +
           "The state has not changed. Try a different approach or different arguments.",
@@ -509,8 +576,8 @@ const GUARDS: ToolGuard[] = [
 export function runGuards(input: Omit<GuardInput, "report">): void {
   for (const guard of GUARDS) {
     if (guard.tools && !guard.tools.includes(input.toolName)) continue;
-    const report: GuardReport = (action, detail) => {
-      input.session.onGuard?.({ guardId: guard.id, toolName: input.toolName, action, detail });
+    const report: GuardReport = (action, detail, feedback) => {
+      input.session.onGuard?.({ guardId: guard.id, toolName: input.toolName, action, detail, feedback });
     };
     guard.check({ ...input, report });
   }

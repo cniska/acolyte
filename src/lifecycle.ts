@@ -60,6 +60,8 @@ function createRunContext(
     policy: RunContext["policy"];
   },
 ): RunContext {
+  const session = params.prepared.session;
+  const previousOnGuard = session.onGuard;
   const agent = createModeAgent({
     soulPrompt: input.soulPrompt,
     mode: params.initialMode,
@@ -68,7 +70,7 @@ function createRunContext(
     tools: params.prepared.tools,
   });
 
-  return {
+  const ctx: RunContext = {
     request: input.request,
     workspace: input.workspace,
     taskId: input.taskId,
@@ -80,7 +82,7 @@ function createRunContext(
     mode: params.initialMode,
     agentForMode: params.initialMode,
     model: params.model,
-    session: Object.assign(params.prepared.session, {
+    session: Object.assign(session, {
       mode: params.initialMode,
       onDebug: (event: `lifecycle.${string}`, data: Record<string, unknown>) => params.debug(event, data),
     }),
@@ -107,6 +109,20 @@ function createRunContext(
     toolCallStartedAt: new Map(),
     toolOutputHandler: null,
   };
+
+  session.onGuard = (event) => {
+    previousOnGuard?.(event);
+    if (event.action !== "blocked" || !event.feedback) return;
+    ctx.lifecycleState.feedback.push({
+      source: "guard",
+      mode: event.feedback.mode ?? ctx.mode,
+      summary: event.feedback.summary,
+      details: event.feedback.details,
+      instruction: event.feedback.instruction,
+    });
+  };
+
+  return ctx;
 }
 
 function attachToolOutputHandler(ctx: RunContext) {

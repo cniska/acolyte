@@ -3,7 +3,7 @@ import { createErrorStats } from "./error-handling";
 import { scheduleMemoryCommit, shouldCommitMemory } from "./lifecycle";
 import type { RunContext } from "./lifecycle-contract";
 import { recoveryActionForError } from "./lifecycle-evaluate";
-import { multiMatchEditEvaluator, verifyCycle } from "./lifecycle-evaluators";
+import { guardRecoveryEvaluator, multiMatchEditEvaluator, verifyCycle } from "./lifecycle-evaluators";
 import { consumeLifecycleFeedback, createGenerationInput, createLifecycleFeedbackText } from "./lifecycle-generate";
 import { defaultLifecyclePolicy } from "./lifecycle-policy";
 import { phasePrepare } from "./lifecycle-prepare";
@@ -205,6 +205,37 @@ describe("verifyCycle", () => {
       result: { text: "No issues found. 0 errors.", toolCalls: [] },
     });
     expect(verifyCycle.evaluate(ctx).type).toBe("done");
+  });
+});
+
+describe("guardRecoveryEvaluator", () => {
+  test("returns regenerate when guard-blocked error has pending guard feedback", () => {
+    const ctx = createMockContext({
+      currentError: { message: "Duplicate read-file call detected", category: "guard-blocked" },
+      result: { text: "Attempted read.", toolCalls: [] },
+      lifecycleState: {
+        feedback: [
+          {
+            source: "guard",
+            mode: "work",
+            summary: "The previous read-file call already used these arguments.",
+            instruction: "Reuse the earlier result or change approach instead of repeating the same call.",
+          },
+        ],
+        verifyOutcome: undefined,
+      },
+    });
+
+    expect(guardRecoveryEvaluator.evaluate(ctx)).toEqual({ type: "regenerate" });
+  });
+
+  test("returns done when no pending guard feedback exists", () => {
+    const ctx = createMockContext({
+      currentError: { message: "Duplicate read-file call detected", category: "guard-blocked" },
+      result: { text: "Attempted read.", toolCalls: [] },
+    });
+
+    expect(guardRecoveryEvaluator.evaluate(ctx)).toEqual({ type: "done" });
   });
 });
 

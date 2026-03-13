@@ -37,7 +37,7 @@ export type EvaluatorContext = {
   workspace: string | undefined;
   request: { message: string; verifyScope?: VerifyScope };
   sawEditFileMultiMatchError: boolean;
-  lifecycleState: { verifyOutcome?: VerifyOutcome };
+  lifecycleState: { feedback: LifecycleFeedback[]; verifyOutcome?: VerifyOutcome };
   currentError?: LifecycleError;
 };
 
@@ -133,6 +133,20 @@ export const lintEvaluator: Evaluator = {
         instruction: "Fix the issues above, then stop.",
       },
     };
+  },
+};
+
+export const guardRecoveryEvaluator: Evaluator = {
+  id: "guard-recovery",
+  evaluate(ctx) {
+    if (!ctx.result) return { type: "done" };
+    if (ctx.currentError?.category !== "guard-blocked") return { type: "done" };
+    const hasPendingFeedback = ctx.lifecycleState.feedback.some(
+      (feedback) => feedback.source === "guard" && feedback.mode === ctx.mode,
+    );
+    if (!hasPendingFeedback) return { type: "done" };
+    ctx.debug("lifecycle.eval.guard_recovery", { mode: ctx.mode, error: ctx.currentError.message });
+    return { type: "regenerate" };
   },
 };
 

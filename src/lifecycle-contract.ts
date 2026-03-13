@@ -100,7 +100,7 @@ export type VerifyOutcome = {
   error?: LifecycleError;
 };
 
-export type FeedbackSource = "lint" | "verify" | "multi-match";
+export type FeedbackSource = "guard" | "lint" | "verify" | "multi-match";
 
 export type LifecycleFeedback = {
   source: FeedbackSource;
