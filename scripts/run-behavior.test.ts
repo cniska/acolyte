@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { BEHAVIOR_SCENARIO_LIST, parseBehaviorScenarioId } from "./behavior-scenarios";
-import { parseArgs } from "./run-behavior";
+import { analyzeBehavior, parseArgs } from "./run-behavior";
 
 describe("run-behavior args", () => {
   test("parseArgs applies defaults", () => {
@@ -9,7 +9,7 @@ describe("run-behavior args", () => {
       scenarioIds: BEHAVIOR_SCENARIO_LIST.map((scenario) => scenario.id),
       keepWorkspaces: false,
       json: false,
-      timeoutMs: 180_000,
+      timeoutMs: 60_000,
     });
   });
 
@@ -20,7 +20,7 @@ describe("run-behavior args", () => {
         scenarioIds: ["docs-link-fix"],
         keepWorkspaces: true,
         json: true,
-        timeoutMs: 180_000,
+        timeoutMs: 60_000,
       },
     );
   });
@@ -37,5 +37,62 @@ describe("behavior scenarios", () => {
 
   test("parseBehaviorScenarioId rejects unknown ids", () => {
     expect(() => parseBehaviorScenarioId("wrong")).toThrow();
+  });
+});
+
+describe("behavior analysis", () => {
+  test("analyzeBehavior scores a clean bounded run highly", () => {
+    const analysis = analyzeBehavior({
+      exitCode: 0,
+      expectedChangeCount: 2,
+      trace: {
+        taskId: "task_123",
+        modelCalls: 3,
+        totalToolCalls: 4,
+        readCalls: 2,
+        searchCalls: 1,
+        writeCalls: 2,
+        preWriteDiscoveryCalls: 2,
+        regenerationCount: 0,
+        guardBlockedCount: 0,
+        hasError: false,
+      },
+    });
+
+    expect(analysis.score).toBe(1);
+    expect(analysis.verdict).toBe("strong");
+  });
+
+  test("analyzeBehavior penalizes spiraling runs", () => {
+    const analysis = analyzeBehavior({
+      exitCode: 1,
+      expectedChangeCount: 1,
+      trace: {
+        taskId: "task_123",
+        modelCalls: 40,
+        totalToolCalls: 25,
+        readCalls: 10,
+        searchCalls: 6,
+        writeCalls: 4,
+        preWriteDiscoveryCalls: 8,
+        regenerationCount: 2,
+        guardBlockedCount: 4,
+        hasError: true,
+      },
+    });
+
+    expect(analysis.score).toBeLessThan(0.6);
+    expect(analysis.verdict).toBe("weak");
+  });
+
+  test("analyzeBehavior treats timeout without trace detail as mixed instead of perfect", () => {
+    const analysis = analyzeBehavior({
+      exitCode: 124,
+      expectedChangeCount: 2,
+      trace: { taskId: "task_123" },
+    });
+
+    expect(analysis.score).toBe(0.7);
+    expect(analysis.verdict).toBe("mixed");
   });
 });

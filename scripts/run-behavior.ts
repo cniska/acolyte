@@ -1,5 +1,5 @@
-import { mkdir, mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
 import {
@@ -11,9 +11,29 @@ import {
 import { PERF_COMMAND_TIMEOUT_MS, runTimedCommand, toPrettyJson } from "./perf-test-utils";
 
 const DEFAULT_MODEL = "anthropic/claude-sonnet-4-6";
-const DEFAULT_TIMEOUT_MS = PERF_COMMAND_TIMEOUT_MS;
+const DEFAULT_TIMEOUT_MS = 60_000;
 const REPO_DIR = join(import.meta.dir, "..");
 const CLI_ENTRY = join(REPO_DIR, "src", "cli.ts");
+const DAEMON_LOG_PATH = join(homedir(), ".acolyte", "daemons", "6767.log");
+
+const behaviorTraceSummarySchema = z.object({
+  taskId: z.string().min(1).optional(),
+  modelCalls: z.number().int().nonnegative().optional(),
+  totalToolCalls: z.number().int().nonnegative().optional(),
+  readCalls: z.number().int().nonnegative().optional(),
+  searchCalls: z.number().int().nonnegative().optional(),
+  writeCalls: z.number().int().nonnegative().optional(),
+  preWriteDiscoveryCalls: z.number().int().nonnegative().optional(),
+  regenerationCount: z.number().int().nonnegative().optional(),
+  guardBlockedCount: z.number().int().nonnegative().optional(),
+  hasError: z.boolean().optional(),
+});
+
+const behaviorAnalysisSchema = z.object({
+  score: z.number().min(0).max(1),
+  verdict: z.enum(["strong", "mixed", "weak"]),
+  reasons: z.array(z.string().min(1)),
+});
 
 const behaviorOutputSchema = z.object({
   scenarioId: z.string().min(1),
@@ -26,6 +46,8 @@ const behaviorOutputSchema = z.object({
   exitCode: z.number().int(),
   stdout: z.string(),
   stderr: z.string(),
+  trace: behaviorTraceSummarySchema.optional(),
+  analysis: behaviorAnalysisSchema,
 });
 
 export type BehaviorArgs = {
@@ -37,6 +59,145 @@ export type BehaviorArgs = {
 };
 
 type BehaviorRun = z.infer<typeof behaviorOutputSchema>;
+
+function parseField(line: string, key: string): string | undefined {
+  const quoted = line.match(new RegExp(`(?:^|\\s)${key}="((?:[^"\\\\]|\\\\.)*)"`));
+  if (quoted?.[1] !== undefined) return quoted[1];
+  const plain = line.match(new RegExp(`(?:^|\\s)${key}=([^\\s]+)`));
+  return plain?.[1];
+}
+
+function parseTaskId(line: string): string | undefined {
+  const value = parseField(line, "task_id");
+  return value && value !== "null" ? value : undefined;
+}
+
+function parseIntField(line: string, key: string): number | undefined {
+  const raw = parseField(line, key);
+  if (!raw) return undefined;
+  const value = Number(raw);
+  return Number.isInteger(value) && value >= 0 ? value : undefined;
+}
+
+function parseBooleanField(line: string, key: string): boolean | undefined {
+  const raw = parseField(line, key);
+  if (raw === "true") return true;
+  if (raw === "false") return false;
+  return undefined;
+}
+
+function countMatching(lines: string[], pattern: string): number {
+  return lines.filter((line) => line.includes(pattern)).length;
+}
+
+function countToolCalls(taskLines: string[], toolNames: string[]): number {
+  return taskLines.filter(
+    (line) => line.includes("event=lifecycle.tool.call") && toolNames.some((toolName) => line.includes(`tool=${toolName}`)),
+  ).length;
+}
+
+async function readLogLines(): Promise<string[]> {
+  try {
+    const raw = await readFile(DAEMON_LOG_PATH, "utf8");
+    return raw.split("\n").filter((line) => line.trim().length > 0);
+  } catch {
+    return [];
+  }
+}
+
+function summarizeTrace(lines: string[]): z.infer<typeof behaviorTraceSummarySchema> | undefined {
+  const taskId = [...lines]
+    .reverse()
+    .map((line) => parseTaskId(line))
+    .find((value) => value && value.length > 0);
+  if (!taskId) return undefined;
+  const taskLines = lines.filter((line) => line.includes(`task_id=${taskId}`));
+  const summaryLine = [...taskLines].reverse().find((line) => line.includes("event=lifecycle.summary"));
+  if (!summaryLine) {
+    return behaviorTraceSummarySchema.parse({
+      taskId,
+      modelCalls: countMatching(taskLines, "event=lifecycle.generate.start"),
+      totalToolCalls: countMatching(taskLines, "event=lifecycle.tool.call"),
+      readCalls: countToolCalls(taskLines, ["read-file"]),
+      searchCalls: countToolCalls(taskLines, [
+        "find-files",
+        "search-files",
+        "scan-code",
+        "git-status",
+        "git-diff",
+        "git-log",
+        "git-show",
+      ]),
+      writeCalls: countToolCalls(taskLines, [
+        "edit-file",
+        "edit-code",
+        "create-file",
+        "delete-file",
+        "git-add",
+        "git-commit",
+      ]),
+      regenerationCount: taskLines.filter((line) => line.includes("event=lifecycle.eval.decision") && line.includes("action=regenerate")).length,
+      guardBlockedCount: countMatching(taskLines, "event=lifecycle.guard"),
+      hasError: countMatching(taskLines, "event=lifecycle.error") > 0,
+    });
+  }
+  return behaviorTraceSummarySchema.parse({
+    taskId,
+    modelCalls: parseIntField(summaryLine, "model_calls"),
+    totalToolCalls: parseIntField(summaryLine, "total_tool_calls"),
+    readCalls: parseIntField(summaryLine, "read_calls"),
+    searchCalls: parseIntField(summaryLine, "search_calls"),
+    writeCalls: parseIntField(summaryLine, "write_calls"),
+    preWriteDiscoveryCalls: parseIntField(summaryLine, "pre_write_discovery_calls"),
+    regenerationCount: parseIntField(summaryLine, "regeneration_count"),
+    guardBlockedCount: parseIntField(summaryLine, "guard_blocked_count"),
+    hasError: parseBooleanField(summaryLine, "has_error"),
+  });
+}
+
+export function analyzeBehavior(run: {
+  exitCode: number;
+  expectedChangeCount: number;
+  trace?: z.infer<typeof behaviorTraceSummarySchema>;
+}): z.infer<typeof behaviorAnalysisSchema> {
+  let score = 1;
+  const reasons: string[] = [];
+  const trace = run.trace;
+
+  if (run.exitCode !== 0) {
+    score -= 0.3;
+    reasons.push("run exited non-zero");
+  }
+  if (trace?.hasError) {
+    score -= 0.2;
+    reasons.push("lifecycle reported an error");
+  }
+  if ((trace?.guardBlockedCount ?? 0) > 0) {
+    score -= Math.min(0.2, (trace?.guardBlockedCount ?? 0) * 0.05);
+    reasons.push(`guard blocks: ${trace?.guardBlockedCount}`);
+  }
+  if ((trace?.regenerationCount ?? 0) > 0) {
+    score -= Math.min(0.2, (trace?.regenerationCount ?? 0) * 0.1);
+    reasons.push(`regenerations: ${trace?.regenerationCount}`);
+  }
+  if ((trace?.preWriteDiscoveryCalls ?? 0) > 2) {
+    score -= Math.min(0.15, ((trace?.preWriteDiscoveryCalls ?? 0) - 2) * 0.05);
+    reasons.push(`excess pre-write discovery: ${trace?.preWriteDiscoveryCalls}`);
+  }
+  if ((trace?.searchCalls ?? 0) > 1) {
+    score -= Math.min(0.1, ((trace?.searchCalls ?? 0) - 1) * 0.05);
+    reasons.push(`search-heavy run: ${trace?.searchCalls}`);
+  }
+  if ((trace?.writeCalls ?? 0) > run.expectedChangeCount + 1) {
+    score -= Math.min(0.1, ((trace?.writeCalls ?? 0) - (run.expectedChangeCount + 1)) * 0.03);
+    reasons.push(`extra writes beyond expected scope: ${trace?.writeCalls}`);
+  }
+
+  const normalized = Math.max(0, Number(score.toFixed(2)));
+  const verdict = normalized >= 0.85 ? "strong" : normalized >= 0.6 ? "mixed" : "weak";
+  if (reasons.length === 0) reasons.push("clean bounded run");
+  return behaviorAnalysisSchema.parse({ score: normalized, verdict, reasons });
+}
 
 function parseInteger(token: string | undefined, flag: string): number {
   if (!token) throw new Error(`Missing value for ${flag}`);
@@ -110,6 +271,7 @@ async function runScenario(scenarioId: BehaviorScenarioId, model: string, timeou
   const scenario = BEHAVIOR_SCENARIO_BY_ID[scenarioId];
   const workspace = await createBehaviorWorkspace(scenario.id);
   await scenario.setup(workspace);
+  const beforeLines = await readLogLines();
 
   const result = await runTimedCommand(
     ["bun", "run", CLI_ENTRY, "run", "--workspace", workspace, "--model", model, scenario.prompt],
@@ -117,6 +279,8 @@ async function runScenario(scenarioId: BehaviorScenarioId, model: string, timeou
     timeoutMs,
     REPO_DIR,
   );
+  const afterLines = await readLogLines();
+  const trace = summarizeTrace(afterLines.slice(beforeLines.length));
 
   return behaviorOutputSchema.parse({
     scenarioId: scenario.id,
@@ -129,6 +293,8 @@ async function runScenario(scenarioId: BehaviorScenarioId, model: string, timeou
     exitCode: result.exitCode,
     stdout: result.stdout,
     stderr: result.stderr,
+    trace,
+    analysis: analyzeBehavior({ exitCode: result.exitCode, expectedChangeCount: scenario.expectedChanges.length, trace }),
   });
 }
 
@@ -138,6 +304,13 @@ function printRun(run: BehaviorRun): void {
   console.log(`workspace: ${run.workspace}`);
   console.log(`expected changes: ${run.expectedChanges.join(", ")}`);
   console.log(`exit: ${run.exitCode} (${Math.round(run.durationMs)}ms)`);
+  console.log(`score: ${run.analysis.score.toFixed(2)} (${run.analysis.verdict})`);
+  if (run.trace) {
+    console.log(
+      `trace: task=${run.trace.taskId ?? "unknown"} model_calls=${run.trace.modelCalls ?? "?"} total_tools=${run.trace.totalToolCalls ?? "?"} read=${run.trace.readCalls ?? "?"} search=${run.trace.searchCalls ?? "?"} write=${run.trace.writeCalls ?? "?"} pre_write_discovery=${run.trace.preWriteDiscoveryCalls ?? "?"} regenerations=${run.trace.regenerationCount ?? "?"} guard_blocked=${run.trace.guardBlockedCount ?? "?"} has_error=${run.trace.hasError ?? "?"}`,
+    );
+  }
+  console.log(`analysis: ${run.analysis.reasons.join("; ")}`);
   if (run.stdout.trim().length > 0) console.log(run.stdout.trimEnd());
   if (run.stderr.trim().length > 0) console.error(run.stderr.trimEnd());
 }
@@ -152,7 +325,11 @@ async function main(): Promise<void> {
   const runs: BehaviorRun[] = [];
 
   try {
-    for (const scenarioId of args.scenarioIds) runs.push(await runScenario(scenarioId, args.model, args.timeoutMs));
+    for (const scenarioId of args.scenarioIds) {
+      const scenario = BEHAVIOR_SCENARIO_BY_ID[scenarioId];
+      if (!args.json) console.log(`starting ${scenario.id}: ${scenario.description}`);
+      runs.push(await runScenario(scenarioId, args.model, args.timeoutMs));
+    }
   } finally {
     if (!args.keepWorkspaces) await cleanup(runs);
   }
