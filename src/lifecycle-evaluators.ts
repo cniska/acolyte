@@ -1,18 +1,11 @@
 import type { AgentMode } from "./agent-contract";
 import { createModeInstructions } from "./agent-instructions";
 import type { VerifyScope } from "./api";
-import {
-  haveChangesBeenVerified,
-  type LifecycleError,
-  type LifecycleEventName,
-  type LifecycleFeedback,
-  taskScopedCallLog,
-  type VerifyOutcome,
-} from "./lifecycle-contract";
+import type { LifecycleError, LifecycleEventName, LifecycleFeedback, VerifyOutcome } from "./lifecycle-contract";
 import type { LifecyclePolicy } from "./lifecycle-policy";
 import { lintFiles } from "./lint-reflection";
 import { extractReadPaths } from "./tool-arg-paths";
-import type { SessionContext } from "./tool-guards";
+import { haveChangesBeenVerified, type SessionContext, scopedCallLog as taskScopedCallLog } from "./tool-guards";
 import { WRITE_TOOL_SET, WRITE_TOOLS } from "./tool-registry";
 
 export type EvalAction =
@@ -175,7 +168,7 @@ export const repeatedFailureEvaluator: Evaluator = {
     return {
       type: "regenerate",
       feedback: {
-        source: "guard",
+        source: "repeated-failure",
         mode: ctx.mode,
         summary: "The same runtime failure has repeated.",
         details: ctx.currentError.message,

@@ -12,6 +12,7 @@ import {
 import { consumeLifecycleFeedback, createGenerationInput, createLifecycleFeedbackText } from "./lifecycle-generate";
 import { defaultLifecyclePolicy } from "./lifecycle-policy";
 import { phasePrepare } from "./lifecycle-prepare";
+import { updateRepeatedFailureState } from "./lifecycle-state";
 import { LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./tool-error-codes";
 import { createSessionContext, recordCall } from "./tool-guards";
 
@@ -316,6 +317,31 @@ describe("repeatedFailureEvaluator", () => {
     });
 
     expect(repeatedFailureEvaluator.evaluate(ctx)).toEqual({ type: "done" });
+  });
+
+  test("tracks different run-command failures as different repeated-failure streaks", () => {
+    const session = createSessionContext("task_repeat");
+    recordCall(session, "run-command", { command: "bun test src/a.test.ts" });
+
+    const ctx = createMockContext({
+      taskId: "task_repeat",
+      session,
+      currentError: {
+        message: "run-command failed: command exited with code 1",
+        category: "other",
+        code: "E_COMMAND_FAILED",
+        tool: "run-command",
+        source: "tool-error",
+      },
+    });
+
+    updateRepeatedFailureState(ctx);
+    expect(ctx.lifecycleState.repeatedFailure?.count).toBe(1);
+
+    recordCall(session, "run-command", { command: "bun test src/b.test.ts" });
+    updateRepeatedFailureState(ctx);
+    expect(ctx.lifecycleState.repeatedFailure?.count).toBe(1);
+    expect(ctx.lifecycleState.repeatedFailure?.signature).toContain("src/b.test.ts");
   });
 });
 

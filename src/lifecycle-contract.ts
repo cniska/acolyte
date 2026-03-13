@@ -100,7 +100,7 @@ export type VerifyOutcome = {
   error?: LifecycleError;
 };
 
-export type FeedbackSource = "guard" | "lint" | "verify" | "multi-match";
+export type FeedbackSource = "guard" | "lint" | "verify" | "multi-match" | "repeated-failure";
 
 export type LifecycleFeedback = {
   source: FeedbackSource;
@@ -172,7 +172,5 @@ type GuardStats = { blocked: number; flagSet: number };
 export function guardStatsFromSession(session: SessionContext): GuardStats {
   return { blocked: session.flags.guardStats?.blocked ?? 0, flagSet: session.flags.guardStats?.flagSet ?? 0 };
 }
-
-export { haveChangesBeenVerified, scopedCallLog as taskScopedCallLog } from "./tool-guards";
 
 export type LifecycleResult = ChatResponse;

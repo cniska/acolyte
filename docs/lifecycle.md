@@ -29,6 +29,7 @@ resolve →prepare →generate →evaluate →finalize
 - It currently carries:
   - `feedback`: pending runtime feedback consumed by the next matching-mode attempt
   - `verifyOutcome`: structured verifier result used across `keepResult` restore boundaries
+  - `repeatedFailure`: task-scoped failure streak state used to surface one recovery nudge per repeated failure signature
 - Lifecycle may translate selected guard blocks into feedback, so the next attempt can recover with clearer runtime context.
 - `lifecycleState` is not persisted to session history or memory sources.
 - `lifecycleState` supports the model with concrete runtime outcomes; it does not plan tasks or decide how issues should be resolved.
