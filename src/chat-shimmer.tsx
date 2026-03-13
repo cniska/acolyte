@@ -1,5 +1,5 @@
-import { Text } from "ink";
 import type React from "react";
+import { Text } from "./tui";
 
 const DIM_R = 0x55;
 const DIM_G = 0x55;

@@ -1,5 +1,5 @@
 import { useContext, useEffect, useRef } from "react";
-import { AppContext, type InputHandler, InputContext } from "./context";
+import { AppContext, InputContext, type InputHandler } from "./context";
 
 export function useApp(): { exit: () => void } {
   return useContext(AppContext);

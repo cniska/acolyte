@@ -1,17 +1,17 @@
 import {
-  type TuiElement,
-  type TuiNode,
-  type TuiNodeType,
-  type TuiProps,
   appendChild,
   createElement,
   createTextNode,
   insertBefore,
   removeChild,
+  type TuiElement,
+  type TuiNode,
+  type TuiNodeType,
+  type TuiProps,
+  type TuiTextNode,
 } from "./dom";
 
 type Props = TuiProps & { children?: unknown };
-type TextInstance = { kind: "text"; value: string; parent: TuiElement | null };
 
 function propsFromRaw(raw: Props): TuiProps {
   const { children: _, ...rest } = raw;
@@ -33,43 +33,43 @@ export const hostConfig = {
     return createElement(type, propsFromRaw(props));
   },
 
-  createTextInstance(text: string): TextInstance {
+  createTextInstance(text: string): TuiTextNode {
     return createTextNode(text);
   },
 
-  appendInitialChild(parent: TuiElement, child: TuiElement | TextInstance) {
-    appendChild(parent, child as TuiNode);
+  appendInitialChild(parent: TuiElement, child: TuiNode) {
+    appendChild(parent, child);
   },
 
-  appendChild(parent: TuiElement, child: TuiElement | TextInstance) {
-    appendChild(parent, child as TuiNode);
+  appendChild(parent: TuiElement, child: TuiNode) {
+    appendChild(parent, child);
   },
 
-  appendChildToContainer(container: TuiElement, child: TuiElement | TextInstance) {
-    appendChild(container, child as TuiNode);
+  appendChildToContainer(container: TuiElement, child: TuiNode) {
+    appendChild(container, child);
   },
 
-  removeChild(parent: TuiElement, child: TuiElement | TextInstance) {
-    removeChild(parent, child as TuiNode);
+  removeChild(parent: TuiElement, child: TuiNode) {
+    removeChild(parent, child);
   },
 
-  removeChildFromContainer(container: TuiElement, child: TuiElement | TextInstance) {
-    removeChild(container, child as TuiNode);
+  removeChildFromContainer(container: TuiElement, child: TuiNode) {
+    removeChild(container, child);
   },
 
-  insertBefore(parent: TuiElement, child: TuiElement | TextInstance, before: TuiElement | TextInstance) {
-    insertBefore(parent, child as TuiNode, before as TuiNode);
+  insertBefore(parent: TuiElement, child: TuiNode, before: TuiNode) {
+    insertBefore(parent, child, before);
   },
 
-  insertInContainerBefore(container: TuiElement, child: TuiElement | TextInstance, before: TuiElement | TextInstance) {
-    insertBefore(container, child as TuiNode, before as TuiNode);
+  insertInContainerBefore(container: TuiElement, child: TuiNode, before: TuiNode) {
+    insertBefore(container, child, before);
   },
 
   commitUpdate(instance: TuiElement, _type: TuiNodeType, _oldProps: Props, newProps: Props) {
     instance.props = propsFromRaw(newProps);
   },
 
-  commitTextUpdate(textInstance: TextInstance, _oldText: string, newText: string) {
+  commitTextUpdate(textInstance: TuiTextNode, _oldText: string, newText: string) {
     textInstance.value = newText;
   },
 
@@ -107,20 +107,20 @@ export const hostConfig = {
 
   scheduleTimeout: setTimeout,
   cancelTimeout: clearTimeout,
-  noTimeout: -1 as const,
+  noTimeout: -1,
   isPrimaryRenderer: true,
   warnsIfNotActing: false,
   supportsMicrotasks: true,
   scheduleMicrotask: queueMicrotask,
 
-  NotPendingTransition: null as never,
+  NotPendingTransition: null,
   HostTransitionContext: {
     $$typeof: Symbol.for("react.context"),
-    _currentValue: null as never,
-    _currentValue2: null as never,
+    _currentValue: null,
+    _currentValue2: null,
     _threadCount: 0,
-    Consumer: null as never,
-    Provider: null as never,
+    Consumer: null,
+    Provider: null,
   },
 
   setCurrentUpdatePriority() {},

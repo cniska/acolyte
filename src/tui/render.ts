@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { createElement as reactCreateElement } from "react";
-import { AppContext, type InputContextValue, InputContext, type InputRegistration } from "./context";
+import { AppContext, InputContext, type InputContextValue, type InputRegistration } from "./context";
 import { createElement } from "./dom";
 import { setOnCommit } from "./host-config";
 import { createInputDispatcher } from "./input";
@@ -96,8 +96,15 @@ export function render(node: ReactNode, options?: RenderOptions): RenderInstance
   setOnCommit(commitRender);
 
   const container = reconciler.createContainer(
-    root, 0, null, false, null, "",
-    (error: Error) => { console.error(error); },
+    root,
+    0,
+    null,
+    false,
+    null,
+    "",
+    (error: Error) => {
+      console.error(error);
+    },
     () => {},
     () => {},
     () => {},

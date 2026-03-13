@@ -1,4 +1,3 @@
-import { Text } from "ink";
 import type React from "react";
 import { clampSuggestionIndex } from "./chat-effects";
 import { borderLine, formatShortcutRows, justifyLineSpaceBetween } from "./chat-layout";
@@ -6,6 +5,7 @@ import { type PickerState, pickerHint, pickerLabel, renderPickerItems } from "./
 import { slashCommandHelp } from "./chat-slash";
 import { t } from "./i18n";
 import { PromptInput } from "./prompt-input";
+import { Text } from "./tui";
 
 type ChatInputPanelProps = {
   picker?: PickerState | null;

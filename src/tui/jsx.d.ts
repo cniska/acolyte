@@ -1,13 +1,16 @@
+import type { ReactNode } from "react";
 import type { TuiProps } from "./dom";
 
-declare global {
+type TuiElementProps = TuiProps & { children?: ReactNode };
+
+declare module "react" {
   namespace JSX {
     interface IntrinsicElements {
-      "tui-root": TuiProps & { children?: React.ReactNode };
-      "tui-box": TuiProps & { children?: React.ReactNode };
-      "tui-text": TuiProps & { children?: React.ReactNode };
-      "tui-static": TuiProps & { children?: React.ReactNode };
-      "tui-virtual": TuiProps & { children?: React.ReactNode };
+      "tui-root": TuiElementProps;
+      "tui-box": TuiElementProps;
+      "tui-text": TuiElementProps;
+      "tui-static": TuiElementProps;
+      "tui-virtual": TuiElementProps;
     }
   }
 }

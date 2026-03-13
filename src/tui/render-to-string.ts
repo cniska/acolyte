@@ -6,13 +6,20 @@ import { serialize } from "./serialize";
 export function renderToString(node: ReactNode, options?: { columns?: number }): string {
   const root = createElement("tui-root", {});
   const container = reconciler.createContainer(
-    root, 0, null, false, null, "",
-    (error: Error) => { throw error; },
+    root,
+    0,
+    null,
+    false,
+    null,
+    "",
+    (error: Error) => {
+      throw error;
+    },
     () => {},
     () => {},
     () => {},
   );
-  reconciler.updateContainer(node, container, null, () => {});
-  reconciler.flushSync(() => {});
+  reconciler.updateContainerSync(node, container, null, () => {});
+  reconciler.flushSyncWork();
   return serialize(root, options?.columns);
 }

@@ -1,6 +1,6 @@
-import { renderToString } from "ink";
 import type { HeaderLine } from "./chat-header";
 import { ChatHeader } from "./chat-header";
+import { renderToString } from "./tui";
 
 export function graduateHeader(
   headerLines: HeaderLine[],

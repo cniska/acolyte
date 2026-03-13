@@ -1,7 +1,7 @@
-import { Box, Text, useInput } from "ink";
 import type React from "react";
 import { useCallback, useRef, useState } from "react";
 import { ESCAPE_CHAR, resolvePromptAction } from "./prompt-keymap";
+import { Box, Text, useInput } from "./tui";
 
 const META_PREFIX_WINDOW_MS = 150;
 

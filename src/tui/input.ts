@@ -35,9 +35,9 @@ export function parseKeyInput(data: Buffer | string): Array<{ input: string; key
     const arrowModMatch = seq.match(/^1;(\d+)([A-D])$/);
     if (arrowModMatch) {
       const mod = Number.parseInt(arrowModMatch[1] ?? "1", 10);
-      if (mod >= 2) key.shift = (mod - 1 & 1) !== 0;
-      if (mod >= 2) key.meta = (mod - 1 & 2) !== 0;
-      if (mod >= 2) key.ctrl = (mod - 1 & 4) !== 0;
+      if (mod >= 2) key.shift = ((mod - 1) & 1) !== 0;
+      if (mod >= 2) key.meta = ((mod - 1) & 2) !== 0;
+      if (mod >= 2) key.ctrl = ((mod - 1) & 4) !== 0;
       const arrow = arrowModMatch[2];
       if (arrow === "A") key.upArrow = true;
       else if (arrow === "B") key.downArrow = true;
@@ -51,9 +51,9 @@ export function parseKeyInput(data: Buffer | string): Array<{ input: string; key
     const homeEndModMatch = seq.match(/^1;(\d+)([HF])$/);
     if (homeEndModMatch) {
       const mod = Number.parseInt(homeEndModMatch[1] ?? "1", 10);
-      if (mod >= 2) key.shift = (mod - 1 & 1) !== 0;
-      if (mod >= 2) key.meta = (mod - 1 & 2) !== 0;
-      if (mod >= 2) key.ctrl = (mod - 1 & 4) !== 0;
+      if (mod >= 2) key.shift = ((mod - 1) & 1) !== 0;
+      if (mod >= 2) key.meta = ((mod - 1) & 2) !== 0;
+      if (mod >= 2) key.ctrl = ((mod - 1) & 4) !== 0;
       if (homeEndModMatch[2] === "H") key.home = true;
       else key.end = true;
       results.push({ input: raw, key });

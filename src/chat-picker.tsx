@@ -1,4 +1,3 @@
-import { Text } from "ink";
 import type React from "react";
 import type { AgentMode } from "./agent-contract";
 import { unreachable } from "./assert";
@@ -7,6 +6,7 @@ import { truncateText } from "./compact-text";
 import { t } from "./i18n";
 import type { Session } from "./session-contract";
 import type { SkillMeta } from "./skills";
+import { Text } from "./tui";
 
 export type PickerState =
   | { kind: "skills"; items: SkillMeta[]; index: number }

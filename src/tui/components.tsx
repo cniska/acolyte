@@ -1,5 +1,4 @@
 import type React from "react";
-import { createElement } from "react";
 
 type BoxProps = {
   flexDirection?: "row" | "column";
@@ -25,14 +24,29 @@ type StaticProps<T> = {
 };
 
 export function Box(props: BoxProps): React.ReactElement {
-  return createElement("tui-box", props as Record<string, unknown>, props.children);
+  return (
+    <tui-box flexDirection={props.flexDirection} width={props.width}>
+      {props.children}
+    </tui-box>
+  );
 }
 
 export function Text(props: TextProps): React.ReactElement {
-  return createElement("tui-text", props as Record<string, unknown>, props.children);
+  return (
+    <tui-text
+      color={props.color}
+      dimColor={props.dimColor}
+      backgroundColor={props.backgroundColor}
+      bold={props.bold}
+      underline={props.underline}
+      inverse={props.inverse}
+    >
+      {props.children}
+    </tui-text>
+  );
 }
 
 export function Static<T extends { id?: string }>(props: StaticProps<T>): React.ReactElement {
   const children = props.items.map((item, index) => props.children(item, index));
-  return createElement("tui-static", { internal_static: true } as Record<string, unknown>, ...children);
+  return <tui-static internal_static>{children}</tui-static>;
 }

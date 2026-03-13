@@ -1,8 +1,8 @@
-import { useInput } from "ink";
 import { clampSuggestionIndex } from "./chat-effects";
 import { applyAtSuggestion, shouldAutocompleteAtSubmit } from "./chat-file-ref";
 import { PICKER_PAGE_SIZE, type PickerState, pickerItemCount } from "./chat-picker";
 import { shouldAutocompleteSlashSubmit } from "./chat-slash";
+import { useInput } from "./tui";
 
 type HistoryTransition = {
   nextIndex: number;

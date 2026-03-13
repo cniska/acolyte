@@ -1,7 +1,7 @@
-import { Text } from "ink";
 import React from "react";
 import { sanitizeAssistantContent, tokenizeForHighlighting, wrapAssistantContent } from "./chat-content";
 import { palette } from "./palette";
+import { Text } from "./tui";
 
 export function renderAssistantContent(content: string, wrapWidth: number): React.ReactNode {
   const cleaned = sanitizeAssistantContent(content);

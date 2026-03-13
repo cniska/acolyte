@@ -1,5 +1,5 @@
-import { renderToString } from "ink";
 import type { ReactNode } from "react";
+import { renderToString } from "./tui";
 
 export const stripAnsi = (value: string): string => {
   let out = "";

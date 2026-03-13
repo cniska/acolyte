@@ -1,9 +1,9 @@
-import { Box, Text } from "ink";
 import React from "react";
 import type { ChatRow } from "./chat-commands";
 import { renderAssistantContent } from "./chat-content-render";
 import { palette } from "./palette";
 import { renderToolOutput as renderToolOutputText, type ToolOutput } from "./tool-output-content";
+import { Box, Text } from "./tui";
 
 const MARKERS: Record<ChatRow["role"], string> = {
   user: "❯ ",
