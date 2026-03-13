@@ -14,7 +14,7 @@ Acolyte v0 ships with these capabilities:
 - **Core UX** — setup, diagnostics, per-tool permissions, error recovery
 - **Execution engine** — 5-phase lifecycle (resolve → prepare → generate → evaluate → finalize) with streaming tool calls
 - **Reliability** — anti-loop guards, step budgets, actionable diagnostics, automatic verify cycles
-- **Autonomous execution** — bounded coding tasks end-to-end: plan, edit, verify, recover
+- **Autonomous execution** — bounded coding tasks end-to-end: edit, verify, recover
 - **Memory** — context distillation across session/project/user tiers, proactive token budgeting, rolling history pruning
 - **Product polish** — typed RPC protocol, task-centric execution, skill parity, visual regression coverage
 - **Extensibility** — interface-first boundaries for lifecycle, tools, guards, memory, and transport

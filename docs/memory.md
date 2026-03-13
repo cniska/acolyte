@@ -8,7 +8,12 @@ Distill preserves durable knowledge; history pruning handles bulky transcript/to
 ## Model
 
 - **Memory Engine**: top-level continuity capability.
-- **Memory Pipeline**: staged flow (`ingest →normalize →select →inject →commit`).
+- **Memory Pipeline**: staged flow:
+
+```text
+ingest → normalize → select → inject → commit
+```
+
 - **Memory Source**: pluggable source that provides entries and optional commit behavior.
 - **Memory Source Strategy**: configured source IDs and order (`memorySources`).
 - **Resource ID**: canonical cross-session identity key (`proj_*` or `user_*`) used for resource-scoped memory.

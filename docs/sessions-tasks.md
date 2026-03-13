@@ -13,7 +13,7 @@ Sessions and tasks are separate runtime concerns.
 Task lifecycle:
 
 ```text
-accepted →queued →running →completed|failed|cancelled
+accepted → queued → running → completed|failed|cancelled
 ```
 
 - **accepted**: request validated and assigned `task_id`.

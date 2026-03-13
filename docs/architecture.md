@@ -21,7 +21,7 @@ Every concept below is modeled as an explicit entity with typed contracts, its o
 ## System flow
 
 ```text
-CLI →client →server →lifecycle →model + tools
+CLI → client → server → lifecycle → model + tools
 ```
 
 - **execution model:** one active task per session, with ordered queued tasks.
@@ -39,7 +39,7 @@ React tree → reconciler → TUI DOM → serialize → terminal output
 ## Daemon flow
 
 ```text
-client →rpc server →task queue →lifecycle worker
+client → rpc server → task queue → lifecycle worker
 ```
 
 - **rpc server:** accepts requests, exposes task/status streams, and routes to queue/lifecycle.
@@ -49,7 +49,7 @@ client →rpc server →task queue →lifecycle worker
 ## Task flow
 
 ```text
-accept →queue →run →complete|fail|cancel
+accept → queue → run → complete|fail|cancel
 ```
 
 - **accept:** validate request and assign `task_id`.
@@ -61,10 +61,11 @@ accept →queue →run →complete|fail|cancel
 ## Tool layering
 
 ```text
-lifecycle →guard →toolkit →registry
+lifecycle → guard → cache → toolkit → registry
 ```
 
 - **guard:** pre-execution safety/redundancy checks and post-execution call recording.
+- **cache:** per-task reuse layer for read-only and search tool results.
 - **toolkit:** domain tool definitions with guarded execution (`core-toolkit`, `git-toolkit`).
 - **registry:** toolkit registration, permission filtering, and agent-facing tool surface.
 - **details:** see [Tooling](./tooling.md).
@@ -72,7 +73,7 @@ lifecycle →guard →toolkit →registry
 ## Lifecycle flow
 
 ```text
-resolve →prepare →generate →evaluate →finalize
+resolve → prepare → generate → evaluate → finalize
 ```
 
 - **resolve:** pick mode and model (sync, not a full phase).
@@ -97,8 +98,8 @@ resolve →prepare →generate →evaluate →finalize
 
 ```text
 Memory Engine
-  →Memory Pipeline (ingest →normalize →select →inject →commit)
-  →Memory context in system prompt
+  → Memory Pipeline (ingest → normalize → select → inject → commit)
+  → Memory context in system prompt
 ```
 
 - Memory Engine composes source strategy, pipeline stages, and distill behavior to provide continuity across turns.
@@ -121,5 +122,5 @@ Memory Engine
 - **state ownership:** chat/session state and memory are persisted outside lifecycle and passed in as inputs.
 - **task trace:** RPC emits task-state transitions with stable `task_id`:
 ```text
-accepted →queued →running →completed|failed|cancelled
+accepted → queued → running → completed|failed|cancelled
 ```

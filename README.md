@@ -29,7 +29,7 @@ bun run test:perf     # performance baselines
 
 - [Index](docs/README.md)
 - [Why Acolyte](docs/why-acolyte.md)
-- [Contributing](docs/contributing.md)
+- [Contributing](CONTRIBUTING.md)
 - [Benchmarks](docs/benchmarks.md)
 - [Agent policy](AGENTS.md)
 

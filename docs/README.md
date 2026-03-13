@@ -27,6 +27,7 @@ Developer documentation for Acolyte — a terminal-first AI coding assistant: lo
 
 ## Reference
 
+- [Contributing](../CONTRIBUTING.md) — contributor workflow and PR expectations
 - [Protocol](./protocol.md) — transport-facing contract between client and server
 - [Localization](./localization.md) — separates translatable copy from protocol contracts
 - [Testing](./testing.md) — test strategy and conventions
