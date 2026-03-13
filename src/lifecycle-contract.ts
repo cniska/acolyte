@@ -105,7 +105,9 @@ export type FeedbackSource = "lint" | "verify" | "multi-match";
 export type LifecycleFeedback = {
   source: FeedbackSource;
   mode: AgentMode;
-  content: string;
+  summary: string;
+  details?: string;
+  instruction?: string;
 };
 
 export type LifecycleState = {

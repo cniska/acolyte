@@ -139,13 +139,16 @@ function ensureAgentForMode(ctx: RunContext): void {
   });
 }
 
-function renderFeedback(feedback: LifecycleFeedback): string {
-  return `SYSTEM: Lifecycle feedback (${feedback.source}):\n${feedback.content}`;
+export function createLifecycleFeedbackText(feedback: LifecycleFeedback): string {
+  const lines = [`SYSTEM: Lifecycle feedback (${feedback.source}):`, feedback.summary];
+  if (feedback.details) lines.push("", feedback.details);
+  if (feedback.instruction) lines.push("", feedback.instruction);
+  return lines.join("\n");
 }
 
 function createGenerationInputFromFeedback(baseAgentInput: string, activeFeedback: LifecycleFeedback[]): string {
   if (activeFeedback.length === 0) return baseAgentInput;
-  return [baseAgentInput, ...activeFeedback.map(renderFeedback)].join("\n\n");
+  return [baseAgentInput, ...activeFeedback.map(createLifecycleFeedbackText)].join("\n\n");
 }
 
 export function consumeLifecycleFeedback(

@@ -1,6 +1,6 @@
 import { type RecoveryAction, recoveryActionForError as resolveRecoveryAction } from "./error-handling";
 import { t } from "./i18n";
-import type { LifecycleInput, RunContext, SavedRegenerationState } from "./lifecycle-contract";
+import type { FeedbackSource, LifecycleInput, RunContext, SavedRegenerationState } from "./lifecycle-contract";
 import { type Evaluator, lintEvaluator, multiMatchEditEvaluator, verifyCycle } from "./lifecycle-evaluators";
 import { phaseGenerate, setMode, shouldYieldNow } from "./lifecycle-generate";
 import { defaultLifecyclePolicy, type LifecyclePolicy } from "./lifecycle-policy";
@@ -17,6 +17,10 @@ function snapshotState(ctx: RunContext): SavedRegenerationState {
 function restoreState(ctx: RunContext, saved: SavedRegenerationState): void {
   ctx.result = saved.result;
   ctx.currentError = saved.currentError;
+}
+
+function prepareLifecycleStateForRegeneration(ctx: RunContext, feedbackSource?: FeedbackSource): void {
+  if (feedbackSource === "verify") ctx.lifecycleState.verifyOutcome = undefined;
 }
 
 export function recoveryActionForError(
@@ -86,6 +90,7 @@ export async function phaseEvaluate(ctx: RunContext, shouldYield: LifecycleInput
         regeneration_count: ctx.regenerationCount,
       });
 
+      prepareLifecycleStateForRegeneration(ctx, action.feedback?.source);
       if (action.feedback) ctx.lifecycleState.feedback.push(action.feedback);
 
       await phaseGenerate(ctx, {

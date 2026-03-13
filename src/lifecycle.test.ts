@@ -4,7 +4,7 @@ import { scheduleMemoryCommit, shouldCommitMemory } from "./lifecycle";
 import type { RunContext } from "./lifecycle-contract";
 import { recoveryActionForError } from "./lifecycle-evaluate";
 import { multiMatchEditEvaluator, verifyCycle } from "./lifecycle-evaluators";
-import { consumeLifecycleFeedback, createGenerationInput } from "./lifecycle-generate";
+import { consumeLifecycleFeedback, createGenerationInput, createLifecycleFeedbackText } from "./lifecycle-generate";
 import { defaultLifecyclePolicy } from "./lifecycle-policy";
 import { phasePrepare } from "./lifecycle-prepare";
 import { LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./tool-error-codes";
@@ -77,13 +77,13 @@ describe("verifyCycle", () => {
     if (action.type === "regenerate") {
       expect(action.mode).toBe("verify");
       expect(action.keepResult).toBe(true);
-      expect(action.feedback?.content).toContain("Task boundary:");
-      expect(action.feedback?.content).toContain("- src/a.ts");
-      expect(action.feedback?.content).toContain("- src/b.ts");
-      expect(action.feedback?.content).toContain("Allowed supporting reads");
-      expect(action.feedback?.content).toContain("- src/c.ts");
-      expect(action.feedback?.content).toContain("- src/d.ts");
-      expect(action.feedback?.content).not.toContain("- src/old.ts");
+      expect(action.feedback?.details).toContain("Task boundary:");
+      expect(action.feedback?.details).toContain("- src/a.ts");
+      expect(action.feedback?.details).toContain("- src/b.ts");
+      expect(action.feedback?.details).toContain("Allowed supporting reads");
+      expect(action.feedback?.details).toContain("- src/c.ts");
+      expect(action.feedback?.details).toContain("- src/d.ts");
+      expect(action.feedback?.details).not.toContain("- src/old.ts");
     }
   });
 
@@ -95,7 +95,7 @@ describe("verifyCycle", () => {
     });
     const action = verifyCycle.evaluate(ctx);
     expect(action.type).toBe("regenerate");
-    if (action.type === "regenerate") expect(action.feedback?.content).not.toContain("Task boundary:");
+    if (action.type === "regenerate") expect(action.feedback?.details).not.toContain("Task boundary:");
   });
 
   test("uses global verify prompt when request explicitly opts into global scope", () => {
@@ -110,7 +110,7 @@ describe("verifyCycle", () => {
     });
     const action = verifyCycle.evaluate(ctx);
     expect(action.type).toBe("regenerate");
-    if (action.type === "regenerate") expect(action.feedback?.content).not.toContain("Task boundary:");
+    if (action.type === "regenerate") expect(action.feedback?.details).not.toContain("Task boundary:");
   });
 
   test("returns done when verify already ran", () => {
@@ -162,7 +162,7 @@ describe("verifyCycle", () => {
     expect(action.type).toBe("regenerate");
     if (action.type === "regenerate") {
       expect(action.mode).toBe("work");
-      expect(action.feedback?.content).toContain("missing export updatePost");
+      expect(action.feedback?.details).toContain("missing export updatePost");
     }
   });
 
@@ -224,9 +224,9 @@ describe("multiMatchEditEvaluator", () => {
     const action = multiMatchEditEvaluator.evaluate(ctx);
     expect(action.type).toBe("regenerate");
     if (action.type === "regenerate") {
-      expect(action.feedback?.content).toContain("next tool call must be edit-code");
-      expect(action.feedback?.content).toContain("Use path 'src/priority.ts' for edit-code");
-      expect(action.feedback?.content).toContain("do not use '.' or directory paths");
+      expect(action.feedback?.instruction).toContain("next tool call must be edit-code");
+      expect(action.feedback?.instruction).toContain("Use path 'src/priority.ts' for edit-code");
+      expect(action.feedback?.instruction).toContain("do not use '.' or directory paths");
     }
   });
 
@@ -241,7 +241,9 @@ describe("multiMatchEditEvaluator", () => {
     });
     const action = multiMatchEditEvaluator.evaluate(ctx);
     expect(action.type).toBe("regenerate");
-    if (action.type === "regenerate") expect(action.feedback?.content).toContain("Use a concrete file path for edit-code");
+    if (action.type === "regenerate") {
+      expect(action.feedback?.instruction).toContain("Use a concrete file path for edit-code");
+    }
   });
 
   test("returns done when edit-code was already used", () => {
@@ -450,9 +452,9 @@ describe("createGenerationInput", () => {
       mode: "work",
       lifecycleState: {
         feedback: [
-          { source: "verify", mode: "verify", content: "Task boundary:\n- src/a.ts" },
-          { source: "lint", mode: "work", content: "Lint errors detected" },
-          { source: "multi-match", mode: "work", content: "Use edit-code next" },
+          { source: "verify", mode: "verify", summary: "Run verification.", details: "Task boundary:\n- src/a.ts" },
+          { source: "lint", mode: "work", summary: "Lint errors detected" },
+          { source: "multi-match", mode: "work", summary: "Use edit-code next" },
         ],
       },
     });
@@ -465,22 +467,70 @@ describe("createGenerationInput", () => {
   });
 });
 
+describe("createLifecycleFeedbackText", () => {
+  test("renders summary, details, and instruction in a single lifecycle-owned format", () => {
+    const text = createLifecycleFeedbackText({
+      source: "lint",
+      mode: "work",
+      summary: "Lint errors detected in files you edited.",
+      details: "src/a.ts:1:1 error unexpected any",
+      instruction: "Fix the issues above, then stop.",
+    });
+
+    expect(text).toContain("SYSTEM: Lifecycle feedback (lint):");
+    expect(text).toContain("Lint errors detected in files you edited.");
+    expect(text).toContain("src/a.ts:1:1 error unexpected any");
+    expect(text).toContain("Fix the issues above, then stop.");
+  });
+});
+
 describe("consumeLifecycleFeedback", () => {
   test("returns and clears pending feedback for the active mode only", () => {
     const state = {
       feedback: [
-        { source: "verify" as const, mode: "verify" as const, content: "Task boundary:\n- src/a.ts" },
-        { source: "lint" as const, mode: "work" as const, content: "Lint errors detected" },
-        { source: "multi-match" as const, mode: "work" as const, content: "Use edit-code next" },
+        {
+          source: "verify" as const,
+          mode: "verify" as const,
+          summary: "Run verification.",
+          details: "Task boundary:\n- src/a.ts",
+        },
+        { source: "lint" as const, mode: "work" as const, summary: "Lint errors detected" },
+        { source: "multi-match" as const, mode: "work" as const, summary: "Use edit-code next" },
       ],
     };
 
     const consumed = consumeLifecycleFeedback(state, "work");
 
     expect(consumed).toEqual([
-      { source: "lint", mode: "work", content: "Lint errors detected" },
-      { source: "multi-match", mode: "work", content: "Use edit-code next" },
+      { source: "lint", mode: "work", summary: "Lint errors detected" },
+      { source: "multi-match", mode: "work", summary: "Use edit-code next" },
     ]);
-    expect(state.feedback).toEqual([{ source: "verify", mode: "verify", content: "Task boundary:\n- src/a.ts" }]);
+    expect(state.feedback).toEqual([
+      { source: "verify", mode: "verify", summary: "Run verification.", details: "Task boundary:\n- src/a.ts" },
+    ]);
+  });
+
+  test("does not leak consumed feedback into later prompt creation", () => {
+    const state = {
+      feedback: [{ source: "lint" as const, mode: "work" as const, summary: "Lint errors detected" }],
+    };
+
+    expect(
+      createGenerationInput({
+        baseAgentInput: "USER: fix it",
+        mode: "work",
+        lifecycleState: state,
+      }),
+    ).toContain("Lint errors detected");
+
+    consumeLifecycleFeedback(state, "work");
+
+    expect(
+      createGenerationInput({
+        baseAgentInput: "USER: fix it",
+        mode: "work",
+        lifecycleState: state,
+      }),
+    ).toBe("USER: fix it");
   });
 });

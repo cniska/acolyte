@@ -29,6 +29,7 @@ resolve →prepare →generate →evaluate →finalize
   - `feedback`: pending runtime feedback consumed by the next matching-mode attempt
   - `verifyOutcome`: structured verifier result used across `keepResult` restore boundaries
 - `lifecycleState` is not persisted to session history or memory sources.
+- `lifecycleState` supports the model with concrete runtime outcomes; it does not plan tasks or decide how issues should be resolved.
 
 ## Memory integration point
 

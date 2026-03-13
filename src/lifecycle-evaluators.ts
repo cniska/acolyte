@@ -128,12 +128,9 @@ export const lintEvaluator: Evaluator = {
       feedback: {
         source: "lint",
         mode: "work",
-        content: [
-          "Lint errors detected in files you edited:",
-          result.output,
-          "",
-          "Fix the issues above, then stop.",
-        ].join("\n"),
+        summary: "Lint errors detected in files you edited.",
+        details: result.output,
+        instruction: "Fix the issues above, then stop.",
       },
     };
   },
@@ -153,7 +150,8 @@ export const verifyCycle: Evaluator = {
           feedback: {
             source: "verify",
             mode: "verify",
-            content: scopedVerifyPrompt(ctx),
+            summary: "Run verification for the current task scope.",
+            details: scopedVerifyPrompt(ctx),
           },
           mode: "verify",
           cycleLimit: ctx.policy.verifyMaxSteps,
@@ -172,7 +170,9 @@ export const verifyCycle: Evaluator = {
       feedback: {
         source: "verify",
         mode: "work",
-        content: `Verification found issues:\n${verifyOutcome.text}\n\nFix the issues above, then stop.`,
+        summary: "Verification found issues.",
+        details: verifyOutcome.text,
+        instruction: "Fix the issues above, then stop.",
       },
       mode: "work",
     };
@@ -198,8 +198,8 @@ export const multiMatchEditEvaluator: Evaluator = {
       feedback: {
         source: "multi-match",
         mode: "work",
-        content:
-          "Your previous edit-file call matched multiple locations. " +
+        summary: "Your previous edit-file call matched multiple locations.",
+        instruction:
           "For this task, your next tool call must be edit-code (not edit-file). " +
           (targetPath
             ? `Use path '${targetPath}' for edit-code and do not use '.' or directory paths. `

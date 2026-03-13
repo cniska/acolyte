@@ -83,6 +83,7 @@ resolve →prepare →generate →evaluate →finalize
 
 - **regeneration:** evaluators may request regeneration, bounded by caps.
 - **lifecycle state:** regeneration uses internal task-scoped pending feedback/verify state; this state is not persisted to session or memory.
+- **host/model boundary:** lifecycle state supports retries with concrete runtime outcomes, while the model remains responsible for deciding how to complete the task.
 - **scheduling:** yield checks happen between lifecycle decisions, never mid-step.
 - **task metrics:** evaluator and summary metrics are scoped by `task_id`.
 - **details:** see [Lifecycle](./lifecycle.md).
