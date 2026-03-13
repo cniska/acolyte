@@ -7,6 +7,7 @@
     "acolyte": "./src/cli.ts"
   },
   "scripts": {
+    "prepare": "bash scripts/setup-hooks.sh",
     "start": "bun run src/cli.ts",
     "dev": "ACOLYTE_SERVER_RESTART=1 ./scripts/with-server.sh serve:watch bun run src/cli.ts",
     "run": "bun run src/cli.ts run",
@@ -24,7 +25,7 @@
     "test:tui": "bash scripts/run-test-suite.sh tui",
     "test:int": "bash scripts/run-test-suite.sh int",
     "test:perf": "bash scripts/run-test-suite.sh perf",
-    "verify": "bun run format && bun run lint && bun run typecheck && bun test",
+    "verify": "bun run lint && bun run typecheck && bun test",
     "benchmark": "bun run scripts/benchmark.ts",
     "release": "bash scripts/release.sh"
   },

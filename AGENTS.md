@@ -25,7 +25,7 @@ Patterns to follow:
 - Feature branch review → run `/review` skill (runs style, arch, and security audits against branch diff)
 
 Development:
-- Validate: `bun run verify` (format + lint + typecheck + test)
+- Validate: `bun run verify` (lint + typecheck + test)
 
 ## Tooling
 
@@ -86,7 +86,7 @@ Development:
 
 - Run relevant validation after changes.
 - Keep the branch green after each fix slice: run the narrowest relevant checks while iterating, then run the required gate before committing.
-- For this repo baseline, run `bun run verify` as the final gate before committing (`format` + `lint` + `typecheck` + `test`).
+- For this repo baseline, run `bun run verify` as the final gate before committing (`lint` + `typecheck` + `test`).
 - While iterating, run the narrowest check: `bun run typecheck` for type changes, `bun run lint` for style, `bun test <file>` for specific tests.
 - Do not commit on red. If baseline is already red, first land a dedicated fix slice that restores green, then continue feature work.
 - Prefer automated smoke checks for readiness; ask for manual user testing only at milestone checkpoints.

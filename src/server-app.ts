@@ -16,18 +16,12 @@ import type { TaskId, TaskState, TaskTransitionReason } from "./task-contract";
 import { TaskRegistry } from "./task-registry";
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : appConfig.server.port;
+const HOST = "127.0.0.1";
 const API_KEY = appConfig.server.apiKey;
 const OPENAI_API_KEY = appConfig.openai.apiKey;
 const SUPPRESSED_STDERR_PREFIX = "Upstream LLM API error from";
 const SERVER_IDLE_TIMEOUT_SECONDS = Math.max(30, Math.ceil(appConfig.server.replyTimeoutMs / 1000) + 30);
 const taskRegistry = new TaskRegistry();
-
-const originalConsoleError = console.error.bind(console);
-console.error = (...args: unknown[]): void => {
-  const first = args[0];
-  if (typeof first === "string" && first.includes(SUPPRESSED_STDERR_PREFIX)) return;
-  originalConsoleError(...args);
-};
 
 function nextErrorId(): ErrorId {
   return errorIdSchema.parse(`err_${createId()}`);
@@ -61,7 +55,7 @@ function safeEqual(a: string, b: string): boolean {
   return crypto.timingSafeEqual(bufA, bufB);
 }
 
-function hasValidAuth(req: Request, url?: URL): boolean {
+function hasValidAuth(req: Request): boolean {
   if (!API_KEY) return true;
 
   const auth = req.headers.get("authorization");
@@ -73,8 +67,7 @@ function hasValidAuth(req: Request, url?: URL): boolean {
     if (trimmed.startsWith("bearer.") && safeEqual(trimmed.slice(7), API_KEY)) return true;
   }
 
-  const param = url?.searchParams.get("apiKey");
-  return param !== null && param !== undefined && safeEqual(param, API_KEY);
+  return false;
 }
 
 function transitionTaskState(
@@ -136,6 +129,15 @@ async function createStatusPayload(): Promise<StatusPayload> {
 }
 
 export async function startServer(): Promise<void> {
+  // Suppress noisy upstream LLM SDK errors that are already handled at the application layer.
+  // Scoped here so it only applies while the server is running.
+  const originalConsoleError = console.error.bind(console);
+  console.error = (...args: unknown[]): void => {
+    const first = args[0];
+    if (typeof first === "string" && first.includes(SUPPRESSED_STDERR_PREFIX)) return;
+    originalConsoleError(...args);
+  };
+
   const rpcWebsocketHandlers = createRpcWebsocketHandlers({
     createStatusPayload,
     isChatRequest,
@@ -166,6 +168,7 @@ export async function startServer(): Promise<void> {
 
   server = Bun.serve<RpcConnectionState>({
     port: PORT,
+    hostname: HOST,
     idleTimeout: SERVER_IDLE_TIMEOUT_SECONDS,
     fetch: fetchHandler,
     websocket: rpcWebsocketHandlers,
@@ -178,5 +181,5 @@ export async function startServer(): Promise<void> {
     log.error("unhandled rejection", errorToLogFields(reason instanceof Error ? reason : new Error(String(reason))));
   });
 
-  log.info("server listening", { url: `http://localhost:${server.port}` });
+  log.info("server listening", { url: `http://${HOST}:${server.port}` });
 }

@@ -48,6 +48,10 @@ Events are append-only and ordered per request.
 RPC uses JSON envelopes with transport request `id` (`rpc_*`), `type`, and optional `payload`.
 Domain task ids are separate (`task_*`).
 
+Authentication:
+- HTTP endpoints use `Authorization: Bearer <apiKey>`.
+- WebSocket RPC uses Bearer auth via `sec-websocket-protocol` (`bearer.<apiKey>`).
+
 Client methods:
 
 - `status.get`

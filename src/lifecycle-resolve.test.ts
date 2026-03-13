@@ -1,13 +1,24 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { beforeEach, describe, expect, test } from "bun:test";
 import { appConfig, setModeModel } from "./app-config";
+import { readResolvedConfigSync } from "./config";
 import { resolveModeModel } from "./lifecycle-resolve";
 
-const savedModels = { ...appConfig.models };
-const savedOpenai = { ...appConfig.openai };
+function resetAppConfigForTest(): void {
+  const defaults = readResolvedConfigSync({ homeDir: "/__acolyte_test_reset__", cwd: "/__acolyte_test_reset__" });
+  (appConfig as { model: string }).model = defaults.model;
+  (appConfig as { models: Record<string, string | undefined> }).models = {};
+  Object.assign(appConfig.server, {
+    port: defaults.port,
+    transportMode: defaults.transportMode,
+    replyTimeoutMs: defaults.replyTimeoutMs,
+  });
+  Object.assign(appConfig.openai, { baseUrl: defaults.openaiBaseUrl });
+  Object.assign(appConfig.anthropic, { baseUrl: defaults.anthropicBaseUrl });
+  Object.assign(appConfig.google, { baseUrl: defaults.googleBaseUrl });
+}
 
-afterEach(() => {
-  (appConfig as { models: typeof appConfig.models }).models = { ...savedModels };
-  Object.assign(appConfig.openai, savedOpenai);
+beforeEach(() => {
+  resetAppConfigForTest();
 });
 
 function withOpenaiKey(key: string | undefined): void {

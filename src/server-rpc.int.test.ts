@@ -95,9 +95,13 @@ function sendRpc(ws: WebSocket, payload: Record<string, unknown>): void {
   ws.send(JSON.stringify(payload));
 }
 
+function createAuthenticatedRpcSocket(port: number, apiKey: string): WebSocket {
+  return new WebSocket(`ws://127.0.0.1:${port}/v1/rpc`, [`bearer.${apiKey}`]);
+}
+
 async function openRpcSession(port: number, apiKey: string): Promise<RpcSession> {
   const messages: RpcEnvelope[] = [];
-  const ws = new WebSocket(`ws://127.0.0.1:${port}/v1/rpc?apiKey=${apiKey}`);
+  const ws = createAuthenticatedRpcSocket(port, apiKey);
   await new Promise<void>((resolve, reject) => {
     const timeout = setTimeout(() => reject(new Error("websocket open timed out")), 5000);
     ws.addEventListener("open", () => {
@@ -159,7 +163,9 @@ describe("server rpc websocket queue", () => {
     const missingKey = await fetch(`http://127.0.0.1:${port}/v1/rpc`);
     expect(missingKey.status).toBe(401);
 
-    const wrongKey = await fetch(`http://127.0.0.1:${port}/v1/rpc?apiKey=wrong_key`);
+    const wrongKey = await fetch(`http://127.0.0.1:${port}/v1/rpc`, {
+      headers: { authorization: "Bearer wrong_key" },
+    });
     expect(wrongKey.status).toBe(401);
   });
 
@@ -171,7 +177,7 @@ describe("server rpc websocket queue", () => {
         await startServerForRpcTest(port, apiKey, { providerBaseUrl });
 
         const messages: RpcEnvelope[] = [];
-        const ws = new WebSocket(`ws://127.0.0.1:${port}/v1/rpc?apiKey=${apiKey}`);
+        const ws = createAuthenticatedRpcSocket(port, apiKey);
         await new Promise<void>((resolve, reject) => {
           const timeout = setTimeout(() => reject(new Error("websocket open timed out")), 5000);
           ws.addEventListener("open", () => {
@@ -284,7 +290,7 @@ describe("server rpc websocket queue", () => {
         const apiKey = "rpc_test_key";
         await startServerForRpcTest(port, apiKey, { providerBaseUrl });
 
-        const ws = new WebSocket(`ws://127.0.0.1:${port}/v1/rpc?apiKey=${apiKey}`);
+        const ws = createAuthenticatedRpcSocket(port, apiKey);
         await new Promise<void>((resolve, reject) => {
           const timeout = setTimeout(() => reject(new Error("websocket open timed out")), 5000);
           ws.addEventListener("open", () => {
@@ -395,7 +401,7 @@ describe("server rpc websocket queue", () => {
         await prepareRpcTestProject(project, port, providerBaseUrl);
 
         const proc = await startRpcTestServerProcess(home, project, apiKey, port, { providerBaseUrl });
-        const ws = new WebSocket(`ws://127.0.0.1:${port}/v1/rpc?apiKey=${apiKey}`);
+        const ws = createAuthenticatedRpcSocket(port, apiKey);
         await new Promise<void>((resolve, reject) => {
           const timeout = setTimeout(() => reject(new Error("websocket open timed out")), 5000);
           ws.addEventListener("open", () => {
@@ -466,7 +472,7 @@ describe("server rpc websocket queue", () => {
         await proc.exited.catch(() => {});
 
         await startRpcTestServerProcess(home, project, apiKey, port, { providerBaseUrl });
-        const wsAfter = new WebSocket(`ws://127.0.0.1:${port}/v1/rpc?apiKey=${apiKey}`);
+        const wsAfter = createAuthenticatedRpcSocket(port, apiKey);
         await new Promise<void>((resolve, reject) => {
           const timeout = setTimeout(() => reject(new Error("websocket open timed out")), 5000);
           wsAfter.addEventListener("open", () => {
@@ -524,7 +530,7 @@ describe("server rpc websocket queue", () => {
         const apiKey = "rpc_test_key";
         await startServerForRpcTest(port, apiKey, { providerBaseUrl });
 
-        const ws = new WebSocket(`ws://127.0.0.1:${port}/v1/rpc?apiKey=${apiKey}`);
+        const ws = createAuthenticatedRpcSocket(port, apiKey);
         await new Promise<void>((resolve, reject) => {
           const timeout = setTimeout(() => reject(new Error("websocket open timed out")), 5000);
           ws.addEventListener("open", () => {
@@ -604,7 +610,7 @@ describe("server rpc websocket queue", () => {
         await startServerForRpcTest(port, apiKey, { providerBaseUrl });
 
         const messages: RpcEnvelope[] = [];
-        const ws = new WebSocket(`ws://127.0.0.1:${port}/v1/rpc?apiKey=${apiKey}`);
+        const ws = createAuthenticatedRpcSocket(port, apiKey);
         await new Promise<void>((resolve, reject) => {
           const timeout = setTimeout(() => reject(new Error("websocket open timed out")), 5000);
           ws.addEventListener("open", () => {
@@ -703,7 +709,7 @@ describe("server rpc websocket queue", () => {
         await startServerForRpcTest(port, apiKey, { providerBaseUrl });
 
         const messages: RpcEnvelope[] = [];
-        const ws = new WebSocket(`ws://127.0.0.1:${port}/v1/rpc?apiKey=${apiKey}`);
+        const ws = createAuthenticatedRpcSocket(port, apiKey);
         await new Promise<void>((resolve, reject) => {
           const timeout = setTimeout(() => reject(new Error("websocket open timed out")), 5000);
           ws.addEventListener("open", () => {
@@ -800,7 +806,7 @@ describe("server rpc websocket queue", () => {
         await startServerForRpcTest(port, apiKey, { providerBaseUrl });
 
         const messages: RpcEnvelope[] = [];
-        const ws = new WebSocket(`ws://127.0.0.1:${port}/v1/rpc?apiKey=${apiKey}`);
+        const ws = createAuthenticatedRpcSocket(port, apiKey);
         await new Promise<void>((resolve, reject) => {
           const timeout = setTimeout(() => reject(new Error("websocket open timed out")), 5000);
           ws.addEventListener("open", () => {
