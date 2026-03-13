@@ -18,7 +18,7 @@ Projects compared: [Aider](https://github.com/Aider-AI/aider), [OpenCode](https:
 | OpenHands | Web platform with Docker sandboxing |
 | OpenClaw | Node.js gateway + WebSocket control plane |
 
-Acolyte runs as a headless daemon. The CLI, future editor plugins, and third-party clients all connect over the same typed RPC protocol. The optional TUI is built with Ink and provides an interactive CLI experience.
+Acolyte runs as a headless daemon. The CLI, future editor plugins, and third-party clients all connect over the same typed RPC protocol. The optional TUI is a custom React terminal renderer built on `react-reconciler` and provides an interactive CLI experience.
 ## Lifecycle pipeline
 
 Every request flows through five explicit phases, each in its own module with its own tests:
@@ -60,7 +60,7 @@ Goose has a RetryManager with shell-command success checks. OpenHands has a Crit
 
 ## Developer experience
 
-The CLI is built with [Ink](https://github.com/vadimdemedes/ink) and ships a full TUI with:
+The CLI ships a custom React terminal renderer (built on `react-reconciler`) with a full TUI:
 - Structured tool output with typed rendering (bold labels, colored diffs, dim line numbers)
 - Fuzzy search and autocomplete with suggestion and correction for file paths, sessions, commands, and skills
 - Model picker that queries provider APIs for available models

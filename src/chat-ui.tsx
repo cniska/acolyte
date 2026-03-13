@@ -1,4 +1,3 @@
-import { Box, render, Static, Text, useApp } from "ink";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ChatRow } from "./chat-contract";
 import { useAtSuggestionsEffect, useSlashSuggestionsEffect, useThinkingAnimationEffect } from "./chat-effects";
@@ -26,6 +25,7 @@ import { palette } from "./palette";
 import { formatModel } from "./provider-config";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
 import { loadSkills } from "./skills";
+import { Box, render, Static, Text, useApp } from "./tui";
 import { clearScreen } from "./ui";
 
 const THINKING_PULSE_FRAMES = 16;
@@ -366,10 +366,7 @@ function ChatApp(props: ChatAppProps) {
   );
 }
 
-export async function runInkChat(props: ChatAppProps): Promise<void> {
-  const app = render(<ChatApp {...props} />, {
-    exitOnCtrlC: false,
-    kittyKeyboard: { mode: "enabled", flags: ["disambiguateEscapeCodes"] },
-  });
+export async function runChat(props: ChatAppProps): Promise<void> {
+  const app = render(<ChatApp {...props} />);
   await app.waitUntilExit();
 }

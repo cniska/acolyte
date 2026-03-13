@@ -1,10 +1,10 @@
-import { Box, Text } from "ink";
 import React from "react";
 import type { ChatRow } from "./chat-contract";
 import { formatTokenCount } from "./chat-format";
 import { ChatRowView } from "./chat-row-view";
 import { ShimmerText } from "./chat-shimmer";
 import { palette } from "./palette";
+import { Box, Text } from "./tui";
 
 export { parseStatusLine } from "./chat-row-view";
 

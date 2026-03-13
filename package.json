@@ -34,6 +34,7 @@
     "@types/bun": "^1.3.10",
     "@types/node": "^25.3.3",
     "@types/react": "^19.2.14",
+    "@types/react-reconciler": "^0.33.0",
     "typescript": "^5.9.3"
   },
   "dependencies": {
@@ -45,9 +46,8 @@
     "@ast-grep/lang-python": "^0.0.5",
     "@ast-grep/lang-rust": "^0.0.6",
     "@ast-grep/napi": "^0.41.0",
-    "ink": "^6.8.0",
-    "ink-text-input": "^6.0.0",
     "react": "^19.2.4",
+    "react-reconciler": "^0.33.0",
     "tiktoken": "^1.0.22",
     "zod": "^4.3.6"
   }

@@ -4,12 +4,12 @@ import { ChatHeader } from "./chat-header";
 import { ChatInputPanel } from "./chat-input-panel";
 import { palette } from "./palette";
 import { dedent } from "./test-utils";
-import { renderInkPlain } from "./tui-test-utils";
+import { renderPlain } from "./tui-test-utils";
 
 const DEFAULT_FOOTER_CONTEXT = "~/code/acolyte · main";
 
 function renderInputPanel(overrides: ComponentProps<typeof ChatInputPanel> = {}, columns = 96): string {
-  return renderInkPlain(
+  return renderPlain(
     <ChatInputPanel brandColor={palette.brand} footerContext={DEFAULT_FOOTER_CONTEXT} {...overrides} />,
     columns,
   );
@@ -17,7 +17,7 @@ function renderInputPanel(overrides: ComponentProps<typeof ChatInputPanel> = {},
 
 describe("chat tui visual regression: header", () => {
   test("renders stable header block", () => {
-    const out = renderInkPlain(
+    const out = renderPlain(
       <ChatHeader
         lines={[
           { id: "title", text: "Acolyte", suffix: "", dim: false, brand: true },
@@ -55,24 +55,24 @@ describe("chat tui visual regression: footer and help", () => {
     );
   });
 
-  test("renders stable help pane rows", () => {
+  test("renders help pane without context", () => {
     const out = renderInputPanel({ showHelp: true });
     expect(out).toBe(
       dedent(`
       ────────────────────────────────────────────────────────────────────────────────────────────────
       ❯ Ask anything…
       ────────────────────────────────────────────────────────────────────────────────────────────────
-        @path               attach file         /remember <text>    save memory note
-        /new                start new session   /memory [scope]     show memory notes
-        /resume <id>        resume session      /tokens             show token usage
-        /sessions           show sessions       /skills             show skills picker
-        /model              change model        /exit               exit chat
+        @path               attach file             /remember <text>    save memory note
+        /new                start new session       /memory [scope]     show memory notes
+        /resume <id>        resume session          /tokens             show token usage
+        /sessions           show sessions           /skills             show skills picker
+        /model              change model            /exit               exit chat
         /status             show server status
     `),
     );
   });
 
-  test("renders stable single-column help pane rows at narrow width", () => {
+  test("renders single-column help pane at narrow width without context", () => {
     const out = renderInputPanel({ showHelp: true }, 80);
     expect(out).toBe(
       dedent(`
@@ -92,6 +92,11 @@ describe("chat tui visual regression: footer and help", () => {
         /exit               exit chat
     `),
     );
+  });
+
+  test("hides context when typing", () => {
+    const out = renderInputPanel({ value: "hello" });
+    expect(out).not.toContain(DEFAULT_FOOTER_CONTEXT);
   });
 
   test("renders slash suggestions with selected help and no footer row", () => {

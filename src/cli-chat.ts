@@ -1,7 +1,7 @@
 import { stdout as output } from "node:process";
 import { appConfig } from "./app-config";
 import { createMessage } from "./chat-session";
-import { runInkChat } from "./chat-ui";
+import { runChat } from "./chat-ui";
 import { resolveCliVersion } from "./cli-version";
 import { createClient } from "./client-factory";
 import { nowIso } from "./datetime";
@@ -97,7 +97,7 @@ export async function chatModeWithOptions(options: { resumeLatest: boolean; resu
 
   try {
     if (output.isTTY) clearScreen();
-    await runInkChat({
+    await runChat({
       client,
       session,
       store,

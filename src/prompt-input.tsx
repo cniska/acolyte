@@ -1,7 +1,9 @@
-import { Box, Text, useInput } from "ink";
 import type React from "react";
 import { useCallback, useRef, useState } from "react";
-import { ESCAPE_CHAR, resolvePromptAction } from "./prompt-keymap";
+import { unreachable } from "./assert";
+import type { PromptAction } from "./prompt-keymap";
+import { resolvePromptAction } from "./prompt-keymap";
+import { Box, Text, useInput } from "./tui";
 
 const META_PREFIX_WINDOW_MS = 150;
 
@@ -107,80 +109,70 @@ export function PromptInput({
     const c = cursorRef.current;
     const now = Date.now();
     const hasMetaPrefix = metaPrefixAt.current !== null && now - metaPrefixAt.current <= META_PREFIX_WINDOW_MS;
-    if (input === ESCAPE_CHAR && !key.backspace && !key.delete) {
-      metaPrefixAt.current = now;
-      return;
-    }
     if (key.escape && !input) {
       metaPrefixAt.current = now;
       return;
     }
 
-    const action = resolvePromptAction(input, key, { hasMetaPrefix });
-    if (action.type === "noop") {
-      metaPrefixAt.current = null;
-      return;
+    const action: PromptAction = resolvePromptAction(input, key, { hasMetaPrefix });
+    switch (action.type) {
+      case "noop":
+        metaPrefixAt.current = null;
+        return;
+      case "submit":
+        onSubmitRef.current(v);
+        return;
+      case "move_home":
+        moveCursor(0);
+        return;
+      case "move_end":
+        moveCursor(v.length);
+        return;
+      case "move_word_left":
+        moveCursor(moveWordLeft(v, c));
+        return;
+      case "move_word_right":
+        moveCursor(moveWordRight(v, c));
+        return;
+      case "delete_word_back": {
+        metaPrefixAt.current = null;
+        if (c === 0) return;
+        const next = moveWordLeft(v, c);
+        emitChange(`${v.slice(0, next)}${v.slice(c)}`);
+        moveCursor(next);
+        return;
+      }
+      case "clear_line":
+        metaPrefixAt.current = null;
+        if (v.length === 0) return;
+        emitChange("");
+        moveCursor(0);
+        return;
+      case "move_left":
+        moveCursor(Math.max(0, c - 1));
+        return;
+      case "move_right":
+        moveCursor(Math.min(v.length, c + 1));
+        return;
+      case "delete_back":
+        metaPrefixAt.current = null;
+        if (c === 0) return;
+        emitChange(`${v.slice(0, c - 1)}${v.slice(c)}`);
+        moveCursor(c - 1);
+        return;
+      case "delete_forward":
+        metaPrefixAt.current = null;
+        if (c >= v.length) return;
+        emitChange(`${v.slice(0, c)}${v.slice(c + 1)}`);
+        return;
+      case "insert":
+        metaPrefixAt.current = null;
+        emitChange(`${v.slice(0, c)}${action.text}${v.slice(c)}`);
+        moveCursor(c + action.text.length);
+        return;
+      default:
+        unreachable(action);
     }
-    if (action.type === "submit") {
-      onSubmitRef.current(v);
-      return;
-    }
-    if (action.type === "move_home") {
-      moveCursor(0);
-      return;
-    }
-    if (action.type === "move_end") {
-      moveCursor(v.length);
-      return;
-    }
-    if (action.type === "move_word_left") {
-      moveCursor(moveWordLeft(v, c));
-      return;
-    }
-    if (action.type === "move_word_right") {
-      moveCursor(moveWordRight(v, c));
-      return;
-    }
-    if (action.type === "delete_word_back") {
-      metaPrefixAt.current = null;
-      if (c === 0) return;
-      const next = moveWordLeft(v, c);
-      emitChange(`${v.slice(0, next)}${v.slice(c)}`);
-      moveCursor(next);
-      return;
-    }
-    if (action.type === "clear_line") {
-      metaPrefixAt.current = null;
-      if (v.length === 0) return;
-      emitChange("");
-      moveCursor(0);
-      return;
-    }
-    if (action.type === "move_left") {
-      moveCursor(Math.max(0, c - 1));
-      return;
-    }
-    if (action.type === "move_right") {
-      moveCursor(Math.min(v.length, c + 1));
-      return;
-    }
-    if (action.type === "delete_back") {
-      metaPrefixAt.current = null;
-      if (c === 0) return;
-      emitChange(`${v.slice(0, c - 1)}${v.slice(c)}`);
-      moveCursor(c - 1);
-      return;
-    }
-    if (action.type === "delete_forward") {
-      metaPrefixAt.current = null;
-      if (c >= v.length) return;
-      emitChange(`${v.slice(0, c)}${v.slice(c + 1)}`);
-      return;
-    }
-
-    metaPrefixAt.current = null;
-    emitChange(`${v.slice(0, c)}${action.text}${v.slice(c)}`);
-    moveCursor(c + action.text.length);
   }, []);
 
   useInput(handleInput, { isActive: focus });
