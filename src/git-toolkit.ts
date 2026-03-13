@@ -96,7 +96,8 @@ function createGitStatusTool(git: GitOps, input: ToolkitInput) {
     category: "search",
     permissions: ["read"],
     description: "Show working tree status (short format with branch) for the current repository.",
-    instruction: "Use `git-status` for working tree status.",
+    instruction:
+      "Use `git-status` for working tree status when repository state itself matters. Do not use it to rediscover target files the user already named explicitly.",
     outputSchema: z.object({
       kind: z.literal("git-status"),
       output: z.string(),
@@ -126,7 +127,8 @@ function createGitDiffTool(git: GitOps, input: ToolkitInput) {
     category: "search",
     permissions: ["read"],
     description: "Show unstaged changes (unified diff) for the repository or a specific file path.",
-    instruction: "Use `git-diff` for change inspection.",
+    instruction:
+      "Use `git-diff` for change inspection when repository diff context matters. Do not use it to rediscover or re-confirm explicitly named target files you already changed.",
     outputSchema: z.object({
       kind: z.literal("git-diff"),
       path: z.string().optional(),

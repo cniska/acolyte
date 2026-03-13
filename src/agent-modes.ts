@@ -22,6 +22,7 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
       "If an explicit target file read fails with ENOENT, stop and report the missing path unless the user asked for alternative files.",
       "For explicit file-scoped tasks, do not inspect neighboring files for examples or style unless the target files are insufficient.",
       "Once explicit file scope is established, do not use repo-wide `search-files` to look for the same pattern elsewhere unless the user asked for a broader update.",
+      "When the user already named the files to change, do not use `git-status` or `git-diff` just to rediscover or reconfirm those same target files.",
       "Read the target file once, then edit. Do not re-read the same file after a successful edit.",
       "Before the first write, avoid repeated `read-file` calls on the same path unless the previous edit failed.",
       "For small in-file updates, use the exact line already visible in `read-file` output as your edit anchor instead of searching for it again.",

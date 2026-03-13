@@ -26,6 +26,7 @@ describe("createModeInstructions", () => {
     expect(out).toContain("read fails with ENOENT, stop and report");
     expect(out).toContain("do not inspect neighboring files for examples or style");
     expect(out).toContain("do not use repo-wide `search-files`");
+    expect(out).toContain("do not use `git-status` or `git-diff` just to rediscover");
     expect(out).toContain("use the exact line already visible in `read-file` output as your edit anchor");
     expect(out).toContain("do not call `search-files` just to locate it again");
     expect(out).toContain("prefer `scan-code` + `edit-code`");

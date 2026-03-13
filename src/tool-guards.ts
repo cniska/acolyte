@@ -222,6 +222,14 @@ const fileChurnGuard: ToolGuard = {
     for (const target of targetPaths) {
       const { readCount, editCount } = countsForPath(target);
 
+      if (toolName === "read-file" && editCount > 0) {
+        report("blocked", target);
+        throw new Error(
+          `File "${target}" was already edited successfully in this turn. ` +
+            "Use the diff you already have or continue with the next step instead of rereading it.",
+        );
+      }
+
       if (toolName === "read-file" && editCount === 0 && readCount >= FILE_READ_ONLY_CHURN_MIN) {
         report("blocked", target);
         throw new Error(

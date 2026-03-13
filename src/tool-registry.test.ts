@@ -114,6 +114,8 @@ describe("localization baseline", () => {
     const editInstruction = toolDefinitionsById["edit-file"]?.instruction ?? "";
     const editCodeInstruction = toolDefinitionsById["edit-code"]?.instruction ?? "";
     const searchInstruction = toolDefinitionsById["search-files"]?.instruction ?? "";
+    const gitStatusInstruction = toolDefinitionsById["git-status"]?.instruction ?? "";
+    const gitDiffInstruction = toolDefinitionsById["git-diff"]?.instruction ?? "";
 
     expect(readInstruction).toContain("Batch multiple reads while discovering scope");
     expect(readInstruction).toContain("do not batch those target reads");
@@ -124,5 +126,7 @@ describe("localization baseline", () => {
     expect(editCodeInstruction).toContain("read that file directly right before editing it");
     expect(searchInstruction).toContain("Do not use repo-wide search after explicit target files are already known");
     expect(searchInstruction).toContain("edit directly instead of searching again");
+    expect(gitStatusInstruction).toContain("Do not use it to rediscover target files");
+    expect(gitDiffInstruction).toContain("Do not use it to rediscover or re-confirm explicitly named target files");
   });
 });
