@@ -268,6 +268,8 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       exit: input.exit,
       openSkillsPanel: input.openSkillsPanel,
       activateSkill: input.activateSkill,
+      startAssistantTurn,
+      createMessage: input.createMessage,
       openResumePanel: input.openResumePanel,
       openModelPanel: input.openModelPanel,
       tokenUsage: input.tokenUsage,

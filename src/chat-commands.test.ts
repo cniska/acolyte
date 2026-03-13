@@ -577,17 +577,21 @@ describe("chat-commands", () => {
       expect(activated).toEqual(["demo", "run tests"]);
     });
 
-    test("/skillname without args continues with run prompt", async () => {
+    test("/skillname without args starts assistant turn directly", async () => {
       const tmpDir = createDir("acolyte-cmd-skill-");
       writeSkill(tmpDir, "demo", "---\nname: demo\ndescription: Demo\n---", "# Demo");
       await loadSkills(tmpDir);
 
+      const assistantTurnTexts: string[] = [];
       const result = await runCommand("/demo", {
         activateSkill: async () => true,
+        startAssistantTurn: async (text) => {
+          assistantTurnTexts.push(text);
+        },
+        createMessage: (role, content) => ({ id: "msg_test", role, content, timestamp: "2026-02-20T00:00:00.000Z" }),
       });
-      expect(result.stop).toBe(false);
-      expect(result.userText).toBe("Run the demo skill.");
-      expect(result.rows.some((r) => r.content.includes("Activated skill: demo"))).toBe(true);
+      expect(result.stop).toBe(true);
+      expect(assistantTurnTexts).toEqual(["Run the demo skill."]);
     });
 
     test("unknown /xyz still shows unknown command", async () => {

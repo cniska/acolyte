@@ -12,33 +12,18 @@ import { formatModel } from "./provider-config";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
 import { findSkillByName, loadSkills, readSkillInstructions } from "./skills";
 
-type CreatePickerHandlersInput = {
-  store: SessionState;
+type CreateSkillActivatorInput = {
   currentSession: Session;
-  setCurrentSession: (next: Session) => void;
-  setTokenUsage?: (updater: (current: SessionTokenUsageEntry[]) => SessionTokenUsageEntry[]) => void;
   setRows: (updater: (current: ChatRow[]) => ChatRow[]) => void;
-  setRowsDirect: (next: ChatRow[]) => void;
-  setPicker: (next: PickerState | null) => void;
-  setShowHelp: (next: boolean | ((current: boolean) => boolean)) => void;
-  setValue: (next: string) => void;
-  persist: () => Promise<void>;
-  toRows: (messages: Message[]) => ChatRow[];
   createMessage: (role: Message["role"], content: string) => Message;
   nowIso: () => string;
-  persistConfig?: (key: string, value: string, scope: "project") => Promise<void>;
-  onSubmit?: (text: string) => void;
-  clearTranscript: (sessionId?: string) => void;
+  persist: () => Promise<void>;
 };
 
-export function createPickerHandlers(input: CreatePickerHandlersInput): {
-  openSkillsPanel: () => Promise<void>;
-  openResumePanel: () => void;
-  openModelPanel: (mode?: AgentMode) => Promise<void>;
-  handlePickerSelect: (state: PickerState) => Promise<void>;
-  activateSkill: (skillName: string, args: string) => Promise<boolean>;
-} {
-  const activateSkill = async (skillName: string, args: string): Promise<boolean> => {
+export function createSkillActivator(
+  input: CreateSkillActivatorInput,
+): (skillName: string, args: string) => Promise<boolean> {
+  return async (skillName, args) => {
     const skill = findSkillByName(skillName);
     if (!skill) return false;
     try {
@@ -57,7 +42,34 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
       return false;
     }
   };
+}
 
+type CreatePickerHandlersInput = {
+  store: SessionState;
+  currentSession: Session;
+  setCurrentSession: (next: Session) => void;
+  setTokenUsage?: (updater: (current: SessionTokenUsageEntry[]) => SessionTokenUsageEntry[]) => void;
+  setRows: (updater: (current: ChatRow[]) => ChatRow[]) => void;
+  setRowsDirect: (next: ChatRow[]) => void;
+  setPicker: (next: PickerState | null) => void;
+  setShowHelp: (next: boolean | ((current: boolean) => boolean)) => void;
+  setValue: (next: string) => void;
+  persist: () => Promise<void>;
+  toRows: (messages: Message[]) => ChatRow[];
+  createMessage: (role: Message["role"], content: string) => Message;
+  nowIso: () => string;
+  persistConfig?: (key: string, value: string, scope: "project") => Promise<void>;
+  activateSkill: (skillName: string, args: string) => Promise<boolean>;
+  startAssistantTurn: (userText: string) => Promise<void>;
+  clearTranscript: (sessionId?: string) => void;
+};
+
+export function createPickerHandlers(input: CreatePickerHandlersInput): {
+  openSkillsPanel: () => Promise<void>;
+  openResumePanel: () => void;
+  openModelPanel: (mode?: AgentMode) => Promise<void>;
+  handlePickerSelect: (state: PickerState) => Promise<void>;
+} {
   const openSkillsPanel = async (): Promise<void> => {
     const skills = await loadSkills();
     if (skills.length === 0) {
@@ -107,7 +119,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
       case "skills": {
         const selected = state.items[state.index];
         if (selected) {
-          const ok = await activateSkill(selected.name, "");
+          const ok = await input.activateSkill(selected.name, "");
           if (!ok) {
             input.setRows((current) => [
               ...current,
@@ -115,7 +127,11 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
             ]);
           } else {
             input.setPicker(null);
-            input.onSubmit?.(t("chat.skill.run_prompt", { skill: selected.name }));
+            const runPrompt = t("chat.skill.run_prompt", { skill: selected.name });
+            const userMessage = input.createMessage("user", runPrompt);
+            input.currentSession.messages.push(userMessage);
+            input.currentSession.updatedAt = input.nowIso();
+            void input.startAssistantTurn(runPrompt);
             return;
           }
         }
@@ -176,6 +192,5 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
     openResumePanel,
     openModelPanel,
     handlePickerSelect,
-    activateSkill,
   };
 }

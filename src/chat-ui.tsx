@@ -12,7 +12,7 @@ import { shownBranch, shownCwd } from "./chat-layout";
 import { createMessageHandler } from "./chat-message-handler";
 import { suggestModels } from "./chat-model-autocomplete";
 import { type PickerState, pickerItemCount } from "./chat-picker";
-import { createPickerHandlers } from "./chat-picker-handlers";
+import { createPickerHandlers, createSkillActivator } from "./chat-picker-handlers";
 import { ChatRowView } from "./chat-row-view";
 import { createMessage, toRows } from "./chat-session";
 import { suggestSlashCommands } from "./chat-slash";
@@ -159,7 +159,15 @@ function ChatApp(props: ChatAppProps) {
     };
   }, []);
 
-  const { openSkillsPanel, openResumePanel, openModelPanel, handlePickerSelect, activateSkill } = createPickerHandlers({
+  const activateSkill = createSkillActivator({
+    currentSession,
+    setRows,
+    createMessage,
+    nowIso,
+    persist,
+  });
+
+  const { openSkillsPanel, openResumePanel, openModelPanel, handlePickerSelect } = createPickerHandlers({
     store,
     currentSession,
     setCurrentSession,
@@ -171,9 +179,10 @@ function ChatApp(props: ChatAppProps) {
     setValue,
     persist,
     toRows,
-    createMessage: createMessage,
+    createMessage,
     nowIso,
-    onSubmit: (text) => setQueuedMessages((current) => [...current, text]),
+    activateSkill,
+    startAssistantTurn: (userText) => startAssistantTurn(userText),
     clearTranscript,
   });
 
@@ -205,7 +214,7 @@ function ChatApp(props: ChatAppProps) {
     setProgressText,
     setRunningUsage,
     setTokenUsage,
-    createMessage: createMessage,
+    createMessage,
     nowIso,
     setInterrupt: (handler) => {
       interruptRef.current = handler;

@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { AgentMode } from "./agent-contract";
 import { appConfig, setDefaultModel, setModeModel } from "./app-config";
 import { COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH, formatColumns, formatRelativeTime } from "./chat-format";
+import type { Message } from "./chat-message-contract";
 import { formatUsage } from "./cli-help";
 import type { Client } from "./client-contract";
 import { setConfigValue } from "./config";
@@ -151,6 +152,8 @@ export type CommandContext = {
   openModelPanel: (mode?: AgentMode) => void | Promise<void>;
   persistModelConfig?: (key: string, value: string, scope: ConfigScope) => Promise<void>;
   activateSkill?: (skillName: string, args: string) => Promise<boolean>;
+  startAssistantTurn?: (userText: string) => Promise<void>;
+  createMessage?: (role: "user" | "assistant" | "system", content: string) => Message;
   clearTranscript: (sessionId?: string) => void;
   tokenUsage: SessionTokenUsageEntry[];
   memoryApi?: {
@@ -487,11 +490,15 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
         ctx.setRows((current) => [...current, createRow("system", t("chat.skill.failed", { skill: skill.name }))]);
         return { stop: true, userText: text };
       }
-      ctx.setRows((current) => [
-        ...current,
-        createRow("system", t("chat.skill.activated", { skill: skill.name }), { dim: true }),
-      ]);
-      return { stop: false, userText: args || t("chat.skill.run_prompt", { skill: skill.name }) };
+      const runPrompt = args || t("chat.skill.run_prompt", { skill: skill.name });
+      if (ctx.startAssistantTurn && ctx.createMessage) {
+        const userMessage = ctx.createMessage("user", runPrompt);
+        ctx.currentSession.messages.push(userMessage);
+        ctx.currentSession.updatedAt = nowIso();
+        void ctx.startAssistantTurn(runPrompt);
+        return { stop: true, userText: text };
+      }
+      return { stop: false, userText: runPrompt };
     }
 
     ctx.setRows((current) => [...current, createRow("system", t("chat.command.unknown", { command: text }))]);
