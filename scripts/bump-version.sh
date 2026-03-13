@@ -17,3 +17,4 @@ sed -i '' "s/Acolyte v${old}/Acolyte v${new}/g" src/cli-visual.int.test.ts
 echo "$old → $new"
 
 bun run verify
+bun run scripts/benchmark.ts

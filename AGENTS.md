@@ -66,6 +66,8 @@ Development:
 - Allowed types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`.
 - Single-line subject only — no message body.
 - Keep commit subject lines under 72 characters.
+- Merge to main via pull request — do not merge branches directly.
+- Pull request titles follow the same Conventional Commit format as commit subjects.
 
 ## Code
 
