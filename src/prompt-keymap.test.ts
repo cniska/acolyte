@@ -1,26 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { resolvePromptAction } from "./prompt-keymap";
 import type { KeyEvent } from "./tui/context";
-
-function emptyKey(): KeyEvent {
-  return {
-    return: false,
-    tab: false,
-    shift: false,
-    ctrl: false,
-    meta: false,
-    super: false,
-    escape: false,
-    upArrow: false,
-    downArrow: false,
-    leftArrow: false,
-    rightArrow: false,
-    home: false,
-    end: false,
-    backspace: false,
-    delete: false,
-  };
-}
+import { emptyKey } from "./tui/input";
 
 function key(overrides: Partial<KeyEvent>): KeyEvent {
   return { ...emptyKey(), ...overrides };

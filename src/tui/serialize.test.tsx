@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { renderPlain } from "../tui-test-utils";
 import { Box, Text } from "./components";
 import { renderToString } from "./render-to-string";
+import { stripAnsiLength } from "./serialize";
 
 describe("serialize", () => {
   describe("text", () => {
@@ -159,6 +160,24 @@ describe("serialize", () => {
       expect(renderPlain(<Text bold>hi</Text>)).toBe("hi");
       expect(renderPlain(<Text color="red">hi</Text>)).toBe("hi");
       expect(renderPlain(<Text dimColor>hi</Text>)).toBe("hi");
+    });
+  });
+
+  describe("stripAnsiLength", () => {
+    test("counts visible characters ignoring CSI sequences", () => {
+      expect(stripAnsiLength("\x1b[1mhello\x1b[0m")).toBe(5);
+    });
+
+    test("counts visible characters ignoring OSC sequences (BEL terminated)", () => {
+      expect(stripAnsiLength("\x1b]0;title\x07hello")).toBe(5);
+    });
+
+    test("counts visible characters ignoring OSC sequences (ST terminated)", () => {
+      expect(stripAnsiLength("\x1b]8;;https://example.com\x1b\\link\x1b]8;;\x1b\\")).toBe(4);
+    });
+
+    test("handles plain text", () => {
+      expect(stripAnsiLength("hello world")).toBe(11);
     });
   });
 

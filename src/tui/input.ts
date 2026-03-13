@@ -22,7 +22,7 @@ const Char = {
 
 const ESCAPE = "\x1b";
 
-function emptyKey(): KeyEvent {
+export function emptyKey(): KeyEvent {
   return {
     return: false,
     tab: false,
