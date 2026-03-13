@@ -55,7 +55,7 @@ describe("chat tui visual regression: footer and help", () => {
     );
   });
 
-  test("renders stable help pane rows with context", () => {
+  test("renders help pane without context", () => {
     const out = renderInputPanel({ showHelp: true });
     expect(out).toBe(
       dedent(`
@@ -68,12 +68,11 @@ describe("chat tui visual regression: footer and help", () => {
         /sessions           show sessions           /skills             show skills picker
         /model              change model            /exit               exit chat
         /status             show server status
-      ~/code/acolyte · main
     `),
     );
   });
 
-  test("renders stable single-column help pane rows at narrow width with context", () => {
+  test("renders single-column help pane at narrow width without context", () => {
     const out = renderInputPanel({ showHelp: true }, 80);
     expect(out).toBe(
       dedent(`
@@ -90,9 +89,14 @@ describe("chat tui visual regression: footer and help", () => {
         /memory [scope]     show memory notes
         /tokens             show token usage
         /skills             show skills picker
-        /exit               exit chat                          ~/code/acolyte · main
+        /exit               exit chat
     `),
     );
+  });
+
+  test("hides context when typing", () => {
+    const out = renderInputPanel({ value: "hello" });
+    expect(out).not.toContain(DEFAULT_FOOTER_CONTEXT);
   });
 
   test("renders slash suggestions with selected help and no footer row", () => {

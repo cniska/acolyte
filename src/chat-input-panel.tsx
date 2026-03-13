@@ -178,30 +178,23 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
       />
       <Text dimColor>{borderLine()}</Text>
       {showHelp ? (
-        <Box justifyContent="space-between" flexWrap="wrap" width={termWidth}>
-          <Box flexDirection="column">{renderShortcutGrid(termWidth)}</Box>
+        <Box flexDirection="column">{renderShortcutGrid(termWidth)}</Box>
+      ) : (
+        renderInputPanelContent({
+          brandColor,
+          atQuery,
+          atSuggestions,
+          atSuggestionIndex,
+          slashSuggestions,
+          slashSuggestionIndex,
+        })
+      )}
+      {showFooter && !showHelp && value.length === 0 ? (
+        <Box justifyContent="space-between" width={termWidth}>
+          <Text dimColor>{`  ${ctrlCPending ? t("chat.input.ctrl_c_hint") : `? ${t("chat.input.help_hint")}`}`}</Text>
           <Text dimColor>{`${footerContext}  `}</Text>
         </Box>
-      ) : (
-        <>
-          {renderInputPanelContent({
-            brandColor,
-            atQuery,
-            atSuggestions,
-            atSuggestionIndex,
-            slashSuggestions,
-            slashSuggestionIndex,
-          })}
-          {showFooter ? (
-            <Box justifyContent="space-between" width={termWidth}>
-              <Text dimColor>
-                {`  ${ctrlCPending ? t("chat.input.ctrl_c_hint") : value.length > 0 ? "" : `? ${t("chat.input.help_hint")}`}`}
-              </Text>
-              <Text dimColor>{`${footerContext}  `}</Text>
-            </Box>
-          ) : null}
-        </>
-      )}
+      ) : null}
     </>
   );
 }
