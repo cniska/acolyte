@@ -48,43 +48,63 @@ function mergeStyle(parent: StyleStack, props: TuiProps): StyleStack {
   };
 }
 
+/** Advance past an escape sequence starting after the ESC byte at `value[start]`. */
+function skipEscapeSequence(value: string, start: number): number {
+  let i = start;
+  if (i < value.length && value[i] === "[") {
+    // CSI: ESC [ <params> <final byte 0x40-0x7E>
+    i++;
+    while (i < value.length) {
+      const code = value.charCodeAt(i);
+      i++;
+      if (code >= 0x40 && code <= 0x7e) break;
+    }
+  } else if (i < value.length && value[i] === "]") {
+    // OSC: ESC ] ... (BEL | ESC \)
+    i++;
+    while (i < value.length) {
+      if (value[i] === "\x07") {
+        i++;
+        break;
+      }
+      if (value[i] === "\x1b" && i + 1 < value.length && value[i + 1] === "\\") {
+        i += 2;
+        break;
+      }
+      i++;
+    }
+  } else if (i < value.length) {
+    i++;
+  }
+  return i;
+}
+
 export function stripAnsiLength(value: string): number {
   let length = 0;
   let i = 0;
   while (i < value.length) {
     if (value[i] === "\x1b") {
-      i++;
-      if (i < value.length && value[i] === "[") {
-        // CSI sequence: ESC [ <params> <final byte 0x40-0x7E>
-        i++;
-        while (i < value.length) {
-          const code = value.charCodeAt(i);
-          i++;
-          if (code >= 0x40 && code <= 0x7e) break;
-        }
-      } else if (i < value.length && value[i] === "]") {
-        // OSC sequence: ESC ] ... (BEL | ESC \)
-        i++;
-        while (i < value.length) {
-          if (value[i] === "\x07") {
-            i++;
-            break;
-          }
-          if (value[i] === "\x1b" && i + 1 < value.length && value[i + 1] === "\\") {
-            i += 2;
-            break;
-          }
-          i++;
-        }
-      } else if (i < value.length) {
-        i++;
-      }
+      i = skipEscapeSequence(value, i + 1);
       continue;
     }
     length++;
     i++;
   }
   return length;
+}
+
+export function stripAnsi(value: string): string {
+  let out = "";
+  let i = 0;
+  while (i < value.length) {
+    if (value[i] === "\x1b") {
+      i = skipEscapeSequence(value, i + 1);
+      continue;
+    }
+    out += value[i];
+    i++;
+  }
+  return out;
 }
 
 function padLine(line: string, width: number): string {

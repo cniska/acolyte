@@ -1,44 +1,6 @@
 import type { ReactNode } from "react";
 import { renderToString } from "./tui";
-
-export const stripAnsi = (value: string): string => {
-  let out = "";
-  let i = 0;
-  while (i < value.length) {
-    if (value[i] === "\u001b") {
-      i++;
-      if (i < value.length && value[i] === "[") {
-        // CSI sequence: ESC [ <params> <final byte 0x40-0x7E>
-        i++;
-        while (i < value.length) {
-          const code = value.charCodeAt(i);
-          i++;
-          if (code >= 0x40 && code <= 0x7e) break;
-        }
-      } else if (i < value.length && value[i] === "]") {
-        // OSC sequence: ESC ] ... (BEL | ESC \)
-        i++;
-        while (i < value.length) {
-          if (value[i] === "\x07") {
-            i++;
-            break;
-          }
-          if (value[i] === "\x1b" && i + 1 < value.length && value[i + 1] === "\\") {
-            i += 2;
-            break;
-          }
-          i++;
-        }
-      } else if (i < value.length) {
-        i++;
-      }
-      continue;
-    }
-    out += value[i];
-    i++;
-  }
-  return out;
-};
+import { stripAnsi } from "./tui/serialize";
 
 export const trimRightLines = (value: string): string =>
   value
