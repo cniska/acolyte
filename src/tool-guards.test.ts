@@ -285,6 +285,20 @@ describe("redundant-search guard", () => {
     recordCall(session, "edit-file", { path: "src/a.ts" });
     expect(() => runGuards({ toolName: "search-files", args: { pattern: "query-5" }, session })).not.toThrow();
   });
+
+  test("blocks searching only within files already edited in this turn", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file"]);
+    recordCall(session, "edit-file", { path: "README.md" });
+    recordCall(session, "edit-file", { path: "docs/README.md" });
+    expect(() =>
+      runGuards({
+        toolName: "search-files",
+        args: { patterns: ["README.md", "docs/README.md"], paths: ["README.md", "docs/README.md"] },
+        session,
+      }),
+    ).toThrow(/only rediscovering files that were already edited/);
+  });
 });
 
 describe("redundant-find guard", () => {
@@ -339,6 +353,16 @@ describe("redundant-find guard", () => {
     }
     recordCall(session, "edit-file", { path: "src/a.ts" });
     expect(() => runGuards({ toolName: "find-files", args: { patterns: ["query-5"] }, session })).not.toThrow();
+  });
+
+  test("blocks rediscovering files already edited in this turn", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file"]);
+    recordCall(session, "edit-file", { path: "README.md" });
+    recordCall(session, "edit-file", { path: "docs/README.md" });
+    expect(() =>
+      runGuards({ toolName: "find-files", args: { patterns: ["README.md", "docs/README.md"] }, session }),
+    ).toThrow(/only rediscovering files that were already edited/);
   });
 });
 

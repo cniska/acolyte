@@ -1,3 +1,4 @@
+import { basename } from "node:path";
 import { invariant } from "./assert";
 import { CONSECUTIVE_GUARD_BLOCK_LIMIT, TOOL_TIMEOUT_MS } from "./lifecycle-constants";
 import {
@@ -113,6 +114,34 @@ function isWorkspaceScope(scope: readonly string[]): boolean {
   return scope.length === 1 && scope[0] === "__workspace__";
 }
 
+function callsSinceLastVerify(session: SessionContext): ToolCallRecord[] {
+  const calls = scopedCallLog(session);
+  for (let i = calls.length - 1; i >= 0; i -= 1) {
+    if (calls[i]?.toolName === "run-command" && calls[i]?.mode === "verify") return calls.slice(i + 1);
+  }
+  return calls;
+}
+
+function editedPathsSinceLastVerify(session: SessionContext): string[] {
+  const paths = new Set<string>();
+  for (const entry of callsSinceLastVerify(session)) {
+    if (!isWriteTool(session, entry.toolName)) continue;
+    if (typeof entry.args.path !== "string") continue;
+    const path = normalizePath(entry.args.path.trim().toLowerCase());
+    if (path.length > 0) paths.add(path);
+  }
+  return Array.from(paths);
+}
+
+function editedPathTokens(paths: readonly string[]): Set<string> {
+  const tokens = new Set<string>();
+  for (const path of paths) {
+    tokens.add(path);
+    tokens.add(basename(path));
+  }
+  return tokens;
+}
+
 type RedundantQueryKind = "narrower" | "scope-narrowing";
 
 function redundantQueryKind(input: {
@@ -202,13 +231,7 @@ const fileChurnGuard: ToolGuard = {
       pathCounts.set(path, created);
       return created;
     };
-    const calls = scopedCallLog(session);
-    const sinceLastVerify = (() => {
-      for (let i = calls.length - 1; i >= 0; i -= 1) {
-        if (calls[i]?.toolName === "run-command" && calls[i]?.mode === "verify") return calls.slice(i + 1);
-      }
-      return calls;
-    })();
+    const sinceLastVerify = callsSinceLastVerify(session);
     for (const entry of sinceLastVerify) {
       if (entry.toolName === "read-file") {
         for (const path of extractReadPaths(entry.args, { normalize: true })) {
@@ -319,6 +342,21 @@ const redundantSearchGuard = createRedundantDiscoveryGuard({
   extractPatterns: extractSearchPatterns,
   loopMessage:
     "Repeated search-files loop detected without reads/writes. Stop synonym searching and conclude from current evidence.",
+  preCheck({ args, session, report }) {
+    const editedPaths = editedPathsSinceLastVerify(session);
+    if (editedPaths.length === 0) return;
+    const scope = extractSearchScope(args);
+    if (isWorkspaceScope(scope)) return;
+    const patterns = extractSearchPatterns(args);
+    const tokens = editedPathTokens(editedPaths);
+    const scopeOnlyEdited = scope.every((entry) => tokens.has(entry));
+    const patternsOnlyEdited = patterns.length > 0 && patterns.every((entry) => tokens.has(normalizePath(entry)));
+    if (!scopeOnlyEdited || !patternsOnlyEdited) return;
+    report("blocked", "post-edit-rediscovery");
+    throw new Error(
+      "Search is only rediscovering files that were already edited in this turn. Use the edit result you already have or stop.",
+    );
+  },
 });
 
 const redundantFindGuard = createRedundantDiscoveryGuard({
@@ -329,6 +367,19 @@ const redundantFindGuard = createRedundantDiscoveryGuard({
   loopMessage:
     "Repeated find-files loop detected without reads/writes. Stop broad discovery and read the best candidate file(s) directly.",
   preCheck({ args, session, report }) {
+    const editedPaths = editedPathsSinceLastVerify(session);
+    const patterns = extractFindPatterns(args);
+    if (editedPaths.length > 0 && patterns.length > 0) {
+      const tokens = editedPathTokens(editedPaths);
+      const patternsOnlyEdited = patterns.every((entry) => tokens.has(normalizePath(entry)));
+      if (patternsOnlyEdited) {
+        report("blocked", "post-edit-rediscovery");
+        throw new Error(
+          "Find is only rediscovering files that were already edited in this turn. Use the edit result you already have or stop.",
+        );
+      }
+    }
+
     const currentScope = extractSearchScope(args);
     for (const entry of scopedCallLog(session)) {
       if (entry.toolName !== "find-files") continue;
