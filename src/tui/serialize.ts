@@ -10,6 +10,18 @@ interface StyleStack {
   inverse?: boolean;
 }
 
+/** Strip C0 control chars and ESC from text to prevent terminal escape injection. */
+function sanitizeText(text: string): string {
+  let out = "";
+  for (let i = 0; i < text.length; i++) {
+    const code = text.charCodeAt(i);
+    if (code === 0x1b) continue;
+    if (code < 0x20 && code !== 0x0a && code !== 0x09) continue;
+    out += text[i];
+  }
+  return out;
+}
+
 function openStyle(style: StyleStack): string {
   let out = "";
   if (style.bold) out += ansi.bold;
@@ -74,11 +86,12 @@ function padLine(line: string, width: number): string {
  */
 function serializeNode(node: TuiNode, inherited: StyleStack, staticAcc?: string[]): string {
   if (node.kind === "text") {
-    if (node.value.length === 0) return "";
+    const text = sanitizeText(node.value);
+    if (text.length === 0) return "";
     if (hasStyle(inherited)) {
-      return `${openStyle(inherited)}${node.value}${ansi.reset}`;
+      return `${openStyle(inherited)}${text}${ansi.reset}`;
     }
-    return node.value;
+    return text;
   }
 
   const el = node;

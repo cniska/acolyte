@@ -161,4 +161,22 @@ describe("serialize", () => {
       expect(renderPlain(<Text dimColor>hi</Text>)).toBe("hi");
     });
   });
+
+  describe("text sanitization", () => {
+    test("strips ESC byte from escape sequences", () => {
+      expect(renderPlain(<Text>{"\x1b[2Jhello"}</Text>)).toBe("[2Jhello");
+    });
+
+    test("strips ESC byte from OSC sequences", () => {
+      expect(renderPlain(<Text>{"\x1b]0;evil title\x07world"}</Text>)).toBe("]0;evil titleworld");
+    });
+
+    test("preserves newlines and tabs", () => {
+      expect(renderPlain(<Text>{"a\nb\tc"}</Text>)).toBe("a\nb\tc");
+    });
+
+    test("strips other C0 control chars", () => {
+      expect(renderPlain(<Text>{"a\x00b\x01c\x7f"}</Text>)).toBe("abc\x7f");
+    });
+  });
 });

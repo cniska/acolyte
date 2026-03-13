@@ -89,10 +89,13 @@ function parseKittySequence(seq: string, key: KeyEvent): { input: string; key: K
  * CSI = ESC [ <params> <final byte>. Final byte is 0x40–0x7E.
  * Returns the index past the final byte, or -1 if not a valid CSI.
  */
+const MAX_CSI_LENGTH = 64;
+
 function csiEnd(raw: string, offset: number): number {
   if (offset + 1 >= raw.length || raw[offset + 1] !== "[") return -1;
   let i = offset + 2;
   while (i < raw.length) {
+    if (i - offset > MAX_CSI_LENGTH) return -1;
     const code = raw.charCodeAt(i);
     if (code >= 0x40 && code <= 0x7e) return i + 1;
     i++;

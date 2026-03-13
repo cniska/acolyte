@@ -181,6 +181,9 @@ export function render(node: ReactNode): RenderInstance {
 
   function cleanup() {
     setOnCommit(null);
+    process.removeListener("SIGINT", onSignal);
+    process.removeListener("SIGTERM", onSignal);
+    process.removeListener("exit", onExit);
     if (stdin.isTTY) {
       stdin.removeListener("data", onStdinData);
       stdin.setRawMode(false);
@@ -193,6 +196,24 @@ export function render(node: ReactNode): RenderInstance {
     }
     reconciler.updateContainer(null, container, null, () => {});
   }
+
+  function onSignal() {
+    exit();
+    process.exit();
+  }
+  function onExit() {
+    if (exited) return;
+    // Synchronous cleanup on exit — restore terminal state.
+    if (stdout.isTTY) {
+      stdout.write(kitty.disable);
+      stdout.write(ansi.cursorShow);
+      stdout.write("\n");
+    }
+  }
+
+  process.on("SIGINT", onSignal);
+  process.on("SIGTERM", onSignal);
+  process.on("exit", onExit);
 
   return {
     waitUntilExit: () => exitPromise,
