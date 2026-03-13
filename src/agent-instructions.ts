@@ -10,6 +10,8 @@ const BASE_INSTRUCTIONS = [
   "Keep tool calls and file changes within the current workspace and the requested scope.",
   "Prefer dedicated project tools; use shell only when no dedicated tool exists.",
   "Prefer targeted, surgical edits. Do not rewrite or delete code beyond the scope of the request.",
+  "When editing an existing file, preserve unrelated content and surrounding structure. Change only the minimal lines needed.",
+  "Preserve local conventions in the file you are editing. Match nearby style and path forms instead of inventing a new one.",
   "Never remove or modify existing code that is unrelated to the current task.",
   "Keep responses concise and outcome-first; expand only when asked.",
   "Never summarize, recap, or list what you did. The user can see your actions directly.",

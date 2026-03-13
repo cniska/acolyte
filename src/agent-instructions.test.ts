@@ -21,7 +21,12 @@ describe("createModeInstructions", () => {
     const out = createModeInstructions("work");
     expect(out).toContain("Read the target file once");
     expect(out).toContain("make `read-file` on X your first tool call");
+    expect(out).toContain("If the user names the files to change");
+    expect(out).toContain("do not batch the initial `read-file` across named targets");
     expect(out).toContain("read fails with ENOENT, stop and report");
+    expect(out).toContain("do not inspect neighboring files for examples or style");
+    expect(out).toContain("do not use repo-wide `search-files`");
+    expect(out).toContain("do not call `search-files` just to locate it again");
     expect(out).toContain("prefer `scan-code` + `edit-code`");
     expect(out).toContain("Trust type signatures");
   });
@@ -29,6 +34,7 @@ describe("createModeInstructions", () => {
   test("verify mode includes verification instructions", () => {
     const out = createModeInstructions("verify");
     expect(out).toContain("Review the changes");
+    expect(out).toContain("Choose the lightest sufficient verification");
     expect(out).toContain("Report any issues found");
     expect(out).toContain("Do not fix them");
   });
@@ -46,6 +52,8 @@ describe("createInstructions", () => {
     expect(out).toContain("Prefer dedicated project tools; use shell only when no dedicated tool exists.");
     expect(out).toContain("Before taking action (tool call, command, or edit), write exactly one sentence");
     expect(out).toContain("Keep tool calls and file changes within the current workspace and the requested scope.");
+    expect(out).toContain("preserve unrelated content and surrounding structure");
+    expect(out).toContain("Preserve local conventions in the file you are editing");
   });
 
   test("work mode includes work-specific instructions", () => {
