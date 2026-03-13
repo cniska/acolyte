@@ -32,11 +32,10 @@ export function render(node: ReactNode): RenderInstance {
   let lastActive = "";
   let lastActiveLineCount = 0;
   let flushedStaticCount = 0;
-  // Content that has scrolled into the terminal's scrollback buffer and can no
-  // longer be erased. During streaming the active region can grow beyond the
-  // terminal height; the overflow is written once and tracked here so we never
-  // attempt to rewrite it.
-  let frozenPrefix = "";
+  // Number of logical lines (split by \n) frozen into scrollback. When the
+  // active region overflows the terminal, top lines are written once and we
+  // only re-render the bottom portion that fits on screen.
+  let frozenLineCount = 0;
   let exitResolve: (() => void) | null = null;
   const exitPromise = new Promise<void>((resolve) => {
     exitResolve = resolve;
@@ -105,7 +104,7 @@ export function render(node: ReactNode): RenderInstance {
         buf += `${staticItems[i]}\n`;
       }
       flushedStaticCount = staticItems.length;
-      frozenPrefix = "";
+      frozenLineCount = 0;
       stdout.write(buf + active);
       lastActive = active;
       lastActiveLineCount = Math.min(countRows(active), maxLiveRows);
@@ -115,14 +114,15 @@ export function render(node: ReactNode): RenderInstance {
     // Only re-render the active region if it changed.
     if (active === lastActive) return;
 
-    // If the frozen prefix no longer matches, reset it (e.g. after graduation).
-    if (frozenPrefix.length > 0 && !active.startsWith(frozenPrefix)) {
-      frozenPrefix = "";
+    const allLines = active.split("\n");
+
+    // If content shrank (e.g. graduation removed rows), reset frozen state.
+    if (allLines.length < frozenLineCount) {
+      frozenLineCount = 0;
     }
 
     // Determine the live (on-screen, erasable) portion of the active output.
-    const livePart = active.slice(frozenPrefix.length);
-    const liveLines = livePart.split("\n");
+    const liveLines = allLines.slice(frozenLineCount);
 
     // Count physical rows from the bottom to find what fits on screen.
     let physRows = 0;
@@ -138,15 +138,15 @@ export function render(node: ReactNode): RenderInstance {
 
     if (splitIdx === 0) {
       // Everything fits on screen — normal erase + rewrite.
-      stdout.write(eraseSequence() + livePart);
+      stdout.write(eraseSequence() + liveLines.join("\n"));
       lastActiveLineCount = physRows > 0 ? physRows - 1 : 0;
     } else {
-      // Overflow: freeze lines that won't fit, write them once to scrollback.
-      const toFreeze = liveLines.slice(0, splitIdx);
+      // Overflow: skip lines that don't fit rather than writing them to
+      // scrollback (which caused duplication when the user scrolled).
+      // They'll reappear once they graduate to a static item.
       const onScreen = liveLines.slice(splitIdx);
-      const freezeStr = `${toFreeze.join("\n")}\n`;
-      frozenPrefix += freezeStr;
-      stdout.write(eraseSequence() + freezeStr + onScreen.join("\n"));
+      frozenLineCount += splitIdx;
+      stdout.write(eraseSequence() + onScreen.join("\n"));
       lastActiveLineCount = physRows > 0 ? physRows - 1 : 0;
     }
 
