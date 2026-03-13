@@ -113,6 +113,11 @@ export type LifecycleFeedback = {
 export type LifecycleState = {
   feedback: LifecycleFeedback[];
   verifyOutcome?: VerifyOutcome;
+  repeatedFailure?: {
+    signature: string;
+    count: number;
+    surfacedCount: number;
+  };
 };
 
 export type LifecycleInput = {

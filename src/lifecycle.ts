@@ -99,6 +99,7 @@ function createRunContext(
     lifecycleState: {
       feedback: [],
       verifyOutcome: undefined,
+      repeatedFailure: undefined,
     },
     observedTools: new Set(),
     modelCallCount: 0,

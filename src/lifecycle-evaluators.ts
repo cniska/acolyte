@@ -37,7 +37,11 @@ export type EvaluatorContext = {
   workspace: string | undefined;
   request: { message: string; verifyScope?: VerifyScope };
   sawEditFileMultiMatchError: boolean;
-  lifecycleState: { feedback: LifecycleFeedback[]; verifyOutcome?: VerifyOutcome };
+  lifecycleState: {
+    feedback: LifecycleFeedback[];
+    verifyOutcome?: VerifyOutcome;
+    repeatedFailure?: { signature: string; count: number; surfacedCount: number };
+  };
   currentError?: LifecycleError;
 };
 
@@ -147,6 +151,37 @@ export const guardRecoveryEvaluator: Evaluator = {
     if (!hasPendingFeedback) return { type: "done" };
     ctx.debug("lifecycle.eval.guard_recovery", { mode: ctx.mode, error: ctx.currentError.message });
     return { type: "regenerate" };
+  },
+};
+
+export const repeatedFailureEvaluator: Evaluator = {
+  id: "repeated-failure",
+  evaluate(ctx) {
+    const repeatedFailure = ctx.lifecycleState.repeatedFailure;
+    if (!ctx.result || !ctx.currentError || !repeatedFailure) return { type: "done" };
+    if (ctx.currentError.category === "guard-blocked") return { type: "done" };
+    if (repeatedFailure.count < 2) return { type: "done" };
+    if (repeatedFailure.surfacedCount >= repeatedFailure.count) return { type: "done" };
+
+    repeatedFailure.surfacedCount = repeatedFailure.count;
+    ctx.debug("lifecycle.eval.repeated_failure", {
+      signature: repeatedFailure.signature,
+      count: repeatedFailure.count,
+      code: ctx.currentError.code ?? null,
+      category: ctx.currentError.category ?? null,
+      tool: ctx.currentError.tool ?? null,
+    });
+
+    return {
+      type: "regenerate",
+      feedback: {
+        source: "guard",
+        mode: ctx.mode,
+        summary: "The same runtime failure has repeated.",
+        details: ctx.currentError.message,
+        instruction: "Do not retry the same failing move. Change approach before continuing.",
+      },
+    };
   },
 };
 

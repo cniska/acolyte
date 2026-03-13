@@ -6,12 +6,44 @@ import {
   type Evaluator,
   lintEvaluator,
   multiMatchEditEvaluator,
+  repeatedFailureEvaluator,
   verifyCycle,
 } from "./lifecycle-evaluators";
 import { phaseGenerate, setMode, shouldYieldNow } from "./lifecycle-generate";
 import { defaultLifecyclePolicy, type LifecyclePolicy } from "./lifecycle-policy";
 
-const EVALUATORS: Evaluator[] = [guardRecoveryEvaluator, multiMatchEditEvaluator, lintEvaluator, verifyCycle];
+const EVALUATORS: Evaluator[] = [
+  guardRecoveryEvaluator,
+  multiMatchEditEvaluator,
+  lintEvaluator,
+  verifyCycle,
+  repeatedFailureEvaluator,
+];
+
+function failureSignatureForError(ctx: RunContext): string | undefined {
+  if (!ctx.currentError) return undefined;
+  const code = ctx.currentError.code ?? "unknown";
+  const category = ctx.currentError.category ?? "other";
+  const source = ctx.currentError.source ?? "generate";
+  const tool = ctx.currentError.tool ?? "none";
+  return [category, source, tool, code].join(":");
+}
+
+function updateRepeatedFailureState(ctx: RunContext): void {
+  const signature = failureSignatureForError(ctx);
+  if (!signature) {
+    ctx.lifecycleState.repeatedFailure = undefined;
+    return;
+  }
+
+  const previous = ctx.lifecycleState.repeatedFailure;
+  if (!previous || previous.signature !== signature) {
+    ctx.lifecycleState.repeatedFailure = { signature, count: 1, surfacedCount: 0 };
+    return;
+  }
+
+  ctx.lifecycleState.repeatedFailure = { ...previous, count: previous.count + 1 };
+}
 
 function snapshotState(ctx: RunContext): SavedRegenerationState {
   return {
@@ -39,6 +71,7 @@ export function recoveryActionForError(
 export async function phaseEvaluate(ctx: RunContext, shouldYield: LifecycleInput["shouldYield"]) {
   while (ctx.result) {
     if (shouldYieldNow(ctx, shouldYield)) break;
+    updateRepeatedFailureState(ctx);
 
     if (
       recoveryActionForError({

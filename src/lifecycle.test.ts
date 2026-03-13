@@ -3,7 +3,7 @@ import { createErrorStats } from "./error-handling";
 import { scheduleMemoryCommit, shouldCommitMemory } from "./lifecycle";
 import type { RunContext } from "./lifecycle-contract";
 import { recoveryActionForError } from "./lifecycle-evaluate";
-import { guardRecoveryEvaluator, multiMatchEditEvaluator, verifyCycle } from "./lifecycle-evaluators";
+import { guardRecoveryEvaluator, multiMatchEditEvaluator, repeatedFailureEvaluator, verifyCycle } from "./lifecycle-evaluators";
 import { consumeLifecycleFeedback, createGenerationInput, createLifecycleFeedbackText } from "./lifecycle-generate";
 import { defaultLifecyclePolicy } from "./lifecycle-policy";
 import { phasePrepare } from "./lifecycle-prepare";
@@ -35,7 +35,7 @@ function createMockContext(overrides: Partial<RunContext> = {}): RunContext {
       includedHistoryMessages: 0,
       totalHistoryMessages: 0,
     },
-    lifecycleState: { feedback: [], verifyOutcome: undefined },
+    lifecycleState: { feedback: [], verifyOutcome: undefined, repeatedFailure: undefined },
     observedTools: new Set(),
     modelCallCount: 1,
     promptTokensAccum: 0,
@@ -236,6 +236,57 @@ describe("guardRecoveryEvaluator", () => {
     });
 
     expect(guardRecoveryEvaluator.evaluate(ctx)).toEqual({ type: "done" });
+  });
+});
+
+describe("repeatedFailureEvaluator", () => {
+  test("returns regenerate when the same non-guard failure repeats", () => {
+    const ctx = createMockContext({
+      currentError: {
+        message: "run-command failed: command exited with code 1",
+        category: "other",
+        code: "E_COMMAND_FAILED",
+        tool: "run-command",
+        source: "tool-error",
+      },
+      result: { text: "Attempted fix.", toolCalls: [] },
+      lifecycleState: {
+        feedback: [],
+        verifyOutcome: undefined,
+        repeatedFailure: {
+          signature: "other:tool-error:run-command:E_COMMAND_FAILED",
+          count: 2,
+          surfacedCount: 0,
+        },
+      },
+    });
+
+    const action = repeatedFailureEvaluator.evaluate(ctx);
+    expect(action.type).toBe("regenerate");
+    if (action.type === "regenerate") {
+      expect(action.feedback?.summary).toBe("The same runtime failure has repeated.");
+      expect(action.feedback?.details).toContain("command exited with code 1");
+      expect(action.feedback?.instruction).toContain("Change approach");
+    }
+    expect(ctx.lifecycleState.repeatedFailure?.surfacedCount).toBe(2);
+  });
+
+  test("returns done for repeated guard-blocked failures", () => {
+    const ctx = createMockContext({
+      currentError: { message: "Duplicate read-file call detected", category: "guard-blocked" },
+      result: { text: "Attempted read.", toolCalls: [] },
+      lifecycleState: {
+        feedback: [],
+        verifyOutcome: undefined,
+        repeatedFailure: {
+          signature: "guard-blocked:tool-error:none:E_GUARD_BLOCKED",
+          count: 2,
+          surfacedCount: 0,
+        },
+      },
+    });
+
+    expect(repeatedFailureEvaluator.evaluate(ctx)).toEqual({ type: "done" });
   });
 });
 
