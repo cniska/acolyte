@@ -487,13 +487,11 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
         ctx.setRows((current) => [...current, createRow("system", t("chat.skill.failed", { skill: skill.name }))]);
         return { stop: true, userText: text };
       }
-      if (args) return { stop: false, userText: args };
-
       ctx.setRows((current) => [
         ...current,
         createRow("system", t("chat.skill.activated", { skill: skill.name }), { dim: true }),
       ]);
-      return { stop: true, userText: text };
+      return { stop: false, userText: args || t("chat.skill.run_prompt", { skill: skill.name }) };
     }
 
     ctx.setRows((current) => [...current, createRow("system", t("chat.command.unknown", { command: text }))]);

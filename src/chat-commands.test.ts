@@ -23,7 +23,7 @@ import {
 async function runCommand(text: string, overrides: Parameters<typeof createCommandContext>[1] = {}) {
   const { ctx, spies } = createCommandContext(text, overrides);
   const result = await dispatchSlashCommand(ctx);
-  return { ...spies, stop: result.stop };
+  return { ...spies, stop: result.stop, userText: result.userText };
 }
 
 describe("chat-commands", () => {
@@ -577,7 +577,7 @@ describe("chat-commands", () => {
       expect(activated).toEqual(["demo", "run tests"]);
     });
 
-    test("/skillname without args stops and shows activation", async () => {
+    test("/skillname without args continues with run prompt", async () => {
       const tmpDir = createDir("acolyte-cmd-skill-");
       writeSkill(tmpDir, "demo", "---\nname: demo\ndescription: Demo\n---", "# Demo");
       await loadSkills(tmpDir);
@@ -585,7 +585,8 @@ describe("chat-commands", () => {
       const result = await runCommand("/demo", {
         activateSkill: async () => true,
       });
-      expect(result.stop).toBe(true);
+      expect(result.stop).toBe(false);
+      expect(result.userText).toBe("Run the demo skill.");
       expect(result.rows.some((r) => r.content.includes("Activated skill: demo"))).toBe(true);
     });
 
