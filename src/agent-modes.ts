@@ -24,6 +24,7 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
       "Once explicit file scope is established, do not use repo-wide `search-files` to look for the same pattern elsewhere unless the user asked for a broader update.",
       "Read the target file once, then edit. Do not re-read the same file after a successful edit.",
       "Before the first write, avoid repeated `read-file` calls on the same path unless the previous edit failed.",
+      "For small in-file updates, use the exact line already visible in `read-file` output as your edit anchor instead of searching for it again.",
       "For rename/refactor tasks or repeated pattern updates, prefer `scan-code` + `edit-code` over `edit-file`.",
       "Batch multiple edits to the same file into one `edit-file` or `edit-code` call.",
       "If the needed text is already visible in `read-file` output, do not call `search-files` just to locate it again.",

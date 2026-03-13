@@ -370,7 +370,7 @@ function createEditFileTool(input: ToolkitInput) {
     description:
       "Edit an existing file. Pass `edits` as an array of either {find, replace} pairs (for small surgical edits using exact text match) or {startLine, endLine, replace} objects (for larger block replacements). Line numbers MUST come from `read-file` output — do not guess. endLine must not exceed the file length. All edits are applied atomically. You MUST read the file first. For new files, use `create-file`. For code renames or structural edits use `edit-code`.",
     instruction:
-      "Use `edit-file` for text edits. For small changes use {find, replace} pairs where `find` is exact text from the latest direct `read-file` of that same file. For larger block changes use {startLine, endLine, replace} with 1-based line numbers from the latest direct `read-file` of that same file. `replace` is *only* the new text for that region — do not include surrounding lines. Batch multiple edits to the same file into one call. If `find` is likely to match multiple locations, switch to `edit-code`.",
+      "Use `edit-file` for text edits. For small changes use {find, replace} pairs where `find` is exact text from the latest direct `read-file` of that same file. If that exact line is already visible in `read-file`, use it directly instead of calling `search-files` again. For larger block changes use {startLine, endLine, replace} with 1-based line numbers from the latest direct `read-file` of that same file. `replace` is *only* the new text for that region — do not include surrounding lines. Batch multiple edits to the same file into one call. If `find` is likely to match multiple locations, switch to `edit-code`.",
     inputSchema: z.object({
       path: z.string().min(1),
       edits: z

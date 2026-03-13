@@ -120,6 +120,7 @@ describe("localization baseline", () => {
     expect(readInstruction).toContain("Read each target separately right before its edit");
     expect(editInstruction).toContain("latest direct `read-file` of that same file");
     expect(editInstruction).toContain("exact text from the latest direct `read-file`");
+    expect(editInstruction).toContain("use it directly instead of calling `search-files` again");
     expect(editCodeInstruction).toContain("read that file directly right before editing it");
     expect(searchInstruction).toContain("Do not use repo-wide search after explicit target files are already known");
     expect(searchInstruction).toContain("edit directly instead of searching again");
