@@ -8,22 +8,12 @@ import { reconciler } from "./reconciler";
 import { serialize } from "./serialize";
 import { ansi, kitty } from "./styles";
 
-type KittyKeyboardOptions = {
-  mode?: "enabled" | "disabled";
-  flags?: string[];
-};
-
-type RenderOptions = {
-  exitOnCtrlC?: boolean;
-  kittyKeyboard?: KittyKeyboardOptions;
-};
-
 type RenderInstance = {
   waitUntilExit: () => Promise<void>;
   unmount: () => void;
 };
 
-export function render(node: ReactNode, options?: RenderOptions): RenderInstance {
+export function render(node: ReactNode): RenderInstance {
   const root = createElement("tui-root", {});
   const stdout = process.stdout;
   const stdin = process.stdin;
@@ -55,13 +45,6 @@ export function render(node: ReactNode, options?: RenderOptions): RenderInstance
   };
 
   const onStdinData = (data: Buffer | string) => {
-    if (options?.exitOnCtrlC !== false) {
-      const raw = typeof data === "string" ? data : data.toString("utf8");
-      if (raw === "\x03") {
-        exit();
-        return;
-      }
-    }
     dispatcher.dispatch(data);
   };
 
@@ -71,11 +54,8 @@ export function render(node: ReactNode, options?: RenderOptions): RenderInstance
     stdin.on("data", onStdinData);
   }
 
-  const kittyFlags = options?.kittyKeyboard?.mode === "enabled" ? 1 : 0;
   if (stdout.isTTY) {
-    if (kittyFlags > 0) {
-      stdout.write(kitty.enable(kittyFlags));
-    }
+    stdout.write(kitty.enable(1));
     stdout.write(ansi.cursorHide);
   }
 
@@ -129,9 +109,7 @@ export function render(node: ReactNode, options?: RenderOptions): RenderInstance
       stdin.pause();
     }
     if (stdout.isTTY) {
-      if (kittyFlags > 0) {
-        stdout.write(kitty.disable);
-      }
+      stdout.write(kitty.disable);
       stdout.write(ansi.cursorShow);
       stdout.write("\n");
     }

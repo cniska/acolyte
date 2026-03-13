@@ -3,10 +3,10 @@ import { ChatInputPanel } from "./chat-input-panel";
 import type { PickerState } from "./chat-picker";
 import { palette } from "./palette";
 import { createSession, dedent } from "./test-utils";
-import { renderInkPlain } from "./tui-test-utils";
+import { renderPlain } from "./tui-test-utils";
 
 function renderInputPanelWithPicker(picker: PickerState, columns = 96): string {
-  return renderInkPlain(
+  return renderPlain(
     <ChatInputPanel
       picker={picker}
       activeSessionId="sess_active"

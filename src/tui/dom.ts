@@ -13,8 +13,6 @@ export interface TuiProps {
   inverse?: boolean;
   // Static
   items?: unknown[];
-  // Internal
-  internal_static?: boolean;
 }
 
 export interface TuiElement {

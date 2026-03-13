@@ -41,7 +41,7 @@ export function withTerminalWidth(width: number, run: () => string): string {
   }
 }
 
-export function renderInkPlain(node: ReactNode, columns = 96): string {
+export function renderPlain(node: ReactNode, columns = 96): string {
   const rendered = withTerminalWidth(columns, () => renderToString(node));
   return trimRightLines(stripAnsi(rendered)).replace(/^\n+/, "").replace(/\n+$/, "");
 }

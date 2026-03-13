@@ -102,6 +102,9 @@ export const hostConfig = {
   },
 
   clearContainer(container: TuiElement) {
+    for (const child of container.children) {
+      child.parent = null;
+    }
     container.children = [];
   },
 

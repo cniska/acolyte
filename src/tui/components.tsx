@@ -52,5 +52,5 @@ export function Static<T extends { id?: string }>(props: StaticProps<T>): React.
     const child = props.children(item, index);
     return <tui-virtual key={key}>{child}</tui-virtual>;
   });
-  return <tui-static internal_static>{children}</tui-static>;
+  return <tui-static>{children}</tui-static>;
 }

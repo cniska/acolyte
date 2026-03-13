@@ -4,12 +4,12 @@ import { ChatHeader } from "./chat-header";
 import { ChatInputPanel } from "./chat-input-panel";
 import { palette } from "./palette";
 import { dedent } from "./test-utils";
-import { renderInkPlain } from "./tui-test-utils";
+import { renderPlain } from "./tui-test-utils";
 
 const DEFAULT_FOOTER_CONTEXT = "~/code/acolyte · main";
 
 function renderInputPanel(overrides: ComponentProps<typeof ChatInputPanel> = {}, columns = 96): string {
-  return renderInkPlain(
+  return renderPlain(
     <ChatInputPanel brandColor={palette.brand} footerContext={DEFAULT_FOOTER_CONTEXT} {...overrides} />,
     columns,
   );
@@ -17,7 +17,7 @@ function renderInputPanel(overrides: ComponentProps<typeof ChatInputPanel> = {},
 
 describe("chat tui visual regression: header", () => {
   test("renders stable header block", () => {
-    const out = renderInkPlain(
+    const out = renderPlain(
       <ChatHeader
         lines={[
           { id: "title", text: "Acolyte", suffix: "", dim: false, brand: true },

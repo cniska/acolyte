@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { ChatTranscript } from "./chat-transcript";
 import { createClient, createMessageHandlerHarness, createSession, createStore, dedent } from "./test-utils";
-import { renderInkPlain } from "./tui-test-utils";
+import { renderPlain } from "./tui-test-utils";
 
 function renderTranscript(rows: Parameters<typeof ChatTranscript>[0]["rows"], columns = 96): string {
-  return dedent(renderInkPlain(<ChatTranscript rows={rows} isWorking={false} thinkingFrame={0} />, columns));
+  return dedent(renderPlain(<ChatTranscript rows={rows} isWorking={false} thinkingFrame={0} />, columns));
 }
 
 describe("chat slash command visual regression", () => {

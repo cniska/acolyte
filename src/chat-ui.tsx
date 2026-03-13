@@ -357,10 +357,7 @@ function ChatApp(props: ChatAppProps) {
   );
 }
 
-export async function runInkChat(props: ChatAppProps): Promise<void> {
-  const app = render(<ChatApp {...props} />, {
-    exitOnCtrlC: false,
-    kittyKeyboard: { mode: "enabled", flags: ["disambiguateEscapeCodes"] },
-  });
+export async function runChat(props: ChatAppProps): Promise<void> {
+  const app = render(<ChatApp {...props} />);
   await app.waitUntilExit();
 }
