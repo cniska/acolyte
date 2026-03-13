@@ -19,6 +19,7 @@ resolve →prepare →generate →evaluate →finalize
 - Evaluators can request regeneration.
 - Regeneration uses task-scoped `lifecycleState` to carry internal feedback and verify outcome between attempts.
 - Generation input is rebuilt from immutable base input plus pending mode-scoped lifecycle feedback.
+- Selected guard blocks may also be translated into lifecycle feedback before the next attempt.
 - Regeneration is bounded by lifecycle policy caps.
 - Yield checks only occur at safe checkpoints between lifecycle decisions.
 
@@ -28,7 +29,7 @@ resolve →prepare →generate →evaluate →finalize
 - It currently carries:
   - `feedback`: pending runtime feedback consumed by the next matching-mode attempt
   - `verifyOutcome`: structured verifier result used across `keepResult` restore boundaries
-- Guards may also contribute structured feedback when they block a call, so the next attempt can recover with clearer runtime context.
+- Lifecycle may translate selected guard blocks into feedback, so the next attempt can recover with clearer runtime context.
 - `lifecycleState` is not persisted to session history or memory sources.
 - `lifecycleState` supports the model with concrete runtime outcomes; it does not plan tasks or decide how issues should be resolved.
 
@@ -43,3 +44,4 @@ resolve →prepare →generate →evaluate →finalize
 - `src/lifecycle.ts`
 - `src/lifecycle-*.ts`
 - `src/lifecycle-evaluators.ts`
+- `src/lifecycle-guard-feedback.ts`
