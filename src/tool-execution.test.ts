@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { invariant } from "./assert";
-import { withToolError } from "./tool-execution";
+import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
+import { guardedExecute, withToolError } from "./tool-execution";
+import { createSessionContext } from "./tool-guards";
 
 describe("withToolError", () => {
   test("prefixes thrown errors with tool id", async () => {
@@ -20,5 +22,28 @@ describe("withToolError", () => {
       expect(wrapped.message).toBe("edit-file failed: multi-match");
       expect(wrapped.code).toBe("E_EDIT_FILE_MULTI_MATCH");
     }
+  });
+});
+
+describe("per-tool timeout", () => {
+  test("rejects with timeout error when tool exceeds limit", async () => {
+    const session = createSessionContext();
+    session.toolTimeoutMs = 50;
+    try {
+      await guardedExecute("slow-tool", {}, session, () => new Promise((resolve) => setTimeout(resolve, 500)));
+      invariant(false, "expected timeout");
+    } catch (error) {
+      expect(error).toBeInstanceOf(Error);
+      const typed = error as Error & { code?: string };
+      expect(typed.code).toBe(LIFECYCLE_ERROR_CODES.timeout);
+      expect(typed.message).toContain("timed out");
+    }
+  });
+
+  test("resolves normally when tool completes within limit", async () => {
+    const session = createSessionContext();
+    session.toolTimeoutMs = 500;
+    const result = await guardedExecute("fast-tool", {}, session, async () => "done");
+    expect(result).toBe("done");
   });
 });

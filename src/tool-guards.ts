@@ -26,6 +26,7 @@ export type SessionFlags = {
   cycleStepLimit?: number;
   totalStepLimit?: number;
   guardStats?: { blocked: number; flagSet: number };
+  consecutiveBlocks?: number;
 };
 
 export type SessionContext = {
@@ -34,6 +35,7 @@ export type SessionContext = {
   mode?: string;
   flags: SessionFlags;
   writeTools: ReadonlySet<string>;
+  toolTimeoutMs?: number;
   onGuard?: (event: GuardEvent) => void;
   cache?: ToolCache;
   onDebug?: (event: `lifecycle.${string}`, data: Record<string, unknown>) => void;
@@ -457,7 +459,25 @@ const staleResultGuard: ToolGuard = {
   },
 };
 
+const CONSECUTIVE_BLOCK_LIMIT = 5;
+
+const circuitBreakerGuard: ToolGuard = {
+  id: "circuit-breaker",
+  description: "Stop the model after too many consecutive guard blocks.",
+  check({ session, report }) {
+    const consecutiveBlocks = session.flags.consecutiveBlocks ?? 0;
+    if (consecutiveBlocks >= CONSECUTIVE_BLOCK_LIMIT) {
+      report("blocked", `${consecutiveBlocks}-consecutive`);
+      throw new Error(
+        `${consecutiveBlocks} consecutive tool calls have been blocked. ` +
+          "Stop and tell the user what you are trying to do.",
+      );
+    }
+  },
+};
+
 const GUARDS: ToolGuard[] = [
+  circuitBreakerGuard,
   stepBudgetGuard,
   duplicateCallGuard,
   pingPongGuard,
@@ -476,6 +496,9 @@ export function runGuards(input: Omit<GuardInput, "report">): void {
     };
     guard.check({ ...input, report });
   }
+  // Any guard that throws increments consecutiveBlocks (in guardedExecute catch).
+  // If we reach here, no guard blocked — reset the counter.
+  input.session.flags.consecutiveBlocks = 0;
 }
 
 export function recordCall(

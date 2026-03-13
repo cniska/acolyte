@@ -497,3 +497,26 @@ describe("hashResultValue", () => {
     expect(hashResultValue("x".repeat(11_000))).toBeUndefined();
   });
 });
+
+describe("circuit-breaker guard", () => {
+  test("blocks after 5 consecutive guard blocks", () => {
+    const session = createSessionContext();
+    session.flags.consecutiveBlocks = 5;
+    expect(() => runGuards({ toolName: "read-file", args: {}, session })).toThrow(
+      /consecutive tool calls have been blocked/,
+    );
+  });
+
+  test("does not block below threshold", () => {
+    const session = createSessionContext();
+    session.flags.consecutiveBlocks = 4;
+    expect(() => runGuards({ toolName: "read-file", args: {}, session })).not.toThrow();
+  });
+
+  test("resets counter when guards pass", () => {
+    const session = createSessionContext();
+    session.flags.consecutiveBlocks = 3;
+    runGuards({ toolName: "read-file", args: {}, session });
+    expect(session.flags.consecutiveBlocks).toBe(0);
+  });
+});
