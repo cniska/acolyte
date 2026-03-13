@@ -1,11 +1,11 @@
 import type React from "react";
 import { clampSuggestionIndex } from "./chat-effects";
-import { borderLine, formatShortcutRows, justifyLineSpaceBetween } from "./chat-layout";
+import { borderLine, formatShortcutRows } from "./chat-layout";
 import { type PickerState, pickerHint, pickerLabel, renderPickerItems } from "./chat-picker";
 import { slashCommandHelp } from "./chat-slash";
 import { t } from "./i18n";
 import { PromptInput } from "./prompt-input";
-import { Text } from "./tui";
+import { Box, Text } from "./tui";
 
 type ChatInputPanelProps = {
   picker?: PickerState | null;
@@ -31,8 +31,9 @@ const noop = (): void => {};
 
 const SLASH_COMMAND_COLUMN_WIDTH = 16;
 
-function resolveFooterVisible(input: { showHelp: boolean; hasSuggestions: boolean; hasPicker: boolean }): boolean {
-  if (input.showHelp) return false;
+const DEFAULT_TERMINAL_WIDTH = 96;
+
+function resolveFooterVisible(input: { hasSuggestions: boolean; hasPicker: boolean }): boolean {
   if (input.hasSuggestions) return false;
   if (input.hasPicker) return false;
   return true;
@@ -110,7 +111,8 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
   } = props;
   const caretVisible = true;
   const hasSuggestions = atQuery !== null || slashSuggestions.length > 0;
-  const showFooter = resolveFooterVisible({ showHelp, hasSuggestions, hasPicker: Boolean(picker) });
+  const showFooter = resolveFooterVisible({ hasSuggestions, hasPicker: Boolean(picker) });
+  const termWidth = process.stdout.columns ?? DEFAULT_TERMINAL_WIDTH;
 
   if (picker) {
     return (
@@ -159,13 +161,12 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
         showHelp,
       })}
       {showFooter ? (
-        <Text dimColor>
-          {justifyLineSpaceBetween(
-            ctrlCPending ? t("chat.input.ctrl_c_hint") : value.length > 0 ? "" : `? ${t("chat.input.help_hint")}`,
-            footerContext,
-            2,
-          )}
-        </Text>
+        <Box justifyContent="space-between" width={termWidth}>
+          <Text dimColor>
+            {`  ${ctrlCPending ? t("chat.input.ctrl_c_hint") : showHelp ? "" : value.length > 0 ? "" : `? ${t("chat.input.help_hint")}`}`}
+          </Text>
+          <Text dimColor>{`${footerContext}  `}</Text>
+        </Box>
       ) : null}
     </>
   );

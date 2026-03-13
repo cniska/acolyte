@@ -41,17 +41,6 @@ export async function shownBranch(cwd = process.cwd()): Promise<string | null> {
   return branch.length > 0 ? branch : null;
 }
 
-export function justifyLineSpaceBetween(left: string, right: string, inset = 0): string {
-  const width = process.stdout.columns ?? DEFAULT_TERMINAL_WIDTH;
-  const safeInset = Math.max(0, inset);
-  const leftText = `${" ".repeat(safeInset)}${left}`;
-  const rightText = `${right}${" ".repeat(safeInset)}`;
-  const minGap = 1;
-  const required = leftText.length + minGap + rightText.length;
-  if (required > width) return `${leftText} · ${rightText}`;
-  return `${leftText}${" ".repeat(width - leftText.length - rightText.length)}${rightText}`;
-}
-
 export function borderLine(): string {
   const width = process.stdout.columns ?? DEFAULT_TERMINAL_WIDTH;
   return "─".repeat(Math.max(24, width));

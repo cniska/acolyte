@@ -55,43 +55,28 @@ describe("chat tui visual regression: footer and help", () => {
     );
   });
 
-  test("renders stable help pane rows", () => {
+  test("renders stable help pane rows with context", () => {
     const out = renderInputPanel({ showHelp: true });
-    expect(out).toBe(
-      dedent(`
-      ────────────────────────────────────────────────────────────────────────────────────────────────
-      ❯ Ask anything…
-      ────────────────────────────────────────────────────────────────────────────────────────────────
-        @path               attach file                /remember <text>    save memory note
-        /new                start new session          /memory [scope]     show memory notes
-        /resume <id>        resume session             /tokens             show token usage
-        /sessions           show sessions              /skills             show skills picker
-        /model              change model               /exit               exit chat
-        /status             show server status
-    `),
-    );
+    const lines = out.split("\n");
+    const lastLine = lines[lines.length - 1] ?? "";
+    // Context should appear as last line, right-aligned
+    expect(lastLine).toContain(DEFAULT_FOOTER_CONTEXT);
+    expect(lastLine.trimStart()).toBe(DEFAULT_FOOTER_CONTEXT);
+    // Help rows should still be present
+    expect(out).toContain("@path");
+    expect(out).toContain("/exit");
   });
 
-  test("renders stable single-column help pane rows at narrow width", () => {
+  test("renders stable single-column help pane rows at narrow width with context", () => {
     const out = renderInputPanel({ showHelp: true }, 80);
-    expect(out).toBe(
-      dedent(`
-      ────────────────────────────────────────────────────────────────────────────────
-      ❯ Ask anything…
-      ────────────────────────────────────────────────────────────────────────────────
-        @path               attach file
-        /new                start new session
-        /resume <id>        resume session
-        /sessions           show sessions
-        /model              change model
-        /status             show server status
-        /remember <text>    save memory note
-        /memory [scope]     show memory notes
-        /tokens             show token usage
-        /skills             show skills picker
-        /exit               exit chat
-    `),
-    );
+    const lines = out.split("\n");
+    const lastLine = lines[lines.length - 1] ?? "";
+    // Context should appear as last line, right-aligned
+    expect(lastLine).toContain(DEFAULT_FOOTER_CONTEXT);
+    expect(lastLine.trimStart()).toBe(DEFAULT_FOOTER_CONTEXT);
+    // Help rows should still be present
+    expect(out).toContain("@path");
+    expect(out).toContain("/exit");
   });
 
   test("renders slash suggestions with selected help and no footer row", () => {

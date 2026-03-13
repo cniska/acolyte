@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { justifyLineSpaceBetween, shownBranch } from "./chat-layout";
+import { shownBranch } from "./chat-layout";
 
 function streamFromText(text: string): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
@@ -9,17 +9,6 @@ function streamFromText(text: string): ReadableStream<Uint8Array> {
       controller.close();
     },
   });
-}
-
-function withColumns(width: number, task: () => void): void {
-  const descriptor = Object.getOwnPropertyDescriptor(process.stdout, "columns");
-  Object.defineProperty(process.stdout, "columns", { configurable: true, value: width });
-  try {
-    task();
-  } finally {
-    if (descriptor) Object.defineProperty(process.stdout, "columns", descriptor);
-    else delete (process.stdout as { columns?: number }).columns;
-  }
 }
 
 describe("chat-layout", () => {
@@ -51,17 +40,5 @@ describe("chat-layout", () => {
     } finally {
       (Bun as { spawn: typeof Bun.spawn }).spawn = originalSpawn;
     }
-  });
-
-  test("justifyLineSpaceBetween keeps help left and context right", () => {
-    withColumns(40, () => {
-      expect(justifyLineSpaceBetween("? help", "acolyte · main")).toBe("? help                    acolyte · main");
-    });
-  });
-
-  test("justifyLineSpaceBetween falls back when line is too narrow", () => {
-    withColumns(10, () => {
-      expect(justifyLineSpaceBetween("? help", "acolyte · main")).toBe("? help · acolyte · main");
-    });
   });
 });
