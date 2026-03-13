@@ -85,9 +85,13 @@ function createRunContext(
       onDebug: (event: `lifecycle.${string}`, data: Record<string, unknown>) => params.debug(event, data),
     }),
     agent,
-    agentInput: params.prepared.agentInput,
+    baseAgentInput: params.prepared.baseAgentInput,
     policy: params.policy,
     promptUsage: params.prepared.promptUsage,
+    lifecycleState: {
+      feedback: [],
+      verifyOutcome: undefined,
+    },
     observedTools: new Set(),
     modelCallCount: 0,
     promptTokensAccum: 0,
@@ -98,7 +102,6 @@ function createRunContext(
     regenerationCount: 0,
     regenerationLimitHit: false,
     sawEditFileMultiMatchError: false,
-    lastVerifyOutcome: undefined,
     errorStats: createErrorStats(),
     nativeIdQueue: new Map(),
     toolCallStartedAt: new Map(),
@@ -169,7 +172,7 @@ export async function runLifecycle(input: LifecycleInput) {
   if (ctx.promptUsage.activeSkillName) {
     emit({ type: "status", message: `skill:${ctx.promptUsage.activeSkillName}` });
   }
-  await phaseGenerate(ctx, ctx.agentInput, {
+  await phaseGenerate(ctx, {
     cycleLimit: policy.initialMaxSteps,
     timeoutMs: policy.stepTimeoutMs,
   });

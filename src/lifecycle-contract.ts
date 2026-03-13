@@ -86,7 +86,7 @@ export type PhasePrepareInput = {
 export type PhasePrepareResult = {
   session: SessionContext;
   tools: Toolset;
-  agentInput: string;
+  baseAgentInput: string;
   promptUsage: PromptUsage;
 };
 export type GenerateOptions = { cycleLimit?: number; timeoutMs: number };
@@ -98,6 +98,19 @@ export type SavedRegenerationState = {
 export type VerifyOutcome = {
   text: string;
   error?: LifecycleError;
+};
+
+export type FeedbackSource = "lint" | "verify" | "multi-match";
+
+export type LifecycleFeedback = {
+  source: FeedbackSource;
+  mode: AgentMode;
+  content: string;
+};
+
+export type LifecycleState = {
+  feedback: LifecycleFeedback[];
+  verifyOutcome?: VerifyOutcome;
 };
 
 export type LifecycleInput = {
@@ -121,9 +134,10 @@ export type RunContext = {
   readonly initialMode: AgentMode;
   readonly tools: Toolset;
   readonly session: SessionContext;
-  readonly agentInput: string;
+  readonly baseAgentInput: string;
   readonly policy: LifecyclePolicy;
   readonly promptUsage: PromptUsage;
+  lifecycleState: LifecycleState;
   model: string;
   agent: Agent;
   agentForMode: AgentMode;
@@ -138,7 +152,6 @@ export type RunContext = {
   regenerationCount: number;
   regenerationLimitHit: boolean;
   sawEditFileMultiMatchError: boolean;
-  lastVerifyOutcome?: VerifyOutcome;
   currentError?: LifecycleError;
   errorStats: Record<ErrorCategory, number>;
   result?: GenerateResult;

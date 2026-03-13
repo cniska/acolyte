@@ -5,6 +5,7 @@ import {
   haveChangesBeenVerified,
   type LifecycleError,
   type LifecycleEventName,
+  type LifecycleFeedback,
   type VerifyOutcome,
   taskScopedCallLog,
 } from "./lifecycle-contract";
@@ -18,7 +19,7 @@ export type EvalAction =
   | { type: "done" }
   | {
       type: "regenerate";
-      prompt: string;
+      feedback?: LifecycleFeedback;
       mode?: AgentMode;
       cycleLimit?: number;
       keepResult?: boolean;
@@ -28,7 +29,6 @@ export type EvaluatorContext = {
   result?: { text: string };
   observedTools: Set<string>;
   debug: (event: LifecycleEventName, fields?: Record<string, unknown>) => void;
-  agentInput: string;
   policy: LifecyclePolicy;
   initialMode: AgentMode;
   mode: AgentMode;
@@ -37,7 +37,7 @@ export type EvaluatorContext = {
   workspace: string | undefined;
   request: { message: string; verifyScope?: VerifyScope };
   sawEditFileMultiMatchError: boolean;
-  lastVerifyOutcome?: VerifyOutcome;
+  lifecycleState: { verifyOutcome?: VerifyOutcome };
   currentError?: LifecycleError;
 };
 
@@ -125,14 +125,16 @@ export const lintEvaluator: Evaluator = {
     ctx.debug("lifecycle.eval.lint", { files: paths.length });
     return {
       type: "regenerate",
-      prompt: [
-        ctx.agentInput,
-        "",
-        "Lint errors detected in files you edited:",
-        result.output,
-        "",
-        "If the project has an auto-fix command, run it first. Otherwise fix the errors manually, then stop.",
-      ].join("\n"),
+      feedback: {
+        source: "lint",
+        mode: "work",
+        content: [
+          "Lint errors detected in files you edited:",
+          result.output,
+          "",
+          "Fix the issues above, then stop.",
+        ].join("\n"),
+      },
     };
   },
 };
@@ -148,7 +150,11 @@ export const verifyCycle: Evaluator = {
       if (ctx.initialMode === "work" && usedWriteTools && !haveChangesBeenVerified(ctx.session, ctx.taskId)) {
         return {
           type: "regenerate",
-          prompt: scopedVerifyPrompt(ctx),
+          feedback: {
+            source: "verify",
+            mode: "verify",
+            content: scopedVerifyPrompt(ctx),
+          },
           mode: "verify",
           cycleLimit: ctx.policy.verifyMaxSteps,
           keepResult: true,
@@ -158,12 +164,16 @@ export const verifyCycle: Evaluator = {
     }
 
     // Verify → Work: use the verifier's structured outcome, not the restored work-mode result.
-    const verifyOutcome = ctx.lastVerifyOutcome;
+    const verifyOutcome = ctx.lifecycleState.verifyOutcome;
     if (!verifyOutcome?.error) return { type: "done" };
     ctx.debug("lifecycle.eval.verify_failure", { text_chars: verifyOutcome.text.length });
     return {
       type: "regenerate",
-      prompt: `${ctx.agentInput}\n\nVerification found issues:\n${verifyOutcome.text}\n\nFix the issues above, then stop.`,
+      feedback: {
+        source: "verify",
+        mode: "work",
+        content: `Verification found issues:\n${verifyOutcome.text}\n\nFix the issues above, then stop.`,
+      },
       mode: "work",
     };
   },
@@ -185,15 +195,18 @@ export const multiMatchEditEvaluator: Evaluator = {
     });
     return {
       type: "regenerate",
-      prompt:
-        `${ctx.agentInput}\n\n` +
-        "Your previous edit-file call matched multiple locations. " +
-        "For this task, your next tool call must be edit-code (not edit-file). " +
-        (targetPath
-          ? `Use path '${targetPath}' for edit-code and do not use '.' or directory paths. `
-          : "Use a concrete file path for edit-code and do not use '.' or directory paths. ") +
-        "Do not run additional find/search/read calls unless edit-code fails. " +
-        "After applying edit-code changes, run verify.",
+      feedback: {
+        source: "multi-match",
+        mode: "work",
+        content:
+          "Your previous edit-file call matched multiple locations. " +
+          "For this task, your next tool call must be edit-code (not edit-file). " +
+          (targetPath
+            ? `Use path '${targetPath}' for edit-code and do not use '.' or directory paths. `
+            : "Use a concrete file path for edit-code and do not use '.' or directory paths. ") +
+          "Do not run additional find/search/read calls unless edit-code fails. " +
+          "After applying edit-code changes, run verify.",
+      },
     };
   },
 };

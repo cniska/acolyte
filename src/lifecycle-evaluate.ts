@@ -82,17 +82,20 @@ export async function phaseEvaluate(ctx: RunContext, shouldYield: LifecycleInput
         mode: ctx.mode,
         cycle_limit: action.cycleLimit ?? ctx.policy.initialMaxSteps,
         keep_result: Boolean(action.keepResult),
+        feedback_source: action.feedback?.source ?? null,
         regeneration_count: ctx.regenerationCount,
       });
 
-      await phaseGenerate(ctx, action.prompt, {
+      if (action.feedback) ctx.lifecycleState.feedback.push(action.feedback);
+
+      await phaseGenerate(ctx, {
         cycleLimit: action.cycleLimit ?? ctx.policy.initialMaxSteps,
         timeoutMs: ctx.policy.stepTimeoutMs,
       });
       if (shouldYieldNow(ctx, shouldYield)) break;
 
       if (saved && ctx.mode === "verify") {
-        ctx.lastVerifyOutcome = {
+        ctx.lifecycleState.verifyOutcome = {
           text: ctx.result?.text ?? "",
           error: ctx.currentError,
         };

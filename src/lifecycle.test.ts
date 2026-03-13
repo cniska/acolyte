@@ -4,6 +4,7 @@ import { scheduleMemoryCommit, shouldCommitMemory } from "./lifecycle";
 import type { RunContext } from "./lifecycle-contract";
 import { recoveryActionForError } from "./lifecycle-evaluate";
 import { multiMatchEditEvaluator, verifyCycle } from "./lifecycle-evaluators";
+import { consumeLifecycleFeedback, createGenerationInput } from "./lifecycle-generate";
 import { defaultLifecyclePolicy } from "./lifecycle-policy";
 import { phasePrepare } from "./lifecycle-prepare";
 import { LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./tool-error-codes";
@@ -24,7 +25,7 @@ function createMockContext(overrides: Partial<RunContext> = {}): RunContext {
     model: "gpt-5-mini",
     session: createSessionContext(),
     agent: {} as RunContext["agent"],
-    agentInput: "test prompt",
+    baseAgentInput: "test prompt",
     policy: defaultLifecyclePolicy,
     promptUsage: {
       promptTokens: 0,
@@ -34,6 +35,7 @@ function createMockContext(overrides: Partial<RunContext> = {}): RunContext {
       includedHistoryMessages: 0,
       totalHistoryMessages: 0,
     },
+    lifecycleState: { feedback: [], verifyOutcome: undefined },
     observedTools: new Set(),
     modelCallCount: 1,
     promptTokensAccum: 0,
@@ -75,13 +77,13 @@ describe("verifyCycle", () => {
     if (action.type === "regenerate") {
       expect(action.mode).toBe("verify");
       expect(action.keepResult).toBe(true);
-      expect(action.prompt).toContain("Task boundary:");
-      expect(action.prompt).toContain("- src/a.ts");
-      expect(action.prompt).toContain("- src/b.ts");
-      expect(action.prompt).toContain("Allowed supporting reads");
-      expect(action.prompt).toContain("- src/c.ts");
-      expect(action.prompt).toContain("- src/d.ts");
-      expect(action.prompt).not.toContain("- src/old.ts");
+      expect(action.feedback?.content).toContain("Task boundary:");
+      expect(action.feedback?.content).toContain("- src/a.ts");
+      expect(action.feedback?.content).toContain("- src/b.ts");
+      expect(action.feedback?.content).toContain("Allowed supporting reads");
+      expect(action.feedback?.content).toContain("- src/c.ts");
+      expect(action.feedback?.content).toContain("- src/d.ts");
+      expect(action.feedback?.content).not.toContain("- src/old.ts");
     }
   });
 
@@ -93,7 +95,7 @@ describe("verifyCycle", () => {
     });
     const action = verifyCycle.evaluate(ctx);
     expect(action.type).toBe("regenerate");
-    if (action.type === "regenerate") expect(action.prompt).not.toContain("Task boundary:");
+    if (action.type === "regenerate") expect(action.feedback?.content).not.toContain("Task boundary:");
   });
 
   test("uses global verify prompt when request explicitly opts into global scope", () => {
@@ -108,7 +110,7 @@ describe("verifyCycle", () => {
     });
     const action = verifyCycle.evaluate(ctx);
     expect(action.type).toBe("regenerate");
-    if (action.type === "regenerate") expect(action.prompt).not.toContain("Task boundary:");
+    if (action.type === "regenerate") expect(action.feedback?.content).not.toContain("Task boundary:");
   });
 
   test("returns done when verify already ran", () => {
@@ -147,9 +149,12 @@ describe("verifyCycle", () => {
       initialMode: "work",
       session,
       result: { text: "Done.", toolCalls: [] },
-      lastVerifyOutcome: {
-        text: "Error: missing export updatePost in post-store.ts",
-        error: { message: "verify failed: missing export updatePost in post-store.ts" },
+      lifecycleState: {
+        feedback: [],
+        verifyOutcome: {
+          text: "Error: missing export updatePost in post-store.ts",
+          error: { message: "verify failed: missing export updatePost in post-store.ts" },
+        },
       },
       observedTools: new Set(["scan-code"]),
     });
@@ -157,7 +162,7 @@ describe("verifyCycle", () => {
     expect(action.type).toBe("regenerate");
     if (action.type === "regenerate") {
       expect(action.mode).toBe("work");
-      expect(action.prompt).toContain("missing export updatePost");
+      expect(action.feedback?.content).toContain("missing export updatePost");
     }
   });
 
@@ -184,7 +189,7 @@ describe("verifyCycle", () => {
       session,
       currentError: undefined,
       result: { text: "Done.", toolCalls: [] },
-      lastVerifyOutcome: undefined,
+      lifecycleState: { feedback: [], verifyOutcome: undefined },
     });
     expect(verifyCycle.evaluate(ctx).type).toBe("done");
   });
@@ -219,9 +224,9 @@ describe("multiMatchEditEvaluator", () => {
     const action = multiMatchEditEvaluator.evaluate(ctx);
     expect(action.type).toBe("regenerate");
     if (action.type === "regenerate") {
-      expect(action.prompt).toContain("next tool call must be edit-code");
-      expect(action.prompt).toContain("Use path 'src/priority.ts' for edit-code");
-      expect(action.prompt).toContain("do not use '.' or directory paths");
+      expect(action.feedback?.content).toContain("next tool call must be edit-code");
+      expect(action.feedback?.content).toContain("Use path 'src/priority.ts' for edit-code");
+      expect(action.feedback?.content).toContain("do not use '.' or directory paths");
     }
   });
 
@@ -236,7 +241,7 @@ describe("multiMatchEditEvaluator", () => {
     });
     const action = multiMatchEditEvaluator.evaluate(ctx);
     expect(action.type).toBe("regenerate");
-    if (action.type === "regenerate") expect(action.prompt).toContain("Use a concrete file path for edit-code");
+    if (action.type === "regenerate") expect(action.feedback?.content).toContain("Use a concrete file path for edit-code");
   });
 
   test("returns done when edit-code was already used", () => {
@@ -426,5 +431,56 @@ describe("phasePrepare", () => {
     });
     expect(prepared.session.toolTimeoutMs).toBe(1_234);
     expect(prepared.session.flags.consecutiveGuardBlockLimit).toBe(7);
+  });
+});
+
+describe("createGenerationInput", () => {
+  test("returns base input when there is no feedback", () => {
+    const input = createGenerationInput({
+      baseAgentInput: "USER: fix it",
+      mode: "work",
+      lifecycleState: { feedback: [] },
+    });
+    expect(input).toBe("USER: fix it");
+  });
+
+  test("appends only active-mode feedback in order", () => {
+    const input = createGenerationInput({
+      baseAgentInput: "USER: fix it",
+      mode: "work",
+      lifecycleState: {
+        feedback: [
+          { source: "verify", mode: "verify", content: "Task boundary:\n- src/a.ts" },
+          { source: "lint", mode: "work", content: "Lint errors detected" },
+          { source: "multi-match", mode: "work", content: "Use edit-code next" },
+        ],
+      },
+    });
+    expect(input).toContain("USER: fix it");
+    expect(input).toContain("Lifecycle feedback (lint)");
+    expect(input).toContain("Lint errors detected");
+    expect(input).toContain("Lifecycle feedback (multi-match)");
+    expect(input).toContain("Use edit-code next");
+    expect(input).not.toContain("Task boundary:\n- src/a.ts");
+  });
+});
+
+describe("consumeLifecycleFeedback", () => {
+  test("returns and clears pending feedback for the active mode only", () => {
+    const state = {
+      feedback: [
+        { source: "verify" as const, mode: "verify" as const, content: "Task boundary:\n- src/a.ts" },
+        { source: "lint" as const, mode: "work" as const, content: "Lint errors detected" },
+        { source: "multi-match" as const, mode: "work" as const, content: "Use edit-code next" },
+      ],
+    };
+
+    const consumed = consumeLifecycleFeedback(state, "work");
+
+    expect(consumed).toEqual([
+      { source: "lint", mode: "work", content: "Lint errors detected" },
+      { source: "multi-match", mode: "work", content: "Use edit-code next" },
+    ]);
+    expect(state.feedback).toEqual([{ source: "verify", mode: "verify", content: "Task boundary:\n- src/a.ts" }]);
   });
 });

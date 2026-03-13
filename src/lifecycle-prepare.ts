@@ -11,7 +11,7 @@ export function phasePrepare(input: PhasePrepareInput): PhasePrepareResult {
   // counted — createAgentInput's returned promptTokens intentionally excludes them.
   const systemPromptTokens = estimateTokens(input.soulPrompt) + INSTRUCTION_OVERHEAD_TOKENS;
   const requestInput = createAgentInput(input.request, { systemPromptTokens });
-  const agentInput = requestInput.input;
+  const baseAgentInput = requestInput.input;
 
   const { tools, session } = toolsForAgent({
     workspace: input.workspace,
@@ -50,5 +50,5 @@ export function phasePrepare(input: PhasePrepareInput): PhasePrepareResult {
     });
   }
 
-  return { session, tools, agentInput, promptUsage: requestInput.usage };
+  return { session, tools, baseAgentInput, promptUsage: requestInput.usage };
 }
