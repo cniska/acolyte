@@ -486,12 +486,3 @@ export function recordCall(
 ): void {
   session.callLog.push({ toolName, args, taskId: session.taskId, mode: session.mode, resultHash });
 }
-
-export function hashResultValue(value: unknown): string | undefined {
-  if (value === undefined || value === null) return undefined;
-  const str = typeof value === "string" ? value : JSON.stringify(value);
-  if (str.length > 10_000) return undefined;
-  const hasher = new Bun.CryptoHasher("sha256");
-  hasher.update(str);
-  return hasher.digest("hex").slice(0, 16);
-}

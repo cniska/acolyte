@@ -1,6 +1,15 @@
 import { createId } from "./short-id";
 import { ERROR_KINDS, LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
-import { hashResultValue, recordCall, runGuards, type SessionContext } from "./tool-guards";
+import { recordCall, runGuards, type SessionContext } from "./tool-guards";
+
+export function hashResultValue(value: unknown): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  const str = typeof value === "string" ? value : JSON.stringify(value);
+  if (str.length > 10_000) return undefined;
+  const hasher = new Bun.CryptoHasher("sha256");
+  hasher.update(str);
+  return hasher.digest("hex").slice(0, 16);
+}
 export function streamCallId(toolName: string): string {
   return `${toolName}_${createId()}`;
 }
