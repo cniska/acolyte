@@ -1,3 +1,5 @@
+import { invariant } from "./assert";
+import { CONSECUTIVE_GUARD_BLOCK_LIMIT, TOOL_TIMEOUT_MS } from "./lifecycle-constants";
 import {
   extractFindPatterns,
   extractReadPaths,
@@ -6,8 +8,6 @@ import {
   includesUniversalFindPattern,
   normalizePath,
 } from "./tool-arg-paths";
-import { invariant } from "./assert";
-import { CONSECUTIVE_GUARD_BLOCK_LIMIT, TOOL_TIMEOUT_MS } from "./lifecycle-constants";
 import type { ToolCache } from "./tool-contract";
 
 const DEFAULT_CYCLE_STEP_LIMIT = 80;
