@@ -36,7 +36,7 @@ function mergeStyle(parent: StyleStack, props: TuiProps): StyleStack {
   };
 }
 
-function stripAnsiLength(value: string): number {
+export function stripAnsiLength(value: string): number {
   let length = 0;
   let i = 0;
   while (i < value.length) {
@@ -66,7 +66,13 @@ function padLine(line: string, width: number): string {
   return line;
 }
 
-function serializeNode(node: TuiNode, inherited: StyleStack): string {
+/**
+ * Serialize a node to string. When `staticAcc` is provided, `tui-static`
+ * children are collected into it instead of rendered inline — this lets
+ * the render loop flush them once to scrollback and only re-render the
+ * active (non-static) portion of the tree.
+ */
+function serializeNode(node: TuiNode, inherited: StyleStack, staticAcc?: string[]): string {
   if (node.kind === "text") {
     if (node.value.length === 0) return "";
     if (hasStyle(inherited)) {
@@ -78,12 +84,24 @@ function serializeNode(node: TuiNode, inherited: StyleStack): string {
   const el = node;
 
   if (el.type === "tui-virtual") {
-    return el.children.map((child) => serializeNode(child, inherited)).join("");
+    return el.children.map((child) => serializeNode(child, inherited, staticAcc)).join("");
   }
 
   if (el.type === "tui-text") {
     const style = mergeStyle(inherited, el.props);
-    return el.children.map((child) => serializeNode(child, style)).join("");
+    return el.children.map((child) => serializeNode(child, style, staticAcc)).join("");
+  }
+
+  if (el.type === "tui-static") {
+    if (staticAcc) {
+      // Collect each virtual child separately for incremental flushing.
+      for (const child of el.children) {
+        staticAcc.push(serializeNode(child, inherited));
+      }
+      return "";
+    }
+    // No accumulator — render inline (used by serialize / renderToString).
+    return el.children.map((child) => serializeNode(child, inherited)).join("\n");
   }
 
   if (el.type === "tui-box") {
@@ -91,7 +109,7 @@ function serializeNode(node: TuiNode, inherited: StyleStack): string {
     const isColumn = el.props.flexDirection === "column";
 
     if (isColumn) {
-      const parts = el.children.map((child) => serializeNode(child, style));
+      const parts = el.children.map((child) => serializeNode(child, style, staticAcc)).filter((p) => p.length > 0);
       let joined = parts.join("\n");
       if (el.props.width !== undefined) {
         const w = el.props.width;
@@ -104,7 +122,7 @@ function serializeNode(node: TuiNode, inherited: StyleStack): string {
     }
 
     // Row direction: concatenate children horizontally.
-    const childOutputs = el.children.map((child) => serializeNode(child, style));
+    const childOutputs = el.children.map((child) => serializeNode(child, style, staticAcc));
     const boxWidth = el.props.width;
     const justify = el.props.justifyContent;
     const wrap = el.props.flexWrap === "wrap";
@@ -135,8 +153,11 @@ function serializeNode(node: TuiNode, inherited: StyleStack): string {
     return joinRow(childOutputs, boxWidth);
   }
 
-  // Root or static — render children as column
-  return el.children.map((child) => serializeNode(child, inherited)).join("\n");
+  // Root — render children as column
+  return el.children
+    .map((child) => serializeNode(child, inherited, staticAcc))
+    .filter((p) => p.length > 0)
+    .join("\n");
 }
 
 /** Join children with space distributed evenly between them. */
@@ -210,4 +231,17 @@ function joinRow(childOutputs: string[], boxWidth?: number): string {
 export function serialize(root: TuiElement): string {
   const emptyStyle: StyleStack = {};
   return serializeNode(root, emptyStyle);
+}
+
+/**
+ * Split root into static (write-once scrollback) and active (re-rendered) regions.
+ * Walks the full tree — `tui-static` elements at any depth are collected into
+ * `staticItems` instead of rendered inline, so the render loop can flush them
+ * once to scrollback and only re-draw the active portion each frame.
+ */
+export function serializeSplit(root: TuiElement): { staticItems: string[]; active: string } {
+  const emptyStyle: StyleStack = {};
+  const staticItems: string[] = [];
+  const active = serializeNode(root, emptyStyle, staticItems);
+  return { staticItems, active };
 }
