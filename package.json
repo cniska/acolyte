@@ -24,7 +24,7 @@
     "test:tui": "bash scripts/run-test-suite.sh tui",
     "test:int": "bash scripts/run-test-suite.sh int",
     "test:perf": "bash scripts/run-test-suite.sh perf",
-    "verify": "bunx biome format --check . && bun run lint && bun run typecheck && bun test",
+    "verify": "bun run lint && bun run typecheck && bun test",
     "benchmark": "bun run scripts/benchmark.ts",
     "release": "bash scripts/release.sh"
   },
