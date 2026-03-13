@@ -1,12 +1,16 @@
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 
 export type LintResult = { hasErrors: boolean; output: string };
 
-export function lintFiles(workspace: string, filePaths: string[]): LintResult {
+export type LintCommand = { bin: string; args: readonly string[] };
+
+const DEFAULT_LINT_COMMAND: LintCommand = { bin: "bunx", args: ["biome", "check"] };
+
+export function lintFiles(workspace: string, filePaths: string[], command?: LintCommand): LintResult {
   if (filePaths.length === 0) return { hasErrors: false, output: "" };
+  const { bin, args } = command ?? DEFAULT_LINT_COMMAND;
   try {
-    const quoted = filePaths.map((f) => `"${f.replace(/"/g, '\\"')}"`).join(" ");
-    execSync(`bunx biome check ${quoted}`, {
+    execFileSync(bin, [...args, ...filePaths], {
       cwd: workspace,
       timeout: 10_000,
       encoding: "utf-8",

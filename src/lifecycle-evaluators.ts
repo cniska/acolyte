@@ -8,6 +8,7 @@ import {
   taskScopedCallLog,
 } from "./lifecycle-contract";
 import type { LifecyclePolicy } from "./lifecycle-policy";
+import { lintFiles } from "./lint-reflection";
 import { extractReadPaths } from "./tool-arg-paths";
 import type { SessionContext } from "./tool-guards";
 import { WRITE_TOOL_SET, WRITE_TOOLS } from "./tool-registry";
@@ -109,6 +110,25 @@ function scopedVerifyPrompt(ctx: EvaluatorContext): string {
     "Do not review unrelated repository changes from earlier tasks.",
   ].join("\n");
 }
+
+export const lintEvaluator: Evaluator = {
+  id: "lint",
+  evaluate(ctx) {
+    if (ctx.mode !== "work" || !ctx.workspace) return { type: "done" };
+    const paths = writePathsForCurrentTask(ctx);
+    if (paths.length === 0) return { type: "done" };
+    const result = lintFiles(ctx.workspace, paths);
+    if (!result.hasErrors) return { type: "done" };
+    ctx.debug("lifecycle.eval.lint", { files: paths.length });
+    return {
+      type: "regenerate",
+      prompt:
+        `${ctx.agentInput}\n\n` +
+        `Lint errors detected in files you edited:\n${result.output}\n\n` +
+        "If the project has an auto-fix command, run it first. Otherwise fix the errors manually, then stop.",
+    };
+  },
+};
 
 export const verifyCycle: Evaluator = {
   id: "verify-cycle",

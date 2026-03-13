@@ -434,7 +434,8 @@ const staleResultGuard: ToolGuard = {
       if (!entry) break;
       if (entry.toolName !== toolName) continue;
       if (!guardArgsEqual(entry.args, args)) break;
-      if (!entry.resultHash) break;
+      // Skip entries with no hash (result too large or unavailable) — can't compare
+      if (!entry.resultHash) continue;
 
       if (lastHash === undefined) {
         lastHash = entry.resultHash;
@@ -490,9 +491,7 @@ export function hashResultValue(value: unknown): string | undefined {
   if (value === undefined || value === null) return undefined;
   const str = typeof value === "string" ? value : JSON.stringify(value);
   if (str.length > 10_000) return undefined;
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
-  }
-  return String(hash);
+  const hasher = new Bun.CryptoHasher("sha256");
+  hasher.update(str);
+  return hasher.digest("hex").slice(0, 16);
 }

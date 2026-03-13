@@ -57,9 +57,6 @@ export function createAgentStream(
     let loopIteration = 0;
     let nudgeCount = 0;
     const maxNudges = options.maxNudges ?? 0;
-    const MAX_LINT_REFLECTIONS = 3;
-    let lintReflectionCount = 0;
-
     let streamController!: ReadableStreamDefaultController<StreamChunk>;
     const fullStream = new ReadableStream<StreamChunk>({
       start(controller) {
@@ -219,41 +216,6 @@ export function createAgentStream(
 
         messages.push({ role: "assistant", content: assistantContent });
         messages.push({ role: "tool", content: toolResultParts });
-
-        if (options.lintCheck && !batchHadError && lintReflectionCount < MAX_LINT_REFLECTIONS) {
-          const writtenPaths: string[] = [];
-          for (const tc of pendingToolCalls) {
-            if (options.writeTools?.has(tc.toolName)) {
-              const parsed = safeParseJSON(tc.input);
-              if (typeof parsed.path === "string") writtenPaths.push(parsed.path);
-            }
-          }
-          if (writtenPaths.length > 0) {
-            const lintOutput = await options.lintCheck(writtenPaths);
-            if (lintOutput) {
-              lintReflectionCount++;
-              log.debug("agent-stream.lint-reflection", {
-                files: writtenPaths.length,
-                reflection_count: lintReflectionCount,
-                iteration: loopIteration,
-              });
-              messages.push({
-                role: "user",
-                content: [
-                  {
-                    type: "text",
-                    text: `[system] Lint errors detected in files you just edited:\n${lintOutput}\nRun the project auto-fix command or fix manually before continuing.`,
-                  },
-                ],
-              });
-              streamController.enqueue({
-                type: "lint-reflection",
-                payload: { files: writtenPaths, output: lintOutput },
-              });
-              continue;
-            }
-          }
-        }
 
         if (finishReason?.unified !== "tool-calls" && finishReason !== undefined) {
           if (nudgeCount < maxNudges && batchHadError) {

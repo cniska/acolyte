@@ -14,7 +14,7 @@ const BASE_INSTRUCTIONS = [
   "Keep responses concise and outcome-first; expand only when asked.",
   "Never summarize, recap, or list what you did. The user can see your actions directly.",
   "Make reasonable assumptions to keep momentum; ask only when blocked by ambiguity or risk.",
-  "When lint or format checks fail, run the project auto-fix command before attempting manual repairs.",
+  "When lint or format checks fail, run the project auto-fix command (if available) before attempting manual repairs.",
   "When finished, state the outcome in one sentence.",
 ];
 
