@@ -1,0 +1,72 @@
+# TUI Renderer
+
+Custom React reconciler for terminal rendering. Replaces Ink with a minimal, zero-dependency renderer tailored to Acolyte's needs.
+
+## Why custom
+
+Ink is general-purpose and brings layout complexity (Yoga), dep weight, and behaviors we don't need. The custom renderer keeps the React component model but owns the full rendering pipeline — from tree reconciliation to terminal escape sequences.
+
+## Primitives
+
+Three components, intentionally minimal:
+
+- **`Box`** — flex container. Props: `flexDirection`, `justifyContent`, `flexWrap`, `width`.
+- **`Text`** — styled text span. Props: `color`, `dimColor`, `backgroundColor`, `bold`, `underline`, `inverse`.
+- **`Static`** — write-once scrollback region. Rendered items are flushed to terminal scrollback and never re-rendered.
+
+Hooks:
+
+- **`useApp()`** — access `{ exit }` to terminate the app.
+- **`useInput(handler, { isActive })`** — register a keyboard input handler.
+
+## Rendering pipeline
+
+```text
+React tree → reconciler → TUI DOM → serialize → terminal output
+```
+
+- **reconciler:** React's `react-reconciler` drives updates against a TUI DOM tree.
+- **TUI DOM:** lightweight node tree (`tui-root`, `tui-box`, `tui-text`, `tui-static`, `tui-virtual`, text nodes).
+- **serialize:** walks the DOM, resolves flex layout, applies ANSI styles, produces a string. `serializeSplit` separates static (scrollback) from active (re-rendered) regions.
+- **render loop:** on each React commit: serialize, diff against last output, erase and rewrite the active region. Static items flush once to scrollback. Overflow is handled by skipping off-screen lines (prevents duplication on scroll).
+- **resize:** terminal dimensions are read from `stdout.columns`/`stdout.rows` on each commit — no SIGWINCH handler needed.
+
+## Input handling
+
+Centralized in `input.ts`. Raw stdin bytes are parsed into `KeyEvent` objects with named flags (`return`, `tab`, `ctrl`, `meta`, `escape`, arrows, etc.). The dispatcher fans out to all registered handlers via `InputContext`.
+
+Components register handlers through `useInput`. Only handlers with `isActive: true` receive events.
+
+## Design constraints
+
+- **Minimal primitive set.** Every new prop becomes renderer debt. Add only what's needed.
+- **Layout rules are a product contract.** Add tests before adding layout semantics.
+- **No "Ink, but homegrown."** If a feature doesn't materially help Acolyte's UX, don't add it.
+- **Centralized input handling.** Terminal key parsing gets fragile fast — keep it in one place.
+- **Terminal edge cases.** Wide glyphs, combining characters, ANSI length vs display width all need care. `stripAnsiLength` and `padLine` in `serialize.ts` handle width calculations.
+
+## Testing
+
+- **`renderToString`** (`render-to-string.ts`) — renders a React tree to a plain string without terminal side effects.
+- **`renderPlain`** (`tui-test-utils.ts`) — wraps `renderToString` with configurable terminal width for test convenience.
+- **`serialize.test.tsx`** — layout and serialization tests against the DOM tree directly.
+
+## Extension seams
+
+- Add primitives by extending `TuiNodeType` in `dom.ts` and handling them in `serialize.ts`.
+- Add style props by extending `TuiProps` in `dom.ts` and `StyleStack` in `serialize.ts`.
+- Keep the primitive surface small — prefer composing existing primitives over adding new ones.
+
+## Key files
+
+- `src/tui/index.ts` — public API surface
+- `src/tui/components.tsx` — `Box`, `Text`, `Static` primitives
+- `src/tui/dom.ts` — TUI DOM node types
+- `src/tui/serialize.ts` — tree-to-string serialization with static/active split
+- `src/tui/render.ts` — terminal render loop, raw mode, cursor management
+- `src/tui/input.ts` — raw stdin dispatcher
+- `src/tui/context.ts` — `AppContext`, `InputContext`, `KeyEvent`
+- `src/tui/hooks.ts` — `useApp`, `useInput`
+- `src/tui/host-config.ts` — React reconciler host config
+- `src/tui/styles.ts` — ANSI escape sequences, color mapping
+- `src/tui/reconciler.ts` — React reconciler instance

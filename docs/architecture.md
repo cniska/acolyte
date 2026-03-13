@@ -26,6 +26,15 @@ CLI →client →server →lifecycle →model + tools
 - **execution model:** one active task per session, with ordered queued tasks.
 - **yielding:** lifecycle only yields at safe checkpoints (never mid-step).
 
+## TUI
+
+```text
+React tree → reconciler → TUI DOM → serialize → terminal output
+```
+
+- custom React reconciler for terminal rendering.
+- **details:** see [TUI](./tui.md).
+
 ## Daemon flow
 
 ```text
@@ -78,7 +87,7 @@ resolve →prepare →generate →evaluate →finalize
 
 ## Modes
 
-- **overview:** explicit operating behaviors are modeled as `work` and `verify`.
+- explicit operating behaviors are modeled as `work` and `verify`.
 - **details:** see [Modes](./modes.md).
 
 ## Memory Engine
@@ -89,7 +98,7 @@ Memory Engine
   →Memory context in system prompt
 ```
 
-- **overview:** Memory Engine composes source strategy, pipeline stages, and distill behavior to provide continuity across turns.
+- Memory Engine composes source strategy, pipeline stages, and distill behavior to provide continuity across turns.
 - **source strategy:** configured source IDs and order (`memorySources`) determine source composition.
 - **pipeline seams:** normalization and selection are strategy-injectable behind registry contracts.
 - **selection default:** one continuation cue is kept; selection prefers the freshest continuation that fits budget.
