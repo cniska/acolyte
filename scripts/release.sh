@@ -21,6 +21,33 @@ new=$(node -p "require('./package.json').version")
 # Update test snapshot
 sed -i '' "s/Acolyte v${old}/Acolyte v${new}/g" src/cli-visual.int.test.ts
 
+# Generate changelog entry
+prev_tag="v${old}"
+date=$(date +%Y-%m-%d)
+entry="## ${new} (${date})"$'\n\n'
+
+while IFS= read -r line; do
+  hash="${line%% *}"
+  msg="${line#* }"
+  # Strip conventional commit prefix for cleaner bullets
+  clean="${msg#*: }"
+  scope=""
+  if [[ "$msg" =~ ^[a-z]+\(([^)]+)\): ]]; then
+    scope="**${BASH_REMATCH[1]}:** "
+  fi
+  entry+="- ${scope}${clean} (\`${hash:0:8}\`)"$'\n'
+done < <(git log "${prev_tag}..HEAD" --oneline --no-merges --reverse)
+
+if [[ -f CHANGELOG.md ]]; then
+  # Prepend new entry after the heading line
+  { head -1 CHANGELOG.md; echo ""; echo "$entry"; tail -n +2 CHANGELOG.md; } > CHANGELOG.tmp
+  mv CHANGELOG.tmp CHANGELOG.md
+else
+  echo "# Changelog" > CHANGELOG.md
+  echo "" >> CHANGELOG.md
+  echo "$entry" >> CHANGELOG.md
+fi
+
 echo "$old → $new"
 
 # Verify everything passes with new version
