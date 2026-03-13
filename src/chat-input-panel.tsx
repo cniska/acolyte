@@ -1,6 +1,6 @@
 import type React from "react";
 import { clampSuggestionIndex } from "./chat-effects";
-import { borderLine, SHORTCUT_ITEMS } from "./chat-layout";
+import { BREAKPOINT_TWO_COLUMN, borderLine, SHORTCUT_ITEMS } from "./chat-layout";
 import { type PickerState, pickerHint, pickerLabel, renderPickerItems } from "./chat-picker";
 import { slashCommandHelp } from "./chat-slash";
 import { t } from "./i18n";
@@ -39,12 +39,20 @@ function resolveFooterVisible(input: { hasSuggestions: boolean; hasPicker: boole
   return true;
 }
 
-const SHORTCUT_KEY_WIDTH = 20;
-const SHORTCUT_COL_WIDTH = 44;
-const SHORTCUT_TWO_COL_MIN = 92;
+function ShortcutItem({ label, description }: { label: string; description: string }): React.ReactNode {
+  return (
+    <Box width={44}>
+      <Text dimColor>{"  "}</Text>
+      <Box width={20}>
+        <Text dimColor>{label}</Text>
+      </Box>
+      <Text dimColor>{description}</Text>
+    </Box>
+  );
+}
 
 function renderShortcutGrid(termWidth: number): React.ReactNode {
-  const useTwoColumns = termWidth >= SHORTCUT_TWO_COL_MIN;
+  const useTwoColumns = termWidth >= BREAKPOINT_TWO_COLUMN;
   const rowsPerColumn = useTwoColumns ? Math.ceil(SHORTCUT_ITEMS.length / 2) : SHORTCUT_ITEMS.length;
   const rows: React.ReactNode[] = [];
 
@@ -53,10 +61,8 @@ function renderShortcutGrid(termWidth: number): React.ReactNode {
     const right = useTwoColumns ? SHORTCUT_ITEMS[row + rowsPerColumn] : undefined;
     rows.push(
       <Box key={left?.key ?? row}>
-        <Box width={SHORTCUT_COL_WIDTH}>
-          <Text dimColor>{`  ${(left?.key ?? "").padEnd(SHORTCUT_KEY_WIDTH)}${left?.description ?? ""}`}</Text>
-        </Box>
-        {right ? <Text dimColor>{`  ${right.key.padEnd(SHORTCUT_KEY_WIDTH)}${right.description}`}</Text> : null}
+        {left ? <ShortcutItem label={left.key} description={left.description} /> : null}
+        {right ? <ShortcutItem label={right.key} description={right.description} /> : null}
       </Box>,
     );
   }
