@@ -104,14 +104,64 @@ function serializeNode(node: TuiNode, inherited: StyleStack): string {
     }
 
     // Row direction: concatenate children horizontally.
-    // For multiline children, subsequent lines must be padded to align
-    // with the child's horizontal start position.
     const childOutputs = el.children.map((child) => serializeNode(child, style));
-    return joinRow(childOutputs, el.props.width);
+    const boxWidth = el.props.width;
+    const justify = el.props.justifyContent;
+    const wrap = el.props.flexWrap === "wrap";
+
+    if (wrap && boxWidth !== undefined) {
+      const totalWidth = childOutputs.reduce((sum, o) => sum + stripAnsiLength(o.split("\n")[0] ?? ""), 0);
+      if (totalWidth > boxWidth) {
+        let joined = childOutputs.join("\n");
+        joined = joined
+          .split("\n")
+          .map((line) => padLine(line, boxWidth))
+          .join("\n");
+        return joined;
+      }
+    }
+
+    if (justify === "space-between" && boxWidth !== undefined && childOutputs.length >= 2) {
+      return joinRowSpaceBetween(childOutputs, boxWidth);
+    }
+
+    if (justify === "flex-end" && boxWidth !== undefined) {
+      const content = childOutputs.join("");
+      const visible = stripAnsiLength(content);
+      if (visible < boxWidth) return " ".repeat(boxWidth - visible) + content;
+      return content;
+    }
+
+    return joinRow(childOutputs, boxWidth);
   }
 
   // Root or static — render children as column
   return el.children.map((child) => serializeNode(child, inherited)).join("\n");
+}
+
+/** Join children with space distributed evenly between them. */
+function joinRowSpaceBetween(childOutputs: string[], boxWidth: number): string {
+  const visibleWidths = childOutputs.map((o) => stripAnsiLength(o.split("\n")[0] ?? ""));
+  const totalContent = visibleWidths.reduce((a, b) => a + b, 0);
+  const totalGap = Math.max(0, boxWidth - totalContent);
+  const gaps = childOutputs.length - 1;
+
+  if (gaps <= 0) {
+    return padLine(childOutputs[0] ?? "", boxWidth);
+  }
+
+  const baseGap = Math.floor(totalGap / gaps);
+  let extraGaps = totalGap - baseGap * gaps;
+  let result = "";
+  for (let i = 0; i < childOutputs.length; i++) {
+    result += childOutputs[i];
+    if (i < childOutputs.length - 1) {
+      const extra = extraGaps > 0 ? 1 : 0;
+      extraGaps -= extra;
+      result += " ".repeat(baseGap + extra);
+    }
+  }
+  return result;
 }
 
 /** Join child outputs horizontally, handling multiline content. */

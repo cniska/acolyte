@@ -2,6 +2,8 @@ import type React from "react";
 
 type BoxProps = {
   flexDirection?: "row" | "column";
+  justifyContent?: "flex-start" | "flex-end" | "space-between";
+  flexWrap?: "nowrap" | "wrap";
   width?: number;
   children?: React.ReactNode;
   key?: React.Key;
@@ -25,7 +27,12 @@ type StaticProps<T> = {
 
 export function Box(props: BoxProps): React.ReactElement {
   return (
-    <tui-box flexDirection={props.flexDirection} width={props.width}>
+    <tui-box
+      flexDirection={props.flexDirection}
+      justifyContent={props.justifyContent}
+      flexWrap={props.flexWrap}
+      width={props.width}
+    >
       {props.children}
     </tui-box>
   );

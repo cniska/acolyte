@@ -3,6 +3,8 @@ export type TuiNodeType = "tui-root" | "tui-box" | "tui-text" | "tui-static" | "
 export interface TuiProps {
   // Box
   flexDirection?: "row" | "column";
+  justifyContent?: "flex-start" | "flex-end" | "space-between";
+  flexWrap?: "nowrap" | "wrap";
   width?: number;
   // Text
   color?: string;
