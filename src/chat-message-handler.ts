@@ -1,6 +1,7 @@
 import type { AgentMode } from "./agent-contract";
 import { appConfig } from "./app-config";
-import { type ChatRow, createRow, dispatchSlashCommand } from "./chat-commands";
+import { dispatchSlashCommand } from "./chat-commands";
+import { type ChatRow, createRow } from "./chat-contract";
 import { invalidateRepoPathCandidates } from "./chat-file-ref";
 import type { Message } from "./chat-message-contract";
 import { formatSubmitError, isAbortError, resolveNaturalRememberDirective } from "./chat-message-handler-helpers";

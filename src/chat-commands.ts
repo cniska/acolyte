@@ -21,8 +21,6 @@ import type { StatusFields } from "./status-contract";
 import { formatStatusOutput } from "./status-format";
 import { createSession } from "./storage";
 
-export { type ChatRow, type ChatRowStyle, createRow } from "./chat-contract";
-
 export type ResumeResolution =
   | { kind: "usage" }
   | { kind: "not_found"; prefix: string }

@@ -1,6 +1,6 @@
 import type { AgentMode } from "./agent-contract";
 import { createWorkspaceSpecifier, type TokenUsage } from "./api";
-import { type ChatRow, createRow } from "./chat-commands";
+import { type ChatRow, createRow } from "./chat-contract";
 import { extractAtReferencePaths } from "./chat-file-ref";
 import { formatThoughtDuration, formatTokenCount } from "./chat-format";
 import type { Message } from "./chat-message-contract";

@@ -83,6 +83,7 @@ Development:
 - Keep behavior behind stable contracts so new transports/integrations are additive, not rewrites.
 - Prefer Zod schema definitions as the single source of truth for string unions and infer TS types from schemas.
 - No banner or separator comments; let code structure speak for itself.
+- Never re-export types or functions — import from the canonical source module directly.
 
 ## Validation
 

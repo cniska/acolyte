@@ -1,6 +1,6 @@
 import { Box, Text } from "ink";
 import React from "react";
-import type { ChatRow } from "./chat-commands";
+import type { ChatRow } from "./chat-contract";
 import { formatTokenCount } from "./chat-format";
 import { ChatRowView } from "./chat-row-view";
 import { ShimmerText } from "./chat-shimmer";

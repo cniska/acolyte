@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { ChatRow } from "./chat-commands";
+import type { ChatRow } from "./chat-contract";
 import { createMessageStreamState } from "./chat-message-handler-stream";
 
 function createRowsHarness(): {

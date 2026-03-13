@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { ChatRow } from "./chat-commands";
+import type { ChatRow } from "./chat-contract";
 import { createMessageHandler } from "./chat-message-handler";
 import { resolveNaturalRememberDirective } from "./chat-message-handler-helpers";
 import type { StreamEvent } from "./client-contract";

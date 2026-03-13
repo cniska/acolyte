@@ -1,6 +1,6 @@
 import { Box, render, Static, Text, useApp } from "ink";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ChatRow } from "./chat-commands";
+import type { ChatRow } from "./chat-contract";
 import { useAtSuggestionsEffect, useSlashSuggestionsEffect, useThinkingAnimationEffect } from "./chat-effects";
 import { extractAtReferenceQuery } from "./chat-file-ref";
 import type { HeaderLine } from "./chat-header";

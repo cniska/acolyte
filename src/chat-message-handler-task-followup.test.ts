@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { ChatRow } from "./chat-commands";
+import type { ChatRow } from "./chat-contract";
 import { startRemoteTaskFollowup } from "./chat-message-handler-task-followup";
 
 describe("chat-message-handler-task-followup", () => {
