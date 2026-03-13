@@ -4,7 +4,6 @@
 
 - **AI SDK stream errors surface as unhandled rejections**: When the AI SDK rejects during `agent.stream()` (e.g. invalid model ID, auth failure), the error escapes the generate loop's promise chain and hits the global unhandled rejection handler. The lifecycle then times out after 120s instead of failing fast. Root cause: the AI SDK rejects an internal promise that isn't part of the `fullStream` reader chain.
 
-- **Window switching duplicates active rows in some terminals**: Switching terminal tabs or windows causes Ink to re-render on top of stale terminal state, duplicating the active (non-graduated) portion of the transcript. Observed in Superset; does not reproduce in iTerm2.
 
 ## Limitations
 

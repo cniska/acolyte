@@ -141,12 +141,13 @@ export function render(node: ReactNode): RenderInstance {
       stdout.write(eraseSequence() + liveLines.join("\n"));
       lastActiveLineCount = physRows > 0 ? physRows - 1 : 0;
     } else {
-      // Overflow: skip lines that don't fit rather than writing them to
-      // scrollback (which caused duplication when the user scrolled).
-      // They'll reappear once they graduate to a static item.
+      // Overflow: flush top lines to scrollback (they are stable during
+      // streaming — content is append-only), then re-render only the
+      // bottom portion that fits on screen.
+      const overflow = liveLines.slice(0, splitIdx);
       const onScreen = liveLines.slice(splitIdx);
       frozenLineCount += splitIdx;
-      stdout.write(eraseSequence() + onScreen.join("\n"));
+      stdout.write(eraseSequence() + overflow.join("\n") + "\n" + onScreen.join("\n"));
       lastActiveLineCount = physRows > 0 ? physRows - 1 : 0;
     }
 
