@@ -1,9 +1,9 @@
 import type { AgentMode } from "./agent-contract";
 import { createWorkspaceSpecifier, type TokenUsage } from "./api";
+import type { ChatMessage } from "./chat-contract";
 import { type ChatRow, createRow } from "./chat-contract";
 import { extractAtReferencePaths } from "./chat-file-ref";
 import { formatThoughtDuration, formatTokenCount } from "./chat-format";
-import type { Message } from "./chat-message-contract";
 import type { Client, StreamEvent } from "./client-contract";
 import { formatFileContext } from "./file-context";
 import { t } from "./i18n";
@@ -52,7 +52,7 @@ export function appendInputHistory(history: string[], value: string, maxEntries 
   return next;
 }
 
-export function createInputHistory(messages: Message[], maxEntries = 200): string[] {
+export function createInputHistory(messages: ChatMessage[], maxEntries = 200): string[] {
   let history: string[] = [];
   for (const message of messages) {
     if (message.role !== "user") continue;
@@ -78,7 +78,7 @@ export function applyUserTurn(params: ApplyUserTurnParams): { row: ChatRow } {
 type RunAssistantTurnParams = {
   client: Client;
   userText: string;
-  history: Message[];
+  history: ChatMessage[];
   model: string;
   modeModels?: Partial<Record<AgentMode, string>>;
   sessionId: string;
@@ -86,11 +86,11 @@ type RunAssistantTurnParams = {
   signal?: AbortSignal;
   onEvent?: (event: StreamEvent) => void;
   thinkingStartedAt: number;
-  createMessage: (role: Message["role"], content: string) => Message;
+  createMessage: (role: ChatMessage["role"], content: string) => ChatMessage;
 };
 
 export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<{
-  assistantMessage: Message;
+  assistantMessage: ChatMessage;
   tokenEntry: SessionTokenUsageEntry;
   rows: ChatRow[];
 }> {
@@ -108,7 +108,7 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
   );
 
   const baseAssistantMessage = params.createMessage("assistant", reply.output);
-  const assistantMessage: Message =
+  const assistantMessage: ChatMessage =
     (reply.toolCalls?.length ?? 0) > 0 ? { ...baseAssistantMessage, kind: "tool_payload" } : baseAssistantMessage;
   const rows: ChatRow[] = [];
   if (reply.error) {

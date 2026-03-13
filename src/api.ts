@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { AgentMode } from "./agent-contract";
-import type { Message } from "./chat-message-contract";
+import type { ChatMessage } from "./chat-contract";
 import type { ResourceId } from "./resource-id";
 import type { SessionId } from "./session-contract";
 
@@ -17,7 +17,7 @@ export interface TokenUsage {
 
 export interface ChatRequest {
   readonly message: string;
-  readonly history: Message[];
+  readonly history: ChatMessage[];
   readonly model: string;
   readonly modeModels?: Partial<Record<AgentMode, string>>;
   readonly sessionId?: SessionId;

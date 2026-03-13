@@ -5,8 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AgentMode } from "./agent-contract";
 import type { CommandContext } from "./chat-commands";
-import type { ChatRow } from "./chat-contract";
-import type { Message } from "./chat-message-contract";
+import type { ChatMessage, ChatRow } from "./chat-contract";
 import { createMessageHandler } from "./chat-message-handler";
 import { type CreatePickerHandlersInput, createPickerHandlers } from "./chat-picker-handlers";
 import type { Client, StreamEvent } from "./client-contract";
@@ -154,10 +153,10 @@ export function writeSkill(base: string, dirName: string, frontmatter: string, b
 const DEFAULT_TIME = "2026-02-20T00:00:00.000Z";
 
 export function createMessage(
-  role: Message["role"] = "user",
+  role: ChatMessage["role"] = "user",
   content = "test",
-  overrides: Partial<Message> = {},
-): Message {
+  overrides: Partial<ChatMessage> = {},
+): ChatMessage {
   return {
     id: overrides.id ?? "msg_test",
     role,
@@ -266,7 +265,7 @@ export function createMessageHandlerHarness(overrides?: {
   session?: Session;
   store?: SessionState;
   tokenUsage?: SessionTokenUsageEntry[];
-  toRows?: (messages: Message[]) => ChatRow[];
+  toRows?: (messages: ChatMessage[]) => ChatRow[];
 }): MessageHandlerHarness {
   const rows: ChatRow[] = [];
   const allRows: ChatRow[] = [];

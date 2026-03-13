@@ -1,8 +1,8 @@
 import type { AgentMode } from "./agent-contract";
 import { setDefaultModel, setModeModel } from "./app-config";
 import { unreachable } from "./assert";
+import type { ChatMessage } from "./chat-contract";
 import { type ChatRow, createRow } from "./chat-contract";
-import type { Message } from "./chat-message-contract";
 import type { PickerState } from "./chat-picker";
 import { createModelPicker, createPicker, createResumePicker } from "./chat-picker-actions";
 import { setConfigValue } from "./config";
@@ -22,7 +22,7 @@ export type CreatePickerHandlersInput = {
   setShowHelp: (next: boolean | ((current: boolean) => boolean)) => void;
   setValue: (next: string) => void;
   persist: () => Promise<void>;
-  toRows: (messages: Message[]) => ChatRow[];
+  toRows: (messages: ChatMessage[]) => ChatRow[];
   nowIso: () => string;
   persistConfig?: (key: string, value: string, scope: "project") => Promise<void>;
   activateSkill: (skillName: string, args: string) => Promise<boolean>;

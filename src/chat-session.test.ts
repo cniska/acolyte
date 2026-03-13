@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import type { Message } from "./chat-message-contract";
+import type { ChatMessage } from "./chat-contract";
 import { toRows } from "./chat-session";
 
 describe("chat session helpers", () => {
   test("toRows keeps only user and assistant messages", () => {
-    const messages: Message[] = [
+    const messages: ChatMessage[] = [
       { id: "1", role: "system", content: "x", timestamp: "" },
       { id: "2", role: "user", content: "u1", timestamp: "" },
       { id: "3", role: "assistant", content: "a1", timestamp: "" },

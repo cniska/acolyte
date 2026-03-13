@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { TokenUsage } from "./api";
-import { type Message, type MessageId, messageIdSchema, messageSchema } from "./chat-message-contract";
+import { type ChatMessage, type MessageId, messageIdSchema, messageSchema } from "./chat-contract";
 import { type IsoDateTimeString, isoDateTimeSchema } from "./datetime";
 import { domainIdSchema } from "./id-contract";
 
@@ -38,7 +38,7 @@ export interface Session {
   updatedAt: IsoDateTimeString;
   model: string;
   title: string;
-  messages: Message[];
+  messages: ChatMessage[];
   tokenUsage: SessionTokenUsageEntry[];
 }
 

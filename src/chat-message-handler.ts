@@ -1,9 +1,9 @@
 import type { AgentMode } from "./agent-contract";
 import { appConfig } from "./app-config";
 import { dispatchSlashCommand } from "./chat-commands";
+import type { ChatMessage } from "./chat-contract";
 import { type ChatRow, createRow } from "./chat-contract";
 import { invalidateRepoPathCandidates } from "./chat-file-ref";
-import type { Message } from "./chat-message-contract";
 import { formatSubmitError, isAbortError, resolveNaturalRememberDirective } from "./chat-message-handler-helpers";
 import { createMessageStreamState } from "./chat-message-handler-stream";
 import { startRemoteTaskFollowup } from "./chat-message-handler-task-followup";
@@ -26,7 +26,7 @@ type CreateMessageHandlerInput = {
   store: SessionState;
   currentSession: Session;
   setCurrentSession: (next: Session) => void;
-  toRows: (messages: Message[]) => ChatRow[];
+  toRows: (messages: ChatMessage[]) => ChatRow[];
   setRows: (updater: (current: ChatRow[]) => ChatRow[]) => void;
   setShowHelp: (next: boolean | ((current: boolean) => boolean)) => void;
   setValue: (next: string) => void;
@@ -47,7 +47,7 @@ type CreateMessageHandlerInput = {
   setProgressText: (next: string | null) => void;
   setRunningUsage: (next: { promptTokens: number; completionTokens: number } | null) => void;
   setTokenUsage: (updater: (current: SessionTokenUsageEntry[]) => SessionTokenUsageEntry[]) => void;
-  createMessage: (role: Message["role"], content: string) => Message;
+  createMessage: (role: ChatMessage["role"], content: string) => ChatMessage;
   nowIso: () => string;
   setInterrupt: (handler: (() => void) | null) => void;
   useMemory?: boolean;
@@ -87,7 +87,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
     input.currentSession.messages.push(userMessage);
     input.currentSession.updatedAt = input.nowIso();
     const { contexts, unresolvedPaths } = await resolveReferencedFileContext(userText);
-    const fileContextMessages: Message[] = contexts.map((context) => input.createMessage("system", context));
+    const fileContextMessages: ChatMessage[] = contexts.map((context) => input.createMessage("system", context));
     if (unresolvedPaths.length > 0) input.setRows((current) => [...current, ...unresolvedPathRows(unresolvedPaths)]);
     if (unresolvedPaths.length > 0 && contexts.length === 0) {
       stopWorking();

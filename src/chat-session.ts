@@ -1,10 +1,9 @@
-import type { ChatRow } from "./chat-contract";
-import type { Message } from "./chat-message-contract";
+import type { ChatMessage, ChatRow } from "./chat-contract";
 import { nowIso } from "./datetime";
 import { remapDomainId } from "./id-contract";
 import { createId } from "./short-id";
 
-export function createMessage(role: Message["role"], content: string): Message {
+export function createMessage(role: ChatMessage["role"], content: string): ChatMessage {
   return {
     id: `msg_${createId()}`,
     role,
@@ -14,7 +13,7 @@ export function createMessage(role: Message["role"], content: string): Message {
   };
 }
 
-export function toRows(messages: Message[]): ChatRow[] {
+export function toRows(messages: ChatMessage[]): ChatRow[] {
   const rows: ChatRow[] = [];
   for (const message of messages) {
     if (message.role === "user" || message.role === "assistant") {

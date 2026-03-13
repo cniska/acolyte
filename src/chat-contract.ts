@@ -1,7 +1,25 @@
 import { z } from "zod";
+import { isoDateTimeSchema } from "./datetime";
 import { domainIdSchema } from "./id-contract";
 import { createId } from "./short-id";
 import { toolOutputSchema } from "./tool-output-content";
+
+export const roleSchema = z.enum(["system", "user", "assistant"]);
+export type Role = z.infer<typeof roleSchema>;
+export const messageKindSchema = z.enum(["text", "tool_payload"]);
+export type MessageKind = z.infer<typeof messageKindSchema>;
+export const messageIdSchema = domainIdSchema("msg");
+export type MessageId = z.infer<typeof messageIdSchema>;
+
+export const messageSchema = z.object({
+  id: messageIdSchema,
+  role: roleSchema,
+  content: z.string(),
+  kind: messageKindSchema.default("text"),
+  timestamp: isoDateTimeSchema,
+});
+
+export type ChatMessage = z.input<typeof messageSchema>;
 
 export const chatRowRoleSchema = z.enum(["user", "assistant", "tool", "status", "task", "system"]);
 
