@@ -5,6 +5,7 @@ import {
   haveChangesBeenVerified,
   type LifecycleError,
   type LifecycleEventName,
+  type VerifyOutcome,
   taskScopedCallLog,
 } from "./lifecycle-contract";
 import type { LifecyclePolicy } from "./lifecycle-policy";
@@ -36,6 +37,7 @@ export type EvaluatorContext = {
   workspace: string | undefined;
   request: { message: string; verifyScope?: VerifyScope };
   sawEditFileMultiMatchError: boolean;
+  lastVerifyOutcome?: VerifyOutcome;
   currentError?: LifecycleError;
 };
 
@@ -155,13 +157,13 @@ export const verifyCycle: Evaluator = {
       return { type: "done" };
     }
 
-    // Verify → Work: return to work only when verify found issues (currentError set).
-    // If verification passed or was never marked, we are done.
-    if (!ctx.currentError) return { type: "done" };
-    ctx.debug("lifecycle.eval.verify_failure", { text_chars: ctx.result.text.length });
+    // Verify → Work: use the verifier's structured outcome, not the restored work-mode result.
+    const verifyOutcome = ctx.lastVerifyOutcome;
+    if (!verifyOutcome?.error) return { type: "done" };
+    ctx.debug("lifecycle.eval.verify_failure", { text_chars: verifyOutcome.text.length });
     return {
       type: "regenerate",
-      prompt: `${ctx.agentInput}\n\nVerification found issues:\n${ctx.result.text}\n\nFix the issues above, then stop.`,
+      prompt: `${ctx.agentInput}\n\nVerification found issues:\n${verifyOutcome.text}\n\nFix the issues above, then stop.`,
       mode: "work",
     };
   },

@@ -146,8 +146,11 @@ describe("verifyCycle", () => {
       mode: "verify",
       initialMode: "work",
       session,
-      currentError: { message: "verify failed: missing export updatePost in post-store.ts" },
-      result: { text: "Error: missing export updatePost in post-store.ts", toolCalls: [] },
+      result: { text: "Done.", toolCalls: [] },
+      lastVerifyOutcome: {
+        text: "Error: missing export updatePost in post-store.ts",
+        error: { message: "verify failed: missing export updatePost in post-store.ts" },
+      },
       observedTools: new Set(["scan-code"]),
     });
     const action = verifyCycle.evaluate(ctx);
@@ -167,6 +170,21 @@ describe("verifyCycle", () => {
       initialMode: "work",
       session,
       result: { text: "", toolCalls: [] },
+    });
+    expect(verifyCycle.evaluate(ctx).type).toBe("done");
+  });
+
+  test("ignores restored work result when verify outcome is missing", () => {
+    const session = createSessionContext();
+    session.mode = "verify";
+    recordCall(session, "run-command", { command: "bun run verify" });
+    const ctx = createMockContext({
+      mode: "verify",
+      initialMode: "work",
+      session,
+      currentError: undefined,
+      result: { text: "Done.", toolCalls: [] },
+      lastVerifyOutcome: undefined,
     });
     expect(verifyCycle.evaluate(ctx).type).toBe("done");
   });

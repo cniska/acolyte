@@ -95,6 +95,11 @@ export type SavedRegenerationState = {
   currentError: LifecycleError | undefined;
 };
 
+export type VerifyOutcome = {
+  text: string;
+  error?: LifecycleError;
+};
+
 export type LifecycleInput = {
   request: ChatRequest;
   soulPrompt: string;
@@ -133,6 +138,7 @@ export type RunContext = {
   regenerationCount: number;
   regenerationLimitHit: boolean;
   sawEditFileMultiMatchError: boolean;
+  lastVerifyOutcome?: VerifyOutcome;
   currentError?: LifecycleError;
   errorStats: Record<ErrorCategory, number>;
   result?: GenerateResult;

@@ -98,6 +98,7 @@ function createRunContext(
     regenerationCount: 0,
     regenerationLimitHit: false,
     sawEditFileMultiMatchError: false,
+    lastVerifyOutcome: undefined,
     errorStats: createErrorStats(),
     nativeIdQueue: new Map(),
     toolCallStartedAt: new Map(),

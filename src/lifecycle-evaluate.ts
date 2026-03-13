@@ -91,6 +91,13 @@ export async function phaseEvaluate(ctx: RunContext, shouldYield: LifecycleInput
       });
       if (shouldYieldNow(ctx, shouldYield)) break;
 
+      if (saved && ctx.mode === "verify") {
+        ctx.lastVerifyOutcome = {
+          text: ctx.result?.text ?? "",
+          error: ctx.currentError,
+        };
+      }
+
       if (saved) restoreState(ctx, saved);
       regenerated = true;
       break;
