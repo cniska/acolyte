@@ -17,7 +17,7 @@
     "serve:watch": "bun --watch --env-file=.env run src/server.ts",
     "wait:server": "bun run scripts/wait-server.ts",
     "format": "bunx biome format --write .",
-    "lint": "bunx biome check .",
+    "lint": "bunx biome check --error-on-warnings .",
     "typecheck": "bunx tsc --noEmit",
     "test": "bun test",
     "test:unit": "bash scripts/run-test-suite.sh unit",
