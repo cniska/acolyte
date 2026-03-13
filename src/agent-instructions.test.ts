@@ -28,6 +28,7 @@ describe("createModeInstructions", () => {
     expect(out).toContain("do not use repo-wide `search-files`");
     expect(out).toContain("do not use `git-status` or `git-diff` just to rediscover");
     expect(out).toContain("use the exact line already visible in `read-file` output as your edit anchor");
+    expect(out).toContain("preserve the relative or absolute form already used in that file");
     expect(out).toContain("Do not replace the whole file or a much larger block than the requested change");
     expect(out).toContain("the diff preview from `edit-file` or `edit-code` is enough confirmation");
     expect(out).toContain("If the target files and one directly referenced support file are already read");
@@ -61,6 +62,7 @@ describe("createInstructions", () => {
     expect(out).toContain("Keep tool calls and file changes within the current workspace and the requested scope.");
     expect(out).toContain("preserve unrelated content and surrounding structure");
     expect(out).toContain("Preserve local conventions in the file you are editing");
+    expect(out).toContain("keep the file's local relative/absolute reference style");
   });
 
   test("work mode includes work-specific instructions", () => {

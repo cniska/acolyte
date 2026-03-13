@@ -26,6 +26,7 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
       "Read the target file once, then edit. Do not re-read the same file after a successful edit.",
       "Before the first write, avoid repeated `read-file` calls on the same path unless the previous edit failed.",
       "For small in-file updates, use the exact line already visible in `read-file` output as your edit anchor instead of searching for it again.",
+      "For existing link or path fixes, preserve the relative or absolute form already used in that file instead of rewriting it to a new global style.",
       "For small fixes in an existing file, use exact `find`/`replace` edits. Do not replace the whole file or a much larger block than the requested change.",
       "For small named-file tasks, the diff preview from `edit-file` or `edit-code` is enough confirmation. Do not call `git-diff` just to inspect the same change again.",
       "If the target files and one directly referenced support file are already read, do not use workspace `search-files` for the same token again. Edit from the text you already have.",

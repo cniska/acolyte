@@ -126,12 +126,14 @@ describe("localization baseline", () => {
     expect(editInstruction).toContain("exact text from the latest direct `read-file`");
     expect(editInstruction).toContain("use it directly instead of calling `search-files` again");
     expect(editInstruction).toContain("do not replace the whole file or a much larger block than needed");
+    expect(editInstruction).toContain("preserve the relative or absolute style already used nearby");
     expect(editInstruction).toContain("do not call `git-diff` just to reconfirm the same edit");
     expect(editCodeInstruction).toContain("read that file directly right before editing it");
     expect(editCodeInstruction).toContain("do not call `git-diff` just to reconfirm the same edit");
     expect(searchInstruction).toContain("Do not use repo-wide search after explicit target files are already known");
     expect(searchInstruction).toContain("edit directly instead of searching again");
     expect(searchInstruction).toContain("do not search the workspace again for the same token");
+    expect(searchInstruction).toContain("keep the local reference style from the target file");
     expect(gitStatusInstruction).toContain("Do not use it to rediscover target files");
     expect(gitStatusInstruction).toContain("do not use it just to reconfirm successful edits");
     expect(gitDiffInstruction).toContain("Do not use it to rediscover or re-confirm explicitly named target files");

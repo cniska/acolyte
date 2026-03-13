@@ -12,6 +12,7 @@ const BASE_INSTRUCTIONS = [
   "Prefer targeted, surgical edits. Do not rewrite or delete code beyond the scope of the request.",
   "When editing an existing file, preserve unrelated content and surrounding structure. Change only the minimal lines needed.",
   "Preserve local conventions in the file you are editing. Match nearby style and path forms instead of inventing a new one.",
+  "When fixing an existing path or link, keep the file's local relative/absolute reference style unless the user explicitly asked to normalize it.",
   "Never remove or modify existing code that is unrelated to the current task.",
   "Keep responses concise and outcome-first; expand only when asked.",
   "Never summarize, recap, or list what you did. The user can see your actions directly.",
