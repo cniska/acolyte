@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { beforeEach, describe, expect, test } from "bun:test";
 import { appConfig, setModeModel } from "./app-config";
 import { readResolvedConfigSync } from "./config";
 import { resolveModeModel } from "./lifecycle-resolve";
@@ -18,10 +18,6 @@ function resetAppConfigForTest(): void {
 }
 
 beforeEach(() => {
-  resetAppConfigForTest();
-});
-
-afterEach(() => {
   resetAppConfigForTest();
 });
 
