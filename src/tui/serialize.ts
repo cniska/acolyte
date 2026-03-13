@@ -48,35 +48,32 @@ function mergeStyle(parent: StyleStack, props: TuiProps): StyleStack {
   };
 }
 
-/** Advance past an escape sequence starting after the ESC byte at `value[start]`. */
-function skipEscapeSequence(value: string, start: number): number {
-  let i = start;
-  if (i < value.length && value[i] === "[") {
-    // CSI: ESC [ <params> <final byte 0x40-0x7E>
+/** Skip CSI: ESC [ <params> <final byte 0x40-0x7E>. `i` points past `[`. */
+function skipCsi(value: string, i: number): number {
+  while (i < value.length) {
+    const code = value.charCodeAt(i);
     i++;
-    while (i < value.length) {
-      const code = value.charCodeAt(i);
-      i++;
-      if (code >= 0x40 && code <= 0x7e) break;
-    }
-  } else if (i < value.length && value[i] === "]") {
-    // OSC: ESC ] ... (BEL | ESC \)
-    i++;
-    while (i < value.length) {
-      if (value[i] === "\x07") {
-        i++;
-        break;
-      }
-      if (value[i] === "\x1b" && i + 1 < value.length && value[i + 1] === "\\") {
-        i += 2;
-        break;
-      }
-      i++;
-    }
-  } else if (i < value.length) {
+    if (code >= 0x40 && code <= 0x7e) return i;
+  }
+  return i;
+}
+
+/** Skip OSC: ESC ] ... terminated by BEL or ST (ESC \). `i` points past `]`. */
+function skipOsc(value: string, i: number): number {
+  while (i < value.length) {
+    if (value[i] === "\x07") return i + 1;
+    if (value[i] === "\x1b" && value[i + 1] === "\\") return i + 2;
     i++;
   }
   return i;
+}
+
+/** Advance past an escape sequence. `start` points to the byte after ESC. */
+function skipEscapeSequence(value: string, start: number): number {
+  const ch = value[start];
+  if (ch === "[") return skipCsi(value, start + 1);
+  if (ch === "]") return skipOsc(value, start + 1);
+  return start < value.length ? start + 1 : start;
 }
 
 export function stripAnsiLength(value: string): number {
