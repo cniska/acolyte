@@ -32,6 +32,7 @@ describe("createModeInstructions", () => {
     expect(out).toContain("the diff preview from `edit-file` or `edit-code` is enough confirmation");
     expect(out).toContain("If the target files and one directly referenced support file are already read");
     expect(out).toContain("When you have already applied the requested edits to all explicitly named files, stop");
+    expect(out).toContain("Do not use `git-diff`, `git-status`, `git-show`, `git-log`");
     expect(out).toContain("do not call `search-files` just to locate it again");
     expect(out).toContain("prefer `scan-code` + `edit-code`");
     expect(out).toContain("Trust type signatures");

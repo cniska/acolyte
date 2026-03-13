@@ -163,7 +163,8 @@ function createGitLogTool(git: GitOps, input: ToolkitInput) {
     category: "search",
     permissions: ["read"],
     description: "Show recent commits in compact one-line form (optionally scoped to a file/path).",
-    instruction: "Use `git-log` to inspect recent commits quickly (optionally scoped by path).",
+    instruction:
+      "Use `git-log` to inspect committed history quickly (optionally scoped by path). Do not use it to inspect current uncommitted edits or to re-confirm edits you just made.",
     outputSchema: z.object({
       kind: z.literal("git-log"),
       path: z.string().optional(),
@@ -198,7 +199,8 @@ function createGitShowTool(git: GitOps, input: ToolkitInput) {
     category: "search",
     permissions: ["read"],
     description: "Show commit details and patch for a ref (default HEAD), optionally scoped to a path.",
-    instruction: "Use `git-show` to inspect a specific commit/tag/ref with patch details (optionally scoped by path).",
+    instruction:
+      "Use `git-show` to inspect committed history for a specific ref/tag/commit (optionally scoped by path). Do not use it to inspect current uncommitted edits or to re-confirm edits you just made.",
     outputSchema: z.object({
       kind: z.literal("git-show"),
       ref: z.string().optional(),

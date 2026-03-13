@@ -116,6 +116,8 @@ describe("localization baseline", () => {
     const searchInstruction = toolDefinitionsById["search-files"]?.instruction ?? "";
     const gitStatusInstruction = toolDefinitionsById["git-status"]?.instruction ?? "";
     const gitDiffInstruction = toolDefinitionsById["git-diff"]?.instruction ?? "";
+    const gitLogInstruction = toolDefinitionsById["git-log"]?.instruction ?? "";
+    const gitShowInstruction = toolDefinitionsById["git-show"]?.instruction ?? "";
 
     expect(readInstruction).toContain("Batch multiple reads while discovering scope");
     expect(readInstruction).toContain("do not batch those target reads");
@@ -134,5 +136,7 @@ describe("localization baseline", () => {
     expect(gitStatusInstruction).toContain("do not use it just to reconfirm successful edits");
     expect(gitDiffInstruction).toContain("Do not use it to rediscover or re-confirm explicitly named target files");
     expect(gitDiffInstruction).toContain("especially after the requested edit is already complete");
+    expect(gitLogInstruction).toContain("Do not use it to inspect current uncommitted edits");
+    expect(gitShowInstruction).toContain("Do not use it to inspect current uncommitted edits");
   });
 });
