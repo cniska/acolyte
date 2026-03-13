@@ -16,6 +16,7 @@ import type { TaskId, TaskState, TaskTransitionReason } from "./task-contract";
 import { TaskRegistry } from "./task-registry";
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : appConfig.server.port;
+const HOST = "127.0.0.1";
 const API_KEY = appConfig.server.apiKey;
 const OPENAI_API_KEY = appConfig.openai.apiKey;
 const SUPPRESSED_STDERR_PREFIX = "Upstream LLM API error from";
@@ -167,6 +168,7 @@ export async function startServer(): Promise<void> {
 
   server = Bun.serve<RpcConnectionState>({
     port: PORT,
+    hostname: HOST,
     idleTimeout: SERVER_IDLE_TIMEOUT_SECONDS,
     fetch: fetchHandler,
     websocket: rpcWebsocketHandlers,
@@ -179,5 +181,5 @@ export async function startServer(): Promise<void> {
     log.error("unhandled rejection", errorToLogFields(reason instanceof Error ? reason : new Error(String(reason))));
   });
 
-  log.info("server listening", { url: `http://${server.hostname}:${server.port}` });
+  log.info("server listening", { url: `http://${HOST}:${server.port}` });
 }
