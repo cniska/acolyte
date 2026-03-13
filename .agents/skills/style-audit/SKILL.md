@@ -23,6 +23,7 @@ Focus on:
 - error classification consistency: prefer structured `kind` contracts over message regex heuristics
 - module layout consistency (flat `src/`, `*-contract`, `*-http`, `*-rpc`, no unnecessary re-export layers)
 - export shape consistency: prefer direct `export const` declarations over local alias + `export { ... }` wrappers
+- import clarity: avoid aliasing imports unless it resolves a real collision or boundary distinction
 
 ## References
 

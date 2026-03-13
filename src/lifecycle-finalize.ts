@@ -2,7 +2,7 @@ import { estimateTokens } from "./agent-input";
 import type { ChatResponse } from "./api";
 import { t } from "./i18n";
 import { guardStatsFromSession, type RunContext } from "./lifecycle-contract";
-import { scopedCallLog as taskScopedCallLog } from "./tool-guards";
+import { scopedCallLog } from "./tool-guards";
 import { DISCOVERY_TOOL_SET, READ_TOOL_SET, SEARCH_TOOL_SET, WRITE_TOOL_SET } from "./tool-registry";
 
 export function phaseFinalize(ctx: RunContext): ChatResponse {
@@ -29,7 +29,7 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
     });
   }
 
-  const callLog = taskScopedCallLog(ctx.session, ctx.taskId);
+  const callLog = scopedCallLog(ctx.session, ctx.taskId);
   const guardStats = guardStatsFromSession(ctx.session);
   const totalToolCalls = callLog.length;
   const readCalls = callLog.filter((entry) => READ_TOOL_SET.has(entry.toolName)).length;

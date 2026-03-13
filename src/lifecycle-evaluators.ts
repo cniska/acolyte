@@ -5,7 +5,7 @@ import type { LifecycleError, LifecycleEventName, LifecycleFeedback, VerifyOutco
 import type { LifecyclePolicy } from "./lifecycle-policy";
 import { lintFiles } from "./lint-reflection";
 import { extractReadPaths } from "./tool-arg-paths";
-import { haveChangesBeenVerified, type SessionContext, scopedCallLog as taskScopedCallLog } from "./tool-guards";
+import { haveChangesBeenVerified, type SessionContext, scopedCallLog } from "./tool-guards";
 import { WRITE_TOOL_SET, WRITE_TOOLS } from "./tool-registry";
 
 export type EvalAction =
@@ -44,7 +44,7 @@ export type Evaluator = {
 };
 
 function findLastEditFilePath(ctx: EvaluatorContext): string | undefined {
-  const callLog = taskScopedCallLog(ctx.session, ctx.taskId);
+  const callLog = scopedCallLog(ctx.session, ctx.taskId);
   for (let i = callLog.length - 1; i >= 0; i -= 1) {
     const entry = callLog[i];
     if (entry?.toolName !== "edit-file") continue;
@@ -56,7 +56,7 @@ function findLastEditFilePath(ctx: EvaluatorContext): string | undefined {
 
 function writePathsForCurrentTask(ctx: EvaluatorContext): string[] {
   const out = new Set<string>();
-  for (const entry of taskScopedCallLog(ctx.session, ctx.taskId)) {
+  for (const entry of scopedCallLog(ctx.session, ctx.taskId)) {
     if (!WRITE_TOOL_SET.has(entry.toolName)) continue;
     const path = entry.args?.path;
     if (typeof path !== "string") continue;
@@ -69,7 +69,7 @@ function writePathsForCurrentTask(ctx: EvaluatorContext): string[] {
 
 function readPathsForCurrentTask(ctx: EvaluatorContext): string[] {
   const out = new Set<string>();
-  for (const entry of taskScopedCallLog(ctx.session, ctx.taskId)) {
+  for (const entry of scopedCallLog(ctx.session, ctx.taskId)) {
     if (entry.toolName === "read-file") {
       for (const key of extractReadPaths(entry.args)) out.add(key);
       continue;

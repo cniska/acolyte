@@ -1,5 +1,5 @@
 import type { RunContext } from "./lifecycle-contract";
-import { scopedCallLog as taskScopedCallLog } from "./tool-guards";
+import { scopedCallLog } from "./tool-guards";
 
 export function clearVerifyOutcomeForFeedback(ctx: RunContext, feedbackSource?: string): void {
   if (feedbackSource === "verify") ctx.lifecycleState.verifyOutcome = undefined;
@@ -42,7 +42,7 @@ function failureAttemptDiscriminator(ctx: RunContext, toolName: string): string 
 }
 
 function lastToolArgsSignature(ctx: RunContext, toolName: string): string | undefined {
-  const calls = taskScopedCallLog(ctx.session, ctx.taskId);
+  const calls = scopedCallLog(ctx.session, ctx.taskId);
   for (let index = calls.length - 1; index >= 0; index -= 1) {
     const entry = calls[index];
     if (entry?.toolName !== toolName) continue;
