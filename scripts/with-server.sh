@@ -31,6 +31,7 @@ if [[ "$restart_server" == "1" ]]; then
 fi
 
 if ! bun run wait:server --url "$wait_url" --timeout-ms "300" >/dev/null 2>&1; then
+  mkdir -p "$(dirname "$log_path")"
   bun run "$serve_script" >"$log_path" 2>&1 &
   server_pid=$!
   started_server=1
