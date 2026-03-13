@@ -3,9 +3,8 @@ import { slashCommandHelp } from "./chat-slash";
 import { t } from "./i18n";
 
 const DEFAULT_TERMINAL_WIDTH = 96;
-const SHORTCUT_TWO_COLUMN_MIN_WIDTH = 92;
 
-const SHORTCUT_ITEMS = [
+export const SHORTCUT_ITEMS = [
   { key: "@path", description: t("chat.at_ref.attach_file") },
   { key: "/new", description: slashCommandHelp("/new") },
   { key: "/resume <id>", description: slashCommandHelp("/resume") },
@@ -44,27 +43,4 @@ export async function shownBranch(cwd = process.cwd()): Promise<string | null> {
 export function borderLine(): string {
   const width = process.stdout.columns ?? DEFAULT_TERMINAL_WIDTH;
   return "─".repeat(Math.max(24, width));
-}
-
-export function formatShortcutRows(): string[] {
-  const width = process.stdout.columns ?? DEFAULT_TERMINAL_WIDTH;
-  const columns = width >= SHORTCUT_TWO_COLUMN_MIN_WIDTH ? 2 : 1;
-  const rowsPerColumn = Math.ceil(SHORTCUT_ITEMS.length / columns);
-  const colWidth = columns > 1 ? Math.min(48, Math.floor((width - 2) / columns)) : width - 2;
-  const keyWidth = 20;
-  const lines: string[] = [];
-
-  for (let row = 0; row < rowsPerColumn; row += 1) {
-    let line = "  ";
-    for (let col = 0; col < columns; col += 1) {
-      const index = row + col * rowsPerColumn;
-      const item = SHORTCUT_ITEMS[index];
-      if (!item) continue;
-      const chunk = `${item.key.padEnd(keyWidth)}${item.description}`;
-      line += col < columns - 1 ? chunk.padEnd(colWidth) : chunk;
-    }
-    lines.push(line.trimEnd());
-  }
-
-  return lines;
 }

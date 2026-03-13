@@ -62,13 +62,13 @@ describe("chat tui visual regression: footer and help", () => {
       ────────────────────────────────────────────────────────────────────────────────────────────────
       ❯ Ask anything…
       ────────────────────────────────────────────────────────────────────────────────────────────────
-        @path               attach file                /remember <text>    save memory note
-        /new                start new session          /memory [scope]     show memory notes
-        /resume <id>        resume session             /tokens             show token usage
-        /sessions           show sessions              /skills             show skills picker
-        /model              change model               /exit               exit chat
+        @path               attach file             /remember <text>    save memory note
+        /new                start new session       /memory [scope]     show memory notes
+        /resume <id>        resume session          /tokens             show token usage
+        /sessions           show sessions           /skills             show skills picker
+        /model              change model            /exit               exit chat
         /status             show server status
-                                                                               ~/code/acolyte · main
+      ~/code/acolyte · main
     `),
     );
   });
@@ -90,8 +90,7 @@ describe("chat tui visual regression: footer and help", () => {
         /memory [scope]     show memory notes
         /tokens             show token usage
         /skills             show skills picker
-        /exit               exit chat
-                                                               ~/code/acolyte · main
+        /exit               exit chat                          ~/code/acolyte · main
     `),
     );
   });

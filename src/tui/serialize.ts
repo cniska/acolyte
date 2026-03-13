@@ -128,14 +128,29 @@ function serializeNode(node: TuiNode, inherited: StyleStack, staticAcc?: string[
     const wrap = el.props.flexWrap === "wrap";
 
     if (wrap && boxWidth !== undefined) {
-      const totalWidth = childOutputs.reduce((sum, o) => sum + stripAnsiLength(o.split("\n")[0] ?? ""), 0);
+      const childWidths = childOutputs.map((o) => stripAnsiLength(o.split("\n")[0] ?? ""));
+      const totalWidth = childWidths.reduce((a, b) => a + b, 0);
       if (totalWidth > boxWidth) {
-        let joined = childOutputs.join("\n");
-        joined = joined
-          .split("\n")
-          .map((line) => padLine(line, boxWidth))
-          .join("\n");
-        return joined;
+        // Group children into rows that fit within boxWidth.
+        const rows: string[][] = [[]];
+        let rowWidth = 0;
+        for (let i = 0; i < childOutputs.length; i++) {
+          const w = childWidths[i]!;
+          if (rows[rows.length - 1]!.length > 0 && rowWidth + w > boxWidth) {
+            rows.push([]);
+            rowWidth = 0;
+          }
+          rows[rows.length - 1]!.push(childOutputs[i]!);
+          rowWidth += w;
+        }
+        // Apply justifyContent to each row, fall back to joinRow for single-item rows.
+        const renderedRows = rows.map((row) => {
+          if (justify === "space-between" && row.length >= 2) {
+            return joinRowSpaceBetween(row, boxWidth);
+          }
+          return joinRow(row, boxWidth);
+        });
+        return renderedRows.join("\n");
       }
     }
 

@@ -122,6 +122,29 @@ describe("serialize", () => {
       );
       expect(out).toBe("helloworld");
     });
+
+    test("wrap with space-between groups children into rows", () => {
+      const out = renderPlain(
+        <Box flexWrap="wrap" justifyContent="space-between" width={20}>
+          <Text>left</Text>
+          <Text>middle</Text>
+          <Text>right</Text>
+        </Box>,
+      );
+      // "left" (4) + "middle" (6) + "right" (5) = 15, fits in 20
+      expect(out).toBe("left   middle  right");
+    });
+
+    test("wrap with space-between wraps when too wide", () => {
+      const out = renderPlain(
+        <Box flexWrap="wrap" justifyContent="space-between" width={15}>
+          <Text>hello world</Text>
+          <Text>overflow!</Text>
+        </Box>,
+      );
+      // "hello world" (11) + "overflow!" (9) = 20 > 15, wraps
+      expect(out).toBe("hello world\noverflow!");
+    });
   });
 
   describe("styles", () => {

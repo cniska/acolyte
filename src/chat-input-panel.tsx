@@ -1,6 +1,6 @@
 import type React from "react";
 import { clampSuggestionIndex } from "./chat-effects";
-import { borderLine, formatShortcutRows } from "./chat-layout";
+import { borderLine, SHORTCUT_ITEMS } from "./chat-layout";
 import { type PickerState, pickerHint, pickerLabel, renderPickerItems } from "./chat-picker";
 import { slashCommandHelp } from "./chat-slash";
 import { t } from "./i18n";
@@ -39,6 +39,31 @@ function resolveFooterVisible(input: { hasSuggestions: boolean; hasPicker: boole
   return true;
 }
 
+const SHORTCUT_KEY_WIDTH = 20;
+const SHORTCUT_COL_WIDTH = 44;
+const SHORTCUT_TWO_COL_MIN = 92;
+
+function renderShortcutGrid(termWidth: number): React.ReactNode {
+  const useTwoColumns = termWidth >= SHORTCUT_TWO_COL_MIN;
+  const rowsPerColumn = useTwoColumns ? Math.ceil(SHORTCUT_ITEMS.length / 2) : SHORTCUT_ITEMS.length;
+  const rows: React.ReactNode[] = [];
+
+  for (let row = 0; row < rowsPerColumn; row++) {
+    const left = SHORTCUT_ITEMS[row];
+    const right = useTwoColumns ? SHORTCUT_ITEMS[row + rowsPerColumn] : undefined;
+    rows.push(
+      <Box key={left?.key ?? row}>
+        <Box width={SHORTCUT_COL_WIDTH}>
+          <Text dimColor>{`  ${(left?.key ?? "").padEnd(SHORTCUT_KEY_WIDTH)}${left?.description ?? ""}`}</Text>
+        </Box>
+        {right ? <Text dimColor>{`  ${right.key.padEnd(SHORTCUT_KEY_WIDTH)}${right.description}`}</Text> : null}
+      </Box>,
+    );
+  }
+
+  return rows;
+}
+
 function renderInputPanelContent(input: {
   brandColor: string;
   atQuery: string | null;
@@ -46,10 +71,8 @@ function renderInputPanelContent(input: {
   atSuggestionIndex: number;
   slashSuggestions: string[];
   slashSuggestionIndex: number;
-  showHelp: boolean;
 }): React.ReactNode {
-  const { brandColor, atQuery, atSuggestions, atSuggestionIndex, slashSuggestions, slashSuggestionIndex, showHelp } =
-    input;
+  const { brandColor, atQuery, atSuggestions, atSuggestionIndex, slashSuggestions, slashSuggestionIndex } = input;
 
   let suggestions: React.ReactNode = null;
   if (atQuery !== null && atSuggestions.length > 0) {
@@ -78,12 +101,6 @@ function renderInputPanelContent(input: {
         {selectedHelp ? <Text dimColor>{`\n  ${selectedHelp}`}</Text> : null}
       </>
     );
-  } else if (showHelp) {
-    suggestions = formatShortcutRows().map((line) => (
-      <Text key={line} dimColor>
-        {line}
-      </Text>
-    ));
   }
 
   return suggestions;
@@ -151,23 +168,31 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
         key={`chat-input-${inputRevision}`}
       />
       <Text dimColor>{borderLine()}</Text>
-      {renderInputPanelContent({
-        brandColor,
-        atQuery,
-        atSuggestions,
-        atSuggestionIndex,
-        slashSuggestions,
-        slashSuggestionIndex,
-        showHelp,
-      })}
-      {showFooter ? (
-        <Box justifyContent="space-between" width={termWidth}>
-          <Text dimColor>
-            {`  ${ctrlCPending ? t("chat.input.ctrl_c_hint") : showHelp ? "" : value.length > 0 ? "" : `? ${t("chat.input.help_hint")}`}`}
-          </Text>
+      {showHelp ? (
+        <Box justifyContent="space-between" flexWrap="wrap" width={termWidth}>
+          <Box flexDirection="column">{renderShortcutGrid(termWidth)}</Box>
           <Text dimColor>{`${footerContext}  `}</Text>
         </Box>
-      ) : null}
+      ) : (
+        <>
+          {renderInputPanelContent({
+            brandColor,
+            atQuery,
+            atSuggestions,
+            atSuggestionIndex,
+            slashSuggestions,
+            slashSuggestionIndex,
+          })}
+          {showFooter ? (
+            <Box justifyContent="space-between" width={termWidth}>
+              <Text dimColor>
+                {`  ${ctrlCPending ? t("chat.input.ctrl_c_hint") : value.length > 0 ? "" : `? ${t("chat.input.help_hint")}`}`}
+              </Text>
+              <Text dimColor>{`${footerContext}  `}</Text>
+            </Box>
+          ) : null}
+        </>
+      )}
     </>
   );
 }
