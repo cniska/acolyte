@@ -1,4 +1,5 @@
 import {
+  CONSECUTIVE_GUARD_BLOCK_LIMIT,
   INITIAL_MAX_STEPS,
   MAX_NUDGES_PER_GENERATION,
   MAX_REGENERATIONS_PER_REQUEST,
@@ -20,6 +21,8 @@ export type LifecyclePolicy = {
   maxNudgesPerGeneration: number;
   /** Per-tool execution timeout in ms. */
   toolTimeoutMs: number;
+  /** Stop tool loop after this many consecutive guard blocks. */
+  consecutiveGuardBlockLimit: number;
   /** Lint command to run after writes. Undefined disables lint evaluation. */
   lintCommand?: LintCommand;
 };
@@ -33,6 +36,7 @@ export const defaultLifecyclePolicy: LifecyclePolicy = {
   maxRegenerationsPerRequest: MAX_REGENERATIONS_PER_REQUEST,
   maxNudgesPerGeneration: MAX_NUDGES_PER_GENERATION,
   toolTimeoutMs: TOOL_TIMEOUT_MS,
+  consecutiveGuardBlockLimit: CONSECUTIVE_GUARD_BLOCK_LIMIT,
 };
 
 export function resolveLifecyclePolicy(override?: Partial<LifecyclePolicy>): LifecyclePolicy {

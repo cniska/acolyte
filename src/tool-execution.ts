@@ -1,8 +1,7 @@
 import { createId } from "./short-id";
+import { invariant } from "./assert";
 import { ERROR_KINDS, LIFECYCLE_ERROR_CODES, ToolError } from "./tool-error-codes";
 import { recordCall, runGuards, type SessionContext } from "./tool-guards";
-
-const DEFAULT_TOOL_TIMEOUT_MS = 10_000;
 
 function withTimeout<T>(task: () => Promise<T>, timeoutMs: number, toolId: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -87,7 +86,11 @@ export async function guardedExecute<T>(
   }
   const argsRecord = args as Record<string, unknown>;
   const cache = session.cache;
-  const timeoutMs = session.toolTimeoutMs ?? DEFAULT_TOOL_TIMEOUT_MS;
+  invariant(
+    typeof session.toolTimeoutMs === "number" && Number.isFinite(session.toolTimeoutMs) && session.toolTimeoutMs > 0,
+    "session.toolTimeoutMs must be a positive number",
+  );
+  const timeoutMs = session.toolTimeoutMs;
 
   // Cache hit returns early with its own recordCall — the finally block only
   // runs on cache miss, so recordCall is never invoked twice for the same call.

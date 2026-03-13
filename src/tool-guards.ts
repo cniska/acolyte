@@ -6,6 +6,8 @@ import {
   includesUniversalFindPattern,
   normalizePath,
 } from "./tool-arg-paths";
+import { invariant } from "./assert";
+import { CONSECUTIVE_GUARD_BLOCK_LIMIT, TOOL_TIMEOUT_MS } from "./lifecycle-constants";
 import type { ToolCache } from "./tool-contract";
 
 const DEFAULT_CYCLE_STEP_LIMIT = 80;
@@ -27,6 +29,7 @@ export type SessionFlags = {
   totalStepLimit?: number;
   guardStats?: { blocked: number; flagSet: number };
   consecutiveBlocks?: number;
+  consecutiveGuardBlockLimit?: number;
 };
 
 export type SessionContext = {
@@ -68,7 +71,13 @@ function isWriteTool(session: SessionContext, toolName: string): boolean {
 }
 
 export function createSessionContext(taskId?: string, writeTools: ReadonlySet<string> = new Set()): SessionContext {
-  return { callLog: [], taskId, flags: {}, writeTools };
+  return {
+    callLog: [],
+    taskId,
+    flags: { consecutiveGuardBlockLimit: CONSECUTIVE_GUARD_BLOCK_LIMIT },
+    writeTools,
+    toolTimeoutMs: TOOL_TIMEOUT_MS,
+  };
 }
 
 export function scopedCallLog(session: SessionContext, taskId?: string): ToolCallRecord[] {
@@ -459,14 +468,17 @@ const staleResultGuard: ToolGuard = {
   },
 };
 
-const CONSECUTIVE_BLOCK_LIMIT = 5;
-
 const circuitBreakerGuard: ToolGuard = {
   id: "circuit-breaker",
   description: "Stop the model after too many consecutive guard blocks.",
   check({ session, report }) {
     const consecutiveBlocks = session.flags.consecutiveBlocks ?? 0;
-    if (consecutiveBlocks >= CONSECUTIVE_BLOCK_LIMIT) {
+    const blockLimit = session.flags.consecutiveGuardBlockLimit;
+    invariant(
+      typeof blockLimit === "number" && Number.isFinite(blockLimit) && blockLimit >= 1,
+      "session.flags.consecutiveGuardBlockLimit must be a positive number",
+    );
+    if (consecutiveBlocks >= blockLimit) {
       report("blocked", `${consecutiveBlocks}-consecutive`);
       throw new Error(
         `${consecutiveBlocks} consecutive tool calls have been blocked. ` +

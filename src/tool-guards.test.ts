@@ -519,4 +519,13 @@ describe("circuit-breaker guard", () => {
     runGuards({ toolName: "read-file", args: {}, session });
     expect(session.flags.consecutiveBlocks).toBe(0);
   });
+
+  test("uses configured guard block limit", () => {
+    const session = createSessionContext();
+    session.flags.consecutiveGuardBlockLimit = 2;
+    session.flags.consecutiveBlocks = 2;
+    expect(() => runGuards({ toolName: "read-file", args: {}, session })).toThrow(
+      /consecutive tool calls have been blocked/,
+    );
+  });
 });

@@ -152,6 +152,7 @@ export async function runLifecycle(input: LifecycleInput) {
     soulPrompt: input.soulPrompt,
     initialMode,
     model,
+    policy,
     debug,
     onOutput: (event: ToolOutputEvent) => {
       ctxRef?.toolOutputHandler?.(event);
