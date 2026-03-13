@@ -4,11 +4,9 @@ export type LintResult = { hasErrors: boolean; output: string };
 
 export type LintCommand = { readonly bin: string; readonly args: readonly string[] };
 
-const DEFAULT_LINT_COMMAND: LintCommand = { bin: "bunx", args: ["biome", "check"] } as const;
-
-export function lintFiles(workspace: string, filePaths: string[], command?: LintCommand): LintResult {
+export function lintFiles(workspace: string, filePaths: string[], command: LintCommand): LintResult {
   if (filePaths.length === 0) return { hasErrors: false, output: "" };
-  const { bin, args } = command ?? DEFAULT_LINT_COMMAND;
+  const { bin, args } = command;
   try {
     execFileSync(bin, [...args, "--", ...filePaths], {
       cwd: workspace,

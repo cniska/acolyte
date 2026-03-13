@@ -2,7 +2,7 @@
 
 ## Project Context
 
-Acolyte is an AI coding assistant: CLI + HTTP server + native agentic loop. See `docs/architecture.md` for full architecture.
+Acolyte is a language-agnostic, terminal-first AI coding assistant: local-first, observable, and built for extension. See `docs/architecture.md` for full architecture.
 
 Key files:
 - `src/lifecycle.ts` — request lifecycle orchestrator (resolve → prepare → generate → evaluate → finalize)
@@ -22,6 +22,7 @@ Patterns to follow:
 - New post-generation behavior → implement `Evaluator` in `lifecycle-evaluators.ts`, add to `EVALUATORS` array
 - New tool guard → implement `ToolGuard` in `tool-guards.ts`, add to `GUARDS` array
 - New tool → add to the appropriate `*-toolkit.ts` file; all tools go through `runTool` in `tool-execution.ts`
+- Feature branch review → run `/review` skill (runs style, arch, and security audits against branch diff)
 
 Development:
 - Validate: `bun run verify` (format + lint + typecheck + test)
