@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process";
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const WORKDIR = "/tmp/acolyte-benchmarks";
@@ -46,26 +46,18 @@ const TS_TEST_RE = /\.(test|spec|int\.test|tui\.test|perf\.test)\.(ts|tsx)$/;
 
 function findSourceTs(dir: string): string[] {
   return walk(dir).filter(
-    (f) =>
-      /\.(ts|tsx)$/.test(f) &&
-      !pathExcluded(f, TS_EXCLUDE_DIRS) &&
-      !f.endsWith(".d.ts") &&
-      !TS_TEST_RE.test(f),
+    (f) => /\.(ts|tsx)$/.test(f) && !pathExcluded(f, TS_EXCLUDE_DIRS) && !f.endsWith(".d.ts") && !TS_TEST_RE.test(f),
   );
 }
 
 function findTestTs(dir: string): string[] {
-  return walk(dir).filter(
-    (f) => TS_TEST_RE.test(f) && !pathExcluded(f, ["/node_modules/", "/.git/", "/dist/"]),
-  );
+  return walk(dir).filter((f) => TS_TEST_RE.test(f) && !pathExcluded(f, ["/node_modules/", "/.git/", "/dist/"]));
 }
 
 const PY_EXCLUDE_DIRS = ["/.git/", "/__pycache__/", "/migrations/", "/generated/"];
 
 function findSourcePy(dir: string): string[] {
-  return walk(dir).filter(
-    (f) => f.endsWith(".py") && !pathExcluded(f, PY_EXCLUDE_DIRS) && !f.includes("/test"),
-  );
+  return walk(dir).filter((f) => f.endsWith(".py") && !pathExcluded(f, PY_EXCLUDE_DIRS) && !f.includes("/test"));
 }
 
 function findTestPy(dir: string): string[] {
@@ -78,20 +70,13 @@ const RS_EXCLUDE_DIRS = ["/.git/", "/target/"];
 
 function findSourceRs(dir: string): string[] {
   return walk(dir).filter(
-    (f) =>
-      f.endsWith(".rs") &&
-      !pathExcluded(f, RS_EXCLUDE_DIRS) &&
-      !f.includes("/tests/") &&
-      !f.endsWith("_test.rs"),
+    (f) => f.endsWith(".rs") && !pathExcluded(f, RS_EXCLUDE_DIRS) && !f.includes("/tests/") && !f.endsWith("_test.rs"),
   );
 }
 
 function findTestRs(dir: string): string[] {
   return walk(dir).filter(
-    (f) =>
-      f.endsWith(".rs") &&
-      !pathExcluded(f, RS_EXCLUDE_DIRS) &&
-      (f.includes("/tests/") || f.endsWith("_test.rs")),
+    (f) => f.endsWith(".rs") && !pathExcluded(f, RS_EXCLUDE_DIRS) && (f.includes("/tests/") || f.endsWith("_test.rs")),
   );
 }
 
@@ -188,12 +173,12 @@ function countDepsPython(dir: string): { runtime: number; dev: number } {
   let dev = 0;
 
   // Prefer .in files (direct deps) over .txt lockfiles
-  const rtCandidates = [
-    `${dir}/requirements/requirements.in`,
-    `${dir}/requirements.in`,
-  ];
+  const rtCandidates = [`${dir}/requirements/requirements.in`, `${dir}/requirements.in`];
   for (const f of rtCandidates) {
-    if (existsSync(f)) { runtime = countReqLines(f); break; }
+    if (existsSync(f)) {
+      runtime = countReqLines(f);
+      break;
+    }
   }
   if (runtime === 0 && existsSync(`${dir}/pyproject.toml`)) {
     runtime = countTomlDeps(`${dir}/pyproject.toml`, "runtime");
@@ -209,7 +194,10 @@ function countDepsPython(dir: string): { runtime: number; dev: number } {
     `${dir}/requirements-dev.txt`,
   ];
   for (const f of devCandidates) {
-    if (existsSync(f)) { dev = countReqLines(f); break; }
+    if (existsSync(f)) {
+      dev = countReqLines(f);
+      break;
+    }
   }
   if (dev === 0 && existsSync(`${dir}/pyproject.toml`)) {
     dev = countTomlDeps(`${dir}/pyproject.toml`, "dev");
@@ -219,9 +207,7 @@ function countDepsPython(dir: string): { runtime: number; dev: number } {
 }
 
 function countDepsRust(dir: string): { runtime: number; dev: number } {
-  const cargoFiles = walk(dir).filter(
-    (f) => f.endsWith("/Cargo.toml") && !f.includes("/target/"),
-  );
+  const cargoFiles = walk(dir).filter((f) => f.endsWith("/Cargo.toml") && !f.includes("/target/"));
   const runtime = new Set<string>();
   const dev = new Set<string>();
   for (const f of cargoFiles) {
@@ -245,7 +231,9 @@ function cloneOrUpdate(name: string, url: string): void {
   const dir = join(WORKDIR, name);
   if (existsSync(join(dir, ".git"))) {
     console.log(`  Updating ${name}...`);
-    try { execSync(`git -C ${dir} pull --ff-only --quiet`, { stdio: "ignore" }); } catch {}
+    try {
+      execSync(`git -C ${dir} pull --ff-only --quiet`, { stdio: "ignore" });
+    } catch {}
   } else {
     console.log(`  Cloning ${name}...`);
     execSync(`git clone --depth 1 --quiet ${url} ${dir}`, { stdio: "ignore" });
@@ -278,9 +266,18 @@ for (const p of PROJECTS) {
   let sourceRaw: string[];
   let testRaw: string[];
   switch (p.lang) {
-    case "typescript": sourceRaw = findSourceTs(dir); testRaw = findTestTs(dir); break;
-    case "python": sourceRaw = findSourcePy(dir); testRaw = findTestPy(dir); break;
-    case "rust": sourceRaw = findSourceRs(dir); testRaw = findTestRs(dir); break;
+    case "typescript":
+      sourceRaw = findSourceTs(dir);
+      testRaw = findTestTs(dir);
+      break;
+    case "python":
+      sourceRaw = findSourcePy(dir);
+      testRaw = findTestPy(dir);
+      break;
+    case "rust":
+      sourceRaw = findSourceRs(dir);
+      testRaw = findTestRs(dir);
+      break;
   }
 
   const src = readFiles(sourceRaw);
@@ -289,9 +286,15 @@ for (const p of PROJECTS) {
   // Dependencies
   let deps: { runtime: number; dev: number };
   switch (p.lang) {
-    case "typescript": deps = countDepsTs(dir); break;
-    case "python": deps = countDepsPython(dir); break;
-    case "rust": deps = countDepsRust(dir); break;
+    case "typescript":
+      deps = countDepsTs(dir);
+      break;
+    case "python":
+      deps = countDepsPython(dir);
+      break;
+    case "rust":
+      deps = countDepsRust(dir);
+      break;
   }
 
   const testRatio = src.lineCount > 0 ? (test.count / src.lineCount).toFixed(2) : "0.00";
