@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { createElement as reactCreateElement } from "react";
+import { createElement as reactCreateElement, StrictMode } from "react";
 import { AppContext, InputContext, type InputContextValue, type InputRegistration } from "./context";
 import { createElement } from "./dom";
 import { setOnCommit } from "./host-config";
@@ -36,6 +36,7 @@ export function render(node: ReactNode): RenderInstance {
   // active region overflows the terminal, top lines are written once and we
   // only re-render the bottom portion that fits on screen.
   let frozenLineCount = 0;
+  let frozenOverflowText = "";
   let exitResolve: (() => void) | null = null;
   const exitPromise = new Promise<void>((resolve) => {
     exitResolve = resolve;
@@ -100,11 +101,17 @@ export function render(node: ReactNode): RenderInstance {
     // Flush any new static items (write-once scrollback).
     if (staticItems.length > flushedStaticCount) {
       let buf = eraseSequence();
+      let appendedStatic = "";
       for (let i = flushedStaticCount; i < staticItems.length; i++) {
-        buf += `${staticItems[i]}\n`;
+        appendedStatic += `${staticItems[i]}\n`;
       }
+      if (frozenOverflowText.length > 0 && appendedStatic.startsWith(frozenOverflowText)) {
+        appendedStatic = appendedStatic.slice(frozenOverflowText.length);
+      }
+      buf += appendedStatic;
       flushedStaticCount = staticItems.length;
       frozenLineCount = 0;
+      frozenOverflowText = "";
       stdout.write(buf + active);
       lastActive = active;
       lastActiveLineCount = Math.min(countRows(active), maxLiveRows);
@@ -119,6 +126,7 @@ export function render(node: ReactNode): RenderInstance {
     // If content shrank (e.g. graduation removed rows), reset frozen state.
     if (allLines.length < frozenLineCount) {
       frozenLineCount = 0;
+      frozenOverflowText = "";
     }
 
     // Determine the live (on-screen, erasable) portion of the active output.
@@ -147,7 +155,9 @@ export function render(node: ReactNode): RenderInstance {
       const overflow = liveLines.slice(0, splitIdx);
       const onScreen = liveLines.slice(splitIdx);
       frozenLineCount += splitIdx;
-      stdout.write(`${eraseSequence()}${overflow.join("\n")}\n${onScreen.join("\n")}`);
+      const overflowText = overflow.join("\n");
+      frozenOverflowText += `${overflowText}\n`;
+      stdout.write(`${eraseSequence()}${overflowText}\n${onScreen.join("\n")}`);
       lastActiveLineCount = physRows > 0 ? physRows - 1 : 0;
     }
 
@@ -172,9 +182,13 @@ export function render(node: ReactNode): RenderInstance {
   );
 
   const wrappedNode = reactCreateElement(
-    AppContext.Provider,
-    { value: { exit } },
-    reactCreateElement(InputContext.Provider, { value: inputContextValue }, node),
+    StrictMode,
+    null,
+    reactCreateElement(
+      AppContext.Provider,
+      { value: { exit } },
+      reactCreateElement(InputContext.Provider, { value: inputContextValue }, node),
+    ),
   );
 
   reconciler.updateContainer(wrappedNode, container, null, () => {});

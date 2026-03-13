@@ -47,6 +47,21 @@ export function initialTranscriptRows(session: Session): ChatRow[] {
 type HeaderItem = { id: string; kind: "header"; lines: HeaderLine[] };
 type GraduatedItem = ChatRow | HeaderItem;
 
+export function appendGraduatedItems(
+  current: GraduatedItem[],
+  next: readonly GraduatedItem[],
+): GraduatedItem[] {
+  if (next.length === 0) return current;
+  const seen = new Set(current.map((item) => item.id));
+  const appended: GraduatedItem[] = [];
+  for (const item of next) {
+    if (seen.has(item.id)) continue;
+    seen.add(item.id);
+    appended.push(item);
+  }
+  return appended.length > 0 ? [...current, ...appended] : current;
+}
+
 function isHeaderItem(item: GraduatedItem): item is HeaderItem {
   return "kind" in item && item.kind === "header";
 }
@@ -68,6 +83,8 @@ function ChatApp(props: ChatAppProps) {
   const { exit } = useApp();
   const [currentSession, setCurrentSession] = useState<Session>(session);
   const [rows, setRows] = useState<ChatRow[]>([]);
+  const rowsRef = useRef(rows);
+  rowsRef.current = rows;
   const [value, setValue] = useState("");
   const [inputRevision, setInputRevision] = useState(0);
   const [isWorking, setIsWorking] = useState(false);
@@ -123,11 +140,10 @@ function ChatApp(props: ChatAppProps) {
   ]);
 
   const graduate = useCallback(() => {
-    setRows((current) => {
-      if (current.length === 0) return current;
-      setGraduatedRows((prev) => [...prev, ...current]);
-      return [];
-    });
+    const current = rowsRef.current;
+    if (current.length === 0) return;
+    setGraduatedRows((prev) => appendGraduatedItems(prev, current));
+    setRows([]);
   }, []);
 
   const clearTranscript = useCallback(

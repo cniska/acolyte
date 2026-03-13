@@ -7,7 +7,7 @@ import {
   rankAtReferenceSuggestions,
   shouldAutocompleteAtSubmit,
 } from "./chat-file-ref";
-import { initialTranscriptRows } from "./chat-ui";
+import { appendGraduatedItems, initialTranscriptRows } from "./chat-ui";
 import { createSession, createStore } from "./test-utils";
 
 function createUiStore() {
@@ -108,6 +108,23 @@ describe("chat-ui helpers", () => {
     expect(rows).toEqual([
       { id: "row_2", role: "user", content: "hello" },
       { id: "row_3", role: "assistant", content: "hi" },
+    ]);
+  });
+
+  test("appendGraduatedItems ignores duplicate row ids", () => {
+    const initial = [
+      { id: "header_sess_demo", kind: "header" as const, lines: [] },
+      { id: "row_1", role: "user" as const, content: "hello" },
+    ];
+    const next = [
+      { id: "row_1", role: "user" as const, content: "hello" },
+      { id: "row_2", role: "assistant" as const, content: "hi" },
+    ];
+
+    expect(appendGraduatedItems(initial, next)).toEqual([
+      { id: "header_sess_demo", kind: "header", lines: [] },
+      { id: "row_1", role: "user", content: "hello" },
+      { id: "row_2", role: "assistant", content: "hi" },
     ]);
   });
 });
