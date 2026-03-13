@@ -74,6 +74,7 @@ Development:
 
 - Pragmatic solutions, low maintenance overhead. Build first, tune second.
 - YAGNI: no speculative features, commands, or abstractions. Rule of Three before abstracting.
+- SRP: each function/module should have one reason to change. When a function mixes concerns (e.g. persistence + display), split it.
 - Prefer root-cause fixes over workarounds. No tech debt without explicit agreement and `TODO(username):`.
 - Prefer prompt/tool-contract improvements over host-side task-classification logic.
 - Extra scrutiny on chat-feature changes: clear UX intent, regression tests, smoke run.
