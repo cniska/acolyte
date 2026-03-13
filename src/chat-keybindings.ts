@@ -169,7 +169,7 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
         (input.atQuery !== null || (input.atQuery === null && input.slashSuggestions.length > 0));
       const historyTriggerUp = key.upArrow || (key.ctrl && keyInput === "p");
       const historyTriggerDown = key.downArrow || (key.ctrl && keyInput === "n");
-      if (!input.isWorking && !suggestionNavActive && historyTriggerUp) {
+      if (!suggestionNavActive && historyTriggerUp) {
         if (!shouldCycleInputHistory(input.inputHistoryIndex)) return;
         const transition = resolveHistoryUp(input.inputHistory, input.inputHistoryIndex, input.value);
         if (!transition) return;
@@ -180,7 +180,7 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
         input.setInputRevision((current) => current + 1);
         return;
       }
-      if (!input.isWorking && !suggestionNavActive && historyTriggerDown && input.inputHistoryIndex >= 0) {
+      if (!suggestionNavActive && historyTriggerDown && input.inputHistoryIndex >= 0) {
         const transition = resolveHistoryDown(input.inputHistory, input.inputHistoryIndex, input.inputHistoryDraft);
         if (!transition) return;
         input.setInputHistoryIndex(transition.nextIndex);
