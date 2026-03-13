@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { homedir } from "node:os";
 import { resolve as resolvePath } from "node:path";
 import { z } from "zod";
@@ -20,7 +19,9 @@ export function parseResourceId(value: string | undefined): ResourceId | undefin
 }
 
 function hashValue(value: string): string {
-  return createHash("sha1").update(value).digest("hex").slice(0, 12);
+  const hasher = new Bun.CryptoHasher("sha1");
+  hasher.update(value);
+  return hasher.digest("hex").slice(0, 12);
 }
 
 export function projectResourceIdFromWorkspace(workspace: string): ProjectResourceId {

@@ -57,7 +57,6 @@ export function createAgentStream(
     let loopIteration = 0;
     let nudgeCount = 0;
     const maxNudges = options.maxNudges ?? 0;
-
     let streamController!: ReadableStreamDefaultController<StreamChunk>;
     const fullStream = new ReadableStream<StreamChunk>({
       start(controller) {

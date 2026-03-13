@@ -6,11 +6,15 @@ import { detectLineWidth } from "./tool-utils";
 const BASE_INSTRUCTIONS = [
   "Before taking action (tool call, command, or edit), write exactly one sentence stating what you will do next.",
   "Then execute directly; avoid extra process narration.",
+  "Execute tool calls immediately in the same turn — do not describe what you will do without doing it.",
   "Keep tool calls and file changes within the current workspace and the requested scope.",
   "Prefer dedicated project tools; use shell only when no dedicated tool exists.",
+  "Prefer targeted, surgical edits. Do not rewrite or delete code beyond the scope of the request.",
+  "Never remove or modify existing code that is unrelated to the current task.",
   "Keep responses concise and outcome-first; expand only when asked.",
   "Never summarize, recap, or list what you did. The user can see your actions directly.",
   "Make reasonable assumptions to keep momentum; ask only when blocked by ambiguity or risk.",
+  "When lint or format checks fail, run the project auto-fix command (if available) before attempting manual repairs.",
   "When finished, state the outcome in one sentence.",
 ];
 

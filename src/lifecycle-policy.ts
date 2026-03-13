@@ -7,6 +7,7 @@ import {
   TOTAL_MAX_STEPS,
   VERIFY_MAX_STEPS,
 } from "./lifecycle-constants";
+import type { LintCommand } from "./lint-reflection";
 
 export type LifecyclePolicy = {
   totalMaxSteps: number;
@@ -16,6 +17,8 @@ export type LifecyclePolicy = {
   maxUnknownErrorsPerRequest: number;
   maxRegenerationsPerRequest: number;
   maxNudgesPerGeneration: number;
+  /** Lint command to run after writes. Undefined disables lint evaluation. */
+  lintCommand?: LintCommand;
 };
 
 export const defaultLifecyclePolicy: LifecyclePolicy = {
