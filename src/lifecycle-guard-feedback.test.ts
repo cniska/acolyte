@@ -67,4 +67,22 @@ describe("createLifecycleFeedbackForGuard", () => {
       instruction: "Do not rerun the same verification command until work mode changes the code.",
     });
   });
+
+  test("maps redundant git-diff to work-scoped lifecycle feedback", () => {
+    const feedback = createLifecycleFeedbackForGuard(
+      createGuardEvent({
+        guardId: "redundant-git-diff",
+        toolName: "git-diff",
+        detail: "README.md",
+      }),
+      "work",
+    );
+    expect(feedback).toEqual({
+      source: "guard",
+      mode: "work",
+      summary: 'A previous edit already produced the diff for "README.md".',
+      instruction:
+        "Do not re-run git-diff for the same file. Trust the edit diff preview you already have and stop if the task is complete.",
+    });
+  });
 });

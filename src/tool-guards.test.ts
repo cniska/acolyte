@@ -366,6 +366,31 @@ describe("redundant-find guard", () => {
   });
 });
 
+describe("redundant-git-diff guard", () => {
+  test("blocks git-diff on a file already edited in this turn", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file"]);
+    recordCall(session, "edit-file", { path: "README.md" });
+    expect(() => runGuards({ toolName: "git-diff", args: { path: "README.md" }, session })).toThrow(
+      /only re-confirming "readme\.md"/i,
+    );
+  });
+
+  test("allows git-diff on a different file", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file"]);
+    recordCall(session, "edit-file", { path: "README.md" });
+    expect(() => runGuards({ toolName: "git-diff", args: { path: "docs/README.md" }, session })).not.toThrow();
+  });
+
+  test("allows repository-wide git-diff when no specific file path is provided", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file"]);
+    recordCall(session, "edit-file", { path: "README.md" });
+    expect(() => runGuards({ toolName: "git-diff", args: {}, session })).not.toThrow();
+  });
+});
+
 describe("recordCall", () => {
   test("appends to callLog with active task id", () => {
     const session = createSessionContext("task_1");

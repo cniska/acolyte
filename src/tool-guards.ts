@@ -434,6 +434,23 @@ const redundantVerifyGuard: ToolGuard = {
   },
 };
 
+const redundantGitDiffGuard: ToolGuard = {
+  id: "redundant-git-diff",
+  description: "Block git-diff on a file that was already edited in this turn.",
+  tools: ["git-diff"],
+  check({ args, session, report }) {
+    const path = typeof args.path === "string" ? normalizePath(args.path.trim().toLowerCase()) : "";
+    if (!path) return;
+    const editedPaths = editedPathsSinceLastVerify(session).map((entry) => normalizePath(entry.toLowerCase()));
+    if (!editedPaths.includes(path)) return;
+    report("blocked", path);
+    throw new Error(
+      `git-diff is only re-confirming "${path}", which was already edited in this turn. ` +
+        "Use the edit diff preview you already have or stop.",
+    );
+  },
+};
+
 const stepBudgetGuard: ToolGuard = {
   id: "step-budget",
   description: "Enforce per-cycle and total step limits.",
@@ -568,6 +585,7 @@ const GUARDS: ToolGuard[] = [
   redundantFindGuard,
   redundantSearchGuard,
   redundantVerifyGuard,
+  redundantGitDiffGuard,
 ];
 
 export function runGuards(input: Omit<GuardInput, "report">): void {

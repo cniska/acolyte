@@ -48,6 +48,11 @@ const guardFeedbackFactories = {
       summary: `A previous ${event.toolName} call already covered this discovery step.`,
       instruction: "Reuse the broader result or read a promising file directly.",
     }),
+  "redundant-git-diff": (event, mode) =>
+    createGuardFeedback(mode, {
+      summary: `A previous edit already produced the diff for "${event.detail ?? "this file"}".`,
+      instruction: "Do not re-run git-diff for the same file. Trust the edit diff preview you already have and stop if the task is complete.",
+    }),
   "redundant-verify": () =>
     createGuardFeedback("verify", {
       summary: "This verify command already ran and no writes happened since then.",
