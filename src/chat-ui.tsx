@@ -47,10 +47,7 @@ export function initialTranscriptRows(session: Session): ChatRow[] {
 type HeaderItem = { id: string; kind: "header"; lines: HeaderLine[] };
 type GraduatedItem = ChatRow | HeaderItem;
 
-export function appendGraduatedItems(
-  current: GraduatedItem[],
-  next: readonly GraduatedItem[],
-): GraduatedItem[] {
+export function appendGraduatedItems(current: GraduatedItem[], next: readonly GraduatedItem[]): GraduatedItem[] {
   if (next.length === 0) return current;
   const seen = new Set(current.map((item) => item.id));
   const appended: GraduatedItem[] = [];
