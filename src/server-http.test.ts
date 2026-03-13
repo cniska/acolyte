@@ -82,16 +82,12 @@ describe("server-http auth coverage", () => {
     expect(runCalls).toBe(0);
   });
 
-  test("/v1/rpc authorization receives URL query context", async () => {
+  test("/v1/rpc rejects unauthorized and accepts Bearer header auth", async () => {
     let upgradeCalls = 0;
-    const seenUrls: string[] = [];
 
     const handler = createServerFetchHandler(
       createTestDeps({
-        hasValidAuth: (_req, url) => {
-          seenUrls.push(url?.toString() ?? "");
-          return url?.searchParams.get("apiKey") === "test-key";
-        },
+        hasValidAuth: (req) => req.headers.get("authorization") === "Bearer test-key",
         upgradeToRpc: () => {
           upgradeCalls += 1;
           return false;
@@ -99,12 +95,13 @@ describe("server-http auth coverage", () => {
       }),
     );
 
-    const unauthorized = await handler(new Request("http://localhost/v1/rpc?apiKey=wrong"));
-    const authorized = await handler(new Request("http://localhost/v1/rpc?apiKey=test-key"));
+    const unauthorized = await handler(new Request("http://localhost/v1/rpc"));
+    const authorized = await handler(
+      new Request("http://localhost/v1/rpc", { headers: { authorization: "Bearer test-key" } }),
+    );
 
     expect(unauthorized?.status).toBe(401);
     expect(authorized?.status).toBe(400);
     expect(upgradeCalls).toBe(1);
-    expect(seenUrls).toEqual(["http://localhost/v1/rpc?apiKey=wrong", "http://localhost/v1/rpc?apiKey=test-key"]);
   });
 });

@@ -4,7 +4,7 @@ import type { RunChatHandlers, StatusPayload } from "./server-contract";
 
 type ServerHttpDeps = {
   createStatusPayload: () => Promise<StatusPayload>;
-  hasValidAuth: (req: Request, url?: URL) => boolean;
+  hasValidAuth: (req: Request) => boolean;
   isChatRequest: (value: unknown) => value is ChatRequest;
   runChatRequest: (chatRequest: ChatRequest, handlers: RunChatHandlers) => Promise<void>;
   serverError: (
@@ -51,7 +51,7 @@ async function handleHealthz(ctx: RouteContext): Promise<Response | null> {
 
 async function handleStatus(ctx: RouteContext): Promise<Response | null> {
   if (ctx.url.pathname !== "/v1/status" || ctx.req.method !== "GET") return null;
-  if (!ctx.deps.hasValidAuth(ctx.req, ctx.url)) return warnUnauthorized(ctx.url.pathname, ctx.req.method);
+  if (!ctx.deps.hasValidAuth(ctx.req)) return warnUnauthorized(ctx.url.pathname, ctx.req.method);
   return json(await ctx.deps.createStatusPayload());
 }
 
@@ -65,7 +65,7 @@ async function handleShutdown(ctx: RouteContext): Promise<Response | null> {
 
 async function handleRpcUpgrade(ctx: RouteContext): Promise<Response | undefined | null> {
   if (ctx.url.pathname !== "/v1/rpc") return null;
-  if (!ctx.deps.hasValidAuth(ctx.req, ctx.url)) return warnUnauthorized(ctx.url.pathname, ctx.req.method);
+  if (!ctx.deps.hasValidAuth(ctx.req)) return warnUnauthorized(ctx.url.pathname, ctx.req.method);
   if (ctx.deps.upgradeToRpc(ctx.req)) return;
   return badRequest("WebSocket upgrade failed");
 }
