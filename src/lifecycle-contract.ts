@@ -49,7 +49,6 @@ export type PromptUsage = {
   activeSkillName?: string;
   skillInstructionChars?: number;
 };
-export type StreamChunk = { type?: string; payload?: unknown };
 export type TextDeltaPayload = { text?: string };
 export type ToolCallPayload = { toolCallId?: string; toolName?: string; args?: Record<string, unknown> };
 export type ToolResultPayload = { toolCallId?: string; toolName?: string; result?: unknown };
@@ -65,6 +64,16 @@ export type ModelUsagePayload = {
   inputTokens?: number;
   outputTokens?: number;
 };
+export type LintReflectionPayload = { files: string[]; output: string };
+
+export type StreamChunk =
+  | { type: "text-delta"; payload: TextDeltaPayload }
+  | { type: "reasoning-delta"; payload: TextDeltaPayload }
+  | { type: "tool-call"; payload: ToolCallPayload }
+  | { type: "tool-result"; payload: ToolResultPayload }
+  | { type: "tool-error"; payload: ToolErrorPayload }
+  | { type: "model-usage"; payload: ModelUsagePayload }
+  | { type: "lint-reflection"; payload: LintReflectionPayload };
 export type ModeResolution = { model: string; provider: string };
 export type PhasePrepareInput = {
   request: ChatRequest;

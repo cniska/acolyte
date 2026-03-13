@@ -14,17 +14,7 @@ import {
   isEditFileMultiMatchSignal,
   parseErrorInfo,
 } from "./error-handling";
-import type {
-  GenerateOptions,
-  GenerateResult,
-  ModelUsagePayload,
-  RunContext,
-  StreamChunk,
-  TextDeltaPayload,
-  ToolCallPayload,
-  ToolErrorPayload,
-  ToolResultPayload,
-} from "./lifecycle-contract";
+import type { GenerateOptions, GenerateResult, RunContext, StreamChunk } from "./lifecycle-contract";
 import { resolveModeModel } from "./lifecycle-resolve";
 import { lintFiles } from "./lint-reflection";
 import type { StreamError } from "./stream-error";
@@ -244,17 +234,16 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
         }),
       ]);
       if (result.done) break;
-      if (!result.value || typeof result.value !== "object") continue;
-      const typed = result.value as { type?: string; payload?: unknown };
+      const chunk = result.value;
       resetTimeout();
-      if (typed.type === "tool-error") {
-        const p = typed.payload as ToolErrorPayload | undefined;
+      if (chunk.type === "tool-error") {
+        const p = chunk.payload;
         if (!p?.toolName && !p?.toolCallId) {
           const parsed = parseErrorInfo(p?.error ?? p?.message);
           throw new Error(parsed.ok ? parsed.value.message : "Model stream error");
         }
       }
-      processStreamChunk(ctx, typed);
+      processStreamChunk(ctx, chunk);
     }
     return (await streamOutput.getFullOutput()) as GenerateResult;
   } finally {
@@ -314,7 +303,7 @@ function emitStreamingUsage(ctx: RunContext, chars: number): void {
 function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
   switch (chunk.type) {
     case "text-delta": {
-      const p = chunk.payload as TextDeltaPayload | undefined;
+      const p = chunk.payload;
       if (typeof p?.text === "string" && p.text.length > 0) {
         if (ctx.mode !== "verify") ctx.emit({ type: "text-delta", text: p.text });
         emitStreamingUsage(ctx, p.text.length);
@@ -322,7 +311,7 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
       break;
     }
     case "reasoning-delta": {
-      const p = chunk.payload as TextDeltaPayload | undefined;
+      const p = chunk.payload;
       if (typeof p?.text === "string" && p.text.length > 0) {
         ctx.emit({ type: "reasoning", text: p.text });
         emitStreamingUsage(ctx, p.text.length);
@@ -330,7 +319,7 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
       break;
     }
     case "tool-call": {
-      const p = chunk.payload as ToolCallPayload | undefined;
+      const p = chunk.payload;
       if (p?.toolCallId && p?.toolName) {
         const toolName = p.toolName;
         ctx.observedTools.add(toolName);
@@ -350,7 +339,7 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
       break;
     }
     case "tool-result": {
-      const p = chunk.payload as ToolResultPayload | undefined;
+      const p = chunk.payload;
       if (p?.toolCallId && p?.toolName) {
         const toolName = p.toolName;
         completeToolCall(ctx, p.toolCallId, toolName);
@@ -376,7 +365,7 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
       break;
     }
     case "tool-error": {
-      const p = chunk.payload as ToolErrorPayload | undefined;
+      const p = chunk.payload;
       const raw = p?.error ?? p?.message;
       const parsed = parseErrorInfo(raw);
       const errorInfo = parsed.ok ? parsed.value : { message: "Tool error" };
@@ -397,7 +386,7 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
       break;
     }
     case "model-usage": {
-      const p = chunk.payload as ModelUsagePayload | undefined;
+      const p = chunk.payload;
       if (typeof p?.inputTokens === "number") ctx.promptTokensAccum += p.inputTokens;
       if (typeof p?.outputTokens === "number") ctx.completionTokensAccum += p.outputTokens;
       ctx.modelCallCount += 1;
@@ -408,5 +397,7 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
       });
       break;
     }
+    case "lint-reflection":
+      break;
   }
 }
