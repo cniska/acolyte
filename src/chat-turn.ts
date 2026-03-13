@@ -9,6 +9,7 @@ import { formatFileContext } from "./file-context";
 import { t } from "./i18n";
 import { palette } from "./palette";
 import type { Session, SessionTokenUsageEntry } from "./session-contract";
+import { createId } from "./short-id";
 
 const AVERAGE_CHARS_PER_TOKEN = 4;
 
@@ -71,7 +72,7 @@ export function applyUserTurn(params: ApplyUserTurnParams): { row: ChatRow } {
   if (params.session.title === t("chat.session.default_title"))
     params.session.title =
       params.displayText.trim().replace(/\s+/g, " ").slice(0, 60) || t("chat.session.default_title");
-  return { row: { id: `user_${Date.now()}`, role: "user", content: params.displayText } };
+  return { row: { id: `row_${createId()}`, role: "user", content: params.displayText } };
 }
 
 type RunAssistantTurnParams = {

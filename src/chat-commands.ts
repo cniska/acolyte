@@ -12,33 +12,16 @@ import { addMemory, listMemories, removeMemoryByPrefix } from "./memory";
 import type { MemoryScope } from "./memory-contract";
 import { formatModel } from "./provider-config";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
-import { createId } from "./short-id";
 import { findSkillByName } from "./skills";
-import type { ToolOutput } from "./tool-output-content";
 
 type MemoryContextScope = "all" | "user" | "project";
 
+import { type ChatRow, createRow } from "./chat-contract";
 import type { StatusFields } from "./status-contract";
 import { formatStatusOutput } from "./status-format";
 import { createSession } from "./storage";
 
-export type ChatRowStyle = {
-  marker?: string;
-  text?: string;
-  dim?: boolean;
-};
-
-export type ChatRow = {
-  id: string;
-  role: "user" | "assistant" | "tool" | "status" | "task" | "system";
-  content: string;
-  style?: ChatRowStyle;
-  toolOutput?: ToolOutput[];
-};
-
-export function createRow(role: ChatRow["role"], content: string, style?: ChatRowStyle): ChatRow {
-  return { id: `row_${createId()}`, role, content, style: style ?? undefined };
-}
+export { type ChatRow, type ChatRowStyle, createRow } from "./chat-contract";
 
 export type ResumeResolution =
   | { kind: "usage" }

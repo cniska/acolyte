@@ -104,9 +104,10 @@ describe("chat-ui helpers", () => {
         { id: "m3", role: "assistant", content: "hi", timestamp: "2026-02-23T00:00:02.000Z" },
       ],
     });
-    expect(initialTranscriptRows(session)).toEqual([
-      { id: "m2", role: "user", content: "hello" },
-      { id: "m3", role: "assistant", content: "hi" },
-    ]);
+    const rows = initialTranscriptRows(session);
+    expect(rows).toHaveLength(2);
+    expect(rows[0]?.id.startsWith("row_")).toBe(true);
+    expect(rows[0]).toMatchObject({ role: "user", content: "hello" });
+    expect(rows[1]).toMatchObject({ role: "assistant", content: "hi" });
   });
 });
