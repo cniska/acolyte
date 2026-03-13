@@ -25,6 +25,8 @@ Patterns to follow:
 - Feature branch review → run `/review` skill (runs style, arch, and security audits against branch diff)
 
 Development:
+- After cloning, run `bun install` to activate the pre-push hook (via `prepare`).
+- To format code: `bun run format`.
 - Validate: `bun run verify` (lint + typecheck + test)
 
 ## Tooling
