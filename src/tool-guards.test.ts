@@ -105,34 +105,6 @@ describe("redundant-verify guard", () => {
   });
 });
 
-describe("shell-file-write guard", () => {
-  test("blocks echo shell redirect", () => {
-    const session = createSessionContext();
-    expect(() =>
-      runGuards({ toolName: "run-command", args: { command: "echo 'content' > src/a.ts" }, session }),
-    ).toThrow(/shell-based file writes are not allowed here/i);
-  });
-
-  test("blocks printf shell redirect", () => {
-    const session = createSessionContext();
-    expect(() =>
-      runGuards({ toolName: "run-command", args: { command: "printf '%s' 'content' > src/a.ts" }, session }),
-    ).toThrow(/shell-based file writes are not allowed here/i);
-  });
-
-  test("blocks tee", () => {
-    const session = createSessionContext();
-    expect(() =>
-      runGuards({ toolName: "run-command", args: { command: "tee src/a.ts <<< 'content'" }, session }),
-    ).toThrow(/shell-based file writes are not allowed here/i);
-  });
-
-  test("allows normal shell commands that do not mutate files", () => {
-    const session = createSessionContext();
-    expect(() => runGuards({ toolName: "run-command", args: { command: "bun run verify" }, session })).not.toThrow();
-  });
-});
-
 describe("file-churn guard", () => {
   test("blocks immediate duplicate read-file call on same path and range", () => {
     const session = createSessionContext();

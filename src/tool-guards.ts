@@ -495,27 +495,6 @@ const redundantVerifyGuard: ToolGuard = {
   },
 };
 
-const shellFileWriteGuard: ToolGuard = {
-  id: "shell-file-write",
-  description: "Block shell-based file mutation commands when direct file tools should be used instead.",
-  tools: ["run-command"],
-  check({ args, report }) {
-    const command = typeof args.command === "string" ? args.command : "";
-    if (!command) return;
-    const normalized = command.toLowerCase();
-    const mutatesViaRedirect =
-      (normalized.includes("echo ") || normalized.includes("printf ") || normalized.includes("cat ")) &&
-      (normalized.includes(" > ") || normalized.includes(" >> "));
-    const mutatesViaTee = /\btee\s/.test(normalized);
-    if (!mutatesViaRedirect && !mutatesViaTee) return;
-
-    report("blocked", "shell-file-write");
-    throw new Error(
-      "Shell-based file writes are not allowed here. Use edit-file, create-file, or edit-code for repository changes.",
-    );
-  },
-};
-
 const postEditRedundancyGuard: ToolGuard = {
   id: "post-edit-redundancy",
   description: "Block redundant follow-up actions on files already edited in this task.",
@@ -669,7 +648,6 @@ const GUARDS: ToolGuard[] = [
   circuitBreakerGuard,
   stepBudgetGuard,
   duplicateCallGuard,
-  shellFileWriteGuard,
   pingPongGuard,
   staleResultGuard,
   fileChurnGuard,
