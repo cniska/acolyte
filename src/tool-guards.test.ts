@@ -402,6 +402,46 @@ describe("redundant-find guard", () => {
 });
 
 describe("post-edit-redundancy guard", () => {
+  test("blocks same-file edit-file retry without new evidence after a successful edit", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file"]);
+    recordCall(session, "edit-file", { path: "src/clamp.ts", edits: [{ find: "a", replace: "b" }] });
+    expect(() =>
+      runGuards({
+        toolName: "edit-file",
+        args: { path: "src/clamp.ts", edits: [{ find: "b", replace: "c" }] },
+        session,
+      }),
+    ).toThrow(/already edited successfully.*no new file evidence/i);
+  });
+
+  test("allows same-file edit-file retry after rereading the file", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file"]);
+    recordCall(session, "edit-file", { path: "src/clamp.ts", edits: [{ find: "a", replace: "b" }] });
+    recordCall(session, "read-file", { paths: [{ path: "src/clamp.ts" }] });
+    expect(() =>
+      runGuards({
+        toolName: "edit-file",
+        args: { path: "src/clamp.ts", edits: [{ find: "b", replace: "c" }] },
+        session,
+      }),
+    ).not.toThrow();
+  });
+
+  test("allows edit-file on a different file after a successful edit", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file"]);
+    recordCall(session, "edit-file", { path: "src/clamp.ts", edits: [{ find: "a", replace: "b" }] });
+    expect(() =>
+      runGuards({
+        toolName: "edit-file",
+        args: { path: "src/other.ts", edits: [{ find: "x", replace: "y" }] },
+        session,
+      }),
+    ).not.toThrow();
+  });
+
   test("blocks delete-file on a file already edited in this turn", () => {
     const session = createSessionContext();
     session.writeTools = new Set(["edit-file", "delete-file"]);

@@ -127,7 +127,8 @@ function createGitDiffTool(git: GitOps, input: ToolkitInput) {
     category: "search",
     permissions: ["read"],
     description: "Show unstaged changes (unified diff) for the repository or a specific file path.",
-    instruction: "Use `git-diff` when repository diff context matters, not to re-check an edit you just made.",
+    instruction:
+      "Use `git-diff` when repository diff context matters, not to re-check an edit you just made. For explicit named-file bounded tasks, trust the write-tool diff preview and stop unless the user asked for verification or git context.",
     outputSchema: z.object({
       kind: z.literal("git-diff"),
       path: z.string().optional(),

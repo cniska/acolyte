@@ -184,6 +184,7 @@ export const verifyCycle: Evaluator = {
   id: "verify-cycle",
   evaluate(ctx) {
     if (!ctx.result) return { type: "done" };
+    if (ctx.request.verifyScope === "none") return { type: "done" };
 
     // Work → Verify: trigger verify when write tools were used
     if (ctx.mode !== "verify") {

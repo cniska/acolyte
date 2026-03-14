@@ -7,6 +7,7 @@ const behaviorScenarioIdSchema = z.enum([
   "single-file-bug-fix",
   "add-focused-test",
   "two-file-rename",
+  "two-file-deps-rename",
   "bounded-return-fix",
 ]);
 
@@ -159,6 +160,110 @@ async function validateTwoFileRenameWorkspace(workspace: string): Promise<string
   if (config.includes("defaultModel")) issues.push("src/config.ts should not keep defaultModel");
   if (!testFile.includes("appModel")) issues.push("src/config.test.ts should assert appModel");
   if (testFile.includes("defaultModel")) issues.push("src/config.test.ts should not keep defaultModel");
+  return issues;
+}
+
+async function createTwoFileDepsRenameWorkspace(workspace: string): Promise<void> {
+  await writeWorkspaceFile(
+    workspace,
+    "src/cli-run.ts",
+    [
+      "type ParsedRunArgs = { files: string[]; prompt: string; workspace?: string; model?: string };",
+      "",
+      "type RunModeDeps = {",
+      "  apiUrlForPort: (port: number) => string;",
+      "  appModel: string;",
+      "  createSession: (model: string) => { model: string };",
+      "};",
+      "",
+      "export async function runMode(args: string[], deps: RunModeDeps): Promise<void> {",
+      '  const parsed: ParsedRunArgs = { files: [], prompt: args.join(" "), model: undefined };',
+      "  const { apiUrlForPort, appModel, createSession } = deps;",
+      "  apiUrlForPort(6767);",
+      "  if (!parsed.prompt) return;",
+      "  const session = createSession(parsed.model ?? appModel);",
+      "  void session;",
+      "}",
+      "",
+    ].join("\n"),
+  );
+  await writeWorkspaceFile(
+    workspace,
+    "src/cli-skill.ts",
+    [
+      "type ParsedSkillArgs = { skillName: string; prompt: string; model?: string };",
+      "",
+      "type SkillModeDeps = {",
+      "  apiUrlForPort: (port: number) => string;",
+      "  appModel: string;",
+      "  createSession: (model: string) => { model: string };",
+      "};",
+      "",
+      "export async function skillMode(args: string[], deps: SkillModeDeps): Promise<void> {",
+      '  const parsed: ParsedSkillArgs = { skillName: args[0] ?? "", prompt: args.slice(1).join(" "), model: undefined };',
+      "  const { apiUrlForPort, appModel, createSession } = deps;",
+      "  apiUrlForPort(6767);",
+      "  if (!parsed.prompt) return;",
+      "  const session = createSession(parsed.model ?? appModel);",
+      "  void session;",
+      "}",
+      "",
+    ].join("\n"),
+  );
+}
+
+async function validateTwoFileDepsRenameWorkspace(workspace: string): Promise<string[]> {
+  const issues: string[] = [];
+  const runFile = await readWorkspaceFile(workspace, "src/cli-run.ts");
+  const skillFile = await readWorkspaceFile(workspace, "src/cli-skill.ts");
+  for (const [path, content] of [
+    ["src/cli-run.ts", runFile],
+    ["src/cli-skill.ts", skillFile],
+  ] as const) {
+    if (content.includes("appModel")) issues.push(`${path} should not keep appModel`);
+    if (!content.includes("defaultModel")) issues.push(`${path} should rename appModel to defaultModel`);
+  }
+  return issues;
+}
+
+function validateTwoFileDepsRenameTrace(traceLines: string[]): string[] {
+  const issues: string[] = [];
+  const toolCallLines = traceLines.filter((line) => line.includes("event=lifecycle.tool.call"));
+  const readRunCalls = toolCallLines.filter(
+    (line) => line.includes("tool=read-file") && line.includes("src/cli-run.ts"),
+  ).length;
+  const readSkillCalls = toolCallLines.filter(
+    (line) => line.includes("tool=read-file") && line.includes("src/cli-skill.ts"),
+  ).length;
+  const searchCalls = toolCallLines.filter((line) => line.includes("tool=search-files")).length;
+  const editRunCalls = toolCallLines.filter(
+    (line) => line.includes("tool=edit-file") && line.includes("path=src/cli-run.ts"),
+  ).length;
+  const editSkillCalls = toolCallLines.filter(
+    (line) => line.includes("tool=edit-file") && line.includes("path=src/cli-skill.ts"),
+  ).length;
+
+  const firstReadTools = toolCallLines
+    .slice(0, 2)
+    .filter((line) => line.includes("tool=read-file"))
+    .map((line) => (line.includes("src/cli-run.ts") ? "run" : line.includes("src/cli-skill.ts") ? "skill" : "other"));
+  if (!(firstReadTools.includes("run") && firstReadTools.includes("skill"))) {
+    issues.push("first two tool calls should read src/cli-run.ts and src/cli-skill.ts");
+  }
+  if (toolCallLines.some((line) => line.includes("tool=find-files"))) {
+    issues.push("two-file deps rename should not use find-files");
+  }
+  if (readRunCalls > 1) issues.push(`should read src/cli-run.ts at most once, saw ${readRunCalls}`);
+  if (readSkillCalls > 1) issues.push(`should read src/cli-skill.ts at most once, saw ${readSkillCalls}`);
+  if (searchCalls > 1) issues.push(`should use at most one scoped search-files call, saw ${searchCalls}`);
+  if (editRunCalls > 1) issues.push(`should edit src/cli-run.ts at most once, saw ${editRunCalls}`);
+  if (editSkillCalls > 1) issues.push(`should edit src/cli-skill.ts at most once, saw ${editSkillCalls}`);
+
+  const summaryLine = [...traceLines].reverse().find((line) => line.includes("event=lifecycle.summary"));
+  if (summaryLine?.includes("lifecycle_signal=done") && summaryLine.includes("has_error=true")) {
+    issues.push("should not finish with done while lifecycle summary still reports an error");
+  }
+
   return issues;
 }
 
@@ -316,6 +421,16 @@ export const BEHAVIOR_SCENARIOS: BehaviorScenario[] = [
     expectedChanges: ["src/config.ts", "src/config.test.ts"],
     setup: createTwoFileRenameWorkspace,
     validate: validateTwoFileRenameWorkspace,
+  },
+  {
+    id: "two-file-deps-rename",
+    description: "Explicit two-file deps rename with separated occurrences in each file.",
+    prompt:
+      "In src/cli-run.ts and src/cli-skill.ts, rename the RunModeDeps and SkillModeDeps property name `appModel` to `defaultModel` and update only the corresponding destructuring and property reads in those two files. Do not change any other behavior. Stop when those two files are updated.",
+    expectedChanges: ["src/cli-run.ts", "src/cli-skill.ts"],
+    setup: createTwoFileDepsRenameWorkspace,
+    validate: validateTwoFileDepsRenameWorkspace,
+    validateTrace: validateTwoFileDepsRenameTrace,
   },
   {
     id: "bounded-return-fix",

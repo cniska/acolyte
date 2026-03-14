@@ -226,6 +226,33 @@ function readCountForPath(session: SessionContext, path: string): number {
   return count;
 }
 
+function searchTouchesPath(args: Record<string, unknown>, path: string): boolean {
+  const scope = extractSearchScope(args);
+  return scope.some((entry) => entry === path);
+}
+
+function scanTouchesPath(args: Record<string, unknown>, path: string): boolean {
+  const rawPaths = Array.isArray(args.paths) ? args.paths : [];
+  return rawPaths.some((entry) => typeof entry === "string" && normalizePath(entry.trim().toLowerCase()) === path);
+}
+
+function hasFreshEvidenceSinceLastSuccessfulEdit(session: SessionContext, path: string): boolean {
+  const calls = scopedCallLog(session);
+  for (let i = calls.length - 1; i >= 0; i -= 1) {
+    const entry = calls[i];
+    if (!entry) continue;
+    if (entry.toolName === "read-file" && extractReadPaths(entry.args, { normalize: true }).includes(path)) return true;
+    if (entry.toolName === "search-files" && searchTouchesPath(entry.args, path)) return true;
+    if (entry.toolName === "scan-code" && scanTouchesPath(entry.args, path)) return true;
+    if (entry.success === false) continue;
+    if (entry.toolName === "edit-file") {
+      const editedPath = typeof entry.args.path === "string" ? normalizePath(entry.args.path.trim().toLowerCase()) : "";
+      if (editedPath === path) return false;
+    }
+  }
+  return true;
+}
+
 function guardArgsEqual(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
   return JSON.stringify(normalizeGuardArgValue(a)) === JSON.stringify(normalizeGuardArgValue(b));
 }
@@ -498,8 +525,18 @@ const redundantVerifyGuard: ToolGuard = {
 const postEditRedundancyGuard: ToolGuard = {
   id: "post-edit-redundancy",
   description: "Block redundant follow-up actions on files already edited in this task.",
-  tools: ["delete-file"],
-  check({ args, session, report }) {
+  tools: ["delete-file", "edit-file"],
+  check({ args, session, report, toolName }) {
+    if (toolName === "edit-file") {
+      const targetPath = typeof args.path === "string" ? normalizePath(args.path.trim().toLowerCase()) : "";
+      if (!targetPath || hasFreshEvidenceSinceLastSuccessfulEdit(session, targetPath)) return;
+      report("blocked", targetPath);
+      throw new Error(
+        `File "${targetPath}" was already edited successfully in this task, and there is no new file evidence for another edit. ` +
+          "Use the diff you already have or read the file again before another edit.",
+      );
+    }
+
     const targetPaths = Array.isArray(args.paths)
       ? args.paths
           .filter((value): value is string => typeof value === "string")

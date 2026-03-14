@@ -81,4 +81,17 @@ describe("cli-run", () => {
     expect(tokenLine).toContain("output 130");
     expect(tokenLine).toContain("3 model calls");
   });
+
+  test("runMode disables verifier for single-shot runs", async () => {
+    const { deps } = createRunDeps();
+    let seenOptions: { resourceId?: string; workspace?: string; verifyScope?: string } | undefined;
+    deps.handlePrompt = async (_prompt, _session, _client, options) => {
+      seenOptions = options as typeof seenOptions;
+      return true;
+    };
+
+    await runMode(["do something"], deps);
+
+    expect(seenOptions?.verifyScope).toBe("none");
+  });
 });

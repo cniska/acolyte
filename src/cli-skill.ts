@@ -165,6 +165,7 @@ export async function skillMode(args: string[], deps: SkillModeDeps): Promise<vo
   const startMs = Date.now();
   const success = await handlePrompt(parsed.prompt, session, client, {
     resourceId: skillResourceId(session.id),
+    verifyScope: "none",
     workspace: parsed.workspace,
   });
   const durationMs = Date.now() - startMs;

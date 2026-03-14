@@ -9,6 +9,7 @@ import type {
 } from "@ai-sdk/provider";
 import { z } from "zod";
 import type { Agent, StreamOptions, StreamOutput } from "./agent-contract";
+import { serializeToolError } from "./error-handling";
 import type { GenerateResult, LifecycleSignal, StreamChunk, ToolCallEntry } from "./lifecycle-contract";
 import {
   appendLifecycleTextDelta,
@@ -206,19 +207,14 @@ export function createAgentStream(
             });
           } catch (error) {
             batchHadError = true;
-            const message = error instanceof Error ? error.message : String(error);
-            const code =
-              typeof error === "object" && error !== null && "code" in error
-                ? (error as { code?: unknown }).code
-                : undefined;
-            const kind =
-              typeof error === "object" && error !== null && "kind" in error
-                ? (error as { kind?: unknown }).kind
-                : undefined;
+            const serializedError = serializeToolError(error);
+            const message = serializedError.error.message;
+            const code = serializedError.error.code;
+            const kind = serializedError.error.kind;
             streamController.enqueue({
               type: "tool-error",
               payload: {
-                error: { message, ...(code ? { code } : {}), ...(kind ? { kind } : {}) },
+                error: serializedError.error,
                 message,
                 code,
                 kind,
@@ -230,7 +226,7 @@ export function createAgentStream(
               type: "tool-result",
               toolCallId: tc.toolCallId,
               toolName: tc.toolName,
-              output: { type: "text", value: JSON.stringify({ error: message }) },
+              output: { type: "text", value: JSON.stringify(serializedError) },
             });
           }
         }

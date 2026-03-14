@@ -19,6 +19,14 @@ export type AppError<TCode extends string = string, TMeta = unknown> = Error & {
 export type ParsedError = { message: string; code?: string; kind?: string; recovery?: ToolRecovery };
 export type ParseErrorResult = { ok: true; value: ParsedError } | { ok: false; error: "invalid_error_payload" };
 export type RecoveryAction = "stop-unknown-budget" | "none";
+export type SerializedToolError = {
+  error: {
+    message: string;
+    code?: string;
+    kind?: string;
+    recovery?: ToolRecovery;
+  };
+};
 export const ERROR_CATEGORIES = ["timeout", "file-not-found", "guard-blocked", "other"] as const;
 export const errorIdSchema = domainIdSchema("err");
 export type ErrorId = z.infer<typeof errorIdSchema>;
@@ -159,6 +167,20 @@ export function recoveryActionForError(
   if (input.errorCode === LIFECYCLE_ERROR_CODES.unknown && input.unknownErrorCount >= unknownErrorBudget)
     return "stop-unknown-budget";
   return "none";
+}
+
+export function serializeToolError(value: unknown): SerializedToolError {
+  const parsed = parseErrorInfo(value);
+  if (!parsed.ok) return { error: { message: "Tool error" } };
+  const { message, code, kind, recovery } = parsed.value;
+  return {
+    error: {
+      message,
+      ...(code ? { code } : {}),
+      ...(kind ? { kind } : {}),
+      ...(recovery ? { recovery } : {}),
+    },
+  };
 }
 
 export function createStreamError(input: {

@@ -124,6 +124,19 @@ describe("verifyCycle", () => {
     if (action.type === "regenerate") expect(action.feedback?.details).not.toContain("Task boundary:");
   });
 
+  test("returns done when request disables verification", () => {
+    const session = createSessionContext();
+    session.callLog = [{ toolName: "edit-file", args: { path: "src/a.ts" } }];
+    const ctx = createMockContext({
+      request: { model: "gpt-5-mini", message: "Implement fix", history: [], verifyScope: "none" },
+      initialMode: "work",
+      session,
+      result: { text: "Done.", toolCalls: [] },
+      observedTools: new Set(["edit-file"]),
+    });
+    expect(verifyCycle.evaluate(ctx).type).toBe("done");
+  });
+
   test("returns done when verify already ran", () => {
     const session = createSessionContext();
     session.mode = "verify";

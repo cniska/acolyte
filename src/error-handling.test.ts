@@ -8,6 +8,7 @@ import {
   errorKindFromCategory,
   parseErrorInfo,
   recoveryActionForError,
+  serializeToolError,
 } from "./error-handling";
 import { createToolError, LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./error-primitives";
 
@@ -46,6 +47,30 @@ describe("error handling helpers", () => {
       kind: "refresh-snippet",
       summary: "Refresh the snippet.",
       instruction: "Reread the file and rebuild the edit.",
+    });
+  });
+
+  test("serializeToolError preserves structured tool recovery metadata", () => {
+    expect(
+      serializeToolError(
+        createToolError(TOOL_ERROR_CODES.editFileFindTooLarge, "find too large", undefined, {
+          tool: "edit-file",
+          kind: "shrink-edit",
+          summary: "Shrink the edit.",
+          instruction: "Use smaller snippets.",
+        }),
+      ),
+    ).toEqual({
+      error: {
+        message: "find too large",
+        code: TOOL_ERROR_CODES.editFileFindTooLarge,
+        recovery: {
+          tool: "edit-file",
+          kind: "shrink-edit",
+          summary: "Shrink the edit.",
+          instruction: "Use smaller snippets.",
+        },
+      },
     });
   });
 
