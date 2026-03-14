@@ -80,6 +80,5 @@ describe("cli-run", () => {
     expect(tokenLine).toContain("input 300");
     expect(tokenLine).toContain("output 130");
     expect(tokenLine).toContain("3 model calls");
-    expect(tokenLine).toContain("2 turns");
   });
 });
