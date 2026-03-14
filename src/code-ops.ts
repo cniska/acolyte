@@ -22,7 +22,7 @@ function editCodeRecovery(path: string, kind: EditCodeRecoveryKind): ToolRecover
         summary: "Your AST pattern did not match the current file.",
         instruction:
           `Keep the change in '${path}' and refine the ast-grep pattern to match the actual syntax in the latest read-file output. ` +
-          "For a helper-scoped variable rename, use the identifier itself as `pattern` and prefer `withinSymbol` with the enclosing helper name instead of matching the whole loop or statement. " +
+          'For a helper-scoped variable rename, prefer a structured rename edit like { op: "rename", from, to, withinSymbol } instead of broadening to a larger pattern. ' +
           "Do not switch to plain-text snippets unless you are changing to edit-file.",
       };
     case "fix-replacement":
