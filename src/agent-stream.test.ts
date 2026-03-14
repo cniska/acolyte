@@ -42,6 +42,11 @@ describe("lifecycle text streaming", () => {
     expect(finalizeLifecycleText(state)).toEqual({ signal: "done", text: "" });
   });
 
+  test("strips a signal that appears after text", () => {
+    expect(extractLifecycleSignal("Hello.\n@signal done\n")).toEqual({ signal: "done", text: "Hello." });
+    expect(extractLifecycleSignal("Hello.\n@signal done")).toEqual({ signal: "done", text: "Hello." });
+  });
+
   test("treats invalid signal-looking text as normal output", () => {
     const state = { pending: "", resolved: false };
 

@@ -1,10 +1,12 @@
 import type { LifecycleSignal } from "./lifecycle-contract";
 
 export function extractLifecycleSignal(text: string): { signal?: LifecycleSignal; text: string } {
-  const match = text.match(/^@signal\s+(done|no_op|blocked)\s*(?:\n|$)/);
+  const match = text.match(/(?:^|\n)@signal\s+(done|no_op|blocked)\s*(?:\n|$)/);
   if (!match) return { text };
   const signal = match[1] as LifecycleSignal;
-  const stripped = text.slice(match[0].length).trimStart();
+  const before = text.slice(0, match.index).trimEnd();
+  const after = text.slice(match.index! + match[0].length).trimStart();
+  const stripped = [before, after].filter(Boolean).join("\n");
   return { signal, text: stripped };
 }
 
