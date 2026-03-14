@@ -8,7 +8,6 @@ import { formatSubmitError, isAbortError, resolveNaturalRememberDirective } from
 import { createMessageStreamState } from "./chat-message-handler-stream";
 import { startRemoteTaskFollowup } from "./chat-message-handler-task-followup";
 import { isKnownSlashToken, suggestSlashCommands } from "./chat-slash";
-import { log } from "./log";
 import {
   appendInputHistory,
   applyUserTurn,
@@ -18,6 +17,7 @@ import {
 } from "./chat-turn";
 import type { Client } from "./client-contract";
 import { t } from "./i18n";
+import { log } from "./log";
 import { addMemory } from "./memory";
 import { palette } from "./palette";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";

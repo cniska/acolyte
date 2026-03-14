@@ -4,8 +4,9 @@ export function extractLifecycleSignal(text: string): { signal?: LifecycleSignal
   const match = text.match(/(?:^|\n)@signal\s+(done|no_op|blocked)\s*(?:\n|$)/);
   if (!match) return { text };
   const signal = match[1] as LifecycleSignal;
-  const before = text.slice(0, match.index).trimEnd();
-  const after = text.slice(match.index! + match[0].length).trimStart();
+  const matchIndex = match.index ?? 0;
+  const before = text.slice(0, matchIndex).trimEnd();
+  const after = text.slice(matchIndex + match[0].length).trimStart();
   const stripped = [before, after].filter(Boolean).join("\n");
   return { signal, text: stripped };
 }
