@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { createErrorStats } from "./error-handling";
+import { LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./error-primitives";
 import { scheduleMemoryCommit, shouldCommitMemory } from "./lifecycle";
 import type { RunContext } from "./lifecycle-contract";
 import { recoveryActionForError } from "./lifecycle-evaluate";
@@ -15,7 +16,6 @@ import { defaultLifecyclePolicy } from "./lifecycle-policy";
 import { phasePrepare } from "./lifecycle-prepare";
 import { acceptedLifecycleSignal, updateRepeatedFailureState } from "./lifecycle-state";
 import { createEmptyPromptBreakdownTotals } from "./lifecycle-usage";
-import { LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./error-primitives";
 import { createSessionContext, recordCall } from "./tool-guards";
 
 function createMockContext(overrides: Partial<RunContext> = {}): RunContext {

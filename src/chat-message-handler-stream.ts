@@ -1,7 +1,7 @@
 import { type ChatRow, createRow } from "./chat-contract";
+import { LIFECYCLE_ERROR_CODES } from "./error-primitives";
 import { palette } from "./palette";
 import { createId } from "./short-id";
-import { LIFECYCLE_ERROR_CODES } from "./error-primitives";
 import { createToolOutputState, type ToolOutput } from "./tool-output-content";
 
 export type MessageStreamState = {

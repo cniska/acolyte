@@ -1,6 +1,7 @@
 import { afterAll, describe, expect, test } from "bun:test";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
+import { TOOL_ERROR_CODES } from "./error-primitives";
 import {
   deleteTextFile,
   editCode,
@@ -12,7 +13,6 @@ import {
   writeTextFile,
 } from "./file-ops";
 import { testUuid } from "./test-utils";
-import { TOOL_ERROR_CODES } from "./error-primitives";
 
 const WORKSPACE = resolve(process.cwd());
 const tempFiles: string[] = [];

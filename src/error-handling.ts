@@ -1,7 +1,5 @@
 import type { z } from "zod";
 import { unreachable } from "./assert";
-import { domainIdSchema } from "./id-contract";
-import type { StreamError } from "./stream-error";
 import {
   ERROR_KINDS,
   type ErrorCode,
@@ -10,6 +8,8 @@ import {
   LIFECYCLE_ERROR_CODES,
   type ToolRecovery,
 } from "./error-primitives";
+import { domainIdSchema } from "./id-contract";
+import type { StreamError } from "./stream-error";
 
 export type ErrorCategory = "timeout" | "file-not-found" | "guard-blocked" | "other";
 export type ErrorSource = "generate" | "tool-result" | "tool-error" | "server";

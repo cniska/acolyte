@@ -5,10 +5,10 @@ import { formatAssistantReplyOutput, printIndentedDim } from "./cli-format";
 import type { Client } from "./client-contract";
 import { nowIso } from "./datetime";
 import { formatPromptError } from "./error-messages";
+import { LIFECYCLE_ERROR_CODES } from "./error-primitives";
 import { t } from "./i18n";
 import type { ResourceId } from "./resource-id";
 import type { Session } from "./session-contract";
-import { LIFECYCLE_ERROR_CODES } from "./error-primitives";
 import { createToolOutputState, formatToolOutput } from "./tool-output-content";
 import { printDim, printError, printOutput, streamText } from "./ui";
 
