@@ -26,11 +26,10 @@ Each provider has a configurable base URL with a sensible default:
 
 ## Local models
 
-Use `acolyte init ollama` to write a project-scoped OpenAI-compatible base URL for a local Ollama server.
-
-Then pull a model and set it explicitly:
+Configure an OpenAI-compatible local endpoint directly in project config, then set the model explicitly:
 
 ```bash
+acolyte config set --project openaiBaseUrl http://localhost:11434/v1
 ollama pull <model>
 acolyte config set --project model openai-compatible/<model>
 ```

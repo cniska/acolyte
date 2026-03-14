@@ -14,18 +14,16 @@ The CLI is the primary interface for working with Acolyte.
 - `acolyte memory list|add`: manage memory
 - `acolyte config list|set|unset`: manage configuration
 - `acolyte tool <tool-id> [args]`: run a tool directly
-- `acolyte init [provider]`: initialize provider or local model setup
+- `acolyte init [provider]`: initialize provider setup
 
 Run `acolyte <command> help` for detailed usage.
 
 ## Local models
 
-Use `acolyte init ollama` to configure a project to talk to a local Ollama server through the existing OpenAI-compatible provider path.
-
-Then set the project model explicitly:
+Configure the project to talk to a local OpenAI-compatible server, then set the project model explicitly:
 
 ```bash
-acolyte init ollama
+acolyte config set --project openaiBaseUrl http://localhost:11434/v1
 acolyte config set --project model openai-compatible/<model>
 ```
 

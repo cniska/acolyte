@@ -110,7 +110,7 @@ describe("getAvailableModels", () => {
 
     try {
       await getAvailableModels();
-      expect(authHeader).toBe("Bearer test-key");
+      expect(authHeader ?? "").toBe("Bearer test-key");
     } finally {
       globalThis.fetch = originalFetch;
     }

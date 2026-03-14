@@ -18,9 +18,7 @@ function createDeps(overrides?: Partial<InitDeps>): { deps: InitDeps; output: ()
     printDim: (message) => lines.push(message),
     printError: (message) => lines.push(message),
     readFile: (async () => "") as never,
-    readConfigForScope: (async () => ({})) as never,
     writeFile: async () => undefined,
-    writeConfig: async () => undefined,
     commandError: (name) => {
       calls.push(`commandError:${name}`);
     },
@@ -50,30 +48,7 @@ describe("cli-init", () => {
     await initMode(["invalid"], deps);
     expect(output()).toBe(
       dedent(`
-        Invalid provider. Use openai, anthropic, google, or ollama.
-      `),
-    );
-  });
-
-  test("ollama preset writes project config without prompting for api key", async () => {
-    let savedConfig: unknown;
-    let savedOptions: unknown;
-    const { deps, output } = createDeps({
-      prompt: () => {
-        throw new Error("prompt should not be called");
-      },
-      writeConfig: (async (config: unknown, options: unknown) => {
-        savedConfig = config;
-        savedOptions = options;
-      }) as never,
-    });
-    await initMode(["ollama"], deps);
-    expect(savedConfig).toEqual({ openaiBaseUrl: "http://localhost:11434/v1" });
-    expect(savedOptions).toEqual({ cwd: "/tmp/test", scope: "project" });
-    expect(output()).toBe(
-      dedent(`
-        Saved Ollama config in /tmp/test/.acolyte/config.toml
-        Next: start Ollama, pull a model, then run 'acolyte config set --project model openai-compatible/<model>'
+        Invalid provider. Use openai, anthropic, or google.
       `),
     );
   });

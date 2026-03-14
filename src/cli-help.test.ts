@@ -12,7 +12,7 @@ const runHelp: CliCommandHelp = {
 
 const initHelp: CliCommandHelp = {
   command: "init [provider]",
-  usage: "acolyte init [openai|anthropic|google|ollama]",
+  usage: "acolyte init [openai|anthropic|google]",
   description: "set up project configuration",
   examples: ["acolyte init"],
 };
