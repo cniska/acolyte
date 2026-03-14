@@ -66,6 +66,7 @@ describe("behavior analysis", () => {
 
     expect(analysis.score).toBe(1);
     expect(analysis.verdict).toBe("strong");
+    expect(analysis.correctnessIssues).toEqual([]);
   });
 
   test("analyzeBehavior penalizes spiraling runs", () => {
@@ -95,6 +96,7 @@ describe("behavior analysis", () => {
 
     expect(analysis.score).toBeLessThan(0.4);
     expect(analysis.verdict).toBe("weak");
+    expect(analysis.correctnessIssues).toEqual([]);
   });
 
   test("analyzeBehavior treats timeout without trace detail as mixed instead of perfect", () => {
@@ -106,5 +108,37 @@ describe("behavior analysis", () => {
 
     expect(analysis.score).toBe(0.7);
     expect(analysis.verdict).toBe("mixed");
+    expect(analysis.correctnessIssues).toEqual([]);
+  });
+
+  test("analyzeBehavior penalizes incorrect final workspace state", () => {
+    const analysis = analyzeBehavior({
+      exitCode: 0,
+      expectedChangeCount: 2,
+      correctnessIssues: ["README.md should link to CONTRIBUTING.md"],
+      trace: {
+        taskId: "task_123",
+        modelCalls: 3,
+        totalToolCalls: 4,
+        uniqueToolCount: 3,
+        readCalls: 2,
+        searchCalls: 1,
+        writeCalls: 2,
+        preWriteDiscoveryCalls: 2,
+        regenerationCount: 0,
+        regenerationLimitHit: false,
+        guardBlockedCount: 0,
+        guardFlagSetCount: 0,
+        hasError: false,
+        timeoutErrorCount: 0,
+        fileNotFoundErrorCount: 0,
+        guardBlockedErrorCount: 0,
+        otherErrorCount: 0,
+      },
+    });
+
+    expect(analysis.score).toBe(0.8);
+    expect(analysis.verdict).toBe("mixed");
+    expect(analysis.correctnessIssues).toEqual(["README.md should link to CONTRIBUTING.md"]);
   });
 });

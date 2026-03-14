@@ -41,6 +41,7 @@ const behaviorAnalysisSchema = z.object({
   score: z.number().min(0).max(1),
   verdict: z.enum(["strong", "mixed", "weak"]),
   reasons: z.array(z.string().min(1)),
+  correctnessIssues: z.array(z.string().min(1)),
 });
 
 const behaviorOutputSchema = z.object({
@@ -185,11 +186,13 @@ function summarizeTrace(lines: string[]): z.infer<typeof behaviorTraceSummarySch
 export function analyzeBehavior(run: {
   exitCode: number;
   expectedChangeCount: number;
+  correctnessIssues?: string[];
   trace?: z.infer<typeof behaviorTraceSummarySchema>;
 }): z.infer<typeof behaviorAnalysisSchema> {
   let score = 1;
   const reasons: string[] = [];
   const trace = run.trace;
+  const correctnessIssues = run.correctnessIssues ?? [];
 
   if (run.exitCode !== 0) {
     score -= 0.3;
@@ -247,11 +250,15 @@ export function analyzeBehavior(run: {
     score -= Math.min(0.1, ((trace?.modelCalls ?? 0) - Math.max(4, run.expectedChangeCount + 2)) * 0.02);
     reasons.push(`excess model calls: ${trace?.modelCalls}`);
   }
+  if (correctnessIssues.length > 0) {
+    score -= Math.min(0.4, correctnessIssues.length * 0.2);
+    reasons.push(`correctness issues: ${correctnessIssues.length}`);
+  }
 
   const normalized = Math.max(0, Number(score.toFixed(2)));
   const verdict = normalized >= 0.85 ? "strong" : normalized >= 0.6 ? "mixed" : "weak";
   if (reasons.length === 0) reasons.push("clean bounded run");
-  return behaviorAnalysisSchema.parse({ score: normalized, verdict, reasons });
+  return behaviorAnalysisSchema.parse({ score: normalized, verdict, reasons, correctnessIssues });
 }
 
 function parseInteger(token: string | undefined, flag: string): number {
@@ -319,6 +326,19 @@ function printUsage(): void {
 async function createBehaviorWorkspace(scenarioId: BehaviorScenarioId): Promise<string> {
   const workspace = await mkdtemp(join(tmpdir(), `acolyte-behavior-${scenarioId}-`));
   await mkdir(workspace, { recursive: true });
+  await runTimedCommand(["git", "init", "-b", "main"], process.env as Record<string, string>, 10_000, workspace);
+  await runTimedCommand(
+    ["git", "config", "user.email", "behavior@example.com"],
+    process.env as Record<string, string>,
+    10_000,
+    workspace,
+  );
+  await runTimedCommand(
+    ["git", "config", "user.name", "Behavior Harness"],
+    process.env as Record<string, string>,
+    10_000,
+    workspace,
+  );
   return workspace;
 }
 
@@ -326,6 +346,8 @@ async function runScenario(scenarioId: BehaviorScenarioId, model: string, timeou
   const scenario = BEHAVIOR_SCENARIO_BY_ID[scenarioId];
   const workspace = await createBehaviorWorkspace(scenario.id);
   await scenario.setup(workspace);
+  await runTimedCommand(["git", "add", "."], process.env as Record<string, string>, 10_000, workspace);
+  await runTimedCommand(["git", "commit", "-m", "baseline"], process.env as Record<string, string>, 10_000, workspace);
   const beforeLines = await readLogLines();
 
   const result = await runTimedCommand(
@@ -336,6 +358,7 @@ async function runScenario(scenarioId: BehaviorScenarioId, model: string, timeou
   );
   const afterLines = await readLogLines();
   const trace = summarizeTrace(afterLines.slice(beforeLines.length));
+  const correctnessIssues = await scenario.validate(workspace);
 
   return behaviorOutputSchema.parse({
     scenarioId: scenario.id,
@@ -352,6 +375,7 @@ async function runScenario(scenarioId: BehaviorScenarioId, model: string, timeou
     analysis: analyzeBehavior({
       exitCode: result.exitCode,
       expectedChangeCount: scenario.expectedChanges.length,
+      correctnessIssues,
       trace,
     }),
   });
@@ -370,6 +394,9 @@ function printRun(run: BehaviorRun): void {
     );
   }
   console.log(`analysis: ${run.analysis.reasons.join("; ")}`);
+  if (run.analysis.correctnessIssues.length > 0) {
+    console.log(`correctness: ${run.analysis.correctnessIssues.join("; ")}`);
+  }
   if (run.stdout.trim().length > 0) console.log(run.stdout.trimEnd());
   if (run.stderr.trim().length > 0) console.error(run.stderr.trimEnd());
 }
