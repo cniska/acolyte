@@ -134,6 +134,11 @@ function editedPathsSinceLastVerify(session: SessionContext): string[] {
 
 type RedundantQueryKind = "narrower" | "scope-narrowing";
 
+type ReadRequestSignature = {
+  path: string;
+  signature: string;
+};
+
 function redundantQueryKind(input: {
   toolName: string;
   session: SessionContext;
@@ -175,6 +180,24 @@ function normalizeGuardArgValue(value: unknown): unknown {
   return value;
 }
 
+function extractReadRequestSignatures(args: Record<string, unknown>): ReadRequestSignature[] {
+  const rawPaths = Array.isArray(args.paths) ? args.paths : [];
+  const signatures: ReadRequestSignature[] = [];
+  for (const entry of rawPaths) {
+    if (!entry || typeof entry !== "object") continue;
+    const pathValue = (entry as { path?: unknown }).path;
+    if (typeof pathValue !== "string") continue;
+    const path = normalizePath(pathValue.trim().toLowerCase());
+    if (path.length === 0) continue;
+    const start = (entry as { start?: unknown }).start;
+    const end = (entry as { end?: unknown }).end;
+    const startValue = typeof start === "number" ? String(start) : "";
+    const endValue = typeof end === "number" ? String(end) : "";
+    signatures.push({ path, signature: `${path}\u0000${startValue}\u0000${endValue}` });
+  }
+  return signatures;
+}
+
 function guardArgsEqual(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
   return JSON.stringify(normalizeGuardArgValue(a)) === JSON.stringify(normalizeGuardArgValue(b));
 }
@@ -213,7 +236,10 @@ const fileChurnGuard: ToolGuard = {
           : []
         : extractReadPaths(args, { normalize: true });
     if (targetPaths.length === 0) return;
+    const requestedReadSignatures =
+      toolName === "read-file" ? extractReadRequestSignatures(args).map((entry) => entry.signature) : [];
     const pathCounts = new Map<string, { readCount: number; editCount: number }>();
+    const readSignaturesByPath = new Map<string, Set<string>>();
     const countsForPath = (path: string): { readCount: number; editCount: number } => {
       const existing = pathCounts.get(path);
       if (existing) return existing;
@@ -221,11 +247,19 @@ const fileChurnGuard: ToolGuard = {
       pathCounts.set(path, created);
       return created;
     };
+    const signaturesForPath = (path: string): Set<string> => {
+      const existing = readSignaturesByPath.get(path);
+      if (existing) return existing;
+      const created = new Set<string>();
+      readSignaturesByPath.set(path, created);
+      return created;
+    };
     const sinceLastVerify = callsSinceLastVerify(session);
     for (const entry of sinceLastVerify) {
       if (entry.toolName === "read-file") {
-        for (const path of extractReadPaths(entry.args, { normalize: true })) {
-          countsForPath(path).readCount += 1;
+        for (const readEntry of extractReadRequestSignatures(entry.args)) {
+          countsForPath(readEntry.path).readCount += 1;
+          signaturesForPath(readEntry.path).add(readEntry.signature);
         }
       } else if (isWriteTool(session, entry.toolName) && typeof entry.args.path === "string") {
         countsForPath(normalizePath(entry.args.path)).editCount += 1;
@@ -235,11 +269,15 @@ const fileChurnGuard: ToolGuard = {
     for (const target of targetPaths) {
       const { readCount, editCount } = countsForPath(target);
 
-      if (toolName === "read-file" && editCount > 0) {
+      if (
+        toolName === "read-file" &&
+        editCount > 0 &&
+        requestedReadSignatures.some((signature) => signaturesForPath(target).has(signature))
+      ) {
         report("blocked", target);
         throw new Error(
-          `File "${target}" was already edited successfully in this turn. ` +
-            "Use the diff you already have or continue with the next step instead of rereading it.",
+          `File "${target}" was already edited successfully in this turn, and this reread repeats an earlier read. ` +
+            "Use the diff you already have or read a different section if you need new context.",
         );
       }
 

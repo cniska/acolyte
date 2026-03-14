@@ -22,6 +22,9 @@ export type FindReplaceEdit = { find: string; replace: string };
 export type LineRangeEdit = { startLine: number; endLine: number; replace: string };
 export type FileEdit = FindReplaceEdit | LineRangeEdit;
 
+const MAX_FIND_SNIPPET_LINES = 8;
+const MAX_FIND_SNIPPET_CHARS = 500;
+
 export async function findFiles(workspace: string, patterns: string[], maxResults = 40): Promise<string> {
   if (patterns.length === 0) throw new Error("At least one pattern is required");
   const allFiles = await collectWorkspaceFiles(workspace);
@@ -131,8 +134,6 @@ export async function editFile(input: {
   const absPath = ensurePathWithinAllowedRoots(input.path, "Edit", input.workspace);
   const raw = await readFile(absPath, "utf8");
   const lines = raw.split("\n");
-  const MAX_FIND_SNIPPET_LINES = 8;
-  const MAX_FIND_SNIPPET_CHARS = 500;
 
   // Locate all match ranges in the original text.
   const ranges: Array<{ start: number; end: number; replace: string }> = [];

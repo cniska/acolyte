@@ -146,14 +146,24 @@ describe("file-churn guard", () => {
     ).not.toThrow();
   });
 
-  test("blocks rereading a file after a successful edit before verify", () => {
+  test("blocks repeating the same reread after a successful edit before verify", () => {
     const session = createSessionContext();
     session.writeTools = new Set(["edit-file"]);
     recordCall(session, "read-file", { paths: [{ path: "src/foo.ts" }] });
     recordCall(session, "edit-file", { path: "src/foo.ts" });
     expect(() => runGuards({ toolName: "read-file", args: { paths: [{ path: "src/foo.ts" }] }, session })).toThrow(
-      /already edited successfully in this turn/,
+      /this reread repeats an earlier read/,
     );
+  });
+
+  test("allows reading a different range of the same file after an edit", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file"]);
+    recordCall(session, "read-file", { paths: [{ path: "src/foo.ts", start: 1, end: 40 }] });
+    recordCall(session, "edit-file", { path: "src/foo.ts" });
+    expect(() =>
+      runGuards({ toolName: "read-file", args: { paths: [{ path: "src/foo.ts", start: 41, end: 80 }] }, session }),
+    ).not.toThrow();
   });
 
   test("allows reading a different file after an edit", () => {
@@ -174,7 +184,7 @@ describe("file-churn guard", () => {
       recordCall(session, "edit-file", { path: "src/foo.ts" });
     }
     expect(() => runGuards({ toolName: "read-file", args: { paths: [{ path: "src/foo.ts" }] }, session })).toThrow(
-      /already edited successfully in this turn/,
+      /this reread repeats an earlier read/,
     );
   });
 
