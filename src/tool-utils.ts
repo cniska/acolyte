@@ -4,6 +4,21 @@ import { tmpdir } from "node:os";
 import { join, relative, resolve } from "node:path";
 
 const TEMP_ROOTS = Array.from(new Set([resolve(tmpdir()), resolve("/tmp"), resolve("/private/tmp")]));
+const GIT_ENV_KEYS = [
+  "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+  "GIT_COMMON_DIR",
+  "GIT_CONFIG",
+  "GIT_CONFIG_COUNT",
+  "GIT_CONFIG_GLOBAL",
+  "GIT_CONFIG_NOSYSTEM",
+  "GIT_CONFIG_PARAMETERS",
+  "GIT_CONFIG_SYSTEM",
+  "GIT_DIR",
+  "GIT_INDEX_FILE",
+  "GIT_OBJECT_DIRECTORY",
+  "GIT_PREFIX",
+  "GIT_WORK_TREE",
+] as const;
 
 function resolveAgentPath(pathInput: string, workspace: string): string {
   return resolve(workspace, pathInput);
@@ -33,11 +48,14 @@ export async function runCommand(
   cmd: string[],
   workspace: string,
 ): Promise<{ code: number; stdout: string; stderr: string }> {
+  const env = { ...process.env };
+  for (const key of GIT_ENV_KEYS) delete env[key];
   const proc = Bun.spawn({
     cmd,
     cwd: workspace,
     stdout: "pipe",
     stderr: "pipe",
+    env,
   });
   const [stdoutText, stderrText] = await Promise.all([
     new Response(proc.stdout).text(),
