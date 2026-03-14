@@ -2,11 +2,12 @@ import { describe, expect, test } from "bun:test";
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { PROTOCOL_VERSION } from "./protocol";
 import { ensureLocalServer, localServerStatus, serverDaemonInternals, stopLocalServer } from "./server-daemon";
 import { startTestServer } from "./test-utils";
 
 function compatibleStatusResponse(): Response {
-  return Response.json({ ok: true, protocol_version: "1" });
+  return Response.json({ ok: true, protocol_version: PROTOCOL_VERSION });
 }
 
 describe("server daemon internals", () => {

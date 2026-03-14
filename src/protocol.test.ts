@@ -3,7 +3,7 @@ import { formatServerCapabilities, PROTOCOL_VERSION } from "./protocol";
 
 describe("protocol metadata", () => {
   test("exposes stable protocol version", () => {
-    expect(PROTOCOL_VERSION).toBe("1");
+    expect(PROTOCOL_VERSION).toBe("2");
   });
 
   test("formats server capabilities as deterministic csv", () => {
