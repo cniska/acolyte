@@ -1,7 +1,12 @@
 import type { AgentMode } from "./agent-contract";
 import { createModeInstructions } from "./agent-instructions";
 import type { VerifyScope } from "./api";
-import type { LifecycleError, LifecycleEventName, LifecycleFeedback, VerifyOutcome } from "./lifecycle-contract";
+import type {
+  LifecycleError,
+  LifecycleEventName,
+  LifecycleFeedback,
+  LifecycleState,
+} from "./lifecycle-contract";
 import type { LifecyclePolicy } from "./lifecycle-policy";
 import { lintFiles } from "./lint-reflection";
 import { extractReadPaths } from "./tool-arg-paths";
@@ -29,11 +34,7 @@ export type EvaluatorContext = {
   session: SessionContext;
   workspace: string | undefined;
   request: { message: string; verifyScope?: VerifyScope };
-  lifecycleState: {
-    feedback: LifecycleFeedback[];
-    verifyOutcome?: VerifyOutcome;
-    repeatedFailure?: { signature: string; count: number; status: "pending" | "surfaced" };
-  };
+  lifecycleState: LifecycleState;
   currentError?: LifecycleError;
 };
 
