@@ -4,6 +4,7 @@ import { scheduleMemoryCommit, shouldCommitMemory } from "./lifecycle";
 import type { RunContext } from "./lifecycle-contract";
 import { recoveryActionForError } from "./lifecycle-evaluate";
 import {
+  editFileFindNotFoundEvaluator,
   guardRecoveryEvaluator,
   multiMatchEditEvaluator,
   oversizedEditSnippetEvaluator,
@@ -618,6 +619,41 @@ describe("oversizedEditSnippetEvaluator", () => {
       result: { text: "Attempted edit.", toolCalls: [] },
     });
     expect(oversizedEditSnippetEvaluator.evaluate(ctx).type).toBe("done");
+  });
+});
+
+describe("editFileFindNotFoundEvaluator", () => {
+  test("returns regenerate when edit-file find text no longer matches", () => {
+    const session = createSessionContext();
+    session.callLog = [{ toolName: "edit-file", args: { path: "src/priority.ts" }, success: false }];
+    const ctx = createMockContext({
+      request: { model: "gpt-5-mini", message: "Make repeated return changes", history: [] },
+      initialMode: "work",
+      session,
+      observedTools: new Set(["read-file", "edit-file"]),
+      currentError: {
+        code: "E_EDIT_FILE_FIND_NOT_FOUND",
+        tool: "edit-file",
+        message: "edit-file failed: Find text not found in file: return undefined;",
+      },
+      result: { text: "Attempted edit.", toolCalls: [] },
+    });
+    const action = editFileFindNotFoundEvaluator.evaluate(ctx);
+    expect(action.type).toBe("regenerate");
+    if (action.type === "regenerate") {
+      expect(action.feedback?.summary).toBe("Your edit-file find snippet no longer matches the file.");
+      expect(action.feedback?.instruction).toContain("Do not retry the same stale find text");
+      expect(action.feedback?.instruction).toContain("Use the latest read-file output");
+    }
+  });
+
+  test("returns done for unrelated edit-file errors", () => {
+    const ctx = createMockContext({
+      initialMode: "work",
+      currentError: { tool: "edit-file", message: "edit-file failed: Find text matched 2 locations" },
+      result: { text: "Attempted edit.", toolCalls: [] },
+    });
+    expect(editFileFindNotFoundEvaluator.evaluate(ctx).type).toBe("done");
   });
 });
 

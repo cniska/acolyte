@@ -1,6 +1,8 @@
 export const TOOL_ERROR_CODES = {
   editFileMultiMatch: "E_EDIT_FILE_MULTI_MATCH",
   editFileFindTooLarge: "E_EDIT_FILE_FIND_TOO_LARGE",
+  editFileFindNotFound: "E_EDIT_FILE_FIND_NOT_FOUND",
+  editFileLineRangeTooLarge: "E_EDIT_FILE_LINE_RANGE_TOO_LARGE",
   editFileReplaceTooLarge: "E_EDIT_FILE_REPLACE_TOO_LARGE",
 } as const;
 

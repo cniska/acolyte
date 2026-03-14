@@ -105,6 +105,15 @@ describe("editFile", () => {
     ).rejects.toThrow("matched 3 locations");
   });
 
+  test("rejects missing find text with a structured error code", async () => {
+    const filePath = `/tmp/acolyte-test-not-found-${testUuid()}.txt`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, "alpha beta", "utf8");
+    await expect(
+      editFile({ workspace: WORKSPACE, path: filePath, edits: [{ find: "gamma", replace: "delta" }] }),
+    ).rejects.toMatchObject({ code: TOOL_ERROR_CODES.editFileFindNotFound });
+  });
+
   test("allows a tiny whole-file snippet when it is only a few lines", async () => {
     const filePath = `/tmp/acolyte-test-small-snippet-${crypto.randomUUID()}.md`;
     tempFiles.push(filePath);
@@ -259,6 +268,19 @@ describe("editFile", () => {
     expect(result).toContain("edits=1");
     const content = await readFile(filePath, "utf8");
     expect(content).toBe("entirely\nnew\ncontent\n");
+  });
+
+  test("line-range rejects whole-file clear edits", async () => {
+    const filePath = `/tmp/acolyte-test-lr8-${testUuid()}.txt`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, "line1\nline2\nline3\n", "utf8");
+    await expect(
+      editFile({
+        workspace: WORKSPACE,
+        path: filePath,
+        edits: [{ startLine: 1, endLine: 99, replace: "" }],
+      }),
+    ).rejects.toMatchObject({ code: TOOL_ERROR_CODES.editFileLineRangeTooLarge });
   });
 });
 

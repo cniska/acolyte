@@ -4,7 +4,11 @@ import type { VerifyScope } from "./api";
 import type { LifecycleError, LifecycleEventName, LifecycleFeedback, VerifyOutcome } from "./lifecycle-contract";
 import type { LifecyclePolicy } from "./lifecycle-policy";
 import { lintFiles } from "./lint-reflection";
-import { isEditFileMultiMatchSignal, isOversizedEditSnippetSignal } from "./error-handling";
+import {
+  isEditFileFindNotFoundSignal,
+  isEditFileMultiMatchSignal,
+  isOversizedEditSnippetSignal,
+} from "./error-handling";
 import { extractReadPaths } from "./tool-arg-paths";
 import { haveChangesBeenVerified, type SessionContext, scopedCallLog } from "./tool-guards";
 import { WRITE_TOOL_SET, WRITE_TOOLS } from "./tool-registry";
@@ -289,6 +293,38 @@ export const oversizedEditSnippetEvaluator: Evaluator = {
             ? `Keep the change in '${targetPath}' and batch the needed replacements into one edit call. `
             : "Keep the change in the same file and batch the needed replacements into one edit call. ") +
           "If the same literal code appears in multiple locations, prefer edit-code with a real ast-grep pattern.",
+      },
+    };
+  },
+};
+
+export const editFileFindNotFoundEvaluator: Evaluator = {
+  id: "edit-file-find-not-found",
+  evaluate(ctx) {
+    if (!ctx.result) return { type: "done" };
+    if (ctx.initialMode !== "work") return { type: "done" };
+    if (ctx.currentError?.tool !== "edit-file") return { type: "done" };
+    if (!isEditFileFindNotFoundSignal({ code: ctx.currentError.code, message: ctx.currentError.message })) {
+      return { type: "done" };
+    }
+
+    const targetPath = findLastEditFilePath(ctx);
+    ctx.debug("lifecycle.eval.edit_file_find_not_found", {
+      error: ctx.currentError.message,
+      target_path: targetPath ?? null,
+    });
+    return {
+      type: "regenerate",
+      feedback: {
+        source: "multi-match",
+        mode: "work",
+        summary: "Your edit-file find snippet no longer matches the file.",
+        instruction:
+          "Do not retry the same stale find text. Use the latest read-file output to build an exact snippet, or switch to a line-range edit for the visible lines you need to change. " +
+          (targetPath
+            ? `Keep the change in '${targetPath}' and make one bounded edit. `
+            : "Keep the change in the same file and make one bounded edit. ") +
+          "If your previous edit already changed nearby lines, reread only the needed range and anchor the next edit to that updated text.",
       },
     };
   },

@@ -47,10 +47,19 @@ export function isEditFileMultiMatchSignal(input: { code?: string; message: stri
   );
 }
 
+export function isEditFileFindNotFoundSignal(input: { code?: string; message: string }): boolean {
+  return (
+    input.code === TOOL_ERROR_CODES.editFileFindNotFound ||
+    hasToolErrorCode(input.message, TOOL_ERROR_CODES.editFileFindNotFound)
+  );
+}
+
 export function isOversizedEditSnippetSignal(input: { code?: string; message: string }): boolean {
   return (
     input.code === TOOL_ERROR_CODES.editFileFindTooLarge ||
     input.code === TOOL_ERROR_CODES.editFileReplaceTooLarge ||
+    input.code === TOOL_ERROR_CODES.editFileLineRangeTooLarge ||
+    hasToolErrorCode(input.message, TOOL_ERROR_CODES.editFileLineRangeTooLarge) ||
     hasToolErrorCode(input.message, TOOL_ERROR_CODES.editFileReplaceTooLarge) ||
     hasToolErrorCode(input.message, TOOL_ERROR_CODES.editFileFindTooLarge)
   );

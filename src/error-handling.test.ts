@@ -6,6 +6,7 @@ import {
   createStreamError,
   errorCodeFromCategory,
   errorKindFromCategory,
+  isEditFileFindNotFoundSignal,
   isEditFileMultiMatchSignal,
   isOversizedEditSnippetSignal,
   parseErrorInfo,
@@ -72,9 +73,23 @@ describe("error handling helpers", () => {
     expect(isEditFileMultiMatchSignal({ message: "random error", code: undefined })).toBe(false);
   });
 
+  test("isEditFileFindNotFoundSignal accepts code or embedded error code", () => {
+    expect(isEditFileFindNotFoundSignal({ code: TOOL_ERROR_CODES.editFileFindNotFound, message: "any" })).toBe(true);
+    expect(
+      isEditFileFindNotFoundSignal({
+        message: `[${TOOL_ERROR_CODES.editFileFindNotFound}] Find text not found in file: return undefined;`,
+        code: undefined,
+      }),
+    ).toBe(true);
+    expect(isEditFileFindNotFoundSignal({ message: "random error", code: undefined })).toBe(false);
+  });
+
   test("isOversizedEditSnippetSignal accepts code or embedded error code", () => {
     expect(isOversizedEditSnippetSignal({ code: TOOL_ERROR_CODES.editFileFindTooLarge, message: "any" })).toBe(true);
     expect(isOversizedEditSnippetSignal({ code: TOOL_ERROR_CODES.editFileReplaceTooLarge, message: "any" })).toBe(
+      true,
+    );
+    expect(isOversizedEditSnippetSignal({ code: TOOL_ERROR_CODES.editFileLineRangeTooLarge, message: "any" })).toBe(
       true,
     );
     expect(
@@ -89,6 +104,12 @@ describe("error handling helpers", () => {
         code: undefined,
       }),
     ).toBe(true);
+    expect(
+      isOversizedEditSnippetSignal({
+        message: `[${TOOL_ERROR_CODES.editFileLineRangeTooLarge}] line-range edit would clear the entire file`,
+        code: undefined,
+      }),
+    ).toBe(true);
     expect(isOversizedEditSnippetSignal({ message: "random error", code: undefined })).toBe(false);
   });
 
@@ -100,11 +121,17 @@ describe("error handling helpers", () => {
     expect(recoveryActionForError({ errorCode: TOOL_ERROR_CODES.editFileMultiMatch, unknownErrorCount: 0 }, 2)).toBe(
       "none",
     );
+    expect(recoveryActionForError({ errorCode: TOOL_ERROR_CODES.editFileFindNotFound, unknownErrorCount: 2 }, 2)).toBe(
+      "none",
+    );
     expect(recoveryActionForError({ errorCode: TOOL_ERROR_CODES.editFileFindTooLarge, unknownErrorCount: 2 }, 2)).toBe(
       "none",
     );
     expect(
       recoveryActionForError({ errorCode: TOOL_ERROR_CODES.editFileReplaceTooLarge, unknownErrorCount: 2 }, 2),
+    ).toBe("none");
+    expect(
+      recoveryActionForError({ errorCode: TOOL_ERROR_CODES.editFileLineRangeTooLarge, unknownErrorCount: 2 }, 2),
     ).toBe("none");
   });
 

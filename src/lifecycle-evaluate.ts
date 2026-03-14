@@ -2,6 +2,7 @@ import { type RecoveryAction, recoveryActionForError as resolveRecoveryAction } 
 import { t } from "./i18n";
 import type { LifecycleInput, RunContext, SavedRegenerationState } from "./lifecycle-contract";
 import {
+  editFileFindNotFoundEvaluator,
   type Evaluator,
   guardRecoveryEvaluator,
   lintEvaluator,
@@ -18,6 +19,7 @@ const EVALUATORS: Evaluator[] = [
   guardRecoveryEvaluator,
   multiMatchEditEvaluator,
   oversizedEditSnippetEvaluator,
+  editFileFindNotFoundEvaluator,
   lintEvaluator,
   verifyCycle,
   repeatedFailureEvaluator,

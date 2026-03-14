@@ -157,7 +157,12 @@ export async function editFile(input: {
         );
       }
       const count = raw.split(edit.find).length - 1;
-      if (count === 0) throw new Error(`Find text not found in file: ${edit.find.slice(0, 60)}`);
+      if (count === 0) {
+        throw createToolError(
+          TOOL_ERROR_CODES.editFileFindNotFound,
+          `Find text not found in file: ${edit.find.slice(0, 60)}`,
+        );
+      }
       if (count > 1) {
         const message = `Find text matched ${count} locations (${edit.find.slice(0, 40)}…). Provide a longer, more unique snippet to match exactly one location, or use edit-code for multi-location code changes.`;
         throw createToolError(TOOL_ERROR_CODES.editFileMultiMatch, message);
@@ -171,6 +176,12 @@ export async function editFile(input: {
       const clampedEnd = Math.min(endLine, lines.length);
       if (clampedEnd !== endLine) {
         // Silently clamp — the model almost always means "to end of file".
+      }
+      if (startLine === 1 && clampedEnd === lines.length && replace.trim().length === 0) {
+        throw createToolError(
+          TOOL_ERROR_CODES.editFileLineRangeTooLarge,
+          "line-range edit would clear the entire file. Use a bounded range edit, or delete-file if the file should be removed.",
+        );
       }
       // Convert 1-based inclusive line range to character offsets.
       let charStart = 0;
