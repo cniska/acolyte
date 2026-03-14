@@ -5,10 +5,21 @@ const editCodeScopeSchema = {
   withinSymbol: z.string().min(1).optional(),
 };
 
+const editCodePatternStrictnessSchema = z.enum(["cst", "smart", "ast", "relaxed", "signature"]);
+
+export const editCodePatternObjectSchema = z.object({
+  context: z.string().min(1),
+  selector: z.string().min(1).optional(),
+  strictness: editCodePatternStrictnessSchema.optional(),
+});
+
+export const editCodePatternSchema = z.union([z.string().min(1), editCodePatternObjectSchema]);
+
 export const editCodePatternEditSchema = z.object({
   op: z.literal("replace"),
-  pattern: z.string().min(1),
+  pattern: editCodePatternSchema,
   replacement: z.string(),
+  kind: z.string().min(1).optional(),
   ...editCodeScopeSchema,
 });
 
@@ -24,3 +35,4 @@ export const editCodeEditSchema = z.discriminatedUnion("op", [editCodePatternEdi
 export type EditCodePatternEdit = z.infer<typeof editCodePatternEditSchema>;
 export type EditCodeRenameEdit = z.infer<typeof editCodeRenameEditSchema>;
 export type EditCodeEdit = z.infer<typeof editCodeEditSchema>;
+export type EditCodePattern = z.infer<typeof editCodePatternSchema>;

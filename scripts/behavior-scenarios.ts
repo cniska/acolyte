@@ -11,6 +11,7 @@ const behaviorScenarioIdSchema = z.enum([
   "bounded-return-fix",
   "scan-code-yaml-recovery",
   "scoped-edit-code-rename",
+  "class-field-edit-code-rename",
 ]);
 
 export type BehaviorScenarioId = z.infer<typeof behaviorScenarioIdSchema>;
@@ -496,6 +497,62 @@ async function validateScopedEditCodeRenameWorkspace(workspace: string): Promise
   return issues;
 }
 
+async function createClassFieldEditCodeRenameWorkspace(workspace: string): Promise<void> {
+  await writeWorkspaceFile(
+    workspace,
+    "src/provider-config.js",
+    [
+      "class ProviderConfig {",
+      '  alias = "acolyte-mini";',
+      "  label() {",
+      "    return this.alias;",
+      "  }",
+      "}",
+      "",
+      'const alias = "outside";',
+      "",
+    ].join("\n"),
+  );
+}
+
+async function validateClassFieldEditCodeRenameWorkspace(workspace: string): Promise<string[]> {
+  const issues: string[] = [];
+  const content = await readWorkspaceFile(workspace, "src/provider-config.js");
+  if (!content.includes('defaultAlias = "acolyte-mini";')) {
+    issues.push("ProviderConfig class field should be renamed to defaultAlias");
+  }
+  if (content.includes('  alias = "acolyte-mini";')) {
+    issues.push("ProviderConfig class field should not keep alias");
+  }
+  if (!content.includes("return this.defaultAlias;")) {
+    issues.push("ProviderConfig method should use this.defaultAlias");
+  }
+  if (!content.includes('const alias = "outside";')) {
+    issues.push("top-level alias should remain unchanged");
+  }
+  return issues;
+}
+
+function validateClassFieldEditCodeRenameTrace(traceLines: string[]): string[] {
+  const issues: string[] = [];
+  const toolCallLines = traceLines.filter((line) => line.includes("event=lifecycle.tool.call"));
+  const firstTool = toolCallLines[0];
+  if (!firstTool || !firstTool.includes("tool=read-file") || !firstTool.includes("src/provider-config.js")) {
+    issues.push("first tool call should be read-file on src/provider-config.js");
+  }
+  const editCodeCalls = toolCallLines.filter(
+    (line) => line.includes("tool=edit-code") && line.includes("path=src/provider-config.js"),
+  ).length;
+  if (editCodeCalls === 0) issues.push("class-field rename scenario should use edit-code on src/provider-config.js");
+  if (editCodeCalls > 2) {
+    issues.push(`class-field rename scenario should use at most 2 edit-code calls, saw ${editCodeCalls}`);
+  }
+  if (toolCallLines.some((line) => line.includes("tool=edit-file") && line.includes("path=src/provider-config.js"))) {
+    issues.push("class-field rename scenario should not fall back to edit-file on src/provider-config.js");
+  }
+  return issues;
+}
+
 function validateScopedEditCodeRenameTrace(traceLines: string[]): string[] {
   const issues: string[] = [];
   const toolCallLines = traceLines.filter((line) => line.includes("event=lifecycle.tool.call"));
@@ -591,6 +648,16 @@ export const BEHAVIOR_SCENARIOS: BehaviorScenario[] = [
     setup: createScopedEditCodeRenameWorkspace,
     validate: validateScopedEditCodeRenameWorkspace,
     validateTrace: validateScopedEditCodeRenameTrace,
+  },
+  {
+    id: "class-field-edit-code-rename",
+    description: "Scoped class-field rename using edit-code with withinSymbol.",
+    prompt:
+      'In src/provider-config.js, rename `alias` to `defaultAlias` inside `ProviderConfig` only. Use `edit-code` with a structured rename edit like { op: "rename", from: "alias", to: "defaultAlias", withinSymbol: "ProviderConfig" }. Update only that file, then stop.',
+    expectedChanges: ["src/provider-config.js"],
+    setup: createClassFieldEditCodeRenameWorkspace,
+    validate: validateClassFieldEditCodeRenameWorkspace,
+    validateTrace: validateClassFieldEditCodeRenameTrace,
   },
 ];
 

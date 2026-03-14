@@ -37,11 +37,12 @@ describe("behavior scenarios", () => {
     expect(() => parseBehaviorScenarioId("wrong")).toThrow();
   });
 
-  test("includes bounded-return-fix, scan-code-yaml-recovery, two-file-deps-rename, and scoped-edit-code-rename scenarios", () => {
+  test("includes bounded-return-fix, scan-code-yaml-recovery, two-file-deps-rename, scoped-edit-code-rename, and class-field-edit-code-rename scenarios", () => {
     expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "bounded-return-fix")).toBe(true);
     expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "scan-code-yaml-recovery")).toBe(true);
     expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "two-file-deps-rename")).toBe(true);
     expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "scoped-edit-code-rename")).toBe(true);
+    expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "class-field-edit-code-rename")).toBe(true);
   });
 });
 

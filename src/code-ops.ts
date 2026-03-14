@@ -2,7 +2,7 @@ import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import * as napi from "@ast-grep/napi";
 import { invariant } from "./assert";
-import type { EditCodeEdit, EditCodeRenameEdit } from "./code-contract";
+import type { EditCodeEdit, EditCodePattern, EditCodeRenameEdit } from "./code-contract";
 import { createToolError, type EditCodeRecoveryKind, TOOL_ERROR_CODES, type ToolRecovery } from "./error-primitives";
 import { createDiff, displayPathForDiff, ensurePathWithinAllowedRoots, IGNORED_DIRS } from "./tool-utils";
 
@@ -134,6 +134,10 @@ function resolveReplacementMetavariable(match: napi.SgNode, metavar: string, sou
 }
 
 function nodeHasWithinSymbol(node: napi.SgNode, symbol: string): boolean {
+  if (node.kind() === "class_declaration") {
+    const name = node.field("name");
+    return name?.text() === symbol;
+  }
   if (node.kind() === "function_declaration") {
     const name = node.field("name");
     return name?.text() === symbol;
@@ -160,6 +164,27 @@ function matchIsWithinSymbol(match: napi.SgNode, symbol: string): boolean {
 
 function isRenameEdit(edit: EditCodeEdit): edit is EditCodeRenameEdit {
   return edit.op === "rename";
+}
+
+function patternSourceText(pattern: EditCodePattern): string {
+  return typeof pattern === "string" ? pattern : pattern.context;
+}
+
+function patternLabel(pattern: EditCodePattern): string {
+  if (typeof pattern === "string") return pattern;
+  return `${pattern.context}${pattern.selector ? ` selector: ${pattern.selector}` : ""}${pattern.strictness ? ` strictness: ${pattern.strictness}` : ""}`;
+}
+
+function replaceRuleForEdit(edit: Exclude<EditCodeEdit, EditCodeRenameEdit>): Record<string, unknown> {
+  const rule: Record<string, unknown> = { pattern: edit.pattern };
+  if (edit.kind) rule.kind = edit.kind;
+  return rule;
+}
+
+function renameMatches(root: napi.SgNode, from: string): napi.SgNode[] {
+  return root
+    .findAll({ rule: { any: [{ kind: "identifier" }, { kind: "property_identifier" }] } })
+    .filter((node) => node.text() === from);
 }
 
 export type EditCodeResult = {
@@ -196,11 +221,11 @@ export async function editCode(input: {
 
   for (const edit of input.edits) {
     const tree = napi.parse(langEnum ?? langName, current);
-    const pattern = isRenameEdit(edit) ? edit.from : edit.pattern;
+    const pattern = isRenameEdit(edit) ? edit.from : patternLabel(edit.pattern);
     const replacement = isRenameEdit(edit) ? edit.to : edit.replacement;
-    const allMatches = tree
-      .root()
-      .findAll(isRenameEdit(edit) ? { rule: { all: [{ kind: "identifier" }, { pattern }] } } : { rule: { pattern } });
+    const allMatches = isRenameEdit(edit)
+      ? renameMatches(tree.root(), pattern)
+      : tree.root().findAll({ rule: replaceRuleForEdit(edit) });
     let matches = allMatches;
     if (edit.within) {
       const scopes = tree.root().findAll({ rule: { pattern: edit.within } });
@@ -226,7 +251,7 @@ export async function editCode(input: {
     }
     totalMatches += matches.length;
 
-    const patternMetavars = isRenameEdit(edit) ? [] : extractMetavariables(edit.pattern);
+    const patternMetavars = isRenameEdit(edit) ? [] : extractMetavariables(patternSourceText(edit.pattern));
     const replacementMetavars = isRenameEdit(edit) ? [] : extractMetavariables(edit.replacement);
     if (!isRenameEdit(edit)) {
       const unknownReplacementMetavars = replacementMetavars.filter((metavar) => !patternMetavars.includes(metavar));

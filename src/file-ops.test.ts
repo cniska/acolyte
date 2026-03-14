@@ -470,6 +470,80 @@ describe("editCode", () => {
     expect(content).toContain("results.reduce((sum, result) => sum + result.length, 0);");
   });
 
+  test("supports structured rename edits within a class declaration", async () => {
+    const filePath = `/tmp/acolyte-test-ast-class-rename-${testUuid()}.js`;
+    tempFiles.push(filePath);
+    await writeFile(
+      filePath,
+      [
+        "class ProviderConfig {",
+        '  alias = "acolyte-mini";',
+        "  label() {",
+        "    return this.alias;",
+        "  }",
+        "}",
+        "",
+        'const alias = "outside";',
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    const result = await editCode({
+      workspace: WORKSPACE,
+      path: filePath,
+      edits: [
+        {
+          op: "rename",
+          from: "alias",
+          to: "defaultAlias",
+          withinSymbol: "ProviderConfig",
+        },
+      ],
+    });
+    expect(result.matches).toBe(2);
+    const content = await readFile(filePath, "utf8");
+    expect(content).toContain('defaultAlias = "acolyte-mini";');
+    expect(content).toContain("return this.defaultAlias;");
+    expect(content).toContain('const alias = "outside";');
+  });
+
+  test("supports structured replace patterns with context and selector", async () => {
+    const filePath = `/tmp/acolyte-test-ast-pattern-object-${testUuid()}.js`;
+    tempFiles.push(filePath);
+    await writeFile(
+      filePath,
+      [
+        "class ProviderConfig {",
+        '  alias = "acolyte-mini";',
+        '  mode = "default";',
+        "}",
+        "",
+        'const alias = "outside";',
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    const result = await editCode({
+      workspace: WORKSPACE,
+      path: filePath,
+      edits: [
+        {
+          op: "replace",
+          pattern: {
+            context: "class ProviderConfig { alias = $VALUE }",
+            selector: "field_definition",
+          },
+          replacement: "defaultAlias = $VALUE",
+        },
+      ],
+    });
+    expect(result.matches).toBe(1);
+    const content = await readFile(filePath, "utf8");
+    expect(content).toContain('defaultAlias = "acolyte-mini";');
+    expect(content).toContain('const alias = "outside";');
+    expect(content).not.toContain('alias = "acolyte-mini";');
+  });
+
   test("throws when no matches found", async () => {
     const filePath = `/tmp/acolyte-test-ast-nomatch-${testUuid()}.ts`;
     tempFiles.push(filePath);
