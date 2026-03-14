@@ -224,10 +224,7 @@ export async function editFile(input: {
       const { startLine, endLine, replace } = edit;
       if (startLine < 1 || endLine < 1) throw new Error("Line numbers must be >= 1");
       if (startLine > endLine) throw new Error(`startLine (${startLine}) must be <= endLine (${endLine})`);
-      const clampedEnd = Math.min(endLine, lines.length);
-      if (clampedEnd !== endLine) {
-        // Silently clamp — the model almost always means "to end of file".
-      }
+      const clampedEnd = Math.min(endLine, lines.length); // silently clamp — model almost always means "to end of file"
       if (startLine === 1 && clampedEnd === lines.length && replace.trim().length === 0) {
         throw createToolError(
           TOOL_ERROR_CODES.editFileLineRangeTooLarge,
@@ -335,10 +332,7 @@ export async function writeTextFile(input: {
     previousContent = await readFile(absPath, "utf8");
     if (!overwrite) throw new Error("Target file already exists");
   } catch (error) {
-    if (!(error instanceof Error) || !/ENOENT/.test(error.message)) {
-      if (error instanceof Error && error.message === "Target file already exists") throw error;
-      throw error;
-    }
+    if (!(error instanceof Error) || !/ENOENT/.test(error.message)) throw error;
   }
 
   await mkdir(dirname(absPath), { recursive: true });

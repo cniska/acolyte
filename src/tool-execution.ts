@@ -1,5 +1,5 @@
 import { invariant } from "./assert";
-import { ERROR_KINDS, LIFECYCLE_ERROR_CODES, ToolError } from "./error-primitives";
+import { ERROR_KINDS, LIFECYCLE_ERROR_CODES, ToolError, type ToolRecovery } from "./error-primitives";
 import { createId } from "./short-id";
 import { recordCall, runGuards, type SessionContext } from "./tool-guards";
 
@@ -58,7 +58,7 @@ export async function withToolError<T>(toolId: string, task: () => Promise<T>): 
     ) as Error & {
       code?: string;
       kind?: string;
-      recovery?: unknown;
+      recovery?: ToolRecovery;
     };
     if (typeof error === "object" && error !== null && "code" in error) {
       const code = (error as { code?: unknown }).code;
@@ -69,7 +69,7 @@ export async function withToolError<T>(toolId: string, task: () => Promise<T>): 
       if (typeof kind === "string" && kind.length > 0) wrapped.kind = kind;
     }
     if (typeof error === "object" && error !== null && "recovery" in error) {
-      wrapped.recovery = (error as { recovery?: unknown }).recovery;
+      wrapped.recovery = (error as { recovery?: ToolRecovery }).recovery;
     }
     throw wrapped;
   }

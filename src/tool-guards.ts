@@ -615,50 +615,6 @@ const postEditDiscoveryGuard: ToolGuard = {
   },
 };
 
-const sequentialSameFileEditGuard: ToolGuard = {
-  id: "sequential-same-file-edit",
-  description: "Block back-to-back write calls on the same file without new evidence.",
-  tools: ["edit-file", "edit-code"],
-  check({ args, session, report }) {
-    const pathValue = typeof args.path === "string" ? normalizePath(args.path.trim()).toLowerCase() : "";
-    if (!pathValue) return;
-
-    const calls = scopedCallLog(session);
-    const lastCall = calls[calls.length - 1];
-    if (!lastCall) return;
-    const lastPath =
-      typeof lastCall.args.path === "string" ? normalizePath(lastCall.args.path.trim()).toLowerCase() : "";
-    if (lastCall.success !== false && isWriteTool(session, lastCall.toolName) && lastPath === pathValue) {
-      report("blocked", pathValue);
-      throw new Error(
-        `File "${pathValue}" was just edited. Batch same-file changes into one edit call unless you gather new evidence first.`,
-      );
-    }
-
-    let attemptsSinceEvidence = 0;
-    for (let index = calls.length - 1; index >= 0; index -= 1) {
-      const entry = calls[index];
-      if (!entry) break;
-      if (entry.toolName === "read-file") {
-        if (extractReadPaths(entry.args, { normalize: true }).includes(pathValue)) break;
-        continue;
-      }
-      if (!isWriteTool(session, entry.toolName)) continue;
-      const entryPath = typeof entry.args.path === "string" ? normalizePath(entry.args.path.trim()).toLowerCase() : "";
-      if (entryPath !== pathValue) break;
-      attemptsSinceEvidence += 1;
-    }
-
-    if (attemptsSinceEvidence < 2) return;
-
-    report("blocked", `${pathValue}:${attemptsSinceEvidence}`);
-    throw new Error(
-      `File "${pathValue}" has already had ${attemptsSinceEvidence} edit attempts without a fresh reread. ` +
-        "Read the file again or change strategy before trying another same-file edit.",
-    );
-  },
-};
-
 const stepBudgetGuard: ToolGuard = {
   id: "step-budget",
   description: "Enforce per-cycle and total step limits.",
@@ -796,7 +752,6 @@ const GUARDS: ToolGuard[] = [
   redundantVerifyGuard,
   postEditRedundancyGuard,
   postEditDiscoveryGuard,
-  sequentialSameFileEditGuard,
 ];
 
 export function runGuards(input: Omit<GuardInput, "report">): void {

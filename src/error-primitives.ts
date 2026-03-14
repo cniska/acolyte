@@ -9,6 +9,11 @@ export const TOOL_ERROR_CODES = {
 
 export type ToolErrorCode = (typeof TOOL_ERROR_CODES)[keyof typeof TOOL_ERROR_CODES];
 export type EditFileRecoveryKind = "disambiguate-match" | "refresh-snippet" | "shrink-edit";
+export const EDIT_FILE_RECOVERY_KINDS: readonly EditFileRecoveryKind[] = [
+  "disambiguate-match",
+  "refresh-snippet",
+  "shrink-edit",
+];
 export type ToolRecovery = {
   tool: "edit-file";
   kind: EditFileRecoveryKind;
