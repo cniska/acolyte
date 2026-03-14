@@ -151,7 +151,10 @@ function summarizeTrace(lines: string[]): z.infer<typeof behaviorTraceSummarySch
       regenerationCount: taskLines.filter(
         (line) => line.includes("event=lifecycle.eval.decision") && line.includes("action=regenerate"),
       ).length,
-      lifecycleSignal: parseField([...taskLines].reverse().find((line) => line.includes("event=lifecycle.signal.accepted")) ?? "", "signal"),
+      lifecycleSignal: parseField(
+        [...taskLines].reverse().find((line) => line.includes("event=lifecycle.signal.accepted")) ?? "",
+        "signal",
+      ),
       regenerationLimitHit: parseBooleanField(taskLines[taskLines.length - 1] ?? "", "regeneration_limit_hit"),
       guardBlockedCount: countMatching(taskLines, "event=lifecycle.guard"),
       guardFlagSetCount: 0,

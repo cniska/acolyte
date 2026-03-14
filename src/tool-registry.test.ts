@@ -147,6 +147,8 @@ describe("localization baseline", () => {
     expect(runCommandInstruction).toContain("Use `run-command` for known repository commands");
     expect(runCommandInstruction).toContain("Do not guess a validation command just because edits were made");
     expect(runCommandInstruction).toContain("update file X then stop");
-    expect(runCommandInstruction).toContain("Do not inspect repository manifests, lockfiles, or build configuration just to invent a command to run");
+    expect(runCommandInstruction).toContain(
+      "Do not inspect repository manifests, lockfiles, or build configuration just to invent a command to run",
+    );
   });
 });

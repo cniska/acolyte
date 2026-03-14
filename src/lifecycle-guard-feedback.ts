@@ -50,16 +50,8 @@ const guardFeedbackFactories = {
     }),
   "post-edit-redundancy": (event, mode) =>
     createGuardFeedback(mode, {
-      summary:
-        event.toolName === "git-diff"
-          ? event.detail === "__edited_workspace__"
-            ? "A previous edit already produced the diff preview for the current workspace changes."
-            : `A previous edit already produced the diff for "${event.detail ?? "this file"}".`
-          : `A previous edit already changed "${event.detail ?? "this file"}".`,
-      instruction:
-        event.toolName === "git-diff"
-          ? "Do not re-run git-diff just to reconfirm edits. Trust the edit diff preview you already have and stop if the task is complete."
-          : "Do not undo or discard the file after a successful edit. Keep it and revise it in place if needed.",
+      summary: `A previous edit already changed "${event.detail ?? "this file"}".`,
+      instruction: "Do not undo or discard the file after a successful edit. Keep it and revise it in place if needed.",
     }),
   "redundant-verify": () =>
     createGuardFeedback("verify", {

@@ -37,7 +37,9 @@ describe("createModeInstructions", () => {
     expect(out).toContain("Do not use `git-diff`, `git-status`, `git-show`, `git-log`");
     expect(out).toContain("If the user says to update explicit file targets and stop, treat that as a real boundary");
     expect(out).toContain("Do not invent a verification command unless the user asked for verification");
-    expect(out).toContain("do not inspect repository manifests, lockfiles, or build configuration just to guess how to validate");
+    expect(out).toContain(
+      "do not inspect repository manifests, lockfiles, or build configuration just to guess how to validate",
+    );
     expect(out).toContain("do not call `search-files` just to locate it again");
     expect(out).toContain("prefer `scan-code` + `edit-code`");
     expect(out).toContain("Trust type signatures");

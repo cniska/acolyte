@@ -68,40 +68,6 @@ describe("createLifecycleFeedbackForGuard", () => {
     });
   });
 
-  test("maps post-edit git-diff to work-scoped lifecycle feedback", () => {
-    const feedback = createLifecycleFeedbackForGuard(
-      createGuardEvent({
-        guardId: "post-edit-redundancy",
-        toolName: "git-diff",
-        detail: "README.md",
-      }),
-      "work",
-    );
-    expect(feedback).toEqual({
-      source: "guard",
-      mode: "work",
-      summary: 'A previous edit already produced the diff for "README.md".',
-      instruction: "Do not re-run git-diff just to reconfirm edits. Trust the edit diff preview you already have and stop if the task is complete.",
-    });
-  });
-
-  test("maps repo-wide post-edit git-diff to work-scoped lifecycle feedback", () => {
-    const feedback = createLifecycleFeedbackForGuard(
-      createGuardEvent({
-        guardId: "post-edit-redundancy",
-        toolName: "git-diff",
-        detail: "__edited_workspace__",
-      }),
-      "work",
-    );
-    expect(feedback).toEqual({
-      source: "guard",
-      mode: "work",
-      summary: "A previous edit already produced the diff preview for the current workspace changes.",
-      instruction: "Do not re-run git-diff just to reconfirm edits. Trust the edit diff preview you already have and stop if the task is complete.",
-    });
-  });
-
   test("maps post-edit delete-file to work-scoped lifecycle feedback", () => {
     const feedback = createLifecycleFeedbackForGuard(
       createGuardEvent({

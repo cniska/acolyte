@@ -285,33 +285,6 @@ describe("redundant-search guard", () => {
     recordCall(session, "edit-file", { path: "src/a.ts" });
     expect(() => runGuards({ toolName: "search-files", args: { pattern: "query-5" }, session })).not.toThrow();
   });
-
-  test("blocks searching only within files already edited in this turn", () => {
-    const session = createSessionContext();
-    session.writeTools = new Set(["edit-file"]);
-    recordCall(session, "edit-file", { path: "README.md" });
-    recordCall(session, "edit-file", { path: "docs/README.md" });
-    expect(() =>
-      runGuards({
-        toolName: "search-files",
-        args: { patterns: ["README.md", "docs/README.md"], paths: ["README.md", "docs/README.md"] },
-        session,
-      }),
-    ).toThrow(/only rediscovering files that were already edited/);
-  });
-
-  test("blocks scoped symbol search that only rechecks an already edited file", () => {
-    const session = createSessionContext();
-    session.writeTools = new Set(["edit-file"]);
-    recordCall(session, "edit-file", { path: "src/clamp.ts" });
-    expect(() =>
-      runGuards({
-        toolName: "search-files",
-        args: { pattern: "clamp(", paths: ["src"] },
-        session,
-      }),
-    ).toThrow(/only rediscovering files that were already edited/);
-  });
 });
 
 describe("redundant-find guard", () => {
@@ -367,44 +340,9 @@ describe("redundant-find guard", () => {
     recordCall(session, "edit-file", { path: "src/a.ts" });
     expect(() => runGuards({ toolName: "find-files", args: { patterns: ["query-5"] }, session })).not.toThrow();
   });
-
-  test("blocks rediscovering files already edited in this turn", () => {
-    const session = createSessionContext();
-    session.writeTools = new Set(["edit-file"]);
-    recordCall(session, "edit-file", { path: "README.md" });
-    recordCall(session, "edit-file", { path: "docs/README.md" });
-    expect(() =>
-      runGuards({ toolName: "find-files", args: { patterns: ["README.md", "docs/README.md"] }, session }),
-    ).toThrow(/only rediscovering files that were already edited/);
-  });
 });
 
 describe("post-edit-redundancy guard", () => {
-  test("blocks git-diff on a file already edited in this turn", () => {
-    const session = createSessionContext();
-    session.writeTools = new Set(["edit-file"]);
-    recordCall(session, "edit-file", { path: "README.md" });
-    expect(() => runGuards({ toolName: "git-diff", args: { path: "README.md" }, session })).toThrow(
-      /only re-confirming "readme\.md"/i,
-    );
-  });
-
-  test("allows git-diff on a different file", () => {
-    const session = createSessionContext();
-    session.writeTools = new Set(["edit-file"]);
-    recordCall(session, "edit-file", { path: "README.md" });
-    expect(() => runGuards({ toolName: "git-diff", args: { path: "docs/README.md" }, session })).not.toThrow();
-  });
-
-  test("allows repository-wide git-diff when no specific file path is provided", () => {
-    const session = createSessionContext();
-    session.writeTools = new Set(["edit-file"]);
-    recordCall(session, "edit-file", { path: "README.md" });
-    expect(() => runGuards({ toolName: "git-diff", args: {}, session })).toThrow(
-      /already shown in the edit diff preview/i,
-    );
-  });
-
   test("blocks delete-file on a file already edited in this turn", () => {
     const session = createSessionContext();
     session.writeTools = new Set(["edit-file", "delete-file"]);

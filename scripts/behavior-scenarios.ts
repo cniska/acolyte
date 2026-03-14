@@ -88,7 +88,7 @@ async function createAddFocusedTestWorkspace(workspace: string): Promise<void> {
     "src/slug.ts",
     [
       "export function slugify(input: string): string {",
-      "  return input.trim().toLowerCase().replace(/\\s+/g, \"-\");",
+      '  return input.trim().toLowerCase().replace(/\\s+/g, "-");',
       "}",
       "",
     ].join("\n"),
@@ -97,11 +97,11 @@ async function createAddFocusedTestWorkspace(workspace: string): Promise<void> {
     workspace,
     "src/slug.test.ts",
     [
-      "import { expect, test } from \"bun:test\";",
-      "import { slugify } from \"./slug\";",
+      'import { expect, test } from "bun:test";',
+      'import { slugify } from "./slug";',
       "",
-      "test(\"slugify collapses spaces\", () => {",
-      "  expect(slugify(\"Hello World\")).toBe(\"hello-world\");",
+      'test("slugify collapses spaces", () => {',
+      '  expect(slugify("Hello World")).toBe("hello-world");',
       "});",
       "",
     ].join("\n"),
@@ -112,7 +112,7 @@ async function validateAddFocusedTestWorkspace(workspace: string): Promise<strin
   const issues: string[] = [];
   const content = await readWorkspaceFile(workspace, "src/slug.test.ts");
   if (!content.includes('expect(slugify("")).toBe("")')) {
-    issues.push('src/slug.test.ts should include an empty-string regression assertion');
+    issues.push("src/slug.test.ts should include an empty-string regression assertion");
   }
   return issues;
 }
@@ -127,7 +127,7 @@ async function createTwoFileRenameWorkspace(workspace: string): Promise<void> {
       "};",
       "",
       "export const DEFAULT_CONFIG: AppConfig = {",
-      "  defaultModel: \"gpt-5-mini\",",
+      '  defaultModel: "gpt-5-mini",',
       "};",
       "",
     ].join("\n"),
@@ -136,11 +136,11 @@ async function createTwoFileRenameWorkspace(workspace: string): Promise<void> {
     workspace,
     "src/config.test.ts",
     [
-      "import { expect, test } from \"bun:test\";",
-      "import { DEFAULT_CONFIG } from \"./config\";",
+      'import { expect, test } from "bun:test";',
+      'import { DEFAULT_CONFIG } from "./config";',
       "",
-      "test(\"default config exposes defaultModel\", () => {",
-      "  expect(DEFAULT_CONFIG.defaultModel).toBe(\"gpt-5-mini\");",
+      'test("default config exposes defaultModel", () => {',
+      '  expect(DEFAULT_CONFIG.defaultModel).toBe("gpt-5-mini");',
       "});",
       "",
     ].join("\n"),
@@ -152,7 +152,8 @@ async function validateTwoFileRenameWorkspace(workspace: string): Promise<string
   const config = await readWorkspaceFile(workspace, "src/config.ts");
   const testFile = await readWorkspaceFile(workspace, "src/config.test.ts");
   if (!config.includes("appModel: string;")) issues.push("src/config.ts should rename defaultModel to appModel");
-  if (!config.includes('appModel: "gpt-5-mini",')) issues.push("src/config.ts should update DEFAULT_CONFIG to appModel");
+  if (!config.includes('appModel: "gpt-5-mini",'))
+    issues.push("src/config.ts should update DEFAULT_CONFIG to appModel");
   if (config.includes("defaultModel")) issues.push("src/config.ts should not keep defaultModel");
   if (!testFile.includes("appModel")) issues.push("src/config.test.ts should assert appModel");
   if (testFile.includes("defaultModel")) issues.push("src/config.test.ts should not keep defaultModel");
@@ -172,7 +173,8 @@ export const BEHAVIOR_SCENARIOS: BehaviorScenario[] = [
   {
     id: "single-file-bug-fix",
     description: "One-file bug fix with no extra exploration required.",
-    prompt: "Fix clamp in src/clamp.ts so values already inside range are returned unchanged. Update only that file, then stop.",
+    prompt:
+      "Fix clamp in src/clamp.ts so values already inside range are returned unchanged. Update only that file, then stop.",
     expectedChanges: ["src/clamp.ts"],
     setup: createSingleFileBugFixWorkspace,
     validate: validateSingleFileBugFixWorkspace,

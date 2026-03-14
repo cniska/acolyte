@@ -1,4 +1,3 @@
-import { basename, extname } from "node:path";
 import { invariant } from "./assert";
 import { CONSECUTIVE_GUARD_BLOCK_LIMIT, TOOL_TIMEOUT_MS } from "./lifecycle-constants";
 import {
@@ -131,26 +130,6 @@ function editedPathsSinceLastVerify(session: SessionContext): string[] {
     if (path.length > 0) paths.add(path);
   }
   return Array.from(paths);
-}
-
-function editedPathTokens(paths: readonly string[]): Set<string> {
-  const tokens = new Set<string>();
-  for (const path of paths) {
-    tokens.add(path);
-    const name = basename(path);
-    tokens.add(name);
-    const extension = extname(name);
-    if (extension.length > 0) tokens.add(name.slice(0, -extension.length));
-  }
-  return tokens;
-}
-
-function normalizeDiscoveryToken(value: string): string {
-  return normalizePath(value.trim().toLowerCase()).replace(/^[^a-z0-9._/-]+|[^a-z0-9._/-]+$/g, "");
-}
-
-function scopeTouchesEditedPaths(scope: readonly string[], editedPaths: readonly string[]): boolean {
-  return scope.every((entry) => editedPaths.some((path) => path === entry || path.startsWith(`${entry}/`)));
 }
 
 type RedundantQueryKind = "narrower" | "scope-narrowing";
@@ -353,22 +332,6 @@ const redundantSearchGuard = createRedundantDiscoveryGuard({
   extractPatterns: extractSearchPatterns,
   loopMessage:
     "Repeated search-files loop detected without reads/writes. Stop synonym searching and conclude from current evidence.",
-  preCheck({ args, session, report }) {
-    const editedPaths = editedPathsSinceLastVerify(session);
-    if (editedPaths.length === 0) return;
-    const scope = extractSearchScope(args);
-    if (isWorkspaceScope(scope)) return;
-    const patterns = extractSearchPatterns(args);
-    const tokens = editedPathTokens(editedPaths);
-    const scopeOnlyEdited = scopeTouchesEditedPaths(scope, editedPaths);
-    const patternsOnlyEdited =
-      patterns.length > 0 && patterns.every((entry) => tokens.has(normalizeDiscoveryToken(entry)));
-    if (!scopeOnlyEdited || !patternsOnlyEdited) return;
-    report("blocked", "post-edit-rediscovery");
-    throw new Error(
-      "Search is only rediscovering files that were already edited in this turn. Use the edit result you already have or stop.",
-    );
-  },
 });
 
 const redundantFindGuard = createRedundantDiscoveryGuard({
@@ -379,19 +342,6 @@ const redundantFindGuard = createRedundantDiscoveryGuard({
   loopMessage:
     "Repeated find-files loop detected without reads/writes. Stop broad discovery and read the best candidate file(s) directly.",
   preCheck({ args, session, report }) {
-    const editedPaths = editedPathsSinceLastVerify(session);
-    const patterns = extractFindPatterns(args);
-    if (editedPaths.length > 0 && patterns.length > 0) {
-      const tokens = editedPathTokens(editedPaths);
-      const patternsOnlyEdited = patterns.every((entry) => tokens.has(normalizePath(entry)));
-      if (patternsOnlyEdited) {
-        report("blocked", "post-edit-rediscovery");
-        throw new Error(
-          "Find is only rediscovering files that were already edited in this turn. Use the edit result you already have or stop.",
-        );
-      }
-    }
-
     const currentScope = extractSearchScope(args);
     for (const entry of scopedCallLog(session)) {
       if (entry.toolName !== "find-files") continue;
@@ -451,20 +401,9 @@ type PostEditRedundancyPolicy = {
   message: (path: string) => string;
 };
 
-type PostEditRedundancyToolName = "git-diff" | "delete-file";
+type PostEditRedundancyToolName = "delete-file";
 
 const postEditRedundancyPolicies = {
-  "git-diff": {
-    extractPaths: (args) => {
-      const path = typeof args.path === "string" ? normalizePath(args.path.trim().toLowerCase()) : "";
-      return path ? [path] : ["__edited_workspace__"];
-    },
-    message: (path) =>
-      path === "__edited_workspace__"
-        ? "git-diff is only re-confirming edits that were already shown in the edit diff preview. Use the diff you already have or stop."
-        : `git-diff is only re-confirming "${path}", which was already edited in this turn. ` +
-          "Use the edit diff preview you already have or stop.",
-  },
   "delete-file": {
     extractPaths: (args) =>
       Array.isArray(args.paths)
