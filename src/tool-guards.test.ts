@@ -416,6 +416,15 @@ describe("post-edit-discovery guard", () => {
       runGuards({ toolName: "search-files", args: { patterns: ["return undefined;"], paths: ["src/foo.ts"] }, session }),
     ).not.toThrow();
   });
+
+  test("blocks git-diff on the same file after a single-file edit", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file"]);
+    recordCall(session, "edit-file", { path: "src/foo.ts" });
+    expect(() => runGuards({ toolName: "git-diff", args: { path: "src/foo.ts" }, session })).toThrow(
+      /already edited in this task\. Do not diff the same file again/i,
+    );
+  });
 });
 
 describe("sequential-same-file-edit guard", () => {

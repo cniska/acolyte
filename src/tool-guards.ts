@@ -469,7 +469,7 @@ const postEditRedundancyGuard: ToolGuard = {
 const postEditDiscoveryGuard: ToolGuard = {
   id: "post-edit-discovery",
   description: "Block rediscovery on the same file after a bounded single-file edit.",
-  tools: ["read-file", "search-files"],
+  tools: ["read-file", "search-files", "git-diff"],
   check({ toolName, args, session, report }) {
     const editedPath = singleEditedPathSinceLastVerify(session);
     if (!editedPath) return;
@@ -494,6 +494,16 @@ const postEditDiscoveryGuard: ToolGuard = {
     }
 
     const scope = extractSearchScope(args);
+    if (toolName === "git-diff") {
+      const pathValue = typeof args.path === "string" ? normalizePath(args.path.trim()).toLowerCase() : "";
+      if (pathValue !== editedPath) return;
+      report("blocked", editedPath);
+      throw new Error(
+        `File "${editedPath}" was already edited in this task. Do not diff the same file again; ` +
+          "use the edit preview you already have or run verify.",
+      );
+    }
+
     if (scope.length !== 1 || scope[0] !== editedPath) return;
     report("blocked", editedPath);
     throw new Error(
