@@ -330,6 +330,12 @@ function emitStreamingUsage(ctx: RunContext, chars: number): void {
   }
 }
 
+function clearResolvedToolError(ctx: RunContext): void {
+  if (!ctx.currentError) return;
+  if (ctx.currentError.source !== "tool-error" && ctx.currentError.source !== "tool-result") return;
+  ctx.currentError = undefined;
+}
+
 function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
   switch (chunk.type) {
     case "text-delta": {
@@ -390,6 +396,8 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
             recovery: errorInfo.recovery,
           });
           ctx.debug("lifecycle.tool.error", { tool: toolName, error: errorInfo.message });
+        } else {
+          clearResolvedToolError(ctx);
         }
         emitToolResult(ctx, p.toolCallId, toolName, isError);
       }
