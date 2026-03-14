@@ -20,13 +20,15 @@ export type GuardEvent = {
   detail?: string;
 };
 
+export type ToolCallStatus = "succeeded" | "failed";
+
 export type ToolCallRecord = {
   toolName: string;
   args: Record<string, unknown>;
   taskId?: string;
   mode?: string;
   resultHash?: string;
-  success?: boolean;
+  status: ToolCallStatus;
 };
 
 export type SessionFlags = {
@@ -125,7 +127,7 @@ function callsSinceLastVerify(session: SessionContext): ToolCallRecord[] {
 function editedPathsSinceLastVerify(session: SessionContext): string[] {
   const paths = new Set<string>();
   for (const entry of callsSinceLastVerify(session)) {
-    if (entry.success === false) continue;
+    if (entry.status === "failed") continue;
     if (!isWriteTool(session, entry.toolName)) continue;
     if (typeof entry.args.path !== "string") continue;
     const path = normalizePath(entry.args.path.trim().toLowerCase());
@@ -244,7 +246,7 @@ function hasFreshEvidenceSinceLastSuccessfulEdit(session: SessionContext, path: 
     if (entry.toolName === "read-file" && extractReadPaths(entry.args, { normalize: true }).includes(path)) return true;
     if (entry.toolName === "search-files" && searchTouchesPath(entry.args, path)) return true;
     if (entry.toolName === "scan-code" && scanTouchesPath(entry.args, path)) return true;
-    if (entry.success === false) continue;
+    if (entry.status === "failed") continue;
     if (entry.toolName === "edit-file") {
       const editedPath = typeof entry.args.path === "string" ? normalizePath(entry.args.path.trim().toLowerCase()) : "";
       if (editedPath === path) return false;
@@ -317,7 +319,7 @@ const fileChurnGuard: ToolGuard = {
           signaturesForPath(readEntry.path).add(readEntry.signature);
         }
       } else if (
-        entry.success !== false &&
+        entry.status !== "failed" &&
         isWriteTool(session, entry.toolName) &&
         typeof entry.args.path === "string"
       ) {
@@ -436,7 +438,7 @@ const redundantSearchGuard = createRedundantDiscoveryGuard({
     if (!targetPath) return;
 
     for (const entry of scopedCallLog(session)) {
-      if (entry.success !== false && isWriteTool(session, entry.toolName)) return;
+      if (entry.status !== "failed" && isWriteTool(session, entry.toolName)) return;
     }
 
     const calls = scopedCallLog(session);
@@ -712,7 +714,7 @@ export function recordCall(
   toolName: string,
   args: Record<string, unknown>,
   resultHash?: string,
-  success = true,
+  status: ToolCallStatus = "succeeded",
 ): void {
-  session.callLog.push({ toolName, args, taskId: session.taskId, mode: session.mode, resultHash, success });
+  session.callLog.push({ toolName, args, taskId: session.taskId, mode: session.mode, resultHash, status });
 }

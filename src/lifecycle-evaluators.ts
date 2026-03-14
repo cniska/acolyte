@@ -42,18 +42,20 @@ export type Evaluator = {
   evaluate: (ctx: EvaluatorContext) => EvalAction;
 };
 
-function hasSuccessfulWriteAfterLastEditFileFail(ctx: EvaluatorContext): boolean {
+function hasRecoveredFromLastEditFileFailure(ctx: EvaluatorContext): boolean {
   const callLog = scopedCallLog(ctx.session, ctx.taskId);
   let lastFailIdx = -1;
   for (let i = callLog.length - 1; i >= 0; i--) {
     const entry = callLog[i];
-    if (entry?.toolName === "edit-file" && entry.success === false) {
+    if (entry?.toolName === "edit-file" && entry.status === "failed") {
       lastFailIdx = i;
       break;
     }
   }
   if (lastFailIdx === -1) return false;
-  return callLog.slice(lastFailIdx + 1).some((entry) => WRITE_TOOL_SET.has(entry.toolName) && entry.success !== false);
+  return callLog
+    .slice(lastFailIdx + 1)
+    .some((entry) => WRITE_TOOL_SET.has(entry.toolName) && entry.status !== "failed");
 }
 
 function writePathsForCurrentTask(ctx: EvaluatorContext): string[] {
@@ -232,7 +234,7 @@ export const editFileRecoveryEvaluator: Evaluator = {
     if (ctx.currentError?.tool !== "edit-file") return { type: "done" };
     const recovery = ctx.currentError.recovery;
     if (!recovery || recovery.tool !== "edit-file") return { type: "done" };
-    if (recovery.kind === "disambiguate-match" && hasSuccessfulWriteAfterLastEditFileFail(ctx)) return { type: "done" };
+    if (recovery.kind === "disambiguate-match" && hasRecoveredFromLastEditFileFailure(ctx)) return { type: "done" };
 
     ctx.debug("lifecycle.eval.edit_file_recovery", {
       error: ctx.currentError.message,

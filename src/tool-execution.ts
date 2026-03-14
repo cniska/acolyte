@@ -106,7 +106,7 @@ export async function guardedExecute<T>(
     const cached = cache.get(toolId, argsRecord);
     if (cached) {
       session.onDebug?.("lifecycle.tool.cache", { tool: toolId, hit: true, ...cache.stats() });
-      recordCall(session, toolId, argsRecord, hashResultValue(cached.result), true);
+      recordCall(session, toolId, argsRecord, hashResultValue(cached.result), "succeeded");
       return cached.result as T;
     }
     session.onDebug?.("lifecycle.tool.cache", { tool: toolId, hit: false, ...cache.stats() });
@@ -125,7 +125,13 @@ export async function guardedExecute<T>(
     taskFailed = true;
     throw error;
   } finally {
-    recordCall(session, toolId, argsRecord, taskFailed ? undefined : hashResultValue(taskResult), !taskFailed);
+    recordCall(
+      session,
+      toolId,
+      argsRecord,
+      taskFailed ? undefined : hashResultValue(taskResult),
+      taskFailed ? "failed" : "succeeded",
+    );
     if (cache && !cache.isCacheable(toolId) && !taskFailed) {
       cache.invalidateForWrite(toolId, argsRecord);
     }

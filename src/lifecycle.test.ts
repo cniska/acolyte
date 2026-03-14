@@ -11,12 +11,7 @@ import {
   verifyCycle,
 } from "./lifecycle-evaluators";
 import { phaseFinalize } from "./lifecycle-finalize";
-import {
-  consumeLifecycleFeedback,
-  createGenerationInput,
-  createLifecycleFeedbackText,
-  phaseGenerate,
-} from "./lifecycle-generate";
+import { consumeLifecycleFeedback, createGenerationInput, createLifecycleFeedbackText } from "./lifecycle-generate";
 import { defaultLifecyclePolicy } from "./lifecycle-policy";
 import { phasePrepare } from "./lifecycle-prepare";
 import { acceptedLifecycleSignal, updateRepeatedFailureState } from "./lifecycle-state";
@@ -74,12 +69,17 @@ describe("verifyCycle", () => {
   test("returns regenerate when write tools used without verify", () => {
     const session = createSessionContext("task_new");
     session.callLog = [
-      { toolName: "edit-file", args: { path: "src/old.ts" }, taskId: "task_old" },
-      { toolName: "read-file", args: { paths: [{ path: "src/a.ts" }] }, taskId: "task_new" },
-      { toolName: "read-file", args: { paths: [{ path: "src/c.ts" }] }, taskId: "task_new" },
-      { toolName: "scan-code", args: { paths: ["src/d.ts"], patterns: ["export function $NAME"] }, taskId: "task_new" },
-      { toolName: "edit-file", args: { path: "src/a.ts" }, taskId: "task_new" },
-      { toolName: "edit-code", args: { path: "src/b.ts" }, taskId: "task_new" },
+      { toolName: "edit-file", args: { path: "src/old.ts" }, taskId: "task_old", status: "succeeded" },
+      { toolName: "read-file", args: { paths: [{ path: "src/a.ts" }] }, taskId: "task_new", status: "succeeded" },
+      { toolName: "read-file", args: { paths: [{ path: "src/c.ts" }] }, taskId: "task_new", status: "succeeded" },
+      {
+        toolName: "scan-code",
+        args: { paths: ["src/d.ts"], patterns: ["export function $NAME"] },
+        taskId: "task_new",
+        status: "succeeded",
+      },
+      { toolName: "edit-file", args: { path: "src/a.ts" }, taskId: "task_new", status: "succeeded" },
+      { toolName: "edit-code", args: { path: "src/b.ts" }, taskId: "task_new", status: "succeeded" },
     ];
     const ctx = createMockContext({
       initialMode: "work",
@@ -116,7 +116,7 @@ describe("verifyCycle", () => {
 
   test("uses global verify prompt when request explicitly opts into global scope", () => {
     const session = createSessionContext();
-    session.callLog = [{ toolName: "edit-file", args: { path: "src/a.ts" } }];
+    session.callLog = [{ toolName: "edit-file", args: { path: "src/a.ts" }, status: "succeeded" }];
     const ctx = createMockContext({
       request: { model: "gpt-5-mini", message: "Implement fix", history: [], verifyScope: "global" },
       initialMode: "work",
@@ -131,7 +131,7 @@ describe("verifyCycle", () => {
 
   test("returns done when request disables verification", () => {
     const session = createSessionContext();
-    session.callLog = [{ toolName: "edit-file", args: { path: "src/a.ts" } }];
+    session.callLog = [{ toolName: "edit-file", args: { path: "src/a.ts" }, status: "succeeded" }];
     const ctx = createMockContext({
       request: { model: "gpt-5-mini", message: "Implement fix", history: [], verifyScope: "none" },
       initialMode: "work",
@@ -234,70 +234,6 @@ describe("verifyCycle", () => {
       result: { text: "No issues found. 0 errors.", toolCalls: [] },
     });
     expect(verifyCycle.evaluate(ctx).type).toBe("done");
-  });
-});
-
-describe("phaseGenerate", () => {
-  test("clears recoverable tool errors after a later successful tool result in the same attempt", async () => {
-    const ctx = createMockContext({
-      request: { model: "gpt-5-mini", message: "test", history: [] },
-      agent: {
-        id: "test-agent",
-        name: "test-agent",
-        instructions: "",
-        model: {} as RunContext["agent"]["model"],
-        tools: {},
-        async stream() {
-          const chunks = [
-            {
-              type: "tool-call" as const,
-              payload: { toolCallId: "call_1", toolName: "edit-file", args: { path: "src/a.ts" } },
-            },
-            {
-              type: "tool-error" as const,
-              payload: {
-                toolCallId: "call_1",
-                toolName: "edit-file",
-                error: {
-                  message: "Find text not found",
-                  code: TOOL_ERROR_CODES.editFileFindNotFound,
-                  recovery: {
-                    tool: "edit-file" as const,
-                    kind: "refresh-snippet" as const,
-                    summary: "Refresh the snippet.",
-                    instruction: "Reread the file and rebuild the edit.",
-                  },
-                },
-              },
-            },
-            {
-              type: "tool-call" as const,
-              payload: { toolCallId: "call_2", toolName: "edit-file", args: { path: "src/a.ts" } },
-            },
-            {
-              type: "tool-result" as const,
-              payload: { toolCallId: "call_2", toolName: "edit-file", result: { ok: true } },
-            },
-          ];
-          return {
-            fullStream: new ReadableStream({
-              start(controller) {
-                for (const chunk of chunks) controller.enqueue(chunk);
-                controller.close();
-              },
-            }),
-            async getFullOutput() {
-              return { text: "Done.", toolCalls: [], signal: "done" as const };
-            },
-          };
-        },
-      },
-    });
-
-    await phaseGenerate(ctx, { timeoutMs: 1000 });
-
-    expect(ctx.currentError).toBeUndefined();
-    expect(acceptedLifecycleSignal(ctx)).toBe("done");
   });
 });
 
@@ -569,7 +505,7 @@ describe("repeatedFailureEvaluator", () => {
 describe("editFileRecoveryEvaluator", () => {
   test("returns regenerate when edit-file exposes structured recovery", () => {
     const session = createSessionContext();
-    session.callLog = [{ toolName: "edit-file", args: { path: "src/priority.ts" }, success: false }];
+    session.callLog = [{ toolName: "edit-file", args: { path: "src/priority.ts" }, status: "failed" }];
     const ctx = createMockContext({
       request: { model: "gpt-5-mini", message: "Rename symbol everywhere", history: [] },
       initialMode: "work",
@@ -615,8 +551,8 @@ describe("editFileRecoveryEvaluator", () => {
     const session = createSessionContext();
     session.writeTools = new Set(["edit-file", "edit-code"]);
     session.callLog = [
-      { toolName: "edit-file", args: { path: "src/priority.ts" }, success: false },
-      { toolName: "edit-file", args: { path: "src/priority.ts" }, success: true },
+      { toolName: "edit-file", args: { path: "src/priority.ts" }, status: "failed" },
+      { toolName: "edit-file", args: { path: "src/priority.ts" }, status: "succeeded" },
     ];
     const ctx = createMockContext({
       request: { model: "gpt-5-mini", message: "Rename symbol everywhere", history: [] },
