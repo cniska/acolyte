@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.1 (2026-03-14)
+
+- **chat:** replace /tokens with /usage and add prompt breakdown (#10) (`beabe48`)
+- **chat:** slash command output swallowed on alternate submits (`a2d0a8d`)
+- **lifecycle:** strip @signal line regardless of position in output (`22bf5a0`)
+- refresh benchmark metrics (`120a50e`)
+
+
 ## 0.3.0 (2026-03-14)
 
 - **tui:** resolve lint warnings from custom-renderer branch (`e95a148`)
