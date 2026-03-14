@@ -33,6 +33,7 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
       "If the target files and one directly referenced support file are already read, do not use workspace `search-files` for the same token again. Edit from the text you already have.",
       "When you have already applied the requested edits to all explicitly named files, stop. Do not use `git-diff`, `git-status`, `git-show`, `git-log`, `find-files`, or `search-files` just to reconfirm those same edits.",
       "If the user says to update explicit file targets and stop, treat that as a real boundary. Do not invent a verification command unless the user asked for verification or the repository already shows the exact command to run.",
+      "After a successful explicit named-file edit, do not inspect repository manifests, lockfiles, or build configuration just to guess how to validate. Stop unless the user asked for validation or the task itself requires those files.",
       "For rename/refactor tasks or repeated pattern updates, prefer `scan-code` + `edit-code` over `edit-file`.",
       "Batch multiple edits to the same file into one `edit-file` or `edit-code` call.",
       "If the needed text is already visible in `read-file` output, do not call `search-files` just to locate it again.",

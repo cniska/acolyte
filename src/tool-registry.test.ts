@@ -145,7 +145,8 @@ describe("localization baseline", () => {
     expect(gitLogInstruction).toContain("Do not use it to inspect current uncommitted edits");
     expect(gitShowInstruction).toContain("Do not use it to inspect current uncommitted edits");
     expect(runCommandInstruction).toContain("Use `run-command` for known repository commands");
-    expect(runCommandInstruction).toContain("Do not guess a verification command just because edits were made");
+    expect(runCommandInstruction).toContain("Do not guess a validation command just because edits were made");
     expect(runCommandInstruction).toContain("update file X then stop");
+    expect(runCommandInstruction).toContain("Do not inspect repository manifests, lockfiles, or build configuration just to invent a command to run");
   });
 });
