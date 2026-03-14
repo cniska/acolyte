@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import type { LifecycleSignal, RunContext } from "./lifecycle-contract";
 import { scopedCallLog } from "./tool-guards";
 import { WRITE_TOOL_SET } from "./tool-registry";
@@ -9,55 +7,12 @@ export function acceptedLifecycleSignal(ctx: RunContext): LifecycleSignal | unde
   if (!signal) return undefined;
   if (ctx.currentError) return undefined;
   if (signal === "no_op" && taskHasWrites(ctx)) return undefined;
-  if (signal === "done" && hasIncompleteRepeatedEdit(ctx)) return undefined;
   if (signal === "done" || signal === "no_op" || signal === "blocked") return signal;
   return undefined;
 }
 
 function taskHasWrites(ctx: RunContext): boolean {
   return scopedCallLog(ctx.session, ctx.taskId).some((entry) => WRITE_TOOL_SET.has(entry.toolName));
-}
-
-function hasIncompleteRepeatedEdit(ctx: RunContext): boolean {
-  if (!ctx.workspace) return false;
-  if (!isEachOccurrenceTask(ctx.request.message)) return false;
-  const repeatedLiteral = extractRepeatedEditLiteral(ctx.request.message);
-  if (!repeatedLiteral) return false;
-
-  const calls = scopedCallLog(ctx.session, ctx.taskId);
-  for (let index = calls.length - 1; index >= 0; index -= 1) {
-    const entry = calls[index];
-    if (entry?.toolName !== "edit-file" || entry.success === false) continue;
-    const path = entry.args.path;
-    if (typeof path !== "string") continue;
-    const content = readWorkspaceFile(ctx.workspace, path.trim());
-    if (!content) return false;
-    return content.includes(repeatedLiteral);
-  }
-  return false;
-}
-
-function isEachOccurrenceTask(message: string): boolean {
-  const normalized = message.toLowerCase();
-  return (
-    /\b(each|every)\b/.test(normalized) ||
-    (/\ball\b/.test(normalized) && /\b(occurrence|instance|match)\b/.test(normalized))
-  );
-}
-
-function extractRepeatedEditLiteral(message: string): string | undefined {
-  const match = message.match(
-    /replace\s+(?:each|every|all(?:\s+\w+)?)?\s*['"`]([^'"`]+)['"`]\s+with\s+['"`][^'"`]+['"`]/i,
-  );
-  return match?.[1];
-}
-
-function readWorkspaceFile(workspace: string, path: string): string | undefined {
-  try {
-    return readFileSync(join(workspace, path), "utf8");
-  } catch {
-    return undefined;
-  }
 }
 
 export function clearVerifyOutcomeForFeedback(ctx: RunContext, feedbackSource?: string): void {

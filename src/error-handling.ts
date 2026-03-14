@@ -40,21 +40,21 @@ export function createErrorStats(initialValue = 0): Record<ErrorCategory, number
   >;
 }
 
-export function isEditFileMultiMatchSignal(input: { code?: string; message: string }): boolean {
+export function isEditFileMultiMatchError(input: { code?: string; message: string }): boolean {
   return (
     input.code === TOOL_ERROR_CODES.editFileMultiMatch ||
     hasToolErrorCode(input.message, TOOL_ERROR_CODES.editFileMultiMatch)
   );
 }
 
-export function isEditFileFindNotFoundSignal(input: { code?: string; message: string }): boolean {
+export function isEditFileFindNotFoundError(input: { code?: string; message: string }): boolean {
   return (
     input.code === TOOL_ERROR_CODES.editFileFindNotFound ||
     hasToolErrorCode(input.message, TOOL_ERROR_CODES.editFileFindNotFound)
   );
 }
 
-export function isOversizedEditSnippetSignal(input: { code?: string; message: string }): boolean {
+export function isOversizedEditSnippetError(input: { code?: string; message: string }): boolean {
   return (
     input.code === TOOL_ERROR_CODES.editFileBatchTooLarge ||
     input.code === TOOL_ERROR_CODES.editFileFindTooLarge ||

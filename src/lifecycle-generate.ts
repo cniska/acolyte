@@ -11,7 +11,7 @@ import {
   type ErrorSource,
   errorCodeFromCategory,
   errorKindFromCategory,
-  isEditFileMultiMatchSignal,
+  isEditFileMultiMatchError,
   parseErrorInfo,
 } from "./error-handling";
 import type {
@@ -65,7 +65,7 @@ function captureError(
   const kind = meta?.kind ?? errorKindFromCategory(category);
   ctx.currentError = { message, code, category, source: meta?.source, tool: meta?.tool };
   ctx.errorStats[category] += 1;
-  if (isEditFileMultiMatchSignal({ code, message })) ctx.sawEditFileMultiMatchError = true;
+  if (isEditFileMultiMatchError({ code, message })) ctx.sawEditFileMultiMatchError = true;
   ctx.debug("lifecycle.error", {
     source: meta?.source ?? "generate",
     tool: meta?.tool ?? null,
