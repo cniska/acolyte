@@ -49,6 +49,6 @@ Naming conventions and core terms used across Acolyte code and docs.
 - **Task**: lifecycle work request flowing through accept/queue/run/terminal states.
 - **Task Queue**: runtime queue policy/mechanism that orders accepted tasks and enforces capacity/cancellation boundaries.
 - **Tool Cache**: per-task LRU cache for read-only and search tool results. Invalidated on writes; shell commands clear the entire cache.
-- **Tool Recovery**: structured recovery payload attached to a `ToolError` when the tool knows the corrective action. Carries `tool`, `kind`, `summary`, and `instruction` fields. Parsed from raw error data by `parseErrorInfo`, stored on `LifecycleError.recovery`, and consumed by evaluators to produce targeted regeneration feedback without host-side string matching.
+- **Tool Recovery**: structured recovery payload attached to a tool failure when the tool knows the corrective action. Carries `tool`, `kind`, `summary`, and `instruction` so lifecycle can regenerate with targeted recovery guidance instead of host-side string matching.
 - **Toolkit**: grouped domain tools exposed through adapters/composition.
 - **Verify Cycle**: post-write verification sequence that runs when verification is enabled for the request scope; the evaluator transitions to verify mode, performs the lightest sufficient scoped verification or review, and re-generates on failure.
