@@ -8,13 +8,19 @@ import type { Session } from "./session-contract";
 import type { SkillMeta } from "./skills";
 import { Box, Text } from "./tui";
 
+export type ModelPickerItem = {
+  label: string;
+  value: string;
+  detail?: string;
+};
+
 export type PickerState =
   | { kind: "skills"; items: SkillMeta[]; index: number }
   | { kind: "resume"; items: Session[]; index: number; scrollOffset: number }
   | {
       kind: "model";
-      items: string[];
-      filtered: string[];
+      items: ModelPickerItem[];
+      filtered: ModelPickerItem[];
       query: string;
       index: number;
       scrollOffset: number;
@@ -112,10 +118,10 @@ export function renderPickerItems(
       }
       const visible = picker.filtered.slice(picker.scrollOffset, picker.scrollOffset + PICKER_PAGE_SIZE);
       return renderPickerRows(
-        visible.map((id) => ({
-          key: id,
-          label: truncateText(id, PICKER_LABEL_WIDTH),
-          detail: "",
+        visible.map((item) => ({
+          key: item.value,
+          label: truncateText(item.label, PICKER_LABEL_WIDTH),
+          detail: item.detail ?? "",
         })),
         picker.index - picker.scrollOffset,
         brandColor,

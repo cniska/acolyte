@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
 import { runShellCommand } from "./shell-ops";
+import { testUuid } from "./test-utils";
 
 const WORKSPACE = resolve(process.cwd());
 
@@ -18,7 +19,7 @@ describe("runShellCommand", () => {
   });
 
   test("allows /tmp paths", async () => {
-    const filePath = `/tmp/acolyte-test-run-${crypto.randomUUID()}.txt`;
+    const filePath = `/tmp/acolyte-test-run-${testUuid()}.txt`;
     const output = await runShellCommand(WORKSPACE, `printf 'ok' > ${filePath}`);
     expect(output).toContain("exit_code=0");
   });

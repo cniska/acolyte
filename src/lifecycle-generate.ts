@@ -23,6 +23,7 @@ import type {
   StreamChunk,
 } from "./lifecycle-contract";
 import { resolveModeModel } from "./lifecycle-resolve";
+import { formatModel } from "./provider-config";
 import type { StreamError } from "./stream-error";
 import type { ToolDefinition } from "./tool-contract";
 import { extractToolErrorCode, LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
@@ -118,7 +119,7 @@ export function setMode(ctx: RunContext, mode: RunContext["mode"], trigger?: str
   ctx.mode = mode;
   ctx.session.mode = mode;
   ctx.debug("lifecycle.mode.changed", { from, to: mode, trigger: trigger ?? null });
-  ctx.emit({ type: "status", message: `${agentModes[mode].statusText} (${ctx.model})` });
+  ctx.emit({ type: "status", message: `${agentModes[mode].statusText} (${formatModel(ctx.model)})` });
 }
 
 function ensureAgentForMode(ctx: RunContext): void {
@@ -183,7 +184,7 @@ export async function phaseGenerate(ctx: RunContext, opts: GenerateOptions): Pro
   ctx.generationAttempt += 1;
   const activeFeedback = consumeLifecycleFeedback(ctx.lifecycleState, ctx.mode);
   const prompt = createGenerationInputFromFeedback(ctx.baseAgentInput, activeFeedback);
-  ctx.emit({ type: "status", message: `${agentModes[ctx.mode].statusText} (${ctx.model})` });
+  ctx.emit({ type: "status", message: `${agentModes[ctx.mode].statusText} (${formatModel(ctx.model)})` });
   ctx.emit({
     type: "usage",
     promptTokens: ctx.promptTokensAccum || ctx.promptUsage.promptTokens,

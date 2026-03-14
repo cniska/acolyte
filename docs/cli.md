@@ -18,6 +18,10 @@ The CLI is the primary interface for working with Acolyte.
 
 Run `acolyte <command> help` for detailed usage.
 
+## Local models
+
+See [Configuration](./configuration.md) for OpenAI-compatible model setup.
+
 ## Chat commands
 
 These are available inside interactive chat mode:

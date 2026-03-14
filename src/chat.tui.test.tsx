@@ -124,8 +124,14 @@ describe("chat tui visual regression: model picker", () => {
   test("renders model picker with selected model", () => {
     const picker = {
       kind: "model" as const,
-      items: ["gpt-5-mini", "gpt-5.2"],
-      filtered: ["gpt-5-mini", "gpt-5.2"],
+      items: [
+        { label: "gpt-5-mini", value: "gpt-5-mini" },
+        { label: "gpt-5.2", value: "gpt-5.2" },
+      ],
+      filtered: [
+        { label: "gpt-5-mini", value: "gpt-5-mini" },
+        { label: "gpt-5.2", value: "gpt-5.2" },
+      ],
       query: "",
       index: 1,
       scrollOffset: 0,
@@ -146,11 +152,38 @@ describe("chat tui visual regression: model picker", () => {
     );
   });
 
+  test("renders local model picker detail without prefixing the label", () => {
+    const picker = {
+      kind: "model" as const,
+      items: [{ label: "qwen2.5-coder:3b", value: "openai-compatible/qwen2.5-coder:3b", detail: "local" }],
+      filtered: [{ label: "qwen2.5-coder:3b", value: "openai-compatible/qwen2.5-coder:3b", detail: "local" }],
+      query: "",
+      index: 0,
+      scrollOffset: 0,
+    };
+
+    const output = renderInputPanel({ picker });
+    expect(output).toBe(
+      dedent(`
+      ────────────────────────────────────────────────────────────────────────────────────────────────
+      Model:
+
+      › qwen2.5-coder:3b     local
+
+      Type to filter · Enter to apply · Esc to close
+      ────────────────────────────────────────────────────────────────────────────────────────────────
+    `),
+    );
+  });
+
   test("renders model picker with query filter", () => {
     const picker = {
       kind: "model" as const,
-      items: ["gpt-5-mini", "gpt-5.2"],
-      filtered: ["gpt-5.2"],
+      items: [
+        { label: "gpt-5-mini", value: "gpt-5-mini" },
+        { label: "gpt-5.2", value: "gpt-5.2" },
+      ],
+      filtered: [{ label: "gpt-5.2", value: "gpt-5.2" }],
       query: "5.2",
       index: 0,
       scrollOffset: 0,
@@ -173,7 +206,10 @@ describe("chat tui visual regression: model picker", () => {
   test("renders model picker empty state when no matches", () => {
     const picker = {
       kind: "model" as const,
-      items: ["gpt-5-mini", "gpt-5.2"],
+      items: [
+        { label: "gpt-5-mini", value: "gpt-5-mini" },
+        { label: "gpt-5.2", value: "gpt-5.2" },
+      ],
       filtered: [],
       query: "zzz",
       index: 0,
@@ -195,7 +231,10 @@ describe("chat tui visual regression: model picker", () => {
   });
 
   test("renders model picker with scroll window", () => {
-    const models = Array.from({ length: 12 }, (_, i) => `model-${String(i + 1).padStart(2, "0")}`);
+    const models = Array.from({ length: 12 }, (_, i) => {
+      const label = `model-${String(i + 1).padStart(2, "0")}`;
+      return { label, value: label };
+    });
     const picker = {
       kind: "model" as const,
       items: models,

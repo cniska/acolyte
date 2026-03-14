@@ -13,6 +13,7 @@ import {
   createSession,
   createStore,
   dedent,
+  testUuid,
 } from "./test-utils";
 
 describe("chat message handler guards", () => {
@@ -463,7 +464,7 @@ describe("chat message handler guards", () => {
   test("continues with resolved @references even when some are unresolved", async () => {
     const rows: ChatRow[] = [];
     let replyCalls = 0;
-    const fixture = `tmp-chat-handleMessage-${crypto.randomUUID()}.txt`;
+    const fixture = `tmp-chat-handleMessage-${testUuid()}.txt`;
     const fixturePath = join(process.cwd(), fixture);
     await writeFile(fixturePath, "fixture");
 

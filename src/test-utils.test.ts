@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { dedent, dedentString, expectToThrowJSON } from "./test-utils";
+import { dedent, dedentString, expectToThrowJSON, testUuid } from "./test-utils";
 
 describe("test utils", () => {
   describe("dedentString", () => {
@@ -66,6 +66,16 @@ describe("test utils", () => {
 
     test("throws when callback does not throw", () => {
       expect(() => expectToThrowJSON(() => {})).toThrow("Expected function to throw");
+    });
+  });
+
+  describe("testUuid", () => {
+    test("returns distinct non-empty ids", () => {
+      const first = testUuid();
+      const second = testUuid();
+      expect(first.length).toBeGreaterThan(0);
+      expect(second.length).toBeGreaterThan(0);
+      expect(first).not.toBe(second);
     });
   });
 });

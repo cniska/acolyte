@@ -1,5 +1,5 @@
 import type { AgentMode } from "./agent-contract";
-import { PICKER_PAGE_SIZE, type PickerState } from "./chat-picker";
+import { type ModelPickerItem, PICKER_PAGE_SIZE, type PickerState } from "./chat-picker";
 import { getAvailableModels } from "./provider-models";
 import type { SessionState } from "./session-contract";
 
@@ -32,8 +32,14 @@ export function createResumePicker(store: SessionState): PickerState | null {
   return { kind: "resume", items, index, scrollOffset };
 }
 
+function modelPickerItem(id: string): ModelPickerItem {
+  const prefix = "openai-compatible/";
+  if (id.startsWith(prefix)) return { label: id.slice(prefix.length), value: id, detail: "local" };
+  return { label: id, value: id };
+}
+
 export async function createModelPicker(targetMode?: AgentMode): Promise<PickerState> {
-  const items = await getAvailableModels();
+  const items = (await getAvailableModels()).map(modelPickerItem);
   return {
     kind: "model",
     items,

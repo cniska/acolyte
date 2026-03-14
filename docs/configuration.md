@@ -24,6 +24,16 @@ Each provider has a configurable base URL with a sensible default:
 - `anthropicBaseUrl`: Anthropic API base (default: `https://api.anthropic.com/v1`). Must end with `/v1`.
 - `googleBaseUrl`: Google AI API base (default: `https://generativelanguage.googleapis.com`).
 
+## Local models
+
+Configure an OpenAI-compatible local endpoint directly in project config, then set the model explicitly:
+
+```bash
+acolyte config set --project openaiBaseUrl http://localhost:11434/v1
+ollama pull <model>
+acolyte config set --project model openai-compatible/<model>
+```
+
 ## Localization
 
 - `locale`: active UI language (defaults to `en`).

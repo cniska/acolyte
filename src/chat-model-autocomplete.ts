@@ -1,4 +1,6 @@
-export function suggestModels(query: string, models: string[]): string[] {
+import type { ModelPickerItem } from "./chat-picker";
+
+export function suggestModels(query: string, models: ModelPickerItem[]): ModelPickerItem[] {
   const q = query.trim().toLowerCase();
   if (!q) return models;
 
@@ -11,21 +13,21 @@ export function suggestModels(query: string, models: string[]): string[] {
     return qi === q.length;
   };
 
-  const score = (id: string): number => {
-    const lower = id.toLowerCase();
+  const score = (label: string): number => {
+    const lower = label.toLowerCase();
     if (lower.startsWith(q)) return 0;
     if (lower.includes(q)) return 1;
-    if (isSubsequence(id)) return 2;
+    if (isSubsequence(label)) return 2;
     return 3;
   };
 
   return models
-    .map((id) => ({ id, score: score(id) }))
+    .map((item) => ({ item, score: score(item.label) }))
     .filter((item) => item.score < 3)
     .sort((a, b) => {
       if (a.score !== b.score) return a.score - b.score;
-      if (a.id.length !== b.id.length) return a.id.length - b.id.length;
-      return a.id.localeCompare(b.id);
+      if (a.item.label.length !== b.item.label.length) return a.item.label.length - b.item.label.length;
+      return a.item.label.localeCompare(b.item.label);
     })
-    .map((item) => item.id);
+    .map((item) => item.item);
 }

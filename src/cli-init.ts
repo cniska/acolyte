@@ -11,7 +11,6 @@ import {
 } from "./provider-contract";
 
 const PROVIDER_ENV_KEYS: readonly ProviderApiEnvKey[] = providerApiEnvKeySchema.options;
-const initProviderSchema = providerSchema;
 
 type InitModeDeps = {
   cwd: () => string;
@@ -25,15 +24,14 @@ type InitModeDeps = {
   writeFile: typeof writeFileType;
 };
 
-function parseInitProvider(value: string | undefined): InitProvider | null {
+function parseInitProvider(value: string | undefined): Provider | null {
   if (!value || value.trim().length === 0) return null;
-  const parsed = initProviderSchema.safeParse(value.trim().toLowerCase());
+  const normalized = value.trim().toLowerCase();
+  const parsed = providerSchema.safeParse(normalized);
   return parsed.success ? parsed.data : null;
 }
 
-type InitProvider = Provider;
-
-function envKeyForProvider(provider: InitProvider): ProviderApiEnvKey {
+function envKeyForProvider(provider: Provider): ProviderApiEnvKey {
   return providerApiEnvKeyByProvider[provider];
 }
 

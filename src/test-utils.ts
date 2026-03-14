@@ -32,6 +32,10 @@ export async function createTempDir(prefix: string): Promise<string> {
   return mkdtemp(join(tmpdir(), prefix));
 }
 
+export function testUuid(): string {
+  return Bun.randomUUIDv7();
+}
+
 export function dedentString(value: string): string {
   const lines = value.split("\n");
   let start = 0;
