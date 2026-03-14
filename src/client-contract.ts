@@ -166,26 +166,37 @@ function parseUsagePayload(raw: unknown): ParsedUsagePayload | undefined {
   const usage = raw as UsageLikePayload;
   const inputTokens = parseUsageNumber(usage.inputTokens) ?? parseUsageNumber(usage.promptTokens);
   const outputTokens = parseUsageNumber(usage.outputTokens) ?? parseUsageNumber(usage.completionTokens);
+  const inputBudgetTokens = parseUsageOptionalNumber(usage, "inputBudgetTokens", "promptBudgetTokens");
+  const inputTruncated = parseUsageOptionalBoolean(usage, "inputTruncated", "promptTruncated");
   if (typeof inputTokens !== "number" || typeof outputTokens !== "number") return undefined;
   return {
     inputTokens,
     outputTokens,
     totalTokens: parseUsageNumber(usage.totalTokens) ?? inputTokens + outputTokens,
-    ...(typeof usage.inputBudgetTokens === "number"
-      ? { inputBudgetTokens: usage.inputBudgetTokens }
-      : typeof usage.promptBudgetTokens === "number"
-        ? { inputBudgetTokens: usage.promptBudgetTokens }
-        : {}),
-    ...(typeof usage.inputTruncated === "boolean"
-      ? { inputTruncated: usage.inputTruncated }
-      : typeof usage.promptTruncated === "boolean"
-        ? { inputTruncated: usage.promptTruncated }
-        : {}),
+    ...(typeof inputBudgetTokens === "number" ? { inputBudgetTokens } : {}),
+    ...(typeof inputTruncated === "boolean" ? { inputTruncated } : {}),
   };
 }
 
 function parseUsageNumber(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function parseUsageOptionalNumber(
+  usage: UsageLikePayload,
+  primary: keyof UsageLikePayload,
+  fallback: keyof UsageLikePayload,
+): number | undefined {
+  return parseUsageNumber(usage[primary]) ?? parseUsageNumber(usage[fallback]);
+}
+
+function parseUsageOptionalBoolean(
+  usage: UsageLikePayload,
+  primary: keyof UsageLikePayload,
+  fallback: keyof UsageLikePayload,
+): boolean | undefined {
+  const value = usage[primary];
+  return typeof value === "boolean" ? value : typeof usage[fallback] === "boolean" ? usage[fallback] : undefined;
 }
 
 export function parseChatResponse(payload: unknown): ChatResponse | null {
