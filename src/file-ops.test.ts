@@ -12,7 +12,7 @@ import {
   writeTextFile,
 } from "./file-ops";
 import { testUuid } from "./test-utils";
-import { TOOL_ERROR_CODES } from "./error-codes";
+import { TOOL_ERROR_CODES } from "./error-primitives";
 
 const WORKSPACE = resolve(process.cwd());
 const tempFiles: string[] = [];

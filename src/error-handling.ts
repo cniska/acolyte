@@ -9,7 +9,7 @@ import {
   extractToolErrorCode,
   LIFECYCLE_ERROR_CODES,
   type ToolRecovery,
-} from "./error-codes";
+} from "./error-primitives";
 
 export type ErrorCategory = "timeout" | "file-not-found" | "guard-blocked" | "other";
 export type ErrorSource = "generate" | "tool-result" | "tool-error" | "server";
