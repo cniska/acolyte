@@ -1,17 +1,9 @@
 import { afterAll, describe, expect, test } from "bun:test";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
+import { editCode, scanCode } from "./code-ops";
 import { TOOL_ERROR_CODES } from "./error-primitives";
-import {
-  deleteTextFile,
-  editCode,
-  editFile,
-  findFiles,
-  readSnippet,
-  scanCode,
-  searchFiles,
-  writeTextFile,
-} from "./file-ops";
+import { deleteTextFile, editFile, findFiles, readSnippet, searchFiles, writeTextFile } from "./file-ops";
 import { testUuid } from "./test-utils";
 
 const WORKSPACE = resolve(process.cwd());

@@ -1,16 +1,8 @@
 import { isAbsolute, relative } from "node:path";
 import { z } from "zod";
 import { appConfig } from "./app-config";
-import {
-  deleteTextFile,
-  editCode,
-  editFile,
-  findFiles,
-  readSnippets,
-  scanCode,
-  searchFiles,
-  writeTextFile,
-} from "./file-ops";
+import { editCode, scanCode } from "./code-ops";
+import { deleteTextFile, editFile, findFiles, readSnippets, searchFiles, writeTextFile } from "./file-ops";
 import { t } from "./i18n";
 import { createTool, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
