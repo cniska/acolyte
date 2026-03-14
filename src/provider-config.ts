@@ -73,9 +73,3 @@ export function isProviderAvailable(provider: Provider, credentials: ProviderCre
   if (credentials.baseUrl && isOpenAICompatibleBaseUrl(credentials.baseUrl)) return true;
   return Boolean(credentials.apiKey);
 }
-
-export function resolveOpenAICompatibleApiKey(credentials: ProviderCredentials): string | undefined {
-  if (credentials.apiKey) return credentials.apiKey;
-  if (credentials.baseUrl && isOpenAICompatibleBaseUrl(credentials.baseUrl)) return "ollama";
-  return undefined;
-}

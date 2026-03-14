@@ -4,7 +4,6 @@ import {
   isProviderAvailable,
   normalizeModel,
   providerFromModel,
-  resolveOpenAICompatibleApiKey,
 } from "./provider-config";
 
 describe("provider config", () => {
@@ -42,13 +41,5 @@ describe("provider config", () => {
     expect(isProviderAvailable("anthropic", { apiKey: "sk-ant", baseUrl: "https://api.anthropic.com" })).toBe(false);
     expect(isProviderAvailable("google", { apiKey: "sk-goog" })).toBe(true);
     expect(isProviderAvailable("google", {})).toBe(false);
-  });
-
-  test("resolveOpenAICompatibleApiKey falls back for local OpenAI-compatible endpoints", () => {
-    expect(resolveOpenAICompatibleApiKey({ apiKey: "sk-openai", baseUrl: "https://api.openai.com/v1" })).toBe(
-      "sk-openai",
-    );
-    expect(resolveOpenAICompatibleApiKey({ baseUrl: "http://localhost:11434/v1" })).toBe("ollama");
-    expect(resolveOpenAICompatibleApiKey({ baseUrl: "https://api.openai.com/v1" })).toBeUndefined();
   });
 });

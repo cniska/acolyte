@@ -82,14 +82,35 @@ describe("getAvailableModels", () => {
   test("prefixes models from local OpenAI-compatible endpoints", async () => {
     (appConfig.openai as { apiKey: string | undefined }).apiKey = undefined;
     (appConfig.openai as { baseUrl: string }).baseUrl = "http://localhost:11434/v1";
+    let authHeader: string | null = null;
     const originalFetch = globalThis.fetch;
-    globalThis.fetch = mock(async () => {
+    globalThis.fetch = mock(async (_url: string | URL | Request, init?: RequestInit) => {
+      authHeader = new Headers(init?.headers).get("Authorization");
       return new Response(JSON.stringify({ data: [{ id: "qwen2.5-coder:3b" }] }), { status: 200 });
     }) as unknown as typeof fetch;
 
     try {
       const models = await getAvailableModels();
       expect(models).toEqual(["openai-compatible/qwen2.5-coder:3b"]);
+      expect(authHeader).toBeNull();
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("sends configured api key for openai-compatible model discovery", async () => {
+    (appConfig.openai as { apiKey: string | undefined }).apiKey = "test-key";
+    (appConfig.openai as { baseUrl: string }).baseUrl = "http://localhost:11434/v1";
+    let authHeader: string | null = null;
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = mock(async (_url: string | URL | Request, init?: RequestInit) => {
+      authHeader = new Headers(init?.headers).get("Authorization");
+      return new Response(JSON.stringify({ data: [{ id: "qwen2.5-coder:3b" }] }), { status: 200 });
+    }) as unknown as typeof fetch;
+
+    try {
+      await getAvailableModels();
+      expect(authHeader).toBe("Bearer test-key");
     } finally {
       globalThis.fetch = originalFetch;
     }
