@@ -62,6 +62,15 @@ describe("path guards", () => {
     );
   });
 
+  test("scanCode rejects unsupported single-file types", async () => {
+    const filePath = `/tmp/acolyte-test-scan-unsupported-${testUuid()}.yaml`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, "foo: bar\n", "utf8");
+    await expect(scanCode({ workspace: WORKSPACE, paths: [filePath], pattern: "const $X" })).rejects.toThrow(
+      `scan-code requires a supported code file, got: ${filePath}`,
+    );
+  });
+
   test("readSnippet allows /tmp files", async () => {
     const filePath = `/tmp/acolyte-test-read-${testUuid()}.txt`;
     tempFiles.push(filePath);
@@ -405,6 +414,19 @@ describe("editCode", () => {
         edits: [{ pattern: "Title", replacement: "Heading" }],
       }),
     ).rejects.toThrow("edit-code requires a supported code file");
+  });
+
+  test("rejects unknown single-file extensions without falling back", async () => {
+    const filePath = `/tmp/acolyte-test-ast-yaml-${testUuid()}.yaml`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, "foo: bar\n", "utf8");
+    await expect(
+      editCode({
+        workspace: WORKSPACE,
+        path: filePath,
+        edits: [{ pattern: "foo: $VALUE", replacement: "bar: $VALUE" }],
+      }),
+    ).rejects.toThrow(`edit-code requires a supported code file, got: ${filePath}`);
   });
 
   test("rejects replacement metavariables that are not present in the pattern", async () => {

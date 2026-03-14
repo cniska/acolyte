@@ -392,10 +392,10 @@ const LANGUAGE_MAP: Record<string, string> = {
   ".go": "go",
 };
 
-function languageFromPath(filePath: string): string {
+function languageFromPath(filePath: string): string | undefined {
   const dot = filePath.lastIndexOf(".");
-  if (dot < 0) return "TypeScript";
-  return LANGUAGE_MAP[filePath.slice(dot).toLowerCase()] ?? "TypeScript";
+  if (dot < 0) return undefined;
+  return LANGUAGE_MAP[filePath.slice(dot).toLowerCase()];
 }
 
 function isParseable(filePath: string): boolean {
@@ -425,6 +425,9 @@ export async function editCode(input: {
   await ensureDynamicLanguages();
 
   const langName = languageFromPath(absPath);
+  if (!langName) {
+    throw new Error(`edit-code requires a supported code file, got: ${input.path}`);
+  }
   const langEnum = napi.Lang[langName as keyof typeof napi.Lang];
   let current = original;
   let totalMatches = 0;
@@ -554,8 +557,14 @@ export async function scanCode(input: {
     const info = await stat(absPath);
 
     if (info.isFile()) {
+      if (!input.language && !isParseable(absPath)) {
+        throw new Error(`scan-code requires a supported code file, got: ${rawPath}`);
+      }
       const content = await readFile(absPath, "utf8");
       const lang = input.language ?? languageFromPath(absPath);
+      if (!lang) {
+        throw new Error(`scan-code requires a supported code file, got: ${rawPath}`);
+      }
       scanned++;
       scanFile(displayPathForDiff(absPath, input.workspace), content, lang);
     } else if (info.isDirectory()) {
@@ -581,6 +590,7 @@ export async function scanCode(input: {
           } else if (entry.isFile() && isParseable(abs)) {
             if (scanned >= maxFiles || totalMatches() >= maxResults) break;
             const lang = input.language ?? languageFromPath(abs);
+            if (!lang) continue;
             try {
               const content = await readFile(abs, "utf8");
               scanned++;
