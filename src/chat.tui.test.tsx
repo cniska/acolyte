@@ -152,6 +152,30 @@ describe("chat tui visual regression: model picker", () => {
     );
   });
 
+  test("renders local model picker detail without prefixing the label", () => {
+    const picker = {
+      kind: "model" as const,
+      items: [{ label: "qwen2.5-coder:3b", value: "openai-compatible/qwen2.5-coder:3b", detail: "local" }],
+      filtered: [{ label: "qwen2.5-coder:3b", value: "openai-compatible/qwen2.5-coder:3b", detail: "local" }],
+      query: "",
+      index: 0,
+      scrollOffset: 0,
+    };
+
+    const output = renderInputPanel({ picker });
+    expect(output).toBe(
+      dedent(`
+      ────────────────────────────────────────────────────────────────────────────────────────────────
+      Model:
+
+      › qwen2.5-coder:3b     local
+
+      Type to filter · Enter to apply · Esc to close
+      ────────────────────────────────────────────────────────────────────────────────────────────────
+    `),
+    );
+  });
+
   test("renders model picker with query filter", () => {
     const picker = {
       kind: "model" as const,

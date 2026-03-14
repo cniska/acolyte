@@ -11,6 +11,7 @@ import { Box, Text } from "./tui";
 export type ModelPickerItem = {
   label: string;
   value: string;
+  detail?: string;
 };
 
 export type PickerState =
@@ -120,7 +121,7 @@ export function renderPickerItems(
         visible.map((item) => ({
           key: item.value,
           label: truncateText(item.label, PICKER_LABEL_WIDTH),
-          detail: "",
+          detail: item.detail ?? "",
         })),
         picker.index - picker.scrollOffset,
         brandColor,

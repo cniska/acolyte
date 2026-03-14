@@ -17,14 +17,25 @@ function session(id: string, title = "New Session"): Session {
 }
 
 let savedApiKey: string | undefined;
+let savedBaseUrl: string | undefined;
+let savedAnthropicApiKey: string | undefined;
+let savedGoogleApiKey: string | undefined;
 
 beforeEach(() => {
   savedApiKey = appConfig.openai.apiKey;
+  savedBaseUrl = appConfig.openai.baseUrl;
+  savedAnthropicApiKey = appConfig.anthropic.apiKey;
+  savedGoogleApiKey = appConfig.google.apiKey;
   (appConfig.openai as { apiKey: string | undefined }).apiKey = "test-key";
+  (appConfig.anthropic as { apiKey: string | undefined }).apiKey = undefined;
+  (appConfig.google as { apiKey: string | undefined }).apiKey = undefined;
 });
 
 afterEach(() => {
   (appConfig.openai as { apiKey: string | undefined }).apiKey = savedApiKey;
+  (appConfig.openai as { baseUrl: string | undefined }).baseUrl = savedBaseUrl;
+  (appConfig.anthropic as { apiKey: string | undefined }).apiKey = savedAnthropicApiKey;
+  (appConfig.google as { apiKey: string | undefined }).apiKey = savedGoogleApiKey;
   invalidateModelsCache();
   mock.restore();
 });
@@ -68,6 +79,26 @@ describe("chat picker actions", () => {
       expect(picker.items[0]).toEqual({ label: "gpt-5-mini", value: "gpt-5-mini" });
       expect(picker.query).toBe("");
       expect(picker.scrollOffset).toBe(0);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("createModelPicker marks openai-compatible models as local", async () => {
+    const originalFetch = globalThis.fetch;
+    (appConfig.openai as { apiKey: string | undefined }).apiKey = undefined;
+    (appConfig.openai as { baseUrl: string }).baseUrl = "http://localhost:11434/v1";
+    globalThis.fetch = mock(async () => {
+      return new Response(JSON.stringify({ data: [{ id: "qwen2.5-coder:3b" }] }), { status: 200 });
+    }) as unknown as typeof fetch;
+
+    try {
+      const picker = await createModelPicker();
+      expect(picker.kind).toBe("model");
+      if (picker.kind !== "model") throw new Error("Expected model picker");
+      expect(picker.items).toEqual([
+        { label: "qwen2.5-coder:3b", value: "openai-compatible/qwen2.5-coder:3b", detail: "local" },
+      ]);
     } finally {
       globalThis.fetch = originalFetch;
     }
