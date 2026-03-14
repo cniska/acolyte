@@ -1,6 +1,7 @@
 import { relative } from "node:path";
 import { z } from "zod";
 import { wrapAssistantContent } from "./chat-content";
+import { formatCompactNumber } from "./chat-format";
 import { t } from "./i18n";
 import { formatToolOutput, type ToolOutput } from "./tool-output-content";
 import { TOOL_OUTPUT_LIMITS } from "./tool-output-format";
@@ -137,6 +138,25 @@ export function formatReadDetail(pathInput: string, start?: string, end?: string
   const from = start ?? "1";
   const to = end ?? "EOF";
   return `${pathInput}:${from}-${to}`;
+}
+
+export function formatRunSummary(
+  label: string,
+  tokenUsage: { usage: { inputTokens: number; outputTokens: number; totalTokens: number }; modelCalls?: number }[],
+  durationMs: number,
+): string | null {
+  const totals = tokenUsage.reduce(
+    (acc, e) => ({
+      input: acc.input + e.usage.inputTokens,
+      output: acc.output + e.usage.outputTokens,
+      total: acc.total + e.usage.totalTokens,
+      modelCalls: acc.modelCalls + (e.modelCalls ?? 1),
+    }),
+    { input: 0, output: 0, total: 0, modelCalls: 0 },
+  );
+  if (totals.total === 0) return null;
+  const durationSec = (durationMs / 1000).toFixed(1);
+  return `${label}: ${durationSec}s, ${formatCompactNumber(totals.total)} tokens (input ${formatCompactNumber(totals.input)}, output ${formatCompactNumber(totals.output)}), ${totals.modelCalls} model calls, ${tokenUsage.length} turns`;
 }
 
 export function formatAssistantReplyOutput(content: string, wrapWidth = 100): string {
