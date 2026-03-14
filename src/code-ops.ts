@@ -191,7 +191,7 @@ function isPatternObject(
 function isRuleObject(
   value: EditCodeRule | EditCodeRelationalRule,
 ): value is EditCodeRuleObject | EditCodeRelationalRule {
-  return typeof value === "object" && value !== null && !("context" in value) && !("rule" in value);
+  return typeof value === "object" && value !== null && !("context" in value);
 }
 
 function compilePattern(pattern: EditCodePattern): string | Record<string, unknown> {
@@ -231,7 +231,18 @@ function compileRule(rule: EditCodeRule | EditCodeRelationalRule): Record<string
 function ruleLabel(rule: EditCodeRule): string {
   if (typeof rule === "string") return rule;
   if (isPatternObject(rule)) return patternLabel(rule);
-  return JSON.stringify(rule);
+  const parts: string[] = [];
+  if (rule.pattern !== undefined) parts.push(`pattern=${ruleLabel(rule.pattern)}`);
+  if (rule.kind) parts.push(`kind=${rule.kind}`);
+  if (rule.regex) parts.push(`regex=${rule.regex}`);
+  if (rule.any) parts.push(`any(${rule.any.length})`);
+  if (rule.all) parts.push(`all(${rule.all.length})`);
+  if (rule.not) parts.push("not");
+  if (rule.inside) parts.push("inside");
+  if (rule.has) parts.push("has");
+  if ("field" in rule && rule.field) parts.push(`field=${rule.field}`);
+  if ("stopBy" in rule && rule.stopBy) parts.push(typeof rule.stopBy === "string" ? `stopBy=${rule.stopBy}` : "stopBy");
+  return parts.join(" ") || "rule object";
 }
 
 function collectRulePatternSources(rule: EditCodeRule | EditCodeRelationalRule): string[] {
@@ -321,7 +332,7 @@ export async function editCode(input: {
     if (matches.length === 0) {
       throw createToolError(
         TOOL_ERROR_CODES.editCodeNoMatch,
-        `No AST matches found for pattern: ${pattern}${edit.within ? ` within: ${edit.within}` : ""}${edit.withinSymbol ? ` withinSymbol: ${edit.withinSymbol}` : ""}`,
+        `No AST matches found for ${isRenameEdit(edit) ? "rename target" : "rule"}: ${pattern}${edit.within ? ` within: ${edit.within}` : ""}${edit.withinSymbol ? ` withinSymbol: ${edit.withinSymbol}` : ""}`,
         undefined,
         editCodeRecovery(input.path, "refine-pattern"),
       );

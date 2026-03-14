@@ -192,6 +192,33 @@ describe("editCode", () => {
     expect(content).toContain('const alias = "outside";');
   });
 
+  test("rename matches exact identifiers only", async () => {
+    const filePath = `/tmp/acolyte-test-ast-rename-exact-${testUuid()}.ts`;
+    tempFiles.push(filePath);
+    await writeFile(
+      filePath,
+      [
+        "const scanFile = (items: string[]): string[] => {",
+        "  const result = items[0] ?? '';",
+        "  const resultCount = items.length;",
+        "  return [result, String(resultCount)];",
+        "};",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    const result = await editCode({
+      workspace: WORKSPACE,
+      path: filePath,
+      edits: [{ op: "rename", from: "result", to: "patternResult", withinSymbol: "scanFile" }],
+    });
+    expect(result.matches).toBe(2);
+    const content = await readFile(filePath, "utf8");
+    expect(content).toContain("const patternResult = items[0] ?? '';");
+    expect(content).toContain("return [patternResult, String(resultCount)];");
+    expect(content).toContain("const resultCount = items.length;");
+  });
+
   test("supports structured replace patterns with context and selector", async () => {
     const filePath = `/tmp/acolyte-test-ast-pattern-object-${testUuid()}.js`;
     tempFiles.push(filePath);
@@ -257,6 +284,51 @@ describe("editCode", () => {
     expect(content).toContain('console.warn("third");');
   });
 
+  test("supports relational stopBy rule objects", async () => {
+    const filePath = `/tmp/acolyte-test-ast-stop-by-${testUuid()}.ts`;
+    tempFiles.push(filePath);
+    await writeFile(
+      filePath,
+      [
+        "function outer() {",
+        "  function inner() {",
+        '    console.log("inner");',
+        "  }",
+        '  console.log("outer");',
+        "}",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    const result = await editCode({
+      workspace: WORKSPACE,
+      path: filePath,
+      edits: [
+        {
+          op: "replace",
+          rule: {
+            pattern: "console.log($ARG)",
+            inside: {
+              kind: "function_declaration",
+              stopBy: {
+                kind: "function_declaration",
+                pattern: {
+                  context: "function outer() { $$$BODY }",
+                  selector: "function_declaration",
+                },
+              },
+            },
+          },
+          replacement: "logger.debug($ARG)",
+        },
+      ],
+    });
+    expect(result.matches).toBe(2);
+    const content = await readFile(filePath, "utf8");
+    expect(content).toContain('logger.debug("inner");');
+    expect(content).toContain('logger.debug("outer");');
+  });
+
   test("throws when no matches found", async () => {
     const filePath = `/tmp/acolyte-test-ast-nomatch-${testUuid()}.ts`;
     tempFiles.push(filePath);
@@ -270,6 +342,21 @@ describe("editCode", () => {
     ).rejects.toMatchObject({
       code: TOOL_ERROR_CODES.editCodeNoMatch,
       recovery: { tool: "edit-code", kind: "refine-pattern" },
+    });
+  });
+
+  test("formats no-match errors with readable rule summaries", async () => {
+    const filePath = `/tmp/acolyte-test-ast-readable-error-${testUuid()}.ts`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, "const x = 1;\n", "utf8");
+    await expect(
+      editCode({
+        workspace: WORKSPACE,
+        path: filePath,
+        edits: [{ op: "replace", rule: { any: ["console.log($ARG)", "console.info($ARG)"] }, replacement: "logger.debug($ARG)" }],
+      }),
+    ).rejects.toMatchObject({
+      message: expect.stringContaining("No AST matches found for rule: any(2)"),
     });
   });
 
