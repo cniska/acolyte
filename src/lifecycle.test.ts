@@ -506,10 +506,12 @@ describe("multiMatchEditEvaluator", () => {
     const action = multiMatchEditEvaluator.evaluate(ctx);
     expect(action.type).toBe("regenerate");
     if (action.type === "regenerate") {
-      expect(action.feedback?.instruction).toContain("next tool call must be edit-code");
+      expect(action.feedback?.instruction).toContain("Do not retry the same ambiguous find snippet");
+      expect(action.feedback?.instruction).toContain("bounded single-file rewrite");
+      expect(action.feedback?.instruction).toContain("single line-range edit");
       expect(action.feedback?.instruction).toContain("real ast-grep pattern with metavariables");
-      expect(action.feedback?.instruction).toContain("Use path 'src/priority.ts' for edit-code");
-      expect(action.feedback?.instruction).toContain("do not use '.' or directory paths");
+      expect(action.feedback?.instruction).toContain("path 'src/priority.ts'");
+      expect(action.feedback?.instruction).toContain("Do not use plain text as an edit-code pattern");
     }
   });
 
@@ -525,7 +527,7 @@ describe("multiMatchEditEvaluator", () => {
     const action = multiMatchEditEvaluator.evaluate(ctx);
     expect(action.type).toBe("regenerate");
     if (action.type === "regenerate") {
-      expect(action.feedback?.instruction).toContain("Use a concrete file path for edit-code");
+      expect(action.feedback?.instruction).toContain("use a concrete file path");
     }
   });
 

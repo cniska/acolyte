@@ -254,12 +254,12 @@ export const multiMatchEditEvaluator: Evaluator = {
         mode: "work",
         summary: "Your previous edit-file call matched multiple locations.",
         instruction:
-          "For this task, your next tool call must be edit-code (not edit-file). Use a real ast-grep pattern with metavariables, not a plain text search string. " +
+          "Do not retry the same ambiguous find snippet. " +
+          "If this is a bounded single-file rewrite, prefer one edit-file call with unique surrounding context or a single line-range edit for the affected block. " +
           (targetPath
-            ? `Use path '${targetPath}' for edit-code and do not use '.' or directory paths. `
-            : "Use a concrete file path for edit-code and do not use '.' or directory paths. ") +
-          "Do not run additional find/search/read calls unless edit-code fails. " +
-          "After applying edit-code changes, run verify.",
+            ? `If you truly need edit-code for a structural rewrite, use path '${targetPath}' and a real ast-grep pattern with metavariables. `
+            : "If you truly need edit-code for a structural rewrite, use a concrete file path and a real ast-grep pattern with metavariables. ") +
+          "Do not use plain text as an edit-code pattern, and do not run additional find/search/read calls unless a new tool error requires it.",
       },
     };
   },

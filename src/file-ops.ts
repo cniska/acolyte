@@ -166,7 +166,11 @@ export async function editFile(input: {
         );
       }
       if (count > 1) {
-        const message = `Find text matched ${count} locations (${edit.find.slice(0, 40)}…). Provide a longer, more unique snippet to match exactly one location, or use edit-code for multi-location code changes.`;
+        const message =
+          `Find text matched ${count} locations (${edit.find.slice(0, 40)}…). ` +
+          "Provide a longer, more unique snippet to match exactly one location. " +
+          "For local rewrites in one file, batch unique snippets or use a single line-range edit for one contiguous block. " +
+          "Use edit-code only for structural code changes.";
         throw createToolError(TOOL_ERROR_CODES.editFileMultiMatch, message);
       }
       const start = raw.indexOf(edit.find);
