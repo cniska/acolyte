@@ -35,7 +35,7 @@ describe("soul prompt loading", () => {
     mkdirSync(join(dir, "docs"), { recursive: true });
     writeFileSync(join(dir, "docs", "soul.md"), "Soul prompt body", "utf8");
     const prompt = await createSoulPrompt({ cwd: dir });
-    expect(prompt).toContain("Soul prompt body");
+    expect(prompt.prompt).toContain("Soul prompt body");
   });
 
   test("createSoulPrompt emits load_skipped debug event when request disables memory", async () => {

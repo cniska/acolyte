@@ -36,8 +36,8 @@ describe("storage", () => {
             {
               id: "msg_1",
               usage: {
-                promptTokens: 10,
-                completionTokens: 5,
+                inputTokens: 10,
+                outputTokens: 5,
                 totalTokens: 15,
               },
               modelCalls: 2,

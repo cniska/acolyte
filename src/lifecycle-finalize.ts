@@ -14,18 +14,18 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
         ? t("agent.output.no_response_after_tools")
         : t("agent.output.no_output");
 
-  const promptTokens = ctx.promptTokensAccum || ctx.promptUsage.promptTokens;
-  const completionTokens = ctx.completionTokensAccum || estimateTokens(output);
+  const inputTokens = ctx.inputTokensAccum || ctx.promptUsage.inputTokens;
+  const outputTokens = ctx.outputTokensAccum || estimateTokens(output);
   let budgetWarning: string | undefined;
-  if (ctx.promptUsage.promptTruncated) {
+  if (ctx.promptUsage.inputTruncated) {
     budgetWarning = t("lifecycle.budget.trimmed", {
       included: t("unit.history_message", { count: ctx.promptUsage.includedHistoryMessages }),
       total: ctx.promptUsage.totalHistoryMessages,
     });
-  } else if (ctx.promptUsage.promptTokens >= Math.floor(ctx.promptUsage.promptBudgetTokens * 0.9)) {
+  } else if (ctx.promptUsage.inputTokens >= Math.floor(ctx.promptUsage.inputBudgetTokens * 0.9)) {
     budgetWarning = t("lifecycle.budget.near", {
-      used: ctx.promptUsage.promptTokens,
-      budget: ctx.promptUsage.promptBudgetTokens,
+      used: ctx.promptUsage.inputTokens,
+      budget: ctx.promptUsage.inputBudgetTokens,
     });
   }
 
@@ -78,11 +78,19 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
     toolCalls: callLog.map((entry) => entry.toolName),
     modelCalls: ctx.modelCallCount,
     usage: {
-      promptTokens,
-      completionTokens,
-      totalTokens: promptTokens + completionTokens,
-      promptBudgetTokens: ctx.promptUsage.promptBudgetTokens,
-      promptTruncated: ctx.promptUsage.promptTruncated,
+      inputTokens,
+      outputTokens,
+      totalTokens: inputTokens + outputTokens,
+      inputBudgetTokens: ctx.promptUsage.inputBudgetTokens,
+      inputTruncated: ctx.promptUsage.inputTruncated,
+    },
+    promptBreakdown: {
+      budgetTokens: ctx.promptUsage.inputBudgetTokens,
+      usedTokens: inputTokens,
+      systemTokens: Math.max(0, ctx.promptUsage.systemPromptTokens - ctx.promptUsage.memoryTokens),
+      toolTokens: ctx.promptUsage.toolTokens,
+      memoryTokens: ctx.promptUsage.memoryTokens,
+      messageTokens: ctx.promptUsage.messageTokens,
     },
     budgetWarning,
   };

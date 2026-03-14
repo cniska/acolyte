@@ -170,17 +170,17 @@ export async function skillMode(args: string[], deps: SkillModeDeps): Promise<vo
 
   const totals = session.tokenUsage.reduce(
     (acc, e) => ({
-      prompt: acc.prompt + e.usage.promptTokens,
-      completion: acc.completion + e.usage.completionTokens,
+      input: acc.input + e.usage.inputTokens,
+      output: acc.output + e.usage.outputTokens,
       total: acc.total + e.usage.totalTokens,
       modelCalls: acc.modelCalls + (e.modelCalls ?? 1),
     }),
-    { prompt: 0, completion: 0, total: 0, modelCalls: 0 },
+    { input: 0, output: 0, total: 0, modelCalls: 0 },
   );
   const durationSec = (durationMs / 1000).toFixed(1);
   if (totals.total > 0) {
     printDim(
-      `skill: ${durationSec}s, ${totals.total} tokens (prompt ${totals.prompt}, completion ${totals.completion}), ${totals.modelCalls} model calls, ${session.tokenUsage.length} turns`,
+      `skill: ${durationSec}s, ${totals.total} tokens (input ${totals.input}, output ${totals.output}), ${totals.modelCalls} model calls, ${session.tokenUsage.length} turns`,
     );
   }
 

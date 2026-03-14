@@ -68,8 +68,8 @@ describe("cli-run", () => {
       updatedAt: "",
       messages: [],
       tokenUsage: [
-        { id: "msg_1", usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 }, modelCalls: 2 },
-        { id: "msg_2", usage: { promptTokens: 200, completionTokens: 80, totalTokens: 280 }, modelCalls: 1 },
+        { id: "msg_1", usage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 }, modelCalls: 2 },
+        { id: "msg_2", usage: { inputTokens: 200, outputTokens: 80, totalTokens: 280 }, modelCalls: 1 },
       ],
     };
     deps.createSession = () => session as never;
@@ -77,8 +77,8 @@ describe("cli-run", () => {
     const tokenLine = calls.dims.find((d) => d.startsWith("run:"));
     expect(tokenLine).toBeDefined();
     expect(tokenLine).toContain("430 tokens");
-    expect(tokenLine).toContain("prompt 300");
-    expect(tokenLine).toContain("completion 130");
+    expect(tokenLine).toContain("input 300");
+    expect(tokenLine).toContain("output 130");
     expect(tokenLine).toContain("3 model calls");
     expect(tokenLine).toContain("2 turns");
   });

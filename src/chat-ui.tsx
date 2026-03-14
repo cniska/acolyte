@@ -94,7 +94,7 @@ function ChatApp(props: ChatAppProps) {
   const [branch, setBranch] = useState<string | null>(null);
   const [picker, setPicker] = useState<PickerState | null>(null);
   const [tokenUsage, setTokenUsage] = useState<SessionTokenUsageEntry[]>(() => session.tokenUsage ?? []);
-  const [runningUsage, setRunningUsage] = useState<{ promptTokens: number; completionTokens: number } | null>(null);
+  const [runningUsage, setRunningUsage] = useState<{ inputTokens: number; outputTokens: number } | null>(null);
   const [inputHistory, setInputHistory] = useState<string[]>([]);
   const [inputHistoryIndex, setInputHistoryIndex] = useState(-1);
   const [inputHistoryDraft, setInputHistoryDraft] = useState("");

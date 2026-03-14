@@ -200,7 +200,8 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
     });
     const reply = await runLifecycle({
       request: lifecycleRequest,
-      soulPrompt,
+      soulPrompt: soulPrompt.prompt,
+      memoryTokens: soulPrompt.memoryTokens,
       workspace: workspaceResolution.workspacePath,
       taskId: handlers.taskId,
       shouldYield: handlers.shouldYield,
@@ -247,8 +248,8 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
       model_calls: reply.modelCalls ?? null,
       tool_count: reply.toolCalls?.length ?? 0,
       tools: reply.toolCalls?.join(",") ?? "",
-      prompt_tokens: reply.usage?.promptTokens ?? null,
-      completion_tokens: reply.usage?.completionTokens ?? null,
+      input_tokens: reply.usage?.inputTokens ?? null,
+      output_tokens: reply.usage?.outputTokens ?? null,
       stream: true,
       transport_path: handlers.path,
     });

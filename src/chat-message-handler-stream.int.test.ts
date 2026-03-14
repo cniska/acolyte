@@ -388,8 +388,8 @@ describe("chat message handler stream behavior", () => {
           model: "gpt-5-mini",
           output: "done",
           usage: {
-            promptTokens: 12,
-            completionTokens: 8,
+            inputTokens: 12,
+            outputTokens: 8,
             totalTokens: 20,
           },
           modelCalls: 3,

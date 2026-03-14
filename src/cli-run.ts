@@ -48,7 +48,7 @@ export function runResourceId(sessionId: string): ResourceId {
 
 function parseRunArgs(args: string[]): ParsedRunArgs {
   const files: string[] = [];
-  const promptTokens: string[] = [];
+  const promptParts: string[] = [];
   let workspace: string | undefined;
   let model: string | undefined;
 
@@ -75,10 +75,10 @@ function parseRunArgs(args: string[]): ParsedRunArgs {
       continue;
     }
 
-    promptTokens.push(args[i]);
+    promptParts.push(args[i]);
   }
 
-  return { ...runArgsSchema.parse({ files, prompt: promptTokens.join(" ").trim() }), workspace, model };
+  return { ...runArgsSchema.parse({ files, prompt: promptParts.join(" ").trim() }), workspace, model };
 }
 
 export async function runMode(args: string[], deps: RunModeDeps): Promise<void> {
@@ -158,17 +158,17 @@ export async function runMode(args: string[], deps: RunModeDeps): Promise<void> 
 
   const totals = session.tokenUsage.reduce(
     (acc, e) => ({
-      prompt: acc.prompt + e.usage.promptTokens,
-      completion: acc.completion + e.usage.completionTokens,
+      input: acc.input + e.usage.inputTokens,
+      output: acc.output + e.usage.outputTokens,
       total: acc.total + e.usage.totalTokens,
       modelCalls: acc.modelCalls + (e.modelCalls ?? 1),
     }),
-    { prompt: 0, completion: 0, total: 0, modelCalls: 0 },
+    { input: 0, output: 0, total: 0, modelCalls: 0 },
   );
   const durationSec = (durationMs / 1000).toFixed(1);
   if (totals.total > 0) {
     printDim(
-      `run: ${durationSec}s, ${formatCompactNumber(totals.total)} tokens (prompt ${formatCompactNumber(totals.prompt)}, completion ${formatCompactNumber(totals.completion)}), ${totals.modelCalls} model calls, ${session.tokenUsage.length} turns`,
+      `run: ${durationSec}s, ${formatCompactNumber(totals.total)} tokens (input ${formatCompactNumber(totals.input)}, output ${formatCompactNumber(totals.output)}), ${totals.modelCalls} model calls, ${session.tokenUsage.length} turns`,
     );
   }
 

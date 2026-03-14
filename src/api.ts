@@ -8,11 +8,20 @@ export const verifyScopeSchema = z.enum(["task", "global"]);
 export type VerifyScope = z.infer<typeof verifyScopeSchema>;
 
 export interface TokenUsage {
-  readonly promptTokens: number;
-  readonly completionTokens: number;
+  readonly inputTokens: number;
+  readonly outputTokens: number;
   readonly totalTokens: number;
-  readonly promptBudgetTokens?: number;
-  readonly promptTruncated?: boolean;
+  readonly inputBudgetTokens?: number;
+  readonly inputTruncated?: boolean;
+}
+
+export interface PromptBreakdown {
+  readonly budgetTokens: number;
+  readonly usedTokens: number;
+  readonly systemTokens: number;
+  readonly toolTokens: number;
+  readonly memoryTokens: number;
+  readonly messageTokens: number;
 }
 
 export interface ChatRequest {
@@ -34,6 +43,7 @@ export interface ChatResponse {
   output: string;
   model: string;
   usage?: TokenUsage;
+  promptBreakdown?: PromptBreakdown;
   budgetWarning?: string;
   toolCalls?: string[];
   modelCalls?: number;

@@ -187,8 +187,8 @@ export async function phaseGenerate(ctx: RunContext, opts: GenerateOptions): Pro
   ctx.emit({ type: "status", message: `${agentModes[ctx.mode].statusText} (${formatModel(ctx.model)})` });
   ctx.emit({
     type: "usage",
-    promptTokens: ctx.promptTokensAccum || ctx.promptUsage.promptTokens,
-    completionTokens: ctx.completionTokensAccum,
+    inputTokens: ctx.inputTokensAccum || ctx.promptUsage.inputTokens,
+    outputTokens: ctx.outputTokensAccum,
   });
   ctx.debug("lifecycle.generate.start", {
     model: ctx.model,
@@ -201,17 +201,17 @@ export async function phaseGenerate(ctx: RunContext, opts: GenerateOptions): Pro
     ctx.result = await streamWithTimeout(ctx, prompt, opts.timeoutMs);
     if (ctx.modelCallCount === preCallCount) {
       ctx.modelCallCount += 1;
-      ctx.completionTokensAccum += estimateTokens(ctx.result.text);
+      ctx.outputTokensAccum += estimateTokens(ctx.result.text);
     }
-    if (ctx.promptTokensAccum === 0) {
-      ctx.promptTokensAccum = ctx.promptUsage.promptTokens;
+    if (ctx.inputTokensAccum === 0) {
+      ctx.inputTokensAccum = ctx.promptUsage.inputTokens;
     }
     ctx.streamingChars = 0;
     ctx.lastUsageEmitChars = 0;
     ctx.emit({
       type: "usage",
-      promptTokens: ctx.promptTokensAccum,
-      completionTokens: ctx.completionTokensAccum,
+      inputTokens: ctx.inputTokensAccum,
+      outputTokens: ctx.outputTokensAccum,
     });
     ctx.debug("lifecycle.generate.done", {
       model: ctx.model,
@@ -303,8 +303,8 @@ function emitToolResult(ctx: RunContext, toolCallId: string, toolName: string, i
   });
   ctx.emit({
     type: "usage",
-    promptTokens: ctx.promptTokensAccum || ctx.promptUsage.promptTokens,
-    completionTokens: ctx.completionTokensAccum,
+    inputTokens: ctx.inputTokensAccum || ctx.promptUsage.inputTokens,
+    outputTokens: ctx.outputTokensAccum,
   });
 }
 
@@ -316,11 +316,11 @@ function emitStreamingUsage(ctx: RunContext, chars: number): void {
   if (ctx.streamingChars - ctx.lastUsageEmitChars >= USAGE_EMIT_CHAR_INTERVAL) {
     ctx.lastUsageEmitChars = ctx.streamingChars;
     const streamingTokens = Math.ceil(ctx.streamingChars / AVERAGE_CHARS_PER_TOKEN);
-    ctx.emit({
-      type: "usage",
-      promptTokens: ctx.promptTokensAccum || ctx.promptUsage.promptTokens,
-      completionTokens: ctx.completionTokensAccum + streamingTokens,
-    });
+      ctx.emit({
+        type: "usage",
+        inputTokens: ctx.inputTokensAccum || ctx.promptUsage.inputTokens,
+        outputTokens: ctx.outputTokensAccum + streamingTokens,
+      });
   }
 }
 
@@ -411,13 +411,13 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
     }
     case "model-usage": {
       const p = chunk.payload;
-      if (typeof p?.inputTokens === "number") ctx.promptTokensAccum += p.inputTokens;
-      if (typeof p?.outputTokens === "number") ctx.completionTokensAccum += p.outputTokens;
+      if (typeof p?.inputTokens === "number") ctx.inputTokensAccum += p.inputTokens;
+      if (typeof p?.outputTokens === "number") ctx.outputTokensAccum += p.outputTokens;
       ctx.modelCallCount += 1;
       ctx.emit({
         type: "usage",
-        promptTokens: ctx.promptTokensAccum,
-        completionTokens: ctx.completionTokensAccum,
+        inputTokens: ctx.inputTokensAccum,
+        outputTokens: ctx.outputTokensAccum,
       });
       break;
     }

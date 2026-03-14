@@ -14,12 +14,12 @@ import { createId } from "./short-id";
 const AVERAGE_CHARS_PER_TOKEN = 4;
 
 export function estimateTokenUsageFallback(prompt: string, output: string): TokenUsage {
-  const promptTokens = Math.ceil(prompt.length / AVERAGE_CHARS_PER_TOKEN);
-  const completionTokens = Math.ceil(output.length / AVERAGE_CHARS_PER_TOKEN);
+  const inputTokens = Math.ceil(prompt.length / AVERAGE_CHARS_PER_TOKEN);
+  const outputTokens = Math.ceil(output.length / AVERAGE_CHARS_PER_TOKEN);
   return {
-    promptTokens,
-    completionTokens,
-    totalTokens: promptTokens + completionTokens,
+    inputTokens,
+    outputTokens,
+    totalTokens: inputTokens + outputTokens,
   };
 }
 
@@ -119,6 +119,7 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
   const tokenEntry: SessionTokenUsageEntry = {
     id: assistantMessage.id,
     usage: reply.usage ?? estimateTokenUsageFallback(params.userText, reply.output),
+    promptBreakdown: reply.promptBreakdown,
     warning: reply.budgetWarning,
     modelCalls: reply.modelCalls,
   };

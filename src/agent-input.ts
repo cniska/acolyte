@@ -119,10 +119,13 @@ export function createAgentInput(
 ): {
   input: string;
   usage: {
-    promptTokens: number;
-    promptBudgetTokens: number;
+    inputTokens: number;
+    inputBudgetTokens: number;
     systemPromptTokens: number;
-    promptTruncated: boolean;
+    toolTokens: number;
+    memoryTokens: number;
+    messageTokens: number;
+    inputTruncated: boolean;
     includedHistoryMessages: number;
     totalHistoryMessages: number;
     activeSkillName?: string;
@@ -159,7 +162,7 @@ export function createAgentInput(
   if (lines.length > 0) lines.push("");
   lines.push(userLine);
   const input = lines.join("\n");
-  const promptTokens = estimateTokens(input);
+  const inputTokens = estimateTokens(input);
 
   let activeSkillName: string | undefined;
   let skillInstructionChars: number | undefined;
@@ -172,16 +175,19 @@ export function createAgentInput(
     }
   }
 
-  // promptTokens covers only the composed input (history + user message); it
+  // inputTokens covers only the composed input (history + user message); it
   // excludes system prompt tokens, which are accounted for separately via
   // options.systemPromptTokens and returned as usage.systemPromptTokens.
   return {
     input,
     usage: {
-      promptTokens,
-      promptBudgetTokens: maxContextTokens,
+      inputTokens,
+      inputBudgetTokens: maxContextTokens,
       systemPromptTokens,
-      promptTruncated: usedIds.size < req.history.length,
+      toolTokens: 0,
+      memoryTokens: 0,
+      messageTokens: inputTokens,
+      inputTruncated: usedIds.size < req.history.length,
       includedHistoryMessages: usedIds.size,
       totalHistoryMessages: req.history.length,
       activeSkillName,

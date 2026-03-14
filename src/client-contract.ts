@@ -36,7 +36,7 @@ export const streamEventSchema = z.discriminatedUnion("type", [
     errorCode: z.string().optional(),
     error: streamErrorSchema.optional(),
   }),
-  z.object({ type: z.literal("usage"), promptTokens: z.number(), completionTokens: z.number() }),
+  z.object({ type: z.literal("usage"), inputTokens: z.number(), outputTokens: z.number() }),
   z.object({ type: z.literal("status"), message: z.string() }),
   z.object({
     type: z.literal("error"),
@@ -97,21 +97,39 @@ export function parseChatResponse(payload: unknown): ChatResponse | null {
     usage:
       json.usage &&
       typeof json.usage === "object" &&
-      typeof (json.usage as { promptTokens?: unknown }).promptTokens === "number" &&
-      typeof (json.usage as { completionTokens?: unknown }).completionTokens === "number" &&
+      typeof (json.usage as { inputTokens?: unknown }).inputTokens === "number" &&
+      typeof (json.usage as { outputTokens?: unknown }).outputTokens === "number" &&
       typeof (json.usage as { totalTokens?: unknown }).totalTokens === "number"
         ? {
-            promptTokens: (json.usage as { promptTokens: number }).promptTokens,
-            completionTokens: (json.usage as { completionTokens: number }).completionTokens,
+            inputTokens: (json.usage as { inputTokens: number }).inputTokens,
+            outputTokens: (json.usage as { outputTokens: number }).outputTokens,
             totalTokens: (json.usage as { totalTokens: number }).totalTokens,
-            promptBudgetTokens:
-              typeof (json.usage as { promptBudgetTokens?: unknown }).promptBudgetTokens === "number"
-                ? (json.usage as { promptBudgetTokens: number }).promptBudgetTokens
+            inputBudgetTokens:
+              typeof (json.usage as { inputBudgetTokens?: unknown }).inputBudgetTokens === "number"
+                ? (json.usage as { inputBudgetTokens: number }).inputBudgetTokens
                 : undefined,
-            promptTruncated:
-              typeof (json.usage as { promptTruncated?: unknown }).promptTruncated === "boolean"
-                ? (json.usage as { promptTruncated: boolean }).promptTruncated
+            inputTruncated:
+              typeof (json.usage as { inputTruncated?: unknown }).inputTruncated === "boolean"
+                ? (json.usage as { inputTruncated: boolean }).inputTruncated
                 : undefined,
+          }
+        : undefined,
+    promptBreakdown:
+      json.promptBreakdown &&
+      typeof json.promptBreakdown === "object" &&
+      typeof (json.promptBreakdown as { budgetTokens?: unknown }).budgetTokens === "number" &&
+      typeof (json.promptBreakdown as { usedTokens?: unknown }).usedTokens === "number" &&
+      typeof (json.promptBreakdown as { systemTokens?: unknown }).systemTokens === "number" &&
+      typeof (json.promptBreakdown as { toolTokens?: unknown }).toolTokens === "number" &&
+      typeof (json.promptBreakdown as { memoryTokens?: unknown }).memoryTokens === "number" &&
+      typeof (json.promptBreakdown as { messageTokens?: unknown }).messageTokens === "number"
+        ? {
+            budgetTokens: (json.promptBreakdown as { budgetTokens: number }).budgetTokens,
+            usedTokens: (json.promptBreakdown as { usedTokens: number }).usedTokens,
+            systemTokens: (json.promptBreakdown as { systemTokens: number }).systemTokens,
+            toolTokens: (json.promptBreakdown as { toolTokens: number }).toolTokens,
+            memoryTokens: (json.promptBreakdown as { memoryTokens: number }).memoryTokens,
+            messageTokens: (json.promptBreakdown as { messageTokens: number }).messageTokens,
           }
         : undefined,
     budgetWarning: typeof json.budgetWarning === "string" ? json.budgetWarning : undefined,
