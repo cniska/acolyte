@@ -1,5 +1,7 @@
 import type { readFile as readFileType, writeFile as writeFileType } from "node:fs/promises";
 import { join } from "node:path";
+import type { readConfigForScope as readConfigForScopeType, writeConfig as writeConfigType } from "./config";
+import type { Config } from "./config-contract";
 import { PRIVATE_FILE_MODE } from "./file-ops";
 import { t } from "./i18n";
 import {
@@ -11,7 +13,13 @@ import {
 } from "./provider-contract";
 
 const PROVIDER_ENV_KEYS: readonly ProviderApiEnvKey[] = providerApiEnvKeySchema.options;
-const initProviderSchema = providerSchema;
+const OLLAMA_BASE_URL = "http://localhost:11434/v1";
+
+type InitTarget = Provider | "ollama";
+
+function isProviderTarget(target: InitTarget): target is Provider {
+  return target !== "ollama";
+}
 
 type InitModeDeps = {
   cwd: () => string;
@@ -20,20 +28,22 @@ type InitModeDeps = {
   printDim: (message: string) => void;
   printError: (message: string) => void;
   readFile: typeof readFileType;
+  readConfigForScope: typeof readConfigForScopeType;
   commandError: (name: string, message?: string) => void;
   commandHelp: (name: string) => void;
+  writeConfig: typeof writeConfigType;
   writeFile: typeof writeFileType;
 };
 
-function parseInitProvider(value: string | undefined): InitProvider | null {
+function parseInitTarget(value: string | undefined): InitTarget | null {
   if (!value || value.trim().length === 0) return null;
-  const parsed = initProviderSchema.safeParse(value.trim().toLowerCase());
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "ollama") return "ollama";
+  const parsed = providerSchema.safeParse(normalized);
   return parsed.success ? parsed.data : null;
 }
 
-type InitProvider = Provider;
-
-function envKeyForProvider(provider: InitProvider): ProviderApiEnvKey {
+function envKeyForProvider(provider: Provider): ProviderApiEnvKey {
   return providerApiEnvKeyByProvider[provider];
 }
 
@@ -105,6 +115,13 @@ async function promptHidden(question: string): Promise<string | undefined> {
   });
 }
 
+function applyOllamaPreset(config: Config): Config {
+  return {
+    ...config,
+    openaiBaseUrl: OLLAMA_BASE_URL,
+  };
+}
+
 export async function initMode(args: string[], deps: InitModeDeps): Promise<void> {
   const {
     cwd,
@@ -113,8 +130,10 @@ export async function initMode(args: string[], deps: InitModeDeps): Promise<void
     printError,
     prompt: promptFn,
     readFile,
+    readConfigForScope,
     commandError,
     commandHelp,
+    writeConfig,
     writeFile,
   } = deps;
   if (hasHelpFlag(args)) {
@@ -126,15 +145,24 @@ export async function initMode(args: string[], deps: InitModeDeps): Promise<void
     return;
   }
 
-  let provider = parseInitProvider(args[0]);
-  if (!provider) provider = parseInitProvider(promptFn(t("cli.init.prompt.provider"))?.trim() ?? undefined);
-  if (!provider) {
+  let target = parseInitTarget(args[0]);
+  if (!target) target = parseInitTarget(promptFn(t("cli.init.prompt.provider"))?.trim() ?? undefined);
+  if (!target) {
     printError(t("cli.init.provider.invalid"));
     process.exitCode = 1;
     return;
   }
 
-  const envKey = envKeyForProvider(provider);
+  if (!isProviderTarget(target)) {
+    const current = await readConfigForScope("project", { cwd: cwd() });
+    const next = applyOllamaPreset(current);
+    await writeConfig(next, { cwd: cwd(), scope: "project" });
+    printDim(t("cli.init.saved_ollama_config", { path: join(cwd(), ".acolyte", "config.toml") }));
+    printDim(t("cli.init.next_ollama"));
+    return;
+  }
+
+  const envKey = envKeyForProvider(target);
   const apiKey = await promptHidden(t("cli.init.prompt.api_key"));
   if (!apiKey) {
     printError(t("cli.init.api_key.empty", { envKey }));

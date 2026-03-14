@@ -1,6 +1,6 @@
 import { appConfig } from "./app-config";
 import { unreachable } from "./assert";
-import { isProviderAvailable } from "./provider-config";
+import { isProviderAvailable, resolveOpenAICompatibleApiKey } from "./provider-config";
 import type { Provider } from "./provider-contract";
 
 function normalizeBaseUrl(url: string): string {
@@ -27,8 +27,9 @@ export function invalidateModelsCache(): void {
 
 async function fetchOpenAIModels(config: ProviderFetchConfig): Promise<string[]> {
   const baseUrl = normalizeBaseUrl(config.baseUrl);
+  const apiKey = resolveOpenAICompatibleApiKey(config);
   const res = await fetch(`${baseUrl}/models`, {
-    headers: { Authorization: `Bearer ${config.apiKey}` },
+    headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
   });
   if (!res.ok) return [];
   const json = (await res.json()) as { data?: Array<{ id: string }> };

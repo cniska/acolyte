@@ -17,7 +17,14 @@ import { isServerConnectionFailure, statusMode } from "./cli-status";
 import { toolMode } from "./cli-tool";
 import { createClient } from "./client-factory";
 import { compactText } from "./compact-text";
-import { readConfig, readConfigForScope, readResolvedConfigSync, setConfigValue, unsetConfigValue } from "./config";
+import {
+  readConfig,
+  readConfigForScope,
+  readResolvedConfigSync,
+  setConfigValue,
+  unsetConfigValue,
+  writeConfig,
+} from "./config";
 
 import { t } from "./i18n";
 import { fileMemoryStore } from "./memory";
@@ -88,9 +95,9 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
   init: {
     help: {
       command: "init [provider]",
-      usage: "acolyte init [openai|anthropic|google]",
+      usage: "acolyte init [openai|anthropic|google|ollama]",
       description: t("cli.help.desc.init"),
-      examples: ["acolyte init", "acolyte init openai"],
+      examples: ["acolyte init", "acolyte init openai", "acolyte init ollama"],
     },
     handler: (args) =>
       initMode(args, {
@@ -100,8 +107,10 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
         printDim,
         printError,
         readFile,
+        readConfigForScope,
         commandError,
         commandHelp,
+        writeConfig,
         writeFile,
       }),
   },

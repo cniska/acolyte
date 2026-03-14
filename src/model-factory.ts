@@ -4,7 +4,7 @@ import { createOpenAI } from "@ai-sdk/openai";
 import type { LanguageModelV3 } from "@ai-sdk/provider";
 import { appConfig } from "./app-config";
 import { unreachable } from "./assert";
-import { providerFromModel } from "./provider-config";
+import { providerFromModel, resolveOpenAICompatibleApiKey } from "./provider-config";
 
 export function createModel(qualifiedModel: string): LanguageModelV3 {
   const provider = providerFromModel(qualifiedModel);
@@ -28,7 +28,7 @@ export function createModel(qualifiedModel: string): LanguageModelV3 {
     }
     case "openai": {
       const openai = createOpenAI({
-        apiKey: appConfig.openai.apiKey,
+        apiKey: resolveOpenAICompatibleApiKey(appConfig.openai),
         ...(appConfig.openai.baseUrl ? { baseURL: appConfig.openai.baseUrl } : {}),
       });
       return openai(modelId);
