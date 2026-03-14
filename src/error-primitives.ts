@@ -5,6 +5,10 @@ export const TOOL_ERROR_CODES = {
   editFileFindNotFound: "E_EDIT_FILE_FIND_NOT_FOUND",
   editFileLineRangeTooLarge: "E_EDIT_FILE_LINE_RANGE_TOO_LARGE",
   editFileReplaceTooLarge: "E_EDIT_FILE_REPLACE_TOO_LARGE",
+  editCodeNoMatch: "E_EDIT_CODE_NO_MATCH",
+  editCodeReplacementMetaMismatch: "E_EDIT_CODE_REPLACEMENT_META_MISMATCH",
+  editCodeUnsupportedFile: "E_EDIT_CODE_UNSUPPORTED_FILE",
+  editCodeVariadicReplacement: "E_EDIT_CODE_VARIADIC_REPLACEMENT",
 } as const;
 
 export type ToolErrorCode = (typeof TOOL_ERROR_CODES)[keyof typeof TOOL_ERROR_CODES];
@@ -14,12 +18,25 @@ export const EDIT_FILE_RECOVERY_KINDS: readonly EditFileRecoveryKind[] = [
   "refresh-snippet",
   "shrink-edit",
 ];
-export type ToolRecovery = {
+export type EditFileRecovery = {
   tool: "edit-file";
   kind: EditFileRecoveryKind;
   summary: string;
   instruction: string;
 };
+export type EditCodeRecoveryKind = "fix-replacement" | "refine-pattern" | "use-supported-file";
+export const EDIT_CODE_RECOVERY_KINDS: readonly EditCodeRecoveryKind[] = [
+  "fix-replacement",
+  "refine-pattern",
+  "use-supported-file",
+];
+export type EditCodeRecovery = {
+  tool: "edit-code";
+  kind: EditCodeRecoveryKind;
+  summary: string;
+  instruction: string;
+};
+export type ToolRecovery = EditFileRecovery | EditCodeRecovery;
 
 export const LIFECYCLE_ERROR_CODES = {
   timeout: "E_TIMEOUT",

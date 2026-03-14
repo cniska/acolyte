@@ -74,6 +74,49 @@ describe("error handling helpers", () => {
     });
   });
 
+  test("parseErrorInfo preserves structured edit-code recovery metadata", () => {
+    const parsed = parseErrorInfo(
+      createToolError(TOOL_ERROR_CODES.editCodeNoMatch, "No AST matches found", undefined, {
+        tool: "edit-code",
+        kind: "refine-pattern",
+        summary: "Your AST pattern did not match the current file.",
+        instruction: "Refine the pattern from the latest read-file output.",
+      }),
+    );
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.value.recovery).toEqual({
+      tool: "edit-code",
+      kind: "refine-pattern",
+      summary: "Your AST pattern did not match the current file.",
+      instruction: "Refine the pattern from the latest read-file output.",
+    });
+  });
+
+  test("serializeToolError preserves structured edit-code recovery metadata", () => {
+    expect(
+      serializeToolError(
+        createToolError(TOOL_ERROR_CODES.editCodeUnsupportedFile, "unsupported file", undefined, {
+          tool: "edit-code",
+          kind: "use-supported-file",
+          summary: "edit-code only works on supported code files.",
+          instruction: "Use a supported code file or switch to edit-file.",
+        }),
+      ),
+    ).toEqual({
+      error: {
+        message: "unsupported file",
+        code: TOOL_ERROR_CODES.editCodeUnsupportedFile,
+        recovery: {
+          tool: "edit-code",
+          kind: "use-supported-file",
+          summary: "edit-code only works on supported code files.",
+          instruction: "Use a supported code file or switch to edit-file.",
+        },
+      },
+    });
+  });
+
   test("parseErrorInfo returns invalid payload for unsupported shapes", () => {
     const parsed = parseErrorInfo({ foo: "bar" });
     expect(parsed.ok).toBe(false);

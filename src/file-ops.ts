@@ -1,7 +1,14 @@
 import { mkdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import * as napi from "@ast-grep/napi";
-import { createToolError, TOOL_ERROR_CODES, type ToolRecovery } from "./error-primitives";
+import { invariant } from "./assert";
+import {
+  createToolError,
+  type EditCodeRecoveryKind,
+  type EditFileRecoveryKind,
+  TOOL_ERROR_CODES,
+  type ToolRecovery,
+} from "./error-primitives";
 
 /** Owner-only read/write. Use for files containing secrets or sensitive metadata. */
 export const PRIVATE_FILE_MODE = 0o600;
@@ -29,7 +36,7 @@ const MAX_FIND_REPLACE_CHARS = 1600;
 const MAX_BATCH_EDIT_LINES = 32;
 const MAX_BATCH_EDIT_CHARS = 2400;
 
-function editFileRecovery(path: string, kind: ToolRecovery["kind"]): ToolRecovery {
+function editFileRecovery(path: string, kind: EditFileRecoveryKind): ToolRecovery {
   switch (kind) {
     case "disambiguate-match":
       return {
@@ -57,6 +64,38 @@ function editFileRecovery(path: string, kind: ToolRecovery["kind"]): ToolRecover
         instruction:
           `Keep the change in '${path}' and shrink it: use short unique find snippets, a bounded line-range edit covering only the changed region, or use edit-code for a structural rewrite. ` +
           "Do not pass large file blocks as find or replacement text.",
+      };
+    default:
+      return kind satisfies never;
+  }
+}
+
+function editCodeRecovery(path: string, kind: EditCodeRecoveryKind): ToolRecovery {
+  switch (kind) {
+    case "use-supported-file":
+      return {
+        tool: "edit-code",
+        kind,
+        summary: "edit-code only works on supported code files.",
+        instruction: `Switch to a supported code file for edit-code when changing '${path}', or use edit-file if this is a plain-text rewrite.`,
+      };
+    case "refine-pattern":
+      return {
+        tool: "edit-code",
+        kind,
+        summary: "Your AST pattern did not match the current file.",
+        instruction:
+          `Keep the change in '${path}' and refine the ast-grep pattern to match the actual syntax in the latest read-file output. ` +
+          "Do not switch to plain-text snippets unless you are changing to edit-file.",
+      };
+    case "fix-replacement":
+      return {
+        tool: "edit-code",
+        kind,
+        summary: "Your edit-code replacement shape is invalid for this pattern.",
+        instruction:
+          `Keep the change in '${path}' and fix the replacement to use only metavariables captured by the pattern. ` +
+          "If the rewrite needs variadic or plain-text editing, switch to edit-file.",
       };
     default:
       return kind satisfies never;
@@ -419,15 +458,17 @@ export async function editCode(input: {
   const pathStats = await stat(absPath);
   if (!pathStats.isFile()) throw new Error(`edit-code requires a file path, got: ${input.path}`);
   if (!isParseable(absPath)) {
-    throw new Error(`edit-code requires a supported code file, got: ${input.path}`);
+    throw createToolError(
+      TOOL_ERROR_CODES.editCodeUnsupportedFile,
+      `edit-code requires a supported code file, got: ${input.path}`,
+      undefined,
+      editCodeRecovery(input.path, "use-supported-file"),
+    );
   }
   const original = await readFile(absPath, "utf8");
   await ensureDynamicLanguages();
 
   const langName = languageFromPath(absPath);
-  if (!langName) {
-    throw new Error(`edit-code requires a supported code file, got: ${input.path}`);
-  }
   const langEnum = napi.Lang[langName as keyof typeof napi.Lang];
   let current = original;
   let totalMatches = 0;
@@ -436,21 +477,34 @@ export async function editCode(input: {
   for (const edit of input.edits) {
     const tree = napi.parse(langEnum ?? langName, current);
     const matches = tree.root().findAll({ rule: { pattern: edit.pattern } });
-    if (matches.length === 0) throw new Error(`No AST matches found for pattern: ${edit.pattern}`);
+    if (matches.length === 0) {
+      throw createToolError(
+        TOOL_ERROR_CODES.editCodeNoMatch,
+        `No AST matches found for pattern: ${edit.pattern}`,
+        undefined,
+        editCodeRecovery(input.path, "refine-pattern"),
+      );
+    }
     totalMatches += matches.length;
 
     const patternMetavars = extractMetavariables(edit.pattern);
     const replacementMetavars = extractMetavariables(edit.replacement);
     const variadicReplacementMetavars = replacementMetavars.filter((metavar) => metavar.startsWith("$$$"));
     if (variadicReplacementMetavars.length > 0) {
-      throw new Error(
+      throw createToolError(
+        TOOL_ERROR_CODES.editCodeVariadicReplacement,
         `edit-code does not support variadic replacement metavariables: ${variadicReplacementMetavars.join(", ")}. Use edit-file for this rewrite.`,
+        undefined,
+        editCodeRecovery(input.path, "fix-replacement"),
       );
     }
     const unknownReplacementMetavars = replacementMetavars.filter((metavar) => !patternMetavars.includes(metavar));
     if (unknownReplacementMetavars.length > 0) {
-      throw new Error(
+      throw createToolError(
+        TOOL_ERROR_CODES.editCodeReplacementMetaMismatch,
         `Replacement references metavariables not present in pattern: ${unknownReplacementMetavars.join(", ")}`,
+        undefined,
+        editCodeRecovery(input.path, "fix-replacement"),
       );
     }
     const replacements: Array<{ start: number; end: number; replacement: string }> = [];
@@ -562,9 +616,7 @@ export async function scanCode(input: {
       }
       const content = await readFile(absPath, "utf8");
       const lang = input.language ?? languageFromPath(absPath);
-      if (!lang) {
-        throw new Error(`scan-code requires a supported code file, got: ${rawPath}`);
-      }
+      invariant(lang, `scan-code requires a supported code file, got: ${rawPath}`);
       scanned++;
       scanFile(displayPathForDiff(absPath, input.workspace), content, lang);
     } else if (info.isDirectory()) {

@@ -387,7 +387,10 @@ describe("editCode", () => {
         path: filePath,
         edits: [{ pattern: "console.log($ARG)", replacement: "logger.debug($ARG)" }],
       }),
-    ).rejects.toThrow("No AST matches found");
+    ).rejects.toMatchObject({
+      code: TOOL_ERROR_CODES.editCodeNoMatch,
+      recovery: { tool: "edit-code", kind: "refine-pattern" },
+    });
   });
 
   test("rejects directory paths", async () => {
@@ -413,7 +416,10 @@ describe("editCode", () => {
         path: filePath,
         edits: [{ pattern: "Title", replacement: "Heading" }],
       }),
-    ).rejects.toThrow("edit-code requires a supported code file");
+    ).rejects.toMatchObject({
+      code: TOOL_ERROR_CODES.editCodeUnsupportedFile,
+      recovery: { tool: "edit-code", kind: "use-supported-file" },
+    });
   });
 
   test("rejects unknown single-file extensions without falling back", async () => {
@@ -426,7 +432,10 @@ describe("editCode", () => {
         path: filePath,
         edits: [{ pattern: "foo: $VALUE", replacement: "bar: $VALUE" }],
       }),
-    ).rejects.toThrow(`edit-code requires a supported code file, got: ${filePath}`);
+    ).rejects.toMatchObject({
+      code: TOOL_ERROR_CODES.editCodeUnsupportedFile,
+      recovery: { tool: "edit-code", kind: "use-supported-file" },
+    });
   });
 
   test("rejects replacement metavariables that are not present in the pattern", async () => {
@@ -439,7 +448,10 @@ describe("editCode", () => {
         path: filePath,
         edits: [{ pattern: "console.log($ARG)", replacement: "logger.debug($MISSING)" }],
       }),
-    ).rejects.toThrow("Replacement references metavariables not present in pattern");
+    ).rejects.toMatchObject({
+      code: TOOL_ERROR_CODES.editCodeReplacementMetaMismatch,
+      recovery: { tool: "edit-code", kind: "fix-replacement" },
+    });
   });
 
   test("rejects variadic metavariables in replacements", async () => {
@@ -452,7 +464,10 @@ describe("editCode", () => {
         path: filePath,
         edits: [{ pattern: "sum($$$ARGS)", replacement: "total($$$ARGS)" }],
       }),
-    ).rejects.toThrow("edit-code does not support variadic replacement metavariables");
+    ).rejects.toMatchObject({
+      code: TOOL_ERROR_CODES.editCodeVariadicReplacement,
+      recovery: { tool: "edit-code", kind: "fix-replacement" },
+    });
   });
 
   test("replaces in Python files", async () => {

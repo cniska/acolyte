@@ -46,6 +46,6 @@ resolve → prepare → generate → evaluate → finalize
 
 - `src/lifecycle.ts`
 - `src/lifecycle-*.ts`
-- `src/lifecycle-evaluators.ts` — post-generation evaluators including edit-file recovery
+- `src/lifecycle-evaluators.ts` — post-generation evaluators including tool recovery
 - `src/lifecycle-guard-feedback.ts` — guard-event-to-feedback translation
 - `src/error-primitives.ts` — `ToolRecovery` contract carried from tool errors into evaluators

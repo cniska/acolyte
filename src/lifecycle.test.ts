@@ -5,9 +5,9 @@ import { scheduleMemoryCommit, shouldCommitMemory } from "./lifecycle";
 import type { RunContext } from "./lifecycle-contract";
 import { recoveryActionForError } from "./lifecycle-evaluate";
 import {
-  editFileRecoveryEvaluator,
   guardRecoveryEvaluator,
   repeatedFailureEvaluator,
+  toolRecoveryEvaluator,
   verifyCycle,
 } from "./lifecycle-evaluators";
 import { phaseFinalize } from "./lifecycle-finalize";
@@ -695,7 +695,7 @@ describe("repeatedFailureEvaluator", () => {
   });
 });
 
-describe("editFileRecoveryEvaluator", () => {
+describe("toolRecoveryEvaluator", () => {
   test("returns regenerate when edit-file exposes structured recovery", () => {
     const session = createSessionContext();
     session.callLog = [{ toolName: "edit-file", args: { path: "src/priority.ts" }, status: "failed" }];
@@ -717,7 +717,7 @@ describe("editFileRecoveryEvaluator", () => {
       },
       result: { text: "Attempted edit.", toolCalls: [] },
     });
-    const action = editFileRecoveryEvaluator.evaluate(ctx);
+    const action = toolRecoveryEvaluator.evaluate(ctx);
     expect(action.type).toBe("regenerate");
     if (action.type === "regenerate") {
       expect(action.feedback?.source).toBe("edit-file");
@@ -727,7 +727,33 @@ describe("editFileRecoveryEvaluator", () => {
     }
   });
 
-  test("returns done when there is no structured edit-file recovery", () => {
+  test("returns regenerate when edit-code exposes structured recovery", () => {
+    const ctx = createMockContext({
+      initialMode: "work",
+      currentError: {
+        code: TOOL_ERROR_CODES.editCodeNoMatch,
+        tool: "edit-code",
+        message: "edit-code failed: [E_EDIT_CODE_NO_MATCH] No AST matches found for pattern: return $VALUE",
+        recovery: {
+          tool: "edit-code",
+          kind: "refine-pattern",
+          summary: "Your AST pattern did not match the current file.",
+          instruction: "Refine the pattern against the latest file syntax.",
+        },
+      },
+      result: { text: "Attempted edit.", toolCalls: [] },
+    });
+    const action = toolRecoveryEvaluator.evaluate(ctx);
+    expect(action.type).toBe("regenerate");
+    if (action.type === "regenerate") {
+      expect(action.feedback?.source).toBe("edit-code");
+      expect(action.feedback?.summary).toBe("Your AST pattern did not match the current file.");
+      expect(action.feedback?.details).toContain("No AST matches found");
+      expect(action.feedback?.instruction).toContain("Refine the pattern");
+    }
+  });
+
+  test("returns done when there is no structured tool recovery", () => {
     const ctx = createMockContext({
       initialMode: "work",
       currentError: {
@@ -737,7 +763,7 @@ describe("editFileRecoveryEvaluator", () => {
       },
       result: { text: "Attempted edit.", toolCalls: [] },
     });
-    expect(editFileRecoveryEvaluator.evaluate(ctx).type).toBe("done");
+    expect(toolRecoveryEvaluator.evaluate(ctx).type).toBe("done");
   });
 
   test("returns done after a later successful write for disambiguate-match recovery", () => {
@@ -763,7 +789,7 @@ describe("editFileRecoveryEvaluator", () => {
       },
       result: { text: "Applied the change.", toolCalls: [] },
     });
-    expect(editFileRecoveryEvaluator.evaluate(ctx).type).toBe("done");
+    expect(toolRecoveryEvaluator.evaluate(ctx).type).toBe("done");
   });
 });
 

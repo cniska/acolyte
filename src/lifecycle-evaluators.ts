@@ -222,27 +222,35 @@ export const verifyCycle: Evaluator = {
   },
 };
 
-export const editFileRecoveryEvaluator: Evaluator = {
-  id: "edit-file-recovery",
+export const toolRecoveryEvaluator: Evaluator = {
+  id: "tool-recovery",
   evaluate(ctx) {
     if (!ctx.result) return { type: "done" };
     if (ctx.initialMode !== "work") return { type: "done" };
-    if (ctx.currentError?.tool !== "edit-file") return { type: "done" };
-    const recovery = ctx.currentError.recovery;
-    if (!recovery || recovery.tool !== "edit-file") return { type: "done" };
-    if (recovery.kind === "disambiguate-match" && hasRecoveredFromLastEditFileFailure(ctx)) return { type: "done" };
+    const currentError = ctx.currentError;
+    if (!currentError) return { type: "done" };
+    const recovery = currentError.recovery;
+    if (!recovery) return { type: "done" };
+    if (
+      recovery.tool === "edit-file" &&
+      recovery.kind === "disambiguate-match" &&
+      hasRecoveredFromLastEditFileFailure(ctx)
+    ) {
+      return { type: "done" };
+    }
 
-    ctx.debug("lifecycle.eval.edit_file_recovery", {
-      error: ctx.currentError.message,
+    ctx.debug("lifecycle.eval.tool_recovery", {
+      error: currentError.message,
+      recovery_tool: recovery.tool,
       recovery_kind: recovery.kind,
     });
     return {
       type: "regenerate",
       feedback: {
-        source: "edit-file",
+        source: recovery.tool,
         mode: "work",
         summary: recovery.summary,
-        details: ctx.currentError.message,
+        details: currentError.message,
         instruction: recovery.instruction,
       },
     };

@@ -1,7 +1,9 @@
 import type { z } from "zod";
 import { unreachable } from "./assert";
 import {
+  EDIT_CODE_RECOVERY_KINDS,
   EDIT_FILE_RECOVERY_KINDS,
+  type EditCodeRecoveryKind,
   type EditFileRecoveryKind,
   ERROR_KINDS,
   type ErrorCode,
@@ -149,14 +151,11 @@ export function parseErrorInfo(value: unknown): ParseErrorResult {
 function parseToolRecovery(value: unknown): ToolRecovery | undefined {
   if (!value || typeof value !== "object") return undefined;
   const rec = value as Record<string, unknown>;
-  if (
-    rec.tool === "edit-file" &&
-    EDIT_FILE_RECOVERY_KINDS.includes(rec.kind as EditFileRecoveryKind) &&
-    typeof rec.summary === "string" &&
-    typeof rec.instruction === "string"
-  ) {
+  if (typeof rec.summary !== "string" || typeof rec.instruction !== "string") return undefined;
+  if (rec.tool === "edit-file" && EDIT_FILE_RECOVERY_KINDS.includes(rec.kind as EditFileRecoveryKind))
     return rec as ToolRecovery;
-  }
+  if (rec.tool === "edit-code" && EDIT_CODE_RECOVERY_KINDS.includes(rec.kind as EditCodeRecoveryKind))
+    return rec as ToolRecovery;
   return undefined;
 }
 
