@@ -50,7 +50,12 @@ function formatEqualColumns(rows: string[][]): string[] {
   if (rows.length === 0) return [];
   const colCount = rows[0]?.length ?? 0;
   const width = rows.reduce((max, row) => row.reduce((inner, cell) => Math.max(inner, cell.length), max), 0);
-  return rows.map((row) => row.slice(0, colCount).map((cell) => cell.padEnd(width)).join("  "));
+  return rows.map((row) =>
+    row
+      .slice(0, colCount)
+      .map((cell) => cell.padEnd(width))
+      .join("  "),
+  );
 }
 
 function formatUsageValue(value: number): string {

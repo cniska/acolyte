@@ -316,11 +316,11 @@ function emitStreamingUsage(ctx: RunContext, chars: number): void {
   if (ctx.streamingChars - ctx.lastUsageEmitChars >= USAGE_EMIT_CHAR_INTERVAL) {
     ctx.lastUsageEmitChars = ctx.streamingChars;
     const streamingTokens = Math.ceil(ctx.streamingChars / AVERAGE_CHARS_PER_TOKEN);
-      ctx.emit({
-        type: "usage",
-        inputTokens: ctx.inputTokensAccum || ctx.promptUsage.inputTokens,
-        outputTokens: ctx.outputTokensAccum + streamingTokens,
-      });
+    ctx.emit({
+      type: "usage",
+      inputTokens: ctx.inputTokensAccum || ctx.promptUsage.inputTokens,
+      outputTokens: ctx.outputTokensAccum + streamingTokens,
+    });
   }
 }
 
