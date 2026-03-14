@@ -47,11 +47,11 @@ describe("behavior scenarios", () => {
 describe("behavior analysis", () => {
   test("summarizeTrace counts code tools in fallback trace mode", () => {
     const trace = summarizeTrace([
-      'ts level=debug event=lifecycle.generate.start task_id=task_123',
-      'ts level=debug event=lifecycle.tool.call task_id=task_123 tool=read-file path=src/code-ops.ts',
-      'ts level=debug event=lifecycle.tool.call task_id=task_123 tool=scan-code path=src/code-ops.ts',
-      'ts level=debug event=lifecycle.tool.call task_id=task_123 tool=edit-code path=src/code-ops.ts',
-      'ts level=debug event=lifecycle.signal.accepted task_id=task_123 signal=done',
+      "ts level=debug event=lifecycle.generate.start task_id=task_123",
+      "ts level=debug event=lifecycle.tool.call task_id=task_123 tool=read-file path=src/code-ops.ts",
+      "ts level=debug event=lifecycle.tool.call task_id=task_123 tool=scan-code path=src/code-ops.ts",
+      "ts level=debug event=lifecycle.tool.call task_id=task_123 tool=edit-code path=src/code-ops.ts",
+      "ts level=debug event=lifecycle.signal.accepted task_id=task_123 signal=done",
     ]);
 
     expect(trace).toBeDefined();
