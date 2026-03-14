@@ -295,6 +295,42 @@ describe("redundant-search guard", () => {
     recordCall(session, "edit-file", { path: "src/a.ts" });
     expect(() => runGuards({ toolName: "search-files", args: { pattern: "query-5" }, session })).not.toThrow();
   });
+
+  test("blocks same-file search immediately after a direct whole-file read", () => {
+    const session = createSessionContext();
+    recordCall(session, "read-file", { paths: [{ path: "src/a.ts" }] });
+    expect(() =>
+      runGuards({
+        toolName: "search-files",
+        args: { patterns: ["return undefined;"], paths: ["src/a.ts"] },
+        session,
+      }),
+    ).toThrow(/already read directly in full/i);
+  });
+
+  test("allows same-file search after a ranged read", () => {
+    const session = createSessionContext();
+    recordCall(session, "read-file", { paths: [{ path: "src/a.ts", start: 1, end: 40 }] });
+    expect(() =>
+      runGuards({
+        toolName: "search-files",
+        args: { patterns: ["return undefined;"], paths: ["src/a.ts"] },
+        session,
+      }),
+    ).not.toThrow();
+  });
+
+  test("blocks same-file search after a whole-file sentinel ranged read", () => {
+    const session = createSessionContext();
+    recordCall(session, "read-file", { paths: [{ path: "src/a.ts", start: 1, end: Number.MAX_SAFE_INTEGER }] });
+    expect(() =>
+      runGuards({
+        toolName: "search-files",
+        args: { patterns: ["return undefined;"], paths: ["src/a.ts"] },
+        session,
+      }),
+    ).toThrow(/already read directly in full/i);
+  });
 });
 
 describe("redundant-find guard", () => {
@@ -476,6 +512,35 @@ describe("sequential-same-file-edit guard", () => {
       runGuards({
         toolName: "edit-file",
         args: { path: "src/foo.ts", edits: [{ find: "c", replace: "d" }] },
+        session,
+      }),
+    ).not.toThrow();
+  });
+
+  test("blocks a third same-file edit attempt after repeated failures without reread", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file", "edit-code"]);
+    recordCall(session, "edit-file", { path: "src/foo.ts", edits: [{ find: "a", replace: "b" }] }, undefined, false);
+    recordCall(session, "edit-file", { path: "src/foo.ts", edits: [{ find: "c", replace: "d" }] }, undefined, false);
+    expect(() =>
+      runGuards({
+        toolName: "edit-file",
+        args: { path: "src/foo.ts", edits: [{ find: "e", replace: "f" }] },
+        session,
+      }),
+    ).toThrow(/already had 2 edit attempts without a fresh reread/i);
+  });
+
+  test("allows another same-file edit after reread following failures", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file", "edit-code"]);
+    recordCall(session, "edit-file", { path: "src/foo.ts", edits: [{ find: "a", replace: "b" }] }, undefined, false);
+    recordCall(session, "edit-file", { path: "src/foo.ts", edits: [{ find: "c", replace: "d" }] }, undefined, false);
+    recordCall(session, "read-file", { paths: [{ path: "src/foo.ts", start: 1, end: 40 }] });
+    expect(() =>
+      runGuards({
+        toolName: "edit-file",
+        args: { path: "src/foo.ts", edits: [{ find: "e", replace: "f" }] },
         session,
       }),
     ).not.toThrow();

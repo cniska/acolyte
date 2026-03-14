@@ -24,6 +24,8 @@ export type FileEdit = FindReplaceEdit | LineRangeEdit;
 
 const MAX_FIND_SNIPPET_LINES = 8;
 const MAX_FIND_SNIPPET_CHARS = 500;
+const MAX_FIND_REPLACE_LINES = 24;
+const MAX_FIND_REPLACE_CHARS = 1600;
 
 export async function findFiles(workspace: string, patterns: string[], maxResults = 40): Promise<string> {
   if (patterns.length === 0) throw new Error("At least one pattern is required");
@@ -145,6 +147,13 @@ export async function editFile(input: {
         throw createToolError(
           TOOL_ERROR_CODES.editFileFindTooLarge,
           "find must be a short unique snippet (a few lines), not a large portion of the file. Use just enough context to uniquely identify the edit location.",
+        );
+      }
+      const replaceLineCount = edit.replace.split("\n").length;
+      if (replaceLineCount > MAX_FIND_REPLACE_LINES || edit.replace.length > MAX_FIND_REPLACE_CHARS) {
+        throw createToolError(
+          TOOL_ERROR_CODES.editFileReplaceTooLarge,
+          "replace must contain only the changed region for a find/replace edit, not a large block or whole-file rewrite. Use a line-range edit for larger replacements.",
         );
       }
       const count = raw.split(edit.find).length - 1;

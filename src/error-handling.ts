@@ -50,6 +50,8 @@ export function isEditFileMultiMatchSignal(input: { code?: string; message: stri
 export function isOversizedEditSnippetSignal(input: { code?: string; message: string }): boolean {
   return (
     input.code === TOOL_ERROR_CODES.editFileFindTooLarge ||
+    input.code === TOOL_ERROR_CODES.editFileReplaceTooLarge ||
+    hasToolErrorCode(input.message, TOOL_ERROR_CODES.editFileReplaceTooLarge) ||
     hasToolErrorCode(input.message, TOOL_ERROR_CODES.editFileFindTooLarge)
   );
 }

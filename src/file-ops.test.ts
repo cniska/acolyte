@@ -140,6 +140,26 @@ describe("editFile", () => {
     ).rejects.toMatchObject({ code: TOOL_ERROR_CODES.editFileFindTooLarge });
   });
 
+  test("rejects oversized replace blocks for find-based edits", async () => {
+    const filePath = `/tmp/acolyte-test-large-replace-${crypto.randomUUID()}.ts`;
+    tempFiles.push(filePath);
+    const content = Array.from({ length: 40 }, (_, index) => `line-${index + 1}`).join("\n");
+    await writeFile(filePath, `${content}\n`, "utf8");
+
+    await expect(
+      editFile({
+        workspace: WORKSPACE,
+        path: filePath,
+        edits: [
+          {
+            find: "line-2\nline-3\nline-4",
+            replace: `${content}\n`,
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({ code: TOOL_ERROR_CODES.editFileReplaceTooLarge });
+  });
+
   test("rejects replace text that duplicates content after edit point", async () => {
     const filePath = `/tmp/acolyte-test-dup-${testUuid()}.txt`;
     tempFiles.push(filePath);

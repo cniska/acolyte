@@ -580,10 +580,34 @@ describe("oversizedEditSnippetEvaluator", () => {
     const action = oversizedEditSnippetEvaluator.evaluate(ctx);
     expect(action.type).toBe("regenerate");
     if (action.type === "regenerate") {
-      expect(action.feedback?.summary).toBe("Your edit-file find snippet was too large.");
+      expect(action.feedback?.summary).toBe("Your edit-file snippet was too large for a surgical find/replace edit.");
       expect(action.feedback?.instruction).toContain("short unique find snippets");
       expect(action.feedback?.instruction).toContain("line-range edits");
       expect(action.feedback?.instruction).toContain("batch the needed replacements into one edit call");
+    }
+  });
+
+  test("returns regenerate when edit-file replace block is too large", () => {
+    const session = createSessionContext();
+    session.callLog = [{ toolName: "edit-file", args: { path: "src/priority.ts" }, success: false }];
+    const ctx = createMockContext({
+      request: { model: "gpt-5-mini", message: "Make repeated return changes", history: [] },
+      initialMode: "work",
+      session,
+      observedTools: new Set(["read-file", "edit-file"]),
+      currentError: {
+        code: "E_EDIT_FILE_REPLACE_TOO_LARGE",
+        tool: "edit-file",
+        message:
+          "edit-file failed: replace must contain only the changed region for a find/replace edit, not a large block or whole-file rewrite.",
+      },
+      result: { text: "Attempted edit.", toolCalls: [] },
+    });
+    const action = oversizedEditSnippetEvaluator.evaluate(ctx);
+    expect(action.type).toBe("regenerate");
+    if (action.type === "regenerate") {
+      expect(action.feedback?.instruction).toContain("replacement text limited to the changed region only");
+      expect(action.feedback?.instruction).toContain("Do not pass a large block of the file as find text or replacement text");
     }
   });
 

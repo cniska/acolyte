@@ -146,6 +146,8 @@ type ReadRequestSignature = {
   signature: string;
 };
 
+const WHOLE_FILE_SENTINEL_END = 1_000_000;
+
 function redundantQueryKind(input: {
   toolName: string;
   session: SessionContext;
@@ -203,6 +205,21 @@ function extractReadRequestSignatures(args: Record<string, unknown>): ReadReques
     signatures.push({ path, signature: `${path}\u0000${startValue}\u0000${endValue}` });
   }
   return signatures;
+}
+
+function isWholeFileReadOfPath(args: Record<string, unknown>, path: string): boolean {
+  const rawPaths = Array.isArray(args.paths) ? args.paths : [];
+  if (rawPaths.length !== 1) return false;
+  const [entry] = rawPaths;
+  if (!entry || typeof entry !== "object") return false;
+  const pathValue = (entry as { path?: unknown }).path;
+  if (typeof pathValue !== "string") return false;
+  const normalizedPath = normalizePath(pathValue.trim().toLowerCase());
+  if (normalizedPath !== path) return false;
+  const start = (entry as { start?: unknown }).start;
+  const end = (entry as { end?: unknown }).end;
+  if (start === undefined && end === undefined) return true;
+  return start === 1 && typeof end === "number" && end >= WHOLE_FILE_SENTINEL_END;
 }
 
 function guardArgsEqual(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
@@ -377,6 +394,27 @@ const redundantSearchGuard = createRedundantDiscoveryGuard({
   extractPatterns: extractSearchPatterns,
   loopMessage:
     "Repeated search-files loop detected without reads/writes. Stop synonym searching and conclude from current evidence.",
+  preCheck({ args, session, report }) {
+    const currentScope = extractSearchScope(args);
+    if (currentScope.length !== 1 || currentScope[0] === "__workspace__") return;
+    const targetPath = currentScope[0];
+    if (!targetPath) return;
+
+    for (const entry of scopedCallLog(session)) {
+      if (entry.success !== false && isWriteTool(session, entry.toolName)) return;
+    }
+
+    const calls = scopedCallLog(session);
+    const prior = calls[calls.length - 1];
+    if (!prior || prior.toolName !== "read-file") return;
+    if (!isWholeFileReadOfPath(prior.args, targetPath)) return;
+
+    report("blocked", targetPath);
+    throw new Error(
+      `File "${targetPath}" was already read directly in full. Do not search the same file before editing; ` +
+        "use the text you already have to make the change.",
+    );
+  },
 });
 
 const redundantFindGuard = createRedundantDiscoveryGuard({
@@ -524,15 +562,35 @@ const sequentialSameFileEditGuard: ToolGuard = {
     const calls = scopedCallLog(session);
     const lastCall = calls[calls.length - 1];
     if (!lastCall) return;
-    if (lastCall.success === false) return;
-    if (!isWriteTool(session, lastCall.toolName)) return;
     const lastPath =
       typeof lastCall.args.path === "string" ? normalizePath(lastCall.args.path.trim()).toLowerCase() : "";
-    if (lastPath !== pathValue) return;
+    if (lastCall.success !== false && isWriteTool(session, lastCall.toolName) && lastPath === pathValue) {
+      report("blocked", pathValue);
+      throw new Error(
+        `File "${pathValue}" was just edited. Batch same-file changes into one edit call unless you gather new evidence first.`,
+      );
+    }
 
-    report("blocked", pathValue);
+    let attemptsSinceEvidence = 0;
+    for (let index = calls.length - 1; index >= 0; index -= 1) {
+      const entry = calls[index];
+      if (!entry) break;
+      if (entry.toolName === "read-file") {
+        if (extractReadPaths(entry.args, { normalize: true }).includes(pathValue)) break;
+        continue;
+      }
+      if (!isWriteTool(session, entry.toolName)) continue;
+      const entryPath = typeof entry.args.path === "string" ? normalizePath(entry.args.path.trim()).toLowerCase() : "";
+      if (entryPath !== pathValue) break;
+      attemptsSinceEvidence += 1;
+    }
+
+    if (attemptsSinceEvidence < 2) return;
+
+    report("blocked", `${pathValue}:${attemptsSinceEvidence}`);
     throw new Error(
-      `File "${pathValue}" was just edited. Batch same-file changes into one edit call unless you gather new evidence first.`,
+      `File "${pathValue}" has already had ${attemptsSinceEvidence} edit attempts without a fresh reread. ` +
+        "Read the file again or change strategy before trying another same-file edit.",
     );
   },
 };

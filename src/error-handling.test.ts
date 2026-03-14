@@ -74,9 +74,18 @@ describe("error handling helpers", () => {
 
   test("isOversizedEditSnippetSignal accepts code or embedded error code", () => {
     expect(isOversizedEditSnippetSignal({ code: TOOL_ERROR_CODES.editFileFindTooLarge, message: "any" })).toBe(true);
+    expect(isOversizedEditSnippetSignal({ code: TOOL_ERROR_CODES.editFileReplaceTooLarge, message: "any" })).toBe(
+      true,
+    );
     expect(
       isOversizedEditSnippetSignal({
         message: `[${TOOL_ERROR_CODES.editFileFindTooLarge}] find must be a short unique snippet`,
+        code: undefined,
+      }),
+    ).toBe(true);
+    expect(
+      isOversizedEditSnippetSignal({
+        message: `[${TOOL_ERROR_CODES.editFileReplaceTooLarge}] replace must contain only the changed region`,
         code: undefined,
       }),
     ).toBe(true);
@@ -94,6 +103,9 @@ describe("error handling helpers", () => {
     expect(recoveryActionForError({ errorCode: TOOL_ERROR_CODES.editFileFindTooLarge, unknownErrorCount: 2 }, 2)).toBe(
       "none",
     );
+    expect(
+      recoveryActionForError({ errorCode: TOOL_ERROR_CODES.editFileReplaceTooLarge, unknownErrorCount: 2 }, 2),
+    ).toBe("none");
   });
 
   test("recoveryActionForError returns action based on error budget", () => {

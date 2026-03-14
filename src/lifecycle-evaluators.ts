@@ -281,10 +281,10 @@ export const oversizedEditSnippetEvaluator: Evaluator = {
       feedback: {
         source: "multi-match",
         mode: "work",
-        summary: "Your edit-file find snippet was too large.",
+        summary: "Your edit-file snippet was too large for a surgical find/replace edit.",
         instruction:
-          "Use edit-file with short unique find snippets only, or use line-range edits from the latest read-file output. " +
-          "Do not pass a large block of the file as find text. " +
+          "Use edit-file with short unique find snippets and replacement text limited to the changed region only, or use line-range edits from the latest read-file output. " +
+          "Do not pass a large block of the file as find text or replacement text. " +
           (targetPath
             ? `Keep the change in '${targetPath}' and batch the needed replacements into one edit call. `
             : "Keep the change in the same file and batch the needed replacements into one edit call. ") +
