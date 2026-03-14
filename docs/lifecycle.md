@@ -21,6 +21,7 @@ resolve → prepare → generate → evaluate → finalize
 - Generation input is rebuilt from immutable base input plus pending mode-scoped lifecycle feedback.
 - Selected guard blocks may also be translated into lifecycle feedback before the next attempt.
 - A valid lifecycle signal can end the loop cleanly before recovery logic reopens the turn.
+- Incompletely executed completion signals can be rejected and converted into a bounded regeneration when runtime state still requires more edits.
 - Regeneration is bounded by lifecycle policy caps.
 - Yield checks only occur at safe checkpoints between lifecycle decisions.
 
@@ -31,7 +32,8 @@ resolve → prepare → generate → evaluate → finalize
   - `feedback`: pending runtime feedback consumed by the next matching-mode attempt
   - `verifyOutcome`: structured verifier result used across `keepResult` restore boundaries
   - `repeatedFailure`: task-scoped failure streak state used to surface one recovery nudge per repeated failure signature
-- Lifecycle may also accept a task-scoped lifecycle signal from generation when there is no contradiction in current runtime state.
+- Lifecycle may also accept a task-scoped lifecycle signal from generation when current runtime state has no contradiction.
+- This includes rejecting `done` when a bounded repeated-edit request is only partially completed and the target file still contains pending match text.
 - Lifecycle may translate selected guard blocks into feedback, so the next attempt can recover with clearer runtime context.
 - `lifecycleState` is not persisted to session history or memory sources.
 - `lifecycleState` supports the model with concrete runtime outcomes; it does not plan tasks or decide how issues should be resolved.
