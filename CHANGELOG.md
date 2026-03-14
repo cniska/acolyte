@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.1 (2026-03-14)
+## 0.4.0 (2026-03-14)
 
 - **chat:** replace /tokens with /usage and add prompt breakdown (#10) (`beabe48`)
 - **chat:** slash command output swallowed on alternate submits (`a2d0a8d`)
