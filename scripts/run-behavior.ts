@@ -5,12 +5,12 @@ import { z } from "zod";
 import {
   BEHAVIOR_SCENARIO_BY_ID,
   BEHAVIOR_SCENARIO_LIST,
-  parseBehaviorScenarioId,
   type BehaviorScenarioId,
+  parseBehaviorScenarioId,
 } from "./behavior-scenarios";
-import { PERF_COMMAND_TIMEOUT_MS, runTimedCommand, toPrettyJson } from "./perf-test-utils";
+import { runTimedCommand, toPrettyJson } from "./perf-test-utils";
 
-const DEFAULT_MODEL = "anthropic/claude-sonnet-4-6";
+const DEFAULT_MODEL = "gpt-5.2";
 const DEFAULT_TIMEOUT_MS = 60_000;
 const REPO_DIR = join(import.meta.dir, "..");
 const CLI_ENTRY = join(REPO_DIR, "src", "cli.ts");
@@ -92,7 +92,8 @@ function countMatching(lines: string[], pattern: string): number {
 
 function countToolCalls(taskLines: string[], toolNames: string[]): number {
   return taskLines.filter(
-    (line) => line.includes("event=lifecycle.tool.call") && toolNames.some((toolName) => line.includes(`tool=${toolName}`)),
+    (line) =>
+      line.includes("event=lifecycle.tool.call") && toolNames.some((toolName) => line.includes(`tool=${toolName}`)),
   ).length;
 }
 
@@ -136,7 +137,9 @@ function summarizeTrace(lines: string[]): z.infer<typeof behaviorTraceSummarySch
         "git-add",
         "git-commit",
       ]),
-      regenerationCount: taskLines.filter((line) => line.includes("event=lifecycle.eval.decision") && line.includes("action=regenerate")).length,
+      regenerationCount: taskLines.filter(
+        (line) => line.includes("event=lifecycle.eval.decision") && line.includes("action=regenerate"),
+      ).length,
       guardBlockedCount: countMatching(taskLines, "event=lifecycle.guard"),
       hasError: countMatching(taskLines, "event=lifecycle.error") > 0,
     });
@@ -294,7 +297,11 @@ async function runScenario(scenarioId: BehaviorScenarioId, model: string, timeou
     stdout: result.stdout,
     stderr: result.stderr,
     trace,
-    analysis: analyzeBehavior({ exitCode: result.exitCode, expectedChangeCount: scenario.expectedChanges.length, trace }),
+    analysis: analyzeBehavior({
+      exitCode: result.exitCode,
+      expectedChangeCount: scenario.expectedChanges.length,
+      trace,
+    }),
   });
 }
 
@@ -316,7 +323,12 @@ function printRun(run: BehaviorRun): void {
 }
 
 async function cleanup(runs: BehaviorRun[]): Promise<void> {
-  await runTimedCommand(["bun", "run", CLI_ENTRY, "stop"], { ...process.env, NO_COLOR: "1" } as Record<string, string>, 10_000, REPO_DIR);
+  await runTimedCommand(
+    ["bun", "run", CLI_ENTRY, "stop"],
+    { ...process.env, NO_COLOR: "1" } as Record<string, string>,
+    10_000,
+    REPO_DIR,
+  );
   for (const run of runs) await rm(run.workspace, { recursive: true, force: true });
 }
 

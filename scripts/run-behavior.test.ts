@@ -5,7 +5,7 @@ import { analyzeBehavior, parseArgs } from "./run-behavior";
 describe("run-behavior args", () => {
   test("parseArgs applies defaults", () => {
     expect(parseArgs([])).toEqual({
-      model: "anthropic/claude-sonnet-4-6",
+      model: "gpt-5.2",
       scenarioIds: BEHAVIOR_SCENARIO_LIST.map((scenario) => scenario.id),
       keepWorkspaces: false,
       json: false,
@@ -14,15 +14,13 @@ describe("run-behavior args", () => {
   });
 
   test("parseArgs parses explicit flags", () => {
-    expect(parseArgs(["--model", "gpt-5-mini", "--scenario", "docs-link-fix", "--keep-workspaces", "--json"])).toEqual(
-      {
-        model: "gpt-5-mini",
-        scenarioIds: ["docs-link-fix"],
-        keepWorkspaces: true,
-        json: true,
-        timeoutMs: 60_000,
-      },
-    );
+    expect(parseArgs(["--model", "gpt-5-mini", "--scenario", "docs-link-fix", "--keep-workspaces", "--json"])).toEqual({
+      model: "gpt-5-mini",
+      scenarioIds: ["docs-link-fix"],
+      keepWorkspaces: true,
+      json: true,
+      timeoutMs: 60_000,
+    });
   });
 
   test("parseArgs rejects unknown flags", () => {

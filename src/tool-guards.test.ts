@@ -299,6 +299,19 @@ describe("redundant-search guard", () => {
       }),
     ).toThrow(/only rediscovering files that were already edited/);
   });
+
+  test("blocks scoped symbol search that only rechecks an already edited file", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file"]);
+    recordCall(session, "edit-file", { path: "src/clamp.ts" });
+    expect(() =>
+      runGuards({
+        toolName: "search-files",
+        args: { pattern: "clamp(", paths: ["src"] },
+        session,
+      }),
+    ).toThrow(/only rediscovering files that were already edited/);
+  });
 });
 
 describe("redundant-find guard", () => {
@@ -366,7 +379,7 @@ describe("redundant-find guard", () => {
   });
 });
 
-describe("redundant-git-diff guard", () => {
+describe("post-edit-redundancy guard", () => {
   test("blocks git-diff on a file already edited in this turn", () => {
     const session = createSessionContext();
     session.writeTools = new Set(["edit-file"]);
@@ -388,6 +401,22 @@ describe("redundant-git-diff guard", () => {
     session.writeTools = new Set(["edit-file"]);
     recordCall(session, "edit-file", { path: "README.md" });
     expect(() => runGuards({ toolName: "git-diff", args: {}, session })).not.toThrow();
+  });
+
+  test("blocks delete-file on a file already edited in this turn", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file", "delete-file"]);
+    recordCall(session, "edit-file", { path: "src/clamp.ts" });
+    expect(() => runGuards({ toolName: "delete-file", args: { paths: ["src/clamp.ts"] }, session })).toThrow(
+      /after it was already edited in this task/i,
+    );
+  });
+
+  test("allows delete-file on a different file", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file", "delete-file"]);
+    recordCall(session, "edit-file", { path: "src/clamp.ts" });
+    expect(() => runGuards({ toolName: "delete-file", args: { paths: ["src/old.ts"] }, session })).not.toThrow();
   });
 });
 

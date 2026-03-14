@@ -1,4 +1,4 @@
-import { basename } from "node:path";
+import { basename, extname } from "node:path";
 import { invariant } from "./assert";
 import { CONSECUTIVE_GUARD_BLOCK_LIMIT, TOOL_TIMEOUT_MS } from "./lifecycle-constants";
 import {
@@ -137,9 +137,20 @@ function editedPathTokens(paths: readonly string[]): Set<string> {
   const tokens = new Set<string>();
   for (const path of paths) {
     tokens.add(path);
-    tokens.add(basename(path));
+    const name = basename(path);
+    tokens.add(name);
+    const extension = extname(name);
+    if (extension.length > 0) tokens.add(name.slice(0, -extension.length));
   }
   return tokens;
+}
+
+function normalizeDiscoveryToken(value: string): string {
+  return normalizePath(value.trim().toLowerCase()).replace(/^[^a-z0-9._/-]+|[^a-z0-9._/-]+$/g, "");
+}
+
+function scopeTouchesEditedPaths(scope: readonly string[], editedPaths: readonly string[]): boolean {
+  return scope.every((entry) => editedPaths.some((path) => path === entry || path.startsWith(`${entry}/`)));
 }
 
 type RedundantQueryKind = "narrower" | "scope-narrowing";
@@ -349,8 +360,9 @@ const redundantSearchGuard = createRedundantDiscoveryGuard({
     if (isWorkspaceScope(scope)) return;
     const patterns = extractSearchPatterns(args);
     const tokens = editedPathTokens(editedPaths);
-    const scopeOnlyEdited = scope.every((entry) => tokens.has(entry));
-    const patternsOnlyEdited = patterns.length > 0 && patterns.every((entry) => tokens.has(normalizePath(entry)));
+    const scopeOnlyEdited = scopeTouchesEditedPaths(scope, editedPaths);
+    const patternsOnlyEdited =
+      patterns.length > 0 && patterns.every((entry) => tokens.has(normalizeDiscoveryToken(entry)));
     if (!scopeOnlyEdited || !patternsOnlyEdited) return;
     report("blocked", "post-edit-rediscovery");
     throw new Error(
@@ -434,20 +446,53 @@ const redundantVerifyGuard: ToolGuard = {
   },
 };
 
-const redundantGitDiffGuard: ToolGuard = {
-  id: "redundant-git-diff",
-  description: "Block git-diff on a file that was already edited in this turn.",
-  tools: ["git-diff"],
-  check({ args, session, report }) {
-    const path = typeof args.path === "string" ? normalizePath(args.path.trim().toLowerCase()) : "";
-    if (!path) return;
-    const editedPaths = editedPathsSinceLastVerify(session).map((entry) => normalizePath(entry.toLowerCase()));
-    if (!editedPaths.includes(path)) return;
-    report("blocked", path);
-    throw new Error(
+type PostEditRedundancyPolicy = {
+  extractPaths: (args: Record<string, unknown>) => string[];
+  message: (path: string) => string;
+};
+
+type PostEditRedundancyToolName = "git-diff" | "delete-file";
+
+const postEditRedundancyPolicies = {
+  "git-diff": {
+    extractPaths: (args) => {
+      const path = typeof args.path === "string" ? normalizePath(args.path.trim().toLowerCase()) : "";
+      return path ? [path] : [];
+    },
+    message: (path) =>
       `git-diff is only re-confirming "${path}", which was already edited in this turn. ` +
-        "Use the edit diff preview you already have or stop.",
-    );
+      "Use the edit diff preview you already have or stop.",
+  },
+  "delete-file": {
+    extractPaths: (args) =>
+      Array.isArray(args.paths)
+        ? args.paths
+            .filter((value): value is string => typeof value === "string")
+            .map((value) => normalizePath(value.trim().toLowerCase()))
+            .filter((value) => value.length > 0)
+        : [],
+    message: (path) =>
+      `delete-file is trying to remove "${path}" after it was already edited in this task. ` +
+      "Keep the file and revise it in place instead of deleting it.",
+  },
+} satisfies Record<PostEditRedundancyToolName, PostEditRedundancyPolicy>;
+
+const postEditRedundancyGuard: ToolGuard = {
+  id: "post-edit-redundancy",
+  description: "Block redundant follow-up actions on files already edited in this task.",
+  tools: Object.keys(postEditRedundancyPolicies) as PostEditRedundancyToolName[],
+  check({ toolName, args, session, report }) {
+    if (!(toolName in postEditRedundancyPolicies)) return;
+    const policy = postEditRedundancyPolicies[toolName as PostEditRedundancyToolName];
+    if (!policy) return;
+    const targetPaths = policy.extractPaths(args);
+    if (targetPaths.length === 0) return;
+    const editedPaths = editedPathsSinceLastVerify(session).map((entry) => normalizePath(entry.toLowerCase()));
+    for (const path of targetPaths) {
+      if (!editedPaths.includes(path)) continue;
+      report("blocked", path);
+      throw new Error(policy.message(path));
+    }
   },
 };
 
@@ -585,7 +630,7 @@ const GUARDS: ToolGuard[] = [
   redundantFindGuard,
   redundantSearchGuard,
   redundantVerifyGuard,
-  redundantGitDiffGuard,
+  postEditRedundancyGuard,
 ];
 
 export function runGuards(input: Omit<GuardInput, "report">): void {

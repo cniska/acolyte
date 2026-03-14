@@ -68,10 +68,10 @@ describe("createLifecycleFeedbackForGuard", () => {
     });
   });
 
-  test("maps redundant git-diff to work-scoped lifecycle feedback", () => {
+  test("maps post-edit git-diff to work-scoped lifecycle feedback", () => {
     const feedback = createLifecycleFeedbackForGuard(
       createGuardEvent({
-        guardId: "redundant-git-diff",
+        guardId: "post-edit-redundancy",
         toolName: "git-diff",
         detail: "README.md",
       }),
@@ -83,6 +83,23 @@ describe("createLifecycleFeedbackForGuard", () => {
       summary: 'A previous edit already produced the diff for "README.md".',
       instruction:
         "Do not re-run git-diff for the same file. Trust the edit diff preview you already have and stop if the task is complete.",
+    });
+  });
+
+  test("maps post-edit delete-file to work-scoped lifecycle feedback", () => {
+    const feedback = createLifecycleFeedbackForGuard(
+      createGuardEvent({
+        guardId: "post-edit-redundancy",
+        toolName: "delete-file",
+        detail: "src/clamp.ts",
+      }),
+      "work",
+    );
+    expect(feedback).toEqual({
+      source: "guard",
+      mode: "work",
+      summary: 'A previous edit already changed "src/clamp.ts".',
+      instruction: "Do not undo or discard the file after a successful edit. Keep it and revise it in place if needed.",
     });
   });
 });

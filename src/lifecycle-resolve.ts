@@ -12,8 +12,15 @@ export function resolveModeModel(
 ): ModeResolution {
   const requestModeModel = modeModels?.[mode]?.trim();
   const configuredModeModel = appConfig.models[mode]?.trim();
-  const modeModel = requestModeModel && requestModeModel.length > 0 ? requestModeModel : configuredModeModel;
-  const requestedModel = modeModel && modeModel.length > 0 ? modeModel : requestModel.trim();
+  const trimmedRequestModel = requestModel.trim();
+  let requestedModel = "";
+  if (requestModeModel && requestModeModel.length > 0) {
+    requestedModel = requestModeModel;
+  } else if (trimmedRequestModel.length > 0) {
+    requestedModel = trimmedRequestModel;
+  } else if (configuredModeModel && configuredModeModel.length > 0) {
+    requestedModel = configuredModeModel;
+  }
   if (!requestedModel) {
     throw createUserError("E_MODEL_NOT_CONFIGURED");
   }

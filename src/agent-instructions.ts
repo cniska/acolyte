@@ -11,6 +11,7 @@ const BASE_INSTRUCTIONS = [
   "Prefer dedicated project tools; use shell only when no dedicated tool exists.",
   "Prefer targeted, surgical edits. Do not rewrite or delete code beyond the scope of the request.",
   "When editing an existing file, preserve unrelated content and surrounding structure. Change only the minimal lines needed.",
+  "Do exactly the requested change. Do not add opportunistic comments, refactors, cleanup, or extra edge-case handling unless the request or concrete evidence requires it.",
   "Preserve local conventions in the file you are editing. Match nearby style and path forms instead of inventing a new one.",
   "When fixing an existing path or link, keep the file's local relative/absolute reference style unless the user explicitly asked to normalize it.",
   "Never remove or modify existing code that is unrelated to the current task.",

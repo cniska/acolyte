@@ -118,14 +118,18 @@ describe("localization baseline", () => {
     const gitDiffInstruction = toolDefinitionsById["git-diff"]?.instruction ?? "";
     const gitLogInstruction = toolDefinitionsById["git-log"]?.instruction ?? "";
     const gitShowInstruction = toolDefinitionsById["git-show"]?.instruction ?? "";
+    const runCommandInstruction = toolDefinitionsById["run-command"]?.instruction ?? "";
 
     expect(readInstruction).toContain("Batch multiple reads while discovering scope");
     expect(readInstruction).toContain("do not batch those target reads");
     expect(readInstruction).toContain("Read each target separately right before its edit");
     expect(editInstruction).toContain("latest direct `read-file` of that same file");
-    expect(editInstruction).toContain("exact text from the latest direct `read-file`");
+    expect(editInstruction).toContain("smallest unique snippet from the latest direct `read-file`");
     expect(editInstruction).toContain("use it directly instead of calling `search-files` again");
+    expect(editInstruction).toContain("the exact changed line or the smallest unique snippet");
+    expect(editInstruction).toContain("Do not use a large copied block as `find`");
     expect(editInstruction).toContain("do not replace the whole file or a much larger block than needed");
+    expect(editInstruction).toContain("keep {startLine, endLine} to only the changed line(s)");
     expect(editInstruction).toContain("preserve the relative or absolute style already used nearby");
     expect(editInstruction).toContain("do not call `git-diff` just to reconfirm the same edit");
     expect(editCodeInstruction).toContain("read that file directly right before editing it");
@@ -140,5 +144,8 @@ describe("localization baseline", () => {
     expect(gitDiffInstruction).toContain("especially after the requested edit is already complete");
     expect(gitLogInstruction).toContain("Do not use it to inspect current uncommitted edits");
     expect(gitShowInstruction).toContain("Do not use it to inspect current uncommitted edits");
+    expect(runCommandInstruction).toContain("Use `run-command` for known repository commands");
+    expect(runCommandInstruction).toContain("Do not guess a verification command just because edits were made");
+    expect(runCommandInstruction).toContain("update file X then stop");
   });
 });

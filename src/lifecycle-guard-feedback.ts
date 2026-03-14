@@ -48,10 +48,16 @@ const guardFeedbackFactories = {
       summary: `A previous ${event.toolName} call already covered this discovery step.`,
       instruction: "Reuse the broader result or read a promising file directly.",
     }),
-  "redundant-git-diff": (event, mode) =>
+  "post-edit-redundancy": (event, mode) =>
     createGuardFeedback(mode, {
-      summary: `A previous edit already produced the diff for "${event.detail ?? "this file"}".`,
-      instruction: "Do not re-run git-diff for the same file. Trust the edit diff preview you already have and stop if the task is complete.",
+      summary:
+        event.toolName === "git-diff"
+          ? `A previous edit already produced the diff for "${event.detail ?? "this file"}".`
+          : `A previous edit already changed "${event.detail ?? "this file"}".`,
+      instruction:
+        event.toolName === "git-diff"
+          ? "Do not re-run git-diff for the same file. Trust the edit diff preview you already have and stop if the task is complete."
+          : "Do not undo or discard the file after a successful edit. Keep it and revise it in place if needed.",
     }),
   "redundant-verify": () =>
     createGuardFeedback("verify", {

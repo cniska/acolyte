@@ -40,11 +40,11 @@ describe("resolveModeModel", () => {
     expect(result.model).toBe("openai/gpt-5-mini");
   });
 
-  test("prefers appConfig mode model over requestModel", () => {
+  test("prefers explicit requestModel over appConfig mode model", () => {
     withOpenaiKey("sk-test");
     setModeModel("verify", "openai/gpt-5-mini");
     const result = resolveModeModel("verify", "openai/gpt-5");
-    expect(result.model).toBe("openai/gpt-5-mini");
+    expect(result.model).toBe("openai/gpt-5");
   });
 
   test("request modeModels override takes highest priority", () => {
@@ -57,6 +57,13 @@ describe("resolveModeModel", () => {
   test("empty modeModels override falls through to next tier", () => {
     withOpenaiKey("sk-test");
     const result = resolveModeModel("work", "openai/gpt-5-mini", { work: "  " });
+    expect(result.model).toBe("openai/gpt-5-mini");
+  });
+
+  test("falls back to appConfig mode model when request model is empty", () => {
+    withOpenaiKey("sk-test");
+    setModeModel("work", "openai/gpt-5-mini");
+    const result = resolveModeModel("work", "   ");
     expect(result.model).toBe("openai/gpt-5-mini");
   });
 
