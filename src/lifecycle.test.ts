@@ -788,6 +788,29 @@ describe("toolRecoveryEvaluator", () => {
     }
   });
 
+  test("returns done for structured recovery while active mode is verify", () => {
+    const ctx = createMockContext({
+      mode: "verify",
+      initialMode: "work",
+      currentError: {
+        code: TOOL_ERROR_CODES.scanCodeUnsupportedFile,
+        tool: "scan-code",
+        message:
+          "scan-code failed: [E_SCAN_CODE_UNSUPPORTED_FILE] scan-code requires a supported code file, got: notes.yaml",
+        recovery: {
+          tool: "scan-code",
+          kind: "use-supported-file",
+          summary: "scan-code only works on supported code files.",
+          instruction: "Use search-files for plain-text lookup.",
+          nextTool: "search-files",
+          targetPaths: ["notes.yaml"],
+        },
+      },
+      result: { text: "Attempted verify scan.", toolCalls: [] },
+    });
+    expect(toolRecoveryEvaluator.evaluate(ctx).type).toBe("done");
+  });
+
   test("returns done when there is no structured tool recovery", () => {
     const ctx = createMockContext({
       initialMode: "work",

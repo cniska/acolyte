@@ -284,6 +284,55 @@ describe("editCode", () => {
     expect(content).toContain('console.warn("third");');
   });
 
+  test("supports nested all/any/inside rule combinations", async () => {
+    const filePath = `/tmp/acolyte-test-ast-nested-rules-${testUuid()}.ts`;
+    tempFiles.push(filePath);
+    await writeFile(
+      filePath,
+      [
+        "function logMessages() {",
+        '  console.log("first");',
+        '  console.info("second");',
+        "}",
+        "",
+        "function keepMessages() {",
+        '  console.log("outside");',
+        "}",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    const result = await editCode({
+      workspace: WORKSPACE,
+      path: filePath,
+      edits: [
+        {
+          op: "replace",
+          rule: {
+            all: [
+              { any: ["console.log($ARG)", "console.info($ARG)"] },
+              {
+                inside: {
+                  pattern: {
+                    context: "function logMessages() { $$$BODY }",
+                    selector: "function_declaration",
+                  },
+                  stopBy: "end",
+                },
+              },
+            ],
+          },
+          replacement: "logger.debug($ARG)",
+        },
+      ],
+    });
+    expect(result.matches).toBe(2);
+    const content = await readFile(filePath, "utf8");
+    expect(content).toContain('logger.debug("first");');
+    expect(content).toContain('logger.debug("second");');
+    expect(content).toContain('console.log("outside");');
+  });
+
   test("supports relational stopBy rule objects", async () => {
     const filePath = `/tmp/acolyte-test-ast-stop-by-${testUuid()}.ts`;
     tempFiles.push(filePath);
@@ -353,7 +402,13 @@ describe("editCode", () => {
       editCode({
         workspace: WORKSPACE,
         path: filePath,
-        edits: [{ op: "replace", rule: { any: ["console.log($ARG)", "console.info($ARG)"] }, replacement: "logger.debug($ARG)" }],
+        edits: [
+          {
+            op: "replace",
+            rule: { any: ["console.log($ARG)", "console.info($ARG)"] },
+            replacement: "logger.debug($ARG)",
+          },
+        ],
       }),
     ).rejects.toMatchObject({
       message: expect.stringContaining("No AST matches found for rule: any(2)"),

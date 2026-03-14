@@ -236,7 +236,7 @@ export const toolRecoveryEvaluator: Evaluator = {
   id: "tool-recovery",
   evaluate(ctx) {
     if (!ctx.result) return { type: "done" };
-    if (ctx.initialMode !== "work") return { type: "done" };
+    if (ctx.mode !== "work") return { type: "done" };
     const currentError = ctx.currentError;
     if (!currentError) return { type: "done" };
     const recovery = currentError.recovery;

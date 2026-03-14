@@ -37,6 +37,8 @@ function editFileRecovery(path: string, kind: EditFileRecoveryKind): ToolRecover
         instruction:
           `Keep the change in '${path}' and make one bounded edit with a more unique snippet or a single line-range edit. ` +
           "If the rewrite is genuinely structural, switch to edit-code with a real ast-grep pattern.",
+        nextTool: "read-file",
+        targetPaths: [path],
       };
     case "refresh-snippet":
       return {
@@ -46,6 +48,8 @@ function editFileRecovery(path: string, kind: EditFileRecoveryKind): ToolRecover
         instruction:
           `Keep the change in '${path}' and rebuild the next edit from the latest read-file output or use a bounded line-range edit. ` +
           "Do not retry the same stale find text.",
+        nextTool: "read-file",
+        targetPaths: [path],
       };
     case "shrink-edit":
       return {
@@ -55,6 +59,8 @@ function editFileRecovery(path: string, kind: EditFileRecoveryKind): ToolRecover
         instruction:
           `Keep the change in '${path}' and shrink it: use short unique find snippets, a bounded line-range edit covering only the changed region, or use edit-code for a structural rewrite. ` +
           "Do not pass large file blocks as find or replacement text.",
+        nextTool: "read-file",
+        targetPaths: [path],
       };
     default:
       return kind satisfies never;

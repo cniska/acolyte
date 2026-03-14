@@ -303,6 +303,7 @@ export async function editCode(input: {
   await ensureDynamicLanguages();
 
   const langName = languageFromPath(absPath);
+  invariant(langName, `edit-code requires a supported code file, got: ${input.path}`);
   const langEnum = napi.Lang[langName as keyof typeof napi.Lang];
   let current = original;
   let totalMatches = 0;

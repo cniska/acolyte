@@ -100,6 +100,8 @@ describe("editFile", () => {
       recovery: {
         tool: "edit-file",
         kind: "refresh-snippet",
+        nextTool: "read-file",
+        targetPaths: [filePath],
       },
     });
   });
@@ -136,7 +138,15 @@ describe("editFile", () => {
         path: filePath,
         edits: [{ find: `${content}\n`, replace: "short\n" }],
       }),
-    ).rejects.toMatchObject({ code: TOOL_ERROR_CODES.editFileFindTooLarge });
+    ).rejects.toMatchObject({
+      code: TOOL_ERROR_CODES.editFileFindTooLarge,
+      recovery: {
+        tool: "edit-file",
+        kind: "shrink-edit",
+        nextTool: "read-file",
+        targetPaths: [filePath],
+      },
+    });
   });
 
   test("rejects oversized replace blocks for find-based edits", async () => {
