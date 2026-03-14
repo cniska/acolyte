@@ -15,6 +15,7 @@ describe("createModeInstructions", () => {
     const out = createModeInstructions("work");
     expect(out).toContain("Use `find-files` to locate");
     expect(out).toContain("Use `search-files` to search");
+    expect(out).toContain("do not use `search-files`; read the file once and make one consolidated `edit-file` call");
   });
 
   test("includes preamble lines", () => {
@@ -30,6 +31,7 @@ describe("createModeInstructions", () => {
     expect(out).toContain("repeated literal replacements in one known file");
     expect(out).toContain("make the requested change and stop");
     expect(out).toContain("trust the edit preview and the text you already have");
+    expect(out).toContain("do not review, find, search, or scan that same file again in work mode");
     expect(out).toContain("prefer `scan-code` + `edit-code`");
     expect(out).toContain("repeated plain-text rewrite inside one known file");
     expect(out).toContain("Trust type signatures");
@@ -70,6 +72,8 @@ describe("createInstructions", () => {
     expect(out).toContain("edit-code");
     expect(out).toContain("AST");
     expect(out).toContain("Do not use plain text snippets as AST patterns");
+    expect(out).toContain("do not re-read the same file unless the edit fails");
+    expect(out).toContain("If that preview shows the requested bounded change, stop");
     expect(out).toContain("call `create-file` with full content");
   });
 });

@@ -27,6 +27,7 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
       "For repeated literal replacements in one known file, do not use `search-files`, `scan-code`, or extra rereads after the initial direct read. Make one consolidated `edit-file` call.",
       "For explicit bounded fixes, make the requested change and stop.",
       "For small named-file tasks, trust the edit preview and the text you already have.",
+      "When a bounded edit in a named file succeeds, do not review, find, search, or scan that same file again in work mode unless the user asked for verification or the edit failed.",
       "For rename/refactor tasks or repeated structural code updates, prefer `scan-code` + `edit-code` over `edit-file`.",
       "If the task is a repeated plain-text rewrite inside one known file, prefer one consolidated `edit-file` call over `edit-code`.",
       "Batch multiple edits to the same file into one `edit-file` or `edit-code` call.",
