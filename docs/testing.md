@@ -23,7 +23,14 @@ Use the smallest test type that gives strong confidence.
 - Integration only: `bun run test:int`
 - Visual only: `bun run test:tui`
 - Perf baseline: `bun run test:perf`
+- Behavior harness: `bun run behavior:run --model anthropic/claude-sonnet-4-6`
 - Coverage report (unit tests only): `bun run test:coverage`
+
+## Behavior harness
+
+- Use `scripts/run-behavior.ts` for small real-model tuning tasks across bounded temporary workspaces.
+- Keep scenarios explicit, small, and manually inspectable; this harness is for behavioral comparison, not automatic scoring.
+- Prefer a few stable scenarios over many overlapping ones.
 
 ## Perf policy
 

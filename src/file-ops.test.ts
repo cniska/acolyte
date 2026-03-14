@@ -104,6 +104,41 @@ describe("editFile", () => {
     ).rejects.toThrow("matched 3 locations");
   });
 
+  test("allows a tiny whole-file snippet when it is only a few lines", async () => {
+    const filePath = `/tmp/acolyte-test-small-snippet-${crypto.randomUUID()}.md`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, "# Demo\n\n## Documentation\n- [Contributing](CONTRIBUTING.md)\n", "utf8");
+
+    const result = await editFile({
+      workspace: WORKSPACE,
+      path: filePath,
+      edits: [
+        {
+          find: "# Demo\n\n## Documentation\n- [Contributing](CONTRIBUTING.md)\n",
+          replace: "# Demo\n\n## Documentation\n- [Contributing](docs/contributing.md)\n",
+        },
+      ],
+    });
+
+    expect(result).toContain("edits=1");
+    await expect(readFile(filePath, "utf8")).resolves.toContain("docs/contributing.md");
+  });
+
+  test("rejects long find snippets even when they are unique", async () => {
+    const filePath = `/tmp/acolyte-test-long-snippet-${crypto.randomUUID()}.txt`;
+    tempFiles.push(filePath);
+    const content = Array.from({ length: 10 }, (_, index) => `line-${index + 1}`).join("\n");
+    await writeFile(filePath, `${content}\n`, "utf8");
+
+    await expect(
+      editFile({
+        workspace: WORKSPACE,
+        path: filePath,
+        edits: [{ find: `${content}\n`, replace: "short\n" }],
+      }),
+    ).rejects.toThrow("find must be a short unique snippet");
+  });
+
   test("rejects replace text that duplicates content after edit point", async () => {
     const filePath = `/tmp/acolyte-test-dup-${testUuid()}.txt`;
     tempFiles.push(filePath);

@@ -146,7 +146,37 @@ describe("file-churn guard", () => {
     ).not.toThrow();
   });
 
-  test("blocks repeated read/edit churn on same path before verify", () => {
+  test("blocks repeating the same reread after a successful edit before verify", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file"]);
+    recordCall(session, "read-file", { paths: [{ path: "src/foo.ts" }] });
+    recordCall(session, "edit-file", { path: "src/foo.ts" });
+    expect(() => runGuards({ toolName: "read-file", args: { paths: [{ path: "src/foo.ts" }] }, session })).toThrow(
+      /this reread repeats an earlier read/,
+    );
+  });
+
+  test("allows reading a different range of the same file after an edit", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file"]);
+    recordCall(session, "read-file", { paths: [{ path: "src/foo.ts", start: 1, end: 40 }] });
+    recordCall(session, "edit-file", { path: "src/foo.ts" });
+    expect(() =>
+      runGuards({ toolName: "read-file", args: { paths: [{ path: "src/foo.ts", start: 41, end: 80 }] }, session }),
+    ).not.toThrow();
+  });
+
+  test("allows reading a different file after an edit", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file"]);
+    recordCall(session, "read-file", { paths: [{ path: "src/foo.ts" }] });
+    recordCall(session, "edit-file", { path: "src/foo.ts" });
+    expect(() =>
+      runGuards({ toolName: "read-file", args: { paths: [{ path: "src/bar.ts" }] }, session }),
+    ).not.toThrow();
+  });
+
+  test("blocks rereading the same path before heavy read/edit churn can continue", () => {
     const session = createSessionContext();
     session.writeTools = new Set(["edit-file"]);
     for (let i = 0; i < 6; i += 1) {
@@ -154,7 +184,7 @@ describe("file-churn guard", () => {
       recordCall(session, "edit-file", { path: "src/foo.ts" });
     }
     expect(() => runGuards({ toolName: "read-file", args: { paths: [{ path: "src/foo.ts" }] }, session })).toThrow(
-      /Repeated read\/edit loop detected/,
+      /this reread repeats an earlier read/,
     );
   });
 
@@ -319,6 +349,24 @@ describe("redundant-find guard", () => {
     }
     recordCall(session, "edit-file", { path: "src/a.ts" });
     expect(() => runGuards({ toolName: "find-files", args: { patterns: ["query-5"] }, session })).not.toThrow();
+  });
+});
+
+describe("post-edit-redundancy guard", () => {
+  test("blocks delete-file on a file already edited in this turn", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file", "delete-file"]);
+    recordCall(session, "edit-file", { path: "src/clamp.ts" });
+    expect(() => runGuards({ toolName: "delete-file", args: { paths: ["src/clamp.ts"] }, session })).toThrow(
+      /after it was already edited in this task/i,
+    );
+  });
+
+  test("allows delete-file on a different file", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file", "delete-file"]);
+    recordCall(session, "edit-file", { path: "src/clamp.ts" });
+    expect(() => runGuards({ toolName: "delete-file", args: { paths: ["src/old.ts"] }, session })).not.toThrow();
   });
 });
 

@@ -7,6 +7,7 @@ import { withFakeProviderServer } from "./fake-provider-server";
 import { PERF_SCENARIO_LIST, type Scenario, type ScenarioId } from "./perf-scenarios";
 import { average, median, percentile, runTimedCommand, toPrettyJson } from "./perf-test-utils";
 import { createPerfProviderHandler } from "./perf-utils";
+import { createTempConfigHome } from "./temp-config-home";
 
 type PerfArgs = {
   runs: number;
@@ -63,22 +64,6 @@ function parseInteger(token: string | undefined, flag: string): number {
   return value;
 }
 
-function toTomlRecord(input: Record<string, string | number | boolean>): string {
-  return Object.entries(input)
-    .map(([key, value]) => {
-      if (typeof value === "number" || typeof value === "boolean") return `${key} = ${value}`;
-      return `${key} = ${JSON.stringify(value)}`;
-    })
-    .join("\n");
-}
-
-function reserveFreePort(): number {
-  const probe = Bun.serve({ port: 0, fetch: () => new Response("ok") });
-  const port = probe.port;
-  probe.stop(true);
-  return port;
-}
-
 function summarizeRunError(error: unknown): string | null {
   if (error instanceof Error) return error.message;
   if (typeof error === "string" && error.trim().length > 0) return error.trim();
@@ -122,17 +107,6 @@ export function parseArgs(args: string[]): PerfArgs {
 
 function printUsage(): void {
   console.log("Usage: bun run scripts/run-perf.ts [--runs N] [--warmup|--no-warmup] [--fail-median-ms N]");
-}
-
-async function writePerfConfig(homeDir: string, port: number, providerBaseUrl: string): Promise<void> {
-  const configDir = join(homeDir, ".acolyte");
-  await mkdir(configDir, { recursive: true });
-  const config = {
-    port,
-    model: PERF_MODEL,
-    openaiBaseUrl: providerBaseUrl,
-  };
-  await writeFile(join(configDir, "config.toml"), `${toTomlRecord(config)}\n`, "utf8");
 }
 
 async function preparePerfWorkspace(): Promise<string> {
@@ -262,13 +236,14 @@ async function main(): Promise<void> {
 
   await withFakeProviderServer(
     async (providerBaseUrl) => {
-      const homeDir = await mkdtemp(join(tmpdir(), "acolyte-run-perf-home-"));
+      const home = await createTempConfigHome(
+        "acolyte-run-perf-home-",
+        { model: PERF_MODEL, openaiBaseUrl: providerBaseUrl },
+        { OPENAI_BASE_URL: providerBaseUrl, OPENAI_API_KEY: "test-key" },
+      );
       const workspaceDir = await preparePerfWorkspace();
-      const port = reserveFreePort();
-      const apiUrl = `http://localhost:${port}`;
-
-      await writePerfConfig(homeDir, port, providerBaseUrl);
-      const server = await startPerfServer(homeDir, workspaceDir, port, providerBaseUrl);
+      const apiUrl = `http://localhost:${home.port}`;
+      const server = await startPerfServer(home.homeDir, workspaceDir, home.port, providerBaseUrl);
 
       try {
         const warmupScenario = SCENARIOS[0];
@@ -335,7 +310,7 @@ async function main(): Promise<void> {
         );
       } finally {
         await server.stop();
-        await rm(homeDir, { recursive: true, force: true });
+        await rm(home.homeDir, { recursive: true, force: true });
         await rm(workspaceDir, { recursive: true, force: true });
       }
     },

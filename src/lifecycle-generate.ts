@@ -123,7 +123,7 @@ export function setMode(ctx: RunContext, mode: RunContext["mode"], trigger?: str
 }
 
 function ensureAgentForMode(ctx: RunContext): void {
-  const resolved = resolveModeModel(ctx.mode, ctx.request.model);
+  const resolved = resolveModeModel(ctx.mode, ctx.request.model, ctx.request.modeModels);
   const nextModel = resolved.model;
   if (ctx.agentForMode === ctx.mode && ctx.model === nextModel) return;
 

@@ -80,11 +80,13 @@ resolve → prepare → generate → evaluate → finalize
 - **prepare:** build inputs, context, and tools.
 - **generate:** run model + tool calls.
 - **evaluate:** decide accept/retry/regenerate (bounded) and update task-scoped lifecycle state.
+- **completion signaling:** generation may emit `done`/`no_op`/`blocked`; evaluate accepts valid signals.
 - **finalize:** persist outputs and emit final response.
 
 - **regeneration:** evaluators may request regeneration, bounded by caps.
-- **lifecycle state:** regeneration uses internal task-scoped pending feedback/verify state; this state is not persisted to session or memory.
-- **host/model boundary:** lifecycle state supports retries with concrete runtime outcomes, while the model remains responsible for deciding how to complete the task.
+- **lifecycle state:** internal task-scoped retry/support state; never persisted to session or memory.
+- **model-host protocol:** model may explicitly signal `done`/`no_op`/`blocked`; host validates against runtime state.
+- **host/model boundary:** host provides runtime structure and feedback; model decides how to complete the task.
 - **scheduling:** yield checks happen between lifecycle decisions, never mid-step.
 - **task metrics:** evaluator and summary metrics are scoped by `task_id`.
 - **details:** see [Lifecycle](./lifecycle.md).

@@ -25,6 +25,7 @@ Shipped, user-visible capabilities.
 ## Agent Execution
 
 - Lifecycle-driven execution with work/verify behavior.
+- Explicit lifecycle completion signals so the agent can stop cleanly when work is done or no changes are needed.
 - Automatic verify pass after write operations.
 - Task-scoped verify boundaries by default, with opt-in global verify scope.
 - Tool-guarded execution for safer autonomous runs.

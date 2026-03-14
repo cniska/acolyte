@@ -9,7 +9,13 @@ import type {
 } from "@ai-sdk/provider";
 import { z } from "zod";
 import type { Agent, StreamOptions, StreamOutput } from "./agent-contract";
-import type { GenerateResult, StreamChunk, ToolCallEntry } from "./lifecycle-contract";
+import type { GenerateResult, LifecycleSignal, StreamChunk, ToolCallEntry } from "./lifecycle-contract";
+import {
+  appendLifecycleTextDelta,
+  createLifecycleTextStreamState,
+  finalizeLifecycleText,
+  type LifecycleTextStreamState,
+} from "./lifecycle-signal";
 import { log } from "./log";
 import { createModel } from "./model-factory";
 import { normalizeModel } from "./provider-config";
@@ -65,6 +71,7 @@ export function createAgentStream(
     });
 
     const resultPromise = (async (): Promise<GenerateResult> => {
+      let lifecycleSignal: LifecycleSignal | undefined;
       while (true) {
         loopIteration++;
         log.debug("agent-stream.loop.start", { iteration: loopIteration, pending_messages: messages.length });
@@ -86,12 +93,13 @@ export function createAgentStream(
         }> = [];
         let finishReason: LanguageModelV3FinishReason | undefined;
         const stepTextParts: string[] = [];
+        const lifecycleTextState = createLifecycleTextStreamState();
 
         const reader = streamResult.stream.getReader();
         while (true) {
           const { done, value: part } = await reader.read();
           if (done) break;
-          emitStreamPart(part, streamController, stepTextParts, pendingToolCalls);
+          emitStreamPart(part, streamController, stepTextParts, pendingToolCalls, lifecycleTextState);
           if (part.type === "finish") {
             finishReason = part.finishReason;
             streamController.enqueue({
@@ -104,11 +112,23 @@ export function createAgentStream(
           }
         }
 
+        const finalizedStep = finalizeLifecycleText(lifecycleTextState);
+        if (finalizedStep.signal) lifecycleSignal = finalizedStep.signal;
+        if (finalizedStep.text.length > 0) {
+          stepTextParts.push(finalizedStep.text);
+          streamController.enqueue({ type: "text-delta", payload: { text: finalizedStep.text } });
+        }
+
         const stepText = stepTextParts.join("");
         if (stepText.length > 0) fullText += stepText;
 
         if (pendingToolCalls.length === 0) {
-          if (nudgeCount < maxNudges && allToolCalls.length > 0 && stepText.trim().length > 0) {
+          if (
+            nudgeCount < maxNudges &&
+            allToolCalls.length > 0 &&
+            !finalizedStep.signal &&
+            stepText.trim().length > 0
+          ) {
             nudgeCount++;
             log.debug("agent-stream.nudge", {
               reason: "no_tool_calls",
@@ -125,7 +145,7 @@ export function createAgentStream(
               content: [
                 {
                   type: "text",
-                  text: "[system] You stopped before completing the task. If you are done, confirm explicitly. Otherwise, continue working with the available tools.",
+                  text: "[system] You stopped before completing the task. If you are done, use @signal done or @signal no_op. If blocked, use @signal blocked. Otherwise, continue working with the available tools.",
                 },
               ],
             });
@@ -138,6 +158,7 @@ export function createAgentStream(
             finish_reason_raw: JSON.stringify(finishReason ?? null),
             text_length: stepText.length,
             total_tool_calls: allToolCalls.length,
+            signal: lifecycleSignal ?? null,
           });
           break;
         }
@@ -257,7 +278,7 @@ export function createAgentStream(
         text_length: fullText.length,
       });
       streamController.close();
-      return { text: fullText, toolCalls: allToolCalls };
+      return { text: fullText, toolCalls: allToolCalls, ...(lifecycleSignal ? { signal: lifecycleSignal } : {}) };
     })().catch((error) => {
       try {
         streamController.error(error);
@@ -276,12 +297,17 @@ function emitStreamPart(
   controller: ReadableStreamDefaultController<StreamChunk>,
   textParts: string[],
   pendingToolCalls: Array<{ toolCallId: string; toolName: string; input: string }>,
+  lifecycleTextState: LifecycleTextStreamState,
 ): void {
   switch (part.type) {
-    case "text-delta":
-      textParts.push(part.delta);
-      controller.enqueue({ type: "text-delta", payload: { text: part.delta } });
+    case "text-delta": {
+      const visibleText = appendLifecycleTextDelta(lifecycleTextState, part.delta);
+      if (visibleText.length > 0) {
+        textParts.push(visibleText);
+        controller.enqueue({ type: "text-delta", payload: { text: visibleText } });
+      }
       break;
+    }
     case "reasoning-delta":
       controller.enqueue({ type: "reasoning-delta", payload: { text: part.delta } });
       break;

@@ -10,6 +10,11 @@ Acolyte uses explicit operating modes to shape behavior:
 - **work**: execute task changes directly.
 - **verify**: validate behavior and report findings.
 
+## Behavior
+
+- **work** stays inside the requested scope, favors surgical edits, and preserves unrelated file content.
+- **verify** chooses the lightest sufficient validation for the actual change instead of assuming every task needs full-project checks.
+
 ## Selection
 
 - Mode classification starts from request intent.

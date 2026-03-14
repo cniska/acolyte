@@ -67,4 +67,21 @@ describe("createLifecycleFeedbackForGuard", () => {
       instruction: "Do not rerun the same verification command until work mode changes the code.",
     });
   });
+
+  test("maps post-edit delete-file to work-scoped lifecycle feedback", () => {
+    const feedback = createLifecycleFeedbackForGuard(
+      createGuardEvent({
+        guardId: "post-edit-redundancy",
+        toolName: "delete-file",
+        detail: "src/clamp.ts",
+      }),
+      "work",
+    );
+    expect(feedback).toEqual({
+      source: "guard",
+      mode: "work",
+      summary: 'A previous edit already changed "src/clamp.ts".',
+      instruction: "Do not undo or discard the file after a successful edit. Keep it and revise it in place if needed.",
+    });
+  });
 });

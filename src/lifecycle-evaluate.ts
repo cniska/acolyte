@@ -11,7 +11,7 @@ import {
 } from "./lifecycle-evaluators";
 import { phaseGenerate, setMode, shouldYieldNow } from "./lifecycle-generate";
 import { defaultLifecyclePolicy, type LifecyclePolicy } from "./lifecycle-policy";
-import { clearVerifyOutcomeForFeedback, updateRepeatedFailureState } from "./lifecycle-state";
+import { acceptedLifecycleSignal, clearVerifyOutcomeForFeedback, updateRepeatedFailureState } from "./lifecycle-state";
 
 const EVALUATORS: Evaluator[] = [
   guardRecoveryEvaluator,
@@ -43,6 +43,16 @@ export function recoveryActionForError(
 export async function phaseEvaluate(ctx: RunContext, shouldYield: LifecycleInput["shouldYield"]) {
   while (ctx.result) {
     if (shouldYieldNow(ctx, shouldYield)) break;
+    const lifecycleSignal = acceptedLifecycleSignal(ctx);
+    if (lifecycleSignal) {
+      ctx.currentError = undefined;
+      ctx.debug("lifecycle.signal.accepted", {
+        signal: lifecycleSignal,
+        mode: ctx.mode,
+        tool_calls: ctx.result.toolCalls.length,
+      });
+      break;
+    }
     updateRepeatedFailureState(ctx);
 
     if (

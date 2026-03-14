@@ -35,7 +35,10 @@ export type ToolCallEntry = {
 export type GenerateResult = {
   text: string;
   toolCalls: ToolCallEntry[];
+  signal?: LifecycleSignal;
 };
+
+export type LifecycleSignal = "done" | "no_op" | "blocked";
 
 export type ToolOutputEvent = { toolName: string; content: ToolOutput; toolCallId?: string };
 export type ToolCallStart = { toolName: string; startedAtMs: number };

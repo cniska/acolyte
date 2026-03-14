@@ -22,6 +22,9 @@ export type FindReplaceEdit = { find: string; replace: string };
 export type LineRangeEdit = { startLine: number; endLine: number; replace: string };
 export type FileEdit = FindReplaceEdit | LineRangeEdit;
 
+const MAX_FIND_SNIPPET_LINES = 8;
+const MAX_FIND_SNIPPET_CHARS = 500;
+
 export async function findFiles(workspace: string, patterns: string[], maxResults = 40): Promise<string> {
   if (patterns.length === 0) throw new Error("At least one pattern is required");
   const allFiles = await collectWorkspaceFiles(workspace);
@@ -137,7 +140,8 @@ export async function editFile(input: {
   for (const edit of input.edits) {
     if ("find" in edit) {
       if (!edit.find) throw new Error("Find text cannot be empty");
-      if (edit.find.length > raw.length * 0.5) {
+      const findLineCount = edit.find.split("\n").length;
+      if (findLineCount > MAX_FIND_SNIPPET_LINES || edit.find.length > MAX_FIND_SNIPPET_CHARS) {
         throw new Error(
           "find must be a short unique snippet (a few lines), not a large portion of the file. Use just enough context to uniquely identify the edit location.",
         );
