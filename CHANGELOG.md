@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.3.0 (2026-03-14)
+
+- **tui:** resolve lint warnings from custom-renderer branch (`e95a148`)
+- **lint:** fail on biome warnings (`2042d27`)
+- auto-generate changelog on release, backfill history (`8899553`)
+- **lifecycle:** improve lifecycle feedback loop (#6) (`2f6907d`)
+- **tsconfig:** tighten module compiler options (`8557822`)
+- **tui:** harden strict mode transcript rendering (`052315d`)
+- **skills:** add docs audit (`374f5d9`)
+- reconcile canonical docs (`1f2da95`)
+- **format:** align strict mode ui formatting (`feb6a6f`)
+- refresh benchmarks and workflow policy (`fa71074`)
+- **cli:** support local models via ollama setup (#7) (`0cea68e`)
+- **lifecycle:** add completion signaling (#8) (`e06a379`)
+- **release:** avoid bash regex parse error (`d124e51`)
+
+
 ## 0.2.0 (2026-03-13)
 
 - **skills:** add unified /review skill for branch audits (`6aa1a220`)
