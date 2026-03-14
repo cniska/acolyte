@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { PromptBreakdown, TokenUsage } from "./api";
+import type { TokenUsage } from "./api";
 import { type ChatMessage, type MessageId, messageIdSchema, messageSchema } from "./chat-contract";
 import { type IsoDateTimeString, isoDateTimeSchema } from "./datetime";
 import { domainIdSchema } from "./id-contract";
@@ -15,7 +15,7 @@ const tokenUsageSchema = z.object({
   inputTruncated: z.boolean().optional(),
 });
 
-const promptBreakdownSchema = z.object({
+export const promptBreakdownSchema = z.object({
   budgetTokens: z.number(),
   usedTokens: z.number(),
   systemTokens: z.number(),
@@ -23,6 +23,8 @@ const promptBreakdownSchema = z.object({
   memoryTokens: z.number(),
   messageTokens: z.number(),
 });
+
+export type PromptBreakdown = z.infer<typeof promptBreakdownSchema>;
 
 export const sessionTokenUsageEntrySchema = z.object({
   id: messageIdSchema,
@@ -55,7 +57,7 @@ export interface Session {
 export interface SessionTokenUsageEntry {
   readonly id: MessageId;
   readonly usage: TokenUsage;
-  readonly promptBreakdown?: PromptBreakdown;
+  readonly promptBreakdown?: z.infer<typeof promptBreakdownSchema>;
   readonly warning?: string;
   readonly modelCalls?: number;
 }
