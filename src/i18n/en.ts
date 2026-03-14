@@ -108,7 +108,7 @@ export const EN_MESSAGES = {
   "cli.config.value_empty": "Config value cannot be empty",
   "cli.help.desc.config": "manage config",
   "cli.help.desc.history": "show recent sessions",
-  "cli.help.desc.init": "initialize provider setup",
+  "cli.help.desc.init": "initialize provider API key",
   "cli.help.desc.memory": "manage memory",
   "cli.help.desc.ps": "list running servers",
   "cli.help.desc.restart": "restart server",

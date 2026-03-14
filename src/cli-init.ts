@@ -24,7 +24,7 @@ type InitModeDeps = {
   writeFile: typeof writeFileType;
 };
 
-function parseInitTarget(value: string | undefined): Provider | null {
+function parseInitProvider(value: string | undefined): Provider | null {
   if (!value || value.trim().length === 0) return null;
   const normalized = value.trim().toLowerCase();
   const parsed = providerSchema.safeParse(normalized);
@@ -124,15 +124,15 @@ export async function initMode(args: string[], deps: InitModeDeps): Promise<void
     return;
   }
 
-  let target = parseInitTarget(args[0]);
-  if (!target) target = parseInitTarget(promptFn(t("cli.init.prompt.provider"))?.trim() ?? undefined);
-  if (!target) {
+  let provider = parseInitProvider(args[0]);
+  if (!provider) provider = parseInitProvider(promptFn(t("cli.init.prompt.provider"))?.trim() ?? undefined);
+  if (!provider) {
     printError(t("cli.init.provider.invalid"));
     process.exitCode = 1;
     return;
   }
 
-  const envKey = envKeyForProvider(target);
+  const envKey = envKeyForProvider(provider);
   const apiKey = await promptHidden(t("cli.init.prompt.api_key"));
   if (!apiKey) {
     printError(t("cli.init.api_key.empty", { envKey }));

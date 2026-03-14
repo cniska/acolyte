@@ -14,18 +14,13 @@ The CLI is the primary interface for working with Acolyte.
 - `acolyte memory list|add`: manage memory
 - `acolyte config list|set|unset`: manage configuration
 - `acolyte tool <tool-id> [args]`: run a tool directly
-- `acolyte init [provider]`: initialize provider setup
+- `acolyte init [provider]`: initialize provider API key
 
 Run `acolyte <command> help` for detailed usage.
 
 ## Local models
 
-Configure the project to talk to a local OpenAI-compatible server, then set the project model explicitly:
-
-```bash
-acolyte config set --project openaiBaseUrl http://localhost:11434/v1
-acolyte config set --project model openai-compatible/<model>
-```
+See [Configuration](./configuration.md) for OpenAI-compatible model setup.
 
 ## Chat commands
 

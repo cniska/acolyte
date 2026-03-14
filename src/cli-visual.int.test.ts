@@ -102,7 +102,7 @@ describe("cli visual regression", () => {
         acolyte <COMMAND> [ARGS]
 
       Commands
-        init [provider]        initialize provider setup
+        init [provider]        initialize provider API key
         resume [id-prefix]     resume previous session
         run <prompt>           run a single prompt
         history                show recent sessions
@@ -318,7 +318,7 @@ describe("cli visual regression", () => {
       output: dedent(`
         Usage: acolyte init [openai|anthropic|google]
         
-        Description: initialize provider setup
+        Description: initialize provider API key
         
         Examples:
           acolyte init
