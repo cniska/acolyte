@@ -8,7 +8,7 @@ import { formatPromptError } from "./error-messages";
 import { t } from "./i18n";
 import type { ResourceId } from "./resource-id";
 import type { Session } from "./session-contract";
-import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
+import { LIFECYCLE_ERROR_CODES } from "./error-codes";
 import { createToolOutputState, formatToolOutput } from "./tool-output-content";
 import { printDim, printError, printOutput, streamText } from "./ui";
 

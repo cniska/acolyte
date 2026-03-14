@@ -18,7 +18,7 @@ import { addPromptBreakdownTotals, estimatePromptBreakdown, totalPromptBreakdown
 import { formatModel } from "./provider-config";
 import type { StreamError } from "./stream-error";
 import type { ToolDefinition } from "./tool-contract";
-import { extractToolErrorCode, LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
+import { extractToolErrorCode, LIFECYCLE_ERROR_CODES } from "./error-codes";
 import { resetCycleStepCount } from "./tool-guards";
 import type { Toolset } from "./tool-registry";
 

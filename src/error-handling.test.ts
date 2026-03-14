@@ -9,7 +9,7 @@ import {
   parseErrorInfo,
   recoveryActionForError,
 } from "./error-handling";
-import { createToolError, LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./tool-error-codes";
+import { createToolError, LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./error-codes";
 
 describe("error handling helpers", () => {
   test("parseErrorInfo extracts code from coded string", () => {

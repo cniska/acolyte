@@ -15,7 +15,7 @@ import { defaultLifecyclePolicy } from "./lifecycle-policy";
 import { phasePrepare } from "./lifecycle-prepare";
 import { acceptedLifecycleSignal, updateRepeatedFailureState } from "./lifecycle-state";
 import { createEmptyPromptBreakdownTotals } from "./lifecycle-usage";
-import { LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./tool-error-codes";
+import { LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./error-codes";
 import { createSessionContext, recordCall } from "./tool-guards";
 
 function createMockContext(overrides: Partial<RunContext> = {}): RunContext {

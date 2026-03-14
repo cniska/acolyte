@@ -1,7 +1,7 @@
 import { mkdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import * as napi from "@ast-grep/napi";
-import { createToolError, type ToolRecovery, TOOL_ERROR_CODES } from "./tool-error-codes";
+import { createToolError, type ToolRecovery, TOOL_ERROR_CODES } from "./error-codes";
 
 /** Owner-only read/write. Use for files containing secrets or sensitive metadata. */
 export const PRIVATE_FILE_MODE = 0o600;

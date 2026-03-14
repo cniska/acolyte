@@ -4,7 +4,7 @@ import type { StreamEvent } from "./client-contract";
 import type { ErrorCategory, ErrorSource } from "./error-handling";
 import type { LifecyclePolicy } from "./lifecycle-policy";
 import type { PromptBreakdownTotals } from "./lifecycle-usage";
-import type { ErrorCode, ToolRecovery } from "./tool-error-codes";
+import type { ErrorCode, ToolRecovery } from "./error-codes";
 import type { SessionContext } from "./tool-guards";
 import type { ToolOutput } from "./tool-output-content";
 import type { Toolset } from "./tool-registry";
