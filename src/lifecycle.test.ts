@@ -502,6 +502,7 @@ describe("multiMatchEditEvaluator", () => {
     expect(action.type).toBe("regenerate");
     if (action.type === "regenerate") {
       expect(action.feedback?.instruction).toContain("next tool call must be edit-code");
+      expect(action.feedback?.instruction).toContain("real ast-grep pattern with metavariables");
       expect(action.feedback?.instruction).toContain("Use path 'src/priority.ts' for edit-code");
       expect(action.feedback?.instruction).toContain("do not use '.' or directory paths");
     }

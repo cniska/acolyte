@@ -27,9 +27,11 @@ describe("createModeInstructions", () => {
     expect(out).toContain("use the exact line already visible in `read-file` output as your edit anchor");
     expect(out).toContain("preserve the relative or absolute form already used in that file");
     expect(out).toContain("keep the change as small as the request allows");
+    expect(out).toContain("repeated literal replacements in one known file");
     expect(out).toContain("make the requested change and stop");
     expect(out).toContain("trust the edit preview and the text you already have");
     expect(out).toContain("prefer `scan-code` + `edit-code`");
+    expect(out).toContain("repeated plain-text rewrite inside one known file");
     expect(out).toContain("Trust type signatures");
   });
 
@@ -67,6 +69,7 @@ describe("createInstructions", () => {
     const out = createInstructions("Soul.", "work");
     expect(out).toContain("edit-code");
     expect(out).toContain("AST");
+    expect(out).toContain("Do not use plain text snippets as AST patterns");
     expect(out).toContain("call `create-file` with full content");
   });
 });

@@ -233,7 +233,7 @@ function createScanCodeTool(input: ToolkitInput) {
     description:
       "Scan files for structural code patterns using AST matching. Pass `paths` as an array of file or directory paths and `patterns` as an array of ast-grep patterns with `$VAR` metavariables (e.g. [`export function $NAME($$$PARAMS)`, `import $SPEC from $MOD`]).",
     instruction:
-      "Use `scan-code` for AST pattern matching. Always pass `paths` and `patterns` as arrays. Batch multiple files and patterns in one call (e.g. paths=[`src/a.ts`, `src/b.ts`], patterns=[`export function $NAME`, `import $SPEC from $MOD`]). Metavariable names (`$NAME`, `$ARG`) are wildcards — they match any node, not literal text. Use it to map rename/refactor targets before `edit-code`. For keyword or regex searches prefer `search-files`.",
+      "Use `scan-code` for AST pattern matching. Always pass `paths` and `patterns` as arrays. Batch multiple files and patterns in one call (e.g. paths=[`src/a.ts`, `src/b.ts`], patterns=[`export function $NAME`, `import $SPEC from $MOD`]). Metavariable names (`$NAME`, `$ARG`) are wildcards — they match any node, not literal text. Use it to map rename/refactor targets before `edit-code`, not for plain text replacements. For keyword or regex searches prefer `search-files`.",
     inputSchema: z.object({
       paths: z.array(z.string().min(1)).min(1),
       patterns: z.array(z.string().min(1)).min(1),
@@ -370,7 +370,7 @@ function createEditFileTool(input: ToolkitInput) {
     description:
       "Edit an existing file. Pass `edits` as an array of either {find, replace} pairs (for small surgical edits using exact text match) or {startLine, endLine, replace} objects (for larger block replacements). Line numbers MUST come from `read-file` output — do not guess. endLine must not exceed the file length. All edits are applied atomically. You MUST read the file first. For new files, use `create-file`. For code renames or structural edits use `edit-code`.",
     instruction:
-      "Use `edit-file` for text edits. For small visible changes, prefer {find, replace} where `find` is the exact changed line or the smallest unique snippet from the latest direct `read-file` of that file. Keep anchors tight, keep line-range edits to the changed lines when possible, and preserve nearby path or link style. The `edit-file` result already includes a diff preview. For larger block changes use {startLine, endLine, replace} with 1-based line numbers from the latest direct `read-file`; `replace` is only the new text for that region. Batch multiple edits to the same file into one call. If `find` is likely to match multiple locations, switch to `edit-code`.",
+      "Use `edit-file` for text edits. For small visible changes, prefer {find, replace} where `find` is the exact changed line or the smallest unique snippet from the latest direct `read-file` of that file. Keep anchors tight, keep line-range edits to the changed lines when possible, and preserve nearby path or link style. The `edit-file` result already includes a diff preview. For larger block changes use {startLine, endLine, replace} with 1-based line numbers from the latest direct `read-file`; `replace` is only the new text for that region. Batch multiple edits to the same file into one call. If the change is a repeated plain-text rewrite in one known file, keep using one consolidated `edit-file` call. Switch to `edit-code` only for real AST-aware refactors or structural code rewrites.",
     inputSchema: z.object({
       path: z.string().min(1),
       edits: z
@@ -426,7 +426,7 @@ function createEditCodeTool(input: ToolkitInput) {
     description:
       "Edit code with AST pattern matching. Pass `edits` as [{pattern, replacement}] using `$VAR` metavariables (e.g. pattern=`console.log($ARG)` replacement=`logger.debug($ARG)`). `path` must be a specific file, not '.' or a directory. For non-code files use `edit-file`.",
     instruction:
-      "Use `edit-code` for multi-location code changes, rename/refactor updates, or structural rewrites with AST `edits` array. `path` must be a concrete file path (not `.` or a directory), and you should read that file directly right before editing it. The `edit-code` result already includes a diff preview. Prefer `edit-file` for single-location text edits.",
+      "Use `edit-code` for AST-aware rename/refactor work or structural code rewrites with AST `edits` array. Do not use plain text snippets as AST patterns, and do not use `edit-code` for markdown, docs, or repeated plain-text replacements in one known file. `path` must be a concrete file path (not `.` or a directory), and you should read that file directly right before editing it. The `edit-code` result already includes a diff preview. Prefer `edit-file` for single-location text edits and for repeated text replacements within one file.",
     inputSchema: z.object({
       path: z.string().min(1),
       edits: z

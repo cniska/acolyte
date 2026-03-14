@@ -242,7 +242,7 @@ export const multiMatchEditEvaluator: Evaluator = {
         mode: "work",
         summary: "Your previous edit-file call matched multiple locations.",
         instruction:
-          "For this task, your next tool call must be edit-code (not edit-file). " +
+          "For this task, your next tool call must be edit-code (not edit-file). Use a real ast-grep pattern with metavariables, not a plain text search string. " +
           (targetPath
             ? `Use path '${targetPath}' for edit-code and do not use '.' or directory paths. `
             : "Use a concrete file path for edit-code and do not use '.' or directory paths. ") +
