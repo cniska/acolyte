@@ -169,6 +169,24 @@ describe("editFile", () => {
     ).rejects.toMatchObject({ code: TOOL_ERROR_CODES.editFileReplaceTooLarge });
   });
 
+  test("rejects batched find edits that rewrite too much of the file", async () => {
+    const filePath = `/tmp/acolyte-test-batch-rewrite-${crypto.randomUUID()}.ts`;
+    tempFiles.push(filePath);
+    const content = Array.from({ length: 40 }, (_, index) => `line-${index + 1}`).join("\n");
+    await writeFile(filePath, `${content}\n`, "utf8");
+
+    await expect(
+      editFile({
+        workspace: WORKSPACE,
+        path: filePath,
+        edits: Array.from({ length: 33 }, (_, index) => ({
+          find: `line-${index + 1}\n`,
+          replace: `updated-${index + 1}\n`,
+        })),
+      }),
+    ).rejects.toMatchObject({ code: TOOL_ERROR_CODES.editFileBatchTooLarge });
+  });
+
   test("rejects replace text that duplicates content after edit point", async () => {
     const filePath = `/tmp/acolyte-test-dup-${testUuid()}.txt`;
     tempFiles.push(filePath);

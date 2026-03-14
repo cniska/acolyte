@@ -56,9 +56,11 @@ export function isEditFileFindNotFoundSignal(input: { code?: string; message: st
 
 export function isOversizedEditSnippetSignal(input: { code?: string; message: string }): boolean {
   return (
+    input.code === TOOL_ERROR_CODES.editFileBatchTooLarge ||
     input.code === TOOL_ERROR_CODES.editFileFindTooLarge ||
     input.code === TOOL_ERROR_CODES.editFileReplaceTooLarge ||
     input.code === TOOL_ERROR_CODES.editFileLineRangeTooLarge ||
+    hasToolErrorCode(input.message, TOOL_ERROR_CODES.editFileBatchTooLarge) ||
     hasToolErrorCode(input.message, TOOL_ERROR_CODES.editFileLineRangeTooLarge) ||
     hasToolErrorCode(input.message, TOOL_ERROR_CODES.editFileReplaceTooLarge) ||
     hasToolErrorCode(input.message, TOOL_ERROR_CODES.editFileFindTooLarge)

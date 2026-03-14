@@ -1,5 +1,6 @@
 export const TOOL_ERROR_CODES = {
   editFileMultiMatch: "E_EDIT_FILE_MULTI_MATCH",
+  editFileBatchTooLarge: "E_EDIT_FILE_BATCH_TOO_LARGE",
   editFileFindTooLarge: "E_EDIT_FILE_FIND_TOO_LARGE",
   editFileFindNotFound: "E_EDIT_FILE_FIND_NOT_FOUND",
   editFileLineRangeTooLarge: "E_EDIT_FILE_LINE_RANGE_TOO_LARGE",

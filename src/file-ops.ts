@@ -26,6 +26,8 @@ const MAX_FIND_SNIPPET_LINES = 8;
 const MAX_FIND_SNIPPET_CHARS = 500;
 const MAX_FIND_REPLACE_LINES = 24;
 const MAX_FIND_REPLACE_CHARS = 1600;
+const MAX_BATCH_EDIT_LINES = 32;
+const MAX_BATCH_EDIT_CHARS = 2400;
 
 export async function findFiles(workspace: string, patterns: string[], maxResults = 40): Promise<string> {
   if (patterns.length === 0) throw new Error("At least one pattern is required");
@@ -205,6 +207,16 @@ export async function editFile(input: {
     const curr = ranges[i];
     if (prev && curr && curr.start < prev.end)
       throw new Error("Edit regions overlap. Use fewer, non-overlapping find snippets.");
+  }
+
+  const hasFindReplaceEdit = input.edits.some((edit) => "find" in edit);
+  const totalTouchedChars = ranges.reduce((sum, range) => sum + (range.end - range.start), 0);
+  const totalTouchedLines = ranges.reduce((sum, range) => sum + raw.slice(range.start, range.end).split("\n").length, 0);
+  if ((hasFindReplaceEdit || input.edits.length > 1) && (totalTouchedChars > MAX_BATCH_EDIT_CHARS || totalTouchedLines > MAX_BATCH_EDIT_LINES)) {
+    throw createToolError(
+      TOOL_ERROR_CODES.editFileBatchTooLarge,
+      "edit-file batch rewrites too much of the file. Use short bounded snippets for local edits, a single line-range edit for one contiguous block, or edit-code for structural rewrites.",
+    );
   }
 
   // Detect likely duplication: replace text ends with lines that already follow the edit point.
