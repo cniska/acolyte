@@ -28,6 +28,7 @@ Other areas:
 - contracts/schemas as source of truth (Zod + inferred types)
 - transport and protocol consistency (HTTP/RPC parity)
 - guard/evaluator extensibility without test-only production hacks
+- language-agnostic design — flag hard-coded runtime, language, or framework-specific assumptions anywhere in the codebase
 - error contracts and typed error model consistency
 - assert patterns and exhaustiveness (`invariant`, `unreachable`, `switch` with `default`)
 - design-pattern consistency for extension seams (policy/strategy tables, adapter boundaries)
