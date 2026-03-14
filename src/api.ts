@@ -2,17 +2,17 @@ import { z } from "zod";
 import type { AgentMode } from "./agent-contract";
 import type { ChatMessage } from "./chat-contract";
 import type { ResourceId } from "./resource-id";
-import type { SessionId } from "./session-contract";
+import type { PromptBreakdown, SessionId } from "./session-contract";
 
 export const verifyScopeSchema = z.enum(["task", "global"]);
 export type VerifyScope = z.infer<typeof verifyScopeSchema>;
 
 export interface TokenUsage {
-  readonly promptTokens: number;
-  readonly completionTokens: number;
+  readonly inputTokens: number;
+  readonly outputTokens: number;
   readonly totalTokens: number;
-  readonly promptBudgetTokens?: number;
-  readonly promptTruncated?: boolean;
+  readonly inputBudgetTokens?: number;
+  readonly inputTruncated?: boolean;
 }
 
 export interface ChatRequest {
@@ -34,6 +34,7 @@ export interface ChatResponse {
   output: string;
   model: string;
   usage?: TokenUsage;
+  promptBreakdown?: PromptBreakdown;
   budgetWarning?: string;
   toolCalls?: string[];
   modelCalls?: number;

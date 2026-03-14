@@ -8,16 +8,28 @@ export const sessionIdSchema = domainIdSchema("sess");
 export type SessionId = z.infer<typeof sessionIdSchema>;
 
 const tokenUsageSchema = z.object({
-  promptTokens: z.number(),
-  completionTokens: z.number(),
+  inputTokens: z.number(),
+  outputTokens: z.number(),
   totalTokens: z.number(),
-  promptBudgetTokens: z.number().optional(),
-  promptTruncated: z.boolean().optional(),
+  inputBudgetTokens: z.number().optional(),
+  inputTruncated: z.boolean().optional(),
 });
+
+export const promptBreakdownSchema = z.object({
+  budgetTokens: z.number(),
+  usedTokens: z.number(),
+  systemTokens: z.number(),
+  toolTokens: z.number(),
+  memoryTokens: z.number(),
+  messageTokens: z.number(),
+});
+
+export type PromptBreakdown = z.infer<typeof promptBreakdownSchema>;
 
 export const sessionTokenUsageEntrySchema = z.object({
   id: messageIdSchema,
   usage: tokenUsageSchema,
+  promptBreakdown: promptBreakdownSchema.optional(),
   warning: z.string().optional(),
   modelCalls: z.number().optional(),
 });
@@ -45,6 +57,7 @@ export interface Session {
 export interface SessionTokenUsageEntry {
   readonly id: MessageId;
   readonly usage: TokenUsage;
+  readonly promptBreakdown?: z.infer<typeof promptBreakdownSchema>;
   readonly warning?: string;
   readonly modelCalls?: number;
 }

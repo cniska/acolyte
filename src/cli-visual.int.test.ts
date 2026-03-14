@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { runCliPlain, withCliTestEnv } from "./int-test-utils";
+import { PROTOCOL_VERSION } from "./protocol";
 import { dedent } from "./test-utils";
 
 async function withDualTransportChatServer<T>(fn: (baseUrl: string) => Promise<T>): Promise<T> {
@@ -15,7 +16,7 @@ async function withDualTransportChatServer<T>(fn: (baseUrl: string) => Promise<T
     fetch(request, srv) {
       const url = new URL(request.url);
       if (url.pathname === "/v1/status") {
-        return Response.json({ ok: true, protocol_version: "1" });
+        return Response.json({ ok: true, protocol_version: PROTOCOL_VERSION });
       }
       if (url.pathname === "/v1/chat/stream") {
         const body = `data: ${JSON.stringify({ type: "done", reply })}\n\n`;
@@ -51,7 +52,7 @@ async function withDualTransportChatServer<T>(fn: (baseUrl: string) => Promise<T
                 ok: true,
                 providers: ["openai"],
                 model: "gpt-5-mini",
-                protocol_version: "1",
+                protocol_version: PROTOCOL_VERSION,
                 capabilities: "stream.sse, error.structured",
                 permissions: "write",
                 service: "http://localhost:6767",
@@ -274,7 +275,7 @@ describe("cli visual regression", () => {
           dedent(`
           providers:          openai
           model:              gpt-5-mini
-          protocol_version:   1
+          protocol_version:   2
           capabilities:       stream.sse, error.structured
           permissions:        write
           service:            http://localhost:6767
@@ -296,7 +297,7 @@ describe("cli visual regression", () => {
         await run(["config", "set", "port", port]);
         const out = await run(["status", "--json"]);
         const parsed = JSON.parse(out) as { protocol_version: string };
-        expect(parsed.protocol_version).toBe("1");
+        expect(parsed.protocol_version).toBe("2");
       });
     });
   });

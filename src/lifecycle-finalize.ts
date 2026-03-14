@@ -2,8 +2,19 @@ import { estimateTokens } from "./agent-input";
 import type { ChatResponse } from "./api";
 import { t } from "./i18n";
 import { guardStatsFromSession, type RunContext } from "./lifecycle-contract";
+import { totalPromptBreakdownTokens } from "./lifecycle-usage";
 import { scopedCallLog } from "./tool-guards";
 import { DISCOVERY_TOOL_SET, READ_TOOL_SET, SEARCH_TOOL_SET, WRITE_TOOL_SET } from "./tool-registry";
+
+function resolvePromptBreakdown(ctx: RunContext) {
+  if (totalPromptBreakdownTokens(ctx.promptBreakdownTotals) > 0) return ctx.promptBreakdownTotals;
+  return {
+    systemTokens: Math.max(0, ctx.promptUsage.systemPromptTokens - ctx.promptUsage.memoryTokens),
+    toolTokens: ctx.promptUsage.toolTokens,
+    memoryTokens: ctx.promptUsage.memoryTokens,
+    messageTokens: ctx.promptUsage.messageTokens,
+  };
+}
 
 export function phaseFinalize(ctx: RunContext): ChatResponse {
   const rawOutput = ctx.result?.text.trim() ?? "";
@@ -14,18 +25,20 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
         ? t("agent.output.no_response_after_tools")
         : t("agent.output.no_output");
 
-  const promptTokens = ctx.promptTokensAccum || ctx.promptUsage.promptTokens;
-  const completionTokens = ctx.completionTokensAccum || estimateTokens(output);
+  const promptBreakdown = resolvePromptBreakdown(ctx);
+  const promptInputTokens = totalPromptBreakdownTokens(promptBreakdown);
+  const inputTokens = Math.max(ctx.inputTokensAccum, promptInputTokens);
+  const outputTokens = ctx.outputTokensAccum || estimateTokens(output);
   let budgetWarning: string | undefined;
-  if (ctx.promptUsage.promptTruncated) {
+  if (ctx.promptUsage.inputTruncated) {
     budgetWarning = t("lifecycle.budget.trimmed", {
       included: t("unit.history_message", { count: ctx.promptUsage.includedHistoryMessages }),
       total: ctx.promptUsage.totalHistoryMessages,
     });
-  } else if (ctx.promptUsage.promptTokens >= Math.floor(ctx.promptUsage.promptBudgetTokens * 0.9)) {
+  } else if (inputTokens >= Math.floor(ctx.promptUsage.inputBudgetTokens * 0.9)) {
     budgetWarning = t("lifecycle.budget.near", {
-      used: ctx.promptUsage.promptTokens,
-      budget: ctx.promptUsage.promptBudgetTokens,
+      used: inputTokens,
+      budget: ctx.promptUsage.inputBudgetTokens,
     });
   }
 
@@ -78,11 +91,19 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
     toolCalls: callLog.map((entry) => entry.toolName),
     modelCalls: ctx.modelCallCount,
     usage: {
-      promptTokens,
-      completionTokens,
-      totalTokens: promptTokens + completionTokens,
-      promptBudgetTokens: ctx.promptUsage.promptBudgetTokens,
-      promptTruncated: ctx.promptUsage.promptTruncated,
+      inputTokens,
+      outputTokens,
+      totalTokens: inputTokens + outputTokens,
+      inputBudgetTokens: ctx.promptUsage.inputBudgetTokens,
+      inputTruncated: ctx.promptUsage.inputTruncated,
+    },
+    promptBreakdown: {
+      budgetTokens: ctx.promptUsage.inputBudgetTokens,
+      usedTokens: inputTokens,
+      systemTokens: promptBreakdown.systemTokens,
+      toolTokens: promptBreakdown.toolTokens,
+      memoryTokens: promptBreakdown.memoryTokens,
+      messageTokens: promptBreakdown.messageTokens,
     },
     budgetWarning,
   };

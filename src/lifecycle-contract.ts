@@ -3,6 +3,7 @@ import type { ChatRequest, ChatResponse } from "./api";
 import type { StreamEvent } from "./client-contract";
 import type { ErrorCategory, ErrorSource } from "./error-handling";
 import type { LifecyclePolicy } from "./lifecycle-policy";
+import type { PromptBreakdownTotals } from "./lifecycle-usage";
 import type { ErrorCode } from "./tool-error-codes";
 import type { SessionContext } from "./tool-guards";
 import type { ToolOutput } from "./tool-output-content";
@@ -43,10 +44,13 @@ export type LifecycleSignal = "done" | "no_op" | "blocked";
 export type ToolOutputEvent = { toolName: string; content: ToolOutput; toolCallId?: string };
 export type ToolCallStart = { toolName: string; startedAtMs: number };
 export type PromptUsage = {
-  promptTokens: number;
-  promptBudgetTokens: number;
+  inputTokens: number;
+  inputBudgetTokens: number;
   systemPromptTokens: number;
-  promptTruncated: boolean;
+  toolTokens: number;
+  memoryTokens: number;
+  messageTokens: number;
+  inputTruncated: boolean;
   includedHistoryMessages: number;
   totalHistoryMessages: number;
   activeSkillName?: string;
@@ -80,6 +84,7 @@ export type PhasePrepareInput = {
   workspace: string | undefined;
   taskId: string | undefined;
   soulPrompt: string;
+  memoryTokens?: number;
   initialMode: AgentMode;
   model: string;
   policy: LifecyclePolicy;
@@ -126,6 +131,7 @@ export type LifecycleState = {
 export type LifecycleInput = {
   request: ChatRequest;
   soulPrompt: string;
+  memoryTokens?: number;
   workspace?: string;
   taskId?: string;
   lifecyclePolicy?: Partial<LifecyclePolicy>;
@@ -154,8 +160,9 @@ export type RunContext = {
   mode: AgentMode;
   observedTools: Set<string>;
   modelCallCount: number;
-  promptTokensAccum: number;
-  completionTokensAccum: number;
+  inputTokensAccum: number;
+  outputTokensAccum: number;
+  promptBreakdownTotals: PromptBreakdownTotals;
   streamingChars: number;
   lastUsageEmitChars: number;
   generationAttempt: number;

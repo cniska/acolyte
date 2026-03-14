@@ -7,11 +7,48 @@ import { streamErrorSchema } from "./stream-error";
 import type { TaskId, TaskRecord } from "./task-contract";
 import { toolOutputSchema } from "./tool-output-content";
 
+type UsageLikePayload = {
+  inputTokens?: unknown;
+  outputTokens?: unknown;
+  totalTokens?: unknown;
+  promptTokens?: unknown;
+  completionTokens?: unknown;
+  inputBudgetTokens?: unknown;
+  inputTruncated?: unknown;
+  promptBudgetTokens?: unknown;
+  promptTruncated?: unknown;
+};
+
+type ParsedUsagePayload = {
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  inputBudgetTokens?: number;
+  inputTruncated?: boolean;
+};
+
 export interface ClientOptions {
   apiUrl: string;
   apiKey?: string;
   replyTimeoutMs?: number;
 }
+
+const streamUsageEventSchema = z
+  .object({
+    type: z.literal("usage"),
+    inputTokens: z.number().optional(),
+    outputTokens: z.number().optional(),
+    promptTokens: z.number().optional(),
+    completionTokens: z.number().optional(),
+  })
+  .refine(
+    (value) =>
+      (typeof value.inputTokens === "number" && typeof value.outputTokens === "number") ||
+      (typeof value.promptTokens === "number" && typeof value.completionTokens === "number"),
+    {
+      message: "usage event missing token counters",
+    },
+  );
 
 export const streamEventSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("text-delta"), text: z.string() }),
@@ -36,7 +73,7 @@ export const streamEventSchema = z.discriminatedUnion("type", [
     errorCode: z.string().optional(),
     error: streamErrorSchema.optional(),
   }),
-  z.object({ type: z.literal("usage"), promptTokens: z.number(), completionTokens: z.number() }),
+  streamUsageEventSchema,
   z.object({ type: z.literal("status"), message: z.string() }),
   z.object({
     type: z.literal("error"),
@@ -47,7 +84,43 @@ export const streamEventSchema = z.discriminatedUnion("type", [
   }),
 ]);
 
-export type StreamEvent = z.infer<typeof streamEventSchema>;
+type TextDeltaEvent = { type: "text-delta"; text: string };
+type ReasoningEvent = { type: "reasoning"; text: string };
+type ToolCallEvent = { type: "tool-call"; toolCallId: string; toolName: string; args: Record<string, unknown> };
+type ToolOutputEvent = {
+  type: "tool-output";
+  toolCallId: string;
+  toolName: string;
+  content: z.infer<typeof toolOutputSchema>;
+};
+type ToolResultEvent = {
+  type: "tool-result";
+  toolCallId: string;
+  toolName: string;
+  isError?: boolean;
+  errorCode?: string;
+  error?: z.infer<typeof streamErrorSchema>;
+};
+type UsageEvent = { type: "usage"; inputTokens: number; outputTokens: number };
+type StatusEvent = { type: "status"; message: string };
+type ErrorEvent = {
+  type: "error";
+  errorMessage: string;
+  errorId?: string;
+  errorCode?: string;
+  error?: z.infer<typeof streamErrorSchema>;
+};
+
+export type StreamEvent =
+  | TextDeltaEvent
+  | ReasoningEvent
+  | ToolCallEvent
+  | ToolOutputEvent
+  | ToolResultEvent
+  | UsageEvent
+  | StatusEvent
+  | ErrorEvent;
+
 export interface Client {
   replyStream(
     input: ChatRequest,
@@ -79,7 +152,51 @@ export function parseRpcServerMessage(raw: unknown): z.infer<typeof rpcServerMes
 
 export function parseStreamEvent(raw: unknown): StreamEvent | null {
   const result = streamEventSchema.safeParse(raw);
-  return result.success ? result.data : null;
+  if (!result.success) return null;
+  const event = result.data;
+  if (event.type === "usage") {
+    const parsed = parseUsagePayload(event);
+    return parsed ? { type: "usage", inputTokens: parsed.inputTokens, outputTokens: parsed.outputTokens } : null;
+  }
+  return event;
+}
+
+function parseUsagePayload(raw: unknown): ParsedUsagePayload | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const usage = raw as UsageLikePayload;
+  const inputTokens = parseUsageNumber(usage.inputTokens) ?? parseUsageNumber(usage.promptTokens);
+  const outputTokens = parseUsageNumber(usage.outputTokens) ?? parseUsageNumber(usage.completionTokens);
+  const inputBudgetTokens = parseUsageOptionalNumber(usage, "inputBudgetTokens", "promptBudgetTokens");
+  const inputTruncated = parseUsageOptionalBoolean(usage, "inputTruncated", "promptTruncated");
+  if (typeof inputTokens !== "number" || typeof outputTokens !== "number") return undefined;
+  return {
+    inputTokens,
+    outputTokens,
+    totalTokens: parseUsageNumber(usage.totalTokens) ?? inputTokens + outputTokens,
+    ...(typeof inputBudgetTokens === "number" ? { inputBudgetTokens } : {}),
+    ...(typeof inputTruncated === "boolean" ? { inputTruncated } : {}),
+  };
+}
+
+function parseUsageNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function parseUsageOptionalNumber(
+  usage: UsageLikePayload,
+  primary: keyof UsageLikePayload,
+  fallback: keyof UsageLikePayload,
+): number | undefined {
+  return parseUsageNumber(usage[primary]) ?? parseUsageNumber(usage[fallback]);
+}
+
+function parseUsageOptionalBoolean(
+  usage: UsageLikePayload,
+  primary: keyof UsageLikePayload,
+  fallback: keyof UsageLikePayload,
+): boolean | undefined {
+  const value = usage[primary];
+  return typeof value === "boolean" ? value : typeof usage[fallback] === "boolean" ? usage[fallback] : undefined;
 }
 
 export function parseChatResponse(payload: unknown): ChatResponse | null {
@@ -87,6 +204,8 @@ export function parseChatResponse(payload: unknown): ChatResponse | null {
   const json = payload as Partial<ChatResponse>;
   if (typeof json.output !== "string") return null;
   if (typeof json.model !== "string" || json.model.trim().length === 0) return null;
+  const parsedUsage = json.usage ? parseUsagePayload(json.usage) : undefined;
+  // TODO(cniska): Drop legacy prompt/completion parsing at v1.0.0.
   return {
     output: json.output,
     model: json.model,
@@ -94,24 +213,23 @@ export function parseChatResponse(payload: unknown): ChatResponse | null {
     toolCalls: Array.isArray((json as { toolCalls?: unknown }).toolCalls)
       ? ((json as { toolCalls?: unknown[] }).toolCalls ?? []).filter((item): item is string => typeof item === "string")
       : undefined,
-    usage:
-      json.usage &&
-      typeof json.usage === "object" &&
-      typeof (json.usage as { promptTokens?: unknown }).promptTokens === "number" &&
-      typeof (json.usage as { completionTokens?: unknown }).completionTokens === "number" &&
-      typeof (json.usage as { totalTokens?: unknown }).totalTokens === "number"
+    usage: parsedUsage,
+    promptBreakdown:
+      json.promptBreakdown &&
+      typeof json.promptBreakdown === "object" &&
+      typeof (json.promptBreakdown as { budgetTokens?: unknown }).budgetTokens === "number" &&
+      typeof (json.promptBreakdown as { usedTokens?: unknown }).usedTokens === "number" &&
+      typeof (json.promptBreakdown as { systemTokens?: unknown }).systemTokens === "number" &&
+      typeof (json.promptBreakdown as { toolTokens?: unknown }).toolTokens === "number" &&
+      typeof (json.promptBreakdown as { memoryTokens?: unknown }).memoryTokens === "number" &&
+      typeof (json.promptBreakdown as { messageTokens?: unknown }).messageTokens === "number"
         ? {
-            promptTokens: (json.usage as { promptTokens: number }).promptTokens,
-            completionTokens: (json.usage as { completionTokens: number }).completionTokens,
-            totalTokens: (json.usage as { totalTokens: number }).totalTokens,
-            promptBudgetTokens:
-              typeof (json.usage as { promptBudgetTokens?: unknown }).promptBudgetTokens === "number"
-                ? (json.usage as { promptBudgetTokens: number }).promptBudgetTokens
-                : undefined,
-            promptTruncated:
-              typeof (json.usage as { promptTruncated?: unknown }).promptTruncated === "boolean"
-                ? (json.usage as { promptTruncated: boolean }).promptTruncated
-                : undefined,
+            budgetTokens: (json.promptBreakdown as { budgetTokens: number }).budgetTokens,
+            usedTokens: (json.promptBreakdown as { usedTokens: number }).usedTokens,
+            systemTokens: (json.promptBreakdown as { systemTokens: number }).systemTokens,
+            toolTokens: (json.promptBreakdown as { toolTokens: number }).toolTokens,
+            memoryTokens: (json.promptBreakdown as { memoryTokens: number }).memoryTokens,
+            messageTokens: (json.promptBreakdown as { messageTokens: number }).messageTokens,
           }
         : undefined,
     budgetWarning: typeof json.budgetWarning === "string" ? json.budgetWarning : undefined,

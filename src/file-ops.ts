@@ -318,7 +318,7 @@ function isParseable(filePath: string): boolean {
 }
 
 function extractMetavariables(pattern: string): string[] {
-  const matches = pattern.match(/\$[A-Z_][A-Z0-9_]*/g);
+  const matches = pattern.match(/\${1,3}[A-Z_][A-Z0-9_]*/g);
   if (!matches) return [];
   return Array.from(new Set(matches));
 }
@@ -332,6 +332,9 @@ export async function editCode(input: {
   const absPath = ensurePathWithinAllowedRoots(input.path, "AST edit", input.workspace);
   const pathStats = await stat(absPath);
   if (!pathStats.isFile()) throw new Error(`edit-code requires a file path, got: ${input.path}`);
+  if (!isParseable(absPath)) {
+    throw new Error(`edit-code requires a supported code file, got: ${input.path}`);
+  }
   const original = await readFile(absPath, "utf8");
   await ensureDynamicLanguages();
 
@@ -347,13 +350,29 @@ export async function editCode(input: {
     if (matches.length === 0) throw new Error(`No AST matches found for pattern: ${edit.pattern}`);
     totalMatches += matches.length;
 
-    const metavars = extractMetavariables(edit.pattern);
+    const patternMetavars = extractMetavariables(edit.pattern);
+    const replacementMetavars = extractMetavariables(edit.replacement);
+    const variadicReplacementMetavars = replacementMetavars.filter((metavar) => metavar.startsWith("$$$"));
+    if (variadicReplacementMetavars.length > 0) {
+      throw new Error(
+        `edit-code does not support variadic replacement metavariables: ${variadicReplacementMetavars.join(", ")}. Use edit-file for this rewrite.`,
+      );
+    }
+    const unknownReplacementMetavars = replacementMetavars.filter((metavar) => !patternMetavars.includes(metavar));
+    if (unknownReplacementMetavars.length > 0) {
+      throw new Error(
+        `Replacement references metavariables not present in pattern: ${unknownReplacementMetavars.join(", ")}`,
+      );
+    }
     const replacements: Array<{ start: number; end: number; replacement: string }> = [];
     for (const match of matches) {
       let replaced = edit.replacement;
-      for (const metavar of metavars) {
-        const captured = match.getMatch(metavar.slice(1));
-        if (captured) replaced = replaced.replaceAll(metavar, captured.text());
+      for (const metavar of replacementMetavars) {
+        const captured = match.getMatch(metavar.replace(/^\$+/, ""));
+        if (!captured) {
+          throw new Error(`Could not resolve metavariable ${metavar} from pattern: ${edit.pattern}`);
+        }
+        replaced = replaced.replaceAll(metavar, captured.text());
       }
       const range = match.range();
       replacements.push({ start: range.start.index, end: range.end.index, replacement: replaced });

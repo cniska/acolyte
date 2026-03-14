@@ -318,6 +318,45 @@ describe("editCode", () => {
     ).rejects.toThrow("edit-code requires a file path");
   });
 
+  test("rejects unsupported non-code files", async () => {
+    const filePath = `/tmp/acolyte-test-ast-md-${testUuid()}.md`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, "# Title\n", "utf8");
+    await expect(
+      editCode({
+        workspace: WORKSPACE,
+        path: filePath,
+        edits: [{ pattern: "Title", replacement: "Heading" }],
+      }),
+    ).rejects.toThrow("edit-code requires a supported code file");
+  });
+
+  test("rejects replacement metavariables that are not present in the pattern", async () => {
+    const filePath = `/tmp/acolyte-test-ast-missing-meta-${testUuid()}.ts`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, 'console.log("hello");\n', "utf8");
+    await expect(
+      editCode({
+        workspace: WORKSPACE,
+        path: filePath,
+        edits: [{ pattern: "console.log($ARG)", replacement: "logger.debug($MISSING)" }],
+      }),
+    ).rejects.toThrow("Replacement references metavariables not present in pattern");
+  });
+
+  test("rejects variadic metavariables in replacements", async () => {
+    const filePath = `/tmp/acolyte-test-ast-variadic-${testUuid()}.ts`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, "sum(a, b);\nsum(c);\n", "utf8");
+    await expect(
+      editCode({
+        workspace: WORKSPACE,
+        path: filePath,
+        edits: [{ pattern: "sum($$$ARGS)", replacement: "total($$$ARGS)" }],
+      }),
+    ).rejects.toThrow("edit-code does not support variadic replacement metavariables");
+  });
+
   test("replaces in Python files", async () => {
     const filePath = `/tmp/acolyte-test-ast-py-${testUuid()}.py`;
     tempFiles.push(filePath);

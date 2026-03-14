@@ -23,6 +23,7 @@ import type {
   StreamChunk,
 } from "./lifecycle-contract";
 import { resolveModeModel } from "./lifecycle-resolve";
+import { addPromptBreakdownTotals, estimatePromptBreakdown, totalPromptBreakdownTokens } from "./lifecycle-usage";
 import { formatModel } from "./provider-config";
 import type { StreamError } from "./stream-error";
 import type { ToolDefinition } from "./tool-contract";
@@ -43,6 +44,10 @@ function formatToolArgs(args: Record<string, unknown>): Record<string, string | 
     }
   }
   return out;
+}
+
+function emitInputTokens(ctx: RunContext): number {
+  return Math.max(ctx.inputTokensAccum, totalPromptBreakdownTokens(ctx.promptBreakdownTotals));
 }
 
 function captureError(
@@ -184,11 +189,12 @@ export async function phaseGenerate(ctx: RunContext, opts: GenerateOptions): Pro
   ctx.generationAttempt += 1;
   const activeFeedback = consumeLifecycleFeedback(ctx.lifecycleState, ctx.mode);
   const prompt = createGenerationInputFromFeedback(ctx.baseAgentInput, activeFeedback);
+  addPromptBreakdownTotals(ctx.promptBreakdownTotals, estimatePromptBreakdown(prompt, ctx.promptUsage));
   ctx.emit({ type: "status", message: `${agentModes[ctx.mode].statusText} (${formatModel(ctx.model)})` });
   ctx.emit({
     type: "usage",
-    promptTokens: ctx.promptTokensAccum || ctx.promptUsage.promptTokens,
-    completionTokens: ctx.completionTokensAccum,
+    inputTokens: emitInputTokens(ctx),
+    outputTokens: ctx.outputTokensAccum,
   });
   ctx.debug("lifecycle.generate.start", {
     model: ctx.model,
@@ -201,17 +207,14 @@ export async function phaseGenerate(ctx: RunContext, opts: GenerateOptions): Pro
     ctx.result = await streamWithTimeout(ctx, prompt, opts.timeoutMs);
     if (ctx.modelCallCount === preCallCount) {
       ctx.modelCallCount += 1;
-      ctx.completionTokensAccum += estimateTokens(ctx.result.text);
-    }
-    if (ctx.promptTokensAccum === 0) {
-      ctx.promptTokensAccum = ctx.promptUsage.promptTokens;
+      ctx.outputTokensAccum += estimateTokens(ctx.result.text);
     }
     ctx.streamingChars = 0;
     ctx.lastUsageEmitChars = 0;
     ctx.emit({
       type: "usage",
-      promptTokens: ctx.promptTokensAccum,
-      completionTokens: ctx.completionTokensAccum,
+      inputTokens: ctx.inputTokensAccum,
+      outputTokens: ctx.outputTokensAccum,
     });
     ctx.debug("lifecycle.generate.done", {
       model: ctx.model,
@@ -303,8 +306,8 @@ function emitToolResult(ctx: RunContext, toolCallId: string, toolName: string, i
   });
   ctx.emit({
     type: "usage",
-    promptTokens: ctx.promptTokensAccum || ctx.promptUsage.promptTokens,
-    completionTokens: ctx.completionTokensAccum,
+    inputTokens: emitInputTokens(ctx),
+    outputTokens: ctx.outputTokensAccum,
   });
 }
 
@@ -318,8 +321,8 @@ function emitStreamingUsage(ctx: RunContext, chars: number): void {
     const streamingTokens = Math.ceil(ctx.streamingChars / AVERAGE_CHARS_PER_TOKEN);
     ctx.emit({
       type: "usage",
-      promptTokens: ctx.promptTokensAccum || ctx.promptUsage.promptTokens,
-      completionTokens: ctx.completionTokensAccum + streamingTokens,
+      inputTokens: emitInputTokens(ctx),
+      outputTokens: ctx.outputTokensAccum + streamingTokens,
     });
   }
 }
@@ -411,13 +414,13 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
     }
     case "model-usage": {
       const p = chunk.payload;
-      if (typeof p?.inputTokens === "number") ctx.promptTokensAccum += p.inputTokens;
-      if (typeof p?.outputTokens === "number") ctx.completionTokensAccum += p.outputTokens;
+      if (typeof p?.inputTokens === "number") ctx.inputTokensAccum += p.inputTokens;
+      if (typeof p?.outputTokens === "number") ctx.outputTokensAccum += p.outputTokens;
       ctx.modelCallCount += 1;
       ctx.emit({
         type: "usage",
-        promptTokens: ctx.promptTokensAccum,
-        completionTokens: ctx.completionTokensAccum,
+        inputTokens: ctx.inputTokensAccum,
+        outputTokens: ctx.outputTokensAccum,
       });
       break;
     }

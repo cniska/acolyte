@@ -132,10 +132,10 @@ describe("chat message handler guards", () => {
     );
   });
 
-  test("routes /tokens through message handler and renders token output row", async () => {
+  test("routes /usage through message handler and renders usage output row", async () => {
     const { handleMessage, rows, calls } = createMessageHandlerHarness();
 
-    await handleMessage("/tokens");
+    await handleMessage("/usage");
 
     expect(calls.setInputHistory).toBe(1);
     expect(calls.setValue).toEqual([""]);
@@ -143,7 +143,7 @@ describe("chat message handler guards", () => {
     expect(rendered).toBe(
       dedent(`
       system
-      No token data yet. Send a prompt first.
+      No usage data yet. Send a prompt first.
     `),
     );
   });

@@ -7,6 +7,7 @@ import { createLifecycleFeedbackForGuard } from "./lifecycle-guard-feedback";
 import { resolveLifecyclePolicy } from "./lifecycle-policy";
 import { phasePrepare } from "./lifecycle-prepare";
 import { resolveInitialMode } from "./lifecycle-resolve";
+import { createEmptyPromptBreakdownTotals } from "./lifecycle-usage";
 import type { MemoryCommitContext, MemoryCommitMetrics } from "./memory-contract";
 import { commitMemorySources } from "./memory-registry";
 import { createInMemoryTaskQueue } from "./task-queue";
@@ -98,8 +99,9 @@ function createRunContext(
     },
     observedTools: new Set(),
     modelCallCount: 0,
-    promptTokensAccum: 0,
-    completionTokensAccum: 0,
+    inputTokensAccum: 0,
+    outputTokensAccum: 0,
+    promptBreakdownTotals: createEmptyPromptBreakdownTotals(),
     streamingChars: 0,
     lastUsageEmitChars: 0,
     generationAttempt: 0,
@@ -167,6 +169,7 @@ export async function runLifecycle(input: LifecycleInput) {
     workspace: input.workspace,
     taskId: input.taskId,
     soulPrompt: input.soulPrompt,
+    memoryTokens: input.memoryTokens,
     initialMode,
     model,
     policy,

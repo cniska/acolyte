@@ -45,7 +45,7 @@ type CreateMessageHandlerInput = {
   stopWorking?: () => void;
   setIsWorking?: (next: boolean) => void;
   setProgressText: (next: string | null) => void;
-  setRunningUsage: (next: { promptTokens: number; completionTokens: number } | null) => void;
+  setRunningUsage: (next: { inputTokens: number; outputTokens: number } | null) => void;
   setTokenUsage: (updater: (current: SessionTokenUsageEntry[]) => SessionTokenUsageEntry[]) => void;
   createMessage: (role: ChatMessage["role"], content: string) => ChatMessage;
   nowIso: () => string;
@@ -121,7 +121,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
               input.setProgressText(event.message);
               break;
             case "usage":
-              input.setRunningUsage({ promptTokens: event.promptTokens, completionTokens: event.completionTokens });
+              input.setRunningUsage({ inputTokens: event.inputTokens, outputTokens: event.outputTokens });
               break;
             case "text-delta":
               streamState.onAssistantDelta(event.text);

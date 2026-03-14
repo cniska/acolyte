@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { estimateTokens } from "./agent-input";
 import { appConfig } from "./app-config";
 import { loadMemoryContext } from "./memory-registry";
 import type { ResourceId } from "./resource-id";
@@ -35,6 +36,11 @@ export function loadSystemPrompt(cwd = process.cwd()): string {
   return agents ? `${soul}\n\n${agents}` : soul;
 }
 
+export type SoulPromptResult = {
+  prompt: string;
+  memoryTokens: number;
+};
+
 type CreateSoulPromptOptions = {
   cwd?: string;
   sessionId?: string;
@@ -54,7 +60,7 @@ export function formatMemoryResumeBlock(continuation: { currentTask?: string; ne
   return lines.join("\n");
 }
 
-export async function createSoulPrompt(options: CreateSoulPromptOptions = {}): Promise<string> {
+export async function createSoulPrompt(options: CreateSoulPromptOptions = {}): Promise<SoulPromptResult> {
   const cwd = options.cwd ?? process.cwd();
   const base = loadSystemPrompt(cwd);
   const debugBaseFields = {
@@ -63,11 +69,11 @@ export async function createSoulPrompt(options: CreateSoulPromptOptions = {}): P
   };
   if (options.useMemory === false) {
     options.onDebug?.("lifecycle.memory.load_skipped", { ...debugBaseFields, reason: "request_disabled" });
-    return base;
+    return { prompt: base, memoryTokens: 0 };
   }
   if (appConfig.memory.budgetTokens <= 0) {
     options.onDebug?.("lifecycle.memory.load_skipped", { ...debugBaseFields, reason: "budget_disabled" });
-    return base;
+    return { prompt: base, memoryTokens: 0 };
   }
   const memoryContext = await loadMemoryContext(
     { sessionId: options.sessionId, resourceId: options.resourceId, workspace: options.workspace },
@@ -76,7 +82,7 @@ export async function createSoulPrompt(options: CreateSoulPromptOptions = {}): P
   const memoryPrompt = memoryContext.prompt;
   if (!memoryPrompt) {
     options.onDebug?.("lifecycle.memory.load_empty", debugBaseFields);
-    return base;
+    return { prompt: base, memoryTokens: 0 };
   }
   const resumeBlock = formatMemoryResumeBlock(memoryContext.continuation);
   options.onDebug?.("lifecycle.memory.load_applied", {
@@ -85,5 +91,9 @@ export async function createSoulPrompt(options: CreateSoulPromptOptions = {}): P
     entryCount: memoryContext.entryCount,
     hasContinuation: memoryContext.continuationSelected,
   });
-  return resumeBlock ? `${base}\n\n${memoryPrompt}\n\n${resumeBlock}` : `${base}\n\n${memoryPrompt}`;
+  const prompt = resumeBlock ? `${base}\n\n${memoryPrompt}\n\n${resumeBlock}` : `${base}\n\n${memoryPrompt}`;
+  return {
+    prompt,
+    memoryTokens: memoryContext.tokenEstimate + (resumeBlock ? estimateTokens(resumeBlock) : 0),
+  };
 }

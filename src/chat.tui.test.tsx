@@ -64,7 +64,7 @@ describe("chat tui visual regression: footer and help", () => {
       ────────────────────────────────────────────────────────────────────────────────────────────────
         @path               attach file             /remember <text>    save memory note
         /new                start new session       /memory [scope]     show memory notes
-        /resume <id>        resume session          /tokens             show token usage
+        /resume <id>        resume session          /usage              show token usage
         /sessions           show sessions           /skills             show skills picker
         /model              change model            /exit               exit chat
         /status             show server status
@@ -87,7 +87,7 @@ describe("chat tui visual regression: footer and help", () => {
         /status             show server status
         /remember <text>    save memory note
         /memory [scope]     show memory notes
-        /tokens             show token usage
+        /usage              show token usage
         /skills             show skills picker
         /exit               exit chat
     `),

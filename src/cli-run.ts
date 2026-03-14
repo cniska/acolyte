@@ -1,8 +1,8 @@
 import { z } from "zod";
 import type { appConfig as appConfigType } from "./app-config";
-import { formatCompactNumber } from "./chat-format";
 import type { createMessage as createMessageType } from "./chat-session";
 import type { attachFileToSession as attachFileToSessionType } from "./cli-chat";
+import { formatRunSummary } from "./cli-format";
 import type { handlePrompt as handlePromptType } from "./cli-prompt";
 import type { createClient as createClientType } from "./client-factory";
 import type { readResolvedConfigSync as readResolvedConfigSyncType } from "./config";
@@ -48,7 +48,7 @@ export function runResourceId(sessionId: string): ResourceId {
 
 function parseRunArgs(args: string[]): ParsedRunArgs {
   const files: string[] = [];
-  const promptTokens: string[] = [];
+  const promptParts: string[] = [];
   let workspace: string | undefined;
   let model: string | undefined;
 
@@ -75,10 +75,10 @@ function parseRunArgs(args: string[]): ParsedRunArgs {
       continue;
     }
 
-    promptTokens.push(args[i]);
+    promptParts.push(args[i]);
   }
 
-  return { ...runArgsSchema.parse({ files, prompt: promptTokens.join(" ").trim() }), workspace, model };
+  return { ...runArgsSchema.parse({ files, prompt: promptParts.join(" ").trim() }), workspace, model };
 }
 
 export async function runMode(args: string[], deps: RunModeDeps): Promise<void> {
@@ -156,21 +156,8 @@ export async function runMode(args: string[], deps: RunModeDeps): Promise<void> 
   });
   const durationMs = Date.now() - startMs;
 
-  const totals = session.tokenUsage.reduce(
-    (acc, e) => ({
-      prompt: acc.prompt + e.usage.promptTokens,
-      completion: acc.completion + e.usage.completionTokens,
-      total: acc.total + e.usage.totalTokens,
-      modelCalls: acc.modelCalls + (e.modelCalls ?? 1),
-    }),
-    { prompt: 0, completion: 0, total: 0, modelCalls: 0 },
-  );
-  const durationSec = (durationMs / 1000).toFixed(1);
-  if (totals.total > 0) {
-    printDim(
-      `run: ${durationSec}s, ${formatCompactNumber(totals.total)} tokens (prompt ${formatCompactNumber(totals.prompt)}, completion ${formatCompactNumber(totals.completion)}), ${totals.modelCalls} model calls, ${session.tokenUsage.length} turns`,
-    );
-  }
+  const summary = formatRunSummary("run", session.tokenUsage, durationMs);
+  if (summary) printDim(summary);
 
   if (!success) {
     process.exitCode = 1;

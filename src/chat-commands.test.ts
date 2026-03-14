@@ -2,10 +2,10 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { appConfig } from "./app-config";
 import {
   dispatchSlashCommand,
-  formatTokenUsageOutput,
+  formatUsageOutput,
   presentSessionsOutput,
   presentStatusOutput,
-  presentTokensOutput,
+  presentUsageOutput,
 } from "./chat-commands";
 import type { ConfigScope } from "./config-contract";
 import type { SessionTokenUsageEntry } from "./session-contract";
@@ -27,41 +27,78 @@ async function runCommand(text: string, overrides: Parameters<typeof createComma
 }
 
 describe("chat-commands", () => {
-  test("formatTokenUsageOutput renders aligned rows", () => {
+  test("formatUsageOutput renders aligned rows", () => {
     const usage: SessionTokenUsageEntry = {
       id: "row_1",
       usage: {
-        promptTokens: 100,
-        completionTokens: 40,
+        inputTokens: 100,
+        outputTokens: 40,
         totalTokens: 140,
-        promptBudgetTokens: 300,
-        promptTruncated: false,
+        inputBudgetTokens: 300,
+        inputTruncated: false,
       },
-      modelCalls: 3,
+      promptBreakdown: {
+        budgetTokens: 300,
+        usedTokens: 100,
+        systemTokens: 40,
+        toolTokens: 30,
+        memoryTokens: 20,
+        messageTokens: 10,
+      },
     };
-    const output = formatTokenUsageOutput(usage, [usage]);
-    expect(output).toContain("last turn:");
-    expect(output).toContain("session:");
-    expect(output).toContain("budget:");
-    expect(output).toContain("model calls:");
-    expect(output).toContain("last=3 session=3");
+    const output = formatUsageOutput(usage, [usage]);
+    expect(output).toContain("Usage");
+    expect(output).toContain("Input");
+    expect(output).toContain("Output");
+    expect(output).toContain("System");
+    expect(output).toContain("Last turn");
+    expect(output).toContain("Session");
+    expect(output).toContain("Share");
   });
 
-  test("formatTokenUsageOutput includes latest warning when present", () => {
+  test("formatUsageOutput includes latest warning when present", () => {
     const usage: SessionTokenUsageEntry = {
       id: "row_warn",
       usage: {
-        promptTokens: 900,
-        completionTokens: 40,
+        inputTokens: 900,
+        outputTokens: 40,
         totalTokens: 940,
-        promptBudgetTokens: 1000,
-        promptTruncated: true,
+        inputBudgetTokens: 1000,
+        inputTruncated: true,
       },
       warning: "context trimmed (8/42 history messages)",
     };
-    const output = formatTokenUsageOutput(usage, [usage]);
-    expect(output).toContain("warning:");
+    const output = formatUsageOutput(usage, [usage]);
+    expect(output).toContain("Warning:");
     expect(output).toContain("context trimmed (8/42 history messages)");
+  });
+
+  test("formatUsageOutput shares use prompt breakdown total", () => {
+    const usage: SessionTokenUsageEntry = {
+      id: "row_1",
+      usage: {
+        inputTokens: 50,
+        outputTokens: 2,
+        totalTokens: 52,
+      },
+      promptBreakdown: {
+        budgetTokens: 1000,
+        usedTokens: 100,
+        systemTokens: 20,
+        toolTokens: 30,
+        memoryTokens: 10,
+        messageTokens: 40,
+      },
+    };
+    const output = formatUsageOutput(usage, [usage]);
+    const systemLine = output.split("\n").find((line) => line.includes("System"));
+    expect(systemLine).toContain("20%");
+    const toolLine = output.split("\n").find((line) => line.includes("Tools"));
+    expect(toolLine).toContain("30%");
+    const memoryLine = output.split("\n").find((line) => line.includes("Memory"));
+    expect(memoryLine).toContain("10%");
+    const messageLine = output.split("\n").find((line) => line.includes("Messages"));
+    expect(messageLine).toContain("40%");
   });
 
   test("presentStatusOutput renders command presentation block", () => {
@@ -94,17 +131,17 @@ describe("chat-commands", () => {
     expect(rendered).toContain("● sess_aaaa1111  First");
   });
 
-  test("presentTokensOutput renders empty-state command presentation block", () => {
-    const rendered = presentTokensOutput(null, []);
-    expect(rendered).toBe("No token data yet. Send a prompt first.");
+  test("presentUsageOutput renders empty-state command presentation block", () => {
+    const rendered = presentUsageOutput(null, []);
+    expect(rendered).toBe("No usage data yet. Send a prompt first.");
   });
 
-  test("formatTokenUsageOutput shows latest session warning even when last turn has none", () => {
+  test("formatUsageOutput shows latest session warning even when last turn has none", () => {
     const warned: SessionTokenUsageEntry = {
       id: "row_warned",
       usage: {
-        promptTokens: 950,
-        completionTokens: 30,
+        inputTokens: 950,
+        outputTokens: 30,
         totalTokens: 980,
       },
       warning: "context near budget (950/1000 tokens)",
@@ -112,51 +149,63 @@ describe("chat-commands", () => {
     const clean: SessionTokenUsageEntry = {
       id: "row_clean",
       usage: {
-        promptTokens: 200,
-        completionTokens: 20,
+        inputTokens: 200,
+        outputTokens: 20,
         totalTokens: 220,
       },
     };
-    const output = formatTokenUsageOutput(clean, [warned, clean]);
-    expect(output).toContain("warning:");
+    const output = formatUsageOutput(clean, [warned, clean]);
+    expect(output).toContain("Warning:");
     expect(output).toContain("context near budget (950/1000 tokens)");
   });
 
-  test("dispatchSlashCommand handles /tokens", async () => {
+  test("dispatchSlashCommand handles /usage", async () => {
     const tokenUsage: SessionTokenUsageEntry[] = [
       {
         id: "row_2",
         usage: {
-          promptTokens: 10,
-          completionTokens: 5,
+          inputTokens: 10,
+          outputTokens: 5,
           totalTokens: 15,
         },
-        modelCalls: 2,
+        promptBreakdown: {
+          budgetTokens: 100,
+          usedTokens: 10,
+          systemTokens: 4,
+          toolTokens: 3,
+          memoryTokens: 2,
+          messageTokens: 1,
+        },
       },
       {
         id: "row_3",
         usage: {
-          promptTokens: 20,
-          completionTokens: 10,
+          inputTokens: 20,
+          outputTokens: 10,
           totalTokens: 30,
         },
-        modelCalls: 5,
+        promptBreakdown: {
+          budgetTokens: 100,
+          usedTokens: 20,
+          systemTokens: 8,
+          toolTokens: 6,
+          memoryTokens: 4,
+          messageTokens: 2,
+        },
       },
     ];
-    const { rows, stop } = await runCommand("/tokens", { tokenUsage });
+    const { rows, stop } = await runCommand("/usage", { tokenUsage });
 
     expect(stop).toBe(true);
-    expect(rows.some((row) => row.role === "system" && row.content.includes("last turn:"))).toBe(true);
-    expect(rows.some((row) => row.content.includes("model calls:") && row.content.includes("last=5 session=7"))).toBe(
-      true,
-    );
+    expect(rows.some((row) => row.role === "system" && row.content.includes("Usage"))).toBe(true);
+    expect(rows.some((row) => row.content.includes("Tokens") && row.content.includes("Share"))).toBe(true);
   });
 
-  test("dispatchSlashCommand handles /tokens with empty usage", async () => {
-    const { rows, stop } = await runCommand("/tokens");
+  test("dispatchSlashCommand handles /usage with empty usage", async () => {
+    const { rows, stop } = await runCommand("/usage");
 
     expect(stop).toBe(true);
-    expect(rows.some((row) => row.content === "No token data yet. Send a prompt first.")).toBe(true);
+    expect(rows.some((row) => row.content === "No usage data yet. Send a prompt first.")).toBe(true);
   });
 
   test("dispatchSlashCommand handles /status", async () => {
@@ -496,7 +545,7 @@ describe("chat-commands", () => {
       tokenUsage: [
         {
           id: "row_1",
-          usage: { promptTokens: 11, completionTokens: 7, totalTokens: 18 },
+          usage: { inputTokens: 11, outputTokens: 7, totalTokens: 18 },
           modelCalls: 2,
         },
       ],

@@ -30,19 +30,33 @@ describe("chat slash command visual regression", () => {
     );
   });
 
-  test("renders /tokens transcript output with usage data", async () => {
+  test("renders /usage transcript output with usage data", async () => {
     const session = createSession({
       id: "sess_tokens",
       tokenUsage: [
         {
           id: "row_1",
-          usage: { promptTokens: 120, completionTokens: 30, totalTokens: 150 },
-          modelCalls: 2,
+          usage: { inputTokens: 26100, outputTokens: 3900, totalTokens: 30000 },
+          promptBreakdown: {
+            budgetTokens: 26100,
+            usedTokens: 26100,
+            systemTokens: 9600,
+            toolTokens: 12800,
+            memoryTokens: 2400,
+            messageTokens: 1300,
+          },
         },
         {
           id: "row_2",
-          usage: { promptTokens: 40, completionTokens: 10, totalTokens: 50 },
-          modelCalls: 1,
+          usage: { inputTokens: 15900, outputTokens: 2700, totalTokens: 18600 },
+          promptBreakdown: {
+            budgetTokens: 15900,
+            usedTokens: 15900,
+            systemTokens: 6200,
+            toolTokens: 8900,
+            memoryTokens: 500,
+            messageTokens: 300,
+          },
         },
       ],
     });
@@ -53,13 +67,22 @@ describe("chat slash command visual regression", () => {
       tokenUsage: session.tokenUsage,
     });
 
-    await handleMessage("/tokens");
+    await handleMessage("/usage");
 
     expect(renderTranscript(rows)).toBe(
       dedent(`
-        last turn:           prompt=40 completion=10 total=50
-        session:             prompt=160 completion=40 total=200 (2 turns)
-        model calls:         last=1 session=3
+        Usage
+
+                        Last turn     Session
+        Input           15.9k         42.0k
+        Output          2.7k          6.6k
+        Total           18.6k         48.6k
+
+                        Tokens        Share
+        System          6.2k          39%
+        Tools           8.9k          56%
+        Memory          500           3%
+        Messages        300           2%
     `),
     );
   });

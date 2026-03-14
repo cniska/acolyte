@@ -5,19 +5,29 @@ import { toolsForAgent } from "./tool-registry";
 /** Approximate overhead for BASE_INSTRUCTIONS + mode-specific instructions. */
 const INSTRUCTION_OVERHEAD_TOKENS = 300;
 
+function estimateToolTokens(tools: ReturnType<typeof toolsForAgent>["tools"]): number {
+  return Object.values(tools).reduce(
+    (sum, tool) => sum + estimateTokens([tool.id, tool.description, tool.instruction].join("\n")),
+    0,
+  );
+}
+
 export function phasePrepare(input: PhasePrepareInput): PhasePrepareResult {
   // System prompt tokens are calculated here and passed into createAgentInput
   // so it can reserve context-window space. This is the only place they are
-  // counted — createAgentInput's returned promptTokens intentionally excludes them.
+  // counted — createAgentInput's returned inputTokens intentionally excludes them.
   const systemPromptTokens = estimateTokens(input.soulPrompt) + INSTRUCTION_OVERHEAD_TOKENS;
-  const requestInput = createAgentInput(input.request, { systemPromptTokens });
-  const baseAgentInput = requestInput.input;
-
   const { tools, session } = toolsForAgent({
     workspace: input.workspace,
     onOutput: input.onOutput,
     taskId: input.taskId,
   });
+  const toolTokens = estimateToolTokens(tools);
+  const requestInput = createAgentInput(input.request, { systemPromptTokens });
+  requestInput.usage.toolTokens = toolTokens;
+  requestInput.usage.memoryTokens = input.memoryTokens ?? 0;
+  requestInput.usage.messageTokens = requestInput.usage.inputTokens;
+  const baseAgentInput = requestInput.input;
 
   session.onGuard = (event) => {
     const current = guardStatsFromSession(session);

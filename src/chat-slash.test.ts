@@ -21,7 +21,7 @@ describe("chat-slash helpers", () => {
     expect(suggestSlashCommands("/memory p")).toEqual(["/memory project"]);
     expect(suggestSlashCommands("/memory a")).toEqual(["/memory add", "/memory all"]);
     expect(suggestSlashCommands("/memory u")).toEqual(["/memory user"]);
-    expect(suggestSlashCommands("/token")).toEqual(["/tokens"]);
+    expect(suggestSlashCommands("/usa")).toEqual(["/usage"]);
     expect(suggestSlashCommands("/mo")).toEqual(["/model", "/model work", "/model verify"]);
     expect(suggestSlashCommands("/mod")).toEqual(["/model", "/model work", "/model verify"]);
     expect(suggestSlashCommands("/reme")).toEqual(["/remember"]);
@@ -67,6 +67,7 @@ describe("chat-slash helpers", () => {
 
   test("isKnownSlashToken recognizes canonical tokens and subcommands", () => {
     expect(isKnownSlashToken("/status")).toBe(true);
+    expect(isKnownSlashToken("/usage")).toBe(true);
     expect(isKnownSlashToken("/model")).toBe(true);
     expect(isKnownSlashToken("/model work")).toBe(true);
     expect(isKnownSlashToken("/memory list")).toBe(true);

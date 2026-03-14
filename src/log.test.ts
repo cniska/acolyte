@@ -30,12 +30,12 @@ describe("log", () => {
       apiKey: "sk-test-secret",
       authorization: "Bearer abc123",
       session_token: "session-secret",
-      promptTokens: 1200,
+      inputTokens: 1200,
     });
     expect(line).toContain('apiKey="[REDACTED]"');
     expect(line).toContain('authorization="[REDACTED]"');
     expect(line).toContain('session_token="[REDACTED]"');
-    expect(line).toContain("promptTokens=1200");
+    expect(line).toContain("inputTokens=1200");
   });
 
   test("renderLogLine redacts secret-like values in messages and fields", () => {

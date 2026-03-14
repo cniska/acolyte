@@ -60,7 +60,7 @@ Shipped, user-visible capabilities.
 ## Diagnostics
 
 - Status command with `--json` output.
-- Token usage reporting per turn and in worked summary.
+- Token usage reporting per turn with prompt breakdown (system, tools, memory, messages) and share percentages.
 - Lifecycle trace tool that parses daemon logs into compact timelines (`bun run trace:lifecycle`).
 - Managed daemon log file at `~/.acolyte/server.log`.
 - Scoped debug logging via `ACOLYTE_DEBUG` tags (supports wildcard matching).

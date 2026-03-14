@@ -15,7 +15,7 @@ type ChatTranscriptProps = {
   thinkingFrame: number;
   queuedMessages?: string[];
   thinkingStartedAt?: number | null;
-  runningUsage?: { promptTokens: number; completionTokens: number } | null;
+  runningUsage?: { inputTokens: number; outputTokens: number } | null;
 };
 
 const MAX_TRANSCRIPT_WIDTH = 120;
@@ -37,7 +37,7 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
   const runningBlinkOn = Math.abs(thinkingFrame) % pulsePeriod < pulsePeriod / 2;
   const pulseGlyph = isRunning ? (runningBlinkOn ? "•" : " ") : "•";
   const indicatorColor: string = isQueued ? palette.queued : isAccepted ? palette.accepted : palette.running;
-  const tokenText = runningUsage ? formatTokenCount(runningUsage.promptTokens + runningUsage.completionTokens) : "";
+  const tokenText = runningUsage ? formatTokenCount(runningUsage.inputTokens + runningUsage.outputTokens) : "";
   const thinkingText = (() => {
     const timeText = elapsedSec >= 60 ? `${Math.floor(elapsedSec / 60)}m ${elapsedSec % 60}s` : `${elapsedSec}s`;
     if (stageMatch) {
