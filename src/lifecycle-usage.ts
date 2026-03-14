@@ -19,6 +19,8 @@ export function createEmptyPromptBreakdownTotals(): PromptBreakdownTotals {
 
 export function estimatePromptBreakdown(prompt: string, usage: PromptUsage): PromptBreakdownTotals {
   return {
+    // Memory is carved out of the system prompt, so systemTokens is the non-memory portion.
+    // Math.max guards against estimation drift where memoryTokens could exceed systemPromptTokens.
     systemTokens: Math.max(0, usage.systemPromptTokens - usage.memoryTokens),
     toolTokens: usage.toolTokens,
     memoryTokens: usage.memoryTokens,

@@ -290,6 +290,32 @@ describe("phaseFinalize", () => {
     expect(response.promptBreakdown?.usedTokens).toBe(80);
   });
 
+  test("includes promptBreakdown when currentError is set", () => {
+    const ctx = createMockContext({
+      promptUsage: {
+        inputTokens: 12,
+        systemPromptTokens: 48,
+        toolTokens: 20,
+        memoryTokens: 8,
+        messageTokens: 12,
+        inputBudgetTokens: 100,
+        inputTruncated: false,
+        includedHistoryMessages: 3,
+        totalHistoryMessages: 6,
+      },
+      inputTokensAccum: 0,
+      outputTokensAccum: 0,
+      currentError: { message: "tool failed", category: "other" },
+      result: { text: "", toolCalls: [] },
+    });
+
+    const response = phaseFinalize(ctx);
+
+    expect(response.error).toBe("tool failed");
+    expect(response.promptBreakdown).toBeDefined();
+    expect(response.promptBreakdown?.usedTokens).toBe(80);
+  });
+
   test("uses accumulated prompt breakdown totals across multiple model calls", () => {
     const ctx = createMockContext({
       baseAgentInput: "USER: first prompt",
