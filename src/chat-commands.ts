@@ -83,7 +83,7 @@ export function formatUsageOutput(last: SessionTokenUsageEntry | null, all: Sess
   );
   const rows = formatTable(
     [
-      ["", t("chat.usage.label.last_task"), t("chat.usage.label.session")],
+      ["", t("chat.usage.label.last_turn"), t("chat.usage.label.session")],
       [t("chat.usage.metric.input"), formatUsageValue(last.usage.inputTokens), formatUsageValue(totals.input)],
       [t("chat.usage.metric.output"), formatUsageValue(last.usage.outputTokens), formatUsageValue(totals.output)],
       [t("chat.usage.metric.total"), formatUsageValue(last.usage.totalTokens), formatUsageValue(totals.total)],
