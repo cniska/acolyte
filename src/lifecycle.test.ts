@@ -248,6 +248,14 @@ describe("acceptedLifecycleSignal", () => {
     });
     expect(acceptedLifecycleSignal(ctx)).toBeUndefined();
   });
+
+  test("accepts done after a guard-blocked error", () => {
+    const ctx = createMockContext({
+      currentError: { message: "duplicate tool call blocked", category: "guard-blocked" },
+      result: { text: "Finished the requested change.", toolCalls: [], signal: "done" },
+    });
+    expect(acceptedLifecycleSignal(ctx)).toBe("done");
+  });
 });
 
 describe("guardRecoveryEvaluator", () => {

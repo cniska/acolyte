@@ -109,35 +109,32 @@ describe("guard regression integration", () => {
     const reply = await runGuardIntegrationScenario(
       "[int:duplicate-consecutive-call] Run the same harmless command eight times in a row.",
       "sess_guardregressionduplicate",
-      ({ model, responseCounter, sourceText, outputs, body }) => {
-        if (sourceText.includes("[int:duplicate-consecutive-call]")) {
-          const toolName = pickFunctionToolName(body.tools, "run-command", ["run", "command", "terminal"]);
-          if (outputs.length === 0) {
-            return createToolCallsPayload(model, responseCounter, [
-              {
-                id: "fc_duplicate_1",
-                callId: "call_duplicate_1",
-                name: toolName,
-                args: JSON.stringify({ command: "echo duplicate-guard-check" }),
-              },
-            ]);
-          }
-
-          const lastCallId = outputs[outputs.length - 1]?.callId;
-          if (lastCallId === "call_duplicate_1") {
-            return createToolCallsPayload(model, responseCounter, [
-              {
-                id: "fc_duplicate_2",
-                callId: "call_duplicate_2",
-                name: toolName,
-                args: JSON.stringify({ command: "echo duplicate-guard-check" }),
-              },
-            ]);
-          }
-
-          return createMessagePayload(model, responseCounter, "Done.");
+      ({ model, responseCounter, outputs, body }) => {
+        const toolName = pickFunctionToolName(body.tools, "run-command", ["run", "command", "terminal"]);
+        if (outputs.length === 0) {
+          return createToolCallsPayload(model, responseCounter, [
+            {
+              id: "fc_duplicate_1",
+              callId: "call_duplicate_1",
+              name: toolName,
+              args: JSON.stringify({ command: "echo duplicate-guard-check" }),
+            },
+          ]);
         }
-        return createMessagePayload(model, responseCounter, "ok");
+
+        const lastCallId = outputs[outputs.length - 1]?.callId;
+        if (lastCallId === "call_duplicate_1") {
+          return createToolCallsPayload(model, responseCounter, [
+            {
+              id: "fc_duplicate_2",
+              callId: "call_duplicate_2",
+              name: toolName,
+              args: JSON.stringify({ command: "echo duplicate-guard-check" }),
+            },
+          ]);
+        }
+
+        return createMessagePayload(model, responseCounter, "@signal done\nDone.");
       },
     );
 

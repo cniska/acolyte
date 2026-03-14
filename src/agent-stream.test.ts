@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { extractLifecycleSignal } from "./agent-stream";
+import { appendLifecycleTextDelta, extractLifecycleSignal, finalizeLifecycleText } from "./lifecycle-signal";
 
 describe("extractLifecycleSignal", () => {
   test("extracts done signal from the first line", () => {
@@ -20,5 +20,32 @@ describe("extractLifecycleSignal", () => {
     expect(extractLifecycleSignal("Finished the requested change.")).toEqual({
       text: "Finished the requested change.",
     });
+  });
+});
+
+describe("lifecycle text streaming", () => {
+  test("streams plain text incrementally", () => {
+    const state = { pending: "", resolved: false } as const;
+    const mutableState = { ...state };
+
+    expect(appendLifecycleTextDelta(mutableState, "Hello")).toBe("Hello");
+    expect(appendLifecycleTextDelta(mutableState, " world")).toBe(" world");
+    expect(finalizeLifecycleText(mutableState)).toEqual({ text: "" });
+  });
+
+  test("strips a leading signal and streams following text", () => {
+    const state = { pending: "", resolved: false };
+
+    expect(appendLifecycleTextDelta(state, "@sig")).toBe("");
+    expect(appendLifecycleTextDelta(state, "nal done\nFin")).toBe("Fin");
+    expect(appendLifecycleTextDelta(state, "ished.")).toBe("ished.");
+    expect(finalizeLifecycleText(state)).toEqual({ signal: "done", text: "" });
+  });
+
+  test("treats invalid signal-looking text as normal output", () => {
+    const state = { pending: "", resolved: false };
+
+    expect(appendLifecycleTextDelta(state, "@signal maybe\nHello")).toBe("@signal maybe\nHello");
+    expect(finalizeLifecycleText(state)).toEqual({ text: "" });
   });
 });

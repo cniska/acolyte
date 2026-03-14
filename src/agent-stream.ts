@@ -10,6 +10,12 @@ import type {
 import { z } from "zod";
 import type { Agent, StreamOptions, StreamOutput } from "./agent-contract";
 import type { GenerateResult, LifecycleSignal, StreamChunk, ToolCallEntry } from "./lifecycle-contract";
+import {
+  appendLifecycleTextDelta,
+  createLifecycleTextStreamState,
+  finalizeLifecycleText,
+  type LifecycleTextStreamState,
+} from "./lifecycle-signal";
 import { log } from "./log";
 import { createModel } from "./model-factory";
 import { normalizeModel } from "./provider-config";
@@ -27,14 +33,6 @@ function toolsToFunctionTools(tools: Record<string, ToolDefinition>): LanguageMo
     description: tool.description,
     inputSchema: toolInputJsonSchema(tool.inputSchema),
   }));
-}
-
-export function extractLifecycleSignal(text: string): { signal?: LifecycleSignal; text: string } {
-  const match = text.match(/^@signal\s+(done|no_op|blocked)\s*(?:\n|$)/);
-  if (!match) return { text };
-  const signal = match[1] as LifecycleSignal;
-  const stripped = text.slice(match[0].length).trimStart();
-  return { signal, text: stripped };
 }
 
 async function resolveInstructions(instructions: Agent["instructions"]): Promise<string> {
@@ -95,12 +93,13 @@ export function createAgentStream(
         }> = [];
         let finishReason: LanguageModelV3FinishReason | undefined;
         const stepTextParts: string[] = [];
+        const lifecycleTextState = createLifecycleTextStreamState();
 
         const reader = streamResult.stream.getReader();
         while (true) {
           const { done, value: part } = await reader.read();
           if (done) break;
-          emitStreamPart(part, streamController, stepTextParts, pendingToolCalls);
+          emitStreamPart(part, streamController, stepTextParts, pendingToolCalls, lifecycleTextState);
           if (part.type === "finish") {
             finishReason = part.finishReason;
             streamController.enqueue({
@@ -113,20 +112,22 @@ export function createAgentStream(
           }
         }
 
-        const stepText = stepTextParts.join("");
-        const parsedStep = extractLifecycleSignal(stepText);
-        if (parsedStep.signal) lifecycleSignal = parsedStep.signal;
-        if (parsedStep.text.length > 0) {
-          fullText += parsedStep.text;
-          streamController.enqueue({ type: "text-delta", payload: { text: parsedStep.text } });
+        const finalizedStep = finalizeLifecycleText(lifecycleTextState);
+        if (finalizedStep.signal) lifecycleSignal = finalizedStep.signal;
+        if (finalizedStep.text.length > 0) {
+          stepTextParts.push(finalizedStep.text);
+          streamController.enqueue({ type: "text-delta", payload: { text: finalizedStep.text } });
         }
+
+        const stepText = stepTextParts.join("");
+        if (stepText.length > 0) fullText += stepText;
 
         if (pendingToolCalls.length === 0) {
           if (
             nudgeCount < maxNudges &&
             allToolCalls.length > 0 &&
-            !parsedStep.signal &&
-            parsedStep.text.trim().length > 0
+            !finalizedStep.signal &&
+            stepText.trim().length > 0
           ) {
             nudgeCount++;
             log.debug("agent-stream.nudge", {
@@ -135,10 +136,10 @@ export function createAgentStream(
               max_nudges: maxNudges,
               iteration: loopIteration,
               finish_reason: finishReason?.unified ?? "undefined",
-              text_length: parsedStep.text.length,
+              text_length: stepText.length,
               total_tool_calls: allToolCalls.length,
             });
-            messages.push({ role: "assistant", content: [{ type: "text", text: parsedStep.text }] });
+            messages.push({ role: "assistant", content: [{ type: "text", text: stepText }] });
             messages.push({
               role: "user",
               content: [
@@ -155,7 +156,7 @@ export function createAgentStream(
             iteration: loopIteration,
             finish_reason: finishReason?.unified ?? "undefined",
             finish_reason_raw: JSON.stringify(finishReason ?? null),
-            text_length: parsedStep.text.length,
+            text_length: stepText.length,
             total_tool_calls: allToolCalls.length,
             signal: lifecycleSignal ?? null,
           });
@@ -296,11 +297,17 @@ function emitStreamPart(
   controller: ReadableStreamDefaultController<StreamChunk>,
   textParts: string[],
   pendingToolCalls: Array<{ toolCallId: string; toolName: string; input: string }>,
+  lifecycleTextState: LifecycleTextStreamState,
 ): void {
   switch (part.type) {
-    case "text-delta":
-      textParts.push(part.delta);
+    case "text-delta": {
+      const visibleText = appendLifecycleTextDelta(lifecycleTextState, part.delta);
+      if (visibleText.length > 0) {
+        textParts.push(visibleText);
+        controller.enqueue({ type: "text-delta", payload: { text: visibleText } });
+      }
       break;
+    }
     case "reasoning-delta":
       controller.enqueue({ type: "reasoning-delta", payload: { text: part.delta } });
       break;

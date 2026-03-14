@@ -1,5 +1,5 @@
-import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
-import { homedir, tmpdir } from "node:os";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
 import {
@@ -12,9 +12,9 @@ import { runTimedCommand, toPrettyJson } from "./perf-test-utils";
 
 const DEFAULT_MODEL = "gpt-5.2";
 const DEFAULT_TIMEOUT_MS = 60_000;
+const BEHAVIOR_SERVER_PORT = 26768;
 const REPO_DIR = join(import.meta.dir, "..");
 const CLI_ENTRY = join(REPO_DIR, "src", "cli.ts");
-const DAEMON_LOG_PATH = join(homedir(), ".acolyte", "daemons", "6767.log");
 
 const behaviorTraceSummarySchema = z.object({
   taskId: z.string().min(1).optional(),
@@ -70,6 +70,12 @@ export type BehaviorArgs = {
 
 type BehaviorRun = z.infer<typeof behaviorOutputSchema>;
 
+type BehaviorEnvironment = {
+  homeDir: string;
+  env: Record<string, string>;
+  daemonLogPath: string;
+};
+
 function parseField(line: string, key: string): string | undefined {
   const quoted = line.match(new RegExp(`(?:^|\\s)${key}="((?:[^"\\\\]|\\\\.)*)"`));
   if (quoted?.[1] !== undefined) return quoted[1];
@@ -107,9 +113,9 @@ function countToolCalls(taskLines: string[], toolNames: string[]): number {
   ).length;
 }
 
-async function readLogLines(): Promise<string[]> {
+async function readLogLines(logPath: string): Promise<string[]> {
   try {
-    const raw = await readFile(DAEMON_LOG_PATH, "utf8");
+    const raw = await readFile(logPath, "utf8");
     return raw.split("\n").filter((line) => line.trim().length > 0);
   } catch {
     return [];
@@ -348,21 +354,42 @@ async function createBehaviorWorkspace(scenarioId: BehaviorScenarioId): Promise<
   return workspace;
 }
 
-async function runScenario(scenarioId: BehaviorScenarioId, model: string, timeoutMs: number): Promise<BehaviorRun> {
+async function createBehaviorEnvironment(): Promise<BehaviorEnvironment> {
+  const homeDir = await mkdtemp(join(tmpdir(), "acolyte-behavior-home-"));
+  const configDir = join(homeDir, ".acolyte");
+  await mkdir(configDir, { recursive: true });
+  await writeFile(join(configDir, "config.toml"), `port = ${BEHAVIOR_SERVER_PORT}\n`, "utf8");
+  return {
+    homeDir,
+    env: {
+      ...(process.env as Record<string, string>),
+      HOME: homeDir,
+      NO_COLOR: "1",
+    },
+    daemonLogPath: join(homeDir, ".acolyte", "daemons", `${BEHAVIOR_SERVER_PORT}.log`),
+  };
+}
+
+async function runScenario(
+  scenarioId: BehaviorScenarioId,
+  model: string,
+  timeoutMs: number,
+  behaviorEnv: BehaviorEnvironment,
+): Promise<BehaviorRun> {
   const scenario = BEHAVIOR_SCENARIO_BY_ID[scenarioId];
   const workspace = await createBehaviorWorkspace(scenario.id);
   await scenario.setup(workspace);
   await runTimedCommand(["git", "add", "."], process.env as Record<string, string>, 10_000, workspace);
   await runTimedCommand(["git", "commit", "-m", "baseline"], process.env as Record<string, string>, 10_000, workspace);
-  const beforeLines = await readLogLines();
+  const beforeLines = await readLogLines(behaviorEnv.daemonLogPath);
 
   const result = await runTimedCommand(
     ["bun", "run", CLI_ENTRY, "run", "--workspace", workspace, "--model", model, scenario.prompt],
-    { ...process.env, NO_COLOR: "1" } as Record<string, string>,
+    behaviorEnv.env,
     timeoutMs,
     REPO_DIR,
   );
-  const afterLines = await readLogLines();
+  const afterLines = await readLogLines(behaviorEnv.daemonLogPath);
   const trace = summarizeTrace(afterLines.slice(beforeLines.length));
   const correctnessIssues = await scenario.validate(workspace);
 
@@ -407,28 +434,31 @@ function printRun(run: BehaviorRun): void {
   if (run.stderr.trim().length > 0) console.error(run.stderr.trimEnd());
 }
 
-async function cleanup(runs: BehaviorRun[]): Promise<void> {
-  await runTimedCommand(
-    ["bun", "run", CLI_ENTRY, "stop"],
-    { ...process.env, NO_COLOR: "1" } as Record<string, string>,
-    10_000,
-    REPO_DIR,
-  );
-  for (const run of runs) await rm(run.workspace, { recursive: true, force: true });
+async function cleanupWithEnvironment(
+  runs: BehaviorRun[],
+  behaviorEnv: BehaviorEnvironment,
+  keepWorkspaces: boolean,
+): Promise<void> {
+  await runTimedCommand(["bun", "run", CLI_ENTRY, "stop"], behaviorEnv.env, 10_000, REPO_DIR);
+  if (!keepWorkspaces) {
+    for (const run of runs) await rm(run.workspace, { recursive: true, force: true });
+  }
+  await rm(behaviorEnv.homeDir, { recursive: true, force: true });
 }
 
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   const runs: BehaviorRun[] = [];
+  const behaviorEnv = await createBehaviorEnvironment();
 
   try {
     for (const scenarioId of args.scenarioIds) {
       const scenario = BEHAVIOR_SCENARIO_BY_ID[scenarioId];
       if (!args.json) console.log(`starting ${scenario.id}: ${scenario.description}`);
-      runs.push(await runScenario(scenarioId, args.model, args.timeoutMs));
+      runs.push(await runScenario(scenarioId, args.model, args.timeoutMs, behaviorEnv));
     }
   } finally {
-    if (!args.keepWorkspaces) await cleanup(runs);
+    await cleanupWithEnvironment(runs, behaviorEnv, args.keepWorkspaces);
   }
 
   if (args.json) {

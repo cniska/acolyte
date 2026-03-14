@@ -45,6 +45,7 @@ export async function phaseEvaluate(ctx: RunContext, shouldYield: LifecycleInput
     if (shouldYieldNow(ctx, shouldYield)) break;
     const lifecycleSignal = acceptedLifecycleSignal(ctx);
     if (lifecycleSignal) {
+      ctx.currentError = undefined;
       ctx.debug("lifecycle.signal.accepted", {
         signal: lifecycleSignal,
         mode: ctx.mode,
