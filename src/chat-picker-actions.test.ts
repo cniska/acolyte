@@ -27,6 +27,7 @@ beforeEach(() => {
   savedAnthropicApiKey = appConfig.anthropic.apiKey;
   savedGoogleApiKey = appConfig.google.apiKey;
   (appConfig.openai as { apiKey: string | undefined }).apiKey = "test-key";
+  (appConfig.openai as { baseUrl: string }).baseUrl = "https://api.openai.com/v1";
   (appConfig.anthropic as { apiKey: string | undefined }).apiKey = undefined;
   (appConfig.google as { apiKey: string | undefined }).apiKey = undefined;
 });
