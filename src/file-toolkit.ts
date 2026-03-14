@@ -166,7 +166,7 @@ function createSearchFilesTool(input: ToolkitInput) {
     description:
       "Search file contents in the repository for text or regex patterns. Optionally scope with `paths` (files or directories). To locate files by name use `find-files` instead.",
     instruction:
-      "Use `search-files` to search file contents by text or regex. Always batch related queries via `patterns`; optionally scope with `paths`. Do not use repo-wide search after explicit target files are already known unless you need to broaden scope. If the needed text is already visible in `read-file` output, edit directly instead of searching again. If you have already read the target files and the directly referenced support file that answers the question, do not search the workspace again for the same token. When fixing a visible path or link, keep the local reference style from the target file instead of searching for a new global form.",
+      "Use `search-files` to search file contents by text or regex. Batch related queries via `patterns` and scope with `paths` when you know the target area. If the needed text is already visible in `read-file`, edit from that evidence. When fixing a visible path or link, keep the local reference style from the target file.",
     inputSchema: z
       .object({
         pattern: z.string().min(1).optional(),
@@ -297,7 +297,7 @@ function createReadFileTool(input: ToolkitInput) {
     description:
       "Read one or more text files. Always pass `paths` as an array of {path, start?, end?} objects, even for a single file. Omit start/end to read the entire file (preferred). Only use line ranges for files over 500 lines. Never re-read a file you already have. Batch multiple files only while discovering scope or comparing targets.",
     instruction:
-      "Use `read-file` to inspect code before editing. Read whole files by default — only use start/end for very large files. Batch multiple reads while discovering scope; once scope is fixed and you are about to edit named target files, do not batch those target reads. Read each target separately right before its edit, then use `edit-file` or `edit-code` without rereading it.",
+      "Use `read-file` to inspect code before editing. Read whole files by default and use start/end only for very large files. Batch reads while discovering scope; once you are editing named targets, read each target separately right before its edit, then continue directly to `edit-file` or `edit-code`.",
     inputSchema: z.object({
       paths: z
         .array(
@@ -370,7 +370,7 @@ function createEditFileTool(input: ToolkitInput) {
     description:
       "Edit an existing file. Pass `edits` as an array of either {find, replace} pairs (for small surgical edits using exact text match) or {startLine, endLine, replace} objects (for larger block replacements). Line numbers MUST come from `read-file` output — do not guess. endLine must not exceed the file length. All edits are applied atomically. You MUST read the file first. For new files, use `create-file`. For code renames or structural edits use `edit-code`.",
     instruction:
-      "Use `edit-file` for text edits. For small visible changes, prefer {find, replace} where `find` is the exact changed line or the smallest unique snippet from the latest direct `read-file` of that same file. Do not use a large copied block as `find`. If that exact line is already visible in `read-file`, use it directly instead of calling `search-files` again. For small fixes in an existing file, do not replace the whole file or a much larger block than needed. For line-range edits, keep {startLine, endLine} to only the changed line(s) when possible; do not replace a larger surrounding block just to make a tiny change. When changing an existing path or link, preserve the relative or absolute style already used nearby in that same file. The `edit-file` result already includes a diff preview of what changed, so do not call `git-diff` just to reconfirm the same edit. For larger block changes use {startLine, endLine, replace} with 1-based line numbers from the latest direct `read-file` of that same file. `replace` is *only* the new text for that region — do not include surrounding lines. Batch multiple edits to the same file into one call. If `find` is likely to match multiple locations, switch to `edit-code`.",
+      "Use `edit-file` for text edits. For small visible changes, prefer {find, replace} where `find` is the exact changed line or the smallest unique snippet from the latest direct `read-file` of that file. Keep anchors tight, keep line-range edits to the changed lines when possible, and preserve nearby path or link style. The `edit-file` result already includes a diff preview. For larger block changes use {startLine, endLine, replace} with 1-based line numbers from the latest direct `read-file`; `replace` is only the new text for that region. Batch multiple edits to the same file into one call. If `find` is likely to match multiple locations, switch to `edit-code`.",
     inputSchema: z.object({
       path: z.string().min(1),
       edits: z
@@ -426,7 +426,7 @@ function createEditCodeTool(input: ToolkitInput) {
     description:
       "Edit code with AST pattern matching. Pass `edits` as [{pattern, replacement}] using `$VAR` metavariables (e.g. pattern=`console.log($ARG)` replacement=`logger.debug($ARG)`). `path` must be a specific file, not '.' or a directory. For non-code files use `edit-file`.",
     instruction:
-      "Use `edit-code` for multi-location code changes, rename/refactor updates, or structural rewrites with AST `edits` array. `path` must be a concrete file path (not `.` or a directory), and you should read that file directly right before editing it. The `edit-code` result already includes a diff preview of what changed, so do not call `git-diff` just to reconfirm the same edit. Prefer `edit-file` for single-location text edits.",
+      "Use `edit-code` for multi-location code changes, rename/refactor updates, or structural rewrites with AST `edits` array. `path` must be a concrete file path (not `.` or a directory), and you should read that file directly right before editing it. The `edit-code` result already includes a diff preview. Prefer `edit-file` for single-location text edits.",
     inputSchema: z.object({
       path: z.string().min(1),
       edits: z

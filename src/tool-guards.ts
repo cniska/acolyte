@@ -396,44 +396,27 @@ const redundantVerifyGuard: ToolGuard = {
   },
 };
 
-type PostEditRedundancyPolicy = {
-  extractPaths: (args: Record<string, unknown>) => string[];
-  message: (path: string) => string;
-};
-
-type PostEditRedundancyToolName = "delete-file";
-
-const postEditRedundancyPolicies = {
-  "delete-file": {
-    extractPaths: (args) =>
-      Array.isArray(args.paths)
-        ? args.paths
-            .filter((value): value is string => typeof value === "string")
-            .map((value) => normalizePath(value.trim().toLowerCase()))
-            .filter((value) => value.length > 0)
-        : [],
-    message: (path) =>
-      `delete-file is trying to remove "${path}" after it was already edited in this task. ` +
-      "Keep the file and revise it in place instead of deleting it.",
-  },
-} satisfies Record<PostEditRedundancyToolName, PostEditRedundancyPolicy>;
-
 const postEditRedundancyGuard: ToolGuard = {
   id: "post-edit-redundancy",
   description: "Block redundant follow-up actions on files already edited in this task.",
-  tools: Object.keys(postEditRedundancyPolicies) as PostEditRedundancyToolName[],
-  check({ toolName, args, session, report }) {
-    if (!(toolName in postEditRedundancyPolicies)) return;
-    const policy = postEditRedundancyPolicies[toolName as PostEditRedundancyToolName];
-    if (!policy) return;
-    const targetPaths = policy.extractPaths(args);
+  tools: ["delete-file"],
+  check({ args, session, report }) {
+    const targetPaths = Array.isArray(args.paths)
+      ? args.paths
+          .filter((value): value is string => typeof value === "string")
+          .map((value) => normalizePath(value.trim().toLowerCase()))
+          .filter((value) => value.length > 0)
+      : [];
     if (targetPaths.length === 0) return;
     const editedPaths = editedPathsSinceLastVerify(session).map((entry) => normalizePath(entry.toLowerCase()));
     for (const path of targetPaths) {
       if (path !== "__edited_workspace__" && !editedPaths.includes(path)) continue;
       if (path === "__edited_workspace__" && editedPaths.length === 0) continue;
       report("blocked", path);
-      throw new Error(policy.message(path));
+      throw new Error(
+        `delete-file is trying to remove "${path}" after it was already edited in this task. ` +
+          "Keep the file and revise it in place instead of deleting it.",
+      );
     }
   },
 };
