@@ -11,6 +11,7 @@ import {
   searchFiles,
   writeTextFile,
 } from "./file-ops";
+import { testUuid } from "./test-utils";
 
 const WORKSPACE = resolve(process.cwd());
 const tempFiles: string[] = [];
@@ -61,7 +62,7 @@ describe("path guards", () => {
   });
 
   test("readSnippet allows /tmp files", async () => {
-    const filePath = `/tmp/acolyte-test-read-${crypto.randomUUID()}.txt`;
+    const filePath = `/tmp/acolyte-test-read-${testUuid()}.txt`;
     tempFiles.push(filePath);
     await writeFile(filePath, "hello from tmp", "utf8");
     const output = await readSnippet(WORKSPACE, filePath, "1", "1");
@@ -69,7 +70,7 @@ describe("path guards", () => {
   });
 
   test("editFile allows /tmp files", async () => {
-    const filePath = `/tmp/acolyte-test-edit-${crypto.randomUUID()}.txt`;
+    const filePath = `/tmp/acolyte-test-edit-${testUuid()}.txt`;
     tempFiles.push(filePath);
     await writeFile(filePath, "alpha beta", "utf8");
     const output = await editFile({
@@ -83,7 +84,7 @@ describe("path guards", () => {
 
 describe("editFile", () => {
   test("find/replace in workspace file", async () => {
-    const filePath = join(WORKSPACE, `tmp-edit-${crypto.randomUUID()}.txt`);
+    const filePath = join(WORKSPACE, `tmp-edit-${testUuid()}.txt`);
     tempFiles.push(filePath);
     await writeFile(filePath, "alpha beta", "utf8");
     const result = await editFile({
@@ -95,7 +96,7 @@ describe("editFile", () => {
   });
 
   test("rejects multi-match find text", async () => {
-    const filePath = `/tmp/acolyte-test-multi-${crypto.randomUUID()}.txt`;
+    const filePath = `/tmp/acolyte-test-multi-${testUuid()}.txt`;
     tempFiles.push(filePath);
     await writeFile(filePath, "foo bar foo baz foo", "utf8");
     await expect(
@@ -104,7 +105,7 @@ describe("editFile", () => {
   });
 
   test("rejects replace text that duplicates content after edit point", async () => {
-    const filePath = `/tmp/acolyte-test-dup-${crypto.randomUUID()}.txt`;
+    const filePath = `/tmp/acolyte-test-dup-${testUuid()}.txt`;
     tempFiles.push(filePath);
     await writeFile(filePath, "line1\nline2\nline3\nline4\nline5\nline6", "utf8");
     await expect(
@@ -117,7 +118,7 @@ describe("editFile", () => {
   });
 
   test("line-range basic replacement", async () => {
-    const filePath = `/tmp/acolyte-test-lr-${crypto.randomUUID()}.txt`;
+    const filePath = `/tmp/acolyte-test-lr-${testUuid()}.txt`;
     tempFiles.push(filePath);
     await writeFile(filePath, "line1\nline2\nline3\nline4\nline5\n", "utf8");
     const result = await editFile({
@@ -131,7 +132,7 @@ describe("editFile", () => {
   });
 
   test("line-range rejects startLine > endLine", async () => {
-    const filePath = `/tmp/acolyte-test-lr2-${crypto.randomUUID()}.txt`;
+    const filePath = `/tmp/acolyte-test-lr2-${testUuid()}.txt`;
     tempFiles.push(filePath);
     await writeFile(filePath, "a\nb\nc\n", "utf8");
     await expect(
@@ -140,7 +141,7 @@ describe("editFile", () => {
   });
 
   test("line-range clamps endLine beyond file", async () => {
-    const filePath = `/tmp/acolyte-test-lr3-${crypto.randomUUID()}.txt`;
+    const filePath = `/tmp/acolyte-test-lr3-${testUuid()}.txt`;
     tempFiles.push(filePath);
     await writeFile(filePath, "a\nb\nc\n", "utf8");
     await editFile({ workspace: WORKSPACE, path: filePath, edits: [{ startLine: 1, endLine: 10, replace: "x" }] });
@@ -149,7 +150,7 @@ describe("editFile", () => {
   });
 
   test("line-range rejects line numbers < 1", async () => {
-    const filePath = `/tmp/acolyte-test-lr4-${crypto.randomUUID()}.txt`;
+    const filePath = `/tmp/acolyte-test-lr4-${testUuid()}.txt`;
     tempFiles.push(filePath);
     await writeFile(filePath, "a\nb\n", "utf8");
     await expect(
@@ -158,7 +159,7 @@ describe("editFile", () => {
   });
 
   test("mixed find/replace and line-range", async () => {
-    const filePath = `/tmp/acolyte-test-lr5-${crypto.randomUUID()}.txt`;
+    const filePath = `/tmp/acolyte-test-lr5-${testUuid()}.txt`;
     tempFiles.push(filePath);
     await writeFile(filePath, "aaa\nbbb\nccc\nddd\neee\n", "utf8");
     const result = await editFile({
@@ -175,7 +176,7 @@ describe("editFile", () => {
   });
 
   test("line-range overlapping ranges rejected", async () => {
-    const filePath = `/tmp/acolyte-test-lr6-${crypto.randomUUID()}.txt`;
+    const filePath = `/tmp/acolyte-test-lr6-${testUuid()}.txt`;
     tempFiles.push(filePath);
     await writeFile(filePath, "a\nb\nc\nd\ne\n", "utf8");
     await expect(
@@ -191,7 +192,7 @@ describe("editFile", () => {
   });
 
   test("line-range full-file replacement", async () => {
-    const filePath = `/tmp/acolyte-test-lr7-${crypto.randomUUID()}.txt`;
+    const filePath = `/tmp/acolyte-test-lr7-${testUuid()}.txt`;
     tempFiles.push(filePath);
     await writeFile(filePath, "line1\nline2\nline3\nline4\nline5\n", "utf8");
     const result = await editFile({
@@ -207,7 +208,7 @@ describe("editFile", () => {
 
 describe("writeTextFile", () => {
   test("creates /tmp files", async () => {
-    const filePath = `/tmp/acolyte-test-write-${crypto.randomUUID()}.txt`;
+    const filePath = `/tmp/acolyte-test-write-${testUuid()}.txt`;
     tempFiles.push(filePath);
     const result = await writeTextFile({ workspace: WORKSPACE, path: filePath, content: "hello" });
     expect(result).toContain("bytes=5");
@@ -216,7 +217,7 @@ describe("writeTextFile", () => {
 
 describe("deleteTextFile", () => {
   test("deletes /tmp files", async () => {
-    const filePath = `/tmp/acolyte-test-delete-${crypto.randomUUID()}.txt`;
+    const filePath = `/tmp/acolyte-test-delete-${testUuid()}.txt`;
     tempFiles.push(filePath);
     await writeFile(filePath, "alpha\nbeta\n", "utf8");
     const result = await deleteTextFile({ workspace: WORKSPACE, path: filePath });
@@ -227,7 +228,7 @@ describe("deleteTextFile", () => {
 
 describe("editCode", () => {
   test("replaces pattern matches with metavariable capture", async () => {
-    const filePath = `/tmp/acolyte-test-ast-${crypto.randomUUID()}.ts`;
+    const filePath = `/tmp/acolyte-test-ast-${testUuid()}.ts`;
     tempFiles.push(filePath);
     await writeFile(filePath, 'console.log("hello");\nconsole.log("world");\n', "utf8");
     const result = await editCode({
@@ -242,7 +243,7 @@ describe("editCode", () => {
   });
 
   test("dry run preserves file", async () => {
-    const filePath = `/tmp/acolyte-test-ast-dry-${crypto.randomUUID()}.ts`;
+    const filePath = `/tmp/acolyte-test-ast-dry-${testUuid()}.ts`;
     tempFiles.push(filePath);
     await writeFile(filePath, 'console.log("keep");\n', "utf8");
     const result = await editCode({
@@ -257,7 +258,7 @@ describe("editCode", () => {
   });
 
   test("throws when no matches found", async () => {
-    const filePath = `/tmp/acolyte-test-ast-nomatch-${crypto.randomUUID()}.ts`;
+    const filePath = `/tmp/acolyte-test-ast-nomatch-${testUuid()}.ts`;
     tempFiles.push(filePath);
     await writeFile(filePath, "const x = 1;\n", "utf8");
     await expect(
@@ -270,7 +271,7 @@ describe("editCode", () => {
   });
 
   test("rejects directory paths", async () => {
-    const dirPath = `/tmp/acolyte-test-ast-dir-${crypto.randomUUID()}`;
+    const dirPath = `/tmp/acolyte-test-ast-dir-${testUuid()}`;
     tempDirs.push(dirPath);
     await mkdir(dirPath, { recursive: true });
     await expect(
@@ -283,7 +284,7 @@ describe("editCode", () => {
   });
 
   test("replaces in Python files", async () => {
-    const filePath = `/tmp/acolyte-test-ast-py-${crypto.randomUUID()}.py`;
+    const filePath = `/tmp/acolyte-test-ast-py-${testUuid()}.py`;
     tempFiles.push(filePath);
     await writeFile(filePath, 'print("hello")\nprint("world")\n', "utf8");
     const result = await editCode({
@@ -298,7 +299,7 @@ describe("editCode", () => {
   });
 
   test("replaces in Rust files", async () => {
-    const filePath = `/tmp/acolyte-test-ast-rs-${crypto.randomUUID()}.rs`;
+    const filePath = `/tmp/acolyte-test-ast-rs-${testUuid()}.rs`;
     tempFiles.push(filePath);
     await writeFile(filePath, 'println!("hello");\nprintln!("world");\n', "utf8");
     const result = await editCode({
@@ -313,7 +314,7 @@ describe("editCode", () => {
   });
 
   test("replaces in Go files", async () => {
-    const filePath = `/tmp/acolyte-test-ast-go-${crypto.randomUUID()}.go`;
+    const filePath = `/tmp/acolyte-test-ast-go-${testUuid()}.go`;
     tempFiles.push(filePath);
     await writeFile(filePath, 'package main\n\nfunc main() {\n\tprintln("hello")\n\tprintln("world")\n}\n', "utf8");
     const result = await editCode({
@@ -330,7 +331,7 @@ describe("editCode", () => {
 
 describe("scanCode", () => {
   test("finds matches with metavariable captures", async () => {
-    const filePath = `/tmp/acolyte-test-scan-${crypto.randomUUID()}.ts`;
+    const filePath = `/tmp/acolyte-test-scan-${testUuid()}.ts`;
     tempFiles.push(filePath);
     await writeFile(filePath, 'console.log("hello");\nconsole.log("world");\nconst x = 1;\n', "utf8");
     const result = await scanCode({ workspace: WORKSPACE, paths: [filePath], pattern: "console.log($ARG)" });
@@ -340,7 +341,7 @@ describe("scanCode", () => {
   });
 
   test("returns no matches when pattern is absent", async () => {
-    const filePath = `/tmp/acolyte-test-scan-nomatch-${crypto.randomUUID()}.ts`;
+    const filePath = `/tmp/acolyte-test-scan-nomatch-${testUuid()}.ts`;
     tempFiles.push(filePath);
     await writeFile(filePath, "const x = 1;\n", "utf8");
     const result = await scanCode({ workspace: WORKSPACE, paths: [filePath], pattern: "console.log($ARG)" });
@@ -349,7 +350,7 @@ describe("scanCode", () => {
   });
 
   test("scans a directory recursively", async () => {
-    const dir = `/tmp/acolyte-test-scan-dir-${crypto.randomUUID()}`;
+    const dir = `/tmp/acolyte-test-scan-dir-${testUuid()}`;
     tempDirs.push(dir);
     await mkdir(join(dir, "sub"), { recursive: true });
     await writeFile(join(dir, "a.ts"), 'console.log("a");\n', "utf8");
@@ -360,7 +361,7 @@ describe("scanCode", () => {
   });
 
   test("respects maxResults limit", async () => {
-    const filePath = `/tmp/acolyte-test-scan-limit-${crypto.randomUUID()}.ts`;
+    const filePath = `/tmp/acolyte-test-scan-limit-${testUuid()}.ts`;
     tempFiles.push(filePath);
     const lines = `${Array.from({ length: 10 }, (_, i) => `console.log("line${i}");`).join("\n")}\n`;
     await writeFile(filePath, lines, "utf8");
@@ -374,7 +375,7 @@ describe("scanCode", () => {
   });
 
   test("batches multiple patterns", async () => {
-    const filePath = `/tmp/acolyte-test-scan-batch-${crypto.randomUUID()}.ts`;
+    const filePath = `/tmp/acolyte-test-scan-batch-${testUuid()}.ts`;
     tempFiles.push(filePath);
     await writeFile(filePath, 'export function hello() {}\nexport const x = 1;\nconsole.log("test");\n', "utf8");
     const result = await scanCode({
@@ -390,7 +391,7 @@ describe("scanCode", () => {
 
 describe("searchFiles", () => {
   test("scopes matches to a single file path", async () => {
-    const dir = join(WORKSPACE, `acolyte-test-search-${crypto.randomUUID()}`);
+    const dir = join(WORKSPACE, `acolyte-test-search-${testUuid()}`);
     tempDirs.push(dir);
     await mkdir(dir, { recursive: true });
     const first = join(dir, "first.ts");
@@ -403,11 +404,11 @@ describe("searchFiles", () => {
   });
 
   test("scopes matches to a directory path", async () => {
-    const dir = join(WORKSPACE, `acolyte-test-search-dir-${crypto.randomUUID()}`);
+    const dir = join(WORKSPACE, `acolyte-test-search-dir-${testUuid()}`);
     tempDirs.push(dir);
     await mkdir(join(dir, "sub"), { recursive: true });
     await writeFile(join(dir, "sub", "inside.ts"), 'export const inside = "needle";\n', "utf8");
-    const outside = join(WORKSPACE, `acolyte-test-search-outside-${crypto.randomUUID()}.ts`);
+    const outside = join(WORKSPACE, `acolyte-test-search-outside-${testUuid()}.ts`);
     tempFiles.push(outside);
     await writeFile(outside, 'export const outside = "needle";\n', "utf8");
     const result = await searchFiles(WORKSPACE, ["needle"], 20, [dir]);
