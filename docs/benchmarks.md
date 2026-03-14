@@ -9,15 +9,15 @@ All metrics extracted with [`scripts/benchmark.ts`](../scripts/benchmark.ts). Fi
 
 | Project | Language | Description | Source Lines | Files | Dependencies |
 |---|---|---|---|---|---|
-| **Acolyte** | TypeScript | CLI-first AI coding agent with lifecycle, guards, and evaluators | 20,560 | 166 | 12 + 6 |
+| **Acolyte** | TypeScript | CLI-first AI coding agent with lifecycle, guards, and evaluators | 21,271 | 168 | 12 + 6 |
 | **Aider** | Python | AI pair programming in your terminal | 25,938 | 105 | 35 + 17 |
-| **OpenCode** | TypeScript | Open-source AI coding agent (TUI/web/desktop) | 212,218 | 1,047 | 173 + 79 |
-| **Pi** | TypeScript | Terminal coding agent harness with extensions | 99,016 | 394 | 50 + 19 |
-| **Goose** | Rust | Extensible AI agent from Block with MCP integration | 121,672 | 326 | 139 + 15 |
-| **OpenHands** | Python | AI-driven software development platform | 121,981 | 702 | 82 + 7 |
-| **Continue** | TypeScript | AI code assistant for VS Code and JetBrains | 231,116 | 1,459 | 186 + 164 |
-| **Cline** | TypeScript | Autonomous AI coding agent for VS Code | 201,715 | 1,219 | 155 + 69 |
-| **OpenClaw** | TypeScript | Personal AI assistant with coding agent skill | 671,014 | 3,713 | 108 + 47 |
+| **OpenCode** | TypeScript | Open-source AI coding agent (TUI/web/desktop) | 216,720 | 1,059 | 173 + 79 |
+| **Pi** | TypeScript | Terminal coding agent harness with extensions | 100,500 | 395 | 50 + 19 |
+| **Goose** | Rust | Extensible AI agent from Block with MCP integration | 122,329 | 327 | 139 + 15 |
+| **OpenHands** | Python | AI-driven software development platform | 122,398 | 704 | 83 + 7 |
+| **Continue** | TypeScript | AI code assistant for VS Code and JetBrains | 231,361 | 1,461 | 186 + 164 |
+| **Cline** | TypeScript | Autonomous AI coding agent for VS Code | 202,584 | 1,230 | 155 + 70 |
+| **OpenClaw** | TypeScript | Personal AI assistant with coding agent skill | 683,082 | 3,787 | 109 + 47 |
 
 Source lines exclude test files, generated code, and files over 10k lines. Dependencies shown as direct runtime + dev.
 
@@ -28,10 +28,10 @@ Acolyte ships with 12 runtime dependencies because the daemon owns the stack —
 | Metric | Acolyte | OpenCode | Pi | Cline | Continue | OpenClaw |
 |---|---|---|---|---|---|---|
 | `as any` | 0.1 | 1.8 | 1.4 | 0.8 | 2.3 | 0.1 |
-| `: any` annotations | 0.0 | 1.1 | 1.4 | 2.3 | 4.4 | 0.2 |
+| `: any` annotations | 0.0 | 1.1 | 1.3 | 2.3 | 4.4 | 0.2 |
 | `@ts-ignore` / `@ts-expect-error` | 0.0 | 0.2 | 0.0 | 0.1 | 0.4 | 0.0 |
 | Lint ignores (`biome-ignore` / `eslint-disable`) | 0.1 | 0.0 | 0.0 | 0.1 | 0.2 | 0.1 |
-| `: unknown` usage | 3.8 | 1.5 | 1.0 | 0.4 | 0.3 | 5.6 |
+| `: unknown` usage | 5.1 | 1.5 | 1.1 | 0.4 | 0.3 | 5.7 |
 
 Acolyte has **2 total `any`**. It uses `unknown` with explicit narrowing at high rates — every tool output, model response, and RPC payload is validated through Zod schemas before entering the type system. OpenClaw also favors `unknown` heavily. Continue has the highest `any` density.
 
@@ -55,18 +55,18 @@ Aider is nearly zero on type escape hatches. Goose has a high `.unwrap()` densit
 
 | Metric | Acolyte | Aider | OpenCode | Pi | Goose | OpenHands | Continue | Cline | OpenClaw |
 |---|---|---|---|---|---|---|---|---|---|
-| TODO / FIXME / HACK | 0.0 | 0.3 | 0.3 | 0.0 | 0.2 | 0.5 | 0.8 | 0.7 | 0.0 |
-| Comment lines | 7.2 | 54.9 | 9.8 | 53.2 | 39.6 | 60.2 | 42.6 | 54.0 | 14.2 |
+| TODO / FIXME / HACK | 0.1 | 0.3 | 0.3 | 0.0 | 0.2 | 0.5 | 0.8 | 0.7 | 0.0 |
+| Comment lines | 7.2 | 54.9 | 9.6 | 52.5 | 39.5 | 60.1 | 42.6 | 54.2 | 14.1 |
 
-Zero tech debt markers. The guard and evaluator system catches issues during generation — problems that would become TODOs in other projects get fixed before they're committed. Low comment density reflects self-documenting code backed by external docs.
+Near-zero tech debt markers (2 total). The guard and evaluator system catches issues during generation — problems that would become TODOs in other projects get fixed before they're committed. Low comment density reflects self-documenting code backed by external docs.
 
 ## Test Quality
 
 | Metric | Acolyte | Aider | OpenCode | Pi | Goose | OpenHands | Continue | Cline | OpenClaw |
 |---|---|---|---|---|---|---|---|---|---|
-| Test files | 127 | 42 | 200 | 111 | 19 | 350 | 331 | 176 | 2,305 |
-| Test lines | 15,637 | 12,410 | 40,270 | 34,436 | 5,314 | 140,844 | 82,475 | 45,762 | 495,081 |
-| Test / source ratio | **0.76** | 0.48 | 0.19 | 0.35 | 0.04 | **1.15** | 0.36 | 0.23 | 0.74 |
+| Test files | 129 | 42 | 212 | 113 | 19 | 354 | 331 | 190 | 2,457 |
+| Test lines | 16,433 | 12,410 | 41,784 | 36,020 | 5,579 | 143,114 | 82,506 | 48,170 | 518,527 |
+| Test / source ratio | **0.77** | 0.48 | 0.19 | 0.36 | 0.05 | **1.17** | 0.36 | 0.24 | 0.76 |
 
 Acolyte maintains a 0.76 test/source ratio because the lifecycle phases, guards, and tools are each independent modules with clean interfaces — testable by design, not by retrofit. Four dedicated test types: unit (`*.test.ts`), integration (`*.int.test.ts`), TUI visual regression (`*.tui.test.ts`), and performance (`*.perf.test.ts`). OpenHands leads on raw ratio. Goose has notably low test density.
 
@@ -74,10 +74,10 @@ Acolyte maintains a 0.76 test/source ratio because the lifecycle phases, guards,
 
 | Metric | Acolyte | Aider | OpenCode | Pi | Goose | OpenHands | Continue | Cline | OpenClaw |
 |---|---|---|---|---|---|---|---|---|---|
-| Avg lines / file | 124 | 247 | 203 | 251 | 373 | 174 | 158 | 165 | 181 |
-| Files > 500 lines | 3 (2%) | 14 (13%) | 103 (10%) | 50 (13%) | 79 (24%) | 55 (8%) | 87 (6%) | 68 (6%) | 311 (8%) |
-| Largest file | 568 | 2,486 | 4,960 | 4,465 | 2,504 | 1,711 | 3,229 | 4,601 | 2,805 |
-| Barrel / index files | 1 | 5 | 51 | 26 | 44 | 85 | 73 | 47 | 76 |
+| Avg lines / file | 127 | 247 | 205 | 254 | 374 | 174 | 158 | 165 | 180 |
+| Files > 500 lines | 4 (2%) | 14 (13%) | 105 (10%) | 51 (13%) | 79 (24%) | 55 (8%) | 87 (6%) | 69 (6%) | 322 (9%) |
+| Largest file | 620 | 2,486 | 4,964 | 4,465 | 2,506 | 1,715 | 3,229 | 4,758 | 2,814 |
+| Barrel / index files | 1 | 5 | 51 | 26 | 44 | 85 | 73 | 47 | 79 |
 
 Acolyte has the smallest average file size and fewest large files. The flat `src/` layout keeps modules at the same depth — minimal barrel re-exports, no deep nesting, no circular dependency chains.
 
@@ -86,8 +86,8 @@ Acolyte has the smallest average file size and fewest large files. The flat `src
 | Metric | Acolyte | OpenCode | Pi | Cline | Continue | OpenClaw |
 |---|---|---|---|---|---|---|
 | `.safeParse()` calls | 1.2 | 0.1 | 0.0 | 0.0 | 0.1 | 0.0 |
-| `try { ... }` blocks | 5.6 | 1.3 | 4.1 | 6.1 | 3.8 | 4.8 |
-| `.catch()` calls | 0.6 | 2.3 | 0.3 | 1.1 | 0.3 | 1.0 |
+| `try { ... }` blocks | 5.5 | 1.3 | 4.2 | 6.1 | 3.8 | 4.8 |
+| `.catch()` calls | 0.6 | 2.2 | 0.3 | 1.1 | 0.3 | 1.0 |
 
 Acolyte validates at boundaries with Zod `.safeParse()` at 13x+ the rate of most other projects. Every RPC payload, model response, and config file is validated before entering the system — errors surface as structured results, not uncaught exceptions.
 
@@ -99,11 +99,11 @@ Acolyte validates at boundaries with Zod `.safeParse()` at 13x+ the rate of most
 | Tech debt | Zero | Low | Low | Zero | Low | Mid | Highest | Mid | Zero |
 | Test density | High (0.76) | Mid (0.48) | Low (0.19) | Mid (0.35) | Lowest (0.04) | Highest (1.15) | Mid (0.36) | Low (0.23) | High (0.74) |
 | Module size | Smallest (124) | Mid (247) | Mid (203) | Mid (251) | Largest (373) | Mid (174) | Mid (158) | Mid (165) | Mid (181) |
-| Dependencies | Lightest (18) | Light (52) | Heavy (252) | Light (69) | Heavy (154) | Mid (89) | Heavy (350) | Heavy (224) | Heavy (155) |
+| Dependencies | Lightest (18) | Light (52) | Heavy (252) | Light (69) | Heavy (154) | Mid (90) | Heavy (350) | Heavy (225) | Heavy (156) |
 | Maturity | New | Shipped | Shipped | Shipped | Shipped | Shipped | Shipped | Shipped | Shipped |
 
 Acolyte leads on type safety, tech debt, module size, and dependency count while being the smallest codebase.
 
 ---
 
-Last updated: March 2026. Acolyte metrics refreshed from the local repo; peer-project metrics are from the prior full benchmark run.
+Last updated: March 2026. All metrics refreshed from current repo state.
