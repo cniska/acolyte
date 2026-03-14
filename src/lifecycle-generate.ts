@@ -28,7 +28,7 @@ import { formatModel } from "./provider-config";
 import type { StreamError } from "./stream-error";
 import type { ToolDefinition } from "./tool-contract";
 import { resetCycleStepCount } from "./tool-guards";
-import type { Toolset } from "./tool-registry";
+import { type Toolset, WRITE_TOOL_SET } from "./tool-registry";
 
 type CaptureErrorMeta = {
   source?: ErrorSource;
@@ -130,9 +130,10 @@ export function setMode(ctx: RunContext, mode: RunContext["mode"], trigger?: str
 }
 
 function ensureAgentForMode(ctx: RunContext): void {
+  if (ctx.agentForMode === ctx.mode) return;
+
   const resolved = resolveModeModel(ctx.mode, ctx.request.model, ctx.request.modeModels);
   const nextModel = resolved.model;
-  if (ctx.agentForMode === ctx.mode && ctx.model === nextModel) return;
 
   const previousMode = ctx.agentForMode;
   const previousModel = ctx.model;
@@ -328,9 +329,12 @@ function emitStreamingUsage(ctx: RunContext, chars: number): void {
   }
 }
 
-function clearResolvedToolError(ctx: RunContext): void {
+function clearResolvedToolError(ctx: RunContext, toolName: string): void {
   if (!ctx.currentError) return;
   if (ctx.currentError.source !== "tool-error" && ctx.currentError.source !== "tool-result") return;
+  const failedTool = ctx.currentError.tool;
+  if (!failedTool) return;
+  if (failedTool !== toolName && !(WRITE_TOOL_SET.has(failedTool) && WRITE_TOOL_SET.has(toolName))) return;
   ctx.currentError = undefined;
 }
 
@@ -395,7 +399,7 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
           });
           ctx.debug("lifecycle.tool.error", { tool: toolName, error: errorInfo.message });
         } else {
-          clearResolvedToolError(ctx);
+          clearResolvedToolError(ctx, toolName);
         }
         emitToolResult(ctx, p.toolCallId, toolName, isError);
       }

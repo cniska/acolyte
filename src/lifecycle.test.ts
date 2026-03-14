@@ -11,7 +11,12 @@ import {
   verifyCycle,
 } from "./lifecycle-evaluators";
 import { phaseFinalize } from "./lifecycle-finalize";
-import { consumeLifecycleFeedback, createGenerationInput, createLifecycleFeedbackText } from "./lifecycle-generate";
+import {
+  consumeLifecycleFeedback,
+  createGenerationInput,
+  createLifecycleFeedbackText,
+  phaseGenerate,
+} from "./lifecycle-generate";
 import { defaultLifecyclePolicy } from "./lifecycle-policy";
 import { phasePrepare } from "./lifecycle-prepare";
 import { acceptedLifecycleSignal, updateRepeatedFailureState } from "./lifecycle-state";
@@ -234,6 +239,132 @@ describe("verifyCycle", () => {
       result: { text: "No issues found. 0 errors.", toolCalls: [] },
     });
     expect(verifyCycle.evaluate(ctx).type).toBe("done");
+  });
+});
+
+describe("phaseGenerate", () => {
+  test("does not clear an edit-file error after an unrelated successful read", async () => {
+    const ctx = createMockContext({
+      request: { model: "gpt-5-mini", message: "test", history: [] },
+      agent: {
+        id: "test-agent",
+        name: "test-agent",
+        instructions: "",
+        model: {} as RunContext["agent"]["model"],
+        tools: {},
+        async stream() {
+          const chunks = [
+            {
+              type: "tool-call" as const,
+              payload: { toolCallId: "call_1", toolName: "edit-file", args: { path: "src/a.ts" } },
+            },
+            {
+              type: "tool-error" as const,
+              payload: {
+                toolCallId: "call_1",
+                toolName: "edit-file",
+                error: {
+                  message: "Find text not found",
+                  code: TOOL_ERROR_CODES.editFileFindNotFound,
+                  recovery: {
+                    tool: "edit-file" as const,
+                    kind: "refresh-snippet" as const,
+                    summary: "Refresh the snippet.",
+                    instruction: "Reread the file and rebuild the edit.",
+                  },
+                },
+              },
+            },
+            {
+              type: "tool-call" as const,
+              payload: { toolCallId: "call_2", toolName: "read-file", args: { paths: [{ path: "src/a.ts" }] } },
+            },
+            {
+              type: "tool-result" as const,
+              payload: { toolCallId: "call_2", toolName: "read-file", result: { output: "File: src/a.ts" } },
+            },
+          ];
+          return {
+            fullStream: new ReadableStream({
+              start(controller) {
+                for (const chunk of chunks) controller.enqueue(chunk);
+                controller.close();
+              },
+            }),
+            async getFullOutput() {
+              return { text: "Done.", toolCalls: [], signal: "done" as const };
+            },
+          };
+        },
+      },
+    });
+
+    await phaseGenerate(ctx, { timeoutMs: 1000 });
+
+    expect(ctx.currentError?.tool).toBe("edit-file");
+    expect(acceptedLifecycleSignal(ctx)).toBeUndefined();
+  });
+
+  test("clears an edit-file error after a later successful write recovery", async () => {
+    const ctx = createMockContext({
+      request: { model: "gpt-5-mini", message: "test", history: [] },
+      agent: {
+        id: "test-agent",
+        name: "test-agent",
+        instructions: "",
+        model: {} as RunContext["agent"]["model"],
+        tools: {},
+        async stream() {
+          const chunks = [
+            {
+              type: "tool-call" as const,
+              payload: { toolCallId: "call_1", toolName: "edit-file", args: { path: "src/a.ts" } },
+            },
+            {
+              type: "tool-error" as const,
+              payload: {
+                toolCallId: "call_1",
+                toolName: "edit-file",
+                error: {
+                  message: "Find text not found",
+                  code: TOOL_ERROR_CODES.editFileFindNotFound,
+                  recovery: {
+                    tool: "edit-file" as const,
+                    kind: "refresh-snippet" as const,
+                    summary: "Refresh the snippet.",
+                    instruction: "Reread the file and rebuild the edit.",
+                  },
+                },
+              },
+            },
+            {
+              type: "tool-call" as const,
+              payload: { toolCallId: "call_2", toolName: "edit-file", args: { path: "src/a.ts" } },
+            },
+            {
+              type: "tool-result" as const,
+              payload: { toolCallId: "call_2", toolName: "edit-file", result: { ok: true } },
+            },
+          ];
+          return {
+            fullStream: new ReadableStream({
+              start(controller) {
+                for (const chunk of chunks) controller.enqueue(chunk);
+                controller.close();
+              },
+            }),
+            async getFullOutput() {
+              return { text: "Done.", toolCalls: [], signal: "done" as const };
+            },
+          };
+        },
+      },
+    });
+
+    await phaseGenerate(ctx, { timeoutMs: 1000 });
+
+    expect(ctx.currentError).toBeUndefined();
+    expect(acceptedLifecycleSignal(ctx)).toBe("done");
   });
 });
 
