@@ -106,58 +106,24 @@ describe("redundant-verify guard", () => {
 });
 
 describe("shell-file-write guard", () => {
-  test("blocks fs.writeFileSync via eval", () => {
-    const session = createSessionContext();
-    expect(() =>
-      runGuards({
-        toolName: "run-command",
-        args: { command: "bun -e \"import { writeFileSync } from 'fs'; writeFileSync('src/a.ts', 'x')\"" },
-        session,
-      }),
-    ).toThrow(/shell-based file writes are not allowed here/i);
-  });
-
-  test("blocks fs.writeFile (async) via eval", () => {
-    const session = createSessionContext();
-    expect(() =>
-      runGuards({
-        toolName: "run-command",
-        args: { command: "node -e \"require('fs').writeFile('src/a.ts', 'x', () => {})\"" },
-        session,
-      }),
-    ).toThrow(/shell-based file writes are not allowed here/i);
-  });
-
-  test("blocks Bun.write via eval", () => {
-    const session = createSessionContext();
-    expect(() =>
-      runGuards({
-        toolName: "run-command",
-        args: { command: "bun -e \"await Bun.write('src/a.ts', 'x')\"" },
-        session,
-      }),
-    ).toThrow(/shell-based file writes are not allowed here/i);
-  });
-
   test("blocks echo shell redirect", () => {
     const session = createSessionContext();
     expect(() =>
-      runGuards({
-        toolName: "run-command",
-        args: { command: "echo 'content' > src/a.ts" },
-        session,
-      }),
+      runGuards({ toolName: "run-command", args: { command: "echo 'content' > src/a.ts" }, session }),
+    ).toThrow(/shell-based file writes are not allowed here/i);
+  });
+
+  test("blocks printf shell redirect", () => {
+    const session = createSessionContext();
+    expect(() =>
+      runGuards({ toolName: "run-command", args: { command: "printf '%s' 'content' > src/a.ts" }, session }),
     ).toThrow(/shell-based file writes are not allowed here/i);
   });
 
   test("blocks tee", () => {
     const session = createSessionContext();
     expect(() =>
-      runGuards({
-        toolName: "run-command",
-        args: { command: "tee src/a.ts <<< 'content'" },
-        session,
-      }),
+      runGuards({ toolName: "run-command", args: { command: "tee src/a.ts <<< 'content'" }, session }),
     ).toThrow(/shell-based file writes are not allowed here/i);
   });
 

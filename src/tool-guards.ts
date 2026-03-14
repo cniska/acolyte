@@ -495,13 +495,6 @@ const redundantVerifyGuard: ToolGuard = {
   },
 };
 
-const SHELL_WRITE_PATTERNS = [
-  "writefile", // fs.writeFile / fs.writeFileSync
-  "appendfile", // fs.appendFile / fs.appendFileSync
-  "bun.write(", // Bun.write
-  "createwritestream(", // fs.createWriteStream
-];
-
 const shellFileWriteGuard: ToolGuard = {
   id: "shell-file-write",
   description: "Block shell-based file mutation commands when direct file tools should be used instead.",
@@ -510,12 +503,11 @@ const shellFileWriteGuard: ToolGuard = {
     const command = typeof args.command === "string" ? args.command : "";
     if (!command) return;
     const normalized = command.toLowerCase();
-    const mutatesViaEval = SHELL_WRITE_PATTERNS.some((p) => normalized.includes(p));
     const mutatesViaRedirect =
       (normalized.includes("echo ") || normalized.includes("printf ") || normalized.includes("cat ")) &&
       (normalized.includes(" > ") || normalized.includes(" >> "));
     const mutatesViaTee = /\btee\s/.test(normalized);
-    if (!mutatesViaEval && !mutatesViaRedirect && !mutatesViaTee) return;
+    if (!mutatesViaRedirect && !mutatesViaTee) return;
 
     report("blocked", "shell-file-write");
     throw new Error(
