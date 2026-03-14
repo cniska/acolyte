@@ -416,9 +416,9 @@ function createEditCodeTool(input: ToolkitInput) {
     category: "write",
     permissions: ["read", "write"],
     description:
-      "Edit code with AST pattern matching. Pass `edits` as [{pattern, replacement}] using `$VAR` metavariables (e.g. pattern=`console.log($ARG)` replacement=`logger.debug($ARG)`). `path` must be a specific file, not '.' or a directory. For non-code files use `edit-file`.",
+      "Edit code with AST pattern matching. Pass `edits` as [{pattern, replacement, within?}] using `$VAR` metavariables (e.g. pattern=`console.log($ARG)` replacement=`logger.debug($ARG)`). Use optional `within` to constrain matches to one enclosing helper/declaration/block, for example pattern=`result` replacement=`patternResult` within=`const scanFile = ($$$ARGS) => { $$$BODY }`. `path` must be a specific file, not '.' or a directory. For non-code files use `edit-file`.",
     instruction:
-      "Use `edit-code` for AST-aware rename/refactor work or structural code rewrites with AST `edits` array. Do not use plain text snippets as AST patterns, and do not use `edit-code` for markdown, docs, or repeated plain-text replacements in one known file. `path` must be a concrete file path (not `.` or a directory), and you should read that file directly right before editing it. The `edit-code` result already includes a diff preview. If that preview shows the requested bounded change, stop instead of re-reading, searching, or reviewing the same file again in work mode. Prefer `edit-file` for single-location text edits and for repeated text replacements within one file.",
+      'Use `edit-code` for AST-aware rename/refactor work or structural code rewrites with AST `edits` array. Do not use plain text snippets as AST patterns, and do not use `edit-code` for markdown, docs, or repeated plain-text replacements in one known file. `path` must be a concrete file path (not `.` or a directory), and you should read that file directly right before editing it. When the change must stay inside one named helper, declaration, or block, add `within` with an enclosing AST pattern and keep the inner `pattern` narrow. For example, to rename `result` only inside `scanFile`, use `pattern: "result"`, `replacement: "patternResult"`, and `within: "const scanFile = ($$$ARGS) => { $$$BODY }"`. If `edit-code` reports no AST matches, refine the `pattern` or `within` clause against the latest read-file text for that same file instead of broadening the rewrite to unrelated matches. The `edit-code` result already includes a diff preview. If that preview shows the requested bounded change, stop instead of re-reading, searching, or reviewing the same file again in work mode. Prefer `edit-file` for single-location text edits and for repeated text replacements within one file.',
     inputSchema: z.object({
       path: z.string().min(1),
       edits: z
@@ -426,6 +426,7 @@ function createEditCodeTool(input: ToolkitInput) {
           z.object({
             pattern: z.string().min(1),
             replacement: z.string(),
+            within: z.string().min(1).optional(),
           }),
         )
         .min(1),

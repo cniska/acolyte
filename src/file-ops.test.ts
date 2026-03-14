@@ -355,19 +355,42 @@ describe("editCode", () => {
     expect(content).not.toContain("console.log");
   });
 
-  test("dry run preserves file", async () => {
-    const filePath = `/tmp/acolyte-test-ast-dry-${testUuid()}.ts`;
+  test("scopes replacements with within", async () => {
+    const filePath = `/tmp/acolyte-test-ast-within-${testUuid()}.ts`;
     tempFiles.push(filePath);
-    await writeFile(filePath, 'console.log("keep");\n', "utf8");
+    await writeFile(
+      filePath,
+      [
+        "function first() {",
+        "  const result = 1;",
+        "  return result;",
+        "}",
+        "",
+        "function second() {",
+        "  const result = 2;",
+        "  return result;",
+        "}",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
     const result = await editCode({
       workspace: WORKSPACE,
       path: filePath,
-      edits: [{ pattern: "console.log($ARG)", replacement: "logger.debug($ARG)" }],
-      dryRun: true,
+      edits: [
+        {
+          pattern: "result",
+          replacement: "value",
+          within: "function second() { $$$BODY }",
+        },
+      ],
     });
-    expect(result).toContain("dry_run=true");
+    expect(result).toContain("matches=2");
     const content = await readFile(filePath, "utf8");
-    expect(content).toContain("console.log");
+    expect(content).toContain("const result = 1;");
+    expect(content).toContain("return result;");
+    expect(content).toContain("const value = 2;");
+    expect(content).toContain("return value;");
   });
 
   test("throws when no matches found", async () => {
@@ -447,20 +470,20 @@ describe("editCode", () => {
     });
   });
 
-  test("rejects variadic metavariables in replacements", async () => {
+  test("supports variadic metavariables in replacements", async () => {
     const filePath = `/tmp/acolyte-test-ast-variadic-${testUuid()}.ts`;
     tempFiles.push(filePath);
     await writeFile(filePath, "sum(a, b);\nsum(c);\n", "utf8");
-    await expect(
-      editCode({
-        workspace: WORKSPACE,
-        path: filePath,
-        edits: [{ pattern: "sum($$$ARGS)", replacement: "total($$$ARGS)" }],
-      }),
-    ).rejects.toMatchObject({
-      code: TOOL_ERROR_CODES.editCodeVariadicReplacement,
-      recovery: { tool: "edit-code", kind: "fix-replacement" },
+    const result = await editCode({
+      workspace: WORKSPACE,
+      path: filePath,
+      edits: [{ pattern: "sum($$$ARGS)", replacement: "total($$$ARGS)" }],
     });
+    expect(result).toContain("matches=2");
+    const content = await readFile(filePath, "utf8");
+    expect(content).toContain("total(a, b);");
+    expect(content).toContain("total(c);");
+    expect(content).not.toContain("sum(");
   });
 
   test("replaces in Python files", async () => {

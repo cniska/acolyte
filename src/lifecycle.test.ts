@@ -759,7 +759,8 @@ describe("toolRecoveryEvaluator", () => {
       currentError: {
         code: TOOL_ERROR_CODES.scanCodeUnsupportedFile,
         tool: "scan-code",
-        message: "scan-code failed: [E_SCAN_CODE_UNSUPPORTED_FILE] scan-code requires a supported code file, got: notes.yaml",
+        message:
+          "scan-code failed: [E_SCAN_CODE_UNSUPPORTED_FILE] scan-code requires a supported code file, got: notes.yaml",
         recovery: {
           tool: "scan-code",
           kind: "use-supported-file",

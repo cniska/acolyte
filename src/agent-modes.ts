@@ -36,6 +36,7 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
       "When a bounded edit in a named file succeeds, do not review, find, search, or scan that same file again in work mode unless the user asked for verification or the edit failed.",
       "Do not call `edit-file` again on the same named file after a successful bounded edit unless the visible preview still shows requested changes remaining in that file.",
       "For rename/refactor tasks or repeated structural code updates, prefer `scan-code` + `edit-code` over `edit-file`.",
+      "For a bounded structural change inside one named helper, declaration, or block, prefer `edit-code` with an enclosing `within` pattern over a file-wide AST rewrite.",
       "If the task is a repeated plain-text rewrite inside one known file, prefer one consolidated `edit-file` call over `edit-code`.",
       "Batch multiple edits to the same file into one `edit-file` or `edit-code` call.",
       "Trust type signatures; do not add impossible null/undefined guards unless the declared types allow them.",

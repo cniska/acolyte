@@ -3,15 +3,15 @@ import { unreachable } from "./assert";
 import {
   EDIT_CODE_RECOVERY_KINDS,
   EDIT_FILE_RECOVERY_KINDS,
-  SCAN_CODE_RECOVERY_KINDS,
   type EditCodeRecoveryKind,
   type EditFileRecoveryKind,
-  type ScanCodeRecoveryKind,
   ERROR_KINDS,
   type ErrorCode,
   type ErrorKind,
   extractToolErrorCode,
   LIFECYCLE_ERROR_CODES,
+  SCAN_CODE_RECOVERY_KINDS,
+  type ScanCodeRecoveryKind,
   type ToolRecovery,
 } from "./error-primitives";
 import { domainIdSchema } from "./id-contract";

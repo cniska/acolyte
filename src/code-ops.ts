@@ -106,11 +106,27 @@ function extractMetavariables(pattern: string): string[] {
   return Array.from(new Set(matches));
 }
 
+function resolveReplacementMetavariable(match: napi.SgNode, metavar: string, source: string): string {
+  const name = metavar.replace(/^\$+/, "");
+  if (metavar.startsWith("$$$")) {
+    const captures = match.getMultipleMatches(name);
+    if (captures.length === 0) return "";
+    const first = captures[0];
+    const last = captures[captures.length - 1];
+    if (!first || !last) return "";
+    const start = first.range().start.index;
+    const end = last.range().end.index;
+    return source.slice(start, end);
+  }
+  const captured = match.getMatch(name);
+  if (!captured) throw new Error(`Could not resolve metavariable ${metavar}`);
+  return captured.text();
+}
+
 export async function editCode(input: {
   workspace: string;
   path: string;
-  edits: Array<{ pattern: string; replacement: string }>;
-  dryRun?: boolean;
+  edits: Array<{ pattern: string; replacement: string; within?: string }>;
 }): Promise<string> {
   const absPath = ensurePathWithinAllowedRoots(input.path, "AST edit", input.workspace);
   const pathStats = await stat(absPath);
@@ -133,11 +149,22 @@ export async function editCode(input: {
 
   for (const edit of input.edits) {
     const tree = napi.parse(langEnum ?? langName, current);
-    const matches = tree.root().findAll({ rule: { pattern: edit.pattern } });
+    const allMatches = tree.root().findAll({ rule: { pattern: edit.pattern } });
+    let matches = allMatches;
+    if (edit.within) {
+      const scopes = tree.root().findAll({ rule: { pattern: edit.within } });
+      matches = allMatches.filter((match) => {
+        const range = match.range();
+        return scopes.some((scope) => {
+          const scopeRange = scope.range();
+          return scopeRange.start.index <= range.start.index && scopeRange.end.index >= range.end.index;
+        });
+      });
+    }
     if (matches.length === 0) {
       throw createToolError(
         TOOL_ERROR_CODES.editCodeNoMatch,
-        `No AST matches found for pattern: ${edit.pattern}`,
+        `No AST matches found for pattern: ${edit.pattern}${edit.within ? ` within: ${edit.within}` : ""}`,
         undefined,
         editCodeRecovery(input.path, "refine-pattern"),
       );
@@ -146,15 +173,6 @@ export async function editCode(input: {
 
     const patternMetavars = extractMetavariables(edit.pattern);
     const replacementMetavars = extractMetavariables(edit.replacement);
-    const variadicReplacementMetavars = replacementMetavars.filter((metavar) => metavar.startsWith("$$$"));
-    if (variadicReplacementMetavars.length > 0) {
-      throw createToolError(
-        TOOL_ERROR_CODES.editCodeVariadicReplacement,
-        `edit-code does not support variadic replacement metavariables: ${variadicReplacementMetavars.join(", ")}. Use edit-file for this rewrite.`,
-        undefined,
-        editCodeRecovery(input.path, "fix-replacement"),
-      );
-    }
     const unknownReplacementMetavars = replacementMetavars.filter((metavar) => !patternMetavars.includes(metavar));
     if (unknownReplacementMetavars.length > 0) {
       throw createToolError(
@@ -168,11 +186,7 @@ export async function editCode(input: {
     for (const match of matches) {
       let replaced = edit.replacement;
       for (const metavar of replacementMetavars) {
-        const captured = match.getMatch(metavar.replace(/^\$+/, ""));
-        if (!captured) {
-          throw new Error(`Could not resolve metavariable ${metavar} from pattern: ${edit.pattern}`);
-        }
-        replaced = replaced.replaceAll(metavar, captured.text());
+        replaced = replaced.replaceAll(metavar, resolveReplacementMetavariable(match, metavar, current));
       }
       const range = match.range();
       replacements.push({ start: range.start.index, end: range.end.index, replacement: replaced });
@@ -184,21 +198,12 @@ export async function editCode(input: {
     }
   }
 
-  if (!input.dryRun) {
-    await mkdir(dirname(absPath), { recursive: true });
-    await writeFile(absPath, current, "utf8");
-  }
+  await mkdir(dirname(absPath), { recursive: true });
+  await writeFile(absPath, current, "utf8");
 
   const relativePath = displayPathForDiff(absPath, input.workspace);
   const diff = createDiff(relativePath, original, current);
-  return [
-    `path=${absPath}`,
-    `edits=${input.edits.length}`,
-    `matches=${totalMatches}`,
-    `dry_run=${input.dryRun ? "true" : "false"}`,
-    "",
-    diff,
-  ].join("\n");
+  return [`path=${absPath}`, `edits=${input.edits.length}`, `matches=${totalMatches}`, "", diff].join("\n");
 }
 
 export async function scanCode(input: {

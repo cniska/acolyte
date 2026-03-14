@@ -43,6 +43,7 @@ describe("createModeInstructions", () => {
     expect(out).toContain("do not review, find, search, or scan that same file again in work mode");
     expect(out).toContain("Do not call `edit-file` again on the same named file after a successful bounded edit");
     expect(out).toContain("prefer `scan-code` + `edit-code`");
+    expect(out).toContain("enclosing `within` pattern");
     expect(out).toContain("repeated plain-text rewrite inside one known file");
     expect(out).toContain("Trust type signatures");
   });
@@ -83,6 +84,10 @@ describe("createInstructions", () => {
     expect(out).toContain("AST");
     expect(out).toContain("Do not use plain text snippets as AST patterns");
     expect(out).toContain("not for plain text replacements or post-edit reassurance on a bounded named-file task");
+    expect(out).toContain("add `within` with an enclosing AST pattern");
+    expect(out).toContain("refine the `pattern` or `within` clause");
+    expect(out).toContain('pattern: "result"');
+    expect(out).toContain('within: "const scanFile = ($$$ARGS) => { $$$BODY }"');
     expect(out).toContain("do not re-read the same file unless the edit fails or the direct read output was truncated");
     expect(out).toContain("If that preview shows the requested bounded change, stop");
     expect(out).toContain("stop instead of re-reading, searching, reviewing, or editing that same file again");
