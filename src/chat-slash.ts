@@ -11,7 +11,7 @@ const CHAT_SLASH_COMMANDS = [
   "/resume",
   "/remember",
   "/memory",
-  "/tokens",
+  "/usage",
   "/exit",
 ] as const;
 
@@ -37,7 +37,7 @@ const SLASH_HELP: Record<string, string> = {
   "/memory all": t("chat.slash.help.memory.all"),
   "/memory user": t("chat.slash.help.memory.user"),
   "/memory project": t("chat.slash.help.memory.project"),
-  "/tokens": t("chat.slash.help.tokens"),
+  "/usage": t("chat.slash.help.usage"),
   "/exit": t("chat.slash.help.exit"),
 };
 

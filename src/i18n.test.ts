@@ -3,7 +3,7 @@ import { t } from "./i18n";
 
 describe("i18n", () => {
   test("returns plain message for key without placeholders", () => {
-    expect(t("chat.tokens.none")).toBe("No token data yet. Send a prompt first.");
+    expect(t("chat.usage.none")).toBe("No usage data yet. Send a prompt first.");
   });
 
   test("interpolates placeholder values", () => {

@@ -31,7 +31,7 @@ These are available inside interactive chat mode:
 - `/resume`: resume a previous session
 - `/sessions`: show sessions
 - `/status`: show server status
-- `/tokens`: show token usage
+- `/usage`: show token usage
 - `/model [id]`: change model
 - `/model work|verify <id>`: change mode-specific model
 - `/permissions [read|write]`: change permission mode
