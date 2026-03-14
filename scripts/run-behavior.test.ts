@@ -47,13 +47,20 @@ describe("behavior analysis", () => {
         taskId: "task_123",
         modelCalls: 3,
         totalToolCalls: 4,
+        uniqueToolCount: 3,
         readCalls: 2,
         searchCalls: 1,
         writeCalls: 2,
         preWriteDiscoveryCalls: 2,
         regenerationCount: 0,
+        regenerationLimitHit: false,
         guardBlockedCount: 0,
+        guardFlagSetCount: 0,
         hasError: false,
+        timeoutErrorCount: 0,
+        fileNotFoundErrorCount: 0,
+        guardBlockedErrorCount: 0,
+        otherErrorCount: 0,
       },
     });
 
@@ -69,17 +76,24 @@ describe("behavior analysis", () => {
         taskId: "task_123",
         modelCalls: 40,
         totalToolCalls: 25,
+        uniqueToolCount: 8,
         readCalls: 10,
         searchCalls: 6,
         writeCalls: 4,
         preWriteDiscoveryCalls: 8,
         regenerationCount: 2,
+        regenerationLimitHit: true,
         guardBlockedCount: 4,
+        guardFlagSetCount: 2,
         hasError: true,
+        timeoutErrorCount: 1,
+        fileNotFoundErrorCount: 1,
+        guardBlockedErrorCount: 2,
+        otherErrorCount: 1,
       },
     });
 
-    expect(analysis.score).toBeLessThan(0.6);
+    expect(analysis.score).toBeLessThan(0.4);
     expect(analysis.verdict).toBe("weak");
   });
 

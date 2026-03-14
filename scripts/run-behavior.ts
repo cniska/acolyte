@@ -20,13 +20,21 @@ const behaviorTraceSummarySchema = z.object({
   taskId: z.string().min(1).optional(),
   modelCalls: z.number().int().nonnegative().optional(),
   totalToolCalls: z.number().int().nonnegative().optional(),
+  uniqueToolCount: z.number().int().nonnegative().optional(),
   readCalls: z.number().int().nonnegative().optional(),
   searchCalls: z.number().int().nonnegative().optional(),
   writeCalls: z.number().int().nonnegative().optional(),
   preWriteDiscoveryCalls: z.number().int().nonnegative().optional(),
   regenerationCount: z.number().int().nonnegative().optional(),
+  regenerationLimitHit: z.boolean().optional(),
   guardBlockedCount: z.number().int().nonnegative().optional(),
+  guardFlagSetCount: z.number().int().nonnegative().optional(),
   hasError: z.boolean().optional(),
+  lastErrorCategory: z.string().min(1).optional(),
+  timeoutErrorCount: z.number().int().nonnegative().optional(),
+  fileNotFoundErrorCount: z.number().int().nonnegative().optional(),
+  guardBlockedErrorCount: z.number().int().nonnegative().optional(),
+  otherErrorCount: z.number().int().nonnegative().optional(),
 });
 
 const behaviorAnalysisSchema = z.object({
@@ -119,6 +127,7 @@ function summarizeTrace(lines: string[]): z.infer<typeof behaviorTraceSummarySch
       taskId,
       modelCalls: countMatching(taskLines, "event=lifecycle.generate.start"),
       totalToolCalls: countMatching(taskLines, "event=lifecycle.tool.call"),
+      uniqueToolCount: undefined,
       readCalls: countToolCalls(taskLines, ["read-file"]),
       searchCalls: countToolCalls(taskLines, [
         "find-files",
@@ -140,21 +149,36 @@ function summarizeTrace(lines: string[]): z.infer<typeof behaviorTraceSummarySch
       regenerationCount: taskLines.filter(
         (line) => line.includes("event=lifecycle.eval.decision") && line.includes("action=regenerate"),
       ).length,
+      regenerationLimitHit: parseBooleanField(taskLines[taskLines.length - 1] ?? "", "regeneration_limit_hit"),
       guardBlockedCount: countMatching(taskLines, "event=lifecycle.guard"),
+      guardFlagSetCount: 0,
       hasError: countMatching(taskLines, "event=lifecycle.error") > 0,
+      lastErrorCategory: undefined,
+      timeoutErrorCount: undefined,
+      fileNotFoundErrorCount: undefined,
+      guardBlockedErrorCount: undefined,
+      otherErrorCount: undefined,
     });
   }
   return behaviorTraceSummarySchema.parse({
     taskId,
     modelCalls: parseIntField(summaryLine, "model_calls"),
-    totalToolCalls: parseIntField(summaryLine, "total_tool_calls"),
+    totalToolCalls: parseIntField(summaryLine, "tool_calls"),
+    uniqueToolCount: parseIntField(summaryLine, "unique_tool_count"),
     readCalls: parseIntField(summaryLine, "read_calls"),
     searchCalls: parseIntField(summaryLine, "search_calls"),
     writeCalls: parseIntField(summaryLine, "write_calls"),
     preWriteDiscoveryCalls: parseIntField(summaryLine, "pre_write_discovery_calls"),
     regenerationCount: parseIntField(summaryLine, "regeneration_count"),
+    regenerationLimitHit: parseBooleanField(summaryLine, "regeneration_limit_hit"),
     guardBlockedCount: parseIntField(summaryLine, "guard_blocked_count"),
+    guardFlagSetCount: parseIntField(summaryLine, "guard_flag_set_count"),
     hasError: parseBooleanField(summaryLine, "has_error"),
+    lastErrorCategory: parseField(summaryLine, "last_error_category"),
+    timeoutErrorCount: parseIntField(summaryLine, "timeout_error_count"),
+    fileNotFoundErrorCount: parseIntField(summaryLine, "file_not_found_error_count"),
+    guardBlockedErrorCount: parseIntField(summaryLine, "guard_blocked_error_count"),
+    otherErrorCount: parseIntField(summaryLine, "other_error_count"),
   });
 }
 
@@ -183,6 +207,10 @@ export function analyzeBehavior(run: {
     score -= Math.min(0.2, (trace?.regenerationCount ?? 0) * 0.1);
     reasons.push(`regenerations: ${trace?.regenerationCount}`);
   }
+  if (trace?.regenerationLimitHit) {
+    score -= 0.2;
+    reasons.push("regeneration cap hit");
+  }
   if ((trace?.preWriteDiscoveryCalls ?? 0) > 2) {
     score -= Math.min(0.15, ((trace?.preWriteDiscoveryCalls ?? 0) - 2) * 0.05);
     reasons.push(`excess pre-write discovery: ${trace?.preWriteDiscoveryCalls}`);
@@ -194,6 +222,30 @@ export function analyzeBehavior(run: {
   if ((trace?.writeCalls ?? 0) > run.expectedChangeCount + 1) {
     score -= Math.min(0.1, ((trace?.writeCalls ?? 0) - (run.expectedChangeCount + 1)) * 0.03);
     reasons.push(`extra writes beyond expected scope: ${trace?.writeCalls}`);
+  }
+  if ((trace?.guardFlagSetCount ?? 0) > 0) {
+    score -= Math.min(0.1, (trace?.guardFlagSetCount ?? 0) * 0.03);
+    reasons.push(`guard flags: ${trace?.guardFlagSetCount}`);
+  }
+  if ((trace?.timeoutErrorCount ?? 0) > 0) {
+    score -= Math.min(0.15, (trace?.timeoutErrorCount ?? 0) * 0.1);
+    reasons.push(`timeout errors: ${trace?.timeoutErrorCount}`);
+  }
+  if ((trace?.fileNotFoundErrorCount ?? 0) > 0) {
+    score -= Math.min(0.1, (trace?.fileNotFoundErrorCount ?? 0) * 0.05);
+    reasons.push(`file-not-found errors: ${trace?.fileNotFoundErrorCount}`);
+  }
+  if ((trace?.guardBlockedErrorCount ?? 0) > 0) {
+    score -= Math.min(0.1, (trace?.guardBlockedErrorCount ?? 0) * 0.05);
+    reasons.push(`guard-blocked errors: ${trace?.guardBlockedErrorCount}`);
+  }
+  if ((trace?.otherErrorCount ?? 0) > 0) {
+    score -= Math.min(0.1, (trace?.otherErrorCount ?? 0) * 0.05);
+    reasons.push(`other errors: ${trace?.otherErrorCount}`);
+  }
+  if ((trace?.modelCalls ?? 0) > Math.max(4, run.expectedChangeCount + 2)) {
+    score -= Math.min(0.1, ((trace?.modelCalls ?? 0) - Math.max(4, run.expectedChangeCount + 2)) * 0.02);
+    reasons.push(`excess model calls: ${trace?.modelCalls}`);
   }
 
   const normalized = Math.max(0, Number(score.toFixed(2)));
@@ -314,7 +366,7 @@ function printRun(run: BehaviorRun): void {
   console.log(`score: ${run.analysis.score.toFixed(2)} (${run.analysis.verdict})`);
   if (run.trace) {
     console.log(
-      `trace: task=${run.trace.taskId ?? "unknown"} model_calls=${run.trace.modelCalls ?? "?"} total_tools=${run.trace.totalToolCalls ?? "?"} read=${run.trace.readCalls ?? "?"} search=${run.trace.searchCalls ?? "?"} write=${run.trace.writeCalls ?? "?"} pre_write_discovery=${run.trace.preWriteDiscoveryCalls ?? "?"} regenerations=${run.trace.regenerationCount ?? "?"} guard_blocked=${run.trace.guardBlockedCount ?? "?"} has_error=${run.trace.hasError ?? "?"}`,
+      `trace: task=${run.trace.taskId ?? "unknown"} model_calls=${run.trace.modelCalls ?? "?"} total_tools=${run.trace.totalToolCalls ?? "?"} unique_tools=${run.trace.uniqueToolCount ?? "?"} read=${run.trace.readCalls ?? "?"} search=${run.trace.searchCalls ?? "?"} write=${run.trace.writeCalls ?? "?"} pre_write_discovery=${run.trace.preWriteDiscoveryCalls ?? "?"} regenerations=${run.trace.regenerationCount ?? "?"} regen_limit_hit=${run.trace.regenerationLimitHit ?? "?"} guard_blocked=${run.trace.guardBlockedCount ?? "?"} guard_flags=${run.trace.guardFlagSetCount ?? "?"} has_error=${run.trace.hasError ?? "?"}`,
     );
   }
   console.log(`analysis: ${run.analysis.reasons.join("; ")}`);
