@@ -33,8 +33,11 @@ describe("createModeInstructions", () => {
     expect(out).toContain("preserve the relative or absolute form already used in that file");
     expect(out).toContain("keep the change as small as the request allows");
     expect(out).toContain("repeated literal replacements in one known file");
+    expect(out).toContain("collect every visible requested occurrence");
+    expect(out).toContain("must cover all of those visible locations");
+    expect(out).toContain("If a direct `read-file` result is truncated");
     expect(out).toContain("if a named file has separated occurrences you have not yet pinned to exact snippets");
-    expect(out).toContain("do not signal completion after the first hit");
+    expect(out).toContain("do not signal completion after the first hit or first partial batch");
     expect(out).toContain("make the requested change and stop");
     expect(out).toContain("trust the edit preview and the text you already have");
     expect(out).toContain("do not review, find, search, or scan that same file again in work mode");
@@ -80,11 +83,13 @@ describe("createInstructions", () => {
     expect(out).toContain("AST");
     expect(out).toContain("Do not use plain text snippets as AST patterns");
     expect(out).toContain("not for plain text replacements or post-edit reassurance on a bounded named-file task");
-    expect(out).toContain("do not re-read the same file unless the edit fails");
+    expect(out).toContain("do not re-read the same file unless the edit fails or the direct read output was truncated");
     expect(out).toContain("If that preview shows the requested bounded change, stop");
     expect(out).toContain("stop instead of re-reading, searching, reviewing, or editing that same file again");
     expect(out).toContain("use several small exact edits in one call rather than one oversized `find` block");
-    expect(out).toContain("completion means no requested matches remain in the latest file text");
+    expect(out).toContain("collect all visible requested occurrences into the same `edit-file` call");
+    expect(out).toContain("include every visible location in that one call");
+    expect(out).toContain("Completion means no requested matches remain in that file");
     expect(out).toContain("do not run commands after the edit just to double-check the result");
     expect(out).toContain("call `create-file` with full content");
   });
