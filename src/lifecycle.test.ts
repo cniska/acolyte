@@ -739,6 +739,8 @@ describe("toolRecoveryEvaluator", () => {
           kind: "refine-pattern",
           summary: "Your AST pattern did not match the current file.",
           instruction: "Refine the pattern against the latest file syntax.",
+          nextTool: "read-file",
+          targetPaths: ["src/code-ops.ts"],
         },
       },
       result: { text: "Attempted edit.", toolCalls: [] },
@@ -749,6 +751,8 @@ describe("toolRecoveryEvaluator", () => {
       expect(action.feedback?.source).toBe("edit-code");
       expect(action.feedback?.summary).toBe("Your AST pattern did not match the current file.");
       expect(action.feedback?.details).toContain("No AST matches found");
+      expect(action.feedback?.details).toContain("Suggested next tool: read-file");
+      expect(action.feedback?.details).toContain("Suggested paths: src/code-ops.ts");
       expect(action.feedback?.instruction).toContain("Refine the pattern");
     }
   });
@@ -766,6 +770,8 @@ describe("toolRecoveryEvaluator", () => {
           kind: "use-supported-file",
           summary: "scan-code only works on supported code files.",
           instruction: "Use scan-code on a supported code file or directory, or switch to search-files.",
+          nextTool: "search-files",
+          targetPaths: ["notes.yaml"],
         },
       },
       result: { text: "Attempted scan.", toolCalls: [] },
@@ -776,6 +782,8 @@ describe("toolRecoveryEvaluator", () => {
       expect(action.feedback?.source).toBe("scan-code");
       expect(action.feedback?.summary).toBe("scan-code only works on supported code files.");
       expect(action.feedback?.details).toContain("notes.yaml");
+      expect(action.feedback?.details).toContain("Suggested next tool: search-files");
+      expect(action.feedback?.details).toContain("Suggested paths: notes.yaml");
       expect(action.feedback?.instruction).toContain("search-files");
     }
   });

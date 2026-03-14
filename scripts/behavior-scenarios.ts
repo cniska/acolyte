@@ -9,6 +9,7 @@ const behaviorScenarioIdSchema = z.enum([
   "two-file-rename",
   "two-file-deps-rename",
   "bounded-return-fix",
+  "scan-code-yaml-recovery",
   "scoped-edit-code-rename",
 ]);
 
@@ -387,6 +388,74 @@ function validateBoundedReturnFixTrace(traceLines: string[]): string[] {
   return issues;
 }
 
+async function createScanCodeYamlRecoveryWorkspace(workspace: string): Promise<void> {
+  await writeWorkspaceFile(
+    workspace,
+    "config/models.yaml",
+    ["models:", "  default_alias: acolyte-mini", "  fallback_alias: acolyte-nano", ""].join("\n"),
+  );
+  await writeWorkspaceFile(
+    workspace,
+    "src/provider-config.ts",
+    [
+      'export const MODEL_ALIAS = "acolyte-mini";',
+      "",
+      "export function resolveProviderLabel(alias: string): string {",
+      '  return alias === MODEL_ALIAS ? "default" : "custom";',
+      "}",
+      "",
+    ].join("\n"),
+  );
+}
+
+async function validateScanCodeYamlRecoveryWorkspace(workspace: string): Promise<string[]> {
+  const issues: string[] = [];
+  const content = await readWorkspaceFile(workspace, "src/provider-config.ts");
+  if (!content.includes('export const DEFAULT_ALIAS = "acolyte-mini";')) {
+    issues.push("src/provider-config.ts should rename MODEL_ALIAS to DEFAULT_ALIAS");
+  }
+  if (content.includes("MODEL_ALIAS")) {
+    issues.push("src/provider-config.ts should not keep MODEL_ALIAS");
+  }
+  if (!content.includes('return alias === DEFAULT_ALIAS ? "default" : "custom";')) {
+    issues.push("src/provider-config.ts should update the provider label comparison to DEFAULT_ALIAS");
+  }
+  return issues;
+}
+
+function validateScanCodeYamlRecoveryTrace(traceLines: string[]): string[] {
+  const issues: string[] = [];
+  const toolCallLines = traceLines.filter((line) => line.includes("event=lifecycle.tool.call"));
+  const scanYamlCalls = toolCallLines.filter(
+    (line) => line.includes("tool=scan-code") && line.includes("config/models.yaml"),
+  ).length;
+  if (scanYamlCalls === 0) {
+    issues.push("scan-code recovery scenario should attempt scan-code on config/models.yaml");
+  }
+  const searchYamlCalls = toolCallLines.filter(
+    (line) => line.includes("tool=search-files") && line.includes("config/models.yaml"),
+  ).length;
+  const readYamlCalls = toolCallLines.filter(
+    (line) => line.includes("tool=read-file") && line.includes("config/models.yaml"),
+  ).length;
+  if (searchYamlCalls + readYamlCalls === 0) {
+    issues.push("scan-code recovery scenario should recover with a plain-text lookup on config/models.yaml");
+  }
+  const editTargetCalls = toolCallLines.filter(
+    (line) => line.includes("tool=edit-file") && line.includes("path=src/provider-config.ts"),
+  ).length;
+  if (editTargetCalls === 0) {
+    issues.push("scan-code recovery scenario should update src/provider-config.ts");
+  }
+  if (editTargetCalls > 1) {
+    issues.push(`scan-code recovery scenario should edit src/provider-config.ts at most once, saw ${editTargetCalls}`);
+  }
+  if (toolCallLines.some((line) => line.includes("tool=edit-code") && line.includes("src/provider-config.ts"))) {
+    issues.push("scan-code recovery scenario should not switch to edit-code for src/provider-config.ts");
+  }
+  return issues;
+}
+
 async function createScopedEditCodeRenameWorkspace(workspace: string): Promise<void> {
   await writeWorkspaceFile(
     workspace,
@@ -502,6 +571,16 @@ export const BEHAVIOR_SCENARIOS: BehaviorScenario[] = [
     setup: createBoundedReturnFixWorkspace,
     validate: validateBoundedReturnFixWorkspace,
     validateTrace: validateBoundedReturnFixTrace,
+  },
+  {
+    id: "scan-code-yaml-recovery",
+    description: "Recover from unsupported scan-code input by switching to plain-text lookup.",
+    prompt:
+      "Use scan-code on config/models.yaml to find the default alias. Then in src/provider-config.ts rename MODEL_ALIAS to DEFAULT_ALIAS and keep the same alias value. If scan-code cannot read the yaml file, recover with the appropriate plain-text tool. Update only src/provider-config.ts, then stop.",
+    expectedChanges: ["src/provider-config.ts"],
+    setup: createScanCodeYamlRecoveryWorkspace,
+    validate: validateScanCodeYamlRecoveryWorkspace,
+    validateTrace: validateScanCodeYamlRecoveryTrace,
   },
   {
     id: "scoped-edit-code-rename",

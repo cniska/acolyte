@@ -14,6 +14,8 @@ function editCodeRecovery(path: string, kind: EditCodeRecoveryKind): ToolRecover
         kind,
         summary: "edit-code only works on supported code files.",
         instruction: `Switch to a supported code file for edit-code when changing '${path}', or use edit-file if this is a plain-text rewrite.`,
+        nextTool: "edit-file",
+        targetPaths: [path],
       };
     case "refine-pattern":
       return {
@@ -24,6 +26,8 @@ function editCodeRecovery(path: string, kind: EditCodeRecoveryKind): ToolRecover
           `Keep the change in '${path}' and refine the ast-grep pattern to match the actual syntax in the latest read-file output. ` +
           'For a helper-scoped variable rename, prefer a structured rename edit like { op: "rename", from, to, withinSymbol } instead of broadening to a larger pattern. ' +
           "Do not switch to plain-text snippets unless you are changing to edit-file.",
+        nextTool: "read-file",
+        targetPaths: [path],
       };
     case "fix-replacement":
       return {
@@ -33,6 +37,8 @@ function editCodeRecovery(path: string, kind: EditCodeRecoveryKind): ToolRecover
         instruction:
           `Keep the change in '${path}' and fix the replacement to use only metavariables captured by the pattern. ` +
           "If the rewrite needs variadic or plain-text editing, switch to edit-file.",
+        nextTool: "edit-code",
+        targetPaths: [path],
       };
     default:
       return kind satisfies never;
@@ -45,6 +51,8 @@ function scanCodeRecovery(path: string): ToolRecovery {
     kind: "use-supported-file",
     summary: "scan-code only works on supported code files.",
     instruction: `Use scan-code on a supported code file or directory when scanning '${path}', or switch to search-files for plain-text lookup.`,
+    nextTool: "search-files",
+    targetPaths: [path],
   };
 }
 

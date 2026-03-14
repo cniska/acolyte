@@ -38,6 +38,8 @@ describe("error handling helpers", () => {
         kind: "refresh-snippet",
         summary: "Refresh the snippet.",
         instruction: "Reread the file and rebuild the edit.",
+        nextTool: "read-file",
+        targetPaths: ["src/a.ts"],
       }),
     );
     expect(parsed.ok).toBe(true);
@@ -47,6 +49,8 @@ describe("error handling helpers", () => {
       kind: "refresh-snippet",
       summary: "Refresh the snippet.",
       instruction: "Reread the file and rebuild the edit.",
+      nextTool: "read-file",
+      targetPaths: ["src/a.ts"],
     });
   });
 
@@ -58,6 +62,8 @@ describe("error handling helpers", () => {
           kind: "shrink-edit",
           summary: "Shrink the edit.",
           instruction: "Use smaller snippets.",
+          nextTool: "edit-file",
+          targetPaths: ["src/a.ts"],
         }),
       ),
     ).toEqual({
@@ -69,6 +75,8 @@ describe("error handling helpers", () => {
           kind: "shrink-edit",
           summary: "Shrink the edit.",
           instruction: "Use smaller snippets.",
+          nextTool: "edit-file",
+          targetPaths: ["src/a.ts"],
         },
       },
     });
@@ -81,6 +89,8 @@ describe("error handling helpers", () => {
         kind: "refine-pattern",
         summary: "Your AST pattern did not match the current file.",
         instruction: "Refine the pattern from the latest read-file output.",
+        nextTool: "read-file",
+        targetPaths: ["src/code-ops.ts"],
       }),
     );
     expect(parsed.ok).toBe(true);
@@ -90,6 +100,8 @@ describe("error handling helpers", () => {
       kind: "refine-pattern",
       summary: "Your AST pattern did not match the current file.",
       instruction: "Refine the pattern from the latest read-file output.",
+      nextTool: "read-file",
+      targetPaths: ["src/code-ops.ts"],
     });
   });
 
@@ -101,6 +113,8 @@ describe("error handling helpers", () => {
           kind: "use-supported-file",
           summary: "edit-code only works on supported code files.",
           instruction: "Use a supported code file or switch to edit-file.",
+          nextTool: "edit-file",
+          targetPaths: ["notes.md"],
         }),
       ),
     ).toEqual({
@@ -112,6 +126,8 @@ describe("error handling helpers", () => {
           kind: "use-supported-file",
           summary: "edit-code only works on supported code files.",
           instruction: "Use a supported code file or switch to edit-file.",
+          nextTool: "edit-file",
+          targetPaths: ["notes.md"],
         },
       },
     });
@@ -124,6 +140,8 @@ describe("error handling helpers", () => {
         kind: "use-supported-file",
         summary: "scan-code only works on supported code files.",
         instruction: "Use scan-code on a supported code file or directory, or switch to search-files.",
+        nextTool: "search-files",
+        targetPaths: ["config/models.yaml"],
       }),
     );
     expect(parsed.ok).toBe(true);
@@ -133,6 +151,34 @@ describe("error handling helpers", () => {
       kind: "use-supported-file",
       summary: "scan-code only works on supported code files.",
       instruction: "Use scan-code on a supported code file or directory, or switch to search-files.",
+      nextTool: "search-files",
+      targetPaths: ["config/models.yaml"],
+    });
+  });
+
+  test("parseErrorInfo drops invalid tool recovery hints", () => {
+    const parsed = parseErrorInfo({
+      error: {
+        message: "unsupported file",
+        code: TOOL_ERROR_CODES.scanCodeUnsupportedFile,
+        recovery: {
+          tool: "scan-code",
+          kind: "use-supported-file",
+          summary: "scan-code only works on supported code files.",
+          instruction: "Use search-files instead.",
+          nextTool: "run-command",
+          targetPaths: ["config/models.yaml", "", 42],
+        },
+      },
+    });
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.value.recovery).toEqual({
+      tool: "scan-code",
+      kind: "use-supported-file",
+      summary: "scan-code only works on supported code files.",
+      instruction: "Use search-files instead.",
+      targetPaths: ["config/models.yaml"],
     });
   });
 

@@ -38,6 +38,16 @@ export type Evaluator = {
   evaluate: (ctx: EvaluatorContext) => EvalAction;
 };
 
+function formatToolRecoveryDetails(message: string, recovery: NonNullable<LifecycleError["recovery"]>): string {
+  const hints: string[] = [];
+  if (recovery.nextTool) hints.push(`Suggested next tool: ${recovery.nextTool}`);
+  if (recovery.targetPaths && recovery.targetPaths.length > 0) {
+    hints.push(`Suggested paths: ${recovery.targetPaths.join(", ")}`);
+  }
+  if (hints.length === 0) return message;
+  return [message, ...hints].join("\n");
+}
+
 function hasRecoveredFromLastEditFileFailure(ctx: EvaluatorContext): boolean {
   const callLog = scopedCallLog(ctx.session, ctx.taskId);
   let lastFailIdx = -1;
@@ -250,7 +260,7 @@ export const toolRecoveryEvaluator: Evaluator = {
         source: recovery.tool,
         mode: "work",
         summary: recovery.summary,
-        details: currentError.message,
+        details: formatToolRecoveryDetails(currentError.message, recovery),
         instruction: recovery.instruction,
       },
     };

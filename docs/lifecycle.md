@@ -49,3 +49,9 @@ resolve → prepare → generate → evaluate → finalize
 - `src/lifecycle-evaluators.ts` — post-generation evaluators including tool recovery
 - `src/lifecycle-guard-feedback.ts` — guard-event-to-feedback translation
 - `src/error-primitives.ts` — `ToolRecovery` contract carried from tool errors into evaluators
+
+## Tool recovery
+
+- `ToolRecovery` is a tool-owned contract for stable failure recovery.
+- Lifecycle consumes it generically; it does not hardcode tool-specific retry policy.
+- Recovery may include optional next-step hints like a suggested next tool or target paths when the tool can state them concretely.
