@@ -68,6 +68,9 @@ describe("createInstructions", () => {
     expect(out).toContain("Do exactly the requested change");
     expect(out).toContain("Preserve local conventions in the file you are editing");
     expect(out).toContain("keep the file's local relative/absolute reference style");
+    expect(out).toContain("@signal done");
+    expect(out).toContain("@signal no_op");
+    expect(out).toContain("@signal blocked");
   });
 
   test("work mode includes work-specific instructions", () => {

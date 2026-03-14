@@ -25,6 +25,7 @@ const behaviorTraceSummarySchema = z.object({
   searchCalls: z.number().int().nonnegative().optional(),
   writeCalls: z.number().int().nonnegative().optional(),
   preWriteDiscoveryCalls: z.number().int().nonnegative().optional(),
+  lifecycleSignal: z.string().min(1).optional(),
   regenerationCount: z.number().int().nonnegative().optional(),
   regenerationLimitHit: z.boolean().optional(),
   guardBlockedCount: z.number().int().nonnegative().optional(),
@@ -150,6 +151,7 @@ function summarizeTrace(lines: string[]): z.infer<typeof behaviorTraceSummarySch
       regenerationCount: taskLines.filter(
         (line) => line.includes("event=lifecycle.eval.decision") && line.includes("action=regenerate"),
       ).length,
+      lifecycleSignal: parseField([...taskLines].reverse().find((line) => line.includes("event=lifecycle.signal.accepted")) ?? "", "signal"),
       regenerationLimitHit: parseBooleanField(taskLines[taskLines.length - 1] ?? "", "regeneration_limit_hit"),
       guardBlockedCount: countMatching(taskLines, "event=lifecycle.guard"),
       guardFlagSetCount: 0,
@@ -170,6 +172,7 @@ function summarizeTrace(lines: string[]): z.infer<typeof behaviorTraceSummarySch
     searchCalls: parseIntField(summaryLine, "search_calls"),
     writeCalls: parseIntField(summaryLine, "write_calls"),
     preWriteDiscoveryCalls: parseIntField(summaryLine, "pre_write_discovery_calls"),
+    lifecycleSignal: parseField(summaryLine, "lifecycle_signal"),
     regenerationCount: parseIntField(summaryLine, "regeneration_count"),
     regenerationLimitHit: parseBooleanField(summaryLine, "regeneration_limit_hit"),
     guardBlockedCount: parseIntField(summaryLine, "guard_blocked_count"),
@@ -390,7 +393,7 @@ function printRun(run: BehaviorRun): void {
   console.log(`score: ${run.analysis.score.toFixed(2)} (${run.analysis.verdict})`);
   if (run.trace) {
     console.log(
-      `trace: task=${run.trace.taskId ?? "unknown"} model_calls=${run.trace.modelCalls ?? "?"} total_tools=${run.trace.totalToolCalls ?? "?"} unique_tools=${run.trace.uniqueToolCount ?? "?"} read=${run.trace.readCalls ?? "?"} search=${run.trace.searchCalls ?? "?"} write=${run.trace.writeCalls ?? "?"} pre_write_discovery=${run.trace.preWriteDiscoveryCalls ?? "?"} regenerations=${run.trace.regenerationCount ?? "?"} regen_limit_hit=${run.trace.regenerationLimitHit ?? "?"} guard_blocked=${run.trace.guardBlockedCount ?? "?"} guard_flags=${run.trace.guardFlagSetCount ?? "?"} has_error=${run.trace.hasError ?? "?"}`,
+      `trace: task=${run.trace.taskId ?? "unknown"} model_calls=${run.trace.modelCalls ?? "?"} total_tools=${run.trace.totalToolCalls ?? "?"} unique_tools=${run.trace.uniqueToolCount ?? "?"} read=${run.trace.readCalls ?? "?"} search=${run.trace.searchCalls ?? "?"} write=${run.trace.writeCalls ?? "?"} pre_write_discovery=${run.trace.preWriteDiscoveryCalls ?? "?"} signal=${run.trace.lifecycleSignal ?? "?"} regenerations=${run.trace.regenerationCount ?? "?"} regen_limit_hit=${run.trace.regenerationLimitHit ?? "?"} guard_blocked=${run.trace.guardBlockedCount ?? "?"} guard_flags=${run.trace.guardFlagSetCount ?? "?"} has_error=${run.trace.hasError ?? "?"}`,
     );
   }
   console.log(`analysis: ${run.analysis.reasons.join("; ")}`);

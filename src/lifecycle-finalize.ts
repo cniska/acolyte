@@ -56,6 +56,7 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
     search_calls: searchCalls,
     write_calls: writeCalls,
     pre_write_discovery_calls: preWriteDiscoveryCalls,
+    lifecycle_signal: ctx.result?.signal ?? null,
     regeneration_count: ctx.regenerationCount,
     regeneration_limit_hit: ctx.regenerationLimitHit,
     guard_blocked_count: guardStats.blocked,

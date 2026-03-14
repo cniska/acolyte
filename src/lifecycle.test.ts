@@ -12,7 +12,7 @@ import {
 import { consumeLifecycleFeedback, createGenerationInput, createLifecycleFeedbackText } from "./lifecycle-generate";
 import { defaultLifecyclePolicy } from "./lifecycle-policy";
 import { phasePrepare } from "./lifecycle-prepare";
-import { updateRepeatedFailureState } from "./lifecycle-state";
+import { acceptedLifecycleSignal, updateRepeatedFailureState } from "./lifecycle-state";
 import { LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./tool-error-codes";
 import { createSessionContext, recordCall } from "./tool-guards";
 
@@ -211,6 +211,42 @@ describe("verifyCycle", () => {
       result: { text: "No issues found. 0 errors.", toolCalls: [] },
     });
     expect(verifyCycle.evaluate(ctx).type).toBe("done");
+  });
+});
+
+describe("acceptedLifecycleSignal", () => {
+  test("accepts done when no contradiction exists", () => {
+    const ctx = createMockContext({
+      result: { text: "Finished the requested change.", toolCalls: [], signal: "done" },
+    });
+    expect(acceptedLifecycleSignal(ctx)).toBe("done");
+  });
+
+  test("accepts blocked when no contradiction exists", () => {
+    const ctx = createMockContext({
+      result: { text: "Blocked by a missing file.", toolCalls: [], signal: "blocked" },
+    });
+    expect(acceptedLifecycleSignal(ctx)).toBe("blocked");
+  });
+
+  test("rejects no_op after writes happened", () => {
+    const session = createSessionContext("task_noop");
+    session.writeTools = new Set(["edit-file"]);
+    recordCall(session, "edit-file", { path: "src/a.ts" });
+    const ctx = createMockContext({
+      taskId: "task_noop",
+      session,
+      result: { text: "No changes were needed.", toolCalls: [], signal: "no_op" },
+    });
+    expect(acceptedLifecycleSignal(ctx)).toBeUndefined();
+  });
+
+  test("rejects any signal when a current error exists", () => {
+    const ctx = createMockContext({
+      currentError: { message: "verify failed", category: "other" },
+      result: { text: "Finished the requested change.", toolCalls: [], signal: "done" },
+    });
+    expect(acceptedLifecycleSignal(ctx)).toBeUndefined();
   });
 });
 

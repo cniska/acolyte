@@ -76,7 +76,9 @@ async function validateSingleFileBugFixWorkspace(workspace: string): Promise<str
   const issues: string[] = [];
   const content = await readWorkspaceFile(workspace, "src/clamp.ts");
   if (!content.includes("return value;")) issues.push("src/clamp.ts should return value when already in range");
-  if (content.includes("return max;")) issues.push("src/clamp.ts still returns max for in-range values");
+  if (!content.includes("if (value > max) return max;")) {
+    issues.push("src/clamp.ts should still clamp values above max");
+  }
   return issues;
 }
 

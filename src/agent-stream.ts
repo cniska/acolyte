@@ -9,7 +9,7 @@ import type {
 } from "@ai-sdk/provider";
 import { z } from "zod";
 import type { Agent, StreamOptions, StreamOutput } from "./agent-contract";
-import type { GenerateResult, StreamChunk, ToolCallEntry } from "./lifecycle-contract";
+import type { GenerateResult, LifecycleSignal, StreamChunk, ToolCallEntry } from "./lifecycle-contract";
 import { log } from "./log";
 import { createModel } from "./model-factory";
 import { normalizeModel } from "./provider-config";
@@ -27,6 +27,14 @@ function toolsToFunctionTools(tools: Record<string, ToolDefinition>): LanguageMo
     description: tool.description,
     inputSchema: toolInputJsonSchema(tool.inputSchema),
   }));
+}
+
+export function extractLifecycleSignal(text: string): { signal?: LifecycleSignal; text: string } {
+  const match = text.match(/^@signal\s+(done|no_op|blocked)\s*(?:\n|$)/);
+  if (!match) return { text };
+  const signal = match[1] as LifecycleSignal;
+  const stripped = text.slice(match[0].length).trimStart();
+  return { signal, text: stripped };
 }
 
 async function resolveInstructions(instructions: Agent["instructions"]): Promise<string> {
@@ -65,6 +73,7 @@ export function createAgentStream(
     });
 
     const resultPromise = (async (): Promise<GenerateResult> => {
+      let lifecycleSignal: LifecycleSignal | undefined;
       while (true) {
         loopIteration++;
         log.debug("agent-stream.loop.start", { iteration: loopIteration, pending_messages: messages.length });
@@ -105,10 +114,15 @@ export function createAgentStream(
         }
 
         const stepText = stepTextParts.join("");
-        if (stepText.length > 0) fullText += stepText;
+        const parsedStep = extractLifecycleSignal(stepText);
+        if (parsedStep.signal) lifecycleSignal = parsedStep.signal;
+        if (parsedStep.text.length > 0) {
+          fullText += parsedStep.text;
+          streamController.enqueue({ type: "text-delta", payload: { text: parsedStep.text } });
+        }
 
         if (pendingToolCalls.length === 0) {
-          if (nudgeCount < maxNudges && allToolCalls.length > 0 && stepText.trim().length > 0) {
+          if (nudgeCount < maxNudges && allToolCalls.length > 0 && !parsedStep.signal && parsedStep.text.trim().length > 0) {
             nudgeCount++;
             log.debug("agent-stream.nudge", {
               reason: "no_tool_calls",
@@ -116,16 +130,16 @@ export function createAgentStream(
               max_nudges: maxNudges,
               iteration: loopIteration,
               finish_reason: finishReason?.unified ?? "undefined",
-              text_length: stepText.length,
+              text_length: parsedStep.text.length,
               total_tool_calls: allToolCalls.length,
             });
-            messages.push({ role: "assistant", content: [{ type: "text", text: stepText }] });
+            messages.push({ role: "assistant", content: [{ type: "text", text: parsedStep.text }] });
             messages.push({
               role: "user",
               content: [
                 {
                   type: "text",
-                  text: "[system] You stopped before completing the task. If you are done, confirm explicitly. Otherwise, continue working with the available tools.",
+                  text: "[system] You stopped before completing the task. If you are done, use @signal done or @signal no_op. If blocked, use @signal blocked. Otherwise, continue working with the available tools.",
                 },
               ],
             });
@@ -136,8 +150,9 @@ export function createAgentStream(
             iteration: loopIteration,
             finish_reason: finishReason?.unified ?? "undefined",
             finish_reason_raw: JSON.stringify(finishReason ?? null),
-            text_length: stepText.length,
+            text_length: parsedStep.text.length,
             total_tool_calls: allToolCalls.length,
+            signal: lifecycleSignal ?? null,
           });
           break;
         }
@@ -257,7 +272,7 @@ export function createAgentStream(
         text_length: fullText.length,
       });
       streamController.close();
-      return { text: fullText, toolCalls: allToolCalls };
+      return { text: fullText, toolCalls: allToolCalls, ...(lifecycleSignal ? { signal: lifecycleSignal } : {}) };
     })().catch((error) => {
       try {
         streamController.error(error);
@@ -280,7 +295,6 @@ function emitStreamPart(
   switch (part.type) {
     case "text-delta":
       textParts.push(part.delta);
-      controller.enqueue({ type: "text-delta", payload: { text: part.delta } });
       break;
     case "reasoning-delta":
       controller.enqueue({ type: "reasoning-delta", payload: { text: part.delta } });

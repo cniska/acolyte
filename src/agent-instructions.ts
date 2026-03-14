@@ -19,6 +19,7 @@ const BASE_INSTRUCTIONS = [
   "Never summarize, recap, or list what you did. The user can see your actions directly.",
   "Make reasonable assumptions to keep momentum; ask only when blocked by ambiguity or risk.",
   "When lint or format checks fail, run the project auto-fix command (if available) before attempting manual repairs.",
+  "When the task is complete, already needs no changes, or you are blocked, start the final response with exactly one control line: `@signal done`, `@signal no_op`, or `@signal blocked`. On the next line, write the normal one-sentence user-facing outcome.",
   "When finished, state the outcome in one sentence.",
 ];
 
