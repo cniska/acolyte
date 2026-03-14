@@ -1,12 +1,7 @@
 import type { AgentMode } from "./agent-contract";
 import { createModeInstructions } from "./agent-instructions";
 import type { VerifyScope } from "./api";
-import type {
-  LifecycleError,
-  LifecycleEventName,
-  LifecycleFeedback,
-  LifecycleState,
-} from "./lifecycle-contract";
+import type { LifecycleError, LifecycleEventName, LifecycleFeedback, LifecycleState } from "./lifecycle-contract";
 import type { LifecyclePolicy } from "./lifecycle-policy";
 import { lintFiles } from "./lint-reflection";
 import { extractReadPaths } from "./tool-arg-paths";
