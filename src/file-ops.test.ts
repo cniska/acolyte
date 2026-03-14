@@ -43,7 +43,7 @@ describe("path guards", () => {
       editCode({
         workspace: WORKSPACE,
         path: "/etc/hosts",
-        edits: [{ pattern: "console.log($ARG)", replacement: "logger.debug($ARG)" }],
+        edits: [{ op: "replace", pattern: "console.log($ARG)", replacement: "logger.debug($ARG)" }],
       }),
     ).rejects.toThrow("restricted to the workspace or /tmp");
   });
@@ -347,9 +347,9 @@ describe("editCode", () => {
     const result = await editCode({
       workspace: WORKSPACE,
       path: filePath,
-      edits: [{ pattern: "console.log($ARG)", replacement: "logger.debug($ARG)" }],
+      edits: [{ op: "replace", pattern: "console.log($ARG)", replacement: "logger.debug($ARG)" }],
     });
-    expect(result).toContain("matches=2");
+    expect(result.matches).toBe(2);
     const content = await readFile(filePath, "utf8");
     expect(content).toContain('logger.debug("hello")');
     expect(content).not.toContain("console.log");
@@ -379,18 +379,95 @@ describe("editCode", () => {
       path: filePath,
       edits: [
         {
+          op: "replace",
           pattern: "result",
           replacement: "value",
           within: "function second() { $$$BODY }",
         },
       ],
     });
-    expect(result).toContain("matches=2");
+    expect(result.matches).toBe(2);
     const content = await readFile(filePath, "utf8");
     expect(content).toContain("const result = 1;");
     expect(content).toContain("return result;");
     expect(content).toContain("const value = 2;");
     expect(content).toContain("return value;");
+  });
+
+  test("scopes replacements with withinSymbol", async () => {
+    const filePath = `/tmp/acolyte-test-ast-within-symbol-${testUuid()}.ts`;
+    tempFiles.push(filePath);
+    await writeFile(
+      filePath,
+      [
+        "const scanFile = (items: string[]): string[] => {",
+        "  const output: string[] = [];",
+        "  for (const result of items) {",
+        "    output.push(result.toUpperCase());",
+        "  }",
+        "  return output;",
+        "};",
+        "",
+        "const totalMatches = (results: string[]) => results.reduce((sum, result) => sum + result.length, 0);",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    const result = await editCode({
+      workspace: WORKSPACE,
+      path: filePath,
+      edits: [
+        {
+          op: "replace",
+          pattern: "result",
+          replacement: "patternResult",
+          withinSymbol: "scanFile",
+        },
+      ],
+    });
+    expect(result.matches).toBe(2);
+    const content = await readFile(filePath, "utf8");
+    expect(content).toContain("for (const patternResult of items)");
+    expect(content).toContain("output.push(patternResult.toUpperCase());");
+    expect(content).toContain("results.reduce((sum, result) => sum + result.length, 0);");
+  });
+
+  test("supports structured rename edits with withinSymbol", async () => {
+    const filePath = `/tmp/acolyte-test-ast-rename-${testUuid()}.ts`;
+    tempFiles.push(filePath);
+    await writeFile(
+      filePath,
+      [
+        "const scanFile = (items: string[]): string[] => {",
+        "  const output: string[] = [];",
+        "  for (const result of items) {",
+        "    output.push(result.toUpperCase());",
+        "  }",
+        "  return output;",
+        "};",
+        "",
+        "const totalMatches = (results: string[]) => results.reduce((sum, result) => sum + result.length, 0);",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    const result = await editCode({
+      workspace: WORKSPACE,
+      path: filePath,
+      edits: [
+        {
+          op: "rename",
+          from: "result",
+          to: "patternResult",
+          withinSymbol: "scanFile",
+        },
+      ],
+    });
+    expect(result.matches).toBe(2);
+    const content = await readFile(filePath, "utf8");
+    expect(content).toContain("for (const patternResult of items)");
+    expect(content).toContain("output.push(patternResult.toUpperCase());");
+    expect(content).toContain("results.reduce((sum, result) => sum + result.length, 0);");
   });
 
   test("throws when no matches found", async () => {
@@ -401,7 +478,7 @@ describe("editCode", () => {
       editCode({
         workspace: WORKSPACE,
         path: filePath,
-        edits: [{ pattern: "console.log($ARG)", replacement: "logger.debug($ARG)" }],
+        edits: [{ op: "replace", pattern: "console.log($ARG)", replacement: "logger.debug($ARG)" }],
       }),
     ).rejects.toMatchObject({
       code: TOOL_ERROR_CODES.editCodeNoMatch,
@@ -417,7 +494,7 @@ describe("editCode", () => {
       editCode({
         workspace: WORKSPACE,
         path: dirPath,
-        edits: [{ pattern: "console.log($ARG)", replacement: "logger.debug($ARG)" }],
+        edits: [{ op: "replace", pattern: "console.log($ARG)", replacement: "logger.debug($ARG)" }],
       }),
     ).rejects.toThrow("edit-code requires a file path");
   });
@@ -430,7 +507,7 @@ describe("editCode", () => {
       editCode({
         workspace: WORKSPACE,
         path: filePath,
-        edits: [{ pattern: "Title", replacement: "Heading" }],
+        edits: [{ op: "replace", pattern: "Title", replacement: "Heading" }],
       }),
     ).rejects.toMatchObject({
       code: TOOL_ERROR_CODES.editCodeUnsupportedFile,
@@ -446,7 +523,7 @@ describe("editCode", () => {
       editCode({
         workspace: WORKSPACE,
         path: filePath,
-        edits: [{ pattern: "foo: $VALUE", replacement: "bar: $VALUE" }],
+        edits: [{ op: "replace", pattern: "foo: $VALUE", replacement: "bar: $VALUE" }],
       }),
     ).rejects.toMatchObject({
       code: TOOL_ERROR_CODES.editCodeUnsupportedFile,
@@ -462,7 +539,7 @@ describe("editCode", () => {
       editCode({
         workspace: WORKSPACE,
         path: filePath,
-        edits: [{ pattern: "console.log($ARG)", replacement: "logger.debug($MISSING)" }],
+        edits: [{ op: "replace", pattern: "console.log($ARG)", replacement: "logger.debug($MISSING)" }],
       }),
     ).rejects.toMatchObject({
       code: TOOL_ERROR_CODES.editCodeReplacementMetaMismatch,
@@ -477,9 +554,9 @@ describe("editCode", () => {
     const result = await editCode({
       workspace: WORKSPACE,
       path: filePath,
-      edits: [{ pattern: "sum($$$ARGS)", replacement: "total($$$ARGS)" }],
+      edits: [{ op: "replace", pattern: "sum($$$ARGS)", replacement: "total($$$ARGS)" }],
     });
-    expect(result).toContain("matches=2");
+    expect(result.matches).toBe(2);
     const content = await readFile(filePath, "utf8");
     expect(content).toContain("total(a, b);");
     expect(content).toContain("total(c);");
@@ -493,9 +570,9 @@ describe("editCode", () => {
     const result = await editCode({
       workspace: WORKSPACE,
       path: filePath,
-      edits: [{ pattern: "print($ARG)", replacement: "log($ARG)" }],
+      edits: [{ op: "replace", pattern: "print($ARG)", replacement: "log($ARG)" }],
     });
-    expect(result).toContain("matches=2");
+    expect(result.matches).toBe(2);
     const content = await readFile(filePath, "utf8");
     expect(content).toContain('log("hello")');
     expect(content).not.toContain("print");
@@ -508,9 +585,9 @@ describe("editCode", () => {
     const result = await editCode({
       workspace: WORKSPACE,
       path: filePath,
-      edits: [{ pattern: "println!($ARGS)", replacement: "eprintln!($ARGS)" }],
+      edits: [{ op: "replace", pattern: "println!($ARGS)", replacement: "eprintln!($ARGS)" }],
     });
-    expect(result).toContain("matches=2");
+    expect(result.matches).toBe(2);
     const content = await readFile(filePath, "utf8");
     expect(content).toContain("eprintln!");
     expect(content).not.toMatch(/(?<!e)println!/);
@@ -523,9 +600,9 @@ describe("editCode", () => {
     const result = await editCode({
       workspace: WORKSPACE,
       path: filePath,
-      edits: [{ pattern: "println($ARG)", replacement: "print($ARG)" }],
+      edits: [{ op: "replace", pattern: "println($ARG)", replacement: "print($ARG)" }],
     });
-    expect(result).toContain("matches=2");
+    expect(result.matches).toBe(2);
     const content = await readFile(filePath, "utf8");
     expect(content).toContain("print(");
     expect(content).not.toContain("println(");

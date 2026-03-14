@@ -1,7 +1,6 @@
 import { isAbsolute, relative } from "node:path";
 import { z } from "zod";
 import { appConfig } from "./app-config";
-import { editCode, scanCode } from "./code-ops";
 import { deleteTextFile, editFile, findFiles, readSnippets, searchFiles, writeTextFile } from "./file-ops";
 import { t } from "./i18n";
 import { createTool, type ToolkitInput } from "./tool-contract";
@@ -215,70 +214,6 @@ function createSearchFilesTool(input: ToolkitInput) {
   });
 }
 
-function createScanCodeTool(input: ToolkitInput) {
-  const { workspace, session, onOutput } = input;
-  return createTool({
-    id: "scan-code",
-    label: t("tool.label.review"),
-    category: "search",
-    permissions: ["read"],
-    description:
-      "Scan files for structural code patterns using AST matching. Pass `paths` as an array of file or directory paths and `patterns` as an array of ast-grep patterns with `$VAR` metavariables (e.g. [`export function $NAME($$$PARAMS)`, `import $SPEC from $MOD`]).",
-    instruction:
-      "Use `scan-code` for AST pattern matching. Always pass `paths` and `patterns` as arrays. Batch multiple files and patterns in one call (e.g. paths=[`src/a.ts`, `src/b.ts`], patterns=[`export function $NAME`, `import $SPEC from $MOD`]). Metavariable names (`$NAME`, `$ARG`) are wildcards — they match any node, not literal text. Use it to map rename/refactor targets before `edit-code`, not for plain text replacements or post-edit reassurance on a bounded named-file task. For keyword or regex searches prefer `search-files`.",
-    inputSchema: z.object({
-      paths: z.array(z.string().min(1)).min(1),
-      patterns: z.array(z.string().min(1)).min(1),
-      language: z.string().optional(),
-      maxResults: z.number().int().min(1).max(200).optional(),
-    }),
-    outputSchema: z.object({
-      kind: z.literal("scan-code"),
-      paths: z.array(z.string().min(1)),
-      patterns: z.array(z.string().min(1)),
-      output: z.string(),
-    }),
-    execute: async (toolInput) => {
-      return runTool(session, "scan-code", toolInput, async (toolCallId) => {
-        const paths = normalizeUniquePaths(toolInput.paths);
-        const unique = Array.from(new Set(paths.map((path) => toDisplayPath(path, workspace))));
-        if (unique.length > 0) {
-          const shown = unique.slice(0, TOOL_OUTPUT_LIMITS.inlineFiles);
-          const remaining = unique.length - shown.length;
-          onOutput({
-            toolName: "scan-code",
-            content: {
-              kind: "file-header",
-              label: t("tool.label.review"),
-              count: unique.length,
-              targets: shown,
-              omitted: remaining > 0 ? remaining : undefined,
-            },
-            toolCallId,
-          });
-        }
-        const baseBudget = appConfig.agent.toolOutputBudget.scanCode;
-        const count = paths.length * toolInput.patterns.length;
-        const budget = {
-          maxChars: Math.max(400, Math.floor(baseBudget.maxChars / count) * count),
-          maxLines: Math.max(20, Math.floor(baseBudget.maxLines / count) * count),
-        };
-        const result = compactToolOutput(
-          await scanCode({
-            workspace,
-            paths,
-            pattern: toolInput.patterns,
-            language: toolInput.language,
-            maxResults: toolInput.maxResults ?? 50,
-          }),
-          budget,
-        );
-        return { kind: "scan-code", paths, patterns: toolInput.patterns, output: result };
-      });
-    },
-  });
-}
-
 function createReadFileTool(input: ToolkitInput) {
   const { workspace, session, onOutput } = input;
   return createTool({
@@ -400,63 +335,6 @@ function createEditFileTool(input: ToolkitInput) {
   });
 }
 
-function createEditCodeTool(input: ToolkitInput) {
-  const { workspace, session, onOutput } = input;
-  const outputSchema = z.object({
-    kind: z.literal("edit-code"),
-    path: z.string().min(1),
-    files: z.number().int().nonnegative(),
-    added: z.number().int().nonnegative(),
-    removed: z.number().int().nonnegative(),
-    output: z.string(),
-  });
-  return createTool({
-    id: "edit-code",
-    label: t("tool.label.edit"),
-    category: "write",
-    permissions: ["read", "write"],
-    description:
-      "Edit code with AST pattern matching. Pass `edits` as [{pattern, replacement, within?}] using `$VAR` metavariables (e.g. pattern=`console.log($ARG)` replacement=`logger.debug($ARG)`). Use optional `within` to constrain matches to one enclosing helper/declaration/block, for example pattern=`result` replacement=`patternResult` within=`const scanFile = ($$$ARGS) => { $$$BODY }`. `path` must be a specific file, not '.' or a directory. For non-code files use `edit-file`.",
-    instruction:
-      'Use `edit-code` for AST-aware rename/refactor work or structural code rewrites with AST `edits` array. Do not use plain text snippets as AST patterns, and do not use `edit-code` for markdown, docs, or repeated plain-text replacements in one known file. `path` must be a concrete file path (not `.` or a directory), and you should read that file directly right before editing it. When the change must stay inside one named helper, declaration, or block, add `within` with an enclosing AST pattern and keep the inner `pattern` narrow. For example, to rename `result` only inside `scanFile`, use `pattern: "result"`, `replacement: "patternResult"`, and `within: "const scanFile = ($$$ARGS) => { $$$BODY }"`. If `edit-code` reports no AST matches, refine the `pattern` or `within` clause against the latest read-file text for that same file instead of broadening the rewrite to unrelated matches. The `edit-code` result already includes a diff preview. If that preview shows the requested bounded change, stop instead of re-reading, searching, or reviewing the same file again in work mode. Prefer `edit-file` for single-location text edits and for repeated text replacements within one file.',
-    inputSchema: z.object({
-      path: z.string().min(1),
-      edits: z
-        .array(
-          z.object({
-            pattern: z.string().min(1),
-            replacement: z.string(),
-            within: z.string().min(1).optional(),
-          }),
-        )
-        .min(1),
-    }),
-    outputSchema,
-    execute: async (toolInput) => {
-      return runTool(session, "edit-code", toolInput, async (toolCallId) => {
-        const rawResult = await editCode({
-          workspace,
-          path: toolInput.path,
-          edits: toolInput.edits,
-        });
-        emitDiffSummaryHeader("edit-code", t("tool.label.edit"), toolInput.path, rawResult, onOutput, toolCallId);
-        for (const content of numberedUnifiedDiffLines(rawResult, WRITE_TOOL_PREVIEW_MAX_LINES))
-          onOutput({ toolName: "edit-code", content, toolCallId });
-        const totals = diffTotals(rawResult);
-        const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.astEdit);
-        return {
-          kind: "edit-code",
-          path: toolInput.path,
-          files: totals.files > 0 ? totals.files : 1,
-          added: totals.added,
-          removed: totals.removed,
-          output: result,
-        };
-      });
-    },
-  });
-}
-
 function createCreateFileTool(input: ToolkitInput) {
   const { workspace, session, onOutput } = input;
   return createTool({
@@ -550,10 +428,8 @@ export function createFileToolkit(input: ToolkitInput) {
   return {
     findFiles: createFindFilesTool(input),
     searchFiles: createSearchFilesTool(input),
-    scanCode: createScanCodeTool(input),
     readFile: createReadFileTool(input),
     editFile: createEditFileTool(input),
-    editCode: createEditCodeTool(input),
     createFile: createCreateFileTool(input),
     deleteFile: createDeleteFileTool(input),
   };

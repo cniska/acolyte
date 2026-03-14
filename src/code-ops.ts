@@ -2,6 +2,7 @@ import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import * as napi from "@ast-grep/napi";
 import { invariant } from "./assert";
+import type { EditCodeEdit, EditCodeRenameEdit } from "./code-contract";
 import { createToolError, type EditCodeRecoveryKind, TOOL_ERROR_CODES, type ToolRecovery } from "./error-primitives";
 import { createDiff, displayPathForDiff, ensurePathWithinAllowedRoots, IGNORED_DIRS } from "./tool-utils";
 
@@ -21,6 +22,7 @@ function editCodeRecovery(path: string, kind: EditCodeRecoveryKind): ToolRecover
         summary: "Your AST pattern did not match the current file.",
         instruction:
           `Keep the change in '${path}' and refine the ast-grep pattern to match the actual syntax in the latest read-file output. ` +
+          "For a helper-scoped variable rename, use the identifier itself as `pattern` and prefer `withinSymbol` with the enclosing helper name instead of matching the whole loop or statement. " +
           "Do not switch to plain-text snippets unless you are changing to edit-file.",
       };
     case "fix-replacement":
@@ -123,11 +125,48 @@ function resolveReplacementMetavariable(match: napi.SgNode, metavar: string, sou
   return captured.text();
 }
 
+function nodeHasWithinSymbol(node: napi.SgNode, symbol: string): boolean {
+  if (node.kind() === "function_declaration") {
+    const name = node.field("name");
+    return name?.text() === symbol;
+  }
+  if (node.kind() === "method_definition") {
+    const name = node.field("name");
+    return name?.text() === symbol;
+  }
+  if (node.kind() === "variable_declarator") {
+    const name = node.field("name");
+    return name?.text() === symbol;
+  }
+  return false;
+}
+
+function matchIsWithinSymbol(match: napi.SgNode, symbol: string): boolean {
+  let current: napi.SgNode | null = match;
+  while (current) {
+    if (nodeHasWithinSymbol(current, symbol)) return true;
+    current = current.parent();
+  }
+  return false;
+}
+
+function isRenameEdit(edit: EditCodeEdit): edit is EditCodeRenameEdit {
+  return edit.op === "rename";
+}
+
+export type EditCodeResult = {
+  path: string;
+  edits: number;
+  matches: number;
+  diff: string;
+  output: string;
+};
+
 export async function editCode(input: {
   workspace: string;
   path: string;
-  edits: Array<{ pattern: string; replacement: string; within?: string }>;
-}): Promise<string> {
+  edits: EditCodeEdit[];
+}): Promise<EditCodeResult> {
   const absPath = ensurePathWithinAllowedRoots(input.path, "AST edit", input.workspace);
   const pathStats = await stat(absPath);
   if (!pathStats.isFile()) throw new Error(`edit-code requires a file path, got: ${input.path}`);
@@ -149,7 +188,11 @@ export async function editCode(input: {
 
   for (const edit of input.edits) {
     const tree = napi.parse(langEnum ?? langName, current);
-    const allMatches = tree.root().findAll({ rule: { pattern: edit.pattern } });
+    const pattern = isRenameEdit(edit) ? edit.from : edit.pattern;
+    const replacement = isRenameEdit(edit) ? edit.to : edit.replacement;
+    const allMatches = tree
+      .root()
+      .findAll(isRenameEdit(edit) ? { rule: { all: [{ kind: "identifier" }, { pattern }] } } : { rule: { pattern } });
     let matches = allMatches;
     if (edit.within) {
       const scopes = tree.root().findAll({ rule: { pattern: edit.within } });
@@ -161,30 +204,36 @@ export async function editCode(input: {
         });
       });
     }
+    if (edit.withinSymbol) {
+      const symbol = edit.withinSymbol;
+      matches = matches.filter((match) => matchIsWithinSymbol(match, symbol));
+    }
     if (matches.length === 0) {
       throw createToolError(
         TOOL_ERROR_CODES.editCodeNoMatch,
-        `No AST matches found for pattern: ${edit.pattern}${edit.within ? ` within: ${edit.within}` : ""}`,
+        `No AST matches found for pattern: ${pattern}${edit.within ? ` within: ${edit.within}` : ""}${edit.withinSymbol ? ` withinSymbol: ${edit.withinSymbol}` : ""}`,
         undefined,
         editCodeRecovery(input.path, "refine-pattern"),
       );
     }
     totalMatches += matches.length;
 
-    const patternMetavars = extractMetavariables(edit.pattern);
-    const replacementMetavars = extractMetavariables(edit.replacement);
-    const unknownReplacementMetavars = replacementMetavars.filter((metavar) => !patternMetavars.includes(metavar));
-    if (unknownReplacementMetavars.length > 0) {
-      throw createToolError(
-        TOOL_ERROR_CODES.editCodeReplacementMetaMismatch,
-        `Replacement references metavariables not present in pattern: ${unknownReplacementMetavars.join(", ")}`,
-        undefined,
-        editCodeRecovery(input.path, "fix-replacement"),
-      );
+    const patternMetavars = isRenameEdit(edit) ? [] : extractMetavariables(edit.pattern);
+    const replacementMetavars = isRenameEdit(edit) ? [] : extractMetavariables(edit.replacement);
+    if (!isRenameEdit(edit)) {
+      const unknownReplacementMetavars = replacementMetavars.filter((metavar) => !patternMetavars.includes(metavar));
+      if (unknownReplacementMetavars.length > 0) {
+        throw createToolError(
+          TOOL_ERROR_CODES.editCodeReplacementMetaMismatch,
+          `Replacement references metavariables not present in pattern: ${unknownReplacementMetavars.join(", ")}`,
+          undefined,
+          editCodeRecovery(input.path, "fix-replacement"),
+        );
+      }
     }
     const replacements: Array<{ start: number; end: number; replacement: string }> = [];
     for (const match of matches) {
-      let replaced = edit.replacement;
+      let replaced = replacement;
       for (const metavar of replacementMetavars) {
         replaced = replaced.replaceAll(metavar, resolveReplacementMetavariable(match, metavar, current));
       }
@@ -203,7 +252,14 @@ export async function editCode(input: {
 
   const relativePath = displayPathForDiff(absPath, input.workspace);
   const diff = createDiff(relativePath, original, current);
-  return [`path=${absPath}`, `edits=${input.edits.length}`, `matches=${totalMatches}`, "", diff].join("\n");
+  const output = [`path=${absPath}`, `edits=${input.edits.length}`, `matches=${totalMatches}`, "", diff].join("\n");
+  return {
+    path: absPath,
+    edits: input.edits.length,
+    matches: totalMatches,
+    diff,
+    output,
+  };
 }
 
 export async function scanCode(input: {

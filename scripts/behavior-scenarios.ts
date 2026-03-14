@@ -9,6 +9,7 @@ const behaviorScenarioIdSchema = z.enum([
   "two-file-rename",
   "two-file-deps-rename",
   "bounded-return-fix",
+  "scoped-edit-code-rename",
 ]);
 
 export type BehaviorScenarioId = z.infer<typeof behaviorScenarioIdSchema>;
@@ -386,6 +387,66 @@ function validateBoundedReturnFixTrace(traceLines: string[]): string[] {
   return issues;
 }
 
+async function createScopedEditCodeRenameWorkspace(workspace: string): Promise<void> {
+  await writeWorkspaceFile(
+    workspace,
+    "src/code-ops.ts",
+    [
+      "export function scanCode(results: string[]): string {",
+      "  const totalMatches = () => results.reduce((sum, result) => sum + result.length, 0);",
+      "  const scanFile = (items: string[]): string[] => {",
+      "    const output: string[] = [];",
+      "    for (const result of items) {",
+      "      output.push(result.toUpperCase());",
+      "    }",
+      "    return output;",
+      "  };",
+      "  const lines = scanFile(results);",
+      "  return totalMatches() + ':' + lines.join(',');",
+      "}",
+      "",
+    ].join("\n"),
+  );
+}
+
+async function validateScopedEditCodeRenameWorkspace(workspace: string): Promise<string[]> {
+  const issues: string[] = [];
+  const content = await readWorkspaceFile(workspace, "src/code-ops.ts");
+  if (!content.includes("for (const patternResult of items)")) {
+    issues.push("scanFile loop variable should be renamed to patternResult");
+  }
+  if (!content.includes("output.push(patternResult.toUpperCase());")) {
+    issues.push("scanFile loop body should use patternResult");
+  }
+  if (!content.includes("results.reduce((sum, result) => sum + result.length, 0)")) {
+    issues.push("totalMatches reducer should keep the outer result variable unchanged");
+  }
+  if (content.includes("sum + patternResult.length")) {
+    issues.push("outer totalMatches reducer should not rename result to patternResult");
+  }
+  return issues;
+}
+
+function validateScopedEditCodeRenameTrace(traceLines: string[]): string[] {
+  const issues: string[] = [];
+  const toolCallLines = traceLines.filter((line) => line.includes("event=lifecycle.tool.call"));
+  const firstTool = toolCallLines[0];
+  if (!firstTool || !firstTool.includes("tool=read-file") || !firstTool.includes("src/code-ops.ts")) {
+    issues.push("first tool call should be read-file on src/code-ops.ts");
+  }
+  const editCodeCalls = toolCallLines.filter(
+    (line) => line.includes("tool=edit-code") && line.includes("path=src/code-ops.ts"),
+  ).length;
+  if (editCodeCalls === 0) issues.push("scoped edit-code scenario should use edit-code on src/code-ops.ts");
+  if (editCodeCalls > 2) {
+    issues.push(`scoped edit-code scenario should use at most 2 edit-code calls, saw ${editCodeCalls}`);
+  }
+  if (toolCallLines.some((line) => line.includes("tool=edit-file") && line.includes("path=src/code-ops.ts"))) {
+    issues.push("scoped edit-code scenario should not fall back to edit-file on src/code-ops.ts");
+  }
+  return issues;
+}
+
 export const BEHAVIOR_SCENARIOS: BehaviorScenario[] = [
   {
     id: "docs-link-fix",
@@ -441,6 +502,16 @@ export const BEHAVIOR_SCENARIOS: BehaviorScenario[] = [
     setup: createBoundedReturnFixWorkspace,
     validate: validateBoundedReturnFixWorkspace,
     validateTrace: validateBoundedReturnFixTrace,
+  },
+  {
+    id: "scoped-edit-code-rename",
+    description: "Scoped helper-only rename using edit-code with within.",
+    prompt:
+      'In src/code-ops.ts, rename the loop variable `result` to `patternResult` inside the `scanFile` helper only. Use `edit-code` with a structured rename edit like { op: "rename", from: "result", to: "patternResult", withinSymbol: "scanFile" }. Update only that file, then stop.',
+    expectedChanges: ["src/code-ops.ts"],
+    setup: createScopedEditCodeRenameWorkspace,
+    validate: validateScopedEditCodeRenameWorkspace,
+    validateTrace: validateScopedEditCodeRenameTrace,
   },
 ];
 

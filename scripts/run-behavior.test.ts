@@ -37,9 +37,10 @@ describe("behavior scenarios", () => {
     expect(() => parseBehaviorScenarioId("wrong")).toThrow();
   });
 
-  test("includes bounded-return-fix and two-file-deps-rename scenarios", () => {
+  test("includes bounded-return-fix, two-file-deps-rename, and scoped-edit-code-rename scenarios", () => {
     expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "bounded-return-fix")).toBe(true);
     expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "two-file-deps-rename")).toBe(true);
+    expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "scoped-edit-code-rename")).toBe(true);
   });
 });
 
