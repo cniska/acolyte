@@ -14,7 +14,7 @@ export function formatThoughtDuration(ms: number): string {
 
 export function formatCompactNumber(n: number): string {
   if (n < 1000) return String(n);
-  if (n < 100000) return `${(n / 1000).toFixed(1)}k`;
+  if (n < 10000) return `${(n / 1000).toFixed(1)}k`;
   return `${Math.round(n / 1000)}k`;
 }
 
