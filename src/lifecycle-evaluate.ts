@@ -5,6 +5,7 @@ import {
   editFileFindNotFoundEvaluator,
   type Evaluator,
   guardRecoveryEvaluator,
+  incompleteRepeatedEditEvaluator,
   lintEvaluator,
   multiMatchEditEvaluator,
   oversizedEditSnippetEvaluator,
@@ -17,6 +18,7 @@ import { acceptedLifecycleSignal, clearVerifyOutcomeForFeedback, updateRepeatedF
 
 const EVALUATORS: Evaluator[] = [
   guardRecoveryEvaluator,
+  incompleteRepeatedEditEvaluator,
   multiMatchEditEvaluator,
   oversizedEditSnippetEvaluator,
   editFileFindNotFoundEvaluator,

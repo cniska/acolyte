@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { AgentMode } from "./agent-contract";
 import { createModeInstructions } from "./agent-instructions";
 import type { VerifyScope } from "./api";
@@ -57,6 +59,39 @@ function findLastEditFilePath(ctx: EvaluatorContext): string | undefined {
     if (typeof path === "string" && path.trim().length > 0) return path.trim();
   }
   return undefined;
+}
+
+function findLastSuccessfulEditFileEntry(ctx: EvaluatorContext):
+  | { path: string; edits: Array<{ find?: string; replace?: string }> }
+  | undefined {
+  const callLog = scopedCallLog(ctx.session, ctx.taskId);
+  for (let i = callLog.length - 1; i >= 0; i -= 1) {
+    const entry = callLog[i];
+    if (entry?.toolName !== "edit-file" || entry.success === false) continue;
+    const path = entry.args?.path;
+    const edits = entry.args?.edits;
+    if (typeof path !== "string" || !Array.isArray(edits)) continue;
+    return { path: path.trim(), edits };
+  }
+  return undefined;
+}
+
+function isEachOccurrenceTask(message: string): boolean {
+  const normalized = message.toLowerCase();
+  return /\b(each|every)\b/.test(normalized) || /\ball\b/.test(normalized) && /\b(occurrence|instance|match)\b/.test(normalized);
+}
+
+function extractRepeatedEditLiteral(message: string): string | undefined {
+  const match = message.match(/replace\s+(?:each|every|all(?:\s+\w+)?)?\s*['"`]([^'"`]+)['"`]\s+with\s+['"`][^'"`]+['"`]/i);
+  return match?.[1];
+}
+
+function readWorkspaceFile(workspace: string, path: string): string | undefined {
+  try {
+    return readFileSync(join(workspace, path), "utf8");
+  } catch {
+    return undefined;
+  }
 }
 
 function hasSuccessfulWriteForCurrentTask(ctx: EvaluatorContext): boolean {
@@ -153,6 +188,41 @@ export const guardRecoveryEvaluator: Evaluator = {
     if (!hasPendingFeedback) return { type: "done" };
     ctx.debug("lifecycle.eval.guard_recovery", { mode: ctx.mode, error: ctx.currentError.message });
     return { type: "regenerate" };
+  },
+};
+
+export const incompleteRepeatedEditEvaluator: Evaluator = {
+  id: "incomplete-repeated-edit",
+  evaluate(ctx) {
+    if (!ctx.result || !ctx.workspace) return { type: "done" };
+    if (ctx.mode !== "work" || ctx.initialMode !== "work") return { type: "done" };
+    if (ctx.currentError) return { type: "done" };
+    if (!isEachOccurrenceTask(ctx.request.message)) return { type: "done" };
+    const repeatedLiteral = extractRepeatedEditLiteral(ctx.request.message);
+    if (!repeatedLiteral) return { type: "done" };
+
+    const lastEdit = findLastSuccessfulEditFileEntry(ctx);
+    if (!lastEdit) return { type: "done" };
+
+    const content = readWorkspaceFile(ctx.workspace, lastEdit.path);
+    if (!content) return { type: "done" };
+
+    if (!content.includes(repeatedLiteral)) return { type: "done" };
+
+    ctx.debug("lifecycle.eval.incomplete_repeated_edit", {
+      path: lastEdit.path,
+      remaining_find: repeatedLiteral.slice(0, 60),
+    });
+    return {
+      type: "regenerate",
+      feedback: {
+        source: "multi-match",
+        mode: "work",
+        summary: "The requested repeated edit is not complete yet.",
+        instruction:
+          "The file still contains at least one remaining occurrence of the text you were asked to replace. Use one more bounded edit-file call on the same file to cover the remaining visible matches, then stop.",
+      },
+    };
   },
 };
 

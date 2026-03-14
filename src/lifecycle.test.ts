@@ -1,3 +1,4 @@
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { describe, expect, test } from "bun:test";
 import { createErrorStats } from "./error-handling";
 import { scheduleMemoryCommit, shouldCommitMemory } from "./lifecycle";
@@ -6,6 +7,7 @@ import { recoveryActionForError } from "./lifecycle-evaluate";
 import {
   editFileFindNotFoundEvaluator,
   guardRecoveryEvaluator,
+  incompleteRepeatedEditEvaluator,
   multiMatchEditEvaluator,
   oversizedEditSnippetEvaluator,
   repeatedFailureEvaluator,
@@ -264,6 +266,38 @@ describe("acceptedLifecycleSignal", () => {
     });
     expect(acceptedLifecycleSignal(ctx)).toBeUndefined();
   });
+
+  test("rejects done when each-occurrence edit leaves matching text behind", async () => {
+    const workspace = `/tmp/acolyte-signal-repeat-${crypto.randomUUID()}`;
+    await mkdir(`${workspace}/src`, { recursive: true });
+    await writeFile(`${workspace}/src/lifecycle-state.ts`, "function f(): undefined { return undefined; }\n", "utf8");
+    const session = createSessionContext("task_repeat_signal");
+    session.callLog = [
+      {
+        toolName: "edit-file",
+        args: {
+          path: "src/lifecycle-state.ts",
+          edits: [{ find: "return undefined;", replace: "return;" }],
+        },
+        taskId: "task_repeat_signal",
+        success: true,
+      },
+    ];
+    const ctx = createMockContext({
+      workspace,
+      taskId: "task_repeat_signal",
+      session,
+      request: {
+        model: "gpt-5-mini",
+        message:
+          "In src/lifecycle-state.ts, replace each 'return undefined;' with 'return;' where the function already returns undefined.",
+        history: [],
+      },
+      result: { text: "Finished the requested change.", toolCalls: [], signal: "done" },
+    });
+    expect(acceptedLifecycleSignal(ctx)).toBeUndefined();
+    await rm(workspace, { recursive: true, force: true });
+  });
 });
 
 describe("phaseFinalize", () => {
@@ -384,6 +418,78 @@ describe("guardRecoveryEvaluator", () => {
     });
 
     expect(guardRecoveryEvaluator.evaluate(ctx)).toEqual({ type: "done" });
+  });
+});
+
+describe("incompleteRepeatedEditEvaluator", () => {
+  test("regenerates when each-occurrence task leaves edited literal behind", async () => {
+    const session = createSessionContext("task_repeat_edit");
+    session.callLog = [
+      {
+        toolName: "edit-file",
+        args: {
+          path: "src/lifecycle-state.ts",
+          edits: [{ find: "return undefined;", replace: "return;" }],
+        },
+        taskId: "task_repeat_edit",
+        success: true,
+      },
+    ];
+    const workspace = `/tmp/acolyte-repeat-edit-${crypto.randomUUID()}`;
+    await mkdir(`${workspace}/src`, { recursive: true });
+    await writeFile(`${workspace}/src/lifecycle-state.ts`, "function f(): undefined { return undefined; }\n", "utf8");
+    const ctx = createMockContext({
+      workspace,
+      taskId: "task_repeat_edit",
+      session,
+      request: {
+        model: "gpt-5-mini",
+        message:
+          "In src/lifecycle-state.ts, replace each 'return undefined;' with 'return;' where the function already returns undefined.",
+        history: [],
+      },
+      result: { text: "Done.", toolCalls: [], signal: "done" },
+    });
+    const action = incompleteRepeatedEditEvaluator.evaluate(ctx);
+    expect(action.type).toBe("regenerate");
+    if (action.type === "regenerate") {
+      expect(action.feedback?.summary).toBe("The requested repeated edit is not complete yet.");
+      expect(action.feedback?.instruction).toContain("remaining occurrence");
+    }
+    await rm(workspace, { recursive: true, force: true });
+  });
+
+  test("returns done when repeated edit is complete", async () => {
+    const session = createSessionContext("task_repeat_edit");
+    session.callLog = [
+      {
+        toolName: "edit-file",
+        args: {
+          path: "src/lifecycle-state.ts",
+          edits: [{ find: "return undefined;", replace: "return;" }],
+        },
+        taskId: "task_repeat_edit",
+        success: true,
+      },
+    ];
+    const workspace = `/tmp/acolyte-repeat-edit-${crypto.randomUUID()}`;
+    await mkdir(`${workspace}/src`, { recursive: true });
+    await writeFile(`${workspace}/src/lifecycle-state.ts`, "function f(): undefined { return; }\n", "utf8");
+    const ctx = createMockContext({
+      workspace,
+      taskId: "task_repeat_edit",
+      session,
+      request: {
+        model: "gpt-5-mini",
+        message:
+          "In src/lifecycle-state.ts, replace each 'return undefined;' with 'return;' where the function already returns undefined.",
+        history: [],
+      },
+      result: { text: "Done.", toolCalls: [], signal: "done" },
+    });
+
+    expect(incompleteRepeatedEditEvaluator.evaluate(ctx).type).toBe("done");
+    await rm(workspace, { recursive: true, force: true });
   });
 });
 
