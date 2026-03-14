@@ -29,6 +29,7 @@ describe("createModeInstructions", () => {
     expect(out).toContain("preserve the relative or absolute form already used in that file");
     expect(out).toContain("keep the change as small as the request allows");
     expect(out).toContain("repeated literal replacements in one known file");
+    expect(out).toContain("do not signal completion after the first hit");
     expect(out).toContain("make the requested change and stop");
     expect(out).toContain("trust the edit preview and the text you already have");
     expect(out).toContain("do not review, find, search, or scan that same file again in work mode");
@@ -74,6 +75,7 @@ describe("createInstructions", () => {
     expect(out).toContain("Do not use plain text snippets as AST patterns");
     expect(out).toContain("do not re-read the same file unless the edit fails");
     expect(out).toContain("If that preview shows the requested bounded change, stop");
+    expect(out).toContain("completion means no requested matches remain in the latest file text");
     expect(out).toContain("call `create-file` with full content");
   });
 });

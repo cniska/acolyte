@@ -25,6 +25,7 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
       "For existing link or path fixes, preserve the relative or absolute form already used in that file instead of rewriting it to a new global style.",
       "For small fixes in an existing file, use exact `find`/`replace` edits and keep the change as small as the request allows.",
       "For repeated literal replacements in one known file, do not use `search-files`, `scan-code`, or extra rereads after the initial direct read. Make one consolidated `edit-file` call.",
+      "For bounded 'each'/'every'/'all' replacements in one named file, do not signal completion after the first hit; finish only when the latest file text and edit preview show no remaining requested matches in that file.",
       "For explicit bounded fixes, make the requested change and stop.",
       "For small named-file tasks, trust the edit preview and the text you already have.",
       "When a bounded edit in a named file succeeds, do not review, find, search, or scan that same file again in work mode unless the user asked for verification or the edit failed.",
