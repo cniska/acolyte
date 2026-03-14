@@ -71,6 +71,7 @@ function formatShare(tokens: number, total: number): string {
 
 export function formatUsageOutput(last: SessionTokenUsageEntry | null, all: SessionTokenUsageEntry[]): string {
   if (!last) return t("chat.usage.none");
+  const promptInput = last.promptBreakdown?.usedTokens ?? last.usage.inputTokens;
   const totals = all.reduce(
     (acc, entry) => {
       acc.input += entry.usage.inputTokens;
@@ -100,22 +101,22 @@ export function formatUsageOutput(last: SessionTokenUsageEntry | null, all: Sess
           [
             t("chat.usage.metric.system"),
             formatUsageValue(breakdown.systemTokens),
-            formatShare(breakdown.systemTokens, last.usage.inputTokens),
+            formatShare(breakdown.systemTokens, promptInput),
           ],
           [
             t("chat.usage.metric.tools"),
             formatUsageValue(breakdown.toolTokens),
-            formatShare(breakdown.toolTokens, last.usage.inputTokens),
+            formatShare(breakdown.toolTokens, promptInput),
           ],
           [
             t("chat.usage.metric.memory"),
             formatUsageValue(breakdown.memoryTokens),
-            formatShare(breakdown.memoryTokens, last.usage.inputTokens),
+            formatShare(breakdown.memoryTokens, promptInput),
           ],
           [
             t("chat.usage.metric.messages"),
             formatUsageValue(breakdown.messageTokens),
-            formatShare(breakdown.messageTokens, last.usage.inputTokens),
+            formatShare(breakdown.messageTokens, promptInput),
           ],
         ],
         [14, 12, 12],

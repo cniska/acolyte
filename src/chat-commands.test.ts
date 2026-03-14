@@ -73,6 +73,34 @@ describe("chat-commands", () => {
     expect(output).toContain("context trimmed (8/42 history messages)");
   });
 
+  test("formatUsageOutput shares use prompt breakdown total", () => {
+    const usage: SessionTokenUsageEntry = {
+      id: "row_1",
+      usage: {
+        inputTokens: 50,
+        outputTokens: 2,
+        totalTokens: 52,
+      },
+      promptBreakdown: {
+        budgetTokens: 1000,
+        usedTokens: 100,
+        systemTokens: 20,
+        toolTokens: 30,
+        memoryTokens: 10,
+        messageTokens: 40,
+      },
+    };
+    const output = formatUsageOutput(usage, [usage]);
+    const systemLine = output.split("\n").find((line) => line.includes("System"));
+    expect(systemLine).toContain("20%");
+    const toolLine = output.split("\n").find((line) => line.includes("Tools"));
+    expect(toolLine).toContain("30%");
+    const memoryLine = output.split("\n").find((line) => line.includes("Memory"));
+    expect(memoryLine).toContain("10%");
+    const messageLine = output.split("\n").find((line) => line.includes("Messages"));
+    expect(messageLine).toContain("40%");
+  });
+
   test("presentStatusOutput renders command presentation block", () => {
     const rendered = presentStatusOutput({
       providers: ["openai"],

@@ -7,11 +7,48 @@ import { streamErrorSchema } from "./stream-error";
 import type { TaskId, TaskRecord } from "./task-contract";
 import { toolOutputSchema } from "./tool-output-content";
 
+type UsageLikePayload = {
+  inputTokens?: unknown;
+  outputTokens?: unknown;
+  totalTokens?: unknown;
+  promptTokens?: unknown;
+  completionTokens?: unknown;
+  inputBudgetTokens?: unknown;
+  inputTruncated?: unknown;
+  promptBudgetTokens?: unknown;
+  promptTruncated?: unknown;
+};
+
+type ParsedUsagePayload = {
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  inputBudgetTokens?: number;
+  inputTruncated?: boolean;
+};
+
 export interface ClientOptions {
   apiUrl: string;
   apiKey?: string;
   replyTimeoutMs?: number;
 }
+
+const streamUsageEventSchema = z
+  .object({
+    type: z.literal("usage"),
+    inputTokens: z.number().optional(),
+    outputTokens: z.number().optional(),
+    promptTokens: z.number().optional(),
+    completionTokens: z.number().optional(),
+  })
+  .refine(
+    (value) =>
+      (typeof value.inputTokens === "number" && typeof value.outputTokens === "number") ||
+      (typeof value.promptTokens === "number" && typeof value.completionTokens === "number"),
+    {
+      message: "usage event missing token counters",
+    },
+  );
 
 export const streamEventSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("text-delta"), text: z.string() }),
@@ -36,7 +73,7 @@ export const streamEventSchema = z.discriminatedUnion("type", [
     errorCode: z.string().optional(),
     error: streamErrorSchema.optional(),
   }),
-  z.object({ type: z.literal("usage"), inputTokens: z.number(), outputTokens: z.number() }),
+  streamUsageEventSchema,
   z.object({ type: z.literal("status"), message: z.string() }),
   z.object({
     type: z.literal("error"),
@@ -79,7 +116,40 @@ export function parseRpcServerMessage(raw: unknown): z.infer<typeof rpcServerMes
 
 export function parseStreamEvent(raw: unknown): StreamEvent | null {
   const result = streamEventSchema.safeParse(raw);
-  return result.success ? result.data : null;
+  if (!result.success) return null;
+  const event = result.data;
+  if (event.type === "usage") {
+    const parsed = parseUsagePayload(event);
+    return parsed ? { type: "usage", inputTokens: parsed.inputTokens, outputTokens: parsed.outputTokens } : null;
+  }
+  return event;
+}
+
+function parseUsagePayload(raw: unknown): ParsedUsagePayload | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const usage = raw as UsageLikePayload;
+  const inputTokens = parseUsageNumber(usage.inputTokens) ?? parseUsageNumber(usage.promptTokens);
+  const outputTokens = parseUsageNumber(usage.outputTokens) ?? parseUsageNumber(usage.completionTokens);
+  if (typeof inputTokens !== "number" || typeof outputTokens !== "number") return undefined;
+  return {
+    inputTokens,
+    outputTokens,
+    totalTokens: parseUsageNumber(usage.totalTokens) ?? inputTokens + outputTokens,
+    ...(typeof usage.inputBudgetTokens === "number"
+      ? { inputBudgetTokens: usage.inputBudgetTokens }
+      : typeof usage.promptBudgetTokens === "number"
+        ? { inputBudgetTokens: usage.promptBudgetTokens }
+        : {}),
+    ...(typeof usage.inputTruncated === "boolean"
+      ? { inputTruncated: usage.inputTruncated }
+      : typeof usage.promptTruncated === "boolean"
+        ? { inputTruncated: usage.promptTruncated }
+        : {}),
+  };
+}
+
+function parseUsageNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
 }
 
 export function parseChatResponse(payload: unknown): ChatResponse | null {
@@ -87,6 +157,8 @@ export function parseChatResponse(payload: unknown): ChatResponse | null {
   const json = payload as Partial<ChatResponse>;
   if (typeof json.output !== "string") return null;
   if (typeof json.model !== "string" || json.model.trim().length === 0) return null;
+  const parsedUsage = json.usage ? parseUsagePayload(json.usage) : undefined;
+  // TODO(cniska): Drop legacy prompt/completion parsing at v1.0.0.
   return {
     output: json.output,
     model: json.model,
@@ -94,26 +166,7 @@ export function parseChatResponse(payload: unknown): ChatResponse | null {
     toolCalls: Array.isArray((json as { toolCalls?: unknown }).toolCalls)
       ? ((json as { toolCalls?: unknown[] }).toolCalls ?? []).filter((item): item is string => typeof item === "string")
       : undefined,
-    usage:
-      json.usage &&
-      typeof json.usage === "object" &&
-      typeof (json.usage as { inputTokens?: unknown }).inputTokens === "number" &&
-      typeof (json.usage as { outputTokens?: unknown }).outputTokens === "number" &&
-      typeof (json.usage as { totalTokens?: unknown }).totalTokens === "number"
-        ? {
-            inputTokens: (json.usage as { inputTokens: number }).inputTokens,
-            outputTokens: (json.usage as { outputTokens: number }).outputTokens,
-            totalTokens: (json.usage as { totalTokens: number }).totalTokens,
-            inputBudgetTokens:
-              typeof (json.usage as { inputBudgetTokens?: unknown }).inputBudgetTokens === "number"
-                ? (json.usage as { inputBudgetTokens: number }).inputBudgetTokens
-                : undefined,
-            inputTruncated:
-              typeof (json.usage as { inputTruncated?: unknown }).inputTruncated === "boolean"
-                ? (json.usage as { inputTruncated: boolean }).inputTruncated
-                : undefined,
-          }
-        : undefined,
+    usage: parsedUsage,
     promptBreakdown:
       json.promptBreakdown &&
       typeof json.promptBreakdown === "object" &&
