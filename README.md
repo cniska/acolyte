@@ -1,5 +1,11 @@
 # Acolyte
 
+[![CI](https://img.shields.io/github/actions/workflow/status/cniska/acolyte/ci.yml?style=flat&label=ci)](https://github.com/cniska/acolyte/actions/workflows/ci.yml)
+[![Version](https://img.shields.io/github/package-json/v/cniska/acolyte?style=flat)](https://github.com/cniska/acolyte)
+[![License](https://img.shields.io/badge/license-MIT-blue?style=flat)](LICENSE)
+[![Bun](https://img.shields.io/badge/runtime-bun-f9f1e1?style=flat)](https://bun.sh)
+[![TypeScript](https://img.shields.io/badge/typescript-strict-3178c6?style=flat)](https://www.typescriptlang.org)
+
 A terminal-first AI coding assistant: local-first, observable, and built for extension.
 
 ![Acolyte CLI](docs/assets/cli.png)
