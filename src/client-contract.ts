@@ -84,7 +84,43 @@ export const streamEventSchema = z.discriminatedUnion("type", [
   }),
 ]);
 
-export type StreamEvent = z.infer<typeof streamEventSchema>;
+type TextDeltaEvent = { type: "text-delta"; text: string };
+type ReasoningEvent = { type: "reasoning"; text: string };
+type ToolCallEvent = { type: "tool-call"; toolCallId: string; toolName: string; args: Record<string, unknown> };
+type ToolOutputEvent = {
+  type: "tool-output";
+  toolCallId: string;
+  toolName: string;
+  content: z.infer<typeof toolOutputSchema>;
+};
+type ToolResultEvent = {
+  type: "tool-result";
+  toolCallId: string;
+  toolName: string;
+  isError?: boolean;
+  errorCode?: string;
+  error?: z.infer<typeof streamErrorSchema>;
+};
+type UsageEvent = { type: "usage"; inputTokens: number; outputTokens: number };
+type StatusEvent = { type: "status"; message: string };
+type ErrorEvent = {
+  type: "error";
+  errorMessage: string;
+  errorId?: string;
+  errorCode?: string;
+  error?: z.infer<typeof streamErrorSchema>;
+};
+
+export type StreamEvent =
+  | TextDeltaEvent
+  | ReasoningEvent
+  | ToolCallEvent
+  | ToolOutputEvent
+  | ToolResultEvent
+  | UsageEvent
+  | StatusEvent
+  | ErrorEvent;
+
 export interface Client {
   replyStream(
     input: ChatRequest,
