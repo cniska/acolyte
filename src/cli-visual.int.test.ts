@@ -266,7 +266,6 @@ describe("cli visual regression", () => {
   });
 
   test("status shows formatted fields on success", async () => {
-    const protocolVersion = PROTOCOL_VERSION;
     await withDualTransportChatServer(async (baseUrl) => {
       await withCliTestEnv(async ({ run }) => {
         const port = new URL(baseUrl).port;
@@ -276,7 +275,7 @@ describe("cli visual regression", () => {
           dedent(`
           providers:          openai
           model:              gpt-5-mini
-          protocol_version:   ${protocolVersion}
+          protocol_version:   2
           capabilities:       stream.sse, error.structured
           permissions:        write
           service:            http://localhost:6767
@@ -298,7 +297,7 @@ describe("cli visual regression", () => {
         await run(["config", "set", "port", port]);
         const out = await run(["status", "--json"]);
         const parsed = JSON.parse(out) as { protocol_version: string };
-        expect(parsed.protocol_version).toBe(PROTOCOL_VERSION);
+        expect(parsed.protocol_version).toBe("2");
       });
     });
   });
