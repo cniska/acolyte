@@ -9,6 +9,7 @@ import {
   repeatedFailureEvaluator,
   verifyCycle,
 } from "./lifecycle-evaluators";
+import { phaseFinalize } from "./lifecycle-finalize";
 import { consumeLifecycleFeedback, createGenerationInput, createLifecycleFeedbackText } from "./lifecycle-generate";
 import { defaultLifecyclePolicy } from "./lifecycle-policy";
 import { phasePrepare } from "./lifecycle-prepare";
@@ -258,6 +259,33 @@ describe("acceptedLifecycleSignal", () => {
       result: { text: "Finished the requested change.", toolCalls: [], signal: "done" },
     });
     expect(acceptedLifecycleSignal(ctx)).toBeUndefined();
+  });
+});
+
+describe("phaseFinalize", () => {
+  test("uses estimated prompt tokens when stream usage is unavailable", () => {
+    const ctx = createMockContext({
+      promptUsage: {
+        inputTokens: 12,
+        systemPromptTokens: 48,
+        toolTokens: 20,
+        memoryTokens: 8,
+        messageTokens: 12,
+        inputBudgetTokens: 100,
+        inputTruncated: false,
+        includedHistoryMessages: 3,
+        totalHistoryMessages: 6,
+      },
+      inputTokensAccum: 0,
+      outputTokensAccum: 0,
+      result: { text: "done", toolCalls: [] },
+    });
+
+    const response = phaseFinalize(ctx);
+
+    expect(response.usage?.inputTokens).toBe(80);
+    expect(response.usage?.totalTokens).toBe(81);
+    expect(response.promptBreakdown?.usedTokens).toBe(80);
   });
 });
 

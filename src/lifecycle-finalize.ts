@@ -1,9 +1,13 @@
 import { estimateTokens } from "./agent-input";
 import type { ChatResponse } from "./api";
 import { t } from "./i18n";
-import { guardStatsFromSession, type RunContext } from "./lifecycle-contract";
+import { guardStatsFromSession, type PromptUsage, type RunContext } from "./lifecycle-contract";
 import { scopedCallLog } from "./tool-guards";
 import { DISCOVERY_TOOL_SET, READ_TOOL_SET, SEARCH_TOOL_SET, WRITE_TOOL_SET } from "./tool-registry";
+
+function estimatePromptInputTokens(usage: PromptUsage): number {
+  return usage.inputTokens + usage.systemPromptTokens + usage.toolTokens;
+}
 
 export function phaseFinalize(ctx: RunContext): ChatResponse {
   const rawOutput = ctx.result?.text.trim() ?? "";
@@ -14,7 +18,8 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
         ? t("agent.output.no_response_after_tools")
         : t("agent.output.no_output");
 
-  const inputTokens = ctx.inputTokensAccum || ctx.promptUsage.inputTokens;
+  const promptInputTokens = estimatePromptInputTokens(ctx.promptUsage);
+  const inputTokens = Math.max(ctx.inputTokensAccum, promptInputTokens);
   const outputTokens = ctx.outputTokensAccum || estimateTokens(output);
   let budgetWarning: string | undefined;
   if (ctx.promptUsage.inputTruncated) {
@@ -22,9 +27,9 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
       included: t("unit.history_message", { count: ctx.promptUsage.includedHistoryMessages }),
       total: ctx.promptUsage.totalHistoryMessages,
     });
-  } else if (ctx.promptUsage.inputTokens >= Math.floor(ctx.promptUsage.inputBudgetTokens * 0.9)) {
+  } else if (inputTokens >= Math.floor(ctx.promptUsage.inputBudgetTokens * 0.9)) {
     budgetWarning = t("lifecycle.budget.near", {
-      used: ctx.promptUsage.inputTokens,
+      used: inputTokens,
       budget: ctx.promptUsage.inputBudgetTokens,
     });
   }

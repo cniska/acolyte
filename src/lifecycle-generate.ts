@@ -19,6 +19,7 @@ import type {
   GenerateResult,
   LifecycleFeedback,
   LifecycleState,
+  PromptUsage,
   RunContext,
   StreamChunk,
 } from "./lifecycle-contract";
@@ -43,6 +44,14 @@ function formatToolArgs(args: Record<string, unknown>): Record<string, string | 
     }
   }
   return out;
+}
+
+function estimatePromptInputTokens(usage: PromptUsage): number {
+  return usage.inputTokens + usage.systemPromptTokens + usage.toolTokens;
+}
+
+function emitInputTokens(ctx: RunContext): number {
+  return ctx.inputTokensAccum || estimatePromptInputTokens(ctx.promptUsage);
 }
 
 function captureError(
@@ -187,7 +196,7 @@ export async function phaseGenerate(ctx: RunContext, opts: GenerateOptions): Pro
   ctx.emit({ type: "status", message: `${agentModes[ctx.mode].statusText} (${formatModel(ctx.model)})` });
   ctx.emit({
     type: "usage",
-    inputTokens: ctx.inputTokensAccum || ctx.promptUsage.inputTokens,
+    inputTokens: emitInputTokens(ctx),
     outputTokens: ctx.outputTokensAccum,
   });
   ctx.debug("lifecycle.generate.start", {
@@ -204,7 +213,7 @@ export async function phaseGenerate(ctx: RunContext, opts: GenerateOptions): Pro
       ctx.outputTokensAccum += estimateTokens(ctx.result.text);
     }
     if (ctx.inputTokensAccum === 0) {
-      ctx.inputTokensAccum = ctx.promptUsage.inputTokens;
+      ctx.inputTokensAccum = estimatePromptInputTokens(ctx.promptUsage);
     }
     ctx.streamingChars = 0;
     ctx.lastUsageEmitChars = 0;
@@ -303,7 +312,7 @@ function emitToolResult(ctx: RunContext, toolCallId: string, toolName: string, i
   });
   ctx.emit({
     type: "usage",
-    inputTokens: ctx.inputTokensAccum || ctx.promptUsage.inputTokens,
+    inputTokens: emitInputTokens(ctx),
     outputTokens: ctx.outputTokensAccum,
   });
 }
@@ -318,7 +327,7 @@ function emitStreamingUsage(ctx: RunContext, chars: number): void {
     const streamingTokens = Math.ceil(ctx.streamingChars / AVERAGE_CHARS_PER_TOKEN);
     ctx.emit({
       type: "usage",
-      inputTokens: ctx.inputTokensAccum || ctx.promptUsage.inputTokens,
+      inputTokens: emitInputTokens(ctx),
       outputTokens: ctx.outputTokensAccum + streamingTokens,
     });
   }
