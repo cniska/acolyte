@@ -28,7 +28,7 @@ import { formatModel } from "./provider-config";
 import type { StreamError } from "./stream-error";
 import type { ToolDefinition } from "./tool-contract";
 import { resetCycleStepCount } from "./tool-guards";
-import { type Toolset, WRITE_TOOL_SET } from "./tool-registry";
+import type { Toolset } from "./tool-registry";
 
 type CaptureErrorMeta = {
   source?: ErrorSource;
@@ -334,7 +334,7 @@ function clearResolvedToolError(ctx: RunContext, toolName: string): void {
   if (ctx.currentError.source !== "tool-error" && ctx.currentError.source !== "tool-result") return;
   const failedTool = ctx.currentError.tool;
   if (!failedTool) return;
-  if (failedTool !== toolName && !(WRITE_TOOL_SET.has(failedTool) && WRITE_TOOL_SET.has(toolName))) return;
+  if (failedTool !== toolName) return;
   ctx.currentError = undefined;
 }
 
