@@ -24,6 +24,7 @@ Naming conventions and core terms used across Acolyte code and docs.
 - **Host**: the runtime environment around the model that provides tools, lifecycle structure, memory, guards, and recovery behavior.
 - **Lifecycle Policy**: bounded execution controls for lifecycle behavior (for example, timeouts and regeneration caps).
 - **Lifecycle Feedback**: task-scoped runtime feedback emitted by evaluators or selected guard outcomes and consumed by the next matching lifecycle attempt.
+- **Lifecycle Signal**: small model-to-host control signal emitted at generation completion (`done`, `no_op`, `blocked`) and accepted when current runtime state does not contradict it.
 - **Lifecycle State**: internal task-scoped lifecycle runtime state used to carry feedback, verify outcomes, and repeated-failure streaks between attempts.
 - **Model Judgment**: the model’s responsibility for deciding how to complete the task; lifecycle policy supports this judgment but does not replace it with host-side task heuristics.
 - **Memory Engine**: top-level memory capability that maintains continuity across turns.
