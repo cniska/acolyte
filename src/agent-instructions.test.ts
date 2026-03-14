@@ -19,7 +19,6 @@ describe("createModeInstructions", () => {
 
   test("includes preamble lines", () => {
     const out = createModeInstructions("work");
-    expect(out).toContain("Read the target file once");
     expect(out).toContain("make `read-file` on X your first tool call");
     expect(out).toContain("If the user names the files to change");
     expect(out).toContain("do not batch the initial `read-file` across named targets");
@@ -35,11 +34,6 @@ describe("createModeInstructions", () => {
     expect(out).toContain("If the target files and one directly referenced support file are already read");
     expect(out).toContain("When you have already applied the requested edits to all explicitly named files, stop");
     expect(out).toContain("Do not use `git-diff`, `git-status`, `git-show`, `git-log`");
-    expect(out).toContain("If the user says to update explicit file targets and stop, treat that as a real boundary");
-    expect(out).toContain("Do not invent a verification command unless the user asked for verification");
-    expect(out).toContain(
-      "do not inspect repository manifests, lockfiles, or build configuration just to guess how to validate",
-    );
     expect(out).toContain("do not call `search-files` just to locate it again");
     expect(out).toContain("prefer `scan-code` + `edit-code`");
     expect(out).toContain("Trust type signatures");
@@ -66,7 +60,7 @@ describe("createInstructions", () => {
     expect(out).toContain("Prefer dedicated project tools; use shell only when no dedicated tool exists.");
     expect(out).toContain("Before taking action (tool call, command, or edit), write exactly one sentence");
     expect(out).toContain("Keep tool calls and file changes within the current workspace and the requested scope.");
-    expect(out).toContain("preserve unrelated content and surrounding structure");
+    expect(out).toContain("Preserve unrelated content and surrounding structure");
     expect(out).toContain("Do exactly the requested change");
     expect(out).toContain("Preserve local conventions in the file you are editing");
     expect(out).toContain("keep the file's local relative/absolute reference style");
@@ -79,7 +73,6 @@ describe("createInstructions", () => {
     const out = createInstructions("Soul.", "work");
     expect(out).toContain("edit-code");
     expect(out).toContain("AST");
-    expect(out).toContain("Read the target file once");
     expect(out).toContain("call `create-file` with full content");
   });
 });
