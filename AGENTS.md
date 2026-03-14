@@ -1,125 +1,79 @@
 # Project Rules
 
-## Project Context
+## Architecture
 
-Acolyte is a language-agnostic, terminal-first AI coding assistant: local-first, observable, and built for extension. See `docs/architecture.md` for full architecture.
+Acolyte is a terminal-first AI coding assistant: local-first, observable, extensible. Read `docs/architecture.md` before working on unfamiliar subsystems.
 
-Key files:
-- `src/lifecycle.ts` — request lifecycle orchestrator (resolve → prepare → generate → evaluate → finalize)
-- `src/lifecycle-resolve.ts`, `src/lifecycle-prepare.ts`, `src/lifecycle-generate.ts`, `src/lifecycle-evaluate.ts`, `src/lifecycle-finalize.ts` — individual lifecycle phases
-- `src/lifecycle-evaluators.ts` — `Evaluator` type and evaluator implementations
-- `src/agent-modes.ts` — mode definitions (work/verify), mode classification
-- `src/file-toolkit.ts`, `src/shell-toolkit.ts`, `src/web-toolkit.ts`, `src/git-toolkit.ts` — tool definitions by domain
-- `src/tool-registry.ts` — toolkit registration, permission filtering, `toolsForAgent()`
-- `src/tool-execution.ts` — `runTool` (pre-execution guards + post-execution recording)
-- `src/tool-guards.ts` — session-level guards (no-rewrite, verify-ran)
-- `src/memory-registry.ts` — memory source resolution and registry
-- `src/memory-pipeline.ts` — memory normalization, selection, and budget pipeline
-- `src/server-http.ts` — HTTP route handlers (`/healthz`, `/v1/status`, `/v1/chat/stream`)
-- `src/server-app.ts` — server bootstrap, auth, WebSocket upgrade
+Extension points:
+- New post-generation behavior → `Evaluator` in `lifecycle-evaluators.ts`, add to `EVALUATORS`
+- New tool guard → `ToolGuard` in `tool-guards.ts`, add to `GUARDS`
+- New tool → appropriate `*-toolkit.ts`; all tools flow through `runTool`
 
-Patterns to follow:
-- New post-generation behavior → implement `Evaluator` in `lifecycle-evaluators.ts`, add to `EVALUATORS` array
-- New tool guard → implement `ToolGuard` in `tool-guards.ts`, add to `GUARDS` array
-- New tool → add to the appropriate `*-toolkit.ts` file; all tools go through `runTool` in `tool-execution.ts`
-- Feature branch review → run `/review` skill (runs style, arch, docs, and security audits against branch diff)
+## Invariants
 
-Development:
-- Validate: `bun run verify` (lint + typecheck + test)
+These must always hold. Break them and the system breaks.
 
-## Tooling
-
-- Prefer repository scripts and task runners over ad-hoc commands.
-- Use documented commands when available.
-- Do not depend on external CLI tools (e.g. `rg`, `fd`, `fzf`). Use Bun-native APIs and Node built-ins so the project runs with zero host dependencies beyond Bun itself.
-- `scripts/` contains test infrastructure (`fake-provider-server.ts`, `wait-server.ts`) and debugging tools (`lifecycle-trace.ts` for filtering daemon logs by task/request ID).
+1. All tools go through `runTool` in `tool-execution.ts` — never call a tool function directly.
+2. Every RPC payload, model response, and config value is validated through Zod before entering the type system.
+3. `@signal` can appear anywhere in model output, not just at the start — strip it wherever it appears.
+4. TUI state updaters must use functional form (`setState(prev => ...)`) when reading current state — stale closure reads cause race conditions.
+5. `bun run verify` passes before every commit.
 
 ## Workflow
 
-- Start from latest `main` before new work.
-- Read relevant files before editing.
-- Keep changes scoped, minimal, and well-engineered.
-- Do not edit out-of-scope files without explicit approval.
-- Preserve established local intent (code/tests/docs) unless explicitly asked to change it.
-- Prefer editing existing files over creating new ones unless necessary.
-- Do not guess; use concrete evidence (errors, logs, tests, source) before changing code.
-- Respect contract-first development: if behavior and expectations diverge, change implementation unless expectation changes are explicitly requested.
-- Avoid incidental rewrites: fix the requested problem without opportunistic restyling/refactors.
-- Stop and ask if unexpected diffs or artifacts appear.
-- If execution drifts, pause, restate constraints, and continue in small verified steps.
-- Default to autonomous execution for straightforward improvements and continue without explicit confirmation.
-- Only pause for confirmation when decisions are ambiguous, risky, or irreversible.
-
-## Docs
-
-- Keep docs short, conceptual, and resistant to drift.
-- Avoid repeating the same content across `README.md` and `docs/*`; prefer linking to a single canonical doc.
-- When behavior/config/contracts change, update the relevant canonical doc in the same work slice.
-- `docs/features.md` is an append-only shipped-feature inventory:
-  - add entries only when a feature is actually shipped
-  - keep entries one line and user-visible
-  - avoid implementation details
+1. Start from latest `main`.
+2. Read relevant files before editing. Use errors, logs, tests, and source as evidence — never guess.
+3. Keep changes scoped. Do not touch out-of-scope files or carry unrelated changes without approval.
+4. Before creating a new file: check whether an existing one is the right place.
+5. When behavior and tests diverge: fix the implementation. Update expectations only if explicitly requested.
+6. Fix the requested problem only — no opportunistic refactors or cleanup.
+7. Default to autonomous execution. Pause only when a decision is ambiguous, risky, or irreversible.
+8. When unexpected diffs or artifacts appear: stop and confirm before continuing.
+9. Ask when intent is unclear. Lead with outcomes, changed files, and next steps — not process.
 
 ## Commits
 
-- Commit only when explicitly requested.
-- Use Conventional Commit format: `type(scope): description`.
-- Allowed types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`.
-- Single-line subject only — no message body.
-- Keep commit subject lines under 72 characters.
-- Ship features through pull requests; commit smaller fixes directly to main.
-- Pull request titles follow the same Conventional Commit format as commit subjects.
-- Cut releases only for user-facing features or meaningful bug fixes, not for internal refactors, audit-skill changes, or architecture/tooling cleanup alone.
-- Keep PR summaries concise — short bullet points, no prose.
+1. Commit only when explicitly requested.
+2. Format: `type(scope): description` — types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`.
+3. Single-line subject, no body, under 72 characters.
+4. Never amend commits already pushed to remote — create a new commit instead.
+5. Cut releases only for user-facing features or meaningful bug fixes — not for internal refactors or tooling cleanup alone.
+6. PR titles follow the same Conventional Commit format. Summaries: short bullets, no prose.
 
 ## Code
 
-- Pragmatic solutions, low maintenance overhead. Build first, tune second.
-- YAGNI: no speculative features, commands, or abstractions. Rule of Three before abstracting.
-- SRP: each function/module should have one reason to change. When a function mixes concerns (e.g. persistence + display), split it.
-- Prefer root-cause fixes over workarounds. No tech debt without explicit agreement and `TODO(username):`.
-- No transitional architecture: if the proper fix belongs in a different subsystem boundary or contract, move it there before merge instead of landing an interim workaround at the current layer.
-- Prefer prompt/tool-contract improvements over host-side task-classification logic.
-- Extra scrutiny on chat-feature changes: clear UX intent, regression tests, smoke run.
-- Prefer interface-first seams at subsystem boundaries (client transport, lifecycle policy, guards, tools).
-- Keep behavior behind stable contracts so new transports/integrations are additive, not rewrites.
-- Prefer Zod schema definitions as the single source of truth for string unions and infer TS types from schemas.
-- No banner or separator comments; let code structure speak for itself.
-- Avoid re-export layers; import from the canonical source module directly unless the re-export is itself the intended boundary.
+- Before adding anything new: ask "will this be used right now?" If not, don't add it.
+- Before abstracting: find at least three similar cases first.
+- When a function mixes concerns (e.g. persistence + display): split it.
+- Before finalizing a fix: ask "root cause or symptom?" If symptom, keep digging.
+- Before committing non-trivial changes: ask "is there a more elegant solution?"
+- No transitional architecture: if the proper fix belongs in a different boundary or contract, move it there instead of landing an interim workaround at the current layer.
+- If you must leave tech debt: get explicit agreement and mark it `TODO(username):`.
+- When choosing between a prompt/tool-contract fix and host-side classification logic: prefer the contract fix.
+- Before committing chat-feature changes: UX intent is clear, regression test exists, smoke run passes.
+- When adding a subsystem boundary: define the interface first, implement second.
+- When defining a string union or shared type: define it as a Zod schema first and infer the TS type from it.
+- No banner or separator comments. Import from the canonical source module directly — no re-export layers.
 
 ## Validation
 
-- Run relevant validation after changes.
-- Keep the branch green after each fix slice: run the narrowest relevant checks while iterating, then run the required gate before committing.
-- For this repo baseline, run `bun run verify` as the final gate before committing (`lint` + `typecheck` + `test`).
-- While iterating, run the narrowest check: `bun run typecheck` for type changes, `bun run lint` for style, `bun test <file>` for specific tests.
-- Do not commit on red. If baseline is already red, first land a dedicated fix slice that restores green, then continue feature work.
-- Prefer automated smoke checks for readiness; ask for manual user testing only at milestone checkpoints.
-- Document validation that could not run and why.
+1. Never call a task done without proving it works. Run tests, check output, demonstrate correctness.
+2. While iterating, run the narrowest check: `bun run typecheck`, `bun run lint`, or `bun test <file>`.
+3. `bun run verify` is the final gate before committing.
+4. Never commit on red. If the baseline is already red: restore green first, then continue.
+5. Manual testing only at milestone checkpoints. Document any validation that couldn't run and why.
 
 ## Testing
 
-- Add tests for meaningful regression risk or critical behavior.
-- Avoid redundant or trivial tests.
-- Runtime behavior is the source of truth; when tests and runtime disagree, correct the tests unless a real runtime bug is proven.
-- Never add test-only branches, flags, mocks, or behavior changes to runtime/production code.
+- Before closing a fix: ask "could this regress silently?" If yes, add a test.
+- Before adding a test: ask "does this cover behavior that could realistically break?" If not, skip it.
+- When a test and runtime disagree: fix the test unless a real runtime bug is proven.
+- Never add test-only branches, flags, mocks, or behavior changes to runtime code.
 
 ## Safety
 
-- Never run destructive git/file operations unless explicitly requested.
-- Use `--force-with-lease` instead of `--force` when force-pushing.
-- Do not discard unrelated changes without approval.
-- If unexpected changes appear, pause and confirm before continuing.
-- Avoid revert churn for local unpublished mistakes; prefer the smallest safe cleanup approach and use `revert` only as a last resort.
-
-## Communication
-
-- Ask when requirements are unclear. Be explicit about assumptions and next steps.
-- Prioritize user-focused output: outcomes, changed files, actionable next steps.
-
-## Skills
-
-- Full skill support is required.
-- When a task matches a skill, load and follow that skill workflow.
-- Prefer skill-provided scripts/templates/assets over re-implementing from scratch.
-- Keep skill usage lightweight: load only what is needed for the current task.
+1. Never run destructive git or file operations unless explicitly requested.
+2. Never amend commits already pushed to remote — create a new commit instead.
+3. Use `--force-with-lease` over `--force`.
+4. Do not discard unrelated changes without approval.
+5. Never revert commits — drop with `git reset` if not pushed; revert only as a last resort.
