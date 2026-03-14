@@ -3,40 +3,16 @@ import { mkdir, realpath, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { gitLog, gitShow } from "./git-ops";
 import { testUuid } from "./test-utils";
+import { runCommand } from "./tool-utils";
 
 const tempDirs: string[] = [];
-const GIT_ENV_KEYS = [
-  "GIT_ALTERNATE_OBJECT_DIRECTORIES",
-  "GIT_COMMON_DIR",
-  "GIT_CONFIG",
-  "GIT_CONFIG_COUNT",
-  "GIT_CONFIG_GLOBAL",
-  "GIT_CONFIG_NOSYSTEM",
-  "GIT_CONFIG_PARAMETERS",
-  "GIT_CONFIG_SYSTEM",
-  "GIT_DIR",
-  "GIT_INDEX_FILE",
-  "GIT_OBJECT_DIRECTORY",
-  "GIT_PREFIX",
-  "GIT_WORK_TREE",
-] as const;
 
 afterAll(async () => {
   await Promise.all(tempDirs.map(async (d) => rm(d, { recursive: true, force: true })));
 });
 
 async function runGit(dirPath: string, args: string[]): Promise<string> {
-  const env = { ...process.env };
-  for (const key of GIT_ENV_KEYS) delete env[key];
-  const proc = Bun.spawn({
-    cmd: ["git", ...args],
-    cwd: dirPath,
-    stdout: "pipe",
-    stderr: "pipe",
-    env,
-  });
-  const [stdout, stderr] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
-  const code = await proc.exited;
+  const { code, stdout, stderr } = await runCommand(["git", ...args], dirPath);
   if (code !== 0) throw new Error(stderr.trim() || stdout.trim() || `git ${args.join(" ")} failed`);
   return stdout.trim();
 }
