@@ -457,11 +457,13 @@ const postEditRedundancyPolicies = {
   "git-diff": {
     extractPaths: (args) => {
       const path = typeof args.path === "string" ? normalizePath(args.path.trim().toLowerCase()) : "";
-      return path ? [path] : [];
+      return path ? [path] : ["__edited_workspace__"];
     },
     message: (path) =>
-      `git-diff is only re-confirming "${path}", which was already edited in this turn. ` +
-      "Use the edit diff preview you already have or stop.",
+      path === "__edited_workspace__"
+        ? "git-diff is only re-confirming edits that were already shown in the edit diff preview. Use the diff you already have or stop."
+        : `git-diff is only re-confirming "${path}", which was already edited in this turn. ` +
+          "Use the edit diff preview you already have or stop.",
   },
   "delete-file": {
     extractPaths: (args) =>
@@ -489,7 +491,8 @@ const postEditRedundancyGuard: ToolGuard = {
     if (targetPaths.length === 0) return;
     const editedPaths = editedPathsSinceLastVerify(session).map((entry) => normalizePath(entry.toLowerCase()));
     for (const path of targetPaths) {
-      if (!editedPaths.includes(path)) continue;
+      if (path !== "__edited_workspace__" && !editedPaths.includes(path)) continue;
+      if (path === "__edited_workspace__" && editedPaths.length === 0) continue;
       report("blocked", path);
       throw new Error(policy.message(path));
     }

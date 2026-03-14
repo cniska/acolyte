@@ -131,13 +131,16 @@ export async function editFile(input: {
   const absPath = ensurePathWithinAllowedRoots(input.path, "Edit", input.workspace);
   const raw = await readFile(absPath, "utf8");
   const lines = raw.split("\n");
+  const MAX_FIND_SNIPPET_LINES = 8;
+  const MAX_FIND_SNIPPET_CHARS = 500;
 
   // Locate all match ranges in the original text.
   const ranges: Array<{ start: number; end: number; replace: string }> = [];
   for (const edit of input.edits) {
     if ("find" in edit) {
       if (!edit.find) throw new Error("Find text cannot be empty");
-      if (edit.find.length > raw.length * 0.5) {
+      const findLineCount = edit.find.split("\n").length;
+      if (findLineCount > MAX_FIND_SNIPPET_LINES || edit.find.length > MAX_FIND_SNIPPET_CHARS) {
         throw new Error(
           "find must be a short unique snippet (a few lines), not a large portion of the file. Use just enough context to uniquely identify the edit location.",
         );

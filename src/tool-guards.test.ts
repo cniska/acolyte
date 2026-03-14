@@ -400,7 +400,9 @@ describe("post-edit-redundancy guard", () => {
     const session = createSessionContext();
     session.writeTools = new Set(["edit-file"]);
     recordCall(session, "edit-file", { path: "README.md" });
-    expect(() => runGuards({ toolName: "git-diff", args: {}, session })).not.toThrow();
+    expect(() => runGuards({ toolName: "git-diff", args: {}, session })).toThrow(
+      /already shown in the edit diff preview/i,
+    );
   });
 
   test("blocks delete-file on a file already edited in this turn", () => {
