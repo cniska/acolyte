@@ -385,8 +385,12 @@ async function runScenario(
     REPO_DIR,
   );
   const afterLines = await readLogLines(behaviorEnv.daemonLogPath);
-  const trace = summarizeTrace(afterLines.slice(beforeLines.length));
-  const correctnessIssues = await scenario.validate(workspace);
+  const traceLines = afterLines.slice(beforeLines.length);
+  const trace = summarizeTrace(traceLines);
+  const correctnessIssues = [
+    ...(await scenario.validate(workspace)),
+    ...(scenario.validateTrace?.(traceLines) ?? []),
+  ];
 
   return behaviorOutputSchema.parse({
     scenarioId: scenario.id,

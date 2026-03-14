@@ -36,6 +36,10 @@ describe("behavior scenarios", () => {
   test("parseBehaviorScenarioId rejects unknown ids", () => {
     expect(() => parseBehaviorScenarioId("wrong")).toThrow();
   });
+
+  test("includes bounded-return-fix scenario", () => {
+    expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "bounded-return-fix")).toBe(true);
+  });
 });
 
 describe("behavior analysis", () => {
