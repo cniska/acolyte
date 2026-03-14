@@ -33,6 +33,22 @@ describe("rpc protocol schema", () => {
     expect(parsed.success).toBe(true);
   });
 
+  test("accepts chat.start verify scope disable override", () => {
+    const parsed = rpcClientMessageSchema.safeParse({
+      id: "rpc_1bb",
+      type: "chat.start",
+      payload: {
+        request: {
+          message: "hi",
+          history: [],
+          model: "gpt-5-mini",
+          verifyScope: "none",
+        },
+      },
+    });
+    expect(parsed.success).toBe(true);
+  });
+
   test("accepts chat.start with modeModels override", () => {
     const parsed = rpcClientMessageSchema.safeParse({
       id: "rpc_1c",

@@ -31,7 +31,7 @@ resolve → prepare → generate → evaluate → finalize
   - `feedback`: pending runtime feedback consumed by the next matching-mode attempt
   - `verifyOutcome`: structured verifier result used across `keepResult` restore boundaries
   - `repeatedFailure`: task-scoped failure streak state used to surface one recovery nudge per repeated failure signature
-- Lifecycle may also accept a task-scoped lifecycle signal from generation when there is no contradiction in current runtime state.
+- Lifecycle may also accept a task-scoped lifecycle signal from generation when current runtime state has no contradiction.
 - Lifecycle may translate selected guard blocks into feedback, so the next attempt can recover with clearer runtime context.
 - `lifecycleState` is not persisted to session history or memory sources.
 - `lifecycleState` supports the model with concrete runtime outcomes; it does not plan tasks or decide how issues should be resolved.
@@ -46,5 +46,6 @@ resolve → prepare → generate → evaluate → finalize
 
 - `src/lifecycle.ts`
 - `src/lifecycle-*.ts`
-- `src/lifecycle-evaluators.ts`
-- `src/lifecycle-guard-feedback.ts`
+- `src/lifecycle-evaluators.ts` — post-generation evaluators including edit-file recovery
+- `src/lifecycle-guard-feedback.ts` — guard-event-to-feedback translation
+- `src/error-primitives.ts` — `ToolRecovery` contract carried from tool errors into evaluators

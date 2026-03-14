@@ -36,6 +36,11 @@ describe("behavior scenarios", () => {
   test("parseBehaviorScenarioId rejects unknown ids", () => {
     expect(() => parseBehaviorScenarioId("wrong")).toThrow();
   });
+
+  test("includes bounded-return-fix and two-file-deps-rename scenarios", () => {
+    expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "bounded-return-fix")).toBe(true);
+    expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "two-file-deps-rename")).toBe(true);
+  });
 });
 
 describe("behavior analysis", () => {

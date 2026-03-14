@@ -1,14 +1,14 @@
 import { stdout as output } from "node:process";
-import { createWorkspaceSpecifier } from "./api";
+import { createWorkspaceSpecifier, type VerifyScope } from "./api";
 import { createMessage } from "./chat-session";
 import { formatAssistantReplyOutput, printIndentedDim } from "./cli-format";
 import type { Client } from "./client-contract";
 import { nowIso } from "./datetime";
 import { formatPromptError } from "./error-messages";
+import { LIFECYCLE_ERROR_CODES } from "./error-primitives";
 import { t } from "./i18n";
 import type { ResourceId } from "./resource-id";
 import type { Session } from "./session-contract";
-import { LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
 import { createToolOutputState, formatToolOutput } from "./tool-output-content";
 import { printDim, printError, printOutput, streamText } from "./ui";
 
@@ -90,7 +90,7 @@ export async function handlePrompt(
   prompt: string,
   session: Session,
   client: Client,
-  options?: { resourceId?: ResourceId; workspace?: string },
+  options?: { resourceId?: ResourceId; workspace?: string; verifyScope?: VerifyScope },
 ): Promise<boolean> {
   const userMsg = createMessage("user", prompt);
   session.messages.push(userMsg);
@@ -110,6 +110,7 @@ export async function handlePrompt(
         model: session.model,
         sessionId: session.id,
         resourceId: options?.resourceId,
+        verifyScope: options?.verifyScope,
         ...createWorkspaceSpecifier(options?.workspace),
       },
       {

@@ -7,6 +7,8 @@ const behaviorScenarioIdSchema = z.enum([
   "single-file-bug-fix",
   "add-focused-test",
   "two-file-rename",
+  "two-file-deps-rename",
+  "bounded-return-fix",
 ]);
 
 export type BehaviorScenarioId = z.infer<typeof behaviorScenarioIdSchema>;
@@ -18,6 +20,7 @@ export type BehaviorScenario = {
   expectedChanges: string[];
   setup: (workspace: string) => Promise<void>;
   validate: (workspace: string) => Promise<string[]>;
+  validateTrace?: (traceLines: string[]) => string[];
 };
 
 async function writeWorkspaceFile(workspace: string, relativePath: string, content: string): Promise<void> {
@@ -160,6 +163,229 @@ async function validateTwoFileRenameWorkspace(workspace: string): Promise<string
   return issues;
 }
 
+async function createTwoFileDepsRenameWorkspace(workspace: string): Promise<void> {
+  await writeWorkspaceFile(
+    workspace,
+    "src/cli-run.ts",
+    [
+      "type ParsedRunArgs = { files: string[]; prompt: string; workspace?: string; model?: string };",
+      "",
+      "type RunModeDeps = {",
+      "  apiUrlForPort: (port: number) => string;",
+      "  appModel: string;",
+      "  createSession: (model: string) => { model: string };",
+      "};",
+      "",
+      "export async function runMode(args: string[], deps: RunModeDeps): Promise<void> {",
+      '  const parsed: ParsedRunArgs = { files: [], prompt: args.join(" "), model: undefined };',
+      "  const { apiUrlForPort, appModel, createSession } = deps;",
+      "  apiUrlForPort(6767);",
+      "  if (!parsed.prompt) return;",
+      "  const session = createSession(parsed.model ?? appModel);",
+      "  void session;",
+      "}",
+      "",
+    ].join("\n"),
+  );
+  await writeWorkspaceFile(
+    workspace,
+    "src/cli-skill.ts",
+    [
+      "type ParsedSkillArgs = { skillName: string; prompt: string; model?: string };",
+      "",
+      "type SkillModeDeps = {",
+      "  apiUrlForPort: (port: number) => string;",
+      "  appModel: string;",
+      "  createSession: (model: string) => { model: string };",
+      "};",
+      "",
+      "export async function skillMode(args: string[], deps: SkillModeDeps): Promise<void> {",
+      '  const parsed: ParsedSkillArgs = { skillName: args[0] ?? "", prompt: args.slice(1).join(" "), model: undefined };',
+      "  const { apiUrlForPort, appModel, createSession } = deps;",
+      "  apiUrlForPort(6767);",
+      "  if (!parsed.prompt) return;",
+      "  const session = createSession(parsed.model ?? appModel);",
+      "  void session;",
+      "}",
+      "",
+    ].join("\n"),
+  );
+}
+
+async function validateTwoFileDepsRenameWorkspace(workspace: string): Promise<string[]> {
+  const issues: string[] = [];
+  const runFile = await readWorkspaceFile(workspace, "src/cli-run.ts");
+  const skillFile = await readWorkspaceFile(workspace, "src/cli-skill.ts");
+  for (const [path, content] of [
+    ["src/cli-run.ts", runFile],
+    ["src/cli-skill.ts", skillFile],
+  ] as const) {
+    if (content.includes("appModel")) issues.push(`${path} should not keep appModel`);
+    if (!content.includes("defaultModel")) issues.push(`${path} should rename appModel to defaultModel`);
+  }
+  return issues;
+}
+
+function validateTwoFileDepsRenameTrace(traceLines: string[]): string[] {
+  const issues: string[] = [];
+  const toolCallLines = traceLines.filter((line) => line.includes("event=lifecycle.tool.call"));
+  const readRunCalls = toolCallLines.filter(
+    (line) => line.includes("tool=read-file") && line.includes("src/cli-run.ts"),
+  ).length;
+  const readSkillCalls = toolCallLines.filter(
+    (line) => line.includes("tool=read-file") && line.includes("src/cli-skill.ts"),
+  ).length;
+  const searchCalls = toolCallLines.filter((line) => line.includes("tool=search-files")).length;
+  const editRunCalls = toolCallLines.filter(
+    (line) => line.includes("tool=edit-file") && line.includes("path=src/cli-run.ts"),
+  ).length;
+  const editSkillCalls = toolCallLines.filter(
+    (line) => line.includes("tool=edit-file") && line.includes("path=src/cli-skill.ts"),
+  ).length;
+
+  const firstReadTools = toolCallLines
+    .slice(0, 2)
+    .filter((line) => line.includes("tool=read-file"))
+    .map((line) => (line.includes("src/cli-run.ts") ? "run" : line.includes("src/cli-skill.ts") ? "skill" : "other"));
+  if (!(firstReadTools.includes("run") && firstReadTools.includes("skill"))) {
+    issues.push("first two tool calls should read src/cli-run.ts and src/cli-skill.ts");
+  }
+  if (toolCallLines.some((line) => line.includes("tool=find-files"))) {
+    issues.push("two-file deps rename should not use find-files");
+  }
+  if (readRunCalls > 1) issues.push(`should read src/cli-run.ts at most once, saw ${readRunCalls}`);
+  if (readSkillCalls > 1) issues.push(`should read src/cli-skill.ts at most once, saw ${readSkillCalls}`);
+  if (searchCalls > 1) issues.push(`should use at most one scoped search-files call, saw ${searchCalls}`);
+  if (editRunCalls > 1) issues.push(`should edit src/cli-run.ts at most once, saw ${editRunCalls}`);
+  if (editSkillCalls > 1) issues.push(`should edit src/cli-skill.ts at most once, saw ${editSkillCalls}`);
+
+  const summaryLine = [...traceLines].reverse().find((line) => line.includes("event=lifecycle.summary"));
+  if (summaryLine?.includes("lifecycle_signal=done") && summaryLine.includes("has_error=true")) {
+    issues.push("should not finish with done while lifecycle summary still reports an error");
+  }
+
+  return issues;
+}
+
+async function createBoundedReturnFixWorkspace(workspace: string): Promise<void> {
+  await writeWorkspaceFile(
+    workspace,
+    "src/lifecycle-state.ts",
+    [
+      'import type { RunContext } from "./lifecycle-contract";',
+      'import { scopedCallLog } from "./tool-guards";',
+      'import { WRITE_TOOL_SET } from "./tool-registry";',
+      "",
+      "export function acceptedLifecycleSignal(ctx: RunContext): string | undefined {",
+      "  const signal = ctx.result?.signal;",
+      "  if (!signal) return undefined;",
+      "  if (ctx.currentError) return undefined;",
+      '  if (signal === "no_op" && taskHasWrites(ctx)) return undefined;',
+      '  if (signal === "done" || signal === "no_op" || signal === "blocked") return signal;',
+      "  return undefined;",
+      "}",
+      "",
+      "function taskHasWrites(ctx: RunContext): boolean {",
+      "  return scopedCallLog(ctx.session, ctx.taskId).some((entry) => WRITE_TOOL_SET.has(entry.toolName));",
+      "}",
+      "",
+      "export function updateRepeatedFailureState(ctx: RunContext): void {",
+      "  const previous = ctx.lifecycleState.repeatedFailure;",
+      "  if (!previous) return;",
+      "  ctx.lifecycleState.repeatedFailure = { ...previous, count: previous.count + 1 };",
+      "}",
+      "",
+      "function failureSignatureForError(ctx: RunContext): string | undefined {",
+      "  if (!ctx.currentError) return undefined;",
+      "  return ctx.currentError.message.trim() || undefined;",
+      "}",
+      "",
+      "function normalizeFailureMessage(message: string | undefined): string | undefined {",
+      "  if (!message) return undefined;",
+      '  const normalized = message.replace(/\\s+/g, " ").trim();',
+      "  return normalized.length > 0 ? normalized : undefined;",
+      "}",
+      "",
+    ].join("\n"),
+  );
+}
+
+async function validateBoundedReturnFixWorkspace(workspace: string): Promise<string[]> {
+  const issues: string[] = [];
+  const content = await readWorkspaceFile(workspace, "src/lifecycle-state.ts");
+  if (content.includes("return undefined;")) {
+    issues.push("src/lifecycle-state.ts should not keep return undefined; statements");
+  }
+  if (!content.includes("if (!signal) return;")) {
+    issues.push("acceptedLifecycleSignal should use bare return for missing signal");
+  }
+  if (!content.includes("if (!ctx.currentError) return;")) {
+    issues.push("failureSignatureForError should use bare return for missing currentError");
+  }
+  if (!content.includes("if (!message) return;")) {
+    issues.push("normalizeFailureMessage should use bare return for missing message");
+  }
+  return issues;
+}
+
+function validateBoundedReturnFixTrace(traceLines: string[]): string[] {
+  const issues: string[] = [];
+  const toolCallLines = traceLines.filter((line) => line.includes("event=lifecycle.tool.call"));
+  const toolCalls = toolCallLines.map((line) => ({
+    line,
+    tool: line.match(/(?:^|\s)tool=([^\s]+)/)?.[1] ?? "",
+    path: line.match(/(?:^|\s)path=([^\s]+)/)?.[1] ?? "",
+  }));
+
+  const firstTool = toolCalls[0];
+  if (!firstTool || firstTool.tool !== "read-file" || !firstTool.line.includes("src/lifecycle-state.ts")) {
+    issues.push("first tool call should be read-file on src/lifecycle-state.ts");
+  }
+
+  if (toolCalls.some((call) => call.tool === "find-files")) {
+    issues.push("bounded single-file scenario should not use find-files");
+  }
+
+  if (toolCalls.some((call) => call.tool === "edit-code")) {
+    issues.push("bounded single-file scenario should not use edit-code");
+  }
+
+  if (toolCalls.some((call) => call.tool === "search-files" && call.line.includes("src/lifecycle-state.ts"))) {
+    issues.push("bounded single-file scenario should not search the already-read target file");
+  }
+
+  const sameFileEditCalls = toolCalls.filter(
+    (call) => call.tool === "edit-file" && call.path === "src/lifecycle-state.ts",
+  ).length;
+  if (sameFileEditCalls > 2) {
+    issues.push(`bounded single-file scenario should use at most 2 edit-file calls, saw ${sameFileEditCalls}`);
+  }
+
+  const verifyModeIndex = traceLines.findIndex(
+    (line) => line.includes("event=lifecycle.mode.changed") && line.includes("to=verify"),
+  );
+  const firstVerifyCommandIndex = traceLines.findIndex(
+    (line) => line.includes("event=lifecycle.tool.call") && line.includes("tool=run-command"),
+  );
+  if (verifyModeIndex >= 0 && firstVerifyCommandIndex > verifyModeIndex) {
+    const verifyPrelude = traceLines.slice(verifyModeIndex + 1, firstVerifyCommandIndex);
+    const badVerifyPrelude = verifyPrelude.some(
+      (line) =>
+        line.includes("event=lifecycle.tool.call") &&
+        (line.includes("tool=read-file") ||
+          line.includes("tool=search-files") ||
+          line.includes("tool=scan-code") ||
+          line.includes("tool=git-diff")) &&
+        line.includes("src/lifecycle-state.ts"),
+    );
+    if (badVerifyPrelude) {
+      issues.push("verify mode should run the verify command before rereading or diffing src/lifecycle-state.ts");
+    }
+  }
+
+  return issues;
+}
+
 export const BEHAVIOR_SCENARIOS: BehaviorScenario[] = [
   {
     id: "docs-link-fix",
@@ -195,6 +421,26 @@ export const BEHAVIOR_SCENARIOS: BehaviorScenario[] = [
     expectedChanges: ["src/config.ts", "src/config.test.ts"],
     setup: createTwoFileRenameWorkspace,
     validate: validateTwoFileRenameWorkspace,
+  },
+  {
+    id: "two-file-deps-rename",
+    description: "Explicit two-file deps rename with separated occurrences in each file.",
+    prompt:
+      "In src/cli-run.ts and src/cli-skill.ts, rename the RunModeDeps and SkillModeDeps property name `appModel` to `defaultModel` and update only the corresponding destructuring and property reads in those two files. Do not change any other behavior. Stop when those two files are updated.",
+    expectedChanges: ["src/cli-run.ts", "src/cli-skill.ts"],
+    setup: createTwoFileDepsRenameWorkspace,
+    validate: validateTwoFileDepsRenameWorkspace,
+    validateTrace: validateTwoFileDepsRenameTrace,
+  },
+  {
+    id: "bounded-return-fix",
+    description: "Bounded one-file literal rewrite with no rediscovery on the target file.",
+    prompt:
+      "In src/lifecycle-state.ts, replace each 'return undefined;' with 'return;' where the function already returns undefined. Update only that file, then stop.",
+    expectedChanges: ["src/lifecycle-state.ts"],
+    setup: createBoundedReturnFixWorkspace,
+    validate: validateBoundedReturnFixWorkspace,
+    validateTrace: validateBoundedReturnFixTrace,
   },
 ];
 

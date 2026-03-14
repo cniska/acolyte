@@ -1,7 +1,7 @@
 import { mkdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import * as napi from "@ast-grep/napi";
-import { createToolError, TOOL_ERROR_CODES } from "./tool-error-codes";
+import { createToolError, TOOL_ERROR_CODES, type ToolRecovery } from "./error-primitives";
 
 /** Owner-only read/write. Use for files containing secrets or sensitive metadata. */
 export const PRIVATE_FILE_MODE = 0o600;
@@ -24,6 +24,44 @@ export type FileEdit = FindReplaceEdit | LineRangeEdit;
 
 const MAX_FIND_SNIPPET_LINES = 8;
 const MAX_FIND_SNIPPET_CHARS = 500;
+const MAX_FIND_REPLACE_LINES = 24;
+const MAX_FIND_REPLACE_CHARS = 1600;
+const MAX_BATCH_EDIT_LINES = 32;
+const MAX_BATCH_EDIT_CHARS = 2400;
+
+function editFileRecovery(path: string, kind: ToolRecovery["kind"]): ToolRecovery {
+  switch (kind) {
+    case "disambiguate-match":
+      return {
+        tool: "edit-file",
+        kind,
+        summary: "Your edit-file snippet matched multiple locations.",
+        instruction:
+          `Keep the change in '${path}' and make one bounded edit with a more unique snippet or a single line-range edit. ` +
+          "If the rewrite is genuinely structural, switch to edit-code with a real ast-grep pattern.",
+      };
+    case "refresh-snippet":
+      return {
+        tool: "edit-file",
+        kind,
+        summary: "Your edit-file find snippet no longer matches the file.",
+        instruction:
+          `Keep the change in '${path}' and rebuild the next edit from the latest read-file output or use a bounded line-range edit. ` +
+          "Do not retry the same stale find text.",
+      };
+    case "shrink-edit":
+      return {
+        tool: "edit-file",
+        kind,
+        summary: "Your edit-file request was too large for a bounded edit.",
+        instruction:
+          `Keep the change in '${path}' and shrink it: use short unique find snippets, a bounded line-range edit covering only the changed region, or use edit-code for a structural rewrite. ` +
+          "Do not pass large file blocks as find or replacement text.",
+      };
+    default:
+      return kind satisfies never;
+  }
+}
 
 export async function findFiles(workspace: string, patterns: string[], maxResults = 40): Promise<string> {
   if (patterns.length === 0) throw new Error("At least one pattern is required");
@@ -142,15 +180,43 @@ export async function editFile(input: {
       if (!edit.find) throw new Error("Find text cannot be empty");
       const findLineCount = edit.find.split("\n").length;
       if (findLineCount > MAX_FIND_SNIPPET_LINES || edit.find.length > MAX_FIND_SNIPPET_CHARS) {
-        throw new Error(
+        throw createToolError(
+          TOOL_ERROR_CODES.editFileFindTooLarge,
           "find must be a short unique snippet (a few lines), not a large portion of the file. Use just enough context to uniquely identify the edit location.",
+          undefined,
+          editFileRecovery(input.path, "shrink-edit"),
+        );
+      }
+      const replaceLineCount = edit.replace.split("\n").length;
+      if (replaceLineCount > MAX_FIND_REPLACE_LINES || edit.replace.length > MAX_FIND_REPLACE_CHARS) {
+        throw createToolError(
+          TOOL_ERROR_CODES.editFileReplaceTooLarge,
+          "replace must contain only the changed region for a find/replace edit, not a large block or whole-file rewrite. Use a line-range edit for larger replacements.",
+          undefined,
+          editFileRecovery(input.path, "shrink-edit"),
         );
       }
       const count = raw.split(edit.find).length - 1;
-      if (count === 0) throw new Error(`Find text not found in file: ${edit.find.slice(0, 60)}`);
+      if (count === 0) {
+        throw createToolError(
+          TOOL_ERROR_CODES.editFileFindNotFound,
+          `Find text not found in file: ${edit.find.slice(0, 60)}`,
+          undefined,
+          editFileRecovery(input.path, "refresh-snippet"),
+        );
+      }
       if (count > 1) {
-        const message = `Find text matched ${count} locations (${edit.find.slice(0, 40)}…). Provide a longer, more unique snippet to match exactly one location, or use edit-code for multi-location code changes.`;
-        throw createToolError(TOOL_ERROR_CODES.editFileMultiMatch, message);
+        const message =
+          `Find text matched ${count} locations (${edit.find.slice(0, 40)}…). ` +
+          "Provide a longer, more unique snippet to match exactly one location. " +
+          "For local rewrites in one file, batch unique snippets or use a single line-range edit for one contiguous block. " +
+          "Use edit-code only for structural code changes.";
+        throw createToolError(
+          TOOL_ERROR_CODES.editFileMultiMatch,
+          message,
+          undefined,
+          editFileRecovery(input.path, "disambiguate-match"),
+        );
       }
       const start = raw.indexOf(edit.find);
       ranges.push({ start, end: start + edit.find.length, replace: edit.replace });
@@ -158,9 +224,14 @@ export async function editFile(input: {
       const { startLine, endLine, replace } = edit;
       if (startLine < 1 || endLine < 1) throw new Error("Line numbers must be >= 1");
       if (startLine > endLine) throw new Error(`startLine (${startLine}) must be <= endLine (${endLine})`);
-      const clampedEnd = Math.min(endLine, lines.length);
-      if (clampedEnd !== endLine) {
-        // Silently clamp — the model almost always means "to end of file".
+      const clampedEnd = Math.min(endLine, lines.length); // silently clamp — model almost always means "to end of file"
+      if (startLine === 1 && clampedEnd === lines.length && replace.trim().length === 0) {
+        throw createToolError(
+          TOOL_ERROR_CODES.editFileLineRangeTooLarge,
+          "line-range edit would clear the entire file. Use a bounded range edit, or delete-file if the file should be removed.",
+          undefined,
+          editFileRecovery(input.path, "shrink-edit"),
+        );
       }
       // Convert 1-based inclusive line range to character offsets.
       let charStart = 0;
@@ -184,6 +255,24 @@ export async function editFile(input: {
     const curr = ranges[i];
     if (prev && curr && curr.start < prev.end)
       throw new Error("Edit regions overlap. Use fewer, non-overlapping find snippets.");
+  }
+
+  const hasFindReplaceEdit = input.edits.some((edit) => "find" in edit);
+  const totalTouchedChars = ranges.reduce((sum, range) => sum + (range.end - range.start), 0);
+  const totalTouchedLines = ranges.reduce(
+    (sum, range) => sum + raw.slice(range.start, range.end).split("\n").length,
+    0,
+  );
+  if (
+    (hasFindReplaceEdit || input.edits.length > 1) &&
+    (totalTouchedChars > MAX_BATCH_EDIT_CHARS || totalTouchedLines > MAX_BATCH_EDIT_LINES)
+  ) {
+    throw createToolError(
+      TOOL_ERROR_CODES.editFileBatchTooLarge,
+      "edit-file batch rewrites too much of the file. Use short bounded snippets for local edits, a single line-range edit for one contiguous block, or edit-code for structural rewrites.",
+      undefined,
+      editFileRecovery(input.path, "shrink-edit"),
+    );
   }
 
   // Detect likely duplication: replace text ends with lines that already follow the edit point.
@@ -243,10 +332,7 @@ export async function writeTextFile(input: {
     previousContent = await readFile(absPath, "utf8");
     if (!overwrite) throw new Error("Target file already exists");
   } catch (error) {
-    if (!(error instanceof Error) || !/ENOENT/.test(error.message)) {
-      if (error instanceof Error && error.message === "Target file already exists") throw error;
-      throw error;
-    }
+    if (!(error instanceof Error) || !/ENOENT/.test(error.message)) throw error;
   }
 
   await mkdir(dirname(absPath), { recursive: true });
@@ -306,10 +392,10 @@ const LANGUAGE_MAP: Record<string, string> = {
   ".go": "go",
 };
 
-function languageFromPath(filePath: string): string {
+function languageFromPath(filePath: string): string | undefined {
   const dot = filePath.lastIndexOf(".");
-  if (dot < 0) return "TypeScript";
-  return LANGUAGE_MAP[filePath.slice(dot).toLowerCase()] ?? "TypeScript";
+  if (dot < 0) return undefined;
+  return LANGUAGE_MAP[filePath.slice(dot).toLowerCase()];
 }
 
 function isParseable(filePath: string): boolean {
@@ -339,6 +425,9 @@ export async function editCode(input: {
   await ensureDynamicLanguages();
 
   const langName = languageFromPath(absPath);
+  if (!langName) {
+    throw new Error(`edit-code requires a supported code file, got: ${input.path}`);
+  }
   const langEnum = napi.Lang[langName as keyof typeof napi.Lang];
   let current = original;
   let totalMatches = 0;
@@ -468,8 +557,14 @@ export async function scanCode(input: {
     const info = await stat(absPath);
 
     if (info.isFile()) {
+      if (!input.language && !isParseable(absPath)) {
+        throw new Error(`scan-code requires a supported code file, got: ${rawPath}`);
+      }
       const content = await readFile(absPath, "utf8");
       const lang = input.language ?? languageFromPath(absPath);
+      if (!lang) {
+        throw new Error(`scan-code requires a supported code file, got: ${rawPath}`);
+      }
       scanned++;
       scanFile(displayPathForDiff(absPath, input.workspace), content, lang);
     } else if (info.isDirectory()) {
@@ -495,6 +590,7 @@ export async function scanCode(input: {
           } else if (entry.isFile() && isParseable(abs)) {
             if (scanned >= maxFiles || totalMatches() >= maxResults) break;
             const lang = input.language ?? languageFromPath(abs);
+            if (!lang) continue;
             try {
               const content = await readFile(abs, "utf8");
               scanned++;

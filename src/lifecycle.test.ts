@@ -1,21 +1,26 @@
 import { describe, expect, test } from "bun:test";
 import { createErrorStats } from "./error-handling";
+import { LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./error-primitives";
 import { scheduleMemoryCommit, shouldCommitMemory } from "./lifecycle";
 import type { RunContext } from "./lifecycle-contract";
 import { recoveryActionForError } from "./lifecycle-evaluate";
 import {
+  editFileRecoveryEvaluator,
   guardRecoveryEvaluator,
-  multiMatchEditEvaluator,
   repeatedFailureEvaluator,
   verifyCycle,
 } from "./lifecycle-evaluators";
 import { phaseFinalize } from "./lifecycle-finalize";
-import { consumeLifecycleFeedback, createGenerationInput, createLifecycleFeedbackText } from "./lifecycle-generate";
+import {
+  consumeLifecycleFeedback,
+  createGenerationInput,
+  createLifecycleFeedbackText,
+  phaseGenerate,
+} from "./lifecycle-generate";
 import { defaultLifecyclePolicy } from "./lifecycle-policy";
 import { phasePrepare } from "./lifecycle-prepare";
 import { acceptedLifecycleSignal, updateRepeatedFailureState } from "./lifecycle-state";
 import { createEmptyPromptBreakdownTotals } from "./lifecycle-usage";
-import { LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./tool-error-codes";
 import { createSessionContext, recordCall } from "./tool-guards";
 
 function createMockContext(overrides: Partial<RunContext> = {}): RunContext {
@@ -57,7 +62,6 @@ function createMockContext(overrides: Partial<RunContext> = {}): RunContext {
     generationAttempt: 0,
     regenerationCount: 0,
     regenerationLimitHit: false,
-    sawEditFileMultiMatchError: false,
     errorStats: createErrorStats(),
     nativeIdQueue: new Map(),
     toolCallStartedAt: new Map(),
@@ -70,12 +74,17 @@ describe("verifyCycle", () => {
   test("returns regenerate when write tools used without verify", () => {
     const session = createSessionContext("task_new");
     session.callLog = [
-      { toolName: "edit-file", args: { path: "src/old.ts" }, taskId: "task_old" },
-      { toolName: "read-file", args: { paths: [{ path: "src/a.ts" }] }, taskId: "task_new" },
-      { toolName: "read-file", args: { paths: [{ path: "src/c.ts" }] }, taskId: "task_new" },
-      { toolName: "scan-code", args: { paths: ["src/d.ts"], patterns: ["export function $NAME"] }, taskId: "task_new" },
-      { toolName: "edit-file", args: { path: "src/a.ts" }, taskId: "task_new" },
-      { toolName: "edit-code", args: { path: "src/b.ts" }, taskId: "task_new" },
+      { toolName: "edit-file", args: { path: "src/old.ts" }, taskId: "task_old", status: "succeeded" },
+      { toolName: "read-file", args: { paths: [{ path: "src/a.ts" }] }, taskId: "task_new", status: "succeeded" },
+      { toolName: "read-file", args: { paths: [{ path: "src/c.ts" }] }, taskId: "task_new", status: "succeeded" },
+      {
+        toolName: "scan-code",
+        args: { paths: ["src/d.ts"], patterns: ["export function $NAME"] },
+        taskId: "task_new",
+        status: "succeeded",
+      },
+      { toolName: "edit-file", args: { path: "src/a.ts" }, taskId: "task_new", status: "succeeded" },
+      { toolName: "edit-code", args: { path: "src/b.ts" }, taskId: "task_new", status: "succeeded" },
     ];
     const ctx = createMockContext({
       initialMode: "work",
@@ -112,7 +121,7 @@ describe("verifyCycle", () => {
 
   test("uses global verify prompt when request explicitly opts into global scope", () => {
     const session = createSessionContext();
-    session.callLog = [{ toolName: "edit-file", args: { path: "src/a.ts" } }];
+    session.callLog = [{ toolName: "edit-file", args: { path: "src/a.ts" }, status: "succeeded" }];
     const ctx = createMockContext({
       request: { model: "gpt-5-mini", message: "Implement fix", history: [], verifyScope: "global" },
       initialMode: "work",
@@ -123,6 +132,19 @@ describe("verifyCycle", () => {
     const action = verifyCycle.evaluate(ctx);
     expect(action.type).toBe("regenerate");
     if (action.type === "regenerate") expect(action.feedback?.details).not.toContain("Task boundary:");
+  });
+
+  test("returns done when request disables verification", () => {
+    const session = createSessionContext();
+    session.callLog = [{ toolName: "edit-file", args: { path: "src/a.ts" }, status: "succeeded" }];
+    const ctx = createMockContext({
+      request: { model: "gpt-5-mini", message: "Implement fix", history: [], verifyScope: "none" },
+      initialMode: "work",
+      session,
+      result: { text: "Done.", toolCalls: [] },
+      observedTools: new Set(["edit-file"]),
+    });
+    expect(verifyCycle.evaluate(ctx).type).toBe("done");
   });
 
   test("returns done when verify already ran", () => {
@@ -217,6 +239,194 @@ describe("verifyCycle", () => {
       result: { text: "No issues found. 0 errors.", toolCalls: [] },
     });
     expect(verifyCycle.evaluate(ctx).type).toBe("done");
+  });
+});
+
+describe("phaseGenerate", () => {
+  test("does not clear an edit-file error after an unrelated successful read", async () => {
+    const ctx = createMockContext({
+      request: { model: "gpt-5-mini", message: "test", history: [] },
+      agent: {
+        id: "test-agent",
+        name: "test-agent",
+        instructions: "",
+        model: {} as RunContext["agent"]["model"],
+        tools: {},
+        async stream() {
+          const chunks = [
+            {
+              type: "tool-call" as const,
+              payload: { toolCallId: "call_1", toolName: "edit-file", args: { path: "src/a.ts" } },
+            },
+            {
+              type: "tool-error" as const,
+              payload: {
+                toolCallId: "call_1",
+                toolName: "edit-file",
+                error: {
+                  message: "Find text not found",
+                  code: TOOL_ERROR_CODES.editFileFindNotFound,
+                  recovery: {
+                    tool: "edit-file" as const,
+                    kind: "refresh-snippet" as const,
+                    summary: "Refresh the snippet.",
+                    instruction: "Reread the file and rebuild the edit.",
+                  },
+                },
+              },
+            },
+            {
+              type: "tool-call" as const,
+              payload: { toolCallId: "call_2", toolName: "read-file", args: { paths: [{ path: "src/a.ts" }] } },
+            },
+            {
+              type: "tool-result" as const,
+              payload: { toolCallId: "call_2", toolName: "read-file", result: { output: "File: src/a.ts" } },
+            },
+          ];
+          return {
+            fullStream: new ReadableStream({
+              start(controller) {
+                for (const chunk of chunks) controller.enqueue(chunk);
+                controller.close();
+              },
+            }),
+            async getFullOutput() {
+              return { text: "Done.", toolCalls: [], signal: "done" as const };
+            },
+          };
+        },
+      },
+    });
+
+    await phaseGenerate(ctx, { timeoutMs: 1000 });
+
+    expect(ctx.currentError?.tool).toBe("edit-file");
+    expect(acceptedLifecycleSignal(ctx)).toBeUndefined();
+  });
+
+  test("clears an edit-file error after a later successful write recovery", async () => {
+    const ctx = createMockContext({
+      request: { model: "gpt-5-mini", message: "test", history: [] },
+      agent: {
+        id: "test-agent",
+        name: "test-agent",
+        instructions: "",
+        model: {} as RunContext["agent"]["model"],
+        tools: {},
+        async stream() {
+          const chunks = [
+            {
+              type: "tool-call" as const,
+              payload: { toolCallId: "call_1", toolName: "edit-file", args: { path: "src/a.ts" } },
+            },
+            {
+              type: "tool-error" as const,
+              payload: {
+                toolCallId: "call_1",
+                toolName: "edit-file",
+                error: {
+                  message: "Find text not found",
+                  code: TOOL_ERROR_CODES.editFileFindNotFound,
+                  recovery: {
+                    tool: "edit-file" as const,
+                    kind: "refresh-snippet" as const,
+                    summary: "Refresh the snippet.",
+                    instruction: "Reread the file and rebuild the edit.",
+                  },
+                },
+              },
+            },
+            {
+              type: "tool-call" as const,
+              payload: { toolCallId: "call_2", toolName: "edit-file", args: { path: "src/a.ts" } },
+            },
+            {
+              type: "tool-result" as const,
+              payload: { toolCallId: "call_2", toolName: "edit-file", result: { ok: true } },
+            },
+          ];
+          return {
+            fullStream: new ReadableStream({
+              start(controller) {
+                for (const chunk of chunks) controller.enqueue(chunk);
+                controller.close();
+              },
+            }),
+            async getFullOutput() {
+              return { text: "Done.", toolCalls: [], signal: "done" as const };
+            },
+          };
+        },
+      },
+    });
+
+    await phaseGenerate(ctx, { timeoutMs: 1000 });
+
+    expect(ctx.currentError).toBeUndefined();
+    expect(acceptedLifecycleSignal(ctx)).toBe("done");
+  });
+
+  test("does not clear an edit-file error after a different write tool succeeds", async () => {
+    const ctx = createMockContext({
+      request: { model: "gpt-5-mini", message: "test", history: [] },
+      agent: {
+        id: "test-agent",
+        name: "test-agent",
+        instructions: "",
+        model: {} as RunContext["agent"]["model"],
+        tools: {},
+        async stream() {
+          const chunks = [
+            {
+              type: "tool-call" as const,
+              payload: { toolCallId: "call_1", toolName: "edit-file", args: { path: "src/a.ts" } },
+            },
+            {
+              type: "tool-error" as const,
+              payload: {
+                toolCallId: "call_1",
+                toolName: "edit-file",
+                error: {
+                  message: "Find text not found",
+                  code: TOOL_ERROR_CODES.editFileFindNotFound,
+                  recovery: {
+                    tool: "edit-file" as const,
+                    kind: "refresh-snippet" as const,
+                    summary: "Refresh the snippet.",
+                    instruction: "Reread the file and rebuild the edit.",
+                  },
+                },
+              },
+            },
+            {
+              type: "tool-call" as const,
+              payload: { toolCallId: "call_2", toolName: "create-file", args: { path: "src/b.ts" } },
+            },
+            {
+              type: "tool-result" as const,
+              payload: { toolCallId: "call_2", toolName: "create-file", result: { ok: true } },
+            },
+          ];
+          return {
+            fullStream: new ReadableStream({
+              start(controller) {
+                for (const chunk of chunks) controller.enqueue(chunk);
+                controller.close();
+              },
+            }),
+            async getFullOutput() {
+              return { text: "Done.", toolCalls: [], signal: "done" as const };
+            },
+          };
+        },
+      },
+    });
+
+    await phaseGenerate(ctx, { timeoutMs: 1000 });
+
+    expect(ctx.currentError?.tool).toBe("edit-file");
+    expect(acceptedLifecycleSignal(ctx)).toBeUndefined();
   });
 });
 
@@ -485,54 +695,75 @@ describe("repeatedFailureEvaluator", () => {
   });
 });
 
-describe("multiMatchEditEvaluator", () => {
-  test("returns regenerate when edit-file fails with multi-match error", () => {
+describe("editFileRecoveryEvaluator", () => {
+  test("returns regenerate when edit-file exposes structured recovery", () => {
     const session = createSessionContext();
-    session.callLog = [{ toolName: "edit-file", args: { path: "src/priority.ts" } }];
+    session.callLog = [{ toolName: "edit-file", args: { path: "src/priority.ts" }, status: "failed" }];
     const ctx = createMockContext({
       request: { model: "gpt-5-mini", message: "Rename symbol everywhere", history: [] },
       initialMode: "work",
       session,
       observedTools: new Set(["read-file", "edit-file"]),
-      sawEditFileMultiMatchError: true,
-      currentError: { message: "edit-file failed: [E_EDIT_FILE_MULTI_MATCH] Find text matched 3 locations (foo…)." },
+      currentError: {
+        code: "E_EDIT_FILE_MULTI_MATCH",
+        message: "edit-file failed: [E_EDIT_FILE_MULTI_MATCH] Find text matched 3 locations (foo…).",
+        tool: "edit-file",
+        recovery: {
+          tool: "edit-file",
+          kind: "disambiguate-match",
+          summary: "Your edit-file snippet matched multiple locations.",
+          instruction: "Keep the change in 'src/priority.ts' and make one bounded edit with a more unique snippet.",
+        },
+      },
       result: { text: "Attempted edit.", toolCalls: [] },
     });
-    const action = multiMatchEditEvaluator.evaluate(ctx);
+    const action = editFileRecoveryEvaluator.evaluate(ctx);
     expect(action.type).toBe("regenerate");
     if (action.type === "regenerate") {
-      expect(action.feedback?.instruction).toContain("next tool call must be edit-code");
-      expect(action.feedback?.instruction).toContain("Use path 'src/priority.ts' for edit-code");
-      expect(action.feedback?.instruction).toContain("do not use '.' or directory paths");
+      expect(action.feedback?.source).toBe("edit-file");
+      expect(action.feedback?.summary).toBe("Your edit-file snippet matched multiple locations.");
+      expect(action.feedback?.details).toContain("Find text matched 3 locations");
+      expect(action.feedback?.instruction).toContain("src/priority.ts");
     }
   });
 
-  test("uses concrete-path guidance when no target path is available", () => {
+  test("returns done when there is no structured edit-file recovery", () => {
     const ctx = createMockContext({
-      request: { model: "gpt-5-mini", message: "Rename symbol everywhere", history: [] },
       initialMode: "work",
-      observedTools: new Set(["edit-file"]),
-      sawEditFileMultiMatchError: true,
-      currentError: { message: "edit-file failed: [E_EDIT_FILE_MULTI_MATCH] Find text matched 2 locations." },
+      currentError: {
+        code: TOOL_ERROR_CODES.editFileFindTooLarge,
+        tool: "edit-file",
+        message: "edit-file failed: find must be a short unique snippet",
+      },
       result: { text: "Attempted edit.", toolCalls: [] },
     });
-    const action = multiMatchEditEvaluator.evaluate(ctx);
-    expect(action.type).toBe("regenerate");
-    if (action.type === "regenerate") {
-      expect(action.feedback?.instruction).toContain("Use a concrete file path for edit-code");
-    }
+    expect(editFileRecoveryEvaluator.evaluate(ctx).type).toBe("done");
   });
 
-  test("returns done when edit-code was already used", () => {
+  test("returns done after a later successful write for disambiguate-match recovery", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file", "edit-code"]);
+    session.callLog = [
+      { toolName: "edit-file", args: { path: "src/priority.ts" }, status: "failed" },
+      { toolName: "edit-file", args: { path: "src/priority.ts" }, status: "succeeded" },
+    ];
     const ctx = createMockContext({
       request: { model: "gpt-5-mini", message: "Rename symbol everywhere", history: [] },
       initialMode: "work",
-      observedTools: new Set(["edit-file", "edit-code"]),
-      sawEditFileMultiMatchError: true,
-      currentError: { message: "edit-file failed: [E_EDIT_FILE_MULTI_MATCH] Find text matched 2 locations." },
-      result: { text: "Attempted edit.", toolCalls: [] },
+      session,
+      currentError: {
+        tool: "edit-file",
+        message: "edit-file failed: [E_EDIT_FILE_MULTI_MATCH] Find text matched 3 locations.",
+        recovery: {
+          tool: "edit-file",
+          kind: "disambiguate-match",
+          summary: "Your edit-file snippet matched multiple locations.",
+          instruction: "Use a more unique snippet.",
+        },
+      },
+      result: { text: "Applied the change.", toolCalls: [] },
     });
-    expect(multiMatchEditEvaluator.evaluate(ctx).type).toBe("done");
+    expect(editFileRecoveryEvaluator.evaluate(ctx).type).toBe("done");
   });
 });
 
@@ -731,15 +962,15 @@ describe("createGenerationInput", () => {
         feedback: [
           { source: "verify", mode: "verify", summary: "Run verification.", details: "Task boundary:\n- src/a.ts" },
           { source: "lint", mode: "work", summary: "Lint errors detected" },
-          { source: "multi-match", mode: "work", summary: "Use edit-code next" },
+          { source: "edit-file", mode: "work", summary: "Use a bounded edit next" },
         ],
       },
     });
     expect(input).toContain("USER: fix it");
     expect(input).toContain("Lifecycle feedback (lint)");
     expect(input).toContain("Lint errors detected");
-    expect(input).toContain("Lifecycle feedback (multi-match)");
-    expect(input).toContain("Use edit-code next");
+    expect(input).toContain("Lifecycle feedback (edit-file)");
+    expect(input).toContain("Use a bounded edit next");
     expect(input).not.toContain("Task boundary:\n- src/a.ts");
   });
 });
@@ -772,7 +1003,7 @@ describe("consumeLifecycleFeedback", () => {
           details: "Task boundary:\n- src/a.ts",
         },
         { source: "lint" as const, mode: "work" as const, summary: "Lint errors detected" },
-        { source: "multi-match" as const, mode: "work" as const, summary: "Use edit-code next" },
+        { source: "edit-file" as const, mode: "work" as const, summary: "Use a bounded edit next" },
       ],
     };
 
@@ -780,7 +1011,7 @@ describe("consumeLifecycleFeedback", () => {
 
     expect(consumed).toEqual([
       { source: "lint", mode: "work", summary: "Lint errors detected" },
-      { source: "multi-match", mode: "work", summary: "Use edit-code next" },
+      { source: "edit-file", mode: "work", summary: "Use a bounded edit next" },
     ]);
     expect(state.feedback).toEqual([
       { source: "verify", mode: "verify", summary: "Run verification.", details: "Task boundary:\n- src/a.ts" },

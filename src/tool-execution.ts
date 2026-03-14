@@ -1,6 +1,6 @@
 import { invariant } from "./assert";
+import { ERROR_KINDS, LIFECYCLE_ERROR_CODES, ToolError, type ToolRecovery } from "./error-primitives";
 import { createId } from "./short-id";
-import { ERROR_KINDS, LIFECYCLE_ERROR_CODES, ToolError } from "./tool-error-codes";
 import { recordCall, runGuards, type SessionContext } from "./tool-guards";
 
 function withTimeout<T>(task: () => Promise<T>, timeoutMs: number, toolId: string): Promise<T> {
@@ -58,6 +58,7 @@ export async function withToolError<T>(toolId: string, task: () => Promise<T>): 
     ) as Error & {
       code?: string;
       kind?: string;
+      recovery?: ToolRecovery;
     };
     if (typeof error === "object" && error !== null && "code" in error) {
       const code = (error as { code?: unknown }).code;
@@ -66,6 +67,9 @@ export async function withToolError<T>(toolId: string, task: () => Promise<T>): 
     if (typeof error === "object" && error !== null && "kind" in error) {
       const kind = (error as { kind?: unknown }).kind;
       if (typeof kind === "string" && kind.length > 0) wrapped.kind = kind;
+    }
+    if (typeof error === "object" && error !== null && "recovery" in error) {
+      wrapped.recovery = (error as { recovery?: ToolRecovery }).recovery;
     }
     throw wrapped;
   }
@@ -102,7 +106,7 @@ export async function guardedExecute<T>(
     const cached = cache.get(toolId, argsRecord);
     if (cached) {
       session.onDebug?.("lifecycle.tool.cache", { tool: toolId, hit: true, ...cache.stats() });
-      recordCall(session, toolId, argsRecord, hashResultValue(cached.result));
+      recordCall(session, toolId, argsRecord, hashResultValue(cached.result), "succeeded");
       return cached.result as T;
     }
     session.onDebug?.("lifecycle.tool.cache", { tool: toolId, hit: false, ...cache.stats() });
@@ -121,7 +125,13 @@ export async function guardedExecute<T>(
     taskFailed = true;
     throw error;
   } finally {
-    recordCall(session, toolId, argsRecord, taskFailed ? undefined : hashResultValue(taskResult));
+    recordCall(
+      session,
+      toolId,
+      argsRecord,
+      taskFailed ? undefined : hashResultValue(taskResult),
+      taskFailed ? "failed" : "succeeded",
+    );
     if (cache && !cache.isCacheable(toolId) && !taskFailed) {
       cache.invalidateForWrite(toolId, argsRecord);
     }

@@ -295,6 +295,55 @@ describe("redundant-search guard", () => {
     recordCall(session, "edit-file", { path: "src/a.ts" });
     expect(() => runGuards({ toolName: "search-files", args: { pattern: "query-5" }, session })).not.toThrow();
   });
+
+  test("blocks same-file search immediately after a direct whole-file read", () => {
+    const session = createSessionContext();
+    recordCall(session, "read-file", { paths: [{ path: "src/a.ts" }] });
+    expect(() =>
+      runGuards({
+        toolName: "search-files",
+        args: { patterns: ["return undefined;"], paths: ["src/a.ts"] },
+        session,
+      }),
+    ).toThrow(/already read directly in full/i);
+  });
+
+  test("allows same-file search after a ranged read", () => {
+    const session = createSessionContext();
+    recordCall(session, "read-file", { paths: [{ path: "src/a.ts", start: 1, end: 40 }] });
+    expect(() =>
+      runGuards({
+        toolName: "search-files",
+        args: { patterns: ["return undefined;"], paths: ["src/a.ts"] },
+        session,
+      }),
+    ).not.toThrow();
+  });
+
+  test("blocks same-file search after a whole-file sentinel ranged read", () => {
+    const session = createSessionContext();
+    recordCall(session, "read-file", { paths: [{ path: "src/a.ts", start: 1, end: Number.MAX_SAFE_INTEGER }] });
+    expect(() =>
+      runGuards({
+        toolName: "search-files",
+        args: { patterns: ["return undefined;"], paths: ["src/a.ts"] },
+        session,
+      }),
+    ).toThrow(/already read directly in full/i);
+  });
+
+  test("blocks same-file search after multiple rereads of the same file", () => {
+    const session = createSessionContext();
+    recordCall(session, "read-file", { paths: [{ path: "src/a.ts", start: 1, end: 40 }] });
+    recordCall(session, "read-file", { paths: [{ path: "src/a.ts", start: 41, end: 80 }] });
+    expect(() =>
+      runGuards({
+        toolName: "search-files",
+        args: { patterns: ["return undefined;"], paths: ["src/a.ts"] },
+        session,
+      }),
+    ).toThrow(/already read multiple times/i);
+  });
 });
 
 describe("redundant-find guard", () => {
@@ -353,6 +402,46 @@ describe("redundant-find guard", () => {
 });
 
 describe("post-edit-redundancy guard", () => {
+  test("blocks same-file edit-file retry without new evidence after a successful edit", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file"]);
+    recordCall(session, "edit-file", { path: "src/clamp.ts", edits: [{ find: "a", replace: "b" }] });
+    expect(() =>
+      runGuards({
+        toolName: "edit-file",
+        args: { path: "src/clamp.ts", edits: [{ find: "b", replace: "c" }] },
+        session,
+      }),
+    ).toThrow(/already edited successfully.*no new file evidence/i);
+  });
+
+  test("allows same-file edit-file retry after rereading the file", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file"]);
+    recordCall(session, "edit-file", { path: "src/clamp.ts", edits: [{ find: "a", replace: "b" }] });
+    recordCall(session, "read-file", { paths: [{ path: "src/clamp.ts" }] });
+    expect(() =>
+      runGuards({
+        toolName: "edit-file",
+        args: { path: "src/clamp.ts", edits: [{ find: "b", replace: "c" }] },
+        session,
+      }),
+    ).not.toThrow();
+  });
+
+  test("allows edit-file on a different file after a successful edit", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file"]);
+    recordCall(session, "edit-file", { path: "src/clamp.ts", edits: [{ find: "a", replace: "b" }] });
+    expect(() =>
+      runGuards({
+        toolName: "edit-file",
+        args: { path: "src/other.ts", edits: [{ find: "x", replace: "y" }] },
+        session,
+      }),
+    ).not.toThrow();
+  });
+
   test("blocks delete-file on a file already edited in this turn", () => {
     const session = createSessionContext();
     session.writeTools = new Set(["edit-file", "delete-file"]);

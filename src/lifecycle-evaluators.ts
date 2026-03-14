@@ -1,7 +1,7 @@
 import type { AgentMode } from "./agent-contract";
 import { createModeInstructions } from "./agent-instructions";
 import type { VerifyScope } from "./api";
-import type { LifecycleError, LifecycleEventName, LifecycleFeedback, VerifyOutcome } from "./lifecycle-contract";
+import type { LifecycleError, LifecycleEventName, LifecycleFeedback, LifecycleState } from "./lifecycle-contract";
 import type { LifecyclePolicy } from "./lifecycle-policy";
 import { lintFiles } from "./lint-reflection";
 import { extractReadPaths } from "./tool-arg-paths";
@@ -29,12 +29,7 @@ export type EvaluatorContext = {
   session: SessionContext;
   workspace: string | undefined;
   request: { message: string; verifyScope?: VerifyScope };
-  sawEditFileMultiMatchError: boolean;
-  lifecycleState: {
-    feedback: LifecycleFeedback[];
-    verifyOutcome?: VerifyOutcome;
-    repeatedFailure?: { signature: string; count: number; status: "pending" | "surfaced" };
-  };
+  lifecycleState: LifecycleState;
   currentError?: LifecycleError;
 };
 
@@ -43,15 +38,20 @@ export type Evaluator = {
   evaluate: (ctx: EvaluatorContext) => EvalAction;
 };
 
-function findLastEditFilePath(ctx: EvaluatorContext): string | undefined {
+function hasRecoveredFromLastEditFileFailure(ctx: EvaluatorContext): boolean {
   const callLog = scopedCallLog(ctx.session, ctx.taskId);
-  for (let i = callLog.length - 1; i >= 0; i -= 1) {
+  let lastFailIdx = -1;
+  for (let i = callLog.length - 1; i >= 0; i--) {
     const entry = callLog[i];
-    if (entry?.toolName !== "edit-file") continue;
-    const path = entry.args?.path;
-    if (typeof path === "string" && path.trim().length > 0) return path.trim();
+    if (entry?.toolName === "edit-file" && entry.status === "failed") {
+      lastFailIdx = i;
+      break;
+    }
   }
-  return undefined;
+  if (lastFailIdx === -1) return false;
+  return callLog
+    .slice(lastFailIdx + 1)
+    .some((entry) => WRITE_TOOL_SET.has(entry.toolName) && entry.status !== "failed");
 }
 
 function writePathsForCurrentTask(ctx: EvaluatorContext): string[] {
@@ -182,6 +182,7 @@ export const verifyCycle: Evaluator = {
   id: "verify-cycle",
   evaluate(ctx) {
     if (!ctx.result) return { type: "done" };
+    if (ctx.request.verifyScope === "none") return { type: "done" };
 
     // Work → Verify: trigger verify when write tools were used
     if (ctx.mode !== "verify") {
@@ -221,33 +222,28 @@ export const verifyCycle: Evaluator = {
   },
 };
 
-export const multiMatchEditEvaluator: Evaluator = {
-  id: "multi-match-edit-evaluator",
+export const editFileRecoveryEvaluator: Evaluator = {
+  id: "edit-file-recovery",
   evaluate(ctx) {
     if (!ctx.result) return { type: "done" };
     if (ctx.initialMode !== "work") return { type: "done" };
-    if (!ctx.sawEditFileMultiMatchError) return { type: "done" };
-    if (!ctx.observedTools.has("edit-file")) return { type: "done" };
-    if (ctx.observedTools.has("edit-code")) return { type: "done" };
+    if (ctx.currentError?.tool !== "edit-file") return { type: "done" };
+    const recovery = ctx.currentError.recovery;
+    if (!recovery || recovery.tool !== "edit-file") return { type: "done" };
+    if (recovery.kind === "disambiguate-match" && hasRecoveredFromLastEditFileFailure(ctx)) return { type: "done" };
 
-    const targetPath = findLastEditFilePath(ctx);
-    ctx.debug("lifecycle.eval.multi_match_edit_regenerate", {
-      error: ctx.currentError?.message ?? "multi_match_seen",
-      target_path: targetPath ?? null,
+    ctx.debug("lifecycle.eval.edit_file_recovery", {
+      error: ctx.currentError.message,
+      recovery_kind: recovery.kind,
     });
     return {
       type: "regenerate",
       feedback: {
-        source: "multi-match",
+        source: "edit-file",
         mode: "work",
-        summary: "Your previous edit-file call matched multiple locations.",
-        instruction:
-          "For this task, your next tool call must be edit-code (not edit-file). " +
-          (targetPath
-            ? `Use path '${targetPath}' for edit-code and do not use '.' or directory paths. `
-            : "Use a concrete file path for edit-code and do not use '.' or directory paths. ") +
-          "Do not run additional find/search/read calls unless edit-code fails. " +
-          "After applying edit-code changes, run verify.",
+        summary: recovery.summary,
+        details: ctx.currentError.message,
+        instruction: recovery.instruction,
       },
     };
   },

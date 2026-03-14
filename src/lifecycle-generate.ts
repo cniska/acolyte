@@ -11,9 +11,9 @@ import {
   type ErrorSource,
   errorCodeFromCategory,
   errorKindFromCategory,
-  isEditFileMultiMatchSignal,
   parseErrorInfo,
 } from "./error-handling";
+import { extractToolErrorCode, LIFECYCLE_ERROR_CODES } from "./error-primitives";
 import type {
   GenerateOptions,
   GenerateResult,
@@ -27,9 +27,16 @@ import { addPromptBreakdownTotals, estimatePromptBreakdown, totalPromptBreakdown
 import { formatModel } from "./provider-config";
 import type { StreamError } from "./stream-error";
 import type { ToolDefinition } from "./tool-contract";
-import { extractToolErrorCode, LIFECYCLE_ERROR_CODES } from "./tool-error-codes";
 import { resetCycleStepCount } from "./tool-guards";
 import type { Toolset } from "./tool-registry";
+
+type CaptureErrorMeta = {
+  source?: ErrorSource;
+  tool?: string;
+  code?: string;
+  kind?: string;
+  recovery?: NonNullable<RunContext["currentError"]>["recovery"];
+};
 
 function formatToolArgs(args: Record<string, unknown>): Record<string, string | number | boolean> {
   const out: Record<string, string | number | boolean> = {};
@@ -50,11 +57,7 @@ function emitInputTokens(ctx: RunContext): number {
   return Math.max(ctx.inputTokensAccum, totalPromptBreakdownTokens(ctx.promptBreakdownTotals));
 }
 
-function captureError(
-  ctx: RunContext,
-  message: string,
-  meta?: { source?: ErrorSource; tool?: string; code?: string; kind?: string },
-): void {
+function captureError(ctx: RunContext, message: string, meta?: CaptureErrorMeta): void {
   const kindCategory = categoryFromErrorKind(meta?.kind);
   const code =
     meta?.code ??
@@ -63,9 +66,8 @@ function captureError(
     LIFECYCLE_ERROR_CODES.unknown;
   const category = categoryFromErrorCode(code) ?? kindCategory ?? "other";
   const kind = meta?.kind ?? errorKindFromCategory(category);
-  ctx.currentError = { message, code, category, source: meta?.source, tool: meta?.tool };
+  ctx.currentError = { message, code, category, source: meta?.source, tool: meta?.tool, recovery: meta?.recovery };
   ctx.errorStats[category] += 1;
-  if (isEditFileMultiMatchSignal({ code, message })) ctx.sawEditFileMultiMatchError = true;
   ctx.debug("lifecycle.error", {
     source: meta?.source ?? "generate",
     tool: meta?.tool ?? null,
@@ -128,9 +130,10 @@ export function setMode(ctx: RunContext, mode: RunContext["mode"], trigger?: str
 }
 
 function ensureAgentForMode(ctx: RunContext): void {
+  if (ctx.agentForMode === ctx.mode) return;
+
   const resolved = resolveModeModel(ctx.mode, ctx.request.model, ctx.request.modeModels);
   const nextModel = resolved.model;
-  if (ctx.agentForMode === ctx.mode && ctx.model === nextModel) return;
 
   const previousMode = ctx.agentForMode;
   const previousModel = ctx.model;
@@ -183,7 +186,6 @@ export function createGenerationInput(
 
 export async function phaseGenerate(ctx: RunContext, opts: GenerateOptions): Promise<void> {
   ctx.currentError = undefined;
-  ctx.sawEditFileMultiMatchError = false;
   ensureAgentForMode(ctx);
   resetCycleStepCount(ctx.session, opts.cycleLimit);
   ctx.generationAttempt += 1;
@@ -327,6 +329,15 @@ function emitStreamingUsage(ctx: RunContext, chars: number): void {
   }
 }
 
+function clearResolvedToolError(ctx: RunContext, toolName: string): void {
+  if (!ctx.currentError) return;
+  if (ctx.currentError.source !== "tool-error" && ctx.currentError.source !== "tool-result") return;
+  const failedTool = ctx.currentError.tool;
+  if (!failedTool) return;
+  if (failedTool !== toolName) return;
+  ctx.currentError = undefined;
+}
+
 function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
   switch (chunk.type) {
     case "text-delta": {
@@ -384,8 +395,11 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
             tool: toolName,
             code: resultCode ?? errorInfo.code,
             kind: errorInfo.kind,
+            recovery: errorInfo.recovery,
           });
           ctx.debug("lifecycle.tool.error", { tool: toolName, error: errorInfo.message });
+        } else {
+          clearResolvedToolError(ctx, toolName);
         }
         emitToolResult(ctx, p.toolCallId, toolName, isError);
       }
@@ -404,6 +418,7 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
         tool: toolName,
         code: payloadCode ?? errorInfo.code,
         kind: payloadKind ?? errorInfo.kind,
+        recovery: errorInfo.recovery,
       });
       ctx.debug("lifecycle.tool.error", { tool: toolName, error: errorInfo.message });
       if (p?.toolCallId && p?.toolName) {

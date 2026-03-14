@@ -1,6 +1,7 @@
 import { afterAll, describe, expect, test } from "bun:test";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
+import { TOOL_ERROR_CODES } from "./error-primitives";
 import {
   deleteTextFile,
   editCode,
@@ -61,6 +62,15 @@ describe("path guards", () => {
     );
   });
 
+  test("scanCode rejects unsupported single-file types", async () => {
+    const filePath = `/tmp/acolyte-test-scan-unsupported-${testUuid()}.yaml`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, "foo: bar\n", "utf8");
+    await expect(scanCode({ workspace: WORKSPACE, paths: [filePath], pattern: "const $X" })).rejects.toThrow(
+      `scan-code requires a supported code file, got: ${filePath}`,
+    );
+  });
+
   test("readSnippet allows /tmp files", async () => {
     const filePath = `/tmp/acolyte-test-read-${testUuid()}.txt`;
     tempFiles.push(filePath);
@@ -104,6 +114,30 @@ describe("editFile", () => {
     ).rejects.toThrow("matched 3 locations");
   });
 
+  test("rejects missing find text with a structured error code", async () => {
+    const filePath = `/tmp/acolyte-test-not-found-${testUuid()}.txt`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, "alpha beta", "utf8");
+    await expect(
+      editFile({ workspace: WORKSPACE, path: filePath, edits: [{ find: "gamma", replace: "delta" }] }),
+    ).rejects.toMatchObject({ code: TOOL_ERROR_CODES.editFileFindNotFound });
+  });
+
+  test("emits structured recovery metadata for bounded edit failures", async () => {
+    const filePath = `/tmp/acolyte-test-recovery-${testUuid()}.txt`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, "alpha beta", "utf8");
+    await expect(
+      editFile({ workspace: WORKSPACE, path: filePath, edits: [{ find: "gamma", replace: "delta" }] }),
+    ).rejects.toMatchObject({
+      code: TOOL_ERROR_CODES.editFileFindNotFound,
+      recovery: {
+        tool: "edit-file",
+        kind: "refresh-snippet",
+      },
+    });
+  });
+
   test("allows a tiny whole-file snippet when it is only a few lines", async () => {
     const filePath = `/tmp/acolyte-test-small-snippet-${crypto.randomUUID()}.md`;
     tempFiles.push(filePath);
@@ -136,7 +170,45 @@ describe("editFile", () => {
         path: filePath,
         edits: [{ find: `${content}\n`, replace: "short\n" }],
       }),
-    ).rejects.toThrow("find must be a short unique snippet");
+    ).rejects.toMatchObject({ code: TOOL_ERROR_CODES.editFileFindTooLarge });
+  });
+
+  test("rejects oversized replace blocks for find-based edits", async () => {
+    const filePath = `/tmp/acolyte-test-large-replace-${crypto.randomUUID()}.ts`;
+    tempFiles.push(filePath);
+    const content = Array.from({ length: 40 }, (_, index) => `line-${index + 1}`).join("\n");
+    await writeFile(filePath, `${content}\n`, "utf8");
+
+    await expect(
+      editFile({
+        workspace: WORKSPACE,
+        path: filePath,
+        edits: [
+          {
+            find: "line-2\nline-3\nline-4",
+            replace: `${content}\n`,
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({ code: TOOL_ERROR_CODES.editFileReplaceTooLarge });
+  });
+
+  test("rejects batched find edits that rewrite too much of the file", async () => {
+    const filePath = `/tmp/acolyte-test-batch-rewrite-${crypto.randomUUID()}.ts`;
+    tempFiles.push(filePath);
+    const content = Array.from({ length: 40 }, (_, index) => `line-${index + 1}`).join("\n");
+    await writeFile(filePath, `${content}\n`, "utf8");
+
+    await expect(
+      editFile({
+        workspace: WORKSPACE,
+        path: filePath,
+        edits: Array.from({ length: 33 }, (_, index) => ({
+          find: `line-${index + 1}\n`,
+          replace: `updated-${index + 1}\n`,
+        })),
+      }),
+    ).rejects.toMatchObject({ code: TOOL_ERROR_CODES.editFileBatchTooLarge });
   });
 
   test("rejects replace text that duplicates content after edit point", async () => {
@@ -239,6 +311,19 @@ describe("editFile", () => {
     const content = await readFile(filePath, "utf8");
     expect(content).toBe("entirely\nnew\ncontent\n");
   });
+
+  test("line-range rejects whole-file clear edits", async () => {
+    const filePath = `/tmp/acolyte-test-lr8-${testUuid()}.txt`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, "line1\nline2\nline3\n", "utf8");
+    await expect(
+      editFile({
+        workspace: WORKSPACE,
+        path: filePath,
+        edits: [{ startLine: 1, endLine: 99, replace: "" }],
+      }),
+    ).rejects.toMatchObject({ code: TOOL_ERROR_CODES.editFileLineRangeTooLarge });
+  });
 });
 
 describe("writeTextFile", () => {
@@ -329,6 +414,19 @@ describe("editCode", () => {
         edits: [{ pattern: "Title", replacement: "Heading" }],
       }),
     ).rejects.toThrow("edit-code requires a supported code file");
+  });
+
+  test("rejects unknown single-file extensions without falling back", async () => {
+    const filePath = `/tmp/acolyte-test-ast-yaml-${testUuid()}.yaml`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, "foo: bar\n", "utf8");
+    await expect(
+      editCode({
+        workspace: WORKSPACE,
+        path: filePath,
+        edits: [{ pattern: "foo: $VALUE", replacement: "bar: $VALUE" }],
+      }),
+    ).rejects.toThrow(`edit-code requires a supported code file, got: ${filePath}`);
   });
 
   test("rejects replacement metavariables that are not present in the pattern", async () => {

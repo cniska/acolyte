@@ -6,11 +6,11 @@ import {
   createStreamError,
   errorCodeFromCategory,
   errorKindFromCategory,
-  isEditFileMultiMatchSignal,
   parseErrorInfo,
   recoveryActionForError,
+  serializeToolError,
 } from "./error-handling";
-import { LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./tool-error-codes";
+import { createToolError, LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./error-primitives";
 
 describe("error handling helpers", () => {
   test("parseErrorInfo extracts code from coded string", () => {
@@ -29,6 +29,49 @@ describe("error handling helpers", () => {
     expect(parsed.value.message).toBe("timeout");
     expect(parsed.value.code).toBe(LIFECYCLE_ERROR_CODES.timeout);
     expect(parsed.value.kind).toBe("timeout");
+  });
+
+  test("parseErrorInfo preserves structured tool recovery metadata", () => {
+    const parsed = parseErrorInfo(
+      createToolError(TOOL_ERROR_CODES.editFileFindNotFound, "stale find", undefined, {
+        tool: "edit-file",
+        kind: "refresh-snippet",
+        summary: "Refresh the snippet.",
+        instruction: "Reread the file and rebuild the edit.",
+      }),
+    );
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.value.recovery).toEqual({
+      tool: "edit-file",
+      kind: "refresh-snippet",
+      summary: "Refresh the snippet.",
+      instruction: "Reread the file and rebuild the edit.",
+    });
+  });
+
+  test("serializeToolError preserves structured tool recovery metadata", () => {
+    expect(
+      serializeToolError(
+        createToolError(TOOL_ERROR_CODES.editFileFindTooLarge, "find too large", undefined, {
+          tool: "edit-file",
+          kind: "shrink-edit",
+          summary: "Shrink the edit.",
+          instruction: "Use smaller snippets.",
+        }),
+      ),
+    ).toEqual({
+      error: {
+        message: "find too large",
+        code: TOOL_ERROR_CODES.editFileFindTooLarge,
+        recovery: {
+          tool: "edit-file",
+          kind: "shrink-edit",
+          summary: "Shrink the edit.",
+          instruction: "Use smaller snippets.",
+        },
+      },
+    });
   });
 
   test("parseErrorInfo returns invalid payload for unsupported shapes", () => {
@@ -60,17 +103,6 @@ describe("error handling helpers", () => {
     expect(errorKindFromCategory("other")).toBe("unknown");
   });
 
-  test("isEditFileMultiMatchSignal accepts code or embedded error code", () => {
-    expect(isEditFileMultiMatchSignal({ code: TOOL_ERROR_CODES.editFileMultiMatch, message: "any" })).toBe(true);
-    expect(
-      isEditFileMultiMatchSignal({
-        message: `[${TOOL_ERROR_CODES.editFileMultiMatch}] Find text matched 4 locations`,
-        code: undefined,
-      }),
-    ).toBe(true);
-    expect(isEditFileMultiMatchSignal({ message: "random error", code: undefined })).toBe(false);
-  });
-
   test("recoveryActionForError uses unknown budget only", () => {
     expect(recoveryActionForError({ errorCode: LIFECYCLE_ERROR_CODES.timeout, unknownErrorCount: 0 }, 2)).toBe("none");
     expect(recoveryActionForError({ errorCode: LIFECYCLE_ERROR_CODES.unknown, unknownErrorCount: 2 }, 2)).toBe(
@@ -79,6 +111,21 @@ describe("error handling helpers", () => {
     expect(recoveryActionForError({ errorCode: TOOL_ERROR_CODES.editFileMultiMatch, unknownErrorCount: 0 }, 2)).toBe(
       "none",
     );
+    expect(recoveryActionForError({ errorCode: TOOL_ERROR_CODES.editFileFindNotFound, unknownErrorCount: 2 }, 2)).toBe(
+      "none",
+    );
+    expect(recoveryActionForError({ errorCode: TOOL_ERROR_CODES.editFileBatchTooLarge, unknownErrorCount: 2 }, 2)).toBe(
+      "none",
+    );
+    expect(recoveryActionForError({ errorCode: TOOL_ERROR_CODES.editFileFindTooLarge, unknownErrorCount: 2 }, 2)).toBe(
+      "none",
+    );
+    expect(
+      recoveryActionForError({ errorCode: TOOL_ERROR_CODES.editFileReplaceTooLarge, unknownErrorCount: 2 }, 2),
+    ).toBe("none");
+    expect(
+      recoveryActionForError({ errorCode: TOOL_ERROR_CODES.editFileLineRangeTooLarge, unknownErrorCount: 2 }, 2),
+    ).toBe("none");
   });
 
   test("recoveryActionForError returns action based on error budget", () => {

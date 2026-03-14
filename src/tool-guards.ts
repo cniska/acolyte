@@ -20,12 +20,15 @@ export type GuardEvent = {
   detail?: string;
 };
 
+export type ToolCallStatus = "succeeded" | "failed";
+
 export type ToolCallRecord = {
   toolName: string;
   args: Record<string, unknown>;
   taskId?: string;
   mode?: string;
   resultHash?: string;
+  status: ToolCallStatus;
 };
 
 export type SessionFlags = {
@@ -124,6 +127,7 @@ function callsSinceLastVerify(session: SessionContext): ToolCallRecord[] {
 function editedPathsSinceLastVerify(session: SessionContext): string[] {
   const paths = new Set<string>();
   for (const entry of callsSinceLastVerify(session)) {
+    if (entry.status === "failed") continue;
     if (!isWriteTool(session, entry.toolName)) continue;
     if (typeof entry.args.path !== "string") continue;
     const path = normalizePath(entry.args.path.trim().toLowerCase());
@@ -138,6 +142,8 @@ type ReadRequestSignature = {
   path: string;
   signature: string;
 };
+
+const WHOLE_FILE_SENTINEL_END = 1_000_000;
 
 function redundantQueryKind(input: {
   toolName: string;
@@ -198,6 +204,57 @@ function extractReadRequestSignatures(args: Record<string, unknown>): ReadReques
   return signatures;
 }
 
+function isWholeFileReadOfPath(args: Record<string, unknown>, path: string): boolean {
+  const rawPaths = Array.isArray(args.paths) ? args.paths : [];
+  if (rawPaths.length !== 1) return false;
+  const [entry] = rawPaths;
+  if (!entry || typeof entry !== "object") return false;
+  const pathValue = (entry as { path?: unknown }).path;
+  if (typeof pathValue !== "string") return false;
+  const normalizedPath = normalizePath(pathValue.trim().toLowerCase());
+  if (normalizedPath !== path) return false;
+  const start = (entry as { start?: unknown }).start;
+  const end = (entry as { end?: unknown }).end;
+  if (start === undefined && end === undefined) return true;
+  return start === 1 && typeof end === "number" && end >= WHOLE_FILE_SENTINEL_END;
+}
+
+function readCountForPath(session: SessionContext, path: string): number {
+  let count = 0;
+  for (const entry of scopedCallLog(session)) {
+    if (entry.toolName !== "read-file") continue;
+    count += extractReadPaths(entry.args, { normalize: true }).filter((readPath) => readPath === path).length;
+  }
+  return count;
+}
+
+function searchTouchesPath(args: Record<string, unknown>, path: string): boolean {
+  const scope = extractSearchScope(args);
+  return scope.some((entry) => entry === path);
+}
+
+function scanTouchesPath(args: Record<string, unknown>, path: string): boolean {
+  const rawPaths = Array.isArray(args.paths) ? args.paths : [];
+  return rawPaths.some((entry) => typeof entry === "string" && normalizePath(entry.trim().toLowerCase()) === path);
+}
+
+function hasFreshEvidenceSinceLastSuccessfulEdit(session: SessionContext, path: string): boolean {
+  const calls = scopedCallLog(session);
+  for (let i = calls.length - 1; i >= 0; i -= 1) {
+    const entry = calls[i];
+    if (!entry) continue;
+    if (entry.toolName === "read-file" && extractReadPaths(entry.args, { normalize: true }).includes(path)) return true;
+    if (entry.toolName === "search-files" && searchTouchesPath(entry.args, path)) return true;
+    if (entry.toolName === "scan-code" && scanTouchesPath(entry.args, path)) return true;
+    if (entry.status === "failed") continue;
+    if (entry.toolName === "edit-file") {
+      const editedPath = typeof entry.args.path === "string" ? normalizePath(entry.args.path.trim().toLowerCase()) : "";
+      if (editedPath === path) return false;
+    }
+  }
+  return true;
+}
+
 function guardArgsEqual(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
   return JSON.stringify(normalizeGuardArgValue(a)) === JSON.stringify(normalizeGuardArgValue(b));
 }
@@ -207,7 +264,7 @@ const DUPLICATE_CALL_LOOKBACK = 3;
 const duplicateCallGuard: ToolGuard = {
   id: "duplicate-call",
   description: "Block near-duplicate tool calls with no state-changing tool in between.",
-  check({ toolName, args, session, report }) {
+  check({ args, toolName, session, report }) {
     if (session.cache?.isCacheable(toolName)) return;
     const calls = scopedCallLog(session);
     const lookback = calls.slice(-DUPLICATE_CALL_LOOKBACK);
@@ -228,7 +285,7 @@ const fileChurnGuard: ToolGuard = {
   id: "file-churn",
   description: "Block excessive read/edit churn on the same file to force a strategy change.",
   tools: ["read-file", "edit-file"],
-  check({ toolName, args, session, report }) {
+  check({ args, session, toolName, report }) {
     const targetPaths =
       toolName === "edit-file"
         ? typeof args.path === "string" && args.path.trim().length > 0
@@ -261,7 +318,11 @@ const fileChurnGuard: ToolGuard = {
           countsForPath(readEntry.path).readCount += 1;
           signaturesForPath(readEntry.path).add(readEntry.signature);
         }
-      } else if (isWriteTool(session, entry.toolName) && typeof entry.args.path === "string") {
+      } else if (
+        entry.status !== "failed" &&
+        isWriteTool(session, entry.toolName) &&
+        typeof entry.args.path === "string"
+      ) {
         countsForPath(normalizePath(entry.args.path)).editCount += 1;
       }
     }
@@ -370,6 +431,35 @@ const redundantSearchGuard = createRedundantDiscoveryGuard({
   extractPatterns: extractSearchPatterns,
   loopMessage:
     "Repeated search-files loop detected without reads/writes. Stop synonym searching and conclude from current evidence.",
+  preCheck({ args, session, report }) {
+    const currentScope = extractSearchScope(args);
+    if (currentScope.length !== 1 || currentScope[0] === "__workspace__") return;
+    const targetPath = currentScope[0];
+    if (!targetPath) return;
+
+    for (const entry of scopedCallLog(session)) {
+      if (entry.status !== "failed" && isWriteTool(session, entry.toolName)) return;
+    }
+
+    const calls = scopedCallLog(session);
+    const prior = calls[calls.length - 1];
+    if (!prior || prior.toolName !== "read-file") return;
+    if (isWholeFileReadOfPath(prior.args, targetPath)) {
+      report("blocked", targetPath);
+      throw new Error(
+        `File "${targetPath}" was already read directly in full. Do not search the same file before editing; ` +
+          "use the text you already have to make the change.",
+      );
+    }
+
+    if (readCountForPath(session, targetPath) < 2) return;
+
+    report("blocked", `${targetPath}:repeat-read`);
+    throw new Error(
+      `File "${targetPath}" was already read multiple times in this task. Do not search the same file again; ` +
+        "use the reads you already have or edit a bounded range directly.",
+    );
+  },
 });
 
 const redundantFindGuard = createRedundantDiscoveryGuard({
@@ -437,8 +527,18 @@ const redundantVerifyGuard: ToolGuard = {
 const postEditRedundancyGuard: ToolGuard = {
   id: "post-edit-redundancy",
   description: "Block redundant follow-up actions on files already edited in this task.",
-  tools: ["delete-file"],
-  check({ args, session, report }) {
+  tools: ["delete-file", "edit-file"],
+  check({ args, session, report, toolName }) {
+    if (toolName === "edit-file") {
+      const targetPath = typeof args.path === "string" ? normalizePath(args.path.trim().toLowerCase()) : "";
+      if (!targetPath || hasFreshEvidenceSinceLastSuccessfulEdit(session, targetPath)) return;
+      report("blocked", targetPath);
+      throw new Error(
+        `File "${targetPath}" was already edited successfully in this task, and there is no new file evidence for another edit. ` +
+          "Use the diff you already have or read the file again before another edit.",
+      );
+    }
+
     const targetPaths = Array.isArray(args.paths)
       ? args.paths
           .filter((value): value is string => typeof value === "string")
@@ -614,6 +714,7 @@ export function recordCall(
   toolName: string,
   args: Record<string, unknown>,
   resultHash?: string,
+  status: ToolCallStatus = "succeeded",
 ): void {
-  session.callLog.push({ toolName, args, taskId: session.taskId, mode: session.mode, resultHash });
+  session.callLog.push({ toolName, args, taskId: session.taskId, mode: session.mode, resultHash, status });
 }

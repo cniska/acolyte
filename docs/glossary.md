@@ -24,7 +24,7 @@ Naming conventions and core terms used across Acolyte code and docs.
 - **Host**: the runtime environment around the model that provides tools, lifecycle structure, memory, guards, and recovery behavior.
 - **Lifecycle Policy**: bounded execution controls for lifecycle behavior (for example, timeouts and regeneration caps).
 - **Lifecycle Feedback**: task-scoped runtime feedback emitted by evaluators or selected guard outcomes and consumed by the next matching lifecycle attempt.
-- **Lifecycle Signal**: small model-to-host control signal emitted at generation completion (`done`, `no_op`, `blocked`) and accepted when current runtime state does not contradict it.
+- **Lifecycle Signal**: small model-to-host control signal emitted at generation completion (`done`, `no_op`, `blocked`) and accepted only if current runtime state does not contradict it.
 - **Lifecycle State**: internal task-scoped lifecycle runtime state used to carry feedback, verify outcomes, and repeated-failure streaks between attempts.
 - **Model Judgment**: the model’s responsibility for deciding how to complete the task; lifecycle policy supports this judgment but does not replace it with host-side task heuristics.
 - **Memory Engine**: top-level memory capability that maintains continuity across turns.
@@ -49,5 +49,6 @@ Naming conventions and core terms used across Acolyte code and docs.
 - **Task**: lifecycle work request flowing through accept/queue/run/terminal states.
 - **Task Queue**: runtime queue policy/mechanism that orders accepted tasks and enforces capacity/cancellation boundaries.
 - **Tool Cache**: per-task LRU cache for read-only and search tool results. Invalidated on writes; shell commands clear the entire cache.
+- **Tool Recovery**: structured recovery payload attached to a tool failure when the tool knows the corrective action. Carries `tool`, `kind`, `summary`, and `instruction` so lifecycle can regenerate with targeted recovery guidance instead of host-side string matching.
 - **Toolkit**: grouped domain tools exposed through adapters/composition.
-- **Verify Cycle**: automatic post-write sequence where the evaluator transitions to verify mode and runs project checks, re-generating on failure.
+- **Verify Cycle**: post-write verification sequence that runs when verification is enabled for the request scope; the evaluator transitions to verify mode, performs the lightest sufficient scoped verification or review, and re-generates on failure.

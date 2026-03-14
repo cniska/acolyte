@@ -4,7 +4,7 @@ import type { ChatMessage } from "./chat-contract";
 import type { ResourceId } from "./resource-id";
 import type { PromptBreakdown, SessionId } from "./session-contract";
 
-export const verifyScopeSchema = z.enum(["task", "global"]);
+export const verifyScopeSchema = z.enum(["none", "task", "global"]);
 export type VerifyScope = z.infer<typeof verifyScopeSchema>;
 
 export interface TokenUsage {
@@ -24,7 +24,7 @@ export interface ChatRequest {
   readonly resourceId?: ResourceId;
   /** When true, stored memories and distill observations are included in context. */
   readonly useMemory?: boolean;
-  /** Verifier read scope: task-bound by default; global only when explicitly requested. */
+  /** Verifier scope: disable with `none`; otherwise task-bound by default and global only when explicitly requested. */
   readonly verifyScope?: VerifyScope;
   /** Client working directory. Falls back to server CWD when omitted. */
   readonly workspace?: string;
