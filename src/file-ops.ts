@@ -55,7 +55,7 @@ function editFileRecovery(path: string, kind: ToolRecovery["kind"]): ToolRecover
         kind,
         summary: "Your edit-file request was too large for a bounded edit.",
         instruction:
-          `Keep the change in '${path}' and shrink it to short unique snippets, one bounded line-range edit, or use edit-code for a structural rewrite. ` +
+          `Keep the change in '${path}' and shrink it: use short unique find snippets, a bounded line-range edit covering only the changed region, or use edit-code for a structural rewrite. ` +
           "Do not pass large file blocks as find or replacement text.",
       };
     default:

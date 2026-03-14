@@ -29,7 +29,6 @@ export type EvaluatorContext = {
   session: SessionContext;
   workspace: string | undefined;
   request: { message: string; verifyScope?: VerifyScope };
-  sawEditFileMultiMatchError: boolean;
   lifecycleState: {
     feedback: LifecycleFeedback[];
     verifyOutcome?: VerifyOutcome;
@@ -43,10 +42,18 @@ export type Evaluator = {
   evaluate: (ctx: EvaluatorContext) => EvalAction;
 };
 
-function hasSuccessfulWriteForCurrentTask(ctx: EvaluatorContext): boolean {
-  return scopedCallLog(ctx.session, ctx.taskId).some(
-    (entry) => WRITE_TOOL_SET.has(entry.toolName) && entry.success !== false,
-  );
+function hasSuccessfulWriteAfterLastEditFileFail(ctx: EvaluatorContext): boolean {
+  const callLog = scopedCallLog(ctx.session, ctx.taskId);
+  let lastFailIdx = -1;
+  for (let i = callLog.length - 1; i >= 0; i--) {
+    const entry = callLog[i];
+    if (entry?.toolName === "edit-file" && entry.success === false) {
+      lastFailIdx = i;
+      break;
+    }
+  }
+  if (lastFailIdx === -1) return false;
+  return callLog.slice(lastFailIdx + 1).some((entry) => WRITE_TOOL_SET.has(entry.toolName) && entry.success !== false);
 }
 
 function writePathsForCurrentTask(ctx: EvaluatorContext): string[] {
@@ -224,7 +231,7 @@ export const editFileRecoveryEvaluator: Evaluator = {
     if (ctx.currentError?.tool !== "edit-file") return { type: "done" };
     const recovery = ctx.currentError.recovery;
     if (!recovery || recovery.tool !== "edit-file") return { type: "done" };
-    if (recovery.kind === "disambiguate-match" && hasSuccessfulWriteForCurrentTask(ctx)) return { type: "done" };
+    if (recovery.kind === "disambiguate-match" && hasSuccessfulWriteAfterLastEditFileFail(ctx)) return { type: "done" };
 
     ctx.debug("lifecycle.eval.edit_file_recovery", {
       error: ctx.currentError.message,

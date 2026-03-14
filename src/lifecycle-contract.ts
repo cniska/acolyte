@@ -169,7 +169,6 @@ export type RunContext = {
   generationAttempt: number;
   regenerationCount: number;
   regenerationLimitHit: boolean;
-  sawEditFileMultiMatchError: boolean;
   currentError?: LifecycleError;
   errorStats: Record<ErrorCategory, number>;
   result?: GenerateResult;

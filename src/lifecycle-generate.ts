@@ -4,7 +4,15 @@ import { createInstructions } from "./agent-instructions";
 import { agentModes } from "./agent-modes";
 import { createAgent } from "./agent-stream";
 import { appConfig } from "./app-config";
-import { categoryFromErrorCode, categoryFromErrorKind, createStreamError, type ErrorSource, errorCodeFromCategory, errorKindFromCategory, parseErrorInfo } from "./error-handling";
+import {
+  categoryFromErrorCode,
+  categoryFromErrorKind,
+  createStreamError,
+  type ErrorSource,
+  errorCodeFromCategory,
+  errorKindFromCategory,
+  parseErrorInfo,
+} from "./error-handling";
 import type {
   GenerateOptions,
   GenerateResult,
@@ -179,7 +187,6 @@ export function createGenerationInput(
 
 export async function phaseGenerate(ctx: RunContext, opts: GenerateOptions): Promise<void> {
   ctx.currentError = undefined;
-  ctx.sawEditFileMultiMatchError = false;
   ensureAgentForMode(ctx);
   resetCycleStepCount(ctx.session, opts.cycleLimit);
   ctx.generationAttempt += 1;

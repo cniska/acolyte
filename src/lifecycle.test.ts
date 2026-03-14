@@ -57,7 +57,6 @@ function createMockContext(overrides: Partial<RunContext> = {}): RunContext {
     generationAttempt: 0,
     regenerationCount: 0,
     regenerationLimitHit: false,
-    sawEditFileMultiMatchError: false,
     errorStats: createErrorStats(),
     nativeIdQueue: new Map(),
     toolCallStartedAt: new Map(),
