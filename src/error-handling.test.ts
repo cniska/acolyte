@@ -87,9 +87,7 @@ describe("error handling helpers", () => {
   test("isOversizedEditSnippetSignal accepts code or embedded error code", () => {
     expect(isOversizedEditSnippetSignal({ code: TOOL_ERROR_CODES.editFileBatchTooLarge, message: "any" })).toBe(true);
     expect(isOversizedEditSnippetSignal({ code: TOOL_ERROR_CODES.editFileFindTooLarge, message: "any" })).toBe(true);
-    expect(isOversizedEditSnippetSignal({ code: TOOL_ERROR_CODES.editFileReplaceTooLarge, message: "any" })).toBe(
-      true,
-    );
+    expect(isOversizedEditSnippetSignal({ code: TOOL_ERROR_CODES.editFileReplaceTooLarge, message: "any" })).toBe(true);
     expect(isOversizedEditSnippetSignal({ code: TOOL_ERROR_CODES.editFileLineRangeTooLarge, message: "any" })).toBe(
       true,
     );
@@ -131,9 +129,9 @@ describe("error handling helpers", () => {
     expect(recoveryActionForError({ errorCode: TOOL_ERROR_CODES.editFileFindNotFound, unknownErrorCount: 2 }, 2)).toBe(
       "none",
     );
-    expect(
-      recoveryActionForError({ errorCode: TOOL_ERROR_CODES.editFileBatchTooLarge, unknownErrorCount: 2 }, 2),
-    ).toBe("none");
+    expect(recoveryActionForError({ errorCode: TOOL_ERROR_CODES.editFileBatchTooLarge, unknownErrorCount: 2 }, 2)).toBe(
+      "none",
+    );
     expect(recoveryActionForError({ errorCode: TOOL_ERROR_CODES.editFileFindTooLarge, unknownErrorCount: 2 }, 2)).toBe(
       "none",
     );

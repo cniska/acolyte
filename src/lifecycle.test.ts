@@ -1,5 +1,5 @@
-import { mkdir, rm, writeFile } from "node:fs/promises";
 import { describe, expect, test } from "bun:test";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { createErrorStats } from "./error-handling";
 import { scheduleMemoryCommit, shouldCommitMemory } from "./lifecycle";
 import type { RunContext } from "./lifecycle-contract";
@@ -716,7 +716,9 @@ describe("oversizedEditSnippetEvaluator", () => {
     expect(action.type).toBe("regenerate");
     if (action.type === "regenerate") {
       expect(action.feedback?.instruction).toContain("replacement text limited to the changed region only");
-      expect(action.feedback?.instruction).toContain("Do not pass a large block of the file as find text or replacement text");
+      expect(action.feedback?.instruction).toContain(
+        "Do not pass a large block of the file as find text or replacement text",
+      );
     }
   });
 

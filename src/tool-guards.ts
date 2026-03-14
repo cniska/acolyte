@@ -254,7 +254,7 @@ const DUPLICATE_CALL_LOOKBACK = 3;
 const duplicateCallGuard: ToolGuard = {
   id: "duplicate-call",
   description: "Block near-duplicate tool calls with no state-changing tool in between.",
-  check({ toolName, args, session, report }) {
+  check({ args, toolName, session, report }) {
     if (session.cache?.isCacheable(toolName)) return;
     const calls = scopedCallLog(session);
     const lookback = calls.slice(-DUPLICATE_CALL_LOOKBACK);
@@ -275,7 +275,7 @@ const fileChurnGuard: ToolGuard = {
   id: "file-churn",
   description: "Block excessive read/edit churn on the same file to force a strategy change.",
   tools: ["read-file", "edit-file"],
-  check({ toolName, args, session, report }) {
+  check({ args, session, toolName, report }) {
     const targetPaths =
       toolName === "edit-file"
         ? typeof args.path === "string" && args.path.trim().length > 0
@@ -308,7 +308,11 @@ const fileChurnGuard: ToolGuard = {
           countsForPath(readEntry.path).readCount += 1;
           signaturesForPath(readEntry.path).add(readEntry.signature);
         }
-      } else if (entry.success !== false && isWriteTool(session, entry.toolName) && typeof entry.args.path === "string") {
+      } else if (
+        entry.success !== false &&
+        isWriteTool(session, entry.toolName) &&
+        typeof entry.args.path === "string"
+      ) {
         countsForPath(normalizePath(entry.args.path)).editCount += 1;
       }
     }
@@ -561,7 +565,7 @@ const postEditDiscoveryGuard: ToolGuard = {
   id: "post-edit-discovery",
   description: "Block rediscovery on the same file after a bounded single-file edit.",
   tools: ["read-file", "search-files", "git-diff"],
-  check({ toolName, args, session, report }) {
+  check({ args, session, toolName, report }) {
     const editedPath = singleEditedPathSinceLastVerify(session);
     if (!editedPath) return;
 
@@ -615,7 +619,7 @@ const sequentialSameFileEditGuard: ToolGuard = {
   id: "sequential-same-file-edit",
   description: "Block back-to-back write calls on the same file without new evidence.",
   tools: ["edit-file", "edit-code"],
-  check({ toolName, args, session, report }) {
+  check({ args, session, report }) {
     const pathValue = typeof args.path === "string" ? normalizePath(args.path.trim()).toLowerCase() : "";
     if (!pathValue) return;
 

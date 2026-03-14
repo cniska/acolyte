@@ -39,11 +39,16 @@ function hasIncompleteRepeatedEdit(ctx: RunContext): boolean {
 
 function isEachOccurrenceTask(message: string): boolean {
   const normalized = message.toLowerCase();
-  return /\b(each|every)\b/.test(normalized) || (/\ball\b/.test(normalized) && /\b(occurrence|instance|match)\b/.test(normalized));
+  return (
+    /\b(each|every)\b/.test(normalized) ||
+    (/\ball\b/.test(normalized) && /\b(occurrence|instance|match)\b/.test(normalized))
+  );
 }
 
 function extractRepeatedEditLiteral(message: string): string | undefined {
-  const match = message.match(/replace\s+(?:each|every|all(?:\s+\w+)?)?\s*['"`]([^'"`]+)['"`]\s+with\s+['"`][^'"`]+['"`]/i);
+  const match = message.match(
+    /replace\s+(?:each|every|all(?:\s+\w+)?)?\s*['"`]([^'"`]+)['"`]\s+with\s+['"`][^'"`]+['"`]/i,
+  );
   return match?.[1];
 }
 

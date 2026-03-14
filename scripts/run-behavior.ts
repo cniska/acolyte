@@ -387,10 +387,7 @@ async function runScenario(
   const afterLines = await readLogLines(behaviorEnv.daemonLogPath);
   const traceLines = afterLines.slice(beforeLines.length);
   const trace = summarizeTrace(traceLines);
-  const correctnessIssues = [
-    ...(await scenario.validate(workspace)),
-    ...(scenario.validateTrace?.(traceLines) ?? []),
-  ];
+  const correctnessIssues = [...(await scenario.validate(workspace)), ...(scenario.validateTrace?.(traceLines) ?? [])];
 
   return behaviorOutputSchema.parse({
     scenarioId: scenario.id,

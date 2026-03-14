@@ -215,8 +215,14 @@ export async function editFile(input: {
 
   const hasFindReplaceEdit = input.edits.some((edit) => "find" in edit);
   const totalTouchedChars = ranges.reduce((sum, range) => sum + (range.end - range.start), 0);
-  const totalTouchedLines = ranges.reduce((sum, range) => sum + raw.slice(range.start, range.end).split("\n").length, 0);
-  if ((hasFindReplaceEdit || input.edits.length > 1) && (totalTouchedChars > MAX_BATCH_EDIT_CHARS || totalTouchedLines > MAX_BATCH_EDIT_LINES)) {
+  const totalTouchedLines = ranges.reduce(
+    (sum, range) => sum + raw.slice(range.start, range.end).split("\n").length,
+    0,
+  );
+  if (
+    (hasFindReplaceEdit || input.edits.length > 1) &&
+    (totalTouchedChars > MAX_BATCH_EDIT_CHARS || totalTouchedLines > MAX_BATCH_EDIT_LINES)
+  ) {
     throw createToolError(
       TOOL_ERROR_CODES.editFileBatchTooLarge,
       "edit-file batch rewrites too much of the file. Use short bounded snippets for local edits, a single line-range edit for one contiguous block, or edit-code for structural rewrites.",

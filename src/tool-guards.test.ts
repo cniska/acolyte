@@ -443,7 +443,11 @@ describe("post-edit-discovery guard", () => {
     session.writeTools = new Set(["edit-file"]);
     recordCall(session, "edit-file", { path: "src/foo.ts" });
     expect(() =>
-      runGuards({ toolName: "search-files", args: { patterns: ["return undefined;"], paths: ["src/foo.ts"] }, session }),
+      runGuards({
+        toolName: "search-files",
+        args: { patterns: ["return undefined;"], paths: ["src/foo.ts"] },
+        session,
+      }),
     ).toThrow(/already edited in this task\. Do not search the same file again/i);
   });
 
@@ -471,7 +475,11 @@ describe("post-edit-discovery guard", () => {
     session.writeTools = new Set(["edit-file"]);
     recordCall(session, "edit-file", { path: "src/foo.ts" });
     expect(() =>
-      runGuards({ toolName: "search-files", args: { patterns: ["return undefined;"], paths: ["src/bar.ts"] }, session }),
+      runGuards({
+        toolName: "search-files",
+        args: { patterns: ["return undefined;"], paths: ["src/bar.ts"] },
+        session,
+      }),
     ).not.toThrow();
   });
 
@@ -481,7 +489,11 @@ describe("post-edit-discovery guard", () => {
     recordCall(session, "edit-file", { path: "src/foo.ts" });
     recordCall(session, "edit-file", { path: "src/bar.ts" });
     expect(() =>
-      runGuards({ toolName: "search-files", args: { patterns: ["return undefined;"], paths: ["src/foo.ts"] }, session }),
+      runGuards({
+        toolName: "search-files",
+        args: { patterns: ["return undefined;"], paths: ["src/foo.ts"] },
+        session,
+      }),
     ).not.toThrow();
   });
 
@@ -490,7 +502,11 @@ describe("post-edit-discovery guard", () => {
     session.writeTools = new Set(["edit-file"]);
     recordCall(session, "edit-file", { path: "src/foo.ts" }, undefined, false);
     expect(() =>
-      runGuards({ toolName: "search-files", args: { patterns: ["return undefined;"], paths: ["src/foo.ts"] }, session }),
+      runGuards({
+        toolName: "search-files",
+        args: { patterns: ["return undefined;"], paths: ["src/foo.ts"] },
+        session,
+      }),
     ).not.toThrow();
   });
 

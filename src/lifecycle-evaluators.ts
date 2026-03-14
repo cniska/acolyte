@@ -3,14 +3,14 @@ import { join } from "node:path";
 import type { AgentMode } from "./agent-contract";
 import { createModeInstructions } from "./agent-instructions";
 import type { VerifyScope } from "./api";
-import type { LifecycleError, LifecycleEventName, LifecycleFeedback, VerifyOutcome } from "./lifecycle-contract";
-import type { LifecyclePolicy } from "./lifecycle-policy";
-import { lintFiles } from "./lint-reflection";
 import {
   isEditFileFindNotFoundSignal,
   isEditFileMultiMatchSignal,
   isOversizedEditSnippetSignal,
 } from "./error-handling";
+import type { LifecycleError, LifecycleEventName, LifecycleFeedback, VerifyOutcome } from "./lifecycle-contract";
+import type { LifecyclePolicy } from "./lifecycle-policy";
+import { lintFiles } from "./lint-reflection";
 import { extractReadPaths } from "./tool-arg-paths";
 import { haveChangesBeenVerified, type SessionContext, scopedCallLog } from "./tool-guards";
 import { WRITE_TOOL_SET, WRITE_TOOLS } from "./tool-registry";
@@ -61,9 +61,9 @@ function findLastEditFilePath(ctx: EvaluatorContext): string | undefined {
   return undefined;
 }
 
-function findLastSuccessfulEditFileEntry(ctx: EvaluatorContext):
-  | { path: string; edits: Array<{ find?: string; replace?: string }> }
-  | undefined {
+function findLastSuccessfulEditFileEntry(
+  ctx: EvaluatorContext,
+): { path: string; edits: Array<{ find?: string; replace?: string }> } | undefined {
   const callLog = scopedCallLog(ctx.session, ctx.taskId);
   for (let i = callLog.length - 1; i >= 0; i -= 1) {
     const entry = callLog[i];
@@ -78,11 +78,16 @@ function findLastSuccessfulEditFileEntry(ctx: EvaluatorContext):
 
 function isEachOccurrenceTask(message: string): boolean {
   const normalized = message.toLowerCase();
-  return /\b(each|every)\b/.test(normalized) || /\ball\b/.test(normalized) && /\b(occurrence|instance|match)\b/.test(normalized);
+  return (
+    /\b(each|every)\b/.test(normalized) ||
+    (/\ball\b/.test(normalized) && /\b(occurrence|instance|match)\b/.test(normalized))
+  );
 }
 
 function extractRepeatedEditLiteral(message: string): string | undefined {
-  const match = message.match(/replace\s+(?:each|every|all(?:\s+\w+)?)?\s*['"`]([^'"`]+)['"`]\s+with\s+['"`][^'"`]+['"`]/i);
+  const match = message.match(
+    /replace\s+(?:each|every|all(?:\s+\w+)?)?\s*['"`]([^'"`]+)['"`]\s+with\s+['"`][^'"`]+['"`]/i,
+  );
   return match?.[1];
 }
 
@@ -95,7 +100,9 @@ function readWorkspaceFile(workspace: string, path: string): string | undefined 
 }
 
 function hasSuccessfulWriteForCurrentTask(ctx: EvaluatorContext): boolean {
-  return scopedCallLog(ctx.session, ctx.taskId).some((entry) => WRITE_TOOL_SET.has(entry.toolName) && entry.success !== false);
+  return scopedCallLog(ctx.session, ctx.taskId).some(
+    (entry) => WRITE_TOOL_SET.has(entry.toolName) && entry.success !== false,
+  );
 }
 
 function writePathsForCurrentTask(ctx: EvaluatorContext): string[] {
