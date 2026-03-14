@@ -7,15 +7,14 @@ import {
   type ErrorCode,
   type ErrorKind,
   extractToolErrorCode,
-  hasToolErrorCode,
   LIFECYCLE_ERROR_CODES,
-  TOOL_ERROR_CODES,
+  type ToolRecovery,
 } from "./tool-error-codes";
 
 export type ErrorCategory = "timeout" | "file-not-found" | "guard-blocked" | "other";
 export type ErrorSource = "generate" | "tool-result" | "tool-error" | "server";
 export type AppError<TCode extends string = string, TMeta = unknown> = Error & { code: TCode; meta?: TMeta };
-export type ParsedError = { message: string; code?: string; kind?: string };
+export type ParsedError = { message: string; code?: string; kind?: string; recovery?: ToolRecovery };
 export type ParseErrorResult = { ok: true; value: ParsedError } | { ok: false; error: "invalid_error_payload" };
 export type RecoveryAction = "stop-unknown-budget" | "none";
 export const ERROR_CATEGORIES = ["timeout", "file-not-found", "guard-blocked", "other"] as const;
@@ -38,33 +37,6 @@ export function createErrorStats(initialValue = 0): Record<ErrorCategory, number
     ErrorCategory,
     number
   >;
-}
-
-export function isEditFileMultiMatchError(input: { code?: string; message: string }): boolean {
-  return (
-    input.code === TOOL_ERROR_CODES.editFileMultiMatch ||
-    hasToolErrorCode(input.message, TOOL_ERROR_CODES.editFileMultiMatch)
-  );
-}
-
-export function isEditFileFindNotFoundError(input: { code?: string; message: string }): boolean {
-  return (
-    input.code === TOOL_ERROR_CODES.editFileFindNotFound ||
-    hasToolErrorCode(input.message, TOOL_ERROR_CODES.editFileFindNotFound)
-  );
-}
-
-export function isOversizedEditSnippetError(input: { code?: string; message: string }): boolean {
-  return (
-    input.code === TOOL_ERROR_CODES.editFileBatchTooLarge ||
-    input.code === TOOL_ERROR_CODES.editFileFindTooLarge ||
-    input.code === TOOL_ERROR_CODES.editFileReplaceTooLarge ||
-    input.code === TOOL_ERROR_CODES.editFileLineRangeTooLarge ||
-    hasToolErrorCode(input.message, TOOL_ERROR_CODES.editFileBatchTooLarge) ||
-    hasToolErrorCode(input.message, TOOL_ERROR_CODES.editFileLineRangeTooLarge) ||
-    hasToolErrorCode(input.message, TOOL_ERROR_CODES.editFileReplaceTooLarge) ||
-    hasToolErrorCode(input.message, TOOL_ERROR_CODES.editFileFindTooLarge)
-  );
 }
 
 export function categoryFromErrorCode(code?: string): ErrorCategory | undefined {
@@ -132,19 +104,20 @@ export function parseErrorInfo(value: unknown): ParseErrorResult {
   if (value instanceof Error) {
     const code = "code" in value && typeof value.code === "string" ? value.code : extractToolErrorCode(value.message);
     const kind = "kind" in value && typeof value.kind === "string" ? value.kind : undefined;
-    return { ok: true, value: { message: value.message, code, kind } };
+    const recovery = "recovery" in value ? parseToolRecovery((value as { recovery?: unknown }).recovery) : undefined;
+    return { ok: true, value: { message: value.message, code, kind, recovery } };
   }
   if (typeof value === "object" && value !== null) {
-    const rec = value as { message?: unknown; error?: unknown; code?: unknown; kind?: unknown };
+    const rec = value as { message?: unknown; error?: unknown; code?: unknown; kind?: unknown; recovery?: unknown };
     if (typeof rec.message === "string") {
       const code = typeof rec.code === "string" ? rec.code : extractToolErrorCode(rec.message);
       const kind = typeof rec.kind === "string" ? rec.kind : undefined;
-      return { ok: true, value: { message: rec.message, code, kind } };
+      return { ok: true, value: { message: rec.message, code, kind, recovery: parseToolRecovery(rec.recovery) } };
     }
     if (typeof rec.error === "string") {
       const code = typeof rec.code === "string" ? rec.code : extractToolErrorCode(rec.error);
       const kind = typeof rec.kind === "string" ? rec.kind : undefined;
-      return { ok: true, value: { message: rec.error, code, kind } };
+      return { ok: true, value: { message: rec.error, code, kind, recovery: parseToolRecovery(rec.recovery) } };
     }
     if (rec.error !== undefined) {
       const nested = parseErrorInfo(rec.error);
@@ -155,11 +128,26 @@ export function parseErrorInfo(value: unknown): ParseErrorResult {
           ...nested.value,
           code: typeof rec.code === "string" ? rec.code : nested.value.code,
           kind: typeof rec.kind === "string" ? rec.kind : nested.value.kind,
+          recovery: parseToolRecovery(rec.recovery) ?? nested.value.recovery,
         },
       };
     }
   }
   return { ok: false, error: "invalid_error_payload" };
+}
+
+function parseToolRecovery(value: unknown): ToolRecovery | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const rec = value as Record<string, unknown>;
+  if (
+    rec.tool === "edit-file" &&
+    (rec.kind === "disambiguate-match" || rec.kind === "refresh-snippet" || rec.kind === "shrink-edit") &&
+    typeof rec.summary === "string" &&
+    typeof rec.instruction === "string"
+  ) {
+    return rec as ToolRecovery;
+  }
+  return undefined;
 }
 
 export function recoveryActionForError(

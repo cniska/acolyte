@@ -58,6 +58,7 @@ export async function withToolError<T>(toolId: string, task: () => Promise<T>): 
     ) as Error & {
       code?: string;
       kind?: string;
+      recovery?: unknown;
     };
     if (typeof error === "object" && error !== null && "code" in error) {
       const code = (error as { code?: unknown }).code;
@@ -66,6 +67,9 @@ export async function withToolError<T>(toolId: string, task: () => Promise<T>): 
     if (typeof error === "object" && error !== null && "kind" in error) {
       const kind = (error as { kind?: unknown }).kind;
       if (typeof kind === "string" && kind.length > 0) wrapped.kind = kind;
+    }
+    if (typeof error === "object" && error !== null && "recovery" in error) {
+      wrapped.recovery = (error as { recovery?: unknown }).recovery;
     }
     throw wrapped;
   }

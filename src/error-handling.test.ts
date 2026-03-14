@@ -6,13 +6,10 @@ import {
   createStreamError,
   errorCodeFromCategory,
   errorKindFromCategory,
-  isEditFileFindNotFoundError,
-  isEditFileMultiMatchError,
-  isOversizedEditSnippetError,
   parseErrorInfo,
   recoveryActionForError,
 } from "./error-handling";
-import { LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./tool-error-codes";
+import { createToolError, LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./tool-error-codes";
 
 describe("error handling helpers", () => {
   test("parseErrorInfo extracts code from coded string", () => {
@@ -31,6 +28,25 @@ describe("error handling helpers", () => {
     expect(parsed.value.message).toBe("timeout");
     expect(parsed.value.code).toBe(LIFECYCLE_ERROR_CODES.timeout);
     expect(parsed.value.kind).toBe("timeout");
+  });
+
+  test("parseErrorInfo preserves structured tool recovery metadata", () => {
+    const parsed = parseErrorInfo(
+      createToolError(TOOL_ERROR_CODES.editFileFindNotFound, "stale find", undefined, {
+        tool: "edit-file",
+        kind: "refresh-snippet",
+        summary: "Refresh the snippet.",
+        instruction: "Reread the file and rebuild the edit.",
+      }),
+    );
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.value.recovery).toEqual({
+      tool: "edit-file",
+      kind: "refresh-snippet",
+      summary: "Refresh the snippet.",
+      instruction: "Reread the file and rebuild the edit.",
+    });
   });
 
   test("parseErrorInfo returns invalid payload for unsupported shapes", () => {
@@ -60,62 +76,6 @@ describe("error handling helpers", () => {
     expect(errorKindFromCategory("file-not-found")).toBe("file_not_found");
     expect(errorKindFromCategory("guard-blocked")).toBe("guard_blocked");
     expect(errorKindFromCategory("other")).toBe("unknown");
-  });
-
-  test("isEditFileMultiMatchError accepts code or embedded error code", () => {
-    expect(isEditFileMultiMatchError({ code: TOOL_ERROR_CODES.editFileMultiMatch, message: "any" })).toBe(true);
-    expect(
-      isEditFileMultiMatchError({
-        message: `[${TOOL_ERROR_CODES.editFileMultiMatch}] Find text matched 4 locations`,
-        code: undefined,
-      }),
-    ).toBe(true);
-    expect(isEditFileMultiMatchError({ message: "random error", code: undefined })).toBe(false);
-  });
-
-  test("isEditFileFindNotFoundError accepts code or embedded error code", () => {
-    expect(isEditFileFindNotFoundError({ code: TOOL_ERROR_CODES.editFileFindNotFound, message: "any" })).toBe(true);
-    expect(
-      isEditFileFindNotFoundError({
-        message: `[${TOOL_ERROR_CODES.editFileFindNotFound}] Find text not found in file: return undefined;`,
-        code: undefined,
-      }),
-    ).toBe(true);
-    expect(isEditFileFindNotFoundError({ message: "random error", code: undefined })).toBe(false);
-  });
-
-  test("isOversizedEditSnippetError accepts code or embedded error code", () => {
-    expect(isOversizedEditSnippetError({ code: TOOL_ERROR_CODES.editFileBatchTooLarge, message: "any" })).toBe(true);
-    expect(isOversizedEditSnippetError({ code: TOOL_ERROR_CODES.editFileFindTooLarge, message: "any" })).toBe(true);
-    expect(isOversizedEditSnippetError({ code: TOOL_ERROR_CODES.editFileReplaceTooLarge, message: "any" })).toBe(true);
-    expect(isOversizedEditSnippetError({ code: TOOL_ERROR_CODES.editFileLineRangeTooLarge, message: "any" })).toBe(
-      true,
-    );
-    expect(
-      isOversizedEditSnippetError({
-        message: `[${TOOL_ERROR_CODES.editFileBatchTooLarge}] edit-file batch rewrites too much of the file`,
-        code: undefined,
-      }),
-    ).toBe(true);
-    expect(
-      isOversizedEditSnippetError({
-        message: `[${TOOL_ERROR_CODES.editFileFindTooLarge}] find must be a short unique snippet`,
-        code: undefined,
-      }),
-    ).toBe(true);
-    expect(
-      isOversizedEditSnippetError({
-        message: `[${TOOL_ERROR_CODES.editFileReplaceTooLarge}] replace must contain only the changed region`,
-        code: undefined,
-      }),
-    ).toBe(true);
-    expect(
-      isOversizedEditSnippetError({
-        message: `[${TOOL_ERROR_CODES.editFileLineRangeTooLarge}] line-range edit would clear the entire file`,
-        code: undefined,
-      }),
-    ).toBe(true);
-    expect(isOversizedEditSnippetError({ message: "random error", code: undefined })).toBe(false);
   });
 
   test("recoveryActionForError uses unknown budget only", () => {

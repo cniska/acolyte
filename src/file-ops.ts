@@ -1,7 +1,7 @@
 import { mkdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import * as napi from "@ast-grep/napi";
-import { createToolError, TOOL_ERROR_CODES } from "./tool-error-codes";
+import { createToolError, type ToolRecovery, TOOL_ERROR_CODES } from "./tool-error-codes";
 
 /** Owner-only read/write. Use for files containing secrets or sensitive metadata. */
 export const PRIVATE_FILE_MODE = 0o600;
@@ -28,6 +28,40 @@ const MAX_FIND_REPLACE_LINES = 24;
 const MAX_FIND_REPLACE_CHARS = 1600;
 const MAX_BATCH_EDIT_LINES = 32;
 const MAX_BATCH_EDIT_CHARS = 2400;
+
+function editFileRecovery(path: string, kind: ToolRecovery["kind"]): ToolRecovery {
+  switch (kind) {
+    case "disambiguate-match":
+      return {
+        tool: "edit-file",
+        kind,
+        summary: "Your edit-file snippet matched multiple locations.",
+        instruction:
+          `Keep the change in '${path}' and make one bounded edit with a more unique snippet or a single line-range edit. ` +
+          "If the rewrite is genuinely structural, switch to edit-code with a real ast-grep pattern.",
+      };
+    case "refresh-snippet":
+      return {
+        tool: "edit-file",
+        kind,
+        summary: "Your edit-file find snippet no longer matches the file.",
+        instruction:
+          `Keep the change in '${path}' and rebuild the next edit from the latest read-file output or use a bounded line-range edit. ` +
+          "Do not retry the same stale find text.",
+      };
+    case "shrink-edit":
+      return {
+        tool: "edit-file",
+        kind,
+        summary: "Your edit-file request was too large for a bounded edit.",
+        instruction:
+          `Keep the change in '${path}' and shrink it to short unique snippets, one bounded line-range edit, or use edit-code for a structural rewrite. ` +
+          "Do not pass large file blocks as find or replacement text.",
+      };
+    default:
+      return kind satisfies never;
+  }
+}
 
 export async function findFiles(workspace: string, patterns: string[], maxResults = 40): Promise<string> {
   if (patterns.length === 0) throw new Error("At least one pattern is required");
@@ -149,6 +183,8 @@ export async function editFile(input: {
         throw createToolError(
           TOOL_ERROR_CODES.editFileFindTooLarge,
           "find must be a short unique snippet (a few lines), not a large portion of the file. Use just enough context to uniquely identify the edit location.",
+          undefined,
+          editFileRecovery(input.path, "shrink-edit"),
         );
       }
       const replaceLineCount = edit.replace.split("\n").length;
@@ -156,6 +192,8 @@ export async function editFile(input: {
         throw createToolError(
           TOOL_ERROR_CODES.editFileReplaceTooLarge,
           "replace must contain only the changed region for a find/replace edit, not a large block or whole-file rewrite. Use a line-range edit for larger replacements.",
+          undefined,
+          editFileRecovery(input.path, "shrink-edit"),
         );
       }
       const count = raw.split(edit.find).length - 1;
@@ -163,6 +201,8 @@ export async function editFile(input: {
         throw createToolError(
           TOOL_ERROR_CODES.editFileFindNotFound,
           `Find text not found in file: ${edit.find.slice(0, 60)}`,
+          undefined,
+          editFileRecovery(input.path, "refresh-snippet"),
         );
       }
       if (count > 1) {
@@ -171,7 +211,12 @@ export async function editFile(input: {
           "Provide a longer, more unique snippet to match exactly one location. " +
           "For local rewrites in one file, batch unique snippets or use a single line-range edit for one contiguous block. " +
           "Use edit-code only for structural code changes.";
-        throw createToolError(TOOL_ERROR_CODES.editFileMultiMatch, message);
+        throw createToolError(
+          TOOL_ERROR_CODES.editFileMultiMatch,
+          message,
+          undefined,
+          editFileRecovery(input.path, "disambiguate-match"),
+        );
       }
       const start = raw.indexOf(edit.find);
       ranges.push({ start, end: start + edit.find.length, replace: edit.replace });
@@ -187,6 +232,8 @@ export async function editFile(input: {
         throw createToolError(
           TOOL_ERROR_CODES.editFileLineRangeTooLarge,
           "line-range edit would clear the entire file. Use a bounded range edit, or delete-file if the file should be removed.",
+          undefined,
+          editFileRecovery(input.path, "shrink-edit"),
         );
       }
       // Convert 1-based inclusive line range to character offsets.
@@ -226,6 +273,8 @@ export async function editFile(input: {
     throw createToolError(
       TOOL_ERROR_CODES.editFileBatchTooLarge,
       "edit-file batch rewrites too much of the file. Use short bounded snippets for local edits, a single line-range edit for one contiguous block, or edit-code for structural rewrites.",
+      undefined,
+      editFileRecovery(input.path, "shrink-edit"),
     );
   }
 

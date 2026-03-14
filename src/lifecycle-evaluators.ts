@@ -1,7 +1,6 @@
 import type { AgentMode } from "./agent-contract";
 import { createModeInstructions } from "./agent-instructions";
 import type { VerifyScope } from "./api";
-import { isEditFileFindNotFoundError, isEditFileMultiMatchError, isOversizedEditSnippetError } from "./error-handling";
 import type { LifecycleError, LifecycleEventName, LifecycleFeedback, VerifyOutcome } from "./lifecycle-contract";
 import type { LifecyclePolicy } from "./lifecycle-policy";
 import { lintFiles } from "./lint-reflection";
@@ -43,17 +42,6 @@ export type Evaluator = {
   id: string;
   evaluate: (ctx: EvaluatorContext) => EvalAction;
 };
-
-function findLastEditFilePath(ctx: EvaluatorContext): string | undefined {
-  const callLog = scopedCallLog(ctx.session, ctx.taskId);
-  for (let i = callLog.length - 1; i >= 0; i -= 1) {
-    const entry = callLog[i];
-    if (entry?.toolName !== "edit-file") continue;
-    const path = entry.args?.path;
-    if (typeof path === "string" && path.trim().length > 0) return path.trim();
-  }
-  return undefined;
-}
 
 function hasSuccessfulWriteForCurrentTask(ctx: EvaluatorContext): boolean {
   return scopedCallLog(ctx.session, ctx.taskId).some(
@@ -228,101 +216,28 @@ export const verifyCycle: Evaluator = {
   },
 };
 
-export const multiMatchEditEvaluator: Evaluator = {
-  id: "multi-match-edit-evaluator",
-  evaluate(ctx) {
-    if (!ctx.result) return { type: "done" };
-    if (ctx.initialMode !== "work") return { type: "done" };
-    if (!ctx.sawEditFileMultiMatchError) return { type: "done" };
-    if (!isEditFileMultiMatchError({ code: ctx.currentError?.code, message: ctx.currentError?.message ?? "" }))
-      return { type: "done" };
-    if (!ctx.observedTools.has("edit-file")) return { type: "done" };
-    if (ctx.observedTools.has("edit-code")) return { type: "done" };
-    if (hasSuccessfulWriteForCurrentTask(ctx)) return { type: "done" };
-
-    const targetPath = findLastEditFilePath(ctx);
-    ctx.debug("lifecycle.eval.multi_match_edit_regenerate", {
-      error: ctx.currentError?.message ?? "multi_match_seen",
-      target_path: targetPath ?? null,
-    });
-    return {
-      type: "regenerate",
-      feedback: {
-        source: "multi-match",
-        mode: "work",
-        summary: "Your previous edit-file call matched multiple locations.",
-        instruction:
-          "Do not retry the same ambiguous find snippet. " +
-          "If this is a bounded single-file rewrite, prefer one edit-file call with unique surrounding context or a single line-range edit for the affected block. " +
-          (targetPath
-            ? `If you truly need edit-code for a structural rewrite, use path '${targetPath}' and a real ast-grep pattern with metavariables. `
-            : "If you truly need edit-code for a structural rewrite, use a concrete file path and a real ast-grep pattern with metavariables. ") +
-          "Do not use plain text as an edit-code pattern, and do not run additional find/search/read calls unless a new tool error requires it.",
-      },
-    };
-  },
-};
-
-export const oversizedEditSnippetEvaluator: Evaluator = {
-  id: "oversized-edit-snippet",
+export const editFileRecoveryEvaluator: Evaluator = {
+  id: "edit-file-recovery",
   evaluate(ctx) {
     if (!ctx.result) return { type: "done" };
     if (ctx.initialMode !== "work") return { type: "done" };
     if (ctx.currentError?.tool !== "edit-file") return { type: "done" };
-    if (!isOversizedEditSnippetError({ code: ctx.currentError.code, message: ctx.currentError.message })) {
-      return { type: "done" };
-    }
+    const recovery = ctx.currentError.recovery;
+    if (!recovery || recovery.tool !== "edit-file") return { type: "done" };
+    if (recovery.kind === "disambiguate-match" && hasSuccessfulWriteForCurrentTask(ctx)) return { type: "done" };
 
-    const targetPath = findLastEditFilePath(ctx);
-    ctx.debug("lifecycle.eval.oversized_edit_snippet", {
+    ctx.debug("lifecycle.eval.edit_file_recovery", {
       error: ctx.currentError.message,
-      target_path: targetPath ?? null,
+      recovery_kind: recovery.kind,
     });
     return {
       type: "regenerate",
       feedback: {
-        source: "multi-match",
+        source: "edit-file",
         mode: "work",
-        summary: "Your edit-file snippet was too large for a surgical find/replace edit.",
-        instruction:
-          "Use edit-file with short unique find snippets and replacement text limited to the changed region only, or use line-range edits from the latest read-file output. " +
-          "Do not pass a large block of the file as find text or replacement text. " +
-          (targetPath
-            ? `Keep the change in '${targetPath}' and batch the needed replacements into one edit call. `
-            : "Keep the change in the same file and batch the needed replacements into one edit call. ") +
-          "If the same literal code appears in multiple locations, prefer edit-code with a real ast-grep pattern.",
-      },
-    };
-  },
-};
-
-export const editFileFindNotFoundEvaluator: Evaluator = {
-  id: "edit-file-find-not-found",
-  evaluate(ctx) {
-    if (!ctx.result) return { type: "done" };
-    if (ctx.initialMode !== "work") return { type: "done" };
-    if (ctx.currentError?.tool !== "edit-file") return { type: "done" };
-    if (!isEditFileFindNotFoundError({ code: ctx.currentError.code, message: ctx.currentError.message })) {
-      return { type: "done" };
-    }
-
-    const targetPath = findLastEditFilePath(ctx);
-    ctx.debug("lifecycle.eval.edit_file_find_not_found", {
-      error: ctx.currentError.message,
-      target_path: targetPath ?? null,
-    });
-    return {
-      type: "regenerate",
-      feedback: {
-        source: "multi-match",
-        mode: "work",
-        summary: "Your edit-file find snippet no longer matches the file.",
-        instruction:
-          "Do not retry the same stale find text. Use the latest read-file output to build an exact snippet, or switch to a line-range edit for the visible lines you need to change. " +
-          (targetPath
-            ? `Keep the change in '${targetPath}' and make one bounded edit. `
-            : "Keep the change in the same file and make one bounded edit. ") +
-          "If your previous edit already changed nearby lines, reread only the needed range and anchor the next edit to that updated text.",
+        summary: recovery.summary,
+        details: ctx.currentError.message,
+        instruction: recovery.instruction,
       },
     };
   },

@@ -4,10 +4,8 @@ import { scheduleMemoryCommit, shouldCommitMemory } from "./lifecycle";
 import type { RunContext } from "./lifecycle-contract";
 import { recoveryActionForError } from "./lifecycle-evaluate";
 import {
-  editFileFindNotFoundEvaluator,
+  editFileRecoveryEvaluator,
   guardRecoveryEvaluator,
-  multiMatchEditEvaluator,
-  oversizedEditSnippetEvaluator,
   repeatedFailureEvaluator,
   verifyCycle,
 } from "./lifecycle-evaluators";
@@ -487,8 +485,8 @@ describe("repeatedFailureEvaluator", () => {
   });
 });
 
-describe("multiMatchEditEvaluator", () => {
-  test("returns regenerate when edit-file fails with multi-match error", () => {
+describe("editFileRecoveryEvaluator", () => {
+  test("returns regenerate when edit-file exposes structured recovery", () => {
     const session = createSessionContext();
     session.callLog = [{ toolName: "edit-file", args: { path: "src/priority.ts" }, success: false }];
     const ctx = createMockContext({
@@ -496,54 +494,43 @@ describe("multiMatchEditEvaluator", () => {
       initialMode: "work",
       session,
       observedTools: new Set(["read-file", "edit-file"]),
-      sawEditFileMultiMatchError: true,
       currentError: {
         code: "E_EDIT_FILE_MULTI_MATCH",
         message: "edit-file failed: [E_EDIT_FILE_MULTI_MATCH] Find text matched 3 locations (foo…).",
+        tool: "edit-file",
+        recovery: {
+          tool: "edit-file",
+          kind: "disambiguate-match",
+          summary: "Your edit-file snippet matched multiple locations.",
+          instruction: "Keep the change in 'src/priority.ts' and make one bounded edit with a more unique snippet.",
+        },
       },
       result: { text: "Attempted edit.", toolCalls: [] },
     });
-    const action = multiMatchEditEvaluator.evaluate(ctx);
+    const action = editFileRecoveryEvaluator.evaluate(ctx);
     expect(action.type).toBe("regenerate");
     if (action.type === "regenerate") {
-      expect(action.feedback?.instruction).toContain("Do not retry the same ambiguous find snippet");
-      expect(action.feedback?.instruction).toContain("bounded single-file rewrite");
-      expect(action.feedback?.instruction).toContain("single line-range edit");
-      expect(action.feedback?.instruction).toContain("real ast-grep pattern with metavariables");
-      expect(action.feedback?.instruction).toContain("path 'src/priority.ts'");
-      expect(action.feedback?.instruction).toContain("Do not use plain text as an edit-code pattern");
+      expect(action.feedback?.source).toBe("edit-file");
+      expect(action.feedback?.summary).toBe("Your edit-file snippet matched multiple locations.");
+      expect(action.feedback?.details).toContain("Find text matched 3 locations");
+      expect(action.feedback?.instruction).toContain("src/priority.ts");
     }
   });
 
-  test("uses concrete-path guidance when no target path is available", () => {
+  test("returns done when there is no structured edit-file recovery", () => {
     const ctx = createMockContext({
-      request: { model: "gpt-5-mini", message: "Rename symbol everywhere", history: [] },
       initialMode: "work",
-      observedTools: new Set(["edit-file"]),
-      sawEditFileMultiMatchError: true,
-      currentError: { message: "edit-file failed: [E_EDIT_FILE_MULTI_MATCH] Find text matched 2 locations." },
+      currentError: {
+        code: TOOL_ERROR_CODES.editFileFindTooLarge,
+        tool: "edit-file",
+        message: "edit-file failed: find must be a short unique snippet",
+      },
       result: { text: "Attempted edit.", toolCalls: [] },
     });
-    const action = multiMatchEditEvaluator.evaluate(ctx);
-    expect(action.type).toBe("regenerate");
-    if (action.type === "regenerate") {
-      expect(action.feedback?.instruction).toContain("use a concrete file path");
-    }
+    expect(editFileRecoveryEvaluator.evaluate(ctx).type).toBe("done");
   });
 
-  test("returns done when edit-code was already used", () => {
-    const ctx = createMockContext({
-      request: { model: "gpt-5-mini", message: "Rename symbol everywhere", history: [] },
-      initialMode: "work",
-      observedTools: new Set(["edit-file", "edit-code"]),
-      sawEditFileMultiMatchError: true,
-      currentError: { message: "edit-file failed: [E_EDIT_FILE_MULTI_MATCH] Find text matched 2 locations." },
-      result: { text: "Attempted edit.", toolCalls: [] },
-    });
-    expect(multiMatchEditEvaluator.evaluate(ctx).type).toBe("done");
-  });
-
-  test("returns done after a later successful write in the same task", () => {
+  test("returns done after a later successful write for disambiguate-match recovery", () => {
     const session = createSessionContext();
     session.writeTools = new Set(["edit-file", "edit-code"]);
     session.callLog = [
@@ -554,110 +541,19 @@ describe("multiMatchEditEvaluator", () => {
       request: { model: "gpt-5-mini", message: "Rename symbol everywhere", history: [] },
       initialMode: "work",
       session,
-      observedTools: new Set(["read-file", "edit-file"]),
-      sawEditFileMultiMatchError: true,
-      currentError: { message: "edit-file failed: [E_EDIT_FILE_MULTI_MATCH] Find text matched 3 locations." },
+      currentError: {
+        tool: "edit-file",
+        message: "edit-file failed: [E_EDIT_FILE_MULTI_MATCH] Find text matched 3 locations.",
+        recovery: {
+          tool: "edit-file",
+          kind: "disambiguate-match",
+          summary: "Your edit-file snippet matched multiple locations.",
+          instruction: "Use a more unique snippet.",
+        },
+      },
       result: { text: "Applied the change.", toolCalls: [] },
     });
-    expect(multiMatchEditEvaluator.evaluate(ctx).type).toBe("done");
-  });
-});
-
-describe("oversizedEditSnippetEvaluator", () => {
-  test("returns regenerate when edit-file find snippet is too large", () => {
-    const session = createSessionContext();
-    session.callLog = [{ toolName: "edit-file", args: { path: "src/priority.ts" }, success: false }];
-    const ctx = createMockContext({
-      request: { model: "gpt-5-mini", message: "Make repeated return changes", history: [] },
-      initialMode: "work",
-      session,
-      observedTools: new Set(["read-file", "edit-file"]),
-      currentError: {
-        code: "E_EDIT_FILE_FIND_TOO_LARGE",
-        tool: "edit-file",
-        message:
-          "edit-file failed: find must be a short unique snippet (a few lines), not a large portion of the file.",
-      },
-      result: { text: "Attempted edit.", toolCalls: [] },
-    });
-    const action = oversizedEditSnippetEvaluator.evaluate(ctx);
-    expect(action.type).toBe("regenerate");
-    if (action.type === "regenerate") {
-      expect(action.feedback?.summary).toBe("Your edit-file snippet was too large for a surgical find/replace edit.");
-      expect(action.feedback?.instruction).toContain("short unique find snippets");
-      expect(action.feedback?.instruction).toContain("line-range edits");
-      expect(action.feedback?.instruction).toContain("batch the needed replacements into one edit call");
-    }
-  });
-
-  test("returns regenerate when edit-file replace block is too large", () => {
-    const session = createSessionContext();
-    session.callLog = [{ toolName: "edit-file", args: { path: "src/priority.ts" }, success: false }];
-    const ctx = createMockContext({
-      request: { model: "gpt-5-mini", message: "Make repeated return changes", history: [] },
-      initialMode: "work",
-      session,
-      observedTools: new Set(["read-file", "edit-file"]),
-      currentError: {
-        code: "E_EDIT_FILE_REPLACE_TOO_LARGE",
-        tool: "edit-file",
-        message:
-          "edit-file failed: replace must contain only the changed region for a find/replace edit, not a large block or whole-file rewrite.",
-      },
-      result: { text: "Attempted edit.", toolCalls: [] },
-    });
-    const action = oversizedEditSnippetEvaluator.evaluate(ctx);
-    expect(action.type).toBe("regenerate");
-    if (action.type === "regenerate") {
-      expect(action.feedback?.instruction).toContain("replacement text limited to the changed region only");
-      expect(action.feedback?.instruction).toContain(
-        "Do not pass a large block of the file as find text or replacement text",
-      );
-    }
-  });
-
-  test("returns done for unrelated edit-file errors", () => {
-    const ctx = createMockContext({
-      initialMode: "work",
-      currentError: { tool: "edit-file", message: "edit-file failed: Find text not found in file" },
-      result: { text: "Attempted edit.", toolCalls: [] },
-    });
-    expect(oversizedEditSnippetEvaluator.evaluate(ctx).type).toBe("done");
-  });
-});
-
-describe("editFileFindNotFoundEvaluator", () => {
-  test("returns regenerate when edit-file find text no longer matches", () => {
-    const session = createSessionContext();
-    session.callLog = [{ toolName: "edit-file", args: { path: "src/priority.ts" }, success: false }];
-    const ctx = createMockContext({
-      request: { model: "gpt-5-mini", message: "Make repeated return changes", history: [] },
-      initialMode: "work",
-      session,
-      observedTools: new Set(["read-file", "edit-file"]),
-      currentError: {
-        code: "E_EDIT_FILE_FIND_NOT_FOUND",
-        tool: "edit-file",
-        message: "edit-file failed: Find text not found in file: return undefined;",
-      },
-      result: { text: "Attempted edit.", toolCalls: [] },
-    });
-    const action = editFileFindNotFoundEvaluator.evaluate(ctx);
-    expect(action.type).toBe("regenerate");
-    if (action.type === "regenerate") {
-      expect(action.feedback?.summary).toBe("Your edit-file find snippet no longer matches the file.");
-      expect(action.feedback?.instruction).toContain("Do not retry the same stale find text");
-      expect(action.feedback?.instruction).toContain("Use the latest read-file output");
-    }
-  });
-
-  test("returns done for unrelated edit-file errors", () => {
-    const ctx = createMockContext({
-      initialMode: "work",
-      currentError: { tool: "edit-file", message: "edit-file failed: Find text matched 2 locations" },
-      result: { text: "Attempted edit.", toolCalls: [] },
-    });
-    expect(editFileFindNotFoundEvaluator.evaluate(ctx).type).toBe("done");
+    expect(editFileRecoveryEvaluator.evaluate(ctx).type).toBe("done");
   });
 });
 
@@ -856,15 +752,15 @@ describe("createGenerationInput", () => {
         feedback: [
           { source: "verify", mode: "verify", summary: "Run verification.", details: "Task boundary:\n- src/a.ts" },
           { source: "lint", mode: "work", summary: "Lint errors detected" },
-          { source: "multi-match", mode: "work", summary: "Use edit-code next" },
+          { source: "edit-file", mode: "work", summary: "Use a bounded edit next" },
         ],
       },
     });
     expect(input).toContain("USER: fix it");
     expect(input).toContain("Lifecycle feedback (lint)");
     expect(input).toContain("Lint errors detected");
-    expect(input).toContain("Lifecycle feedback (multi-match)");
-    expect(input).toContain("Use edit-code next");
+    expect(input).toContain("Lifecycle feedback (edit-file)");
+    expect(input).toContain("Use a bounded edit next");
     expect(input).not.toContain("Task boundary:\n- src/a.ts");
   });
 });
@@ -897,7 +793,7 @@ describe("consumeLifecycleFeedback", () => {
           details: "Task boundary:\n- src/a.ts",
         },
         { source: "lint" as const, mode: "work" as const, summary: "Lint errors detected" },
-        { source: "multi-match" as const, mode: "work" as const, summary: "Use edit-code next" },
+        { source: "edit-file" as const, mode: "work" as const, summary: "Use a bounded edit next" },
       ],
     };
 
@@ -905,7 +801,7 @@ describe("consumeLifecycleFeedback", () => {
 
     expect(consumed).toEqual([
       { source: "lint", mode: "work", summary: "Lint errors detected" },
-      { source: "multi-match", mode: "work", summary: "Use edit-code next" },
+      { source: "edit-file", mode: "work", summary: "Use a bounded edit next" },
     ]);
     expect(state.feedback).toEqual([
       { source: "verify", mode: "verify", summary: "Run verification.", details: "Task boundary:\n- src/a.ts" },

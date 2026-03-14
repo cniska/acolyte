@@ -3,11 +3,9 @@ import { t } from "./i18n";
 import type { LifecycleInput, RunContext, SavedRegenerationState } from "./lifecycle-contract";
 import {
   type Evaluator,
-  editFileFindNotFoundEvaluator,
+  editFileRecoveryEvaluator,
   guardRecoveryEvaluator,
   lintEvaluator,
-  multiMatchEditEvaluator,
-  oversizedEditSnippetEvaluator,
   repeatedFailureEvaluator,
   verifyCycle,
 } from "./lifecycle-evaluators";
@@ -17,9 +15,7 @@ import { acceptedLifecycleSignal, clearVerifyOutcomeForFeedback, updateRepeatedF
 
 const EVALUATORS: Evaluator[] = [
   guardRecoveryEvaluator,
-  multiMatchEditEvaluator,
-  oversizedEditSnippetEvaluator,
-  editFileFindNotFoundEvaluator,
+  editFileRecoveryEvaluator,
   lintEvaluator,
   verifyCycle,
   repeatedFailureEvaluator,

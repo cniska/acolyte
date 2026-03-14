@@ -4,7 +4,7 @@ import type { StreamEvent } from "./client-contract";
 import type { ErrorCategory, ErrorSource } from "./error-handling";
 import type { LifecyclePolicy } from "./lifecycle-policy";
 import type { PromptBreakdownTotals } from "./lifecycle-usage";
-import type { ErrorCode } from "./tool-error-codes";
+import type { ErrorCode, ToolRecovery } from "./tool-error-codes";
 import type { SessionContext } from "./tool-guards";
 import type { ToolOutput } from "./tool-output-content";
 import type { Toolset } from "./tool-registry";
@@ -15,6 +15,7 @@ export type LifecycleError = {
   category?: ErrorCategory;
   source?: ErrorSource;
   tool?: string;
+  recovery?: ToolRecovery;
 };
 
 export type LifecycleEventName = `lifecycle.${string}`;
@@ -108,7 +109,7 @@ export type VerifyOutcome = {
   error?: LifecycleError;
 };
 
-export type FeedbackSource = "guard" | "lint" | "verify" | "multi-match" | "repeated-failure";
+export type FeedbackSource = "guard" | "lint" | "verify" | "edit-file" | "repeated-failure";
 
 export type LifecycleFeedback = {
   source: FeedbackSource;

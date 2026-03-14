@@ -8,6 +8,13 @@ export const TOOL_ERROR_CODES = {
 } as const;
 
 export type ToolErrorCode = (typeof TOOL_ERROR_CODES)[keyof typeof TOOL_ERROR_CODES];
+export type EditFileRecoveryKind = "disambiguate-match" | "refresh-snippet" | "shrink-edit";
+export type ToolRecovery = {
+  tool: "edit-file";
+  kind: EditFileRecoveryKind;
+  summary: string;
+  instruction: string;
+};
 
 export const LIFECYCLE_ERROR_CODES = {
   timeout: "E_TIMEOUT",
@@ -30,17 +37,19 @@ export type ErrorKind = (typeof ERROR_KINDS)[keyof typeof ERROR_KINDS];
 export class ToolError extends Error {
   code: string;
   kind?: ErrorKind;
+  recovery?: ToolRecovery;
 
-  constructor(code: string, message: string, kind?: ErrorKind) {
+  constructor(code: string, message: string, kind?: ErrorKind, recovery?: ToolRecovery) {
     super(message);
     this.name = "ToolError";
     this.code = code;
     this.kind = kind;
+    this.recovery = recovery;
   }
 }
 
-export function createToolError(code: string, message: string, kind?: ErrorKind): ToolError {
-  return new ToolError(code, message, kind);
+export function createToolError(code: string, message: string, kind?: ErrorKind, recovery?: ToolRecovery): ToolError {
+  return new ToolError(code, message, kind, recovery);
 }
 
 export function encodeToolError(code: string, message: string): string {
