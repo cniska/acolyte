@@ -9,7 +9,18 @@ if [[ -n "$(git status --porcelain)" ]]; then
   echo "error: working directory not clean" >&2; exit 1
 fi
 
-level="${1:-patch}"
+level="${1:-}"
+if [[ -z "$level" ]]; then
+  # Auto-detect: if any feat commit exists since the last tag, default to minor
+  old_for_detect=$(node -p "require('./package.json').version")
+  prev_tag_for_detect="v${old_for_detect}"
+  if git log "${prev_tag_for_detect}..HEAD" --oneline | grep -qE '^[a-f0-9]+ feat'; then
+    level="minor"
+    echo "info: feat commit detected since ${prev_tag_for_detect}, defaulting to minor bump"
+  else
+    level="patch"
+  fi
+fi
 if [[ "$level" != "patch" && "$level" != "minor" && "$level" != "major" ]]; then
   echo "Usage: $0 [patch|minor|major]" >&2; exit 1
 fi
