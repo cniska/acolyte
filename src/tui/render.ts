@@ -1,5 +1,9 @@
+import { appendFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import type { ReactNode } from "react";
 import { createElement as reactCreateElement, StrictMode } from "react";
+import { setLogSink } from "../log";
 import { AppContext, InputContext, type InputContextValue, type InputRegistration } from "./context";
 import { createElement } from "./dom";
 import { setOnCommit } from "./host-config";
@@ -7,6 +11,10 @@ import { createInputDispatcher } from "./input";
 import { reconciler } from "./reconciler";
 import { serializeSplit, stripAnsiLength } from "./serialize";
 import { ansi, kitty } from "./styles";
+
+function clientLogPath(): string {
+  return join(homedir(), ".acolyte", "client.log");
+}
 
 /** Count physical terminal rows, accounting for line wrapping. */
 function physicalRowCount(output: string, columns: number): number {
@@ -26,6 +34,18 @@ type RenderInstance = {
 };
 
 export function render(node: ReactNode): RenderInstance {
+  setLogSink(
+    process.env.ACOLYTE_DEBUG
+      ? (line) => {
+          try {
+            appendFileSync(clientLogPath(), line);
+          } catch {
+            // best-effort
+          }
+        }
+      : () => {},
+  );
+
   const root = createElement("tui-root", {});
   const stdout = process.stdout;
   const stdin = process.stdin;
@@ -194,6 +214,7 @@ export function render(node: ReactNode): RenderInstance {
   reconciler.updateContainer(wrappedNode, container, null, () => {});
 
   function cleanup() {
+    setLogSink(null);
     setOnCommit(null);
     process.removeListener("SIGINT", onSignal);
     process.removeListener("SIGTERM", onSignal);

@@ -7,7 +7,7 @@ import {
   rankAtReferenceSuggestions,
   shouldAutocompleteAtSubmit,
 } from "./chat-file-ref";
-import { appendGraduatedItems, initialTranscriptRows } from "./chat-ui";
+import { appendGraduatedItems, applyGraduation, initialTranscriptRows } from "./chat-ui";
 import { createSession, createStore } from "./test-utils";
 
 function createUiStore() {
@@ -109,6 +109,19 @@ describe("chat-ui helpers", () => {
       { id: "row_2", role: "user", content: "hello" },
       { id: "row_3", role: "assistant", content: "hi" },
     ]);
+  });
+
+  test("applyGraduation removes captured rows and preserves concurrently added rows", () => {
+    const graduated: never[] = [];
+    const captured = [
+      { id: "row_1", role: "user" as const, content: "hello" },
+      { id: "row_2", role: "assistant" as const, content: "hi" },
+    ];
+    // Simulate concurrent addition: live state has captured rows + a new one added during graduation
+    const live = [...captured, { id: "row_3", role: "system" as const, content: "/usage output" }];
+    const { nextGraduated, nextLive } = applyGraduation(graduated, captured, live);
+    expect(nextGraduated).toEqual(captured);
+    expect(nextLive).toEqual([{ id: "row_3", role: "system", content: "/usage output" }]);
   });
 
   test("appendGraduatedItems ignores duplicate row ids", () => {

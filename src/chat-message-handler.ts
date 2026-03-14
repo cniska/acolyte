@@ -8,6 +8,7 @@ import { formatSubmitError, isAbortError, resolveNaturalRememberDirective } from
 import { createMessageStreamState } from "./chat-message-handler-stream";
 import { startRemoteTaskFollowup } from "./chat-message-handler-task-followup";
 import { isKnownSlashToken, suggestSlashCommands } from "./chat-slash";
+import { log } from "./log";
 import {
   appendInputHistory,
   applyUserTurn,
@@ -82,6 +83,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
   };
 
   const startAssistantTurn = async (userText: string): Promise<void> => {
+    log.debug("chat.turn.start", { userText });
     startWorking();
     const userMessage = input.createMessage("user", userText);
     input.currentSession.messages.push(userMessage);
@@ -200,6 +202,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
 
   const handler = async (raw: string): Promise<void> => {
     const text = raw.trim();
+    log.debug("chat.handler", { text, isWorking: input.isWorking });
     if (!text || (input.isWorking && !text.startsWith("/"))) return;
     if (text.startsWith("/") && !text.includes(" ") && !isKnownSlashToken(text)) {
       const corrections = suggestSlashCommands(text);
@@ -278,6 +281,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       tokenUsage: input.tokenUsage,
       clearTranscript: input.clearTranscript,
     });
+    log.debug("chat.command.result", { stop: commandResult.stop, userText: commandResult.userText });
     if (commandResult.stop) {
       input.graduate?.();
       return;

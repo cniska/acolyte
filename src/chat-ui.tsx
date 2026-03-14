@@ -5,6 +5,7 @@ import { extractAtReferenceQuery } from "./chat-file-ref";
 import type { HeaderLine } from "./chat-header";
 import { ChatHeader } from "./chat-header";
 import { processInputChange, processInputSubmit } from "./chat-input-handlers";
+import { log } from "./log";
 import { ChatInputPanel } from "./chat-input-panel";
 import { useChatKeybindings } from "./chat-keybindings";
 import { shownBranch, shownCwd } from "./chat-layout";
@@ -57,6 +58,18 @@ export function appendGraduatedItems(current: GraduatedItem[], next: readonly Gr
     appended.push(item);
   }
   return appended.length > 0 ? [...current, ...appended] : current;
+}
+
+export function applyGraduation(
+  graduated: GraduatedItem[],
+  toGraduate: ChatRow[],
+  live: ChatRow[],
+): { nextGraduated: GraduatedItem[]; nextLive: ChatRow[] } {
+  const graduatedIds = new Set(toGraduate.map((row) => row.id));
+  return {
+    nextGraduated: appendGraduatedItems(graduated, toGraduate),
+    nextLive: live.filter((row) => !graduatedIds.has(row.id)),
+  };
 }
 
 function isHeaderItem(item: GraduatedItem): item is HeaderItem {
@@ -138,9 +151,15 @@ function ChatApp(props: ChatAppProps) {
 
   const graduate = useCallback(() => {
     const current = rowsRef.current;
+    log.debug("chat.graduate.trigger", { rows: current.length });
     if (current.length === 0) return;
+    const graduatedIds = new Set(current.map((row) => row.id));
     setGraduatedRows((prev) => appendGraduatedItems(prev, current));
-    setRows([]);
+    setRows((live) => {
+      const surviving = live.filter((row) => !graduatedIds.has(row.id));
+      log.debug("chat.graduate.done", { graduated: graduatedIds.size, surviving: surviving.length });
+      return surviving;
+    });
   }, []);
 
   const clearTranscript = useCallback(
@@ -155,7 +174,10 @@ function ChatApp(props: ChatAppProps) {
   // Graduate completed rows when working state ends.
   const prevWorkingRef = useRef(false);
   useEffect(() => {
-    if (prevWorkingRef.current && !isWorking) graduate();
+    if (prevWorkingRef.current && !isWorking) {
+      log.debug("chat.graduate.working_end");
+      graduate();
+    }
     prevWorkingRef.current = isWorking;
   }, [isWorking, graduate]);
 
@@ -353,6 +375,7 @@ function ChatApp(props: ChatAppProps) {
             slashSuggestions,
             slashSuggestionIndex,
           });
+          log.debug("chat.submit", { value: next, suggestions: slashSuggestions.join(","), resolved: resolved.kind });
           if (resolved.kind === "autocomplete") {
             setValue(resolved.value);
             setInputRevision((current) => current + 1);

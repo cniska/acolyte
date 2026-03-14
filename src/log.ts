@@ -90,8 +90,18 @@ export function renderLogLine(level: LogLevel, message: string, fields?: LogFiel
   return renderLogfmtLine(level, message, fields);
 }
 
+let logSink: ((line: string) => void) | null = null;
+
+export function setLogSink(sink: ((line: string) => void) | null): void {
+  logSink = sink;
+}
+
 function write(level: LogLevel, message: string, fields?: LogFields): void {
   const line = renderLogLine(level, message, fields);
+  if (logSink) {
+    logSink(line);
+    return;
+  }
   if (level === "warn" || level === "error") {
     process.stderr.write(line);
     return;
