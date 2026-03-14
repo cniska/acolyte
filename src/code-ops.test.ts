@@ -1,0 +1,473 @@
+import { afterAll, describe, expect, test } from "bun:test";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { join, resolve } from "node:path";
+import { editCode, scanCode } from "./code-ops";
+import { TOOL_ERROR_CODES } from "./error-primitives";
+import { testUuid } from "./test-utils";
+
+const WORKSPACE = resolve(process.cwd());
+const tempFiles: string[] = [];
+const tempDirs: string[] = [];
+
+afterAll(async () => {
+  await Promise.all(tempFiles.map(async (filePath) => rm(filePath, { force: true })));
+  await Promise.all(tempDirs.map(async (dirPath) => rm(dirPath, { recursive: true, force: true })));
+});
+
+describe("editCode", () => {
+  test("blocks paths outside workspace", async () => {
+    await expect(
+      editCode({
+        workspace: WORKSPACE,
+        path: "/etc/hosts",
+        edits: [{ op: "replace", rule: "console.log($ARG)", replacement: "logger.debug($ARG)" }],
+      }),
+    ).rejects.toThrow("restricted to the workspace or /tmp");
+  });
+
+  test("replaces pattern matches with metavariable capture", async () => {
+    const filePath = `/tmp/acolyte-test-ast-${testUuid()}.ts`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, 'console.log("hello");\nconsole.log("world");\n', "utf8");
+    const result = await editCode({
+      workspace: WORKSPACE,
+      path: filePath,
+      edits: [{ op: "replace", rule: "console.log($ARG)", replacement: "logger.debug($ARG)" }],
+    });
+    expect(result.matches).toBe(2);
+    const content = await readFile(filePath, "utf8");
+    expect(content).toContain('logger.debug("hello")');
+    expect(content).not.toContain("console.log");
+  });
+
+  test("scopes replacements with within", async () => {
+    const filePath = `/tmp/acolyte-test-ast-within-${testUuid()}.ts`;
+    tempFiles.push(filePath);
+    await writeFile(
+      filePath,
+      [
+        "function first() {",
+        "  const result = 1;",
+        "  return result;",
+        "}",
+        "",
+        "function second() {",
+        "  const result = 2;",
+        "  return result;",
+        "}",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    const result = await editCode({
+      workspace: WORKSPACE,
+      path: filePath,
+      edits: [
+        {
+          op: "replace",
+          rule: "result",
+          replacement: "value",
+          within: "function second() { $$$BODY }",
+        },
+      ],
+    });
+    expect(result.matches).toBe(2);
+    const content = await readFile(filePath, "utf8");
+    expect(content).toContain("const result = 1;");
+    expect(content).toContain("return result;");
+    expect(content).toContain("const value = 2;");
+    expect(content).toContain("return value;");
+  });
+
+  test("scopes replacements with withinSymbol", async () => {
+    const filePath = `/tmp/acolyte-test-ast-within-symbol-${testUuid()}.ts`;
+    tempFiles.push(filePath);
+    await writeFile(
+      filePath,
+      [
+        "const scanFile = (items: string[]): string[] => {",
+        "  const output: string[] = [];",
+        "  for (const result of items) {",
+        "    output.push(result.toUpperCase());",
+        "  }",
+        "  return output;",
+        "};",
+        "",
+        "const totalMatches = (results: string[]) => results.reduce((sum, result) => sum + result.length, 0);",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    const result = await editCode({
+      workspace: WORKSPACE,
+      path: filePath,
+      edits: [
+        {
+          op: "replace",
+          rule: "result",
+          replacement: "patternResult",
+          withinSymbol: "scanFile",
+        },
+      ],
+    });
+    expect(result.matches).toBe(2);
+    const content = await readFile(filePath, "utf8");
+    expect(content).toContain("for (const patternResult of items)");
+    expect(content).toContain("output.push(patternResult.toUpperCase());");
+    expect(content).toContain("results.reduce((sum, result) => sum + result.length, 0);");
+  });
+
+  test("supports structured rename edits with withinSymbol", async () => {
+    const filePath = `/tmp/acolyte-test-ast-rename-${testUuid()}.ts`;
+    tempFiles.push(filePath);
+    await writeFile(
+      filePath,
+      [
+        "const scanFile = (items: string[]): string[] => {",
+        "  const output: string[] = [];",
+        "  for (const result of items) {",
+        "    output.push(result.toUpperCase());",
+        "  }",
+        "  return output;",
+        "};",
+        "",
+        "const totalMatches = (results: string[]) => results.reduce((sum, result) => sum + result.length, 0);",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    const result = await editCode({
+      workspace: WORKSPACE,
+      path: filePath,
+      edits: [
+        {
+          op: "rename",
+          from: "result",
+          to: "patternResult",
+          withinSymbol: "scanFile",
+        },
+      ],
+    });
+    expect(result.matches).toBe(2);
+    const content = await readFile(filePath, "utf8");
+    expect(content).toContain("for (const patternResult of items)");
+    expect(content).toContain("output.push(patternResult.toUpperCase());");
+    expect(content).toContain("results.reduce((sum, result) => sum + result.length, 0);");
+  });
+
+  test("supports structured rename edits within a class declaration", async () => {
+    const filePath = `/tmp/acolyte-test-ast-class-rename-${testUuid()}.js`;
+    tempFiles.push(filePath);
+    await writeFile(
+      filePath,
+      [
+        "class ProviderConfig {",
+        '  alias = "acolyte-mini";',
+        "  label() {",
+        "    return this.alias;",
+        "  }",
+        "}",
+        "",
+        'const alias = "outside";',
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    const result = await editCode({
+      workspace: WORKSPACE,
+      path: filePath,
+      edits: [
+        {
+          op: "rename",
+          from: "alias",
+          to: "defaultAlias",
+          withinSymbol: "ProviderConfig",
+        },
+      ],
+    });
+    expect(result.matches).toBe(2);
+    const content = await readFile(filePath, "utf8");
+    expect(content).toContain('defaultAlias = "acolyte-mini";');
+    expect(content).toContain("return this.defaultAlias;");
+    expect(content).toContain('const alias = "outside";');
+  });
+
+  test("supports structured replace patterns with context and selector", async () => {
+    const filePath = `/tmp/acolyte-test-ast-pattern-object-${testUuid()}.js`;
+    tempFiles.push(filePath);
+    await writeFile(
+      filePath,
+      [
+        "class ProviderConfig {",
+        '  alias = "acolyte-mini";',
+        '  mode = "default";',
+        "}",
+        "",
+        'const alias = "outside";',
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    const result = await editCode({
+      workspace: WORKSPACE,
+      path: filePath,
+      edits: [
+        {
+          op: "replace",
+          rule: {
+            context: "class ProviderConfig { alias = $VALUE }",
+            selector: "field_definition",
+          },
+          replacement: "defaultAlias = $VALUE",
+        },
+      ],
+    });
+    expect(result.matches).toBe(1);
+    const content = await readFile(filePath, "utf8");
+    expect(content).toContain('defaultAlias = "acolyte-mini";');
+    expect(content).toContain('const alias = "outside";');
+    expect(content).not.toContain('alias = "acolyte-mini";');
+  });
+
+  test("supports recursive rule objects for replacements", async () => {
+    const filePath = `/tmp/acolyte-test-ast-rule-object-${testUuid()}.ts`;
+    tempFiles.push(filePath);
+    await writeFile(
+      filePath,
+      ['console.log("first");', 'console.info("second");', 'console.warn("third");', ""].join("\n"),
+      "utf8",
+    );
+    const result = await editCode({
+      workspace: WORKSPACE,
+      path: filePath,
+      edits: [
+        {
+          op: "replace",
+          rule: {
+            any: ["console.log($ARG)", "console.info($ARG)"],
+          },
+          replacement: "logger.debug($ARG)",
+        },
+      ],
+    });
+    expect(result.matches).toBe(2);
+    const content = await readFile(filePath, "utf8");
+    expect(content).toContain('logger.debug("first");');
+    expect(content).toContain('logger.debug("second");');
+    expect(content).toContain('console.warn("third");');
+  });
+
+  test("throws when no matches found", async () => {
+    const filePath = `/tmp/acolyte-test-ast-nomatch-${testUuid()}.ts`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, "const x = 1;\n", "utf8");
+    await expect(
+      editCode({
+        workspace: WORKSPACE,
+        path: filePath,
+        edits: [{ op: "replace", rule: "console.log($ARG)", replacement: "logger.debug($ARG)" }],
+      }),
+    ).rejects.toMatchObject({
+      code: TOOL_ERROR_CODES.editCodeNoMatch,
+      recovery: { tool: "edit-code", kind: "refine-pattern" },
+    });
+  });
+
+  test("rejects directory paths", async () => {
+    const dirPath = `/tmp/acolyte-test-ast-dir-${testUuid()}`;
+    tempDirs.push(dirPath);
+    await mkdir(dirPath, { recursive: true });
+    await expect(
+      editCode({
+        workspace: WORKSPACE,
+        path: dirPath,
+        edits: [{ op: "replace", rule: "console.log($ARG)", replacement: "logger.debug($ARG)" }],
+      }),
+    ).rejects.toThrow("edit-code requires a file path");
+  });
+
+  test("rejects unsupported non-code files", async () => {
+    const filePath = `/tmp/acolyte-test-ast-md-${testUuid()}.md`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, "# Title\n", "utf8");
+    await expect(
+      editCode({
+        workspace: WORKSPACE,
+        path: filePath,
+        edits: [{ op: "replace", rule: "Title", replacement: "Heading" }],
+      }),
+    ).rejects.toMatchObject({
+      code: TOOL_ERROR_CODES.editCodeUnsupportedFile,
+      recovery: { tool: "edit-code", kind: "use-supported-file" },
+    });
+  });
+
+  test("rejects unknown single-file extensions without falling back", async () => {
+    const filePath = `/tmp/acolyte-test-ast-yaml-${testUuid()}.yaml`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, "foo: bar\n", "utf8");
+    await expect(
+      editCode({
+        workspace: WORKSPACE,
+        path: filePath,
+        edits: [{ op: "replace", rule: "foo: $VALUE", replacement: "bar: $VALUE" }],
+      }),
+    ).rejects.toMatchObject({
+      code: TOOL_ERROR_CODES.editCodeUnsupportedFile,
+      recovery: { tool: "edit-code", kind: "use-supported-file" },
+    });
+  });
+
+  test("rejects replacement metavariables that are not present in the pattern", async () => {
+    const filePath = `/tmp/acolyte-test-ast-missing-meta-${testUuid()}.ts`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, 'console.log("hello");\n', "utf8");
+    await expect(
+      editCode({
+        workspace: WORKSPACE,
+        path: filePath,
+        edits: [{ op: "replace", rule: "console.log($ARG)", replacement: "logger.debug($MISSING)" }],
+      }),
+    ).rejects.toMatchObject({
+      code: TOOL_ERROR_CODES.editCodeReplacementMetaMismatch,
+      recovery: { tool: "edit-code", kind: "fix-replacement" },
+    });
+  });
+
+  test("supports variadic metavariables in replacements", async () => {
+    const filePath = `/tmp/acolyte-test-ast-variadic-${testUuid()}.ts`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, "sum(a, b);\nsum(c);\n", "utf8");
+    const result = await editCode({
+      workspace: WORKSPACE,
+      path: filePath,
+      edits: [{ op: "replace", rule: "sum($$$ARGS)", replacement: "total($$$ARGS)" }],
+    });
+    expect(result.matches).toBe(2);
+    const content = await readFile(filePath, "utf8");
+    expect(content).toContain("total(a, b);");
+    expect(content).toContain("total(c);");
+    expect(content).not.toContain("sum(");
+  });
+
+  test("replaces in Python files", async () => {
+    const filePath = `/tmp/acolyte-test-ast-py-${testUuid()}.py`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, 'print("hello")\nprint("world")\n', "utf8");
+    const result = await editCode({
+      workspace: WORKSPACE,
+      path: filePath,
+      edits: [{ op: "replace", rule: "print($ARG)", replacement: "log($ARG)" }],
+    });
+    expect(result.matches).toBe(2);
+    const content = await readFile(filePath, "utf8");
+    expect(content).toContain('log("hello")');
+    expect(content).not.toContain("print");
+  });
+
+  test("replaces in Rust files", async () => {
+    const filePath = `/tmp/acolyte-test-ast-rs-${testUuid()}.rs`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, 'println!("hello");\nprintln!("world");\n', "utf8");
+    const result = await editCode({
+      workspace: WORKSPACE,
+      path: filePath,
+      edits: [{ op: "replace", rule: "println!($ARGS)", replacement: "eprintln!($ARGS)" }],
+    });
+    expect(result.matches).toBe(2);
+    const content = await readFile(filePath, "utf8");
+    expect(content).toContain("eprintln!");
+    expect(content).not.toMatch(/(?<!e)println!/);
+  });
+
+  test("replaces in Go files", async () => {
+    const filePath = `/tmp/acolyte-test-ast-go-${testUuid()}.go`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, 'package main\n\nfunc main() {\n\tprintln("hello")\n\tprintln("world")\n}\n', "utf8");
+    const result = await editCode({
+      workspace: WORKSPACE,
+      path: filePath,
+      edits: [{ op: "replace", rule: "println($ARG)", replacement: "print($ARG)" }],
+    });
+    expect(result.matches).toBe(2);
+    const content = await readFile(filePath, "utf8");
+    expect(content).toContain("print(");
+    expect(content).not.toContain("println(");
+  });
+});
+
+describe("scanCode", () => {
+  test("blocks paths outside workspace", async () => {
+    await expect(scanCode({ workspace: WORKSPACE, paths: ["/etc/hosts"], pattern: "const $X" })).rejects.toThrow(
+      "restricted to the workspace or /tmp",
+    );
+  });
+
+  test("rejects unsupported single-file types", async () => {
+    const filePath = `/tmp/acolyte-test-scan-unsupported-${testUuid()}.yaml`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, "foo: bar\n", "utf8");
+    await expect(scanCode({ workspace: WORKSPACE, paths: [filePath], pattern: "const $X" })).rejects.toMatchObject({
+      code: TOOL_ERROR_CODES.scanCodeUnsupportedFile,
+      recovery: { tool: "scan-code", kind: "use-supported-file" },
+    });
+  });
+
+  test("finds matches with metavariable captures", async () => {
+    const filePath = `/tmp/acolyte-test-scan-${testUuid()}.ts`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, 'console.log("hello");\nconsole.log("world");\nconst x = 1;\n', "utf8");
+    const result = await scanCode({ workspace: WORKSPACE, paths: [filePath], pattern: "console.log($ARG)" });
+    expect(result).toContain("scanned=1");
+    expect(result).toContain("matches=2");
+    expect(result).toContain('$ARG="hello"');
+  });
+
+  test("returns no matches when pattern is absent", async () => {
+    const filePath = `/tmp/acolyte-test-scan-nomatch-${testUuid()}.ts`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, "const x = 1;\n", "utf8");
+    const result = await scanCode({ workspace: WORKSPACE, paths: [filePath], pattern: "console.log($ARG)" });
+    expect(result).toContain("matches=0");
+    expect(result).toContain("No matches.");
+  });
+
+  test("scans a directory recursively", async () => {
+    const dirPath = `/tmp/acolyte-test-scan-dir-${testUuid()}`;
+    tempDirs.push(dirPath);
+    await mkdir(join(dirPath, "sub"), { recursive: true });
+    await writeFile(join(dirPath, "a.ts"), 'console.log("a");\n', "utf8");
+    await writeFile(join(dirPath, "sub", "b.ts"), 'console.log("b");\nconst y = 2;\n', "utf8");
+    const result = await scanCode({ workspace: WORKSPACE, paths: [dirPath], pattern: "console.log($ARG)" });
+    expect(result).toContain("scanned=2");
+    expect(result).toContain("matches=2");
+  });
+
+  test("respects maxResults limit", async () => {
+    const filePath = `/tmp/acolyte-test-scan-limit-${testUuid()}.ts`;
+    tempFiles.push(filePath);
+    const lines = `${Array.from({ length: 10 }, (_, i) => `console.log("line${i}");`).join("\n")}\n`;
+    await writeFile(filePath, lines, "utf8");
+    const result = await scanCode({
+      workspace: WORKSPACE,
+      paths: [filePath],
+      pattern: "console.log($ARG)",
+      maxResults: 3,
+    });
+    expect(result).toContain("matches=3");
+  });
+
+  test("batches multiple patterns", async () => {
+    const filePath = `/tmp/acolyte-test-scan-batch-${testUuid()}.ts`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, 'export function hello() {}\nexport const x = 1;\nconsole.log("test");\n', "utf8");
+    const result = await scanCode({
+      workspace: WORKSPACE,
+      paths: [filePath],
+      pattern: ["export function $NAME() {}", "console.log($ARG)"],
+    });
+    expect(result).toContain("matches=2");
+    expect(result).toContain("$NAME=hello");
+    expect(result).toContain('$ARG="test"');
+  });
+});

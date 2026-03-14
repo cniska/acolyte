@@ -87,7 +87,7 @@ describe("createInstructions", () => {
     expect(out).toContain("Prefer explicit operation objects");
     expect(out).toContain("not for plain text replacements or post-edit reassurance on a bounded named-file task");
     expect(out).toContain("prefer `withinSymbol` with the enclosing name");
-    expect(out).toContain("refine the rename scope or the pattern");
+    expect(out).toContain("refine the rename scope or rule");
     expect(out).toContain('{ op: "rename", from: "result", to: "patternResult"');
     expect(out).toContain('withinSymbol: "scanFile"');
     expect(out).toContain("broadening the rewrite to unrelated matches");

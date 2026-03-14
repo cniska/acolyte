@@ -2,7 +2,14 @@ import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import * as napi from "@ast-grep/napi";
 import { invariant } from "./assert";
-import type { EditCodeEdit, EditCodePattern, EditCodeRenameEdit } from "./code-contract";
+import type {
+  EditCodeEdit,
+  EditCodePattern,
+  EditCodeRelationalRule,
+  EditCodeRenameEdit,
+  EditCodeRule,
+  EditCodeRuleObject,
+} from "./code-contract";
 import { createToolError, type EditCodeRecoveryKind, TOOL_ERROR_CODES, type ToolRecovery } from "./error-primitives";
 import { createDiff, displayPathForDiff, ensurePathWithinAllowedRoots, IGNORED_DIRS } from "./tool-utils";
 
@@ -175,16 +182,86 @@ function patternLabel(pattern: EditCodePattern): string {
   return `${pattern.context}${pattern.selector ? ` selector: ${pattern.selector}` : ""}${pattern.strictness ? ` strictness: ${pattern.strictness}` : ""}`;
 }
 
-function replaceRuleForEdit(edit: Exclude<EditCodeEdit, EditCodeRenameEdit>): Record<string, unknown> {
-  const rule: Record<string, unknown> = { pattern: edit.pattern };
-  if (edit.kind) rule.kind = edit.kind;
-  return rule;
+function isPatternObject(
+  value: EditCodeRule | EditCodeRelationalRule | EditCodePattern,
+): value is Exclude<EditCodePattern, string> {
+  return typeof value === "object" && value !== null && "context" in value;
 }
 
-function renameMatches(root: napi.SgNode, from: string): napi.SgNode[] {
-  return root
-    .findAll({ rule: { any: [{ kind: "identifier" }, { kind: "property_identifier" }] } })
-    .filter((node) => node.text() === from);
+function isRuleObject(
+  value: EditCodeRule | EditCodeRelationalRule,
+): value is EditCodeRuleObject | EditCodeRelationalRule {
+  return typeof value === "object" && value !== null && !("context" in value) && !("rule" in value);
+}
+
+function compilePattern(pattern: EditCodePattern): string | Record<string, unknown> {
+  if (typeof pattern === "string") return pattern;
+  return {
+    context: pattern.context,
+    ...(pattern.selector ? { selector: pattern.selector } : {}),
+    ...(pattern.strictness ? { strictness: pattern.strictness } : {}),
+  };
+}
+
+function compileRelationalRule(rule: EditCodeRelationalRule): Record<string, unknown> {
+  return {
+    ...compileRule(rule),
+    ...(rule.field ? { field: rule.field } : {}),
+    ...(rule.stopBy ? { stopBy: typeof rule.stopBy === "string" ? rule.stopBy : compileRule(rule.stopBy) } : {}),
+  };
+}
+
+function compileRule(rule: EditCodeRule | EditCodeRelationalRule): Record<string, unknown> {
+  if (typeof rule === "string" || isPatternObject(rule)) {
+    return { pattern: compilePattern(rule) };
+  }
+  invariant(isRuleObject(rule), "edit-code rule must compile from a rule object");
+  return {
+    ...(rule.pattern !== undefined ? { pattern: compilePattern(rule.pattern) } : {}),
+    ...(rule.kind ? { kind: rule.kind } : {}),
+    ...(rule.regex ? { regex: rule.regex } : {}),
+    ...(rule.inside ? { inside: compileRelationalRule(rule.inside) } : {}),
+    ...(rule.has ? { has: compileRelationalRule(rule.has) } : {}),
+    ...(rule.all ? { all: rule.all.map(compileRule) } : {}),
+    ...(rule.any ? { any: rule.any.map(compileRule) } : {}),
+    ...(rule.not ? { not: compileRule(rule.not) } : {}),
+  };
+}
+
+function ruleLabel(rule: EditCodeRule): string {
+  if (typeof rule === "string") return rule;
+  if (isPatternObject(rule)) return patternLabel(rule);
+  return JSON.stringify(rule);
+}
+
+function collectRulePatternSources(rule: EditCodeRule | EditCodeRelationalRule): string[] {
+  if (typeof rule === "string") return [rule];
+  if (isPatternObject(rule)) return [patternSourceText(rule)];
+  invariant(isRuleObject(rule), "edit-code rule must collect pattern sources from a rule object");
+  const out: string[] = [];
+  if (rule.pattern !== undefined) out.push(...collectRulePatternSources(rule.pattern));
+  if (rule.inside) out.push(...collectRulePatternSources(rule.inside));
+  if (rule.has) out.push(...collectRulePatternSources(rule.has));
+  if (rule.all) for (const child of rule.all) out.push(...collectRulePatternSources(child));
+  if (rule.any) for (const child of rule.any) out.push(...collectRulePatternSources(child));
+  if (rule.not) out.push(...collectRulePatternSources(rule.not));
+  if ("stopBy" in rule && rule.stopBy && typeof rule.stopBy !== "string") {
+    out.push(...collectRulePatternSources(rule.stopBy));
+  }
+  return out;
+}
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function renameRule(from: string): Record<string, unknown> {
+  return {
+    any: [
+      { all: [{ kind: "identifier" }, { regex: `^${escapeRegex(from)}$` }] },
+      { all: [{ kind: "property_identifier" }, { regex: `^${escapeRegex(from)}$` }] },
+    ],
+  };
 }
 
 export type EditCodeResult = {
@@ -221,11 +298,11 @@ export async function editCode(input: {
 
   for (const edit of input.edits) {
     const tree = napi.parse(langEnum ?? langName, current);
-    const pattern = isRenameEdit(edit) ? edit.from : patternLabel(edit.pattern);
+    const pattern = isRenameEdit(edit) ? edit.from : ruleLabel(edit.rule);
     const replacement = isRenameEdit(edit) ? edit.to : edit.replacement;
-    const allMatches = isRenameEdit(edit)
-      ? renameMatches(tree.root(), pattern)
-      : tree.root().findAll({ rule: replaceRuleForEdit(edit) });
+    const allMatches = tree
+      .root()
+      .findAll(isRenameEdit(edit) ? { rule: renameRule(pattern) } : { rule: compileRule(edit.rule) });
     let matches = allMatches;
     if (edit.within) {
       const scopes = tree.root().findAll({ rule: { pattern: edit.within } });
@@ -251,7 +328,9 @@ export async function editCode(input: {
     }
     totalMatches += matches.length;
 
-    const patternMetavars = isRenameEdit(edit) ? [] : extractMetavariables(patternSourceText(edit.pattern));
+    const patternMetavars = isRenameEdit(edit)
+      ? []
+      : Array.from(new Set(collectRulePatternSources(edit.rule).flatMap((source) => extractMetavariables(source))));
     const replacementMetavars = isRenameEdit(edit) ? [] : extractMetavariables(edit.replacement);
     if (!isRenameEdit(edit)) {
       const unknownReplacementMetavars = replacementMetavars.filter((metavar) => !patternMetavars.includes(metavar));

@@ -12,6 +12,7 @@ const behaviorScenarioIdSchema = z.enum([
   "scan-code-yaml-recovery",
   "scoped-edit-code-rename",
   "class-field-edit-code-rename",
+  "structured-edit-code-replace",
 ]);
 
 export type BehaviorScenarioId = z.infer<typeof behaviorScenarioIdSchema>;
@@ -533,6 +534,62 @@ async function validateClassFieldEditCodeRenameWorkspace(workspace: string): Pro
   return issues;
 }
 
+async function createStructuredEditCodeReplaceWorkspace(workspace: string): Promise<void> {
+  await writeWorkspaceFile(
+    workspace,
+    "src/logger-migration.ts",
+    [
+      "export function logMessages(): void {",
+      '  console.log("first");',
+      '  console.info("second");',
+      '  console.warn("third");',
+      "}",
+      "",
+    ].join("\n"),
+  );
+}
+
+async function validateStructuredEditCodeReplaceWorkspace(workspace: string): Promise<string[]> {
+  const issues: string[] = [];
+  const content = await readWorkspaceFile(workspace, "src/logger-migration.ts");
+  if (!content.includes('logger.debug("first");')) {
+    issues.push("logger migration should replace console.log with logger.debug");
+  }
+  if (!content.includes('logger.debug("second");')) {
+    issues.push("logger migration should replace console.info with logger.debug");
+  }
+  if (!content.includes('console.warn("third");')) {
+    issues.push("logger migration should leave console.warn unchanged");
+  }
+  if (content.includes('console.log("first");')) {
+    issues.push("logger migration should not keep console.log");
+  }
+  if (content.includes('console.info("second");')) {
+    issues.push("logger migration should not keep console.info");
+  }
+  return issues;
+}
+
+function validateStructuredEditCodeReplaceTrace(traceLines: string[]): string[] {
+  const issues: string[] = [];
+  const toolCallLines = traceLines.filter((line) => line.includes("event=lifecycle.tool.call"));
+  const firstTool = toolCallLines[0];
+  if (!firstTool || !firstTool.includes("tool=read-file") || !firstTool.includes("src/logger-migration.ts")) {
+    issues.push("first tool call should be read-file on src/logger-migration.ts");
+  }
+  const editCodeCalls = toolCallLines.filter(
+    (line) => line.includes("tool=edit-code") && line.includes("path=src/logger-migration.ts"),
+  ).length;
+  if (editCodeCalls === 0) issues.push("structured replace scenario should use edit-code on src/logger-migration.ts");
+  if (editCodeCalls > 2) {
+    issues.push(`structured replace scenario should use at most 2 edit-code calls, saw ${editCodeCalls}`);
+  }
+  if (toolCallLines.some((line) => line.includes("tool=edit-file") && line.includes("path=src/logger-migration.ts"))) {
+    issues.push("structured replace scenario should not fall back to edit-file on src/logger-migration.ts");
+  }
+  return issues;
+}
+
 function validateClassFieldEditCodeRenameTrace(traceLines: string[]): string[] {
   const issues: string[] = [];
   const toolCallLines = traceLines.filter((line) => line.includes("event=lifecycle.tool.call"));
@@ -658,6 +715,16 @@ export const BEHAVIOR_SCENARIOS: BehaviorScenario[] = [
     setup: createClassFieldEditCodeRenameWorkspace,
     validate: validateClassFieldEditCodeRenameWorkspace,
     validateTrace: validateClassFieldEditCodeRenameTrace,
+  },
+  {
+    id: "structured-edit-code-replace",
+    description: "Structured edit-code replace using a rule object with any.",
+    prompt:
+      'In src/logger-migration.ts, replace console.log(...) and console.info(...) with logger.debug(...) using `edit-code` and a structured replace edit like { op: "replace", rule: { any: ["console.log($ARG)", "console.info($ARG)"] }, replacement: "logger.debug($ARG)" }. Leave console.warn unchanged. Update only that file, then stop.',
+    expectedChanges: ["src/logger-migration.ts"],
+    setup: createStructuredEditCodeReplaceWorkspace,
+    validate: validateStructuredEditCodeReplaceWorkspace,
+    validateTrace: validateStructuredEditCodeReplaceTrace,
   },
 ];
 
