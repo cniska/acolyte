@@ -26,13 +26,15 @@ prev_tag="v${old}"
 date=$(date +%Y-%m-%d)
 entry="## ${new} (${date})"$'\n\n'
 
+scope_re='^[a-z]+\(([^)]+)\):'
+
 while IFS= read -r line; do
   hash="${line%% *}"
   msg="${line#* }"
   # Strip conventional commit prefix for cleaner bullets
   clean="${msg#*: }"
   scope=""
-  if [[ "$msg" =~ ^[a-z]+\(([^)]+)\): ]]; then
+  if [[ "$msg" =~ $scope_re ]]; then
     scope="**${BASH_REMATCH[1]}:** "
   fi
   entry+="- ${scope}${clean} (\`${hash:0:8}\`)"$'\n'
