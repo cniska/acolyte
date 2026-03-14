@@ -26,6 +26,7 @@ export type ToolCallRecord = {
   taskId?: string;
   mode?: string;
   resultHash?: string;
+  success?: boolean;
 };
 
 export type SessionFlags = {
@@ -124,6 +125,7 @@ function callsSinceLastVerify(session: SessionContext): ToolCallRecord[] {
 function editedPathsSinceLastVerify(session: SessionContext): string[] {
   const paths = new Set<string>();
   for (const entry of callsSinceLastVerify(session)) {
+    if (entry.success === false) continue;
     if (!isWriteTool(session, entry.toolName)) continue;
     if (typeof entry.args.path !== "string") continue;
     const path = normalizePath(entry.args.path.trim().toLowerCase());
@@ -266,7 +268,7 @@ const fileChurnGuard: ToolGuard = {
           countsForPath(readEntry.path).readCount += 1;
           signaturesForPath(readEntry.path).add(readEntry.signature);
         }
-      } else if (isWriteTool(session, entry.toolName) && typeof entry.args.path === "string") {
+      } else if (entry.success !== false && isWriteTool(session, entry.toolName) && typeof entry.args.path === "string") {
         countsForPath(normalizePath(entry.args.path)).editCount += 1;
       }
     }
@@ -512,6 +514,7 @@ const sequentialSameFileEditGuard: ToolGuard = {
     const calls = scopedCallLog(session);
     const lastCall = calls[calls.length - 1];
     if (!lastCall) return;
+    if (lastCall.success === false) return;
     if (!isWriteTool(session, lastCall.toolName)) return;
     const lastPath =
       typeof lastCall.args.path === "string" ? normalizePath(lastCall.args.path.trim()).toLowerCase() : "";
@@ -681,6 +684,7 @@ export function recordCall(
   toolName: string,
   args: Record<string, unknown>,
   resultHash?: string,
+  success = true,
 ): void {
-  session.callLog.push({ toolName, args, taskId: session.taskId, mode: session.mode, resultHash });
+  session.callLog.push({ toolName, args, taskId: session.taskId, mode: session.mode, resultHash, success });
 }

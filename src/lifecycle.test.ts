@@ -488,14 +488,17 @@ describe("repeatedFailureEvaluator", () => {
 describe("multiMatchEditEvaluator", () => {
   test("returns regenerate when edit-file fails with multi-match error", () => {
     const session = createSessionContext();
-    session.callLog = [{ toolName: "edit-file", args: { path: "src/priority.ts" } }];
+    session.callLog = [{ toolName: "edit-file", args: { path: "src/priority.ts" }, success: false }];
     const ctx = createMockContext({
       request: { model: "gpt-5-mini", message: "Rename symbol everywhere", history: [] },
       initialMode: "work",
       session,
       observedTools: new Set(["read-file", "edit-file"]),
       sawEditFileMultiMatchError: true,
-      currentError: { message: "edit-file failed: [E_EDIT_FILE_MULTI_MATCH] Find text matched 3 locations (foo…)." },
+      currentError: {
+        code: "E_EDIT_FILE_MULTI_MATCH",
+        message: "edit-file failed: [E_EDIT_FILE_MULTI_MATCH] Find text matched 3 locations (foo…).",
+      },
       result: { text: "Attempted edit.", toolCalls: [] },
     });
     const action = multiMatchEditEvaluator.evaluate(ctx);
@@ -532,6 +535,25 @@ describe("multiMatchEditEvaluator", () => {
       sawEditFileMultiMatchError: true,
       currentError: { message: "edit-file failed: [E_EDIT_FILE_MULTI_MATCH] Find text matched 2 locations." },
       result: { text: "Attempted edit.", toolCalls: [] },
+    });
+    expect(multiMatchEditEvaluator.evaluate(ctx).type).toBe("done");
+  });
+
+  test("returns done after a later successful write in the same task", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file", "edit-code"]);
+    session.callLog = [
+      { toolName: "edit-file", args: { path: "src/priority.ts" }, success: false },
+      { toolName: "edit-file", args: { path: "src/priority.ts" }, success: true },
+    ];
+    const ctx = createMockContext({
+      request: { model: "gpt-5-mini", message: "Rename symbol everywhere", history: [] },
+      initialMode: "work",
+      session,
+      observedTools: new Set(["read-file", "edit-file"]),
+      sawEditFileMultiMatchError: true,
+      currentError: { message: "edit-file failed: [E_EDIT_FILE_MULTI_MATCH] Find text matched 3 locations." },
+      result: { text: "Applied the change.", toolCalls: [] },
     });
     expect(multiMatchEditEvaluator.evaluate(ctx).type).toBe("done");
   });

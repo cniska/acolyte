@@ -4,6 +4,7 @@ import type { VerifyScope } from "./api";
 import type { LifecycleError, LifecycleEventName, LifecycleFeedback, VerifyOutcome } from "./lifecycle-contract";
 import type { LifecyclePolicy } from "./lifecycle-policy";
 import { lintFiles } from "./lint-reflection";
+import { isEditFileMultiMatchSignal } from "./error-handling";
 import { extractReadPaths } from "./tool-arg-paths";
 import { haveChangesBeenVerified, type SessionContext, scopedCallLog } from "./tool-guards";
 import { WRITE_TOOL_SET, WRITE_TOOLS } from "./tool-registry";
@@ -52,6 +53,10 @@ function findLastEditFilePath(ctx: EvaluatorContext): string | undefined {
     if (typeof path === "string" && path.trim().length > 0) return path.trim();
   }
   return undefined;
+}
+
+function hasSuccessfulWriteForCurrentTask(ctx: EvaluatorContext): boolean {
+  return scopedCallLog(ctx.session, ctx.taskId).some((entry) => WRITE_TOOL_SET.has(entry.toolName) && entry.success !== false);
 }
 
 function writePathsForCurrentTask(ctx: EvaluatorContext): string[] {
@@ -227,8 +232,11 @@ export const multiMatchEditEvaluator: Evaluator = {
     if (!ctx.result) return { type: "done" };
     if (ctx.initialMode !== "work") return { type: "done" };
     if (!ctx.sawEditFileMultiMatchError) return { type: "done" };
+    if (!isEditFileMultiMatchSignal({ code: ctx.currentError?.code, message: ctx.currentError?.message ?? "" }))
+      return { type: "done" };
     if (!ctx.observedTools.has("edit-file")) return { type: "done" };
     if (ctx.observedTools.has("edit-code")) return { type: "done" };
+    if (hasSuccessfulWriteForCurrentTask(ctx)) return { type: "done" };
 
     const targetPath = findLastEditFilePath(ctx);
     ctx.debug("lifecycle.eval.multi_match_edit_regenerate", {

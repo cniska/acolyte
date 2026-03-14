@@ -407,6 +407,15 @@ describe("post-edit-discovery guard", () => {
       runGuards({ toolName: "search-files", args: { patterns: ["return undefined;"], paths: ["src/foo.ts"] }, session }),
     ).not.toThrow();
   });
+
+  test("does not treat failed edits as an already-edited file", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file"]);
+    recordCall(session, "edit-file", { path: "src/foo.ts" }, undefined, false);
+    expect(() =>
+      runGuards({ toolName: "search-files", args: { patterns: ["return undefined;"], paths: ["src/foo.ts"] }, session }),
+    ).not.toThrow();
+  });
 });
 
 describe("sequential-same-file-edit guard", () => {
@@ -445,6 +454,19 @@ describe("sequential-same-file-edit guard", () => {
       runGuards({
         toolName: "edit-file",
         args: { path: "src/bar.ts", edits: [{ find: "c", replace: "d" }] },
+        session,
+      }),
+    ).not.toThrow();
+  });
+
+  test("does not block after a failed same-file edit", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file", "edit-code"]);
+    recordCall(session, "edit-file", { path: "src/foo.ts", edits: [{ find: "a", replace: "b" }] }, undefined, false);
+    expect(() =>
+      runGuards({
+        toolName: "edit-file",
+        args: { path: "src/foo.ts", edits: [{ find: "c", replace: "d" }] },
         session,
       }),
     ).not.toThrow();
