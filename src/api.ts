@@ -15,8 +15,6 @@ export interface TokenUsage {
   readonly inputTruncated?: boolean;
 }
 
-export type { PromptBreakdown };
-
 export interface ChatRequest {
   readonly message: string;
   readonly history: ChatMessage[];
