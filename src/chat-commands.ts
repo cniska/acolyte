@@ -71,7 +71,7 @@ function formatShare(tokens: number, total: number): string {
 
 export function formatUsageOutput(last: SessionTokenUsageEntry | null, all: SessionTokenUsageEntry[]): string {
   if (!last) return t("chat.usage.none");
-  const promptInput = last.promptBreakdown?.usedTokens ?? last.usage.inputTokens;
+  const promptInput = Math.max(last.promptBreakdown?.usedTokens ?? 0, last.usage.inputTokens);
   const totals = all.reduce(
     (acc, entry) => {
       acc.input += entry.usage.inputTokens;

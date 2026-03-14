@@ -3,6 +3,7 @@ import type { ChatRequest, ChatResponse } from "./api";
 import type { StreamEvent } from "./client-contract";
 import type { ErrorCategory, ErrorSource } from "./error-handling";
 import type { LifecyclePolicy } from "./lifecycle-policy";
+import type { PromptBreakdownTotals } from "./lifecycle-usage";
 import type { ErrorCode } from "./tool-error-codes";
 import type { SessionContext } from "./tool-guards";
 import type { ToolOutput } from "./tool-output-content";
@@ -161,6 +162,7 @@ export type RunContext = {
   modelCallCount: number;
   inputTokensAccum: number;
   outputTokensAccum: number;
+  promptBreakdownTotals: PromptBreakdownTotals;
   streamingChars: number;
   lastUsageEmitChars: number;
   generationAttempt: number;

@@ -19,11 +19,11 @@ import type {
   GenerateResult,
   LifecycleFeedback,
   LifecycleState,
-  PromptUsage,
   RunContext,
   StreamChunk,
 } from "./lifecycle-contract";
 import { resolveModeModel } from "./lifecycle-resolve";
+import { addPromptBreakdownTotals, estimatePromptBreakdown, totalPromptBreakdownTokens } from "./lifecycle-usage";
 import { formatModel } from "./provider-config";
 import type { StreamError } from "./stream-error";
 import type { ToolDefinition } from "./tool-contract";
@@ -46,12 +46,8 @@ function formatToolArgs(args: Record<string, unknown>): Record<string, string | 
   return out;
 }
 
-function estimatePromptInputTokens(usage: PromptUsage): number {
-  return usage.inputTokens + usage.systemPromptTokens + usage.toolTokens;
-}
-
 function emitInputTokens(ctx: RunContext): number {
-  return ctx.inputTokensAccum || estimatePromptInputTokens(ctx.promptUsage);
+  return Math.max(ctx.inputTokensAccum, totalPromptBreakdownTokens(ctx.promptBreakdownTotals));
 }
 
 function captureError(
@@ -193,6 +189,7 @@ export async function phaseGenerate(ctx: RunContext, opts: GenerateOptions): Pro
   ctx.generationAttempt += 1;
   const activeFeedback = consumeLifecycleFeedback(ctx.lifecycleState, ctx.mode);
   const prompt = createGenerationInputFromFeedback(ctx.baseAgentInput, activeFeedback);
+  addPromptBreakdownTotals(ctx.promptBreakdownTotals, estimatePromptBreakdown(prompt, ctx.promptUsage));
   ctx.emit({ type: "status", message: `${agentModes[ctx.mode].statusText} (${formatModel(ctx.model)})` });
   ctx.emit({
     type: "usage",
@@ -211,9 +208,6 @@ export async function phaseGenerate(ctx: RunContext, opts: GenerateOptions): Pro
     if (ctx.modelCallCount === preCallCount) {
       ctx.modelCallCount += 1;
       ctx.outputTokensAccum += estimateTokens(ctx.result.text);
-    }
-    if (ctx.inputTokensAccum === 0) {
-      ctx.inputTokensAccum = estimatePromptInputTokens(ctx.promptUsage);
     }
     ctx.streamingChars = 0;
     ctx.lastUsageEmitChars = 0;

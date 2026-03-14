@@ -1,12 +1,19 @@
 import { estimateTokens } from "./agent-input";
 import type { ChatResponse } from "./api";
 import { t } from "./i18n";
-import { guardStatsFromSession, type PromptUsage, type RunContext } from "./lifecycle-contract";
+import { guardStatsFromSession, type RunContext } from "./lifecycle-contract";
+import { totalPromptBreakdownTokens } from "./lifecycle-usage";
 import { scopedCallLog } from "./tool-guards";
 import { DISCOVERY_TOOL_SET, READ_TOOL_SET, SEARCH_TOOL_SET, WRITE_TOOL_SET } from "./tool-registry";
 
-function estimatePromptInputTokens(usage: PromptUsage): number {
-  return usage.inputTokens + usage.systemPromptTokens + usage.toolTokens;
+function resolvePromptBreakdown(ctx: RunContext) {
+  if (totalPromptBreakdownTokens(ctx.promptBreakdownTotals) > 0) return ctx.promptBreakdownTotals;
+  return {
+    systemTokens: Math.max(0, ctx.promptUsage.systemPromptTokens - ctx.promptUsage.memoryTokens),
+    toolTokens: ctx.promptUsage.toolTokens,
+    memoryTokens: ctx.promptUsage.memoryTokens,
+    messageTokens: ctx.promptUsage.messageTokens,
+  };
 }
 
 export function phaseFinalize(ctx: RunContext): ChatResponse {
@@ -18,7 +25,8 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
         ? t("agent.output.no_response_after_tools")
         : t("agent.output.no_output");
 
-  const promptInputTokens = estimatePromptInputTokens(ctx.promptUsage);
+  const promptBreakdown = resolvePromptBreakdown(ctx);
+  const promptInputTokens = totalPromptBreakdownTokens(promptBreakdown);
   const inputTokens = Math.max(ctx.inputTokensAccum, promptInputTokens);
   const outputTokens = ctx.outputTokensAccum || estimateTokens(output);
   let budgetWarning: string | undefined;
@@ -92,10 +100,10 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
     promptBreakdown: {
       budgetTokens: ctx.promptUsage.inputBudgetTokens,
       usedTokens: inputTokens,
-      systemTokens: Math.max(0, ctx.promptUsage.systemPromptTokens - ctx.promptUsage.memoryTokens),
-      toolTokens: ctx.promptUsage.toolTokens,
-      memoryTokens: ctx.promptUsage.memoryTokens,
-      messageTokens: ctx.promptUsage.messageTokens,
+      systemTokens: promptBreakdown.systemTokens,
+      toolTokens: promptBreakdown.toolTokens,
+      memoryTokens: promptBreakdown.memoryTokens,
+      messageTokens: promptBreakdown.messageTokens,
     },
     budgetWarning,
   };

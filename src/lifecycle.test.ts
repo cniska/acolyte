@@ -13,6 +13,7 @@ import { phaseFinalize } from "./lifecycle-finalize";
 import { consumeLifecycleFeedback, createGenerationInput, createLifecycleFeedbackText } from "./lifecycle-generate";
 import { defaultLifecyclePolicy } from "./lifecycle-policy";
 import { phasePrepare } from "./lifecycle-prepare";
+import { createEmptyPromptBreakdownTotals } from "./lifecycle-usage";
 import { acceptedLifecycleSignal, updateRepeatedFailureState } from "./lifecycle-state";
 import { LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./tool-error-codes";
 import { createSessionContext, recordCall } from "./tool-guards";
@@ -50,6 +51,7 @@ function createMockContext(overrides: Partial<RunContext> = {}): RunContext {
     modelCallCount: 1,
     inputTokensAccum: 0,
     outputTokensAccum: 0,
+    promptBreakdownTotals: createEmptyPromptBreakdownTotals(),
     streamingChars: 0,
     lastUsageEmitChars: 0,
     generationAttempt: 0,
@@ -286,6 +288,43 @@ describe("phaseFinalize", () => {
     expect(response.usage?.inputTokens).toBe(80);
     expect(response.usage?.totalTokens).toBe(81);
     expect(response.promptBreakdown?.usedTokens).toBe(80);
+  });
+
+  test("uses accumulated prompt breakdown totals across multiple model calls", () => {
+    const ctx = createMockContext({
+      baseAgentInput: "USER: first prompt",
+      promptUsage: {
+        inputTokens: 12,
+        systemPromptTokens: 48,
+        toolTokens: 20,
+        memoryTokens: 8,
+        messageTokens: 12,
+        inputBudgetTokens: 100,
+        inputTruncated: false,
+        includedHistoryMessages: 3,
+        totalHistoryMessages: 6,
+      },
+      inputTokensAccum: 120,
+      promptBreakdownTotals: {
+        systemTokens: 80,
+        toolTokens: 40,
+        memoryTokens: 16,
+        messageTokens: 34,
+      },
+      result: { text: "done", toolCalls: [] },
+    });
+
+    const response = phaseFinalize(ctx);
+
+    expect(response.usage?.inputTokens).toBe(170);
+    expect(response.promptBreakdown).toEqual({
+      budgetTokens: 100,
+      usedTokens: 170,
+      systemTokens: 80,
+      toolTokens: 40,
+      memoryTokens: 16,
+      messageTokens: 34,
+    });
   });
 });
 
