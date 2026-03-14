@@ -222,6 +222,29 @@ function isWholeFileReadOfPath(args: Record<string, unknown>, path: string): boo
   return start === 1 && typeof end === "number" && end >= WHOLE_FILE_SENTINEL_END;
 }
 
+function readCountForPath(session: SessionContext, path: string): number {
+  let count = 0;
+  for (const entry of scopedCallLog(session)) {
+    if (entry.toolName !== "read-file") continue;
+    count += extractReadPaths(entry.args, { normalize: true }).filter((readPath) => readPath === path).length;
+  }
+  return count;
+}
+
+function hadWholeFileReadBeforeSuccessfulEdit(session: SessionContext, path: string): boolean {
+  let sawWholeFileRead = false;
+  for (const entry of callsSinceLastVerify(session)) {
+    if (entry.toolName === "read-file" && isWholeFileReadOfPath(entry.args, path)) {
+      sawWholeFileRead = true;
+      continue;
+    }
+    if (!isWriteTool(session, entry.toolName) || entry.success === false) continue;
+    const entryPath = typeof entry.args.path === "string" ? normalizePath(entry.args.path.trim()).toLowerCase() : "";
+    if (entryPath === path) return sawWholeFileRead;
+  }
+  return false;
+}
+
 function guardArgsEqual(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
   return JSON.stringify(normalizeGuardArgValue(a)) === JSON.stringify(normalizeGuardArgValue(b));
 }
@@ -407,12 +430,20 @@ const redundantSearchGuard = createRedundantDiscoveryGuard({
     const calls = scopedCallLog(session);
     const prior = calls[calls.length - 1];
     if (!prior || prior.toolName !== "read-file") return;
-    if (!isWholeFileReadOfPath(prior.args, targetPath)) return;
+    if (isWholeFileReadOfPath(prior.args, targetPath)) {
+      report("blocked", targetPath);
+      throw new Error(
+        `File "${targetPath}" was already read directly in full. Do not search the same file before editing; ` +
+          "use the text you already have to make the change.",
+      );
+    }
 
-    report("blocked", targetPath);
+    if (readCountForPath(session, targetPath) < 2) return;
+
+    report("blocked", `${targetPath}:repeat-read`);
     throw new Error(
-      `File "${targetPath}" was already read directly in full. Do not search the same file before editing; ` +
-        "use the text you already have to make the change.",
+      `File "${targetPath}" was already read multiple times in this task. Do not search the same file again; ` +
+        "use the reads you already have or edit a bounded range directly.",
     );
   },
 });
@@ -479,6 +510,28 @@ const redundantVerifyGuard: ToolGuard = {
   },
 };
 
+const shellFileWriteGuard: ToolGuard = {
+  id: "shell-file-write",
+  description: "Block shell-based file mutation commands when direct file tools should be used instead.",
+  tools: ["run-command"],
+  check({ args, report }) {
+    const command = typeof args.command === "string" ? args.command : "";
+    if (!command) return;
+    const normalized = command.toLowerCase();
+    const mutatesViaEval =
+      normalized.includes("writefilesync(") ||
+      normalized.includes("appendfilesync(") ||
+      normalized.includes(".writefilesync(") ||
+      normalized.includes(".appendfilesync(");
+    if (!mutatesViaEval) return;
+
+    report("blocked", "shell-file-write");
+    throw new Error(
+      "Shell-based file writes are not allowed here. Use edit-file, create-file, or edit-code for repository changes.",
+    );
+  },
+};
+
 const postEditRedundancyGuard: ToolGuard = {
   id: "post-edit-redundancy",
   description: "Block redundant follow-up actions on files already edited in this task.",
@@ -523,7 +576,14 @@ const postEditDiscoveryGuard: ToolGuard = {
       if (typeof pathValue !== "string") return;
       const readPath = normalizePath(pathValue.trim()).toLowerCase();
       if (readPath !== editedPath) return;
-      if (typeof start === "number" || typeof end === "number") return;
+      if (typeof start === "number" || typeof end === "number") {
+        if (!hadWholeFileReadBeforeSuccessfulEdit(session, editedPath)) return;
+        report("blocked", `${editedPath}:reread-after-full-read`);
+        throw new Error(
+          `File "${editedPath}" was already read in full and then edited in this task. Do not reread ranges from the same file; ` +
+            "use the diff you already have or run verify.",
+        );
+      }
       report("blocked", editedPath);
       throw new Error(
         `File "${editedPath}" was already edited in this task. Do not re-read the same file; ` +
@@ -723,6 +783,7 @@ const GUARDS: ToolGuard[] = [
   circuitBreakerGuard,
   stepBudgetGuard,
   duplicateCallGuard,
+  shellFileWriteGuard,
   pingPongGuard,
   staleResultGuard,
   fileChurnGuard,

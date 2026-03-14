@@ -105,6 +105,24 @@ describe("redundant-verify guard", () => {
   });
 });
 
+describe("shell-file-write guard", () => {
+  test("blocks bun eval commands that write files directly", () => {
+    const session = createSessionContext();
+    expect(() =>
+      runGuards({
+        toolName: "run-command",
+        args: { command: "bun -e \"import { writeFileSync } from 'fs'; writeFileSync('src/a.ts', 'x')\"" },
+        session,
+      }),
+    ).toThrow(/shell-based file writes are not allowed here/i);
+  });
+
+  test("allows normal shell commands that do not mutate files", () => {
+    const session = createSessionContext();
+    expect(() => runGuards({ toolName: "run-command", args: { command: "bun run verify" }, session })).not.toThrow();
+  });
+});
+
 describe("file-churn guard", () => {
   test("blocks immediate duplicate read-file call on same path and range", () => {
     const session = createSessionContext();
@@ -331,6 +349,19 @@ describe("redundant-search guard", () => {
       }),
     ).toThrow(/already read directly in full/i);
   });
+
+  test("blocks same-file search after multiple rereads of the same file", () => {
+    const session = createSessionContext();
+    recordCall(session, "read-file", { paths: [{ path: "src/a.ts", start: 1, end: 40 }] });
+    recordCall(session, "read-file", { paths: [{ path: "src/a.ts", start: 41, end: 80 }] });
+    expect(() =>
+      runGuards({
+        toolName: "search-files",
+        args: { patterns: ["return undefined;"], paths: ["src/a.ts"] },
+        session,
+      }),
+    ).toThrow(/already read multiple times/i);
+  });
 });
 
 describe("redundant-find guard", () => {
@@ -423,6 +454,16 @@ describe("post-edit-discovery guard", () => {
     expect(() => runGuards({ toolName: "read-file", args: { paths: [{ path: "src/foo.ts" }] }, session })).toThrow(
       /already edited in this task\. Do not re-read the same file/i,
     );
+  });
+
+  test("blocks ranged same-file reread after a full read and edit", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file"]);
+    recordCall(session, "read-file", { paths: [{ path: "src/foo.ts", start: 1, end: Number.MAX_SAFE_INTEGER }] });
+    recordCall(session, "edit-file", { path: "src/foo.ts" });
+    expect(() =>
+      runGuards({ toolName: "read-file", args: { paths: [{ path: "src/foo.ts", start: 20, end: 80 }] }, session }),
+    ).toThrow(/already read in full and then edited/i);
   });
 
   test("allows search in another file after a single-file edit", () => {
