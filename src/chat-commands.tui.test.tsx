@@ -71,16 +71,18 @@ describe("chat slash command visual regression", () => {
 
     expect(renderTranscript(rows)).toBe(
       dedent(`
-                   Last task  Session
-        Input      15.9k      42.0k
-        Output     2.7k       6.6k
-        Total      18.6k      48.6k
+        Usage
 
-                  Tokens    Share
-        System    6.2k      39%
-        Tools     8.9k      56%
-        Memory    500       3%
-        Messages  300       2%
+                        Last turn     Session
+        Input           15.9k         42.0k
+        Output          2.7k          6.6k
+        Total           18.6k         48.6k
+
+                        Tokens        Share
+        System          6.2k          39%
+        Tools           8.9k          56%
+        Memory          500           3%
+        Messages        300           2%
     `),
     );
   });

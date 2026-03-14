@@ -87,7 +87,7 @@ export const EN_MESSAGES = {
   "chat.task.followup.lost_tracking": "Lost task tracking after stream disconnect.",
   "chat.task.followup.running_hint": "Task is still running. Use /status to check server health.",
   "chat.task.followup.still_running": "Still running on server…",
-  "chat.usage.label.last_task": "Last task",
+  "chat.usage.label.last_task": "Last turn",
   "chat.usage.label.session": "Session",
   "chat.usage.label.share": "Share",
   "chat.usage.label.tokens": "Tokens",

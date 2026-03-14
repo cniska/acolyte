@@ -47,11 +47,12 @@ describe("chat-commands", () => {
       },
     };
     const output = formatUsageOutput(usage, [usage]);
-    expect(output).toContain("Last task");
-    expect(output).toContain("Session");
+    expect(output).toContain("Usage");
     expect(output).toContain("Input");
     expect(output).toContain("Output");
     expect(output).toContain("System");
+    expect(output).toContain("Last turn");
+    expect(output).toContain("Session");
     expect(output).toContain("Share");
   });
 
@@ -68,7 +69,7 @@ describe("chat-commands", () => {
       warning: "context trimmed (8/42 history messages)",
     };
     const output = formatUsageOutput(usage, [usage]);
-    expect(output).toContain("Warning");
+    expect(output).toContain("Warning:");
     expect(output).toContain("context trimmed (8/42 history messages)");
   });
 
@@ -126,7 +127,7 @@ describe("chat-commands", () => {
       },
     };
     const output = formatUsageOutput(clean, [warned, clean]);
-    expect(output).toContain("Warning");
+    expect(output).toContain("Warning:");
     expect(output).toContain("context near budget (950/1000 tokens)");
   });
 
@@ -168,7 +169,7 @@ describe("chat-commands", () => {
     const { rows, stop } = await runCommand("/usage", { tokenUsage });
 
     expect(stop).toBe(true);
-    expect(rows.some((row) => row.role === "system" && row.content.includes("Last task"))).toBe(true);
+    expect(rows.some((row) => row.role === "system" && row.content.includes("Usage"))).toBe(true);
     expect(rows.some((row) => row.content.includes("Tokens") && row.content.includes("Share"))).toBe(true);
   });
 

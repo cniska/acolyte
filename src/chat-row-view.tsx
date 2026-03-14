@@ -23,17 +23,17 @@ function renderSessionsListContent(content: string): React.ReactNode {
       <Text>{match[1] ?? "Sessions "}</Text>
       <Text dimColor>{match[2] ?? "0"}</Text>
       {restLines.length > 0
-        ? restLines.map((line) => {
+        ? restLines.map((line, index) => {
             const sessionMatch = line.match(/^(. )(sess_\S+)(\s.*)$/);
             if (!sessionMatch) {
               return (
-                <Text key={line} dimColor>
+                <Text key={`${index}:${line}`} dimColor>
                   {`\n${line}`}
                 </Text>
               );
             }
             return (
-              <React.Fragment key={line}>
+              <React.Fragment key={`${index}:${line}`}>
                 <Text dimColor>{`\n${sessionMatch[1]}`}</Text>
                 <Text>{sessionMatch[2]}</Text>
                 <Text dimColor>{sessionMatch[3]}</Text>
@@ -64,7 +64,7 @@ function renderKeyValueContent(content: string): React.ReactNode {
       {lines.map((line, index) => {
         const parsed = parseStatusLine(line);
         return (
-          <React.Fragment key={line}>
+          <React.Fragment key={`${index}:${line}`}>
             {index > 0 ? "\n" : null}
             {parsed ? (
               <>
@@ -82,8 +82,63 @@ function renderKeyValueContent(content: string): React.ReactNode {
   );
 }
 
+function renderUsageContent(content: string): React.ReactNode {
+  const lines = content.split("\n");
+  if (lines[0] !== "Usage") return null;
+  return (
+    <>
+      {lines.map((line, index) => {
+        if (index === 0) {
+          return (
+            <React.Fragment key={`${index}:${line}`}>
+              <Text dimColor>{line}</Text>
+            </React.Fragment>
+          );
+        }
+        if (line.length === 0) {
+          return <React.Fragment key={`${index}:${line}`}>{index > 0 ? "\n" : null}</React.Fragment>;
+        }
+
+        const headerMatch = line.match(/^(\s+)([^\s].*?)(\s{2,})([^\s].*)$/);
+        if (headerMatch && !line.includes(":")) {
+          return (
+            <React.Fragment key={`${index}:${line}`}>
+              {index > 0 ? "\n" : null}
+              <Text>{headerMatch[1] ?? ""}</Text>
+              <Text dimColor>{headerMatch[2] ?? ""}</Text>
+              <Text>{headerMatch[3] ?? ""}</Text>
+              <Text dimColor>{headerMatch[4] ?? ""}</Text>
+            </React.Fragment>
+          );
+        }
+
+        const labelMatch = line.match(/^(\S.*?)(\s{2,})(\S.*?)(\s{2,})(\S.*)$/);
+        if (labelMatch) {
+          return (
+            <React.Fragment key={`${index}:${line}`}>
+              {index > 0 ? "\n" : null}
+              <Text dimColor>{labelMatch[1] ?? ""}</Text>
+              <Text>{labelMatch[2] ?? ""}</Text>
+              <Text>{labelMatch[3] ?? ""}</Text>
+              <Text>{labelMatch[4] ?? ""}</Text>
+              <Text>{labelMatch[5] ?? ""}</Text>
+            </React.Fragment>
+          );
+        }
+
+        return (
+          <React.Fragment key={`${index}:${line}`}>
+            {index > 0 ? "\n" : null}
+            <Text>{line}</Text>
+          </React.Fragment>
+        );
+      })}
+    </>
+  );
+}
+
 function renderSystemContent(content: string): React.ReactNode {
-  return renderSessionsListContent(content) ?? renderKeyValueContent(content) ?? content;
+  return renderUsageContent(content) ?? renderSessionsListContent(content) ?? renderKeyValueContent(content) ?? content;
 }
 
 function renderToolLine(

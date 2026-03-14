@@ -46,14 +46,16 @@ export function formatSessionList(store: SessionState, limit = 10): string[] {
   return formatColumns(rows);
 }
 
-function formatEqualColumns(rows: string[][]): string[] {
+function formatTable(rows: string[][], minWidths: number[] = []): string[] {
   if (rows.length === 0) return [];
   const colCount = rows[0]?.length ?? 0;
-  const width = rows.reduce((max, row) => row.reduce((inner, cell) => Math.max(inner, cell.length), max), 0);
+  const widths = Array.from({ length: colCount }, (_, index) =>
+    rows.reduce((max, row) => Math.max(max, row[index]?.length ?? 0, minWidths[index] ?? 0), 0),
+  );
   return rows.map((row) =>
     row
       .slice(0, colCount)
-      .map((cell) => cell.padEnd(width))
+      .map((cell, index) => (index === colCount - 1 ? cell : cell.padEnd(widths[index] ?? cell.length)))
       .join("  "),
   );
 }
@@ -78,45 +80,51 @@ export function formatUsageOutput(last: SessionTokenUsageEntry | null, all: Sess
     },
     { input: 0, output: 0, total: 0 },
   );
-  const rows = formatEqualColumns([
-    ["", t("chat.usage.label.last_task"), t("chat.usage.label.session")],
-    [t("chat.usage.metric.input"), formatUsageValue(last.usage.inputTokens), formatUsageValue(totals.input)],
-    [t("chat.usage.metric.output"), formatUsageValue(last.usage.outputTokens), formatUsageValue(totals.output)],
-    [t("chat.usage.metric.total"), formatUsageValue(last.usage.totalTokens), formatUsageValue(totals.total)],
-  ]);
-  const output = [...rows];
+  const rows = formatTable(
+    [
+      ["", t("chat.usage.label.last_task"), t("chat.usage.label.session")],
+      [t("chat.usage.metric.input"), formatUsageValue(last.usage.inputTokens), formatUsageValue(totals.input)],
+      [t("chat.usage.metric.output"), formatUsageValue(last.usage.outputTokens), formatUsageValue(totals.output)],
+      [t("chat.usage.metric.total"), formatUsageValue(last.usage.totalTokens), formatUsageValue(totals.total)],
+    ],
+    [14, 12, 12],
+  );
+  const output = ["Usage", "", ...rows];
   if (last.promptBreakdown) {
     const breakdown = last.promptBreakdown;
     output.push(
       "",
-      ...formatEqualColumns([
-        ["", t("chat.usage.label.tokens"), t("chat.usage.label.share")],
+      ...formatTable(
         [
-          t("chat.usage.metric.system"),
-          formatUsageValue(breakdown.systemTokens),
-          formatShare(breakdown.systemTokens, last.usage.inputTokens),
+          ["", t("chat.usage.label.tokens"), t("chat.usage.label.share")],
+          [
+            t("chat.usage.metric.system"),
+            formatUsageValue(breakdown.systemTokens),
+            formatShare(breakdown.systemTokens, last.usage.inputTokens),
+          ],
+          [
+            t("chat.usage.metric.tools"),
+            formatUsageValue(breakdown.toolTokens),
+            formatShare(breakdown.toolTokens, last.usage.inputTokens),
+          ],
+          [
+            t("chat.usage.metric.memory"),
+            formatUsageValue(breakdown.memoryTokens),
+            formatShare(breakdown.memoryTokens, last.usage.inputTokens),
+          ],
+          [
+            t("chat.usage.metric.messages"),
+            formatUsageValue(breakdown.messageTokens),
+            formatShare(breakdown.messageTokens, last.usage.inputTokens),
+          ],
         ],
-        [
-          t("chat.usage.metric.tools"),
-          formatUsageValue(breakdown.toolTokens),
-          formatShare(breakdown.toolTokens, last.usage.inputTokens),
-        ],
-        [
-          t("chat.usage.metric.memory"),
-          formatUsageValue(breakdown.memoryTokens),
-          formatShare(breakdown.memoryTokens, last.usage.inputTokens),
-        ],
-        [
-          t("chat.usage.metric.messages"),
-          formatUsageValue(breakdown.messageTokens),
-          formatShare(breakdown.messageTokens, last.usage.inputTokens),
-        ],
-      ]),
+        [14, 12, 12],
+      ),
     );
   }
   const latestWarning = [...all].reverse().find((entry) => Boolean(entry.warning))?.warning;
   if (latestWarning) {
-    output.push("", `${t("chat.usage.label.warning")} ${latestWarning}`);
+    output.push("", `${t("chat.usage.label.warning")}: ${latestWarning}`);
   }
   return output.join("\n");
 }
