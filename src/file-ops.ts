@@ -142,7 +142,8 @@ export async function editFile(input: {
       if (!edit.find) throw new Error("Find text cannot be empty");
       const findLineCount = edit.find.split("\n").length;
       if (findLineCount > MAX_FIND_SNIPPET_LINES || edit.find.length > MAX_FIND_SNIPPET_CHARS) {
-        throw new Error(
+        throw createToolError(
+          TOOL_ERROR_CODES.editFileFindTooLarge,
           "find must be a short unique snippet (a few lines), not a large portion of the file. Use just enough context to uniquely identify the edit location.",
         );
       }

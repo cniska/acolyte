@@ -4,7 +4,7 @@ import type { VerifyScope } from "./api";
 import type { LifecycleError, LifecycleEventName, LifecycleFeedback, VerifyOutcome } from "./lifecycle-contract";
 import type { LifecyclePolicy } from "./lifecycle-policy";
 import { lintFiles } from "./lint-reflection";
-import { isEditFileMultiMatchSignal } from "./error-handling";
+import { isEditFileMultiMatchSignal, isOversizedEditSnippetSignal } from "./error-handling";
 import { extractReadPaths } from "./tool-arg-paths";
 import { haveChangesBeenVerified, type SessionContext, scopedCallLog } from "./tool-guards";
 import { WRITE_TOOL_SET, WRITE_TOOLS } from "./tool-registry";
@@ -256,6 +256,39 @@ export const multiMatchEditEvaluator: Evaluator = {
             : "Use a concrete file path for edit-code and do not use '.' or directory paths. ") +
           "Do not run additional find/search/read calls unless edit-code fails. " +
           "After applying edit-code changes, run verify.",
+      },
+    };
+  },
+};
+
+export const oversizedEditSnippetEvaluator: Evaluator = {
+  id: "oversized-edit-snippet",
+  evaluate(ctx) {
+    if (!ctx.result) return { type: "done" };
+    if (ctx.initialMode !== "work") return { type: "done" };
+    if (ctx.currentError?.tool !== "edit-file") return { type: "done" };
+    if (!isOversizedEditSnippetSignal({ code: ctx.currentError.code, message: ctx.currentError.message })) {
+      return { type: "done" };
+    }
+
+    const targetPath = findLastEditFilePath(ctx);
+    ctx.debug("lifecycle.eval.oversized_edit_snippet", {
+      error: ctx.currentError.message,
+      target_path: targetPath ?? null,
+    });
+    return {
+      type: "regenerate",
+      feedback: {
+        source: "multi-match",
+        mode: "work",
+        summary: "Your edit-file find snippet was too large.",
+        instruction:
+          "Use edit-file with short unique find snippets only, or use line-range edits from the latest read-file output. " +
+          "Do not pass a large block of the file as find text. " +
+          (targetPath
+            ? `Keep the change in '${targetPath}' and batch the needed replacements into one edit call. `
+            : "Keep the change in the same file and batch the needed replacements into one edit call. ") +
+          "If the same literal code appears in multiple locations, prefer edit-code with a real ast-grep pattern.",
       },
     };
   },

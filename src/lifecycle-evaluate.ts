@@ -6,6 +6,7 @@ import {
   guardRecoveryEvaluator,
   lintEvaluator,
   multiMatchEditEvaluator,
+  oversizedEditSnippetEvaluator,
   repeatedFailureEvaluator,
   verifyCycle,
 } from "./lifecycle-evaluators";
@@ -16,6 +17,7 @@ import { acceptedLifecycleSignal, clearVerifyOutcomeForFeedback, updateRepeatedF
 const EVALUATORS: Evaluator[] = [
   guardRecoveryEvaluator,
   multiMatchEditEvaluator,
+  oversizedEditSnippetEvaluator,
   lintEvaluator,
   verifyCycle,
   repeatedFailureEvaluator,

@@ -47,6 +47,13 @@ export function isEditFileMultiMatchSignal(input: { code?: string; message: stri
   );
 }
 
+export function isOversizedEditSnippetSignal(input: { code?: string; message: string }): boolean {
+  return (
+    input.code === TOOL_ERROR_CODES.editFileFindTooLarge ||
+    hasToolErrorCode(input.message, TOOL_ERROR_CODES.editFileFindTooLarge)
+  );
+}
+
 export function categoryFromErrorCode(code?: string): ErrorCategory | undefined {
   switch (code) {
     case LIFECYCLE_ERROR_CODES.timeout:

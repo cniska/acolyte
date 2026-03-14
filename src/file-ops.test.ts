@@ -11,6 +11,7 @@ import {
   searchFiles,
   writeTextFile,
 } from "./file-ops";
+import { TOOL_ERROR_CODES } from "./tool-error-codes";
 import { testUuid } from "./test-utils";
 
 const WORKSPACE = resolve(process.cwd());
@@ -136,7 +137,7 @@ describe("editFile", () => {
         path: filePath,
         edits: [{ find: `${content}\n`, replace: "short\n" }],
       }),
-    ).rejects.toThrow("find must be a short unique snippet");
+    ).rejects.toMatchObject({ code: TOOL_ERROR_CODES.editFileFindTooLarge });
   });
 
   test("rejects replace text that duplicates content after edit point", async () => {

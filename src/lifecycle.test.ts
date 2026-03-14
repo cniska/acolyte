@@ -6,6 +6,7 @@ import { recoveryActionForError } from "./lifecycle-evaluate";
 import {
   guardRecoveryEvaluator,
   multiMatchEditEvaluator,
+  oversizedEditSnippetEvaluator,
   repeatedFailureEvaluator,
   verifyCycle,
 } from "./lifecycle-evaluators";
@@ -556,6 +557,43 @@ describe("multiMatchEditEvaluator", () => {
       result: { text: "Applied the change.", toolCalls: [] },
     });
     expect(multiMatchEditEvaluator.evaluate(ctx).type).toBe("done");
+  });
+});
+
+describe("oversizedEditSnippetEvaluator", () => {
+  test("returns regenerate when edit-file find snippet is too large", () => {
+    const session = createSessionContext();
+    session.callLog = [{ toolName: "edit-file", args: { path: "src/priority.ts" }, success: false }];
+    const ctx = createMockContext({
+      request: { model: "gpt-5-mini", message: "Make repeated return changes", history: [] },
+      initialMode: "work",
+      session,
+      observedTools: new Set(["read-file", "edit-file"]),
+      currentError: {
+        code: "E_EDIT_FILE_FIND_TOO_LARGE",
+        tool: "edit-file",
+        message:
+          "edit-file failed: find must be a short unique snippet (a few lines), not a large portion of the file.",
+      },
+      result: { text: "Attempted edit.", toolCalls: [] },
+    });
+    const action = oversizedEditSnippetEvaluator.evaluate(ctx);
+    expect(action.type).toBe("regenerate");
+    if (action.type === "regenerate") {
+      expect(action.feedback?.summary).toBe("Your edit-file find snippet was too large.");
+      expect(action.feedback?.instruction).toContain("short unique find snippets");
+      expect(action.feedback?.instruction).toContain("line-range edits");
+      expect(action.feedback?.instruction).toContain("batch the needed replacements into one edit call");
+    }
+  });
+
+  test("returns done for unrelated edit-file errors", () => {
+    const ctx = createMockContext({
+      initialMode: "work",
+      currentError: { tool: "edit-file", message: "edit-file failed: Find text not found in file" },
+      result: { text: "Attempted edit.", toolCalls: [] },
+    });
+    expect(oversizedEditSnippetEvaluator.evaluate(ctx).type).toBe("done");
   });
 });
 

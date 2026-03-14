@@ -7,6 +7,7 @@ import {
   errorCodeFromCategory,
   errorKindFromCategory,
   isEditFileMultiMatchSignal,
+  isOversizedEditSnippetSignal,
   parseErrorInfo,
   recoveryActionForError,
 } from "./error-handling";
@@ -71,12 +72,26 @@ describe("error handling helpers", () => {
     expect(isEditFileMultiMatchSignal({ message: "random error", code: undefined })).toBe(false);
   });
 
+  test("isOversizedEditSnippetSignal accepts code or embedded error code", () => {
+    expect(isOversizedEditSnippetSignal({ code: TOOL_ERROR_CODES.editFileFindTooLarge, message: "any" })).toBe(true);
+    expect(
+      isOversizedEditSnippetSignal({
+        message: `[${TOOL_ERROR_CODES.editFileFindTooLarge}] find must be a short unique snippet`,
+        code: undefined,
+      }),
+    ).toBe(true);
+    expect(isOversizedEditSnippetSignal({ message: "random error", code: undefined })).toBe(false);
+  });
+
   test("recoveryActionForError uses unknown budget only", () => {
     expect(recoveryActionForError({ errorCode: LIFECYCLE_ERROR_CODES.timeout, unknownErrorCount: 0 }, 2)).toBe("none");
     expect(recoveryActionForError({ errorCode: LIFECYCLE_ERROR_CODES.unknown, unknownErrorCount: 2 }, 2)).toBe(
       "stop-unknown-budget",
     );
     expect(recoveryActionForError({ errorCode: TOOL_ERROR_CODES.editFileMultiMatch, unknownErrorCount: 0 }, 2)).toBe(
+      "none",
+    );
+    expect(recoveryActionForError({ errorCode: TOOL_ERROR_CODES.editFileFindTooLarge, unknownErrorCount: 2 }, 2)).toBe(
       "none",
     );
   });
