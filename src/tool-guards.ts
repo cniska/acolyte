@@ -132,6 +132,11 @@ function editedPathsSinceLastVerify(session: SessionContext): string[] {
   return Array.from(paths);
 }
 
+function singleEditedPathSinceLastVerify(session: SessionContext): string | undefined {
+  const paths = editedPathsSinceLastVerify(session);
+  return paths.length === 1 ? paths[0] : undefined;
+}
+
 type RedundantQueryKind = "narrower" | "scope-narrowing";
 
 type ReadRequestSignature = {
@@ -459,6 +464,66 @@ const postEditRedundancyGuard: ToolGuard = {
   },
 };
 
+const postEditDiscoveryGuard: ToolGuard = {
+  id: "post-edit-discovery",
+  description: "Block rediscovery on the same file after a bounded single-file edit.",
+  tools: ["read-file", "search-files"],
+  check({ toolName, args, session, report }) {
+    const editedPath = singleEditedPathSinceLastVerify(session);
+    if (!editedPath) return;
+
+    if (toolName === "read-file") {
+      const rawPaths = Array.isArray(args.paths) ? args.paths : [];
+      if (rawPaths.length !== 1) return;
+      const entry = rawPaths[0];
+      if (!entry || typeof entry !== "object") return;
+      const pathValue = (entry as { path?: unknown }).path;
+      const start = (entry as { start?: unknown }).start;
+      const end = (entry as { end?: unknown }).end;
+      if (typeof pathValue !== "string") return;
+      const readPath = normalizePath(pathValue.trim()).toLowerCase();
+      if (readPath !== editedPath) return;
+      if (typeof start === "number" || typeof end === "number") return;
+      report("blocked", editedPath);
+      throw new Error(
+        `File "${editedPath}" was already edited in this task. Do not re-read the same file; ` +
+          "use the diff you already have or run verify.",
+      );
+    }
+
+    const scope = extractSearchScope(args);
+    if (scope.length !== 1 || scope[0] !== editedPath) return;
+    report("blocked", editedPath);
+    throw new Error(
+      `File "${editedPath}" was already edited in this task. Do not search the same file again; ` +
+        "use the diff you already have or run verify.",
+    );
+  },
+};
+
+const sequentialSameFileEditGuard: ToolGuard = {
+  id: "sequential-same-file-edit",
+  description: "Block back-to-back write calls on the same file without new evidence.",
+  tools: ["edit-file", "edit-code"],
+  check({ toolName, args, session, report }) {
+    const pathValue = typeof args.path === "string" ? normalizePath(args.path.trim()).toLowerCase() : "";
+    if (!pathValue) return;
+
+    const calls = scopedCallLog(session);
+    const lastCall = calls[calls.length - 1];
+    if (!lastCall) return;
+    if (!isWriteTool(session, lastCall.toolName)) return;
+    const lastPath =
+      typeof lastCall.args.path === "string" ? normalizePath(lastCall.args.path.trim()).toLowerCase() : "";
+    if (lastPath !== pathValue) return;
+
+    report("blocked", pathValue);
+    throw new Error(
+      `File "${pathValue}" was just edited. Batch same-file changes into one edit call unless you gather new evidence first.`,
+    );
+  },
+};
+
 const stepBudgetGuard: ToolGuard = {
   id: "step-budget",
   description: "Enforce per-cycle and total step limits.",
@@ -594,6 +659,8 @@ const GUARDS: ToolGuard[] = [
   redundantSearchGuard,
   redundantVerifyGuard,
   postEditRedundancyGuard,
+  postEditDiscoveryGuard,
+  sequentialSameFileEditGuard,
 ];
 
 export function runGuards(input: Omit<GuardInput, "report">): void {

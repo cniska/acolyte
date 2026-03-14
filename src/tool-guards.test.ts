@@ -370,6 +370,87 @@ describe("post-edit-redundancy guard", () => {
   });
 });
 
+describe("post-edit-discovery guard", () => {
+  test("blocks same-file search after a single-file edit", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file"]);
+    recordCall(session, "edit-file", { path: "src/foo.ts" });
+    expect(() =>
+      runGuards({ toolName: "search-files", args: { patterns: ["return undefined;"], paths: ["src/foo.ts"] }, session }),
+    ).toThrow(/already edited in this task\. Do not search the same file again/i);
+  });
+
+  test("blocks same-file reread after a single-file edit", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file"]);
+    recordCall(session, "edit-file", { path: "src/foo.ts" });
+    expect(() => runGuards({ toolName: "read-file", args: { paths: [{ path: "src/foo.ts" }] }, session })).toThrow(
+      /already edited in this task\. Do not re-read the same file/i,
+    );
+  });
+
+  test("allows search in another file after a single-file edit", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file"]);
+    recordCall(session, "edit-file", { path: "src/foo.ts" });
+    expect(() =>
+      runGuards({ toolName: "search-files", args: { patterns: ["return undefined;"], paths: ["src/bar.ts"] }, session }),
+    ).not.toThrow();
+  });
+
+  test("allows same-file search when multiple files were edited", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file"]);
+    recordCall(session, "edit-file", { path: "src/foo.ts" });
+    recordCall(session, "edit-file", { path: "src/bar.ts" });
+    expect(() =>
+      runGuards({ toolName: "search-files", args: { patterns: ["return undefined;"], paths: ["src/foo.ts"] }, session }),
+    ).not.toThrow();
+  });
+});
+
+describe("sequential-same-file-edit guard", () => {
+  test("blocks immediate second edit-file on the same path", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file", "edit-code"]);
+    recordCall(session, "edit-file", { path: "src/foo.ts", edits: [{ find: "a", replace: "b" }] });
+    expect(() =>
+      runGuards({
+        toolName: "edit-file",
+        args: { path: "src/foo.ts", edits: [{ find: "c", replace: "d" }] },
+        session,
+      }),
+    ).toThrow(/was just edited\. Batch same-file changes into one edit call/i);
+  });
+
+  test("allows same-file edit after a reread", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file", "edit-code"]);
+    recordCall(session, "edit-file", { path: "src/foo.ts", edits: [{ find: "a", replace: "b" }] });
+    recordCall(session, "read-file", { paths: [{ path: "src/foo.ts", start: 1, end: 20 }] });
+    expect(() =>
+      runGuards({
+        toolName: "edit-file",
+        args: { path: "src/foo.ts", edits: [{ find: "c", replace: "d" }] },
+        session,
+      }),
+    ).not.toThrow();
+  });
+
+  test("allows immediate edit on a different path", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file", "edit-code"]);
+    recordCall(session, "edit-file", { path: "src/foo.ts", edits: [{ find: "a", replace: "b" }] });
+    expect(() =>
+      runGuards({
+        toolName: "edit-file",
+        args: { path: "src/bar.ts", edits: [{ find: "c", replace: "d" }] },
+        session,
+      }),
+    ).not.toThrow();
+  });
+});
+
 describe("recordCall", () => {
   test("appends to callLog with active task id", () => {
     const session = createSessionContext("task_1");
