@@ -3,8 +3,10 @@ import { unreachable } from "./assert";
 import {
   EDIT_CODE_RECOVERY_KINDS,
   EDIT_FILE_RECOVERY_KINDS,
+  SCAN_CODE_RECOVERY_KINDS,
   type EditCodeRecoveryKind,
   type EditFileRecoveryKind,
+  type ScanCodeRecoveryKind,
   ERROR_KINDS,
   type ErrorCode,
   type ErrorKind,
@@ -155,6 +157,8 @@ function parseToolRecovery(value: unknown): ToolRecovery | undefined {
   if (rec.tool === "edit-file" && EDIT_FILE_RECOVERY_KINDS.includes(rec.kind as EditFileRecoveryKind))
     return rec as ToolRecovery;
   if (rec.tool === "edit-code" && EDIT_CODE_RECOVERY_KINDS.includes(rec.kind as EditCodeRecoveryKind))
+    return rec as ToolRecovery;
+  if (rec.tool === "scan-code" && SCAN_CODE_RECOVERY_KINDS.includes(rec.kind as ScanCodeRecoveryKind))
     return rec as ToolRecovery;
   return undefined;
 }

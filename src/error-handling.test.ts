@@ -117,6 +117,25 @@ describe("error handling helpers", () => {
     });
   });
 
+  test("parseErrorInfo preserves structured scan-code recovery metadata", () => {
+    const parsed = parseErrorInfo(
+      createToolError(TOOL_ERROR_CODES.scanCodeUnsupportedFile, "unsupported file", undefined, {
+        tool: "scan-code",
+        kind: "use-supported-file",
+        summary: "scan-code only works on supported code files.",
+        instruction: "Use scan-code on a supported code file or directory, or switch to search-files.",
+      }),
+    );
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.value.recovery).toEqual({
+      tool: "scan-code",
+      kind: "use-supported-file",
+      summary: "scan-code only works on supported code files.",
+      instruction: "Use scan-code on a supported code file or directory, or switch to search-files.",
+    });
+  });
+
   test("parseErrorInfo returns invalid payload for unsupported shapes", () => {
     const parsed = parseErrorInfo({ foo: "bar" });
     expect(parsed.ok).toBe(false);

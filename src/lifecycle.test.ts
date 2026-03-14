@@ -753,6 +753,32 @@ describe("toolRecoveryEvaluator", () => {
     }
   });
 
+  test("returns regenerate when scan-code exposes structured recovery", () => {
+    const ctx = createMockContext({
+      initialMode: "work",
+      currentError: {
+        code: TOOL_ERROR_CODES.scanCodeUnsupportedFile,
+        tool: "scan-code",
+        message: "scan-code failed: [E_SCAN_CODE_UNSUPPORTED_FILE] scan-code requires a supported code file, got: notes.yaml",
+        recovery: {
+          tool: "scan-code",
+          kind: "use-supported-file",
+          summary: "scan-code only works on supported code files.",
+          instruction: "Use scan-code on a supported code file or directory, or switch to search-files.",
+        },
+      },
+      result: { text: "Attempted scan.", toolCalls: [] },
+    });
+    const action = toolRecoveryEvaluator.evaluate(ctx);
+    expect(action.type).toBe("regenerate");
+    if (action.type === "regenerate") {
+      expect(action.feedback?.source).toBe("scan-code");
+      expect(action.feedback?.summary).toBe("scan-code only works on supported code files.");
+      expect(action.feedback?.details).toContain("notes.yaml");
+      expect(action.feedback?.instruction).toContain("search-files");
+    }
+  });
+
   test("returns done when there is no structured tool recovery", () => {
     const ctx = createMockContext({
       initialMode: "work",

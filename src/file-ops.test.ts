@@ -58,9 +58,10 @@ describe("path guards", () => {
     const filePath = `/tmp/acolyte-test-scan-unsupported-${testUuid()}.yaml`;
     tempFiles.push(filePath);
     await writeFile(filePath, "foo: bar\n", "utf8");
-    await expect(scanCode({ workspace: WORKSPACE, paths: [filePath], pattern: "const $X" })).rejects.toThrow(
-      `scan-code requires a supported code file, got: ${filePath}`,
-    );
+    await expect(scanCode({ workspace: WORKSPACE, paths: [filePath], pattern: "const $X" })).rejects.toMatchObject({
+      code: TOOL_ERROR_CODES.scanCodeUnsupportedFile,
+      recovery: { tool: "scan-code", kind: "use-supported-file" },
+    });
   });
 
   test("readSnippet allows /tmp files", async () => {

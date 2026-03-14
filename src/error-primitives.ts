@@ -9,6 +9,7 @@ export const TOOL_ERROR_CODES = {
   editCodeReplacementMetaMismatch: "E_EDIT_CODE_REPLACEMENT_META_MISMATCH",
   editCodeUnsupportedFile: "E_EDIT_CODE_UNSUPPORTED_FILE",
   editCodeVariadicReplacement: "E_EDIT_CODE_VARIADIC_REPLACEMENT",
+  scanCodeUnsupportedFile: "E_SCAN_CODE_UNSUPPORTED_FILE",
 } as const;
 
 export type ToolErrorCode = (typeof TOOL_ERROR_CODES)[keyof typeof TOOL_ERROR_CODES];
@@ -36,7 +37,15 @@ export type EditCodeRecovery = {
   summary: string;
   instruction: string;
 };
-export type ToolRecovery = EditFileRecovery | EditCodeRecovery;
+export type ScanCodeRecoveryKind = "use-supported-file";
+export const SCAN_CODE_RECOVERY_KINDS: readonly ScanCodeRecoveryKind[] = ["use-supported-file"];
+export type ScanCodeRecovery = {
+  tool: "scan-code";
+  kind: ScanCodeRecoveryKind;
+  summary: string;
+  instruction: string;
+};
+export type ToolRecovery = EditFileRecovery | EditCodeRecovery | ScanCodeRecovery;
 
 export const LIFECYCLE_ERROR_CODES = {
   timeout: "E_TIMEOUT",

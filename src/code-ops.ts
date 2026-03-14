@@ -37,6 +37,15 @@ function editCodeRecovery(path: string, kind: EditCodeRecoveryKind): ToolRecover
   }
 }
 
+function scanCodeRecovery(path: string): ToolRecovery {
+  return {
+    tool: "scan-code",
+    kind: "use-supported-file",
+    summary: "scan-code only works on supported code files.",
+    instruction: `Use scan-code on a supported code file or directory when scanning '${path}', or switch to search-files for plain-text lookup.`,
+  };
+}
+
 let dynamicLangsRegistered = false;
 
 async function ensureDynamicLanguages(): Promise<void> {
@@ -244,7 +253,12 @@ export async function scanCode(input: {
 
     if (info.isFile()) {
       if (!input.language && !isParseable(absPath)) {
-        throw new Error(`scan-code requires a supported code file, got: ${rawPath}`);
+        throw createToolError(
+          TOOL_ERROR_CODES.scanCodeUnsupportedFile,
+          `scan-code requires a supported code file, got: ${rawPath}`,
+          undefined,
+          scanCodeRecovery(rawPath),
+        );
       }
       const content = await readFile(absPath, "utf8");
       const lang = input.language ?? languageFromPath(absPath);
