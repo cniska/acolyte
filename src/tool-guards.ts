@@ -561,60 +561,6 @@ const postEditRedundancyGuard: ToolGuard = {
   },
 };
 
-const postEditDiscoveryGuard: ToolGuard = {
-  id: "post-edit-discovery",
-  description: "Block rediscovery on the same file after a bounded single-file edit.",
-  tools: ["read-file", "search-files", "git-diff"],
-  check({ args, session, toolName, report }) {
-    const editedPath = singleEditedPathSinceLastVerify(session);
-    if (!editedPath) return;
-
-    if (toolName === "read-file") {
-      const rawPaths = Array.isArray(args.paths) ? args.paths : [];
-      if (rawPaths.length !== 1) return;
-      const entry = rawPaths[0];
-      if (!entry || typeof entry !== "object") return;
-      const pathValue = (entry as { path?: unknown }).path;
-      const start = (entry as { start?: unknown }).start;
-      const end = (entry as { end?: unknown }).end;
-      if (typeof pathValue !== "string") return;
-      const readPath = normalizePath(pathValue.trim()).toLowerCase();
-      if (readPath !== editedPath) return;
-      if (typeof start === "number" || typeof end === "number") {
-        if (!hadWholeFileReadBeforeSuccessfulEdit(session, editedPath)) return;
-        report("blocked", `${editedPath}:reread-after-full-read`);
-        throw new Error(
-          `File "${editedPath}" was already read in full and then edited in this task. Do not reread ranges from the same file; ` +
-            "use the diff you already have or run verify.",
-        );
-      }
-      report("blocked", editedPath);
-      throw new Error(
-        `File "${editedPath}" was already edited in this task. Do not re-read the same file; ` +
-          "use the diff you already have or run verify.",
-      );
-    }
-
-    const scope = extractSearchScope(args);
-    if (toolName === "git-diff") {
-      const pathValue = typeof args.path === "string" ? normalizePath(args.path.trim()).toLowerCase() : "";
-      if (pathValue !== editedPath) return;
-      report("blocked", editedPath);
-      throw new Error(
-        `File "${editedPath}" was already edited in this task. Do not diff the same file again; ` +
-          "use the edit preview you already have or run verify.",
-      );
-    }
-
-    if (scope.length !== 1 || scope[0] !== editedPath) return;
-    report("blocked", editedPath);
-    throw new Error(
-      `File "${editedPath}" was already edited in this task. Do not search the same file again; ` +
-        "use the diff you already have or run verify.",
-    );
-  },
-};
-
 const stepBudgetGuard: ToolGuard = {
   id: "step-budget",
   description: "Enforce per-cycle and total step limits.",
@@ -751,7 +697,6 @@ const GUARDS: ToolGuard[] = [
   redundantSearchGuard,
   redundantVerifyGuard,
   postEditRedundancyGuard,
-  postEditDiscoveryGuard,
 ];
 
 export function runGuards(input: Omit<GuardInput, "report">): void {
