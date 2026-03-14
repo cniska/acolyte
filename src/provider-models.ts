@@ -36,6 +36,19 @@ async function fetchOpenAIModels(config: ProviderFetchConfig): Promise<string[]>
   return (json.data ?? []).map((m) => m.id);
 }
 
+function isOpenAIHostedBaseUrl(baseUrl: string): boolean {
+  try {
+    return new URL(baseUrl).hostname.toLowerCase() === "api.openai.com";
+  } catch {
+    return false;
+  }
+}
+
+function normalizeDiscoveredModel(provider: Provider, id: string, config: ProviderFetchConfig): string {
+  if (provider === "openai" && !isOpenAIHostedBaseUrl(config.baseUrl)) return `openai-compatible/${id}`;
+  return id;
+}
+
 async function fetchAnthropicModels(config: ProviderFetchConfig): Promise<string[]> {
   const baseUrl = normalizeBaseUrl(config.baseUrl);
   const res = await fetch(`${baseUrl}/models`, {
@@ -103,7 +116,13 @@ export async function getAvailableModels(): Promise<string[]> {
 
   inflight = (async () => {
     const providers = availableProviders();
-    const results = await Promise.all(providers.map((p) => fetchProviderModels(p, providerConfig(p))));
+    const results = await Promise.all(
+      providers.map(async (provider) => {
+        const config = providerConfig(provider);
+        const models = await fetchProviderModels(provider, config);
+        return models.map((id) => normalizeDiscoveredModel(provider, id, config));
+      }),
+    );
     const seen = new Set<string>();
     const models: string[] = [];
     for (const list of results) {
