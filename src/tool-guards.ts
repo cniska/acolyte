@@ -134,11 +134,6 @@ function editedPathsSinceLastVerify(session: SessionContext): string[] {
   return Array.from(paths);
 }
 
-function singleEditedPathSinceLastVerify(session: SessionContext): string | undefined {
-  const paths = editedPathsSinceLastVerify(session);
-  return paths.length === 1 ? paths[0] : undefined;
-}
-
 type RedundantQueryKind = "narrower" | "scope-narrowing";
 
 type ReadRequestSignature = {
@@ -229,20 +224,6 @@ function readCountForPath(session: SessionContext, path: string): number {
     count += extractReadPaths(entry.args, { normalize: true }).filter((readPath) => readPath === path).length;
   }
   return count;
-}
-
-function hadWholeFileReadBeforeSuccessfulEdit(session: SessionContext, path: string): boolean {
-  let sawWholeFileRead = false;
-  for (const entry of callsSinceLastVerify(session)) {
-    if (entry.toolName === "read-file" && isWholeFileReadOfPath(entry.args, path)) {
-      sawWholeFileRead = true;
-      continue;
-    }
-    if (!isWriteTool(session, entry.toolName) || entry.success === false) continue;
-    const entryPath = typeof entry.args.path === "string" ? normalizePath(entry.args.path.trim()).toLowerCase() : "";
-    if (entryPath === path) return sawWholeFileRead;
-  }
-  return false;
 }
 
 function guardArgsEqual(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
