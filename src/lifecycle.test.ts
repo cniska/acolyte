@@ -13,8 +13,8 @@ import { phaseFinalize } from "./lifecycle-finalize";
 import { consumeLifecycleFeedback, createGenerationInput, createLifecycleFeedbackText } from "./lifecycle-generate";
 import { defaultLifecyclePolicy } from "./lifecycle-policy";
 import { phasePrepare } from "./lifecycle-prepare";
-import { createEmptyPromptBreakdownTotals } from "./lifecycle-usage";
 import { acceptedLifecycleSignal, updateRepeatedFailureState } from "./lifecycle-state";
+import { createEmptyPromptBreakdownTotals } from "./lifecycle-usage";
 import { LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./tool-error-codes";
 import { createSessionContext, recordCall } from "./tool-guards";
 

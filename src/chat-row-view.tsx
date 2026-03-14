@@ -106,9 +106,7 @@ function renderUsageContent(content: string): React.ReactNode {
         }
         if (line.length === 0) {
           return (
-            <React.Fragment key={createLineKey(seenLineKeys, "usage-empty")}>
-              {index > 0 ? "\n" : null}
-            </React.Fragment>
+            <React.Fragment key={createLineKey(seenLineKeys, "usage-empty")}>{index > 0 ? "\n" : null}</React.Fragment>
           );
         }
 
