@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
@@ -9,10 +9,10 @@ import {
   parseBehaviorScenarioId,
 } from "./behavior-scenarios";
 import { runTimedCommand, toPrettyJson } from "./perf-test-utils";
+import { createTempConfigHome } from "./temp-config-home";
 
 const DEFAULT_MODEL = "gpt-5.2";
 const DEFAULT_TIMEOUT_MS = 60_000;
-const BEHAVIOR_SERVER_PORT = 26768;
 const REPO_DIR = join(import.meta.dir, "..");
 const CLI_ENTRY = join(REPO_DIR, "src", "cli.ts");
 
@@ -72,6 +72,7 @@ type BehaviorRun = z.infer<typeof behaviorOutputSchema>;
 
 type BehaviorEnvironment = {
   homeDir: string;
+  port: number;
   env: Record<string, string>;
   daemonLogPath: string;
 };
@@ -355,18 +356,12 @@ async function createBehaviorWorkspace(scenarioId: BehaviorScenarioId): Promise<
 }
 
 async function createBehaviorEnvironment(): Promise<BehaviorEnvironment> {
-  const homeDir = await mkdtemp(join(tmpdir(), "acolyte-behavior-home-"));
-  const configDir = join(homeDir, ".acolyte");
-  await mkdir(configDir, { recursive: true });
-  await writeFile(join(configDir, "config.toml"), `port = ${BEHAVIOR_SERVER_PORT}\n`, "utf8");
+  const home = await createTempConfigHome("acolyte-behavior-home-", {});
   return {
-    homeDir,
-    env: {
-      ...(process.env as Record<string, string>),
-      HOME: homeDir,
-      NO_COLOR: "1",
-    },
-    daemonLogPath: join(homeDir, ".acolyte", "daemons", `${BEHAVIOR_SERVER_PORT}.log`),
+    homeDir: home.homeDir,
+    port: home.port,
+    env: home.env,
+    daemonLogPath: join(home.homeDir, ".acolyte", "daemons", `${home.port}.log`),
   };
 }
 
