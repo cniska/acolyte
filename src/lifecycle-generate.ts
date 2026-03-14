@@ -30,6 +30,14 @@ import type { ToolDefinition } from "./tool-contract";
 import { resetCycleStepCount } from "./tool-guards";
 import type { Toolset } from "./tool-registry";
 
+type CaptureErrorMeta = {
+  source?: ErrorSource;
+  tool?: string;
+  code?: string;
+  kind?: string;
+  recovery?: NonNullable<RunContext["currentError"]>["recovery"];
+};
+
 function formatToolArgs(args: Record<string, unknown>): Record<string, string | number | boolean> {
   const out: Record<string, string | number | boolean> = {};
   for (const [key, value] of Object.entries(args)) {
@@ -49,17 +57,7 @@ function emitInputTokens(ctx: RunContext): number {
   return Math.max(ctx.inputTokensAccum, totalPromptBreakdownTokens(ctx.promptBreakdownTotals));
 }
 
-function captureError(
-  ctx: RunContext,
-  message: string,
-  meta?: {
-    source?: ErrorSource;
-    tool?: string;
-    code?: string;
-    kind?: string;
-    recovery?: NonNullable<RunContext["currentError"]>["recovery"];
-  },
-): void {
+function captureError(ctx: RunContext, message: string, meta?: CaptureErrorMeta): void {
   const kindCategory = categoryFromErrorKind(meta?.kind);
   const code =
     meta?.code ??
