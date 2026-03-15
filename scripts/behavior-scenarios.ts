@@ -9,6 +9,7 @@ const behaviorScenarioIdSchema = z.enum([
   "two-file-rename",
   "two-file-deps-rename",
   "bounded-return-fix",
+  "post-success-stop",
   "scan-code-yaml-recovery",
   "search-files-no-match-recovery",
   "scoped-edit-code-rename",
@@ -329,6 +330,61 @@ async function validateBoundedReturnFixWorkspace(workspace: string): Promise<str
   }
   if (!content.includes("if (!message) return;")) {
     issues.push("normalizeFailureMessage should use bare return for missing message");
+  }
+  return issues;
+}
+
+async function createPostSuccessStopWorkspace(workspace: string): Promise<void> {
+  await writeWorkspaceFile(
+    workspace,
+    "src/provider-config.ts",
+    [
+      'export const MODEL_ALIAS = "acolyte-mini";',
+      "",
+      "export function resolveProviderLabel(alias: string): string {",
+      '  return alias === MODEL_ALIAS ? "default" : "custom";',
+      "}",
+      "",
+    ].join("\n"),
+  );
+}
+
+async function validatePostSuccessStopWorkspace(workspace: string): Promise<string[]> {
+  const issues: string[] = [];
+  const content = await readWorkspaceFile(workspace, "src/provider-config.ts");
+  if (!content.includes('export const DEFAULT_ALIAS = "acolyte-mini";')) {
+    issues.push("src/provider-config.ts should rename MODEL_ALIAS to DEFAULT_ALIAS");
+  }
+  if (content.includes("MODEL_ALIAS")) {
+    issues.push("src/provider-config.ts should not keep MODEL_ALIAS");
+  }
+  if (!content.includes('return alias === DEFAULT_ALIAS ? "default" : "custom";')) {
+    issues.push("src/provider-config.ts should update the provider label comparison to DEFAULT_ALIAS");
+  }
+  return issues;
+}
+
+function validatePostSuccessStopTrace(traceLines: string[]): string[] {
+  const issues: string[] = [];
+  const toolCallLines = traceLines.filter((line) => line.includes("event=lifecycle.tool.call"));
+  const firstTool = toolCallLines[0];
+  if (!firstTool || !firstTool.includes("tool=read-file") || !firstTool.includes("src/provider-config.ts")) {
+    issues.push("first tool call should be read-file on src/provider-config.ts");
+  }
+  if (toolCallLines.some((line) => line.includes("tool=find-files") || line.includes("tool=search-files"))) {
+    issues.push("post-success stop scenario should not use find-files or search-files");
+  }
+  const readCalls = toolCallLines.filter(
+    (line) => line.includes("tool=read-file") && line.includes("src/provider-config.ts"),
+  ).length;
+  if (readCalls > 1) {
+    issues.push(`post-success stop scenario should read src/provider-config.ts at most once, saw ${readCalls}`);
+  }
+  const editCalls = toolCallLines.filter(
+    (line) => line.includes("tool=edit-file") && line.includes("path=src/provider-config.ts"),
+  ).length;
+  if (editCalls !== 1) {
+    issues.push(`post-success stop scenario should edit src/provider-config.ts exactly once, saw ${editCalls}`);
   }
   return issues;
 }
@@ -743,6 +799,16 @@ export const BEHAVIOR_SCENARIOS: BehaviorScenario[] = [
     setup: createBoundedReturnFixWorkspace,
     validate: validateBoundedReturnFixWorkspace,
     validateTrace: validateBoundedReturnFixTrace,
+  },
+  {
+    id: "post-success-stop",
+    description: "Read once, make one bounded edit, and stop without rereads.",
+    prompt:
+      "Use `read-file` on src/provider-config.ts first. Then rename MODEL_ALIAS to DEFAULT_ALIAS in that file, keep the same alias value, update only that file, and stop.",
+    expectedChanges: ["src/provider-config.ts"],
+    setup: createPostSuccessStopWorkspace,
+    validate: validatePostSuccessStopWorkspace,
+    validateTrace: validatePostSuccessStopTrace,
   },
   {
     id: "scan-code-yaml-recovery",
