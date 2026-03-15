@@ -10,7 +10,8 @@ import {
   recoveryActionForError,
   serializeToolError,
 } from "./error-handling";
-import { createToolError, LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./error-primitives";
+import { LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./error-primitives";
+import { createToolError } from "./tool-error";
 
 describe("error handling helpers", () => {
   test("parseError extracts code from coded string", () => {

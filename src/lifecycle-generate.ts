@@ -13,7 +13,7 @@ import {
   errorKindFromCategory,
   parseError,
 } from "./error-handling";
-import { extractToolErrorCode, LIFECYCLE_ERROR_CODES } from "./error-primitives";
+import { LIFECYCLE_ERROR_CODES } from "./error-primitives";
 import type {
   GenerateOptions,
   GenerateResult,
@@ -27,6 +27,7 @@ import { addPromptBreakdownTotals, estimatePromptBreakdown, totalPromptBreakdown
 import { formatModel } from "./provider-config";
 import type { StreamError } from "./stream-error";
 import type { ToolDefinition } from "./tool-contract";
+import { extractToolErrorCode } from "./tool-error";
 import { resetCycleStepCount } from "./tool-guards";
 import type { Toolset } from "./tool-registry";
 

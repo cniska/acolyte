@@ -4,12 +4,12 @@ import {
   ERROR_KINDS,
   type ErrorCode,
   type ErrorKind,
-  extractToolErrorCode,
   LIFECYCLE_ERROR_CODES,
   type ToolRecovery,
 } from "./error-primitives";
 import { domainIdSchema } from "./id-contract";
 import type { StreamError } from "./stream-error";
+import { extractToolErrorCode } from "./tool-error";
 import { parseToolRecovery } from "./tool-recovery";
 
 export type ErrorCategory = "timeout" | "file-not-found" | "guard-blocked" | "other";
