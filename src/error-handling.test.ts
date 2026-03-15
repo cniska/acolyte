@@ -173,6 +173,7 @@ describe("error handling helpers", () => {
         summary: "Your search-files scope resolved to no searchable files.",
         instruction: "Broaden the scope or use find-files first.",
         nextTool: "find-files",
+        resolvesOn: [{ tool: "find-files" }],
       }),
     );
     expect(parsed.ok).toBe(true);
@@ -183,6 +184,7 @@ describe("error handling helpers", () => {
       summary: "Your search-files scope resolved to no searchable files.",
       instruction: "Broaden the scope or use find-files first.",
       nextTool: "find-files",
+      resolvesOn: [{ tool: "find-files" }],
     });
   });
 
@@ -195,6 +197,7 @@ describe("error handling helpers", () => {
         instruction: "Switch to read-file and inspect the file directly.",
         nextTool: "read-file",
         targetPaths: ["src/provider-config.ts"],
+        resolvesOn: [{ tool: "read-file" }],
       }),
     );
     expect(parsed.ok).toBe(true);
@@ -206,6 +209,7 @@ describe("error handling helpers", () => {
       instruction: "Switch to read-file and inspect the file directly.",
       nextTool: "read-file",
       targetPaths: ["src/provider-config.ts"],
+      resolvesOn: [{ tool: "read-file" }],
     });
   });
 

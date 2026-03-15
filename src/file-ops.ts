@@ -79,6 +79,7 @@ function searchFilesRecovery(kind: SearchFilesRecoveryKind): ToolRecovery {
         instruction:
           "If you already know the exact file, read it directly. Otherwise broaden the scope or use find-files to locate the target file before searching again.",
         nextTool: "find-files",
+        resolvesOn: [{ tool: "find-files" }],
       };
     case "switch-to-read":
       return {
@@ -88,6 +89,7 @@ function searchFilesRecovery(kind: SearchFilesRecoveryKind): ToolRecovery {
         instruction:
           "If the file is still the right target, switch to read-file and inspect the current text directly before deciding the next edit or search.",
         nextTool: "read-file",
+        resolvesOn: [{ tool: "read-file" }],
       };
     default:
       return kind satisfies never;

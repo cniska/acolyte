@@ -410,6 +410,144 @@ describe("phaseGenerate", () => {
     expect(ctx.currentError?.tool).toBe("edit-file");
     expect(acceptedLifecycleSignal(ctx)).toBeUndefined();
   });
+
+  test("clears a search-files no-match recovery after a successful read-file on the suggested path", async () => {
+    const ctx = createMockContext({
+      request: { model: "gpt-5-mini", message: "test", history: [] },
+      agent: {
+        id: "test-agent",
+        name: "test-agent",
+        instructions: "",
+        model: {} as RunContext["agent"]["model"],
+        tools: {},
+        async stream() {
+          const chunks = [
+            {
+              type: "tool-call" as const,
+              payload: {
+                toolCallId: "call_1",
+                toolName: "search-files",
+                args: { patterns: ["alias"], paths: ["src/a.ts"] },
+              },
+            },
+            {
+              type: "tool-error" as const,
+              payload: {
+                toolCallId: "call_1",
+                toolName: "search-files",
+                error: {
+                  message: "search-files found no matches in scoped file: src/a.ts",
+                  code: TOOL_ERROR_CODES.searchFilesNoMatch,
+                  recovery: {
+                    tool: "search-files" as const,
+                    kind: "switch-to-read" as const,
+                    summary: "Switch to read-file.",
+                    instruction: "Read the file directly.",
+                    nextTool: "read-file" as const,
+                    targetPaths: ["src/a.ts"],
+                    resolvesOn: [{ tool: "read-file" as const, targetPaths: ["src/a.ts"] }],
+                  },
+                },
+              },
+            },
+            {
+              type: "tool-call" as const,
+              payload: { toolCallId: "call_2", toolName: "read-file", args: { paths: [{ path: "src/a.ts" }] } },
+            },
+            {
+              type: "tool-result" as const,
+              payload: { toolCallId: "call_2", toolName: "read-file", result: { output: "File: src/a.ts" } },
+            },
+          ];
+          return {
+            fullStream: new ReadableStream({
+              start(controller) {
+                for (const chunk of chunks) controller.enqueue(chunk);
+                controller.close();
+              },
+            }),
+            async getFullOutput() {
+              return { text: "Done.", toolCalls: [], signal: "done" as const };
+            },
+          };
+        },
+      },
+    });
+
+    await phaseGenerate(ctx, { timeoutMs: 1000 });
+
+    expect(ctx.currentError).toBeUndefined();
+    expect(acceptedLifecycleSignal(ctx)).toBe("done");
+  });
+
+  test("does not clear a search-files no-match recovery after a read-file on a different path", async () => {
+    const ctx = createMockContext({
+      request: { model: "gpt-5-mini", message: "test", history: [] },
+      agent: {
+        id: "test-agent",
+        name: "test-agent",
+        instructions: "",
+        model: {} as RunContext["agent"]["model"],
+        tools: {},
+        async stream() {
+          const chunks = [
+            {
+              type: "tool-call" as const,
+              payload: {
+                toolCallId: "call_1",
+                toolName: "search-files",
+                args: { patterns: ["alias"], paths: ["src/a.ts"] },
+              },
+            },
+            {
+              type: "tool-error" as const,
+              payload: {
+                toolCallId: "call_1",
+                toolName: "search-files",
+                error: {
+                  message: "search-files found no matches in scoped file: src/a.ts",
+                  code: TOOL_ERROR_CODES.searchFilesNoMatch,
+                  recovery: {
+                    tool: "search-files" as const,
+                    kind: "switch-to-read" as const,
+                    summary: "Switch to read-file.",
+                    instruction: "Read the file directly.",
+                    nextTool: "read-file" as const,
+                    targetPaths: ["src/a.ts"],
+                    resolvesOn: [{ tool: "read-file" as const, targetPaths: ["src/a.ts"] }],
+                  },
+                },
+              },
+            },
+            {
+              type: "tool-call" as const,
+              payload: { toolCallId: "call_2", toolName: "read-file", args: { paths: [{ path: "src/b.ts" }] } },
+            },
+            {
+              type: "tool-result" as const,
+              payload: { toolCallId: "call_2", toolName: "read-file", result: { output: "File: src/b.ts" } },
+            },
+          ];
+          return {
+            fullStream: new ReadableStream({
+              start(controller) {
+                for (const chunk of chunks) controller.enqueue(chunk);
+                controller.close();
+              },
+            }),
+            async getFullOutput() {
+              return { text: "Done.", toolCalls: [], signal: "done" as const };
+            },
+          };
+        },
+      },
+    });
+
+    await phaseGenerate(ctx, { timeoutMs: 1000 });
+
+    expect(ctx.currentError?.tool).toBe("search-files");
+    expect(acceptedLifecycleSignal(ctx)).toBeUndefined();
+  });
 });
 
 describe("acceptedLifecycleSignal", () => {
@@ -799,7 +937,8 @@ describe("toolRecoveryEvaluator", () => {
       currentError: {
         code: TOOL_ERROR_CODES.searchFilesEmptyScope,
         tool: "search-files",
-        message: "search-files failed: [E_SEARCH_FILES_EMPTY_SCOPE] search-files scope resolved to no files: src/missing",
+        message:
+          "search-files failed: [E_SEARCH_FILES_EMPTY_SCOPE] search-files scope resolved to no files: src/missing",
         recovery: {
           tool: "search-files",
           kind: "broaden-scope",
@@ -827,7 +966,8 @@ describe("toolRecoveryEvaluator", () => {
       currentError: {
         code: TOOL_ERROR_CODES.searchFilesNoMatch,
         tool: "search-files",
-        message: "search-files failed: [E_SEARCH_FILES_NO_MATCH] search-files found no matches in scoped file: src/provider-config.ts",
+        message:
+          "search-files failed: [E_SEARCH_FILES_NO_MATCH] search-files found no matches in scoped file: src/provider-config.ts",
         recovery: {
           tool: "search-files",
           kind: "switch-to-read",

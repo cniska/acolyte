@@ -336,12 +336,46 @@ function emitStreamingUsage(ctx: RunContext, chars: number): void {
   }
 }
 
-function clearResolvedToolError(ctx: RunContext, toolName: string): void {
+function toolCallTargets(started: { toolName: string; args?: Record<string, unknown> }): string[] {
+  if (started.toolName === "read-file") {
+    const entries = started.args?.paths;
+    if (!Array.isArray(entries)) return [];
+    return entries.flatMap((entry) => {
+      if (!entry || typeof entry !== "object") return [];
+      const path = (entry as Record<string, unknown>).path;
+      return typeof path === "string" && path.trim().length > 0 ? [path] : [];
+    });
+  }
+  const path = started.args?.path;
+  if (typeof path === "string" && path.trim().length > 0) return [path];
+  const paths = started.args?.paths;
+  if (!Array.isArray(paths)) return [];
+  return paths.filter((value): value is string => typeof value === "string" && value.trim().length > 0);
+}
+
+function didResolveToolRecovery(
+  recovery: NonNullable<RunContext["currentError"]>["recovery"],
+  started: { toolName: string; args?: Record<string, unknown> },
+): boolean {
+  if (!recovery?.resolvesOn || recovery.resolvesOn.length === 0) return false;
+  const targets = toolCallTargets(started);
+  return recovery.resolvesOn.some((resolution) => {
+    if (resolution.tool !== started.toolName) return false;
+    if (!resolution.targetPaths || resolution.targetPaths.length === 0) return true;
+    return resolution.targetPaths.every((targetPath) => targets.includes(targetPath));
+  });
+}
+
+function clearResolvedToolError(ctx: RunContext, started: { toolName: string; args?: Record<string, unknown> }): void {
   if (!ctx.currentError) return;
   if (ctx.currentError.source !== "tool-error" && ctx.currentError.source !== "tool-result") return;
   const failedTool = ctx.currentError.tool;
   if (!failedTool) return;
-  if (failedTool !== toolName) return;
+  if (failedTool === started.toolName) {
+    ctx.currentError = undefined;
+    return;
+  }
+  if (!didResolveToolRecovery(ctx.currentError.recovery, started)) return;
   ctx.currentError = undefined;
 }
 
@@ -368,7 +402,7 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
       if (p?.toolCallId && p?.toolName) {
         const toolName = p.toolName;
         ctx.observedTools.add(toolName);
-        ctx.toolCallStartedAt.set(p.toolCallId, { toolName, startedAtMs: Date.now() });
+        ctx.toolCallStartedAt.set(p.toolCallId, { toolName, startedAtMs: Date.now(), args: p.args });
         const args = (p.args ?? {}) as Record<string, unknown>;
         ctx.debug("lifecycle.tool.call", { tool: toolName, ...formatToolArgs(args) });
 
@@ -387,7 +421,7 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
       const p = chunk.payload;
       if (p?.toolCallId && p?.toolName) {
         const toolName = p.toolName;
-        completeToolCall(ctx, p.toolCallId, toolName);
+        const started = ctx.toolCallStartedAt.get(p.toolCallId);
         const queue = ctx.nativeIdQueue.get(toolName);
         if (queue?.[queue.length - 1] === p.toolCallId) queue.pop();
         const resultRecord =
@@ -406,8 +440,9 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
           });
           ctx.debug("lifecycle.tool.error", { tool: toolName, error: errorInfo.message });
         } else {
-          clearResolvedToolError(ctx, toolName);
+          clearResolvedToolError(ctx, started ?? { toolName });
         }
+        completeToolCall(ctx, p.toolCallId, toolName);
         emitToolResult(ctx, p.toolCallId, toolName, isError);
       }
       break;

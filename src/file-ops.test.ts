@@ -310,6 +310,7 @@ describe("searchFiles", () => {
         tool: "search-files",
         kind: "broaden-scope",
         nextTool: "find-files",
+        resolvesOn: [{ tool: "find-files" }],
       },
     });
   });
@@ -325,6 +326,7 @@ describe("searchFiles", () => {
         kind: "switch-to-read",
         nextTool: "read-file",
         targetPaths: [filePath],
+        resolvesOn: [{ tool: "read-file" }],
       },
     });
   });
