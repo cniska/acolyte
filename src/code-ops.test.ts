@@ -757,6 +757,26 @@ describe("editCode", () => {
     expect(content).toContain("print(");
     expect(content).not.toContain("println(");
   });
+
+  test("includes affectedSymbols in result", async () => {
+    const filePath = `/tmp/acolyte-test-ast-affected-${testUuid()}.ts`;
+    tempFiles.push(filePath);
+    await writeFile(
+      filePath,
+      ['function processItems() { console.log("processing"); }', 'function other() { console.log("other"); }', ""].join(
+        "\n",
+      ),
+      "utf8",
+    );
+    const result = await editCode({
+      workspace: WORKSPACE,
+      path: filePath,
+      edits: [
+        { op: "replace", rule: "console.log($ARG)", replacement: "logger.info($ARG)", withinSymbol: "processItems" },
+      ],
+    });
+    expect(result.affectedSymbols).toEqual(["processItems"]);
+  });
 });
 
 describe("scanCode", () => {

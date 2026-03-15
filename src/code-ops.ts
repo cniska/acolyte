@@ -393,6 +393,7 @@ export type EditCodeResult = {
   matches: number;
   diff: string;
   output: string;
+  affectedSymbols: string[];
 };
 
 export type ScanCodeMatch = {
@@ -438,6 +439,7 @@ export async function editCode(input: {
   const langEnum = napi.Lang[langName as keyof typeof napi.Lang];
   let current = original;
   let totalMatches = 0;
+  const affectedSymbols = new Set<string>();
 
   for (const edit of input.edits) {
     const tree = napi.parse(langEnum ?? langName, current);
@@ -489,6 +491,10 @@ export async function editCode(input: {
       );
     }
     totalMatches += matches.length;
+    for (const match of matches) {
+      const sym = findEnclosingSymbol(match);
+      if (sym) affectedSymbols.add(sym);
+    }
 
     const patternMetavars = isRenameEdit(edit)
       ? []
@@ -530,13 +536,19 @@ export async function editCode(input: {
 
   const relativePath = displayPathForDiff(absPath, input.workspace);
   const diff = createDiff(relativePath, original, current);
-  const output = [`path=${absPath}`, `edits=${input.edits.length}`, `matches=${totalMatches}`, "", diff].join("\n");
+  const affectedSymbolsList = Array.from(affectedSymbols);
+  const symbolsLine = affectedSymbolsList.length > 0 ? `symbols=${affectedSymbolsList.join(", ")}` : "";
+  const outputParts = [`path=${absPath}`, `edits=${input.edits.length}`, `matches=${totalMatches}`];
+  if (symbolsLine) outputParts.push(symbolsLine);
+  outputParts.push("", diff);
+  const output = outputParts.join("\n");
   return {
     path: absPath,
     edits: input.edits.length,
     matches: totalMatches,
     diff,
     output,
+    affectedSymbols: affectedSymbolsList,
   };
 }
 
