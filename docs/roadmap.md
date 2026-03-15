@@ -2,8 +2,8 @@
 
 ## Vision
 
-One AI coding assistant for day-to-day development across projects and machines.
-Chat-first and opinionated for the 80% default workflow, with stable seams for customization.
+One terminal-first AI coding agent for day-to-day development across projects and machines.
+Opinionated for the 80% default workflow, with stable extension points for customization.
 Built for safe autonomous execution of bounded tasks with the developer in control.
 
 ## What shipped at launch

@@ -203,7 +203,7 @@ Other agents have limited or no plugin systems.
 
 # Extension seams
 
-Core systems expose minimal extension boundaries:
+Core systems expose minimal, well-defined extension points:
 
 - lifecycle policies
 - tool registration
@@ -212,9 +212,7 @@ Core systems expose minimal extension boundaries:
 - skill metadata
 - configuration layers
 
-The design principle is **interface-first boundaries**.
-
-Extensions implement contracts rather than injecting runtime plugins.
+Extensions implement typed contracts. The surface is intentionally narrow — Acolyte is an opinionated product, not a general-purpose agent framework.
 
 ---
 

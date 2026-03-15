@@ -192,7 +192,7 @@ Across the benchmarked projects, Acolyte demonstrates:
 - high automated test coverage
 - clear lifecycle boundaries across independently testable modules
 
-These characteristics reflect a deliberately small, strongly typed architecture designed for long-term maintainability.
+These characteristics reflect a deliberately small, strongly typed architecture — built so that lifecycle phases, guards, and tools behave predictably and can be independently verified.
 
 ---
 

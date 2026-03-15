@@ -1,6 +1,6 @@
 # Why Acolyte?
 
-> **TL;DR** — Acolyte is an open-source AI coding agent that runs as a headless daemon, supports any LLM provider, and gives you full control over agent behavior. It has a 5-phase lifecycle pipeline, behavioral guards, auto-verification, persistent memory with context distillation, and real token budgeting — things most open-source agents don't have, and closed-source agents don't let you customize.
+> **TL;DR** — Acolyte is an open-source, terminal-first AI coding agent built for reliable agent behavior: it prevents drift, stops redundant work, verifies its own output, and preserves context across sessions. It runs as a headless daemon, supports any LLM provider, and gives you full control — behavioral guards, a 5-phase lifecycle pipeline, auto-verification, context distillation, and real token budgeting built in. These are things most open-source agents don't have, and closed-source agents don't let you touch.
 
 ## Why open source?
 
@@ -10,11 +10,11 @@ Open-source agents like Acolyte exist for the cases where that's not enough:
 
 - **Provider choice**: use OpenAI, Anthropic, Google, or any OpenAI-compatible endpoint — switch models per task without switching tools
 - **Self-hosted**: run everything on your own infrastructure with no data leaving your network
-- **Customizable agent behavior**: lifecycle phases, guards, evaluators, and memory strategies are all exposed as extensible contracts — not hidden behind a product surface
+- **Customizable agent behavior**: lifecycle phases, guards, evaluators, and memory strategies are all configurable — not locked behind a closed product surface
 - **Transparent execution**: every tool call, guard decision, and evaluator action is observable in structured logs — no black box
 - **No vendor lock-in**: your sessions, memory, and configuration are local files you own
 
-Acolyte is designed for developers who want the power of an AI coding agent with full control over how it works. Ready to try it? See the [Quick Start](../README.md#quick-start).
+Acolyte is for developers who want reliable, observable agent behavior — not a black box. Ready to try it? See the [Quick Start](../README.md#quick-start).
 
 ## What makes Acolyte different
 

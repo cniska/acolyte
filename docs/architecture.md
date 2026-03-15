@@ -1,6 +1,6 @@
 # Architecture
 
-System map of Acolyte runtime flow, boundaries, and extension seams.
+System map of Acolyte's runtime flow, module boundaries, and extension points.
 
 ## First-class concepts
 

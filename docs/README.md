@@ -1,6 +1,6 @@
 # Documentation
 
-Developer documentation for Acolyte — a terminal-first AI coding assistant: local-first, observable, and built for extension.
+Developer documentation for Acolyte — a terminal-first AI coding agent: reliable by default, observable, and open source.
 
 ## Overview
 

@@ -6,7 +6,7 @@
 [![Bun](https://img.shields.io/badge/runtime-bun-f9f1e1?style=flat)](https://bun.sh)
 [![TypeScript](https://img.shields.io/badge/typescript-strict-3178c6?style=flat)](https://www.typescriptlang.org)
 
-A terminal-first AI coding assistant: local-first, observable, and built for extension.
+A terminal-first AI coding agent: reliable by default, observable, and open source.
 
 ![Acolyte CLI](docs/assets/cli.png)
 
