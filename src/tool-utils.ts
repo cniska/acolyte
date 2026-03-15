@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { readdir, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, relative, resolve } from "node:path";
+import { type GitignoreContext, isIgnoredByPatterns, loadGitignoreContext } from "./gitignore";
 
 const TEMP_ROOTS = Array.from(new Set([resolve(tmpdir()), resolve("/tmp"), resolve("/private/tmp")]));
 const GIT_ENV_KEYS = [
@@ -112,7 +113,9 @@ export function detectLineWidth(workspace: string): number | null {
   return null;
 }
 
-export const IGNORED_DIRS = new Set(["node_modules", ".git", ".acolyte", "dist", "build", ".next", "coverage"]);
+// Directories always excluded regardless of .gitignore — these are either internal
+// runtime directories or universally irrelevant to any project's source.
+export const IGNORED_DIRS = new Set(["node_modules", ".git", ".acolyte"]);
 
 const BINARY_EXTENSIONS = new Set([
   ".png",
@@ -174,7 +177,11 @@ export function isBinaryExtension(path: string): boolean {
 
 export async function collectWorkspaceFiles(workspace: string, maxEntries = 5000): Promise<string[]> {
   const out: string[] = [];
-  const stack: Array<{ abs: string; rel: string }> = [{ abs: workspace, rel: "" }];
+  const rootContext = await loadGitignoreContext(workspace);
+  const rootContexts: GitignoreContext[] = rootContext ? [rootContext] : [];
+  const stack: Array<{ abs: string; rel: string; contexts: GitignoreContext[] }> = [
+    { abs: workspace, rel: "", contexts: rootContexts },
+  ];
 
   while (stack.length > 0 && out.length < maxEntries) {
     const current = stack.pop();
@@ -188,12 +195,15 @@ export async function collectWorkspaceFiles(workspace: string, maxEntries = 5000
     entries.sort((a, b) => a.name.localeCompare(b.name));
 
     for (const entry of entries) {
-      if (entry.name.startsWith(".") && entry.isDirectory()) continue;
       if (entry.isDirectory() && IGNORED_DIRS.has(entry.name)) continue;
       const rel = current.rel ? `${current.rel}/${entry.name}` : entry.name;
       const abs = join(current.abs, entry.name);
-      if (entry.isDirectory()) {
-        stack.push({ abs, rel });
+      const isDir = entry.isDirectory();
+      if (isIgnoredByPatterns(current.contexts, abs, isDir)) continue;
+      if (isDir) {
+        const childContext = await loadGitignoreContext(abs);
+        const childContexts = childContext ? [...current.contexts, childContext] : current.contexts;
+        stack.push({ abs, rel, contexts: childContexts });
       } else if (entry.isFile()) {
         out.push(rel);
       }
