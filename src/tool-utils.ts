@@ -113,7 +113,9 @@ export function detectLineWidth(workspace: string): number | null {
   return null;
 }
 
-export const IGNORED_DIRS = new Set(["node_modules", ".git", ".acolyte", "dist", "build", ".next", "coverage"]);
+// Directories always excluded regardless of .gitignore — these are either internal
+// runtime directories or universally irrelevant to any project's source.
+export const IGNORED_DIRS = new Set(["node_modules", ".git", ".acolyte"]);
 
 const BINARY_EXTENSIONS = new Set([
   ".png",
