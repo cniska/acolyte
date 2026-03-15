@@ -11,10 +11,9 @@ fi
 
 level="${1:-}"
 if [[ -z "$level" ]]; then
-  # Auto-detect: if any feat commit exists since the last tag, default to minor
-  old_for_detect=$(node -p "require('./package.json').version")
-  prev_tag_for_detect="v${old_for_detect}"
-  if git log "${prev_tag_for_detect}..HEAD" --oneline | grep -qE '^[a-f0-9]+ feat'; then
+  # Auto-detect from the latest release tag, not the working package version.
+  prev_tag_for_detect="$(git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null || true)"
+  if [[ -n "$prev_tag_for_detect" ]] && git log "${prev_tag_for_detect}..HEAD" --format=%s | grep -qE '^feat(\(|:)'; then
     level="minor"
     echo "info: feat commit detected since ${prev_tag_for_detect}, defaulting to minor bump"
   else
