@@ -183,7 +183,7 @@ function createEditCodeTool(input: ToolkitInput) {
           onOutput,
           toolCallId,
         );
-        for (const content of numberedUnifiedDiffLines(editResult.output, "all"))
+        for (const content of numberedUnifiedDiffLines(editResult.output))
           onOutput({ toolName: "edit-code", content, toolCallId });
         const totals = diffTotals(editResult.output);
         const result = compactToolOutput(editResult.output, appConfig.agent.toolOutputBudget.astEdit);

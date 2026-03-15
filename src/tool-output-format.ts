@@ -12,6 +12,9 @@ export const TOOL_OUTPUT_LIMITS = {
   status: 6,
 } as const;
 
+const NUMBERED_DIFF_PREVIEW_MAX_LINES = 160;
+const NUMBERED_DIFF_SOURCE_MAX_LINES = NUMBERED_DIFF_PREVIEW_MAX_LINES * 2;
+
 export function emitHeadTailLines(
   toolName: string,
   rawText: string,
@@ -351,7 +354,7 @@ export function emitSearchSummary(
     });
 }
 
-function unifiedDiffLines(rawResult: string, maxLines: number | "all" = 120): string[] {
+function unifiedDiffLines(rawResult: string, maxLines = 120): string[] {
   const marker = "\ndiff --git ";
   const index = rawResult.indexOf(marker);
   const start = index >= 0 ? index + 1 : rawResult.indexOf("diff --git ");
@@ -360,13 +363,12 @@ function unifiedDiffLines(rawResult: string, maxLines: number | "all" = 120): st
     .slice(start)
     .split("\n")
     .map((line) => line.trimEnd());
-  if (maxLines !== "all" && lines.length > maxLines) return lines.slice(0, maxLines);
+  if (lines.length > maxLines) return lines.slice(0, maxLines);
   return lines;
 }
 
-export function numberedUnifiedDiffLines(rawResult: string, maxLines: number | "all" = 160): ToolOutput[] {
-  const lineBudget = maxLines === "all" ? "all" : Math.max(maxLines * 2, 240);
-  const lines = unifiedDiffLines(rawResult, lineBudget);
+export function numberedUnifiedDiffLines(rawResult: string): ToolOutput[] {
+  const lines = unifiedDiffLines(rawResult, NUMBERED_DIFF_SOURCE_MAX_LINES);
   if (lines.length === 0) return [];
   const rendered: ToolOutput[] = [];
   let oldLine = 0;
@@ -444,9 +446,12 @@ export function numberedUnifiedDiffLines(rawResult: string, maxLines: number | "
     }
   }
   if (skippedCount > 0) filteredOutput.push({ kind: "truncated", count: skippedCount, unit: "lines" });
-  if (maxLines !== "all" && filteredOutput.length > maxLines) {
-    const omitted = filteredOutput.length - maxLines;
-    return [...filteredOutput.slice(0, maxLines), { kind: "truncated", count: omitted, unit: "lines" }];
+  if (filteredOutput.length > NUMBERED_DIFF_PREVIEW_MAX_LINES) {
+    const omitted = filteredOutput.length - NUMBERED_DIFF_PREVIEW_MAX_LINES;
+    return [
+      ...filteredOutput.slice(0, NUMBERED_DIFF_PREVIEW_MAX_LINES),
+      { kind: "truncated", count: omitted, unit: "lines" },
+    ];
   }
   return filteredOutput;
 }

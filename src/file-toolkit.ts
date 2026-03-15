@@ -15,8 +15,6 @@ import {
   TOOL_OUTPUT_LIMITS,
 } from "./tool-output-format";
 
-const WRITE_TOOL_PREVIEW_MAX_LINES = Number.POSITIVE_INFINITY;
-
 function diffTotals(rawResult: string): { files: number; added: number; removed: number } {
   let files = 0;
   let added = 0;
@@ -318,7 +316,7 @@ function createEditFileTool(input: ToolkitInput) {
           edits: toolInput.edits,
         });
         emitDiffSummaryHeader("edit-file", t("tool.label.edit"), toolInput.path, rawResult, onOutput, toolCallId);
-        for (const content of numberedUnifiedDiffLines(rawResult, WRITE_TOOL_PREVIEW_MAX_LINES))
+        for (const content of numberedUnifiedDiffLines(rawResult))
           onOutput({ toolName: "edit-file", content, toolCallId });
         const totals = diffTotals(rawResult);
         const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.edit);
@@ -366,7 +364,7 @@ function createCreateFileTool(input: ToolkitInput) {
           overwrite: true,
         });
         emitDiffSummaryHeader("create-file", t("tool.label.create"), toolInput.path, rawResult, onOutput, toolCallId);
-        for (const content of numberedUnifiedDiffLines(rawResult, WRITE_TOOL_PREVIEW_MAX_LINES))
+        for (const content of numberedUnifiedDiffLines(rawResult))
           onOutput({ toolName: "create-file", content, toolCallId });
         const totals = diffTotals(rawResult);
         const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.create);
