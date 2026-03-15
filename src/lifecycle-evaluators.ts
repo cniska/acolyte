@@ -38,7 +38,7 @@ export type Evaluator = {
   evaluate: (ctx: EvaluatorContext) => EvalAction;
 };
 
-function formatToolRecoveryDetails(message: string, recovery: NonNullable<LifecycleError["recovery"]>): string {
+function formatToolRecovery(message: string, recovery: NonNullable<LifecycleError["recovery"]>): string {
   const hints: string[] = [];
   if (recovery.nextTool) hints.push(`Suggested next tool: ${recovery.nextTool}`);
   if (recovery.targetPaths && recovery.targetPaths.length > 0) {
@@ -257,10 +257,11 @@ export const toolRecoveryEvaluator: Evaluator = {
     return {
       type: "regenerate",
       feedback: {
-        source: recovery.tool,
+        source: "tool-recovery",
+        tool: recovery.tool,
         mode: "work",
         summary: recovery.summary,
-        details: formatToolRecoveryDetails(currentError.message, recovery),
+        details: formatToolRecovery(currentError.message, recovery),
         instruction: recovery.instruction,
       },
     };

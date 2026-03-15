@@ -109,10 +109,11 @@ export type VerifyOutcome = {
   error?: LifecycleError;
 };
 
-export type FeedbackSource = "guard" | "lint" | "verify" | "edit-file" | "edit-code" | "scan-code" | "repeated-failure";
+export type FeedbackSource = "guard" | "lint" | "verify" | "tool-recovery" | "repeated-failure";
 
 export type LifecycleFeedback = {
   source: FeedbackSource;
+  tool?: string;
   mode: AgentMode;
   summary: string;
   details?: string;
