@@ -84,9 +84,7 @@ function findTestRs(dir: string): string[] {
 const GO_EXCLUDE_DIRS = ["/.git/", "/vendor/"];
 
 function findSourceGo(dir: string): string[] {
-  return walk(dir).filter(
-    (f) => f.endsWith(".go") && !pathExcluded(f, GO_EXCLUDE_DIRS) && !f.endsWith("_test.go"),
-  );
+  return walk(dir).filter((f) => f.endsWith(".go") && !pathExcluded(f, GO_EXCLUDE_DIRS) && !f.endsWith("_test.go"));
 }
 
 function findTestGo(dir: string): string[] {
@@ -247,8 +245,14 @@ function countDepsGo(dir: string): { runtime: number; dev: number } {
     let inRequire = false;
     for (const line of text.split("\n")) {
       const trimmed = line.trim();
-      if (trimmed === "require (" || trimmed === "require(") { inRequire = true; continue; }
-      if (inRequire && trimmed === ")") { inRequire = false; continue; }
+      if (trimmed === "require (" || trimmed === "require(") {
+        inRequire = true;
+        continue;
+      }
+      if (inRequire && trimmed === ")") {
+        inRequire = false;
+        continue;
+      }
       if (inRequire && trimmed && !trimmed.startsWith("//") && !trimmed.includes("// indirect")) {
         runtime.add(trimmed.split(/\s/)[0]);
       }
