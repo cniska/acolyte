@@ -112,7 +112,7 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
     (reply.toolCalls?.length ?? 0) > 0 ? { ...baseAssistantMessage, kind: "tool_payload" } : baseAssistantMessage;
   const rows: ChatRow[] = [];
   if (reply.error) {
-    rows.push(createRow("system", `Error: ${reply.error}`, { text: palette.error }));
+    rows.push(createRow("system", reply.error, { text: palette.error }));
   } else if (reply.output.trim().length > 0) {
     rows.push(createRow("assistant", reply.output));
   }
