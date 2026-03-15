@@ -48,6 +48,17 @@ describe("collectWorkspaceFiles — gitignore integration", () => {
     expect(files).toContain("lib/foo.generated.ts");
   });
 
+  test("traverses hidden directories not in IGNORED_DIRS", async () => {
+    const root = await createWorkspace({
+      ".github/workflows/ci.yml": "",
+      "src/index.ts": "",
+    });
+
+    const files = await collectWorkspaceFiles(root);
+    expect(files).toContain(".github/workflows/ci.yml");
+    expect(files).toContain("src/index.ts");
+  });
+
   test("always excludes .git and node_modules regardless of .gitignore", async () => {
     const root = await createWorkspace({
       "src/index.ts": "",

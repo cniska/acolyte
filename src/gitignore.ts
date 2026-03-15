@@ -96,7 +96,11 @@ function compileGitignorePattern(raw: string): CompiledPattern | null {
 
   regexStr += "(/|$)";
 
-  return { regex: new RegExp(regexStr), negated, dirOnly };
+  try {
+    return { regex: new RegExp(regexStr), negated, dirOnly };
+  } catch {
+    return null;
+  }
 }
 
 export function compileGitignorePatterns(lines: string[]): CompiledPattern[] {

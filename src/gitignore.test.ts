@@ -1,13 +1,21 @@
 import { describe, expect, test } from "bun:test";
 import { compileGitignorePatterns, isIgnoredByPatterns } from "./gitignore";
 
-function makeCtx(dir: string, lines: string[]) {
+function createContext(dir: string, lines: string[]) {
   return { dir, patterns: compileGitignorePatterns(lines) };
 }
 
 function ignored(lines: string[], path: string, isDir = false): boolean {
-  return isIgnoredByPatterns([makeCtx("/repo", lines)], `/repo/${path}`, isDir);
+  return isIgnoredByPatterns([createContext("/repo", lines)], `/repo/${path}`, isDir);
 }
+
+describe("malformed patterns", () => {
+  test("does not throw on a pattern with an out-of-order character class range", () => {
+    // [z-a] is a valid gitignore pattern but produces an invalid JS regex — should be silently dropped
+    expect(() => compileGitignorePatterns(["file[z-a].ts"])).not.toThrow();
+    expect(compileGitignorePatterns(["file[z-a].ts"])).toHaveLength(0);
+  });
+});
 
 describe("comments and blank lines", () => {
   test("ignores blank lines", () => {
@@ -142,8 +150,8 @@ describe("character classes", () => {
 
 describe("nested gitignore contexts", () => {
   test("child context applies only within its directory", () => {
-    const root = makeCtx("/repo", ["*.log"]);
-    const child = makeCtx("/repo/src", ["*.generated.ts"]);
+    const root = createContext("/repo", ["*.log"]);
+    const child = createContext("/repo/src", ["*.generated.ts"]);
     const contexts = [root, child];
 
     expect(isIgnoredByPatterns(contexts, "/repo/error.log", false)).toBe(true);
@@ -152,8 +160,8 @@ describe("nested gitignore contexts", () => {
   });
 
   test("child negation does not affect root patterns", () => {
-    const root = makeCtx("/repo", ["*.log"]);
-    const child = makeCtx("/repo/src", ["!error.log"]);
+    const root = createContext("/repo", ["*.log"]);
+    const child = createContext("/repo/src", ["!error.log"]);
     const contexts = [root, child];
 
     // Root-level log is ignored by root pattern; child negation only applies within /repo/src

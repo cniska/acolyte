@@ -195,7 +195,6 @@ export async function collectWorkspaceFiles(workspace: string, maxEntries = 5000
     entries.sort((a, b) => a.name.localeCompare(b.name));
 
     for (const entry of entries) {
-      if (entry.name.startsWith(".") && entry.isDirectory()) continue;
       if (entry.isDirectory() && IGNORED_DIRS.has(entry.name)) continue;
       const rel = current.rel ? `${current.rel}/${entry.name}` : entry.name;
       const abs = join(current.abs, entry.name);
