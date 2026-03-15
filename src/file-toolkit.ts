@@ -12,27 +12,9 @@ import {
   findResultPaths,
   numberedUnifiedDiffLines,
   searchResultSummaryEntries,
+  summarizeUnifiedDiff,
   TOOL_OUTPUT_LIMITS,
 } from "./tool-output-format";
-
-function diffTotals(rawResult: string): { files: number; added: number; removed: number } {
-  let files = 0;
-  let added = 0;
-  let removed = 0;
-  for (const line of rawResult.split("\n")) {
-    if (line.startsWith("diff --git ")) {
-      files += 1;
-      continue;
-    }
-    if (line.startsWith("+++ ") || line.startsWith("--- ")) continue;
-    if (line.startsWith("+")) {
-      added += 1;
-      continue;
-    }
-    if (line.startsWith("-")) removed += 1;
-  }
-  return { files, added, removed };
-}
 
 function emitDiffSummaryHeader(
   toolName: "edit-file" | "edit-code" | "create-file",
@@ -42,7 +24,7 @@ function emitDiffSummaryHeader(
   onOutput: ToolkitInput["onOutput"],
   toolCallId: string,
 ): void {
-  const { files, added, removed } = diffTotals(rawResult);
+  const { files, added, removed } = summarizeUnifiedDiff(rawResult);
   const touchedFiles = files > 0 ? files : 1;
   onOutput({
     toolName,
@@ -318,7 +300,7 @@ function createEditFileTool(input: ToolkitInput) {
         emitDiffSummaryHeader("edit-file", t("tool.label.edit"), toolInput.path, rawResult, onOutput, toolCallId);
         for (const content of numberedUnifiedDiffLines(rawResult))
           onOutput({ toolName: "edit-file", content, toolCallId });
-        const totals = diffTotals(rawResult);
+        const totals = summarizeUnifiedDiff(rawResult);
         const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.edit);
         return {
           kind: "edit-file",
@@ -366,7 +348,7 @@ function createCreateFileTool(input: ToolkitInput) {
         emitDiffSummaryHeader("create-file", t("tool.label.create"), toolInput.path, rawResult, onOutput, toolCallId);
         for (const content of numberedUnifiedDiffLines(rawResult))
           onOutput({ toolName: "create-file", content, toolCallId });
-        const totals = diffTotals(rawResult);
+        const totals = summarizeUnifiedDiff(rawResult);
         const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.create);
         return {
           kind: "create-file",

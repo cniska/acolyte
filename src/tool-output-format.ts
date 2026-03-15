@@ -3,6 +3,12 @@ import type { ToolOutput } from "./tool-output-content";
 
 export type ToolOutputListener = (event: { toolName: string; content: ToolOutput; toolCallId?: string }) => void;
 
+export type UnifiedDiffSummary = {
+  files: number;
+  added: number;
+  removed: number;
+};
+
 export const TOOL_OUTPUT_LIMITS = {
   files: 5,
   inlineFiles: 3,
@@ -14,6 +20,25 @@ export const TOOL_OUTPUT_LIMITS = {
 
 const NUMBERED_DIFF_PREVIEW_MAX_LINES = 160;
 const NUMBERED_DIFF_SOURCE_MAX_LINES = NUMBERED_DIFF_PREVIEW_MAX_LINES * 2;
+
+export function summarizeUnifiedDiff(rawResult: string): UnifiedDiffSummary {
+  let files = 0;
+  let added = 0;
+  let removed = 0;
+  for (const line of rawResult.split("\n")) {
+    if (line.startsWith("diff --git ")) {
+      files += 1;
+      continue;
+    }
+    if (line.startsWith("+++ ") || line.startsWith("--- ")) continue;
+    if (line.startsWith("+")) {
+      added += 1;
+      continue;
+    }
+    if (line.startsWith("-")) removed += 1;
+  }
+  return { files, added, removed };
+}
 
 export function emitHeadTailLines(
   toolName: string,

@@ -7,26 +7,7 @@ import { t } from "./i18n";
 import { createTool, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { compactToolOutput } from "./tool-output";
-import { numberedUnifiedDiffLines } from "./tool-output-format";
-
-function diffTotals(rawResult: string): { files: number; added: number; removed: number } {
-  let files = 0;
-  let added = 0;
-  let removed = 0;
-  for (const line of rawResult.split("\n")) {
-    if (line.startsWith("diff --git ")) {
-      files += 1;
-      continue;
-    }
-    if (line.startsWith("+++ ") || line.startsWith("--- ")) continue;
-    if (line.startsWith("+")) {
-      added += 1;
-      continue;
-    }
-    if (line.startsWith("-")) removed += 1;
-  }
-  return { files, added, removed };
-}
+import { numberedUnifiedDiffLines, summarizeUnifiedDiff } from "./tool-output-format";
 
 function emitDiffSummaryHeader(
   toolName: "edit-code",
@@ -36,7 +17,7 @@ function emitDiffSummaryHeader(
   onOutput: ToolkitInput["onOutput"],
   toolCallId: string,
 ): void {
-  const { files, added, removed } = diffTotals(rawResult);
+  const { files, added, removed } = summarizeUnifiedDiff(rawResult);
   const touchedFiles = files > 0 ? files : 1;
   onOutput({
     toolName,
@@ -185,7 +166,7 @@ function createEditCodeTool(input: ToolkitInput) {
         );
         for (const content of numberedUnifiedDiffLines(editResult.output))
           onOutput({ toolName: "edit-code", content, toolCallId });
-        const totals = diffTotals(editResult.output);
+        const totals = summarizeUnifiedDiff(editResult.output);
         const result = compactToolOutput(editResult.output, appConfig.agent.toolOutputBudget.astEdit);
         return {
           kind: "edit-code",
