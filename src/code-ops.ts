@@ -32,9 +32,7 @@ function editCodeRecovery(path: string, kind: EditCodeRecoveryKind): ToolRecover
         kind,
         summary: "Your AST pattern did not match the current file.",
         instruction:
-          `Keep the change in '${path}' and refine the ast-grep pattern to match the actual syntax in the latest read-file output. ` +
-          'For a helper-scoped variable rename, prefer a structured rename edit like { op: "rename", from, to, withinSymbol } instead of broadening to a larger pattern. ' +
-          "Do not switch to plain-text snippets unless you are changing to edit-file.",
+          `Keep the change in '${path}' and refine the ast-grep pattern to match the actual syntax in the latest read-file output. For a helper-scoped variable rename, prefer a structured rename edit like { op: "rename", from, to, withinSymbol } instead of broadening to a larger pattern. Do not switch to plain-text snippets unless you are changing to edit-file.`,
         nextTool: "read-file",
         targetPaths: [path],
       };
@@ -44,8 +42,7 @@ function editCodeRecovery(path: string, kind: EditCodeRecoveryKind): ToolRecover
         kind,
         summary: "This scoped rename matches both local and member symbols.",
         instruction:
-          `Keep the change in '${path}' and retry the rename with an explicit target. ` +
-          'Use target: "local" to rename the local symbol, or target: "member" to rename the declared member and its this.member references.',
+          `Keep the change in '${path}' and retry the rename with an explicit target. Use target: "local" to rename the local symbol, or target: "member" to rename the declared member and its this.member references.`,
         nextTool: "edit-code",
         targetPaths: [path],
       };
@@ -55,8 +52,7 @@ function editCodeRecovery(path: string, kind: EditCodeRecoveryKind): ToolRecover
         kind,
         summary: "Your edit-code replacement shape is invalid for this pattern.",
         instruction:
-          `Keep the change in '${path}' and fix the replacement to use only metavariables captured by the pattern. ` +
-          "If the rewrite needs variadic or plain-text editing, switch to edit-file.",
+          `Keep the change in '${path}' and fix the replacement to use only metavariables captured by the pattern. If the rewrite needs variadic or plain-text editing, switch to edit-file.`,
         nextTool: "edit-code",
         targetPaths: [path],
       };
