@@ -33,5 +33,4 @@ Developer documentation for Acolyte — a terminal-first AI coding assistant: lo
 - [Localization](./localization.md) — separates translatable copy from protocol contracts
 - [Testing](./testing.md) — test strategy and conventions
 - [Features](./features.md) — shipped user-visible capabilities
-- [Known issues](./known-issues.md) — bugs and documented issues
 - [Roadmap](./roadmap.md) — planned features and milestones
