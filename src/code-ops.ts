@@ -146,24 +146,39 @@ function resolveReplacementMetavariable(match: napi.SgNode, metavar: string, sou
   return captured.text();
 }
 
+function extractSymbolName(node: napi.SgNode): string | null {
+  const kind = node.kind();
+  if (
+    kind === "class_declaration" ||
+    kind === "function_declaration" ||
+    kind === "generator_function_declaration" ||
+    kind === "method_definition" ||
+    kind === "interface_declaration" ||
+    kind === "type_alias_declaration" ||
+    kind === "enum_declaration" ||
+    kind === "variable_declarator"
+  ) {
+    return node.field("name")?.text() ?? null;
+  }
+  if (kind === "function_expression") {
+    const name = node.field("name");
+    return name ? name.text() : null;
+  }
+  return null;
+}
+
 function nodeHasWithinSymbol(node: napi.SgNode, symbol: string): boolean {
-  if (node.kind() === "class_declaration") {
-    const name = node.field("name");
-    return name?.text() === symbol;
+  return extractSymbolName(node) === symbol;
+}
+
+function findEnclosingSymbol(node: napi.SgNode): string | null {
+  let current: napi.SgNode | null = node.parent();
+  while (current) {
+    const name = extractSymbolName(current);
+    if (name) return name;
+    current = current.parent();
   }
-  if (node.kind() === "function_declaration") {
-    const name = node.field("name");
-    return name?.text() === symbol;
-  }
-  if (node.kind() === "method_definition") {
-    const name = node.field("name");
-    return name?.text() === symbol;
-  }
-  if (node.kind() === "variable_declarator") {
-    const name = node.field("name");
-    return name?.text() === symbol;
-  }
-  return false;
+  return null;
 }
 
 function matchIsWithinSymbol(match: napi.SgNode, symbol: string): boolean {
@@ -378,13 +393,15 @@ export type EditCodeResult = {
   matches: number;
   diff: string;
   output: string;
+  affectedSymbols: string[];
 };
 
 export type ScanCodeMatch = {
-  relPath: string;
+  path: string;
   line: number;
   text: string;
   captures: Record<string, string>;
+  enclosingSymbol?: string;
 };
 
 export type ScanCodePatternResult = {
@@ -422,6 +439,7 @@ export async function editCode(input: {
   const langEnum = napi.Lang[langName as keyof typeof napi.Lang];
   let current = original;
   let totalMatches = 0;
+  const affectedSymbols = new Set<string>();
 
   for (const edit of input.edits) {
     const tree = napi.parse(langEnum ?? langName, current);
@@ -473,6 +491,10 @@ export async function editCode(input: {
       );
     }
     totalMatches += matches.length;
+    for (const match of matches) {
+      const sym = findEnclosingSymbol(match);
+      if (sym) affectedSymbols.add(sym);
+    }
 
     const patternMetavars = isRenameEdit(edit)
       ? []
@@ -514,13 +536,19 @@ export async function editCode(input: {
 
   const relativePath = displayPathForDiff(absPath, input.workspace);
   const diff = createDiff(relativePath, original, current);
-  const output = [`path=${absPath}`, `edits=${input.edits.length}`, `matches=${totalMatches}`, "", diff].join("\n");
+  const affectedSymbolsList = Array.from(affectedSymbols);
+  const symbolsLine = affectedSymbolsList.length > 0 ? `symbols=${affectedSymbolsList.join(", ")}` : "";
+  const outputParts = [`path=${absPath}`, `edits=${input.edits.length}`, `matches=${totalMatches}`];
+  if (symbolsLine) outputParts.push(symbolsLine);
+  outputParts.push("", diff);
+  const output = outputParts.join("\n");
   return {
     path: absPath,
     edits: input.edits.length,
     matches: totalMatches,
     diff,
     output,
+    affectedSymbols: affectedSymbolsList,
   };
 }
 
@@ -540,7 +568,7 @@ export async function scanCode(input: {
 
   const totalMatches = () => results.reduce((sum, result) => sum + result.matches.length, 0);
 
-  const scanFile = (relPath: string, content: string, lang: string): void => {
+  const scanFile = (path: string, content: string, lang: string): void => {
     const langEnum = napi.Lang[lang as keyof typeof napi.Lang];
     let tree: ReturnType<typeof napi.parse>;
     try {
@@ -561,7 +589,8 @@ export async function scanCode(input: {
           const captured = match.getMatch(metavar.slice(1));
           if (captured) captures[metavar] = captured.text();
         }
-        result.matches.push({ relPath, line: range.start.line + 1, text, captures });
+        const enclosingSymbol = findEnclosingSymbol(match) ?? undefined;
+        result.matches.push({ path, line: range.start.line + 1, text, captures, enclosingSymbol });
       }
     }
   };

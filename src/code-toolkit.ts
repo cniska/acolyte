@@ -36,7 +36,10 @@ function formatScanCodeResult(result: ScanCodeResult): string {
               .map(([key, value]) => `${key}=${value}`)
               .join(", ")}}`
           : "";
-      lines.push(`${match.relPath}:${match.line}: ${truncated}${captureStr}`);
+      const prefix = match.enclosingSymbol
+        ? `${match.path}:${match.line}:[${match.enclosingSymbol}] `
+        : `${match.path}:${match.line}: `;
+      lines.push(`${prefix}${truncated}${captureStr}`.trimEnd());
     }
     if (multi && patternResult.matches.length === 0) lines.push("No matches.");
   }
@@ -59,6 +62,7 @@ function createScanCodeTool(input: ToolkitInput) {
       "Batch multiple files and patterns in one call.",
       "Use it to map structural targets before `edit-code`, not for plain text replacements or post-edit reassurance on a bounded named-file task.",
       "For keyword or regex searches prefer `search-files`.",
+      "Each match includes an `enclosingSymbol` in the output — use it directly as `withinSymbol` in a follow-up `edit-code` call.",
     ].join(" "),
     inputSchema: z.object({
       paths: z.array(z.string().min(1)).min(1),
@@ -126,6 +130,7 @@ function createEditCodeTool(input: ToolkitInput) {
     removed: z.number().int().nonnegative(),
     matches: z.number().int().nonnegative(),
     edits: z.number().int().nonnegative(),
+    affectedSymbols: z.array(z.string()),
     output: z.string(),
   });
   return createTool({
@@ -179,6 +184,7 @@ function createEditCodeTool(input: ToolkitInput) {
           removed: totals.removed,
           matches: editResult.matches,
           edits: editResult.edits,
+          affectedSymbols: editResult.affectedSymbols,
           output: result,
         };
       });
