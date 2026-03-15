@@ -1,63 +1,18 @@
 import { describe, expect, test } from "bun:test";
 import { TOOL_ERROR_CODES } from "./error-contract";
-import { createErrorStats } from "./error-handling";
 import type { RunContext } from "./lifecycle-contract";
-import { phaseGenerate } from "./lifecycle-generate";
-import { defaultLifecyclePolicy } from "./lifecycle-policy";
+import {
+  consumeLifecycleFeedback,
+  createGenerationInput,
+  createLifecycleFeedbackText,
+  phaseGenerate,
+} from "./lifecycle-generate";
 import { acceptedLifecycleSignal } from "./lifecycle-state";
-import { createEmptyPromptBreakdownTotals } from "./lifecycle-usage";
-import { createSessionContext } from "./tool-guards";
-
-function createMockContext(overrides: Partial<RunContext> = {}): RunContext {
-  return {
-    request: { model: "gpt-5-mini", message: "test", history: [] },
-    workspace: undefined,
-    taskId: undefined,
-    soulPrompt: "",
-    emit: () => {},
-    debug: () => {},
-    initialMode: "work",
-    tools: {} as RunContext["tools"],
-    mode: "work",
-    agentForMode: "work",
-    model: "gpt-5-mini",
-    session: createSessionContext(),
-    agent: {} as RunContext["agent"],
-    baseAgentInput: "test prompt",
-    policy: defaultLifecyclePolicy,
-    promptUsage: {
-      inputTokens: 0,
-      systemPromptTokens: 0,
-      toolTokens: 0,
-      memoryTokens: 0,
-      messageTokens: 0,
-      inputBudgetTokens: 8000,
-      inputTruncated: false,
-      includedHistoryMessages: 0,
-      totalHistoryMessages: 0,
-    },
-    lifecycleState: { feedback: [], verifyOutcome: undefined, repeatedFailure: undefined },
-    observedTools: new Set(),
-    modelCallCount: 1,
-    inputTokensAccum: 0,
-    outputTokensAccum: 0,
-    promptBreakdownTotals: createEmptyPromptBreakdownTotals(),
-    streamingChars: 0,
-    lastUsageEmitChars: 0,
-    generationAttempt: 0,
-    regenerationCount: 0,
-    regenerationLimitHit: false,
-    errorStats: createErrorStats(),
-    nativeIdQueue: new Map(),
-    toolCallStartedAt: new Map(),
-    toolOutputHandler: null,
-    ...overrides,
-  };
-}
+import { createRunContext } from "./test-utils";
 
 describe("phaseGenerate", () => {
   test("does not clear an edit-file error after an unrelated successful read", async () => {
-    const ctx = createMockContext({
+    const ctx = createRunContext({
       request: { model: "gpt-5-mini", message: "test", history: [] },
       agent: {
         id: "test-agent",
@@ -119,7 +74,7 @@ describe("phaseGenerate", () => {
   });
 
   test("clears an edit-file error after a later successful write recovery", async () => {
-    const ctx = createMockContext({
+    const ctx = createRunContext({
       request: { model: "gpt-5-mini", message: "test", history: [] },
       agent: {
         id: "test-agent",
@@ -181,7 +136,7 @@ describe("phaseGenerate", () => {
   });
 
   test("does not clear an edit-file error after a different write tool succeeds", async () => {
-    const ctx = createMockContext({
+    const ctx = createRunContext({
       request: { model: "gpt-5-mini", message: "test", history: [] },
       agent: {
         id: "test-agent",
@@ -243,7 +198,7 @@ describe("phaseGenerate", () => {
   });
 
   test("fails fast when fullOutput rejects outside the reader chain", async () => {
-    const ctx = createMockContext({
+    const ctx = createRunContext({
       request: { model: "gpt-5-mini", message: "test", history: [] },
       agent: {
         id: "test-agent",
@@ -266,5 +221,108 @@ describe("phaseGenerate", () => {
 
     expect(ctx.currentError?.message).toBe("invalid_api_key");
     expect(ctx.currentError?.source).toBe("generate");
+  });
+});
+
+describe("createGenerationInput", () => {
+  test("returns base input when there is no feedback", () => {
+    const input = createGenerationInput({
+      baseAgentInput: "USER: fix it",
+      mode: "work",
+      lifecycleState: { feedback: [] },
+    });
+    expect(input).toBe("USER: fix it");
+  });
+
+  test("appends only active-mode feedback in order", () => {
+    const input = createGenerationInput({
+      baseAgentInput: "USER: fix it",
+      mode: "work",
+      lifecycleState: {
+        feedback: [
+          { source: "verify", mode: "verify", summary: "Run verification.", details: "Task boundary:\n- src/a.ts" },
+          { source: "lint", mode: "work", summary: "Lint errors detected" },
+          { source: "tool-recovery", mode: "work", summary: "Use a bounded edit next" },
+        ],
+      },
+    });
+    expect(input).toContain("USER: fix it");
+    expect(input).toContain("Lifecycle feedback (lint)");
+    expect(input).toContain("Lint errors detected");
+    expect(input).toContain("Lifecycle feedback (tool-recovery)");
+    expect(input).toContain("Use a bounded edit next");
+    expect(input).not.toContain("Task boundary:\n- src/a.ts");
+  });
+});
+
+describe("createLifecycleFeedbackText", () => {
+  test("renders summary, details, and instruction in a single lifecycle-owned format", () => {
+    const text = createLifecycleFeedbackText({
+      source: "lint",
+      mode: "work",
+      summary: "Lint errors detected in files you edited.",
+      details: "src/a.ts:1:1 error unexpected any",
+      instruction: "Fix the issues above, then stop.",
+    });
+
+    expect(text).toContain("SYSTEM: Lifecycle feedback (lint):");
+    expect(text).toContain("Lint errors detected in files you edited.");
+    expect(text).toContain("src/a.ts:1:1 error unexpected any");
+    expect(text).toContain("Fix the issues above, then stop.");
+  });
+});
+
+describe("consumeLifecycleFeedback", () => {
+  test("returns and clears pending feedback for the active mode only", () => {
+    const state = {
+      feedback: [
+        {
+          source: "verify" as const,
+          mode: "verify" as const,
+          summary: "Run verification.",
+          details: "Task boundary:\n- src/a.ts",
+        },
+        { source: "lint" as const, mode: "work" as const, summary: "Lint errors detected" },
+        {
+          source: "tool-recovery" as const,
+          mode: "work" as const,
+          summary: "Use a bounded edit next",
+        },
+      ],
+    };
+
+    const consumed = consumeLifecycleFeedback(state, "work");
+
+    expect(consumed).toEqual([
+      { source: "lint", mode: "work", summary: "Lint errors detected" },
+      { source: "tool-recovery", mode: "work", summary: "Use a bounded edit next" },
+    ]);
+    expect(state.feedback).toEqual([
+      { source: "verify", mode: "verify", summary: "Run verification.", details: "Task boundary:\n- src/a.ts" },
+    ]);
+  });
+
+  test("does not leak consumed feedback into later prompt creation", () => {
+    const state = {
+      feedback: [{ source: "lint" as const, mode: "work" as const, summary: "Lint errors detected" }],
+    };
+
+    expect(
+      createGenerationInput({
+        baseAgentInput: "USER: fix it",
+        mode: "work",
+        lifecycleState: state,
+      }),
+    ).toContain("Lint errors detected");
+
+    consumeLifecycleFeedback(state, "work");
+
+    expect(
+      createGenerationInput({
+        baseAgentInput: "USER: fix it",
+        mode: "work",
+        lifecycleState: state,
+      }),
+    ).toBe("USER: fix it");
   });
 });

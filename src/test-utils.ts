@@ -9,8 +9,13 @@ import type { ChatMessage, ChatRow } from "./chat-contract";
 import { createMessageHandler } from "./chat-message-handler";
 import { type CreatePickerHandlersInput, createPickerHandlers } from "./chat-picker-handlers";
 import type { Client, StreamEvent } from "./client-contract";
+import { createErrorStats } from "./error-handling";
+import type { RunContext } from "./lifecycle-contract";
+import { defaultLifecyclePolicy } from "./lifecycle-policy";
+import { createEmptyPromptBreakdownTotals } from "./lifecycle-usage";
 import type { MemorySource } from "./memory-contract";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
+import { createSessionContext } from "./tool-guards";
 
 export function tempDir(): { createDir: (prefix: string) => string; cleanupDirs: () => void } {
   const dirs: string[] = [];
@@ -401,6 +406,53 @@ export type CommandContextSpies = {
   currentSessionIds: string[];
   tokenUsageSets: SessionTokenUsageEntry[][];
 };
+
+export function createRunContext(overrides: Partial<RunContext> = {}): RunContext {
+  return {
+    request: { model: "gpt-5-mini", message: "test", history: [] },
+    workspace: undefined,
+    taskId: undefined,
+    soulPrompt: "",
+    emit: () => {},
+    debug: () => {},
+    initialMode: "work",
+    tools: {} as RunContext["tools"],
+    mode: "work",
+    agentForMode: "work",
+    model: "gpt-5-mini",
+    session: createSessionContext(),
+    agent: {} as RunContext["agent"],
+    baseAgentInput: "test prompt",
+    policy: defaultLifecyclePolicy,
+    promptUsage: {
+      inputTokens: 0,
+      systemPromptTokens: 0,
+      toolTokens: 0,
+      memoryTokens: 0,
+      messageTokens: 0,
+      inputBudgetTokens: 8000,
+      inputTruncated: false,
+      includedHistoryMessages: 0,
+      totalHistoryMessages: 0,
+    },
+    lifecycleState: { feedback: [], verifyOutcome: undefined, repeatedFailure: undefined },
+    observedTools: new Set(),
+    modelCallCount: 1,
+    inputTokensAccum: 0,
+    outputTokensAccum: 0,
+    promptBreakdownTotals: createEmptyPromptBreakdownTotals(),
+    streamingChars: 0,
+    lastUsageEmitChars: 0,
+    generationAttempt: 0,
+    regenerationCount: 0,
+    regenerationLimitHit: false,
+    errorStats: createErrorStats(),
+    nativeIdQueue: new Map(),
+    toolCallStartedAt: new Map(),
+    toolOutputHandler: null,
+    ...overrides,
+  };
+}
 
 export function createCommandContext(
   text: string,

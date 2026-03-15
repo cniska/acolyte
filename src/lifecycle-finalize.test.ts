@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { parseChatResponse, parseStreamEvent } from "./client-contract";
+import { phaseFinalize } from "./lifecycle-finalize";
+import { createRunContext } from "./test-utils";
 
 describe("ChatResponse error field", () => {
   test("parseChatResponse preserves error field", () => {
@@ -57,5 +59,95 @@ describe("ChatResponse error field", () => {
       completionTokens: 4,
     });
     expect(event).toEqual({ type: "usage", inputTokens: 9, outputTokens: 4 });
+  });
+});
+
+describe("phaseFinalize", () => {
+  test("uses estimated prompt tokens when stream usage is unavailable", () => {
+    const ctx = createRunContext({
+      promptUsage: {
+        inputTokens: 12,
+        systemPromptTokens: 48,
+        toolTokens: 20,
+        memoryTokens: 8,
+        messageTokens: 12,
+        inputBudgetTokens: 100,
+        inputTruncated: false,
+        includedHistoryMessages: 3,
+        totalHistoryMessages: 6,
+      },
+      inputTokensAccum: 0,
+      outputTokensAccum: 0,
+      result: { text: "done", toolCalls: [] },
+    });
+
+    const response = phaseFinalize(ctx);
+
+    expect(response.usage?.inputTokens).toBe(80);
+    expect(response.usage?.totalTokens).toBe(81);
+    expect(response.promptBreakdown?.usedTokens).toBe(80);
+  });
+
+  test("includes promptBreakdown when currentError is set", () => {
+    const ctx = createRunContext({
+      promptUsage: {
+        inputTokens: 12,
+        systemPromptTokens: 48,
+        toolTokens: 20,
+        memoryTokens: 8,
+        messageTokens: 12,
+        inputBudgetTokens: 100,
+        inputTruncated: false,
+        includedHistoryMessages: 3,
+        totalHistoryMessages: 6,
+      },
+      inputTokensAccum: 0,
+      outputTokensAccum: 0,
+      currentError: { message: "tool failed", category: "other" },
+      result: { text: "", toolCalls: [] },
+    });
+
+    const response = phaseFinalize(ctx);
+
+    expect(response.error).toBe("tool failed");
+    expect(response.promptBreakdown).toBeDefined();
+    expect(response.promptBreakdown?.usedTokens).toBe(80);
+  });
+
+  test("uses accumulated prompt breakdown totals across multiple model calls", () => {
+    const ctx = createRunContext({
+      baseAgentInput: "USER: first prompt",
+      promptUsage: {
+        inputTokens: 12,
+        systemPromptTokens: 48,
+        toolTokens: 20,
+        memoryTokens: 8,
+        messageTokens: 12,
+        inputBudgetTokens: 100,
+        inputTruncated: false,
+        includedHistoryMessages: 3,
+        totalHistoryMessages: 6,
+      },
+      inputTokensAccum: 120,
+      promptBreakdownTotals: {
+        systemTokens: 80,
+        toolTokens: 40,
+        memoryTokens: 16,
+        messageTokens: 34,
+      },
+      result: { text: "done", toolCalls: [] },
+    });
+
+    const response = phaseFinalize(ctx);
+
+    expect(response.usage?.inputTokens).toBe(170);
+    expect(response.promptBreakdown).toEqual({
+      budgetTokens: 100,
+      usedTokens: 170,
+      systemTokens: 80,
+      toolTokens: 40,
+      memoryTokens: 16,
+      messageTokens: 34,
+    });
   });
 });
