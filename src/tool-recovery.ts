@@ -30,8 +30,13 @@ export type EditFileRecovery = {
   resolvesOn?: ToolRecoveryResolution[];
 } & ToolRecoveryHints;
 
-export type EditCodeRecoveryKind = "fix-replacement" | "refine-pattern" | "use-supported-file";
+export type EditCodeRecoveryKind =
+  | "clarify-rename-target"
+  | "fix-replacement"
+  | "refine-pattern"
+  | "use-supported-file";
 export const EDIT_CODE_RECOVERY_KINDS: readonly EditCodeRecoveryKind[] = [
+  "clarify-rename-target",
   "fix-replacement",
   "refine-pattern",
   "use-supported-file",

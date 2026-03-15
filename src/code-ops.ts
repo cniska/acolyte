@@ -31,11 +31,17 @@ function editCodeRecovery(path: string, kind: EditCodeRecoveryKind): ToolRecover
         tool: "edit-code",
         kind,
         summary: "Your AST pattern did not match the current file.",
-        instruction:
-          `Keep the change in '${path}' and refine the ast-grep pattern to match the actual syntax in the latest read-file output. ` +
-          'For a helper-scoped variable rename, prefer a structured rename edit like { op: "rename", from, to, withinSymbol } instead of broadening to a larger pattern. ' +
-          "Do not switch to plain-text snippets unless you are changing to edit-file.",
+        instruction: `Keep the change in '${path}' and refine the ast-grep pattern to match the actual syntax in the latest read-file output. For a helper-scoped variable rename, prefer a structured rename edit like { op: "rename", from, to, withinSymbol } instead of broadening to a larger pattern. Do not switch to plain-text snippets unless you are changing to edit-file.`,
         nextTool: "read-file",
+        targetPaths: [path],
+      };
+    case "clarify-rename-target":
+      return {
+        tool: "edit-code",
+        kind,
+        summary: "This scoped rename matches both local and member symbols.",
+        instruction: `Keep the change in '${path}' and retry the rename with an explicit target. Use target: "local" to rename the local symbol, or target: "member" to rename the declared member and its this.member references.`,
+        nextTool: "edit-code",
         targetPaths: [path],
       };
     case "fix-replacement":
@@ -43,9 +49,7 @@ function editCodeRecovery(path: string, kind: EditCodeRecoveryKind): ToolRecover
         tool: "edit-code",
         kind,
         summary: "Your edit-code replacement shape is invalid for this pattern.",
-        instruction:
-          `Keep the change in '${path}' and fix the replacement to use only metavariables captured by the pattern. ` +
-          "If the rewrite needs variadic or plain-text editing, switch to edit-file.",
+        instruction: `Keep the change in '${path}' and fix the replacement to use only metavariables captured by the pattern. If the rewrite needs variadic or plain-text editing, switch to edit-file.`,
         nextTool: "edit-code",
         targetPaths: [path],
       };
@@ -273,8 +277,99 @@ function renameRule(from: string): Record<string, unknown> {
     any: [
       { all: [{ kind: "identifier" }, { regex: `^${escapeRegex(from)}$` }] },
       { all: [{ kind: "property_identifier" }, { regex: `^${escapeRegex(from)}$` }] },
+      { all: [{ kind: "shorthand_property_identifier" }, { regex: `^${escapeRegex(from)}$` }] },
+      { all: [{ kind: "shorthand_property_identifier_pattern" }, { regex: `^${escapeRegex(from)}$` }] },
     ],
   };
+}
+
+type RenameMode = "local" | "member" | "text";
+
+function classifyRenameDeclaration(node: napi.SgNode): RenameMode | null {
+  const parent = node.parent();
+  if (!parent) return null;
+  if (node.kind() === "identifier") {
+    if (parent.kind() === "variable_declarator") return "local";
+    if (
+      parent.kind() === "required_parameter" ||
+      parent.kind() === "optional_parameter" ||
+      parent.kind() === "rest_pattern" ||
+      parent.kind() === "formal_parameters" ||
+      parent.kind() === "function_declaration"
+    ) {
+      return "local";
+    }
+  }
+  if (node.kind() === "property_identifier") {
+    if (
+      parent.kind() === "field_definition" ||
+      parent.kind() === "public_field_definition" ||
+      parent.kind() === "method_definition"
+    ) {
+      return "member";
+    }
+  }
+  if (node.kind() === "shorthand_property_identifier_pattern") return "local";
+  return null;
+}
+
+function resolveRenameMode(matches: napi.SgNode[]): RenameMode {
+  let mode: RenameMode | null = null;
+  for (const match of matches) {
+    const classified = classifyRenameDeclaration(match);
+    if (!classified) continue;
+    if (!mode) {
+      mode = classified;
+      continue;
+    }
+    if (mode !== classified) return "text";
+  }
+  return mode ?? "text";
+}
+
+function hasRenameModeConflict(matches: napi.SgNode[]): boolean {
+  let sawLocal = false;
+  let sawMember = false;
+  for (const match of matches) {
+    const classified = classifyRenameDeclaration(match);
+    if (classified === "local") sawLocal = true;
+    if (classified === "member") sawMember = true;
+  }
+  return sawLocal && sawMember;
+}
+
+function requestedRenameMode(edit: EditCodeRenameEdit): RenameMode | null {
+  if (edit.target === "local") return "local";
+  if (edit.target === "member") return "member";
+  return null;
+}
+
+function isThisMemberReference(node: napi.SgNode): boolean {
+  if (node.kind() !== "property_identifier") return false;
+  const parent = node.parent();
+  if (!parent || parent.kind() !== "member_expression") return false;
+  const objectNode = parent.child(0);
+  return objectNode?.kind() === "this" || objectNode?.kind() === "super";
+}
+
+function isLocalRenameTarget(node: napi.SgNode): boolean {
+  if (node.kind() === "identifier") return true;
+  if (node.kind() === "shorthand_property_identifier") return true;
+  if (node.kind() === "shorthand_property_identifier_pattern") return true;
+  return false;
+}
+
+function isMemberRenameTarget(node: napi.SgNode): boolean {
+  const declarationKind = classifyRenameDeclaration(node);
+  if (declarationKind === "member") return true;
+  return isThisMemberReference(node);
+}
+
+function renameReplacement(node: napi.SgNode, from: string, to: string): string {
+  if (node.kind() === "shorthand_property_identifier" || node.kind() === "shorthand_property_identifier_pattern") {
+    return `${from}: ${to}`;
+  }
+  return to;
 }
 
 export type EditCodeResult = {
@@ -358,6 +453,25 @@ export async function editCode(input: {
         editCodeRecovery(input.path, "refine-pattern"),
       );
     }
+    if (isRenameEdit(edit) && !edit.target && hasRenameModeConflict(matches)) {
+      throw createToolError(
+        TOOL_ERROR_CODES.editCodeNoMatch,
+        `Scoped rename target is ambiguous for ${edit.from}; retry with target: "local" or target: "member"${edit.withinSymbol ? ` withinSymbol: ${edit.withinSymbol}` : ""}`,
+        undefined,
+        editCodeRecovery(input.path, "clarify-rename-target"),
+      );
+    }
+    const renameMode = isRenameEdit(edit) ? (requestedRenameMode(edit) ?? resolveRenameMode(matches)) : null;
+    if (renameMode === "local") matches = matches.filter(isLocalRenameTarget);
+    if (renameMode === "member") matches = matches.filter(isMemberRenameTarget);
+    if (matches.length === 0) {
+      throw createToolError(
+        TOOL_ERROR_CODES.editCodeNoMatch,
+        `No AST matches found for ${isRenameEdit(edit) ? "rename target" : "rule"}: ${pattern}${edit.within ? ` within: ${edit.within}` : ""}${edit.withinSymbol ? ` withinSymbol: ${edit.withinSymbol}` : ""}${isRenameEdit(edit) && edit.target ? ` target: ${edit.target}` : ""}`,
+        undefined,
+        editCodeRecovery(input.path, "refine-pattern"),
+      );
+    }
     totalMatches += matches.length;
 
     const patternMetavars = isRenameEdit(edit)
@@ -382,7 +496,11 @@ export async function editCode(input: {
         replaced = replaced.replaceAll(metavar, resolveReplacementMetavariable(match, metavar, current));
       }
       const range = match.range();
-      replacements.push({ start: range.start.index, end: range.end.index, replacement: replaced });
+      replacements.push({
+        start: range.start.index,
+        end: range.end.index,
+        replacement: isRenameEdit(edit) ? renameReplacement(match, edit.from, edit.to) : replaced,
+      });
     }
 
     replacements.sort((a, b) => b.start - a.start);

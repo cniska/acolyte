@@ -375,6 +375,37 @@ describe("toolRecoveryEvaluator", () => {
     }
   });
 
+  test("returns regenerate when edit-code rename target is ambiguous", () => {
+    const ctx = createRunContext({
+      initialMode: "work",
+      currentError: {
+        code: TOOL_ERROR_CODES.editCodeNoMatch,
+        tool: "edit-code",
+        message:
+          'edit-code failed: [E_EDIT_CODE_NO_MATCH] Scoped rename target is ambiguous for alias; retry with target: "local" or target: "member" withinSymbol: ProviderConfig',
+        recovery: {
+          tool: "edit-code",
+          kind: "clarify-rename-target",
+          summary: "This scoped rename matches both local and member symbols.",
+          instruction: 'Retry the rename with target: "local" or target: "member".',
+          nextTool: "edit-code",
+          targetPaths: ["src/provider-config.ts"],
+        },
+      },
+      result: { text: "Attempted rename.", toolCalls: [] },
+    });
+    const action = toolRecoveryEvaluator.evaluate(ctx);
+    expect(action.type).toBe("regenerate");
+    if (action.type === "regenerate") {
+      expect(action.feedback?.source).toBe("tool-recovery");
+      expect(action.feedback?.summary).toBe("This scoped rename matches both local and member symbols.");
+      expect(action.feedback?.details).toContain('target: "local"');
+      expect(action.feedback?.details).toContain("Suggested next tool: edit-code");
+      expect(action.feedback?.details).toContain("Suggested paths: src/provider-config.ts");
+      expect(action.feedback?.instruction).toContain('target: "member"');
+    }
+  });
+
   test("returns regenerate when scan-code exposes structured recovery", () => {
     const ctx = createRunContext({
       initialMode: "work",

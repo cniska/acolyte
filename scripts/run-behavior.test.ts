@@ -37,14 +37,16 @@ describe("behavior scenarios", () => {
     expect(() => parseBehaviorScenarioId("wrong")).toThrow();
   });
 
-  test("includes bounded-return-fix, post-success-stop, scan-code-yaml-recovery, search-files-no-match-recovery, two-file-deps-rename, scoped-edit-code-rename, class-field-edit-code-rename, and structured-edit-code-replace scenarios", () => {
+  test("includes bounded-return-fix, post-success-stop, scan-code-yaml-recovery, search-files-no-match-recovery, two-file-deps-rename, scoped-edit-code-rename, scoped-edit-code-rename-shorthand, class-field-edit-code-rename, scoped-edit-code-rename-target, and structured-edit-code-replace scenarios", () => {
     expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "bounded-return-fix")).toBe(true);
     expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "post-success-stop")).toBe(true);
     expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "scan-code-yaml-recovery")).toBe(true);
     expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "search-files-no-match-recovery")).toBe(true);
     expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "two-file-deps-rename")).toBe(true);
     expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "scoped-edit-code-rename")).toBe(true);
+    expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "scoped-edit-code-rename-shorthand")).toBe(true);
     expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "class-field-edit-code-rename")).toBe(true);
+    expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "scoped-edit-code-rename-target")).toBe(true);
     expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "structured-edit-code-replace")).toBe(true);
   });
 });
