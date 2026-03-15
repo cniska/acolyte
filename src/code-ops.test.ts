@@ -222,6 +222,37 @@ describe("editCode", () => {
     expect(content).toContain('const alias = "outside";');
   });
 
+  test("scoped member rename updates declared methods and this-method calls only", async () => {
+    const filePath = `/tmp/acolyte-test-ast-class-method-rename-${testUuid()}.js`;
+    tempFiles.push(filePath);
+    await writeFile(
+      filePath,
+      [
+        "class ProviderConfig {",
+        "  label() {",
+        "    return this.labelText + config.label;",
+        "  }",
+        "  render() {",
+        "    return this.label();",
+        "  }",
+        "}",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    const result = await editCode({
+      workspace: WORKSPACE,
+      path: filePath,
+      edits: [{ op: "rename", from: "label", to: "displayLabel", withinSymbol: "ProviderConfig" }],
+    });
+    expect(result.matches).toBe(2);
+    const content = await readFile(filePath, "utf8");
+    expect(content).toContain("displayLabel() {");
+    expect(content).toContain("return this.labelText + config.label;");
+    expect(content).toContain("return this.displayLabel();");
+    expect(content).not.toContain("config.displayLabel");
+  });
+
   test("scoped local rename rewrites shorthand destructuring bindings", async () => {
     const filePath = `/tmp/acolyte-test-ast-local-rename-destructure-${testUuid()}.ts`;
     tempFiles.push(filePath);
