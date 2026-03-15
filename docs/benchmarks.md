@@ -3,7 +3,7 @@
 Measured comparisons of Acolyte against prominent open-source AI coding agents.
 All metrics are from source code analysis — no opinions, just counts.
 
-All metrics extracted with [`scripts/benchmark.ts`](../scripts/benchmark.ts). Files over 10k lines are excluded (generated/embedded data). Dependencies are direct only.
+All metrics extracted with [`scripts/benchmark.ts`](../scripts/benchmark.ts).
 
 ## Projects Compared
 
@@ -68,7 +68,7 @@ Near-zero tech debt markers (2 total). The guard and evaluator system catches is
 | Test lines | 16,433 | 12,410 | 41,784 | 36,020 | 5,579 | 143,114 | 82,506 | 48,170 | 518,527 |
 | Test / source ratio | **0.77** | 0.48 | 0.19 | 0.36 | 0.05 | **1.17** | 0.36 | 0.24 | 0.76 |
 
-Acolyte maintains a 0.79 test/source ratio because the lifecycle phases, guards, and tools are each independent modules with clean interfaces — testable by design, not by retrofit. Four dedicated test types: unit (`*.test.ts`), integration (`*.int.test.ts`), TUI visual regression (`*.tui.test.ts`), and performance (`*.perf.test.ts`). OpenHands leads on raw ratio. Goose has notably low test density.
+Acolyte maintains a 0.77 test/source ratio because the lifecycle phases, guards, and tools are each independent modules with clean interfaces — testable by design, not by retrofit. Four dedicated test types: unit (`*.test.ts`), integration (`*.int.test.ts`), TUI visual regression (`*.tui.test.ts`), and performance (`*.perf.test.ts`). OpenHands leads on raw ratio. Goose has notably low test density.
 
 ## Module Cohesion
 
@@ -97,8 +97,8 @@ Acolyte validates at boundaries with Zod `.safeParse()` at 11x+ the rate of most
 |---|---|---|---|---|---|---|---|---|---|
 | Type safety | Best | Clean | Weak | Mid | Unwrap-heavy | Type-ignore-heavy | Weakest | Mid | Good |
 | Tech debt | Zero | Low | Low | Zero | Low | Mid | Highest | Mid | Zero |
-| Test density | High (0.79) | Mid (0.48) | Low (0.20) | Mid (0.36) | Lowest (0.05) | Highest (1.17) | Mid (0.36) | Low (0.24) | High (0.76) |
-| Module size | Smallest (128) | Mid (247) | Mid (204) | Mid (254) | Largest (374) | Mid (174) | Mid (158) | Mid (165) | Mid (181) |
+| Test density | High (0.77) | Mid (0.48) | Low (0.19) | Mid (0.36) | Lowest (0.05) | Highest (1.17) | Mid (0.36) | Low (0.24) | High (0.76) |
+| Module size | Smallest (127) | Mid (247) | Mid (204) | Mid (254) | Largest (374) | Mid (174) | Mid (158) | Mid (165) | Mid (181) |
 | Dependencies | Lightest (18) | Light (52) | Heavy (252) | Light (69) | Heavy (154) | Mid (90) | Heavy (350) | Heavy (225) | Heavy (156) |
 | Maturity | New | Shipped | Shipped | Shipped | Shipped | Shipped | Shipped | Shipped | Shipped |
 
