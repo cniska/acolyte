@@ -3,6 +3,12 @@ import type { ToolOutput } from "./tool-output-content";
 
 export type ToolOutputListener = (event: { toolName: string; content: ToolOutput; toolCallId?: string }) => void;
 
+export type UnifiedDiffSummary = {
+  files: number;
+  added: number;
+  removed: number;
+};
+
 export const TOOL_OUTPUT_LIMITS = {
   files: 5,
   inlineFiles: 3,
@@ -11,6 +17,45 @@ export const TOOL_OUTPUT_LIMITS = {
   diff: 64,
   status: 6,
 } as const;
+
+const NUMBERED_DIFF_PREVIEW_MAX_LINES = 160;
+const NUMBERED_DIFF_SOURCE_MAX_LINES = NUMBERED_DIFF_PREVIEW_MAX_LINES * 2;
+
+export function summarizeUnifiedDiff(rawResult: string): UnifiedDiffSummary {
+  let files = 0;
+  let added = 0;
+  let removed = 0;
+  for (const line of rawResult.split("\n")) {
+    if (line.startsWith("diff --git ")) {
+      files += 1;
+      continue;
+    }
+    if (line.startsWith("+++ ") || line.startsWith("--- ")) continue;
+    if (line.startsWith("+")) {
+      added += 1;
+      continue;
+    }
+    if (line.startsWith("-")) removed += 1;
+  }
+  return { files, added, removed };
+}
+
+export function createDiffSummaryEmitter<TToolName extends string>(input: {
+  toolName: TToolName;
+  label: string;
+  onOutput: ToolOutputListener;
+}): (path: string, rawResult: string, toolCallId: string) => void {
+  const { toolName, label, onOutput } = input;
+  return (path, rawResult, toolCallId) => {
+    const { files, added, removed } = summarizeUnifiedDiff(rawResult);
+    const touchedFiles = files > 0 ? files : 1;
+    onOutput({
+      toolName,
+      content: { kind: "edit-header", label, path, files: touchedFiles, added, removed },
+      toolCallId,
+    });
+  };
+}
 
 export function emitHeadTailLines(
   toolName: string,
@@ -364,8 +409,8 @@ function unifiedDiffLines(rawResult: string, maxLines = 120): string[] {
   return lines;
 }
 
-export function numberedUnifiedDiffLines(rawResult: string, maxLines = 160): ToolOutput[] {
-  const lines = unifiedDiffLines(rawResult, Math.max(maxLines * 2, 240));
+export function numberedUnifiedDiffLines(rawResult: string): ToolOutput[] {
+  const lines = unifiedDiffLines(rawResult, NUMBERED_DIFF_SOURCE_MAX_LINES);
   if (lines.length === 0) return [];
   const rendered: ToolOutput[] = [];
   let oldLine = 0;
@@ -443,9 +488,12 @@ export function numberedUnifiedDiffLines(rawResult: string, maxLines = 160): Too
     }
   }
   if (skippedCount > 0) filteredOutput.push({ kind: "truncated", count: skippedCount, unit: "lines" });
-  if (filteredOutput.length > maxLines) {
-    const omitted = filteredOutput.length - maxLines;
-    return [...filteredOutput.slice(0, maxLines), { kind: "truncated", count: omitted, unit: "lines" }];
+  if (filteredOutput.length > NUMBERED_DIFF_PREVIEW_MAX_LINES) {
+    const omitted = filteredOutput.length - NUMBERED_DIFF_PREVIEW_MAX_LINES;
+    return [
+      ...filteredOutput.slice(0, NUMBERED_DIFF_PREVIEW_MAX_LINES),
+      { kind: "truncated", count: omitted, unit: "lines" },
+    ];
   }
   return filteredOutput;
 }

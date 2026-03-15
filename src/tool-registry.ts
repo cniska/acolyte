@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import { invariant } from "./assert";
+import { createCodeToolkit } from "./code-toolkit";
 import { createFileToolkit } from "./file-toolkit";
 import { createGitToolkit } from "./git-toolkit";
 import { createShellToolkit } from "./shell-toolkit";
@@ -13,6 +14,7 @@ import { createWebToolkit } from "./web-toolkit";
 type ToolMap = Record<string, ToolDefinition<any>>;
 
 type RegisteredToolkit = ReturnType<typeof createFileToolkit> &
+  ReturnType<typeof createCodeToolkit> &
   ReturnType<typeof createWebToolkit> &
   ReturnType<typeof createShellToolkit> &
   ReturnType<typeof createGitToolkit>;
@@ -30,6 +32,10 @@ export const TOOLKIT_REGISTRY: {
   {
     id: "file",
     createToolkit: (input) => createFileToolkit(input),
+  },
+  {
+    id: "code",
+    createToolkit: (input) => createCodeToolkit(input),
   },
   {
     id: "web",

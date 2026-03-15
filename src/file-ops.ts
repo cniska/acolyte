@@ -1,7 +1,8 @@
-import { mkdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
+import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import * as napi from "@ast-grep/napi";
-import { createToolError, TOOL_ERROR_CODES, type ToolRecovery } from "./error-primitives";
+import { TOOL_ERROR_CODES } from "./error-contract";
+import { createToolError } from "./tool-error";
+import type { EditFileRecoveryKind, ToolRecovery } from "./tool-recovery";
 
 /** Owner-only read/write. Use for files containing secrets or sensitive metadata. */
 export const PRIVATE_FILE_MODE = 0o600;
@@ -12,7 +13,6 @@ import {
   createUnifiedDeleteDiff,
   displayPathForDiff,
   ensurePathWithinAllowedRoots,
-  IGNORED_DIRS,
   isBinaryExtension,
   resolveSearchScopeFiles,
   toInt,
@@ -29,7 +29,7 @@ const MAX_FIND_REPLACE_CHARS = 1600;
 const MAX_BATCH_EDIT_LINES = 32;
 const MAX_BATCH_EDIT_CHARS = 2400;
 
-function editFileRecovery(path: string, kind: ToolRecovery["kind"]): ToolRecovery {
+function editFileRecovery(path: string, kind: EditFileRecoveryKind): ToolRecovery {
   switch (kind) {
     case "disambiguate-match":
       return {
@@ -39,6 +39,8 @@ function editFileRecovery(path: string, kind: ToolRecovery["kind"]): ToolRecover
         instruction:
           `Keep the change in '${path}' and make one bounded edit with a more unique snippet or a single line-range edit. ` +
           "If the rewrite is genuinely structural, switch to edit-code with a real ast-grep pattern.",
+        nextTool: "read-file",
+        targetPaths: [path],
       };
     case "refresh-snippet":
       return {
@@ -48,6 +50,8 @@ function editFileRecovery(path: string, kind: ToolRecovery["kind"]): ToolRecover
         instruction:
           `Keep the change in '${path}' and rebuild the next edit from the latest read-file output or use a bounded line-range edit. ` +
           "Do not retry the same stale find text.",
+        nextTool: "read-file",
+        targetPaths: [path],
       };
     case "shrink-edit":
       return {
@@ -57,6 +61,8 @@ function editFileRecovery(path: string, kind: ToolRecovery["kind"]): ToolRecover
         instruction:
           `Keep the change in '${path}' and shrink it: use short unique find snippets, a bounded line-range edit covering only the changed region, or use edit-code for a structural rewrite. ` +
           "Do not pass large file blocks as find or replacement text.",
+        nextTool: "read-file",
+        targetPaths: [path],
       };
     default:
       return kind satisfies never;
@@ -349,147 +355,6 @@ export async function writeTextFile(input: {
   return parts.join("\n");
 }
 
-let dynamicLangsRegistered = false;
-
-async function ensureDynamicLanguages(): Promise<void> {
-  if (dynamicLangsRegistered) return;
-  const langs: Record<string, unknown> = {};
-  try {
-    const { default: python } = await import("@ast-grep/lang-python");
-    langs.python = python;
-  } catch {
-    /* optional */
-  }
-  try {
-    const { default: rust } = await import("@ast-grep/lang-rust");
-    langs.rust = rust;
-  } catch {
-    /* optional */
-  }
-  try {
-    const { default: go } = await import("@ast-grep/lang-go");
-    langs.go = go;
-  } catch {
-    /* optional */
-  }
-  if (Object.keys(langs).length > 0) {
-    // biome-ignore lint/suspicious/noExplicitAny: ast-grep dynamic language API has loose types
-    napi.registerDynamicLanguage(langs as any);
-  }
-  dynamicLangsRegistered = true;
-}
-
-const LANGUAGE_MAP: Record<string, string> = {
-  ".ts": "TypeScript",
-  ".tsx": "Tsx",
-  ".js": "JavaScript",
-  ".jsx": "JavaScript",
-  ".html": "Html",
-  ".css": "Css",
-  ".py": "python",
-  ".pyi": "python",
-  ".rs": "rust",
-  ".go": "go",
-};
-
-function languageFromPath(filePath: string): string | undefined {
-  const dot = filePath.lastIndexOf(".");
-  if (dot < 0) return undefined;
-  return LANGUAGE_MAP[filePath.slice(dot).toLowerCase()];
-}
-
-function isParseable(filePath: string): boolean {
-  const dot = filePath.lastIndexOf(".");
-  return dot >= 0 && filePath.slice(dot).toLowerCase() in LANGUAGE_MAP;
-}
-
-function extractMetavariables(pattern: string): string[] {
-  const matches = pattern.match(/\${1,3}[A-Z_][A-Z0-9_]*/g);
-  if (!matches) return [];
-  return Array.from(new Set(matches));
-}
-
-export async function editCode(input: {
-  workspace: string;
-  path: string;
-  edits: Array<{ pattern: string; replacement: string }>;
-  dryRun?: boolean;
-}): Promise<string> {
-  const absPath = ensurePathWithinAllowedRoots(input.path, "AST edit", input.workspace);
-  const pathStats = await stat(absPath);
-  if (!pathStats.isFile()) throw new Error(`edit-code requires a file path, got: ${input.path}`);
-  if (!isParseable(absPath)) {
-    throw new Error(`edit-code requires a supported code file, got: ${input.path}`);
-  }
-  const original = await readFile(absPath, "utf8");
-  await ensureDynamicLanguages();
-
-  const langName = languageFromPath(absPath);
-  if (!langName) {
-    throw new Error(`edit-code requires a supported code file, got: ${input.path}`);
-  }
-  const langEnum = napi.Lang[langName as keyof typeof napi.Lang];
-  let current = original;
-  let totalMatches = 0;
-
-  // Apply each pattern sequentially (reparse between patterns).
-  for (const edit of input.edits) {
-    const tree = napi.parse(langEnum ?? langName, current);
-    const matches = tree.root().findAll({ rule: { pattern: edit.pattern } });
-    if (matches.length === 0) throw new Error(`No AST matches found for pattern: ${edit.pattern}`);
-    totalMatches += matches.length;
-
-    const patternMetavars = extractMetavariables(edit.pattern);
-    const replacementMetavars = extractMetavariables(edit.replacement);
-    const variadicReplacementMetavars = replacementMetavars.filter((metavar) => metavar.startsWith("$$$"));
-    if (variadicReplacementMetavars.length > 0) {
-      throw new Error(
-        `edit-code does not support variadic replacement metavariables: ${variadicReplacementMetavars.join(", ")}. Use edit-file for this rewrite.`,
-      );
-    }
-    const unknownReplacementMetavars = replacementMetavars.filter((metavar) => !patternMetavars.includes(metavar));
-    if (unknownReplacementMetavars.length > 0) {
-      throw new Error(
-        `Replacement references metavariables not present in pattern: ${unknownReplacementMetavars.join(", ")}`,
-      );
-    }
-    const replacements: Array<{ start: number; end: number; replacement: string }> = [];
-    for (const match of matches) {
-      let replaced = edit.replacement;
-      for (const metavar of replacementMetavars) {
-        const captured = match.getMatch(metavar.replace(/^\$+/, ""));
-        if (!captured) {
-          throw new Error(`Could not resolve metavariable ${metavar} from pattern: ${edit.pattern}`);
-        }
-        replaced = replaced.replaceAll(metavar, captured.text());
-      }
-      const range = match.range();
-      replacements.push({ start: range.start.index, end: range.end.index, replacement: replaced });
-    }
-
-    replacements.sort((a, b) => b.start - a.start);
-    for (const r of replacements) {
-      current = current.slice(0, r.start) + r.replacement + current.slice(r.end);
-    }
-  }
-
-  if (!input.dryRun) {
-    await mkdir(dirname(absPath), { recursive: true });
-    await writeFile(absPath, current, "utf8");
-  }
-
-  const relativePath = displayPathForDiff(absPath, input.workspace);
-  const diff = createDiff(relativePath, original, current);
-  return [
-    `path=${absPath}`,
-    `edits=${input.edits.length}`,
-    `matches=${totalMatches}`,
-    `dry_run=${input.dryRun ? "true" : "false"}`,
-    "",
-    diff,
-  ].join("\n");
-}
-
 export async function deleteTextFile(input: { workspace: string; path: string; dryRun?: boolean }): Promise<string> {
   const absPath = ensurePathWithinAllowedRoots(input.path, "Delete", input.workspace);
   const previousContent = await readFile(absPath, "utf8");
@@ -504,130 +369,4 @@ export async function deleteTextFile(input: { workspace: string; path: string; d
     "",
     diff,
   ].join("\n");
-}
-
-export async function scanCode(input: {
-  workspace: string;
-  paths: string[];
-  pattern: string | string[];
-  language?: string;
-  maxResults?: number;
-}): Promise<string> {
-  const maxResults = input.maxResults ?? 50;
-  const patterns = Array.isArray(input.pattern) ? input.pattern : [input.pattern];
-
-  await ensureDynamicLanguages();
-
-  type Match = { relPath: string; line: number; text: string; captures: Record<string, string> };
-  type PatternResult = { pattern: string; matches: Match[] };
-  const results: PatternResult[] = patterns.map((p) => ({ pattern: p, matches: [] }));
-
-  const totalMatches = () => results.reduce((sum, r) => sum + r.matches.length, 0);
-
-  const scanFile = (relPath: string, content: string, lang: string): void => {
-    const langEnum = napi.Lang[lang as keyof typeof napi.Lang];
-    let tree: ReturnType<typeof napi.parse>;
-    try {
-      tree = napi.parse(langEnum ?? lang, content);
-    } catch {
-      return; // skip unparseable files
-    }
-    for (const pr of results) {
-      if (totalMatches() >= maxResults) return;
-      const metavars = extractMetavariables(pr.pattern);
-      const found = tree.root().findAll({ rule: { pattern: pr.pattern } });
-      for (const m of found) {
-        if (totalMatches() >= maxResults) return;
-        const range = m.range();
-        const text = m.text().split("\n")[0] ?? "";
-        const captures: Record<string, string> = {};
-        for (const mv of metavars) {
-          const captured = m.getMatch(mv.slice(1));
-          if (captured) captures[mv] = captured.text();
-        }
-        pr.matches.push({ relPath, line: range.start.line + 1, text, captures });
-      }
-    }
-  };
-
-  let scanned = 0;
-
-  const scanPath = async (rawPath: string) => {
-    const absPath = ensurePathWithinAllowedRoots(rawPath, "Scan", input.workspace);
-    const info = await stat(absPath);
-
-    if (info.isFile()) {
-      if (!input.language && !isParseable(absPath)) {
-        throw new Error(`scan-code requires a supported code file, got: ${rawPath}`);
-      }
-      const content = await readFile(absPath, "utf8");
-      const lang = input.language ?? languageFromPath(absPath);
-      if (!lang) {
-        throw new Error(`scan-code requires a supported code file, got: ${rawPath}`);
-      }
-      scanned++;
-      scanFile(displayPathForDiff(absPath, input.workspace), content, lang);
-    } else if (info.isDirectory()) {
-      const { readdir } = await import("node:fs/promises");
-      const stack: string[] = [absPath];
-      const maxFiles = 500;
-      while (stack.length > 0 && scanned < maxFiles && totalMatches() < maxResults) {
-        const dir = stack.pop();
-        if (!dir) break;
-        let entries: Array<{ name: string; isDirectory: () => boolean; isFile: () => boolean }>;
-        try {
-          entries = await readdir(dir, { withFileTypes: true });
-        } catch {
-          continue;
-        }
-        entries.sort((a, b) => a.name.localeCompare(b.name));
-        for (const entry of entries) {
-          if (entry.name.startsWith(".") && entry.isDirectory()) continue;
-          if (entry.isDirectory() && IGNORED_DIRS.has(entry.name)) continue;
-          const abs = join(dir, entry.name);
-          if (entry.isDirectory()) {
-            stack.push(abs);
-          } else if (entry.isFile() && isParseable(abs)) {
-            if (scanned >= maxFiles || totalMatches() >= maxResults) break;
-            const lang = input.language ?? languageFromPath(abs);
-            if (!lang) continue;
-            try {
-              const content = await readFile(abs, "utf8");
-              scanned++;
-              scanFile(displayPathForDiff(abs, input.workspace), content, lang);
-            } catch {
-              /* skip unreadable files */
-            }
-          }
-        }
-      }
-    } else {
-      throw new Error(`Path is not a file or directory: ${absPath}`);
-    }
-  };
-
-  for (const p of input.paths) {
-    if (totalMatches() >= maxResults) break;
-    await scanPath(p);
-  }
-
-  const total = totalMatches();
-  const lines: string[] = [`scanned=${scanned} matches=${total}`];
-  const multi = patterns.length > 1;
-  for (const pr of results) {
-    if (multi) lines.push(`--- pattern: ${pr.pattern} ---`);
-    for (const m of pr.matches) {
-      const truncated = m.text.length > 80 ? `${m.text.slice(0, 77)}...` : m.text;
-      const captureStr =
-        Object.keys(m.captures).length > 0
-          ? `  {${Object.entries(m.captures)
-              .map(([k, v]) => `${k}=${v}`)
-              .join(", ")}}`
-          : "";
-      lines.push(`${m.relPath}:${m.line}: ${truncated}${captureStr}`);
-    }
-    if (multi && pr.matches.length === 0) lines.push("No matches.");
-  }
-  if (!multi && total === 0) lines.push("No matches.");
-  return lines.join("\n");
 }

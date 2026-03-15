@@ -1,27 +1,36 @@
 import { describe, expect, test } from "bun:test";
+import { LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./error-contract";
 import {
   categoryFromErrorCode,
   categoryFromErrorKind,
+  createAppError,
   createErrorStats,
   createStreamError,
   errorCodeFromCategory,
   errorKindFromCategory,
-  parseErrorInfo,
+  parseError,
   recoveryActionForError,
   serializeToolError,
 } from "./error-handling";
-import { createToolError, LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./error-primitives";
+import { createToolError } from "./tool-error";
 
 describe("error handling helpers", () => {
-  test("parseErrorInfo extracts code from coded string", () => {
-    const parsed = parseErrorInfo(`[E_EDIT_FILE_MULTI_MATCH] Find text matched 3 locations`);
+  test("createAppError returns a coded runtime error with meta", () => {
+    const error = createAppError("E_TEST", "boom", { source: "unit" });
+    expect(error).toBeInstanceOf(Error);
+    expect(error.code).toBe("E_TEST");
+    expect(error.meta).toEqual({ source: "unit" });
+  });
+
+  test("parseError extracts code from coded string", () => {
+    const parsed = parseError(`[E_EDIT_FILE_MULTI_MATCH] Find text matched 3 locations`);
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     expect(parsed.value.code).toBe(TOOL_ERROR_CODES.editFileMultiMatch);
   });
 
-  test("parseErrorInfo handles nested object payload", () => {
-    const parsed = parseErrorInfo({
+  test("parseError handles nested object payload", () => {
+    const parsed = parseError({
       error: { message: "timeout", code: LIFECYCLE_ERROR_CODES.timeout, kind: "timeout" },
     });
     expect(parsed.ok).toBe(true);
@@ -31,13 +40,15 @@ describe("error handling helpers", () => {
     expect(parsed.value.kind).toBe("timeout");
   });
 
-  test("parseErrorInfo preserves structured tool recovery metadata", () => {
-    const parsed = parseErrorInfo(
+  test("parseError preserves structured tool recovery metadata", () => {
+    const parsed = parseError(
       createToolError(TOOL_ERROR_CODES.editFileFindNotFound, "stale find", undefined, {
         tool: "edit-file",
         kind: "refresh-snippet",
         summary: "Refresh the snippet.",
         instruction: "Reread the file and rebuild the edit.",
+        nextTool: "read-file",
+        targetPaths: ["src/a.ts"],
       }),
     );
     expect(parsed.ok).toBe(true);
@@ -47,6 +58,8 @@ describe("error handling helpers", () => {
       kind: "refresh-snippet",
       summary: "Refresh the snippet.",
       instruction: "Reread the file and rebuild the edit.",
+      nextTool: "read-file",
+      targetPaths: ["src/a.ts"],
     });
   });
 
@@ -58,6 +71,8 @@ describe("error handling helpers", () => {
           kind: "shrink-edit",
           summary: "Shrink the edit.",
           instruction: "Use smaller snippets.",
+          nextTool: "edit-file",
+          targetPaths: ["src/a.ts"],
         }),
       ),
     ).toEqual({
@@ -69,13 +84,115 @@ describe("error handling helpers", () => {
           kind: "shrink-edit",
           summary: "Shrink the edit.",
           instruction: "Use smaller snippets.",
+          nextTool: "edit-file",
+          targetPaths: ["src/a.ts"],
         },
       },
     });
   });
 
-  test("parseErrorInfo returns invalid payload for unsupported shapes", () => {
-    const parsed = parseErrorInfo({ foo: "bar" });
+  test("parseError preserves structured edit-code recovery metadata", () => {
+    const parsed = parseError(
+      createToolError(TOOL_ERROR_CODES.editCodeNoMatch, "No AST matches found", undefined, {
+        tool: "edit-code",
+        kind: "refine-pattern",
+        summary: "Your AST pattern did not match the current file.",
+        instruction: "Refine the pattern from the latest read-file output.",
+        nextTool: "read-file",
+        targetPaths: ["src/code-ops.ts"],
+      }),
+    );
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.value.recovery).toEqual({
+      tool: "edit-code",
+      kind: "refine-pattern",
+      summary: "Your AST pattern did not match the current file.",
+      instruction: "Refine the pattern from the latest read-file output.",
+      nextTool: "read-file",
+      targetPaths: ["src/code-ops.ts"],
+    });
+  });
+
+  test("serializeToolError preserves structured edit-code recovery metadata", () => {
+    expect(
+      serializeToolError(
+        createToolError(TOOL_ERROR_CODES.editCodeUnsupportedFile, "unsupported file", undefined, {
+          tool: "edit-code",
+          kind: "use-supported-file",
+          summary: "edit-code only works on supported code files.",
+          instruction: "Use a supported code file or switch to edit-file.",
+          nextTool: "edit-file",
+          targetPaths: ["notes.md"],
+        }),
+      ),
+    ).toEqual({
+      error: {
+        message: "unsupported file",
+        code: TOOL_ERROR_CODES.editCodeUnsupportedFile,
+        recovery: {
+          tool: "edit-code",
+          kind: "use-supported-file",
+          summary: "edit-code only works on supported code files.",
+          instruction: "Use a supported code file or switch to edit-file.",
+          nextTool: "edit-file",
+          targetPaths: ["notes.md"],
+        },
+      },
+    });
+  });
+
+  test("parseError preserves structured scan-code recovery metadata", () => {
+    const parsed = parseError(
+      createToolError(TOOL_ERROR_CODES.scanCodeUnsupportedFile, "unsupported file", undefined, {
+        tool: "scan-code",
+        kind: "use-supported-file",
+        summary: "scan-code only works on supported code files.",
+        instruction: "Use scan-code on a supported code file or directory, or switch to search-files.",
+        nextTool: "search-files",
+        targetPaths: ["config/models.yaml"],
+      }),
+    );
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.value.recovery).toEqual({
+      tool: "scan-code",
+      kind: "use-supported-file",
+      summary: "scan-code only works on supported code files.",
+      instruction: "Use scan-code on a supported code file or directory, or switch to search-files.",
+      nextTool: "search-files",
+      targetPaths: ["config/models.yaml"],
+    });
+  });
+
+  test("parseError drops invalid tool recovery hints", () => {
+    const parsed = parseError({
+      error: {
+        message: "unsupported file",
+        code: TOOL_ERROR_CODES.scanCodeUnsupportedFile,
+        recovery: {
+          tool: "scan-code",
+          kind: "use-supported-file",
+          summary: "scan-code only works on supported code files.",
+          instruction: "Use search-files instead.",
+          nextTool: "run-command",
+          targetPaths: ["config/models.yaml", "", 42],
+        },
+      },
+    });
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.value.recovery).toEqual({
+      tool: "scan-code",
+      kind: "use-supported-file",
+      summary: "scan-code only works on supported code files.",
+      instruction: "Use search-files instead.",
+      targetPaths: ["config/models.yaml"],
+    });
+  });
+
+  test("parseError returns invalid payload for unsupported shapes", () => {
+    const parsed = parseError({ foo: "bar" });
     expect(parsed.ok).toBe(false);
   });
 

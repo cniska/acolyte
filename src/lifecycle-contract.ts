@@ -1,12 +1,13 @@
 import type { Agent, AgentMode } from "./agent-contract";
 import type { ChatRequest, ChatResponse } from "./api";
 import type { StreamEvent } from "./client-contract";
+import type { ErrorCode } from "./error-contract";
 import type { ErrorCategory, ErrorSource } from "./error-handling";
-import type { ErrorCode, ToolRecovery } from "./error-primitives";
 import type { LifecyclePolicy } from "./lifecycle-policy";
 import type { PromptBreakdownTotals } from "./lifecycle-usage";
 import type { SessionContext } from "./tool-guards";
 import type { ToolOutput } from "./tool-output-content";
+import type { ToolRecovery } from "./tool-recovery";
 import type { Toolset } from "./tool-registry";
 
 export type LifecycleError = {
@@ -109,7 +110,7 @@ export type VerifyOutcome = {
   error?: LifecycleError;
 };
 
-export type FeedbackSource = "guard" | "lint" | "verify" | "edit-file" | "repeated-failure";
+export type FeedbackSource = "guard" | "lint" | "verify" | "tool-recovery" | "repeated-failure";
 
 export type LifecycleFeedback = {
   source: FeedbackSource;

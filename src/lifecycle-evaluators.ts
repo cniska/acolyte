@@ -38,6 +38,16 @@ export type Evaluator = {
   evaluate: (ctx: EvaluatorContext) => EvalAction;
 };
 
+function formatToolRecovery(message: string, recovery: NonNullable<LifecycleError["recovery"]>): string {
+  const hints: string[] = [];
+  if (recovery.nextTool) hints.push(`Suggested next tool: ${recovery.nextTool}`);
+  if (recovery.targetPaths && recovery.targetPaths.length > 0) {
+    hints.push(`Suggested paths: ${recovery.targetPaths.join(", ")}`);
+  }
+  if (hints.length === 0) return message;
+  return [message, ...hints].join("\n");
+}
+
 function hasRecoveredFromLastEditFileFailure(ctx: EvaluatorContext): boolean {
   const callLog = scopedCallLog(ctx.session, ctx.taskId);
   let lastFailIdx = -1;
@@ -222,27 +232,35 @@ export const verifyCycle: Evaluator = {
   },
 };
 
-export const editFileRecoveryEvaluator: Evaluator = {
-  id: "edit-file-recovery",
+export const toolRecoveryEvaluator: Evaluator = {
+  id: "tool-recovery",
   evaluate(ctx) {
     if (!ctx.result) return { type: "done" };
-    if (ctx.initialMode !== "work") return { type: "done" };
-    if (ctx.currentError?.tool !== "edit-file") return { type: "done" };
-    const recovery = ctx.currentError.recovery;
-    if (!recovery || recovery.tool !== "edit-file") return { type: "done" };
-    if (recovery.kind === "disambiguate-match" && hasRecoveredFromLastEditFileFailure(ctx)) return { type: "done" };
+    if (ctx.mode !== "work") return { type: "done" };
+    const currentError = ctx.currentError;
+    if (!currentError) return { type: "done" };
+    const recovery = currentError.recovery;
+    if (!recovery) return { type: "done" };
+    if (
+      recovery.tool === "edit-file" &&
+      recovery.kind === "disambiguate-match" &&
+      hasRecoveredFromLastEditFileFailure(ctx)
+    ) {
+      return { type: "done" };
+    }
 
-    ctx.debug("lifecycle.eval.edit_file_recovery", {
-      error: ctx.currentError.message,
+    ctx.debug("lifecycle.eval.tool_recovery", {
+      error: currentError.message,
+      recovery_tool: recovery.tool,
       recovery_kind: recovery.kind,
     });
     return {
       type: "regenerate",
       feedback: {
-        source: "edit-file",
+        source: "tool-recovery",
         mode: "work",
         summary: recovery.summary,
-        details: ctx.currentError.message,
+        details: formatToolRecovery(currentError.message, recovery),
         instruction: recovery.instruction,
       },
     };

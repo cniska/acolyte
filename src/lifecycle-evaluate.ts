@@ -3,10 +3,10 @@ import { t } from "./i18n";
 import type { LifecycleInput, RunContext, SavedRegenerationState } from "./lifecycle-contract";
 import {
   type Evaluator,
-  editFileRecoveryEvaluator,
   guardRecoveryEvaluator,
   lintEvaluator,
   repeatedFailureEvaluator,
+  toolRecoveryEvaluator,
   verifyCycle,
 } from "./lifecycle-evaluators";
 import { phaseGenerate, setMode, shouldYieldNow } from "./lifecycle-generate";
@@ -15,7 +15,7 @@ import { acceptedLifecycleSignal, clearVerifyOutcomeForFeedback, updateRepeatedF
 
 const EVALUATORS: Evaluator[] = [
   guardRecoveryEvaluator,
-  editFileRecoveryEvaluator,
+  toolRecoveryEvaluator,
   lintEvaluator,
   verifyCycle,
   repeatedFailureEvaluator,
