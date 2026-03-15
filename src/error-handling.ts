@@ -1,16 +1,10 @@
 import type { z } from "zod";
 import { unreachable } from "./assert";
-import {
-  ERROR_KINDS,
-  type ErrorCode,
-  type ErrorKind,
-  LIFECYCLE_ERROR_CODES,
-  type ToolRecovery,
-} from "./error-primitives";
+import { ERROR_KINDS, type ErrorCode, type ErrorKind, LIFECYCLE_ERROR_CODES } from "./error-primitives";
 import { domainIdSchema } from "./id-contract";
 import type { StreamError } from "./stream-error";
 import { extractToolErrorCode } from "./tool-error";
-import { parseToolRecovery } from "./tool-recovery";
+import { parseToolRecovery, type ToolRecovery } from "./tool-recovery";
 
 export type ErrorCategory = "timeout" | "file-not-found" | "guard-blocked" | "other";
 export type ErrorSource = "generate" | "tool-result" | "tool-error" | "server";

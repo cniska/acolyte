@@ -1,15 +1,46 @@
-import {
-  EDIT_CODE_RECOVERY_KINDS,
-  EDIT_FILE_RECOVERY_KINDS,
-  type EditCodeRecoveryKind,
-  type EditFileRecoveryKind,
-  SCAN_CODE_RECOVERY_KINDS,
-  type ScanCodeRecoveryKind,
-  TOOL_RECOVERY_NEXT_TOOLS,
-  type ToolRecovery,
-  type ToolRecoveryHints,
-  type ToolRecoveryNextTool,
-} from "./error-primitives";
+export const TOOL_RECOVERY_NEXT_TOOLS = ["read-file", "search-files", "edit-file", "scan-code", "edit-code"] as const;
+export type ToolRecoveryNextTool = (typeof TOOL_RECOVERY_NEXT_TOOLS)[number];
+export type ToolRecoveryHints = {
+  nextTool?: ToolRecoveryNextTool;
+  targetPaths?: string[];
+};
+
+export type EditFileRecoveryKind = "disambiguate-match" | "refresh-snippet" | "shrink-edit";
+export const EDIT_FILE_RECOVERY_KINDS: readonly EditFileRecoveryKind[] = [
+  "disambiguate-match",
+  "refresh-snippet",
+  "shrink-edit",
+];
+export type EditFileRecovery = {
+  tool: "edit-file";
+  kind: EditFileRecoveryKind;
+  summary: string;
+  instruction: string;
+} & ToolRecoveryHints;
+
+export type EditCodeRecoveryKind = "fix-replacement" | "refine-pattern" | "use-supported-file";
+export const EDIT_CODE_RECOVERY_KINDS: readonly EditCodeRecoveryKind[] = [
+  "fix-replacement",
+  "refine-pattern",
+  "use-supported-file",
+];
+export type EditCodeRecovery = {
+  tool: "edit-code";
+  kind: EditCodeRecoveryKind;
+  summary: string;
+  instruction: string;
+} & ToolRecoveryHints;
+
+export type ScanCodeRecoveryKind = "use-supported-file";
+export const SCAN_CODE_RECOVERY_KINDS: readonly ScanCodeRecoveryKind[] = ["use-supported-file"];
+export type ScanCodeRecovery = {
+  tool: "scan-code";
+  kind: ScanCodeRecoveryKind;
+  summary: string;
+  instruction: string;
+} & ToolRecoveryHints;
+
+export type ToolRecovery = EditFileRecovery | EditCodeRecovery | ScanCodeRecovery;
 
 export function parseToolRecovery(value: unknown): ToolRecovery | undefined {
   if (!value || typeof value !== "object") return undefined;

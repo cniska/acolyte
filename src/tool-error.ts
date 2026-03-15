@@ -1,4 +1,5 @@
-import type { ErrorKind, ToolRecovery } from "./error-primitives";
+import type { ErrorKind } from "./error-primitives";
+import type { ToolRecovery } from "./tool-recovery";
 
 export class ToolError extends Error {
   code: string;

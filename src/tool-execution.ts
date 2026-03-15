@@ -1,8 +1,9 @@
 import { invariant } from "./assert";
-import { ERROR_KINDS, LIFECYCLE_ERROR_CODES, type ToolRecovery } from "./error-primitives";
+import { ERROR_KINDS, LIFECYCLE_ERROR_CODES } from "./error-primitives";
 import { createId } from "./short-id";
 import { ToolError } from "./tool-error";
 import { recordCall, runGuards, type SessionContext } from "./tool-guards";
+import type { ToolRecovery } from "./tool-recovery";
 
 function withTimeout<T>(task: () => Promise<T>, timeoutMs: number, toolId: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {

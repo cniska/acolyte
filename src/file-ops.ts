@@ -1,7 +1,8 @@
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { type EditFileRecoveryKind, TOOL_ERROR_CODES, type ToolRecovery } from "./error-primitives";
+import { TOOL_ERROR_CODES } from "./error-primitives";
 import { createToolError } from "./tool-error";
+import type { EditFileRecoveryKind, ToolRecovery } from "./tool-recovery";
 
 /** Owner-only read/write. Use for files containing secrets or sensitive metadata. */
 export const PRIVATE_FILE_MODE = 0o600;

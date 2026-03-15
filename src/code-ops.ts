@@ -10,8 +10,9 @@ import type {
   EditCodeRule,
   EditCodeRuleObject,
 } from "./code-contract";
-import { type EditCodeRecoveryKind, TOOL_ERROR_CODES, type ToolRecovery } from "./error-primitives";
+import { TOOL_ERROR_CODES } from "./error-primitives";
 import { createToolError } from "./tool-error";
+import type { EditCodeRecoveryKind, ToolRecovery } from "./tool-recovery";
 import { createDiff, displayPathForDiff, ensurePathWithinAllowedRoots, IGNORED_DIRS } from "./tool-utils";
 
 function editCodeRecovery(path: string, kind: EditCodeRecoveryKind): ToolRecovery {
