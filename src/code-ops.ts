@@ -470,6 +470,14 @@ export async function editCode(input: {
     const renameMode = isRenameEdit(edit) ? (requestedRenameMode(edit) ?? resolveRenameMode(matches)) : null;
     if (renameMode === "local") matches = matches.filter(isLocalRenameTarget);
     if (renameMode === "member") matches = matches.filter(isMemberRenameTarget);
+    if (matches.length === 0) {
+      throw createToolError(
+        TOOL_ERROR_CODES.editCodeNoMatch,
+        `No AST matches found for ${isRenameEdit(edit) ? "rename target" : "rule"}: ${pattern}${edit.within ? ` within: ${edit.within}` : ""}${edit.withinSymbol ? ` withinSymbol: ${edit.withinSymbol}` : ""}${isRenameEdit(edit) && edit.target ? ` target: ${edit.target}` : ""}`,
+        undefined,
+        editCodeRecovery(input.path, "refine-pattern"),
+      );
+    }
     totalMatches += matches.length;
 
     const patternMetavars = isRenameEdit(edit)

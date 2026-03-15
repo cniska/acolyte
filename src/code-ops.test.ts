@@ -342,6 +342,33 @@ describe("editCode", () => {
     });
   });
 
+  test("scoped rename fails when explicit target has no matches in scope", async () => {
+    const filePath = `/tmp/acolyte-test-ast-invalid-target-${testUuid()}.ts`;
+    tempFiles.push(filePath);
+    await writeFile(
+      filePath,
+      [
+        "const scanFile = (items: string[]) => {",
+        "  const result = items[0] ?? '';",
+        "  return { result };",
+        "};",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    await expect(
+      editCode({
+        workspace: WORKSPACE,
+        path: filePath,
+        edits: [{ op: "rename", from: "result", to: "patternResult", withinSymbol: "scanFile", target: "member" }],
+      }),
+    ).rejects.toMatchObject({
+      code: TOOL_ERROR_CODES.editCodeNoMatch,
+      recovery: { tool: "edit-code", kind: "refine-pattern" },
+      message: expect.stringContaining("target: member"),
+    });
+  });
+
   test("scoped local rename rewrites shorthand destructuring bindings", async () => {
     const filePath = `/tmp/acolyte-test-ast-local-rename-destructure-${testUuid()}.ts`;
     tempFiles.push(filePath);
