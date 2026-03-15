@@ -5,7 +5,7 @@ const editCodeScopeSchema = {
   withinSymbol: z.string().min(1).optional(),
 };
 
-export const editCodeRenameTargetSchema = z.enum(["auto", "local", "member"]);
+export const editCodeRenameTargetSchema = z.enum(["local", "member"]);
 const editCodePatternStrictnessSchema = z.enum(["cst", "smart", "ast", "relaxed", "signature"]);
 const editCodeRelationalStopByKeywordSchema = z.enum(["neighbor", "end"]);
 

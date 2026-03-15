@@ -301,6 +301,7 @@ function classifyRenameDeclaration(node: napi.SgNode): RenameMode | null {
       parent.kind() === "required_parameter" ||
       parent.kind() === "optional_parameter" ||
       parent.kind() === "rest_pattern" ||
+      parent.kind() === "formal_parameters" ||
       parent.kind() === "function_declaration"
     ) {
       return "local";

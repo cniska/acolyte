@@ -155,6 +155,31 @@ describe("editCode", () => {
     expect(content).toContain("results.reduce((sum, result) => sum + result.length, 0);");
   });
 
+  test("scoped local rename handles arrow function parameters", async () => {
+    const filePath = `/tmp/acolyte-test-ast-arrow-param-rename-${testUuid()}.ts`;
+    tempFiles.push(filePath);
+    await writeFile(
+      filePath,
+      [
+        "class Processor {",
+        "  process(items: string[]) {",
+        "    return items.map((item) => item.toUpperCase());",
+        "  }",
+        "}",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    const result = await editCode({
+      workspace: WORKSPACE,
+      path: filePath,
+      edits: [{ op: "rename", from: "item", to: "entry", withinSymbol: "Processor" }],
+    });
+    expect(result.matches).toBe(2);
+    const content = await readFile(filePath, "utf8");
+    expect(content).toContain("(entry) => entry.toUpperCase()");
+  });
+
   test("scoped local rename rewrites shorthand references without renaming object properties", async () => {
     const filePath = `/tmp/acolyte-test-ast-local-rename-scope-${testUuid()}.ts`;
     tempFiles.push(filePath);
